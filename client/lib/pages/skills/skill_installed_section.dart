@@ -252,7 +252,7 @@ class SkillInstalledRow extends StatelessWidget {
                   const SizedBox(height: 4),
                   Text(
                     skill.description,
-                    maxLines: 2,
+                    maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: TpTextStyles.of(context).smColored(
                       textBase.withValues(alpha: 0.6),

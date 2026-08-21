@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:shared_ui/shared_ui.dart';
-import '../../widgets/app_toast/app_toast.dart';
 
 import '../../l10n/l10n_extensions.dart';
 import '../../models/mcp_registry_source.dart';
@@ -8,6 +7,8 @@ import '../../services/mcp/mcp_registry_browse_service.dart';
 import '../../services/mcp/mcp_registry_config_service.dart';
 import '../../services/mcp/smithery_mcp_service.dart';
 import '../../theme/workspace_surface_layers.dart';
+import '../../widgets/app_toast/app_toast.dart';
+import '../../widgets/catalog/catalog_registry_row_actions.dart';
 import '../../widgets/workspace_library_card.dart';
 
 /// Registry API sources (skills repos layout).
@@ -63,11 +64,7 @@ class _McpRegistriesSectionState extends State<McpRegistriesSection> {
       };
 
   String _registryRowSubtitle(McpRegistrySourceConfig source, dynamic l10n) {
-    final name = _sourceLabel(source.kind, l10n);
-    if (source.kind == McpRegistrySourceKind.smithery && source.hasApiToken) {
-      return '@$name · ${l10n.mcpSmitheryApiTokenSet}';
-    }
-    return '@$name';
+    return '@${_sourceLabel(source.kind, l10n)}';
   }
 
   Future<void> _toggleEnabled(
@@ -367,6 +364,7 @@ class _RegistryRow extends StatelessWidget {
     final cs = Theme.of(context).colorScheme;
     final l10n = context.l10n;
     final textBase = cs.onSurface;
+    final needsAuth = source.kind == McpRegistrySourceKind.smithery;
 
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 6),
@@ -403,6 +401,10 @@ class _RegistryRow extends StatelessWidget {
                   ],
                 ),
               ),
+              if (needsAuth) ...[
+                CatalogRegistryAuthBadge(authenticated: source.hasApiToken),
+                const SizedBox(width: 4),
+              ],
               if (testing) ...[
                 const SizedBox(
                   width: 16,
@@ -411,6 +413,10 @@ class _RegistryRow extends StatelessWidget {
                 ),
                 const SizedBox(width: 8),
               ],
+              CatalogRegistryEditButton(
+                onPressed: onEdit,
+                tooltip: l10n.mcpRegistryEditTitle,
+              ),
               Switch(value: source.enabled, onChanged: onToggle),
               IconButton(
                 tooltip: l10n.mcpRegistryResetTitle,

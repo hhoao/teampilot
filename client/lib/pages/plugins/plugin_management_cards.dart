@@ -4,22 +4,14 @@ import '../../widgets/app_toast/app_toast.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../../l10n/l10n_extensions.dart';
-import '../../theme/workspace_surface_layers.dart';
+import '../../widgets/workspace_library_card.dart';
 
 class PluginManagementCard extends StatelessWidget {
   const PluginManagementCard({super.key, required this.child});
   final Widget child;
 
   @override
-  Widget build(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
-    return Container(
-      margin: const EdgeInsets.only(bottom: 14),
-      padding: const EdgeInsets.all(18),
-      decoration: workspaceCardDecoration(cs, radius: 12),
-      child: child,
-    );
-  }
+  Widget build(BuildContext context) => WorkspaceLibraryCard(child: child);
 }
 
 class PluginCardHeader extends StatelessWidget {

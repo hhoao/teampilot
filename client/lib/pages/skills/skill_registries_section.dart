@@ -11,6 +11,7 @@ import '../../services/skill/registry/skill_registry_source.dart';
 import '../../theme/workspace_surface_layers.dart';
 import '../../utils/debounce/button_callbacks.dart';
 import '../../widgets/app_toast/app_toast.dart';
+import '../../widgets/catalog/catalog_registry_row_actions.dart';
 import '../../widgets/workspace_library_card.dart';
 import 'skill_management_cards.dart';
 
@@ -462,11 +463,11 @@ class _RegistryRow extends StatelessWidget {
     final cfg = source is ApiRegistrySource
         ? (source as ApiRegistrySource).config
         : (source as GitRepoRegistrySource).config;
+    final needsAuth = source is ApiRegistrySource &&
+        cfg.protocol == SkillRegistryProtocol.skillsMp;
     final subtitle = source is GitRepoRegistrySource
         ? '@${(source as GitRepoRegistrySource).gitRepo.branch}'
-        : (cfg.hasApiToken
-              ? '@${source.label} · ${l10n.skillsRegistryApiKeySet}'
-              : '@${source.label}');
+        : '@${source.label}';
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 6),
       child: TpHover(
@@ -500,10 +501,22 @@ class _RegistryRow extends StatelessWidget {
                   ],
                 ),
               ),
+              if (needsAuth) ...[
+                CatalogRegistryAuthBadge(authenticated: cfg.hasApiToken),
+                const SizedBox(width: 4),
+              ],
               if (syncing) ...[
-                const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2)),
+                const SizedBox(
+                  width: 16,
+                  height: 16,
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                ),
                 const SizedBox(width: 8),
               ],
+              CatalogRegistryEditButton(
+                onPressed: onEdit,
+                tooltip: l10n.skillsRegistryEditTitle,
+              ),
               Switch(value: source.enabled, onChanged: onToggle),
               IconButton(
                 tooltip: source.id == 'skillsSh' || source.id == 'skillsMp'

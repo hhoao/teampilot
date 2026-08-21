@@ -4086,6 +4086,12 @@ class AppLocalizationsEn extends AppLocalizations {
   String get pluginsCardUpdate => 'Update';
 
   @override
+  String get pluginsUpdateAvailable => 'Update available';
+
+  @override
+  String get pluginsLocal => 'local';
+
+  @override
   String get pluginsCardUninstall => 'Uninstall';
 
   @override
@@ -4100,6 +4106,9 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get pluginsMarketplaceBranch => 'Branch';
+
+  @override
+  String get pluginsMarketplaceDisplayName => 'Display name';
 
   @override
   String get pluginsMarketplaceRemove => 'Remove marketplace';

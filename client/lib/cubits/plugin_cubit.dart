@@ -695,6 +695,18 @@ class PluginCubit extends Cubit<PluginState> {
     unawaited(_syncMarketplacesInBackground([updated], force: false));
   }
 
+  Future<void> updateMarketplace(PluginMarketplace marketplace) async {
+    await repoService.updateMarketplace(marketplace);
+    final marketplaces = await repoService.loadMarketplaces();
+    emit(state.copyWith(marketplaces: marketplaces));
+    if (marketplace.enabled) {
+      final updated = marketplaces.firstWhere(
+        (x) => x.owner == marketplace.owner && x.name == marketplace.name,
+      );
+      unawaited(_syncMarketplacesInBackground([updated], force: true));
+    }
+  }
+
   Future<void> checkUpdates() async {
     emit(state.copyWith(updatesLoading: true));
     try {

@@ -95,6 +95,16 @@ class PluginRepoService {
     await saveMarketplaces(list);
   }
 
+  Future<void> updateMarketplace(PluginMarketplace updated) async {
+    final list = await loadMarketplaces();
+    final idx = list.indexWhere(
+      (m) => m.owner == updated.owner && m.name == updated.name,
+    );
+    if (idx < 0) return;
+    list[idx] = updated;
+    await saveMarketplaces(list);
+  }
+
   Future<RemoteFileStore?> _remote() async {
     if (!AppStorage.isInstalled) return null;
     final snap = AppStorage.context;

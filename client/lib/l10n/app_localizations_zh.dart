@@ -3919,6 +3919,12 @@ class AppLocalizationsZh extends AppLocalizations {
   String get pluginsCardUpdate => '更新';
 
   @override
+  String get pluginsUpdateAvailable => '有新版本';
+
+  @override
+  String get pluginsLocal => '本地';
+
+  @override
   String get pluginsCardUninstall => '卸载';
 
   @override
@@ -3933,6 +3939,9 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get pluginsMarketplaceBranch => '分支';
+
+  @override
+  String get pluginsMarketplaceDisplayName => '显示名称';
 
   @override
   String get pluginsMarketplaceRemove => '移除 marketplace';

@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:shared_ui/shared_ui.dart';
 import 'package:teampilot/cubits/skill_cubit.dart';
 import 'package:teampilot/l10n/app_localizations.dart';
 import 'package:teampilot/models/skill_registry_source.dart';
@@ -67,10 +68,16 @@ void main() {
     locale: const Locale('en'),
     localizationsDelegates: AppLocalizations.localizationsDelegates,
     supportedLocales: AppLocalizations.supportedLocales,
-    home: Scaffold(
-      body: BlocProvider<SkillCubit>.value(
-        value: cubit,
-        child: const SizedBox(height: 900, child: SkillRegistriesSection()),
+    home: TpTheme(
+      data: TpThemeData.fromColorScheme(
+        ThemeData.light().colorScheme,
+        scale: 1.0,
+      ),
+      child: Scaffold(
+        body: BlocProvider<SkillCubit>.value(
+          value: cubit,
+          child: const SizedBox(height: 900, child: SkillRegistriesSection()),
+        ),
       ),
     ),
   );
@@ -139,7 +146,7 @@ void main() {
     expect(find.text('@My API'), findsWidgets);
   });
 
-  testWidgets('clearing token in edit dialog removes API key set subtitle', (
+  testWidgets('clearing token in edit dialog shows unauthenticated badge', (
     tester,
   ) async {
     final defaults = SkillRegistriesConfig.defaults();
@@ -151,13 +158,15 @@ void main() {
     final cubit = await buildCubit(tester);
     await tester.pumpWidget(wrap(cubit));
     await tester.pumpAndSettle();
-    expect(find.text('@SkillsMP · API key set'), findsOneWidget);
+    expect(find.text('Authenticated'), findsOneWidget);
+    expect(find.byIcon(Icons.edit_outlined), findsWidgets);
     await tester.tap(find.text('https://skillsmp.com/api/v1'));
     await tester.pumpAndSettle();
     await tester.enterText(find.byType(TextField).at(2), '');
     await tester.tap(find.text('Save'));
     await _flushRealIo(tester);
-    expect(find.text('@SkillsMP · API key set'), findsNothing);
+    expect(find.text('Authenticated'), findsNothing);
+    expect(find.text('Unauthenticated'), findsOneWidget);
     expect(find.text('@SkillsMP'), findsOneWidget);
   });
 

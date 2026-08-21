@@ -54,23 +54,13 @@ class McpInstalledServerRow extends StatelessWidget {
                 children: [
                   Row(
                     children: [
-                      Flexible(
+                      Expanded(
                         child: Text(
                           server.name,
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                           style: TpTextStyles.of(context)
                               .mdSemiboldColored(textBase),
-                        ),
-                      ),
-                      const SizedBox(width: 8),
-                      Flexible(
-                        child: Text(
-                          typeLabel,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: TpTextStyles.of(context)
-                              .xsColored(textBase.withValues(alpha: 0.5)),
                         ),
                       ),
                       if (oauthAuthenticated == false) ...[
@@ -111,11 +101,19 @@ class McpInstalledServerRow extends StatelessWidget {
                       ],
                     ],
                   ),
+                  const SizedBox(height: 2),
+                  Text(
+                    typeLabel,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TpTextStyles.of(context)
+                        .xsColored(textBase.withValues(alpha: 0.5)),
+                  ),
                   if (description.isNotEmpty) ...[
                     const SizedBox(height: 4),
                     Text(
                       description,
-                      maxLines: 2,
+                      maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: TpTextStyles.of(context)
                           .smColored(textBase.withValues(alpha: 0.6)),

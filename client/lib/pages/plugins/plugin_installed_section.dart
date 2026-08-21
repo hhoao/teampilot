@@ -13,6 +13,7 @@ import '../../utils/debounce/debounce.dart';
 import '../../utils/github/github_source_url.dart';
 import '../../widgets/github_details_button.dart';
 import '../../widgets/plugins/plugin_cli_support_disclosure.dart';
+import '../../theme/workspace_surface_layers.dart';
 import 'plugin_management_cards.dart';
 
 class PluginInstalledSection extends StatelessWidget {
@@ -273,78 +274,156 @@ class PluginInstalledRow extends StatelessWidget {
     final cubit = context.read<PluginCubit>();
     final cs = Theme.of(context).colorScheme;
     final textBase = cs.onSurface;
+    final hasUpdate = updateInfo != null;
+    final sourceLabel = plugin.marketplaceOwner != null &&
+            plugin.marketplaceName != null
+        ? '${plugin.marketplaceOwner}/${plugin.marketplaceName}'
+        : l10n.pluginsLocal;
 
-    return Container(
-      margin: const EdgeInsets.only(top: 8),
-      padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 14),
-      decoration: BoxDecoration(
-        color: cs.surfaceContainerLow,
-        borderRadius: BorderRadius.circular(10),
-      ),
-      child: Row(
-        children: [
-          Expanded(
-            child: Column(
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 8),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+        decoration: workspaceInsetDecoration(cs, radius: 10),
+        child: LayoutBuilder(
+          builder: (context, constraints) {
+            final stackActions = constraints.maxWidth < 420;
+            final info = Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Row(
                   children: [
                     Flexible(
-                      child: Text(
-                        plugin.name,
-                        style: TpTextStyles.of(
-                          context,
-                        ).mdSemiboldColored(textBase),
+                      child: Row(
+                        children: [
+                          Flexible(
+                            child: Text(
+                              plugin.name,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: TpTextStyles.of(
+                                context,
+                              ).mdSemiboldColored(textBase),
+                            ),
+                          ),
+                          if (plugin.version.isNotEmpty) ...[
+                            const SizedBox(width: 8),
+                            Text(
+                              'v${plugin.version}',
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: TpTextStyles.of(context).xsColored(
+                                textBase.withValues(alpha: 0.45),
+                              ),
+                            ),
+                          ],
+                        ],
                       ),
                     ),
-                    if (plugin.version.isNotEmpty) ...[
+                    if (hasUpdate) ...[
                       const SizedBox(width: 8),
-                      Text(
-                        'v${plugin.version}',
-                        style: TpTextStyles.of(context).xsColored(textBase.withValues(alpha: 0.45),
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 6,
+                          vertical: 2,
+                        ),
+                        decoration: BoxDecoration(
+                          color: Colors.amber.withValues(alpha: 0.18),
+                          borderRadius: BorderRadius.circular(4),
+                        ),
+                        child: Text(
+                          l10n.pluginsUpdateAvailable,
+                          style: TpTextStyles.of(
+                            context,
+                          ).xsBoldColored(const Color(0xFFB45309)),
                         ),
                       ),
                     ],
                   ],
                 ),
+                const SizedBox(height: 2),
+                Text(
+                  sourceLabel,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TpTextStyles.of(context).xsColored(
+                    textBase.withValues(alpha: 0.5),
+                  ),
+                ),
+                PluginCliSupportDisclosure(capabilities: plugin.capabilities),
                 if (plugin.description.isNotEmpty) ...[
                   const SizedBox(height: 4),
                   Text(
                     plugin.description,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
-                    style: TpTextStyles.of(context).smColored(textBase.withValues(alpha: 0.55),
+                    style: TpTextStyles.of(context).smColored(
+                      textBase.withValues(alpha: 0.6),
                     ),
                   ),
                 ],
-                PluginCliSupportDisclosure(capabilities: plugin.capabilities),
               ],
-            ),
-          ),
-          if (busy)
-            const SizedBox(
-              width: 14,
-              height: 14,
-              child: CircularProgressIndicator(strokeWidth: 2),
-            )
-          else ...[
-            GithubDetailsButton(
-              url: plugin.githubBrowseUrl,
-              label: l10n.pluginsCardDetails,
-            ),
-            if (updateInfo != null)
-              TextButton.icon(
-                onPressed: () => cubit.updatePlugin(plugin),
-                icon: Icon(Icons.upgrade, size: context.tpIconSizes.md),
-                label: Text(l10n.pluginsCardUpdate),
-              ),
-            TextButton.icon(
-              onPressed: () => _uninstall(context, plugin, l10n, cubit),
-              icon: Icon(Icons.delete_outline, size: context.tpIconSizes.md),
-              label: Text(l10n.pluginsCardUninstall),
-            ),
-          ],
-        ],
+            );
+            final actions = Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                GithubDetailsButton(
+                  url: plugin.githubBrowseUrl,
+                  label: l10n.pluginsCardDetails,
+                ),
+                const SizedBox(width: 8),
+                if (hasUpdate)
+                  IconButton(
+                    tooltip: l10n.pluginsCardUpdate,
+                    onPressed: busy
+                        ? null
+                        : () => cubit.updatePlugin(plugin),
+                    icon: busy
+                        ? const SizedBox(
+                            width: 16,
+                            height: 16,
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          )
+                        : Icon(Icons.upgrade, size: context.tpIconSizes.md),
+                  ),
+                IconButton(
+                  tooltip: l10n.pluginsCardUninstall,
+                  onPressed: busy
+                      ? null
+                      : () => _uninstall(context, plugin, l10n, cubit),
+                  icon: Icon(
+                    Icons.delete_outline,
+                    size: context.tpIconSizes.md,
+                    color: cs.error,
+                  ),
+                ),
+              ],
+            );
+            if (stackActions) {
+              return Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  info,
+                  const SizedBox(height: 4),
+                  Align(
+                    alignment: Alignment.centerRight,
+                    child: FittedBox(
+                      fit: BoxFit.scaleDown,
+                      alignment: Alignment.centerRight,
+                      child: actions,
+                    ),
+                  ),
+                ],
+              );
+            }
+            return Row(
+              children: [
+                Expanded(child: info),
+                actions,
+              ],
+            );
+          },
+        ),
       ),
     );
   }

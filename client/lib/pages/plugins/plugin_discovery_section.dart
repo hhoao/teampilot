@@ -119,11 +119,11 @@ class PluginDiscoveryBodyState extends State<PluginDiscoveryBody> {
       );
     }
 
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        PluginManagementCard(
-          child: TpCatalogDiscoveryHeader(
+    return PluginManagementCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          TpCatalogDiscoveryHeader(
             title: l10n.pluginsNavDiscovery,
             searchController: _searchCtrl,
             searchHint: l10n.pluginsSearchPlaceholder,
@@ -190,9 +190,10 @@ class PluginDiscoveryBodyState extends State<PluginDiscoveryBody> {
               ),
             ],
           ),
-        ),
-        Expanded(child: _buildDiscoveryList(context, l10n)),
-      ],
+          const SizedBox(height: 14),
+          Expanded(child: _buildDiscoveryList(context, l10n)),
+        ],
+      ),
     );
   }
 
@@ -205,8 +206,8 @@ class PluginDiscoveryBodyState extends State<PluginDiscoveryBody> {
     if (!widget.state.discoveryLoading && filtered.isEmpty) {
       if (widget.state.discoveryFailures.isNotEmpty &&
           widget.state.errorMessage != null) {
-        return SingleChildScrollView(
-          child: PluginManagementCard(
+        return Center(
+          child: SingleChildScrollView(
             child: Text(
               widget.state.errorMessage!,
               style: TpTextStyles.of(context).sm,
@@ -214,8 +215,8 @@ class PluginDiscoveryBodyState extends State<PluginDiscoveryBody> {
           ),
         );
       }
-      return SingleChildScrollView(
-        child: PluginManagementCard(
+      return Center(
+        child: SingleChildScrollView(
           child: TpEmptyState(
             icon: Icons.travel_explore_outlined,
             title: l10n.pluginsDiscoveryEmpty,

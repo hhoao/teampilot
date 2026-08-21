@@ -7269,6 +7269,18 @@ abstract class AppLocalizations {
   /// **'Update'**
   String get pluginsCardUpdate;
 
+  /// No description provided for @pluginsUpdateAvailable.
+  ///
+  /// In en, this message translates to:
+  /// **'Update available'**
+  String get pluginsUpdateAvailable;
+
+  /// No description provided for @pluginsLocal.
+  ///
+  /// In en, this message translates to:
+  /// **'local'**
+  String get pluginsLocal;
+
   /// No description provided for @pluginsCardUninstall.
   ///
   /// In en, this message translates to:
@@ -7298,6 +7310,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Branch'**
   String get pluginsMarketplaceBranch;
+
+  /// No description provided for @pluginsMarketplaceDisplayName.
+  ///
+  /// In en, this message translates to:
+  /// **'Display name'**
+  String get pluginsMarketplaceDisplayName;
 
   /// No description provided for @pluginsMarketplaceRemove.
   ///

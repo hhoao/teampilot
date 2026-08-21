@@ -109,49 +109,45 @@ class SkillDiscoverySectionState extends State<SkillDiscoverySection> {
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        WorkspaceLibraryCard(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              _FilterBar(
-                searchCtl: _searchCtl,
-                onSearchChanged: _onSearchChanged,
-                sourceFilter: _sourceFilter,
-                statusFilter: _statusFilter,
-                onDiscoverySort: (sort) =>
-                    context.read<SkillCubit>().setDiscoverySort(sort),
-                onSourceFilter: (v) {
-                  setState(() => _sourceFilter = v ?? 'all');
-                  _onFilterChanged();
-                },
-                onStatusFilter: (v) {
-                  setState(() => _statusFilter = v ?? 'all');
-                },
-                onRefresh: () => context.read<SkillCubit>().unifiedSearch(
-                  _query.trim().length >= 2 ? _query.trim() : '',
-                  sourceId: _sourceIdOrNull(),
-                  sortBy: _sortBy,
-                  language: _language,
-                  category: _category,
-                  occupation: _occupation,
-                ),
-              ),
-            ],
-          ),
-        ),
-        Expanded(
-          child: _ResultsBody(
-            query: _query,
+    return WorkspaceLibraryCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          _FilterBar(
+            searchCtl: _searchCtl,
+            onSearchChanged: _onSearchChanged,
             sourceFilter: _sourceFilter,
             statusFilter: _statusFilter,
-            onGoRegistries: widget.onGoRegistries,
-            onRetry: _onFilterChanged,
+            onDiscoverySort: (sort) =>
+                context.read<SkillCubit>().setDiscoverySort(sort),
+            onSourceFilter: (v) {
+              setState(() => _sourceFilter = v ?? 'all');
+              _onFilterChanged();
+            },
+            onStatusFilter: (v) {
+              setState(() => _statusFilter = v ?? 'all');
+            },
+            onRefresh: () => context.read<SkillCubit>().unifiedSearch(
+              _query.trim().length >= 2 ? _query.trim() : '',
+              sourceId: _sourceIdOrNull(),
+              sortBy: _sortBy,
+              language: _language,
+              category: _category,
+              occupation: _occupation,
+            ),
           ),
-        ),
-      ],
+          const SizedBox(height: 14),
+          Expanded(
+            child: _ResultsBody(
+              query: _query,
+              sourceFilter: _sourceFilter,
+              statusFilter: _statusFilter,
+              onGoRegistries: widget.onGoRegistries,
+              onRetry: _onFilterChanged,
+            ),
+          ),
+        ],
+      ),
     );
   }
 }
@@ -339,8 +335,8 @@ class _ResultsBody extends StatelessWidget {
               return const Center(child: CircularProgressIndicator());
             }
             if (filtered.isEmpty) {
-              return SingleChildScrollView(
-                child: WorkspaceLibraryCard(
+              return Center(
+                child: SingleChildScrollView(
                   child: TpEmptyState(
                     icon: Icons.travel_explore_outlined,
                     title: l10n.skillsDiscoveryEmpty,
@@ -425,28 +421,26 @@ class _ErrorBody extends StatelessWidget {
     final l10n = context.l10n;
     final isQuota = error == marketplaceQuotaErrorKey;
     return SingleChildScrollView(
-      child: WorkspaceLibraryCard(
-        child: Column(
-          children: [
-            TpEmptyState(
-              icon: isQuota ? Icons.key_off_outlined : Icons.error_outline,
-              title: l10n.skillsDiscoveryErrorTitle,
-              hint: isQuota ? l10n.skillsMpQuotaHint : error,
-              actionLabel: isQuota ? l10n.skillsRegistryGoSetKey : null,
-              onAction: isQuota ? onGoRegistries : null,
-              centered: true,
+      child: Column(
+        children: [
+          TpEmptyState(
+            icon: isQuota ? Icons.key_off_outlined : Icons.error_outline,
+            title: l10n.skillsDiscoveryErrorTitle,
+            hint: isQuota ? l10n.skillsMpQuotaHint : error,
+            actionLabel: isQuota ? l10n.skillsRegistryGoSetKey : null,
+            onAction: isQuota ? onGoRegistries : null,
+            centered: true,
+          ),
+          if (isQuota) const SizedBox(height: 4),
+          Padding(
+            padding: const EdgeInsets.only(bottom: 16),
+            child: OutlinedButton.icon(
+              onPressed: onRetry,
+              icon: const Icon(Icons.refresh, size: 18),
+              label: Text(l10n.skillsRegistryRetry),
             ),
-            if (isQuota) const SizedBox(height: 4),
-            Padding(
-              padding: const EdgeInsets.only(bottom: 16),
-              child: OutlinedButton.icon(
-                onPressed: onRetry,
-                icon: const Icon(Icons.refresh, size: 18),
-                label: Text(l10n.skillsRegistryRetry),
-              ),
-            ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
