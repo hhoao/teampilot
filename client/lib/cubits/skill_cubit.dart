@@ -14,7 +14,13 @@ import '../repositories/skill_repository.dart';
 import '../services/discovery/discovery_refresh_policy.dart';
 import '../services/catalog/catalog_error_sanitizer.dart';
 import '../services/catalog/catalog_sort_comparator.dart';
-import '../services/progress_activity/pack_acquire_activity_adapter.dart';
+import '../models/install_job/install_cancel_policy.dart';
+import '../models/install_job/install_job_context.dart';
+import '../models/install_job/install_job_key.dart';
+import '../models/install_job/install_job_spec.dart';
+import '../services/install/install_job_keys.dart';
+import '../services/install/install_job_registry.dart';
+import '../services/install/runners/pack_acquire_install_job_runner.dart';
 import '../services/skill/marketplace/skill_marketplace_source.dart';
 import '../services/skill/registry/api_registry_source.dart';
 import '../services/skill/registry/git_repo_registry_source.dart';
@@ -175,7 +181,7 @@ class SkillCubit extends Cubit<SkillState> {
     rebuildSources,
     SkillAcquisitionEngine? acquisitionEngine,
     SkillUninstalledHandler? onSkillUninstalled,
-    PackAcquireActivityAdapter? packAcquireActivity,
+    InstallJobRegistry? installJobRegistry,
     DiscoverySettingsCubit? discoverySettings,
   }) : _rebuildSources = rebuildSources,
        _acquisitionEngine =
@@ -194,7 +200,7 @@ class SkillCubit extends Cubit<SkillState> {
              repoCache: _repo.repoCache,
            ),
        _onSkillUninstalled = onSkillUninstalled,
-       _packAcquireActivity = packAcquireActivity,
+       _installJobRegistry = installJobRegistry,
        _discoverySettings = discoverySettings,
        super(SkillState(sources: initialSources));
 
@@ -202,7 +208,7 @@ class SkillCubit extends Cubit<SkillState> {
   final SkillRegistryConfigService registryConfigService;
   final SkillAcquisitionEngine _acquisitionEngine;
   final SkillUninstalledHandler? _onSkillUninstalled;
-  final PackAcquireActivityAdapter? _packAcquireActivity;
+  final InstallJobRegistry? _installJobRegistry;
   final DiscoverySettingsCubit? _discoverySettings;
   final List<SkillRegistrySource> Function(SkillRegistriesConfig)
   _rebuildSources;
@@ -447,6 +453,7 @@ class SkillCubit extends Cubit<SkillState> {
     emit(state.copyWith(busyIds: busy, clearError: true));
     try {
       await _runPackAcquireTracked(
+        key: InstallJobKeys.skill(d.key),
         title: 'Installing skill: ${d.name}',
         historyMessage: 'Installed ${d.name}',
         run: (_) => _installDiscoverableCore(d, overwrite: overwrite),
@@ -474,20 +481,24 @@ class SkillCubit extends Cubit<SkillState> {
   }
 
   Future<void> _runPackAcquireTracked({
+    required InstallJobKey key,
     required String title,
     required String historyMessage,
     required Future<void> Function(PackAcquireStepReporter onStep) run,
   }) async {
-    final adapter = _packAcquireActivity;
-    if (adapter == null) {
+    final registry = _installJobRegistry;
+    if (registry == null) {
       await run(({subtitle, completedSteps, totalSteps}) {});
       return;
     }
-    await adapter.runTracked<void>(
-      kind: ProgressActivityKind.packAcquire,
-      title: title,
-      historyMessageFor: (_) => historyMessage,
-      run: run,
+    await registry.enqueue(
+      InstallJobSpec<void>(
+        key: key,
+        title: title,
+        cancelPolicy: InstallCancelPolicy.cooperative,
+        historyMessageFor: (_) => historyMessage,
+        run: (ctx) => run(packAcquireStepReporter(ctx)),
+      ),
     );
   }
 

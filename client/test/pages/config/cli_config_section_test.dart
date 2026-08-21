@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:shared_ui/shared_ui.dart';
+import 'package:teampilot/cubits/progress_activity_cubit.dart';
 import 'package:teampilot/cubits/session_preferences_cubit.dart';
 import 'package:teampilot/l10n/app_localizations.dart';
 import 'package:teampilot/models/session_preferences.dart';
@@ -11,10 +13,47 @@ import 'package:teampilot/pages/config/cli_config_section.dart';
 import 'package:teampilot/pages/config/cli_executable_path_settings_row.dart';
 import 'package:teampilot/repositories/session_preferences_repository.dart';
 import 'package:teampilot/services/app/connection_mode_service.dart';
+import 'package:teampilot/services/cli/cli_installer_service.dart';
+import 'package:teampilot/services/cli/installer_types.dart';
+import 'package:teampilot/services/install/install_job_registry.dart';
+import 'package:teampilot/services/install/install_job_runner_registry.dart';
+import 'package:teampilot/services/install/runners/cli_install_job_runner.dart';
+import 'package:teampilot/services/notification/notification_recorder.dart';
 import 'package:teampilot/utils/ui/app_keys.dart';
 import 'package:teampilot/widgets/app_toast/app_toast.dart';
 
 import '../../support/post_frame_test_harness.dart';
+
+class _FakeRecorder implements NotificationRecorder {
+  @override
+  void record({
+    required String message,
+    required TpToastVariant variant,
+    String title = '',
+    String payload = '',
+  }) {}
+}
+
+class _DelayedCliInstallerService extends CliInstallerService {
+  _DelayedCliInstallerService() : super(isWindowsOverride: false);
+
+  @override
+  Future<CliInstallResult> install({
+    required CliTool cli,
+    required CliInstallMode mode,
+    sshProfile,
+    onProgress,
+    isCancelled,
+    onProcessStarted,
+  }) async {
+    await Future<void>.delayed(const Duration(milliseconds: 80));
+    return CliInstallResult(
+      success: true,
+      message: 'Installed',
+      executablePath: '/installed/${cli.value}',
+    );
+  }
+}
 
 Future<SessionPreferencesCubit> _makeCubit({
   Map<CliTool, String> locatedExecutables = const {},
@@ -31,6 +70,18 @@ Future<SessionPreferencesCubit> _makeCubit({
 }
 
 Widget _wrap(SessionPreferencesCubit cubit) {
+  final progressCubit = ProgressActivityCubit(historyRecorder: _FakeRecorder());
+  final registry = InstallJobRegistry(
+    progressCubit: progressCubit,
+    runnerRegistry: InstallJobRunnerRegistry(
+      runners: [
+        CliInstallJobRunner(
+          installerFactory: () => _DelayedCliInstallerService(),
+        ),
+      ],
+    ),
+  );
+
   return MultiRepositoryProvider(
     providers: [
       RepositoryProvider<ConnectionModeService>(
@@ -39,6 +90,7 @@ Widget _wrap(SessionPreferencesCubit cubit) {
           hasSshProfiles: () => false,
         ),
       ),
+      RepositoryProvider<InstallJobRegistry>.value(value: registry),
     ],
     child: BlocProvider.value(
       value: cubit,
@@ -56,7 +108,22 @@ Widget _wrap(SessionPreferencesCubit cubit) {
 Widget _wrapRow(
   SessionPreferencesCubit cubit, {
   Future<String?> Function()? locateOverride,
+  InstallJobRegistry? installJobRegistry,
 }) {
+  final progressCubit = ProgressActivityCubit(historyRecorder: _FakeRecorder());
+  final registry =
+      installJobRegistry ??
+      InstallJobRegistry(
+        progressCubit: progressCubit,
+        runnerRegistry: InstallJobRunnerRegistry(
+          runners: [
+            CliInstallJobRunner(
+              installerFactory: () => _DelayedCliInstallerService(),
+            ),
+          ],
+        ),
+      );
+
   return MultiRepositoryProvider(
     providers: [
       RepositoryProvider<ConnectionModeService>(
@@ -65,6 +132,7 @@ Widget _wrapRow(
           hasSshProfiles: () => false,
         ),
       ),
+      RepositoryProvider<InstallJobRegistry>.value(value: registry),
     ],
     child: BlocProvider.value(
       value: cubit,
@@ -219,5 +287,23 @@ void main() {
     AppToast.dismiss();
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 250));
+  });
+
+  testWidgets('install button uses registry and persists after unmount', (
+    tester,
+  ) async {
+    final cubit = await _makeCubit();
+    addTearDown(cubit.close);
+
+    await tester.pumpWidget(_wrapRow(cubit));
+    await tester.pump();
+    await tester.tap(find.byKey(AppKeys.claudeCliInstallButton));
+    await tester.pump();
+
+    await tester.pumpWidget(const SizedBox.shrink());
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 200));
+
+    expect(cubit.configuredExecutablePath(CliTool.claude), '/installed/claude');
   });
 }

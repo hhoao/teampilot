@@ -40,7 +40,7 @@ import 'agent_attention_cubit.dart';
 import '../services/launch/launch_factory.dart';
 import '../services/launch/session_connect_orchestrator.dart';
 import '../services/launch/workspace_provision_coordinator.dart';
-import '../services/progress_activity/cli_provision_activity_adapter.dart';
+import '../services/install/install_job_registry.dart';
 import '../services/cli/registry/cli_tool_registry.dart';
 import '../services/cli/registry/capabilities/team_behavior_capability.dart';
 import '../services/cli/preset_resolver.dart';
@@ -129,14 +129,14 @@ class ChatCubit extends Cubit<ChatState>
     required AutomationRepository automationRepository,
     LayoutCubit? layoutCubit,
     RemoteCliReadinessService? remoteCliReadiness,
-    CliProvisionActivityAdapter? cliProvisionActivity,
+    InstallJobRegistry? installJobRegistry,
     bool Function()? termuxConnectedResolver,
     String Function()? termuxDisconnectedWorkOpsMessageResolver,
     RuntimeTarget Function()? termuxGateHomeResolver,
   }) : _remoteBusResolver = remoteBusResolver,
        _remoteCliReadiness = remoteCliReadiness,
        _sessionConnect = sessionConnect,
-       _cliProvisionActivity = cliProvisionActivity,
+       _installJobRegistry = installJobRegistry,
        _teamById = teamById,
        _teammateBusMcpGateway =
            teammateBusMcpGateway ?? TeammateBusMcpGateway(),
@@ -215,7 +215,7 @@ class ChatCubit extends Cubit<ChatState>
 
   final RemoteBusBindingResolver? _remoteBusResolver;
   final RemoteCliReadinessService? _remoteCliReadiness;
-  final CliProvisionActivityAdapter? _cliProvisionActivity;
+  final InstallJobRegistry? _installJobRegistry;
   final SessionConnectOrchestrator? _sessionConnect;
 
   /// User-driven remote CLI locate/install (Machines panel + landing gate).
@@ -662,8 +662,7 @@ class ChatCubit extends Cubit<ChatState>
       sessionConnect.workspaceProvision;
 
   @override
-  CliProvisionActivityAdapter? get cliProvisionActivity =>
-      _cliProvisionActivity;
+  InstallJobRegistry? get installJobRegistry => _installJobRegistry;
 
   @override
   CliToolRegistry get cliRegistry => _lifecycle.cliToolRegistry;

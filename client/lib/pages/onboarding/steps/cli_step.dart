@@ -5,26 +5,27 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:shared_ui/shared_ui.dart';
 import '../../../widgets/app_toast/app_toast.dart';
 
-import '../../../cubits/progress_activity_cubit.dart';
 import '../../../cubits/session_preferences_cubit.dart';
 import '../../../cubits/ssh_profile_cubit.dart';
 import '../../../cubits/termux_cubit.dart';
 import '../../../l10n/l10n_extensions.dart';
+import '../../../models/install_job/install_job_key.dart';
 import '../../../models/session_preferences.dart';
 import '../../../models/ssh_profile.dart';
 import '../../../models/team_config.dart';
 import '../../../services/app/connection_mode_service.dart';
 import '../../../services/cli/cli_executable_discovery.dart';
-import '../../../services/cli/cli_installer_service.dart';
 import '../../../services/cli/remote_cli_locator.dart';
 import '../../../services/cli/registry/cli_display_name.dart';
 import '../../../services/cli/registry/cli_tool_definition.dart';
 import '../../../services/cli/registry/cli_tool_registry.dart';
 import '../../../services/cli/registry/cli_tool_registry_scope.dart';
-import '../../../services/progress_activity/cli_provision_activity_adapter.dart';
+import '../../../services/install/install_job_enqueue.dart';
+import '../../../services/install/install_job_keys.dart';
+import '../../../services/install/install_job_registry.dart';
+import '../../../services/install/install_job_scope_resolver.dart';
 import '../../../services/ssh/ssh_client_factory.dart';
 import '../../../services/termux/termux_transport_profile.dart';
-import '../../../widgets/cli_install_progress_panel.dart';
 import 'onboarding_cli_row.dart';
 import 'onboarding_step_scaffold.dart';
 
@@ -44,9 +45,6 @@ class _OnboardingCliStepState extends State<OnboardingCliStep> {
   final _detecting = ValueNotifier(false);
   final _busy = ValueNotifier(false);
   var _hasStartedDetect = false;
-  CliTool? _installingCli;
-  CliInstallPhase? _installPhase;
-  final List<String> _installLog = [];
   String? _detectError;
 
   @override
@@ -96,10 +94,24 @@ class _OnboardingCliStepState extends State<OnboardingCliStep> {
       _controllers.putIfAbsent(cli, TextEditingController.new);
 
   bool _supportsInstall(CliTool cli) =>
-      _registry.capability<CliExecutableCapability>(cli)?.supportsInstaller ?? false;
+      _registry.capability<CliExecutableCapability>(cli)?.supportsInstaller ??
+      false;
+
+  InstallJobKey _installJobKey(CliTool cli) {
+    final connectionMode = context.read<ConnectionModeService>();
+    final profile = connectionMode.isTermuxMode
+        ? _termuxProfile(context)
+        : context.read<SshProfileCubit>().state.selectedProfile;
+    final scope = installJobScopeForProfile(profile);
+    return InstallJobKeys.cli(cli.value, scope: scope);
+  }
 
   void _syncBusy() {
-    _busy.value = _detecting.value || _installingCli != null;
+    final registry = context.read<InstallJobRegistry>();
+    final installing = _launchable.any(
+      (def) => registry.isRunning(_installJobKey(def.id)),
+    );
+    _busy.value = _detecting.value || installing;
   }
 
   Future<void> _detect() async {
@@ -184,67 +196,44 @@ class _OnboardingCliStepState extends State<OnboardingCliStep> {
 
   Future<void> _install(CliTool cli) async {
     if (_busy.value || !_supportsInstall(cli)) return;
-    setState(() {
-      _installingCli = cli;
-      _installPhase = CliInstallPhase.checkingNpm;
-      _installLog.clear();
-    });
     _syncBusy();
+    setState(() => _detectError = null);
     try {
       final connectionMode = context.read<ConnectionModeService>();
       final sshProfile = connectionMode.isTermuxMode
           ? _termuxProfile(context)
           : context.read<SshProfileCubit>().state.selectedProfile;
-      final installer = CliInstallerService(
-        sshClientFactory: context.read<SshClientFactory>(),
-        cliToolRegistry: _registry,
-        preferredNodePath: () => context
-            .read<SessionPreferencesCubit>()
-            .toolchainPath(SessionPreferences.toolchainNode),
-      );
       final def = _registry.tryGet(cli);
       final cliLabel = def != null
           ? cliDisplayName(def, context.l10n, registry: _registry)
           : cli.value;
-      final adapter = CliProvisionActivityAdapter(
-        cubit: context.read<ProgressActivityCubit>(),
-      );
-      final result = await adapter.runTracked(
+      final scope = installJobScopeForProfile(sshProfile);
+      final registry = context.read<InstallJobRegistry>();
+      final result = await registry.installCli(
+        cli: cli,
+        scope: scope,
         title: connectionMode.isRemoteWorkPlane
             ? 'Install $cliLabel on ${sshProfile?.host ?? 'remote host'}'
             : 'Install $cliLabel',
         historyMessageFor: (installResult) => installResult.success
             ? '$cliLabel installed'
             : installResult.message,
-        run: (onProgress) async {
-          final installResult = await installer.install(
-            cli: cli,
-            mode: connectionMode.isRemoteWorkPlane
-                ? CliInstallMode.ssh
-                : CliInstallMode.local,
-            sshProfile: sshProfile,
-            onProgress: (progress) {
-              onProgress(progress);
-              _onInstallProgress(progress);
-            },
-          );
-          if (!installResult.success) {
-            // Fail the tracked activity; caught below so it is not unhandled.
-            throw StateError(installResult.message);
+        onSucceeded: (installResult) async {
+          final path = installResult.executablePath?.trim() ?? '';
+          if (path.isEmpty) return;
+          await _persistPath(cli, path);
+          if (mounted) {
+            _controllerFor(cli).text = path;
+            setState(() {
+              _detectedPaths[cli] = path;
+              _detectError = null;
+            });
           }
-          return installResult;
         },
       );
       if (!mounted) return;
       final path = result.executablePath?.trim() ?? '';
-      if (result.success && path.isNotEmpty) {
-        _controllerFor(cli).text = path;
-        setState(() {
-          _detectedPaths[cli] = path;
-          _detectError = null;
-        });
-        await _persistPath(cli, path);
-      } else if (result.success) {
+      if (result.success && path.isEmpty) {
         await _detect();
       }
       if (!mounted) return;
@@ -255,43 +244,27 @@ class _OnboardingCliStepState extends State<OnboardingCliStep> {
             ? TpToastVariant.success
             : TpToastVariant.error,
       );
-    } on StateError catch (error) {
+    } catch (error) {
       if (!mounted) return;
-      setState(() => _detectError = error.message);
+      setState(() => _detectError = error.toString());
       AppToast.show(
         context,
-        message: error.message,
+        message: error.toString(),
         variant: TpToastVariant.error,
       );
     } finally {
       if (mounted) {
-        setState(() {
-          _installingCli = null;
-          _installPhase = null;
-        });
         _syncBusy();
+        setState(() {});
       }
     }
-  }
-
-  void _onInstallProgress(CliInstallProgress progress) {
-    if (!mounted) return;
-    setState(() {
-      _installPhase = progress.phase;
-      final detail = progress.detail?.trim();
-      if (detail != null && detail.isNotEmpty) {
-        _installLog.add(detail);
-        if (_installLog.length > 80) {
-          _installLog.removeRange(0, _installLog.length - 80);
-        }
-      }
-    });
   }
 
   @override
   Widget build(BuildContext context) {
     final l10n = context.l10n;
     final launchable = _launchable;
+    final registry = context.read<InstallJobRegistry>();
 
     return OnboardingStepScaffold(
       title: l10n.onboardingCliTitle,
@@ -362,7 +335,9 @@ class _OnboardingCliStepState extends State<OnboardingCliStep> {
                     controller: _controllerFor(launchable[i].id),
                     detectedPath: _detectedPaths[launchable[i].id],
                     supportsInstall: _supportsInstall(launchable[i].id),
-                    installing: _installingCli == launchable[i].id,
+                    installing: registry.isRunning(
+                      _installJobKey(launchable[i].id),
+                    ),
                     busyListenable: _busy,
                     onPathChanged: (value) {
                       final trimmed = value.trim();
@@ -402,13 +377,6 @@ class _OnboardingCliStepState extends State<OnboardingCliStep> {
               },
             ),
           ),
-          if (_installingCli != null && _installPhase != null) ...[
-            const SizedBox(height: 12),
-            CliInstallProgressPanel(
-              phase: _installPhase!,
-              logLines: _installLog,
-            ),
-          ],
         ],
       ),
     );
