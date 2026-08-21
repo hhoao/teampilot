@@ -3,6 +3,31 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/widgets/resizable_split_view.dart';
 
 void main() {
+  testWidgets('zero-width parent does not throw while clamping primary size', (
+    tester,
+  ) async {
+    await tester.binding.setSurfaceSize(const Size(40, 400));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+
+    await tester.pumpWidget(
+      const MaterialApp(
+        home: Scaffold(
+          body: ResizableSplitView(
+            first: SizedBox(key: Key('primary-pane')),
+            second: SizedBox(key: Key('secondary-pane')),
+            initialPrimarySize: 180,
+            minPrimarySize: 120,
+            minSecondarySize: 120,
+            maxPrimarySize: 500,
+          ),
+        ),
+      ),
+    );
+    await tester.pump();
+
+    expect(tester.takeException(), isNull);
+  });
+
   testWidgets('respects minSecondarySize when dragging primary', (
     tester,
   ) async {

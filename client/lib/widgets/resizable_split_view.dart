@@ -105,11 +105,17 @@ class _ResizableSplitViewState extends State<ResizableSplitView> {
 
   double _maxPrimarySize(double available) {
     final cap = available - widget.dividerThickness - widget.minSecondarySize;
-    return widget.maxPrimarySize.clamp(0.0, cap);
+    // Tight/zero layouts (first frame, macOS zoomed hub chrome) can make
+    // [cap] negative; `clamp(0, cap)` throws ArgumentError.
+    if (!(cap > 0)) return 0;
+    final maxSize = widget.maxPrimarySize;
+    if (!(maxSize > 0)) return 0;
+    return maxSize.clamp(0.0, cap);
   }
 
   double _minPrimarySize(double available) {
     final maxPrimary = _maxPrimarySize(available);
+    if (!(maxPrimary > 0)) return 0;
     return widget.minPrimarySize.clamp(0.0, maxPrimary);
   }
 
@@ -148,21 +154,28 @@ class _ResizableSplitViewState extends State<ResizableSplitView> {
       ? Container(width: thickness, color: color)
       : Container(height: thickness, color: color);
 
-  Widget _flexPane(Widget child) {
+  Widget _flexPane(Widget child, {required double available}) {
     final pane = ClipRect(
       child: IgnorePointer(ignoring: _isDragging, child: child),
     );
+    final honorMin =
+        available > widget.dividerThickness + widget.minSecondarySize;
+    final minFlex = honorMin ? widget.minSecondarySize : 0.0;
     return Expanded(
       child: ConstrainedBox(
         constraints: widget._isHorizontal
-            ? BoxConstraints(minWidth: widget.minSecondarySize)
-            : BoxConstraints(minHeight: widget.minSecondarySize),
+            ? BoxConstraints(minWidth: minFlex)
+            : BoxConstraints(minHeight: minFlex),
         child: pane,
       ),
     );
   }
 
-  Widget _buildPanes(double primarySize, Color dividerColor) {
+  Widget _buildPanes(
+    double primarySize,
+    Color dividerColor, {
+    required double available,
+  }) {
     final flexChild = widget.primaryAtEnd ? widget.first : widget.second;
     final fixedChild = ClipRect(
       child: IgnorePointer(
@@ -173,12 +186,12 @@ class _ResizableSplitViewState extends State<ResizableSplitView> {
 
     final panes = [
       widget.primaryAtEnd
-          ? _flexPane(flexChild)
+          ? _flexPane(flexChild, available: available)
           : _primarySizedChild(primarySize, fixedChild),
       _divider(widget.dividerThickness, dividerColor),
       widget.primaryAtEnd
           ? _primarySizedChild(primarySize, fixedChild)
-          : _flexPane(flexChild),
+          : _flexPane(flexChild, available: available),
     ];
 
     return widget._isHorizontal
@@ -326,7 +339,11 @@ class _ResizableSplitViewState extends State<ResizableSplitView> {
             return Stack(
               fit: StackFit.expand,
               children: [
-                _buildPanes(currentPrimary, dividerColor),
+                _buildPanes(
+                  currentPrimary,
+                  dividerColor,
+                  available: available,
+                ),
                 _buildDragHandle(
                   available: available,
                   primarySize: currentPrimary,
