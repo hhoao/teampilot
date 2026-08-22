@@ -8,6 +8,7 @@ import 'package:teampilot/models/app_provider_config.dart';
 import 'package:teampilot/repositories/app_provider_repository.dart';
 import 'package:teampilot/services/storage/app_storage.dart';
 import 'package:teampilot/services/io/local_filesystem.dart';
+import 'package:teampilot/services/cli/cursor/provider/cursor_home_layout.dart';
 import 'package:teampilot/services/cli/opencode/provider/opencode_data_layout.dart';
 import 'package:teampilot/services/provider/provider_import_service.dart';
 
@@ -326,20 +327,19 @@ wire_api = "chat"
       final cursor = await repository.loadProviders(CliTool.cursor);
       final account = cursor.singleWhere((p) => p.id == 'cursor-account');
       expect(account.isOfficial, isTrue);
+      final providerHome = p.join(
+        appData,
+        'providers',
+        'cursor',
+        'cursor-account',
+        'home',
+      );
+      final layout = CursorHomeLayout();
       expect(
-        await File(
-          p.join(
-            appData,
-            'providers',
-            'cursor',
-            'cursor-account',
-            'home',
-            '.config',
-            'cursor',
-            'auth.json',
-          ),
-        ).exists(),
+        await File(layout.authJson(providerHome)).exists(),
         isTrue,
+        reason: 'imported global auth must land at the platform auth.json '
+            '(macOS ~/.cursor, others ~/.config/cursor)',
       );
     },
   );
