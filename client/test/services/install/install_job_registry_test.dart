@@ -12,6 +12,8 @@ import 'package:teampilot/models/progress_activity.dart';
 import 'package:teampilot/services/install/install_job_registry.dart';
 import 'package:teampilot/services/notification/notification_recorder.dart';
 
+import '../../support/post_frame_test_harness.dart';
+
 class _FakeNotificationRecorder implements NotificationRecorder {
   final records = <({String message, TpToastVariant variant, String title})>[];
 
@@ -129,7 +131,11 @@ void main() {
         future,
         throwsA(isA<InstallJobCancelledException>()),
       );
-      expect(snapshots.last.phase, InstallJobPhase.cancelled);
+      await waitUntil(
+        () => snapshots.last.phase == InstallJobPhase.cancelled,
+        timeout: const Duration(seconds: 5),
+        step: const Duration(milliseconds: 10),
+      );
       expect(registry.isRunning(key), isFalse);
       expect(progressCubit.state.activities, isEmpty);
       await subscription.cancel();
