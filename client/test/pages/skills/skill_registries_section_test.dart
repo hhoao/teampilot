@@ -189,7 +189,21 @@ void main() {
     await tester.pumpAndSettle();
     await tester.enterText(find.byType(TextField).at(2), '');
     await tester.tap(find.text('Save'));
-    await _flushRealIo(tester);
+
+    // The edit dialog persists real-async (disk IO + registry reload), so
+    // poll for the badge transition instead of relying on a fixed flush.
+    final deadline = DateTime.now().add(const Duration(seconds: 5));
+    while (find.text('Authenticated').evaluate().isNotEmpty &&
+        DateTime.now().isBefore(deadline)) {
+      for (var i = 0; i < 2 && find.text('Authenticated').evaluate().isNotEmpty; i++) {
+        await tester.runAsync(
+          () => Future<void>.delayed(const Duration(milliseconds: 80)),
+        );
+        await tester.pumpAndSettle();
+      }
+    }
+    expect(DateTime.now().isBefore(deadline), isTrue,
+        reason: 'badge should drop Authenticated after clearing the token');
     expect(find.text('Authenticated'), findsNothing);
     expect(find.text('Unauthenticated'), findsOneWidget);
     expect(find.text('@SkillsMP'), findsOneWidget);

@@ -401,21 +401,23 @@ void main() {
     final client = await factory.clientForStorage(profile);
     client.close();
 
-    await Future<void>.delayed(const Duration(milliseconds: 25));
-    expect(
-      coordinator.monitorFor('p1').state.status,
-      RemoteConnectionStatus.reconnecting,
+    await waitUntil(
+      () =>
+          coordinator.monitorFor('p1').state.status ==
+          RemoteConnectionStatus.reconnecting,
+      timeout: const Duration(seconds: 10),
     );
 
     await coordinator.userDisconnect(profile.id);
 
-    await Future<void>.delayed(const Duration(milliseconds: 200));
-    expect(coordinator.isUserDisconnectLatched(profile.id), isTrue);
-    expect(factory.hasLiveStorageClient(profile.id), isFalse);
-    expect(sessionSignals, isEmpty);
-    expect(
-      coordinator.monitorFor('p1').state.status,
-      RemoteConnectionStatus.down,
+    await waitUntil(
+      () =>
+          coordinator.isUserDisconnectLatched(profile.id) &&
+          !factory.hasLiveStorageClient(profile.id) &&
+          sessionSignals.isEmpty &&
+          coordinator.monitorFor('p1').state.status ==
+              RemoteConnectionStatus.down,
+      timeout: const Duration(seconds: 10),
     );
     await coordinator.dispose();
   });
