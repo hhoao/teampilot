@@ -42,9 +42,17 @@ void main() {
 
           // The worker may already be reclaimed (the 2s threshold fires once it
           // idles, possibly during the boot settle) or may still be settling —
-          // either way, poll until its real PTY is torn down.
+          // either way, poll until reclaim is recorded and no worker PTY is
+          // running. UI member selection (e.g. the harness settle loop) can
+          // lazily restore a disconnected shell stub via `ensureMemberTerminalForView`,
+          // so assert the reclaim semantics (marked reclaimed + no live PTY)
+          // instead of an empty `memberShells` map.
           await waitUntil(
-            () => !tab.memberShells.containsKey(kWorkerMember.id),
+            () {
+              final shell = tab.memberShells[kWorkerMember.id];
+              return tab.reclaimedMemberIds.contains(kWorkerMember.id) &&
+                  (shell == null || (!shell.isRunning && !shell.isConnecting));
+            },
             timeout: const Duration(seconds: 20),
             step: const Duration(milliseconds: 500),
           );
