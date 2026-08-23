@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
+import 'package:path/path.dart' as p;
 import 'package:teampilot/services/cli/cli_tool_locator.dart';
 
 void main() {
@@ -68,6 +69,42 @@ void main() {
 
       expect(calls, ['which claude', 'bash -ilc command -v claude']);
       expect(located, '/home/user/.local/bin/claude');
+    },
+  );
+
+  test(
+    'locate falls back to ~/.local/bin when PATH and login shells miss',
+    () async {
+      if (Platform.isWindows) return;
+      final home = Platform.environment['HOME']?.trim() ?? '';
+      if (home.isEmpty) return;
+
+      final executableName =
+          'tp-locate-test-${DateTime.now().microsecondsSinceEpoch}';
+      final binDir = Directory(p.join(home, '.local', 'bin'));
+      await binDir.create(recursive: true);
+      final executable = File(p.join(binDir.path, executableName));
+      await executable.writeAsString('#!/bin/sh\n');
+      addTearDown(() async {
+        if (await executable.exists()) {
+          await executable.delete();
+        }
+      });
+
+      final located = await CliToolLocator(executableName).locate(
+        runner:
+            (executable, arguments, {stdoutEncoding, stderrEncoding}) async {
+              if (executable == 'which') {
+                return ProcessResult(1, 1, '', '');
+              }
+              if (executable == 'bash' || executable == 'zsh') {
+                return ProcessResult(1, 1, '', '');
+              }
+              fail('unexpected runner call: $executable');
+            },
+      );
+
+      expect(located, executable.path);
     },
   );
 

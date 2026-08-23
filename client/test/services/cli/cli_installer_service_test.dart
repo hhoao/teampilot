@@ -1,11 +1,18 @@
+import 'dart:io';
+
 import 'package:flutter_test/flutter_test.dart';
+import 'package:path/path.dart' as p;
 import 'package:teampilot/models/ssh_profile.dart';
 import 'package:teampilot/models/team_config.dart';
 import 'package:teampilot/services/cli/cli_installer_service.dart';
+import 'package:teampilot/services/cli/cli_tool_locator.dart';
 
 bool _isClaudeNpmInstall(String line) =>
-    line.contains('npm install -g --prefix') &&
+    line.contains('npm install -g') &&
     line.contains('@anthropic-ai/claude-code');
+
+bool _isCodexNpmInstall(String line) =>
+    line.contains('npm install -g') && line.contains('@openai/codex');
 
 bool _isRemoteClaudeLocate(String line) =>
     line.startsWith('sh -c') && line.contains('command -v claude');
@@ -730,6 +737,100 @@ void main() {
     expect(commands[2], contains('curl https://cursor.com/install'));
     expect(commands[3], startsWith('sh -c'));
   });
+
+  test(
+    'installs Codex locally and resolves ~/.local/bin when PATH misses',
+    () async {
+      if (Platform.isWindows) return;
+      final home = Platform.environment['HOME']?.trim() ?? '';
+      if (home.isEmpty) return;
+
+      final codexPath = p.join(home, '.local', 'bin', 'codex');
+      final codexFile = File(codexPath);
+      final hadExisting = codexFile.existsSync();
+      final backup = hadExisting ? await codexFile.readAsBytes() : null;
+      await Directory(p.dirname(codexPath)).create(recursive: true);
+      await codexFile.writeAsString('#!/bin/sh\n');
+      addTearDown(() async {
+        if (backup != null) {
+          await codexFile.writeAsBytes(backup);
+        } else if (await codexFile.exists()) {
+          await codexFile.delete();
+        }
+      });
+
+      final commands = <String>[];
+      final installer = CliInstallerService(
+        isWindowsOverride: false,
+        localRunner: (command) async {
+          commands.add(command.commandLine);
+          if (command.commandLine == 'which npm') {
+            return const CliInstallerCommandResult(
+              exitCode: 0,
+              stdout: '/usr/bin/npm\n',
+            );
+          }
+          if (_isCodexNpmInstall(command.commandLine)) {
+            return const CliInstallerCommandResult(exitCode: 0);
+          }
+          if (command.commandLine == 'which codex') {
+            return const CliInstallerCommandResult(exitCode: 1);
+          }
+          if (command.executable == 'bash' || command.executable == 'zsh') {
+            return const CliInstallerCommandResult(exitCode: 1);
+          }
+          return const CliInstallerCommandResult(exitCode: 127);
+        },
+      );
+
+      final result = await installer.install(
+        cli: CliTool.codex,
+        mode: CliInstallMode.local,
+      );
+
+      expect(result.success, isTrue, reason: result.message);
+      expect(result.executablePath, codexPath);
+      expect(_isCodexNpmInstall(commands[1]), isTrue);
+    },
+  );
+
+  test(
+    'fails when Codex npm install succeeds but executable cannot be located',
+    () async {
+      if (Platform.isWindows) return;
+      if (CliToolLocator.wellKnownLocalBinPath('codex') != null) return;
+
+      final installer = CliInstallerService(
+        isWindowsOverride: false,
+        localRunner: (command) async {
+          if (command.commandLine == 'which npm') {
+            return const CliInstallerCommandResult(
+              exitCode: 0,
+              stdout: '/usr/bin/npm\n',
+            );
+          }
+          if (_isCodexNpmInstall(command.commandLine)) {
+            return const CliInstallerCommandResult(exitCode: 0);
+          }
+          if (command.commandLine == 'which codex') {
+            return const CliInstallerCommandResult(exitCode: 1);
+          }
+          if (command.executable == 'bash' || command.executable == 'zsh') {
+            return const CliInstallerCommandResult(exitCode: 1);
+          }
+          return const CliInstallerCommandResult(exitCode: 127);
+        },
+      );
+
+      final result = await installer.install(
+        cli: CliTool.codex,
+        mode: CliInstallMode.local,
+      );
+
+      expect(result.success, isFalse);
+      expect(result.message, contains('could not be located'));
+    },
+  );
 }
 
 const _profile = SshProfile(

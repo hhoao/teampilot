@@ -1,3 +1,5 @@
+import 'dart:io' show Platform;
+
 import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/services/host/host_execution_environment.dart';
 import 'package:teampilot/services/cli/registry/installer/teampilot_node_install.dart';
@@ -98,5 +100,32 @@ void main() {
       TeampilotNodeInstall.bootstrappedUnixNpmPath,
       '${TeampilotNodeInstall.unixToolchainNodeBase}/current/bin/npm',
     );
+  });
+
+  test('existing npm on macOS uses system global prefix', () {
+    if (!Platform.isMacOS) return;
+
+    final command = node.existingNpmPackageInstall(
+      isWindows: false,
+      npmPath: '/opt/homebrew/bin/npm',
+      package: '@openai/codex',
+    );
+
+    expect(command.executable, '/opt/homebrew/bin/npm');
+    expect(command.arguments, ['install', '-g', '@openai/codex']);
+    expect(command.commandLine, isNot(contains('--prefix')));
+  });
+
+  test('existing npm on Linux keeps ~/.local prefix', () {
+    if (Platform.isMacOS || Platform.isWindows) return;
+
+    final command = node.existingNpmPackageInstall(
+      isWindows: false,
+      npmPath: '/usr/bin/npm',
+      package: '@anthropic-ai/claude-code',
+    );
+
+    expect(command.executable, 'sh');
+    expect(command.arguments.last, contains('--prefix "\$HOME/.local"'));
   });
 }
