@@ -1,40 +1,41 @@
 import '../../../models/app_provider_config.dart';
-import 'provider/opencode_provider_credentials_service.dart';
+import '../../../models/team_config.dart';
 import '../../../repositories/provider_persistence/provider_persistence_strategy.dart';
+import 'provider/opencode_credential_kind.dart';
+import 'provider/opencode_credential_materializer.dart';
 
-/// Opencode: probe official-account credentials on load. No native tool-config
-/// materialization on save.
-final class OpencodeProviderPersistence extends ProviderPersistenceStrategy
-    with CredentialProbeSupport {
-  OpencodeProviderPersistence({
-    required OpencodeProviderCredentialsService credentials,
-  }) : _credentials = credentials;
-
-  final OpencodeProviderCredentialsService _credentials;
+/// OpenCode: probe catalog-stored credentials on load. No separate auth store.
+final class OpencodeProviderPersistence extends ProviderPersistenceStrategy {
+  const OpencodeProviderPersistence();
 
   @override
   CliTool get cli => CliTool.opencode;
 
   @override
-  bool appliesToProbe(AppProviderConfig provider) =>
-      provider.cli == CliTool.opencode && provider.isOfficial;
-
-  @override
-  CredentialProbeFn get credentialProbe =>
-      (provider) => _credentials.probe(provider.id);
-
-  @override
-  CredentialImportFn get credentialImport =>
-      (provider, {required homeDirectory, replace = false}) =>
-          _credentials.importFromGlobal(
-            provider.id,
-            homeDirectory: homeDirectory,
-            replace: replace,
-          );
-
-  @override
   Future<List<AppProviderConfig>> reconcileLoaded(
     ProviderPersistenceContext ctx,
     List<AppProviderConfig> providers,
-  ) => probeOfficialCredentials(ctx, providers);
+  ) async {
+    final probed = providers.map((provider) {
+      if (!OpencodeCredentialKindResolver.needsCredential(provider)) {
+        return provider;
+      }
+      return provider.withCredentialProbe(
+        OpencodeCredentialMaterializer.probe(provider),
+      );
+    }).toList();
+
+    final changed = probed.any(
+      (next) => providers.any(
+        (previous) =>
+            previous.id == next.id &&
+            (previous.credentialStatus != next.credentialStatus ||
+                previous.credentialUpdatedAt != next.credentialUpdatedAt),
+      ),
+    );
+    if (changed) {
+      await ctx.save(cli, probed);
+    }
+    return probed;
+  }
 }

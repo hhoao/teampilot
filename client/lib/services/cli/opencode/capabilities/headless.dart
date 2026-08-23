@@ -14,8 +14,8 @@ import '../../registry/launch/user_extra_args_provider.dart';
 import 'agent_launch.dart';
 import 'model_launch.dart';
 import 'session_selection_launch.dart';
-import '../provider/opencode_auth_artifacts.dart';
-import '../provider/opencode_data_layout.dart';
+import '../provider/opencode_credential_kind.dart';
+import '../provider/opencode_credential_materializer.dart';
 import '../provider/opencode_provider_settings_resolver.dart';
 import 'provider.dart';
 
@@ -25,8 +25,6 @@ final class OpencodeHeadlessCapability
     with HeadlessProvisionSupport
     implements HeadlessCapability {
   const OpencodeHeadlessCapability();
-
-  static const _layout = OpencodeDataLayout();
 
   @override
   bool get isSupported => true;
@@ -111,10 +109,10 @@ final class OpencodeHeadlessCapability
     await writeJson(configPath, config);
 
     final extraEnvironment = <String, String>{};
-    final authContent = await _readOpencodeAuthContent(resolved);
+    final authContent = OpencodeCredentialMaterializer.authJsonContent(resolved);
     if (authContent != null) {
       extraEnvironment[OpencodeProviderCapability.authContentEnv] = authContent;
-    } else if (resolved.isOfficial) {
+    } else if (OpencodeCredentialKindResolver.needsCredential(resolved)) {
       warnings.add('opencode_credentials_missing');
       return HeadlessProvisionResult(
         warnings: warnings,
@@ -126,20 +124,6 @@ final class OpencodeHeadlessCapability
       extraEnvironment: extraEnvironment,
       warnings: warnings,
     );
-  }
-
-  Future<String?> _readOpencodeAuthContent(AppProviderConfig provider) async {
-    if (!provider.isOfficial) return null;
-    final authPath = _layout.providerAuthJsonPath(
-      p.join(basePath, 'providers', 'opencode', provider.id),
-    );
-    if (!(await fs.stat(authPath)).isFile) return null;
-    final content = await fs.readString(authPath);
-    if (content == null || content.trim().isEmpty) return null;
-    if (!OpencodeAuthArtifacts.authJsonIndicatesReady(content, provider.id)) {
-      return null;
-    }
-    return content.trim();
   }
 
   Map<String, Object?> _mergeOpencodeProvider(

@@ -1,11 +1,13 @@
 import 'dart:convert';
 
 import '../../../../models/app_provider_config.dart';
+import '../../../../models/team_config.dart';
 import '../provider_presets.dart';
 import '../../registry/capabilities/provider_capability.dart';
 import '../../../io/filesystem.dart';
 import '../../codex/provider/codex_cc_switch_import.dart';
 import 'opencode_auth_artifacts.dart';
+import 'opencode_credential_materializer.dart';
 import 'opencode_data_layout.dart';
 
 /// Scans the user's global OpenCode config and auth store.
@@ -86,18 +88,22 @@ abstract final class OpencodeLiveImport {
     final providerConfig = _providerConfigSection(opencodeConfig, id);
     final baseUrl = _readBaseUrl(providerConfig);
     final defaultModel = _defaultModelForProvider(id, opencodeConfig);
-    final config = _buildConfig(
-      providerConfig,
-      preset?.template.config ?? const {},
+    final presetConfig = preset?.template.config ?? const {};
+    final config = _buildConfig(providerConfig, presetConfig);
+    final catalogFields = OpencodeCredentialMaterializer.catalogFieldsFromAuthEntry(
+      providerId: id,
+      entry: entry,
+      existingConfig: config,
     );
 
     if (preset != null) {
       return preset.template.copyWith(
+        apiKey: catalogFields?.apiKey ?? '',
         baseUrl: baseUrl.isNotEmpty ? baseUrl : preset.template.baseUrl,
         defaultModel: defaultModel.isNotEmpty
             ? defaultModel
             : preset.template.defaultModel,
-        config: config,
+        config: catalogFields?.configPatch ?? config,
         createdAt: now,
         updatedAt: now,
       );
@@ -114,8 +120,8 @@ abstract final class OpencodeLiveImport {
           : AppProviderCategory.custom,
       baseUrl: baseUrl,
       defaultModel: defaultModel,
-      isOfficial: type == 'oauth',
-      config: config,
+      apiKey: catalogFields?.apiKey ?? '',
+      config: catalogFields?.configPatch ?? config,
       createdAt: now,
       updatedAt: now,
     );

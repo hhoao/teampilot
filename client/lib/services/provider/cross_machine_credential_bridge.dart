@@ -1,3 +1,4 @@
+import '../../models/app_provider_config.dart';
 import '../../models/team_config.dart';
 import '../cli/registry/config_profile/config_profile_context.dart';
 import '../launch/work_plane_paths.dart';
@@ -8,6 +9,7 @@ import '../cli/codex/provider/codex_provider_credentials_service.dart';
 import '../cli/cursor/provider/cursor_auth_artifacts.dart';
 import '../cli/cursor/provider/cursor_home_layout.dart';
 import '../cli/cursor/provider/cursor_provider_credentials_service.dart';
+import '../cli/opencode/provider/opencode_credential_materializer.dart';
 import '../cli/opencode/provider/opencode_data_layout.dart';
 import '../storage/runtime_layout.dart';
 import 'provider_catalog_access.dart';
@@ -146,38 +148,27 @@ abstract final class CrossMachineCredentialBridge {
   static Future<bool> materializeOpencodeAuth({
     required ConfigProfilePaths catalog,
     required ConfigProfileDelegate work,
-    required String providerId,
+    required AppProviderConfig provider,
   }) async {
+    if (!OpencodeCredentialMaterializer.isReady(provider)) return false;
+
     const layout = OpencodeDataLayout();
-    final src = layout.providerAuthJsonPath(
-      catalog.pathContext.join(
-        catalog.basePath,
-        'providers',
-        CliTool.opencode.value,
-        providerId.trim(),
-      ),
+    final providerId = provider.id.trim();
+    final workProviderDir = work.joinWork(
+      work.basePath,
+      'providers',
+      CliTool.opencode.value,
+      providerId,
     );
     final dest = work.normalizeWork(
-      layout.providerAuthJsonPath(
-        work.joinWork(
-          work.basePath,
-          'providers',
-          CliTool.opencode.value,
-          providerId.trim(),
-        ),
-      ),
+      layout.providerAuthJsonPath(workProviderDir),
     );
-    final bytes = await catalog.fs.readBytes(src);
-    if (bytes != null && bytes.isNotEmpty) {
-      await ensureWorkDir(work.fs, work.workPathContext.dirname(dest));
-      await writeWorkBytes(work.fs, dest, bytes);
-      return true;
-    }
-    final content = await catalog.fs.readString(src);
-    if (content == null || content.trim().isEmpty) return false;
-    await ensureWorkDir(work.fs, work.workPathContext.dirname(dest));
-    await writeWorkString(work.fs, dest, content);
-    return true;
+    return await OpencodeCredentialMaterializer.writeAuthArtifact(
+      fs: work.fs,
+      basePath: work.basePath,
+      provider: provider,
+    ) &&
+        (await work.fs.stat(dest)).isFile;
   }
 
   static Future<CredentialBindingKind> claudeBindingFor(

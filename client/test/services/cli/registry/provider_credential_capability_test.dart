@@ -74,21 +74,18 @@ void main() {
     expect(capability.hidesApiKeyFields(provider), isTrue);
   });
 
-  test('opencode official provider exposes login and import actions', () {
+  test('opencode official provider uses catalog apiKey credential model', () {
     final capability = OpencodeProviderCapability();
     const provider = AppProviderConfig(
       id: 'openai',
       cli: CliTool.opencode,
       name: 'OpenAI',
       category: AppProviderCategory.official,
-      isOfficial: true,
+      config: {'credentialKind': 'apiKey'},
     );
 
-    expect(capability.appliesTo(provider), isTrue);
-    expect(
-      capability.actionsFor(provider).map((a) => a.kind),
-      contains(ProviderCredentialActionKind.importFile),
-    );
-    expect(capability.hidesApiKeyFields(provider), isTrue);
+    expect(capability.appliesTo(provider), isFalse);
+    expect(capability.hidesApiKeyFields(provider), isFalse);
+    expect(capability.actionsFor(provider), isEmpty);
   });
 }

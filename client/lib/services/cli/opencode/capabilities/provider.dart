@@ -29,13 +29,13 @@ import '../../registry/config_profile/hook_seat_context_completer.dart';
 import '../../registry/hook/managed_hook_provisioner.dart';
 import '../../registry/prompt/prompt_hub_service.dart';
 import '../../registry/launch/cli_launch_capability_error.dart';
-import '../provider/opencode_auth_artifacts.dart';
+import '../provider/opencode_credential_kind.dart';
+import '../provider/opencode_credential_materializer.dart';
 import '../provider/opencode_data_layout.dart';
 import '../provider/opencode_effort_catalog.dart';
 import '../provider/opencode_live_import.dart';
 import '../provider/opencode_model_catalog.dart';
 import '../provider/opencode_models_service.dart';
-import '../provider/opencode_provider_credentials_service.dart';
 import '../provider/opencode_provider_settings_resolver.dart';
 import '../provider/opencode_shared_plugin_deps.dart';
 import '../provider_presets.dart';
@@ -73,16 +73,10 @@ final class OpencodeCatalogSource implements ModelCatalogSource {
 final class OpencodeProviderCapability extends CatalogModelCapability
     with PassthroughProviderFormDefaults
     implements ProviderCapability, RefreshableProviderModelCapability {
-  const OpencodeProviderCapability({
-    OpencodeModelsService? modelsService,
-    OpencodeProviderCredentialsService? credentials,
-  }) : _modelsService = modelsService,
-       _credentials = credentials;
+  const OpencodeProviderCapability({OpencodeModelsService? modelsService})
+    : _modelsService = modelsService;
 
   final OpencodeModelsService? _modelsService;
-  final OpencodeProviderCredentialsService? _credentials;
-
-  OpencodeProviderCredentialsService? get _service => _credentials;
 
   // ---- ProviderCatalogCapability ----
   @override
@@ -104,7 +98,7 @@ final class OpencodeProviderCapability extends CatalogModelCapability
   @override
   bool get supportsDelegate => false;
   @override
-  bool get supportsOAuthCredentials => true;
+  bool get supportsOAuthCredentials => false;
   @override
   bool get usesLlmConfigJsonPreview => false;
 
@@ -174,76 +168,27 @@ final class OpencodeProviderCapability extends CatalogModelCapability
   ProviderModelPickerMode pickerMode(AppProviderConfig provider) =>
       ProviderModelPickerMode.catalogWithCustomEntry;
 
-  // ---- ProviderCredentialCapability ----
+  // ---- ProviderCredentialCapability (catalog apiKey; no CLI login flow) ----
   @override
-  bool appliesTo(AppProviderConfig provider) =>
-      provider.cli == CliTool.opencode && provider.isOfficial;
+  bool appliesTo(AppProviderConfig provider) => false;
 
   @override
-  bool hidesApiKeyFields(AppProviderConfig provider) => appliesTo(provider);
+  bool hidesApiKeyFields(AppProviderConfig provider) => false;
 
   @override
-  List<ProviderCredentialActionSpec> actionsFor(AppProviderConfig provider) {
-    if (!appliesTo(provider)) return const [];
-    return const [
-      ProviderCredentialActionSpec(
-        kind: ProviderCredentialActionKind.login,
-        primary: true,
-        showWhenReady: false,
-      ),
-      ProviderCredentialActionSpec(
-        kind: ProviderCredentialActionKind.importGlobal,
-      ),
-      ProviderCredentialActionSpec(
-        kind: ProviderCredentialActionKind.importFile,
-      ),
-      ProviderCredentialActionSpec(
-        kind: ProviderCredentialActionKind.revoke,
-        showWhenReady: true,
-      ),
-    ];
-  }
+  List<ProviderCredentialActionSpec> actionsFor(AppProviderConfig provider) =>
+      const [];
 
   @override
-  Future<CredentialProbe> probe(AppProviderConfig provider) async {
-    final service = _service;
-    if (service == null) {
-      return CredentialProbe(
-        providerId: provider.id,
-        status: CredentialStatus.missing,
-        credentialPath: '',
-      );
-    }
-    return service.probe(provider.id);
-  }
+  Future<CredentialProbe> probe(AppProviderConfig provider) async =>
+      OpencodeCredentialMaterializer.probe(provider);
 
   @override
   Future<CredentialActionResult> execute({
     required String providerId,
     required ProviderCredentialActionKind kind,
     ProviderCredentialActionInput input = const ProviderCredentialActionInput(),
-  }) async {
-    final service = _service;
-    if (service == null) return CredentialActionResult.serviceUnavailable();
-    return switch (kind) {
-      ProviderCredentialActionKind.login => service.runAuthLogin(providerId),
-      ProviderCredentialActionKind.importGlobal => service.importFromGlobal(
-        providerId,
-        homeDirectory: input.homeDirectory?.trim() ?? '',
-        replace: input.replace,
-      ),
-      ProviderCredentialActionKind.importFile => service.importFromFile(
-        providerId,
-        input.pickedPath?.trim() ?? '',
-        replace: input.replace,
-      ),
-      ProviderCredentialActionKind.importDirectory =>
-        CredentialActionResult.unsupported(),
-      ProviderCredentialActionKind.revoke => service.revokeCredentials(
-        providerId,
-      ),
-    };
-  }
+  }) async => CredentialActionResult.unsupported();
 
   @override
   bool get supportsCredentialBinding => false;
@@ -267,11 +212,7 @@ final class OpencodeProviderCapability extends CatalogModelCapability
     required String home,
     required AppProviderConfig provider,
   }) async {
-    final path = OpencodeProviderCredentialsService(
-      fs: fs,
-      basePath: basePath,
-    ).credentialPath(provider.id);
-    final content = await fs.readString(path);
+    final content = OpencodeCredentialMaterializer.authJsonContent(provider);
     if (content == null || content.trim().isEmpty) return null;
     return CredentialFile(
       relativePath: '${provider.id}/${OpencodeDataLayout.authFileName}',
@@ -327,8 +268,6 @@ final class OpencodeProviderCapability extends CatalogModelCapability
   /// `$XDG_DATA_HOME/opencode/opencode.db`.
   static const dbPathEnv = 'OPENCODE_DB';
   static const authContentEnv = 'OPENCODE_AUTH_CONTENT';
-
-  static const _opencodeDataLayout = OpencodeDataLayout();
 
   /// Assembles profile-provided hooks before the OpenCode-specific writer.
   /// OpenCode's endpoint plugins remain target-native because its HookCapability
@@ -587,12 +526,12 @@ final class OpencodeProviderCapability extends CatalogModelCapability
     }
 
     if (launchProvider != null &&
-        launchProvider.isOfficial &&
+        OpencodeCredentialKindResolver.needsCredential(launchProvider) &&
         ctx.crossMachine) {
       final copied = await CrossMachineCredentialBridge.materializeOpencodeAuth(
         catalog: ctx.catalog,
         work: paths,
-        providerId: launchProvider.id,
+        provider: launchProvider,
       );
       if (!copied) {
         warnings.add('opencode_credentials_missing');
@@ -607,11 +546,13 @@ final class OpencodeProviderCapability extends CatalogModelCapability
         paths.pathContext.join(opencodeDir, 'opencode.db'),
       ),
     };
-    final authContent = launchProvider == null
-        ? null
-        : await _readStoredAuthContent(paths, launchProvider);
-    if (authContent != null) {
-      environment[authContentEnv] = authContent;
+    if (launchProvider != null) {
+      final authContent = _authContentForLaunch(launchProvider);
+      if (authContent != null) {
+        environment[authContentEnv] = authContent;
+      } else if (OpencodeCredentialKindResolver.needsCredential(launchProvider)) {
+        warnings.add('opencode_credentials_missing');
+      }
     }
 
     return SessionHomeContribution(
@@ -620,31 +561,8 @@ final class OpencodeProviderCapability extends CatalogModelCapability
     );
   }
 
-  Future<String?> _readStoredAuthContent(
-    ConfigProfileDelegate paths,
-    AppProviderConfig provider,
-  ) async {
-    if (!provider.isOfficial) return null;
-    final providerDir = paths.joinWork(
-      paths.basePath,
-      'providers',
-      'opencode',
-      provider.id,
-    );
-    final authPath = paths.normalizeWork(
-      _opencodeDataLayout.providerAuthJsonPath(providerDir),
-    );
-    if (!(await paths.fs.stat(authPath)).isFile) return null;
-    final bytes = await paths.fs.readBytes(authPath);
-    final content = bytes != null
-        ? utf8.decode(bytes)
-        : await paths.fs.readString(authPath);
-    if (content == null || content.trim().isEmpty) return null;
-    if (!OpencodeAuthArtifacts.authJsonIndicatesReady(content, provider.id)) {
-      return null;
-    }
-    return content.trim();
-  }
+  String? _authContentForLaunch(AppProviderConfig provider) =>
+      OpencodeCredentialMaterializer.authJsonContent(provider);
 
   OpencodeProviderSettingsResolver _resolver(ConfigProfilePaths catalog) =>
       OpencodeProviderSettingsResolver(
