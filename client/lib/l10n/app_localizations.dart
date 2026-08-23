@@ -13742,18 +13742,6 @@ abstract class AppLocalizations {
   /// **'Preconfigured for the balance API; add an API key credential.'**
   String get managedProvidersQuickPresetDeepSeekHint;
 
-  /// No description provided for @managedProvidersQuickPresetOpenCode.
-  ///
-  /// In en, this message translates to:
-  /// **'OpenCode'**
-  String get managedProvidersQuickPresetOpenCode;
-
-  /// No description provided for @managedProvidersQuickPresetOpenCodeHint.
-  ///
-  /// In en, this message translates to:
-  /// **'No universal balance endpoint is assumed; add the endpoint for your provider.'**
-  String get managedProvidersQuickPresetOpenCodeHint;
-
   /// No description provided for @managedProvidersBasicsSectionTitle.
   ///
   /// In en, this message translates to:

@@ -7722,13 +7722,6 @@ class AppLocalizationsEn extends AppLocalizations {
       'Preconfigured for the balance API; add an API key credential.';
 
   @override
-  String get managedProvidersQuickPresetOpenCode => 'OpenCode';
-
-  @override
-  String get managedProvidersQuickPresetOpenCodeHint =>
-      'No universal balance endpoint is assumed; add the endpoint for your provider.';
-
-  @override
   String get managedProvidersBasicsSectionTitle => 'Basics';
 
   @override

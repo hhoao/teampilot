@@ -571,7 +571,7 @@ void main() {
     );
   });
 
-  testWidgets('custom HTTP presets expand query setup by default', (
+  testWidgets('custom HTTP editors expand query setup by default', (
     tester,
   ) async {
     providerCubit.emit(
@@ -583,7 +583,6 @@ void main() {
     await pumpPage(tester);
 
     await openNewEditor(tester);
-    await applyPreset(tester, 'OpenCode');
 
     expect(
       find.byKey(const Key('managed-provider-section-query')),
@@ -611,7 +610,7 @@ void main() {
     await tester.enterText(find.byType(TpSelectSearchField), 'Deep');
     await tester.pump();
     expect(find.text('DeepSeek'), findsWidgets);
-    expect(find.text('OpenCode'), findsNothing);
+    expect(find.text('Codex'), findsNothing);
   });
 
   testWidgets('new provider stores API key in secure storage only', (
@@ -908,7 +907,10 @@ void main() {
       await pumpPage(tester);
 
       await openNewEditor(tester);
-      await applyPreset(tester, 'OpenCode');
+      await tester.enterText(
+        find.byKey(const Key('managed-provider-name')),
+        'Custom',
+      );
       await tester.enterText(
         find.byKey(const Key('managed-provider-endpoint')),
         'https://example.test/usage',
@@ -957,7 +959,7 @@ void main() {
       await tester.pumpAndSettle();
 
       final provider = providerCubit.state.providers.single;
-      expect(provider.name, 'OpenCode');
+      expect(provider.name, 'Custom');
       expect(provider.credentialRef, 'managed-provider:${provider.id}');
       expect(provider.toJson().toString(), isNot(contains('sk-custom')));
       final scope = await ManagedProviderSecretStore(
@@ -1001,7 +1003,6 @@ void main() {
       await tester.tap(find.byKey(const Key('managed-provider-editor-back')));
       await tester.pumpAndSettle();
       await openNewEditor(tester);
-      await applyPreset(tester, 'OpenCode');
       await tester.scrollUntilVisible(
         find.byKey(const Key('managed-provider-section-advanced')),
         500,
@@ -1257,7 +1258,6 @@ void main() {
     );
     await pumpPage(tester);
     await openNewEditor(tester);
-    await applyPreset(tester, 'OpenCode');
     await tester.enterText(
       find.byKey(const Key('managed-provider-name')),
       'New Provider',

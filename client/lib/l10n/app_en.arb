@@ -3517,8 +3517,6 @@
   "managedProvidersQuickPresetClaudeCodeHint": "Sign in or import credentials below. Usage uses the official Claude OAuth quota API.",
   "managedProvidersQuickPresetDeepSeek": "DeepSeek",
   "managedProvidersQuickPresetDeepSeekHint": "Preconfigured for the balance API; add an API key credential.",
-  "managedProvidersQuickPresetOpenCode": "OpenCode",
-  "managedProvidersQuickPresetOpenCodeHint": "No universal balance endpoint is assumed; add the endpoint for your provider.",
   "managedProvidersBasicsSectionTitle": "Basics",
   "managedProvidersBasicsSectionSubtitle": "Start with identity and any required secret.",
   "managedProvidersBasicsSummary": "Choose a preset, name the provider, and add the required secret when this provider needs one.",

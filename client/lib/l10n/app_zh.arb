@@ -3051,8 +3051,6 @@
   "managedProvidersQuickPresetClaudeCodeHint": "在下方登录或导入凭据。用量查询走官方 Claude OAuth 配额接口。",
   "managedProvidersQuickPresetDeepSeek": "DeepSeek",
   "managedProvidersQuickPresetDeepSeekHint": "已配置余额 API；请补充 API Key 凭据。",
-  "managedProvidersQuickPresetOpenCode": "OpenCode",
-  "managedProvidersQuickPresetOpenCodeHint": "不假设通用余额接口；请补充你所用 Provider 的 endpoint。",
   "managedProvidersBasicsSectionTitle": "基本信息",
   "managedProvidersBasicsSectionSubtitle": "先填写身份信息和必要密钥。",
   "managedProvidersBasicsSummary": "选择预设、命名 Provider，并在需要时填写必要密钥。",

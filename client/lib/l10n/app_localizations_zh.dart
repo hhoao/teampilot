@@ -7413,13 +7413,6 @@ class AppLocalizationsZh extends AppLocalizations {
       '已配置余额 API；请补充 API Key 凭据。';
 
   @override
-  String get managedProvidersQuickPresetOpenCode => 'OpenCode';
-
-  @override
-  String get managedProvidersQuickPresetOpenCodeHint =>
-      '不假设通用余额接口；请补充你所用 Provider 的 endpoint。';
-
-  @override
   String get managedProvidersBasicsSectionTitle => '基本信息';
 
   @override
