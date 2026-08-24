@@ -1843,26 +1843,34 @@ class ChatCubit extends Cubit<ChatState>
   void syncTeam(TeamProfile team) {
     final tab = _activeTab;
     if (team.members.isEmpty) {
-      if (tab != null && tab.selectedMemberId.isNotEmpty) {
-        tab.selectedMemberId = '';
-        _bumpMemberSelection();
-      }
+      if (tab != null) assignSelectedMember(tab, '');
       return;
     }
     if (team.members.any((m) => m.id == tab?.selectedMemberId)) return;
-    final next = _tabStore.defaultMemberId(team);
-    if (tab != null && tab.selectedMemberId != next) {
-      tab.selectedMemberId = next;
-      _bumpMemberSelection();
-    }
+    if (tab != null) assignSelectedMember(tab, _tabStore.defaultMemberId(team));
+  }
+
+  void _syncActiveWorkspaceScope(String tabScopeId) {
+    if (_tabStore.activeWorkspaceId == tabScopeId) return;
+    _tabStore.setActiveWorkspaceId(tabScopeId);
+    _pushPresenceTarget();
   }
 
   @override
-  void selectMember(String memberId) {
-    final tab = _activeTab;
-    if (tab == null || tab.selectedMemberId == memberId) return;
+  void assignSelectedMember(ChatTab tab, String memberId) {
+    if (tab.selectedMemberId == memberId) return;
     tab.selectedMemberId = memberId;
     _bumpMemberSelection();
+  }
+
+  @override
+  void selectMember(String memberId, {String? tabScopeId}) {
+    if (tabScopeId != null && tabScopeId.isNotEmpty) {
+      _syncActiveWorkspaceScope(tabScopeId);
+    }
+    final tab = _activeTab;
+    if (tab == null) return;
+    assignSelectedMember(tab, memberId);
     if (tab.workbenchView == SessionWorkbenchView.terminal) {
       unawaited(ensureMemberTerminalForView(tab.info.id, memberId));
     }

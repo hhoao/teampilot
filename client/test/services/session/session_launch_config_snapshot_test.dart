@@ -259,6 +259,57 @@ void main() {
       expect(shellMember.provider, 'anthropic');
       expect(shellMember.model, 'claude-a');
       expect(shellMember.cli, CliTool.claude);
+      expect(shellMember.id, 'team-lead-0');
+    },
+  );
+
+  test(
+    'memberForSessionConnect keeps numbered instance id for replicated type',
+    () {
+      const liveTeam = TeamProfile(
+        id: 'team',
+        name: 'Team',
+        teamMode: TeamMode.mixed,
+        cli: CliTool.claude,
+        members: [
+          TeamMemberConfig(
+            id: 'builder',
+            name: 'Builder',
+            replicas: 2,
+            responsibilities: 'Build things',
+          ),
+        ],
+      );
+      const member = TeamMemberConfig(
+        id: 'builder-0',
+        name: 'Builder #0',
+        capabilities: {'builder'},
+      );
+      const binding = SessionMemberBinding(
+        rosterMemberId: 'builder-0',
+        typeId: 'builder',
+        taskId: 'task-b0',
+        cli: CliTool.claude,
+      );
+      final session = AppSession(
+        sessionId: 's1',
+        workspaceId: 'w1',
+        sessionTeam: 'team',
+        members: const [binding],
+        createdAt: 1,
+      );
+
+      final launchMember = memberForSessionConnect(
+        session: session,
+        team: liveTeam,
+        member: member,
+        memberBinding: binding,
+        globalPresets: const [],
+      );
+
+      expect(launchMember.id, 'builder-0');
+      expect(launchMember.name, 'Builder #0');
+      expect(launchMember.responsibilities, 'Build things');
     },
   );
 }

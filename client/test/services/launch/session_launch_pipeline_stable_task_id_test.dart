@@ -577,7 +577,12 @@ class _CapturingHost implements SessionLaunchHost {
   void setLaunchError(String sessionId, String rawMessage) {}
 
   @override
-  void selectMember(String memberId) {}
+  void assignSelectedMember(ChatTab tab, String memberId) {
+    tab.selectedMemberId = memberId;
+  }
+
+  @override
+  void selectMember(String memberId, {String? tabScopeId}) {}
 
   @override
   void closeSessionTab(String sessionId) {}

@@ -57,7 +57,8 @@ typedef SessionTabConnectPrepCallbacks = ({
     required int generation,
   })
   installTeamRuntimeIfNeeded,
-  void Function(String memberId) updateSelectedMember,
+  void Function({required ChatTab tab, required String memberId})
+  assignSelectedMember,
   TerminalSession Function({
     required ChatTab tab,
     required String shellKey,
@@ -144,8 +145,7 @@ Future<TabConnectPrepResult?> runSessionTabConnectPrep({
     if (!callbacks.launchStillValid(tab, generation)) return null;
   }
 
-  callbacks.updateSelectedMember(resolved.member.id);
-  tab.selectedMemberId = resolved.member.id;
+  callbacks.assignSelectedMember(tab: tab, memberId: resolved.member.id);
 
   final shell = callbacks.shellForLaunch(
     tab: tab,

@@ -68,22 +68,28 @@ TeamMemberConfig memberForSessionConnect({
   );
 
   if (lockedCli != null && resolved.cli != lockedCli) {
-    return type.copyWith(
-      provider: type.provider.trim().isNotEmpty
-          ? type.provider
-          : team.providerForCli(lockedCli),
-      model: type.model.trim().isNotEmpty ? type.model : team.modelForCli(lockedCli),
-      effort: type.effort.trim().isNotEmpty
-          ? type.effort
-          : team.effortForCli(lockedCli),
-      cli: team.teamMode == TeamMode.mixed ? lockedCli : null,
-      updateCli: team.teamMode == TeamMode.mixed,
-      activePresetId: null,
-      updateActivePresetId: true,
+    return _withInstanceIdentity(
+      instance: member,
+      launched: type.copyWith(
+        provider: type.provider.trim().isNotEmpty
+            ? type.provider
+            : team.providerForCli(lockedCli),
+        model: type.model.trim().isNotEmpty ? type.model : team.modelForCli(lockedCli),
+        effort: type.effort.trim().isNotEmpty
+            ? type.effort
+            : team.effortForCli(lockedCli),
+        cli: team.teamMode == TeamMode.mixed ? lockedCli : null,
+        updateCli: team.teamMode == TeamMode.mixed,
+        activePresetId: null,
+        updateActivePresetId: true,
+      ),
     );
   }
 
-  return memberForLaunch(team: team, member: type, globalPresets: globalPresets);
+  return _withInstanceIdentity(
+    instance: member,
+    launched: memberForLaunch(team: team, member: type, globalPresets: globalPresets),
+  );
 }
 
 /// Effective preset for team session connect (never [TeamProfile.inheritPresetId]).
@@ -147,7 +153,37 @@ TeamMemberConfig? _memberTypeForConnect(
   for (final type in team.members) {
     if (type.id == member.id) return type;
   }
+  final instanceId = member.id.trim();
+  final dash = instanceId.lastIndexOf('-');
+  if (dash > 0) {
+    final suffix = instanceId.substring(dash + 1);
+    if (int.tryParse(suffix) != null) {
+      final inferredTypeId = instanceId.substring(0, dash);
+      for (final type in team.members) {
+        if (type.id == inferredTypeId) return type;
+      }
+    }
+  }
   return null;
+}
+
+/// Keeps the runtime pod id ([instance]) while applying launch fields from
+/// the resolved member-type config ([launched]).
+TeamMemberConfig _withInstanceIdentity({
+  required TeamMemberConfig instance,
+  required TeamMemberConfig launched,
+}) {
+  final instanceId = instance.id.trim();
+  if (instanceId.isEmpty || instanceId == launched.id) return launched;
+  return launched.copyWith(
+    id: instanceId,
+    name: instance.name.trim().isNotEmpty ? instance.name.trim() : launched.name,
+    agentType: instance.agentType ?? launched.agentType,
+    capabilities: instance.capabilities.isNotEmpty
+        ? instance.capabilities
+        : launched.capabilities,
+    replicas: 1,
+  );
 }
 
 String _rosterMemberId(

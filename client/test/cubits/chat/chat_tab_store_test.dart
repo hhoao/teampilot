@@ -119,4 +119,30 @@ void main() {
     expect(store.defaultMemberId(team), 'team-lead');
     expect(store.hasOpenTabs, isFalse);
   });
+
+  test('sessionForTab prefers in-memory snapshot over stale tab cache', () {
+    final store = ChatTabStore();
+    final tab = _tab('s1')
+      ..persistedSession = AppSession(
+        sessionId: 's1',
+        workspaceId: 'w1',
+        folders: const [],
+        launchState: AppSessionLaunchState.created,
+        createdAt: 1,
+      );
+    final fresh = AppSession(
+      sessionId: 's1',
+      workspaceId: 'w1',
+      folders: const [],
+      launchState: AppSessionLaunchState.started,
+      nativeSessionIds: const {'claude': 'native-1'},
+      createdAt: 1,
+    );
+
+    expect(store.sessionForTab(tab, [fresh]), fresh);
+    expect(
+      store.sessionForTab(tab, [fresh])!.nativeSessionIds,
+      const {'claude': 'native-1'},
+    );
+  });
 }

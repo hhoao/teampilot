@@ -30,12 +30,19 @@ TeamMemberConfig finalizeSessionLaunchMember({
   final afterPreset = (!isSimple && preset != null && withPreset != null)
       ? withPreset(baseMember, preset)
       : baseMember;
-  return applySessionContinueOverrides(
+  var merged = applySessionContinueOverrides(
     baseMember: afterPreset,
     session: session,
     memberId: memberId,
     isSimple: isSimple,
   );
+  if (!isSimple) {
+    final id = memberId.trim();
+    if (id.isNotEmpty) {
+      merged = merged.copyWith(id: id);
+    }
+  }
+  return merged;
 }
 
 /// Simple: do NOT re-apply provider/model from memberOverrides; only security

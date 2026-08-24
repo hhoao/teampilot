@@ -512,6 +512,7 @@ class _RightToolsToolViewsState extends State<RightToolsToolViews> {
             selectedMemberId: chatSlice.selectedMemberId,
             canViewDetail: chatSlice.hasActiveTab,
             workspaceId: widget.workspaceId,
+            tabScopeId: widget.toolsScopeId,
             cwd: widget.cwd,
             scope: widget.scope,
             maybeDismissDrawer: maybeDismissDrawer,
@@ -608,6 +609,7 @@ class _ScopedMembersPanel extends StatefulWidget {
     required this.selectedMemberId,
     required this.canViewDetail,
     required this.workspaceId,
+    required this.tabScopeId,
     required this.cwd,
     required this.scope,
     required this.maybeDismissDrawer,
@@ -620,6 +622,7 @@ class _ScopedMembersPanel extends StatefulWidget {
   final String selectedMemberId;
   final bool canViewDetail;
   final String workspaceId;
+  final String tabScopeId;
   final String cwd;
   final WorkspaceToolsScopeState scope;
   final VoidCallback maybeDismissDrawer;
@@ -708,7 +711,7 @@ class _ScopedMembersPanelState extends State<_ScopedMembersPanel> {
   }
 
   void _switchToMember(BuildContext context, String id) {
-    context.read<ChatCubit>().selectMember(id);
+    context.read<ChatCubit>().selectMember(id, tabScopeId: widget.tabScopeId);
     widget.maybeDismissDrawer();
   }
 

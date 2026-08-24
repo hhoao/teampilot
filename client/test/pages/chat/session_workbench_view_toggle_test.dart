@@ -66,12 +66,15 @@ void main() {
     ChatCubit chat,
     WorkbenchCubit workbench, {
     required String sessionId,
+    String sessionTeam = '',
+    String selectedMemberId = '',
   }) {
     chat.tabStore.setActiveWorkspaceId('w1');
     final session = AppSession(
       sessionId: sessionId,
       workspaceId: 'w1',
       folders: const [WorkspaceFolder(path: '/w')],
+      sessionTeam: sessionTeam,
       createdAt: 1,
       updatedAt: 1,
     );
@@ -79,7 +82,9 @@ void main() {
       ChatTab(
         info: ChatTabInfo(id: sessionId, title: 'S', subtitle: ''),
         cliTeamName: '',
-      )..persistedSession = session,
+      )
+        ..persistedSession = session
+        ..selectedMemberId = selectedMemberId,
     );
     workbench.openSession('w1', sessionId);
   }
@@ -95,7 +100,7 @@ void main() {
   }
 
   testWidgets(
-    'idle session: tapping show-terminal switches to Terminal and connects',
+    'idle simple session: tapping show-terminal switches to Terminal and connects',
     (tester) async {
       final chat = _RecordingChatCubit();
       final workbench = WorkbenchCubit();
@@ -118,6 +123,34 @@ void main() {
       // The toggle switched the tab's view to Terminal before connecting.
       expect(chat.tabStore.openTabBySessionId('s1')!.workbenchView,
           SessionWorkbenchView.terminal);
+    },
+  );
+
+  testWidgets(
+    'idle team session: show-terminal lazy-spawns only (no full connect)',
+    (tester) async {
+      final chat = _RecordingChatCubit();
+      final workbench = WorkbenchCubit();
+      addTearDown(chat.close);
+      addTearDown(workbench.close);
+      surfaceSession(
+        chat,
+        workbench,
+        sessionId: 's-team',
+        sessionTeam: 'team-1',
+        selectedMemberId: 'developer',
+      );
+
+      await pumpToggle(tester, chat: chat, workbench: workbench);
+
+      await tester.tap(find.byKey(AppKeys.sessionWorkbenchViewToggle));
+      await tester.pump();
+
+      expect(chat.connects, isEmpty);
+      expect(
+        chat.tabStore.openTabBySessionId('s-team')!.workbenchView,
+        SessionWorkbenchView.terminal,
+      );
     },
   );
 

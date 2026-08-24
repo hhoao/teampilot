@@ -148,8 +148,7 @@ class SessionLaunchConnectPrepRunner {
         generation: generation,
       );
       if (!_prepCallbacks.launchStillValid(tab, generation)) return;
-      tab.selectedMemberId = request.member!.id;
-      _host.selectMember(request.member!.id);
+      _host.assignSelectedMember(tab, request.member!.id);
       _host.updateTabRunning(session.sessionId);
     } on Object catch (e, st) {
       appLogger.e(
