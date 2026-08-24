@@ -6,6 +6,7 @@ import '../../models/team_config.dart';
 import '../../models/team_roster_slot.dart';
 import '../../models/workspace.dart';
 import '../../utils/team/team_member_naming.dart';
+import '../../utils/workspace/landing_draft_resolver.dart';
 import '../cli/installer_types.dart';
 import '../cli/registry/capabilities/cli_session_capability.dart';
 import '../cli/registry/cli_tool_registry.dart';
@@ -74,8 +75,11 @@ class SessionConnectOrchestrator {
     final planSw = Stopwatch()..start();
     // Back-fill the official default provider for legacy rows persisted before
     // provider resolution existed.
-    final identity = session.simpleIdentity.withOfficialDefaultProvider(
-      CliToolRegistry.builtIn().defaultOfficialProviderId,
+    final identity = enrichSimpleLaunchIdentityFromPreset(
+      identity: session.simpleIdentity.withOfficialDefaultProvider(
+        CliToolRegistry.builtIn().defaultOfficialProviderId,
+      ),
+      presets: lifecycle.globalPresets,
     );
     final plan = await runtimePlanBuilder.buildSimple(
       workspaceId: workspace.workspaceId,

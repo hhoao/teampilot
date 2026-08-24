@@ -47,6 +47,31 @@ SimpleLaunchIdentity resolveLandingSimpleLaunchIdentity({
 String? _officialProviderId(CliTool cli) =>
     CliToolRegistry.builtIn().defaultOfficialProviderId(cli);
 
+/// Expands [identity.presetId] into provider/model/effort when the session row
+/// only persisted the preset id (landing draft, legacy rows, or silent create).
+///
+/// When concrete provider/model are already pinned on the session, they are kept.
+SimpleLaunchIdentity enrichSimpleLaunchIdentityFromPreset({
+  required SimpleLaunchIdentity identity,
+  required List<CliPreset> presets,
+}) {
+  final presetId = identity.presetId.trim();
+  if (presetId.isEmpty) return identity;
+  if (identity.model.trim().isNotEmpty &&
+      identity.provider.trim().isNotEmpty) {
+    return identity;
+  }
+  final preset = presetById(presetId, presets);
+  if (preset == null) return identity;
+  return SimpleLaunchIdentity.resolve(
+    preset: preset,
+    presetId: presetId,
+    cli: identity.cli,
+    expertKey: identity.expertKey,
+    officialProviderId: _officialProviderId,
+  );
+}
+
 /// Select a global preset and clear any custom four-tuple.
 LandingLaunchContext landingDraftSelectingPreset(
   LandingLaunchContext draft,

@@ -573,8 +573,9 @@ Future<SessionOpenStatus?> _requestCreateWorkspaceConversation(
 
   final identity = isPersonal
       ? (simpleIdentity ??
-            _resolveSimpleLaunchIdentity(
+            await _resolvePersonalLaunchIdentity(
               context,
+              workspace: workspace,
               cli: cli,
               expertKey: expertKey,
             ))
@@ -654,5 +655,32 @@ SimpleLaunchIdentity _resolveSimpleLaunchIdentity(
     model: model,
     effort: effort,
     expertKey: expertKey,
+  );
+}
+
+Future<SimpleLaunchIdentity> _resolvePersonalLaunchIdentity(
+  BuildContext context, {
+  required Workspace workspace,
+  CliTool? cli,
+  String? expertKey,
+}) async {
+  final presets = context.read<CliPresetsCubit>().state.presets;
+  final draft = await resolveLandingDraft(
+    workspaceId: workspace.workspaceId,
+    simpleModeDefaultFullAccess: context
+        .read<SessionPreferencesCubit>()
+        .state
+        .preferences
+        .simpleModeDefaultFullAccess,
+  );
+  final seeded = seedLandingDraftPresetDefault(draft, presets);
+  return resolveLandingSimpleLaunchIdentity(
+    presets: presets,
+    presetId: seeded.presetId,
+    cli: cli ?? seeded.cli,
+    provider: seeded.provider,
+    model: seeded.model,
+    effort: seeded.effort,
+    expertKey: expertKey ?? seeded.expertKey,
   );
 }
