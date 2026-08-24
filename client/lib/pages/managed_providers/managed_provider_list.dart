@@ -128,7 +128,6 @@ class _ManagedProviderCard extends StatelessWidget {
       status,
     );
     final warning =
-        status == ProviderUsageStatus.stale ||
         status == ProviderUsageStatus.error ||
         status == ProviderUsageStatus.unsupported;
     final statusLabel = provider.enabled
