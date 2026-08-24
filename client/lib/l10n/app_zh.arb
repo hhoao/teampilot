@@ -3143,5 +3143,22 @@
   "managedProvidersQueryUnsupported": "不支持查询",
   "managedProvidersUnknownUsage": "未知用量状态",
   "managedProvidersStale": "已过期",
-  "managedProvidersError": "错误"
+  "managedProvidersError": "错误",
+  "managedProvidersRemainingPercent": "{percent}剩余 %",
+  "@managedProvidersRemainingPercent": {
+    "placeholders": {
+      "percent": {
+        "type": "String"
+      }
+    }
+  },
+  "managedProvidersResetsIn": "{duration}后重置",
+  "@managedProvidersResetsIn": {
+    "placeholders": {
+      "duration": {
+        "type": "String"
+      }
+    }
+  },
+  "managedProvidersResetsSoon": "即将重置"
 }

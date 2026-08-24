@@ -14299,6 +14299,24 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Error'**
   String get managedProvidersError;
+
+  /// No description provided for @managedProvidersRemainingPercent.
+  ///
+  /// In en, this message translates to:
+  /// **'{percent}% remaining'**
+  String managedProvidersRemainingPercent(String percent);
+
+  /// No description provided for @managedProvidersResetsIn.
+  ///
+  /// In en, this message translates to:
+  /// **'Resets in {duration}'**
+  String managedProvidersResetsIn(String duration);
+
+  /// No description provided for @managedProvidersResetsSoon.
+  ///
+  /// In en, this message translates to:
+  /// **'Resets soon'**
+  String get managedProvidersResetsSoon;
 }
 
 class _AppLocalizationsDelegate

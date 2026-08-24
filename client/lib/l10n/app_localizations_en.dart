@@ -8034,4 +8034,17 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get managedProvidersError => 'Error';
+
+  @override
+  String managedProvidersRemainingPercent(String percent) {
+    return '$percent% remaining';
+  }
+
+  @override
+  String managedProvidersResetsIn(String duration) {
+    return 'Resets in $duration';
+  }
+
+  @override
+  String get managedProvidersResetsSoon => 'Resets soon';
 }

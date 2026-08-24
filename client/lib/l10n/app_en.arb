@@ -3609,5 +3609,22 @@
   "managedProvidersQueryUnsupported": "Query unsupported",
   "managedProvidersUnknownUsage": "Unknown usage status",
   "managedProvidersStale": "Stale",
-  "managedProvidersError": "Error"
+  "managedProvidersError": "Error",
+  "managedProvidersRemainingPercent": "{percent}% remaining",
+  "@managedProvidersRemainingPercent": {
+    "placeholders": {
+      "percent": {
+        "type": "String"
+      }
+    }
+  },
+  "managedProvidersResetsIn": "Resets in {duration}",
+  "@managedProvidersResetsIn": {
+    "placeholders": {
+      "duration": {
+        "type": "String"
+      }
+    }
+  },
+  "managedProvidersResetsSoon": "Resets soon"
 }

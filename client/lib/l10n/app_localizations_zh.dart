@@ -7696,4 +7696,17 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get managedProvidersError => '错误';
+
+  @override
+  String managedProvidersRemainingPercent(String percent) {
+    return '$percent剩余 %';
+  }
+
+  @override
+  String managedProvidersResetsIn(String duration) {
+    return '$duration后重置';
+  }
+
+  @override
+  String get managedProvidersResetsSoon => '即将重置';
 }
