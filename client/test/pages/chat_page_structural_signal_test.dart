@@ -62,4 +62,65 @@ void main() {
 
     expect(before, equals(after));
   });
+
+  test(
+    'selectMember bump differs even when live tab already holds the new id',
+    () {
+      // Mirrors ChatPageShell.buildWhen: selectMember mutates ChatTab in place
+      // before emit, so both prev/next signals read the same live selectedMemberId.
+      // memberSelectionVersion on ChatState must still make the signals unequal.
+      final cubit = testChatCubit(executableResolver: () => '/bin/true');
+      addTearDown(cubit.close);
+      final workbench = WorkbenchCubit();
+      addTearDown(workbench.close);
+
+      cubit.setActiveWorkspace('ws');
+      cubit.ingestWorkspaceSessionSnapshot(
+        workspaces: cubit.state.workspaces,
+        sessions: [
+          AppSession(
+            sessionId: 'sess-1',
+            workspaceId: 'ws',
+            folders: const [WorkspaceFolder(path: '/tmp')],
+            display: 'Team',
+            createdAt: 1,
+          ),
+        ],
+      );
+      final tab = ChatTab(
+        info: const ChatTabInfo(id: 'sess-1', title: 'Team', subtitle: ''),
+        cliTeamName: 'sess-1',
+      )..selectedMemberId = 'lead';
+      cubit.tabStore.registerSession(tab);
+      workbench.openSession('ws', 'sess-1');
+
+      final previousState = cubit.state;
+      expect(previousState.memberSelectionVersion, 0);
+
+      // In-place mutation then version bump — same order as ChatCubit.selectMember.
+      tab.selectedMemberId = 'worker';
+      cubit.emit(
+        cubit.state.copyWith(
+          memberSelectionVersion: cubit.state.memberSelectionVersion + 1,
+        ),
+      );
+
+      final before = chatPageStructuralSignal(
+        state: previousState,
+        tabStore: cubit.tabStore,
+        workbench: workbench,
+        tabScopeId: 'ws',
+      );
+      final after = chatPageStructuralSignal(
+        state: cubit.state,
+        tabStore: cubit.tabStore,
+        workbench: workbench,
+        tabScopeId: 'ws',
+      );
+
+      expect(before.selectedMemberId, 'worker');
+      expect(after.selectedMemberId, 'worker');
+      expect(before, isNot(equals(after)));
+    },
+  );
 }
