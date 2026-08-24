@@ -10,11 +10,6 @@ import '../../cubits/workbench/workbench_tab.dart';
 ///
 /// Derived from the workbench bar (single source of strip order/active) plus the
 /// session registry for per-workspace runtime state.
-///
-/// [memberSelectionVersion] must be included: [ChatCubit.selectMember] mutates
-/// [ChatTab.selectedMemberId] in place *before* emit, so a buildWhen that only
-/// compared live [selectedMemberId] would see the same id on prev and next and
-/// skip the rebuild that switches the center workbench member surface.
 @immutable
 class ChatPageStructuralSignal {
   const ChatPageStructuralSignal({
@@ -22,7 +17,6 @@ class ChatPageStructuralSignal {
     required this.activeTabIndex,
     required this.newChatActive,
     required this.selectedMemberId,
-    required this.memberSelectionVersion,
     required this.sessionLaunchError,
     required this.pinnedBySessionId,
   });
@@ -31,10 +25,6 @@ class ChatPageStructuralSignal {
   final int activeTabIndex;
   final bool newChatActive;
   final String selectedMemberId;
-
-  /// From [ChatState.memberSelectionVersion] — the reliable member-switch gate
-  /// when the live tab store has already been rewritten.
-  final int memberSelectionVersion;
   final String? sessionLaunchError;
   final Map<String, bool> pinnedBySessionId;
 
@@ -45,7 +35,6 @@ class ChatPageStructuralSignal {
         activeTabIndex == other.activeTabIndex &&
         newChatActive == other.newChatActive &&
         selectedMemberId == other.selectedMemberId &&
-        memberSelectionVersion == other.memberSelectionVersion &&
         sessionLaunchError == other.sessionLaunchError &&
         const MapEquality<String, bool>().equals(
           pinnedBySessionId,
@@ -59,7 +48,6 @@ class ChatPageStructuralSignal {
     activeTabIndex,
     newChatActive,
     selectedMemberId,
-    memberSelectionVersion,
     sessionLaunchError,
     const MapEquality<String, bool>().hash(pinnedBySessionId),
   );
@@ -87,7 +75,6 @@ ChatPageStructuralSignal chatPageStructuralSignal({
     activeTabIndex: activeId == null ? -1 : order.indexOf(activeId),
     newChatActive: bar.center.landingActive,
     selectedMemberId: activeTab?.selectedMemberId ?? '',
-    memberSelectionVersion: state.memberSelectionVersion,
     sessionLaunchError: isForeground
         ? (activeTab?.info.launchError ?? state.sessionLaunchError)
         : activeTab?.info.launchError,
