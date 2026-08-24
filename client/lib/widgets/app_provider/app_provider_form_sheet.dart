@@ -65,6 +65,8 @@ class _AppProviderFormPageState extends State<AppProviderFormPage> {
   late Map<String, Object?> _extra;
   late CredentialBindingKind _credentialBinding;
   late bool _showAdvancedJson;
+  String? _prospectiveId;
+  String? _prospectiveIdName;
 
   bool get _isEditing => widget.existing != null;
 
@@ -131,6 +133,8 @@ class _AppProviderFormPageState extends State<AppProviderFormPage> {
     _config = formCap.configForCliSwitch();
     _apiKeyField = formCap.defaultApiKeyField();
     _extra = const {};
+    _prospectiveId = null;
+    _prospectiveIdName = null;
   }
 
   @override
@@ -187,9 +191,28 @@ class _AppProviderFormPageState extends State<AppProviderFormPage> {
     );
   }
 
+  /// Final id for a new provider row, resolved once per name so credential
+  /// login inside the add form targets this row — never an existing row that
+  /// already owns the base slug (e.g. a second official preset row must get
+  /// `openai-official-2`, not clobber `openai-official`).
+  String _prospectiveIdForCurrentName() {
+    final name = _nameCtl.text.trim();
+    if (_prospectiveId == null || _prospectiveIdName != name) {
+      final cubit = context.read<AppProviderCubit>();
+      final base = AppProviderCubit.slugifyId(name);
+      final existing = cubit.state
+          .providersFor(widget.cli)
+          .map((p) => p.id)
+          .toList(growable: false);
+      _prospectiveId = AppProviderCubit.uniqueId(base, existing);
+      _prospectiveIdName = name;
+    }
+    return _prospectiveId!;
+  }
+
   AppProviderConfig _buildNormalDraft() {
     final name = _nameCtl.text.trim();
-    final baseId = widget.existing?.id ?? AppProviderCubit.slugifyId(name);
+    final baseId = widget.existing?.id ?? _prospectiveIdForCurrentName();
     final now = DateTime.now().toUtc().millisecondsSinceEpoch;
     final config = _formCap().buildConfig(_formInput());
     final draft = AppProviderConfig(

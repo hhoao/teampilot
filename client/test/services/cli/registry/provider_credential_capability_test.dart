@@ -74,6 +74,40 @@ void main() {
     expect(capability.hidesApiKeyFields(provider), isTrue);
   });
 
+  test('duplicate codex official rows keep login capability', () {
+    final capability = CodexProviderCapability();
+    const provider = AppProviderConfig(
+      id: 'openai-official-2',
+      cli: CliTool.codex,
+      name: 'OpenAI Official',
+      category: AppProviderCategory.official,
+      isOfficial: true,
+    );
+
+    expect(isOfficialCodexOAuthProvider(provider), isTrue);
+    expect(capability.appliesTo(provider), isTrue);
+    expect(
+      capability.actionsFor(provider).map((a) => a.kind),
+      contains(ProviderCredentialActionKind.login),
+    );
+    expect(capability.hidesApiKeyFields(provider), isTrue);
+  });
+
+  test('azure codex preset (isOfficial but third-party) stays API-key', () {
+    final capability = CodexProviderCapability();
+    const provider = AppProviderConfig(
+      id: 'azure-openai',
+      cli: CliTool.codex,
+      name: 'Azure OpenAI',
+      category: AppProviderCategory.thirdParty,
+      isOfficial: true,
+    );
+
+    expect(isOfficialCodexOAuthProvider(provider), isFalse);
+    expect(capability.appliesTo(provider), isFalse);
+    expect(capability.hidesApiKeyFields(provider), isFalse);
+  });
+
   test('opencode official provider exposes login and import actions', () {
     final capability = OpencodeProviderCapability();
     const provider = AppProviderConfig(

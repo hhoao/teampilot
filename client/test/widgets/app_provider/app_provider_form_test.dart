@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:teampilot/cubits/app_provider_cubit.dart';
 import 'package:teampilot/l10n/app_localizations.dart';
 import 'package:teampilot/models/app_provider_config.dart';
 import 'package:teampilot/services/cli/registry/cli_tool_registry.dart';
@@ -53,17 +55,20 @@ void main() {
         supportedLocales: AppLocalizations.supportedLocales,
         home: CliToolRegistryScope(
           registry: CliToolRegistry.builtIn(),
-          child: StatefulBuilder(
-            builder: (context, setState) => Scaffold(
-              body: SizedBox(
-                width: 900,
-                height: 1000,
-                child: AppProviderFormPage(
-                  key: ValueKey(cli),
-                  cli: cli,
-                  onCliChanged: (next) => setState(() => cli = next),
-                  onCancel: () {},
-                  onSaved: (_) {},
+          child: BlocProvider(
+            create: (_) => AppProviderCubit(),
+            child: StatefulBuilder(
+              builder: (context, setState) => Scaffold(
+                body: SizedBox(
+                  width: 900,
+                  height: 1000,
+                  child: AppProviderFormPage(
+                    key: ValueKey(cli),
+                    cli: cli,
+                    onCliChanged: (next) => setState(() => cli = next),
+                    onCancel: () {},
+                    onSaved: (_) {},
+                  ),
                 ),
               ),
             ),
@@ -147,7 +152,10 @@ Widget _wrapForm(Widget form) {
     supportedLocales: AppLocalizations.supportedLocales,
     home: CliToolRegistryScope(
       registry: CliToolRegistry.builtIn(),
-      child: Scaffold(body: SizedBox(width: 1000, height: 1400, child: form)),
+      child: BlocProvider(
+        create: (_) => AppProviderCubit(),
+        child: Scaffold(body: SizedBox(width: 1000, height: 1400, child: form)),
+      ),
     ),
   );
 }
