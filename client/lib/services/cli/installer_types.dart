@@ -41,7 +41,9 @@ class CliInstallerCommand {
   /// Wraps in [unixShellScript] when [npmCommand] needs shell expansion.
   /// Bootstrapped npm is a Node shebang script — Node must be on PATH.
   /// Uses one-shot `--prefix ~/.local` so the binary lands in `~/.local/bin`
-  /// without writing `prefix` into the user's `~/.npmrc` (nvm-incompatible).
+  /// without writing `prefix` into the user's `~/.npmrc`. Used for Linux and
+  /// SSH; macOS desktop installs with the user's npm use [TeampilotNodeInstall
+  /// .existingNpmPackageInstall] instead.
   factory CliInstallerCommand.npmGlobalInstall({
     required String npmCommand,
     required String package,

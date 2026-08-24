@@ -89,6 +89,14 @@ abstract class NpmInstallerCapability {
 
     host.report(CliInstallPhase.locatingExecutable);
     final path = await host.locateExecutable(executableName);
+    if (path == null) {
+      return CliInstallResult(
+        success: false,
+        message:
+            '$displayName install finished but the executable could not be '
+            'located. Add ~/.local/bin to PATH if needed.',
+      );
+    }
     return CliInstallResult(
       success: true,
       message: '$displayName installed.',

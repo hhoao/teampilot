@@ -53,7 +53,16 @@ class CliToolLocator {
     if (!Platform.isMacOS) return const [];
     final home = Platform.environment['HOME']?.trim() ?? '';
     if (home.isEmpty) return const [];
-    return ['$home/.local/bin/cursor-agent'];
+    return [wellKnownLocalBinPath('cursor-agent')].whereType<String>().toList();
+  }
+
+  /// TeamPilot npm installs default to prefix `~/.local` → `~/.local/bin`.
+  static String? wellKnownLocalBinPath(String executableName) {
+    if (Platform.isWindows) return null;
+    final home = Platform.environment['HOME']?.trim() ?? '';
+    if (home.isEmpty) return null;
+    final candidate = p.join(home, '.local', 'bin', executableName);
+    return File(candidate).existsSync() ? candidate : null;
   }
 
   Future<String?> locate({
@@ -134,7 +143,9 @@ class CliToolLocator {
     if (isWindows) {
       return _locateInWsl(runner);
     }
-    return _locateInLoginShell(runner);
+    final shellLocated = await _locateInLoginShell(runner);
+    if (shellLocated != null) return shellLocated;
+    return wellKnownLocalBinPath(executableName);
   }
 
   Future<String?> _locateInLoginShell(ProcessRunner runner) =>

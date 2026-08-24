@@ -7,7 +7,10 @@ void main() {
     final preset = OpencodeProviderPresets.byId('opencode-go');
     expect(preset, isNotNull);
     expect(preset!.label, 'OpenCode Go (subscription)');
-    expect(preset.template.isOfficial, isTrue);
+    expect(
+      preset.template.config['credentialKind'],
+      'apiKey',
+    );
     expect(preset.template.category, AppProviderCategory.official);
     expect(preset.template.apiKeyUrl, 'https://opencode.ai/go');
     expect(preset.template.baseUrl, 'https://opencode.ai/zen/go/v1');

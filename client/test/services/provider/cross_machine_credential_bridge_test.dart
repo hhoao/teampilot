@@ -1,5 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:path/path.dart' as p;
+import 'package:teampilot/models/app_provider_config.dart';
 import 'package:teampilot/models/runtime_target.dart';
 import 'package:teampilot/models/team_config.dart';
 import 'package:teampilot/services/launch/work_plane_paths.dart';
@@ -210,14 +211,10 @@ void main() {
   );
 
   test(
-    'materializeOpencodeAuth copies provider auth.json to work plane',
+    'materializeOpencodeAuth writes synthesized auth.json to work plane',
     () async {
       const layout = OpencodeDataLayout();
-      final homeFs = InMemoryFilesystem();
       final workFs = InMemoryFilesystem();
-      final catalog = ControlPlaneProfilePaths(
-        _memoryContext('/home-catalog', homeFs),
-      );
       final work = ConfigProfileService(
         basePath: '/work',
         home: '/work-home',
@@ -225,22 +222,21 @@ void main() {
         layout: _memoryContext('/work', workFs).layout,
       );
 
-      final src = layout.providerAuthJsonPath(
-        catalog.pathContext.join(
-          catalog.basePath,
-          'providers',
-          CliTool.opencode.value,
-          'official',
-        ),
+      const provider = AppProviderConfig(
+        id: 'official',
+        cli: CliTool.opencode,
+        name: 'Official',
+        apiKey: 'sk-cross',
+        config: {'credentialKind': 'apiKey'},
       );
-      await catalog.fs.ensureDir(catalog.fs.pathContext.dirname(src));
-      await catalog.fs.writeString(src, '{"provider":"official","ready":true}');
 
       expect(
         await CrossMachineCredentialBridge.materializeOpencodeAuth(
-          catalog: catalog,
+          catalog: ControlPlaneProfilePaths(
+            _memoryContext('/home-catalog', InMemoryFilesystem()),
+          ),
           work: work,
-          providerId: 'official',
+          provider: provider,
         ),
         isTrue,
       );
@@ -257,7 +253,7 @@ void main() {
       );
       expect(
         String.fromCharCodes((await work.fs.readBytes(dest))!),
-        contains('official'),
+        contains('sk-cross'),
       );
     },
   );

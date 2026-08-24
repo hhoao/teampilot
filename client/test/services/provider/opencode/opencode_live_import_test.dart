@@ -29,7 +29,7 @@ void main() {
     expect(snapshot.sources, contains('live'));
     final provider = snapshot.providers.single;
     expect(provider.id, 'opencode-go');
-    expect(provider.isOfficial, isTrue);
+    expect(provider.apiKey, 'sk-test');
     expect(provider.baseUrl, 'https://opencode.ai/zen/go/v1');
     expect(provider.defaultModel, 'deepseek-v4-flash');
   });

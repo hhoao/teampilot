@@ -1,3 +1,5 @@
+import 'dart:io' show Platform;
+
 import '../../../../models/ssh_profile.dart';
 import '../../../host/host_script_dialect.dart';
 import '../../../host/host_script_runner.dart';
@@ -132,6 +134,9 @@ final class TeampilotNodeInstall {
   }
 
   /// Install [package] with an existing npm executable path.
+  ///
+  /// On macOS, uses the user's npm global prefix (Homebrew / nvm) so CLIs are
+  /// available in Terminal. Linux and SSH keep one-shot `--prefix ~/.local`.
   CliInstallerCommand existingNpmPackageInstall({
     required bool isWindows,
     required String npmPath,
@@ -156,10 +161,32 @@ final class TeampilotNodeInstall {
         package,
       ]);
     }
+    if (Platform.isMacOS) {
+      return _unixSystemNpmGlobalInstall(npmPath: npmPath, package: package);
+    }
     return CliInstallerCommand.npmGlobalInstall(
       npmCommand: npmPath,
       package: package,
     );
+  }
+
+  /// `npm install -g` under the active npm prefix (no `~/.local` override).
+  static CliInstallerCommand _unixSystemNpmGlobalInstall({
+    required String npmPath,
+    required String package,
+  }) {
+    final npm = CliToolLocator.resolveSpawnExecutable(npmPath);
+    if (!CliInstallerCommand.needsUnixShellInvocation(npm) && npm.contains('/')) {
+      return CliInstallerCommand(npm, ['install', '-g', package]);
+    }
+    if (CliInstallerCommand.needsUnixShellInvocation(npm)) {
+      final binDir = npm.replaceAll(RegExp(r'/npm$'), '');
+      return CliInstallerCommand.unixShellScript(
+        'export PATH="$binDir:\$PATH"\n'
+        'npm install -g $package',
+      );
+    }
+    return CliInstallerCommand.unixShellScript('$npm install -g $package');
   }
 
   static String _unixBootstrapScript({

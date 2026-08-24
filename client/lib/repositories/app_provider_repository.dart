@@ -5,7 +5,6 @@ import '../services/storage/app_storage.dart';
 import '../services/cli/claude/provider/claude_provider_credentials_service.dart';
 import '../services/cli/codex/provider/codex_provider_credentials_service.dart';
 import '../services/cli/cursor/provider/cursor_provider_credentials_service.dart';
-import '../services/cli/opencode/provider/opencode_provider_credentials_service.dart';
 import '../services/io/filesystem.dart';
 import '../services/provider/tool_config_generator.dart';
 import '../services/cli/claude/provider_persistence.dart';
@@ -26,14 +25,12 @@ class AppProviderRepository {
     ClaudeProviderCredentialsService? claudeCredentialsService,
     CursorProviderCredentialsService? cursorCredentialsService,
     CodexProviderCredentialsService? codexCredentialsService,
-    OpencodeProviderCredentialsService? opencodeCredentialsService,
   }) : _basePathOverride = basePath,
        _generator = generator ?? const ToolConfigGenerator(),
        _fsOverride = fs,
        _claudeCredentialsServiceOverride = claudeCredentialsService,
        _cursorCredentialsServiceOverride = cursorCredentialsService,
-       _codexCredentialsServiceOverride = codexCredentialsService,
-       _opencodeCredentialsServiceOverride = opencodeCredentialsService;
+       _codexCredentialsServiceOverride = codexCredentialsService;
 
   final String? _basePathOverride;
   final Filesystem? _fsOverride;
@@ -41,7 +38,6 @@ class AppProviderRepository {
   final ClaudeProviderCredentialsService? _claudeCredentialsServiceOverride;
   final CursorProviderCredentialsService? _cursorCredentialsServiceOverride;
   final CodexProviderCredentialsService? _codexCredentialsServiceOverride;
-  final OpencodeProviderCredentialsService? _opencodeCredentialsServiceOverride;
 
   final Map<String, List<AppProviderConfig>> _diskCache = {};
 
@@ -71,10 +67,6 @@ class AppProviderRepository {
       _codexCredentialsServiceOverride ??
       CodexProviderCredentialsService(fs: _fs, basePath: _basePath);
 
-  OpencodeProviderCredentialsService get _opencodeCredentials =>
-      _opencodeCredentialsServiceOverride ??
-      OpencodeProviderCredentialsService(fs: _fs, basePath: _basePath);
-
   String providersPath(CliTool cli) =>
       _fs.pathContext.join(_basePath, 'providers', cli.value, 'providers.json');
 
@@ -85,9 +77,7 @@ class AppProviderRepository {
     CliTool.claude: ClaudeProviderPersistence(credentials: _claudeCredentials),
     CliTool.cursor: CursorProviderPersistence(credentials: _cursorCredentials),
     CliTool.codex: CodexProviderPersistence(credentials: _codexCredentials),
-    CliTool.opencode: OpencodeProviderPersistence(
-      credentials: _opencodeCredentials,
-    ),
+    CliTool.opencode: const OpencodeProviderPersistence(),
     CliTool.flashskyai: const FlashskyaiProviderPersistence(),
   };
 

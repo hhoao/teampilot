@@ -55,7 +55,6 @@ void registerBuiltInCliTools(
     OpencodeCliTool(
       provider: OpencodeProviderCapability(
         modelsService: opencodeEntry?.modelsService,
-        credentials: opencodeEntry?.credentialsService,
       ),
     ),
   );

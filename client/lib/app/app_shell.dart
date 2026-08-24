@@ -179,7 +179,6 @@ import '../services/host/host_one_shot_runner_for_context.dart';
 import '../services/host/host_process_starter_for_context.dart';
 import '../services/cli/claude/provider/claude_provider_credentials_service.dart';
 import '../services/cli/codex/provider/codex_provider_credentials_service.dart';
-import '../services/cli/opencode/provider/opencode_provider_credentials_service.dart';
 import '../services/cli/opencode/provider/opencode_models_service.dart';
 import '../services/provider/api_model_catalog_service.dart';
 import '../services/cli/cursor/provider/cursor_agent_models_service.dart';
@@ -1079,13 +1078,7 @@ Future<AppShell> buildAppShell({
         sessionPreferencesCubit.resolveExecutable(CliTool.codex),
     hostRunner: credentialHostRunner,
   );
-  final opencodeCredentialsService = OpencodeProviderCredentialsService(
-    fs: AppStorage.fs,
-    basePath: AppStorage.paths.basePath,
-    resolveOpencodeExecutable: () =>
-        sessionPreferencesCubit.resolveExecutable(CliTool.opencode),
-    hostRunner: credentialHostRunner,
-  );
+  final opencodeModelsService = OpencodeModelsService();
 
   cliToolRegistry.configure(
     CliBootstrap({
@@ -1108,8 +1101,7 @@ Future<AppShell> buildAppShell({
         ),
       ),
       CliTool.opencode: OpencodeBootstrapEntry(
-        credentialsService: opencodeCredentialsService,
-        modelsService: OpencodeModelsService(),
+        modelsService: opencodeModelsService,
       ),
     }),
   );

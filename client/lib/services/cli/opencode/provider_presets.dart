@@ -1,4 +1,5 @@
 import '../../../models/app_provider_config.dart';
+import 'provider/opencode_credential_kind.dart';
 
 /// Built-in opencode provider presets.
 ///
@@ -27,7 +28,7 @@ class OpencodeProviderPresets {
         apiKeyUrl: "https://opencode.ai/zen",
         category: AppProviderCategory.official,
         defaultModel: "claude-sonnet-4-5",
-        isOfficial: true,
+        config: {OpencodeCredentialConfigKeys.kind: 'apiKey'},
       ),
     ),
     AppProviderPreset(
@@ -42,8 +43,10 @@ class OpencodeProviderPresets {
         category: AppProviderCategory.official,
         baseUrl: "https://opencode.ai/zen/go/v1",
         defaultModel: "deepseek-v4-flash",
-        config: {"npm": "@ai-sdk/openai-compatible"},
-        isOfficial: true,
+        config: {
+          OpencodeCredentialConfigKeys.kind: 'apiKey',
+          "npm": "@ai-sdk/openai-compatible",
+        },
       ),
     ),
     AppProviderPreset(
@@ -60,7 +63,7 @@ class OpencodeProviderPresets {
         defaultModel: "gpt-4o",
         icon: "openai",
         iconColor: "#00A67E",
-        isOfficial: true,
+        config: {OpencodeCredentialConfigKeys.kind: 'apiKey'},
       ),
     ),
     AppProviderPreset(
@@ -76,7 +79,7 @@ class OpencodeProviderPresets {
         defaultModel: "claude-sonnet-4-5",
         icon: "anthropic",
         iconColor: "#D4915D",
-        isOfficial: true,
+        config: {OpencodeCredentialConfigKeys.kind: 'apiKey'},
       ),
     ),
     AppProviderPreset(
@@ -91,7 +94,7 @@ class OpencodeProviderPresets {
         category: AppProviderCategory.official,
         defaultModel: "gemini-2.0-flash",
         icon: "gemini",
-        isOfficial: true,
+        config: {OpencodeCredentialConfigKeys.kind: 'apiKey'},
       ),
     ),
     AppProviderPreset(
@@ -107,6 +110,7 @@ class OpencodeProviderPresets {
         baseUrl: "https://openrouter.ai/api/v1",
         defaultModel: "anthropic/claude-sonnet-4",
         icon: "openrouter",
+        config: {OpencodeCredentialConfigKeys.kind: 'apiKey'},
       ),
     ),
     AppProviderPreset(
@@ -122,6 +126,7 @@ class OpencodeProviderPresets {
         baseUrl: "https://api.deepseek.com",
         defaultModel: "deepseek-chat",
         icon: "deepseek",
+        config: {OpencodeCredentialConfigKeys.kind: 'apiKey'},
       ),
     ),
     AppProviderPreset(
@@ -136,7 +141,7 @@ class OpencodeProviderPresets {
         category: AppProviderCategory.official,
         baseUrl: "https://api.x.ai/v1",
         defaultModel: "grok-3",
-        isOfficial: true,
+        config: {OpencodeCredentialConfigKeys.kind: 'apiKey'},
       ),
     ),
     AppProviderPreset(
@@ -151,6 +156,7 @@ class OpencodeProviderPresets {
         category: AppProviderCategory.thirdParty,
         baseUrl: "https://api.groq.com/openai/v1",
         defaultModel: "llama-3.3-70b-versatile",
+        config: {OpencodeCredentialConfigKeys.kind: 'apiKey'},
       ),
     ),
     AppProviderPreset(
@@ -161,7 +167,10 @@ class OpencodeProviderPresets {
         cli: CliTool.opencode,
         name: "OpenAI Compatible",
         category: AppProviderCategory.custom,
-        config: {"npm": "@ai-sdk/openai-compatible"},
+        config: {
+          OpencodeCredentialConfigKeys.kind: 'apiKey',
+          "npm": "@ai-sdk/openai-compatible",
+        },
       ),
     ),
   ];
