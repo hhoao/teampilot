@@ -6,6 +6,7 @@ import 'package:shared_ui/shared_ui.dart';
 
 import '../../cubits/agent_attention_cubit.dart';
 import '../../cubits/chat_cubit.dart';
+import '../../cubits/chat/model/session_connect_request.dart';
 import '../../cubits/cli_presets_cubit.dart';
 import '../../cubits/expert_hub_cubit.dart';
 import '../../cubits/launch_profile_cubit.dart';
@@ -25,6 +26,7 @@ import '../../models/plugin.dart';
 import '../../models/skill.dart';
 import '../../models/team_config.dart';
 import '../../models/workspace.dart';
+import '../../repositories/session_repository.dart';
 import '../../services/cli/preset_resolver.dart';
 import '../../services/cli/registry/capabilities/skill_capability.dart';
 import '../../services/cli/registry/capabilities/terminal_behavior_capability.dart';
@@ -700,7 +702,17 @@ class SessionChatComposeSection extends StatelessWidget {
         memberId: memberId,
         lockedCli: lockedCli,
       );
-      if (!ok && context.mounted) _toastContinueSaveFailed(context);
+      if (!ok && context.mounted) {
+        _toastContinueSaveFailed(context);
+        return;
+      }
+      if (context.mounted) {
+        await _offerRestartAfterIdentitySwitch(
+          context,
+          session: live,
+          memberId: memberId,
+        );
+      }
     } on Object {
       if (context.mounted) _toastContinueSaveFailed(context);
     }
@@ -757,10 +769,85 @@ class SessionChatComposeSection extends StatelessWidget {
         model: result.model,
         effort: result.effort,
       );
-      if (!ok && context.mounted) _toastContinueSaveFailed(context);
+      if (!ok && context.mounted) {
+        _toastContinueSaveFailed(context);
+        return;
+      }
+      if (context.mounted) {
+        await _offerRestartAfterIdentitySwitch(
+          context,
+          session: live,
+          memberId: null,
+        );
+      }
     } on Object {
       if (context.mounted) _toastContinueSaveFailed(context);
     }
+  }
+
+  /// After a successful provider/model switch, the running terminal keeps the
+  /// old materialized config. Offer an immediate restart so the switch lands;
+  /// team members restart only their own PTY, Simple restarts the session.
+  static Future<void> _offerRestartAfterIdentitySwitch(
+    BuildContext context, {
+    required AppSession session,
+    required String? memberId,
+  }) async {
+    final chatCubit = context.read<ChatCubit>();
+    final sessionId = session.sessionId;
+    final running = session.isSimple
+        ? chatCubit.isSessionRunning(sessionId)
+        : (memberId?.isNotEmpty == true &&
+            chatCubit.isMemberRunning(
+              sessionId: sessionId,
+              memberId: memberId!,
+            ));
+    if (!running) return;
+    final restartNow =
+        await showDialog<bool>(
+          context: context,
+          builder: (dialogContext) => TpDialog(
+            maxWidth: 480,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                TpDialogHeader(
+                  title: dialogContext.l10n.continueSwitchRestartTitle,
+                  onClose: () => Navigator.pop(dialogContext, false),
+                ),
+                const SizedBox(height: 16),
+                Text(dialogContext.l10n.continueSwitchRestartBody),
+                TpDialogActions(
+                  children: [
+                    TextButton(
+                      onPressed: () =>
+                          Navigator.pop(dialogContext, false),
+                      child: Text(dialogContext.l10n.continueSwitchRestartLater),
+                    ),
+                    FilledButton(
+                      onPressed: () => Navigator.pop(dialogContext, true),
+                      child: Text(dialogContext.l10n.continueSwitchRestartNow),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ) ??
+        false;
+    if (!restartNow || !context.mounted) return;
+    if (session.isSimple) {
+      final repo = context.read<SessionRepository>();
+      await chatCubit.restartWorkspaceSession(
+        PersonalSessionConnect(workspaceId: session.workspaceId),
+        repo: repo,
+      );
+      return;
+    }
+    if (memberId == null || memberId.isEmpty) return;
+    chatCubit.discardMemberTerminal(sessionId, memberId);
+    await chatCubit.ensureMemberTerminalForView(sessionId, memberId);
   }
 
   static Future<void> _openTeamSettings({

@@ -2959,6 +2959,19 @@ class AppLocalizationsEn extends AppLocalizations {
       'When enabled (default), new Simple-mode compose landing starts with full access permissions. Workspace chip choices still override and persist per workspace.';
 
   @override
+  String get continueSwitchRestartTitle => 'Restart to apply switch?';
+
+  @override
+  String get continueSwitchRestartBody =>
+      'The new provider/model is saved. A running session still uses the old config, so the switch only takes effect after a restart.';
+
+  @override
+  String get continueSwitchRestartNow => 'Restart now';
+
+  @override
+  String get continueSwitchRestartLater => 'Later';
+
+  @override
   String get scopeSessionsToSelectedTeamTitle =>
       'Scope sessions to selected team';
 

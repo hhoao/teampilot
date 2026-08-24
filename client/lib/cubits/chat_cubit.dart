@@ -1890,6 +1890,10 @@ class ChatCubit extends Cubit<ChatState>
     return shell?.isRunning ?? false;
   }
 
+  /// Whether any terminal of the session's open tab is up (spawning/running).
+  bool isSessionRunning(String sessionId) =>
+      _tabStore.openTabBySessionId(sessionId)?.isRunning ?? false;
+
   Future<void> launchAllMembers(
     TeamProfile team, {
     SessionRepository? repo,
@@ -2052,6 +2056,7 @@ class ChatCubit extends Cubit<ChatState>
         patched: patched,
       );
       replaceSessionSnapshot(patched);
+      _syncTabPersistedSession(patched);
       return true;
     } on Object {
       return false;
@@ -2087,6 +2092,7 @@ class ChatCubit extends Cubit<ChatState>
       memberId: memberId,
     );
     replaceSessionSnapshot(patched);
+    _syncTabPersistedSession(patched);
     return true;
   }
 
@@ -2118,7 +2124,21 @@ class ChatCubit extends Cubit<ChatState>
       patched: patched,
     );
     replaceSessionSnapshot(patched);
+    _syncTabPersistedSession(patched);
     return true;
+  }
+
+  /// Keeps [ChatTab.persistedSession] (used by restart / member reconnect)
+  /// in sync with continue-chrome edits without dropping launch-time fields
+  /// (native resume ids, launchState) that only exist on the tab cache.
+  void _syncTabPersistedSession(AppSession patched) {
+    final tab = _tabStore.openTabBySessionId(patched.sessionId);
+    final cached = tab?.persistedSession;
+    if (tab == null || cached == null) return;
+    tab.persistedSession = SessionContinueOverridesController.mergeOntoTabCache(
+      cached: cached,
+      patched: patched,
+    );
   }
 
   /// Persists a manual session arrangement. [orderedSessionIds] is the new

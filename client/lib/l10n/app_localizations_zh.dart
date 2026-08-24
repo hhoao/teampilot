@@ -2821,6 +2821,19 @@ class AppLocalizationsZh extends AppLocalizations {
       '开启（默认）时，简单模式落地页默认使用完全访问权限。工作区里权限芯片的选择仍会覆盖并按工作区持久化。';
 
   @override
+  String get continueSwitchRestartTitle => '重启以应用切换？';
+
+  @override
+  String get continueSwitchRestartBody =>
+      '新的供应商/模型已保存。正在运行的会话仍在使用旧配置，重启后切换才会生效。';
+
+  @override
+  String get continueSwitchRestartNow => '立即重启';
+
+  @override
+  String get continueSwitchRestartLater => '稍后';
+
+  @override
   String get scopeSessionsToSelectedTeamTitle => '按所选团队筛选会话';
 
   @override

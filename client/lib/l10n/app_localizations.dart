@@ -5294,6 +5294,30 @@ abstract class AppLocalizations {
   /// **'When enabled (default), new Simple-mode compose landing starts with full access permissions. Workspace chip choices still override and persist per workspace.'**
   String get simpleModeDefaultFullAccessDescription;
 
+  /// No description provided for @continueSwitchRestartTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Restart to apply switch?'**
+  String get continueSwitchRestartTitle;
+
+  /// No description provided for @continueSwitchRestartBody.
+  ///
+  /// In en, this message translates to:
+  /// **'The new provider/model is saved. A running session still uses the old config, so the switch only takes effect after a restart.'**
+  String get continueSwitchRestartBody;
+
+  /// No description provided for @continueSwitchRestartNow.
+  ///
+  /// In en, this message translates to:
+  /// **'Restart now'**
+  String get continueSwitchRestartNow;
+
+  /// No description provided for @continueSwitchRestartLater.
+  ///
+  /// In en, this message translates to:
+  /// **'Later'**
+  String get continueSwitchRestartLater;
+
   /// No description provided for @scopeSessionsToSelectedTeamTitle.
   ///
   /// In en, this message translates to:

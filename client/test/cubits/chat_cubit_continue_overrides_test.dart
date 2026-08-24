@@ -3,6 +3,8 @@ import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/cubits/chat_cubit.dart';
+import 'package:teampilot/cubits/chat/session_continue_overrides_controller.dart';
+import 'package:teampilot/models/app_session.dart';
 import 'package:teampilot/models/cli_preset.dart';
 import 'package:teampilot/models/session_continue_overrides.dart';
 import 'package:teampilot/models/team_config.dart';
@@ -199,5 +201,52 @@ void main() {
         expect(ok, isFalse);
       },
     );
+
+    test('mergeOntoTabCache applies switch while keeping launch fields', () {
+      final cached = AppSession(
+        sessionId: 's1',
+        workspaceId: 'w1',
+        display: 'First chat',
+        provider: 'anthropic',
+        model: 'claude-sonnet',
+        effort: 'high',
+        presetId: 'preset-a',
+        launchState: AppSessionLaunchState.started,
+        createdAt: 1000,
+        nativeSessionIds: const {'claude': 'native-42'},
+      );
+      final patched = cached.copyWith(
+        presetId: 'preset-b',
+        provider: 'openai',
+        model: 'gpt-4o',
+        effort: 'medium',
+        continueOverrides: const SessionContinueOverrides(
+          memberOverrides: {
+            'builder-0': SessionMemberContinueOverride(
+              presetId: 'preset-b',
+              provider: 'openai',
+              model: 'gpt-4o',
+            ),
+          },
+        ),
+      );
+
+      final merged = SessionContinueOverridesController.mergeOntoTabCache(
+        cached: cached,
+        patched: patched,
+      );
+
+      expect(merged.provider, 'openai');
+      expect(merged.model, 'gpt-4o');
+      expect(merged.effort, 'medium');
+      expect(merged.presetId, 'preset-b');
+      expect(merged.display, 'First chat');
+      expect(merged.launchState, AppSessionLaunchState.started);
+      expect(merged.nativeSessionIds, {'claude': 'native-42'});
+      expect(
+        merged.continueOverrides.memberOverrides['builder-0']?.model,
+        'gpt-4o',
+      );
+    });
   });
 }
