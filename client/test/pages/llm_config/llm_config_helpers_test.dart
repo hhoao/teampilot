@@ -64,7 +64,9 @@ void main() {
     // Real disk IO must run on the real event loop.
     await tester.runAsync(() async {
       await tester.tap(find.text('save'));
-      await Future<void>.delayed(const Duration(milliseconds: 200));
+      for (var i = 0; i < 40 && savedId == null; i++) {
+        await Future<void>.delayed(const Duration(milliseconds: 50));
+      }
     });
     await tester.pump();
     return savedId;

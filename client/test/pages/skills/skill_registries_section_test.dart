@@ -168,6 +168,7 @@ void main() {
     await tester.enterText(find.byType(TextField).at(0), 'My API');
     await tester.tap(find.text('Save'));
     await _flushRealIo(tester);
+    await tester.pumpAndSettle();
     expect(find.text('@My API'), findsWidgets);
   });
 

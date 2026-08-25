@@ -224,7 +224,7 @@ void main() {
           '"params":{"name":"wait_for_message","arguments":{}}}\n',
         ),
       );
-      await Future<void>.delayed(const Duration(milliseconds: 80));
+      await Future<void>.delayed(const Duration(milliseconds: 150));
 
       final live = await Socket.connect('127.0.0.1', port);
       live.add(utf8.encode('{"token":"T","memberId":"worker"}\n'));
@@ -234,7 +234,7 @@ void main() {
           '"params":{"name":"wait_for_message","arguments":{}}}\n',
         ),
       );
-      await Future<void>.delayed(const Duration(milliseconds: 150));
+      await Future<void>.delayed(const Duration(milliseconds: 400));
 
       // Stale request id=20 must get an error (or connection close); never
       // silence. Prefer an explicit JSON-RPC error when the socket is still up.
