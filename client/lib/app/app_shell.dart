@@ -6,6 +6,7 @@ import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:http/http.dart' as http;
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:posix/posix.dart' as posix;
 
 import '../cubits/app_bootstrap_cubit.dart';
 import 'app_data_bootstrap.dart';
@@ -70,6 +71,7 @@ import '../services/session/session_history_context_builder.dart';
 import '../cubits/ai_feature_settings_cubit.dart';
 import '../cubits/discovery_settings_cubit.dart';
 import '../cubits/config_cubit.dart';
+import '../cubits/connect_cubit.dart';
 import '../cubits/layout_cubit.dart';
 import '../cubits/floating_workspace/floating_workspace_cubit.dart';
 import '../models/layout_preferences.dart';
@@ -130,6 +132,11 @@ import '../services/extension/extension_acquisition_engine.dart';
 import '../services/extension/extension_provisioner.dart';
 import '../services/storage/app_storage.dart';
 import '../services/storage/device_local_control_plane.dart';
+import '../services/io/local_filesystem.dart';
+import '../services/connect/authorized_keys_file.dart';
+import '../services/connect/connect_agent.dart';
+import '../services/connect/connect_settings_store.dart';
+import '../services/connect/sshd_presence.dart';
 import '../services/perf/live_perf_driver.dart';
 import '../services/storage/workspace_layout.dart';
 import '../services/automation/automation_bus_gateway.dart';
@@ -429,6 +436,7 @@ class AppShell {
     required this.identityRepository,
     required this.teamCubit,
     required this.configCubit,
+    required this.connectCubit,
     required this.appProviderCubit,
     required this.managedProviderControlPlane,
     required this.managedProviderRepository,
@@ -523,6 +531,7 @@ class AppShell {
   final LaunchProfileRepository identityRepository;
   final LaunchProfileCubit teamCubit;
   final ConfigCubit configCubit;
+  final ConnectCubit? connectCubit;
   final AppProviderCubit appProviderCubit;
   final ManagedProviderControlPlane managedProviderControlPlane;
   final ManagedProviderRepository managedProviderRepository;
@@ -1479,6 +1488,74 @@ Future<AppShell> buildAppShell({
     ),
   );
   final configCubit = ConfigCubit();
+  ConnectCubit? connectCubit;
+  if (!Platform.isAndroid) {
+    final localFs = LocalFilesystem(
+      pathContext: AppPaths.pathContextForDataRoot(nativeAppDataPath),
+    );
+    final nativeHome =
+        (Platform.environment['HOME'] ??
+                Platform.environment['USERPROFILE'] ??
+                '')
+            .trim();
+    if (nativeHome.isEmpty) {
+      throw StateError('Could not resolve the local user home for Connect');
+    }
+    final username =
+        (Platform.environment['USER'] ??
+                Platform.environment['USERNAME'] ??
+                localFs.pathContext.basename(nativeHome))
+            .trim();
+    final authorizedKeysPath = localFs.pathContext.join(
+      nativeHome,
+      '.ssh',
+      'authorized_keys',
+    );
+    final authorizedKeys = AuthorizedKeysFile(
+      path: authorizedKeysPath,
+      read: localFs.readString,
+      write: localFs.atomicWrite,
+      chmod: (path, {required mode}) async {
+        if (!Platform.isWindows) {
+          posix.chmod(path, mode.toRadixString(8));
+        }
+      },
+    );
+    final settingsStore = ConnectSettingsStore(
+      fs: localFs,
+      appDataRoot: nativeAppDataPath,
+    );
+    final settings = await settingsStore.load();
+    final sshdPresence = SshdPresence();
+    final connectAgent = ConnectAgent.production(
+      keys: authorizedKeys,
+      fs: localFs,
+      extraEndpoints: settings.extraEndpoints,
+      probe: sshdPresence.probe,
+    );
+    connectCubit = ConnectCubit(
+      agent: ConnectAgentController.fromAgent(connectAgent),
+      probeSshd: sshdPresence.probe,
+      authorizedKeys: authorizedKeys,
+      settingsStore: settingsStore,
+      listNetworkAddresses: () async {
+        final interfaces = await NetworkInterface.list(includeLoopback: true);
+        return [
+          for (final interface in interfaces)
+            for (final address in interface.addresses)
+              ConnectNetworkAddress(
+                name: interface.name,
+                address: address.address,
+                isLoopback: address.isLoopback,
+                isIpv4: address.type == InternetAddressType.IPv4,
+              ),
+        ];
+      },
+      username: username,
+      displayName: Platform.localHostname,
+      appDataRoot: nativeAppDataPath,
+    );
+  }
   final commandBus = CommandBus();
   final shortcutCubit = ShortcutCubit();
   final workspaceChromeCommands = WorkspaceChromeCommands();
@@ -2273,6 +2350,7 @@ Future<AppShell> buildAppShell({
     identityRepository: identityRepository,
     teamCubit: teamCubit,
     configCubit: configCubit,
+    connectCubit: connectCubit,
     appProviderCubit: appProviderCubit,
     managedProviderControlPlane: managedProviderControlPlane,
     managedProviderRepository: resolvedManagedProviderRepository,
@@ -2411,12 +2489,14 @@ class _TeamPilotBootstrapState extends State<TeamPilotBootstrap>
       );
       final shell = builtShell;
       if (!mounted) {
+        await shell.connectCubit?.close();
         await shell.managedProviderControlPlane.close();
         return;
       }
       await yieldUiFrame();
       await shell.bootstrapAppData();
       if (!mounted) {
+        await shell.connectCubit?.close();
         await shell.managedProviderControlPlane.close();
         return;
       }
@@ -2443,6 +2523,7 @@ class _TeamPilotBootstrapState extends State<TeamPilotBootstrap>
       if (!mounted) return;
       await completeBootSplashTransition();
     } on Object catch (error, stackTrace) {
+      await builtShell?.connectCubit?.close();
       await builtShell?.managedProviderControlPlane.close();
       appLogger.e(
         '[boot] buildAppShell failed',
@@ -2499,6 +2580,7 @@ class _TeamPilotBootstrapState extends State<TeamPilotBootstrap>
     _usageAutoRefresh?.dispose();
     final shell = _shell;
     if (shell != null) {
+      unawaited(shell.connectCubit?.close());
       unawaited(shell.managedProviderControlPlane.close());
     }
     super.dispose();
@@ -2540,6 +2622,8 @@ class _TeamPilotBootstrapState extends State<TeamPilotBootstrap>
       providers: [
         BlocProvider.value(value: shell.managedProviderCubit),
         BlocProvider.value(value: shell.managedProviderUsageCubit),
+        if (shell.connectCubit != null)
+          BlocProvider<ConnectCubit>.value(value: shell.connectCubit!),
       ],
       child: widget.childBuilder(shell),
     );

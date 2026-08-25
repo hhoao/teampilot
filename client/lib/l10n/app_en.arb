@@ -3626,5 +3626,31 @@
       }
     }
   },
-  "managedProvidersResetsSoon": "Resets soon"
+  "managedProvidersResetsSoon": "Resets soon",
+  "connectSettingsTitle": "Phone",
+  "connectSettingsSubtitle": "Pair a phone over SSH",
+  "connectLanOnlyStatus": "LAN only",
+  "connectRemoteReadyStatus": "LAN and remote",
+  "connectSshdDown": "OpenSSH is not listening. Enable Remote Login or start sshd before pairing.",
+  "connectScanHint": "Scan this code in TeamPilot on your phone.",
+  "connectAndroidScanHint": "Scan a QR from desktop TeamPilot.",
+  "connectCheckAgain": "Check again",
+  "connectCopyLink": "Copy link",
+  "connectRegenerate": "Regenerate",
+  "connectInterfaceLabel": "Network interface",
+  "connectNoNetworkAddress": "No non-loopback IPv4 network interface is available.",
+  "connectAdvancedTitle": "Reachability",
+  "connectAdvancedSubtitle": "Add SSH addresses that are reachable outside this LAN.",
+  "connectExtraHost": "Host",
+  "connectExtraPort": "Port",
+  "connectAddEndpoint": "Add address",
+  "connectRemoveEndpoint": "Remove address",
+  "connectRelayUrl": "Relay URL",
+  "connectRelayUrlHint": "Optional relay service URL",
+  "connectSaveSettings": "Save reachability",
+  "connectInvalidEndpoint": "Every address needs a host and a port from 1 to 65535.",
+  "connectPairedDevicesTitle": "Paired devices",
+  "connectNoPairedDevices": "No phones are paired yet.",
+  "connectRevokeDevice": "Revoke",
+  "connectError": "Connect could not refresh pairing. Try again."
 }

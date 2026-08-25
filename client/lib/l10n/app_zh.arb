@@ -3160,5 +3160,31 @@
       }
     }
   },
-  "managedProvidersResetsSoon": "即将重置"
+  "managedProvidersResetsSoon": "即将重置",
+  "connectSettingsTitle": "手机",
+  "connectSettingsSubtitle": "扫码用 SSH 连接这台电脑",
+  "connectLanOnlyStatus": "仅局域网",
+  "connectRemoteReadyStatus": "局域网和远程",
+  "connectSshdDown": "未检测到 OpenSSH，请先开启远程登录或 sshd。",
+  "connectScanHint": "在手机上的 TeamPilot 中扫描此码。",
+  "connectAndroidScanHint": "扫描桌面版 TeamPilot 显示的二维码。",
+  "connectCheckAgain": "重新检查",
+  "connectCopyLink": "复制链接",
+  "connectRegenerate": "重新生成",
+  "connectInterfaceLabel": "网络接口",
+  "connectNoNetworkAddress": "没有可用的非回环 IPv4 网络接口。",
+  "connectAdvancedTitle": "可达地址",
+  "connectAdvancedSubtitle": "添加可从当前局域网外访问的 SSH 地址。",
+  "connectExtraHost": "主机",
+  "connectExtraPort": "端口",
+  "connectAddEndpoint": "添加地址",
+  "connectRemoveEndpoint": "移除地址",
+  "connectRelayUrl": "中继 URL",
+  "connectRelayUrlHint": "可选的中继服务 URL",
+  "connectSaveSettings": "保存可达地址",
+  "connectInvalidEndpoint": "每个地址都需要主机名和 1 至 65535 的端口。",
+  "connectPairedDevicesTitle": "已配对设备",
+  "connectNoPairedDevices": "尚未配对手机。",
+  "connectRevokeDevice": "撤销",
+  "connectError": "无法刷新配对信息，请重试。"
 }

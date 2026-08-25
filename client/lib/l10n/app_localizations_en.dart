@@ -8047,4 +8047,86 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get managedProvidersResetsSoon => 'Resets soon';
+
+  @override
+  String get connectSettingsTitle => 'Phone';
+
+  @override
+  String get connectSettingsSubtitle => 'Pair a phone over SSH';
+
+  @override
+  String get connectLanOnlyStatus => 'LAN only';
+
+  @override
+  String get connectRemoteReadyStatus => 'LAN and remote';
+
+  @override
+  String get connectSshdDown =>
+      'OpenSSH is not listening. Enable Remote Login or start sshd before pairing.';
+
+  @override
+  String get connectScanHint => 'Scan this code in TeamPilot on your phone.';
+
+  @override
+  String get connectAndroidScanHint => 'Scan a QR from desktop TeamPilot.';
+
+  @override
+  String get connectCheckAgain => 'Check again';
+
+  @override
+  String get connectCopyLink => 'Copy link';
+
+  @override
+  String get connectRegenerate => 'Regenerate';
+
+  @override
+  String get connectInterfaceLabel => 'Network interface';
+
+  @override
+  String get connectNoNetworkAddress =>
+      'No non-loopback IPv4 network interface is available.';
+
+  @override
+  String get connectAdvancedTitle => 'Reachability';
+
+  @override
+  String get connectAdvancedSubtitle =>
+      'Add SSH addresses that are reachable outside this LAN.';
+
+  @override
+  String get connectExtraHost => 'Host';
+
+  @override
+  String get connectExtraPort => 'Port';
+
+  @override
+  String get connectAddEndpoint => 'Add address';
+
+  @override
+  String get connectRemoveEndpoint => 'Remove address';
+
+  @override
+  String get connectRelayUrl => 'Relay URL';
+
+  @override
+  String get connectRelayUrlHint => 'Optional relay service URL';
+
+  @override
+  String get connectSaveSettings => 'Save reachability';
+
+  @override
+  String get connectInvalidEndpoint =>
+      'Every address needs a host and a port from 1 to 65535.';
+
+  @override
+  String get connectPairedDevicesTitle => 'Paired devices';
+
+  @override
+  String get connectNoPairedDevices => 'No phones are paired yet.';
+
+  @override
+  String get connectRevokeDevice => 'Revoke';
+
+  @override
+  String get connectError => 'Connect could not refresh pairing. Try again.';
 }

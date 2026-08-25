@@ -291,6 +291,35 @@ void main() {
     );
   });
 
+  test('ConnectSettingsStore persists endpoint and relay settings', () async {
+    final fs = InMemoryFilesystem();
+    final store = ConnectSettingsStore(
+      fs: fs,
+      appDataRoot: '/app-data',
+      generateHostId: () => hostId,
+    );
+    const endpoints = [
+      SshReachabilityEndpoint(
+        kind: SshEndpointKind.extra,
+        host: 'desktop.example.com',
+        port: 2222,
+      ),
+    ];
+
+    await store.save(
+      extraEndpoints: endpoints,
+      relayUrl: 'wss://relay.example.com',
+    );
+    final reloaded = await ConnectSettingsStore(
+      fs: fs,
+      appDataRoot: '/app-data',
+    ).load();
+
+    expect(reloaded.hostId, hostId);
+    expect(reloaded.extraEndpoints, endpoints);
+    expect(reloaded.relayUrl, 'wss://relay.example.com');
+  });
+
   test(
     'ConnectTls creates a fresh pinned leaf without a process runner',
     () async {

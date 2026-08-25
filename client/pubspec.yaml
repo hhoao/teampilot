@@ -74,6 +74,7 @@ dependencies:
   synchronized: ^3.3.1
   meta: ^1.16.0
   flutter_svg: ^2.3.0
+  qr_flutter: ^4.1.0
   intl: any
   native_splash_screen:
     path: packages/native_splash_screen/native_splash_screen

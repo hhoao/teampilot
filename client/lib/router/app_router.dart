@@ -272,6 +272,12 @@ final appRouter = GoRouter(
               ),
             ),
             GoRoute(
+              path: '/config/connect',
+              pageBuilder: (context, state) => const NoTransitionPage(
+                child: ConfigWorkspace(section: ConfigSection.connect),
+              ),
+            ),
+            GoRoute(
               path: '/config/github',
               pageBuilder: (context, state) => const NoTransitionPage(
                 child: ConfigWorkspace(section: ConfigSection.github),

@@ -7709,4 +7709,82 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get managedProvidersResetsSoon => '即将重置';
+
+  @override
+  String get connectSettingsTitle => '手机';
+
+  @override
+  String get connectSettingsSubtitle => '扫码用 SSH 连接这台电脑';
+
+  @override
+  String get connectLanOnlyStatus => '仅局域网';
+
+  @override
+  String get connectRemoteReadyStatus => '局域网和远程';
+
+  @override
+  String get connectSshdDown => '未检测到 OpenSSH，请先开启远程登录或 sshd。';
+
+  @override
+  String get connectScanHint => '在手机上的 TeamPilot 中扫描此码。';
+
+  @override
+  String get connectAndroidScanHint => '扫描桌面版 TeamPilot 显示的二维码。';
+
+  @override
+  String get connectCheckAgain => '重新检查';
+
+  @override
+  String get connectCopyLink => '复制链接';
+
+  @override
+  String get connectRegenerate => '重新生成';
+
+  @override
+  String get connectInterfaceLabel => '网络接口';
+
+  @override
+  String get connectNoNetworkAddress => '没有可用的非回环 IPv4 网络接口。';
+
+  @override
+  String get connectAdvancedTitle => '可达地址';
+
+  @override
+  String get connectAdvancedSubtitle => '添加可从当前局域网外访问的 SSH 地址。';
+
+  @override
+  String get connectExtraHost => '主机';
+
+  @override
+  String get connectExtraPort => '端口';
+
+  @override
+  String get connectAddEndpoint => '添加地址';
+
+  @override
+  String get connectRemoveEndpoint => '移除地址';
+
+  @override
+  String get connectRelayUrl => '中继 URL';
+
+  @override
+  String get connectRelayUrlHint => '可选的中继服务 URL';
+
+  @override
+  String get connectSaveSettings => '保存可达地址';
+
+  @override
+  String get connectInvalidEndpoint => '每个地址都需要主机名和 1 至 65535 的端口。';
+
+  @override
+  String get connectPairedDevicesTitle => '已配对设备';
+
+  @override
+  String get connectNoPairedDevices => '尚未配对手机。';
+
+  @override
+  String get connectRevokeDevice => '撤销';
+
+  @override
+  String get connectError => '无法刷新配对信息，请重试。';
 }
