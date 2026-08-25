@@ -211,4 +211,37 @@ void main() {
     expect(groupsCubit.state.groupById('g1')!.containsSession('a'), isTrue);
     expect(groupsCubit.state.groupById('g1')!.containsSession('b'), isFalse);
   });
+
+  testWidgets('add dialog reflects live membership, save keeps it', (
+    tester,
+  ) async {
+    await pumpSection(
+      tester,
+      sessions: [_session('a'), _session('b')],
+      groups: const [SessionGroup(id: 'g1', name: 'G', sessionIds: ['a'])],
+    );
+
+    // Mutated through the shared cubit after construction: the section's
+    // constructor group snapshot is now stale.
+    groupsCubit.addSession('g1', 'b');
+    await tester.pump();
+
+    await hoverHeader(tester, 'G');
+    await tester.tap(find.byIcon(Icons.add_rounded));
+    await tester.pumpAndSettle();
+
+    // The externally-added member must render as already checked.
+    CheckboxListTile checkboxFor(String id) => tester.widget<CheckboxListTile>(
+      find.widgetWithText(CheckboxListTile, id),
+    );
+    expect(checkboxFor('a').value, isTrue);
+    expect(checkboxFor('b').value, isTrue);
+
+    // Saving with no changes must keep the external membership.
+    await tester.tap(find.widgetWithText(FilledButton, 'Save'));
+    await tester.pumpAndSettle();
+
+    expect(groupsCubit.state.groupById('g1')!.containsSession('a'), isTrue);
+    expect(groupsCubit.state.groupById('g1')!.containsSession('b'), isTrue);
+  });
 }

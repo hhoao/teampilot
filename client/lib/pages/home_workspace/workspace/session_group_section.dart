@@ -46,6 +46,12 @@ class SessionGroupSection extends StatelessWidget {
   final AppSessionSort sessionSort;
   final String? highlightSessionId;
 
+  /// Fresh group state by id. The constructor [group] is only a snapshot —
+  /// membership/name/collapse may have been mutated through the shared cubit
+  /// (dialogs here, header menus, or another tab) after this widget was built.
+  SessionGroup _groupIn(SessionGroupsState state) =>
+      state.groupById(group.id) ?? group;
+
   void _toggleCollapse(BuildContext context) {
     context.read<SessionGroupsCubit>().toggleCollapsed(group.id);
   }
@@ -53,28 +59,30 @@ class SessionGroupSection extends StatelessWidget {
   Future<void> _rename(BuildContext context) async {
     final cubit = context.read<SessionGroupsCubit>();
     final l10n = context.l10n;
+    final current = _groupIn(cubit.state);
     final name = await showTpTextPromptDialog(
       context,
       title: l10n.sessionGroupRenameTitle,
-      initialText: group.name,
+      initialText: current.name,
       labelText: l10n.sessionGroupNameLabel,
       confirmLabel: l10n.save,
       cancelLabel: l10n.cancel,
     );
-    if (name == null || name.trim().isEmpty || name.trim() == group.name) {
+    if (name == null || name.trim().isEmpty || name.trim() == current.name) {
       return;
     }
-    cubit.renameGroup(group.id, name.trim());
+    cubit.renameGroup(current.id, name.trim());
   }
 
   Future<void> _confirmAndDelete(BuildContext context) async {
     final cubit = context.read<SessionGroupsCubit>();
     final l10n = context.l10n;
+    final current = _groupIn(cubit.state);
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (dialogContext) => AlertDialog(
         title: Text(l10n.sessionGroupMenuRemove),
-        content: Text(group.name),
+        content: Text(current.name),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(dialogContext).pop(false),
@@ -97,6 +105,9 @@ class SessionGroupSection extends StatelessWidget {
   Future<void> _openAddSessionsDialog(BuildContext context) async {
     final cubit = context.read<SessionGroupsCubit>();
     final l10n = context.l10n;
+    // Resolve membership now: prechecks and the Save diff must both start
+    // from live state, not the constructor snapshot.
+    final current = _groupIn(cubit.state);
     final workspaceSessions = context
         .read<ChatCubit>()
         .state
@@ -105,7 +116,7 @@ class SessionGroupSection extends StatelessWidget {
         .toList();
     if (workspaceSessions.isEmpty) return;
 
-    final selected = group.sessionIds.toSet();
+    final selected = current.sessionIds.toSet();
     final saved = await showDialog<bool>(
       context: context,
       builder: (dialogContext) => StatefulBuilder(
@@ -149,8 +160,8 @@ class SessionGroupSection extends StatelessWidget {
     if (saved != true || !context.mounted) return;
     for (final session in workspaceSessions) {
       final member = selected.contains(session.sessionId);
-      if (member != group.containsSession(session.sessionId)) {
-        cubit.setMembership(group.id, session.sessionId, member: member);
+      if (member != current.containsSession(session.sessionId)) {
+        cubit.setMembership(current.id, session.sessionId, member: member);
       }
     }
   }
@@ -159,10 +170,9 @@ class SessionGroupSection extends StatelessWidget {
   Widget build(BuildContext context) {
     // Watch both cubits: membership and collapse flags may change via the
     // header menu or dialogs, and live sessions arrive through ChatCubit.
-    final current =
-        context.watch<SessionGroupsCubit>().state.groupById(group.id) ?? group;
+    final current = _groupIn(context.watch<SessionGroupsCubit>().state);
     final chatState = context.watch<ChatCubit>().state;
-    final liveMembers = _liveMembers(chatState, current);
+    final liveMembers = _liveGroupMembers(chatState, current, workspace);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
@@ -186,14 +196,21 @@ class SessionGroupSection extends StatelessWidget {
     );
   }
 
-  List<AppSession> _liveMembers(ChatState state, SessionGroup current) {
-    final byId = {for (final s in state.sessions) s.sessionId: s};
-    return [
-      for (final id in current.sessionIds)
-        if (byId[id] case final session?)
-          if (session.workspaceId == workspace.workspaceId) session,
-    ];
-  }
+}
+
+/// Group member ids resolved to live sessions of [workspace]'s sidebar,
+/// preserving group order and dropping unknown/other-workspace ids.
+List<AppSession> _liveGroupMembers(
+  ChatState chatState,
+  SessionGroup group,
+  Workspace workspace,
+) {
+  final byId = {for (final s in chatState.sessions) s.sessionId: s};
+  return [
+    for (final id in group.sessionIds)
+      if (byId[id] case final session?)
+        if (session.workspaceId == workspace.workspaceId) session,
+  ];
 }
 
 class _SessionGroupHeader extends StatefulWidget {
@@ -363,13 +380,8 @@ class _SessionGroupMemberListState extends State<_SessionGroupMemberList> {
   Widget build(BuildContext context) {
     final l10n = context.l10n;
     final chatState = context.read<ChatCubit>().state;
-    final byId = {for (final s in chatState.sessions) s.sessionId: s};
     final all = sortAppSessions(
-      [
-        for (final id in widget.group.sessionIds)
-          if (byId[id] case final session?)
-            if (session.workspaceId == widget.workspace.workspaceId) session,
-      ],
+      _liveGroupMembers(chatState, widget.group, widget.workspace),
       sort: widget.sessionSort,
     );
     if (all.isEmpty) {
