@@ -29,6 +29,9 @@ class TeammateSnapshot {
   };
 
   String get busPhaseLabel => activity.busPhaseLabel;
+
+  /// MCP `list_teammates` `status` — idle unless mid-turn.
+  TeammateBusStatus get busStatus => activity.busStatus;
 }
 
 class TeamRosterSnapshot {
