@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:flutter/foundation.dart';
 
 /// One manual session group ("todo", "review", …) in a workspace sidebar.
@@ -99,6 +101,20 @@ class SessionGroupsFile {
               SessionGroup.fromJson(entry.cast<String, Object?>()),
       ],
     );
+  }
+
+  /// Tolerant decode of a raw JSON string; junk or corrupt input yields an
+  /// empty document instead of throwing.
+  static SessionGroupsFile fromRawJson(String raw) {
+    try {
+      final decoded = jsonDecode(raw);
+      if (decoded is Map) {
+        return SessionGroupsFile.fromJson(decoded.cast<String, Object?>());
+      }
+    } on Object {
+      // Fall through to empty.
+    }
+    return const SessionGroupsFile();
   }
 
   final int version;

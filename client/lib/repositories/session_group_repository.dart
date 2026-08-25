@@ -29,17 +29,7 @@ class SessionGroupRepository {
     if (raw == null || raw.trim().isEmpty) {
       return _cache[id] = const SessionGroupsFile();
     }
-    try {
-      final decoded = jsonDecode(raw);
-      if (decoded is Map) {
-        return _cache[id] = SessionGroupsFile.fromJson(
-          decoded.cast<String, Object?>(),
-        );
-      }
-    } on Object {
-      // Corrupt file → empty; next save overwrites.
-    }
-    return _cache[id] = const SessionGroupsFile();
+    return _cache[id] = SessionGroupsFile.fromRawJson(raw);
   }
 
   Future<void> save(String workspaceId, SessionGroupsFile file) async {
