@@ -10,6 +10,8 @@ import 'package:teampilot/services/cli/opencode/capabilities/provider.dart';
 import 'package:teampilot/services/cli/registry/capabilities/provider_capability.dart';
 import 'package:teampilot/services/io/local_filesystem.dart';
 import 'package:teampilot/services/provider/config_profile_service.dart';
+import 'package:teampilot/services/resource/providers/hook_contribution_provider.dart';
+import 'package:teampilot/services/resource/providers/runtime_event_hook_contribution_provider.dart';
 import 'package:teampilot/services/storage/runtime_layout.dart';
 
 void main() {
@@ -19,6 +21,27 @@ void main() {
   ) => capability.materializeSessionHome(
     sessionHomeContextFromLaunch(ctx, CliTool.opencode),
   );
+
+  Map<String, Object?> mergeRuntimePlugin(
+    Map<String, Object?> config,
+    String memberId,
+    String url, {
+    String? token,
+    String? sessionId,
+  }) {
+    final contribution =
+        RuntimeEventHookContributionProvider(
+          endpoint: MemberAgentStatusEndpoint(
+            url: url,
+            token: token,
+            sessionId: sessionId,
+          ),
+          memberId: memberId,
+        ).nativePluginContribution(
+          HookProviderContext(cli: CliTool.opencode, supportsHttp: false),
+        )!;
+    return mergeOpencodeRuntimeEventPlugin(config, contribution);
+  }
 
   test('opencodeAgentStatusPluginSource polls Bus and replies via SDK', () {
     final source = opencodeAgentStatusPluginSource;
@@ -75,8 +98,8 @@ void main() {
     expect(source, contains('isResolved(requestId)'));
   });
 
-  test('mergeOpencodeAgentStatusPlugin adds plugin entry with url', () {
-    final merged = mergeOpencodeAgentStatusPlugin(
+  test('mergeRuntimePlugin adds plugin entry with url', () {
+    final merged = mergeRuntimePlugin(
       const {},
       'm1',
       'http://127.0.0.1:12345/agent-status',
@@ -92,13 +115,13 @@ void main() {
     expect(opts['session'], 'session-1');
   });
 
-  test('mergeOpencodeAgentStatusPlugin is idempotent for same url', () {
-    final once = mergeOpencodeAgentStatusPlugin(
+  test('mergeRuntimePlugin is idempotent for same url', () {
+    final once = mergeRuntimePlugin(
       const {},
       'm1',
       'http://127.0.0.1:12345/agent-status',
     );
-    final twice = mergeOpencodeAgentStatusPlugin(
+    final twice = mergeRuntimePlugin(
       once,
       'm1',
       'http://127.0.0.1:12345/agent-status',
@@ -106,17 +129,17 @@ void main() {
     expect(twice['plugin'], hasLength(1));
   });
 
-  test('mergeOpencodeAgentStatusPlugin replaces stale same-member entry when '
+  test('mergeRuntimePlugin replaces stale same-member entry when '
       'the gateway port changes', () {
     // Every connect stamps a fresh gateway port, so the old entry with the
     // dead URL must be replaced — not appended alongside.
-    final once = mergeOpencodeAgentStatusPlugin(
+    final once = mergeRuntimePlugin(
       const {},
       'm1',
       'http://127.0.0.1:12345/agent-status',
       sessionId: 'session-1',
     );
-    final twice = mergeOpencodeAgentStatusPlugin(
+    final twice = mergeRuntimePlugin(
       once,
       'm1',
       'http://127.0.0.1:23456/agent-status',
@@ -130,9 +153,9 @@ void main() {
     expect(opts['url'], 'http://127.0.0.1:23456/agent-status');
   });
 
-  test('mergeOpencodeAgentStatusPlugin preserves unrelated plugin entries and '
+  test('mergeRuntimePlugin preserves unrelated plugin entries and '
       'other members', () {
-    final merged = mergeOpencodeAgentStatusPlugin(
+    final merged = mergeRuntimePlugin(
       <String, Object?>{
         'plugin': <Object?>[
           './plugins/other/plugin.js',
@@ -188,7 +211,8 @@ void main() {
         memberId: 'm1',
       );
 
-      await contribute(capability,
+      await contribute(
+        capability,
         ConfigProfileLaunchContext(
           workspaceId: 'workspace-1',
           teamId: 'team-a',
@@ -259,58 +283,55 @@ void main() {
     },
   );
 
-  test(
-    'prepareSimpleSessionLaunch with agentStatus writes the JS plugin '
-    'instead of assembling HTTP hooks',
-    () async {
-      final base = await Directory.systemTemp.createTemp('opencode_status_fs_');
-      addTearDown(() async {
-        if (await base.exists()) await base.delete(recursive: true);
-      });
+  test('prepareSimpleSessionLaunch with agentStatus writes the JS plugin '
+      'instead of assembling HTTP hooks', () async {
+    final base = await Directory.systemTemp.createTemp('opencode_status_fs_');
+    addTearDown(() async {
+      if (await base.exists()) await base.delete(recursive: true);
+    });
 
-      final fs = LocalFilesystem();
-      final service = ConfigProfileService(
-        basePath: base.path,
-        fs: fs,
-        layout: RuntimeLayout(teampilotRoot: base.path, fs: fs),
-      );
-      const workspaceId = 'workspace-1';
-      const sessionId = 'session-1';
-      const member = TeamMemberConfig(
-        id: sessionId,
-        name: 'Solo',
-        cli: CliTool.opencode,
-      );
+    final fs = LocalFilesystem();
+    final service = ConfigProfileService(
+      basePath: base.path,
+      fs: fs,
+      layout: RuntimeLayout(teampilotRoot: base.path, fs: fs),
+    );
+    const workspaceId = 'workspace-1';
+    const sessionId = 'session-1';
+    const member = TeamMemberConfig(
+      id: sessionId,
+      name: 'Solo',
+      cli: CliTool.opencode,
+    );
 
-      await service.prepareSimpleSessionLaunch(
-        workspaceId: workspaceId,
+    await service.prepareSimpleSessionLaunch(
+      workspaceId: workspaceId,
+      sessionId: sessionId,
+      runtimeBundle: const ConfigBundle(),
+      member: member,
+      agentStatus: const MemberAgentStatusEndpoint(
+        url: 'http://127.0.0.1:12345/agent-status',
         sessionId: sessionId,
-        runtimeBundle: const ConfigBundle(),
-        member: member,
-        agentStatus: const MemberAgentStatusEndpoint(
-          url: 'http://127.0.0.1:12345/agent-status',
-          sessionId: sessionId,
-        ),
-      );
+      ),
+    );
 
-      final opencodeDir = service.sessionToolDir(
-        workspaceId,
-        sessionId,
-        'opencode',
-      );
-      final pluginPath = '$opencodeDir/$opencodeAgentStatusPluginFileName';
-      expect(await fs.stat(pluginPath), isNotNull);
-      final configPath =
-          '$opencodeDir/${OpencodeProviderCapability.opencodeConfigFileName}';
-      final raw = await fs.readString(configPath);
-      expect(raw, isNotNull);
-      final config = jsonDecode(raw!) as Map<String, dynamic>;
-      final plugin = config['plugin'] as List;
-      expect(plugin, isNotEmpty);
-      final entry = plugin.first as List;
-      expect(entry[0], './$opencodeAgentStatusPluginFileName');
-      final opts = entry[1] as Map;
-      expect(opts['url'], 'http://127.0.0.1:12345/agent-status');
-    },
-  );
+    final opencodeDir = service.sessionToolDir(
+      workspaceId,
+      sessionId,
+      'opencode',
+    );
+    final pluginPath = '$opencodeDir/$opencodeAgentStatusPluginFileName';
+    expect(await fs.stat(pluginPath), isNotNull);
+    final configPath =
+        '$opencodeDir/${OpencodeProviderCapability.opencodeConfigFileName}';
+    final raw = await fs.readString(configPath);
+    expect(raw, isNotNull);
+    final config = jsonDecode(raw!) as Map<String, dynamic>;
+    final plugin = config['plugin'] as List;
+    expect(plugin, isNotEmpty);
+    final entry = plugin.first as List;
+    expect(entry[0], './$opencodeAgentStatusPluginFileName');
+    final opts = entry[1] as Map;
+    expect(opts['url'], 'http://127.0.0.1:12345/agent-status');
+  });
 }

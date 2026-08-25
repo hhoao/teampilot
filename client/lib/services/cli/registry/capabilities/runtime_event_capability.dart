@@ -33,6 +33,33 @@ abstract interface class RuntimeEventCapability implements CliCapability {
   List<HookEntry> managedHookEntries(RuntimeEventHookContext context);
 }
 
+/// Native plugin artifact for CLIs that cannot render an HTTP [HookEntry].
+///
+/// The artifact is still requested through [RuntimeEventHookContributionProvider]
+/// at the shared hook-assembly boundary; its target-specific materializer only
+/// writes the returned source and merges the returned plugin entry.
+final class RuntimeEventNativePluginContribution {
+  const RuntimeEventNativePluginContribution({
+    required this.fileName,
+    required this.source,
+    required this.pluginPath,
+    required this.pluginOptions,
+  });
+
+  final String fileName;
+  final String source;
+  final String pluginPath;
+  final Map<String, Object?> pluginOptions;
+}
+
+/// Optional companion for plugin-only runtime hook implementations.
+abstract interface class RuntimeEventNativePluginCapability
+    implements CliCapability {
+  RuntimeEventNativePluginContribution? managedPluginContribution(
+    RuntimeEventHookContext context,
+  );
+}
+
 /// Shared HookEntry shape for the existing endpoint contract.
 ///
 /// Per-CLI capabilities opt into this helper rather than a provider installing

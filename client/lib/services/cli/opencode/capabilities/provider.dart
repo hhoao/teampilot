@@ -23,6 +23,7 @@ import '../../../team_bus/mcp/teammate_bus_mcp_config.dart';
 import '../../registry/capabilities/hook_capability.dart';
 import '../../registry/capabilities/provider_capability.dart';
 import '../../registry/capabilities/prompt_capability.dart';
+import '../../registry/capabilities/runtime_event_capability.dart';
 import '../../registry/cli_tool_registry.dart';
 import '../../registry/config_profile/config_profile_context.dart';
 import '../../registry/config_profile/hook_seat_context_completer.dart';
@@ -41,7 +42,7 @@ import '../provider/opencode_shared_plugin_deps.dart';
 import '../provider_presets.dart';
 import '../../../resource/providers/hook_library_contribution_provider.dart';
 import '../../../resource/providers/hook_contribution_provider.dart';
-import 'agent_status_plugin.dart';
+import '../../../resource/providers/runtime_event_hook_contribution_provider.dart';
 import 'awareness_plugin.dart';
 import 'idle_plugin.dart';
 import 'opencode_hook_writer.dart';
@@ -277,6 +278,7 @@ final class OpencodeProviderCapability extends CatalogModelCapability
     required Iterable<HookEntry> entries,
     TeamMemberConfig? member,
     HookContributionProvider? hookLibraryProvider,
+    RuntimeEventHookContributionProvider? runtimeEventProvider,
     Iterable<HookContributionProvider> resourceHookProviders = const [],
   }) async {
     final result = await const HookSeatContextCompleter().assemble(
@@ -284,6 +286,7 @@ final class OpencodeProviderCapability extends CatalogModelCapability
       supportsHttp: false,
       member: member,
       providers: [
+        if (runtimeEventProvider != null) runtimeEventProvider,
         ...resourceHookProviders,
         if (resourceHookProviders.isEmpty)
           hookLibraryProvider ?? UserHookContributionProvider(entries: entries),
@@ -458,17 +461,27 @@ final class OpencodeProviderCapability extends CatalogModelCapability
       }
     }
 
-    // Agent-status plugin: simple + team whenever stamped — not mixed-gated.
+    // Plugin-only runtime events still enter the same assembly boundary as
+    // user/resource hooks. The runtime capability supplies the native plugin
+    // artifact; this target materializer only writes that returned artifact.
     final agentStatus = ctx.agentStatus;
-    if (agentStatus != null && member != null && member.isValid) {
-      await _writeAgentStatusPlugin(paths: paths, opencodeDir: opencodeDir);
-      config = mergeOpencodeAgentStatusPlugin(
-        config,
-        member.id,
-        agentStatus.url,
-        token: agentStatus.token,
-        sessionId: agentStatus.sessionId,
+    final runtimeEventProvider =
+        agentStatus != null && member != null && member.isValid
+        ? RuntimeEventHookContributionProvider(
+            endpoint: agentStatus,
+            memberId: member.id,
+          )
+        : null;
+    final runtimePlugin = runtimeEventProvider?.nativePluginContribution(
+      HookProviderContext(cli: CliTool.opencode, supportsHttp: false),
+    );
+    if (runtimePlugin != null) {
+      await _materializeRuntimeEventPlugin(
+        paths: paths,
+        opencodeDir: opencodeDir,
+        plugin: runtimePlugin,
       );
+      config = mergeOpencodeRuntimeEventPlugin(config, runtimePlugin);
       changed = true;
     }
 
@@ -481,6 +494,7 @@ final class OpencodeProviderCapability extends CatalogModelCapability
         entries: ctx.hooks,
         member: member,
         hookLibraryProvider: ctx.hookLibraryProvider,
+        runtimeEventProvider: runtimeEventProvider,
         resourceHookProviders: ctx.resourceProviders.hooks,
       );
       if (assembledHookEntries.isNotEmpty) {
@@ -550,7 +564,9 @@ final class OpencodeProviderCapability extends CatalogModelCapability
       final authContent = _authContentForLaunch(launchProvider);
       if (authContent != null) {
         environment[authContentEnv] = authContent;
-      } else if (OpencodeCredentialKindResolver.needsCredential(launchProvider)) {
+      } else if (OpencodeCredentialKindResolver.needsCredential(
+        launchProvider,
+      )) {
         warnings.add('opencode_credentials_missing');
       }
     }
@@ -597,19 +613,17 @@ final class OpencodeProviderCapability extends CatalogModelCapability
     await paths.fs.atomicWrite(pluginPath, opencodeAwarenessPluginSource);
   }
 
-  Future<void> _writeAgentStatusPlugin({
+  Future<void> _materializeRuntimeEventPlugin({
     required ConfigProfileDelegate paths,
     required String opencodeDir,
+    required RuntimeEventNativePluginContribution plugin,
   }) async {
-    final pluginPath = paths.joinWork(
-      opencodeDir,
-      opencodeAgentStatusPluginFileName,
-    );
+    final pluginPath = paths.joinWork(opencodeDir, plugin.fileName);
     final existing = await paths.fs.readString(pluginPath);
-    if (existing == opencodeAgentStatusPluginSource) {
+    if (existing == plugin.source) {
       return;
     }
-    await paths.fs.atomicWrite(pluginPath, opencodeAgentStatusPluginSource);
+    await paths.fs.atomicWrite(pluginPath, plugin.source);
   }
 
   static String _resolveOpencodeEffort({
@@ -637,6 +651,30 @@ final class OpencodeProviderCapability extends CatalogModelCapability
   }
 }
 
+/// Merges a capability-owned native runtime plugin into OpenCode config.
+///
+/// The leading plugin path plus member identify the seat-scoped entry, so a
+/// reconnect replaces a stale endpoint instead of accumulating dead entries.
+Map<String, Object?> mergeOpencodeRuntimeEventPlugin(
+  Map<String, Object?> config,
+  RuntimeEventNativePluginContribution contribution,
+) {
+  final memberId = contribution.pluginOptions['member'];
+  final entry = <Object?>[contribution.pluginPath, contribution.pluginOptions];
+  final plugins = List<Object?>.from((config['plugin'] as List?) ?? const [])
+    ..removeWhere(
+      (e) =>
+          e is List &&
+          e.isNotEmpty &&
+          e[0] == contribution.pluginPath &&
+          e.length > 1 &&
+          e[1] is Map &&
+          (e[1] as Map)['member'] == memberId,
+    );
+  plugins.add(entry);
+  return {...config, 'plugin': plugins};
+}
+
 /// Parses bus idle URL (e.g. `http://127.0.0.1:12345/idle`) to the listening port.
 @visibleForTesting
 int? parseBusPortFromIdleUrl(String? idleUrl) {
@@ -660,42 +698,6 @@ Map<String, Object?> mergeOpencodeIdlePlugin(
 }) {
   final pluginPath = './$opencodeIdlePluginFileName';
   final options = <String, Object?>{'member': memberId, 'port': port};
-  if (sessionId != null && sessionId.isNotEmpty) {
-    options['session'] = sessionId;
-  }
-  if (token != null && token.isNotEmpty) {
-    options['token'] = token;
-  }
-  final entry = <Object?>[pluginPath, options];
-  final plugins = List<Object?>.from((config['plugin'] as List?) ?? const [])
-    ..removeWhere(
-      (e) =>
-          e is List &&
-          e.isNotEmpty &&
-          e[0] == pluginPath &&
-          e.length > 1 &&
-          e[1] is Map &&
-          (e[1] as Map)['member'] == memberId,
-    );
-  plugins.add(entry);
-  return {...config, 'plugin': plugins};
-}
-
-/// Merges opencode.json `plugin` entry for `/agent-status` reporting.
-///
-/// Install whenever [url] is stamped (simple + team) — not gated on mixed.
-/// Every connect stamps a fresh gateway port, so a prior entry for the same
-/// member (dead URL) is replaced instead of accumulating.
-@visibleForTesting
-Map<String, Object?> mergeOpencodeAgentStatusPlugin(
-  Map<String, Object?> config,
-  String memberId,
-  String url, {
-  String? token,
-  String? sessionId,
-}) {
-  final pluginPath = './$opencodeAgentStatusPluginFileName';
-  final options = <String, Object?>{'member': memberId, 'url': url};
   if (sessionId != null && sessionId.isNotEmpty) {
     options['session'] = sessionId;
   }

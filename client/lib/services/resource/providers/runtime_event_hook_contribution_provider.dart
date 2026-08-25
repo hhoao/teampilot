@@ -47,6 +47,19 @@ final class RuntimeEventHookContributionProvider
     ];
   }
 
+  /// Returns a target-native runtime plugin when the selected capability needs
+  /// one instead of a native HTTP hook writer (currently OpenCode).
+  RuntimeEventNativePluginContribution? nativePluginContribution(
+    HookProviderContext context,
+  ) {
+    final capability = _registry.capability<RuntimeEventNativePluginCapability>(
+      context.cli,
+    );
+    return capability?.managedPluginContribution(
+      RuntimeEventHookContext(endpoint: endpoint, memberId: memberId),
+    );
+  }
+
   bool _isSupported(HookEntry entry, HookProviderContext context) =>
       HookEventCapability.supports(entry.event, context.cli) &&
       (entry.action is! HttpHookAction || context.supportsHttp);

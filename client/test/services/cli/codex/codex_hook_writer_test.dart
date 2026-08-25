@@ -1,10 +1,13 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/models/hook_entry.dart';
 import 'package:teampilot/models/hook_event.dart';
+import 'package:teampilot/models/team_config.dart';
 import 'package:teampilot/services/agent_status/member_agent_status_endpoint.dart';
 import 'package:teampilot/services/cli/codex/provider/codex_hook_writer.dart';
 import 'package:teampilot/services/cli/codex/provider/codex_toml_parser.dart';
 import 'package:teampilot/services/cli/registry/capabilities/hook_capability.dart';
+import 'package:teampilot/services/cli/registry/capabilities/runtime_event_capability.dart';
+import 'package:teampilot/services/cli/registry/cli_tool_registry.dart';
 import 'package:teampilot/services/cli/registry/config_profile/hook_seat_context_completer.dart';
 import 'package:teampilot/services/hook/glue_script_builder.dart';
 import 'package:teampilot/services/host/host_execution_environment.dart';
@@ -117,14 +120,13 @@ void main() {
   });
 
   test('agent-status managed entries render command-hook forward scripts', () {
-    const completer = HookSeatContextCompleter();
     const endpoint = MemberAgentStatusEndpoint(
       url: 'http://127.0.0.1:1/agent-status',
       token: 't',
       sessionId: 's',
     );
     final entries = [
-      ...completer.agentStatusHooks(endpoint: endpoint, memberId: 'm1'),
+      ..._runtimeHooks(endpoint),
       HookEntry(
         id: 'h1',
         source: HookSource.userLibrary,
@@ -143,7 +145,7 @@ void main() {
     final preToolUseScript = result.scripts.singleWhere(
       (s) =>
           s.fileName ==
-          'teampilot-http-teampilot-agent-status-preToolUse'
+          'teampilot-http-teampilot-runtime-event-preToolUse'
               '-preToolUse.sh',
     );
     expect(preToolUseScript.content, contains('?event=PreToolUse'));
@@ -151,7 +153,8 @@ void main() {
     expect(preToolUseScript.content, contains('-H \'X-Session: s\''));
     expect(preToolUseScript.content, contains('-H \'X-Bus-Token: t\''));
     final stopScript = result.scripts.singleWhere(
-      (s) => s.fileName == 'teampilot-http-teampilot-agent-status-stop-stop.sh',
+      (s) =>
+          s.fileName == 'teampilot-http-teampilot-runtime-event-stop-stop.sh',
     );
     expect(stopScript.content, contains('?event=Stop'));
     expect(stopScript.content, contains('>/dev/null'));
@@ -162,7 +165,7 @@ void main() {
     expect(
       preToolUseBlock,
       contains(
-        '/teampilot-http-teampilot-agent-status-preToolUse-preToolUse.sh',
+        '/teampilot-http-teampilot-runtime-event-preToolUse-preToolUse.sh',
       ),
     );
     final stopBlock = toml.split('[[hooks.Stop]]')[1];
@@ -211,10 +214,7 @@ void main() {
       glueBuilder: GlueScriptBuilder(),
     );
     const endpoint = MemberAgentStatusEndpoint(url: 'http://127.0.0.1:9/a');
-    final entries = const HookSeatContextCompleter().agentStatusHooks(
-      endpoint: endpoint,
-      memberId: 'm1',
-    );
+    final entries = _runtimeHooks(endpoint);
     final result = writer.render(entries: entries, ctx: runnerCtx);
     final toml = result.configFragments['config.toml']! as String;
     // Schema gate: everything the writer renders must be loadable by codex —
@@ -224,8 +224,15 @@ void main() {
       toml,
       contains(
         'command = "bash \\"/s/hooks/'
-        'teampilot-http-teampilot-agent-status-preToolUse-preToolUse.sh\\""',
+        'teampilot-http-teampilot-runtime-event-preToolUse-preToolUse.sh\\""',
       ),
     );
   });
 }
+
+List<HookEntry> _runtimeHooks(MemberAgentStatusEndpoint endpoint) =>
+    CliToolRegistry.builtIn()
+        .capability<RuntimeEventCapability>(CliTool.codex)!
+        .managedHookEntries(
+          RuntimeEventHookContext(endpoint: endpoint, memberId: 'm1'),
+        );

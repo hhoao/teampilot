@@ -8,6 +8,7 @@ import '../../../../models/hook_entry.dart';
 import '../../../../models/team_config.dart';
 import '../../registry/capabilities/chat_interaction_capability.dart';
 import '../../registry/capabilities/runtime_event_capability.dart';
+import 'agent_status_plugin.dart';
 
 /// OpenCode's own hook event format (`event`, `request_id`, …).
 ///
@@ -15,7 +16,10 @@ import '../../registry/capabilities/runtime_event_capability.dart';
 /// allow/deny replies from the chat card); no in-chat ExitPlanMode approval
 /// (keeps the "Open Terminal" fallback).
 final class OpencodeChatInteraction
-    implements ChatInteractionCapability, RuntimeEventCapability {
+    implements
+        ChatInteractionCapability,
+        RuntimeEventCapability,
+        RuntimeEventNativePluginCapability {
   const OpencodeChatInteraction();
 
   @override
@@ -111,6 +115,22 @@ final class OpencodeChatInteraction
   @override
   List<HookEntry> managedHookEntries(RuntimeEventHookContext context) =>
       managedRuntimeEventHookEntries(cli: CliTool.opencode, context: context);
+
+  @override
+  RuntimeEventNativePluginContribution? managedPluginContribution(
+    RuntimeEventHookContext context,
+  ) => RuntimeEventNativePluginContribution(
+    fileName: opencodeAgentStatusPluginFileName,
+    source: opencodeAgentStatusPluginSource,
+    pluginPath: './$opencodeAgentStatusPluginFileName',
+    pluginOptions: {
+      'member': context.memberId,
+      'url': context.endpoint.url,
+      if (context.endpoint.sessionId case final sessionId?)
+        'session': sessionId,
+      if (context.endpoint.token case final token?) 'token': token,
+    },
+  );
 
   @override
   bool get supportsStructuredAsk => true;
