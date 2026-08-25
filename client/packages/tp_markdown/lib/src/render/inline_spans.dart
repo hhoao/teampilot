@@ -202,26 +202,39 @@ Widget buildHeading(
   );
 }
 
-String plainTextFromRuns(List<InlineRun> runs) {
-  final buffer = StringBuffer();
+/// One leaf text piece in document order ([TextRun]/[CodeRun] glyphs).
+/// Images render as unsplittable [WidgetSpan]s and are excluded.
+class InlineTextPiece {
+  const InlineTextPiece(this.text);
+
+  final String text;
+}
+
+/// Ordered leaf text pieces of [runs]; the canonical traversal shared by the
+/// search-index projection and highlight-aware span splitting.
+List<InlineTextPiece> inlineTextPieces(List<InlineRun> runs) {
+  final pieces = <InlineTextPiece>[];
   void walk(List<InlineRun> list) {
     for (final run in list) {
       switch (run) {
         case TextRun(:final text):
-          buffer.write(text);
+          pieces.add(InlineTextPiece(text));
         case CodeRun(:final text):
-          buffer.write(text);
+          pieces.add(InlineTextPiece(text));
         case StrongRun(:final children) ||
               EmphasisRun(:final children) ||
               StrikeRun(:final children) ||
               LinkRun(:final children):
           walk(children);
-        case ImageRun(:final alt):
-          buffer.write(alt ?? '');
+        case ImageRun():
+          break;
       }
     }
   }
 
   walk(runs);
-  return buffer.toString();
+  return pieces;
 }
+
+String plainTextFromRuns(List<InlineRun> runs) =>
+    inlineTextPieces(runs).map((p) => p.text).join();
