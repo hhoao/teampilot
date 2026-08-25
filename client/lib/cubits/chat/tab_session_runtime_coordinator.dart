@@ -34,6 +34,7 @@ class TabSessionRuntimeCoordinator {
     bool Function()? reclaimEnabled,
     int Function()? reclaimIdleAfterSeconds,
     void Function(String sessionId, String memberId)? onReclaimMember,
+    bool Function(String sessionId)? isSessionPinned,
     TabWorkingAggregator? workingAggregator,
     VoidCallback? onAfterIdleWatchTick,
     void Function(String sessionId, String memberId)? onAfterTurnLatched,
@@ -91,6 +92,7 @@ class TabSessionRuntimeCoordinator {
                     TerminalReclaimPolicy(idleAfter: Duration(seconds: reclaimSeconds())),
                 onDiscardMember: onReclaimMember,
                 sessionBusyFromAttention: sessionBusyFromAttention,
+                isSessionPinned: isSessionPinned,
               ));
     final aggregator =
         workingAggregator ??

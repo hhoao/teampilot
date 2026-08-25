@@ -62,4 +62,54 @@ void main() {
 
     expect(before, equals(after));
   });
+
+  test('selectMember bumps memberSelectionVersion in structural signal', () {
+    final cubit = testChatCubit(executableResolver: () => '/bin/true');
+    addTearDown(cubit.close);
+    final workbench = WorkbenchCubit();
+    addTearDown(workbench.close);
+
+    cubit.setActiveWorkspace('ws');
+    cubit.ingestWorkspaceSessionSnapshot(
+      workspaces: cubit.state.workspaces,
+      sessions: [
+        AppSession(
+          sessionId: 'sess-1',
+          workspaceId: 'ws',
+          folders: const [WorkspaceFolder(path: '/tmp')],
+          display: 'Title',
+          createdAt: 1,
+        ),
+      ],
+    );
+    cubit.tabStore.registerSession(
+      ChatTab(
+        info: const ChatTabInfo(id: 'sess-1', title: 'Title', subtitle: ''),
+        cliTeamName: 'sess-1',
+        selectedMemberId: 'm-lead',
+      ),
+    );
+    workbench.openSession('ws', 'sess-1');
+
+    final before = chatPageStructuralSignal(
+      state: cubit.state,
+      tabStore: cubit.tabStore,
+      workbench: workbench,
+      tabScopeId: 'ws',
+    );
+
+    cubit.selectMember('m-worker');
+
+    final after = chatPageStructuralSignal(
+      state: cubit.state,
+      tabStore: cubit.tabStore,
+      workbench: workbench,
+      tabScopeId: 'ws',
+    );
+
+    expect(before.memberSelectionVersion, 0);
+    expect(after.memberSelectionVersion, 1);
+    expect(before, isNot(equals(after)));
+    expect(after.selectedMemberId, 'm-worker');
+  });
 }

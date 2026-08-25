@@ -10,7 +10,8 @@ import 'model/chat_tab.dart';
 import 'model/session_workbench_view.dart';
 
 /// Chrome-style idle discard: reclaims a member terminal that has been idle
-/// (not working, no unread, not the lead, not displayed) past the threshold.
+/// (not working, no unread, not the lead, not displayed, not session-pinned)
+/// past the threshold.
 /// Restoration is lazy — via the TeamBus materialize funnel or
 /// `ensureMemberTerminalForView` — so reclaim is cheap to reverse.
 class TabMemberReclaimWatch {
@@ -21,6 +22,7 @@ class TabMemberReclaimWatch {
     required TerminalReclaimPolicy Function() policy,
     required void Function(String sessionId, String memberId) onDiscardMember,
     bool Function(String sessionId)? sessionBusyFromAttention,
+    bool Function(String sessionId)? isSessionPinned,
     DateTime Function()? now,
   }) : _tabStore = tabStore,
        _reclaimEnabled = reclaimEnabled,
@@ -28,6 +30,7 @@ class TabMemberReclaimWatch {
        _policy = policy,
        _onDiscardMember = onDiscardMember,
        _sessionBusyFromAttention = sessionBusyFromAttention,
+       _isSessionPinned = isSessionPinned,
        _now = now ?? DateTime.now;
 
   final ChatTabStore _tabStore;
@@ -36,6 +39,7 @@ class TabMemberReclaimWatch {
   final TerminalReclaimPolicy Function() _policy;
   final void Function(String sessionId, String memberId) _onDiscardMember;
   final bool Function(String sessionId)? _sessionBusyFromAttention;
+  final bool Function(String sessionId)? _isSessionPinned;
   final DateTime Function() _now;
 
   Timer? _timer;
@@ -122,6 +126,8 @@ class TabMemberReclaimWatch {
       inTurn: (bus?.isMemberInTurn(memberId) ?? shell.userTurnActive) ||
           (_sessionBusyFromAttention?.call(tab.info.id) ?? false),
       hasUnread: (bus?.memberById(memberId)?.inbox.unreadCount ?? 0) > 0,
+      isSessionPinned: _isSessionPinned?.call(tab.info.id) ??
+          (tab.persistedSession?.pinned ?? false),
     );
   }
 

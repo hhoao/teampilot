@@ -9,6 +9,8 @@ import '../../models/managed_provider.dart';
 import '../../models/provider_usage_snapshot.dart';
 import '../../utils/managed_provider_error_localization.dart';
 import 'managed_provider_brand_icon.dart';
+import 'managed_provider_quota_meter.dart';
+import 'managed_provider_reset_countdown.dart';
 
 /// Cached Managed Provider usage popover content.
 ///
@@ -132,18 +134,18 @@ class _PanelHeader extends StatelessWidget {
     final styles = TpTextStyles.of(context);
     return Row(
       children: [
-        Icon(
-          Icons.account_balance_wallet_outlined,
-          size: 15,
-          color: cs.onSurfaceVariant,
-        ),
-        const SizedBox(width: 6),
         Expanded(
-          child: Text(
-            l10n.managedProvidersTitle,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: styles.xsSemibold,
+          child: ManagedProviderBrandLabelRow(
+            leading: Icon(
+              Icons.account_balance_wallet_outlined,
+              size: 15,
+              color: cs.onSurfaceVariant,
+            ),
+            label: l10n.managedProvidersTitle,
+            iconSize: 15,
+            textStyle: styles.xsSemibold,
+            spacing: 6,
+            expanded: true,
           ),
         ),
         TpIconButton(
@@ -244,12 +246,14 @@ class _ProviderUsageRow extends StatelessWidget {
     final styles = TpTextStyles.of(context);
     final l10n = context.l10n;
     final status = snapshot?.status;
-    final warning =
-        status == ProviderUsageStatus.stale ||
-        status == ProviderUsageStatus.error ||
-        status == ProviderUsageStatus.unsupported;
+    final isError = status == ProviderUsageStatus.error;
+    final isUnsupported = status == ProviderUsageStatus.unsupported;
+    final measure = snapshot?.measures.firstOrNull;
     final value = _primaryMeasure(snapshot, provider.displayConfig);
     final statusText = _statusText(context, status);
+    final showQuotaMeter =
+        measure != null &&
+        ManagedProviderQuotaMeter.supports(provider.displayConfig, measure);
 
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -265,116 +269,106 @@ class _ProviderUsageRow extends StatelessWidget {
               hoverColor: cs.onSurface.withValues(alpha: 0.06),
               borderRadius: BorderRadius.circular(7),
               padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 7),
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Row(
-                          crossAxisAlignment: CrossAxisAlignment.center,
-                          children: [
-                            KeyedSubtree(
-                              key: Key('managed-provider-brand-${provider.id}'),
-                              child: ManagedProviderBrandMark(
-                                provider: provider,
-                                size: 15,
+                  ManagedProviderBrandLabelRow(
+                    key: Key('managed-provider-usage-row-title-${provider.id}'),
+                    leading: KeyedSubtree(
+                      key: Key('managed-provider-brand-${provider.id}'),
+                      child: ManagedProviderBrandMark(
+                        provider: provider,
+                        size: 15,
+                      ),
+                    ),
+                    label: provider.name,
+                    iconSize: 15,
+                    textStyle: styles.smSemibold,
+                    spacing: 7,
+                    expanded: true,
+                  ),
+                  const SizedBox(height: 4),
+                  if (showQuotaMeter)
+                    ManagedProviderQuotaMeter(
+                      measure: measure,
+                      display: provider.displayConfig,
+                      resetsAt: measure.resetsAt,
+                      warning: isError,
+                    )
+                  else ...[
+                      Wrap(
+                        spacing: 6,
+                        runSpacing: 2,
+                        children: [
+                          Text(
+                            value ?? statusText,
+                            style: styles.xs.copyWith(
+                              color: isError
+                                  ? cs.error
+                                  : cs.onSurfaceVariant,
+                              fontFeatures: const [
+                                FontFeature.tabularFigures(),
+                              ],
+                            ),
+                          ),
+                          if (isError)
+                            Icon(
+                              Icons.warning_amber_rounded,
+                              key: const Key(
+                                'managed-provider-usage-warning',
+                              ),
+                              size: 13,
+                              color: cs.error,
+                            ),
+                          if (isUnsupported)
+                            Icon(
+                              Icons.block_outlined,
+                              key: const Key(
+                                'managed-provider-usage-unsupported',
+                              ),
+                              size: 13,
+                              color: cs.onSurfaceVariant,
+                            ),
+                          if (snapshot?.fetchedAt != null)
+                            Text(
+                              _timeLabel(context, snapshot!.fetchedAt!),
+                              style: styles.xs.copyWith(
+                                color: cs.onSurfaceVariant,
                               ),
                             ),
-                            const SizedBox(width: 7),
-                            Expanded(
-                              child: Text(
-                                provider.name,
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                                style: styles.smSemibold.copyWith(height: 1),
-                              ),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 2),
-                        Padding(
-                          padding: const EdgeInsets.only(left: 22),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Wrap(
-                                spacing: 6,
-                                runSpacing: 2,
-                                children: [
-                                  Text(
-                                    value ?? statusText,
-                                    style: styles.xs.copyWith(
-                                      color: warning
-                                          ? cs.error
-                                          : cs.onSurfaceVariant,
-                                      fontFeatures: const [
-                                        FontFeature.tabularFigures(),
-                                      ],
-                                    ),
-                                  ),
-                                  if (warning)
-                                    Icon(
-                                      Icons.warning_amber_rounded,
-                                      key: const Key(
-                                        'managed-provider-usage-warning',
-                                      ),
-                                      size: 13,
-                                      color: cs.error,
-                                    ),
-                                  if (snapshot?.fetchedAt != null)
-                                    Text(
-                                      _timeLabel(context, snapshot!.fetchedAt!),
-                                      style: styles.xs.copyWith(
-                                        color: cs.onSurfaceVariant,
-                                      ),
-                                    ),
-                                ],
-                              ),
-                              if (snapshot?.measures.isNotEmpty == true &&
-                                  snapshot!.measures.first.resetsAt != null)
-                                Text(
-                                  _resetLabel(
-                                    context,
-                                    snapshot!.measures.first.resetsAt!,
-                                  ),
-                                  style: styles.xs.copyWith(
-                                    color: cs.onSurfaceVariant,
-                                  ),
-                                ),
-                              if (status == ProviderUsageStatus.error &&
-                                  snapshot?.lastErrorMessage
-                                          ?.trim()
-                                          .isNotEmpty ==
-                                      true)
-                                Text(
-                                  managedProviderSnapshotErrorMessage(
-                                    context.l10n,
-                                    snapshot!,
-                                  ),
-                                  key: const Key(
-                                    'managed-provider-usage-error',
-                                  ),
-                                  maxLines: 2,
-                                  overflow: TextOverflow.ellipsis,
-                                  style: styles.xs.copyWith(color: cs.error),
-                                ),
-                            ],
+                        ],
+                      ),
+                      if (snapshot?.measures.isNotEmpty == true &&
+                          snapshot!.measures.first.resetsAt != null)
+                        ManagedProviderResetCountdownLabel(
+                          resetsAt: snapshot!.measures.first.resetsAt,
+                          style: styles.xs.copyWith(
+                            color: cs.onSurfaceVariant,
                           ),
                         ),
-                      ],
+                    ],
+                  if (status == ProviderUsageStatus.error &&
+                      snapshot?.lastErrorMessage?.trim().isNotEmpty == true)
+                    Padding(
+                      padding: EdgeInsets.only(top: showQuotaMeter ? 4 : 0),
+                      child: Text(
+                        managedProviderSnapshotErrorMessage(
+                          context.l10n,
+                          snapshot!,
+                        ),
+                        key: const Key('managed-provider-usage-error'),
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: styles.xs.copyWith(color: cs.error),
+                      ),
                     ),
-                  ),
-                  if (snapshot?.measures.isNotEmpty == true)
-                    _ProgressIndicator(measure: snapshot!.measures.first),
                 ],
               ),
             ),
           ),
         ),
         Padding(
-          padding: const EdgeInsets.only(top: 2),
+          padding: const EdgeInsets.only(top: 7),
           child: TpIconButton(
             key: Key('managed-provider-usage-enabled-${provider.id}'),
             icon: Icons.pause_circle_outline,
@@ -415,7 +409,7 @@ class _ProviderUsageRow extends StatelessWidget {
     final l10n = context.l10n;
     return switch (status) {
       ProviderUsageStatus.ready => l10n.managedProvidersCachedUsage,
-      ProviderUsageStatus.stale => l10n.managedProvidersCachedUsageStale,
+      ProviderUsageStatus.stale => l10n.managedProvidersCachedUsage,
       ProviderUsageStatus.error => l10n.managedProvidersLastQueryFailed,
       ProviderUsageStatus.loading => l10n.managedProvidersLoadingUsage,
       ProviderUsageStatus.unsupported => l10n.managedProvidersQueryUnsupported,
@@ -430,9 +424,6 @@ class _ProviderUsageRow extends StatelessWidget {
     return time.format(context);
   }
 
-  static String _resetLabel(BuildContext context, int milliseconds) =>
-      '↻ ${_timeLabel(context, milliseconds)}';
-
   static String _formatDecimal(String value, int places) {
     if (places < 0) return value;
     final negative = value.startsWith('-');
@@ -444,31 +435,5 @@ class _ProviderUsageRow extends StatelessWidget {
         ? whole
         : '$whole.${fraction.padRight(places, '0').substring(0, places)}';
     return negative ? '-$normalized' : normalized;
-  }
-}
-
-class _ProgressIndicator extends StatelessWidget {
-  const _ProgressIndicator({required this.measure});
-
-  final ProviderUsageMeasure measure;
-
-  @override
-  Widget build(BuildContext context) {
-    final total = double.tryParse(measure.total ?? '');
-    final used = double.tryParse(measure.used ?? '');
-    if (total == null || used == null || total <= 0) {
-      return const SizedBox.shrink();
-    }
-    return SizedBox(
-      key: const Key('managed-provider-usage-progress'),
-      width: 42,
-      child: Padding(
-        padding: const EdgeInsets.only(top: 5),
-        child: LinearProgressIndicator(
-          minHeight: 3,
-          value: (used / total).clamp(0.0, 1.0),
-        ),
-      ),
-    );
   }
 }

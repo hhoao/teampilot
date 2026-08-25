@@ -175,9 +175,56 @@ bool _appendFromEventMsg(
         timestamp: timestamp,
         fallbackId: fallbackId,
       );
+    case 'item_completed':
+    case 'item_started':
+      // Codex 0.14x+ spawn_agent args no longer carry agent_id; the child
+      // thread uuid arrives on SubAgentActivity (item.id == spawn call_id).
+      return _bindSubAgentActivityThreadId(messages, payload);
     default:
       return false;
   }
+}
+
+/// Codex spawn tools whose side rollouts are keyed by thread uuid.
+const _codexSubagentSpawnToolNames = {'spawn_agent', 'agent', 'task'};
+
+/// Copies [agent_thread_id] onto a matching spawn tool as `agent_id` so
+/// [subagentAgentIdFromPart] / [CodexSideResolver] keep working.
+bool _bindSubAgentActivityThreadId(
+  List<AiMessage> messages,
+  Map<String, dynamic> payload,
+) {
+  final itemRaw = payload['item'];
+  if (itemRaw is! Map) return false;
+  final item = Map<String, dynamic>.from(itemRaw);
+  if ('${item['type'] ?? ''}' != 'SubAgentActivity') return false;
+
+  final callId = '${item['id'] ?? ''}'.trim();
+  final threadId = '${item['agent_thread_id'] ?? ''}'.trim();
+  if (callId.isEmpty || threadId.isEmpty) return false;
+
+  for (var i = messages.length - 1; i >= 0; i--) {
+    final message = messages[i];
+    for (var j = 0; j < message.parts.length; j++) {
+      final part = message.parts[j];
+      if (part is! AiToolCallPart) continue;
+      if (part.toolCallId != callId) continue;
+      final name = part.toolName.trim().toLowerCase();
+      if (!_codexSubagentSpawnToolNames.contains(name)) return false;
+      // Prefer an id already present on older transcripts / tool results.
+      if (subagentAgentIdFromPart(part) != null) return true;
+
+      final nextArgs = <String, Object?>{
+        ...?part.args,
+        'agent_id': threadId,
+      };
+      final nextParts = List<AiMessagePart>.of(message.parts);
+      nextParts[j] = part.copyWith(args: nextArgs);
+      messages[i] = message.copyWith(parts: nextParts);
+      return true;
+    }
+  }
+  return false;
 }
 
 bool _appendFromResponseItem(

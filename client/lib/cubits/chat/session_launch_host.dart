@@ -91,7 +91,8 @@ abstract interface class SessionLaunchHost
   void emitTeamConfigValidation(TeamConfigValidation validation);
 
   // Cubit-owned facade methods the launch flow drives.
-  void selectMember(String memberId);
+  void assignSelectedMember(ChatTab tab, String memberId);
+  void selectMember(String memberId, {String? tabScopeId});
   Future<void> renameSession(
     SessionRepository repo,
     String sessionId,

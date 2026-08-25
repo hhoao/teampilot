@@ -8,6 +8,7 @@ TerminalReclaimSnapshot _snap({
   bool isDisplayed = false,
   bool inTurn = false,
   bool hasUnread = false,
+  bool isSessionPinned = false,
 }) => TerminalReclaimSnapshot(
   sessionId: 's',
   memberId: 'm',
@@ -17,6 +18,7 @@ TerminalReclaimSnapshot _snap({
   isDisplayed: isDisplayed,
   inTurn: inTurn,
   hasUnread: hasUnread,
+  isSessionPinned: isSessionPinned,
 );
 
 void main() {
@@ -45,6 +47,7 @@ void main() {
       _snap(isDisplayed: true),
       _snap(inTurn: true),
       _snap(hasUnread: true),
+      _snap(isSessionPinned: true),
     ]) {
       expect(
         policy.shouldReclaim(s, idleSince, now),

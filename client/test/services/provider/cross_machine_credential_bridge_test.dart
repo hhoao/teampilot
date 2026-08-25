@@ -241,16 +241,13 @@ void main() {
         isTrue,
       );
 
-      final dest = work.normalizeWork(
-        layout.providerAuthJsonPath(
-          work.joinWork(
-            work.basePath,
-            'providers',
-            CliTool.opencode.value,
-            'official',
-          ),
-        ),
+      final providerDir = work.fs.pathContext.join(
+        work.basePath,
+        'providers',
+        CliTool.opencode.value,
+        'official',
       );
+      final dest = layout.providerAuthJsonPath(providerDir);
       expect(
         String.fromCharCodes((await work.fs.readBytes(dest))!),
         contains('sk-cross'),

@@ -1,7 +1,12 @@
 import 'dart:async';
 import 'dart:collection';
+import 'dart:io';
+
+import 'package:flutter/foundation.dart';
+import 'package:teampilot_search/teampilot_search.dart';
 
 import '../io/filesystem.dart';
+import '../io/sftp_filesystem.dart';
 import 'workspace_file_search.dart';
 
 /// Match mode for [WorkspaceFileIndex.query].
@@ -55,6 +60,7 @@ class WorkspaceFileIndex {
   /// Distinct relative directory paths (e.g. `src/utils`) collected during the
   /// same build, used by [queryDirectories] for directory-name matches.
   List<String>? _dirs;
+  TpFileIndex? _rust;
   DateTime? _builtRootMtime;
   DateTime? _builtAt;
   Future<void>? _buildInFlight;
@@ -65,18 +71,21 @@ class WorkspaceFileIndex {
   static const maxStale = Duration(minutes: 5);
 
   /// True once the index has been built at least once.
-  bool get isReady => _entries != null;
+  bool get isReady => _rust?.isBuilt == true || _entries != null;
 
   /// Number of files currently indexed (0 before first build).
-  int get size => _entries?.length ?? 0;
+  int get size => _rust?.isBuilt == true ? 0 : (_entries?.length ?? 0);
+
+  @visibleForTesting
+  bool get usedRustBackend => _rust?.isBuilt == true;
 
   /// Builds the index if missing or stale. Safe to call concurrently from
   /// multiple queries — concurrent callers share the in-flight build.
   Future<void> ensureFresh() async {
-    if (_entries != null && !(await _isStale())) return;
+    if (isReady && !(await _isStale())) return;
     final inFlight = _buildInFlight;
     if (inFlight != null) return inFlight;
-    final build = _build();
+    final build = _buildIndex();
     _buildInFlight = build;
     try {
       await build;
@@ -87,11 +96,16 @@ class WorkspaceFileIndex {
 
   /// Drops the built index; the next [ensureFresh] rebuilds.
   void invalidate() {
+    _rust?.dispose();
+    _rust = null;
     _entries = null;
     _dirs = null;
     _builtRootMtime = null;
     _builtAt = null;
   }
+
+  /// Frees resources held by the index.
+  void dispose() => invalidate();
 
   Future<bool> _isStale() async {
     final built = _builtAt;
@@ -102,6 +116,40 @@ class WorkspaceFileIndex {
       // mtime became unavailable — fall back to the TTL check below.
     }
     return built == null || DateTime.now().difference(built) > maxStale;
+  }
+
+  bool _shouldUseRust() {
+    if (_fs is SftpFilesystem) return false;
+    try {
+      return FileSystemEntity.typeSync(root) != FileSystemEntityType.notFound;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  Future<void> _buildIndex() async {
+    if (_shouldUseRust()) {
+      final rust = _rust ?? TpFileIndex();
+      try {
+        await rust.build(
+          root,
+          TpFileIndexOptions(
+            maxEntries: _limits.maxIndexEntries,
+            useGitignore: true,
+          ),
+        );
+        _rust = rust;
+        _entries = null;
+        _dirs = null;
+        _builtAt = DateTime.now();
+        _builtRootMtime = (await _fs.stat(root)).mtime;
+        return;
+      } on Object {
+        rust.dispose();
+        if (identical(_rust, rust)) _rust = null;
+      }
+    }
+    await _build();
   }
 
   Future<void> _build() async {
@@ -163,13 +211,31 @@ class WorkspaceFileIndex {
     int? limit,
     WorkspaceFileMatchMode mode = WorkspaceFileMatchMode.fuzzy,
   }) {
-    final entries = _entries;
-    if (entries == null) return const [];
     final q = query.trim().toLowerCase();
     if (q.isEmpty) return const [];
     final cap = limit ?? _limits.maxResults;
     if (cap <= 0) return const [];
 
+    final rust = _rust;
+    if (rust?.isBuilt == true) {
+      return [
+        for (final hit in rust!.query(
+          q,
+          mode: mode == WorkspaceFileMatchMode.fuzzy
+              ? TpFileMatchMode.fuzzy
+              : TpFileMatchMode.contains,
+          limit: cap,
+        ))
+          WorkspaceFileMatch(
+            path: hit.path,
+            name: hit.name,
+            relativePath: hit.relativePath,
+          ),
+      ];
+    }
+
+    final entries = _entries;
+    if (entries == null) return const [];
     if (mode == WorkspaceFileMatchMode.contains) {
       final out = <WorkspaceFileMatch>[];
       for (final match in entries) {
@@ -200,10 +266,15 @@ class WorkspaceFileIndex {
   /// picker to keep directory-drilling suggestions alongside file matches.
   /// Empty when the index is not built yet or [query] is blank.
   List<String> queryDirectories(String query, {int limit = 20}) {
-    final dirs = _dirs;
-    if (dirs == null) return const [];
     final q = query.trim().toLowerCase();
     if (q.isEmpty || limit <= 0) return const [];
+    final rust = _rust;
+    if (rust?.isBuilt == true) {
+      return rust!.queryDirectories(q, limit: limit);
+    }
+
+    final dirs = _dirs;
+    if (dirs == null) return const [];
     final out = <String>[];
     for (final dir in dirs) {
       if (out.length >= limit) break;
@@ -314,9 +385,14 @@ class WorkspaceFileIndexRegistry {
 
   /// Drops the index for [root] (e.g. when its workspace tab closes).
   void remove(String root) {
-    _byRoot.remove(root.trim());
+    _byRoot.remove(root.trim())?.dispose();
   }
 
   /// Drops every index. Call when the home storage backend changes.
-  void clear() => _byRoot.clear();
+  void clear() {
+    for (final index in _byRoot.values) {
+      index.dispose();
+    }
+    _byRoot.clear();
+  }
 }

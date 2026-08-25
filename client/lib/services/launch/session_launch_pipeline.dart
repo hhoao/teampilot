@@ -493,8 +493,7 @@ class SessionLaunchPipeline {
               ? member!.id.trim()
               : tab.selectedMemberId.trim());
     if (memberId.isNotEmpty) {
-      tab.selectedMemberId = memberId;
-      _host.selectMember(memberId);
+      _host.assignSelectedMember(tab, memberId);
     }
 
     // Prefer the freshest in-memory snapshot (launchState / native ids) over a

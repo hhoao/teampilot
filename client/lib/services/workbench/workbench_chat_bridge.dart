@@ -24,7 +24,7 @@ class WorkbenchChatBridge implements WorkbenchDomainPort, ChatWorkbenchPort {
   /// preview slot (file/diff/shell/run). Sessions are handled inline; null
   /// keeps the bridge inert in tests that only exercise session tabs.
   final void Function(String workspaceId, WorkbenchTabId replaced)?
-      replacedPreviewTeardown;
+  replacedPreviewTeardown;
 
   /// Session domain staged a new/reused session tab; surface it in the bar.
   void onSessionTabOpened(

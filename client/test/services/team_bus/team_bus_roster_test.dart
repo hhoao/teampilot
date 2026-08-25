@@ -234,16 +234,15 @@ void main() {
       expect(byId['team-lead']!['agent_id'], 'team-lead');
       expect(byId['team-lead']!['model'], 'claude-opus-4');
       expect(byId['team-lead']!['task_id'], 'lead-task');
-      expect((byId['team-lead']!['bus'] as Map)['activity'], 'active');
-      expect((byId['team-lead']!['bus'] as Map)['phase'], 'in_turn');
+      expect((byId['team-lead']!['status']), 'busy');
       expect(byId['developer']!['agent_id'], 'developer@demo-1');
       expect(byId['developer']!['agent_type'], 'implementer');
       expect(byId['developer']!['cli'], 'opencode');
       expect(byId['developer']!['responsibilities'], 'You implement features.');
       expect(text, isNot(contains('playbook')));
       expect(text, isNot(contains('Use TDD and open a PR.')));
-      expect((byId['developer']!['bus'] as Map)['unread'], 1);
-      expect(byId['developer']!['pty_running'], isFalse);
+      expect(byId['developer']!['status'], 'idle');
+      expect(byId['developer']!['unread'], 1);
     },
   );
 }

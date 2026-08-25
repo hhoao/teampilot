@@ -21,14 +21,12 @@ import '../../services/terminal/terminal_uri_opener.dart';
 import '../../services/workbench/workbench_editor_opener.dart';
 import '../../services/workspace_dnd/terminal_drop_ingestor.dart';
 import '../../services/workspace_dnd/workspace_drop_target.dart';
-import '../../utils/team/team_member_naming.dart';
 import '../../widgets/follow_up/terminal_follow_up_compose.dart';
 import '../../widgets/terminal/parked_send_overlay.dart';
 import '../../widgets/terminal/teampilot_alacritty_terminal.dart';
 import '../../widgets/terminal_find_bar.dart';
 import '../../widgets/workspace_dnd/external_file_drop_region.dart';
 import '../../widgets/workspace_dnd/workspace_file_drop_region.dart';
-import '../home_workspace/workspace/workspace_session_actions.dart';
 import 'chat_workbench_context_menu.dart';
 
 class ChatWorkbenchRunningTerminal extends StatefulWidget {
@@ -340,68 +338,9 @@ void consumeChatWorkbenchRouteSession({
   required void Function(bool handled) onHandled,
   bool connectImmediately = false,
 }) {
-  if (routeSessionId == null || handledRouteSession) return;
-
-  AppSession? session;
-  for (final s in state.sessions) {
-    if (s.sessionId == routeSessionId) {
-      session = s;
-      break;
-    }
-  }
-  if (session == null) return;
-
-  onHandled(true);
-
-  if (chatCubit.tabStore.openTabBySessionId(routeSessionId) != null) {
-    return;
-  }
-
-  if (session.sessionTeam.trim().isEmpty) {
-    unawaited(
-      chatCubit.requestOpenSession(
-        buildOpenExistingSessionRequest(
-          session: session,
-          repo: sessionRepo,
-          emptyDisplayTitleFallback: l10n.defaultNewChatSessionTitle,
-          connectImmediately: connectImmediately,
-        ),
-      ),
-    );
-    return;
-  }
-
-  final teamId = session.sessionTeam.trim();
-  final profile = teamCubit.byId(teamId);
-  if (profile is! TeamProfile) {
-    chatCubit.addSystemMessage(l10n.sessionLaunchMissingTeamMember);
-    return;
-  }
-  TeamMemberConfig? lead;
-  for (final member in profile.members) {
-    if (TeamMemberNaming.isTeamLead(member)) {
-      lead = member;
-      break;
-    }
-  }
-  if (lead == null) {
-    chatCubit.addSystemMessage(l10n.sessionLaunchMissingTeamMember);
-    return;
-  }
-
-  unawaited(chatCubit.scheduleTeamConfigValidation(profile));
-  unawaited(
-    chatCubit.requestOpenSession(
-      buildOpenExistingSessionRequest(
-        session: session,
-        team: profile,
-        member: lead,
-        repo: sessionRepo,
-        emptyDisplayTitleFallback: l10n.defaultNewChatSessionTitle,
-        connectImmediately: connectImmediately,
-      ),
-    ),
-  );
+  // WorkspacePage is the sole owner of `?session=` deep links. A kept-alive
+  // workbench can retain a stale session id after navigation, so reopening it
+  // here would overwrite a newer sidebar selection.
 }
 
 /// Stable key for the chat workbench terminal stack.

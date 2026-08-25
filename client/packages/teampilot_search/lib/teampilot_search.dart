@@ -6,6 +6,7 @@
 library;
 
 export 'src/fallback_search_engine.dart' show fallbackSearch, kFallbackIgnoredDirNames, kFallbackMaxLineBytes;
+export 'src/file_index.dart';
 export 'src/search_file_reader.dart' show SearchFileReader, SearchDirEntry;
 
 import 'dart:convert';

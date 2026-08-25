@@ -6,6 +6,7 @@ import '../../models/team_config.dart';
 import '../../models/team_roster_slot.dart';
 import '../../models/workspace.dart';
 import '../../utils/team/team_member_naming.dart';
+import '../../utils/workspace/landing_draft_resolver.dart';
 import '../cli/installer_types.dart';
 import '../cli/registry/capabilities/cli_session_capability.dart';
 import '../cli/registry/cli_tool_registry.dart';
@@ -14,6 +15,7 @@ import '../cli/claude/capabilities/mcp_project_cleanup.dart';
 import '../cli/preset_resolver.dart';
 import '../provider/config_profile_service.dart';
 import '../session/session_continue_overrides_apply.dart';
+import '../session/session_launch_config_snapshot.dart';
 import '../session/session_lifecycle_service.dart';
 import '../storage/runtime_context.dart';
 import '../team_bus/member_bus_idle_endpoint.dart';
@@ -73,8 +75,11 @@ class SessionConnectOrchestrator {
     final planSw = Stopwatch()..start();
     // Back-fill the official default provider for legacy rows persisted before
     // provider resolution existed.
-    final identity = session.simpleIdentity.withOfficialDefaultProvider(
-      CliToolRegistry.builtIn().defaultOfficialProviderId,
+    final identity = enrichSimpleLaunchIdentityFromPreset(
+      identity: session.simpleIdentity.withOfficialDefaultProvider(
+        CliToolRegistry.builtIn().defaultOfficialProviderId,
+      ),
+      presets: lifecycle.globalPresets,
     );
     final plan = await runtimePlanBuilder.buildSimple(
       workspaceId: workspace.workspaceId,
@@ -131,20 +136,30 @@ class SessionConnectOrchestrator {
           folders: session.folders,
           createdAt: session.createdAt,
         );
-    final slot = _slotForMember(team, member);
+    final connectMember = memberForSessionConnect(
+      session: session,
+      team: team,
+      member: member,
+      memberBinding: memberBinding,
+      globalPresets: lifecycle.globalPresets,
+    );
+    final slot = _slotForMember(team, connectMember);
+    final preset = presetForSessionConnect(
+      session: session,
+      team: team,
+      member: member,
+      memberBinding: memberBinding,
+      globalPresets: lifecycle.globalPresets,
+    );
     final plan = await runtimePlanBuilder.buildTeamSeat(
       workspaceId: resolvedWorkspace.workspaceId,
       sessionId: session.sessionId,
       team: team,
       slot: slot,
-      presetId: member.activePresetId,
-      member: member,
+      presetId: preset?.id,
+      member: connectMember,
     );
     final memberId = memberBinding?.rosterMemberId ?? member.id;
-    final presetId = (plan.presetId ?? member.activePresetId)?.trim() ?? '';
-    final preset = presetId.isEmpty
-        ? null
-        : presetById(presetId, lifecycle.globalPresets);
     final finalizedMember = finalizeSessionLaunchMember(
       session: session,
       baseMember: plan.member,

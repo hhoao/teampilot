@@ -27,13 +27,7 @@ class ManagedProviderUsageRepository {
 
   Future<List<ProviderUsageSnapshot>> load() async {
     final store = await _readStore();
-    final now = _now();
-    return [
-      for (final snapshot in store.snapshots.values)
-        snapshot.staleAt != null && now >= snapshot.staleAt!
-            ? snapshot.copyWith(status: ProviderUsageStatus.stale)
-            : snapshot,
-    ];
+    return store.snapshots.values.toList(growable: false);
   }
 
   Future<void> save(ProviderUsageSnapshot snapshot) async {

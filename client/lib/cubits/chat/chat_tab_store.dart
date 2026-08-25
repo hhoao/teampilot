@@ -112,13 +112,13 @@ class ChatTabStore {
   }
 
   AppSession? sessionForTab(ChatTab tab, List<AppSession> sessions) {
-    final cached = tab.persistedSession;
-    if (cached != null) return cached;
     final tabId = tab.info.id;
-    if (tabId.startsWith('local-')) return null;
+    if (tabId.startsWith('local-')) return tab.persistedSession;
+    // Prefer the in-memory snapshot (launchState, member bindings, native ids)
+    // over a stale tab.persistedSession left at create/reopen time.
     for (final s in sessions) {
       if (s.sessionId == tabId) return s;
     }
-    return null;
+    return tab.persistedSession;
   }
 }

@@ -3284,6 +3284,48 @@ abstract class AppLocalizations {
   /// **'What can I help you with today? @ reference files, / invoke skills'**
   String get workspaceChatLandingInputHint;
 
+  /// No description provided for @composeCommandNative.
+  ///
+  /// In en, this message translates to:
+  /// **'Native'**
+  String get composeCommandNative;
+
+  /// No description provided for @composeCommandPlugin.
+  ///
+  /// In en, this message translates to:
+  /// **'Plugin'**
+  String get composeCommandPlugin;
+
+  /// No description provided for @composeCommandExperimental.
+  ///
+  /// In en, this message translates to:
+  /// **'Experimental'**
+  String get composeCommandExperimental;
+
+  /// No description provided for @composeNativeCommandGoal.
+  ///
+  /// In en, this message translates to:
+  /// **'Keep a durable objective for long-running work.'**
+  String get composeNativeCommandGoal;
+
+  /// No description provided for @composeNativeCommandCompact.
+  ///
+  /// In en, this message translates to:
+  /// **'Compact the active conversation context.'**
+  String get composeNativeCommandCompact;
+
+  /// No description provided for @composeNativeCommandPlan.
+  ///
+  /// In en, this message translates to:
+  /// **'Switch the session into a planning workflow.'**
+  String get composeNativeCommandPlan;
+
+  /// No description provided for @composeNativeCommandHelp.
+  ///
+  /// In en, this message translates to:
+  /// **'Show commands available in this CLI session.'**
+  String get composeNativeCommandHelp;
+
   /// No description provided for @workspaceChatLandingBackToStart.
   ///
   /// In en, this message translates to:
@@ -5293,6 +5335,30 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'When enabled (default), new Simple-mode compose landing starts with full access permissions. Workspace chip choices still override and persist per workspace.'**
   String get simpleModeDefaultFullAccessDescription;
+
+  /// No description provided for @continueSwitchRestartTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Restart to apply switch?'**
+  String get continueSwitchRestartTitle;
+
+  /// No description provided for @continueSwitchRestartBody.
+  ///
+  /// In en, this message translates to:
+  /// **'The new provider/model is saved. A running session still uses the old config, so the switch only takes effect after a restart.'**
+  String get continueSwitchRestartBody;
+
+  /// No description provided for @continueSwitchRestartNow.
+  ///
+  /// In en, this message translates to:
+  /// **'Restart now'**
+  String get continueSwitchRestartNow;
+
+  /// No description provided for @continueSwitchRestartLater.
+  ///
+  /// In en, this message translates to:
+  /// **'Later'**
+  String get continueSwitchRestartLater;
 
   /// No description provided for @scopeSessionsToSelectedTeamTitle.
   ///
@@ -13742,18 +13808,6 @@ abstract class AppLocalizations {
   /// **'Preconfigured for the balance API; add an API key credential.'**
   String get managedProvidersQuickPresetDeepSeekHint;
 
-  /// No description provided for @managedProvidersQuickPresetOpenCode.
-  ///
-  /// In en, this message translates to:
-  /// **'OpenCode'**
-  String get managedProvidersQuickPresetOpenCode;
-
-  /// No description provided for @managedProvidersQuickPresetOpenCodeHint.
-  ///
-  /// In en, this message translates to:
-  /// **'No universal balance endpoint is assumed; add the endpoint for your provider.'**
-  String get managedProvidersQuickPresetOpenCodeHint;
-
   /// No description provided for @managedProvidersBasicsSectionTitle.
   ///
   /// In en, this message translates to:
@@ -14287,6 +14341,24 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Error'**
   String get managedProvidersError;
+
+  /// No description provided for @managedProvidersRemainingPercent.
+  ///
+  /// In en, this message translates to:
+  /// **'{percent}% remaining'**
+  String managedProvidersRemainingPercent(String percent);
+
+  /// No description provided for @managedProvidersResetsIn.
+  ///
+  /// In en, this message translates to:
+  /// **'Resets in {duration}'**
+  String managedProvidersResetsIn(String duration);
+
+  /// No description provided for @managedProvidersResetsSoon.
+  ///
+  /// In en, this message translates to:
+  /// **'Resets soon'**
+  String get managedProvidersResetsSoon;
 }
 
 class _AppLocalizationsDelegate

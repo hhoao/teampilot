@@ -2,15 +2,21 @@ import 'package:flutter/material.dart';
 
 import 'compose_trigger_query.dart';
 
+class ComposeTriggerInsertion {
+  const ComposeTriggerInsertion({required this.text, this.suffix = ' '});
+
+  final String text;
+  final String suffix;
+}
+
 /// Replaces the active trigger token with [insertion].
 TextEditingValue replaceComposeTrigger(
   TextEditingController controller,
   ComposeTriggerQuery trigger,
-  String insertion, {
-  String suffix = ' ',
-}) {
+  ComposeTriggerInsertion insertion,
+) {
   final value = controller.value;
-  final chunk = '$insertion$suffix';
+  final chunk = '${insertion.text}${insertion.suffix}';
   final newText = value.text.replaceRange(
     trigger.triggerStart,
     trigger.triggerEnd,

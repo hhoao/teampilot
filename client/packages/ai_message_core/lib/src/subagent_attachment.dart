@@ -150,6 +150,8 @@ String? subagentTitleFromPart(AiToolCallPart part) {
   if (args != null) {
     final description = _trimmedString(args['description']);
     if (description != null) return description;
+    final taskName = _trimmedString(args['task_name']);
+    if (taskName != null) return taskName;
     final prompt = _trimmedString(args['prompt']);
     if (prompt != null) return prompt;
   }

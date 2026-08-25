@@ -78,7 +78,6 @@ class _ChatWorkbenchState extends State<ChatWorkbench> {
   TerminalController _terminalController = TerminalController();
 
   var _findVisible = false;
-  var _handledRouteSession = false;
   var _remappingDeadTarget = false;
   int? _lastTerminalThemeFingerprint;
   TerminalSession? _themeSyncedSession;
@@ -97,8 +96,7 @@ class _ChatWorkbenchState extends State<ChatWorkbench> {
     AppSession? appSession;
     if (sessionId.isNotEmpty) {
       for (final s in chatCubit.state.sessions) {
-        if (s.sessionId == sessionId &&
-            s.workspaceId == widget.workspaceId) {
+        if (s.sessionId == sessionId && s.workspaceId == widget.workspaceId) {
           appSession = s;
           break;
         }
@@ -142,26 +140,6 @@ class _ChatWorkbenchState extends State<ChatWorkbench> {
     );
   }
 
-  void _consumeRouteSession(ChatState state) {
-    if (!mounted) return;
-    final connectImmediately = context
-        .read<SessionPreferencesCubit>()
-        .state
-        .preferences
-        .openExistingSessionStartsTerminal;
-    consumeChatWorkbenchRouteSession(
-      routeSessionId: widget.sessionId,
-      handledRouteSession: _handledRouteSession,
-      state: state,
-      chatCubit: context.read<ChatCubit>(),
-      teamCubit: context.read<LaunchProfileCubit>(),
-      sessionRepo: context.read<SessionRepository>(),
-      l10n: AppLocalizations.of(context),
-      onHandled: (handled) => _handledRouteSession = handled,
-      connectImmediately: connectImmediately,
-    );
-  }
-
   SessionConnectRequest _connectRequest({
     required bool isPersonal,
     TeamProfile? team,
@@ -182,9 +160,8 @@ class _ChatWorkbenchState extends State<ChatWorkbench> {
     );
   }
 
-  TargetLiveness _targetLiveness(BuildContext context) => DefaultTargetLiveness(
-    sshProfiles: context.read<SshProfileRepository>(),
-  );
+  TargetLiveness _targetLiveness(BuildContext context) =>
+      DefaultTargetLiveness(sshProfiles: context.read<SshProfileRepository>());
 
   Future<void> _remapDeadTargetFromLaunch({
     required String launchError,
@@ -289,24 +266,19 @@ class _ChatWorkbenchState extends State<ChatWorkbench> {
   Widget build(BuildContext context) {
     final slice = widget.workbenchSlice;
     final team = widget.team;
-    return BlocListener<ChatCubit, ChatState>(
-      listenWhen: (previous, next) =>
-          widget.routeActive && widget.sessionId != null,
-      listener: (context, state) => _consumeRouteSession(state),
-      child: _ChatWorkbenchBody(
-        workspaceId: widget.workspaceId,
-        tabScopeId: widget.tabScopeId ?? widget.workspaceId,
-        profileId: widget.profileId,
-        routeActive: widget.routeActive,
-        sessionId: widget.sessionId,
-        isPersonalContext: widget.isPersonalContext,
-        slice: slice,
-        team: team,
-        findVisible: _findVisible,
-        onSyncTerminalTheme: _syncTerminalTheme,
-        buildRunningTerminal: _buildRunningTerminal,
-        onRemapDeadTargetFromLaunch: _remapDeadTargetFromLaunch,
-      ),
+    return _ChatWorkbenchBody(
+      workspaceId: widget.workspaceId,
+      tabScopeId: widget.tabScopeId ?? widget.workspaceId,
+      profileId: widget.profileId,
+      routeActive: widget.routeActive,
+      sessionId: widget.sessionId,
+      isPersonalContext: widget.isPersonalContext,
+      slice: slice,
+      team: team,
+      findVisible: _findVisible,
+      onSyncTerminalTheme: _syncTerminalTheme,
+      buildRunningTerminal: _buildRunningTerminal,
+      onRemapDeadTargetFromLaunch: _remapDeadTargetFromLaunch,
     );
   }
 }
@@ -385,16 +357,14 @@ class _ChatWorkbenchBody extends StatelessWidget {
         : null;
 
     final launchError =
-        routeActive &&
-            chatCubit.tabStore.activeWorkspaceId == tabScopeId
+        routeActive && chatCubit.tabStore.activeWorkspaceId == tabScopeId
         ? (chatCubit.activeLaunchError ?? slice.sessionLaunchError)
         : slice.sessionLaunchError;
 
     // Pod-state values cached here; the ListenableBuilder below re-reads them
     // on every pod notification so sessionConnectInProgress / workbenchView
     // stay current without a global ChatCubit emit.
-    bool readConnectInProgress() =>
-        pod?.state.phase.isLaunching ?? false;
+    bool readConnectInProgress() => pod?.state.phase.isLaunching ?? false;
 
     SessionWorkbenchView readWorkbenchView() {
       if (activeId == null || activeId.isEmpty) {
@@ -442,8 +412,8 @@ class _ChatWorkbenchBody extends StatelessWidget {
       final memberId = slice.selectedMemberId.isNotEmpty
           ? slice.selectedMemberId
           : '';
-      final remoteProvision =
-          context.select<ChatCubit, MemberRemoteProvisionProgress?>((c) {
+      final remoteProvision = context
+          .select<ChatCubit, MemberRemoteProvisionProgress?>((c) {
             final sid = slice.activeSessionId;
             if (sid == null || sid.isEmpty) return null;
             final mid = memberId.isNotEmpty
@@ -552,8 +522,7 @@ class _ChatWorkbenchBody extends StatelessWidget {
     final tickerActive = TickerMode.valuesOf(context).enabled;
     final terminalVisible = routeForeground && tickerActive;
 
-    final showRemoteProvision =
-        remoteProvision != null && !session.isRunning;
+    final showRemoteProvision = remoteProvision != null && !session.isRunning;
     // Keep the Alacritty surface mounted after a non-zero CLI exit so scrollback
     // (and the "[process exited …]" line) stays inspectable under the error
     // banner. Previously isRunning=false unmounted the terminal → empty pane.
@@ -570,8 +539,7 @@ class _ChatWorkbenchBody extends StatelessWidget {
       showRemoteProvision: showRemoteProvision,
     );
     final showChat = overlay == ChatWorkbenchOverlay.chat;
-    final showSessionStarting =
-        overlay == ChatWorkbenchOverlay.sessionStarting;
+    final showSessionStarting = overlay == ChatWorkbenchOverlay.sessionStarting;
     final failure = presentSessionLaunchFailure(launchError);
     final showTerminalLaunchError = shouldShowTerminalSessionLaunchErrorBanner(
       overlay: overlay,
@@ -582,13 +550,15 @@ class _ChatWorkbenchBody extends StatelessWidget {
     final memberId = slice.selectedMemberId.isNotEmpty
         ? slice.selectedMemberId
         : _tabSelectedMemberId(chatCubit);
-    final isPersonal = appSession?.sessionTeam.trim().isEmpty ?? isPersonalContext;
+    final isPersonal =
+        appSession?.sessionTeam.trim().isEmpty ?? isPersonalContext;
     final historyMemberId = isPersonal ? '' : memberId;
     final resolvedTeam = isPersonal
         ? null
-        : (team ?? (appSession != null
-              ? _teamProfileForSession(context, appSession)
-              : null));
+        : (team ??
+              (appSession != null
+                  ? _teamProfileForSession(context, appSession)
+                  : null));
 
     // Keep Alacritty mounted across title-bar workspace tab switches; hide with
     // [Offstage] so scrollback survives when the tab returns to foreground.
@@ -606,9 +576,8 @@ class _ChatWorkbenchBody extends StatelessWidget {
             children: [
               if (mountTerminalForLayout)
                 Offstage(
-                  offstage: showSessionStarting ||
-                      showChat ||
-                      showRemoteProvision,
+                  offstage:
+                      showSessionStarting || showChat || showRemoteProvision,
                   child: buildRunningTerminal(
                     session: session,
                     terminalTheme: terminalTheme,
@@ -617,7 +586,8 @@ class _ChatWorkbenchBody extends StatelessWidget {
                     team: resolvedTeam,
                     appSession: appSession,
                     historyMemberId: historyMemberId,
-                    autofocus: !showSessionStarting &&
+                    autofocus:
+                        !showSessionStarting &&
                         !showChat &&
                         !showRemoteProvision &&
                         terminalVisible,
@@ -711,7 +681,8 @@ class _ChatWorkbenchBody extends StatelessWidget {
   }) {
     final sessionId = slice.activeSessionId;
     final memberId = slice.selectedMemberId;
-    final reclaimed = sessionId != null &&
+    final reclaimed =
+        sessionId != null &&
         memberId.isNotEmpty &&
         chatCubit.isMemberTerminalReclaimed(sessionId, memberId);
     final theme = Theme.of(context);
@@ -823,7 +794,8 @@ class _ChatWorkbenchBody extends StatelessWidget {
 
     return SessionChatView(
       session: appSession,
-      workspace: chatCubit.state.workspaces
+      workspace:
+          chatCubit.state.workspaces
               .where((w) => w.workspaceId == workspaceId)
               .firstOrNull ??
           Workspace(
@@ -836,9 +808,8 @@ class _ChatWorkbenchBody extends StatelessWidget {
       routeActive: routeActive,
       launchError: launchError,
       sessionConnectInProgress: sessionConnectInProgress,
-      onRetry: () => unawaited(
-        chatCubit.retrySessionLaunch(appSession.sessionId),
-      ),
+      onRetry: () =>
+          unawaited(chatCubit.retrySessionLaunch(appSession.sessionId)),
       peekContinueChannel: resolveChannel,
       isMailboxUnread: (mailId) {
         final bus = chatCubit.sessionRuntime.busForSession(
@@ -890,9 +861,8 @@ class _ChatWorkbenchBody extends StatelessWidget {
           resolveChannel: resolveChannel,
           connectWorkspaceSession: chatCubit.connectWorkspaceSession,
           ensureMemberInputReady:
-              (sessionId, mid, {bool directToPty = false}) => chatCubit
-                  .memberMaterializer
-                  .ensureMemberInputReady(
+              (sessionId, mid, {bool directToPty = false}) =>
+                  chatCubit.memberMaterializer.ensureMemberInputReady(
                     sessionId,
                     mid,
                     directToPty: directToPty,
@@ -911,7 +881,10 @@ class _ChatWorkbenchBody extends StatelessWidget {
     );
   }
 
-  TeamProfile? _teamProfileForSession(BuildContext context, AppSession session) {
+  TeamProfile? _teamProfileForSession(
+    BuildContext context,
+    AppSession session,
+  ) {
     final teamId = session.sessionTeam.trim();
     if (teamId.isEmpty) return null;
     final profile = context.read<LaunchProfileCubit>().byId(teamId);

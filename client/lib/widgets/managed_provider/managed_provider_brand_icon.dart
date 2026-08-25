@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 
 import '../../models/managed_provider.dart';
@@ -74,6 +76,82 @@ ManagedProviderBrandIconSpec resolveManagedProviderBrandIcon(
     return ManagedProviderBrandIconSpec.remote(iconUrl);
   }
   return ManagedProviderBrandIconSpec.initials(provider.name);
+}
+
+const managedProviderBrandLabelTextHeightBehavior = TextHeightBehavior(
+  applyHeightToFirstAscent: false,
+  applyHeightToLastDescent: false,
+);
+
+double managedProviderBrandLabelLineHeight(
+  TextStyle style,
+  TextScaler scaler,
+) {
+  final fontSize = scaler.scale(style.fontSize ?? 12);
+  return fontSize * (style.height ?? 1.2);
+}
+
+/// Vertically centers a brand mark with adjacent label text.
+class ManagedProviderBrandLabelRow extends StatelessWidget {
+  const ManagedProviderBrandLabelRow({
+    required this.leading,
+    required this.label,
+    required this.iconSize,
+    required this.textStyle,
+    this.spacing = 7,
+    this.expanded = false,
+    this.between = const [],
+    super.key,
+  });
+
+  final Widget leading;
+  final String? label;
+  final double iconSize;
+  final TextStyle textStyle;
+  final double spacing;
+  final bool expanded;
+  final List<Widget> between;
+
+  @override
+  Widget build(BuildContext context) {
+    final trimmed = label?.trim();
+    final hasLabel = trimmed != null && trimmed.isNotEmpty;
+    final scaler = MediaQuery.textScalerOf(context);
+    final resolvedStyle = textStyle;
+    final rowHeight = hasLabel
+        ? math.max(iconSize, managedProviderBrandLabelLineHeight(resolvedStyle, scaler))
+        : iconSize;
+
+    final children = <Widget>[
+      SizedBox(
+        width: iconSize,
+        height: iconSize,
+        child: Center(child: leading),
+      ),
+      ...between,
+    ];
+
+    if (hasLabel) {
+      children.add(SizedBox(width: spacing));
+      final labelWidget = Text(
+        trimmed,
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
+        style: resolvedStyle,
+        textHeightBehavior: managedProviderBrandLabelTextHeightBehavior,
+      );
+      children.add(expanded ? Expanded(child: labelWidget) : labelWidget);
+    }
+
+    return SizedBox(
+      height: rowHeight,
+      child: Row(
+        mainAxisSize: expanded ? MainAxisSize.max : MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: children,
+      ),
+    );
+  }
 }
 
 class ManagedProviderBrandMark extends StatelessWidget {

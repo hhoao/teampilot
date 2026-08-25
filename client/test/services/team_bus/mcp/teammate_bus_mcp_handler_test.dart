@@ -102,9 +102,9 @@ void main() {
     expect(byId['team-lead']!['display_name'], 'Team Lead');
     expect(byId['team-lead']!['cli'], 'claude');
     expect(byId['developer']!['display_name'], 'Developer');
-    expect((byId['developer']!['bus'] as Map)['lifecycle'], 'declared');
-    expect((byId['developer']!['bus'] as Map)['activity'], 'none');
-    expect((byId['developer']!['bus'] as Map)['unread'], 1);
+    expect(byId['team-lead']!['status'], 'busy');
+    expect(byId['developer']!['status'], 'idle');
+    expect(byId['developer']!['unread'], 1);
   });
 
   test('send_message resolves agentId and reports resolution', () async {

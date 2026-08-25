@@ -35,8 +35,22 @@ enum MemberActivity {
   mailQueued,
 }
 
+/// Leader-facing availability from MCP `list_teammates` (`status` field).
+enum TeammateBusStatus {
+  /// Not in an active turn — safe to assign (`send_message` / queue).
+  idle,
+
+  /// Turn in progress.
+  busy,
+}
+
 /// [MemberActivity] 语义与 MCP/UI 展示标签。
 extension MemberActivitySemantics on MemberActivity {
+  /// MCP `list_teammates` `status`: only [MemberActivity.active] is busy.
+  TeammateBusStatus get busStatus => switch (this) {
+    MemberActivity.active => TeammateBusStatus.busy,
+    _ => TeammateBusStatus.idle,
+  };
   /// Claude `TeamFile.members[].isActive`.
   bool get claudeIsActive => this == MemberActivity.active;
 
@@ -57,7 +71,7 @@ extension MemberActivitySemantics on MemberActivity {
   /// 任一「在等 teammate 信」形态。
   bool get isWaitingForMail => isBusWaitBlocked || isMailQueuedWithoutPty;
 
-  /// `list_teammates` 合成态（`turn_done` 前缀消除 at_prompt / idleWaiting 歧义）。
+  /// 内部诊断标签（不暴露给 MCP `list_teammates`）。
   String get busPhaseLabel => switch (this) {
     MemberActivity.none => 'offline',
     MemberActivity.active => 'in_turn',

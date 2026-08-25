@@ -9,6 +9,7 @@ import '../../models/workspace_launch_context.dart';
 import '../../models/workspace_folder.dart';
 import '../../models/app_session.dart';
 import '../../models/member_instance.dart';
+import '../../models/session_continue_overrides.dart';
 import '../../models/team_config.dart';
 import '../../repositories/session_repository.dart';
 import '../../services/launch/session_launch_readiness.dart';
@@ -25,6 +26,7 @@ import '../../services/launch/session_shell_connector.dart';
 import '../../services/launch/session_tab_connect_prep.dart';
 import '../../services/launch/session_launch_workspace_index.dart';
 import '../../services/cli/preset_resolver.dart';
+import '../../services/session/session_launch_config_snapshot.dart';
 import '../../services/session/session_member_cli_locks.dart';
 import '../../services/storage/work_target_canonicalizer.dart';
 import '../../services/team/team_config_launch_validator.dart';
@@ -136,7 +138,7 @@ class SessionLaunchService
     onMixedPlacementNotReady: _onMixedPlacementNotReady,
     resolveLaunchMembers: _resolveLaunchMembers,
     installTeamRuntimeIfNeeded: _installTeamRuntimeIfNeeded,
-    updateSelectedMember: _updateSelectedMember,
+    assignSelectedMember: _assignSelectedMemberOnTab,
     shellForLaunch: _shellForLaunch,
     launchStillValid: _launchStillValid,
   );
@@ -154,9 +156,11 @@ class SessionLaunchService
   Workspace? _workspaceById(String workspaceId) =>
       _workspaceIndex.byId(workspaceId);
 
-  void _updateSelectedMember(String memberId) {
-    // Selected member lives on the ChatTab; the tab-connect prep writes
-    // tab.selectedMemberId. The bar is the single session-identity source.
+  void _assignSelectedMemberOnTab({
+    required ChatTab tab,
+    required String memberId,
+  }) {
+    _h.assignSelectedMember(tab, memberId);
   }
 
   void _onMixedPlacementNotReady({
@@ -216,6 +220,14 @@ class SessionLaunchService
             globalPresets: _h.lifecycle.globalPresets,
           );
 
+    final continueOverrides = params.sessionTeamId.trim().isEmpty
+        ? params.continueOverrides
+        : snapshotTeamSessionContinueOverrides(
+            base: params.continueOverrides ?? const SessionContinueOverrides(),
+            team: request.team!,
+            bindings: session.members,
+            globalPresets: _h.lifecycle.globalPresets,
+          );
     final persisted = (await repo.createSession(
       session.workspaceId,
       sessionTeam: params.sessionTeamId,
@@ -229,7 +241,7 @@ class SessionLaunchService
       workingDirectory: params.workingDirectory,
       fixedSessionId: session.sessionId,
       expertKey: params.simpleIdentity?.expertKey ?? params.expertKey,
-      continueOverrides: params.continueOverrides,
+      continueOverrides: continueOverrides,
       members: session.members,
       memberTargets: session.memberTargets,
       knownWorkspace: request.workspace,
@@ -603,8 +615,11 @@ class SessionLaunchService
   );
 
   AppSession? _sessionForMemberConnect(ChatTab tab, TeamProfile team) {
-    final cached = _tabStore.sessionForTab(tab, _state.sessions);
-    if (cached != null) return cached;
+    final freshest = _freshestSessionForTab(tab);
+    if (freshest != null) {
+      tab.persistedSession = freshest;
+      return freshest;
+    }
     if (!tab.info.id.startsWith('local-')) return null;
     final launch = _tabStore.workingDirectoryAndAddDirsForTab(
       tab,
@@ -633,6 +648,10 @@ class SessionLaunchService
     tab.persistedSession = session;
     return session;
   }
+
+  /// Latest [AppSession] for [tab]: in-memory snapshot first, then tab cache.
+  AppSession? _freshestSessionForTab(ChatTab tab) =>
+      _tabStore.sessionForTab(tab, _state.sessions);
 
   @override
   void scheduleMemberConnect(
@@ -666,7 +685,7 @@ class SessionLaunchService
     }
     if (tab == null) return null;
     if (tab.selectedMemberId.isEmpty) {
-      tab.selectedMemberId = _tabStore.defaultMemberId(team);
+      _h.assignSelectedMember(tab, _tabStore.defaultMemberId(team));
     }
     if (tab.selectedMemberId.isNotEmpty) {
       final memberId = tab.selectedMemberId;
@@ -787,8 +806,9 @@ class SessionLaunchService
     final shell = tab.memberShells[mid];
     if (shell != null && (shell.isRunning || shell.isConnecting)) return;
     if (tab.membersPendingConnect.contains(mid)) return;
-    final session = tab.persistedSession;
+    final session = _freshestSessionForTab(tab);
     if (session == null) return;
+    tab.persistedSession = session;
     final teamId = session.sessionTeam.trim();
     if (teamId.isEmpty) return; // Simple mode — not this path.
     final team = await _h.teamProfileById(teamId);

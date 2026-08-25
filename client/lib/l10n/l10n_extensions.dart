@@ -56,7 +56,6 @@ extension AppLocalizationsX on AppLocalizations {
     'codex' => managedProvidersQuickPresetCodex,
     'claude-code' => managedProvidersQuickPresetClaudeCode,
     'deepseek' => managedProvidersQuickPresetDeepSeek,
-    'opencode' => managedProvidersQuickPresetOpenCode,
     _ => id,
   };
 
@@ -64,7 +63,6 @@ extension AppLocalizationsX on AppLocalizations {
     'codex' => managedProvidersQuickPresetCodexHint,
     'claude-code' => managedProvidersQuickPresetClaudeCodeHint,
     'deepseek' => managedProvidersQuickPresetDeepSeekHint,
-    'opencode' => managedProvidersQuickPresetOpenCodeHint,
     _ => '',
   };
 

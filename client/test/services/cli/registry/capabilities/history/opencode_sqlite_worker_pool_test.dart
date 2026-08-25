@@ -44,8 +44,19 @@ void main() {
     }
   });
 
-  tearDown(() {
-    tmp.deleteSync(recursive: true);
+  tearDown(() async {
+    // Windows: an open sqlite handle blocks directory deletion (errno=32).
+    // Worker close is asynchronous across isolates, so retry the deletion
+    // for a bounded window instead of racing the handle release.
+    for (var attempt = 0;; attempt++) {
+      try {
+        tmp.deleteSync(recursive: true);
+        break;
+      } on FileSystemException catch (_) {
+        if (attempt >= 20) rethrow;
+        await Future<void>.delayed(const Duration(milliseconds: 100));
+      }
+    }
   });
 
   test('runs query on a resident worker and reuses the connection', () async {
@@ -65,7 +76,7 @@ void main() {
     expect(second, 'ses_1');
     expect(pool.liveWorkerCount, 1);
 
-    pool.dispose(dbPath);
+    await pool.disposeAndWait(dbPath);
     expect(pool.liveWorkerCount, 0);
   });
 
@@ -85,7 +96,7 @@ void main() {
     expect(ok, 'ses_1');
     expect(pool.liveWorkerCount, 1);
 
-    pool.dispose(dbPath);
+    await pool.disposeAndWait(dbPath);
   });
 
   test('idle worker exits and is respawned on the next run', () async {
@@ -108,7 +119,7 @@ void main() {
       expect(second, 'ses_1');
     } finally {
       pool.idleTimeout = const Duration(seconds: 30);
-      pool.dispose(dbPath);
+      await pool.disposeAndWait(dbPath);
     }
   });
 
@@ -160,7 +171,7 @@ void main() {
         heldLease?.returnLease();
         holder?.close();
         pool.idleTimeout = const Duration(seconds: 30);
-        pool.dispose(dbPath);
+        await pool.disposeAndWait(dbPath);
       }
     },
   );
@@ -190,7 +201,7 @@ void main() {
       expect(ok, 'ses_1');
     } finally {
       pool.queryTimeout = savedTimeout;
-      pool.dispose(dbPath);
+      await pool.disposeAndWait(dbPath);
     }
   });
 
@@ -214,7 +225,7 @@ void main() {
       query: opencodeNewestSessionId,
     );
     expect(result, 'ses_1'); // child 最新也不能被选中
-    pool.dispose(dbPath);
+    await pool.disposeAndWait(dbPath);
   });
 
   test('empty parent_id is treated as a root', () async {
@@ -233,7 +244,7 @@ void main() {
       query: opencodeNewestSessionId,
     );
     expect(result, 'ses_2');
-    pool.dispose(dbPath);
+    await pool.disposeAndWait(dbPath);
   });
 
   test('legacy layout without parent_id column filters children via data JSON',
@@ -262,6 +273,6 @@ void main() {
       query: opencodeNewestSessionId,
     );
     expect(result, 'ses_root');
-    pool.dispose(legacyDbPath);
+    await pool.disposeAndWait(legacyDbPath);
   });
 }

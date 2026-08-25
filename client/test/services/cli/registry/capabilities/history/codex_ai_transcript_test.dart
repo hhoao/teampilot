@@ -371,6 +371,111 @@ void main() {
   });
 
   test(
+    'SubAgentActivity started binds agent_thread_id onto spawn_agent args',
+    () {
+      final messages = <AiMessage>[];
+      String id() => 'codex-${messages.length}';
+
+      expect(
+        appendCodexJsonlEvent(
+          messages,
+          {
+            'type': 'response_item',
+            'timestamp': '2026-08-25T11:23:14.000Z',
+            'payload': {
+              'type': 'function_call',
+              'name': 'spawn_agent',
+              'call_id': 'call_spawn_1',
+              'arguments':
+                  '{"task_name":"task6_review","fork_turns":"none","message":"cipher"}',
+            },
+          },
+          fallbackId: id,
+        ),
+        isTrue,
+      );
+
+      expect(
+        appendCodexJsonlEvent(
+          messages,
+          {
+            'type': 'event_msg',
+            'timestamp': '2026-08-25T11:23:14.100Z',
+            'payload': {
+              'type': 'item_completed',
+              'item': {
+                'type': 'SubAgentActivity',
+                'id': 'call_spawn_1',
+                'kind': 'started',
+                'agent_thread_id': '01a038a8-fd40-77a2-bb5a-59452ffa9bf0',
+                'agent_path': '/root/task6_review',
+              },
+            },
+          },
+          fallbackId: id,
+        ),
+        isTrue,
+      );
+
+      final tool = messages.single.parts.single as AiToolCallPart;
+      expect(tool.toolName, 'spawn_agent');
+      expect(
+        tool.args?['agent_id'],
+        '01a038a8-fd40-77a2-bb5a-59452ffa9bf0',
+      );
+      expect(tool.args?['task_name'], 'task6_review');
+      expect(subagentAgentIdFromPart(tool), '01a038a8-fd40-77a2-bb5a-59452ffa9bf0');
+    },
+  );
+
+  test(
+    'SubAgentActivity on send_message does not rewrite non-spawn tool args',
+    () {
+      final messages = <AiMessage>[];
+      String id() => 'codex-${messages.length}';
+
+      appendCodexJsonlEvent(
+        messages,
+        {
+          'type': 'response_item',
+          'timestamp': '2026-08-25T11:23:14.000Z',
+          'payload': {
+            'type': 'function_call',
+            'name': 'send_message',
+            'call_id': 'call_send_1',
+            'arguments': '{"target":"/root/task6_review","message":"hi"}',
+          },
+        },
+        fallbackId: id,
+      );
+      expect(
+        appendCodexJsonlEvent(
+          messages,
+          {
+            'type': 'event_msg',
+            'timestamp': '2026-08-25T11:23:14.100Z',
+            'payload': {
+              'type': 'item_completed',
+              'item': {
+                'type': 'SubAgentActivity',
+                'id': 'call_send_1',
+                'kind': 'interacted',
+                'agent_thread_id': '01a038a8-fd40-77a2-bb5a-59452ffa9bf0',
+              },
+            },
+          },
+          fallbackId: id,
+        ),
+        isFalse,
+      );
+
+      final tool = messages.single.parts.single as AiToolCallPart;
+      expect(tool.args?.containsKey('agent_id'), isFalse);
+      expect(subagentAgentIdFromPart(tool), isNull);
+    },
+  );
+
+  test(
       'custom_tool_call non-JSON String input keeps args=null and '
       'argsText as faithful copy (G2)',
       () {

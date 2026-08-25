@@ -140,7 +140,7 @@ class SessionRuntimePlanBuilder {
       mode: SessionRuntimeMode.team,
       workspaceId: workspaceId,
       sessionId: sessionId,
-      memberId: slot.id,
+      memberId: member?.id.trim().isNotEmpty == true ? member!.id : slot.id,
       expertKey: resolvedKey,
       teamId: team.id,
       presetId: presetId,

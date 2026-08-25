@@ -30,6 +30,7 @@ void main() {
       final index = WorkspaceFileIndex(fs: fs, root: root);
       await index.ensureFresh();
       expect(index.isReady, isTrue);
+      expect(index.usedRustBackend, isFalse);
 
       // First query hits the same built index again without rebuilding.
       await index.ensureFresh();

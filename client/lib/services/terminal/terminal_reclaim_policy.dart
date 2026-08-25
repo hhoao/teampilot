@@ -9,6 +9,7 @@ class TerminalReclaimSnapshot {
     required this.isDisplayed,
     required this.inTurn,
     required this.hasUnread,
+    this.isSessionPinned = false,
   });
 
   final String sessionId;
@@ -19,10 +20,14 @@ class TerminalReclaimSnapshot {
   final bool isDisplayed;
   final bool inTurn;
   final bool hasUnread;
+
+  /// Sidebar pin ([AppSession.pinned]) — keep all member shells for the session.
+  final bool isSessionPinned;
 }
 
 /// Pure reclaim decision. Single source of truth for the protection set:
-/// lead, displayed terminal, working/in-turn, unread, or connecting/pending.
+/// lead, displayed terminal, working/in-turn, unread, connecting/pending,
+/// or a sidebar-pinned session.
 class TerminalReclaimPolicy {
   const TerminalReclaimPolicy({required this.idleAfter});
 
@@ -34,7 +39,8 @@ class TerminalReclaimPolicy {
       s.isTeamLead ||
       s.isDisplayed ||
       s.inTurn ||
-      s.hasUnread;
+      s.hasUnread ||
+      s.isSessionPinned;
 
   /// true when the member has been idle since [idleSince] for at least
   /// [idleAfter] and no protection guard applies.

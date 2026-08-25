@@ -166,14 +166,8 @@ abstract final class TeammateBusToolFormat {
       'responsibilities': profile.responsibilities.trim().isEmpty
           ? null
           : profile.responsibilitiesSummary(),
-      'bus': {
-        'lifecycle': teammate.lifecycle.name,
-        'activity': teammate.activity.name,
-        'phase': teammate.busPhaseLabel,
-        'unread': teammate.unreadCount,
-      },
-      'claude_is_active': teammate.claudeIsActive,
-      'pty_running': teammate.ptyRunning,
+      'status': teammate.busStatus.name,
+      'unread': teammate.unreadCount,
     });
   }
 

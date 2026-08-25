@@ -1821,6 +1821,31 @@ class AppLocalizationsEn extends AppLocalizations {
       'What can I help you with today? @ reference files, / invoke skills';
 
   @override
+  String get composeCommandNative => 'Native';
+
+  @override
+  String get composeCommandPlugin => 'Plugin';
+
+  @override
+  String get composeCommandExperimental => 'Experimental';
+
+  @override
+  String get composeNativeCommandGoal =>
+      'Keep a durable objective for long-running work.';
+
+  @override
+  String get composeNativeCommandCompact =>
+      'Compact the active conversation context.';
+
+  @override
+  String get composeNativeCommandPlan =>
+      'Switch the session into a planning workflow.';
+
+  @override
+  String get composeNativeCommandHelp =>
+      'Show commands available in this CLI session.';
+
+  @override
   String get workspaceChatLandingBackToStart => 'Back to start';
 
   @override
@@ -2957,6 +2982,19 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get simpleModeDefaultFullAccessDescription =>
       'When enabled (default), new Simple-mode compose landing starts with full access permissions. Workspace chip choices still override and persist per workspace.';
+
+  @override
+  String get continueSwitchRestartTitle => 'Restart to apply switch?';
+
+  @override
+  String get continueSwitchRestartBody =>
+      'The new provider/model is saved. A running session still uses the old config, so the switch only takes effect after a restart.';
+
+  @override
+  String get continueSwitchRestartNow => 'Restart now';
+
+  @override
+  String get continueSwitchRestartLater => 'Later';
 
   @override
   String get scopeSessionsToSelectedTeamTitle =>
@@ -7722,13 +7760,6 @@ class AppLocalizationsEn extends AppLocalizations {
       'Preconfigured for the balance API; add an API key credential.';
 
   @override
-  String get managedProvidersQuickPresetOpenCode => 'OpenCode';
-
-  @override
-  String get managedProvidersQuickPresetOpenCodeHint =>
-      'No universal balance endpoint is assumed; add the endpoint for your provider.';
-
-  @override
   String get managedProvidersBasicsSectionTitle => 'Basics';
 
   @override
@@ -8028,4 +8059,17 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get managedProvidersError => 'Error';
+
+  @override
+  String managedProvidersRemainingPercent(String percent) {
+    return '$percent% remaining';
+  }
+
+  @override
+  String managedProvidersResetsIn(String duration) {
+    return 'Resets in $duration';
+  }
+
+  @override
+  String get managedProvidersResetsSoon => 'Resets soon';
 }

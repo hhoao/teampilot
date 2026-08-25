@@ -5,6 +5,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/models/cli_preset.dart';
 import 'package:teampilot/models/landing_launch_context.dart';
 import 'package:teampilot/models/session_continue_overrides.dart';
+import 'package:teampilot/models/simple_launch_identity.dart';
 import 'package:teampilot/models/team_config.dart';
 import 'package:teampilot/models/workspace.dart';
 import 'package:teampilot/models/workspace_folder.dart';
@@ -323,6 +324,53 @@ void main() {
       expect(next.provider, 'openai-official');
       expect(next.model, 'o3');
       expect(next.effort, 'medium');
+    });
+  });
+
+  group('enrichSimpleLaunchIdentityFromPreset', () {
+    const presets = [
+      CliPreset(
+        id: 'cursor-composer',
+        name: 'Composer 2.5',
+        cli: CliTool.cursor,
+        provider: 'cursor-account',
+        model: 'composer-2.5',
+        createdAt: 1,
+        updatedAt: 2,
+      ),
+    ];
+
+    test('expands presetId-only identity into model and provider', () {
+      const identity = SimpleLaunchIdentity(
+        cli: CliTool.cursor,
+        presetId: 'cursor-composer',
+      );
+
+      final enriched = enrichSimpleLaunchIdentityFromPreset(
+        identity: identity,
+        presets: presets,
+      );
+
+      expect(enriched.model, 'composer-2.5');
+      expect(enriched.provider, 'cursor-account');
+      expect(enriched.presetId, 'cursor-composer');
+    });
+
+    test('keeps session-pinned provider and model when already set', () {
+      const identity = SimpleLaunchIdentity(
+        cli: CliTool.cursor,
+        presetId: 'cursor-composer',
+        provider: 'custom-provider',
+        model: 'gpt-5.2',
+      );
+
+      final enriched = enrichSimpleLaunchIdentityFromPreset(
+        identity: identity,
+        presets: presets,
+      );
+
+      expect(enriched.model, 'gpt-5.2');
+      expect(enriched.provider, 'custom-provider');
     });
   });
 }

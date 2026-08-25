@@ -217,18 +217,7 @@ final List<ManagedProviderPreset> builtInManagedProviderPresets =
         ),
         schema: _deepSeekEditorSchema,
       ),
-      ManagedProviderPreset(
-        id: 'opencode',
-        labelId: 'opencode',
-        hintId: 'opencode',
-        template: ManagedProvider(
-          id: '',
-          name: 'OpenCode',
-          kind: ManagedProviderKind.customHttp,
-          adapterId: 'http-json',
-        ),
-      ),
-    ]);
+      ]);
 
 ManagedProviderPreset? managedProviderPresetById(String id) {
   for (final preset in builtInManagedProviderPresets) {

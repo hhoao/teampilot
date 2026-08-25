@@ -79,7 +79,7 @@ class SessionMemberConnectScheduler {
       '[session-launch] scheduleMemberConnect '
       'session=${tab.info.id} member=${member.id} team=${team.id}',
     );
-    tab.selectedMemberId = member.id;
+    _host.assignSelectedMember(tab, member.id);
     final session = tab.persistedSession ?? _sessionForMemberConnect(tab, team);
     final shell = memberShellForConnect(
       tab: tab,

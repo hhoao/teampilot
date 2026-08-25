@@ -154,15 +154,13 @@ abstract final class CrossMachineCredentialBridge {
 
     const layout = OpencodeDataLayout();
     final providerId = provider.id.trim();
-    final workProviderDir = work.joinWork(
+    final providerDir = work.fs.pathContext.join(
       work.basePath,
       'providers',
       CliTool.opencode.value,
       providerId,
     );
-    final dest = work.normalizeWork(
-      layout.providerAuthJsonPath(workProviderDir),
-    );
+    final dest = layout.providerAuthJsonPath(providerDir);
     return await OpencodeCredentialMaterializer.writeAuthArtifact(
       fs: work.fs,
       basePath: work.basePath,

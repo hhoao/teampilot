@@ -160,7 +160,7 @@ void main() {
     }
 
     test(
-      'route deep-link open-existing passes connectImmediately: false',
+      'stale workbench route session does not reopen an existing session',
       () async {
         await boot(forwardOpen: false);
         addTearDown(shutdown);
@@ -168,7 +168,9 @@ void main() {
         final workspace = await repo.createWorkspace([
           WorkspaceFolder(path: '/tmp'),
         ]);
-        final session = (await repo.createSession(workspace.workspaceId)).session;
+        final session = (await repo.createSession(
+          workspace.workspaceId,
+        )).session;
         await chatCubit.loadWorkspaceData(repo);
 
         final l10n = lookupAppLocalizations(const Locale('en'));
@@ -185,13 +187,12 @@ void main() {
         );
         await drainPendingAsyncWork();
 
-        expect(handled, isTrue);
-        expect(chatCubit.openRequests, hasLength(1));
-        expect(chatCubit.openRequests.single.connectImmediately, isFalse);
+        expect(handled, isFalse);
+        expect(chatCubit.openRequests, isEmpty);
       },
     );
 
-    test('route deep-link respects connectImmediately: true', () async {
+    test('stale workbench route session ignores terminal preference', () async {
       await boot(forwardOpen: false);
       addTearDown(shutdown);
 
@@ -215,8 +216,7 @@ void main() {
       );
       await drainPendingAsyncWork();
 
-      expect(chatCubit.openRequests, hasLength(1));
-      expect(chatCubit.openRequests.single.connectImmediately, isTrue);
+      expect(chatCubit.openRequests, isEmpty);
     });
 
     test(
@@ -228,7 +228,9 @@ void main() {
         final workspace = await repo.createWorkspace([
           WorkspaceFolder(path: '/tmp'),
         ]);
-        final session = (await repo.createSession(workspace.workspaceId)).session;
+        final session = (await repo.createSession(
+          workspace.workspaceId,
+        )).session;
         await chatCubit.loadWorkspaceData(repo);
 
         await chatCubit.requestOpenSession(

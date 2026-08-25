@@ -9,7 +9,6 @@ void main() {
       'codex',
       'claude-code',
       'deepseek',
-      'opencode',
     ]);
 
     final codex = managedProviderPresetById('codex')!;
@@ -41,16 +40,6 @@ void main() {
     expect(endpoint.credentialField, 'apiKey');
     expect(endpoint.credentialPlacement, 'header');
     expect(endpoint.credentialPrefix, 'Bearer ');
-    expect(preset.template.credentialRef, isNull);
-  });
-
-  test('OpenCode preset does not invent a balance endpoint', () {
-    final preset = managedProviderPresetById('opencode')!;
-
-    expect(preset.template.name, 'OpenCode');
-    expect(preset.template.kind, ManagedProviderKind.customHttp);
-    expect(preset.template.adapterId, 'http-json');
-    expect(preset.template.endpointConfig.url, isEmpty);
     expect(preset.template.credentialRef, isNull);
   });
 

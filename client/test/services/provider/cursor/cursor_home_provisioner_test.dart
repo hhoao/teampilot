@@ -415,6 +415,34 @@ void main() {
       },
     );
 
+    test('provision stamps composer-2.5 picker id into cli-config', () async {
+      const memberHome = '/data/tp/sessions/sess/cursor/home';
+
+      await provisioner.provision(
+        memberHome: memberHome,
+        providerId: null,
+        member: const TeamMemberConfig(
+          id: 'solo',
+          name: 'solo',
+          model: 'composer-2.5',
+        ),
+        busIdle: null,
+        forceTeamLeadDelegateMode: false,
+        mixed: false,
+        promptAlreadyMaterialized: true,
+      );
+
+      final cliConfig =
+          jsonDecode((await fs.readString(layout.cliConfig(memberHome)))!)
+              as Map<String, Object?>;
+      expect((cliConfig['model'] as Map)['modelId'], 'composer-2.5');
+      expect(
+        (cliConfig['selectedModel'] as Map)['modelId'],
+        'composer-2.5',
+      );
+      expect(cliConfig['hasChangedDefaultModel'], isTrue);
+    });
+
     test('provision symlinks plugins/cache from the warm home', () async {
       const memberHome = '/data/tp/members/planner/cursor/home';
       const realHome = '/home/user';

@@ -35,7 +35,7 @@ class _RecordingChatCubit extends ChatCubit {
   }
 
   @override
-  void selectMember(String memberId) {
+  void selectMember(String memberId, {String? tabScopeId}) {
     selectedMembers.add(memberId);
     super.selectMember(memberId);
   }

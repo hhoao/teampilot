@@ -1732,6 +1732,27 @@ class AppLocalizationsZh extends AppLocalizations {
   String get workspaceChatLandingInputHint => '今天帮你做些什么？ @ 引用对话文件，/ 调用技能与指令';
 
   @override
+  String get composeCommandNative => '原生命令';
+
+  @override
+  String get composeCommandPlugin => '插件';
+
+  @override
+  String get composeCommandExperimental => '实验性';
+
+  @override
+  String get composeNativeCommandGoal => '为长时间运行的工作保留持久目标。';
+
+  @override
+  String get composeNativeCommandCompact => '压缩当前对话上下文。';
+
+  @override
+  String get composeNativeCommandPlan => '将会话切换到规划工作流。';
+
+  @override
+  String get composeNativeCommandHelp => '显示此 CLI 会话中可用的命令。';
+
+  @override
   String get workspaceChatLandingBackToStart => '返回启动页';
 
   @override
@@ -2819,6 +2840,19 @@ class AppLocalizationsZh extends AppLocalizations {
   @override
   String get simpleModeDefaultFullAccessDescription =>
       '开启（默认）时，简单模式落地页默认使用完全访问权限。工作区里权限芯片的选择仍会覆盖并按工作区持久化。';
+
+  @override
+  String get continueSwitchRestartTitle => '重启以应用切换？';
+
+  @override
+  String get continueSwitchRestartBody =>
+      '新的供应商/模型已保存。正在运行的会话仍在使用旧配置，重启后切换才会生效。';
+
+  @override
+  String get continueSwitchRestartNow => '立即重启';
+
+  @override
+  String get continueSwitchRestartLater => '稍后';
 
   @override
   String get scopeSessionsToSelectedTeamTitle => '按所选团队筛选会话';
@@ -7413,13 +7447,6 @@ class AppLocalizationsZh extends AppLocalizations {
       '已配置余额 API；请补充 API Key 凭据。';
 
   @override
-  String get managedProvidersQuickPresetOpenCode => 'OpenCode';
-
-  @override
-  String get managedProvidersQuickPresetOpenCodeHint =>
-      '不假设通用余额接口；请补充你所用 Provider 的 endpoint。';
-
-  @override
   String get managedProvidersBasicsSectionTitle => '基本信息';
 
   @override
@@ -7690,4 +7717,17 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get managedProvidersError => '错误';
+
+  @override
+  String managedProvidersRemainingPercent(String percent) {
+    return '$percent剩余 %';
+  }
+
+  @override
+  String managedProvidersResetsIn(String duration) {
+    return '$duration后重置';
+  }
+
+  @override
+  String get managedProvidersResetsSoon => '即将重置';
 }

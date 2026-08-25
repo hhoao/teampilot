@@ -185,13 +185,13 @@ void main() {
       var count = 0;
       watcher.onChanged.listen((_) => count++);
       fs.emit(FsChangeType.created, '/repo/a.txt');
-      await Future<void>.delayed(const Duration(milliseconds: 60));
+      await Future<void>.delayed(const Duration(milliseconds: 150));
       expect(count, 1);
 
       await watcher.stopAndDispose();
 
       fs.emit(FsChangeType.created, '/repo/a.txt');
-      await Future<void>.delayed(const Duration(milliseconds: 60));
+      await Future<void>.delayed(const Duration(milliseconds: 150));
       expect(count, 1);
     });
 

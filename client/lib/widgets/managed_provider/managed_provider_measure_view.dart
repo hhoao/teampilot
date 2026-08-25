@@ -54,7 +54,7 @@ class ManagedProviderMeasureView extends StatelessWidget {
     if (status == null) return l10n.managedProvidersNoUsage;
     return switch (status) {
       ProviderUsageStatus.ready => l10n.managedProvidersCachedUsage,
-      ProviderUsageStatus.stale => l10n.managedProvidersCachedUsageStale,
+      ProviderUsageStatus.stale => l10n.managedProvidersCachedUsage,
       ProviderUsageStatus.error => l10n.managedProvidersLastQueryFailed,
       ProviderUsageStatus.loading => l10n.managedProvidersLoadingUsage,
       ProviderUsageStatus.unsupported => l10n.managedProvidersQueryUnsupported,
@@ -85,12 +85,6 @@ class ManagedProviderMeasureView extends StatelessWidget {
                 ),
               ),
             ),
-            if (status == ProviderUsageStatus.stale)
-              TpStatusBadge(
-                label: l10n.managedProvidersStale,
-                icon: Icons.schedule_outlined,
-                tone: TpStatusBadgeTone.warning,
-              ),
             if (status == ProviderUsageStatus.error)
               TpStatusBadge(
                 label: l10n.managedProvidersError,

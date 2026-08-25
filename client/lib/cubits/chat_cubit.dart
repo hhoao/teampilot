@@ -332,6 +332,12 @@ class ChatCubit extends Cubit<ChatState>
         reclaimIdleAfterSeconds: () =>
             _reclaimIdleTerminalAfterSeconds?.call() ?? 180,
         onReclaimMember: _launchService.discardMemberTerminal,
+        isSessionPinned: (sessionId) {
+          for (final s in state.sessions) {
+            if (s.sessionId == sessionId) return s.pinned;
+          }
+          return false;
+        },
       );
   late final MemberTurnInterruptService _turnInterrupt =
       MemberTurnInterruptService(
@@ -1843,26 +1849,34 @@ class ChatCubit extends Cubit<ChatState>
   void syncTeam(TeamProfile team) {
     final tab = _activeTab;
     if (team.members.isEmpty) {
-      if (tab != null && tab.selectedMemberId.isNotEmpty) {
-        tab.selectedMemberId = '';
-        _bumpMemberSelection();
-      }
+      if (tab != null) assignSelectedMember(tab, '');
       return;
     }
     if (team.members.any((m) => m.id == tab?.selectedMemberId)) return;
-    final next = _tabStore.defaultMemberId(team);
-    if (tab != null && tab.selectedMemberId != next) {
-      tab.selectedMemberId = next;
-      _bumpMemberSelection();
-    }
+    if (tab != null) assignSelectedMember(tab, _tabStore.defaultMemberId(team));
+  }
+
+  void _syncActiveWorkspaceScope(String tabScopeId) {
+    if (_tabStore.activeWorkspaceId == tabScopeId) return;
+    _tabStore.setActiveWorkspaceId(tabScopeId);
+    _pushPresenceTarget();
   }
 
   @override
-  void selectMember(String memberId) {
-    final tab = _activeTab;
-    if (tab == null || tab.selectedMemberId == memberId) return;
+  void assignSelectedMember(ChatTab tab, String memberId) {
+    if (tab.selectedMemberId == memberId) return;
     tab.selectedMemberId = memberId;
     _bumpMemberSelection();
+  }
+
+  @override
+  void selectMember(String memberId, {String? tabScopeId}) {
+    if (tabScopeId != null && tabScopeId.isNotEmpty) {
+      _syncActiveWorkspaceScope(tabScopeId);
+    }
+    final tab = _activeTab;
+    if (tab == null) return;
+    assignSelectedMember(tab, memberId);
     if (tab.workbenchView == SessionWorkbenchView.terminal) {
       unawaited(ensureMemberTerminalForView(tab.info.id, memberId));
     }
@@ -1889,6 +1903,10 @@ class ChatCubit extends Cubit<ChatState>
     final shell = tab?.memberShells[memberId];
     return shell?.isRunning ?? false;
   }
+
+  /// Whether any terminal of the session's open tab is up (spawning/running).
+  bool isSessionRunning(String sessionId) =>
+      _tabStore.openTabBySessionId(sessionId)?.isRunning ?? false;
 
   Future<void> launchAllMembers(
     TeamProfile team, {
@@ -2052,6 +2070,7 @@ class ChatCubit extends Cubit<ChatState>
         patched: patched,
       );
       replaceSessionSnapshot(patched);
+      _syncTabPersistedSession(patched);
       return true;
     } on Object {
       return false;
@@ -2087,6 +2106,7 @@ class ChatCubit extends Cubit<ChatState>
       memberId: memberId,
     );
     replaceSessionSnapshot(patched);
+    _syncTabPersistedSession(patched);
     return true;
   }
 
@@ -2118,7 +2138,21 @@ class ChatCubit extends Cubit<ChatState>
       patched: patched,
     );
     replaceSessionSnapshot(patched);
+    _syncTabPersistedSession(patched);
     return true;
+  }
+
+  /// Keeps [ChatTab.persistedSession] (used by restart / member reconnect)
+  /// in sync with continue-chrome edits without dropping launch-time fields
+  /// (native resume ids, launchState) that only exist on the tab cache.
+  void _syncTabPersistedSession(AppSession patched) {
+    final tab = _tabStore.openTabBySessionId(patched.sessionId);
+    final cached = tab?.persistedSession;
+    if (tab == null || cached == null) return;
+    tab.persistedSession = SessionContinueOverridesController.mergeOntoTabCache(
+      cached: cached,
+      patched: patched,
+    );
   }
 
   /// Persists a manual session arrangement. [orderedSessionIds] is the new

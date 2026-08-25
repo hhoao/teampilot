@@ -777,6 +777,13 @@
   "sessionReadySubtitleGeneric": "在此工作区中开始新对话",
   "sessionReadyHint": "用日常语言描述你想做的事即可，无需输入命令。",
   "workspaceChatLandingInputHint": "今天帮你做些什么？ @ 引用对话文件，/ 调用技能与指令",
+  "composeCommandNative": "原生命令",
+  "composeCommandPlugin": "插件",
+  "composeCommandExperimental": "实验性",
+  "composeNativeCommandGoal": "为长时间运行的工作保留持久目标。",
+  "composeNativeCommandCompact": "压缩当前对话上下文。",
+  "composeNativeCommandPlan": "将会话切换到规划工作流。",
+  "composeNativeCommandHelp": "显示此 CLI 会话中可用的命令。",
   "workspaceChatLandingBackToStart": "返回启动页",
   "workspaceChatLandingSelectWorkspace": "选择工作空间 >",
   "workspaceChatLandingSelectProject": "选择项目 >",
@@ -1223,6 +1230,10 @@
   "chatSubmitSwitchesToTerminalDescription": "关闭（默认）时，在聊天页发送（新建或继续）后仍留在聊天视图，终端在后台运行。开启后，发送后切换到终端。",
   "simpleModeDefaultFullAccessTitle": "简单模式默认：完全访问",
   "simpleModeDefaultFullAccessDescription": "开启（默认）时，简单模式落地页默认使用完全访问权限。工作区里权限芯片的选择仍会覆盖并按工作区持久化。",
+  "continueSwitchRestartTitle": "重启以应用切换？",
+  "continueSwitchRestartBody": "新的供应商/模型已保存。正在运行的会话仍在使用旧配置，重启后切换才会生效。",
+  "continueSwitchRestartNow": "立即重启",
+  "continueSwitchRestartLater": "稍后",
   "scopeSessionsToSelectedTeamTitle": "按所选团队筛选会话",
   "scopeSessionsToSelectedTeamDescription": "开启后，侧边栏仅显示归属当前团队的会话。新建会话仍会写入当前所选团队，之后开启本选项即可看到它们。",
   "notifyOnSessionIdleTitle": "Agent 空闲系统通知",
@@ -3051,8 +3062,6 @@
   "managedProvidersQuickPresetClaudeCodeHint": "在下方登录或导入凭据。用量查询走官方 Claude OAuth 配额接口。",
   "managedProvidersQuickPresetDeepSeek": "DeepSeek",
   "managedProvidersQuickPresetDeepSeekHint": "已配置余额 API；请补充 API Key 凭据。",
-  "managedProvidersQuickPresetOpenCode": "OpenCode",
-  "managedProvidersQuickPresetOpenCodeHint": "不假设通用余额接口；请补充你所用 Provider 的 endpoint。",
   "managedProvidersBasicsSectionTitle": "基本信息",
   "managedProvidersBasicsSectionSubtitle": "先填写身份信息和必要密钥。",
   "managedProvidersBasicsSummary": "选择预设、命名 Provider，并在需要时填写必要密钥。",
@@ -3141,5 +3150,22 @@
   "managedProvidersQueryUnsupported": "不支持查询",
   "managedProvidersUnknownUsage": "未知用量状态",
   "managedProvidersStale": "已过期",
-  "managedProvidersError": "错误"
+  "managedProvidersError": "错误",
+  "managedProvidersRemainingPercent": "{percent}剩余 %",
+  "@managedProvidersRemainingPercent": {
+    "placeholders": {
+      "percent": {
+        "type": "String"
+      }
+    }
+  },
+  "managedProvidersResetsIn": "{duration}后重置",
+  "@managedProvidersResetsIn": {
+    "placeholders": {
+      "duration": {
+        "type": "String"
+      }
+    }
+  },
+  "managedProvidersResetsSoon": "即将重置"
 }

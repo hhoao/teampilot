@@ -363,28 +363,18 @@ wire_api = "chat"
     );
 
     expect(result.added, 2);
-    await repository.loadProviders(
+    final opencode = await repository.loadProviders(
       CliTool.opencode,
       importCredentialsFromGlobal: true,
     );
-    final opencode = await repository.loadProviders(CliTool.opencode);
     expect(opencode.map((p) => p.id), containsAll(['openai', 'anthropic']));
     final openai = opencode.singleWhere((p) => p.id == 'openai');
     expect(openai.defaultModel, 'gpt-4o');
-    expect(
-      await File(
-        p.join(
-          appData,
-          'providers',
-          'opencode',
-          'openai',
-          'xdg-data',
-          'opencode',
-          'auth.json',
-        ),
-      ).exists(),
-      isTrue,
-    );
+    expect(openai.apiKey, 'sk-openai');
+    expect(openai.hasCredentialsReady, isTrue);
+    final anthropic = opencode.singleWhere((p) => p.id == 'anthropic');
+    expect(anthropic.apiKey, 'sk-anthropic');
+    expect(anthropic.hasCredentialsReady, isTrue);
   });
 }
 

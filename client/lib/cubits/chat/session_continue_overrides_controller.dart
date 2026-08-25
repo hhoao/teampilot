@@ -9,6 +9,24 @@ import '../../repositories/session_repository.dart';
 class SessionContinueOverridesController {
   const SessionContinueOverridesController();
 
+  /// Merges a continue-chrome patch onto the tab's cached session without
+  /// dropping launch-time fields (native resume ids, launchState) that only
+  /// exist on the cache. Restart / member-reconnect read the cache, so keep
+  /// the switched provider/model/effort/preset and overrides in sync there.
+  static AppSession mergeOntoTabCache({
+    required AppSession cached,
+    required AppSession patched,
+  }) {
+    return cached.copyWith(
+      display: patched.display,
+      presetId: patched.presetId,
+      provider: patched.provider,
+      model: patched.model,
+      effort: patched.effort,
+      continueOverrides: patched.continueOverrides,
+    );
+  }
+
   AppSession? sessionIn(List<AppSession> sessions, String sessionId) {
     for (final session in sessions) {
       if (session.sessionId == sessionId) return session;

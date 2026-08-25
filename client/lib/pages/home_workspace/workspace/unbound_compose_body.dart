@@ -40,6 +40,7 @@ import '../../../services/expert_hub/expert_hub_recent_store.dart';
 import '../../../services/expert_hub/expert_landing_preflight.dart';
 import '../../../services/expert_hub/expert_member_resolver.dart';
 import '../../../services/cli/registry/cli_tool_registry_scope.dart';
+import '../../../services/cli/registry/capabilities/native_command_capability.dart';
 import '../../../services/cli/registry/capabilities/skill_capability.dart';
 import '../../../services/cli/preset_resolver.dart';
 import '../../../utils/team/team_member_naming.dart';
@@ -514,15 +515,12 @@ class _UnboundComposeBodyState extends State<UnboundComposeBody> {
     );
   }
 
-  /// Skill invocation syntax for the CLI that will receive the composed
-  /// prompt: the selected preset's CLI (simple) or the team lead's CLI (team).
-  /// Null when no CLI is determinable — the slash menu falls back to `/`.
-  SkillCapability? _skillSyntaxForDraft(
-    BuildContext context, {
+  /// CLI that will receive the composed prompt: the selected preset's CLI
+  /// (simple) or the team lead's CLI (team).
+  CliTool? _cliForDraft({
     required List<CliPreset> presets,
     required TeamProfile? selectedTeam,
   }) {
-    final registry = CliToolRegistryScope.of(context);
     CliTool? cli;
     if (_conversationMode == _LandingConversationMode.simple) {
       final preset = presets
@@ -541,8 +539,7 @@ class _UnboundComposeBodyState extends State<UnboundComposeBody> {
               globalPresets: presets,
             );
     }
-    if (cli == null) return null;
-    return registry.capability<SkillCapability>(cli);
+    return cli;
   }
 
   Future<void> _loadDraft() async {
@@ -1398,11 +1395,15 @@ class _UnboundComposeBodyState extends State<UnboundComposeBody> {
     final selectedTeam = _conversationMode == _LandingConversationMode.team
         ? _selectedTeamProfile(teams)
         : null;
-    final skillSyntax = _skillSyntaxForDraft(
-      context,
-      presets: presets,
-      selectedTeam: selectedTeam,
-    );
+    final cli = _cliForDraft(presets: presets, selectedTeam: selectedTeam);
+    final registry = CliToolRegistryScope.of(context);
+    final skillSyntax = cli == null
+        ? null
+        : registry.capability<SkillCapability>(cli);
+    final nativeCommands = cli == null
+        ? const <NativeCommand>[]
+        : registry.capability<NativeCommandCapability>(cli)?.commands ??
+              const <NativeCommand>[];
     final launchWarningBlock = _resolveLaunchWarningBlock(selectedTeam);
     final remoteCliReadiness = context.read<ChatCubit>().remoteCliReadiness;
     final remoteCliMissing = launchWarningBlock is RemoteCliMissingLaunchBlock
@@ -1495,6 +1496,7 @@ class _UnboundComposeBodyState extends State<UnboundComposeBody> {
       plugins: plugins,
       slashBundle: slashBundle,
       skillSyntax: skillSyntax,
+      nativeCommands: nativeCommands,
       onOpenAtFile: (path) {
         unawaited(
           context.read<WorkbenchEditorOpener>().openFile(
@@ -1511,7 +1513,7 @@ class _UnboundComposeBodyState extends State<UnboundComposeBody> {
           ? landingLaunchBlockMessage(
               l10n,
               launchWarningBlock,
-              registry: CliToolRegistryScope.of(context),
+              registry: registry,
             )
           : null,
     );

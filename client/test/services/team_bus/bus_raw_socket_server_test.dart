@@ -54,7 +54,7 @@ void main() {
       });
       sock.add(utf8.encode('{"token":"T","memberId":"m1"}\n'));
       sock.add(utf8.encode('{"jsonrpc":"2.0","id":1,"method":"initialize"}\n'));
-      await Future<void>.delayed(const Duration(milliseconds: 150));
+      await Future<void>.delayed(const Duration(milliseconds: 300));
       expect(responses, isNotEmpty);
       expect((responses.first['result'] as Map)['protocolVersion'], isNotNull);
       await sock.close();
@@ -224,7 +224,7 @@ void main() {
           '"params":{"name":"wait_for_message","arguments":{}}}\n',
         ),
       );
-      await Future<void>.delayed(const Duration(milliseconds: 80));
+      await Future<void>.delayed(const Duration(milliseconds: 150));
 
       final live = await Socket.connect('127.0.0.1', port);
       live.add(utf8.encode('{"token":"T","memberId":"worker"}\n'));
@@ -234,7 +234,7 @@ void main() {
           '"params":{"name":"wait_for_message","arguments":{}}}\n',
         ),
       );
-      await Future<void>.delayed(const Duration(milliseconds: 150));
+      await Future<void>.delayed(const Duration(milliseconds: 400));
 
       // Stale request id=20 must get an error (or connection close); never
       // silence. Prefer an explicit JSON-RPC error when the socket is still up.

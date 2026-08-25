@@ -70,7 +70,7 @@ class _RecordingChatCubit extends ChatCubit {
   }
 
   @override
-  void selectMember(String memberId) {
+  void selectMember(String memberId, {String? tabScopeId}) {
     eventOrder.add('selectMember:$memberId');
     activeSessionAtSelectMember.add(activeTab?.info.id);
     selectedMembers.add(memberId);

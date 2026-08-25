@@ -138,6 +138,87 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
+  testWidgets('quota meter sits below title row and aligns with brand icon', (
+    tester,
+  ) async {
+    final fs = InMemoryFilesystem();
+    final usage = ManagedProviderUsageRepository(
+      fs: fs,
+      cachePath: '/tp/usage-cache.json',
+      now: () => 100,
+    );
+    final providers = ManagedProviderRepository(
+      fs: fs,
+      configPath: '/tp/providers.json',
+      onProvidersDeleted: usage.deleteMany,
+    );
+    final coordinator = ManagedProviderUsageCoordinator(
+      providerRepository: providers,
+      usageRepository: usage,
+      registry: ManagedProviderUsageRegistry([_Adapter()]),
+      credentials: _NoCredentials(),
+      http: _NoHttp(),
+    );
+    final providerCubit = ManagedProviderCubit(repository: providers)
+      ..emit(
+        ManagedProviderState(
+          status: ManagedProviderLoadStatus.ready,
+          providers: [_codexProvider()],
+        ),
+      );
+    final usageCubit = ManagedProviderUsageCubit(coordinator: coordinator)
+      ..emit(
+        ManagedProviderUsageState(
+          status: ManagedProviderUsageLoadStatus.ready,
+          snapshots: {
+            'p1': ProviderUsageSnapshot(
+              providerId: 'p1',
+              status: ProviderUsageStatus.ready,
+              measures: [
+                ProviderUsageMeasure(
+                  label: '5h',
+                  kind: ProviderUsageMeasureKind.quota,
+                  total: '100',
+                  used: '10',
+                  remaining: '90',
+                  unit: '%',
+                  resetsAt: 1_800_000_000_000,
+                ),
+              ],
+            ),
+          },
+        ),
+      );
+    addTearDown(providerCubit.close);
+    addTearDown(usageCubit.close);
+
+    await tester.pumpWidget(
+      MaterialApp(
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
+        home: MultiBlocProvider(
+          providers: [
+            BlocProvider.value(value: providerCubit),
+            BlocProvider.value(value: usageCubit),
+          ],
+          child: const Scaffold(body: ManagedProviderUsagePanel()),
+        ),
+      ),
+    );
+    await tester.pump();
+
+    final icon = tester.getRect(find.byKey(const Key('managed-provider-brand-p1')));
+    final name = tester.getRect(find.text('Codex').first);
+    final meter = tester.getRect(
+      find.byKey(const Key('managed-provider-quota-meter')),
+    );
+
+    expect((icon.center.dy - name.center.dy).abs(), lessThanOrEqualTo(1.5));
+    expect(meter.top, greaterThan(name.bottom));
+    expect(meter.left, closeTo(icon.left, 1));
+    expect(tester.takeException(), isNull);
+  });
+
   testWidgets('panel omits disabled providers from the list', (
     tester,
   ) async {

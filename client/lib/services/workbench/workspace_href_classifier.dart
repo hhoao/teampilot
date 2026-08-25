@@ -19,6 +19,8 @@ final class WorkspaceHrefIgnored extends WorkspaceHrefKind {
 class WorkspaceHrefClassifier {
   const WorkspaceHrefClassifier();
 
+  static final RegExp _lineSuffixPattern = RegExp(r':\d+(?::\d+)?$');
+
   WorkspaceHrefKind classify(String href) {
     final raw = href.trim();
     if (raw.isEmpty) return const WorkspaceHrefIgnored();
@@ -45,7 +47,7 @@ class WorkspaceHrefClassifier {
       if (afterColon > 0 && afterColon < raw.length) {
         final next = raw[afterColon];
         if (next == '/' || next == r'\') {
-          final path = raw.split('#').first.trim();
+          final path = _localPathWithoutLocation(raw);
           if (path.isEmpty) return const WorkspaceHrefIgnored();
           return WorkspaceHrefLocalPath(path);
         }
@@ -53,8 +55,11 @@ class WorkspaceHrefClassifier {
     }
     if (scheme.isNotEmpty) return const WorkspaceHrefIgnored();
 
-    final path = raw.split('#').first.trim();
+    final path = _localPathWithoutLocation(raw);
     if (path.isEmpty) return const WorkspaceHrefIgnored();
     return WorkspaceHrefLocalPath(path);
   }
+
+  String _localPathWithoutLocation(String raw) =>
+      raw.split('#').first.replaceFirst(_lineSuffixPattern, '').trim();
 }

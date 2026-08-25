@@ -15,8 +15,10 @@ final class ListTeammatesTool extends TeammateBusTool {
   String get description =>
       'List team members and team config as JSON: member_id, display_name, '
       'agent_id, agent_type, model, provider, cli, task_id, machine / '
-      'machine_kind / machine_id, cwd, responsibilities, plus live bus state '
-      '(unread, phase, pty_running). Use member_id in send_message(to=...).';
+      'machine_kind / machine_id, cwd, responsibilities, plus live '
+      'status (idle | busy) and unread mail count. '
+      'status=idle means assignable — send_message still works for cold-start '
+      'members (no PTY yet). Use member_id in send_message(to=...).';
 
   @override
   Map<String, Object?> get inputSchema => McpSchema.object();

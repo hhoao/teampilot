@@ -29,34 +29,40 @@ import 'workspace_shell_models.dart';
 
 /// Sidebar + right-tools visibility toggles for the workspace IDE shell.
 class WorkspaceShellPaneVisibilityToggles extends StatelessWidget {
-  const WorkspaceShellPaneVisibilityToggles({super.key});
+  const WorkspaceShellPaneVisibilityToggles({
+    required this.workspaceId,
+    super.key,
+  });
+
+  final String workspaceId;
 
   @override
   Widget build(BuildContext context) {
-    return const Row(
+    return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
-        WorkspaceShellSidebarVisibilityToggle(),
-        SizedBox(width: 2),
-        WorkspaceShellRightToolsVisibilityToggle(),
+        const WorkspaceShellSidebarVisibilityToggle(),
+        const SizedBox(width: 2),
+        WorkspaceShellRightToolsVisibilityToggle(workspaceId: workspaceId),
       ],
     );
   }
 }
 
 class WorkspaceShellRightToolsVisibilityToggle extends StatelessWidget {
-  const WorkspaceShellRightToolsVisibilityToggle({super.key});
+  const WorkspaceShellRightToolsVisibilityToggle({
+    required this.workspaceId,
+    super.key,
+  });
+
+  final String workspaceId;
 
   @override
   Widget build(BuildContext context) {
     final l10n = context.l10n;
     final cs = Theme.of(context).colorScheme;
-    // Chrome is for the active workspace: land-state comes from its bar.
-    final activeWorkspaceId = context.select<ChatCubit, String>(
-      (c) => c.tabStore.activeWorkspaceId,
-    );
     final composeLanding = context.select<WorkbenchCubit, bool>(
-      (w) => w.state.bar(activeWorkspaceId).center.landingActive,
+      (w) => w.state.bar(workspaceId).center.landingActive,
     );
     return BlocBuilder<LayoutCubit, LayoutState>(
       buildWhen: (a, b) =>

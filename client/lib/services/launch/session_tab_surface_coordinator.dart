@@ -87,7 +87,7 @@ class SessionTabSurfaceCoordinator {
         ? existing.selectedMemberId
         : (request.member?.id ?? existing.selectedMemberId);
     if (memberId.isNotEmpty) {
-      existing.selectedMemberId = memberId;
+      _host.assignSelectedMember(existing, memberId);
     }
     final connectAlreadyScheduled =
         _host.isSessionConnecting(session.sessionId);

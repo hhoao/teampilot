@@ -830,6 +830,13 @@
   "sessionReadySubtitleGeneric": "Start a conversation in this workspace.",
   "sessionReadyHint": "Describe what you want in everyday language — no terminal commands needed.",
   "workspaceChatLandingInputHint": "What can I help you with today? @ reference files, / invoke skills",
+  "composeCommandNative": "Native",
+  "composeCommandPlugin": "Plugin",
+  "composeCommandExperimental": "Experimental",
+  "composeNativeCommandGoal": "Keep a durable objective for long-running work.",
+  "composeNativeCommandCompact": "Compact the active conversation context.",
+  "composeNativeCommandPlan": "Switch the session into a planning workflow.",
+  "composeNativeCommandHelp": "Show commands available in this CLI session.",
   "workspaceChatLandingBackToStart": "Back to start",
   "workspaceChatLandingSelectWorkspace": "Select workspace >",
   "workspaceChatLandingSelectProject": "Select project >",
@@ -1321,6 +1328,10 @@
   "chatSubmitSwitchesToTerminalDescription": "When off (default), sending from Chat (new conversation or continue) stays on the Chat view while the terminal runs in the background. When on, switch to the Terminal after send.",
   "simpleModeDefaultFullAccessTitle": "Simple mode default: full access",
   "simpleModeDefaultFullAccessDescription": "When enabled (default), new Simple-mode compose landing starts with full access permissions. Workspace chip choices still override and persist per workspace.",
+  "continueSwitchRestartTitle": "Restart to apply switch?",
+  "continueSwitchRestartBody": "The new provider/model is saved. A running session still uses the old config, so the switch only takes effect after a restart.",
+  "continueSwitchRestartNow": "Restart now",
+  "continueSwitchRestartLater": "Later",
   "scopeSessionsToSelectedTeamTitle": "Scope sessions to selected team",
   "scopeSessionsToSelectedTeamDescription": "When enabled, the sidebar shows only sessions assigned to the current team. New sessions are always tagged with the selected team so they appear here if you turn this on later.",
   "notifyOnSessionIdleTitle": "Agent idle system notification",
@@ -3517,8 +3528,6 @@
   "managedProvidersQuickPresetClaudeCodeHint": "Sign in or import credentials below. Usage uses the official Claude OAuth quota API.",
   "managedProvidersQuickPresetDeepSeek": "DeepSeek",
   "managedProvidersQuickPresetDeepSeekHint": "Preconfigured for the balance API; add an API key credential.",
-  "managedProvidersQuickPresetOpenCode": "OpenCode",
-  "managedProvidersQuickPresetOpenCodeHint": "No universal balance endpoint is assumed; add the endpoint for your provider.",
   "managedProvidersBasicsSectionTitle": "Basics",
   "managedProvidersBasicsSectionSubtitle": "Start with identity and any required secret.",
   "managedProvidersBasicsSummary": "Choose a preset, name the provider, and add the required secret when this provider needs one.",
@@ -3607,5 +3616,22 @@
   "managedProvidersQueryUnsupported": "Query unsupported",
   "managedProvidersUnknownUsage": "Unknown usage status",
   "managedProvidersStale": "Stale",
-  "managedProvidersError": "Error"
+  "managedProvidersError": "Error",
+  "managedProvidersRemainingPercent": "{percent}% remaining",
+  "@managedProvidersRemainingPercent": {
+    "placeholders": {
+      "percent": {
+        "type": "String"
+      }
+    }
+  },
+  "managedProvidersResetsIn": "Resets in {duration}",
+  "@managedProvidersResetsIn": {
+    "placeholders": {
+      "duration": {
+        "type": "String"
+      }
+    }
+  },
+  "managedProvidersResetsSoon": "Resets soon"
 }

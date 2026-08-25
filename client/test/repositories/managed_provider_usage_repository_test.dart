@@ -113,7 +113,7 @@ void main() {
       expect(snapshots.single.providerId, 'valid');
     });
 
-    test('expired cache is returned as stale instead of discarded', () async {
+    test('expired cache is returned with preserved data instead of discarded', () async {
       final repo = ManagedProviderUsageRepository(
         fs: fs,
         cachePath: path,
@@ -123,7 +123,7 @@ void main() {
 
       final result = await repo.load();
 
-      expect(result.single.status, ProviderUsageStatus.stale);
+      expect(result.single.status, ProviderUsageStatus.ready);
       expect(result.single.fetchedAt, 100);
       expect(result.single.staleAt, 200);
       expect(result.single.measures.single.remaining, '12.50');

@@ -321,9 +321,13 @@ final class AiHistoryLoader {
     return out;
   }
 
-  /// 截断的 part 内容签名:状态 + 错误标志 + 结果(长度分量 + 头 64 字符)。
-  /// 结果不整串拼接,签名构建 O(1),避免大 tool result 每 tick 全量
-  /// 字符串化;长度分量捕获流式追加/截断,头分量捕获同长替换。
+  /// 截断的 part 内容签名:状态 + 错误标志 + 结果(长度分量 + 头 64 字符)
+  /// + 子 agent id。结果不整串拼接,签名构建 O(1),避免大 tool result 每
+  /// tick 全量字符串化;长度分量捕获流式追加/截断,头分量捕获同长替换。
+  ///
+  /// 子 agent id 分量覆盖 Codex 等「先出现 spawn 工具、后经 SubAgentActivity
+  /// 绑定 thread id」的路径:仅结果签名不变时也必须触发重新 inflate,否则
+  /// 会一直复用 degrade 附件。
   ///
   /// 状态按 [finalizeAiMessagesForHistory] 语义归一:未配对调用(结果为空)
   /// 在全量 parse 后被归一为 incomplete,而增量 tail 直接 append 时仍保持
@@ -342,7 +346,8 @@ final class AiHistoryLoader {
                     (status == AiToolCallStatus.complete && !part.isError)))
             ? AiToolCallStatus.incomplete
             : status;
-    return '${normalizedStatus.name}|${part.isError}|$head';
+    final agentId = subagentAgentIdFromPart(part) ?? '';
+    return '${normalizedStatus.name}|${part.isError}|$head|$agentId';
   }
 
   AiToolCallCategoryResolver _categoryResolverFor(CliTool cli) =>

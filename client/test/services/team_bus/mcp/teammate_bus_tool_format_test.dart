@@ -7,6 +7,7 @@ import 'package:teampilot/services/team_bus/persistence/bus_message_page.dart';
 import 'package:teampilot/services/team_bus/tasks/task_queue.dart';
 import 'package:teampilot/services/team_bus/tasks/team_task.dart';
 import 'package:teampilot/services/team_bus/team_bus.dart';
+import 'package:teampilot/services/team_bus/team_message.dart';
 import 'package:teampilot/services/team_bus/teammate_roster_profile.dart';
 
 import '../support/fake_member_launcher.dart';
@@ -105,6 +106,47 @@ void main() {
     expect(member.containsKey('machine'), isFalse);
     expect(member.containsKey('machine_kind'), isFalse);
     expect(member.containsKey('machine_id'), isFalse);
+  });
+
+  test('encodeRoster member maps activity to idle/busy status', () {
+    final bus = TeamBus(launcher: FakeMemberLauncher());
+    bus
+      ..declareMember(
+        AgentNode.test(
+          memberId: 'lead',
+          lifecycle: MemberLifecycle.running,
+          activity: MemberActivity.active,
+        ),
+      )
+      ..declareMember(AgentNode.test(memberId: 'dev'))
+      ..declareMember(
+        AgentNode.test(
+          memberId: 'worker',
+          lifecycle: MemberLifecycle.running,
+          activity: MemberActivity.turnDoneBusWait,
+        ),
+      );
+    bus
+        .memberById('dev')!
+        .inbox
+        .deliver(
+          TeamMessage(id: '1', from: 'lead', to: 'dev', content: 'hi'),
+        );
+
+    final json =
+        jsonDecode(TeammateBusToolFormat.encodeRoster(bus, 'lead'))
+            as Map<String, Object?>;
+    final byId = {
+      for (final m in json['members'] as List)
+        (m as Map)['member_id'] as String: m,
+    };
+    expect(byId['lead']!['status'], 'busy');
+    expect(byId['dev']!['status'], 'idle');
+    expect(byId['dev']!['unread'], 1);
+    expect(byId['worker']!['status'], 'idle');
+    expect(byId['lead']!.containsKey('bus'), isFalse);
+    expect(byId['lead']!.containsKey('pty_running'), isFalse);
+    expect(byId['lead']!.containsKey('claude_is_active'), isFalse);
   });
 
   test('unknownRecipientHint is JSON object', () {
