@@ -253,4 +253,37 @@ void main() {
 
     await gateway.unregister('idle-sess');
   });
+
+  test('POST /idle without X-Member clears known waiting seats', () async {
+    final bus = TeamBus(launcher: FakeMemberLauncher());
+    gateway.register(
+      sessionId: 'idle-no-member',
+      handler: TeammateBusMcpHandler(bus: bus),
+    );
+    gateway.registerAgentStatusSession(sessionId: 'idle-no-member');
+
+    final wait = await postAgentStatus(
+      sessionId: 'idle-no-member',
+      member: 'm1',
+      body: {
+        'hook_event_name': 'PermissionRequest',
+        'tool_name': 'Bash',
+      },
+    );
+    await wait.drain<void>();
+    expect(cubit.state.sessionHasWaiting('idle-no-member'), isTrue);
+
+    final idleClient = HttpClient();
+    addTearDown(() => idleClient.close(force: true));
+    final idleUri = Uri.parse('http://127.0.0.1:${gateway.httpPort}/idle');
+    final idleReq = await idleClient.postUrl(idleUri);
+    idleReq.headers.set('connection', 'close');
+    idleReq.headers.set('x-session', 'idle-no-member');
+    final idleResp = await idleReq.close();
+    expect(idleResp.statusCode, HttpStatus.ok);
+    await idleResp.drain<void>();
+
+    expect(cubit.state.sessionHasWaiting('idle-no-member'), isFalse);
+    await gateway.unregister('idle-no-member');
+  });
 }

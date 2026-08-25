@@ -5,9 +5,7 @@ import 'dart:typed_data';
 
 import '../../models/team_config.dart';
 import '../../cubits/agent_attention_cubit.dart';
-import '../agent_status/ask_user_question.dart';
 import '../agent_status/ask_user_question_hook_gate.dart';
-import '../agent_status/exit_plan_mode.dart';
 import '../agent_status/exit_plan_mode_hook_gate.dart';
 import '../cli/registry/capabilities/chat_interaction_capability.dart';
 import '../cli/registry/capabilities/runtime_event_capability.dart';
@@ -30,14 +28,16 @@ final class AgentEventGateway {
     required this.journal,
     required this.stream,
     required this.resolveCli,
-    this.askUserHookGate,
-    this.exitPlanModeHookGate,
     Iterable<RuntimeEventProjection> projections = const [],
+    Iterable<RuntimeEventHookResponderProjection> responders = const [],
     CliToolRegistry? registry,
     DateTime Function()? clock,
   }) : registry = registry ?? CliToolRegistry.builtIn(),
        _clock = clock ?? DateTime.now,
-       _projections = List<RuntimeEventProjection>.unmodifiable(projections);
+       _projections = List<RuntimeEventProjection>.unmodifiable(projections),
+       _responders = List<RuntimeEventHookResponderProjection>.unmodifiable(
+         responders,
+       );
 
   /// Lightweight in-memory composition for focused endpoint tests.
   factory AgentEventGateway.forAttention({
@@ -51,12 +51,22 @@ final class AgentEventGateway {
     DateTime Function()? clock,
   }) {
     final effectiveRegistry = registry ?? CliToolRegistry.builtIn();
+    final questionProjection = askUserHookGate == null
+        ? null
+        : AskUserQuestionRuntimeEventProjection(
+            hookGate: askUserHookGate,
+            registry: effectiveRegistry,
+          );
+    final planProjection = exitPlanModeHookGate == null
+        ? null
+        : ExitPlanModeRuntimeEventProjection(
+            hookGate: exitPlanModeHookGate,
+            registry: effectiveRegistry,
+          );
     return AgentEventGateway(
       journal: MemoryRuntimeEventJournal(),
       stream: SeatEventStream(),
       resolveCli: resolveCli,
-      askUserHookGate: askUserHookGate,
-      exitPlanModeHookGate: exitPlanModeHookGate,
       registry: effectiveRegistry,
       clock: clock,
       projections: [
@@ -65,6 +75,12 @@ final class AgentEventGateway {
           resolveSkipPermissions: resolveSkipPermissions,
           registry: effectiveRegistry,
         ),
+        if (questionProjection != null) questionProjection,
+        if (planProjection != null) planProjection,
+      ],
+      responders: [
+        if (questionProjection != null) questionProjection,
+        if (planProjection != null) planProjection,
       ],
     );
   }
@@ -72,14 +88,14 @@ final class AgentEventGateway {
   final RuntimeEventJournal journal;
   final SeatEventStream stream;
   final CliTool? Function(String sessionId, String memberId) resolveCli;
-  final AskUserQuestionHookGate? askUserHookGate;
-  final ExitPlanModeHookGate? exitPlanModeHookGate;
   final CliToolRegistry registry;
   final DateTime Function() _clock;
   final List<RuntimeEventProjection> _projections;
+  final List<RuntimeEventHookResponderProjection> _responders;
   final Map<RuntimeSeatKey, Set<String>> _nativeEventIds = {};
   final Set<RuntimeSeatKey> _loadedNativeEventIds = {};
   final Map<RuntimeSeatKey, Future<void>> _seatTails = {};
+  final Map<String, Set<RuntimeSeatKey>> _knownSeatsBySession = {};
   final Map<RuntimeEventProjection, Set<RuntimeSeatKey>> _attachedSeats = {};
   final List<StreamSubscription<RuntimeEventEnvelope>> _subscriptions = [];
 
@@ -140,8 +156,45 @@ final class AgentEventGateway {
       _nativeEventIds[seat]!.add(nativeEventId);
     }
     _attachProjections(event.seat);
+    _rememberSeat(event.seat);
     stream.publish(event);
     return event;
+  }
+
+  /// Publishes a durable idle/reset event for one seat, or every known seat in
+  /// a session when an established Windows keep-alive request omits X-Member.
+  Future<void> publishIdle({
+    required String sessionId,
+    String? memberId,
+  }) async {
+    final trimmedMemberId = memberId?.trim() ?? '';
+    final seats = trimmedMemberId.isNotEmpty
+        ? <RuntimeSeatKey>{
+            RuntimeSeatKey(sessionId: sessionId, memberId: trimmedMemberId),
+          }
+        : Set<RuntimeSeatKey>.of(_knownSeatsBySession[sessionId] ?? const {});
+    for (final seat in seats) {
+      await _serialized(seat, () async {
+        final cli = resolveCli(seat.sessionId, seat.memberId);
+        if (cli == null) return;
+        final event = await journal.append(
+          RuntimeEventEnvelopeDraft.seatIdle(
+            seat: seat,
+            cli: cli,
+            occurredAt: _clock(),
+          ),
+        );
+        _attachProjections(seat);
+        _rememberSeat(seat);
+        stream.publish(event);
+      });
+    }
+  }
+
+  void _rememberSeat(RuntimeSeatKey seat) {
+    _knownSeatsBySession
+        .putIfAbsent(seat.sessionId, () => <RuntimeSeatKey>{})
+        .add(seat);
   }
 
   Future<void> _loadNativeEventIds(RuntimeSeatKey seat) async {
@@ -217,46 +270,12 @@ final class AgentEventGateway {
   Future<Map<String, Object?>?> _heldHookResponse(
     RuntimeEventEnvelope event,
   ) async {
-    final raw = event.raw;
-    if (raw == null) return null;
-    final status = registry
-        .capability<ChatInteractionCapability>(event.cli)
-        ?.normalize(raw);
-    if (status == null || status.hookEventName?.trim() != 'PreToolUse') {
-      return null;
+    for (final responder in _responders) {
+      final pendingResponse = responder.responseFor(event);
+      if (pendingResponse == null) continue;
+      return await pendingResponse;
     }
-
-    final toolUseId = status.toolUseId?.trim() ?? '';
-    if (toolUseId.isEmpty) return null;
-    if (isAskUserQuestionTool(status.toolName)) {
-      final gate = askUserHookGate;
-      final questions = status.askUserQuestions;
-      if (gate == null || questions == null || questions.isEmpty) return null;
-      final reply = await gate.wait(
-        sessionId: event.seat.sessionId,
-        memberId: event.seat.memberId,
-        toolUseId: toolUseId,
-      );
-      return reply?.toHookResponse();
-    }
-
-    if (!isExitPlanModeTool(status.toolName)) return null;
-    final gate = exitPlanModeHookGate;
-    final hasPlan =
-        (status.planText?.trim() ?? '').isNotEmpty ||
-        (status.planFilePath?.trim() ?? '').isNotEmpty;
-    final supportsApproval =
-        registry
-            .capability<ChatInteractionCapability>(event.cli)
-            ?.supportsInChatApproval ??
-        false;
-    if (gate == null || !hasPlan || !supportsApproval) return null;
-    final reply = await gate.wait(
-      sessionId: event.seat.sessionId,
-      memberId: event.seat.memberId,
-      toolUseId: toolUseId,
-    );
-    return reply?.toHookResponse();
+    return null;
   }
 
   Map<String, Object?> _withHookEventName(

@@ -5,7 +5,6 @@ import 'dart:math';
 import 'package:meta/meta.dart';
 
 import '../../agent_runtime/agent_event_gateway.dart';
-import '../../agent_runtime/runtime_event.dart';
 import '../../agent_status/ask_user_answer_pending_store.dart';
 import '../../catalog/catalog_mcp_constants.dart';
 import '../../catalog/catalog_mcp_handler.dart';
@@ -410,10 +409,10 @@ class TeammateBusMcpGateway {
     required String memberId,
   }) async {
     final gateway = _agentEventGateway;
-    if (gateway == null || memberId.isEmpty) return;
-    await gateway.handleJson(
-      RuntimeSeatKey(sessionId: sessionId, memberId: memberId),
-      const {'hook_event_name': 'Stop'},
+    if (gateway == null) return;
+    await gateway.publishIdle(
+      sessionId: sessionId,
+      memberId: memberId.isEmpty ? null : memberId,
     );
   }
 }

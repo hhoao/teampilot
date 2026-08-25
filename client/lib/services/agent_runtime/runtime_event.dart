@@ -1,6 +1,6 @@
 import '../../models/team_config.dart';
 
-enum RuntimeEventKind { promptSubmitted, statusReported }
+enum RuntimeEventKind { promptSubmitted, statusReported, seatIdle }
 
 enum RuntimeCorrelationStrength { exact, serializedPromptEpoch }
 
@@ -65,6 +65,17 @@ final class RuntimeEventEnvelopeDraft {
     occurredAt: occurredAt,
     raw: raw,
     nativeEventId: nativeEventId,
+  );
+
+  factory RuntimeEventEnvelopeDraft.seatIdle({
+    required RuntimeSeatKey seat,
+    required CliTool cli,
+    required DateTime occurredAt,
+  }) => RuntimeEventEnvelopeDraft._(
+    seat: seat,
+    cli: cli,
+    kind: RuntimeEventKind.seatIdle,
+    occurredAt: occurredAt,
   );
 
   final RuntimeSeatKey seat;

@@ -1557,6 +1557,12 @@ Future<AppShell> buildAppShell({
   // the runtime delivery coordinator.
   final promptSubmitAckTracker = PromptSubmitAckTracker();
   final agentRuntimeStream = SeatEventStream();
+  final askUserQuestionProjection = AskUserQuestionRuntimeEventProjection(
+    hookGate: askUserQuestionHookGate,
+  );
+  final exitPlanModeProjection = ExitPlanModeRuntimeEventProjection(
+    hookGate: exitPlanModeHookGate,
+  );
   final agentEventGateway = AgentEventGateway(
     journal: FileRuntimeEventJournal(
       journalRoot: AppStorage.fs.pathContext.join(
@@ -1567,14 +1573,15 @@ Future<AppShell> buildAppShell({
     ),
     stream: agentRuntimeStream,
     resolveCli: agentStatusSeatLookup.resolveCli,
-    askUserHookGate: askUserQuestionHookGate,
-    exitPlanModeHookGate: exitPlanModeHookGate,
     projections: [
       RuntimeEventProjection.attention(
         attention: agentAttentionCubit,
         resolveSkipPermissions: agentStatusSeatLookup.resolveSkipPermissions,
       ),
+      askUserQuestionProjection,
+      exitPlanModeProjection,
     ],
+    responders: [askUserQuestionProjection, exitPlanModeProjection],
   );
   teammateBusMcpGateway.attachAgentEventGateway(agentEventGateway);
 
