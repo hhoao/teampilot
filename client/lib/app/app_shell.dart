@@ -15,6 +15,7 @@ import '../cubits/remote_download_catalog_cubit.dart';
 import '../cubits/automation_cubit.dart';
 import '../cubits/agent_attention_cubit.dart';
 import '../cubits/chat_cubit.dart';
+import '../cubits/session_groups_cubit.dart';
 import '../services/agent_status/agent_status_http_handler.dart';
 import '../services/agent_status/agent_status_seat_lookup.dart';
 import '../services/agent_status/ask_user_answer_pending_store.dart';
@@ -242,6 +243,7 @@ import '../services/workspace/workspace_run_registry.dart';
 import '../services/run/workspace_run_platform_factory.dart';
 import '../services/search/workspace_search_indexes.dart';
 import '../services/workspace/workspace_worktree_registry.dart';
+import '../services/workspace/workspace_session_groups_registry.dart';
 import '../services/terminal/workspace_shell_connector.dart';
 import '../services/terminal/workspace_terminal_registry.dart';
 import '../services/terminal/workspace_terminal_connect_coordinator.dart';
@@ -421,6 +423,7 @@ class AppShell {
     required this.workspaceFileTreeStore,
     required this.workspaceSearchIndexes,
     required this.workspaceWorktreeRegistry,
+    required this.workspaceSessionGroupsRegistry,
     required this.workspaceToolsScopeRegistry,
     required this.workspaceRunRegistry,
     required this.sshClientFactory,
@@ -515,6 +518,7 @@ class AppShell {
   final WorkspaceFileTreeStore workspaceFileTreeStore;
   final WorkspaceSearchIndexes workspaceSearchIndexes;
   final WorkspaceWorktreeRegistry workspaceWorktreeRegistry;
+  final WorkspaceSessionGroupsRegistry workspaceSessionGroupsRegistry;
   final WorkspaceToolsScopeRegistry workspaceToolsScopeRegistry;
   final WorkspaceRunRegistry workspaceRunRegistry;
   final SshClientFactory sshClientFactory;
@@ -1467,6 +1471,13 @@ Future<AppShell> buildAppShell({
   final workspaceFileTreeStore = WorkspaceFileTreeStore();
   final workspaceSearchIndexes = WorkspaceSearchIndexes();
   final workspaceWorktreeRegistry = WorkspaceWorktreeRegistry();
+  final workspaceSessionGroupsRegistry = WorkspaceSessionGroupsRegistry(
+    cubitFactory: () => SessionGroupsCubit(
+      knownSessionIds: () => {
+        for (final s in chatCubit.state.sessions) s.sessionId,
+      },
+    ),
+  );
   final workspaceToolsScopeRegistry = WorkspaceToolsScopeRegistry();
   final workspaceRunRegistry = WorkspaceRunRegistry(
     platformFactory: WorkspaceRunPlatformFactory(
@@ -2265,6 +2276,7 @@ Future<AppShell> buildAppShell({
     workspaceFileTreeStore: workspaceFileTreeStore,
     workspaceSearchIndexes: workspaceSearchIndexes,
     workspaceWorktreeRegistry: workspaceWorktreeRegistry,
+    workspaceSessionGroupsRegistry: workspaceSessionGroupsRegistry,
     workspaceToolsScopeRegistry: workspaceToolsScopeRegistry,
     workspaceRunRegistry: workspaceRunRegistry,
     sshClientFactory: sshClientFactory,

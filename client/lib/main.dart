@@ -74,6 +74,7 @@ import 'services/git/git_repo_store.dart';
 import 'services/workspace/workspace_tools_scope_registry.dart';
 import 'services/workspace/workspace_run_registry.dart';
 import 'services/workspace/workspace_worktree_registry.dart';
+import 'services/workspace/workspace_session_groups_registry.dart';
 import 'services/terminal/workspace_shell_connector.dart';
 import 'services/terminal/workspace_terminal_registry.dart';
 import 'services/terminal/workspace_terminal_run_service.dart';
@@ -664,6 +665,9 @@ void main() async {
                 ),
                 RepositoryProvider<WorkspaceWorktreeRegistry>.value(
                   value: shell.workspaceWorktreeRegistry,
+                ),
+                RepositoryProvider<WorkspaceSessionGroupsRegistry>.value(
+                  value: shell.workspaceSessionGroupsRegistry,
                 ),
                 RepositoryProvider<WorkspaceToolsScopeRegistry>.value(
                   value: shell.workspaceToolsScopeRegistry,

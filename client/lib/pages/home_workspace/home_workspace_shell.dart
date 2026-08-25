@@ -34,6 +34,7 @@ import '../../services/workspace/workspace_run_registry.dart';
 import '../../services/workspace/workspace_tools_scope_registry.dart';
 import '../../services/workspace/workspace_pane_policy.dart';
 import '../../services/workspace/workspace_worktree_registry.dart';
+import '../../services/workspace/workspace_session_groups_registry.dart';
 import '../../theme/workspace_surface_layers.dart';
 import '../../utils/workspace/workspace_display_name.dart';
 import 'package:shared_ui/shared_ui.dart';
@@ -396,6 +397,9 @@ class _HomeShellState extends State<HomeShell> {
 
     context.read<WorkspaceFileTreeStore>().removeWorkspace(tab.workspaceId);
     context.read<WorkspaceWorktreeRegistry>().removeWorkspace(tab.workspaceId);
+    context
+        .read<WorkspaceSessionGroupsRegistry>()
+        .removeWorkspace(tab.workspaceId);
 
     if (running == 0) {
       chat.closeTabsForWorkspace(tab.tabKey);

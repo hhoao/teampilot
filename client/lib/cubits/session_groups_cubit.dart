@@ -67,7 +67,7 @@ class SessionGroupsCubit extends Cubit<SessionGroupsState> {
   Future<void> load(String workspaceId) async {
     final id = workspaceId.trim();
     final generation = ++_generation;
-    emit(const SessionGroupsState(status: SessionGroupsStatus.loading));
+    emit(SessionGroupsState(status: SessionGroupsStatus.loading, workspaceId: id));
     final file = await _repository.load(id);
     if (generation != _generation || isClosed) return;
     emit(
