@@ -107,9 +107,12 @@ void main() {
           connectImmediately: false,
         ),
       );
-      await drainPendingAsyncWork();
-
-      expect(cubit.hasTeamBusResources(session.sessionId), isTrue);
+      // Bus install runs unawaited after staging and involves real loopback
+      // binds; poll instead of a fixed drain so loaded CI cannot assert early.
+      await waitUntil(
+        () => cubit.hasTeamBusResources(session.sessionId),
+        pump: drainPendingAsyncWork,
+      );
       final endpoint = cubit.teammateBusMcpEndpointForSession(
         session.sessionId,
       );
@@ -157,7 +160,15 @@ void main() {
           connectImmediately: false,
         ),
       );
-      await drainPendingAsyncWork();
+      // Both bus installs are unawaited staging side effects; wait for the
+      // gateway to register both sessions before asserting port sharing.
+      await waitUntil(
+        () =>
+            cubit.teammateBusMcpEndpointForSession(sessionA.sessionId) !=
+            null &&
+            cubit.teammateBusMcpEndpointForSession(sessionB.sessionId) != null,
+        pump: drainPendingAsyncWork,
+      );
 
       final epA = cubit.teammateBusMcpEndpointForSession(sessionA.sessionId);
       final epB = cubit.teammateBusMcpEndpointForSession(sessionB.sessionId);
@@ -187,14 +198,21 @@ void main() {
           connectImmediately: false,
         ),
       );
-      await drainPendingAsyncWork();
+      await waitUntil(
+        () => cubit.teammateBusMcpEndpointForSession(session.sessionId) != null,
+        pump: drainPendingAsyncWork,
+      );
       final endpoint = cubit.teammateBusMcpEndpointForSession(
         session.sessionId,
       )!;
       expect(cubit.tabStore.openTabs.length, 1);
 
       cubit.closeSessionTab(session.sessionId);
-      await drainPendingAsyncWork();
+      // closeSessionTab tears the bus down unawaited; poll for the release.
+      await waitUntil(
+        () => !cubit.hasTeamBusResources(session.sessionId),
+        pump: drainPendingAsyncWork,
+      );
 
       expect(cubit.hasTeamBusResources(session.sessionId), isFalse);
       expect(cubit.teammateBusMcpEndpointForSession(session.sessionId), isNull);
