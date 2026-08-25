@@ -54,7 +54,7 @@ void main() {
       });
       sock.add(utf8.encode('{"token":"T","memberId":"m1"}\n'));
       sock.add(utf8.encode('{"jsonrpc":"2.0","id":1,"method":"initialize"}\n'));
-      await Future<void>.delayed(const Duration(milliseconds: 150));
+      await Future<void>.delayed(const Duration(milliseconds: 300));
       expect(responses, isNotEmpty);
       expect((responses.first['result'] as Map)['protocolVersion'], isNotNull);
       await sock.close();

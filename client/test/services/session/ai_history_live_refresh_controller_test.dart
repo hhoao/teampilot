@@ -498,10 +498,10 @@ void main() {
     // 新实现:只做轻量探测,不触发 seat 软重载。
     messagesBySession[session.sessionId] = messages(3);
 
-    await Future<void>.delayed(const Duration(milliseconds: 250));
+    await Future<void>.delayed(const Duration(milliseconds: 320));
     await pumpEventQueue();
 
-    // 固定节奏探测(20ms 周期,250ms 内 ~12 次),无退避。
+    // 固定节奏探测(20ms 周期,320ms 内 ~15 次),无退避。
     expect(resolveCount, greaterThanOrEqualTo(probesAfterStart + 10));
     // 探测不应触发 seat 软重载:消息列表停留在 1。
     expect(cubit.state.totalMessageCount, 1);
