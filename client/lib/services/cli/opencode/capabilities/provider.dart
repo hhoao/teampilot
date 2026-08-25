@@ -23,7 +23,6 @@ import '../../../team_bus/mcp/teammate_bus_mcp_config.dart';
 import '../../registry/capabilities/hook_capability.dart';
 import '../../registry/capabilities/provider_capability.dart';
 import '../../registry/capabilities/prompt_capability.dart';
-import '../../registry/capabilities/runtime_event_capability.dart';
 import '../../registry/cli_tool_registry.dart';
 import '../../registry/config_profile/config_profile_context.dart';
 import '../../registry/config_profile/hook_seat_context_completer.dart';
@@ -461,9 +460,8 @@ final class OpencodeProviderCapability extends CatalogModelCapability
       }
     }
 
-    // Plugin-only runtime events still enter the same assembly boundary as
-    // user/resource hooks. The runtime capability supplies the native plugin
-    // artifact; this target materializer only writes that returned artifact.
+    // Runtime events are represented as HookEntry values and rendered through
+    // the same assembler and HookCapability writer as user/resource hooks.
     final agentStatus = ctx.agentStatus;
     final runtimeEventProvider =
         agentStatus != null && member != null && member.isValid
@@ -472,30 +470,22 @@ final class OpencodeProviderCapability extends CatalogModelCapability
             memberId: member.id,
           )
         : null;
-    final runtimePlugin = runtimeEventProvider?.nativePluginContribution(
-      HookProviderContext(cli: CliTool.opencode, supportsHttp: false),
-    );
-    if (runtimePlugin != null) {
-      await _materializeRuntimeEventPlugin(
-        paths: paths,
-        opencodeDir: opencodeDir,
-        plugin: runtimePlugin,
-      );
-      config = mergeOpencodeRuntimeEventPlugin(config, runtimePlugin);
-      changed = true;
-    }
 
-    if (!ctx.hooksAlreadyMaterialized) {
+    if (!ctx.hooksAlreadyMaterialized || runtimeEventProvider != null) {
       // User hooks bridge: generated JS plugin (event hook + tool-keyed hooks),
       // plus glue scripts under `<opencodeDir>/hooks/` (paths referenced by the
       // plugin's execFile commands). Plugin entry merges into the `plugin`
       // array, coexisting with agent-status / idle entries (dedup by path).
       final assembledHookEntries = await assembleHookEntries(
-        entries: ctx.hooks,
+        entries: ctx.hooksAlreadyMaterialized ? const [] : ctx.hooks,
         member: member,
-        hookLibraryProvider: ctx.hookLibraryProvider,
+        hookLibraryProvider: ctx.hooksAlreadyMaterialized
+            ? null
+            : ctx.hookLibraryProvider,
         runtimeEventProvider: runtimeEventProvider,
-        resourceHookProviders: ctx.resourceProviders.hooks,
+        resourceHookProviders: ctx.hooksAlreadyMaterialized
+            ? const []
+            : ctx.resourceProviders.hooks,
       );
       if (assembledHookEntries.isNotEmpty) {
         final writer = const OpencodeHookWriter();
@@ -519,6 +509,7 @@ final class OpencodeProviderCapability extends CatalogModelCapability
                 hooksDir: hooksDir,
                 runner: paths.hostEnvironmentForProvision().scriptRunner,
                 glueBuilder: const GlueScriptBuilder(),
+                generatedScriptDirectory: opencodeDir,
               ),
             );
         final fragment =
@@ -526,9 +517,7 @@ final class OpencodeProviderCapability extends CatalogModelCapability
         if (fragment != null) {
           config = mergeOpencodePluginEntries(
             config,
-            ((fragment['plugin'] as List?) ?? const []).map(
-              (e) => e is String ? e : e.toString(),
-            ),
+            ((fragment['plugin'] as List?) ?? const []),
           );
           changed = true;
         }
@@ -613,19 +602,6 @@ final class OpencodeProviderCapability extends CatalogModelCapability
     await paths.fs.atomicWrite(pluginPath, opencodeAwarenessPluginSource);
   }
 
-  Future<void> _materializeRuntimeEventPlugin({
-    required ConfigProfileDelegate paths,
-    required String opencodeDir,
-    required RuntimeEventNativePluginContribution plugin,
-  }) async {
-    final pluginPath = paths.joinWork(opencodeDir, plugin.fileName);
-    final existing = await paths.fs.readString(pluginPath);
-    if (existing == plugin.source) {
-      return;
-    }
-    await paths.fs.atomicWrite(pluginPath, plugin.source);
-  }
-
   static String _resolveOpencodeEffort({
     required TeamProfile? team,
     required TeamMemberConfig? member,
@@ -649,30 +625,6 @@ final class OpencodeProviderCapability extends CatalogModelCapability
       ),
     );
   }
-}
-
-/// Merges a capability-owned native runtime plugin into OpenCode config.
-///
-/// The leading plugin path plus member identify the seat-scoped entry, so a
-/// reconnect replaces a stale endpoint instead of accumulating dead entries.
-Map<String, Object?> mergeOpencodeRuntimeEventPlugin(
-  Map<String, Object?> config,
-  RuntimeEventNativePluginContribution contribution,
-) {
-  final memberId = contribution.pluginOptions['member'];
-  final entry = <Object?>[contribution.pluginPath, contribution.pluginOptions];
-  final plugins = List<Object?>.from((config['plugin'] as List?) ?? const [])
-    ..removeWhere(
-      (e) =>
-          e is List &&
-          e.isNotEmpty &&
-          e[0] == contribution.pluginPath &&
-          e.length > 1 &&
-          e[1] is Map &&
-          (e[1] as Map)['member'] == memberId,
-    );
-  plugins.add(entry);
-  return {...config, 'plugin': plugins};
 }
 
 /// Parses bus idle URL (e.g. `http://127.0.0.1:12345/idle`) to the listening port.
@@ -719,26 +671,61 @@ Map<String, Object?> mergeOpencodeIdlePlugin(
   return {...config, 'plugin': plugins};
 }
 
-/// Merges materialized opencode plugin entry paths (`./plugins/<name>/<rel>`)
-/// into the `plugin` array. String entries are appended when absent; tuple
-/// entries (`[path, options]`, e.g. the idle/agent-status plugins) are
-/// preserved and matched by their leading path.
+/// Merges materialized OpenCode plugin entries into the `plugin` array.
+///
+/// String paths are appended once. Tuple entries (`[path, options]`) replace
+/// the existing tuple for the same path and member, so a reconnect updates its
+/// endpoint without accumulating stale seat-scoped runtime plugins.
 Map<String, Object?> mergeOpencodePluginEntries(
   Map<String, Object?> config,
-  Iterable<String> entryPaths,
+  Iterable<Object?> entries,
 ) {
-  if (entryPaths.isEmpty) return config;
+  if (entries.isEmpty) return config;
   final plugins = List<Object?>.from((config['plugin'] as List?) ?? const []);
-  final present = <Object?>{
-    for (final e in plugins)
-      if (e is String) e else if (e is List && e.isNotEmpty) e.first,
-  };
   var changed = false;
-  for (final path in entryPaths) {
-    if (present.contains(path)) continue;
-    plugins.add(path);
-    present.add(path);
-    changed = true;
+  for (final entry in entries) {
+    final String? path;
+    if (entry is String) {
+      path = entry;
+    } else if (entry is List && entry.isNotEmpty) {
+      path = entry.first?.toString();
+    } else {
+      path = null;
+    }
+    if (path == null || path.isEmpty) continue;
+    final memberId = entry is List && entry.length > 1 && entry[1] is Map
+        ? (entry[1] as Map)['member']
+        : null;
+    final matchingIndexes = <int>[
+      for (var index = 0; index < plugins.length; index++)
+        if (switch (plugins[index]) {
+          String existing => existing == path,
+          List existing when existing.isNotEmpty =>
+            existing.first == path &&
+                (memberId == null ||
+                    (existing.length > 1 &&
+                        existing[1] is Map &&
+                        (existing[1] as Map)['member'] == memberId)),
+          _ => false,
+        })
+          index,
+    ];
+    if (matchingIndexes.isEmpty) {
+      plugins.add(entry);
+      changed = true;
+      continue;
+    }
+    if (entry is List && memberId != null) {
+      final existingIndex = matchingIndexes.first;
+      if (plugins[existingIndex] != entry) {
+        plugins[existingIndex] = entry;
+        changed = true;
+      }
+      for (final index in matchingIndexes.skip(1).toList().reversed) {
+        plugins.removeAt(index);
+        changed = true;
+      }
+    }
   }
   if (!changed) return config;
   return {...config, 'plugin': plugins};

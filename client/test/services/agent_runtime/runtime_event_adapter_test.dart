@@ -5,7 +5,11 @@ import 'package:teampilot/models/team_config.dart';
 import 'package:teampilot/services/agent_runtime/runtime_event.dart';
 import 'package:teampilot/services/agent_status/member_agent_status_endpoint.dart';
 import 'package:teampilot/services/cli/registry/capabilities/runtime_event_capability.dart';
+import 'package:teampilot/services/cli/registry/capabilities/hook_capability.dart';
 import 'package:teampilot/services/cli/registry/cli_tool_registry.dart';
+import 'package:teampilot/services/cli/registry/config_profile/hook_seat_context_completer.dart';
+import 'package:teampilot/services/cli/opencode/capabilities/opencode_hook_writer.dart';
+import 'package:teampilot/services/hook/glue_script_builder.dart';
 import 'package:teampilot/services/resource/providers/hook_contribution_provider.dart';
 import 'package:teampilot/services/resource/providers/runtime_event_hook_contribution_provider.dart';
 
@@ -104,19 +108,44 @@ void main() {
   });
 
   test(
-    'OpenCode exposes its runtime plugin through the contribution provider',
-    () {
-      final contribution = RuntimeEventHookContributionProvider(
+    'OpenCode runtime plugin flows through hook assembly and writer',
+    () async {
+      final provider = RuntimeEventHookContributionProvider(
         endpoint: const MemberAgentStatusEndpoint(
           url: 'http://127.0.0.1:4321/agent-status',
           sessionId: 'session-1',
         ),
         memberId: 'member-1',
-      ).nativePluginContribution(HookProviderContext(cli: CliTool.opencode));
+      );
+      final assembly = await const HookSeatContextCompleter().assemble(
+        cli: CliTool.opencode,
+        supportsHttp: false,
+        providers: [provider],
+      );
 
-      expect(contribution, isNotNull);
-      expect(contribution!.fileName, 'teampilot-agent-status.js');
-      expect(contribution.pluginPath, './teampilot-agent-status.js');
+      final action = assembly.entries.single.action as NativePluginHookAction;
+      expect(action.fileName, 'teampilot-agent-status.js');
+      expect(action.pluginPath, './teampilot-agent-status.js');
+      expect(action.pluginOptions, {
+        'member': 'member-1',
+        'url': 'http://127.0.0.1:4321/agent-status',
+        'session': 'session-1',
+      });
+      final rendered = const OpencodeHookWriter().render(
+        entries: assembly.entries,
+        ctx: const HookRenderContext(
+          hooksDir: '/runtime/hooks',
+          runner: null,
+          glueBuilder: GlueScriptBuilder(),
+        ),
+      );
+
+      expect(rendered.scripts.single.fileName, 'teampilot-agent-status.js');
+      final config = rendered.configFragments['opencode.json']! as Map;
+      expect((config['plugin'] as List).single, [
+        './teampilot-agent-status.js',
+        action.pluginOptions,
+      ]);
     },
   );
 }

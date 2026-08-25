@@ -5,6 +5,7 @@ import '../../../agent_status/agent_status_tool_input.dart';
 import '../../../agent_status/ask_user_question.dart';
 import '../../../agent_runtime/runtime_event.dart';
 import '../../../../models/hook_entry.dart';
+import '../../../../models/hook_event.dart';
 import '../../../../models/team_config.dart';
 import '../../registry/capabilities/chat_interaction_capability.dart';
 import '../../registry/capabilities/runtime_event_capability.dart';
@@ -16,10 +17,7 @@ import 'agent_status_plugin.dart';
 /// allow/deny replies from the chat card); no in-chat ExitPlanMode approval
 /// (keeps the "Open Terminal" fallback).
 final class OpencodeChatInteraction
-    implements
-        ChatInteractionCapability,
-        RuntimeEventCapability,
-        RuntimeEventNativePluginCapability {
+    implements ChatInteractionCapability, RuntimeEventCapability {
   const OpencodeChatInteraction();
 
   @override
@@ -113,24 +111,25 @@ final class OpencodeChatInteraction
       RuntimeCorrelationStrength.serializedPromptEpoch;
 
   @override
-  List<HookEntry> managedHookEntries(RuntimeEventHookContext context) =>
-      managedRuntimeEventHookEntries(cli: CliTool.opencode, context: context);
-
-  @override
-  RuntimeEventNativePluginContribution? managedPluginContribution(
-    RuntimeEventHookContext context,
-  ) => RuntimeEventNativePluginContribution(
-    fileName: opencodeAgentStatusPluginFileName,
-    source: opencodeAgentStatusPluginSource,
-    pluginPath: './$opencodeAgentStatusPluginFileName',
-    pluginOptions: {
-      'member': context.memberId,
-      'url': context.endpoint.url,
-      if (context.endpoint.sessionId case final sessionId?)
-        'session': sessionId,
-      if (context.endpoint.token case final token?) 'token': token,
-    },
-  );
+  List<HookEntry> managedHookEntries(RuntimeEventHookContext context) => [
+    HookEntry(
+      id: 'teampilot-runtime-event-plugin',
+      source: HookSource.managed,
+      event: HookEvent.userPromptSubmit,
+      action: NativePluginHookAction(
+        fileName: opencodeAgentStatusPluginFileName,
+        source: opencodeAgentStatusPluginSource,
+        pluginPath: './$opencodeAgentStatusPluginFileName',
+        pluginOptions: {
+          'member': context.memberId,
+          'url': context.endpoint.url,
+          if (context.endpoint.sessionId case final sessionId?)
+            'session': sessionId,
+          if (context.endpoint.token case final token?) 'token': token,
+        },
+      ),
+    ),
+  ];
 
   @override
   bool get supportsStructuredAsk => true;

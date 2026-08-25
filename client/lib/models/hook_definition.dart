@@ -108,6 +108,13 @@ class HookDefinition {
           'url': h.url,
           if (h.headers.isNotEmpty) 'headers': h.headers,
         },
+        NativePluginHookAction p => {
+          'type': 'nativePlugin',
+          'fileName': p.fileName,
+          'source': p.source,
+          'pluginPath': p.pluginPath,
+          if (p.pluginOptions.isNotEmpty) 'pluginOptions': p.pluginOptions,
+        },
       };
 
   static HookAction _actionFromJson(Object? raw) {
@@ -124,6 +131,12 @@ class HookDefinition {
         url: map['url'] as String? ?? '',
         headers: _decodeEnv(map['headers']),
       ),
+      'nativePlugin' => NativePluginHookAction(
+        fileName: map['fileName'] as String? ?? '',
+        source: map['source'] as String? ?? '',
+        pluginPath: map['pluginPath'] as String? ?? '',
+        pluginOptions: _decodeObjectMap(map['pluginOptions']),
+      ),
       _ => CommandHookAction.raw(map['command'] as String? ?? ''),
     };
   }
@@ -136,6 +149,11 @@ class HookDefinition {
       if (value is String) out[entry.key.toString()] = value;
     }
     return Map.unmodifiable(out);
+  }
+
+  static Map<String, Object?> _decodeObjectMap(Object? raw) {
+    if (raw is! Map) return const {};
+    return Map<String, Object?>.from(raw.cast<String, Object?>());
   }
 
   static Map<String, Object?>? _decodeNative(Object? raw) {

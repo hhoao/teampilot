@@ -62,6 +62,9 @@ class ClaudeFamilyHookWriter implements HookCapability {
       );
 
       switch (entry.action) {
+        case NativePluginHookAction _:
+          warnings.add('hook_native_plugin_unsupported_${entry.id}');
+          continue;
         case HttpHookAction http:
           final hookJson = <String, Object?>{
             'type': 'http',

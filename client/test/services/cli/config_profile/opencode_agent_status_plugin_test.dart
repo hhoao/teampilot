@@ -6,8 +6,11 @@ import 'package:teampilot/models/config_bundle.dart';
 import 'package:teampilot/models/team_config.dart';
 import 'package:teampilot/services/agent_status/member_agent_status_endpoint.dart';
 import 'package:teampilot/services/cli/opencode/capabilities/agent_status_plugin.dart';
+import 'package:teampilot/services/cli/opencode/capabilities/opencode_hook_writer.dart';
 import 'package:teampilot/services/cli/opencode/capabilities/provider.dart';
+import 'package:teampilot/services/cli/registry/capabilities/hook_capability.dart';
 import 'package:teampilot/services/cli/registry/capabilities/provider_capability.dart';
+import 'package:teampilot/services/hook/glue_script_builder.dart';
 import 'package:teampilot/services/io/local_filesystem.dart';
 import 'package:teampilot/services/provider/config_profile_service.dart';
 import 'package:teampilot/services/resource/providers/hook_contribution_provider.dart';
@@ -29,18 +32,30 @@ void main() {
     String? token,
     String? sessionId,
   }) {
-    final contribution =
+    final entries =
         RuntimeEventHookContributionProvider(
-          endpoint: MemberAgentStatusEndpoint(
-            url: url,
-            token: token,
-            sessionId: sessionId,
-          ),
-          memberId: memberId,
-        ).nativePluginContribution(
-          HookProviderContext(cli: CliTool.opencode, supportsHttp: false),
-        )!;
-    return mergeOpencodeRuntimeEventPlugin(config, contribution);
+              endpoint: MemberAgentStatusEndpoint(
+                url: url,
+                token: token,
+                sessionId: sessionId,
+              ),
+              memberId: memberId,
+            )
+            .provide(
+              HookProviderContext(cli: CliTool.opencode, supportsHttp: false),
+            )
+            .map((contribution) => contribution.entry)
+            .toList();
+    final rendered = const OpencodeHookWriter().render(
+      entries: entries,
+      ctx: const HookRenderContext(
+        hooksDir: '/runtime/hooks',
+        runner: null,
+        glueBuilder: GlueScriptBuilder(),
+      ),
+    );
+    final fragment = rendered.configFragments['opencode.json']! as Map;
+    return mergeOpencodePluginEntries(config, fragment['plugin'] as List);
   }
 
   test('opencodeAgentStatusPluginSource polls Bus and replies via SDK', () {
@@ -283,8 +298,8 @@ void main() {
     },
   );
 
-  test('prepareSimpleSessionLaunch with agentStatus writes the JS plugin '
-      'instead of assembling HTTP hooks', () async {
+  test('prepareSimpleSessionLaunch with agentStatus writes the assembled JS '
+      'plugin', () async {
     final base = await Directory.systemTemp.createTemp('opencode_status_fs_');
     addTearDown(() async {
       if (await base.exists()) await base.delete(recursive: true);

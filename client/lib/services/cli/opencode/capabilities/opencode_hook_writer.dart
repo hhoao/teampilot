@@ -24,11 +24,8 @@ class _OpencodeSubscription {
 /// 的函数式 hook 按 tool 键限定。每个 hook 用 Node `child_process` 跑 glue
 /// 命令，stdout（决策 JSON）原样传回。
 ///
-/// 共存说明：用户 hooks plugin（`teampilot-user-hooks.js`）与内部托管 plugin
-/// （`teampilot-agent-status.js` / `teampilot-idle-bus.js`，事件订阅 + /agent-status
-/// POST + /idle 报告）**平行安装**于 opencode.json `plugin` 数组 —— 两者都是
-/// opencode 特有能力而非"hook 配置"，内部托管保持为专属 JS plugin，**不迁移**
-/// 进本 writer。写入时经 `mergeOpencodePluginEntries` 按路径去重合并。
+/// Managed runtime plugins use [NativePluginHookAction], so their JS artifacts
+/// and `opencode.json` entries follow this same writer path as user hooks.
 class OpencodeHookWriter implements HookCapability {
   const OpencodeHookWriter({this.denyReason = 'TeamPilot hook policy'});
 
@@ -56,6 +53,7 @@ class OpencodeHookWriter implements HookCapability {
     final scripts = <GeneratedScript>[];
     final warnings = <String>[];
     final subscriptions = <String, List<_OpencodeSubscription>>{};
+    final nativePlugins = <NativePluginHookAction>[];
 
     for (final entry in entries) {
       final native = nativeEvent(entry.event);
@@ -63,24 +61,37 @@ class OpencodeHookWriter implements HookCapability {
         warnings.add('hook_unsupported_event_${entry.id}_${entry.event.name}');
         continue;
       }
+      final action = entry.action;
+      if (action is NativePluginHookAction) {
+        nativePlugins.add(action);
+        scripts.add(
+          GeneratedScript(
+            fileName: action.fileName,
+            content: action.source,
+            targetDirectory: ctx.generatedScriptDirectory,
+          ),
+        );
+        continue;
+      }
       if (entry.action is HttpHookAction) {
         warnings.add('hook_http_unsupported_${entry.id}');
         continue;
       }
-      final command = entry.action as CommandHookAction;
+      final command = action as CommandHookAction;
       if (entry.policy != HookPolicy.none && !entry.event.isIntercepting) {
         warnings.add('hook_policy_ignored_${entry.id}_${entry.event.name}');
       }
       // Matcher 仅对 tool.execute.before/after 生效（按 tool 键限定）；其余
       // 事件上的 matcher 忽略并警告（spec §2.1）。
       final matcher = entry.matcher?.trim() ?? '';
-      final toolKeyed = matcher.isNotEmpty &&
+      final toolKeyed =
+          matcher.isNotEmpty &&
           (native == 'tool.execute.before' || native == 'tool.execute.after');
       if (!toolKeyed && matcher.isNotEmpty) {
         warnings.add('hook_matcher_ignored_${entry.id}_${entry.event.name}');
       }
-      final decisionJson = entry.policy == HookPolicy.none ||
-              !entry.event.isIntercepting
+      final decisionJson =
+          entry.policy == HookPolicy.none || !entry.event.isIntercepting
           ? null
           : entry.policy == HookPolicy.allow
           ? '{"decision":"allow"}'
@@ -109,27 +120,34 @@ class OpencodeHookWriter implements HookCapability {
           .add(_OpencodeSubscription(argv, tool: toolKeyed ? matcher : null));
     }
 
-    if (subscriptions.isEmpty) {
+    if (subscriptions.isEmpty && nativePlugins.isEmpty) {
       return HookWriteResult(warnings: warnings);
     }
-    scripts.add(
-      GeneratedScript(
-        fileName: opencodeUserHooksPluginFileName,
-        content: _buildPluginSource(subscriptions),
-      ),
-    );
+    final pluginEntries = <Object?>[
+      for (final plugin in nativePlugins)
+        [plugin.pluginPath, plugin.pluginOptions],
+    ];
+    if (subscriptions.isNotEmpty) {
+      scripts.add(
+        GeneratedScript(
+          fileName: opencodeUserHooksPluginFileName,
+          content: _buildPluginSource(subscriptions),
+        ),
+      );
+      pluginEntries.add('./$opencodeUserHooksPluginFileName');
+    }
     return HookWriteResult(
       configFragments: {
-        'opencode.json': {
-          'plugin': ['./$opencodeUserHooksPluginFileName'],
-        },
+        'opencode.json': {'plugin': pluginEntries},
       },
       scripts: scripts,
       warnings: warnings,
     );
   }
 
-  String _buildPluginSource(Map<String, List<_OpencodeSubscription>> subscriptions) {
+  String _buildPluginSource(
+    Map<String, List<_OpencodeSubscription>> subscriptions,
+  ) {
     final toolHooks = <String, List<_OpencodeSubscription>>{};
     final eventHooks = <String, List<_OpencodeSubscription>>{};
     for (final entry in subscriptions.entries) {

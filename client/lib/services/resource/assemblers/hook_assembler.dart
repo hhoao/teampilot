@@ -283,6 +283,9 @@ final class HookAssembler {
             : 'script:${_normalize(c.fileName ?? '')}\u0000'
                   '${_normalize(c.scriptContent ?? '')}',
       HttpHookAction h => 'http:${_normalize(h.url)}\u0000${_map(h.headers)}',
+      NativePluginHookAction p =>
+        'native-plugin:${_normalize(p.fileName)}\u0000'
+            '${_normalize(p.pluginPath)}\u0000${_mapObjects(p.pluginOptions)}',
     };
     return '${entry.event.name}\u0000$matcher\u0000${entry.policy.name}\u0000$action';
   }
@@ -296,6 +299,12 @@ final class HookAssembler {
   String _normalize(String value) => value.trim();
 
   String _map(Map<String, String> value) {
+    final entries = value.entries.toList()
+      ..sort((left, right) => left.key.compareTo(right.key));
+    return entries.map((entry) => '${entry.key}=${entry.value}').join('\u0001');
+  }
+
+  String _mapObjects(Map<String, Object?> value) {
     final entries = value.entries.toList()
       ..sort((left, right) => left.key.compareTo(right.key));
     return entries.map((entry) => '${entry.key}=${entry.value}').join('\u0001');
