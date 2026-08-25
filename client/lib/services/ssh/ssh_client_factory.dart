@@ -90,9 +90,7 @@ class SshClientFactory {
 
   bool hasLiveStorageClient(String profileId) {
     final cached = _pool[profileId];
-    return cached != null &&
-        !cached.client.isClosed &&
-        cached.readyCompleted;
+    return cached != null && !cached.client.isClosed && cached.readyCompleted;
   }
 
   Stream<String> get storagePoolChanges => _poolChanges.stream;
@@ -289,7 +287,8 @@ class SshClientFactory {
     );
     client.done.then(
       (_) => _onClientDone(client, null, StackTrace.empty),
-      onError: (Object error) => _onClientDone(client, error, StackTrace.current),
+      onError: (Object error) =>
+          _onClientDone(client, error, StackTrace.current),
     );
   }
 
@@ -298,7 +297,8 @@ class SshClientFactory {
     _watchedClients.remove(client);
     if (lifecycle == null) return;
 
-    final reason = lifecycle.pendingLocalCloseReason ??
+    final reason =
+        lifecycle.pendingLocalCloseReason ??
         (error != null
             ? SshTransportCloseReason.transportError
             : SshTransportCloseReason.remotePeerClosed);
@@ -544,6 +544,21 @@ class _CredentialOverrideStore implements SshCredentialStore {
   @override
   Future<void> savePrivateKeyPassphrase(String profileId, String passphrase) =>
       _base.savePrivateKeyPassphrase(profileId, passphrase);
+
+  @override
+  Future<String?> loadDevicePrivateKey() => _base.loadDevicePrivateKey();
+
+  @override
+  Future<void> saveDevicePrivateKey(String privateKey) =>
+      _base.saveDevicePrivateKey(privateKey);
+
+  @override
+  Future<String?> loadRelayGrant(String profileId) =>
+      _base.loadRelayGrant(profileId);
+
+  @override
+  Future<void> saveRelayGrant(String profileId, String grant) =>
+      _base.saveRelayGrant(profileId, grant);
 
   @override
   Future<void> deleteAll(String profileId) => _base.deleteAll(profileId);

@@ -30,6 +30,16 @@ class SshReachabilityEndpoint {
     'host': host,
     'port': port,
   };
+
+  @override
+  bool operator ==(Object other) =>
+      other is SshReachabilityEndpoint &&
+      kind == other.kind &&
+      host == other.host &&
+      port == other.port;
+
+  @override
+  int get hashCode => Object.hash(kind, host, port);
 }
 
 extension<T> on Iterable<T> {

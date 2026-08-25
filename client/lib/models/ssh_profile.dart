@@ -1,5 +1,7 @@
 import 'package:flutter/foundation.dart';
 
+import 'ssh_reachability.dart';
+
 enum SshAuthType { password, privateKey }
 
 @immutable
@@ -15,6 +17,11 @@ class SshProfile {
     this.updatedAt = 0,
     this.lastHome,
     this.lastAppDataRoot,
+    this.endpoints = const [],
+    this.hostKeyFingerprints = const [],
+    this.pairedDesktopId,
+    this.relayUrl,
+    this.lastGoodKind,
   });
 
   factory SshProfile.fromJson(Map<String, Object?> json) {
@@ -34,6 +41,27 @@ class SshProfile {
       updatedAt: (json['updatedAt'] as num?)?.toInt() ?? 0,
       lastHome: json['lastHome'] as String?,
       lastAppDataRoot: json['lastAppDataRoot'] as String?,
+      endpoints:
+          (json['endpoints'] as List?)
+              ?.whereType<Map>()
+              .map(
+                (value) => SshReachabilityEndpoint.tryParse(
+                  value.cast<String, Object?>(),
+                ),
+              )
+              .whereType<SshReachabilityEndpoint>()
+              .toList(growable: false) ??
+          const [],
+      hostKeyFingerprints:
+          (json['hostKeyFingerprints'] as List?)?.whereType<String>().toList(
+            growable: false,
+          ) ??
+          const [],
+      pairedDesktopId: json['pairedDesktopId'] as String?,
+      relayUrl: json['relayUrl'] as String?,
+      lastGoodKind: SshEndpointKind.values
+          .where((value) => value.name == json['lastGoodKind'])
+          .firstOrNull,
     );
   }
 
@@ -47,6 +75,11 @@ class SshProfile {
   final int updatedAt;
   final String? lastHome;
   final String? lastAppDataRoot;
+  final List<SshReachabilityEndpoint> endpoints;
+  final List<String> hostKeyFingerprints;
+  final String? pairedDesktopId;
+  final String? relayUrl;
+  final SshEndpointKind? lastGoodKind;
 
   String get hostIdentifier => '$username@$host:$port';
 
@@ -61,6 +94,11 @@ class SshProfile {
     int? updatedAt,
     String? lastHome,
     String? lastAppDataRoot,
+    List<SshReachabilityEndpoint>? endpoints,
+    List<String>? hostKeyFingerprints,
+    String? pairedDesktopId,
+    String? relayUrl,
+    SshEndpointKind? lastGoodKind,
   }) {
     return SshProfile(
       id: id ?? this.id,
@@ -73,6 +111,11 @@ class SshProfile {
       updatedAt: updatedAt ?? this.updatedAt,
       lastHome: lastHome ?? this.lastHome,
       lastAppDataRoot: lastAppDataRoot ?? this.lastAppDataRoot,
+      endpoints: endpoints ?? this.endpoints,
+      hostKeyFingerprints: hostKeyFingerprints ?? this.hostKeyFingerprints,
+      pairedDesktopId: pairedDesktopId ?? this.pairedDesktopId,
+      relayUrl: relayUrl ?? this.relayUrl,
+      lastGoodKind: lastGoodKind ?? this.lastGoodKind,
     );
   }
 
@@ -89,6 +132,13 @@ class SshProfile {
       'updatedAt': updatedAt,
       if (lastHome != null) 'lastHome': lastHome,
       if (lastAppDataRoot != null) 'lastAppDataRoot': lastAppDataRoot,
+      if (endpoints.isNotEmpty)
+        'endpoints': endpoints.map((endpoint) => endpoint.toJson()).toList(),
+      if (hostKeyFingerprints.isNotEmpty)
+        'hostKeyFingerprints': hostKeyFingerprints,
+      if (pairedDesktopId != null) 'pairedDesktopId': pairedDesktopId,
+      if (relayUrl != null) 'relayUrl': relayUrl,
+      if (lastGoodKind != null) 'lastGoodKind': lastGoodKind!.name,
     };
   }
 
@@ -106,7 +156,12 @@ class SshProfile {
             username == other.username &&
             authType == other.authType &&
             lastHome == other.lastHome &&
-            lastAppDataRoot == other.lastAppDataRoot;
+            lastAppDataRoot == other.lastAppDataRoot &&
+            listEquals(endpoints, other.endpoints) &&
+            listEquals(hostKeyFingerprints, other.hostKeyFingerprints) &&
+            pairedDesktopId == other.pairedDesktopId &&
+            relayUrl == other.relayUrl &&
+            lastGoodKind == other.lastGoodKind;
   }
 
   @override
@@ -119,5 +174,10 @@ class SshProfile {
     authType,
     lastHome,
     lastAppDataRoot,
+    Object.hashAll(endpoints),
+    Object.hashAll(hostKeyFingerprints),
+    pairedDesktopId,
+    relayUrl,
+    lastGoodKind,
   );
 }
