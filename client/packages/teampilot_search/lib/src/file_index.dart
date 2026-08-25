@@ -31,7 +31,8 @@ class TpFileHit {
   final String name;
 }
 
-const int _kDefaultStringBufferBytes = 64 * 1024;
+const int _kMaxChunkBytes = 8 * 1024 * 1024;
+const Duration _kBuildPollInterval = Duration(milliseconds: 5);
 const int _kErrRootUnreadable = -2;
 const int _kErrInternal = -3;
 
@@ -53,18 +54,17 @@ class TpFileIndex {
     final handle = _newHandle(root, options);
     _handle = handle;
 
-    final status = await Future(() => bindings.tp_file_index_build(handle));
-    if (status < 0) {
-      dispose();
-      if (status == _kErrRootUnreadable) {
-        throw StateError('root unreadable: $root');
+    final startStatus = bindings.tp_file_index_build_start(handle);
+    _checkBuildStatus(startStatus, root);
+    while (true) {
+      final status = bindings.tp_file_index_build_poll(handle);
+      if (status == 1) {
+        _isBuilt = true;
+        return;
       }
-      if (status == _kErrInternal) {
-        throw StateError('file index build failed internally');
-      }
-      throw StateError('file index build failed with code $status');
+      _checkBuildStatus(status, root);
+      await Future<void>.delayed(_kBuildPollInterval);
     }
-    _isBuilt = true;
   }
 
   /// Returns matching indexed files.
@@ -195,7 +195,7 @@ class TpFileIndex {
       throw ArgumentError.value(limit, 'limit', 'must not be negative');
     }
     final entryCapacity = limit;
-    final stringCapacity = _kDefaultStringBufferBytes;
+    final stringCapacity = _kMaxChunkBytes;
     final strings = calloc<ffi.Uint8>(stringCapacity);
     final entries = calloc<bindings.TpFileIndexEntry>(entryCapacity);
     final chunk = calloc<bindings.TpFileIndexChunk>()
@@ -216,6 +216,18 @@ class TpFileIndex {
     if (status < 0) {
       throw StateError('file index query failed with code $status');
     }
+  }
+
+  void _checkBuildStatus(int status, String root) {
+    if (status >= 0) return;
+    dispose();
+    if (status == _kErrRootUnreadable) {
+      throw StateError('root unreadable: $root');
+    }
+    if (status == _kErrInternal) {
+      throw StateError('file index build failed internally');
+    }
+    throw StateError('file index build failed with code $status');
   }
 
   String _readCStringAt(

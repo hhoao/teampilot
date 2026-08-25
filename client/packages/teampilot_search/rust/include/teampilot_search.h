@@ -79,6 +79,8 @@ typedef struct TpFileIndexChunk {
 
 int32_t tp_file_index_new(const TpFileIndexConfig* config, TpFileIndexHandle** out);
 int32_t tp_file_index_build(TpFileIndexHandle* handle);
+int32_t tp_file_index_build_start(TpFileIndexHandle* handle);
+int32_t tp_file_index_build_poll(TpFileIndexHandle* handle);
 void tp_file_index_cancel(TpFileIndexHandle* handle);
 int32_t tp_file_index_query(TpFileIndexHandle* handle, const char* query, int32_t mode, uint32_t limit, TpFileIndexChunk* chunk);
 int32_t tp_file_index_query_dirs(TpFileIndexHandle* handle, const char* query, uint32_t limit, TpFileIndexChunk* chunk);

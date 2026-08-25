@@ -38,4 +38,27 @@ void main() {
     );
     expect(index.queryDirectories('lib'), contains('lib'));
   });
+
+  test('returns large expanded query result sets without clipping', () async {
+    final root = await Directory.systemTemp.createTemp('tp-file-index-');
+    addTearDown(() => root.delete(recursive: true));
+    final index = TpFileIndex();
+    addTearDown(index.dispose);
+
+    for (var i = 0; i < 600; i++) {
+      await File(
+        '${root.path}/expanded-${i.toString().padLeft(4, '0')}-${'x' * 120}.dart',
+      ).writeAsString('');
+    }
+
+    await index.build(root.path);
+    final hits = index.query(
+      'expanded',
+      mode: TpFileMatchMode.contains,
+      limit: 100000,
+    );
+
+    expect(hits, hasLength(600));
+    expect(index.truncated, isFalse);
+  });
 }

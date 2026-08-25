@@ -84,7 +84,7 @@ fn max_entries_truncates() {
     let mut index = index(1);
     index.build().expect("index should build");
 
-    assert_eq!(index.file_count(), 1);
+    assert!(index.file_count() + index.directory_count() <= 1);
     assert!(index.truncated());
 }
 

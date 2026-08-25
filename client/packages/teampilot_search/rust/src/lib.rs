@@ -6,6 +6,8 @@ use std::ffi::{c_char, CStr};
 use std::slice;
 use std::sync::atomic::Ordering;
 use std::sync::mpsc;
+use std::sync::{Arc, Mutex};
+use std::thread::JoinHandle;
 
 pub use engine::{SearchConfig, SearchError, SearchMatchData, SearchMsg, TpSearchHandle};
 
@@ -286,7 +288,15 @@ pub unsafe extern "C" fn tp_search_free(handle: *mut TpSearchHandle) {
 }
 
 pub struct TpFileIndexHandle {
-    index: FileIndex,
+    index: Arc<Mutex<FileIndex>>,
+    cancel: Arc<std::sync::atomic::AtomicBool>,
+    build_state: Mutex<FileIndexBuildState>,
+}
+
+enum FileIndexBuildState {
+    Idle,
+    Running(JoinHandle<i32>),
+    Completed(i32),
 }
 
 #[repr(C)]
@@ -420,7 +430,12 @@ pub unsafe extern "C" fn tp_file_index_new(
         max_entries: cfg.max_entries,
     }) {
         Ok(index) => {
-            *out = Box::into_raw(Box::new(TpFileIndexHandle { index }));
+            let cancel = index.cancel_token();
+            *out = Box::into_raw(Box::new(TpFileIndexHandle {
+                index: Arc::new(Mutex::new(index)),
+                cancel,
+                build_state: Mutex::new(FileIndexBuildState::Idle),
+            }));
             0
         }
         Err(error) => map_file_index_error(error),
@@ -432,16 +447,73 @@ pub unsafe extern "C" fn tp_file_index_build(handle: *mut TpFileIndexHandle) -> 
     if handle.is_null() {
         return ERR_INTERNAL;
     }
-    match (*handle).index.build() {
-        Ok(()) => 0,
-        Err(error) => map_file_index_error(error),
+    let handle = &*handle;
+    match handle.index.lock() {
+        Ok(mut index) => match index.build() {
+            Ok(()) => 0,
+            Err(error) => map_file_index_error(error),
+        },
+        Err(_) => ERR_INTERNAL,
+    }
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn tp_file_index_build_start(handle: *mut TpFileIndexHandle) -> i32 {
+    if handle.is_null() {
+        return ERR_INTERNAL;
+    }
+    let handle = &*handle;
+    let mut build_state = match handle.build_state.lock() {
+        Ok(build_state) => build_state,
+        Err(_) => return ERR_INTERNAL,
+    };
+    if !matches!(*build_state, FileIndexBuildState::Idle) {
+        return ERR_INTERNAL;
+    }
+    let index = handle.index.clone();
+    *build_state = FileIndexBuildState::Running(std::thread::spawn(move || match index.lock() {
+        Ok(mut index) => match index.build() {
+            Ok(()) => 0,
+            Err(error) => map_file_index_error(error),
+        },
+        Err(_) => ERR_INTERNAL,
+    }));
+    0
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn tp_file_index_build_poll(handle: *mut TpFileIndexHandle) -> i32 {
+    if handle.is_null() {
+        return ERR_INTERNAL;
+    }
+    let handle = &*handle;
+    let mut build_state = match handle.build_state.lock() {
+        Ok(build_state) => build_state,
+        Err(_) => return ERR_INTERNAL,
+    };
+    let completed = match &*build_state {
+        FileIndexBuildState::Idle => return ERR_INTERNAL,
+        FileIndexBuildState::Completed(status) => return if *status == 0 { 1 } else { *status },
+        FileIndexBuildState::Running(thread) if !thread.is_finished() => return 0,
+        FileIndexBuildState::Running(_) => {
+            match std::mem::replace(&mut *build_state, FileIndexBuildState::Idle) {
+                FileIndexBuildState::Running(thread) => thread.join().unwrap_or(ERR_INTERNAL),
+                _ => unreachable!(),
+            }
+        }
+    };
+    *build_state = FileIndexBuildState::Completed(completed);
+    if completed == 0 {
+        1
+    } else {
+        completed
     }
 }
 
 #[no_mangle]
 pub unsafe extern "C" fn tp_file_index_cancel(handle: *mut TpFileIndexHandle) {
     if !handle.is_null() {
-        (*handle).index.cancel();
+        (*handle).cancel.store(true, Ordering::Relaxed);
     }
 }
 
@@ -465,13 +537,17 @@ pub unsafe extern "C" fn tp_file_index_query(
         1 => FileMatchMode::Contains,
         _ => return ERR_INTERNAL,
     };
-    let handle = &mut *handle;
-    let hits = handle.index.query(&query, mode, limit as usize);
+    let handle = &*handle;
+    let index = match handle.index.lock() {
+        Ok(index) => index,
+        Err(_) => return ERR_INTERNAL,
+    };
+    let hits = index.query(&query, mode, limit as usize);
     fill_file_index_chunk(
         &mut *chunk,
         hits.into_iter()
             .map(|hit| (hit.path, hit.relative_path, hit.name)),
-        handle.index.truncated(),
+        index.truncated(),
     );
     0
 }
@@ -490,14 +566,18 @@ pub unsafe extern "C" fn tp_file_index_query_dirs(
         Ok(query) => query,
         Err(_) => return ERR_INTERNAL,
     };
-    let handle = &mut *handle;
-    let directories = handle.index.query_dirs(&query, limit as usize);
+    let handle = &*handle;
+    let index = match handle.index.lock() {
+        Ok(index) => index,
+        Err(_) => return ERR_INTERNAL,
+    };
+    let directories = index.query_dirs(&query, limit as usize);
     fill_file_index_chunk(
         &mut *chunk,
         directories
             .into_iter()
             .map(|relative_path| (String::new(), relative_path, String::new())),
-        handle.index.truncated(),
+        index.truncated(),
     );
     0
 }
@@ -505,7 +585,9 @@ pub unsafe extern "C" fn tp_file_index_query_dirs(
 #[no_mangle]
 pub unsafe extern "C" fn tp_file_index_free(handle: *mut TpFileIndexHandle) {
     if !handle.is_null() {
-        drop(Box::from_raw(handle));
+        let handle = Box::from_raw(handle);
+        handle.cancel.store(true, Ordering::Relaxed);
+        drop(handle);
     }
 }
 
@@ -538,7 +620,14 @@ mod tests {
         };
         let mut handle = ptr::null_mut();
         assert_eq!(unsafe { tp_file_index_new(&config, &mut handle) }, 0);
-        assert_eq!(unsafe { tp_file_index_build(handle) }, 0);
+        assert_eq!(unsafe { tp_file_index_build_start(handle) }, 0);
+        loop {
+            match unsafe { tp_file_index_build_poll(handle) } {
+                0 => std::thread::yield_now(),
+                1 => break,
+                status => panic!("file index build failed with code {status}"),
+            }
+        }
 
         let query = CString::new("router").unwrap();
         let mut string_buf = vec![0i8; 1024];

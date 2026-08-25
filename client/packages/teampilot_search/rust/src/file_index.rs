@@ -52,16 +52,14 @@ impl FileIndex {
 
     pub fn build(&mut self) -> Result<(), FileIndexError> {
         let walker = build_walker(&self.config)?;
-        let files = Arc::new(Mutex::new(Vec::new()));
-        let directories = Arc::new(Mutex::new(Vec::new()));
+        let entries = Arc::new(Mutex::new((Vec::new(), Vec::new())));
         let stopped_for_limit = Arc::new(AtomicBool::new(false));
         let root = self.config.root.clone();
         let max_entries = self.config.max_entries;
         let cancel = self.cancel.clone();
 
         walker.build_parallel().run(|| {
-            let files = files.clone();
-            let directories = directories.clone();
+            let entries = entries.clone();
             let stopped_for_limit = stopped_for_limit.clone();
             let cancel = cancel.clone();
             let root = root.clone();
@@ -78,9 +76,21 @@ impl FileIndex {
                 if entry.file_type().map(|ft| ft.is_dir()).unwrap_or(false) {
                     let directory = relative_path(path, &root);
                     if !directory.is_empty() {
-                        if let Ok(mut directories) = directories.lock() {
+                        if let Ok(mut entries) = entries.lock() {
+                            let (files, directories) = &mut *entries;
                             if !directories.contains(&directory) {
+                                if max_entries > 0
+                                    && (files.len() + directories.len()) as u64 >= max_entries
+                                {
+                                    stopped_for_limit.store(true, Ordering::Relaxed);
+                                    return WalkState::Quit;
+                                }
                                 directories.push(directory);
+                                if max_entries > 0
+                                    && (files.len() + directories.len()) as u64 >= max_entries
+                                {
+                                    stopped_for_limit.store(true, Ordering::Relaxed);
+                                }
                             }
                         } else {
                             return WalkState::Quit;
@@ -102,13 +112,14 @@ impl FileIndex {
                     relative_path: relative_path.clone(),
                     name,
                 };
-                if let Ok(mut files) = files.lock() {
-                    if max_entries > 0 && files.len() as u64 >= max_entries {
+                if let Ok(mut entries) = entries.lock() {
+                    let (files, directories) = &mut *entries;
+                    if max_entries > 0 && (files.len() + directories.len()) as u64 >= max_entries {
                         stopped_for_limit.store(true, Ordering::Relaxed);
                         return WalkState::Quit;
                     }
                     files.push(hit);
-                    if max_entries > 0 && files.len() as u64 >= max_entries {
+                    if max_entries > 0 && (files.len() + directories.len()) as u64 >= max_entries {
                         stopped_for_limit.store(true, Ordering::Relaxed);
                     }
                 } else {
@@ -123,14 +134,12 @@ impl FileIndex {
             })
         });
 
-        self.files = Arc::try_unwrap(files)
-            .map_err(|_| FileIndexError::Internal("file collection still shared".into()))?
+        let (files, directories) = Arc::try_unwrap(entries)
+            .map_err(|_| FileIndexError::Internal("entry collection still shared".into()))?
             .into_inner()
-            .map_err(|_| FileIndexError::Internal("file collection lock poisoned".into()))?;
-        self.directories = Arc::try_unwrap(directories)
-            .map_err(|_| FileIndexError::Internal("directory collection still shared".into()))?
-            .into_inner()
-            .map_err(|_| FileIndexError::Internal("directory collection lock poisoned".into()))?;
+            .map_err(|_| FileIndexError::Internal("entry collection lock poisoned".into()))?;
+        self.files = files;
+        self.directories = directories;
         self.truncated = stopped_for_limit.load(Ordering::Relaxed);
         Ok(())
     }
@@ -201,6 +210,14 @@ impl FileIndex {
 
     pub fn file_count(&self) -> usize {
         self.files.len()
+    }
+
+    pub fn directory_count(&self) -> usize {
+        self.directories.len()
+    }
+
+    pub fn cancel_token(&self) -> Arc<AtomicBool> {
+        self.cancel.clone()
     }
 }
 
