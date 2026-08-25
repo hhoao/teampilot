@@ -24,6 +24,30 @@ class _Ctx implements MarkdownHighlightContext {
       map[blockIndex];
 }
 
+/// Path-exact fake: entries only resolve when BOTH the block index and the
+/// fully-extended container path match MarkdownSearchIndex's projection.
+class _PathCtx implements MarkdownHighlightContext {
+  _PathCtx(this.entries);
+
+  final Map<String, MarkdownContainerHighlights> entries;
+
+  static String key(int blockIndex, List<MarkdownPathStep> path) =>
+      '$blockIndex|'
+      '${path.map((s) => switch (s) {
+              ListItemStep(:final item) => 'L$item',
+              ChildStep(:final index) => 'C$index',
+              TableHeaderStep(:final col) => 'H$col',
+              TableCellStep(:final row, :final col) => 'T$row.$col',
+            }).join(',')}';
+
+  @override
+  MarkdownContainerHighlights? forContainer(
+    int blockIndex,
+    List<MarkdownPathStep> path,
+  ) =>
+      entries[key(blockIndex, path)];
+}
+
 List<Text> _richParagraphTexts(WidgetTester tester) => tester
     .widgetList<Text>(find.byType(Text))
     .where((t) => t.textSpan != null)
@@ -171,5 +195,45 @@ void main() {
     final any = _richParagraphTexts(tester)
         .any((t) => _hasBackgroundOn(t.textSpan!, tokens.matchHighlightColor));
     expect(any, isFalse);
+  });
+
+  testWidgets('nested sub-list highlights resolve through ChildStep path',
+      (tester) async {
+    const doc = MarkdownDocument(blocks: [
+      ListBlock(ordered: false, items: [
+        ContentListItem(runs: [TextRun('outer alpha')], children: [
+          ListBlock(ordered: false, items: [
+            ContentListItem(runs: [TextRun('inner world')]),
+          ]),
+        ]),
+      ]),
+    ]);
+    final tokens = MarkdownTokens.test();
+    final correctPath = _PathCtx.key(
+      0,
+      const [ListItemStep(0), ChildStep(0), ListItemStep(0)],
+    );
+    final wrongPath =
+        _PathCtx.key(0, const [ListItemStep(0), ListItemStep(0)]);
+    Future<List<String>> pumpWashed(_PathCtx ctx) async {
+      await pump(tester, doc, ctx);
+      return _richParagraphTexts(tester)
+          .where((t) =>
+              _hasBackgroundOn(t.textSpan!, tokens.matchHighlightColor))
+          .map((t) => _spanText(t.textSpan!))
+          .toList();
+    }
+
+    // Search index registers sub-item j at (k, [L(i), C(c), L(j)]): paints.
+    final hit = await pumpWashed(_PathCtx({
+      correctPath: _hl(ranges: [const TextRange(start: 6, end: 11)]),
+    }));
+    expect(hit.join('\n'), contains('inner world'));
+
+    // Address missing the ChildStep must never match (no silent hits).
+    final miss = await pumpWashed(_PathCtx({
+      wrongPath: _hl(ranges: [const TextRange(start: 6, end: 11)]),
+    }));
+    expect(miss, isEmpty);
   });
 }

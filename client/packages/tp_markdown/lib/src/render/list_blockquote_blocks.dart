@@ -163,7 +163,7 @@ class _MarkdownList extends StatelessWidget {
               nestedView: nestedView,
               highlights: highlights,
               blockIndex: blockIndex,
-              basePath: itemPath,
+              basePath: [...itemPath, ChildStep(childIndex)],
               depth: depth + 1,
             ),
           );
