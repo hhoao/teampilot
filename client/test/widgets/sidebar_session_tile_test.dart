@@ -10,11 +10,13 @@ import 'package:teampilot/cubits/automation_state.dart';
 import 'package:teampilot/cubits/chat/model/chat_tab.dart';
 import 'package:teampilot/cubits/chat_cubit.dart';
 import 'package:teampilot/cubits/session/session_phase.dart';
+import 'package:teampilot/cubits/session_groups_cubit.dart';
 import 'package:teampilot/cubits/workbench/workbench_cubit.dart';
 import 'package:teampilot/cubits/workbench/workbench_tab.dart';
 import 'package:teampilot/l10n/app_localizations.dart';
 import 'package:teampilot/models/app_session.dart';
 import 'package:teampilot/models/automation.dart';
+import 'package:teampilot/models/session_group.dart';
 import 'package:teampilot/repositories/session_repository.dart';
 import 'package:teampilot/services/agent_status/agent_attention_state.dart';
 import 'package:teampilot/services/agent_status/agent_status_event.dart';
@@ -83,6 +85,7 @@ Widget _host({
   required AutomationCubit automationCubit,
   required SessionRepository sessionRepository,
   required AgentAttentionCubit attentionCubit,
+  SessionGroupsCubit? groupsCubit,
   Widget? child,
   FutureOr<void> Function()? onTap,
 }) {
@@ -98,6 +101,8 @@ Widget _host({
           BlocProvider<ChatCubit>.value(value: chatCubit),
           BlocProvider<AutomationCubit>.value(value: automationCubit),
           BlocProvider<AgentAttentionCubit>.value(value: attentionCubit),
+          if (groupsCubit != null)
+            BlocProvider<SessionGroupsCubit>.value(value: groupsCubit),
         ],
         child: Scaffold(
           body:
@@ -113,6 +118,18 @@ Widget _host({
   final attention = AgentAttentionCubit(pruneInterval: null);
   final automation = testAutomationCubit();
   return (attention, automation);
+}
+
+Future<SessionGroupsCubit> _groupsCubit(
+  WidgetTester tester,
+  List<SessionGroup> groups,
+) async {
+  final cubit = SessionGroupsCubit();
+  // Repository reads use real dart:io; under testWidgets they only complete
+  // inside runAsync.
+  await tester.runAsync(() => cubit.load(_session.workspaceId));
+  cubit.emit(cubit.state.copyWith(groups: groups));
+  return cubit;
 }
 
 Future<void> _openContextMenu(WidgetTester tester) async {
@@ -325,6 +342,99 @@ void main() {
     expect(find.text(l10n.automationsSessionContextMenu), findsOneWidget);
     expect(find.text(l10n.automationsManageSessionContextMenu), findsOneWidget);
 
+    await _dismissContextMenu(tester);
+  });
+
+  testWidgets('context menu lists groups with membership checkmarks', (
+    tester,
+  ) async {
+    final chatCubit = testChatCubit(executableResolver: () => 'claude');
+    final (attention, automationCubit) = _tileCubits();
+    final groupsCubit = await _groupsCubit(tester, [
+      const SessionGroup(id: 'g1', name: '待办'),
+      const SessionGroup(id: 'g2', name: 'Review', sessionIds: ['sess-1']),
+    ]);
+    addTearDown(chatCubit.close);
+    addTearDown(automationCubit.close);
+    addTearDown(attention.close);
+    addTearDown(groupsCubit.close);
+
+    await tester.pumpWidget(
+      _host(
+        chatCubit: chatCubit,
+        automationCubit: automationCubit,
+        attentionCubit: attention,
+        sessionRepository: SessionRepository(),
+        groupsCubit: groupsCubit,
+      ),
+    );
+    await tester.pump();
+
+    await _openContextMenu(tester);
+    expect(find.text('待办'), findsOneWidget);
+    expect(find.text('Review'), findsOneWidget);
+    // sess-1 already in g2 → check-box icon present twice (leading icons).
+    expect(
+      find.byIcon(Icons.check_box_outlined),
+      findsOneWidget,
+    );
+    await _dismissContextMenu(tester);
+  });
+
+  testWidgets('tapping a group item toggles membership', (tester) async {
+    final chatCubit = testChatCubit(executableResolver: () => 'claude');
+    final (attention, automationCubit) = _tileCubits();
+    final groupsCubit = await _groupsCubit(tester, [
+      const SessionGroup(id: 'g1', name: '待办'),
+    ]);
+    addTearDown(chatCubit.close);
+    addTearDown(automationCubit.close);
+    addTearDown(attention.close);
+    addTearDown(groupsCubit.close);
+
+    await tester.pumpWidget(
+      _host(
+        chatCubit: chatCubit,
+        automationCubit: automationCubit,
+        attentionCubit: attention,
+        sessionRepository: SessionRepository(),
+        groupsCubit: groupsCubit,
+      ),
+    );
+    await tester.pump();
+
+    await _openContextMenu(tester);
+    await tester.tap(find.text('待办'));
+    await tester.pump();
+    expect(groupsCubit.state.groupById('g1')!.containsSession('sess-1'), isTrue);
+
+    await _openContextMenu(tester);
+    await tester.tap(find.text('待办'));
+    await tester.pump();
+    expect(
+      groupsCubit.state.groupById('g1')!.containsSession('sess-1'),
+      isFalse,
+    );
+  });
+
+  testWidgets('no group provider → menu unchanged', (tester) async {
+    final chatCubit = testChatCubit(executableResolver: () => 'claude');
+    final (attention, automationCubit) = _tileCubits();
+    addTearDown(chatCubit.close);
+    addTearDown(automationCubit.close);
+    addTearDown(attention.close);
+
+    await tester.pumpWidget(
+      _host(
+        chatCubit: chatCubit,
+        automationCubit: automationCubit,
+        attentionCubit: attention,
+        sessionRepository: SessionRepository(),
+      ),
+    );
+    await tester.pump();
+    await _openContextMenu(tester);
+    expect(find.byIcon(Icons.check_box_outlined), findsNothing);
     await _dismissContextMenu(tester);
   });
 
