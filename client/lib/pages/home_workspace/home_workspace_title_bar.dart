@@ -7,7 +7,6 @@ import 'package:flutter_svg/flutter_svg.dart';
 import 'package:shared_ui/shared_ui.dart';
 import 'package:window_manager/window_manager.dart';
 
-import '../../cubits/chat_cubit.dart';
 import '../../cubits/layout_cubit.dart';
 import '../../cubits/workbench/workbench_cubit.dart';
 import '../../cubits/mobile_workspace_drawer.dart';
@@ -473,7 +472,9 @@ class _HomeTitleBarState extends State<HomeTitleBar> with WindowListener {
                           const SizedBox(width: 8),
                         ],
                         if (widget.activeTabKey != null) ...[
-                          const WorkspaceShellPaneVisibilityToggles(),
+                          WorkspaceShellPaneVisibilityToggles(
+                            workspaceId: widget.activeTabKey!,
+                          ),
                           const SizedBox(width: 4),
                         ],
                         const SizedBox(width: 8),
@@ -521,11 +522,8 @@ class _HomeTitleBarMobileDrawerTrigger extends StatelessWidget {
       return TpSidebarTrigger(size: controlSize, selected: openMobile);
     }
 
-    final activeWorkspaceId = context.select<ChatCubit, String>(
-      (c) => c.tabStore.activeWorkspaceId,
-    );
     final composeLanding = context.select<WorkbenchCubit, bool>(
-      (w) => w.state.bar(activeWorkspaceId).center.landingActive,
+      (w) => w.state.bar(activeTabKey!).center.landingActive,
     );
     return BlocBuilder<LayoutCubit, LayoutState>(
       buildWhen: (a, b) =>
