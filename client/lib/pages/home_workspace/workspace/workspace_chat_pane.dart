@@ -19,16 +19,12 @@ import 'workspace_session_actions.dart';
 
 /// Unbound Chat pane for a workspace — sibling to [ChatPage], not inside the shell.
 class WorkspaceChatPane extends StatefulWidget {
-  const WorkspaceChatPane({
-    required this.workspace,
-    super.key,
-  });
+  const WorkspaceChatPane({required this.workspace, super.key});
 
   final Workspace workspace;
 
   @override
-  State<WorkspaceChatPane> createState() =>
-      _WorkspaceChatPaneState();
+  State<WorkspaceChatPane> createState() => _WorkspaceChatPaneState();
 }
 
 class _WorkspaceChatPaneState extends State<WorkspaceChatPane> {
@@ -55,8 +51,10 @@ class _WorkspaceChatPaneState extends State<WorkspaceChatPane> {
         workingDirectory = draftPath;
       } else {
         try {
-          workingDirectory =
-              context.read<WorktreeCubit>().state.pathForNewSession;
+          workingDirectory = context
+              .read<WorktreeCubit>()
+              .state
+              .pathForNewSession;
         } on ProviderNotFoundException {
           workingDirectory = workspace.firstFolderPath;
         }
@@ -71,17 +69,20 @@ class _WorkspaceChatPaneState extends State<WorkspaceChatPane> {
       }
 
       await persistLandingDraft(workspace.workspaceId, draft);
+      if (!mounted) return;
 
-      await submitWorkspaceLandingMessage(
+      final delivered = await submitWorkspaceLandingMessage(
         context,
         workspace,
         launch: draft,
         message: message,
         workingDirectory: workingDirectory,
         expertKey: draft.expertKey,
-        onSessionOpened: (_) =>
-            composeDraftCache.clearLandingDraft(workspace.workspaceId),
       );
+      if (delivered) {
+        await composeDraftCache.clearLandingPersistent(workspace.workspaceId);
+        composeDraftCache.clearLandingDraft(workspace.workspaceId);
+      }
     } finally {
       _submitInFlight = false;
     }
@@ -89,10 +90,9 @@ class _WorkspaceChatPaneState extends State<WorkspaceChatPane> {
 
   /// Whether the active session is still launching. Scoped to that session's
   /// pod — it never blocks the rest of the pane or other conversations.
-  bool _launchInFlight(BuildContext context) =>
-      context.select<ChatCubit, bool>(
-        (c) => c.activePod?.phase.isLaunching ?? false,
-      );
+  bool _launchInFlight(BuildContext context) => context.select<ChatCubit, bool>(
+    (c) => c.activePod?.phase.isLaunching ?? false,
+  );
 
   @override
   Widget build(BuildContext context) {
@@ -117,8 +117,7 @@ class _WorkspaceChatPaneState extends State<WorkspaceChatPane> {
           child: WorkspaceChatLanding(
             workspace: workspace,
             isSubmitting: launching,
-            onSubmit: (message, draft) =>
-                unawaited(_submit(message, draft)),
+            onSubmit: (message, draft) => unawaited(_submit(message, draft)),
           ),
         ),
       ),
