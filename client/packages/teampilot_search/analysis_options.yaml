@@ -4,3 +4,10 @@ analyzer:
   exclude:
     # Native Rust crate (including Rust test fixtures named *.dart).
     - rust/**
+    - build/**
+    - android/**
+    - ios/**
+    - web/**
+    - windows/**
+    - macos/**
+    - linux/**

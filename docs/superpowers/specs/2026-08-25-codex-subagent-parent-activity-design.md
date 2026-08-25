@@ -22,8 +22,9 @@ Codex 的任务调度、TeamBus 协议或 PTY 输出判定。
 - 父 `Stop` / `StopFailure`：集合为空时立即变为 `done`；否则仅记录
   `parentStopPending`，seat 保持 `working`。
 - 普通无子 agent 的 turn 保持现有语义：`Stop` 立即完成。
-- 清除 seat/session 或 status 超时会一起清理子 agent 活动状态，避免旧状态泄漏
-  到后续 turn。
+- `UserPromptSubmit`、显式 seat/session 清除会清理子 agent 活动状态，避免旧状态
+  泄漏到后续 turn。活动子 agent 存在时不适用 30 分钟 attention TTL；宁可保守地
+  保持 terminal，也不能在一个无输出的长任务中回收它。
 
 Codex agent-status hook 需要订阅 `SubagentStart` 与 `SubagentStop`，使上述事件能
 到达状态处理器。处理器应继续按 seat 隔离事件，且重复的 start/stop 不得改变
@@ -44,3 +45,4 @@ terminal reclaim 继续使用现有的 `sessionBusyFromAttention` 保护条件�
 3. 最后一个子 agent 完成后，延迟的父完成状态变为 `done`；
 4. 无子 agent 的 `Stop` 仍立即为 `done`；
 5. 重复 lifecycle 事件和 seat 清理不残留活动状态。
+6. 活动子 agent 在通常 attention TTL 之后仍保持父 seat 为 `working`。
