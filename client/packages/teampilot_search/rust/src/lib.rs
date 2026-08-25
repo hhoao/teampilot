@@ -347,32 +347,45 @@ unsafe fn fill_file_index_chunk(
 
     let mut str_off = 0usize;
     let mut entry_idx = 0usize;
+    let mut chunk_truncated = truncated;
     for (path, relative_path, name) in entries {
         if entry_idx >= entry_arr.len() {
+            chunk_truncated = true;
             break;
         }
         let required = path.len() + relative_path.len() + name.len() + 3;
         if required > str_cap {
+            chunk_truncated = true;
             continue;
         }
         if required > str_cap.saturating_sub(str_off) {
+            chunk_truncated = true;
             break;
         }
 
         let path_off = str_off;
         str_off = match write_string(str_buf, str_off, &path) {
             Ok(offset) => offset,
-            Err(_) => break,
+            Err(_) => {
+                chunk_truncated = true;
+                break;
+            }
         };
         let relative_path_off = str_off;
         str_off = match write_string(str_buf, str_off, &relative_path) {
             Ok(offset) => offset,
-            Err(_) => break,
+            Err(_) => {
+                chunk_truncated = true;
+                break;
+            }
         };
         let name_off = str_off;
         str_off = match write_string(str_buf, str_off, &name) {
             Ok(offset) => offset,
-            Err(_) => break,
+            Err(_) => {
+                chunk_truncated = true;
+                break;
+            }
         };
         let base = chunk.string_buf as usize;
         entry_arr[entry_idx] = TpFileIndexEntry {
@@ -384,6 +397,7 @@ unsafe fn fill_file_index_chunk(
     }
     chunk.string_buf_len = str_off as u32;
     chunk.entries_len = entry_idx as u32;
+    chunk.truncated = if chunk_truncated { 1 } else { 0 };
 }
 
 #[no_mangle]
@@ -399,6 +413,7 @@ pub unsafe extern "C" fn tp_file_index_new(
         Ok(root) => root,
         Err(_) => return ERR_INTERNAL,
     };
+    // Chunk limits are supplied by the caller's TpFileIndexChunk for now.
     match FileIndex::new(FileIndexConfig {
         root,
         use_gitignore: cfg.use_gitignore != 0,
@@ -580,5 +595,63 @@ mod tests {
         );
 
         unsafe { tp_file_index_free(handle) };
+    }
+
+    #[test]
+    fn file_index_chunk_marks_truncated_when_entry_capacity_clips_results() {
+        let mut string_buf = vec![0i8; 64];
+        let mut entries = Vec::<TpFileIndexEntry>::with_capacity(1);
+        let mut chunk = TpFileIndexChunk {
+            string_buf: string_buf.as_mut_ptr(),
+            string_buf_cap: string_buf.len() as u32,
+            string_buf_len: 0,
+            entries: entries.as_mut_ptr(),
+            entries_cap: entries.capacity() as u32,
+            entries_len: 0,
+            truncated: 0,
+        };
+
+        unsafe {
+            fill_file_index_chunk(
+                &mut chunk,
+                [
+                    ("a".to_string(), "a".to_string(), "a".to_string()),
+                    ("b".to_string(), "b".to_string(), "b".to_string()),
+                ],
+                false,
+            );
+        }
+
+        assert_eq!(chunk.entries_len, 1);
+        assert_eq!(chunk.truncated, 1);
+    }
+
+    #[test]
+    fn file_index_chunk_marks_truncated_when_string_buffer_clips_results() {
+        let mut string_buf = vec![0i8; 6];
+        let mut entries = Vec::<TpFileIndexEntry>::with_capacity(2);
+        let mut chunk = TpFileIndexChunk {
+            string_buf: string_buf.as_mut_ptr(),
+            string_buf_cap: string_buf.len() as u32,
+            string_buf_len: 0,
+            entries: entries.as_mut_ptr(),
+            entries_cap: entries.capacity() as u32,
+            entries_len: 0,
+            truncated: 0,
+        };
+
+        unsafe {
+            fill_file_index_chunk(
+                &mut chunk,
+                [
+                    ("a".to_string(), "".to_string(), "".to_string()),
+                    ("b".to_string(), "".to_string(), "".to_string()),
+                ],
+                false,
+            );
+        }
+
+        assert_eq!(chunk.entries_len, 1);
+        assert_eq!(chunk.truncated, 1);
     }
 }
