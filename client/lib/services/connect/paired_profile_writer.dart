@@ -74,6 +74,11 @@ class PairedProfileWriter {
   }
 
   Future<void> _saveKnownHostPins(SshPairingOffer offer) async {
+    // The legacy TOFU cache can represent only one fingerprint per host/key
+    // type. Paired profiles use their complete fingerprint list directly, so
+    // skip this compatibility cache rather than discard a rotation pin.
+    if (offer.hostKeyFingerprints.length != 1) return;
+    final fingerprint = offer.hostKeyFingerprints.single;
     final endpoints = offer.endpoints.where(
       (endpoint) =>
           endpoint.kind == SshEndpointKind.lan ||
@@ -82,13 +87,11 @@ class PairedProfileWriter {
     for (final endpoint in endpoints) {
       final hostIdentifier =
           '${offer.username}@${endpoint.host}:${endpoint.port}';
-      for (final fingerprint in offer.hostKeyFingerprints) {
-        await _knownHostRepository.saveFingerprint(
-          hostIdentifier,
-          'ssh-ed25519',
-          fingerprint,
-        );
-      }
+      await _knownHostRepository.saveFingerprint(
+        hostIdentifier,
+        'ssh-ed25519',
+        fingerprint,
+      );
     }
   }
 }

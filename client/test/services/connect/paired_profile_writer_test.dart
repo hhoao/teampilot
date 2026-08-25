@@ -10,7 +10,10 @@ import 'package:teampilot/services/connect/ssh_pairing_offer.dart';
 
 import '../../support/in_memory_filesystem.dart';
 
-SshPairingOffer offer({List<SshReachabilityEndpoint>? endpoints}) {
+SshPairingOffer offer({
+  List<SshReachabilityEndpoint>? endpoints,
+  List<String> hostKeyFingerprints = const ['SHA256:host-key'],
+}) {
   return SshPairingOffer(
     v: 1,
     hostId: 'AbCdEf0123_-xyZ9',
@@ -31,7 +34,7 @@ SshPairingOffer offer({List<SshReachabilityEndpoint>? endpoints}) {
             port: 2222,
           ),
         ],
-    hostKeyFingerprints: const ['SHA256:host-key'],
+    hostKeyFingerprints: hostKeyFingerprints,
     pairing: const SshPairingSession(
       token: 'abcdefghijklmnopqrstuvwxyz0123456789ABCDE',
       expiresAt: 1770000000000,
@@ -149,6 +152,25 @@ void main() {
         saved.singleWhere((profile) => profile.id == 'manual').host,
         'manual.example.test',
       );
+    },
+  );
+
+  test(
+    'keeps every offered pin in the paired profile without lossy cache writes',
+    () async {
+      final profile = await writer.upsert(
+        offer: offer(
+          hostKeyFingerprints: const ['SHA256:current-key', 'SHA256:next-key'],
+        ),
+        result: const PairingPostResult(ok: true, profileHint: 'Alice desktop'),
+        devicePem: 'PRIVATE KEY',
+      );
+
+      expect(profile.hostKeyFingerprints, [
+        'SHA256:current-key',
+        'SHA256:next-key',
+      ]);
+      expect(await knownHosts.loadAll(), isEmpty);
     },
   );
 }
