@@ -2,6 +2,7 @@ import 'dart:convert';
 
 import '../io/filesystem.dart';
 import '../storage/workspace_layout.dart';
+import '../../utils/lock_pool.dart';
 
 /// Persists landing and session compose text for one workspace.
 class ComposeDraftStore {
@@ -11,21 +12,21 @@ class ComposeDraftStore {
 
   final Filesystem _fs;
   final WorkspaceLayout _layout;
+  static final _workspaceMutationLocks = LockPool();
 
   Future<String?> loadLanding(String workspaceId) async {
     final document = await _load(workspaceId);
     return document['landing'] as String?;
   }
 
-  Future<void> saveLanding(String workspaceId, String text) async {
-    final document = await _load(workspaceId);
-    if (text.isEmpty) {
-      document.remove('landing');
-    } else {
-      document['landing'] = text;
-    }
-    await _save(workspaceId, document);
-  }
+  Future<void> saveLanding(String workspaceId, String text) =>
+      _mutate(workspaceId, (document) {
+        if (text.trim().isEmpty) {
+          document.remove('landing');
+        } else {
+          document['landing'] = text;
+        }
+      });
 
   Future<String?> loadSession(String workspaceId, String sessionId) async {
     final document = await _load(workspaceId);
@@ -33,26 +34,29 @@ class ComposeDraftStore {
     return sessions?[sessionId] as String?;
   }
 
-  Future<void> saveSession(
-    String workspaceId,
-    String sessionId,
-    String text,
-  ) async {
-    final document = await _load(workspaceId);
-    final sessions = _sessions(document);
-    if (text.isEmpty) {
-      sessions.remove(sessionId);
-    } else {
-      sessions[sessionId] = text;
-    }
-    await _save(workspaceId, document);
-  }
+  Future<void> saveSession(String workspaceId, String sessionId, String text) =>
+      _mutate(workspaceId, (document) {
+        final sessions = _sessions(document);
+        if (text.trim().isEmpty) {
+          sessions.remove(sessionId);
+        } else {
+          sessions[sessionId] = text;
+        }
+      });
 
-  Future<void> clearSession(String workspaceId, String sessionId) async {
+  Future<void> clearSession(String workspaceId, String sessionId) =>
+      _mutate(workspaceId, (document) {
+        _sessions(document).remove(sessionId);
+      });
+
+  Future<void> _mutate(
+    String workspaceId,
+    void Function(Map<String, dynamic> document) update,
+  ) => _workspaceMutationLocks.synchronized(workspaceId, () async {
     final document = await _load(workspaceId);
-    _sessions(document).remove(sessionId);
+    update(document);
     await _save(workspaceId, document);
-  }
+  });
 
   Future<Map<String, dynamic>> _load(String workspaceId) async {
     final text = await _fs.readString(_layout.composeDraftsFile(workspaceId));

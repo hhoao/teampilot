@@ -1,5 +1,10 @@
+import 'dart:async';
+
 import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/services/compose/compose_draft_cache.dart';
+import 'package:teampilot/services/compose/compose_draft_store.dart';
+
+import '../../support/in_memory_filesystem.dart';
 
 void main() {
   test('landing draft round-trips by workspaceId', () {
@@ -57,4 +62,23 @@ void main() {
     expect(cache.landingDraft('w1'), isNull);
     expect(cache.sessionDraft('s1'), isNull);
   });
+
+  test(
+    'hydration does not replace a draft typed while it was loading',
+    () async {
+      final fs = InMemoryFilesystem();
+      final store = ComposeDraftStore(fs: fs, rootPath: '/tp');
+      await store.saveLanding('w1', 'persisted');
+      await store.saveSession('w1', 's1', 'persisted session');
+      final cache = ComposeDraftCache(persistentStore: store);
+      cache.setLandingDraft('w1', 'typed while loading');
+      cache.setSessionDraft('s1', 'typed session while loading');
+
+      await cache.hydrateLanding('w1', shouldSeed: () => false);
+      await cache.hydrateSession('w1', 's1', shouldSeed: () => false);
+
+      expect(cache.landingDraft('w1'), 'typed while loading');
+      expect(cache.sessionDraft('s1'), 'typed session while loading');
+    },
+  );
 }

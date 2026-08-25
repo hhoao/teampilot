@@ -230,6 +230,7 @@ class _UnboundComposeBodyState extends State<UnboundComposeBody> {
   Future<void> _hydrateComposeDraft() async {
     final draft = await composeDraftCache.hydrateLanding(
       widget.workspace.workspaceId,
+      shouldSeed: () => mounted && _controller.text.isEmpty,
     );
     if (!mounted ||
         _controller.text.isNotEmpty ||

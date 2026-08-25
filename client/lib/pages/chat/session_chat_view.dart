@@ -351,6 +351,7 @@ class _SessionChatViewState extends State<SessionChatView> {
     final draft = await composeDraftCache.hydrateSession(
       widget.session.workspaceId,
       widget.session.sessionId,
+      shouldSeed: () => mounted && _controller.text.isEmpty,
     );
     if (!mounted ||
         _controller.text.isNotEmpty ||

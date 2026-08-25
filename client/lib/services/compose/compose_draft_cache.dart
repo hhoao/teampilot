@@ -5,14 +5,20 @@ import 'compose_draft_store.dart';
 
 /// Memory front for persisted compose input drafts.
 class ComposeDraftCache {
-  ComposeDraftCache({Map<String, String>? store}) : _store = store ?? {};
+  ComposeDraftCache({
+    Map<String, String>? store,
+    ComposeDraftStore? persistentStore,
+  }) : _store = store ?? {},
+       _persistentStoreOverride = persistentStore;
 
   final Map<String, String> _store;
+  final ComposeDraftStore? _persistentStoreOverride;
 
   static const _landingPrefix = 'landing:';
   static const _sessionPrefix = 'session:';
 
   ComposeDraftStore get _persistentStore =>
+      _persistentStoreOverride ??
       ComposeDraftStore(fs: AppStorage.fs, rootPath: AppStorage.appDataRoot);
 
   // ── Landing compose (workspace "New Chat") ──────────────────────────────
@@ -26,9 +32,12 @@ class ComposeDraftCache {
   void clearLandingDraft(String workspaceId) =>
       _store.remove(_landingPrefix + workspaceId);
 
-  Future<String?> hydrateLanding(String workspaceId) async {
+  Future<String?> hydrateLanding(
+    String workspaceId, {
+    bool Function()? shouldSeed,
+  }) async {
     final text = await _persistentStore.loadLanding(workspaceId);
-    if (text != null && text.isNotEmpty) {
+    if (text != null && text.isNotEmpty && (shouldSeed?.call() ?? true)) {
       setLandingDraft(workspaceId, text);
     }
     return text;
@@ -52,9 +61,13 @@ class ComposeDraftCache {
   void clearSessionDraft(String sessionId) =>
       _store.remove(_sessionPrefix + sessionId);
 
-  Future<String?> hydrateSession(String workspaceId, String sessionId) async {
+  Future<String?> hydrateSession(
+    String workspaceId,
+    String sessionId, {
+    bool Function()? shouldSeed,
+  }) async {
     final text = await _persistentStore.loadSession(workspaceId, sessionId);
-    if (text != null && text.isNotEmpty) {
+    if (text != null && text.isNotEmpty && (shouldSeed?.call() ?? true)) {
       setSessionDraft(sessionId, text);
     }
     return text;
