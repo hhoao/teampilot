@@ -40,3 +40,9 @@ fn basename_prefix_beats_directory_only() {
     assert_eq!(directory_only_score, -1);
     assert!(basename_score > directory_only_score);
 }
+
+#[test]
+fn cjk_path_uses_utf16_length_for_penalty() {
+    // UTF-16 length is 9 (文档/a.dart); byte length is 13 — penalty must use 9/4=2 not 13/4=3.
+    assert_eq!(fuzzy_match_score("文档/a.dart", "a"), 39);
+}

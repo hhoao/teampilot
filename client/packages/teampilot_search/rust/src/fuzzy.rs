@@ -66,12 +66,12 @@ pub fn fuzzy_match_score(text: &str, query: &str) -> i32 {
     if base_lower.contains(&q) {
         score += 12;
     }
-    score -= (text.len() / 4) as i32; // shorter path preferred
+    score -= (text_units.len() / 4) as i32; // shorter path preferred (Dart text.length)
     score
 }
 
 fn boundary_bonus(text_units: &[u32], index: usize) -> i32 {
-    if index == 0 {
+    if index <= 0 {
         return 6; // match at the very start of the path
     }
     let prev = text_units[index - 1];
