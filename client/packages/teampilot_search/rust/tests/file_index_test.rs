@@ -31,10 +31,7 @@ fn build_respects_gitignore_and_hidden() {
             .iter()
             .any(|excluded| hit.path.contains(excluded))
     }));
-    let paths: Vec<_> = hits
-        .into_iter()
-        .map(|hit| hit.relative_path)
-        .collect();
+    let paths: Vec<_> = hits.into_iter().map(|hit| hit.relative_path).collect();
     assert_eq!(paths, ["lib/app_router.dart"]);
 }
 
@@ -45,7 +42,10 @@ fn fuzzy_mode_returns_router_file() {
 
     let hits = index.query("router", FileMatchMode::Fuzzy, 10);
 
-    assert_eq!(hits.first().map(|hit| hit.name.as_str()), Some("app_router.dart"));
+    assert_eq!(
+        hits.first().map(|hit| hit.name.as_str()),
+        Some("app_router.dart")
+    );
 }
 
 #[test]
@@ -58,6 +58,17 @@ fn contains_mode_matches_basename() {
     assert_eq!(hits.len(), 1);
     assert_eq!(hits[0].name, "app_router.dart");
     assert_eq!(hits[0].relative_path, "lib/app_router.dart");
+}
+
+#[test]
+fn empty_queries_return_no_hits() {
+    let mut index = index(100);
+    index.build().expect("index should build");
+
+    assert!(index.query("", FileMatchMode::Contains, 10).is_empty());
+    assert!(index.query("   ", FileMatchMode::Fuzzy, 10).is_empty());
+    assert!(index.query_dirs("", 10).is_empty());
+    assert!(index.query_dirs("   ", 10).is_empty());
 }
 
 #[test]
@@ -75,4 +86,14 @@ fn max_entries_truncates() {
 
     assert_eq!(index.file_count(), 1);
     assert!(index.truncated());
+}
+
+#[test]
+fn cancel_before_build_stops_indexing() {
+    let mut index = index(100);
+    index.cancel();
+
+    index.build().expect("cancelled index build should finish");
+
+    assert_eq!(index.file_count(), 0);
 }

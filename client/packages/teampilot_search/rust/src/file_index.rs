@@ -1,5 +1,5 @@
 use std::path::Path;
-use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex};
 
 use ignore::{WalkBuilder, WalkState};
@@ -54,7 +54,6 @@ impl FileIndex {
         let walker = build_walker(&self.config)?;
         let files = Arc::new(Mutex::new(Vec::new()));
         let directories = Arc::new(Mutex::new(Vec::new()));
-        let scanned = Arc::new(AtomicU64::new(0));
         let stopped_for_limit = Arc::new(AtomicBool::new(false));
         let root = self.config.root.clone();
         let max_entries = self.config.max_entries;
@@ -63,7 +62,6 @@ impl FileIndex {
         walker.build_parallel().run(|| {
             let files = files.clone();
             let directories = directories.clone();
-            let scanned = scanned.clone();
             let stopped_for_limit = stopped_for_limit.clone();
             let cancel = cancel.clone();
             let root = root.clone();
@@ -94,17 +92,6 @@ impl FileIndex {
                     return WalkState::Continue;
                 }
 
-                if max_entries > 0 {
-                    let count = scanned.fetch_add(1, Ordering::Relaxed) + 1;
-                    if count > max_entries {
-                        stopped_for_limit.store(true, Ordering::Relaxed);
-                        return WalkState::Quit;
-                    }
-                    if count == max_entries {
-                        stopped_for_limit.store(true, Ordering::Relaxed);
-                    }
-                }
-
                 let relative_path = relative_path(path, &root);
                 let name = path
                     .file_name()
@@ -116,7 +103,14 @@ impl FileIndex {
                     name,
                 };
                 if let Ok(mut files) = files.lock() {
+                    if max_entries > 0 && files.len() as u64 >= max_entries {
+                        stopped_for_limit.store(true, Ordering::Relaxed);
+                        return WalkState::Quit;
+                    }
                     files.push(hit);
+                    if max_entries > 0 && files.len() as u64 >= max_entries {
+                        stopped_for_limit.store(true, Ordering::Relaxed);
+                    }
                 } else {
                     return WalkState::Quit;
                 }
@@ -146,7 +140,7 @@ impl FileIndex {
     }
 
     pub fn query(&self, q: &str, mode: FileMatchMode, limit: usize) -> Vec<FileHit> {
-        if limit == 0 {
+        if limit == 0 || q.trim().is_empty() {
             return Vec::new();
         }
         match mode {
@@ -183,6 +177,9 @@ impl FileIndex {
     }
 
     pub fn query_dirs(&self, q: &str, limit: usize) -> Vec<String> {
+        if limit == 0 || q.trim().is_empty() {
+            return Vec::new();
+        }
         let query = q.to_lowercase();
         self.directories
             .iter()
