@@ -13,6 +13,7 @@ import '../../pages/chat/session_launch_failure_presenter.dart';
 import '../../pages/home_workspace/workspace/workspace_chat_landing_palette.dart';
 import '../../pages/home_workspace/workspace/workspace_chat_landing_voice_bar.dart';
 import '../../services/workspace_dnd/workspace_drop_target.dart';
+import '../../services/cli/registry/capabilities/native_command_capability.dart';
 import '../../services/cli/registry/capabilities/skill_capability.dart';
 import '../../services/compose/compose_at_file_refs.dart';
 import '../../services/compose/compose_clip.dart';
@@ -68,6 +69,7 @@ class WorkspaceComposeCard extends StatelessWidget {
     required this.plugins,
     required this.slashBundle,
     this.skillSyntax,
+    this.nativeCommands = const [],
     this.isSubmitting = false,
     this.onPasteImage,
     this.submitBlockedTooltip,
@@ -104,6 +106,7 @@ class WorkspaceComposeCard extends StatelessWidget {
   final List<Plugin> plugins;
   final ConfigBundle slashBundle;
   final SkillCapability? skillSyntax;
+  final List<NativeCommand> nativeCommands;
   final bool isSubmitting;
   final Future<bool> Function()? onPasteImage;
   final String? submitBlockedTooltip;
@@ -154,6 +157,7 @@ class WorkspaceComposeCard extends StatelessWidget {
       plugins: plugins,
       slashBundle: slashBundle,
       skillSyntax: skillSyntax,
+      nativeCommands: nativeCommands,
       mutedColor: palette.muted,
       hintColor: palette.hint,
       onPasteImage: onPasteImage,

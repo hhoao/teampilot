@@ -1821,6 +1821,31 @@ class AppLocalizationsEn extends AppLocalizations {
       'What can I help you with today? @ reference files, / invoke skills';
 
   @override
+  String get composeCommandNative => 'Native';
+
+  @override
+  String get composeCommandPlugin => 'Plugin';
+
+  @override
+  String get composeCommandExperimental => 'Experimental';
+
+  @override
+  String get composeNativeCommandGoal =>
+      'Keep a durable objective for long-running work.';
+
+  @override
+  String get composeNativeCommandCompact =>
+      'Compact the active conversation context.';
+
+  @override
+  String get composeNativeCommandPlan =>
+      'Switch the session into a planning workflow.';
+
+  @override
+  String get composeNativeCommandHelp =>
+      'Show commands available in this CLI session.';
+
+  @override
   String get workspaceChatLandingBackToStart => 'Back to start';
 
   @override

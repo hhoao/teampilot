@@ -3284,6 +3284,48 @@ abstract class AppLocalizations {
   /// **'What can I help you with today? @ reference files, / invoke skills'**
   String get workspaceChatLandingInputHint;
 
+  /// No description provided for @composeCommandNative.
+  ///
+  /// In en, this message translates to:
+  /// **'Native'**
+  String get composeCommandNative;
+
+  /// No description provided for @composeCommandPlugin.
+  ///
+  /// In en, this message translates to:
+  /// **'Plugin'**
+  String get composeCommandPlugin;
+
+  /// No description provided for @composeCommandExperimental.
+  ///
+  /// In en, this message translates to:
+  /// **'Experimental'**
+  String get composeCommandExperimental;
+
+  /// No description provided for @composeNativeCommandGoal.
+  ///
+  /// In en, this message translates to:
+  /// **'Keep a durable objective for long-running work.'**
+  String get composeNativeCommandGoal;
+
+  /// No description provided for @composeNativeCommandCompact.
+  ///
+  /// In en, this message translates to:
+  /// **'Compact the active conversation context.'**
+  String get composeNativeCommandCompact;
+
+  /// No description provided for @composeNativeCommandPlan.
+  ///
+  /// In en, this message translates to:
+  /// **'Switch the session into a planning workflow.'**
+  String get composeNativeCommandPlan;
+
+  /// No description provided for @composeNativeCommandHelp.
+  ///
+  /// In en, this message translates to:
+  /// **'Show commands available in this CLI session.'**
+  String get composeNativeCommandHelp;
+
   /// No description provided for @workspaceChatLandingBackToStart.
   ///
   /// In en, this message translates to:

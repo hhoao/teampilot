@@ -4,9 +4,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
+import '../../l10n/l10n_extensions.dart';
 import '../../models/plugin.dart';
 import '../../models/skill.dart';
 import '../../models/config_bundle.dart';
+import '../../services/cli/registry/capabilities/native_command_capability.dart';
 import '../../services/commands/command_bus.dart';
 import '../../services/commands/shortcut_focus.dart';
 import '../../services/storage/app_storage.dart';
@@ -57,6 +59,7 @@ class ComposeTriggerField extends StatefulWidget {
     required this.mutedColor,
     required this.hintColor,
     this.skillSyntax,
+    this.nativeCommands = const [],
     this.onPasteImage,
     this.clip,
     super.key,
@@ -76,6 +79,7 @@ class ComposeTriggerField extends StatefulWidget {
   final Color mutedColor;
   final Color hintColor;
   final SkillCapability? skillSyntax;
+  final List<NativeCommand> nativeCommands;
   final Future<bool> Function()? onPasteImage;
 
   /// Optional paste-collapse buffer. When set and a single change pushes the
@@ -134,7 +138,8 @@ class _ComposeTriggerFieldState extends State<ComposeTriggerField> {
         oldWidget.skills != widget.skills ||
         oldWidget.plugins != widget.plugins ||
         oldWidget.slashBundle != widget.slashBundle ||
-        oldWidget.skillSyntax != widget.skillSyntax) {
+        oldWidget.skillSyntax != widget.skillSyntax ||
+        oldWidget.nativeCommands != widget.nativeCommands) {
       _refreshSuggestions(immediate: true);
     }
   }
@@ -328,6 +333,7 @@ class _ComposeTriggerFieldState extends State<ComposeTriggerField> {
           enabledBundle: widget.slashBundle,
           query: trigger.query,
           syntax: widget.skillSyntax,
+          nativeCommands: widget.nativeCommands,
         );
         suggestions = [
           for (final item in slash) ComposeTriggerSlashSuggestion(item),
@@ -388,14 +394,21 @@ class _ComposeTriggerFieldState extends State<ComposeTriggerField> {
     final trigger = _trigger;
     if (trigger == null) return;
 
-    final insertion = switch (suggestion) {
-      ComposeTriggerFileSuggestion(:final candidate) => candidate.insertText,
-      ComposeTriggerSlashSuggestion(:final candidate) => candidate.insertText,
+    final (insertion, suffix) = switch (suggestion) {
+      ComposeTriggerFileSuggestion(:final candidate) => (
+        candidate.insertText,
+        ' ',
+      ),
+      ComposeTriggerSlashSuggestion(:final candidate) => (
+        candidate.insertText,
+        candidate.source == ComposeSlashCandidateSource.native ? '' : ' ',
+      ),
     };
     widget.controller.value = replaceComposeTrigger(
       widget.controller,
       trigger,
       insertion,
+      suffix: suffix,
     );
     _focusClearTimer?.cancel();
     _clearSuggestions();
@@ -585,20 +598,25 @@ class _ComposeTriggerSuggestionPanel extends StatelessWidget {
       }
 
       final selected = index == selectedIndex;
-      final (icon, label, subtitle) = switch (suggestion) {
+      final (icon, label, subtitle, experimental) = switch (suggestion) {
         ComposeTriggerFileSuggestion(:final candidate) => (
           candidate.isDirectory
               ? Icons.folder_outlined
               : Icons.description_outlined,
           candidate.insertText,
           candidate.relativePath,
+          false,
         ),
         ComposeTriggerSlashSuggestion(:final candidate) => (
           candidate.kind == ComposeSlashCandidateKind.skill
               ? Icons.auto_awesome_outlined
               : Icons.terminal_outlined,
-          candidate.insertText,
-          candidate.subtitle,
+          candidate.insertText.trimRight(),
+          candidate.kind == ComposeSlashCandidateKind.command
+              ? _commandDetails(context, candidate)
+              : candidate.subtitle,
+          candidate.kind == ComposeSlashCandidateKind.command &&
+              candidate.availability == NativeCommandAvailability.experimental,
         ),
       };
 
@@ -627,16 +645,27 @@ class _ComposeTriggerSuggestionPanel extends StatelessWidget {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(
-                        label,
-                        style: styles.smSemibold,
-                      ),
-                      if (subtitle != null && subtitle.trim().isNotEmpty)
-                        Text(
-                          subtitle,
-                          maxLines: 2,
-                          overflow: TextOverflow.ellipsis,
-                          style: styles.smColored(cs.onSurfaceVariant,),
+                      Text(label, style: styles.smSemibold),
+                      if ((subtitle != null && subtitle.trim().isNotEmpty) ||
+                          experimental)
+                        Wrap(
+                          spacing: spacing.xs,
+                          runSpacing: spacing.xs,
+                          crossAxisAlignment: WrapCrossAlignment.center,
+                          children: [
+                            if (subtitle != null && subtitle.trim().isNotEmpty)
+                              Text(
+                                subtitle,
+                                maxLines: 2,
+                                overflow: TextOverflow.ellipsis,
+                                style: styles.smColored(cs.onSurfaceVariant),
+                              ),
+                            if (experimental)
+                              TpStatusBadge(
+                                label: context.l10n.composeCommandExperimental,
+                                tone: TpStatusBadgeTone.warning,
+                              ),
+                          ],
                         ),
                     ],
                   ),
@@ -650,6 +679,35 @@ class _ComposeTriggerSuggestionPanel extends StatelessWidget {
 
     return children;
   }
+
+  String? _commandDetails(
+    BuildContext context,
+    ComposeSlashCandidate candidate,
+  ) {
+    final l10n = context.l10n;
+    final details = <String>[
+      switch (candidate.source) {
+        ComposeSlashCandidateSource.native => l10n.composeCommandNative,
+        ComposeSlashCandidateSource.plugin => l10n.composeCommandPlugin,
+        null => '',
+      },
+      if (candidate.subtitle?.trim().isNotEmpty == true)
+        candidate.subtitle!.trim(),
+      if (candidate.description case final description?)
+        description.localized(context),
+    ].where((detail) => detail.isNotEmpty).toList();
+    return details.isEmpty ? null : details.join(' · ');
+  }
+}
+
+extension _NativeCommandDescriptionL10n on NativeCommandDescription {
+  String localized(BuildContext context) => switch (this) {
+    NativeCommandDescription.goal => context.l10n.composeNativeCommandGoal,
+    NativeCommandDescription.compact =>
+      context.l10n.composeNativeCommandCompact,
+    NativeCommandDescription.plan => context.l10n.composeNativeCommandPlan,
+    NativeCommandDescription.help => context.l10n.composeNativeCommandHelp,
+  };
 }
 
 class _ComposeTriggerSectionHeader extends StatelessWidget {
