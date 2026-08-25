@@ -14461,6 +14461,18 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Loading…'**
   String get gitGraphLoadingMore;
+
+  /// No description provided for @gitGraphSelectCommit.
+  ///
+  /// In en, this message translates to:
+  /// **'Select a commit to view details'**
+  String get gitGraphSelectCommit;
+
+  /// No description provided for @gitGraphHashCopied.
+  ///
+  /// In en, this message translates to:
+  /// **'Hash copied to clipboard'**
+  String get gitGraphHashCopied;
 }
 
 class _AppLocalizationsDelegate

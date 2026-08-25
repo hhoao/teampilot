@@ -8123,4 +8123,10 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get gitGraphLoadingMore => 'Loading…';
+
+  @override
+  String get gitGraphSelectCommit => 'Select a commit to view details';
+
+  @override
+  String get gitGraphHashCopied => 'Hash copied to clipboard';
 }

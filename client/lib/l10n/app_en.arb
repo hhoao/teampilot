@@ -3650,5 +3650,7 @@
   "gitGraphNoCommits": "No commits found",
   "gitGraphNotARepository": "Not a git repository",
   "gitGraphLoadMore": "Load more",
-  "gitGraphLoadingMore": "Loading…"
+  "gitGraphLoadingMore": "Loading…",
+  "gitGraphSelectCommit": "Select a commit to view details",
+  "gitGraphHashCopied": "Hash copied to clipboard"
 }

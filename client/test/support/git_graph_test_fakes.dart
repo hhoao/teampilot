@@ -9,11 +9,21 @@ class FakeHistoryForGraph implements GitHistoryService {
   FakeHistoryForGraph({
     this.rows = const [],
     this.detail,
+    this.fileDiff =
+        'diff --git a/a.dart b/a.dart\n'
+        '--- a/a.dart\n'
+        '+++ b/a.dart\n'
+        '@@ -1 +1 @@\n'
+        '-a\n'
+        '+b\n',
     this.fullPages = false,
   });
 
   final List<GitGraphRow> rows;
   final GitCommitDetail? detail;
+
+  /// `commitFileDiff` 返回的固定 diff 文本。
+  final String fileDiff;
 
   /// 为真时按请求的 limit 循环填满每页，模拟“仍有更多提交”的大仓库。
   final bool fullPages;
@@ -50,6 +60,14 @@ class FakeHistoryForGraph implements GitHistoryService {
   @override
   Future<GitCommitDetail> commitDetail(String dir, String hash) async =>
       detail!;
+
+  @override
+  Future<String> commitFileDiff(
+    String dir, {
+    required String hash,
+    String? parent,
+    required String path,
+  }) async => fileDiff;
 
   @override
   Future<List<GitBranchInfo>> branches(String dir) async => const [];
@@ -164,7 +182,5 @@ GitRepoStatus dirtyStatus() => const GitRepoStatus(
 );
 
 /// 不在 git 工作树内的目录状态。
-GitRepoStatus notRepoStatus() => const GitRepoStatus(
-  isRepository: false,
-  hasCommits: false,
-);
+GitRepoStatus notRepoStatus() =>
+    const GitRepoStatus(isRepository: false, hasCommits: false);

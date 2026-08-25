@@ -3184,5 +3184,7 @@
   "gitGraphNoCommits": "未找到提交",
   "gitGraphNotARepository": "不是 Git 仓库",
   "gitGraphLoadMore": "加载更多",
-  "gitGraphLoadingMore": "加载中…"
+  "gitGraphLoadingMore": "加载中…",
+  "gitGraphSelectCommit": "选择一个提交查看详情",
+  "gitGraphHashCopied": "哈希已复制到剪贴板"
 }

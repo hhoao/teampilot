@@ -8,6 +8,7 @@ import '../../models/git_graph.dart';
 import '../../services/git/git_repo_store.dart';
 import '../../services/storage/runtime_context.dart';
 import '../../services/workspace/workspace_tools_scope.dart';
+import 'git_graph_detail_pane.dart';
 import 'git_graph_row_tile.dart';
 import 'git_graph_toolbar.dart';
 
@@ -38,10 +39,10 @@ class _GitGraphPaneState extends State<GitGraphPane> {
     final workContext = _resolveWorkContext(context);
     if (workContext == null) return const SizedBox.shrink();
     return BlocProvider(
-      create: (_) => context
-          .read<GitRepoStore>()
-          .graphCubitFor(widget.repoRoot, workContext: workContext)
-        ..selectCommit(null),
+      create: (_) => context.read<GitRepoStore>().graphCubitFor(
+        widget.repoRoot,
+        workContext: workContext,
+      )..selectCommit(null),
       child: const _PaneBody(),
     );
   }
@@ -76,12 +77,37 @@ class _PaneBody extends StatelessWidget {
         if (!state.gitAvailable && !state.isRefreshing) {
           return _NotARepositoryHint(state: state);
         }
-        return Column(
+        final cubit = context.read<GitGraphCubit>();
+        return Row(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            GitGraphToolbar(state: state),
-            Expanded(child: _GraphList(state: state)),
-            if (state.errorMessage != null || state.currentBranch.isNotEmpty)
-              _StatusBar(state: state),
+            Expanded(
+              child: Column(
+                children: [
+                  GitGraphToolbar(state: state),
+                  Expanded(child: _GraphList(state: state)),
+                  if (state.errorMessage != null ||
+                      state.currentBranch.isNotEmpty)
+                    _StatusBar(state: state),
+                ],
+              ),
+            ),
+            // 详情栏：选中提交后展开固定宽度右栏；未选中时收起，避免挤压图区。
+            if (state.selectedHash != null) ...[
+              VerticalDivider(
+                width: 1,
+                thickness: 1,
+                color: Theme.of(
+                  context,
+                ).colorScheme.outlineVariant.withValues(alpha: 0.5),
+              ),
+              SizedBox(
+                width: 380,
+                child: GitGraphDetailPane(
+                  onBack: () => cubit.selectCommit(null),
+                ),
+              ),
+            ],
           ],
         );
       },
@@ -160,9 +186,9 @@ class _GraphListState extends State<_GraphList> {
       return Center(
         child: Text(
           context.l10n.gitGraphNoCommits,
-          style: TpTextStyles.of(context).smColored(
-            Theme.of(context).colorScheme.onSurfaceVariant,
-          ),
+          style: TpTextStyles.of(
+            context,
+          ).smColored(Theme.of(context).colorScheme.onSurfaceVariant),
         ),
       );
     }
@@ -230,11 +256,9 @@ class _UncommittedTile extends StatelessWidget {
           const SizedBox(width: 6),
           Text(
             context.l10n.gitGraphUncommittedChanges,
-            style: TpTextStyles.of(
-              context,
-            ).xsColored(cs.onSurfaceVariant).copyWith(
-              fontStyle: FontStyle.italic,
-            ),
+            style: TpTextStyles.of(context)
+                .xsColored(cs.onSurfaceVariant)
+                .copyWith(fontStyle: FontStyle.italic),
           ),
           const SizedBox(width: 6),
           Container(
@@ -273,14 +297,20 @@ class _LoadMoreTile extends StatelessWidget {
                   child: CircularProgressIndicator(strokeWidth: 2),
                 ),
                 const SizedBox(width: 6),
-                Text(l10n.gitGraphLoadingMore, style: TpTextStyles.of(context).xs),
+                Text(
+                  l10n.gitGraphLoadingMore,
+                  style: TpTextStyles.of(context).xs,
+                ),
               ],
             )
           : TpHover(
               onTap: () => context.read<GitGraphCubit>().loadMore(),
               padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
               borderRadius: BorderRadius.circular(6),
-              child: Text(l10n.gitGraphLoadMore, style: TpTextStyles.of(context).xs),
+              child: Text(
+                l10n.gitGraphLoadMore,
+                style: TpTextStyles.of(context).xs,
+              ),
             ),
     );
   }

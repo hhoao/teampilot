@@ -7781,4 +7781,10 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get gitGraphLoadingMore => '加载中…';
+
+  @override
+  String get gitGraphSelectCommit => '选择一个提交查看详情';
+
+  @override
+  String get gitGraphHashCopied => '哈希已复制到剪贴板';
 }
