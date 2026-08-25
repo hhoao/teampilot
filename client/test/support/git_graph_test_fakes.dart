@@ -31,9 +31,16 @@ class FakeHistoryForGraph implements GitHistoryService {
     int skip = 0,
     String query = '',
     GitSearchMode mode = GitSearchMode.message,
+    String? revisionRange,
   }) async {
     graphCalls++;
-    lastArgs = {'limit': limit, 'skip': skip, 'query': query, 'mode': mode};
+    lastArgs = {
+      'limit': limit,
+      'skip': skip,
+      'query': query,
+      'mode': mode,
+      'revisionRange': revisionRange,
+    };
     if (fullPages) {
       return List<GitGraphRow>.generate(limit, (i) => rows[i % rows.length]);
     }
@@ -138,4 +145,26 @@ GitRepoStatus repoStatus() => GitRepoStatus(
   ahead: 1,
   behind: 0,
   hasCommits: true,
+);
+
+/// 有暂存与未暂存改动的状态（dirtyCount = 2）。
+GitRepoStatus dirtyStatus() => const GitRepoStatus(
+  isRepository: true,
+  branch: 'main',
+  upstream: 'origin/main',
+  ahead: 0,
+  behind: 0,
+  hasCommits: true,
+  staged: [
+    GitFileChange(path: 'a.dart', kind: GitChangeKind.modified, staged: true),
+  ],
+  unstaged: [
+    GitFileChange(path: 'b.dart', kind: GitChangeKind.modified, staged: false),
+  ],
+);
+
+/// 不在 git 工作树内的目录状态。
+GitRepoStatus notRepoStatus() => const GitRepoStatus(
+  isRepository: false,
+  hasCommits: false,
 );

@@ -57,16 +57,18 @@ class GitHistoryService {
 
   /// 提交拓扑行。query/mode 组成搜索过滤：
   /// message → `--grep=<q> -i`；author → `--author=<q>`；hash → 客户端过滤。
+  /// [revisionRange] 为 null → `--all`；否则替换为给定范围（如 `HEAD`）。
   Future<List<GitGraphRow>> graphRows(
     String dir, {
     int limit = initialLoadCommits,
     int skip = 0,
     String query = '',
     GitSearchMode mode = GitSearchMode.message,
+    String? revisionRange,
   }) async {
     final args = <String>[
       'log',
-      '--all',
+      revisionRange ?? '--all',
       '--date-order',
       if (skip > 0) ...['--skip', '$skip'],
       '--max-count',

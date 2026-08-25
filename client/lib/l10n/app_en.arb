@@ -3633,5 +3633,22 @@
       }
     }
   },
-  "managedProvidersResetsSoon": "Resets soon"
+  "managedProvidersResetsSoon": "Resets soon",
+  "gitGraphTitle": "Git Graph",
+  "gitGraphFetch": "Fetch",
+  "gitGraphPull": "Pull",
+  "gitGraphPush": "Push",
+  "gitGraphStash": "Stash",
+  "gitGraphRefresh": "Refresh",
+  "gitGraphSearchHint": "Search commits (message / author / hash)",
+  "gitGraphSearchModeMessage": "Message",
+  "gitGraphSearchModeAuthor": "Author",
+  "gitGraphSearchModeHash": "Hash",
+  "gitGraphAllBranches": "All branches",
+  "gitGraphCurrentBranch": "Current branch",
+  "gitGraphUncommittedChanges": "Uncommitted changes",
+  "gitGraphNoCommits": "No commits found",
+  "gitGraphNotARepository": "Not a git repository",
+  "gitGraphLoadMore": "Load more",
+  "gitGraphLoadingMore": "Loading…"
 }

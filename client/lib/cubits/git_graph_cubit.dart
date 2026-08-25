@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:equatable/equatable.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:meta/meta.dart';
@@ -30,6 +32,7 @@ class GitGraphState extends Equatable {
     this.dirtyCount = 0,
     this.searchQuery = '',
     this.searchMode = GitSearchMode.message,
+    this.currentOnly = false,
     this.errorMessage,
     this.gitAvailable = true,
   });
@@ -54,6 +57,9 @@ class GitGraphState extends Equatable {
   final int dirtyCount;
   final String searchQuery;
   final GitSearchMode searchMode;
+
+  /// 仅显示当前分支（refresh 时以 `HEAD` 替代 `--all`）。
+  final bool currentOnly;
   final String? errorMessage;
   final bool gitAvailable;
 
@@ -84,6 +90,7 @@ class GitGraphState extends Equatable {
     int? dirtyCount,
     String? searchQuery,
     GitSearchMode? searchMode,
+    bool? currentOnly,
     Object? errorMessage = _unset,
     bool clearError = false,
     bool? gitAvailable,
@@ -126,6 +133,7 @@ class GitGraphState extends Equatable {
       dirtyCount: dirtyCount ?? this.dirtyCount,
       searchQuery: searchQuery ?? this.searchQuery,
       searchMode: searchMode ?? this.searchMode,
+      currentOnly: currentOnly ?? this.currentOnly,
       errorMessage: clearError
           ? null
           : isUnset(errorMessage)
@@ -166,6 +174,7 @@ class GitGraphState extends Equatable {
     dirtyCount,
     searchQuery,
     searchMode,
+    currentOnly,
     errorMessage,
     gitAvailable,
   ];
@@ -235,6 +244,7 @@ class GitGraphCubit extends Cubit<GitGraphState> {
         dir,
         query: state.searchQuery,
         mode: state.searchMode,
+        revisionRange: state.currentOnly ? 'HEAD' : null,
       );
       final status = await _git.status(dir);
       if (isClosed || state.repoRoot != dir) return;
@@ -279,6 +289,7 @@ class GitGraphCubit extends Cubit<GitGraphState> {
         limit: GitHistoryService.loadMoreCommits,
         query: state.searchQuery,
         mode: state.searchMode,
+        revisionRange: state.currentOnly ? 'HEAD' : null,
       );
       if (isClosed || state.repoRoot != dir) return;
       emit(
@@ -307,6 +318,18 @@ class GitGraphCubit extends Cubit<GitGraphState> {
     _errorSurfaced = false;
     emit(state.copyWith(searchQuery: '', clearError: true));
     await refresh();
+  }
+
+  /// 分支范围切换：true → 仅当前分支（revisionRange `HEAD`），false → `--all`。
+  Future<void> setShowOnlyCurrentBranch(bool value) async {
+    if (state.currentOnly == value) return;
+    emit(state.copyWith(currentOnly: value));
+    await refresh();
+  }
+
+  /// [setShowOnlyCurrentBranch] 的翻转形式。
+  void toggleCurrentOnly() {
+    unawaited(setShowOnlyCurrentBranch(!state.currentOnly));
   }
 
   /// null → 清除选中与详情；非 null → 设置并懒加载详情。

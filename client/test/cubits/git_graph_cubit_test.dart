@@ -19,6 +19,7 @@ class _FailingHistory implements GitHistoryService {
     int skip = 0,
     String query = '',
     GitSearchMode mode = GitSearchMode.message,
+    String? revisionRange,
   }) async {
     calls++;
     if (calls > 1) throw GitException('boom');

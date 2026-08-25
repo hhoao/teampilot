@@ -8072,4 +8072,55 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get managedProvidersResetsSoon => 'Resets soon';
+
+  @override
+  String get gitGraphTitle => 'Git Graph';
+
+  @override
+  String get gitGraphFetch => 'Fetch';
+
+  @override
+  String get gitGraphPull => 'Pull';
+
+  @override
+  String get gitGraphPush => 'Push';
+
+  @override
+  String get gitGraphStash => 'Stash';
+
+  @override
+  String get gitGraphRefresh => 'Refresh';
+
+  @override
+  String get gitGraphSearchHint => 'Search commits (message / author / hash)';
+
+  @override
+  String get gitGraphSearchModeMessage => 'Message';
+
+  @override
+  String get gitGraphSearchModeAuthor => 'Author';
+
+  @override
+  String get gitGraphSearchModeHash => 'Hash';
+
+  @override
+  String get gitGraphAllBranches => 'All branches';
+
+  @override
+  String get gitGraphCurrentBranch => 'Current branch';
+
+  @override
+  String get gitGraphUncommittedChanges => 'Uncommitted changes';
+
+  @override
+  String get gitGraphNoCommits => 'No commits found';
+
+  @override
+  String get gitGraphNotARepository => 'Not a git repository';
+
+  @override
+  String get gitGraphLoadMore => 'Load more';
+
+  @override
+  String get gitGraphLoadingMore => 'Loading…';
 }

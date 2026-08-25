@@ -14359,6 +14359,108 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Resets soon'**
   String get managedProvidersResetsSoon;
+
+  /// No description provided for @gitGraphTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Git Graph'**
+  String get gitGraphTitle;
+
+  /// No description provided for @gitGraphFetch.
+  ///
+  /// In en, this message translates to:
+  /// **'Fetch'**
+  String get gitGraphFetch;
+
+  /// No description provided for @gitGraphPull.
+  ///
+  /// In en, this message translates to:
+  /// **'Pull'**
+  String get gitGraphPull;
+
+  /// No description provided for @gitGraphPush.
+  ///
+  /// In en, this message translates to:
+  /// **'Push'**
+  String get gitGraphPush;
+
+  /// No description provided for @gitGraphStash.
+  ///
+  /// In en, this message translates to:
+  /// **'Stash'**
+  String get gitGraphStash;
+
+  /// No description provided for @gitGraphRefresh.
+  ///
+  /// In en, this message translates to:
+  /// **'Refresh'**
+  String get gitGraphRefresh;
+
+  /// No description provided for @gitGraphSearchHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Search commits (message / author / hash)'**
+  String get gitGraphSearchHint;
+
+  /// No description provided for @gitGraphSearchModeMessage.
+  ///
+  /// In en, this message translates to:
+  /// **'Message'**
+  String get gitGraphSearchModeMessage;
+
+  /// No description provided for @gitGraphSearchModeAuthor.
+  ///
+  /// In en, this message translates to:
+  /// **'Author'**
+  String get gitGraphSearchModeAuthor;
+
+  /// No description provided for @gitGraphSearchModeHash.
+  ///
+  /// In en, this message translates to:
+  /// **'Hash'**
+  String get gitGraphSearchModeHash;
+
+  /// No description provided for @gitGraphAllBranches.
+  ///
+  /// In en, this message translates to:
+  /// **'All branches'**
+  String get gitGraphAllBranches;
+
+  /// No description provided for @gitGraphCurrentBranch.
+  ///
+  /// In en, this message translates to:
+  /// **'Current branch'**
+  String get gitGraphCurrentBranch;
+
+  /// No description provided for @gitGraphUncommittedChanges.
+  ///
+  /// In en, this message translates to:
+  /// **'Uncommitted changes'**
+  String get gitGraphUncommittedChanges;
+
+  /// No description provided for @gitGraphNoCommits.
+  ///
+  /// In en, this message translates to:
+  /// **'No commits found'**
+  String get gitGraphNoCommits;
+
+  /// No description provided for @gitGraphNotARepository.
+  ///
+  /// In en, this message translates to:
+  /// **'Not a git repository'**
+  String get gitGraphNotARepository;
+
+  /// No description provided for @gitGraphLoadMore.
+  ///
+  /// In en, this message translates to:
+  /// **'Load more'**
+  String get gitGraphLoadMore;
+
+  /// No description provided for @gitGraphLoadingMore.
+  ///
+  /// In en, this message translates to:
+  /// **'Loading…'**
+  String get gitGraphLoadingMore;
 }
 
 class _AppLocalizationsDelegate

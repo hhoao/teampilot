@@ -7730,4 +7730,55 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get managedProvidersResetsSoon => '即将重置';
+
+  @override
+  String get gitGraphTitle => '提交图';
+
+  @override
+  String get gitGraphFetch => '抓取';
+
+  @override
+  String get gitGraphPull => '拉取';
+
+  @override
+  String get gitGraphPush => '推送';
+
+  @override
+  String get gitGraphStash => '贮藏';
+
+  @override
+  String get gitGraphRefresh => '刷新';
+
+  @override
+  String get gitGraphSearchHint => '搜索提交（消息 / 作者 / 哈希）';
+
+  @override
+  String get gitGraphSearchModeMessage => '消息';
+
+  @override
+  String get gitGraphSearchModeAuthor => '作者';
+
+  @override
+  String get gitGraphSearchModeHash => '哈希';
+
+  @override
+  String get gitGraphAllBranches => '所有分支';
+
+  @override
+  String get gitGraphCurrentBranch => '当前分支';
+
+  @override
+  String get gitGraphUncommittedChanges => '未提交的更改';
+
+  @override
+  String get gitGraphNoCommits => '未找到提交';
+
+  @override
+  String get gitGraphNotARepository => '不是 Git 仓库';
+
+  @override
+  String get gitGraphLoadMore => '加载更多';
+
+  @override
+  String get gitGraphLoadingMore => '加载中…';
 }
