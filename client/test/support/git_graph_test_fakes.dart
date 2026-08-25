@@ -1,0 +1,141 @@
+import 'package:teampilot/models/git_graph.dart';
+import 'package:teampilot/models/git_status.dart';
+import 'package:teampilot/services/git/git_history_actions.dart';
+import 'package:teampilot/services/git/git_history_service.dart';
+import 'package:teampilot/services/git/git_service.dart';
+
+/// [GitHistoryService] 测试替身：固定 graph 行与提交详情，记录调用参数。
+class FakeHistoryForGraph implements GitHistoryService {
+  FakeHistoryForGraph({
+    this.rows = const [],
+    this.detail,
+    this.fullPages = false,
+  });
+
+  final List<GitGraphRow> rows;
+  final GitCommitDetail? detail;
+
+  /// 为真时按请求的 limit 循环填满每页，模拟“仍有更多提交”的大仓库。
+  final bool fullPages;
+
+  int graphCalls = 0;
+  Map<String, Object?> lastArgs = {};
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
+
+  @override
+  Future<List<GitGraphRow>> graphRows(
+    String dir, {
+    int limit = GitHistoryService.initialLoadCommits,
+    int skip = 0,
+    String query = '',
+    GitSearchMode mode = GitSearchMode.message,
+  }) async {
+    graphCalls++;
+    lastArgs = {'limit': limit, 'skip': skip, 'query': query, 'mode': mode};
+    if (fullPages) {
+      return List<GitGraphRow>.generate(limit, (i) => rows[i % rows.length]);
+    }
+    return rows;
+  }
+
+  @override
+  Future<GitCommitDetail> commitDetail(String dir, String hash) async =>
+      detail!;
+
+  @override
+  Future<List<GitBranchInfo>> branches(String dir) async => const [];
+
+  @override
+  Future<List<GitTagInfo>> tags(String dir) async => const [];
+
+  @override
+  Future<List<GitStashEntry>> stashList(String dir) async => const [];
+}
+
+/// [GitService] 测试替身：固定 `git status` 结果。
+class FakeGitForGraph implements GitService {
+  FakeGitForGraph(this.statusResult);
+
+  final GitRepoStatus statusResult;
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
+
+  @override
+  Future<GitRepoStatus> status(String dir) async => statusResult;
+}
+
+/// [GitHistoryActions] 录制替身：记录调用并可通过 [throwNext] 注入失败。
+class RecordingGraphActions implements GitHistoryActions {
+  final List<List<String>> calls = [];
+  Object? throwNext;
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
+
+  void _maybeThrow() {
+    final t = throwNext;
+    if (t != null) throw t;
+  }
+
+  @override
+  Future<void> createBranchAt(
+    String dir,
+    String name, {
+    required String startPoint,
+  }) async {
+    calls.add(['branch', name, startPoint]);
+    _maybeThrow();
+  }
+
+  @override
+  Future<void> deleteBranch(
+    String dir,
+    String name, {
+    bool force = false,
+  }) async {
+    calls.add(['branch', force ? '-D' : '-d', name]);
+    _maybeThrow();
+  }
+
+  @override
+  Future<void> resetTo(
+    String dir,
+    String ref, {
+    required GitResetMode mode,
+  }) async {
+    calls.add([
+      'reset',
+      switch (mode) {
+        GitResetMode.soft => '--soft',
+        GitResetMode.mixed => '--mixed',
+        GitResetMode.hard => '--hard',
+      },
+      ref,
+    ]);
+    _maybeThrow();
+  }
+}
+
+GitCommitRow graphCommitRow(String hash) => GitCommitRow(
+  edges: const [GitGraphEdge(0, 0, 0)],
+  node: const GitGraphNode(0, 0),
+  hash: hash,
+  parents: const ['p0'],
+  authorName: 'A',
+  authorEmail: 'a@x',
+  authorDate: DateTime.fromMillisecondsSinceEpoch(0, isUtc: true),
+  subject: 's-$hash',
+  refs: const [],
+);
+
+GitRepoStatus repoStatus() => GitRepoStatus(
+  isRepository: true,
+  branch: 'main',
+  upstream: 'origin/main',
+  ahead: 1,
+  behind: 0,
+  hasCommits: true,
+);

@@ -1,7 +1,9 @@
 import 'package:equatable/equatable.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:meta/meta.dart';
 
 import '../models/git_graph.dart';
+import '../services/git/git_history_actions.dart';
 import '../services/git/git_history_service.dart';
 import '../services/git/git_service.dart' show GitException, GitService;
 import '../utils/logging/logger.dart';
@@ -96,24 +98,24 @@ class GitGraphState extends Equatable {
       selectedHash: clearSelection
           ? null
           : isUnset(selectedHash)
-              ? this.selectedHash
-              : selectedHash as String?,
+          ? this.selectedHash
+          : selectedHash as String?,
       commitDetail: clearDetail
           ? null
           : isUnset(commitDetail)
-              ? this.commitDetail
-              : commitDetail as GitCommitDetail?,
+          ? this.commitDetail
+          : commitDetail as GitCommitDetail?,
       detailLoading: detailLoading ?? this.detailLoading,
       openFilePath: clearFileDiff
           ? null
           : isUnset(openFilePath)
-              ? this.openFilePath
-              : openFilePath as String?,
+          ? this.openFilePath
+          : openFilePath as String?,
       fileDiffText: clearFileDiff
           ? null
           : isUnset(fileDiffText)
-              ? this.fileDiffText
-              : fileDiffText as String?,
+          ? this.fileDiffText
+          : fileDiffText as String?,
       fileDiffLoading: fileDiffLoading ?? this.fileDiffLoading,
       branches: branches ?? this.branches,
       tags: tags ?? this.tags,
@@ -127,8 +129,8 @@ class GitGraphState extends Equatable {
       errorMessage: clearError
           ? null
           : isUnset(errorMessage)
-              ? this.errorMessage
-              : errorMessage as String?,
+          ? this.errorMessage
+          : errorMessage as String?,
       gitAvailable: gitAvailable ?? this.gitAvailable,
     );
   }
@@ -138,46 +140,66 @@ class GitGraphState extends Equatable {
     if (searchMode != GitSearchMode.hash || searchQuery.isEmpty) return rows;
     final q = searchQuery.toLowerCase();
     return rows
-        .where((r) =>
-            r is GitCommitRow && r.hash.toLowerCase().startsWith(q))
+        .where((r) => r is GitCommitRow && r.hash.toLowerCase().startsWith(q))
         .toList(growable: false);
   }
 
   @override
   List<Object?> get props => [
-        repoRoot,
-        rows,
-        hasMore,
-        isLoadingMore,
-        isRefreshing,
-        selectedHash,
-        commitDetail,
-        detailLoading,
-        openFilePath,
-        fileDiffText,
-        fileDiffLoading,
-        branches,
-        tags,
-        stashList,
-        currentBranch,
-        ahead,
-        behind,
-        dirtyCount,
-        searchQuery,
-        searchMode,
-        errorMessage,
-        gitAvailable,
-      ];
+    repoRoot,
+    rows,
+    hasMore,
+    isLoadingMore,
+    isRefreshing,
+    selectedHash,
+    commitDetail,
+    detailLoading,
+    openFilePath,
+    fileDiffText,
+    fileDiffLoading,
+    branches,
+    tags,
+    stashList,
+    currentBranch,
+    ahead,
+    behind,
+    dirtyCount,
+    searchQuery,
+    searchMode,
+    errorMessage,
+    gitAvailable,
+  ];
 }
 
 class GitGraphCubit extends Cubit<GitGraphState> {
-  GitGraphCubit({required GitHistoryService history, required GitService git})
-      : _history = history,
-        _git = git,
-        super(const GitGraphState());
+  GitGraphCubit({
+    required GitHistoryService history,
+    required GitService git,
+    GitHistoryActions? actions,
+  }) : _history = history,
+       _git = git,
+       _actions = actions ?? GitHistoryActions(),
+       super(const GitGraphState());
 
   final GitHistoryService _history;
   final GitService _git;
+  final GitHistoryActions _actions;
+
+  /// [surfaceError] 置位：下一次成功刷新保留该错误一次，再下次才清除。
+  bool _errorSurfaced = false;
+
+  @visibleForTesting
+  GitHistoryActions get actions => _actions;
+
+  @visibleForTesting
+  GitService get gitService => _git;
+
+  /// 写操作失败提示。与刷新自产的错误不同：随后一次成功的 refresh 不清除它，
+  /// 避免刚弹出的错误被立刻冲掉；再下次成功刷新（如重试生效）才消失。
+  void surfaceError(String message) {
+    _errorSurfaced = true;
+    emit(state.copyWith(errorMessage: message));
+  }
 
   bool _refreshInFlight = false;
   bool _refreshQueued = false;
@@ -220,20 +242,25 @@ class GitGraphCubit extends Cubit<GitGraphState> {
       final tags = await _history.tags(dir);
       final stashes = await _history.stashList(dir);
       if (isClosed || state.repoRoot != dir) return;
-      emit(state.copyWith(
-        rows: rows,
-        hasMore: rows.length == GitHistoryService.initialLoadCommits,
-        branches: branches,
-        tags: tags,
-        stashList: stashes,
-        currentBranch: status.branch ?? '',
-        ahead: status.ahead,
-        behind: status.behind,
-        dirtyCount: status.staged.length + status.unstaged.length,
-        gitAvailable: status.isRepository,
-        clearError: true,
-      ));
+      final keepSurfacedError = _errorSurfaced;
+      _errorSurfaced = false;
+      emit(
+        state.copyWith(
+          rows: rows,
+          hasMore: rows.length == GitHistoryService.initialLoadCommits,
+          branches: branches,
+          tags: tags,
+          stashList: stashes,
+          currentBranch: status.branch ?? '',
+          ahead: status.ahead,
+          behind: status.behind,
+          dirtyCount: status.staged.length + status.unstaged.length,
+          gitAvailable: status.isRepository,
+          clearError: !keepSurfacedError,
+        ),
+      );
     } on GitException catch (e) {
+      _errorSurfaced = false;
       if (isClosed) return;
       appLogger.e('[GitGraph] refresh failed: ${e.message}');
       emit(state.copyWith(errorMessage: e.message));
@@ -254,12 +281,15 @@ class GitGraphCubit extends Cubit<GitGraphState> {
         mode: state.searchMode,
       );
       if (isClosed || state.repoRoot != dir) return;
-      emit(state.copyWith(
-        rows: [...state.rows, ...more],
-        hasMore: more.length == GitHistoryService.loadMoreCommits,
-        isLoadingMore: false,
-      ));
+      emit(
+        state.copyWith(
+          rows: [...state.rows, ...more],
+          hasMore: more.length == GitHistoryService.loadMoreCommits,
+          isLoadingMore: false,
+        ),
+      );
     } on GitException catch (e) {
+      _errorSurfaced = false;
       if (isClosed) return;
       appLogger.e('[GitGraph] loadMore failed: ${e.message}');
       emit(state.copyWith(isLoadingMore: false, errorMessage: e.message));
@@ -274,6 +304,7 @@ class GitGraphCubit extends Cubit<GitGraphState> {
   }
 
   Future<void> clearSearch() async {
+    _errorSurfaced = false;
     emit(state.copyWith(searchQuery: '', clearError: true));
     await refresh();
   }
@@ -281,12 +312,14 @@ class GitGraphCubit extends Cubit<GitGraphState> {
   /// null → 清除选中与详情；非 null → 设置并懒加载详情。
   Future<void> selectCommit(String? hash) async {
     final root = state.repoRoot;
-    emit(state.copyWith(
-      selectedHash: hash,
-      commitDetail: hash == null ? null : state.commitDetail,
-      detailLoading: hash != null,
-      clearFileDiff: true,
-    ));
+    emit(
+      state.copyWith(
+        selectedHash: hash,
+        commitDetail: hash == null ? null : state.commitDetail,
+        detailLoading: hash != null,
+        clearFileDiff: true,
+      ),
+    );
     if (hash == null) return;
     try {
       final detail = await _history.commitDetail(root, hash);
@@ -296,6 +329,7 @@ class GitGraphCubit extends Cubit<GitGraphState> {
       }
       emit(state.copyWith(commitDetail: detail, detailLoading: false));
     } on GitException catch (e) {
+      _errorSurfaced = false;
       if (isClosed) return;
       appLogger.e('[GitGraph] detail failed: ${e.message}');
       emit(state.copyWith(detailLoading: false, errorMessage: e.message));
@@ -305,11 +339,13 @@ class GitGraphCubit extends Cubit<GitGraphState> {
   Future<void> openCommitFile(GitCommitFileChange file) async {
     final detail = state.commitDetail;
     if (detail == null) return;
-    emit(state.copyWith(
-      openFilePath: file.path,
-      fileDiffLoading: true,
-      fileDiffText: null,
-    ));
+    emit(
+      state.copyWith(
+        openFilePath: file.path,
+        fileDiffLoading: true,
+        fileDiffText: null,
+      ),
+    );
     try {
       final text = await _history.commitFileDiff(
         state.repoRoot,
@@ -320,15 +356,18 @@ class GitGraphCubit extends Cubit<GitGraphState> {
       if (isClosed || state.openFilePath != file.path) return;
       emit(state.copyWith(fileDiffText: text, fileDiffLoading: false));
     } on GitException catch (e) {
+      _errorSurfaced = false;
       if (isClosed) return;
       appLogger.e('[GitGraph] file diff failed: ${e.message}');
       emit(state.copyWith(fileDiffLoading: false, errorMessage: e.message));
     }
   }
 
-  void closeFileDiff() => emit(state.copyWith(
-        openFilePath: null,
-        fileDiffText: null,
-        fileDiffLoading: false,
-      ));
+  void closeFileDiff() => emit(
+    state.copyWith(
+      openFilePath: null,
+      fileDiffText: null,
+      fileDiffLoading: false,
+    ),
+  );
 }

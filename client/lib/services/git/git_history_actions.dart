@@ -13,6 +13,9 @@ class GitHistoryActions {
   factory GitHistoryActions.forContext(RuntimeContext ctx) =>
       GitHistoryActions(runner: gitCommandRunnerForContext(ctx));
 
+  /// 测试缝（同 [GitService.debugOverrideFactory] 模式）。
+  static GitHistoryActions Function()? debugOverrideFactory;
+
   final GitCommandRunner _runner;
 
   Future<void> _run(String dir, List<String> args) async {
@@ -21,7 +24,9 @@ class GitHistoryActions {
       final detail = result.stderr.trim().isEmpty
           ? result.stdout.trim()
           : result.stderr.trim();
-      appLogger.d('[GitActions] ${args.join(' ')} exit ${result.exitCode}: $detail');
+      appLogger.d(
+        '[GitActions] ${args.join(' ')} exit ${result.exitCode}: $detail',
+      );
       throw GitException(detail.isEmpty ? 'git ${args.first} failed' : detail);
     }
   }
@@ -30,8 +35,7 @@ class GitHistoryActions {
     String dir,
     String name, {
     required String startPoint,
-  }) =>
-      _run(dir, ['branch', name, startPoint]);
+  }) => _run(dir, ['branch', name, startPoint]);
 
   Future<void> renameBranch(String dir, String oldName, String newName) =>
       _run(dir, ['branch', '-m', oldName, newName]);
@@ -54,30 +58,21 @@ class GitHistoryActions {
     String name, {
     String? at,
     String? message,
-  }) =>
-      message != null && message.isNotEmpty
-          ? _run(dir, [
-              'tag',
-              '-a',
-              name,
-              '-m',
-              message,
-              if (at != null && at.isNotEmpty) at,
-            ])
-          : _run(dir, [
-              'tag',
-              name,
-              if (at != null && at.isNotEmpty) at,
-            ]);
+  }) => message != null && message.isNotEmpty
+      ? _run(dir, [
+          'tag',
+          '-a',
+          name,
+          '-m',
+          message,
+          if (at != null && at.isNotEmpty) at,
+        ])
+      : _run(dir, ['tag', name, if (at != null && at.isNotEmpty) at]);
 
   Future<void> deleteTag(String dir, String name) =>
       _run(dir, ['tag', '-d', name]);
 
-  Future<void> pushTag(
-    String dir,
-    String name, {
-    String remote = 'origin',
-  }) =>
+  Future<void> pushTag(String dir, String name, {String remote = 'origin'}) =>
       _run(dir, ['push', remote, name]);
 
   Future<void> cherryPick(String dir, String hash) =>
@@ -86,11 +81,7 @@ class GitHistoryActions {
   Future<void> revert(String dir, String hash) =>
       _run(dir, ['revert', '--no-edit', hash]);
 
-  Future<void> resetTo(
-    String dir,
-    String ref, {
-    required GitResetMode mode,
-  }) =>
+  Future<void> resetTo(String dir, String ref, {required GitResetMode mode}) =>
       _run(dir, [
         'reset',
         switch (mode) {
@@ -101,24 +92,14 @@ class GitHistoryActions {
         ref,
       ]);
 
-  Future<void> stashPop(String dir, {String? ref}) => _run(dir, [
-        'stash',
-        'pop',
-        if (ref != null && ref.isNotEmpty) ref,
-      ]);
+  Future<void> stashPop(String dir, {String? ref}) =>
+      _run(dir, ['stash', 'pop', if (ref != null && ref.isNotEmpty) ref]);
 
-  Future<void> stashApply(String dir, {String? ref}) => _run(dir, [
-        'stash',
-        'apply',
-        if (ref != null && ref.isNotEmpty) ref,
-      ]);
+  Future<void> stashApply(String dir, {String? ref}) =>
+      _run(dir, ['stash', 'apply', if (ref != null && ref.isNotEmpty) ref]);
 
-  Future<void> stashDrop(String dir, {String? ref}) => _run(dir, [
-        'stash',
-        'drop',
-        if (ref != null && ref.isNotEmpty) ref,
-      ]);
+  Future<void> stashDrop(String dir, {String? ref}) =>
+      _run(dir, ['stash', 'drop', if (ref != null && ref.isNotEmpty) ref]);
 
-  Future<void> fetchAll(String dir) =>
-      _run(dir, ['fetch', '--all', '--prune']);
+  Future<void> fetchAll(String dir) => _run(dir, ['fetch', '--all', '--prune']);
 }

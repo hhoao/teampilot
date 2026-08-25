@@ -1,7 +1,12 @@
+import 'dart:async';
+
 import 'package:path/path.dart' as p;
 
 import '../../cubits/git_cubit.dart';
+import '../../cubits/git_graph_cubit.dart';
 import '../storage/runtime_context.dart';
+import 'git_history_actions.dart';
+import 'git_history_service.dart';
 import 'git_service.dart';
 
 /// App-level registry of long-lived [GitCubit]s, one per repository root and
@@ -20,8 +25,11 @@ import 'git_service.dart';
 class GitRepoStore {
   GitRepoStore({
     GitCubit Function(String root, RuntimeContext workContext)? cubitFactory,
+    GitGraphCubit Function(String root, RuntimeContext workContext)?
+    graphCubitFactory,
     int maxRetained = 8,
   }) : _cubitFactory = cubitFactory ?? _defaultFactory,
+       _graphFactory = graphCubitFactory ?? _defaultGraphFactory,
        _maxRetained = maxRetained;
 
   static GitCubit _defaultFactory(String root, RuntimeContext workContext) {
@@ -31,13 +39,35 @@ class GitRepoStore {
     return GitCubit(service: service)..setRepoRoot(root);
   }
 
+  static GitGraphCubit _defaultGraphFactory(
+    String root,
+    RuntimeContext workContext,
+  ) {
+    final history =
+        GitHistoryService.debugOverrideFactory?.call() ??
+        GitHistoryService.forContext(workContext);
+    final git =
+        GitService.debugOverrideFactory?.call() ??
+        GitService.forContext(workContext);
+    final actions =
+        GitHistoryActions.debugOverrideFactory?.call() ??
+        GitHistoryActions.forContext(workContext);
+    return GitGraphCubit(history: history, git: git, actions: actions);
+  }
+
   final GitCubit Function(String root, RuntimeContext workContext)
   _cubitFactory;
+  final GitGraphCubit Function(String root, RuntimeContext workContext)
+  _graphFactory;
   final int _maxRetained;
   final p.Context _ctx = p.Context();
 
   /// Normalized `targetId:root` → cubit. Insertion order is the LRU order.
   final Map<String, GitCubit> _cubits = <String, GitCubit>{};
+
+  /// Same keying as [_cubits]; independent LRU so graph panels never evict
+  /// status cubits (and vice versa).
+  final Map<String, GitGraphCubit> _graphCubits = <String, GitGraphCubit>{};
 
   static String _cacheKey(String root, RuntimeContext workContext) {
     final normalized = p.Context(style: p.Style.posix).normalize(root);
@@ -59,6 +89,25 @@ class GitRepoStore {
     return cubit;
   }
 
+  /// Returns the retained graph cubit for [root] on [workContext], creating it
+  /// on first access and warming it asynchronously.
+  GitGraphCubit graphCubitFor(
+    String root, {
+    required RuntimeContext workContext,
+  }) {
+    final key = _cacheKey(root, workContext);
+    final existing = _graphCubits.remove(key);
+    if (existing != null) {
+      _graphCubits[key] = existing;
+      return existing;
+    }
+    final cubit = _graphFactory(_ctx.normalize(root), workContext);
+    unawaited(cubit.setRepoRoot(root));
+    _graphCubits[key] = cubit;
+    _evict();
+    return cubit;
+  }
+
   /// Triggers a coalesced refresh for every [roots] entry on [workContext].
   void refreshAll(
     Iterable<String> roots, {
@@ -75,12 +124,20 @@ class GitRepoStore {
       final oldestKey = _cubits.keys.first;
       _cubits.remove(oldestKey)?.close();
     }
+    while (_graphCubits.length > _maxRetained) {
+      final oldestKey = _graphCubits.keys.first;
+      _graphCubits.remove(oldestKey)?.close();
+    }
   }
 
   void dispose() {
     for (final cubit in _cubits.values) {
       cubit.close();
     }
+    for (final cubit in _graphCubits.values) {
+      cubit.close();
+    }
     _cubits.clear();
+    _graphCubits.clear();
   }
 }
