@@ -48,6 +48,7 @@ class _WorkspaceSearchPanelState extends State<WorkspaceSearchPanel> {
   final _includeController = TextEditingController();
   final _excludeController = TextEditingController();
   final _focusNode = FocusNode();
+  final Set<String> _collapsedPaths = {};
   bool _isRegex = true;
   bool _caseSensitive = false;
   bool _useGitignore = true;
@@ -334,6 +335,10 @@ class _WorkspaceSearchPanelState extends State<WorkspaceSearchPanel> {
                 query: _queryController.text.trim(),
                 truncated: state.truncated,
                 replacement: _replaceController.text,
+                collapsedPaths: _collapsedPaths,
+                onToggleGroup: (path) => setState(() {
+                  if (!_collapsedPaths.add(path)) _collapsedPaths.remove(path);
+                }),
                 onOpenResult: (path, line) => _openResult(context, path, line),
                 onReplaceSingle: (path, replacement) =>
                     _cubit.replaceSingle(path, replacement),

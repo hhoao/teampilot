@@ -165,4 +165,44 @@ void main() {
     final l10n = AppLocalizations.of(tester.element(find.byType(Scaffold)));
     expect(find.text(l10n.workspaceSearchResultSummary(1, 1)), findsOneWidget);
   });
+
+  testWidgets('tapping a file group header collapses and expands its lines', (
+    tester,
+  ) async {
+    final cubit = buildCubit();
+    addTearDown(cubit.close);
+    await tester.pumpWidget(wrap(cubit));
+    await runSearch(tester, 'hello');
+    expect(find.textContaining('hello world'), findsWidgets);
+    await tester.tap(find.textContaining('a.dart').first);
+    await tester.pumpAndSettle();
+    expect(find.textContaining('hello world'), findsNothing);
+    await tester.tap(find.textContaining('a.dart').first);
+    await tester.pumpAndSettle();
+    expect(find.textContaining('hello world'), findsWidgets);
+  });
+
+  testWidgets('hover replace button replaces one file after confirm', (
+    tester,
+  ) async {
+    final cubit = buildCubit();
+    addTearDown(cubit.close);
+    await tester.pumpWidget(wrap(cubit));
+    await runSearch(tester, 'hello');
+    await tester.enterText(find.byType(TextField).at(3), 'hi');
+    await tester.pump();
+    await tester.tap(find.byKey(const ValueKey('search-file-replace-all')));
+    await tester.pumpAndSettle();
+    final l10n = AppLocalizations.of(tester.element(find.byType(Scaffold)));
+    expect(find.text(l10n.workspaceSearchReplaceAllTitle), findsOneWidget);
+    await tester.tap(find.text(l10n.workspaceSearchReplace).last);
+    for (var i = 0; i < 30; i++) {
+      await tester.pump(const Duration(milliseconds: 50));
+      await tester.runAsync(
+        () => Future<void>.delayed(const Duration(milliseconds: 20)),
+      );
+    }
+    await tester.pumpAndSettle();
+    expect(File('${fixture.path}/a.dart').readAsStringSync(), 'hi world\n');
+  });
 }
