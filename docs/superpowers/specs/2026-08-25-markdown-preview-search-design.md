@@ -65,7 +65,7 @@ class MarkdownSearchIndex {
 
 Each container records:
 
-- its **plain text** — runs flattened via the same traversal as `plainTextFromRuns` (TextRun/CodeRun text; Strong/Emphasis/Strike/Link children recursed; ImageRun alt text);
+- its **plain text** — runs flattened via a shared traversal (`inlineTextPieces`: TextRun/CodeRun text; Strong/Emphasis/Strike/Link children recursed; **image alt excluded** — images render as unsplittable `WidgetSpan`s, so their text cannot carry highlight);
 - an **offset ↔ run-path mapping** from plain-text offsets back into `(runIndex, offsetWithinRun)` so span building can split runs at match boundaries;
 - its **address**: top-level `blockIndex` + structured path to the container (`self()` / `listItem(i)` / `child(j)` / `tableCell(row, col)` …).
 
