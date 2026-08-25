@@ -4,6 +4,7 @@ import 'package:teampilot/cubits/chat/model/chat_tab.dart';
 import 'package:teampilot/cubits/chat/model/chat_tab_info.dart';
 import 'package:teampilot/cubits/chat/model/session_workbench_view.dart';
 import 'package:teampilot/cubits/chat/tab_member_reclaim_watch.dart';
+import 'package:teampilot/models/app_session.dart';
 import 'package:teampilot/models/team_config.dart';
 import 'package:teampilot/services/team_bus/agent_node.dart';
 import 'package:teampilot/services/team_bus/team_bus.dart';
@@ -46,12 +47,14 @@ TabMemberReclaimWatch _watch(
   ChatTabStore store, {
   required void Function(String, String) onDiscard,
   required DateTime Function() now,
+  bool Function(String sessionId)? isSessionPinned,
 }) => TabMemberReclaimWatch(
   tabStore: store,
   reclaimEnabled: () => true,
   activeTeam: () => _team,
   policy: () => const TerminalReclaimPolicy(idleAfter: Duration(seconds: 2)),
   onDiscardMember: onDiscard,
+  isSessionPinned: isSessionPinned,
   now: now,
 );
 
@@ -104,6 +107,68 @@ void main() {
 
     watch.tick();
     expect(discarded, isEmpty, reason: 'in-turn member is protected');
+  });
+
+  test('pinned sessions are never reclaimed', () {
+    final store = ChatTabStore();
+    final tab = _tabWithBus();
+    store.registerSession(tab);
+    final bus = _busWith(
+      'worker-1',
+      MemberLifecycle.running,
+      MemberActivity.turnDoneBusWait,
+    );
+    tab.teamBus = bus;
+    tab.memberShells['worker-1'] = _runningShell();
+
+    final discarded = <(String, String)>[];
+    var now = DateTime(2026, 8, 9, 12, 0, 0);
+    final watch = _watch(
+      store,
+      onDiscard: (s, m) => discarded.add((s, m)),
+      now: () => now,
+      isSessionPinned: (id) => id == 'sess',
+    );
+
+    watch.tick();
+    now = now.add(const Duration(seconds: 3));
+    watch.tick();
+
+    expect(discarded, isEmpty, reason: 'pinned session terminals stay live');
+  });
+
+  test('persistedSession.pinned protects without callback', () {
+    final store = ChatTabStore();
+    final tab = _tabWithBus();
+    tab.persistedSession = AppSession(
+      sessionId: 'sess',
+      workspaceId: 'ws',
+      createdAt: 1,
+      pinned: true,
+      sessionTeam: 't',
+    );
+    store.registerSession(tab);
+    final bus = _busWith(
+      'worker-1',
+      MemberLifecycle.running,
+      MemberActivity.turnDoneBusWait,
+    );
+    tab.teamBus = bus;
+    tab.memberShells['worker-1'] = _runningShell();
+
+    final discarded = <(String, String)>[];
+    var now = DateTime(2026, 8, 9, 12, 0, 0);
+    final watch = _watch(
+      store,
+      onDiscard: (s, m) => discarded.add((s, m)),
+      now: () => now,
+    );
+
+    watch.tick();
+    now = now.add(const Duration(seconds: 3));
+    watch.tick();
+
+    expect(discarded, isEmpty);
   });
 }
 
