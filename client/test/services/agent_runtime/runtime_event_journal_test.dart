@@ -2,6 +2,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/models/team_config.dart';
 import 'package:teampilot/services/agent_runtime/runtime_event.dart';
 import 'package:teampilot/services/agent_runtime/runtime_event_journal.dart';
+import 'package:teampilot/services/io/filesystem.dart';
 import '../../support/in_memory_filesystem.dart';
 
 void main() {
@@ -121,6 +122,45 @@ void main() {
 
     expect([one.sequence, two.sequence, three.sequence], [1, 2, 3]);
   });
+
+  test(
+    'independent filesystem views serialize concurrent persisted-seat appends',
+    () async {
+      final backing = InMemoryFilesystem();
+      const seat = RuntimeSeatKey(sessionId: 'session', memberId: 'member');
+      final first = FileRuntimeEventJournal(
+        journalRoot: '/runtime/events',
+        fs: _FilesystemView(backing),
+      );
+      final second = FileRuntimeEventJournal(
+        journalRoot: '/runtime/events',
+        fs: _FilesystemView(backing),
+      );
+
+      final events = await Future.wait([
+        first.append(_prompt(seat, 'one')),
+        second.append(_prompt(seat, 'two')),
+      ]);
+
+      expect(events.map((event) => event.sequence).toSet(), {1, 2});
+      expect(
+        (await first.replay(seat).toList()).map((event) => event.sequence),
+        [1, 2],
+      );
+    },
+  );
+
+  test('completed file-journal append releases its seat lock', () async {
+    final journal = FileRuntimeEventJournal(
+      journalRoot: '/runtime/events',
+      fs: InMemoryFilesystem(),
+    );
+    const seat = RuntimeSeatKey(sessionId: 'session', memberId: 'member');
+
+    await journal.append(_prompt(seat, 'one'));
+
+    expect(FileRuntimeEventJournal.activeSeatLockCount, 0);
+  });
 }
 
 RuntimeEventEnvelopeDraft _prompt(RuntimeSeatKey seat, String prompt) =>
@@ -130,3 +170,25 @@ RuntimeEventEnvelopeDraft _prompt(RuntimeSeatKey seat, String prompt) =>
       prompt: prompt,
       occurredAt: DateTime.utc(2026),
     );
+
+class _FilesystemView implements Filesystem {
+  _FilesystemView(this._delegate);
+
+  final Filesystem _delegate;
+
+  @override
+  get pathContext => _delegate.pathContext;
+
+  @override
+  Future<String?> readString(String path) => _delegate.readString(path);
+
+  @override
+  Future<void> ensureDir(String path) => _delegate.ensureDir(path);
+
+  @override
+  Future<void> appendString(String path, String content) =>
+      _delegate.appendString(path, content);
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
+}

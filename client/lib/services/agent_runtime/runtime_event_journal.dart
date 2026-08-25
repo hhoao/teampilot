@@ -1,4 +1,7 @@
+import 'dart:async';
 import 'dart:convert';
+
+import 'package:meta/meta.dart';
 
 import '../../models/team_config.dart';
 import '../io/filesystem.dart';
@@ -57,19 +60,29 @@ final class FileRuntimeEventJournal implements RuntimeEventJournal {
 
   static final Map<String, Future<void>> _seatLocks = {};
 
+  @visibleForTesting
+  static int get activeSeatLockCount => _seatLocks.length;
+
   String _fileFor(RuntimeSeatKey seat) => _fs.pathContext.join(
     journalRoot,
     '${_pathSegment(seat.sessionId)}--${_pathSegment(seat.memberId)}.jsonl',
   );
 
-  String _lockKey(RuntimeSeatKey seat) =>
-      '${identityHashCode(_fs)}:${_fileFor(seat)}';
+  String _lockKey(RuntimeSeatKey seat) => _fileFor(seat);
 
   Future<T> _serialized<T>(RuntimeSeatKey seat, Future<T> Function() action) {
     final key = _lockKey(seat);
     final previous = _seatLocks[key] ?? Future<void>.value();
     final result = previous.then((_) => action());
-    _seatLocks[key] = result.then((_) {}, onError: (_) {});
+    final tail = result.then<void>((_) {}, onError: (_) {});
+    _seatLocks[key] = tail;
+    unawaited(
+      tail.then((_) {
+        if (identical(_seatLocks[key], tail)) {
+          _seatLocks.remove(key);
+        }
+      }),
+    );
     return result;
   }
 
