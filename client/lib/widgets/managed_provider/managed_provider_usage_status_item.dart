@@ -146,22 +146,31 @@ class _SummaryContent extends StatelessWidget {
     Widget leadingIcon;
     if (summary.loading) {
       leadingIcon = const SizedBox.square(
-        dimension: 12,
-        child: CircularProgressIndicator(strokeWidth: 1.5),
+        dimension: 13,
+        child: Center(
+          child: SizedBox.square(
+            dimension: 12,
+            child: CircularProgressIndicator(strokeWidth: 1.5),
+          ),
+        ),
       );
     } else if (summary.providerList.length == 1) {
       leadingIcon = KeyedSubtree(
         key: Key('managed-provider-brand-${summary.providerList.single.id}'),
         child: ManagedProviderBrandMark(
           provider: summary.providerList.single,
-          size: 15,
+          size: 13,
         ),
       );
     } else {
-      leadingIcon = Icon(
-        Icons.account_balance_wallet_outlined,
-        size: 13,
-        color: cs.onSurfaceVariant,
+      leadingIcon = SizedBox(
+        width: 13,
+        height: 13,
+        child: Icon(
+          Icons.account_balance_wallet_outlined,
+          size: 12,
+          color: cs.onSurfaceVariant,
+        ),
       );
     }
 
@@ -174,15 +183,18 @@ class _SummaryContent extends StatelessWidget {
           )
         : null;
 
+    final showLabel = !compact || summary.providerList.length == 1;
+
     return Row(
       mainAxisSize: MainAxisSize.min,
       crossAxisAlignment: CrossAxisAlignment.center,
       children: [
         leadingIcon,
         if (warningIcon != null) ...[const SizedBox(width: 2), warningIcon],
-        const SizedBox(width: 4),
-        if (!compact || summary.providerList.length == 1)
+        if (showLabel) ...[
+          const SizedBox(width: 4),
           Text(
+            key: const Key('managed-provider-usage-status-label'),
             summary.label,
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
@@ -192,6 +204,7 @@ class _SummaryContent extends StatelessWidget {
               fontFeatures: const [FontFeature.tabularFigures()],
             ),
           ),
+        ],
       ],
     );
   }

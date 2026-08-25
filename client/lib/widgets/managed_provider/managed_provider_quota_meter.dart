@@ -4,6 +4,7 @@ import 'package:shared_ui/shared_ui.dart';
 import '../../l10n/l10n_extensions.dart';
 import '../../models/managed_provider.dart';
 import '../../models/provider_usage_snapshot.dart';
+import 'managed_provider_reset_countdown.dart';
 
 /// Compact quota meter: rounded progress bar with remaining % and reset time.
 class ManagedProviderQuotaMeter extends StatelessWidget {
@@ -92,9 +93,7 @@ class ManagedProviderQuotaMeter extends StatelessWidget {
 
     final cs = Theme.of(context).colorScheme;
     final styles = TpTextStyles.of(context);
-    final l10n = context.l10n;
-    final remainingLabel = _remainingLabel(measure, display, l10n);
-    final resetLabel = _resetLabel(context, l10n);
+    final remainingLabel = _remainingLabel(measure, display, context.l10n);
     final barColor = warning
         ? cs.error
         : fraction <= 0.35
@@ -132,12 +131,11 @@ class ManagedProviderQuotaMeter extends StatelessWidget {
                 ),
               ),
             ),
-            if (resetLabel != null) ...[
+            if (resetsAt != null) ...[
               const SizedBox(width: 8),
-              Text(
-                resetLabel,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
+              ManagedProviderResetCountdownLabel(
+                resetsAt: resetsAt,
+                now: now,
                 style: styles.xs.copyWith(
                   color: cs.onSurfaceVariant.withValues(alpha: 0.72),
                   fontFeatures: const [FontFeature.tabularFigures()],
@@ -160,24 +158,4 @@ class ManagedProviderQuotaMeter extends StatelessWidget {
     );
   }
 
-  String? _resetLabel(BuildContext context, AppLocalizations l10n) {
-    final resetsAt = this.resetsAt;
-    if (resetsAt == null) return null;
-    final nowMs = (now ?? DateTime.now()).millisecondsSinceEpoch;
-    final remainingMs = resetsAt - nowMs;
-    if (remainingMs <= 0) return l10n.managedProvidersResetsSoon;
-    return l10n.managedProvidersResetsIn(
-      _formatResetCountdown(Duration(milliseconds: remainingMs)),
-    );
-  }
-
-  static String _formatResetCountdown(Duration remaining) {
-    final days = remaining.inDays;
-    final hours = remaining.inHours % 24;
-    final minutes = remaining.inMinutes % 60;
-    if (days > 0) return '${days}d ${hours}h';
-    if (hours > 0) return '${hours}h ${minutes}m';
-    if (minutes > 0) return '${minutes}m';
-    return '${remaining.inSeconds}s';
-  }
 }

@@ -380,7 +380,7 @@ void main() {
         find.byKey(const Key('managed-provider-brand-p1')),
       );
       final label = tester.getRect(
-        find.byKey(const Key('managed-provider-usage-status-item')),
+        find.byKey(const Key('managed-provider-usage-status-label')),
       );
       expect((icon.center.dy - label.center.dy).abs(), lessThanOrEqualTo(1));
     },
