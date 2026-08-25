@@ -10,6 +10,7 @@ use std::sync::mpsc;
 pub use engine::{SearchConfig, SearchError, SearchMatchData, SearchMsg, TpSearchHandle};
 
 use engine::spawn_search;
+use file_index::{FileIndex, FileIndexConfig, FileIndexError, FileMatchMode};
 
 #[repr(C)]
 pub struct TpSearchConfig {
@@ -64,10 +65,7 @@ unsafe fn read_string(ptr: *const c_char) -> Result<String, String> {
         .map_err(|e| e.to_string())
 }
 
-unsafe fn read_string_array(
-    ptr: *const *const c_char,
-    count: u32,
-) -> Result<Vec<String>, String> {
+unsafe fn read_string_array(ptr: *const *const c_char, count: u32) -> Result<Vec<String>, String> {
     if ptr.is_null() {
         return Ok(Vec::new());
     }
@@ -232,8 +230,11 @@ pub unsafe extern "C" fn tp_search_next(
     if !h.finished && h.pending.len() < h.max_chunk_matches {
         let mut budget = h.max_chunk_matches.saturating_sub(h.pending.len());
         while budget > 0 {
-            let pending_bytes: usize =
-                h.pending.iter().map(|d| d.line_text.len() + d.path.len()).sum();
+            let pending_bytes: usize = h
+                .pending
+                .iter()
+                .map(|d| d.line_text.len() + d.path.len())
+                .sum();
             if pending_bytes >= h.max_chunk_bytes {
                 break;
             }
@@ -282,4 +283,302 @@ pub unsafe extern "C" fn tp_search_free(handle: *mut TpSearchHandle) {
     let h = Box::from_raw(handle);
     h.cancel.store(true, Ordering::Relaxed);
     drop(h);
+}
+
+pub struct TpFileIndexHandle {
+    index: FileIndex,
+}
+
+#[repr(C)]
+pub struct TpFileIndexConfig {
+    root: *const c_char,
+    use_gitignore: i32,
+    max_entries: u64,
+    max_chunk_matches: u32,
+    max_chunk_bytes: u32,
+}
+
+#[repr(C)]
+pub struct TpFileIndexEntry {
+    path: *const c_char,
+    relative_path: *const c_char,
+    name: *const c_char,
+}
+
+#[repr(C)]
+pub struct TpFileIndexChunk {
+    string_buf: *mut c_char,
+    string_buf_cap: u32,
+    string_buf_len: u32,
+    entries: *mut TpFileIndexEntry,
+    entries_cap: u32,
+    entries_len: u32,
+    truncated: i32,
+}
+
+fn map_file_index_error(error: FileIndexError) -> i32 {
+    match error {
+        FileIndexError::RootUnreadable => ERR_ROOT_UNREADABLE,
+        FileIndexError::Internal(_) => ERR_INTERNAL,
+    }
+}
+
+unsafe fn fill_file_index_chunk(
+    chunk: &mut TpFileIndexChunk,
+    entries: impl IntoIterator<Item = (String, String, String)>,
+    truncated: bool,
+) {
+    chunk.string_buf_len = 0;
+    chunk.entries_len = 0;
+    chunk.truncated = if truncated { 1 } else { 0 };
+
+    let str_cap = chunk.string_buf_cap as usize;
+    let str_buf = if chunk.string_buf.is_null() {
+        &mut []
+    } else {
+        std::slice::from_raw_parts_mut(chunk.string_buf as *mut u8, str_cap)
+    };
+    let entry_cap = chunk.entries_cap as usize;
+    let entry_arr = if chunk.entries.is_null() {
+        &mut []
+    } else {
+        std::slice::from_raw_parts_mut(chunk.entries, entry_cap)
+    };
+
+    let mut str_off = 0usize;
+    let mut entry_idx = 0usize;
+    for (path, relative_path, name) in entries {
+        if entry_idx >= entry_arr.len() {
+            break;
+        }
+        let required = path.len() + relative_path.len() + name.len() + 3;
+        if required > str_cap {
+            continue;
+        }
+        if required > str_cap.saturating_sub(str_off) {
+            break;
+        }
+
+        let path_off = str_off;
+        str_off = match write_string(str_buf, str_off, &path) {
+            Ok(offset) => offset,
+            Err(_) => break,
+        };
+        let relative_path_off = str_off;
+        str_off = match write_string(str_buf, str_off, &relative_path) {
+            Ok(offset) => offset,
+            Err(_) => break,
+        };
+        let name_off = str_off;
+        str_off = match write_string(str_buf, str_off, &name) {
+            Ok(offset) => offset,
+            Err(_) => break,
+        };
+        let base = chunk.string_buf as usize;
+        entry_arr[entry_idx] = TpFileIndexEntry {
+            path: (base + path_off) as *const c_char,
+            relative_path: (base + relative_path_off) as *const c_char,
+            name: (base + name_off) as *const c_char,
+        };
+        entry_idx += 1;
+    }
+    chunk.string_buf_len = str_off as u32;
+    chunk.entries_len = entry_idx as u32;
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn tp_file_index_new(
+    config: *const TpFileIndexConfig,
+    out: *mut *mut TpFileIndexHandle,
+) -> i32 {
+    if config.is_null() || out.is_null() {
+        return ERR_INTERNAL;
+    }
+    let cfg = &*config;
+    let root = match read_string(cfg.root) {
+        Ok(root) => root,
+        Err(_) => return ERR_INTERNAL,
+    };
+    match FileIndex::new(FileIndexConfig {
+        root,
+        use_gitignore: cfg.use_gitignore != 0,
+        max_entries: cfg.max_entries,
+    }) {
+        Ok(index) => {
+            *out = Box::into_raw(Box::new(TpFileIndexHandle { index }));
+            0
+        }
+        Err(error) => map_file_index_error(error),
+    }
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn tp_file_index_build(handle: *mut TpFileIndexHandle) -> i32 {
+    if handle.is_null() {
+        return ERR_INTERNAL;
+    }
+    match (*handle).index.build() {
+        Ok(()) => 0,
+        Err(error) => map_file_index_error(error),
+    }
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn tp_file_index_cancel(handle: *mut TpFileIndexHandle) {
+    if !handle.is_null() {
+        (*handle).index.cancel();
+    }
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn tp_file_index_query(
+    handle: *mut TpFileIndexHandle,
+    query: *const c_char,
+    mode: i32,
+    limit: u32,
+    chunk: *mut TpFileIndexChunk,
+) -> i32 {
+    if handle.is_null() || chunk.is_null() {
+        return ERR_INTERNAL;
+    }
+    let query = match read_string(query) {
+        Ok(query) => query,
+        Err(_) => return ERR_INTERNAL,
+    };
+    let mode = match mode {
+        0 => FileMatchMode::Fuzzy,
+        1 => FileMatchMode::Contains,
+        _ => return ERR_INTERNAL,
+    };
+    let handle = &mut *handle;
+    let hits = handle.index.query(&query, mode, limit as usize);
+    fill_file_index_chunk(
+        &mut *chunk,
+        hits.into_iter()
+            .map(|hit| (hit.path, hit.relative_path, hit.name)),
+        handle.index.truncated(),
+    );
+    0
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn tp_file_index_query_dirs(
+    handle: *mut TpFileIndexHandle,
+    query: *const c_char,
+    limit: u32,
+    chunk: *mut TpFileIndexChunk,
+) -> i32 {
+    if handle.is_null() || chunk.is_null() {
+        return ERR_INTERNAL;
+    }
+    let query = match read_string(query) {
+        Ok(query) => query,
+        Err(_) => return ERR_INTERNAL,
+    };
+    let handle = &mut *handle;
+    let directories = handle.index.query_dirs(&query, limit as usize);
+    fill_file_index_chunk(
+        &mut *chunk,
+        directories
+            .into_iter()
+            .map(|relative_path| (String::new(), relative_path, String::new())),
+        handle.index.truncated(),
+    );
+    0
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn tp_file_index_free(handle: *mut TpFileIndexHandle) {
+    if !handle.is_null() {
+        drop(Box::from_raw(handle));
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::ffi::{CStr, CString};
+    use std::path::PathBuf;
+    use std::ptr;
+
+    fn fixture_root() -> CString {
+        CString::new(
+            PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+                .join("tests/fixtures/file_index")
+                .to_string_lossy()
+                .into_owned(),
+        )
+        .unwrap()
+    }
+
+    #[test]
+    fn file_index_ffi_writes_file_and_directory_entries() {
+        let root = fixture_root();
+        let config = TpFileIndexConfig {
+            root: root.as_ptr(),
+            use_gitignore: 1,
+            max_entries: 100,
+            max_chunk_matches: 0,
+            max_chunk_bytes: 0,
+        };
+        let mut handle = ptr::null_mut();
+        assert_eq!(unsafe { tp_file_index_new(&config, &mut handle) }, 0);
+        assert_eq!(unsafe { tp_file_index_build(handle) }, 0);
+
+        let query = CString::new("router").unwrap();
+        let mut string_buf = vec![0i8; 1024];
+        let mut entries = Vec::<TpFileIndexEntry>::with_capacity(4);
+        let mut chunk = TpFileIndexChunk {
+            string_buf: string_buf.as_mut_ptr(),
+            string_buf_cap: string_buf.len() as u32,
+            string_buf_len: 0,
+            entries: entries.as_mut_ptr(),
+            entries_cap: entries.capacity() as u32,
+            entries_len: 0,
+            truncated: 0,
+        };
+        assert_eq!(
+            unsafe { tp_file_index_query(handle, query.as_ptr(), 1, 10, &mut chunk) },
+            0
+        );
+        assert_eq!(chunk.entries_len, 1);
+        let entry = unsafe { &*chunk.entries };
+        assert_eq!(
+            unsafe { CStr::from_ptr(entry.relative_path) }
+                .to_str()
+                .unwrap(),
+            "lib/app_router.dart"
+        );
+        assert_eq!(
+            unsafe { CStr::from_ptr(entry.name) }.to_str().unwrap(),
+            "app_router.dart"
+        );
+
+        let dir_query = CString::new("li").unwrap();
+        assert_eq!(
+            unsafe { tp_file_index_query_dirs(handle, dir_query.as_ptr(), 10, &mut chunk) },
+            0
+        );
+        assert_eq!(chunk.entries_len, 1);
+        assert_eq!(
+            unsafe { CStr::from_ptr((*chunk.entries).relative_path) }
+                .to_str()
+                .unwrap(),
+            "lib"
+        );
+        assert_eq!(
+            unsafe { CStr::from_ptr((*chunk.entries).path) }
+                .to_str()
+                .unwrap(),
+            ""
+        );
+        assert_eq!(
+            unsafe { CStr::from_ptr((*chunk.entries).name) }
+                .to_str()
+                .unwrap(),
+            ""
+        );
+
+        unsafe { tp_file_index_free(handle) };
+    }
 }

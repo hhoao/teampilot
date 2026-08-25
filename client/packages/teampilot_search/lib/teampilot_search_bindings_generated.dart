@@ -32,6 +32,58 @@ external void tp_search_cancel(ffi.Pointer<TpSearchHandle> handle);
 @ffi.Native<ffi.Void Function(ffi.Pointer<TpSearchHandle>)>()
 external void tp_search_free(ffi.Pointer<TpSearchHandle> handle);
 
+@ffi.Native<
+  ffi.Int32 Function(
+    ffi.Pointer<TpFileIndexConfig>,
+    ffi.Pointer<ffi.Pointer<TpFileIndexHandle>>,
+  )
+>()
+external int tp_file_index_new(
+  ffi.Pointer<TpFileIndexConfig> config,
+  ffi.Pointer<ffi.Pointer<TpFileIndexHandle>> out,
+);
+
+@ffi.Native<ffi.Int32 Function(ffi.Pointer<TpFileIndexHandle>)>()
+external int tp_file_index_build(ffi.Pointer<TpFileIndexHandle> handle);
+
+@ffi.Native<ffi.Void Function(ffi.Pointer<TpFileIndexHandle>)>()
+external void tp_file_index_cancel(ffi.Pointer<TpFileIndexHandle> handle);
+
+@ffi.Native<
+  ffi.Int32 Function(
+    ffi.Pointer<TpFileIndexHandle>,
+    ffi.Pointer<ffi.Char>,
+    ffi.Int32,
+    ffi.Uint32,
+    ffi.Pointer<TpFileIndexChunk>,
+  )
+>()
+external int tp_file_index_query(
+  ffi.Pointer<TpFileIndexHandle> handle,
+  ffi.Pointer<ffi.Char> query,
+  int mode,
+  int limit,
+  ffi.Pointer<TpFileIndexChunk> chunk,
+);
+
+@ffi.Native<
+  ffi.Int32 Function(
+    ffi.Pointer<TpFileIndexHandle>,
+    ffi.Pointer<ffi.Char>,
+    ffi.Uint32,
+    ffi.Pointer<TpFileIndexChunk>,
+  )
+>()
+external int tp_file_index_query_dirs(
+  ffi.Pointer<TpFileIndexHandle> handle,
+  ffi.Pointer<ffi.Char> query,
+  int limit,
+  ffi.Pointer<TpFileIndexChunk> chunk,
+);
+
+@ffi.Native<ffi.Void Function(ffi.Pointer<TpFileIndexHandle>)>()
+external void tp_file_index_free(ffi.Pointer<TpFileIndexHandle> handle);
+
 final class TpSearchHandle extends ffi.Opaque {}
 
 final class TpSearchConfig extends ffi.Struct {
@@ -107,6 +159,53 @@ final class TpSearchChunk extends ffi.Struct {
 
   @ffi.Uint32()
   external int matches_len;
+
+  @ffi.Int32()
+  external int truncated;
+}
+
+final class TpFileIndexHandle extends ffi.Opaque {}
+
+final class TpFileIndexConfig extends ffi.Struct {
+  external ffi.Pointer<ffi.Char> root;
+
+  @ffi.Int32()
+  external int use_gitignore;
+
+  @ffi.Uint64()
+  external int max_entries;
+
+  @ffi.Uint32()
+  external int max_chunk_matches;
+
+  @ffi.Uint32()
+  external int max_chunk_bytes;
+}
+
+final class TpFileIndexEntry extends ffi.Struct {
+  external ffi.Pointer<ffi.Char> path;
+
+  external ffi.Pointer<ffi.Char> relative_path;
+
+  external ffi.Pointer<ffi.Char> name;
+}
+
+final class TpFileIndexChunk extends ffi.Struct {
+  external ffi.Pointer<ffi.Char> string_buf;
+
+  @ffi.Uint32()
+  external int string_buf_cap;
+
+  @ffi.Uint32()
+  external int string_buf_len;
+
+  external ffi.Pointer<TpFileIndexEntry> entries;
+
+  @ffi.Uint32()
+  external int entries_cap;
+
+  @ffi.Uint32()
+  external int entries_len;
 
   @ffi.Int32()
   external int truncated;
