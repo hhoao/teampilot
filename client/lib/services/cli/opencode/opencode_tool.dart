@@ -5,6 +5,7 @@ import 'capabilities/session.dart';
 import '../registry/cli_capability.dart';
 import '../registry/cli_tool_definition.dart';
 import 'capabilities/team_behavior.dart';
+import 'capabilities/native_commands.dart';
 import 'capabilities/session_selection_launch.dart';
 import 'capabilities/model_launch.dart';
 import 'capabilities/permission_launch.dart';
@@ -19,6 +20,7 @@ import 'capabilities/history/ai_history_capability.dart';
 import 'capabilities/headless.dart';
 import '../registry/capabilities/member_config_inspection_capability.dart';
 import '../registry/capabilities/skill_capability.dart';
+import '../registry/capabilities/native_command_capability.dart';
 import '../registry/capabilities/chat_interaction_capability.dart';
 import '../registry/capabilities/cli_executable_capability.dart';
 import '../registry/capabilities/hook_capability.dart';
@@ -50,6 +52,7 @@ final class OpencodeCliTool implements CliToolDefinition {
     this.chatInteraction = const OpencodeChatInteraction(),
     this.aiHistory = const OpencodeAiHistoryCapability(),
     this.skill = const OpencodeSkillCapability(),
+    this.nativeCommands = const OpencodeNativeCommands(),
     this.prompt = const OpencodePromptCapability(),
     this.hookWriter = const OpencodeHookWriter(),
   }) : provider = provider ?? OpencodeProviderCapability();
@@ -74,6 +77,7 @@ final class OpencodeCliTool implements CliToolDefinition {
   final ChatInteractionCapability chatInteraction;
   final OpencodeAiHistoryCapability aiHistory;
   final SkillCapability skill;
+  final NativeCommandCapability nativeCommands;
   final PromptCapability prompt;
 
   @override
@@ -101,6 +105,7 @@ final class OpencodeCliTool implements CliToolDefinition {
     chatInteraction,
     aiHistory,
     skill,
+    nativeCommands,
     prompt,
     hookWriter,
   ];

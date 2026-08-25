@@ -5,6 +5,7 @@ import 'capabilities/session.dart';
 import '../registry/cli_capability.dart';
 import '../registry/cli_tool_definition.dart';
 import 'capabilities/team_behavior.dart';
+import 'capabilities/native_commands.dart';
 import 'capabilities/session_selection_launch.dart';
 import 'capabilities/workspace_access_launch.dart';
 import 'capabilities/model_launch.dart';
@@ -21,6 +22,7 @@ import '../registry/capabilities/prompt_capability.dart';
 import 'capabilities/headless.dart';
 import '../registry/capabilities/member_config_inspection_capability.dart';
 import '../registry/capabilities/skill_capability.dart';
+import '../registry/capabilities/native_command_capability.dart';
 import '../registry/capabilities/chat_interaction_capability.dart';
 import '../registry/capabilities/cli_executable_capability.dart';
 import '../claude/capabilities/mcp.dart';
@@ -52,6 +54,7 @@ final class FlashskyaiCliTool implements CliToolDefinition {
     this.chatInteraction = const FlashskyaiChatInteraction(),
     this.aiHistory = const FlashskyaiAiHistoryCapability(),
     this.skill = const DefaultSkillCapability(),
+    this.nativeCommands = const FlashskyaiNativeCommands(),
     this.hookWriter = const FlashskyaiHookWriter(),
     this.prompt = const FlashskyaiPromptCapability(),
   });
@@ -78,6 +81,7 @@ final class FlashskyaiCliTool implements CliToolDefinition {
   final ChatInteractionCapability chatInteraction;
   final FlashskyaiAiHistoryCapability aiHistory;
   final SkillCapability skill;
+  final NativeCommandCapability nativeCommands;
 
   @override
   CliTool get id => CliTool.flashskyai;
@@ -105,6 +109,7 @@ final class FlashskyaiCliTool implements CliToolDefinition {
     chatInteraction,
     aiHistory,
     skill,
+    nativeCommands,
     hookWriter,
     prompt,
   ];

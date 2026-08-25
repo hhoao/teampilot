@@ -9,6 +9,7 @@ import 'package:teampilot/services/commands/command_bus.dart';
 import 'package:teampilot/services/commands/command_catalog.dart';
 import 'package:teampilot/services/commands/shortcut_context.dart';
 import 'package:teampilot/services/commands/shortcut_dispatcher.dart';
+import 'package:teampilot/services/cli/registry/capabilities/native_command_capability.dart';
 import 'package:teampilot/services/compose/compose_clip.dart';
 import 'package:shared_ui/shared_ui.dart';
 import 'package:teampilot/widgets/compose/compose_trigger_field.dart';
@@ -40,6 +41,7 @@ void main() {
     required TextEditingController controller,
     required FocusNode focusNode,
     required VoidCallback onSubmit,
+    List<NativeCommand> nativeCommands = const [],
   }) async {
     await tester.pumpWidget(
       RepositoryProvider<CommandBus>.value(
@@ -60,6 +62,7 @@ void main() {
               skills: [skill],
               plugins: const [],
               slashBundle: const ConfigBundle(skillIds: ['skill-1']),
+              nativeCommands: nativeCommands,
               mutedColor: Colors.black,
               hintColor: Colors.grey,
             ),
@@ -68,6 +71,82 @@ void main() {
       ),
     );
   }
+
+  testWidgets('native command shows source and inserts argument space', (
+    tester,
+  ) async {
+    final bus = CommandBus();
+    final controller = TextEditingController();
+    final focusNode = FocusNode();
+    addTearDown(() {
+      controller.dispose();
+      focusNode.dispose();
+    });
+
+    await pumpField(
+      tester,
+      bus: bus,
+      controller: controller,
+      focusNode: focusNode,
+      onSubmit: () {},
+      nativeCommands: const [
+        NativeCommand(
+          name: 'goal',
+          description: NativeCommandDescription.goal,
+          argumentHint: '<objective>',
+        ),
+      ],
+    );
+
+    focusNode.requestFocus();
+    await tester.pump();
+    await tester.enterText(find.byType(TextField), '/go');
+    await tester.pumpAndSettle(const Duration(milliseconds: 200));
+
+    expect(find.text('/goal'), findsWidgets);
+    expect(find.textContaining('Native'), findsOneWidget);
+
+    await tester.sendKeyEvent(LogicalKeyboardKey.enter);
+    await tester.pump();
+
+    expect(controller.text, '/goal ');
+  });
+
+  testWidgets('zero-argument native command inserts without a space', (
+    tester,
+  ) async {
+    final bus = CommandBus();
+    final controller = TextEditingController();
+    final focusNode = FocusNode();
+    addTearDown(() {
+      controller.dispose();
+      focusNode.dispose();
+    });
+
+    await pumpField(
+      tester,
+      bus: bus,
+      controller: controller,
+      focusNode: focusNode,
+      onSubmit: () {},
+      nativeCommands: const [
+        NativeCommand(
+          name: 'help',
+          description: NativeCommandDescription.help,
+        ),
+      ],
+    );
+
+    focusNode.requestFocus();
+    await tester.pump();
+    await tester.enterText(find.byType(TextField), '/he');
+    await tester.pumpAndSettle(const Duration(milliseconds: 200));
+
+    await tester.sendKeyEvent(LogicalKeyboardKey.enter);
+    await tester.pump();
+
+    expect(controller.text, '/help');
+  });
 
   ShortcutDispatcher installDispatcher(CommandBus bus) {
     final dispatcher = ShortcutDispatcher(

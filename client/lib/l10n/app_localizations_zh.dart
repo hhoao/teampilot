@@ -1732,6 +1732,27 @@ class AppLocalizationsZh extends AppLocalizations {
   String get workspaceChatLandingInputHint => '今天帮你做些什么？ @ 引用对话文件，/ 调用技能与指令';
 
   @override
+  String get composeCommandNative => '原生命令';
+
+  @override
+  String get composeCommandPlugin => '插件';
+
+  @override
+  String get composeCommandExperimental => '实验性';
+
+  @override
+  String get composeNativeCommandGoal => '为长时间运行的工作保留持久目标。';
+
+  @override
+  String get composeNativeCommandCompact => '压缩当前对话上下文。';
+
+  @override
+  String get composeNativeCommandPlan => '将会话切换到规划工作流。';
+
+  @override
+  String get composeNativeCommandHelp => '显示此 CLI 会话中可用的命令。';
+
+  @override
   String get workspaceChatLandingBackToStart => '返回启动页';
 
   @override

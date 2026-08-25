@@ -28,6 +28,7 @@ import '../../models/team_config.dart';
 import '../../models/workspace.dart';
 import '../../repositories/session_repository.dart';
 import '../../services/cli/preset_resolver.dart';
+import '../../services/cli/registry/capabilities/native_command_capability.dart';
 import '../../services/cli/registry/capabilities/skill_capability.dart';
 import '../../services/cli/registry/capabilities/terminal_behavior_capability.dart';
 import '../../services/cli/registry/cli_tool_registry.dart';
@@ -192,6 +193,9 @@ class SessionChatComposeSection extends StatelessWidget {
       composeTextEmpty: composeTextEmpty,
     );
     final skillSyntax = registry.capability<SkillCapability>(lockedCli);
+    final nativeCommands =
+        registry.capability<NativeCommandCapability>(lockedCli)?.commands ??
+        const <NativeCommand>[];
 
     // -- Derived values --------------------------------------------------
     final canSubmit = !permissionWaiting && !composeTextEmpty && !isSubmitting;
@@ -466,6 +470,7 @@ class SessionChatComposeSection extends StatelessWidget {
                           plugins: plugins,
                           slashBundle: slashBundle,
                           skillSyntax: skillSyntax,
+                          nativeCommands: nativeCommands,
                           onOpenAtFile: (path) {
                             unawaited(
                               context.read<WorkbenchEditorOpener>().openFile(

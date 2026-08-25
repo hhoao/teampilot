@@ -24,6 +24,7 @@ import 'package:teampilot/cubits/worktree_cubit.dart';
 import 'package:teampilot/l10n/app_localizations.dart';
 import 'package:teampilot/models/app_session.dart';
 import 'package:teampilot/models/config_bundle.dart';
+import 'package:teampilot/models/plugin.dart';
 import 'package:teampilot/models/runtime_target.dart';
 import 'package:teampilot/models/skill.dart';
 import 'package:teampilot/models/team_config.dart';
@@ -38,11 +39,13 @@ import 'package:teampilot/services/cli/registry/cli_tool_registry.dart';
 import 'package:teampilot/services/cli/registry/cli_tool_registry_scope.dart';
 import 'package:teampilot/services/commands/command_bus.dart';
 import 'package:teampilot/services/compose/compose_draft_cache.dart';
+import 'package:teampilot/services/compose/compose_slash_catalog.dart';
 import 'package:teampilot/services/follow_up/follow_up_queue.dart';
 import 'package:teampilot/services/session/history_awaiting_working_sync.dart';
 import 'package:teampilot/services/session/session_lifecycle_service.dart';
 import 'package:teampilot/services/storage/workspace_layout.dart';
 import 'package:teampilot/theme/app_theme.dart';
+import 'package:teampilot/widgets/compose/compose_trigger_field.dart';
 
 import '../../support/in_memory_filesystem.dart';
 import '../../support/post_frame_test_harness.dart';
@@ -154,6 +157,7 @@ void main() {
     WidgetTester tester, {
     required AppSession session,
     required WorkspaceProjectConfigRepository projectConfigRepository,
+    PluginState pluginState = const PluginState(),
   }) async {
     final workspace = Workspace(
       workspaceId: 'ws-1',
@@ -186,7 +190,7 @@ void main() {
     _stubCubit(aiHistoryCubit, const AiHistoryState());
     _stubCubit(cliPresetsCubit, const CliPresetsState());
     _stubCubit(launchProfileCubit, const LaunchProfileState());
-    _stubCubit(pluginCubit, const PluginState());
+    _stubCubit(pluginCubit, pluginState);
     _stubCubit(
       skillCubit,
       const SkillState(installed: [
@@ -295,11 +299,11 @@ void main() {
     await tester.pumpAndSettle();
   }
 
-  AppSession session(String id) => AppSession(
+  AppSession session(String id, {CliTool cli = CliTool.claude}) => AppSession(
     sessionId: id,
     workspaceId: 'ws-1',
     folders: const [WorkspaceFolder(path: '/work')],
-    cli: CliTool.claude,
+    cli: cli,
     createdAt: 1,
   );
 
@@ -357,4 +361,61 @@ void main() {
 
     expect(find.text('Secret Skill'), findsNothing);
   });
+
+  testWidgets(
+    'existing session resolves OpenCode commands with enabled skills and plugins',
+    (tester) async {
+      final fs = InMemoryFilesystem();
+      final repository = projectRepository(fs);
+      await repository.save(
+        'ws-1',
+        const WorkspaceProjectConfig(bundle: ConfigBundle(
+          skillIds: ['ws-skill'],
+          pluginIds: ['review-plugin'],
+        )),
+      );
+
+      await pumpSession(
+        tester,
+        session: session('s3', cli: CliTool.opencode),
+        projectConfigRepository: repository,
+        pluginState: const PluginState(installed: [
+          Plugin(
+            id: 'review-plugin',
+            name: 'Review Plugin',
+            description: '',
+            version: '1.0',
+            directory: 'review-plugin',
+            installedAt: 0,
+            updatedAt: 0,
+            capabilities: PluginCapabilities(
+              commands: [PluginCommand(name: 'review')],
+            ),
+          ),
+        ]),
+      );
+
+      final field = tester.widget<ComposeTriggerField>(
+        find.byType(ComposeTriggerField),
+      );
+      expect(field.nativeCommands.map((command) => command.name), [
+        'compact',
+        'help',
+      ]);
+      final candidates = buildComposeSlashCandidates(
+        skills: field.skills,
+        plugins: field.plugins,
+        enabledBundle: field.slashBundle,
+        query: '',
+        syntax: field.skillSyntax,
+        nativeCommands: field.nativeCommands,
+      );
+      expect(candidates.map((candidate) => candidate.insertText), [
+        ' /plan-ws',
+        '/compact ',
+        '/help',
+        '/review',
+      ]);
+    },
+  );
 }
