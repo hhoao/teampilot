@@ -119,6 +119,11 @@ class _VirtualMarkdownViewState extends State<VirtualMarkdownView> {
   bool _correctionScheduled = false;
   double _pendingCorrection = 0;
 
+  /// Monotonic reveal generation: rapid n/N navigation supersedes in-flight
+  /// reveals, and an older reveal's second-pass correction must not fire after
+  /// a newer one started (it would jump scroll back).
+  int _revealEpoch = 0;
+
   /// Parent scroll position we follow in [flatten] mode (the parent's
   /// `Scrollable`); null in bounded mode.
   ScrollPosition? _parentPosition;
@@ -479,16 +484,17 @@ class _VirtualMarkdownViewState extends State<VirtualMarkdownView> {
   Future<void> revealBlockPublic(int blockIndex) async {
     final unit = _unitForBlock(blockIndex);
     if (unit < 0 || !mounted) return;
+    final epoch = ++_revealEpoch;
     // Initiate the reveal without awaiting its animation: the animation only
     // advances as frames are produced, so awaiting it here would deadlock
     // frame-driven callers/tests that reveal then settle.
     unawaited(_revealTo(unit).then((_) {
       if (!mounted) return;
-      // Heights ahead may still be estimates; correct once they measure.
+      // Heights ahead may still be estimates; correct once they measure. The
+      // pass is dropped when a newer reveal superseded this one.
       WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (mounted) {
-          _revealCorrectionPass(unit);
-        }
+        if (!mounted || epoch != _revealEpoch) return;
+        _revealCorrectionPass(unit);
       });
     }));
   }

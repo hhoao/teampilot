@@ -20,6 +20,7 @@ import '../../services/editor/file_editor_ai_context.dart';
 import '../../services/editor/file_editor_theme.dart';
 import '../../services/editor/file_editor_toolbar.dart';
 import '../../services/editor/html_view_mode_store.dart';
+import '../../services/editor/markdown_preview_find_controller.dart';
 import '../../services/editor/markdown_preview_link_handler.dart';
 import '../../services/editor/markdown_view_mode_store.dart';
 import '../../services/editor_platform/document_session.dart';
@@ -114,7 +115,7 @@ class _FileEditorInsets {
 }
 
 /// Center-pane file editor for one path (no inner tab bar).
-class FileEditorSurface extends StatelessWidget {
+class FileEditorSurface extends StatefulWidget {
   const FileEditorSurface({
     required this.workspaceId,
     required this.path,
@@ -125,7 +126,35 @@ class FileEditorSurface extends StatelessWidget {
   final String path;
 
   @override
+  State<FileEditorSurface> createState() => _FileEditorSurfaceState();
+}
+
+class _FileEditorSurfaceState extends State<FileEditorSurface> {
+  /// One find controller per document: markdown preview find state (query,
+  /// hits, open flag) must not leak across files, so it resets when the
+  /// surface retargets to another path.
+  MarkdownPreviewFindController _findController =
+      MarkdownPreviewFindController();
+
+  @override
+  void didUpdateWidget(FileEditorSurface oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.path != widget.path) {
+      _findController.dispose();
+      _findController = MarkdownPreviewFindController();
+    }
+  }
+
+  @override
+  void dispose() {
+    _findController.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
+    final workspaceId = widget.workspaceId;
+    final path = widget.path;
     final cs = Theme.of(context).colorScheme;
     final shell = _fileEditorShellColor(cs);
     if (isImagePreviewPath(path)) {
@@ -163,10 +192,18 @@ class FileEditorSurface extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                _FileEditorToolbar(workspaceId: workspaceId, path: path),
+                _FileEditorToolbar(
+                  workspaceId: workspaceId,
+                  path: path,
+                  findController: _findController,
+                ),
                 const Divider(height: 1),
                 Expanded(
-                  child: _FileEditorBody(workspaceId: workspaceId, path: path),
+                  child: _FileEditorBody(
+                    workspaceId: workspaceId,
+                    path: path,
+                    findController: _findController,
+                  ),
                 ),
               ],
             ),
@@ -233,10 +270,17 @@ Future<bool> _confirmDiscardDiffBeforeFileSave(BuildContext context) async {
 }
 
 class _FileEditorToolbar extends StatelessWidget {
-  const _FileEditorToolbar({required this.workspaceId, required this.path});
+  const _FileEditorToolbar({
+    required this.workspaceId,
+    required this.path,
+    this.findController,
+  });
 
   final String workspaceId;
   final String path;
+
+  /// Preview find entry point; null hides the toolbar search affordance.
+  final MarkdownPreviewFindController? findController;
 
   @override
   Widget build(BuildContext context) {
@@ -297,10 +341,26 @@ class _FileEditorToolbar extends StatelessWidget {
             ListenableBuilder(
               listenable: opener.markdownViewModes,
               builder: (context, _) {
-                return MarkdownViewModeToggle(
-                  mode: opener.markdownViewModes.modeFor(path),
-                  onModeChanged: (mode) =>
-                      opener.markdownViewModes.setMode(path, mode),
+                final mode = opener.markdownViewModes.modeFor(path);
+                return Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    if (mode == MarkdownViewMode.preview &&
+                        findController != null)
+                      TpIconButton(
+                        tooltip: context.l10n.editorFindHint,
+                        icon: Icons.search_rounded,
+                        size: TpIconButton.kCompactSize,
+                        compact: true,
+                        color: iconColor,
+                        onTap: findController!.openFind,
+                      ),
+                    MarkdownViewModeToggle(
+                      mode: mode,
+                      onModeChanged: (mode) =>
+                          opener.markdownViewModes.setMode(path, mode),
+                    ),
+                  ],
                 );
               },
             ),
@@ -343,10 +403,17 @@ class _FileEditorToolbar extends StatelessWidget {
 }
 
 class _FileEditorBody extends StatelessWidget {
-  const _FileEditorBody({required this.workspaceId, required this.path});
+  const _FileEditorBody({
+    required this.workspaceId,
+    required this.path,
+    this.findController,
+  });
 
   final String workspaceId;
   final String path;
+
+  /// Handed to the markdown preview pane (null = preview find off).
+  final MarkdownPreviewFindController? findController;
 
   @override
   Widget build(BuildContext context) {
@@ -452,6 +519,7 @@ class _FileEditorBody extends StatelessWidget {
               context,
             ).markdownPadding,
             shellColor: _fileEditorShellColor(Theme.of(context).colorScheme),
+            findController: findController,
           );
         }
         return _CodeEditorPane(
