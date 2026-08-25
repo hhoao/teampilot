@@ -10,12 +10,14 @@ class FloatingSurfaceRegistry {
     FloatingSurface? diff,
     FloatingSurface? run,
     FloatingSurface? html,
+    FloatingSurface? gitGraph,
   }) => FloatingSurfaceRegistry([
     terminal,
     file,
     if (diff != null) diff,
     if (run != null) run,
     if (html != null) html,
+    if (gitGraph != null) gitGraph,
   ]);
 
   final Map<String, FloatingSurface> _byId;
