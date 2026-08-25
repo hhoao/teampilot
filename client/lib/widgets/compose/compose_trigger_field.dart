@@ -394,21 +394,16 @@ class _ComposeTriggerFieldState extends State<ComposeTriggerField> {
     final trigger = _trigger;
     if (trigger == null) return;
 
-    final (insertion, suffix) = switch (suggestion) {
-      ComposeTriggerFileSuggestion(:final candidate) => (
-        candidate.insertText,
-        ' ',
+    final insertion = switch (suggestion) {
+      ComposeTriggerFileSuggestion(:final candidate) => ComposeTriggerInsertion(
+        text: candidate.insertText,
       ),
-      ComposeTriggerSlashSuggestion(:final candidate) => (
-        candidate.insertText,
-        candidate.source == ComposeSlashCandidateSource.native ? '' : ' ',
-      ),
+      ComposeTriggerSlashSuggestion(:final candidate) => candidate.insertion,
     };
     widget.controller.value = replaceComposeTrigger(
       widget.controller,
       trigger,
       insertion,
-      suffix: suffix,
     );
     _focusClearTimer?.cancel();
     _clearSuggestions();

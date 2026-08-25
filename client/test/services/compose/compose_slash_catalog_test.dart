@@ -137,7 +137,10 @@ void main() {
       '/review',
     ]);
     expect(candidates[2].source, ComposeSlashCandidateSource.native);
+    expect(candidates[2].insertion.suffix, isEmpty);
+    expect(candidates[3].insertion.suffix, isEmpty);
     expect(candidates[4].source, ComposeSlashCandidateSource.plugin);
+    expect(candidates[4].insertion.suffix, ' ');
   });
 
   test('filters a native command by name and description key', () {

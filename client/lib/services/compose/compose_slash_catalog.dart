@@ -3,6 +3,7 @@ import '../../models/skill.dart';
 import '../../models/config_bundle.dart';
 import '../cli/registry/capabilities/native_command_capability.dart';
 import '../cli/registry/capabilities/skill_capability.dart';
+import 'compose_trigger_insert.dart';
 
 enum ComposeSlashCandidateKind { skill, command }
 
@@ -17,6 +18,7 @@ class ComposeSlashCandidate {
     this.source,
     this.description,
     this.availability = NativeCommandAvailability.stable,
+    this.insertionSuffix = ' ',
   });
 
   final String insertText;
@@ -26,6 +28,10 @@ class ComposeSlashCandidate {
   final ComposeSlashCandidateSource? source;
   final NativeCommandDescription? description;
   final NativeCommandAvailability availability;
+  final String insertionSuffix;
+
+  ComposeTriggerInsertion get insertion =>
+      ComposeTriggerInsertion(text: insertText, suffix: insertionSuffix);
 }
 
 List<ComposeSlashCandidate> buildComposeSlashCandidates({
@@ -80,6 +86,7 @@ List<ComposeSlashCandidate> buildComposeSlashCandidates({
         source: ComposeSlashCandidateSource.native,
         description: command.description,
         availability: command.availability,
+        insertionSuffix: '',
       ),
     );
   }
