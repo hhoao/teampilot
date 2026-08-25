@@ -3,8 +3,23 @@ import 'dart:io';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot_search/teampilot_search.dart';
 
+String _fixtureRoot() {
+  // Resolve whether `flutter test` was launched from the package root or
+  // from `client/` (workspace-root runs).
+  for (final relative in const [
+    'rust/tests/fixtures/file_index',
+    'packages/teampilot_search/rust/tests/fixtures/file_index',
+  ]) {
+    final dir = Directory(relative);
+    if (dir.existsSync()) return dir.absolute.path;
+  }
+  throw StateError(
+    'file_index fixture not found from ${Directory.current.path}',
+  );
+}
+
 void main() {
-  final fixtureRoot = Directory('rust/tests/fixtures/file_index').absolute.path;
+  final fixtureRoot = _fixtureRoot();
 
   test('builds and fuzzy queries indexed files', () async {
     final index = TpFileIndex();
