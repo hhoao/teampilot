@@ -8,6 +8,7 @@ import '../registry/block_widget_registry.dart';
 import '../registry/markdown_resolvers.dart';
 import '../strings.dart';
 import '../tokens/markdown_tokens.dart';
+import 'highlight_context.dart';
 import 'inline_spans.dart';
 
 /// Block-level virtualized markdown renderer for very large documents.
@@ -40,6 +41,7 @@ class VirtualMarkdownView extends StatefulWidget {
     this.estimateHeight = 44,
     this.overscan = 6,
     this.flatten = false,
+    this.highlights,
   });
 
   final MarkdownDocument document;
@@ -62,6 +64,10 @@ class VirtualMarkdownView extends StatefulWidget {
   /// scrollbar, no max-height), mounting only the blocks visible in the parent
   /// viewport. VS Code markdown preview-style flow; the parent owns scrolling.
   final bool flatten;
+
+  /// Optional match-highlight resolver, looked up per top-level block index
+  /// while units build their spans.
+  final MarkdownHighlightContext? highlights;
 
   @override
   State<VirtualMarkdownView> createState() => _VirtualMarkdownViewState();
@@ -118,13 +124,19 @@ class _VirtualMarkdownViewState extends State<VirtualMarkdownView> {
     if (oldWidget.flatten != widget.flatten) {
       _bindParentScroll();
     }
-    if (oldWidget.document != widget.document) {
+    // Units capture the highlight context in their build closures, so any
+    // highlight swap must recompute them. Heights stay cached across
+    // highlight-only changes — background wash never affects layout.
+    if (!identical(oldWidget.highlights, widget.highlights) ||
+        oldWidget.document != widget.document) {
       _units = _computeUnits(widget.document);
-      _cache.invalidateAll();
-      _firstIndex = 0;
-      _lastIndex = -1;
-      if (_scrollController.hasClients) {
-        _scrollController.jumpTo(0);
+      if (oldWidget.document != widget.document) {
+        _cache.invalidateAll();
+        _firstIndex = 0;
+        _lastIndex = -1;
+        if (_scrollController.hasClients) {
+          _scrollController.jumpTo(0);
+        }
       }
       _syncVisibleRange();
     }
@@ -169,13 +181,26 @@ class _VirtualMarkdownViewState extends State<VirtualMarkdownView> {
           end++;
         }
         final run = blocks.sublist(i, end).cast<ParagraphBlock>();
+        final first = i;
+        final last = end - 1;
+        final context = widget.highlights;
         units.add(
           _MarkdownUnit(
             kind: MarkdownBlockKind.paragraph,
             gapBefore: _gapBefore(previous?.kind, MarkdownBlockKind.paragraph),
-            build: (tokens, resolvers, strings, reg) => run.length == 1
-                ? buildParagraph(run.first, tokens, resolvers)
-                : buildMergedParagraphs(run, tokens, resolvers),
+            firstBlockIndex: first,
+            lastBlockIndex: last,
+            build: (tokens, resolvers, strings, reg) {
+              final perParagraph = [
+                for (var p = 0; p < run.length; p++)
+                  context?.forContainer(first + p, const []),
+              ];
+              return run.length == 1
+                  ? buildParagraph(run.first, tokens, resolvers,
+                      highlights: perParagraph[0])
+                  : buildMergedParagraphs(run, tokens, resolvers,
+                      highlights: perParagraph);
+            },
           ),
         );
         previous = run.last;
@@ -183,12 +208,22 @@ class _VirtualMarkdownViewState extends State<VirtualMarkdownView> {
         continue;
       }
 
+      final currentIndex = i;
       units.add(
         _MarkdownUnit(
           kind: block.kind,
           gapBefore: _gapBefore(previous?.kind, block.kind),
-          build: (tokens, resolvers, strings, reg) =>
-              reg.build(block, tokens, resolvers, strings),
+          firstBlockIndex: currentIndex,
+          lastBlockIndex: currentIndex,
+          build: (tokens, resolvers, strings, reg) => reg.build(
+            block,
+            tokens,
+            resolvers,
+            strings,
+            highlights: widget.highlights,
+            blockIndex: currentIndex,
+            basePath: const [],
+          ),
         ),
       );
       previous = block;
@@ -199,6 +234,25 @@ class _VirtualMarkdownViewState extends State<VirtualMarkdownView> {
 
   double _gapBefore(MarkdownBlockKind? previous, MarkdownBlockKind next) =>
       previous == null ? 0 : gapBetween(previous, next, widget.tokens);
+
+  /// Index of the unit covering [blockIndex], or -1.
+  // ignore: unused_element
+  int _unitForBlock(int blockIndex) {
+    var lo = 0;
+    var hi = _units.length - 1;
+    while (lo <= hi) {
+      final mid = (lo + hi) >> 1;
+      final unit = _units[mid];
+      if (blockIndex < unit.firstBlockIndex) {
+        hi = mid - 1;
+      } else if (blockIndex > unit.lastBlockIndex) {
+        lo = mid + 1;
+      } else {
+        return mid;
+      }
+    }
+    return -1;
+  }
 
   // --- Link recognizer lifecycle (mirrors MarkdownView) --------------------
 
@@ -462,6 +516,8 @@ class _MarkdownUnit {
     required this.kind,
     required this.gapBefore,
     required this.build,
+    this.firstBlockIndex = 0,
+    this.lastBlockIndex = 0,
   });
 
   final MarkdownBlockKind kind;
@@ -472,6 +528,10 @@ class _MarkdownUnit {
     MarkdownStrings,
     BlockWidgetRegistry,
   ) build;
+
+  /// Top-level block indexes covered (merged paragraph runs span several).
+  final int firstBlockIndex;
+  final int lastBlockIndex;
 }
 
 class _BlockVisibleRange {
