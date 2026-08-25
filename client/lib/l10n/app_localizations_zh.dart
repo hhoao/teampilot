@@ -1338,6 +1338,11 @@ class AppLocalizationsZh extends AppLocalizations {
   }
 
   @override
+  String workspaceSearchResultSummary(int matches, int files) {
+    return '$matches 个结果 · $files 个文件';
+  }
+
+  @override
   String get workspaceSearchError => '搜索失败——请检查正则';
 
   @override

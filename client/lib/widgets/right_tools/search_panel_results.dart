@@ -11,7 +11,6 @@ class SearchPanelResults extends StatelessWidget {
     required this.files,
     required this.query,
     required this.truncated,
-    required this.backendLabel,
     required this.replacement,
     required this.onOpenResult,
     required this.onReplaceSingle,
@@ -21,7 +20,6 @@ class SearchPanelResults extends StatelessWidget {
   final List<ContentSearchFileGroup> files;
   final String query;
   final bool truncated;
-  final String backendLabel;
   final String replacement;
   final void Function(String path, int lineNumber) onOpenResult;
   final Future<void> Function(String path, String replacement) onReplaceSingle;
@@ -40,16 +38,15 @@ class SearchPanelResults extends StatelessWidget {
         ),
       );
     }
+    final itemCount = files.length + (truncated ? 1 : 0);
     return ListView.builder(
-      itemCount: files.length + 1,
+      itemCount: itemCount,
       itemBuilder: (context, index) {
         if (index == files.length) {
           return Padding(
             padding: const EdgeInsets.all(8),
             child: Text(
-              truncated
-                  ? l10n.workspaceSearchTruncated
-                  : l10n.workspaceSearchBackend(backendLabel),
+              l10n.workspaceSearchTruncated,
               style: styles.mutedSm,
             ),
           );

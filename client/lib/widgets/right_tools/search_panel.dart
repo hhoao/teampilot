@@ -292,6 +292,34 @@ class _WorkspaceSearchPanelState extends State<WorkspaceSearchPanel> {
                 ],
               ),
             ),
+            if (_queryController.text.trim().isNotEmpty)
+              Padding(
+                padding: const EdgeInsets.fromLTRB(8, 0, 8, 4),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        state.searching
+                            ? l10n.workspaceSearchSearching
+                            : state.files.isEmpty
+                            ? ''
+                            : l10n.workspaceSearchResultSummary(
+                                state.files.fold<int>(
+                                  0,
+                                  (sum, f) => sum + f.lines.length,
+                                ),
+                                state.files.length,
+                              ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: styles.mutedSm,
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Text(_backendLabel(), style: styles.mutedSm),
+                  ],
+                ),
+              ),
             if (state.error != null)
               Padding(
                 padding: const EdgeInsets.all(8),
@@ -305,7 +333,6 @@ class _WorkspaceSearchPanelState extends State<WorkspaceSearchPanel> {
                 files: state.files,
                 query: _queryController.text.trim(),
                 truncated: state.truncated,
-                backendLabel: _backendLabel(),
                 replacement: _replaceController.text,
                 onOpenResult: (path, line) => _openResult(context, path, line),
                 onReplaceSingle: (path, replacement) =>

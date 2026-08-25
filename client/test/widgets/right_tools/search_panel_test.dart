@@ -154,4 +154,15 @@ void main() {
     final l10n = AppLocalizations.of(tester.element(find.byType(Scaffold)));
     expect(find.text(l10n.workspaceSearchEmptyHint), findsOneWidget);
   });
+
+  testWidgets('summary row shows match and file counts after a search', (
+    tester,
+  ) async {
+    final cubit = buildCubit();
+    addTearDown(cubit.close);
+    await tester.pumpWidget(wrap(cubit));
+    await runSearch(tester, 'hello');
+    final l10n = AppLocalizations.of(tester.element(find.byType(Scaffold)));
+    expect(find.text(l10n.workspaceSearchResultSummary(1, 1)), findsOneWidget);
+  });
 }

@@ -1402,6 +1402,11 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
+  String workspaceSearchResultSummary(int matches, int files) {
+    return '$matches results in $files files';
+  }
+
+  @override
   String get workspaceSearchError => 'Search failed — check the pattern';
 
   @override

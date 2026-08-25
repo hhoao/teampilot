@@ -594,6 +594,7 @@
       }
     }
   },
+  "workspaceSearchResultSummary": "{matches} 个结果 · {files} 个文件",
   "workspaceSearchError": "搜索失败——请检查正则",
   "appDropdownSearchHint": "搜索…",
   "appDropdownSearchNoResults": "未找到结果",

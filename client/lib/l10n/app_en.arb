@@ -619,6 +619,17 @@
       }
     }
   },
+  "workspaceSearchResultSummary": "{matches} results in {files} files",
+  "@workspaceSearchResultSummary": {
+    "placeholders": {
+      "matches": {
+        "type": "int"
+      },
+      "files": {
+        "type": "int"
+      }
+    }
+  },
   "workspaceSearchError": "Search failed — check the pattern",
   "appDropdownSearchHint": "Search…",
   "appDropdownSearchNoResults": "No results found.",

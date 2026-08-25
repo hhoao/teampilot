@@ -2600,6 +2600,12 @@ abstract class AppLocalizations {
   /// **'Engine: {backend}'**
   String workspaceSearchBackend(String backend);
 
+  /// No description provided for @workspaceSearchResultSummary.
+  ///
+  /// In en, this message translates to:
+  /// **'{matches} results in {files} files'**
+  String workspaceSearchResultSummary(int matches, int files);
+
   /// No description provided for @workspaceSearchError.
   ///
   /// In en, this message translates to:
