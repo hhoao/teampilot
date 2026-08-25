@@ -4,6 +4,7 @@ import '../../../models/team_config.dart';
 import '../registry/cli_capability.dart';
 import '../registry/cli_tool_definition.dart';
 import 'capabilities/team_behavior.dart';
+import 'capabilities/native_commands.dart';
 import 'capabilities/session_selection_launch.dart';
 import 'capabilities/workspace_access_launch.dart';
 import 'capabilities/model_launch.dart';
@@ -20,6 +21,7 @@ import 'capabilities/session_lifecycle.dart';
 import 'capabilities/headless.dart';
 import '../registry/capabilities/member_config_inspection_capability.dart';
 import '../registry/capabilities/skill_capability.dart';
+import '../registry/capabilities/native_command_capability.dart';
 import '../registry/capabilities/chat_interaction_capability.dart';
 import '../registry/capabilities/cli_executable_capability.dart';
 import 'capabilities/mcp.dart';
@@ -51,6 +53,7 @@ final class CursorCliTool implements CliToolDefinition {
     this.chatInteraction = const CursorChatInteraction(),
     this.aiHistory = const CursorAiHistoryCapability(),
     this.skill = const CursorSkillCapability(),
+    this.nativeCommands = const CursorNativeCommands(),
     this.hookWriter = const CursorHookWriter(),
     this.prompt = const CursorPromptCapability(),
     CursorProviderCapability? provider,
@@ -76,6 +79,7 @@ final class CursorCliTool implements CliToolDefinition {
   final ChatInteractionCapability chatInteraction;
   final CursorAiHistoryCapability aiHistory;
   final SkillCapability skill;
+  final NativeCommandCapability nativeCommands;
   final PromptCapability prompt;
 
   @override
@@ -103,6 +107,7 @@ final class CursorCliTool implements CliToolDefinition {
     chatInteraction,
     aiHistory,
     skill,
+    nativeCommands,
     prompt,
     hookWriter,
   ];
