@@ -69,6 +69,16 @@ Replace `ChatInteractionCapability.normalize` as the runtime hook surface with
 - the prompt-confirmation correlation strength it can provide;
 - full-screen input confirmation semantics and fallback policy.
 
+`HookEntry` remains the only control-plane intermediate representation for a
+native managed runtime hook. The capability produces managed `HookEntry`
+instances through a `RuntimeEventHookContributionProvider`; those entries go
+through `HookSeatContextCompleter`, `HookAssembler`, and the existing CLI
+`HookCapability` writer together with user, plugin, and extension entries.
+The runtime-event gateway does not write hook files or CLI hook configuration.
+Plugin-only CLIs still use their capability's native plugin materialization,
+but the provider is assembled at the same resource-provisioning boundary and
+does not bypass that boundary.
+
 No caller switches on `CliTool`. Codex, Claude-family, OpenCode, and Cursor
 adapters can expose different native payload grammars while consumers receive
 the same envelope type.
@@ -154,11 +164,15 @@ previously queued CR.
 Remove `PromptSubmitAckTracker`, the direct `promptAckTracker` dependency from
 `AgentStatusHttpHandler`, and terminal-owned retry decisions. Replace the
 current agent-status handler with the gateway and move attention/question/plan
-handling into event-stream projections.
+handling into event-stream projections. Replace
+`AgentStatusHookContributionProvider` with
+`RuntimeEventHookContributionProvider`, retaining `HookEntry` assembly and
+per-CLI hook writers as the sole native-hook installation path.
 
-The existing HTTP endpoint, scripts, and CLI config writers are replaced at
-the same time by the runtime-event capability's provisioning contract. No
-compatibility facade is retained.
+The existing HTTP endpoint payload contract and runtime scripts are replaced
+at the same time by the runtime-event capability's provisioning contract. The
+existing `HookEntry` assembly and CLI config writers remain the control-plane
+contract; no compatibility facade is retained.
 
 ## Tests and acceptance criteria
 

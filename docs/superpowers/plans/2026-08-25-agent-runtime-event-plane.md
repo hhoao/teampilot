@@ -29,6 +29,7 @@
 | `client/lib/services/agent_runtime/seat_event_stream.dart` | Ordered in-memory publication for one seat. |
 | `client/lib/services/agent_runtime/agent_event_gateway.dart` | HTTP ingress: normalize, journal, publish, and respond. |
 | `client/lib/services/agent_runtime/runtime_event_projection.dart` | Attention, question, and plan projections. |
+| `client/lib/services/resource/providers/runtime_event_hook_contribution_provider.dart` | Produces managed `HookEntry` values for native runtime-event hooks. |
 | `client/lib/services/prompt_delivery/prompt_delivery.dart` | Delivery model and state transitions. |
 | `client/lib/services/prompt_delivery/prompt_delivery_store.dart` | Durable delivery records. |
 | `client/lib/services/prompt_delivery/prompt_delivery_coordinator.dart` | Delivery/event state machine. |
@@ -112,12 +113,14 @@ git commit -m "feat(runtime): add durable seat event primitives"
 
 **Files:**
 - Create: `client/lib/services/cli/registry/capabilities/runtime_event_capability.dart`
+- Create: `client/lib/services/resource/providers/runtime_event_hook_contribution_provider.dart`
 - Modify: `client/lib/services/cli/*/capabilities/chat_interaction.dart`
 - Modify: `client/lib/services/cli/registry/tools/*.dart`
+- Modify: `client/lib/services/cli/registry/config_profile/hook_seat_context_completer.dart`
 - Delete: `client/lib/services/agent_status/agent_status_normalizer.dart`
 - Test: `client/test/services/agent_runtime/runtime_event_adapter_test.dart`
 
-**Interfaces:** Produces `RuntimeEventCapability.normalizeRuntimeEvent(raw, seat, occurredAt)` and `RuntimeCorrelationStrength`.
+**Interfaces:** Produces `RuntimeEventCapability.normalizeRuntimeEvent(raw, seat, occurredAt)`, `RuntimeEventCapability.managedHookEntries(context)`, and `RuntimeCorrelationStrength`. Native entries remain `HookEntry` values and are rendered by the existing `HookCapability` writers.
 
 - [ ] **Step 1: Write the failing Codex adapter test.**
 
@@ -151,10 +154,11 @@ abstract interface class RuntimeEventCapability {
     DateTime occurredAt,
   );
   RuntimeCorrelationStrength get promptCorrelationStrength;
+  List<HookEntry> managedHookEntries(RuntimeEventHookContext context);
 }
 ```
 
-Reuse existing per-CLI parsers. Move each legacy `AgentStatusEvent` assertion into the adapter test and delete the legacy normalizer.
+Reuse existing per-CLI parsers. `RuntimeEventHookContributionProvider` must return `HookEntry(source: HookSource.managed, ...)`, and `HookSeatContextCompleter` must assemble those entries alongside user, plugin, extension, and bus entries before the existing `HookCapability` writer renders them. Move each legacy `AgentStatusEvent` assertion into the adapter test and delete the legacy normalizer.
 
 - [ ] **Step 4: Verify GREEN and commit.**
 
@@ -399,6 +403,7 @@ git commit -m "refactor(delivery): route tab input through coordinator"
 - Modify: `client/lib/app/app_shell.dart`
 - Modify: `client/lib/services/team_bus/teammate_bus_mcp_gateway.dart`
 - Modify: `client/lib/services/launch/session_lifecycle_service.dart`
+- Modify: `client/lib/services/provider/config_profile_service.dart`
 - Modify: `client/lib/pages/chat/session_chat_compose_section.dart`
 - Modify: `client/lib/l10n/app_en.arb`
 - Modify: `client/lib/l10n/app_zh.arb`
@@ -442,6 +447,12 @@ final agentRuntime = AgentRuntime(
 
 Open/replay the journal and delivery store before enabling a session's input. Add localized unknown-status and review/retry text. Retry explicitly creates a new delivery id; it never resumes the old one.
 
+Build the per-seat `RuntimeEventHookContext` from the gateway endpoint and
+session credentials, then pass `RuntimeEventHookContributionProvider` into the
+existing `HookSeatContextCompleter`. Verify generated Codex/Claude hook config
+still originates from managed `HookEntry` values and OpenCode's plugin
+materialization is contributed through the same profile assembly step.
+
 - [ ] **Step 4: Run focused and required full verification.**
 
 Run: `cd client && flutter test test/services/agent_runtime test/services/prompt_delivery test/services/terminal test/cubits/chat/tab_member_pty_delivery_test.dart test/pages/chat/prompt_delivery_recovery_test.dart && flutter analyze --no-fatal-infos --no-fatal-warnings && dart run tool/run_tests.dart`
@@ -462,4 +473,3 @@ git commit -m "feat(runtime): complete durable prompt event plane"
 ## Plan self-review
 
 Tasks 1–3 implement durable ingress, ordered streams, adapter boundaries, and projections. Tasks 4–6 implement persistent delivery state, correlation, write fences, and the exact delayed-ACK duplication regression. Task 7 composes lifecycle, persistence, recovery UI, and project-wide verification. Every type referenced by a later task is first produced by an earlier task; no legacy compatibility facade remains.
-
