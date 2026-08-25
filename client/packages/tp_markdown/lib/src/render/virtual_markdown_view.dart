@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
@@ -10,6 +12,31 @@ import '../strings.dart';
 import '../tokens/markdown_tokens.dart';
 import 'highlight_context.dart';
 import 'inline_spans.dart';
+
+/// Controller bound to one [VirtualMarkdownView]; reveals blocks by scrolling
+/// the owning viewport (internal in bounded mode, parent scroll in flatten).
+class MarkdownViewController {
+  _VirtualMarkdownViewState? _state;
+
+  bool get hasClients => _state != null;
+
+  Future<void> revealBlock(int blockIndex) async {
+    await _state?.revealBlockPublic(blockIndex);
+  }
+
+  /// Detach without disposing the bound view (safe to call repeatedly).
+  void dispose() {
+    if (_state != null) {
+      _state = null;
+    }
+  }
+
+  void _attachInternal(_VirtualMarkdownViewState s) => _state = s;
+
+  void _detachInternal(_VirtualMarkdownViewState s) {
+    if (identical(_state, s)) _state = null;
+  }
+}
 
 /// Block-level virtualized markdown renderer for very large documents.
 ///
@@ -42,6 +69,7 @@ class VirtualMarkdownView extends StatefulWidget {
     this.overscan = 6,
     this.flatten = false,
     this.highlights,
+    this.controller,
   });
 
   final MarkdownDocument document;
@@ -69,6 +97,10 @@ class VirtualMarkdownView extends StatefulWidget {
   /// while units build their spans.
   final MarkdownHighlightContext? highlights;
 
+  /// Optional controller for programmatic reveal (e.g. jumping to a search
+  /// hit). See [MarkdownViewController.revealBlock].
+  final MarkdownViewController? controller;
+
   @override
   State<VirtualMarkdownView> createState() => _VirtualMarkdownViewState();
 }
@@ -94,6 +126,7 @@ class _VirtualMarkdownViewState extends State<VirtualMarkdownView> {
   @override
   void initState() {
     super.initState();
+    widget.controller?._attachInternal(this);
     _scrollController = ScrollController();
     _cache = _BlockHeightCache(estimate: widget.estimateHeight);
     _units = _computeUnits(widget.document);
@@ -121,6 +154,10 @@ class _VirtualMarkdownViewState extends State<VirtualMarkdownView> {
   @override
   void didUpdateWidget(covariant VirtualMarkdownView oldWidget) {
     super.didUpdateWidget(oldWidget);
+    if (oldWidget.controller != widget.controller) {
+      oldWidget.controller?._detachInternal(this);
+      widget.controller?._attachInternal(this);
+    }
     if (oldWidget.flatten != widget.flatten) {
       _bindParentScroll();
     }
@@ -159,6 +196,7 @@ class _VirtualMarkdownViewState extends State<VirtualMarkdownView> {
 
   @override
   void dispose() {
+    widget.controller?._detachInternal(this);
     _parentPosition?.removeListener(_onScroll);
     _disposeRecognizers(_linkRecognizers);
     _scrollController.removeListener(_onScroll);
@@ -236,7 +274,6 @@ class _VirtualMarkdownViewState extends State<VirtualMarkdownView> {
       previous == null ? 0 : gapBetween(previous, next, widget.tokens);
 
   /// Index of the unit covering [blockIndex], or -1.
-  // ignore: unused_element
   int _unitForBlock(int blockIndex) {
     var lo = 0;
     var hi = _units.length - 1;
@@ -432,6 +469,84 @@ class _VirtualMarkdownViewState extends State<VirtualMarkdownView> {
         position.jumpTo(target);
       }
     });
+  }
+
+  // --- Reveal (controller-driven block navigation) -------------------------
+
+  static const Duration _revealDuration = Duration(milliseconds: 180);
+  static const double _revealCorrectionThreshold = 2.0;
+
+  Future<void> revealBlockPublic(int blockIndex) async {
+    final unit = _unitForBlock(blockIndex);
+    if (unit < 0 || !mounted) return;
+    // Initiate the reveal without awaiting its animation: the animation only
+    // advances as frames are produced, so awaiting it here would deadlock
+    // frame-driven callers/tests that reveal then settle.
+    unawaited(_revealTo(unit).then((_) {
+      if (!mounted) return;
+      // Heights ahead may still be estimates; correct once they measure.
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) {
+          _revealCorrectionPass(unit);
+        }
+      });
+    }));
+  }
+
+  Future<void> _revealTo(int unit) async {
+    final contentOffset = _cache.offsetBefore(_units.length, unit);
+    if (!widget.flatten) {
+      if (!_scrollController.hasClients ||
+          !_scrollController.position.hasViewportDimension) {
+        return;
+      }
+      await _animateTo(_scrollController.position, contentOffset);
+      return;
+    }
+    final position = _parentPosition;
+    final renderObject = context.findRenderObject();
+    if (position == null || !position.hasViewportDimension) return;
+    if (renderObject is! RenderBox || !renderObject.hasSize) return;
+    final revealed = RenderAbstractViewport.of(renderObject)
+        .getOffsetToReveal(renderObject, 0.0);
+    await _animateTo(position, revealed.offset + contentOffset);
+  }
+
+  Future<void> _animateTo(ScrollPosition position, double contentOffset) async {
+    final target = (contentOffset - position.viewportDimension * 0.25)
+        .clamp(0.0, position.maxScrollExtent);
+    if ((target - position.pixels).abs() < 1.0) return;
+    await position.animateTo(
+      target,
+      duration: _revealDuration,
+      curve: Curves.easeOutCubic,
+    );
+  }
+
+  void _revealCorrectionPass(int unit) {
+    final contentOffset = _cache.offsetBefore(_units.length, unit);
+    if (!widget.flatten) {
+      if (!_scrollController.hasClients) return;
+      final position = _scrollController.position;
+      final target =
+          (contentOffset - position.viewportDimension * 0.25).clamp(0.0, position.maxScrollExtent);
+      if ((target - position.pixels).abs() >= _revealCorrectionThreshold) {
+        position.jumpTo(target);
+      }
+      return;
+    }
+    final position = _parentPosition;
+    final renderObject = context.findRenderObject();
+    if (position == null || renderObject is! RenderBox || !renderObject.hasSize) {
+      return;
+    }
+    final revealed = RenderAbstractViewport.of(renderObject)
+        .getOffsetToReveal(renderObject, 0.0);
+    final target = (revealed.offset + contentOffset - position.viewportDimension * 0.25)
+        .clamp(0.0, position.maxScrollExtent);
+    if ((target - position.pixels).abs() >= _revealCorrectionThreshold) {
+      position.jumpTo(target);
+    }
   }
 
   // --- Build ---------------------------------------------------------------
