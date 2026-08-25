@@ -6201,6 +6201,30 @@ class AppLocalizationsZh extends AppLocalizations {
   String get worktreeDeleteBusyWarning => '请先停止该 worktree 下正在运行的会话，再删除。';
 
   @override
+  String get sessionGroupCreateTooltip => '新建分组';
+
+  @override
+  String get sessionGroupCreateTitle => '新建分组';
+
+  @override
+  String get sessionGroupNameLabel => '分组名称';
+
+  @override
+  String get sessionGroupRenameTitle => '重命名分组';
+
+  @override
+  String get sessionGroupMenuRemove => '删除分组';
+
+  @override
+  String get sessionGroupAddSessionsTooltip => '添加会话';
+
+  @override
+  String get sessionGroupAddSessionsTitle => '添加会话';
+
+  @override
+  String get sessionGroupEmpty => '暂无会话';
+
+  @override
   String get automationsTitle => '全部自动化';
 
   @override

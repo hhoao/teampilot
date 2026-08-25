@@ -11498,6 +11498,54 @@ abstract class AppLocalizations {
   /// **'Stop the running conversations in this worktree before removing it.'**
   String get worktreeDeleteBusyWarning;
 
+  /// No description provided for @sessionGroupCreateTooltip.
+  ///
+  /// In en, this message translates to:
+  /// **'New group'**
+  String get sessionGroupCreateTooltip;
+
+  /// No description provided for @sessionGroupCreateTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'New Group'**
+  String get sessionGroupCreateTitle;
+
+  /// No description provided for @sessionGroupNameLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Group name'**
+  String get sessionGroupNameLabel;
+
+  /// No description provided for @sessionGroupRenameTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Rename Group'**
+  String get sessionGroupRenameTitle;
+
+  /// No description provided for @sessionGroupMenuRemove.
+  ///
+  /// In en, this message translates to:
+  /// **'Remove group'**
+  String get sessionGroupMenuRemove;
+
+  /// No description provided for @sessionGroupAddSessionsTooltip.
+  ///
+  /// In en, this message translates to:
+  /// **'Add conversations'**
+  String get sessionGroupAddSessionsTooltip;
+
+  /// No description provided for @sessionGroupAddSessionsTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Add conversations'**
+  String get sessionGroupAddSessionsTitle;
+
+  /// No description provided for @sessionGroupEmpty.
+  ///
+  /// In en, this message translates to:
+  /// **'No conversations'**
+  String get sessionGroupEmpty;
+
   /// Title for automations management UI
   ///
   /// In en, this message translates to:

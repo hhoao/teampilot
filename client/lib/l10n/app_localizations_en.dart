@@ -6475,6 +6475,30 @@ class AppLocalizationsEn extends AppLocalizations {
       'Stop the running conversations in this worktree before removing it.';
 
   @override
+  String get sessionGroupCreateTooltip => 'New group';
+
+  @override
+  String get sessionGroupCreateTitle => 'New Group';
+
+  @override
+  String get sessionGroupNameLabel => 'Group name';
+
+  @override
+  String get sessionGroupRenameTitle => 'Rename Group';
+
+  @override
+  String get sessionGroupMenuRemove => 'Remove group';
+
+  @override
+  String get sessionGroupAddSessionsTooltip => 'Add conversations';
+
+  @override
+  String get sessionGroupAddSessionsTitle => 'Add conversations';
+
+  @override
+  String get sessionGroupEmpty => 'No conversations';
+
+  @override
   String get automationsTitle => 'Automations';
 
   @override
