@@ -62,6 +62,8 @@ dependencies:
   pub_semver: ^2.2.0
   android_package_installer: ^0.0.3
   crypto: ^3.0.7
+  pointycastle: ^4.0.0
+  posix: ^6.5.2
   archive: ^4.0.9
   toggle_switch: ^2.3.0
   google_fonts: ^8.1.0
