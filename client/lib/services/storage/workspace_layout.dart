@@ -13,6 +13,7 @@ import 'app_storage.dart';
 /// workspace/workspaces/{workspaceId}/
 ///   manifest.json       # Workspace
 ///   project-config.json # Project-scoped skills/plugins/mcp/extensions
+///   session-groups.json # manual sidebar session groups
 ///   profile.json        # legacy; unused after identity-model removal
 ///   assets/icon.*       # custom workspace icon
 ///   config/             # workspace-level CLI overrides
@@ -61,6 +62,10 @@ class WorkspaceLayout {
   /// Project-scoped skills/plugins/mcp/extension bindings.
   String projectConfigFile(String workspaceId) =>
       _ctx.join(workspaceDir(workspaceId), 'project-config.json');
+
+  /// Manual sidebar session groups ("todo" etc.), tag-style membership.
+  String sessionGroupsFile(String workspaceId) =>
+      _ctx.join(workspaceDir(workspaceId), 'session-groups.json');
 
   String assetsDir(String workspaceId) =>
       _ctx.join(workspaceDir(workspaceId), 'assets');

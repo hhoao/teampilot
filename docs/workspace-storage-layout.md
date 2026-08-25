@@ -50,6 +50,7 @@ Each workspace is self-contained; deleting `workspace/workspaces/{workspaceId}/`
 workspace/workspaces/{workspaceId}/
   manifest.json                  # Workspace (folders, defaultProfileId, session ids, …)
   project-config.json            # workspace-scoped skill/plugin/mcp/extension bindings
+  session-groups.json            # manual sidebar session groups
   assets/icon.*                  # custom workspace icon
   config/                        # workspace-level CLI overrides (inherits app → identity)
     mcp/servers.json
