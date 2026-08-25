@@ -17,11 +17,41 @@ import 'workspace_chat_landing.dart';
 import 'workspace_landing_skeleton.dart';
 import 'workspace_session_actions.dart';
 
+typedef WorkspaceLandingMessageSubmitter =
+    Future<bool> Function(
+      BuildContext context,
+      Workspace workspace, {
+      required LandingLaunchContext launch,
+      required String message,
+      String? workingDirectory,
+      String? expertKey,
+    });
+
+typedef WorkspaceLandingDraftPersister =
+    Future<void> Function(String workspaceId, LandingLaunchContext draft);
+
+typedef WorkspaceLandingDraftCleaner =
+    Future<void> Function(String workspaceId);
+
+Future<void> clearWorkspaceLandingDraft(String workspaceId) async {
+  await composeDraftCache.clearLandingPersistent(workspaceId);
+  composeDraftCache.clearLandingDraft(workspaceId);
+}
+
 /// Unbound Chat pane for a workspace — sibling to [ChatPage], not inside the shell.
 class WorkspaceChatPane extends StatefulWidget {
-  const WorkspaceChatPane({required this.workspace, super.key});
+  const WorkspaceChatPane({
+    required this.workspace,
+    this.submitter = submitWorkspaceLandingMessage,
+    this.landingDraftPersister = persistLandingDraft,
+    this.landingDraftCleaner = clearWorkspaceLandingDraft,
+    super.key,
+  });
 
   final Workspace workspace;
+  final WorkspaceLandingMessageSubmitter submitter;
+  final WorkspaceLandingDraftPersister landingDraftPersister;
+  final WorkspaceLandingDraftCleaner landingDraftCleaner;
 
   @override
   State<WorkspaceChatPane> createState() => _WorkspaceChatPaneState();
@@ -68,10 +98,10 @@ class _WorkspaceChatPaneState extends State<WorkspaceChatPane> {
         }
       }
 
-      await persistLandingDraft(workspace.workspaceId, draft);
+      await widget.landingDraftPersister(workspace.workspaceId, draft);
       if (!mounted) return;
 
-      final delivered = await submitWorkspaceLandingMessage(
+      final delivered = await widget.submitter(
         context,
         workspace,
         launch: draft,
@@ -80,8 +110,7 @@ class _WorkspaceChatPaneState extends State<WorkspaceChatPane> {
         expertKey: draft.expertKey,
       );
       if (delivered) {
-        await composeDraftCache.clearLandingPersistent(workspace.workspaceId);
-        composeDraftCache.clearLandingDraft(workspace.workspaceId);
+        await widget.landingDraftCleaner(workspace.workspaceId);
       }
     } finally {
       _submitInFlight = false;
