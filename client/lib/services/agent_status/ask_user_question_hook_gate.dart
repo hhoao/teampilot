@@ -21,6 +21,39 @@ final class AskUserQuestionHookReply {
   /// Question text → selected label (comma-joined for multi-select).
   final Map<String, String>? answers;
   final bool reject;
+
+  /// Claude-family `PreToolUse` response for a completed held hook.
+  ///
+  /// A non-rejecting reply without both payload fields intentionally returns
+  /// null, allowing the gateway to preserve the native TUI fallback (`{}`).
+  Map<String, Object?>? toHookResponse() {
+    if (reject) {
+      return const {
+        'hookSpecificOutput': {
+          'hookEventName': 'PreToolUse',
+          'permissionDecision': 'deny',
+          'permissionDecisionReason': 'User dismissed the question',
+        },
+      };
+    }
+    final replyQuestions = questions;
+    final replyAnswers = answers;
+    if (replyQuestions == null ||
+        replyAnswers == null ||
+        replyAnswers.isEmpty) {
+      return null;
+    }
+    return {
+      'hookSpecificOutput': {
+        'hookEventName': 'PreToolUse',
+        'permissionDecision': 'allow',
+        'updatedInput': {
+          'questions': askUserQuestionsToJson(replyQuestions),
+          'answers': replyAnswers,
+        },
+      },
+    };
+  }
 }
 
 /// Holds open Claude `PreToolUse` HTTP hooks for AskUserQuestion until the
@@ -62,9 +95,7 @@ final class AskUserQuestionHookGate {
     required String toolUseId,
     required AskUserQuestionHookReply reply,
   }) {
-    final completer = _waiters.remove(
-      _key(sessionId, memberId, toolUseId),
-    );
+    final completer = _waiters.remove(_key(sessionId, memberId, toolUseId));
     if (completer == null || completer.isCompleted) return false;
     completer.complete(reply);
     return true;

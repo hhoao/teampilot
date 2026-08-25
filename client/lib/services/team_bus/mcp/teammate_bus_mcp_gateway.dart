@@ -4,9 +4,8 @@ import 'dart:math';
 
 import 'package:meta/meta.dart';
 
-import '../../agent_status/agent_attention_state.dart';
-import '../../agent_status/agent_status_event.dart';
-import '../../agent_status/agent_status_http_handler.dart';
+import '../../agent_runtime/agent_event_gateway.dart';
+import '../../agent_runtime/runtime_event.dart';
 import '../../agent_status/ask_user_answer_pending_store.dart';
 import '../../catalog/catalog_mcp_constants.dart';
 import '../../catalog/catalog_mcp_handler.dart';
@@ -30,7 +29,7 @@ class TeammateBusMcpGateway {
   final _agentStatusSessions = <String>{};
   final _agentStatusTokenToSession = <String, String>{};
   final _agentStatusSessionToToken = <String, String>{};
-  AgentStatusHttpHandler? _agentStatusHandler;
+  AgentEventGateway? _agentEventGateway;
   AskUserAnswerPendingStore? _askUserAnswerStore;
   CatalogMcpHandler? _catalogHandler;
   Future<CatalogMcpSession?> Function(String sessionId)? _resolveCatalogSession;
@@ -89,8 +88,8 @@ class TeammateBusMcpGateway {
   int activeWaitStreamCountFor(String sessionId) =>
       _delegates[sessionId]?.activeWaitStreamCount ?? 0;
 
-  void attachAgentStatusHandler(AgentStatusHttpHandler handler) {
-    _agentStatusHandler = handler;
+  void attachAgentEventGateway(AgentEventGateway gateway) {
+    _agentEventGateway = gateway;
   }
 
   void attachAskUserAnswerStore(AskUserAnswerPendingStore store) {
@@ -202,7 +201,7 @@ class TeammateBusMcpGateway {
       if (request.method == 'POST' && request.uri.path == '/idle') {
         // Clear attention before closing the response so clients that drain
         // the body cannot race ahead of the sticky-waiting update (Windows CI).
-        _clearAttentionOnIdle(sessionId: sessionId, memberId: member);
+        await _publishIdle(sessionId: sessionId, memberId: member);
         await delegate.handleIdleRequest(request, memberId: member);
         return;
       }
@@ -277,19 +276,19 @@ class TeammateBusMcpGateway {
     HttpRequest request, {
     required String? sessionId,
   }) async {
-    final handler = _agentStatusHandler;
+    final gateway = _agentEventGateway;
     final member = _headerValue(request.headers, teammateBusMcpMemberHeader);
     final allowed =
         sessionId != null &&
         sessionId.isNotEmpty &&
         (_agentStatusSessions.contains(sessionId) ||
             _delegates.containsKey(sessionId));
-    if (handler == null || !allowed || member.isEmpty) {
+    if (gateway == null || !allowed || member.isEmpty) {
       await _writeAgentStatusOkEmpty(request);
       return;
     }
 
-    await handler.handle(request, sessionId: sessionId, memberId: member);
+    await gateway.handle(request, sessionId: sessionId, memberId: member);
   }
 
   Future<void> _writeAgentStatusOkEmpty(HttpRequest request) async {
@@ -406,38 +405,16 @@ class TeammateBusMcpGateway {
     return null;
   }
 
-  void _clearAttentionOnIdle({
+  Future<void> _publishIdle({
     required String sessionId,
     required String memberId,
-  }) {
-    final handler = _agentStatusHandler;
-    if (handler == null) return;
-    // Some Windows HttpClient keep-alive paths omit X-Member on a follow-up
-    // POST /idle; fall back to clearing the whole session's attention.
-    if (memberId.isEmpty) {
-      handler.attention.clearSession(sessionId);
-      return;
-    }
-    // Drop prior sticky PermissionRequest context, then stamp done so idle
-    // backup always clears waiting even if a concurrent hook races.
-    handler.attention.clearSeat(sessionId: sessionId, memberId: memberId);
-    handler.attention.applyEvent(
-      sessionId: sessionId,
-      memberId: memberId,
-      event: const AgentStatusEvent(state: AgentSeatAttention.done),
-      skipPermissions: false,
+  }) async {
+    final gateway = _agentEventGateway;
+    if (gateway == null || memberId.isEmpty) return;
+    await gateway.handleJson(
+      RuntimeSeatKey(sessionId: sessionId, memberId: memberId),
+      const {'hook_event_name': 'Stop'},
     );
-    // If seat-key update missed the waiting row, force a session clear then
-    // re-stamp done for this member.
-    if (handler.attention.state.sessionHasWaiting(sessionId)) {
-      handler.attention.clearSession(sessionId);
-      handler.attention.applyEvent(
-        sessionId: sessionId,
-        memberId: memberId,
-        event: const AgentStatusEvent(state: AgentSeatAttention.done),
-        skipPermissions: false,
-      );
-    }
   }
 }
 

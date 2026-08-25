@@ -29,6 +29,8 @@ final class MemoryRuntimeEventJournal implements RuntimeEventJournal {
       kind: draft.kind,
       occurredAt: draft.occurredAt,
       prompt: draft.prompt,
+      raw: draft.raw,
+      nativeEventId: draft.nativeEventId,
       correlationStrength: draft.correlationStrength,
       sequence: seatEvents.length + 1,
     );
@@ -96,6 +98,8 @@ final class FileRuntimeEventJournal implements RuntimeEventJournal {
         kind: draft.kind,
         occurredAt: draft.occurredAt,
         prompt: draft.prompt,
+        raw: draft.raw,
+        nativeEventId: draft.nativeEventId,
         correlationStrength: draft.correlationStrength,
         sequence: sequence,
       );
@@ -156,6 +160,8 @@ Map<String, Object?> _encode(RuntimeEventEnvelope event) => {
   'kind': event.kind.name,
   'occurredAt': event.occurredAt.toUtc().toIso8601String(),
   'prompt': event.prompt,
+  'raw': event.raw,
+  'nativeEventId': event.nativeEventId,
   'correlationStrength': event.correlationStrength.name,
   'sequence': event.sequence,
 };
@@ -194,9 +200,16 @@ RuntimeEventEnvelope? _decode(Map<String, Object?> value) {
     kind: kind,
     occurredAt: occurredAt,
     prompt: value['prompt'] as String?,
+    raw: _stringKeyedMap(value['raw']),
+    nativeEventId: value['nativeEventId'] as String?,
     correlationStrength: correlationStrength,
     sequence: sequence,
   );
+}
+
+Map<String, Object?>? _stringKeyedMap(Object? value) {
+  if (value is! Map) return null;
+  return value.map((key, entry) => MapEntry(key.toString(), entry));
 }
 
 T? _enumByName<T extends Enum>(Iterable<T> values, String name) {

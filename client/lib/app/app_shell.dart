@@ -15,7 +15,10 @@ import '../cubits/remote_download_catalog_cubit.dart';
 import '../cubits/automation_cubit.dart';
 import '../cubits/agent_attention_cubit.dart';
 import '../cubits/chat_cubit.dart';
-import '../services/agent_status/agent_status_http_handler.dart';
+import '../services/agent_runtime/agent_event_gateway.dart';
+import '../services/agent_runtime/runtime_event_journal.dart';
+import '../services/agent_runtime/runtime_event_projection.dart';
+import '../services/agent_runtime/seat_event_stream.dart';
 import '../services/agent_status/agent_status_seat_lookup.dart';
 import '../services/agent_status/ask_user_answer_pending_store.dart';
 import '../services/agent_status/ask_user_question_hook_gate.dart';
@@ -29,7 +32,6 @@ import '../services/team_bus/mcp/teammate_bus_mcp_gateway.dart';
 import '../services/team_bus/remote/remote_bus_binding_resolver.dart';
 import '../services/remote/local_credential_exporter.dart';
 import '../services/remote/remote_cli_readiness.dart';
-import '../widgets/app_toast/app_toast.dart';
 import '../services/editor_platform/editor_platform.dart';
 import '../services/launch/launch_factory.dart';
 import '../cubits/board_cubit.dart';
@@ -1551,19 +1553,30 @@ Future<AppShell> buildAppShell({
 
   final agentAttentionCubit = AgentAttentionCubit();
   final agentStatusSeatLookup = AgentStatusSeatLookup();
-  // Shared prompt-submit ACK registry: AgentStatusHttpHandler completes
-  // pendings, TabMemberPtyDelivery consumes them to cancel crStuck retries.
+  // Prompt delivery remains on its existing tracker until Task 6 moves it to
+  // the runtime delivery coordinator.
   final promptSubmitAckTracker = PromptSubmitAckTracker();
-  teammateBusMcpGateway.attachAgentStatusHandler(
-    AgentStatusHttpHandler(
-      attention: agentAttentionCubit,
-      resolveCli: agentStatusSeatLookup.resolveCli,
-      resolveSkipPermissions: agentStatusSeatLookup.resolveSkipPermissions,
-      askUserHookGate: askUserQuestionHookGate,
-      exitPlanModeHookGate: exitPlanModeHookGate,
-      promptAckTracker: promptSubmitAckTracker,
+  final agentRuntimeStream = SeatEventStream();
+  final agentEventGateway = AgentEventGateway(
+    journal: FileRuntimeEventJournal(
+      journalRoot: AppStorage.fs.pathContext.join(
+        AppStorage.paths.basePath,
+        'runtime-events',
+      ),
+      fs: AppStorage.fs,
     ),
+    stream: agentRuntimeStream,
+    resolveCli: agentStatusSeatLookup.resolveCli,
+    askUserHookGate: askUserQuestionHookGate,
+    exitPlanModeHookGate: exitPlanModeHookGate,
+    projections: [
+      RuntimeEventProjection.attention(
+        attention: agentAttentionCubit,
+        resolveSkipPermissions: agentStatusSeatLookup.resolveSkipPermissions,
+      ),
+    ],
   );
+  teammateBusMcpGateway.attachAgentEventGateway(agentEventGateway);
 
   final catalogRuntime = CatalogRuntime.assemble(
     sessions: sessionRepo,
