@@ -24,6 +24,7 @@ import '../registry/capabilities/member_config_inspection_capability.dart';
 import '../registry/capabilities/skill_capability.dart';
 import '../registry/capabilities/native_command_capability.dart';
 import '../registry/capabilities/chat_interaction_capability.dart';
+import '../registry/capabilities/runtime_event_capability.dart';
 import '../registry/capabilities/cli_executable_capability.dart';
 import '../claude/capabilities/mcp.dart';
 import 'capabilities/plugin.dart';
@@ -52,6 +53,7 @@ final class FlashskyaiCliTool implements CliToolDefinition {
     this.headless = const FlashskyaiHeadlessCapability(),
     this.mcp = const FlashskyaiMcpCapability(),
     this.chatInteraction = const FlashskyaiChatInteraction(),
+    this.runtimeEvents = const FlashskyaiChatInteraction(),
     this.aiHistory = const FlashskyaiAiHistoryCapability(),
     this.skill = const DefaultSkillCapability(),
     this.nativeCommands = const FlashskyaiNativeCommands(),
@@ -79,6 +81,7 @@ final class FlashskyaiCliTool implements CliToolDefinition {
   final HookCapability hookWriter;
   final PromptCapability prompt;
   final ChatInteractionCapability chatInteraction;
+  final RuntimeEventCapability runtimeEvents;
   final FlashskyaiAiHistoryCapability aiHistory;
   final SkillCapability skill;
   final NativeCommandCapability nativeCommands;
@@ -107,6 +110,7 @@ final class FlashskyaiCliTool implements CliToolDefinition {
     headless,
     mcp,
     chatInteraction,
+    runtimeEvents,
     aiHistory,
     skill,
     nativeCommands,

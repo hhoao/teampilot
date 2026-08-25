@@ -22,6 +22,7 @@ import '../registry/capabilities/member_config_inspection_capability.dart';
 import '../registry/capabilities/skill_capability.dart';
 import '../registry/capabilities/native_command_capability.dart';
 import '../registry/capabilities/chat_interaction_capability.dart';
+import '../registry/capabilities/runtime_event_capability.dart';
 import '../registry/capabilities/cli_executable_capability.dart';
 import 'capabilities/mcp.dart';
 import 'capabilities/plugin.dart';
@@ -54,6 +55,7 @@ final class ClaudeCliTool implements CliToolDefinition {
 
     this.mcp = const ClaudeMcpCapability(),
     this.chatInteraction = const ClaudeChatInteraction(),
+    this.runtimeEvents = const ClaudeChatInteraction(),
     this.aiHistory = const ClaudeAiHistoryCapability(),
     this.skill = const DefaultSkillCapability(),
     this.nativeCommands = const ClaudeNativeCommands(),
@@ -82,6 +84,7 @@ final class ClaudeCliTool implements CliToolDefinition {
   final ClaudePromptLaunch promptLaunch;
   final UserExtraArgsProvider userExtraArgs;
   final ChatInteractionCapability chatInteraction;
+  final RuntimeEventCapability runtimeEvents;
   final ClaudeAiHistoryCapability aiHistory;
   final SkillCapability skill;
   final NativeCommandCapability nativeCommands;
@@ -111,6 +114,7 @@ final class ClaudeCliTool implements CliToolDefinition {
     headless,
     mcp,
     chatInteraction,
+    runtimeEvents,
     aiHistory,
     skill,
     nativeCommands,

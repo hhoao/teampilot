@@ -9,7 +9,6 @@ import '../../services/cli/registry/cli_tool_registry.dart';
 import '../../utils/logging/logger.dart';
 import '../../services/terminal/prompt_submit_ack_tracker.dart';
 import 'agent_status_event.dart';
-import 'agent_status_normalizer.dart';
 import 'ask_user_question.dart';
 import 'ask_user_question_hook_gate.dart';
 import 'exit_plan_mode.dart';
@@ -18,7 +17,8 @@ import 'exit_plan_mode_hook_gate.dart';
 /// Max POST body size for `/agent-status` (~1 MiB).
 const int agentStatusMaxBodyBytes = 1024 * 1024;
 
-/// Parses CLI hook JSON → [AgentStatusNormalizer] → [AgentAttentionCubit].
+/// Parses CLI hook JSON through its chat-interaction capability before applying
+/// the legacy attention projection.
 ///
 /// Never touches TeamBus idle / park. Corrupt or oversized bodies keep prior
 /// attention and return HTTP 200 `{}`.
@@ -57,7 +57,9 @@ class AgentStatusHttpHandler {
       if (body != null) {
         final cli = resolveCli(sessionId, memberId);
         if (cli != null) {
-          final event = AgentStatusNormalizer.normalize(cli: cli, body: body);
+          final event = registry
+              .capability<ChatInteractionCapability>(cli)
+              ?.normalize(body);
           if (event != null) {
             attention.applyEvent(
               sessionId: sessionId,
@@ -65,11 +67,12 @@ class AgentStatusHttpHandler {
               event: event,
               skipPermissions: resolveSkipPermissions(sessionId, memberId),
             );
-            final acked = promptAckTracker?.tryAck(
-              sessionId: sessionId,
-              memberId: memberId,
-              text: event.prompt ?? '',
-            ) ??
+            final acked =
+                promptAckTracker?.tryAck(
+                  sessionId: sessionId,
+                  memberId: memberId,
+                  text: event.prompt ?? '',
+                ) ??
                 false;
             if (acked) {
               appLogger.d(

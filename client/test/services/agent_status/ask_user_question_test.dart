@@ -1,8 +1,17 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/models/team_config.dart';
 import 'package:teampilot/services/agent_status/agent_attention_state.dart';
-import 'package:teampilot/services/agent_status/agent_status_normalizer.dart';
+import 'package:teampilot/services/agent_status/agent_status_event.dart';
 import 'package:teampilot/services/agent_status/ask_user_question.dart';
+import 'package:teampilot/services/cli/registry/capabilities/chat_interaction_capability.dart';
+import 'package:teampilot/services/cli/registry/cli_tool_registry.dart';
+
+AgentStatusEvent? normalize({
+  required CliTool cli,
+  required Map<String, Object?> body,
+}) => CliToolRegistry.builtIn()
+    .capability<ChatInteractionCapability>(cli)
+    ?.normalize(body);
 
 void main() {
   group('parseAskUserQuestions', () {
@@ -269,7 +278,7 @@ void main() {
 
   group('AgentStatusNormalizer AskUserQuestion payload', () {
     test('attaches questions to AskUserQuestion PreToolUse waiting', () {
-      final e = AgentStatusNormalizer.normalize(
+      final e = normalize(
         cli: CliTool.claude,
         body: {
           'hook_event_name': 'PreToolUse',
@@ -293,7 +302,7 @@ void main() {
     });
 
     test('does not attach questions for non-AskUserQuestion tools', () {
-      final e = AgentStatusNormalizer.normalize(
+      final e = normalize(
         cli: CliTool.claude,
         body: {
           'hook_event_name': 'PreToolUse',
@@ -306,7 +315,7 @@ void main() {
     });
 
     test('PermissionRequest carries no questions', () {
-      final e = AgentStatusNormalizer.normalize(
+      final e = normalize(
         cli: CliTool.claude,
         body: {'hook_event_name': 'PermissionRequest', 'tool_name': 'Bash'},
       );

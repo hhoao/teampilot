@@ -23,6 +23,7 @@ import '../registry/capabilities/member_config_inspection_capability.dart';
 import '../registry/capabilities/skill_capability.dart';
 import '../registry/capabilities/native_command_capability.dart';
 import '../registry/capabilities/chat_interaction_capability.dart';
+import '../registry/capabilities/runtime_event_capability.dart';
 import '../registry/capabilities/cli_executable_capability.dart';
 import 'capabilities/mcp.dart';
 import 'capabilities/plugin.dart';
@@ -51,6 +52,7 @@ final class CursorCliTool implements CliToolDefinition {
     this.headless = const CursorHeadlessCapability(),
     this.mcp = const CursorMcpCapability(),
     this.chatInteraction = const CursorChatInteraction(),
+    this.runtimeEvents = const CursorChatInteraction(),
     this.aiHistory = const CursorAiHistoryCapability(),
     this.skill = const CursorSkillCapability(),
     this.nativeCommands = const CursorNativeCommands(),
@@ -77,6 +79,7 @@ final class CursorCliTool implements CliToolDefinition {
   final UserExtraArgsProvider userExtraArgs;
   final HookCapability hookWriter;
   final ChatInteractionCapability chatInteraction;
+  final RuntimeEventCapability runtimeEvents;
   final CursorAiHistoryCapability aiHistory;
   final SkillCapability skill;
   final NativeCommandCapability nativeCommands;
@@ -105,6 +108,7 @@ final class CursorCliTool implements CliToolDefinition {
     headless,
     mcp,
     chatInteraction,
+    runtimeEvents,
     aiHistory,
     skill,
     nativeCommands,

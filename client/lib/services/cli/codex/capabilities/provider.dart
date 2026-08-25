@@ -22,6 +22,7 @@ import '../../registry/config_profile/config_profile_context.dart';
 import '../../registry/config_profile/hook_seat_context_completer.dart';
 import '../../registry/hook/managed_hook_provisioner.dart';
 import '../../registry/prompt/prompt_hub_service.dart';
+import '../../../resource/providers/runtime_event_hook_contribution_provider.dart';
 import '../../../resource/providers/endpoint_hook_contribution_provider.dart';
 import '../../../resource/providers/bus_awareness_hook_contribution_provider.dart';
 import '../provider/codex_auth_artifacts.dart';
@@ -402,7 +403,7 @@ final class CodexProviderCapability extends CatalogModelCapability
                 memberId: member.id,
               ),
             if (agentStatus != null && member != null && member.isValid)
-              AgentStatusHookContributionProvider(
+              RuntimeEventHookContributionProvider(
                 endpoint: agentStatus,
                 memberId: member.id,
               ),

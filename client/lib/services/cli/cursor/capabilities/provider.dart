@@ -16,6 +16,7 @@ import '../../registry/capabilities/provider_capability.dart';
 import '../../registry/cli_tool_registry.dart';
 import '../../registry/config_profile/config_profile_context.dart';
 import '../../registry/config_profile/hook_seat_context_completer.dart';
+import '../../../resource/providers/runtime_event_hook_contribution_provider.dart';
 import '../../../resource/providers/endpoint_hook_contribution_provider.dart';
 import '../../../resource/providers/bus_awareness_hook_contribution_provider.dart';
 import '../provider/cursor_agent_models_service.dart';
@@ -393,7 +394,7 @@ final class CursorProviderCapability extends CatalogModelCapability
         member: member,
         providers: [
           if (agentStatus != null)
-            AgentStatusHookContributionProvider(
+            RuntimeEventHookContributionProvider(
               endpoint: agentStatus,
               memberId: member.id,
             ),
@@ -532,7 +533,7 @@ final class CursorProviderCapability extends CatalogModelCapability
                 memberId: member.id,
               ),
             if (agentStatus != null && member != null && member.isValid)
-              AgentStatusHookContributionProvider(
+              RuntimeEventHookContributionProvider(
                 endpoint: agentStatus,
                 memberId: member.id,
               ),

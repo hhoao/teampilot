@@ -1,12 +1,21 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/models/team_config.dart';
-import 'package:teampilot/services/agent_status/agent_status_normalizer.dart';
 import 'package:teampilot/services/agent_status/agent_attention_state.dart';
+import 'package:teampilot/services/agent_status/agent_status_event.dart';
+import 'package:teampilot/services/cli/registry/capabilities/chat_interaction_capability.dart';
+import 'package:teampilot/services/cli/registry/cli_tool_registry.dart';
+
+AgentStatusEvent? normalize({
+  required CliTool cli,
+  required Map<String, Object?> body,
+}) => CliToolRegistry.builtIn()
+    .capability<ChatInteractionCapability>(cli)
+    ?.normalize(body);
 
 void main() {
   group('AgentStatusNormalizer', () {
     test('Claude PermissionRequest → waiting', () {
-      final e = AgentStatusNormalizer.normalize(
+      final e = normalize(
         cli: CliTool.claude,
         body: {'hook_event_name': 'PermissionRequest', 'tool_name': 'Bash'},
       );
@@ -14,7 +23,7 @@ void main() {
     });
 
     test('Claude AskUserQuestion PreToolUse → waiting', () {
-      final e = AgentStatusNormalizer.normalize(
+      final e = normalize(
         cli: CliTool.claude,
         body: {'hook_event_name': 'PreToolUse', 'tool_name': 'AskUserQuestion'},
       );
@@ -22,7 +31,7 @@ void main() {
     });
 
     test('Claude ExitPlanMode PreToolUse → waiting', () {
-      final e = AgentStatusNormalizer.normalize(
+      final e = normalize(
         cli: CliTool.claude,
         body: {
           'hook_event_name': 'PreToolUse',
@@ -42,7 +51,7 @@ void main() {
     });
 
     test('exit_plan_mode PreToolUse → waiting (casing variants)', () {
-      final e = AgentStatusNormalizer.normalize(
+      final e = normalize(
         cli: CliTool.claude,
         body: {'hook_event_name': 'PreToolUse', 'tool_name': 'exit_plan_mode'},
       );
@@ -50,7 +59,7 @@ void main() {
     });
 
     test('Claude Stop → done', () {
-      final e = AgentStatusNormalizer.normalize(
+      final e = normalize(
         cli: CliTool.claude,
         body: {'hook_event_name': 'Stop'},
       );
@@ -58,7 +67,7 @@ void main() {
     });
 
     test('Claude UserPromptSubmit → working', () {
-      final e = AgentStatusNormalizer.normalize(
+      final e = normalize(
         cli: CliTool.claude,
         body: {'hook_event_name': 'UserPromptSubmit'},
       );
@@ -66,7 +75,7 @@ void main() {
     });
 
     test('Claude PostToolUse → working (clears wait)', () {
-      final e = AgentStatusNormalizer.normalize(
+      final e = normalize(
         cli: CliTool.claude,
         body: {'hook_event_name': 'PostToolUse', 'tool_name': 'Bash'},
       );
@@ -74,7 +83,7 @@ void main() {
     });
 
     test('Claude PreToolUse (non-AskUserQuestion) → working (clears wait)', () {
-      final e = AgentStatusNormalizer.normalize(
+      final e = normalize(
         cli: CliTool.claude,
         body: {'hook_event_name': 'PreToolUse', 'tool_name': 'Bash'},
       );
@@ -82,7 +91,7 @@ void main() {
     });
 
     test('Claude PostToolUseFailure → working (clears wait)', () {
-      final e = AgentStatusNormalizer.normalize(
+      final e = normalize(
         cli: CliTool.claude,
         body: {'hook_event_name': 'PostToolUseFailure', 'tool_name': 'Bash'},
       );
@@ -90,7 +99,7 @@ void main() {
     });
 
     test('Claude StopFailure → done', () {
-      final e = AgentStatusNormalizer.normalize(
+      final e = normalize(
         cli: CliTool.claude,
         body: {'hook_event_name': 'StopFailure'},
       );
@@ -98,7 +107,7 @@ void main() {
     });
 
     test('ask_user_question PreToolUse → waiting (casing variants)', () {
-      final e = AgentStatusNormalizer.normalize(
+      final e = normalize(
         cli: CliTool.claude,
         body: {
           'hook_event_name': 'PreToolUse',
@@ -109,7 +118,7 @@ void main() {
     });
 
     test('flashskyai uses Claude-family rules', () {
-      final e = AgentStatusNormalizer.normalize(
+      final e = normalize(
         cli: CliTool.flashskyai,
         body: {'hook_event_name': 'PermissionRequest'},
       );
@@ -117,7 +126,7 @@ void main() {
     });
 
     test('Codex PermissionRequest → waiting', () {
-      final e = AgentStatusNormalizer.normalize(
+      final e = normalize(
         cli: CliTool.codex,
         body: {'hook_event_name': 'PermissionRequest'},
       );
@@ -125,7 +134,7 @@ void main() {
     });
 
     test('OpenCode permission.asked → waiting', () {
-      final e = AgentStatusNormalizer.normalize(
+      final e = normalize(
         cli: CliTool.opencode,
         body: {'event': 'permission.asked'},
       );
@@ -133,7 +142,7 @@ void main() {
     });
 
     test('OpenCode permission.asked parses payload for chat card', () {
-      final e = AgentStatusNormalizer.normalize(
+      final e = normalize(
         cli: CliTool.opencode,
         body: {
           'event': 'permission.asked',
@@ -163,7 +172,7 @@ void main() {
     test(
       'OpenCode permission.asked without id keeps waiting without card data',
       () {
-        final e = AgentStatusNormalizer.normalize(
+        final e = normalize(
           cli: CliTool.opencode,
           body: {'event': 'permission.asked', 'permission': 'Run tests'},
         );
@@ -175,7 +184,7 @@ void main() {
     );
 
     test('OpenCode question.asked → waiting', () {
-      final e = AgentStatusNormalizer.normalize(
+      final e = normalize(
         cli: CliTool.opencode,
         body: {'event': 'question.asked'},
       );
@@ -184,7 +193,7 @@ void main() {
     });
 
     test('OpenCode question.asked parses questions for chat card', () {
-      final e = AgentStatusNormalizer.normalize(
+      final e = normalize(
         cli: CliTool.opencode,
         body: {
           'event': 'question.asked',
@@ -213,7 +222,7 @@ void main() {
     });
 
     test('opencode question.asked keeps request_id and session_id', () {
-      final e = AgentStatusNormalizer.normalize(
+      final e = normalize(
         cli: CliTool.opencode,
         body: {
           'event': 'question.asked',
@@ -236,7 +245,7 @@ void main() {
     });
 
     test('opencode question.asked accepts id / sessionID aliases', () {
-      final e = AgentStatusNormalizer.normalize(
+      final e = normalize(
         cli: CliTool.opencode,
         body: {
           'event': 'question.asked',
@@ -257,7 +266,7 @@ void main() {
     });
 
     test('opencode question.reply_failed restores signal', () {
-      final e = AgentStatusNormalizer.normalize(
+      final e = normalize(
         cli: CliTool.opencode,
         body: {
           'event': 'question.reply_failed',
@@ -273,7 +282,7 @@ void main() {
     });
 
     test('opencode question.reply_failed without request_id skips restore', () {
-      final e = AgentStatusNormalizer.normalize(
+      final e = normalize(
         cli: CliTool.opencode,
         body: {'event': 'question.reply_failed', 'message': 'missing id'},
       );
@@ -285,7 +294,7 @@ void main() {
     });
 
     test('opencode question.answered → working with request id', () {
-      final e = AgentStatusNormalizer.normalize(
+      final e = normalize(
         cli: CliTool.opencode,
         body: {
           'event': 'question.answered',
@@ -300,7 +309,7 @@ void main() {
     });
 
     test('opencode permission.answered → working with request id', () {
-      final e = AgentStatusNormalizer.normalize(
+      final e = normalize(
         cli: CliTool.opencode,
         body: {'event': 'permission.answered', 'request_id': 'per_1'},
       );
@@ -312,7 +321,7 @@ void main() {
     test(
       'Claude AskUserQuestion PreToolUse sets askRequestId from tool_use_id',
       () {
-        final e = AgentStatusNormalizer.normalize(
+        final e = normalize(
           cli: CliTool.claude,
           body: {
             'hook_event_name': 'PreToolUse',
@@ -336,7 +345,7 @@ void main() {
     );
 
     test('OpenCode session.idle → done', () {
-      final e = AgentStatusNormalizer.normalize(
+      final e = normalize(
         cli: CliTool.opencode,
         body: {'event': 'session.idle'},
       );
@@ -344,7 +353,7 @@ void main() {
     });
 
     test('opencode userMessageSubmitted → working + prompt', () {
-      final e = AgentStatusNormalizer.normalize(
+      final e = normalize(
         cli: CliTool.opencode,
         body: {'event': 'userMessageSubmitted', 'prompt': '1'},
       );
@@ -353,7 +362,7 @@ void main() {
     });
 
     test('Cursor preToolUse → working with tool info', () {
-      final e = AgentStatusNormalizer.normalize(
+      final e = normalize(
         cli: CliTool.cursor,
         body: {
           'hook_event_name': 'preToolUse',
@@ -375,7 +384,7 @@ void main() {
         'beforeShellExecution',
         'beforeMCPExecution',
       ]) {
-        final e = AgentStatusNormalizer.normalize(
+        final e = normalize(
           cli: CliTool.cursor,
           body: {'hook_event_name': event},
         );
@@ -384,7 +393,7 @@ void main() {
     });
 
     test('Cursor stop → done', () {
-      final e = AgentStatusNormalizer.normalize(
+      final e = normalize(
         cli: CliTool.cursor,
         body: {'hook_event_name': 'stop'},
       );
@@ -393,35 +402,26 @@ void main() {
 
     test('Cursor unknown / empty → null', () {
       expect(
-        AgentStatusNormalizer.normalize(
-          cli: CliTool.cursor,
-          body: {'hook_event_name': 'weird'},
-        ),
+        normalize(cli: CliTool.cursor, body: {'hook_event_name': 'weird'}),
         isNull,
       );
-      expect(
-        AgentStatusNormalizer.normalize(cli: CliTool.cursor, body: {}),
-        isNull,
-      );
+      expect(normalize(cli: CliTool.cursor, body: {}), isNull);
     });
 
     test('corrupt / unknown → null', () {
-      expect(
-        AgentStatusNormalizer.normalize(cli: CliTool.claude, body: {}),
-        isNull,
-      );
+      expect(normalize(cli: CliTool.claude, body: {}), isNull);
     });
 
     test('SubagentStart / SubagentStop → null (do not flip seat)', () {
       expect(
-        AgentStatusNormalizer.normalize(
+        normalize(
           cli: CliTool.claude,
           body: {'hook_event_name': 'SubagentStart'},
         ),
         isNull,
       );
       expect(
-        AgentStatusNormalizer.normalize(
+        normalize(
           cli: CliTool.claude,
           body: {'hook_event_name': 'SubagentStop'},
         ),
@@ -430,7 +430,7 @@ void main() {
     });
 
     test('extracts tool_use_id / agent_id / tool input preview', () {
-      final e = AgentStatusNormalizer.normalize(
+      final e = normalize(
         cli: CliTool.claude,
         body: {
           'hook_event_name': 'PreToolUse',
@@ -450,7 +450,7 @@ void main() {
     });
 
     test('UserPromptSubmit sets hasExplicitPrompt', () {
-      final e = AgentStatusNormalizer.normalize(
+      final e = normalize(
         cli: CliTool.claude,
         body: {'hook_event_name': 'UserPromptSubmit'},
       );
@@ -458,18 +458,15 @@ void main() {
     });
 
     test('Claude UserPromptSubmit 携带 prompt 原文', () {
-      final e = AgentStatusNormalizer.normalize(
+      final e = normalize(
         cli: CliTool.claude,
-        body: {
-          'hook_event_name': 'UserPromptSubmit',
-          'prompt': '1',
-        },
+        body: {'hook_event_name': 'UserPromptSubmit', 'prompt': '1'},
       );
       expect(e?.prompt, '1');
     });
 
     test('非 UserPromptSubmit 事件 prompt 为 null', () {
-      final e = AgentStatusNormalizer.normalize(
+      final e = normalize(
         cli: CliTool.claude,
         body: {'hook_event_name': 'Stop'},
       );
@@ -482,7 +479,7 @@ void main() {
       // generation_id, model, prompt, attachments, composer_mode}) 然后
       // {...args, hook_event_name, cursor_version, workspace_roots,
       // user_email, transcript_path} 整体作为 stdin payload。
-      final e = AgentStatusNormalizer.normalize(
+      final e = normalize(
         cli: CliTool.cursor,
         body: {
           'conversation_id': 'conv-1',

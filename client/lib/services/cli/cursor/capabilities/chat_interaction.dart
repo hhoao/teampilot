@@ -1,7 +1,11 @@
 import '../../../agent_status/agent_attention_state.dart';
 import '../../../agent_status/agent_status_event.dart';
 import '../../../agent_status/agent_status_tool_input.dart';
+import '../../../agent_runtime/runtime_event.dart';
+import '../../../../models/hook_entry.dart';
+import '../../../../models/team_config.dart';
 import '../../registry/capabilities/chat_interaction_capability.dart';
+import '../../registry/capabilities/runtime_event_capability.dart';
 
 /// Cursor hook payloads mirror Claude Code's keys (`hook_event_name`,
 /// `tool_name`, `tool_use_id`); the event names differ (camelCase), so map
@@ -11,7 +15,8 @@ import '../../registry/capabilities/chat_interaction_capability.dart';
 ///
 /// Cursor has no structured question payload (asks as plain terminal text)
 /// and no in-chat ExitPlanMode approval (keeps the "Open Terminal" fallback).
-final class CursorChatInteraction implements ChatInteractionCapability {
+final class CursorChatInteraction
+    implements ChatInteractionCapability, RuntimeEventCapability {
   const CursorChatInteraction();
 
   @override
@@ -43,6 +48,32 @@ final class CursorChatInteraction implements ChatInteractionCapability {
       _ => null,
     };
   }
+
+  @override
+  RuntimeEventEnvelopeDraft? normalizeRuntimeEvent(
+    Map<String, Object?> raw,
+    RuntimeSeatKey seat,
+    DateTime occurredAt,
+  ) {
+    if (raw['hook_event_name'] != 'beforeSubmitPrompt') return null;
+    final prompt = readPayloadString(raw, const ['prompt']);
+    if (prompt == null || prompt.isEmpty) return null;
+    return RuntimeEventEnvelopeDraft.promptSubmitted(
+      seat: seat,
+      cli: CliTool.cursor,
+      prompt: prompt,
+      occurredAt: occurredAt,
+      correlationStrength: promptCorrelationStrength,
+    );
+  }
+
+  @override
+  RuntimeCorrelationStrength get promptCorrelationStrength =>
+      RuntimeCorrelationStrength.serializedPromptEpoch;
+
+  @override
+  List<HookEntry> managedHookEntries(RuntimeEventHookContext context) =>
+      managedRuntimeEventHookEntries(cli: CliTool.cursor, context: context);
 
   @override
   bool get supportsStructuredAsk => false;
