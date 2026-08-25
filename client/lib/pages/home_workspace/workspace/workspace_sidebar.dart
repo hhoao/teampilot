@@ -6,11 +6,13 @@ import 'package:go_router/go_router.dart';
 import 'package:shared_ui/shared_ui.dart';
 
 import '../../../cubits/chat_cubit.dart';
+import '../../../cubits/session_groups_cubit.dart';
 import '../../../cubits/workbench/workbench_cubit.dart';
 import '../../../cubits/worktree_cubit.dart';
 import '../../../l10n/l10n_extensions.dart';
 import '../../../models/app_session.dart';
 import '../../../models/git_worktree.dart';
+import '../../../models/session_group.dart';
 import '../../../models/workspace.dart';
 import '../../../pages/home_workspace/home_workspace_route.dart';
 import '../../../services/git/git_worktree_service.dart';
@@ -22,6 +24,7 @@ import '../../../utils/session/session_project_grouping.dart';
 import '../../../utils/session/session_worktree_grouping.dart';
 import '../../../utils/workspace/workspace_chrome_profile.dart';
 import '../../../widgets/app_toast/app_toast.dart';
+import 'session_group_section.dart';
 import 'worktree_create_dialog.dart';
 import 'worktree_group_section.dart';
 import '../../../utils/ui/app_keys.dart';
@@ -137,6 +140,17 @@ class _WorkspaceSidebarState extends State<WorkspaceSidebar> {
                   sort: _sessionSort,
                   onChanged: (s) => setState(() => _sessionSort = s),
                 ),
+                const SizedBox(width: 2),
+                TpIconButton(
+                  icon: Icons.new_label_outlined,
+                  compact: true,
+                  size: TpIconButton.kCompactSize,
+                  tooltip: l10n.sessionGroupCreateTooltip,
+                  onTap: throttledTap(
+                    'workspace_sidebar_new_group',
+                    () => unawaited(_createSessionGroup(context)),
+                  ),
+                ),
                 if (toolsContext != null &&
                     worktreeManagementEnabled(toolsContext)) ...[
                   const SizedBox(width: 2),
@@ -228,6 +242,19 @@ class _WorkspaceSidebarState extends State<WorkspaceSidebar> {
       setState(() => _sessionSort = AppSessionSort.manual);
     }
     unawaited(context.read<ChatCubit>().reorderSessions(orderedSessionIds));
+  }
+
+  Future<void> _createSessionGroup(BuildContext context) async {
+    final l10n = context.l10n;
+    final name = await showTpTextPromptDialog(
+      context,
+      title: l10n.sessionGroupCreateTitle,
+      labelText: l10n.sessionGroupNameLabel,
+      confirmLabel: l10n.save,
+      cancelLabel: l10n.cancel,
+    );
+    if (name == null || name.trim().isEmpty || !context.mounted) return;
+    context.read<SessionGroupsCubit>().createGroup(name.trim());
   }
 
   Future<void> _startNewConversation(BuildContext context) async {
@@ -381,17 +408,41 @@ class _ConversationListHost extends StatelessWidget {
 
     return SidebarRebuildProbe(
       key: const Key('workspace-sidebar-conversation-list-probe'),
-      child: TpDeferredMountShell(
-        delayFrames: 1,
-        placeholder: const _SessionListSkeleton(),
-        child: _buildBody(
-          context,
-          sortedSessions,
-          structure,
-          wtView,
-          sessionsHydrated: sessionsHydrated,
+      child: _buildWithManualGroups(
+        context,
+        TpDeferredMountShell(
+          delayFrames: 1,
+          placeholder: const _SessionListSkeleton(),
+          child: _buildBody(
+            context,
+            sortedSessions,
+            structure,
+            wtView,
+            sessionsHydrated: sessionsHydrated,
+          ),
         ),
       ),
+    );
+  }
+
+  /// Manual group blocks ride ABOVE every automatic layout (flat, worktree-
+  /// grouped, multi-project): bounded stack with its own scroll so a
+  /// scrollable is never nested inside the list's scrollable.
+  Widget _buildWithManualGroups(BuildContext context, Widget listArea) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        _ManualGroupsHost(
+          workspace: workspace,
+          tabScopeId: tabScopeId,
+          sessionSort: sessionSort,
+          highlightSessionId: scopedActiveSessionId(
+            context.read<WorkbenchCubit>(),
+            tabScopeId,
+          ),
+        ),
+        Expanded(child: listArea),
+      ],
     );
   }
 
@@ -826,4 +877,49 @@ class _ShimmerSlide extends GradientTransform {
   @override
   Matrix4 transform(Rect bounds, {TextDirection? textDirection}) =>
       Matrix4.translationValues(bounds.width * (3.0 * t - 1.5), 0, 0);
+}
+
+/// Renders one [SessionGroupSection] per manual group, bounded to a fixed
+/// maxHeight with its own scroll so several expanded blocks cannot overflow
+/// the column. Hidden entirely when the workspace has no groups.
+class _ManualGroupsHost extends StatelessWidget {
+  const _ManualGroupsHost({
+    required this.workspace,
+    required this.tabScopeId,
+    required this.sessionSort,
+    required this.highlightSessionId,
+  });
+
+  final Workspace workspace;
+  final String tabScopeId;
+  final AppSessionSort sessionSort;
+  final String? highlightSessionId;
+
+  @override
+  Widget build(BuildContext context) {
+    final groups = context.select<SessionGroupsCubit, List<SessionGroup>>(
+      (c) => c.state.ready ? c.state.groups : const <SessionGroup>[],
+    );
+    if (groups.isEmpty) return const SizedBox.shrink();
+    return ConstrainedBox(
+      constraints: const BoxConstraints(maxHeight: 360),
+      child: SingleChildScrollView(
+        padding: const EdgeInsets.only(bottom: 8),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            for (final group in groups)
+              SessionGroupSection(
+                key: ValueKey('manual-group-${group.id}'),
+                group: group,
+                workspace: workspace,
+                tabScopeId: tabScopeId,
+                sessionSort: sessionSort,
+                highlightSessionId: highlightSessionId,
+              ),
+          ],
+        ),
+      ),
+    );
+  }
 }
