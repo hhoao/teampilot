@@ -24,12 +24,28 @@ fn build_respects_gitignore_and_hidden() {
     index.build().expect("index should build");
 
     assert_eq!(index.file_count(), 2);
-    let paths: Vec<_> = index
-        .query("", FileMatchMode::Contains, 10)
+    let hits = index.query("router", FileMatchMode::Fuzzy, 10);
+    assert!(hits.iter().any(|hit| hit.path.ends_with("app_router.dart")));
+    assert!(hits.iter().all(|hit| {
+        !["secret", "ignored_dir", "node_modules", ".hidden"]
+            .iter()
+            .any(|excluded| hit.path.contains(excluded))
+    }));
+    let paths: Vec<_> = hits
         .into_iter()
         .map(|hit| hit.relative_path)
         .collect();
-    assert_eq!(paths, ["lib/app_router.dart", "lib/chat_cubit.dart"]);
+    assert_eq!(paths, ["lib/app_router.dart"]);
+}
+
+#[test]
+fn fuzzy_mode_returns_router_file() {
+    let mut index = index(100);
+    index.build().expect("index should build");
+
+    let hits = index.query("router", FileMatchMode::Fuzzy, 10);
+
+    assert_eq!(hits.first().map(|hit| hit.name.as_str()), Some("app_router.dart"));
 }
 
 #[test]
