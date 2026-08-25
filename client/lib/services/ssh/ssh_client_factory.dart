@@ -586,6 +586,9 @@ class SshHostKeyTrustPolicy {
     final storageKey = '${profile.hostIdentifier}::$keyType';
     final fingerprintHex = SshClientFactory.fingerprintIdentity(fingerprint);
     final fingerprintBase64 = SshClientFactory.fingerprintToBase64(fingerprint);
+    if (profile.hostKeyFingerprints.isNotEmpty) {
+      return profile.hostKeyFingerprints.contains(fingerprintHex);
+    }
     final existing = await _knownHostRepository.findFingerprint(
       profile.hostIdentifier,
       keyType,
