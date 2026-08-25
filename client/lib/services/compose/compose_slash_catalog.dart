@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import '../../models/plugin.dart';
 import '../../models/skill.dart';
 import '../../models/config_bundle.dart';
@@ -50,11 +52,11 @@ List<ComposeSlashCandidate> buildComposeSlashCandidates({
   final enabledPluginIds = enabledBundle.pluginIds.toSet();
 
   void add(ComposeSlashCandidate candidate) {
-    if (out.length >= limit) return;
     if (!seen.add(candidate.insertText)) return;
     if (needle.isNotEmpty &&
         !candidate.label.toLowerCase().contains(needle) &&
-        !(candidate.description?.name.contains(needle) ?? false)) {
+        !(candidate.description?.searchTerms.toLowerCase().contains(needle) ??
+            false)) {
       return;
     }
     out.add(candidate);
@@ -141,7 +143,33 @@ List<ComposeSlashCandidate> buildComposeSlashCandidates({
     }
     return a.label.toLowerCase().compareTo(b.label.toLowerCase());
   });
-  return out;
+  return _limitCandidates(out, limit);
+}
+
+List<ComposeSlashCandidate> _limitCandidates(
+  List<ComposeSlashCandidate> candidates,
+  int limit,
+) {
+  if (limit <= 0) return const [];
+  if (candidates.length <= limit) return candidates;
+
+  final skills = candidates
+      .where((candidate) => candidate.kind == ComposeSlashCandidateKind.skill)
+      .toList(growable: false);
+  final commands = candidates
+      .where((candidate) => candidate.kind == ComposeSlashCandidateKind.command)
+      .toList(growable: false);
+  if (skills.isEmpty || commands.isEmpty) {
+    return candidates.take(limit).toList(growable: false);
+  }
+
+  // Keep the Commands section discoverable even when a large skill catalog
+  // matches. One third leaves useful room for native and plugin commands while
+  // Skills remain the primary section.
+  final reservedCommands = math.min(commands.length, math.max(1, limit ~/ 3));
+  final skillCount = math.min(skills.length, limit - reservedCommands);
+  final commandCount = math.min(commands.length, limit - skillCount);
+  return [...skills.take(skillCount), ...commands.take(commandCount)];
 }
 
 int _commandSourceOrder(ComposeSlashCandidateSource? source) {

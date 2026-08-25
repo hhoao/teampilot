@@ -1,6 +1,19 @@
 import '../cli_capability.dart';
 
-enum NativeCommandDescription { goal, compact, plan, help }
+enum NativeCommandDescription {
+  goal('durable objective long-running work'),
+  compact('compact active conversation context'),
+  plan('planning workflow session task'),
+  help('commands available CLI session');
+
+  const NativeCommandDescription(this.searchTerms);
+
+  /// Stable, locale-independent terms mirroring the localized description.
+  ///
+  /// Compose filtering stays outside Flutter l10n so the pure catalog remains
+  /// usable in service tests and non-widget callers.
+  final String searchTerms;
+}
 
 enum NativeCommandAvailability { stable, experimental }
 

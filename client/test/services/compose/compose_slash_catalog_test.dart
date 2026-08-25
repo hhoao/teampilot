@@ -143,20 +143,92 @@ void main() {
     expect(candidates[4].insertion.suffix, ' ');
   });
 
-  test('filters a native command by name and description key', () {
-    final candidates = buildComposeSlashCandidates(
+  test('filters native commands by meaningful description search terms', () {
+    const commands = [
+      NativeCommand(name: 'goal', description: NativeCommandDescription.goal),
+      NativeCommand(
+        name: 'compact',
+        description: NativeCommandDescription.compact,
+      ),
+      NativeCommand(name: 'plan', description: NativeCommandDescription.plan),
+    ];
+
+    String matchFor(String query) => buildComposeSlashCandidates(
       skills: const [],
       plugins: const [],
       enabledBundle: const ConfigBundle(),
-      query: 'compact',
-      nativeCommands: const [
-        NativeCommand(
-          name: 'compact',
-          description: NativeCommandDescription.compact,
-        ),
-      ],
-    );
+      query: query,
+      nativeCommands: commands,
+    ).single.insertText;
 
-    expect(candidates.single.insertText, '/compact');
+    expect(matchFor('durable'), '/goal');
+    expect(matchFor('context'), '/compact');
+    expect(matchFor('workflow'), '/plan');
   });
+
+  for (final query in ['', 'workflow']) {
+    test(
+      'keeps native and plugin commands discoverable with 20 matching skills '
+      'for query "$query"',
+      () {
+        final skills = List.generate(
+          20,
+          (index) => Skill(
+            id: 'skill-$index',
+            name: 'Workflow Skill $index',
+            description: '',
+            directory: 'workflow-skill-$index',
+            installedAt: 0,
+            updatedAt: 0,
+          ),
+        );
+        final plugin = Plugin(
+          id: 'workflow-plugin',
+          name: 'Workflow Plugin',
+          description: '',
+          version: '1.0',
+          directory: 'workflow-plugin',
+          installedAt: 0,
+          updatedAt: 0,
+          capabilities: const PluginCapabilities(
+            commands: [PluginCommand(name: 'workflow-review')],
+          ),
+        );
+        final candidates = buildComposeSlashCandidates(
+          skills: skills,
+          plugins: [plugin],
+          enabledBundle: ConfigBundle(
+            skillIds: skills.map((skill) => skill.id).toList(),
+            pluginIds: const ['workflow-plugin'],
+          ),
+          query: query,
+          nativeCommands: const [
+            NativeCommand(
+              name: 'plan',
+              description: NativeCommandDescription.plan,
+            ),
+          ],
+        );
+
+        expect(candidates, hasLength(20));
+        expect(
+          candidates
+              .where(
+                (candidate) =>
+                    candidate.kind == ComposeSlashCandidateKind.skill,
+              )
+              .length,
+          lessThan(20),
+        );
+        expect(
+          candidates.map((candidate) => candidate.insertText),
+          contains('/plan'),
+        );
+        expect(
+          candidates.map((candidate) => candidate.insertText),
+          contains('/workflow-review'),
+        );
+      },
+    );
+  }
 }
