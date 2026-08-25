@@ -21,8 +21,10 @@ import 'package:teampilot/services/cli/registry/cli_tool_registry.dart';
 import 'package:teampilot/services/cli/registry/cli_tool_registry_scope.dart';
 import 'package:teampilot/services/commands/command_bus.dart';
 import 'package:teampilot/services/compose/compose_draft_cache.dart';
+import 'package:teampilot/services/compose/compose_draft_store.dart';
 import 'package:teampilot/theme/app_theme.dart';
 
+import '../../../support/in_memory_filesystem.dart';
 import '../../../support/post_frame_test_harness.dart';
 
 class _MockChatCubit extends Mock implements ChatCubit {}
@@ -46,16 +48,27 @@ void _stubCubit<TState>(Cubit<TState> cubit, TState state) {
 }
 
 class _LandingDrafts {
-  _LandingDrafts(String workspaceId, String text)
-    : memory = {workspaceId: text},
-      persistent = {workspaceId: text};
+  _LandingDrafts._(this.store, this.cache);
 
-  final Map<String, String> memory;
-  final Map<String, String> persistent;
+  factory _LandingDrafts() {
+    final store = ComposeDraftStore(
+      fs: InMemoryFilesystem(),
+      rootPath: '/teampilot',
+    );
+    return _LandingDrafts._(store, ComposeDraftCache(persistentStore: store));
+  }
+
+  final ComposeDraftStore store;
+  final ComposeDraftCache cache;
+
+  Future<void> seed(String workspaceId, String text) async {
+    cache.setLandingDraft(workspaceId, text);
+    await store.saveLanding(workspaceId, text);
+  }
 
   Future<void> clear(String workspaceId) async {
-    persistent.remove(workspaceId);
-    memory.remove(workspaceId);
+    await cache.clearLandingPersistent(workspaceId);
+    cache.clearLandingDraft(workspaceId);
   }
 }
 
@@ -151,7 +164,8 @@ void main() {
   testWidgets('failed delivery retains landing drafts', (tester) async {
     const workspaceId = 'workspace-1';
     const draft = 'retry this message';
-    final drafts = _LandingDrafts(workspaceId, draft);
+    final drafts = _LandingDrafts();
+    await drafts.seed(workspaceId, draft);
 
     await tester.pumpWidget(
       _pane(
@@ -171,14 +185,15 @@ void main() {
 
     await _submitLanding(tester, draft);
 
-    expect(drafts.memory[workspaceId], draft);
-    expect(drafts.persistent[workspaceId], draft);
+    expect(drafts.cache.landingDraft(workspaceId), draft);
+    expect(await drafts.store.loadLanding(workspaceId), draft);
   });
 
   testWidgets('successful delivery clears landing drafts', (tester) async {
     const workspaceId = 'workspace-1';
     const draft = 'delivered message';
-    final drafts = _LandingDrafts(workspaceId, draft);
+    final drafts = _LandingDrafts();
+    await drafts.seed(workspaceId, draft);
 
     await tester.pumpWidget(
       _pane(
@@ -198,8 +213,8 @@ void main() {
 
     await _submitLanding(tester, draft);
 
-    expect(drafts.memory[workspaceId], isNull);
-    expect(drafts.persistent[workspaceId], isNull);
+    expect(drafts.cache.landingDraft(workspaceId), isNull);
+    expect(await drafts.store.loadLanding(workspaceId), isNull);
   });
 }
 
