@@ -3,7 +3,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:tp_markdown/tp_markdown.dart';
-import 'package:tp_markdown/src/render/highlight_context.dart';
 
 MarkdownContainerHighlights _hl({
   required List<TextRange> ranges,
