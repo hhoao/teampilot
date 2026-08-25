@@ -5,6 +5,7 @@ import 'package:teampilot/models/skill.dart';
 import 'package:teampilot/services/cli/codex/capabilities/skill.dart';
 import 'package:teampilot/services/cli/opencode/capabilities/skill.dart';
 import 'package:teampilot/services/cli/registry/capabilities/skill_capability.dart';
+import 'package:teampilot/services/cli/registry/capabilities/native_command_capability.dart';
 import 'package:teampilot/services/compose/compose_slash_catalog.dart';
 
 void main() {
@@ -39,19 +40,26 @@ void main() {
     pluginIds: ['superpowers'],
   );
 
-  List<ComposeSlashCandidate> build({required List<Skill> skills, required List<Plugin> plugins, SkillCapability? syntax}) =>
-      buildComposeSlashCandidates(
-        skills: skills,
-        plugins: plugins,
-        enabledBundle: bundle,
-        query: '',
-        syntax: syntax,
-      );
+  List<ComposeSlashCandidate> build({
+    required List<Skill> skills,
+    required List<Plugin> plugins,
+    SkillCapability? syntax,
+  }) => buildComposeSlashCandidates(
+    skills: skills,
+    plugins: plugins,
+    enabledBundle: bundle,
+    query: '',
+    syntax: syntax,
+  );
 
   test('default syntax inserts /name for standalone and plugin skills', () {
     final candidates = build(skills: [standaloneSkill], plugins: [superpowers]);
-    expect(candidates.where((c) => c.kind == ComposeSlashCandidateKind.skill)
-        .map((c) => c.insertText), contains('/using-git-worktrees'));
+    expect(
+      candidates
+          .where((c) => c.kind == ComposeSlashCandidateKind.skill)
+          .map((c) => c.insertText),
+      contains('/using-git-worktrees'),
+    );
   });
 
   test(r'codex syntax inserts $name for standalone skills', () {
@@ -84,8 +92,12 @@ void main() {
       plugins: const [],
       syntax: opencodeSyntax,
     );
-    expect(candidates.where((c) => c.kind == ComposeSlashCandidateKind.skill)
-        .map((c) => c.insertText), contains(' /using-git-worktrees'));
+    expect(
+      candidates
+          .where((c) => c.kind == ComposeSlashCandidateKind.skill)
+          .map((c) => c.insertText),
+      contains(' /using-git-worktrees'),
+    );
   });
 
   test('plugin commands keep the slash form regardless of skill syntax', () {
@@ -98,5 +110,50 @@ void main() {
         .where((c) => c.kind == ComposeSlashCandidateKind.command)
         .map((c) => c.insertText);
     expect(commandCandidates, contains('/review'));
+  });
+
+  test('merges native commands before plugin commands and keeps syntax', () {
+    final candidates = buildComposeSlashCandidates(
+      skills: [standaloneSkill],
+      plugins: [superpowers],
+      enabledBundle: bundle,
+      query: '',
+      syntax: codexSyntax,
+      nativeCommands: const [
+        NativeCommand(
+          name: 'goal',
+          description: NativeCommandDescription.goal,
+          argumentHint: '<objective>',
+        ),
+        NativeCommand(name: 'help', description: NativeCommandDescription.help),
+      ],
+    );
+
+    expect(candidates.map((item) => item.insertText), [
+      r'$using-git-worktrees',
+      r'$superpowers:using-git-worktrees',
+      '/goal ',
+      '/help',
+      '/review',
+    ]);
+    expect(candidates[2].source, ComposeSlashCandidateSource.native);
+    expect(candidates[4].source, ComposeSlashCandidateSource.plugin);
+  });
+
+  test('filters a native command by name and description key', () {
+    final candidates = buildComposeSlashCandidates(
+      skills: const [],
+      plugins: const [],
+      enabledBundle: const ConfigBundle(),
+      query: 'compact',
+      nativeCommands: const [
+        NativeCommand(
+          name: 'compact',
+          description: NativeCommandDescription.compact,
+        ),
+      ],
+    );
+
+    expect(candidates.single.insertText, '/compact');
   });
 }

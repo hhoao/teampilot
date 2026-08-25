@@ -1,9 +1,12 @@
 import '../../models/plugin.dart';
 import '../../models/skill.dart';
 import '../../models/config_bundle.dart';
+import '../cli/registry/capabilities/native_command_capability.dart';
 import '../cli/registry/capabilities/skill_capability.dart';
 
 enum ComposeSlashCandidateKind { skill, command }
+
+enum ComposeSlashCandidateSource { native, plugin }
 
 class ComposeSlashCandidate {
   const ComposeSlashCandidate({
@@ -11,12 +14,18 @@ class ComposeSlashCandidate {
     required this.label,
     required this.kind,
     this.subtitle,
+    this.source,
+    this.description,
+    this.availability = NativeCommandAvailability.stable,
   });
 
   final String insertText;
   final String label;
   final String? subtitle;
   final ComposeSlashCandidateKind kind;
+  final ComposeSlashCandidateSource? source;
+  final NativeCommandDescription? description;
+  final NativeCommandAvailability availability;
 }
 
 List<ComposeSlashCandidate> buildComposeSlashCandidates({
@@ -25,6 +34,7 @@ List<ComposeSlashCandidate> buildComposeSlashCandidates({
   required ConfigBundle enabledBundle,
   required String query,
   SkillCapability? syntax,
+  List<NativeCommand> nativeCommands = const [],
   int limit = 20,
 }) {
   final needle = query.trim().toLowerCase();
@@ -36,7 +46,9 @@ List<ComposeSlashCandidate> buildComposeSlashCandidates({
   void add(ComposeSlashCandidate candidate) {
     if (out.length >= limit) return;
     if (!seen.add(candidate.insertText)) return;
-    if (needle.isNotEmpty && !candidate.label.toLowerCase().contains(needle)) {
+    if (needle.isNotEmpty &&
+        !candidate.label.toLowerCase().contains(needle) &&
+        !(candidate.description?.name.contains(needle) ?? false)) {
       return;
     }
     out.add(candidate);
@@ -57,9 +69,26 @@ List<ComposeSlashCandidate> buildComposeSlashCandidates({
     );
   }
 
+  for (final command in nativeCommands) {
+    final name = command.name.trim();
+    if (name.isEmpty) continue;
+    add(
+      ComposeSlashCandidate(
+        insertText: command.insertText,
+        label: name,
+        kind: ComposeSlashCandidateKind.command,
+        source: ComposeSlashCandidateSource.native,
+        description: command.description,
+        availability: command.availability,
+      ),
+    );
+  }
+
   for (final plugin in plugins) {
     if (!enabledPluginIds.contains(plugin.id)) continue;
-    final pluginLabel = plugin.name.trim().isNotEmpty ? plugin.name.trim() : null;
+    final pluginLabel = plugin.name.trim().isNotEmpty
+        ? plugin.name.trim()
+        : null;
     for (final command in plugin.capabilities.commands) {
       final name = command.name.trim();
       if (name.isEmpty) continue;
@@ -69,6 +98,7 @@ List<ComposeSlashCandidate> buildComposeSlashCandidates({
           label: name,
           subtitle: pluginLabel,
           kind: ComposeSlashCandidateKind.command,
+          source: ComposeSlashCandidateSource.plugin,
         ),
       );
     }
@@ -87,6 +117,7 @@ List<ComposeSlashCandidate> buildComposeSlashCandidates({
           label: name,
           subtitle: pluginLabel,
           kind: ComposeSlashCandidateKind.skill,
+          source: ComposeSlashCandidateSource.plugin,
         ),
       );
     }
@@ -95,7 +126,21 @@ List<ComposeSlashCandidate> buildComposeSlashCandidates({
   out.sort((a, b) {
     final kindOrder = a.kind.index.compareTo(b.kind.index);
     if (kindOrder != 0) return kindOrder;
+    if (a.kind == ComposeSlashCandidateKind.command) {
+      final sourceOrder = _commandSourceOrder(
+        a.source,
+      ).compareTo(_commandSourceOrder(b.source));
+      if (sourceOrder != 0) return sourceOrder;
+    }
     return a.label.toLowerCase().compareTo(b.label.toLowerCase());
   });
   return out;
+}
+
+int _commandSourceOrder(ComposeSlashCandidateSource? source) {
+  return switch (source) {
+    ComposeSlashCandidateSource.native => 0,
+    ComposeSlashCandidateSource.plugin => 1,
+    null => 2,
+  };
 }
