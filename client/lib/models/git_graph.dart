@@ -91,3 +91,94 @@ class GitCommitRow extends GitGraphRow {
 class GitGraphSpacerRow extends GitGraphRow {
   const GitGraphSpacerRow({required super.edges});
 }
+
+/// 单个提交的完整详情（`git show -s` 元数据 + diff-tree 文件清单）。
+class GitCommitDetail extends Equatable {
+  const GitCommitDetail({
+    required this.hash,
+    required this.parents,
+    required this.authorName,
+    required this.authorEmail,
+    required this.authorDate,
+    required this.subject,
+    required this.body,
+    required this.files,
+  });
+
+  final String hash;
+  final List<String> parents;
+  final String authorName;
+  final String authorEmail;
+  final DateTime authorDate;
+  final String subject;
+  final String body;
+  final List<GitCommitFileChange> files;
+
+  @override
+  List<Object?> get props => [
+        hash,
+        parents,
+        authorName,
+        authorEmail,
+        authorDate,
+        subject,
+        body,
+        files,
+      ];
+}
+
+/// diff-tree --name-status 的字母状态映射。
+enum GitCommitFileStatus { added, modified, deleted, renamed, typeChanged }
+
+/// 提交内单个文件的变更（rename 时带 [previousPath]）。
+class GitCommitFileChange extends Equatable {
+  const GitCommitFileChange(this.path, this.status, {this.previousPath});
+
+  final String path;
+  final GitCommitFileStatus status;
+  final String? previousPath;
+
+  @override
+  List<Object?> get props => [path, status, previousPath];
+}
+
+/// 本地或远程分支（[isCurrent] 仅对本地分支有意义）。
+class GitBranchInfo extends Equatable {
+  const GitBranchInfo(
+    this.name,
+    this.hash, {
+    required this.isRemote,
+    required this.isCurrent,
+  });
+
+  final String name;
+  final String hash;
+  final bool isRemote;
+  final bool isCurrent;
+
+  @override
+  List<Object?> get props => [name, hash, isRemote, isCurrent];
+}
+
+/// 标签。
+class GitTagInfo extends Equatable {
+  const GitTagInfo(this.name, this.hash);
+
+  final String name;
+  final String hash;
+
+  @override
+  List<Object?> get props => [name, hash];
+}
+
+/// 一条 stash 记录（[selector] 如 stash@{0}）。
+class GitStashEntry extends Equatable {
+  const GitStashEntry(this.selector, this.hash, this.subject);
+
+  final String selector;
+  final String hash;
+  final String subject;
+
+  @override
+  List<Object?> get props => [selector, hash, subject];
+}
