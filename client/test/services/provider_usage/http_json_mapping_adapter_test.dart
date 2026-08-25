@@ -50,6 +50,36 @@ void main() {
   );
 
   test(
+    'marks a successful HTTP/JSON snapshot stale after ten minutes',
+    () async {
+      final adapter = HttpJsonMappingAdapter(
+        config: const HttpJsonMappingConfig(
+          method: 'GET',
+          url: 'https://example.test/usage',
+          remainingPath: r'$.remaining',
+        ),
+      );
+
+      final snapshot = await adapter.fetch(
+        _provider(),
+        credentials: const _Resolver(null),
+        http: FakeProviderUsageHttpClient(
+          response: const ProviderUsageHttpResponse(
+            statusCode: 200,
+            body: '{"remaining":"3.25"}',
+          ),
+        ),
+        now: now,
+      );
+
+      expect(
+        snapshot.staleAt,
+        now.add(const Duration(minutes: 10)).millisecondsSinceEpoch,
+      );
+    },
+  );
+
+  test(
     'places an API key in the explicitly configured POST JSON field',
     () async {
       final fakeHttp = FakeProviderUsageHttpClient(

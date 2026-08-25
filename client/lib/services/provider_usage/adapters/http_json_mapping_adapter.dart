@@ -46,7 +46,7 @@ class HttpJsonMappingConfig {
     this.credential,
     this.headers = const {},
     this.body = const {},
-    this.staleAfter,
+    this.staleAfter = const Duration(minutes: 10),
     this.adapterVersion,
   });
 
