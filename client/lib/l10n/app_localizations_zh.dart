@@ -7787,4 +7787,84 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get gitGraphHashCopied => '哈希已复制到剪贴板';
+
+  @override
+  String get gitGraphSubjectCopied => '说明已复制到剪贴板';
+
+  @override
+  String gitGraphCheckoutBranch(String branch) {
+    return '检出 $branch';
+  }
+
+  @override
+  String get gitGraphCreateBranchHere => '在此创建分支';
+
+  @override
+  String get gitGraphCreateTagHere => '在此创建标签';
+
+  @override
+  String get gitGraphCherryPick => '摘取（Cherry-pick）';
+
+  @override
+  String get gitGraphRevert => '回退（Revert）';
+
+  @override
+  String get gitGraphReset => '重置（Reset）';
+
+  @override
+  String get gitGraphResetSoft => '软重置（Soft）';
+
+  @override
+  String get gitGraphResetMixed => '混合重置（Mixed）';
+
+  @override
+  String get gitGraphResetHard => '硬重置（Hard）';
+
+  @override
+  String get gitGraphCopyHash => '复制哈希';
+
+  @override
+  String get gitGraphCopySubject => '复制说明';
+
+  @override
+  String get gitGraphCreateBranchTitle => '创建分支';
+
+  @override
+  String get gitGraphCreateTagTitle => '创建标签';
+
+  @override
+  String get gitGraphBranchNameLabel => '分支名称';
+
+  @override
+  String get gitGraphTagNameLabel => '标签名称';
+
+  @override
+  String get gitGraphTagMessageLabel => '说明（可选）';
+
+  @override
+  String get gitGraphCreate => '创建';
+
+  @override
+  String gitGraphRevertConfirmBody(String hash) {
+    return '确定回退提交 $hash 吗？将创建一个撤销该提交的新提交。';
+  }
+
+  @override
+  String gitGraphResetHardConfirmBody(String branch) {
+    return '硬重置会把“$branch”移动到此提交，并丢弃所有未提交的更改。输入“$branch”以确认。';
+  }
+
+  @override
+  String get gitGraphStashPop => '弹出';
+
+  @override
+  String get gitGraphStashApply => '应用';
+
+  @override
+  String get gitGraphStashDrop => '丢弃';
+
+  @override
+  String gitGraphStashDropConfirmBody(String selector) {
+    return '确定丢弃 $selector 吗？此操作无法撤销。';
+  }
 }

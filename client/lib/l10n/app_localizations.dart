@@ -14473,6 +14473,150 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Hash copied to clipboard'**
   String get gitGraphHashCopied;
+
+  /// No description provided for @gitGraphSubjectCopied.
+  ///
+  /// In en, this message translates to:
+  /// **'Subject copied to clipboard'**
+  String get gitGraphSubjectCopied;
+
+  /// No description provided for @gitGraphCheckoutBranch.
+  ///
+  /// In en, this message translates to:
+  /// **'Checkout {branch}'**
+  String gitGraphCheckoutBranch(String branch);
+
+  /// No description provided for @gitGraphCreateBranchHere.
+  ///
+  /// In en, this message translates to:
+  /// **'Create branch here'**
+  String get gitGraphCreateBranchHere;
+
+  /// No description provided for @gitGraphCreateTagHere.
+  ///
+  /// In en, this message translates to:
+  /// **'Create tag here'**
+  String get gitGraphCreateTagHere;
+
+  /// No description provided for @gitGraphCherryPick.
+  ///
+  /// In en, this message translates to:
+  /// **'Cherry-pick'**
+  String get gitGraphCherryPick;
+
+  /// No description provided for @gitGraphRevert.
+  ///
+  /// In en, this message translates to:
+  /// **'Revert'**
+  String get gitGraphRevert;
+
+  /// No description provided for @gitGraphReset.
+  ///
+  /// In en, this message translates to:
+  /// **'Reset'**
+  String get gitGraphReset;
+
+  /// No description provided for @gitGraphResetSoft.
+  ///
+  /// In en, this message translates to:
+  /// **'Soft'**
+  String get gitGraphResetSoft;
+
+  /// No description provided for @gitGraphResetMixed.
+  ///
+  /// In en, this message translates to:
+  /// **'Mixed'**
+  String get gitGraphResetMixed;
+
+  /// No description provided for @gitGraphResetHard.
+  ///
+  /// In en, this message translates to:
+  /// **'Hard'**
+  String get gitGraphResetHard;
+
+  /// No description provided for @gitGraphCopyHash.
+  ///
+  /// In en, this message translates to:
+  /// **'Copy hash'**
+  String get gitGraphCopyHash;
+
+  /// No description provided for @gitGraphCopySubject.
+  ///
+  /// In en, this message translates to:
+  /// **'Copy subject'**
+  String get gitGraphCopySubject;
+
+  /// No description provided for @gitGraphCreateBranchTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Create branch'**
+  String get gitGraphCreateBranchTitle;
+
+  /// No description provided for @gitGraphCreateTagTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Create tag'**
+  String get gitGraphCreateTagTitle;
+
+  /// No description provided for @gitGraphBranchNameLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Branch name'**
+  String get gitGraphBranchNameLabel;
+
+  /// No description provided for @gitGraphTagNameLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Tag name'**
+  String get gitGraphTagNameLabel;
+
+  /// No description provided for @gitGraphTagMessageLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Message (optional)'**
+  String get gitGraphTagMessageLabel;
+
+  /// No description provided for @gitGraphCreate.
+  ///
+  /// In en, this message translates to:
+  /// **'Create'**
+  String get gitGraphCreate;
+
+  /// No description provided for @gitGraphRevertConfirmBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Revert commit {hash}? A new commit undoing it will be created.'**
+  String gitGraphRevertConfirmBody(String hash);
+
+  /// No description provided for @gitGraphResetHardConfirmBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Hard reset moves \"{branch}\" to this commit and discards ALL uncommitted changes. Type \"{branch}\" to confirm.'**
+  String gitGraphResetHardConfirmBody(String branch);
+
+  /// No description provided for @gitGraphStashPop.
+  ///
+  /// In en, this message translates to:
+  /// **'Pop'**
+  String get gitGraphStashPop;
+
+  /// No description provided for @gitGraphStashApply.
+  ///
+  /// In en, this message translates to:
+  /// **'Apply'**
+  String get gitGraphStashApply;
+
+  /// No description provided for @gitGraphStashDrop.
+  ///
+  /// In en, this message translates to:
+  /// **'Drop'**
+  String get gitGraphStashDrop;
+
+  /// No description provided for @gitGraphStashDropConfirmBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Drop {selector}? This cannot be undone.'**
+  String gitGraphStashDropConfirmBody(String selector);
 }
 
 class _AppLocalizationsDelegate

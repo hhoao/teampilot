@@ -8129,4 +8129,84 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get gitGraphHashCopied => 'Hash copied to clipboard';
+
+  @override
+  String get gitGraphSubjectCopied => 'Subject copied to clipboard';
+
+  @override
+  String gitGraphCheckoutBranch(String branch) {
+    return 'Checkout $branch';
+  }
+
+  @override
+  String get gitGraphCreateBranchHere => 'Create branch here';
+
+  @override
+  String get gitGraphCreateTagHere => 'Create tag here';
+
+  @override
+  String get gitGraphCherryPick => 'Cherry-pick';
+
+  @override
+  String get gitGraphRevert => 'Revert';
+
+  @override
+  String get gitGraphReset => 'Reset';
+
+  @override
+  String get gitGraphResetSoft => 'Soft';
+
+  @override
+  String get gitGraphResetMixed => 'Mixed';
+
+  @override
+  String get gitGraphResetHard => 'Hard';
+
+  @override
+  String get gitGraphCopyHash => 'Copy hash';
+
+  @override
+  String get gitGraphCopySubject => 'Copy subject';
+
+  @override
+  String get gitGraphCreateBranchTitle => 'Create branch';
+
+  @override
+  String get gitGraphCreateTagTitle => 'Create tag';
+
+  @override
+  String get gitGraphBranchNameLabel => 'Branch name';
+
+  @override
+  String get gitGraphTagNameLabel => 'Tag name';
+
+  @override
+  String get gitGraphTagMessageLabel => 'Message (optional)';
+
+  @override
+  String get gitGraphCreate => 'Create';
+
+  @override
+  String gitGraphRevertConfirmBody(String hash) {
+    return 'Revert commit $hash? A new commit undoing it will be created.';
+  }
+
+  @override
+  String gitGraphResetHardConfirmBody(String branch) {
+    return 'Hard reset moves \"$branch\" to this commit and discards ALL uncommitted changes. Type \"$branch\" to confirm.';
+  }
+
+  @override
+  String get gitGraphStashPop => 'Pop';
+
+  @override
+  String get gitGraphStashApply => 'Apply';
+
+  @override
+  String get gitGraphStashDrop => 'Drop';
+
+  @override
+  String gitGraphStashDropConfirmBody(String selector) {
+    return 'Drop $selector? This cannot be undone.';
+  }
 }

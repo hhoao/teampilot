@@ -142,6 +142,12 @@ class RecordingGraphActions implements GitHistoryActions {
     ]);
     _maybeThrow();
   }
+
+  @override
+  Future<void> cherryPick(String dir, String hash) async {
+    calls.add(['cherry-pick', hash]);
+    _maybeThrow();
+  }
 }
 
 GitCommitRow graphCommitRow(String hash) => GitCommitRow(

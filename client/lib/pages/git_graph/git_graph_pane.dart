@@ -1,7 +1,10 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:shared_ui/shared_ui.dart';
 
+import '../../cubits/git_graph_actions_controller.dart';
 import '../../cubits/git_graph_cubit.dart';
 import '../../l10n/l10n_extensions.dart';
 import '../../models/git_graph.dart';
@@ -9,6 +12,7 @@ import '../../services/git/git_repo_store.dart';
 import '../../services/storage/runtime_context.dart';
 import '../../services/workspace/workspace_tools_scope.dart';
 import 'git_graph_detail_pane.dart';
+import 'git_graph_menus.dart';
 import 'git_graph_row_tile.dart';
 import 'git_graph_toolbar.dart';
 
@@ -220,16 +224,34 @@ class _GraphListState extends State<_GraphList> {
     GitGraphState state,
   ) {
     final cubit = context.read<GitGraphCubit>();
-    // 右键 / 长按菜单由后续任务接入；事件缝先占位。
-    return BlocProvider.value(
-      value: cubit,
-      child: GitGraphRowTile(
-        key: ValueKey('git-graph-row-${row.hash}'),
-        row: row,
-        selected: state.selectedHash == row.hash,
-        onTap: () => cubit.selectCommit(row.hash),
-        onSecondaryTapUp: (_) {},
-        onLongPress: () {},
+    final actions = GitGraphActionsController(cubit: cubit);
+    return Builder(
+      builder: (tileContext) => BlocProvider.value(
+        value: cubit,
+        child: GitGraphRowTile(
+          key: ValueKey('git-graph-row-${row.hash}'),
+          row: row,
+          selected: state.selectedHash == row.hash,
+          onTap: () => cubit.selectCommit(row.hash),
+          onSecondaryTapUp: (details) => unawaited(
+            showCommitContextMenu(
+              tileContext,
+              details.globalPosition,
+              row,
+              actions,
+              state,
+            ),
+          ),
+          onLongPress: () {
+            final box = tileContext.findRenderObject();
+            final center = box is RenderBox && box.attached
+                ? box.localToGlobal(box.size.center(Offset.zero))
+                : Offset.zero;
+            unawaited(
+              showCommitContextMenu(tileContext, center, row, actions, state),
+            );
+          },
+        ),
       ),
     );
   }

@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:shared_ui/shared_ui.dart';
@@ -6,6 +8,7 @@ import '../../cubits/git_graph_actions_controller.dart';
 import '../../cubits/git_graph_cubit.dart';
 import '../../l10n/l10n_extensions.dart';
 import '../../models/git_graph.dart';
+import 'git_graph_menus.dart';
 
 /// 图面板顶部工具条：分支范围切换、fetch/pull/push、stash 弹层、搜索 + 模式、刷新。
 /// 无状态：所有回调走 [GitGraphCubit] / [GitGraphActionsController]，不做 IO。
@@ -50,7 +53,7 @@ class GitGraphToolbar extends StatelessWidget {
             onTap: () => _runAction(context, (actions) => actions.push()),
           ),
           const SizedBox(width: 4),
-          _stashMenu(context),
+          _StashMenu(state: state),
           const SizedBox(width: 8),
           Expanded(child: _searchField(context)),
           const SizedBox(width: 4),
@@ -86,58 +89,6 @@ class GitGraphToolbar extends StatelessWidget {
         minimumSize: WidgetStatePropertyAll(Size(0, 26)),
         padding: WidgetStatePropertyAll(EdgeInsets.symmetric(horizontal: 8)),
         textStyle: WidgetStatePropertyAll(TextStyle(fontSize: 11)),
-      ),
-    );
-  }
-
-  /// Stash 列表弹层。菜单项的 pop/apply/drop 动作由右键菜单任务接线。
-  Widget _stashMenu(BuildContext context) {
-    final l10n = context.l10n;
-    return PopupMenuButton<String>(
-      tooltip: l10n.gitGraphStash,
-      onSelected: (_) {},
-      itemBuilder: (context) {
-        if (state.stashList.isEmpty) {
-          return [
-            PopupMenuItem<String>(enabled: false, child: Text(l10n.gitGraphStash)),
-          ];
-        }
-        return [
-          for (final stash in state.stashList)
-            PopupMenuItem<String>(
-              value: stash.selector,
-              child: Text(
-                '${stash.selector} ${stash.subject}',
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-              ),
-            ),
-        ];
-      },
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(6),
-          border: Border.all(
-            color: Theme.of(context).colorScheme.outlineVariant,
-          ),
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(
-              Icons.inventory_2_outlined,
-              size: 14,
-              color: Theme.of(context).colorScheme.onSurfaceVariant,
-            ),
-            const SizedBox(width: 3),
-            Text(
-              l10n.gitGraphStash,
-              style: TpTextStyles.of(context).xs,
-            ),
-            const Icon(Icons.arrow_drop_down_rounded, size: 14),
-          ],
-        ),
       ),
     );
   }
@@ -191,18 +142,140 @@ class GitGraphToolbar extends StatelessWidget {
     );
   }
 
-  String _modeLabel(AppLocalizations l10n, GitSearchMode mode) => switch (mode) {
-    GitSearchMode.message => l10n.gitGraphSearchModeMessage,
-    GitSearchMode.author => l10n.gitGraphSearchModeAuthor,
-    GitSearchMode.hash => l10n.gitGraphSearchModeHash,
-  };
+  String _modeLabel(AppLocalizations l10n, GitSearchMode mode) =>
+      switch (mode) {
+        GitSearchMode.message => l10n.gitGraphSearchModeMessage,
+        GitSearchMode.author => l10n.gitGraphSearchModeAuthor,
+        GitSearchMode.hash => l10n.gitGraphSearchModeHash,
+      };
 
   Future<void> _runAction(
     BuildContext context,
     Future<bool> Function(GitGraphActionsController actions) run,
   ) async {
-    await run(
-      GitGraphActionsController(cubit: context.read<GitGraphCubit>()),
+    await run(GitGraphActionsController(cubit: context.read<GitGraphCubit>()));
+  }
+}
+
+/// Stash 弹层：主菜单列出 `stashList`，选中条目再弹 Pop/Applly/Drop 子菜单
+/// （Drop 走 [confirmDangerAction]）；v1 不做 stash 创建（仍走终端）。
+class _StashMenu extends StatefulWidget {
+  const _StashMenu({required this.state});
+
+  final GitGraphState state;
+
+  @override
+  State<_StashMenu> createState() => _StashMenuState();
+}
+
+class _StashMenuState extends State<_StashMenu> {
+  final GlobalKey _buttonKey = GlobalKey();
+
+  Future<void> _openSubmenu(GitStashEntry entry) async {
+    final l10n = context.l10n;
+    final position = _buttonPosition();
+    if (!mounted) return;
+    final action = await showMenu<String>(
+      context: context,
+      position: position,
+      items: [
+        PopupMenuItem<String>(value: 'pop', child: Text(l10n.gitGraphStashPop)),
+        PopupMenuItem<String>(
+          value: 'apply',
+          child: Text(l10n.gitGraphStashApply),
+        ),
+        PopupMenuItem<String>(
+          value: 'drop',
+          child: Text(l10n.gitGraphStashDrop),
+        ),
+      ],
+    );
+    if (action == null || !mounted) return;
+    final controller = GitGraphActionsController(
+      cubit: context.read<GitGraphCubit>(),
+    );
+    switch (action) {
+      case 'pop':
+        await controller.stashPop(ref: entry.selector);
+      case 'apply':
+        await controller.stashApply(ref: entry.selector);
+      case 'drop':
+        final confirmed = await confirmDangerAction(
+          context,
+          title: l10n.gitGraphStashDrop,
+          body: l10n.gitGraphStashDropConfirmBody(entry.selector),
+        );
+        if (!confirmed || !mounted) return;
+        await controller.stashDrop(ref: entry.selector);
+    }
+  }
+
+  /// 子菜单锚定在 stash 按钮下方；拿不到按钮位置时回退到左上角附近。
+  RelativeRect _buttonPosition() {
+    final button = _buttonKey.currentContext?.findRenderObject();
+    final overlay = Overlay.of(context).context.findRenderObject();
+    if (button is RenderBox && overlay is RenderBox && button.attached) {
+      final topLeft = button.localToGlobal(Offset.zero, ancestor: overlay);
+      return RelativeRect.fromLTRB(
+        topLeft.dx,
+        topLeft.dy,
+        overlay.size.width - topLeft.dx - button.size.width,
+        topLeft.dy + 1,
+      );
+    }
+    return const RelativeRect.fromLTRB(48, 40, 48, 40);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = context.l10n;
+    return PopupMenuButton<GitStashEntry>(
+      tooltip: l10n.gitGraphStash,
+      onSelected: (entry) => unawaited(_openSubmenu(entry)),
+      itemBuilder: (context) {
+        if (widget.state.stashList.isEmpty) {
+          return [
+            PopupMenuItem<GitStashEntry>(
+              enabled: false,
+              child: Text(l10n.gitGraphStash),
+            ),
+          ];
+        }
+        return [
+          for (final stash in widget.state.stashList)
+            PopupMenuItem<GitStashEntry>(
+              value: stash,
+              child: Text(
+                '${stash.selector} ${stash.subject}',
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+        ];
+      },
+      child: Container(
+        key: _buttonKey,
+        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(6),
+          border: Border.all(
+            color: Theme.of(context).colorScheme.outlineVariant,
+          ),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              Icons.inventory_2_outlined,
+              size: 14,
+              color: Theme.of(context).colorScheme.onSurfaceVariant,
+            ),
+            const SizedBox(width: 3),
+            Text(l10n.gitGraphStash, style: TpTextStyles.of(context).xs),
+            const Icon(Icons.arrow_drop_down_rounded, size: 14),
+          ],
+        ),
+      ),
     );
   }
 }
