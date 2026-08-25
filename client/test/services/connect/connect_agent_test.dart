@@ -31,10 +31,11 @@ void main() {
   );
 
   ConnectAgent agent({
-    required SshdPresenceSnapshot presence,
+    SshdPresenceSnapshot presence = _listeningPresence,
+    SshdPresenceProbe? probe,
     List<SshReachabilityEndpoint> extraEndpoints = const [],
   }) => ConnectAgent(
-    probe: () async => presence,
+    probe: probe ?? () async => presence,
     keys: keys(),
     gate: gate,
     bind: binding.call,
@@ -162,6 +163,28 @@ void main() {
     },
   );
 
+  test('stop waits for and closes an in-flight start binding', () async {
+    final probeStarted = Completer<void>();
+    final releaseProbe = Completer<void>();
+    final connectAgent = agent(
+      probe: () async {
+        probeStarted.complete();
+        await releaseProbe.future;
+        return _listeningPresence;
+      },
+    );
+
+    final starting = _start(connectAgent);
+    await probeStarted.future;
+    final stopping = connectAgent.stopQrSession();
+    releaseProbe.complete();
+    await Future.wait([starting, stopping]);
+
+    expect(binding.closed, isTrue);
+    expect(connectAgent.currentOffer, isNull);
+    expect(gate.hasActiveToken, isFalse);
+  });
+
   test('regenerate replaces and invalidates the previous token', () async {
     final connectAgent = agent(presence: _listeningPresence);
     await _start(connectAgent);
@@ -200,6 +223,43 @@ void main() {
     expect(result.statusCode, HttpStatus.ok);
     expect(result.body['ok'], isTrue);
     expect(authorizedKeys, contains('device=pixel-1'));
+  });
+
+  test('rejects an oversized content length before listening', () async {
+    var listened = false;
+    final source = StreamController<List<int>>(onListen: () => listened = true);
+    addTearDown(() {
+      source.close();
+    });
+
+    await expectLater(
+      readPairingPostBody(
+        source.stream,
+        contentLength: maxPairingRequestBytes + 1,
+      ),
+      throwsA(isA<PairingRequestTooLargeException>()),
+    );
+
+    expect(listened, isFalse);
+  });
+
+  test('stops consuming chunked request bytes at the size limit', () async {
+    var emittedChunks = 0;
+    Stream<List<int>> oversizedBody() async* {
+      emittedChunks += 1;
+      yield List<int>.filled(40000, 97);
+      emittedChunks += 1;
+      yield List<int>.filled(40000, 97);
+      emittedChunks += 1;
+      yield const [97];
+    }
+
+    await expectLater(
+      readPairingPostBody(oversizedBody()),
+      throwsA(isA<PairingRequestTooLargeException>()),
+    );
+
+    expect(emittedChunks, 2);
   });
 
   test('ConnectSettingsStore persists one stable host ID', () async {

@@ -1,6 +1,9 @@
 import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
+import 'dart:typed_data';
+
+import 'package:synchronized/synchronized.dart';
 
 import '../../models/ssh_reachability.dart';
 import '../io/filesystem.dart';
@@ -51,6 +54,12 @@ class PairingBinding {
 typedef PairingBind =
     Future<PairingBinding> Function(InternetAddress address, Object tlsContext);
 typedef StableConnectHostId = Future<String> Function(String appDataRoot);
+
+const int maxPairingRequestBytes = 64 * 1024;
+
+class PairingRequestTooLargeException implements Exception {
+  const PairingRequestTooLargeException();
+}
 
 class ConnectRelayRegistration {
   const ConnectRelayRegistration({
@@ -120,6 +129,7 @@ class ConnectAgent {
   final StableConnectHostId _stableHostId;
   final List<SshReachabilityEndpoint> _extraEndpoints;
   final ConnectRelayRegistration? _relayRegistration;
+  final Lock _lifecycleLock = Lock();
 
   PairingBinding? _binding;
   StreamSubscription<PairingHttpRequest>? _requestSubscription;
@@ -133,8 +143,22 @@ class ConnectAgent {
     required String username,
     required String displayName,
     required String appDataRoot,
+  }) => _lifecycleLock.synchronized(
+    () => _startQrSession(
+      advertiseAddress: advertiseAddress,
+      username: username,
+      displayName: displayName,
+      appDataRoot: appDataRoot,
+    ),
+  );
+
+  Future<void> _startQrSession({
+    required String advertiseAddress,
+    required String username,
+    required String displayName,
+    required String appDataRoot,
   }) async {
-    await stopQrSession();
+    await _stopQrSession();
     final address = InternetAddress(advertiseAddress);
     if (_isWildcard(address)) {
       throw ArgumentError.value(
@@ -182,7 +206,9 @@ class ConnectAgent {
     }
   }
 
-  Future<void> stopQrSession() async {
+  Future<void> stopQrSession() => _lifecycleLock.synchronized(_stopQrSession);
+
+  Future<void> _stopQrSession() async {
     _gate.invalidate();
     _currentOffer = null;
     _session = null;
@@ -194,7 +220,9 @@ class ConnectAgent {
     await binding?.close();
   }
 
-  Future<void> regenerateQr() async {
+  Future<void> regenerateQr() => _lifecycleLock.synchronized(_regenerateQr);
+
+  Future<void> _regenerateQr() async {
     final session = _session;
     if (session == null || _binding == null) {
       throw StateError('No QR pairing session is active');
@@ -364,17 +392,17 @@ Future<void> _forwardHttpRequest(
   PairingPostBody? body;
   if (source.method == 'POST' && source.uri.path == '/pair') {
     try {
-      final text = await utf8.decoder.bind(source).join();
-      if (text.length > 64 * 1024) throw const FormatException();
-      final decoded = jsonDecode(text);
-      if (decoded is! Map) throw const FormatException();
-      final json = decoded.cast<String, Object?>();
-      body = PairingPostBody(
-        token: json['token'] as String,
-        deviceId: json['deviceId'] as String,
-        deviceName: json['deviceName'] as String,
-        publicKey: json['publicKey'] as String,
+      body = await readPairingPostBody(
+        source,
+        contentLength: source.contentLength,
       );
+    } on PairingRequestTooLargeException {
+      source.response
+        ..statusCode = HttpStatus.requestEntityTooLarge
+        ..headers.contentType = ContentType.json
+        ..write(jsonEncode(const {'ok': false, 'error': 'tooLarge'}));
+      await source.response.close();
+      return;
     } on Object {
       body = null;
     }
@@ -397,5 +425,38 @@ Future<void> _forwardHttpRequest(
         await source.response.close();
       },
     ),
+  );
+}
+
+Future<PairingPostBody> readPairingPostBody(
+  Stream<List<int>> source, {
+  int? contentLength,
+  int maxBytes = maxPairingRequestBytes,
+}) async {
+  if (maxBytes < 1) {
+    throw ArgumentError.value(maxBytes, 'maxBytes', 'must be positive');
+  }
+  if (contentLength != null && contentLength > maxBytes) {
+    throw const PairingRequestTooLargeException();
+  }
+
+  final bytes = BytesBuilder(copy: false);
+  var byteCount = 0;
+  await for (final chunk in source) {
+    byteCount += chunk.length;
+    if (byteCount > maxBytes) {
+      throw const PairingRequestTooLargeException();
+    }
+    bytes.add(chunk);
+  }
+
+  final decoded = jsonDecode(utf8.decode(bytes.takeBytes()));
+  if (decoded is! Map) throw const FormatException();
+  final json = decoded.cast<String, Object?>();
+  return PairingPostBody(
+    token: json['token'] as String,
+    deviceId: json['deviceId'] as String,
+    deviceName: json['deviceName'] as String,
+    publicKey: json['publicKey'] as String,
   );
 }
