@@ -6,6 +6,7 @@ import '../markdown_display_mode_scope.dart';
 import '../registry/markdown_resolvers.dart';
 import '../strings.dart';
 import '../tokens/markdown_tokens.dart';
+import 'highlight_context.dart';
 import 'inline_spans.dart';
 
 Widget buildHorizontalRule(MarkdownTokens tokens) {
@@ -15,21 +16,34 @@ Widget buildHorizontalRule(MarkdownTokens tokens) {
 Widget buildTable(
   TableBlock block,
   MarkdownTokens tokens,
-  MarkdownResolvers resolvers,
-) {
+  MarkdownResolvers resolvers, {
+  MarkdownHighlightContext? highlights,
+  int blockIndex = 0,
+  List<MarkdownPathStep> basePath = const [],
+}) {
   return _MarkdownTable(
     headers: block.headers,
     rows: block.rows,
     tokens: tokens,
     resolvers: resolvers,
+    highlights: highlights,
+    blockIndex: blockIndex,
+    basePath: basePath,
   );
 }
 
-Widget buildCodeBlock(CodeBlock block, MarkdownTokens tokens) {
+Widget buildCodeBlock(
+  CodeBlock block,
+  MarkdownTokens tokens, {
+  MarkdownHighlightContext? highlights,
+  int blockIndex = 0,
+  List<MarkdownPathStep> basePath = const [],
+}) {
   return _MarkdownCodeBlock(
     language: block.language ?? '',
     code: block.text,
     tokens: tokens,
+    highlights: highlights?.forContainer(blockIndex, basePath),
   );
 }
 
@@ -39,12 +53,18 @@ class _MarkdownTable extends StatelessWidget {
     required this.rows,
     required this.tokens,
     required this.resolvers,
+    required this.highlights,
+    required this.blockIndex,
+    required this.basePath,
   });
 
   final List<InlineDocument> headers;
   final List<List<InlineDocument>> rows;
   final MarkdownTokens tokens;
   final MarkdownResolvers resolvers;
+  final MarkdownHighlightContext? highlights;
+  final int blockIndex;
+  final List<MarkdownPathStep> basePath;
 
   @override
   Widget build(BuildContext context) {
@@ -57,7 +77,11 @@ class _MarkdownTable extends StatelessWidget {
     // on history fling (see post-compile DevTools: _CompiledTable / RenderTable).
     final border = BorderSide(color: tokens.borderColor, width: 1);
 
-    Widget cellRow(List<InlineDocument> cells, {required bool isHeader}) {
+    Widget cellRow(
+      List<InlineDocument> cells, {
+      required bool isHeader,
+      int? rowIndex,
+    }) {
       final cellStyle = isHeader ? tokens.tableHead : tokens.tableBody;
       return ColoredBox(
         color: isHeader
@@ -85,6 +109,12 @@ class _MarkdownTable extends StatelessWidget {
                           tokens,
                           cellStyle,
                           resolvers,
+                          highlights: highlights?.forContainer(
+                            blockIndex,
+                            rowIndex == null
+                                ? [...basePath, TableHeaderStep(c)]
+                                : [...basePath, TableCellStep(rowIndex, c)],
+                          ),
                         ),
                       ),
                       strutStyle: forcedStrut(cellStyle),
@@ -99,7 +129,8 @@ class _MarkdownTable extends StatelessWidget {
 
     final rowWidgets = <Widget>[
       if (headers.isNotEmpty) cellRow(headers, isHeader: true),
-      for (final row in rows) cellRow(row, isHeader: false),
+      for (var r = 0; r < rows.length; r++)
+        cellRow(rows[r], isHeader: false, rowIndex: r),
     ];
 
     return DecoratedBox(
@@ -127,11 +158,13 @@ class _MarkdownCodeBlock extends StatefulWidget {
     required this.language,
     required this.code,
     required this.tokens,
+    required this.highlights,
   });
 
   final String language;
   final String code;
   final MarkdownTokens tokens;
+  final MarkdownContainerHighlights? highlights;
 
   @override
   State<_MarkdownCodeBlock> createState() => _MarkdownCodeBlockState();
@@ -161,6 +194,12 @@ class _MarkdownCodeBlockState extends State<_MarkdownCodeBlock> {
         : widget.language.toLowerCase();
     final mode = MarkdownDisplayModeScope.codeBlockOf(context);
     final huge = widget.code.length > _kCollapseChars;
+    // Masked collapse shows only the first lines, so ranges computed against
+    // the FULL text would misalign — auto-expand masked blocks carrying matches.
+    final forceFull = widget.highlights != null &&
+        widget.highlights!.ranges.isNotEmpty &&
+        huge &&
+        mode != ContentDisplayMode.flatten;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -210,8 +249,9 @@ class _MarkdownCodeBlockState extends State<_MarkdownCodeBlock> {
             ),
           ),
         ),
-        if (!huge || mode == ContentDisplayMode.flatten)
-          // Short code, or flatten mode: always full natural height, no mask.
+        if (!huge || mode == ContentDisplayMode.flatten || forceFull)
+          // Short code, or flatten mode, or masked-but-highlighted: full
+          // natural height, no mask (highlight offsets need the full text).
           DecoratedBox(
             decoration: BoxDecoration(
               color: muted,
@@ -310,11 +350,11 @@ class _MarkdownCodeBlockState extends State<_MarkdownCodeBlock> {
       scrollDirection: Axis.horizontal,
       child: Padding(
         padding: const EdgeInsets.fromLTRB(14, 10, 14, 12),
-        child: Text(
+        child: buildHighlightedCode(
           code,
-          style: widget.tokens.codeBlock,
-          softWrap: false,
-          strutStyle: forcedStrut(widget.tokens.codeBlock),
+          widget.tokens.codeBlock,
+          widget.tokens,
+          widget.highlights,
         ),
       ),
     );
