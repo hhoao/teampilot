@@ -208,7 +208,15 @@ pub fn spawn_search(config: &SearchConfig) -> Result<TpSearchHandle, SearchError
                         }
                         if line.len() > MAX_LINE_BYTES {
                             // Text-less placeholder: line number kept, offsets zeroed.
+                            // Reserve the slot BEFORE emitting: parallel walkers
+                            // interleave between the stop-check above and the
+                            // fetch_add, so counts can exceed `max_results`;
+                            // only the caller holding count <= max_results may
+                            // emit (guarantees exactly max_results emissions).
                             let count = total.fetch_add(1, Ordering::Relaxed) + 1;
+                            if max_results > 0 && count > max_results {
+                                return Ok(false);
+                            }
                             let data = SearchMatchData {
                                 path: path_str.clone(),
                                 relative_path: relative_path.clone(),
@@ -230,7 +238,11 @@ pub fn spawn_search(config: &SearchConfig) -> Result<TpSearchHandle, SearchError
                             return Ok(true);
                         }
                         let _ = matcher.find_iter(line.as_bytes(), |m| {
+                            // Same reserve-before-emit contract as above.
                             let count = total.fetch_add(1, Ordering::Relaxed) + 1;
+                            if max_results > 0 && count > max_results {
+                                return false;
+                            }
                             let data = SearchMatchData {
                                 path: path_str.clone(),
                                 relative_path: relative_path.clone(),

@@ -104,13 +104,41 @@ fn include_exclude_globs() {
 fn max_results_truncates() {
     let mut c = cfg(FIXTURES, "hello");
     c.max_results = 2;
-    let mut h = engine::spawn_search(&c).expect("spawn");
-    let (msgs, truncated) = drain(&mut h);
-    assert!(truncated, "truncation flag set");
-    // The atomic stop is racy across walker threads: one thread may emit a
-    // couple of matches after the cap trips, so allow a small overshoot.
-    let n = matches(&msgs).len();
-    assert!((2..=3).contains(&n), "overshoot window is 2..=3, got {n}");
+    // Slots are reserved before emitting, so parallel walkers can never
+    // overshoot the cap (regression: emit-then-check allowed 3 of 2).
+    for _ in 0..25 {
+        let mut h = engine::spawn_search(&c).expect("spawn");
+        let (msgs, truncated) = drain(&mut h);
+        assert!(truncated, "truncation flag set");
+        let n = matches(&msgs).len();
+        assert_eq!(n, 2, "emitted matches must equal max_results");
+    }
+}
+
+#[test]
+fn max_results_never_overshoots_on_wide_parallel_trees() {
+    // Many small files across several walker threads maximizes the chance
+    // two threads interleave between the stop-check and their fetch_add.
+    let temp = std::env::temp_dir().join("tp_search_max_results_race_test");
+    let _ = std::fs::remove_dir_all(&temp);
+    std::fs::create_dir_all(&temp).unwrap();
+    for i in 0..64 {
+        std::fs::write(
+            temp.join(format!("f{i:03}.txt")),
+            "hello one\nfiller\nhello two\n",
+        )
+        .unwrap();
+    }
+    for _ in 0..15 {
+        let mut c = cfg(temp.to_str().unwrap(), "hello");
+        c.max_results = 5;
+        let mut h = engine::spawn_search(&c).expect("spawn");
+        let (msgs, truncated) = drain(&mut h);
+        assert!(truncated);
+        let n = matches(&msgs).len();
+        assert_eq!(n, 5, "parallel walkers must not emit past max_results");
+    }
+    let _ = std::fs::remove_dir_all(&temp);
 }
 
 #[test]
