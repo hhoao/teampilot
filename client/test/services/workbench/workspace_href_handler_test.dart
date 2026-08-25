@@ -69,6 +69,25 @@ void main() {
     );
   });
 
+  test('absolute file link with a line suffix opens the source file', () async {
+    final fs = InMemoryFilesystem()..files['/repo/lib/src/a.dart'] = 'ok';
+    final harness = _harness(fs);
+
+    final outcome = await harness.handler.open(
+      href: '/repo/lib/src/a.dart:82',
+      workspaceId: 'ws',
+      workspaceRoots: const ['/repo'],
+      searchBases: const ['/repo'],
+      fs: fs,
+    );
+
+    expect(outcome, WorkspaceHrefOpenOutcome.openedFile);
+    expect(
+      harness.editor.state.bucket('ws').openFilePaths,
+      contains('/repo/lib/src/a.dart'),
+    );
+  });
+
   test('empty workspaceRoots is outsideWorkspace and does not open', () async {
     final fs = InMemoryFilesystem()..files['/repo/src/a.dart'] = 'ok';
     final harness = _harness(fs);
