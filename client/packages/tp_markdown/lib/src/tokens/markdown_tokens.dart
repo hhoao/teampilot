@@ -48,6 +48,8 @@ class MarkdownTokens {
     this.strongWeight = FontWeight.w700,
     this.emphasisFontStyle = FontStyle.italic,
     this.strikeDecoration = TextDecoration.lineThrough,
+    this.matchHighlightColor = const Color(0x2690CAF9),
+    this.matchHighlightActiveColor = const Color(0x66FFB74D),
   });
 
   /// Minimal tokens for package widget tests (not for product UI).
@@ -182,6 +184,12 @@ class MarkdownTokens {
   /// [StrikeRun] decoration applied onto the surrounding base.
   final TextDecoration strikeDecoration;
 
+  /// Background wash painted over non-active search matches.
+  final Color matchHighlightColor;
+
+  /// Background wash painted over the active (navigated) search match.
+  final Color matchHighlightActiveColor;
+
   EdgeInsets marginOf(MarkdownBlockKind kind) {
     return switch (kind) {
       MarkdownBlockKind.paragraph => paragraphMargin,
@@ -232,6 +240,13 @@ class MarkdownTokens {
         fontSize: base.fontSize,
         height: base.height,
         letterSpacing: base.letterSpacing,
+      );
+
+  /// Search-match paint over [base]: background wash only; [active] stronger.
+  TextStyle matchHighlight(TextStyle base, {required bool active}) =>
+      base.copyWith(
+        backgroundColor:
+            active ? matchHighlightActiveColor : matchHighlightColor,
       );
 
   /// Text styles that should participate in host glyph warmup.
