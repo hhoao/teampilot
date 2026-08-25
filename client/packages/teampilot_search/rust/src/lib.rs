@@ -1,4 +1,5 @@
 pub mod engine;
+pub mod fuzzy;
 
 use std::ffi::{c_char, CStr};
 use std::slice;
