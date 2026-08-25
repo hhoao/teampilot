@@ -41,6 +41,7 @@ import 'package:teampilot/services/session/session_lifecycle_service.dart';
 import 'package:teampilot/services/storage/app_storage.dart';
 import 'package:teampilot/theme/app_theme.dart';
 
+import '../../support/in_memory_filesystem.dart';
 import '../../support/post_frame_test_harness.dart';
 
 class _MockChatCubit extends Mock implements ChatCubit {}
@@ -109,6 +110,12 @@ void main() {
 
   setUp(() {
     setUpTestAppStorage();
+    AppStorage.installForTesting(
+      filesystem: InMemoryFilesystem(),
+      paths: const AppPaths('/compose-draft-test'),
+      home: '/compose-draft-test',
+      cwd: '/compose-draft-test',
+    );
     composeDraftCache.clear();
 
     seat = _MockAiHistorySeat();
@@ -149,6 +156,7 @@ void main() {
   Future<void> pumpSession(
     WidgetTester tester, {
     required AppSession session,
+    Future<HistoryContinueSubmitResult> Function(String)? onSubmit,
   }) async {
     final workspace = Workspace(
       workspaceId: 'ws-1',
@@ -249,10 +257,13 @@ void main() {
                     session: session,
                     workspace: workspace,
                     selectedMemberId: '',
-                    onSubmit: (_) async => const HistoryContinueSubmitResult(
-                      ok: true,
-                      channel: HistoryContinueChannel.pty,
-                    ),
+                    onSubmit:
+                        onSubmit ??
+                        (_) async => const HistoryContinueSubmitResult(
+                          ok: true,
+                          channel: HistoryContinueChannel.pty,
+                        ),
+                    routeActive: false,
                   ),
                 ),
               ),
@@ -344,7 +355,66 @@ void main() {
     final field = tester.widget<TextField>(find.byType(TextField).first);
     expect(field.controller!.text, 'keep me');
   });
+
+  testWidgets('failed session delivery retains the persisted draft', (
+    tester,
+  ) async {
+    final session = _session('s4');
+    await pumpSession(
+      tester,
+      session: session,
+      onSubmit: (_) async => const HistoryContinueSubmitResult.failed(),
+    );
+
+    await tester.enterText(find.byType(TextField).first, 'do not lose this');
+    await tester.pump();
+    await tester.tap(find.byIcon(Icons.arrow_upward_rounded));
+    await tester.pumpAndSettle();
+
+    expect(
+      await ComposeDraftStore(
+        fs: AppStorage.fs,
+        rootPath: AppStorage.appDataRoot,
+      ).loadSession('ws-1', 's4'),
+      'do not lose this',
+    );
+  });
+
+  testWidgets('successful session delivery removes the persisted draft', (
+    tester,
+  ) async {
+    final session = _session('s5');
+    await pumpSession(
+      tester,
+      session: session,
+      onSubmit: (_) async => const HistoryContinueSubmitResult(
+        ok: true,
+        channel: HistoryContinueChannel.pty,
+      ),
+    );
+
+    await tester.enterText(find.byType(TextField).first, 'delivered');
+    await tester.pump();
+    await tester.tap(find.byIcon(Icons.arrow_upward_rounded));
+    await tester.pumpAndSettle();
+
+    expect(
+      await ComposeDraftStore(
+        fs: AppStorage.fs,
+        rootPath: AppStorage.appDataRoot,
+      ).loadSession('ws-1', 's5'),
+      isNull,
+    );
+  });
 }
+
+AppSession _session(String sessionId) => AppSession(
+  sessionId: sessionId,
+  workspaceId: 'ws-1',
+  folders: const [WorkspaceFolder(path: '/work')],
+  cli: CliTool.claude,
+  createdAt: 1,
+);
 
 TextField _composeField(WidgetTester tester) =>
     tester.widget<TextField>(find.byType(TextField).first);
