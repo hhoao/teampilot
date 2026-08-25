@@ -193,6 +193,7 @@ class _SessionChatViewState extends State<SessionChatView> {
       );
     }
     _controller.addListener(_onComposeChanged);
+    unawaited(_hydrateComposeDraft());
     _projectConfigRepository =
         widget.projectConfigRepository ?? WorkspaceProjectConfigRepository();
     _bindSeat();
@@ -336,11 +337,31 @@ class _SessionChatViewState extends State<SessionChatView> {
   }
 
   void _onComposeChanged() {
-    composeDraftCache.setSessionDraft(
-      widget.session.sessionId,
-      _controller.text,
+    unawaited(
+      composeDraftCache.saveSession(
+        widget.session.workspaceId,
+        widget.session.sessionId,
+        _controller.text,
+      ),
     );
     if (mounted) setState(() {});
+  }
+
+  Future<void> _hydrateComposeDraft() async {
+    final draft = await composeDraftCache.hydrateSession(
+      widget.session.workspaceId,
+      widget.session.sessionId,
+    );
+    if (!mounted ||
+        _controller.text.isNotEmpty ||
+        draft == null ||
+        draft.isEmpty) {
+      return;
+    }
+    _controller.value = TextEditingValue(
+      text: draft,
+      selection: TextSelection.collapsed(offset: draft.length),
+    );
   }
 
   bool get _isSubmitting => _submitLock.isBusy || widget.isSubmitting;

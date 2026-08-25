@@ -1,8 +1,9 @@
 import 'package:flutter/foundation.dart';
 
-/// In-memory cache of compose input drafts, keyed by workspace (landing
-/// compose) or session (session compose). Survives compose host unmounts so
-/// switching away and back does not lose typed text. Not persisted to disk.
+import '../storage/app_storage.dart';
+import 'compose_draft_store.dart';
+
+/// Memory front for persisted compose input drafts.
 class ComposeDraftCache {
   ComposeDraftCache({Map<String, String>? store}) : _store = store ?? {};
 
@@ -10,6 +11,9 @@ class ComposeDraftCache {
 
   static const _landingPrefix = 'landing:';
   static const _sessionPrefix = 'session:';
+
+  ComposeDraftStore get _persistentStore =>
+      ComposeDraftStore(fs: AppStorage.fs, rootPath: AppStorage.appDataRoot);
 
   // ── Landing compose (workspace "New Chat") ──────────────────────────────
 
@@ -22,6 +26,22 @@ class ComposeDraftCache {
   void clearLandingDraft(String workspaceId) =>
       _store.remove(_landingPrefix + workspaceId);
 
+  Future<String?> hydrateLanding(String workspaceId) async {
+    final text = await _persistentStore.loadLanding(workspaceId);
+    if (text != null && text.isNotEmpty) {
+      setLandingDraft(workspaceId, text);
+    }
+    return text;
+  }
+
+  Future<void> saveLanding(String workspaceId, String text) async {
+    setLandingDraft(workspaceId, text);
+    await _persistentStore.saveLanding(workspaceId, text);
+  }
+
+  Future<void> clearLandingPersistent(String workspaceId) =>
+      _persistentStore.saveLanding(workspaceId, '');
+
   // ── Session compose (session workbench) ─────────────────────────────────
 
   String? sessionDraft(String sessionId) => _store[_sessionPrefix + sessionId];
@@ -31,6 +51,26 @@ class ComposeDraftCache {
 
   void clearSessionDraft(String sessionId) =>
       _store.remove(_sessionPrefix + sessionId);
+
+  Future<String?> hydrateSession(String workspaceId, String sessionId) async {
+    final text = await _persistentStore.loadSession(workspaceId, sessionId);
+    if (text != null && text.isNotEmpty) {
+      setSessionDraft(sessionId, text);
+    }
+    return text;
+  }
+
+  Future<void> saveSession(
+    String workspaceId,
+    String sessionId,
+    String text,
+  ) async {
+    setSessionDraft(sessionId, text);
+    await _persistentStore.saveSession(workspaceId, sessionId, text);
+  }
+
+  Future<void> clearSessionPersistent(String workspaceId, String sessionId) =>
+      _persistentStore.clearSession(workspaceId, sessionId);
 
   /// Writing trimmed-empty text removes the entry — a cleared input must not
   /// resurrect stale text on remount.
