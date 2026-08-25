@@ -595,6 +595,10 @@
     }
   },
   "workspaceSearchResultSummary": "{matches} 个结果 · {files} 个文件",
+  "workspaceSearchFilesToInclude": "包含的文件：",
+  "workspaceSearchFilesToExclude": "排除的文件：",
+  "workspaceSearchUseGitignore": "使用 .gitignore 设置",
+  "workspaceSearchToggleDetails": "展开搜索选项",
   "workspaceSearchError": "搜索失败——请检查正则",
   "appDropdownSearchHint": "搜索…",
   "appDropdownSearchNoResults": "未找到结果",

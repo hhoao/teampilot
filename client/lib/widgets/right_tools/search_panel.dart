@@ -9,10 +9,14 @@ import '../../l10n/l10n_extensions.dart';
 import '../../services/io/filesystem.dart';
 import '../../services/search/content_search_runner.dart';
 import '../../utils/debounce/debounce.dart';
+import '../find/find_bar_widgets.dart';
+import 'search_panel_form.dart';
 import 'search_panel_results.dart';
 
-/// Right-tools search tool: pattern + options + replace over the workspace
-/// content search engines (Rust / Dart fallback).
+/// Right-tools search tool styled like the VS Code search view: a search row
+/// with inline option toggles, an expandable replace row, a `...` details
+/// section (globs + gitignore), and collapsible file-group results over the
+/// workspace content search engines (Rust / Dart fallback).
 class WorkspaceSearchPanel extends StatefulWidget {
   const WorkspaceSearchPanel({
     required this.workspaceId,
@@ -48,10 +52,15 @@ class _WorkspaceSearchPanelState extends State<WorkspaceSearchPanel> {
   final _includeController = TextEditingController();
   final _excludeController = TextEditingController();
   final _focusNode = FocusNode();
-  final Set<String> _collapsedPaths = {};
+  final _replaceFocusNode = FocusNode();
+  final _includeFocusNode = FocusNode();
+  final _excludeFocusNode = FocusNode();
   bool _isRegex = true;
   bool _caseSensitive = false;
   bool _useGitignore = true;
+  bool _showReplace = false;
+  bool _showDetails = false;
+  final Set<String> _collapsedPaths = {};
 
   ContentSearchCubit get _cubit => context.read<ContentSearchCubit>();
 
@@ -83,6 +92,9 @@ class _WorkspaceSearchPanelState extends State<WorkspaceSearchPanel> {
     _includeController.dispose();
     _excludeController.dispose();
     _focusNode.dispose();
+    _replaceFocusNode.dispose();
+    _includeFocusNode.dispose();
+    _excludeFocusNode.dispose();
     // Bump the search sequence so an in-flight stream bails out instead of
     // emitting after the provider closes this cubit on unmount.
     final cubit = _cubitRef;
@@ -137,6 +149,12 @@ class _WorkspaceSearchPanelState extends State<WorkspaceSearchPanel> {
 
   void _cancelSearch() => _cubit.cancel();
 
+  /// Non-default filters keep the `...` toggle highlighted, like VS Code.
+  bool get _hasActiveFilters =>
+      _includeController.text.trim().isNotEmpty ||
+      _excludeController.text.trim().isNotEmpty ||
+      !_useGitignore;
+
   Future<void> _confirmReplaceAll(String replacement) async {
     final l10n = context.l10n;
     final count = _cubit.state.files.fold<int>(
@@ -181,6 +199,11 @@ class _WorkspaceSearchPanelState extends State<WorkspaceSearchPanel> {
     final styles = TpTextStyles.of(context);
     return BlocBuilder<ContentSearchCubit, ContentSearchState>(
       builder: (context, state) {
+        final query = _queryController.text.trim();
+        final pendingCount = state.files.fold<int>(
+          0,
+          (sum, f) => sum + f.lines.where((l) => !l.replaced).length,
+        );
         return Column(
           children: [
             Padding(
@@ -188,100 +211,121 @@ class _WorkspaceSearchPanelState extends State<WorkspaceSearchPanel> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  TpInput(
-                    controller: _queryController,
-                    focusNode: _focusNode,
-                    decoration: InputDecoration(
-                      hintText: l10n.workspaceSearchQueryHint,
-                      suffixIcon: state.searching
-                          ? IconButton(
-                              icon: const Icon(Icons.close),
-                              onPressed: _cancelSearch,
-                              tooltip: l10n.workspaceSearchCancel,
-                            )
-                          : null,
-                    ),
-                  ),
-                  const SizedBox(height: 4),
-                  Wrap(
-                    spacing: 4,
-                    children: [
-                      FilterChip(
-                        label: Text(l10n.workspaceSearchRegex),
-                        selected: _isRegex,
-                        onSelected: (v) => setState(() {
-                          _isRegex = v;
-                          _runSearch();
-                        }),
-                      ),
-                      FilterChip(
-                        label: Text(l10n.workspaceSearchCaseSensitive),
-                        selected: _caseSensitive,
-                        onSelected: (v) => setState(() {
-                          _caseSensitive = v;
-                          _runSearch();
-                        }),
-                      ),
-                      FilterChip(
-                        label: Text(l10n.workspaceSearchGitignore),
-                        selected: _useGitignore,
-                        onSelected: (v) => setState(() {
-                          _useGitignore = v;
-                          _runSearch();
-                        }),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 4),
-                  TpInput(
-                    controller: _includeController,
-                    decoration: InputDecoration(
-                      hintText: l10n.workspaceSearchIncludeHint,
-                    ),
-                    onChanged: (_) => Debounces.debounce(
-                      'workspace_search_panel_globs',
-                      const Duration(milliseconds: 400),
-                      () {
-                        if (!mounted) return;
-                        _runSearch();
-                      },
-                    ),
-                  ),
-                  const SizedBox(height: 4),
-                  TpInput(
-                    controller: _excludeController,
-                    decoration: InputDecoration(
-                      hintText: l10n.workspaceSearchExcludeHint,
-                    ),
-                    onChanged: (_) => Debounces.debounce(
-                      'workspace_search_panel_globs',
-                      const Duration(milliseconds: 400),
-                      () {
-                        if (!mounted) return;
-                        _runSearch();
-                      },
-                    ),
-                  ),
-                  const SizedBox(height: 4),
                   Row(
+                    crossAxisAlignment: CrossAxisAlignment.center,
                     children: [
-                      Expanded(
-                        child: TpInput(
-                          controller: _replaceController,
-                          decoration: InputDecoration(
-                            hintText: l10n.workspaceSearchReplaceHint,
-                          ),
-                        ),
+                      SearchPanelChevron(
+                        expanded: _showReplace,
+                        onTap: () =>
+                            setState(() => _showReplace = !_showReplace),
                       ),
                       const SizedBox(width: 4),
-                      TpButton(
-                        onPressed: _replaceController.text.isEmpty
-                            ? null
-                            : () => _confirmReplaceAll(_replaceController.text),
-                        child: Text(l10n.workspaceSearchReplaceAll),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: [
+                            Row(
+                              children: [
+                                Expanded(
+                                  child: FindField(
+                                    controller: _queryController,
+                                    focusNode: _focusNode,
+                                    hint: l10n.workspaceSearchQueryHint,
+                                    toggles: [
+                                      FindToggleButton(
+                                        iconAsset: FindBarIcons.caseSensitive,
+                                        tooltip: l10n.editorFindMatchCase,
+                                        checked: _caseSensitive,
+                                        onTap: () => setState(() {
+                                          _caseSensitive = !_caseSensitive;
+                                          _runSearch();
+                                        }),
+                                      ),
+                                      FindToggleButton(
+                                        iconAsset: FindBarIcons.regexp,
+                                        tooltip: l10n.editorFindUseRegex,
+                                        checked: _isRegex,
+                                        onTap: () => setState(() {
+                                          _isRegex = !_isRegex;
+                                          _runSearch();
+                                        }),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                                if (state.searching) ...[
+                                  const SizedBox(width: 4),
+                                  FindActionButton(
+                                    icon: Icons.close,
+                                    tooltip: l10n.workspaceSearchCancel,
+                                    onTap: _cancelSearch,
+                                  ),
+                                ],
+                              ],
+                            ),
+                            if (_showReplace) ...[
+                              const SizedBox(height: 4),
+                              Row(
+                                children: [
+                                  Expanded(
+                                    child: FindField(
+                                      controller: _replaceController,
+                                      focusNode: _replaceFocusNode,
+                                      hint: l10n.workspaceSearchReplaceHint,
+                                    ),
+                                  ),
+                                  const SizedBox(width: 4),
+                                  FindActionButton(
+                                    key: const ValueKey('search-replace-all'),
+                                    assetPath: FindBarIcons.replaceAll,
+                                    tooltip: l10n.editorFindReplaceAll,
+                                    enabled:
+                                        _replaceController.text.isNotEmpty &&
+                                        pendingCount > 0,
+                                    onTap: () => _confirmReplaceAll(
+                                      _replaceController.text,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ],
+                          ],
+                        ),
                       ),
                     ],
                   ),
+                  const SizedBox(height: 4),
+                  Align(
+                    alignment: Alignment.centerLeft,
+                    child: SearchPanelDetailsToggle(
+                      expanded: _showDetails,
+                      highlighted: _hasActiveFilters,
+                      onTap: () =>
+                          setState(() => _showDetails = !_showDetails),
+                    ),
+                  ),
+                  if (_showDetails) ...[
+                    const SizedBox(height: 4),
+                    SearchPanelDetailsSection(
+                      includeController: _includeController,
+                      includeFocusNode: _includeFocusNode,
+                      excludeController: _excludeController,
+                      excludeFocusNode: _excludeFocusNode,
+                      useGitignore: _useGitignore,
+                      onGlobChanged: (_) => Debounces.debounce(
+                        'workspace_search_panel_globs',
+                        const Duration(milliseconds: 400),
+                        () {
+                          if (!mounted) return;
+                          _runSearch();
+                        },
+                      ),
+                      onGitignoreChanged: (v) => setState(() {
+                        _useGitignore = v;
+                        _runSearch();
+                      }),
+                    ),
+                  ],
                   if (state.replacedCount != null)
                     Padding(
                       padding: const EdgeInsets.only(top: 4),
@@ -293,7 +337,7 @@ class _WorkspaceSearchPanelState extends State<WorkspaceSearchPanel> {
                 ],
               ),
             ),
-            if (_queryController.text.trim().isNotEmpty)
+            if (query.isNotEmpty)
               Padding(
                 padding: const EdgeInsets.fromLTRB(8, 0, 8, 4),
                 child: Row(
@@ -332,7 +376,7 @@ class _WorkspaceSearchPanelState extends State<WorkspaceSearchPanel> {
             Expanded(
               child: SearchPanelResults(
                 files: state.files,
-                query: _queryController.text.trim(),
+                query: query,
                 truncated: state.truncated,
                 replacement: _replaceController.text,
                 collapsedPaths: _collapsedPaths,

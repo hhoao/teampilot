@@ -1343,6 +1343,18 @@ class AppLocalizationsZh extends AppLocalizations {
   }
 
   @override
+  String get workspaceSearchFilesToInclude => '包含的文件：';
+
+  @override
+  String get workspaceSearchFilesToExclude => '排除的文件：';
+
+  @override
+  String get workspaceSearchUseGitignore => '使用 .gitignore 设置';
+
+  @override
+  String get workspaceSearchToggleDetails => '展开搜索选项';
+
+  @override
   String get workspaceSearchError => '搜索失败——请检查正则';
 
   @override

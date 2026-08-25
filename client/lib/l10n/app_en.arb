@@ -630,6 +630,10 @@
       }
     }
   },
+  "workspaceSearchFilesToInclude": "Files to include:",
+  "workspaceSearchFilesToExclude": "Files to exclude:",
+  "workspaceSearchUseGitignore": "Use .gitignore settings",
+  "workspaceSearchToggleDetails": "Toggle search details",
   "workspaceSearchError": "Search failed — check the pattern",
   "appDropdownSearchHint": "Search…",
   "appDropdownSearchNoResults": "No results found.",

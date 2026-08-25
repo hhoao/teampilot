@@ -2606,6 +2606,30 @@ abstract class AppLocalizations {
   /// **'{matches} results in {files} files'**
   String workspaceSearchResultSummary(int matches, int files);
 
+  /// No description provided for @workspaceSearchFilesToInclude.
+  ///
+  /// In en, this message translates to:
+  /// **'Files to include:'**
+  String get workspaceSearchFilesToInclude;
+
+  /// No description provided for @workspaceSearchFilesToExclude.
+  ///
+  /// In en, this message translates to:
+  /// **'Files to exclude:'**
+  String get workspaceSearchFilesToExclude;
+
+  /// No description provided for @workspaceSearchUseGitignore.
+  ///
+  /// In en, this message translates to:
+  /// **'Use .gitignore settings'**
+  String get workspaceSearchUseGitignore;
+
+  /// No description provided for @workspaceSearchToggleDetails.
+  ///
+  /// In en, this message translates to:
+  /// **'Toggle search details'**
+  String get workspaceSearchToggleDetails;
+
   /// No description provided for @workspaceSearchError.
   ///
   /// In en, this message translates to:

@@ -1407,6 +1407,18 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
+  String get workspaceSearchFilesToInclude => 'Files to include:';
+
+  @override
+  String get workspaceSearchFilesToExclude => 'Files to exclude:';
+
+  @override
+  String get workspaceSearchUseGitignore => 'Use .gitignore settings';
+
+  @override
+  String get workspaceSearchToggleDetails => 'Toggle search details';
+
+  @override
   String get workspaceSearchError => 'Search failed — check the pattern';
 
   @override
