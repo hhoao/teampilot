@@ -1,0 +1,5 @@
+.dart_tool/
+pubspec.lock
+build/
+teampilot_connect_relay
+teampilot_connect_relay.exe

@@ -1,0 +1,15 @@
+name: teampilot_connect_relay
+description: >
+  Self-hosted TeamPilot Connect relay: an unauthenticated WebSocket byte
+  pipe that lets a paired phone reach its desktop's OpenSSH (or pairing
+  endpoint) across networks. SSH provides confidentiality; this tool never
+  terminates or inspects traffic.
+version: 0.1.0
+publish_to: none
+
+environment:
+  sdk: ^3.7.0
+
+dev_dependencies:
+  lints: ^5.0.0
+  test: ^1.25.0
