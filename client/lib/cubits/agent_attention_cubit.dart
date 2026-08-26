@@ -25,6 +25,8 @@ class AgentSeatAttentionEntry extends Equatable {
     this.lastEvent,
     this.dismissedAskRequestId,
     this.askReplyError,
+    this.activeSubagentIds = const <String>{},
+    this.parentStopPending = false,
   });
 
   final AgentSeatAttention attention;
@@ -40,6 +42,15 @@ class AgentSeatAttentionEntry extends Equatable {
   /// Optional error from `question.reply_failed` after optimistic dismiss.
   final String? askReplyError;
 
+  /// 活动子 agent id 集合（codex SubagentStart/SubagentStop 维护，按 id 去重）。
+  /// 非空时该 seat 免除 attention TTL——宁可在无输出的长任务期间保守保住
+  /// terminal，也不能提前判空闲导致回收。
+  final Set<String> activeSubagentIds;
+
+  /// 父任务已上报 Stop/StopFailure 但仍有子 agent 未结束：seat 保持 working，
+  /// 集合清空后才真正转 done。
+  final bool parentStopPending;
+
   @override
   List<Object?> get props => [
     attention,
@@ -47,6 +58,8 @@ class AgentSeatAttentionEntry extends Equatable {
     lastEvent,
     dismissedAskRequestId,
     askReplyError,
+    activeSubagentIds,
+    parentStopPending,
   ];
 }
 
@@ -135,7 +148,9 @@ class AgentAttentionState extends Equatable {
     return copyWith(seats: next);
   }
 
+  /// 活动子 agent 存在时永不过期（spec：TTL 例外）。
   static bool _isStale(AgentSeatAttentionEntry entry, DateTime now) =>
+      entry.activeSubagentIds.isEmpty &&
       now.difference(entry.updatedAt) > agentAttentionStaleAfter;
 
   @override
@@ -186,6 +201,8 @@ class AgentAttentionCubit extends Cubit<AgentAttentionState> {
       lastEvent: existing.lastEvent,
       dismissedAskRequestId: askRequestId,
       askReplyError: null,
+      activeSubagentIds: existing.activeSubagentIds,
+      parentStopPending: existing.parentStopPending,
     );
     emit(AgentAttentionState(seats: seats, clock: _clock));
   }
@@ -203,6 +220,8 @@ class AgentAttentionCubit extends Cubit<AgentAttentionState> {
       attention: AgentSeatAttention.working,
       updatedAt: _clock(),
       lastEvent: existing.lastEvent,
+      activeSubagentIds: existing.activeSubagentIds,
+      parentStopPending: existing.parentStopPending,
     );
     emit(AgentAttentionState(seats: seats, clock: _clock));
   }
@@ -246,6 +265,56 @@ class AgentAttentionCubit extends Cubit<AgentAttentionState> {
     final existingEntry = pruned.seats[key];
     final previous = existingEntry?.lastEvent;
 
+    // 子 agent 生命周期（codex SubagentStart/SubagentStop）先于通用注意力
+    // 处理：子 agent 的完成绝不等于父完成。
+    final hookName = event.hookEventName;
+    if (hookName == 'SubagentStart' || hookName == 'SubagentStop') {
+      final childId = event.toolAgentId?.trim() ?? '';
+      if (childId.isEmpty) {
+        // 无法定位子 agent：不参与计数、不改变状态（也绝不当作父完成）。
+        if (pruned != state) emit(pruned);
+        return;
+      }
+      _applySubagentLifecycle(
+        key: key,
+        event: event,
+        isStart: hookName == 'SubagentStart',
+        baseSeats: pruned.seats,
+        now: now,
+      );
+      return;
+    }
+
+    // 父任务完成（Stop/StopFailure）：仍有子 agent 时仅记录 pending 并保持
+    // working，最后一个子结束才转 done；集合为空走原有立即完成路径。
+    final activeChildren = existingEntry?.activeSubagentIds ?? const <String>{};
+    final isParentCompletion =
+        (hookName == 'Stop' || hookName == 'StopFailure') &&
+        activeChildren.isNotEmpty;
+    if (isParentCompletion) {
+      final seats = Map<String, AgentSeatAttentionEntry>.of(pruned.seats);
+      // waiting 权限/提问卡保持可见，只更新跟踪状态。
+      seats[key] = existingEntry!.attention == AgentSeatAttention.waiting
+          ? AgentSeatAttentionEntry(
+              attention: AgentSeatAttention.waiting,
+              updatedAt: now,
+              lastEvent: existingEntry.lastEvent,
+              dismissedAskRequestId: existingEntry.dismissedAskRequestId,
+              askReplyError: existingEntry.askReplyError,
+              activeSubagentIds: existingEntry.activeSubagentIds,
+              parentStopPending: true,
+            )
+          : AgentSeatAttentionEntry(
+              attention: AgentSeatAttention.working,
+              updatedAt: now,
+              lastEvent: event,
+              activeSubagentIds: existingEntry.activeSubagentIds,
+              parentStopPending: true,
+            );
+      emit(AgentAttentionState(seats: seats, clock: _clock));
+      return;
+    }
+
     // Ignore echoed waiting for an optimistically dismissed ask.
     final dismissedId = existingEntry?.dismissedAskRequestId;
     if (event.state == AgentSeatAttention.waiting &&
@@ -274,6 +343,8 @@ class AgentAttentionCubit extends Cubit<AgentAttentionState> {
           lastEvent: existingEntry.lastEvent,
           dismissedAskRequestId: null,
           askReplyError: event.message,
+          activeSubagentIds: existingEntry.activeSubagentIds,
+          parentStopPending: existingEntry.parentStopPending,
         );
         emit(AgentAttentionState(seats: seats, clock: _clock));
         return;
@@ -303,6 +374,8 @@ class AgentAttentionCubit extends Cubit<AgentAttentionState> {
           lastEvent: existingEntry.lastEvent,
           dismissedAskRequestId: null,
           askReplyError: null,
+          activeSubagentIds: existingEntry.activeSubagentIds,
+          parentStopPending: existingEntry.parentStopPending,
         );
         emit(AgentAttentionState(seats: seats, clock: _clock));
       }
@@ -329,10 +402,80 @@ class AgentAttentionCubit extends Cubit<AgentAttentionState> {
     }
 
     final seats = Map<String, AgentSeatAttentionEntry>.of(pruned.seats);
+    // 新用户回合（UserPromptSubmit）重置上一回合的子 agent 跟踪，避免旧
+    // 集合/pending 泄漏；其余通用事件保留跟踪（父 pending 不被中途活动清掉）。
+    final startsNewTurn = effective.hasExplicitPrompt;
     seats[key] = AgentSeatAttentionEntry(
       attention: effective.state,
       updatedAt: now,
       lastEvent: effective,
+      activeSubagentIds: startsNewTurn
+          ? const <String>{}
+          : existingEntry?.activeSubagentIds ?? const <String>{},
+      parentStopPending: startsNewTurn
+          ? false
+          : existingEntry?.parentStopPending ?? false,
+    );
+    emit(AgentAttentionState(seats: seats, clock: _clock));
+  }
+
+  /// 子 agent 生命周期状态机（按 `sessionId+memberId+agentId` 幂等）：
+  ///
+  /// - Start：id 加入集合；waiting 权限/提问卡保持可见，只更新集合。
+  /// - Stop：id 移出集合；集合清空且父已 [AgentSeatAttentionEntry.parentStopPending]
+  ///   才转 done，否则保留 working/waiting。未知 id 或无 seat 的事件忽略，
+  ///   重复/乱序事件不改变正确状态。
+  void _applySubagentLifecycle({
+    required String key,
+    required AgentStatusEvent event,
+    required bool isStart,
+    required Map<String, AgentSeatAttentionEntry> baseSeats,
+    required DateTime now,
+  }) {
+    final seats = Map<String, AgentSeatAttentionEntry>.of(baseSeats);
+    final existing = seats[key];
+    final id = event.toolAgentId!.trim();
+
+    if (!isStart) {
+      if (existing == null || !existing.activeSubagentIds.contains(id)) {
+        return;
+      }
+      final remaining = Set<String>.of(existing.activeSubagentIds)..remove(id);
+      final turnOver = remaining.isEmpty && existing.parentStopPending;
+      final keepWaiting =
+          !turnOver && existing.attention == AgentSeatAttention.waiting;
+      seats[key] = AgentSeatAttentionEntry(
+        attention: turnOver
+            ? AgentSeatAttention.done
+            : keepWaiting
+            ? AgentSeatAttention.waiting
+            : AgentSeatAttention.working,
+        updatedAt: now,
+        lastEvent: keepWaiting ? existing.lastEvent : event,
+        dismissedAskRequestId: existing.dismissedAskRequestId,
+        askReplyError: existing.askReplyError,
+        activeSubagentIds: remaining,
+        parentStopPending: turnOver ? false : existing.parentStopPending,
+      );
+      emit(AgentAttentionState(seats: seats, clock: _clock));
+      return;
+    }
+
+    final added = Set<String>.of(
+      existing?.activeSubagentIds ?? const <String>{},
+    )..add(id);
+    final keepWaitingCard =
+        existing != null && existing.attention == AgentSeatAttention.waiting;
+    seats[key] = AgentSeatAttentionEntry(
+      attention: keepWaitingCard
+          ? AgentSeatAttention.waiting
+          : AgentSeatAttention.working,
+      updatedAt: now,
+      lastEvent: keepWaitingCard ? existing.lastEvent : event,
+      dismissedAskRequestId: existing?.dismissedAskRequestId,
+      askReplyError: existing?.askReplyError,
+      activeSubagentIds: added,
+      parentStopPending: existing?.parentStopPending ?? false,
     );
     emit(AgentAttentionState(seats: seats, clock: _clock));
   }

@@ -934,5 +934,223 @@ void main() {
         expect(entry?.lastEvent?.permissionRequest?.id, 'perm-2');
       });
     });
+
+    group('subagent child tracking (codex parent activity)', () {
+      AgentStatusEvent lifecycle(String name, String id) => AgentStatusEvent(
+        state: AgentSeatAttention.working,
+        hookEventName: name,
+        toolAgentId: id,
+      );
+
+      void apply(AgentAttentionCubit c, AgentStatusEvent event) => c.applyEvent(
+        sessionId: 's1',
+        memberId: 'm1',
+        event: event,
+        skipPermissions: false,
+      );
+
+      void applyParentStop(AgentAttentionCubit c) => apply(
+        c,
+        const AgentStatusEvent(
+          state: AgentSeatAttention.done,
+          hookEventName: 'Stop',
+        ),
+      );
+
+      test('parent Stop waits for all parallel subagents', () {
+        final c = _cubit();
+        apply(c, lifecycle('SubagentStart', 'a'));
+        apply(c, lifecycle('SubagentStart', 'b'));
+        expect(c.state.sessionIsAgentActive('s1'), isTrue);
+
+        applyParentStop(c);
+        expect(
+          c.state.sessionIsAgentActive('s1'),
+          isTrue,
+          reason: 'parent completion must wait while children still run',
+        );
+        final pendingEntry = c.state.entryFor(sessionId: 's1', memberId: 'm1');
+        expect(pendingEntry?.attention, AgentSeatAttention.working);
+        expect(pendingEntry?.parentStopPending, isTrue);
+        expect(pendingEntry?.activeSubagentIds, {'a', 'b'});
+
+        apply(c, lifecycle('SubagentStop', 'a'));
+        expect(
+          c.state.sessionIsAgentActive('s1'),
+          isTrue,
+          reason: 'one sibling still running',
+        );
+
+        apply(c, lifecycle('SubagentStop', 'b'));
+        expect(
+          c.state.sessionIsAgentActive('s1'),
+          isFalse,
+          reason: 'last child stopped after parent completion → idle',
+        );
+        expect(
+          c.state.attentionFor(sessionId: 's1', memberId: 'm1'),
+          AgentSeatAttention.done,
+        );
+      });
+
+      test('ordinary Stop with no tracked child completes immediately', () {
+        final c = _cubit();
+        apply(
+          c,
+          const AgentStatusEvent(
+            state: AgentSeatAttention.working,
+            hookEventName: 'PreToolUse',
+            toolName: 'Bash',
+          ),
+        );
+        applyParentStop(c);
+        expect(c.state.sessionIsAgentActive('s1'), isFalse);
+        expect(
+          c.state.attentionFor(sessionId: 's1', memberId: 'm1'),
+          AgentSeatAttention.done,
+        );
+      });
+
+      test('lifecycle events without a child id never flip the seat', () {
+        final c = _cubit();
+        apply(
+          c,
+          const AgentStatusEvent(
+            state: AgentSeatAttention.working,
+            hookEventName: 'SubagentStop',
+          ),
+        );
+        expect(c.state.seats, isEmpty, reason: 'stray child stop is a no-op');
+
+        apply(c, lifecycle('SubagentStart', 'a'));
+        applyParentStop(c);
+        apply(
+          c,
+          const AgentStatusEvent(
+            state: AgentSeatAttention.done,
+            hookEventName: 'SubagentStop',
+          ),
+        );
+        expect(
+          c.state.sessionIsAgentActive('s1'),
+          isTrue,
+          reason: 'tracked child a still runs; id-less stop is ignored',
+        );
+      });
+
+      test('duplicate start/stop events stay idempotent', () {
+        final c = _cubit();
+        apply(c, lifecycle('SubagentStart', 'a'));
+        apply(c, lifecycle('SubagentStart', 'a'));
+        applyParentStop(c);
+        apply(c, lifecycle('SubagentStop', 'a'));
+        expect(c.state.sessionIsAgentActive('s1'), isFalse);
+
+        // Duplicate stop after completion must not resurrect working.
+        apply(c, lifecycle('SubagentStop', 'a'));
+        expect(
+          c.state.attentionFor(sessionId: 's1', memberId: 'm1'),
+          AgentSeatAttention.done,
+        );
+      });
+
+      test('UserPromptSubmit clears stale child tracking across turns', () {
+        final c = _cubit();
+        apply(c, lifecycle('SubagentStart', 'a'));
+        // Child 'a' never reported its stop (lost hook); the next user turn
+        // must reset tracking so a fresh Stop completes immediately.
+        apply(
+          c,
+          const AgentStatusEvent(
+            state: AgentSeatAttention.working,
+            hookEventName: 'UserPromptSubmit',
+            hasExplicitPrompt: true,
+          ),
+        );
+        applyParentStop(c);
+        expect(c.state.sessionIsAgentActive('s1'), isFalse);
+      });
+
+      test('generic working event keeps deferred parent completion', () {
+        final c = _cubit();
+        apply(c, lifecycle('SubagentStart', 'a'));
+        applyParentStop(c);
+        apply(
+          c,
+          const AgentStatusEvent(
+            state: AgentSeatAttention.working,
+            hookEventName: 'PostToolUse',
+            toolName: 'Bash',
+          ),
+        );
+        apply(c, lifecycle('SubagentStop', 'a'));
+        expect(
+          c.state.sessionIsAgentActive('s1'),
+          isFalse,
+          reason: 'pending parent completion survives mid-turn activity',
+        );
+      });
+
+      test('subagent lifecycle keeps sticky waiting permission visible', () {
+        final c = _cubit();
+        apply(
+          c,
+          const AgentStatusEvent(
+            state: AgentSeatAttention.waiting,
+            hookEventName: 'PermissionRequest',
+            toolName: 'Bash',
+            toolInput: 'rm -rf /tmp/x',
+            toolAgentId: 'agent-a',
+          ),
+        );
+        apply(c, lifecycle('SubagentStart', 'b'));
+        expect(
+          c.state.attentionFor(sessionId: 's1', memberId: 'm1'),
+          AgentSeatAttention.waiting,
+          reason: 'concurrent child start must not hide the permission card',
+        );
+        final entry = c.state.entryFor(sessionId: 's1', memberId: 'm1');
+        expect(entry?.activeSubagentIds, {
+          'b',
+        }, reason: 'tracking continues behind the waiting card');
+
+        applyParentStop(c);
+        expect(
+          c.state.attentionFor(sessionId: 's1', memberId: 'm1'),
+          AgentSeatAttention.waiting,
+        );
+
+        apply(c, lifecycle('SubagentStop', 'b'));
+        expect(
+          c.state.attentionFor(sessionId: 's1', memberId: 'm1'),
+          AgentSeatAttention.done,
+          reason: 'turn fully over clears the orphaned waiting card',
+        );
+      });
+
+      test('child activity keeps seat past agentAttentionStaleAfter', () {
+        var now = DateTime.utc(2026, 8, 25, 12);
+        final c = _cubit(clock: () => now);
+        apply(c, lifecycle('SubagentStart', 'a'));
+
+        now = now.add(const Duration(minutes: 31));
+        c.pruneStale();
+        expect(
+          c.state.sessionIsAgentActive('s1'),
+          isTrue,
+          reason: 'an unoutput long subagent task must not be reclaimed',
+        );
+
+        applyParentStop(c);
+        apply(c, lifecycle('SubagentStop', 'a'));
+        now = now.add(const Duration(minutes: 31));
+        c.pruneStale();
+        expect(
+          c.state.entryFor(sessionId: 's1', memberId: 'm1'),
+          isNull,
+          reason: 'TTL resumes once no child is tracked',
+        );
+      });
+    });
   });
 }
