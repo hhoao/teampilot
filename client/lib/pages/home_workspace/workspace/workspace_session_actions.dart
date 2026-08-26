@@ -284,10 +284,12 @@ Future<void> showWorkspaceComposeLandingWithWorktree(
 ///
 /// [launch] is the sole source of launch intent (preset, team, identity, mode).
 ///
+/// Returns true only after terminal delivery completes successfully.
+///
 /// [onSessionOpened] fires once the session tab is staged, before the (possibly
 /// minutes-long) connect + deliver phase, so hosts such as the Selection →
 /// Ask AI dialog can dismiss themselves without waiting for delivery.
-Future<void> submitWorkspaceLandingMessage(
+Future<bool> submitWorkspaceLandingMessage(
   BuildContext context,
   Workspace workspace, {
   required LandingLaunchContext launch,
@@ -297,7 +299,7 @@ Future<void> submitWorkspaceLandingMessage(
   void Function(String sessionId)? onSessionOpened,
 }) async {
   final trimmed = message.trim();
-  if (trimmed.isEmpty) return;
+  if (trimmed.isEmpty) return false;
 
   final chatCubit = context.read<ChatCubit>();
   final repo = context.read<SessionRepository>();
@@ -319,14 +321,14 @@ Future<void> submitWorkspaceLandingMessage(
       key: trimmedExpert,
       hubState: context.mounted ? context.read<ExpertHubCubit>().state : null,
     );
-    if (!context.mounted) return;
+    if (!context.mounted) return false;
     if (resolved == null) {
       AppToast.show(
         context,
         message: l10n.expertHubNotFound,
         variant: TpToastVariant.warning,
       );
-      return;
+      return false;
     }
   }
 
@@ -366,7 +368,7 @@ Future<void> submitWorkspaceLandingMessage(
     // Default preference keeps Chat; coordinator forces Terminal when false.
     preserveWorkbenchView: !switchToTerminal,
   );
-  if (status == null) return;
+  if (status == null) return false;
   if (status != SessionOpenStatus.opened) {
     if (context.mounted) {
       _handleSessionOpenStatus(
@@ -375,7 +377,7 @@ Future<void> submitWorkspaceLandingMessage(
         blockedMixedMessage: l10n.mixedWorkspaceCreateSessionBlocked,
       );
     }
-    return;
+    return false;
   }
 
   // Landing unmounts ChatPage while a Run tab (启动配置) may still be active;
@@ -426,7 +428,7 @@ Future<void> submitWorkspaceLandingMessage(
         text: trimmed,
       );
     }
-    return;
+    return false;
   }
 
   // Landing inject bypasses FirstUserLineCapture (keyboard path only); rename
@@ -468,7 +470,7 @@ Future<void> submitWorkspaceLandingMessage(
         variant: TpToastVariant.error,
       );
     }
-    return;
+    return false;
   }
 
   try {
@@ -478,6 +480,7 @@ Future<void> submitWorkspaceLandingMessage(
       trimmed,
       directToPty: true,
     );
+    return true;
   } on Object catch (error, stackTrace) {
     if (!switchToTerminal) {
       chatCubit.cancelHistorySeedPending(
@@ -497,6 +500,7 @@ Future<void> submitWorkspaceLandingMessage(
         variant: TpToastVariant.error,
       );
     }
+    return false;
   }
 }
 

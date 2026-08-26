@@ -207,6 +207,9 @@ class _UnboundComposeBodyState extends State<UnboundComposeBody> {
       }
     }
     _controller.addListener(_syncComposeDraft);
+    if (widget.initialText == null) {
+      unawaited(_hydrateComposeDraft());
+    }
     unawaited(_loadDraft());
     unawaited(_loadWorkspaceProjectBundle());
     unawaited(_loadRecentExperts());
@@ -217,9 +220,28 @@ class _UnboundComposeBodyState extends State<UnboundComposeBody> {
   /// (typing, voice insert, enhance). No setState — the field's own onChanged
   /// rebuilds; this fires for programmatic edits too.
   void _syncComposeDraft() {
-    composeDraftCache.setLandingDraft(
+    unawaited(
+      composeDraftCache.saveLanding(
+        widget.workspace.workspaceId,
+        _controller.text,
+      ),
+    );
+  }
+
+  Future<void> _hydrateComposeDraft() async {
+    final draft = await composeDraftCache.hydrateLanding(
       widget.workspace.workspaceId,
-      _controller.text,
+      shouldSeed: () => mounted && _controller.text.isEmpty,
+    );
+    if (!mounted ||
+        _controller.text.isNotEmpty ||
+        draft == null ||
+        draft.isEmpty) {
+      return;
+    }
+    _controller.value = TextEditingValue(
+      text: draft,
+      selection: TextSelection.collapsed(offset: draft.length),
     );
   }
 

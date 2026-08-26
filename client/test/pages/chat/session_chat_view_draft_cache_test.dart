@@ -34,11 +34,14 @@ import 'package:teampilot/services/cli/registry/cli_tool_registry.dart';
 import 'package:teampilot/services/cli/registry/cli_tool_registry_scope.dart';
 import 'package:teampilot/services/commands/command_bus.dart';
 import 'package:teampilot/services/compose/compose_draft_cache.dart';
+import 'package:teampilot/services/compose/compose_draft_store.dart';
 import 'package:teampilot/services/follow_up/follow_up_queue.dart';
 import 'package:teampilot/services/session/history_awaiting_working_sync.dart';
 import 'package:teampilot/services/session/session_lifecycle_service.dart';
+import 'package:teampilot/services/storage/app_storage.dart';
 import 'package:teampilot/theme/app_theme.dart';
 
+import '../../support/in_memory_filesystem.dart';
 import '../../support/post_frame_test_harness.dart';
 
 class _MockChatCubit extends Mock implements ChatCubit {}
@@ -84,10 +87,7 @@ void main() {
   late _MockAiHistorySeat seat;
 
   setUpAll(() {
-    final fbWorkspace = Workspace(
-      workspaceId: 'ws-fb',
-      createdAt: 0,
-    );
+    final fbWorkspace = Workspace(workspaceId: 'ws-fb', createdAt: 0);
     final fbSession = AppSession(
       sessionId: 'fb',
       workspaceId: 'ws-fb',
@@ -110,6 +110,12 @@ void main() {
 
   setUp(() {
     setUpTestAppStorage();
+    AppStorage.installForTesting(
+      filesystem: InMemoryFilesystem(),
+      paths: const AppPaths('/compose-draft-test'),
+      home: '/compose-draft-test',
+      cwd: '/compose-draft-test',
+    );
     composeDraftCache.clear();
 
     seat = _MockAiHistorySeat();
@@ -117,33 +123,40 @@ void main() {
     when(() => seat.subagentAttachments).thenReturn(const {});
     when(() => seat.runtime).thenReturn(ExternalStoreAiThreadRuntime());
     when(() => seat.loadedMessages).thenReturn(const []);
-    when(() => seat.applyWorkingSessionSync(
-          sessionWorking: any(named: 'sessionWorking'),
-          sessionConnecting: any(named: 'sessionConnecting'),
-          memberRunning: any(named: 'memberRunning'),
-          historyContinueInFlight: any(named: 'historyContinueInFlight'),
-        )).thenReturn(HistoryAwaitingWorkingAction.none);
-    when(() => seat.load(
-          session: any(named: 'session'),
-          memberId: any(named: 'memberId'),
-          launchContext: any(named: 'launchContext'),
-          team: any(named: 'team'),
-          workingDirectory: any(named: 'workingDirectory'),
-          force: any(named: 'force'),
-        )).thenAnswer((_) => Future.value());
-    when(() => seat.softReloadOrLoad(
-          session: any(named: 'session'),
-          memberId: any(named: 'memberId'),
-          launchContext: any(named: 'launchContext'),
-          team: any(named: 'team'),
-          workingDirectory: any(named: 'workingDirectory'),
-        )).thenAnswer((_) => Future.value());
+    when(
+      () => seat.applyWorkingSessionSync(
+        sessionWorking: any(named: 'sessionWorking'),
+        sessionConnecting: any(named: 'sessionConnecting'),
+        memberRunning: any(named: 'memberRunning'),
+        historyContinueInFlight: any(named: 'historyContinueInFlight'),
+      ),
+    ).thenReturn(HistoryAwaitingWorkingAction.none);
+    when(
+      () => seat.load(
+        session: any(named: 'session'),
+        memberId: any(named: 'memberId'),
+        launchContext: any(named: 'launchContext'),
+        team: any(named: 'team'),
+        workingDirectory: any(named: 'workingDirectory'),
+        force: any(named: 'force'),
+      ),
+    ).thenAnswer((_) => Future.value());
+    when(
+      () => seat.softReloadOrLoad(
+        session: any(named: 'session'),
+        memberId: any(named: 'memberId'),
+        launchContext: any(named: 'launchContext'),
+        team: any(named: 'team'),
+        workingDirectory: any(named: 'workingDirectory'),
+      ),
+    ).thenAnswer((_) => Future.value());
   });
   tearDown(tearDownTestAppStorage);
 
   Future<void> pumpSession(
     WidgetTester tester, {
     required AppSession session,
+    Future<HistoryContinueSubmitResult> Function(String)? onSubmit,
   }) async {
     final workspace = Workspace(
       workspaceId: 'ws-1',
@@ -167,10 +180,9 @@ void main() {
     final layoutCubit = _MockLayoutCubit();
     final workbenchCubit = WorkbenchCubit();
     final lifecycle = _MockSessionLifecycleService();
-    when(() => lifecycle.launchWorkTarget(
-          any(),
-          memberId: any(named: 'memberId'),
-        )).thenReturn(RuntimeTarget.local());
+    when(
+      () => lifecycle.launchWorkTarget(any(), memberId: any(named: 'memberId')),
+    ).thenReturn(RuntimeTarget.local());
 
     _stubCubit(chatCubit, ChatState(workspaces: [workspace]));
     _stubCubit(aiHistoryCubit, const AiHistoryState());
@@ -187,19 +199,23 @@ void main() {
     _stubCubit(memberPresenceCubit, const MemberPresenceState());
     _stubCubit(layoutCubit, const LayoutState());
     when(() => chatCubit.isMemberWorking(any(), any())).thenReturn(false);
-    when(() => chatCubit.isMemberRunning(
-          sessionId: any(named: 'sessionId'),
-          memberId: any(named: 'memberId'),
-        )).thenReturn(false);
+    when(
+      () => chatCubit.isMemberRunning(
+        sessionId: any(named: 'sessionId'),
+        memberId: any(named: 'memberId'),
+      ),
+    ).thenReturn(false);
     when(() => chatCubit.lifecycle).thenReturn(lifecycle);
-    when(() => chatCubit.followUpQueue).thenReturn(
-      InMemoryFollowUpQueueStore(),
-    );
+    when(
+      () => chatCubit.followUpQueue,
+    ).thenReturn(InMemoryFollowUpQueueStore());
     when(() => chatCubit.tabStore).thenReturn(ChatTabStore());
-    when(() => aiHistoryCubit.ensureSeat(
-          sessionId: any(named: 'sessionId'),
-          selectedMemberId: any(named: 'selectedMemberId'),
-        )).thenReturn(seat);
+    when(
+      () => aiHistoryCubit.ensureSeat(
+        sessionId: any(named: 'sessionId'),
+        selectedMemberId: any(named: 'selectedMemberId'),
+      ),
+    ).thenReturn(seat);
     when(() => worktreeCubit.worktreesForProject(any())).thenReturn(const []);
 
     final theme = buildDarkTheme();
@@ -208,54 +224,51 @@ void main() {
         providers: [
           RepositoryProvider<CommandBus>(create: (_) => CommandBus()),
         ],
-        child: MultiBlocProvider(providers: [
-          BlocProvider<ChatCubit>.value(value: chatCubit),
-          BlocProvider<AiHistoryCubit>.value(value: aiHistoryCubit),
-          BlocProvider<CliPresetsCubit>.value(value: cliPresetsCubit),
-          BlocProvider<LaunchProfileCubit>.value(value: launchProfileCubit),
-          BlocProvider<PluginCubit>.value(value: pluginCubit),
-          BlocProvider<SkillCubit>.value(value: skillCubit),
-          BlocProvider<SessionPreferencesCubit>.value(
-            value: sessionPreferencesCubit,
-          ),
-          BlocProvider<AppProviderCubit>.value(value: appProviderCubit),
-          BlocProvider<ExpertHubCubit>.value(value: expertHubCubit),
-          BlocProvider<AgentAttentionCubit>.value(
-            value: agentAttentionCubit,
-          ),
-          BlocProvider<EditorCubit>.value(value: editorCubit),
-          BlocProvider<WorktreeCubit>.value(value: worktreeCubit),
-          BlocProvider<MemberPresenceCubit>.value(
-            value: memberPresenceCubit,
-          ),
-          BlocProvider<LayoutCubit>.value(value: layoutCubit),
-          BlocProvider<WorkbenchCubit>.value(value: workbenchCubit),
-        ],
-        child: CliToolRegistryScope(
-          registry: CliToolRegistry.builtIn(),
-          child: MaterialApp(
-            theme: theme,
-            localizationsDelegates: AppLocalizations.localizationsDelegates,
-            supportedLocales: AppLocalizations.supportedLocales,
-            home: TpTheme(
-              data: TpThemeData.fromColorScheme(
-                theme.colorScheme,
-                scale: 1,
-              ),
-              child: Scaffold(
-                body: SessionChatView(
-                  session: session,
-                  workspace: workspace,
-                  selectedMemberId: '',
-                  onSubmit: (_) async => const HistoryContinueSubmitResult(
-                    ok: true,
-                    channel: HistoryContinueChannel.pty,
+        child: MultiBlocProvider(
+          providers: [
+            BlocProvider<ChatCubit>.value(value: chatCubit),
+            BlocProvider<AiHistoryCubit>.value(value: aiHistoryCubit),
+            BlocProvider<CliPresetsCubit>.value(value: cliPresetsCubit),
+            BlocProvider<LaunchProfileCubit>.value(value: launchProfileCubit),
+            BlocProvider<PluginCubit>.value(value: pluginCubit),
+            BlocProvider<SkillCubit>.value(value: skillCubit),
+            BlocProvider<SessionPreferencesCubit>.value(
+              value: sessionPreferencesCubit,
+            ),
+            BlocProvider<AppProviderCubit>.value(value: appProviderCubit),
+            BlocProvider<ExpertHubCubit>.value(value: expertHubCubit),
+            BlocProvider<AgentAttentionCubit>.value(value: agentAttentionCubit),
+            BlocProvider<EditorCubit>.value(value: editorCubit),
+            BlocProvider<WorktreeCubit>.value(value: worktreeCubit),
+            BlocProvider<MemberPresenceCubit>.value(value: memberPresenceCubit),
+            BlocProvider<LayoutCubit>.value(value: layoutCubit),
+            BlocProvider<WorkbenchCubit>.value(value: workbenchCubit),
+          ],
+          child: CliToolRegistryScope(
+            registry: CliToolRegistry.builtIn(),
+            child: MaterialApp(
+              theme: theme,
+              localizationsDelegates: AppLocalizations.localizationsDelegates,
+              supportedLocales: AppLocalizations.supportedLocales,
+              home: TpTheme(
+                data: TpThemeData.fromColorScheme(theme.colorScheme, scale: 1),
+                child: Scaffold(
+                  body: SessionChatView(
+                    session: session,
+                    workspace: workspace,
+                    selectedMemberId: '',
+                    onSubmit:
+                        onSubmit ??
+                        (_) async => const HistoryContinueSubmitResult(
+                          ok: true,
+                          channel: HistoryContinueChannel.pty,
+                        ),
+                    routeActive: false,
                   ),
                 ),
               ),
             ),
           ),
-        ),
         ),
       ),
     );
@@ -278,6 +291,32 @@ void main() {
     expect(field.controller!.text, 'continue this');
   });
 
+  testWidgets('session restores persisted draft after cache reset', (
+    tester,
+  ) async {
+    await tester.runAsync(
+      () => ComposeDraftStore(
+        fs: AppStorage.fs,
+        rootPath: AppStorage.appDataRoot,
+      ).saveSession('ws-1', 's1', 'retry after restart'),
+    );
+    composeDraftCache.clear();
+
+    await pumpSession(
+      tester,
+      session: AppSession(
+        sessionId: 's1',
+        workspaceId: 'ws-1',
+        folders: const [WorkspaceFolder(path: '/work')],
+        cli: CliTool.claude,
+        createdAt: 1,
+      ),
+    );
+    await _flushRealIo(tester);
+
+    expect(_composeField(tester).controller!.text, 'retry after restart');
+  });
+
   testWidgets('typing writes the draft into the cache', (tester) async {
     final session = AppSession(
       sessionId: 's2',
@@ -294,8 +333,9 @@ void main() {
     expect(composeDraftCache.sessionDraft('s2'), 'draft two');
   });
 
-  testWidgets('remounting after unmount restores the typed draft',
-      (tester) async {
+  testWidgets('remounting after unmount restores the typed draft', (
+    tester,
+  ) async {
     final session = AppSession(
       sessionId: 's3',
       workspaceId: 'ws-1',
@@ -315,4 +355,75 @@ void main() {
     final field = tester.widget<TextField>(find.byType(TextField).first);
     expect(field.controller!.text, 'keep me');
   });
+
+  testWidgets('failed session delivery retains the persisted draft', (
+    tester,
+  ) async {
+    final session = _session('s4');
+    await pumpSession(
+      tester,
+      session: session,
+      onSubmit: (_) async => const HistoryContinueSubmitResult.failed(),
+    );
+
+    await tester.enterText(find.byType(TextField).first, 'do not lose this');
+    await tester.pump();
+    await tester.tap(find.byIcon(Icons.arrow_upward_rounded));
+    await tester.pumpAndSettle();
+
+    expect(
+      await ComposeDraftStore(
+        fs: AppStorage.fs,
+        rootPath: AppStorage.appDataRoot,
+      ).loadSession('ws-1', 's4'),
+      'do not lose this',
+    );
+  });
+
+  testWidgets('successful session delivery removes the persisted draft', (
+    tester,
+  ) async {
+    final session = _session('s5');
+    await pumpSession(
+      tester,
+      session: session,
+      onSubmit: (_) async => const HistoryContinueSubmitResult(
+        ok: true,
+        channel: HistoryContinueChannel.pty,
+      ),
+    );
+
+    await tester.enterText(find.byType(TextField).first, 'delivered');
+    await tester.pump();
+    await tester.tap(find.byIcon(Icons.arrow_upward_rounded));
+    await tester.pumpAndSettle();
+
+    expect(
+      await ComposeDraftStore(
+        fs: AppStorage.fs,
+        rootPath: AppStorage.appDataRoot,
+      ).loadSession('ws-1', 's5'),
+      isNull,
+    );
+  });
+}
+
+AppSession _session(String sessionId) => AppSession(
+  sessionId: sessionId,
+  workspaceId: 'ws-1',
+  folders: const [WorkspaceFolder(path: '/work')],
+  cli: CliTool.claude,
+  createdAt: 1,
+);
+
+TextField _composeField(WidgetTester tester) =>
+    tester.widget<TextField>(find.byType(TextField).first);
+
+Future<void> _flushRealIo(WidgetTester tester, {int rounds = 6}) async {
+  for (var i = 0; i < rounds; i++) {
+    await tester.runAsync(
+      () => Future<void>.delayed(const Duration(milliseconds: 80)),
+    );
+    await tester.pump();
+  }
 }

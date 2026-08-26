@@ -16,6 +16,7 @@ import 'package:teampilot/services/storage/app_storage.dart';
 import 'package:teampilot/services/session/shell_launch_spec.dart';
 import 'package:teampilot/services/terminal/terminal_session.dart';
 import 'package:teampilot/services/compose/compose_draft_cache.dart';
+import 'package:teampilot/services/compose/compose_draft_store.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import '../support/post_frame_test_harness.dart';
@@ -880,7 +881,7 @@ void main() {
       },
     );
 
-    test('deleteSession clears the cached session compose draft', () async {
+    test('deleteSession removes the persisted session compose draft', () async {
       final tmp = await Directory.systemTemp.createTemp(
         'chat_cubit_draft_clear_',
       );
@@ -906,13 +907,24 @@ void main() {
       _registerTempCubitCleanup(tmp: tmp, cubit: cubit, postFrame: postFrame);
 
       await cubit.loadWorkspaceData(repo);
-      composeDraftCache.setSessionDraft(session.sessionId, 'in progress');
+      await composeDraftCache.saveSession(
+        workspace.workspaceId,
+        session.sessionId,
+        'in progress',
+      );
 
       await cubit.deleteSession(repo, session.sessionId);
       await drainPendingAsyncWork();
       await postFrame.flush();
 
       expect(composeDraftCache.sessionDraft(session.sessionId), isNull);
+      expect(
+        await ComposeDraftStore(
+          fs: AppStorage.fs,
+          rootPath: AppStorage.appDataRoot,
+        ).loadSession(workspace.workspaceId, session.sessionId),
+        isNull,
+      );
     });
 
     test('deleteWorkspace clears the cached landing compose draft', () async {

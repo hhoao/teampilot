@@ -2196,6 +2196,12 @@ class ChatCubit extends Cubit<ChatState>
         .where((s) => s.sessionId == sessionId)
         .firstOrNull;
     composeDraftCache.clearSessionDraft(sessionId);
+    if (session != null) {
+      await composeDraftCache.clearSessionPersistent(
+        session.workspaceId,
+        sessionId,
+      );
+    }
     final sessions = state.sessions
         .where((s) => s.sessionId != sessionId)
         .toList();

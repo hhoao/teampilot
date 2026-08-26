@@ -13,6 +13,7 @@ import 'app_storage.dart';
 /// workspace/workspaces/{workspaceId}/
 ///   manifest.json       # Workspace
 ///   project-config.json # Project-scoped skills/plugins/mcp/extensions
+///   compose-drafts.json # Landing and session compose text
 ///   profile.json        # legacy; unused after identity-model removal
 ///   assets/icon.*       # custom workspace icon
 ///   config/             # workspace-level CLI overrides
@@ -61,6 +62,9 @@ class WorkspaceLayout {
   /// Project-scoped skills/plugins/mcp/extension bindings.
   String projectConfigFile(String workspaceId) =>
       _ctx.join(workspaceDir(workspaceId), 'project-config.json');
+
+  String composeDraftsFile(String workspaceId) =>
+      _ctx.join(workspaceDir(workspaceId), 'compose-drafts.json');
 
   String assetsDir(String workspaceId) =>
       _ctx.join(workspaceDir(workspaceId), 'assets');

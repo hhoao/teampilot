@@ -17,6 +17,8 @@ import 'package:teampilot/services/cli/registry/cli_tool_registry.dart';
 import 'package:teampilot/services/cli/registry/cli_tool_registry_scope.dart';
 import 'package:teampilot/services/commands/command_bus.dart';
 import 'package:teampilot/services/compose/compose_draft_cache.dart';
+import 'package:teampilot/services/compose/compose_draft_store.dart';
+import 'package:teampilot/services/storage/app_storage.dart';
 import 'package:teampilot/theme/app_theme.dart';
 
 import '../../../support/post_frame_test_harness.dart';
@@ -58,8 +60,35 @@ void main() {
     expect(field.controller!.selection.baseOffset, 'my draft'.length);
   });
 
-  testWidgets('does not restore the cache when initialText is provided',
-      (tester) async {
+  testWidgets('landing restores persisted draft after cache reset', (
+    tester,
+  ) async {
+    await tester.runAsync(
+      () => ComposeDraftStore(
+        fs: AppStorage.fs,
+        rootPath: AppStorage.appDataRoot,
+      ).saveLanding('workspace-1', 'survive restart'),
+    );
+    expect(
+      await tester.runAsync(
+        () => ComposeDraftStore(
+          fs: AppStorage.fs,
+          rootPath: AppStorage.appDataRoot,
+        ).loadLanding('workspace-1'),
+      ),
+      'survive restart',
+    );
+    composeDraftCache.clear();
+
+    await tester.pumpWidget(_landing(initialText: null));
+    await _flushRealIo(tester);
+
+    expect(_composeField(tester).controller!.text, 'survive restart');
+  });
+
+  testWidgets('does not restore the cache when initialText is provided', (
+    tester,
+  ) async {
     composeDraftCache.setLandingDraft('workspace-1', 'cached');
     await tester.pumpWidget(_landing(initialText: 'prefill'));
     await tester.pumpAndSettle();
@@ -91,8 +120,9 @@ void main() {
     expect(composeDraftCache.landingDraft('workspace-1'), isNull);
   });
 
-  testWidgets('remounting after unmount restores the typed draft',
-      (tester) async {
+  testWidgets('remounting after unmount restores the typed draft', (
+    tester,
+  ) async {
     await tester.pumpWidget(_landing(initialText: null));
     await tester.pumpAndSettle();
 
@@ -107,6 +137,18 @@ void main() {
     final field = tester.widget<TextField>(find.byType(TextField).first);
     expect(field.controller!.text, 'work in progress');
   });
+}
+
+TextField _composeField(WidgetTester tester) =>
+    tester.widget<TextField>(find.byType(TextField).first);
+
+Future<void> _flushRealIo(WidgetTester tester, {int rounds = 6}) async {
+  for (var i = 0; i < rounds; i++) {
+    await tester.runAsync(
+      () => Future<void>.delayed(const Duration(milliseconds: 80)),
+    );
+    await tester.pump();
+  }
 }
 
 Widget _landing({required String? initialText}) {
@@ -130,9 +172,7 @@ Widget _landing({required String? initialText}) {
 
   final theme = buildDarkTheme();
   return MultiRepositoryProvider(
-    providers: [
-      RepositoryProvider<CommandBus>(create: (_) => CommandBus()),
-    ],
+    providers: [RepositoryProvider<CommandBus>(create: (_) => CommandBus())],
     child: MultiBlocProvider(
       providers: [
         BlocProvider<ChatCubit>.value(value: chatCubit),
@@ -152,10 +192,7 @@ Widget _landing({required String? initialText}) {
           localizationsDelegates: AppLocalizations.localizationsDelegates,
           supportedLocales: AppLocalizations.supportedLocales,
           home: TpTheme(
-            data: TpThemeData.fromColorScheme(
-              theme.colorScheme,
-              scale: 1,
-            ),
+            data: TpThemeData.fromColorScheme(theme.colorScheme, scale: 1),
             child: Scaffold(
               body: WorkspaceChatLanding(
                 workspace: workspace,

@@ -148,6 +148,7 @@ class _SessionChatViewState extends State<SessionChatView> {
   /// True from optimistic enqueue through connect/boot/inject settle so idle
   /// grace cannot blank tip chrome while History continue is still in flight.
   var _historyContinueInFlight = false;
+  var _suppressComposeDraftPersistence = false;
 
   /// mailId → seat key at queue time (guards wrong-seat timeline refresh).
   final Map<String, String> _mailboxQueuedSeats = {};
@@ -193,6 +194,7 @@ class _SessionChatViewState extends State<SessionChatView> {
       );
     }
     _controller.addListener(_onComposeChanged);
+    unawaited(_hydrateComposeDraft());
     _projectConfigRepository =
         widget.projectConfigRepository ?? WorkspaceProjectConfigRepository();
     _bindSeat();
@@ -336,11 +338,36 @@ class _SessionChatViewState extends State<SessionChatView> {
   }
 
   void _onComposeChanged() {
-    composeDraftCache.setSessionDraft(
-      widget.session.sessionId,
-      _controller.text,
+    if (_suppressComposeDraftPersistence) {
+      if (mounted) setState(() {});
+      return;
+    }
+    unawaited(
+      composeDraftCache.saveSession(
+        widget.session.workspaceId,
+        widget.session.sessionId,
+        _controller.text,
+      ),
     );
     if (mounted) setState(() {});
+  }
+
+  Future<void> _hydrateComposeDraft() async {
+    final draft = await composeDraftCache.hydrateSession(
+      widget.session.workspaceId,
+      widget.session.sessionId,
+      shouldSeed: () => mounted && _controller.text.isEmpty,
+    );
+    if (!mounted ||
+        _controller.text.isNotEmpty ||
+        draft == null ||
+        draft.isEmpty) {
+      return;
+    }
+    _controller.value = TextEditingValue(
+      text: draft,
+      selection: TextSelection.collapsed(offset: draft.length),
+    );
   }
 
   bool get _isSubmitting => _submitLock.isBusy || widget.isSubmitting;
@@ -835,6 +862,15 @@ class _SessionChatViewState extends State<SessionChatView> {
         seat.enqueuePendingUser(text);
         _syncAwaitingFromWorkingSessions(context.read<ChatCubit>().state);
       }
+      // The field must clear while delivery is in flight, but that temporary
+      // UI state is not a user-cleared draft. Persist the message first and
+      // suppress the controller listener until terminal delivery settles.
+      await composeDraftCache.saveSession(
+        widget.session.workspaceId,
+        widget.session.sessionId,
+        text,
+      );
+      _suppressComposeDraftPersistence = true;
       _controller.clear();
       _clip.clear();
       if (mounted) setState(() {});
@@ -846,6 +882,7 @@ class _SessionChatViewState extends State<SessionChatView> {
       if (!mounted) return const HistoryContinueSubmitResult.failed();
       setState(() {});
       if (!result.ok) {
+        _suppressComposeDraftPersistence = false;
         _cancelAwaitingIdleGrace();
         if (optimisticPty) seat.removePendingMatching(text);
         // Clear the stale clip before restoring the composed text. If the
@@ -859,6 +896,13 @@ class _SessionChatViewState extends State<SessionChatView> {
         setState(() {});
         return result;
       }
+
+      await composeDraftCache.clearSessionPersistent(
+        widget.session.workspaceId,
+        widget.session.sessionId,
+      );
+      composeDraftCache.clearSessionDraft(widget.session.sessionId);
+      if (!mounted) return result;
 
       if (result.isMailbox) {
         _cancelAwaitingIdleGrace();
@@ -880,6 +924,7 @@ class _SessionChatViewState extends State<SessionChatView> {
       return result;
     } finally {
       _historyContinueInFlight = false;
+      _suppressComposeDraftPersistence = false;
     }
   }
 
@@ -970,9 +1015,7 @@ class _SessionChatViewState extends State<SessionChatView> {
     context.select<WorkbenchCubit, WorkbenchTabId?>(
       (w) => w.centerActiveId(widget.session.workspaceId),
     );
-    context.select<ChatCubit, Set<String>>(
-      (c) => c.state.workingSessionIds,
-    );
+    context.select<ChatCubit, Set<String>>((c) => c.state.workingSessionIds);
     context.select<MemberPresenceCubit, Map<String, MemberPresence>>(
       (c) => c.state.presence,
     );
@@ -1139,8 +1182,8 @@ class _SessionChatViewState extends State<SessionChatView> {
                                       historySeat.subagentAttachments.keys
                                           .toSet(),
                                     );
-                                    final runningSubagentIds = prefs
-                                            .autoOpenSubagentPreview
+                                    final runningSubagentIds =
+                                        prefs.autoOpenSubagentPreview
                                         ? _runningSubagentIds(
                                             historySeat,
                                             historyCap,
@@ -1161,9 +1204,9 @@ class _SessionChatViewState extends State<SessionChatView> {
                                       // Deferred: never notify inside build.
                                       WidgetsBinding.instance
                                           .addPostFrameCallback((_) {
-                                        if (!mounted) return;
-                                        _subagentPreview.autoOpen(id);
-                                      });
+                                            if (!mounted) return;
+                                            _subagentPreview.autoOpen(id);
+                                          });
                                     }
                                     final stack = _subagentPreview.stack;
                                     final top = stack.isEmpty
@@ -1275,10 +1318,7 @@ class _SessionChatViewState extends State<SessionChatView> {
 /// Subagent tool calls still in flight (newest-first), for auto-follow.
 /// Only ids whose attachment is inflated can be opened; [computeAutoFollow]
 /// re-checks against the attachment index.
-List<String> _runningSubagentIds(
-  AiHistorySeat seat,
-  AiHistoryCapability? cap,
-) {
+List<String> _runningSubagentIds(AiHistorySeat seat, AiHistoryCapability? cap) {
   if (cap == null) return const [];
   final names = cap.subagentToolNames;
   final out = <String>[];
