@@ -113,7 +113,13 @@ final class AskUserQuestionRuntimeEventProjection extends RuntimeEventProjection
         questions.isEmpty) {
       return;
     }
-    _responses[(event.seat, event.sequence)] = hookGate
+    final key = (event.seat, event.sequence);
+    // A restore replay or duplicate publication must not re-register a stale
+    // hold for the same seat/sequence whose HTTP request is long gone.
+    // Kept after completion so [responseFor] still returns the held future;
+    // entries are bounded by distinct PreToolUse sequences per seat.
+    if (_responses.containsKey(key)) return;
+    _responses[key] = hookGate
         .wait(
           sessionId: event.seat.sessionId,
           memberId: event.seat.memberId,
@@ -161,7 +167,13 @@ final class ExitPlanModeRuntimeEventProjection extends RuntimeEventProjection
         capability?.supportsInChatApproval != true) {
       return;
     }
-    _responses[(event.seat, event.sequence)] = hookGate
+    final key = (event.seat, event.sequence);
+    // A restore replay or duplicate publication must not re-register a stale
+    // hold for the same seat/sequence whose HTTP request is long gone.
+    // Kept after completion so [responseFor] still returns the held future;
+    // entries are bounded by distinct PreToolUse sequences per seat.
+    if (_responses.containsKey(key)) return;
+    _responses[key] = hookGate
         .wait(
           sessionId: event.seat.sessionId,
           memberId: event.seat.memberId,

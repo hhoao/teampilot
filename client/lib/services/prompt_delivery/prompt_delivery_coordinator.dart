@@ -141,12 +141,14 @@ final class PromptDeliveryCoordinator {
       rethrow;
     }
     if (_submitInvalidatedIds.remove(id)) {
+      _submitPendingIds.remove(id);
       await _transition(
         delivery,
         PromptDeliveryState.submittedUnknown,
       );
       return PromptSubmissionResult.dropped;
     }
+    _submitPendingIds.remove(id);
     final result = await commands.submit(
       delivery,
       canExecute: () =>
@@ -165,6 +167,7 @@ final class PromptDeliveryCoordinator {
           failureReason: 'terminal_surface_unavailable',
         );
     }
+    _submitInvalidatedIds.remove(id);
     return result;
   }
 
@@ -207,12 +210,22 @@ final class PromptDeliveryCoordinator {
   }
 
   /// Recovery never replays staging or submit commands. A prior CR might have
-  /// reached the process, so it becomes explicitly unresolved instead.
+  /// reached the process, so it becomes explicitly unresolved instead; a
+  /// delivery whose submit was never issued (`created` / `waitingForInputSurface`
+  /// / `staged`) is failed so it can never wedge the seat's only non-terminal
+  /// slot or falsely re-glass a future submit.
   Future<void> restoreSeat(RuntimeSeatKey seat) => _serialized(seat, () async {
     for (final delivery in await store.activeFor(seat)) {
       _liveStates[delivery.id] = delivery.state;
-      if (delivery.state == PromptDeliveryState.submitIssued) {
-        await _transition(delivery, PromptDeliveryState.submittedUnknown);
+      switch (delivery.state) {
+        case PromptDeliveryState.submitIssued:
+          await _transition(delivery, PromptDeliveryState.submittedUnknown);
+        case PromptDeliveryState.created:
+        case PromptDeliveryState.waitingForInputSurface:
+        case PromptDeliveryState.staged:
+          await _transition(delivery, PromptDeliveryState.failed);
+        default:
+          break;
       }
     }
   });

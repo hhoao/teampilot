@@ -4,6 +4,7 @@ import 'dart:io';
 import 'dart:typed_data';
 
 import '../../models/team_config.dart';
+import '../../utils/logging/logger.dart';
 import '../../cubits/agent_attention_cubit.dart';
 import '../agent_status/ask_user_question_hook_gate.dart';
 import '../agent_status/exit_plan_mode_hook_gate.dart';
@@ -299,7 +300,13 @@ final class AgentEventGateway {
         builder.clear();
       }
     }
-    if (overflow) return null;
+    if (overflow) {
+      appLogger.w(
+        '[agent-runtime] hook body dropped: exceeds '
+        '$agentEventMaxBodyBytes bytes',
+      );
+      return null;
+    }
     final bytes = builder.takeBytes();
     if (bytes.isEmpty) return null;
     try {

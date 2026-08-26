@@ -136,7 +136,7 @@ class SessionLifecycleService {
       // Recovery must never block a launch, but it is loud in diagnostics:
       // a missed restore leaves a submitIssued record unresolved-safe only
       // through the next successful restore.
-      appLogger.w(
+      appLogger.e(
         '[session-lifecycle] agent-runtime restore failed '
         'session=$trimmed: $error',
         error: error,

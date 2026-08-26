@@ -68,9 +68,7 @@ void main() {
         state: PromptDeliveryState.submittedUnknown,
         text: 'the lost prompt',
       );
-      await harness.cubit.refreshSession(seat.sessionId);
-      // Seeding used the real fenced path once; the assertions below are
-      // about what CONSUMING the submittedUnknown state does on its own.
+      // No manual cubit refresh: the mount primes recovery on session open.
       harness.ptyWrites.clear();
 
       await tester.pumpWidget(harness.widget());
@@ -105,6 +103,34 @@ void main() {
       // The explicit retry performs the only PTY write, through the fenced
       // submit path.
       expect(harness.ptyWrites, ['the lost prompt']);
+    },
+  );
+
+  testWidgets(
+    'mount primes recovery on session open: strip appears from the durable store',
+    (tester) async {
+      final harness = _RecoveryHarness();
+      addTearDown(harness.dispose);
+      await harness.seedDelivery(
+        state: PromptDeliveryState.submittedUnknown,
+        text: 'primed on mount',
+      );
+      harness.ptyWrites.clear();
+
+      // Mount the recovery surface BEFORE any refreshSession call. The mount
+      // runs the post-frame refresh itself, so the strip must appear without
+      // a manual cubit call (the D-C1 restart-recovery dead-surface fix).
+      await tester.pumpWidget(harness.widget());
+      await tester.pumpAndSettle();
+
+      expect(find.text('Delivery status unknown'), findsOneWidget);
+      expect(find.text('primed on mount'), findsNothing); // not revealed yet
+      expect(harness.ptyWrites, isEmpty);
+
+      // The strip is reachable for a real retry.
+      await tester.tap(find.text('Review message'));
+      await tester.pumpAndSettle();
+      expect(find.text('primed on mount'), findsOneWidget);
     },
   );
 
@@ -217,14 +243,12 @@ class _RecoveryHarness {
                 PromptDeliveryStatusState>(
               bloc: cubit,
               builder: (context, state) {
-                final recovery = state.recoveryFor(
-                  seat.sessionId,
-                  seat.memberId,
-                );
-                if (recovery == null) return const SizedBox.shrink();
-                return PromptDeliveryRecoveryStrip(
-                  key: kPromptDeliveryRecoveryStripKey,
-                  recovery: recovery,
+                return PromptDeliveryRecoveryMount(
+                  key: const ValueKey('recovery-mount'),
+                  recovery: state.recoveryFor(
+                    seat.sessionId,
+                    seat.memberId,
+                  ),
                   onRetry: () => unawaited(
                     cubit.retry(
                       sessionId: seat.sessionId,

@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/models/team_config.dart';
 import 'package:teampilot/services/agent_runtime/runtime_event.dart';
@@ -150,6 +152,31 @@ void main() {
     },
   );
 
+  test('file journal partitions seats by sessionId directory', () async {
+    final fs = InMemoryFilesystem();
+    const seat = RuntimeSeatKey(sessionId: 'session', memberId: 'member');
+    const otherSeat = RuntimeSeatKey(sessionId: 'other', memberId: 'member');
+    final journal = FileRuntimeEventJournal(
+      journalRoot: '/runtime/events',
+      fs: fs,
+    );
+
+    await journal.append(_prompt(seat, 'one'));
+    await journal.append(_prompt(otherSeat, 'two'));
+
+    final rootEntries = await fs.listDir('/runtime/events');
+    expect(rootEntries.where((e) => !e.isDirectory), isEmpty);
+    expect(
+      await fs.listDir('/runtime/events/${_seg('session')}').then(
+        (entries) => entries.map((e) => e.name),
+      ),
+      ['${_seg('member')}.jsonl'],
+    );
+    expect(await journal.seatsForSession('session'), {seat});
+    expect(await journal.seatsForSession('other'), {otherSeat});
+    expect(await journal.seatsForSession('missing'), isEmpty);
+  });
+
   test('completed file-journal append releases its seat lock', () async {
     final journal = FileRuntimeEventJournal(
       journalRoot: '/runtime/events',
@@ -170,6 +197,9 @@ RuntimeEventEnvelopeDraft _prompt(RuntimeSeatKey seat, String prompt) =>
       prompt: prompt,
       occurredAt: DateTime.utc(2026),
     );
+
+String _seg(String value) =>
+    base64Url.encode(utf8.encode(value)).replaceAll('=', '');
 
 class _FilesystemView implements Filesystem {
   _FilesystemView(this._delegate);

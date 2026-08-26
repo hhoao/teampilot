@@ -55,8 +55,10 @@ final class MemoryPromptDeliveryStore implements PromptDeliveryStore {
   };
 }
 
-/// One JSON record per delivery. Atomic replacement means an observed state
-/// transition always survives process restart as a complete record.
+/// One JSON record per delivery, partitioned per session under
+/// `root/{sessionId}/{id}.json`. Recovery scans only the requested session's
+/// directory instead of a flat root. Atomic replacement means an observed
+/// state transition always survives process restart as a complete record.
 final class FilePromptDeliveryStore implements PromptDeliveryStore {
   FilePromptDeliveryStore({required this.root, Filesystem? fs})
     : _fs = fs ?? LocalFilesystem();
@@ -64,26 +66,40 @@ final class FilePromptDeliveryStore implements PromptDeliveryStore {
   final String root;
   final Filesystem _fs;
 
-  String _pathFor(String id) => _fs.pathContext.join(root, '$id.json');
+  String _sessionDirFor(RuntimeSeatKey seat) =>
+      _fs.pathContext.join(root, _pathSegment(seat.sessionId));
+
+  String _fileFor(PromptDelivery delivery) => _fs.pathContext.join(
+    _sessionDirFor(delivery.seat),
+    '${delivery.id}.json',
+  );
 
   @override
   Future<void> save(PromptDelivery delivery) async {
-    await _fs.ensureDir(root);
-    await _fs.atomicWrite(_pathFor(delivery.id), jsonEncode(_encode(delivery)));
+    await _fs.ensureDir(_sessionDirFor(delivery.seat));
+    await _fs.atomicWrite(_fileFor(delivery), jsonEncode(_encode(delivery)));
   }
 
   @override
   Future<PromptDelivery?> read(String id) async {
-    final content = await _fs.readString(_pathFor(id));
-    if (content == null || content.trim().isEmpty) return null;
-    try {
-      final decoded = jsonDecode(content);
-      return decoded is Map
-          ? _decode(Map<String, Object?>.from(decoded))
-          : null;
-    } on FormatException {
-      return null;
+    final entries = await _fs.listDir(root);
+    for (final entry in entries) {
+      if (!entry.isDirectory) continue;
+      final content = await _fs.readString(
+        _fs.pathContext.join(root, entry.name, '$id.json'),
+      );
+      if (content == null || content.trim().isEmpty) continue;
+      try {
+        final decoded = jsonDecode(content);
+        final delivery = decoded is Map
+            ? _decode(Map<String, Object?>.from(decoded))
+            : null;
+        if (delivery != null && delivery.id == id) return delivery;
+      } on FormatException {
+        continue;
+      }
     }
+    return null;
   }
 
   @override
@@ -94,41 +110,28 @@ final class FilePromptDeliveryStore implements PromptDeliveryStore {
 
   @override
   Future<List<PromptDelivery>> forSeat(RuntimeSeatKey seat) async {
-    final entries = await _fs.listDir(root);
-    final values = <PromptDelivery>[];
-    for (final entry in entries) {
-      if (entry.isDirectory || !entry.name.endsWith('.json')) continue;
-      final content = await _fs.readString(
-        _fs.pathContext.join(root, entry.name),
-      );
-      if (content == null) continue;
-      try {
-        final decoded = jsonDecode(content);
-        final delivery = decoded is Map
-            ? _decode(Map<String, Object?>.from(decoded))
-            : null;
-        if (delivery?.seat == seat) values.add(delivery!);
-      } on FormatException {
-        // An invalid record is never a valid active delivery.
-      }
-    }
+    final values = await _readDir(_sessionDirFor(seat));
     values.sort((left, right) => left.promptEpoch.compareTo(right.promptEpoch));
-    return values;
+    return values
+        .where((delivery) => delivery.seat == seat)
+        .toList(growable: false);
   }
 
   @override
   Future<Set<RuntimeSeatKey>> seatsForSession(String sessionId) async => {
-    for (final delivery in await _readAll())
-      if (delivery.seat.sessionId == sessionId) delivery.seat,
+    for (final delivery in await _readDir(
+      _fs.pathContext.join(root, _pathSegment(sessionId)),
+    ))
+      delivery.seat,
   };
 
-  Future<List<PromptDelivery>> _readAll() async {
-    final entries = await _fs.listDir(root);
+  Future<List<PromptDelivery>> _readDir(String dir) async {
+    final entries = await _fs.listDir(dir);
     final values = <PromptDelivery>[];
     for (final entry in entries) {
       if (entry.isDirectory || !entry.name.endsWith('.json')) continue;
       final content = await _fs.readString(
-        _fs.pathContext.join(root, entry.name),
+        _fs.pathContext.join(dir, entry.name),
       );
       if (content == null) continue;
       try {
@@ -207,3 +210,8 @@ T? _byName<T extends Enum>(Iterable<T> values, String name) {
   }
   return null;
 }
+
+/// Filesystem-safe path segment (base64url) so arbitrary session ids never
+/// introduce nested or unsafe path separators.
+String _pathSegment(String value) =>
+    base64Url.encode(utf8.encode(value)).replaceAll('=', '');

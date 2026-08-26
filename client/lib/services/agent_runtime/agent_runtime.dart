@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import '../../utils/logging/logger.dart';
 import '../prompt_delivery/prompt_delivery.dart';
 import '../prompt_delivery/prompt_delivery_coordinator.dart';
 import 'agent_event_gateway.dart';
@@ -38,10 +39,28 @@ final class AgentRuntime {
   StreamSubscription<RuntimeEventEnvelope>? _subscription;
 
   void _onEvent(RuntimeEventEnvelope event) {
-    final previous = _seatTails[event.seat] ?? Future<void>.value();
-    _seatTails[event.seat] = previous
-        .then((_) => promptDeliveries.onRuntimeEvent(event))
-        .then<void>((_) {}, onError: (Object _, StackTrace __) {});
+    _enqueueApply(event.seat, () => promptDeliveries.onRuntimeEvent(event));
+  }
+
+  void _enqueueApply(
+    RuntimeSeatKey seat,
+    Future<void> Function() apply,
+  ) {
+    final previous = _seatTails[seat] ?? Future<void>.value();
+    _seatTails[seat] = previous
+        .then((_) => apply())
+        .then<void>((_) {}, onError: (Object error, StackTrace stackTrace) {
+          // A failed delivery apply (store IO error or projection throw) would
+          // otherwise silently leave the delivery submitIssued with the fence
+          // open and no recovery entry. Log loud so the missed re-application
+          // is visible to diagnostics.
+          appLogger.w(
+            '[agent-runtime] coordinator event apply failed '
+            'seat=${seat.sessionId}/${seat.memberId}: $error',
+            error: error,
+            stackTrace: stackTrace,
+          );
+        });
   }
 
   /// Completes when every runtime event already published for [seat] has
@@ -63,10 +82,7 @@ final class AgentRuntime {
         for (final projection in _projections) {
           projection.apply(event);
         }
-        final previous = _seatTails[seat] ?? Future<void>.value();
-        _seatTails[seat] = previous
-            .then((_) => promptDeliveries.onRuntimeEvent(event))
-            .then<void>((_) {}, onError: (Object _, StackTrace __) {});
+        _enqueueApply(seat, () => promptDeliveries.onRuntimeEvent(event));
       }
       await settle(seat);
       await promptDeliveries.restoreSeat(seat);

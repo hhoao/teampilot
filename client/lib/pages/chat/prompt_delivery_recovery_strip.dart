@@ -13,6 +13,55 @@ const Key kPromptDeliveryRecoveryStripKey = ValueKey(
 const Key _kReviewButtonKey = ValueKey('prompt-recovery-review');
 const Key _kRetryButtonKey = ValueKey('prompt-recovery-resend');
 
+/// Mounts the compose-seat recovery surface unconditionally so its
+/// post-frame [onRefresh] always runs on session open, even before any
+/// recovery is visible (cold start or a `submitIssued → submittedUnknown`
+/// restore). Renders [SizedBox.shrink] until a recovery becomes available.
+///
+/// Deliberately provider-free: it receives the durable snapshot [recovery]
+/// the parent selected from [PromptDeliveryStatusCubit] plus the refresh and
+/// retry callbacks, so no disk IO happens in build.
+class PromptDeliveryRecoveryMount extends StatefulWidget {
+  const PromptDeliveryRecoveryMount({
+    required this.recovery,
+    required this.onRetry,
+    this.onRefresh,
+    super.key,
+  });
+
+  final PromptDeliveryRecovery? recovery;
+  final VoidCallback onRetry;
+  final Future<void> Function()? onRefresh;
+
+  @override
+  State<PromptDeliveryRecoveryMount> createState() =>
+      _PromptDeliveryRecoveryMountState();
+}
+
+class _PromptDeliveryRecoveryMountState extends State<PromptDeliveryRecoveryMount> {
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final refresh = widget.onRefresh;
+      if (refresh == null || !mounted) return;
+      unawaited(refresh());
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final recovery = widget.recovery;
+    if (recovery == null) return const SizedBox.shrink();
+    return PromptDeliveryRecoveryStrip(
+      key: ValueKey('prompt-recovery-${recovery.deliveryId}'),
+      recovery: recovery,
+      onRetry: widget.onRetry,
+      onRefresh: widget.onRefresh,
+    );
+  }
+}
+
 /// Compose-section recovery strip for a seat whose last submit is
 /// explicitly unresolved (`submittedUnknown`).
 ///

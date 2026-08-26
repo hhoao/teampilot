@@ -317,19 +317,14 @@ class SessionChatComposeSection extends StatelessWidget {
                   if (!askCardVisible)
                     Builder(
                       builder: (context) {
-                        final recovery = _promptDeliveryRecovery(
-                          context,
-                          sessionId: session.sessionId,
-                          memberId: shellMemberId,
-                        );
-                        if (recovery == null) return const SizedBox.shrink();
-                        final cubit = context
-                            .read<PromptDeliveryStatusCubit>();
-                        return PromptDeliveryRecoveryStrip(
-                          key: ValueKey(
-                            'prompt-recovery-${recovery.deliveryId}',
+                        final cubit = _promptDeliveryStatusCubit(context);
+                        if (cubit == null) return const SizedBox.shrink();
+                        return PromptDeliveryRecoveryMount(
+                          recovery: _promptDeliveryRecovery(
+                            context,
+                            sessionId: session.sessionId,
+                            memberId: shellMemberId,
                           ),
-                          recovery: recovery,
                           onRetry: () => unawaited(
                             cubit.retry(
                               sessionId: session.sessionId,
@@ -575,6 +570,17 @@ class SessionChatComposeSection extends StatelessWidget {
           .select<PromptDeliveryStatusCubit, PromptDeliveryRecovery?>(
         (c) => c.state.recoveryFor(sessionId, memberId),
       );
+    } on ProviderNotFoundException {
+      return null;
+    }
+  }
+
+  /// The status cubit when in scope; null in standalone harnesses that do not
+  /// provide it, so the recovery surface degrades to nothing rather than
+  /// throwing during compose build.
+  PromptDeliveryStatusCubit? _promptDeliveryStatusCubit(BuildContext context) {
+    try {
+      return context.read<PromptDeliveryStatusCubit>();
     } on ProviderNotFoundException {
       return null;
     }

@@ -78,7 +78,8 @@ final class FileRuntimeEventJournal implements RuntimeEventJournal {
 
   String _fileFor(RuntimeSeatKey seat) => _fs.pathContext.join(
     journalRoot,
-    '${_pathSegment(seat.sessionId)}--${_pathSegment(seat.memberId)}.jsonl',
+    _pathSegment(seat.sessionId),
+    '${_pathSegment(seat.memberId)}.jsonl',
   );
 
   String _lockKey(RuntimeSeatKey seat) => _fileFor(seat);
@@ -114,7 +115,9 @@ final class FileRuntimeEventJournal implements RuntimeEventJournal {
         correlationStrength: draft.correlationStrength,
         sequence: sequence,
       );
-      await _fs.ensureDir(journalRoot);
+      await _fs.ensureDir(
+        _fs.pathContext.dirname(_fileFor(draft.seat)),
+      );
       await _fs.appendString(
         _fileFor(draft.seat),
         '${jsonEncode(_encode(event))}\n',
@@ -134,17 +137,21 @@ final class FileRuntimeEventJournal implements RuntimeEventJournal {
     }
   }
 
-  /// File names encode the seat, but base64url segments may themselves
-  /// contain `--`, so seats are recovered from each file's first record.
+  /// Each seat's journal lives at `{session}/{member}.jsonl`, so only that
+  /// session's directory is scanned to recover its seats.
   @override
   Future<Set<RuntimeSeatKey>> seatsForSession(String sessionId) async {
-    final stat = await _fs.stat(journalRoot);
+    final sessionDir = _fs.pathContext.join(
+      journalRoot,
+      _pathSegment(sessionId),
+    );
+    final stat = await _fs.stat(sessionDir);
     if (!stat.exists || !stat.isDirectory) return const {};
     final seats = <RuntimeSeatKey>{};
-    for (final entry in await _fs.listDir(journalRoot)) {
+    for (final entry in await _fs.listDir(sessionDir)) {
       if (entry.isDirectory || !entry.name.endsWith('.jsonl')) continue;
       final content = await _fs.readString(
-        _fs.pathContext.join(journalRoot, entry.name),
+        _fs.pathContext.join(sessionDir, entry.name),
       );
       final firstLine = content == null
           ? null
@@ -156,7 +163,6 @@ final class FileRuntimeEventJournal implements RuntimeEventJournal {
       try {
         final decoded = jsonDecode(firstLine);
         if (decoded is! Map) continue;
-        if (decoded['sessionId'] != sessionId) continue;
         final memberId = decoded['memberId']?.toString() ?? '';
         if (memberId.isEmpty) continue;
         seats.add(

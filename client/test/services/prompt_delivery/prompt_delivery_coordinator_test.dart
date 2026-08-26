@@ -208,6 +208,39 @@ void main() {
     );
   });
 
+  test(
+    'restoreSeat fails a non-issued active delivery and unblocks the seat',
+    () async {
+      final delivery = PromptDelivery(
+        id: 'd1',
+        seat: seat,
+        cli: CliTool.codex,
+        text: 'never issued',
+        normalizedText: 'never issued',
+        promptEpoch: 1,
+        state: PromptDeliveryState.created,
+        createdAt: DateTime.utc(2026, 8, 25),
+        updatedAt: DateTime.utc(2026, 8, 25),
+      );
+      await store.save(delivery);
+
+      final restored = PromptDeliveryCoordinator(
+        store: store,
+        commands: commands,
+      );
+      await restored.restoreSeat(seat);
+
+      expect(
+        (await store.read('d1'))!.state,
+        PromptDeliveryState.failed,
+      );
+      // A seat wedged by an orphaned non-terminal delivery must accept a new
+      // submit after restore.
+      final next = await restored.submit(request(text: 'recovered'));
+      expect(next.id, isNot('d1'));
+    },
+  );
+
   test('a failed submit closes its delivery as failed', () async {
     final outcomeCommands = _OutcomePromptDeliveryCommands(
       PromptSubmissionResult.failed,
