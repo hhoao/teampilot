@@ -12,11 +12,11 @@ import '../../services/git/git_repo_store.dart';
 import '../../services/storage/runtime_context.dart';
 import '../../services/workbench/workbench_editor_opener.dart';
 import '../../services/workspace/workspace_tools_scope.dart';
+import '../../services/workspace/workspace_tools_scope_registry.dart';
 import 'git_graph_detail_pane.dart';
 import 'git_graph_menus.dart';
 import 'git_graph_row_tile.dart';
 import 'git_graph_toolbar.dart';
-import '../../utils/logging/logger.dart';
 
 /// 浮动面板主体。内部：
 /// BlocProvider.value(value: store.graphCubitFor(repoRoot, workContext))
@@ -36,28 +36,49 @@ class GitGraphPane extends StatefulWidget {
 }
 
 class _GitGraphPaneState extends State<GitGraphPane> {
-  static const int _maxContextRetries = 40;
-  static const Duration _contextRetryDelay = Duration(milliseconds: 80);
-  int _contextRetries = 0;
+  /// 活动工作区的 tools scope 可能晚于本面板挂载才注册进 registry
+  /// （桥接层据此发布）。直接监听 registry：注册完成的瞬间重建。
+  WorkspaceToolsScopeRegistry? _registry;
 
-  /// 浮动面板挂载可能早于活动工作区 tools scope 的注册完成
-  /// （FloatingWorkspaceToolsScopeBridge 用非响应式 peek）。此时短暂重试，
-  /// 而不是把面板永久留在空白态。
-  void _scheduleContextRetry() {
-    if (_contextRetries >= _maxContextRetries || !mounted) return;
-    _contextRetries++;
-    Future.delayed(_contextRetryDelay, () {
-      if (!mounted) return;
-      setState(() {});
-    });
+  @override
+  void initState() {
+    super.initState();
+    _listenRegistry(context);
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    _listenRegistry(context);
+  }
+
+  void _listenRegistry(BuildContext context) {
+    WorkspaceToolsScopeRegistry? registry;
+    try {
+      registry = context.read<WorkspaceToolsScopeRegistry>();
+    } catch (_) {
+      return;
+    }
+    if (identical(registry, _registry)) return;
+    _registry?.removeListener(_onRegistryChanged);
+    _registry = registry;
+    _onRegistryChanged(); // 换了实例立即对齐一次
+    registry.addListener(_onRegistryChanged);
+  }
+
+  void _onRegistryChanged() {
+    if (mounted) setState(() {});
+  }
+
+  @override
+  void dispose() {
+    _registry?.removeListener(_onRegistryChanged);
+    super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
     final provided = _providedCubit(context);
-    // TEMP-DIAG
-    appLogger.d('[GitGraphDiag] pane build provided=${provided != null} '
-        'root=${widget.repoRoot} ws=${widget.workspaceId}');
     if (provided != null) {
       return BlocProvider.value(
         value: provided,
@@ -65,12 +86,8 @@ class _GitGraphPaneState extends State<GitGraphPane> {
       );
     }
     final workContext = _resolveWorkContext(context);
-    // TEMP-DIAG
-    appLogger.d('[GitGraphDiag] pane workContext=${workContext?.mode.name ?? 'NULL'} '
-        'scopeSlices=${WorkspaceToolsScope.maybeOf(context)?.targetSlices.length ?? -1} '
-        'retry=$_contextRetries');
     if (workContext == null) {
-      _scheduleContextRetry();
+      // scope 尚未注册完成；registry 监听会在其就绪时触发重建。
       return const Center(
         child: SizedBox(
           width: 18,
