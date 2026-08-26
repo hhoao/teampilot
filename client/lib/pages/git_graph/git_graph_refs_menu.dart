@@ -156,35 +156,41 @@ class _GitGraphRefsMenuState extends State<GitGraphRefsMenu> {
       else ...[
         if (locals.isNotEmpty) ...[
           _sectionHeader(Icons.call_split, l10n.gitGraphLocalBranches),
-          for (final branch in locals)
-            TpActionMenuSpec.item(
-              value: _RefEntry(
-                _RefSection.local,
-                branch.name,
-                isCurrent: branch.isCurrent,
+          TpActionMenuSpec.scroll(children: [
+            for (final branch in locals)
+              TpActionMenuSpec.item(
+                value: _RefEntry(
+                  _RefSection.local,
+                  branch.name,
+                  isCurrent: branch.isCurrent,
+                ),
+                icon: Icons.call_split_outlined,
+                label: branch.name,
+                selected: branch.isCurrent,
               ),
-              icon: Icons.call_split_outlined,
-              label: branch.name,
-              selected: branch.isCurrent,
-            ),
+          ]),
         ],
         if (remotes.isNotEmpty) ...[
           _sectionHeader(Icons.cloud_outlined, l10n.gitGraphRemoteBranches),
-          for (final branch in remotes)
-            TpActionMenuSpec.item(
-              value: _RefEntry(_RefSection.remote, branch.name),
-              icon: Icons.cloud_outlined,
-              label: branch.name,
-            ),
+          TpActionMenuSpec.scroll(children: [
+            for (final branch in remotes)
+              TpActionMenuSpec.item(
+                value: _RefEntry(_RefSection.remote, branch.name),
+                icon: Icons.cloud_outlined,
+                label: branch.name,
+              ),
+          ]),
         ],
         if (widget.state.tags.isNotEmpty) ...[
           _sectionHeader(Icons.sell_outlined, l10n.gitGraphTags),
-          for (final tag in widget.state.tags)
-            TpActionMenuSpec.item(
-              value: _RefEntry(_RefSection.tag, tag.name),
-              icon: Icons.sell_outlined,
-              label: tag.name,
-            ),
+          TpActionMenuSpec.scroll(children: [
+            for (final tag in widget.state.tags)
+              TpActionMenuSpec.item(
+                value: _RefEntry(_RefSection.tag, tag.name),
+                icon: Icons.sell_outlined,
+                label: tag.name,
+              ),
+          ]),
         ],
       ],
     ];

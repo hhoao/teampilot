@@ -350,12 +350,14 @@ class _StashMenuState extends State<_StashMenu> {
           return buildTpActionMenuChildren(
             context: context,
             specs: [
-              for (final stash in widget.state.stashList)
-                TpActionMenuSpec.item(
-                  value: stash,
-                  icon: Icons.inventory_2_outlined,
-                  label: '${stash.selector} ${stash.subject}',
-                ),
+              TpActionMenuSpec.scroll(children: [
+                for (final stash in widget.state.stashList)
+                  TpActionMenuSpec.item(
+                    value: stash,
+                    icon: Icons.inventory_2_outlined,
+                    label: '${stash.selector} ${stash.subject}',
+                  ),
+              ]),
             ],
             menuController: controller,
             onSelect: (value) {
