@@ -55,39 +55,80 @@ Future<String?> showComposeCustomModelIdDialog(
   required String confirmLabel,
   String initial = '',
 }) {
-  final controller = TextEditingController(text: initial);
   return showDialog<String>(
     context: context,
-    builder: (dialogContext) => TpDialog(
+    builder: (dialogContext) => _ComposeCustomModelIdDialog(
+      title: title,
+      confirmLabel: confirmLabel,
+      initial: initial,
+    ),
+  );
+}
+
+class _ComposeCustomModelIdDialog extends StatefulWidget {
+  const _ComposeCustomModelIdDialog({
+    required this.title,
+    required this.confirmLabel,
+    required this.initial,
+  });
+
+  final String title;
+  final String confirmLabel;
+  final String initial;
+
+  @override
+  State<_ComposeCustomModelIdDialog> createState() =>
+      _ComposeCustomModelIdDialogState();
+}
+
+class _ComposeCustomModelIdDialogState
+    extends State<_ComposeCustomModelIdDialog> {
+  late final TextEditingController _controller;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = TextEditingController(text: widget.initial);
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return TpDialog(
       maxWidth: 420,
       child: Column(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           TpDialogHeader(
-            title: title,
-            onClose: () => Navigator.pop(dialogContext),
+            title: widget.title,
+            onClose: () => Navigator.pop(context),
           ),
           const SizedBox(height: 16),
-          TextField(controller: controller, autofocus: true),
+          TextField(controller: _controller, autofocus: true),
           TpDialogActions(children: [
             TextButton(
-              onPressed: () => Navigator.pop(dialogContext),
-              child: Text(dialogContext.l10n.cancel),
+              onPressed: () => Navigator.pop(context),
+              child: Text(context.l10n.cancel),
             ),
             FilledButton(
               onPressed: () {
-                final id = controller.text.trim();
+                final id = _controller.text.trim();
                 if (id.isEmpty) return;
-                Navigator.pop(dialogContext, id);
+                Navigator.pop(context, id);
               },
-              child: Text(confirmLabel),
+              child: Text(widget.confirmLabel),
             ),
           ]),
         ],
       ),
-    ),
-  );
+    );
+  }
 }
 
 class _SimpleCustomLaunchDialog extends StatefulWidget {
