@@ -178,6 +178,7 @@ import '../services/cli/cursor/cursor_bootstrap_entry.dart';
 import '../services/cli/opencode/opencode_bootstrap_entry.dart';
 import '../services/host/host_one_shot_runner_for_context.dart';
 import '../services/host/host_process_starter_for_context.dart';
+import '../services/host/host_shell_path_resolver.dart';
 import '../services/cli/claude/provider/claude_provider_credentials_service.dart';
 import '../services/cli/codex/provider/codex_provider_credentials_service.dart';
 import '../services/cli/opencode/provider/opencode_models_service.dart';
@@ -600,6 +601,9 @@ Future<AppShell> buildAppShell({
       appLogger.i('[boot] +${bootSw.elapsedMilliseconds}ms $phase');
 
   boot('start');
+  // Capture the user's real login-shell PATH early (POSIX desktops) so local
+  // PTY children see Homebrew/nvm/~/.local/bin despite sparse GUI PATH.
+  unawaited(HostShellPathResolver.warmup());
   final documentsFuture =
       defaultWorkspaceDirectoryFuture ??
       DefaultWorkspaceDirectory.resolve(preferences: preferences);
