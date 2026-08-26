@@ -112,7 +112,11 @@ void main() {
         groupByCli: true,
       );
 
-      final presetRow = specs.first;
+      // Presets are wrapped in a fixed-height scroll block.
+      expect(specs.first.isScrollBlock, isTrue);
+      final presetRows = specs.first.scrollChildren!;
+      expect(presetRows, hasLength(1));
+      final presetRow = presetRows.first;
       expect(presetRow.selected, isTrue);
       expect(presetRow.value, 'preset-1');
 

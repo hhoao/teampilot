@@ -48,12 +48,14 @@ void main() {
         selectedPresetId: 'b',
       );
 
-      expect(specs.first.isDivider, isFalse);
-      expect(specs[0].label, 'Alpha');
-      expect(specs[0].selected, isFalse);
-      expect(specs[0].iconWidget, isNotNull);
-      expect(specs[1].selected, isTrue);
-      expect(specs[1].iconWidget, isNotNull);
+      expect(specs.first.isScrollBlock, isTrue);
+      final presetRows = specs.first.scrollChildren!;
+      expect(presetRows.first.isDivider, isFalse);
+      expect(presetRows[0].label, 'Alpha');
+      expect(presetRows[0].selected, isFalse);
+      expect(presetRows[0].iconWidget, isNotNull);
+      expect(presetRows[1].selected, isTrue);
+      expect(presetRows[1].iconWidget, isNotNull);
 
       final values = specs.map((s) => s.value).toList();
       expect(values, contains(ComposeModelPresetChipAction.savePreset));

@@ -11,6 +11,10 @@ import '../../utils/logging/logger_utils.dart';
 import '../cli/cli_brand_icon.dart';
 import 'package:shared_ui/shared_ui.dart';
 
+/// Fixed max-height applied to the scrollable presets group in the cascade
+/// menu so a long preset list doesn't push provider/actions out of view.
+const double kComposeCascadePresetsMaxHeight = 320;
+
 /// Sentinel values for optional model chip menu rows.
 enum ComposeModelPresetChipAction {
   manage,
@@ -221,37 +225,38 @@ List<TpActionMenuSpec> buildComposeModelCascadeMenuSpecs({
     final rows = <TpActionMenuSpec>[
       if (p.models.isEmpty)
         TpActionMenuSpec.item(
-          value: null, icon: Icons.cloud_off_outlined,
+          value: null,
           label: noModelsLabel, enabled: false)
       else
         for (final model in p.models)
           if ((p.effortByModel[model]?.isNotEmpty ?? false))
             TpActionMenuSpec.submenu(
               value: CascadeModelPick(cli: group.cli, providerId: p.id, modelId: model),
-              icon: Icons.memory_outlined,
               label: model,
               onOpen: () => onModelsOpened?.call(group.cli, p.id, p.config),
               children: [
                 TpActionMenuSpec.item(
                   value: CascadeModelPick(cli: group.cli, providerId: p.id,
                     modelId: model),
-                  icon: Icons.speed_outlined, label: defaultEffortLabel,
+                  label: defaultEffortLabel,
                   selected: false),
                 for (final e in p.effortByModel[model]!)
                   TpActionMenuSpec.item(
                     value: CascadeEffortPick(cli: group.cli, providerId: p.id,
                       modelId: model, effort: e),
-                    icon: Icons.speed_outlined, label: e),
+                    label: e),
               ],
             )
           else
             TpActionMenuSpec.item(
               value: CascadeModelPick(cli: group.cli, providerId: p.id, modelId: model),
-              icon: Icons.memory_outlined, label: model),
-      if (p.supportsCustomModelEntry)
+              label: model),
+      if (p.supportsCustomModelEntry) ...[
+        const TpActionMenuSpec.divider(),
         TpActionMenuSpec.item(
           value: CascadeCustomModelRequest(cli: group.cli, providerId: p.id),
-          icon: Icons.edit_outlined, label: customModelIdLabel),
+          label: customModelIdLabel),
+      ],
     ];
     return rows;
   }
@@ -274,10 +279,15 @@ List<TpActionMenuSpec> buildComposeModelCascadeMenuSpecs({
       TpActionMenuSpec.item(value: null, icon: Icons.terminal_outlined,
         label: emptyHintLabel, enabled: false)
     else
-      for (final preset in presets)
-        TpActionMenuSpec.item(value: preset.id,
-          iconWidget: _PresetCliMenuIcon(cli: preset.cli),
-          label: preset.name, selected: preset.id == selectedPresetId),
+      TpActionMenuSpec.scroll(
+        maxHeight: kComposeCascadePresetsMaxHeight,
+        children: [
+          for (final preset in presets)
+            TpActionMenuSpec.item(value: preset.id,
+              iconWidget: _PresetCliMenuIcon(cli: preset.cli),
+              label: preset.name, selected: preset.id == selectedPresetId),
+        ],
+      ),
     const TpActionMenuSpec.divider(),
     if (!hasProviderRows)
       TpActionMenuSpec.item(value: null, icon: Icons.cloud_off_outlined,
