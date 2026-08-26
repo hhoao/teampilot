@@ -9,6 +9,7 @@ import '../../cubits/git_graph_cubit.dart';
 import '../../l10n/l10n_extensions.dart';
 import '../../models/git_graph.dart';
 import 'git_graph_menus.dart';
+import 'git_graph_refs_menu.dart';
 
 /// 图面板顶部工具条：分支范围切换、fetch/pull/push、stash 弹层、搜索 + 模式、刷新。
 /// 无状态：所有回调走 [GitGraphCubit] / [GitGraphActionsController]，不做 IO。
@@ -54,6 +55,8 @@ class GitGraphToolbar extends StatelessWidget {
           ),
           const SizedBox(width: 4),
           _StashMenu(state: state),
+          const SizedBox(width: 4),
+          GitGraphRefsMenu(state: state),
           const SizedBox(width: 8),
           Expanded(child: _searchField(context)),
           const SizedBox(width: 4),

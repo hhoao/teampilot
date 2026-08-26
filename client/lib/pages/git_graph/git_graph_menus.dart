@@ -7,8 +7,9 @@ import '../../cubits/git_graph_cubit.dart';
 import '../../l10n/l10n_extensions.dart';
 import '../../models/git_graph.dart';
 
-/// 行级右键 / 长按菜单：checkout 本地分支、在此建分支 / 标签、cherry-pick、
-/// revert、reset（hard 需输入当前分支名确认）与复制哈希 / 说明。
+/// 行级右键 / 长按菜单：checkout 本地分支或该提交（分离 HEAD）、重命名 / 删除 /
+/// 合并本地分支、删除 / 推送标签、在此建分支 / 标签、cherry-pick、revert、
+/// reset（hard 需输入当前分支名确认）与复制哈希 / 说明。
 /// 所有写操作经 [GitGraphActionsController]；成败反馈由状态栏错误区呈现。
 Future<void> showCommitContextMenu(
   BuildContext context,
@@ -18,10 +19,13 @@ Future<void> showCommitContextMenu(
   GitGraphState state,
 ) async {
   String? localBranch;
+  String? tagName;
   for (final ref in row.refs) {
-    if (ref.kind == GitRefDecorationKind.localBranch) {
+    if (ref.kind == GitRefDecorationKind.localBranch && localBranch == null) {
       localBranch = ref.name;
-      break;
+    }
+    if (ref.kind == GitRefDecorationKind.tag && tagName == null) {
+      tagName = ref.name;
     }
   }
   final l10n = context.l10n;
@@ -35,12 +39,32 @@ Future<void> showCommitContextMenu(
       local.dx + 1,
       local.dy + 1,
     ),
-    items: _menuItems(l10n, localBranch),
+    items: _menuItems(l10n, localBranch, tagName),
   );
   if (choice == null || !context.mounted) return;
   switch (choice) {
     case 'checkout':
       if (localBranch != null) await actions.checkoutBranch(localBranch);
+    case 'rename-branch':
+      final newName = await showRenameBranchDialog(context, localBranch!);
+      if (newName == null || newName.isEmpty || !context.mounted) return;
+      await actions.renameBranch(localBranch, newName);
+    case 'delete-branch':
+      final confirmed = await confirmDangerAction(
+        context,
+        title: l10n.gitGraphDeleteBranchTitle,
+        body: l10n.gitGraphDeleteBranchConfirmBody(localBranch!),
+      );
+      if (confirmed && context.mounted) await actions.deleteBranch(localBranch);
+    case 'merge-branch':
+      await actions.mergeIntoCurrent(localBranch!);
+    case 'checkout-commit':
+      final confirmed = await confirmDangerAction(
+        context,
+        title: l10n.gitGraphCheckoutCommit,
+        body: l10n.gitGraphCheckoutCommitConfirmBody(row.hash),
+      );
+      if (confirmed && context.mounted) await actions.checkoutCommit(row.hash);
     case 'create-branch':
       final name = await _promptBranchName(context);
       if (name == null || name.isEmpty || !context.mounted) return;
@@ -53,6 +77,15 @@ Future<void> showCommitContextMenu(
         at: row.hash,
         message: tag.$2.isEmpty ? null : tag.$2,
       );
+    case 'delete-tag':
+      final confirmed = await confirmDangerAction(
+        context,
+        title: l10n.gitGraphDeleteTagTitle,
+        body: l10n.gitGraphDeleteTagConfirmBody(tagName!),
+      );
+      if (confirmed && context.mounted) await actions.deleteTag(tagName);
+    case 'push-tag':
+      await actions.pushTag(tagName!);
     case 'cherry-pick':
       await actions.cherryPick(row.hash);
     case 'revert':
@@ -95,24 +128,43 @@ Future<void> showCommitContextMenu(
 List<PopupMenuEntry<String>> _menuItems(
   AppLocalizations l10n,
   String? localBranch,
+  String? tagName,
 ) => [
-  if (localBranch != null)
+  if (localBranch != null) ...[
     PopupMenuItem<String>(
       value: 'checkout',
       child: Text(l10n.gitGraphCheckoutBranch(localBranch)),
     ),
+    PopupMenuItem<String>(
+      value: 'rename-branch',
+      child: Text(l10n.gitGraphRenameBranch),
+    ),
+    PopupMenuItem<String>(
+      value: 'delete-branch',
+      child: Text(l10n.gitGraphDeleteBranch(localBranch)),
+    ),
+    PopupMenuItem<String>(
+      value: 'merge-branch',
+      child: Text(l10n.gitGraphMergeIntoCurrent(localBranch)),
+    ),
+  ],
+  PopupMenuItem<String>(value: 'create-branch', child: Text(l10n.gitGraphCreateBranchHere)),
+  PopupMenuItem<String>(value: 'create-tag', child: Text(l10n.gitGraphCreateTagHere)),
   PopupMenuItem<String>(
-    value: 'create-branch',
-    child: Text(l10n.gitGraphCreateBranchHere),
+    value: 'checkout-commit',
+    child: Text(l10n.gitGraphCheckoutCommit),
   ),
-  PopupMenuItem<String>(
-    value: 'create-tag',
-    child: Text(l10n.gitGraphCreateTagHere),
-  ),
-  PopupMenuItem<String>(
-    value: 'cherry-pick',
-    child: Text(l10n.gitGraphCherryPick),
-  ),
+  if (tagName != null) ...[
+    PopupMenuItem<String>(
+      value: 'push-tag',
+      child: Text(l10n.gitGraphPushTag(tagName)),
+    ),
+    PopupMenuItem<String>(
+      value: 'delete-tag',
+      child: Text(l10n.gitGraphDeleteTag(tagName)),
+    ),
+  ],
+  PopupMenuItem<String>(value: 'cherry-pick', child: Text(l10n.gitGraphCherryPick)),
   PopupMenuItem<String>(value: 'revert', child: Text(l10n.gitGraphRevert)),
   PopupMenuItem<String>(enabled: false, child: Text(l10n.gitGraphReset)),
   PopupMenuItem<String>(
@@ -154,6 +206,18 @@ Future<String?> _promptBranchName(BuildContext context) {
     title: l10n.gitGraphCreateBranchTitle,
     labelText: l10n.gitGraphBranchNameLabel,
     confirmLabel: l10n.gitGraphCreate,
+  ).then((value) => value?.trim());
+}
+
+/// 重命名对话框：预填旧分支名，返回新名字（取消返回 null）。
+Future<String?> showRenameBranchDialog(BuildContext context, String oldName) {
+  final l10n = context.l10n;
+  return showTpTextPromptDialog(
+    context,
+    title: l10n.gitGraphRenameBranchTitle,
+    initialText: oldName,
+    labelText: l10n.gitGraphBranchNameLabel,
+    confirmLabel: l10n.confirm,
   ).then((value) => value?.trim());
 }
 

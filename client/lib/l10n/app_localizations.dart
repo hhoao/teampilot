@@ -14617,6 +14617,102 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Drop {selector}? This cannot be undone.'**
   String gitGraphStashDropConfirmBody(String selector);
+
+  /// No description provided for @gitGraphRenameBranch.
+  ///
+  /// In en, this message translates to:
+  /// **'Rename branch…'**
+  String get gitGraphRenameBranch;
+
+  /// No description provided for @gitGraphRenameBranchTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Rename branch'**
+  String get gitGraphRenameBranchTitle;
+
+  /// No description provided for @gitGraphDeleteBranch.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete branch {name}'**
+  String gitGraphDeleteBranch(String name);
+
+  /// No description provided for @gitGraphDeleteBranchTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete branch'**
+  String get gitGraphDeleteBranchTitle;
+
+  /// No description provided for @gitGraphDeleteBranchConfirmBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete branch \"{name}\"? Commits only reachable from it may become unreachable. This cannot be undone.'**
+  String gitGraphDeleteBranchConfirmBody(String name);
+
+  /// No description provided for @gitGraphMergeIntoCurrent.
+  ///
+  /// In en, this message translates to:
+  /// **'Merge {branch} into current branch'**
+  String gitGraphMergeIntoCurrent(String branch);
+
+  /// No description provided for @gitGraphCheckoutCommit.
+  ///
+  /// In en, this message translates to:
+  /// **'Checkout this commit (detached HEAD)'**
+  String get gitGraphCheckoutCommit;
+
+  /// No description provided for @gitGraphCheckoutCommitConfirmBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Checkout {hash} with detached HEAD?'**
+  String gitGraphCheckoutCommitConfirmBody(String hash);
+
+  /// No description provided for @gitGraphDeleteTag.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete tag {name}'**
+  String gitGraphDeleteTag(String name);
+
+  /// No description provided for @gitGraphDeleteTagTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete tag'**
+  String get gitGraphDeleteTagTitle;
+
+  /// No description provided for @gitGraphDeleteTagConfirmBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete tag \"{name}\"? This cannot be undone.'**
+  String gitGraphDeleteTagConfirmBody(String name);
+
+  /// No description provided for @gitGraphPushTag.
+  ///
+  /// In en, this message translates to:
+  /// **'Push tag {name}'**
+  String gitGraphPushTag(String name);
+
+  /// No description provided for @gitGraphBranchesTags.
+  ///
+  /// In en, this message translates to:
+  /// **'Branches & tags'**
+  String get gitGraphBranchesTags;
+
+  /// No description provided for @gitGraphLocalBranches.
+  ///
+  /// In en, this message translates to:
+  /// **'Local branches'**
+  String get gitGraphLocalBranches;
+
+  /// No description provided for @gitGraphRemoteBranches.
+  ///
+  /// In en, this message translates to:
+  /// **'Remote branches'**
+  String get gitGraphRemoteBranches;
+
+  /// No description provided for @gitGraphTags.
+  ///
+  /// In en, this message translates to:
+  /// **'Tags'**
+  String get gitGraphTags;
 }
 
 class _AppLocalizationsDelegate

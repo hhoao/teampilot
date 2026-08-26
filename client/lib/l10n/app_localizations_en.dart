@@ -8209,4 +8209,66 @@ class AppLocalizationsEn extends AppLocalizations {
   String gitGraphStashDropConfirmBody(String selector) {
     return 'Drop $selector? This cannot be undone.';
   }
+
+  @override
+  String get gitGraphRenameBranch => 'Rename branch…';
+
+  @override
+  String get gitGraphRenameBranchTitle => 'Rename branch';
+
+  @override
+  String gitGraphDeleteBranch(String name) {
+    return 'Delete branch $name';
+  }
+
+  @override
+  String get gitGraphDeleteBranchTitle => 'Delete branch';
+
+  @override
+  String gitGraphDeleteBranchConfirmBody(String name) {
+    return 'Delete branch \"$name\"? Commits only reachable from it may become unreachable. This cannot be undone.';
+  }
+
+  @override
+  String gitGraphMergeIntoCurrent(String branch) {
+    return 'Merge $branch into current branch';
+  }
+
+  @override
+  String get gitGraphCheckoutCommit => 'Checkout this commit (detached HEAD)';
+
+  @override
+  String gitGraphCheckoutCommitConfirmBody(String hash) {
+    return 'Checkout $hash with detached HEAD?';
+  }
+
+  @override
+  String gitGraphDeleteTag(String name) {
+    return 'Delete tag $name';
+  }
+
+  @override
+  String get gitGraphDeleteTagTitle => 'Delete tag';
+
+  @override
+  String gitGraphDeleteTagConfirmBody(String name) {
+    return 'Delete tag \"$name\"? This cannot be undone.';
+  }
+
+  @override
+  String gitGraphPushTag(String name) {
+    return 'Push tag $name';
+  }
+
+  @override
+  String get gitGraphBranchesTags => 'Branches & tags';
+
+  @override
+  String get gitGraphLocalBranches => 'Local branches';
+
+  @override
+  String get gitGraphRemoteBranches => 'Remote branches';
+
+  @override
+  String get gitGraphTags => 'Tags';
 }

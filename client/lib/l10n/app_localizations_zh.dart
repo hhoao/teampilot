@@ -7867,4 +7867,66 @@ class AppLocalizationsZh extends AppLocalizations {
   String gitGraphStashDropConfirmBody(String selector) {
     return '确定丢弃 $selector 吗？此操作无法撤销。';
   }
+
+  @override
+  String get gitGraphRenameBranch => '重命名分支…';
+
+  @override
+  String get gitGraphRenameBranchTitle => '重命名分支';
+
+  @override
+  String gitGraphDeleteBranch(String name) {
+    return '删除分支 $name';
+  }
+
+  @override
+  String get gitGraphDeleteBranchTitle => '删除分支';
+
+  @override
+  String gitGraphDeleteBranchConfirmBody(String name) {
+    return '确定删除分支“$name”吗？仅能从该分支到达的提交可能变得不可达，此操作无法撤销。';
+  }
+
+  @override
+  String gitGraphMergeIntoCurrent(String branch) {
+    return '合并 $branch 到当前分支';
+  }
+
+  @override
+  String get gitGraphCheckoutCommit => '检出该提交（分离 HEAD）';
+
+  @override
+  String gitGraphCheckoutCommitConfirmBody(String hash) {
+    return '以分离 HEAD 状态检出 $hash 吗？';
+  }
+
+  @override
+  String gitGraphDeleteTag(String name) {
+    return '删除标签 $name';
+  }
+
+  @override
+  String get gitGraphDeleteTagTitle => '删除标签';
+
+  @override
+  String gitGraphDeleteTagConfirmBody(String name) {
+    return '确定删除标签“$name”吗？此操作无法撤销。';
+  }
+
+  @override
+  String gitGraphPushTag(String name) {
+    return '推送标签 $name';
+  }
+
+  @override
+  String get gitGraphBranchesTags => '分支与标签';
+
+  @override
+  String get gitGraphLocalBranches => '本地分支';
+
+  @override
+  String get gitGraphRemoteBranches => '远程分支';
+
+  @override
+  String get gitGraphTags => '标签';
 }

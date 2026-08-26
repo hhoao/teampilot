@@ -17,6 +17,8 @@ class FakeHistoryForGraph implements GitHistoryService {
         '-a\n'
         '+b\n',
     this.fullPages = false,
+    this.branchInfos = const [],
+    this.tagInfos = const [],
   });
 
   final List<GitGraphRow> rows;
@@ -27,6 +29,10 @@ class FakeHistoryForGraph implements GitHistoryService {
 
   /// 为真时按请求的 limit 循环填满每页，模拟“仍有更多提交”的大仓库。
   final bool fullPages;
+
+  /// `branches` / `tags` 返回的固定列表。
+  final List<GitBranchInfo> branchInfos;
+  final List<GitTagInfo> tagInfos;
 
   int graphCalls = 0;
   Map<String, Object?> lastArgs = {};
@@ -70,10 +76,10 @@ class FakeHistoryForGraph implements GitHistoryService {
   }) async => fileDiff;
 
   @override
-  Future<List<GitBranchInfo>> branches(String dir) async => const [];
+  Future<List<GitBranchInfo>> branches(String dir) async => branchInfos;
 
   @override
-  Future<List<GitTagInfo>> tags(String dir) async => const [];
+  Future<List<GitTagInfo>> tags(String dir) async => tagInfos;
 
   @override
   Future<List<GitStashEntry>> stashList(String dir) async => const [];
@@ -126,6 +132,42 @@ class RecordingGraphActions implements GitHistoryActions {
   }
 
   @override
+  Future<void> renameBranch(String dir, String oldName, String newName) async {
+    calls.add(['rename-branch', oldName, newName]);
+    _maybeThrow();
+  }
+
+  @override
+  Future<void> checkoutBranch(String dir, String name) async {
+    calls.add(['checkout-branch', name]);
+    _maybeThrow();
+  }
+
+  @override
+  Future<void> checkoutCommit(String dir, String hash) async {
+    calls.add(['checkout-commit', hash]);
+    _maybeThrow();
+  }
+
+  @override
+  Future<void> mergeIntoCurrent(String dir, String refName) async {
+    calls.add(['merge', refName]);
+    _maybeThrow();
+  }
+
+  @override
+  Future<void> deleteTag(String dir, String name) async {
+    calls.add(['delete-tag', name]);
+    _maybeThrow();
+  }
+
+  @override
+  Future<void> pushTag(String dir, String name, {String remote = 'origin'}) async {
+    calls.add(['push-tag', name, remote]);
+    _maybeThrow();
+  }
+
+  @override
   Future<void> resetTo(
     String dir,
     String ref, {
@@ -150,7 +192,10 @@ class RecordingGraphActions implements GitHistoryActions {
   }
 }
 
-GitCommitRow graphCommitRow(String hash) => GitCommitRow(
+GitCommitRow graphCommitRow(
+  String hash, {
+  List<GitRefDecoration> refs = const [],
+}) => GitCommitRow(
   edges: const [GitGraphEdge(0, 0, 0)],
   node: const GitGraphNode(0, 0),
   hash: hash,
@@ -159,7 +204,7 @@ GitCommitRow graphCommitRow(String hash) => GitCommitRow(
   authorEmail: 'a@x',
   authorDate: DateTime.fromMillisecondsSinceEpoch(0, isUtc: true),
   subject: 's-$hash',
-  refs: const [],
+  refs: refs,
 );
 
 GitRepoStatus repoStatus() => GitRepoStatus(
