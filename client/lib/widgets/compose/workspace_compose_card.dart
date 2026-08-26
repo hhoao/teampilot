@@ -23,7 +23,6 @@ import 'compose_chrome.dart';
 import 'compose_file_drop_region.dart';
 import 'compose_focus_shell.dart';
 import 'compose_menu_chip.dart';
-import 'compose_model_preset_chip.dart';
 import 'compose_paste_clip_bar.dart';
 import 'compose_paste_editor_dialog.dart';
 import 'compose_permission_chip.dart';
@@ -428,19 +427,17 @@ class WorkspaceComposeCard extends StatelessWidget {
         ),
         SizedBox(width: spacing.sm),
       ],
-      if (chrome.onPresetSelected != null &&
-          chrome.modelPresetLabel != null &&
-          chrome.emptyPresetHintLabel != null) ...[
-        ComposeModelPresetChip(
+      if (chrome.onModelCascadeSelected != null &&
+          chrome.modelCascadeSpecs != null &&
+          chrome.modelPresetLabel != null) ...[
+        ComposeMenuChip(
           palette: palette,
-          sameCliPresets: chrome.sameCliPresets,
-          selectedPresetId: chrome.selectedPresetId,
+          icon: Icons.terminal_outlined,
+          leading: chrome.modelChipLeading,
           label: chrome.modelPresetLabel!,
-          emptyHintLabel: chrome.emptyPresetHintLabel!,
-          onPresetSelected: chrome.onPresetSelected!,
-          customLabel: chrome.customLabel,
-          customSelected: chrome.customSelected,
-          onCustom: chrome.onCustom,
+          minWidth: 200,
+          specs: chrome.modelCascadeSpecs!,
+          onSelected: chrome.onModelCascadeSelected!,
         ),
         SizedBox(width: spacing.sm),
       ],
@@ -528,7 +525,7 @@ class WorkspaceComposeCard extends StatelessWidget {
 
   bool _hasBoundToolbar(BoundComposeChrome chrome) =>
       chrome.identityLabel != null ||
-      chrome.onPresetSelected != null ||
+      chrome.onModelCascadeSelected != null ||
       chrome.onPermissionSelected != null ||
       chrome.onTeamSettings != null;
 

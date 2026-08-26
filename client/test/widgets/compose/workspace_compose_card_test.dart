@@ -87,8 +87,14 @@ void main() {
     identityLabel: 'Team',
     identityIcon: Icons.groups_outlined,
     modelPresetLabel: 'Model',
-    emptyPresetHintLabel: 'No presets',
-    onPresetSelected: _noopString,
+    modelCascadeSpecs: [
+      TpActionMenuSpec.item(
+        value: 'preset-x',
+        icon: Icons.terminal_outlined,
+        label: 'X',
+      ),
+    ],
+    onModelCascadeSelected: _noopObject,
   );
 
   testWidgets('unbound chrome shows conversation mode label and drop region', (
@@ -253,5 +259,5 @@ void main() {
 
 void _noop(Object? _) {}
 void _noopBool(bool _) {}
-void _noopString(String _) {}
+void _noopObject(Object? _) {}
 void _noopPolicy(LaunchSecurityPolicy _) {}

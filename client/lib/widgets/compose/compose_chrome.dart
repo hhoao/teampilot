@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:shared_ui/shared_ui.dart';
 
-import '../../models/cli_preset.dart';
 import '../../models/launch_security_policy.dart';
 
 sealed class ComposeChrome {
@@ -66,14 +65,10 @@ final class BoundComposeChrome extends ComposeChrome {
     this.floating = false,
     this.identityLabel,
     this.identityIcon,
-    this.sameCliPresets = const [],
-    this.selectedPresetId,
     this.modelPresetLabel,
-    this.emptyPresetHintLabel,
-    this.onPresetSelected,
-    this.customLabel,
-    this.customSelected = false,
-    this.onCustom,
+    this.modelChipLeading,
+    this.modelCascadeSpecs,
+    this.onModelCascadeSelected,
     this.launchSecurityPolicy = LaunchSecurityPolicy.fullAccess,
     this.defaultPermissionsLabel,
     this.fullAccessPermissionsLabel,
@@ -100,14 +95,10 @@ final class BoundComposeChrome extends ComposeChrome {
   final String? identityLabel;
   final IconData? identityIcon;
 
-  final List<CliPreset> sameCliPresets;
-  final String? selectedPresetId;
   final String? modelPresetLabel;
-  final String? emptyPresetHintLabel;
-  final ValueChanged<String>? onPresetSelected;
-  final String? customLabel;
-  final bool customSelected;
-  final VoidCallback? onCustom;
+  final Widget? modelChipLeading;
+  final List<TpActionMenuSpec>? modelCascadeSpecs;
+  final ValueChanged<Object?>? onModelCascadeSelected;
 
   final LaunchSecurityPolicy launchSecurityPolicy;
   final String? defaultPermissionsLabel;
