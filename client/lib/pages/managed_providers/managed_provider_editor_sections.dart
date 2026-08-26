@@ -141,9 +141,11 @@ class ManagedProviderQuerySection extends StatelessWidget {
     required this.requestMappingController,
     required this.fieldMappingsController,
     required this.onMethodChanged,
-    this.strictEndpoint = false,
+    this.strictEndpointResolver = _defaultStrictEndpointResolver,
     super.key,
   });
+
+  static bool _defaultStrictEndpointResolver() => false;
 
   final ManagedProviderEditorSchema schema;
   final TextEditingController endpointController;
@@ -153,7 +155,10 @@ class ManagedProviderQuerySection extends StatelessWidget {
   final TextEditingController requestMappingController;
   final TextEditingController fieldMappingsController;
   final ValueChanged<String> onMethodChanged;
-  final bool strictEndpoint;
+
+  /// Evaluated inside the endpoint validator so the freshness of the adapter
+  /// / kind inputs is captured at validate time, not at build time.
+  final bool Function() strictEndpointResolver;
 
   @override
   Widget build(BuildContext context) {
@@ -173,7 +178,7 @@ class ManagedProviderQuerySection extends StatelessWidget {
             validator: (value) =>
                 isAllowedManagedProviderEndpoint(
                   value ?? '',
-                  allowHttpLocalhost: strictEndpoint,
+                  allowHttpLocalhost: strictEndpointResolver(),
                 )
                 ? null
                 : context.l10n.managedProvidersEndpointError,

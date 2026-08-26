@@ -74,12 +74,17 @@ class _TeamDefaultPresetConfigureDialogState
   TeamProfile get _baselineTeam => widget.team;
 
   void _applyCatalogCliChange(CliTool cli) {
+    final nextProviderId = _baselineTeam.providerForCli(cli);
     setState(() {
       _catalogCli = cli;
-      _providerId = _baselineTeam.providerForCli(cli);
+      _providerId = nextProviderId;
       _modelId = _baselineTeam.modelForCli(cli);
       _effortId = _baselineTeam.effortForCli(cli);
     });
+    // The provider field stays mounted across the CLI switch; sync its form
+    // value with the reset state so save-time validation cannot pass on the
+    // previous catalog's stale provider id.
+    _formKey.currentState?.setFieldValue('custom-provider', nextProviderId);
   }
 
   void _applyConfigKind(TeamLaunchConfigKind kind) {

@@ -351,6 +351,10 @@ class _MemberLaunchConfigureDialogState
       _modelId = '';
       _effortId = '';
     });
+    // The provider field stays mounted across the CLI switch; clear its stale
+    // form value so save-time validation sees the reset instead of the
+    // previous catalog's provider id.
+    _formKey.currentState?.setFieldValue('custom-provider', '');
   }
 
   /// Applies a preset choice when configuration type is [MemberLaunchConfigKind.preset].
