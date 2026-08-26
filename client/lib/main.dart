@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:io';
 
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import 'package:flutter_alacritty/flutter_alacritty.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -665,7 +666,7 @@ void main() async {
                 RepositoryProvider<WorkspaceWorktreeRegistry>.value(
                   value: shell.workspaceWorktreeRegistry,
                 ),
-                RepositoryProvider<WorkspaceToolsScopeRegistry>.value(
+                ListenableProvider<WorkspaceToolsScopeRegistry>.value(
                   value: shell.workspaceToolsScopeRegistry,
                 ),
                 RepositoryProvider<WorkspaceRunRegistry>.value(
