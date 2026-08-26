@@ -706,6 +706,7 @@ void main() async {
                   BlocProvider.value(value: shell.chatCubit),
                   BlocProvider.value(value: shell.memberPresenceCubit),
                   BlocProvider.value(value: shell.agentAttentionCubit),
+                  BlocProvider.value(value: shell.promptDeliveryStatusCubit),
                   BlocProvider.value(value: shell.mailboxCubit),
                   BlocProvider.value(value: shell.boardCubit),
                   BlocProvider.value(value: shell.aiHistoryCubit),

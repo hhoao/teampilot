@@ -11,6 +11,7 @@ import '../../cubits/cli_presets_cubit.dart';
 import '../../cubits/expert_hub_cubit.dart';
 import '../../cubits/launch_profile_cubit.dart';
 import '../../cubits/member_presence_cubit.dart';
+import '../../cubits/prompt_delivery_status_cubit.dart';
 import '../../cubits/plugin_cubit.dart';
 import '../../cubits/skill_cubit.dart';
 import '../../cubits/workbench/workbench_cubit.dart';
@@ -59,6 +60,7 @@ import 'agent_permission_attention_banner.dart';
 import 'compose_stop_visibility.dart';
 import 'history_continue_delivery.dart';
 import 'history_mailbox_queued_strip.dart';
+import 'prompt_delivery_recovery_strip.dart';
 import 'session_chat_voice_controller.dart';
 
 /// Self-contained compose section that reads its own cubits via
@@ -313,6 +315,33 @@ class SessionChatComposeSection extends StatelessWidget {
                       },
                     ),
                   if (!askCardVisible)
+                    Builder(
+                      builder: (context) {
+                        final recovery = _promptDeliveryRecovery(
+                          context,
+                          sessionId: session.sessionId,
+                          memberId: shellMemberId,
+                        );
+                        if (recovery == null) return const SizedBox.shrink();
+                        final cubit = context
+                            .read<PromptDeliveryStatusCubit>();
+                        return PromptDeliveryRecoveryStrip(
+                          key: ValueKey(
+                            'prompt-recovery-${recovery.deliveryId}',
+                          ),
+                          recovery: recovery,
+                          onRetry: () => unawaited(
+                            cubit.retry(
+                              sessionId: session.sessionId,
+                              memberId: shellMemberId,
+                            ),
+                          ),
+                          onRefresh: () =>
+                              cubit.refreshSession(session.sessionId),
+                        );
+                      },
+                    ),
+                  if (!askCardVisible)
                     ListenableBuilder(
                       listenable: voiceController,
                       builder: (context, _) {
@@ -528,6 +557,24 @@ class SessionChatComposeSection extends StatelessWidget {
   ExpertHubState? _readExpertHubState(BuildContext context) {
     try {
       return context.select<ExpertHubCubit, ExpertHubState>((c) => c.state);
+    } on ProviderNotFoundException {
+      return null;
+    }
+  }
+
+  /// Recovery snapshot for the compose seat. Null when the status cubit is
+  /// not in scope (standalone test harnesses) or the seat has nothing to
+  /// recover — never a build-time IO.
+  PromptDeliveryRecovery? _promptDeliveryRecovery(
+    BuildContext context, {
+    required String sessionId,
+    required String memberId,
+  }) {
+    try {
+      return context
+          .select<PromptDeliveryStatusCubit, PromptDeliveryRecovery?>(
+        (c) => c.state.recoveryFor(sessionId, memberId),
+      );
     } on ProviderNotFoundException {
       return null;
     }

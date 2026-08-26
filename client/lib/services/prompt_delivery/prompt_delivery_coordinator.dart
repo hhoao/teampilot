@@ -48,6 +48,16 @@ final class PromptDeliveryCoordinator {
   final Map<RuntimeSeatKey, Future<void>> _seatTails = {};
   final Map<String, PromptDeliveryState> _liveStates = {};
 
+  /// Claimed synchronously by [issueSubmit] before its first await so an
+  /// abort landing inside the real-IO `submitIssued` persist is observable:
+  /// [invalidateSubmittedDelivery] records the invalidation here while the
+  /// record has not yet reached `submitIssued`.
+  final Set<String> _submitPendingIds = {};
+
+  /// Submit attempts invalidated while they were still persisting. Their
+  /// fence must never open and their outcome must stay unresolved.
+  final Set<String> _submitInvalidatedIds = {};
+
   /// Creates the only non-terminal delivery allowed for [request.seat].
   Future<PromptDelivery> submit(PromptDeliveryRequest request) => _serialized(
     request.seat,
@@ -106,23 +116,56 @@ final class PromptDeliveryCoordinator {
     return delivery;
   }
 
-  /// Persists `submitIssued` before asking the terminal adapter to issue CR.
-  /// Returns the adapter's explicit write outcome; only `submitted` proves a
-  /// PTY submission happened.
+  /// Persists `submitIssued` before asking the terminal adapter to issue CR,
+  /// then owns the adapter's explicit outcome: only `submitted` leaves the
+  /// record awaiting confirmation. `dropped` and `failed` close the record
+  /// immediately so a later weak prompt event can never mis-confirm a
+  /// delivery whose CR never happened.
   Future<PromptSubmissionResult> issueSubmit(String id) async {
-    final delivery = await _update(
-      id,
-      allowed: const {
-        PromptDeliveryState.created,
-        PromptDeliveryState.waitingForInputSurface,
-        PromptDeliveryState.staged,
-      },
-      next: PromptDeliveryState.submitIssued,
-    );
-    return commands.submit(
+    // Claimed before the first await: an abort racing this persist is
+    // otherwise invisible (the live fence is not submitIssued yet).
+    _submitPendingIds.add(id);
+    PromptDelivery delivery;
+    try {
+      delivery = await _update(
+        id,
+        allowed: const {
+          PromptDeliveryState.created,
+          PromptDeliveryState.waitingForInputSurface,
+          PromptDeliveryState.staged,
+        },
+        next: PromptDeliveryState.submitIssued,
+      );
+    } on Object {
+      _submitPendingIds.remove(id);
+      rethrow;
+    }
+    if (_submitInvalidatedIds.remove(id)) {
+      await _transition(
+        delivery,
+        PromptDeliveryState.submittedUnknown,
+      );
+      return PromptSubmissionResult.dropped;
+    }
+    final result = await commands.submit(
       delivery,
-      canExecute: () => canExecute(id, PromptDeliveryState.submitIssued),
+      canExecute: () =>
+          canExecute(id, PromptDeliveryState.submitIssued) &&
+          !_submitInvalidatedIds.contains(id),
     );
+    switch (result) {
+      case PromptSubmissionResult.submitted:
+        break;
+      case PromptSubmissionResult.dropped:
+        await _transitionIfUnconfirmed(id, PromptDeliveryState.submittedUnknown);
+      case PromptSubmissionResult.failed:
+        await _transitionIfUnconfirmed(
+          id,
+          PromptDeliveryState.failed,
+          failureReason: 'terminal_surface_unavailable',
+        );
+    }
+    return result;
   }
 
   /// The synchronous fence terminal queues consult immediately before a PTY
@@ -198,15 +241,42 @@ final class PromptDeliveryCoordinator {
   /// transition still records that a prior CR may already have reached the
   /// process.
   void invalidateSubmittedDelivery(String id) {
-    if (_liveStates[id] != PromptDeliveryState.submitIssued) return;
-    _liveStates[id] = PromptDeliveryState.submittedUnknown;
-    unawaited(
-      _update(
+    final live = _liveStates[id];
+    if (live == PromptDeliveryState.submitIssued) {
+      _liveStates[id] = PromptDeliveryState.submittedUnknown;
+      unawaited(
+        _update(
+          id,
+          allowed: const {PromptDeliveryState.submitIssued},
+          next: PromptDeliveryState.submittedUnknown,
+        ).then<void>((_) {}, onError: (Object _, StackTrace __) {}),
+      );
+      return;
+    }
+    // The submit persist is still in flight; remember the invalidation so
+    // issueSubmit closes the delivery without ever opening its fence.
+    if (_submitPendingIds.contains(id)) {
+      _submitInvalidatedIds.add(id);
+    }
+  }
+
+  /// Seat-serialized close-out of a submit whose adapter reported it did not
+  /// happen. Tolerates a racing terminal transition (interrupt / restore).
+  Future<void> _transitionIfUnconfirmed(
+    String id,
+    PromptDeliveryState next, {
+    String? failureReason,
+  }) async {
+    try {
+      await _update(
         id,
         allowed: const {PromptDeliveryState.submitIssued},
-        next: PromptDeliveryState.submittedUnknown,
-      ).then<void>((_) {}, onError: (Object _, StackTrace __) {}),
-    );
+        next: next,
+        failureReason: failureReason,
+      );
+    } on StateError {
+      // A concurrent transition already resolved the record.
+    }
   }
 
   Future<void> _confirm(PromptDelivery delivery) async {

@@ -7730,4 +7730,16 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get managedProvidersResetsSoon => '即将重置';
+
+  @override
+  String get promptDeliveryUnknownTitle => '投递状态未知';
+
+  @override
+  String get promptDeliveryReviewMessage => '查看消息内容';
+
+  @override
+  String get promptDeliveryHideMessage => '收起消息';
+
+  @override
+  String get promptDeliveryResend => '重新发送';
 }

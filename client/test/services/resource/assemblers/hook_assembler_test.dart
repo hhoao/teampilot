@@ -382,7 +382,14 @@ void main() {
         ],
       );
 
-      expect(result.entries, isEmpty);
+      // HTTP endpoint hooks are dropped for CLIs whose native config cannot
+      // express them, while OpenCode's runtime plugin materialization stays:
+      // it is contributed through this same profile assembly step
+      // (NativePluginHookAction), not as an HTTP hook.
+      expect(result.entries.map((entry) => entry.id), [
+        'teampilot-runtime-event-plugin',
+      ]);
+      expect(result.entries.single.action, isA<NativePluginHookAction>());
       expect(result.assembly.errors, isEmpty);
     },
   );

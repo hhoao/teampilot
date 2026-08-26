@@ -14359,6 +14359,30 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Resets soon'**
   String get managedProvidersResetsSoon;
+
+  /// No description provided for @promptDeliveryUnknownTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Delivery status unknown'**
+  String get promptDeliveryUnknownTitle;
+
+  /// No description provided for @promptDeliveryReviewMessage.
+  ///
+  /// In en, this message translates to:
+  /// **'Review message'**
+  String get promptDeliveryReviewMessage;
+
+  /// No description provided for @promptDeliveryHideMessage.
+  ///
+  /// In en, this message translates to:
+  /// **'Hide message'**
+  String get promptDeliveryHideMessage;
+
+  /// No description provided for @promptDeliveryResend.
+  ///
+  /// In en, this message translates to:
+  /// **'Resend'**
+  String get promptDeliveryResend;
 }
 
 class _AppLocalizationsDelegate

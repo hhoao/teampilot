@@ -48,7 +48,8 @@ class TeammateBusMcpGateway {
     }
   }
 
-  /// Closes HTTP + raw-socket listeners (tests / shutdown).
+  /// Closes HTTP + raw-socket listeners (tests / shutdown). The attached
+  /// runtime-event gateway's projection subscriptions are cancelled too.
   Future<void> dispose() async {
     for (final sessionId in _delegates.keys.toList()) {
       await unregister(sessionId);
@@ -56,6 +57,8 @@ class TeammateBusMcpGateway {
     for (final sessionId in _agentStatusSessions.toList()) {
       unregisterAgentStatusSession(sessionId);
     }
+    await _agentEventGateway?.close();
+    _agentEventGateway = null;
     await _http?.close(force: true);
     _http = null;
     await _rawSocket?.close();

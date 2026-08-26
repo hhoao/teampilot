@@ -369,7 +369,11 @@ void main() {
           );
 
       expect(report.hardDiagnostics, isEmpty);
-      expect(report.hooks, isEmpty);
+      // OpenCode has no native HTTP hooks, but its runtime plugin is still
+      // materialized through this assembly step.
+      expect(report.hooks.map((hook) => hook.id), [
+        'teampilot-runtime-event-plugin',
+      ]);
     },
   );
 

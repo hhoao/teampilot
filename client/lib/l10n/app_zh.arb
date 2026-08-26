@@ -3167,5 +3167,9 @@
       }
     }
   },
-  "managedProvidersResetsSoon": "即将重置"
+  "managedProvidersResetsSoon": "即将重置",
+  "promptDeliveryUnknownTitle": "投递状态未知",
+  "promptDeliveryReviewMessage": "查看消息内容",
+  "promptDeliveryHideMessage": "收起消息",
+  "promptDeliveryResend": "重新发送"
 }

@@ -8072,4 +8072,16 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get managedProvidersResetsSoon => 'Resets soon';
+
+  @override
+  String get promptDeliveryUnknownTitle => 'Delivery status unknown';
+
+  @override
+  String get promptDeliveryReviewMessage => 'Review message';
+
+  @override
+  String get promptDeliveryHideMessage => 'Hide message';
+
+  @override
+  String get promptDeliveryResend => 'Resend';
 }

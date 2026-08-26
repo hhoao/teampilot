@@ -35,6 +35,7 @@ import '../services/agent_status/agent_attention_state.dart';
 import '../services/agent_status/agent_status_event.dart';
 import '../services/agent_status/agent_status_seat_lookup.dart';
 import '../services/agent_status/ask_user_answer_pending_store.dart';
+import '../services/prompt_delivery/prompt_delivery_coordinator.dart';
 import 'agent_attention_cubit.dart';
 import '../services/launch/launch_factory.dart';
 import '../services/launch/session_connect_orchestrator.dart';
@@ -130,7 +131,9 @@ class ChatCubit extends Cubit<ChatState>
     bool Function()? termuxConnectedResolver,
     String Function()? termuxDisconnectedWorkOpsMessageResolver,
     RuntimeTarget Function()? termuxGateHomeResolver,
+    PromptDeliveryCoordinator? Function()? promptDeliveries,
   }) : _remoteBusResolver = remoteBusResolver,
+       _promptDeliveries = promptDeliveries,
        _remoteCliReadiness = remoteCliReadiness,
        _sessionConnect = sessionConnect,
        _installJobRegistry = installJobRegistry,
@@ -220,6 +223,7 @@ class ChatCubit extends Cubit<ChatState>
   final bool Function()? _termuxConnectedResolver;
   final String Function()? _termuxDisconnectedWorkOpsMessageResolver;
   final RuntimeTarget Function()? _termuxGateHomeResolver;
+  final PromptDeliveryCoordinator? Function()? _promptDeliveries;
   final TeammateBusMcpGateway _teammateBusMcpGateway;
   final AgentStatusSeatLookup? _agentStatusSeatLookup;
   final AgentAttentionCubit? _agentAttentionCubit;
@@ -326,6 +330,7 @@ class ChatCubit extends Cubit<ChatState>
         reclaimIdleAfterSeconds: () =>
             _reclaimIdleTerminalAfterSeconds?.call() ?? 180,
         onReclaimMember: _launchService.discardMemberTerminal,
+        promptDeliveries: _promptDeliveries?.call(),
       );
   late final MemberTurnInterruptService _turnInterrupt =
       MemberTurnInterruptService(

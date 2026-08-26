@@ -16,6 +16,10 @@ abstract interface class PromptDeliveryStore {
 
   /// Includes terminal records for recovery history and diagnostics.
   Future<List<PromptDelivery>> forSeat(RuntimeSeatKey seat);
+
+  /// Seats with at least one durable record in [sessionId]. Recovery uses
+  /// this to open/replay every seat of a session without knowing its roster.
+  Future<Set<RuntimeSeatKey>> seatsForSession(String sessionId);
 }
 
 final class MemoryPromptDeliveryStore implements PromptDeliveryStore {
@@ -43,6 +47,12 @@ final class MemoryPromptDeliveryStore implements PromptDeliveryStore {
     values.sort((left, right) => left.promptEpoch.compareTo(right.promptEpoch));
     return values;
   }
+
+  @override
+  Future<Set<RuntimeSeatKey>> seatsForSession(String sessionId) async => {
+    for (final delivery in _deliveries.values)
+      if (delivery.seat.sessionId == sessionId) delivery.seat,
+  };
 }
 
 /// One JSON record per delivery. Atomic replacement means an observed state
@@ -103,6 +113,34 @@ final class FilePromptDeliveryStore implements PromptDeliveryStore {
       }
     }
     values.sort((left, right) => left.promptEpoch.compareTo(right.promptEpoch));
+    return values;
+  }
+
+  @override
+  Future<Set<RuntimeSeatKey>> seatsForSession(String sessionId) async => {
+    for (final delivery in await _readAll())
+      if (delivery.seat.sessionId == sessionId) delivery.seat,
+  };
+
+  Future<List<PromptDelivery>> _readAll() async {
+    final entries = await _fs.listDir(root);
+    final values = <PromptDelivery>[];
+    for (final entry in entries) {
+      if (entry.isDirectory || !entry.name.endsWith('.json')) continue;
+      final content = await _fs.readString(
+        _fs.pathContext.join(root, entry.name),
+      );
+      if (content == null) continue;
+      try {
+        final decoded = jsonDecode(content);
+        final delivery = decoded is Map
+            ? _decode(Map<String, Object?>.from(decoded))
+            : null;
+        if (delivery != null) values.add(delivery);
+      } on FormatException {
+        // An invalid record is never a valid active delivery.
+      }
+    }
     return values;
   }
 }

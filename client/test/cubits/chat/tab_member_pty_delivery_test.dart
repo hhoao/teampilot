@@ -384,4 +384,8 @@ final class _GatedCreationStore implements PromptDeliveryStore {
   @override
   Future<List<PromptDelivery>> forSeat(RuntimeSeatKey seat) =>
       _inner.forSeat(seat);
+
+  @override
+  Future<Set<RuntimeSeatKey>> seatsForSession(String sessionId) =>
+      _inner.seatsForSession(sessionId);
 }

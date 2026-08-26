@@ -3633,5 +3633,9 @@
       }
     }
   },
-  "managedProvidersResetsSoon": "Resets soon"
+  "managedProvidersResetsSoon": "Resets soon",
+  "promptDeliveryUnknownTitle": "Delivery status unknown",
+  "promptDeliveryReviewMessage": "Review message",
+  "promptDeliveryHideMessage": "Hide message",
+  "promptDeliveryResend": "Resend"
 }

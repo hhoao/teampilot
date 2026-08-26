@@ -15,10 +15,14 @@ import '../cubits/remote_download_catalog_cubit.dart';
 import '../cubits/automation_cubit.dart';
 import '../cubits/agent_attention_cubit.dart';
 import '../cubits/chat_cubit.dart';
+import '../cubits/prompt_delivery_status_cubit.dart';
 import '../services/agent_runtime/agent_event_gateway.dart';
+import '../services/agent_runtime/agent_runtime.dart';
 import '../services/agent_runtime/runtime_event_journal.dart';
 import '../services/agent_runtime/runtime_event_projection.dart';
 import '../services/agent_runtime/seat_event_stream.dart';
+import '../services/prompt_delivery/prompt_delivery_coordinator.dart';
+import '../services/prompt_delivery/prompt_delivery_store.dart';
 import '../services/agent_status/agent_status_seat_lookup.dart';
 import '../services/agent_status/ask_user_answer_pending_store.dart';
 import '../services/agent_status/ask_user_question_hook_gate.dart';
@@ -184,6 +188,7 @@ import '../services/cli/opencode/provider/opencode_models_service.dart';
 import '../services/provider/api_model_catalog_service.dart';
 import '../services/cli/cursor/provider/cursor_agent_models_service.dart';
 import '../services/cli/cursor/provider/cursor_provider_credentials_service.dart';
+import '../cubits/chat/tab_member_pty_delivery.dart';
 import '../services/provider/provider_credential_host_runner.dart';
 import '../services/provider_usage/managed_provider_secret_store.dart';
 import '../services/provider_usage/managed_provider_usage_adapter.dart';
@@ -395,6 +400,8 @@ class AppShell {
     required this.memberPresenceCubit,
     required this.agentAttentionCubit,
     required this.agentStatusSeatLookup,
+    required this.agentRuntime,
+    required this.promptDeliveryStatusCubit,
     required this.mailboxCubit,
     required this.boardCubit,
     required this.aiHistoryCubit,
@@ -489,6 +496,8 @@ class AppShell {
   final MemberPresenceCubit memberPresenceCubit;
   final AgentAttentionCubit agentAttentionCubit;
   final AgentStatusSeatLookup agentStatusSeatLookup;
+  final AgentRuntime agentRuntime;
+  final PromptDeliveryStatusCubit promptDeliveryStatusCubit;
   final MailboxCubit mailboxCubit;
   final BoardCubit boardCubit;
   final AiHistoryCubit aiHistoryCubit;
@@ -1559,6 +1568,14 @@ Future<AppShell> buildAppShell({
   final exitPlanModeProjection = ExitPlanModeRuntimeEventProjection(
     hookGate: exitPlanModeHookGate,
   );
+  final runtimeProjections = [
+    RuntimeEventProjection.attention(
+      attention: agentAttentionCubit,
+      resolveSkipPermissions: agentStatusSeatLookup.resolveSkipPermissions,
+    ),
+    askUserQuestionProjection,
+    exitPlanModeProjection,
+  ];
   final agentEventGateway = AgentEventGateway(
     journal: FileRuntimeEventJournal(
       journalRoot: AppStorage.fs.pathContext.join(
@@ -1569,14 +1586,7 @@ Future<AppShell> buildAppShell({
     ),
     stream: agentRuntimeStream,
     resolveCli: agentStatusSeatLookup.resolveCli,
-    projections: [
-      RuntimeEventProjection.attention(
-        attention: agentAttentionCubit,
-        resolveSkipPermissions: agentStatusSeatLookup.resolveSkipPermissions,
-      ),
-      askUserQuestionProjection,
-      exitPlanModeProjection,
-    ],
+    projections: runtimeProjections,
     responders: [askUserQuestionProjection, exitPlanModeProjection],
   );
   teammateBusMcpGateway.attachAgentEventGateway(agentEventGateway);
@@ -1623,7 +1633,13 @@ Future<AppShell> buildAppShell({
     unawaited(WorkspaceProjectConfigCubit.reloadLive(event.workspaceId));
   });
 
+  // App-scoped durable prompt-delivery composition (Task 7): the coordinator
+  // is created after ChatCubit because its fenced terminal adapter needs the
+  // tab store; the lazy getter below is resolved when the session runtime is
+  // first touched, which only happens after bootstrap completes.
+  PromptDeliveryCoordinator? appScopedPromptDeliveries;
   chatCubit = ChatCubit(
+    promptDeliveries: () => appScopedPromptDeliveries,
     teammateBusMcpGateway: teammateBusMcpGateway,
     agentStatusSeatLookup: agentStatusSeatLookup,
     agentAttentionCubit: agentAttentionCubit,
@@ -1683,6 +1699,38 @@ Future<AppShell> buildAppShell({
     termuxDisconnectedWorkOpsMessageResolver:
         TermuxWorkOpsMessage.disconnectedBlocked,
     termuxGateHomeResolver: defaultTargetResolver,
+  );
+  final promptDeliveryStore = FilePromptDeliveryStore(
+    root: AppStorage.fs.pathContext.join(
+      AppStorage.paths.basePath,
+      'prompt-deliveries',
+    ),
+    fs: AppStorage.fs,
+  );
+  appScopedPromptDeliveries = PromptDeliveryCoordinator(
+    store: promptDeliveryStore,
+    commands: TabPromptDeliveryCommands(chatCubit.tabStore),
+  );
+  // One app-scoped runtime join: journaled hooks drive delivery correlation
+  // under per-seat serialization; restoreSession replays both durable stores
+  // before a session's input is enabled (see SessionLifecycleService).
+  final agentRuntime = AgentRuntime(
+    gateway: agentEventGateway,
+    projections: runtimeProjections,
+    promptDeliveries: appScopedPromptDeliveries,
+  );
+  sessionLifecycleService.attachAgentRuntime(agentRuntime);
+  final promptDeliveryStatusCubit = PromptDeliveryStatusCubit(
+    runtime: agentRuntime,
+    resubmit: (sessionId, memberId, text) async {
+      final id = await chatCubit.sessionRuntime.deliverUserCommandToMember(
+        sessionId,
+        memberId,
+        text,
+        directToPty: true,
+      );
+      return id != null;
+    },
   );
 
   // Bound after [WorkbenchCubit] exists; togglePanel aliases new-terminal UX
@@ -2253,6 +2301,8 @@ Future<AppShell> buildAppShell({
     memberPresenceCubit: memberPresenceCubit,
     agentAttentionCubit: agentAttentionCubit,
     agentStatusSeatLookup: agentStatusSeatLookup,
+    agentRuntime: agentRuntime,
+    promptDeliveryStatusCubit: promptDeliveryStatusCubit,
     mailboxCubit: mailboxCubit,
     boardCubit: boardCubit,
     aiHistoryCubit: aiHistoryCubit,

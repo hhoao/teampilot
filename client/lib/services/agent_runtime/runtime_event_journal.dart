@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:convert';
 
+import 'package:collection/collection.dart';
 import 'package:meta/meta.dart';
 
 import '../../models/team_config.dart';
@@ -15,6 +16,10 @@ abstract interface class RuntimeEventJournal {
     RuntimeSeatKey seat, {
     int afterSequence = 0,
   });
+
+  /// Seats with at least one durable record in [sessionId]. Recovery uses
+  /// this to open/replay every seat of a session without knowing its roster.
+  Future<Set<RuntimeSeatKey>> seatsForSession(String sessionId);
 }
 
 final class MemoryRuntimeEventJournal implements RuntimeEventJournal {
@@ -47,6 +52,12 @@ final class MemoryRuntimeEventJournal implements RuntimeEventJournal {
       if (event.sequence > afterSequence) yield event;
     }
   }
+
+  @override
+  Future<Set<RuntimeSeatKey>> seatsForSession(String sessionId) async => {
+    for (final seat in _events.keys)
+      if (seat.sessionId == sessionId) seat,
+  };
 }
 
 /// Append-only newline-delimited JSON journal with one file per runtime seat.
@@ -121,6 +132,41 @@ final class FileRuntimeEventJournal implements RuntimeEventJournal {
     for (final event in events) {
       if (event.sequence > afterSequence) yield event;
     }
+  }
+
+  /// File names encode the seat, but base64url segments may themselves
+  /// contain `--`, so seats are recovered from each file's first record.
+  @override
+  Future<Set<RuntimeSeatKey>> seatsForSession(String sessionId) async {
+    final stat = await _fs.stat(journalRoot);
+    if (!stat.exists || !stat.isDirectory) return const {};
+    final seats = <RuntimeSeatKey>{};
+    for (final entry in await _fs.listDir(journalRoot)) {
+      if (entry.isDirectory || !entry.name.endsWith('.jsonl')) continue;
+      final content = await _fs.readString(
+        _fs.pathContext.join(journalRoot, entry.name),
+      );
+      final firstLine = content == null
+          ? null
+          : const LineSplitter()
+              .convert(content)
+              .where((line) => line.trim().isNotEmpty)
+              .firstOrNull;
+      if (firstLine == null) continue;
+      try {
+        final decoded = jsonDecode(firstLine);
+        if (decoded is! Map) continue;
+        if (decoded['sessionId'] != sessionId) continue;
+        final memberId = decoded['memberId']?.toString() ?? '';
+        if (memberId.isEmpty) continue;
+        seats.add(
+          RuntimeSeatKey(sessionId: sessionId, memberId: memberId),
+        );
+      } on FormatException {
+        continue;
+      }
+    }
+    return seats;
   }
 
   Future<int> _lastSequence(RuntimeSeatKey seat) async {

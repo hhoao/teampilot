@@ -1,9 +1,12 @@
+import 'dart:async';
+
 import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/models/team_config.dart';
 import 'package:teampilot/services/agent_runtime/runtime_event.dart';
 import 'package:teampilot/services/prompt_delivery/prompt_delivery.dart';
 import 'package:teampilot/services/prompt_delivery/prompt_delivery_coordinator.dart';
 import 'package:teampilot/services/prompt_delivery/prompt_delivery_store.dart';
+import '../../support/in_memory_filesystem.dart';
 
 void main() {
   const seat = RuntimeSeatKey(sessionId: 'session', memberId: 'member');
@@ -176,6 +179,170 @@ void main() {
       expect(commands.writes, isEmpty);
     },
   );
+
+  test('a dropped submit cannot be weakly confirmed afterwards', () async {
+    final outcomeCommands = _OutcomePromptDeliveryCommands(
+      PromptSubmissionResult.dropped,
+    );
+    final dropping = PromptDeliveryCoordinator(
+      store: store,
+      commands: outcomeCommands,
+      clock: () => now,
+    );
+
+    final delivery = await dropping.submit(request(text: 'same'));
+    await dropping.issueSubmit(delivery.id);
+
+    // The fence dropped the CR: the record must leave submitIssued so a later
+    // same-text hook can never mis-confirm it.
+    expect(
+      (await store.read(delivery.id))!.state,
+      PromptDeliveryState.submittedUnknown,
+    );
+
+    await coordinator.onRuntimeEvent(promptSubmitted(text: 'same'));
+
+    expect(
+      (await store.read(delivery.id))!.state,
+      PromptDeliveryState.submittedUnknown,
+    );
+  });
+
+  test('a failed submit closes its delivery as failed', () async {
+    final outcomeCommands = _OutcomePromptDeliveryCommands(
+      PromptSubmissionResult.failed,
+    );
+    final failing = PromptDeliveryCoordinator(
+      store: store,
+      commands: outcomeCommands,
+      clock: () => now,
+    );
+
+    final delivery = await failing.submit(request(text: 'same'));
+    await failing.issueSubmit(delivery.id);
+
+    expect(
+      (await store.read(delivery.id))!.state,
+      PromptDeliveryState.failed,
+    );
+    expect(outcomeCommands.submitAttempts, 1);
+  });
+
+  test('abort landing during the submitIssued persist writes nothing',
+      () async {
+    final gatedStore = _GatedSaveStore(store);
+    final gated = PromptDeliveryCoordinator(
+      store: gatedStore,
+      commands: commands,
+      clock: () => now,
+    );
+
+    final delivery = await gated.submit(request(text: 'same'));
+    gatedStore.gateNextSave();
+    final issuing = gated.issueSubmit(delivery.id);
+    // The abort lands while the `submitIssued` persist is still unresolved.
+    gated.invalidateSubmittedDelivery(delivery.id);
+    gatedStore.releaseAll();
+    final result = await issuing;
+
+    expect(result, PromptSubmissionResult.dropped);
+    expect(commands.writes, isEmpty);
+    expect(
+      (await store.read(delivery.id))!.state,
+      PromptDeliveryState.submittedUnknown,
+    );
+  });
+
+  test('file-backed records keep their transitions across reopen', () async {
+    final fs = InMemoryFilesystem();
+    final persisted = FilePromptDeliveryStore(root: '/deliveries', fs: fs);
+    final first = PromptDeliveryCoordinator(
+      store: persisted,
+      commands: commands,
+      clock: () => now,
+    );
+
+    final delivery = await first.submit(request(text: 'same'));
+    await first.issueSubmit(delivery.id);
+    final writesBeforeRestore = commands.writes.length;
+
+    final reopened = PromptDeliveryCoordinator(
+      store: FilePromptDeliveryStore(root: '/deliveries', fs: fs),
+      commands: commands,
+      clock: () => now,
+    );
+    await reopened.restoreSeat(seat);
+
+    final record =
+        (await FilePromptDeliveryStore(root: '/deliveries', fs: fs)
+                .forSeat(seat))
+            .single;
+    expect(record.state, PromptDeliveryState.submittedUnknown);
+    expect(commands.writes.length, writesBeforeRestore);
+    expect(commands.writes.last, 'submit:${delivery.id}');
+  });
+}
+
+final class _GatedSaveStore implements PromptDeliveryStore {
+  _GatedSaveStore(this._inner);
+
+  final PromptDeliveryStore _inner;
+  Completer<void>? _gate;
+
+  /// Holds the NEXT save until [releaseAll].
+  void gateNextSave() => _gate = Completer<void>();
+
+  void releaseAll() {
+    _gate?.complete();
+    _gate = null;
+  }
+
+  @override
+  Future<void> save(PromptDelivery delivery) async {
+    final gate = _gate;
+    if (gate != null) {
+      _gate = null;
+      await gate.future;
+    }
+    await _inner.save(delivery);
+  }
+
+  @override
+  Future<PromptDelivery?> read(String id) => _inner.read(id);
+
+  @override
+  Future<List<PromptDelivery>> activeFor(RuntimeSeatKey seat) =>
+      _inner.activeFor(seat);
+
+  @override
+  Future<List<PromptDelivery>> forSeat(RuntimeSeatKey seat) =>
+      _inner.forSeat(seat);
+
+  @override
+  Future<Set<RuntimeSeatKey>> seatsForSession(String sessionId) =>
+      _inner.seatsForSession(sessionId);
+}
+
+final class _OutcomePromptDeliveryCommands implements PromptDeliveryCommands {
+  _OutcomePromptDeliveryCommands(this.outcome);
+
+  final PromptSubmissionResult outcome;
+  var submitAttempts = 0;
+
+  @override
+  Future<void> stage(
+    PromptDelivery delivery, {
+    required bool Function() canExecute,
+  }) async {}
+
+  @override
+  Future<PromptSubmissionResult> submit(
+    PromptDelivery delivery, {
+    required bool Function() canExecute,
+  }) async {
+    submitAttempts++;
+    return outcome;
+  }
 }
 
 final class _FakePromptDeliveryCommands implements PromptDeliveryCommands {
