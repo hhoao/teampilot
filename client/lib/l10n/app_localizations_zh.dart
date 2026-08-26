@@ -2010,6 +2010,18 @@ class AppLocalizationsZh extends AppLocalizations {
   String get unpinConversation => '取消置顶';
 
   @override
+  String get duplicateConversation => '复制对话';
+
+  @override
+  String get sessionDuplicated => '对话已复制';
+
+  @override
+  String get sessionDuplicateFailed => '复制对话失败';
+
+  @override
+  String get sessionTitleCopySuffix => '（副本）';
+
+  @override
   String get openSessionDirectory => '打开会话目录';
 
   @override
