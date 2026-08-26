@@ -85,6 +85,7 @@ import 'package:teampilot/services/terminal/terminal_transport_factory.dart';
 import 'package:teampilot/services/terminal/workspace_shell_connector.dart';
 import 'package:teampilot/services/terminal/workspace_terminal_registry.dart';
 import 'package:teampilot/services/workspace/workspace_run_registry.dart';
+import 'package:teampilot/services/workspace/workspace_session_groups_registry.dart';
 import 'package:teampilot/services/workspace/workspace_tools_scope_registry.dart';
 import 'package:teampilot/services/workspace/workspace_worktree_registry.dart';
 
@@ -300,6 +301,9 @@ Widget buildTestApp({
       ),
       RepositoryProvider<WorkspaceToolsScopeRegistry>(
         create: (_) => WorkspaceToolsScopeRegistry(),
+      ),
+      RepositoryProvider<WorkspaceSessionGroupsRegistry>(
+        create: (_) => WorkspaceSessionGroupsRegistry(),
       ),
       RepositoryProvider<CommandBus>(create: (_) => CommandBus()),
       RepositoryProvider<WorkspaceChromeCommands>(
