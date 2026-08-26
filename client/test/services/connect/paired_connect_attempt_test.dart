@@ -42,6 +42,7 @@ class _Harness {
   );
 
   Future<({InternetAddress address, int port})> Function(
+    SshProfile,
     SshReachabilityEndpoint,
   )? openRelayTunnel;
 }
@@ -105,9 +106,10 @@ void main() {
 
   test('a relay win persists only lastGoodKind and never rewrites the host',
       () async {
-    final harness = _Harness()..openRelayTunnel = (endpoint) async {
-      return (address: InternetAddress.loopbackIPv4, port: 45678);
-    };
+    final harness = _Harness()
+      ..openRelayTunnel = (profile, endpoint) async {
+        return (address: InternetAddress.loopbackIPv4, port: 45678);
+      };
 
     final winner = await harness.attempt.connectFirst(
       profile: pairedProfile(const [relayA]),

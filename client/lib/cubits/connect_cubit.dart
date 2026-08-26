@@ -15,6 +15,11 @@ typedef ConnectAgentStartQrSession =
       required String displayName,
       required String appDataRoot,
     });
+typedef ConnectAgentEnableRelay =
+    Future<void> Function({
+      required String appDataRoot,
+      required ConnectRelayRegistration registration,
+    });
 typedef ConnectNetworkAddressLookup =
     Future<List<ConnectNetworkAddress>> Function();
 
@@ -26,11 +31,15 @@ class ConnectAgentController {
     required Future<void> Function() regenerateQr,
     required Future<void> Function(List<SshReachabilityEndpoint>)
     updateExtraEndpoints,
+    ConnectAgentEnableRelay? enableRelay,
+    Future<void> Function()? disableRelay,
   }) : _currentOffer = currentOffer,
        _startQrSession = startQrSession,
        _stopQrSession = stopQrSession,
        _regenerateQr = regenerateQr,
-       _updateExtraEndpoints = updateExtraEndpoints;
+       _updateExtraEndpoints = updateExtraEndpoints,
+       _enableRelay = enableRelay,
+       _disableRelay = disableRelay;
 
   factory ConnectAgentController.fromAgent(ConnectAgent agent) {
     return ConnectAgentController(
@@ -39,6 +48,8 @@ class ConnectAgentController {
       stopQrSession: agent.stopQrSession,
       regenerateQr: agent.regenerateQr,
       updateExtraEndpoints: agent.updateExtraEndpoints,
+      enableRelay: agent.enableRelay,
+      disableRelay: agent.disableRelay,
     );
   }
 
@@ -48,6 +59,10 @@ class ConnectAgentController {
   final Future<void> Function() _regenerateQr;
   final Future<void> Function(List<SshReachabilityEndpoint>)
   _updateExtraEndpoints;
+  final ConnectAgentEnableRelay? _enableRelay;
+  final Future<void> Function()? _disableRelay;
+
+  bool get supportsRelay => _enableRelay != null && _disableRelay != null;
 
   SshPairingOffer? get currentOffer => _currentOffer();
 
@@ -66,6 +81,21 @@ class ConnectAgentController {
   Future<void> stopQrSession() => _stopQrSession();
 
   Future<void> regenerateQr() => _regenerateQr();
+
+  Future<void> enableRelay({
+    required String appDataRoot,
+    required ConnectRelayRegistration registration,
+  }) async {
+    final enable = _enableRelay;
+    if (enable == null) return;
+    await enable(appDataRoot: appDataRoot, registration: registration);
+  }
+
+  Future<void> disableRelay() async {
+    final disable = _disableRelay;
+    if (disable == null) return;
+    await disable();
+  }
 
   Future<void> updateExtraEndpoints(
     List<SshReachabilityEndpoint> extraEndpoints,
@@ -325,11 +355,13 @@ class ConnectCubit extends Cubit<ConnectState> {
     required String relayUrl,
   }) async {
     emit(state.copyWith(saving: true, hasError: false));
+    final trimmedRelayUrl = relayUrl.trim();
     try {
       await _settingsStore.save(
         extraEndpoints: extraEndpoints,
         relayUrl: relayUrl,
       );
+      await _applyRelaySettings(trimmedRelayUrl);
       await _agent.updateExtraEndpoints(extraEndpoints);
       if (!isClosed) {
         final offer = _agent.currentOffer;
@@ -338,7 +370,7 @@ class ConnectCubit extends Cubit<ConnectState> {
             offer: offer,
             clearOffer: offer == null,
             extraEndpoints: List.unmodifiable(extraEndpoints),
-            relayUrl: relayUrl.trim(),
+            relayUrl: trimmedRelayUrl,
             saving: false,
           ),
         );
@@ -348,6 +380,29 @@ class ConnectCubit extends Cubit<ConnectState> {
         emit(state.copyWith(saving: false, hasError: true));
       }
     }
+  }
+
+  /// The outbound register socket follows the saved URL for the whole app
+  /// lifetime; QR visibility never affects it.
+  Future<void> _applyRelaySettings(String relayUrl) async {
+    if (relayUrl.isEmpty) {
+      await _agent.disableRelay();
+      return;
+    }
+    final uri = Uri.tryParse(relayUrl);
+    if (uri == null || (uri.scheme != 'ws' && uri.scheme != 'wss')) {
+      throw const FormatException('relay URL must be ws:// or wss://');
+    }
+    await _agent.enableRelay(
+      appDataRoot: _appDataRoot,
+      registration: ConnectRelayRegistration(
+        url: uri.toString(),
+        endpointHost: uri.host,
+        endpointPort: uri.port == 0
+            ? (uri.scheme == 'wss' ? 443 : 80)
+            : uri.port,
+      ),
+    );
   }
 
   Future<void> revokeDevice(String deviceId) async {

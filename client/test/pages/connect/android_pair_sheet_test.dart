@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
+import 'dart:io';
 import 'dart:typed_data';
 
 import 'package:dartssh2/dartssh2.dart';
@@ -70,6 +71,27 @@ class _RecordingTransport implements PairingPostTransport {
   }) async {
     calls++;
     return const PairingPostResult(ok: true, profileHint: 'Alice desktop');
+  }
+}
+
+class _LanFailRelayOkTransport implements PairingPostTransport {
+  final seenUrls = <Uri>[];
+
+  @override
+  Future<PairingPostResult> post({
+    required Uri url,
+    required Map<String, Object?> body,
+    required String tlsCertSha256,
+  }) async {
+    seenUrls.add(url);
+    if (url.host != InternetAddress.loopbackIPv4.address) {
+      throw const SocketException('LAN unreachable');
+    }
+    return const PairingPostResult(
+      ok: true,
+      profileHint: 'Alice desktop',
+      relayGrant: 'grant-1',
+    );
   }
 }
 
@@ -245,6 +267,7 @@ Widget _host({
   required _Harness harness,
   required Future<String?> Function() scanCode,
   SshDeviceKeyFactory? deviceKeyFactory,
+  RelayPairChannelOpener? relayTunnelOpener,
   Locale locale = const Locale('en'),
 }) {
   final theme = ThemeData(useMaterial3: true);
@@ -291,6 +314,7 @@ Widget _host({
                   ),
               deviceId: 'phone-1',
               deviceName: 'Pixel',
+              relayTunnelOpener: relayTunnelOpener,
             ),
           ),
         ),
@@ -298,6 +322,40 @@ Widget _host({
     ),
   );
 }
+
+SshPairingOffer _offerWithRelay() => const SshPairingOffer(
+  v: 1,
+  hostId: 'AbCdEf0123_-xyZ9',
+  username: 'alice',
+  displayName: 'Alice desktop',
+  appDataRoot: '/home/alice/.local/share/com.hhoa.teampilot',
+  endpoints: [
+    SshReachabilityEndpoint(
+      kind: SshEndpointKind.lan,
+      host: '192.168.1.20',
+      port: 22,
+    ),
+    SshReachabilityEndpoint(
+      kind: SshEndpointKind.relay,
+      host: 'relay.example.test',
+      port: 443,
+    ),
+  ],
+  hostKeyFingerprints: ['SHA256:host-key'],
+  pairing: SshPairingSession(
+    token: 'abcdefghijklmnopqrstuvwxyz0123456789ABCDE',
+    expiresAt: 1770000000000,
+    url: 'https://192.168.1.20:2768/pair',
+    tlsCertSha256: 'deadbeef',
+  ),
+  relay: SshRelayOffer(
+    v: 1,
+    url: 'wss://relay.example.test',
+    hostId: 'AbCdEf0123_-xyZ9',
+    inviteToken: 'abcdefghijklmnopqrstuvwxyz0123456789ABCDE',
+    inviteExpiresAt: 1770000000000,
+  ),
+);
 
 String _unsupportedOfferCode() {
   final json = _offer().toJson()..['v'] = 2;
@@ -332,6 +390,44 @@ void main() {
     expect(writer.calls, 1);
     expect(harness.connectionCubit.connectCalls, [_profile.id]);
     expect(await harness.credentials.loadDevicePrivateKey(), 'PRIVATE KEY');
+  });
+
+  testWidgets('LAN failure falls back to the relay pair channel', (
+    tester,
+  ) async {
+    final transport = _LanFailRelayOkTransport();
+    final writer = _RecordingWriter();
+    final harness = _Harness(
+      pairClient: ConnectPairClient(transport: transport),
+      writer: writer,
+    );
+    addTearDown(harness.dispose);
+    final openedRelays = <SshRelayOffer>[];
+
+    await tester.pumpWidget(
+      _host(
+        harness: harness,
+        scanCode: () async => _offerWithRelay().encode(),
+        relayTunnelOpener: (relay) async {
+          openedRelays.add(relay);
+          return (address: InternetAddress.loopbackIPv4, port: 45999);
+        },
+      ),
+    );
+
+    await tester.tap(find.byKey(AppKeys.connectScanQr));
+    await tester.pumpAndSettle();
+
+    expect(openedRelays.single.url, 'wss://relay.example.test');
+    expect(transport.seenUrls, hasLength(2));
+    final loopbackPost = transport.seenUrls.last;
+    expect(loopbackPost.scheme, 'https');
+    expect(loopbackPost.host, InternetAddress.loopbackIPv4.address);
+    expect(loopbackPost.port, 45999);
+    expect(loopbackPost.path, '/pair');
+    expect(writer.calls, 1);
+    expect(harness.connectionCubit.connectCalls, [_profile.id]);
+    expect(await harness.credentials.loadRelayGrant(_profile.id), 'grant-1');
   });
 
   for (final entry in const [

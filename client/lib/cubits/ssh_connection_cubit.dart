@@ -5,7 +5,9 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../models/ssh_profile.dart';
+import '../models/ssh_reachability.dart';
 import '../services/connect/endpoint_dial_planner.dart';
+import '../services/connect/paired_relay_tunnel_registry.dart';
 import '../services/remote/remote_connection_monitor.dart';
 import '../services/ssh/ssh_client_factory.dart';
 import '../services/ssh/ssh_connection_failure.dart';
@@ -110,10 +112,12 @@ class SshConnectionCubit extends Cubit<SshConnectionState> {
     required SshProfileConnectionCoordinator coordinator,
     Future<void> Function(String id)? selectProfileOnConnect,
     PairedConnectAttempt? pairedConnectAttempt,
+    PairedRelayTunnelRegistry? relayTunnels,
   }) : _factory = factory,
        _coordinator = coordinator,
        _selectProfileOnConnect = selectProfileOnConnect,
        _pairedConnectAttempt = pairedConnectAttempt,
+       _relayTunnels = relayTunnels,
        super(const SshConnectionState()) {
     _poolSubscription = _factory.storagePoolChanges.listen(_onPoolChanged);
   }
@@ -122,6 +126,7 @@ class SshConnectionCubit extends Cubit<SshConnectionState> {
   final SshProfileConnectionCoordinator _coordinator;
   final Future<void> Function(String id)? _selectProfileOnConnect;
   final PairedConnectAttempt? _pairedConnectAttempt;
+  final PairedRelayTunnelRegistry? _relayTunnels;
 
   final Map<String, SshProfile> _profilesById = {};
   final Map<String, StreamSubscription<RemoteConnectionState>>
@@ -141,6 +146,7 @@ class SshConnectionCubit extends Cubit<SshConnectionState> {
     for (final id in removed) {
       // Always disconnect: cancels reconnect timers + sets latch even when
       // the pool is already cold or a reconnect is in flight.
+      await _relayTunnels?.closeFor(id);
       await _coordinator.userDisconnect(id);
       _unsubscribeMonitor(id);
       _profilesById.remove(id);
@@ -206,18 +212,23 @@ class SshConnectionCubit extends Cubit<SshConnectionState> {
   /// relay) and keep the winning endpoint; manual profiles connect as before.
   Future<void> _connectProfile(SshProfile profile) async {
     final attempt = _pairedConnectAttempt;
+    final tunnels = _relayTunnels;
     if (attempt == null ||
         profile.pairedDesktopId == null ||
         planEndpointDials(profile).isEmpty) {
       await _coordinator.userConnect(profile);
       return;
     }
-    final winner = await attempt.connectFirst(
-      profile: profile,
-      dial: (endpoint) => _coordinator.userConnect(
-        withLastGoodEndpoint(profile, endpoint),
-      ),
-    );
+    final SshReachabilityEndpoint winner;
+    try {
+      winner = await attempt.connectFirst(
+        profile: profile,
+        dial: (endpoint) => _dialCandidate(tunnels, profile, endpoint),
+      );
+    } on Object {
+      await tunnels?.closeFor(profile.id);
+      rethrow;
+    }
     final updated = withLastGoodEndpoint(profile, winner);
     // Keep the UI and the pooled connection on the same host identity.
     if (_profilesById[profile.id]?.id == profile.id) {
@@ -225,11 +236,32 @@ class SshConnectionCubit extends Cubit<SshConnectionState> {
     }
   }
 
+  Future<void> _dialCandidate(
+    PairedRelayTunnelRegistry? tunnels,
+    SshProfile profile,
+    SshReachabilityEndpoint endpoint,
+  ) async {
+    if (endpoint.kind == SshEndpointKind.relay && tunnels != null) {
+      // Route the pool through the tunnel before dialing: the factory's
+      // dial resolver sends every connection for this profile to loopback.
+      await tunnels.ensureSshTunnel(profile);
+      try {
+        return await _coordinator.userConnect(profile);
+      } on Object {
+        await tunnels.closeFor(profile.id);
+        rethrow;
+      }
+    }
+    await tunnels?.closeFor(profile.id);
+    await _coordinator.userConnect(withLastGoodEndpoint(profile, endpoint));
+  }
+
   Future<void> disconnect(String profileId) async {
     if (!_profilesById.containsKey(profileId)) return;
     _connectingIds.remove(profileId);
     _lastErrorDetail.remove(profileId);
     _lastFailureStatus.remove(profileId);
+    await _relayTunnels?.closeFor(profileId);
     await _coordinator.userDisconnect(profileId);
     emit(_buildState());
   }

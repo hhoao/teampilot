@@ -67,8 +67,11 @@ SshProfile withLastGoodEndpoint(
 
 typedef SshPairedProfileSaver = Future<void> Function(SshProfile updated);
 
+/// Opens the phone-side relay tunnel for [profile]; resolves to the loopback
+/// target dartssh2 should dial for relay traffic.
 typedef SshRelayTunnelOpener =
     Future<({InternetAddress address, int port})> Function(
+      SshProfile profile,
       SshReachabilityEndpoint endpoint,
     );
 

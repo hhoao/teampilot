@@ -28,7 +28,7 @@ class ConnectPairClient {
     if (url == null || url.scheme != 'https' || url.host.isEmpty) {
       throw const ConnectPairClientException('invalidUrl');
     }
-    return _transport.post(
+    return pairAt(
       url: url,
       tlsCertSha256: offer.pairing.tlsCertSha256,
       body: {
@@ -38,6 +38,16 @@ class ConnectPairClient {
         'publicKey': publicKey,
       },
     );
+  }
+
+  /// POSTs a pairing body to [url] trusting only [tlsCertSha256]. Used for
+  /// the direct LAN POST and for the relay pair channel's loopback POST.
+  Future<PairingPostResult> pairAt({
+    required Uri url,
+    required Map<String, Object?> body,
+    required String tlsCertSha256,
+  }) {
+    return _transport.post(url: url, body: body, tlsCertSha256: tlsCertSha256);
   }
 }
 

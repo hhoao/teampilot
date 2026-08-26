@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
+import 'dart:math';
 import 'dart:typed_data';
 
 import 'package:synchronized/synchronized.dart';
@@ -8,7 +9,9 @@ import 'package:synchronized/synchronized.dart';
 import '../../models/ssh_reachability.dart';
 import '../io/filesystem.dart';
 import 'authorized_keys_file.dart';
+import 'connect_relay_client.dart';
 import 'connect_settings_store.dart';
+import 'paired_device_store.dart';
 import 'pairing_certificate.dart';
 import 'pairing_http.dart';
 import 'pairing_token_gate.dart';
@@ -54,6 +57,7 @@ class PairingBinding {
 typedef PairingBind =
     Future<PairingBinding> Function(InternetAddress address, Object tlsContext);
 typedef StableConnectHostId = Future<String> Function(String appDataRoot);
+typedef RelaySocketSeam = Future<WebSocket> Function(Uri url);
 
 const int maxPairingRequestBytes = 64 * 1024;
 
@@ -84,6 +88,9 @@ class ConnectAgent {
     required StableConnectHostId stableHostId,
     List<SshReachabilityEndpoint> extraEndpoints = const [],
     ConnectRelayRegistration? relayRegistration,
+    PairedDeviceStore? deviceStore,
+    GrantGenerator? generateGrant,
+    RelaySocketSeam? relayConnectSocket,
   }) : _probe = probe,
        _keys = keys,
        _gate = gate,
@@ -92,7 +99,20 @@ class ConnectAgent {
        _now = now,
        _stableHostId = stableHostId,
        _extraEndpoints = List.unmodifiable(extraEndpoints),
-       _relayRegistration = relayRegistration;
+       _relayRegistration = relayRegistration,
+       _deviceStore = deviceStore,
+       _generateGrant =
+           generateGrant ??
+           (() =>
+               base64Url
+                   .encode(
+                     List<int>.generate(
+                       32,
+                       (_) => Random.secure().nextInt(256),
+                     ),
+                   )
+                   .replaceAll('=', '')),
+       _relayConnectSocket = relayConnectSocket;
 
   factory ConnectAgent.production({
     required AuthorizedKeysFile keys,
@@ -101,6 +121,8 @@ class ConnectAgent {
     ConnectRelayRegistration? relayRegistration,
     SshdPresenceProbe? probe,
     PairingCertificateProvider? certificateProvider,
+    PairedDeviceStore? deviceStore,
+    RelaySocketSeam? relayConnectSocket,
   }) {
     return ConnectAgent(
       probe: probe ?? SshdPresence().probe,
@@ -115,6 +137,8 @@ class ConnectAgent {
       ).loadOrCreateHostId(),
       extraEndpoints: extraEndpoints,
       relayRegistration: relayRegistration,
+      deviceStore: deviceStore,
+      relayConnectSocket: relayConnectSocket,
     );
   }
 
@@ -128,13 +152,24 @@ class ConnectAgent {
   final DateTime Function() _now;
   final StableConnectHostId _stableHostId;
   List<SshReachabilityEndpoint> _extraEndpoints;
-  final ConnectRelayRegistration? _relayRegistration;
+  ConnectRelayRegistration? _relayRegistration;
+  final PairedDeviceStore? _deviceStore;
+  final GrantGenerator _generateGrant;
+  final RelaySocketSeam? _relayConnectSocket;
   final Lock _lifecycleLock = Lock();
 
   PairingBinding? _binding;
   StreamSubscription<PairingHttpRequest>? _requestSubscription;
   _QrSession? _session;
   SshPairingOffer? _currentOffer;
+  ConnectRelayClient? _relayClient;
+
+  /// Cached install id + sshd port for relay dial validation. These survive
+  /// QR-session stops: an SSH grant stays usable while the app runs even when
+  /// no QR is on screen.
+  String? _cachedHostId;
+  bool _relaySshdReachable = false;
+  int? _relaySshdPort;
 
   SshPairingOffer? get currentOffer => _currentOffer;
 
@@ -192,6 +227,7 @@ class ConnectAgent {
         certificateSha256: certificate.sha256Hex,
         pairingPort: binding.port,
       );
+      _cachedHostId = session.hostId;
       _binding = binding;
       _session = session;
       _currentOffer = _mintOffer(session);
@@ -221,6 +257,107 @@ class ConnectAgent {
   }
 
   Future<void> regenerateQr() => _lifecycleLock.synchronized(_regenerateQr);
+
+  /// App-lifetime relay registration. Unlike the QR session, the outbound
+  /// register socket (and therefore off-LAN SSH via grants) stays up while
+  /// Connect is enabled, independent of QR visibility.
+  Future<void> enableRelay({
+    required String appDataRoot,
+    required ConnectRelayRegistration registration,
+  }) => _lifecycleLock.synchronized(
+    () => _enableRelay(appDataRoot: appDataRoot, registration: registration),
+  );
+
+  Future<void> _enableRelay({
+    required String appDataRoot,
+    required ConnectRelayRegistration registration,
+  }) async {
+    final hostId = await _stableHostId(appDataRoot);
+    _cachedHostId = hostId;
+
+    // One probe now: relay sshd targets refresh whenever a QR session runs.
+    final sshd = await _probe();
+    _relaySshdReachable = sshd.listening;
+    _relaySshdPort = sshd.listening ? sshd.port : null;
+
+    final client =
+        _relayClient ??= ConnectRelayClient(
+          validateDial: validateRelayDial,
+          resolveTarget: resolveRelayTarget,
+          connectSocket: _relayConnectSocket,
+        );
+    await client.start(url: Uri.parse(registration.url), hostId: hostId);
+
+    final remintNeeded = _relayRegistration != registration;
+    _relayRegistration = registration;
+    if (_session != null && _binding != null && remintNeeded) {
+      await _regenerateQr();
+    }
+  }
+
+  /// Tears down the outbound register socket and drops the relay endpoint
+  /// from any active offer. Grants already issued stay valid on disk; revoke
+  /// is the explicit removal path.
+  Future<void> disableRelay() =>
+      _lifecycleLock.synchronized(() async {
+        await _relayClient?.stop();
+        _relayRegistration = null;
+        if (_session != null && _binding != null) {
+          await _regenerateQr();
+        }
+      });
+
+  /// Credential gate for relay dials, owned by the agent because only it
+  /// knows the live invite token and the grant registry. The relay itself
+  /// never decides authorization.
+  Future<bool> validateRelayDial(ConnectRelayDialRequest request) async {
+    switch (request.channel) {
+      case 'pair':
+        final invite = request.inviteToken;
+        if (invite == null || invite.isEmpty) return false;
+        return _gate.matchesInvite(invite, now: _now());
+      case 'ssh':
+        final store = _deviceStore;
+        final deviceId = request.deviceId;
+        final grant = request.relayGrant;
+        final hostId = _cachedHostId;
+        if (store == null ||
+            hostId == null ||
+            deviceId == null ||
+            deviceId.isEmpty ||
+            grant == null ||
+            grant.isEmpty) {
+          return false;
+        }
+        return store.validateGrant(
+          hostId: hostId,
+          deviceId: deviceId,
+          grant: grant,
+        );
+      default:
+        return false;
+    }
+  }
+
+  /// Loopback target for an accepted dial; null rejects without touching
+  /// local services.
+  Future<({InternetAddress host, int port})?> resolveRelayTarget(
+    String channel,
+  ) async {
+    switch (channel) {
+      case 'pair':
+        // Only while the pairing HTTPS listener exists (QR surface visible).
+        final binding = _binding;
+        if (binding == null) return null;
+        return (host: InternetAddress.loopbackIPv4, port: binding.port);
+      case 'ssh':
+        final port = _relaySshdPort;
+        if (!_relaySshdReachable || port == null) return null;
+        return (host: InternetAddress.loopbackIPv4, port: port);
+      default:
+        return null;
+    }
+  }
 
   Future<void> updateExtraEndpoints(
     List<SshReachabilityEndpoint> extraEndpoints,
@@ -316,12 +453,17 @@ class ConnectAgent {
         now: _now(),
         profileHint: session.displayName,
       );
+      final relayGrant = await _issueRelayGrant(
+        hostId: session.hostId,
+        deviceId: body.deviceId,
+      );
       await request.respond(
         statusCode: HttpStatus.ok,
         body: {
           'ok': result.ok,
           'profileHint': result.profileHint,
           if (result.relayGrant != null) 'relayGrant': result.relayGrant,
+          if (relayGrant != null) 'relayGrant': relayGrant,
         },
       );
     } on PairingHttpException catch (error) {
@@ -335,6 +477,24 @@ class ConnectAgent {
         body: const {'ok': false, 'error': 'internal'},
       );
     }
+  }
+
+  /// Mints a long-lived device grant when a relay is registered. Only the
+  /// SHA-256 digest is stored; the raw token travels to the phone in this
+  /// response and never appears in logs or the QR.
+  Future<String?> _issueRelayGrant({
+    required String hostId,
+    required String deviceId,
+  }) async {
+    final store = _deviceStore;
+    if (store == null || _relayRegistration == null) return null;
+    final grant = _generateGrant();
+    await store.issueGrant(
+      hostId: hostId,
+      deviceId: deviceId,
+      grant: grant,
+    );
+    return grant;
   }
 }
 

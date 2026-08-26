@@ -271,4 +271,16 @@ class _ThrowingCredentialStore implements SshCredentialStore {
     String profileId,
     String passphrase,
   ) async {}
+
+  @override
+  Future<String?> loadDevicePrivateKey() async => null;
+
+  @override
+  Future<void> saveDevicePrivateKey(String privateKey) async {}
+
+  @override
+  Future<String?> loadRelayGrant(String profileId) async => null;
+
+  @override
+  Future<void> saveRelayGrant(String profileId, String grant) async {}
 }

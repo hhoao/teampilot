@@ -28,6 +28,17 @@ class PairingTokenGate {
     return true;
   }
 
+  /// Non-consuming validity check used to pre-validate relay pair dials; the
+  /// one-time invite is still consumed by the pairing POST itself.
+  bool matchesInvite(String token, {required DateTime now}) {
+    final expected = _token;
+    final expiry = _expiresAt;
+    if (expected == null || expiry == null || _used || now.isAfter(expiry)) {
+      return false;
+    }
+    return _constantTimeEquals(expected, token);
+  }
+
   void invalidate() {
     _token = null;
     _expiresAt = null;

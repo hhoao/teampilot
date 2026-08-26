@@ -6,7 +6,9 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/models/ssh_reachability.dart';
 import 'package:teampilot/services/connect/authorized_keys_file.dart';
 import 'package:teampilot/services/connect/connect_agent.dart';
+import 'package:teampilot/services/connect/connect_relay_client.dart';
 import 'package:teampilot/services/connect/connect_settings_store.dart';
+import 'package:teampilot/services/connect/paired_device_store.dart';
 import 'package:teampilot/services/connect/pairing_certificate.dart';
 import 'package:teampilot/services/connect/pairing_http.dart';
 import 'package:teampilot/services/connect/pairing_token_gate.dart';
@@ -34,6 +36,9 @@ void main() {
     SshdPresenceSnapshot presence = _listeningPresence,
     SshdPresenceProbe? probe,
     List<SshReachabilityEndpoint> extraEndpoints = const [],
+    PairedDeviceStore? deviceStore,
+    ConnectRelayRegistration? relayRegistration,
+    GrantGenerator? generateGrant,
   }) => ConnectAgent(
     probe: probe ?? () async => presence,
     keys: keys(),
@@ -43,6 +48,9 @@ void main() {
     now: () => now,
     stableHostId: (_) async => hostId,
     extraEndpoints: extraEndpoints,
+    deviceStore: deviceStore,
+    relayRegistration: relayRegistration,
+    generateGrant: generateGrant,
   );
 
   setUp(() {
@@ -278,6 +286,180 @@ void main() {
     );
 
     expect(emittedChunks, 2);
+  });
+
+  group('relay', () {
+    const registration = ConnectRelayRegistration(
+      url: 'ws://relay.example.test',
+      endpointHost: 'relay.example.test',
+      endpointPort: 443,
+    );
+
+    Future<({int statusCode, Map<String, Object?> body})> postPair(
+      ConnectAgent connectAgent, {
+      String deviceId = 'pixel-1',
+    }) {
+      final response =
+          Completer<({int statusCode, Map<String, Object?> body})>();
+      binding.requests.add(
+        PairingHttpRequest(
+          method: 'POST',
+          uri: Uri(path: '/pair'),
+          body: PairingPostBody(
+            token: connectAgent.currentOffer!.pairing.token,
+            deviceId: deviceId,
+            deviceName: 'Pixel',
+            publicKey: publicKey,
+          ),
+          respond: ({required statusCode, required body}) async {
+            response.complete((statusCode: statusCode, body: body));
+          },
+        ),
+      );
+      return response.future;
+    }
+
+    test('issues a hashed device grant when a relay is registered',
+        () async {
+      final store = PairedDeviceStore(
+        fs: InMemoryFilesystem(),
+        appDataRoot: '/data',
+        generateGrant: () => 'grant-token-abc',
+      );
+      final connectAgent = agent(
+        deviceStore: store,
+        relayRegistration: registration,
+        generateGrant: () => 'grant-token-abc',
+      );
+      await _start(connectAgent);
+
+      final result = await postPair(connectAgent);
+
+      expect(result.statusCode, HttpStatus.ok);
+      expect(result.body['relayGrant'], 'grant-token-abc');
+      expect(
+        await store.validateGrant(
+          hostId: hostId,
+          deviceId: 'pixel-1',
+          grant: 'grant-token-abc',
+        ),
+        isTrue,
+      );
+      expect(await store.hasDevice('pixel-1'), isTrue);
+    });
+
+    test('LAN pairing succeeds without any relay and mints no grant',
+        () async {
+      final store = PairedDeviceStore(
+        fs: InMemoryFilesystem(),
+        appDataRoot: '/data',
+        generateGrant: () => 'grant-token-abc',
+      );
+      final connectAgent = agent(deviceStore: store);
+      await _start(connectAgent);
+
+      final result = await postPair(connectAgent);
+
+      expect(result.statusCode, HttpStatus.ok);
+      expect(result.body.containsKey('relayGrant'), isFalse);
+      expect(await store.hasDevice('pixel-1'), isFalse);
+    });
+
+    test(
+      'pair dials accept only the live invite while the QR session runs',
+      () async {
+        final connectAgent = agent(relayRegistration: registration);
+        await _start(connectAgent);
+        final invite = connectAgent.currentOffer!.pairing.token;
+
+        expect(
+          await connectAgent.validateRelayDial(
+            ConnectRelayDialRequest(
+              channel: 'pair',
+              deviceId: 'pixel-1',
+              inviteToken: invite,
+            ),
+          ),
+          isTrue,
+        );
+
+        // Wrong or stale invites never pass.
+        expect(
+          await connectAgent.validateRelayDial(
+            const ConnectRelayDialRequest(channel: 'pair', inviteToken: 'nope'),
+          ),
+          isFalse,
+        );
+        expect(
+          await connectAgent.validateRelayDial(
+            const ConnectRelayDialRequest(channel: 'pair'),
+          ),
+          isFalse,
+        );
+
+        // After the QR closes the pairing channel is dead everywhere.
+        await connectAgent.stopQrSession();
+        expect(
+          await connectAgent.validateRelayDial(
+            ConnectRelayDialRequest(
+              channel: 'pair',
+              deviceId: 'pixel-1',
+              inviteToken: invite,
+            ),
+          ),
+          isFalse,
+        );
+        expect(
+          await connectAgent.resolveRelayTarget('pair'),
+          isNull,
+        );
+      },
+    );
+
+    test('ssh dials require a grant bound to device and install', () async {
+      final store = PairedDeviceStore(
+        fs: InMemoryFilesystem(),
+        appDataRoot: '/data',
+        generateGrant: () => 'grant-token-abc',
+      );
+      await store.issueGrant(hostId: hostId, deviceId: 'pixel-1');
+      final connectAgent = agent(deviceStore: store);
+      await _start(connectAgent);
+
+      Future<bool> dial({
+        String? deviceId = 'pixel-1',
+        String? grant = 'grant-token-abc',
+      }) {
+        return connectAgent.validateRelayDial(
+          ConnectRelayDialRequest(
+            channel: 'ssh',
+            deviceId: deviceId,
+            relayGrant: grant,
+          ),
+        );
+      }
+
+      expect(await dial(), isTrue);
+
+      // Wrong device, wrong install, revoked, missing credential.
+      expect(await dial(deviceId: 'other-phone'), isFalse);
+      expect(
+        await dial(grant: 'wrong-token'),
+        isFalse,
+      );
+      expect(
+        await connectAgent.validateRelayDial(
+          const ConnectRelayDialRequest(channel: 'ssh', deviceId: 'pixel-1'),
+        ),
+        isFalse,
+      );
+
+      // The grant survives a QR stop but dies with revocation.
+      await connectAgent.stopQrSession();
+      expect(await dial(), isTrue);
+      await store.revokeDevice('pixel-1');
+      expect(await dial(), isFalse);
+    });
   });
 
   test('ConnectSettingsStore persists one stable host ID', () async {

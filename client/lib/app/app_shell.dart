@@ -73,6 +73,8 @@ import '../cubits/discovery_settings_cubit.dart';
 import '../cubits/config_cubit.dart';
 import '../cubits/connect_cubit.dart';
 import '../services/connect/endpoint_dial_planner.dart';
+import '../services/connect/paired_device_store.dart';
+import '../services/connect/paired_relay_tunnel_registry.dart';
 import '../cubits/layout_cubit.dart';
 import '../cubits/floating_workspace/floating_workspace_cubit.dart';
 import '../models/layout_preferences.dart';
@@ -656,6 +658,11 @@ Future<AppShell> buildAppShell({
   final sshCredentialStore = const SecureSshCredentialStore(
     FlutterSecureKeyValueStore(),
   );
+  // Relay tunnels for paired (QR) SSH profiles: while a tunnel lives, every
+  // dial for that profile rides the loopback port instead of the stored host.
+  final pairedRelayTunnels = PairedRelayTunnelRegistry(
+    credentialStore: sshCredentialStore,
+  );
   final sshKnownHostRepo = SharedPrefsSshKnownHostRepository(preferences);
   final sshConnectionEvents = SshConnectionEvents();
   final sshClientFactory = SshClientFactory(
@@ -663,6 +670,7 @@ Future<AppShell> buildAppShell({
     knownHostRepository: sshKnownHostRepo,
     events: sshConnectionEvents,
     onHostKeyPrompt: showSshHostKeyPrompt,
+    dialTargetResolver: (profile) => pairedRelayTunnels.targetFor(profile.id),
   );
 
   // P1: the home target (the machine the control plane runs on) is the single
@@ -1528,12 +1536,37 @@ Future<AppShell> buildAppShell({
     );
     final settings = await settingsStore.load();
     final sshdPresence = SshdPresence();
+    final pairedDeviceStore = PairedDeviceStore(
+      fs: localFs,
+      appDataRoot: nativeAppDataPath,
+    );
     final connectAgent = ConnectAgent.production(
       keys: authorizedKeys,
       fs: localFs,
       extraEndpoints: settings.extraEndpoints,
       probe: sshdPresence.probe,
+      deviceStore: pairedDeviceStore,
     );
+    // App-lifetime relay registration: keeps off-LAN SSH reachable via
+    // device grants even when no QR is on screen.
+    final relayUrl = settings.relayUrl.trim();
+    if (relayUrl.isNotEmpty) {
+      try {
+        final uri = Uri.parse(relayUrl);
+        if (uri.scheme == 'ws' || uri.scheme == 'wss') {
+          await connectAgent.enableRelay(
+            appDataRoot: nativeAppDataPath,
+            registration: _relayRegistrationFor(uri),
+          );
+        }
+      } on Object catch (error, stackTrace) {
+        appLogger.w(
+          '[connect-relay] startup registration failed',
+          error: error,
+          stackTrace: stackTrace,
+        );
+      }
+    }
     connectCubit = ConnectCubit(
       agent: ConnectAgentController.fromAgent(connectAgent),
       probeSshd: sshdPresence.probe,
@@ -1840,6 +1873,8 @@ Future<AppShell> buildAppShell({
       await sshProfileRepo.save(updated);
       await sshProfileCubit.load();
     },
+    openRelayTunnel: (profile, endpoint) =>
+        pairedRelayTunnels.ensureSshTunnel(profile),
   );
 
   final sshConnectionCubit = SshConnectionCubit(
@@ -1853,6 +1888,7 @@ Future<AppShell> buildAppShell({
           )
         : null,
     pairedConnectAttempt: pairedConnectAttempt,
+    relayTunnels: pairedRelayTunnels,
   );
 
   final scheduleCalculator = AutomationScheduleCalculator();
@@ -2639,4 +2675,14 @@ class _TeamPilotBootstrapState extends State<TeamPilotBootstrap>
       child: widget.childBuilder(shell),
     );
   }
+}
+
+ConnectRelayRegistration _relayRegistrationFor(Uri uri) {
+  return ConnectRelayRegistration(
+    url: uri.toString(),
+    endpointHost: uri.host,
+    endpointPort: uri.port == 0
+        ? (uri.scheme == 'wss' ? 443 : 80)
+        : uri.port,
+  );
 }

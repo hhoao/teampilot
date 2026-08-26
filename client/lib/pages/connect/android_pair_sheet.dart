@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
@@ -17,12 +18,17 @@ import '../../repositories/ssh_profile_repository.dart';
 import '../../services/connect/connect_pair_client.dart';
 import '../../services/connect/paired_profile_writer.dart';
 import '../../services/connect/pairing_http.dart';
+import '../../services/connect/phone_relay_tunnel.dart';
 import '../../services/connect/ssh_device_key.dart';
 import '../../services/connect/ssh_pairing_offer.dart';
 import '../../utils/logging/logger_utils.dart';
 import '../../utils/ui/app_keys.dart';
 
 typedef SshDeviceKeyFactory = ({String pem, String openSshPublic}) Function();
+typedef RelayPairChannelOpener =
+    Future<({InternetAddress address, int port})> Function(
+      SshRelayOffer relay,
+    );
 
 Future<void> showAndroidPairSheet(
   BuildContext context, {
@@ -47,6 +53,7 @@ class AndroidPairSheet extends StatefulWidget {
     this.deviceKeyFactory,
     this.deviceId,
     this.deviceName,
+    this.relayTunnelOpener,
     super.key,
   });
 
@@ -57,6 +64,10 @@ class AndroidPairSheet extends StatefulWidget {
   final SshDeviceKeyFactory? deviceKeyFactory;
   final String? deviceId;
   final String? deviceName;
+
+  /// Test seam for the relay pair channel. Production opens a
+  /// [PhoneRelayTunnel] and POSTs the pairing body over loopback.
+  final RelayPairChannelOpener? relayTunnelOpener;
 
   @override
   State<AndroidPairSheet> createState() => _AndroidPairSheetState();
@@ -70,6 +81,7 @@ class _AndroidPairSheetState extends State<AndroidPairSheet> {
 
   @override
   void dispose() {
+    unawaited(_defaultTunnel?.close());
     _codeController.dispose();
     super.dispose();
   }
@@ -110,10 +122,13 @@ class _AndroidPairSheetState extends State<AndroidPairSheet> {
     try {
       final offer = SshPairingOffer.decode(rawCode);
       final key = await _loadDeviceKey(credentials);
-      final result = await pairClient.pair(
+      final deviceId = widget.deviceId ?? _deviceIdFor(key.openSshPublic);
+      final deviceName = widget.deviceName ?? Platform.localHostname;
+      final result = await _requestPairing(
+        pairClient,
         offer: offer,
-        deviceId: widget.deviceId ?? _deviceIdFor(key.openSshPublic),
-        deviceName: widget.deviceName ?? Platform.localHostname,
+        deviceId: deviceId,
+        deviceName: deviceName,
         publicKey: key.openSshPublic,
       );
       final profile = await writer.upsert(
@@ -161,6 +176,68 @@ class _AndroidPairSheetState extends State<AndroidPairSheet> {
     } finally {
       if (mounted) setState(() => _pairing = false);
     }
+  }
+
+  /// Direct LAN POST first; when the desktop is unreachable on LAN but the
+  /// offer carries a relay, retry the same POST over the relay pair channel.
+  Future<PairingPostResult> _requestPairing(
+    ConnectPairClient pairClient, {
+    required SshPairingOffer offer,
+    required String deviceId,
+    required String deviceName,
+    required String publicKey,
+  }) async {
+    final body = {
+      'token': offer.pairing.token,
+      'deviceId': deviceId,
+      'deviceName': deviceName,
+      'publicKey': publicKey,
+    };
+    try {
+      return await pairClient.pair(
+        offer: offer,
+        deviceId: deviceId,
+        deviceName: deviceName,
+        publicKey: publicKey,
+      );
+    } on SocketException catch (error, stackTrace) {
+      final relay = offer.relay;
+      if (relay == null) rethrow;
+      AppLogger.instance.w(
+        '[connect-pair] LAN pairing unreachable; trying relay channel',
+        error: error,
+        stackTrace: stackTrace,
+      );
+      final opener = widget.relayTunnelOpener ?? _openDefaultRelayTunnel;
+      final target = await opener(relay);
+      return pairClient.pairAt(
+        url: Uri(
+          scheme: 'https',
+          host: InternetAddress.loopbackIPv4.address,
+          port: target.port,
+          path: '/pair',
+        ),
+        tlsCertSha256: offer.pairing.tlsCertSha256,
+        body: body,
+      );
+    }
+  }
+
+  PhoneRelayTunnel? _defaultTunnel;
+
+  Future<({InternetAddress address, int port})> _openDefaultRelayTunnel(
+    SshRelayOffer relay,
+  ) async {
+    await _defaultTunnel?.close();
+    final tunnel = PhoneRelayTunnel();
+    await tunnel.open(
+      relayUrl: Uri.parse(relay.url),
+      hostId: relay.hostId,
+      channel: 'pair',
+      inviteToken: relay.inviteToken,
+    );
+    _defaultTunnel = tunnel;
+    return (address: tunnel.address, port: tunnel.port);
   }
 
   Future<({String pem, String openSshPublic})> _loadDeviceKey(
