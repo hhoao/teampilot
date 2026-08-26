@@ -8271,4 +8271,12 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get gitGraphTags => 'Tags';
+
+  @override
+  String get gitGraphHashSearchEmptyHint =>
+      'No loaded commit matches this hash. Scroll down or click \"Load more\" to fetch older history.';
+
+  @override
+  String get gitGraphConflictHint =>
+      'Resolve the conflicts, stage the files, then commit to continue.';
 }

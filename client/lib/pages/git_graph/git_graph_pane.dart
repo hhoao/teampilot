@@ -10,6 +10,7 @@ import '../../l10n/l10n_extensions.dart';
 import '../../models/git_graph.dart';
 import '../../services/git/git_repo_store.dart';
 import '../../services/storage/runtime_context.dart';
+import '../../services/workbench/workbench_editor_opener.dart';
 import '../../services/workspace/workspace_tools_scope.dart';
 import 'git_graph_detail_pane.dart';
 import 'git_graph_menus.dart';
@@ -38,7 +39,10 @@ class _GitGraphPaneState extends State<GitGraphPane> {
   Widget build(BuildContext context) {
     final provided = _providedCubit(context);
     if (provided != null) {
-      return BlocProvider.value(value: provided, child: const _PaneBody());
+      return BlocProvider.value(
+        value: provided,
+        child: _PaneBody(workspaceId: widget.workspaceId),
+      );
     }
     final workContext = _resolveWorkContext(context);
     if (workContext == null) return const SizedBox.shrink();
@@ -47,7 +51,7 @@ class _GitGraphPaneState extends State<GitGraphPane> {
         widget.repoRoot,
         workContext: workContext,
       )..selectCommit(null),
-      child: const _PaneBody(),
+      child: _PaneBody(workspaceId: widget.workspaceId),
     );
   }
 
@@ -72,7 +76,9 @@ class _GitGraphPaneState extends State<GitGraphPane> {
 }
 
 class _PaneBody extends StatelessWidget {
-  const _PaneBody();
+  const _PaneBody({required this.workspaceId});
+
+  final String workspaceId;
 
   @override
   Widget build(BuildContext context) {
@@ -89,7 +95,7 @@ class _PaneBody extends StatelessWidget {
               child: Column(
                 children: [
                   GitGraphToolbar(state: state),
-                  Expanded(child: _GraphList(state: state)),
+                  Expanded(child: _GraphList(state: state, workspaceId: workspaceId)),
                   if (state.errorMessage != null ||
                       state.currentBranch.isNotEmpty)
                     _StatusBar(state: state),
@@ -144,9 +150,10 @@ class _NotARepositoryHint extends StatelessWidget {
 }
 
 class _GraphList extends StatefulWidget {
-  const _GraphList({required this.state});
+  const _GraphList({required this.state, required this.workspaceId});
 
   final GitGraphState state;
+  final String workspaceId;
 
   @override
   State<_GraphList> createState() => _GraphListState();
@@ -193,6 +200,22 @@ class _GraphListState extends State<_GraphList> {
     final itemCount =
         (hasDirtyRow ? 1 : 0) + rows.length + (state.hasMore ? 1 : 0);
 
+    // hash 模式下已加载行全被过滤掉：提示还有更早历史可加载，而非“无提交”。
+    if (state.searchMode == GitSearchMode.hash &&
+        state.searchQuery.isNotEmpty &&
+        rows.isEmpty &&
+        state.rows.isNotEmpty) {
+      return Center(
+        child: Text(
+          context.l10n.gitGraphHashSearchEmptyHint,
+          textAlign: TextAlign.center,
+          style: TpTextStyles.of(
+            context,
+          ).smColored(Theme.of(context).colorScheme.onSurfaceVariant),
+        ),
+      );
+    }
+
     if (itemCount == 0) {
       return Center(
         child: Text(
@@ -209,7 +232,10 @@ class _GraphListState extends State<_GraphList> {
       itemCount: itemCount,
       itemBuilder: (context, index) {
         if (hasDirtyRow && index == 0) {
-          return _UncommittedTile(dirtyCount: state.dirtyCount);
+          return _UncommittedTile(
+            dirtyCount: state.dirtyCount,
+            workspaceId: widget.workspaceId,
+          );
         }
         final rowIndex = index - (hasDirtyRow ? 1 : 0);
         if (rowIndex < rows.length) {
@@ -265,40 +291,64 @@ class _GraphListState extends State<_GraphList> {
 }
 
 class _UncommittedTile extends StatelessWidget {
-  const _UncommittedTile({required this.dirtyCount});
+  const _UncommittedTile({required this.dirtyCount, required this.workspaceId});
 
   final int dirtyCount;
+  final String workspaceId;
+
+  /// 打开与 source control 面板一致的未提交 changes diff（整树，working
+  /// tree vs HEAD）。
+  Future<void> _openChangesDiff(BuildContext context) async {
+    final cubit = context.read<GitGraphCubit>();
+    await context.read<WorkbenchEditorOpener>().openChangesDiff(
+      workspaceId: workspaceId,
+      absolutePath: cubit.state.repoRoot,
+      title: context.l10n.gitGraphUncommittedChanges,
+      loadDiff: ({ignoreWhitespace = false, fullContext = false}) =>
+          cubit.workingTreeDiff(
+            ignoreWhitespace: ignoreWhitespace,
+            fullContext: fullContext,
+          ),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
     final badgeColor = cs.primary.withValues(alpha: 0.16);
-    return Container(
-      height: 26,
-      padding: const EdgeInsets.only(right: 12),
-      child: Row(
-        children: [
-          SizedBox(
-            width: 24,
-            child: Icon(Icons.edit_note_rounded, size: 18, color: cs.primary),
+    return MouseRegion(
+      cursor: SystemMouseCursors.click,
+      child: GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onTap: () => unawaited(_openChangesDiff(context)),
+        child: Container(
+          height: 26,
+          padding: const EdgeInsets.only(right: 12),
+          child: Row(
+            children: [
+              SizedBox(
+                width: 24,
+                child: Icon(Icons.edit_note_rounded, size: 18, color: cs.primary),
+              ),
+              const SizedBox(width: 6),
+              Text(
+                context.l10n.gitGraphUncommittedChanges,
+                style: TpTextStyles.of(context)
+                    .xsColored(cs.onSurfaceVariant)
+                    .copyWith(fontStyle: FontStyle.italic),
+              ),
+              const SizedBox(width: 6),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
+                decoration: BoxDecoration(
+                  color: badgeColor,
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Text('$dirtyCount', style: TpTextStyles.of(context).xs),
+              ),
+            ],
           ),
-          const SizedBox(width: 6),
-          Text(
-            context.l10n.gitGraphUncommittedChanges,
-            style: TpTextStyles.of(context)
-                .xsColored(cs.onSurfaceVariant)
-                .copyWith(fontStyle: FontStyle.italic),
-          ),
-          const SizedBox(width: 6),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
-            decoration: BoxDecoration(
-              color: badgeColor,
-              borderRadius: BorderRadius.circular(8),
-            ),
-            child: Text('$dirtyCount', style: TpTextStyles.of(context).xs),
-          ),
-        ],
+        ),
       ),
     );
   }
@@ -364,11 +414,25 @@ class _StatusBar extends StatelessWidget {
             Icon(Icons.error_outline_rounded, size: 13, color: cs.error),
             const SizedBox(width: 5),
             Expanded(
-              child: Text(
-                error,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: TpTextStyles.of(context).xsColored(cs.error),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    error,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TpTextStyles.of(context).xsColored(cs.error),
+                  ),
+                  // 冲突类错误追加处理指引（仅呈现，不改状态）。
+                  if (_isConflictError(error))
+                    Text(
+                      context.l10n.gitGraphConflictHint,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: TpTextStyles.of(context).xsColored(cs.error),
+                    ),
+                ],
               ),
             ),
           ] else ...[
@@ -403,4 +467,8 @@ class _StatusBar extends StatelessWidget {
       ),
     );
   }
+
+  /// 错误信息是否为合并 / 变基冲突（大小写不敏感）。
+  static bool _isConflictError(String message) =>
+      message.toLowerCase().contains('conflict');
 }

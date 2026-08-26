@@ -14713,6 +14713,18 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Tags'**
   String get gitGraphTags;
+
+  /// No description provided for @gitGraphHashSearchEmptyHint.
+  ///
+  /// In en, this message translates to:
+  /// **'No loaded commit matches this hash. Scroll down or click \"Load more\" to fetch older history.'**
+  String get gitGraphHashSearchEmptyHint;
+
+  /// No description provided for @gitGraphConflictHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Resolve the conflicts, stage the files, then commit to continue.'**
+  String get gitGraphConflictHint;
 }
 
 class _AppLocalizationsDelegate

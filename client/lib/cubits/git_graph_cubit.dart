@@ -409,4 +409,27 @@ class GitGraphCubit extends Cubit<GitGraphState> {
       fileDiffLoading: false,
     ),
   );
+
+  /// 整个工作区的未提交 diff（working tree vs HEAD），供未提交伪行打开
+  /// changes diff。失败时返回 null（呈现空 diff，不向 UI 抛异常）。
+  Future<String?> workingTreeDiff({
+    bool ignoreWhitespace = false,
+    bool fullContext = false,
+  }) async {
+    final dir = state.repoRoot;
+    if (dir.isEmpty) return null;
+    try {
+      // 相对路径 "." 表示仓库根下全部改动，等价于 source control 的逐文件
+      // diffAgainstHead，但一次拿到整树。
+      return await _git.diffAgainstHead(
+        dir,
+        '.',
+        ignoreWhitespace: ignoreWhitespace,
+        fullContext: fullContext,
+      );
+    } on GitException catch (e) {
+      appLogger.e('[GitGraph] working tree diff failed: ${e.message}');
+      return null;
+    }
+  }
 }

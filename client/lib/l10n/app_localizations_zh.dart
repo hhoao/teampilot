@@ -7929,4 +7929,11 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get gitGraphTags => '标签';
+
+  @override
+  String get gitGraphHashSearchEmptyHint =>
+      '已加载的提交中没有匹配该哈希的记录，请继续向下滚动或点击“加载更多”以载入更早的历史。';
+
+  @override
+  String get gitGraphConflictHint => '请先解决冲突并暂存相关文件，然后提交以继续。';
 }

@@ -87,15 +87,27 @@ class FakeHistoryForGraph implements GitHistoryService {
 
 /// [GitService] 测试替身：固定 `git status` 结果。
 class FakeGitForGraph implements GitService {
-  FakeGitForGraph(this.statusResult);
+  FakeGitForGraph(this.statusResult, {this.diffText = ''});
 
   final GitRepoStatus statusResult;
+
+  /// `diffAgainstHead` 返回的固定 diff 文本。
+  final String diffText;
 
   @override
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 
   @override
   Future<GitRepoStatus> status(String dir) async => statusResult;
+
+  @override
+  Future<String> diffAgainstHead(
+    String dir,
+    String relativePath, {
+    bool ignoreWhitespace = false,
+    bool fullContext = false,
+    bool untracked = false,
+  }) async => diffText;
 }
 
 /// [GitHistoryActions] 录制替身：记录调用并可通过 [throwNext] 注入失败。

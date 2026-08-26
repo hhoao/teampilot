@@ -3703,5 +3703,7 @@
   "gitGraphBranchesTags": "Branches & tags",
   "gitGraphLocalBranches": "Local branches",
   "gitGraphRemoteBranches": "Remote branches",
-  "gitGraphTags": "Tags"
+  "gitGraphTags": "Tags",
+  "gitGraphHashSearchEmptyHint": "No loaded commit matches this hash. Scroll down or click \"Load more\" to fetch older history.",
+  "gitGraphConflictHint": "Resolve the conflicts, stage the files, then commit to continue."
 }
