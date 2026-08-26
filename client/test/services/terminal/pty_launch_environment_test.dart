@@ -113,6 +113,33 @@ void main() {
       expect(env['PATH'], '/skill/bin:/home/.nvm/bin:/sparse/bin');
     });
 
+    // Regression pins from the final review: the resolved branch must not
+    // double-append fallback candidates, and must still restore host-base
+    // leftovers when the incoming env has no PATH at all.
+    test('resolved mode ignores candidateDirs', () {
+      HostShellPathResolver.debugSetCachedPath('/nvm/bin');
+      final env = {'PATH': '/skill/bin:/sparse/bin'};
+      PtyLaunchEnvironment.applyLocalLoginShellPath(
+        env,
+        hostBasePath: '/sparse/bin',
+        posixDesktop: true,
+        candidateDirs: [candidateA, candidateB],
+      );
+      expect(env['PATH'], '/skill/bin:/nvm/bin:/sparse/bin');
+    });
+
+    test('resolved mode restores host-base leftovers when env has no PATH', () {
+      HostShellPathResolver.debugSetCachedPath('/nvm/bin');
+      final env = <String, String>{};
+      PtyLaunchEnvironment.applyLocalLoginShellPath(
+        env,
+        hostBasePath: '/sparse/bin',
+        posixDesktop: true,
+        candidateDirs: const [],
+      );
+      expect(env['PATH'], '/nvm/bin:/sparse/bin');
+    });
+
     test('unresolved: appends existing missing candidates only', () {
       final env = {'PATH': '/sparse/bin:$candidateA'};
       PtyLaunchEnvironment.applyLocalLoginShellPath(
