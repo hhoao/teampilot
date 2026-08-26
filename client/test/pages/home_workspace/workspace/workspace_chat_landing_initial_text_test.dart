@@ -17,6 +17,7 @@ import 'package:teampilot/pages/home_workspace/workspace/workspace_chat_landing.
 import 'package:teampilot/services/cli/registry/cli_tool_registry.dart';
 import 'package:teampilot/services/cli/registry/cli_tool_registry_scope.dart';
 import 'package:teampilot/services/commands/command_bus.dart';
+import 'package:teampilot/services/compose/compose_draft_cache.dart';
 import 'package:teampilot/theme/app_theme.dart';
 
 import '../../../support/post_frame_test_harness.dart';
@@ -44,11 +45,17 @@ void _stubCubit<TState>(Cubit<TState> cubit, TState state) {
 }
 
 void main() {
-  setUp(setUpTestAppStorage);
-  tearDown(tearDownTestAppStorage);
+  setUp(() {
+    setUpTestAppStorage();
+    composeDraftCache.clear();
+  });
+  tearDown(() {
+    composeDraftCache.clear();
+    tearDownTestAppStorage();
+  });
 
   testWidgets(
-    'initialText fills compose field once and survives draft reload',
+    'initialText takes precedence over a cached draft and refreshes in place',
     (tester) async {
       const seed = 'Selected context\n\n';
       final workspace = Workspace(workspaceId: 'workspace-1', createdAt: 1);
@@ -72,7 +79,7 @@ void main() {
       _stubCubit(worktreeCubit, const WorktreeState());
       when(() => worktreeCubit.worktreesForProject(any())).thenReturn(const []);
 
-      Widget landing(String initialText) {
+      Widget landing(String? initialText) {
         final theme = buildDarkTheme();
         return MultiRepositoryProvider(
           providers: [
@@ -116,6 +123,8 @@ void main() {
         );
       }
 
+      composeDraftCache.setLandingDraft(workspace.workspaceId, 'old draft');
+
       await tester.pumpWidget(landing(seed));
       await tester.pumpAndSettle();
 
@@ -123,8 +132,17 @@ void main() {
           tester.widget<TextField>(find.byType(TextField).first);
       expect(field().controller!.text, seed);
       expect(field().controller!.selection.baseOffset, seed.length);
+      expect(
+        composeDraftCache.landingDraft(workspace.workspaceId),
+        'old draft',
+      );
 
       await tester.pumpWidget(landing('replacement'));
+      await tester.pump();
+
+      expect(field().controller!.text, 'replacement');
+
+      await tester.pumpWidget(landing(null));
       await tester.pump();
 
       expect(field().controller!.text, 'replacement');
