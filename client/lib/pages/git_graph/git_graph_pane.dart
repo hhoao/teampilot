@@ -87,47 +87,75 @@ class _GitGraphPaneState extends State<GitGraphPane> {
       );
     }
     final scopeCubit = _registry?.peek(widget.workspaceId);
-    if (scopeCubit == null) {
-      // 工作区 scope 尚未注册；registry 监听在注册完成时触发重建。
-      return const Center(
-        child: SizedBox(
-          width: 18,
-          height: 18,
-          child: CircularProgressIndicator(strokeWidth: 2),
+    // 主路径：registry cubit（Bloc 响应式，不依赖 InheritedWidget 晚插入通知）。
+    if (scopeCubit != null) {
+      return BlocProvider<WorkspaceToolsScopeCubit>.value(
+        value: scopeCubit,
+        child: BlocBuilder<WorkspaceToolsScopeCubit, WorkspaceToolsScopeState>(
+          builder: (context, state) {
+            final ctx = _ctxFromState(state);
+            if (ctx == null) {
+              return const Center(
+                child: SizedBox(
+                  width: 18,
+                  height: 18,
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                ),
+              );
+            }
+            return BlocProvider.value(
+              value: context.read<GitRepoStore>().graphCubitFor(
+                widget.repoRoot,
+                workContext: ctx,
+              ),
+              child: _PaneBody(workspaceId: widget.workspaceId),
+            );
+          },
         ),
       );
     }
-    return BlocProvider<WorkspaceToolsScopeCubit>.value(
-      value: scopeCubit,
-      child: BlocBuilder<WorkspaceToolsScopeCubit, WorkspaceToolsScopeState>(
-        builder: (context, state) {
-          RuntimeContext? ctx;
-          for (final slice in state.targetSlices) {
-            if (slice.roots.contains(widget.repoRoot)) {
-              ctx = slice.tools.context;
-              break;
-            }
-          }
-          ctx ??= state.tools?.context;
-          if (ctx == null) {
-            return const Center(
-              child: SizedBox(
-                width: 18,
-                height: 18,
-                child: CircularProgressIndicator(strokeWidth: 2),
-              ),
-            );
-          }
-          return BlocProvider.value(
-            value: context.read<GitRepoStore>().graphCubitFor(
-              widget.repoRoot,
-              workContext: ctx,
-            ),
-            child: _PaneBody(workspaceId: widget.workspaceId),
-          );
-        },
+    // 回退：继承的 WorkspaceToolsScope（测试宿主 / 其它已提供 scope 的语境）。
+    final inherited = _ctxFromInherited(context);
+    if (inherited != null) {
+      return BlocProvider.value(
+        value: context.read<GitRepoStore>().graphCubitFor(
+          widget.repoRoot,
+          workContext: inherited,
+        ),
+        child: _PaneBody(workspaceId: widget.workspaceId),
+      );
+    }
+    // 工作区 scope 尚未注册；registry 监听在注册完成时触发重建。
+    return const Center(
+      child: SizedBox(
+        width: 18,
+        height: 18,
+        child: CircularProgressIndicator(strokeWidth: 2),
       ),
     );
+  }
+
+  RuntimeContext? _ctxFromState(WorkspaceToolsScopeState state) {
+    RuntimeContext? ctx;
+    for (final slice in state.targetSlices) {
+      if (slice.roots.contains(widget.repoRoot)) {
+        ctx = slice.tools.context;
+        break;
+      }
+    }
+    ctx ??= state.tools?.context;
+    return ctx;
+  }
+
+  RuntimeContext? _ctxFromInherited(BuildContext context) {
+    final scope = WorkspaceToolsScope.maybeOf(context);
+    final ctx = _ctxFromState(
+      WorkspaceToolsScopeState(
+        tools: scope?.tools,
+        targetSlices: scope?.targetSlices ?? const [],
+      ),
+    );
+    return ctx;
   }
 
   /// 祖先已提供 cubit（surface / 测试宿主）时直接复用，不经过 store。
