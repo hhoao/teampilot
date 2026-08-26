@@ -49,6 +49,47 @@ Future<SimpleCustomLaunchResult?> showSimpleCustomLaunchDialog(
   );
 }
 
+Future<String?> showComposeCustomModelIdDialog(
+  BuildContext context, {
+  required String title,
+  required String confirmLabel,
+  String initial = '',
+}) {
+  final controller = TextEditingController(text: initial);
+  return showDialog<String>(
+    context: context,
+    builder: (dialogContext) => TpDialog(
+      maxWidth: 420,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          TpDialogHeader(
+            title: title,
+            onClose: () => Navigator.pop(dialogContext),
+          ),
+          const SizedBox(height: 16),
+          TextField(controller: controller, autofocus: true),
+          TpDialogActions(children: [
+            TextButton(
+              onPressed: () => Navigator.pop(dialogContext),
+              child: Text(dialogContext.l10n.cancel),
+            ),
+            FilledButton(
+              onPressed: () {
+                final id = controller.text.trim();
+                if (id.isEmpty) return;
+                Navigator.pop(dialogContext, id);
+              },
+              child: Text(confirmLabel),
+            ),
+          ]),
+        ],
+      ),
+    ),
+  );
+}
+
 class _SimpleCustomLaunchDialog extends StatefulWidget {
   const _SimpleCustomLaunchDialog({
     required this.initialCli,

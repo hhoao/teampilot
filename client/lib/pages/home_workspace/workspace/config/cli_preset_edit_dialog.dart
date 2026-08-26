@@ -16,10 +16,13 @@ import 'workspace_cli_effort_helpers.dart';
 import 'package:shared_ui/shared_ui.dart';
 
 class CliPresetEditDialog extends StatefulWidget {
-  const CliPresetEditDialog({this.existing, this.lockCli, super.key});
+  const CliPresetEditDialog({this.existing, this.lockCli, this.draft, super.key});
 
   /// If non-null, editing an existing preset.
   final CliPreset? existing;
+
+  /// Prefill-only four-tuple (save-as-preset); ignored when [existing] != null.
+  final CliPreset? draft;
 
   /// When non-null, the CLI dropdown is disabled and forced to this value.
   /// Used in native mode to lock presets to the team CLI.
@@ -41,7 +44,7 @@ class _CliPresetEditDialogState extends State<CliPresetEditDialog> {
   @override
   void initState() {
     super.initState();
-    final p = widget.existing;
+    final p = widget.existing ?? widget.draft;
     _nameCtl = TextEditingController(text: p?.name ?? '');
     _cli = widget.lockCli ?? p?.cli ?? CliTool.claude;
     _providerId = p?.provider ?? '';

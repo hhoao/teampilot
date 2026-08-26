@@ -1,10 +1,13 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 
+import '../../cubits/session_preferences_cubit.dart';
 import '../../models/app_provider_config.dart';
 import '../../models/cli_preset.dart';
 import '../../pages/home_workspace/workspace/workspace_chat_landing_palette.dart';
 import '../../services/cli/registry/capabilities/provider_capability.dart';
 import '../../services/cli/registry/cli_tool_registry.dart';
+import '../../services/cli/registry/cli_tool_registry_scope.dart';
 import '../cli/cli_brand_icon.dart';
 import 'compose_menu_chip.dart';
 import 'package:shared_ui/shared_ui.dart';
@@ -94,6 +97,30 @@ List<ComposeCascadeCliGroup> resolveComposeCascadeCliGroups({
     groups.add(ComposeCascadeCliGroup(cli: cli, providers: cascadeProviders));
   }
   return groups;
+}
+
+Future<void> refreshComposeCascadeCatalog(
+  BuildContext context, {
+  required CliTool cli,
+  required String providerId,
+}) async {
+  final registry = CliToolRegistryScope.maybeOf(context);
+  final capability = registry?.capability<ProviderCapability>(cli);
+  if (capability is! RefreshableProviderModelCapability) return;
+  SessionPreferencesCubit? prefs;
+  try {
+    prefs = context.read<SessionPreferencesCubit>();
+  } on ProviderNotFoundException {
+    prefs = null;
+  }
+  try {
+    await capability.refreshModelCatalog(
+      providerId: providerId,
+      executable: prefs?.resolveExecutable(cli),
+    );
+  } on Object {
+    // Catalog refresh is best-effort; cached candidates stay usable.
+  }
 }
 
 List<TpActionMenuSpec> buildComposeModelCascadeMenuSpecs({
