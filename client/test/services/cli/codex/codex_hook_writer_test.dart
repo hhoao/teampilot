@@ -1,11 +1,15 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/models/hook_entry.dart';
+import 'package:teampilot/models/team_config.dart';
 import 'package:teampilot/models/hook_event.dart';
 import 'package:teampilot/services/agent_status/member_agent_status_endpoint.dart';
 import 'package:teampilot/services/cli/codex/provider/codex_hook_writer.dart';
 import 'package:teampilot/services/cli/codex/provider/codex_toml_parser.dart';
 import 'package:teampilot/services/cli/registry/capabilities/hook_capability.dart';
 import 'package:teampilot/services/cli/registry/config_profile/hook_seat_context_completer.dart';
+import 'package:teampilot/services/resource/assemblers/hook_assembler.dart';
+import 'package:teampilot/services/resource/providers/endpoint_hook_contribution_provider.dart';
+import 'package:teampilot/services/resource/providers/hook_contribution_provider.dart';
 import 'package:teampilot/services/hook/glue_script_builder.dart';
 import 'package:teampilot/services/host/host_execution_environment.dart';
 import 'package:teampilot/services/host/host_script_dialect.dart';
@@ -172,6 +176,31 @@ void main() {
     // The 4 matcher-capable events (PermissionRequest/PreToolUse/PostToolUse/
     // PostToolUseFailure) render `matcher = "*"`; Stop has no matcher.
     expect('matcher = "*"'.allMatches(toml).length, 4);
+  });
+
+  test('codex renders subagent lifecycle agent-status hooks', () async {
+    const endpoint = MemberAgentStatusEndpoint(
+      url: 'http://127.0.0.1:1/agent-status',
+      token: 't',
+      sessionId: 's',
+    );
+    // Full assembly chain so the capability-matrix gate cannot silently drop
+    // the lifecycle entries before the writer sees them.
+    final assembled = await const HookAssembler().assemble(
+      context: HookProviderContext(cli: CliTool.codex),
+      providers: [
+        AgentStatusHookContributionProvider(endpoint: endpoint, memberId: 'm1'),
+      ],
+    );
+    expect(assembled.entries.map((e) => e.event), containsAll(const [
+      HookEvent.subagentStart,
+      HookEvent.subagentStop,
+    ]));
+    final result = writer.render(entries: assembled.entries, ctx: ctx);
+    expect(result.warnings, isEmpty);
+    final toml = result.configFragments['config.toml']! as String;
+    expect(toml, contains('[[hooks.SubagentStart]]'));
+    expect(toml, contains('[[hooks.SubagentStop]]'));
   });
 
   test('bus-idle managed entries render response-to-stdout stop script', () {

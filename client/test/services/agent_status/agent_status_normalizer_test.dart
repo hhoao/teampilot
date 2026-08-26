@@ -412,21 +412,31 @@ void main() {
       );
     });
 
-    test('SubagentStart / SubagentStop → null (do not flip seat)', () {
-      expect(
-        AgentStatusNormalizer.normalize(
-          cli: CliTool.claude,
-          body: {'hook_event_name': 'SubagentStart'},
-        ),
-        isNull,
-      );
-      expect(
-        AgentStatusNormalizer.normalize(
-          cli: CliTool.claude,
-          body: {'hook_event_name': 'SubagentStop'},
-        ),
-        isNull,
-      );
+    // Why working (not null): the attention cubit tracks child ids and keeps
+    // the parent seat working until every subagent stops — a child completion
+    // must reach the cubit instead of being dropped here.
+    test('Codex SubagentStart and SubagentStop retain the child id', () {
+      for (final name in ['SubagentStart', 'SubagentStop']) {
+        final event = AgentStatusNormalizer.normalize(
+          cli: CliTool.codex,
+          body: {'hook_event_name': name, 'agent_id': 'child-a'},
+        );
+        expect(event?.hookEventName, name);
+        expect(event?.toolAgentId, 'child-a');
+        expect(event?.state, AgentSeatAttention.working);
+      }
+    });
+
+    test('Subagent lifecycle without agent id stays working', () {
+      for (final name in ['SubagentStart', 'SubagentStop']) {
+        final event = AgentStatusNormalizer.normalize(
+          cli: CliTool.codex,
+          body: {'hook_event_name': name},
+        );
+        expect(event?.hookEventName, name);
+        expect(event?.toolAgentId, isNull);
+        expect(event?.state, AgentSeatAttention.working);
+      }
     });
 
     test('extracts tool_use_id / agent_id / tool input preview', () {

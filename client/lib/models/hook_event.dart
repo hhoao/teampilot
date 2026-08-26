@@ -12,6 +12,7 @@ enum HookEvent {
   permissionRequest,
   stop,
   stopFailure,
+  subagentStart,
   subagentStop,
   preCompact,
   notification,
@@ -131,6 +132,12 @@ abstract final class HookEventCapability {
       CliTool.claude: HookCliSupport(supported: true, nativeEvent: 'StopFailure'),
       CliTool.flashskyai: HookCliSupport(supported: true, nativeEvent: 'StopFailure'),
       CliTool.codex: HookCliSupport(supported: true, nativeEvent: 'StopFailure'),
+    },
+    // Why codex-only for SubagentStart: only codex exposes a native start
+    // lifecycle hook; agent-status assembly registers it so the attention
+    // cubit can count concurrent children (parent Stop must wait for them).
+    HookEvent.subagentStart: {
+      CliTool.codex: HookCliSupport(supported: true, nativeEvent: 'SubagentStart'),
     },
     HookEvent.subagentStop: {
       CliTool.claude: HookCliSupport(supported: true, nativeEvent: 'SubagentStop'),

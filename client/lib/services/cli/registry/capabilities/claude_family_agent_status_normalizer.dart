@@ -13,18 +13,15 @@ import '../../../agent_status/exit_plan_mode.dart';
 /// - non-AskUserQuestion PreToolUse / PostToolUse / PostToolUseFailure /
 ///   UserPromptSubmit → working
 /// - Stop / StopFailure → done
-/// - SubagentStart / SubagentStop → null (do not mark primary done)
+/// - SubagentStart / SubagentStop → working carrying `agent_id`; the
+///   attention cubit counts concurrent children so a child completion never
+///   completes the parent seat while siblings still run.
 final class ClaudeFamilyAgentStatusNormalizer {
   const ClaudeFamilyAgentStatusNormalizer();
 
   AgentStatusEvent? normalize(Map<String, Object?> body) {
     final eventName = body['hook_event_name']?.toString();
     if (eventName == null || eventName.isEmpty) return null;
-
-    // Why: Subagent lifecycle must not flip the primary seat to done/working.
-    if (eventName == 'SubagentStart' || eventName == 'SubagentStop') {
-      return null;
-    }
 
     final toolName = readPayloadString(body, const ['tool_name', 'toolName']);
     final prompt = readPayloadString(body, const ['prompt']);
@@ -81,6 +78,9 @@ final class ClaudeFamilyAgentStatusNormalizer {
         AgentSeatAttention.working,
         explicit: true,
       ),
+      // Subagent lifecycle stays `working`; the cubit interprets the event
+      // name and child id — a child stop must not read as parent completion.
+      'SubagentStart' || 'SubagentStop' => build(AgentSeatAttention.working),
       'Stop' || 'StopFailure' => build(AgentSeatAttention.done),
       _ => null,
     };
