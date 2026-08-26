@@ -8,6 +8,7 @@ import '../../models/hook_entry.dart';
 import '../../models/hook_event.dart';
 import '../../models/team_config.dart';
 import '../../services/hook/hook_repository.dart';
+import '../../widgets/app_toast/app_toast.dart';
 
 /// 打开新建/编辑 hook 对话框。返回 `true` = 保存成功；`false`/`null` = 取消。
 Future<bool?> showHookEditorDialog(
@@ -123,6 +124,7 @@ class _HookEditorDialogState extends State<HookEditorDialog> {
   /// 标准表单文本字段：label 走 [TpFormFieldLayout]，TextField 只负责输入。
   Widget _textField({
     required Key fieldKey,
+    String? id,
     required TextEditingController controller,
     required Widget label,
     String? hint,
@@ -131,6 +133,7 @@ class _HookEditorDialogState extends State<HookEditorDialog> {
     bool enabled = true,
   }) {
     return TpFormField<String>(
+      id: id,
       initialValue: controller.text,
       label: label,
       validator: validator,
@@ -154,9 +157,14 @@ class _HookEditorDialogState extends State<HookEditorDialog> {
 
   Future<void> _save() async {
     if (_saving) return;
+    final l10n = context.l10n;
+    _formKey.currentState?.setFieldError('name', null);
     if (!(_formKey.currentState?.validate() ?? false)) return;
     final id = widget.definition?.id ?? _slugify(_name.text);
-    if (id.isEmpty) return;
+    if (id.isEmpty) {
+      _formKey.currentState?.setFieldError('name', l10n.hookNameRequired);
+      return;
+    }
     final env = <String, String>{};
     for (final line in _env.text.split('\n')) {
       final trimmed = line.trim();
@@ -189,7 +197,15 @@ class _HookEditorDialogState extends State<HookEditorDialog> {
     final ok = await widget.cubit.upsert(definition, scripts: scripts);
     if (!mounted) return;
     setState(() => _saving = false);
-    if (ok) Navigator.of(context).pop(true);
+    if (ok) {
+      Navigator.of(context).pop(true);
+    } else {
+      AppToast.show(
+        context,
+        message: l10n.hookSaveFailed,
+        variant: TpToastVariant.error,
+      );
+    }
   }
 
   String _slugify(String value) {
@@ -217,6 +233,7 @@ class _HookEditorDialogState extends State<HookEditorDialog> {
             children: [
               _textField(
                 fieldKey: const Key('hook-name'),
+                id: 'name',
                 controller: _name,
                 label: Text(l10n.hookName),
                 validator: (value) => (value == null || value.trim().isEmpty)
