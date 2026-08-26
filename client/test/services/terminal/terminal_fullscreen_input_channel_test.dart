@@ -28,11 +28,12 @@ void main() {
     expect(writes.join(), '\x1B[200~$body\x1B[201~');
   });
 
-  test('writeln writes text and CR as a single chunk', () {
+  test('writeln writes text and CR as a single chunk', () async {
     final writes = <String>[];
     final channel = TerminalFullscreenInputChannel(writeToPty: writes.add);
 
     channel.writeln('hello team', onTurnStart: () {});
+    await Future<void>.delayed(Duration.zero);
 
     expect(writes, ['hello team\r']);
   });

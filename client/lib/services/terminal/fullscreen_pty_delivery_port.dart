@@ -30,9 +30,9 @@ abstract interface class FullscreenPtyDeliveryPort {
 
   Future<void> clearStagedInput();
 
-  Future<void> pasteText(String text);
+  Future<void> pasteText(String text, {bool Function()? canExecute});
 
-  Future<void> submitCr();
+  Future<void> submitCr({bool Function()? canExecute});
 
   /// Bottom [scanRows] of the mirror grid for ACK-miss diagnostics.
   String describeProbeWindow({int scanRows = 24});

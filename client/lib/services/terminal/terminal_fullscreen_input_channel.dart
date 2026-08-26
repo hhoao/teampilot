@@ -4,15 +4,20 @@ import 'dart:math' as math;
 import 'dart:typed_data';
 
 import '../../utils/logging/logger.dart';
+import 'terminal_input_command_queue.dart';
 
 /// Serialized bracketed-paste + CR injections for full-screen TUI CLIs.
 ///
 /// DIP: depends on a narrow write delegate, not [TerminalSession] itself.
 final class TerminalFullscreenInputChannel {
-  TerminalFullscreenInputChannel({required void Function(String text) writeToPty})
-    : _writeToPty = writeToPty;
+  TerminalFullscreenInputChannel({
+    void Function(String text)? writeToPty,
+    TerminalInputCommandQueue? commands,
+  }) : assert(writeToPty != null || commands != null),
+       _commands =
+           commands ?? TerminalInputCommandQueue(write: writeToPty!);
 
-  final void Function(String text) _writeToPty;
+  final TerminalInputCommandQueue _commands;
 
   /// Settle window between bracketed-paste content and the standalone CR for
   /// full-screen TUI CLIs, matching Claude Code's own ~10ms child-PTY delay.
@@ -24,20 +29,26 @@ final class TerminalFullscreenInputChannel {
 
   Future<void> _ptySubmitChain = Future<void>.value();
 
-  void _writeChunked(String text) {
+  Future<void> _writeChunked(String text, {bool Function()? canExecute}) async {
+    final fence = canExecute ?? _always;
     if (text.length <= ptyWriteChunkChars) {
-      _writeToPty(text);
+      await _commands.enqueue(
+        TerminalInputCommand.bytes(text, canExecute: fence),
+      );
       return;
     }
     for (var i = 0; i < text.length; i += ptyWriteChunkChars) {
       final end = math.min(i + ptyWriteChunkChars, text.length);
-      _writeToPty(text.substring(i, end));
+      final result = await _commands.enqueue(
+        TerminalInputCommand.bytes(text.substring(i, end), canExecute: fence),
+      );
+      if (result == TerminalInputCommandResult.dropped) return;
     }
   }
 
-  Future<void> pasteText(String text) {
+  Future<void> pasteText(String text, {bool Function()? canExecute}) {
     final next = _ptySubmitChain.then((_) async {
-      _writeChunked('\x1B[200~$text\x1B[201~');
+      await _writeChunked('\x1B[200~$text\x1B[201~', canExecute: canExecute);
     });
     _ptySubmitChain = next.catchError((_) {});
     return next;
@@ -45,7 +56,9 @@ final class TerminalFullscreenInputChannel {
 
   Future<void> clearInputLine() {
     final next = _ptySubmitChain.then((_) async {
-      _writeToPty('\x15');
+      await _commands.enqueue(
+        TerminalInputCommand.bytes('\x15', canExecute: _always),
+      );
     });
     _ptySubmitChain = next.catchError((_) {});
     return next;
@@ -54,7 +67,9 @@ final class TerminalFullscreenInputChannel {
   Future<void> clearStagedInput({int killLines = 3}) {
     final next = _ptySubmitChain.then((_) async {
       for (var i = 0; i < killLines; i++) {
-        _writeToPty('\x15');
+        await _commands.enqueue(
+          TerminalInputCommand.bytes('\x15', canExecute: _always),
+        );
         if (i < killLines - 1) {
           await Future<void>.delayed(const Duration(milliseconds: 80));
         }
@@ -69,6 +84,7 @@ final class TerminalFullscreenInputChannel {
     Duration? pasteSettleDelay,
     required Duration defaultSettleDelay,
     required void Function() onTurnStart,
+    bool Function()? canExecute,
   }) {
     onTurnStart();
     final delay = pasteSettleDelay ?? defaultSettleDelay;
@@ -77,19 +93,23 @@ final class TerminalFullscreenInputChannel {
       'settleMs=${delay.inMilliseconds}',
     );
     final next = _ptySubmitChain.then((_) async {
-      _writeChunked('\x1B[200~$text\x1B[201~');
+      await _writeChunked('\x1B[200~$text\x1B[201~', canExecute: canExecute);
       await Future<void>.delayed(delay);
       appLogger.d('[terminal] fullscreen-inject cr');
-      _writeToPty('\r');
+      await _commands.enqueue(
+        TerminalInputCommand.bytes('\r', canExecute: canExecute ?? _always),
+      );
     });
     _ptySubmitChain = next.catchError((_) {});
     return next;
   }
 
-  Future<void> submitPendingCr() {
+  Future<void> submitPendingCr({bool Function()? canExecute}) {
     appLogger.d('[terminal] nudge-cr-only');
     final next = _ptySubmitChain.then((_) async {
-      _writeToPty('\r');
+      await _commands.enqueue(
+        TerminalInputCommand.bytes('\r', canExecute: canExecute ?? _always),
+      );
     });
     _ptySubmitChain = next.catchError((_) {});
     return next;
@@ -97,11 +117,19 @@ final class TerminalFullscreenInputChannel {
 
   void writeln(String text, {required void Function() onTurnStart}) {
     onTurnStart();
-    _writeToPty('$text\r');
+    unawaited(
+      _commands.enqueue(
+        TerminalInputCommand.bytes('$text\r', canExecute: _always),
+      ),
+    );
   }
 
-  void writeRaw(String text) => _writeToPty(text);
+  void writeRaw(String text) => unawaited(
+    _commands.enqueue(TerminalInputCommand.bytes(text, canExecute: _always)),
+  );
 
   void writeBytes(Uint8List data) =>
-      _writeToPty(utf8.decode(data, allowMalformed: true));
+      writeRaw(utf8.decode(data, allowMalformed: true));
 }
+
+bool _always() => true;

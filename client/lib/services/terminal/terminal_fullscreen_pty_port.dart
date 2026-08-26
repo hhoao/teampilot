@@ -86,10 +86,12 @@ final class TerminalFullscreenPtyPort implements FullscreenPtyDeliveryPort {
   Future<void> clearStagedInput() => _input.clearStagedInput();
 
   @override
-  Future<void> pasteText(String text) => _input.pasteText(text);
+  Future<void> pasteText(String text, {bool Function()? canExecute}) =>
+      _input.pasteText(text, canExecute: canExecute);
 
   @override
-  Future<void> submitCr() => _input.submitPendingCr();
+  Future<void> submitCr({bool Function()? canExecute}) =>
+      _input.submitPendingCr(canExecute: canExecute);
 
   @override
   String describeProbeWindow({int scanRows = 24}) =>

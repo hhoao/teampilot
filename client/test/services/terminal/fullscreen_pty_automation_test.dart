@@ -29,7 +29,7 @@ void main() {
       expect(port.staged, isNull);
     });
 
-    test('reinjects when paste is not found on grid', () async {
+    test('returns pasteNotFound without internally re-pasting', () async {
       final port = FakeFullscreenPtyDeliveryPort(pastesBeforeVisible: 2);
       const text = '和你的队员打个招呼吧';
 
@@ -39,8 +39,8 @@ void main() {
         pasteSettle: Duration.zero,
       );
 
-      expect(outcome, FullscreenPtyDeliveryOutcome.submitted);
-      expect(port.pasteCount, 2);
+      expect(outcome, FullscreenPtyDeliveryOutcome.pasteNotFound);
+      expect(port.pasteCount, 1);
     });
 
     test('returns pasteNotFound when needle never appears', () async {
@@ -58,7 +58,7 @@ void main() {
 
     test('submits when Claude collapses long paste into chrome', () async {
       final port = FakeFullscreenPtyDeliveryPort(collapseAsClaudePaste: true);
-      final long = 'deploy jar\n' + ('x' * 80) + '\nxl-control.jar\n449 MB';
+      final long = 'deploy jar\n${'x' * 80}\nxl-control.jar\n449 MB';
 
       final outcome = await automation.deliverPasteAndSubmit(
         port: port,
@@ -166,7 +166,7 @@ void main() {
   });
 
   group('retry', () {
-    test('repastes when text not visible', () async {
+    test('does not re-paste when text is not visible', () async {
       final port = FakeFullscreenPtyDeliveryPort();
 
       final outcome = await automation.retry(
@@ -175,11 +175,11 @@ void main() {
         pasteSettle: Duration.zero,
       );
 
-      expect(outcome, FullscreenPtyDeliveryOutcome.submitted);
-      expect(port.pasteCount, 1);
+      expect(outcome, FullscreenPtyDeliveryOutcome.pasteNotFound);
+      expect(port.pasteCount, 0);
     });
 
-    test('repastes when text already visible', () async {
+    test('only nudges CR when text is already visible', () async {
       final port = FakeFullscreenPtyDeliveryPort()
         ..staged = TeamBus.doorbellNotice;
 
@@ -190,9 +190,9 @@ void main() {
       );
 
       expect(outcome, FullscreenPtyDeliveryOutcome.submitted);
-      expect(port.pasteCount, 1);
-      expect(port.clearCount, greaterThanOrEqualTo(1));
-      expect(port.crCount, greaterThanOrEqualTo(1));
+      expect(port.pasteCount, 0);
+      expect(port.clearCount, 0);
+      expect(port.crCount, 1);
     });
 
     test('skips re-paste entirely when hook already acked the submit', () async {
@@ -225,101 +225,24 @@ void main() {
     );
   });
 
-  group('composerMovesDown reinject guard', () {
-    test('skips reinject when crStuck but empty composer + needle', () async {
-      final port = _ComposerMovesDownStuckButCommittedPort(text: 'A');
-
-      final outcome = await automation.deliverPasteAndSubmit(
-        port: port,
-        text: 'A',
-        pasteSettle: Duration.zero,
-      );
-
-      expect(outcome, FullscreenPtyDeliveryOutcome.submitted);
-      expect(
-        port.pasteCount,
-        1,
-        reason: 'first CR already committed; reinject would duplicate user turn',
-      );
-    });
-
-    test('reinjects when crStuck and body still staged on composer', () async {
-      final port = _ComposerMovesDownStuckStagedThenAckPort(text: 'A');
-
-      final outcome = await automation.deliverPasteAndSubmit(
-        port: port,
-        text: 'A',
-        pasteSettle: Duration.zero,
-      );
-
-      expect(outcome, FullscreenPtyDeliveryOutcome.submitted);
-      expect(port.pasteCount, greaterThanOrEqualTo(2));
-    });
-
-    test('reinjects when composer empty but needle gone', () async {
-      final port = _ComposerMovesDownEmptyNoNeedleThenAckPort(text: 'A');
-
-      final outcome = await automation.deliverPasteAndSubmit(
-        port: port,
-        text: 'A',
-        pasteSettle: Duration.zero,
-      );
-
-      expect(outcome, FullscreenPtyDeliveryOutcome.submitted);
-      expect(port.pasteCount, greaterThanOrEqualTo(2));
-    });
-
-    test('anchorCellClears never skips reinject via guard', () async {
-      final port = FakeFullscreenPtyDeliveryPort(
-        crsToClear: 999,
-        composerChromeEmptyOverride: true,
-      );
-
-      final outcome = await automation.deliverPasteAndSubmit(
-        port: port,
-        text: 'hello',
-        pasteSettle: Duration.zero,
-      );
-
-      expect(outcome, FullscreenPtyDeliveryOutcome.crStuck);
-      expect(port.pasteCount, greaterThanOrEqualTo(2));
-    });
-
-    test(
-      'hook ACK during crStuck poll cancels reinject (anchorCellClears)',
+  test('hook confirmation after first CR prevents all later automated CRs',
       () async {
-        // opencode shape: first CR actually commits (composer clears) but the
-        // mirror grid stays stale so the probe reports crStuck. Meanwhile the
-        // prompt-submit hook ACK (authoritative) has already arrived.
-        final port = _AnchorCellStuckButHookAckedPort(text: 'A');
-        var acked = false;
-        bool isAcked() {
-          // Hook fires right after the CLI commits the prompt (first CR).
-          if (port.crCount > 0) acked = true;
-          return acked;
-        }
+    final port = _AnchorCellStuckButHookAckedPort(text: 'A');
+    var confirmed = false;
+    bool canExecute() {
+      if (port.crCount > 0) confirmed = true;
+      return !confirmed;
+    }
 
-        final outcome = await automation.deliverPasteAndSubmit(
-          port: port,
-          text: 'A',
-          pasteSettle: Duration.zero,
-          isAcked: isAcked,
-        );
-
-        expect(
-          outcome,
-          FullscreenPtyDeliveryOutcome.submitted,
-          reason: 'ACK proves the message already committed; reinject would '
-              'create a duplicate user row (the opencode multi-bubble bug)',
-        );
-        expect(
-          port.pasteCount,
-          1,
-          reason: 'ACK arrived mid-poll — the in-loop reinject must not '
-              're-paste the same text',
-        );
-      },
+    final outcome = await automation.deliverPasteAndSubmit(
+      port: port,
+      text: 'A',
+      pasteSettle: Duration.zero,
+      isAcked: () => !canExecute(),
     );
+
+    expect(outcome, FullscreenPtyDeliveryOutcome.submitted);
+    expect(port.crCount, 1);
   });
 }
 
@@ -378,10 +301,11 @@ final class _TimestampedPastePort implements FullscreenPtyDeliveryPort {
   Future<void> clearStagedInput() => _inner.clearStagedInput();
 
   @override
-  Future<void> pasteText(String text) => _inner.pasteText(text);
+  Future<void> pasteText(String text, {bool Function()? canExecute}) =>
+      _inner.pasteText(text, canExecute: canExecute);
 
   @override
-  Future<void> submitCr() async {
+  Future<void> submitCr({bool Function()? canExecute}) async {
     crAt ??= DateTime.now();
     await _inner.submitCr();
   }
@@ -456,13 +380,13 @@ final class _CursorTranscriptAfterSubmitPort
   }
 
   @override
-  Future<void> pasteText(String text) async {
+  Future<void> pasteText(String text, {bool Function()? canExecute}) async {
     _staged = text;
     _submitted = false;
   }
 
   @override
-  Future<void> submitCr() async {
+  Future<void> submitCr({bool Function()? canExecute}) async {
     crCount++;
     _submitted = true;
   }
@@ -476,6 +400,7 @@ final class _CursorTranscriptAfterSubmitPort
 }
 
 /// Cursor-shaped bug: CR commits text into transcript, ACK never fires, composer empty.
+// ignore: unused_element
 final class _ComposerMovesDownStuckButCommittedPort
     implements FullscreenPtyDeliveryPort {
   _ComposerMovesDownStuckButCommittedPort({required this.text});
@@ -538,13 +463,13 @@ final class _ComposerMovesDownStuckButCommittedPort
   }
 
   @override
-  Future<void> pasteText(String value) async {
+  Future<void> pasteText(String value, {bool Function()? canExecute}) async {
     pasteCount++;
     _composerBody = value;
   }
 
   @override
-  Future<void> submitCr() async {
+  Future<void> submitCr({bool Function()? canExecute}) async {
     crCount++;
     if (_composerBody != null) {
       _transcript = _composerBody;
@@ -558,6 +483,7 @@ final class _ComposerMovesDownStuckButCommittedPort
 }
 
 /// First round: CR leaves body staged and ACK fails; reinject then ACKs.
+// ignore: unused_element
 final class _ComposerMovesDownStuckStagedThenAckPort
     implements FullscreenPtyDeliveryPort {
   _ComposerMovesDownStuckStagedThenAckPort({required this.text});
@@ -621,14 +547,14 @@ final class _ComposerMovesDownStuckStagedThenAckPort
   }
 
   @override
-  Future<void> pasteText(String value) async {
+  Future<void> pasteText(String value, {bool Function()? canExecute}) async {
     pasteCount++;
     if (pasteCount > 1) _round = 1;
     staged = value;
   }
 
   @override
-  Future<void> submitCr() async {
+  Future<void> submitCr({bool Function()? canExecute}) async {
     crCount++;
     if (_round >= 1) {
       staged = null;
@@ -641,6 +567,7 @@ final class _ComposerMovesDownStuckStagedThenAckPort
 }
 
 /// First CR clears composer without leaving a needle (swallowed); reinject recovers.
+// ignore: unused_element
 final class _ComposerMovesDownEmptyNoNeedleThenAckPort
     implements FullscreenPtyDeliveryPort {
   _ComposerMovesDownEmptyNoNeedleThenAckPort({required this.text});
@@ -703,13 +630,13 @@ final class _ComposerMovesDownEmptyNoNeedleThenAckPort
   }
 
   @override
-  Future<void> pasteText(String value) async {
+  Future<void> pasteText(String value, {bool Function()? canExecute}) async {
     pasteCount++;
     staged = value;
   }
 
   @override
-  Future<void> submitCr() async {
+  Future<void> submitCr({bool Function()? canExecute}) async {
     crCount++;
     if (pasteCount == 1) {
       // Swallowed: clear without transcript residual.
@@ -789,13 +716,13 @@ final class _AnchorCellStuckButHookAckedPort
   }
 
   @override
-  Future<void> pasteText(String value) async {
+  Future<void> pasteText(String value, {bool Function()? canExecute}) async {
     pasteCount++;
     staged = value;
   }
 
   @override
-  Future<void> submitCr() async {
+  Future<void> submitCr({bool Function()? canExecute}) async {
     crCount++;
     // The CLI really did commit the message.
     submitted = true;
