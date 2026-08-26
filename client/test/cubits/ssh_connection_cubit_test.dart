@@ -1,12 +1,15 @@
 import 'dart:async';
+import 'dart:io';
 import 'dart:typed_data';
 
 import 'package:dartssh2/dartssh2.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/cubits/ssh_connection_cubit.dart';
 import 'package:teampilot/models/ssh_profile.dart';
+import 'package:teampilot/models/ssh_reachability.dart';
 import 'package:teampilot/repositories/ssh_credential_store.dart';
 import 'package:teampilot/repositories/ssh_known_host_repository.dart';
+import 'package:teampilot/services/connect/endpoint_dial_planner.dart';
 import 'package:teampilot/services/remote/remote_connection_monitor.dart';
 import 'package:teampilot/services/ssh/ssh_client_factory.dart';
 import 'package:teampilot/services/ssh/ssh_connection_events.dart';
@@ -432,6 +435,62 @@ void main() {
       harness.dispose();
     });
 
+    test('paired profile plans endpoint dials and persists the winner', () async {
+      final dialedHosts = <String>[];
+      final harness = _Harness(
+        connector: (profile, {timeout = const Duration(seconds: 10)}) async {
+          dialedHosts.add(profile.host);
+          if (profile.host == _pairedLanHost) {
+            throw const SocketException('LAN down');
+          }
+          return _InstantAuthClient();
+        },
+      );
+      final saved = <SshProfile>[];
+      final cubit = harness.createCubit(
+        pairedConnectAttempt: PairedConnectAttempt(
+          saveLastGood: (updated) async => saved.add(updated),
+        ),
+      );
+      cubit.syncProfiles([_paired]);
+
+      await cubit.connect(_paired.id);
+
+      expect(dialedHosts, [_pairedLanHost, _pairedExtraHost]);
+      expect(saved.single.host, _pairedExtraHost);
+      expect(saved.single.lastGoodKind, SshEndpointKind.extra);
+      expect(cubit.state.hostsById[_paired.id]!.host, _pairedExtraHost);
+      expect(
+        cubit.state.hostsById[_paired.id]!.status,
+        SshHostUiStatus.connected,
+      );
+
+      await cubit.close();
+      harness.dispose();
+    });
+
+    test('manual profiles connect directly without last-good saves', () async {
+      final harness = _Harness();
+      final saved = <SshProfile>[];
+      final cubit = harness.createCubit(
+        pairedConnectAttempt: PairedConnectAttempt(
+          saveLastGood: (updated) async => saved.add(updated),
+        ),
+      );
+      cubit.syncProfiles(const [_p1]);
+
+      await cubit.connect(_p1.id);
+
+      expect(saved, isEmpty);
+      expect(
+        cubit.state.hostsById[_p1.id]!.status,
+        SshHostUiStatus.connected,
+      );
+
+      await cubit.close();
+      harness.dispose();
+    });
+
     test('monitor degraded → UI still connected', () async {
       final harness = _Harness();
       const profile = _p1;
@@ -515,6 +574,30 @@ const _p2 = SshProfile(
   username: 'bob',
 );
 
+const _pairedLanHost = '192.168.1.20';
+const _pairedExtraHost = 'desktop.example.test';
+
+final _paired = const SshProfile(
+  id: 'paired',
+  name: 'Alice desktop',
+  host: _pairedLanHost,
+  username: 'alice',
+  pairedDesktopId: 'AbCdEf0123_-xyZ9',
+).copyWith(
+  endpoints: [
+    SshReachabilityEndpoint(
+      kind: SshEndpointKind.lan,
+      host: _pairedLanHost,
+      port: 22,
+    ),
+    SshReachabilityEndpoint(
+      kind: SshEndpointKind.extra,
+      host: _pairedExtraHost,
+      port: 2222,
+    ),
+  ],
+);
+
 class _Harness {
   _Harness({
     SshClientConnector? connector,
@@ -548,11 +631,13 @@ class _Harness {
 
   SshConnectionCubit createCubit({
     Future<void> Function(String id)? selectProfileOnConnect,
+    PairedConnectAttempt? pairedConnectAttempt,
   }) {
     return SshConnectionCubit(
       factory: factory,
       coordinator: coordinator,
       selectProfileOnConnect: selectProfileOnConnect,
+      pairedConnectAttempt: pairedConnectAttempt,
     );
   }
 

@@ -72,6 +72,7 @@ import '../cubits/ai_feature_settings_cubit.dart';
 import '../cubits/discovery_settings_cubit.dart';
 import '../cubits/config_cubit.dart';
 import '../cubits/connect_cubit.dart';
+import '../services/connect/endpoint_dial_planner.dart';
 import '../cubits/layout_cubit.dart';
 import '../cubits/floating_workspace/floating_workspace_cubit.dart';
 import '../models/layout_preferences.dart';
@@ -1832,6 +1833,15 @@ Future<AppShell> buildAppShell({
     onReconnectSessionPlane: chatCubit.reconnectSshProfile,
   );
 
+  // Paired profiles (QR scan) try lan → extra → relay and persist the winner
+  // without invalidating the pool connection that just succeeded.
+  final pairedConnectAttempt = PairedConnectAttempt(
+    saveLastGood: (updated) async {
+      await sshProfileRepo.save(updated);
+      await sshProfileCubit.load();
+    },
+  );
+
   final sshConnectionCubit = SshConnectionCubit(
     factory: sshClientFactory,
     coordinator: sshProfileConnectionCoordinator,
@@ -1842,6 +1852,7 @@ Future<AppShell> buildAppShell({
             selectProfile: sshProfileCubit.selectProfile,
           )
         : null,
+    pairedConnectAttempt: pairedConnectAttempt,
   );
 
   final scheduleCalculator = AutomationScheduleCalculator();

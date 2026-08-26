@@ -5,6 +5,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../models/ssh_profile.dart';
+import '../services/connect/endpoint_dial_planner.dart';
 import '../services/remote/remote_connection_monitor.dart';
 import '../services/ssh/ssh_client_factory.dart';
 import '../services/ssh/ssh_connection_failure.dart';
@@ -108,9 +109,11 @@ class SshConnectionCubit extends Cubit<SshConnectionState> {
     required SshClientFactory factory,
     required SshProfileConnectionCoordinator coordinator,
     Future<void> Function(String id)? selectProfileOnConnect,
+    PairedConnectAttempt? pairedConnectAttempt,
   }) : _factory = factory,
        _coordinator = coordinator,
        _selectProfileOnConnect = selectProfileOnConnect,
+       _pairedConnectAttempt = pairedConnectAttempt,
        super(const SshConnectionState()) {
     _poolSubscription = _factory.storagePoolChanges.listen(_onPoolChanged);
   }
@@ -118,6 +121,7 @@ class SshConnectionCubit extends Cubit<SshConnectionState> {
   final SshClientFactory _factory;
   final SshProfileConnectionCoordinator _coordinator;
   final Future<void> Function(String id)? _selectProfileOnConnect;
+  final PairedConnectAttempt? _pairedConnectAttempt;
 
   final Map<String, SshProfile> _profilesById = {};
   final Map<String, StreamSubscription<RemoteConnectionState>>
@@ -166,7 +170,7 @@ class SshConnectionCubit extends Cubit<SshConnectionState> {
     emit(_buildState());
 
     try {
-      await _coordinator.userConnect(profile);
+      await _connectProfile(profile);
       _connectingIds.remove(profileId);
       if (!_profilesById.containsKey(profileId)) {
         await _coordinator.userDisconnect(profileId);
@@ -195,6 +199,29 @@ class SshConnectionCubit extends Cubit<SshConnectionState> {
       _lastFailureStatus[profileId] = status;
       _lastErrorDetail[profileId] = error.toString();
       emit(_buildState());
+    }
+  }
+
+  /// Paired profiles dial their endpoints in planner order (lan → extra →
+  /// relay) and keep the winning endpoint; manual profiles connect as before.
+  Future<void> _connectProfile(SshProfile profile) async {
+    final attempt = _pairedConnectAttempt;
+    if (attempt == null ||
+        profile.pairedDesktopId == null ||
+        planEndpointDials(profile).isEmpty) {
+      await _coordinator.userConnect(profile);
+      return;
+    }
+    final winner = await attempt.connectFirst(
+      profile: profile,
+      dial: (endpoint) => _coordinator.userConnect(
+        withLastGoodEndpoint(profile, endpoint),
+      ),
+    );
+    final updated = withLastGoodEndpoint(profile, winner);
+    // Keep the UI and the pooled connection on the same host identity.
+    if (_profilesById[profile.id]?.id == profile.id) {
+      _profilesById[profile.id] = updated;
     }
   }
 
