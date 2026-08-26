@@ -10,6 +10,7 @@ import '../../../cubits/layout_cubit.dart';
 import '../../../cubits/mailbox_cubit.dart';
 import '../../../cubits/workbench/workbench_cubit.dart';
 import '../../../cubits/run_cubit.dart';
+import '../../../cubits/session_groups_cubit.dart';
 import '../../../cubits/worktree_cubit.dart';
 import '../../../cubits/workspace_tools_cubit.dart';
 import '../../../models/workspace.dart';
@@ -21,6 +22,7 @@ import '../../../services/io/local_filesystem.dart';
 import '../../../services/workspace/workspace_tools_scope.dart';
 import '../../../services/workspace/workspace_tools_scope_registry.dart';
 import '../../../services/workspace/workspace_worktree_registry.dart';
+import '../../../services/workspace/workspace_session_groups_registry.dart';
 import '../../../utils/session/workspace_tab_session_scope.dart';
 import '../../../utils/ui/app_keys.dart';
 import '../../../utils/workspace/workspace_active_context.dart';
@@ -237,6 +239,9 @@ class _WorkspaceSplitPaneState extends State<WorkspaceSplitPane> {
       workspaceId: widget.workspace.workspaceId,
       repoPath: widget.workspace.firstFolderPath,
     );
+    final sessionGroupsCubit = context
+        .read<WorkspaceSessionGroupsRegistry>()
+        .cubitFor(widget.workspace.workspaceId);
     final runCubit = context.read<WorkspaceRunRegistry>().cubitFor(
       tabScopeId: widget.tabScopeId,
       workspaceId: widget.workspace.workspaceId,
@@ -247,6 +252,7 @@ class _WorkspaceSplitPaneState extends State<WorkspaceSplitPane> {
         BlocProvider<WorkspaceToolsScopeCubit>.value(value: scopeCubit),
         BlocProvider<WorktreeCubit>.value(value: worktreeCubit),
         BlocProvider<RunCubit>.value(value: runCubit),
+        BlocProvider<SessionGroupsCubit>.value(value: sessionGroupsCubit),
       ],
       child: BlocBuilder<WorktreeCubit, WorktreeState>(
         buildWhen: (a, b) => a.currentWorktreePath != b.currentWorktreePath,

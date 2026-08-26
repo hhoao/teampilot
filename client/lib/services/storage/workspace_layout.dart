@@ -14,6 +14,7 @@ import 'app_storage.dart';
 ///   manifest.json       # Workspace
 ///   project-config.json # Project-scoped skills/plugins/mcp/extensions
 ///   compose-drafts.json # Landing and session compose text
+///   session-groups.json # manual sidebar session groups
 ///   profile.json        # legacy; unused after identity-model removal
 ///   assets/icon.*       # custom workspace icon
 ///   config/             # workspace-level CLI overrides
@@ -65,6 +66,10 @@ class WorkspaceLayout {
 
   String composeDraftsFile(String workspaceId) =>
       _ctx.join(workspaceDir(workspaceId), 'compose-drafts.json');
+
+  /// Manual sidebar session groups ("todo" etc.), tag-style membership.
+  String sessionGroupsFile(String workspaceId) =>
+      _ctx.join(workspaceDir(workspaceId), 'session-groups.json');
 
   String assetsDir(String workspaceId) =>
       _ctx.join(workspaceDir(workspaceId), 'assets');

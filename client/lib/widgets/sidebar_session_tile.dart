@@ -8,6 +8,7 @@ import '../cubits/agent_attention_cubit.dart';
 import '../cubits/automation_cubit.dart';
 import '../cubits/automation_state.dart';
 import '../cubits/chat_cubit.dart';
+import '../cubits/session_groups_cubit.dart';
 import '../l10n/l10n_extensions.dart';
 import '../models/app_session.dart';
 import '../models/automation_list_scope.dart';
@@ -156,6 +157,7 @@ class _SidebarSessionTileState extends State<SidebarSessionTile> {
         icon: session.pinned ? Icons.push_pin : Icons.push_pin_outlined,
         label: session.pinned ? l10n.unpinConversation : l10n.pinConversation,
       ),
+      ..._sessionGroupItems(session),
     ];
     if (_canOpenSessionDirectory) {
       items.add(
@@ -193,6 +195,33 @@ class _SidebarSessionTileState extends State<SidebarSessionTile> {
     return items;
   }
 
+  /// Tag-style group toggles from [SessionGroupsCubit]; silently omitted when
+  /// the caller has no group provider (e.g. floating windows).
+  List<TpActionMenuPopupItem<String>> _sessionGroupItems(AppSession session) {
+    final SessionGroupsCubit cubit;
+    try {
+      cubit = context.read<SessionGroupsCubit>();
+    } on Object {
+      return const [];
+    }
+    final state = cubit.state;
+    if (!state.ready || state.groups.isEmpty) return const [];
+    final memberOf = state.groupIdsContaining(session.sessionId);
+    return [
+      for (final group in state.groups)
+        TpActionMenuPopupItem(
+          value: 'toggle_group:${group.id}',
+          iconWidget: Icon(
+            memberOf.contains(group.id)
+                ? Icons.check_box_outlined
+                : Icons.check_box_outline_blank_outlined,
+            size: context.tpIconSizes.sm,
+          ),
+          label: group.name,
+        ),
+    ];
+  }
+
   Future<void> _handleContextAction(String selected, AppSession session) async {
     final l10n = context.l10n;
     switch (selected) {
@@ -200,6 +229,17 @@ class _SidebarSessionTileState extends State<SidebarSessionTile> {
         await _showRenameDialog(context, session, l10n);
       case 'pin':
         await _chatCubit?.toggleSessionPin(session.sessionId);
+      case String value when value.startsWith('toggle_group:'):
+        final groupId = value.substring('toggle_group:'.length);
+        final groups = context.read<SessionGroupsCubit>().state;
+        final group = groups.groupById(groupId);
+        if (group != null) {
+          context.read<SessionGroupsCubit>().setMembership(
+            groupId,
+            session.sessionId,
+            member: !group.containsSession(session.sessionId),
+          );
+        }
       case 'open_directory':
         await _openSessionDirectory(session);
       case 'schedule':
