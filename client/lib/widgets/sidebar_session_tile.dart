@@ -76,6 +76,10 @@ class _SidebarSessionTileState extends State<SidebarSessionTile> {
   /// performs the delete (no dialog).
   var _deleteArmed = false;
 
+  /// True while a duplicate round-trip is awaited; disables the duplicate
+  /// menu items and blocks re-entry until the fork (or its failure) lands.
+  var _duplicateInFlight = false;
+
   Timer? _deleteArmResetTimer;
 
   SessionRepository? _repo;
@@ -247,6 +251,7 @@ class _SidebarSessionTileState extends State<SidebarSessionTile> {
   }
 
   bool _duplicateEnabled(AppSession session) {
+    if (_duplicateInFlight) return false;
     final chat = _chatCubit;
     if (chat == null) return false;
     final tab = chat.tabStore.openTabBySessionId(session.sessionId);
@@ -262,41 +267,49 @@ class _SidebarSessionTileState extends State<SidebarSessionTile> {
     final chatCubit = _chatCubit;
     final repo = _repo;
     if (chatCubit == null || repo == null) return;
+    if (_duplicateInFlight) return;
     final baseTitle = session.display.isNotEmpty
         ? session.display
         : l10n.defaultNewChatSessionTitle;
+    _duplicateInFlight = true;
     try {
-      final fork = await chatCubit.duplicateSession(
-        repo,
-        session.sessionId,
-        newDisplayTitle: '$baseTitle ${l10n.sessionTitleCopySuffix}',
-      );
-      if (!context.mounted) return;
-      AppToast.show(context, message: l10n.sessionDuplicated);
-      final workspace = context.read<ChatCubit>().state.workspaces.firstWhereOrNull(
-            (w) => w.workspaceId == fork.workspaceId,
+      try {
+        final fork = await chatCubit.duplicateSession(
+          repo,
+          session.sessionId,
+          newDisplayTitle: '$baseTitle ${l10n.sessionTitleCopySuffix}',
+        );
+        if (!context.mounted) return;
+        AppToast.show(context, message: l10n.sessionDuplicated);
+        final workspace = context
+            .read<ChatCubit>()
+            .state
+            .workspaces
+            .firstWhereOrNull((w) => w.workspaceId == fork.workspaceId);
+        if (workspace != null) {
+          await openWorkspaceSessionTab(
+            context,
+            workspace,
+            fork,
+            connectImmediatelyOverride: true,
           );
-      if (workspace != null) {
-        await openWorkspaceSessionTab(
-          context,
-          workspace,
-          fork,
-          connectImmediatelyOverride: true,
+        }
+      } on Object catch (error, stackTrace) {
+        appLogger.e(
+          'duplicateSession',
+          error: error,
+          stackTrace: stackTrace,
         );
+        if (context.mounted) {
+          AppToast.show(
+            context,
+            message: l10n.sessionDuplicateFailed,
+            variant: TpToastVariant.error,
+          );
+        }
       }
-    } on Object catch (error, stackTrace) {
-      appLogger.e(
-        'duplicateSession',
-        error: error,
-        stackTrace: stackTrace,
-      );
-      if (context.mounted) {
-        AppToast.show(
-          context,
-          message: l10n.sessionDuplicateFailed,
-          variant: TpToastVariant.error,
-        );
-      }
+    } finally {
+      _duplicateInFlight = false;
     }
   }
 

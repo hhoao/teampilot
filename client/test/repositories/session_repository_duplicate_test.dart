@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
@@ -141,6 +142,40 @@ void main() {
       'rollout-2026-08-26-codex-native-uuid-1.jsonl',
     );
     expect(await fs.readString(copiedRollout), isNotNull);
+  });
+
+  test('copies launch-identity passthrough fields onto the fork', () async {
+    final workspace = await repo.createWorkspace([
+      WorkspaceFolder(path: '/tmp/my-workspace'),
+    ]);
+    final source = (await repo.createSession(
+      workspace.workspaceId,
+      cli: CliTool.claude,
+      provider: 'anthropic',
+      model: 'claude-sonnet-4-5',
+      effort: 'high',
+      presetId: 'preset-1',
+      expertKey: 'teampilot/builtin/reviewer',
+    )).session;
+    // memberTargets only persists for teamed sessions; plant the fixture the
+    // same way session_repository_test rewrites session.json directly.
+    final sessionPath =
+        '${tmp.path}/workspace/workspaces/${workspace.workspaceId}'
+        '/sessions/${source.sessionId}/session.json';
+    final raw =
+        jsonDecode(File(sessionPath).readAsStringSync())
+            as Map<String, dynamic>;
+    raw['memberTargets'] = {'local': 'machine-a'};
+    File(sessionPath).writeAsStringSync(jsonEncode(raw));
+
+    final fork = await repo.duplicateSession(source.sessionId, display: 'x');
+
+    expect(fork.provider, 'anthropic');
+    expect(fork.model, 'claude-sonnet-4-5');
+    expect(fork.effort, 'high');
+    expect(fork.presetId, 'preset-1');
+    expect(fork.expertKey, 'teampilot/builtin/reviewer');
+    expect(fork.memberTargets, {'local': 'machine-a'});
   });
 
   test('skips the copy silently when the CLI never launched', () async {

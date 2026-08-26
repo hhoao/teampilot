@@ -100,6 +100,29 @@ class _DuplicateRecordingChatCubit extends _RecordingChatCubit {
   }
 }
 
+/// Duplicate round-trip blocked on a completer, so the tile's in-flight
+/// window can be observed.
+class _GatedDuplicateChatCubit extends _RecordingChatCubit {
+  final gate = Completer<void>();
+  var calls = 0;
+
+  @override
+  Future<AppSession> duplicateSession(
+    SessionRepository repo,
+    String sourceSessionId, {
+    required String newDisplayTitle,
+  }) async {
+    calls++;
+    await gate.future;
+    return AppSession(
+      sessionId: 'sess-1-fork',
+      workspaceId: 'ws1',
+      display: newDisplayTitle,
+      createdAt: 1,
+    );
+  }
+}
+
 Widget _host({
   required ChatCubit chatCubit,
   required AutomationCubit automationCubit,
@@ -646,6 +669,46 @@ void main() {
 
     // Dismiss the success toast so its auto-close timer does not outlive
     // the widget tree (same pattern as app_toast_recorder_test.dart).
+    TpToast.dismiss();
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 250));
+  });
+
+  testWidgets('duplicate item is disabled while a duplicate is in flight',
+      (tester) async {
+    final chatCubit = _GatedDuplicateChatCubit();
+    final (attention, automationCubit) = _tileCubits();
+    addTearDown(chatCubit.close);
+    addTearDown(automationCubit.close);
+    addTearDown(attention.close);
+
+    await tester.pumpWidget(_host(
+      chatCubit: chatCubit,
+      automationCubit: automationCubit,
+      sessionRepository: SessionRepository(rootDir: '/nonexistent'),
+      attentionCubit: attention,
+    ));
+
+    await _openContextMenu(tester);
+    await tester.tap(find.text('Duplicate conversation'));
+    await tester.pump();
+    expect(chatCubit.calls, 1);
+
+    // Re-open the context menu while the first duplicate still awaits.
+    await _openContextMenu(tester);
+    final duplicateItem = tester.widget<TpActionMenuPopupItem<String>>(
+      find.byWidgetPredicate(
+        (w) => w is TpActionMenuPopupItem<String> && w.value == 'duplicate',
+      ),
+    );
+    expect(duplicateItem.enabled, isFalse);
+    await _dismissContextMenu(tester);
+
+    chatCubit.gate.complete();
+    await tester.pumpAndSettle();
+    // Exactly one round-trip ran; nothing re-entered while in flight.
+    expect(chatCubit.calls, 1);
+
     TpToast.dismiss();
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 250));

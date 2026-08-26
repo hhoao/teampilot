@@ -1218,8 +1218,9 @@ class SessionRepository {
   /// [AppSession.nativeSessionIds] so resume/history resolve against the
   /// copied state: postCaptured CLIs reuse their persisted entry,
   /// clientPinned CLIs get the source sessionId (the pinned transcript
-  /// filename). Team sessions are rejected. On a mid-copy failure the
-  /// half-written target directory is removed before rethrowing.
+  /// filename). Team sessions are rejected. On a mid-copy failure (tree copy
+  /// or first fork-record write) the half-written target directory is removed
+  /// before rethrowing.
   Future<AppSession> duplicateSession(
     String sourceSessionId, {
     required String display,
@@ -1290,11 +1291,11 @@ class SessionRepository {
             ),
           );
         }
+        await _writeSession(fs, fork);
       } on Object {
         await fs.deleteSessionDir(source.workspaceId, newSessionId);
         rethrow;
       }
-      await _writeSession(fs, fork);
 
       // Index mirror — same prepend semantics as createSession.
       final key = _workspacesIndexCacheKey();
@@ -1310,16 +1311,23 @@ class SessionRepository {
         source.workspaceId,
         indexOnly: true,
       );
-      final baseIds =
-          cachedWorkspace?.sessionIds ??
-          manifest?.sessionIds ??
-          const <String>[];
-      if (!baseIds.contains(newSessionId)) {
-        await _rememberWorkspace(
-          (cachedWorkspace ?? manifest)!.copyWith(
-            sessionIds: [newSessionId, ...baseIds],
-          ),
+      final indexEntry = cachedWorkspace ?? manifest;
+      if (indexEntry == null) {
+        // The manifest read raced an external workspace delete; the fork
+        // record itself is already persisted. Skip the mirror (the index
+        // rebuilds from disk on next boot) instead of crashing the duplicate.
+        appLogger.w(
+          '[session-duplicate] workspace ${source.workspaceId} missing from '
+          'index snapshot and manifest; skipped session-index mirror for '
+          '$newSessionId',
         );
+      } else {
+        final baseIds = indexEntry.sessionIds;
+        if (!baseIds.contains(newSessionId)) {
+          await _rememberWorkspace(
+            indexEntry.copyWith(sessionIds: [newSessionId, ...baseIds]),
+          );
+        }
       }
       appLogger.d(
         '[session-duplicate] duplicated $sourceSessionId -> $newSessionId '

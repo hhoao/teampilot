@@ -9,6 +9,10 @@ import '../../../../session/session_history_context.dart';
 import '../../../claude/capabilities/history/compatible_jsonl.dart';
 
 /// Probes the persisted id first (duplicated sessions), then [ctx.taskId].
+///
+/// Both probes pass `matchDirectories: false`: history parse needs the
+/// `.jsonl` file itself, so a `{sessionId}/` sidecar directory must not
+/// shadow it.
 Future<PinnedTranscriptProbeResult> _locateProbe(
   SessionHistoryContext ctx,
 ) async {
