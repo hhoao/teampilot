@@ -32,9 +32,6 @@ void main() {
             chrome: BoundComposeChrome(
               identityLabel: 'Team',
               identityIcon: Icons.groups_outlined,
-              modelPresetLabel: 'Model',
-              emptyPresetHintLabel: 'No presets',
-              onPresetSelected: (_) {},
               showStop: showStop,
               onStop: onStop,
             ),
@@ -113,9 +110,6 @@ void main() {
             chrome: const BoundComposeChrome(
               identityLabel: 'Team',
               identityIcon: Icons.groups_outlined,
-              modelPresetLabel: 'Model',
-              emptyPresetHintLabel: 'No presets',
-              onPresetSelected: _noopString,
             ),
             dropTarget: ComposeFileDropIngestor(
               workspaceRoot: '/tmp',
@@ -160,5 +154,3 @@ void main() {
     expect(find.byIcon(Icons.stop_rounded), findsNothing);
   });
 }
-
-void _noopString(String _) {}

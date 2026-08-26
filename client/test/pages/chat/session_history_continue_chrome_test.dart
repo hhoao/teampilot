@@ -18,6 +18,7 @@ import 'package:teampilot/services/compose/compose_file_drop_ingestor.dart';
 import 'package:teampilot/services/session/session_continue_overrides_apply.dart';
 import 'package:teampilot/widgets/compose/compose_chrome.dart';
 import 'package:teampilot/widgets/compose/compose_file_drop_region.dart';
+import 'package:teampilot/widgets/compose/compose_menu_chip.dart';
 import 'package:teampilot/widgets/compose/compose_model_preset_chip.dart';
 import 'package:teampilot/widgets/compose/compose_permission_chip.dart';
 import 'package:teampilot/widgets/compose/workspace_compose_card.dart';
@@ -531,11 +532,22 @@ void main() {
                 onChanged: (_) {},
                 chrome: BoundComposeChrome(
                   identityLabel: 'My Team',
-                  sameCliPresets: [claudePreset()],
-                  selectedPresetId: 'preset-b',
                   modelPresetLabel: 'Beta',
-                  emptyPresetHintLabel: 'No presets',
-                  onPresetSelected: (_) {},
+                  modelCascadeSpecs: buildComposeModelCascadeMenuSpecs(
+                    presets: [claudePreset()],
+                    selectedPresetId: 'preset-b',
+                    emptyHintLabel: 'No presets',
+                    emptyProvidersLabel: 'No providers configured',
+                    presetsLabel: 'Presets',
+                    defaultEffortLabel: 'Default',
+                    customModelIdLabel: 'Custom model ID…',
+                    noModelsLabel: 'No model catalog',
+                    savePresetLabel: 'Save as preset',
+                    managePresetsLabel: 'Manage',
+                    cliGroups: const [],
+                    groupByCli: false,
+                  ),
+                  onModelCascadeSelected: (_) {},
                   launchSecurityPolicy: LaunchSecurityPolicy.cliDefault,
                   defaultPermissionsLabel: 'Default',
                   fullAccessPermissionsLabel: 'Full access',
@@ -571,7 +583,7 @@ void main() {
 
         expect(find.byType(WorkspaceComposeCard), findsOneWidget);
         expect(find.byType(ComposeFileDropRegion), findsOneWidget);
-        expect(find.byType(ComposeModelPresetChip), findsOneWidget);
+        expect(find.widgetWithText(ComposeMenuChip, 'Beta'), findsOneWidget);
         expect(find.byType(ComposePermissionChip), findsOneWidget);
         expect(find.text('My Team'), findsOneWidget);
         expect(find.text('Beta'), findsOneWidget);
@@ -583,72 +595,6 @@ void main() {
         expect(find.text('Simple'), findsNothing);
         expect(find.text('Team'), findsNothing);
         expect(find.textContaining('Mode'), findsNothing);
-      },
-    );
-
-    testWidgets(
-      'BoundComposeChrome Simple custom row appears when customLabel set',
-      (tester) async {
-        final textController = TextEditingController();
-        final focusNode = FocusNode();
-        addTearDown(textController.dispose);
-        addTearDown(focusNode.dispose);
-
-        await tester.pumpWidget(
-          MaterialApp(
-            home: Scaffold(
-              body: WorkspaceComposeCard(
-                controller: textController,
-                focusNode: focusNode,
-                hint: 'Continue',
-                canSubmit: false,
-                onSubmit: () {},
-                onChanged: (_) {},
-                chrome: BoundComposeChrome(
-                  sameCliPresets: [claudePreset()],
-                  selectedPresetId: null,
-                  modelPresetLabel: 'Claude · gpt-4o',
-                  emptyPresetHintLabel: 'No presets',
-                  onPresetSelected: (_) {},
-                  customLabel: 'Custom…',
-                  customSelected: true,
-                  onCustom: () {},
-                  launchSecurityPolicy: LaunchSecurityPolicy.cliDefault,
-                  defaultPermissionsLabel: 'Default',
-                  fullAccessPermissionsLabel: 'Full access',
-                  onPermissionSelected: (_) {},
-                ),
-                dropTarget: ComposeFileDropIngestor(
-                  workspaceRoot: '/tmp',
-                  onInsertReferences: (_) {},
-                ),
-                attachTooltip: 'Attach',
-                enhanceTooltip: 'Enhance',
-                voiceTooltip: 'Voice',
-                voiceCancelTooltip: 'Cancel',
-                voiceStopTooltip: 'Stop',
-                isEnhancing: false,
-                isVoiceListening: false,
-                voiceElapsed: Duration.zero,
-                voiceSoundLevel: 0,
-                onAttach: () {},
-                onEnhance: () {},
-                onVoice: () {},
-                onVoiceCancel: () {},
-                onVoiceStop: () {},
-                workspaceRoot: '/tmp',
-                skills: const [],
-                plugins: const [],
-                slashBundle: const ConfigBundle(),
-                deferFieldMount: false,
-              ),
-            ),
-          ),
-        );
-
-        await tester.tap(find.byType(ComposeModelPresetChip));
-        await tester.pumpAndSettle();
-        expect(find.text('Custom…'), findsOneWidget);
       },
     );
   });

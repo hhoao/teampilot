@@ -73,9 +73,6 @@ void main() {
               onChanged: (_) {},
               chrome: const BoundComposeChrome(
                 identityLabel: 'Simple',
-                modelPresetLabel: 'Model',
-                emptyPresetHintLabel: 'No presets',
-                onPresetSelected: _noopString,
                 launchSecurityPolicy: LaunchSecurityPolicy.cliDefault,
                 defaultPermissionsLabel: 'Default',
                 fullAccessPermissionsLabel: 'Full access',
@@ -119,6 +116,5 @@ void main() {
   });
 }
 
-void _noopString(String _) {}
 void _noopBool(bool _) {}
 void _noopPolicy(LaunchSecurityPolicy _) {}

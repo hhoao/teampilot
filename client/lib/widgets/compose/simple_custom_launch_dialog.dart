@@ -49,6 +49,88 @@ Future<SimpleCustomLaunchResult?> showSimpleCustomLaunchDialog(
   );
 }
 
+Future<String?> showComposeCustomModelIdDialog(
+  BuildContext context, {
+  required String title,
+  required String confirmLabel,
+  String initial = '',
+}) {
+  return showDialog<String>(
+    context: context,
+    builder: (dialogContext) => _ComposeCustomModelIdDialog(
+      title: title,
+      confirmLabel: confirmLabel,
+      initial: initial,
+    ),
+  );
+}
+
+class _ComposeCustomModelIdDialog extends StatefulWidget {
+  const _ComposeCustomModelIdDialog({
+    required this.title,
+    required this.confirmLabel,
+    required this.initial,
+  });
+
+  final String title;
+  final String confirmLabel;
+  final String initial;
+
+  @override
+  State<_ComposeCustomModelIdDialog> createState() =>
+      _ComposeCustomModelIdDialogState();
+}
+
+class _ComposeCustomModelIdDialogState
+    extends State<_ComposeCustomModelIdDialog> {
+  late final TextEditingController _controller;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = TextEditingController(text: widget.initial);
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return TpDialog(
+      maxWidth: 420,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          TpDialogHeader(
+            title: widget.title,
+            onClose: () => Navigator.pop(context),
+          ),
+          const SizedBox(height: 16),
+          TextField(controller: _controller, autofocus: true),
+          TpDialogActions(children: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: Text(context.l10n.cancel),
+            ),
+            FilledButton(
+              onPressed: () {
+                final id = _controller.text.trim();
+                if (id.isEmpty) return;
+                Navigator.pop(context, id);
+              },
+              child: Text(widget.confirmLabel),
+            ),
+          ]),
+        ],
+      ),
+    );
+  }
+}
+
 class _SimpleCustomLaunchDialog extends StatefulWidget {
   const _SimpleCustomLaunchDialog({
     required this.initialCli,

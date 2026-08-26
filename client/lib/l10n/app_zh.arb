@@ -430,6 +430,13 @@
   "workspaceCliPresetNameLabel": "预设名称",
   "workspaceCliPresetsManageTitle": "管理预设",
   "workspaceCliPresetsEmptyHint": "还没有预设，创建一个开始使用",
+  "composeCascadeSavePreset": "保存当前为预设…",
+  "composeCascadeDefaultEffort": "默认",
+  "composeCascadeCustomModelId": "自定义模型 ID…",
+  "composeCascadeCustomModelIdTitle": "自定义模型 ID",
+  "composeCascadeNoModels": "暂无模型目录",
+  "composeCascadeNoProviders": "尚未配置任何服务商",
+  "composeCascadePresets": "预设",
   "workspaceCliDeletePresetTitle": "删除预设",
   "workspaceCliDeletePresetConfirm": "删除预设'{name}'？此操作不可撤销。",
   "@workspaceCliDeletePresetConfirm": {

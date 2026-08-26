@@ -5,6 +5,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:shared_ui/shared_ui.dart';
 
 import '../../cubits/agent_attention_cubit.dart';
+import '../../cubits/app_provider_cubit.dart';
 import '../../cubits/chat_cubit.dart';
 import '../../cubits/chat/model/session_connect_request.dart';
 import '../../cubits/cli_presets_cubit.dart';
@@ -49,11 +50,14 @@ import '../../services/terminal/session_member_cli_resolver.dart';
 import '../../services/workbench/workbench_editor_opener.dart';
 import '../../utils/team/team_member_naming.dart';
 import '../../widgets/app_toast/app_toast.dart';
+import '../../widgets/cli/cli_brand_icon.dart';
 import '../../widgets/compose/compose_chrome.dart';
 import '../../widgets/compose/compose_model_preset_chip.dart';
 import '../../widgets/compose/simple_custom_launch_dialog.dart';
 import '../../widgets/compose/workspace_compose_card.dart';
 import '../../widgets/follow_up/follow_up_queue_strip.dart';
+import '../home_workspace/workspace/config/cli_preset_edit_dialog.dart';
+import '../home_workspace/workspace/config/cli_presets_manage_dialog.dart';
 import '../home_workspace/workspace/workspace_landing_team_settings_dialog.dart';
 import 'agent_permission_attention_banner.dart';
 import 'compose_stop_visibility.dart';
@@ -208,6 +212,9 @@ class SessionChatComposeSection extends StatelessWidget {
     final selectedPreset = selectedPresetId == null
         ? null
         : sameCliPresets.where((p) => p.id == selectedPresetId).firstOrNull;
+    final providerState = context.select<AppProviderCubit, AppProviderState>(
+      (c) => c.state,
+    );
     final modelLabel = session.isSimple
         ? simpleLaunchChipLabel(
             presetName: selectedPreset?.name,
@@ -313,10 +320,63 @@ class SessionChatComposeSection extends StatelessWidget {
                       },
                     ),
                   if (!askCardVisible)
-                    ListenableBuilder(
-                      listenable: voiceController,
-                      builder: (context, _) {
-                        return WorkspaceComposeCard(
+                    _CascadeCatalogLive(
+                      registry: registry,
+                      cli: lockedCli,
+                      enabled: session.isSimple,
+                      builder: (context) {
+                        final cascadeGroups = session.isSimple
+                            ? resolveComposeCascadeCliGroups(
+                                registry: registry,
+                                providersByCli: {
+                                  lockedCli: providerState
+                                      .providersFor(lockedCli)
+                                      .toList(growable: false),
+                                },
+                                cliItems: [lockedCli],
+                              )
+                            : const <ComposeCascadeCliGroup>[];
+                        final cascadeSpecs = session.isSimple
+                            ? buildComposeModelCascadeMenuSpecs(
+                                presets: sameCliPresets,
+                                selectedPresetId: selectedPresetId,
+                                emptyHintLabel:
+                                    l10n.workspaceCliPresetsEmptyHint,
+                                emptyProvidersLabel:
+                                    l10n.composeCascadeNoProviders,
+                                presetsLabel:
+                                    l10n.composeCascadePresets,
+                                defaultEffortLabel:
+                                    l10n.composeCascadeDefaultEffort,
+                                customModelIdLabel:
+                                    l10n.composeCascadeCustomModelId,
+                                noModelsLabel: l10n.composeCascadeNoModels,
+                                savePresetLabel: l10n.composeCascadeSavePreset,
+                                managePresetsLabel:
+                                    l10n.workspaceCliAddPresetTitle,
+                                cliGroups: cascadeGroups,
+                                groupByCli: false,
+                                onModelsOpened: (cli, pid, config) =>
+                                    unawaited(
+                                      refreshComposeCascadeCatalog(
+                                        context,
+                                        cli: cli,
+                                        providerId: pid,
+                                        provider: config,
+                                      ),
+                                    ),
+                              )
+                            : teamPresetMenuSpecs(
+                                context: context,
+                                presets: sameCliPresets,
+                                selectedPresetId: selectedPresetId,
+                                emptyHintLabel:
+                                    l10n.workspaceCliPresetsEmptyHint,
+                              );
+                        return ListenableBuilder(
+                          listenable: voiceController,
+                          builder: (context, _) {
+                            return WorkspaceComposeCard(
                           controller: composeController,
                           focusNode: composeFocusNode,
                           clip: composeClip,
@@ -345,36 +405,25 @@ class SessionChatComposeSection extends StatelessWidget {
                             identityIcon: session.isSimple
                                 ? Icons.psychology_outlined
                                 : Icons.groups_outlined,
-                            sameCliPresets: sameCliPresets,
-                            selectedPresetId: selectedPresetId,
                             modelPresetLabel: modelLabel,
-                            emptyPresetHintLabel:
-                                l10n.workspaceCliPresetsEmptyHint,
-                            onPresetSelected: (presetId) => unawaited(
-                              _onPresetSelected(
+                            modelChipLeading: CliBrandIcon(
+                              cli: lockedCli,
+                              size: context.tpIconSizes.sm,
+                              borderRadius: 4,
+                              showBorder: false,
+                            ),
+                            modelCascadeSpecs: cascadeSpecs,
+                            onModelCascadeSelected: (v) => unawaited(
+                              _onCascadeSelected(
                                 context: context,
-                                presetId: presetId,
                                 session: session,
                                 team: team,
                                 sameCliPresets: sameCliPresets,
                                 lockedCli: lockedCli,
                                 selectedMemberId: selectedMemberId,
+                                value: v,
                               ),
                             ),
-                            customLabel: session.isSimple
-                                ? l10n.workspaceChatLandingCustomLaunch
-                                : null,
-                            customSelected:
-                                session.isSimple &&
-                                session.presetId.trim().isEmpty,
-                            onCustom: session.isSimple
-                                ? () => unawaited(
-                                    _openContinueCustomLaunchDialog(
-                                      context: context,
-                                      session: session,
-                                    ),
-                                  )
-                                : null,
                             launchSecurityPolicy: _effectiveSecurityPolicy(
                               session: session,
                               team: team,
@@ -480,6 +529,8 @@ class SessionChatComposeSection extends StatelessWidget {
                                 fs: filesystemForComposeAtFileOpen(path),
                               ),
                             );
+                          },
+                        );
                           },
                         );
                       },
@@ -619,6 +670,36 @@ class SessionChatComposeSection extends StatelessWidget {
 
   // -- Selected preset id --------------------------------------------------
 
+  static List<TpActionMenuSpec> teamPresetMenuSpecs({
+    required BuildContext context,
+    required List<CliPreset> presets,
+    required String? selectedPresetId,
+    required String emptyHintLabel,
+  }) {
+    return [
+      if (presets.isEmpty)
+        TpActionMenuSpec.item(
+          value: null,
+          icon: Icons.terminal_outlined,
+          label: emptyHintLabel,
+          enabled: false,
+        )
+      else
+        for (final preset in presets)
+          TpActionMenuSpec.item(
+            value: preset.id,
+            iconWidget: CliBrandIcon(
+              cli: preset.cli,
+              size: TpActionMenuMetrics.iconSize(context),
+              borderRadius: 4,
+              showBorder: false,
+            ),
+            label: preset.name,
+            selected: preset.id == selectedPresetId,
+          ),
+    ];
+  }
+
   static String? _selectedPresetId({
     required AppSession session,
     required TeamProfile? team,
@@ -748,19 +829,89 @@ class SessionChatComposeSection extends StatelessWidget {
     }
   }
 
-  static Future<void> _openContinueCustomLaunchDialog({
+  static Future<void> _onCascadeSelected({
     required BuildContext context,
     required AppSession session,
+    required TeamProfile? team,
+    required List<CliPreset> sameCliPresets,
+    required CliTool lockedCli,
+    required String selectedMemberId,
+    required Object? value,
   }) async {
-    final result = await showSimpleCustomLaunchDialog(
-      context,
-      lockCli: true,
-      initialCli: session.cli ?? CliTool.claude,
-      initialProvider: session.provider,
-      initialModel: session.model,
-      initialEffort: session.effort,
-    );
-    if (!context.mounted || result == null) return;
+    if (value is String && value.isNotEmpty) {
+      await _onPresetSelected(
+        context: context,
+        presetId: value,
+        session: session,
+        team: team,
+        sameCliPresets: sameCliPresets,
+        lockedCli: lockedCli,
+        selectedMemberId: selectedMemberId,
+      );
+      return;
+    }
+    final tuple = decodeComposeCascadeValue(value);
+    if (tuple != null) {
+      await _applyContinueCustom(
+        context,
+        session: session,
+        provider: tuple.providerId,
+        model: tuple.modelId,
+        effort: tuple.effort,
+      );
+      return;
+    }
+    if (value is CascadeCustomModelRequest) {
+      final modelId = await showComposeCustomModelIdDialog(
+        context,
+        title: context.l10n.composeCascadeCustomModelIdTitle,
+        confirmLabel: context.l10n.confirm,
+        initial: session.model,
+      );
+      if (!context.mounted || modelId == null || modelId.isEmpty) return;
+      await _applyContinueCustom(
+        context,
+        session: session,
+        provider: value.providerId,
+        model: modelId,
+        effort: session.effort,
+      );
+      return;
+    }
+    if (value == ComposeModelPresetChipAction.savePreset) {
+      final cli = session.cli ?? CliTool.claude;
+      showDialog<void>(
+        context: context,
+        builder: (_) => CliPresetEditDialog(
+          draft: CliPreset(
+            id: '',
+            name: '',
+            cli: cli,
+            provider: session.provider,
+            model: session.model,
+            effort: session.effort,
+            createdAt: 0,
+            updatedAt: 0,
+          ),
+        ),
+      );
+      return;
+    }
+    if (value == ComposeModelPresetChipAction.manage) {
+      showDialog<void>(
+        context: context,
+        builder: (_) => const CliPresetsManageDialog(),
+      );
+    }
+  }
+
+  static Future<void> _applyContinueCustom(
+    BuildContext context, {
+    required AppSession session,
+    required String provider,
+    required String model,
+    required String effort,
+  }) async {
     final chatCubit = context.read<ChatCubit>();
     final live = _cubitSession(chatCubit, session.sessionId);
     if (live == null) {
@@ -770,9 +921,9 @@ class SessionChatComposeSection extends StatelessWidget {
     try {
       final ok = await chatCubit.setSessionContinueCustom(
         sessionId: live.sessionId,
-        provider: result.provider,
-        model: result.model,
-        effort: result.effort,
+        provider: provider,
+        model: model,
+        effort: effort,
       );
       if (!ok && context.mounted) {
         _toastContinueSaveFailed(context);
@@ -923,6 +1074,70 @@ class SessionChatComposeSection extends StatelessWidget {
       team: team,
       workspace: workspaceBundle,
       hubState: hubState,
+    );
+  }
+}
+
+/// Rebuilds [builder]'s subtree whenever the live model catalog of the locked
+/// CLI changes, so open cascade menus pick up refreshed candidates in place.
+class _CascadeCatalogLive extends StatefulWidget {
+  const _CascadeCatalogLive({
+    required this.registry,
+    required this.cli,
+    required this.enabled,
+    required this.builder,
+  });
+
+  final CliToolRegistry registry;
+  final CliTool cli;
+  final bool enabled;
+  final WidgetBuilder builder;
+
+  @override
+  State<_CascadeCatalogLive> createState() => _CascadeCatalogLiveState();
+}
+
+class _CascadeCatalogLiveState extends State<_CascadeCatalogLive> {
+  CascadeCatalogListenable? _listenable;
+
+  void _syncAttachments() {
+    if (!widget.enabled) {
+      _listenable?.detach();
+      return;
+    }
+    (_listenable ??= CascadeCatalogListenable(registry: widget.registry))
+        .attach([widget.cli]);
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    _syncAttachments();
+  }
+
+  @override
+  void didUpdateWidget(covariant _CascadeCatalogLive oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.cli != widget.cli ||
+        oldWidget.registry != widget.registry ||
+        oldWidget.enabled != widget.enabled) {
+      _syncAttachments();
+    }
+  }
+
+  @override
+  void dispose() {
+    _listenable?.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final listenable = _listenable;
+    if (listenable == null) return widget.builder(context);
+    return ListenableBuilder(
+      listenable: listenable,
+      builder: (context, _) => widget.builder(context),
     );
   }
 }

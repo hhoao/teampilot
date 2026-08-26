@@ -39,6 +39,7 @@ import '../../../services/expert_hub/expert_capability_resolver.dart';
 import '../../../services/expert_hub/expert_hub_recent_store.dart';
 import '../../../services/expert_hub/expert_landing_preflight.dart';
 import '../../../services/expert_hub/expert_member_resolver.dart';
+import '../../../services/cli/registry/cli_tool_registry.dart';
 import '../../../services/cli/registry/cli_tool_registry_scope.dart';
 import '../../../services/cli/registry/capabilities/native_command_capability.dart';
 import '../../../services/cli/registry/capabilities/skill_capability.dart';
@@ -62,6 +63,7 @@ import '../../expert_hub/expert_landing_picker_sheet.dart';
 import '../../expert_hub/expert_landing_preflight_feedback.dart';
 import '../../team_hub/team_landing_chip_menu.dart';
 import '../../team_hub/team_landing_picker_sheet.dart';
+import 'config/cli_preset_edit_dialog.dart';
 import 'config/cli_presets_manage_dialog.dart';
 import 'workspace_landing_launch_feedback.dart';
 import 'workspace_landing_selectors.dart';
@@ -143,6 +145,7 @@ class _UnboundComposeBodyState extends State<UnboundComposeBody> {
   List<String> _recentExpertKeys = const [];
   final _teamRecentStore = TeamLandingRecentStore();
   List<String> _recentTeamIds = const [];
+  CascadeCatalogListenable? _cascadeCatalog;
 
   @override
   void initState() {
@@ -279,6 +282,10 @@ class _UnboundComposeBodyState extends State<UnboundComposeBody> {
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
+    _cascadeCatalog ??= CascadeCatalogListenable(
+      registry: CliToolRegistryScope.maybeOf(context) ??
+          CliToolRegistry.builtIn(),
+    );
     _runtimeTargetsLoad ??= _loadRuntimeTargets();
     _reloadDraftIfRouteExpertChanged();
   }
@@ -363,6 +370,7 @@ class _UnboundComposeBodyState extends State<UnboundComposeBody> {
   @override
   void dispose() {
     _stopVoiceSessionClock();
+    _cascadeCatalog?.dispose();
     _voiceInput.dispose();
     _controller.removeListener(_syncComposeDraft);
     _clip.dispose();
@@ -1084,29 +1092,57 @@ class _UnboundComposeBodyState extends State<UnboundComposeBody> {
     _scheduleTeamLaunchReadinessCheck();
   }
 
-  Future<void> _openCustomLaunchDialog() async {
-    final result = await showSimpleCustomLaunchDialog(
-      context,
-      lockCli: false,
-      initialCli: _selectedCli,
-      initialProvider: _selectedProvider ?? '',
-      initialModel: _selectedModel ?? '',
-      initialEffort: _selectedEffort ?? '',
-    );
-    if (!mounted || result == null) return;
+  Future<void> _applyCascadeLaunch(SimpleLaunchFourTuple tuple) async {
     setState(
       () => _applyDraft(
         landingDraftSelectingCustom(
           _currentDraft(),
-          cli: result.cli,
-          provider: result.provider,
-          model: result.model,
-          effort: result.effort,
+          cli: tuple.cli,
+          provider: tuple.providerId,
+          model: tuple.modelId,
+          effort: tuple.effort,
         ),
       ),
     );
     _persistDraft();
     _scheduleTeamLaunchReadinessCheck();
+  }
+
+  Future<void> _applyCustomModelId({
+    required CascadeCustomModelRequest request,
+  }) async {
+    final modelId = await showComposeCustomModelIdDialog(
+      context,
+      title: context.l10n.composeCascadeCustomModelIdTitle,
+      confirmLabel: context.l10n.confirm,
+      initial: _selectedModel ?? '',
+    );
+    if (!mounted || modelId == null || modelId.isEmpty) return;
+    await _applyCascadeLaunch(
+      SimpleLaunchFourTuple(
+        cli: request.cli,
+        providerId: request.providerId,
+        modelId: modelId,
+        effort: _selectedEffort ?? '',
+      ),
+    );
+  }
+
+  void _openSaveAsPresetDialog() {
+    final draft = CliPreset(
+      id: '',
+      name: '',
+      cli: _selectedCli ?? CliTool.claude,
+      provider: _selectedProvider ?? '',
+      model: _selectedModel ?? '',
+      effort: _selectedEffort ?? '',
+      createdAt: 0,
+      updatedAt: 0,
+    );
+    showDialog<void>(
+      context: context,
+      builder: (_) => CliPresetEditDialog(draft: draft),
+    );
   }
 
   void _openPresetsManageDialog() {
@@ -1364,14 +1400,41 @@ class _UnboundComposeBodyState extends State<UnboundComposeBody> {
     required List<TeamProfile> teams,
   }) {
     if (_conversationMode == _LandingConversationMode.simple) {
-      final presetEmpty = _selectedPresetId?.trim().isEmpty ?? true;
-      return buildComposeModelPresetMenuSpecs(
-        sameCliPresets: presets,
+      final registry = CliToolRegistryScope.of(context);
+      final providerCubit = context.read<AppProviderCubit>();
+      final cliItems = registry.launchable
+          .map((d) => d.id)
+          .toList(growable: false);
+      _cascadeCatalog?.attach(cliItems);
+      final groups = resolveComposeCascadeCliGroups(
+        registry: registry,
+        providersByCli: {
+          for (final cli in cliItems)
+            cli: providerCubit.state.providersFor(cli).toList(growable: false),
+        },
+        cliItems: cliItems,
+      );
+      return buildComposeModelCascadeMenuSpecs(
+        presets: presets,
         selectedPresetId: _selectedPresetId,
         emptyHintLabel: l10n.workspaceCliPresetsEmptyHint,
-        customLabel: l10n.workspaceChatLandingCustomLaunch,
-        customSelected: _selectedCli != null && presetEmpty,
+        emptyProvidersLabel: l10n.composeCascadeNoProviders,
+        presetsLabel: l10n.composeCascadePresets,
+        defaultEffortLabel: l10n.composeCascadeDefaultEffort,
+        customModelIdLabel: l10n.composeCascadeCustomModelId,
+        noModelsLabel: l10n.composeCascadeNoModels,
+        savePresetLabel: l10n.composeCascadeSavePreset,
         managePresetsLabel: l10n.workspaceCliAddPresetTitle,
+        cliGroups: groups,
+        groupByCli: true,
+        onModelsOpened: (cli, providerId, config) => unawaited(
+          refreshComposeCascadeCatalog(
+            context,
+            cli: cli,
+            providerId: providerId,
+            provider: config,
+          ),
+        ),
       );
     }
 
@@ -1432,7 +1495,8 @@ class _UnboundComposeBodyState extends State<UnboundComposeBody> {
         ? launchWarningBlock.missing
         : null;
 
-    final composeCard = WorkspaceComposeCard(
+    WorkspaceComposeCard buildCard(BuildContext context) =>
+        WorkspaceComposeCard(
       controller: _controller,
       clip: _clip,
       focusNode: _focusNode,
@@ -1466,13 +1530,22 @@ class _UnboundComposeBodyState extends State<UnboundComposeBody> {
             _setConversationMode(value);
           }
         },
-        onAutoChipSelected: (value) {
+        onAutoChipSelected: (value) async {
           if (value == ComposeModelPresetChipAction.manage) {
             _openPresetsManageDialog();
             return;
           }
-          if (value == ComposeModelPresetChipAction.custom) {
-            unawaited(_openCustomLaunchDialog());
+          final tuple = decodeComposeCascadeValue(value);
+          if (tuple != null) {
+            await _applyCascadeLaunch(tuple);
+            return;
+          }
+          if (value is CascadeCustomModelRequest) {
+            await _applyCustomModelId(request: value);
+            return;
+          }
+          if (value == ComposeModelPresetChipAction.savePreset) {
+            _openSaveAsPresetDialog();
             return;
           }
           if (_conversationMode == _LandingConversationMode.team) {
@@ -1539,6 +1612,16 @@ class _UnboundComposeBodyState extends State<UnboundComposeBody> {
             )
           : null,
     );
+
+    final cascadeCatalog = _cascadeCatalog;
+    final composeCard =
+        _conversationMode == _LandingConversationMode.simple &&
+            cascadeCatalog != null
+        ? ListenableBuilder(
+            listenable: cascadeCatalog,
+            builder: (context, _) => buildCard(context),
+          )
+        : buildCard(context);
 
     Widget composeSection = composeCard;
     if (remoteCliMissing != null &&

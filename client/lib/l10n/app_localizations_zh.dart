@@ -1042,6 +1042,27 @@ class AppLocalizationsZh extends AppLocalizations {
   String get workspaceCliPresetsEmptyHint => '还没有预设，创建一个开始使用';
 
   @override
+  String get composeCascadeSavePreset => '保存当前为预设…';
+
+  @override
+  String get composeCascadeDefaultEffort => '默认';
+
+  @override
+  String get composeCascadeCustomModelId => '自定义模型 ID…';
+
+  @override
+  String get composeCascadeCustomModelIdTitle => '自定义模型 ID';
+
+  @override
+  String get composeCascadeNoModels => '暂无模型目录';
+
+  @override
+  String get composeCascadeNoProviders => '尚未配置任何服务商';
+
+  @override
+  String get composeCascadePresets => '预设';
+
+  @override
   String get workspaceCliDeletePresetTitle => '删除预设';
 
   @override

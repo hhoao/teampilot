@@ -455,6 +455,13 @@
   "workspaceCliPresetNameLabel": "Preset Name",
   "workspaceCliPresetsManageTitle": "Manage Presets",
   "workspaceCliPresetsEmptyHint": "No presets yet. Create one to get started.",
+  "composeCascadeSavePreset": "Save current as preset…",
+  "composeCascadeDefaultEffort": "Default",
+  "composeCascadeCustomModelId": "Custom model ID…",
+  "composeCascadeCustomModelIdTitle": "Custom model ID",
+  "composeCascadeNoModels": "No model catalog",
+  "composeCascadeNoProviders": "No providers configured",
+  "composeCascadePresets": "Presets",
   "workspaceCliDeletePresetTitle": "Delete Preset",
   "workspaceCliDeletePresetConfirm": "Delete preset '{name}'? This cannot be undone.",
   "@workspaceCliDeletePresetConfirm": {
