@@ -32,6 +32,7 @@ class CliPresetEditDialog extends StatefulWidget {
 }
 
 class _CliPresetEditDialogState extends State<CliPresetEditDialog> {
+  final _formKey = GlobalKey<TpFormState>();
   late final TextEditingController _nameCtl;
   late CliTool _cli;
   late String _providerId;
@@ -63,9 +64,9 @@ class _CliPresetEditDialogState extends State<CliPresetEditDialog> {
   }
 
   Future<void> _save() async {
+    if (!(_formKey.currentState?.validate() ?? false)) return;
     final name = _nameCtl.text.trim();
-    if (name.isEmpty) return;
-    if (_providerId.trim().isEmpty) return;
+    final providerId = _providerId.trim();
 
     final cubit = context.read<CliPresetsCubit>();
     if (widget.isEditing) {
@@ -73,7 +74,7 @@ class _CliPresetEditDialogState extends State<CliPresetEditDialog> {
         id: widget.existing!.id,
         name: name,
         cli: _cli,
-        provider: _providerId,
+        provider: providerId,
         model: _modelId,
         effort: _effortId,
       );
@@ -81,7 +82,7 @@ class _CliPresetEditDialogState extends State<CliPresetEditDialog> {
       await cubit.addPreset(
         name: name,
         cli: _cli,
-        provider: _providerId,
+        provider: providerId,
         model: _modelId,
         effort: _effortId,
       );
@@ -126,129 +127,140 @@ class _CliPresetEditDialogState extends State<CliPresetEditDialog> {
               ? l10n.workspaceCliEditPresetTitle
               : l10n.workspaceCliAddPresetTitle,
         ),
-        body: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            TpPreferenceStack(
-              title: l10n.workspaceCliPresetNameLabel,
-              body: TextField(
-                controller: _nameCtl,
-                decoration: const InputDecoration(),
-                autofocus: !widget.isEditing,
-              ),
-              showDividerBelow: true,
-            ),
-            TpPreferenceRow(
-              title: l10n.teamCliLabel,
-              trailing: TpSelect<String>(
-                items: [for (final def in registry.launchable) def.id.value],
-                initialItem: _cli.value,
-                decoration: dropdownDeco,
-                enabled: widget.lockCli == null,
-                onChanged: (value) {
-                  if (value == null || widget.lockCli != null) return;
-                  setState(() {
-                    _cli = CliTool.decode(value);
-                    _providerId = '';
-                    _modelId = '';
-                    _effortId = '';
-                  });
-                },
-                itemLabel: (value) {
-                  final def = registry.tryGet(CliTool.decode(value));
-                  return def == null ? value : cliDisplayName(def, l10n);
-                },
-                itemBuilder: (context, value) => cliDropdownRow(
-                  context,
-                  cli: CliTool.decode(value),
-                  label: cliDisplayName(
-                    registry.tryGet(CliTool.decode(value))!,
-                    l10n,
-                  ),
-                  registry: registry,
+        body: TpForm(
+          key: _formKey,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              TpPreferenceStack(
+                title: l10n.workspaceCliPresetNameLabel,
+                body: TpInputFormField(
+                  key: const Key('preset-name-field'),
+                  controller: _nameCtl,
+                  autofocus: !widget.isEditing,
+                  validator: (value) => (value == null || value.trim().isEmpty)
+                      ? l10n.formFieldRequired
+                      : null,
                 ),
+                showDividerBelow: true,
               ),
-              showDividerBelow: true,
-            ),
-            TpPreferenceRow(
-              title: l10n.provider,
-              trailing: TpSelect<String>(
-                key: ValueKey('preset-provider-$_cli-$_providerId'),
-                items: providers.map((p) => p.id).toList()..sort(),
-                initialItem: _providerId.isEmpty ? null : _providerId,
-                hintText: l10n.selectProvider,
-                decoration: dropdownDeco,
-                onChanged: (value) {
-                  setState(() {
-                    _providerId = value ?? '';
-                    _modelId = '';
-                    _effortId = '';
-                  });
-                },
-                itemLabel: (value) {
-                  for (final p in providers) {
-                    if (p.id == value) return p.name;
-                  }
-                  return value;
-                },
-                itemBuilder: providerDropdownItemBuilder(
-                  providers: providers,
-                  labelFor: (value) {
+              TpPreferenceRow(
+                title: l10n.teamCliLabel,
+                trailing: TpSelect<String>(
+                  items: [for (final def in registry.launchable) def.id.value],
+                  initialItem: _cli.value,
+                  decoration: dropdownDeco,
+                  enabled: widget.lockCli == null,
+                  onChanged: (value) {
+                    if (value == null || widget.lockCli != null) return;
+                    setState(() {
+                      _cli = CliTool.decode(value);
+                      _providerId = '';
+                      _modelId = '';
+                      _effortId = '';
+                    });
+                  },
+                  itemLabel: (value) {
+                    final def = registry.tryGet(CliTool.decode(value));
+                    return def == null ? value : cliDisplayName(def, l10n);
+                  },
+                  itemBuilder: (context, value) => cliDropdownRow(
+                    context,
+                    cli: CliTool.decode(value),
+                    label: cliDisplayName(
+                      registry.tryGet(CliTool.decode(value))!,
+                      l10n,
+                    ),
+                    registry: registry,
+                  ),
+                ),
+                showDividerBelow: true,
+              ),
+              TpPreferenceRow(
+                title: l10n.provider,
+                trailing: TpSelectFormField<String>(
+                  key: ValueKey('preset-provider-form-$_cli'),
+                  id: 'provider',
+                  items: providers.map((p) => p.id).toList()..sort(),
+                  initialValue: _providerId.isEmpty ? null : _providerId,
+                  hintText: l10n.selectProvider,
+                  onEmptyTap: () => _openProviderConfig(context),
+                  validator: (value) => (value == null || value.trim().isEmpty)
+                      ? l10n.selectProvider
+                      : null,
+                  onChanged: (value) {
+                    setState(() {
+                      _providerId = value ?? '';
+                      _modelId = '';
+                      _effortId = '';
+                    });
+                  },
+                  itemLabel: (value) {
                     for (final p in providers) {
                       if (p.id == value) return p.name;
                     }
                     return value;
                   },
-                ),
-              ),
-              showDividerBelow: hideModelPicker || showEffortPicker,
-            ),
-            if (!hideModelPicker)
-              TpPreferenceRow(
-                title: l10n.model,
-                trailing: ProviderModelPickerField(
-                  key: ValueKey('preset-model-$_providerId-$_modelId'),
-                  cli: _cli,
-                  providerId: _providerId,
-                  provider: selectedProvider,
-                  value: _modelId,
-                  hintText: l10n.selectModel,
-                  decoration: dropdownDeco,
-                  onChanged: (value) => setState(() {
-                    _modelId = value.trim();
-                    if (!workspaceCliShowsEffortPicker(
-                      registry: registry,
-                      cli: _cli,
-                      provider: selectedProvider,
-                      model: _modelId,
-                    )) {
-                      _effortId = '';
-                    }
-                  }),
-                ),
-                showDividerBelow: showEffortPicker,
-              ),
-            if (showEffortPicker)
-              TpPreferenceRow(
-                title: l10n.workspaceCliEffortLevel,
-                subtitle: l10n.workspaceCliEffortLevelSubtitle,
-                trailing: CliEffortPickerField(
-                  key: ValueKey(
-                    'preset-effort-$_providerId-$_modelId-$_effortId',
+                  itemBuilder: providerDropdownItemBuilder(
+                    providers: providers,
+                    labelFor: (value) {
+                      for (final p in providers) {
+                        if (p.id == value) return p.name;
+                      }
+                      return value;
+                    },
                   ),
-                  cli: _cli,
-                  value: _effortId,
-                  provider: selectedProvider,
-                  model: _modelId,
-                  allowInherit: true,
-                  inheritLabel: l10n.workspaceCliEffortInheritHint,
-                  decoration: dropdownDeco,
-                  onChanged: (value) => setState(() => _effortId = value.trim()),
                 ),
-                showDividerBelow: false,
+                showDividerBelow: hideModelPicker || showEffortPicker,
               ),
-          ],
+              if (!hideModelPicker)
+                TpPreferenceRow(
+                  title: l10n.model,
+                  trailing: ProviderModelPickerField(
+                    key: ValueKey('preset-model-$_providerId-$_modelId'),
+                    cli: _cli,
+                    providerId: _providerId,
+                    provider: selectedProvider,
+                    value: _modelId,
+                    hintText: l10n.selectModel,
+                    decoration: dropdownDeco,
+                    onChanged: (value) => setState(() {
+                      _modelId = value.trim();
+                      if (!workspaceCliShowsEffortPicker(
+                        registry: registry,
+                        cli: _cli,
+                        provider: selectedProvider,
+                        model: _modelId,
+                      )) {
+                        _effortId = '';
+                      }
+                    }),
+                  ),
+                  showDividerBelow: showEffortPicker,
+                ),
+              if (showEffortPicker)
+                TpPreferenceRow(
+                  title: l10n.workspaceCliEffortLevel,
+                  subtitle: l10n.workspaceCliEffortLevelSubtitle,
+                  trailing: CliEffortPickerField(
+                    key: ValueKey(
+                      'preset-effort-$_providerId-$_modelId-$_effortId',
+                    ),
+                    cli: _cli,
+                    value: _effortId,
+                    provider: selectedProvider,
+                    model: _modelId,
+                    allowInherit: true,
+                    inheritLabel: l10n.workspaceCliEffortInheritHint,
+                    decoration: dropdownDeco,
+                    onChanged: (value) =>
+                        setState(() => _effortId = value.trim()),
+                  ),
+                  showDividerBelow: false,
+                ),
+            ],
+          ),
         ),
         footer: TpDialogActions(
           children: [
@@ -260,10 +272,7 @@ class _CliPresetEditDialogState extends State<CliPresetEditDialog> {
               onPressed: () => Navigator.of(context).pop(),
               child: Text(l10n.cancel),
             ),
-            FilledButton(
-              onPressed: _providerId.trim().isEmpty ? null : _save,
-              child: Text(l10n.save),
-            ),
+            FilledButton(onPressed: _save, child: Text(l10n.save)),
           ],
         ),
       ),

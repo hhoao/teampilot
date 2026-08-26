@@ -23,21 +23,22 @@ void main() {
   late CliPresetsCubit cubit;
   late AppProviderCubit appProviderCubit;
 
-  Future<void> seedPreset() async {
+  Future<void> seedPreset({
+    String name = 'Old Name',
+    String provider = 'anthropic',
+    String model = 'claude-sonnet-4-5',
+  }) async {
     final preset = CliPreset(
       id: 'preset-1',
-      name: 'Old Name',
+      name: name,
       cli: CliTool.claude,
-      provider: 'anthropic',
-      model: 'claude-sonnet-4-5',
+      provider: provider,
+      model: model,
       effort: 'high',
       createdAt: 1,
       updatedAt: 1,
     );
-    await fs.writeString(
-      '/cli-presets.json',
-      jsonEncode([preset.toJson()]),
-    );
+    await fs.writeString('/cli-presets.json', jsonEncode([preset.toJson()]));
   }
 
   Future<void> seedProviderCatalog() async {
@@ -72,8 +73,12 @@ void main() {
     appProviderCubit.close();
   });
 
-  Future<void> pumpManageDialog(WidgetTester tester) async {
-    await seedPreset();
+  Future<void> pumpManageDialog(
+    WidgetTester tester, {
+    String presetName = 'Old Name',
+    String presetProvider = 'anthropic',
+  }) async {
+    await seedPreset(name: presetName, provider: presetProvider);
     await seedProviderCatalog();
     await cubit.load();
     await appProviderCubit.load(reconcileCredentials: false);
@@ -97,9 +102,7 @@ void main() {
   }
 
   Finder modelSelectFinder() {
-    return find.byWidgetPredicate(
-      (w) => w is TpSelectWithCustomInput,
-    );
+    return find.byWidgetPredicate((w) => w is TpSelectWithCustomInput);
   }
 
   testWidgets('edit preset name persists and updates manage list', (
@@ -222,5 +225,71 @@ void main() {
     expect(find.byType(TextField), findsNothing);
     expect(cubit.state.presets.single.name, 'Short Window Name');
     expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('saving with empty name shows inline error and keeps dialog', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(1280, 1000);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    await pumpManageDialog(tester);
+
+    await tester.tap(find.byIcon(Icons.edit_outlined));
+    await tester.pumpAndSettle();
+
+    final l10n = AppLocalizations.of(
+      tester.element(find.byType(Scaffold).first),
+    );
+    await tester.enterText(find.byType(TextField), '');
+    await tester.pump();
+    await tester.tap(find.widgetWithText(FilledButton, l10n.save));
+    await tester.pumpAndSettle();
+
+    expect(find.byType(TextField), findsOneWidget);
+    expect(find.text(l10n.formFieldRequired), findsOneWidget);
+    expect(cubit.state.presets.single.name, 'Old Name');
+
+    await tester.enterText(find.byType(TextField), 'Fixed Name');
+    await tester.pump();
+    await tester.tap(find.widgetWithText(FilledButton, l10n.save));
+    await tester.pumpAndSettle();
+
+    expect(find.byType(TextField), findsNothing);
+    expect(cubit.state.presets.single.name, 'Fixed Name');
+  });
+
+  testWidgets('saving without provider shows inline error and keeps dialog', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(1280, 1000);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    await pumpManageDialog(
+      tester,
+      presetName: 'No Provider',
+      presetProvider: '',
+    );
+
+    await tester.tap(find.byIcon(Icons.edit_outlined));
+    await tester.pumpAndSettle();
+
+    final l10n = AppLocalizations.of(
+      tester.element(find.byType(Scaffold).first),
+    );
+    await tester.enterText(find.byType(TextField), 'Named Preset');
+    await tester.pump();
+    await tester.tap(find.widgetWithText(FilledButton, l10n.save));
+    await tester.pumpAndSettle();
+
+    expect(find.byType(TextField), findsOneWidget);
+    // The closed trigger's hint shares the string; the inline error adds one.
+    expect(find.text(l10n.selectProvider), findsExactly(2));
+    expect(
+      cubit.state.presets.map((p) => p.name),
+      isNot(contains('Named Preset')),
+    );
   });
 }
