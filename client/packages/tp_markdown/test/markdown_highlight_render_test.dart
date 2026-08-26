@@ -235,4 +235,33 @@ void main() {
     }));
     expect(miss, isEmpty);
   });
+
+  testWidgets('inline image stays visible while highlights are active',
+      (tester) async {
+    await pump(
+      tester,
+      const MarkdownDocument(blocks: [
+        ParagraphBlock(runs: [
+          ImageRun(src: 'badge.svg', alt: 'badge'),
+          TextRun('hello brave world'),
+        ])
+      ]),
+      _Ctx({
+        0: _hl(ranges: [TextRange(start: 6, end: 11)]),
+      }),
+    );
+    final para = _richParagraphTexts(tester)
+        .firstWhere((t) => _spanText(t.textSpan!).contains('brave'));
+    // Image WidgetSpan must survive the highlighted span build (images
+    // contribute zero plain-text offsets, so they render unhighlighted).
+    bool hasWidgetSpan(InlineSpan s) =>
+        s is WidgetSpan ||
+        (s is TextSpan &&
+            (s.children ?? const <InlineSpan>[]).any(hasWidgetSpan));
+    expect(hasWidgetSpan(para.textSpan!), isTrue);
+    // And the text match still paints the wash.
+    final tokens = MarkdownTokens.test();
+    expect(_hasBackgroundOn(para.textSpan!, tokens.matchHighlightColor),
+        isTrue);
+  });
 }

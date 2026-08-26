@@ -157,7 +157,10 @@ void _emitHighlightedRuns(
           out[i] = _withLinkGesture(out[i], recognizer, cursorIcon);
         }
       case ImageRun():
-        break; // WidgetSpan — outside the text flow, unhighlightable.
+        // WidgetSpan — outside the text flow, unhighlightable. Images
+        // contribute zero plain-text offsets in the shared traversal, so
+        // emitting them unchanged keeps cursor alignment intact.
+        out.add(inlineSpan(run, tokens, base, resolvers));
     }
   }
 }
