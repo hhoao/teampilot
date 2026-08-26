@@ -17,6 +17,8 @@ import '../services/io/filesystem.dart';
 import '../services/session/session_member_cli_locks.dart';
 import '../services/session/session_team_counter.dart';
 import '../services/session/team_session_member_plan.dart';
+import '../services/cli/registry/capabilities/ai_history_capability.dart';
+import '../services/cli/registry/cli_tool_registry.dart';
 import '../services/storage/app_storage.dart';
 import '../services/storage/work_target_canonicalizer.dart';
 import '../models/workspace_icon_ref.dart';
@@ -1205,6 +1207,125 @@ class SessionRepository {
           );
         }
       }
+    });
+  }
+
+  /// Duplicates a Simple session together with its CLI runtime state
+  /// (conversation-history fork). See
+  /// `docs/superpowers/specs/2026-08-26-duplicate-session-design.md`.
+  ///
+  /// Copies `runtime/{tool}/` verbatim and seeds the fork's
+  /// [AppSession.nativeSessionIds] so resume/history resolve against the
+  /// copied state: postCaptured CLIs reuse their persisted entry,
+  /// clientPinned CLIs get the source sessionId (the pinned transcript
+  /// filename). Team sessions are rejected. On a mid-copy failure the
+  /// half-written target directory is removed before rethrowing.
+  Future<AppSession> duplicateSession(
+    String sourceSessionId, {
+    required String display,
+  }) {
+    return _withSessionFile(sourceSessionId, () async {
+      final fs = await _fs();
+      final source = await _findSession(fs, sourceSessionId);
+      if (source == null) {
+        throw StateError('Unknown sessionId: $sourceSessionId');
+      }
+      if (!source.isSimple) {
+        throw StateError(
+          'duplicateSession supports Simple sessions only '
+          '(source ${source.sessionId} is teamed)',
+        );
+      }
+      final cli = source.cli ?? CliTool.claude;
+      final tool = cli.value;
+      final now = DateTime.now().millisecondsSinceEpoch;
+      final newSessionId = const Uuid().v4();
+
+      final persisted = source.nativeSessionIds[tool]?.trim() ?? '';
+      final pinsOwnTranscript =
+          CliToolRegistry.builtIn()
+              .capability<AiHistoryCapability>(cli)
+              ?.binding ==
+          ResumeBinding.clientPinned;
+      final seededNativeId = persisted.isNotEmpty
+          ? persisted
+          : pinsOwnTranscript
+          ? source.sessionId
+          : '';
+
+      var fork = AppSession(
+        sessionId: newSessionId,
+        workspaceId: source.workspaceId,
+        folders: List.of(source.folders),
+        memberTargets: Map.of(source.memberTargets),
+        display: display,
+        cli: cli,
+        provider: source.provider,
+        model: source.model,
+        effort: source.effort,
+        presetId: source.presetId,
+        nativeSessionIds: seededNativeId.isEmpty
+            ? const {}
+            : {tool: seededNativeId},
+        launchState: AppSessionLaunchState.created,
+        createdAt: now,
+        updatedAt: now,
+        expertKey: source.expertKey,
+        continueOverrides: source.continueOverrides,
+      );
+      try {
+        await fs.ensureSessionDir(source.workspaceId, newSessionId);
+        final sourceToolDir = fs.layout.sessionRuntimeToolDir(
+          source.workspaceId,
+          sourceSessionId,
+          tool,
+        );
+        if ((await fs.fs.stat(sourceToolDir)).isDirectory) {
+          await fs.fs.copyTree(
+            source: sourceToolDir,
+            destination: fs.layout.sessionRuntimeToolDir(
+              source.workspaceId,
+              newSessionId,
+              tool,
+            ),
+          );
+        }
+      } on Object {
+        await fs.deleteSessionDir(source.workspaceId, newSessionId);
+        rethrow;
+      }
+      await _writeSession(fs, fork);
+
+      // Index mirror — same prepend semantics as createSession.
+      final key = _workspacesIndexCacheKey();
+      Workspace? cachedWorkspace;
+      for (final w in _workspacesIndexByRoot[key] ?? const <Workspace>[]) {
+        if (w.workspaceId == source.workspaceId) {
+          cachedWorkspace = w;
+          break;
+        }
+      }
+      final manifest = await _readManifest(
+        fs,
+        source.workspaceId,
+        indexOnly: true,
+      );
+      final baseIds =
+          cachedWorkspace?.sessionIds ??
+          manifest?.sessionIds ??
+          const <String>[];
+      if (!baseIds.contains(newSessionId)) {
+        await _rememberWorkspace(
+          (cachedWorkspace ?? manifest)!.copyWith(
+            sessionIds: [newSessionId, ...baseIds],
+          ),
+        );
+      }
+      appLogger.d(
+        '[session-duplicate] duplicated $sourceSessionId -> $newSessionId '
+        'tool=$tool',
+      );
+      return fork;
     });
   }
 
