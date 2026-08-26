@@ -48,6 +48,7 @@ class HomeNewWorkspaceDialog extends StatefulWidget {
 }
 
 class _HomeNewWorkspaceDialogState extends State<HomeNewWorkspaceDialog> {
+  final _formKey = GlobalKey<TpFormState>();
   late final TextEditingController _nameController;
   var _targetId = WorkspaceFolder.localTargetId;
   var _folders = <WorkspaceFolder>[];
@@ -87,8 +88,8 @@ class _HomeNewWorkspaceDialogState extends State<HomeNewWorkspaceDialog> {
   }
 
   void _submit() {
+    if (!(_formKey.currentState?.validate() ?? false)) return;
     final valid = _folders.where((f) => f.path.trim().isNotEmpty).toList();
-    if (valid.isEmpty) return;
     Navigator.of(context).pop((
       folders: List<WorkspaceFolder>.unmodifiable(valid),
       display: _nameController.text.trim(),
@@ -105,48 +106,59 @@ class _HomeNewWorkspaceDialogState extends State<HomeNewWorkspaceDialog> {
 
     return TpDialog(
       maxWidth: 780,
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          TpDialogHeader(title: l10n.newWorkspace),
-          const SizedBox(height: 8),
-          Text(
-            l10n.homeWorkspaceNewWorkspaceSubtitle,
-            textAlign: TextAlign.center,
-            style: styles.mdColored(cs.onSurfaceVariant),
-          ),
-          const SizedBox(height: 28),
-          WorkspaceCreateDirectoryPicker(
-            targetId: _targetId,
-            onTargetChanged: _onTargetChanged,
-            folders: _folders,
-            onFoldersChanged: (next) => setState(() => _folders = next),
-          ),
-          const SizedBox(height: 16),
-          WorkspaceCreateNameField(
-            controller: _nameController,
-            hint: hasDirectory
-                ? _basename(firstPath)
-                : l10n.homeWorkspaceNewWorkspaceNameHint,
-            onSubmitted: (_) => _submit(),
-          ),
-          const SizedBox(height: 28),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.end,
-            children: [
-              TextButton(
-                onPressed: () => Navigator.of(context).pop(),
-                child: Text(l10n.cancel),
-              ),
-              const SizedBox(width: 12),
-              FilledButton(
-                onPressed: hasDirectory ? _submit : null,
-                child: Text(l10n.homeWorkspaceCreateWorkspace),
-              ),
-            ],
-          ),
-        ],
+      child: TpForm(
+        key: _formKey,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            TpDialogHeader(title: l10n.newWorkspace),
+            const SizedBox(height: 8),
+            Text(
+              l10n.homeWorkspaceNewWorkspaceSubtitle,
+              textAlign: TextAlign.center,
+              style: styles.mdColored(cs.onSurfaceVariant),
+            ),
+            const SizedBox(height: 28),
+            WorkspaceCreateDirectoryPicker(
+              targetId: _targetId,
+              onTargetChanged: _onTargetChanged,
+              folders: _folders,
+              onFoldersChanged: (next) => setState(() => _folders = next),
+            ),
+            const SizedBox(height: 16),
+            TpFormField<bool>(
+              id: 'folders',
+              builder: (_) => const SizedBox.shrink(),
+              validator: (_) =>
+                  _folders.where((f) => f.path.trim().isNotEmpty).isEmpty
+                      ? l10n.workspacePrimaryPathRequired
+                      : null,
+            ),
+            WorkspaceCreateNameField(
+              controller: _nameController,
+              hint: hasDirectory
+                  ? _basename(firstPath)
+                  : l10n.homeWorkspaceNewWorkspaceNameHint,
+              onSubmitted: (_) => _submit(),
+            ),
+            const SizedBox(height: 28),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.end,
+              children: [
+                TextButton(
+                  onPressed: () => Navigator.of(context).pop(),
+                  child: Text(l10n.cancel),
+                ),
+                const SizedBox(width: 12),
+                FilledButton(
+                  onPressed: _submit,
+                  child: Text(l10n.homeWorkspaceCreateWorkspace),
+                ),
+              ],
+            ),
+          ],
+        ),
       ),
     );
   }
