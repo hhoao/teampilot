@@ -64,11 +64,15 @@ final class TerminalFullscreenInputChannel {
     return next;
   }
 
-  Future<void> clearStagedInput({int killLines = 3}) {
+  Future<void> clearStagedInput({
+    int killLines = 3,
+    bool Function()? canExecute,
+  }) {
+    final fence = canExecute ?? _always;
     final next = _ptySubmitChain.then((_) async {
       for (var i = 0; i < killLines; i++) {
         await _commands.enqueue(
-          TerminalInputCommand.bytes('\x15', canExecute: _always),
+          TerminalInputCommand.bytes('\x15', canExecute: fence),
         );
         if (i < killLines - 1) {
           await Future<void>.delayed(const Duration(milliseconds: 80));

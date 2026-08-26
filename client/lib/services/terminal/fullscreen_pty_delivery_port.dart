@@ -28,7 +28,7 @@ abstract interface class FullscreenPtyDeliveryPort {
   /// Whether [needle] is still the body of a composer-prefixed input row.
   bool isNeedleStagedInComposer(String needle, {int scanRows = 24});
 
-  Future<void> clearStagedInput();
+  Future<void> clearStagedInput({bool Function()? canExecute});
 
   Future<void> pasteText(String text, {bool Function()? canExecute});
 

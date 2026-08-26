@@ -83,7 +83,8 @@ final class TerminalFullscreenPtyPort implements FullscreenPtyDeliveryPort {
   }
 
   @override
-  Future<void> clearStagedInput() => _input.clearStagedInput();
+  Future<void> clearStagedInput({bool Function()? canExecute}) =>
+      _input.clearStagedInput(canExecute: canExecute);
 
   @override
   Future<void> pasteText(String text, {bool Function()? canExecute}) =>

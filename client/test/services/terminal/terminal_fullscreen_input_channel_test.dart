@@ -1,5 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/services/terminal/terminal_fullscreen_input_channel.dart';
+import 'package:teampilot/services/terminal/terminal_input_command_queue.dart';
 
 void main() {
   test('submitFullScreenInput writes bracketed paste then a standalone CR', () async {
@@ -36,5 +37,55 @@ void main() {
     await Future<void>.delayed(Duration.zero);
 
     expect(writes, ['hello team\r']);
+  });
+
+  test('confirmation before queued CR drops it in the production channel',
+      () async {
+    final writes = <String>[];
+    var confirmed = false;
+    final commands = TerminalInputCommandQueue(write: writes.add);
+    final channel = TerminalFullscreenInputChannel(commands: commands);
+
+    await channel.submitPendingCr(canExecute: () => true);
+    final queuedCr = channel.submitPendingCr(
+      canExecute: () => !confirmed,
+    );
+    confirmed = true;
+    await queuedCr;
+
+    expect(writes.where((write) => write == '\r'), hasLength(1));
+  });
+
+  test('confirmation during staged clear fences every later Ctrl-U', () async {
+    final writes = <String>[];
+    var confirmed = false;
+    final channel = TerminalFullscreenInputChannel(
+      writeToPty: (write) {
+        writes.add(write);
+        if (write == '\x15') confirmed = true;
+      },
+    );
+
+    await channel.clearStagedInput(
+      canExecute: () => !confirmed,
+      killLines: 3,
+    );
+
+    expect(writes.where((write) => write == '\x15'), hasLength(1));
+  });
+
+  test('confirmation before queued staged clear drops every Ctrl-U', () async {
+    final writes = <String>[];
+    var confirmed = false;
+    final channel = TerminalFullscreenInputChannel(writeToPty: writes.add);
+
+    final clear = channel.clearStagedInput(
+      canExecute: () => !confirmed,
+      killLines: 3,
+    );
+    confirmed = true;
+    await clear;
+
+    expect(writes.where((write) => write == '\x15'), isEmpty);
   });
 }

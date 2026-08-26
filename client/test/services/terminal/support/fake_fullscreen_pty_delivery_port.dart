@@ -98,7 +98,7 @@ final class FakeFullscreenPtyDeliveryPort implements FullscreenPtyDeliveryPort {
   }
 
   @override
-  Future<void> clearStagedInput() async {
+  Future<void> clearStagedInput({bool Function()? canExecute}) async {
     clearCount++;
     staged = null;
   }

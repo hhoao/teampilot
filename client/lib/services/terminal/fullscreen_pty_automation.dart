@@ -121,13 +121,14 @@ class FullscreenPtyAutomation {
     if (isAcked?.call() ?? false) {
       return FullscreenPtyDeliveryOutcome.submitted;
     }
+    bool canExecute() => !(isAcked?.call() ?? false);
     final needle = PtyAutomationNeedle.forText(text);
     await port.syncDisplayGrid();
-    await port.clearStagedInput();
+    await port.clearStagedInput(canExecute: canExecute);
     await Future<void>.delayed(_timing.afterClear);
     await port.pasteText(
       text,
-      canExecute: () => !(isAcked?.call() ?? false),
+      canExecute: canExecute,
     );
     final anchor = await _pollForNeedle(
       port,
@@ -140,7 +141,12 @@ class FullscreenPtyAutomation {
       return FullscreenPtyDeliveryOutcome.pasteNotFound;
     }
     await _settleAfterPasteAck(port, pasteSettle);
-    return _pollCrUntilAnchorClears(port, anchor, isAcked: isAcked);
+    return _pollCrUntilAnchorClears(
+      port,
+      anchor,
+      isAcked: isAcked,
+      canExecute: canExecute,
+    );
   }
 
   /// CR-only pass when [text] is already visible on the grid.
@@ -179,14 +185,16 @@ class FullscreenPtyAutomation {
     FullscreenPtyDeliveryPort port,
     FullscreenPromptAnchor anchor, {
     bool Function()? isAcked,
+    bool Function()? canExecute,
   }) async {
+    final fence = canExecute ?? (() => !(isAcked?.call() ?? false));
     if (port.crAckConfig.strategy == FullscreenCrAckStrategy.timed) {
-      await port.submitCr(canExecute: () => !(isAcked?.call() ?? false));
+      await port.submitCr(canExecute: fence);
       await Future<void>.delayed(_timing.afterCr);
       return FullscreenPtyDeliveryOutcome.submitted;
     }
 
-    await port.submitCr(canExecute: () => !(isAcked?.call() ?? false));
+    await port.submitCr(canExecute: fence);
     if (port.isAborted) return FullscreenPtyDeliveryOutcome.aborted;
     await Future<void>.delayed(_timing.afterCr);
     if (isAcked?.call() ?? false) return FullscreenPtyDeliveryOutcome.submitted;

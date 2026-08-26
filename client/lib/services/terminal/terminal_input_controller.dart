@@ -51,8 +51,13 @@ final class TerminalInputController implements TerminalTextSink {
 
   Future<void> clearInputLine() => _fullscreen.clearInputLine();
 
-  Future<void> clearStagedInput({int killLines = 3}) =>
-      _fullscreen.clearStagedInput(killLines: killLines);
+  Future<void> clearStagedInput({
+    int killLines = 3,
+    bool Function()? canExecute,
+  }) => _fullscreen.clearStagedInput(
+    killLines: killLines,
+    canExecute: canExecute,
+  );
 
   void writeln(String text) =>
       _fullscreen.writeln(text, onTurnStart: _onTurnStart);

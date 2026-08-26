@@ -298,7 +298,8 @@ final class _TimestampedPastePort implements FullscreenPtyDeliveryPort {
       _inner.isNeedleStagedInComposer(needle, scanRows: scanRows);
 
   @override
-  Future<void> clearStagedInput() => _inner.clearStagedInput();
+  Future<void> clearStagedInput({bool Function()? canExecute}) =>
+      _inner.clearStagedInput(canExecute: canExecute);
 
   @override
   Future<void> pasteText(String text, {bool Function()? canExecute}) =>
@@ -374,7 +375,7 @@ final class _CursorTranscriptAfterSubmitPort
       !_submitted && _staged != null && _staged!.contains(needle);
 
   @override
-  Future<void> clearStagedInput() async {
+  Future<void> clearStagedInput({bool Function()? canExecute}) async {
     _staged = null;
     _submitted = false;
   }
@@ -458,7 +459,7 @@ final class _ComposerMovesDownStuckButCommittedPort
       _composerBody != null && _composerBody!.contains(needle);
 
   @override
-  Future<void> clearStagedInput() async {
+  Future<void> clearStagedInput({bool Function()? canExecute}) async {
     _composerBody = null;
   }
 
@@ -542,7 +543,7 @@ final class _ComposerMovesDownStuckStagedThenAckPort
       staged != null && staged!.contains(needle);
 
   @override
-  Future<void> clearStagedInput() async {
+  Future<void> clearStagedInput({bool Function()? canExecute}) async {
     staged = null;
   }
 
@@ -625,7 +626,7 @@ final class _ComposerMovesDownEmptyNoNeedleThenAckPort
       staged != null && staged!.contains(needle);
 
   @override
-  Future<void> clearStagedInput() async {
+  Future<void> clearStagedInput({bool Function()? canExecute}) async {
     staged = null;
   }
 
@@ -711,7 +712,7 @@ final class _AnchorCellStuckButHookAckedPort
       !submitted && staged != null && staged!.contains(needle);
 
   @override
-  Future<void> clearStagedInput() async {
+  Future<void> clearStagedInput({bool Function()? canExecute}) async {
     staged = null;
   }
 
