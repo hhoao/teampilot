@@ -435,6 +435,7 @@
   "composeCascadeCustomModelId": "自定义模型 ID…",
   "composeCascadeCustomModelIdTitle": "自定义模型 ID",
   "composeCascadeNoModels": "暂无模型目录",
+  "composeCascadeNoProviders": "尚未配置任何服务商",
   "workspaceCliDeletePresetTitle": "删除预设",
   "workspaceCliDeletePresetConfirm": "删除预设'{name}'？此操作不可撤销。",
   "@workspaceCliDeletePresetConfirm": {

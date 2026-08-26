@@ -460,6 +460,7 @@
   "composeCascadeCustomModelId": "Custom model ID…",
   "composeCascadeCustomModelIdTitle": "Custom model ID",
   "composeCascadeNoModels": "No model catalog",
+  "composeCascadeNoProviders": "No providers configured",
   "workspaceCliDeletePresetTitle": "Delete Preset",
   "workspaceCliDeletePresetConfirm": "Delete preset '{name}'? This cannot be undone.",
   "@workspaceCliDeletePresetConfirm": {

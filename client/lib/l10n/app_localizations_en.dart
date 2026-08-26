@@ -1103,6 +1103,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get composeCascadeNoModels => 'No model catalog';
 
   @override
+  String get composeCascadeNoProviders => 'No providers configured';
+
+  @override
   String get workspaceCliDeletePresetTitle => 'Delete Preset';
 
   @override

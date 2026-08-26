@@ -2084,6 +2084,12 @@ abstract class AppLocalizations {
   /// **'No model catalog'**
   String get composeCascadeNoModels;
 
+  /// No description provided for @composeCascadeNoProviders.
+  ///
+  /// In en, this message translates to:
+  /// **'No providers configured'**
+  String get composeCascadeNoProviders;
+
   /// No description provided for @workspaceCliDeletePresetTitle.
   ///
   /// In en, this message translates to:

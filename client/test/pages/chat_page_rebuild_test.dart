@@ -248,9 +248,6 @@ void main() {
               providers: [
                 BlocProvider.value(value: teamCubit),
                 BlocProvider.value(value: chatCubit),
-              BlocProvider<AppProviderCubit>(
-                create: (_) => _SeededAppProviderCubit(),
-              ),
                 BlocProvider<AppProviderCubit>(
                   create: (_) => _SeededAppProviderCubit(),
                 ),
@@ -426,9 +423,6 @@ void main() {
               providers: [
                 BlocProvider.value(value: teamCubit),
                 BlocProvider.value(value: chatCubit),
-              BlocProvider<AppProviderCubit>(
-                create: (_) => _SeededAppProviderCubit(),
-              ),
                 BlocProvider<AppProviderCubit>(
                   create: (_) => _SeededAppProviderCubit(),
                 ),
@@ -788,9 +782,6 @@ void main() {
               providers: [
                 BlocProvider.value(value: teamCubit),
                 BlocProvider.value(value: chatCubit),
-              BlocProvider<AppProviderCubit>(
-                create: (_) => _SeededAppProviderCubit(),
-              ),
                 BlocProvider<AppProviderCubit>(
                   create: (_) => _SeededAppProviderCubit(),
                 ),

@@ -215,39 +215,6 @@ class SessionChatComposeSection extends StatelessWidget {
     final providerState = context.select<AppProviderCubit, AppProviderState>(
       (c) => c.state,
     );
-    final cascadeGroups = session.isSimple
-        ? resolveComposeCascadeCliGroups(
-            registry: registry,
-            providersByCli: {
-              lockedCli: providerState
-                  .providersFor(lockedCli)
-                  .toList(growable: false),
-            },
-            cliItems: [lockedCli],
-          )
-        : const <ComposeCascadeCliGroup>[];
-    final cascadeSpecs = session.isSimple
-        ? buildComposeModelCascadeMenuSpecs(
-            presets: sameCliPresets,
-            selectedPresetId: selectedPresetId,
-            emptyHintLabel: l10n.workspaceCliPresetsEmptyHint,
-            defaultEffortLabel: l10n.composeCascadeDefaultEffort,
-            customModelIdLabel: l10n.composeCascadeCustomModelId,
-            noModelsLabel: l10n.composeCascadeNoModels,
-            savePresetLabel: l10n.composeCascadeSavePreset,
-            managePresetsLabel: l10n.workspaceCliAddPresetTitle,
-            cliGroups: cascadeGroups,
-            groupByCli: false,
-            onModelsOpened: (cli, pid) => unawaited(
-              refreshComposeCascadeCatalog(context, cli: cli, providerId: pid),
-            ),
-          )
-        : teamPresetMenuSpecs(
-            context: context,
-            presets: sameCliPresets,
-            selectedPresetId: selectedPresetId,
-            emptyHintLabel: l10n.workspaceCliPresetsEmptyHint,
-          );
     final modelLabel = session.isSimple
         ? simpleLaunchChipLabel(
             presetName: selectedPreset?.name,
@@ -353,10 +320,61 @@ class SessionChatComposeSection extends StatelessWidget {
                       },
                     ),
                   if (!askCardVisible)
-                    ListenableBuilder(
-                      listenable: voiceController,
-                      builder: (context, _) {
-                        return WorkspaceComposeCard(
+                    _CascadeCatalogLive(
+                      registry: registry,
+                      cli: lockedCli,
+                      enabled: session.isSimple,
+                      builder: (context) {
+                        final cascadeGroups = session.isSimple
+                            ? resolveComposeCascadeCliGroups(
+                                registry: registry,
+                                providersByCli: {
+                                  lockedCli: providerState
+                                      .providersFor(lockedCli)
+                                      .toList(growable: false),
+                                },
+                                cliItems: [lockedCli],
+                              )
+                            : const <ComposeCascadeCliGroup>[];
+                        final cascadeSpecs = session.isSimple
+                            ? buildComposeModelCascadeMenuSpecs(
+                                presets: sameCliPresets,
+                                selectedPresetId: selectedPresetId,
+                                emptyHintLabel:
+                                    l10n.workspaceCliPresetsEmptyHint,
+                                emptyProvidersLabel:
+                                    l10n.composeCascadeNoProviders,
+                                defaultEffortLabel:
+                                    l10n.composeCascadeDefaultEffort,
+                                customModelIdLabel:
+                                    l10n.composeCascadeCustomModelId,
+                                noModelsLabel: l10n.composeCascadeNoModels,
+                                savePresetLabel: l10n.composeCascadeSavePreset,
+                                managePresetsLabel:
+                                    l10n.workspaceCliAddPresetTitle,
+                                cliGroups: cascadeGroups,
+                                groupByCli: false,
+                                onModelsOpened: (cli, pid, config) =>
+                                    unawaited(
+                                      refreshComposeCascadeCatalog(
+                                        context,
+                                        cli: cli,
+                                        providerId: pid,
+                                        provider: config,
+                                      ),
+                                    ),
+                              )
+                            : teamPresetMenuSpecs(
+                                context: context,
+                                presets: sameCliPresets,
+                                selectedPresetId: selectedPresetId,
+                                emptyHintLabel:
+                                    l10n.workspaceCliPresetsEmptyHint,
+                              );
+                        return ListenableBuilder(
+                          listenable: voiceController,
+                          builder: (context, _) {
+                            return WorkspaceComposeCard(
                           controller: composeController,
                           focusNode: composeFocusNode,
                           clip: composeClip,
@@ -509,6 +527,8 @@ class SessionChatComposeSection extends StatelessWidget {
                                 fs: filesystemForComposeAtFileOpen(path),
                               ),
                             );
+                          },
+                        );
                           },
                         );
                       },
@@ -1052,6 +1072,70 @@ class SessionChatComposeSection extends StatelessWidget {
       team: team,
       workspace: workspaceBundle,
       hubState: hubState,
+    );
+  }
+}
+
+/// Rebuilds [builder]'s subtree whenever the live model catalog of the locked
+/// CLI changes, so open cascade menus pick up refreshed candidates in place.
+class _CascadeCatalogLive extends StatefulWidget {
+  const _CascadeCatalogLive({
+    required this.registry,
+    required this.cli,
+    required this.enabled,
+    required this.builder,
+  });
+
+  final CliToolRegistry registry;
+  final CliTool cli;
+  final bool enabled;
+  final WidgetBuilder builder;
+
+  @override
+  State<_CascadeCatalogLive> createState() => _CascadeCatalogLiveState();
+}
+
+class _CascadeCatalogLiveState extends State<_CascadeCatalogLive> {
+  CascadeCatalogListenable? _listenable;
+
+  void _syncAttachments() {
+    if (!widget.enabled) {
+      _listenable?.detach();
+      return;
+    }
+    (_listenable ??= CascadeCatalogListenable(registry: widget.registry))
+        .attach([widget.cli]);
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    _syncAttachments();
+  }
+
+  @override
+  void didUpdateWidget(covariant _CascadeCatalogLive oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.cli != widget.cli ||
+        oldWidget.registry != widget.registry ||
+        oldWidget.enabled != widget.enabled) {
+      _syncAttachments();
+    }
+  }
+
+  @override
+  void dispose() {
+    _listenable?.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final listenable = _listenable;
+    if (listenable == null) return widget.builder(context);
+    return ListenableBuilder(
+      listenable: listenable,
+      builder: (context, _) => widget.builder(context),
     );
   }
 }

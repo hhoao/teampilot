@@ -1057,6 +1057,9 @@ class AppLocalizationsZh extends AppLocalizations {
   String get composeCascadeNoModels => '暂无模型目录';
 
   @override
+  String get composeCascadeNoProviders => '尚未配置任何服务商';
+
+  @override
   String get workspaceCliDeletePresetTitle => '删除预设';
 
   @override

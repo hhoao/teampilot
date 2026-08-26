@@ -32,6 +32,7 @@ void main() {
       final p = groups.single.providers.single;
       expect(p.supportsCustomModelEntry, isTrue); // claude picker mode
       expect(p.models, containsAll(['m-a', 'm-b']));
+      expect(p.config.id, 'official');
     });
 
     test('skips CLIs without providers or capability', () {
@@ -42,17 +43,58 @@ void main() {
       );
       expect(groups.where((g) => g.cli == CliTool.codex), isEmpty);
     });
+
+    test('sorts providers by category then lowercase name', () {
+      final zebra = AppProviderConfig(
+        id: 'z', cli: CliTool.claude, name: 'Zebra',
+        category: AppProviderCategory.custom);
+      final alpha = AppProviderConfig(
+        id: 'a', cli: CliTool.claude, name: 'alpha',
+        category: AppProviderCategory.custom);
+      official() => AppProviderConfig(
+        id: 'o', cli: CliTool.claude, name: 'mid',
+        category: AppProviderCategory.official);
+      final groups = resolveComposeCascadeCliGroups(
+        registry: registry,
+        providersByCli: {
+          CliTool.claude: [zebra, official(), alpha],
+        },
+        cliItems: [CliTool.claude],
+      );
+      expect(
+        groups.single.providers.map((p) => p.id).toList(),
+        ['a', 'z', 'o'],
+      );
+    });
   });
 
   group('buildComposeModelCascadeMenuSpecs', () {
-    test('presets group, provider drill-down, effort leaves, bottom actions', () {
+    ComposeCascadeProvider cascadeProvider({
+      String id = 'p1',
+      String name = 'X',
+      bool supportsCustomModelEntry = false,
+      List<String> models = const ['plain-model'],
+      Map<String, List<String>> efforts = const {'plain-model': []},
+    }) =>
+        ComposeCascadeProvider(
+          id: id,
+          name: name,
+          supportsCustomModelEntry: supportsCustomModelEntry,
+          models: models,
+          config: provider(id, name: name),
+          effortByModel: efforts,
+        );
+
+    test('presets group, provider drill-down, effort leaves, bottom actions',
+        () {
       final groups = [
         ComposeCascadeCliGroup(cli: CliTool.claude, providers: [
-          ComposeCascadeProvider(
-            id: 'p1', name: 'DeepSeek',
+          cascadeProvider(
+            id: 'p1',
+            name: 'DeepSeek',
             supportsCustomModelEntry: true,
             models: ['deepseek-chat'],
-            effortByModel: {'deepseek-chat': ['low', 'high']},
+            efforts: {'deepseek-chat': ['low', 'high']},
           ),
         ]),
       ];
@@ -60,6 +102,7 @@ void main() {
         presets: [preset('preset-1', 'Work')],
         selectedPresetId: 'preset-1',
         emptyHintLabel: 'No presets',
+        emptyProvidersLabel: 'No providers',
         defaultEffortLabel: 'Default',
         customModelIdLabel: 'Custom model ID…',
         noModelsLabel: 'No models',
@@ -97,11 +140,86 @@ void main() {
       );
     });
 
+    test('onModelsOpened receives cli, provider id and full config', () {
+      final config = provider('prov-1', name: 'Prov');
+      Object? captured;
+      final groups = [
+        ComposeCascadeCliGroup(cli: CliTool.claude, providers: [
+          ComposeCascadeProvider(
+            id: 'prov-1',
+            name: 'Prov',
+            supportsCustomModelEntry: false,
+            models: ['m1'],
+            config: config,
+            effortByModel: {'m1': ['low']},
+          ),
+        ]),
+      ];
+      final specs = buildComposeModelCascadeMenuSpecs(
+        presets: const [],
+        selectedPresetId: null,
+        emptyHintLabel: 'x',
+        emptyProvidersLabel: 'y',
+        defaultEffortLabel: 'Default',
+        customModelIdLabel: 'Custom…',
+        noModelsLabel: 'No models',
+        savePresetLabel: 'Save',
+        managePresetsLabel: 'Manage',
+        cliGroups: groups,
+        groupByCli: false,
+        onModelsOpened: (cli, providerId, cfg) {
+          captured = (cli, providerId, cfg);
+        },
+      );
+      // onOpen closures are attached to the spec; invoke via the submenu spec.
+      final modelSpec = specs.firstWhere((s) => s.isSubmenu).children!.first;
+      modelSpec.onOpen?.call();
+      final tuple = captured! as (CliTool, String, AppProviderConfig);
+      expect(tuple.$1, CliTool.claude);
+      expect(tuple.$2, 'prov-1');
+      expect(identical(tuple.$3, config), isTrue);
+    });
+
+    test('zero providers renders hint row and a single divider', () {
+      final specs = buildComposeModelCascadeMenuSpecs(
+        presets: const [],
+        selectedPresetId: null,
+        emptyHintLabel: 'No presets',
+        emptyProvidersLabel: 'No providers',
+        defaultEffortLabel: 'Default',
+        customModelIdLabel: 'Custom…',
+        noModelsLabel: 'No models',
+        savePresetLabel: 'Save',
+        managePresetsLabel: 'Manage',
+        cliGroups: [
+          ComposeCascadeCliGroup(cli: CliTool.claude, providers: []),
+          ComposeCascadeCliGroup(cli: CliTool.codex, providers: []),
+        ],
+        groupByCli: true,
+      );
+      expect(specs.where((s) => s.isDivider), hasLength(1));
+      expect(
+        specs.any(
+          (s) =>
+              !s.isDivider &&
+              !s.isSubmenu &&
+              s.enabled == false &&
+              s.label == 'No providers',
+        ),
+        isTrue,
+      );
+      expect(
+        specs.any((s) => s.value == ComposeModelPresetChipAction.savePreset),
+        isTrue,
+      );
+    });
+
     test('model without effort candidates is a direct leaf', () {
       final specs = buildComposeModelCascadeMenuSpecs(
         presets: const [],
         selectedPresetId: null,
         emptyHintLabel: 'No presets',
+        emptyProvidersLabel: 'No providers',
         defaultEffortLabel: 'Default',
         customModelIdLabel: 'Custom…',
         noModelsLabel: 'No models',
@@ -109,11 +227,11 @@ void main() {
         managePresetsLabel: 'Manage',
         cliGroups: [
           ComposeCascadeCliGroup(cli: CliTool.claude, providers: [
-            ComposeCascadeProvider(
-              id: 'p1', name: 'X',
-              supportsCustomModelEntry: false,
+            cascadeProvider(
+              id: 'p1',
+              name: 'X',
               models: ['plain-model'],
-              effortByModel: {'plain-model': []},
+              efforts: {'plain-model': []},
             ),
           ]),
         ],
@@ -133,6 +251,7 @@ void main() {
         presets: const [],
         selectedPresetId: null,
         emptyHintLabel: 'x',
+        emptyProvidersLabel: 'No providers',
         defaultEffortLabel: 'Default',
         customModelIdLabel: 'Custom…',
         noModelsLabel: 'No models',
@@ -144,6 +263,7 @@ void main() {
               id: 'p1', name: 'X',
               supportsCustomModelEntry: true,
               models: [],
+              config: provider('p1'),
               effortByModel: {},
             ),
           ]),

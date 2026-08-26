@@ -537,6 +537,7 @@ void main() {
                     presets: [claudePreset()],
                     selectedPresetId: 'preset-b',
                     emptyHintLabel: 'No presets',
+                    emptyProvidersLabel: 'No providers configured',
                     defaultEffortLabel: 'Default',
                     customModelIdLabel: 'Custom model ID…',
                     noModelsLabel: 'No model catalog',

@@ -39,6 +39,7 @@ import '../../../services/expert_hub/expert_capability_resolver.dart';
 import '../../../services/expert_hub/expert_hub_recent_store.dart';
 import '../../../services/expert_hub/expert_landing_preflight.dart';
 import '../../../services/expert_hub/expert_member_resolver.dart';
+import '../../../services/cli/registry/cli_tool_registry.dart';
 import '../../../services/cli/registry/cli_tool_registry_scope.dart';
 import '../../../services/cli/registry/capabilities/native_command_capability.dart';
 import '../../../services/cli/registry/capabilities/skill_capability.dart';
@@ -144,6 +145,7 @@ class _UnboundComposeBodyState extends State<UnboundComposeBody> {
   List<String> _recentExpertKeys = const [];
   final _teamRecentStore = TeamLandingRecentStore();
   List<String> _recentTeamIds = const [];
+  CascadeCatalogListenable? _cascadeCatalog;
 
   @override
   void initState() {
@@ -280,6 +282,10 @@ class _UnboundComposeBodyState extends State<UnboundComposeBody> {
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
+    _cascadeCatalog ??= CascadeCatalogListenable(
+      registry: CliToolRegistryScope.maybeOf(context) ??
+          CliToolRegistry.builtIn(),
+    );
     _runtimeTargetsLoad ??= _loadRuntimeTargets();
     _reloadDraftIfRouteExpertChanged();
   }
@@ -364,6 +370,7 @@ class _UnboundComposeBodyState extends State<UnboundComposeBody> {
   @override
   void dispose() {
     _stopVoiceSessionClock();
+    _cascadeCatalog?.dispose();
     _voiceInput.dispose();
     _controller.removeListener(_syncComposeDraft);
     _clip.dispose();
@@ -1398,6 +1405,7 @@ class _UnboundComposeBodyState extends State<UnboundComposeBody> {
       final cliItems = registry.launchable
           .map((d) => d.id)
           .toList(growable: false);
+      _cascadeCatalog?.attach(cliItems);
       final groups = resolveComposeCascadeCliGroups(
         registry: registry,
         providersByCli: {
@@ -1410,6 +1418,7 @@ class _UnboundComposeBodyState extends State<UnboundComposeBody> {
         presets: presets,
         selectedPresetId: _selectedPresetId,
         emptyHintLabel: l10n.workspaceCliPresetsEmptyHint,
+        emptyProvidersLabel: l10n.composeCascadeNoProviders,
         defaultEffortLabel: l10n.composeCascadeDefaultEffort,
         customModelIdLabel: l10n.composeCascadeCustomModelId,
         noModelsLabel: l10n.composeCascadeNoModels,
@@ -1417,8 +1426,13 @@ class _UnboundComposeBodyState extends State<UnboundComposeBody> {
         managePresetsLabel: l10n.workspaceCliAddPresetTitle,
         cliGroups: groups,
         groupByCli: true,
-        onModelsOpened: (cli, providerId) => unawaited(
-          refreshComposeCascadeCatalog(context, cli: cli, providerId: providerId),
+        onModelsOpened: (cli, providerId, config) => unawaited(
+          refreshComposeCascadeCatalog(
+            context,
+            cli: cli,
+            providerId: providerId,
+            provider: config,
+          ),
         ),
       );
     }
@@ -1480,7 +1494,8 @@ class _UnboundComposeBodyState extends State<UnboundComposeBody> {
         ? launchWarningBlock.missing
         : null;
 
-    final composeCard = WorkspaceComposeCard(
+    WorkspaceComposeCard buildCard(BuildContext context) =>
+        WorkspaceComposeCard(
       controller: _controller,
       clip: _clip,
       focusNode: _focusNode,
@@ -1596,6 +1611,16 @@ class _UnboundComposeBodyState extends State<UnboundComposeBody> {
             )
           : null,
     );
+
+    final cascadeCatalog = _cascadeCatalog;
+    final composeCard =
+        _conversationMode == _LandingConversationMode.simple &&
+            cascadeCatalog != null
+        ? ListenableBuilder(
+            listenable: cascadeCatalog,
+            builder: (context, _) => buildCard(context),
+          )
+        : buildCard(context);
 
     Widget composeSection = composeCard;
     if (remoteCliMissing != null &&
