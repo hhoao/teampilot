@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/cubits/git_graph_cubit.dart';
 import 'package:teampilot/models/git_graph.dart';
@@ -63,6 +65,40 @@ void main() {
     expect(cubit.state.ahead, 1);
     expect(cubit.state.hasMore, isFalse); // 1 行 < limit 300
     await cubit.close();
+  });
+
+  test('refresh completing after loadMore keeps the appended rows', () async {
+    // 竞态：refresh 发起时快照 300 行；等待期间 loadMore 追加完成；
+    // refresh 随后才 emit——不得用过期的第一页覆盖累计结果。
+    var releaseLoadMore = Completer<List<GitGraphRow>>();
+    final history = _RacyHistory(
+      // 满页首屏（300 条）才有 hasMore=true，loadMore 才会真正发起。
+      firstPage: List<GitGraphRow>.generate(
+        GitHistoryService.initialLoadCommits,
+        (i) => graphCommitRow('p$i'),
+      ),
+      morePage: [graphCommitRow('h3'), graphCommitRow('h4')],
+      gateLoadMore: releaseLoadMore.future,
+    );
+    final cubit = GitGraphCubit(history: history, git: FakeGitForGraph(repoStatus()));
+    addTearDown(cubit.close);
+    await cubit.setRepoRoot('/repo');
+
+    final loadMoreDone = cubit.loadMore();
+    final refreshDone = cubit.refresh();
+    releaseLoadMore.complete([
+      graphCommitRow('h3'),
+      graphCommitRow('h4'),
+    ]);
+    await loadMoreDone;
+    await refreshDone;
+
+    expect(
+      cubit.state.rows.length,
+      GitHistoryService.initialLoadCommits + 2,
+      reason: 'refresh 完成于 loadMore 之后，不得覆盖追加结果',
+    );
+    expect((cubit.state.rows.last as GitCommitRow).hash, 'h4');
   });
 
   test('poll refresh keeps accumulated pagination when head unchanged',
@@ -282,6 +318,48 @@ class _ScriptedHistory implements GitHistoryService {
     if (page.isEmpty || limit <= 0) return page;
     // 保持页首为该页 HEAD，其余循环填充至满页。
     return List<GitGraphRow>.generate(limit, (n) => page[n % page.length]);
+  }
+
+  @override
+  Future<List<GitBranchInfo>> branches(String dir) async => const [];
+
+  @override
+  Future<List<GitTagInfo>> tags(String dir) async => const [];
+
+  @override
+  Future<List<GitStashEntry>> stashList(String dir) async => const [];
+}
+
+
+/// 可控时序的 fake：loadMore 的结果由 [gateLoadMore] 门控，用于复现
+/// 「refresh 与 loadMore 并发、且 refresh 后完成」的竞态。
+class _RacyHistory implements GitHistoryService {
+  _RacyHistory({
+    required this.firstPage,
+    required this.morePage,
+    required this.gateLoadMore,
+  });
+
+  final List<GitGraphRow> firstPage;
+  final List<GitGraphRow> morePage;
+  final Future<List<GitGraphRow>> gateLoadMore;
+  int loadMoreCalls = 0;
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
+
+  @override
+  Future<List<GitGraphRow>> graphRows(
+    String dir, {
+    int limit = GitHistoryService.initialLoadCommits,
+    int skip = 0,
+    String query = '',
+    GitSearchMode mode = GitSearchMode.message,
+    String? revisionRange,
+  }) {
+    if (skip == 0) return Future.value(firstPage);
+    loadMoreCalls++;
+    return gateLoadMore;
   }
 
   @override

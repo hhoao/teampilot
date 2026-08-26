@@ -293,16 +293,18 @@ class GitGraphCubit extends Cubit<GitGraphState> {
       // 轮询/手动重刷只取第一页；若查询条件未变、本地已分页更深且头提交
       // 未变，则保留累计行——否则（新提交到达 / 过滤变化 / 首次加载）
       // 整页替换。
+      // 注意：累计行必须在 emit 前一刻读取（而非进入函数时）——refresh 与
+      // loadMore 并发时，loadMore 可能在本函数等待 git 期间完成追加。
       var nextRows = rows;
       var nextHasMore = rows.length == GitHistoryService.initialLoadCommits;
-      final prevRows = state.rows;
+      final accumulated = state.rows;
       final headUnchanged = rows.isNotEmpty &&
-          prevRows.isNotEmpty &&
-          _headHashOf(rows) == _headHashOf(prevRows);
+          accumulated.isNotEmpty &&
+          _headHashOf(rows) == _headHashOf(accumulated);
       if (_lastFetchSignature == signature &&
           headUnchanged &&
-          prevRows.length > rows.length) {
-        nextRows = prevRows;
+          accumulated.length > rows.length) {
+        nextRows = accumulated;
         nextHasMore = state.hasMore;
       }
       _lastFetchSignature = signature;
