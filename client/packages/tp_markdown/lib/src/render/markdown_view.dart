@@ -7,6 +7,7 @@ import '../registry/block_widget_registry.dart';
 import '../registry/markdown_resolvers.dart';
 import '../strings.dart';
 import '../tokens/markdown_tokens.dart';
+import 'highlight_context.dart';
 import 'inline_spans.dart';
 
 /// Semantic markdown renderer: Column layout with kind-based inter-block gaps.
@@ -18,6 +19,9 @@ class MarkdownView extends StatefulWidget {
     this.resolvers = const MarkdownResolvers(),
     this.strings = MarkdownStrings.english,
     this.registry,
+    this.highlights,
+    this.blockIndex = 0,
+    this.basePath = const [],
   });
 
   final MarkdownDocument document;
@@ -25,6 +29,16 @@ class MarkdownView extends StatefulWidget {
   final MarkdownResolvers resolvers;
   final MarkdownStrings strings;
   final BlockWidgetRegistry? registry;
+
+  /// Resolves per-container highlight ranges for this document's blocks.
+  final MarkdownHighlightContext? highlights;
+
+  /// Top-level index reported by blocks of this view when it renders nested
+  /// content ([basePath] non-empty); nested views reuse the parent's index
+  /// while nesting extends [basePath]. Root views (empty [basePath]) address
+  /// each block by its own top-level slot instead.
+  final int blockIndex;
+  final List<MarkdownPathStep> basePath;
 
   @override
   State<MarkdownView> createState() => _MarkdownViewState();
@@ -95,6 +109,15 @@ class _MarkdownViewState extends State<MarkdownView> {
 
     while (i < blocks.length) {
       final block = blocks[i];
+      // Container address of the block rendered at loop slot i. Root views
+      // (empty basePath) address each block by its own top-level slot, matching
+      // MarkdownSearchIndex's projection; nested views report the inherited
+      // (blockIndex, basePath) pair — their callers hand over exactly one
+      // fully-extended base per container.
+      final isNested = widget.basePath.isNotEmpty;
+      final containerIndex = isNested ? widget.blockIndex : i;
+      final containerPath =
+          isNested ? widget.basePath : const <MarkdownPathStep>[];
 
       if (block is ParagraphBlock) {
         var end = i + 1;
@@ -104,12 +127,18 @@ class _MarkdownViewState extends State<MarkdownView> {
         final run = blocks.sublist(i, end).cast<ParagraphBlock>();
 
         _addGapIfNeeded(children, previous, block, tokens);
+        final perParagraph = [
+          for (var k = 0; k < run.length; k++)
+            widget.highlights?.forContainer(containerIndex + k, containerPath),
+        ];
         children.add(
           wrapHorizontal(
             MarkdownBlockKind.paragraph,
             run.length == 1
-                ? buildParagraph(run.first, tokens, resolvers)
-                : buildMergedParagraphs(run, tokens, resolvers),
+                ? buildParagraph(run.first, tokens, resolvers,
+                    highlights: perParagraph[0])
+                : buildMergedParagraphs(run, tokens, resolvers,
+                    highlights: perParagraph),
           ),
         );
         previous = run.last;
@@ -121,7 +150,15 @@ class _MarkdownViewState extends State<MarkdownView> {
       children.add(
         wrapHorizontal(
           block.kind,
-          reg.build(block, tokens, resolvers, strings),
+          reg.build(
+            block,
+            tokens,
+            resolvers,
+            strings,
+            highlights: widget.highlights,
+            blockIndex: containerIndex,
+            basePath: containerPath,
+          ),
         ),
       );
       previous = block;

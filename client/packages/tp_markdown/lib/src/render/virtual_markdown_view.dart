@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
@@ -8,7 +10,33 @@ import '../registry/block_widget_registry.dart';
 import '../registry/markdown_resolvers.dart';
 import '../strings.dart';
 import '../tokens/markdown_tokens.dart';
+import 'highlight_context.dart';
 import 'inline_spans.dart';
+
+/// Controller bound to one [VirtualMarkdownView]; reveals blocks by scrolling
+/// the owning viewport (internal in bounded mode, parent scroll in flatten).
+class MarkdownViewController {
+  _VirtualMarkdownViewState? _state;
+
+  bool get hasClients => _state != null;
+
+  Future<void> revealBlock(int blockIndex) async {
+    await _state?.revealBlockPublic(blockIndex);
+  }
+
+  /// Detach without disposing the bound view (safe to call repeatedly).
+  void dispose() {
+    if (_state != null) {
+      _state = null;
+    }
+  }
+
+  void _attachInternal(_VirtualMarkdownViewState s) => _state = s;
+
+  void _detachInternal(_VirtualMarkdownViewState s) {
+    if (identical(_state, s)) _state = null;
+  }
+}
 
 /// Block-level virtualized markdown renderer for very large documents.
 ///
@@ -40,6 +68,8 @@ class VirtualMarkdownView extends StatefulWidget {
     this.estimateHeight = 44,
     this.overscan = 6,
     this.flatten = false,
+    this.highlights,
+    this.controller,
   });
 
   final MarkdownDocument document;
@@ -63,6 +93,14 @@ class VirtualMarkdownView extends StatefulWidget {
   /// viewport. VS Code markdown preview-style flow; the parent owns scrolling.
   final bool flatten;
 
+  /// Optional match-highlight resolver, looked up per top-level block index
+  /// while units build their spans.
+  final MarkdownHighlightContext? highlights;
+
+  /// Optional controller for programmatic reveal (e.g. jumping to a search
+  /// hit). See [MarkdownViewController.revealBlock].
+  final MarkdownViewController? controller;
+
   @override
   State<VirtualMarkdownView> createState() => _VirtualMarkdownViewState();
 }
@@ -81,6 +119,11 @@ class _VirtualMarkdownViewState extends State<VirtualMarkdownView> {
   bool _correctionScheduled = false;
   double _pendingCorrection = 0;
 
+  /// Monotonic reveal generation: rapid n/N navigation supersedes in-flight
+  /// reveals, and an older reveal's second-pass correction must not fire after
+  /// a newer one started (it would jump scroll back).
+  int _revealEpoch = 0;
+
   /// Parent scroll position we follow in [flatten] mode (the parent's
   /// `Scrollable`); null in bounded mode.
   ScrollPosition? _parentPosition;
@@ -88,6 +131,7 @@ class _VirtualMarkdownViewState extends State<VirtualMarkdownView> {
   @override
   void initState() {
     super.initState();
+    widget.controller?._attachInternal(this);
     _scrollController = ScrollController();
     _cache = _BlockHeightCache(estimate: widget.estimateHeight);
     _units = _computeUnits(widget.document);
@@ -115,16 +159,26 @@ class _VirtualMarkdownViewState extends State<VirtualMarkdownView> {
   @override
   void didUpdateWidget(covariant VirtualMarkdownView oldWidget) {
     super.didUpdateWidget(oldWidget);
+    if (oldWidget.controller != widget.controller) {
+      oldWidget.controller?._detachInternal(this);
+      widget.controller?._attachInternal(this);
+    }
     if (oldWidget.flatten != widget.flatten) {
       _bindParentScroll();
     }
-    if (oldWidget.document != widget.document) {
+    // Units capture the highlight context in their build closures, so any
+    // highlight swap must recompute them. Heights stay cached across
+    // highlight-only changes — background wash never affects layout.
+    if (!identical(oldWidget.highlights, widget.highlights) ||
+        oldWidget.document != widget.document) {
       _units = _computeUnits(widget.document);
-      _cache.invalidateAll();
-      _firstIndex = 0;
-      _lastIndex = -1;
-      if (_scrollController.hasClients) {
-        _scrollController.jumpTo(0);
+      if (oldWidget.document != widget.document) {
+        _cache.invalidateAll();
+        _firstIndex = 0;
+        _lastIndex = -1;
+        if (_scrollController.hasClients) {
+          _scrollController.jumpTo(0);
+        }
       }
       _syncVisibleRange();
     }
@@ -147,6 +201,7 @@ class _VirtualMarkdownViewState extends State<VirtualMarkdownView> {
 
   @override
   void dispose() {
+    widget.controller?._detachInternal(this);
     _parentPosition?.removeListener(_onScroll);
     _disposeRecognizers(_linkRecognizers);
     _scrollController.removeListener(_onScroll);
@@ -169,13 +224,26 @@ class _VirtualMarkdownViewState extends State<VirtualMarkdownView> {
           end++;
         }
         final run = blocks.sublist(i, end).cast<ParagraphBlock>();
+        final first = i;
+        final last = end - 1;
+        final context = widget.highlights;
         units.add(
           _MarkdownUnit(
             kind: MarkdownBlockKind.paragraph,
             gapBefore: _gapBefore(previous?.kind, MarkdownBlockKind.paragraph),
-            build: (tokens, resolvers, strings, reg) => run.length == 1
-                ? buildParagraph(run.first, tokens, resolvers)
-                : buildMergedParagraphs(run, tokens, resolvers),
+            firstBlockIndex: first,
+            lastBlockIndex: last,
+            build: (tokens, resolvers, strings, reg) {
+              final perParagraph = [
+                for (var p = 0; p < run.length; p++)
+                  context?.forContainer(first + p, const []),
+              ];
+              return run.length == 1
+                  ? buildParagraph(run.first, tokens, resolvers,
+                      highlights: perParagraph[0])
+                  : buildMergedParagraphs(run, tokens, resolvers,
+                      highlights: perParagraph);
+            },
           ),
         );
         previous = run.last;
@@ -183,12 +251,22 @@ class _VirtualMarkdownViewState extends State<VirtualMarkdownView> {
         continue;
       }
 
+      final currentIndex = i;
       units.add(
         _MarkdownUnit(
           kind: block.kind,
           gapBefore: _gapBefore(previous?.kind, block.kind),
-          build: (tokens, resolvers, strings, reg) =>
-              reg.build(block, tokens, resolvers, strings),
+          firstBlockIndex: currentIndex,
+          lastBlockIndex: currentIndex,
+          build: (tokens, resolvers, strings, reg) => reg.build(
+            block,
+            tokens,
+            resolvers,
+            strings,
+            highlights: widget.highlights,
+            blockIndex: currentIndex,
+            basePath: const [],
+          ),
         ),
       );
       previous = block;
@@ -199,6 +277,24 @@ class _VirtualMarkdownViewState extends State<VirtualMarkdownView> {
 
   double _gapBefore(MarkdownBlockKind? previous, MarkdownBlockKind next) =>
       previous == null ? 0 : gapBetween(previous, next, widget.tokens);
+
+  /// Index of the unit covering [blockIndex], or -1.
+  int _unitForBlock(int blockIndex) {
+    var lo = 0;
+    var hi = _units.length - 1;
+    while (lo <= hi) {
+      final mid = (lo + hi) >> 1;
+      final unit = _units[mid];
+      if (blockIndex < unit.firstBlockIndex) {
+        hi = mid - 1;
+      } else if (blockIndex > unit.lastBlockIndex) {
+        lo = mid + 1;
+      } else {
+        return mid;
+      }
+    }
+    return -1;
+  }
 
   // --- Link recognizer lifecycle (mirrors MarkdownView) --------------------
 
@@ -380,6 +476,85 @@ class _VirtualMarkdownViewState extends State<VirtualMarkdownView> {
     });
   }
 
+  // --- Reveal (controller-driven block navigation) -------------------------
+
+  static const Duration _revealDuration = Duration(milliseconds: 180);
+  static const double _revealCorrectionThreshold = 2.0;
+
+  Future<void> revealBlockPublic(int blockIndex) async {
+    final unit = _unitForBlock(blockIndex);
+    if (unit < 0 || !mounted) return;
+    final epoch = ++_revealEpoch;
+    // Initiate the reveal without awaiting its animation: the animation only
+    // advances as frames are produced, so awaiting it here would deadlock
+    // frame-driven callers/tests that reveal then settle.
+    unawaited(_revealTo(unit).then((_) {
+      if (!mounted) return;
+      // Heights ahead may still be estimates; correct once they measure. The
+      // pass is dropped when a newer reveal superseded this one.
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted || epoch != _revealEpoch) return;
+        _revealCorrectionPass(unit);
+      });
+    }));
+  }
+
+  Future<void> _revealTo(int unit) async {
+    final contentOffset = _cache.offsetBefore(_units.length, unit);
+    if (!widget.flatten) {
+      if (!_scrollController.hasClients ||
+          !_scrollController.position.hasViewportDimension) {
+        return;
+      }
+      await _animateTo(_scrollController.position, contentOffset);
+      return;
+    }
+    final position = _parentPosition;
+    final renderObject = context.findRenderObject();
+    if (position == null || !position.hasViewportDimension) return;
+    if (renderObject is! RenderBox || !renderObject.hasSize) return;
+    final revealed = RenderAbstractViewport.of(renderObject)
+        .getOffsetToReveal(renderObject, 0.0);
+    await _animateTo(position, revealed.offset + contentOffset);
+  }
+
+  Future<void> _animateTo(ScrollPosition position, double contentOffset) async {
+    final target = (contentOffset - position.viewportDimension * 0.25)
+        .clamp(0.0, position.maxScrollExtent);
+    if ((target - position.pixels).abs() < 1.0) return;
+    await position.animateTo(
+      target,
+      duration: _revealDuration,
+      curve: Curves.easeOutCubic,
+    );
+  }
+
+  void _revealCorrectionPass(int unit) {
+    final contentOffset = _cache.offsetBefore(_units.length, unit);
+    if (!widget.flatten) {
+      if (!_scrollController.hasClients) return;
+      final position = _scrollController.position;
+      final target =
+          (contentOffset - position.viewportDimension * 0.25).clamp(0.0, position.maxScrollExtent);
+      if ((target - position.pixels).abs() >= _revealCorrectionThreshold) {
+        position.jumpTo(target);
+      }
+      return;
+    }
+    final position = _parentPosition;
+    final renderObject = context.findRenderObject();
+    if (position == null || renderObject is! RenderBox || !renderObject.hasSize) {
+      return;
+    }
+    final revealed = RenderAbstractViewport.of(renderObject)
+        .getOffsetToReveal(renderObject, 0.0);
+    final target = (revealed.offset + contentOffset - position.viewportDimension * 0.25)
+        .clamp(0.0, position.maxScrollExtent);
+    if ((target - position.pixels).abs() >= _revealCorrectionThreshold) {
+      position.jumpTo(target);
+    }
+  }
+
   // --- Build ---------------------------------------------------------------
 
   @override
@@ -462,6 +637,8 @@ class _MarkdownUnit {
     required this.kind,
     required this.gapBefore,
     required this.build,
+    this.firstBlockIndex = 0,
+    this.lastBlockIndex = 0,
   });
 
   final MarkdownBlockKind kind;
@@ -472,6 +649,10 @@ class _MarkdownUnit {
     MarkdownStrings,
     BlockWidgetRegistry,
   ) build;
+
+  /// Top-level block indexes covered (merged paragraph runs span several).
+  final int firstBlockIndex;
+  final int lastBlockIndex;
 }
 
 class _BlockVisibleRange {

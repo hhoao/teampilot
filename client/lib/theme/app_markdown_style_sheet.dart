@@ -165,6 +165,10 @@ MarkdownTokens buildAppMarkdownTokens(
     tableCellsPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
     tableHeadBackground: scheme.onSurface.withValues(alpha: 0.04),
     tableBodyBackground: Colors.transparent,
+    // Search match washes (preview find): quiet primary tint for hits, stronger
+    // wash for the active one.
+    matchHighlightColor: scheme.primary.withValues(alpha: 0.20),
+    matchHighlightActiveColor: scheme.primary.withValues(alpha: 0.45),
     paragraphMargin: paragraphMargin,
     h1Margin: h1Margin,
     h2Margin: h2Margin,
