@@ -1179,6 +1179,7 @@
   "editorFindReplacePreserveCase": "Preserve case",
   "editorFindReplaceOne": "Replace",
   "editorFindNoResults": "No matches",
+  "editorFindInvalidRegex": "Invalid regular expression",
   "fileTreeRevealActiveFile": "Reveal active file",
   "fileTreeRefresh": "Refresh",
   "fileTreeShowFilter": "Show file filter",

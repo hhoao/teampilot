@@ -66,7 +66,7 @@ class MarkdownSearchIndex {
 Each container records:
 
 - its **plain text** — runs flattened via a shared traversal (`inlineTextPieces`: TextRun/CodeRun text; Strong/Emphasis/Strike/Link children recursed; **image alt excluded** — images render as unsplittable `WidgetSpan`s, so their text cannot carry highlight);
-- an **offset ↔ run-path mapping** from plain-text offsets back into `(runIndex, offsetWithinRun)` so span building can split runs at match boundaries;
+- a shared plain-text traversal (`inlineTextPieces`) reused by both the index projection and highlight-aware span splitting, so match ranges computed at index time align exactly with the offsets consumed while splitting runs (no separate mapping object is materialized);
 - its **address**: top-level `blockIndex` + structured path to the container (`self()` / `listItem(i)` / `child(j)` / `tableCell(row, col)` …).
 
 `search()` compiles the query once (literal substring with case folding, or `RegExp`), scans every container's plain text, and returns hits ordered by container then offset. Overlapping regex matches collapse to the first (non-overlapping scan).
@@ -134,8 +134,8 @@ l10n: reuse existing find-bar strings where present; add new keys only if missin
 
 | Scenario | Handling |
 |----------|----------|
-| Invalid regex | Catch format exception → error state shown in the bar; no highlights cleared |
-| Too many hits | Cap at 10 000; counter shows `9999+`; beyond-cap hits excluded from navigation |
+| Invalid regex | Compile failure surfaces as a distinct "invalid regular expression" label in the bar; results cleared |
+| Too many hits | Cap at 10 000; counter shows `10000+`; beyond-cap hits excluded from navigation |
 | Large documents | Index built O(n) once per document; input debounced |
 | Document changed mid-search | Results carry a document generation tag; stale results discarded |
 | Long-jump landing drift | Height estimates → post-frame second-pass correction (~2 px threshold) |

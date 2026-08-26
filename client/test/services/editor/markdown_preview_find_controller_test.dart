@@ -147,6 +147,22 @@ void main() {
     });
   });
 
+  test('counterLabel shows capped total beyond kMarkdownSearchMaxHits', () {
+    fakeAsync((async) {
+      final big = compileMarkdown(
+        '${List.filled(kMarkdownSearchMaxHits + 500, 'a').join(' ')}\n',
+      );
+      final c = MarkdownPreviewFindController();
+      c.openFind();
+      c.setDocument(big);
+      c.search('a');
+      async.elapse(const Duration(milliseconds: 200));
+      expect(c.hits.length, kMarkdownSearchMaxHits);
+      expect(c.counterLabel(), '1/$kMarkdownSearchMaxHits+');
+      c.dispose();
+    });
+  });
+
   test('open setter notifies only on change', () {
     final c = MarkdownPreviewFindController();
     var notifications = 0;

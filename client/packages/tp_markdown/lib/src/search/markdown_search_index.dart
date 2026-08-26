@@ -182,37 +182,25 @@ class MarkdownSearchIndex {
 
   final List<MarkdownSearchContainer> containers;
 
-  /// Scans every container in order; literal queries use case-folded
-  /// substring scan (non-overlapping), regex queries [RegExp.allMatches]
-  /// skipping zero-length matches. Throws [MarkdownSearchException] when a
-  /// regex pattern cannot compile.
+  /// Scans every container in order; literal queries run an escaped
+  /// case-aware [RegExp] over the original text (manual `toLowerCase()` can
+  /// change string length for rare Unicode — e.g. `İ` folds to two code units
+  /// — which would shift highlight offsets), regex queries use the pattern as
+  /// given. Both go through [RegExp.allMatches], skipping zero-length matches.
+  /// Throws [MarkdownSearchException] when a regex pattern cannot compile.
   List<MarkdownSearchHit> search(MarkdownSearchQuery query) {
     if (query.pattern.isEmpty) return const [];
-    if (query.regex) {
-      final RegExp re;
-      try {
-        re = RegExp(query.pattern, caseSensitive: query.caseSensitive);
-      } on FormatException catch (e) {
-        throw MarkdownSearchException(e.message);
-      }
-      return _collect((text) {
-        return re.allMatches(text).map((m) => (m.start, m.end));
-      });
+    final RegExp re;
+    try {
+      re = RegExp(
+        query.regex ? query.pattern : RegExp.escape(query.pattern),
+        caseSensitive: query.caseSensitive,
+      );
+    } on FormatException catch (e) {
+      throw MarkdownSearchException(e.message);
     }
-    final needle =
-        query.caseSensitive ? query.pattern : query.pattern.toLowerCase();
-    if (needle.isEmpty) return const [];
     return _collect((text) {
-      final source = query.caseSensitive ? text : text.toLowerCase();
-      final ranges = <(int, int)>[];
-      var from = 0;
-      while (true) {
-        final idx = source.indexOf(needle, from);
-        if (idx < 0) break;
-        ranges.add((idx, idx + needle.length));
-        from = idx + needle.length;
-      }
-      return ranges;
+      return re.allMatches(text).map((m) => (m.start, m.end));
     });
   }
 
@@ -235,8 +223,11 @@ class MarkdownSearchIndex {
   MarkdownSearchHighlightContext highlightsFor(
     List<MarkdownSearchHit> hits, {
     int activeOrdinal = -1,
-  }) =>
-      MarkdownSearchHighlightContext.of(this, hits, activeOrdinal: activeOrdinal);
+  }) => MarkdownSearchHighlightContext.of(
+    this,
+    hits,
+    activeOrdinal: activeOrdinal,
+  );
 }
 
 /// [MarkdownHighlightContext] resolved from an index + hit list.
@@ -278,8 +269,7 @@ class MarkdownSearchHighlightContext implements MarkdownHighlightContext {
   MarkdownContainerHighlights? forContainer(
     int blockIndex,
     List<MarkdownPathStep> path,
-  ) =>
-      _entries[encodeAddress(blockIndex, path)];
+  ) => _entries[encodeAddress(blockIndex, path)];
 
   static String encodeAddress(int blockIndex, List<MarkdownPathStep> path) {
     final buf = StringBuffer('$blockIndex');

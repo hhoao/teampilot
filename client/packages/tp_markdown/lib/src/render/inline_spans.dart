@@ -45,63 +45,63 @@ InlineSpan inlineSpan(
   return switch (run) {
     TextRun(:final text) => TextSpan(text: text, style: base),
     StrongRun(:final children) => TextSpan(
-        style: tokens.strongStyle(base),
-        children: inlineSpans(
-          children,
-          tokens,
-          tokens.strongStyle(base),
-          resolvers,
-        ),
+      style: tokens.strongStyle(base),
+      children: inlineSpans(
+        children,
+        tokens,
+        tokens.strongStyle(base),
+        resolvers,
       ),
+    ),
     EmphasisRun(:final children) => TextSpan(
-        style: tokens.emphasisStyle(base),
-        children: inlineSpans(
-          children,
-          tokens,
-          tokens.emphasisStyle(base),
-          resolvers,
-        ),
+      style: tokens.emphasisStyle(base),
+      children: inlineSpans(
+        children,
+        tokens,
+        tokens.emphasisStyle(base),
+        resolvers,
       ),
+    ),
     StrikeRun(:final children) => TextSpan(
-        style: tokens.strikeStyle(base),
-        children: inlineSpans(
-          children,
-          tokens,
-          tokens.strikeStyle(base),
-          resolvers,
-        ),
+      style: tokens.strikeStyle(base),
+      children: inlineSpans(
+        children,
+        tokens,
+        tokens.strikeStyle(base),
+        resolvers,
       ),
+    ),
     CodeRun(:final text) => TextSpan(
-        text: text,
-        style: tokens.inlineCodeAt(base),
-      ),
+      text: text,
+      style: tokens.inlineCodeAt(base),
+    ),
     // TextSpan (not WidgetSpan) so SelectionArea keeps a continuous highlight.
     // mouseCursor + TapGestureRecognizer provide click affordance. Recognizer
     // must sit on spans that own text ranges — a children-only parent is not
     // hit-tested for gestures under RenderParagraph.
     LinkRun(:final url, :final title, :final children) => TextSpan(
-        style: tokens.link,
-        mouseCursor: resolvers.onLinkTap == null
-            ? MouseCursor.defer
-            : SystemMouseCursors.click,
-        children: _linkChildren(
-          children,
-          tokens,
-          resolvers,
-          resolvers.createLinkRecognizer?.call(url),
-        ),
+      style: tokens.link,
+      mouseCursor: resolvers.onLinkTap == null
+          ? MouseCursor.defer
+          : SystemMouseCursors.click,
+      children: _linkChildren(
+        children,
+        tokens,
+        resolvers,
+        resolvers.createLinkRecognizer?.call(url),
       ),
+    ),
     ImageRun(:final src, :final alt) => WidgetSpan(
-        alignment: PlaceholderAlignment.baseline,
-        baseline: TextBaseline.alphabetic,
-        child: buildMarkdownImage(
-          src: src,
-          alt: alt,
-          tokens: tokens,
-          resolvers: resolvers,
-          inline: true,
-        ),
+      alignment: PlaceholderAlignment.baseline,
+      baseline: TextBaseline.alphabetic,
+      child: buildMarkdownImage(
+        src: src,
+        alt: alt,
+        tokens: tokens,
+        resolvers: resolvers,
+        inline: true,
       ),
+    ),
   };
 }
 
@@ -113,11 +113,13 @@ class _HighlightCursor {
   int offset = 0;
 
   TextStyle styleFor(int start, int end, TextStyle base, MarkdownTokens t) {
-    final covered =
-        highlights.ranges.any((r) => r.start <= start && end <= r.end);
+    final covered = highlights.ranges.any(
+      (r) => r.start <= start && end <= r.end,
+    );
     if (!covered) return base;
     final active = highlights.active;
-    final isActive = active != null && active.start <= start && end <= active.end;
+    final isActive =
+        active != null && active.start <= start && end <= active.end;
     return t.matchHighlight(base, active: isActive);
   }
 }
@@ -137,18 +139,42 @@ void _emitHighlightedRuns(
       case CodeRun(:final text):
         _emitSplitLeaf(text, tokens.inlineCodeAt(base), tokens, cursor, out);
       case StrongRun(:final children):
-        _emitMarked(children, tokens.strongStyle(base), tokens, resolvers,
-            cursor, out);
+        _emitMarked(
+          children,
+          tokens.strongStyle(base),
+          tokens,
+          resolvers,
+          cursor,
+          out,
+        );
       case EmphasisRun(:final children):
-        _emitMarked(children, tokens.emphasisStyle(base), tokens, resolvers,
-            cursor, out);
+        _emitMarked(
+          children,
+          tokens.emphasisStyle(base),
+          tokens,
+          resolvers,
+          cursor,
+          out,
+        );
       case StrikeRun(:final children):
-        _emitMarked(children, tokens.strikeStyle(base), tokens, resolvers,
-            cursor, out);
+        _emitMarked(
+          children,
+          tokens.strikeStyle(base),
+          tokens,
+          resolvers,
+          cursor,
+          out,
+        );
       case LinkRun(:final url, :final children):
         final start = out.length;
         _emitHighlightedRuns(
-            children, tokens, tokens.link, resolvers, cursor, out);
+          children,
+          tokens,
+          tokens.link,
+          resolvers,
+          cursor,
+          out,
+        );
         final recognizer = resolvers.createLinkRecognizer?.call(url);
         final cursorIcon = resolvers.onLinkTap == null
             ? MouseCursor.defer
@@ -199,10 +225,12 @@ void _emitSplitLeaf(
     final s = points[i];
     final e = points[i + 1];
     if (e <= s) continue;
-    out.add(TextSpan(
-      text: text.substring(s - start, e - start),
-      style: cursor.styleFor(s, e, style, tokens),
-    ));
+    out.add(
+      TextSpan(
+        text: text.substring(s - start, e - start),
+        style: cursor.styleFor(s, e, style, tokens),
+      ),
+    );
   }
   cursor.offset = end;
 }
@@ -269,8 +297,13 @@ Widget buildMergedParagraphs(
     spans.add(
       TextSpan(
         style: tokens.body,
-        children: inlineSpans(paragraphs[i].runs, tokens, tokens.body,
-            resolvers, highlights: at(i)),
+        children: inlineSpans(
+          paragraphs[i].runs,
+          tokens,
+          tokens.body,
+          resolvers,
+          highlights: at(i),
+        ),
       ),
     );
   }
@@ -289,8 +322,13 @@ Widget buildParagraph(
   return Text.rich(
     TextSpan(
       style: tokens.body,
-      children: inlineSpans(block.runs, tokens, tokens.body, resolvers,
-          highlights: highlights),
+      children: inlineSpans(
+        block.runs,
+        tokens,
+        tokens.body,
+        resolvers,
+        highlights: highlights,
+      ),
     ),
     strutStyle: forcedStrut(tokens.body),
   );
@@ -306,8 +344,13 @@ Widget buildHeading(
   return Text.rich(
     TextSpan(
       style: style,
-      children: inlineSpans(block.runs, tokens, style, resolvers,
-          highlights: highlights),
+      children: inlineSpans(
+        block.runs,
+        tokens,
+        style,
+        resolvers,
+        highlights: highlights,
+      ),
     ),
     strutStyle: forcedStrut(style),
   );
@@ -321,7 +364,12 @@ Text buildHighlightedCode(
   MarkdownContainerHighlights? highlights,
 ) {
   if (highlights == null || highlights.ranges.isEmpty) {
-    return Text(code, style: base, softWrap: false, strutStyle: forcedStrut(base));
+    return Text(
+      code,
+      style: base,
+      softWrap: false,
+      strutStyle: forcedStrut(base),
+    );
   }
   final cursor = _HighlightCursor(highlights);
   final out = <InlineSpan>[];
@@ -353,9 +401,9 @@ List<InlineTextPiece> inlineTextPieces(List<InlineRun> runs) {
         case CodeRun(:final text):
           pieces.add(InlineTextPiece(text));
         case StrongRun(:final children) ||
-              EmphasisRun(:final children) ||
-              StrikeRun(:final children) ||
-              LinkRun(:final children):
+            EmphasisRun(:final children) ||
+            StrikeRun(:final children) ||
+            LinkRun(:final children):
           walk(children);
         case ImageRun():
           break;
@@ -366,6 +414,3 @@ List<InlineTextPiece> inlineTextPieces(List<InlineRun> runs) {
   walk(runs);
   return pieces;
 }
-
-String plainTextFromRuns(List<InlineRun> runs) =>
-    inlineTextPieces(runs).map((p) => p.text).join();

@@ -4766,6 +4766,12 @@ abstract class AppLocalizations {
   /// **'No matches'**
   String get editorFindNoResults;
 
+  /// No description provided for @editorFindInvalidRegex.
+  ///
+  /// In en, this message translates to:
+  /// **'Invalid regular expression'**
+  String get editorFindInvalidRegex;
+
   /// No description provided for @fileTreeRevealActiveFile.
   ///
   /// In en, this message translates to:
