@@ -33,6 +33,7 @@ class GitGraphState extends Equatable {
     this.searchQuery = '',
     this.searchMode = GitSearchMode.message,
     this.currentOnly = false,
+    this.branchFilter,
     this.errorMessage,
     this.gitAvailable = true,
   });
@@ -60,6 +61,9 @@ class GitGraphState extends Equatable {
 
   /// 仅显示当前分支（refresh 时以 `HEAD` 替代 `--all`）。
   final bool currentOnly;
+
+  /// 查看指定分支历史（revisionRange 直接用该 ref）；null = 未过滤。
+  final String? branchFilter;
   final String? errorMessage;
   final bool gitAvailable;
 
@@ -91,6 +95,7 @@ class GitGraphState extends Equatable {
     String? searchQuery,
     GitSearchMode? searchMode,
     bool? currentOnly,
+    Object? branchFilter = _unset,
     Object? errorMessage = _unset,
     bool clearError = false,
     bool? gitAvailable,
@@ -134,6 +139,9 @@ class GitGraphState extends Equatable {
       searchQuery: searchQuery ?? this.searchQuery,
       searchMode: searchMode ?? this.searchMode,
       currentOnly: currentOnly ?? this.currentOnly,
+      branchFilter: isUnset(branchFilter)
+          ? this.branchFilter
+          : branchFilter as String?,
       errorMessage: clearError
           ? null
           : isUnset(errorMessage)
@@ -175,6 +183,7 @@ class GitGraphState extends Equatable {
     searchQuery,
     searchMode,
     currentOnly,
+    branchFilter,
     errorMessage,
     gitAvailable,
   ];
@@ -230,6 +239,11 @@ class GitGraphCubit extends Cubit<GitGraphState> {
   bool _refreshQueued = false;
   bool _loadMoreInFlight = false;
 
+  /// 图查询的 revisionRange：显式分支过滤优先，其次“仅当前分支”（HEAD），
+  /// 否则 null（`--all`）。
+  String? get _effectiveRevisionRange =>
+      state.branchFilter ?? (state.currentOnly ? 'HEAD' : null);
+
   Future<void> setRepoRoot(String root) async {
     emit(GitGraphState(repoRoot: root));
     await refresh();
@@ -260,7 +274,7 @@ class GitGraphCubit extends Cubit<GitGraphState> {
         dir,
         query: state.searchQuery,
         mode: state.searchMode,
-        revisionRange: state.currentOnly ? 'HEAD' : null,
+        revisionRange: _effectiveRevisionRange,
       );
       final status = await _git.status(dir);
       if (isClosed || state.repoRoot != dir) return;
@@ -305,7 +319,7 @@ class GitGraphCubit extends Cubit<GitGraphState> {
         limit: GitHistoryService.loadMoreCommits,
         query: state.searchQuery,
         mode: state.searchMode,
-        revisionRange: state.currentOnly ? 'HEAD' : null,
+        revisionRange: _effectiveRevisionRange,
       );
       if (isClosed || state.repoRoot != dir) return;
       emit(
@@ -337,15 +351,24 @@ class GitGraphCubit extends Cubit<GitGraphState> {
   }
 
   /// 分支范围切换：true → 仅当前分支（revisionRange `HEAD`），false → `--all`。
+  /// 切换时清除分支历史过滤（两者互斥，过滤优先级更高会掩盖范围切换）。
   Future<void> setShowOnlyCurrentBranch(bool value) async {
-    if (state.currentOnly == value) return;
-    emit(state.copyWith(currentOnly: value));
+    if (state.currentOnly == value && state.branchFilter == null) return;
+    emit(state.copyWith(currentOnly: value, branchFilter: null));
     await refresh();
   }
 
   /// [setShowOnlyCurrentBranch] 的翻转形式。
   void toggleCurrentOnly() {
     unawaited(setShowOnlyCurrentBranch(!state.currentOnly));
+  }
+
+  /// 查看指定分支历史：非 null → revisionRange 直接用该 ref（覆盖
+  /// currentOnly）；null → 清除过滤，回到范围开关决定的默认。
+  Future<void> setBranchFilter(String? ref) async {
+    if (state.branchFilter == ref) return;
+    emit(state.copyWith(branchFilter: ref));
+    await refresh();
   }
 
   /// null → 清除选中与详情；非 null → 设置并懒加载详情。

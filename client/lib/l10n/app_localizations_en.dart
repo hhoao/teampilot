@@ -8139,6 +8139,9 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
+  String get gitGraphViewBranchHistory => 'View this branch\'s history';
+
+  @override
   String get gitGraphCreateBranchHere => 'Create branch here';
 
   @override

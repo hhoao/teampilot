@@ -21,8 +21,8 @@ class _RefEntry {
 }
 
 /// 分支 / 标签管理弹层：平铺列出本地分支、远程分支、标签三个分区，
-/// 选中条目再弹动作子菜单（本地：checkout / 重命名 / 删除；远程：仅展示，
-/// checkout 暂不可用（v1）；标签：推送 / 删除）。写操作经
+/// 选中条目再弹动作子菜单（本地：checkout / 查看此分支历史 / 重命名 / 删除；
+/// 远程：仅展示，checkout 暂不可用（v1）；标签：推送 / 删除）。写操作经
 /// [GitGraphActionsController]。
 class GitGraphRefsMenu extends StatefulWidget {
   const GitGraphRefsMenu({super.key, required this.state});
@@ -46,6 +46,11 @@ class _GitGraphRefsMenuState extends State<GitGraphRefsMenu> {
           icon: Icons.check_circle_outline,
           label: l10n.gitGraphCheckoutBranch(entry.name),
           enabled: !entry.isCurrent,
+        ),
+        TpActionMenuSpec.item(
+          value: 'history',
+          icon: Icons.history,
+          label: l10n.gitGraphViewBranchHistory,
         ),
         TpActionMenuSpec.item(
           value: 'rename',
@@ -93,6 +98,8 @@ class _GitGraphRefsMenuState extends State<GitGraphRefsMenu> {
     switch (action) {
       case 'checkout':
         await controller.checkoutBranch(entry.name);
+      case 'history':
+        await context.read<GitGraphCubit>().setBranchFilter(entry.name);
       case 'rename':
         final newName = await showRenameBranchDialog(context, entry.name);
         if (newName == null || newName.isEmpty || !mounted) return;

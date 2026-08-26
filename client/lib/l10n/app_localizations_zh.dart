@@ -7797,6 +7797,9 @@ class AppLocalizationsZh extends AppLocalizations {
   }
 
   @override
+  String get gitGraphViewBranchHistory => '查看此分支历史';
+
+  @override
   String get gitGraphCreateBranchHere => '在此创建分支';
 
   @override

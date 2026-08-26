@@ -14486,6 +14486,12 @@ abstract class AppLocalizations {
   /// **'Checkout {branch}'**
   String gitGraphCheckoutBranch(String branch);
 
+  /// No description provided for @gitGraphViewBranchHistory.
+  ///
+  /// In en, this message translates to:
+  /// **'View this branch\'s history'**
+  String get gitGraphViewBranchHistory;
+
   /// No description provided for @gitGraphCreateBranchHere.
   ///
   /// In en, this message translates to:

@@ -3656,6 +3656,7 @@
   "gitGraphSubjectCopied": "Subject copied to clipboard",
   "gitGraphCheckoutBranch": "Checkout {branch}",
   "@gitGraphCheckoutBranch": { "placeholders": { "branch": { "type": "String" } } },
+  "gitGraphViewBranchHistory": "View this branch's history",
   "gitGraphCreateBranchHere": "Create branch here",
   "gitGraphCreateTagHere": "Create tag here",
   "gitGraphCherryPick": "Cherry-pick",

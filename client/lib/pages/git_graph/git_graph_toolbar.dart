@@ -34,6 +34,10 @@ class GitGraphToolbar extends StatelessWidget {
       child: Row(
         children: [
           _branchScopeButton(context),
+          if (state.branchFilter != null) ...[
+            const SizedBox(width: 6),
+            _branchFilterChip(context),
+          ],
           const SizedBox(width: 6),
           TpIconButton(
             icon: Icons.cloud_download_outlined,
@@ -96,6 +100,56 @@ class GitGraphToolbar extends StatelessWidget {
     );
   }
 
+  /// 分支历史过滤 chip：高亮展示被查看历史的分支名，点关闭清除过滤。
+  Widget _branchFilterChip(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    final l10n = context.l10n;
+    return Tooltip(
+      message: l10n.gitGraphViewBranchHistory,
+      child: Container(
+        key: const ValueKey('git-graph-branch-filter-chip'),
+        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
+        decoration: BoxDecoration(
+          color: cs.primaryContainer,
+          borderRadius: BorderRadius.circular(6),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              Icons.history,
+              size: 14,
+              color: cs.onPrimaryContainer,
+            ),
+            const SizedBox(width: 3),
+            ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 140),
+              child: Text(
+                state.branchFilter!,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                softWrap: false,
+                style: TpTextStyles.of(
+                  context,
+                ).xsColored(cs.onPrimaryContainer),
+              ),
+            ),
+            const SizedBox(width: 2),
+            GestureDetector(
+              behavior: HitTestBehavior.opaque,
+              onTap: () => context.read<GitGraphCubit>().setBranchFilter(null),
+              child: Icon(
+                Icons.close_rounded,
+                size: 14,
+                color: cs.onPrimaryContainer,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   Widget _searchField(BuildContext context) {
     final l10n = context.l10n;
     return TpInput(
@@ -125,7 +179,7 @@ class GitGraphToolbar extends StatelessWidget {
   Widget _modeDropdown(BuildContext context) {
     final l10n = context.l10n;
     return SizedBox(
-      width: 84,
+      width: 108,
       child: TpSelect<GitSearchMode>(
         key: ValueKey(state.searchMode),
         items: GitSearchMode.values,

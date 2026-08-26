@@ -156,6 +156,50 @@ void main() {
     await cubit.close();
   });
 
+  test('setBranchFilter scopes refresh and loadMore to that branch', () async {
+    final history = FakeHistoryForGraph(
+      rows: [graphCommitRow('c1')],
+      fullPages: true,
+    );
+    final cubit = GitGraphCubit(
+      history: history,
+      git: FakeGitForGraph(repoStatus()),
+    );
+    await cubit.setRepoRoot('/repo');
+    expect(history.lastArgs['revisionRange'], isNull);
+    await cubit.setBranchFilter('feature/x');
+    expect(cubit.state.branchFilter, 'feature/x');
+    expect(history.lastArgs['revisionRange'], 'feature/x');
+    await cubit.loadMore();
+    expect(history.lastArgs['revisionRange'], 'feature/x');
+    expect(history.lastArgs['skip'], GitHistoryService.initialLoadCommits);
+    await cubit.close();
+  });
+
+  test(
+    'clearing branch filter restores scope default; toggle clears filter',
+    () async {
+      final history = FakeHistoryForGraph(rows: [graphCommitRow('c1')]);
+      final cubit = GitGraphCubit(
+        history: history,
+        git: FakeGitForGraph(repoStatus()),
+      );
+      await cubit.setRepoRoot('/repo');
+      await cubit.setBranchFilter('feature/x');
+      await cubit.setBranchFilter(null);
+      expect(cubit.state.branchFilter, isNull);
+      expect(history.lastArgs['revisionRange'], isNull); // currentOnly=false
+
+      // 过滤优先级高于范围开关；切换范围时清除过滤。
+      await cubit.setBranchFilter('feature/x');
+      await cubit.setShowOnlyCurrentBranch(!cubit.state.currentOnly);
+      expect(cubit.state.currentOnly, isTrue);
+      expect(cubit.state.branchFilter, isNull);
+      expect(history.lastArgs['revisionRange'], 'HEAD');
+      await cubit.close();
+    },
+  );
+
   test('surfaceError after close is a no-op', () async {
     final cubit = GitGraphCubit(
       history: FakeHistoryForGraph(rows: [graphCommitRow('c1')]),

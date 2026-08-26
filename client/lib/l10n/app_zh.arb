@@ -3190,6 +3190,7 @@
   "gitGraphSubjectCopied": "说明已复制到剪贴板",
   "gitGraphCheckoutBranch": "检出 {branch}",
   "@gitGraphCheckoutBranch": { "placeholders": { "branch": { "type": "String" } } },
+  "gitGraphViewBranchHistory": "查看此分支历史",
   "gitGraphCreateBranchHere": "在此创建分支",
   "gitGraphCreateTagHere": "在此创建标签",
   "gitGraphCherryPick": "摘取（Cherry-pick）",
