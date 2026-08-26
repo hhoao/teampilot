@@ -38,45 +38,53 @@ class _GitGraphRefsMenuState extends State<GitGraphRefsMenu> {
 
   Future<void> _openSubmenu(_RefEntry entry) async {
     final l10n = context.l10n;
-    final position = _buttonPosition();
     if (!mounted) return;
-    final action = await showMenu<String>(
+    final specs = switch (entry.section) {
+      _RefSection.local => [
+        TpActionMenuSpec.item(
+          value: 'checkout',
+          icon: Icons.check_circle_outline,
+          label: l10n.gitGraphCheckoutBranch(entry.name),
+          enabled: !entry.isCurrent,
+        ),
+        TpActionMenuSpec.item(
+          value: 'rename',
+          icon: Icons.drive_file_rename_outline,
+          label: l10n.gitGraphRenameBranch,
+        ),
+        TpActionMenuSpec.item(
+          value: 'delete',
+          icon: Icons.delete_outline,
+          label: l10n.gitGraphDeleteBranch(entry.name),
+          destructive: true,
+        ),
+      ],
+      // v1 仅列出远程分支，checkout 暂不可用。
+      _RefSection.remote => [
+        TpActionMenuSpec.item(
+          icon: Icons.check_circle_outline,
+          label: l10n.gitGraphCheckoutBranch(entry.name),
+          enabled: false,
+        ),
+      ],
+      _RefSection.tag => [
+        TpActionMenuSpec.item(
+          value: 'push',
+          icon: Icons.cloud_upload_outlined,
+          label: l10n.gitGraphPushTag(entry.name),
+        ),
+        TpActionMenuSpec.item(
+          value: 'delete',
+          icon: Icons.delete_outline,
+          label: l10n.gitGraphDeleteTag(entry.name),
+          destructive: true,
+        ),
+      ],
+    };
+    final action = await showTpActionMenuFromSpecs<String>(
       context: context,
-      position: position,
-      items: switch (entry.section) {
-        _RefSection.local => [
-          PopupMenuItem<String>(
-            value: 'checkout',
-            enabled: !entry.isCurrent,
-            child: Text(l10n.gitGraphCheckoutBranch(entry.name)),
-          ),
-          PopupMenuItem<String>(
-            value: 'rename',
-            child: Text(l10n.gitGraphRenameBranch),
-          ),
-          PopupMenuItem<String>(
-            value: 'delete',
-            child: Text(l10n.gitGraphDeleteBranch(entry.name)),
-          ),
-        ],
-        // v1 仅列出远程分支，checkout 暂不可用。
-        _RefSection.remote => [
-          PopupMenuItem<String>(
-            enabled: false,
-            child: Text(l10n.gitGraphCheckoutBranch(entry.name)),
-          ),
-        ],
-        _RefSection.tag => [
-          PopupMenuItem<String>(
-            value: 'push',
-            child: Text(l10n.gitGraphPushTag(entry.name)),
-          ),
-          PopupMenuItem<String>(
-            value: 'delete',
-            child: Text(l10n.gitGraphDeleteTag(entry.name)),
-          ),
-        ],
-      },
+      globalPosition: _buttonGlobalPosition(),
+      specs: specs,
     );
     if (action == null || !mounted) return;
     final controller = GitGraphActionsController(
@@ -119,91 +127,98 @@ class _GitGraphRefsMenuState extends State<GitGraphRefsMenu> {
   }
 
   /// 子菜单锚定在按钮下方；拿不到按钮位置时回退到左上角附近。
-  RelativeRect _buttonPosition() {
+  Offset _buttonGlobalPosition() {
     final button = _buttonKey.currentContext?.findRenderObject();
     final overlay = Overlay.of(context).context.findRenderObject();
     if (button is RenderBox && overlay is RenderBox && button.attached) {
-      final topLeft = button.localToGlobal(Offset.zero, ancestor: overlay);
-      return RelativeRect.fromLTRB(
-        topLeft.dx,
-        topLeft.dy,
-        overlay.size.width - topLeft.dx - button.size.width,
-        topLeft.dy + 1,
-      );
+      return button.localToGlobal(Offset.zero, ancestor: overlay);
     }
-    return const RelativeRect.fromLTRB(48, 40, 48, 40);
+    return const Offset(48, 40);
   }
 
-  List<PopupMenuEntry<_RefEntry>> _buildItems(AppLocalizations l10n) {
+  List<TpActionMenuSpec> _buildSpecs(AppLocalizations l10n) {
     final locals = widget.state.branches.where((b) => !b.isRemote);
     final remotes = widget.state.branches.where((b) => b.isRemote);
     return [
       if (locals.isEmpty && remotes.isEmpty && widget.state.tags.isEmpty)
-        PopupMenuItem<_RefEntry>(
+        TpActionMenuSpec.item(
+          icon: Icons.account_tree_outlined,
+          label: l10n.gitGraphBranchesTags,
           enabled: false,
-          child: Text(l10n.gitGraphBranchesTags),
         )
       else ...[
         if (locals.isNotEmpty) ...[
-          _sectionHeader(l10n.gitGraphLocalBranches),
+          _sectionHeader(Icons.call_split, l10n.gitGraphLocalBranches),
           for (final branch in locals)
-            PopupMenuItem<_RefEntry>(
+            TpActionMenuSpec.item(
               value: _RefEntry(
                 _RefSection.local,
                 branch.name,
                 isCurrent: branch.isCurrent,
               ),
-              height: 34,
-              child: Text(branch.name, maxLines: 1, overflow: TextOverflow.ellipsis),
+              icon: Icons.call_split_outlined,
+              label: branch.name,
+              selected: branch.isCurrent,
             ),
         ],
         if (remotes.isNotEmpty) ...[
-          _sectionHeader(l10n.gitGraphRemoteBranches),
+          _sectionHeader(Icons.cloud_outlined, l10n.gitGraphRemoteBranches),
           for (final branch in remotes)
-            PopupMenuItem<_RefEntry>(
+            TpActionMenuSpec.item(
               value: _RefEntry(_RefSection.remote, branch.name),
-              height: 34,
-              child: Text(branch.name, maxLines: 1, overflow: TextOverflow.ellipsis),
+              icon: Icons.cloud_outlined,
+              label: branch.name,
             ),
         ],
         if (widget.state.tags.isNotEmpty) ...[
-          _sectionHeader(l10n.gitGraphTags),
+          _sectionHeader(Icons.sell_outlined, l10n.gitGraphTags),
           for (final tag in widget.state.tags)
-            PopupMenuItem<_RefEntry>(
+            TpActionMenuSpec.item(
               value: _RefEntry(_RefSection.tag, tag.name),
-              height: 34,
-              child: Text(tag.name, maxLines: 1, overflow: TextOverflow.ellipsis),
+              icon: Icons.sell_outlined,
+              label: tag.name,
             ),
         ],
       ],
     ];
   }
 
-  PopupMenuEntry<_RefEntry> _sectionHeader(String label) {
-    final cs = Theme.of(context).colorScheme;
-    return PopupMenuItem<_RefEntry>(
-      enabled: false,
-      height: 30,
-      child: Text(label, style: TpTextStyles.of(context).xsColored(cs.onSurfaceVariant)),
-    );
-  }
+  TpActionMenuSpec _sectionHeader(IconData icon, String label) =>
+      TpActionMenuSpec.item(icon: icon, label: label, enabled: false);
 
   @override
   Widget build(BuildContext context) {
     final l10n = context.l10n;
-    return PopupMenuButton<_RefEntry>(
-      tooltip: l10n.gitGraphBranchesTags,
-      onSelected: (entry) => unawaited(_openSubmenu(entry)),
-      itemBuilder: (context) => _buildItems(l10n),
-      // 与相邻图标按钮同宽的紧凑入口，避免挤爆工具条。
-      child: Container(
-        key: _buttonKey,
-        padding: const EdgeInsets.symmetric(horizontal: 4),
-        child: Icon(
-          Icons.account_tree_outlined,
-          size: 17,
-          color: Theme.of(context).colorScheme.onSurfaceVariant,
-        ),
+    return Tooltip(
+      message: l10n.gitGraphBranchesTags,
+      child: TpActionMenuIconAnchor(
+        minWidth: 200,
+        triggerBuilder: (context, controller) {
+          return GestureDetector(
+            behavior: HitTestBehavior.opaque,
+            onTap: () =>
+                controller.isOpen ? controller.close() : controller.open(),
+            // 与相邻图标按钮同宽的紧凑入口，避免挤爆工具条。
+            child: Container(
+              key: _buttonKey,
+              padding: const EdgeInsets.symmetric(horizontal: 4),
+              child: Icon(
+                Icons.account_tree_outlined,
+                size: 17,
+                color: Theme.of(context).colorScheme.onSurfaceVariant,
+              ),
+            ),
+          );
+        },
+        buildMenuChildren: (context, controller) =>
+            buildTpActionMenuChildren(
+              context: context,
+              specs: _buildSpecs(l10n),
+              menuController: controller,
+              onSelect: (value) {
+                if (value is _RefEntry) unawaited(_openSubmenu(value));
+              },
+            ),
       ),
     );
   }

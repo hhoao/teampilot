@@ -29,17 +29,10 @@ Future<void> showCommitContextMenu(
     }
   }
   final l10n = context.l10n;
-  final overlay = Overlay.of(context).context.findRenderObject()! as RenderBox;
-  final local = overlay.globalToLocal(position);
-  final choice = await showMenu<String>(
+  final choice = await showTpActionMenuFromSpecs<String>(
     context: context,
-    position: RelativeRect.fromLTRB(
-      local.dx,
-      local.dy,
-      local.dx + 1,
-      local.dy + 1,
-    ),
-    items: _menuItems(l10n, localBranch, tagName),
+    globalPosition: position,
+    specs: _menuSpecs(l10n, localBranch, tagName),
   );
   if (choice == null || !context.mounted) return;
   switch (choice) {
@@ -125,77 +118,104 @@ Future<void> showCommitContextMenu(
   }
 }
 
-List<PopupMenuEntry<String>> _menuItems(
+/// 平铺动作规格；reset 三档以禁用组头 + 扁平条目呈现（hard 保留输入确认）。
+List<TpActionMenuSpec> _menuSpecs(
   AppLocalizations l10n,
   String? localBranch,
   String? tagName,
 ) => [
   if (localBranch != null) ...[
-    PopupMenuItem<String>(
+    TpActionMenuSpec.item(
       value: 'checkout',
-      child: Text(l10n.gitGraphCheckoutBranch(localBranch)),
+      icon: Icons.check_circle_outline,
+      label: l10n.gitGraphCheckoutBranch(localBranch),
     ),
-    PopupMenuItem<String>(
+    TpActionMenuSpec.item(
       value: 'rename-branch',
-      child: Text(l10n.gitGraphRenameBranch),
+      icon: Icons.drive_file_rename_outline,
+      label: l10n.gitGraphRenameBranch,
     ),
-    PopupMenuItem<String>(
+    TpActionMenuSpec.item(
       value: 'delete-branch',
-      child: Text(l10n.gitGraphDeleteBranch(localBranch)),
+      icon: Icons.delete_outline,
+      label: l10n.gitGraphDeleteBranch(localBranch),
+      destructive: true,
     ),
-    PopupMenuItem<String>(
+    TpActionMenuSpec.item(
       value: 'merge-branch',
-      child: Text(l10n.gitGraphMergeIntoCurrent(localBranch)),
+      icon: Icons.merge_type,
+      label: l10n.gitGraphMergeIntoCurrent(localBranch),
     ),
   ],
-  PopupMenuItem<String>(value: 'create-branch', child: Text(l10n.gitGraphCreateBranchHere)),
-  PopupMenuItem<String>(value: 'create-tag', child: Text(l10n.gitGraphCreateTagHere)),
-  PopupMenuItem<String>(
+  TpActionMenuSpec.item(
+    value: 'create-branch',
+    icon: Icons.fork_right,
+    label: l10n.gitGraphCreateBranchHere,
+  ),
+  TpActionMenuSpec.item(
+    value: 'create-tag',
+    icon: Icons.sell_outlined,
+    label: l10n.gitGraphCreateTagHere,
+  ),
+  TpActionMenuSpec.item(
     value: 'checkout-commit',
-    child: Text(l10n.gitGraphCheckoutCommit),
+    icon: Icons.commit,
+    label: l10n.gitGraphCheckoutCommit,
   ),
   if (tagName != null) ...[
-    PopupMenuItem<String>(
+    TpActionMenuSpec.item(
       value: 'push-tag',
-      child: Text(l10n.gitGraphPushTag(tagName)),
+      icon: Icons.cloud_upload_outlined,
+      label: l10n.gitGraphPushTag(tagName),
     ),
-    PopupMenuItem<String>(
+    TpActionMenuSpec.item(
       value: 'delete-tag',
-      child: Text(l10n.gitGraphDeleteTag(tagName)),
+      icon: Icons.delete_outline,
+      label: l10n.gitGraphDeleteTag(tagName),
+      destructive: true,
     ),
   ],
-  PopupMenuItem<String>(value: 'cherry-pick', child: Text(l10n.gitGraphCherryPick)),
-  PopupMenuItem<String>(value: 'revert', child: Text(l10n.gitGraphRevert)),
-  PopupMenuItem<String>(enabled: false, child: Text(l10n.gitGraphReset)),
-  PopupMenuItem<String>(
+  TpActionMenuSpec.item(
+    value: 'cherry-pick',
+    icon: Icons.playlist_add,
+    label: l10n.gitGraphCherryPick,
+  ),
+  TpActionMenuSpec.item(
+    value: 'revert',
+    icon: Icons.undo,
+    label: l10n.gitGraphRevert,
+  ),
+  TpActionMenuSpec.item(
+    icon: Icons.restart_alt,
+    label: l10n.gitGraphReset,
+    enabled: false,
+  ),
+  TpActionMenuSpec.item(
     value: 'reset-soft',
-    height: 34,
-    child: Padding(
-      padding: const EdgeInsets.only(left: 12),
-      child: Text(l10n.gitGraphResetSoft),
-    ),
+    icon: Icons.restart_alt,
+    label: l10n.gitGraphResetSoft,
   ),
-  PopupMenuItem<String>(
+  TpActionMenuSpec.item(
     value: 'reset-mixed',
-    height: 34,
-    child: Padding(
-      padding: const EdgeInsets.only(left: 12),
-      child: Text(l10n.gitGraphResetMixed),
-    ),
+    icon: Icons.restart_alt,
+    label: l10n.gitGraphResetMixed,
   ),
-  PopupMenuItem<String>(
+  TpActionMenuSpec.item(
     value: 'reset-hard',
-    height: 34,
-    child: Padding(
-      padding: const EdgeInsets.only(left: 12),
-      child: Text(l10n.gitGraphResetHard),
-    ),
+    icon: Icons.restart_alt,
+    label: l10n.gitGraphResetHard,
+    destructive: true,
   ),
-  const PopupMenuDivider(),
-  PopupMenuItem<String>(value: 'copy-hash', child: Text(l10n.gitGraphCopyHash)),
-  PopupMenuItem<String>(
+  const TpActionMenuSpec.divider(),
+  TpActionMenuSpec.item(
+    value: 'copy-hash',
+    icon: Icons.copy,
+    label: l10n.gitGraphCopyHash,
+  ),
+  TpActionMenuSpec.item(
     value: 'copy-subject',
-    child: Text(l10n.gitGraphCopySubject),
+    icon: Icons.subject,
+    label: l10n.gitGraphCopySubject,
   ),
 ];
 

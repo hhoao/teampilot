@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:shared_ui/shared_ui.dart';
 import 'package:teampilot/cubits/git_graph_cubit.dart';
 import 'package:teampilot/l10n/app_localizations.dart';
 import 'package:teampilot/models/git_graph.dart';
@@ -98,11 +99,12 @@ void main() {
     await tester.pumpAndSettle();
     await tester.tap(find.text('origin/main'));
     await tester.pumpAndSettle();
-    // v1：远程分支仅列出，checkout 禁用。
-    final item = tester.widget<PopupMenuItem<String>>(
-      find.byType(PopupMenuItem<String>),
+    // v1：远程分支仅列出，checkout 禁用（禁用条目点击不弹子菜单）。
+    final item = tester.widget<TpActionMenuItem>(
+      find.widgetWithText(TpActionMenuItem, 'Checkout origin/main'),
     );
     expect(item.enabled, isFalse);
+    expect(find.widgetWithText(TpActionMenuItem, 'Delete branch'), findsNothing);
     expect(actions.calls, isEmpty);
   });
 }

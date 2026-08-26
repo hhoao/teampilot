@@ -176,20 +176,26 @@ class _StashMenuState extends State<_StashMenu> {
 
   Future<void> _openSubmenu(GitStashEntry entry) async {
     final l10n = context.l10n;
-    final position = _buttonPosition();
     if (!mounted) return;
-    final action = await showMenu<String>(
+    final action = await showTpActionMenuFromSpecs<String>(
       context: context,
-      position: position,
-      items: [
-        PopupMenuItem<String>(value: 'pop', child: Text(l10n.gitGraphStashPop)),
-        PopupMenuItem<String>(
-          value: 'apply',
-          child: Text(l10n.gitGraphStashApply),
+      globalPosition: _buttonGlobalPosition(),
+      specs: [
+        TpActionMenuSpec.item(
+          value: 'pop',
+          icon: Icons.unarchive,
+          label: l10n.gitGraphStashPop,
         ),
-        PopupMenuItem<String>(
+        TpActionMenuSpec.item(
+          value: 'apply',
+          icon: Icons.move_to_inbox,
+          label: l10n.gitGraphStashApply,
+        ),
+        TpActionMenuSpec.item(
           value: 'drop',
-          child: Text(l10n.gitGraphStashDrop),
+          icon: Icons.delete_outline,
+          label: l10n.gitGraphStashDrop,
+          destructive: true,
         ),
       ],
     );
@@ -214,70 +220,83 @@ class _StashMenuState extends State<_StashMenu> {
   }
 
   /// 子菜单锚定在 stash 按钮下方；拿不到按钮位置时回退到左上角附近。
-  RelativeRect _buttonPosition() {
+  Offset _buttonGlobalPosition() {
     final button = _buttonKey.currentContext?.findRenderObject();
     final overlay = Overlay.of(context).context.findRenderObject();
     if (button is RenderBox && overlay is RenderBox && button.attached) {
-      final topLeft = button.localToGlobal(Offset.zero, ancestor: overlay);
-      return RelativeRect.fromLTRB(
-        topLeft.dx,
-        topLeft.dy,
-        overlay.size.width - topLeft.dx - button.size.width,
-        topLeft.dy + 1,
-      );
+      return button.localToGlobal(Offset.zero, ancestor: overlay);
     }
-    return const RelativeRect.fromLTRB(48, 40, 48, 40);
+    return const Offset(48, 40);
   }
 
   @override
   Widget build(BuildContext context) {
     final l10n = context.l10n;
-    return PopupMenuButton<GitStashEntry>(
-      tooltip: l10n.gitGraphStash,
-      onSelected: (entry) => unawaited(_openSubmenu(entry)),
-      itemBuilder: (context) {
-        if (widget.state.stashList.isEmpty) {
-          return [
-            PopupMenuItem<GitStashEntry>(
-              enabled: false,
-              child: Text(l10n.gitGraphStash),
-            ),
-          ];
-        }
-        return [
-          for (final stash in widget.state.stashList)
-            PopupMenuItem<GitStashEntry>(
-              value: stash,
-              child: Text(
-                '${stash.selector} ${stash.subject}',
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
+    return Tooltip(
+      message: l10n.gitGraphStash,
+      child: TpActionMenuIconAnchor(
+        minWidth: 220,
+        triggerBuilder: (context, controller) {
+          return GestureDetector(
+            behavior: HitTestBehavior.opaque,
+            onTap: () =>
+                controller.isOpen ? controller.close() : controller.open(),
+            child: Container(
+              key: _buttonKey,
+              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(6),
+                border: Border.all(
+                  color: Theme.of(context).colorScheme.outlineVariant,
+                ),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(
+                    Icons.inventory_2_outlined,
+                    size: 14,
+                    color: Theme.of(context).colorScheme.onSurfaceVariant,
+                  ),
+                  const SizedBox(width: 3),
+                  Text(l10n.gitGraphStash, style: TpTextStyles.of(context).xs),
+                  const Icon(Icons.arrow_drop_down_rounded, size: 14),
+                ],
               ),
             ),
-        ];
-      },
-      child: Container(
-        key: _buttonKey,
-        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(6),
-          border: Border.all(
-            color: Theme.of(context).colorScheme.outlineVariant,
-          ),
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(
-              Icons.inventory_2_outlined,
-              size: 14,
-              color: Theme.of(context).colorScheme.onSurfaceVariant,
-            ),
-            const SizedBox(width: 3),
-            Text(l10n.gitGraphStash, style: TpTextStyles.of(context).xs),
-            const Icon(Icons.arrow_drop_down_rounded, size: 14),
-          ],
-        ),
+          );
+        },
+        buildMenuChildren: (context, controller) {
+          if (widget.state.stashList.isEmpty) {
+            return buildTpActionMenuChildren(
+              context: context,
+              specs: [
+                TpActionMenuSpec.item(
+                  icon: Icons.inventory_2_outlined,
+                  label: l10n.gitGraphStash,
+                  enabled: false,
+                ),
+              ],
+              menuController: controller,
+              onSelect: (_) {},
+            );
+          }
+          return buildTpActionMenuChildren(
+            context: context,
+            specs: [
+              for (final stash in widget.state.stashList)
+                TpActionMenuSpec.item(
+                  value: stash,
+                  icon: Icons.inventory_2_outlined,
+                  label: '${stash.selector} ${stash.subject}',
+                ),
+            ],
+            menuController: controller,
+            onSelect: (value) {
+              if (value is GitStashEntry) unawaited(_openSubmenu(value));
+            },
+          );
+        },
       ),
     );
   }

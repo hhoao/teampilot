@@ -178,6 +178,10 @@ Future<void> _pumpMenuHost(
   RecordingGraphActions actions,
   GitCommitRow row,
 ) async {
+  // 全量提交菜单（分支 + 标签 + reset 组）高约 600px，默认测试表面放不下。
+  tester.view.physicalSize = const Size(900, 1400);
+  tester.view.devicePixelRatio = 1.0;
+  addTearDown(tester.view.reset);
   final cubit = GitGraphCubit(
     history: FakeHistoryForGraph(rows: [graphCommitRow('c0')]),
     git: FakeGitForGraph(repoStatus()),
