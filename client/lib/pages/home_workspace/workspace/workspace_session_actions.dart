@@ -244,12 +244,53 @@ Future<void> showWorkspaceComposeLanding(
   BuildContext context,
   Workspace workspace, {
   required String tabScopeId,
+  String? initialText,
 }) async {
   final chat = context.read<ChatCubit>();
   if (chat.tabStore.activeWorkspaceId != tabScopeId) {
     chat.setActiveWorkspace(tabScopeId);
   }
-  chat.enterNewChat(tabScopeId);
+  chat.enterNewChat(tabScopeId, initialText: initialText);
+}
+
+/// Opens the workspace Landing with a prompt that points the new conversation
+/// at [session]'s persisted directory. The source session and its runtime are
+/// not modified or copied; the current Landing launch configuration remains
+/// the source of truth for the new conversation.
+Future<void> referenceWorkspaceSession(
+  BuildContext context,
+  AppSession session,
+) async {
+  try {
+    final chat = context.read<ChatCubit>();
+    final fs = await context.read<SessionRepository>().fs();
+    final workspace = chat.state.workspaces.firstWhereOrNull(
+      (item) => item.workspaceId == session.workspaceId,
+    );
+    if (!context.mounted || workspace == null) {
+      throw StateError('workspace not found: ${session.workspaceId}');
+    }
+    final path = fs.layout.sessionDir(session.workspaceId, session.sessionId);
+    await showWorkspaceComposeLanding(
+      context,
+      workspace,
+      tabScopeId: session.workspaceId,
+      initialText: '审查并继续完成该会话: $path',
+    );
+  } on Object catch (error, stackTrace) {
+    appLogger.e(
+      'referenceWorkspaceSession',
+      error: error,
+      stackTrace: stackTrace,
+    );
+    if (context.mounted) {
+      AppToast.show(
+        context,
+        message: context.l10n.referenceConversationFailed,
+        variant: TpToastVariant.error,
+      );
+    }
+  }
 }
 
 /// Opens Chat with [worktreePath] pre-selected as the session cwd.

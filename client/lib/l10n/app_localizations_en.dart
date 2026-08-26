@@ -2155,6 +2155,13 @@ class AppLocalizationsEn extends AppLocalizations {
   String get duplicateConversation => 'Duplicate conversation';
 
   @override
+  String get referenceConversation => 'Reference conversation';
+
+  @override
+  String get referenceConversationFailed =>
+      'Failed to prepare conversation reference';
+
+  @override
   String get sessionDuplicated => 'Conversation duplicated';
 
   @override

@@ -173,6 +173,11 @@ class _SidebarSessionTileState extends State<SidebarSessionTile> {
         icon: session.pinned ? Icons.push_pin : Icons.push_pin_outlined,
         label: session.pinned ? l10n.unpinConversation : l10n.pinConversation,
       ),
+      TpActionMenuPopupItem(
+        value: 'reference',
+        icon: Icons.format_quote_rounded,
+        label: l10n.referenceConversation,
+      ),
       ..._sessionGroupItems(session),
     ];
     if (_canOpenSessionDirectory) {
@@ -247,6 +252,8 @@ class _SidebarSessionTileState extends State<SidebarSessionTile> {
         await _duplicateSession(context, session, l10n);
       case 'pin':
         await _chatCubit?.toggleSessionPin(session.sessionId);
+      case 'reference':
+        await referenceWorkspaceSession(context, session);
       case String value when value.startsWith('toggle_group:'):
         final groupId = value.substring('toggle_group:'.length);
         final groups = context.read<SessionGroupsCubit>().state;
@@ -599,6 +606,14 @@ class _SidebarSessionTileState extends State<SidebarSessionTile> {
                         context.read<ChatCubit>().toggleSessionPin(
                           session.sessionId,
                         ),
+                      ),
+                    ),
+                    TpActionMenuItem(
+                      icon: Icons.format_quote_rounded,
+                      label: l10n.referenceConversation,
+                      menuController: controller,
+                      onTap: () => unawaited(
+                        referenceWorkspaceSession(context, session),
                       ),
                     ),
                     TpActionMenuItem(

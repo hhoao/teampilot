@@ -2051,6 +2051,12 @@ class AppLocalizationsZh extends AppLocalizations {
   String get duplicateConversation => '复制对话';
 
   @override
+  String get referenceConversation => '引用会话';
+
+  @override
+  String get referenceConversationFailed => '准备会话引用失败';
+
+  @override
   String get sessionDuplicated => '对话已复制';
 
   @override

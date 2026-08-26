@@ -907,6 +907,8 @@
   "pinConversation": "置顶对话",
   "unpinConversation": "取消置顶",
   "duplicateConversation": "复制对话",
+  "referenceConversation": "引用会话",
+  "referenceConversationFailed": "准备会话引用失败",
   "sessionDuplicated": "对话已复制",
   "sessionDuplicateFailed": "复制对话失败",
   "sessionTitleCopySuffix": "（副本）",

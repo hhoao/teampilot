@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -133,8 +134,10 @@ Widget _host({
   SessionGroupsCubit? groupsCubit,
   Widget? child,
   FutureOr<void> Function()? onTap,
+  Locale? locale,
 }) {
   return MaterialApp(
+    locale: locale,
     localizationsDelegates: AppLocalizations.localizationsDelegates,
     supportedLocales: AppLocalizations.supportedLocales,
     home: MultiRepositoryProvider(
@@ -351,6 +354,57 @@ void main() {
     expect(find.text(l10n.openSessionDirectory), findsOneWidget);
 
     await _dismissContextMenu(tester);
+  });
+
+  testWidgets('both session menus include the localized reference action', (
+    tester,
+  ) async {
+    debugDefaultTargetPlatformOverride = TargetPlatform.linux;
+    final chatCubit = testChatCubit(executableResolver: () => 'claude');
+    final (attention, automationCubit) = _tileCubits();
+    addTearDown(chatCubit.close);
+    addTearDown(automationCubit.close);
+    addTearDown(attention.close);
+
+    await tester.pumpWidget(
+      _host(
+        chatCubit: chatCubit,
+        automationCubit: automationCubit,
+        attentionCubit: attention,
+        sessionRepository: SessionRepository(),
+        locale: const Locale('zh'),
+      ),
+    );
+    await tester.pump();
+
+    await _openContextMenu(tester);
+
+    final l10n = AppLocalizations.of(
+      tester.element(find.byType(SidebarSessionTile)),
+    );
+    expect(l10n.referenceConversation, '引用会话');
+    final contextReference = tester.widget<TpActionMenuPopupItem<String>>(
+      find.byWidgetPredicate(
+        (widget) =>
+            widget is TpActionMenuPopupItem<String> &&
+            widget.value == 'reference',
+      ),
+    );
+    expect(contextReference.label, l10n.referenceConversation);
+
+    await _dismissContextMenu(tester);
+
+    final mouse = await tester.createGesture(kind: PointerDeviceKind.mouse);
+    await mouse.addPointer(location: Offset.zero);
+    addTearDown(mouse.removePointer);
+    await tester.pump();
+    await mouse.moveTo(tester.getCenter(find.byType(TpHoverRow)));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byIcon(Icons.more_horiz));
+    await tester.pumpAndSettle();
+
+    expect(find.text(l10n.referenceConversation), findsOneWidget);
+    debugDefaultTargetPlatformOverride = null;
   });
 
   testWidgets('context menu shows manage item when session has automations', (

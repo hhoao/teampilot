@@ -3884,6 +3884,18 @@ abstract class AppLocalizations {
   /// **'Duplicate conversation'**
   String get duplicateConversation;
 
+  /// No description provided for @referenceConversation.
+  ///
+  /// In en, this message translates to:
+  /// **'Reference conversation'**
+  String get referenceConversation;
+
+  /// No description provided for @referenceConversationFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Failed to prepare conversation reference'**
+  String get referenceConversationFailed;
+
   /// No description provided for @sessionDuplicated.
   ///
   /// In en, this message translates to:

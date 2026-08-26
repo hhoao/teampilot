@@ -977,6 +977,8 @@
   "pinConversation": "Pin conversation",
   "unpinConversation": "Unpin conversation",
   "duplicateConversation": "Duplicate conversation",
+  "referenceConversation": "Reference conversation",
+  "referenceConversationFailed": "Failed to prepare conversation reference",
   "sessionDuplicated": "Conversation duplicated",
   "sessionDuplicateFailed": "Failed to duplicate conversation",
   "sessionTitleCopySuffix": "(copy)",
