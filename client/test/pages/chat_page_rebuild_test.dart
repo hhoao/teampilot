@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/cubits/ai_history_cubit.dart';
+import 'package:teampilot/cubits/app_provider_cubit.dart';
 import 'package:teampilot/cubits/agent_attention_cubit.dart';
 import 'package:teampilot/cubits/chat/model/chat_tab.dart';
 import 'package:teampilot/cubits/chat/model/chat_tab_info.dart';
@@ -53,6 +54,12 @@ import '../support/in_memory_filesystem.dart';
 import '../support/post_frame_test_harness.dart';
 
 String _executable() => 'flashskyai';
+
+class _SeededAppProviderCubit extends AppProviderCubit {
+  _SeededAppProviderCubit() {
+    emit(const AppProviderState());
+  }
+}
 
 ChatPageStructuralBodyProbeState _structuralProbe(WidgetTester tester) {
   return tester.state<ChatPageStructuralBodyProbeState>(
@@ -241,6 +248,12 @@ void main() {
               providers: [
                 BlocProvider.value(value: teamCubit),
                 BlocProvider.value(value: chatCubit),
+              BlocProvider<AppProviderCubit>(
+                create: (_) => _SeededAppProviderCubit(),
+              ),
+                BlocProvider<AppProviderCubit>(
+                  create: (_) => _SeededAppProviderCubit(),
+                ),
                 BlocProvider.value(value: layoutCubit),
                 BlocProvider.value(value: editorCubit),
                 BlocProvider.value(value: workbenchCubit),
@@ -413,6 +426,12 @@ void main() {
               providers: [
                 BlocProvider.value(value: teamCubit),
                 BlocProvider.value(value: chatCubit),
+              BlocProvider<AppProviderCubit>(
+                create: (_) => _SeededAppProviderCubit(),
+              ),
+                BlocProvider<AppProviderCubit>(
+                  create: (_) => _SeededAppProviderCubit(),
+                ),
                 BlocProvider.value(value: layoutCubit),
                 BlocProvider.value(value: editorCubit),
                 BlocProvider.value(value: workbenchCubit),
@@ -593,6 +612,9 @@ void main() {
             providers: [
               BlocProvider.value(value: teamCubit),
               BlocProvider.value(value: chatCubit),
+              BlocProvider<AppProviderCubit>(
+                create: (_) => _SeededAppProviderCubit(),
+              ),
               BlocProvider.value(value: layoutCubit),
               BlocProvider.value(value: editorCubit),
               BlocProvider.value(value: workbenchCubit),
@@ -766,6 +788,12 @@ void main() {
               providers: [
                 BlocProvider.value(value: teamCubit),
                 BlocProvider.value(value: chatCubit),
+              BlocProvider<AppProviderCubit>(
+                create: (_) => _SeededAppProviderCubit(),
+              ),
+                BlocProvider<AppProviderCubit>(
+                  create: (_) => _SeededAppProviderCubit(),
+                ),
                 BlocProvider.value(value: layoutCubit),
                 BlocProvider.value(value: editorCubit),
                 BlocProvider.value(value: workbenchCubit),

@@ -7,6 +7,7 @@ import 'package:go_router/go_router.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:shared_ui/shared_ui.dart';
 import 'package:teampilot/cubits/chat/chat_tab_store.dart';
+import 'package:teampilot/cubits/app_provider_cubit.dart';
 import 'package:teampilot/cubits/chat_cubit.dart';
 import 'package:teampilot/cubits/cli_presets_cubit.dart';
 import 'package:teampilot/cubits/launch_profile_cubit.dart';
@@ -44,6 +45,8 @@ void _expectComposeOnlyAskAiDialog() {
 }
 
 class _MockChatCubit extends Mock implements ChatCubit {}
+
+class _MockAppProviderCubit extends Mock implements AppProviderCubit {}
 
 class _MockCliPresetsCubit extends Mock implements CliPresetsCubit {}
 
@@ -98,6 +101,7 @@ void main() {
       folders: const [WorkspaceFolder(path: '/repo')],
     );
     final chatCubit = _MockChatCubit();
+    final appProviderCubit = _MockAppProviderCubit();
     final cliPresetsCubit = _MockCliPresetsCubit();
     final launchProfileCubit = _MockLaunchProfileCubit();
     final pluginCubit = _MockPluginCubit();
@@ -107,6 +111,8 @@ void main() {
     addTearDown(worktreeCubit.close);
 
     _stubCubit(chatCubit, ChatState(workspaces: [workspace]));
+
+    _stubCubit(appProviderCubit, const AppProviderState());
     final tabStore = ChatTabStore()..setActiveWorkspaceId(workspace.workspaceId);
     when(() => chatCubit.tabStore).thenReturn(tabStore);
     _stubCubit(cliPresetsCubit, const CliPresetsState());
@@ -124,6 +130,7 @@ void main() {
         child: MultiBlocProvider(
           providers: [
             BlocProvider<ChatCubit>.value(value: chatCubit),
+            BlocProvider<AppProviderCubit>.value(value: appProviderCubit),
             BlocProvider<CliPresetsCubit>.value(value: cliPresetsCubit),
             BlocProvider<LaunchProfileCubit>.value(value: launchProfileCubit),
             BlocProvider<PluginCubit>.value(value: pluginCubit),
@@ -177,6 +184,7 @@ void main() {
       folders: const [WorkspaceFolder(path: '/repo')],
     );
     final chatCubit = _MockChatCubit();
+    final appProviderCubit = _MockAppProviderCubit();
     final cliPresetsCubit = _MockCliPresetsCubit();
     final launchProfileCubit = _MockLaunchProfileCubit();
     final pluginCubit = _MockPluginCubit();
@@ -187,6 +195,8 @@ void main() {
     registry.cubitFor(workspaceId: workspace.workspaceId, repoPath: '/repo');
 
     _stubCubit(chatCubit, ChatState(workspaces: [workspace]));
+
+    _stubCubit(appProviderCubit, const AppProviderState());
     final tabStore = ChatTabStore()..setActiveWorkspaceId(workspace.workspaceId);
     when(() => chatCubit.tabStore).thenReturn(tabStore);
     _stubCubit(cliPresetsCubit, const CliPresetsState());
@@ -205,6 +215,7 @@ void main() {
         child: MultiBlocProvider(
           providers: [
             BlocProvider<ChatCubit>.value(value: chatCubit),
+            BlocProvider<AppProviderCubit>.value(value: appProviderCubit),
             BlocProvider<CliPresetsCubit>.value(value: cliPresetsCubit),
             BlocProvider<LaunchProfileCubit>.value(value: launchProfileCubit),
             BlocProvider<PluginCubit>.value(value: pluginCubit),
@@ -257,6 +268,7 @@ void main() {
       folders: const [WorkspaceFolder(path: '/repo')],
     );
     final chatCubit = _MockChatCubit();
+    final appProviderCubit = _MockAppProviderCubit();
     final cliPresetsCubit = _MockCliPresetsCubit();
     final launchProfileCubit = _MockLaunchProfileCubit();
     final pluginCubit = _MockPluginCubit();
@@ -266,6 +278,8 @@ void main() {
     addTearDown(worktreeCubit.close);
 
     _stubCubit(chatCubit, ChatState(workspaces: [workspace]));
+
+    _stubCubit(appProviderCubit, const AppProviderState());
     final tabStore = ChatTabStore()..setActiveWorkspaceId(workspace.workspaceId);
     when(() => chatCubit.tabStore).thenReturn(tabStore);
     _stubCubit(cliPresetsCubit, const CliPresetsState());
@@ -283,6 +297,7 @@ void main() {
         child: MultiBlocProvider(
           providers: [
             BlocProvider<ChatCubit>.value(value: chatCubit),
+            BlocProvider<AppProviderCubit>.value(value: appProviderCubit),
             BlocProvider<CliPresetsCubit>.value(value: cliPresetsCubit),
             BlocProvider<LaunchProfileCubit>.value(value: launchProfileCubit),
             BlocProvider<PluginCubit>.value(value: pluginCubit),
@@ -341,6 +356,7 @@ void main() {
       folders: const [WorkspaceFolder(path: '/repo')],
     );
     final chatCubit = _MockChatCubit();
+    final appProviderCubit = _MockAppProviderCubit();
     final cliPresetsCubit = _MockCliPresetsCubit();
     final launchProfileCubit = _MockLaunchProfileCubit();
     final pluginCubit = _MockPluginCubit();
@@ -350,6 +366,8 @@ void main() {
     addTearDown(worktreeCubit.close);
 
     _stubCubit(chatCubit, ChatState(workspaces: [workspace]));
+
+    _stubCubit(appProviderCubit, const AppProviderState());
     final tabStore = ChatTabStore()..setActiveWorkspaceId(workspace.workspaceId);
     when(() => chatCubit.tabStore).thenReturn(tabStore);
     _stubCubit(cliPresetsCubit, const CliPresetsState());
@@ -396,6 +414,7 @@ void main() {
         child: MultiBlocProvider(
           providers: [
             BlocProvider<ChatCubit>.value(value: chatCubit),
+            BlocProvider<AppProviderCubit>.value(value: appProviderCubit),
             BlocProvider<CliPresetsCubit>.value(value: cliPresetsCubit),
             BlocProvider<LaunchProfileCubit>.value(value: launchProfileCubit),
             BlocProvider<PluginCubit>.value(value: pluginCubit),
