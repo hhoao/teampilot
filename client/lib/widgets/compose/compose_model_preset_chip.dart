@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 
+import '../../models/app_provider_config.dart';
 import '../../models/cli_preset.dart';
-import '../../models/team_config.dart';
 import '../../pages/home_workspace/workspace/workspace_chat_landing_palette.dart';
+import '../../services/cli/registry/capabilities/provider_capability.dart';
+import '../../services/cli/registry/cli_tool_registry.dart';
 import '../cli/cli_brand_icon.dart';
 import 'compose_menu_chip.dart';
 import 'package:shared_ui/shared_ui.dart';
@@ -11,6 +13,181 @@ import 'package:shared_ui/shared_ui.dart';
 enum ComposeModelPresetChipAction {
   custom,
   manage,
+  savePreset,
+}
+
+sealed class CascadeSelection {
+  final CliTool cli;
+  final String providerId;
+  const CascadeSelection({required this.cli, required this.providerId});
+}
+
+final class CascadeModelPick extends CascadeSelection {
+  // Direct model-row pick: effort stays empty (identical to today's modal submit).
+  final String modelId;
+  const CascadeModelPick({required super.cli, required super.providerId, required this.modelId});
+}
+
+final class CascadeEffortPick extends CascadeSelection {
+  final String modelId;
+  final String effort;
+  const CascadeEffortPick({required super.cli, required super.providerId, required this.modelId, required this.effort});
+}
+
+final class CascadeCustomModelRequest extends CascadeSelection {
+  const CascadeCustomModelRequest({required super.cli, required super.providerId});
+}
+
+class ComposeCascadeProvider {
+  final String id;
+  final String name;
+  final bool supportsCustomModelEntry;
+  final List<String> models;
+  final Map<String, List<String>> effortByModel; // value empty ⇒ model is a leaf
+  const ComposeCascadeProvider({
+    required this.id,
+    required this.name,
+    required this.supportsCustomModelEntry,
+    required this.models,
+    required this.effortByModel,
+  });
+}
+
+class ComposeCascadeCliGroup {
+  final CliTool cli;
+  final List<ComposeCascadeProvider> providers;
+  const ComposeCascadeCliGroup({required this.cli, required this.providers});
+}
+
+List<ComposeCascadeCliGroup> resolveComposeCascadeCliGroups({
+  required CliToolRegistry registry,
+  required Map<CliTool, List<AppProviderConfig>> providersByCli,
+  required List<CliTool> cliItems,
+}) {
+  final groups = <ComposeCascadeCliGroup>[];
+  for (final cli in cliItems) {
+    final capability = registry.capability<ProviderCapability>(cli);
+    if (capability == null) continue;
+    final providers = [...providersByCli[cli] ?? const <AppProviderConfig>[]]
+      ..sort((a, b) => a.name.toLowerCase().compareTo(b.name.toLowerCase()));
+    if (providers.isEmpty) continue;
+    final cascadeProviders = <ComposeCascadeProvider>[];
+    for (final p in providers) {
+      final mode = capability.pickerMode(p);
+      final models = mode == ProviderModelPickerMode.hidden
+          ? const <String>[]
+          : capability.modelCandidates(provider: p, providerId: p.id, currentModel: '');
+      cascadeProviders.add(ComposeCascadeProvider(
+        id: p.id,
+        name: p.name,
+        supportsCustomModelEntry:
+            mode == ProviderModelPickerMode.catalogWithCustomEntry,
+        models: models,
+        effortByModel: {
+          for (final m in models)
+            m: capability.isApplicable(model: m)
+                ? capability.effortCandidates(model: m, provider: p)
+                : const <String>[],
+        },
+      ));
+    }
+    groups.add(ComposeCascadeCliGroup(cli: cli, providers: cascadeProviders));
+  }
+  return groups;
+}
+
+List<TpActionMenuSpec> buildComposeModelCascadeMenuSpecs({
+  required List<CliPreset> presets,
+  required String? selectedPresetId,
+  required String emptyHintLabel,
+  required String defaultEffortLabel,
+  required String customModelIdLabel,
+  required String noModelsLabel,
+  required String savePresetLabel,
+  required String managePresetsLabel,
+  required List<ComposeCascadeCliGroup> cliGroups,
+  required bool groupByCli,
+  void Function(CliTool cli, String providerId)? onModelsOpened,
+}) {
+  List<TpActionMenuSpec> providerChildren(ComposeCascadeCliGroup group,
+      ComposeCascadeProvider p) {
+    final rows = <TpActionMenuSpec>[
+      if (p.models.isEmpty)
+        TpActionMenuSpec.item(
+          value: null, icon: Icons.cloud_off_outlined,
+          label: noModelsLabel, enabled: false)
+      else
+        for (final model in p.models)
+          if ((p.effortByModel[model]?.isNotEmpty ?? false))
+            TpActionMenuSpec.submenu(
+              value: CascadeModelPick(cli: group.cli, providerId: p.id, modelId: model),
+              icon: Icons.memory_outlined,
+              label: model,
+              onOpen: () => onModelsOpened?.call(group.cli, p.id),
+              children: [
+                TpActionMenuSpec.item(
+                  value: CascadeModelPick(cli: group.cli, providerId: p.id, modelId: model),
+                  icon: Icons.speed_outlined, label: defaultEffortLabel,
+                  selected: false),
+                for (final e in p.effortByModel[model]!)
+                  TpActionMenuSpec.item(
+                    value: CascadeEffortPick(cli: group.cli, providerId: p.id,
+                      modelId: model, effort: e),
+                    icon: Icons.speed_outlined, label: e),
+              ],
+            )
+          else
+            TpActionMenuSpec.item(
+              value: CascadeModelPick(cli: group.cli, providerId: p.id, modelId: model),
+              icon: Icons.memory_outlined, label: model),
+      if (p.supportsCustomModelEntry)
+        TpActionMenuSpec.item(
+          value: CascadeCustomModelRequest(cli: group.cli, providerId: p.id),
+          icon: Icons.edit_outlined, label: customModelIdLabel),
+    ];
+    return rows;
+  }
+
+  TpActionMenuSpec providerSpec(ComposeCascadeCliGroup group,
+      ComposeCascadeProvider p) {
+    return TpActionMenuSpec.submenu(
+      value: p.id,
+      icon: Icons.cloud_outlined,
+      label: p.name,
+      searchable: true,
+      children: providerChildren(group, p),
+    );
+  }
+
+  final specs = <TpActionMenuSpec>[
+    if (presets.isEmpty)
+      TpActionMenuSpec.item(value: null, icon: Icons.terminal_outlined,
+        label: emptyHintLabel, enabled: false)
+    else
+      for (final preset in presets)
+        TpActionMenuSpec.item(value: preset.id,
+          iconWidget: _PresetCliMenuIcon(cli: preset.cli),
+          label: preset.name, selected: preset.id == selectedPresetId),
+    const TpActionMenuSpec.divider(),
+    for (final group in cliGroups)
+      if (!groupByCli)
+        for (final p in group.providers) providerSpec(group, p)
+      else if (group.providers.isNotEmpty)
+        TpActionMenuSpec.submenu(
+          value: group.cli,
+          iconWidget: _PresetCliMenuIcon(cli: group.cli),
+          label: group.cli.value,
+          children: [for (final p in group.providers) providerSpec(group, p)],
+        ),
+    const TpActionMenuSpec.divider(),
+    TpActionMenuSpec.item(
+      value: ComposeModelPresetChipAction.savePreset,
+      icon: Icons.bookmark_add_outlined, label: savePresetLabel),
+    TpActionMenuSpec.item(
+      value: ComposeModelPresetChipAction.manage,
+      icon: Icons.add, label: managePresetsLabel),
+  ];
+  return specs;
 }
 
 /// Summary label for Simple launch model chips (preset or custom four-tuple).
