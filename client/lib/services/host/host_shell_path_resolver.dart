@@ -1,31 +1,22 @@
 import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
+import 'dart:typed_data';
 
 import 'package:meta/meta.dart';
 
 import '../../utils/logging/logger.dart';
 
-typedef ShellPathProcessRunner =
-    Future<ProcessResult> Function(
-      String executable,
-      List<String> arguments, {
-      Encoding? stdoutEncoding,
-      Encoding? stderrEncoding,
-    });
+/// Starts a probe shell whose handle stays reachable, so a hung rc plugin can
+/// be killed instead of leaking an orphaned interactive shell per app run.
+typedef ShellPathProcessStarter =
+    Future<Process> Function(String executable, List<String> arguments);
 
-Future<ProcessResult> defaultShellPathProcessRun(
+Future<Process> defaultShellPathProcessStart(
   String executable,
-  List<String> arguments, {
-  Encoding? stdoutEncoding,
-  Encoding? stderrEncoding,
-}) {
-  return Process.run(
-    executable,
-    arguments,
-    stdoutEncoding: stdoutEncoding ?? latin1,
-    stderrEncoding: stderrEncoding ?? latin1,
-  );
+  List<String> arguments,
+) {
+  return Process.start(executable, arguments);
 }
 
 /// Resolves the user's login-shell PATH once per process so local PTY children
@@ -92,8 +83,10 @@ abstract final class HostShellPathResolver {
 
   /// Extracts the PATH from shell stdout: everything after the LAST [marker],
   /// truncated at the first CR/LF (PATH cannot contain newlines), trimmed.
-  /// Returns null when the marker is missing or the value is empty or has no
-  /// absolute entry.
+  /// Entries containing whitespace are dropped — fish joins `$PATH` with
+  /// spaces, so its output degrades to null (falling through to zsh/bash)
+  /// instead of installing a bogus directory.
+  /// Returns null when nothing valid remains.
   static String? parseMarkerOutput(Object? stdout) {
     if (stdout is! String) return null;
     final index = stdout.lastIndexOf(marker);
@@ -103,22 +96,26 @@ abstract final class HostShellPathResolver {
     if (lineBreak != null) {
       value = value.substring(0, lineBreak.start);
     }
-    value = value.trim();
-    if (value.isEmpty) return null;
-    final hasAbsoluteEntry = value.split(':').any((entry) => entry.startsWith('/'));
-    return hasAbsoluteEntry ? value : null;
+    final entries = value
+        .split(':')
+        .map((entry) => entry.trim())
+        .where(
+          (entry) => entry.startsWith('/') && !entry.contains(RegExp(r'\s')),
+        )
+        .toList();
+    return entries.isEmpty ? null : entries.join(':');
   }
 
   /// Kick off resolution once; later calls are no-ops.
   static Future<void> warmup({
-    ShellPathProcessRunner runner = defaultShellPathProcessRun,
+    ShellPathProcessStarter starter = defaultShellPathProcessStart,
   }) {
     if (_resolved) return Future.value();
-    return resolve(runner: runner);
+    return resolve(starter: starter);
   }
 
   static Future<String?> resolve({
-    ShellPathProcessRunner runner = defaultShellPathProcessRun,
+    ShellPathProcessStarter starter = defaultShellPathProcessStart,
     Duration timeout = defaultPerShellTimeout,
     bool? posixPlatformOverride,
   }) async {
@@ -131,7 +128,7 @@ abstract final class HostShellPathResolver {
     }
     String? resolved;
     for (final shell in shellCandidates()) {
-      resolved = await _probeShell(shell, runner, timeout);
+      resolved = await _probeShell(shell, starter, timeout);
       if (resolved != null) break;
     }
     _cachedPath = resolved;
@@ -149,26 +146,56 @@ abstract final class HostShellPathResolver {
 
   static Future<String?> _probeShell(
     String shell,
-    ShellPathProcessRunner runner,
+    ShellPathProcessStarter starter,
     Duration timeout,
   ) async {
+    final Process process;
     try {
       // argv goes straight to `<shell> -c`. `$PATH` must expand in the CHILD
       // shell, so build the string via concatenation to dodge Dart `$`
       // interpolation: literal output is `printf "%s" "__TP_PATH__$PATH"`.
       final innerCommand = 'printf "%s" "$marker' r'$PATH"';
-      final result = await runner(shell, [
-        '-ilc',
-        innerCommand,
-      ]).timeout(timeout);
-      if (result.exitCode != 0) return null;
-      return parseMarkerOutput(result.stdout);
-    } on TimeoutException {
-      appLogger.w('[shell-path] $shell -ilc timed out');
-      return null;
+      process = await starter(shell, ['-ilc', innerCommand]);
     } on Object catch (error) {
-      appLogger.w('[shell-path] $shell -ilc failed: $error');
+      appLogger.w('[shell-path] $shell -ilc failed to start: $error');
       return null;
     }
+
+    final output = BytesBuilder(copy: false);
+    final drained = Completer<void>();
+    final outSub = process.stdout.listen(
+      output.add,
+      onDone: drained.complete,
+      onError: (Object _) => drained.complete(),
+      cancelOnError: true,
+    );
+    final errSub = process.stderr.listen(
+      (_) {},
+      onError: (Object _) {},
+      cancelOnError: true,
+    );
+
+    var timedOut = false;
+    int exitCode;
+    try {
+      exitCode = await process.exitCode.timeout(timeout);
+    } on TimeoutException {
+      timedOut = true;
+      exitCode = -1;
+    }
+    if (timedOut) {
+      appLogger.w('[shell-path] $shell -ilc timed out; killing pid '
+          '${process.pid}');
+      unawaited(outSub.cancel());
+      unawaited(errSub.cancel());
+      process.kill();
+      return null;
+    }
+    // Drain the pipes after a normal exit so late output can't deadlock.
+    await drained.future.timeout(const Duration(seconds: 2), onTimeout: () {});
+    unawaited(outSub.cancel());
+    unawaited(errSub.cancel());
+    if (exitCode != 0) return null;
+    return parseMarkerOutput(utf8.decode(output.toBytes(), allowMalformed: true));
   }
 }
