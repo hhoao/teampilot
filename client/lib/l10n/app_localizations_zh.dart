@@ -7765,6 +7765,9 @@ class AppLocalizationsZh extends AppLocalizations {
   String get connectPairFailed => '无法与此电脑配对，请重试。';
 
   @override
+  String get connectNeedLanOrRelay => '请连同一 Wi-Fi，或先在桌面填写中继地址。';
+
+  @override
   String get connectScannerUnavailable => '相机扫描器不可用，请改为粘贴配对码。';
 
   @override

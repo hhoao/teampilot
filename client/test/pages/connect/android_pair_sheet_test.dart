@@ -95,6 +95,17 @@ class _LanFailRelayOkTransport implements PairingPostTransport {
   }
 }
 
+class _AlwaysFailTransport implements PairingPostTransport {
+  @override
+  Future<PairingPostResult> post({
+    required Uri url,
+    required Map<String, Object?> body,
+    required String tlsCertSha256,
+  }) async {
+    throw const SocketException('LAN unreachable');
+  }
+}
+
 class _ThrowingPairClient extends ConnectPairClient {
   _ThrowingPairClient(this.error);
 
@@ -429,6 +440,27 @@ void main() {
     expect(harness.connectionCubit.connectCalls, [_profile.id]);
     expect(await harness.credentials.loadRelayGrant(_profile.id), 'grant-1');
   });
+
+  testWidgets(
+    'LAN failure without a relay explains same Wi-Fi or relay options',
+    (tester) async {
+      final harness = _Harness(
+        pairClient: ConnectPairClient(transport: _AlwaysFailTransport()),
+      );
+      addTearDown(harness.dispose);
+      await tester.pumpWidget(
+        _host(harness: harness, scanCode: () async => _offer().encode()),
+      );
+
+      await tester.tap(find.byKey(AppKeys.connectScanQr));
+      await tester.pumpAndSettle();
+
+      expect(
+        find.textContaining('same Wi-Fi'),
+        findsOneWidget,
+      );
+    },
+  );
 
   for (final entry in const [
     (locale: Locale('en'), message: 'Code expired. Scan again.'),

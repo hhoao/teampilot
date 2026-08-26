@@ -208,6 +208,9 @@ class ConnectAgent {
         .where((value) => value.startsWith('SHA256:'))
         .toSet()
         .toList(growable: false);
+    // Keep relay SSH targets fresh with every QR-session probe.
+    _relaySshdReachable = sshd.listening;
+    _relaySshdPort = sshd.listening ? sshd.port : null;
     if (!sshd.listening || fingerprints.isEmpty) return;
 
     final certificate = await _certificateProvider.generate(

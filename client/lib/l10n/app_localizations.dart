@@ -14426,6 +14426,12 @@ abstract class AppLocalizations {
   /// **'Could not pair with this desktop. Try again.'**
   String get connectPairFailed;
 
+  /// No description provided for @connectNeedLanOrRelay.
+  ///
+  /// In en, this message translates to:
+  /// **'Join the same Wi-Fi as this computer, or set a relay on the desktop first.'**
+  String get connectNeedLanOrRelay;
+
   /// No description provided for @connectScannerUnavailable.
   ///
   /// In en, this message translates to:

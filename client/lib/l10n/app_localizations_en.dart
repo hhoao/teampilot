@@ -8106,6 +8106,10 @@ class AppLocalizationsEn extends AppLocalizations {
       'Could not pair with this desktop. Try again.';
 
   @override
+  String get connectNeedLanOrRelay =>
+      'Join the same Wi-Fi as this computer, or set a relay on the desktop first.';
+
+  @override
   String get connectScannerUnavailable =>
       'The camera scanner is unavailable. Paste the code instead.';
 

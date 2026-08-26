@@ -3179,6 +3179,7 @@
   "connectPairUpdateApp": "请更新 TeamPilot 后再扫描此配对码。",
   "connectPairInvalid": "此配对码无效。",
   "connectPairFailed": "无法与此电脑配对，请重试。",
+  "connectNeedLanOrRelay": "请连同一 Wi-Fi，或先在桌面填写中继地址。",
   "connectScannerUnavailable": "相机扫描器不可用，请改为粘贴配对码。",
   "connectCheckAgain": "重新检查",
   "connectCopyLink": "复制链接",

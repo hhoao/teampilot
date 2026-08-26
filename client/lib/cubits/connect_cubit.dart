@@ -5,6 +5,7 @@ import '../models/ssh_reachability.dart';
 import '../services/connect/authorized_keys_file.dart';
 import '../services/connect/connect_agent.dart';
 import '../services/connect/connect_settings_store.dart';
+import '../services/connect/paired_device_store.dart';
 import '../services/connect/ssh_pairing_offer.dart';
 import '../services/connect/sshd_presence.dart';
 
@@ -223,6 +224,7 @@ class ConnectCubit extends Cubit<ConnectState> {
     required String username,
     required String displayName,
     required String appDataRoot,
+    PairedDeviceStore? deviceStore,
   }) : _agent = agent,
        _probeSshd = probeSshd,
        _authorizedKeys = authorizedKeys,
@@ -231,6 +233,7 @@ class ConnectCubit extends Cubit<ConnectState> {
        _username = username,
        _displayName = displayName,
        _appDataRoot = appDataRoot,
+       _deviceStore = deviceStore,
        super(const ConnectState());
 
   final ConnectAgentController _agent;
@@ -241,6 +244,7 @@ class ConnectCubit extends Cubit<ConnectState> {
   final String _username;
   final String _displayName;
   final String _appDataRoot;
+  final PairedDeviceStore? _deviceStore;
 
   bool _qrSessionVisible = false;
   int _operationId = 0;
@@ -405,8 +409,11 @@ class ConnectCubit extends Cubit<ConnectState> {
     );
   }
 
+  /// Revoking removes the tagged authorized_keys line and the relay grant
+  /// hash together, so the next SSH auth and any relay dial both fail.
   Future<void> revokeDevice(String deviceId) async {
     try {
+      await _deviceStore?.revokeDevice(deviceId);
       await _authorizedKeys.revokeDevice(deviceId);
       if (!isClosed) {
         emit(state.copyWith(pairedDevices: await _loadPairedDevices()));

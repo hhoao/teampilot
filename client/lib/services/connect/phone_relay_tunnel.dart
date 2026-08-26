@@ -119,11 +119,15 @@ class PhoneRelayTunnel {
       unawaited(socket.close());
     }
     _sockets.clear();
+    // Destroying clients first frees the sockets even when their dial
+    // WebSocket peer already died mid-handshake.
     for (final client in _clients.toList(growable: false)) {
       client.destroy();
     }
     _clients.clear();
-    await server?.close();
+    // Not awaited: server shutdown may outlive this call without blocking
+    // callers that are tearing down a session.
+    unawaited(server?.close());
   }
 }
 

@@ -3645,6 +3645,7 @@
   "connectPairUpdateApp": "Update TeamPilot to scan this code.",
   "connectPairInvalid": "This pairing code is invalid.",
   "connectPairFailed": "Could not pair with this desktop. Try again.",
+  "connectNeedLanOrRelay": "Join the same Wi-Fi as this computer, or set a relay on the desktop first.",
   "connectScannerUnavailable": "The camera scanner is unavailable. Paste the code instead.",
   "connectCheckAgain": "Check again",
   "connectCopyLink": "Copy link",

@@ -54,14 +54,20 @@ class ConnectQrPanel extends StatelessWidget {
       return const Center(child: CircularProgressIndicator());
     }
 
+    // Reachability must be labeled honestly: without an extra endpoint or a
+    // live relay registration the phone can only pair on LAN.
+    final lanOnly = state.extraEndpoints.isEmpty &&
+        state.relayUrl.trim().isEmpty &&
+        offer.relay == null;
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         TpStatusBadge(
-          label: offer.relay == null
+          label: lanOnly
               ? l10n.connectLanOnlyStatus
               : l10n.connectRemoteReadyStatus,
-          icon: offer.relay == null ? Icons.lan_outlined : Icons.public,
+          icon: lanOnly ? Icons.lan_outlined : Icons.public,
           tone: TpStatusBadgeTone.success,
         ),
         const SizedBox(height: 16),

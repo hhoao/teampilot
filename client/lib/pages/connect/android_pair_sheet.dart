@@ -172,7 +172,11 @@ class _AndroidPairSheetState extends State<AndroidPairSheet> {
         '[connect-pair] pairing failed type=${error.runtimeType}',
         stackTrace: stackTrace,
       );
-      _showError(l10n.connectPairFailed);
+      _showError(
+        error is ConnectPairClientException && error.code == 'unreachable'
+            ? l10n.connectNeedLanOrRelay
+            : l10n.connectPairFailed,
+      );
     } finally {
       if (mounted) setState(() => _pairing = false);
     }
@@ -202,7 +206,11 @@ class _AndroidPairSheetState extends State<AndroidPairSheet> {
       );
     } on SocketException catch (error, stackTrace) {
       final relay = offer.relay;
-      if (relay == null) rethrow;
+      if (relay == null) {
+        // No relay configured on the desktop: explain what would help
+        // instead of a generic failure.
+        throw const ConnectPairClientException('unreachable');
+      }
       AppLogger.instance.w(
         '[connect-pair] LAN pairing unreachable; trying relay channel',
         error: error,
