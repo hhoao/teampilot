@@ -36,10 +36,10 @@ class GitGraphPane extends StatefulWidget {
 }
 
 class _GitGraphPaneState extends State<GitGraphPane> {
-  /// 活动工作区的 tools scope 可能晚于本面板挂载才注册进 registry
-  /// （桥接层据此发布）。直接监听 registry：注册完成的瞬间重建。
+  /// 不经 InheritedWidget/桥接，直接持有本工作区的 scope cubit：
+  /// Bloc 响应式，state 就绪（roots/context 填充）即可渲染，不依赖
+  /// “晚插入通知”，也不再受浮动面板子树结构影响。
   WorkspaceToolsScopeRegistry? _registry;
-  Timer? _scopeGuard;
 
   @override
   void initState() {
@@ -63,7 +63,7 @@ class _GitGraphPaneState extends State<GitGraphPane> {
     if (identical(registry, _registry)) return;
     _registry?.removeListener(_onRegistryChanged);
     _registry = registry;
-    _onRegistryChanged(); // 换了实例立即对齐一次
+    _onRegistryChanged();
     registry.addListener(_onRegistryChanged);
   }
 
@@ -71,22 +71,9 @@ class _GitGraphPaneState extends State<GitGraphPane> {
     if (mounted) setState(() {});
   }
 
-  void _startScopeGuard() {
-    _scopeGuard ??= Timer.periodic(const Duration(milliseconds: 150), (_) {
-      if (!mounted) return;
-      setState(() {});
-    });
-  }
-
-  void _stopScopeGuard() {
-    _scopeGuard?.cancel();
-    _scopeGuard = null;
-  }
-
   @override
   void dispose() {
     _registry?.removeListener(_onRegistryChanged);
-    _stopScopeGuard();
     super.dispose();
   }
 
@@ -99,11 +86,9 @@ class _GitGraphPaneState extends State<GitGraphPane> {
         child: _PaneBody(workspaceId: widget.workspaceId),
       );
     }
-    final workContext = _resolveWorkContext(context);
-    if (workContext == null) {
-      // scope 未就绪。InheritedWidget 晚插入不会通知依赖方，单次 registry
-      // 通知可能错过本面板；用定时 setState 驱动机重建，直到解析成功。
-      _startScopeGuard();
+    final scopeCubit = _registry?.peek(widget.workspaceId);
+    if (scopeCubit == null) {
+      // 工作区 scope 尚未注册；registry 监听在注册完成时触发重建。
       return const Center(
         child: SizedBox(
           width: 18,
@@ -112,15 +97,36 @@ class _GitGraphPaneState extends State<GitGraphPane> {
         ),
       );
     }
-    _stopScopeGuard();
-    // store 拥有 cubit 的生命周期（LRU 淘汰 / dispose），provider 不得关闭它，
-    // 故用 BlocProvider.value（flutter_bloc 保证 .value 不自动 close）。
-    return BlocProvider.value(
-      value: context.read<GitRepoStore>().graphCubitFor(
-        widget.repoRoot,
-        workContext: workContext,
+    return BlocProvider<WorkspaceToolsScopeCubit>.value(
+      value: scopeCubit,
+      child: BlocBuilder<WorkspaceToolsScopeCubit, WorkspaceToolsScopeState>(
+        builder: (context, state) {
+          RuntimeContext? ctx;
+          for (final slice in state.targetSlices) {
+            if (slice.roots.contains(widget.repoRoot)) {
+              ctx = slice.tools.context;
+              break;
+            }
+          }
+          ctx ??= state.tools?.context;
+          if (ctx == null) {
+            return const Center(
+              child: SizedBox(
+                width: 18,
+                height: 18,
+                child: CircularProgressIndicator(strokeWidth: 2),
+              ),
+            );
+          }
+          return BlocProvider.value(
+            value: context.read<GitRepoStore>().graphCubitFor(
+              widget.repoRoot,
+              workContext: ctx,
+            ),
+            child: _PaneBody(workspaceId: widget.workspaceId),
+          );
+        },
       ),
-      child: _PaneBody(workspaceId: widget.workspaceId),
     );
   }
 
@@ -131,16 +137,6 @@ class _GitGraphPaneState extends State<GitGraphPane> {
     } on ProviderNotFoundException {
       return null;
     }
-  }
-
-  /// 仓库根所属后端上下文：优先命中包含 repoRoot 的 target 切片，
-  /// 回退到活动工具平面；两者皆缺（无 workspace 环境）时面板收缩。
-  RuntimeContext? _resolveWorkContext(BuildContext context) {
-    final scope = WorkspaceToolsScope.maybeOf(context);
-    for (final slice in scope?.targetSlices ?? const <WorkspaceTargetSlice>[]) {
-      if (slice.roots.contains(widget.repoRoot)) return slice.tools.context;
-    }
-    return scope?.tools?.context;
   }
 }
 
