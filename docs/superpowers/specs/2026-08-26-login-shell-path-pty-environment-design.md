@@ -34,10 +34,14 @@ environments match a login shell.
 - **Resolve at startup, cache forever.** A one-shot warmup runs the user's login
   shell non-interactively-driven (`-ilc`) to print its PATH behind a marker; the
   result is memoized for the process lifetime.
-- **Replace semantics on POSIX local PTYs.** When a resolved PATH exists,
-  `buildPtyEnvironment` replaces the child `PATH` with it. Semantics: "same
-  environment as the user's terminal" — version managers (nvm) must win over system
-  shims exactly as they do in a real terminal.
+- **Replace-with-prefix-preservation on POSIX local PTYs.** When a resolved PATH
+  exists, `buildPtyEnvironment` rebuilds the child `PATH` as
+  `[deliberate prepends] + [login-shell dirs] + [leftover host dirs]`: entries the
+  launch flow intentionally added on top of the inherited host PATH (skill-pack
+  `PATH` exports from `SkillPackInstallStore.prependPath`) stay first, then login
+  shell dirs fill in, then whatever remains of the sparse host base. Net effect:
+  version managers (nvm) win exactly as in a real terminal, and nothing the app
+  prepended is dropped.
 - **Synchronous fallback candidates.** If resolution has not completed (or failed)
   by spawn time, append known directories (`/opt/homebrew/bin`, `/usr/local/bin`,
   `$HOME/.local/bin`) that exist and are missing from the current PATH. Cheap
