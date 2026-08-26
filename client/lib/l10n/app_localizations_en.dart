@@ -6617,6 +6617,15 @@ class AppLocalizationsEn extends AppLocalizations {
   String get automationsValidationRequired => 'Name and message are required';
 
   @override
+  String get formFieldRequired => 'This field is required.';
+
+  @override
+  String get teamModeRequired => 'Choose a team mode first.';
+
+  @override
+  String get hookSaveFailed => 'Failed to save hook.';
+
+  @override
   String get automationsTime => 'Time';
 
   @override
