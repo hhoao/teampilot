@@ -1,5 +1,7 @@
 import 'dart:io';
 
+import '../host/host_shell_path_resolver.dart';
+
 /// Environment hints for embedded PTY sessions so child CLIs emit OSC 8 links.
 abstract final class PtyLaunchEnvironment {
   /// VTE-based terminals (GNOME Terminal, etc.) set this; Claude Code also treats
@@ -46,6 +48,57 @@ abstract final class PtyLaunchEnvironment {
     env['COLORFGBG'] = isDark ? '15;0' : '0;15';
   }
 
+  /// Merges the user's login-shell PATH into a local PTY child environment.
+  ///
+  /// Semantics (spec 2026-08-26): when a login-shell PATH is cached, deliberate
+  /// app prepends survive first, then cached login-shell dirs fill in, then
+  /// remaining host-base dirs. When no resolution is cached yet, the inherited
+  /// PATH order is kept intact and existing-but-missing fallback candidate dirs
+  /// are appended instead — cheap existsSync checks that rescue Homebrew-style
+  /// installs even if warmup lost the race with an instant reconnect.
+  static void applyLocalLoginShellPath(
+    Map<String, String> env, {
+    required String? hostBasePath,
+    required bool posixDesktop,
+    List<String>? candidateDirs,
+  }) {
+    if (!posixDesktop) return;
+    final currentEntries = (env['PATH'] ?? '')
+        .split(':')
+        .where((entry) => entry.isNotEmpty)
+        .toList();
+    final hostBaseEntries = (hostBasePath ?? '')
+        .split(':')
+        .where((entry) => entry.isNotEmpty)
+        .toList();
+
+    final result = <String>[];
+    final resolved = HostShellPathResolver.cachedPath;
+    if (resolved != null) {
+      result.addAll(
+        currentEntries.where((entry) => !hostBaseEntries.contains(entry)),
+      );
+      for (final entry in resolved.split(':')) {
+        if (entry.isNotEmpty && !result.contains(entry)) result.add(entry);
+      }
+    } else {
+      result.addAll(currentEntries);
+      for (final dir
+          in candidateDirs ?? HostShellPathResolver.fallbackCandidateDirs()) {
+        if (!Directory(dir).existsSync()) continue;
+        if (result.contains(dir)) continue;
+        result.add(dir);
+      }
+    }
+
+    for (final entry in hostBaseEntries) {
+      if (entry.isEmpty || result.contains(entry)) continue;
+      result.add(entry);
+    }
+
+    if (result.isNotEmpty) env['PATH'] = result.join(':');
+  }
+
   /// Full process environment for [Pty.start], including OSC 8 identity hints.
   ///
   /// [inheritHostEnvironment] is true for local/WSL PTY (PATH, locale, …).
@@ -69,6 +122,13 @@ abstract final class PtyLaunchEnvironment {
       if (path != null && path.isNotEmpty) {
         merged['PATH'] = path;
       }
+    }
+    if (inheritHostEnvironment && (Platform.isMacOS || Platform.isLinux)) {
+      applyLocalLoginShellPath(
+        merged,
+        hostBasePath: Platform.environment['PATH'],
+        posixDesktop: true,
+      );
     }
     return merged;
   }
