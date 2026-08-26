@@ -51,6 +51,7 @@ class CliLaunchCustomFields extends StatelessWidget {
     this.effortTitle,
     this.dropdownKeyPrefix = 'cli-launch',
     this.decoration,
+    this.providerHasError = false,
     super.key,
   });
 
@@ -81,6 +82,10 @@ class CliLaunchCustomFields extends StatelessWidget {
   final String? effortTitle;
   final String dropdownKeyPrefix;
   final TpSelectDecoration? decoration;
+
+  /// Paints the provider select trigger red (validation feedback from the
+  /// enclosing TpFormField).
+  final bool providerHasError;
 
   @override
   Widget build(BuildContext context) {
@@ -130,6 +135,7 @@ class CliLaunchCustomFields extends StatelessWidget {
                 initialItem: providerId.isEmpty ? null : providerId,
                 hintText: l10n.selectProvider,
                 decoration: dropdownDeco,
+                hasError: providerHasError,
                 onChanged: (value) {
                   if (value == null || value.isEmpty) return;
                   onProviderChanged(value);
