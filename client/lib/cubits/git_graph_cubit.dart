@@ -239,12 +239,17 @@ class GitGraphCubit extends Cubit<GitGraphState> {
   bool _refreshQueued = false;
   bool _loadMoreInFlight = false;
 
+  /// 上次整页拉取的查询签名（query|mode|revisionRange）；变化即视为过滤
+  /// 改变，刷新时整页替换而非保留累计分页。
+  String _lastFetchSignature = '';
+
   /// 图查询的 revisionRange：显式分支过滤优先，其次“仅当前分支”（HEAD），
   /// 否则 null（`--all`）。
   String? get _effectiveRevisionRange =>
       state.branchFilter ?? (state.currentOnly ? 'HEAD' : null);
 
   Future<void> setRepoRoot(String root) async {
+    _lastFetchSignature = '';
     emit(GitGraphState(repoRoot: root));
     await refresh();
   }
@@ -270,6 +275,8 @@ class GitGraphCubit extends Cubit<GitGraphState> {
     final dir = state.repoRoot;
     if (dir.isEmpty || isClosed) return;
     try {
+      final signature =
+          '${state.searchQuery}|${state.searchMode.index}|${_effectiveRevisionRange}';
       final rows = await _history.graphRows(
         dir,
         query: state.searchQuery,
@@ -282,12 +289,30 @@ class GitGraphCubit extends Cubit<GitGraphState> {
       final tags = await _history.tags(dir);
       final stashes = await _history.stashList(dir);
       if (isClosed || state.repoRoot != dir) return;
+
+      // 轮询/手动重刷只取第一页；若查询条件未变、本地已分页更深且头提交
+      // 未变，则保留累计行——否则（新提交到达 / 过滤变化 / 首次加载）
+      // 整页替换。
+      var nextRows = rows;
+      var nextHasMore = rows.length == GitHistoryService.initialLoadCommits;
+      final prevRows = state.rows;
+      final headUnchanged = rows.isNotEmpty &&
+          prevRows.isNotEmpty &&
+          _headHashOf(rows) == _headHashOf(prevRows);
+      if (_lastFetchSignature == signature &&
+          headUnchanged &&
+          prevRows.length > rows.length) {
+        nextRows = prevRows;
+        nextHasMore = state.hasMore;
+      }
+      _lastFetchSignature = signature;
+
       final keepSurfacedError = _errorSurfaced;
       _errorSurfaced = false;
       emit(
         state.copyWith(
-          rows: rows,
-          hasMore: rows.length == GitHistoryService.initialLoadCommits,
+          rows: nextRows,
+          hasMore: nextHasMore,
           branches: branches,
           tags: tags,
           stashList: stashes,
@@ -305,6 +330,14 @@ class GitGraphCubit extends Cubit<GitGraphState> {
       appLogger.e('[GitGraph] refresh failed: ${e.message}');
       emit(state.copyWith(errorMessage: e.message));
     }
+  }
+
+  /// 首行（最新提交）的 hash；首行理论上必为 commit，防御 spacer 在前的情况。
+  static String _headHashOf(List<GitGraphRow> rows) {
+    for (final row in rows) {
+      if (row is GitCommitRow) return row.hash;
+    }
+    return '';
   }
 
   Future<void> loadMore() async {

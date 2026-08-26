@@ -65,6 +65,44 @@ void main() {
     await cubit.close();
   });
 
+  test('poll refresh keeps accumulated pagination when head unchanged',
+      () async {
+    final history = _ScriptedHistory(
+      expandToLimit: true,
+      pages: [
+        [graphCommitRow('h1'), graphCommitRow('h2')], // 首屏（扩充到满页）
+        [graphCommitRow('h3'), graphCommitRow('h4')], // loadMore 追加
+        [graphCommitRow('h1'), graphCommitRow('h2')], // 轮询重取第一页（头未变）
+      ],
+    );
+    final cubit = GitGraphCubit(history: history, git: FakeGitForGraph(repoStatus()));
+    await cubit.setRepoRoot('/repo');
+    await cubit.loadMore();
+    expect(cubit.state.rows.length, GitHistoryService.initialLoadCommits + GitHistoryService.loadMoreCommits);
+    await cubit.refresh(); // 模拟后台轮询
+    expect(
+      cubit.state.rows.length,
+      GitHistoryService.initialLoadCommits + GitHistoryService.loadMoreCommits,
+      reason: '轮询不得重置已累计的分页',
+    );
+    expect((cubit.state.rows.last as GitCommitRow).hash, 'h4');
+    expect(cubit.state.hasMore, isTrue);
+    await cubit.close();
+  });
+
+  test('refresh replaces rows when head commit changed', () async {
+    final history = _ScriptedHistory(pages: [
+      [graphCommitRow('h1'), graphCommitRow('h2')],
+      [graphCommitRow('x9'), graphCommitRow('h1')], // 上游来了新提交 → 整页替换
+    ]);
+    final cubit = GitGraphCubit(history: history, git: FakeGitForGraph(repoStatus()));
+    await cubit.setRepoRoot('/repo');
+    await cubit.refresh();
+    expect((cubit.state.rows.first as GitCommitRow).hash, 'x9');
+    expect(cubit.state.rows.length, 2);
+    await cubit.close();
+  });
+
   test('loadMore requests skip=rows.length and appends', () async {
     // fullPages: 首屏与 loadMore 都返回满页，验证 hasMore = 行数 == limit。
     final history = FakeHistoryForGraph(
@@ -209,4 +247,49 @@ void main() {
     // 关闭后再调用不得抛出 emit-after-close 异常。
     cubit.surfaceError('boom');
   });
+}
+
+
+/// 按调用序返回不同页面的 fake：验证分页与轮询刷新的交互。
+class _ScriptedHistory implements GitHistoryService {
+  _ScriptedHistory({required this.pages, this.expandToLimit = false});
+
+  /// 为真时把每页循环填充到请求的 limit（模拟大仓库的满页返回）。
+  final bool expandToLimit;
+
+  /// 每次 `graphRows` 调用按序消耗一页；耗尽后重复最后一页。
+  final List<List<GitGraphRow>> pages;
+  int calls = 0;
+  Map<String, Object?> lastArgs = {};
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
+
+  @override
+  Future<List<GitGraphRow>> graphRows(
+    String dir, {
+    int limit = GitHistoryService.initialLoadCommits,
+    int skip = 0,
+    String query = '',
+    GitSearchMode mode = GitSearchMode.message,
+    String? revisionRange,
+  }) async {
+    lastArgs = {'skip': skip, 'revisionRange': revisionRange};
+    final i = calls < pages.length ? calls : pages.length - 1;
+    calls++;
+    final page = pages[i];
+    if (!expandToLimit) return page;
+    if (page.isEmpty || limit <= 0) return page;
+    // 保持页首为该页 HEAD，其余循环填充至满页。
+    return List<GitGraphRow>.generate(limit, (n) => page[n % page.length]);
+  }
+
+  @override
+  Future<List<GitBranchInfo>> branches(String dir) async => const [];
+
+  @override
+  Future<List<GitTagInfo>> tags(String dir) async => const [];
+
+  @override
+  Future<List<GitStashEntry>> stashList(String dir) async => const [];
 }
