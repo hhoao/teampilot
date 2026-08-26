@@ -198,6 +198,24 @@ void main() {
     expect(gate.consume(newToken, now), isTrue);
   });
 
+  test('updating extra endpoints remints the active offer', () async {
+    final connectAgent = agent(presence: _listeningPresence);
+    await _start(connectAgent);
+    final oldToken = connectAgent.currentOffer!.pairing.token;
+    const endpoint = SshReachabilityEndpoint(
+      kind: SshEndpointKind.extra,
+      host: 'desktop.example.com',
+      port: 2222,
+    );
+
+    await connectAgent.updateExtraEndpoints(const [endpoint]);
+
+    expect(connectAgent.currentOffer!.endpoints, contains(endpoint));
+    expect(connectAgent.currentOffer!.pairing.token, isNot(oldToken));
+    expect(binding.calls, hasLength(1));
+    expect(gate.consume(oldToken, now), isFalse);
+  });
+
   test('valid incoming POST writes the device authorized key', () async {
     final connectAgent = agent(presence: _listeningPresence);
     await _start(connectAgent);

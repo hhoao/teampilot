@@ -27,6 +27,7 @@ void main() {
           },
       stopQrSession: () async => stops += 1,
       regenerateQr: () async => regenerations += 1,
+      updateExtraEndpoints: (_) async {},
     );
     var authorizedKeys =
         'ssh-ed25519 AAAA teampilot-pair device=phone-1 name=Alice_phone\n';
@@ -89,20 +90,84 @@ void main() {
     await cubit.closeQrSession();
     expect(stops, 1);
   });
+
+  test('saving extra endpoints updates the active QR offer', () async {
+    var offer = _offer();
+    final agent = ConnectAgentController(
+      currentOffer: () => offer,
+      startQrSession:
+          ({
+            required advertiseAddress,
+            required username,
+            required displayName,
+            required appDataRoot,
+          }) async {},
+      stopQrSession: () async {},
+      regenerateQr: () async {},
+      updateExtraEndpoints: (endpoints) async {
+        offer = _offer(extraEndpoints: endpoints);
+      },
+    );
+    final cubit = ConnectCubit(
+      agent: agent,
+      probeSshd: () async => const SshdPresenceSnapshot(
+        listening: true,
+        port: 22,
+        fingerprints: ['SHA256:host-key'],
+        enableHint: '',
+      ),
+      authorizedKeys: AuthorizedKeysFile(
+        path: '/home/alice/.ssh/authorized_keys',
+        read: (_) async => '',
+        write: (_, _) async {},
+        chmod: (_, {required mode}) async {},
+      ),
+      settingsStore: ConnectSettingsStore(
+        fs: InMemoryFilesystem(),
+        appDataRoot: '/app-data',
+        generateHostId: () => 'abcdefghijklmnop',
+      ),
+      listNetworkAddresses: () async => const [
+        ConnectNetworkAddress(
+          name: 'Wi-Fi',
+          address: '192.168.1.20',
+          isLoopback: false,
+          isIpv4: true,
+        ),
+      ],
+      username: 'alice',
+      displayName: 'Alice desktop',
+      appDataRoot: '/app-data',
+    );
+    addTearDown(cubit.close);
+    const endpoint = SshReachabilityEndpoint(
+      kind: SshEndpointKind.extra,
+      host: 'desktop.example.com',
+      port: 2222,
+    );
+
+    await cubit.openQrSession();
+    await cubit.saveSettings(extraEndpoints: const [endpoint], relayUrl: '');
+
+    expect(cubit.state.offer!.endpoints, contains(endpoint));
+  });
 }
 
-SshPairingOffer _offer() => SshPairingOffer(
+SshPairingOffer _offer({
+  List<SshReachabilityEndpoint> extraEndpoints = const [],
+}) => SshPairingOffer(
   v: 1,
   hostId: 'abcdefghijklmnop',
   username: 'alice',
   displayName: 'Alice desktop',
   appDataRoot: '/app-data',
-  endpoints: const [
-    SshReachabilityEndpoint(
+  endpoints: [
+    const SshReachabilityEndpoint(
       kind: SshEndpointKind.lan,
       host: '192.168.1.20',
       port: 22,
     ),
+    ...extraEndpoints,
   ],
   hostKeyFingerprints: const ['SHA256:host-key'],
   pairing: const SshPairingSession(

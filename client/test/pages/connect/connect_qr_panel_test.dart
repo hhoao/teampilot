@@ -139,6 +139,7 @@ void main() {
               },
           stopQrSession: () async => stops += 1,
           regenerateQr: () async {},
+          updateExtraEndpoints: (_) async {},
         ),
         probeSshd: () async => _sshd(listening: true),
         authorizedKeys: AuthorizedKeysFile(

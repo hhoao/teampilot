@@ -127,7 +127,7 @@ class ConnectAgent {
   final PairingCertificateProvider _certificateProvider;
   final DateTime Function() _now;
   final StableConnectHostId _stableHostId;
-  final List<SshReachabilityEndpoint> _extraEndpoints;
+  List<SshReachabilityEndpoint> _extraEndpoints;
   final ConnectRelayRegistration? _relayRegistration;
   final Lock _lifecycleLock = Lock();
 
@@ -221,6 +221,15 @@ class ConnectAgent {
   }
 
   Future<void> regenerateQr() => _lifecycleLock.synchronized(_regenerateQr);
+
+  Future<void> updateExtraEndpoints(
+    List<SshReachabilityEndpoint> extraEndpoints,
+  ) => _lifecycleLock.synchronized(() async {
+    _extraEndpoints = List.unmodifiable(extraEndpoints);
+    if (_session != null && _binding != null) {
+      await _regenerateQr();
+    }
+  });
 
   Future<void> _regenerateQr() async {
     final session = _session;

@@ -24,10 +24,13 @@ class ConnectAgentController {
     required ConnectAgentStartQrSession startQrSession,
     required Future<void> Function() stopQrSession,
     required Future<void> Function() regenerateQr,
+    required Future<void> Function(List<SshReachabilityEndpoint>)
+    updateExtraEndpoints,
   }) : _currentOffer = currentOffer,
        _startQrSession = startQrSession,
        _stopQrSession = stopQrSession,
-       _regenerateQr = regenerateQr;
+       _regenerateQr = regenerateQr,
+       _updateExtraEndpoints = updateExtraEndpoints;
 
   factory ConnectAgentController.fromAgent(ConnectAgent agent) {
     return ConnectAgentController(
@@ -35,6 +38,7 @@ class ConnectAgentController {
       startQrSession: agent.startQrSession,
       stopQrSession: agent.stopQrSession,
       regenerateQr: agent.regenerateQr,
+      updateExtraEndpoints: agent.updateExtraEndpoints,
     );
   }
 
@@ -42,6 +46,8 @@ class ConnectAgentController {
   final ConnectAgentStartQrSession _startQrSession;
   final Future<void> Function() _stopQrSession;
   final Future<void> Function() _regenerateQr;
+  final Future<void> Function(List<SshReachabilityEndpoint>)
+  _updateExtraEndpoints;
 
   SshPairingOffer? get currentOffer => _currentOffer();
 
@@ -60,6 +66,10 @@ class ConnectAgentController {
   Future<void> stopQrSession() => _stopQrSession();
 
   Future<void> regenerateQr() => _regenerateQr();
+
+  Future<void> updateExtraEndpoints(
+    List<SshReachabilityEndpoint> extraEndpoints,
+  ) => _updateExtraEndpoints(extraEndpoints);
 }
 
 class ConnectNetworkAddress extends Equatable {
@@ -320,9 +330,13 @@ class ConnectCubit extends Cubit<ConnectState> {
         extraEndpoints: extraEndpoints,
         relayUrl: relayUrl,
       );
+      await _agent.updateExtraEndpoints(extraEndpoints);
       if (!isClosed) {
+        final offer = _agent.currentOffer;
         emit(
           state.copyWith(
+            offer: offer,
+            clearOffer: offer == null,
             extraEndpoints: List.unmodifiable(extraEndpoints),
             relayUrl: relayUrl.trim(),
             saving: false,
