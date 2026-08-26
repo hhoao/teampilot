@@ -29,21 +29,24 @@ final class TerminalFullscreenInputChannel {
 
   Future<void> _ptySubmitChain = Future<void>.value();
 
-  Future<void> _writeChunked(String text, {bool Function()? canExecute}) async {
+  Future<TerminalInputCommandResult> _writeChunked(
+    String text, {
+    bool Function()? canExecute,
+  }) async {
     final fence = canExecute ?? _always;
     if (text.length <= ptyWriteChunkChars) {
-      await _commands.enqueue(
+      return _commands.enqueue(
         TerminalInputCommand.bytes(text, canExecute: fence),
       );
-      return;
     }
     for (var i = 0; i < text.length; i += ptyWriteChunkChars) {
       final end = math.min(i + ptyWriteChunkChars, text.length);
       final result = await _commands.enqueue(
         TerminalInputCommand.bytes(text.substring(i, end), canExecute: fence),
       );
-      if (result == TerminalInputCommandResult.dropped) return;
+      if (result == TerminalInputCommandResult.dropped) return result;
     }
+    return TerminalInputCommandResult.written;
   }
 
   Future<void> pasteText(String text, {bool Function()? canExecute}) {
@@ -83,7 +86,10 @@ final class TerminalFullscreenInputChannel {
     return next;
   }
 
-  Future<void> submitFullScreenInput(
+  /// Writes the bracketed-paste payload then a standalone CR. Reports
+  /// [TerminalInputCommandResult.dropped] unless every write cleared its
+  /// fence, so callers can distinguish a real submission from a dropped one.
+  Future<TerminalInputCommandResult> submitFullScreenInput(
     String text, {
     Duration? pasteSettleDelay,
     required Duration defaultSettleDelay,
@@ -97,14 +103,22 @@ final class TerminalFullscreenInputChannel {
       'settleMs=${delay.inMilliseconds}',
     );
     final next = _ptySubmitChain.then((_) async {
-      await _writeChunked('\x1B[200~$text\x1B[201~', canExecute: canExecute);
+      final pasteResult =
+          await _writeChunked('\x1b[200~$text\x1b[201~', canExecute: canExecute);
       await Future<void>.delayed(delay);
       appLogger.d('[terminal] fullscreen-inject cr');
-      await _commands.enqueue(
+      final crResult = await _commands.enqueue(
         TerminalInputCommand.bytes('\r', canExecute: canExecute ?? _always),
       );
+      if (pasteResult == TerminalInputCommandResult.dropped ||
+          crResult == TerminalInputCommandResult.dropped) {
+        return TerminalInputCommandResult.dropped;
+      }
+      return TerminalInputCommandResult.written;
     });
-    _ptySubmitChain = next.catchError((_) {});
+    _ptySubmitChain = next.catchError(
+      (_) => TerminalInputCommandResult.dropped,
+    );
     return next;
   }
 

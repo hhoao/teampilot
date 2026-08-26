@@ -13,6 +13,7 @@ import '../../services/prompt_delivery/prompt_delivery.dart';
 import '../../services/prompt_delivery/prompt_delivery_coordinator.dart';
 import '../../services/prompt_delivery/prompt_delivery_store.dart';
 import '../../services/terminal/session_member_cli_resolver.dart';
+import '../../services/terminal/terminal_input_command_queue.dart';
 import '../../services/terminal/terminal_session.dart';
 import '../../utils/logging/logger.dart';
 import 'chat_session_shell_factory.dart';
@@ -58,6 +59,7 @@ final class TabMemberPtyDelivery {
   final Map<String, DateTime> _lastBootGateNudge = {};
   final Map<String, FullscreenInputSurfaceWatch> _surfaceWatches = {};
   final Map<String, String> _directDeliveryBySeat = {};
+  final Map<String, int> _directEpochBySeat = {};
   final Set<String> _directTurnLatched = {};
 
   TeamBus? busForSession(String sessionId) =>
@@ -119,6 +121,7 @@ final class TabMemberPtyDelivery {
 
   void abortMemberInject(String sessionId, String memberId) {
     final key = _seatKey(sessionId, memberId);
+    _directEpochBySeat.update(key, (value) => value + 1, ifAbsent: () => 1);
     final directDelivery = _directDeliveryBySeat.remove(key);
     if (directDelivery != null) {
       _promptDeliveries.invalidateSubmittedDelivery(directDelivery);
@@ -252,7 +255,8 @@ final class TabMemberPtyDelivery {
   /// the member prompt (compose landing, automation, first prompt).
   ///
   /// Returns the mailbox message id when routed via TeamBus, or the durable
-  /// prompt-delivery id when [directToPty] is true.
+  /// prompt-delivery id when [directToPty] is true. Returns `null` when the
+  /// direct delivery was interrupted before it could be issued.
   /// When [directToPty] is false and no bus is installed, returns `null`
   /// without falling back to PTY inject (caller must not treat that as success).
   Future<String?> deliverUserCommandToMember(
@@ -269,6 +273,11 @@ final class TabMemberPtyDelivery {
       final id = bus.deliverUserCommand(memberId, message);
       return id.isEmpty ? null : id;
     }
+    final key = _seatKey(sessionId, memberId);
+    // Claimed before the first await so an interrupt racing record creation is
+    // observable even though no delivery id is registered for the seat yet.
+    final epoch = (_directEpochBySeat[key] ?? 0) + 1;
+    _directEpochBySeat[key] = epoch;
     final delivery = await _promptDeliveries.submit(
       PromptDeliveryRequest(
         seat: RuntimeSeatKey(sessionId: sessionId, memberId: memberId),
@@ -276,10 +285,14 @@ final class TabMemberPtyDelivery {
         text: message,
       ),
     );
-    final key = _seatKey(sessionId, memberId);
+    if (_directEpochBySeat[key] != epoch) {
+      await _promptDeliveries.failBeforeSubmit(delivery.id);
+      return null;
+    }
     _directDeliveryBySeat[key] = delivery.id;
-    await _promptDeliveries.issueSubmit(delivery.id);
+    final result = await _promptDeliveries.issueSubmit(delivery.id);
     if (_directDeliveryBySeat[key] == delivery.id &&
+        result == PromptSubmissionResult.submitted &&
         _directTurnLatched.add(delivery.id)) {
       _markMemberTurnStartedOnSubmitSuccess(sessionId, memberId);
     }
@@ -480,14 +493,14 @@ final class TabMemberPtyDelivery {
 PromptDeliveryCoordinator _tabPromptDeliveries(ChatTabStore tabStore) =>
     PromptDeliveryCoordinator(
       store: MemoryPromptDeliveryStore(),
-      commands: _TabPromptDeliveryCommands(tabStore),
+      commands: TabPromptDeliveryCommands(tabStore),
     );
 
 /// Transitional terminal adapter until app-scoped lifecycle wiring supplies a
 /// persistent coordinator. Its writes still flow through the fenced terminal
 /// command queue and are controlled by the coordinator's delivery id.
-final class _TabPromptDeliveryCommands implements PromptDeliveryCommands {
-  const _TabPromptDeliveryCommands(this._tabStore);
+final class TabPromptDeliveryCommands implements PromptDeliveryCommands {
+  const TabPromptDeliveryCommands(this._tabStore);
 
   final ChatTabStore _tabStore;
 
@@ -498,17 +511,23 @@ final class _TabPromptDeliveryCommands implements PromptDeliveryCommands {
   }) async {}
 
   @override
-  Future<void> submit(
+  Future<PromptSubmissionResult> submit(
     PromptDelivery delivery, {
     required bool Function() canExecute,
   }) async {
     final shell = _tabStore
         .openTabBySessionId(delivery.seat.sessionId)
         ?.memberShells[delivery.seat.memberId];
-    if (shell == null) return;
-    await shell.input.submitFullScreenInput(
+    if (shell == null) return PromptSubmissionResult.failed;
+    final result = await shell.input.submitFullScreenInput(
       delivery.text,
       canExecute: canExecute,
     );
+    switch (result) {
+      case TerminalInputCommandResult.written:
+        return PromptSubmissionResult.submitted;
+      case TerminalInputCommandResult.dropped:
+        return PromptSubmissionResult.dropped;
+    }
   }
 }

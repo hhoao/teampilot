@@ -62,7 +62,7 @@ final class TerminalInputController implements TerminalTextSink {
   void writeln(String text) =>
       _fullscreen.writeln(text, onTurnStart: _onTurnStart);
 
-  Future<void> submitFullScreenInput(
+  Future<TerminalInputCommandResult> submitFullScreenInput(
     String text, {
     Duration? pasteSettleDelay,
     bool Function()? canExecute,

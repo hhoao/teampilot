@@ -196,11 +196,12 @@ final class _FakePromptDeliveryCommands implements PromptDeliveryCommands {
   }
 
   @override
-  Future<void> submit(
+  Future<PromptSubmissionResult> submit(
     PromptDelivery delivery, {
     required bool Function() canExecute,
   }) async {
     _submitFences.add(canExecute);
     writes.add('submit:${delivery.id}');
+    return PromptSubmissionResult.submitted;
   }
 }

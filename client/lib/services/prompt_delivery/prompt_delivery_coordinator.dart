@@ -5,6 +5,18 @@ import '../agent_runtime/runtime_event.dart';
 import 'prompt_delivery.dart';
 import 'prompt_delivery_store.dart';
 
+/// Outcome one terminal adapter reports for a single submit attempt.
+enum PromptSubmissionResult {
+  /// The paste and its terminating CR were both written to the PTY.
+  submitted,
+
+  /// The delivery fence dropped the command before or during the write.
+  dropped,
+
+  /// No terminal surface existed for the seat, so nothing was written.
+  failed,
+}
+
 /// The write boundary consumed by terminal adapters. The coordinator persists
 /// state before invoking either operation and never invokes it on restore.
 abstract interface class PromptDeliveryCommands {
@@ -13,7 +25,7 @@ abstract interface class PromptDeliveryCommands {
     required bool Function() canExecute,
   });
 
-  Future<void> submit(
+  Future<PromptSubmissionResult> submit(
     PromptDelivery delivery, {
     required bool Function() canExecute,
   });
@@ -95,7 +107,9 @@ final class PromptDeliveryCoordinator {
   }
 
   /// Persists `submitIssued` before asking the terminal adapter to issue CR.
-  Future<PromptDelivery> issueSubmit(String id) async {
+  /// Returns the adapter's explicit write outcome; only `submitted` proves a
+  /// PTY submission happened.
+  Future<PromptSubmissionResult> issueSubmit(String id) async {
     final delivery = await _update(
       id,
       allowed: const {
@@ -105,11 +119,10 @@ final class PromptDeliveryCoordinator {
       },
       next: PromptDeliveryState.submitIssued,
     );
-    await commands.submit(
+    return commands.submit(
       delivery,
       canExecute: () => canExecute(id, PromptDeliveryState.submitIssued),
     );
-    return delivery;
   }
 
   /// The synchronous fence terminal queues consult immediately before a PTY

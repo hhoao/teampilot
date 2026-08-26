@@ -35,7 +35,7 @@ void main() {
 
     expect(id, isNotEmpty);
     expect(
-      (harness.pty as _RecordingPromptCommands).submittedPrompts,
+      (harness.pty! as _RecordingPromptCommands).submittedPrompts,
       ['inspect this'],
     );
   });
@@ -82,6 +82,86 @@ void main() {
     expect(shell.session.userTurnActive, isTrue);
     expect(afterTurn, ['s:m']);
   });
+
+  test('interrupt racing delivery creation prevents any direct PTY write',
+      () async {
+    final commands = _RecordingPromptCommands();
+    final store = _GatedCreationStore();
+    final harness = _DeliveryHarness.withCommands(commands, store: store);
+
+    final send = harness.delivery.deliverUserCommandToMember(
+      's',
+      'm',
+      'inspect this',
+      directToPty: true,
+    );
+    await store.started.future;
+    // The interrupt lands while creation is still awaiting, before any
+    // delivery id is registered for the seat.
+    harness.delivery.abortMemberInject('s', 'm');
+    store.release.complete();
+
+    final id = await send;
+
+    expect(id, isNull);
+    expect(commands.submittedPrompts, isEmpty);
+    final records = await store.recordsFor(
+      const RuntimeSeatKey(sessionId: 's', memberId: 'm'),
+    );
+    expect(records.single.state, PromptDeliveryState.failed);
+  });
+
+  test('no-shell direct submit does not latch the operator turn', () async {
+    final afterTurn = <String>[];
+    final harness = _DeliveryHarness.shellLess(
+      onAfterTurnLatched: (sessionId, memberId) {
+        afterTurn.add('$sessionId:$memberId');
+      },
+    );
+
+    await harness.delivery.deliverUserCommandToMember(
+      's',
+      'm',
+      'inspect this',
+      directToPty: true,
+    );
+
+    expect(afterTurn, isEmpty);
+  });
+
+  test('fence-dropped direct submit does not latch the operator turn',
+      () async {
+    final shell = await ConnectedRecordingShell.connect();
+    addTearDown(shell.dispose);
+    final afterTurn = <String>[];
+    final harness = _DeliveryHarness.connectedReal(
+      shell: shell,
+      onAfterTurnLatched: (sessionId, memberId) {
+        afterTurn.add('$sessionId:$memberId');
+      },
+    );
+
+    final send = harness.delivery.deliverUserCommandToMember(
+      's',
+      'm',
+      'inspect this',
+      directToPty: true,
+    );
+    const pasteMarker = '\x1b[200~';
+    final deadline = DateTime.now().add(const Duration(seconds: 5));
+    while (!shell.ptyInputJoined.contains(pasteMarker)) {
+      if (DateTime.now().isAfter(deadline)) {
+        fail('paste never reached the PTY');
+      }
+      await Future<void>.delayed(const Duration(milliseconds: 1));
+    }
+    // Confirming mid-submit drops the pending CR through the delivery fence.
+    await harness.publishCodexPromptSubmitted('inspect this');
+    await send;
+
+    expect(afterTurn, isEmpty);
+    expect(shell.ptyInputJoined.endsWith('\r'), isFalse);
+  });
 }
 
 final class _DeliveryHarness {
@@ -90,9 +170,12 @@ final class _DeliveryHarness {
     return _DeliveryHarness.withCommands(pty);
   }
 
-  factory _DeliveryHarness.withCommands(PromptDeliveryCommands pty) {
+  factory _DeliveryHarness.withCommands(
+    PromptDeliveryCommands pty, {
+    PromptDeliveryStore? store,
+  }) {
     final coordinator = PromptDeliveryCoordinator(
-      store: MemoryPromptDeliveryStore(),
+      store: store ?? MemoryPromptDeliveryStore(),
       commands: pty,
     );
     final tabStore = ChatTabStore();
@@ -117,19 +200,7 @@ final class _DeliveryHarness {
     required PromptDeliveryCommands commands,
     required void Function(String sessionId, String memberId) onAfterTurnLatched,
   }) {
-    final tabStore = ChatTabStore();
-    final tab = ChatTab(
-      info: const ChatTabInfo(id: 's', title: 'S', subtitle: ''),
-      cliTeamName: '',
-    )..persistedSession = AppSession(
-        sessionId: 's',
-        workspaceId: 'workspace',
-        sessionTeam: '',
-        cli: CliTool.codex,
-        createdAt: 0,
-      );
-    tab.memberShells['m'] = shell.session;
-    tabStore.registerSession(tab);
+    final tabStore = _connectedTabStore(shell);
     final coordinator = PromptDeliveryCoordinator(
       store: MemoryPromptDeliveryStore(),
       commands: commands,
@@ -151,14 +222,77 @@ final class _DeliveryHarness {
     return _DeliveryHarness._(coordinator, commands, delivery);
   }
 
+  factory _DeliveryHarness.connectedReal({
+    required ConnectedRecordingShell shell,
+    required void Function(String sessionId, String memberId) onAfterTurnLatched,
+  }) {
+    final tabStore = _connectedTabStore(shell);
+    final coordinator = PromptDeliveryCoordinator(
+      store: MemoryPromptDeliveryStore(),
+      commands: TabPromptDeliveryCommands(tabStore),
+    );
+    final delivery = TabMemberPtyDelivery(
+      tabStore: tabStore,
+      shellFactory: ChatSessionShellFactory(executableResolver: () => 'unused'),
+      globalPresets: () => const [],
+      activeTeam: () => null,
+      isClosed: () => false,
+      coordinationFactory: TabMemberCoordinationFactory(
+        tabStore: tabStore,
+        globalPresets: () => const [],
+        activeTeam: () => null,
+      ),
+      promptDeliveries: coordinator,
+      onAfterTurnLatched: onAfterTurnLatched,
+    );
+    return _DeliveryHarness._(coordinator, coordinator.commands, delivery);
+  }
+
+  factory _DeliveryHarness.shellLess({
+    required void Function(String sessionId, String memberId) onAfterTurnLatched,
+  }) {
+    final tabStore = ChatTabStore();
+    final delivery = TabMemberPtyDelivery(
+      tabStore: tabStore,
+      shellFactory: ChatSessionShellFactory(executableResolver: () => 'unused'),
+      globalPresets: () => const [],
+      activeTeam: () => null,
+      isClosed: () => false,
+      coordinationFactory: TabMemberCoordinationFactory(
+        tabStore: tabStore,
+        globalPresets: () => const [],
+        activeTeam: () => null,
+      ),
+      onAfterTurnLatched: onAfterTurnLatched,
+    );
+    return _DeliveryHarness._(null, null, delivery);
+  }
+
+  static ChatTabStore _connectedTabStore(ConnectedRecordingShell shell) {
+    final tabStore = ChatTabStore();
+    final tab = ChatTab(
+      info: const ChatTabInfo(id: 's', title: 'S', subtitle: ''),
+      cliTeamName: '',
+    )..persistedSession = AppSession(
+        sessionId: 's',
+        workspaceId: 'workspace',
+        sessionTeam: '',
+        cli: CliTool.codex,
+        createdAt: 0,
+      );
+    tab.memberShells['m'] = shell.session;
+    tabStore.registerSession(tab);
+    return tabStore;
+  }
+
   _DeliveryHarness._(this.coordinator, this.pty, this.delivery);
 
-  final PromptDeliveryCommands pty;
-  final PromptDeliveryCoordinator coordinator;
+  final PromptDeliveryCoordinator? coordinator;
+  final PromptDeliveryCommands? pty;
   final TabMemberPtyDelivery delivery;
 
   Future<void> publishCodexPromptSubmitted(String prompt) =>
-      coordinator.onRuntimeEvent(
+      coordinator!.onRuntimeEvent(
         RuntimeEventEnvelope(
           seat: const RuntimeSeatKey(sessionId: 's', memberId: 'm'),
           cli: CliTool.codex,
@@ -186,15 +320,18 @@ final class _BlockedQueuedPromptCommands implements PromptDeliveryCommands {
   }) async {}
 
   @override
-  Future<void> submit(
+  Future<PromptSubmissionResult> submit(
     PromptDelivery delivery, {
     required bool Function() canExecute,
   }) async {
     submitStarted.complete();
     await release.future;
-    await _queue.enqueue(
+    final result = await _queue.enqueue(
       TerminalInputCommand.bytes(delivery.text, canExecute: canExecute),
     );
+    return result == TerminalInputCommandResult.written
+        ? PromptSubmissionResult.submitted
+        : PromptSubmissionResult.dropped;
   }
 }
 
@@ -208,10 +345,43 @@ final class _RecordingPromptCommands implements PromptDeliveryCommands {
   }) async {}
 
   @override
-  Future<void> submit(
+  Future<PromptSubmissionResult> submit(
     PromptDelivery delivery, {
     required bool Function() canExecute,
   }) async {
-    if (canExecute()) submittedPrompts.add(delivery.text);
+    if (!canExecute()) return PromptSubmissionResult.dropped;
+    submittedPrompts.add(delivery.text);
+    return PromptSubmissionResult.submitted;
   }
+}
+
+final class _GatedCreationStore implements PromptDeliveryStore {
+  _GatedCreationStore() : _inner = MemoryPromptDeliveryStore();
+
+  final MemoryPromptDeliveryStore _inner;
+  final started = Completer<void>();
+  final release = Completer<void>();
+
+  Future<List<PromptDelivery>> recordsFor(RuntimeSeatKey seat) =>
+      _inner.forSeat(seat);
+
+  @override
+  Future<List<PromptDelivery>> activeFor(RuntimeSeatKey seat) =>
+      _inner.activeFor(seat);
+
+  @override
+  Future<PromptDelivery?> read(String id) => _inner.read(id);
+
+  @override
+  Future<void> save(PromptDelivery delivery) async {
+    if (!started.isCompleted) {
+      started.complete();
+      await release.future;
+    }
+    await _inner.save(delivery);
+  }
+
+  @override
+  Future<List<PromptDelivery>> forSeat(RuntimeSeatKey seat) =>
+      _inner.forSeat(seat);
 }
