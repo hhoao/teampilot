@@ -63,12 +63,21 @@ class SessionGroupsCubit extends Cubit<SessionGroupsState> {
   Future<void>? _pendingPersist;
 
   /// Loads (or switches to) [workspaceId]. A later load supersedes an earlier
-  /// in-flight one via generation check.
+  /// in-flight one via generation check. IO failures degrade to an empty
+  /// ready state (same semantics as a corrupt file) instead of escaping as
+  /// unhandled errors and wedging the cubit in `loading`.
   Future<void> load(String workspaceId) async {
     final id = workspaceId.trim();
     final generation = ++_generation;
     emit(SessionGroupsState(status: SessionGroupsStatus.loading, workspaceId: id));
-    final file = await _repository.load(id);
+    SessionGroupsFile file;
+    try {
+      file = await _repository.load(id);
+    } on Object {
+      if (generation != _generation || isClosed) return;
+      emit(SessionGroupsState(status: SessionGroupsStatus.ready, workspaceId: id));
+      return;
+    }
     if (generation != _generation || isClosed) return;
     emit(
       SessionGroupsState(status: SessionGroupsStatus.ready, workspaceId: id, groups: file.groups),
@@ -94,11 +103,12 @@ class SessionGroupsCubit extends Cubit<SessionGroupsState> {
     );
   });
 
-  void deleteGroup(String groupId) => _mutate(
-    (state) => state.copyWith(
+  void deleteGroup(String groupId) => _mutate((state) {
+    if (!state.ready) return state;
+    return state.copyWith(
       groups: state.groups.where((group) => group.id != groupId).toList(),
-    ),
-  );
+    );
+  });
 
   void addSession(String groupId, String sessionId) =>
       setMembership(groupId, sessionId, member: true);
@@ -155,22 +165,23 @@ class SessionGroupsCubit extends Cubit<SessionGroupsState> {
 
   Future<void> _persist(SessionGroupsState next) async {
     var groups = next.groups;
-    final known = knownSessionIds?.call();
-    if (known != null && known.isNotEmpty) {
-      groups = [
-        for (final group in groups)
-          group.copyWith(
-            sessionIds: [
-              for (final id in group.sessionIds)
-                if (known.contains(id)) id,
-            ],
-          ),
-      ];
-    }
     try {
+      final known = knownSessionIds?.call();
+      if (known != null && known.isNotEmpty) {
+        groups = [
+          for (final group in groups)
+            group.copyWith(
+              sessionIds: [
+                for (final id in group.sessionIds)
+                  if (known.contains(id)) id,
+              ],
+            ),
+        ];
+      }
       await _repository.save(next.workspaceId, SessionGroupsFile(groups: groups));
     } on Object {
-      // Keep the optimistic state; the next mutation retries the save.
+      // Callback or IO failures keep the optimistic state; the next mutation
+      // retries the save.
     }
   }
 }

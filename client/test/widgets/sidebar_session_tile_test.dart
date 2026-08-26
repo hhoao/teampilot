@@ -373,7 +373,7 @@ void main() {
     await _openContextMenu(tester);
     expect(find.text('待办'), findsOneWidget);
     expect(find.text('Review'), findsOneWidget);
-    // sess-1 already in g2 → check-box icon present twice (leading icons).
+    // sess-1 already belongs to g2 → exactly one checked group entry.
     expect(
       find.byIcon(Icons.check_box_outlined),
       findsOneWidget,

@@ -4,10 +4,12 @@ import '../models/session_group.dart';
 import '../services/io/filesystem.dart';
 import '../services/storage/app_storage.dart';
 import '../services/storage/workspace_layout.dart';
+import '../utils/logging/logger_utils.dart';
 
 /// Reads and writes `{workspaceDir}/session-groups.json` — manual sidebar
 /// session groups for one workspace. Corrupt or missing files decode to an
-/// empty document; the next save rebuilds the file.
+/// empty document (corruption is logged as a warning); the next save rebuilds
+/// the file.
 class SessionGroupRepository {
   SessionGroupRepository({Filesystem? fs, WorkspaceLayout? layout})
     : _fs = fs ?? AppStorage.fs,
@@ -29,7 +31,32 @@ class SessionGroupRepository {
     if (raw == null || raw.trim().isEmpty) {
       return _cache[id] = const SessionGroupsFile();
     }
-    return _cache[id] = SessionGroupsFile.fromRawJson(raw);
+    final decoded = _decodeTolerantly(id, raw);
+    return _cache[id] = decoded ?? const SessionGroupsFile();
+  }
+
+  /// Best-effort decode; logs and returns null when the document is corrupt
+  /// so the caller starts from (and later rewrites) an empty document.
+  SessionGroupsFile? _decodeTolerantly(String workspaceId, String raw) {
+    Object? decoded;
+    Object? failure;
+    try {
+      decoded = jsonDecode(raw);
+    } on Object catch (error) {
+      failure = error;
+    }
+    if (failure == null && decoded is! Map) {
+      failure = 'unexpected ${decoded.runtimeType} payload';
+    }
+    if (failure != null) {
+      AppLogger.instance.w(
+        'Corrupt session-groups.json for workspace "$workspaceId" ($failure); '
+        'starting from an empty document.',
+        error: failure,
+      );
+      return null;
+    }
+    return SessionGroupsFile.fromJson((decoded as Map).cast<String, Object?>());
   }
 
   Future<void> save(String workspaceId, SessionGroupsFile file) async {
