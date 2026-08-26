@@ -399,16 +399,26 @@ String? _optionalAttr(String? value) {
   return value;
 }
 
-/// Raw HTML tag shape (`<div>`, `</div>`, `<br/>`, `<!-- c -->`) as it appears
-/// inside literal text nodes — the markdown parser leaves inline tags as plain
-/// text instead of producing [md.Element]s.
+/// Embedded raw-HTML tag shape (`<div>`, `</div>`, `<br/>`) inside literal text.
+///
+/// The markdown parser keeps inline tags as plain [md.Text] instead of
+/// producing [md.Element]s, so they survive only as tag-shaped substrings.
+/// Comments and declarations (`<!-- c -->`) do not match — their `<` is not
+/// followed by a letter — and are only caught when they lead the whole region.
 final RegExp _htmlTagPattern = RegExp(r'</?[a-zA-Z][^>]*>');
 
-/// Whether [text] carries raw HTML markup: a leading tag region or any
-/// embedded `<tag>` region.
+/// Whether [text] carries raw HTML markup: either an HTML *region* (leading
+/// `<…>`, e.g. block-level markup kept as text) or any embedded `<tag>` shape
+/// ([_htmlTagPattern]).
+///
+/// Applied to every demotion path: [_hasUnsupportedInline] delegates here, so
+/// prose embedding a `<tag>` shape demotes its whole region to [HtmlBlock]
+/// rather than dropping or escaping the markup (accepted spec trade-off:
+/// rendered markup beats literal source text). Comparison-shaped prose such as
+/// `5 < 6 and 3 > 2` does not match because no letter follows `<`.
 bool _looksLikeHtml(String text) {
   final trimmed = text.trimLeft();
-  return trimmed.startsWith('<') && trimmed.contains('>') ||
+  return (trimmed.startsWith('<') && trimmed.contains('>')) ||
       _htmlTagPattern.hasMatch(trimmed);
 }
 
