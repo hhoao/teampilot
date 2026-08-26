@@ -179,6 +179,23 @@ final class PromptDeliveryCoordinator {
     next: PromptDeliveryState.submittedUnknown,
   );
 
+  /// Immediately drops the live submit fence, then persists the unresolved
+  /// outcome. This is used by an interrupt that races a queued PTY write: the
+  /// queue must observe the invalidation synchronously, while the durable
+  /// transition still records that a prior CR may already have reached the
+  /// process.
+  void invalidateSubmittedDelivery(String id) {
+    if (_liveStates[id] != PromptDeliveryState.submitIssued) return;
+    _liveStates[id] = PromptDeliveryState.submittedUnknown;
+    unawaited(
+      _update(
+        id,
+        allowed: const {PromptDeliveryState.submitIssued},
+        next: PromptDeliveryState.submittedUnknown,
+      ).then<void>((_) {}, onError: (Object _, StackTrace __) {}),
+    );
+  }
+
   Future<void> _confirm(PromptDelivery delivery) async {
     await _transition(delivery, PromptDeliveryState.confirmed);
   }

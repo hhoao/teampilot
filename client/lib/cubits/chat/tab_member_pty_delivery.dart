@@ -57,6 +57,8 @@ final class TabMemberPtyDelivery {
   final PromptDeliveryCoordinator _promptDeliveries;
   final Map<String, DateTime> _lastBootGateNudge = {};
   final Map<String, FullscreenInputSurfaceWatch> _surfaceWatches = {};
+  final Map<String, String> _directDeliveryBySeat = {};
+  final Set<String> _directTurnLatched = {};
 
   TeamBus? busForSession(String sessionId) =>
       _tabStore.openTabBySessionId(sessionId)?.teamBus;
@@ -116,6 +118,11 @@ final class TabMemberPtyDelivery {
   }
 
   void abortMemberInject(String sessionId, String memberId) {
+    final key = _seatKey(sessionId, memberId);
+    final directDelivery = _directDeliveryBySeat.remove(key);
+    if (directDelivery != null) {
+      _promptDeliveries.invalidateSubmittedDelivery(directDelivery);
+    }
     _ptyInject.requestAbort(sessionId, memberId);
     if (!_ptyInject.isDelivering(sessionId, memberId)) {
       _ptyInject.clearAbort(sessionId, memberId);
@@ -269,7 +276,13 @@ final class TabMemberPtyDelivery {
         text: message,
       ),
     );
+    final key = _seatKey(sessionId, memberId);
+    _directDeliveryBySeat[key] = delivery.id;
     await _promptDeliveries.issueSubmit(delivery.id);
+    if (_directDeliveryBySeat[key] == delivery.id &&
+        _directTurnLatched.add(delivery.id)) {
+      _markMemberTurnStartedOnSubmitSuccess(sessionId, memberId);
+    }
     return delivery.id;
   }
 
@@ -403,6 +416,9 @@ final class TabMemberPtyDelivery {
 
   static bool _isMailDoorbellText(String text) =>
       text == TeamBus.doorbellNotice;
+
+  static String _seatKey(String sessionId, String memberId) =>
+      '$sessionId\u0000$memberId';
 
   /// 门铃投递的 boot 门控:全屏 TUI 未就绪时推迟到重试 tick,避免盲粘启动屏。
   /// 返回 true 表示已推迟(调用方应 return)。只对邮件门铃生效——operator 直投
