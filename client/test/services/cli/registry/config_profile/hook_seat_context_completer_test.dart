@@ -23,7 +23,7 @@ void main() {
       endpoint: endpoint,
       memberId: 'm1',
     );
-    expect(entries, hasLength(7));
+    expect(entries, hasLength(9));
     expect(entries.map((e) => e.event), [
       HookEvent.permissionRequest,
       HookEvent.preToolUse,
@@ -32,6 +32,8 @@ void main() {
       HookEvent.stop,
       HookEvent.stopFailure,
       HookEvent.userPromptSubmit,
+      HookEvent.subagentStart,
+      HookEvent.subagentStop,
     ]);
     const matcherEvents = {
       HookEvent.permissionRequest,
@@ -50,12 +52,13 @@ void main() {
       );
       final http = entry.action as HttpHookAction;
       // URL 事件名与现有 agent-status 一致（PascalCase 原生名），
-      // 保证 per-event URL 去重身份与 hook-gate 兼容。
-      final native = HookEventCapability.nativeEvent(
-        entry.event,
-        CliTool.claude,
-      );
-      expect(http.url, contains('event=$native'));
+      // 保证 per-event URL 去重身份与 hook-gate 兼容。claude matrix 无条目的
+      // 事件（codex 独有 SubagentStart）回退到规范 PascalCase 名。
+      final urlName = switch (entry.event) {
+        HookEvent.subagentStart => 'SubagentStart',
+        _ => HookEventCapability.nativeEvent(entry.event, CliTool.claude),
+      };
+      expect(http.url, contains('event=$urlName'));
       expect(http.headers['X-Member'], 'm1');
     }
   });

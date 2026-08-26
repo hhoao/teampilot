@@ -656,5 +656,77 @@ void main() {
         reason: 'simple mode only lights working after user send',
       );
     });
+
+    test('parallel child activity keeps the parent session working', () async {
+      final workspace = await repo.createWorkspace([
+        WorkspaceFolder(path: '/tmp'),
+      ]);
+      final session = (await repo.createSession(workspace.workspaceId)).session;
+      await cubit.loadWorkspaceData(repo);
+
+      await cubit.requestOpenSession(
+        SessionOpenRequest(
+          session: session,
+          workspace: workspace,
+          repo: repo,
+          connectImmediately: false,
+        ),
+      );
+      await drainPendingAsyncWork();
+
+      // Codex delegates to two concurrent subagents; a PTY-quiet delegation
+      // must keep the parent seat working via agent-status hooks alone.
+      void lifecycle(String name, String id) => attention.applyEvent(
+        sessionId: session.sessionId,
+        memberId: 'codex-seat',
+        event: AgentStatusEvent(
+          state: AgentSeatAttention.working,
+          hookEventName: name,
+          toolAgentId: id,
+        ),
+        skipPermissions: true,
+      );
+
+      lifecycle('SubagentStart', 'a');
+      lifecycle('SubagentStart', 'b');
+      await drainPendingAsyncWork();
+      expect(
+        cubit.state.workingSessionIds,
+        contains(session.sessionId),
+        reason: 'delegated children light the session without PTY bytes',
+      );
+
+      attention.applyEvent(
+        sessionId: session.sessionId,
+        memberId: 'codex-seat',
+        event: const AgentStatusEvent(
+          state: AgentSeatAttention.done,
+          hookEventName: 'Stop',
+        ),
+        skipPermissions: true,
+      );
+      await drainPendingAsyncWork();
+      expect(
+        cubit.state.workingSessionIds,
+        contains(session.sessionId),
+        reason: 'parent Stop waits while both children still run',
+      );
+
+      lifecycle('SubagentStop', 'a');
+      await drainPendingAsyncWork();
+      expect(
+        cubit.state.workingSessionIds,
+        contains(session.sessionId),
+        reason: 'one sibling still running keeps the session working',
+      );
+
+      lifecycle('SubagentStop', 'b');
+      await drainPendingAsyncWork();
+      expect(
+        cubit.state.workingSessionIds,
+        isNot(contains(session.sessionId)),
+        reason: 'last child stopped after parent completion → idle',
+      );
+    });
   });
 }

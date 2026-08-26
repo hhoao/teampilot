@@ -42,7 +42,7 @@
 - Produces normalized `AgentStatusEvent` values whose `hookEventName` is `SubagentStart` or `SubagentStop` and whose `toolAgentId` comes from `agent_id`.
 - Produces Codex `[[hooks.SubagentStart]]` and `[[hooks.SubagentStop]]` command-hook sections.
 
-- [ ] **Step 1: Write failing normalizer and writer tests**
+- [x] **Step 1: Write failing normalizer and writer tests**
 
 ```dart
 test('Codex SubagentStart and SubagentStop retain the child id', () {
@@ -60,13 +60,13 @@ expect(toml, contains('[[hooks.SubagentStart]]'));
 expect(toml, contains('[[hooks.SubagentStop]]'));
 ```
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 Run: `cd client && flutter test test/services/agent_status/agent_status_normalizer_test.dart test/services/cli/codex/codex_hook_writer_test.dart`
 
 Expected: FAIL because lifecycle events are discarded and `SubagentStart` is not a managed hook.
 
-- [ ] **Step 3: Add the managed event and normalizer support**
+- [x] **Step 3: Add the managed event and normalizer support**
 
 ```dart
 // HookEvent values and Codex support map
@@ -85,13 +85,13 @@ if (eventName == 'SubagentStart' || eventName == 'SubagentStop') {
 
 Keep lifecycle events as `working`; Task 2 interprets their names and must not treat child completion as generic parent completion.
 
-- [ ] **Step 4: Run test to verify it passes**
+- [x] **Step 4: Run test to verify it passes**
 
 Run: `cd client && flutter test test/services/agent_status/agent_status_normalizer_test.dart test/services/cli/codex/codex_hook_writer_test.dart`
 
 Expected: PASS.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add client/lib/models/hook_event.dart client/lib/services/cli/registry/config_profile/hook_seat_context_completer.dart client/lib/services/cli/registry/capabilities/claude_family_agent_status_normalizer.dart client/test/services/agent_status/agent_status_normalizer_test.dart client/test/services/cli/codex/codex_hook_writer_test.dart
@@ -110,7 +110,7 @@ git commit -m "fix: forward codex subagent lifecycle hooks"
 - `AgentSeatAttentionEntry` gains immutable `activeSubagentIds` and `parentStopPending` fields.
 - `AgentAttentionCubit.applyEvent` applies the lifecycle transition before generic attention handling.
 
-- [ ] **Step 1: Write failing parent/child state-machine tests**
+- [x] **Step 1: Write failing parent/child state-machine tests**
 
 ```dart
 void child(AgentAttentionCubit c, String event, String id) => c.applyEvent(
@@ -137,13 +137,13 @@ test('parent Stop waits for all parallel subagents', () {
 
 Also add isolated tests for an ordinary `Stop` with no child, duplicate start/stop, `UserPromptSubmit` cleanup, and child activity past `agentAttentionStaleAfter`.
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 Run: `cd client && flutter test test/cubits/agent_attention_cubit_test.dart`
 
 Expected: FAIL because the first `Stop` stores `done` and `SubagentStop` does not preserve working state.
 
-- [ ] **Step 3: Implement the immutable child-aware transition**
+- [x] **Step 3: Implement the immutable child-aware transition**
 
 ```dart
 class AgentSeatAttentionEntry extends Equatable {
@@ -163,13 +163,13 @@ class AgentSeatAttentionEntry extends Equatable {
 
 Make `_isStale` return false while `activeSubagentIds.isNotEmpty`. `clearSeat`, `clearSession`, and `UserPromptSubmit` must clear child IDs and pending completion so they cannot cross a parent-turn boundary.
 
-- [ ] **Step 4: Run test to verify it passes**
+- [x] **Step 4: Run test to verify it passes**
 
 Run: `cd client && flutter test test/cubits/agent_attention_cubit_test.dart`
 
 Expected: PASS.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add client/lib/cubits/agent_attention_cubit.dart client/test/cubits/agent_attention_cubit_test.dart
@@ -187,7 +187,7 @@ git commit -m "fix: retain parent activity for codex subagents"
 - Consumes `AgentAttentionState.sessionIsAgentActive` from Task 2 through the existing `TabWorkingAggregator` and reclaim guard.
 - Produces an integration regression showing a parent terminal remains busy after one of two children stops.
 
-- [ ] **Step 1: Write the failing integration test**
+- [x] **Step 1: Write the failing integration test**
 
 ```dart
 testWidgets('parallel child activity keeps the parent session working', (tester) async {
@@ -199,25 +199,25 @@ testWidgets('parallel child activity keeps the parent session working', (tester)
 });
 ```
 
-- [ ] **Step 2: Run test to verify it fails before Task 2 is applied**
+- [x] **Step 2: Run test to verify it fails before Task 2 is applied**
 
 Run: `cd client && flutter test test/integration/session_idle_busy_integration_test.dart`
 
 Expected: FAIL on the assertion after the first child stops when run against the pre-Task-2 behavior; after Task 2 it is retained as a regression test and passes.
 
-- [ ] **Step 3: Run the integration test after Tasks 1–2 and verify it passes**
+- [x] **Step 3: Run the integration test after Tasks 1–2 and verify it passes**
 
 Run: `cd client && flutter test test/integration/session_idle_busy_integration_test.dart`
 
 Expected: PASS; no production change should be needed because `TabWorkingAggregator` and `TabMemberReclaimWatch` already use attention activity.
 
-- [ ] **Step 4: Run required verification**
+- [x] **Step 4: Run required verification**
 
 Run: `cd client && flutter analyze --no-fatal-infos --no-fatal-warnings && dart run tool/run_tests.dart`
 
 Expected: analyzer exits 0 and the full test runner reports success.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add client/test/integration/session_idle_busy_integration_test.dart docs/superpowers/specs/2026-08-25-codex-subagent-parent-activity-design.md docs/superpowers/plans/2026-08-25-codex-subagent-parent-activity.md
