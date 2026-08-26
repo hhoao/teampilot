@@ -1,5 +1,6 @@
 import 'dart:io';
 
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -10,6 +11,18 @@ import 'package:teampilot/services/io/local_filesystem.dart';
 import 'package:teampilot/services/search/content_search_runner.dart';
 import 'package:teampilot/services/search/content_replacer.dart';
 import 'package:teampilot/widgets/right_tools/search_panel.dart';
+
+/// Emits canned states so tests can pin exact render windows (the real
+/// engine finishes inside one pump on small fixtures).
+class _StubbedSearchCubit extends ContentSearchCubit {
+  _StubbedSearchCubit()
+    : super(
+        runnerFactory: (_) => throw UnimplementedError(),
+        replacerFactory: () => throw UnimplementedError(),
+      );
+
+  void debugEmitState(ContentSearchState state) => emit(state);
+}
 
 void main() {
   late Directory fixture;
@@ -168,6 +181,54 @@ void main() {
     expect(find.text(l10n.workspaceSearchResultSummary(1, 1)), findsOneWidget);
   });
 
+  testWidgets('summary row shows the searching label while the engine runs', (
+    tester,
+  ) async {
+    // The real engine drains within a single pump on this tiny fixture, so
+    // drive the cubit states directly to pin the searching -> summary swap.
+    final cubit = _StubbedSearchCubit();
+    addTearDown(cubit.close);
+    await tester.pumpWidget(wrap(cubit));
+    final l10n = AppLocalizations.of(tester.element(find.byType(Scaffold)));
+    await tester.enterText(find.byType(TextField).first, 'hello');
+    await tester.pump();
+    expect(find.text(l10n.workspaceSearchSearching), findsNothing);
+
+    cubit.debugEmitState(
+      const ContentSearchState(query: 'hello', searching: true),
+    );
+    await tester.pump();
+    expect(find.text(l10n.workspaceSearchSearching), findsOneWidget);
+
+    cubit.debugEmitState(
+      ContentSearchState(
+        query: 'hello',
+        files: [
+          ContentSearchFileGroup(
+            path: '${fixture.path}/a.dart',
+            relativePath: 'a.dart',
+            lines: [
+              ContentSearchLineMatch(
+                lineNumber: 1,
+                lineText: 'hello world',
+                matchStart: 0,
+                matchEnd: 5,
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+    await tester.pump();
+    expect(find.text(l10n.workspaceSearchSearching), findsNothing);
+    expect(find.text(l10n.workspaceSearchResultSummary(1, 1)), findsOneWidget);
+
+    // Clearing the query re-arms the debounce so flushing it below runs the
+    // safe empty branch instead of the stubbed engine.
+    await tester.enterText(find.byType(TextField).first, '');
+    await tester.pump(const Duration(milliseconds: 350));
+  });
+
   testWidgets('tapping a file group header collapses and expands its lines', (
     tester,
   ) async {
@@ -196,7 +257,29 @@ void main() {
     await tester.pumpAndSettle();
     await tester.enterText(find.byType(TextField).at(1), 'hi');
     await tester.pump();
+
+    // Without a prior hover the per-file action must stay inert: tapping it
+    // must not open the confirm dialog.
     await tester.tap(find.byKey(const ValueKey('search-file-replace-all')));
+    await tester.pump();
+    expect(find.text(l10n.workspaceSearchReplaceAllTitle), findsNothing);
+
+    // Synthesize mouse hover over the button to activate it.
+    final hover = await tester.createGesture(kind: PointerDeviceKind.mouse);
+    await hover.addPointer(
+      location: tester.getCenter(
+        find.byKey(const ValueKey('search-file-replace-all')),
+      ),
+    );
+    addTearDown(hover.removePointer);
+    await tester.pumpAndSettle();
+
+    // The finder resolves through Tooltip's overlay surrogate, which never
+    // participates in hit testing; the inner action receives the tap.
+    await tester.tap(
+      find.byKey(const ValueKey('search-file-replace-all')),
+      warnIfMissed: false,
+    );
     await tester.pumpAndSettle();
     expect(find.text(l10n.workspaceSearchReplaceAllTitle), findsOneWidget);
     await tester.tap(find.text(l10n.workspaceSearchReplace).last);

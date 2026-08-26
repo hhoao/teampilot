@@ -212,19 +212,22 @@ class _GroupHeaderState extends State<_GroupHeader> {
               ),
               const SizedBox(width: 4),
               // Hover-only per-file replace action, like the VS Code search
-              // view. AnimatedOpacity keeps it hit-testable so tests can tap
-              // it without synthesizing a hover.
-              AnimatedOpacity(
-                opacity: _hovering ? 1 : 0,
-                duration: const Duration(milliseconds: 120),
-                child: FindActionButton(
-                  key: const ValueKey('search-file-replace-all'),
-                  assetPath: FindBarIcons.replaceAll,
-                  tooltip: context.l10n.workspaceSearchReplaceAll,
-                  enabled: widget.replaceEnabled,
-                  width: 22,
-                  height: 22,
-                  onTap: widget.onReplace,
+              // view. Gated on hover so touch taps cannot trigger an
+              // invisible-but-active control.
+              IgnorePointer(
+                ignoring: !_hovering,
+                child: AnimatedOpacity(
+                  opacity: _hovering ? 1 : 0,
+                  duration: const Duration(milliseconds: 120),
+                  child: FindActionButton(
+                    key: const ValueKey('search-file-replace-all'),
+                    assetPath: FindBarIcons.replaceAll,
+                    tooltip: context.l10n.workspaceSearchReplaceAll,
+                    enabled: _hovering && widget.replaceEnabled,
+                    width: 22,
+                    height: 22,
+                    onTap: widget.onReplace,
+                  ),
                 ),
               ),
             ],

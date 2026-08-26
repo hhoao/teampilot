@@ -349,10 +349,7 @@ class _WorkspaceSearchPanelState extends State<WorkspaceSearchPanel> {
                             : state.files.isEmpty
                             ? ''
                             : l10n.workspaceSearchResultSummary(
-                                state.files.fold<int>(
-                                  0,
-                                  (sum, f) => sum + f.lines.length,
-                                ),
+                                pendingCount,
                                 state.files.length,
                               ),
                         maxLines: 1,
