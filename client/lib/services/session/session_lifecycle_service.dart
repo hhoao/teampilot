@@ -1202,12 +1202,19 @@ class SessionLifecycleService {
     } else {
       resolvedCli = cli;
     }
+    final persistedId = resolvedCli == null
+        ? ''
+        : (memberBinding?.nativeSessionIds[resolvedCli.value] ??
+                session.nativeSessionIds[resolvedCli.value] ??
+                '')
+            .trim();
     final probe = await _findCliState(
       roots: roots,
       session: session,
       teamId: (teamId ?? session.sessionTeam).trim(),
       runtimeSessionId: runtimeTeamId,
       cliSessionId: cliSessionId,
+      fallbackSessionId: persistedId,
       cli: resolvedCli,
       workspaceId: isPersonal ? workspace!.workspaceId : null,
     );
@@ -1548,6 +1555,7 @@ class SessionLifecycleService {
     required String teamId,
     required String runtimeSessionId,
     required String cliSessionId,
+    String? fallbackSessionId,
     CliTool? cli,
     String? workspaceId,
   }) async {
@@ -1574,12 +1582,23 @@ class SessionLifecycleService {
     final bucket = RuntimeLayout.workspaceBucketForPrimaryPath(
       session.firstFolderPath,
     );
-    return _findCliStateInFilesystem(
+    final probe = await _findCliStateInFilesystem(
       fs: roots.fs,
       toolRoots: toolRoots,
       sessionId: id,
       bucket: bucket,
     );
+    if (probe.exists) return probe;
+    final fallback = fallbackSessionId?.trim() ?? '';
+    if (fallback.isNotEmpty && fallback != id) {
+      return _findCliStateInFilesystem(
+        fs: roots.fs,
+        toolRoots: toolRoots,
+        sessionId: fallback,
+        bucket: bucket,
+      );
+    }
+    return const _CliStateProbeResult(exists: false);
   }
 
   Future<_CliStateProbeResult> _findCliStateInFilesystem({
