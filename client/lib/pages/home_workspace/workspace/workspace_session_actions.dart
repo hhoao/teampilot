@@ -103,7 +103,8 @@ Future<void> openWorkspaceSessionTab(
   final chatCubit = context.read<ChatCubit>();
   final repo = context.read<SessionRepository>();
   final fallback = context.l10n.defaultNewChatSessionTitle;
-  final connectImmediately = connectImmediatelyOverride ??
+  final connectImmediately =
+      connectImmediatelyOverride ??
       context
           .read<SessionPreferencesCubit>()
           .state

@@ -283,8 +283,8 @@ class _UnboundComposeBodyState extends State<UnboundComposeBody> {
   void didChangeDependencies() {
     super.didChangeDependencies();
     _cascadeCatalog ??= CascadeCatalogListenable(
-      registry: CliToolRegistryScope.maybeOf(context) ??
-          CliToolRegistry.builtIn(),
+      registry:
+          CliToolRegistryScope.maybeOf(context) ?? CliToolRegistry.builtIn(),
     );
     _runtimeTargetsLoad ??= _loadRuntimeTargets();
     _reloadDraftIfRouteExpertChanged();
@@ -1504,8 +1504,9 @@ class _UnboundComposeBodyState extends State<UnboundComposeBody> {
         ? launchWarningBlock.missing
         : null;
 
-    WorkspaceComposeCard buildCard(BuildContext context) =>
-        WorkspaceComposeCard(
+    WorkspaceComposeCard buildCard(
+      BuildContext context,
+    ) => WorkspaceComposeCard(
       controller: _controller,
       clip: _clip,
       focusNode: _focusNode,

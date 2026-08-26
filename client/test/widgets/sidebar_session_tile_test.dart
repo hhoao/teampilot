@@ -473,10 +473,7 @@ void main() {
     expect(find.text('待办'), findsOneWidget);
     expect(find.text('Review'), findsOneWidget);
     // sess-1 already belongs to g2 → exactly one checked group entry.
-    expect(
-      find.byIcon(Icons.check_box_outlined),
-      findsOneWidget,
-    );
+    expect(find.byIcon(Icons.check_box_outlined), findsOneWidget);
     await _dismissContextMenu(tester);
   });
 
@@ -505,7 +502,10 @@ void main() {
     await _openContextMenu(tester);
     await tester.tap(find.text('待办'));
     await tester.pump();
-    expect(groupsCubit.state.groupById('g1')!.containsSession('sess-1'), isTrue);
+    expect(
+      groupsCubit.state.groupById('g1')!.containsSession('sess-1'),
+      isTrue,
+    );
 
     await _openContextMenu(tester);
     await tester.tap(find.text('待办'));
@@ -759,20 +759,23 @@ void main() {
     ]);
   });
 
-  testWidgets('context menu offers Duplicate for simple sessions',
-      (tester) async {
+  testWidgets('context menu offers Duplicate for simple sessions', (
+    tester,
+  ) async {
     final chatCubit = testChatCubit(executableResolver: () => 'claude');
     final (attention, automationCubit) = _tileCubits();
     addTearDown(chatCubit.close);
     addTearDown(automationCubit.close);
     addTearDown(attention.close);
 
-    await tester.pumpWidget(_host(
-      chatCubit: chatCubit,
-      automationCubit: automationCubit,
-      sessionRepository: SessionRepository(rootDir: '/nonexistent'),
-      attentionCubit: attention,
-    ));
+    await tester.pumpWidget(
+      _host(
+        chatCubit: chatCubit,
+        automationCubit: automationCubit,
+        sessionRepository: SessionRepository(rootDir: '/nonexistent'),
+        attentionCubit: attention,
+      ),
+    );
     await _openContextMenu(tester);
 
     expect(find.text('Duplicate conversation'), findsOneWidget);
@@ -784,8 +787,7 @@ void main() {
     expect(item.enabled, isTrue);
   });
 
-  testWidgets('context menu hides Duplicate for team sessions',
-      (tester) async {
+  testWidgets('context menu hides Duplicate for team sessions', (tester) async {
     final chatCubit = testChatCubit(executableResolver: () => 'claude');
     final (attention, automationCubit) = _tileCubits();
     addTearDown(chatCubit.close);
@@ -798,20 +800,23 @@ void main() {
       sessionTeam: 'team-1',
       createdAt: 1,
     );
-    await tester.pumpWidget(_host(
-      chatCubit: chatCubit,
-      automationCubit: automationCubit,
-      sessionRepository: SessionRepository(rootDir: '/nonexistent'),
-      attentionCubit: attention,
-      child: SidebarSessionTile(session: teamed, onTap: () {}),
-    ));
+    await tester.pumpWidget(
+      _host(
+        chatCubit: chatCubit,
+        automationCubit: automationCubit,
+        sessionRepository: SessionRepository(rootDir: '/nonexistent'),
+        attentionCubit: attention,
+        child: SidebarSessionTile(session: teamed, onTap: () {}),
+      ),
+    );
     await _openContextMenu(tester);
 
     expect(find.text('Duplicate conversation'), findsNothing);
   });
 
-  testWidgets('tapping Duplicate calls the cubit and opens the fork',
-      (tester) async {
+  testWidgets('tapping Duplicate calls the cubit and opens the fork', (
+    tester,
+  ) async {
     final recorded = <String>[];
     final chatCubit = _DuplicateRecordingChatCubit(recorded);
     final (attention, automationCubit) = _tileCubits();
@@ -819,12 +824,14 @@ void main() {
     addTearDown(automationCubit.close);
     addTearDown(attention.close);
 
-    await tester.pumpWidget(_host(
-      chatCubit: chatCubit,
-      automationCubit: automationCubit,
-      sessionRepository: SessionRepository(rootDir: '/nonexistent'),
-      attentionCubit: attention,
-    ));
+    await tester.pumpWidget(
+      _host(
+        chatCubit: chatCubit,
+        automationCubit: automationCubit,
+        sessionRepository: SessionRepository(rootDir: '/nonexistent'),
+        attentionCubit: attention,
+      ),
+    );
     await _openContextMenu(tester);
     await tester.tap(find.text('Duplicate conversation'));
     await tester.pumpAndSettle();
@@ -838,20 +845,23 @@ void main() {
     await tester.pump(const Duration(milliseconds: 250));
   });
 
-  testWidgets('duplicate item is disabled while a duplicate is in flight',
-      (tester) async {
+  testWidgets('duplicate item is disabled while a duplicate is in flight', (
+    tester,
+  ) async {
     final chatCubit = _GatedDuplicateChatCubit();
     final (attention, automationCubit) = _tileCubits();
     addTearDown(chatCubit.close);
     addTearDown(automationCubit.close);
     addTearDown(attention.close);
 
-    await tester.pumpWidget(_host(
-      chatCubit: chatCubit,
-      automationCubit: automationCubit,
-      sessionRepository: SessionRepository(rootDir: '/nonexistent'),
-      attentionCubit: attention,
-    ));
+    await tester.pumpWidget(
+      _host(
+        chatCubit: chatCubit,
+        automationCubit: automationCubit,
+        sessionRepository: SessionRepository(rootDir: '/nonexistent'),
+        attentionCubit: attention,
+      ),
+    );
 
     await _openContextMenu(tester);
     await tester.tap(find.text('Duplicate conversation'));

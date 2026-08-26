@@ -106,8 +106,7 @@ class _WorkspaceSplitPaneState extends State<WorkspaceSplitPane> {
       showWorkspaceSearchDialog(
         context,
         workspace: widget.workspace,
-        fs:
-            scopeCubit.state.tools?.context.filesystem ?? LocalFilesystem(),
+        fs: scopeCubit.state.tools?.context.filesystem ?? LocalFilesystem(),
       ),
     );
   }
@@ -183,9 +182,10 @@ class _WorkspaceSplitPaneState extends State<WorkspaceSplitPane> {
       showMailbox: mailboxGate.showMailbox,
       showBoard: mailboxGate.showBoard,
     );
-    context
-        .read<WorkspaceToolsCubit>()
-        .setSelectedIndex(widget.tabScopeId, index);
+    context.read<WorkspaceToolsCubit>().setSelectedIndex(
+      widget.tabScopeId,
+      index,
+    );
 
     // Defer the focus bump until the search panel has (re)mounted so it is
     // not lost to the panel's ValueListenable listener registration; keep

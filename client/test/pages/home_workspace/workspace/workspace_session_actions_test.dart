@@ -66,18 +66,21 @@ void main() {
     tearDownTestAppStorage();
   });
 
-  test('applyLandingPromptTitleBestEffort forwards the landing prompt', () async {
-    final chat = _RecordingChatCubit();
-    addTearDown(chat.close);
+  test(
+    'applyLandingPromptTitleBestEffort forwards the landing prompt',
+    () async {
+      final chat = _RecordingChatCubit();
+      addTearDown(chat.close);
 
-    await applyLandingPromptTitleBestEffort(
-      chatCubit: chat,
-      sessionId: 'sess-1',
-      prompt: 'fix the title',
-    );
+      await applyLandingPromptTitleBestEffort(
+        chatCubit: chat,
+        sessionId: 'sess-1',
+        prompt: 'fix the title',
+      );
 
-    expect(chat.prompts, [('sess-1', 'fix the title')]);
-  });
+      expect(chat.prompts, [('sess-1', 'fix the title')]);
+    },
+  );
 
   test('applyLandingPromptTitleBestEffort swallows rename errors', () async {
     final chat = _RecordingChatCubit(failRename: true);

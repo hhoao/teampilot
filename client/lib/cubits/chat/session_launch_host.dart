@@ -177,10 +177,7 @@ extension SessionLaunchHostAgentStatus on SessionLaunchHost {
     required String sessionId,
     required String memberId,
   }) {
-    agentAttentionCubit?.clearSeat(
-      sessionId: sessionId,
-      memberId: memberId,
-    );
+    agentAttentionCubit?.clearSeat(sessionId: sessionId, memberId: memberId);
     agentStatusSeatLookup?.unregisterSeat(
       sessionId: sessionId,
       memberId: memberId,

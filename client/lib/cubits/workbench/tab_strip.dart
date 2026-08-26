@@ -150,11 +150,7 @@ class TabStripReducer {
         active = order.first;
       }
     }
-    return strip.copyWith(
-      order: order,
-      activeId: active,
-      previewIds: previews,
-    );
+    return strip.copyWith(order: order, activeId: active, previewIds: previews);
   }
 
   TabStrip reorder(TabStrip strip, int oldIndex, int newIndex) {

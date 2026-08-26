@@ -91,11 +91,7 @@ void main() {
       );
       await drainPendingAsyncWork();
       await postFrame.flush();
-      workbench.openSession(
-        workspaceId,
-        session.sessionId,
-        preview: false,
-      );
+      workbench.openSession(workspaceId, session.sessionId, preview: false);
     }
 
     setUp(() async {
@@ -202,19 +198,21 @@ void main() {
       expect(workbench.centerActiveId(workspaceId), s0);
     });
 
-    test('close(active session) is the session-close-tab command equivalent',
-        () async {
-      await openSession();
-      await openSession();
-      expect(chat.tabStore.openTabs, hasLength(2));
-      final closing = chat.activeTab?.info.id;
-      final active = workbench.centerActiveId(workspaceId);
-      await workbench.close(workspaceId, active!);
-      await drainPendingAsyncWork();
-      await postFrame.flush();
-      expect(chat.tabStore.openTabs, hasLength(1));
-      expect(chat.activeTab?.info.id, isNot(closing));
-    });
+    test(
+      'close(active session) is the session-close-tab command equivalent',
+      () async {
+        await openSession();
+        await openSession();
+        expect(chat.tabStore.openTabs, hasLength(2));
+        final closing = chat.activeTab?.info.id;
+        final active = workbench.centerActiveId(workspaceId);
+        await workbench.close(workspaceId, active!);
+        await drainPendingAsyncWork();
+        await postFrame.flush();
+        expect(chat.tabStore.openTabs, hasLength(1));
+        expect(chat.activeTab?.info.id, isNot(closing));
+      },
+    );
 
     test('enterLanding(activeWorkspaceId) is the session-new-tab command '
         'equivalent', () async {
@@ -237,20 +235,22 @@ void main() {
       );
     });
 
-    test('enterLanding without text clears a prefill after a session is active',
-        () {
-      workbench.enterLanding(
-        workspaceId,
-        initialText: '审查并继续完成该会话: /data/session',
-      );
-      workbench.openSession(workspaceId, 'session-1', preview: false);
-      workbench.enterLanding(workspaceId);
+    test(
+      'enterLanding without text clears a prefill after a session is active',
+      () {
+        workbench.enterLanding(
+          workspaceId,
+          initialText: '审查并继续完成该会话: /data/session',
+        );
+        workbench.openSession(workspaceId, 'session-1', preview: false);
+        workbench.enterLanding(workspaceId);
 
-      expect(
-        workbench.state.bar(workspaceId).center.landingInitialText,
-        isNull,
-      );
-    });
+        expect(
+          workbench.state.bar(workspaceId).center.landingInitialText,
+          isNull,
+        );
+      },
+    );
 
     test('closeOthers preserves a Landing prefill', () {
       const prefill = '审查并继续完成该会话: /data/session';
@@ -261,7 +261,10 @@ void main() {
         ..enterLanding(workspaceId, initialText: prefill)
         ..closeOthers(workspaceId, first);
 
-      expect(workbench.state.bar(workspaceId).center.landingInitialText, prefill);
+      expect(
+        workbench.state.bar(workspaceId).center.landingInitialText,
+        prefill,
+      );
     });
 
     test('closeRight preserves an active Landing prefill', () {
@@ -273,7 +276,10 @@ void main() {
         ..enterLanding(workspaceId, initialText: prefill)
         ..closeRight(workspaceId, first);
 
-      expect(workbench.state.bar(workspaceId).center.landingInitialText, prefill);
+      expect(
+        workbench.state.bar(workspaceId).center.landingInitialText,
+        prefill,
+      );
     });
 
     test('closeAll preserves an active Landing prefill', () {

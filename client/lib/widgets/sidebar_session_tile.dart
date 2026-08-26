@@ -342,11 +342,7 @@ class _SidebarSessionTileState extends State<SidebarSessionTile> {
           );
         }
       } on Object catch (error, stackTrace) {
-        appLogger.e(
-          'duplicateSession',
-          error: error,
-          stackTrace: stackTrace,
-        );
+        appLogger.e('duplicateSession', error: error, stackTrace: stackTrace);
         if (context.mounted) {
           AppToast.show(
             context,
