@@ -4,6 +4,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_ui/shared_ui.dart';
 import 'package:teampilot/models/cli_preset.dart';
 import 'package:teampilot/models/team_config.dart';
+import 'package:teampilot/pages/chat/session_chat_compose_section.dart';
 import 'package:teampilot/pages/home_workspace/workspace/workspace_chat_landing_palette.dart';
 import 'package:teampilot/widgets/compose/compose_model_preset_chip.dart';
 import 'package:teampilot/widgets/compose/compose_permission_chip.dart';
@@ -76,6 +77,84 @@ void main() {
         values.indexOf(ComposeModelPresetChipAction.savePreset),
         lessThan(values.indexOf(ComposeModelPresetChipAction.manage)),
       );
+    });
+  });
+
+  group('teamPresetMenuSpecs', () {
+    testWidgets('flat preset rows only: no submenu, no savePreset/manage', (
+      tester,
+    ) async {
+      List<TpActionMenuSpec> specs = const [];
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Builder(
+            builder: (context) {
+              specs = SessionChatComposeSection.teamPresetMenuSpecs(
+                context: context,
+                presets: [
+                  CliPreset(
+                    id: 'a',
+                    name: 'Alpha',
+                    cli: CliTool.claude,
+                    provider: 'p',
+                    model: 'm',
+                    createdAt: 0,
+                    updatedAt: 0,
+                  ),
+                  CliPreset(
+                    id: 'b',
+                    name: 'Beta',
+                    cli: CliTool.claude,
+                    provider: 'p',
+                    model: 'm',
+                    createdAt: 0,
+                    updatedAt: 0,
+                  ),
+                ],
+                selectedPresetId: 'b',
+                emptyHintLabel: 'No presets',
+              );
+              return const SizedBox.shrink();
+            },
+          ),
+        ),
+      );
+
+      expect(specs.map((s) => s.value), ['a', 'b']);
+      expect(specs[1].selected, isTrue);
+      expect(specs[0].iconWidget, isNotNull);
+      for (final spec in specs) {
+        expect(spec.isDivider, isFalse);
+        expect(spec.isSubmenu, isFalse);
+        expect(spec.value, isNot(ComposeModelPresetChipAction.savePreset));
+        expect(spec.value, isNot(ComposeModelPresetChipAction.manage));
+      }
+    });
+
+    testWidgets('empty presets render only the disabled hint row', (
+      tester,
+    ) async {
+      List<TpActionMenuSpec> specs = const [];
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Builder(
+            builder: (context) {
+              specs = SessionChatComposeSection.teamPresetMenuSpecs(
+                context: context,
+                presets: const [],
+                selectedPresetId: null,
+                emptyHintLabel: 'No presets',
+              );
+              return const SizedBox.shrink();
+            },
+          ),
+        ),
+      );
+
+      expect(specs, hasLength(1));
+      expect(specs.single.enabled, isFalse);
+      expect(specs.single.label, 'No presets');
+      expect(specs.single.isSubmenu, isFalse);
     });
   });
 

@@ -242,7 +242,12 @@ class SessionChatComposeSection extends StatelessWidget {
               refreshComposeCascadeCatalog(context, cli: cli, providerId: pid),
             ),
           )
-        : null;
+        : teamPresetMenuSpecs(
+            context: context,
+            presets: sameCliPresets,
+            selectedPresetId: selectedPresetId,
+            emptyHintLabel: l10n.workspaceCliPresetsEmptyHint,
+          );
     final modelLabel = session.isSimple
         ? simpleLaunchChipLabel(
             presetName: selectedPreset?.name,
@@ -388,15 +393,17 @@ class SessionChatComposeSection extends StatelessWidget {
                               showBorder: false,
                             ),
                             modelCascadeSpecs: cascadeSpecs,
-                            onModelCascadeSelected: session.isSimple
-                                ? (v) => unawaited(
-                                    _onCascadeSelected(
-                                      context: context,
-                                      session: session,
-                                      value: v,
-                                    ),
-                                  )
-                                : null,
+                            onModelCascadeSelected: (v) => unawaited(
+                              _onCascadeSelected(
+                                context: context,
+                                session: session,
+                                team: team,
+                                sameCliPresets: sameCliPresets,
+                                lockedCli: lockedCli,
+                                selectedMemberId: selectedMemberId,
+                                value: v,
+                              ),
+                            ),
                             launchSecurityPolicy: _effectiveSecurityPolicy(
                               session: session,
                               team: team,
@@ -641,6 +648,36 @@ class SessionChatComposeSection extends StatelessWidget {
 
   // -- Selected preset id --------------------------------------------------
 
+  static List<TpActionMenuSpec> teamPresetMenuSpecs({
+    required BuildContext context,
+    required List<CliPreset> presets,
+    required String? selectedPresetId,
+    required String emptyHintLabel,
+  }) {
+    return [
+      if (presets.isEmpty)
+        TpActionMenuSpec.item(
+          value: null,
+          icon: Icons.terminal_outlined,
+          label: emptyHintLabel,
+          enabled: false,
+        )
+      else
+        for (final preset in presets)
+          TpActionMenuSpec.item(
+            value: preset.id,
+            iconWidget: CliBrandIcon(
+              cli: preset.cli,
+              size: TpActionMenuMetrics.iconSize(context),
+              borderRadius: 4,
+              showBorder: false,
+            ),
+            label: preset.name,
+            selected: preset.id == selectedPresetId,
+          ),
+    ];
+  }
+
   static String? _selectedPresetId({
     required AppSession session,
     required TeamProfile? team,
@@ -773,26 +810,22 @@ class SessionChatComposeSection extends StatelessWidget {
   static Future<void> _onCascadeSelected({
     required BuildContext context,
     required AppSession session,
+    required TeamProfile? team,
+    required List<CliPreset> sameCliPresets,
+    required CliTool lockedCli,
+    required String selectedMemberId,
     required Object? value,
   }) async {
     if (value is String && value.isNotEmpty) {
-      final preset = context
-          .read<CliPresetsCubit>()
-          .state
-          .presets
-          .where((p) => p.id == value)
-          .firstOrNull;
-      if (preset != null) {
-        await _onPresetSelected(
-          context: context,
-          presetId: value,
-          session: session,
-          team: null,
-          sameCliPresets: [preset],
-          lockedCli: preset.cli,
-          selectedMemberId: '',
-        );
-      }
+      await _onPresetSelected(
+        context: context,
+        presetId: value,
+        session: session,
+        team: team,
+        sameCliPresets: sameCliPresets,
+        lockedCli: lockedCli,
+        selectedMemberId: selectedMemberId,
+      );
       return;
     }
     final tuple = decodeComposeCascadeValue(value);
