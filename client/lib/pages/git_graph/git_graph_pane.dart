@@ -157,14 +157,21 @@ class _GraphListState extends State<_GraphList> {
 
   final ScrollController _controller = ScrollController();
 
+  late final GitGraphCubit _cubit = context.read<GitGraphCubit>();
+
+  // 挂载期间向 cubit 登记占用，避免 GitRepoStore 的 LRU 淘汰关闭在用面板。
+  void _occupy() {}
+
   @override
   void initState() {
     super.initState();
+    _cubit.addListener(_occupy);
     _controller.addListener(_onScroll);
   }
 
   @override
   void dispose() {
+    _cubit.removeListener(_occupy);
     _controller.removeListener(_onScroll);
     _controller.dispose();
     super.dispose();

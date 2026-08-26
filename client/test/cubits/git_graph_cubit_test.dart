@@ -155,4 +155,14 @@ void main() {
     expect(cubit.state.rows, isNotEmpty); // 旧行保留
     await cubit.close();
   });
+
+  test('surfaceError after close is a no-op', () async {
+    final cubit = GitGraphCubit(
+      history: FakeHistoryForGraph(rows: [graphCommitRow('c1')]),
+      git: FakeGitForGraph(repoStatus()),
+    );
+    await cubit.close();
+    // 关闭后再调用不得抛出 emit-after-close 异常。
+    cubit.surfaceError('boom');
+  });
 }

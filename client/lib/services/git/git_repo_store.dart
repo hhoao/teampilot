@@ -119,15 +119,37 @@ class GitRepoStore {
     }
   }
 
+  /// Triggers a coalesced refresh of the graph cubits for every [roots] entry
+  /// on [workContext], so open graph panes track poll-driven status updates.
+  void refreshGraphs(
+    Iterable<String> roots, {
+    required RuntimeContext workContext,
+  }) {
+    for (final root in roots) {
+      if (root.isEmpty) continue;
+      unawaited(graphCubitFor(root, workContext: workContext).refresh());
+    }
+  }
+
   void _evict() {
     while (_cubits.length > _maxRetained) {
       final oldestKey = _cubits.keys.first;
       _cubits.remove(oldestKey)?.close();
     }
     while (_graphCubits.length > _maxRetained) {
-      final oldestKey = _graphCubits.keys.first;
-      _graphCubits.remove(oldestKey)?.close();
+      final oldestEvictable = _oldestEvictableGraphKey();
+      // 全部图 cubit 都有监听者（面板挂载中）时暂停淘汰，避免关闭在用面板。
+      if (oldestEvictable == null) break;
+      _graphCubits.remove(oldestEvictable)?.close();
     }
+  }
+
+  /// LRU 序里第一个没有监听者的图 cubit key；全被占用时返回 null。
+  String? _oldestEvictableGraphKey() {
+    for (final key in _graphCubits.keys) {
+      if (!_graphCubits[key]!.hasActiveListeners) return key;
+    }
+    return null;
   }
 
   void dispose() {

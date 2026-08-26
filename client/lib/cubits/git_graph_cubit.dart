@@ -206,9 +206,25 @@ class GitGraphCubit extends Cubit<GitGraphState> {
   /// 写操作失败提示。与刷新自产的错误不同：随后一次成功的 refresh 不清除它，
   /// 避免刚弹出的错误被立刻冲掉；再下次成功刷新（如重试生效）才消失。
   void surfaceError(String message) {
+    if (isClosed) return;
     _errorSurfaced = true;
     emit(state.copyWith(errorMessage: message));
   }
+
+  /// 有监听者挂载（面板仍在使用）时不允许被 LRU 淘汰。
+  /// GitRepoStore 的淘汰逻辑是合法消费方，故不加 @visibleForTesting。
+  bool get hasActiveListeners => _activeListeners.isNotEmpty;
+
+  // bloc 9 的 BlocBase 不再暴露 hasListeners；这里自行维护挂载登记，
+  // 回调仅作占位（不接收状态通知），供 GitRepoStore 淘汰逻辑查询。
+  final Set<void Function()> _activeListeners = {};
+
+  /// 登记一个占用者（如挂载中的图面板）。
+  void addListener(void Function() listener) => _activeListeners.add(listener);
+
+  /// 取消占用登记。
+  void removeListener(void Function() listener) =>
+      _activeListeners.remove(listener);
 
   bool _refreshInFlight = false;
   bool _refreshQueued = false;

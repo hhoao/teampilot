@@ -457,7 +457,9 @@ class _RightToolsLifecycleHostState extends State<RightToolsLifecycleHost> {
   void _warmGit() {
     final tools = _scope?.tools?.context;
     if (tools == null) return;
-    context.read<GitRepoStore>().refreshAll(_scope!.roots, workContext: tools);
+    final store = context.read<GitRepoStore>();
+    store.refreshAll(_scope!.roots, workContext: tools);
+    store.refreshGraphs(_scope!.roots, workContext: tools);
   }
 
   void _pokeOnTurnEnd() => _fsWatcher?.poke();
