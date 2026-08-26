@@ -161,4 +161,18 @@ void main() {
       );
     });
   });
+
+  group('decodeComposeCascadeValue', () {
+    test('decodeComposeCascadeValue maps picks and ignores actions', () {
+      final effort = decodeComposeCascadeValue(CascadeEffortPick(
+        cli: CliTool.claude, providerId: 'p', modelId: 'm', effort: 'high'))!;
+      expect(effort.effort, 'high');
+      final model = decodeComposeCascadeValue(
+        CascadeModelPick(cli: CliTool.claude, providerId: 'p', modelId: 'm'))!;
+      expect(model.effort, isEmpty);
+      expect(decodeComposeCascadeValue(ComposeModelPresetChipAction.manage), isNull);
+      expect(decodeComposeCascadeValue(CascadeCustomModelRequest(
+        cli: CliTool.claude, providerId: 'p')), isNull);
+    });
+  });
 }

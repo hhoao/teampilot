@@ -1088,6 +1088,21 @@ class AppLocalizationsEn extends AppLocalizations {
       'No presets yet. Create one to get started.';
 
   @override
+  String get composeCascadeSavePreset => 'Save current as preset…';
+
+  @override
+  String get composeCascadeDefaultEffort => 'Default';
+
+  @override
+  String get composeCascadeCustomModelId => 'Custom model ID…';
+
+  @override
+  String get composeCascadeCustomModelIdTitle => 'Custom model ID';
+
+  @override
+  String get composeCascadeNoModels => 'No model catalog';
+
+  @override
   String get workspaceCliDeletePresetTitle => 'Delete Preset';
 
   @override

@@ -2054,6 +2054,36 @@ abstract class AppLocalizations {
   /// **'No presets yet. Create one to get started.'**
   String get workspaceCliPresetsEmptyHint;
 
+  /// No description provided for @composeCascadeSavePreset.
+  ///
+  /// In en, this message translates to:
+  /// **'Save current as preset…'**
+  String get composeCascadeSavePreset;
+
+  /// No description provided for @composeCascadeDefaultEffort.
+  ///
+  /// In en, this message translates to:
+  /// **'Default'**
+  String get composeCascadeDefaultEffort;
+
+  /// No description provided for @composeCascadeCustomModelId.
+  ///
+  /// In en, this message translates to:
+  /// **'Custom model ID…'**
+  String get composeCascadeCustomModelId;
+
+  /// No description provided for @composeCascadeCustomModelIdTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Custom model ID'**
+  String get composeCascadeCustomModelIdTitle;
+
+  /// No description provided for @composeCascadeNoModels.
+  ///
+  /// In en, this message translates to:
+  /// **'No model catalog'**
+  String get composeCascadeNoModels;
+
   /// No description provided for @workspaceCliDeletePresetTitle.
   ///
   /// In en, this message translates to:

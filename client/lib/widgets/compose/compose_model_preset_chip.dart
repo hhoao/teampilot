@@ -123,6 +123,42 @@ Future<void> refreshComposeCascadeCatalog(
   }
 }
 
+/// Decodes a cascade menu value into a concrete launch four-tuple request.
+/// Returns null when [value] needs dialog interaction first (custom model id)
+/// or is a pure action (manage/save-preset handled by callers).
+SimpleLaunchFourTuple? decodeComposeCascadeValue(Object? value) {
+  if (value is CascadeEffortPick) {
+    return SimpleLaunchFourTuple(
+      cli: value.cli,
+      providerId: value.providerId,
+      modelId: value.modelId,
+      effort: value.effort,
+    );
+  }
+  if (value is CascadeModelPick) {
+    return SimpleLaunchFourTuple(
+      cli: value.cli,
+      providerId: value.providerId,
+      modelId: value.modelId,
+      effort: '',
+    );
+  }
+  return null;
+}
+
+class SimpleLaunchFourTuple {
+  final CliTool cli;
+  final String providerId;
+  final String modelId;
+  final String effort;
+  const SimpleLaunchFourTuple({
+    required this.cli,
+    required this.providerId,
+    required this.modelId,
+    required this.effort,
+  });
+}
+
 List<TpActionMenuSpec> buildComposeModelCascadeMenuSpecs({
   required List<CliPreset> presets,
   required String? selectedPresetId,
