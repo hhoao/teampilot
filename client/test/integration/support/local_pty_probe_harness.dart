@@ -9,6 +9,7 @@ import 'package:teampilot/services/terminal/terminal_session.dart';
 import 'package:teampilot/services/terminal/terminal_transport.dart';
 
 import 'integration_prerequisites.dart';
+import 'cli_store_env.dart';
 
 /// Boots a [TerminalSession] on a real local PTY for screen-probe integration tests.
 abstract final class LocalPtyProbeHarness {
@@ -162,7 +163,12 @@ abstract final class LocalPtyProbeHarness {
               workingDirectory: workingDirectory,
               columns: columns,
               rows: rows,
-              environment: extraEnvironment ?? environment,
+              // Probes must never inherit TeamPilot-injected CLI store
+              // redirects: launched from an agent PTY they would boot the
+              // real CLI against the live session store and corrupt it.
+              environment: sanitizeCliStoreEnvironment(
+                extraEnvironment ?? environment ?? const {},
+              ),
             );
           },
     );
