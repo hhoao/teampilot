@@ -7,8 +7,12 @@ import 'package:teampilot/l10n/app_localizations.dart';
 import 'package:teampilot/models/git_graph.dart';
 import 'package:teampilot/pages/git_graph/git_graph_pane.dart';
 import 'package:teampilot/services/workbench/workbench_editor_opener.dart';
+import 'package:teampilot/services/workspace/workspace_tools_context.dart';
+import 'package:teampilot/services/workspace/workspace_tools_scope.dart';
+import 'package:teampilot/services/git/git_repo_store.dart';
 
 import '../../support/git_graph_test_fakes.dart';
+import '../../support/test_runtime_context.dart';
 
 Widget host(GitGraphCubit cubit, {WorkbenchEditorOpener? opener}) =>
     MaterialApp(
@@ -143,5 +147,67 @@ void main() {
     expect(find.byType(TextField), findsNothing); // 工具条隐藏
     expect(find.text('Not a git repository'), findsOneWidget);
     await cubit.close();
+  });
+
+  testWidgets('remounting via store does not close or reuse a closed cubit', (
+    tester,
+  ) async {
+    final workContext = testRuntimeContext('/home');
+    var created = 0;
+    final store = GitRepoStore(
+      graphCubitFactory: (root, ctx) {
+        created++;
+        return GitGraphCubit(
+          history: FakeHistoryForGraph(rows: [graphCommitRow('c1')]),
+          git: FakeGitForGraph(repoStatus()),
+        );
+      },
+    );
+    addTearDown(store.dispose);
+
+    Widget storeHost() => MaterialApp(
+      localizationsDelegates: AppLocalizations.localizationsDelegates,
+      home: MultiProvider(
+        providers: [
+          Provider<GitRepoStore>.value(value: store),
+          Provider<WorkbenchEditorOpener>.value(value: _RecordingOpener()),
+        ],
+        child: WorkspaceToolsScope(
+          state: WorkspaceToolsScopeState(
+            tools: WorkspaceToolsContext(
+              targetId: 'local',
+              context: workContext,
+            ),
+            resolving: false,
+          ),
+          child: const Scaffold(
+            body: GitGraphPane(workspaceId: 'ws', repoRoot: '/repo'),
+          ),
+        ),
+      ),
+    );
+
+    // 首次挂载：store 路径创建并渲染。
+    await tester.pumpWidget(storeHost());
+    await tester.pumpAndSettle();
+    expect(find.byKey(const ValueKey('git-graph-row-c1')), findsOneWidget);
+    expect(created, 1);
+    final retained = store.graphCubitFor(
+      '/repo',
+      workContext: workContext,
+    );
+    expect(retained.isClosed, isFalse);
+
+    // 关闭浮动面板：卸载 pane（修复前此处 BlocProvider 会误关保留 cubit）。
+    await tester.pumpWidget(const SizedBox());
+    await tester.pumpAndSettle();
+
+    // 卸载不得关闭 store 保留的 cubit；重开复用同一存活实例，不抛 StateError。
+    expect(store.graphCubitFor('/repo', workContext: workContext), same(retained));
+    expect(retained.isClosed, isFalse);
+    await tester.pumpWidget(storeHost());
+    await tester.pumpAndSettle();
+    expect(created, 1);
+    expect(find.byKey(const ValueKey('git-graph-row-c1')), findsOneWidget);
   });
 }

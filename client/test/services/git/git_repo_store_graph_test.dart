@@ -78,6 +78,32 @@ void main() {
     expect(a.isClosed, isTrue); // 移除监听后变为可淘汰
   });
 
+  test('graphCubitFor recreates after an external close of the retained cubit', () async {
+    late final List<_SpyGraphCubit> created;
+    var counter = 0;
+    final store = GitRepoStore(
+      maxRetained: 2,
+      graphCubitFactory: (root, workContext) {
+        counter++;
+        return created[counter - 1];
+      },
+    );
+    addTearDown(store.dispose);
+    final context = testRuntimeContext('/home');
+    created = [_SpyGraphCubit(), _SpyGraphCubit()];
+
+    final first = store.graphCubitFor('/repo', workContext: context);
+    expect(first.isClosed, isFalse);
+
+    // 模拟外部路径（如 BlocProvider）误关了 store 保留的 cubit。
+    await first.close();
+
+    final second = store.graphCubitFor('/repo', workContext: context);
+    // 必须换新实例，而不是把 closed cubit 发给面板。
+    expect(second, isNot(same(first)));
+    expect(second.isClosed, isFalse);
+  });
+
   test('eviction pauses entirely when every graph cubit is mounted', () {
     late final List<_SpyGraphCubit> created;
     var counter = 0;

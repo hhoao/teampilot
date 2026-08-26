@@ -46,11 +46,13 @@ class _GitGraphPaneState extends State<GitGraphPane> {
     }
     final workContext = _resolveWorkContext(context);
     if (workContext == null) return const SizedBox.shrink();
-    return BlocProvider(
-      create: (_) => context.read<GitRepoStore>().graphCubitFor(
+    // store 拥有 cubit 的生命周期（LRU 淘汰 / dispose），provider 不得关闭它，
+    // 故用 BlocProvider.value（flutter_bloc 保证 .value 不自动 close）。
+    return BlocProvider.value(
+      value: context.read<GitRepoStore>().graphCubitFor(
         widget.repoRoot,
         workContext: workContext,
-      )..selectCommit(null),
+      ),
       child: _PaneBody(workspaceId: widget.workspaceId),
     );
   }

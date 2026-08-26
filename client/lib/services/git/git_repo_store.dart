@@ -97,7 +97,9 @@ class GitRepoStore {
   }) {
     final key = _cacheKey(root, workContext);
     final existing = _graphCubits.remove(key);
-    if (existing != null) {
+    // 已被外部路径（如 BlocProvider）关闭的保留实例必须弃用，否则面板拿到
+    // closed cubit 后任何 emit 都会抛 StateError。
+    if (existing != null && !existing.isClosed) {
       _graphCubits[key] = existing;
       return existing;
     }
