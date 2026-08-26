@@ -115,15 +115,17 @@ Finder _verticalScrollable() => find.byWidgetPredicate(
 Future<void> _scrollToEditorBottom(WidgetTester tester) async {
   tester.binding.focusManager.primaryFocus?.unfocus();
   await tester.pump();
-  await tester.drag(_verticalScrollable(), const Offset(0, -800));
-  await tester.pump();
+  final scrollable = tester.state<ScrollableState>(_verticalScrollable());
+  scrollable.position.jumpTo(scrollable.position.maxScrollExtent);
+  await tester.pumpAndSettle();
 }
 
 Future<void> _scrollToEditorTop(WidgetTester tester) async {
   tester.binding.focusManager.primaryFocus?.unfocus();
   await tester.pump();
-  await tester.drag(_verticalScrollable(), const Offset(0, 1000));
-  await tester.pump();
+  final scrollable = tester.state<ScrollableState>(_verticalScrollable());
+  scrollable.position.jumpTo(0);
+  await tester.pumpAndSettle();
 }
 
 class _MemorySecureKeyValueStore implements SecureKeyValueStore {
@@ -406,13 +408,13 @@ void main() {
       await openNewEditor(tester);
       await applyPreset(tester, 'DeepSeek');
 
-      final nameInput = tester.widget<TpInput>(
+      final nameInput = tester.widget<TpInputFormField>(
         find.byKey(const Key('managed-provider-name')),
       );
       expect(nameInput.controller!.text, 'DeepSeek');
       await tester.tap(find.byKey(const Key('managed-provider-section-query')));
       await tester.pumpAndSettle();
-      final endpointInput = tester.widget<TpInput>(
+      final endpointInput = tester.widget<TpInputFormField>(
         find.byKey(const Key('managed-provider-endpoint')),
       );
       expect(
@@ -433,11 +435,11 @@ void main() {
         500,
         scrollable: _verticalScrollable(),
       );
-      final decimalsInput = tester.widget<TpInput>(
+      final decimalsInput = tester.widget<TpInputFormField>(
         find.byKey(const Key('managed-provider-decimal-places')),
       );
       expect(decimalsInput.controller!.text, '2');
-      final fieldMappings = tester.widget<TpTextarea>(
+      final fieldMappings = tester.widget<TpTextareaFormField>(
         find.byKey(
           const Key('managed-provider-field-mappings'),
           skipOffstage: false,
@@ -1046,7 +1048,9 @@ void main() {
     await tester.pumpAndSettle();
     expect(
       tester
-          .widget<TpInput>(find.byKey(const Key('managed-provider-adapter')))
+          .widget<TpInputFormField>(
+            find.byKey(const Key('managed-provider-adapter')),
+          )
           .readOnly,
       isFalse,
     );
@@ -1066,7 +1070,9 @@ void main() {
     await tester.pumpAndSettle();
     expect(
       tester
-          .widget<TpInput>(find.byKey(const Key('managed-provider-adapter')))
+          .widget<TpInputFormField>(
+            find.byKey(const Key('managed-provider-adapter')),
+          )
           .readOnly,
       isTrue,
     );
