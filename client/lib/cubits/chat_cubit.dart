@@ -2033,6 +2033,37 @@ class ChatCubit extends Cubit<ChatState>
     );
   }
 
+  /// Duplicates a Simple session (launch identity + CLI history fork).
+  ///
+  /// [newDisplayTitle] is resolved by the caller so l10n stays out of the
+  /// cubit. Throws [StateError] while the source session still has a live
+  /// terminal or pending connects — copying a live transcript risks torn
+  /// JSONL appends and corrupt SQLite WAL snapshots.
+  Future<AppSession> duplicateSession(
+    SessionRepository repo,
+    String sourceSessionId, {
+    required String newDisplayTitle,
+  }) async {
+    final tab = _tabStore.openTabBySessionId(sourceSessionId);
+    if (tab != null &&
+        (tab.isRunning || tab.membersPendingConnect.isNotEmpty)) {
+      throw StateError('Cannot duplicate a running session');
+    }
+    final created = await repo.duplicateSession(
+      sourceSessionId,
+      display: newDisplayTitle,
+    );
+    final sessions = [...state.sessions, created];
+    _emitSnapshot(
+      _dataStore.deriveSnapshot(
+        workspaces: state.workspaces,
+        sessions: sessions,
+      ),
+      base: state.copyWith(sessions: sessions),
+    );
+    return created;
+  }
+
   /// Compose-landing / inject path: rename untitled session from first prompt.
   Future<void> applyFirstPromptTitle(String sessionId, String firstPrompt) =>
       _launchService.applyFirstPromptTitle(sessionId, firstPrompt);

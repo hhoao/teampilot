@@ -2114,6 +2114,18 @@ class AppLocalizationsEn extends AppLocalizations {
   String get unpinConversation => 'Unpin conversation';
 
   @override
+  String get duplicateConversation => 'Duplicate conversation';
+
+  @override
+  String get sessionDuplicated => 'Conversation duplicated';
+
+  @override
+  String get sessionDuplicateFailed => 'Failed to duplicate conversation';
+
+  @override
+  String get sessionTitleCopySuffix => '(copy)';
+
+  @override
   String get openSessionDirectory => 'Open session folder';
 
   @override
@@ -2655,6 +2667,9 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get editorFindNoResults => 'No matches';
+
+  @override
+  String get editorFindInvalidRegex => 'Invalid regular expression';
 
   @override
   String get fileTreeRevealActiveFile => 'Reveal active file';

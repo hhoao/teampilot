@@ -131,3 +131,22 @@ no dedup logic.
    running-disabled).
 5. Harness: `setUpTestAppStorage()` / `tearDownTestAppStorage()` conventions;
    filesystem injected.
+
+## Known limitations (v1)
+
+Two accepted gaps, documented so they are not rediscovered as bugs:
+
+- **Windows cursor junction copies.** cursor's fake-HOME isolation
+  materializes parts of its runtime tree as NTFS junctions (see the cursor
+  capability). When duplicating a cursor conversation whose copied tree
+  contains those link entities, `LocalFilesystem.copyTree` skips links instead
+  of following them, so the duplicated conversation can resume blank. This is
+  no worse than pre-feature behavior (where nothing was copied at all); a full
+  physical-home copy is a fast-follow.
+- **Liveness guard blind window.** The cubit-level liveness check
+  (`_duplicateEnabled`) inspects the source tab when the menu is built. A
+  source tab that is staged but not yet running — inside its async prep
+  window — still looks idle, so its history could be copied just before the
+  terminal goes live. The copy remains a consistent point-in-time snapshot,
+  but may miss turns that land between the copy and the terminal going live.
+

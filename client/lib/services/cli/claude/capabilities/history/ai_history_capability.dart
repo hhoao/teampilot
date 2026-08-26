@@ -60,6 +60,19 @@ final class ClaudeAiHistoryCapability implements AiHistoryCapability {
 
   @override
   Future<String?> detectNativeId(ResumeContext ctx) async {
+    // Duplicated sessions carry the source transcript under its original
+    // pinned filename; prefer the persisted id over the taskId probe.
+    final persisted = ctx.persistedNativeId?.trim() ?? '';
+    if (persisted.isNotEmpty) {
+      final persistedExists = await pinnedTranscriptExists(
+        fs: ctx.fs,
+        toolRoots: ctx.transcriptRoots,
+        sessionId: persisted,
+        bucket: ctx.bucket,
+        layoutSegments: _layoutSegments,
+      );
+      if (persistedExists) return persisted;
+    }
     final id = ctx.taskId.trim();
     if (id.isEmpty) return null;
     final exists = await pinnedTranscriptExists(

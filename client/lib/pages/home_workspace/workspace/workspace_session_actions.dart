@@ -79,11 +79,16 @@ Future<void> applyLandingPromptTitleBestEffort({
   }
 }
 
+/// Opens a persisted session in a workspace tab.
+///
+/// [connectImmediatelyOverride] forces the choice (duplicate flow always
+/// connects immediately); null defers to the user preference.
 Future<void> openWorkspaceSessionTab(
   BuildContext context,
   Workspace workspace,
   AppSession session, {
   String? tabScopeId,
+  bool? connectImmediatelyOverride,
 }) async {
   final isPersonal = session.sessionTeam.trim().isEmpty;
   appLogger.d(
@@ -98,11 +103,12 @@ Future<void> openWorkspaceSessionTab(
   final chatCubit = context.read<ChatCubit>();
   final repo = context.read<SessionRepository>();
   final fallback = context.l10n.defaultNewChatSessionTitle;
-  final connectImmediately = context
-      .read<SessionPreferencesCubit>()
-      .state
-      .preferences
-      .openExistingSessionStartsTerminal;
+  final connectImmediately = connectImmediatelyOverride ??
+      context
+          .read<SessionPreferencesCubit>()
+          .state
+          .preferences
+          .openExistingSessionStartsTerminal;
   if (team != null) {
     unawaited(chatCubit.scheduleTeamConfigValidation(team));
   }

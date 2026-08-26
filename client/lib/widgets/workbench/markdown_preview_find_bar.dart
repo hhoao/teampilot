@@ -17,8 +17,7 @@ class MarkdownPreviewFindBar extends StatefulWidget {
   final MarkdownPreviewFindController controller;
 
   @override
-  State<MarkdownPreviewFindBar> createState() =>
-      _MarkdownPreviewFindBarState();
+  State<MarkdownPreviewFindBar> createState() => _MarkdownPreviewFindBarState();
 }
 
 class _MarkdownPreviewFindBarState extends State<MarkdownPreviewFindBar> {
@@ -65,7 +64,12 @@ class _MarkdownPreviewFindBarState extends State<MarkdownPreviewFindBar> {
       builder: (context, _) {
         final c = widget.controller;
         final l10n = context.l10n;
-        final noResults = c.hasError || c.hits.isEmpty;
+        final noHits = c.hits.isEmpty;
+        final counterLabel = c.hasError
+            ? l10n.editorFindInvalidRegex
+            : noHits
+            ? l10n.editorFindNoResults
+            : c.counterLabel();
         return FindBarPanel(
           child: Padding(
             padding: const EdgeInsets.fromLTRB(8, 4, 4, 4),
@@ -95,20 +99,17 @@ class _MarkdownPreviewFindBarState extends State<MarkdownPreviewFindBar> {
                   ],
                 ),
                 const SizedBox(width: 6),
-                FindCounterText(
-                  label: noResults ? l10n.editorFindNoResults : c.counterLabel(),
-                  empty: noResults,
-                ),
+                FindCounterText(label: counterLabel, empty: noHits),
                 FindActionButton(
                   tooltip: l10n.editorFindPrevious,
                   icon: Icons.keyboard_arrow_up_rounded,
-                  enabled: !noResults,
+                  enabled: !noHits,
                   onTap: c.previous,
                 ),
                 FindActionButton(
                   tooltip: l10n.editorFindNext,
                   icon: Icons.keyboard_arrow_down_rounded,
-                  enabled: !noResults,
+                  enabled: !noHits,
                   onTap: c.next,
                 ),
                 FindActionButton(

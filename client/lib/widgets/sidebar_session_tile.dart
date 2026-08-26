@@ -4,6 +4,8 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
+import 'package:collection/collection.dart';
+
 import '../cubits/agent_attention_cubit.dart';
 import '../cubits/automation_cubit.dart';
 import '../cubits/automation_state.dart';
@@ -14,14 +16,17 @@ import '../models/app_session.dart';
 import '../models/automation_list_scope.dart';
 import '../pages/automations/automation_editor_dialog.dart';
 import '../pages/automations/automations_dialog.dart';
+import '../pages/home_workspace/workspace/workspace_session_actions.dart';
 import '../pages/home_workspace/workspace/workspace_sidebar_row_metrics.dart';
 import '../repositories/session_repository.dart';
 import '../services/io/file_path_actions.dart';
 import '../services/storage/app_storage.dart';
 import '../services/storage/runtime_context.dart';
+import '../utils/logging/logger.dart';
 import '../utils/session/session_row_content.dart';
 import '../utils/ui/coarse_relative_time.dart';
 import '../utils/debounce/debounce.dart';
+import 'app_toast/app_toast.dart';
 import 'session_working_spinner.dart';
 import 'package:shared_ui/shared_ui.dart';
 
@@ -71,6 +76,10 @@ class _SidebarSessionTileState extends State<SidebarSessionTile> {
   /// First click on delete arms confirmation; second click on [l10n.confirm]
   /// performs the delete (no dialog).
   var _deleteArmed = false;
+
+  /// True while a duplicate round-trip is awaited; disables the duplicate
+  /// menu items and blocks re-entry until the fork (or its failure) lands.
+  var _duplicateInFlight = false;
 
   Timer? _deleteArmResetTimer;
 
@@ -152,6 +161,13 @@ class _SidebarSessionTileState extends State<SidebarSessionTile> {
         icon: Icons.drive_file_rename_outline,
         label: l10n.renameConversation,
       ),
+      if (session.isSimple)
+        TpActionMenuPopupItem(
+          value: 'duplicate',
+          icon: Icons.copy_rounded,
+          label: l10n.duplicateConversation,
+          enabled: _duplicateEnabled(session),
+        ),
       TpActionMenuPopupItem(
         value: 'pin',
         icon: session.pinned ? Icons.push_pin : Icons.push_pin_outlined,
@@ -227,6 +243,8 @@ class _SidebarSessionTileState extends State<SidebarSessionTile> {
     switch (selected) {
       case 'rename':
         await _showRenameDialog(context, session, l10n);
+      case 'duplicate':
+        await _duplicateSession(context, session, l10n);
       case 'pin':
         await _chatCubit?.toggleSessionPin(session.sessionId);
       case String value when value.startsWith('toggle_group:'):
@@ -269,6 +287,69 @@ class _SidebarSessionTileState extends State<SidebarSessionTile> {
         }
       case 'delete':
         _armDelete();
+    }
+  }
+
+  bool _duplicateEnabled(AppSession session) {
+    if (_duplicateInFlight) return false;
+    final chat = _chatCubit;
+    if (chat == null) return false;
+    final tab = chat.tabStore.openTabBySessionId(session.sessionId);
+    return tab == null ||
+        !(tab.isRunning || tab.membersPendingConnect.isNotEmpty);
+  }
+
+  Future<void> _duplicateSession(
+    BuildContext context,
+    AppSession session,
+    AppLocalizations l10n,
+  ) async {
+    final chatCubit = _chatCubit;
+    final repo = _repo;
+    if (chatCubit == null || repo == null) return;
+    if (_duplicateInFlight) return;
+    final baseTitle = session.display.isNotEmpty
+        ? session.display
+        : l10n.defaultNewChatSessionTitle;
+    _duplicateInFlight = true;
+    try {
+      try {
+        final fork = await chatCubit.duplicateSession(
+          repo,
+          session.sessionId,
+          newDisplayTitle: '$baseTitle ${l10n.sessionTitleCopySuffix}',
+        );
+        if (!context.mounted) return;
+        AppToast.show(context, message: l10n.sessionDuplicated);
+        final workspace = context
+            .read<ChatCubit>()
+            .state
+            .workspaces
+            .firstWhereOrNull((w) => w.workspaceId == fork.workspaceId);
+        if (workspace != null) {
+          await openWorkspaceSessionTab(
+            context,
+            workspace,
+            fork,
+            connectImmediatelyOverride: true,
+          );
+        }
+      } on Object catch (error, stackTrace) {
+        appLogger.e(
+          'duplicateSession',
+          error: error,
+          stackTrace: stackTrace,
+        );
+        if (context.mounted) {
+          AppToast.show(
+            context,
+            message: l10n.sessionDuplicateFailed,
+            variant: TpToastVariant.error,
+          );
+        }
+      }
+    } finally {
+      _duplicateInFlight = false;
     }
   }
 
@@ -496,6 +577,16 @@ class _SidebarSessionTileState extends State<SidebarSessionTile> {
                       onTap: () =>
                           unawaited(_showRenameDialog(context, session, l10n)),
                     ),
+                    if (session.isSimple)
+                      TpActionMenuItem(
+                        icon: Icons.copy_rounded,
+                        label: l10n.duplicateConversation,
+                        enabled: _duplicateEnabled(session),
+                        menuController: controller,
+                        onTap: () => unawaited(
+                          _duplicateSession(context, session, l10n),
+                        ),
+                      ),
                     TpActionMenuItem(
                       icon: session.pinned
                           ? Icons.push_pin

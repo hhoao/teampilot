@@ -3806,6 +3806,30 @@ abstract class AppLocalizations {
   /// **'Unpin conversation'**
   String get unpinConversation;
 
+  /// No description provided for @duplicateConversation.
+  ///
+  /// In en, this message translates to:
+  /// **'Duplicate conversation'**
+  String get duplicateConversation;
+
+  /// No description provided for @sessionDuplicated.
+  ///
+  /// In en, this message translates to:
+  /// **'Conversation duplicated'**
+  String get sessionDuplicated;
+
+  /// No description provided for @sessionDuplicateFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Failed to duplicate conversation'**
+  String get sessionDuplicateFailed;
+
+  /// No description provided for @sessionTitleCopySuffix.
+  ///
+  /// In en, this message translates to:
+  /// **'(copy)'**
+  String get sessionTitleCopySuffix;
+
   /// No description provided for @openSessionDirectory.
   ///
   /// In en, this message translates to:
@@ -4765,6 +4789,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'No matches'**
   String get editorFindNoResults;
+
+  /// No description provided for @editorFindInvalidRegex.
+  ///
+  /// In en, this message translates to:
+  /// **'Invalid regular expression'**
+  String get editorFindInvalidRegex;
 
   /// No description provided for @fileTreeRevealActiveFile.
   ///
