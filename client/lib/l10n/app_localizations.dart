@@ -11822,6 +11822,24 @@ abstract class AppLocalizations {
   /// **'Name and message are required'**
   String get automationsValidationRequired;
 
+  /// No description provided for @formFieldRequired.
+  ///
+  /// In en, this message translates to:
+  /// **'This field is required.'**
+  String get formFieldRequired;
+
+  /// No description provided for @teamModeRequired.
+  ///
+  /// In en, this message translates to:
+  /// **'Choose a team mode first.'**
+  String get teamModeRequired;
+
+  /// No description provided for @hookSaveFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Failed to save hook.'**
+  String get hookSaveFailed;
+
   /// No description provided for @automationsTime.
   ///
   /// In en, this message translates to:

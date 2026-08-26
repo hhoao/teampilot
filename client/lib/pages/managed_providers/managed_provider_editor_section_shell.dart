@@ -28,6 +28,10 @@ class ManagedProviderEditorSectionShell extends StatelessWidget {
       child: ExpansionTile(
         key: ValueKey<Object?>((title, initiallyExpanded, badge)),
         initiallyExpanded: initiallyExpanded,
+
+        // Keep collapsed sections mounted so their TpFormField registrations
+        // survive; otherwise click-time form validation silently skips them.
+        maintainState: true,
         tilePadding: const EdgeInsets.symmetric(horizontal: 14),
         childrenPadding: const EdgeInsets.fromLTRB(14, 0, 14, 14),
         shape: const RoundedRectangleBorder(

@@ -6371,6 +6371,15 @@ class AppLocalizationsZh extends AppLocalizations {
   String get automationsValidationRequired => '名称和消息为必填项';
 
   @override
+  String get formFieldRequired => '此项为必填。';
+
+  @override
+  String get teamModeRequired => '请先选择团队模式。';
+
+  @override
+  String get hookSaveFailed => '保存 Hook 失败。';
+
+  @override
   String get automationsTime => '时间';
 
   @override

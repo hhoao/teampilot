@@ -18,6 +18,7 @@ import '../../widgets/app_toast/app_toast.dart';
 import '../../utils/managed_provider_error_localization.dart';
 import 'managed_provider_editor_section_shell.dart';
 import 'managed_provider_editor_sections.dart';
+import 'managed_provider_editor_validation.dart';
 import 'managed_provider_official_credentials.dart';
 
 class ManagedProviderEditorPage extends StatefulWidget {
@@ -61,6 +62,7 @@ class _ManagedProviderEditorPageState extends State<ManagedProviderEditorPage> {
   late ManagedProviderEditorSchema _schema;
   String? _credentialPrefix;
   ManagedProviderPreset? _selectedPreset;
+  final _editorFormKey = GlobalKey<TpFormState>();
   String? _formError;
   bool _saving = false;
 
@@ -140,134 +142,148 @@ class _ManagedProviderEditorPageState extends State<ManagedProviderEditorPage> {
     final provider = _provider;
     final l10n = context.l10n;
     final form = SafeArea(
-      child: Form(
-        child: ListView(
+      child: TpForm(
+        key: _editorFormKey,
+
+        // Non-lazy scrolling keeps every section's TpFormFields mounted:
+        // click-time validation must see collapsed and off-screen sections
+        // alike, and lazy recycling would unregister their fields.
+        child: SingleChildScrollView(
+          physics: const AlwaysScrollableScrollPhysics(),
           padding: widget.embedded
               ? const EdgeInsets.fromLTRB(0, 8, 0, 80)
               : const EdgeInsets.fromLTRB(20, 8, 20, 80),
-          children: [
-            if (_formError != null) _ErrorBanner(message: _formError!),
-            ManagedProviderEditorSectionShell(
-              key: const Key('managed-provider-section-basics'),
-              title: l10n.managedProvidersBasicsSectionTitle,
-              subtitle: l10n.managedProvidersBasicsSectionSubtitle,
-              initiallyExpanded: true,
-              child: ManagedProviderBasicsSection(
-                schema: _schema,
-                showPresetSelector: provider == null,
-                selectedPreset: _selectedPreset,
-                nameController: _name,
-                credentialSecretController: _credentialSecret,
-                credentialSecretFocusNode: _credentialSecretFocus,
-                credentialConfigured: _credentialRef.text.trim().isNotEmpty,
-                enabled: _enabled,
-                onPresetChanged: _applyPreset,
-                onEnabledChanged: _setEnabled,
-              ),
-            ),
-            if (_schema.hasSection(ManagedProviderEditorSection.query)) ...[
-              const SizedBox(height: 12),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              if (_formError != null) _ErrorBanner(message: _formError!),
               ManagedProviderEditorSectionShell(
-                key: const Key('managed-provider-section-query'),
-                title: l10n.managedProvidersQuerySectionTitle,
-                subtitle: l10n.managedProvidersQuerySectionSubtitle,
-                initiallyExpanded: _queryInitiallyExpanded,
-                child: ManagedProviderQuerySection(
+                key: const Key('managed-provider-section-basics'),
+                title: l10n.managedProvidersBasicsSectionTitle,
+                subtitle: l10n.managedProvidersBasicsSectionSubtitle,
+                initiallyExpanded: true,
+                child: ManagedProviderBasicsSection(
                   schema: _schema,
-                  endpointController: _endpoint,
-                  method: _method,
-                  responsePathController: _responsePath,
-                  measuresPathController: _measuresPath,
-                  requestMappingController: _requestMapping,
-                  fieldMappingsController: _fieldMappings,
-                  onMethodChanged: (value) => setState(() => _method = value),
+                  showPresetSelector: provider == null,
+                  selectedPreset: _selectedPreset,
+                  nameController: _name,
+                  credentialSecretController: _credentialSecret,
+                  credentialSecretFocusNode: _credentialSecretFocus,
+                  credentialConfigured: _credentialRef.text.trim().isNotEmpty,
+                  enabled: _enabled,
+                  onPresetChanged: _applyPreset,
+                  onEnabledChanged: _setEnabled,
                 ),
               ),
-            ],
-            const SizedBox(height: 12),
-            ManagedProviderEditorSectionShell(
-              key: const Key('managed-provider-section-credentials'),
-              title: l10n.managedProvidersCredentialsSectionTitle,
-              subtitle: l10n.managedProvidersCredentialsSectionSubtitle,
-              initiallyExpanded: _credentialsInitiallyExpanded,
-              badge: _credentialsInitiallyExpanded
-                  ? l10n.managedProvidersSectionConfiguredBadge
-                  : null,
-              child: _isOfficialSubscription
-                  ? ManagedProviderOfficialCredentials(adapterId: _adapter.text)
-                  : ManagedProviderCredentialsSection(
-                      schema: _schema,
-                      credentialNameController: _credentialName,
-                      credentialFieldController: _credentialField,
-                      credentialPlacementController: _credentialPlacement,
-                      credentialConfigured: _credentialRef.text
-                          .trim()
-                          .isNotEmpty,
-                      onCredentialFieldChanged: _handleCredentialFieldChanged,
-                    ),
-            ),
-            const SizedBox(height: 12),
-            ManagedProviderEditorSectionShell(
-              key: const Key('managed-provider-section-display'),
-              title: l10n.managedProvidersDisplaySectionTitle,
-              subtitle: l10n.managedProvidersDisplaySectionSubtitle,
-              initiallyExpanded: _displayInitiallyExpanded,
-              badge: _displayInitiallyExpanded
-                  ? l10n.managedProvidersSectionConfiguredBadge
-                  : null,
-              child: ManagedProviderDisplaySection(
-                schema: _schema,
-                currencyController: _currency,
-                unitController: _unit,
-                decimalPlacesController: _decimalPlaces,
-                showPercent: _showPercent,
-                onShowPercentChanged: (value) =>
-                    setState(() => _showPercent = value),
-              ),
-            ),
-            const SizedBox(height: 12),
-            ManagedProviderEditorSectionShell(
-              key: const Key('managed-provider-section-advanced'),
-              title: l10n.managedProvidersAdvancedSectionTitle,
-              subtitle: l10n.managedProvidersAdvancedSectionSubtitle,
-              initiallyExpanded: _advancedInitiallyExpanded,
-              badge: _advancedInitiallyExpanded
-                  ? l10n.managedProvidersSectionConfiguredBadge
-                  : null,
-              child: ManagedProviderAdvancedSection(
-                schema: _schema,
-                kind: _kind,
-                adapterController: _adapter,
-                credentialRefController: _credentialRef,
-                onKindChanged: _setKind,
-              ),
-            ),
-            const SizedBox(height: 16),
-            Row(
-              children: [
-                Expanded(
-                  child: TpButton(
-                    key: const Key('managed-provider-save'),
-                    onPressed: _saving ? null : _save,
-                    child: Text(
-                      _saving
-                          ? l10n.managedProvidersSaving
-                          : l10n.managedProvidersSaveProvider,
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: TpButton(
-                    key: const Key('managed-provider-test-query'),
-                    variant: TpButtonVariant.outline,
-                    onPressed: _saving ? null : _testQuery,
-                    child: Text(l10n.managedProvidersTestProviderQuery),
+              if (_schema.hasSection(ManagedProviderEditorSection.query)) ...[
+                const SizedBox(height: 12),
+                ManagedProviderEditorSectionShell(
+                  key: const Key('managed-provider-section-query'),
+                  title: l10n.managedProvidersQuerySectionTitle,
+                  subtitle: l10n.managedProvidersQuerySectionSubtitle,
+                  initiallyExpanded: _queryInitiallyExpanded,
+                  child: ManagedProviderQuerySection(
+                    schema: _schema,
+                    endpointController: _endpoint,
+                    method: _method,
+                    responsePathController: _responsePath,
+                    measuresPathController: _measuresPath,
+                    requestMappingController: _requestMapping,
+                    fieldMappingsController: _fieldMappings,
+                    onMethodChanged: (value) => setState(() => _method = value),
+                    strictEndpointResolver: () =>
+                        _adapter.text.trim() == 'http-json' ||
+                        _kind == ManagedProviderKind.customHttp,
                   ),
                 ),
               ],
-            ),
-          ],
+              const SizedBox(height: 12),
+              ManagedProviderEditorSectionShell(
+                key: const Key('managed-provider-section-credentials'),
+                title: l10n.managedProvidersCredentialsSectionTitle,
+                subtitle: l10n.managedProvidersCredentialsSectionSubtitle,
+                initiallyExpanded: _credentialsInitiallyExpanded,
+                badge: _credentialsInitiallyExpanded
+                    ? l10n.managedProvidersSectionConfiguredBadge
+                    : null,
+                child: _isOfficialSubscription
+                    ? ManagedProviderOfficialCredentials(
+                        adapterId: _adapter.text,
+                      )
+                    : ManagedProviderCredentialsSection(
+                        schema: _schema,
+                        credentialNameController: _credentialName,
+                        credentialFieldController: _credentialField,
+                        credentialPlacementController: _credentialPlacement,
+                        credentialConfigured: _credentialRef.text
+                            .trim()
+                            .isNotEmpty,
+                        onCredentialFieldChanged: _handleCredentialFieldChanged,
+                      ),
+              ),
+              const SizedBox(height: 12),
+              ManagedProviderEditorSectionShell(
+                key: const Key('managed-provider-section-display'),
+                title: l10n.managedProvidersDisplaySectionTitle,
+                subtitle: l10n.managedProvidersDisplaySectionSubtitle,
+                initiallyExpanded: _displayInitiallyExpanded,
+                badge: _displayInitiallyExpanded
+                    ? l10n.managedProvidersSectionConfiguredBadge
+                    : null,
+                child: ManagedProviderDisplaySection(
+                  schema: _schema,
+                  currencyController: _currency,
+                  unitController: _unit,
+                  decimalPlacesController: _decimalPlaces,
+                  showPercent: _showPercent,
+                  onShowPercentChanged: (value) =>
+                      setState(() => _showPercent = value),
+                ),
+              ),
+              const SizedBox(height: 12),
+              ManagedProviderEditorSectionShell(
+                key: const Key('managed-provider-section-advanced'),
+                title: l10n.managedProvidersAdvancedSectionTitle,
+                subtitle: l10n.managedProvidersAdvancedSectionSubtitle,
+                initiallyExpanded: _advancedInitiallyExpanded,
+                badge: _advancedInitiallyExpanded
+                    ? l10n.managedProvidersSectionConfiguredBadge
+                    : null,
+                child: ManagedProviderAdvancedSection(
+                  schema: _schema,
+                  kind: _kind,
+                  adapterController: _adapter,
+                  credentialRefController: _credentialRef,
+                  onKindChanged: _setKind,
+                ),
+              ),
+              const SizedBox(height: 16),
+              Row(
+                children: [
+                  Expanded(
+                    child: TpButton(
+                      key: const Key('managed-provider-save'),
+                      onPressed: _saving ? null : _save,
+                      child: Text(
+                        _saving
+                            ? l10n.managedProvidersSaving
+                            : l10n.managedProvidersSaveProvider,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: TpButton(
+                      key: const Key('managed-provider-test-query'),
+                      variant: TpButtonVariant.outline,
+                      onPressed: _saving ? null : _testQuery,
+                      child: Text(l10n.managedProvidersTestProviderQuery),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -385,8 +401,8 @@ class _ManagedProviderEditorPageState extends State<ManagedProviderEditorPage> {
       measuresPath: _measuresPath.text.trim().isEmpty
           ? null
           : _measuresPath.text.trim(),
-      body: _decodeObject(_requestMapping.text) ?? const {},
-      fieldMappings: _decodeObject(_fieldMappings.text) ?? const {},
+      body: decodeJsonObject(_requestMapping.text) ?? const {},
+      fieldMappings: decodeJsonObject(_fieldMappings.text) ?? const {},
       credentialName: _credentialName.text.trim().isEmpty
           ? null
           : _credentialName.text.trim(),
@@ -459,49 +475,13 @@ class _ManagedProviderEditorPageState extends State<ManagedProviderEditorPage> {
       );
 
   Future<void> _save() async {
+    if (!(_editorFormKey.currentState?.validate() ?? false)) return;
     final name = _name.text.trim();
     final adapter = _adapter.text.trim();
     final endpoint = _endpoint.text.trim();
-    if (name.isEmpty || adapter.isEmpty) {
-      setState(
-        () => _formError = context.l10n.managedProvidersNameAdapterError,
-      );
-      return;
-    }
-
-    final body = _decodeObject(_requestMapping.text);
-    final fieldMappings = _decodeObject(_fieldMappings.text);
+    final body = decodeJsonObject(_requestMapping.text) ?? const {};
+    final fieldMappings = decodeJsonObject(_fieldMappings.text) ?? const {};
     final decimalPlaces = int.tryParse(_decimalPlaces.text.trim());
-    if (body == null ||
-        _requestMapping.text.trim().isNotEmpty &&
-            body.isEmpty &&
-            _requestMapping.text.trim() != '{}') {
-      setState(
-        () => _formError = context.l10n.managedProvidersRequestMappingError,
-      );
-      return;
-    }
-    if (_containsCredentialKey(body)) {
-      setState(
-        () => _formError = context.l10n.managedProvidersSecretMappingError,
-      );
-      return;
-    }
-    if (fieldMappings == null || _containsCredentialKey(fieldMappings)) {
-      setState(
-        () => _formError = context.l10n.managedProvidersFieldMappingError,
-      );
-      return;
-    }
-    if (_decimalPlaces.text.trim().isNotEmpty && decimalPlaces == null) {
-      setState(() => _formError = context.l10n.managedProvidersDecimalError);
-      return;
-    }
-    if ((adapter == 'http-json' || _kind == ManagedProviderKind.customHttp) &&
-        !_isAllowedEndpoint(endpoint)) {
-      setState(() => _formError = context.l10n.managedProvidersEndpointError);
-      return;
-    }
 
     setState(() {
       _saving = true;
@@ -715,28 +695,28 @@ class _ManagedProviderEditorPageState extends State<ManagedProviderEditorPage> {
     final name = _name.text.trim();
     final adapter = _adapter.text.trim();
     final endpoint = _endpoint.text.trim();
-    final body = _decodeObject(_requestMapping.text);
-    final fieldMappings = _decodeObject(_fieldMappings.text);
+    final body = decodeJsonObject(_requestMapping.text);
+    final fieldMappings = decodeJsonObject(_fieldMappings.text);
     if (name.isEmpty || adapter.isEmpty) {
       setState(
         () => _formError = context.l10n.managedProvidersNameAdapterError,
       );
       return null;
     }
-    if (body == null || _containsCredentialKey(body)) {
+    if (body == null || mappingContainsCredentialKey(body)) {
       setState(
         () => _formError = context.l10n.managedProvidersSecretMappingError,
       );
       return null;
     }
-    if (fieldMappings == null || _containsCredentialKey(fieldMappings)) {
+    if (fieldMappings == null || mappingContainsCredentialKey(fieldMappings)) {
       setState(
         () => _formError = context.l10n.managedProvidersFieldMappingError,
       );
       return null;
     }
     if ((adapter == 'http-json' || _kind == ManagedProviderKind.customHttp) &&
-        !_isAllowedEndpoint(endpoint)) {
+        !isAllowedManagedProviderEndpoint(endpoint, allowHttpLocalhost: true)) {
       setState(() => _formError = context.l10n.managedProvidersEndpointError);
       return null;
     }
@@ -789,50 +769,9 @@ class _ManagedProviderEditorPageState extends State<ManagedProviderEditorPage> {
     }
   }
 
-  static Map<String, Object?>? _decodeObject(String text) {
-    final trimmed = text.trim();
-    if (trimmed.isEmpty) return const {};
-    try {
-      final decoded = jsonDecode(trimmed);
-      if (decoded is! Map) return null;
-      return Map<String, Object?>.from(decoded);
-    } on Object {
-      return null;
-    }
-  }
-
   static String _prettyJson(Map<String, Object?> value) {
     if (value.isEmpty) return '{}';
     return const JsonEncoder.withIndent('  ').convert(value);
-  }
-
-  static bool _isAllowedEndpoint(String value) {
-    final uri = Uri.tryParse(value);
-    if (uri == null || uri.host.isEmpty) return false;
-    if (uri.scheme == 'https') return true;
-    const loopback = {'localhost', '127.0.0.1', '::1'};
-    return loopback.contains(uri.host.toLowerCase()) &&
-        (uri.scheme == 'http' || uri.scheme == 'https');
-  }
-
-  static bool _containsCredentialKey(Map<String, Object?> value) {
-    for (final entry in value.entries) {
-      if (isManagedProviderCredentialKey(entry.key)) return true;
-      final nested = entry.value;
-      if (nested is Map &&
-          _containsCredentialKey(Map<String, Object?>.from(nested))) {
-        return true;
-      }
-      if (nested is List) {
-        for (final item in nested) {
-          if (item is Map &&
-              _containsCredentialKey(Map<String, Object?>.from(item))) {
-            return true;
-          }
-        }
-      }
-    }
-    return false;
   }
 }
 
@@ -894,9 +833,7 @@ class _EmbeddedEditorHeader extends StatelessWidget {
           onPressed: onBack,
           icon: const Icon(Icons.arrow_back),
         ),
-        Expanded(
-          child: Text(title, style: TpTextStyles.of(context).xl),
-        ),
+        Expanded(child: Text(title, style: TpTextStyles.of(context).xl)),
         if (showDelete)
           IconButton(
             key: const Key('managed-provider-delete'),
@@ -925,9 +862,9 @@ class _ErrorBanner extends StatelessWidget {
     ),
     child: Text(
       message,
-      style: TpTextStyles.of(context).smColored(
-        Theme.of(context).colorScheme.onErrorContainer,
-      ),
+      style: TpTextStyles.of(
+        context,
+      ).smColored(Theme.of(context).colorScheme.onErrorContainer),
     ),
   );
 }

@@ -175,7 +175,7 @@ class _MemberLaunchConfigRowBody extends StatelessWidget {
                             l10n.memberLaunchConfigTitle,
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
-                            style: styles.lgColored(cs.onSurface,),
+                            style: styles.lgColored(cs.onSurface),
                           ),
                         ),
                         const SizedBox(width: 8),
@@ -284,6 +284,7 @@ class _MemberLaunchConfigureDialogState
   late MemberLaunchConfigKind _configKind;
   late String _presetToken;
   var _saving = false;
+  final _formKey = GlobalKey<TpFormState>();
 
   @override
   void initState() {
@@ -350,6 +351,10 @@ class _MemberLaunchConfigureDialogState
       _modelId = '';
       _effortId = '';
     });
+    // The provider field stays mounted across the CLI switch; clear its stale
+    // form value so save-time validation sees the reset instead of the
+    // previous catalog's provider id.
+    _formKey.currentState?.setFieldValue('custom-provider', '');
   }
 
   /// Applies a preset choice when configuration type is [MemberLaunchConfigKind.preset].
@@ -370,6 +375,7 @@ class _MemberLaunchConfigureDialogState
 
   Future<void> _save() async {
     if (_saving) return;
+    if (!(_formKey.currentState?.validate() ?? false)) return;
     setState(() => _saving = true);
     TeamProfile? updated;
     try {
@@ -395,7 +401,13 @@ class _MemberLaunchConfigureDialogState
         case MemberLaunchConfigKind.preset:
           final allPresets = context.read<CliPresetsCubit>().state.presets;
           _ensurePresetTokenSelected(allPresets);
-          if (_presetToken.isEmpty) return;
+          if (_presetToken.isEmpty) {
+            _formKey.currentState?.setFieldError(
+              'preset-token',
+              context.l10n.formFieldRequired,
+            );
+            return;
+          }
           CliTool? syncCli;
           for (final preset in allPresets) {
             if (preset.id == _presetToken) {
@@ -419,12 +431,6 @@ class _MemberLaunchConfigureDialogState
     } finally {
       if (mounted) setState(() => _saving = false);
     }
-  }
-
-  bool _canSaveCustom(bool mixed) {
-    if (_providerId.trim().isEmpty) return false;
-    if (mixed && _cliToken.trim().isEmpty) return false;
-    return true;
   }
 
   @override
@@ -473,78 +479,103 @@ class _MemberLaunchConfigureDialogState
           TpDialogHeader(title: l10n.memberLaunchConfigTitle),
           const SizedBox(height: 16),
           TpCard.outlined(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                MemberLaunchConfigTypeField(
-                  currentKind: _configKind,
-                  decoration: dropdownDeco,
-                  showDividerBelow:
-                      _configKind == MemberLaunchConfigKind.custom,
-                  onChanged: _applyConfigKind,
-                ),
-                if (_configKind == MemberLaunchConfigKind.inheritTeam)
-                  MemberLaunchInheritSummary(
-                    team: team,
-                    presets: allPresets,
-                    registry: registry,
-                    providerState: providerState,
-                  ),
-                if (_configKind == MemberLaunchConfigKind.preset &&
-                    presetDropdownItems.isNotEmpty)
-                  MemberLaunchPresetField(
-                    items: presetDropdownItems,
-                    currentToken: effectivePresetToken,
-                    eligiblePresets: eligiblePresetList,
-                    registry: registry,
-                    providerState: providerState,
+            child: TpForm(
+              key: _formKey,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  MemberLaunchConfigTypeField(
+                    currentKind: _configKind,
                     decoration: dropdownDeco,
-                    onChanged: (token) =>
-                        _applyPresetChoice(token, allPresets),
+                    showDividerBelow:
+                        _configKind == MemberLaunchConfigKind.custom,
+                    onChanged: _applyConfigKind,
                   ),
-                if (isCustom)
-                  CliLaunchCustomFields(
-                    catalogCli: catalogCli,
-                    providers: providers,
-                    providerId: _providerId,
-                    modelId: _modelId,
-                    effortId: _effortId,
-                    registry: registry,
-                    cliFieldKind: mixed
-                        ? CliLaunchCliFieldKind.mixedMember
-                        : CliLaunchCliFieldKind.hidden,
-                    mixedMemberCliItems: mixedMemberCliItems,
-                    cliToken: _cliToken,
-                    onMixedCliTokenChanged: _applyCatalogCliChange,
-                    team: team,
-                    member: member,
-                    effortContext: CliLaunchEffortContext.member,
-                    effortSubtitle: l10n.memberEffortLevelSubtitle,
-                    effortAllowInherit: false,
-                    effortTitle: l10n.memberEffortLevel,
-                    dropdownKeyPrefix: 'member-launch',
-                    decoration: dropdownDeco,
-                    onProviderChanged: (value) => setState(() {
-                      _providerId = value;
-                      _modelId = '';
-                      _effortId = '';
-                    }),
-                    onModelChanged: (value) => setState(() {
-                      _modelId = value.trim();
-                      if (!teamShowsEffortPicker(
-                        context,
-                        cli: catalogCli,
-                        placement: EffortPickerPlacement.member,
-                        model: _modelId,
-                      )) {
-                        _effortId = '';
-                      }
-                    }),
-                    onEffortChanged: (value) =>
-                        setState(() => _effortId = value.trim()),
-                  ),
-              ],
+                  if (_configKind == MemberLaunchConfigKind.inheritTeam)
+                    MemberLaunchInheritSummary(
+                      team: team,
+                      presets: allPresets,
+                      registry: registry,
+                      providerState: providerState,
+                    ),
+                  if (_configKind == MemberLaunchConfigKind.preset &&
+                      presetDropdownItems.isNotEmpty)
+                    TpFormField<String>(
+                      id: 'preset-token',
+                      initialValue: effectivePresetToken,
+                      builder: (state) => MemberLaunchPresetField(
+                        items: presetDropdownItems,
+                        currentToken: state.value ?? effectivePresetToken,
+                        eligiblePresets: eligiblePresetList,
+                        registry: registry,
+                        providerState: providerState,
+                        decoration: dropdownDeco,
+                        onChanged: (token) {
+                          state.didChange(token);
+                          _applyPresetChoice(token, allPresets);
+                        },
+                      ),
+                      validator: (value) => (value == null || value.isEmpty)
+                          ? context.l10n.formFieldRequired
+                          : null,
+                    ),
+                  if (isCustom)
+                    TpFormField<String>(
+                      id: 'custom-provider',
+                      initialValue: _providerId,
+                      builder: (state) => CliLaunchCustomFields(
+                        catalogCli: catalogCli,
+                        providers: providers,
+                        providerId: _providerId,
+                        modelId: _modelId,
+                        effortId: _effortId,
+                        registry: registry,
+                        cliFieldKind: mixed
+                            ? CliLaunchCliFieldKind.mixedMember
+                            : CliLaunchCliFieldKind.hidden,
+                        mixedMemberCliItems: mixedMemberCliItems,
+                        cliToken: _cliToken,
+                        onMixedCliTokenChanged: _applyCatalogCliChange,
+                        team: team,
+                        member: member,
+                        effortContext: CliLaunchEffortContext.member,
+                        effortSubtitle: l10n.memberEffortLevelSubtitle,
+                        effortAllowInherit: false,
+                        effortTitle: l10n.memberEffortLevel,
+                        dropdownKeyPrefix: 'member-launch',
+                        decoration: dropdownDeco,
+                        providerHasError:
+                            state.hasError && _providerId.trim().isEmpty,
+                        onProviderChanged: (value) {
+                          state.didChange(value);
+                          setState(() {
+                            _providerId = value;
+                            _modelId = '';
+                            _effortId = '';
+                          });
+                        },
+                        onModelChanged: (value) => setState(() {
+                          _modelId = value.trim();
+                          if (!teamShowsEffortPicker(
+                            context,
+                            cli: catalogCli,
+                            placement: EffortPickerPlacement.member,
+                            model: _modelId,
+                          )) {
+                            _effortId = '';
+                          }
+                        }),
+                        onEffortChanged: (value) =>
+                            setState(() => _effortId = value.trim()),
+                      ),
+                      validator: (value) =>
+                          (value == null || value.trim().isEmpty)
+                          ? context.l10n.selectProvider
+                          : null,
+                    ),
+                ],
+              ),
             ),
           ),
           TpDialogActions(
@@ -556,10 +587,6 @@ class _MemberLaunchConfigureDialogState
               FilledButton(
                 onPressed: _saving
                     ? null
-                    : isCustom
-                    ? (_canSaveCustom(mixed)
-                          ? () => unawaited(_save())
-                          : null)
                     : (_configKind == MemberLaunchConfigKind.preset &&
                               presetDropdownItems.isEmpty
                           ? null

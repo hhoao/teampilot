@@ -5,6 +5,7 @@ import '../../l10n/l10n_extensions.dart';
 import '../../models/managed_provider.dart';
 import '../../models/managed_provider_editor_schema.dart';
 import '../../services/provider_usage/managed_provider_presets.dart';
+import 'managed_provider_editor_validation.dart';
 
 class ManagedProviderBasicsSection extends StatelessWidget {
   const ManagedProviderBasicsSection({
@@ -80,11 +81,15 @@ class ManagedProviderBasicsSection extends StatelessWidget {
         ),
         const SizedBox(height: 12),
         if (schema.hasField('name'))
-          _ManagedProviderTextField(
-            fieldKey: const Key('managed-provider-name'),
-            label: l10n.managedProvidersName,
+          TpInputFormField(
+            key: const Key('managed-provider-name'),
+            label: Text(l10n.managedProvidersName),
             controller: nameController,
-            hint: l10n.managedProvidersNameHint,
+            decoration: InputDecoration(hintText: l10n.managedProvidersNameHint),
+            validator: (value) =>
+                (value == null || value.trim().isEmpty)
+                    ? context.l10n.formFieldRequired
+                    : null,
           ),
         if (schema.hasField('enabled'))
           SwitchListTile.adaptive(
@@ -136,8 +141,11 @@ class ManagedProviderQuerySection extends StatelessWidget {
     required this.requestMappingController,
     required this.fieldMappingsController,
     required this.onMethodChanged,
+    this.strictEndpointResolver = _defaultStrictEndpointResolver,
     super.key,
   });
+
+  static bool _defaultStrictEndpointResolver() => false;
 
   final ManagedProviderEditorSchema schema;
   final TextEditingController endpointController;
@@ -148,6 +156,10 @@ class ManagedProviderQuerySection extends StatelessWidget {
   final TextEditingController fieldMappingsController;
   final ValueChanged<String> onMethodChanged;
 
+  /// Evaluated inside the endpoint validator so the freshness of the adapter
+  /// / kind inputs is captured at validate time, not at build time.
+  final bool Function() strictEndpointResolver;
+
   @override
   Widget build(BuildContext context) {
     final l10n = context.l10n;
@@ -155,12 +167,21 @@ class ManagedProviderQuerySection extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         if (schema.hasField('endpointConfig.url'))
-          _ManagedProviderTextField(
-            fieldKey: const Key('managed-provider-endpoint'),
-            label: l10n.managedProvidersEndpoint,
+          TpInputFormField(
+            key: const Key('managed-provider-endpoint'),
+            label: Text(l10n.managedProvidersEndpoint),
             controller: endpointController,
-            hint: l10n.managedProvidersEndpointHint,
+            decoration: InputDecoration(
+              hintText: l10n.managedProvidersEndpointHint,
+            ),
             keyboardType: TextInputType.url,
+            validator: (value) =>
+                isAllowedManagedProviderEndpoint(
+                  value ?? '',
+                  allowHttpLocalhost: strictEndpointResolver(),
+                )
+                ? null
+                : context.l10n.managedProvidersEndpointError,
           ),
         if (schema.hasField('endpointConfig.method')) ...[
           const SizedBox(height: 12),
@@ -199,18 +220,38 @@ class ManagedProviderQuerySection extends StatelessWidget {
         ],
         if (schema.hasField('endpointConfig.body')) ...[
           const SizedBox(height: 12),
-          _ManagedProviderTextarea(
-            fieldKey: const Key('managed-provider-request-mapping'),
-            label: l10n.managedProvidersRequestMapping,
+          TpTextareaFormField(
+            key: const Key('managed-provider-request-mapping'),
+            label: Text(l10n.managedProvidersRequestMapping),
             controller: requestMappingController,
+            minHeight: 90,
+            maxHeight: 180,
+            decoration: const InputDecoration(hintText: '{"region": "us"}'),
+            validator: (value) {
+              final parsed = decodeJsonObject(value ?? '');
+              if (parsed == null || mappingContainsCredentialKey(parsed)) {
+                return context.l10n.managedProvidersRequestMappingError;
+              }
+              return null;
+            },
           ),
         ],
         if (schema.hasField('endpointConfig.fieldMappings')) ...[
           const SizedBox(height: 12),
-          _ManagedProviderTextarea(
-            fieldKey: const Key('managed-provider-field-mappings'),
-            label: l10n.managedProvidersFieldMappings,
+          TpTextareaFormField(
+            key: const Key('managed-provider-field-mappings'),
+            label: Text(l10n.managedProvidersFieldMappings),
             controller: fieldMappingsController,
+            minHeight: 90,
+            maxHeight: 180,
+            decoration: const InputDecoration(hintText: '{"region": "us"}'),
+            validator: (value) {
+              final parsed = decodeJsonObject(value ?? '');
+              if (parsed == null || mappingContainsCredentialKey(parsed)) {
+                return context.l10n.managedProvidersFieldMappingError;
+              }
+              return null;
+            },
           ),
           const SizedBox(height: 6),
           Text(
@@ -337,11 +378,16 @@ class ManagedProviderDisplaySection extends StatelessWidget {
                   hint: 'requests / tokens',
                 ),
               if (schema.hasField('displayConfig.decimalPlaces'))
-                _ManagedProviderTextField(
-                  fieldKey: const Key('managed-provider-decimal-places'),
-                  label: l10n.managedProvidersDecimals,
+                TpInputFormField(
+                  key: const Key('managed-provider-decimal-places'),
+                  label: Text(l10n.managedProvidersDecimals),
                   controller: decimalPlacesController,
                   keyboardType: TextInputType.number,
+                  validator: (value) =>
+                      ((value ?? '').trim().isNotEmpty &&
+                          int.tryParse(value!.trim()) == null)
+                      ? context.l10n.managedProvidersDecimalError
+                      : null,
                 ),
             ];
             if (fields.isEmpty) return const SizedBox.shrink();
@@ -418,12 +464,18 @@ class ManagedProviderAdvancedSection extends StatelessWidget {
           ),
         if (schema.hasField('adapterId')) ...[
           const SizedBox(height: 12),
-          _ManagedProviderTextField(
-            fieldKey: const Key('managed-provider-adapter'),
-            label: l10n.managedProvidersAdapter,
+          TpInputFormField(
+            key: const Key('managed-provider-adapter'),
+            label: Text(l10n.managedProvidersAdapter),
             controller: adapterController,
-            hint: l10n.managedProvidersAdapterHint,
+            decoration: InputDecoration(
+              hintText: l10n.managedProvidersAdapterHint,
+            ),
             readOnly: adapterField?.readOnly ?? false,
+            validator: (value) =>
+                (value == null || value.trim().isEmpty)
+                    ? context.l10n.formFieldRequired
+                    : null,
           ),
         ],
         if (schema.hasField('credentialRef')) ...[
@@ -447,7 +499,6 @@ class _ManagedProviderTextField extends StatelessWidget {
     required this.label,
     required this.controller,
     this.hint,
-    this.keyboardType,
     this.readOnly = false,
     this.obscureText = false,
     this.onChanged,
@@ -458,7 +509,6 @@ class _ManagedProviderTextField extends StatelessWidget {
   final String label;
   final TextEditingController controller;
   final String? hint;
-  final TextInputType? keyboardType;
   final bool readOnly;
   final bool obscureText;
   final ValueChanged<String>? onChanged;
@@ -472,34 +522,9 @@ class _ManagedProviderTextField extends StatelessWidget {
       controller: controller,
       focusNode: focusNode,
       decoration: InputDecoration(hintText: hint),
-      keyboardType: keyboardType,
       readOnly: readOnly,
       obscureText: obscureText,
       onChanged: onChanged,
-    ),
-  );
-}
-
-class _ManagedProviderTextarea extends StatelessWidget {
-  const _ManagedProviderTextarea({
-    required this.fieldKey,
-    required this.label,
-    required this.controller,
-  });
-
-  final Key fieldKey;
-  final String label;
-  final TextEditingController controller;
-
-  @override
-  Widget build(BuildContext context) => _LabeledControl(
-    label: label,
-    child: TpTextarea(
-      key: fieldKey,
-      controller: controller,
-      minHeight: 90,
-      maxHeight: 180,
-      decoration: const InputDecoration(hintText: '{"region": "us"}'),
     ),
   );
 }

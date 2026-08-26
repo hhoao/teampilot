@@ -82,12 +82,12 @@ class _HomeNewTeamDialogState extends State<HomeNewTeamDialog> {
   TeamMode? _mode;
   CliTool _cli = CliTool.claude;
   String _providerId = '';
-  bool _canCreate = false;
+  final _formKey = GlobalKey<TpFormState>();
   bool _didSeedProvider = false;
   bool _generating = false;
   TeamConfigDraft? _draft;
 
-  /// AI-tab description; drives the "生成" button enabled state.
+  /// AI-tab description; validated as required when generating/creating.
   String _aiDescription = '';
 
   /// Non-null while streaming generation runs: 0..1 progress for the bar.
@@ -97,7 +97,7 @@ class _HomeNewTeamDialogState extends State<HomeNewTeamDialog> {
   @override
   void initState() {
     super.initState();
-    _nameController = TextEditingController()..addListener(_syncCanCreate);
+    _nameController = TextEditingController()..addListener(_refreshValidation);
   }
 
   @override
@@ -115,15 +115,8 @@ class _HomeNewTeamDialogState extends State<HomeNewTeamDialog> {
     super.dispose();
   }
 
-  void _syncCanCreate() {
-    if (_mode == null) {
-      if (_canCreate) setState(() => _canCreate = false);
-      return;
-    }
-    final canCreate = _creationMethod == _TeamCreationMethod.custom
-        ? _nameController.text.trim().isNotEmpty
-        : _draft != null && _draft!.members.isNotEmpty;
-    if (canCreate != _canCreate) setState(() => _canCreate = canCreate);
+  void _refreshValidation() {
+    if (mounted) setState(() {});
   }
 
   String _teamNameForSubmit() {
@@ -197,10 +190,9 @@ class _HomeNewTeamDialogState extends State<HomeNewTeamDialog> {
   );
 
   Future<void> _submit() async {
+    if (!(_formKey.currentState?.validate() ?? false)) return;
     final name = _teamNameForSubmit().trim();
-    if (name.isEmpty) return;
     final mode = _mode;
-    if (mode == null) return;
     List<TeamRosterSlot>? roster;
     if (_draft != null) {
       roster = await rosterSlotsFromTeamDraft(_draft!);
@@ -209,16 +201,13 @@ class _HomeNewTeamDialogState extends State<HomeNewTeamDialog> {
     Navigator.of(context).pop(
       _buildDialogResult(
         name: name,
-        mode: mode,
+        mode: mode!,
         providerIdsByTool: _providerIdsByToolForSubmit(),
         roster: roster,
         description: _draft?.description?.trim() ?? '',
       ),
     );
   }
-
-  bool get _canGenerate =>
-      _mode != null && _aiDescription.trim().isNotEmpty && !_generating;
 
   /// AI flow: stream-generate the team, advancing the progress bar, then create
   /// the team and close the dialog. The bar eases toward — but never reaches —
@@ -227,8 +216,9 @@ class _HomeNewTeamDialogState extends State<HomeNewTeamDialog> {
   Future<void> _generateAndCreate() async {
     final l10n = context.l10n;
     final mode = _mode;
+    if (!(_formKey.currentState?.validate() ?? false)) return;
+    if (mode == null || _generating) return;
     final description = _aiDescription.trim();
-    if (mode == null || description.isEmpty || _generating) return;
 
     final stored = context.read<AiFeatureSettingsCubit>().state.settingFor(
       AiFeatureId.teamGenerate,
@@ -314,10 +304,12 @@ class _HomeNewTeamDialogState extends State<HomeNewTeamDialog> {
         MediaQuery.sizeOf(context).width <
         WorkspacePanePolicy.narrowBreakpointWidth;
 
-    final body = Column(
-      mainAxisSize: MainAxisSize.min,
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
+    final body = TpForm(
+      key: _formKey,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
           TpSegmentedPicker<_TeamCreationMethod>(
             alignment: Alignment.center,
             customWidths: const [156, 120],
@@ -341,7 +333,7 @@ class _HomeNewTeamDialogState extends State<HomeNewTeamDialog> {
                   _draft = null;
                 }
               });
-              _syncCanCreate();
+              _refreshValidation();
             },
           ),
           const SizedBox(height: 12),
@@ -373,7 +365,7 @@ class _HomeNewTeamDialogState extends State<HomeNewTeamDialog> {
                         _draft = null;
                       });
                       _ensureNativeTeamCli();
-                      _syncCanCreate();
+                      _refreshValidation();
                     },
                   ),
                 ),
@@ -391,12 +383,17 @@ class _HomeNewTeamDialogState extends State<HomeNewTeamDialog> {
                         _mode = TeamMode.mixed;
                         _draft = null;
                       });
-                      _syncCanCreate();
+                      _refreshValidation();
                     },
                   ),
                 ),
               ],
             ),
+          ),
+          TpFormField<bool>(
+            id: 'mode',
+            builder: (_) => const SizedBox.shrink(),
+            validator: (_) => _mode == null ? l10n.teamModeRequired : null,
           ),
           if (_creationMethod == _TeamCreationMethod.custom) ...[
             if (_mode == TeamMode.native) ...[
@@ -416,11 +413,30 @@ class _HomeNewTeamDialogState extends State<HomeNewTeamDialog> {
               ),
             ],
             const SizedBox(height: 24),
-            _NameField(
-              controller: _nameController,
-              onSubmitted: (_) => _submit(),
+            TpFormField<bool>(
+              id: 'team-name',
+              builder: (state) => _NameField(
+                controller: _nameController,
+                onSubmitted: (_) => _submit(),
+                hasError: state.hasError,
+              ),
+              validator: (_) =>
+                  (_creationMethod == _TeamCreationMethod.custom &&
+                          _mode != null &&
+                          _nameController.text.trim().isEmpty)
+                      ? l10n.teamNameRequired
+                      : null,
             ),
           ] else ...[
+            TpFormField<bool>(
+              id: 'ai-description',
+              builder: (_) => const SizedBox.shrink(),
+              validator: (_) =>
+                  _creationMethod == _TeamCreationMethod.ai &&
+                          _aiDescription.trim().isEmpty
+                      ? l10n.formFieldRequired
+                      : null,
+            ),
             const SizedBox(height: 24),
             HomeTeamGenerateSection(
               enabled: _mode != null,
@@ -440,13 +456,10 @@ class _HomeNewTeamDialogState extends State<HomeNewTeamDialog> {
               Builder(
                 builder: (context) {
                   final isAi = _creationMethod == _TeamCreationMethod.ai;
-                  final enabled = isAi
-                      ? _canGenerate
-                      : (_canCreate && !_generating);
                   return FilledButton(
-                    onPressed: enabled
-                        ? (isAi ? _generateAndCreate : _submit)
-                        : null,
+                    onPressed: _generating
+                        ? null
+                        : (isAi ? _generateAndCreate : _submit),
                     child: _generating
                         ? const SizedBox(
                             width: 18,
@@ -464,7 +477,8 @@ class _HomeNewTeamDialogState extends State<HomeNewTeamDialog> {
             ],
           ),
         ],
-      );
+      ),
+    );
 
     return TpDialogPageShell(
       title: l10n.homeWorkspaceNewTeam,
@@ -705,10 +719,15 @@ class _NativeTeamOptionsCard extends StatelessWidget {
 }
 
 class _NameField extends StatelessWidget {
-  const _NameField({required this.controller, required this.onSubmitted});
+  const _NameField({
+    required this.controller,
+    required this.onSubmitted,
+    required this.hasError,
+  });
 
   final TextEditingController controller;
   final ValueChanged<String> onSubmitted;
+  final bool hasError;
 
   @override
   Widget build(BuildContext context) {
@@ -763,6 +782,8 @@ class _NameField extends StatelessWidget {
                   decoration: InputDecoration(
                     hintText: l10n.homeWorkspaceNewTeamNameHint,
                     isDense: true,
+                    errorText: hasError ? '' : null,
+                    errorStyle: const TextStyle(height: 0, fontSize: 0),
                   ),
                 ),
               ],

@@ -115,15 +115,17 @@ Finder _verticalScrollable() => find.byWidgetPredicate(
 Future<void> _scrollToEditorBottom(WidgetTester tester) async {
   tester.binding.focusManager.primaryFocus?.unfocus();
   await tester.pump();
-  await tester.drag(_verticalScrollable(), const Offset(0, -800));
-  await tester.pump();
+  final scrollable = tester.state<ScrollableState>(_verticalScrollable());
+  scrollable.position.jumpTo(scrollable.position.maxScrollExtent);
+  await tester.pumpAndSettle();
 }
 
 Future<void> _scrollToEditorTop(WidgetTester tester) async {
   tester.binding.focusManager.primaryFocus?.unfocus();
   await tester.pump();
-  await tester.drag(_verticalScrollable(), const Offset(0, 1000));
-  await tester.pump();
+  final scrollable = tester.state<ScrollableState>(_verticalScrollable());
+  scrollable.position.jumpTo(0);
+  await tester.pumpAndSettle();
 }
 
 class _MemorySecureKeyValueStore implements SecureKeyValueStore {
@@ -406,13 +408,13 @@ void main() {
       await openNewEditor(tester);
       await applyPreset(tester, 'DeepSeek');
 
-      final nameInput = tester.widget<TpInput>(
+      final nameInput = tester.widget<TpInputFormField>(
         find.byKey(const Key('managed-provider-name')),
       );
       expect(nameInput.controller!.text, 'DeepSeek');
       await tester.tap(find.byKey(const Key('managed-provider-section-query')));
       await tester.pumpAndSettle();
-      final endpointInput = tester.widget<TpInput>(
+      final endpointInput = tester.widget<TpInputFormField>(
         find.byKey(const Key('managed-provider-endpoint')),
       );
       expect(
@@ -433,11 +435,11 @@ void main() {
         500,
         scrollable: _verticalScrollable(),
       );
-      final decimalsInput = tester.widget<TpInput>(
+      final decimalsInput = tester.widget<TpInputFormField>(
         find.byKey(const Key('managed-provider-decimal-places')),
       );
       expect(decimalsInput.controller!.text, '2');
-      final fieldMappings = tester.widget<TpTextarea>(
+      final fieldMappings = tester.widget<TpTextareaFormField>(
         find.byKey(
           const Key('managed-provider-field-mappings'),
           skipOffstage: false,
@@ -915,18 +917,19 @@ void main() {
         find.byKey(const Key('managed-provider-endpoint')),
         'https://example.test/usage',
       );
-      await tester.scrollUntilVisible(
-        find.byKey(const Key('managed-provider-section-credentials')),
-        500,
-        scrollable: _verticalScrollable(),
+      // Sections stay mounted (non-lazy editor scroll view), so bring the
+      // credentials header into view directly and tap its visible header.
+      final credentialsHeader = find.byKey(
+        const Key('managed-provider-section-credentials'),
       );
-      await tester.ensureVisible(
-        find.byKey(const Key('managed-provider-section-credentials')),
-      );
+      await tester.ensureVisible(credentialsHeader);
       await tester.pumpAndSettle();
-      await tester.tap(
-        find.byKey(const Key('managed-provider-section-credentials')),
-      );
+      final viewport = tester.getRect(_verticalScrollable());
+      if (!viewport.contains(tester.getCenter(credentialsHeader))) {
+        await tester.drag(_verticalScrollable(), const Offset(0, -200));
+        await tester.pumpAndSettle();
+      }
+      await tester.tap(credentialsHeader);
       await tester.pumpAndSettle();
       await tester.enterText(
         find.byKey(const Key('managed-provider-credential-name')),
@@ -1046,7 +1049,9 @@ void main() {
     await tester.pumpAndSettle();
     expect(
       tester
-          .widget<TpInput>(find.byKey(const Key('managed-provider-adapter')))
+          .widget<TpInputFormField>(
+            find.byKey(const Key('managed-provider-adapter')),
+          )
           .readOnly,
       isFalse,
     );
@@ -1066,7 +1071,9 @@ void main() {
     await tester.pumpAndSettle();
     expect(
       tester
-          .widget<TpInput>(find.byKey(const Key('managed-provider-adapter')))
+          .widget<TpInputFormField>(
+            find.byKey(const Key('managed-provider-adapter')),
+          )
           .readOnly,
       isTrue,
     );
@@ -1093,7 +1100,7 @@ void main() {
         find.byKey(const Key('managed-provider-endpoint')),
         'https://example.test/usage',
       );
-      await tester.drag(find.byType(ListView).last, const Offset(0, -800));
+      await tester.drag(_verticalScrollable(), const Offset(0, -800));
       await tester.pump();
       await tester.scrollUntilVisible(
         find.byKey(const Key('managed-provider-save'), skipOffstage: false),
@@ -1297,6 +1304,81 @@ void main() {
       findsOneWidget,
     );
     expect(providerCubit.state.providers, isEmpty);
+  });
+
+  testWidgets('collapsed query section still blocks an invalid save', (
+    tester,
+  ) async {
+    providerCubit.emit(
+      ManagedProviderState(status: ManagedProviderLoadStatus.ready),
+    );
+    usageCubit.emit(
+      ManagedProviderUsageState(status: ManagedProviderUsageLoadStatus.ready),
+    );
+    await pumpPage(tester);
+
+    await openNewEditor(tester);
+    await tester.enterText(
+      find.byKey(const Key('managed-provider-name')),
+      'Custom',
+    );
+    await tester.enterText(
+      find.byKey(const Key('managed-provider-endpoint')),
+      'http://example.test/usage',
+    );
+    await tester.pumpAndSettle();
+
+    // Collapse the query section before saving. Tap the header list tile:
+    // the shell's own center sits over the expanded section body.
+    final queryHeader = find.byKey(const Key('managed-provider-section-query'));
+    final queryTile = find.descendant(
+      of: queryHeader,
+      matching: find.byType(ListTile),
+    );
+    final viewport = tester.getRect(_verticalScrollable());
+    if (!viewport.contains(tester.getCenter(queryTile))) {
+      await tester.drag(_verticalScrollable(), const Offset(0, -200));
+      await tester.pumpAndSettle();
+    }
+    await tester.tap(queryTile);
+    await tester.pumpAndSettle();
+
+    // Collapsed but still mounted: hidden on stage, present off stage.
+    expect(
+      find.byKey(const Key('managed-provider-endpoint')),
+      findsNothing,
+    );
+    expect(
+      find.byKey(const Key('managed-provider-endpoint'), skipOffstage: false),
+      findsOneWidget,
+    );
+
+    await _scrollToEditorBottom(tester);
+    await tester.runAsync(() async {
+      tester
+          .widget<TpButton>(find.byKey(const Key('managed-provider-save')))
+          .onPressed!
+          .call();
+      await Future<void>.delayed(const Duration(milliseconds: 100));
+    });
+    await tester.pumpAndSettle();
+
+    expect(providerCubit.state.providers, isEmpty);
+    expect(secureStore.values, isEmpty);
+    expect(httpJsonAdapter.calls, 0);
+    expect(
+      find.byKey(const Key('managed-provider-editor-page')),
+      findsOneWidget,
+    );
+
+    // Re-expanding surfaces the endpoint error from the collapsed section.
+    await _scrollToEditorTop(tester);
+    await tester.tap(queryTile);
+    await tester.pumpAndSettle();
+    expect(
+      find.text('Enter an HTTPS or loopback endpoint for this HTTP adapter.'),
+      findsOneWidget,
+    );
   });
 
   testWidgets('list card shows brand mark and no wallet icon for Codex official', (

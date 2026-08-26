@@ -77,6 +77,7 @@ class _WorktreeCreateDialog extends StatefulWidget {
 }
 
 class _WorktreeCreateDialogState extends State<_WorktreeCreateDialog> {
+  final _formKey = GlobalKey<TpFormState>();
   final _branch = TextEditingController();
   String _selectorValue = '';
   List<WorktreeBranchOption> _branchOptions = const [];
@@ -169,59 +170,67 @@ class _WorktreeCreateDialogState extends State<_WorktreeCreateDialog> {
       title: Text(l10n.worktreeCreateTitle),
       content: SizedBox(
         width: 420,
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            TextField(
-              controller: _branch,
-              autofocus: true,
-              decoration: InputDecoration(
-                labelText: l10n.worktreeBranchLabel,
-                suffixIcon: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    if (_loadingBranches)
-                      const Padding(
-                        padding: EdgeInsets.all(12),
-                        child: SizedBox(
-                          width: 16,
-                          height: 16,
-                          child: CircularProgressIndicator(strokeWidth: 2),
+        child: TpForm(
+          key: _formKey,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              TpInputFormField(
+                key: const Key('worktree-branch-field'),
+                controller: _branch,
+                autofocus: true,
+                decoration: InputDecoration(
+                  labelText: l10n.worktreeBranchLabel,
+                  suffixIcon: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      if (_loadingBranches)
+                        const Padding(
+                          padding: EdgeInsets.all(12),
+                          child: SizedBox(
+                            width: 16,
+                            height: 16,
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          ),
                         ),
+                      TpIconButton(
+                        icon: Icons.casino_outlined,
+                        size: TpIconButton.kCompactSize,
+                        tooltip: l10n.worktreeRandomNameTooltip,
+                        onTap: _applyRandomName,
                       ),
-                    TpIconButton(
-                      icon: Icons.casino_outlined,
-                      size: TpIconButton.kCompactSize,
-                      tooltip: l10n.worktreeRandomNameTooltip,
-                      onTap: _applyRandomName,
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
+                validator: (value) =>
+                    (value == null || value.trim().isEmpty)
+                        ? l10n.formFieldRequired
+                        : null,
               ),
-            ),
-            const SizedBox(height: 12),
-            TpSelectWithCustomInput(
-              value: _selectorValue,
-              items: _selectorItems,
-              onChanged: _onSelectorChanged,
-              hintText: l10n.worktreeBaseSelectorHint,
-              decoration: TpSelectDecorations.themed(context),
-              customInputTooltip: l10n.worktreeBaseSelectorHint,
-            ),
-            const SizedBox(height: 12),
-            if (_previewPath.isNotEmpty) ...[
-              Text(l10n.worktreePathLabel, style: TpTextStyles(theme).xs),
-              const SizedBox(height: 2),
-              Text(
-                _previewPath,
-                style: TpTextStyles(theme).sm,
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
+              const SizedBox(height: 12),
+              TpSelectWithCustomInput(
+                value: _selectorValue,
+                items: _selectorItems,
+                onChanged: _onSelectorChanged,
+                hintText: l10n.worktreeBaseSelectorHint,
+                decoration: TpSelectDecorations.themed(context),
+                customInputTooltip: l10n.worktreeBaseSelectorHint,
               ),
-              const SizedBox(height: 8),
+              const SizedBox(height: 12),
+              if (_previewPath.isNotEmpty) ...[
+                Text(l10n.worktreePathLabel, style: TpTextStyles(theme).xs),
+                const SizedBox(height: 2),
+                Text(
+                  _previewPath,
+                  style: TpTextStyles(theme).sm,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                ),
+                const SizedBox(height: 8),
+              ],
             ],
-          ],
+          ),
         ),
       ),
       actions: [
@@ -230,9 +239,10 @@ class _WorktreeCreateDialogState extends State<_WorktreeCreateDialog> {
           child: Text(MaterialLocalizations.of(context).cancelButtonLabel),
         ),
         FilledButton(
-          onPressed: _branch.text.trim().isEmpty
-              ? null
-              : () => Navigator.of(context).pop(_buildResult()),
+          onPressed: () {
+            if (!(_formKey.currentState?.validate() ?? false)) return;
+            Navigator.of(context).pop(_buildResult());
+          },
           child: Text(l10n.worktreeCreateAction),
         ),
       ],

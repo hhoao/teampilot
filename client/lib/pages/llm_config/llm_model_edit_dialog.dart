@@ -24,6 +24,7 @@ class LlmModelEditDialog extends StatefulWidget {
 }
 
 class LlmModelEditDialogState extends State<LlmModelEditDialog> {
+  final _formKey = GlobalKey<TpFormState>();
   late final TextEditingController _nameController;
   late String _provider;
   late final TextEditingController _modelController;
@@ -65,79 +66,91 @@ class LlmModelEditDialogState extends State<LlmModelEditDialog> {
 
     return TpDialog(
       maxWidth: 400,
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          TpDialogHeader(title: widget.title),
-          const SizedBox(height: 16),
-          TextField(
-            key: AppKeys.modelNameDialogField,
-            controller: _nameController,
-            autofocus: true,
-            decoration: InputDecoration(labelText: l10n.modelName),
-          ),
-          const SizedBox(height: 14),
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text(
-                l10n.provider,
-                style: TpTextStyles.of(context).mdSemibold,
-              ),
-              const SizedBox(height: 8),
-              TpSelect<String>(
-                key: AppKeys.modelProviderField,
-                items: providerNames,
-                initialItem: initialProvider,
-                hintText: l10n.provider,
-                decoration: deco,
-                onChanged: (value) => setState(() => _provider = value ?? ''),
-                itemLabel: (value) => value,
-              ),
-            ],
-          ),
-          const SizedBox(height: 14),
-          TextField(
-            key: AppKeys.modelModelIdField,
-            controller: _modelController,
-            decoration: InputDecoration(labelText: l10n.modelId),
-          ),
-          const SizedBox(height: 14),
-          SwitchListTile(
-            contentPadding: EdgeInsets.zero,
-            key: AppKeys.modelEnabledToggle,
-            title: Text(l10n.enabled),
-            value: _enabled,
-            onChanged: (value) => setState(() => _enabled = value),
-          ),
-          TpDialogActions(
-            children: [
-              TextButton(
-                onPressed: () => Navigator.pop(context),
-                child: Text(l10n.cancel),
-              ),
-              FilledButton(
-                onPressed: () {
-                  final name = _nameController.text.trim();
-                  if (name.isEmpty) return;
-                  Navigator.pop(
-                    context,
-                    LlmModelConfig(
-                      id: isEditing ? widget.model!.id : name,
-                      name: name,
-                      provider: _provider,
-                      model: _modelController.text.trim(),
-                      enabled: _enabled,
-                    ),
-                  );
-                },
-                child: Text(l10n.save),
-              ),
-            ],
-          ),
-        ],
+      child: TpForm(
+        key: _formKey,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            TpDialogHeader(title: widget.title),
+            const SizedBox(height: 16),
+            TpInputFormField(
+              key: AppKeys.modelNameDialogField,
+              controller: _nameController,
+              autofocus: true,
+              decoration: InputDecoration(labelText: l10n.modelName),
+              validator: (value) =>
+                  (value == null || value.trim().isEmpty)
+                      ? l10n.formFieldRequired
+                      : null,
+            ),
+            const SizedBox(height: 14),
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  l10n.provider,
+                  style: TpTextStyles.of(context).mdSemibold,
+                ),
+                const SizedBox(height: 8),
+                TpSelectFormField<String>(
+                  key: AppKeys.modelProviderField,
+                  id: 'provider',
+                  items: providerNames,
+                  initialValue: initialProvider,
+                  hintText: l10n.provider,
+                  decoration: deco,
+                  validator: (value) =>
+                      (value == null || value.isEmpty)
+                          ? l10n.formFieldRequired
+                          : null,
+                  onChanged: (value) => setState(() => _provider = value ?? ''),
+                  itemLabel: (value) => value,
+                ),
+              ],
+            ),
+            const SizedBox(height: 14),
+            TpInputFormField(
+              key: AppKeys.modelModelIdField,
+              controller: _modelController,
+              decoration: InputDecoration(labelText: l10n.modelId),
+            ),
+            const SizedBox(height: 14),
+            SwitchListTile(
+              contentPadding: EdgeInsets.zero,
+              key: AppKeys.modelEnabledToggle,
+              title: Text(l10n.enabled),
+              value: _enabled,
+              onChanged: (value) => setState(() => _enabled = value),
+            ),
+            TpDialogActions(
+              children: [
+                TextButton(
+                  onPressed: () => Navigator.pop(context),
+                  child: Text(l10n.cancel),
+                ),
+                FilledButton(
+                  onPressed: () {
+                    if (!(_formKey.currentState?.validate() ?? false)) return;
+                    final name = _nameController.text.trim();
+                    Navigator.pop(
+                      context,
+                      LlmModelConfig(
+                        id: isEditing ? widget.model!.id : name,
+                        name: name,
+                        provider: _provider,
+                        model: _modelController.text.trim(),
+                        enabled: _enabled,
+                      ),
+                    );
+                  },
+                  child: Text(l10n.save),
+                ),
+              ],
+            ),
+          ],
+        ),
       ),
     );
   }
