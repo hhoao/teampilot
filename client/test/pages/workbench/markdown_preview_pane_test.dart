@@ -30,7 +30,7 @@ ThemeData _themeForTest() {
   return buildLightTheme(null, AppTypographyScale.standard, null, fonts);
 }
 
-/// Mirrors [_MarkdownPreviewPane] layout without [EditorCubit] tree-sitter open.
+/// Mirrors [MarkdownPreviewPane] layout without [EditorCubit] tree-sitter open.
 Widget _previewPaneFixture(
   ThemeData theme,
   String markdown, {

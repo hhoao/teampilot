@@ -1088,6 +1088,7 @@
   "editorFindReplacePreserveCase": "保留大小写",
   "editorFindReplaceOne": "替换",
   "editorFindNoResults": "无匹配",
+  "editorFindInvalidRegex": "正则表达式无效",
   "fileTreeRevealActiveFile": "定位当前文件",
   "fileTreeRefresh": "刷新",
   "fileTreeShowFilter": "显示筛选",

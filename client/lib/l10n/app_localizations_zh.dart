@@ -2532,6 +2532,9 @@ class AppLocalizationsZh extends AppLocalizations {
   String get editorFindNoResults => '无匹配';
 
   @override
+  String get editorFindInvalidRegex => '正则表达式无效';
+
+  @override
   String get fileTreeRevealActiveFile => '定位当前文件';
 
   @override

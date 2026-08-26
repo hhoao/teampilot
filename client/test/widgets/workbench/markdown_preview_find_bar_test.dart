@@ -69,6 +69,21 @@ void main() {
     controller.dispose();
   });
 
+  testWidgets('invalid regex shows the distinct error label', (tester) async {
+    final controller = await pumpBar(tester);
+    final l10n = AppLocalizations.of(
+      tester.element(find.byType(MarkdownPreviewFindBar)),
+    );
+    await tester.tap(find.byTooltip(l10n.editorFindUseRegex));
+    await tester.pump();
+    await tester.enterText(find.byType(TextField), '([ ');
+    await tester.pump(const Duration(milliseconds: 200));
+    expect(controller.hasError, isTrue);
+    expect(find.text(l10n.editorFindInvalidRegex), findsOneWidget);
+    expect(find.text(l10n.editorFindNoResults), findsNothing);
+    controller.dispose();
+  });
+
   testWidgets('seeds the field text from an existing query', (tester) async {
     final controller = MarkdownPreviewFindController()
       ..openFind()

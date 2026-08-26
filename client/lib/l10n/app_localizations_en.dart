@@ -2657,6 +2657,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get editorFindNoResults => 'No matches';
 
   @override
+  String get editorFindInvalidRegex => 'Invalid regular expression';
+
+  @override
   String get fileTreeRevealActiveFile => 'Reveal active file';
 
   @override
