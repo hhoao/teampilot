@@ -80,7 +80,13 @@ class GitGraphRowTile extends StatelessWidget {
               ),
             ),
             const SizedBox(width: 8),
-            ...[for (final r in row.refs) _RefChip(decoration: r)],
+            ...[
+              for (final r in row.refs)
+                _RefChip(
+                  decoration: r,
+                  laneColor: palette[row.node.colorIndex],
+                ),
+            ],
             Expanded(
               child: Text(
                 row.subject,
@@ -119,16 +125,22 @@ class GitGraphRowTile extends StatelessWidget {
 }
 
 class _RefChip extends StatelessWidget {
-  const _RefChip({required this.decoration});
+  const _RefChip({required this.decoration, this.laneColor});
+
   final GitRefDecoration decoration;
+
+  /// 该 ref 所在提交的 lane 调色板色。分支/标签与连线同色（gitk 风格），
+  /// HEAD 固定用琥珀色以示“当前位置”。
+  final Color? laneColor;
 
   @override
   Widget build(BuildContext context) {
     final colors = switch (decoration.kind) {
       GitRefDecorationKind.head => Colors.amber,
-      GitRefDecorationKind.localBranch => Colors.lightBlueAccent,
-      GitRefDecorationKind.remoteBranch => Colors.tealAccent.shade200,
-      GitRefDecorationKind.tag => Colors.purpleAccent,
+      GitRefDecorationKind.localBranch ||
+      GitRefDecorationKind.remoteBranch ||
+      GitRefDecorationKind.tag =>
+        laneColor ?? Colors.lightBlueAccent,
     };
     return Padding(
       padding: const EdgeInsets.only(right: 4),
