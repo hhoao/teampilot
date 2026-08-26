@@ -91,11 +91,10 @@ class _CommitSummary extends StatelessWidget {
                   ),
                 ),
               ),
-              IconButton(
-                icon: const Icon(Icons.close_rounded, size: 18),
-                visualDensity: VisualDensity.compact,
+              TpIconButton(
+                icon: Icons.close_rounded,
                 tooltip: MaterialLocalizations.of(context).closeButtonTooltip,
-                onPressed: onBack,
+                onTap: onBack,
               ),
             ],
           ),
@@ -124,11 +123,11 @@ class _CommitSummary extends StatelessWidget {
                   ).xsColored(cs.onSurfaceVariant),
                 ),
               ),
-              IconButton(
-                icon: const Icon(Icons.copy_rounded, size: 16),
-                visualDensity: VisualDensity.compact,
+              TpIconButton(
+                icon: Icons.copy_rounded,
+                compact: true,
                 tooltip: context.l10n.gitGraphHashCopied,
-                onPressed: () => unawaited(_copyHash(context)),
+                onTap: () => unawaited(_copyHash(context)),
               ),
             ],
           ),
@@ -249,11 +248,10 @@ class _FileDiffView extends StatelessWidget {
           padding: const EdgeInsets.fromLTRB(4, 4, 12, 4),
           child: Row(
             children: [
-              IconButton(
-                icon: const Icon(Icons.arrow_back_rounded, size: 18),
-                visualDensity: VisualDensity.compact,
+              TpIconButton(
+                icon: Icons.arrow_back_rounded,
                 tooltip: MaterialLocalizations.of(context).backButtonTooltip,
-                onPressed: () => context.read<GitGraphCubit>().closeFileDiff(),
+                onTap: () => context.read<GitGraphCubit>().closeFileDiff(),
               ),
               const SizedBox(width: 4),
               Expanded(

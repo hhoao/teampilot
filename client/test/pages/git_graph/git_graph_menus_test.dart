@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:shared_ui/shared_ui.dart';
 import 'package:teampilot/cubits/git_graph_actions_controller.dart';
 import 'package:teampilot/cubits/git_graph_cubit.dart';
 import 'package:teampilot/l10n/app_localizations.dart';
@@ -43,18 +44,18 @@ void main() {
 
     // 未输入时禁用
     expect(
-      tester.widget<ElevatedButton>(find.byType(ElevatedButton).last).onPressed,
+      tester.widget<TpButton>(find.byType(TpButton).last).onPressed,
       isNull,
     );
     await tester.enterText(find.byType(TextField), 'wrong');
     await tester.pump();
     expect(
-      tester.widget<ElevatedButton>(find.byType(ElevatedButton).last).onPressed,
+      tester.widget<TpButton>(find.byType(TpButton).last).onPressed,
       isNull,
     );
     await tester.enterText(find.byType(TextField), 'main');
     await tester.pump();
-    await tester.tap(find.byType(ElevatedButton).last);
+    await tester.tap(find.byType(TpButton).last);
     await tester.pumpAndSettle();
     expect(result, isTrue);
   });
@@ -110,7 +111,7 @@ void main() {
     await tester.tap(find.text('Delete branch feature'));
     await tester.pumpAndSettle();
     expect(find.text('Delete branch'), findsOneWidget); // 确认对话框
-    await tester.tap(find.byType(ElevatedButton).last);
+    await tester.tap(find.byType(TpButton).last);
     await tester.pumpAndSettle();
     expect(actions.calls.single, ['branch', '-d', 'feature']);
   });
@@ -167,7 +168,7 @@ void main() {
     await tester.pumpAndSettle();
     // 未确认前不得执行。
     expect(actions.calls, isEmpty);
-    await tester.tap(find.byType(ElevatedButton).last);
+    await tester.tap(find.byType(TpButton).last);
     await tester.pumpAndSettle();
     expect(actions.calls.single, ['checkout-commit', 'deadbeef']);
   });

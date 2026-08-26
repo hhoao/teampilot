@@ -150,8 +150,10 @@ class _RefChip extends StatelessWidget {
             color: colors,
           ),
           const SizedBox(width: 2),
-          Text(decoration.name.isEmpty ? 'HEAD' : decoration.name,
-              style: TextStyle(fontSize: 10, color: colors)),
+          Text(
+            decoration.name.isEmpty ? 'HEAD' : decoration.name,
+            style: TpTextStyles.of(context).xsColored(colors),
+          ),
         ]),
       ),
     );

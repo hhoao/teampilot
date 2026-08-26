@@ -58,7 +58,7 @@ void main() {
     await tester.pumpAndSettle();
     await tester.tap(find.textContaining('Delete branch feature'));
     await tester.pumpAndSettle();
-    await tester.tap(find.byType(ElevatedButton).last); // 接受确认
+    await tester.tap(find.byType(TpButton).last); // 接受确认
     await tester.pumpAndSettle();
     expect(actions.calls.single, ['branch', '-d', 'feature']);
   });

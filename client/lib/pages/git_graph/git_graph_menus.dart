@@ -299,27 +299,28 @@ class _TagPromptDialogState extends State<_TagPromptDialog> {
             onClose: () => Navigator.of(context).pop(),
           ),
           SizedBox(height: context.tpSpacing.lg),
-          TextField(
+          TpInput(
             controller: _name,
             autofocus: true,
             decoration: InputDecoration(labelText: widget.nameLabel),
             onSubmitted: (_) => _submit(),
           ),
           const SizedBox(height: 12),
-          TextField(
+          TpInput(
             controller: _message,
             decoration: InputDecoration(labelText: widget.messageLabel),
             onSubmitted: (_) => _submit(),
           ),
           TpDialogActions(
             children: [
-              TextButton(
+              TpButton(
+                variant: TpButtonVariant.ghost,
                 onPressed: () => Navigator.of(context).pop(),
                 child: Text(
                   MaterialLocalizations.of(context).cancelButtonLabel,
                 ),
               ),
-              FilledButton(
+              TpButton(
                 onPressed: _submit,
                 child: Text(widget.confirmLabel),
               ),
@@ -393,7 +394,6 @@ class _DangerConfirmDialogState extends State<_DangerConfirmDialog> {
 
   @override
   Widget build(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
     final l10n = context.l10n;
     return TpDialog(
       maxWidth: 480,
@@ -409,7 +409,7 @@ class _DangerConfirmDialogState extends State<_DangerConfirmDialog> {
           Text(widget.body),
           if (_requiresTyping) ...[
             SizedBox(height: context.tpSpacing.lg),
-            TextField(
+            TpInput(
               controller: _controller,
               autofocus: true,
               decoration: InputDecoration(hintText: widget.typeToConfirm),
@@ -417,17 +417,13 @@ class _DangerConfirmDialogState extends State<_DangerConfirmDialog> {
           ],
           TpDialogActions(
             children: [
-              TextButton(
+              TpButton(
+                variant: TpButtonVariant.ghost,
                 onPressed: () => Navigator.of(context).pop(),
                 child: Text(l10n.cancel),
               ),
-              ElevatedButton(
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: cs.error,
-                  foregroundColor: cs.onError,
-                  disabledBackgroundColor: cs.error.withValues(alpha: 0.38),
-                  disabledForegroundColor: cs.onError.withValues(alpha: 0.6),
-                ),
+              TpButton(
+                variant: TpButtonVariant.destructive,
                 onPressed: _canConfirm
                     ? () => Navigator.of(context).pop(true)
                     : null,

@@ -84,14 +84,14 @@ class GitGraphToolbar extends StatelessWidget {
           .read<GitGraphCubit>()
           .setShowOnlyCurrentBranch(selection.first),
       showSelectedIcon: false,
-      style: const ButtonStyle(
+      style: ButtonStyle(
         visualDensity: VisualDensity.compact,
         tapTargetSize: MaterialTapTargetSize.shrinkWrap,
         side: WidgetStatePropertyAll(BorderSide(style: BorderStyle.none)),
         overlayColor: WidgetStatePropertyAll(Colors.transparent),
         minimumSize: WidgetStatePropertyAll(Size(0, 26)),
         padding: WidgetStatePropertyAll(EdgeInsets.symmetric(horizontal: 8)),
-        textStyle: WidgetStatePropertyAll(TextStyle(fontSize: 11)),
+        textStyle: WidgetStatePropertyAll(TpTextStyles.of(context).xs),
       ),
     );
   }
