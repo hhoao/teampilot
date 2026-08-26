@@ -172,6 +172,7 @@ int _estimateBlockChars(MarkdownBlock block) {
     CodeBlock(:final text) => text.length,
     HorizontalRuleBlock() => 0,
     RawLiteralBlock(:final rawMarkdown) => rawMarkdown.length,
+    HtmlBlock(:final rawHtml) => rawHtml.length,
     BlockquoteBlock(:final blocks) =>
       blocks.fold<int>(0, (sum, b) => sum + _estimateBlockChars(b)),
     ListBlock(:final items) => items.fold<int>(0, (sum, item) {

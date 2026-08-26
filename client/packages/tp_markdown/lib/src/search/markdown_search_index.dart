@@ -161,7 +161,11 @@ void _visitBlock(
           ]);
         }
       }
-    case ImageBlock() || RawLiteralBlock() || HorizontalRuleBlock():
+    case ImageBlock() ||
+        RawLiteralBlock() ||
+        HorizontalRuleBlock() ||
+        // Rendered by the embedded html engine; no inline-span container yet.
+        HtmlBlock():
       break;
   }
 }
