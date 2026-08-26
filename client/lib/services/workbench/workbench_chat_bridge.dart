@@ -72,8 +72,8 @@ class WorkbenchChatBridge implements WorkbenchDomainPort, ChatWorkbenchPort {
   }
 
   @override
-  void enterLanding(String workspaceId) {
-    _workbench.enterLanding(workspaceId);
+  void enterLanding(String workspaceId, {String? initialText}) {
+    _workbench.enterLanding(workspaceId, initialText: initialText);
   }
 
   @override

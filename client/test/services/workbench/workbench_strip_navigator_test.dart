@@ -223,5 +223,70 @@ void main() {
       workbench.enterLanding(chat.tabStore.activeWorkspaceId);
       expect(workbench.state.bar(workspaceId).center.landingActive, isTrue);
     });
+
+    test('enterLanding updates prefill while Landing is already active', () {
+      workbench.enterLanding(workspaceId);
+      workbench.enterLanding(
+        workspaceId,
+        initialText: '审查并继续完成该会话: /data/session-2',
+      );
+
+      expect(
+        workbench.state.bar(workspaceId).center.landingInitialText,
+        '审查并继续完成该会话: /data/session-2',
+      );
+    });
+
+    test('enterLanding without text clears a prefill after a session is active',
+        () {
+      workbench.enterLanding(
+        workspaceId,
+        initialText: '审查并继续完成该会话: /data/session',
+      );
+      workbench.openSession(workspaceId, 'session-1', preview: false);
+      workbench.enterLanding(workspaceId);
+
+      expect(
+        workbench.state.bar(workspaceId).center.landingInitialText,
+        isNull,
+      );
+    });
+
+    test('closeOthers preserves a Landing prefill', () {
+      const prefill = '审查并继续完成该会话: /data/session';
+      final first = WorkbenchTabId.session('session-1');
+      workbench
+        ..openSession(workspaceId, first.id, preview: false)
+        ..openSession(workspaceId, 'session-2', preview: false)
+        ..enterLanding(workspaceId, initialText: prefill)
+        ..closeOthers(workspaceId, first);
+
+      expect(workbench.state.bar(workspaceId).center.landingInitialText, prefill);
+    });
+
+    test('closeRight preserves an active Landing prefill', () {
+      const prefill = '审查并继续完成该会话: /data/session';
+      final first = WorkbenchTabId.session('session-1');
+      workbench
+        ..openSession(workspaceId, first.id, preview: false)
+        ..openSession(workspaceId, 'session-2', preview: false)
+        ..enterLanding(workspaceId, initialText: prefill)
+        ..closeRight(workspaceId, first);
+
+      expect(workbench.state.bar(workspaceId).center.landingInitialText, prefill);
+    });
+
+    test('closeAll preserves an active Landing prefill', () {
+      const prefill = '审查并继续完成该会话: /data/session';
+      workbench
+        ..openSession(workspaceId, 'session-1', preview: false)
+        ..enterLanding(workspaceId, initialText: prefill)
+        ..closeAll(workspaceId);
+
+      final center = workbench.state.bar(workspaceId).center;
+      expect(center.order, isEmpty);
+      expect(center.landingActive, isTrue);
+      expect(center.landingInitialText, prefill);
+    });
   });
 }

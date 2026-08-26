@@ -212,7 +212,7 @@ abstract class ChatWorkbenchPort {
   void onSessionTabClosed(String workspaceId, String sessionId);
 
   /// Show the new-chat landing for [workspaceId] (bar active → null).
-  void enterLanding(String workspaceId);
+  void enterLanding(String workspaceId, {String? initialText});
 
   /// Close every center tab for [workspaceId] (each removal tears down).
   void closeAll(String workspaceId);

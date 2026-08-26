@@ -108,6 +108,44 @@ void main() {
       expect(s2.order, [_s1]);
       expect(s2.landingActive, isTrue);
     });
+
+    test('enterLanding stores the initial text while retaining open tabs', () {
+      final (withTab, _) = r.add(empty, _s1, preview: false);
+      final landing = r.enterLanding(
+        withTab,
+        initialText: '审查并继续完成该会话: /data/session',
+      );
+
+      expect(landing.activeId, isNull);
+      expect(landing.order, [_s1]);
+      expect(landing.landingInitialText, '审查并继续完成该会话: /data/session');
+    });
+
+    test('non-Landing mutations preserve the Landing prefill', () {
+      const prefill = '审查并继续完成该会话: /data/session';
+      final landing = TabStrip(
+        order: [_s1, _s2],
+        previewIds: {_s2},
+        landingInitialText: prefill,
+      );
+
+      final (added, _) = r.add(landing, _s3, preview: false, activate: false);
+      final removed = r.remove(landing, _s1)!;
+      final reordered = r.reorder(landing, 0, 1);
+      final activated = r.activate(landing, _s1);
+      final pinned = r.pin(landing, _s2);
+
+      expect(
+        [
+          added.landingInitialText,
+          removed.landingInitialText,
+          reordered.landingInitialText,
+          activated.landingInitialText,
+          pinned.landingInitialText,
+        ],
+        [prefill, prefill, prefill, prefill, prefill],
+      );
+    });
   });
 
   group('invariants', () {

@@ -11,10 +11,13 @@ import 'workbench_tab.dart';
 /// strip never holds payloads.
 @immutable
 class TabStrip extends Equatable {
+  static const Object _unset = Object();
+
   const TabStrip({
     this.order = const [],
     this.activeId,
     this.previewIds = const {},
+    this.landingInitialText,
   });
 
   final List<WorkbenchTabId> order;
@@ -22,6 +25,9 @@ class TabStrip extends Equatable {
 
   /// Tabs that are still preview (replaceable) until pinned.
   final Set<WorkbenchTabId> previewIds;
+
+  /// Optional text to seed the landing compose with on its next render.
+  final String? landingInitialText;
 
   /// Landing / welcome shows when nothing is selected. Tabs may remain in the
   /// bar (open sessions) while the landing is displayed.
@@ -31,8 +37,22 @@ class TabStrip extends Equatable {
 
   int indexOf(WorkbenchTabId id) => order.indexOf(id);
 
+  TabStrip copyWith({
+    List<WorkbenchTabId>? order,
+    Object? activeId = _unset,
+    Set<WorkbenchTabId>? previewIds,
+    Object? landingInitialText = _unset,
+  }) => TabStrip(
+    order: order ?? this.order,
+    activeId: activeId == _unset ? this.activeId : activeId as WorkbenchTabId?,
+    previewIds: previewIds ?? this.previewIds,
+    landingInitialText: landingInitialText == _unset
+        ? this.landingInitialText
+        : landingInitialText as String?,
+  );
+
   @override
-  List<Object?> get props => [order, activeId, previewIds];
+  List<Object?> get props => [order, activeId, previewIds, landingInitialText];
 }
 
 /// Pure reducer: returns the next [TabStrip] for each mutation. Never mutates
@@ -59,7 +79,7 @@ class TabStripReducer {
       if (!preview) {
         previews.remove(tab);
         return (
-          TabStrip(
+          strip.copyWith(
             order: order,
             activeId: activate ? tab : strip.activeId,
             previewIds: previews,
@@ -69,7 +89,7 @@ class TabStripReducer {
       }
       if (previews.contains(tab)) {
         return (
-          TabStrip(
+          strip.copyWith(
             order: order,
             activeId: activate ? tab : strip.activeId,
             previewIds: previews,
@@ -101,7 +121,7 @@ class TabStripReducer {
     }
 
     return (
-      TabStrip(
+      strip.copyWith(
         order: order,
         activeId: activate ? tab : strip.activeId,
         previewIds: previews,
@@ -130,7 +150,11 @@ class TabStripReducer {
         active = order.first;
       }
     }
-    return TabStrip(order: order, activeId: active, previewIds: previews);
+    return strip.copyWith(
+      order: order,
+      activeId: active,
+      previewIds: previews,
+    );
   }
 
   TabStrip reorder(TabStrip strip, int oldIndex, int newIndex) {
@@ -145,7 +169,7 @@ class TabStripReducer {
     final order = List<WorkbenchTabId>.of(strip.order);
     final item = order.removeAt(oldIndex);
     order.insert(newIndex, item);
-    return TabStrip(
+    return strip.copyWith(
       order: order,
       activeId: strip.activeId,
       previewIds: strip.previewIds,
@@ -154,7 +178,7 @@ class TabStripReducer {
 
   TabStrip activate(TabStrip strip, WorkbenchTabId id) {
     if (!strip.order.contains(id)) return strip;
-    return TabStrip(
+    return strip.copyWith(
       order: strip.order,
       activeId: id,
       previewIds: strip.previewIds,
@@ -164,16 +188,13 @@ class TabStripReducer {
   TabStrip pin(TabStrip strip, WorkbenchTabId id) {
     if (!strip.previewIds.contains(id)) return strip;
     final previews = Set<WorkbenchTabId>.of(strip.previewIds)..remove(id);
-    return TabStrip(
+    return strip.copyWith(
       order: strip.order,
       activeId: strip.activeId,
       previewIds: previews,
     );
   }
 
-  TabStrip enterLanding(TabStrip strip) => TabStrip(
-    order: strip.order,
-    activeId: null,
-    previewIds: strip.previewIds,
-  );
+  TabStrip enterLanding(TabStrip strip, {String? initialText}) =>
+      strip.copyWith(activeId: null, landingInitialText: initialText);
 }

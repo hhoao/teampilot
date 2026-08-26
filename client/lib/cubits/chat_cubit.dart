@@ -1833,8 +1833,8 @@ class ChatCubit extends Cubit<ChatState>
   /// routes through the port so the workbench is the single source of
   /// presence/active. When the port is not yet wired (tests), the landing is
   /// left to the bar caller.
-  void enterNewChat(String workspaceId) {
-    _workbenchPort?.enterLanding(workspaceId);
+  void enterNewChat(String workspaceId, {String? initialText}) {
+    _workbenchPort?.enterLanding(workspaceId, initialText: initialText);
   }
 
   /// Leaves new-chat mode. The bar's center-active is the single source —

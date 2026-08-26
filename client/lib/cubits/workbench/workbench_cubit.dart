@@ -195,11 +195,17 @@ class WorkbenchCubit extends Cubit<WorkbenchState> {
   }
 
   /// Shows the center landing (new-chat / welcome) without closing tabs.
-  /// No-op when the center strip is already in landing (activeId == null).
-  void enterLanding(String workspaceId) {
+  /// No-op when the center strip is already in landing (activeId == null) and
+  /// no new initial text is supplied. A supplied text replaces the current
+  /// landing prefill even when Landing is already visible.
+  void enterLanding(String workspaceId, {String? initialText}) {
     final bar = state.bar(workspaceId);
-    if (bar.center.landingActive) return;
-    final next = _r.enterLanding(bar.center);
+    if (bar.center.landingActive && initialText == null) return;
+    if (bar.center.landingActive &&
+        bar.center.landingInitialText == initialText) {
+      return;
+    }
+    final next = _r.enterLanding(bar.center, initialText: initialText);
     emit(state.withBar(workspaceId, bar.copyWith(center: next)));
   }
 
@@ -223,7 +229,7 @@ class WorkbenchCubit extends Cubit<WorkbenchState> {
     emit(state.withBar(
       workspaceId,
       bar.copyWith(
-        center: TabStrip(
+        center: center.copyWith(
           order: [keep],
           activeId: keep,
           previewIds: center.previewIds.contains(keep)
@@ -249,7 +255,7 @@ class WorkbenchCubit extends Cubit<WorkbenchState> {
     emit(state.withBar(
       workspaceId,
       state.bar(workspaceId).copyWith(
-        center: TabStrip(
+        center: center.copyWith(
           order: kept,
           activeId: nextActive,
           previewIds: center.previewIds.where(kept.contains).toSet(),
@@ -268,7 +274,13 @@ class WorkbenchCubit extends Cubit<WorkbenchState> {
     if (removed.isEmpty) return const [];
     emit(state.withBar(
       workspaceId,
-      state.bar(workspaceId).copyWith(center: const TabStrip()),
+      state.bar(workspaceId).copyWith(
+        center: center.copyWith(
+          order: const [],
+          activeId: null,
+          previewIds: const {},
+        ),
+      ),
     ));
     for (final tab in removed) {
       unawaited(_port.onTabRemoved(workspaceId, tab));
