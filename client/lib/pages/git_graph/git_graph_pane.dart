@@ -16,6 +16,7 @@ import 'git_graph_detail_pane.dart';
 import 'git_graph_menus.dart';
 import 'git_graph_row_tile.dart';
 import 'git_graph_toolbar.dart';
+import '../../utils/logging/logger.dart';
 
 /// 浮动面板主体。内部：
 /// BlocProvider.value(value: store.graphCubitFor(repoRoot, workContext))
@@ -35,9 +36,28 @@ class GitGraphPane extends StatefulWidget {
 }
 
 class _GitGraphPaneState extends State<GitGraphPane> {
+  static const int _maxContextRetries = 40;
+  static const Duration _contextRetryDelay = Duration(milliseconds: 80);
+  int _contextRetries = 0;
+
+  /// 浮动面板挂载可能早于活动工作区 tools scope 的注册完成
+  /// （FloatingWorkspaceToolsScopeBridge 用非响应式 peek）。此时短暂重试，
+  /// 而不是把面板永久留在空白态。
+  void _scheduleContextRetry() {
+    if (_contextRetries >= _maxContextRetries || !mounted) return;
+    _contextRetries++;
+    Future.delayed(_contextRetryDelay, () {
+      if (!mounted) return;
+      setState(() {});
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     final provided = _providedCubit(context);
+    // TEMP-DIAG
+    appLogger.d('[GitGraphDiag] pane build provided=${provided != null} '
+        'root=${widget.repoRoot} ws=${widget.workspaceId}');
     if (provided != null) {
       return BlocProvider.value(
         value: provided,
@@ -45,7 +65,20 @@ class _GitGraphPaneState extends State<GitGraphPane> {
       );
     }
     final workContext = _resolveWorkContext(context);
-    if (workContext == null) return const SizedBox.shrink();
+    // TEMP-DIAG
+    appLogger.d('[GitGraphDiag] pane workContext=${workContext?.mode.name ?? 'NULL'} '
+        'scopeSlices=${WorkspaceToolsScope.maybeOf(context)?.targetSlices.length ?? -1} '
+        'retry=$_contextRetries');
+    if (workContext == null) {
+      _scheduleContextRetry();
+      return const Center(
+        child: SizedBox(
+          width: 18,
+          height: 18,
+          child: CircularProgressIndicator(strokeWidth: 2),
+        ),
+      );
+    }
     // store 拥有 cubit 的生命周期（LRU 淘汰 / dispose），provider 不得关闭它，
     // 故用 BlocProvider.value（flutter_bloc 保证 .value 不自动 close）。
     return BlocProvider.value(
