@@ -30,9 +30,6 @@ class WorkspaceToolsScopeRegistry extends ChangeNotifier {
     return cubit;
   }
 
-  /// TEMP-DIAG: 已注册的 scope key 列表（诊断用）。
-  List<String> get debugKeys => _cubits.keys.toList(growable: false);
-
   /// Returns an already-created cubit without allocating a new one.
   WorkspaceToolsScopeCubit? peek(String tabScopeId) {
     final key = tabScopeId.trim();

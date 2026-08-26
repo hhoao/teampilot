@@ -39,6 +39,7 @@ class _GitGraphPaneState extends State<GitGraphPane> {
   /// 活动工作区的 tools scope 可能晚于本面板挂载才注册进 registry
   /// （桥接层据此发布）。直接监听 registry：注册完成的瞬间重建。
   WorkspaceToolsScopeRegistry? _registry;
+  Timer? _scopeGuard;
 
   @override
   void initState() {
@@ -70,9 +71,22 @@ class _GitGraphPaneState extends State<GitGraphPane> {
     if (mounted) setState(() {});
   }
 
+  void _startScopeGuard() {
+    _scopeGuard ??= Timer.periodic(const Duration(milliseconds: 150), (_) {
+      if (!mounted) return;
+      setState(() {});
+    });
+  }
+
+  void _stopScopeGuard() {
+    _scopeGuard?.cancel();
+    _scopeGuard = null;
+  }
+
   @override
   void dispose() {
     _registry?.removeListener(_onRegistryChanged);
+    _stopScopeGuard();
     super.dispose();
   }
 
@@ -87,7 +101,9 @@ class _GitGraphPaneState extends State<GitGraphPane> {
     }
     final workContext = _resolveWorkContext(context);
     if (workContext == null) {
-      // scope 尚未注册完成；registry 监听会在其就绪时触发重建。
+      // scope 未就绪。InheritedWidget 晚插入不会通知依赖方，单次 registry
+      // 通知可能错过本面板；用定时 setState 驱动机重建，直到解析成功。
+      _startScopeGuard();
       return const Center(
         child: SizedBox(
           width: 18,
@@ -96,6 +112,7 @@ class _GitGraphPaneState extends State<GitGraphPane> {
         ),
       );
     }
+    _stopScopeGuard();
     // store 拥有 cubit 的生命周期（LRU 淘汰 / dispose），provider 不得关闭它，
     // 故用 BlocProvider.value（flutter_bloc 保证 .value 不自动 close）。
     return BlocProvider.value(
