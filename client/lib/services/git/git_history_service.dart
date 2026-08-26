@@ -58,6 +58,10 @@ class GitHistoryService {
   /// 提交拓扑行。query/mode 组成搜索过滤：
   /// message → `--grep=<q> -i`；author → `--author=<q>`；hash → 客户端过滤。
   /// [revisionRange] 为 null → `--all`；否则替换为给定范围（如 `HEAD`）。
+  ///
+  /// 坏引用仓库（如 `fatal: bad object refs/remotes/...`）会让 `--all` 整体
+  /// 失败；此时按 `--branches --tags` → `HEAD` 逐级降级，全部失败才抛出
+  /// 最后一次的 [GitException]。
   Future<List<GitGraphRow>> graphRows(
     String dir, {
     int limit = initialLoadCommits,
@@ -66,9 +70,46 @@ class GitHistoryService {
     GitSearchMode mode = GitSearchMode.message,
     String? revisionRange,
   }) async {
+    final selectors = <List<String>>[
+      [revisionRange ?? '--all'],
+      const ['--branches', '--tags'],
+      const ['HEAD'],
+    ];
+    GitException? last;
+    for (var i = 0; i < selectors.length; i++) {
+      try {
+        return await _graphRowsForSelector(
+          dir,
+          selectors[i],
+          limit: limit,
+          skip: skip,
+          query: query,
+          mode: mode,
+        );
+      } on GitException catch (e) {
+        last = e;
+        if (i + 1 < selectors.length) {
+          appLogger.d(
+            '[GitHistory] graph falling back to ${selectors[i + 1].join(' ')}: '
+            '${e.message.split('\n').first.trim()}',
+          );
+        }
+      }
+    }
+    throw last!;
+  }
+
+  Future<List<GitGraphRow>> _graphRowsForSelector(
+    String dir,
+    List<String> selector, {
+    required int limit,
+    required int skip,
+    required String query,
+    required GitSearchMode mode,
+  }) async {
     final args = <String>[
       'log',
-      revisionRange ?? '--all',
+      ...selector,
       '--date-order',
       if (skip > 0) ...['--skip', '$skip'],
       '--max-count',

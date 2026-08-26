@@ -39,6 +39,16 @@ ProcessResult ok([String stdout = '']) => ProcessResult(0, 0, stdout, '');
 List<String> _logCall(_FakeRunner fake) =>
     fake.calls.where((c) => c.first == 'log').single;
 
+List<List<String>> _logCalls(_FakeRunner fake) =>
+    fake.calls.where((c) => c.first == 'log').toList();
+
+/// exit 128 + stderr：模拟坏引用仓库的 `git log --all` 失败。
+ProcessResult _badRef([String detail = 'fatal: bad object refs/remotes/origin/xxx']) =>
+    ProcessResult(0, 128, '', '$detail\n');
+
+/// 一条可解析的 commit 行：`*` + \x1e + 七字段。
+const String _oneRow = '*\x1eh1\x1f\x1fAnn\x1fann@x\x1f1700000000\x1f\x1fsubj\n';
+
 void main() {
   setUp(GitService.debugResetExecutableCache);
 
@@ -79,6 +89,57 @@ void main() {
     final svc = GitHistoryService(runner: LocalGitCommandRunner(runner: fake.call));
     await svc.graphRows('/repo', query: 'abc12', mode: GitSearchMode.hash);
     expect(_logCall(fake).any((a) => a.startsWith('--grep=')), isFalse);
+  });
+
+  test('graphRows falls back to --branches --tags when --all hits bad ref', () async {
+    final fake = _FakeRunner({
+      'log --all': _badRef(),
+      'log --branches --tags': ok(_oneRow),
+    });
+    final svc = GitHistoryService(runner: LocalGitCommandRunner(runner: fake.call));
+    final rows = await svc.graphRows('/repo');
+    final logs = _logCalls(fake);
+    expect(logs, hasLength(2));
+    expect(logs[0], contains('--all'));
+    expect(logs[1], containsAllInOrder(['--branches', '--tags']));
+    expect(logs[1].contains('--all'), isFalse);
+    expect(rows.whereType<GitCommitRow>().map((r) => r.hash), ['h1']);
+  });
+
+  test('graphRows degrades --branches --tags to HEAD when both fail', () async {
+    final fake = _FakeRunner({
+      'log --all': _badRef('fatal: bad object refs/remotes/origin/a'),
+      'log --branches --tags': _badRef('fatal: bad object refs/tags/t'),
+      'log HEAD': ok(_oneRow),
+    });
+    final svc = GitHistoryService(runner: LocalGitCommandRunner(runner: fake.call));
+    final rows = await svc.graphRows('/repo');
+    final logs = _logCalls(fake);
+    expect(logs, hasLength(3));
+    expect(logs[2], containsAllInOrder(['HEAD', '--date-order']));
+    expect(logs[2].contains('--all'), isFalse);
+    expect(logs[2].contains('--branches'), isFalse);
+    expect(rows.whereType<GitCommitRow>().map((r) => r.hash), ['h1']);
+  });
+
+  test('graphRows throws last GitException after exhausting fallbacks', () async {
+    final fake = _FakeRunner({
+      'log --all': _badRef('fatal: bad object refs/remotes/origin/a'),
+      'log --branches --tags': _badRef('fatal: bad object refs/tags/t'),
+      'log HEAD': _badRef('fatal: your current branch appears to be broken'),
+    });
+    final svc = GitHistoryService(runner: LocalGitCommandRunner(runner: fake.call));
+    await expectLater(
+      svc.graphRows('/repo'),
+      throwsA(
+        isA<GitException>().having(
+          (e) => e.message,
+          'message',
+          contains('your current branch appears to be broken'),
+        ),
+      ),
+    );
+    expect(_logCalls(fake), hasLength(3));
   });
 
   test('commitDetail parses show + diff-tree name-status', () async {
