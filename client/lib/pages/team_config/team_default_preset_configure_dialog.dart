@@ -58,6 +58,7 @@ class _TeamDefaultPresetConfigureDialogState
   late TeamLaunchConfigKind _configKind;
   late String _presetToken;
   var _saving = false;
+  final _formKey = GlobalKey<TpFormState>();
 
   @override
   void initState() {
@@ -133,6 +134,7 @@ class _TeamDefaultPresetConfigureDialogState
 
   Future<void> _save() async {
     if (_saving) return;
+    if (!(_formKey.currentState?.validate() ?? false)) return;
     setState(() => _saving = true);
     TeamProfile? updated;
     try {
@@ -148,7 +150,13 @@ class _TeamDefaultPresetConfigureDialogState
         );
       } else {
         _ensurePresetTokenSelected();
-        if (_presetToken.isEmpty) return;
+        if (_presetToken.isEmpty) {
+          _formKey.currentState?.setFieldError(
+            'preset-token',
+            context.l10n.formFieldRequired,
+          );
+          return;
+        }
         CliTool? syncCli;
         for (final preset in context.read<CliPresetsCubit>().state.presets) {
           if (preset.id == _presetToken) {
@@ -208,68 +216,94 @@ class _TeamDefaultPresetConfigureDialogState
           TpDialogHeader(title: l10n.teamDefaultPresetLabel),
           const SizedBox(height: 16),
           TpCard.outlined(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                TeamLaunchConfigTypeField(
-                  currentKind: _configKind,
-                  decoration: dropdownDeco,
-                  showDividerBelow: isCustom,
-                  onChanged: _applyConfigKind,
-                ),
-                if (_configKind == TeamLaunchConfigKind.preset &&
-                    presetDropdownItems.isNotEmpty)
-                  MemberLaunchPresetField(
-                    items: presetDropdownItems,
-                    currentToken: effectivePresetToken,
-                    eligiblePresets: eligiblePresetList,
-                    registry: registry,
-                    providerState: providerState,
+            child: TpForm(
+              key: _formKey,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  TeamLaunchConfigTypeField(
+                    currentKind: _configKind,
                     decoration: dropdownDeco,
-                    onChanged: _applyPresetChoice,
+                    showDividerBelow: isCustom,
+                    onChanged: _applyConfigKind,
                   ),
-                if (isCustom)
-                  CliLaunchCustomFields(
-                    catalogCli: _catalogCli,
-                    providers: providers,
-                    providerId: _providerId,
-                    modelId: _modelId,
-                    effortId: _effortId,
-                    registry: registry,
-                    cliFieldKind: mixed
-                        ? CliLaunchCliFieldKind.mixedTeam
-                        : CliLaunchCliFieldKind.hidden,
-                    cliItems: cliItems,
-                    cliSubtitle: mixed
-                        ? l10n.teamDefaultCliMixedSubtitle
-                        : null,
-                    onCliChanged: _applyCatalogCliChange,
-                    team: team,
-                    effortContext: CliLaunchEffortContext.team,
-                    effortSubtitle: l10n.teamDefaultDialogEffortSubtitle,
-                    dropdownKeyPrefix: 'team-launch',
-                    decoration: dropdownDeco,
-                    onProviderChanged: (value) => setState(() {
-                      _providerId = value;
-                      _modelId = '';
-                      _effortId = '';
-                    }),
-                    onModelChanged: (value) => setState(() {
-                      _modelId = value.trim();
-                      if (!teamShowsEffortPicker(
-                        context,
-                        cli: _catalogCli,
-                        placement: EffortPickerPlacement.team,
-                        model: _modelId,
-                      )) {
-                        _effortId = '';
-                      }
-                    }),
-                    onEffortChanged: (value) =>
-                        setState(() => _effortId = value.trim()),
-                  ),
-              ],
+                  if (_configKind == TeamLaunchConfigKind.preset &&
+                      presetDropdownItems.isNotEmpty)
+                    TpFormField<String>(
+                      id: 'preset-token',
+                      initialValue: effectivePresetToken,
+                      builder: (state) => MemberLaunchPresetField(
+                        items: presetDropdownItems,
+                        currentToken: state.value ?? effectivePresetToken,
+                        eligiblePresets: eligiblePresetList,
+                        registry: registry,
+                        providerState: providerState,
+                        decoration: dropdownDeco,
+                        onChanged: (token) {
+                          state.didChange(token);
+                          _applyPresetChoice(token);
+                        },
+                      ),
+                      validator: (value) => (value == null || value.isEmpty)
+                          ? context.l10n.formFieldRequired
+                          : null,
+                    ),
+                  if (isCustom)
+                    TpFormField<String>(
+                      id: 'custom-provider',
+                      initialValue: _providerId,
+                      builder: (state) => CliLaunchCustomFields(
+                        catalogCli: _catalogCli,
+                        providers: providers,
+                        providerId: _providerId,
+                        modelId: _modelId,
+                        effortId: _effortId,
+                        registry: registry,
+                        cliFieldKind: mixed
+                            ? CliLaunchCliFieldKind.mixedTeam
+                            : CliLaunchCliFieldKind.hidden,
+                        cliItems: cliItems,
+                        cliSubtitle: mixed
+                            ? l10n.teamDefaultCliMixedSubtitle
+                            : null,
+                        onCliChanged: _applyCatalogCliChange,
+                        team: team,
+                        effortContext: CliLaunchEffortContext.team,
+                        effortSubtitle: l10n.teamDefaultDialogEffortSubtitle,
+                        dropdownKeyPrefix: 'team-launch',
+                        decoration: dropdownDeco,
+                        providerHasError:
+                            state.hasError && _providerId.trim().isEmpty,
+                        onProviderChanged: (value) {
+                          state.didChange(value);
+                          setState(() {
+                            _providerId = value;
+                            _modelId = '';
+                            _effortId = '';
+                          });
+                        },
+                        onModelChanged: (value) => setState(() {
+                          _modelId = value.trim();
+                          if (!teamShowsEffortPicker(
+                            context,
+                            cli: _catalogCli,
+                            placement: EffortPickerPlacement.team,
+                            model: _modelId,
+                          )) {
+                            _effortId = '';
+                          }
+                        }),
+                        onEffortChanged: (value) =>
+                            setState(() => _effortId = value.trim()),
+                      ),
+                      validator: (value) =>
+                          (value == null || value.trim().isEmpty)
+                          ? context.l10n.selectProvider
+                          : null,
+                    ),
+                ],
+              ),
             ),
           ),
           TpDialogActions(
@@ -297,11 +331,8 @@ class _TeamDefaultPresetConfigureDialogState
               FilledButton(
                 onPressed: _saving
                     ? null
-                    : isCustom
-                    ? (_providerId.trim().isEmpty
-                          ? null
-                          : () => unawaited(_save()))
-                    : (presetDropdownItems.isEmpty
+                    : (_configKind == TeamLaunchConfigKind.preset &&
+                              presetDropdownItems.isEmpty
                           ? null
                           : () => unawaited(_save())),
                 child: _saving
