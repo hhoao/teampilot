@@ -6,27 +6,23 @@ import '../../services/team/member_turn_idle_sync.dart';
 import '../../utils/logging/logger.dart';
 import 'chat_tab_store.dart';
 import 'tab_member_coordination_factory.dart';
-import 'tab_member_pty_delivery.dart';
 
-/// Cross-tab idle watch: automation retry ticks, bus reengage, turn quiet sync.
+/// Cross-tab idle watch: TeamBus reengage and turn quiet sync.
 final class TabSessionIdleWatch {
   TabSessionIdleWatch({
     required ChatTabStore tabStore,
     required TabMemberCoordinationFactory coordinationFactory,
-    required TabMemberPtyDelivery delivery,
     required bool Function() isClosed,
     VoidCallback? onAfterTick,
     void Function(String sessionId, String memberId)? onAfterTurnEnded,
   }) : _tabStore = tabStore,
        _coordinationFactory = coordinationFactory,
-       _delivery = delivery,
        _isClosed = isClosed,
        _onAfterTick = onAfterTick,
        _onAfterTurnEnded = onAfterTurnEnded;
 
   final ChatTabStore _tabStore;
   final TabMemberCoordinationFactory _coordinationFactory;
-  final TabMemberPtyDelivery _delivery;
   final bool Function() _isClosed;
   final VoidCallback? _onAfterTick;
   final void Function(String sessionId, String memberId)? _onAfterTurnEnded;
@@ -61,33 +57,6 @@ final class TabSessionIdleWatch {
 
   void tick() {
     if (_isClosed()) return;
-    _delivery.tickRetries(
-      shouldSkip: (retryTick) {
-        if (!_delivery.shouldSkipAutomationRetry(
-          retryTick.sessionId,
-          retryTick.memberId,
-          dueRetryText: retryTick.text,
-        )) {
-          return false;
-        }
-        final shell = _tabStore
-            .openTabBySessionId(retryTick.sessionId)
-            ?.memberShells[retryTick.memberId];
-        if (shell != null) {
-          _delivery.dropStaleAutomationRetry(
-            retryTick.sessionId,
-            retryTick.memberId,
-            shell,
-          );
-        } else {
-          _delivery.clearPending(retryTick.sessionId, retryTick.memberId);
-        }
-        return true;
-      },
-      onTick: (retryTick) {
-        unawaited(_delivery.retryAutomationTick(retryTick));
-      },
-    );
     for (final tab in _tabStore.openTabs) {
       final bus = tab.teamBus;
       if (bus != null) {
@@ -97,10 +66,7 @@ final class TabSessionIdleWatch {
       final isPersonal = _coordinationFactory.sessionWorking.isPersonalTab(tab);
       tab.memberShells.forEach((memberId, shell) {
         final key = '${tab.info.id}:$memberId';
-        final sessionId = tab.info.id;
-        final pendingDelivery =
-            _delivery.hasPendingRetry(sessionId, memberId) ||
-            _delivery.isBusy(sessionId, memberId);
+        const pendingDelivery = false;
         final coordination = _coordinationFactory.forTabMember(
           tab: tab,
           memberId: memberId,

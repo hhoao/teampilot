@@ -25,7 +25,6 @@ import '../services/agent_status/ask_user_question_hook_gate.dart';
 import '../services/agent_status/exit_plan_mode_hook_gate.dart';
 import '../services/terminal/ask_user_question_answer_service.dart';
 import '../services/terminal/exit_plan_mode_approval_service.dart';
-import '../services/terminal/prompt_submit_ack_tracker.dart';
 import '../services/catalog/catalog_runtime.dart';
 import '../services/catalog/catalog_production.dart';
 import '../services/team_bus/mcp/teammate_bus_mcp_gateway.dart';
@@ -1553,9 +1552,6 @@ Future<AppShell> buildAppShell({
 
   final agentAttentionCubit = AgentAttentionCubit();
   final agentStatusSeatLookup = AgentStatusSeatLookup();
-  // Prompt delivery remains on its existing tracker until Task 6 moves it to
-  // the runtime delivery coordinator.
-  final promptSubmitAckTracker = PromptSubmitAckTracker();
   final agentRuntimeStream = SeatEventStream();
   final askUserQuestionProjection = AskUserQuestionRuntimeEventProjection(
     hookGate: askUserQuestionHookGate,
@@ -1634,7 +1630,6 @@ Future<AppShell> buildAppShell({
     askUserAnswerPendingStore: askUserAnswerPendingStore,
     askUserQuestionAnswerService: askUserQuestionAnswerService,
     exitPlanApprovalService: exitPlanModeApprovalService,
-    promptAckTracker: promptSubmitAckTracker,
     sessionRepository: sessionRepo,
     lifecycleService: sessionLifecycleService,
     automationRepository: automationRepo,

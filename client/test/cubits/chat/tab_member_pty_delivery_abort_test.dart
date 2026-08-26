@@ -39,7 +39,6 @@ void main() {
     delivery.abortMemberInject('s1', 'm1');
 
     expect(ptyInject.isAbortRequested('s1', 'm1'), isFalse);
-    expect(ptyInject.isBusy('s1', 'm1'), isFalse);
   });
 
   test('deliverUserCommandToMember reports user activity for inject', () async {

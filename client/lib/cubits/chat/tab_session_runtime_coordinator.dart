@@ -5,7 +5,6 @@ import '../../models/member_presence.dart';
 import '../../models/team_config.dart';
 import '../../services/team/session_working_resolver.dart';
 import '../../services/team_bus/team_bus.dart';
-import '../../services/terminal/prompt_submit_ack_tracker.dart';
 import '../../services/terminal/terminal_reclaim_policy.dart';
 import 'chat_session_shell_factory.dart';
 import 'chat_tab_store.dart';
@@ -28,7 +27,6 @@ class TabSessionRuntimeCoordinator {
     required bool Function() isClosed,
     TabMemberCoordinationFactory? coordinationFactory,
     TabMemberPtyDelivery? delivery,
-    PromptSubmitAckTracker? promptAckTracker,
     TabSessionIdleWatch? idleWatch,
     TabMemberReclaimWatch? reclaimWatch,
     bool Function()? reclaimEnabled,
@@ -66,14 +64,12 @@ class TabSessionRuntimeCoordinator {
           coordinationFactory: coordination,
           onAfterTurnLatched: onAfterTurnLatched,
           onUserActivity: onUserActivity,
-          promptAckTracker: promptAckTracker,
         );
     final idle =
         idleWatch ??
         TabSessionIdleWatch(
           tabStore: tabStore,
           coordinationFactory: coordination,
-          delivery: ptyDelivery,
           isClosed: isClosed,
           onAfterTick: onAfterIdleWatchTick,
           onAfterTurnEnded: onAfterTurnEnded,
