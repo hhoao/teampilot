@@ -121,27 +121,39 @@ class GitGraphToolbar extends StatelessWidget {
   }
 
   /// 模式三选：message / author / hash。切换后以最近一次提交的关键词重查。
+  /// 紧凑无框 [TpSelect]，嵌在搜索框尾部；固定宽度保证弹层条目不省略。
   Widget _modeDropdown(BuildContext context) {
     final l10n = context.l10n;
-    return DropdownButton<GitSearchMode>(
-      value: state.searchMode,
-      underline: const SizedBox.shrink(),
-      isDense: true,
-      padding: EdgeInsets.zero,
-      items: [
-        for (final mode in GitSearchMode.values)
-          DropdownMenuItem(
-            value: mode,
-            child: Text(
-              _modeLabel(l10n, mode),
-              style: TpTextStyles.of(context).xs,
-            ),
-          ),
-      ],
-      onChanged: (mode) {
-        if (mode == null || mode == state.searchMode) return;
-        context.read<GitGraphCubit>().search(state.searchQuery, mode);
-      },
+    return SizedBox(
+      width: 84,
+      child: TpSelect<GitSearchMode>(
+        key: ValueKey(state.searchMode),
+        items: GitSearchMode.values,
+        initialItem: state.searchMode,
+        searchable: false,
+        itemLabel: (mode) => _modeLabel(l10n, mode),
+        closedHeaderPadding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+        expandedHeaderPadding: const EdgeInsets.symmetric(
+          horizontal: 6,
+          vertical: 2,
+        ),
+        listItemPadding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
+        decoration: TpSelectDecorations.themed(
+          context,
+          closedFillColor: Colors.transparent,
+          closedBorder: const Border(),
+          buttonHoverColor: Theme.of(
+            context,
+          ).colorScheme.onSurface.withValues(alpha: 0.04),
+          headerStyle: TpTextStyles.of(context).xs,
+          listItemStyle: TpTextStyles.of(context).sm,
+          suffixIconSize: context.tpIconSizes.sm,
+        ),
+        onChanged: (mode) {
+          if (mode == null || mode == state.searchMode) return;
+          context.read<GitGraphCubit>().search(state.searchQuery, mode);
+        },
+      ),
     );
   }
 
