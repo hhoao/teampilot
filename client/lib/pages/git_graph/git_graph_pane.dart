@@ -114,17 +114,6 @@ class _GitGraphPaneState extends State<GitGraphPane> {
         ),
       );
     }
-    // 回退：继承的 WorkspaceToolsScope（测试宿主 / 其它已提供 scope 的语境）。
-    final inherited = _ctxFromInherited(context);
-    if (inherited != null) {
-      return BlocProvider.value(
-        value: context.read<GitRepoStore>().graphCubitFor(
-          widget.repoRoot,
-          workContext: inherited,
-        ),
-        child: _PaneBody(workspaceId: widget.workspaceId),
-      );
-    }
     // 工作区 scope 尚未注册；registry 监听在注册完成时触发重建。
     return const Center(
       child: SizedBox(
@@ -147,16 +136,6 @@ class _GitGraphPaneState extends State<GitGraphPane> {
     return ctx;
   }
 
-  RuntimeContext? _ctxFromInherited(BuildContext context) {
-    final scope = WorkspaceToolsScope.maybeOf(context);
-    final ctx = _ctxFromState(
-      WorkspaceToolsScopeState(
-        tools: scope?.tools,
-        targetSlices: scope?.targetSlices ?? const [],
-      ),
-    );
-    return ctx;
-  }
 
   /// 祖先已提供 cubit（surface / 测试宿主）时直接复用，不经过 store。
   static GitGraphCubit? _providedCubit(BuildContext context) {

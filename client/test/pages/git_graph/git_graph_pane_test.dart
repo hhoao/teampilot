@@ -1,17 +1,19 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:provider/provider.dart';
 import 'package:teampilot/cubits/git_graph_cubit.dart';
 import 'package:teampilot/l10n/app_localizations.dart';
 import 'package:teampilot/models/git_graph.dart';
 import 'package:teampilot/pages/git_graph/git_graph_pane.dart';
 import 'package:teampilot/services/workbench/workbench_editor_opener.dart';
-import 'package:teampilot/services/workspace/workspace_tools_context.dart';
+import 'package:provider/provider.dart';
+import 'package:teampilot/models/workspace_folder.dart';
 import 'package:teampilot/services/workspace/workspace_tools_scope.dart';
+import 'package:teampilot/services/workspace/workspace_tools_scope_registry.dart';
 import 'package:teampilot/services/git/git_repo_store.dart';
 
 import '../../support/git_graph_test_fakes.dart';
+import '../../support/fixed_resume_lifecycle_service.dart';
 import '../../support/test_runtime_context.dart';
 
 Widget host(GitGraphCubit cubit, {WorkbenchEditorOpener? opener}) =>
@@ -201,24 +203,40 @@ void main() {
     );
     addTearDown(store.dispose);
 
+    final lifecycle = FixedResumeLifecycleService(resume: false);
+    // 注册 'ws' 的 scope cubit：Pane 当前从 registry 直接解析后端上下文。
+    final registry = WorkspaceToolsScopeRegistry();
+    addTearDown(registry.dispose);
+    final scopeCubit = WorkspaceToolsScopeCubit(lifecycle: lifecycle);
+    addTearDown(scopeCubit.close);
+    await scopeCubit.sync(
+      workspaceFolders: const [
+        WorkspaceFolder(path: '/repo', targetId: 'local'),
+      ],
+      cwd: '/repo',
+      additionalPaths: const [],
+    );
+    final registered = registry.cubitFor(tabScopeId: 'ws', lifecycle: lifecycle);
+    await registered.sync(
+      workspaceFolders: const [
+        WorkspaceFolder(path: '/repo', targetId: 'local'),
+      ],
+      cwd: '/repo',
+      additionalPaths: const [],
+    );
+    addTearDown(registered.close);
+
     Widget storeHost() => MaterialApp(
       localizationsDelegates: AppLocalizations.localizationsDelegates,
       home: MultiProvider(
         providers: [
           Provider<GitRepoStore>.value(value: store),
-          Provider<WorkbenchEditorOpener>.value(value: _RecordingOpener()),
+          ListenableProvider<WorkspaceToolsScopeRegistry>.value(
+            value: registry,
+          ),
         ],
-        child: WorkspaceToolsScope(
-          state: WorkspaceToolsScopeState(
-            tools: WorkspaceToolsContext(
-              targetId: 'local',
-              context: workContext,
-            ),
-            resolving: false,
-          ),
-          child: const Scaffold(
-            body: GitGraphPane(workspaceId: 'ws', repoRoot: '/repo'),
-          ),
+        child: const Scaffold(
+          body: GitGraphPane(workspaceId: 'ws', repoRoot: '/repo'),
         ),
       ),
     );
