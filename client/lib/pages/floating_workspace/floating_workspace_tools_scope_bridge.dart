@@ -24,15 +24,23 @@ class FloatingWorkspaceToolsScopeBridge extends StatelessWidget {
     if (workspaceId.isEmpty) return child;
 
     final registry = _maybeRegistry(context);
-    final cubit = registry?.peek(workspaceId);
-    if (cubit == null) return child;
+    if (registry == null) return child;
 
-    return BlocProvider<WorkspaceToolsScopeCubit>.value(
-      value: cubit,
-      child: BlocBuilder<WorkspaceToolsScopeCubit, WorkspaceToolsScopeState>(
-        builder: (context, state) =>
-            WorkspaceToolsScope(state: state, child: child),
-      ),
+    // Scope cubits register lazily as workspace tabs initialize; listen so a
+    // late registration re-publishes without waiting for another rebuild.
+    return ListenableBuilder(
+      listenable: registry,
+      builder: (context, _) {
+        final cubit = registry.peek(workspaceId);
+        if (cubit == null) return child;
+        return BlocProvider<WorkspaceToolsScopeCubit>.value(
+          value: cubit,
+          child: BlocBuilder<WorkspaceToolsScopeCubit, WorkspaceToolsScopeState>(
+            builder: (context, state) =>
+                WorkspaceToolsScope(state: state, child: child),
+          ),
+        );
+      },
     );
   }
 }

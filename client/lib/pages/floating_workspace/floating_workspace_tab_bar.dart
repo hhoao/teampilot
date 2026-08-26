@@ -31,6 +31,10 @@ import 'floating_workspace_new_terminal_menu.dart';
       WorkbenchTabKind.htmlPreview,
       tab.payload is String ? tab.payload as String : null,
     ),
+    'gitGraph' => (
+      WorkbenchTabKind.gitGraph,
+      tab.payload is String ? tab.payload as String : null,
+    ),
     _ => (WorkbenchTabKind.run, null),
   };
 }
@@ -132,6 +136,7 @@ class FloatingWorkspaceTabBar extends StatelessWidget {
       'filePreview' => Icons.description_outlined,
       'diffPreview' => Icons.difference_outlined,
       'htmlPreview' => Icons.preview_outlined,
+      'gitGraph' => Icons.account_tree_outlined,
       _ => Icons.widgets_outlined,
     };
   }

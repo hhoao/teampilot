@@ -166,6 +166,7 @@ import '../services/floating_workspace/floating_workspace_open_file.dart';
 import '../services/floating_workspace/floating_workspace_persistence.dart';
 import '../services/floating_workspace/surfaces/diff_preview_floating_surface.dart';
 import '../services/floating_workspace/surfaces/file_preview_floating_surface.dart';
+import '../services/floating_workspace/surfaces/git_graph_floating_surface.dart';
 import '../services/floating_workspace/surfaces/html_preview_floating_surface.dart';
 import '../services/floating_workspace/surfaces/run_floating_surface.dart';
 import '../services/floating_workspace/surfaces/terminal_floating_surface.dart';
@@ -2080,6 +2081,8 @@ Future<AppShell> buildAppShell({
           break;
         case WorkbenchTabKind.htmlPreview:
           break;
+        case WorkbenchTabKind.gitGraph:
+          break;
       }
     },
   );
@@ -2130,6 +2133,7 @@ Future<AppShell> buildAppShell({
       floating: floatingWorkspaceCubit,
     ),
     html: HtmlPreviewFloatingSurface(floating: floatingWorkspaceCubit),
+    gitGraph: GitGraphFloatingSurface(),
     run: RunFloatingSurface(
       floating: floatingWorkspaceCubit,
       resolveCubit: (tabScopeId) {

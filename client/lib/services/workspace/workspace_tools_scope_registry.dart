@@ -1,10 +1,15 @@
+import 'package:flutter/foundation.dart';
+
 import '../../services/session/session_lifecycle_service.dart';
 import 'workspace_tools_scope.dart';
 
 /// Retains resolved [WorkspaceToolsScopeCubit]s per title-bar tab scope so
 /// returning to a workspace tab keeps the tools plane (file tree, git) visible
 /// while a background re-sync runs.
-class WorkspaceToolsScopeRegistry {
+/// Notifies listeners whenever a scope cubit is registered or removed, so
+/// late consumers (e.g. the floating-workspace scope bridge) can re-resolve
+/// without waiting for an unrelated rebuild.
+class WorkspaceToolsScopeRegistry extends ChangeNotifier {
   final Map<String, WorkspaceToolsScopeCubit> _cubits =
       <String, WorkspaceToolsScopeCubit>{};
 
@@ -21,6 +26,7 @@ class WorkspaceToolsScopeRegistry {
 
     final cubit = WorkspaceToolsScopeCubit(lifecycle: lifecycle);
     _cubits[key] = cubit;
+    notifyListeners();
     return cubit;
   }
 
@@ -37,12 +43,15 @@ class WorkspaceToolsScopeRegistry {
     final key = tabScopeId.trim();
     if (key.isEmpty) return;
     _cubits.remove(key)?.close();
+    notifyListeners();
   }
 
+  @override
   void dispose() {
     for (final cubit in _cubits.values) {
       cubit.close();
     }
     _cubits.clear();
+    super.dispose();
   }
 }

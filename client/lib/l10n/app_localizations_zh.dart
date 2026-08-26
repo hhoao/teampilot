@@ -7822,4 +7822,213 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get managedProvidersResetsSoon => '即将重置';
+
+  @override
+  String get gitGraphTitle => '提交图';
+
+  @override
+  String get gitGraphFetch => '抓取';
+
+  @override
+  String get gitGraphPull => '拉取';
+
+  @override
+  String get gitGraphPush => '推送';
+
+  @override
+  String get gitGraphStash => '贮藏';
+
+  @override
+  String get gitGraphRefresh => '刷新';
+
+  @override
+  String get gitGraphSearchHint => '搜索提交（消息 / 作者 / 哈希）';
+
+  @override
+  String get gitGraphSearchModeMessage => '消息';
+
+  @override
+  String get gitGraphSearchModeAuthor => '作者';
+
+  @override
+  String get gitGraphSearchModeHash => '哈希';
+
+  @override
+  String get gitGraphAllBranches => '所有分支';
+
+  @override
+  String get gitGraphCurrentBranch => '当前分支';
+
+  @override
+  String get gitGraphUncommittedChanges => '未提交的更改';
+
+  @override
+  String get gitGraphNoCommits => '未找到提交';
+
+  @override
+  String get gitGraphNotARepository => '不是 Git 仓库';
+
+  @override
+  String get gitGraphLoadMore => '加载更多';
+
+  @override
+  String get gitGraphLoadingMore => '加载中…';
+
+  @override
+  String get gitGraphSelectCommit => '选择一个提交查看详情';
+
+  @override
+  String get gitGraphHashCopied => '哈希已复制到剪贴板';
+
+  @override
+  String get gitGraphSubjectCopied => '说明已复制到剪贴板';
+
+  @override
+  String gitGraphCheckoutBranch(String branch) {
+    return '检出 $branch';
+  }
+
+  @override
+  String get gitGraphViewBranchHistory => '查看此分支历史';
+
+  @override
+  String get gitGraphCreateBranchHere => '在此创建分支';
+
+  @override
+  String get gitGraphCreateTagHere => '在此创建标签';
+
+  @override
+  String get gitGraphCherryPick => '摘取（Cherry-pick）';
+
+  @override
+  String get gitGraphRevert => '回退（Revert）';
+
+  @override
+  String get gitGraphReset => '重置（Reset）';
+
+  @override
+  String get gitGraphResetSoft => '软重置（Soft）';
+
+  @override
+  String get gitGraphResetMixed => '混合重置（Mixed）';
+
+  @override
+  String get gitGraphResetHard => '硬重置（Hard）';
+
+  @override
+  String get gitGraphCopyHash => '复制哈希';
+
+  @override
+  String get gitGraphCopySubject => '复制说明';
+
+  @override
+  String get gitGraphCreateBranchTitle => '创建分支';
+
+  @override
+  String get gitGraphCreateTagTitle => '创建标签';
+
+  @override
+  String get gitGraphBranchNameLabel => '分支名称';
+
+  @override
+  String get gitGraphTagNameLabel => '标签名称';
+
+  @override
+  String get gitGraphTagMessageLabel => '说明（可选）';
+
+  @override
+  String get gitGraphCreate => '创建';
+
+  @override
+  String gitGraphRevertConfirmBody(String hash) {
+    return '确定回退提交 $hash 吗？将创建一个撤销该提交的新提交。';
+  }
+
+  @override
+  String gitGraphResetHardConfirmBody(String branch) {
+    return '硬重置会把“$branch”移动到此提交，并丢弃所有未提交的更改。输入“$branch”以确认。';
+  }
+
+  @override
+  String get gitGraphStashPop => '弹出';
+
+  @override
+  String get gitGraphStashApply => '应用';
+
+  @override
+  String get gitGraphStashDrop => '丢弃';
+
+  @override
+  String gitGraphStashDropConfirmBody(String selector) {
+    return '确定丢弃 $selector 吗？此操作无法撤销。';
+  }
+
+  @override
+  String get gitGraphRenameBranch => '重命名分支…';
+
+  @override
+  String get gitGraphRenameBranchTitle => '重命名分支';
+
+  @override
+  String gitGraphDeleteBranch(String name) {
+    return '删除分支 $name';
+  }
+
+  @override
+  String get gitGraphDeleteBranchTitle => '删除分支';
+
+  @override
+  String gitGraphDeleteBranchConfirmBody(String name) {
+    return '确定删除分支“$name”吗？仅能从该分支到达的提交可能变得不可达，此操作无法撤销。';
+  }
+
+  @override
+  String gitGraphMergeIntoCurrent(String branch) {
+    return '合并 $branch 到当前分支';
+  }
+
+  @override
+  String get gitGraphCheckoutCommit => '检出该提交（分离 HEAD）';
+
+  @override
+  String gitGraphCheckoutCommitConfirmBody(String hash) {
+    return '以分离 HEAD 状态检出 $hash 吗？';
+  }
+
+  @override
+  String gitGraphDeleteTag(String name) {
+    return '删除标签 $name';
+  }
+
+  @override
+  String get gitGraphDeleteTagTitle => '删除标签';
+
+  @override
+  String gitGraphDeleteTagConfirmBody(String name) {
+    return '确定删除标签“$name”吗？此操作无法撤销。';
+  }
+
+  @override
+  String gitGraphPushTag(String name) {
+    return '推送标签 $name';
+  }
+
+  @override
+  String get gitGraphBranchesTags => '分支与标签';
+
+  @override
+  String get gitGraphLocalBranches => '本地分支';
+
+  @override
+  String get gitGraphRemoteBranches => '远程分支';
+
+  @override
+  String get gitGraphTags => '标签';
+
+  @override
+  String get gitGraphHashSearchEmptyHint =>
+      '已加载的提交中没有匹配该哈希的记录，请继续向下滚动或点击“加载更多”以载入更早的历史。';
+
+  @override
+  String get gitGraphConflictHint => '请先解决冲突并暂存相关文件，然后提交以继续。';
 }

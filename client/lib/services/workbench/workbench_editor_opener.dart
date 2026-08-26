@@ -165,6 +165,7 @@ class WorkbenchEditorOpener {
       case WorkbenchTabKind.shell:
       case WorkbenchTabKind.run:
       case WorkbenchTabKind.htmlPreview:
+      case WorkbenchTabKind.gitGraph:
         break;
     }
   }

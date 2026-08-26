@@ -8165,4 +8165,214 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get managedProvidersResetsSoon => 'Resets soon';
+
+  @override
+  String get gitGraphTitle => 'Git Graph';
+
+  @override
+  String get gitGraphFetch => 'Fetch';
+
+  @override
+  String get gitGraphPull => 'Pull';
+
+  @override
+  String get gitGraphPush => 'Push';
+
+  @override
+  String get gitGraphStash => 'Stash';
+
+  @override
+  String get gitGraphRefresh => 'Refresh';
+
+  @override
+  String get gitGraphSearchHint => 'Search commits (message / author / hash)';
+
+  @override
+  String get gitGraphSearchModeMessage => 'Message';
+
+  @override
+  String get gitGraphSearchModeAuthor => 'Author';
+
+  @override
+  String get gitGraphSearchModeHash => 'Hash';
+
+  @override
+  String get gitGraphAllBranches => 'All branches';
+
+  @override
+  String get gitGraphCurrentBranch => 'Current branch';
+
+  @override
+  String get gitGraphUncommittedChanges => 'Uncommitted changes';
+
+  @override
+  String get gitGraphNoCommits => 'No commits found';
+
+  @override
+  String get gitGraphNotARepository => 'Not a git repository';
+
+  @override
+  String get gitGraphLoadMore => 'Load more';
+
+  @override
+  String get gitGraphLoadingMore => 'Loading…';
+
+  @override
+  String get gitGraphSelectCommit => 'Select a commit to view details';
+
+  @override
+  String get gitGraphHashCopied => 'Hash copied to clipboard';
+
+  @override
+  String get gitGraphSubjectCopied => 'Subject copied to clipboard';
+
+  @override
+  String gitGraphCheckoutBranch(String branch) {
+    return 'Checkout $branch';
+  }
+
+  @override
+  String get gitGraphViewBranchHistory => 'View this branch\'s history';
+
+  @override
+  String get gitGraphCreateBranchHere => 'Create branch here';
+
+  @override
+  String get gitGraphCreateTagHere => 'Create tag here';
+
+  @override
+  String get gitGraphCherryPick => 'Cherry-pick';
+
+  @override
+  String get gitGraphRevert => 'Revert';
+
+  @override
+  String get gitGraphReset => 'Reset';
+
+  @override
+  String get gitGraphResetSoft => 'Soft';
+
+  @override
+  String get gitGraphResetMixed => 'Mixed';
+
+  @override
+  String get gitGraphResetHard => 'Hard';
+
+  @override
+  String get gitGraphCopyHash => 'Copy hash';
+
+  @override
+  String get gitGraphCopySubject => 'Copy subject';
+
+  @override
+  String get gitGraphCreateBranchTitle => 'Create branch';
+
+  @override
+  String get gitGraphCreateTagTitle => 'Create tag';
+
+  @override
+  String get gitGraphBranchNameLabel => 'Branch name';
+
+  @override
+  String get gitGraphTagNameLabel => 'Tag name';
+
+  @override
+  String get gitGraphTagMessageLabel => 'Message (optional)';
+
+  @override
+  String get gitGraphCreate => 'Create';
+
+  @override
+  String gitGraphRevertConfirmBody(String hash) {
+    return 'Revert commit $hash? A new commit undoing it will be created.';
+  }
+
+  @override
+  String gitGraphResetHardConfirmBody(String branch) {
+    return 'Hard reset moves \"$branch\" to this commit and discards ALL uncommitted changes. Type \"$branch\" to confirm.';
+  }
+
+  @override
+  String get gitGraphStashPop => 'Pop';
+
+  @override
+  String get gitGraphStashApply => 'Apply';
+
+  @override
+  String get gitGraphStashDrop => 'Drop';
+
+  @override
+  String gitGraphStashDropConfirmBody(String selector) {
+    return 'Drop $selector? This cannot be undone.';
+  }
+
+  @override
+  String get gitGraphRenameBranch => 'Rename branch…';
+
+  @override
+  String get gitGraphRenameBranchTitle => 'Rename branch';
+
+  @override
+  String gitGraphDeleteBranch(String name) {
+    return 'Delete branch $name';
+  }
+
+  @override
+  String get gitGraphDeleteBranchTitle => 'Delete branch';
+
+  @override
+  String gitGraphDeleteBranchConfirmBody(String name) {
+    return 'Delete branch \"$name\"? Commits only reachable from it may become unreachable. This cannot be undone.';
+  }
+
+  @override
+  String gitGraphMergeIntoCurrent(String branch) {
+    return 'Merge $branch into current branch';
+  }
+
+  @override
+  String get gitGraphCheckoutCommit => 'Checkout this commit (detached HEAD)';
+
+  @override
+  String gitGraphCheckoutCommitConfirmBody(String hash) {
+    return 'Checkout $hash with detached HEAD?';
+  }
+
+  @override
+  String gitGraphDeleteTag(String name) {
+    return 'Delete tag $name';
+  }
+
+  @override
+  String get gitGraphDeleteTagTitle => 'Delete tag';
+
+  @override
+  String gitGraphDeleteTagConfirmBody(String name) {
+    return 'Delete tag \"$name\"? This cannot be undone.';
+  }
+
+  @override
+  String gitGraphPushTag(String name) {
+    return 'Push tag $name';
+  }
+
+  @override
+  String get gitGraphBranchesTags => 'Branches & tags';
+
+  @override
+  String get gitGraphLocalBranches => 'Local branches';
+
+  @override
+  String get gitGraphRemoteBranches => 'Remote branches';
+
+  @override
+  String get gitGraphTags => 'Tags';
+
+  @override
+  String get gitGraphHashSearchEmptyHint =>
+      'No loaded commit matches this hash. Scroll down or click \"Load more\" to fetch older history.';
+
+  @override
+  String get gitGraphConflictHint =>
+      'Resolve the conflicts, stage the files, then commit to continue.';
 }

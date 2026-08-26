@@ -14539,6 +14539,378 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Resets soon'**
   String get managedProvidersResetsSoon;
+
+  /// No description provided for @gitGraphTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Git Graph'**
+  String get gitGraphTitle;
+
+  /// No description provided for @gitGraphFetch.
+  ///
+  /// In en, this message translates to:
+  /// **'Fetch'**
+  String get gitGraphFetch;
+
+  /// No description provided for @gitGraphPull.
+  ///
+  /// In en, this message translates to:
+  /// **'Pull'**
+  String get gitGraphPull;
+
+  /// No description provided for @gitGraphPush.
+  ///
+  /// In en, this message translates to:
+  /// **'Push'**
+  String get gitGraphPush;
+
+  /// No description provided for @gitGraphStash.
+  ///
+  /// In en, this message translates to:
+  /// **'Stash'**
+  String get gitGraphStash;
+
+  /// No description provided for @gitGraphRefresh.
+  ///
+  /// In en, this message translates to:
+  /// **'Refresh'**
+  String get gitGraphRefresh;
+
+  /// No description provided for @gitGraphSearchHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Search commits (message / author / hash)'**
+  String get gitGraphSearchHint;
+
+  /// No description provided for @gitGraphSearchModeMessage.
+  ///
+  /// In en, this message translates to:
+  /// **'Message'**
+  String get gitGraphSearchModeMessage;
+
+  /// No description provided for @gitGraphSearchModeAuthor.
+  ///
+  /// In en, this message translates to:
+  /// **'Author'**
+  String get gitGraphSearchModeAuthor;
+
+  /// No description provided for @gitGraphSearchModeHash.
+  ///
+  /// In en, this message translates to:
+  /// **'Hash'**
+  String get gitGraphSearchModeHash;
+
+  /// No description provided for @gitGraphAllBranches.
+  ///
+  /// In en, this message translates to:
+  /// **'All branches'**
+  String get gitGraphAllBranches;
+
+  /// No description provided for @gitGraphCurrentBranch.
+  ///
+  /// In en, this message translates to:
+  /// **'Current branch'**
+  String get gitGraphCurrentBranch;
+
+  /// No description provided for @gitGraphUncommittedChanges.
+  ///
+  /// In en, this message translates to:
+  /// **'Uncommitted changes'**
+  String get gitGraphUncommittedChanges;
+
+  /// No description provided for @gitGraphNoCommits.
+  ///
+  /// In en, this message translates to:
+  /// **'No commits found'**
+  String get gitGraphNoCommits;
+
+  /// No description provided for @gitGraphNotARepository.
+  ///
+  /// In en, this message translates to:
+  /// **'Not a git repository'**
+  String get gitGraphNotARepository;
+
+  /// No description provided for @gitGraphLoadMore.
+  ///
+  /// In en, this message translates to:
+  /// **'Load more'**
+  String get gitGraphLoadMore;
+
+  /// No description provided for @gitGraphLoadingMore.
+  ///
+  /// In en, this message translates to:
+  /// **'Loading…'**
+  String get gitGraphLoadingMore;
+
+  /// No description provided for @gitGraphSelectCommit.
+  ///
+  /// In en, this message translates to:
+  /// **'Select a commit to view details'**
+  String get gitGraphSelectCommit;
+
+  /// No description provided for @gitGraphHashCopied.
+  ///
+  /// In en, this message translates to:
+  /// **'Hash copied to clipboard'**
+  String get gitGraphHashCopied;
+
+  /// No description provided for @gitGraphSubjectCopied.
+  ///
+  /// In en, this message translates to:
+  /// **'Subject copied to clipboard'**
+  String get gitGraphSubjectCopied;
+
+  /// No description provided for @gitGraphCheckoutBranch.
+  ///
+  /// In en, this message translates to:
+  /// **'Checkout {branch}'**
+  String gitGraphCheckoutBranch(String branch);
+
+  /// No description provided for @gitGraphViewBranchHistory.
+  ///
+  /// In en, this message translates to:
+  /// **'View this branch\'s history'**
+  String get gitGraphViewBranchHistory;
+
+  /// No description provided for @gitGraphCreateBranchHere.
+  ///
+  /// In en, this message translates to:
+  /// **'Create branch here'**
+  String get gitGraphCreateBranchHere;
+
+  /// No description provided for @gitGraphCreateTagHere.
+  ///
+  /// In en, this message translates to:
+  /// **'Create tag here'**
+  String get gitGraphCreateTagHere;
+
+  /// No description provided for @gitGraphCherryPick.
+  ///
+  /// In en, this message translates to:
+  /// **'Cherry-pick'**
+  String get gitGraphCherryPick;
+
+  /// No description provided for @gitGraphRevert.
+  ///
+  /// In en, this message translates to:
+  /// **'Revert'**
+  String get gitGraphRevert;
+
+  /// No description provided for @gitGraphReset.
+  ///
+  /// In en, this message translates to:
+  /// **'Reset'**
+  String get gitGraphReset;
+
+  /// No description provided for @gitGraphResetSoft.
+  ///
+  /// In en, this message translates to:
+  /// **'Soft'**
+  String get gitGraphResetSoft;
+
+  /// No description provided for @gitGraphResetMixed.
+  ///
+  /// In en, this message translates to:
+  /// **'Mixed'**
+  String get gitGraphResetMixed;
+
+  /// No description provided for @gitGraphResetHard.
+  ///
+  /// In en, this message translates to:
+  /// **'Hard'**
+  String get gitGraphResetHard;
+
+  /// No description provided for @gitGraphCopyHash.
+  ///
+  /// In en, this message translates to:
+  /// **'Copy hash'**
+  String get gitGraphCopyHash;
+
+  /// No description provided for @gitGraphCopySubject.
+  ///
+  /// In en, this message translates to:
+  /// **'Copy subject'**
+  String get gitGraphCopySubject;
+
+  /// No description provided for @gitGraphCreateBranchTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Create branch'**
+  String get gitGraphCreateBranchTitle;
+
+  /// No description provided for @gitGraphCreateTagTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Create tag'**
+  String get gitGraphCreateTagTitle;
+
+  /// No description provided for @gitGraphBranchNameLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Branch name'**
+  String get gitGraphBranchNameLabel;
+
+  /// No description provided for @gitGraphTagNameLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Tag name'**
+  String get gitGraphTagNameLabel;
+
+  /// No description provided for @gitGraphTagMessageLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Message (optional)'**
+  String get gitGraphTagMessageLabel;
+
+  /// No description provided for @gitGraphCreate.
+  ///
+  /// In en, this message translates to:
+  /// **'Create'**
+  String get gitGraphCreate;
+
+  /// No description provided for @gitGraphRevertConfirmBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Revert commit {hash}? A new commit undoing it will be created.'**
+  String gitGraphRevertConfirmBody(String hash);
+
+  /// No description provided for @gitGraphResetHardConfirmBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Hard reset moves \"{branch}\" to this commit and discards ALL uncommitted changes. Type \"{branch}\" to confirm.'**
+  String gitGraphResetHardConfirmBody(String branch);
+
+  /// No description provided for @gitGraphStashPop.
+  ///
+  /// In en, this message translates to:
+  /// **'Pop'**
+  String get gitGraphStashPop;
+
+  /// No description provided for @gitGraphStashApply.
+  ///
+  /// In en, this message translates to:
+  /// **'Apply'**
+  String get gitGraphStashApply;
+
+  /// No description provided for @gitGraphStashDrop.
+  ///
+  /// In en, this message translates to:
+  /// **'Drop'**
+  String get gitGraphStashDrop;
+
+  /// No description provided for @gitGraphStashDropConfirmBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Drop {selector}? This cannot be undone.'**
+  String gitGraphStashDropConfirmBody(String selector);
+
+  /// No description provided for @gitGraphRenameBranch.
+  ///
+  /// In en, this message translates to:
+  /// **'Rename branch…'**
+  String get gitGraphRenameBranch;
+
+  /// No description provided for @gitGraphRenameBranchTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Rename branch'**
+  String get gitGraphRenameBranchTitle;
+
+  /// No description provided for @gitGraphDeleteBranch.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete branch {name}'**
+  String gitGraphDeleteBranch(String name);
+
+  /// No description provided for @gitGraphDeleteBranchTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete branch'**
+  String get gitGraphDeleteBranchTitle;
+
+  /// No description provided for @gitGraphDeleteBranchConfirmBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete branch \"{name}\"? Commits only reachable from it may become unreachable. This cannot be undone.'**
+  String gitGraphDeleteBranchConfirmBody(String name);
+
+  /// No description provided for @gitGraphMergeIntoCurrent.
+  ///
+  /// In en, this message translates to:
+  /// **'Merge {branch} into current branch'**
+  String gitGraphMergeIntoCurrent(String branch);
+
+  /// No description provided for @gitGraphCheckoutCommit.
+  ///
+  /// In en, this message translates to:
+  /// **'Checkout this commit (detached HEAD)'**
+  String get gitGraphCheckoutCommit;
+
+  /// No description provided for @gitGraphCheckoutCommitConfirmBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Checkout {hash} with detached HEAD?'**
+  String gitGraphCheckoutCommitConfirmBody(String hash);
+
+  /// No description provided for @gitGraphDeleteTag.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete tag {name}'**
+  String gitGraphDeleteTag(String name);
+
+  /// No description provided for @gitGraphDeleteTagTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete tag'**
+  String get gitGraphDeleteTagTitle;
+
+  /// No description provided for @gitGraphDeleteTagConfirmBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete tag \"{name}\"? This cannot be undone.'**
+  String gitGraphDeleteTagConfirmBody(String name);
+
+  /// No description provided for @gitGraphPushTag.
+  ///
+  /// In en, this message translates to:
+  /// **'Push tag {name}'**
+  String gitGraphPushTag(String name);
+
+  /// No description provided for @gitGraphBranchesTags.
+  ///
+  /// In en, this message translates to:
+  /// **'Branches & tags'**
+  String get gitGraphBranchesTags;
+
+  /// No description provided for @gitGraphLocalBranches.
+  ///
+  /// In en, this message translates to:
+  /// **'Local branches'**
+  String get gitGraphLocalBranches;
+
+  /// No description provided for @gitGraphRemoteBranches.
+  ///
+  /// In en, this message translates to:
+  /// **'Remote branches'**
+  String get gitGraphRemoteBranches;
+
+  /// No description provided for @gitGraphTags.
+  ///
+  /// In en, this message translates to:
+  /// **'Tags'**
+  String get gitGraphTags;
+
+  /// No description provided for @gitGraphHashSearchEmptyHint.
+  ///
+  /// In en, this message translates to:
+  /// **'No loaded commit matches this hash. Scroll down or click \"Load more\" to fetch older history.'**
+  String get gitGraphHashSearchEmptyHint;
+
+  /// No description provided for @gitGraphConflictHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Resolve the conflicts, stage the files, then commit to continue.'**
+  String get gitGraphConflictHint;
 }
 
 class _AppLocalizationsDelegate

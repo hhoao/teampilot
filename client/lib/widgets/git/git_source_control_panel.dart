@@ -13,6 +13,7 @@ import '../../cubits/git_cubit.dart';
 import '../../cubits/app_provider_cubit.dart';
 import '../../cubits/workbench/workbench_tab.dart';
 import '../../models/ai_feature_setting.dart';
+import '../../pages/git_graph/open_git_graph.dart';
 import '../../services/ai/ai_feature_setting_resolver.dart';
 import '../../services/cli/registry/cli_tool_registry_scope.dart';
 import '../../l10n/l10n_extensions.dart';
@@ -607,6 +608,11 @@ class _GitRepoBodyState extends State<_GitRepoBody> {
                 onPull: () => unawaited(_cubit.pull()),
                 onBranch: () => unawaited(_openBranchSheet()),
                 onToggleExpandAll: _cubit.toggleExpandAllFolders,
+                onOpenGraph: () => openGitGraphTab(
+                  context,
+                  workspaceId: widget.workspaceId,
+                  repoRoot: _cubit.state.repoRoot,
+                ),
                 onDiscardSelected: _selectedPath == null
                     ? null
                     : () => unawaited(_discardSelected()),
@@ -747,6 +753,7 @@ class _Header extends StatelessWidget {
     required this.onPull,
     required this.onBranch,
     required this.onToggleExpandAll,
+    required this.onOpenGraph,
     this.onDiscardSelected,
     this.onDiscardAll,
   });
@@ -767,6 +774,7 @@ class _Header extends StatelessWidget {
   final VoidCallback onPull;
   final VoidCallback onBranch;
   final VoidCallback onToggleExpandAll;
+  final VoidCallback onOpenGraph;
   final VoidCallback? onDiscardSelected;
   final VoidCallback? onDiscardAll;
 
@@ -811,6 +819,20 @@ class _Header extends StatelessWidget {
                     ),
                   ],
                 ],
+              ),
+            ),
+          ),
+        ),
+        Tooltip(
+          message: l10n.gitGraphTitle,
+          child: TpHover(
+            onTap: onOpenGraph,
+            borderRadius: BorderRadius.circular(6),
+            child: const Padding(
+              padding: EdgeInsets.symmetric(horizontal: 4, vertical: 4),
+              child: Icon(
+                Icons.account_tree_outlined,
+                size: 16,
               ),
             ),
           ),

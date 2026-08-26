@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:provider/provider.dart';
 import 'package:teampilot/cubits/floating_workspace/floating_workspace_cubit.dart';
 import 'package:teampilot/models/workspace_folder.dart';
 import 'package:teampilot/pages/floating_workspace/floating_workspace_tools_scope_bridge.dart';
@@ -38,7 +39,7 @@ void main() {
     late List<String>? seenRoots;
     await tester.pumpWidget(
       MaterialApp(
-        home: RepositoryProvider<WorkspaceToolsScopeRegistry>.value(
+        home: ListenableProvider<WorkspaceToolsScopeRegistry>.value(
           value: registry,
           child: BlocProvider<FloatingWorkspaceCubit>.value(
             value: floating,
@@ -68,7 +69,7 @@ void main() {
     late List<String>? seenRoots;
     await tester.pumpWidget(
       MaterialApp(
-        home: RepositoryProvider<WorkspaceToolsScopeRegistry>.value(
+        home: ListenableProvider<WorkspaceToolsScopeRegistry>.value(
           value: WorkspaceToolsScopeRegistry(),
           child: BlocProvider<FloatingWorkspaceCubit>.value(
             value: floating,

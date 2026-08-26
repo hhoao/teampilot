@@ -124,6 +124,9 @@ abstract final class WorkbenchShellActions {
       case WorkbenchTabKind.htmlPreview:
         // Floating html preview tabs close through the floating panel path.
         break;
+      case WorkbenchTabKind.gitGraph:
+        // Floating git graph tabs close through the floating panel path.
+        break;
     }
     await workbench.close(workspaceId, tab);
   }
@@ -216,6 +219,8 @@ abstract final class WorkbenchShellActions {
       case WorkbenchTabKind.run:
         await context.read<RunCubit>().dismissSession(tab.id);
       case WorkbenchTabKind.htmlPreview:
+        break;
+      case WorkbenchTabKind.gitGraph:
         break;
     }
   }

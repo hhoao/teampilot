@@ -1,6 +1,6 @@
 import 'package:equatable/equatable.dart';
 
-enum WorkbenchTabKind { session, file, diff, shell, run, htmlPreview }
+enum WorkbenchTabKind { session, file, diff, shell, run, htmlPreview, gitGraph }
 
 /// Floating panel surface id for [kind], or null when the kind hosts on the
 /// center strip (session) rather than the floating panel.
@@ -10,6 +10,7 @@ String? surfaceIdFor(WorkbenchTabKind kind) => switch (kind) {
   WorkbenchTabKind.file => 'filePreview',
   WorkbenchTabKind.diff => 'diffPreview',
   WorkbenchTabKind.htmlPreview => 'htmlPreview',
+  WorkbenchTabKind.gitGraph => 'gitGraph',
   WorkbenchTabKind.session => null,
 };
 
@@ -72,6 +73,10 @@ class WorkbenchTabId extends Equatable {
 
   factory WorkbenchTabId.htmlPreview(String absolutePath) =>
       WorkbenchTabId._(WorkbenchTabKind.htmlPreview, absolutePath);
+
+  /// Git Graph 浮动页：id 即仓库根绝对路径。
+  factory WorkbenchTabId.gitGraph(String repoRoot) =>
+      WorkbenchTabId._(WorkbenchTabKind.gitGraph, repoRoot);
 
   static String diffKey(
     String absolutePath, {
