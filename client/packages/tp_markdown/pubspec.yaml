@@ -11,6 +11,8 @@ dependencies:
   flutter:
     sdk: flutter
   markdown: ^7.3.0
+  flutter_html: 3.0.0
+  html: ^0.15.5
 
 dev_dependencies:
   flutter_test:

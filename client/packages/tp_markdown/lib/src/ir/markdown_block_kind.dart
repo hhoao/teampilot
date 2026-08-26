@@ -13,4 +13,5 @@ enum MarkdownBlockKind {
   horizontalRule,
   image,
   rawLiteral,
+  html,
 }
