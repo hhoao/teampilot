@@ -7732,6 +7732,42 @@ class AppLocalizationsZh extends AppLocalizations {
   String get connectAndroidScanHint => '扫描桌面版 TeamPilot 显示的二维码。';
 
   @override
+  String get connectPairSheetTitle => '与电脑配对';
+
+  @override
+  String get connectPairSheetSubtitle => '扫描桌面版 TeamPilot 显示的二维码，或粘贴配对码。';
+
+  @override
+  String get connectScanQr => '扫描二维码';
+
+  @override
+  String get connectPasteCode => '粘贴配对码';
+
+  @override
+  String get connectPairCodeHint => 'teampilot://pair-ssh?code=…';
+
+  @override
+  String get connectPairNow => '配对';
+
+  @override
+  String get connectPairing => '正在配对…';
+
+  @override
+  String get connectPairExpired => '配对码已过期，请重新扫描。';
+
+  @override
+  String get connectPairUpdateApp => '请更新 TeamPilot 后再扫描此配对码。';
+
+  @override
+  String get connectPairInvalid => '此配对码无效。';
+
+  @override
+  String get connectPairFailed => '无法与此电脑配对，请重试。';
+
+  @override
+  String get connectScannerUnavailable => '相机扫描器不可用，请改为粘贴配对码。';
+
+  @override
   String get connectCheckAgain => '重新检查';
 
   @override

@@ -8071,6 +8071,45 @@ class AppLocalizationsEn extends AppLocalizations {
   String get connectAndroidScanHint => 'Scan a QR from desktop TeamPilot.';
 
   @override
+  String get connectPairSheetTitle => 'Pair with a desktop';
+
+  @override
+  String get connectPairSheetSubtitle =>
+      'Scan the QR shown by desktop TeamPilot, or paste its pairing code.';
+
+  @override
+  String get connectScanQr => 'Scan QR';
+
+  @override
+  String get connectPasteCode => 'Paste code';
+
+  @override
+  String get connectPairCodeHint => 'teampilot://pair-ssh?code=…';
+
+  @override
+  String get connectPairNow => 'Pair';
+
+  @override
+  String get connectPairing => 'Pairing…';
+
+  @override
+  String get connectPairExpired => 'Code expired. Scan again.';
+
+  @override
+  String get connectPairUpdateApp => 'Update TeamPilot to scan this code.';
+
+  @override
+  String get connectPairInvalid => 'This pairing code is invalid.';
+
+  @override
+  String get connectPairFailed =>
+      'Could not pair with this desktop. Try again.';
+
+  @override
+  String get connectScannerUnavailable =>
+      'The camera scanner is unavailable. Paste the code instead.';
+
+  @override
   String get connectCheckAgain => 'Check again';
 
   @override

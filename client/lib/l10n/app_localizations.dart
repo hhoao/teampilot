@@ -14360,6 +14360,78 @@ abstract class AppLocalizations {
   /// **'Scan a QR from desktop TeamPilot.'**
   String get connectAndroidScanHint;
 
+  /// No description provided for @connectPairSheetTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Pair with a desktop'**
+  String get connectPairSheetTitle;
+
+  /// No description provided for @connectPairSheetSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Scan the QR shown by desktop TeamPilot, or paste its pairing code.'**
+  String get connectPairSheetSubtitle;
+
+  /// No description provided for @connectScanQr.
+  ///
+  /// In en, this message translates to:
+  /// **'Scan QR'**
+  String get connectScanQr;
+
+  /// No description provided for @connectPasteCode.
+  ///
+  /// In en, this message translates to:
+  /// **'Paste code'**
+  String get connectPasteCode;
+
+  /// No description provided for @connectPairCodeHint.
+  ///
+  /// In en, this message translates to:
+  /// **'teampilot://pair-ssh?code=…'**
+  String get connectPairCodeHint;
+
+  /// No description provided for @connectPairNow.
+  ///
+  /// In en, this message translates to:
+  /// **'Pair'**
+  String get connectPairNow;
+
+  /// No description provided for @connectPairing.
+  ///
+  /// In en, this message translates to:
+  /// **'Pairing…'**
+  String get connectPairing;
+
+  /// No description provided for @connectPairExpired.
+  ///
+  /// In en, this message translates to:
+  /// **'Code expired. Scan again.'**
+  String get connectPairExpired;
+
+  /// No description provided for @connectPairUpdateApp.
+  ///
+  /// In en, this message translates to:
+  /// **'Update TeamPilot to scan this code.'**
+  String get connectPairUpdateApp;
+
+  /// No description provided for @connectPairInvalid.
+  ///
+  /// In en, this message translates to:
+  /// **'This pairing code is invalid.'**
+  String get connectPairInvalid;
+
+  /// No description provided for @connectPairFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not pair with this desktop. Try again.'**
+  String get connectPairFailed;
+
+  /// No description provided for @connectScannerUnavailable.
+  ///
+  /// In en, this message translates to:
+  /// **'The camera scanner is unavailable. Paste the code instead.'**
+  String get connectScannerUnavailable;
+
   /// No description provided for @connectCheckAgain.
   ///
   /// In en, this message translates to:
