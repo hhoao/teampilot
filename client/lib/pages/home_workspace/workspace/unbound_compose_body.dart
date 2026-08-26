@@ -309,6 +309,15 @@ class _UnboundComposeBodyState extends State<UnboundComposeBody> {
     if (oldWidget.workspace.workspaceId != widget.workspace.workspaceId) {
       unawaited(_loadWorkspaceProjectBundle());
     }
+    final nextInitialText = widget.initialText;
+    if (oldWidget.initialText != nextInitialText &&
+        nextInitialText != null &&
+        nextInitialText.isNotEmpty) {
+      _controller.value = TextEditingValue(
+        text: nextInitialText,
+        selection: TextSelection.collapsed(offset: nextInitialText.length),
+      );
+    }
     if (!mapEquals(
           oldWidget.workspace.memberTargetsByTeam,
           widget.workspace.memberTargetsByTeam,

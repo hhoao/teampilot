@@ -42,6 +42,7 @@ Future<void> clearWorkspaceLandingDraft(String workspaceId) async {
 class WorkspaceChatPane extends StatefulWidget {
   const WorkspaceChatPane({
     required this.workspace,
+    this.initialText,
     this.submitter = submitWorkspaceLandingMessage,
     this.landingDraftPersister = persistLandingDraft,
     this.landingDraftCleaner = clearWorkspaceLandingDraft,
@@ -49,6 +50,7 @@ class WorkspaceChatPane extends StatefulWidget {
   });
 
   final Workspace workspace;
+  final String? initialText;
   final WorkspaceLandingMessageSubmitter submitter;
   final WorkspaceLandingDraftPersister landingDraftPersister;
   final WorkspaceLandingDraftCleaner landingDraftCleaner;
@@ -145,6 +147,7 @@ class _WorkspaceChatPaneState extends State<WorkspaceChatPane> {
           placeholder: const WorkspaceLandingSkeleton(),
           child: WorkspaceChatLanding(
             workspace: workspace,
+            initialText: widget.initialText,
             isSubmitting: launching,
             onSubmit: (message, draft) => unawaited(_submit(message, draft)),
           ),

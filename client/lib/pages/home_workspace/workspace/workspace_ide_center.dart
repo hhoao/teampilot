@@ -11,9 +11,10 @@ Widget buildWorkspaceIdeCenter({
   required bool newChat,
   required Workspace workspace,
   required Widget chatPage,
+  String? initialText,
 }) {
   if (newChat) {
-    return WorkspaceChatPane(workspace: workspace);
+    return WorkspaceChatPane(workspace: workspace, initialText: initialText);
   }
   return chatPage;
 }

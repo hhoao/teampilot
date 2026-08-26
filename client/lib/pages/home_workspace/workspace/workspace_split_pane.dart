@@ -263,6 +263,9 @@ class _WorkspaceSplitPaneState extends State<WorkspaceSplitPane> {
           final composeLanding = context.select<WorkbenchCubit, bool>(
             (w) => workspaceNewChatActive(w, widget.tabScopeId),
           );
+          final landingInitialText = context.select<WorkbenchCubit, String?>(
+            (w) => w.state.bar(widget.tabScopeId).center.landingInitialText,
+          );
           return WorkspaceToolsScopeSync(
             workspace: widget.workspace,
             cwd: cwd,
@@ -286,6 +289,7 @@ class _WorkspaceSplitPaneState extends State<WorkspaceSplitPane> {
                 center: buildWorkspaceIdeCenter(
                   newChat: composeLanding,
                   workspace: widget.workspace,
+                  initialText: landingInitialText,
                   chatPage: ChatPage(
                     cwd: cwd,
                     additionalPaths: widget.workspace.extraFolderPaths,

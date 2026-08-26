@@ -127,7 +127,7 @@ void main() {
       await tester.pumpWidget(landing('replacement'));
       await tester.pump();
 
-      expect(field().controller!.text, seed);
+      expect(field().controller!.text, 'replacement');
     },
   );
 }
