@@ -276,7 +276,7 @@ class GitGraphCubit extends Cubit<GitGraphState> {
     if (dir.isEmpty || isClosed) return;
     try {
       final signature =
-          '${state.searchQuery}|${state.searchMode.index}|${_effectiveRevisionRange}';
+          '${state.searchQuery}|${state.searchMode.index}|$_effectiveRevisionRange';
       final rows = await _history.graphRows(
         dir,
         query: state.searchQuery,
