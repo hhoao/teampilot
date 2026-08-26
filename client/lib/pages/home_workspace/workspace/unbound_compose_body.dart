@@ -1419,6 +1419,7 @@ class _UnboundComposeBodyState extends State<UnboundComposeBody> {
         selectedPresetId: _selectedPresetId,
         emptyHintLabel: l10n.workspaceCliPresetsEmptyHint,
         emptyProvidersLabel: l10n.composeCascadeNoProviders,
+        presetsLabel: l10n.composeCascadePresets,
         defaultEffortLabel: l10n.composeCascadeDefaultEffort,
         customModelIdLabel: l10n.composeCascadeCustomModelId,
         noModelsLabel: l10n.composeCascadeNoModels,

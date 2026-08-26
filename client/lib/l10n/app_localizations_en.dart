@@ -1106,6 +1106,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get composeCascadeNoProviders => 'No providers configured';
 
   @override
+  String get composeCascadePresets => 'Presets';
+
+  @override
   String get workspaceCliDeletePresetTitle => 'Delete Preset';
 
   @override

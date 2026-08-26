@@ -538,6 +538,7 @@ void main() {
                     selectedPresetId: 'preset-b',
                     emptyHintLabel: 'No presets',
                     emptyProvidersLabel: 'No providers configured',
+                    presetsLabel: 'Presets',
                     defaultEffortLabel: 'Default',
                     customModelIdLabel: 'Custom model ID…',
                     noModelsLabel: 'No model catalog',

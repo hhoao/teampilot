@@ -103,6 +103,7 @@ void main() {
         selectedPresetId: 'preset-1',
         emptyHintLabel: 'No presets',
         emptyProvidersLabel: 'No providers',
+        presetsLabel: 'Presets',
         defaultEffortLabel: 'Default',
         customModelIdLabel: 'Custom model ID…',
         noModelsLabel: 'No models',
@@ -112,9 +113,12 @@ void main() {
         groupByCli: true,
       );
 
-      // Presets are wrapped in a fixed-height scroll block.
-      expect(specs.first.isScrollBlock, isTrue);
-      final presetRows = specs.first.scrollChildren!;
+      // Presets are a submenu whose sole child is a fixed-height scroll block.
+      expect(specs.first.isSubmenu, isTrue);
+      expect(specs.first.label, 'Presets');
+      final presetBlock = specs.first.children!.single;
+      expect(presetBlock.isScrollBlock, isTrue);
+      final presetRows = presetBlock.scrollChildren!;
       expect(presetRows, hasLength(1));
       final presetRow = presetRows.first;
       expect(presetRow.selected, isTrue);
@@ -164,6 +168,7 @@ void main() {
         selectedPresetId: null,
         emptyHintLabel: 'x',
         emptyProvidersLabel: 'y',
+        presetsLabel: 'Presets',
         defaultEffortLabel: 'Default',
         customModelIdLabel: 'Custom…',
         noModelsLabel: 'No models',
@@ -190,6 +195,7 @@ void main() {
         selectedPresetId: null,
         emptyHintLabel: 'No presets',
         emptyProvidersLabel: 'No providers',
+        presetsLabel: 'Presets',
         defaultEffortLabel: 'Default',
         customModelIdLabel: 'Custom…',
         noModelsLabel: 'No models',
@@ -224,6 +230,7 @@ void main() {
         selectedPresetId: null,
         emptyHintLabel: 'No presets',
         emptyProvidersLabel: 'No providers',
+        presetsLabel: 'Presets',
         defaultEffortLabel: 'Default',
         customModelIdLabel: 'Custom…',
         noModelsLabel: 'No models',
@@ -256,6 +263,7 @@ void main() {
         selectedPresetId: null,
         emptyHintLabel: 'x',
         emptyProvidersLabel: 'No providers',
+        presetsLabel: 'Presets',
         defaultEffortLabel: 'Default',
         customModelIdLabel: 'Custom…',
         noModelsLabel: 'No models',

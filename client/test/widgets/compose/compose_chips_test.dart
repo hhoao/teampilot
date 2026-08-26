@@ -32,6 +32,7 @@ void main() {
         selectedPresetId: selectedPresetId,
         emptyHintLabel: 'No presets',
         emptyProvidersLabel: 'No providers configured',
+        presetsLabel: 'Presets',
         defaultEffortLabel: 'Default',
         customModelIdLabel: 'Custom model ID…',
         noModelsLabel: 'No model catalog',
@@ -48,8 +49,9 @@ void main() {
         selectedPresetId: 'b',
       );
 
-      expect(specs.first.isScrollBlock, isTrue);
-      final presetRows = specs.first.scrollChildren!;
+      expect(specs.first.isSubmenu, isTrue);
+      expect(specs.first.label, 'Presets');
+      final presetRows = specs.first.children!.single.scrollChildren!;
       expect(presetRows.first.isDivider, isFalse);
       expect(presetRows[0].label, 'Alpha');
       expect(presetRows[0].selected, isFalse);

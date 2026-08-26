@@ -344,6 +344,8 @@ class SessionChatComposeSection extends StatelessWidget {
                                     l10n.workspaceCliPresetsEmptyHint,
                                 emptyProvidersLabel:
                                     l10n.composeCascadeNoProviders,
+                                presetsLabel:
+                                    l10n.composeCascadePresets,
                                 defaultEffortLabel:
                                     l10n.composeCascadeDefaultEffort,
                                 customModelIdLabel:

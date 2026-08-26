@@ -2090,6 +2090,12 @@ abstract class AppLocalizations {
   /// **'No providers configured'**
   String get composeCascadeNoProviders;
 
+  /// No description provided for @composeCascadePresets.
+  ///
+  /// In en, this message translates to:
+  /// **'Presets'**
+  String get composeCascadePresets;
+
   /// No description provided for @workspaceCliDeletePresetTitle.
   ///
   /// In en, this message translates to:

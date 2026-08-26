@@ -210,6 +210,7 @@ List<TpActionMenuSpec> buildComposeModelCascadeMenuSpecs({
   required String? selectedPresetId,
   required String emptyHintLabel,
   required String emptyProvidersLabel,
+  required String presetsLabel,
   required String defaultEffortLabel,
   required String customModelIdLabel,
   required String noModelsLabel,
@@ -265,7 +266,6 @@ List<TpActionMenuSpec> buildComposeModelCascadeMenuSpecs({
       ComposeCascadeProvider p) {
     return TpActionMenuSpec.submenu(
       value: p.id,
-      icon: Icons.cloud_outlined,
       label: p.name,
       searchable: true,
       children: providerChildren(group, p),
@@ -279,13 +279,20 @@ List<TpActionMenuSpec> buildComposeModelCascadeMenuSpecs({
       TpActionMenuSpec.item(value: null, icon: Icons.terminal_outlined,
         label: emptyHintLabel, enabled: false)
     else
-      TpActionMenuSpec.scroll(
-        maxHeight: kComposeCascadePresetsMaxHeight,
+      TpActionMenuSpec.submenu(
+        value: null,
+        label: presetsLabel,
         children: [
-          for (final preset in presets)
-            TpActionMenuSpec.item(value: preset.id,
-              iconWidget: _PresetCliMenuIcon(cli: preset.cli),
-              label: preset.name, selected: preset.id == selectedPresetId),
+          TpActionMenuSpec.scroll(
+            maxHeight: kComposeCascadePresetsMaxHeight,
+            children: [
+              for (final preset in presets)
+                TpActionMenuSpec.item(value: preset.id,
+                  iconWidget: _PresetCliMenuIcon(cli: preset.cli),
+                  label: preset.name,
+                  selected: preset.id == selectedPresetId),
+            ],
+          ),
         ],
       ),
     const TpActionMenuSpec.divider(),
