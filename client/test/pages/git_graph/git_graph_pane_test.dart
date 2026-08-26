@@ -52,6 +52,42 @@ class _RecordingOpener implements WorkbenchEditorOpener {
 }
 
 void main() {
+  testWidgets('scrolling to bottom twice triggers two loadMore fetches',
+      (tester) async {
+    final history = FullPagesChainHistory();
+    final cubit = GitGraphCubit(history: history, git: FakeGitForGraph(repoStatus()));
+    addTearDown(cubit.close);
+    await cubit.setRepoRoot('/repo');
+    await tester.pumpWidget(host(cubit));
+    await tester.pumpAndSettle();
+    expect(cubit.state.rows.length, 300);
+    expect(cubit.state.hasMore, isTrue);
+
+    Future<void> scrollToEnd() async {
+      // 多次小幅拖动，模拟真实滚轮到底；每次后等帧让 ListView 布局。
+      for (var i = 0; i < 40; i++) {
+        await tester.drag(find.byType(ListView).first, const Offset(0, -600));
+        await tester.pump(const Duration(milliseconds: 50));
+      }
+      await tester.pumpAndSettle();
+    }
+
+    await scrollToEnd();
+    expect(history.loadMoreCalls, greaterThanOrEqualTo(1),
+        reason: '第一次触底应触发 loadMore');
+    expect(cubit.state.isLoadingMore, isFalse);
+    expect(cubit.state.rows.length, greaterThan(300));
+
+    // 记录第一轮后继续滚动：应再次触发新的加载（链路可重复）。
+    final callsAfterFirst = history.loadMoreCalls;
+    final rowsAfterFirst = cubit.state.rows.length;
+
+    await scrollToEnd();
+    expect(history.loadMoreCalls, greaterThan(callsAfterFirst),
+        reason: '第二次触底应继续触发 loadMore');
+    expect(cubit.state.rows.length, greaterThan(rowsAfterFirst));
+  });
+
   testWidgets('renders commit rows and uncommitted pseudo row when dirty', (
     tester,
   ) async {

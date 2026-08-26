@@ -247,3 +247,122 @@ GitRepoStatus dirtyStatus() => const GitRepoStatus(
 /// 不在 git 工作树内的目录状态。
 GitRepoStatus notRepoStatus() =>
     const GitRepoStatus(isRepository: false, hasCommits: false);
+
+
+/// 每页按 limit 生成满页、且每次 loadMore 都有下一页的 fake：
+/// 验证真实滚动链路的分页触发。
+class FullPagesChainHistory implements GitHistoryService {
+  FullPagesChainHistory({this.initialLoadCommits = 300, this.loadMoreCommits = 100});
+
+  final int initialLoadCommits;
+  final int loadMoreCommits;
+
+  int graphCalls = 0;
+  int loadMoreCalls = 0;
+  Map<String, Object?> lastArgs = {};
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
+
+  @override
+  Future<List<GitGraphRow>> graphRows(
+    String dir, {
+    int limit = GitHistoryService.initialLoadCommits,
+    int skip = 0,
+    String query = '',
+    GitSearchMode mode = GitSearchMode.message,
+    String? revisionRange,
+  }) async {
+    graphCalls++;
+    lastArgs = {'skip': skip};
+    if (skip > 0) {
+      loadMoreCalls++;
+      return List<GitGraphRow>.generate(loadMoreCommits, (i) {
+        final n = skip + i;
+        return GitCommitRow(
+          edges: const [GitGraphEdge(0, 0, 0)],
+          node: const GitGraphNode(0, 0),
+          hash: 'c$n',
+          parents: const [],
+          authorName: 'A',
+          authorEmail: 'a@x',
+          authorDate: DateTime.fromMillisecondsSinceEpoch(-n * 1000, isUtc: true),
+          subject: 's-$n',
+          refs: const [],
+        );
+      });
+    }
+    return List<GitGraphRow>.generate(initialLoadCommits, (i) {
+      return GitCommitRow(
+        edges: const [GitGraphEdge(0, 0, 0)],
+        node: const GitGraphNode(0, 0),
+        hash: 'c$i',
+        parents: const [],
+        authorName: 'A',
+        authorEmail: 'a@x',
+        authorDate: DateTime.fromMillisecondsSinceEpoch(-i * 1000, isUtc: true),
+        subject: 's-$i',
+        refs: const [],
+      );
+    });
+  }
+
+  @override
+  Future<List<GitBranchInfo>> branches(String dir) async => const [];
+
+  @override
+  Future<List<GitTagInfo>> tags(String dir) async => const [];
+
+  @override
+  Future<List<GitStashEntry>> stashList(String dir) async => const [];
+
+  @override
+  Future<GitCommitDetail> commitDetail(String dir, String hash) async =>
+      throw UnimplementedError();
+
+  @override
+  Future<String> commitFileDiff(String dir,
+      {required String hash, String? parent, required String path}) async => '';
+
+  @override
+  Future<List<String>> remotes(String dir) async => const [];
+}
+
+
+/// 满页 fake 变体：每 6 行插入一个拓扑 spacer 行（模拟 `git log --graph`
+/// 的 merge 连线行），使「总行数 > 提交数」，专用于回归分页判据。
+class SpacedFullPagesHistory extends FullPagesChainHistory {
+  SpacedFullPagesHistory({super.initialLoadCommits, super.loadMoreCommits});
+
+  List<GitGraphRow> _interleave(List<GitGraphRow> commits) {
+    final out = <GitGraphRow>[];
+    for (var i = 0; i < commits.length; i++) {
+      if (i > 0 && i % 6 == 0) {
+        out.add(const GitGraphSpacerRow(edges: [GitGraphEdge(0, 0, 0)]));
+      }
+      out.add(commits[i]);
+    }
+    return out;
+  }
+
+  @override
+  Future<List<GitGraphRow>> graphRows(
+    String dir, {
+    int limit = GitHistoryService.initialLoadCommits,
+    int skip = 0,
+    String query = '',
+    GitSearchMode mode = GitSearchMode.message,
+    String? revisionRange,
+  }) async {
+    // 复用父类产出的「纯提交」页，再按位置穿插 spacer。
+    final commits = await super.graphRows(
+      dir,
+      limit: limit,
+      skip: skip,
+      query: query,
+      mode: mode,
+      revisionRange: revisionRange,
+    );
+    return _interleave(commits);
+  }
+}

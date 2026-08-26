@@ -296,7 +296,8 @@ class GitGraphCubit extends Cubit<GitGraphState> {
       // 注意：累计行必须在 emit 前一刻读取（而非进入函数时）——refresh 与
       // loadMore 并发时，loadMore 可能在本函数等待 git 期间完成追加。
       var nextRows = rows;
-      var nextHasMore = rows.length == GitHistoryService.initialLoadCommits;
+      var nextHasMore =
+          _commitCountOf(rows) == GitHistoryService.initialLoadCommits;
       final accumulated = state.rows;
       final headUnchanged = rows.isNotEmpty &&
           accumulated.isNotEmpty &&
@@ -334,6 +335,11 @@ class GitGraphCubit extends Cubit<GitGraphState> {
     }
   }
 
+  /// `--graph` 输出中除提交行外还有拓扑连线行（spacer），分页判据与
+  /// `--skip` 语义都必须按「提交数」而非总行数。
+  static int _commitCountOf(List<GitGraphRow> rows) =>
+      rows.whereType<GitCommitRow>().length;
+
   /// 首行（最新提交）的 hash；首行理论上必为 commit，防御 spacer 在前的情况。
   static String _headHashOf(List<GitGraphRow> rows) {
     for (final row in rows) {
@@ -350,7 +356,7 @@ class GitGraphCubit extends Cubit<GitGraphState> {
     try {
       final more = await _history.graphRows(
         dir,
-        skip: state.rows.length,
+        skip: _commitCountOf(state.rows),
         limit: GitHistoryService.loadMoreCommits,
         query: state.searchQuery,
         mode: state.searchMode,
@@ -360,7 +366,8 @@ class GitGraphCubit extends Cubit<GitGraphState> {
       emit(
         state.copyWith(
           rows: [...state.rows, ...more],
-          hasMore: more.length == GitHistoryService.loadMoreCommits,
+          hasMore:
+              _commitCountOf(more) == GitHistoryService.loadMoreCommits,
           isLoadingMore: false,
         ),
       );

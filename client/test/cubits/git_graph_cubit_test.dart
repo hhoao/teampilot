@@ -126,6 +126,33 @@ void main() {
     await cubit.close();
   });
 
+  test('graph spacer rows do not break pagination flags or skip math',
+      () async {
+    // --graph 输出含 merge 连线行：总行数 > 提交数。hasMore 必须按
+    // 「提交数 == limit」判定，skip 也必须按提交数递增。
+    final history = SpacedFullPagesHistory();
+    final cubit = GitGraphCubit(history: history, git: FakeGitForGraph(repoStatus()));
+    addTearDown(cubit.close);
+    await cubit.setRepoRoot('/repo');
+
+    final pageCommits = GitHistoryService.initialLoadCommits;
+    expect(
+      cubit.state.rows.whereType<GitCommitRow>().length,
+      pageCommits,
+    );
+    expect(cubit.state.rows.length, greaterThan(pageCommits)); // 含 spacer
+    expect(cubit.state.hasMore, isTrue, reason: '满页提交 + spacer 行也应视为还有更多');
+
+    await cubit.loadMore();
+    expect(history.lastArgs['skip'], pageCommits,
+        reason: 'skip 按「已加载提交数」而非总行数');
+    expect(
+      cubit.state.rows.whereType<GitCommitRow>().length,
+      pageCommits + GitHistoryService.loadMoreCommits,
+    );
+    expect(cubit.state.hasMore, isTrue);
+  });
+
   test('refresh replaces rows when head commit changed', () async {
     final history = _ScriptedHistory(pages: [
       [graphCommitRow('h1'), graphCommitRow('h2')],
