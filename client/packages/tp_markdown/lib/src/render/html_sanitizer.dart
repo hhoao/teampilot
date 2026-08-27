@@ -16,7 +16,7 @@ const Set<String> _dangerousSchemes = {'javascript:', 'vbscript:'};
 /// DOM document (the parser wraps input in html/body).
 dom.Document sanitizeHtmlDocument(String rawHtml) {
   final document = html_parser.parse(rawHtml);
-  final root = document.body ?? document.documentElement;
+  final root = document.documentElement;
   if (root != null) _scrub(root);
   return document;
 }
@@ -26,6 +26,7 @@ String htmlPlainText(String rawHtml) =>
     html_parser.parse(rawHtml).documentElement?.text ?? '';
 
 void _scrub(dom.Element element) {
+  // Keys are String or AttributeName (LinkedHashMap<Object, String>).
   element.attributes.removeWhere(
     (name, _) => name.toString().toLowerCase().startsWith('on'),
   );

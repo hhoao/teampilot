@@ -40,6 +40,30 @@ void main() {
       expect(doc.querySelectorAll('summary'), hasLength(1));
       expect(doc.querySelector('b')!.text, 'b');
     });
+
+    test('removes script-only input that the parser places in head', () {
+      final doc = sanitizeHtmlDocument('<script>alert(1)</script>');
+      expect(doc.querySelectorAll('script'), isEmpty);
+    });
+
+    test('removes scripts in head while keeping body content', () {
+      final doc = sanitizeHtmlDocument(
+        '<head><script>evil</script></head><body><p>ok</p></body>',
+      );
+      expect(doc.querySelectorAll('script'), isEmpty);
+      expect(doc.querySelector('p')!.text, 'ok');
+    });
+
+    test('strips event handlers on the html documentElement', () {
+      final doc = sanitizeHtmlDocument(
+        '<html onclick="x"><body><p>ok</p></body></html>',
+      );
+      expect(
+        doc.documentElement!.attributes.containsKey('onclick'),
+        isFalse,
+      );
+      expect(doc.querySelector('p')!.text, 'ok');
+    });
   });
 
   group('htmlPlainText', () {
