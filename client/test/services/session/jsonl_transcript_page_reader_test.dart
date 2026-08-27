@@ -302,16 +302,21 @@ void main() {
     );
   });
 
-  test('fallback ids make the page source unavailable', () async {
+  test('suffix fallback ids make the page source unavailable', () async {
     final fs = InMemoryFilesystem();
     final path = '/transcript.jsonl';
-    await fs.writeString(path, '{"type":"user","message":{"content":"one"}}\n');
+    await fs.writeString(
+      path,
+      '{"type":"user","uuid":"u-1","message":{"content":"one"}}\n'
+      '{"type":"user","message":{"content":"two needs fallback"}}\n',
+    );
     final reader = JsonlTranscriptPageReader(
       fs: fs,
       lineAppend: appendClaudeJsonlEvent,
       fallbackPrefix: 'claude',
       decodeEvents: _syncDecoder(),
       sourcePath: (_) async => path,
+      windowSizes: const [24],
     );
     final ctx = SessionHistoryContext(
       fs: fs,
@@ -698,7 +703,8 @@ void main() {
       ),
     );
     expect(full.map((message) => message.id), ['codex-0', 'codex-1']);
-    expect(page, isNull);
+    expect(page, isNotNull);
+    expect(page!.messages.map((message) => message.id), ['codex-0', 'codex-1']);
   });
 
   test('uses stat source version without a full-transcript read', () async {

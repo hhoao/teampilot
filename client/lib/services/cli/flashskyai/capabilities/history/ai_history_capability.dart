@@ -4,7 +4,6 @@ import '../../../registry/capabilities/ai_history_capability.dart';
 import '../../../../io/filesystem.dart';
 import '../../../../session/jsonl_transcript_page_reader.dart';
 import '../../../../session/session_history_context.dart';
-import '../../../../storage/app_storage.dart';
 import '../../../registry/capabilities/history/subagent_side_resolver.dart';
 import '../../../registry/capabilities/history/tool_result_enricher.dart';
 import '../../../registry/capabilities/resume/pinned_transcript_probe.dart';
@@ -21,7 +20,7 @@ final class FlashskyaiAiHistoryCapability implements AiHistoryCapability {
     this.pageFilesystem,
   });
 
-  /// Test seam; production uses the bound runtime filesystem.
+  /// Test seam; production reads go through [SessionHistoryContext.fs].
   final Filesystem? pageFilesystem;
 
   static const _resolvers = SharedToolCallResolvers();
@@ -41,7 +40,7 @@ final class FlashskyaiAiHistoryCapability implements AiHistoryCapability {
 
   @override
   AiTranscriptPageReader get pageReader => JsonlTranscriptPageReader(
-    fs: pageFilesystem ?? AppStorage.fs,
+    fs: pageFilesystem,
     lineAppend: lineAppend,
     fallbackPrefix: tailFallbackPrefix,
     sourcePath: locateFlashskyaiTranscriptPath,

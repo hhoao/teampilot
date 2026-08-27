@@ -37,6 +37,9 @@ class _Cap implements AiHistoryCapability {
   AiTranscriptLineAppend? get lineAppend => null;
 
   @override
+  AiTranscriptPageReader? get pageReader => null;
+
+  @override
   String get tailFallbackPrefix => 'test';
 
   @override
@@ -604,6 +607,9 @@ class _WorkflowCap implements AiHistoryCapability {
 
   @override
   AiTranscriptLineAppend? get lineAppend => null;
+
+  @override
+  AiTranscriptPageReader? get pageReader => null;
 
   @override
   String get tailFallbackPrefix => 'test';

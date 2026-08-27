@@ -18,7 +18,7 @@ typedef AiTranscriptSourceVersion =
 /// their sequence cannot be proven equivalent without parsing the prefix.
 final class JsonlTranscriptPageReader implements AiTranscriptPageReader {
   JsonlTranscriptPageReader({
-    required this.fs,
+    this.fs,
     required AiTranscriptLineAppend lineAppend,
     required String fallbackPrefix,
     required AiTranscriptSourcePath sourcePath,
@@ -31,7 +31,10 @@ final class JsonlTranscriptPageReader implements AiTranscriptPageReader {
        _sourcePath = sourcePath,
        _sourceVersion = sourceVersion ?? _highPrecisionStatVersion;
 
-  final Filesystem fs;
+  /// Test override. Production reads go through [SessionHistoryContext.fs].
+  final Filesystem? fs;
+
+  Filesystem _boundFs(SessionHistoryContext ctx) => fs ?? ctx.fs;
   final AiTranscriptLineAppend _lineAppend;
   final String _fallbackPrefix;
   final EventDecoder _decodeEvents;
@@ -47,7 +50,8 @@ final class JsonlTranscriptPageReader implements AiTranscriptPageReader {
     if (limit <= 0) return null;
     final path = await _sourcePath(ctx);
     if (path == null || path.isEmpty) return null;
-    final stat = await fs.stat(path);
+    final filesystem = _boundFs(ctx);
+    final stat = await filesystem.stat(path);
     if (!stat.isFile) return null;
     final size = stat.size ?? 0;
     final sourceToken = await _sourceToken(path, stat);
@@ -55,7 +59,7 @@ final class JsonlTranscriptPageReader implements AiTranscriptPageReader {
     if (size == 0) return _emptyPage(sourceToken: sourceToken, rebuilt: true);
 
     for (final window in _windowsFor(size)) {
-      final lines = await _readLatestLines(path, size, window);
+      final lines = await _readLatestLines(filesystem, path, size, window);
       final page = await _buildPage(
         lines,
         limit: limit,
@@ -77,7 +81,8 @@ final class JsonlTranscriptPageReader implements AiTranscriptPageReader {
     if (limit <= 0) return null;
     final path = await _sourcePath(ctx);
     if (path == null || path.isEmpty) return null;
-    final stat = await fs.stat(path);
+    final filesystem = _boundFs(ctx);
+    final stat = await filesystem.stat(path);
     if (!stat.isFile) return null;
     final size = stat.size ?? 0;
     final source = _decodeSourceToken(cursor.sourceToken);
@@ -86,13 +91,14 @@ final class JsonlTranscriptPageReader implements AiTranscriptPageReader {
     final currentToken = await _sourceToken(path, stat);
     if (currentToken == null || currentToken != cursor.sourceToken) return null;
     if (cursor.offset <= 0 || cursor.offset > size) return null;
-    final anchor = await _readLineAt(path, cursor.offset, size);
+    final anchor = await _readLineAt(filesystem, path, cursor.offset, size);
     if (anchor == null || _lineHash(anchor.bytes) != cursor.lineHash) {
       return null;
     }
 
     for (final window in _windowsFor(cursor.offset)) {
       final lines = await _readOlderLines(
+        filesystem,
         path,
         end: cursor.offset,
         window: window,
@@ -130,7 +136,18 @@ final class JsonlTranscriptPageReader implements AiTranscriptPageReader {
     final events = await _decodeEvents([for (final line in lines) line.bytes]);
     if (events.length != lines.length) return null;
     final parsed = _parseFrom(events, 0);
-    if (parsed.fallbackUsed || parsed.unresolvedDependency) return null;
+    final prefixComplete = lines.first.offset == 0;
+    // Suffix fallback ids cannot be proven equivalent without the prefix.
+    // A window that starts at byte zero assigns the same sequence as
+    // adapter.parse of that complete source.
+    if (parsed.unresolvedDependency ||
+        _unsafeFallback(
+          fallbackUsed: parsed.fallbackUsed,
+          prefixComplete: prefixComplete,
+          parseStart: 0,
+        )) {
+      return null;
+    }
     // Ignore decoded noise and inspect the first event that the injected CLI
     // append semantics actually turns into a logical message. If that event
     // produces an assistant message after byte zero, it may be a continuation
@@ -153,11 +170,25 @@ final class JsonlTranscriptPageReader implements AiTranscriptPageReader {
       contextStart--;
     }
     final contextual = _parseFrom(events, contextStart);
-    if (contextual.fallbackUsed || contextual.unresolvedDependency) return null;
+    if (contextual.unresolvedDependency ||
+        _unsafeFallback(
+          fallbackUsed: contextual.fallbackUsed,
+          prefixComplete: prefixComplete,
+          parseStart: contextStart,
+        )) {
+      return null;
+    }
     final plain = contextStart == rawStart
         ? contextual
         : _parseFrom(events, rawStart);
-    if (plain.fallbackUsed || plain.unresolvedDependency) return null;
+    if (plain.unresolvedDependency ||
+        _unsafeFallback(
+          fallbackUsed: plain.fallbackUsed,
+          prefixComplete: prefixComplete,
+          parseStart: rawStart,
+        )) {
+      return null;
+    }
 
     final contextualMessages = finalizeAiMessagesForHistory(
       contextual.messages,
@@ -259,6 +290,15 @@ final class JsonlTranscriptPageReader implements AiTranscriptPageReader {
     return false;
   }
 
+  static bool _unsafeFallback({
+    required bool fallbackUsed,
+    required bool prefixComplete,
+    required int parseStart,
+  }) {
+    if (!fallbackUsed) return false;
+    return !(prefixComplete && parseStart == 0);
+  }
+
   int _rawStartIndex(List<int> counts, int messageCount, int limit) {
     if (messageCount <= limit) return 0;
     final target = messageCount - limit;
@@ -269,6 +309,7 @@ final class JsonlTranscriptPageReader implements AiTranscriptPageReader {
   }
 
   Future<List<_TranscriptLine>> _readLatestLines(
+    Filesystem filesystem,
     String path,
     int size,
     int window,
@@ -278,11 +319,15 @@ final class JsonlTranscriptPageReader implements AiTranscriptPageReader {
     // whose first visible fragment is at the boundary can be merged with its
     // preceding line without a second decode request.
     final readStart = start > 0 ? (start - window).clamp(0, start) : 0;
-    final bytes = await fs.readBytesRange(path, readStart, size - readStart);
+    final bytes = await filesystem.readBytesRange(
+      path,
+      readStart,
+      size - readStart,
+    );
     if (bytes == null || bytes.isEmpty) return const [];
     var first = 0;
     if (readStart > 0) {
-      final before = await fs.readBytesRange(path, readStart - 1, 1);
+      final before = await filesystem.readBytesRange(path, readStart - 1, 1);
       if (before == null || before.single != 0x0A) {
         final newline = bytes.indexOf(0x0A);
         if (newline < 0) return const [];
@@ -297,17 +342,22 @@ final class JsonlTranscriptPageReader implements AiTranscriptPageReader {
   }
 
   Future<List<_TranscriptLine>> _readOlderLines(
+    Filesystem filesystem,
     String path, {
     required int end,
     required int window,
   }) async {
     final start = end > window ? end - window : 0;
     final readStart = start > 0 ? (start - window).clamp(0, start) : 0;
-    final bytes = await fs.readBytesRange(path, readStart, end - readStart);
+    final bytes = await filesystem.readBytesRange(
+      path,
+      readStart,
+      end - readStart,
+    );
     if (bytes == null || bytes.isEmpty) return const [];
     var first = 0;
     if (readStart > 0) {
-      final before = await fs.readBytesRange(path, readStart - 1, 1);
+      final before = await filesystem.readBytesRange(path, readStart - 1, 1);
       if (before == null || before.single != 0x0A) {
         final newline = bytes.indexOf(0x0A);
         if (newline < 0) return const [];
@@ -346,11 +396,12 @@ final class JsonlTranscriptPageReader implements AiTranscriptPageReader {
   }
 
   Future<_TranscriptLine?> _readLineAt(
+    Filesystem filesystem,
     String path,
     int offset,
     int size,
   ) async {
-    final bytes = await fs.readBytesRange(path, offset, size - offset);
+    final bytes = await filesystem.readBytesRange(path, offset, size - offset);
     if (bytes == null || bytes.isEmpty) return null;
     final end = bytes.indexOf(0x0A);
     final line = end < 0 ? bytes : bytes.sublist(0, end);

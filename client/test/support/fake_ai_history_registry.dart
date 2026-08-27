@@ -37,6 +37,9 @@ final class FakeAiHistoryCapability implements AiHistoryCapability {
   final AiTranscriptLineAppend? lineAppend;
 
   @override
+  AiTranscriptPageReader? get pageReader => null;
+
+  @override
   String get tailFallbackPrefix => 'test';
 
   @override
