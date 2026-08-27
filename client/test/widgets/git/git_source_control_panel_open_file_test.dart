@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:path/path.dart' as p;
+import 'package:shared_ui/shared_ui.dart';
 import 'package:teampilot/cubits/ai_feature_settings_cubit.dart';
 import 'package:teampilot/cubits/editor_cubit.dart';
 import 'package:teampilot/cubits/floating_workspace/floating_workspace_cubit.dart';
@@ -317,10 +318,10 @@ void main() {
       await tester.tap(find.byIcon(Icons.undo));
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 300));
-      final selectedItem = tester.widget<PopupMenuItem<String>>(
+      final selectedItem = tester.widget<TpActionMenuItem>(
         find.ancestor(
           of: find.text('Discard Selected Change'),
-          matching: find.byType(PopupMenuItem<String>),
+          matching: find.byType(TpActionMenuItem),
         ),
       );
       expect(selectedItem.enabled, isTrue);
@@ -402,10 +403,10 @@ void main() {
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 300));
 
-      final selectedItem = tester.widget<PopupMenuItem<String>>(
+      final selectedItem = tester.widget<TpActionMenuItem>(
         find.ancestor(
           of: find.text('Discard Selected Change'),
-          matching: find.byType(PopupMenuItem<String>),
+          matching: find.byType(TpActionMenuItem),
         ),
       );
       expect(selectedItem.enabled, isTrue);

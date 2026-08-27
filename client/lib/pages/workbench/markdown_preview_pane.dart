@@ -4,6 +4,7 @@ import 'package:ai_message_ui/ai_message_ui.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:re_editor/re_editor.dart';
+import 'package:shared_ui/shared_ui.dart';
 import 'package:tp_markdown/tp_markdown.dart';
 
 import '../../services/commands/key_chord.dart';
@@ -218,6 +219,8 @@ class _MarkdownPreviewPaneState extends State<MarkdownPreviewPane> {
                         padding: widget.markdownPadding,
                         child: AiLineSpacedSelectionStyle(
                           child: SelectionArea(
+                            contextMenuBuilder:
+                                buildTpSelectionAreaContextMenu,
                             child: MarkdownDisplayModeScope(
                               codeBlockMode: widget.codeBlockMode,
                               child: VirtualMarkdownView(

@@ -25,6 +25,7 @@ class RunSessionPage extends StatelessWidget {
         return ColoredBox(
           color: cs.workspaceCode,
           child: SelectionArea(
+            contextMenuBuilder: buildTpSelectionAreaContextMenu,
             child: SingleChildScrollView(
               padding: const EdgeInsets.all(12),
               child: Align(

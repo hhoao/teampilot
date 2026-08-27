@@ -28,52 +28,41 @@ class WindowDragArea extends StatelessWidget {
     BuildContext context,
     Offset globalPosition,
   ) async {
-    // Resolve the menu anchor synchronously, before any async gap, so the
-    // BuildContext is only used while it is guaranteed mounted.
-    final overlay = Overlay.of(context).context.findRenderObject() as RenderBox;
-    final position = RelativeRect.fromLTRB(
-      globalPosition.dx,
-      globalPosition.dy,
-      overlay.size.width - globalPosition.dx,
-      overlay.size.height - globalPosition.dy,
-    );
-
     final expanded = await isDesktopWindowExpanded();
     final onTop = await windowManagerCall(windowManager.isAlwaysOnTop) ?? false;
     if (!context.mounted) return;
 
     final l10n = context.l10n;
-    final selected = await showMenu<_WindowMenuAction>(
+    final selected = await showTpActionMenuFromSpecs<_WindowMenuAction>(
       context: context,
-      position: position,
-      items: [
-        PopupMenuItem(
+      globalPosition: globalPosition,
+      specs: [
+        TpActionMenuSpec.item(
           value: _WindowMenuAction.minimize,
-          child: _MenuRow(
-            icon: Icons.remove,
-            label: l10n.windowControlMinimize,
-          ),
+          icon: Icons.remove,
+          label: l10n.windowControlMinimize,
         ),
-        PopupMenuItem(
+        TpActionMenuSpec.item(
           value: expanded
               ? _WindowMenuAction.restore
               : _WindowMenuAction.maximize,
-          child: _MenuRow(
-            icon: expanded ? Icons.filter_none : Icons.crop_square_outlined,
-            label: expanded
-                ? l10n.windowControlRestore
-                : l10n.windowControlMaximize,
-          ),
+          icon: expanded ? Icons.filter_none : Icons.crop_square_outlined,
+          label: expanded
+              ? l10n.windowControlRestore
+              : l10n.windowControlMaximize,
         ),
-        CheckedPopupMenuItem(
+        TpActionMenuSpec.item(
           value: _WindowMenuAction.toggleAlwaysOnTop,
-          checked: onTop,
-          child: Text(l10n.windowControlAlwaysOnTop),
+          icon: Icons.push_pin_outlined,
+          label: l10n.windowControlAlwaysOnTop,
+          selected: onTop,
         ),
-        const PopupMenuDivider(),
-        PopupMenuItem(
+        const TpActionMenuSpec.divider(),
+        TpActionMenuSpec.item(
           value: _WindowMenuAction.close,
-          child: _MenuRow(icon: Icons.close, label: l10n.windowControlClose),
+          icon: Icons.close,
+          label: l10n.windowControlClose,
+          destructive: true,
         ),
       ],
     );
@@ -108,22 +97,3 @@ class WindowDragArea extends StatelessWidget {
 }
 
 enum _WindowMenuAction { minimize, maximize, restore, toggleAlwaysOnTop, close }
-
-class _MenuRow extends StatelessWidget {
-  const _MenuRow({required this.icon, required this.label});
-
-  final IconData icon;
-  final String label;
-
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Icon(icon, size: context.tpIconSizes.md),
-        const SizedBox(width: 12),
-        Text(label),
-      ],
-    );
-  }
-}

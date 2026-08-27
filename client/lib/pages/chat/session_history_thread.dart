@@ -8,7 +8,6 @@ import 'package:flutter/scheduler.dart';
 import 'package:shared_ui/shared_ui.dart';
 
 import '../../l10n/l10n_extensions.dart';
-import 'ai_thread_selection_context_menu.dart';
 import 'chat_reveal_controller.dart';
 import 'history_scroll_cursor_lock.dart';
 import 'session_history_live_chrome.dart';
@@ -572,7 +571,7 @@ class _SessionHistoryThreadState extends State<SessionHistoryThread> {
           // "scroll crazy" bug that prompted sitting inside the scroll content
           // (flutter/flutter#110917) is fixed since 2022 (PR #112816).
           child: SelectionArea(
-            contextMenuBuilder: buildAiThreadSelectionContextMenu,
+            contextMenuBuilder: buildTpSelectionAreaContextMenu,
             child: SingleChildScrollView(
               controller: _scrollController,
               padding: const EdgeInsets.fromLTRB(0, 16, 0, 24),
