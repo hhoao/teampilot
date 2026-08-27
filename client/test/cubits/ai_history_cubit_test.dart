@@ -435,6 +435,93 @@ void main() {
     },
   );
 
+  test(
+    'softReload after fullIndex keeps the hydrated loadedMessages',
+    () async {
+      final all = _pagedHistoryMessages();
+      final recent = all.sublist(all.length - kSessionHistoryInitialTurns);
+      final older = all.sublist(0, all.length - kSessionHistoryInitialTurns);
+      final parseGate = Completer<void>();
+      final adapter = _GatedParseAdapter(all, parseGate);
+      final reader = _FakePageReader(latest: recent, older: older);
+      final fs = LocalFilesystem();
+      final pagedLoader = AiHistoryLoader(
+        contextBuilder: const SessionHistoryContextBuilder(),
+        resolveWorkContext: (_, {String? memberId}) async => RuntimeContext(
+          target: RuntimeTarget.local(),
+          filesystem: fs,
+          home: '/tmp/ai-history-cubit-soft-reload-index',
+          cwd: '/tmp/ai-history-cubit-soft-reload-index',
+          appDataRoot: '/tmp/ai-history-cubit-soft-reload-index',
+          paths: AppPaths('/tmp/ai-history-cubit-soft-reload-index'),
+        ),
+        locator: _ScriptedLocator()..emitBundle = true,
+        registry: fakeAiHistoryRegistry(
+          cli: CliTool.claude,
+          adapter: adapter,
+          pageReader: reader,
+          locate: (_) async => _dummyBundle(),
+        ),
+        resolveCacheToken: (_) async => 'page-token-soft-reload-index',
+      );
+      final pagedCubit = AiHistoryCubit(loader: pagedLoader);
+      addTearDown(pagedCubit.close);
+
+      await pagedCubit.load(
+        session: simpleSession(),
+        memberId: '',
+        launchContext: launchCtx(simpleSession()),
+      );
+      final seat = pagedCubit.ensureSeat(
+        sessionId: 'sess-a',
+        selectedMemberId: '',
+      );
+      expect(seat.runtime.messages.map((m) => m.id), recent.map((m) => m.id));
+      expect(pagedCubit.state.hasOlder, isTrue);
+
+      parseGate.complete();
+      await pagedLoader.fullIndex(sessionId: 'sess-a', memberId: '');
+      for (var i = 0; i < 40 && seat.loadedMessages.length < all.length; i++) {
+        await Future<void>.delayed(Duration.zero);
+      }
+      expect(seat.loadedMessages.map((m) => m.id), all.map((m) => m.id));
+      expect(
+        reduceCliTaskBoard(seat.loadedMessages).tasks.map((t) => t.subject),
+        contains('old-task'),
+      );
+
+      await pagedCubit.softReload();
+
+      expect(
+        seat.loadedMessages.map((m) => m.id),
+        all.map((m) => m.id),
+        reason: 'unchanged-token softReload must keep the hydrated full index',
+      );
+      expect(
+        reduceCliTaskBoard(seat.loadedMessages).tasks.map((t) => t.subject),
+        contains('old-task'),
+        reason: 'task-create consumers must still see rows outside the page',
+      );
+      expect(
+        seat.runtime.messages.map((m) => m.id),
+        recent.map((m) => m.id),
+        reason: 'softReload must not expand or shrink the display window',
+      );
+      expect(
+        pagedCubit.state.hasOlder,
+        isTrue,
+        reason: 'the display window is still a suffix of the full index',
+      );
+      final finder = ChatTranscriptFindController(
+        messagesProvider: () => seat.loadedMessages,
+      );
+      addTearDown(finder.dispose);
+      finder.search('msg-1');
+      expect(finder.hits, isNotEmpty);
+      expect(finder.hits.first.messageId, 'm-1');
+    },
+  );
+
   test('loadOlder page failure keeps runtime and reports a soft error', () async {
     final all = _pagedHistoryMessages();
     final recent = all.sublist(all.length - kSessionHistoryInitialTurns);

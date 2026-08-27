@@ -426,12 +426,16 @@ class AiHistorySeat extends Cubit<AiHistoryState> {
       // the transcript mtime is unchanged, so an instance comparison is a
       // zero-cost "CLI unchanged" test (the previous full-content identity scan
       // string-built every message — including every tool result — on the UI
-      // isolate on each live refresh). The same instance test applies to the
-      // subagent attachment map; the loader may still re-inflate it from side
-      // transcripts while the CLI text is frozen (a running sub-agent appends
-      // its own transcript but the parent only moves when the tool result
-      // lands), so a content comparison covers that map too.
-      final cliUnchanged = identical(messages, _cliMessages);
+      // isolate on each live refresh). After page-first hydrate, the cache may
+      // still hand back the shorter recent page; treating that suffix as
+      // unchanged keeps the longer full index for find / task-board consumers.
+      // The same instance test applies to the subagent attachment map; the
+      // loader may still re-inflate it from side transcripts while the CLI
+      // text is frozen (a running sub-agent appends its own transcript but the
+      // parent only moves when the tool result lands), so a content comparison
+      // covers that map too.
+      final cliUnchanged =
+          identical(messages, _cliMessages) || _isHydratedIndexSuffix(messages);
       final attachmentsUnchanged =
           identical(result.subagentAttachments, _subagentAttachments) ||
           _sameSubagentAttachments(
@@ -1078,6 +1082,21 @@ class AiHistorySeat extends Cubit<AiHistoryState> {
     for (var i = 0; i < previous.length; i++) {
       if (previous[i].seq != next[i].seq) return false;
       if (previous[i].read != next[i].read) return false;
+    }
+    return true;
+  }
+
+  /// True when [incoming] is the recent-page suffix of the already-hydrated
+  /// CLI transcript. Token-cache `load()` may still return that page after
+  /// [fullIndex] lands; replacing [_cliMessages] with it would shrink
+  /// [loadedMessages] on [softReload].
+  bool _isHydratedIndexSuffix(List<AiMessage> incoming) {
+    if (incoming.isEmpty || incoming.length >= _cliMessages.length) {
+      return false;
+    }
+    final offset = _cliMessages.length - incoming.length;
+    for (var i = 0; i < incoming.length; i++) {
+      if (incoming[i].id != _cliMessages[offset + i].id) return false;
     }
     return true;
   }

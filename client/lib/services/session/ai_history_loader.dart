@@ -372,10 +372,10 @@ final class AiHistoryLoader {
     final status = part.status;
     final normalizedStatus =
         (result == null &&
-                (status == AiToolCallStatus.running ||
-                    (status == AiToolCallStatus.complete && !part.isError)))
-            ? AiToolCallStatus.incomplete
-            : status;
+            (status == AiToolCallStatus.running ||
+                (status == AiToolCallStatus.complete && !part.isError)))
+        ? AiToolCallStatus.incomplete
+        : status;
     final agentId = subagentAgentIdFromPart(part) ?? '';
     return '${normalizedStatus.name}|${part.isError}|$head|$agentId';
   }
@@ -471,8 +471,10 @@ final class AiHistoryLoader {
       ctx,
     );
     if (!force && token != null && _tokens[cacheKey] == token) {
-      final cachedMessages = _messages[cacheKey] ?? const [];
-      final cachedAttachments = _attachments[cacheKey] ?? const {};
+      final full = _fullIndexes[cacheKey];
+      final cachedMessages = full?.messages ?? _messages[cacheKey] ?? const [];
+      final cachedAttachments =
+          full?.subagentAttachments ?? _attachments[cacheKey] ?? const {};
       // Parent transcript unchanged. While a sub-agent is still running its
       // side transcript appends lines but the parent transcript only moves
       // when the tool result lands — so the parent cache token cannot see it.
@@ -483,6 +485,7 @@ final class AiHistoryLoader {
         rootTranscriptPath: _parentPaths[cacheKey],
       );
       if (sideToken == null || _sideTokens[cacheKey] == sideToken) {
+        if (full != null) return full;
         return _result(
           cacheKey: cacheKey,
           messages: cachedMessages,
@@ -502,11 +505,19 @@ final class AiHistoryLoader {
         resolver: _categoryResolverFor(cli),
       );
       _attachments[cacheKey] = attachments;
-      _attachmentSigs[cacheKey] = _taskCallSignatures(
-        cachedMessages,
-        cap,
-      );
+      _attachmentSigs[cacheKey] = _taskCallSignatures(cachedMessages, cap);
       _sideTokens[cacheKey] = sideToken;
+      if (full != null) {
+        final updated = AiHistoryLoadResult(
+          messages: cachedMessages,
+          cli: cli,
+          subagentAttachments: attachments,
+          isComplete: true,
+        );
+        _fullIndexes[cacheKey] = updated;
+        _fullIndexFutures[cacheKey] = Future.value(updated);
+        return updated;
+      }
       return _result(
         cacheKey: cacheKey,
         messages: cachedMessages,

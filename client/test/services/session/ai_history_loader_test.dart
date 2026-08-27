@@ -5,6 +5,7 @@ import 'dart:io';
 import 'package:ai_message_core/ai_message_core.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:path/path.dart' as p;
+import 'package:sqlite3/sqlite3.dart';
 import 'package:teampilot/models/app_session.dart';
 import 'package:teampilot/models/runtime_target.dart';
 import 'package:teampilot/models/team_config.dart';
@@ -17,6 +18,8 @@ import 'package:teampilot/services/cli/cursor/capabilities/history/ai_transcript
 import 'package:teampilot/services/cli/cursor/capabilities/history/terminal_tool_result_enricher.dart';
 import 'package:teampilot/services/ai_history/tool_call_resolvers.dart';
 import 'package:teampilot/services/cli/opencode/capabilities/history/tool_output_backfill_enricher.dart';
+import 'package:teampilot/services/cli/opencode/capabilities/sqlite_worker_pool.dart';
+import 'package:teampilot/services/cli/registry/capabilities/cli_session_capability.dart';
 import 'package:teampilot/services/cli/registry/capabilities/history/tool_result_enricher.dart';
 import 'package:teampilot/services/cli/registry/cli_tool_registry.dart';
 import 'package:teampilot/services/session/session_history_context.dart';
@@ -99,7 +102,8 @@ void main() {
     layout = RuntimeLayout(teampilotRoot: base.path, fs: fs);
   });
 
-  tearDown(() {
+  tearDown(() async {
+    await OpencodeSqliteWorkerPool.instance.disposeAllAndWait();
     if (base.existsSync()) {
       base.deleteSync(recursive: true);
     }
@@ -1264,6 +1268,67 @@ void main() {
     );
   });
 
+  test(
+    'unchanged-token load after fullIndex returns the hydrated full index',
+    () async {
+      final all = _pagedHistoryMessages();
+      final recent = all.sublist(all.length - kSessionHistoryInitialTurns);
+      final older = all.sublist(0, all.length - kSessionHistoryInitialTurns);
+      final adapter = _GatedParseAdapter(all, Completer<void>()..complete());
+      final reader = _FakePageReader(latest: recent, older: older);
+      final session = simpleSession();
+      final loader = buildLoader(
+        locator: _CountingLocator(
+          () async => const AiTranscriptBundle(
+            adapterId: 'claude',
+            fragments: [AiTranscriptFragment(name: 'canned.jsonl', bytes: [])],
+          ),
+        ),
+        registry: fakeAiHistoryRegistry(
+          cli: CliTool.claude,
+          adapter: adapter,
+          pageReader: reader,
+          locate: (_) async => const AiTranscriptBundle(
+            adapterId: 'claude',
+            fragments: [AiTranscriptFragment(name: 'canned.jsonl', bytes: [])],
+          ),
+        ),
+      );
+
+      final first = await loader.load(
+        session: session,
+        memberId: '',
+        launchContext: launchContextFor(session),
+      );
+      expect(first.messages.map((m) => m.id), recent.map((m) => m.id));
+      expect(first.isComplete, isFalse);
+
+      final full = await loader.fullIndex(
+        sessionId: session.sessionId,
+        memberId: '',
+      );
+      expect(full, isNotNull);
+      expect(full!.messages.map((m) => m.id), all.map((m) => m.id));
+
+      final cached = await loader.load(
+        session: session,
+        memberId: '',
+        launchContext: launchContextFor(session),
+      );
+      expect(
+        cached.messages.map((m) => m.id),
+        full.messages.map((m) => m.id),
+        reason: 'token-cache load must not drop the hydrated full index',
+      );
+      expect(cached.isComplete, isTrue);
+      expect(
+        identical(cached.messages, full.messages),
+        isTrue,
+        reason: 'token-cache load must reuse the full-index list instance',
+      );
+    },
+  );
+
   test('page reader null or throw uses the full adapter path', () async {
     final all = _pagedHistoryMessages();
     final adapter = _GatedParseAdapter(all, Completer<void>()..complete());
@@ -1311,59 +1376,18 @@ void main() {
   test(
     'concatenated pages match background full parse for fixture families',
     () async {
-      final families = <({String label, CliTool cli, String fixture})>[
-        (
-          label: 'claude/basic',
-          cli: CliTool.claude,
-          fixture: 'test/fixtures/session_history/claude/basic.jsonl',
-        ),
-        (
-          label: 'claude/streamed_turn',
-          cli: CliTool.claude,
-          fixture: 'test/fixtures/session_history/claude/streamed_turn.jsonl',
-        ),
-        (
-          label: 'claude/truncated_bash',
-          cli: CliTool.claude,
-          fixture: 'test/fixtures/session_history/claude/truncated_bash.jsonl',
-        ),
-        (
-          label: 'flashskyai/basic',
-          cli: CliTool.flashskyai,
-          fixture: 'test/fixtures/session_history/flashskyai/basic.jsonl',
-        ),
-        (
-          label: 'flashskyai/streamed_tools',
-          cli: CliTool.flashskyai,
-          fixture: 'test/fixtures/session_history/flashskyai/streamed_tools.jsonl',
-        ),
-        (
-          label: 'flashskyai/edit_real',
-          cli: CliTool.flashskyai,
-          fixture: 'test/fixtures/session_history/flashskyai/edit_real.jsonl',
-        ),
-      ];
-      final bucket = RuntimeLayout.workspaceBucketForPrimaryPath(
-        '/work/project',
+      final families = await _loaderFixtureFamilies(
+        layout: layout,
+        sessionFor: simpleSession,
       );
+      expect(families, isNotEmpty);
       for (final family in families) {
         mtimeToken = 'mtime-${family.label}';
-        final sessionId = 'sess-${family.label.replaceAll('/', '-')}';
-        final session = simpleSession(id: sessionId).copyWith(cli: family.cli);
-        final toolRoot = layout.sessionRuntimeToolDir(
-          'ws-1',
-          sessionId,
-          family.cli.value,
-        );
-        final dest = p.join(toolRoot, 'projects', bucket, '$sessionId.jsonl');
-        await Directory(p.dirname(dest)).create(recursive: true);
-        await File(dest).writeAsBytes(await File(family.fixture).readAsBytes());
-
         final loader = buildLoader();
         final first = await loader.load(
-          session: session,
+          session: family.session,
           memberId: '',
-          launchContext: launchContextFor(session),
+          launchContext: launchContextFor(family.session),
         );
         final concatenated = [...first.messages];
         var hasOlder = first.hasOlder;
@@ -1371,7 +1395,7 @@ void main() {
         while (hasOlder) {
           expect(guard++, lessThan(64), reason: family.label);
           final older = await loader.loadOlder(
-            sessionId: session.sessionId,
+            sessionId: family.session.sessionId,
             memberId: '',
           );
           if (older == null) break;
@@ -1379,7 +1403,7 @@ void main() {
           hasOlder = older.hasOlder;
         }
         final full = await loader.fullIndex(
-          sessionId: session.sessionId,
+          sessionId: family.session.sessionId,
           memberId: '',
         );
         expect(full, isNotNull, reason: family.label);
@@ -1724,4 +1748,304 @@ class _ThrowingPageReader implements AiTranscriptPageReader {
     required AiHistoryCursor cursor,
     required int limit,
   }) async => throw StateError('page reader boom');
+}
+
+typedef _LoaderFamily = ({String label, AppSession session});
+
+Future<List<_LoaderFamily>> _loaderFixtureFamilies({
+  required RuntimeLayout layout,
+  required AppSession Function({String id}) sessionFor,
+}) async {
+  return [
+    await _installPinnedJsonlFamily(
+      layout: layout,
+      sessionFor: sessionFor,
+      cli: CliTool.claude,
+      name: 'basic.jsonl',
+    ),
+    await _installPinnedJsonlFamily(
+      layout: layout,
+      sessionFor: sessionFor,
+      cli: CliTool.claude,
+      name: 'streamed_turn.jsonl',
+    ),
+    await _installPinnedJsonlFamily(
+      layout: layout,
+      sessionFor: sessionFor,
+      cli: CliTool.claude,
+      name: 'truncated_bash.jsonl',
+    ),
+    await _installPinnedJsonlFamily(
+      layout: layout,
+      sessionFor: sessionFor,
+      cli: CliTool.flashskyai,
+      name: 'basic.jsonl',
+    ),
+    await _installPinnedJsonlFamily(
+      layout: layout,
+      sessionFor: sessionFor,
+      cli: CliTool.flashskyai,
+      name: 'streamed_tools.jsonl',
+    ),
+    await _installPinnedJsonlFamily(
+      layout: layout,
+      sessionFor: sessionFor,
+      cli: CliTool.flashskyai,
+      name: 'edit_real.jsonl',
+    ),
+    await _installCodexFamily(
+      layout: layout,
+      sessionFor: sessionFor,
+      name: 'reasoning_and_tools.jsonl',
+      uuid: '11111111-1111-1111-1111-111111111111',
+    ),
+    await _installCodexFamily(
+      layout: layout,
+      sessionFor: sessionFor,
+      name: 'custom_tool_call_dual_form.jsonl',
+      uuid: '22222222-2222-2222-2222-222222222222',
+    ),
+    await _installCodexFamily(
+      layout: layout,
+      sessionFor: sessionFor,
+      name: 'response_item_messages.jsonl',
+      uuid: '33333333-3333-3333-3333-333333333333',
+    ),
+    await _installCursorFamily(
+      layout: layout,
+      sessionFor: sessionFor,
+      chatId: 'chat-aaaa-bbbb-cccc-dddd',
+    ),
+    await _installCursorFamily(
+      layout: layout,
+      sessionFor: sessionFor,
+      chatId: 'chat-strreplace-write',
+    ),
+    await _installCursorFamily(
+      layout: layout,
+      sessionFor: sessionFor,
+      chatId: 'chat-shell-missing-result',
+    ),
+    await _installOpencodeFamily(
+      layout: layout,
+      sessionFor: sessionFor,
+      label: 'opencode/storage',
+      storageRoot: 'test/fixtures/session_history/opencode/storage',
+      nativeId: 'ses_demo001',
+    ),
+    await _installOpencodeFamily(
+      layout: layout,
+      sessionFor: sessionFor,
+      label: 'opencode/from_db_shape',
+      storageRoot:
+          'test/fixtures/session_history/opencode/from_db_shape/storage',
+      nativeId: 'ses_dbdemo001',
+    ),
+  ];
+}
+
+String _sessionConfigDir(RuntimeLayout layout, CliTool cli, String sessionId) =>
+    sessionConfigDirForTool(
+      cli,
+      layout,
+      workspaceId: 'ws-1',
+      sessionId: sessionId,
+    );
+
+Future<_LoaderFamily> _installPinnedJsonlFamily({
+  required RuntimeLayout layout,
+  required AppSession Function({String id}) sessionFor,
+  required CliTool cli,
+  required String name,
+}) async {
+  final label = '${cli.value}/$name';
+  final sessionId = 'sess-${label.replaceAll('/', '-')}';
+  final toolRoot = _sessionConfigDir(layout, cli, sessionId);
+  final bucket = RuntimeLayout.workspaceBucketForPrimaryPath('/work/project');
+  final dest = p.join(toolRoot, 'projects', bucket, '$sessionId.jsonl');
+  await _copyFile(
+    'test/fixtures/session_history/${cli.value}/$name',
+    dest,
+  );
+  return (
+    label: label,
+    session: sessionFor(id: sessionId).copyWith(cli: cli),
+  );
+}
+
+Future<_LoaderFamily> _installCodexFamily({
+  required RuntimeLayout layout,
+  required AppSession Function({String id}) sessionFor,
+  required String name,
+  required String uuid,
+}) async {
+  final label = 'codex/$name';
+  final sessionId = 'sess-${label.replaceAll('/', '-')}';
+  final toolRoot = _sessionConfigDir(layout, CliTool.codex, sessionId);
+  await _copyFile(
+    'test/fixtures/session_history/codex/$name',
+    p.join(
+      toolRoot,
+      'sessions',
+      '2026',
+      '07',
+      '10',
+      'rollout-2026-07-10T12-00-00-$uuid.jsonl',
+    ),
+  );
+  return (
+    label: label,
+    session: sessionFor(id: sessionId).copyWith(
+      cli: CliTool.codex,
+      nativeSessionIds: {CliTool.codex.value: uuid},
+    ),
+  );
+}
+
+Future<_LoaderFamily> _installCursorFamily({
+  required RuntimeLayout layout,
+  required AppSession Function({String id}) sessionFor,
+  required String chatId,
+}) async {
+  final label = 'cursor/$chatId';
+  final sessionId = 'sess-${label.replaceAll('/', '-')}';
+  final toolRoot = _sessionConfigDir(layout, CliTool.cursor, sessionId);
+  await _copyTree('test/fixtures/session_history/cursor', toolRoot);
+  return (
+    label: label,
+    session: sessionFor(id: sessionId).copyWith(
+      cli: CliTool.cursor,
+      nativeSessionIds: {CliTool.cursor.value: chatId},
+    ),
+  );
+}
+
+Future<_LoaderFamily> _installOpencodeFamily({
+  required RuntimeLayout layout,
+  required AppSession Function({String id}) sessionFor,
+  required String label,
+  required String storageRoot,
+  required String nativeId,
+}) async {
+  final sessionId = 'sess-${label.replaceAll('/', '-')}';
+  final toolRoot = _sessionConfigDir(layout, CliTool.opencode, sessionId);
+  await _writeOpencodeDbFromJsonTree(
+    p.join(toolRoot, 'opencode.db'),
+    storageRoot,
+  );
+  return (
+    label: label,
+    session: sessionFor(id: sessionId).copyWith(
+      cli: CliTool.opencode,
+      nativeSessionIds: {CliTool.opencode.value: nativeId},
+    ),
+  );
+}
+
+Future<void> _copyFile(String source, String destination) async {
+  final file = File(destination);
+  await file.parent.create(recursive: true);
+  await file.writeAsBytes(await File(source).readAsBytes());
+}
+
+Future<void> _copyTree(String source, String destination) async {
+  final root = Directory(source);
+  await for (final entity in root.list(recursive: true)) {
+    if (entity is! File) continue;
+    final dest = File(
+      p.join(destination, p.relative(entity.path, from: root.path)),
+    );
+    await dest.parent.create(recursive: true);
+    await dest.writeAsBytes(await entity.readAsBytes());
+  }
+}
+
+Future<void> _writeOpencodeDbFromJsonTree(
+  String dbPath,
+  String storageRoot,
+) async {
+  await File(dbPath).parent.create(recursive: true);
+  final db = sqlite3.open(dbPath);
+  try {
+    db.execute('''
+CREATE TABLE session (id TEXT PRIMARY KEY, parent_id TEXT, time_created INTEGER NOT NULL, time_updated INTEGER NOT NULL);
+CREATE TABLE message (id TEXT PRIMARY KEY, session_id TEXT NOT NULL, data TEXT NOT NULL, time_created INTEGER NOT NULL, time_updated INTEGER NOT NULL);
+CREATE TABLE part (id TEXT PRIMARY KEY, session_id TEXT NOT NULL, message_id TEXT NOT NULL, data TEXT NOT NULL, time_created INTEGER NOT NULL, time_updated INTEGER NOT NULL);
+''');
+    final messagesDir = Directory(p.join(storageRoot, 'message'));
+    final partsDir = Directory(p.join(storageRoot, 'part'));
+    final sessionIds = <String>{};
+    if (await messagesDir.exists()) {
+      await for (final entity in messagesDir.list(recursive: true)) {
+        if (entity is! File || !entity.path.endsWith('.json')) continue;
+        final raw = await entity.readAsString();
+        final obj = jsonDecode(raw);
+        if (obj is! Map) continue;
+        final id = '${obj['id'] ?? p.basenameWithoutExtension(entity.path)}';
+        final sessionId = '${obj['sessionID'] ?? ''}';
+        if (id.isEmpty || sessionId.isEmpty) continue;
+        sessionIds.add(sessionId);
+        final created = _jsonTime(Map<Object?, Object?>.from(obj)) ?? 1;
+        db.execute('INSERT INTO message VALUES (?, ?, ?, ?, ?)', [
+          id,
+          sessionId,
+          raw,
+          created,
+          created,
+        ]);
+      }
+    }
+    if (await partsDir.exists()) {
+      await for (final entity in partsDir.list(recursive: true)) {
+        if (entity is! File) continue;
+        final raw = await entity.readAsString();
+        Map<String, dynamic>? obj;
+        try {
+          final decoded = jsonDecode(raw);
+          if (decoded is Map) obj = Map<String, dynamic>.from(decoded);
+        } on Object {
+          obj = null;
+        }
+        final id = obj == null
+            ? p.basenameWithoutExtension(entity.path)
+            : '${obj['id'] ?? p.basenameWithoutExtension(entity.path)}';
+        final messageId = obj == null
+            ? p.basename(p.dirname(entity.path))
+            : '${obj['messageID'] ?? p.basename(p.dirname(entity.path))}';
+        final sessionId = obj == null
+            ? sessionIds.first
+            : '${obj['sessionID'] ?? sessionIds.first}';
+        final created = obj == null
+            ? 1
+            : (_jsonTime(Map<Object?, Object?>.from(obj)) ?? 1);
+        db.execute('INSERT INTO part VALUES (?, ?, ?, ?, ?, ?)', [
+          id,
+          sessionId,
+          messageId,
+          raw,
+          created,
+          created,
+        ]);
+      }
+    }
+    for (final sessionId in sessionIds) {
+      db.execute('INSERT INTO session VALUES (?, ?, ?, ?)', [
+        sessionId,
+        null,
+        1,
+        1,
+      ]);
+    }
+  } finally {
+    db.dispose();
+  }
+}
+
+int? _jsonTime(Map<Object?, Object?> obj) {
+  final time = obj['time'];
+  if (time is! Map) return null;
+  final created = time['created'];
+  if (created is int) return created;
+  if (created is num) return created.toInt();
+  return null;
 }
