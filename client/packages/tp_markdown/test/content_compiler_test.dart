@@ -170,9 +170,9 @@ void main() {
     expect(item.runs.whereType<ImageRun>().single.src, 'b.png');
   });
 
-  test('raw HTML becomes unsupported', () {
+  test('raw HTML becomes HtmlBlock', () {
     final doc = compileMarkdown('<div>hi</div>\n');
     expect(doc.blocks, isNotEmpty);
-    expect(doc.blocks.any((b) => b is RawLiteralBlock), isTrue);
+    expect(doc.blocks.any((b) => b is HtmlBlock), isTrue);
   });
 }

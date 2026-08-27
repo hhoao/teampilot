@@ -206,6 +206,8 @@ class MarkdownTokens {
       MarkdownBlockKind.horizontalRule => horizontalRuleMargin,
       MarkdownBlockKind.image => imageMargin,
       MarkdownBlockKind.rawLiteral => rawLiteralMargin,
+      // HTML blocks inherit the paragraph rhythm so surrounding gaps match.
+      MarkdownBlockKind.html => paragraphMargin,
     };
   }
 

@@ -2,6 +2,7 @@ import 'dart:ui' show TextRange;
 
 import '../ir/markdown_document.dart';
 import '../render/highlight_context.dart';
+import '../render/html_sanitizer.dart';
 import '../render/inline_spans.dart';
 
 /// Thrown when a regex query fails to compile.
@@ -160,6 +161,17 @@ void _visitBlock(
             TableCellStep(r, c),
           ]);
         }
+      }
+    case HtmlBlock(:final rawHtml):
+      final text = htmlPlainText(rawHtml);
+      if (text.trim().isNotEmpty) {
+        containers.add(
+          MarkdownSearchContainer(
+            blockIndex: blockIndex,
+            path: List.unmodifiable(basePath),
+            plainText: text,
+          ),
+        );
       }
     case ImageBlock() || RawLiteralBlock() || HorizontalRuleBlock():
       break;

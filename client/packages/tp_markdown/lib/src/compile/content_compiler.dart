@@ -24,9 +24,10 @@ void clearMessageContentCache() {
 
 /// Compiles GFM markdown into a style-free [MarkdownDocument].
 ///
-/// Images compile to [ImageBlock] / [ImageRun]. Raw HTML becomes
-/// [RawLiteralBlock]. Task-list checkboxes are recognized and do not count as
-/// unsupported HTML.
+/// Images compile to [ImageBlock] / [ImageRun]. Raw HTML regions become
+/// [HtmlBlock] so an html engine can render them. Demotion paths whose
+/// reconstruction injects GFM syntax (headings, tables) keep [RawLiteralBlock].
+/// Task-list checkboxes are recognized and do not count as unsupported HTML.
 ///
 /// Results are cached (LRU, max 256) by the prepared markdown string. Cache hits
 /// return the identical [MarkdownDocument] instance.
@@ -68,7 +69,7 @@ MarkdownBlock _compileTopLevelNode(md.Node node) {
   if (node is md.Text) {
     final text = node.textContent;
     if (_looksLikeHtml(text)) {
-      return RawLiteralBlock(rawMarkdown: text);
+      return HtmlBlock(rawHtml: text);
     }
     if (text.trim().isEmpty) {
       return const ParagraphBlock(runs: []);
@@ -91,6 +92,8 @@ MarkdownBlock _compileElement(md.Element element) {
     case 'h5':
     case 'h6':
       if (_hasUnsupportedInline(element.children)) {
+        // Reconstruction injects '#'-prefix GFM syntax the html engine cannot
+        // parse — keep source-text rendering.
         return RawLiteralBlock(rawMarkdown: _reconstructUnsupported(element));
       }
       return HeadingBlock(
@@ -100,7 +103,7 @@ MarkdownBlock _compileElement(md.Element element) {
     case 'p':
       // Image-only paragraphs are expanded in [_compileTopLevelBlocks].
       if (_hasUnsupportedInline(element.children)) {
-        return RawLiteralBlock(rawMarkdown: _reconstructUnsupported(element));
+        return HtmlBlock(rawHtml: _reconstructUnsupported(element));
       }
       return ParagraphBlock(runs: _compileInlines(element.children));
     case 'pre':
@@ -155,8 +158,8 @@ ContentListItem _compileListItem(md.Element li) {
   final runs = <InlineRun>[];
   final children = <MarkdownBlock>[];
 
-  // Unsupported inlines (raw HTML) follow the paragraph policy: emit a
-  // [RawLiteralBlock] for that item region instead of silently dropping content.
+  // Unsupported inlines (raw HTML) follow the paragraph policy: emit an
+  // [HtmlBlock] for that item region instead of silently dropping content.
   for (final child in li.children ?? const <md.Node>[]) {
     if (child is md.Element &&
         child.tag == 'input' &&
@@ -168,7 +171,7 @@ ContentListItem _compileListItem(md.Element li) {
       if (child is md.Element && child.tag == 'p' && runs.isEmpty) {
         if (_hasUnsupportedInline(child.children)) {
           children.add(
-            RawLiteralBlock(rawMarkdown: _reconstructUnsupported(child)),
+            HtmlBlock(rawHtml: _reconstructUnsupported(child)),
           );
         } else {
           runs.addAll(_compileInlines(child.children));
@@ -180,7 +183,7 @@ ContentListItem _compileListItem(md.Element li) {
     }
     if (_hasUnsupportedInline([child])) {
       children.add(
-        RawLiteralBlock(rawMarkdown: _reconstructUnsupported(child)),
+        HtmlBlock(rawHtml: _reconstructUnsupported(child)),
       );
       continue;
     }
@@ -218,6 +221,8 @@ bool _isBlockChild(md.Node node) {
 
 MarkdownBlock _compileTable(md.Element table) {
   if (_tableHasUnsupportedInline(table)) {
+    // Reconstruction injects `| --- |` GFM rows the html engine cannot parse
+    // as a table — keep source-text rendering.
     return RawLiteralBlock(rawMarkdown: _reconstructUnsupported(table));
   }
 
@@ -394,9 +399,27 @@ String? _optionalAttr(String? value) {
   return value;
 }
 
+/// Embedded raw-HTML tag shape (`<div>`, `</div>`, `<br/>`) inside literal text.
+///
+/// The markdown parser keeps inline tags as plain [md.Text] instead of
+/// producing [md.Element]s, so they survive only as tag-shaped substrings.
+/// Comments and declarations (`<!-- c -->`) do not match — their `<` is not
+/// followed by a letter — and are only caught when they lead the whole region.
+final RegExp _htmlTagPattern = RegExp(r'</?[a-zA-Z][^>]*>');
+
+/// Whether [text] carries raw HTML markup: either an HTML *region* (leading
+/// `<…>`, e.g. block-level markup kept as text) or any embedded `<tag>` shape
+/// ([_htmlTagPattern]).
+///
+/// Applied to every demotion path: [_hasUnsupportedInline] delegates here, so
+/// prose embedding a `<tag>` shape demotes its whole region to [HtmlBlock]
+/// rather than dropping or escaping the markup (accepted spec trade-off:
+/// rendered markup beats literal source text). Comparison-shaped prose such as
+/// `5 < 6 and 3 > 2` does not match because no letter follows `<`.
 bool _looksLikeHtml(String text) {
   final trimmed = text.trimLeft();
-  return trimmed.startsWith('<') && trimmed.contains('>');
+  return (trimmed.startsWith('<') && trimmed.contains('>')) ||
+      _htmlTagPattern.hasMatch(trimmed);
 }
 
 String _reconstructUnsupported(md.Node node) {

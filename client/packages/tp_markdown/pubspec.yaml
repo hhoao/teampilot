@@ -1,6 +1,6 @@
 name: tp_markdown
 description: Semantic GFM markdown — compile to IR, kind-based layout, Flutter MarkdownView.
-version: 0.1.0
+version: 0.2.0
 publish_to: none
 
 environment:
@@ -11,6 +11,8 @@ dependencies:
   flutter:
     sdk: flutter
   markdown: ^7.3.0
+  flutter_html: 3.0.0
+  html: ^0.15.5
 
 dev_dependencies:
   flutter_test:

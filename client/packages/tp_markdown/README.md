@@ -17,6 +17,10 @@ markdown string
   → MarkdownView + gapBetween(prevKind, nextKind, tokens)  # collapse over marginOf; see 2026-08-02-markdown-block-margins-design.md
 ```
 
+Raw HTML regions compile to sanitized `HtmlBlock` and render via flutter_html
+with `MarkdownTokens` styling. Table/heading demotions that reconstruct GFM stay
+`RawLiteralBlock` (source text).
+
 ## Usage
 
 ```dart

@@ -238,6 +238,28 @@ final class RawLiteralBlock extends MarkdownBlock {
   int get hashCode => rawMarkdown.hashCode;
 }
 
+/// Raw HTML region rendered by an embedded html engine (flutter_html).
+///
+/// Produced for demotion paths that carry verbatim markup (see
+/// `content_compiler.dart`); paths whose fallback reconstruction injects GFM
+/// syntax stay [RawLiteralBlock].
+final class HtmlBlock extends MarkdownBlock {
+  const HtmlBlock({required this.rawHtml});
+
+  final String rawHtml;
+
+  @override
+  MarkdownBlockKind get kind => MarkdownBlockKind.html;
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is HtmlBlock && rawHtml == other.rawHtml;
+
+  @override
+  int get hashCode => rawHtml.hashCode;
+}
+
 /// Inline-run document for table cells (no nested blocks).
 @immutable
 class InlineDocument {
