@@ -2553,13 +2553,13 @@ class _TeamPilotBootstrapState extends State<TeamPilotBootstrap>
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.resumed) {
-      unawaited(_refreshExpiredManagedProviders(_shell));
+      unawaited(_refreshEnabledManagedProviders(_shell));
     }
   }
 
-  Future<void> _refreshExpiredManagedProviders(AppShell? shell) async {
+  Future<void> _refreshEnabledManagedProviders(AppShell? shell) async {
     if (shell == null) return;
-    await shell.managedProviderUsageCubit.refreshExpiredEnabled();
+    await shell.managedProviderUsageCubit.refreshEnabled();
   }
 
   Future<void> _chooseWorkEnvironmentAndRetry() async {

@@ -261,15 +261,11 @@ class ManagedProviderUsageCubit extends Cubit<ManagedProviderUsageState> {
     }
   }
 
-  /// Reloads the catalog, then [ensureFresh] for each enabled Provider.
-  /// Fresh snapshots skip the adapter; disabled Providers are not queried.
-  Future<void> refreshExpiredEnabled() async {
+  /// Reloads the catalog, then refreshes every enabled Provider.
+  Future<List<ProviderUsageSnapshot>> refreshEnabled() async {
     await load();
-    if (isClosed) return;
-    await Future.wait([
-      for (final provider in _coordinator.providers.where((p) => p.enabled))
-        ensureFresh(provider.id),
-    ]);
+    if (isClosed) return const [];
+    return refreshAll();
   }
 
   Future<void> cancelForProvider(String providerId) async {

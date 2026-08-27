@@ -3,7 +3,7 @@ import 'dart:async';
 import '../../cubits/managed_provider_cubit.dart';
 import '../../cubits/managed_provider_usage_cubit.dart';
 
-/// Starts a 10-minute [ensureFresh] loop for enabled Providers and cancels
+/// Starts a 10-minute forced refresh loop for enabled Providers and cancels
 /// in-flight work when a Provider is disabled.
 class ManagedProviderUsageAutoRefresh {
   ManagedProviderUsageAutoRefresh({
@@ -44,6 +44,7 @@ class ManagedProviderUsageAutoRefresh {
     _enabledIds = _enabledIdSet(_providers.state);
     _subscription = _providers.stream.listen(_onProviders);
     _periodicHandle = _startPeriodic(_onTick, interval);
+    unawaited(_usage.refreshEnabled());
   }
 
   void stop() {
@@ -60,7 +61,7 @@ class ManagedProviderUsageAutoRefresh {
 
   void _onTick() {
     if (!_started) return;
-    unawaited(_usage.refreshExpiredEnabled());
+    unawaited(_usage.refreshEnabled());
   }
 
   void _onProviders(ManagedProviderState state) {

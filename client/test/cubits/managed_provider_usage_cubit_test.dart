@@ -347,36 +347,42 @@ void main() {
     },
   );
 
-  test('refreshExpiredEnabled skips disabled and fresh snapshots', () async {
-    await providers.upsert(_provider());
-    await providers.upsert(_provider(id: 'disabled', enabled: false));
-    await usage.save(_ready());
-    final cubit = ManagedProviderUsageCubit(
-      coordinator: coordinator,
-      now: () => DateTime.fromMillisecondsSinceEpoch(100),
-    );
-    addTearDown(cubit.close);
-    await cubit.load();
+  test(
+    'refreshEnabled queries enabled providers with fresh snapshots',
+    () async {
+      await providers.upsert(_provider());
+      await providers.upsert(_provider(id: 'disabled', enabled: false));
+      await usage.save(_ready());
+      final cubit = ManagedProviderUsageCubit(
+        coordinator: coordinator,
+        now: () => DateTime.fromMillisecondsSinceEpoch(100),
+      );
+      addTearDown(cubit.close);
+      await cubit.load();
 
-    await cubit.refreshExpiredEnabled();
+      await cubit.refreshEnabled();
 
-    expect(adapter.calls, 0);
-  });
+      expect(adapter.calls, 1);
+    },
+  );
 
-  test('refreshExpiredEnabled queries stale enabled providers', () async {
-    await providers.upsert(_provider());
-    await usage.save(_ready(staleAt: 50));
-    final cubit = ManagedProviderUsageCubit(
-      coordinator: coordinator,
-      now: () => DateTime.fromMillisecondsSinceEpoch(100),
-    );
-    addTearDown(cubit.close);
-    await cubit.load();
+  test(
+    'refreshEnabled queries enabled providers with stale snapshots',
+    () async {
+      await providers.upsert(_provider());
+      await usage.save(_ready(staleAt: 50));
+      final cubit = ManagedProviderUsageCubit(
+        coordinator: coordinator,
+        now: () => DateTime.fromMillisecondsSinceEpoch(100),
+      );
+      addTearDown(cubit.close);
+      await cubit.load();
 
-    await cubit.refreshExpiredEnabled();
+      await cubit.refreshEnabled();
 
-    expect(adapter.calls, 1);
-  });
+      expect(adapter.calls, 1);
+    },
+  );
 
   test('closing during a blocked refresh does not emit or throw', () async {
     await providers.upsert(_provider());

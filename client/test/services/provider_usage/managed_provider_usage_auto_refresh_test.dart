@@ -118,7 +118,7 @@ void main() {
     addTearDown(providerCubit.close);
   });
 
-  test('tick calls refreshExpiredEnabled only while started', () async {
+  test('start and tick refresh enabled providers while started', () async {
     await providers.upsert(_provider());
     await usage.save(_ready(staleAt: 50));
     await providerCubit.load();
@@ -140,17 +140,17 @@ void main() {
 
     binder.start();
     await Future<void>.delayed(Duration.zero);
-    expect(adapter.calls, 0);
+    expect(adapter.calls, 1);
 
     fire();
     await Future<void>.delayed(Duration.zero);
-    expect(adapter.calls, 1);
+    expect(adapter.calls, 2);
 
     binder.stop();
     expect(stopped, 1);
     fire();
     await Future<void>.delayed(Duration.zero);
-    expect(adapter.calls, 1);
+    expect(adapter.calls, 2);
   });
 
   test('disabling a provider cancels its in-flight ensureFresh', () async {
@@ -158,13 +158,11 @@ void main() {
     await usage.save(_ready(staleAt: 50));
     await providerCubit.load();
     await usageCubit.load();
-    late void Function() fire;
     final binder = ManagedProviderUsageAutoRefresh(
       usage: usageCubit,
       providers: providerCubit,
-      startPeriodic: (callback, interval) {
+      startPeriodic: (_, interval) {
         expect(interval, const Duration(minutes: 10));
-        fire = callback;
         return Object();
       },
       stopPeriodic: (_) {},
@@ -186,10 +184,5 @@ void main() {
       usageCubit.state.snapshotFor('p1')?.measures.single.remaining,
       '12.50',
     );
-
-    fire();
-    await Future<void>.delayed(Duration.zero);
-    await usageCubit.refreshExpiredEnabled();
-    expect(adapter.calls, 1);
   });
 }
