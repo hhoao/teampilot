@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/foundation.dart';
 
 import '../../services/session/session_lifecycle_service.dart';
@@ -8,10 +10,15 @@ import 'workspace_tools_scope.dart';
 /// while a background re-sync runs.
 /// Notifies listeners whenever a scope cubit is registered or removed, so
 /// late consumers (e.g. the floating-workspace scope bridge) can re-resolve
-/// without waiting for an unrelated rebuild.
+/// without waiting for an unrelated rebuild. Announcements are deferred out of
+/// the build phase, so a registration performed from a widget build (e.g.
+/// [WorkspaceSplitPaneState] resolving its scope cubit) never triggers
+/// markNeedsBuild on a peer listener.
 class WorkspaceToolsScopeRegistry extends ChangeNotifier {
   final Map<String, WorkspaceToolsScopeCubit> _cubits =
       <String, WorkspaceToolsScopeCubit>{};
+  bool _notifyScheduled = false;
+  bool _isDisposed = false;
 
   WorkspaceToolsScopeCubit cubitFor({
     required String tabScopeId,
@@ -26,7 +33,7 @@ class WorkspaceToolsScopeRegistry extends ChangeNotifier {
 
     final cubit = WorkspaceToolsScopeCubit(lifecycle: lifecycle);
     _cubits[key] = cubit;
-    notifyListeners();
+    _scheduleNotify();
     return cubit;
   }
 
@@ -43,11 +50,28 @@ class WorkspaceToolsScopeRegistry extends ChangeNotifier {
     final key = tabScopeId.trim();
     if (key.isEmpty) return;
     _cubits.remove(key)?.close();
-    notifyListeners();
+    _scheduleNotify();
+  }
+
+  /// Defers announcements until after the current frame's build phase, so a
+  /// registration from a widget build (e.g. WorkspaceSplitPane resolving its
+  /// scope cubit) never marks a peer ListenableBuilder (e.g. the
+  /// floating-workspace scope bridge) dirty while the framework is building.
+  /// Coalesces multiple mutations within the same frame; still fires in the
+  /// same microtask so late consumers re-resolve promptly.
+  void _scheduleNotify() {
+    if (_notifyScheduled) return;
+    _notifyScheduled = true;
+    scheduleMicrotask(() {
+      _notifyScheduled = false;
+      if (_isDisposed) return;
+      notifyListeners();
+    });
   }
 
   @override
   void dispose() {
+    _isDisposed = true;
     for (final cubit in _cubits.values) {
       cubit.close();
     }
