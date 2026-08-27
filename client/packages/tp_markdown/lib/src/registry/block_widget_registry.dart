@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../ir/markdown_document.dart';
 import '../render/highlight_context.dart';
+import '../render/html_block.dart';
 import '../render/image_raw_blocks.dart';
 import '../render/inline_spans.dart';
 import '../render/list_blockquote_blocks.dart';
@@ -124,6 +125,10 @@ class BlockWidgetRegistry {
 
     registry.register<RawLiteralBlock>((block, tokens, _, __, ___, ____, _____) {
       return buildRawLiteralBlock(block as RawLiteralBlock, tokens);
+    });
+
+    registry.register<HtmlBlock>((block, tokens, resolvers, _, __, ___, ____) {
+      return buildHtmlBlock(block as HtmlBlock, tokens, resolvers);
     });
 
     return registry;
