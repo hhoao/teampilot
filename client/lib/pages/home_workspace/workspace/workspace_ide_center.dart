@@ -12,9 +12,14 @@ Widget buildWorkspaceIdeCenter({
   required Workspace workspace,
   required Widget chatPage,
   String? initialText,
+  int initialTextRevision = 0,
 }) {
   if (newChat) {
-    return WorkspaceChatPane(workspace: workspace, initialText: initialText);
+    return WorkspaceChatPane(
+      workspace: workspace,
+      initialText: initialText,
+      initialTextRevision: initialTextRevision,
+    );
   }
   return chatPage;
 }

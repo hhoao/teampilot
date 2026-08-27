@@ -23,7 +23,10 @@ void main() {
     test('does not duplicate when opened twice', () {
       cubit.openSession(_ws, 's1');
       cubit.openSession(_ws, 's1');
-      expect(cubit.state.bar(_ws).center.order.where((t) => t == _s1).length, 1);
+      expect(
+        cubit.state.bar(_ws).center.order.where((t) => t == _s1).length,
+        1,
+      );
     });
   });
 
@@ -38,12 +41,27 @@ void main() {
       expect(order.contains(_s1), isFalse);
     });
 
-    test('re-activating a closed id re-adds at the end (explicit open only)', () async {
-      cubit.openSession(_ws, 's1');
-      cubit.openSession(_ws, 's2');
+    test(
+      're-activating a closed id re-adds at the end (explicit open only)',
+      () async {
+        cubit.openSession(_ws, 's1');
+        cubit.openSession(_ws, 's2');
+        await cubit.close(_ws, _s1);
+        cubit.openSession(_ws, 's1'); // explicit re-open
+        expect(cubit.state.bar(_ws).center.order, [_s2, _s1]);
+      },
+    );
+
+    test('closing the final session clears the Landing prefill', () async {
+      cubit
+        ..openSession(_ws, 's1')
+        ..enterLanding(_ws, initialText: '审查并继续完成该会话: /data/session');
+
       await cubit.close(_ws, _s1);
-      cubit.openSession(_ws, 's1'); // explicit re-open
-      expect(cubit.state.bar(_ws).center.order, [_s2, _s1]);
+
+      final center = cubit.state.bar(_ws).center;
+      expect(center.order, isEmpty);
+      expect(center.landingInitialText, isNull);
     });
   });
 
@@ -82,6 +100,17 @@ void main() {
       final removed = cubit.closeOthers(_ws, _s2);
       expect(removed, [_s1, _s3]);
       expect(cubit.state.bar(_ws).center.order, [_s2]);
+    });
+
+    test('closeAll clears a Landing prefill', () {
+      cubit
+        ..openSession(_ws, 's1')
+        ..enterLanding(_ws, initialText: '审查并继续完成该会话: /data/session')
+        ..closeAll(_ws);
+
+      final center = cubit.state.bar(_ws).center;
+      expect(center.order, isEmpty);
+      expect(center.landingInitialText, isNull);
     });
   });
 }

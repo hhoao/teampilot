@@ -282,7 +282,7 @@ void main() {
       );
     });
 
-    test('closeAll preserves an active Landing prefill', () {
+    test('closeAll clears an active Landing prefill', () {
       const prefill = '审查并继续完成该会话: /data/session';
       workbench
         ..openSession(workspaceId, 'session-1', preview: false)
@@ -292,7 +292,7 @@ void main() {
       final center = workbench.state.bar(workspaceId).center;
       expect(center.order, isEmpty);
       expect(center.landingActive, isTrue);
-      expect(center.landingInitialText, prefill);
+      expect(center.landingInitialText, isNull);
     });
   });
 }

@@ -66,6 +66,20 @@ void main() {
       final s2 = r.remove(s1, _f)!;
       expect(s2.previewIds, isEmpty);
     });
+
+    test('clears Landing prefill when removing the final tab', () {
+      final (withTab, _) = r.add(empty, _s1, preview: false);
+      final withPrefill = r.enterLanding(
+        withTab,
+        initialText: '审查并继续完成该会话: /data/session',
+      );
+
+      final result = r.remove(withPrefill, _s1);
+
+      expect(result, isNotNull);
+      expect(result!.order, isEmpty);
+      expect(result.landingInitialText, isNull);
+    });
   });
 
   group('reorder / activate / pin / landing', () {
@@ -120,6 +134,21 @@ void main() {
       expect(landing.order, [_s1]);
       expect(landing.landingInitialText, '审查并继续完成该会话: /data/session');
     });
+
+    test(
+      'advances the Landing prefill revision for repeated text requests',
+      () {
+        const prefill = '审查并继续完成该会话: /data/session';
+        final first = r.enterLanding(empty, initialText: prefill);
+        final second = r.enterLanding(first, initialText: prefill);
+
+        expect(second.landingInitialText, prefill);
+        expect(
+          second.landingInitialTextRevision,
+          first.landingInitialTextRevision + 1,
+        );
+      },
+    );
 
     test('non-Landing mutations preserve the Landing prefill', () {
       const prefill = '审查并继续完成该会话: /data/session';

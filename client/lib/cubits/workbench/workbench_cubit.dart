@@ -215,10 +215,6 @@ class WorkbenchCubit extends Cubit<WorkbenchState> {
   void enterLanding(String workspaceId, {String? initialText}) {
     final bar = state.bar(workspaceId);
     if (bar.center.landingActive && initialText == null) return;
-    if (bar.center.landingActive &&
-        bar.center.landingInitialText == initialText) {
-      return;
-    }
     final next = _r.enterLanding(bar.center, initialText: initialText);
     emit(state.withBar(workspaceId, bar.copyWith(center: next)));
   }
@@ -306,6 +302,7 @@ class WorkbenchCubit extends Cubit<WorkbenchState> {
                 order: const [],
                 activeId: null,
                 previewIds: const {},
+                landingInitialText: null,
               ),
             ),
       ),

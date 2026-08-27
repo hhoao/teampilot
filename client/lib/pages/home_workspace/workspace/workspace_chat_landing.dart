@@ -22,6 +22,7 @@ class WorkspaceChatLanding extends StatelessWidget {
     this.isSubmitting = false,
     this.disabled = false,
     this.initialText,
+    this.initialTextRevision = 0,
     super.key,
   });
 
@@ -30,6 +31,7 @@ class WorkspaceChatLanding extends StatelessWidget {
   final bool isSubmitting;
   final bool disabled;
   final String? initialText;
+  final int initialTextRevision;
 
   @override
   Widget build(BuildContext context) {
@@ -62,6 +64,7 @@ class WorkspaceChatLanding extends StatelessWidget {
                     isSubmitting: isSubmitting,
                     disabled: disabled,
                     initialText: initialText,
+                    initialTextRevision: initialTextRevision,
                     deferFieldMount: true,
                     showLocationHeader: true,
                   ),

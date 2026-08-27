@@ -79,7 +79,7 @@ void main() {
       _stubCubit(worktreeCubit, const WorktreeState());
       when(() => worktreeCubit.worktreesForProject(any())).thenReturn(const []);
 
-      Widget landing(String? initialText) {
+      Widget landing(String? initialText, {int initialTextRevision = 0}) {
         final theme = buildDarkTheme();
         return MultiRepositoryProvider(
           providers: [
@@ -113,6 +113,7 @@ void main() {
                     body: WorkspaceChatLanding(
                       workspace: workspace,
                       initialText: initialText,
+                      initialTextRevision: initialTextRevision,
                       onSubmit: (_, _) {},
                     ),
                   ),
@@ -125,7 +126,7 @@ void main() {
 
       composeDraftCache.setLandingDraft(workspace.workspaceId, 'old draft');
 
-      await tester.pumpWidget(landing(seed));
+      await tester.pumpWidget(landing(seed, initialTextRevision: 1));
       await tester.pumpAndSettle();
 
       TextField field() =>
@@ -138,6 +139,12 @@ void main() {
       );
 
       await tester.pumpWidget(landing('replacement'));
+      await tester.pump();
+
+      expect(field().controller!.text, 'replacement');
+
+      await tester.enterText(find.byType(TextField).first, 'user draft');
+      await tester.pumpWidget(landing('replacement', initialTextRevision: 2));
       await tester.pump();
 
       expect(field().controller!.text, 'replacement');

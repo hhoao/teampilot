@@ -87,6 +87,7 @@ class UnboundComposeBody extends StatefulWidget {
     this.isSubmitting = false,
     this.disabled = false,
     this.initialText,
+    this.initialTextRevision = 0,
     this.deferFieldMount = false,
     this.showLocationHeader = false,
     super.key,
@@ -97,6 +98,7 @@ class UnboundComposeBody extends StatefulWidget {
   final bool isSubmitting;
   final bool disabled;
   final String? initialText;
+  final int initialTextRevision;
   final bool deferFieldMount;
 
   /// When true, renders [WorkspaceLandingHeaderRow] above the compose card
@@ -310,7 +312,8 @@ class _UnboundComposeBodyState extends State<UnboundComposeBody> {
       unawaited(_loadWorkspaceProjectBundle());
     }
     final nextInitialText = widget.initialText;
-    if (oldWidget.initialText != nextInitialText &&
+    if ((oldWidget.initialText != nextInitialText ||
+            oldWidget.initialTextRevision != widget.initialTextRevision) &&
         nextInitialText != null &&
         nextInitialText.isNotEmpty) {
       _controller.value = TextEditingValue(

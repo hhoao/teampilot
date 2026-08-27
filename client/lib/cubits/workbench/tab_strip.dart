@@ -18,6 +18,7 @@ class TabStrip extends Equatable {
     this.activeId,
     this.previewIds = const {},
     this.landingInitialText,
+    this.landingInitialTextRevision = 0,
   });
 
   final List<WorkbenchTabId> order;
@@ -28,6 +29,12 @@ class TabStrip extends Equatable {
 
   /// Optional text to seed the landing compose with on its next render.
   final String? landingInitialText;
+
+  /// Monotonically advances for each explicit Landing prefill request.
+  ///
+  /// The same reference text can be requested again after the user edits the
+  /// compose, so text equality alone cannot represent the request.
+  final int landingInitialTextRevision;
 
   /// Landing / welcome shows when nothing is selected. Tabs may remain in the
   /// bar (open sessions) while the landing is displayed.
@@ -42,6 +49,7 @@ class TabStrip extends Equatable {
     Object? activeId = _unset,
     Set<WorkbenchTabId>? previewIds,
     Object? landingInitialText = _unset,
+    int? landingInitialTextRevision,
   }) => TabStrip(
     order: order ?? this.order,
     activeId: activeId == _unset ? this.activeId : activeId as WorkbenchTabId?,
@@ -49,10 +57,18 @@ class TabStrip extends Equatable {
     landingInitialText: landingInitialText == _unset
         ? this.landingInitialText
         : landingInitialText as String?,
+    landingInitialTextRevision:
+        landingInitialTextRevision ?? this.landingInitialTextRevision,
   );
 
   @override
-  List<Object?> get props => [order, activeId, previewIds, landingInitialText];
+  List<Object?> get props => [
+    order,
+    activeId,
+    previewIds,
+    landingInitialText,
+    landingInitialTextRevision,
+  ];
 }
 
 /// Pure reducer: returns the next [TabStrip] for each mutation. Never mutates
@@ -150,7 +166,12 @@ class TabStripReducer {
         active = order.first;
       }
     }
-    return strip.copyWith(order: order, activeId: active, previewIds: previews);
+    return strip.copyWith(
+      order: order,
+      activeId: active,
+      previewIds: previews,
+      landingInitialText: order.isEmpty ? null : strip.landingInitialText,
+    );
   }
 
   TabStrip reorder(TabStrip strip, int oldIndex, int newIndex) {
@@ -192,5 +213,11 @@ class TabStripReducer {
   }
 
   TabStrip enterLanding(TabStrip strip, {String? initialText}) =>
-      strip.copyWith(activeId: null, landingInitialText: initialText);
+      strip.copyWith(
+        activeId: null,
+        landingInitialText: initialText,
+        landingInitialTextRevision: initialText == null
+            ? strip.landingInitialTextRevision
+            : strip.landingInitialTextRevision + 1,
+      );
 }
