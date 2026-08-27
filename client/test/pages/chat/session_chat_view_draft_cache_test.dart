@@ -1,5 +1,6 @@
 import 'package:ai_message_core/ai_message_core.dart'
     show AiMessage, AiRole, AiTextPart, ExternalStoreAiThreadRuntime;
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -74,6 +75,8 @@ class _MockEditorCubit extends Mock implements EditorCubit {}
 class _MockWorktreeCubit extends Mock implements WorktreeCubit {}
 
 class _FakeFailedMessageStore extends Fake implements FailedMessageStore {}
+
+class _MockFailedMessageStore extends Mock implements FailedMessageStore {}
 
 class _MockMemberPresenceCubit extends Mock implements MemberPresenceCubit {}
 
@@ -561,6 +564,75 @@ void main() {
         record: record.copyWith(status: FailedMessageStatus.sending),
       ),
     ).called(1);
+  });
+
+  testWidgets('rapid Retry taps deliver only once without restoring failure', (
+    tester,
+  ) async {
+    final store = _MockFailedMessageStore();
+    final record = FailedMessageRecord(
+      id: 'pending:rapid-retry',
+      text: 'retry this once',
+      createdAt: DateTime.utc(2026),
+      status: FailedMessageStatus.failed,
+    );
+    final recordsReady = Completer<List<FailedMessageRecord>>();
+    when(
+      () => store.load('ws-1', 'rapid-retry'),
+    ).thenAnswer((_) => recordsReady.future);
+    runtime.setMessages([
+      const AiMessage(
+        id: 'pending:rapid-retry',
+        role: AiRole.user,
+        parts: [AiTextPart(text: 'retry this once')],
+      ),
+    ]);
+    when(
+      () => seat.pendingDeliveryStatuses,
+    ).thenReturn(const {'pending:rapid-retry': FailedMessageStatus.failed});
+    final delivery = Completer<HistoryContinueSubmitResult>();
+    var submitted = 0;
+
+    await pumpSession(
+      tester,
+      session: _session('rapid-retry'),
+      failedMessageStore: store,
+      onSubmit: (_) {
+        submitted++;
+        return delivery.future;
+      },
+    );
+
+    await tester.tap(find.text('Retry'));
+    await tester.tap(find.text('Retry'));
+    recordsReady.complete([record]);
+    await tester.pump();
+
+    expect(submitted, 1);
+    delivery.complete(
+      const HistoryContinueSubmitResult(
+        ok: true,
+        channel: HistoryContinueChannel.pty,
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    verify(
+      () => seat.retryPendingUser(
+        store: store,
+        workspaceId: 'ws-1',
+        sessionId: 'rapid-retry',
+        record: record,
+      ),
+    ).called(1);
+    verifyNever(
+      () => seat.markPendingFailed(
+        store: any(named: 'store'),
+        workspaceId: any(named: 'workspaceId'),
+        sessionId: any(named: 'sessionId'),
+        record: any(named: 'record'),
+      ),
+    );
   });
 
   testWidgets('Edit and retry loads the failed text into the composer', (

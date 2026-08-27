@@ -169,6 +169,7 @@ class _SessionChatViewState extends State<SessionChatView> {
   late final WorkspaceProjectConfigRepository _projectConfigRepository;
   late final FailedMessageStore _failedMessageStore;
   FailedMessageRecord? _editingFailedMessage;
+  final Set<String> _retryingFailedMessageIds = <String>{};
 
   /// Host-owned Timer for [historyAwaitingIdleGrace]; latch lives on the seat.
   Timer? _awaitingIdleGraceTimer;
@@ -1041,14 +1042,18 @@ class _SessionChatViewState extends State<SessionChatView> {
   }
 
   Future<void> _retryFailedMessage(String messageId) async {
-    if (_isSubmitting) return;
-    final record = await _loadFailedMessage(messageId);
-    if (record == null || !mounted) return;
-    await _deliverComposeMessage(
-      record.text,
-      retryRecord: record,
-      clearCompose: false,
-    );
+    if (_isSubmitting || !_retryingFailedMessageIds.add(messageId)) return;
+    try {
+      final record = await _loadFailedMessage(messageId);
+      if (record == null || !mounted) return;
+      await _deliverComposeMessage(
+        record.text,
+        retryRecord: record,
+        clearCompose: false,
+      );
+    } finally {
+      _retryingFailedMessageIds.remove(messageId);
+    }
   }
 
   Future<void> _editFailedMessage(String messageId) async {

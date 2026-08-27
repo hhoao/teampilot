@@ -13,13 +13,16 @@ Implemented retry and edit-and-retry for persisted failed session messages.
   the failed record identity for the next compose submit.
 - Async record lookup is guarded by `HistoryHydrationScope`, so a late lookup
   cannot affect a newly selected seat.
+- A synchronous per-message retry gate is acquired before the asynchronous
+  record load. Rapid duplicate Retry taps therefore cannot race through the
+  submit lock and restore a record to `failed` after the first retry succeeds.
 
 Verification:
 
 - RED: `flutter test test/pages/chat/session_chat_view_failed_message_test.dart`
   failed because `AiHistorySeat.retryPendingUser` did not exist.
 - GREEN: `flutter test test/pages/chat/session_chat_view_failed_message_test.dart test/pages/chat/session_history_review_messages_test.dart test/pages/chat/session_chat_view_draft_cache_test.dart`
-  passed (20 tests).
+  passed (21 tests), including the delayed-load rapid-double-Retry regression.
 - `flutter analyze --no-fatal-infos --no-fatal-warnings` exited 0; it reports
   the repository's existing warning/info backlog (300 issues), with no new
   analyzer errors.
