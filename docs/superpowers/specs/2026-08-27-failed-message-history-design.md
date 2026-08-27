@@ -4,12 +4,15 @@
 
 When a message submitted from an existing session cannot be delivered, keep it
 in that session's chat history as a failed outgoing message instead of moving
-it back into the compose field. The failed message must remain visible after
-the app restarts.
+it back into the compose field. The existing optimistic "sending" bubble is
+the UI representation of this same record; it is persisted immediately when
+the user submits, so the message survives an app restart at any point in the
+delivery lifecycle.
 
 ## Behavior
 
-- On submit, append a local user-message record with `sending` status.
+- On submit, immediately persist the local user-message record with `sending`
+  status and render the existing optimistic bubble from that record.
 - If terminal delivery succeeds, finalize the record as a normal user message.
 - If delivery fails, retain the original text with `failed` status and leave
   the compose field empty.
@@ -30,7 +33,8 @@ Store failed-message records in a local file under the session directory; do
 not write them into any CLI transcript. Each record contains a stable local ID,
 session ID, message text, status, and creation/update timestamps. The store is
 independent of compose drafts: drafts protect text before submission, while
-failed records represent a submitted message.
+the same optimistic bubble becomes a persisted message record at submission
+time. Do not render a second duplicate bubble for the persisted record.
 
 ## State flow
 
