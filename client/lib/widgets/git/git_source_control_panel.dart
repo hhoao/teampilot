@@ -735,7 +735,7 @@ class _GitCenteredHint extends StatelessWidget {
   }
 }
 
-class _Header extends StatelessWidget {
+class _Header extends StatefulWidget {
   const _Header({
     required this.branch,
     required this.ahead,
@@ -779,155 +779,210 @@ class _Header extends StatelessWidget {
   final VoidCallback? onDiscardAll;
 
   @override
+  State<_Header> createState() => _HeaderState();
+}
+
+class _HeaderState extends State<_Header> {
+  static const double _branchRowCounterMinWidth = 120;
+
+  final ScrollController _toolbarScrollController = ScrollController();
+
+  @override
+  void dispose() {
+    _toolbarScrollController.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
     final l10n = context.l10n;
     final cs = Theme.of(context).colorScheme;
 
     return Row(
       children: [
-        Expanded(
+        Flexible(
+          flex: 1,
           child: TpHover(
-            onTap: onBranch,
+            onTap: widget.onBranch,
             borderRadius: BorderRadius.circular(6),
             child: Padding(
               padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
+              child: LayoutBuilder(
+                builder: (context, constraints) {
+                  final showAheadBehind =
+                      constraints.maxWidth >= _branchRowCounterMinWidth;
+                  return Row(
+                    children: [
+                      Icon(
+                        Icons.account_tree_outlined,
+                        size: 16,
+                        color: cs.primary,
+                      ),
+                      const SizedBox(width: 6),
+                      Flexible(
+                        child: Text(
+                          widget.branch,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: TpTextStyles.of(
+                            context,
+                          ).smSemibold,
+                        ),
+                      ),
+                      if (showAheadBehind &&
+                          (widget.ahead > 0 || widget.behind > 0)) ...[
+                        const SizedBox(width: 6),
+                        Flexible(
+                          child: Text(
+                            l10n.gitAheadBehind(widget.ahead, widget.behind),
+                            maxLines: 1,
+                            overflow: TextOverflow.clip,
+                            style: TpTextStyles.of(context).xsColored(
+                              cs.onSurfaceVariant,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ],
+                  );
+                },
+              ),
+            ),
+          ),
+        ),
+        Flexible(
+          flex: 1,
+          child: Scrollbar(
+            controller: _toolbarScrollController,
+            thumbVisibility: true,
+            child: SingleChildScrollView(
+              controller: _toolbarScrollController,
+              scrollDirection: Axis.horizontal,
               child: Row(
+                mainAxisSize: MainAxisSize.min,
                 children: [
-                  Icon(
-                    Icons.account_tree_outlined,
-                    size: 16,
-                    color: cs.primary,
-                  ),
-                  const SizedBox(width: 6),
-                  Flexible(
-                    child: Text(
-                      branch,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: TpTextStyles.of(
-                        context,
-                      ).smSemibold,
+                  Tooltip(
+                    message: l10n.gitGraphTitle,
+                    child: TpHover(
+                      onTap: widget.onOpenGraph,
+                      borderRadius: BorderRadius.circular(6),
+                      child: const Padding(
+                        padding: EdgeInsets.symmetric(
+                          horizontal: 4,
+                          vertical: 4,
+                        ),
+                        child: Icon(
+                          Icons.account_tree_outlined,
+                          size: 16,
+                        ),
+                      ),
                     ),
                   ),
-                  if (ahead > 0 || behind > 0) ...[
-                    const SizedBox(width: 6),
-                    Text(
-                      l10n.gitAheadBehind(ahead, behind),
-                      style: TpTextStyles.of(
-                        context,
-                      ).xsColored(cs.onSurfaceVariant),
+                  if (widget.busy)
+                    const Padding(
+                      padding: EdgeInsets.symmetric(horizontal: 8),
+                      child: SizedBox(
+                        width: 14,
+                        height: 14,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      ),
                     ),
-                  ],
+                  Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      SizedBox(
+                        width: 24,
+                        height: 24,
+                        child: Checkbox(
+                          key: const ValueKey('git-amend-checkbox'),
+                          value: widget.amend,
+                          onChanged: widget.canAmend
+                              ? (v) => widget.onAmend(v ?? false)
+                              : null,
+                          visualDensity: VisualDensity.compact,
+                        ),
+                      ),
+                      const SizedBox(width: 2),
+                      Text(l10n.gitAmend, style: TpTextStyles.of(context).sm),
+                    ],
+                  ),
+                  TpIconButton(
+                    icon: widget.allFoldersExpanded
+                        ? Icons.unfold_less
+                        : Icons.unfold_more,
+                    compact: true,
+                    size: TpIconButton.kCompactSize,
+                    tooltip: widget.allFoldersExpanded
+                        ? l10n.treeCollapseAllFolders
+                        : l10n.treeExpandAllFolders,
+                    onTap: widget.onToggleExpandAll,
+                  ),
+                  TpActionMenuButton(
+                    tooltip: l10n.gitDiscard,
+                    icon: const Icon(Icons.undo, size: 18),
+                    size: TpIconButton.kCompactSize,
+                    specs: [
+                      TpActionMenuSpec.item(
+                        value: 'selected',
+                        label: l10n.gitDiscardSelected,
+                        icon: Icons.delete_outline,
+                        enabled: widget.onDiscardSelected != null,
+                      ),
+                      TpActionMenuSpec.item(
+                        value: 'all',
+                        label: l10n.gitDiscardAllUnstaged,
+                        icon: Icons.undo,
+                        destructive: true,
+                      ),
+                    ],
+                    onSelected: (value) {
+                      if (value == 'selected') {
+                        widget.onDiscardSelected?.call();
+                      }
+                      if (value == 'all') widget.onDiscardAll?.call();
+                    },
+                  ),
+                  TpIconButton(
+                    key: const ValueKey('git-generate-commit-button'),
+                    icon: Icons.auto_awesome_outlined,
+                    iconWidget: widget.generating
+                        ? const SizedBox(
+                            width: 14,
+                            height: 14,
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          )
+                        : null,
+                    compact: true,
+                    size: TpIconButton.kCompactSize,
+                    tooltip: l10n.gitGenerateCommitMessage,
+                    enabled: widget.canGenerate,
+                    onTap: widget.onGenerate,
+                  ),
+                  TpIconButton(
+                    icon: Icons.download_outlined,
+                    compact: true,
+                    size: TpIconButton.kCompactSize,
+                    tooltip: l10n.gitPull,
+                    onTap: widget.onPull,
+                  ),
+                  TpIconButton(
+                    icon: Icons.upload_outlined,
+                    compact: true,
+                    size: TpIconButton.kCompactSize,
+                    tooltip: l10n.gitPush,
+                    onTap: widget.onPush,
+                  ),
+                  TpIconButton(
+                    icon: Icons.refresh,
+                    compact: true,
+                    size: TpIconButton.kCompactSize,
+                    tooltip: l10n.gitRefresh,
+                    onTap: widget.onRefresh,
+                  ),
                 ],
               ),
             ),
           ),
-        ),
-        Tooltip(
-          message: l10n.gitGraphTitle,
-          child: TpHover(
-            onTap: onOpenGraph,
-            borderRadius: BorderRadius.circular(6),
-            child: const Padding(
-              padding: EdgeInsets.symmetric(horizontal: 4, vertical: 4),
-              child: Icon(
-                Icons.account_tree_outlined,
-                size: 16,
-              ),
-            ),
-          ),
-        ),
-        if (busy)
-          const Padding(
-            padding: EdgeInsets.symmetric(horizontal: 8),
-            child: SizedBox(
-              width: 14,
-              height: 14,
-              child: CircularProgressIndicator(strokeWidth: 2),
-            ),
-          ),
-        Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            SizedBox(
-              width: 24,
-              height: 24,
-              child: Checkbox(
-                key: const ValueKey('git-amend-checkbox'),
-                value: amend,
-                onChanged: canAmend ? (v) => onAmend(v ?? false) : null,
-                visualDensity: VisualDensity.compact,
-              ),
-            ),
-            const SizedBox(width: 2),
-            Text(l10n.gitAmend, style: TpTextStyles.of(context).sm),
-          ],
-        ),
-        TpIconButton(
-          icon: allFoldersExpanded ? Icons.unfold_less : Icons.unfold_more,
-          compact: true,
-          size: TpIconButton.kCompactSize,
-          tooltip: allFoldersExpanded
-              ? l10n.treeCollapseAllFolders
-              : l10n.treeExpandAllFolders,
-          onTap: onToggleExpandAll,
-        ),
-        PopupMenuButton<String>(
-          tooltip: l10n.gitDiscard,
-          icon: const Icon(Icons.undo, size: 18),
-          padding: EdgeInsets.zero,
-          onSelected: (value) {
-            if (value == 'selected') onDiscardSelected?.call();
-            if (value == 'all') onDiscardAll?.call();
-          },
-          itemBuilder: (context) => [
-            PopupMenuItem(
-              value: 'selected',
-              enabled: onDiscardSelected != null,
-              child: Text(l10n.gitDiscardSelected),
-            ),
-            PopupMenuItem(
-              value: 'all',
-              child: Text(l10n.gitDiscardAllUnstaged),
-            ),
-          ],
-        ),
-        TpIconButton(
-          key: const ValueKey('git-generate-commit-button'),
-          icon: Icons.auto_awesome_outlined,
-          iconWidget: generating
-              ? const SizedBox(
-                  width: 14,
-                  height: 14,
-                  child: CircularProgressIndicator(strokeWidth: 2),
-                )
-              : null,
-          compact: true,
-          size: TpIconButton.kCompactSize,
-          tooltip: l10n.gitGenerateCommitMessage,
-          enabled: canGenerate,
-          onTap: onGenerate,
-        ),
-        TpIconButton(
-          icon: Icons.download_outlined,
-          compact: true,
-          size: TpIconButton.kCompactSize,
-          tooltip: l10n.gitPull,
-          onTap: onPull,
-        ),
-        TpIconButton(
-          icon: Icons.upload_outlined,
-          compact: true,
-          size: TpIconButton.kCompactSize,
-          tooltip: l10n.gitPush,
-          onTap: onPush,
-        ),
-        TpIconButton(
-          icon: Icons.refresh,
-          compact: true,
-          size: TpIconButton.kCompactSize,
-          tooltip: l10n.gitRefresh,
-          onTap: onRefresh,
         ),
       ],
     );
