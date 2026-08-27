@@ -74,9 +74,10 @@ class ConnectQrPanel extends StatelessWidget {
         Center(
           child: QrImageView(
             key: AppKeys.connectQrCode,
-            data: offer.encode(),
-            size: 240,
+            data: offer.qrPayload,
+            size: 400,
             backgroundColor: Colors.white,
+            errorCorrectionLevel: QrErrorCorrectLevel.L,
           ),
         ),
         const SizedBox(height: 12),

@@ -33,6 +33,29 @@ SshPairingOffer _offer({SshRelayOffer? relay}) {
 }
 
 void main() {
+  test('bare code round-trips from QR payload', () {
+    final offer = _offer();
+    expect(SshPairingOffer.decode(offer.bareCode).username, 'alice');
+  });
+
+  test('compressed QR payload round-trips and is shorter than bare code', () {
+    final offer = _offer(
+      relay: const SshRelayOffer(
+        v: 1,
+        url: 'wss://relay.example.test/ws',
+        hostId: 'AbCdEf0123_-xyZ9',
+        inviteToken: 'abcdefghijklmnopqrstuvwxyz0123456789ABCDE',
+        inviteExpiresAt: 1770000000000,
+      ),
+    );
+    final decoded = SshPairingOffer.decode(offer.qrPayload);
+    expect(decoded.username, 'alice');
+    expect(decoded.pairing.url, 'https://192.168.1.20:2768/pair');
+    expect(decoded.relay?.url, 'wss://relay.example.test/ws');
+    expect(offer.qrPayload.startsWith('z'), isTrue);
+    expect(offer.qrPayload.length, lessThan(offer.bareCode.length * 0.75));
+  });
+
   test('round-trips deep link and bare code', () {
     final encoded = _offer().encode();
     expect(encoded.startsWith('teampilot://pair-ssh?code='), isTrue);

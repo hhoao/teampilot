@@ -5,6 +5,7 @@ import 'dart:io';
 import 'package:crypto/crypto.dart';
 import 'package:dartssh2/dartssh2.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
 import 'package:shared_ui/shared_ui.dart';
@@ -143,8 +144,15 @@ class _AndroidPairSheetState extends State<AndroidPairSheet> {
 
       await profiles.load();
       await connections.syncProfiles(profiles.state.profiles);
-      await connections.connect(profile.id);
-      if (mounted) await Navigator.of(context).maybePop();
+      final profileId = profile.id;
+      unawaited(connections.connect(profileId));
+      if (!mounted) return;
+      setState(() => _pairing = false);
+      // PopScope blocks pop while _pairing is true; wait one frame after clearing it.
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
+        Navigator.of(context).pop();
+      });
     } on PairingHttpException catch (error, stackTrace) {
       AppLogger.instance.w(
         '[connect-pair] pairing request rejected code=${error.code}',
@@ -173,12 +181,13 @@ class _AndroidPairSheetState extends State<AndroidPairSheet> {
         stackTrace: stackTrace,
       );
       _showError(
-        error is ConnectPairClientException && error.code == 'unreachable'
+        error is ConnectPairClientException &&
+                (error.code == 'unreachable' || error.code == 'timeout')
             ? l10n.connectNeedLanOrRelay
             : l10n.connectPairFailed,
       );
     } finally {
-      if (mounted) setState(() => _pairing = false);
+      if (mounted && _pairing) setState(() => _pairing = false);
     }
   }
 
@@ -393,17 +402,38 @@ class _AndroidQrScannerPage extends StatefulWidget {
 }
 
 class _AndroidQrScannerPageState extends State<_AndroidQrScannerPage> {
+  final _controller = MobileScannerController(
+    formats: const [BarcodeFormat.qrCode],
+  );
   var _finished = false;
+
+  @override
+  void dispose() {
+    unawaited(_controller.dispose());
+    super.dispose();
+  }
+
+  String? _payload(Barcode barcode) {
+    final raw = barcode.rawValue?.trim();
+    if (raw != null && raw.isNotEmpty) {
+      return raw;
+    }
+    final display = barcode.displayValue?.trim();
+    if (display != null && display.isNotEmpty) {
+      return display;
+    }
+    return null;
+  }
 
   void _detected(BarcodeCapture capture) {
     if (_finished) return;
     final value = capture.barcodes
-        .map((barcode) => barcode.rawValue?.trim())
+        .map(_payload)
         .whereType<String>()
-        .where((value) => value.isNotEmpty)
         .firstOrNull;
     if (value == null) return;
     _finished = true;
+    HapticFeedback.mediumImpact();
     Navigator.of(context).pop(value);
   }
 
@@ -413,6 +443,7 @@ class _AndroidQrScannerPageState extends State<_AndroidQrScannerPage> {
     return Scaffold(
       appBar: AppBar(title: Text(l10n.connectScanQr)),
       body: MobileScanner(
+        controller: _controller,
         onDetect: _detected,
         errorBuilder: (context, _) => Center(
           child: Padding(

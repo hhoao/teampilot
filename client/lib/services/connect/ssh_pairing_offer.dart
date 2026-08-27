@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:io';
 
 import '../../models/ssh_reachability.dart';
 
@@ -117,11 +118,36 @@ class SshPairingOffer {
   final SshPairingSession pairing;
   final SshRelayOffer? relay;
 
-  String encode() {
-    final code = base64Url
-        .encode(utf8.encode(jsonEncode(toJson())))
-        .replaceAll('=', '');
-    return 'teampilot://pair-ssh?code=$code';
+  /// Uncompressed base64 JSON for copy/paste links.
+  String get bareCode =>
+      base64Url.encode(utf8.encode(jsonEncode(toJson()))).replaceAll('=', '');
+
+  /// Gzip-compressed compact offer for QR rendering (prefix `z`). Self-contained;
+  /// the phone does not fetch anything after scan.
+  String get qrPayload {
+    final compressed = gzip.encode(utf8.encode(jsonEncode(_toQrJson())));
+    return 'z${base64Url.encode(compressed).replaceAll('=', '')}';
+  }
+
+  String encode() => 'teampilot://pair-ssh?code=$bareCode';
+
+  /// Omits reconstructable fields to keep the QR module grid coarser.
+  Map<String, Object?> _toQrJson() {
+    final pairingUri = Uri.parse(pairing.url);
+    return {
+      'v': v,
+      'hostId': hostId,
+      'username': username,
+      'appDataRoot': appDataRoot,
+      'endpoints': endpoints.map((endpoint) => endpoint.toJson()).toList(),
+      'hostKeyFingerprints': hostKeyFingerprints,
+      'pairing': {
+        'token': pairing.token,
+        'tlsCertSha256': pairing.tlsCertSha256,
+        'port': pairingUri.port,
+      },
+      if (relay != null) 'relay': {'url': relay!.url},
+    };
   }
 
   Map<String, Object?> toJson() => {
@@ -137,26 +163,92 @@ class SshPairingOffer {
   };
 
   static SshPairingOffer decode(String input) {
-    final trimmed = input.trim();
-    final uri = Uri.tryParse(trimmed);
-    final code = uri?.scheme == 'teampilot' && uri?.host == 'pair-ssh'
-        ? uri?.queryParameters['code']
-        : trimmed;
+    final code = _extractCode(input);
     if (code == null || code.isEmpty) {
       throw const SshPairingOfferFormatException('missing pairing code');
     }
     try {
-      final padded = code.padRight((code.length + 3) ~/ 4 * 4, '=');
-      final decoded = jsonDecode(utf8.decode(base64Url.decode(padded)));
-      if (decoded is! Map) {
-        throw const SshPairingOfferFormatException('offer must be an object');
-      }
-      return SshPairingOffer.fromJson(decoded.cast<String, Object?>());
+      final decoded = _decodeCodePayload(code);
+      return SshPairingOffer.fromJson(_normalizeDecodedJson(decoded));
     } on SshPairingOfferFormatException {
       rethrow;
     } on Object {
       throw const SshPairingOfferFormatException('invalid pairing code');
     }
+  }
+
+  static String? _extractCode(String input) {
+    final trimmed = input.trim();
+    final uri = Uri.tryParse(trimmed);
+    if (uri?.scheme == 'teampilot' && uri?.host == 'pair-ssh') {
+      return uri?.queryParameters['code'];
+    }
+    return trimmed;
+  }
+
+  static Map<String, Object?> _decodeCodePayload(String code) {
+    if (code.startsWith('z')) {
+      final payload = code.substring(1);
+      final padded = payload.padRight((payload.length + 3) ~/ 4 * 4, '=');
+      final bytes = base64Url.decode(padded);
+      final jsonText = utf8.decode(gzip.decode(bytes));
+      final decoded = jsonDecode(jsonText);
+      if (decoded is! Map) {
+        throw const SshPairingOfferFormatException('offer must be an object');
+      }
+      return decoded.cast<String, Object?>();
+    }
+    final padded = code.padRight((code.length + 3) ~/ 4 * 4, '=');
+    final decoded = jsonDecode(utf8.decode(base64Url.decode(padded)));
+    if (decoded is! Map) {
+      throw const SshPairingOfferFormatException('offer must be an object');
+    }
+    return decoded.cast<String, Object?>();
+  }
+
+  static Map<String, Object?> _normalizeDecodedJson(Map<String, Object?> json) {
+    final pairingRaw = json['pairing'];
+    if (pairingRaw is Map) {
+      final pairing = Map<String, Object?>.from(
+        pairingRaw.cast<String, Object?>(),
+      );
+      if (pairing['url'] == null) {
+        final port = (pairing.remove('port') as num?)?.toInt() ?? 2768;
+        final host = _lanHost(json);
+        pairing['url'] = 'https://$host:$port/pair';
+      }
+      pairing.putIfAbsent('expiresAt', () => 1);
+      json['pairing'] = pairing;
+    }
+    json.putIfAbsent('displayName', () => json['username']);
+    final relayRaw = json['relay'];
+    if (relayRaw is Map) {
+      final pairing = (json['pairing'] as Map).cast<String, Object?>();
+      final relay = Map<String, Object?>.from(relayRaw.cast<String, Object?>());
+      relay.putIfAbsent('v', () => 1);
+      relay.putIfAbsent('hostId', () => json['hostId']);
+      relay.putIfAbsent('inviteToken', () => pairing['token']);
+      relay.putIfAbsent('inviteExpiresAt', () => pairing['expiresAt']);
+      json['relay'] = relay;
+    }
+    return json;
+  }
+
+  static String _lanHost(Map<String, Object?> json) {
+    final endpoints = json['endpoints'];
+    if (endpoints is List) {
+      for (final entry in endpoints) {
+        if (entry is! Map) continue;
+        final endpoint = entry.cast<String, Object?>();
+        if (endpoint['kind'] == 'lan') {
+          final host = endpoint['host'] as String?;
+          if (host != null && host.trim().isNotEmpty) {
+            return host;
+          }
+        }
+      }
+    }
+    throw const SshPairingOfferFormatException('missing endpoints');
   }
 
   factory SshPairingOffer.fromJson(Map<String, Object?> json) {
