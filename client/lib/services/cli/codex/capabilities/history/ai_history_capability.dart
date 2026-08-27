@@ -1,7 +1,10 @@
 import 'package:ai_message_core/ai_message_core.dart';
 
 import '../../../registry/capabilities/ai_history_capability.dart';
+import '../../../../io/filesystem.dart';
+import '../../../../session/jsonl_transcript_page_reader.dart';
 import '../../../../session/session_history_context.dart';
+import '../../../../storage/app_storage.dart';
 import '../../../registry/capabilities/history/subagent_side_resolver.dart';
 import '../../../registry/capabilities/history/tool_result_enricher.dart';
 import '../../../registry/capabilities/shared_tool_call_resolvers.dart';
@@ -13,7 +16,11 @@ final class CodexAiHistoryCapability implements AiHistoryCapability {
   const CodexAiHistoryCapability({
     this.subagentSideResolver = const CodexSideResolver(),
     this.toolResultEnricher = const NoOpToolResultEnricher(),
+    this.pageFilesystem,
   });
+
+  /// Test seam; production uses the bound runtime filesystem.
+  final Filesystem? pageFilesystem;
 
   static const _resolvers = SharedToolCallResolvers();
 
@@ -26,6 +33,14 @@ final class CodexAiHistoryCapability implements AiHistoryCapability {
 
   @override
   AiTranscriptLineAppend get lineAppend => appendCodexJsonlEvent;
+
+  @override
+  AiTranscriptPageReader get pageReader => JsonlTranscriptPageReader(
+    fs: pageFilesystem ?? AppStorage.fs,
+    lineAppend: lineAppend,
+    fallbackPrefix: tailFallbackPrefix,
+    sourcePath: locateCodexTranscriptPath,
+  );
 
   @override
   String get tailFallbackPrefix => 'codex';

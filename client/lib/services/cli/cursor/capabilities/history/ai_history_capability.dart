@@ -4,7 +4,10 @@ import 'package:ai_message_core/ai_message_core.dart';
 import 'package:path/path.dart' as p;
 
 import '../../../registry/capabilities/ai_history_capability.dart';
+import '../../../../io/filesystem.dart';
+import '../../../../session/jsonl_transcript_page_reader.dart';
 import '../../../../session/session_history_context.dart';
+import '../../../../storage/app_storage.dart';
 import '../../../registry/capabilities/history/subagent_side_resolver.dart';
 import '../../../registry/capabilities/history/tool_result_enricher.dart';
 import '../../provider/cursor_windows_home_junction.dart';
@@ -17,7 +20,11 @@ final class CursorAiHistoryCapability implements AiHistoryCapability {
   const CursorAiHistoryCapability({
     this.shellResolver = CursorToolCallResolvers.shellResolverInstance,
     this.subagentSideResolver = const CursorSideResolver(),
+    this.pageFilesystem,
   });
+
+  /// Test seam; production uses the bound runtime filesystem.
+  final Filesystem? pageFilesystem;
 
   @override
   final AiShellToolTargetResolver shellResolver;
@@ -35,6 +42,14 @@ final class CursorAiHistoryCapability implements AiHistoryCapability {
   AiTranscriptLineAppend get lineAppend => appendCursorJsonlEvent;
 
   @override
+  AiTranscriptPageReader get pageReader => JsonlTranscriptPageReader(
+    fs: pageFilesystem ?? AppStorage.fs,
+    lineAppend: lineAppend,
+    fallbackPrefix: tailFallbackPrefix,
+    sourcePath: locateCursorTranscriptPath,
+  );
+
+  @override
   String get tailFallbackPrefix => 'cursor';
 
   @override
@@ -44,9 +59,8 @@ final class CursorAiHistoryCapability implements AiHistoryCapability {
   final SubagentSideResolver subagentSideResolver;
 
   @override
-  ToolResultEnricher get toolResultEnricher => CursorTerminalToolResultEnricher(
-        shellResolver: shellResolver,
-      );
+  ToolResultEnricher get toolResultEnricher =>
+      CursorTerminalToolResultEnricher(shellResolver: shellResolver);
 
   @override
   Future<String?> liveCacheToken(SessionHistoryContext ctx) async => null;

@@ -46,9 +46,8 @@ Future<PinnedTranscriptProbeResult> _locateProbe(
 Future<AiTranscriptBundle?> locateFlashskyaiTranscript(
   SessionHistoryContext ctx,
 ) async {
-  final probe = await _locateProbe(ctx);
-  final path = probe.matchedPath;
-  if (!probe.exists || path == null) return null;
+  final path = await locateFlashskyaiTranscriptPath(ctx);
+  if (path == null) return null;
 
   final stat = await ctx.fs.stat(path);
   if (!stat.isFile) return null;
@@ -77,6 +76,15 @@ Future<AiTranscriptBundle?> locateFlashskyaiTranscript(
       ).toHints(),
     },
   );
+}
+
+/// Resolves the single flashskyai JSONL source without decoding it.
+Future<String?> locateFlashskyaiTranscriptPath(
+  SessionHistoryContext ctx,
+) async {
+  final probe = await _locateProbe(ctx);
+  final path = probe.matchedPath;
+  return probe.exists && path != null ? path : null;
 }
 
 /// flashskyai JSONL → [AiMessage] (same shapes as Claude Code).

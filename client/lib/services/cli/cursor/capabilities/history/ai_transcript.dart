@@ -48,6 +48,12 @@ Future<AiTranscriptBundle?> locateCursorTranscript(
   );
 }
 
+/// Resolves Cursor's agent JSONL source without decoding it.
+Future<String?> locateCursorTranscriptPath(SessionHistoryContext ctx) async {
+  final hit = await _locateAgentTranscript(ctx);
+  return hit?.transcriptPath;
+}
+
 class _CursorTranscriptHit {
   const _CursorTranscriptHit({
     required this.transcriptPath,
@@ -246,8 +252,8 @@ bool appendCursorJsonlEvent(
         final toolCallId = rawId.isNotEmpty
             ? rawId
             : role == 'assistant'
-                ? '${id()}-tool-${toolSeq++}'
-                : 'user-tool-${toolSeq++}';
+            ? '${id()}-tool-${toolSeq++}'
+            : 'user-tool-${toolSeq++}';
         final name = '${blockMap['name'] ?? 'tool'}';
         final input = blockMap['input'];
         toolParts.add(
@@ -277,7 +283,8 @@ bool appendCursorJsonlEvent(
 
   var appliedAny = false;
   for (final result in toolResults) {
-    appliedAny = _applyToolResult(
+    appliedAny =
+        _applyToolResult(
           messages,
           toolUseId: result.toolUseId,
           result: result.result,
@@ -362,22 +369,21 @@ String _messageId(Map<String, dynamic> event, String Function() fallbackId) {
 
 Map<String, Object?>? _asArgs(Object? input) {
   if (input is! Map) return null;
-  return {
-    for (final entry in input.entries) '${entry.key}': entry.value,
-  };
+  return {for (final entry in input.entries) '${entry.key}': entry.value};
 }
 
 Object? _toolResultValue(Object? content) {
   return switch (content) {
     String s => s,
-    List list => list
-        .map((item) {
-          if (item is Map && item['type'] == 'text') {
-            return '${item['text'] ?? ''}';
-          }
-          return '$item';
-        })
-        .join('\n'),
+    List list =>
+      list
+          .map((item) {
+            if (item is Map && item['type'] == 'text') {
+              return '${item['text'] ?? ''}';
+            }
+            return '$item';
+          })
+          .join('\n'),
     null => '',
     _ => content,
   };

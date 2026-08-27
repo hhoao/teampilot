@@ -11,7 +11,7 @@ import 'root_rollout.dart';
 Future<AiTranscriptBundle?> locateCodexTranscript(
   SessionHistoryContext ctx,
 ) async {
-  final path = await _locateRollout(ctx);
+  final path = await locateCodexTranscriptPath(ctx);
   if (path == null) return null;
 
   final bytes = await ctx.fs.readBytes(path);
@@ -39,6 +39,10 @@ Future<AiTranscriptBundle?> locateCodexTranscript(
     },
   );
 }
+
+/// Resolves Codex's root rollout JSONL without reading its contents.
+Future<String?> locateCodexTranscriptPath(SessionHistoryContext ctx) =>
+    _locateRollout(ctx);
 
 Future<String?> _locateRollout(SessionHistoryContext ctx) async {
   final home = ctx.env['CODEX_HOME']?.trim() ?? '';
@@ -214,10 +218,7 @@ bool _bindSubAgentActivityThreadId(
       // Prefer an id already present on older transcripts / tool results.
       if (subagentAgentIdFromPart(part) != null) return true;
 
-      final nextArgs = <String, Object?>{
-        ...?part.args,
-        'agent_id': threadId,
-      };
+      final nextArgs = <String, Object?>{...?part.args, 'agent_id': threadId};
       final nextParts = List<AiMessagePart>.of(message.parts);
       nextParts[j] = part.copyWith(args: nextArgs);
       messages[i] = message.copyWith(parts: nextParts);
@@ -430,9 +431,7 @@ String? _reasoningSummaryText(Map<String, dynamic> payload) {
 Map<String, Object?>? _parseArgs(Object? argsRaw) {
   if (argsRaw == null) return null;
   if (argsRaw is Map) {
-    return {
-      for (final entry in argsRaw.entries) '${entry.key}': entry.value,
-    };
+    return {for (final entry in argsRaw.entries) '${entry.key}': entry.value};
   }
   if (argsRaw is String) {
     final trimmed = argsRaw.trim();

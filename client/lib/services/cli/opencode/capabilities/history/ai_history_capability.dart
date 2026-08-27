@@ -16,9 +16,13 @@ final class OpencodeAiHistoryCapability implements AiHistoryCapability {
     this.subagentSideResolver = const OpencodeSideResolver(),
     this.toolResultEnricher = const OpencodeToolOutputBackfillEnricher(),
     this.liveCacheTokenImpl = opencodeLiveCacheToken,
+    this.pageReaderOverride,
   });
 
   final Future<String?> Function(SessionHistoryContext ctx) liveCacheTokenImpl;
+
+  /// Test seam for callers that need to supply an isolated page source.
+  final AiTranscriptPageReader? pageReaderOverride;
 
   static const _resolvers = OpencodeToolCallResolvers();
 
@@ -31,6 +35,10 @@ final class OpencodeAiHistoryCapability implements AiHistoryCapability {
 
   @override
   AiTranscriptLineAppend? get lineAppend => null; // multi-file DB; no single-line incremental dialect.
+
+  @override
+  AiTranscriptPageReader get pageReader =>
+      pageReaderOverride ?? const OpencodeTranscriptPageReader();
 
   @override
   AiTranscriptIncrementalRefresher get incrementalRefresher =>

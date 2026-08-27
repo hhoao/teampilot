@@ -77,11 +77,13 @@ class OpencodeHistoryIncrementalRefresher
     s._adopt(messages);
     s._seen.clear();
     final dataDir = opencodeDataDirFromEnv(ctx);
-    final sessionId =
-        dataDir.isEmpty ? null : await _resolveSessionId(ctx, dataDir);
+    final sessionId = dataDir.isEmpty
+        ? null
+        : await _resolveSessionId(ctx, dataDir);
     s.sessionId = sessionId;
-    final rows =
-        sessionId == null ? null : await _readFingerprints(ctx, sessionId);
+    final rows = sessionId == null
+        ? null
+        : await _readFingerprints(ctx, sessionId);
     if (rows == null) {
       // DB 尚不存在(暂态,下次 seed 重试)与 schema 不兼容(永久回退
       // 全量)都表现为 null;只有 DB 存在且查询失败才标记不可增量,避免
@@ -398,10 +400,7 @@ void _evictParentBundles() {
 void clearOpencodeParentMemo() => _parentBundles.clear();
 
 class _ParentBundleMemo {
-  const _ParentBundleMemo({
-    required this.fingerprint,
-    required this.bundle,
-  });
+  const _ParentBundleMemo({required this.fingerprint, required this.bundle});
 
   final String fingerprint;
   final AiTranscriptBundle bundle;
@@ -455,12 +454,213 @@ Future<String?> opencodeLiveCacheToken(SessionHistoryContext ctx) async {
   return handle.read<String?>(_storeCacheTokenQuery);
 }
 
+/// Cursor-backed SQLite transcript source. It deliberately reuses the full
+/// locator's message/part query ordering and fragment conversion, then asks
+/// [OpencodeAiTranscriptAdapter] to perform the one canonical conversion.
+///
+/// A missing modern store fingerprint, a changed source token, or a malformed
+/// cursor yields null so the history loader retains its full-parse fallback.
+final class OpencodeTranscriptPageReader implements AiTranscriptPageReader {
+  const OpencodeTranscriptPageReader();
+
+  @override
+  Future<AiHistoryPage?> readLatest({
+    required SessionHistoryContext ctx,
+    required int limit,
+  }) async {
+    if (limit <= 0) return null;
+    final snapshot = await _pageSnapshot(ctx);
+    if (snapshot == null) return null;
+    final page = await _readPage(
+      ctx: ctx,
+      snapshot: snapshot,
+      offset: 0,
+      limit: limit,
+      rebuilt: true,
+    );
+    return page?.page;
+  }
+
+  @override
+  Future<AiHistoryPage?> readOlder({
+    required SessionHistoryContext ctx,
+    required AiHistoryCursor cursor,
+    required int limit,
+  }) async {
+    if (limit <= 0 || cursor.offset <= 0) return null;
+    final expected = _decodePageToken(cursor.sourceToken);
+    if (expected == null) return null;
+    final snapshot = await _pageSnapshot(ctx);
+    if (snapshot == null ||
+        snapshot.sourceToken != cursor.sourceToken ||
+        snapshot.dataDir != expected.dataDir ||
+        snapshot.sessionId != expected.sessionId) {
+      return null;
+    }
+    final page = await _readPage(
+      ctx: ctx,
+      snapshot: snapshot,
+      offset: cursor.offset,
+      limit: limit,
+      rebuilt: false,
+    );
+    if (page == null ||
+        _stableHash(page.firstMessageId ?? '') != cursor.lineHash) {
+      return null;
+    }
+    return page.page;
+  }
+
+  Future<_OpencodePageRead?> _readPage({
+    required SessionHistoryContext ctx,
+    required _OpencodePageSnapshot snapshot,
+    required int offset,
+    required int limit,
+    required bool rebuilt,
+  }) async {
+    final handle = await resolveOpencodeSqliteReadPath(
+      fs: ctx.fs,
+      dbPath: ctx.fs.pathContext.join(snapshot.dataDir, 'opencode.db'),
+    );
+    if (handle == null) return null;
+    final rows = await handle.read<_OpencodePageRows?>(_pageRowsQuery, {
+      'sessionId': snapshot.sessionId,
+      'offset': offset,
+      'limit': limit,
+    });
+    if (rows == null || rows.fragments.isEmpty || rows.firstMessageId == null) {
+      return null;
+    }
+    final messages = await const OpencodeAiTranscriptAdapter().parse(
+      AiTranscriptBundle(
+        adapterId: 'opencode',
+        fragments: _toTranscriptFragments(rows.fragments),
+        hints: const {'source': 'sqlite', 'paged': 'true'},
+      ),
+    );
+    // Empty output means this raw row window contains only unsupported or
+    // synthetic entries. Do not advance a cursor that cannot be compared with
+    // the adapter's visible transcript.
+    if (messages.isEmpty) return null;
+    final hasOlder = rows.nextMessageId != null;
+    final nextOffset = offset + limit;
+    return (
+      firstMessageId: rows.firstMessageId,
+      page: AiHistoryPage(
+        messages: messages,
+        hasOlder: hasOlder,
+        nextCursor: hasOlder
+            ? AiHistoryCursor(
+                sourceToken: snapshot.sourceToken,
+                offset: nextOffset,
+                lineHash: _stableHash(rows.nextMessageId!),
+              )
+            : null,
+        sourceToken: snapshot.sourceToken,
+        rebuilt: rebuilt,
+      ),
+    );
+  }
+}
+
+typedef _OpencodePageSnapshot = ({
+  String dataDir,
+  String sessionId,
+  String sourceToken,
+});
+
+Future<_OpencodePageSnapshot?> _pageSnapshot(SessionHistoryContext ctx) async {
+  final dataDir = opencodeDataDirFromEnv(ctx);
+  if (dataDir.isEmpty) return null;
+  final sessionId = await _resolveSessionId(ctx, dataDir);
+  if (sessionId == null || sessionId.isEmpty) return null;
+  // The existing store fingerprint is intentionally cheap and returns null on
+  // old/unsupported schemas (for example, without time_updated). Never hash
+  // the database as a paging fallback.
+  final version = await opencodeLiveCacheToken(ctx);
+  if (version == null || version.isEmpty) return null;
+  final sourceToken = base64Url.encode(
+    utf8.encode(
+      jsonEncode({
+        'dataDir': dataDir,
+        'sessionId': sessionId,
+        'version': version,
+      }),
+    ),
+  );
+  return (dataDir: dataDir, sessionId: sessionId, sourceToken: sourceToken);
+}
+
+({String dataDir, String sessionId})? _decodePageToken(String token) {
+  try {
+    final decoded = jsonDecode(utf8.decode(base64Url.decode(token)));
+    if (decoded is! Map ||
+        decoded['dataDir'] is! String ||
+        decoded['sessionId'] is! String ||
+        decoded['version'] is! String) {
+      return null;
+    }
+    return (
+      dataDir: decoded['dataDir'] as String,
+      sessionId: decoded['sessionId'] as String,
+    );
+  } on Object {
+    return null;
+  }
+}
+
+typedef _OpencodePageRows = ({
+  List<SqliteFragmentData> fragments,
+  String? firstMessageId,
+  String? nextMessageId,
+});
+
+typedef _OpencodePageRead = ({String? firstMessageId, AiHistoryPage page});
+
+/// Page query with the same `(time_created, id)` message order and
+/// `_buildSqliteFragments` conversion used by the full SQLite locator. The
+/// descending read makes the recent page cheap; fragments are restored to
+/// ascending order before the adapter sees them.
+_OpencodePageRows? _pageRowsQuery(Database db, Object? args) {
+  final map = args as Map<String, Object?>;
+  final sessionId = map['sessionId'] as String;
+  final offset = map['offset'] as int;
+  final limit = map['limit'] as int;
+  if (offset < 0 || limit <= 0) return null;
+  final rows = db.select(
+    '''
+SELECT id, data, time_created
+FROM message
+WHERE session_id = ?
+ORDER BY time_created DESC, id DESC
+LIMIT ? OFFSET ?
+''',
+    [sessionId, limit + 1, offset],
+  );
+  if (rows.isEmpty) return null;
+  final visible = rows.length > limit ? rows.sublist(0, limit) : rows;
+  final nextId = rows.length > limit ? '${rows[limit]['id']}' : null;
+  final firstId = '${visible.first['id']}';
+  final fragments = _buildSqliteFragments(
+    db,
+    sessionId,
+    visible.reversed.toList(growable: false),
+  );
+  return (fragments: fragments, firstMessageId: firstId, nextMessageId: nextId);
+}
+
+int _stableHash(String value) {
+  var hash = 0x811C9DC5;
+  for (final codeUnit in value.codeUnits) {
+    hash = ((hash ^ codeUnit) * 0x01000193) & 0xFFFFFFFF;
+  }
+  return hash;
+}
+
 /// Store 级指纹(worker isolate 上执行,args = null)。
 String? _storeCacheTokenQuery(Database db, Object? args) {
   final parts = db.select('SELECT COUNT(*), MAX(time_updated) FROM part');
-  final sessions = db.select(
-    'SELECT COUNT(*), MAX(time_updated) FROM session',
-  );
+  final sessions = db.select('SELECT COUNT(*), MAX(time_updated) FROM session');
   if (parts.isEmpty || sessions.isEmpty) return null;
   return 'oc|${parts.first['COUNT(*)']}|${parts.first['MAX(time_updated)']}'
       '|${sessions.first['COUNT(*)']}|${sessions.first['MAX(time_updated)']}';
@@ -490,10 +690,7 @@ ORDER BY id ASC
   );
   if (messageRows.isEmpty) return null;
   final fragments = _buildSqliteFragments(db, sessionId, messageRows);
-  return (
-    fragments: fragments,
-    lastId: '${messageRows.last['id']}',
-  );
+  return (fragments: fragments, lastId: '${messageRows.last['id']}');
 }
 
 /// 全量 sqlite locate 查询(worker isolate 上执行,args = sessionId)。
@@ -530,13 +727,11 @@ Future<AiTranscriptBundle?> locateOpencodeTranscriptIncremental(
   );
   if (handle == null) return null;
 
-  final read = await handle.read<({
-    List<SqliteFragmentData> fragments,
-    String lastId,
-  })?>(_incrementalLocateQuery, {
-    'sessionId': sessionId,
-    'afterMessageId': afterMessageId,
-  });
+  final read = await handle
+      .read<({List<SqliteFragmentData> fragments, String lastId})?>(
+        _incrementalLocateQuery,
+        {'sessionId': sessionId, 'afterMessageId': afterMessageId},
+      );
   if (read == null) return null;
 
   final fragments = _toTranscriptFragments(read.fragments);
@@ -576,8 +771,10 @@ Future<AiTranscriptBundle?> _locateSqliteStorage(
   );
   if (handle == null) return null;
 
-  final fragmentsData =
-      await handle.read<List<SqliteFragmentData>>(_fullLocateQuery, sessionId);
+  final fragmentsData = await handle.read<List<SqliteFragmentData>>(
+    _fullLocateQuery,
+    sessionId,
+  );
   if (fragmentsData == null) return null;
   final fragments = _toTranscriptFragments(fragmentsData);
   if (fragments.where((f) => f.name.startsWith('message/')).isEmpty) {
@@ -710,10 +907,7 @@ Map<String, dynamic>? _decodeDbJson(Object? raw) {
   return null;
 }
 
-Future<String?> _resolveSessionId(
-  SessionHistoryContext ctx,
-  String dataDir,
-) {
+Future<String?> _resolveSessionId(SessionHistoryContext ctx, String dataDir) {
   return resolveOpencodeNativeSessionId(
     fs: ctx.fs,
     dataDir: dataDir,
@@ -743,11 +937,7 @@ final class OpencodeAiTranscriptAdapter implements AiTranscriptAdapter {
         final role = '${obj['role'] ?? ''}'.trim();
         if (id.isEmpty || (role != 'user' && role != 'assistant')) continue;
         messageInfos.add(
-          _OcMessage(
-            id: id,
-            role: role,
-            createdMs: _createdMs(obj['time']),
-          ),
+          _OcMessage(id: id, role: role, createdMs: _createdMs(obj['time'])),
         );
       } else if (name.startsWith('part/')) {
         // part/{messageId}/{partId}.json
@@ -851,9 +1041,7 @@ Iterable<AiMessagePart> _partsFromOcPart(
       final name = toolName.isEmpty ? 'tool' : toolName;
       final stateRaw = part['state'];
       if (stateRaw is! Map) {
-        return [
-          AiToolCallPart(toolCallId: callId, toolName: name),
-        ];
+        return [AiToolCallPart(toolCallId: callId, toolName: name)];
       }
       final state = Map<String, dynamic>.from(stateRaw);
       final statusRaw = '${state['status'] ?? ''}';
@@ -891,7 +1079,5 @@ Iterable<AiMessagePart> _partsFromOcPart(
 
 Map<String, Object?>? _asArgs(Object? input) {
   if (input is! Map) return null;
-  return {
-    for (final entry in input.entries) '${entry.key}': entry.value,
-  };
+  return {for (final entry in input.entries) '${entry.key}': entry.value};
 }

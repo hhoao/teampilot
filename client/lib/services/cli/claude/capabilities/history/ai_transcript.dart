@@ -41,9 +41,8 @@ Future<PinnedTranscriptProbeResult> _locateProbe(
 Future<AiTranscriptBundle?> locateClaudeTranscript(
   SessionHistoryContext ctx,
 ) async {
-  final probe = await _locateProbe(ctx);
-  final path = probe.matchedPath;
-  if (!probe.exists || path == null) return null;
+  final path = await locateClaudeTranscriptPath(ctx);
+  if (path == null) return null;
 
   final stat = await ctx.fs.stat(path);
   if (!stat.isFile) return null;
@@ -72,6 +71,15 @@ Future<AiTranscriptBundle?> locateClaudeTranscript(
       ).toHints(),
     },
   );
+}
+
+/// Resolves the single Claude JSONL source without reading its contents.
+/// Paged history uses this exact locator and retains [locateClaudeTranscript]
+/// as its full-parse fallback.
+Future<String?> locateClaudeTranscriptPath(SessionHistoryContext ctx) async {
+  final probe = await _locateProbe(ctx);
+  final path = probe.matchedPath;
+  return probe.exists && path != null ? path : null;
 }
 
 /// Claude Code JSONL → [AiMessage] with text / reasoning / tool-call parts.
