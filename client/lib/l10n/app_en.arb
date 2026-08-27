@@ -558,6 +558,7 @@
   "homeWorkspaceWorkspaceSettingsSectionBasic": "Basic",
   "homeWorkspaceWorkspaceSettingsBasicInfo": "Basic information",
   "homeWorkspaceWorkspaceId": "Workspace ID",
+  "homeWorkspaceWorkspacePath": "Workspace path",
   "homeWorkspaceWorkspaceAdditionalDirsCount": "{count, plural, =1{1 additional directory} other{{count} additional directories}}",
   "@homeWorkspaceWorkspaceAdditionalDirsCount": {
     "placeholders": {

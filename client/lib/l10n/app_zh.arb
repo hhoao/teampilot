@@ -533,6 +533,7 @@
   "homeWorkspaceWorkspaceSettingsSectionBasic": "基本设置",
   "homeWorkspaceWorkspaceSettingsBasicInfo": "基本信息",
   "homeWorkspaceWorkspaceId": "工作区 ID",
+  "homeWorkspaceWorkspacePath": "工作区路径",
   "homeWorkspaceWorkspaceAdditionalDirsCount": "{count} 个附加目录",
   "@homeWorkspaceWorkspaceAdditionalDirsCount": {
     "placeholders": {

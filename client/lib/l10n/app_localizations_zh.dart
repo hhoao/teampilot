@@ -1230,6 +1230,9 @@ class AppLocalizationsZh extends AppLocalizations {
   String get homeWorkspaceWorkspaceId => '工作区 ID';
 
   @override
+  String get homeWorkspaceWorkspacePath => '工作区路径';
+
+  @override
   String homeWorkspaceWorkspaceAdditionalDirsCount(int count) {
     return '$count 个附加目录';
   }

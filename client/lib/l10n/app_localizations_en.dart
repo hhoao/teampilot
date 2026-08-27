@@ -1282,6 +1282,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get homeWorkspaceWorkspaceId => 'Workspace ID';
 
   @override
+  String get homeWorkspaceWorkspacePath => 'Workspace path';
+
+  @override
   String homeWorkspaceWorkspaceAdditionalDirsCount(int count) {
     String _temp0 = intl.Intl.pluralLogic(
       count,

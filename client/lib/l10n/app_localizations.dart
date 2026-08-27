@@ -2402,6 +2402,12 @@ abstract class AppLocalizations {
   /// **'Workspace ID'**
   String get homeWorkspaceWorkspaceId;
 
+  /// No description provided for @homeWorkspaceWorkspacePath.
+  ///
+  /// In en, this message translates to:
+  /// **'Workspace path'**
+  String get homeWorkspaceWorkspacePath;
+
   /// No description provided for @homeWorkspaceWorkspaceAdditionalDirsCount.
   ///
   /// In en, this message translates to:

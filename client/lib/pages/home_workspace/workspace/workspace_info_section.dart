@@ -61,7 +61,22 @@ class WorkspaceInfoSection extends StatelessWidget {
                 _WorkspaceSettingsInlineRow(
                   label: l10n.homeWorkspaceWorkspaceId,
                   value: live.workspaceId,
-                  onCopy: () => _copyText(context, live.workspaceId),
+                  valueEllipsis: true,
+                  onCopy: () => _copyText(
+                    context,
+                    live.workspaceId,
+                    toastMessage: l10n.aiMessageCopied,
+                  ),
+                ),
+                _WorkspaceSettingsInlineRow(
+                  label: l10n.homeWorkspaceWorkspacePath,
+                  value: live.firstFolderPath.isNotEmpty
+                      ? live.firstFolderPath
+                      : l10n.workspacePrimaryPathNotSelected,
+                  valueEllipsis: true,
+                  onCopy: live.firstFolderPath.isNotEmpty
+                      ? () => _copyText(context, live.firstFolderPath)
+                      : null,
                 ),
                 _WorkspaceSettingsInlineRow(
                   label: l10n.workspaceTypeLabel,
@@ -175,6 +190,7 @@ class _WorkspaceSettingsInlineRow extends StatelessWidget {
     required this.label,
     this.value = '',
     this.valueWidget,
+    this.valueEllipsis = false,
     this.onEdit,
     this.onCopy,
     this.showDividerBelow = true,
@@ -183,6 +199,7 @@ class _WorkspaceSettingsInlineRow extends StatelessWidget {
   final String label;
   final String value;
   final Widget? valueWidget;
+  final bool valueEllipsis;
   final VoidCallback? onEdit;
   final VoidCallback? onCopy;
   final Widget? trailing;
@@ -197,7 +214,7 @@ class _WorkspaceSettingsInlineRow extends StatelessWidget {
     if (onEdit != null) {
       action = TextButton(onPressed: onEdit, child: Text(l10n.edit));
     } else if (onCopy != null) {
-      action = TextButton(onPressed: onCopy, child: Text(l10n.copyFolderPath));
+      action = TextButton(onPressed: onCopy, child: Text(l10n.copy));
     }
 
     return Column(
@@ -206,7 +223,9 @@ class _WorkspaceSettingsInlineRow extends StatelessWidget {
         Padding(
           padding: const EdgeInsets.fromLTRB(20, 14, 20, 14),
           child: Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
+            crossAxisAlignment: valueEllipsis
+                ? CrossAxisAlignment.center
+                : CrossAxisAlignment.start,
             children: [
               SizedBox(
                 width: 168,
@@ -221,6 +240,8 @@ class _WorkspaceSettingsInlineRow extends StatelessWidget {
                     Text(
                       value,
                       style: TpTextStyles.of(context).mdMedium,
+                      maxLines: valueEllipsis ? 1 : null,
+                      overflow: valueEllipsis ? TextOverflow.ellipsis : null,
                     ),
               ),
               if (trailing != null) trailing!,
@@ -247,11 +268,15 @@ String _formatTimestamp(int ms) {
       '${two(dt.hour)}:${two(dt.minute)}';
 }
 
-void _copyText(BuildContext context, String text) {
+void _copyText(
+  BuildContext context,
+  String text, {
+  String? toastMessage,
+}) {
   Clipboard.setData(ClipboardData(text: text));
   AppToast.show(
     context,
-    message: context.l10n.pathCopied(text),
+    message: toastMessage ?? context.l10n.pathCopied(text),
     variant: TpToastVariant.success,
   );
 }
