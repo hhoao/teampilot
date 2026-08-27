@@ -18,3 +18,8 @@ Verification:
 - History hydration now waits for the initial transcript load to establish its CLI user-turn baseline; restored records can no longer be consumed by pre-existing transcript turns.
 - FIFO transcript confirmation skips persisted `failed` records. Only pending/sending records are eligible for confirmation and persisted-record cleanup.
 - Added focused seat tests for restoring alongside existing user history and for preserving a failed record after a later CLI user turn.
+
+## Round 2 review fix
+
+- Captured the seat/session/member scope before the asynchronous initial load. The continuation now verifies that scope is still current before hydrating, so an A→B switch cannot hydrate B with A's persisted records.
+- Added a focused rapid-switch scope regression test.

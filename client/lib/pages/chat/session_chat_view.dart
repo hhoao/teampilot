@@ -49,6 +49,7 @@ import '../../services/session/ai_history_live_refresh_controller.dart';
 import '../../services/session/failed_message_store.dart';
 import '../../services/session/chat_transcript_find_controller.dart';
 import '../../services/session/history_seat_key.dart';
+import '../../services/session/history_hydration_scope.dart';
 import '../../services/session/history_awaiting_working_sync.dart';
 import '../../services/session/session_history_pagination.dart';
 import '../../services/storage/app_storage.dart';
@@ -292,8 +293,22 @@ class _SessionChatViewState extends State<SessionChatView> {
   /// confirmation. Hydrating before it completes lets existing transcript
   /// turns consume restored records as though they were freshly sent.
   Future<void> _loadHistoryThenHydratePersistedPendingUsers() async {
+    final seat = _seat;
+    if (seat == null) return;
+    final scope = HistoryHydrationScope(
+      seat: seat,
+      sessionId: widget.session.sessionId,
+      memberId: widget.selectedMemberId,
+    );
     await _loadHistory();
-    if (!mounted) return;
+    if (!mounted ||
+        !scope.isCurrent(
+          seat: _seat,
+          sessionId: widget.session.sessionId,
+          memberId: widget.selectedMemberId,
+        )) {
+      return;
+    }
     await _hydratePersistedPendingUsers();
   }
 
