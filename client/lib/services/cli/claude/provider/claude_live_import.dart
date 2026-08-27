@@ -3,10 +3,10 @@ import 'dart:convert';
 import '../../../../models/app_provider_config.dart';
 import '../../registry/capabilities/provider_capability.dart';
 import '../../../io/filesystem.dart';
-import '../../../provider/cc_switch_catalog_import.dart';
+import '../../codex/provider/codex_cc_switch_import.dart';
+import 'claude_cc_switch_import.dart';
 import 'claude_official_provider.dart';
 import '../../../provider/credential_binding.dart';
-import '../../codex/provider/codex_cc_switch_import.dart';
 
 /// Scans `~/.claude` settings profiles and CC Switch rows.
 abstract final class ClaudeLiveImport {
@@ -15,11 +15,20 @@ abstract final class ClaudeLiveImport {
   static Future<ProviderCatalogSnapshot> loadSnapshot(
     ProviderCatalogLoadContext context,
   ) async {
+    const importer = ClaudeCcSwitchImport();
+    final runtime = await importer.loadRuntime(
+      fs: context.fs,
+      home: context.homeDirectory,
+    );
     final byId = <String, AppProviderConfig>{};
     final sources = <String>{};
     final now = context.resolvedNow();
 
-    for (final provider in await _loadLiveProfiles(
+    if (runtime.hasLive) {
+      byId['default'] = importer.buildLiveDefaultProvider(runtime, now);
+      sources.add('live');
+    }
+    for (final provider in await _loadExtraProfiles(
       context.fs,
       context.homeDirectory,
       now,
@@ -27,26 +36,14 @@ abstract final class ClaudeLiveImport {
       byId[provider.id] = provider;
       sources.add('live');
     }
-
-    const ccSwitch = CcSwitchCatalogImport();
-    for (final row in await ccSwitch.loadRows(
-      cli: CliTool.claude,
+    for (final row in await importer.loadCatalog(
       fs: context.fs,
-      homeDirectory: context.homeDirectory,
+      home: context.homeDirectory,
     )) {
-      if (row.id.isEmpty) continue;
-      byId[row.id] = providerFromSettings(
-        row.id,
-        row.settingsConfig,
-        now,
-        name: row.name,
-        category: row.category,
-        websiteUrl: row.websiteUrl,
-        notes: row.notes,
-        icon: row.icon,
-        iconColor: row.iconColor,
-        createdAt: row.createdAt,
-        meta: row.meta,
+      byId[row.id] = importer.buildCatalogProvider(
+        row: row,
+        runtime: runtime,
+        now: now,
       );
       sources.add('cc-switch');
     }
@@ -58,7 +55,7 @@ abstract final class ClaudeLiveImport {
     );
   }
 
-  static Future<List<AppProviderConfig>> _loadLiveProfiles(
+  static Future<List<AppProviderConfig>> _loadExtraProfiles(
     Filesystem fs,
     String homeDirectory,
     int now,
@@ -71,10 +68,6 @@ abstract final class ClaudeLiveImport {
     if (!(await fs.stat(dirPath)).isDirectory) return const [];
 
     final files = <_NamedFile>[];
-    final settingsPath = ctx.join(dirPath, 'settings.json');
-    if ((await fs.stat(settingsPath)).isFile) {
-      files.add(_NamedFile('default', settingsPath));
-    }
     for (final entry in await fs.listDir(dirPath)) {
       if (entry.isDirectory) continue;
       final name = entry.name;
@@ -128,6 +121,7 @@ abstract final class ClaudeLiveImport {
             isOfficialClaudeSettings(config)
         ? AppProviderCategory.official
         : category;
+    final resolvedMeta = meta ?? _mapFrom(config['meta']) ?? const {};
     return AppProviderConfig(
       id: id,
       cli: CliTool.claude,
@@ -146,7 +140,7 @@ abstract final class ClaudeLiveImport {
         ...config,
         if (resolvedCategory == AppProviderCategory.official)
           credentialBindingConfigKey: CredentialBindingKind.linked.value,
-        if (meta != null && meta.isNotEmpty) 'meta': meta,
+        if (resolvedMeta.isNotEmpty) 'meta': resolvedMeta,
       },
       createdAt: createdAt > 0 ? createdAt : now,
       updatedAt: now,
@@ -175,6 +169,11 @@ Map<String, String> _stringMap(Object? raw) {
     for (final entry in raw.entries)
       entry.key.toString(): entry.value?.toString() ?? '',
   };
+}
+
+Map<String, Object?>? _mapFrom(Object? raw) {
+  if (raw is Map) return Map<String, Object?>.from(raw);
+  return null;
 }
 
 class _NamedFile {
