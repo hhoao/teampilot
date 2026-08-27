@@ -137,6 +137,11 @@ class AppKeys {
   static const configSshProfilesSectionButton = Key(
     'config-ssh-profiles-section-button',
   );
+  static const connectQrCode = Key('connect-qr-code');
+  static const connectScanQr = Key('connect-scan-qr');
+  static const connectPasteCode = Key('connect-paste-code');
+  static const connectSshdEnableCta = Key('connect-sshd-enable-cta');
+  static const connectRegenerateQr = Key('connect-regenerate-qr');
   static const configGithubSectionButton = Key('config-github-section-button');
   static const configDiscoverySectionButton = Key(
     'config-discovery-section-button',

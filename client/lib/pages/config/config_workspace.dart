@@ -15,6 +15,7 @@ import '../about_page.dart';
 import '../system/log_config_workspace.dart';
 import 'ai_features_config_section.dart';
 import 'cli_config_section.dart';
+import 'connect_config_section.dart';
 import 'github_config_section.dart';
 import 'download_sources_config_section.dart';
 import 'discovery_config_section.dart';
@@ -30,12 +31,13 @@ int _configSectionDialogIndex(ConfigSection section) {
     ConfigSection.cli => 2,
     ConfigSection.aiFeatures => 3,
     ConfigSection.sshProfiles => 4,
-    ConfigSection.github => 5,
-    ConfigSection.downloadSources => 6,
-    ConfigSection.discovery => 7,
-    ConfigSection.shortcuts => 8,
-    ConfigSection.about => 9,
-    ConfigSection.logs => 9,
+    ConfigSection.connect => 5,
+    ConfigSection.github => 6,
+    ConfigSection.downloadSources => 7,
+    ConfigSection.discovery => 8,
+    ConfigSection.shortcuts => 9,
+    ConfigSection.about => 10,
+    ConfigSection.logs => 10,
   };
 }
 
@@ -100,6 +102,13 @@ Future<void> showWorkspaceSettingsDialog(
         subtitle: (l10n) => l10n.sshProfilesPageSubtitle,
         bodyBuilder: (_) =>
             const SshProfilesConfigWorkspace(showHeading: false),
+      ),
+      SettingsDialogEntry(
+        icon: Icons.phone_android_outlined,
+        navLabel: (l10n) => l10n.connectSettingsTitle,
+        title: (l10n) => l10n.connectSettingsTitle,
+        subtitle: (l10n) => l10n.connectSettingsSubtitle,
+        bodyBuilder: (_) => const ConnectConfigWorkspace(showHeading: false),
       ),
       SettingsDialogEntry(
         icon: Icons.hub_outlined,
@@ -208,6 +217,14 @@ class ConfigSettingsHubPage extends StatelessWidget {
           }),
         ),
         WorkspaceHubEntry(
+          title: l10n.connectSettingsTitle,
+          icon: Icons.phone_android_outlined,
+          onTap: throttledTap('config_hub_connect', () {
+            context.read<ConfigCubit>().selectSection(ConfigSection.connect);
+            context.push('/config/${ConfigSection.connect.routeSegment}');
+          }),
+        ),
+        WorkspaceHubEntry(
           key: AppKeys.configGithubSectionButton,
           title: l10n.githubSettingsTitle,
           icon: Icons.hub_outlined,
@@ -311,6 +328,9 @@ class ConfigWorkspace extends StatelessWidget {
         ConfigSection.sshProfiles => SshProfilesConfigWorkspace(
           showHeading: showHeading,
         ),
+        ConfigSection.connect => ConnectConfigWorkspace(
+          showHeading: showHeading,
+        ),
         ConfigSection.github => GithubConfigWorkspace(showHeading: showHeading),
         ConfigSection.downloadSources => DownloadSourcesConfigWorkspace(
           showHeading: showHeading,
@@ -393,6 +413,15 @@ class ConfigNavPanel extends StatelessWidget {
           onTap: throttledTap(
             'config_nav_ssh_profiles',
             () => onSelectSection(ConfigSection.sshProfiles),
+          ),
+        ),
+        WorkspaceHubEntry(
+          title: l10n.connectSettingsTitle,
+          icon: Icons.phone_android_outlined,
+          selected: section == ConfigSection.connect,
+          onTap: throttledTap(
+            'config_nav_connect',
+            () => onSelectSection(ConfigSection.connect),
           ),
         ),
         WorkspaceHubEntry(

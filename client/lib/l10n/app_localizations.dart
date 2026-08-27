@@ -14359,6 +14359,240 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Resets soon'**
   String get managedProvidersResetsSoon;
+
+  /// No description provided for @connectSettingsTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Phone'**
+  String get connectSettingsTitle;
+
+  /// No description provided for @connectSettingsSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Pair a phone over SSH'**
+  String get connectSettingsSubtitle;
+
+  /// No description provided for @connectLanOnlyStatus.
+  ///
+  /// In en, this message translates to:
+  /// **'LAN only'**
+  String get connectLanOnlyStatus;
+
+  /// No description provided for @connectRemoteReadyStatus.
+  ///
+  /// In en, this message translates to:
+  /// **'LAN and remote'**
+  String get connectRemoteReadyStatus;
+
+  /// No description provided for @connectSshdDown.
+  ///
+  /// In en, this message translates to:
+  /// **'OpenSSH is not listening. Enable Remote Login or start sshd before pairing.'**
+  String get connectSshdDown;
+
+  /// No description provided for @connectScanHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Scan this code in TeamPilot on your phone.'**
+  String get connectScanHint;
+
+  /// No description provided for @connectAndroidScanHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Scan a QR from desktop TeamPilot.'**
+  String get connectAndroidScanHint;
+
+  /// No description provided for @connectPairSheetTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Pair with a desktop'**
+  String get connectPairSheetTitle;
+
+  /// No description provided for @connectPairSheetSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Scan the QR shown by desktop TeamPilot, or paste its pairing code.'**
+  String get connectPairSheetSubtitle;
+
+  /// No description provided for @connectScanQr.
+  ///
+  /// In en, this message translates to:
+  /// **'Scan QR'**
+  String get connectScanQr;
+
+  /// No description provided for @connectPasteCode.
+  ///
+  /// In en, this message translates to:
+  /// **'Paste code'**
+  String get connectPasteCode;
+
+  /// No description provided for @connectPairCodeHint.
+  ///
+  /// In en, this message translates to:
+  /// **'teampilot://pair-ssh?code=…'**
+  String get connectPairCodeHint;
+
+  /// No description provided for @connectPairNow.
+  ///
+  /// In en, this message translates to:
+  /// **'Pair'**
+  String get connectPairNow;
+
+  /// No description provided for @connectPairing.
+  ///
+  /// In en, this message translates to:
+  /// **'Pairing…'**
+  String get connectPairing;
+
+  /// No description provided for @connectPairExpired.
+  ///
+  /// In en, this message translates to:
+  /// **'Code expired. Scan again.'**
+  String get connectPairExpired;
+
+  /// No description provided for @connectPairUpdateApp.
+  ///
+  /// In en, this message translates to:
+  /// **'Update TeamPilot to scan this code.'**
+  String get connectPairUpdateApp;
+
+  /// No description provided for @connectPairInvalid.
+  ///
+  /// In en, this message translates to:
+  /// **'This pairing code is invalid.'**
+  String get connectPairInvalid;
+
+  /// No description provided for @connectPairFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not pair with this desktop. Try again.'**
+  String get connectPairFailed;
+
+  /// No description provided for @connectNeedLanOrRelay.
+  ///
+  /// In en, this message translates to:
+  /// **'Join the same Wi-Fi as this computer, or set a relay on the desktop first.'**
+  String get connectNeedLanOrRelay;
+
+  /// No description provided for @connectScannerUnavailable.
+  ///
+  /// In en, this message translates to:
+  /// **'The camera scanner is unavailable. Paste the code instead.'**
+  String get connectScannerUnavailable;
+
+  /// No description provided for @connectCheckAgain.
+  ///
+  /// In en, this message translates to:
+  /// **'Check again'**
+  String get connectCheckAgain;
+
+  /// No description provided for @connectCopyLink.
+  ///
+  /// In en, this message translates to:
+  /// **'Copy link'**
+  String get connectCopyLink;
+
+  /// No description provided for @connectRegenerate.
+  ///
+  /// In en, this message translates to:
+  /// **'Regenerate'**
+  String get connectRegenerate;
+
+  /// No description provided for @connectInterfaceLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Network interface'**
+  String get connectInterfaceLabel;
+
+  /// No description provided for @connectNoNetworkAddress.
+  ///
+  /// In en, this message translates to:
+  /// **'No non-loopback IPv4 network interface is available.'**
+  String get connectNoNetworkAddress;
+
+  /// No description provided for @connectAdvancedTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Reachability'**
+  String get connectAdvancedTitle;
+
+  /// No description provided for @connectAdvancedSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Add SSH addresses that are reachable outside this LAN.'**
+  String get connectAdvancedSubtitle;
+
+  /// No description provided for @connectExtraHost.
+  ///
+  /// In en, this message translates to:
+  /// **'Host'**
+  String get connectExtraHost;
+
+  /// No description provided for @connectExtraPort.
+  ///
+  /// In en, this message translates to:
+  /// **'Port'**
+  String get connectExtraPort;
+
+  /// No description provided for @connectAddEndpoint.
+  ///
+  /// In en, this message translates to:
+  /// **'Add address'**
+  String get connectAddEndpoint;
+
+  /// No description provided for @connectRemoveEndpoint.
+  ///
+  /// In en, this message translates to:
+  /// **'Remove address'**
+  String get connectRemoveEndpoint;
+
+  /// No description provided for @connectRelayUrl.
+  ///
+  /// In en, this message translates to:
+  /// **'Relay URL'**
+  String get connectRelayUrl;
+
+  /// No description provided for @connectRelayUrlHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Optional relay service URL'**
+  String get connectRelayUrlHint;
+
+  /// No description provided for @connectSaveSettings.
+  ///
+  /// In en, this message translates to:
+  /// **'Save reachability'**
+  String get connectSaveSettings;
+
+  /// No description provided for @connectInvalidEndpoint.
+  ///
+  /// In en, this message translates to:
+  /// **'Every address needs a host and a port from 1 to 65535.'**
+  String get connectInvalidEndpoint;
+
+  /// No description provided for @connectPairedDevicesTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Paired devices'**
+  String get connectPairedDevicesTitle;
+
+  /// No description provided for @connectNoPairedDevices.
+  ///
+  /// In en, this message translates to:
+  /// **'No phones are paired yet.'**
+  String get connectNoPairedDevices;
+
+  /// No description provided for @connectRevokeDevice.
+  ///
+  /// In en, this message translates to:
+  /// **'Revoke'**
+  String get connectRevokeDevice;
+
+  /// No description provided for @connectError.
+  ///
+  /// In en, this message translates to:
+  /// **'Connect could not refresh pairing. Try again.'**
+  String get connectError;
 }
 
 class _AppLocalizationsDelegate

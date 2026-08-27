@@ -1,5 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/models/ssh_profile.dart';
+import 'package:teampilot/models/ssh_reachability.dart';
 
 void main() {
   test('SSH profile ignores legacy launch options', () {
@@ -57,4 +58,37 @@ void main() {
     );
     expect(a, isNot(equals(b)));
   });
+
+  test(
+    'json round-trip preserves pairing fields; manual profiles omit them',
+    () {
+      const paired = SshProfile(
+        id: 'a',
+        name: 'Box',
+        host: '192.168.1.20',
+        username: 'u',
+        endpoints: [
+          SshReachabilityEndpoint(
+            kind: SshEndpointKind.lan,
+            host: '192.168.1.20',
+            port: 22,
+          ),
+        ],
+        hostKeyFingerprints: ['SHA256:abc'],
+        pairedDesktopId: 'AbCdEf0123_-xyZ9',
+        relayUrl: 'wss://relay.example.com',
+        lastGoodKind: SshEndpointKind.lan,
+      );
+
+      final round = SshProfile.fromJson(paired.toJson());
+
+      expect(round.pairedDesktopId, 'AbCdEf0123_-xyZ9');
+      expect(round.relayUrl, 'wss://relay.example.com');
+      expect(round.lastGoodKind, SshEndpointKind.lan);
+      expect(round.endpoints.single.host, '192.168.1.20');
+
+      const manual = SshProfile(id: 'b', name: 'm', host: 'h', username: 'u');
+      expect(manual.toJson().containsKey('pairedDesktopId'), isFalse);
+    },
+  );
 }

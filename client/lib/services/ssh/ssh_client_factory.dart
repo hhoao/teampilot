@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
+import 'dart:io';
 import 'dart:typed_data';
 import 'package:dartssh2/dartssh2.dart';
 import '../../models/ssh_profile.dart';
@@ -11,6 +12,12 @@ import 'ssh_transport_close.dart';
 
 typedef SshClientConnector =
     Future<SSHClient> Function(SshProfile profile, {Duration timeout});
+
+/// Returns the actual socket target for [profile], or null to use the
+/// stored host/port. Relay-paired profiles route through this while a
+/// loopback tunnel lives.
+typedef SshDialTargetResolver =
+    Future<({InternetAddress address, int port})?> Function(SshProfile profile);
 
 typedef SshProfileTransportClosedHandler =
     void Function(String profileId, Object error, StackTrace stackTrace);
@@ -62,6 +69,7 @@ class SshClientFactory {
     Future<bool> Function(HostKeyPromptInfo)? onHostKeyPrompt,
     void Function(String storageKey, String fingerprintHex)? onHostKeyPersist,
     SshClientConnector? connector,
+    SshDialTargetResolver? dialTargetResolver,
   }) : _credentialStore = credentialStore,
        _knownHostRepository = knownHostRepository,
        _events = events ?? SshConnectionEvents(),
@@ -72,7 +80,8 @@ class SshClientFactory {
          onHostKeyPrompt: onHostKeyPrompt,
          onHostKeyPersist: onHostKeyPersist,
        ),
-       _connector = connector;
+       _connector = connector,
+       _dialTargetResolver = dialTargetResolver;
 
   final SshCredentialStore _credentialStore;
   final SshKnownHostRepository _knownHostRepository;
@@ -82,6 +91,7 @@ class SshClientFactory {
   _onHostKeyPersist;
   final SshHostKeyTrustPolicy _hostKeyTrustPolicy;
   final SshClientConnector? _connector;
+  final SshDialTargetResolver? _dialTargetResolver;
   final Map<String, _PooledConnection> _pool = {};
   final Map<String, SftpClient> _sftpByProfile = {};
   final Set<SSHClient> _watchedClients = {};
@@ -90,9 +100,7 @@ class SshClientFactory {
 
   bool hasLiveStorageClient(String profileId) {
     final cached = _pool[profileId];
-    return cached != null &&
-        !cached.client.isClosed &&
-        cached.readyCompleted;
+    return cached != null && !cached.client.isClosed && cached.readyCompleted;
   }
 
   Stream<String> get storagePoolChanges => _poolChanges.stream;
@@ -289,7 +297,8 @@ class SshClientFactory {
     );
     client.done.then(
       (_) => _onClientDone(client, null, StackTrace.empty),
-      onError: (Object error) => _onClientDone(client, error, StackTrace.current),
+      onError: (Object error) =>
+          _onClientDone(client, error, StackTrace.current),
     );
   }
 
@@ -298,7 +307,8 @@ class SshClientFactory {
     _watchedClients.remove(client);
     if (lifecycle == null) return;
 
-    final reason = lifecycle.pendingLocalCloseReason ??
+    final reason =
+        lifecycle.pendingLocalCloseReason ??
         (error != null
             ? SshTransportCloseReason.transportError
             : SshTransportCloseReason.remotePeerClosed);
@@ -447,9 +457,12 @@ class SshClientFactory {
     SshProfile profile, {
     Duration timeout = const Duration(seconds: 10),
   }) async {
+    final resolved = _dialTargetResolver == null
+        ? null
+        : await _dialTargetResolver(profile);
     final socket = await SSHSocket.connect(
-      profile.host,
-      profile.port,
+      resolved?.address.address ?? profile.host,
+      resolved?.port ?? profile.port,
       timeout: timeout,
     );
 
@@ -546,6 +559,21 @@ class _CredentialOverrideStore implements SshCredentialStore {
       _base.savePrivateKeyPassphrase(profileId, passphrase);
 
   @override
+  Future<String?> loadDevicePrivateKey() => _base.loadDevicePrivateKey();
+
+  @override
+  Future<void> saveDevicePrivateKey(String privateKey) =>
+      _base.saveDevicePrivateKey(privateKey);
+
+  @override
+  Future<String?> loadRelayGrant(String profileId) =>
+      _base.loadRelayGrant(profileId);
+
+  @override
+  Future<void> saveRelayGrant(String profileId, String grant) =>
+      _base.saveRelayGrant(profileId, grant);
+
+  @override
   Future<void> deleteAll(String profileId) => _base.deleteAll(profileId);
 }
 
@@ -571,6 +599,9 @@ class SshHostKeyTrustPolicy {
     final storageKey = '${profile.hostIdentifier}::$keyType';
     final fingerprintHex = SshClientFactory.fingerprintIdentity(fingerprint);
     final fingerprintBase64 = SshClientFactory.fingerprintToBase64(fingerprint);
+    if (profile.hostKeyFingerprints.isNotEmpty) {
+      return profile.hostKeyFingerprints.contains(fingerprintHex);
+    }
     final existing = await _knownHostRepository.findFingerprint(
       profile.hostIdentifier,
       keyType,

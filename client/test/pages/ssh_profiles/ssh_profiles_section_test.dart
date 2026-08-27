@@ -1,8 +1,8 @@
 import 'dart:async';
 import 'dart:io';
-import 'dart:typed_data';
 
 import 'package:dartssh2/dartssh2.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -23,6 +23,7 @@ import 'package:teampilot/services/ssh/ssh_profile_connection_coordinator.dart';
 import 'package:teampilot/services/ssh/ssh_profile_reconnect_policy.dart';
 import 'package:teampilot/services/terminal/terminal_transport_factory.dart';
 import 'package:teampilot/theme/app_typography_scale.dart';
+import 'package:teampilot/utils/ui/app_keys.dart';
 
 const _profile = SshProfile(
   id: 'p1',
@@ -59,7 +60,9 @@ class _SeededSshProfileCubit extends SshProfileCubit {
     required super.credentialStore,
     required List<SshProfile> profiles,
   }) {
-    emit(SshProfileState(profiles: profiles, selectedProfileId: profiles.first.id));
+    emit(
+      SshProfileState(profiles: profiles, selectedProfileId: profiles.first.id),
+    );
   }
 }
 
@@ -254,16 +257,34 @@ void main() {
   });
 
   tearDown(() async {
+    debugDefaultTargetPlatformOverride = null;
     await connectionCubit.close();
     await profileCubit.close();
     await harness.dispose();
     await tempDir.delete(recursive: true);
   });
 
-  testWidgets('card status comes from SshConnectionCubit', (tester) async {
-    connectionCubit.seed(
-      _stateWithHost(status: SshHostUiStatus.connected),
+  testWidgets('Android shows Scan QR as the primary SSH action', (
+    tester,
+  ) async {
+    debugDefaultTargetPlatformOverride = TargetPlatform.android;
+
+    await tester.pumpWidget(
+      await _host(
+        profileCubit: profileCubit,
+        connectionCubit: connectionCubit,
+        credentialStore: harness.credentialStore,
+        transportFactory: transportFactory,
+        profileRepository: profileRepository,
+      ),
     );
+
+    expect(find.byKey(AppKeys.connectScanQr), findsOneWidget);
+    debugDefaultTargetPlatformOverride = null;
+  });
+
+  testWidgets('card status comes from SshConnectionCubit', (tester) async {
+    connectionCubit.seed(_stateWithHost(status: SshHostUiStatus.connected));
 
     await tester.pumpWidget(
       await _host(
@@ -280,9 +301,7 @@ void main() {
   });
 
   testWidgets('Connect calls SshConnectionCubit.connect', (tester) async {
-    connectionCubit.seed(
-      _stateWithHost(status: SshHostUiStatus.disconnected),
-    );
+    connectionCubit.seed(_stateWithHost(status: SshHostUiStatus.disconnected));
 
     await tester.pumpWidget(
       await _host(
@@ -301,9 +320,7 @@ void main() {
   });
 
   testWidgets('Disconnect calls SshConnectionCubit.disconnect', (tester) async {
-    connectionCubit.seed(
-      _stateWithHost(status: SshHostUiStatus.connected),
-    );
+    connectionCubit.seed(_stateWithHost(status: SshHostUiStatus.connected));
 
     await tester.pumpWidget(
       await _host(
@@ -322,9 +339,7 @@ void main() {
   });
 
   testWidgets('card layout does not overflow at narrow width', (tester) async {
-    connectionCubit.seed(
-      _stateWithHost(status: SshHostUiStatus.disconnected),
-    );
+    connectionCubit.seed(_stateWithHost(status: SshHostUiStatus.disconnected));
 
     await tester.binding.setSurfaceSize(const Size(320, 600));
     addTearDown(() => tester.binding.setSurfaceSize(null));
@@ -371,9 +386,7 @@ void main() {
   });
 
   testWidgets('Test does not mark Cubit connected', (tester) async {
-    connectionCubit.seed(
-      _stateWithHost(status: SshHostUiStatus.disconnected),
-    );
+    connectionCubit.seed(_stateWithHost(status: SshHostUiStatus.disconnected));
 
     await tester.pumpWidget(
       await _host(
