@@ -80,13 +80,23 @@ class GitGraphRowTile extends StatelessWidget {
               ),
             ),
             const SizedBox(width: 8),
-            ...[
-              for (final r in row.refs)
-                _RefChip(
-                  decoration: r,
-                  laneColor: palette[row.node.colorIndex],
+            if (row.refs.isNotEmpty)
+              Flexible(
+                fit: FlexFit.loose,
+                child: SingleChildScrollView(
+                  scrollDirection: Axis.horizontal,
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      for (final r in row.refs)
+                        _RefChip(
+                          decoration: r,
+                          laneColor: palette[row.node.colorIndex],
+                        ),
+                    ],
+                  ),
                 ),
-            ],
+              ),
             Expanded(
               child: Text(
                 row.subject,
@@ -96,17 +106,29 @@ class GitGraphRowTile extends StatelessWidget {
               ),
             ),
             const SizedBox(width: 8),
-            Text(
-              row.authorName,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: TpTextStyles.of(context).xsColored(cs.onSurfaceVariant),
+            Flexible(
+              child: Text(
+                row.authorName,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                softWrap: false,
+                style: TpTextStyles.of(context).xsColored(
+                  cs.onSurfaceVariant,
+                ),
+              ),
             ),
             const SizedBox(width: 10),
-            Text(
-              (dateFormat ?? DateFormat('MM/dd HH:mm'))
-                  .format(row.authorDate.toLocal()),
-              style: TpTextStyles.of(context).xsColored(cs.onSurfaceVariant),
+            Flexible(
+              child: Text(
+                (dateFormat ?? DateFormat('MM/dd HH:mm'))
+                    .format(row.authorDate.toLocal()),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                softWrap: false,
+                style: TpTextStyles.of(context).xsColored(
+                  cs.onSurfaceVariant,
+                ),
+              ),
             ),
           ],
         ),

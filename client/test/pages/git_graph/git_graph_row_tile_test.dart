@@ -55,6 +55,38 @@ void main() {
     expect(find.text('v1'), findsOneWidget);
   });
 
+  testWidgets('commit row does not overflow with long metadata', (tester) async {
+    await pump(
+      tester,
+      SizedBox(
+        height: 26,
+        width: 220,
+        child: GitGraphRowTile(
+          row: GitCommitRow(
+            edges: const [GitGraphEdge(0, 0, 0)],
+            node: const GitGraphNode(0, 0),
+            hash: 'abc',
+            parents: const ['p'],
+            authorName: 'A very long author name',
+            authorEmail: 'ann@x',
+            authorDate: DateTime.utc(2026, 8, 25, 10, 30),
+            subject: 'a very long commit subject that needs truncating',
+            refs: const [
+              GitRefDecoration(
+                GitRefDecorationKind.localBranch,
+                'feature/with-a-long-name',
+              ),
+            ],
+          ),
+          selected: false,
+          onTap: () {},
+        ),
+      ),
+    );
+
+    expect(tester.takeException(), isNull);
+  });
+
   testWidgets('tap fires callback', (tester) async {
     var tapped = false;
     await pump(

@@ -28,6 +28,23 @@ Widget _host(GitGraphCubit cubit, GitGraphState state) => MaterialApp(
   ),
 );
 
+Widget _narrowHost(GitGraphCubit cubit) => MaterialApp(
+  localizationsDelegates: AppLocalizations.localizationsDelegates,
+  supportedLocales: AppLocalizations.supportedLocales,
+  locale: const Locale('en'),
+  home: BlocProvider.value(
+    value: cubit,
+    child: Scaffold(
+      body: SizedBox(
+        width: 300,
+        child: BlocBuilder<GitGraphCubit, GitGraphState>(
+          builder: (context, state) => GitGraphToolbar(state: state),
+        ),
+      ),
+    ),
+  ),
+);
+
 /// 打开 refs 弹层并触发本地分支的「查看此分支历史」动作。
 Future<void> _viewBranchHistory(WidgetTester tester, String branch) async {
   await tester.tap(find.byIcon(Icons.account_tree_outlined).first);
@@ -104,5 +121,19 @@ void main() {
     expect(find.byKey(_chipKey), findsNothing);
     expect(cubit.state.branchFilter, isNull);
     expect(history.lastArgs['revisionRange'], isNull);
+  });
+
+  testWidgets('toolbar does not overflow in a narrow pane', (tester) async {
+    final cubit = GitGraphCubit(
+      history: FakeHistoryForGraph(),
+      git: FakeGitForGraph(repoStatus()),
+    );
+    addTearDown(cubit.close);
+    await cubit.setRepoRoot('/repo');
+    await cubit.setBranchFilter('feature/with-a-long-name');
+    await tester.pumpWidget(_narrowHost(cubit));
+    await tester.pumpAndSettle();
+
+    expect(tester.takeException(), isNull);
   });
 }

@@ -33,34 +33,48 @@ class GitGraphToolbar extends StatelessWidget {
       ),
       child: Row(
         children: [
-          _branchScopeButton(context),
-          if (state.branchFilter != null) ...[
-            const SizedBox(width: 6),
-            _branchFilterChip(context),
-          ],
-          const SizedBox(width: 6),
-          TpIconButton(
-            icon: Icons.cloud_download_outlined,
-            tooltip: l10n.gitGraphFetch,
-            compact: true,
-            onTap: () => _runAction(context, (actions) => actions.fetchAll()),
+          Flexible(
+            fit: FlexFit.loose,
+            child: SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  _branchScopeButton(context),
+                  if (state.branchFilter != null) ...[
+                    const SizedBox(width: 6),
+                    _branchFilterChip(context),
+                  ],
+                  const SizedBox(width: 6),
+                  TpIconButton(
+                    icon: Icons.cloud_download_outlined,
+                    tooltip: l10n.gitGraphFetch,
+                    compact: true,
+                    onTap: () =>
+                        _runAction(context, (actions) => actions.fetchAll()),
+                  ),
+                  TpIconButton(
+                    icon: Icons.arrow_downward_rounded,
+                    tooltip: l10n.gitGraphPull,
+                    compact: true,
+                    onTap: () =>
+                        _runAction(context, (actions) => actions.pull()),
+                  ),
+                  TpIconButton(
+                    icon: Icons.arrow_upward_rounded,
+                    tooltip: l10n.gitGraphPush,
+                    compact: true,
+                    onTap: () =>
+                        _runAction(context, (actions) => actions.push()),
+                  ),
+                  const SizedBox(width: 4),
+                  _StashMenu(state: state),
+                  const SizedBox(width: 4),
+                  GitGraphRefsMenu(state: state),
+                ],
+              ),
+            ),
           ),
-          TpIconButton(
-            icon: Icons.arrow_downward_rounded,
-            tooltip: l10n.gitGraphPull,
-            compact: true,
-            onTap: () => _runAction(context, (actions) => actions.pull()),
-          ),
-          TpIconButton(
-            icon: Icons.arrow_upward_rounded,
-            tooltip: l10n.gitGraphPush,
-            compact: true,
-            onTap: () => _runAction(context, (actions) => actions.push()),
-          ),
-          const SizedBox(width: 4),
-          _StashMenu(state: state),
-          const SizedBox(width: 4),
-          GitGraphRefsMenu(state: state),
           const SizedBox(width: 8),
           Expanded(child: _searchField(context)),
           const SizedBox(width: 4),
