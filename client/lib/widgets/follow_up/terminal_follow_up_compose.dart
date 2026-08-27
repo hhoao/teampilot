@@ -6,8 +6,6 @@ import 'package:shared_ui/shared_ui.dart';
 
 import '../../cubits/chat_cubit.dart';
 import '../../cubits/member_presence_cubit.dart';
-import '../../cubits/workbench/workbench_cubit.dart';
-import '../../cubits/workbench/workbench_tab.dart';
 import '../../models/member_presence.dart';
 import '../../models/app_session.dart';
 import '../../models/team_config.dart';
@@ -69,12 +67,10 @@ class TerminalFollowUpCompose extends StatelessWidget {
             ),
             child: FollowUpQueueStrip(
               queue: queue,
-              onDelete: (id) =>
-                  chat.followUpQueue.remove(_followUpSeatKey, id),
+              onDelete: (id) => chat.followUpQueue.remove(_followUpSeatKey, id),
               onEdit: (id, content) =>
                   chat.followUpQueue.edit(_followUpSeatKey, id, content),
-              onMoveUp: (id) =>
-                  chat.followUpQueue.moveUp(_followUpSeatKey, id),
+              onMoveUp: (id) => chat.followUpQueue.moveUp(_followUpSeatKey, id),
               onResume: () => unawaited(
                 chat.resumeFollowUpQueue(session.sessionId, _shellMemberId),
               ),
@@ -103,18 +99,6 @@ class TerminalFollowUpComposeHost extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // Rebuild when the session's workspace bar active changes (session switch)
-    // or session working changes (seat-level stop).
-    context.select<WorkbenchCubit, WorkbenchTabId?>(
-      (w) => w.centerActiveId(session.workspaceId),
-    );
-    context.select<ChatCubit, Set<String>>(
-      (c) => c.state.workingSessionIds,
-    );
-    context.select<MemberPresenceCubit, Map<String, MemberPresence>>(
-      (c) => c.state.presence,
-    );
-
     final shellMemberId = shellMemberIdForHistory(
       sessionId: session.sessionId,
       selectedMemberId: selectedMemberId,
@@ -124,31 +108,29 @@ class TerminalFollowUpComposeHost extends StatelessWidget {
       listeners: [
         BlocListener<ChatCubit, ChatState>(
           listenWhen: (previous, current) =>
-              previous.workingSessionIds != current.workingSessionIds,
+              previous.workingSessionIds.contains(session.sessionId) !=
+              current.workingSessionIds.contains(session.sessionId),
           listener: (context, _) {
             final cubit = context.read<ChatCubit>();
             cubit.notifyFollowUpMemberWorking(
               session.sessionId,
               shellMemberId,
-              working: cubit.isMemberWorking(
-                session.sessionId,
-                shellMemberId,
-              ),
+              working: cubit.isMemberWorking(session.sessionId, shellMemberId),
             );
           },
         ),
         BlocListener<MemberPresenceCubit, MemberPresenceState>(
-          listenWhen: (previous, current) =>
-              previous.presence != current.presence,
+          listenWhen: (previous, current) {
+            const offline = MemberPresence.offline();
+            return (previous.presence[shellMemberId] ?? offline) !=
+                (current.presence[shellMemberId] ?? offline);
+          },
           listener: (context, _) {
             final cubit = context.read<ChatCubit>();
             cubit.notifyFollowUpMemberWorking(
               session.sessionId,
               shellMemberId,
-              working: cubit.isMemberWorking(
-                session.sessionId,
-                shellMemberId,
-              ),
+              working: cubit.isMemberWorking(session.sessionId, shellMemberId),
             );
           },
         ),

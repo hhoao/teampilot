@@ -11,19 +11,15 @@ import '../../cubits/chat/model/session_connect_request.dart';
 import '../../cubits/cli_presets_cubit.dart';
 import '../../cubits/expert_hub_cubit.dart';
 import '../../cubits/launch_profile_cubit.dart';
-import '../../cubits/member_presence_cubit.dart';
 import '../../cubits/prompt_delivery_status_cubit.dart';
 import '../../cubits/plugin_cubit.dart';
 import '../../cubits/skill_cubit.dart';
-import '../../cubits/workbench/workbench_cubit.dart';
-import '../../cubits/workbench/workbench_tab.dart';
 import '../../l10n/l10n_extensions.dart';
 import '../../models/app_session.dart';
 import '../../models/cli_preset.dart';
 import '../../models/config_bundle.dart';
 import '../../models/landing_launch_context.dart';
 import '../../models/launch_security_policy.dart';
-import '../../models/member_presence.dart';
 import '../../models/plugin.dart';
 import '../../models/skill.dart';
 import '../../models/team_config.dart';
@@ -66,6 +62,7 @@ import 'history_continue_delivery.dart';
 import 'history_mailbox_queued_strip.dart';
 import 'prompt_delivery_recovery_strip.dart';
 import 'session_chat_voice_controller.dart';
+import 'session_seat_working.dart';
 
 /// Self-contained compose section that reads its own cubits via
 /// [context.select], eliminating the need for the parent to pass computed
@@ -165,16 +162,13 @@ class SessionChatComposeSection extends StatelessWidget {
     final registry =
         CliToolRegistryScope.maybeOf(context) ?? CliToolRegistry.builtIn();
 
-    // Rebuild when the session's workspace bar active changes (session switch)
-    // or session working changes (seat-level stop).
-    context.select<WorkbenchCubit, WorkbenchTabId?>(
-      (w) => w.centerActiveId(session.workspaceId),
-    );
-    context.select<ChatCubit, Set<String>>((c) => c.state.workingSessionIds);
-    context.select<MemberPresenceCubit, Map<String, MemberPresence>>(
-      (c) => c.state.presence,
-    );
     final chat = context.read<ChatCubit>();
+    watchSessionSeatWorking(
+      context,
+      workspaceId: session.workspaceId,
+      sessionId: session.sessionId,
+      memberId: shellMemberId,
+    );
     final memberWorking = chat.isMemberWorking(
       session.sessionId,
       shellMemberId,
@@ -343,221 +337,221 @@ class SessionChatComposeSection extends StatelessWidget {
                         );
                       },
                     ),
-                    _CascadeCatalogLive(
-                      registry: registry,
-                      cli: lockedCli,
-                      enabled: session.isSimple,
-                      builder: (context) {
-                        final cascadeGroups = session.isSimple
-                            ? resolveComposeCascadeCliGroups(
-                                registry: registry,
-                                providersByCli: {
-                                  lockedCli: providerState
-                                      .providersFor(lockedCli)
-                                      .toList(growable: false),
-                                },
-                                cliItems: [lockedCli],
-                              )
-                            : const <ComposeCascadeCliGroup>[];
-                        final cascadeSpecs = session.isSimple
-                            ? buildComposeModelCascadeMenuSpecs(
-                                presets: sameCliPresets,
-                                selectedPresetId: selectedPresetId,
-                                emptyHintLabel:
-                                    l10n.workspaceCliPresetsEmptyHint,
-                                emptyProvidersLabel:
-                                    l10n.composeCascadeNoProviders,
-                                presetsLabel:
-                                    l10n.composeCascadePresets,
-                                defaultEffortLabel:
-                                    l10n.composeCascadeDefaultEffort,
-                                customModelIdLabel:
-                                    l10n.composeCascadeCustomModelId,
-                                noModelsLabel: l10n.composeCascadeNoModels,
-                                savePresetLabel: l10n.composeCascadeSavePreset,
-                                managePresetsLabel:
-                                    l10n.workspaceCliAddPresetTitle,
-                                cliGroups: cascadeGroups,
-                                groupByCli: false,
-                                onModelsOpened: (cli, pid, config) =>
-                                    unawaited(
-                                      refreshComposeCascadeCatalog(
-                                        context,
-                                        cli: cli,
-                                        providerId: pid,
-                                        provider: config,
-                                      ),
-                                    ),
-                              )
-                            : teamPresetMenuSpecs(
-                                context: context,
-                                presets: sameCliPresets,
-                                selectedPresetId: selectedPresetId,
-                                emptyHintLabel:
-                                    l10n.workspaceCliPresetsEmptyHint,
-                              );
-                        return ListenableBuilder(
-                          listenable: voiceController,
-                          builder: (context, _) {
-                            return WorkspaceComposeCard(
-                          controller: composeController,
-                          focusNode: composeFocusNode,
-                          clip: composeClip,
-                          hint: memberWorking
-                              ? l10n.sessionFollowUpAddPlaceholder
-                              : l10n.sessionHistoryComposeHint,
-                          canSubmit: canSubmit,
-                          isSubmitting: isSubmitting,
-                          onSubmit: () => unawaited(
-                            onSubmit(
-                              composeClip?.composeMessage(
+                  _CascadeCatalogLive(
+                    registry: registry,
+                    cli: lockedCli,
+                    enabled: session.isSimple,
+                    builder: (context) {
+                      final cascadeGroups = session.isSimple
+                          ? resolveComposeCascadeCliGroups(
+                              registry: registry,
+                              providersByCli: {
+                                lockedCli: providerState
+                                    .providersFor(lockedCli)
+                                    .toList(growable: false),
+                              },
+                              cliItems: [lockedCli],
+                            )
+                          : const <ComposeCascadeCliGroup>[];
+                      final cascadeSpecs = session.isSimple
+                          ? buildComposeModelCascadeMenuSpecs(
+                              presets: sameCliPresets,
+                              selectedPresetId: selectedPresetId,
+                              emptyHintLabel: l10n.workspaceCliPresetsEmptyHint,
+                              emptyProvidersLabel:
+                                  l10n.composeCascadeNoProviders,
+                              presetsLabel: l10n.composeCascadePresets,
+                              defaultEffortLabel:
+                                  l10n.composeCascadeDefaultEffort,
+                              customModelIdLabel:
+                                  l10n.composeCascadeCustomModelId,
+                              noModelsLabel: l10n.composeCascadeNoModels,
+                              savePresetLabel: l10n.composeCascadeSavePreset,
+                              managePresetsLabel:
+                                  l10n.workspaceCliAddPresetTitle,
+                              cliGroups: cascadeGroups,
+                              groupByCli: false,
+                              onModelsOpened: (cli, pid, config) => unawaited(
+                                refreshComposeCascadeCatalog(
+                                  context,
+                                  cli: cli,
+                                  providerId: pid,
+                                  provider: config,
+                                ),
+                              ),
+                            )
+                          : teamPresetMenuSpecs(
+                              context: context,
+                              presets: sameCliPresets,
+                              selectedPresetId: selectedPresetId,
+                              emptyHintLabel: l10n.workspaceCliPresetsEmptyHint,
+                            );
+                      return ListenableBuilder(
+                        listenable: voiceController,
+                        builder: (context, _) {
+                          return WorkspaceComposeCard(
+                            controller: composeController,
+                            focusNode: composeFocusNode,
+                            clip: composeClip,
+                            hint: memberWorking
+                                ? l10n.sessionFollowUpAddPlaceholder
+                                : l10n.sessionHistoryComposeHint,
+                            canSubmit: canSubmit,
+                            isSubmitting: isSubmitting,
+                            onSubmit: () => unawaited(
+                              onSubmit(
+                                composeClip?.composeMessage(
+                                      composeController.text.trim(),
+                                    ) ??
                                     composeController.text.trim(),
-                                  ) ??
-                                  composeController.text.trim(),
-                            ),
-                          ),
-                          onChanged: (_) => onComposeChanged(),
-                          chrome: BoundComposeChrome(
-                            composeEnabled: !permissionWaiting,
-                            launchError: launchError,
-                            onRemapDeadTarget: onRemapDeadTarget,
-                            onRetry: onRetry,
-                            sessionConnectInProgress: sessionConnectInProgress,
-                            floating: true,
-                            identityLabel: identityLabel,
-                            identityIcon: session.isSimple
-                                ? Icons.psychology_outlined
-                                : Icons.groups_outlined,
-                            modelPresetLabel: modelLabel,
-                            modelChipLeading: CliBrandIcon(
-                              cli: lockedCli,
-                              size: context.tpIconSizes.sm,
-                              borderRadius: 4,
-                              showBorder: false,
-                            ),
-                            modelCascadeSpecs: cascadeSpecs,
-                            onModelCascadeSelected: (v) => unawaited(
-                              _onCascadeSelected(
-                                context: context,
-                                session: session,
-                                team: team,
-                                sameCliPresets: sameCliPresets,
-                                lockedCli: lockedCli,
-                                selectedMemberId: selectedMemberId,
-                                value: v,
                               ),
                             ),
-                            launchSecurityPolicy: _effectiveSecurityPolicy(
-                              session: session,
-                              team: team,
-                              selectedMemberId: selectedMemberId,
-                            ),
-                            defaultPermissionsLabel:
-                                l10n.workspaceChatLandingDefaultPermissions,
-                            fullAccessPermissionsLabel:
-                                l10n.workspaceChatLandingFullAccessPermissions,
-                            askReadOnlyPermissionsLabel:
-                                l10n.workspaceChatLandingAskReadOnlyPermissions,
-                            autoApproveWorkspaceWritePermissionsLabel: l10n
-                                .workspaceChatLandingAutoApproveWorkspaceWritePermissions,
-                            customPermissionsLabel:
-                                l10n.workspaceChatLandingCustomPermissions,
-                            onPermissionSelected: (value) => unawaited(
-                              _onPermissionSelected(
-                                context: context,
-                                value: value,
+                            onChanged: (_) => onComposeChanged(),
+                            chrome: BoundComposeChrome(
+                              composeEnabled: !permissionWaiting,
+                              launchError: launchError,
+                              onRemapDeadTarget: onRemapDeadTarget,
+                              onRetry: onRetry,
+                              sessionConnectInProgress:
+                                  sessionConnectInProgress,
+                              floating: true,
+                              identityLabel: identityLabel,
+                              identityIcon: session.isSimple
+                                  ? Icons.psychology_outlined
+                                  : Icons.groups_outlined,
+                              modelPresetLabel: modelLabel,
+                              modelChipLeading: CliBrandIcon(
+                                cli: lockedCli,
+                                size: context.tpIconSizes.sm,
+                                borderRadius: 4,
+                                showBorder: false,
+                              ),
+                              modelCascadeSpecs: cascadeSpecs,
+                              onModelCascadeSelected: (v) => unawaited(
+                                _onCascadeSelected(
+                                  context: context,
+                                  session: session,
+                                  team: team,
+                                  sameCliPresets: sameCliPresets,
+                                  lockedCli: lockedCli,
+                                  selectedMemberId: selectedMemberId,
+                                  value: v,
+                                ),
+                              ),
+                              launchSecurityPolicy: _effectiveSecurityPolicy(
                                 session: session,
                                 team: team,
                                 selectedMemberId: selectedMemberId,
                               ),
-                            ),
-                            teamSettingsTooltip: showTeamSettings
-                                ? l10n.teamSettings
-                                : null,
-                            onTeamSettings: showTeamSettings && liveTeam != null
-                                ? () => unawaited(
-                                    _openTeamSettings(
-                                      context: context,
-                                      team: liveTeam,
-                                      workspaceId: session.workspaceId,
-                                    ),
-                                  )
-                                : null,
-                            showTeamSettingsAttention: teamSettingsAttention,
-                            showStop: showComposeStop,
-                            onStop: showComposeStop
-                                ? () => unawaited(
-                                    _handleComposeStop(
-                                      context: context,
-                                      sessionId: session.sessionId,
-                                      shellMemberId: shellMemberId,
-                                    ),
-                                  )
-                                : null,
-                          ),
-                          dropTarget: dropTarget,
-                          deferFieldMount: false,
-                          attachTooltip: l10n.workspaceChatLandingAttach,
-                          enhanceTooltip: l10n.workspaceChatLandingEnhance,
-                          voiceTooltip: l10n.workspaceChatLandingVoice,
-                          voiceCancelTooltip:
-                              l10n.workspaceChatLandingVoiceCancel,
-                          voiceStopTooltip: l10n.workspaceChatLandingVoiceStop,
-                          isEnhancing: isEnhancing,
-                          isVoiceListening: voiceController.isListening,
-                          voiceElapsed: voiceController.elapsed,
-                          voiceSoundLevel: voiceController.soundLevel,
-                          onAttach: onAttach,
-                          onEnhance: onEnhance,
-                          onVoice: () {
-                            if (isSubmitting || isEnhancing) return;
-                            unawaited(
-                              voiceController
-                                  .toggle(Localizations.localeOf(context))
-                                  .then((ok) {
-                                    if (!context.mounted) return;
-                                    if (ok) {
-                                      composeFocusNode.requestFocus();
-                                      return;
-                                    }
-                                    final input = voiceController.input;
-                                    if (input == null) return;
-                                    AppToast.show(
-                                      context,
-                                      message: composeVoiceInitFailureMessage(
-                                        context.l10n,
-                                        input,
+                              defaultPermissionsLabel:
+                                  l10n.workspaceChatLandingDefaultPermissions,
+                              fullAccessPermissionsLabel: l10n
+                                  .workspaceChatLandingFullAccessPermissions,
+                              askReadOnlyPermissionsLabel: l10n
+                                  .workspaceChatLandingAskReadOnlyPermissions,
+                              autoApproveWorkspaceWritePermissionsLabel: l10n
+                                  .workspaceChatLandingAutoApproveWorkspaceWritePermissions,
+                              customPermissionsLabel:
+                                  l10n.workspaceChatLandingCustomPermissions,
+                              onPermissionSelected: (value) => unawaited(
+                                _onPermissionSelected(
+                                  context: context,
+                                  value: value,
+                                  session: session,
+                                  team: team,
+                                  selectedMemberId: selectedMemberId,
+                                ),
+                              ),
+                              teamSettingsTooltip: showTeamSettings
+                                  ? l10n.teamSettings
+                                  : null,
+                              onTeamSettings:
+                                  showTeamSettings && liveTeam != null
+                                  ? () => unawaited(
+                                      _openTeamSettings(
+                                        context: context,
+                                        team: liveTeam,
+                                        workspaceId: session.workspaceId,
                                       ),
-                                      variant: TpToastVariant.warning,
-                                    );
-                                  }),
-                            );
-                          },
-                          onVoiceCancel: () =>
-                              unawaited(voiceController.cancel()),
-                          onVoiceStop: () => unawaited(voiceController.stop()),
-                          onPasteImage: onPasteImage,
-                          workspaceRoot: workspaceRoot,
-                          skills: skills,
-                          plugins: plugins,
-                          slashBundle: slashBundle,
-                          skillSyntax: skillSyntax,
-                          nativeCommands: nativeCommands,
-                          onOpenAtFile: (path) {
-                            unawaited(
-                              context.read<WorkbenchEditorOpener>().openFile(
-                                session.workspaceId,
-                                path,
-                                preview: true,
-                                fs: filesystemForComposeAtFileOpen(path),
-                              ),
-                            );
-                          },
-                        );
-                          },
-                        );
-                      },
-                    ),
+                                    )
+                                  : null,
+                              showTeamSettingsAttention: teamSettingsAttention,
+                              showStop: showComposeStop,
+                              onStop: showComposeStop
+                                  ? () => unawaited(
+                                      _handleComposeStop(
+                                        context: context,
+                                        sessionId: session.sessionId,
+                                        shellMemberId: shellMemberId,
+                                      ),
+                                    )
+                                  : null,
+                            ),
+                            dropTarget: dropTarget,
+                            deferFieldMount: false,
+                            attachTooltip: l10n.workspaceChatLandingAttach,
+                            enhanceTooltip: l10n.workspaceChatLandingEnhance,
+                            voiceTooltip: l10n.workspaceChatLandingVoice,
+                            voiceCancelTooltip:
+                                l10n.workspaceChatLandingVoiceCancel,
+                            voiceStopTooltip:
+                                l10n.workspaceChatLandingVoiceStop,
+                            isEnhancing: isEnhancing,
+                            isVoiceListening: voiceController.isListening,
+                            voiceElapsed: voiceController.elapsed,
+                            voiceSoundLevel: voiceController.soundLevel,
+                            onAttach: onAttach,
+                            onEnhance: onEnhance,
+                            onVoice: () {
+                              if (isSubmitting || isEnhancing) return;
+                              unawaited(
+                                voiceController
+                                    .toggle(Localizations.localeOf(context))
+                                    .then((ok) {
+                                      if (!context.mounted) return;
+                                      if (ok) {
+                                        composeFocusNode.requestFocus();
+                                        return;
+                                      }
+                                      final input = voiceController.input;
+                                      if (input == null) return;
+                                      AppToast.show(
+                                        context,
+                                        message: composeVoiceInitFailureMessage(
+                                          context.l10n,
+                                          input,
+                                        ),
+                                        variant: TpToastVariant.warning,
+                                      );
+                                    }),
+                              );
+                            },
+                            onVoiceCancel: () =>
+                                unawaited(voiceController.cancel()),
+                            onVoiceStop: () =>
+                                unawaited(voiceController.stop()),
+                            onPasteImage: onPasteImage,
+                            workspaceRoot: workspaceRoot,
+                            skills: skills,
+                            plugins: plugins,
+                            slashBundle: slashBundle,
+                            skillSyntax: skillSyntax,
+                            nativeCommands: nativeCommands,
+                            onOpenAtFile: (path) {
+                              unawaited(
+                                context.read<WorkbenchEditorOpener>().openFile(
+                                  session.workspaceId,
+                                  path,
+                                  preview: true,
+                                  fs: filesystemForComposeAtFileOpen(path),
+                                ),
+                              );
+                            },
+                          );
+                        },
+                      );
+                    },
+                  ),
                 ],
               ),
             ),
@@ -616,8 +610,7 @@ class SessionChatComposeSection extends StatelessWidget {
     required String memberId,
   }) {
     try {
-      return context
-          .select<PromptDeliveryStatusCubit, PromptDeliveryRecovery?>(
+      return context.select<PromptDeliveryStatusCubit, PromptDeliveryRecovery?>(
         (c) => c.state.recoveryFor(sessionId, memberId),
       );
     } on ProviderNotFoundException {
@@ -1006,10 +999,10 @@ class SessionChatComposeSection extends StatelessWidget {
     final running = session.isSimple
         ? chatCubit.isSessionRunning(sessionId)
         : (memberId?.isNotEmpty == true &&
-            chatCubit.isMemberRunning(
-              sessionId: sessionId,
-              memberId: memberId!,
-            ));
+              chatCubit.isMemberRunning(
+                sessionId: sessionId,
+                memberId: memberId!,
+              ));
     if (!running) return;
     final restartNow =
         await showDialog<bool>(
@@ -1029,9 +1022,10 @@ class SessionChatComposeSection extends StatelessWidget {
                 TpDialogActions(
                   children: [
                     TextButton(
-                      onPressed: () =>
-                          Navigator.pop(dialogContext, false),
-                      child: Text(dialogContext.l10n.continueSwitchRestartLater),
+                      onPressed: () => Navigator.pop(dialogContext, false),
+                      child: Text(
+                        dialogContext.l10n.continueSwitchRestartLater,
+                      ),
                     ),
                     FilledButton(
                       onPressed: () => Navigator.pop(dialogContext, true),
@@ -1157,8 +1151,9 @@ class _CascadeCatalogLiveState extends State<_CascadeCatalogLive> {
       _listenable?.detach();
       return;
     }
-    (_listenable ??= CascadeCatalogListenable(registry: widget.registry))
-        .attach([widget.cli]);
+    (_listenable ??= CascadeCatalogListenable(
+      registry: widget.registry,
+    )).attach([widget.cli]);
   }
 
   @override

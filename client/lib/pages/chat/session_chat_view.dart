@@ -17,8 +17,6 @@ import '../../cubits/cli_presets_cubit.dart';
 import '../../cubits/layout_cubit.dart';
 import '../../cubits/launch_profile_cubit.dart';
 import '../../cubits/member_presence_cubit.dart';
-import '../../cubits/workbench/workbench_cubit.dart';
-import '../../cubits/workbench/workbench_tab.dart';
 import '../../l10n/l10n_extensions.dart';
 import '../../models/app_session.dart';
 import '../../models/cli_preset.dart';
@@ -61,6 +59,7 @@ import '../../utils/logging/logger.dart';
 import '../../utils/team/team_member_naming.dart';
 import 'session_chat_compose_section.dart';
 import 'session_chat_message_area.dart';
+import 'session_seat_working.dart';
 import 'agent_permission_attention_banner.dart';
 import 'chat_find_bar.dart';
 import 'chat_reveal_controller.dart';
@@ -1139,16 +1138,6 @@ class _SessionChatViewState extends State<SessionChatView> {
     final registry =
         CliToolRegistryScope.maybeOf(context) ?? CliToolRegistry.builtIn();
 
-    // Rebuild when the session's workspace bar active changes (session switch)
-    // or session working changes (seat-level stop).
-    context.select<WorkbenchCubit, WorkbenchTabId?>(
-      (w) => w.centerActiveId(widget.session.workspaceId),
-    );
-    context.select<ChatCubit, Set<String>>((c) => c.state.workingSessionIds);
-    context.select<MemberPresenceCubit, Map<String, MemberPresence>>(
-      (c) => c.state.presence,
-    );
-
     // lockedCli is still needed by the parent for historyCap (subagent tools).
     final presets = context.select<CliPresetsCubit, List<CliPreset>>(
       (c) => c.state.presets,
@@ -1159,6 +1148,12 @@ class _SessionChatViewState extends State<SessionChatView> {
       presets: presets,
     );
     final historyCap = registry.capability<AiHistoryCapability>(lockedCli);
+    watchSessionSeatWorking(
+      context,
+      workspaceId: widget.session.workspaceId,
+      sessionId: widget.session.sessionId,
+      memberId: _shellMemberId,
+    );
     final askCardVisible = context.select<AgentAttentionCubit, bool>(
       (c) => AgentPermissionAttentionBanner.isSelectedSeatAskCard(
         attention: c,
@@ -1197,7 +1192,12 @@ class _SessionChatViewState extends State<SessionChatView> {
             listeners: [
               BlocListener<ChatCubit, ChatState>(
                 listenWhen: (previous, current) =>
-                    previous.workingSessionIds != current.workingSessionIds,
+                    previous.workingSessionIds.contains(
+                      widget.session.sessionId,
+                    ) !=
+                    current.workingSessionIds.contains(
+                      widget.session.sessionId,
+                    ),
                 listener: (context, state) {
                   _syncAwaitingFromWorkingSessions(state);
                   _maybeStartLiveRefreshForRunningPty();
@@ -1205,8 +1205,11 @@ class _SessionChatViewState extends State<SessionChatView> {
                 },
               ),
               BlocListener<MemberPresenceCubit, MemberPresenceState>(
-                listenWhen: (previous, current) =>
-                    previous.presence != current.presence,
+                listenWhen: (previous, current) {
+                  const offline = MemberPresence.offline();
+                  return (previous.presence[_shellMemberId] ?? offline) !=
+                      (current.presence[_shellMemberId] ?? offline);
+                },
                 listener: (context, _) {
                   _notifyFollowUpMemberWorking(context.read<ChatCubit>());
                 },
