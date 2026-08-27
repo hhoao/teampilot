@@ -11,6 +11,8 @@ import 'session_history_context.dart';
 
 typedef AiTranscriptSourcePath =
     Future<String?> Function(SessionHistoryContext ctx);
+typedef AiTranscriptSourceVersion =
+    Future<String?> Function(String path, FsStat stat);
 
 /// Complete-line JSONL page source. It refuses suffix fallback ids because
 /// their sequence cannot be proven equivalent without parsing the prefix.
@@ -20,18 +22,21 @@ final class JsonlTranscriptPageReader implements AiTranscriptPageReader {
     required AiTranscriptLineAppend lineAppend,
     required String fallbackPrefix,
     required AiTranscriptSourcePath sourcePath,
+    AiTranscriptSourceVersion? sourceVersion,
     EventDecoder? decodeEvents,
     this.windowSizes = const [64 * 1024, 256 * 1024],
   }) : _lineAppend = lineAppend,
        _fallbackPrefix = fallbackPrefix,
        _decodeEvents = decodeEvents ?? decodeJsonlLines,
-       _sourcePath = sourcePath;
+       _sourcePath = sourcePath,
+       _sourceVersion = sourceVersion ?? _highPrecisionStatVersion;
 
   final Filesystem fs;
   final AiTranscriptLineAppend _lineAppend;
   final String _fallbackPrefix;
   final EventDecoder _decodeEvents;
   final AiTranscriptSourcePath _sourcePath;
+  final AiTranscriptSourceVersion _sourceVersion;
   final List<int> windowSizes;
 
   @override
@@ -45,7 +50,7 @@ final class JsonlTranscriptPageReader implements AiTranscriptPageReader {
     final stat = await fs.stat(path);
     if (!stat.isFile) return null;
     final size = stat.size ?? 0;
-    final sourceToken = _sourceToken(path, stat);
+    final sourceToken = await _sourceToken(path, stat);
     if (sourceToken == null) return null;
     if (size == 0) return _emptyPage(sourceToken: sourceToken, rebuilt: true);
 
@@ -78,7 +83,7 @@ final class JsonlTranscriptPageReader implements AiTranscriptPageReader {
     final source = _decodeSourceToken(cursor.sourceToken);
     if (source == null || source.path != path || source.size != size)
       return null;
-    final currentToken = _sourceToken(path, stat);
+    final currentToken = await _sourceToken(path, stat);
     if (currentToken == null || currentToken != cursor.sourceToken) return null;
     if (cursor.offset <= 0 || cursor.offset > size) return null;
     final anchor = await _readLineAt(path, cursor.offset, size);
@@ -363,22 +368,32 @@ final class JsonlTranscriptPageReader implements AiTranscriptPageReader {
     rebuilt: rebuilt,
   );
 
-  static String? _sourceToken(String path, FsStat stat) {
+  Future<String?> _sourceToken(String path, FsStat stat) async {
     final size = stat.size;
-    final mtime = stat.mtime;
-    if (size == null || mtime == null) return null;
+    if (size == null) return null;
+    final version = await _sourceVersion(path, stat);
+    if (version == null || version.isEmpty) return null;
     return base64Url.encode(
-      utf8.encode(
-        jsonEncode({
-          'path': path,
-          'size': size,
-          'version': mtime.toUtc().microsecondsSinceEpoch,
-        }),
-      ),
+      utf8.encode(jsonEncode({'path': path, 'size': size, 'version': version})),
     );
   }
 
-  static ({String path, int size, int version})? _decodeSourceToken(
+  static Future<String?> _highPrecisionStatVersion(
+    String _,
+    FsStat stat,
+  ) async {
+    final mtime = stat.mtime;
+    if (mtime == null) return null;
+    final micros = mtime.toUtc().microsecondsSinceEpoch;
+    // WSL `%Y` and SFTP attrs expose whole seconds. Such a value cannot
+    // distinguish a same-size rewrite in the same second, so page reads must
+    // fall back to the full adapter. A backend with a stronger native version
+    // can provide it through [AiTranscriptSourceVersion].
+    if (micros % Duration.microsecondsPerSecond == 0) return null;
+    return 'mtime-us:$micros';
+  }
+
+  static ({String path, int size, String version})? _decodeSourceToken(
     String token,
   ) {
     try {
@@ -386,13 +401,13 @@ final class JsonlTranscriptPageReader implements AiTranscriptPageReader {
       if (decoded is! Map ||
           decoded['path'] is! String ||
           decoded['size'] is! int ||
-          decoded['version'] is! int) {
+          decoded['version'] is! String) {
         return null;
       }
       return (
         path: decoded['path'] as String,
         size: decoded['size'] as int,
-        version: decoded['version'] as int,
+        version: decoded['version'] as String,
       );
     } on Object {
       return null;

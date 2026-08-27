@@ -732,6 +732,62 @@ void main() {
       isNull,
     );
   });
+
+  test('returns null for a second-precision stat source version', () async {
+    final fs = _SecondPrecisionInMemoryFilesystem();
+    const path = '/transcript.jsonl';
+    await fs.writeString(
+      path,
+      '${_userLine('u1', 'one')}${_userLine('u2', 'two')}',
+    );
+
+    expect(
+      await _claudeReader(fs, path).readLatest(ctx: _ctxFor(fs), limit: 1),
+      isNull,
+    );
+    expect(fs.fullReadCount, 0);
+  });
+
+  test('uses an injected stable version for a coarse stat backend', () async {
+    final fs = _SecondPrecisionInMemoryFilesystem();
+    const path = '/transcript.jsonl';
+    await fs.writeString(
+      path,
+      '${_userLine('u1', 'one')}${_userLine('u2', 'two')}',
+    );
+    final reader = JsonlTranscriptPageReader(
+      fs: fs,
+      lineAppend: appendClaudeJsonlEvent,
+      fallbackPrefix: 'claude',
+      decodeEvents: _syncDecoder(),
+      sourcePath: (_) async => path,
+      sourceVersion: (_, _) async => fs.sourceVersion,
+    );
+    final latest = await reader.readLatest(ctx: _ctxFor(fs), limit: 1);
+
+    expect(latest, isNotNull);
+    expect(
+      await reader.readOlder(
+        ctx: _ctxFor(fs),
+        cursor: latest!.nextCursor!,
+        limit: 1,
+      ),
+      isNotNull,
+    );
+    await fs.writeString(
+      path,
+      '${_userLine('u1', 'ONE')}${_userLine('u2', 'two')}',
+    );
+    expect(
+      await reader.readOlder(
+        ctx: _ctxFor(fs),
+        cursor: latest.nextCursor!,
+        limit: 1,
+      ),
+      isNull,
+    );
+    expect(fs.fullReadCount, 0);
+  });
 }
 
 String _userLine(String id, String text) =>
@@ -820,6 +876,43 @@ class InMemoryFilesystem extends test_fs.InMemoryFilesystem {
 
 final class _VersionedInMemoryFilesystem extends InMemoryFilesystem {
   int fullReadCount = 0;
+
+  @override
+  Future<List<int>?> readBytes(String path) async {
+    fullReadCount++;
+    return super.readBytes(path);
+  }
+
+  @override
+  Future<List<int>?> readBytesRange(String path, int offset, int length) async {
+    final bytes = byteFiles[path] ?? files[path]?.codeUnits;
+    if (bytes == null) return null;
+    if (offset >= bytes.length) return <int>[];
+    return bytes.sublist(offset, (offset + length).clamp(0, bytes.length));
+  }
+}
+
+final class _SecondPrecisionInMemoryFilesystem
+    extends test_fs.InMemoryFilesystem {
+  final DateTime _mtime = DateTime.utc(2026, 8, 27);
+  var _version = 0;
+  int fullReadCount = 0;
+
+  String get sourceVersion => 'version-$_version';
+
+  @override
+  Future<FsStat> stat(String path) async {
+    final current = await super.stat(path);
+    return current.isFile
+        ? FsStat(kind: current.kind, size: current.size, mtime: _mtime)
+        : current;
+  }
+
+  @override
+  Future<void> writeString(String path, String content) async {
+    await super.writeString(path, content);
+    _version++;
+  }
 
   @override
   Future<List<int>?> readBytes(String path) async {
