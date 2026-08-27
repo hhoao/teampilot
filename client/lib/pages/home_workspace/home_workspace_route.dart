@@ -70,6 +70,18 @@ abstract final class HomeWorkspaceRoute {
     ).toString();
   }
 
+  /// Same path/query as [location] with manage `view` / `section` removed.
+  static String locationWithoutManage(String location) {
+    final uri = parse(location);
+    final params = Map<String, String>.from(uri.queryParameters)
+      ..remove('view')
+      ..remove('section');
+    return Uri(
+      path: uri.path,
+      queryParameters: params.isEmpty ? null : params,
+    ).toString();
+  }
+
   static HomeGlobalView? homeGlobalView(String location) =>
       HomeGlobalView.fromSegment(
         parse(location).queryParameters[HomeGlobalView.globalQueryParam],

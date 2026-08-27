@@ -43,11 +43,15 @@ class WorkspaceSplitPane extends StatefulWidget {
   const WorkspaceSplitPane({
     required this.workspace,
     required this.tabScopeId,
+    this.showManage = false,
+    this.manageOverlay,
     super.key,
   });
 
   final Workspace workspace;
   final String tabScopeId;
+  final bool showManage;
+  final Widget? manageOverlay;
 
   @override
   State<WorkspaceSplitPane> createState() => _WorkspaceSplitPaneState();
@@ -291,6 +295,8 @@ class _WorkspaceSplitPaneState extends State<WorkspaceSplitPane> {
               child: WorkspaceIdeShell(
                 composeLanding: composeLanding,
                 terminalHold: _terminalHold,
+                showManage: widget.showManage,
+                manageOverlay: widget.manageOverlay,
                 onOpenWorkspaceManagement: () =>
                     openWorkspaceManagementRoute(context, widget.workspace),
                 left: WorkspaceSidebar(

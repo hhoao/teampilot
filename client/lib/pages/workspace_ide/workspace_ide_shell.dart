@@ -9,6 +9,7 @@ import '../../models/layout_preferences.dart';
 import '../../services/floating_workspace/floating_maximize_insets.dart';
 import '../../services/workspace/workspace_pane_policy.dart';
 import '../../widgets/workspace_terminal_panel.dart';
+import '../home_workspace/workspace/workspace_manage_overlay_stack.dart';
 import '../home_workspace/workspace/workspace_route_active_scope.dart';
 import 'mobile_workspace_drawer_host.dart';
 import 'pane_overlay_host.dart';
@@ -34,6 +35,8 @@ class WorkspaceIdeShell extends StatefulWidget {
     this.composeLanding = false,
     this.terminalHold,
     this.onOpenWorkspaceManagement,
+    this.showManage = false,
+    this.manageOverlay,
     super.key,
   });
 
@@ -52,6 +55,14 @@ class WorkspaceIdeShell extends StatefulWidget {
   /// Opens workspace manage (`view=manage`). Required on narrow for the unified
   /// drawer shell footer; optional on wide (sidebar embeds its own manage tile).
   final VoidCallback? onOpenWorkspaceManagement;
+
+  /// When true, [manageOverlay] is the hit-testable foreground.
+  final bool showManage;
+
+  /// Workspace-manage panel kept alive after first visit. On narrow layouts this
+  /// must sit *inside* [MobileWorkspaceDrawerHost.child] so the hamburger
+  /// drawer still paints and receives taps above manage.
+  final Widget? manageOverlay;
 
   @override
   State<WorkspaceIdeShell> createState() => _WorkspaceIdeShellState();
@@ -434,11 +445,7 @@ class _WorkspaceIdeShellState extends State<WorkspaceIdeShell> {
     controller.updatePane(entry.copyWith(maxSize: PaneSize.pixel(max)));
   }
 
-  void _clampVisualPixelSize(
-    PaneController controller,
-    String id,
-    double max,
-  ) {
+  void _clampVisualPixelSize(PaneController controller, String id, double max) {
     final visual = controller.getVisualPixelSize(id);
     if (visual == null || visual <= max) return;
     // ignore: deprecated_member_use
@@ -510,31 +517,32 @@ class _WorkspaceIdeShellState extends State<WorkspaceIdeShell> {
 
   Widget _rowPaneBuilder(BuildContext context, String id, double progress) {
     return switch (id) {
-      _leftId => _narrow
-          ? const SizedBox.shrink()
-          : !_leftDocked
-          ? widget.left
-          : _sideChrome(
-              child: widget.left,
-              leadingOuter: true,
-              trailingOuter: false,
-            ),
-      _rightId => _narrow
-          ? const SizedBox.shrink()
-          : !_rightDocked
-          ? widget.right
-          : _sideChrome(
-              child: widget.right,
-              leadingOuter: false,
-              trailingOuter: true,
-            ),
+      _leftId =>
+        _narrow
+            ? const SizedBox.shrink()
+            : !_leftDocked
+            ? widget.left
+            : _sideChrome(
+                child: widget.left,
+                leadingOuter: true,
+                trailingOuter: false,
+              ),
+      _rightId =>
+        _narrow
+            ? const SizedBox.shrink()
+            : !_rightDocked
+            ? widget.right
+            : _sideChrome(
+                child: widget.right,
+                leadingOuter: false,
+                trailingOuter: true,
+              ),
       _ => _centerChrome(),
     };
   }
 
-  Duration get _paneAnimationDuration => _paneAnimationEnabled
-      ? const Duration(milliseconds: 250)
-      : Duration.zero;
+  Duration get _paneAnimationDuration =>
+      _paneAnimationEnabled ? const Duration(milliseconds: 250) : Duration.zero;
 
   @override
   Widget build(BuildContext context) {
@@ -630,8 +638,9 @@ class _WorkspaceIdeShellState extends State<WorkspaceIdeShell> {
     required LayoutState layoutState,
     required bool composeLanding,
   }) {
-    final fractionWidth = TpTheme.of(context).sidebarTheme
-        .resolveMobileDrawerWidth(MediaQuery.sizeOf(context).width);
+    final fractionWidth = TpTheme.of(
+      context,
+    ).sidebarTheme.resolveMobileDrawerWidth(MediaQuery.sizeOf(context).width);
     final multiPane = MultiPane(
       direction: Axis.horizontal,
       controller: _rowController,
@@ -654,23 +663,34 @@ class _WorkspaceIdeShellState extends State<WorkspaceIdeShell> {
         onDismiss: () => context.read<LayoutCubit>().closeMobileWorkspaceDrawer(
           composeLanding: composeLanding,
         ),
-        onModeChanged: (mode) => context.read<LayoutCubit>().setMobileDrawerMode(
-          mode,
-          composeLanding: composeLanding,
-        ),
-        onOpenWorkspaceManagement:
-            widget.onOpenWorkspaceManagement ?? () {},
-        child: multiPane,
+        onModeChanged: (mode) => context
+            .read<LayoutCubit>()
+            .setMobileDrawerMode(mode, composeLanding: composeLanding),
+        onOpenWorkspaceManagement: widget.onOpenWorkspaceManagement ?? () {},
+        // Manage covers the workbench only — drawer stays a sibling overlay.
+        child: _withManageOverlay(multiPane),
       );
     }
-    return PaneOverlayHost(
-      showLeft: false,
-      showRight: false,
-      leftWidth: prefs.sidebarWidth,
-      rightWidth: prefs.rightToolsWidth,
-      onDismissLeft: () {},
-      onDismissRight: () {},
-      child: multiPane,
+    return _withManageOverlay(
+      PaneOverlayHost(
+        showLeft: false,
+        showRight: false,
+        leftWidth: prefs.sidebarWidth,
+        rightWidth: prefs.rightToolsWidth,
+        onDismissLeft: () {},
+        onDismissRight: () {},
+        child: multiPane,
+      ),
+    );
+  }
+
+  Widget _withManageOverlay(Widget conversations) {
+    final overlay = widget.manageOverlay;
+    if (overlay == null) return conversations;
+    return WorkspaceManageOverlayStack(
+      showManage: widget.showManage,
+      conversations: conversations,
+      manage: overlay,
     );
   }
 }

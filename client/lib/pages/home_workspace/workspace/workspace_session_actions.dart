@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:collection/collection.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_ui/shared_ui.dart';
 import '../../../widgets/app_toast/app_toast.dart';
@@ -33,8 +34,16 @@ import '../../../utils/team/team_member_naming.dart';
 import '../../../utils/logging/logger.dart';
 import '../../../utils/workspace/workspace_path_utils.dart';
 import '../../chat/session_history_review_submit.dart';
+import '../home_workspace_route.dart';
 
 const _uuid = Uuid();
+
+void leaveWorkspaceManagementRoute(BuildContext context) {
+  final current = GoRouterState.of(context).uri.toString();
+  final next = HomeWorkspaceRoute.locationWithoutManage(current);
+  if (current == next) return;
+  context.go(next);
+}
 
 /// Builds the [SessionOpenRequest] for opening a persisted session from the
 /// sidebar / session list.
@@ -90,6 +99,7 @@ Future<void> openWorkspaceSessionTab(
   String? tabScopeId,
   bool? connectImmediatelyOverride,
 }) async {
+  leaveWorkspaceManagementRoute(context);
   final isPersonal = session.sessionTeam.trim().isEmpty;
   appLogger.d(
     '[session-launch] openWorkspaceSessionTab start '
@@ -248,6 +258,7 @@ Future<void> showWorkspaceComposeLanding(
   String? initialText,
   String? referencedSessionId,
 }) async {
+  leaveWorkspaceManagementRoute(context);
   final chat = context.read<ChatCubit>();
   if (chat.tabStore.activeWorkspaceId != tabScopeId) {
     chat.setActiveWorkspace(tabScopeId);

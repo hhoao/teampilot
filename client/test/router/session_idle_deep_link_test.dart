@@ -5,9 +5,7 @@ void main() {
   group('HomeWorkspaceRoute.session', () {
     test('decodes session query param', () {
       expect(
-        HomeWorkspaceRoute.session(
-          '/home-v2/workspace/ws-1?session=sess-42',
-        ),
+        HomeWorkspaceRoute.session('/home-v2/workspace/ws-1?session=sess-42'),
         'sess-42',
       );
       expect(
@@ -53,6 +51,29 @@ void main() {
       expect(
         HomeWorkspaceRoute.locationWithoutSession('/home-v2/workspace/ws-1'),
         '/home-v2/workspace/ws-1',
+      );
+    });
+  });
+
+  group('HomeWorkspaceRoute.locationWithoutManage', () {
+    test('strips manage view and section, keeps profile', () {
+      expect(
+        HomeWorkspaceRoute.locationWithoutManage(
+          '/home-v2/workspace/ws-1?profile=p1&view=manage&section=settings',
+        ),
+        '/home-v2/workspace/ws-1?profile=p1',
+      );
+      expect(
+        HomeWorkspaceRoute.locationWithoutManage(
+          '/home-v2/workspace/ws-1?view=manage',
+        ),
+        '/home-v2/workspace/ws-1',
+      );
+      expect(
+        HomeWorkspaceRoute.locationWithoutManage(
+          '/home-v2/workspace/ws-1?profile=p1',
+        ),
+        '/home-v2/workspace/ws-1?profile=p1',
       );
     });
   });

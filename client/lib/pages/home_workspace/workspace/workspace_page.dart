@@ -103,10 +103,7 @@ class _WorkspacePageState extends State<WorkspacePage> {
     final launchProfiles = context.read<LaunchProfileCubit>();
     final profile = launchProfiles.byId(routeProfile);
     if (profile == null) return;
-    final next = LandingLaunchContext(
-      isPersonal: false,
-      teamId: profile.id,
-    );
+    final next = LandingLaunchContext(isPersonal: false, teamId: profile.id);
     cubit.update(next);
   }
 
@@ -126,7 +123,10 @@ class _WorkspacePageState extends State<WorkspacePage> {
   }
 
   Future<void> _applyExpertFromRoute(String expertKey) async {
-    final workspace = context.read<ChatCubit>().state.workspaces
+    final workspace = context
+        .read<ChatCubit>()
+        .state
+        .workspaces
         .where((w) => w.workspaceId == widget.workspaceId)
         .firstOrNull;
     if (workspace == null) return;
@@ -134,7 +134,9 @@ class _WorkspacePageState extends State<WorkspacePage> {
     final location = GoRouterState.of(context).uri.toString();
     final routeProfile = HomeWorkspaceRoute.profile(location);
     final launchProfiles = context.read<LaunchProfileCubit>();
-    final profile = routeProfile == null ? null : launchProfiles.byId(routeProfile);
+    final profile = routeProfile == null
+        ? null
+        : launchProfiles.byId(routeProfile);
     final routeProfileIsTeam = profile != null
         ? profile.kind == LaunchProfileKind.team
         : false;
@@ -226,7 +228,10 @@ class _WorkspacePageState extends State<WorkspacePage> {
   }
 
   Future<void> _applySessionFromRoute(String sessionId) async {
-    final workspace = context.read<ChatCubit>().state.workspaces
+    final workspace = context
+        .read<ChatCubit>()
+        .state
+        .workspaces
         .where((w) => w.workspaceId == widget.workspaceId)
         .firstOrNull;
     if (workspace == null) {
@@ -367,38 +372,17 @@ class _WorkspacePageState extends State<WorkspacePage> {
 
   Widget _buildCardBody({required Workspace workspace}) {
     final showManage = _section == WorkspaceSection.manage;
-    return Stack(
-      fit: StackFit.expand,
-      children: [
-        TpKeepAliveLayer(
-          active: !showManage,
-          child: TickerMode(
-            enabled: !showManage,
-            child: IgnorePointer(
-              ignoring: showManage,
-              child: WorkspaceSplitPane(
-                key: ValueKey('conversations-${widget.tabKey}'),
-                workspace: workspace,
-                tabScopeId: widget.tabKey,
-              ),
-            ),
-          ),
-        ),
-        if (_visitedManage)
-          TpKeepAliveLayer(
-            active: showManage,
-            child: TickerMode(
-              enabled: showManage,
-              child: IgnorePointer(
-                ignoring: !showManage,
-                child: WorkspaceConfigPanel(
-                  workspace: workspace,
-                  section: _configSection(context),
-                ),
-              ),
-            ),
-          ),
-      ],
+    return WorkspaceSplitPane(
+      key: ValueKey('conversations-${widget.tabKey}'),
+      workspace: workspace,
+      tabScopeId: widget.tabKey,
+      showManage: showManage,
+      manageOverlay: _visitedManage
+          ? WorkspaceConfigPanel(
+              workspace: workspace,
+              section: _configSection(context),
+            )
+          : null,
     );
   }
 
@@ -417,8 +401,6 @@ class _MissingWorkspace extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Center(
-      child: Text(label, style: TpTextStyles.of(context).mutedMd),
-    );
+    return Center(child: Text(label, style: TpTextStyles.of(context).mutedMd));
   }
 }

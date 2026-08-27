@@ -7,7 +7,6 @@ import '../../../l10n/l10n_extensions.dart';
 import '../../../models/workspace.dart';
 import '../../../repositories/workspace_project_config_repository.dart';
 import '../../../utils/ui/app_keys.dart';
-import '../../../utils/workspace/workspace_chrome_profile.dart';
 import '../../../utils/workspace/workspace_display_name.dart';
 import '../../../widgets/settings/workspace_section_host.dart';
 import '../../../widgets/settings/workspace_section_nav_item.dart';
@@ -18,7 +17,7 @@ import 'config/workspace_plugins_section.dart';
 import 'config/workspace_skills_section.dart';
 import 'workspace_config_section.dart';
 import 'workspace_info_section.dart';
-import '../home_workspace_route.dart';
+import 'workspace_session_actions.dart';
 
 /// Project-scoped workspace configuration (settings + resource bindings).
 class WorkspaceConfigPanel extends StatefulWidget {
@@ -39,27 +38,11 @@ class _WorkspaceConfigPanelState extends State<WorkspaceConfigPanel> {
   String _managePath(WorkspaceConfigSection section) {
     return Uri(
       path: '/home-v2/workspace/${widget.workspace.workspaceId}',
-      queryParameters: {
-        'view': 'manage',
-        'section': section.routeSegment,
-      },
+      queryParameters: {'view': 'manage', 'section': section.routeSegment},
     ).toString();
   }
 
-  void _leaveManage() {
-    final location = GoRouterState.of(context).uri.toString();
-    final routeProfile = HomeWorkspaceRoute.profile(location);
-    final profileId = workspaceChromeProfileId(
-      widget.workspace,
-      routeProfileId: routeProfile,
-    );
-    context.go(
-      Uri(
-        path: '/home-v2/workspace/${widget.workspace.workspaceId}',
-        queryParameters: {'profile': profileId},
-      ).toString(),
-    );
-  }
+  void _leaveManage() => leaveWorkspaceManagementRoute(context);
 
   @override
   Widget build(BuildContext context) {
@@ -81,6 +64,7 @@ class _WorkspaceConfigPanelState extends State<WorkspaceConfigPanel> {
         showSubtitle: false,
         onBack: _leaveManage,
         compactSectionTabs: true,
+        embedded: true,
         items: [
           for (final s in sections)
             WorkspaceSectionNavItem(
@@ -103,10 +87,7 @@ class _WorkspaceConfigPanelState extends State<WorkspaceConfigPanel> {
 }
 
 class _ProjectConfigBody extends StatelessWidget {
-  const _ProjectConfigBody({
-    required this.workspace,
-    required this.section,
-  });
+  const _ProjectConfigBody({required this.workspace, required this.section});
 
   final Workspace workspace;
   final WorkspaceConfigSection section;
@@ -114,7 +95,9 @@ class _ProjectConfigBody extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return switch (section) {
-      WorkspaceConfigSection.settings => WorkspaceInfoSection(workspace: workspace),
+      WorkspaceConfigSection.settings => WorkspaceInfoSection(
+        workspace: workspace,
+      ),
       WorkspaceConfigSection.skills => WorkspaceSkillsSection(
         workspaceId: workspace.workspaceId,
       ),
