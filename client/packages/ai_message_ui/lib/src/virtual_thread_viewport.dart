@@ -45,6 +45,7 @@ class VirtualThreadViewport extends StatefulWidget {
     this.revealMessageId,
     this.revealEpoch = 0,
     this.onRevealOffset,
+    this.onVisibleRange,
     this.buildKey,
     super.key,
   });
@@ -77,6 +78,9 @@ class VirtualThreadViewport extends StatefulWidget {
   /// host must add its own outer scroll padding (e.g. SingleChildScrollView top
   /// padding) when jumping.
   final void Function(double offset)? onRevealOffset;
+
+  /// Viewport-visible turn range (overscan 0), independent of the mount window.
+  final ValueChanged<TurnVisibleRange>? onVisibleRange;
 
   /// Host-controlled cache key. When it changes (with the same message list
   /// instance), cached `messageBuilder` outputs are invalidated so the builder
@@ -114,6 +118,8 @@ class _VirtualThreadViewportState extends State<VirtualThreadViewport> {
 
   String? _lastRevealMessageId;
   int _lastRevealEpoch = 0;
+  int _notifiedVisibleFirst = 0;
+  int _notifiedVisibleLast = -1;
 
   static const _fillChunk = 2;
 
@@ -288,6 +294,18 @@ class _VirtualThreadViewportState extends State<VirtualThreadViewport> {
     _syncVisibleRange();
   }
 
+  void _notifyVisibleRange(TurnVisibleRange visible) {
+    final cb = widget.onVisibleRange;
+    if (cb == null) return;
+    if (visible.firstIndex == _notifiedVisibleFirst &&
+        visible.lastIndex == _notifiedVisibleLast) {
+      return;
+    }
+    _notifiedVisibleFirst = visible.firstIndex;
+    _notifiedVisibleLast = visible.lastIndex;
+    cb(visible);
+  }
+
   /// Scroll offset in turn-space (turns start after the optional header).
   double _scrollPixelsInTurnSpace(double documentPixels) {
     final inTurn = documentPixels - _headerHeight;
@@ -351,6 +369,16 @@ class _VirtualThreadViewportState extends State<VirtualThreadViewport> {
           scrollPixels <= 1.0) {
         scrollPixels = position.maxScrollExtent;
       }
+      // Viewport-visible range is independent of overscan / retain / fill.
+      // Report it from current scroll pixels before widening the mount window.
+      _notifyVisibleRange(
+        _cache.visibleRange(
+          turns: _turns,
+          scrollPixels: _scrollPixelsInTurnSpace(scrollPixels),
+          viewportHeight: position.viewportDimension,
+          overscan: 0,
+        ),
+      );
       range = _cache.clampUnmeasuredMounts(
         turns: _turns,
         range: _cache.visibleRange(
@@ -385,6 +413,7 @@ class _VirtualThreadViewportState extends State<VirtualThreadViewport> {
         paddingTop: 0,
         paddingBottom: 0,
       );
+      _notifyVisibleRange(range);
     } else {
       // Until first layout: mount a small window at the anchored end.
       final count = _coldMountLimit.clamp(1, _turns.length);
