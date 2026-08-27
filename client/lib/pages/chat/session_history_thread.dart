@@ -630,6 +630,10 @@ class _SessionHistoryThreadState extends State<SessionHistoryThread> {
                         onVisibleRange: (range) {
                           final notifier = widget.visibleOwnerId;
                           if (notifier == null) return;
+                          if (range.lastIndex < range.firstIndex) {
+                            notifier.value = null;
+                            return;
+                          }
                           notifier.value = owningUserTurnId(
                             _displayMessages,
                             range.firstIndex,
