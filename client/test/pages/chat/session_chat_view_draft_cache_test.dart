@@ -170,6 +170,7 @@ void main() {
         record: any(named: 'record'),
       ),
     ).thenAnswer((_) async {});
+    when(() => seat.removePendingById(any())).thenAnswer((_) async {});
     when(
       () => seat.retryPendingUser(
         store: any(named: 'store'),
@@ -416,7 +417,7 @@ void main() {
     expect(field.controller!.text, 'keep me');
   });
 
-  testWidgets('failed session delivery retains the persisted draft', (
+  testWidgets('failed session delivery clears the persisted draft', (
     tester,
   ) async {
     final session = _session('s4');
@@ -431,12 +432,13 @@ void main() {
     await tester.tap(find.byIcon(Icons.arrow_upward_rounded));
     await tester.pumpAndSettle();
 
+    expect(_composeField(tester).controller!.text, isEmpty);
     expect(
       await ComposeDraftStore(
         fs: AppStorage.fs,
         rootPath: AppStorage.appDataRoot,
       ).loadSession('ws-1', 's4'),
-      'do not lose this',
+      isNull,
     );
   });
 
@@ -507,7 +509,7 @@ void main() {
       },
     );
 
-    await tester.tap(find.text('Retry'));
+    await tester.tap(find.byIcon(Icons.refresh_rounded));
     await tester.pumpAndSettle();
 
     expect(submitted, 1);
@@ -553,7 +555,7 @@ void main() {
       onSubmit: (_) async => const HistoryContinueSubmitResult.failed(),
     );
 
-    await tester.tap(find.text('Retry'));
+    await tester.tap(find.byIcon(Icons.refresh_rounded));
     await tester.pumpAndSettle();
 
     verify(
@@ -603,8 +605,8 @@ void main() {
       },
     );
 
-    await tester.tap(find.text('Retry'));
-    await tester.tap(find.text('Retry'));
+    await tester.tap(find.byIcon(Icons.refresh_rounded));
+    await tester.tap(find.byIcon(Icons.refresh_rounded));
     recordsReady.complete([record]);
     await tester.pump();
 
@@ -633,43 +635,6 @@ void main() {
         record: any(named: 'record'),
       ),
     );
-  });
-
-  testWidgets('Edit and retry loads the failed text into the composer', (
-    tester,
-  ) async {
-    final store = FailedMessageStore(
-      fs: AppStorage.fs,
-      rootPath: AppStorage.appDataRoot,
-    );
-    final record = FailedMessageRecord(
-      id: 'pending:edit',
-      text: 'edit this first',
-      createdAt: DateTime.utc(2026),
-      status: FailedMessageStatus.failed,
-    );
-    await store.save('ws-1', 'edit-retry', record);
-    runtime.setMessages([
-      const AiMessage(
-        id: 'pending:edit',
-        role: AiRole.user,
-        parts: [AiTextPart(text: 'edit this first')],
-      ),
-    ]);
-    when(
-      () => seat.pendingDeliveryStatuses,
-    ).thenReturn(const {'pending:edit': FailedMessageStatus.failed});
-
-    await pumpSession(
-      tester,
-      session: _session('edit-retry'),
-      failedMessageStore: store,
-    );
-
-    await tester.tap(find.text('Edit and retry'));
-    await tester.pumpAndSettle();
-
-    expect(_composeField(tester).controller!.text, 'edit this first');
   });
 }
 

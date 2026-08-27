@@ -952,15 +952,13 @@ class _SessionChatViewState extends State<SessionChatView> {
             record: pendingRecord,
           );
         }
-        // Clear the stale clip before restoring the composed text. If the
-        // restored text exceeds the paste-collapse threshold, detection in
-        // ComposeTriggerField re-collapses it into the clip — the block /
-        // follow-up split is intentionally lost on a failed submit.
         if (clearCompose) {
           _clip.clear();
-          _controller
-            ..text = text
-            ..selection = TextSelection.collapsed(offset: text.length);
+          await composeDraftCache.clearSessionPersistent(
+            widget.session.workspaceId,
+            widget.session.sessionId,
+          );
+          composeDraftCache.clearSessionDraft(widget.session.sessionId);
         }
         if (retryingRecord != null) {
           _editingFailedMessage = retryingRecord.copyWith(
@@ -1004,6 +1002,9 @@ class _SessionChatViewState extends State<SessionChatView> {
         seat.enqueuePendingUser(text);
         _syncAwaitingFromWorkingSessions(context.read<ChatCubit>().state);
       }
+      // Keep the optimistic bubble until the CLI transcript gains a user turn
+      // (_reconcilePendings). Removing here left History blank while the CLI
+      // was still processing.
       unawaited(_startLiveRefresh());
       return result;
     } finally {
@@ -1054,18 +1055,6 @@ class _SessionChatViewState extends State<SessionChatView> {
     } finally {
       _retryingFailedMessageIds.remove(messageId);
     }
-  }
-
-  Future<void> _editFailedMessage(String messageId) async {
-    final record = await _loadFailedMessage(messageId);
-    if (record == null || !mounted) return;
-    _editingFailedMessage = record;
-    _clip.clear();
-    _controller
-      ..text = record.text
-      ..selection = TextSelection.collapsed(offset: record.text.length);
-    _focusNode.requestFocus();
-    setState(() {});
   }
 
   void _cancelAwaitingIdleGrace() {
@@ -1393,8 +1382,6 @@ class _SessionChatViewState extends State<SessionChatView> {
                                               unawaited(
                                                 _retryFailedMessage(id),
                                               ),
-                                          onEditFailedMessage: (id) =>
-                                              unawaited(_editFailedMessage(id)),
                                           onCloseFind: _closeFind,
                                           onNavigateFind: _navigateFindTo,
                                         ),

@@ -17,7 +17,6 @@ Widget _harness({
   required AiThreadRuntime runtime,
   Map<String, FailedMessageStatus> pendingDeliveryStatuses = const {},
   ValueChanged<String>? onRetryFailedMessage,
-  ValueChanged<String>? onEditFailedMessage,
 }) {
   return MaterialApp(
     localizationsDelegates: AppLocalizations.localizationsDelegates,
@@ -35,7 +34,6 @@ Widget _harness({
           onLoadOlder: () {},
           pendingDeliveryStatuses: pendingDeliveryStatuses,
           onRetryFailedMessage: onRetryFailedMessage,
-          onEditFailedMessage: onEditFailedMessage,
         ),
       ),
     ),
@@ -98,7 +96,7 @@ void main() {
     expect(find.text('optimistic continue'), findsOneWidget);
   });
 
-  testWidgets('persisted pending bubble renders its delivery status', (
+  testWidgets('pending delivery status does not show inline labels', (
     tester,
   ) async {
     final runtime = ExternalStoreAiThreadRuntime()
@@ -122,14 +120,14 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('recover me'), findsOneWidget);
-    expect(find.text('Failed'), findsOneWidget);
+    expect(find.text('Failed'), findsNothing);
+    expect(find.text('Sending'), findsNothing);
   });
 
-  testWidgets('failed bubble exposes retry and edit-and-retry actions', (
+  testWidgets('failed bubble exposes retry in the action bar', (
     tester,
   ) async {
     String? retryId;
-    String? editId;
     final runtime = ExternalStoreAiThreadRuntime()
       ..setMessages([
         const AiMessage(
@@ -147,16 +145,14 @@ void main() {
           'pending:failed': FailedMessageStatus.failed,
         },
         onRetryFailedMessage: (id) => retryId = id,
-        onEditFailedMessage: (id) => editId = id,
       ),
     );
     await tester.pumpAndSettle();
 
-    await tester.tap(find.text('Retry'));
-    await tester.tap(find.text('Edit and retry'));
+    expect(find.byIcon(Icons.refresh_rounded), findsOneWidget);
+    await tester.tap(find.byIcon(Icons.refresh_rounded));
 
     expect(retryId, 'pending:failed');
-    expect(editId, 'pending:failed');
   });
 
   testWidgets('default prefs fold read but keep subagent standalone', (

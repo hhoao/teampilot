@@ -12,6 +12,7 @@ AiMessageStrings aiMessageStringsFromL10n(AppLocalizations l10n) {
     result: l10n.aiMessageToolResult,
     copy: l10n.copy,
     copied: l10n.aiMessageCopied,
+    retryDelivery: l10n.sessionHistoryRetry,
     exportMarkdown: l10n.aiMessageExportMarkdown,
     messageIncomplete: l10n.aiMessageIncomplete,
     messageCancelled: l10n.aiMessageCancelled,

@@ -18,6 +18,7 @@ import '../../../cubits/session_preferences_cubit.dart';
 import '../../../cubits/workbench/workbench_cubit.dart';
 import '../../../cubits/worktree_cubit.dart';
 import '../../../l10n/l10n_extensions.dart';
+import '../../../models/failed_message_record.dart';
 import '../../../models/landing_launch_context.dart';
 import '../../../models/launch_security_policy.dart';
 import '../../../models/simple_launch_identity.dart';
@@ -463,19 +464,6 @@ Future<bool> submitWorkspaceLandingMessage(
   // Opening the session exits new-chat mode and unmounts [WorkspaceChatPane].
   // Delivery must keep going via cubits/repos captured above — not [context.mounted].
 
-  // Stay-on-Chat: seed the optimistic bubble before connect/deliver so Chat
-  // shows the user turn immediately (connect can take many seconds).
-  final historyMemberId = isPersonal
-      ? ''
-      : (_teamLead(team)?.id ?? 'team-lead');
-  if (!switchToTerminal) {
-    chatCubit.seedHistoryPending(
-      sessionId: plannedSessionId,
-      memberId: historyMemberId,
-      text: trimmed,
-    );
-  }
-
   final session = await _sessionById(
     chatCubit: chatCubit,
     repo: repo,
@@ -487,12 +475,6 @@ Future<bool> submitWorkspaceLandingMessage(
       'submitWorkspaceLandingMessage: session missing after open '
       'sessionId=$plannedSessionId workspace=${liveWorkspace.workspaceId}',
     );
-    if (!switchToTerminal) {
-      chatCubit.cancelHistorySeedPending(
-        sessionId: plannedSessionId,
-        text: trimmed,
-      );
-    }
     return false;
   }
 
@@ -512,6 +494,19 @@ Future<bool> submitWorkspaceLandingMessage(
     team: team,
   );
 
+  final historyMemberId = isPersonal
+      ? ''
+      : (_teamLead(team)?.id ?? 'team-lead');
+  FailedMessageRecord? pendingRecord;
+  if (!switchToTerminal) {
+    pendingRecord = await chatCubit.persistHistoryPending(
+      workspaceId: liveWorkspace.workspaceId,
+      sessionId: session.sessionId,
+      memberId: historyMemberId,
+      text: trimmed,
+    );
+  }
+
   final connected = await _ensureLandingSessionConnected(
     chatCubit: chatCubit,
     session: session,
@@ -522,10 +517,12 @@ Future<bool> submitWorkspaceLandingMessage(
       'submitWorkspaceLandingMessage: member not ready '
       'session=${session.sessionId} member=$memberId',
     );
-    if (!switchToTerminal) {
-      chatCubit.cancelHistorySeedPending(
+    if (pendingRecord != null) {
+      await chatCubit.markHistoryPendingFailed(
+        workspaceId: liveWorkspace.workspaceId,
         sessionId: session.sessionId,
-        text: trimmed,
+        memberId: historyMemberId,
+        record: pendingRecord,
       );
     }
     if (context.mounted) {
@@ -545,12 +542,15 @@ Future<bool> submitWorkspaceLandingMessage(
       trimmed,
       directToPty: true,
     );
+    // Pending bubble stays until transcript reconcile — do not clear here.
     return true;
   } on Object catch (error, stackTrace) {
-    if (!switchToTerminal) {
-      chatCubit.cancelHistorySeedPending(
+    if (pendingRecord != null) {
+      await chatCubit.markHistoryPendingFailed(
+        workspaceId: liveWorkspace.workspaceId,
         sessionId: session.sessionId,
-        text: trimmed,
+        memberId: historyMemberId,
+        record: pendingRecord,
       );
     }
     appLogger.e(

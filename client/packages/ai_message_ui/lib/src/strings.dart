@@ -14,6 +14,7 @@ class AiMessageStrings {
     this.result = 'Result',
     this.copy = 'Copy',
     this.copied = 'Copied',
+    this.retryDelivery = 'Retry',
     this.exportMarkdown = 'Export Markdown',
     this.code = 'code',
     this.messageIncomplete = 'Message incomplete',
@@ -79,6 +80,7 @@ class AiMessageStrings {
   final String result;
   final String copy;
   final String copied;
+  final String retryDelivery;
   final String exportMarkdown;
   final String code;
   final String messageIncomplete;

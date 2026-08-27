@@ -31,12 +31,16 @@ class AiMessageActionBar extends StatefulWidget {
     this.reveal = AiActionBarReveal.always,
     this.forceVisible = false,
     this.forceVisibleListenable,
+    this.onRetryDelivery,
     super.key,
   });
 
   final AiMessage message;
   final AiActionBarReveal reveal;
   final bool forceVisible;
+
+  /// When set, shows a refresh icon to retry failed delivery.
+  final VoidCallback? onRetryDelivery;
 
   /// When set (history hover path), visibility toggles via Opacity without
   /// rebuilding the button row after first mount.
@@ -132,7 +136,9 @@ class _AiMessageActionBarState extends State<AiMessageActionBar> {
     _unmountTimer?.cancel();
     _plain = plainTextForCopy(widget.message);
     _markdown = markdownForExport(widget.message);
-    if (_plain.isNotEmpty || _markdown.isNotEmpty) {
+    if (_plain.isNotEmpty ||
+        _markdown.isNotEmpty ||
+        widget.onRetryDelivery != null) {
       _actionsMounted = true;
     }
   }
@@ -201,6 +207,13 @@ class _AiMessageActionBarState extends State<AiMessageActionBar> {
     final actions = Row(
       mainAxisSize: MainAxisSize.min,
       children: [
+        if (widget.onRetryDelivery != null)
+          _LiteIconAction(
+            label: strings.retryDelivery,
+            icon: Icons.refresh_rounded,
+            color: color,
+            onPressed: widget.onRetryDelivery,
+          ),
         _LiteIconAction(
           label: _copied ? strings.copied : strings.copy,
           icon: _copied ? Icons.check_rounded : Icons.copy_rounded,

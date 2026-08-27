@@ -8,6 +8,7 @@ import 'package:flutter/widgets.dart';
 import 'package:flutter_alacritty/flutter_alacritty.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
+import '../models/failed_message_record.dart';
 import '../models/workspace.dart';
 import '../models/workspace_folder.dart';
 import '../models/workspace_launch_context.dart';
@@ -24,6 +25,7 @@ import '../services/workspace/workspace_icon_service.dart';
 import '../services/workspace/workspace_icon_storage.dart';
 import '../services/storage/app_storage.dart';
 import '../services/session/ai_history_loader.dart';
+import '../services/session/failed_message_store.dart';
 import '../services/session/session_lifecycle_service.dart';
 import '../services/session/session_member_cli_locks.dart';
 import '../services/remote/remote_cli_readiness.dart';
@@ -518,6 +520,67 @@ class ChatCubit extends Cubit<ChatState>
       return;
     }
     onCancelSeedHistoryPending?.call(sessionId, text);
+  }
+
+  FailedMessageStore get _failedMessageStore =>
+      FailedMessageStore(fs: AppStorage.fs, rootPath: AppStorage.appDataRoot);
+
+  /// Persists the optimistic user bubble for landing create+send (same record
+  /// model as History continue) so it survives tab close and app restart.
+  Future<FailedMessageRecord?> persistHistoryPending({
+    required String workspaceId,
+    required String sessionId,
+    required String memberId,
+    required String text,
+  }) async {
+    final trimmed = text.trim();
+    if (trimmed.isEmpty ||
+        workspaceId.trim().isEmpty ||
+        sessionId.trim().isEmpty) {
+      return null;
+    }
+    final history = ensurePodRuntime(sessionId).history;
+    if (history == null) return null;
+    final seat = history.memberSeat(sessionId: sessionId, memberId: memberId);
+    return seat.persistPendingUser(
+      store: _failedMessageStore,
+      workspaceId: workspaceId,
+      sessionId: sessionId,
+      text: trimmed,
+    );
+  }
+
+  /// Marks a persisted landing bubble failed instead of rolling it back.
+  Future<void> markHistoryPendingFailed({
+    required String workspaceId,
+    required String sessionId,
+    required String memberId,
+    required FailedMessageRecord record,
+  }) async {
+    final history = podRuntime(sessionId)?.history;
+    if (history == null) return;
+    final seat = history.memberSeat(sessionId: sessionId, memberId: memberId);
+    await seat.markPendingFailed(
+      store: _failedMessageStore,
+      workspaceId: workspaceId,
+      sessionId: sessionId,
+      record: record,
+    );
+  }
+
+  /// Clears a delivered pending bubble from memory and disk.
+  Future<void> clearHistoryPending({
+    required String workspaceId,
+    required String sessionId,
+    required String memberId,
+    required String recordId,
+  }) async {
+    final trimmed = recordId.trim();
+    if (trimmed.isEmpty) return;
+    await _failedMessageStore.remove(workspaceId, sessionId, trimmed);
+    await podRuntime(sessionId)?.history
+        ?.memberSeat(sessionId: sessionId, memberId: memberId)
+        .removePendingById(trimmed);
   }
 
   /// Releases a session's pod: closes its HistoryStore and drops the registry

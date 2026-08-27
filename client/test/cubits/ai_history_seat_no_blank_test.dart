@@ -153,7 +153,7 @@ void main() {
     },
   );
 
-  test('hydrates sending record after existing transcript baseline', () async {
+  test('hydrates stale sending as failed without latching awaiting', () async {
     holderMessages = messages(1);
     final current = session();
     await seat.load(
@@ -169,6 +169,7 @@ void main() {
       id: 'pending:restart',
       text: 'survives restart',
       createdAt: DateTime.utc(2026),
+      status: FailedMessageStatus.sending,
     );
     await store.save(current.workspaceId, current.sessionId, record);
 
@@ -181,6 +182,15 @@ void main() {
     expect(
       seat.runtime.messages.map((message) => message.id),
       containsAll(['m-0', record.id]),
+    );
+    expect(seat.state.awaitingAssistant, isFalse);
+    expect(
+      seat.pendingDeliveryStatusFor(record.id),
+      FailedMessageStatus.failed,
+    );
+    expect(
+      (await store.load(current.workspaceId, current.sessionId)).single.status,
+      FailedMessageStatus.failed,
     );
   });
 

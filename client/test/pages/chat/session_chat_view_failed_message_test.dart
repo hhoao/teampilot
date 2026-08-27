@@ -41,6 +41,50 @@ void main() {
     );
   });
 
+  test('hydrates a sending record as failed after reopen', () async {
+    final record = FailedMessageRecord(
+      id: 'pending:restart',
+      text: 'survives restart',
+      createdAt: DateTime.utc(2026),
+      status: FailedMessageStatus.sending,
+    );
+    await store.save('workspace-a', 'session-a', record);
+    final history = seat();
+
+    await history.hydratePendingUsers(
+      store: store,
+      workspaceId: 'workspace-a',
+      sessionId: 'session-a',
+    );
+
+    expect(history.runtime.messages.single.id, record.id);
+    expect(
+      history.pendingDeliveryStatusFor(record.id),
+      FailedMessageStatus.failed,
+    );
+    expect(history.state.awaitingAssistant, isFalse);
+    expect(
+      (await store.load('workspace-a', 'session-a')).single.status,
+      FailedMessageStatus.failed,
+    );
+  });
+
+  test('removePendingById drops the overlay before transcript reload', () async {
+    final history = seat();
+    final record = await history.persistPendingUser(
+      store: store,
+      workspaceId: 'workspace-a',
+      sessionId: 'session-a',
+      text: 'delivered once',
+    );
+
+    await history.removePendingById(record.id);
+
+    expect(history.runtime.messages, isEmpty);
+    expect(await store.load('workspace-a', 'session-a'), isEmpty);
+    expect(history.state.awaitingAssistant, isFalse);
+  });
+
   test('hydrates a failed bubble into a fresh history seat', () async {
     final record = FailedMessageRecord(
       id: 'failed-1',

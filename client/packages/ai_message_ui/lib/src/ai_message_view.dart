@@ -22,6 +22,7 @@ class AiMessageView extends StatefulWidget {
     this.actionBarReveal = AiActionBarReveal.always,
     this.actionBarHoverEnabled,
     this.chainOfThoughtAutoExpand = false,
+    this.onRetryDelivery,
     super.key,
   });
 
@@ -29,6 +30,9 @@ class AiMessageView extends StatefulWidget {
   final AiPartRegistry registry;
   final bool showActionBar;
   final AiActionBarReveal actionBarReveal;
+
+  /// When set, shows a refresh icon on the action bar (failed delivery retry).
+  final VoidCallback? onRetryDelivery;
 
   /// When `false`, ignore pointer-enter for hover ActionBars (history fling).
   /// Defaults to always enabled when null.
@@ -106,6 +110,7 @@ class _AiMessageViewState extends State<AiMessageView> {
             showActionBar: widget.showActionBar,
             actionBarReveal: widget.actionBarReveal,
             hoverListenable: trackHover ? _hovered : null,
+            onRetryDelivery: widget.onRetryDelivery,
           ),
           AiRole.assistant => _AssistantBlock(
             scheme: scheme,
@@ -197,6 +202,7 @@ class _UserBubble extends StatelessWidget {
     required this.showActionBar,
     required this.actionBarReveal,
     this.hoverListenable,
+    this.onRetryDelivery,
   });
 
   final ColorScheme scheme;
@@ -206,6 +212,7 @@ class _UserBubble extends StatelessWidget {
   final bool showActionBar;
   final AiActionBarReveal actionBarReveal;
   final ValueListenable<bool>? hoverListenable;
+  final VoidCallback? onRetryDelivery;
 
   @override
   Widget build(BuildContext context) {
@@ -214,7 +221,8 @@ class _UserBubble extends StatelessWidget {
       child: LayoutBuilder(
         builder: (context, constraints) {
           // Reserve action-bar chrome so Row never overflows the thread width.
-          const actionBarReserve = 80.0;
+          final actionBarReserve =
+              80.0 + (onRetryDelivery != null ? 36.0 : 0.0);
           final threadMax = constraints.maxWidth.isFinite
               ? constraints.maxWidth
               : 480.0;
@@ -233,6 +241,7 @@ class _UserBubble extends StatelessWidget {
                   message: message,
                   reveal: actionBarReveal,
                   hoverListenable: hoverListenable,
+                  onRetryDelivery: onRetryDelivery,
                 ),
               Flexible(
                 child: ConstrainedBox(
@@ -394,11 +403,13 @@ class _HoverScopedActionBar extends StatelessWidget {
     required this.message,
     required this.reveal,
     this.hoverListenable,
+    this.onRetryDelivery,
   });
 
   final AiMessage message;
   final AiActionBarReveal reveal;
   final ValueListenable<bool>? hoverListenable;
+  final VoidCallback? onRetryDelivery;
 
   @override
   Widget build(BuildContext context) {
@@ -406,6 +417,7 @@ class _HoverScopedActionBar extends StatelessWidget {
       message: message,
       reveal: reveal,
       forceVisibleListenable: hoverListenable,
+      onRetryDelivery: onRetryDelivery,
     );
   }
 }

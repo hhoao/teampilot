@@ -558,15 +558,21 @@ class AiHistorySeat extends Cubit<AiHistoryState> {
     return action;
   }
 
+  bool _pendingDeliveryLatchesAwaiting(FailedMessageStatus? deliveryStatus) =>
+      deliveryStatus != FailedMessageStatus.failed;
+
   void enqueuePendingUser(
     String text, {
     String? id,
     FailedMessageStatus? deliveryStatus,
   }) {
     if (isClosed) return;
-    // New user turn — need a fresh rising edge of working.
-    _cancelTurnEndSettle();
-    _sawWorkingWhileAwaiting = false;
+    final latchAwaiting = _pendingDeliveryLatchesAwaiting(deliveryStatus);
+    if (latchAwaiting) {
+      // New user turn — need a fresh rising edge of working.
+      _cancelTurnEndSettle();
+      _sawWorkingWhileAwaiting = false;
+    }
     final pending = _PendingUser(
       id: id ?? 'pending:${_uuid.v4()}',
       text: text,
@@ -581,10 +587,10 @@ class AiHistorySeat extends Cubit<AiHistoryState> {
       emit(
         state.copyWith(
           status: AiHistoryViewStatus.ready,
-          awaitingAssistant: true,
+          awaitingAssistant: latchAwaiting || state.awaitingAssistant,
         ),
       );
-    } else {
+    } else if (latchAwaiting) {
       emit(state.copyWith(awaitingAssistant: true));
     }
   }
@@ -673,10 +679,19 @@ class AiHistorySeat extends Cubit<AiHistoryState> {
           _pendingQueue.any((pending) => pending.id == record.id)) {
         continue;
       }
+      // Stale sending rows never completed delivery — treat as failed on
+      // reopen so we do not latch Starting/connect chrome or FIFO-consume
+      // a later successful send against this bubble.
+      final restored = record.status == FailedMessageStatus.sending
+          ? record.copyWith(status: FailedMessageStatus.failed)
+          : record;
+      if (restored.status != record.status) {
+        await store.save(workspaceId, sessionId, restored);
+      }
       enqueuePendingUser(
-        record.text,
-        id: record.id,
-        deliveryStatus: record.status,
+        restored.text,
+        id: restored.id,
+        deliveryStatus: restored.status,
       );
     }
   }
@@ -718,6 +733,31 @@ class AiHistorySeat extends Cubit<AiHistoryState> {
     emit(state.copyWith(awaitingAssistant: false));
   }
 
+  /// Drops one persisted pending by id after a successful deliver or explicit
+  /// cancel — avoids duplicate user bubbles while the CLI transcript catches up.
+  Future<void> removePendingById(String id) async {
+    if (isClosed) return;
+    final trimmed = id.trim();
+    if (trimmed.isEmpty) return;
+    final before = _pendingQueue.length;
+    _pendingQueue.removeWhere((pending) => pending.id == trimmed);
+    if (_pendingQueue.length == before) return;
+    await _removePersistedPending(trimmed);
+    if (isClosed) return;
+    _remergePendingsOntoRuntime();
+    _syncAwaitingAfterPendingRemoval();
+  }
+
+  void _syncAwaitingAfterPendingRemoval() {
+    if (!_pendingQueue.any(
+      (pending) => _pendingDeliveryLatchesAwaiting(pending.deliveryStatus),
+    )) {
+      if (state.awaitingAssistant) {
+        emit(state.copyWith(awaitingAssistant: false));
+      }
+    }
+  }
+
   /// Rolls back an optimistic pending when connect/inject fails.
   void removePendingMatching(String text) {
     if (isClosed) return;
@@ -733,7 +773,7 @@ class AiHistorySeat extends Cubit<AiHistoryState> {
     _commitAll();
     _remergePendingsOntoRuntime();
     _sawWorkingWhileAwaiting = false;
-    emit(state.copyWith(awaitingAssistant: false));
+    _syncAwaitingAfterPendingRemoval();
   }
 
   void setAwaitingAssistant(bool value) {
