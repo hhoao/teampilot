@@ -2,9 +2,9 @@
 /// `cli-config.json` `modelId` + parameters cursor-agent persists after a
 /// successful catalog load.
 ///
-/// Passing those slugs as `--model` skips cursor-agent's persist-from-config
-/// fallback and exits 1 when the live catalog is still empty. Stamp this
-/// instead and omit `--model`.
+/// Interactive launch also passes the picker slug as `--model` so cursor-agent
+/// cannot revert to Auto after startup. This mapping is still stamped into
+/// isolated `cli-config.json` as a secondary path.
 final class CursorLaunchModel {
   const CursorLaunchModel({required this.modelId, required this.parameters});
 

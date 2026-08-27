@@ -48,6 +48,8 @@ void main() {
         '/repo/a',
         '--add-dir',
         '/repo/b',
+        '--model',
+        'gpt-5.2',
         '--approve-mcps',
         '--force',
         '--team-flag',
@@ -79,27 +81,53 @@ void main() {
     );
   });
 
-  test(
-    'Cursor does not pass --model; picker ids are stamped into cli-config',
-    () {
-      expect(
-        _assemble(
-          team: const TeamProfile(
-            id: 'team',
-            name: 'Team',
-            cli: CliTool.cursor,
-          ),
-          member: const TeamMemberConfig(
-            id: 'member',
-            name: 'Member',
-            model: 'cursor-grok-4.6-high',
-            launchSecurityPolicy: LaunchSecurityPolicy.cliDefault,
-          ),
+  test('Cursor passes --model for explicit picker ids', () {
+    expect(
+      _assemble(
+        team: const TeamProfile(id: 'team', name: 'Team', cli: CliTool.cursor),
+        member: const TeamMemberConfig(
+          id: 'member',
+          name: 'Member',
+          model: 'composer-2.5',
+          launchSecurityPolicy: LaunchSecurityPolicy.cliDefault,
         ),
-        isNot(contains('--model')),
-      );
-    },
-  );
+      ),
+      containsAllInOrder(['--model', 'composer-2.5']),
+    );
+    expect(
+      _assemble(
+        team: const TeamProfile(id: 'team', name: 'Team', cli: CliTool.cursor),
+        member: const TeamMemberConfig(
+          id: 'member',
+          name: 'Member',
+          model: 'cursor-grok-4.6-high',
+          launchSecurityPolicy: LaunchSecurityPolicy.cliDefault,
+        ),
+      ),
+      containsAllInOrder(['--model', 'cursor-grok-4.6-high']),
+    );
+  });
+
+  test('Cursor omits --model for auto and blank member models', () {
+    expect(
+      _assemble(
+        team: const TeamProfile(id: 'team', name: 'Team', cli: CliTool.cursor),
+        member: const TeamMemberConfig(
+          id: 'member',
+          name: 'Member',
+          model: 'auto',
+        ),
+      ),
+      isNot(contains('--model')),
+    );
+    expect(
+      _assemble(
+        team: const TeamProfile(id: 'team', name: 'Team', cli: CliTool.cursor),
+        member: const TeamMemberConfig(id: 'member', name: 'Member'),
+      ),
+      isNot(contains('--model')),
+    );
+  });
 
   test('Cursor permission provider emits --force only for full access', () {
     expect(
