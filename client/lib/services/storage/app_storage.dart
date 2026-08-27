@@ -170,6 +170,10 @@ class AppPaths {
   static String skillPacksInstallDirForTeampilotRoot(String teampilotRoot) =>
       _pathUnderTeampilotRoot(teampilotRoot, 'skills/packs');
 
+  static String skillPackCatalogCacheDirForTeampilotRoot(
+    String teampilotRoot,
+  ) => _pathUnderTeampilotRoot(teampilotRoot, 'skill-packs/cache');
+
   /// Installed plugin bundles.
   static String pluginsDirForTeampilotRoot(String teampilotRoot) =>
       _pathUnderTeampilotRoot(teampilotRoot, 'plugins/installed');
@@ -296,6 +300,9 @@ class AppPaths {
   String get skillPacksInstallDir =>
       skillPacksInstallDirForTeampilotRoot(basePath);
 
+  String get skillPackCatalogCacheDir =>
+      skillPackCatalogCacheDirForTeampilotRoot(basePath);
+
   String get pluginMarketplaceCacheDir =>
       pluginMarketplaceCacheDirForTeampilotRoot(basePath);
 
@@ -331,8 +338,7 @@ class AppPaths {
       teamHubRegistriesJsonForTeampilotRoot(basePath);
   String get teamHubFavoritesJson =>
       teamHubFavoritesJsonForTeampilotRoot(basePath);
-  String get teamHubRecentJson =>
-      teamHubRecentJsonForTeampilotRoot(basePath);
+  String get teamHubRecentJson => teamHubRecentJsonForTeampilotRoot(basePath);
 
   String get memberHubDir => memberHubDirForTeampilotRoot(basePath);
   String get memberHubFavoritesJson =>
