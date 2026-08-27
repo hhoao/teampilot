@@ -237,6 +237,26 @@ void main() {
     expect(snap.sessions.map((s) => s.sessionId), ['n1', 'n2']);
   });
 
+  test('mergeWorkspaceSessions rebuilds the hydrated workspace sessionIds', () {
+    final store = SessionDataStore();
+    final base = store.deriveSnapshot(
+      workspaces: [
+        _ws('p1', sessionIds: ['p2-session', 'stale']),
+        _ws('p2', sessionIds: ['p2-session']),
+      ],
+      sessions: [_sess('p2-session', 'p2'), _sess('stale', 'p1')],
+    );
+
+    final snap = store.mergeWorkspaceSessions(
+      current: base,
+      workspaceId: 'p1',
+      workspaceSessions: [_sess('p1-new', 'p1', createdAt: 2)],
+    );
+
+    expect(snap.workspaces.first.sessionIds, ['p1-new']);
+    expect(snap.workspaces.last.sessionIds, ['p2-session']);
+  });
+
   test('snapshotWithoutWorkspace removes workspace and its sessions', () {
     final store = SessionDataStore();
     final base = store.deriveSnapshot(

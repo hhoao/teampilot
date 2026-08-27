@@ -6,7 +6,10 @@ List<AppSession> sessionsForWorkspace(
   Workspace workspace,
   List<AppSession> all,
 ) {
-  final byId = {for (final s in all) s.sessionId: s};
+  final byId = {
+    for (final s in all)
+      if (s.workspaceId == workspace.workspaceId) s.sessionId: s,
+  };
   final ordered = <AppSession>[];
   final seen = <String>{};
   for (final id in workspace.sessionIds) {

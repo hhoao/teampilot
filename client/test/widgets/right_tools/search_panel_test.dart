@@ -170,6 +170,67 @@ void main() {
     expect(find.text(l10n.workspaceSearchEmptyHint), findsOneWidget);
   });
 
+  testWidgets('search panels debounce independently across workspaces', (
+    tester,
+  ) async {
+    final secondFixture = Directory.systemTemp.createTempSync('tp_panel_');
+    addTearDown(() => secondFixture.deleteSync(recursive: true));
+    File('${secondFixture.path}/b.dart').writeAsStringSync('beta\n');
+
+    final firstCubit = buildCubit();
+    final secondCubit = ContentSearchCubit(
+      runnerFactory: (o) =>
+          ContentSearchRunner(fs: LocalFilesystem(), root: secondFixture.path),
+      replacerFactory: () => ContentReplacer(fs: LocalFilesystem()),
+    );
+    addTearDown(firstCubit.close);
+    addTearDown(secondCubit.close);
+
+    await tester.pumpWidget(
+      MaterialApp(
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
+        home: Scaffold(
+          body: Row(
+            children: [
+              Expanded(
+                child: BlocProvider.value(
+                  value: firstCubit,
+                  child: WorkspaceSearchPanel(
+                    workspaceId: 'ws1',
+                    root: fixture.path,
+                    fs: LocalFilesystem(),
+                    focusRequest: ValueNotifier<int>(0),
+                  ),
+                ),
+              ),
+              Expanded(
+                child: BlocProvider.value(
+                  value: secondCubit,
+                  child: WorkspaceSearchPanel(
+                    workspaceId: 'ws2',
+                    root: secondFixture.path,
+                    fs: LocalFilesystem(),
+                    focusRequest: ValueNotifier<int>(0),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+
+    final fields = find.byType(TextField);
+    await tester.enterText(fields.at(0), 'hello');
+    await tester.enterText(fields.at(1), 'beta');
+    await tester.pump(const Duration(milliseconds: 350));
+    await tester.pumpAndSettle();
+
+    expect(firstCubit.state.query, 'hello');
+    expect(secondCubit.state.query, 'beta');
+  });
+
   testWidgets('summary row shows match and file counts after a search', (
     tester,
   ) async {

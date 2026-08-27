@@ -39,6 +39,23 @@ void main() {
     expect(ordered.map((s) => s.sessionId).toList(), ['s2', 's1']);
   });
 
+  test('sessionsForWorkspace excludes mismatched sessions listed by id', () {
+    final workspace = Workspace(
+      workspaceId: 'p1',
+      folders: const [WorkspaceFolder(path: '/tmp')],
+      sessionIds: const ['p2-session', 'p1-session'],
+      createdAt: 1,
+    );
+    final all = [
+      session(id: 'p1-session', workspaceId: 'p1'),
+      session(id: 'p2-session', workspaceId: 'p2'),
+    ];
+
+    final ordered = sessionsForWorkspace(workspace, all);
+
+    expect(ordered.map((s) => s.sessionId).toList(), ['p1-session']);
+  });
+
   test('sessionsForWorkspace appends orphan sessions without duplicates', () {
     final workspace = Workspace(
       workspaceId: 'p1',

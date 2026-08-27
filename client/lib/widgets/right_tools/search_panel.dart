@@ -61,6 +61,8 @@ class _WorkspaceSearchPanelState extends State<WorkspaceSearchPanel> {
   bool _showReplace = false;
   bool _showDetails = false;
   final Set<String> _collapsedPaths = {};
+  late final Debouncer _searchDebouncer;
+  late final Debouncer _globDebouncer;
 
   ContentSearchCubit get _cubit => context.read<ContentSearchCubit>();
 
@@ -71,6 +73,14 @@ class _WorkspaceSearchPanelState extends State<WorkspaceSearchPanel> {
   @override
   void initState() {
     super.initState();
+    _searchDebouncer = Debouncer(
+      tag: 'workspace_search_panel_${identityHashCode(this)}',
+      duration: const Duration(milliseconds: 300),
+    );
+    _globDebouncer = Debouncer(
+      tag: 'workspace_search_panel_globs_${identityHashCode(this)}',
+      duration: const Duration(milliseconds: 400),
+    );
     widget.focusRequest.addListener(_onFocusRequest);
     _queryController.addListener(_onQueryChanged);
     _replaceController.addListener(_onReplaceChanged);
@@ -95,6 +105,8 @@ class _WorkspaceSearchPanelState extends State<WorkspaceSearchPanel> {
     _replaceFocusNode.dispose();
     _includeFocusNode.dispose();
     _excludeFocusNode.dispose();
+    _searchDebouncer.dispose();
+    _globDebouncer.dispose();
     // Bump the search sequence so an in-flight stream bails out instead of
     // emitting after the provider closes this cubit on unmount.
     final cubit = _cubitRef;
@@ -107,14 +119,7 @@ class _WorkspaceSearchPanelState extends State<WorkspaceSearchPanel> {
   void _onFocusRequest() => _focusNode.requestFocus();
 
   void _onQueryChanged() {
-    Debounces.debounce(
-      'workspace_search_panel',
-      const Duration(milliseconds: 300),
-      () {
-        if (!mounted) return;
-        _runSearch();
-      },
-    );
+    _searchDebouncer.call(_runSearch);
   }
 
   void _onReplaceChanged() {
@@ -300,8 +305,7 @@ class _WorkspaceSearchPanelState extends State<WorkspaceSearchPanel> {
                     child: SearchPanelDetailsToggle(
                       expanded: _showDetails,
                       highlighted: _hasActiveFilters,
-                      onTap: () =>
-                          setState(() => _showDetails = !_showDetails),
+                      onTap: () => setState(() => _showDetails = !_showDetails),
                     ),
                   ),
                   if (_showDetails) ...[
@@ -312,14 +316,7 @@ class _WorkspaceSearchPanelState extends State<WorkspaceSearchPanel> {
                       excludeController: _excludeController,
                       excludeFocusNode: _excludeFocusNode,
                       useGitignore: _useGitignore,
-                      onGlobChanged: (_) => Debounces.debounce(
-                        'workspace_search_panel_globs',
-                        const Duration(milliseconds: 400),
-                        () {
-                          if (!mounted) return;
-                          _runSearch();
-                        },
-                      ),
+                      onGlobChanged: (_) => _globDebouncer.call(_runSearch),
                       onGitignoreChanged: (v) => setState(() {
                         _useGitignore = v;
                         _runSearch();

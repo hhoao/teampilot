@@ -127,14 +127,27 @@ class SessionDataStore {
     required String workspaceId,
     required List<AppSession> workspaceSessions,
   }) {
-    _hydratedSessionWorkspaceIds.add(workspaceId.trim());
+    final normalizedWorkspaceId = workspaceId.trim();
+    final ownedSessions = workspaceSessions
+        .where((session) => session.workspaceId == normalizedWorkspaceId)
+        .toList();
+    _hydratedSessionWorkspaceIds.add(normalizedWorkspaceId);
     final others = [
       for (final session in current.sessions)
-        if (session.workspaceId != workspaceId) session,
+        if (session.workspaceId != normalizedWorkspaceId) session,
+    ];
+    final workspaces = [
+      for (final workspace in current.workspaces)
+        if (workspace.workspaceId == normalizedWorkspaceId)
+          workspace.copyWith(
+            sessionIds: sortedSessionIdsByCreatedAt(ownedSessions),
+          )
+        else
+          workspace,
     ];
     return deriveSnapshot(
-      workspaces: current.workspaces,
-      sessions: [...others, ...workspaceSessions],
+      workspaces: workspaces,
+      sessions: [...others, ...ownedSessions],
     );
   }
 
