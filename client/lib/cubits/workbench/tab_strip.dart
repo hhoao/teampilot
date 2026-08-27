@@ -170,7 +170,12 @@ class TabStripReducer {
       order: order,
       activeId: active,
       previewIds: previews,
-      landingInitialText: order.isEmpty ? null : strip.landingInitialText,
+      landingInitialText:
+          order.isEmpty ||
+              (id.kind == WorkbenchTabKind.session &&
+                  !order.any((tab) => tab.kind == WorkbenchTabKind.session))
+          ? null
+          : strip.landingInitialText,
     );
   }
 

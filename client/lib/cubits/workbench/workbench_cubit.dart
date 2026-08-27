@@ -291,7 +291,9 @@ class WorkbenchCubit extends Cubit<WorkbenchState> {
   List<WorkbenchTabId> closeAll(String workspaceId) {
     final center = state.bar(workspaceId).center;
     final removed = List<WorkbenchTabId>.from(center.order);
-    if (removed.isEmpty) return const [];
+    if (removed.isEmpty && center.landingInitialText == null) {
+      return const [];
+    }
     emit(
       state.withBar(
         workspaceId,

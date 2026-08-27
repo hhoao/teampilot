@@ -112,5 +112,19 @@ void main() {
       expect(center.order, isEmpty);
       expect(center.landingInitialText, isNull);
     });
+
+    test(
+      'closeAll clears a Landing prefill when the center is already empty',
+      () {
+        cubit.enterLanding(_ws, initialText: '审查并继续完成该会话: /data/session');
+
+        final removed = cubit.closeAll(_ws);
+
+        expect(removed, isEmpty);
+        final center = cubit.state.bar(_ws).center;
+        expect(center.order, isEmpty);
+        expect(center.landingInitialText, isNull);
+      },
+    );
   });
 }

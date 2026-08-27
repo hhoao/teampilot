@@ -7,6 +7,7 @@ final _s1 = WorkbenchTabId.session('s1');
 final _s2 = WorkbenchTabId.session('s2');
 final _s3 = WorkbenchTabId.session('s3');
 final _f = WorkbenchTabId.file('/a.dart');
+final _d = WorkbenchTabId.diffChanges('/a.dart');
 
 void main() {
   const r = TabStripReducer();
@@ -80,6 +81,39 @@ void main() {
       expect(result!.order, isEmpty);
       expect(result.landingInitialText, isNull);
     });
+
+    test('clears Landing prefill when removing the final Session tab', () {
+      final (withSession, _) = r.add(empty, _s1, preview: false);
+      final (withFile, _) = r.add(withSession, _f, preview: false);
+      final withPrefill = r.enterLanding(
+        withFile,
+        initialText: '审查并继续完成该会话: /data/session',
+      );
+
+      final result = r.remove(withPrefill, _s1);
+
+      expect(result, isNotNull);
+      expect(result!.order, [_f]);
+      expect(result.landingInitialText, isNull);
+    });
+
+    test(
+      'clears Landing prefill when a diff tab remains after Session removal',
+      () {
+        final (withSession, _) = r.add(empty, _s1, preview: false);
+        final (withDiff, _) = r.add(withSession, _d, preview: false);
+        final withPrefill = r.enterLanding(
+          withDiff,
+          initialText: '审查并继续完成该会话: /data/session',
+        );
+
+        final result = r.remove(withPrefill, _s1);
+
+        expect(result, isNotNull);
+        expect(result!.order, [_d]);
+        expect(result.landingInitialText, isNull);
+      },
+    );
   });
 
   group('reorder / activate / pin / landing', () {
