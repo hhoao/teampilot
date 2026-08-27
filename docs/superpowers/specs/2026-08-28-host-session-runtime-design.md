@@ -1,7 +1,7 @@
 # Host Session Runtime — Design
 
 **Date:** 2026-08-28
-**Status:** Draft (awaiting review)
+**Status:** Approved
 **Supersedes:** GUI-owned PTY (`ChatCubit` / `TerminalSession` as session owner), Android spawning CLIs through `SshPtyTransport`, file-poll “sync” between devices, owner/follower takeover.
 
 Related: [SSH QR pairing](2026-08-20-ssh-qr-pairing-design.md) (SSH remains the pipe), [Agent runtime event plane](2026-08-25-agent-runtime-event-plane-design.md) (this process *is* that plane), [Persistent compose drafts](2026-08-25-persistent-compose-drafts-design.md) (drafts move onto the host).
