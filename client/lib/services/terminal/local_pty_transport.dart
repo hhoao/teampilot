@@ -6,6 +6,7 @@ class LocalPtyTransport implements TerminalTransport {
   LocalPtyTransport(this._pty);
 
   final Pty _pty;
+  bool _closed = false;
 
   @override
   Stream<Uint8List> get output => _pty.output;
@@ -31,6 +32,12 @@ class LocalPtyTransport implements TerminalTransport {
 
   @override
   void close() {
-    _pty.kill();
+    if (_closed) return;
+    _closed = true;
+    try {
+      _pty.kill();
+    } finally {
+      _pty.dispose();
+    }
   }
 }
