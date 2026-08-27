@@ -1,7 +1,6 @@
 import 'dart:convert';
 
 import 'package:ai_message_core/ai_message_core.dart';
-import 'package:crypto/crypto.dart';
 
 import '../cli/registry/capabilities/ai_history_capability.dart';
 import '../io/filesystem.dart';
@@ -46,7 +45,7 @@ final class JsonlTranscriptPageReader implements AiTranscriptPageReader {
     final stat = await fs.stat(path);
     if (!stat.isFile) return null;
     final size = stat.size ?? 0;
-    final sourceToken = await _sourceToken(path, size);
+    final sourceToken = _sourceToken(path, stat);
     if (sourceToken == null) return null;
     if (size == 0) return _emptyPage(sourceToken: sourceToken, rebuilt: true);
 
@@ -79,7 +78,7 @@ final class JsonlTranscriptPageReader implements AiTranscriptPageReader {
     final source = _decodeSourceToken(cursor.sourceToken);
     if (source == null || source.path != path || source.size != size)
       return null;
-    final currentToken = await _sourceToken(path, size);
+    final currentToken = _sourceToken(path, stat);
     if (currentToken == null || currentToken != cursor.sourceToken) return null;
     if (cursor.offset <= 0 || cursor.offset > size) return null;
     final anchor = await _readLineAt(path, cursor.offset, size);
@@ -125,23 +124,27 @@ final class JsonlTranscriptPageReader implements AiTranscriptPageReader {
     }
     final events = await _decodeEvents([for (final line in lines) line.bytes]);
     if (events.length != lines.length) return null;
-    // A complete JSONL line can still be the continuation of an assistant
-    // turn whose earlier events sit just before this byte window. The append
-    // contract may merge adjacent assistant events, so returning a page here
-    // would be observably different from the full adapter. Without the
-    // preceding event we cannot establish a logical boundary; use full parse.
-    if (lines.first.offset > 0 && _isAssistantEvent(events.first)) {
-      return null;
-    }
     final parsed = _parseFrom(events, 0);
     if (parsed.fallbackUsed || parsed.unresolvedDependency) return null;
+    // Ignore decoded noise and inspect the first event that the injected CLI
+    // append semantics actually turns into a logical message. If that event
+    // produces an assistant message after byte zero, it may be a continuation
+    // of an omitted assistant fragment and cannot be paged safely.
+    final firstConsumedIndex = parsed.firstConsumedIndex;
+    if (firstConsumedIndex != null &&
+        lines[firstConsumedIndex].offset > 0 &&
+        parsed.firstConsumedRole == AiRole.assistant) {
+      return null;
+    }
     final rawStart = _rawStartIndex(
       parsed.messageCounts,
       parsed.messages.length,
       limit,
     );
     var contextStart = rawStart > 0 ? rawStart - 1 : rawStart;
-    while (contextStart > 0 && _isAssistantEvent(events[contextStart - 1])) {
+    while (contextStart > 0) {
+      final previousRole = parsed.consumedRoles[contextStart - 1];
+      if (previousRole != null && previousRole != AiRole.assistant) break;
       contextStart--;
     }
     final contextual = _parseFrom(events, contextStart);
@@ -188,8 +191,12 @@ final class JsonlTranscriptPageReader implements AiTranscriptPageReader {
     var fallbackSeq = 0;
     var fallbackUsed = false;
     var unresolvedDependency = false;
+    int? firstConsumedIndex;
+    AiRole? firstConsumedRole;
+    final consumedRoles = <AiRole?>[];
     for (var i = start; i < events.length; i++) {
       final event = events[i];
+      AiRole? consumedRole;
       if (event != null) {
         final before = fallbackSeq;
         final consumed = _lineAppend(
@@ -201,24 +208,27 @@ final class JsonlTranscriptPageReader implements AiTranscriptPageReader {
           },
         );
         if (!consumed) fallbackSeq = before;
+        if (consumed && firstConsumedIndex == null && messages.isNotEmpty) {
+          firstConsumedIndex = i;
+          firstConsumedRole = messages.last.role;
+        }
+        if (consumed && messages.isNotEmpty) consumedRole = messages.last.role;
         if (_containsToolResult(event) && !consumed) {
           unresolvedDependency = true;
         }
       }
       counts.add(messages.length);
+      consumedRoles.add(consumedRole);
     }
     return _ParsedLines(
       messages: messages,
       messageCounts: counts,
       fallbackUsed: fallbackUsed,
       unresolvedDependency: unresolvedDependency,
+      firstConsumedIndex: firstConsumedIndex,
+      firstConsumedRole: firstConsumedRole,
+      consumedRoles: consumedRoles,
     );
-  }
-
-  static bool _isAssistantEvent(Map<String, dynamic>? event) {
-    if (event == null) return false;
-    final role = event['role'] ?? event['type'];
-    return role == 'assistant' && event['message'] is Map;
   }
 
   static bool _containsToolResult(Map<String, dynamic> event) {
@@ -229,7 +239,9 @@ final class JsonlTranscriptPageReader implements AiTranscriptPageReader {
     final payload = event['payload'];
     if (payload is Map) {
       final type = payload['type'];
-      return type == 'function_call_output' || type == 'tool_result';
+      return type == 'function_call_output' ||
+          type == 'custom_tool_call_output' ||
+          type == 'tool_result';
     }
     return false;
   }
@@ -351,21 +363,22 @@ final class JsonlTranscriptPageReader implements AiTranscriptPageReader {
     rebuilt: rebuilt,
   );
 
-  Future<String?> _sourceToken(String path, int size) async {
-    final bytes = await fs.readBytes(path);
-    if (bytes == null || bytes.length != size) return null;
+  static String? _sourceToken(String path, FsStat stat) {
+    final size = stat.size;
+    final mtime = stat.mtime;
+    if (size == null || mtime == null) return null;
     return base64Url.encode(
       utf8.encode(
         jsonEncode({
           'path': path,
           'size': size,
-          'fingerprint': sha256.convert(bytes).toString(),
+          'version': mtime.toUtc().microsecondsSinceEpoch,
         }),
       ),
     );
   }
 
-  static ({String path, int size, String fingerprint})? _decodeSourceToken(
+  static ({String path, int size, int version})? _decodeSourceToken(
     String token,
   ) {
     try {
@@ -373,13 +386,13 @@ final class JsonlTranscriptPageReader implements AiTranscriptPageReader {
       if (decoded is! Map ||
           decoded['path'] is! String ||
           decoded['size'] is! int ||
-          decoded['fingerprint'] is! String) {
+          decoded['version'] is! int) {
         return null;
       }
       return (
         path: decoded['path'] as String,
         size: decoded['size'] as int,
-        fingerprint: decoded['fingerprint'] as String,
+        version: decoded['version'] as int,
       );
     } on Object {
       return null;
@@ -441,10 +454,16 @@ final class _ParsedLines {
     required this.messageCounts,
     required this.fallbackUsed,
     required this.unresolvedDependency,
+    required this.firstConsumedIndex,
+    required this.firstConsumedRole,
+    required this.consumedRoles,
   });
 
   final List<AiMessage> messages;
   final List<int> messageCounts;
   final bool fallbackUsed;
   final bool unresolvedDependency;
+  final int? firstConsumedIndex;
+  final AiRole? firstConsumedRole;
+  final List<AiRole?> consumedRoles;
 }

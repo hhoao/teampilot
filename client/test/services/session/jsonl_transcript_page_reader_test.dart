@@ -7,12 +7,13 @@ import 'package:teampilot/services/cli/claude/capabilities/history/compatible_js
 import 'package:teampilot/services/cli/codex/capabilities/history/ai_transcript.dart';
 import 'package:teampilot/services/cli/cursor/capabilities/history/ai_transcript.dart';
 import 'package:teampilot/services/cli/flashskyai/capabilities/history/ai_transcript.dart';
+import 'package:teampilot/services/io/filesystem.dart';
 import 'package:teampilot/services/session/ai_history_page.dart';
 import 'package:teampilot/services/session/ai_transcript_tail_reader.dart';
 import 'package:teampilot/services/session/jsonl_transcript_page_reader.dart';
 import 'package:teampilot/services/session/session_history_context.dart';
 
-import '../../support/in_memory_filesystem.dart';
+import '../../support/in_memory_filesystem.dart' as test_fs;
 
 EventDecoder _syncDecoder() {
   return (lines) async => [
@@ -377,6 +378,32 @@ void main() {
     },
   );
 
+  test(
+    'rejects a Codex custom tool result whose call is outside the window',
+    () async {
+      final fs = InMemoryFilesystem();
+      const path = '/transcript.jsonl';
+      await fs.writeString(
+        path,
+        [
+          for (var i = 0; i < 8; i++)
+            '{"type":"event_msg","payload":{"type":"item_started"}}\n',
+          '{"type":"response_item","payload":{"type":"custom_tool_call_output","call_id":"call-1","output":"result"}}\n',
+        ].join(),
+      );
+      final page = await JsonlTranscriptPageReader(
+        fs: fs,
+        lineAppend: appendCodexJsonlEvent,
+        fallbackPrefix: 'codex',
+        decodeEvents: _syncDecoder(),
+        sourcePath: (_) async => path,
+        windowSizes: const [160],
+      ).readLatest(ctx: _ctxFor(fs), limit: 1);
+
+      expect(page, isNull);
+    },
+  );
+
   test('keeps an arbitrary adjacent assistant run on one page', () async {
     final fs = InMemoryFilesystem();
     final path = '/transcript.jsonl';
@@ -433,6 +460,31 @@ void main() {
         reason:
             'a truncated assistant run cannot be equivalent to full parsing',
       );
+    },
+  );
+
+  test(
+    'rejects a page when noise precedes a truncated assistant run',
+    () async {
+      final fs = InMemoryFilesystem();
+      const path = '/transcript.jsonl';
+      await fs.writeString(
+        path,
+        [
+          _userLine('u1', 'prefix'),
+          _assistantLine('a1', 'x' * 50),
+          '{"type":"progress","message":{"id":"noise"}}\n',
+          _assistantLine('a2', 'x' * 50),
+        ].join(),
+      );
+
+      final page = await _claudeReader(
+        fs,
+        path,
+        windowSizes: const [120],
+      ).readLatest(ctx: _ctxFor(fs), limit: 1);
+
+      expect(page, isNull);
     },
   );
 
@@ -540,6 +592,7 @@ void main() {
           '{"role":"assistant","message":{"id":"a1","content":['
           '{"type":"text","text":"answer"},'
           '{"type":"tool_use","id":"call-1","name":"read","input":{"path":"x"}}]}}\n'
+          '{"role":"assistant","message":{"id":"a2","content":"after tool"}}\n'
           '{"role":"user","message":{"id":"u2","content":"bye"}}\n';
       final fs = InMemoryFilesystem();
       const path = '/transcript.jsonl';
@@ -570,6 +623,13 @@ void main() {
         limit: 2,
       );
       expect(older, isNotNull);
+      expect(
+        latest.messages.first.parts.whereType<AiTextPart>().map(
+          (part) => part.text,
+        ),
+        ['answer', 'after tool'],
+        reason: 'adjacent Cursor assistant fragments must remain one turn',
+      );
       expect(
         _messageShapes([...older!.messages, ...latest.messages]),
         _messageShapes(full),
@@ -640,6 +700,38 @@ void main() {
     expect(full.map((message) => message.id), ['codex-0', 'codex-1']);
     expect(page, isNull);
   });
+
+  test('uses stat source version without a full-transcript read', () async {
+    final fs = _VersionedInMemoryFilesystem();
+    const path = '/transcript.jsonl';
+    await fs.writeString(
+      path,
+      '${_userLine('u1', 'one')}${_userLine('u2', 'two')}',
+    );
+    final page = await _claudeReader(
+      fs,
+      path,
+    ).readLatest(ctx: _ctxFor(fs), limit: 1);
+
+    expect(page, isNotNull);
+    final older = await _claudeReader(
+      fs,
+      path,
+    ).readOlder(ctx: _ctxFor(fs), cursor: page!.nextCursor!, limit: 1);
+    expect(older, isNotNull);
+    expect(fs.fullReadCount, 0);
+  });
+
+  test('returns null when stat has no stable source version', () async {
+    final fs = test_fs.InMemoryFilesystem();
+    const path = '/transcript.jsonl';
+    await fs.writeString(path, _userLine('u1', 'one'));
+
+    expect(
+      await _claudeReader(fs, path).readLatest(ctx: _ctxFor(fs), limit: 1),
+      isNull,
+    );
+  });
 }
 
 String _userLine(String id, String text) =>
@@ -661,7 +753,7 @@ List<String> _texts(List<AiMessage> messages) => [
 ];
 
 JsonlTranscriptPageReader _claudeReader(
-  InMemoryFilesystem fs,
+  Filesystem fs,
   String path, {
   List<int> windowSizes = const [64 * 1024, 256 * 1024],
 }) => JsonlTranscriptPageReader(
@@ -673,7 +765,7 @@ JsonlTranscriptPageReader _claudeReader(
   windowSizes: windowSizes,
 );
 
-SessionHistoryContext _ctxFor(InMemoryFilesystem fs) => SessionHistoryContext(
+SessionHistoryContext _ctxFor(Filesystem fs) => SessionHistoryContext(
   fs: fs,
   taskId: 'task',
   env: const {},
@@ -697,3 +789,49 @@ List<List<Object?>> _messageShapes(List<AiMessage> messages) => [
       ],
     ],
 ];
+
+class InMemoryFilesystem extends test_fs.InMemoryFilesystem {
+  DateTime _mtime = DateTime.utc(2026, 8, 27);
+
+  void _advanceVersion() {
+    _mtime = _mtime.add(const Duration(microseconds: 1));
+  }
+
+  @override
+  Future<FsStat> stat(String path) async {
+    final current = await super.stat(path);
+    return current.isFile
+        ? FsStat(kind: current.kind, size: current.size, mtime: _mtime)
+        : current;
+  }
+
+  @override
+  Future<void> writeString(String path, String content) async {
+    await super.writeString(path, content);
+    _advanceVersion();
+  }
+
+  @override
+  Future<void> writeBytes(String path, List<int> bytes) async {
+    await super.writeBytes(path, bytes);
+    _advanceVersion();
+  }
+}
+
+final class _VersionedInMemoryFilesystem extends InMemoryFilesystem {
+  int fullReadCount = 0;
+
+  @override
+  Future<List<int>?> readBytes(String path) async {
+    fullReadCount++;
+    return super.readBytes(path);
+  }
+
+  @override
+  Future<List<int>?> readBytesRange(String path, int offset, int length) async {
+    final bytes = byteFiles[path] ?? files[path]?.codeUnits;
+    if (bytes == null) return null;
+    if (offset >= bytes.length) return <int>[];
+    return bytes.sublist(offset, (offset + length).clamp(0, bytes.length));
+  }
+}
