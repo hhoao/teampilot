@@ -33,6 +33,33 @@ void main() {
   String metaLine() =>
       '{"type":"last-prompt","lastPrompt":"x","sessionId":"s"}';
 
+  test('full reload decodes all lines in one batch', () async {
+    final batches = <List<List<int>>>[];
+    final reader = AiTranscriptTailReader(
+      lineAppend: appendClaudeJsonlEvent,
+      fallbackPrefix: 'claude',
+      decodeEvents: (lines) async {
+        batches.add(lines);
+        return [
+          for (final line in lines)
+            tryDecodeJsonlLine(utf8.decode(line, allowMalformed: true)),
+        ];
+      },
+    );
+    await fs.writeString(
+      path,
+      '${userLine('u1', 'one')}\n'
+      '${userLine('u2', 'two')}\n'
+      '${assistantLine('a1', 'three')}\n'
+      '${metaLine()}\n',
+    );
+
+    await reader.refresh(fs: fs, path: path, state: TailReaderState());
+
+    expect(batches, hasLength(1));
+    expect(batches.single, hasLength(4));
+  });
+
   test('append: only new lines are parsed; instance is reused', () async {
     await fs.writeString(path, '${userLine('u1', 'hi')}\n');
     final reader = _reader();
@@ -185,31 +212,31 @@ void main() {
   });
 
   test('adjacent different-id assistant parts coalesce like full parse', () async {
-    await fs.writeString(path, '${userLine('u1', 'hi')}\n');
-    final reader = _reader();
-    final state = TailReaderState();
-    await reader.refresh(fs: fs, path: path, state: state);
+      await fs.writeString(path, '${userLine('u1', 'hi')}\n');
+      final reader = _reader();
+      final state = TailReaderState();
+      await reader.refresh(fs: fs, path: path, state: state);
 
-    // 真实 Claude transcript:一个 turn 的 thinking 分片各自独立 message.id,
-    // 且分片之间穿插 user(tool_result 附着)行。
-    await fs.appendString(
-      path,
-      '${assistantLine('a1', 'think1 ')}\n'
-      '${userToolResultLine()}\n'
-      '${assistantLine('a2', 'think2 ')}\n'
-      '${assistantLine('a3', 'done')}\n',
-    );
+      // 真实 Claude transcript:一个 turn 的 thinking 分片各自独立 message.id,
+      // 且分片之间穿插 user(tool_result 附着)行。
+      await fs.appendString(
+        path,
+        '${assistantLine('a1', 'think1 ')}\n'
+        '${userToolResultLine()}\n'
+        '${assistantLine('a2', 'think2 ')}\n'
+        '${assistantLine('a3', 'done')}\n',
+      );
     final first =
         await reader.refresh(fs: fs, path: path, state: state);
-    expect(first.changed, isTrue);
+      expect(first.changed, isTrue);
     expect(state.messages, hasLength(2),
         reason: '相邻 assistant(不同 id)必须合并为一条');
     expect(state.messages[1].parts.length, 3,
         reason: '3 个 thinking 分片拼进同一条 assistant 消息');
 
-    // 跨 refresh 边界:下一条 assistant 分片在后续刷新到达,仍需合并。
-    await fs.appendString(path, '${assistantLine('a4', ' tail')}\n');
-    await reader.refresh(fs: fs, path: path, state: state);
+      // 跨 refresh 边界:下一条 assistant 分片在后续刷新到达,仍需合并。
+      await fs.appendString(path, '${assistantLine('a4', ' tail')}\n');
+      await reader.refresh(fs: fs, path: path, state: state);
     expect(state.messages, hasLength(2),
         reason: '跨 refresh 追加的分片继续并入上一条 assistant');
     expect(state.messages[1].parts.length, 4);

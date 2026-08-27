@@ -172,25 +172,30 @@ class AiTranscriptTailReader {
     var fallbackSeq = 0;
     int? anchor;
     if (bytes != null) {
+      final lines = <List<int>>[];
       var start = 0;
       for (var i = 0; i <= bytes.length; i++) {
         if (i == bytes.length || bytes[i] == 0x0A) {
           final line = bytes.sublist(start, i);
           start = i + 1;
           if (line.isEmpty) continue;
-          final event = (await _decodeEvents([line])).first;
-          if (event == null) continue;
-          final before = fallbackSeq;
-          final ok = _lineAppend(
-            messages,
-            event,
-            fallbackId: () => '$_fallbackPrefix-${fallbackSeq++}',
-          );
-          if (ok) {
-            anchor = _lineHash(line);
-          } else {
-            fallbackSeq = before;
-          }
+          lines.add(line);
+        }
+      }
+      final events = await _decodeEvents(lines);
+      for (var i = 0; i < lines.length; i++) {
+        final event = events[i];
+        if (event == null) continue;
+        final before = fallbackSeq;
+        final ok = _lineAppend(
+          messages,
+          event,
+          fallbackId: () => '$_fallbackPrefix-${fallbackSeq++}',
+        );
+        if (ok) {
+          anchor = _lineHash(lines[i]);
+        } else {
+          fallbackSeq = before;
         }
       }
     }
