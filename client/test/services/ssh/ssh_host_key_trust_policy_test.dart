@@ -77,24 +77,68 @@ void main() {
     },
   );
 
-  test('OpenSSH SHA256 fingerprints are stored as the identity string', () async {
-    final repository = InMemorySshKnownHostRepository();
-    final policy = SshHostKeyTrustPolicy(knownHostRepository: repository);
-    const identity = 'SHA256:nThbg6kXUpJWGl7E1IGOCspRomTxdCARLviKw6E5SY8';
-    final fingerprint = Uint8List.fromList(identity.codeUnits);
+  test(
+    'OpenSSH SHA256 fingerprints are stored as the identity string',
+    () async {
+      final repository = InMemorySshKnownHostRepository();
+      final policy = SshHostKeyTrustPolicy(knownHostRepository: repository);
+      const identity = 'SHA256:nThbg6kXUpJWGl7E1IGOCspRomTxdCARLviKw6E5SY8';
+      final fingerprint = Uint8List.fromList(identity.codeUnits);
 
-    final accepted = await policy.verify(
-      profile: profile,
-      keyType: 'ssh-ed25519',
-      fingerprint: fingerprint,
-    );
+      final accepted = await policy.verify(
+        profile: profile,
+        keyType: 'ssh-ed25519',
+        fingerprint: fingerprint,
+      );
 
-    expect(accepted, isTrue);
-    expect(
-      await repository.findFingerprint(profile.hostIdentifier, 'ssh-ed25519'),
-      identity,
-    );
-  });
+      expect(accepted, isTrue);
+      expect(
+        await repository.findFingerprint(profile.hostIdentifier, 'ssh-ed25519'),
+        identity,
+      );
+    },
+  );
+
+  test(
+    'paired profiles accept only their QR-pinned host key without prompting',
+    () async {
+      const paired = SshProfile(
+        id: 'paired',
+        name: 'desktop',
+        host: '192.168.1.20',
+        username: 'alice',
+        hostKeyFingerprints: ['SHA256:expected'],
+      );
+      final repository = InMemorySshKnownHostRepository();
+      var promptCount = 0;
+      final policy = SshHostKeyTrustPolicy(
+        knownHostRepository: repository,
+        onHostKeyPrompt: (_) async {
+          promptCount++;
+          return true;
+        },
+      );
+
+      expect(
+        await policy.verify(
+          profile: paired,
+          keyType: 'ssh-ed25519',
+          fingerprint: Uint8List.fromList('SHA256:expected'.codeUnits),
+        ),
+        isTrue,
+      );
+      expect(
+        await policy.verify(
+          profile: paired,
+          keyType: 'ssh-ed25519',
+          fingerprint: Uint8List.fromList('SHA256:other'.codeUnits),
+        ),
+        isFalse,
+      );
+      expect(promptCount, 0);
+      expect(await repository.loadAll(), isEmpty);
+    },
+  );
 
   test('prompt can accept a mismatched host key and replace the pin', () async {
     final repository = InMemorySshKnownHostRepository();

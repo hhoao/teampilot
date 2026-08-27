@@ -8,6 +8,10 @@ abstract class SshCredentialStore {
   Future<void> savePrivateKey(String profileId, String privateKey);
   Future<String?> loadPrivateKeyPassphrase(String profileId);
   Future<void> savePrivateKeyPassphrase(String profileId, String passphrase);
+  Future<String?> loadDevicePrivateKey();
+  Future<void> saveDevicePrivateKey(String privateKey);
+  Future<String?> loadRelayGrant(String profileId);
+  Future<void> saveRelayGrant(String profileId, String grant);
   Future<void> deleteAll(String profileId);
 }
 
@@ -45,6 +49,8 @@ class SecureSshCredentialStore implements SshCredentialStore {
 
   String _key(String profileId, String field) => '$_prefix.$profileId.$field';
 
+  String get _deviceKey => '$_prefix.connect.device.privateKey';
+
   @override
   Future<String?> loadPassword(String profileId) {
     return _store.read(_key(profileId, 'password'));
@@ -76,10 +82,26 @@ class SecureSshCredentialStore implements SshCredentialStore {
   }
 
   @override
+  Future<String?> loadDevicePrivateKey() => _store.read(_deviceKey);
+
+  @override
+  Future<void> saveDevicePrivateKey(String privateKey) =>
+      _store.write(_deviceKey, privateKey);
+
+  @override
+  Future<String?> loadRelayGrant(String profileId) =>
+      _store.read(_key(profileId, 'relayGrant'));
+
+  @override
+  Future<void> saveRelayGrant(String profileId, String grant) =>
+      _store.write(_key(profileId, 'relayGrant'), grant);
+
+  @override
   Future<void> deleteAll(String profileId) async {
     await _store.delete(_key(profileId, 'password'));
     await _store.delete(_key(profileId, 'privateKey'));
     await _store.delete(_key(profileId, 'passphrase'));
+    await _store.delete(_key(profileId, 'relayGrant'));
   }
 }
 
@@ -91,6 +113,8 @@ class SharedPrefsSshCredentialStore implements SshCredentialStore {
   final SharedPreferences _preferences;
 
   String _key(String profileId, String field) => '$_prefix.$profileId.$field';
+
+  String get _deviceKey => '$_prefix.connect.device.privateKey';
 
   @override
   Future<String?> loadPassword(String profileId) async {
@@ -126,10 +150,29 @@ class SharedPrefsSshCredentialStore implements SshCredentialStore {
   }
 
   @override
+  Future<String?> loadDevicePrivateKey() async =>
+      _preferences.getString(_deviceKey);
+
+  @override
+  Future<void> saveDevicePrivateKey(String privateKey) async {
+    await _preferences.setString(_deviceKey, privateKey);
+  }
+
+  @override
+  Future<String?> loadRelayGrant(String profileId) async =>
+      _preferences.getString(_key(profileId, 'relayGrant'));
+
+  @override
+  Future<void> saveRelayGrant(String profileId, String grant) async {
+    await _preferences.setString(_key(profileId, 'relayGrant'), grant);
+  }
+
+  @override
   Future<void> deleteAll(String profileId) async {
     await _preferences.remove(_key(profileId, 'password'));
     await _preferences.remove(_key(profileId, 'privateKey'));
     await _preferences.remove(_key(profileId, 'passphrase'));
+    await _preferences.remove(_key(profileId, 'relayGrant'));
   }
 }
 
@@ -137,6 +180,8 @@ class InMemorySshCredentialStore implements SshCredentialStore {
   final _passwords = <String, String>{};
   final _privateKeys = <String, String>{};
   final _passphrases = <String, String>{};
+  String? _devicePrivateKey;
+  final _relayGrants = <String, String>{};
 
   @override
   Future<String?> loadPassword(String profileId) async => _passwords[profileId];
@@ -168,9 +213,27 @@ class InMemorySshCredentialStore implements SshCredentialStore {
   }
 
   @override
+  Future<String?> loadDevicePrivateKey() async => _devicePrivateKey;
+
+  @override
+  Future<void> saveDevicePrivateKey(String privateKey) async {
+    _devicePrivateKey = privateKey;
+  }
+
+  @override
+  Future<String?> loadRelayGrant(String profileId) async =>
+      _relayGrants[profileId];
+
+  @override
+  Future<void> saveRelayGrant(String profileId, String grant) async {
+    _relayGrants[profileId] = grant;
+  }
+
+  @override
   Future<void> deleteAll(String profileId) async {
     _passwords.remove(profileId);
     _privateKeys.remove(profileId);
     _passphrases.remove(profileId);
+    _relayGrants.remove(profileId);
   }
 }

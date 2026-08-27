@@ -1,5 +1,6 @@
 import 'package:shared_ui/shared_ui.dart';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../widgets/app_toast/app_toast.dart';
@@ -12,6 +13,8 @@ import '../../repositories/ssh_credential_store.dart';
 import '../../services/ssh/ssh_connection_failure.dart';
 import '../../services/ssh/ssh_profile_connection_tester.dart';
 import '../../services/terminal/terminal_transport_factory.dart';
+import '../../utils/ui/app_keys.dart';
+import '../connect/android_pair_sheet.dart';
 import '../ssh_profiles_page.dart';
 import 'ssh_profile_connection_status.dart';
 import 'ssh_profile_target_card.dart';
@@ -35,12 +38,11 @@ class _SshProfilesSectionState extends State<SshProfilesSection> {
     }
     setState(() => _testingIds.add(profile.id));
     try {
+      final clientFactory = context
+          .read<TerminalTransportFactory>()
+          .sshClientFactory;
       final creds = await _loadCredentials(profile);
-      final tester = SshProfileConnectionTester(
-        clientFactory: context
-            .read<TerminalTransportFactory>()
-            .sshClientFactory,
-      );
+      final tester = SshProfileConnectionTester(clientFactory: clientFactory);
       await tester.test(
         profile,
         password: creds.password,
@@ -74,10 +76,7 @@ class _SshProfilesSectionState extends State<SshProfilesSection> {
   Future<void> _connect(SshProfile profile) async {
     await context.read<SshConnectionCubit>().connect(profile.id);
     if (!mounted) return;
-    final host = context
-        .read<SshConnectionCubit>()
-        .state
-        .hostsById[profile.id];
+    final host = context.read<SshConnectionCubit>().state.hostsById[profile.id];
     if (host?.status == SshHostUiStatus.connected) {
       AppToast.show(
         context,
@@ -124,6 +123,21 @@ class _SshProfilesSectionState extends State<SshProfilesSection> {
     final state = context.watch<SshProfileCubit>().state;
     final connectionState = context.watch<SshConnectionCubit>().state;
     final profiles = state.profiles;
+    final isAndroid = defaultTargetPlatform == TargetPlatform.android;
+    final heading = Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          l10n.sshProfilesTargetsTitle,
+          style: TpTextStyles.of(context).mdBoldTightSnug,
+        ),
+        const SizedBox(height: 4),
+        Text(
+          l10n.sshProfilesTargetsSubtitle,
+          style: TpTextStyles.of(context).mutedSm,
+        ),
+      ],
+    );
 
     return TpCard.outlined(
       child: Padding(
@@ -131,44 +145,56 @@ class _SshProfilesSectionState extends State<SshProfilesSection> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.center,
-              children: [
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
+            if (isAndroid)
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  heading,
+                  const SizedBox(height: 14),
+                  Wrap(
+                    alignment: WrapAlignment.end,
+                    spacing: 8,
+                    runSpacing: 8,
                     children: [
-                      Text(
-                        l10n.sshProfilesTargetsTitle,
-                        style: TpTextStyles.of(context).mdBoldTightSnug,
+                      FilledButton.icon(
+                        key: AppKeys.connectScanQr,
+                        onPressed: () => showAndroidPairSheet(context),
+                        icon: const Icon(Icons.qr_code_scanner, size: 18),
+                        label: Text(l10n.connectScanQr),
                       ),
-                      const SizedBox(height: 4),
-                      Text(
-                        l10n.sshProfilesTargetsSubtitle,
-                        style: TpTextStyles.of(context).mutedSm,
+                      FilledButton.tonalIcon(
+                        onPressed: () => openSshProfileEditor(context),
+                        icon: const Icon(Icons.add, size: 18),
+                        label: Text(l10n.sshProfilesAddTarget),
                       ),
                     ],
                   ),
-                ),
-                OutlinedButton.icon(
-                  onPressed: () {
-                    AppToast.show(
-                      context,
-                      message: l10n.sshProfilesImportUnavailable,
-                      variant: TpToastVariant.info,
-                    );
-                  },
-                  icon: const Icon(Icons.upload_outlined, size: 18),
-                  label: Text(l10n.sshProfilesImport),
-                ),
-                const SizedBox(width: 8),
-                FilledButton.tonalIcon(
-                  onPressed: () => openSshProfileEditor(context),
-                  icon: const Icon(Icons.add, size: 18),
-                  label: Text(l10n.sshProfilesAddTarget),
-                ),
-              ],
-            ),
+                ],
+              )
+            else
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: [
+                  Expanded(child: heading),
+                  OutlinedButton.icon(
+                    onPressed: () {
+                      AppToast.show(
+                        context,
+                        message: l10n.sshProfilesImportUnavailable,
+                        variant: TpToastVariant.info,
+                      );
+                    },
+                    icon: const Icon(Icons.upload_outlined, size: 18),
+                    label: Text(l10n.sshProfilesImport),
+                  ),
+                  const SizedBox(width: 8),
+                  FilledButton.tonalIcon(
+                    onPressed: () => openSshProfileEditor(context),
+                    icon: const Icon(Icons.add, size: 18),
+                    label: Text(l10n.sshProfilesAddTarget),
+                  ),
+                ],
+              ),
             const SizedBox(height: 16),
             if (state.isLoading)
               const Center(
