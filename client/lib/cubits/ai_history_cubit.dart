@@ -348,11 +348,13 @@ class AiHistoryCubit extends Cubit<AiHistoryState> {
     _loader.invalidate(sessionId: sessionId);
   }
 
-  void loadOlder() {
+  Future<void> loadOlder() async {
     final seat = _focusedSeat;
     final key = _focusedSeatKey;
     if (seat == null || key == null) return;
-    seat.loadOlder();
+    final future = seat.loadOlder();
+    _mirrorSeat(key, seat);
+    await future;
     _mirrorSeat(key, seat);
   }
 

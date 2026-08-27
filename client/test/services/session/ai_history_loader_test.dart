@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
@@ -20,10 +21,15 @@ import 'package:teampilot/services/cli/registry/capabilities/history/tool_result
 import 'package:teampilot/services/cli/registry/cli_tool_registry.dart';
 import 'package:teampilot/services/session/session_history_context.dart';
 import 'package:teampilot/services/io/local_filesystem.dart';
+import 'package:teampilot/services/cli/tasks/cli_task_board.dart';
+import 'package:teampilot/services/session/ai_history_load_result.dart';
 import 'package:teampilot/services/session/ai_history_loader.dart';
 import 'package:teampilot/services/session/ai_history_locator.dart';
+import 'package:teampilot/services/session/ai_history_page.dart';
 import 'package:teampilot/services/session/ai_history_watch_meta.dart';
+import 'package:teampilot/services/session/chat_transcript_find_controller.dart';
 import 'package:teampilot/services/session/session_history_context_builder.dart';
+import 'package:teampilot/services/session/session_history_pagination.dart';
 import 'package:teampilot/services/storage/app_storage.dart';
 import 'package:teampilot/services/storage/runtime_context.dart';
 import 'package:teampilot/services/storage/runtime_layout.dart';
@@ -250,6 +256,7 @@ void main() {
       );
 
       expect(result.messages, isNotEmpty);
+      await loader.fullIndex(sessionId: session.sessionId, memberId: '');
       expect(locatedCtx?.fs, same(workFs));
       expect(locatedCtx?.fs, isNot(same(fs)));
     } finally {
@@ -787,6 +794,12 @@ void main() {
       launchContext: ctx,
     );
     expect(first.messages, hasLength(1));
+    final indexed = await loader.fullIndex(
+      sessionId: session.sessionId,
+      memberId: '',
+    );
+    expect(indexed, isNotNull);
+    expect(indexed!.messages, hasLength(1));
 
     // 追加流式分片 + 元数据行
     await File(transcriptPath).writeAsString(
@@ -803,10 +816,10 @@ void main() {
       memberId: '',
       launchContext: ctx,
     );
-    expect(identical(second.messages, first.messages), isFalse,
+    expect(identical(second.messages, indexed.messages), isFalse,
         reason: '增量 tail 原地变异 state 列表,必须返回新 List 实例,'
             '否则 seat 的 identical 判定会把新内容当成没变而跳过渲染');
-    expect(identical(second.messages[0], first.messages[0]), isTrue,
+    expect(identical(second.messages[0], indexed.messages[0]), isTrue,
         reason: '未变化消息保持实例身份');
     expect(second.messages, hasLength(2));
     expect(
@@ -851,6 +864,7 @@ void main() {
           launchContext: ctx,
         );
         expect(first.subagentAttachments.keys, contains('toolu_agent'));
+        await loader.fullIndex(sessionId: session.sessionId, memberId: '');
 
         // CLI 流式追加:父 transcript 新出现一条 assistant 消息,内含第二个
         // Agent 调用。增量 tail 只追加事件,不重跑全量 parse。
@@ -924,6 +938,7 @@ void main() {
           launchContext: ctx,
         );
         expect(first.subagentAttachments, isNotEmpty);
+        await loader.fullIndex(sessionId: session.sessionId, memberId: '');
 
         // 追加一条纯文本 user 行:增量路径触发,但任务调用集合没有变化。
         await File(parentPath).writeAsString(
@@ -984,6 +999,7 @@ void main() {
           AiSubagentAttachmentSource.toolResult,
           reason: '没有 side 数据时首次解析退化为 toolResult 占位',
         );
+        await loader.fullIndex(sessionId: session.sessionId, memberId: '');
 
         // 子 agent 完成:side transcript 出现 + 父 transcript 追加
         // tool_result(part 从 incomplete 变成 complete 且带 result)。
@@ -1109,6 +1125,275 @@ void main() {
         isTrue,
         reason: 'unchanged side data must reuse the attachment map',
       );
+    },
+  );
+
+  test('publishes recent page before older history', () async {
+    final all = _pagedHistoryMessages();
+    final recent = all.sublist(all.length - kSessionHistoryInitialTurns);
+    final older = all.sublist(0, all.length - kSessionHistoryInitialTurns);
+    final parseGate = Completer<void>();
+    final adapter = _GatedParseAdapter(all, parseGate);
+    final reader = _FakePageReader(latest: recent, older: older);
+    final session = simpleSession();
+    final loader = buildLoader(
+      locator: _CountingLocator(
+        () async => const AiTranscriptBundle(
+          adapterId: 'claude',
+          fragments: [AiTranscriptFragment(name: 'canned.jsonl', bytes: [])],
+        ),
+      ),
+      registry: fakeAiHistoryRegistry(
+        cli: CliTool.claude,
+        adapter: adapter,
+        pageReader: reader,
+        locate: (_) async => const AiTranscriptBundle(
+          adapterId: 'claude',
+          fragments: [AiTranscriptFragment(name: 'canned.jsonl', bytes: [])],
+        ),
+      ),
+    );
+
+    final first = await loader.load(
+      session: session,
+      memberId: '',
+      launchContext: launchContextFor(session),
+    );
+
+    expect(first.messages, hasLength(kSessionHistoryInitialTurns));
+    expect(first.messages.map((m) => m.id), recent.map((m) => m.id));
+    expect(identical(first.messages.first, recent.first), isTrue);
+    expect(first.hasOlder, isTrue);
+    expect(first.cursor, isNotNull);
+    expect(first.isComplete, isFalse);
+    expect(parseGate.isCompleted, isFalse);
+    expect(reader.latestCalls, 1);
+    expect(reader.olderCalls, 0);
+
+    final olderResult = await loader.loadOlder(
+      sessionId: session.sessionId,
+      memberId: '',
+    );
+    expect(olderResult, isNotNull);
+    expect(olderResult!.messages, hasLength(older.length));
+    expect(olderResult.messages.map((m) => m.id), older.map((m) => m.id));
+    expect(identical(olderResult.messages[1], older[1]), isTrue);
+    expect(parseGate.isCompleted, isFalse);
+    expect(reader.olderCalls, 1);
+
+    parseGate.complete();
+    final full = await loader.fullIndex(
+      sessionId: session.sessionId,
+      memberId: '',
+    );
+    expect(full, isNotNull);
+    expect(full!.isComplete, isTrue);
+    expect(full.messages, hasLength(all.length));
+    expect(full.messages.map((m) => m.id), all.map((m) => m.id));
+    expect(adapter.parseCalls, greaterThan(0));
+
+    final concatenated = [...olderResult.messages, ...first.messages];
+    expect(concatenated.map((m) => m.id), full.messages.map((m) => m.id));
+
+    final board = reduceCliTaskBoard(full.messages);
+    expect(board.tasks.map((t) => t.subject), contains('old-task'));
+
+    final finder = ChatTranscriptFindController(
+      messagesProvider: () => full.messages,
+    );
+    addTearDown(finder.dispose);
+    finder.search('msg-1');
+    expect(finder.hits, isNotEmpty);
+    expect(finder.hits.first.messageId, 'm-1');
+  });
+
+  test('loadOlder still prepends after background full index completes', () async {
+    final all = _pagedHistoryMessages();
+    final recent = all.sublist(all.length - kSessionHistoryInitialTurns);
+    final older = all.sublist(0, all.length - kSessionHistoryInitialTurns);
+    final adapter = _GatedParseAdapter(all, Completer<void>()..complete());
+    final reader = _FakePageReader(latest: recent, older: older);
+    final session = simpleSession();
+    final loader = buildLoader(
+      locator: _CountingLocator(
+        () async => const AiTranscriptBundle(
+          adapterId: 'claude',
+          fragments: [AiTranscriptFragment(name: 'canned.jsonl', bytes: [])],
+        ),
+      ),
+      registry: fakeAiHistoryRegistry(
+        cli: CliTool.claude,
+        adapter: adapter,
+        pageReader: reader,
+        locate: (_) async => const AiTranscriptBundle(
+          adapterId: 'claude',
+          fragments: [AiTranscriptFragment(name: 'canned.jsonl', bytes: [])],
+        ),
+      ),
+    );
+
+    final first = await loader.load(
+      session: session,
+      memberId: '',
+      launchContext: launchContextFor(session),
+    );
+    expect(first.hasOlder, isTrue);
+    expect(first.isComplete, isFalse);
+
+    final full = await loader.fullIndex(
+      sessionId: session.sessionId,
+      memberId: '',
+    );
+    expect(full, isNotNull);
+    expect(full!.isComplete, isTrue);
+    expect(full.messages.map((m) => m.id), all.map((m) => m.id));
+
+    final olderResult = await loader.loadOlder(
+      sessionId: session.sessionId,
+      memberId: '',
+    );
+    expect(
+      olderResult,
+      isNotNull,
+      reason: 'background full index must not drop the page cursor',
+    );
+    expect(olderResult!.messages.map((m) => m.id), older.map((m) => m.id));
+    expect(
+      [...olderResult.messages, ...first.messages].map((m) => m.id),
+      full.messages.map((m) => m.id),
+    );
+  });
+
+  test('page reader null or throw uses the full adapter path', () async {
+    final all = _pagedHistoryMessages();
+    final adapter = _GatedParseAdapter(all, Completer<void>()..complete());
+    final session = simpleSession();
+
+    Future<AiHistoryLoadResult> loadWith(
+      AiTranscriptPageReader? reader,
+    ) {
+      return buildLoader(
+        locator: _CountingLocator(
+          () async => const AiTranscriptBundle(
+            adapterId: 'claude',
+            fragments: [AiTranscriptFragment(name: 'canned.jsonl', bytes: [])],
+          ),
+        ),
+        registry: fakeAiHistoryRegistry(
+          cli: CliTool.claude,
+          adapter: adapter,
+          pageReader: reader,
+          locate: (_) async => const AiTranscriptBundle(
+            adapterId: 'claude',
+            fragments: [AiTranscriptFragment(name: 'canned.jsonl', bytes: [])],
+          ),
+        ),
+      ).load(
+        session: session,
+        memberId: '',
+        launchContext: launchContextFor(session),
+      );
+    }
+
+    adapter.parseCalls = 0;
+    final fromNull = await loadWith(_NullPageReader());
+    expect(fromNull.isComplete, isTrue);
+    expect(fromNull.messages, hasLength(all.length));
+    expect(adapter.parseCalls, greaterThan(0));
+
+    adapter.parseCalls = 0;
+    final fromThrow = await loadWith(_ThrowingPageReader());
+    expect(fromThrow.isComplete, isTrue);
+    expect(fromThrow.messages, hasLength(all.length));
+    expect(adapter.parseCalls, greaterThan(0));
+  });
+
+  test(
+    'concatenated pages match background full parse for fixture families',
+    () async {
+      final families = <({String label, CliTool cli, String fixture})>[
+        (
+          label: 'claude/basic',
+          cli: CliTool.claude,
+          fixture: 'test/fixtures/session_history/claude/basic.jsonl',
+        ),
+        (
+          label: 'claude/streamed_turn',
+          cli: CliTool.claude,
+          fixture: 'test/fixtures/session_history/claude/streamed_turn.jsonl',
+        ),
+        (
+          label: 'claude/truncated_bash',
+          cli: CliTool.claude,
+          fixture: 'test/fixtures/session_history/claude/truncated_bash.jsonl',
+        ),
+        (
+          label: 'flashskyai/basic',
+          cli: CliTool.flashskyai,
+          fixture: 'test/fixtures/session_history/flashskyai/basic.jsonl',
+        ),
+        (
+          label: 'flashskyai/streamed_tools',
+          cli: CliTool.flashskyai,
+          fixture: 'test/fixtures/session_history/flashskyai/streamed_tools.jsonl',
+        ),
+        (
+          label: 'flashskyai/edit_real',
+          cli: CliTool.flashskyai,
+          fixture: 'test/fixtures/session_history/flashskyai/edit_real.jsonl',
+        ),
+      ];
+      final bucket = RuntimeLayout.workspaceBucketForPrimaryPath(
+        '/work/project',
+      );
+      for (final family in families) {
+        mtimeToken = 'mtime-${family.label}';
+        final sessionId = 'sess-${family.label.replaceAll('/', '-')}';
+        final session = simpleSession(id: sessionId).copyWith(cli: family.cli);
+        final toolRoot = layout.sessionRuntimeToolDir(
+          'ws-1',
+          sessionId,
+          family.cli.value,
+        );
+        final dest = p.join(toolRoot, 'projects', bucket, '$sessionId.jsonl');
+        await Directory(p.dirname(dest)).create(recursive: true);
+        await File(dest).writeAsBytes(await File(family.fixture).readAsBytes());
+
+        final loader = buildLoader();
+        final first = await loader.load(
+          session: session,
+          memberId: '',
+          launchContext: launchContextFor(session),
+        );
+        final concatenated = [...first.messages];
+        var hasOlder = first.hasOlder;
+        var guard = 0;
+        while (hasOlder) {
+          expect(guard++, lessThan(64), reason: family.label);
+          final older = await loader.loadOlder(
+            sessionId: session.sessionId,
+            memberId: '',
+          );
+          if (older == null) break;
+          concatenated.insertAll(0, older.messages);
+          hasOlder = older.hasOlder;
+        }
+        final full = await loader.fullIndex(
+          sessionId: session.sessionId,
+          memberId: '',
+        );
+        expect(full, isNotNull, reason: family.label);
+        expect(
+          concatenated.map((m) => m.id),
+          full!.messages.map((m) => m.id),
+          reason: '${family.label} concatenated pages must equal full index ids',
+        );
+        expect(
+          sameMessageListContent(concatenated, full.messages),
+          isTrue,
+          reason: '${family.label} concatenated pages must equal full index',
+        );
+      }
     },
   );
 }
@@ -1326,4 +1611,117 @@ String _sideTranscriptJsonl({required int lines}) {
         'timestamp': '2026-07-10T10:00:0${i + 2}.000Z',
       }),
   ].join('\n');
+}
+
+List<AiMessage> _pagedHistoryMessages() => [
+  for (var i = 0; i < 50; i++)
+    AiMessage(
+      id: 'm-$i',
+      role: i == 0 ? AiRole.assistant : AiRole.user,
+      parts: i == 0
+          ? [
+              AiToolCallPart(
+                toolCallId: 'c-old',
+                toolName: 'TaskCreate',
+                args: {'subject': 'old-task'},
+                result: {'taskId': 'task-old'},
+                status: AiToolCallStatus.complete,
+              ),
+            ]
+          : [AiTextPart(text: 'msg-$i')],
+    ),
+];
+
+class _GatedParseAdapter implements AiTranscriptAdapter {
+  _GatedParseAdapter(this._messages, this._gate);
+
+  final List<AiMessage> _messages;
+  final Completer<void> _gate;
+  var parseCalls = 0;
+
+  @override
+  String get id => 'claude';
+
+  @override
+  Future<List<AiMessage>> parse(AiTranscriptBundle bundle) async {
+    parseCalls++;
+    await _gate.future;
+    return List.of(_messages);
+  }
+}
+
+class _FakePageReader implements AiTranscriptPageReader {
+  _FakePageReader({required this.latest, required this.older});
+
+  final List<AiMessage> latest;
+  final List<AiMessage> older;
+  var latestCalls = 0;
+  var olderCalls = 0;
+
+  @override
+  Future<AiHistoryPage?> readLatest({
+    required SessionHistoryContext ctx,
+    required int limit,
+  }) async {
+    latestCalls++;
+    return AiHistoryPage(
+      messages: latest,
+      hasOlder: older.isNotEmpty,
+      nextCursor: older.isEmpty
+          ? null
+          : const AiHistoryCursor(
+              sourceToken: 'page-token',
+              offset: 0,
+              lineHash: 1,
+            ),
+      sourceToken: 'page-token',
+      rebuilt: false,
+    );
+  }
+
+  @override
+  Future<AiHistoryPage?> readOlder({
+    required SessionHistoryContext ctx,
+    required AiHistoryCursor cursor,
+    required int limit,
+  }) async {
+    olderCalls++;
+    return AiHistoryPage(
+      messages: older,
+      hasOlder: false,
+      nextCursor: null,
+      sourceToken: 'page-token',
+      rebuilt: false,
+    );
+  }
+}
+
+class _NullPageReader implements AiTranscriptPageReader {
+  @override
+  Future<AiHistoryPage?> readLatest({
+    required SessionHistoryContext ctx,
+    required int limit,
+  }) async => null;
+
+  @override
+  Future<AiHistoryPage?> readOlder({
+    required SessionHistoryContext ctx,
+    required AiHistoryCursor cursor,
+    required int limit,
+  }) async => null;
+}
+
+class _ThrowingPageReader implements AiTranscriptPageReader {
+  @override
+  Future<AiHistoryPage?> readLatest({
+    required SessionHistoryContext ctx,
+    required int limit,
+  }) async => throw StateError('page reader boom');
+
+  @override
+  Future<AiHistoryPage?> readOlder({
+    required SessionHistoryContext ctx,
+    required AiHistoryCursor cursor,
+    required int limit,
+  }) async => throw StateError('page reader boom');
 }

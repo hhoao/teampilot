@@ -13,8 +13,12 @@ import 'package:teampilot/models/team_config.dart';
 import 'package:teampilot/models/workspace_folder.dart';
 import 'package:teampilot/services/session/session_history_context.dart';
 import 'package:teampilot/services/io/local_filesystem.dart';
+import 'package:teampilot/services/cli/registry/capabilities/ai_history_capability.dart';
+import 'package:teampilot/services/cli/tasks/cli_task_board.dart';
 import 'package:teampilot/services/session/ai_history_loader.dart';
 import 'package:teampilot/services/session/ai_history_locator.dart';
+import 'package:teampilot/services/session/ai_history_page.dart';
+import 'package:teampilot/services/session/chat_transcript_find_controller.dart';
 import 'package:teampilot/services/session/session_history_context_builder.dart';
 import 'package:teampilot/services/session/session_history_pagination.dart';
 import 'package:teampilot/services/team_bus/persistence/bus_message_log.dart';
@@ -186,6 +190,311 @@ void main() {
     expect(seatRuntime().messages, hasLength(50));
     expect(cubit.state.hasOlder, isFalse);
     expect(cubit.state.isLoadingOlder, isFalse);
+  });
+
+  test('publishes recent page before older history', () async {
+    final all = _pagedHistoryMessages();
+    final recent = all.sublist(all.length - kSessionHistoryInitialTurns);
+    final older = all.sublist(0, all.length - kSessionHistoryInitialTurns);
+    final parseGate = Completer<void>();
+    final adapter = _GatedParseAdapter(all, parseGate);
+    final reader = _FakePageReader(latest: recent, older: older);
+    final fs = LocalFilesystem();
+    final pagedLoader = AiHistoryLoader(
+      contextBuilder: const SessionHistoryContextBuilder(),
+      resolveWorkContext: (_, {String? memberId}) async => RuntimeContext(
+        target: RuntimeTarget.local(),
+        filesystem: fs,
+        home: '/tmp/ai-history-cubit-page',
+        cwd: '/tmp/ai-history-cubit-page',
+        appDataRoot: '/tmp/ai-history-cubit-page',
+        paths: AppPaths('/tmp/ai-history-cubit-page'),
+      ),
+      locator: _ScriptedLocator()..emitBundle = true,
+      registry: fakeAiHistoryRegistry(
+        cli: CliTool.claude,
+        adapter: adapter,
+        pageReader: reader,
+        locate: (_) async => _dummyBundle(),
+      ),
+      resolveCacheToken: (_) async => 'page-token-1',
+    );
+    final pagedCubit = AiHistoryCubit(loader: pagedLoader);
+    addTearDown(pagedCubit.close);
+
+    ExternalStoreAiThreadRuntime runtime() => pagedCubit
+        .ensureSeat(sessionId: 'sess-a', selectedMemberId: '')
+        .runtime;
+
+    await pagedCubit.load(
+      session: simpleSession(),
+      memberId: '',
+      launchContext: launchCtx(simpleSession()),
+    );
+
+    expect(pagedCubit.state.status, AiHistoryViewStatus.ready);
+    expect(runtime().messages.map((m) => m.id), recent.map((m) => m.id));
+    expect(pagedCubit.state.hasOlder, isTrue);
+    expect(parseGate.isCompleted, isFalse);
+
+    pagedCubit.enqueuePendingUser('keep-me');
+    final recentCliBefore = runtime().messages
+        .where((m) => m.id.startsWith('m-'))
+        .toList();
+    await pagedCubit.loadOlder();
+
+    final cliAfter = runtime().messages
+        .where((m) => m.id.startsWith('m-'))
+        .toList();
+    expect(cliAfter.map((m) => m.id), [...older, ...recent].map((m) => m.id));
+    for (var i = 0; i < recentCliBefore.length; i++) {
+      expect(
+        identical(cliAfter[older.length + i], recentCliBefore[i]),
+        isTrue,
+        reason: 'loadOlder must retain recent message instances',
+      );
+    }
+    expect(runtime().messages.last.role, AiRole.user);
+    expect(
+      (runtime().messages.last.parts.single as AiTextPart).text,
+      'keep-me',
+    );
+    expect(pagedCubit.state.hasOlder, isFalse);
+    expect(pagedCubit.state.isLoadingOlder, isFalse);
+    expect(parseGate.isCompleted, isFalse);
+
+    parseGate.complete();
+    final full = await pagedLoader.fullIndex(
+      sessionId: 'sess-a',
+      memberId: '',
+    );
+    expect(full, isNotNull);
+    expect(full!.messages.map((m) => m.id), all.map((m) => m.id));
+
+    await Future<void>.delayed(Duration.zero);
+    final seat = pagedCubit.ensureSeat(
+      sessionId: 'sess-a',
+      selectedMemberId: '',
+    );
+    expect(
+      reduceCliTaskBoard(seat.loadedMessages).tasks.map((t) => t.subject),
+      contains('old-task'),
+    );
+    final finder = ChatTranscriptFindController(
+      messagesProvider: () => seat.loadedMessages,
+    );
+    addTearDown(finder.dispose);
+    finder.search('msg-1');
+    expect(finder.hits, isNotEmpty);
+    expect(finder.hits.first.messageId, 'm-1');
+  });
+
+  test(
+    'full index consumers see old task-create messages outside the display window',
+    () async {
+      final all = _pagedHistoryMessages();
+      final recent = all.sublist(all.length - kSessionHistoryInitialTurns);
+      final older = all.sublist(0, all.length - kSessionHistoryInitialTurns);
+      final parseGate = Completer<void>();
+      final adapter = _GatedParseAdapter(all, parseGate);
+      final reader = _FakePageReader(latest: recent, older: older);
+      final fs = LocalFilesystem();
+      final pagedLoader = AiHistoryLoader(
+        contextBuilder: const SessionHistoryContextBuilder(),
+        resolveWorkContext: (_, {String? memberId}) async => RuntimeContext(
+          target: RuntimeTarget.local(),
+          filesystem: fs,
+          home: '/tmp/ai-history-cubit-full-index',
+          cwd: '/tmp/ai-history-cubit-full-index',
+          appDataRoot: '/tmp/ai-history-cubit-full-index',
+          paths: AppPaths('/tmp/ai-history-cubit-full-index'),
+        ),
+        locator: _ScriptedLocator()..emitBundle = true,
+        registry: fakeAiHistoryRegistry(
+          cli: CliTool.claude,
+          adapter: adapter,
+          pageReader: reader,
+          locate: (_) async => _dummyBundle(),
+        ),
+        resolveCacheToken: (_) async => 'page-token-full-index',
+      );
+      final pagedCubit = AiHistoryCubit(loader: pagedLoader);
+      addTearDown(pagedCubit.close);
+
+      await pagedCubit.load(
+        session: simpleSession(),
+        memberId: '',
+        launchContext: launchCtx(simpleSession()),
+      );
+      final seat = pagedCubit.ensureSeat(
+        sessionId: 'sess-a',
+        selectedMemberId: '',
+      );
+      expect(
+        seat.runtime.messages.map((m) => m.id),
+        recent.map((m) => m.id),
+      );
+      expect(
+        seat.runtime.messages.map((m) => m.id),
+        isNot(contains('m-0')),
+        reason: 'display window must not include the oldest task-create',
+      );
+
+      parseGate.complete();
+      await pagedLoader.fullIndex(sessionId: 'sess-a', memberId: '');
+      for (var i = 0; i < 40 && seat.loadedMessages.length < all.length; i++) {
+        await Future<void>.delayed(Duration.zero);
+      }
+
+      expect(seat.loadedMessages.map((m) => m.id), all.map((m) => m.id));
+      expect(
+        seat.runtime.messages.map((m) => m.id),
+        recent.map((m) => m.id),
+        reason: 'hydrating the full index must not expand the display window',
+      );
+      expect(
+        reduceCliTaskBoard(seat.loadedMessages).tasks.map((t) => t.subject),
+        contains('old-task'),
+      );
+      expect(
+        reduceCliTaskBoard(seat.runtime.messages).tasks.map((t) => t.subject),
+        isNot(contains('old-task')),
+        reason: 'task-create consumers must scan loadedMessages, not the window',
+      );
+    },
+  );
+
+  test(
+    'chat find scans the full index rather than only the display window',
+    () async {
+      final all = _pagedHistoryMessages();
+      final recent = all.sublist(all.length - kSessionHistoryInitialTurns);
+      final older = all.sublist(0, all.length - kSessionHistoryInitialTurns);
+      final parseGate = Completer<void>();
+      final adapter = _GatedParseAdapter(all, parseGate);
+      final reader = _FakePageReader(latest: recent, older: older);
+      final fs = LocalFilesystem();
+      final pagedLoader = AiHistoryLoader(
+        contextBuilder: const SessionHistoryContextBuilder(),
+        resolveWorkContext: (_, {String? memberId}) async => RuntimeContext(
+          target: RuntimeTarget.local(),
+          filesystem: fs,
+          home: '/tmp/ai-history-cubit-find',
+          cwd: '/tmp/ai-history-cubit-find',
+          appDataRoot: '/tmp/ai-history-cubit-find',
+          paths: AppPaths('/tmp/ai-history-cubit-find'),
+        ),
+        locator: _ScriptedLocator()..emitBundle = true,
+        registry: fakeAiHistoryRegistry(
+          cli: CliTool.claude,
+          adapter: adapter,
+          pageReader: reader,
+          locate: (_) async => _dummyBundle(),
+        ),
+        resolveCacheToken: (_) async => 'page-token-find',
+      );
+      final pagedCubit = AiHistoryCubit(loader: pagedLoader);
+      addTearDown(pagedCubit.close);
+
+      await pagedCubit.load(
+        session: simpleSession(),
+        memberId: '',
+        launchContext: launchCtx(simpleSession()),
+      );
+      final seat = pagedCubit.ensureSeat(
+        sessionId: 'sess-a',
+        selectedMemberId: '',
+      );
+
+      parseGate.complete();
+      await pagedLoader.fullIndex(sessionId: 'sess-a', memberId: '');
+      for (var i = 0; i < 40 && seat.loadedMessages.length < all.length; i++) {
+        await Future<void>.delayed(Duration.zero);
+      }
+
+      expect(seat.runtime.messages.map((m) => m.id), isNot(contains('m-1')));
+
+      final windowFinder = ChatTranscriptFindController(
+        messagesProvider: () => seat.runtime.messages,
+      );
+      addTearDown(windowFinder.dispose);
+      windowFinder.search('msg-1');
+      expect(
+        windowFinder.hits,
+        isEmpty,
+        reason: 'the visible window does not contain the oldest user text',
+      );
+
+      final indexFinder = ChatTranscriptFindController(
+        messagesProvider: () => seat.loadedMessages,
+      );
+      addTearDown(indexFinder.dispose);
+      indexFinder.search('msg-1');
+      expect(indexFinder.hits, isNotEmpty);
+      expect(indexFinder.hits.first.messageId, 'm-1');
+    },
+  );
+
+  test('loadOlder page failure keeps runtime and reports a soft error', () async {
+    final all = _pagedHistoryMessages();
+    final recent = all.sublist(all.length - kSessionHistoryInitialTurns);
+    final older = all.sublist(0, all.length - kSessionHistoryInitialTurns);
+    final parseGate = Completer<void>();
+    final adapter = _GatedParseAdapter(all, parseGate);
+    final reader = _FakePageReader(
+      latest: recent,
+      older: older,
+      olderError: StateError('older page boom'),
+    );
+    final fs = LocalFilesystem();
+    final pagedLoader = AiHistoryLoader(
+      contextBuilder: const SessionHistoryContextBuilder(),
+      resolveWorkContext: (_, {String? memberId}) async => RuntimeContext(
+        target: RuntimeTarget.local(),
+        filesystem: fs,
+        home: '/tmp/ai-history-cubit-page-fail',
+        cwd: '/tmp/ai-history-cubit-page-fail',
+        appDataRoot: '/tmp/ai-history-cubit-page-fail',
+        paths: AppPaths('/tmp/ai-history-cubit-page-fail'),
+      ),
+      locator: _ScriptedLocator()..emitBundle = true,
+      registry: fakeAiHistoryRegistry(
+        cli: CliTool.claude,
+        adapter: adapter,
+        pageReader: reader,
+        locate: (_) async => _dummyBundle(),
+      ),
+      resolveCacheToken: (_) async => 'page-token-fail',
+    );
+    final pagedCubit = AiHistoryCubit(loader: pagedLoader);
+    addTearDown(pagedCubit.close);
+    addTearDown(parseGate.complete);
+
+    await pagedCubit.load(
+      session: simpleSession(),
+      memberId: '',
+      launchContext: launchCtx(simpleSession()),
+    );
+    final before = List<AiMessage>.from(
+      pagedCubit
+          .ensureSeat(sessionId: 'sess-a', selectedMemberId: '')
+          .runtime
+          .messages,
+    );
+
+    await pagedCubit.loadOlder();
+
+    expect(
+      pagedCubit
+          .ensureSeat(sessionId: 'sess-a', selectedMemberId: '')
+          .runtime
+          .messages
+          .map((m) => m.id),
+      before.map((m) => m.id),
+    );
+    expect(pagedCubit.state.isLoadingOlder, isFalse);
+    expect(pagedCubit.state.softReloadError, contains('older page boom'));
+    expect(pagedCubit.state.status, AiHistoryViewStatus.ready);
   });
 
   test('error sets runtime error', () async {
@@ -1164,5 +1473,95 @@ class _ScriptedLocator extends AiHistoryLocator {
     if (queue.isNotEmpty) return queue.removeAt(0);
     if (!emitBundle) return null;
     return _dummyBundle();
+  }
+}
+
+List<AiMessage> _pagedHistoryMessages() => [
+  for (var i = 0; i < 50; i++)
+    AiMessage(
+      id: 'm-$i',
+      role: i == 0 ? AiRole.assistant : AiRole.user,
+      parts: i == 0
+          ? [
+              AiToolCallPart(
+                toolCallId: 'c-old',
+                toolName: 'TaskCreate',
+                args: {'subject': 'old-task'},
+                result: {'taskId': 'task-old'},
+                status: AiToolCallStatus.complete,
+              ),
+            ]
+          : [AiTextPart(text: 'msg-$i')],
+    ),
+];
+
+class _GatedParseAdapter implements AiTranscriptAdapter {
+  _GatedParseAdapter(this._messages, this._gate);
+
+  final List<AiMessage> _messages;
+  final Completer<void> _gate;
+  var parseCalls = 0;
+
+  @override
+  String get id => 'claude';
+
+  @override
+  Future<List<AiMessage>> parse(AiTranscriptBundle bundle) async {
+    parseCalls++;
+    await _gate.future;
+    return List.of(_messages);
+  }
+}
+
+class _FakePageReader implements AiTranscriptPageReader {
+  _FakePageReader({
+    required this.latest,
+    required this.older,
+    this.olderError,
+  });
+
+  final List<AiMessage> latest;
+  final List<AiMessage> older;
+  final Object? olderError;
+  var latestCalls = 0;
+  var olderCalls = 0;
+
+  @override
+  Future<AiHistoryPage?> readLatest({
+    required SessionHistoryContext ctx,
+    required int limit,
+  }) async {
+    latestCalls++;
+    return AiHistoryPage(
+      messages: latest,
+      hasOlder: older.isNotEmpty || olderError != null,
+      nextCursor: (older.isEmpty && olderError == null)
+          ? null
+          : const AiHistoryCursor(
+              sourceToken: 'page-token',
+              offset: 0,
+              lineHash: 1,
+            ),
+      sourceToken: 'page-token',
+      rebuilt: false,
+    );
+  }
+
+  @override
+  Future<AiHistoryPage?> readOlder({
+    required SessionHistoryContext ctx,
+    required AiHistoryCursor cursor,
+    required int limit,
+  }) async {
+    olderCalls++;
+    final error = olderError;
+    if (error != null) throw error;
+    return AiHistoryPage(
+      messages: older,
+      hasOlder: false,
+      nextCursor: null,
+      sourceToken: 'page-token',
+      rebuilt: false,
+    );
   }
 }

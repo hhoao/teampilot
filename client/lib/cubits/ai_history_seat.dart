@@ -12,8 +12,10 @@ import '../models/team_config.dart';
 import '../models/workspace_launch_context.dart';
 import '../services/conversation_timeline/conversation_timeline.dart';
 import '../services/conversation_timeline/mailbox_user_source.dart';
+import '../services/session/ai_history_load_result.dart';
 import '../services/session/ai_history_loader.dart';
 import '../services/session/ai_history_message_dedup.dart';
+import '../services/session/ai_history_page.dart';
 import '../services/session/ai_history_pending_text.dart';
 import '../services/session/failed_message_store.dart';
 import '../services/session/history_awaiting_working_sync.dart';
@@ -164,6 +166,8 @@ class AiHistorySeat extends Cubit<AiHistoryState> {
   List<AiMessage> _cliMessages = const [];
   List<AiMessage> _allMessages = const [];
   int _visibleCount = 0;
+  AiHistoryCursor? _pageCursor;
+  var _sourceHasOlder = false;
 
   /// CLI identity of the last successful [load] / [softReload]. [softReload]
   /// also refreshes it so a failed cold load (which never reaches the success
@@ -266,6 +270,8 @@ class AiHistorySeat extends Cubit<AiHistoryState> {
       _allMessages = const [];
       _visibleCount = 0;
       _committedLength = 0;
+      _pageCursor = null;
+      _sourceHasOlder = false;
       _lastUserTurnCount = 0;
       _clearSubagentAttachments();
       runtime.setLoading();
@@ -293,6 +299,8 @@ class AiHistorySeat extends Cubit<AiHistoryState> {
       if (gen != _loadGeneration || isClosed) return;
       _cliMessages = result.messages;
       _lastCli = result.cli;
+      _pageCursor = result.cursor;
+      _sourceHasOlder = result.hasOlder;
       _setSubagentAttachments(result.subagentAttachments);
       final merged = await _mergeWithMailbox(
         result.messages,
@@ -301,6 +309,9 @@ class AiHistorySeat extends Cubit<AiHistoryState> {
       );
       if (gen != _loadGeneration || isClosed) return;
       _applyMessages(merged, session.sessionId, memberId);
+      if (!result.isComplete) {
+        unawaited(_hydrateFullIndex(gen, session.sessionId, memberId));
+      }
     } catch (e, st) {
       appLogger.e(
         '[ai-history] seat load failed session=${session.sessionId} '
@@ -328,6 +339,8 @@ class AiHistorySeat extends Cubit<AiHistoryState> {
       _allMessages = const [];
       _visibleCount = 0;
       _committedLength = 0;
+      _pageCursor = null;
+      _sourceHasOlder = false;
       _clearSubagentAttachments();
       runtime.setError(e.toString());
       emit(
@@ -870,16 +883,138 @@ class AiHistorySeat extends Cubit<AiHistoryState> {
     );
   }
 
-  void loadOlder() {
+  Future<void> loadOlder() async {
     if (state.status != AiHistoryViewStatus.ready) return;
     if (!state.hasOlder || state.isLoadingOlder) return;
 
+    if (_pageCursor == null) {
+      _visibleCount = math.min(
+        _visibleCount + kSessionHistoryOlderPageSize,
+        _committedLength,
+      );
+      _emitReadyWindow(state.sessionId, state.memberId);
+      return;
+    }
+
     emit(state.copyWith(isLoadingOlder: true));
+    try {
+      final result = await _loader.loadOlder(
+        sessionId: state.sessionId ?? '',
+        memberId: state.memberId ?? '',
+      );
+      if (isClosed) return;
+      if (result == null) {
+        _sourceHasOlder = false;
+        _pageCursor = null;
+        if (_visibleCount < _committedLength) {
+          _visibleCount = math.min(
+            _visibleCount + kSessionHistoryOlderPageSize,
+            _committedLength,
+          );
+        }
+        _emitReadyWindow(state.sessionId, state.memberId);
+        return;
+      }
+      await _applyOlderPage(result);
+    } catch (e, st) {
+      appLogger.w(
+        '[ai-history] loadOlder failed session=${state.sessionId} '
+        'member=${state.memberId}: $e',
+        error: e,
+        stackTrace: st,
+      );
+      if (isClosed) return;
+      emit(
+        state.copyWith(
+          isLoadingOlder: false,
+          softReloadError: e.toString(),
+          hasOlder: _hasOlder(),
+        ),
+      );
+    }
+  }
+
+  Future<void> _applyOlderPage(AiHistoryLoadResult result) async {
+    _pageCursor = result.cursor;
+    _sourceHasOlder = result.hasOlder;
+    _cliMessages = prependOlderHistoryMessages(
+      older: result.messages,
+      recent: _cliMessages,
+    );
+    final sessionId = state.sessionId ?? '';
+    final memberId = state.memberId ?? '';
+    final previous = _allMessages;
+    final merged = await _mergeWithMailbox(_cliMessages, sessionId, memberId);
+    if (isClosed) return;
+    var next = reuseHistoryMessageIdentity(previous: previous, next: merged);
+    final cli = _lastCli;
+    if (cli != null) {
+      next = _loader.annotate(next, cli: cli);
+    }
+    next = _dedupeLiveMessages(
+      next,
+      sessionId: sessionId,
+      memberId: memberId,
+      source: 'loadOlder',
+    );
+    final added = math.max(0, next.length - previous.length);
+    _allMessages = next;
+    _committedLength = _allMessages.length;
     _visibleCount = math.min(
-      _visibleCount + kSessionHistoryOlderPageSize,
+      _visibleCount + math.max(added, result.messages.length),
       _committedLength,
     );
-    _emitReadyWindow(state.sessionId, state.memberId);
+    _remergePendingsOntoRuntime();
+    _emitReadyWindow(sessionId, memberId);
+  }
+
+  Future<void> _hydrateFullIndex(
+    int gen,
+    String sessionId,
+    String memberId,
+  ) async {
+    try {
+      final full = await _loader.fullIndex(
+        sessionId: sessionId,
+        memberId: memberId,
+      );
+      if (full == null || gen != _loadGeneration || isClosed) return;
+      _cliMessages = reuseHistoryMessageIdentity(
+        previous: _cliMessages,
+        next: full.messages,
+      );
+      _lastCli = full.cli;
+      _setSubagentAttachments(full.subagentAttachments);
+      final merged = await _mergeWithMailbox(_cliMessages, sessionId, memberId);
+      if (gen != _loadGeneration || isClosed) return;
+      final previous = _allMessages;
+      var next = reuseHistoryMessageIdentity(previous: previous, next: merged);
+      next = _dedupeLiveMessages(
+        next,
+        sessionId: sessionId,
+        memberId: memberId,
+        source: 'fullIndex',
+      );
+      _allMessages = next;
+      _committedLength = _allMessages.length;
+      _visibleCount = math.min(_visibleCount, _committedLength);
+      if (_visibleCount <= 0 && _committedLength > 0) {
+        _visibleCount = math.min(kSessionHistoryInitialTurns, _committedLength);
+      }
+      _pageCursor = null;
+      _sourceHasOlder = false;
+      _remergePendingsOntoRuntime();
+      if (state.status == AiHistoryViewStatus.ready ||
+          state.status == AiHistoryViewStatus.empty) {
+        _emitReadyWindow(sessionId, memberId);
+      }
+    } on Object catch (e, st) {
+      appLogger.w(
+        '[ai-history] full index failed session=$sessionId member=$memberId: $e',
+        error: e,
+        stackTrace: st,
+      );
+    }
   }
 
   /// Expands the committed + visible render window so the message at [index]
@@ -1336,7 +1471,7 @@ class AiHistorySeat extends Cubit<AiHistoryState> {
     return committed.sublist(start);
   }
 
-  bool _hasOlder() => _visibleCount < _committedLength;
+  bool _hasOlder() => _sourceHasOlder || _visibleCount < _committedLength;
 
   @override
   Future<void> close() {

@@ -251,6 +251,23 @@ void main() {
     },
   );
 
+  test('loadOlder keeps runtime content and never blanks', () async {
+    holderMessages = messages(40);
+    bumpCacheToken();
+    await seat.load(session: session(), memberId: '', launchContext: ctx(session()));
+    expect(seat.runtime.messages, isNotEmpty);
+    final before = List<AiMessage>.from(seat.runtime.messages);
+    expect(seat.runtime.status, isNot(AiThreadStatus.loading));
+
+    await seat.loadOlder();
+
+    expect(seat.runtime.status, isNot(AiThreadStatus.loading));
+    expect(seat.runtime.messages, isNotEmpty);
+    expect(seat.runtime.messages.first.id, isNot(before.first.id));
+    expect(seat.runtime.messages.last.id, before.last.id);
+    expect(seat.state.status, AiHistoryViewStatus.ready);
+  });
+
   group('revealMessage', () {
     test(
       'expands the visible window to include a not-yet-loaded index',

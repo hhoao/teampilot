@@ -1,3 +1,5 @@
+import 'package:ai_message_core/ai_message_core.dart';
+
 /// Windowed rendering for session history review.
 const int kSessionHistoryInitialTurns = 30;
 
@@ -53,4 +55,28 @@ double resolveSessionHistoryColumnWidth(double availableWidth) {
   return chat < kSessionHistoryColumnMaxWidth
       ? chat
       : kSessionHistoryColumnMaxWidth;
+}
+
+/// Prepends [older] before [recent], dropping older ids already present in
+/// [recent] so the existing suffix keeps its object identity.
+List<AiMessage> prependOlderHistoryMessages({
+  required List<AiMessage> older,
+  required List<AiMessage> recent,
+}) {
+  if (older.isEmpty) return recent;
+  if (recent.isEmpty) return List<AiMessage>.of(older);
+  final recentIds = {for (final m in recent) m.id};
+  final prefix = [for (final m in older) if (!recentIds.contains(m.id)) m];
+  if (prefix.isEmpty) return recent;
+  return [...prefix, ...recent];
+}
+
+/// Reuses [previous] instances whenever [next] carries the same message id.
+List<AiMessage> reuseHistoryMessageIdentity({
+  required List<AiMessage> previous,
+  required List<AiMessage> next,
+}) {
+  if (previous.isEmpty) return next;
+  final previousById = {for (final m in previous) m.id: m};
+  return [for (final m in next) previousById[m.id] ?? m];
 }

@@ -15,6 +15,7 @@ final class FakeAiHistoryCapability implements AiHistoryCapability {
     required this.adapter,
     this.locateFn,
     this.lineAppend,
+    this.pageReader,
     this.subagentSideResolver = const NullSubagentSideResolver(),
     this.toolResultEnricher = const NoOpToolResultEnricher(),
     this.subagentToolNames = const {},
@@ -37,7 +38,7 @@ final class FakeAiHistoryCapability implements AiHistoryCapability {
   final AiTranscriptLineAppend? lineAppend;
 
   @override
-  AiTranscriptPageReader? get pageReader => null;
+  final AiTranscriptPageReader? pageReader;
 
   @override
   String get tailFallbackPrefix => 'test';
@@ -107,6 +108,7 @@ CliToolRegistry fakeAiHistoryRegistry({
   ToolResultEnricher toolResultEnricher = const NoOpToolResultEnricher(),
   Set<String> subagentToolNames = const {},
   Future<String?> Function(SessionHistoryContext ctx)? liveCacheToken,
+  AiTranscriptPageReader? pageReader,
 }) {
   final registry = CliToolRegistry();
   registry.register(
@@ -115,6 +117,7 @@ CliToolRegistry fakeAiHistoryRegistry({
       FakeAiHistoryCapability(
         adapter: adapter,
         locateFn: locate,
+        pageReader: pageReader,
         subagentSideResolver: subagentSideResolver,
         toolResultEnricher: toolResultEnricher,
         subagentToolNames: subagentToolNames,

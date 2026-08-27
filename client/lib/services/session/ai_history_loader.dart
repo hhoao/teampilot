@@ -18,10 +18,12 @@ import '../storage/runtime_context.dart';
 import '../terminal/session_member_cli_resolver.dart';
 import 'ai_history_load_result.dart';
 import 'ai_history_locator.dart';
+import 'ai_history_page.dart';
 import 'ai_history_watch_meta.dart';
 import 'ai_transcript_tail_reader.dart';
 import 'session_history_context.dart';
 import 'session_history_context_builder.dart';
+import 'session_history_pagination.dart';
 import 'subagent_attachment_inflater.dart';
 
 /// Resolves the work-plane [RuntimeContext] for a History seat (same seam as
@@ -100,6 +102,17 @@ final class AiHistoryLoader {
   /// 在途 load 单飞表(cacheKey → future):并发触发合并,见 [load]。
   final _inflightLoads = <String, Future<AiHistoryLoadResult>>{};
 
+  /// Page-window metadata for [loadOlder] / first-paint results.
+  final _hasOlder = <String, bool>{};
+  final _cursors = <String, AiHistoryCursor?>{};
+  final _complete = <String, bool>{};
+  final _pageContexts = <String, SessionHistoryContext>{};
+  final _pageClis = <String, CliTool>{};
+
+  /// Background full-index futures and completed results (search / task board).
+  final _fullIndexFutures = <String, Future<AiHistoryLoadResult>>{};
+  final _fullIndexes = <String, AiHistoryLoadResult>{};
+
   /// Bundles at/above this size parse on a worker isolate; smaller ones parse
   /// in place (isolate spawn + transfer overhead would dominate).
   static const _isolateParseMinBytes = 256 * 1024;
@@ -132,6 +145,13 @@ final class AiHistoryLoader {
     _tailStates.clear();
     _incrementalStates.clear();
     _inflightLoads.clear();
+    _hasOlder.clear();
+    _cursors.clear();
+    _complete.clear();
+    _pageContexts.clear();
+    _pageClis.clear();
+    _fullIndexFutures.clear();
+    _fullIndexes.clear();
   }
 
   /// Per-CLI tail reader for JSONL-style transcripts. Returns null when the
@@ -201,6 +221,7 @@ final class AiHistoryLoader {
     required List<AiMessage> messages,
     required String? parentPath,
     required String? token,
+    bool indexOnly = false,
   }) async {
     // Incrementally added/replaced parts are unannotated → annotate now
     // (idempotent on parts the previous load already covered).
@@ -219,6 +240,7 @@ final class AiHistoryLoader {
       ctx: ctx,
       messages: annotated,
       rootTranscriptPath: parentPath,
+      cache: !indexOnly,
     );
     // 增量路径原地变异 state 的实时列表,annotate 无改动时返回的仍是
     // 同一个实例——seat 用 identical 判定"CLI 未变化"会把这个实例当成
@@ -227,14 +249,20 @@ final class AiHistoryLoader {
     // 是同一个返回实例,否则缓存命中路径返回的实例与上次返回值不同,
     // seat 会误判"变了"。
     final result = List<AiMessage>.of(annotated);
-    _messages[cacheKey] = result;
-    _attachments[cacheKey] = attachments;
-    _tokens[cacheKey] = token ?? 'changed-$cacheKey';
-    return AiHistoryLoadResult(
+    final complete = AiHistoryLoadResult(
       messages: result,
       cli: cli,
       subagentAttachments: attachments,
+      isComplete: true,
     );
+    _fullIndexes[cacheKey] = complete;
+    _fullIndexFutures[cacheKey] = Future.value(complete);
+    if (indexOnly) return complete;
+    _messages[cacheKey] = result;
+    _attachments[cacheKey] = attachments;
+    _tokens[cacheKey] = token ?? 'changed-$cacheKey';
+    _markComplete(cacheKey);
+    return complete;
   }
 
   /// 增量路径的附件索引刷新。
@@ -248,11 +276,12 @@ final class AiHistoryLoader {
     required SessionHistoryContext ctx,
     required List<AiMessage> messages,
     required String? rootTranscriptPath,
+    bool cache = true,
   }) async {
     final capability = _registry.capability<AiHistoryCapability>(cli);
     if (capability == null) return const {};
-    final cached = _attachments[cacheKey];
-    final prevSigs = _attachmentSigs[cacheKey];
+    final cached = cache ? _attachments[cacheKey] : null;
+    final prevSigs = cache ? _attachmentSigs[cacheKey] : null;
     String? sideToken;
     if (cached != null &&
         prevSigs != null &&
@@ -278,6 +307,7 @@ final class AiHistoryLoader {
       attachments,
       resolver: _categoryResolverFor(cli),
     );
+    if (!cache) return attachments;
     _attachmentSigs[cacheKey] = _taskCallSignatures(messages, capability);
     // 记录本次 inflate 时的 side 指纹,让后续 tick 的复用分支可比。首载走
     // 增量 tail 路径时(全量 parse 路径在别处记录)也必须填充,否则第一次
@@ -426,6 +456,7 @@ final class AiHistoryLoader {
     required SessionHistoryContext ctx,
     required String cacheKey,
     required bool force,
+    bool skipPaging = false,
   }) async {
     final cap = _registry.capability<AiHistoryCapability>(cli);
     if (cap == null) {
@@ -435,8 +466,6 @@ final class AiHistoryLoader {
       );
       throw StateError('AiHistoryCapability missing for launch CLI $cli');
     }
-
-    final cacheKey = _cacheKey(session.sessionId, effectiveMemberId);
 
     final token = await (_resolveCacheToken ?? _defaultTokenResolverFor(cap))(
       ctx,
@@ -454,7 +483,8 @@ final class AiHistoryLoader {
         rootTranscriptPath: _parentPaths[cacheKey],
       );
       if (sideToken == null || _sideTokens[cacheKey] == sideToken) {
-        return AiHistoryLoadResult(
+        return _result(
+          cacheKey: cacheKey,
           messages: cachedMessages,
           cli: cli,
           subagentAttachments: cachedAttachments,
@@ -477,7 +507,8 @@ final class AiHistoryLoader {
         cap,
       );
       _sideTokens[cacheKey] = sideToken;
-      return AiHistoryLoadResult(
+      return _result(
+        cacheKey: cacheKey,
         messages: cachedMessages,
         cli: cli,
         subagentAttachments: attachments,
@@ -485,6 +516,21 @@ final class AiHistoryLoader {
     }
 
     try {
+      if (!skipPaging &&
+          !_hasWarmIncremental(cacheKey) &&
+          !_messages.containsKey(cacheKey)) {
+        final paged = await _tryPageFirst(
+          session: session,
+          cacheKey: cacheKey,
+          cli: cli,
+          cap: cap,
+          ctx: ctx,
+          token: token,
+          effectiveMemberId: effectiveMemberId,
+        );
+        if (paged != null) return paged;
+      }
+
       // 增量优先:数据库行级增量(如 opencode SQLite)——跳过全量 locate +
       // 全量 parse,只重读指纹变化的行并原地合并。不可增量(未对齐/计数
       // 回退/删除/压缩/schema 不兼容)返回 null,继续走全量路径。
@@ -504,6 +550,7 @@ final class AiHistoryLoader {
           messages: dbDelta.messages,
           parentPath: parentPath,
           token: token,
+          indexOnly: skipPaging,
         );
       }
 
@@ -538,6 +585,7 @@ final class AiHistoryLoader {
           messages: tail,
           parentPath: parentPath,
           token: token,
+          indexOnly: skipPaging,
         );
       }
 
@@ -638,6 +686,15 @@ final class AiHistoryLoader {
         );
       }
 
+      final complete = AiHistoryLoadResult(
+        messages: messages,
+        cli: cli,
+        subagentAttachments: attachments,
+        isComplete: true,
+      );
+      _fullIndexes[cacheKey] = complete;
+      _fullIndexFutures[cacheKey] = Future.value(complete);
+      if (skipPaging) return complete;
       _messages[cacheKey] = messages;
       _attachments[cacheKey] = attachments;
       _attachmentSigs[cacheKey] = _taskCallSignatures(messages, cap);
@@ -647,11 +704,8 @@ final class AiHistoryLoader {
         rootTranscriptPath: parentPath,
       );
       if (sideToken != null) _sideTokens[cacheKey] = sideToken;
-      return AiHistoryLoadResult(
-        messages: messages,
-        cli: cli,
-        subagentAttachments: attachments,
-      );
+      _markComplete(cacheKey);
+      return complete;
     } on Object catch (e, st) {
       appLogger.e(
         '[ai-history] load failed session=${session.sessionId} '
@@ -660,6 +714,151 @@ final class AiHistoryLoader {
         stackTrace: st,
       );
       rethrow;
+    }
+  }
+
+  /// Older page for a seat that already published a recent window.
+  ///
+  /// Returns null when there is no cursor (complete in-memory list, or paging
+  /// unavailable). Throws when a later page fails so the seat can keep the
+  /// current runtime and show a non-blocking error.
+  Future<AiHistoryLoadResult?> loadOlder({
+    required String sessionId,
+    required String memberId,
+  }) async {
+    final cacheKey = _cacheKey(sessionId, memberId);
+    if (_complete[cacheKey] == true) return null;
+    final cursor = _cursors[cacheKey];
+    final ctx = _pageContexts[cacheKey];
+    final cli = _pageClis[cacheKey];
+    if (cursor == null || ctx == null || cli == null) return null;
+    final cap = _registry.capability<AiHistoryCapability>(cli);
+    final reader = cap?.pageReader;
+    if (reader == null) return null;
+    final page = await reader.readOlder(
+      ctx: ctx,
+      cursor: cursor,
+      limit: kSessionHistoryOlderPageSize,
+    );
+    if (page == null) return null;
+    final messages = annotate(page.messages, cli: cli);
+    _cursors[cacheKey] = page.nextCursor;
+    _hasOlder[cacheKey] = page.hasOlder;
+    _complete[cacheKey] = false;
+    final recent = _messages[cacheKey] ?? const <AiMessage>[];
+    _messages[cacheKey] = prependOlderHistoryMessages(
+      older: messages,
+      recent: recent,
+    );
+    return AiHistoryLoadResult(
+      messages: messages,
+      cli: cli,
+      hasOlder: page.hasOlder,
+      cursor: page.nextCursor,
+      isComplete: false,
+    );
+  }
+
+  /// Completed or in-flight full transcript for search / task-board consumers.
+  Future<AiHistoryLoadResult?> fullIndex({
+    required String sessionId,
+    required String memberId,
+  }) async {
+    final cacheKey = _cacheKey(sessionId, memberId);
+    return _fullIndexFutures[cacheKey];
+  }
+
+  bool _hasWarmIncremental(String cacheKey) =>
+      _tailStates.containsKey(cacheKey) ||
+      _incrementalStates.containsKey(cacheKey);
+
+  void _markComplete(String cacheKey) {
+    _complete[cacheKey] = true;
+    _hasOlder[cacheKey] = false;
+    _cursors[cacheKey] = null;
+  }
+
+  AiHistoryLoadResult _result({
+    required String cacheKey,
+    required List<AiMessage> messages,
+    required CliTool cli,
+    required Map<String, AiSubagentAttachment> subagentAttachments,
+  }) {
+    return AiHistoryLoadResult(
+      messages: messages,
+      cli: cli,
+      subagentAttachments: subagentAttachments,
+      hasOlder: _hasOlder[cacheKey] ?? false,
+      cursor: _cursors[cacheKey],
+      isComplete: _complete[cacheKey] ?? true,
+    );
+  }
+
+  Future<AiHistoryLoadResult?> _tryPageFirst({
+    required AppSession session,
+    required String cacheKey,
+    required CliTool cli,
+    required AiHistoryCapability cap,
+    required SessionHistoryContext ctx,
+    required String? token,
+    required String effectiveMemberId,
+  }) async {
+    final reader = cap.pageReader;
+    if (reader == null) return null;
+    try {
+      final page = await reader.readLatest(
+        ctx: ctx,
+        limit: kSessionHistoryInitialTurns,
+      );
+      if (page == null) return null;
+      final messages = annotate(page.messages, cli: cli);
+      final parentPath = await _parentPathHint(ctx);
+      _parentPaths[cacheKey] = parentPath;
+      final attachments = await _subagentAttachmentsFor(
+        cacheKey: cacheKey,
+        cli: cli,
+        ctx: ctx,
+        messages: messages,
+        rootTranscriptPath: parentPath,
+      );
+      _messages[cacheKey] = messages;
+      _attachments[cacheKey] = attachments;
+      _tokens[cacheKey] = token ?? 'changed-$cacheKey';
+      _hasOlder[cacheKey] = page.hasOlder;
+      _cursors[cacheKey] = page.nextCursor;
+      _complete[cacheKey] = false;
+      _pageContexts[cacheKey] = ctx;
+      _pageClis[cacheKey] = cli;
+      _fullIndexFutures.putIfAbsent(
+        cacheKey,
+        () => Future(() {
+          return _loadOnce(
+            session: session,
+            cli: cli,
+            effectiveMemberId: effectiveMemberId,
+            ctx: ctx,
+            cacheKey: cacheKey,
+            force: true,
+            skipPaging: true,
+          );
+        }),
+      );
+      return AiHistoryLoadResult(
+        messages: messages,
+        cli: cli,
+        subagentAttachments: attachments,
+        hasOlder: page.hasOlder,
+        cursor: page.nextCursor,
+        isComplete: false,
+      );
+    } on Object catch (e, st) {
+      appLogger.w(
+        '[ai-history] page reader failed, falling back to full parse '
+        'cli=$cli: $e',
+        error: e,
+        stackTrace: st,
+      );
+      return null;
     }
   }
 
@@ -674,6 +873,13 @@ final class AiHistoryLoader {
       _sideTokens.remove(key);
       _tailStates.remove(key);
       _incrementalStates.remove(key);
+      _hasOlder.remove(key);
+      _cursors.remove(key);
+      _complete.remove(key);
+      _pageContexts.remove(key);
+      _pageClis.remove(key);
+      _fullIndexFutures.remove(key);
+      _fullIndexes.remove(key);
       return;
     }
     final prefix = '${sessionId.trim()}\u0000';
@@ -685,6 +891,13 @@ final class AiHistoryLoader {
     _sideTokens.removeWhere((key, _) => key.startsWith(prefix));
     _tailStates.removeWhere((key, _) => key.startsWith(prefix));
     _incrementalStates.removeWhere((key, _) => key.startsWith(prefix));
+    _hasOlder.removeWhere((key, _) => key.startsWith(prefix));
+    _cursors.removeWhere((key, _) => key.startsWith(prefix));
+    _complete.removeWhere((key, _) => key.startsWith(prefix));
+    _pageContexts.removeWhere((key, _) => key.startsWith(prefix));
+    _pageClis.removeWhere((key, _) => key.startsWith(prefix));
+    _fullIndexFutures.removeWhere((key, _) => key.startsWith(prefix));
+    _fullIndexes.removeWhere((key, _) => key.startsWith(prefix));
   }
 
   Future<_AiHistorySeat> _resolveSeat({
@@ -751,6 +964,20 @@ final class AiHistoryLoader {
 
   static String _cacheKey(String sessionId, String memberId) =>
       '${sessionId.trim()}\u0000${memberId.trim()}';
+
+  /// Cheap parent-transcript path for first-paint attachment inflate. Stats
+  /// only — never reads transcript bytes.
+  static Future<String> _parentPathHint(SessionHistoryContext ctx) async {
+    final probe = await probePinnedTranscript(
+      fs: ctx.fs,
+      toolRoots: ctx.transcriptRoots,
+      sessionId: ctx.taskId,
+      bucket: ctx.bucket,
+      layoutSegments: const ['projects', 'workspaces'],
+      matchDirectories: false,
+    );
+    return probe.matchedPath ?? '';
+  }
 
   /// Enrichers gate per-part via [ToolResultEnricher.needsEnrichment]; skip
   /// [enrich] when no part needs it.
