@@ -30,6 +30,20 @@ void main() {
     bus.dispatchOutput(Uint8List.fromList(utf8.encode('hello world\n')));
     expect(tracker.notes, 1);
   });
+
+  test('unbind stops activity notes', () {
+    final tracker = _SpyTracker();
+    seat = TerminalObservationSeat(
+      sessionId: 's',
+      memberId: 'm',
+      phase: TerminalLaunchPhase.running,
+      activityTracker: tracker,
+    );
+    bus = TerminalObservationBus(seat: seat);
+    ActivityObservationModule().bind(bus, seat).unbind();
+    bus.dispatchOutput(Uint8List.fromList(utf8.encode('hello world\n')));
+    expect(tracker.notes, 0);
+  });
 }
 
 class _SpyTracker extends TerminalActivityTracker {
