@@ -29,6 +29,7 @@ class SessionHistoryReviewMessages extends StatelessWidget {
     this.onRetryFailedMessage,
     this.highlightMessageId,
     this.revealRequest,
+    this.visibleOwnerId,
     super.key,
   });
 
@@ -47,6 +48,9 @@ class SessionHistoryReviewMessages extends StatelessWidget {
 
   /// Carries the reveal intent (jump + highlight) from the chat find host.
   final ChatRevealController? revealRequest;
+
+  /// Owning user-turn id of the first viewport-visible turn.
+  final ValueNotifier<String?>? visibleOwnerId;
 
   bool get _showThread {
     if (state.status == AiHistoryViewStatus.ready) return true;
@@ -79,6 +83,7 @@ class SessionHistoryReviewMessages extends StatelessWidget {
               onRetryFailedMessage: onRetryFailedMessage,
               highlightMessageId: highlightMessageId,
               revealRequest: revealRequest,
+              visibleOwnerId: visibleOwnerId,
             ),
           ),
         ],

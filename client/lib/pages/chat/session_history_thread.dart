@@ -9,6 +9,7 @@ import 'package:shared_ui/shared_ui.dart';
 
 import '../../l10n/l10n_extensions.dart';
 import '../../models/failed_message_record.dart';
+import 'chat_outline.dart';
 import 'chat_reveal_controller.dart';
 import 'history_scroll_cursor_lock.dart';
 import 'session_history_live_chrome.dart';
@@ -49,6 +50,7 @@ class SessionHistoryThread extends StatefulWidget {
     this.onRetryFailedMessage,
     this.highlightMessageId,
     this.revealRequest,
+    this.visibleOwnerId,
     super.key,
   });
 
@@ -67,6 +69,10 @@ class SessionHistoryThread extends StatefulWidget {
 
   /// Carries the reveal intent (jump + highlight) from the chat find host.
   final ChatRevealController? revealRequest;
+
+  /// Owning user-turn id of the first viewport-visible turn. Host-owned;
+  /// updated from [VirtualThreadViewport.onVisibleRange] without [setState].
+  final ValueNotifier<String?>? visibleOwnerId;
 
   @override
   State<SessionHistoryThread> createState() => _SessionHistoryThreadState();
@@ -620,6 +626,14 @@ class _SessionHistoryThreadState extends State<SessionHistoryThread> {
                           final max =
                               _scrollController.position.maxScrollExtent;
                           _jumpTo(target > max ? max : target);
+                        },
+                        onVisibleRange: (range) {
+                          final notifier = widget.visibleOwnerId;
+                          if (notifier == null) return;
+                          notifier.value = owningUserTurnId(
+                            _displayMessages,
+                            range.firstIndex,
+                          );
                         },
                         suppressMeasureScrollCorrection: _stickToEnd,
                         onMeasureScrollCorrection: (delta) {

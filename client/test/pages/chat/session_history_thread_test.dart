@@ -30,6 +30,7 @@ Widget _harness({
   bool isLoadingOlder = false,
   SessionHistoryLiveChrome liveChrome = SessionHistoryLiveChrome.none,
   VoidCallback? onLoadOlder,
+  ValueNotifier<String?>? visibleOwnerId,
 }) {
   return MaterialApp(
     localizationsDelegates: AppLocalizations.localizationsDelegates,
@@ -46,6 +47,7 @@ Widget _harness({
           isLoadingOlder: isLoadingOlder,
           liveChrome: liveChrome,
           onLoadOlder: onLoadOlder,
+          visibleOwnerId: visibleOwnerId,
         ),
       ),
     ),
@@ -593,5 +595,63 @@ void main() {
     jumpDuringLayout = true;
     await tester.pumpWidget(tree());
     await tester.pump();
+  });
+
+  testWidgets('visibleOwnerId follows the first visible user turn', (
+    tester,
+  ) async {
+    final store = ExternalStoreAiThreadRuntime()
+      ..setMessages([
+        ...List.generate(
+          12,
+          (i) => AiMessage(
+            id: 'u$i',
+            role: AiRole.user,
+            parts: [AiTextPart(text: 'msg $i')],
+          ),
+        ),
+      ]);
+    final owner = ValueNotifier<String?>(null);
+    addTearDown(owner.dispose);
+
+    await tester.pumpWidget(
+      MaterialApp(
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
+        locale: const Locale('en'),
+        theme: ThemeData(extensions: [AiMessageTheme.test()]),
+        home: Scaffold(
+          body: Align(
+            alignment: Alignment.topCenter,
+            child: SizedBox(
+              width: 600,
+              height: 160,
+              child: SessionHistoryThread(
+                runtime: store,
+                hasOlder: false,
+                isLoadingOlder: false,
+                visibleOwnerId: owner,
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+    await pumpUntilSettled(tester);
+
+    expect(owner.value, isNotNull);
+    // stick-to-end: first visible turn is a later user id (viewport still
+    // shows more than one message, so not necessarily the last id).
+    expect(
+      List.generate(12, (i) => 'u$i'),
+      contains(owner.value),
+    );
+    expect(owner.value, isNot('u0'));
+
+    tester.state<ScrollableState>(find.byType(Scrollable).first).position
+        .jumpTo(0);
+    await tester.pumpAndSettle();
+
+    expect(owner.value, 'u0');
   });
 }
