@@ -34,7 +34,10 @@ Widget buildHtmlBlock(
       onLinkTap: resolvers.onLinkTap == null
           ? null
           : (url, attributes, element) => resolvers.onLinkTap!(url ?? ''),
-      extensions: [_ResolvedImageExtension(tokens, resolvers)],
+      extensions: [
+        _ResolvedImageExtension(tokens, resolvers),
+        const _UnknownTagPassthroughExtension(),
+      ],
     );
   } on Exception catch (_) {
     // HtmlParser is tolerant; this is defensive for fromDom construction.
@@ -83,6 +86,38 @@ Map<String, fh.Style> _styleFor(MarkdownTokens tokens) {
     'blockquote': fh.Style(color: tokens.blockquote.color),
     'th': fh.Style(fontWeight: FontWeight.w600),
   };
+}
+
+/// Renders unrecognized tags as transparent wrappers so inner text is kept.
+///
+/// flutter_html turns unmatched tags into [fh.EmptyContentElement], which
+/// drops the whole subtree — a wrapping `<think>` / custom XML tag would
+/// otherwise blank the block.
+final class _UnknownTagPassthroughExtension extends fh.HtmlExtension {
+  const _UnknownTagPassthroughExtension();
+
+  static final Set<String> _builtinTags = {
+    for (final builtin in fh.HtmlParser.builtIns) ...builtin.supportedTags,
+  };
+
+  @override
+  Set<String> get supportedTags => const {};
+
+  @override
+  bool matches(fh.ExtensionContext context) {
+    if (context.node is! dom.Element) return false;
+    final name = context.elementName;
+    if (name.isEmpty) return false;
+    return !_builtinTags.contains(name);
+  }
+
+  @override
+  InlineSpan build(fh.ExtensionContext context) {
+    final children = context.inlineSpanChildren ?? const <InlineSpan>[];
+    if (children.isEmpty) return const TextSpan();
+    if (children.length == 1) return children.single;
+    return TextSpan(children: children);
+  }
 }
 
 /// Renders `<img>` via [buildMarkdownImage]: resolved providers keep the

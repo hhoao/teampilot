@@ -134,6 +134,31 @@ void main() {
     expect(find.byType(Html), findsNothing);
   });
 
+  testWidgets('unknown wrapping tag keeps inner text', (tester) async {
+    await tester.pumpWidget(harness(MarkdownView(
+      document: const MarkdownDocument(
+        blocks: [HtmlBlock(rawHtml: '<think>keep this text</think>')],
+      ),
+      tokens: MarkdownTokens.test(),
+    )));
+
+    expect(_plainText(tester), contains('keep this text'));
+  });
+
+  testWidgets('unknown inline tag keeps surrounding text', (tester) async {
+    await tester.pumpWidget(harness(MarkdownView(
+      document: const MarkdownDocument(
+        blocks: [HtmlBlock(rawHtml: 'hello <foo>bar</foo> world')],
+      ),
+      tokens: MarkdownTokens.test(),
+    )));
+
+    final text = _plainText(tester);
+    expect(text, contains('hello'));
+    expect(text, contains('bar'));
+    expect(text, contains('world'));
+  });
+
   testWidgets('VirtualMarkdownView renders HtmlBlock lazily', (tester) async {
     await tester.pumpWidget(MaterialApp(
       home: Scaffold(
