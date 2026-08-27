@@ -43,6 +43,12 @@ void main() {
     expect(bus.transformInput(Uint8List.fromList([1])), [1, 7]);
   });
 
+  test('throwing input observer does not skip later transform', () {
+    bus.addInputObserver(_ThrowingInput());
+    bus.addInputTransform(_Append(order: 100, suffix: 7));
+    expect(bus.transformInput(Uint8List.fromList([1])), [1, 7]);
+  });
+
   test('empty transform result is returned as empty', () {
     bus.addInputTransform(_DropAll(order: 100));
     expect(bus.transformInput(Uint8List.fromList([1, 2])), isEmpty);
@@ -53,6 +59,19 @@ void main() {
     bus.addScreenObserver(_Paint(() => paints++));
     bus.notifyPainted();
     expect(paints, 1);
+  });
+
+  test('painted stream emits once then no-ops after dispose', () async {
+    var count = 0;
+    final sub = bus.painted.listen((_) => count++);
+    addTearDown(sub.cancel);
+    bus.notifyPainted();
+    await pumpEventQueue();
+    expect(count, 1);
+    bus.dispose();
+    expect(() => bus.notifyPainted(), returnsNormally);
+    await pumpEventQueue();
+    expect(count, 1);
   });
 
   test('notifyProcessExited fans out after dispose no-ops', () {
@@ -73,6 +92,13 @@ final class _InputCapture implements TerminalInputObserver {
   @override
   void onInput(Uint8List bytes, TerminalObservationSeat seat) {
     seen.add(bytes[0]);
+  }
+}
+
+final class _ThrowingInput implements TerminalInputObserver {
+  @override
+  void onInput(Uint8List bytes, TerminalObservationSeat seat) {
+    throw StateError('input observer failed');
   }
 }
 

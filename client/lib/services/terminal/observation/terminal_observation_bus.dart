@@ -146,7 +146,7 @@ final class TerminalObservationBus {
         );
       }
     }
-    if (_painted.hasListener) {
+    if (!_disposed && !_painted.isClosed && _painted.hasListener) {
       _painted.add(null);
     }
   }
