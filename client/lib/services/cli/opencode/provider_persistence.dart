@@ -1,7 +1,5 @@
 import '../../../models/app_provider_config.dart';
-import '../../../models/team_config.dart';
 import '../../../repositories/provider_persistence/provider_persistence_strategy.dart';
-import 'provider/opencode_credential_kind.dart';
 import 'provider/opencode_credential_materializer.dart';
 
 /// OpenCode: probe catalog-stored credentials on load. No separate auth store.
@@ -17,9 +15,6 @@ final class OpencodeProviderPersistence extends ProviderPersistenceStrategy {
     List<AppProviderConfig> providers,
   ) async {
     final probed = providers.map((provider) {
-      if (!OpencodeCredentialKindResolver.needsCredential(provider)) {
-        return provider;
-      }
       return provider.withCredentialProbe(
         OpencodeCredentialMaterializer.probe(provider),
       );

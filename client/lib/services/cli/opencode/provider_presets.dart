@@ -28,7 +28,7 @@ class OpencodeProviderPresets {
         apiKeyUrl: "https://opencode.ai/zen",
         category: AppProviderCategory.official,
         defaultModel: "claude-sonnet-4-5",
-        config: {OpencodeCredentialConfigKeys.kind: 'apiKey'},
+        config: {OpencodeCredentialConfigKeys.kind: 'none'},
       ),
     ),
     AppProviderPreset(
@@ -44,7 +44,7 @@ class OpencodeProviderPresets {
         baseUrl: "https://opencode.ai/zen/go/v1",
         defaultModel: "deepseek-v4-flash",
         config: {
-          OpencodeCredentialConfigKeys.kind: 'apiKey',
+          OpencodeCredentialConfigKeys.kind: 'none',
           "npm": "@ai-sdk/openai-compatible",
         },
       ),
