@@ -30,9 +30,10 @@ class WorkspaceIndexStore {
 
   /// Reads the derived index.
   ///
-  /// [preferIsolate] is for cold-start prefetch only. Mutation paths must pass
-  /// `false` — `Isolate.run` has hung on Linux debug during first-boot upsert.
-  Future<List<Workspace>?> tryRead({bool preferIsolate = true}) async {
+  /// Defaults to the calling isolate. Boot used to pass `preferIsolate: true`,
+  /// but cold-start `Isolate.run` can hang on debug (Android/Linux) and leave
+  /// the splash stuck. Mutation paths must keep this `false`.
+  Future<List<Workspace>?> tryRead({bool preferIsolate = false}) async {
     final indexFile = _indexFile;
     if (preferIsolate && _fs.fs is LocalFilesystem) {
       try {

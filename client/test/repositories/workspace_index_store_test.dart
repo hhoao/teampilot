@@ -30,6 +30,28 @@ void main() {
   );
 
   test(
+    'boot tryRead completes even when isolate index reader never returns',
+    () async {
+      IndexSnapshotIsolate.debugWorkspacesReaderOverride = (_) =>
+          Completer<List<Map<String, Object?>>?>().future;
+
+      final store = WorkspaceIndexStore(
+        SessionRepositoryFs(
+          teampilotRoot: tmp.path,
+          fs: LocalFilesystem(),
+        ),
+      );
+      await store.upsert(_workspace('ws-1'));
+
+      final loaded = await store
+          .tryRead()
+          .timeout(const Duration(seconds: 2));
+      expect(loaded, isNotNull);
+      expect(loaded!.single.workspaceId, 'ws-1');
+    },
+  );
+
+  test(
     'upsert completes even when isolate index reader never returns',
     () async {
       IndexSnapshotIsolate.debugWorkspacesReaderOverride = (_) =>

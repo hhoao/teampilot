@@ -21,6 +21,33 @@ void main() {
   });
 
   test(
+    'boot tryRead completes even when isolate index reader never returns',
+    () async {
+      IndexSnapshotIsolate.debugLaunchProfilesReaderOverride = (_) =>
+          Completer<List<Map<String, Object?>>?>().future;
+
+      final profilesDir = p.join(tmp.path, 'launch-profiles');
+      Directory(profilesDir).createSync(recursive: true);
+      final store = LaunchProfileIndexStore(
+        launchProfilesDir: profilesDir,
+        fs: LocalFilesystem(),
+      );
+      const profile = TeamProfile(
+        id: 'default-native-team',
+        name: 'Native',
+        createdAt: 1,
+      );
+      await store.upsert(profile);
+
+      final loaded = await store
+          .tryRead()
+          .timeout(const Duration(seconds: 2));
+      expect(loaded, isNotNull);
+      expect(loaded!.single.id, 'default-native-team');
+    },
+  );
+
+  test(
     'upsert completes even when isolate index reader never returns',
     () async {
       IndexSnapshotIsolate.debugLaunchProfilesReaderOverride = (_) =>

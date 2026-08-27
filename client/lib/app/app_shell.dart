@@ -10,6 +10,7 @@ import 'package:posix/posix.dart' as posix;
 
 import '../cubits/app_bootstrap_cubit.dart';
 import 'app_data_bootstrap.dart';
+import 'home_index_prefetch.dart';
 import '../cubits/app_provider_cubit.dart';
 import '../cubits/app_update_cubit.dart';
 import '../cubits/remote_download_catalog_cubit.dart';
@@ -1267,14 +1268,15 @@ Future<AppShell> buildAppShell({
     }
   }
 
-  final homeIndexPrefetch =
-      homeIndexPrefetchFuture ??
-      (connectionModeService.isRemoteWorkPlane
-          ? prefetchHomeIndex()
-          : Future.wait([
-              sessionRepo.loadWorkspacesIndex(),
-              identityRepository.loadAll(),
-            ]));
+  if (connectionModeService.isRemoteWorkPlane &&
+      homeIndexPrefetchFuture != null) {
+    boot('ignoring native-path home index prefetch (remote home)');
+  }
+  final homeIndexPrefetch = bindHomeIndexPrefetch(
+    isRemoteWorkPlane: connectionModeService.isRemoteWorkPlane,
+    nativePathPrefetch: homeIndexPrefetchFuture,
+    boundHomePrefetch: prefetchHomeIndex,
+  );
   final pluginRepository = PluginRepository();
   final mcpRepository = McpRepository();
   hookRepository = HookRepository(

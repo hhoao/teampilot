@@ -8,9 +8,9 @@ import 'package:flutter/foundation.dart';
 ///
 /// Top-level parsers only — no model imports so [Isolate.run] stays valid.
 ///
-/// Startup prefetch uses [Isolate.run]; mutation paths (`upsert` / `remove`)
-/// must read on the calling isolate — cold-start `Isolate.run` can hang on
-/// Linux debug and leave the boot splash stuck.
+/// Optional [Isolate.run] readers exist for large snapshots, but boot and
+/// mutation paths must read on the calling isolate — cold-start `Isolate.run`
+/// can hang on debug and leave the boot splash stuck.
 abstract final class IndexSnapshotIsolate {
   IndexSnapshotIsolate._();
 
