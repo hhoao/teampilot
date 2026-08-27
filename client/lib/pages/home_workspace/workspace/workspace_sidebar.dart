@@ -6,6 +6,7 @@ import 'package:go_router/go_router.dart';
 import 'package:shared_ui/shared_ui.dart';
 
 import '../../../cubits/chat_cubit.dart';
+import '../../../cubits/layout_cubit.dart';
 import '../../../cubits/session_groups_cubit.dart';
 import '../../../cubits/workbench/workbench_cubit.dart';
 import '../../../cubits/worktree_cubit.dart';
@@ -44,6 +45,11 @@ import 'workspace_session_actions.dart';
 
 /// Navigates to workspace manage view for [workspace].
 void openWorkspaceManagementRoute(BuildContext context, Workspace workspace) {
+  try {
+    context.read<LayoutCubit>().closeMobileWorkspaceDrawer();
+  } on ProviderNotFoundException {
+    // Isolated tests may not mount [LayoutCubit].
+  }
   final location = GoRouterState.of(context).uri.toString();
   final routeProfile = HomeWorkspaceRoute.profile(location);
   final profileId = workspaceChromeProfileId(

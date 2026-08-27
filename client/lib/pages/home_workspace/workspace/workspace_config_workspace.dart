@@ -64,7 +64,6 @@ class _WorkspaceConfigPanelState extends State<WorkspaceConfigPanel> {
         showSubtitle: false,
         onBack: _leaveManage,
         compactSectionTabs: true,
-        embedded: true,
         items: [
           for (final s in sections)
             WorkspaceSectionNavItem(

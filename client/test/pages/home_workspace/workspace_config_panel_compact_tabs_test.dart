@@ -9,6 +9,7 @@ import 'package:teampilot/pages/home_workspace/workspace/workspace_config_sectio
 import 'package:teampilot/pages/home_workspace/workspace/workspace_config_workspace.dart';
 import 'package:teampilot/repositories/workspace_project_config_repository.dart';
 import 'package:teampilot/widgets/settings/workspace_hub_shell.dart';
+import 'package:teampilot/widgets/settings/workspace_pane_insets.dart';
 import 'package:teampilot/widgets/settings/workspace_section_tab_bar.dart';
 
 import '../../support/post_frame_test_harness.dart';
@@ -72,5 +73,12 @@ void main() {
     expect(find.text('Extensions'), findsOneWidget);
     expect(find.byType(WorkspaceSectionTabBar), findsOneWidget);
     expect(find.byType(WorkspaceSplitShell), findsNothing);
+    expect(
+      find.byWidgetPredicate(
+        (widget) =>
+            widget is Padding && widget.padding == WorkspacePaneInsets.page,
+      ),
+      findsOneWidget,
+    );
   });
 }
