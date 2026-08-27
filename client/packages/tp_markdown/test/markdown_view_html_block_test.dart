@@ -74,6 +74,43 @@ void main() {
     expect(tester.widget<Image>(find.byType(Image)).image, testImage);
   });
 
+  testWidgets('relative img without resolveImage shows the placeholder',
+      (tester) async {
+    await tester.pumpWidget(harness(MarkdownView(
+      document: const MarkdownDocument(
+        blocks: [HtmlBlock(rawHtml: '<img src="docs/pic.png">')],
+      ),
+      tokens: MarkdownTokens.test(),
+    )));
+
+    expect(find.byIcon(Icons.image_outlined), findsOneWidget);
+    expect(_plainText(tester), contains('docs/pic.png'));
+  });
+
+  testWidgets('https img without resolveImage falls through to flutter_html',
+      (tester) async {
+    await tester.pumpWidget(harness(MarkdownView(
+      document: const MarkdownDocument(
+        blocks: [HtmlBlock(rawHtml: '<img src="https://example.dev/a.png">')],
+      ),
+      tokens: MarkdownTokens.test(),
+    )));
+
+    expect(find.byType(Html), findsOneWidget);
+    expect(find.byIcon(Icons.image_outlined), findsNothing);
+  });
+
+  testWidgets('malformed HTML still renders without throwing', (tester) async {
+    await tester.pumpWidget(harness(MarkdownView(
+      document: const MarkdownDocument(
+        blocks: [HtmlBlock(rawHtml: '<p>unclosed <b>x')],
+      ),
+      tokens: MarkdownTokens.test(),
+    )));
+
+    expect(_plainText(tester), contains('x'));
+  });
+
   testWidgets('script content never reaches the widget tree', (tester) async {
     await tester.pumpWidget(harness(MarkdownView(
       document: const MarkdownDocument(

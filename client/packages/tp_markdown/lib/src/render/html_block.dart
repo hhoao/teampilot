@@ -19,6 +19,12 @@ Widget buildHtmlBlock(
   MarkdownResolvers resolvers,
 ) {
   final document = sanitizeHtmlDocument(block.rawHtml);
+  if (document.documentElement == null) {
+    return buildRawLiteralBlock(
+      RawLiteralBlock(rawMarkdown: block.rawHtml),
+      tokens,
+    );
+  }
   if (_isEmpty(document)) return const SizedBox.shrink();
 
   try {
@@ -30,8 +36,10 @@ Widget buildHtmlBlock(
           : (url, attributes, element) => resolvers.onLinkTap!(url ?? ''),
       extensions: [_ResolvedImageExtension(tokens, resolvers)],
     );
-  } catch (_) {
-    // The tolerant parser should never throw; degrade to source text.
+  } on Exception catch (_) {
+    // HtmlParser is tolerant; this is defensive for fromDom construction.
+    // Parse/build runs later in HtmlParser State, so this does not catch
+    // layout-time failures.
     return buildRawLiteralBlock(
       RawLiteralBlock(rawMarkdown: block.rawHtml),
       tokens,
@@ -77,8 +85,9 @@ Map<String, fh.Style> _styleFor(MarkdownTokens tokens) {
   };
 }
 
-/// Renders `<img>` whose src resolves via [MarkdownResolvers.resolveImage]
-/// (workspace-relative assets etc.). Non-matching imgs fall through to
+/// Renders `<img>` via [buildMarkdownImage]: resolved providers keep the
+/// inline [Image], unresolved relative/empty srcs show the existing
+/// placeholder. http(s)/data/asset srcs with no provider fall through to
 /// flutter_html's built-in network/data-uri handling.
 class _ResolvedImageExtension extends fh.HtmlExtension {
   _ResolvedImageExtension(this.tokens, this.resolvers);
@@ -95,27 +104,36 @@ class _ResolvedImageExtension extends fh.HtmlExtension {
     return resolvers.resolveImage?.call(src);
   }
 
+  /// True when flutter_html's built-in image handler can load [src] itself.
+  bool _isBuiltinHandledSrc(String src) {
+    final uri = Uri.tryParse(src);
+    if (uri == null) return false;
+    return uri.scheme == 'http' ||
+        uri.scheme == 'https' ||
+        uri.scheme == 'data' ||
+        uri.scheme == 'asset';
+  }
+
   @override
-  bool matches(fh.ExtensionContext context) =>
-      context.elementName == 'img' && _provider(context) != null;
+  bool matches(fh.ExtensionContext context) {
+    if (context.elementName != 'img') return false;
+    if (_provider(context) != null) return true;
+    final src = context.attributes['src'] ?? '';
+    if (_isBuiltinHandledSrc(src)) return false;
+    return true;
+  }
 
   @override
   InlineSpan build(fh.ExtensionContext context) {
-    final provider = _provider(context)!;
-    // Inline-image sizing parity with buildMarkdownImage(inline: true).
-    final lineHeight =
-        (tokens.body.fontSize ?? 14) * (tokens.body.height ?? 1.4);
+    final src = context.attributes['src'] ?? '';
     return WidgetSpan(
       alignment: PlaceholderAlignment.middle,
-      child: Image(
-        image: provider,
-        height: lineHeight,
-        fit: BoxFit.contain,
-        errorBuilder: (_, __, ___) => Icon(
-          Icons.image_outlined,
-          size: lineHeight,
-          color: tokens.body.color,
-        ),
+      child: buildMarkdownImage(
+        src: src,
+        alt: context.attributes['alt'],
+        tokens: tokens,
+        resolvers: resolvers,
+        inline: true,
       ),
     );
   }
