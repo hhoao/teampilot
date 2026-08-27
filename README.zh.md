@@ -65,7 +65,7 @@
 | **团队中心**（Team Hub） | 浏览公开团队模板并克隆到「我的团队」（克隆时可一并安装技能 / 插件 / MCP 依赖）。 |
 | **专家中心**（Expert Hub） | 浏览公开专家模板并加入「我的专家」。 |
 
-默认公开目录在本仓库的 [`team-hub/`](team-hub/) 与 [`member-hub/`](member-hub/)（`hhoao/teampilot` 的 `main`）。在「我的团队 / 我的专家」中配置好 GitHub token 后，可 **上传** 本地团队或专家，向上述 registry 发起 PR。
+公开的团队中心、专家中心与技能包目录统一维护在 [`hhoao/teampilot-resources`](https://github.com/hhoao/teampilot-resources)，本仓库通过 [`resources/`](resources/) 子模块跟踪（内含 `team-hub/`、`member-hub/`、`skill-packs/`）。客户端只按索引拉取清单；在「我的团队 / 我的专家」中配置好 GitHub token 后，可 **上传** 本地团队或专家，向该 registry 发起 PR。
 
 ## 工作区与内置 IDE
 
