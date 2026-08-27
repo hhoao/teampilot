@@ -1,19 +1,37 @@
 import 'package:ai_message_core/ai_message_core.dart';
 
 import '../../../io/filesystem.dart';
+import '../../../session/ai_history_page.dart';
 import '../../../session/session_history_context.dart';
 import '../cli_capability.dart';
 import 'history/subagent_side_resolver.dart';
 import 'history/tool_result_enricher.dart';
 
+export '../../../session/ai_history_page.dart';
+
+/// Optional paged source for transcript histories.
+abstract interface class AiTranscriptPageReader {
+  Future<AiHistoryPage?> readLatest({
+    required SessionHistoryContext ctx,
+    required int limit,
+  });
+
+  Future<AiHistoryPage?> readOlder({
+    required SessionHistoryContext ctx,
+    required AiHistoryCursor cursor,
+    required int limit,
+  });
+}
+
 /// 逐事件追加钩子:把一条已解码的 transcript 事件合并进 [messages]。
 /// 返回该事件是否被解析消费(产生或修改了消息)。增量 tailer 只把"消费
 /// 成功"的行推进锚点;无显示内容的事件(快照/元数据)返回 false。
-typedef AiTranscriptLineAppend = bool Function(
-  List<AiMessage> messages,
-  Map<String, dynamic> event, {
-  required String Function() fallbackId,
-});
+typedef AiTranscriptLineAppend =
+    bool Function(
+      List<AiMessage> messages,
+      Map<String, dynamic> event, {
+      required String Function() fallbackId,
+    });
 
 /// 数据库行级增量刷新结果:合并后的消息列表 + 可供子代理附件膨胀使用的
 /// 父 transcript 路径(通常为 DB 路径)。
@@ -118,10 +136,15 @@ class ResumeContext {
 abstract interface class AiHistoryCapability implements CliCapability {
   Future<AiTranscriptBundle?> locate(SessionHistoryContext ctx);
   AiTranscriptAdapter get adapter;
+
   /// 逐事件追加钩子(增量解析与全量解析共用,保证语义零分叉)。
   /// Null 当该 CLI 的 transcript 无法增量解析(如 opencode 的 SQLite /
   /// JSON 树存储),loader 回退全量 [adapter].parse。
   AiTranscriptLineAppend? get lineAppend;
+
+  /// Optional page source. Unsupported or unsafe sources return null so the
+  /// loader can retain the adapter's full parse as its correctness fallback.
+  AiTranscriptPageReader? get pageReader => null;
 
   /// Fallback id 前缀,必须与全量 adapter parse 的 `'$prefix-${seq}'` 一致
   /// (Claude→'claude',Codex→'codex',Cursor→'cursor',FlashskyAI→'flashskyai'),
