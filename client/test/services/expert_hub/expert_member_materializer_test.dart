@@ -18,7 +18,7 @@ void main() {
   );
 
   const registryExpert = DiscoverableMember(
-    key: 'hhoao/teampilot/member-hub/gstack-office-hours',
+    key: 'hhoao/teampilot-resources/member-hub/gstack-office-hours',
     name: 'Office Hours',
     description: 'YC-style product interrogation',
     category: 'Workflow',
@@ -52,7 +52,7 @@ void main() {
         roster: [
           TeamRosterSlot(
             id: 'team-lead',
-            expertKey: 'hhoao/teampilot/member-hub/gstack-office-hours',
+            expertKey: 'hhoao/teampilot-resources/member-hub/gstack-office-hours',
           ),
         ],
       );
@@ -68,7 +68,7 @@ void main() {
         roster: [
           TeamRosterSlot(
             id: 'team-lead',
-            expertKey: 'hhoao/teampilot/member-hub/gstack-office-hours',
+            expertKey: 'hhoao/teampilot-resources/member-hub/gstack-office-hours',
           ),
         ],
       );

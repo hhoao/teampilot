@@ -65,7 +65,7 @@ Home sidebar globals (`/home-v2?global=…`) cover local libraries and public ca
 | **Team Hub** | Browse public team templates and clone them into My Teams (skills/plugins/MCP deps can install with the clone). |
 | **Expert Hub** | Browse public expert templates and add them to My Experts. |
 
-Default public catalogs live in this repo under [`team-hub/`](team-hub/) and [`member-hub/`](member-hub/) (`hhoao/teampilot` on `main`). From My Teams / My Experts you can **upload** a local team or expert to open a PR against those registries when a GitHub token is configured.
+Public Team Hub, Expert Hub, and Skill Pack catalogs are maintained in [`hhoao/teampilot-resources`](https://github.com/hhoao/teampilot-resources) and tracked here under [`resources/`](resources/) (`team-hub/`, `member-hub/`, `skill-packs/`). Consumers fetch only indexed manifests from that repository, and Hub uploads open PRs against it when a GitHub token is configured.
 
 ## Workspace & built-in IDE
 

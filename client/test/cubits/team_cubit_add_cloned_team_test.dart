@@ -20,11 +20,11 @@ const _leadSlot = TeamRosterSlot(
 
 const _registrySlot = TeamRosterSlot(
   id: 'team-lead',
-  expertKey: 'hhoao/teampilot/member-hub/gstack-office-hours',
+  expertKey: 'hhoao/teampilot-resources/member-hub/gstack-office-hours',
 );
 
 const _registryExpert = DiscoverableMember(
-  key: 'hhoao/teampilot/member-hub/gstack-office-hours',
+  key: 'hhoao/teampilot-resources/member-hub/gstack-office-hours',
   name: 'Office Hours',
   description: '',
   category: 'Workflow',

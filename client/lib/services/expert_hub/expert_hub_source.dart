@@ -50,10 +50,10 @@ class ExpertHubRegistry {
   }
 }
 
-/// Default registry: TeamPilot app repo, `member-hub/` subdirectory.
+/// Default registry: TeamPilot resources repo, `member-hub/` subdirectory.
 const kDefaultExpertHubRegistry = ExpertHubRegistry(
   owner: 'hhoao',
-  name: 'teampilot',
+  name: 'teampilot-resources',
   branch: 'main',
   rootPath: 'member-hub',
 );

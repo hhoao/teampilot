@@ -27,3 +27,7 @@
 	path = third_party/fastforge
 	url = https://github.com/hhoao/fastforge.git
 	branch = feat/appimage-startup-wm-class
+[submodule "resources"]
+	path = resources
+	url = https://github.com/hhoao/teampilot-resources.git
+	branch = main

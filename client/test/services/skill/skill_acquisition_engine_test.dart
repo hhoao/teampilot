@@ -10,16 +10,26 @@ import 'package:teampilot/services/cli/installer_types.dart';
 import 'package:teampilot/services/skill/skill_acquisition_engine.dart';
 import 'package:teampilot/services/skill/skill_pack_registry.dart';
 import 'package:teampilot/services/skill/skill_repo_disk_cache_service.dart';
+import 'package:teampilot/services/skill/skill_pack_source.dart';
 import 'package:teampilot/services/storage/app_storage.dart';
 
 import '../../support/post_frame_test_harness.dart';
 
+class _FakeSkillPackSource implements SkillPackSource {
+  _FakeSkillPackSource(this.loader);
+
+  final Future<List<SkillPack>> Function() loader;
+
+  @override
+  Future<List<SkillPack>> fetchPacks({bool forceRefresh = false}) => loader();
+}
+
 void _plantSkillMdUnder(String syncRoot, String dirName) {
   final dir = Directory(p.join(syncRoot, dirName));
   dir.createSync(recursive: true);
-  File(p.join(dir.path, 'SKILL.md')).writeAsStringSync(
-    '---\nname: $dirName\n---\n',
-  );
+  File(
+    p.join(dir.path, 'SKILL.md'),
+  ).writeAsStringSync('---\nname: $dirName\n---\n');
 }
 
 String _syncRootFor(SkillRepo repo) => p.join(
@@ -245,6 +255,48 @@ void main() {
     expect(result.success, isFalse);
     expect(result.message, contains('owner/pack:review'));
     expect(installed, ['owner/pack:ship']);
+  });
+
+  test('known local pack skips remote resolution', () async {
+    var remoteLoads = 0;
+    final installed = <String>[];
+    final pack = SkillPack(
+      id: 'owner/pack',
+      name: 'pack',
+      install: [
+        FromInstruction.parseRef('owner/repo@main'),
+        const SkillsInstruction(includeAll: true),
+      ],
+    );
+    final engine = _engine(
+      installed: installed,
+      packRegistry: SkillPackRegistry(
+        packs: [pack],
+        remote: _FakeSkillPackSource(() async {
+          remoteLoads++;
+          return const [];
+        }),
+      ),
+    );
+    _plantSkillMdUnder(
+      _syncRootFor(const SkillRepo(owner: 'owner', name: 'repo')),
+      'review',
+    );
+
+    final result = await engine.install(
+      const SkillDependencyRef(
+        id: 'owner/pack:review',
+        name: 'Review',
+        packId: 'owner/pack',
+        directory: 'review',
+        repoOwner: 'owner',
+        repoName: 'repo',
+        repoBranch: 'main',
+      ),
+    );
+    expect(result.success, isTrue);
+    expect(installed, ['owner/pack:review']);
+    expect(remoteLoads, 0);
   });
 
   test('optional RUN failure still applies PATH', () async {

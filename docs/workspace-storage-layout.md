@@ -88,10 +88,16 @@ Persona prompt/playbook is **not** stored at layers 1–3; it is resolved from t
 
 Team **templates** — same roster shape as user teams (`roster[]` of expert keys, not embedded prompts).
 
-**Git registry (app repo):** public templates are fetched from
-`https://github.com/hhoao/teampilot` under the `team-hub/` subdirectory
+Public Team Hub, Expert Hub, and Skill Pack catalogs are maintained in
+[`hhoao/teampilot-resources`](https://github.com/hhoao/teampilot-resources). The
+application repository tracks the same content at `resources/` as a
+source-maintenance-only Git submodule; runtime consumers fetch indexed Raw
+manifests and never scan the checkout.
+
+**Git registry (resources repo):** public templates are fetched from
+`https://github.com/hhoao/teampilot-resources` under the `team-hub/` subdirectory
 (`index.json` + `teams/<slug>/team.json`). Catalog keys:
-`hhoao/teampilot/team-hub/<slug>`.
+`hhoao/teampilot-resources/team-hub/<slug>`.
 
 **Local app-data cache** (under `<teampilotRoot>`):
 
@@ -104,10 +110,10 @@ team-hub/cache/{owner}-{repo}/
 
 Catalog UX and user-authored experts. Persona source-of-truth for shared experts. Spec: [Expert Hub design](superpowers/specs/2026-07-05-expert-hub-design.md).
 
-**Git registry (app repo):** public experts are fetched from the same
-`hhoao/teampilot` repo under `member-hub/` (`index.json` +
+**Git registry (resources repo):** public experts are fetched from the same
+`hhoao/teampilot-resources` repo under `member-hub/` (`index.json` +
 `members/<slug>/member.json`). Catalog keys:
-`hhoao/teampilot/member-hub/<slug>`.
+`hhoao/teampilot-resources/member-hub/<slug>`.
 
 **Local app-data** (under `<teampilotRoot>`):
 
@@ -158,7 +164,7 @@ Teams persist **references** to catalog experts:
     },
     {
       "id": "developer",
-      "expertKey": "hhoao/teampilot/member-hub/developer",
+      "expertKey": "hhoao/teampilot-resources/member-hub/developer",
       "joinedAt": 1710000001000
     }
   ]

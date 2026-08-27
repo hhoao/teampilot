@@ -11,6 +11,14 @@ void main() {
   setUp(setUpTestAppStorage);
   tearDown(tearDownTestAppStorage);
 
+  test('default registry points to teampilot-resources', () {
+    expect(kDefaultExpertHubRegistry.fullName, 'hhoao/teampilot-resources');
+    expect(
+      kDefaultExpertHubRegistry.catalogPrefix,
+      'hhoao/teampilot-resources/member-hub',
+    );
+  });
+
   Map<Uri, String> network() {
     const reg = kDefaultExpertHubRegistry;
     return {
@@ -38,7 +46,7 @@ void main() {
 
     final members = await source.fetchMembers();
     expect(members, hasLength(1));
-    expect(members.single.key, 'hhoao/teampilot/member-hub/security-reviewer');
+    expect(members.single.key, 'hhoao/teampilot-resources/member-hub/security-reviewer');
     expect(members.single.source, ExpertMemberSource.registry);
     expect(members.single.name, 'Security Reviewer');
     expect(

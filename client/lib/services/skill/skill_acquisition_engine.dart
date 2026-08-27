@@ -28,10 +28,7 @@ typedef SkillGitDirInstaller =
     });
 
 typedef SkillDirectoryRegistrar =
-    Future<Skill> Function({
-      required String id,
-      required String directory,
-    });
+    Future<Skill> Function({required String id, required String directory});
 
 typedef SkillRepoEnsureSynced =
     Future<SkillRepoSyncResult> Function(SkillRepo repo);
@@ -210,7 +207,11 @@ class SkillAcquisitionEngine {
     required String expectedSkillId,
     required bool overwrite,
   }) async {
-    final pack = _packRegistry.byId(packId);
+    var pack = _packRegistry.byId(packId);
+    if (pack == null) {
+      await _packRegistry.ensureLoaded();
+      pack = _packRegistry.byId(packId);
+    }
     if (pack == null) {
       return SkillAcquireResult(
         success: false,
@@ -273,7 +274,8 @@ class SkillAcquisitionEngine {
       final step = install[i];
       final stepResult = await _dispatch(step, ctx, index: i);
       if (!stepResult.success) {
-        final optional = (step is RunInstruction && step.optional) ||
+        final optional =
+            (step is RunInstruction && step.optional) ||
             (step is ScriptInstruction && step.optional);
         if (optional) {
           appLogger.w(
@@ -332,10 +334,7 @@ class SkillAcquisitionEngine {
       final sync = _ensureSynced ?? _repoCache.ensureSynced;
       await sync(repo);
     } catch (e) {
-      return _InstrResult(
-        success: false,
-        message: 'install[$index] FROM: $e',
-      );
+      return _InstrResult(success: false, message: 'install[$index] FROM: $e');
     }
     final syncRoot = fs.pathContext.join(
       AppStorage.paths.skillRepoCacheDir,
@@ -361,10 +360,7 @@ class SkillAcquisitionEngine {
         message: 'install[$index] SCRIPT: not supported on this host',
       );
     }
-    final urls = <String>[
-      step.url,
-      ...step.alternatives,
-    ];
+    final urls = <String>[step.url, ...step.alternatives];
     if (!_isSafeScriptUrl(step.url)) {
       return _InstrResult(
         success: false,
@@ -494,9 +490,8 @@ class SkillAcquisitionEngine {
     final dirs = await _resolveSkillDirs(step, ctx.syncRoot!);
     final pack = ctx.pack;
     // Spec: only use expectedSkillId when pack==null and exactly one dir.
-    final useExpectedId = pack == null &&
-        ctx.expectedSkillId.isNotEmpty &&
-        dirs.length == 1;
+    final useExpectedId =
+        pack == null && ctx.expectedSkillId.isNotEmpty && dirs.length == 1;
 
     for (final dir in dirs) {
       final basename = p.basename(dir);
@@ -580,10 +575,10 @@ class SkillAcquisitionEngine {
           message: 'install[$index] RUN: empty SHELL',
         );
       }
-      command = CliInstallerCommand(
-        shell.first,
-        [...shell.skip(1), step.shell!],
-      );
+      command = CliInstallerCommand(shell.first, [
+        ...shell.skip(1),
+        step.shell!,
+      ]);
     }
     try {
       final CliInstallerCommandResult result;

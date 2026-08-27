@@ -294,7 +294,7 @@ void main() {
     await records.upsert(
       HubPublishRecord(
         kind: HubPublishKind.expert,
-        registryFullName: 'hhoao/teampilot/member-hub',
+        registryFullName: 'hhoao/teampilot-resources/member-hub',
         slug: 'published-one',
         prUrl: 'https://github.com/hhoao/teampilot/pull/3',
         publishedAtMs: 1,

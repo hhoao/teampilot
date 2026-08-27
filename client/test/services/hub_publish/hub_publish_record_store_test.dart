@@ -10,7 +10,7 @@ void main() {
     await records.upsert(
       HubPublishRecord(
         kind: HubPublishKind.expert,
-        registryFullName: 'hhoao/teampilot/member-hub',
+        registryFullName: 'hhoao/teampilot-resources/member-hub',
         slug: 'arch',
         prUrl: 'https://github.com/hhoao/teampilot/pull/1',
         publishedAtMs: 1,
@@ -34,7 +34,7 @@ void main() {
     await writer.upsert(
       HubPublishRecord(
         kind: HubPublishKind.team,
-        registryFullName: 'hhoao/teampilot/team-hub',
+        registryFullName: 'hhoao/teampilot-resources/team-hub',
         slug: 'alpha',
         prUrl: 'https://github.com/hhoao/teampilot/pull/2',
         publishedAtMs: 2,

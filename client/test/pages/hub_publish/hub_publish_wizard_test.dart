@@ -54,7 +54,7 @@ class FakeHubPublishService implements HubPublishApi {
     if (lastError != null) throw lastError!;
     return HubPublishResult(
       prUrl: prUrl,
-      registryFullName: 'hhoao/teampilot/member-hub',
+      registryFullName: 'hhoao/teampilot-resources/member-hub',
       slug: slug,
     );
   }
@@ -73,7 +73,7 @@ class FakeHubPublishService implements HubPublishApi {
     if (lastError != null) throw lastError!;
     return HubPublishResult(
       prUrl: prUrl,
-      registryFullName: 'hhoao/teampilot/team-hub',
+      registryFullName: 'hhoao/teampilot-resources/team-hub',
       slug: slug,
     );
   }
@@ -94,7 +94,7 @@ DiscoverableMember _localExpert() => DiscoverableMember(
 );
 
 DiscoverableMember _publishedExpert() => DiscoverableMember(
-  key: 'hhoao/teampilot/member-hub/arch',
+  key: 'hhoao/teampilot-resources/member-hub/arch',
   name: 'Arch (published)',
   description: '',
   category: 'Engineering',

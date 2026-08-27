@@ -142,7 +142,7 @@ void main() {
         upstream: kDefaultExpertHubRegistry,
         slug: 'arch',
         memberJson: {
-          'key': 'hhoao/teampilot/member-hub/arch',
+          'key': 'hhoao/teampilot-resources/member-hub/arch',
           'name': 'Arch',
           'description': 'Architect',
           'category': 'Engineering',
@@ -161,7 +161,10 @@ void main() {
       expect(api.openedPr, isTrue);
       expect(api.lastPrHead, 'alice:publish-expert-arch');
       expect(api.lastPrBase, 'main');
-      expect(api.createdBranches.single, contains('alice/teampilot:'));
+      expect(
+        api.createdBranches.single,
+        contains('alice/teampilot-resources:'),
+      );
     });
 
     test('slug collision on upstream index fails before write', () async {
@@ -175,7 +178,7 @@ void main() {
           upstream: kDefaultExpertHubRegistry,
           slug: 'arch',
           memberJson: {
-            'key': 'hhoao/teampilot/member-hub/arch',
+            'key': 'hhoao/teampilot-resources/member-hub/arch',
             'name': 'Arch',
             'description': '',
             'category': '',
@@ -208,7 +211,7 @@ void main() {
         upstream: kDefaultTeamHubRegistry,
         slug: 'platform',
         teamJson: {
-          'key': 'hhoao/teampilot/team-hub/platform',
+          'key': 'hhoao/teampilot-resources/team-hub/platform',
           'name': 'Platform',
           'description': 'Platform team',
           'category': 'Engineering',
@@ -240,7 +243,7 @@ void main() {
           upstream: kDefaultTeamHubRegistry,
           slug: 'platform',
           teamJson: {
-            'key': 'hhoao/teampilot/team-hub/platform',
+            'key': 'hhoao/teampilot-resources/team-hub/platform',
             'name': 'Platform',
             'description': '',
             'category': '',

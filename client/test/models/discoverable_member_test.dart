@@ -109,7 +109,7 @@ void main() {
 
   test('forLocale overlays zh display fields and falls back otherwise', () {
     const m = DiscoverableMember(
-      key: 'hhoao/teampilot/member-hub/gstack-reviewer',
+      key: 'hhoao/teampilot-resources/member-hub/gstack-reviewer',
       name: 'gstack Reviewer',
       description: 'Staff-engineer review',
       category: 'Development',
