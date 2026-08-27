@@ -112,7 +112,7 @@ class LaunchProfileCubit extends Cubit<LaunchProfileState>
   final TeamRosterEditor _rosterEditor = const TeamRosterEditor();
 
   /// Wire after bootstrap creates [CompositeExpertHubSource] so roster
-  /// `hhoao/teampilot/member-hub/*` keys resolve on load/clone.
+  /// `hhoao/teampilot-resources/member-hub/*` keys resolve on load/clone.
   void attachExpertHubSource(CompositeExpertHubSource source) {
     _expertHubSource = source;
   }

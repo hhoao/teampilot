@@ -10,6 +10,14 @@ void main() {
   setUp(setUpTestAppStorage);
   tearDown(tearDownTestAppStorage);
 
+  test('default registry points to teampilot-resources', () {
+    expect(kDefaultTeamHubRegistry.fullName, 'hhoao/teampilot-resources');
+    expect(
+      kDefaultTeamHubRegistry.catalogPrefix,
+      'hhoao/teampilot-resources/team-hub',
+    );
+  });
+
   Map<Uri, String> network() {
     const reg = kDefaultTeamHubRegistry;
     return {
@@ -47,8 +55,8 @@ void main() {
     expect(
       teams.map((t) => t.key),
       containsAll(<String>[
-        'hhoao/teampilot/team-hub/research-squad',
-        'hhoao/teampilot/team-hub/qa-pair',
+        'hhoao/teampilot-resources/team-hub/research-squad',
+        'hhoao/teampilot-resources/team-hub/qa-pair',
       ]),
     );
     final categories = await source.categories();

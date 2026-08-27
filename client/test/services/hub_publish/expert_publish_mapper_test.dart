@@ -53,14 +53,14 @@ void main() {
     final result = ExpertPublishMapper.map(
       member: local,
       lookup: lookup,
-      key: 'hhoao/teampilot/member-hub/arch',
+      key: 'hhoao/teampilot-resources/member-hub/arch',
       author: 'flashskyai',
       updatedAt: 1700000000000,
     );
 
     expect(result, isA<PublishReadyExpert>());
     final ready = result as PublishReadyExpert;
-    expect(ready.member.key, 'hhoao/teampilot/member-hub/arch');
+    expect(ready.member.key, 'hhoao/teampilot-resources/member-hub/arch');
     expect(ready.member.source, ExpertMemberSource.registry);
     expect(ready.member.originTeamKey, isNull);
     expect(ready.member.author, 'flashskyai');
@@ -106,7 +106,7 @@ void main() {
     final result = ExpertPublishMapper.map(
       member: local,
       lookup: lookup,
-      key: 'hhoao/teampilot/member-hub/arch',
+      key: 'hhoao/teampilot-resources/member-hub/arch',
     );
 
     expect(result, isA<PublishReadyExpert>());
@@ -162,7 +162,7 @@ void main() {
       lookup: lookup,
       pluginIds: const ['acme/tools/lint'],
       mcpServerIds: const ['mcp-fs'],
-      key: 'hhoao/teampilot/member-hub/arch',
+      key: 'hhoao/teampilot-resources/member-hub/arch',
     );
 
     expect(result, isA<PublishReadyExpert>());
@@ -202,7 +202,7 @@ void main() {
       member: local,
       lookup: lookup,
       skillIds: const ['local-skill'],
-      key: 'hhoao/teampilot/member-hub/arch',
+      key: 'hhoao/teampilot-resources/member-hub/arch',
     );
 
     expect(result, isA<PublishBlockedExpert>());
@@ -240,7 +240,7 @@ void main() {
       member: local,
       lookup: lookup,
       pluginIds: const ['local-plugin'],
-      key: 'hhoao/teampilot/member-hub/arch',
+      key: 'hhoao/teampilot-resources/member-hub/arch',
     );
 
     expect(result, isA<PublishBlockedExpert>());

@@ -230,7 +230,7 @@ void main() {
     await records.upsert(
       HubPublishRecord(
         kind: HubPublishKind.team,
-        registryFullName: 'hhoao/teampilot/team-hub',
+        registryFullName: 'hhoao/teampilot-resources/team-hub',
         slug: 'alpha-squad',
         prUrl: 'https://github.com/hhoao/teampilot/pull/9',
         publishedAtMs: 1,

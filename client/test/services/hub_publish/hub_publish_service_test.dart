@@ -128,7 +128,7 @@ void main() {
       roster: const [
         TeamRosterSlot(
           id: 'arch',
-          expertKey: 'hhoao/teampilot/member-hub/arch',
+          expertKey: 'hhoao/teampilot-resources/member-hub/arch',
         ),
       ],
       createdAt: 1,

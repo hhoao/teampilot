@@ -782,7 +782,7 @@ void main() {
           ),
           TeamRosterSlot(
             id: 'worker',
-            expertKey: 'hhoao/teampilot/member-hub/remote-worker',
+            expertKey: 'hhoao/teampilot-resources/member-hub/remote-worker',
           ),
         ],
         members: [

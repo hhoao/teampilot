@@ -49,7 +49,7 @@ void main() {
       team: team,
       expertKeyRemap: const {},
       lookup: lookupWith(skills: [portableSkill]),
-      key: 'hhoao/teampilot/team-hub/research-squad',
+      key: 'hhoao/teampilot-resources/team-hub/research-squad',
       category: 'Research',
       author: 'flashskyai',
       updatedAt: 1700000000000,
@@ -85,7 +85,7 @@ void main() {
 
     final result = TeamProfilePublishMapper.map(
       team: team,
-      expertKeyRemap: const {'local/abc': 'hhoao/teampilot/member-hub/arch'},
+      expertKeyRemap: const {'local/abc': 'hhoao/teampilot-resources/member-hub/arch'},
       lookup: lookupWith(),
       key: 'o/r/t',
       category: 'General',
@@ -93,7 +93,7 @@ void main() {
 
     expect(result, isA<PublishReadyTeam>());
     final ready = result as PublishReadyTeam;
-    expect(ready.team.roster.single.expertKey, 'hhoao/teampilot/member-hub/arch');
+    expect(ready.team.roster.single.expertKey, 'hhoao/teampilot-resources/member-hub/arch');
   });
 
   test('mapper fails closed when local expert keys remain', () {

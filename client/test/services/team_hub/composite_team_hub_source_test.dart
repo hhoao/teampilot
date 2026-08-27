@@ -31,7 +31,7 @@ void main() {
       updatedAt: 1,
     );
     const remoteOther = DiscoverableTeam(
-      key: 'hhoao/teampilot/team-hub/other',
+      key: 'hhoao/teampilot-resources/team-hub/other',
       name: 'Other',
       description: '',
       category: 'Y',
