@@ -13,12 +13,14 @@ Widget buildWorkspaceIdeCenter({
   required Widget chatPage,
   String? initialText,
   int initialTextRevision = 0,
+  String? referencedSessionId,
 }) {
   if (newChat) {
     return WorkspaceChatPane(
       workspace: workspace,
       initialText: initialText,
       initialTextRevision: initialTextRevision,
+      referencedSessionId: referencedSessionId,
     );
   }
   return chatPage;

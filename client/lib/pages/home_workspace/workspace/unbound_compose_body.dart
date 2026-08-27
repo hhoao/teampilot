@@ -88,6 +88,7 @@ class UnboundComposeBody extends StatefulWidget {
     this.disabled = false,
     this.initialText,
     this.initialTextRevision = 0,
+    this.referencedSessionId,
     this.deferFieldMount = false,
     this.showLocationHeader = false,
     super.key,
@@ -99,6 +100,7 @@ class UnboundComposeBody extends StatefulWidget {
   final bool disabled;
   final String? initialText;
   final int initialTextRevision;
+  final String? referencedSessionId;
   final bool deferFieldMount;
 
   /// When true, renders [WorkspaceLandingHeaderRow] above the compose card
@@ -115,6 +117,7 @@ class _UnboundComposeBodyState extends State<UnboundComposeBody> {
   late final FocusNode _focusNode;
   late final ComposeVoiceInput _voiceInput;
   final _headlessAi = HeadlessAiService();
+  var _suppressDraftSync = false;
 
   var _conversationMode = _LandingConversationMode.simple;
   var _launchSecurityPolicy = LaunchSecurityPolicy.fullAccess;
@@ -194,10 +197,7 @@ class _UnboundComposeBodyState extends State<UnboundComposeBody> {
     // open does not block on speech_to_text platform channels.
     final seed = widget.initialText;
     if (seed != null && seed.isNotEmpty) {
-      _controller.value = TextEditingValue(
-        text: seed,
-        selection: TextSelection.collapsed(offset: seed.length),
-      );
+      _setComposeText(seed);
     } else if (widget.initialText == null) {
       // Restore the cached landing draft so navigating away and back does not
       // lose typed text. Ask AI (initialText != null) never reads the cache.
@@ -205,10 +205,7 @@ class _UnboundComposeBodyState extends State<UnboundComposeBody> {
         widget.workspace.workspaceId,
       );
       if (draft != null && draft.isNotEmpty) {
-        _controller.value = TextEditingValue(
-          text: draft,
-          selection: TextSelection.collapsed(offset: draft.length),
-        );
+        _setComposeText(draft);
       }
     }
     _controller.addListener(_syncComposeDraft);
@@ -225,6 +222,7 @@ class _UnboundComposeBodyState extends State<UnboundComposeBody> {
   /// (typing, voice insert, enhance). No setState — the field's own onChanged
   /// rebuilds; this fires for programmatic edits too.
   void _syncComposeDraft() {
+    if (_suppressDraftSync) return;
     unawaited(
       composeDraftCache.saveLanding(
         widget.workspace.workspaceId,
@@ -244,10 +242,19 @@ class _UnboundComposeBodyState extends State<UnboundComposeBody> {
         draft.isEmpty) {
       return;
     }
-    _controller.value = TextEditingValue(
-      text: draft,
-      selection: TextSelection.collapsed(offset: draft.length),
-    );
+    _setComposeText(draft);
+  }
+
+  void _setComposeText(String text) {
+    _suppressDraftSync = true;
+    try {
+      _controller.value = TextEditingValue(
+        text: text,
+        selection: TextSelection.collapsed(offset: text.length),
+      );
+    } finally {
+      _suppressDraftSync = false;
+    }
   }
 
   Future<void> _loadRecentExperts() async {
@@ -312,14 +319,17 @@ class _UnboundComposeBodyState extends State<UnboundComposeBody> {
       unawaited(_loadWorkspaceProjectBundle());
     }
     final nextInitialText = widget.initialText;
-    if ((oldWidget.initialText != nextInitialText ||
-            oldWidget.initialTextRevision != widget.initialTextRevision) &&
-        nextInitialText != null &&
-        nextInitialText.isNotEmpty) {
-      _controller.value = TextEditingValue(
-        text: nextInitialText,
-        selection: TextSelection.collapsed(offset: nextInitialText.length),
-      );
+    final prefillChanged =
+        oldWidget.initialText != nextInitialText ||
+        oldWidget.initialTextRevision != widget.initialTextRevision ||
+        oldWidget.referencedSessionId != widget.referencedSessionId;
+    if (prefillChanged) {
+      if (nextInitialText != null && nextInitialText.isNotEmpty) {
+        _setComposeText(nextInitialText);
+      } else if (oldWidget.referencedSessionId != null &&
+          _controller.text == oldWidget.initialText) {
+        _setComposeText('');
+      }
     }
     if (!mapEquals(
           oldWidget.workspace.memberTargetsByTeam,

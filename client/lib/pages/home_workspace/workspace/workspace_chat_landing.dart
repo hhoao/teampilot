@@ -23,6 +23,7 @@ class WorkspaceChatLanding extends StatelessWidget {
     this.disabled = false,
     this.initialText,
     this.initialTextRevision = 0,
+    this.referencedSessionId,
     super.key,
   });
 
@@ -32,6 +33,7 @@ class WorkspaceChatLanding extends StatelessWidget {
   final bool disabled;
   final String? initialText;
   final int initialTextRevision;
+  final String? referencedSessionId;
 
   @override
   Widget build(BuildContext context) {
@@ -65,6 +67,7 @@ class WorkspaceChatLanding extends StatelessWidget {
                     disabled: disabled,
                     initialText: initialText,
                     initialTextRevision: initialTextRevision,
+                    referencedSessionId: referencedSessionId,
                     deferFieldMount: true,
                     showLocationHeader: true,
                   ),

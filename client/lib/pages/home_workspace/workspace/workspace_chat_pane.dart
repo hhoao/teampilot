@@ -44,6 +44,7 @@ class WorkspaceChatPane extends StatefulWidget {
     required this.workspace,
     this.initialText,
     this.initialTextRevision = 0,
+    this.referencedSessionId,
     this.submitter = submitWorkspaceLandingMessage,
     this.landingDraftPersister = persistLandingDraft,
     this.landingDraftCleaner = clearWorkspaceLandingDraft,
@@ -53,6 +54,7 @@ class WorkspaceChatPane extends StatefulWidget {
   final Workspace workspace;
   final String? initialText;
   final int initialTextRevision;
+  final String? referencedSessionId;
   final WorkspaceLandingMessageSubmitter submitter;
   final WorkspaceLandingDraftPersister landingDraftPersister;
   final WorkspaceLandingDraftCleaner landingDraftCleaner;
@@ -151,6 +153,7 @@ class _WorkspaceChatPaneState extends State<WorkspaceChatPane> {
             workspace: workspace,
             initialText: widget.initialText,
             initialTextRevision: widget.initialTextRevision,
+            referencedSessionId: widget.referencedSessionId,
             isSubmitting: launching,
             onSubmit: (message, draft) => unawaited(_submit(message, draft)),
           ),

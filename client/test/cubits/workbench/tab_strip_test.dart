@@ -114,6 +114,47 @@ void main() {
         expect(result.landingInitialText, isNull);
       },
     );
+
+    test(
+      'preserves a reference when an unrelated final Session is removed',
+      () {
+        final (withFile, _) = r.add(empty, _f, preview: false);
+        final (withUnrelatedSession, _) = r.add(withFile, _s1, preview: false);
+        final withReference = r.enterLanding(
+          withUnrelatedSession,
+          initialText: '审查并继续完成该会话: /data/referenced',
+          referencedSessionId: 'referenced-session',
+        );
+
+        final result = r.remove(withReference, _s1);
+
+        expect(result, isNotNull);
+        expect(result!.order, [_f]);
+        expect(result.landingInitialText, '审查并继续完成该会话: /data/referenced');
+        expect(result.landingReferenceSessionId, 'referenced-session');
+      },
+    );
+
+    test(
+      'clears text and provenance together when the reference is removed',
+      () {
+        final (withSession, _) = r.add(empty, _s1, preview: false);
+        final withReference = r.enterLanding(
+          withSession,
+          initialText: '审查并继续完成该会话: /data/referenced',
+          referencedSessionId: 's1',
+        );
+
+        final result = r.remove(withReference, _s1)!;
+
+        expect(result.landingInitialText, isNull);
+        expect(result.landingReferenceSessionId, isNull);
+        expect(
+          result.landingInitialTextRevision,
+          withReference.landingInitialTextRevision + 1,
+        );
+      },
+    );
   });
 
   group('reorder / activate / pin / landing', () {

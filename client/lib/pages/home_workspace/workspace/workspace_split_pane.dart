@@ -273,6 +273,13 @@ class _WorkspaceSplitPaneState extends State<WorkspaceSplitPane> {
                     .center
                     .landingInitialTextRevision,
               );
+          final landingReferenceSessionId = context
+              .select<WorkbenchCubit, String?>(
+                (w) => w.state
+                    .bar(widget.tabScopeId)
+                    .center
+                    .landingReferenceSessionId,
+              );
           return WorkspaceToolsScopeSync(
             workspace: widget.workspace,
             cwd: cwd,
@@ -298,6 +305,7 @@ class _WorkspaceSplitPaneState extends State<WorkspaceSplitPane> {
                   workspace: widget.workspace,
                   initialText: landingInitialText,
                   initialTextRevision: landingInitialTextRevision,
+                  referencedSessionId: landingReferenceSessionId,
                   chatPage: ChatPage(
                     cwd: cwd,
                     additionalPaths: widget.workspace.extraFolderPaths,

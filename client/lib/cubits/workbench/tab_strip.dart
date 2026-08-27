@@ -165,10 +165,21 @@ class TabStripReducer {
     order.removeAt(index);
     final previews = Set<WorkbenchTabId>.of(strip.previewIds)..remove(id);
     final hasSession = order.any((tab) => tab.kind == WorkbenchTabKind.session);
-    final clearLandingReference =
-        order.isEmpty ||
+    final removedSessionIsReferenceSource =
+        id.kind == WorkbenchTabKind.session &&
+        id.id == strip.landingReferenceSessionId;
+    final clearLandingPrefill =
+        (strip.landingReferenceSessionId == null && order.isEmpty) ||
         (id.kind == WorkbenchTabKind.session &&
-            (id.id == strip.landingReferenceSessionId || !hasSession));
+            (strip.landingReferenceSessionId == null
+                ? !hasSession
+                : removedSessionIsReferenceSource));
+    final nextLandingRevision =
+        clearLandingPrefill &&
+            (strip.landingInitialText != null ||
+                strip.landingReferenceSessionId != null)
+        ? strip.landingInitialTextRevision + 1
+        : strip.landingInitialTextRevision;
 
     WorkbenchTabId? active = strip.activeId;
     if (active == id) {
@@ -184,11 +195,9 @@ class TabStripReducer {
       order: order,
       activeId: active,
       previewIds: previews,
-      landingInitialText:
-          order.isEmpty || (id.kind == WorkbenchTabKind.session && !hasSession)
-          ? null
-          : strip.landingInitialText,
-      landingReferenceSessionId: clearLandingReference
+      landingInitialText: clearLandingPrefill ? null : strip.landingInitialText,
+      landingInitialTextRevision: nextLandingRevision,
+      landingReferenceSessionId: clearLandingPrefill
           ? null
           : strip.landingReferenceSessionId,
     );

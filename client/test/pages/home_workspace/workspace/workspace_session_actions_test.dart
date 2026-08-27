@@ -152,6 +152,7 @@ void main() {
       '审查并继续完成该会话: '
       '/teampilot/workspace/workspaces/ws1/sessions/sess-1',
     );
+    expect(bar.center.landingReferenceSessionId, session.sessionId);
   });
 
   testWidgets('referenceWorkspaceSession reports storage failures', (
@@ -265,6 +266,13 @@ void main() {
 
       expect(
         workbench.state.bar(workspace.workspaceId).center.landingInitialText,
+        isNull,
+      );
+      expect(
+        workbench.state
+            .bar(workspace.workspaceId)
+            .center
+            .landingReferenceSessionId,
         isNull,
       );
     },

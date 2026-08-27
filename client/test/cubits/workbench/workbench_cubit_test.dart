@@ -117,6 +117,24 @@ void main() {
       expect(center.landingInitialText, isNull);
     });
 
+    test('closeOthers preserves a reference to an unopened Session', () {
+      cubit
+        ..openFile(_ws, '/a.dart')
+        ..openSession(_ws, 'unrelated')
+        ..enterLanding(
+          _ws,
+          initialText: '审查并继续完成该会话: /data/referenced',
+          referencedSessionId: 'unopened-reference',
+        );
+
+      cubit.closeOthers(_ws, _f);
+
+      final center = cubit.state.bar(_ws).center;
+      expect(center.order, [_f]);
+      expect(center.landingInitialText, '审查并继续完成该会话: /data/referenced');
+      expect(center.landingReferenceSessionId, 'unopened-reference');
+    });
+
     test('closeRight clears Landing prefill when a diff remains', () {
       cubit
         ..openDiff(_ws, _d)
@@ -130,6 +148,27 @@ void main() {
       expect(center.landingInitialText, isNull);
     });
 
+    test(
+      'closeRight preserves a reference when removing an unrelated Session',
+      () {
+        cubit
+          ..openDiff(_ws, _d)
+          ..openSession(_ws, 'unrelated')
+          ..enterLanding(
+            _ws,
+            initialText: '审查并继续完成该会话: /data/referenced',
+            referencedSessionId: 'unopened-reference',
+          );
+
+        cubit.closeRight(_ws, _d);
+
+        final center = cubit.state.bar(_ws).center;
+        expect(center.order, [_d]);
+        expect(center.landingInitialText, '审查并继续完成该会话: /data/referenced');
+        expect(center.landingReferenceSessionId, 'unopened-reference');
+      },
+    );
+
     test('closeAll clears a Landing prefill', () {
       cubit
         ..openSession(_ws, 's1')
@@ -139,6 +178,24 @@ void main() {
       final center = cubit.state.bar(_ws).center;
       expect(center.order, isEmpty);
       expect(center.landingInitialText, isNull);
+    });
+
+    test('closeAll preserves a reference to an unopened Session', () {
+      cubit
+        ..openFile(_ws, '/a.dart')
+        ..openSession(_ws, 'unrelated')
+        ..enterLanding(
+          _ws,
+          initialText: '审查并继续完成该会话: /data/referenced',
+          referencedSessionId: 'unopened-reference',
+        );
+
+      cubit.closeAll(_ws);
+
+      final center = cubit.state.bar(_ws).center;
+      expect(center.order, isEmpty);
+      expect(center.landingInitialText, '审查并继续完成该会话: /data/referenced');
+      expect(center.landingReferenceSessionId, 'unopened-reference');
     });
 
     test(
@@ -154,5 +211,26 @@ void main() {
         expect(center.landingInitialText, isNull);
       },
     );
+
+    test('onSessionDeleted clears reference and advances its revision', () {
+      cubit
+        ..openSession(_ws, 'unrelated')
+        ..enterLanding(
+          _ws,
+          initialText: '审查并继续完成该会话: /data/referenced',
+          referencedSessionId: 'deleted',
+        );
+      final before = cubit.state.bar(_ws).center;
+
+      cubit.onSessionDeleted(_ws, 'deleted');
+
+      final center = cubit.state.bar(_ws).center;
+      expect(center.landingInitialText, isNull);
+      expect(center.landingReferenceSessionId, isNull);
+      expect(
+        center.landingInitialTextRevision,
+        before.landingInitialTextRevision + 1,
+      );
+    });
   });
 }

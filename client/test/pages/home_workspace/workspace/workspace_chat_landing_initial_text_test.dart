@@ -79,7 +79,11 @@ void main() {
       _stubCubit(worktreeCubit, const WorktreeState());
       when(() => worktreeCubit.worktreesForProject(any())).thenReturn(const []);
 
-      Widget landing(String? initialText, {int initialTextRevision = 0}) {
+      Widget landing(
+        String? initialText, {
+        int initialTextRevision = 0,
+        String? referencedSessionId,
+      }) {
         final theme = buildDarkTheme();
         return MultiRepositoryProvider(
           providers: [
@@ -114,6 +118,7 @@ void main() {
                       workspace: workspace,
                       initialText: initialText,
                       initialTextRevision: initialTextRevision,
+                      referencedSessionId: referencedSessionId,
                       onSubmit: (_, _) {},
                     ),
                   ),
@@ -126,7 +131,13 @@ void main() {
 
       composeDraftCache.setLandingDraft(workspace.workspaceId, 'old draft');
 
-      await tester.pumpWidget(landing(seed, initialTextRevision: 1));
+      await tester.pumpWidget(
+        landing(
+          seed,
+          initialTextRevision: 1,
+          referencedSessionId: 'deleted-reference',
+        ),
+      );
       await tester.pumpAndSettle();
 
       TextField field() =>
@@ -138,21 +149,43 @@ void main() {
         'old draft',
       );
 
-      await tester.pumpWidget(landing('replacement'));
+      await tester.pumpWidget(
+        landing('replacement', referencedSessionId: 'deleted-reference'),
+      );
       await tester.pump();
 
       expect(field().controller!.text, 'replacement');
+      expect(
+        composeDraftCache.landingDraft(workspace.workspaceId),
+        'old draft',
+      );
+
+      await tester.pumpWidget(landing(null, initialTextRevision: 2));
+      await tester.pump();
+
+      expect(field().controller!.text, isEmpty);
+      expect(
+        composeDraftCache.landingDraft(workspace.workspaceId),
+        'old draft',
+      );
 
       await tester.enterText(find.byType(TextField).first, 'user draft');
-      await tester.pumpWidget(landing('replacement', initialTextRevision: 2));
+      await tester.pumpWidget(
+        landing(
+          'replacement',
+          initialTextRevision: 3,
+          referencedSessionId: 'deleted-reference',
+        ),
+      );
       await tester.pump();
 
       expect(field().controller!.text, 'replacement');
 
-      await tester.pumpWidget(landing(null));
+      await tester.enterText(find.byType(TextField).first, 'user edit');
+      await tester.pumpWidget(landing(null, initialTextRevision: 4));
       await tester.pump();
 
-      expect(field().controller!.text, 'replacement');
+      expect(field().controller!.text, 'user edit');
     },
   );
 }
