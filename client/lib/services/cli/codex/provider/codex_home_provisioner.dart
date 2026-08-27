@@ -125,12 +125,16 @@ final class CodexHomeProvisioner {
       );
       final sidecarDir = providerDir?.trim();
       if (sidecarDir != null && sidecarDir.isNotEmpty) {
-        await CodexConfigSidecar.copyIntoCodexHome(
-          fs: store,
-          providerDir: sidecarDir,
-          codexHome: codexHome,
-          configToml: toml,
-        );
+        try {
+          await CodexConfigSidecar.materializeIntoCodexHome(
+            fs: store,
+            providerDir: sidecarDir,
+            codexHome: codexHome,
+            configToml: toml,
+          );
+        } on CodexConfigSidecarException catch (e) {
+          throw CodexHomeProvisionException(e.message);
+        }
       }
     }
   }
