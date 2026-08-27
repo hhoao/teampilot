@@ -120,6 +120,7 @@ class _VirtualThreadViewportState extends State<VirtualThreadViewport> {
   int _lastRevealEpoch = 0;
   int _notifiedVisibleFirst = 0;
   int _notifiedVisibleLast = -1;
+  String? _notifiedVisibleTurnId;
 
   static const _fillChunk = 2;
 
@@ -297,12 +298,19 @@ class _VirtualThreadViewportState extends State<VirtualThreadViewport> {
   void _notifyVisibleRange(TurnVisibleRange visible) {
     final cb = widget.onVisibleRange;
     if (cb == null) return;
+    final turnId = visible.lastIndex < visible.firstIndex ||
+            visible.firstIndex < 0 ||
+            visible.firstIndex >= _turns.length
+        ? null
+        : _turns[visible.firstIndex].id;
     if (visible.firstIndex == _notifiedVisibleFirst &&
-        visible.lastIndex == _notifiedVisibleLast) {
+        visible.lastIndex == _notifiedVisibleLast &&
+        turnId == _notifiedVisibleTurnId) {
       return;
     }
     _notifiedVisibleFirst = visible.firstIndex;
     _notifiedVisibleLast = visible.lastIndex;
+    _notifiedVisibleTurnId = turnId;
     cb(visible);
   }
 
@@ -354,6 +362,7 @@ class _VirtualThreadViewportState extends State<VirtualThreadViewport> {
         paddingTop: 0,
         paddingBottom: _cache.totalExtent(_turns),
       );
+      _notifyVisibleRange(range);
       offstageChanged = true;
     } else if (controller.hasClients &&
         controller.position.hasViewportDimension) {
