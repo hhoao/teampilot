@@ -38,6 +38,7 @@ import '../../registry/prompt/prompt_hub_service.dart';
 import '../../../resource/providers/extension_hook_contribution_provider.dart';
 import '../../../resource/providers/hook_library_contribution_provider.dart';
 import '../../../resource/providers/managed_hook_contribution_provider.dart';
+import '../../../resource/providers/runtime_event_hook_contribution_provider.dart';
 import '../../../resource/providers/endpoint_hook_contribution_provider.dart';
 import '../../../resource/providers/bus_awareness_hook_contribution_provider.dart';
 import '../../../resource/providers/hook_contribution_provider.dart';
@@ -1161,7 +1162,7 @@ final class ClaudeProviderCapability extends CatalogModelCapability
             memberId: member.id,
           ),
         if (agentStatus != null)
-          AgentStatusHookContributionProvider(
+          RuntimeEventHookContributionProvider(
             endpoint: agentStatus,
             memberId: member.id,
           ),

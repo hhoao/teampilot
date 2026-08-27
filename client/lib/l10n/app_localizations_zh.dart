@@ -8031,4 +8031,16 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get gitGraphConflictHint => '请先解决冲突并暂存相关文件，然后提交以继续。';
+
+  @override
+  String get promptDeliveryUnknownTitle => '投递状态未知';
+
+  @override
+  String get promptDeliveryReviewMessage => '查看消息内容';
+
+  @override
+  String get promptDeliveryHideMessage => '收起消息';
+
+  @override
+  String get promptDeliveryResend => '重新发送';
 }

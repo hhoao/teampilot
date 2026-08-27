@@ -3,14 +3,21 @@ import '../../../agent_status/agent_permission_request.dart';
 import '../../../agent_status/agent_status_event.dart';
 import '../../../agent_status/agent_status_tool_input.dart';
 import '../../../agent_status/ask_user_question.dart';
+import '../../../agent_runtime/runtime_event.dart';
+import '../../../../models/hook_entry.dart';
+import '../../../../models/hook_event.dart';
+import '../../../../models/team_config.dart';
 import '../../registry/capabilities/chat_interaction_capability.dart';
+import '../../registry/capabilities/runtime_event_capability.dart';
+import 'agent_status_plugin.dart';
 
 /// OpenCode's own hook event format (`event`, `request_id`, …).
 ///
 /// OpenCode answers questions through the plugin SDK (and `permission.asked`
 /// allow/deny replies from the chat card); no in-chat ExitPlanMode approval
 /// (keeps the "Open Terminal" fallback).
-final class OpencodeChatInteraction implements ChatInteractionCapability {
+final class OpencodeChatInteraction
+    implements ChatInteractionCapability, RuntimeEventCapability {
   const OpencodeChatInteraction();
 
   @override
@@ -80,6 +87,49 @@ final class OpencodeChatInteraction implements ChatInteractionCapability {
       _ => null,
     };
   }
+
+  @override
+  RuntimeEventEnvelopeDraft? normalizeRuntimeEvent(
+    Map<String, Object?> raw,
+    RuntimeSeatKey seat,
+    DateTime occurredAt,
+  ) {
+    if (raw['event'] != 'userMessageSubmitted') return null;
+    final prompt = readPayloadString(raw, const ['prompt']);
+    if (prompt == null || prompt.isEmpty) return null;
+    return RuntimeEventEnvelopeDraft.promptSubmitted(
+      seat: seat,
+      cli: CliTool.opencode,
+      prompt: prompt,
+      occurredAt: occurredAt,
+      correlationStrength: promptCorrelationStrength,
+    );
+  }
+
+  @override
+  RuntimeCorrelationStrength get promptCorrelationStrength =>
+      RuntimeCorrelationStrength.serializedPromptEpoch;
+
+  @override
+  List<HookEntry> managedHookEntries(RuntimeEventHookContext context) => [
+    HookEntry(
+      id: 'teampilot-runtime-event-plugin',
+      source: HookSource.managed,
+      event: HookEvent.userPromptSubmit,
+      action: NativePluginHookAction(
+        fileName: opencodeAgentStatusPluginFileName,
+        source: opencodeAgentStatusPluginSource,
+        pluginPath: './$opencodeAgentStatusPluginFileName',
+        pluginOptions: {
+          'member': context.memberId,
+          'url': context.endpoint.url,
+          if (context.endpoint.sessionId case final sessionId?)
+            'session': sessionId,
+          if (context.endpoint.token case final token?) 'token': token,
+        },
+      ),
+    ),
+  ];
 
   @override
   bool get supportsStructuredAsk => true;

@@ -1,10 +1,8 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:teampilot/cubits/chat/chat_session_shell_factory.dart';
 import 'package:teampilot/cubits/chat/chat_tab_store.dart';
 import 'package:teampilot/cubits/chat/model/chat_tab.dart';
 import 'package:teampilot/cubits/chat/model/chat_tab_info.dart';
 import 'package:teampilot/cubits/chat/tab_member_coordination_factory.dart';
-import 'package:teampilot/cubits/chat/tab_member_pty_delivery.dart';
 import 'package:teampilot/cubits/chat/tab_session_idle_watch.dart';
 import 'package:teampilot/services/team/session_working_resolver.dart';
 
@@ -30,26 +28,11 @@ void main() {
       activeTeam: () => null,
       sessionWorking: SessionWorkingResolver(),
     );
-    final delivery = TabMemberPtyDelivery(
-      tabStore: store,
-      shellFactory: ChatSessionShellFactory(
-        executableResolver: () => 'true',
-        terminalSessionFactory:
-            ({required String executable, int scrollbackLines = 10000}) =>
-                shell.session,
-      ),
-      globalPresets: () => const [],
-      activeTeam: () => null,
-      isClosed: () => false,
-      coordinationFactory: coordination,
-    );
-
     String? endedSession;
     String? endedMember;
     final watch = TabSessionIdleWatch(
       tabStore: store,
       coordinationFactory: coordination,
-      delivery: delivery,
       isClosed: () => false,
       onAfterTurnEnded: (sid, mid) {
         endedSession = sid;

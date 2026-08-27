@@ -6,6 +6,15 @@ final class ExitPlanModeHookReply {
   const ExitPlanModeHookReply.deny() : deny = true;
 
   final bool deny;
+
+  /// Claude-family `PreToolUse` response for a completed held hook.
+  Map<String, Object?> toHookResponse() => {
+    'hookSpecificOutput': {
+      'hookEventName': 'PreToolUse',
+      'permissionDecision': deny ? 'deny' : 'allow',
+      if (deny) 'permissionDecisionReason': 'User rejected the plan',
+    },
+  };
 }
 
 /// Holds open Claude `PreToolUse` HTTP hooks for ExitPlanMode until the chat
@@ -50,9 +59,7 @@ final class ExitPlanModeHookGate {
     required String toolUseId,
     required ExitPlanModeHookReply reply,
   }) {
-    final completer = _waiters.remove(
-      _key(sessionId, memberId, toolUseId),
-    );
+    final completer = _waiters.remove(_key(sessionId, memberId, toolUseId));
     if (completer == null || completer.isCompleted) return false;
     completer.complete(reply);
     return true;

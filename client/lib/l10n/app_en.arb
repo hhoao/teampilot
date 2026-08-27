@@ -3746,5 +3746,9 @@
   "gitGraphRemoteBranches": "Remote branches",
   "gitGraphTags": "Tags",
   "gitGraphHashSearchEmptyHint": "No loaded commit matches this hash. Scroll down or click \"Load more\" to fetch older history.",
-  "gitGraphConflictHint": "Resolve the conflicts, stage the files, then commit to continue."
+  "gitGraphConflictHint": "Resolve the conflicts, stage the files, then commit to continue.",
+  "promptDeliveryUnknownTitle": "Delivery status unknown",
+  "promptDeliveryReviewMessage": "Review message",
+  "promptDeliveryHideMessage": "Hide message",
+  "promptDeliveryResend": "Resend"
 }

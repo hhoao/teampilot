@@ -2,7 +2,6 @@ import '../../../../models/hook_entry.dart';
 import '../../../../models/hook_event.dart';
 import '../../../../models/plugin.dart';
 import '../../../../models/team_config.dart';
-import '../../../agent_status/member_agent_status_endpoint.dart';
 import '../../../team/team_lead_delegate_settings_merge.dart';
 import '../../../team/team_lead_settings_merge.dart';
 import '../../../team_bus/bus_awareness_prompt.dart';
@@ -13,7 +12,6 @@ import '../../../resource/providers/hook_contribution_provider.dart';
 import '../../../io/filesystem.dart';
 import '../../../host/team_pilot_hook_scripts.dart';
 import 'config_profile_scope.dart';
-import 'agent_status_hooks.dart';
 
 /// 把内部托管 hook 组装为 [HookEntry]（source: managed）。
 /// 装配点（各 CLI config_profile）用它组装 managed 条目，渲染走统一 writer
@@ -43,63 +41,11 @@ class HookSeatContextCompleter {
     providers: providers,
   );
 
-  /// agent-status 全事件集（与 agent_status_hooks.dart 常量一致）。
-  ///
-  /// 子 agent 生命周期事件也在列：attention cubit 按子 agent id 计数，
-  /// 父 Stop 必须等最后一个子 agent 结束才能进入 done（否则终端会被误回收）。
-  static const List<HookEvent> agentStatusEvents = [
-    HookEvent.permissionRequest,
-    HookEvent.preToolUse,
-    HookEvent.postToolUse,
-    HookEvent.postToolUseFailure,
-    HookEvent.stop,
-    HookEvent.stopFailure,
-    HookEvent.userPromptSubmit,
-    HookEvent.subagentStart,
-    HookEvent.subagentStop,
-  ];
-
-  /// 需要 matcher `*` 的事件（与 agent_status_hooks.dart 一致）。
-  static const Set<HookEvent> agentStatusMatcherEvents = {
-    HookEvent.permissionRequest,
-    HookEvent.preToolUse,
-    HookEvent.postToolUse,
-    HookEvent.postToolUseFailure,
-  };
-
   /// bus idle（mixed Stop/StopFailure）事件集。
   static const List<HookEvent> busIdleEvents = [
     HookEvent.stop,
     HookEvent.stopFailure,
   ];
-
-  List<HookEntry> agentStatusHooks({
-    required MemberAgentStatusEndpoint endpoint,
-    required String memberId,
-  }) {
-    final headers = endpoint.headersFor(memberId);
-    return [
-      for (final event in agentStatusEvents)
-        HookEntry(
-          id: 'teampilot-agent-status-${event.name}',
-          source: HookSource.managed,
-          event: event,
-          matcher: agentStatusMatcherEvents.contains(event) ? '*' : null,
-          action: HttpHookAction(
-            // URL 事件名用原生 PascalCase，与现有 agent_status_hooks.dart
-            // 的 per-event URL 身份一致（hook-gate / 去重兼容）。claude 无
-            // 该事件的 matrix 条目时（codex 独有 SubagentStart）回退到规范
-            // PascalCase 名。
-            url: agentStatusHookUrl(endpoint.url, _urlEventName(event)),
-            headers: headers,
-          ),
-          // AskUserQuestion PreToolUse 保持挂起（与现状 timeout 86400 一致）。
-          timeout: event == HookEvent.preToolUse
-              ? const Duration(days: 1)
-              : const Duration(seconds: 5),
-        ),
-    ];
-  }
 
   List<HookEntry> busIdleHooks({
     required MemberBusIdleEndpoint idle,
@@ -232,15 +178,6 @@ class HookSeatContextCompleter {
           action: CommandHookAction.raw(command.trim()),
         ),
   ];
-
-  /// agent-status URL 的事件身份名：沿用 claude 原生名（历史 per-event URL
-  /// 去重兼容）；claude matrix 无条目的事件回退到规范 PascalCase 名。
-  static String _urlEventName(HookEvent event) =>
-      HookEventCapability.nativeEvent(event, CliTool.claude) ??
-      switch (event) {
-        HookEvent.subagentStart => 'SubagentStart',
-        _ => event.name,
-      };
 
   /// 宽容事件名解析：camelCase 精确匹配 → 大小写不敏感 → claude 原生名。
   static HookEvent? _parseEventName(String name) {

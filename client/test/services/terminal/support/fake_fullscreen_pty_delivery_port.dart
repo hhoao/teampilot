@@ -98,13 +98,13 @@ final class FakeFullscreenPtyDeliveryPort implements FullscreenPtyDeliveryPort {
   }
 
   @override
-  Future<void> clearStagedInput() async {
+  Future<void> clearStagedInput({bool Function()? canExecute}) async {
     clearCount++;
     staged = null;
   }
 
   @override
-  Future<void> pasteText(String text) async {
+  Future<void> pasteText(String text, {bool Function()? canExecute}) async {
     pasteCount++;
     if (visibleAfterPaste && pasteCount >= pastesBeforeVisible) {
       staged = collapseAsClaudePaste
@@ -114,7 +114,7 @@ final class FakeFullscreenPtyDeliveryPort implements FullscreenPtyDeliveryPort {
   }
 
   @override
-  Future<void> submitCr() async {
+  Future<void> submitCr({bool Function()? canExecute}) async {
     crCount++;
     if (crCount >= crsToClear) {
       staged = null;

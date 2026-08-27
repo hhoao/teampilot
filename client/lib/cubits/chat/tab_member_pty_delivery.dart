@@ -2,17 +2,18 @@ import '../../models/cli_preset.dart';
 import '../../models/team_config.dart';
 import '../../services/cli/registry/capabilities/terminal_behavior_capability.dart';
 import '../../services/cli/registry/cli_tool_registry.dart';
+import '../../services/agent_runtime/runtime_event.dart';
 import '../../services/team_bus/mailbox_delivery.dart';
 import '../../services/team_bus/team_bus.dart';
 import '../../services/terminal/fullscreen_cr_ack_config.dart';
 import '../../services/terminal/fullscreen_input_readiness.dart';
 import '../../services/terminal/fullscreen_pty_automation.dart';
 import '../../services/terminal/member_pty_inject_service.dart';
-import '../../services/terminal/prompt_submit_ack_tracker.dart';
-import '../../services/terminal/pty_automation_delivery_guard.dart';
-import '../../services/terminal/pty_automation_retry_queue.dart';
+import '../../services/prompt_delivery/prompt_delivery.dart';
+import '../../services/prompt_delivery/prompt_delivery_coordinator.dart';
+import '../../services/prompt_delivery/prompt_delivery_store.dart';
 import '../../services/terminal/session_member_cli_resolver.dart';
-import '../../services/terminal/terminal_input_controller.dart';
+import '../../services/terminal/terminal_input_command_queue.dart';
 import '../../services/terminal/terminal_session.dart';
 import '../../utils/logging/logger.dart';
 import 'chat_session_shell_factory.dart';
@@ -31,7 +32,7 @@ final class TabMemberPtyDelivery {
     void Function(String sessionId, String memberId)? onAfterTurnLatched,
     void Function(String sessionId)? onUserActivity,
     MemberPtyInjectService? ptyInject,
-    PromptSubmitAckTracker? promptAckTracker,
+    PromptDeliveryCoordinator? promptDeliveries,
   }) : _tabStore = tabStore,
        _shellFactory = shellFactory,
        _globalPresets = globalPresets,
@@ -40,13 +41,9 @@ final class TabMemberPtyDelivery {
        _coordinationFactory = coordinationFactory,
        _onAfterTurnLatched = onAfterTurnLatched,
        _onUserActivity = onUserActivity,
-       _promptAckTracker = promptAckTracker ?? PromptSubmitAckTracker() {
-    _ptyInject =
-        ptyInject ??
-        MemberPtyInjectService(
-          onDeliveryRetryExhausted: _onDeliveryRetryExhausted,
-          ackTracker: _promptAckTracker,
-        );
+       _promptDeliveries =
+           promptDeliveries ?? _tabPromptDeliveries(tabStore) {
+    _ptyInject = ptyInject ?? MemberPtyInjectService();
   }
 
   final ChatTabStore _tabStore;
@@ -58,15 +55,15 @@ final class TabMemberPtyDelivery {
   final void Function(String sessionId, String memberId)? _onAfterTurnLatched;
   final void Function(String sessionId)? _onUserActivity;
   late final MemberPtyInjectService _ptyInject;
-  final PromptSubmitAckTracker _promptAckTracker;
+  final PromptDeliveryCoordinator _promptDeliveries;
   final Map<String, DateTime> _lastBootGateNudge = {};
   final Map<String, FullscreenInputSurfaceWatch> _surfaceWatches = {};
+  final Map<String, String> _directDeliveryBySeat = {};
+  final Map<String, int> _directEpochBySeat = {};
+  final Set<String> _directTurnLatched = {};
 
   TeamBus? busForSession(String sessionId) =>
       _tabStore.openTabBySessionId(sessionId)?.teamBus;
-
-  bool hasPendingRetry(String sessionId, String memberId) =>
-      _ptyInject.hasPendingRetry(sessionId, memberId);
 
   static const _composerProbeRows = 52;
   static const _bootGateNudgeGap = Duration(milliseconds: 600);
@@ -122,24 +119,17 @@ final class TabMemberPtyDelivery {
     shell.input.writeToPty('\r');
   }
 
-  bool isBusy(String sessionId, String memberId) =>
-      _ptyInject.isBusy(sessionId, memberId);
-
-  void clearPending(String sessionId, String memberId) =>
-      _ptyInject.clearPending(sessionId, memberId);
-
   void abortMemberInject(String sessionId, String memberId) {
+    final key = _seatKey(sessionId, memberId);
+    _directEpochBySeat.update(key, (value) => value + 1, ifAbsent: () => 1);
+    final directDelivery = _directDeliveryBySeat.remove(key);
+    if (directDelivery != null) {
+      _promptDeliveries.invalidateSubmittedDelivery(directDelivery);
+    }
     _ptyInject.requestAbort(sessionId, memberId);
-    if (!_ptyInject.isBusy(sessionId, memberId)) {
+    if (!_ptyInject.isDelivering(sessionId, memberId)) {
       _ptyInject.clearAbort(sessionId, memberId);
     }
-  }
-
-  void tickRetries({
-    required bool Function(PtyAutomationRetryTick tick) shouldSkip,
-    required void Function(PtyAutomationRetryTick tick) onTick,
-  }) {
-    _ptyInject.tickRetries(shouldSkip: shouldSkip, onTick: onTick);
   }
 
   /// Bracketed-paste + CR for full-screen CLIs; [automation] uses grid ACK.
@@ -179,12 +169,6 @@ final class TabMemberPtyDelivery {
       if (_deferMailDoorbellIfBooting(sessionId, memberId, shell, trimmed)) {
         return;
       }
-      _trackPromptSubmitAck(
-        sessionId: sessionId,
-        memberId: memberId,
-        text: trimmed,
-        isOperatorTurn: isOperatorTurn,
-      );
       await _deliverFullScreen(
         sessionId: sessionId,
         memberId: memberId,
@@ -216,10 +200,6 @@ final class TabMemberPtyDelivery {
       return;
     }
     if (_ptyAckAborted(shell, sessionId: sessionId, memberId: memberId)) return;
-    if (shouldSkipAutomationRetry(sessionId, memberId)) {
-      dropStaleAutomationRetry(sessionId, memberId, shell);
-      return;
-    }
     final trimmed = notice.trim();
     if (trimmed.isEmpty) return;
     final isMailDoorbell = _isMailDoorbellText(trimmed);
@@ -230,26 +210,6 @@ final class TabMemberPtyDelivery {
     if (_deferMailDoorbellIfBooting(sessionId, memberId, shell, trimmed)) {
       return;
     }
-    // Hook already confirmed this prompt was submitted — re-pasting now would
-    // create a duplicate user row (the multi-bubble symptom).
-    if (_promptAckTracker.isAcked(sessionId: sessionId, memberId: memberId)) {
-      appLogger.d(
-        '[session-runtime] retry-delivery skipped prompt-already-acked '
-        'member=$memberId session=$sessionId',
-      );
-      _ptyInject.clearPending(sessionId, memberId);
-      if (isMailDoorbell) {
-        _reportMailDeliveryOutcome(
-          sessionId,
-          memberId,
-          FullscreenPtyDeliveryOutcome.submitted,
-        );
-      } else {
-        _markMemberTurnStartedOnSubmitSuccess(sessionId, memberId);
-      }
-      return;
-    }
-
     appLogger.d(
       '[session-runtime] retry-delivery member=$memberId session=$sessionId '
       'preview=${_doorbellLogPreview(trimmed)}',
@@ -275,11 +235,6 @@ final class TabMemberPtyDelivery {
       memberId,
       automation: true,
     );
-    _trackPromptSubmitAck(
-      sessionId: sessionId,
-      memberId: memberId,
-      text: trimmed,
-    );
     final outcome = await _ptyInject.retry(
       input: shell.input,
       probe: shell.probe,
@@ -290,8 +245,6 @@ final class TabMemberPtyDelivery {
       aborted: () =>
           _ptyAckAborted(shell, sessionId: sessionId, memberId: memberId),
       crAckConfig: _crAckForMember(sessionId, memberId),
-      isAcked: () =>
-          _promptAckTracker.isAcked(sessionId: sessionId, memberId: memberId),
     );
     if (isMailDoorbell) {
       _reportMailDeliveryOutcome(sessionId, memberId, outcome);
@@ -301,7 +254,9 @@ final class TabMemberPtyDelivery {
   /// Default: TeamBus mailbox when a bus is installed. [directToPty] injects at
   /// the member prompt (compose landing, automation, first prompt).
   ///
-  /// Returns the mailbox message id when routed via TeamBus; otherwise `null`.
+  /// Returns the mailbox message id when routed via TeamBus, or the durable
+  /// prompt-delivery id when [directToPty] is true. Returns `null` when the
+  /// direct delivery was interrupted before it could be issued.
   /// When [directToPty] is false and no bus is installed, returns `null`
   /// without falling back to PTY inject (caller must not treat that as success).
   Future<String?> deliverUserCommandToMember(
@@ -318,144 +273,30 @@ final class TabMemberPtyDelivery {
       final id = bus.deliverUserCommand(memberId, message);
       return id.isEmpty ? null : id;
     }
-    await deliverMemberStdin(
-      sessionId,
-      memberId,
-      message,
-      automation: true,
-    );
-    return null;
-  }
-
-  bool shouldSkipAutomationRetry(
-    String sessionId,
-    String memberId, {
-    String? dueRetryText,
-  }) {
-    final bus = busForSession(sessionId);
-    // due() dequeues before shouldSkip. Landing injects have no doorbell
-    // obligation — without this, the guard treats them as stale and drops.
-    if (dueRetryText != null && !_isMailDoorbellText(dueRetryText)) {
-      return false;
-    }
-    return PtyAutomationDeliveryGuard.shouldSkipRetry(
-      bus: bus,
-      memberId: memberId,
-      memberInTurn: bus?.isMemberInTurn(memberId) ?? false,
-      pendingAutomationRetry: _ptyInject.hasPendingRetry(sessionId, memberId),
-    );
-  }
-
-  void dropStaleAutomationRetry(
-    String sessionId,
-    String memberId,
-    TerminalSession shell,
-  ) {
-    _ptyInject.clearPending(sessionId, memberId);
-    shell.markUserTurnIdle();
-    appLogger.d(
-      '[session-runtime] automation-retry-skipped member=$memberId '
-      'session=$sessionId',
-    );
-  }
-
-  Future<void> retryAutomationTick(PtyAutomationRetryTick tick) async {
-    final shell =
-        _tabStore.openTabBySessionId(tick.sessionId)?.memberShells[tick.memberId];
-    if (shell == null) return;
-    if (_ptyAckAborted(
-      shell,
-      sessionId: tick.sessionId,
-      memberId: tick.memberId,
-    )) {
-      return;
-    }
-    if (shouldSkipAutomationRetry(
-      tick.sessionId,
-      tick.memberId,
-      dueRetryText: tick.text,
-    )) {
-      dropStaleAutomationRetry(tick.sessionId, tick.memberId, shell);
-      return;
-    }
-    if (_deferMailDoorbellIfBooting(
-      tick.sessionId,
-      tick.memberId,
-      shell,
-      tick.text,
-    )) {
-      return;
-    }
-    // Hook ACK already confirmed this prompt submitted (e.g. it landed while
-    // the previous crStuck outcome was being computed) — re-pasting now would
-    // duplicate the user row, so treat the delivery as done.
-    if (_promptAckTracker.isAcked(
-      sessionId: tick.sessionId,
-      memberId: tick.memberId,
-    )) {
-      appLogger.d(
-        '[session-runtime] automation-retry-skipped prompt-already-acked '
-        'member=${tick.memberId} session=${tick.sessionId}',
-      );
-      _ptyInject.clearPending(tick.sessionId, tick.memberId);
-      if (_isMailDoorbellText(tick.text)) {
-        _reportMailDeliveryOutcome(
-          tick.sessionId,
-          tick.memberId,
-          FullscreenPtyDeliveryOutcome.submitted,
-        );
-      } else {
-        _markMemberTurnStartedOnSubmitSuccess(tick.sessionId, tick.memberId);
-      }
-      return;
-    }
-    final settle = _pasteSettleForMember(
-      tick.sessionId,
-      tick.memberId,
-      automation: true,
-    );
-    if (!_memberUsesGridPasteAck(tick.sessionId, tick.memberId)) {
-      await shell.input.submitFullScreenInput(tick.text, pasteSettleDelay: settle);
-      if (_isMailDoorbellText(tick.text)) {
-        _reportMailDeliveryOutcome(
-          tick.sessionId,
-          tick.memberId,
-          FullscreenPtyDeliveryOutcome.submitted,
-        );
-      } else {
-        _markMemberTurnStartedOnSubmitSuccess(tick.sessionId, tick.memberId);
-      }
-      return;
-    }
-    _trackPromptSubmitAck(
-      sessionId: tick.sessionId,
-      memberId: tick.memberId,
-      text: tick.text,
-      isOperatorTurn: !_isMailDoorbellText(tick.text),
-    );
-    final outcome = await _ptyInject.retry(
-      input: shell.input,
-      probe: shell.probe,
-      sessionId: tick.sessionId,
-      memberId: tick.memberId,
-      text: tick.text,
-      pasteSettle: settle,
-      aborted: () => _ptyAckAborted(
-        shell,
-        sessionId: tick.sessionId,
-        memberId: tick.memberId,
-      ),
-      crAckConfig: _crAckForMember(tick.sessionId, tick.memberId),
-      isAcked: () => _promptAckTracker.isAcked(
-        sessionId: tick.sessionId,
-        memberId: tick.memberId,
+    final key = _seatKey(sessionId, memberId);
+    // Claimed before the first await so an interrupt racing record creation is
+    // observable even though no delivery id is registered for the seat yet.
+    final epoch = (_directEpochBySeat[key] ?? 0) + 1;
+    _directEpochBySeat[key] = epoch;
+    final delivery = await _promptDeliveries.submit(
+      PromptDeliveryRequest(
+        seat: RuntimeSeatKey(sessionId: sessionId, memberId: memberId),
+        cli: _memberCli(sessionId, memberId),
+        text: message,
       ),
     );
-    if (_isMailDoorbellText(tick.text)) {
-      _reportMailDeliveryOutcome(tick.sessionId, tick.memberId, outcome);
-    } else if (outcome == FullscreenPtyDeliveryOutcome.submitted) {
-      _markMemberTurnStartedOnSubmitSuccess(tick.sessionId, tick.memberId);
+    if (_directEpochBySeat[key] != epoch) {
+      await _promptDeliveries.failBeforeSubmit(delivery.id);
+      return null;
     }
+    _directDeliveryBySeat[key] = delivery.id;
+    final result = await _promptDeliveries.issueSubmit(delivery.id);
+    if (_directDeliveryBySeat[key] == delivery.id &&
+        result == PromptSubmissionResult.submitted &&
+        _directTurnLatched.add(delivery.id)) {
+      _markMemberTurnStartedOnSubmitSuccess(sessionId, memberId);
+    }
+    return delivery.id;
   }
 
   Future<void> _deliverFullScreen({
@@ -484,8 +325,6 @@ final class TabMemberPtyDelivery {
         aborted: () =>
             _ptyAckAborted(shell, sessionId: sessionId, memberId: memberId),
         crAckConfig: _crAckForMember(sessionId, memberId),
-        isAcked: () =>
-            _promptAckTracker.isAcked(sessionId: sessionId, memberId: memberId),
       );
       if (isMailDoorbell) {
         _reportMailDeliveryOutcome(sessionId, memberId, outcome);
@@ -514,30 +353,6 @@ final class TabMemberPtyDelivery {
         MailboxDeliveryPhase.failed;
   }
 
-  /// Registers a prompt-submit ACK pending before the grid probe runs. The
-  /// hook event (UserPromptSubmit) is the authoritative delivery confirmation:
-  /// when it arrives, cancel any scheduled re-paste (crStuck retry storm) and
-  /// treat the submit as success. The grid probe still runs as a fallback —
-  /// hook-channel absence keeps today's behavior unchanged.
-  void _trackPromptSubmitAck({
-    required String sessionId,
-    required String memberId,
-    required String text,
-    bool isOperatorTurn = false,
-  }) {
-    _promptAckTracker
-        .register(sessionId: sessionId, memberId: memberId, text: text)
-        .then((acked) {
-          if (acked) {
-            _ptyInject.clearPending(sessionId, memberId);
-            if (isOperatorTurn) {
-              _markMemberTurnStartedOnSubmitSuccess(sessionId, memberId);
-            }
-          }
-        })
-        .ignore();
-  }
-
   bool _ptyAckAborted(
     TerminalSession shell, {
     String? sessionId,
@@ -547,9 +362,6 @@ final class TabMemberPtyDelivery {
     if (sessionId != null &&
         memberId != null &&
         _ptyInject.isAbortRequested(sessionId, memberId)) {
-      if (!_ptyInject.isBusy(sessionId, memberId)) {
-        _ptyInject.clearAbort(sessionId, memberId);
-      }
       return true;
     }
     return false;
@@ -618,6 +430,9 @@ final class TabMemberPtyDelivery {
   static bool _isMailDoorbellText(String text) =>
       text == TeamBus.doorbellNotice;
 
+  static String _seatKey(String sessionId, String memberId) =>
+      '$sessionId\u0000$memberId';
+
   /// 门铃投递的 boot 门控:全屏 TUI 未就绪时推迟到重试 tick,避免盲粘启动屏。
   /// 返回 true 表示已推迟(调用方应 return)。只对邮件门铃生效——operator 直投
   /// 已由 [ensureMemberInputReady] 等过 composer 表面。
@@ -636,7 +451,6 @@ final class TabMemberPtyDelivery {
       '[session-runtime] doorbell deferred (surface) member=$memberId '
       'session=$sessionId boot=${shell.activityTracker.isBootFrameReady}',
     );
-    _ptyInject.deferForBoot(sessionId, memberId, text);
     return true;
   }
 
@@ -674,20 +488,46 @@ final class TabMemberPtyDelivery {
     _onAfterTurnLatched?.call(sessionId, memberId);
   }
 
-  void _onDeliveryRetryExhausted(
-    String sessionId,
-    String memberId,
-    FullscreenPtyDeliveryOutcome outcome,
-  ) {
-    final error = switch (outcome) {
-      FullscreenPtyDeliveryOutcome.pasteNotFound =>
-        MailboxDeliveryError.pasteNotFound,
-      FullscreenPtyDeliveryOutcome.aborted => MailboxDeliveryError.aborted,
-      FullscreenPtyDeliveryOutcome.crStuck ||
-      FullscreenPtyDeliveryOutcome.submitted =>
-        MailboxDeliveryError.crStuck,
-    };
-    busForSession(sessionId)?.markMailDeliveryFailed(memberId, error: error);
-    _ptyInject.clearPending(sessionId, memberId);
+}
+
+PromptDeliveryCoordinator _tabPromptDeliveries(ChatTabStore tabStore) =>
+    PromptDeliveryCoordinator(
+      store: MemoryPromptDeliveryStore(),
+      commands: TabPromptDeliveryCommands(tabStore),
+    );
+
+/// Transitional terminal adapter until app-scoped lifecycle wiring supplies a
+/// persistent coordinator. Its writes still flow through the fenced terminal
+/// command queue and are controlled by the coordinator's delivery id.
+final class TabPromptDeliveryCommands implements PromptDeliveryCommands {
+  const TabPromptDeliveryCommands(this._tabStore);
+
+  final ChatTabStore _tabStore;
+
+  @override
+  Future<void> stage(
+    PromptDelivery delivery, {
+    required bool Function() canExecute,
+  }) async {}
+
+  @override
+  Future<PromptSubmissionResult> submit(
+    PromptDelivery delivery, {
+    required bool Function() canExecute,
+  }) async {
+    final shell = _tabStore
+        .openTabBySessionId(delivery.seat.sessionId)
+        ?.memberShells[delivery.seat.memberId];
+    if (shell == null) return PromptSubmissionResult.failed;
+    final result = await shell.input.submitFullScreenInput(
+      delivery.text,
+      canExecute: canExecute,
+    );
+    switch (result) {
+      case TerminalInputCommandResult.written:
+        return PromptSubmissionResult.submitted;
+      case TerminalInputCommandResult.dropped:
+        return PromptSubmissionResult.dropped;
+    }
   }
 }

@@ -105,7 +105,6 @@ void main() {
         )
         .timeout(const Duration(seconds: 2));
 
-    expect(harness.ptyInject.hasPendingRetry(_sessionId, _memberId), isTrue);
     expect(
       harness.shell.ptyInputJoined.contains(TeamBus.doorbellNotice),
       isFalse,

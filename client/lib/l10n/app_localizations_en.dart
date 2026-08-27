@@ -8375,4 +8375,16 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get gitGraphConflictHint =>
       'Resolve the conflicts, stage the files, then commit to continue.';
+
+  @override
+  String get promptDeliveryUnknownTitle => 'Delivery status unknown';
+
+  @override
+  String get promptDeliveryReviewMessage => 'Review message';
+
+  @override
+  String get promptDeliveryHideMessage => 'Hide message';
+
+  @override
+  String get promptDeliveryResend => 'Resend';
 }

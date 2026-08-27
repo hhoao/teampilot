@@ -16,21 +16,26 @@ import '../cubits/automation_cubit.dart';
 import '../cubits/agent_attention_cubit.dart';
 import '../cubits/chat_cubit.dart';
 import '../cubits/session_groups_cubit.dart';
-import '../services/agent_status/agent_status_http_handler.dart';
+import '../cubits/prompt_delivery_status_cubit.dart';
+import '../services/agent_runtime/agent_event_gateway.dart';
+import '../services/agent_runtime/agent_runtime.dart';
+import '../services/agent_runtime/runtime_event_journal.dart';
+import '../services/agent_runtime/runtime_event_projection.dart';
+import '../services/agent_runtime/seat_event_stream.dart';
+import '../services/prompt_delivery/prompt_delivery_coordinator.dart';
+import '../services/prompt_delivery/prompt_delivery_store.dart';
 import '../services/agent_status/agent_status_seat_lookup.dart';
 import '../services/agent_status/ask_user_answer_pending_store.dart';
 import '../services/agent_status/ask_user_question_hook_gate.dart';
 import '../services/agent_status/exit_plan_mode_hook_gate.dart';
 import '../services/terminal/ask_user_question_answer_service.dart';
 import '../services/terminal/exit_plan_mode_approval_service.dart';
-import '../services/terminal/prompt_submit_ack_tracker.dart';
 import '../services/catalog/catalog_runtime.dart';
 import '../services/catalog/catalog_production.dart';
 import '../services/team_bus/mcp/teammate_bus_mcp_gateway.dart';
 import '../services/team_bus/remote/remote_bus_binding_resolver.dart';
 import '../services/remote/local_credential_exporter.dart';
 import '../services/remote/remote_cli_readiness.dart';
-import '../widgets/app_toast/app_toast.dart';
 import '../services/editor_platform/editor_platform.dart';
 import '../services/launch/launch_factory.dart';
 import '../cubits/board_cubit.dart';
@@ -186,6 +191,7 @@ import '../services/cli/opencode/provider/opencode_models_service.dart';
 import '../services/provider/api_model_catalog_service.dart';
 import '../services/cli/cursor/provider/cursor_agent_models_service.dart';
 import '../services/cli/cursor/provider/cursor_provider_credentials_service.dart';
+import '../cubits/chat/tab_member_pty_delivery.dart';
 import '../services/provider/provider_credential_host_runner.dart';
 import '../services/provider_usage/managed_provider_secret_store.dart';
 import '../services/provider_usage/managed_provider_usage_adapter.dart';
@@ -398,6 +404,8 @@ class AppShell {
     required this.memberPresenceCubit,
     required this.agentAttentionCubit,
     required this.agentStatusSeatLookup,
+    required this.agentRuntime,
+    required this.promptDeliveryStatusCubit,
     required this.mailboxCubit,
     required this.boardCubit,
     required this.aiHistoryCubit,
@@ -493,6 +501,8 @@ class AppShell {
   final MemberPresenceCubit memberPresenceCubit;
   final AgentAttentionCubit agentAttentionCubit;
   final AgentStatusSeatLookup agentStatusSeatLookup;
+  final AgentRuntime agentRuntime;
+  final PromptDeliveryStatusCubit promptDeliveryStatusCubit;
   final MailboxCubit mailboxCubit;
   final BoardCubit boardCubit;
   final AiHistoryCubit aiHistoryCubit;
@@ -1567,19 +1577,35 @@ Future<AppShell> buildAppShell({
 
   final agentAttentionCubit = AgentAttentionCubit();
   final agentStatusSeatLookup = AgentStatusSeatLookup();
-  // Shared prompt-submit ACK registry: AgentStatusHttpHandler completes
-  // pendings, TabMemberPtyDelivery consumes them to cancel crStuck retries.
-  final promptSubmitAckTracker = PromptSubmitAckTracker();
-  teammateBusMcpGateway.attachAgentStatusHandler(
-    AgentStatusHttpHandler(
-      attention: agentAttentionCubit,
-      resolveCli: agentStatusSeatLookup.resolveCli,
-      resolveSkipPermissions: agentStatusSeatLookup.resolveSkipPermissions,
-      askUserHookGate: askUserQuestionHookGate,
-      exitPlanModeHookGate: exitPlanModeHookGate,
-      promptAckTracker: promptSubmitAckTracker,
-    ),
+  final agentRuntimeStream = SeatEventStream();
+  final askUserQuestionProjection = AskUserQuestionRuntimeEventProjection(
+    hookGate: askUserQuestionHookGate,
   );
+  final exitPlanModeProjection = ExitPlanModeRuntimeEventProjection(
+    hookGate: exitPlanModeHookGate,
+  );
+  final runtimeProjections = [
+    RuntimeEventProjection.attention(
+      attention: agentAttentionCubit,
+      resolveSkipPermissions: agentStatusSeatLookup.resolveSkipPermissions,
+    ),
+    askUserQuestionProjection,
+    exitPlanModeProjection,
+  ];
+  final agentEventGateway = AgentEventGateway(
+    journal: FileRuntimeEventJournal(
+      journalRoot: AppStorage.fs.pathContext.join(
+        AppStorage.paths.basePath,
+        'runtime-events',
+      ),
+      fs: AppStorage.fs,
+    ),
+    stream: agentRuntimeStream,
+    resolveCli: agentStatusSeatLookup.resolveCli,
+    projections: runtimeProjections,
+    responders: [askUserQuestionProjection, exitPlanModeProjection],
+  );
+  teammateBusMcpGateway.attachAgentEventGateway(agentEventGateway);
 
   final catalogRuntime = CatalogRuntime.assemble(
     sessions: sessionRepo,
@@ -1623,14 +1649,19 @@ Future<AppShell> buildAppShell({
     unawaited(WorkspaceProjectConfigCubit.reloadLive(event.workspaceId));
   });
 
+  // App-scoped durable prompt-delivery composition (Task 7): the coordinator
+  // is created after ChatCubit because its fenced terminal adapter needs the
+  // tab store; the lazy getter below is resolved when the session runtime is
+  // first touched, which only happens after bootstrap completes.
+  PromptDeliveryCoordinator? appScopedPromptDeliveries;
   chatCubit = ChatCubit(
+    promptDeliveries: () => appScopedPromptDeliveries,
     teammateBusMcpGateway: teammateBusMcpGateway,
     agentStatusSeatLookup: agentStatusSeatLookup,
     agentAttentionCubit: agentAttentionCubit,
     askUserAnswerPendingStore: askUserAnswerPendingStore,
     askUserQuestionAnswerService: askUserQuestionAnswerService,
     exitPlanApprovalService: exitPlanModeApprovalService,
-    promptAckTracker: promptSubmitAckTracker,
     sessionRepository: sessionRepo,
     lifecycleService: sessionLifecycleService,
     automationRepository: automationRepo,
@@ -1684,6 +1715,38 @@ Future<AppShell> buildAppShell({
     termuxDisconnectedWorkOpsMessageResolver:
         TermuxWorkOpsMessage.disconnectedBlocked,
     termuxGateHomeResolver: defaultTargetResolver,
+  );
+  final promptDeliveryStore = FilePromptDeliveryStore(
+    root: AppStorage.fs.pathContext.join(
+      AppStorage.paths.basePath,
+      'prompt-deliveries',
+    ),
+    fs: AppStorage.fs,
+  );
+  appScopedPromptDeliveries = PromptDeliveryCoordinator(
+    store: promptDeliveryStore,
+    commands: TabPromptDeliveryCommands(chatCubit.tabStore),
+  );
+  // One app-scoped runtime join: journaled hooks drive delivery correlation
+  // under per-seat serialization; restoreSession replays both durable stores
+  // before a session's input is enabled (see SessionLifecycleService).
+  final agentRuntime = AgentRuntime(
+    gateway: agentEventGateway,
+    projections: runtimeProjections,
+    promptDeliveries: appScopedPromptDeliveries,
+  );
+  sessionLifecycleService.attachAgentRuntime(agentRuntime);
+  final promptDeliveryStatusCubit = PromptDeliveryStatusCubit(
+    runtime: agentRuntime,
+    resubmit: (sessionId, memberId, text) async {
+      final id = await chatCubit.sessionRuntime.deliverUserCommandToMember(
+        sessionId,
+        memberId,
+        text,
+        directToPty: true,
+      );
+      return id != null;
+    },
   );
 
   // Bound after [WorkbenchCubit] exists; togglePanel aliases new-terminal UX
@@ -2257,6 +2320,8 @@ Future<AppShell> buildAppShell({
     memberPresenceCubit: memberPresenceCubit,
     agentAttentionCubit: agentAttentionCubit,
     agentStatusSeatLookup: agentStatusSeatLookup,
+    agentRuntime: agentRuntime,
+    promptDeliveryStatusCubit: promptDeliveryStatusCubit,
     mailboxCubit: mailboxCubit,
     boardCubit: boardCubit,
     aiHistoryCubit: aiHistoryCubit,

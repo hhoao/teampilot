@@ -22,6 +22,7 @@ import '../registry/capabilities/member_config_inspection_capability.dart';
 import '../registry/capabilities/skill_capability.dart';
 import '../registry/capabilities/native_command_capability.dart';
 import '../registry/capabilities/chat_interaction_capability.dart';
+import '../registry/capabilities/runtime_event_capability.dart';
 import '../registry/capabilities/cli_executable_capability.dart';
 import '../registry/capabilities/hook_capability.dart';
 import 'capabilities/mcp.dart';
@@ -50,6 +51,7 @@ final class OpencodeCliTool implements CliToolDefinition {
     this.headless = const OpencodeHeadlessCapability(),
     this.mcp = const OpencodeMcpCapability(),
     this.chatInteraction = const OpencodeChatInteraction(),
+    this.runtimeEvents = const OpencodeChatInteraction(),
     this.aiHistory = const OpencodeAiHistoryCapability(),
     this.skill = const OpencodeSkillCapability(),
     this.nativeCommands = const OpencodeNativeCommands(),
@@ -75,6 +77,7 @@ final class OpencodeCliTool implements CliToolDefinition {
   final OpencodeUserExtraArgsLaunch userExtraArgs;
   final HookCapability hookWriter;
   final ChatInteractionCapability chatInteraction;
+  final RuntimeEventCapability runtimeEvents;
   final OpencodeAiHistoryCapability aiHistory;
   final SkillCapability skill;
   final NativeCommandCapability nativeCommands;
@@ -103,6 +106,7 @@ final class OpencodeCliTool implements CliToolDefinition {
     headless,
     mcp,
     chatInteraction,
+    runtimeEvents,
     aiHistory,
     skill,
     nativeCommands,

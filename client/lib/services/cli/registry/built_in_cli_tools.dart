@@ -13,6 +13,7 @@ import 'capabilities/cli_session_capability.dart';
 import 'capabilities/team_behavior_capability.dart';
 import 'capabilities/cli_executable_capability.dart';
 import 'capabilities/chat_interaction_capability.dart';
+import 'capabilities/runtime_event_capability.dart';
 import 'capabilities/terminal_behavior_capability.dart';
 import 'capabilities/plugin_capability.dart';
 import 'cli_bootstrap.dart';
@@ -67,9 +68,7 @@ void registerBuiltInCliTools(
     ),
   );
 
-  registry.register(
-    FlashskyaiCliTool(),
-  );
+  registry.register(FlashskyaiCliTool());
 
   assert(
     CliTool.values.every((cli) => registry.tryGet(cli) != null),
@@ -98,6 +97,7 @@ void registerBuiltInCliTools(
   _verifyRequired<TerminalBehaviorCapability>(registry);
   _verifyRequired<PluginCapability>(registry);
   _verifyRequired<ChatInteractionCapability>(registry);
+  _verifyRequired<RuntimeEventCapability>(registry);
   _verifyNativeTeamRegistration(registry);
   _verifyMemberAgentPresetRegistration(registry);
 }
@@ -112,8 +112,9 @@ void _verifyRequired<T extends CliCapability>(CliToolRegistry registry) {
 void _verifyMemberAgentPresetRegistration(CliToolRegistry registry) {
   const allowed = {CliTool.claude, CliTool.flashskyai};
   final presetIds = {
-    for (final def
-        in registry.all.where((d) => registry.memberAgentPresetStyle(d.id) != null))
+    for (final def in registry.all.where(
+      (d) => registry.memberAgentPresetStyle(d.id) != null,
+    ))
       def.id,
   };
   if (presetIds.length != allowed.length ||

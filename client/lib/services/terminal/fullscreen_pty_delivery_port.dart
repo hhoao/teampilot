@@ -28,11 +28,11 @@ abstract interface class FullscreenPtyDeliveryPort {
   /// Whether [needle] is still the body of a composer-prefixed input row.
   bool isNeedleStagedInComposer(String needle, {int scanRows = 24});
 
-  Future<void> clearStagedInput();
+  Future<void> clearStagedInput({bool Function()? canExecute});
 
-  Future<void> pasteText(String text);
+  Future<void> pasteText(String text, {bool Function()? canExecute});
 
-  Future<void> submitCr();
+  Future<void> submitCr({bool Function()? canExecute});
 
   /// Bottom [scanRows] of the mirror grid for ACK-miss diagnostics.
   String describeProbeWindow({int scanRows = 24});

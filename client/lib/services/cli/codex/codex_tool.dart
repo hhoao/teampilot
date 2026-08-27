@@ -22,6 +22,7 @@ import '../registry/capabilities/member_config_inspection_capability.dart';
 import '../registry/capabilities/skill_capability.dart';
 import '../registry/capabilities/native_command_capability.dart';
 import '../registry/capabilities/chat_interaction_capability.dart';
+import '../registry/capabilities/runtime_event_capability.dart';
 import '../registry/capabilities/cli_executable_capability.dart';
 import 'capabilities/mcp.dart';
 import 'capabilities/plugin.dart';
@@ -49,6 +50,7 @@ final class CodexCliTool implements CliToolDefinition {
     this.headless = const CodexHeadlessCapability(),
     this.mcp = const CodexMcpCapability(),
     this.chatInteraction = const CodexChatInteraction(),
+    this.runtimeEvents = const CodexChatInteraction(),
     this.aiHistory = const CodexAiHistoryCapability(),
     this.skill = const CodexSkillCapability(),
     this.nativeCommands = const CodexNativeCommands(),
@@ -74,6 +76,7 @@ final class CodexCliTool implements CliToolDefinition {
   final CodexPermissionLaunch permissionLaunch;
   final UserExtraArgsProvider userExtraArgs;
   final ChatInteractionCapability chatInteraction;
+  final RuntimeEventCapability runtimeEvents;
   final CodexAiHistoryCapability aiHistory;
   final SkillCapability skill;
   final NativeCommandCapability nativeCommands;
@@ -103,6 +106,7 @@ final class CodexCliTool implements CliToolDefinition {
     headless,
     mcp,
     chatInteraction,
+    runtimeEvents,
     aiHistory,
     skill,
     nativeCommands,

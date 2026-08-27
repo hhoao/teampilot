@@ -16,7 +16,6 @@ import '../services/team/member_presence_service.dart';
 import '../models/workspace_icon_picker_result.dart';
 import '../models/workspace_icon_ref.dart';
 import '../models/team_config.dart';
-import '../models/launch_security_policy.dart';
 import '../models/runtime_target.dart';
 import '../repositories/launch_profile_repository.dart';
 import '../repositories/automation_repository.dart';
@@ -36,6 +35,7 @@ import '../services/agent_status/agent_attention_state.dart';
 import '../services/agent_status/agent_status_event.dart';
 import '../services/agent_status/agent_status_seat_lookup.dart';
 import '../services/agent_status/ask_user_answer_pending_store.dart';
+import '../services/prompt_delivery/prompt_delivery_coordinator.dart';
 import 'agent_attention_cubit.dart';
 import '../services/launch/launch_factory.dart';
 import '../services/launch/session_connect_orchestrator.dart';
@@ -48,7 +48,6 @@ import '../services/terminal/terminal_session.dart';
 import '../services/terminal/ask_user_question_answer_service.dart';
 import '../services/terminal/exit_plan_mode_approval_service.dart';
 import '../services/terminal/member_turn_interrupt_service.dart';
-import '../services/terminal/prompt_submit_ack_tracker.dart';
 import '../services/terminal/session_member_cli_resolver.dart';
 import '../services/termux/termux_connection_gate.dart';
 import '../services/terminal/terminal_theme_for_launch.dart';
@@ -122,7 +121,6 @@ class ChatCubit extends Cubit<ChatState>
     AskUserAnswerPendingStore? askUserAnswerPendingStore,
     AskUserQuestionAnswerService? askUserQuestionAnswerService,
     ExitPlanModeApprovalService? exitPlanApprovalService,
-    PromptSubmitAckTracker? promptAckTracker,
     InMemoryFollowUpQueueStore? followUpQueueStore,
     FollowUpQueueDrainer? followUpQueueDrainer,
     Future<TeamProfile?> Function(String teamId)? teamById,
@@ -133,7 +131,9 @@ class ChatCubit extends Cubit<ChatState>
     bool Function()? termuxConnectedResolver,
     String Function()? termuxDisconnectedWorkOpsMessageResolver,
     RuntimeTarget Function()? termuxGateHomeResolver,
+    PromptDeliveryCoordinator? Function()? promptDeliveries,
   }) : _remoteBusResolver = remoteBusResolver,
+       _promptDeliveries = promptDeliveries,
        _remoteCliReadiness = remoteCliReadiness,
        _sessionConnect = sessionConnect,
        _installJobRegistry = installJobRegistry,
@@ -143,7 +143,6 @@ class ChatCubit extends Cubit<ChatState>
        _agentStatusSeatLookup = agentStatusSeatLookup,
        _agentAttentionCubit = agentAttentionCubit,
        _askUserAnswerPendingStore = askUserAnswerPendingStore,
-       _promptAckTracker = promptAckTracker,
        _automationRepository = automationRepository,
        _layoutCubit = layoutCubit,
        _shellFactory = ChatSessionShellFactory(
@@ -224,11 +223,11 @@ class ChatCubit extends Cubit<ChatState>
   final bool Function()? _termuxConnectedResolver;
   final String Function()? _termuxDisconnectedWorkOpsMessageResolver;
   final RuntimeTarget Function()? _termuxGateHomeResolver;
+  final PromptDeliveryCoordinator? Function()? _promptDeliveries;
   final TeammateBusMcpGateway _teammateBusMcpGateway;
   final AgentStatusSeatLookup? _agentStatusSeatLookup;
   final AgentAttentionCubit? _agentAttentionCubit;
   final AskUserAnswerPendingStore? _askUserAnswerPendingStore;
-  final PromptSubmitAckTracker? _promptAckTracker;
   StreamSubscription<AgentAttentionState>? _agentAttentionSub;
   final AutomationRepository _automationRepository;
   final LayoutCubit? _layoutCubit;
@@ -307,7 +306,6 @@ class ChatCubit extends Cubit<ChatState>
         activeTeam: () => _activeTeam,
         isClosed: () => isClosed,
         globalPresets: () => _lifecycle.globalPresets,
-        promptAckTracker: _promptAckTracker,
         activeSessionId: () => activeTab?.info.id,
         presence: () => _presenceCubit?.state.presence ?? const {},
         sessionBusyFromAttention: (sessionId) {
@@ -338,6 +336,7 @@ class ChatCubit extends Cubit<ChatState>
           }
           return false;
         },
+        promptDeliveries: _promptDeliveries?.call(),
       );
   late final MemberTurnInterruptService _turnInterrupt =
       MemberTurnInterruptService(

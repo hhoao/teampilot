@@ -1,6 +1,5 @@
 import '../../../models/hook_entry.dart';
 import '../../../models/hook_event.dart';
-import '../../agent_status/member_agent_status_endpoint.dart';
 import '../../cli/registry/config_profile/hook_seat_context_completer.dart';
 import '../../team_bus/member_bus_idle_endpoint.dart';
 import '../contribution/resource_origin.dart';
@@ -43,21 +42,6 @@ class EndpointHookContributionProvider implements HookContributionProvider {
     }
     return entry.action is! HttpHookAction || context.supportsHttp;
   }
-}
-
-/// Agent-status endpoint provider; hook construction stays in the completer.
-final class AgentStatusHookContributionProvider
-    extends EndpointHookContributionProvider {
-  AgentStatusHookContributionProvider({
-    required MemberAgentStatusEndpoint endpoint,
-    required String memberId,
-  }) : super(
-         providerId: 'agent-status',
-         entries: const HookSeatContextCompleter().agentStatusHooks(
-           endpoint: endpoint,
-           memberId: memberId,
-         ),
-       );
 }
 
 /// TeamBus idle endpoint provider; hook construction stays in the completer.

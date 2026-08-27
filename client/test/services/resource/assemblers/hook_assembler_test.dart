@@ -8,6 +8,7 @@ import 'package:teampilot/services/resource/contribution/resource_origin.dart';
 import 'package:teampilot/services/resource/providers/hook_contribution_provider.dart';
 import 'package:teampilot/services/agent_status/member_agent_status_endpoint.dart';
 import 'package:teampilot/services/resource/providers/endpoint_hook_contribution_provider.dart';
+import 'package:teampilot/services/resource/providers/runtime_event_hook_contribution_provider.dart';
 import 'package:teampilot/services/resource/providers/bus_awareness_hook_contribution_provider.dart';
 import 'package:teampilot/services/team_bus/member_bus_idle_endpoint.dart';
 
@@ -323,7 +324,9 @@ void main() {
       context: HookProviderContext(cli: CliTool.claude, member: member),
       providers: [BusAwarenessHookContributionProvider()],
     );
-    expect(result.entries.map((entry) => entry.event), [HookEvent.sessionStart]);
+    expect(result.entries.map((entry) => entry.event), [
+      HookEvent.sessionStart,
+    ]);
     expect(result.entries.single.id, 'teampilot-bus-awareness-sessionStart');
   });
 
@@ -364,7 +367,7 @@ void main() {
           supportsHttp: false,
         ),
         providers: [
-          AgentStatusHookContributionProvider(
+          RuntimeEventHookContributionProvider(
             endpoint: const MemberAgentStatusEndpoint(
               url: 'http://127.0.0.1:1/agent-status',
             ),
@@ -379,7 +382,14 @@ void main() {
         ],
       );
 
-      expect(result.entries, isEmpty);
+      // HTTP endpoint hooks are dropped for CLIs whose native config cannot
+      // express them, while OpenCode's runtime plugin materialization stays:
+      // it is contributed through this same profile assembly step
+      // (NativePluginHookAction), not as an HTTP hook.
+      expect(result.entries.map((entry) => entry.id), [
+        'teampilot-runtime-event-plugin',
+      ]);
+      expect(result.entries.single.action, isA<NativePluginHookAction>());
       expect(result.assembly.errors, isEmpty);
     },
   );

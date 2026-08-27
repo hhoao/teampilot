@@ -103,7 +103,7 @@ void main() {
     test(
       'landing due ticks are not skipped by empty-inbox guard after dequeue',
       () {
-        // PtyAutomationRetryQueue.due() removes the entry before onTick.
+        // The caller has already dequeued this retry before evaluating it.
         // Landing injects have no doorbell — TabMemberPtyDelivery must keep
         // them alive via dueRetryText (non-doorbell → never skip).
         final bus = TeamBus(launcher: FakeMemberLauncher());

@@ -26,6 +26,7 @@ import '../storage/work_target_canonicalizer.dart';
 import '../cli/registry/capabilities/ai_history_capability.dart';
 import '../cli/registry/capabilities/resume/pinned_transcript_probe.dart';
 import '../cli/preset_resolver.dart';
+import '../agent_runtime/agent_runtime.dart';
 import '../cli/registry/launch/cli_launch_context.dart';
 import '../cli/registry/cli_tool_registry.dart';
 import '../cli/flashskyai/capabilities/provider.dart';
@@ -114,6 +115,35 @@ class SessionLifecycleService {
 
   /// Current app home target (local, SSH, or WSL).
   RuntimeTarget get currentHome => _homeTarget();
+
+  /// Late-bound app-scoped runtime composition. When attached, every launch
+  /// preparation first replays the session's durable journal + delivery
+  /// records so an unconfirmed submitted delivery becomes `submittedUnknown`
+  /// before the session's input can be enabled.
+  AgentRuntime? _agentRuntime;
+
+  void attachAgentRuntime(AgentRuntime runtime) {
+    _agentRuntime = runtime;
+  }
+
+  Future<void> _restoreAgentRuntimeFor(String sessionId) async {
+    final runtime = _agentRuntime;
+    final trimmed = sessionId.trim();
+    if (runtime == null || trimmed.isEmpty) return;
+    try {
+      await runtime.restoreSession(trimmed);
+    } on Object catch (error, stackTrace) {
+      // Recovery must never block a launch, but it is loud in diagnostics:
+      // a missed restore leaves a submitIssued record unresolved-safe only
+      // through the next successful restore.
+      appLogger.e(
+        '[session-lifecycle] agent-runtime restore failed '
+        'session=$trimmed: $error',
+        error: error,
+        stackTrace: stackTrace,
+      );
+    }
+  }
 
   /// Late-bind after bootstrap constructs [SessionRuntimePlanBuilder].
   void attachRuntimePlanBuilder(SessionRuntimePlanBuilder builder) {
@@ -497,6 +527,8 @@ class SessionLifecycleService {
       isSimple ? null : (memberBinding?.rosterMemberId ?? launchMember.id),
       folders: workspace.folders,
     );
+    // Open/replay the durable runtime state before any input is enabled.
+    await _restoreAgentRuntimeFor(sessionId);
 
     appLogger.d(
       '[session-lifecycle] prepareLaunchFromRuntimePlan start '
@@ -670,6 +702,8 @@ class SessionLifecycleService {
       isSimple ? null : (memberBinding?.rosterMemberId ?? launchMember.id),
       folders: workspace.folders,
     );
+    // Open/replay the durable runtime state before any input is enabled.
+    await _restoreAgentRuntimeFor(sessionId);
 
     final roots = await _resolveRoots(
       session: session,
@@ -973,6 +1007,8 @@ class SessionLifecycleService {
     final taskId = memberBinding?.taskId.trim() ?? sessionId;
     final launchMember = _resolveTeamMemberForLaunch(team, member) ?? member;
 
+    // Open/replay the durable runtime state before any input is enabled.
+    await _restoreAgentRuntimeFor(sessionId);
     appLogger.d(
       '[session-lifecycle] prepareTeamLaunchFromEnvironment start '
       'session=$sessionId team=$teamId member=${member.id}',

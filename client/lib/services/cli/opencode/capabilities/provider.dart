@@ -41,7 +41,7 @@ import '../provider/opencode_shared_plugin_deps.dart';
 import '../provider_presets.dart';
 import '../../../resource/providers/hook_library_contribution_provider.dart';
 import '../../../resource/providers/hook_contribution_provider.dart';
-import 'agent_status_plugin.dart';
+import '../../../resource/providers/runtime_event_hook_contribution_provider.dart';
 import 'awareness_plugin.dart';
 import 'idle_plugin.dart';
 import 'opencode_hook_writer.dart';
@@ -277,6 +277,7 @@ final class OpencodeProviderCapability extends CatalogModelCapability
     required Iterable<HookEntry> entries,
     TeamMemberConfig? member,
     HookContributionProvider? hookLibraryProvider,
+    RuntimeEventHookContributionProvider? runtimeEventProvider,
     Iterable<HookContributionProvider> resourceHookProviders = const [],
   }) async {
     final result = await const HookSeatContextCompleter().assemble(
@@ -284,6 +285,7 @@ final class OpencodeProviderCapability extends CatalogModelCapability
       supportsHttp: false,
       member: member,
       providers: [
+        if (runtimeEventProvider != null) runtimeEventProvider,
         ...resourceHookProviders,
         if (resourceHookProviders.isEmpty)
           hookLibraryProvider ?? UserHookContributionProvider(entries: entries),
@@ -458,30 +460,32 @@ final class OpencodeProviderCapability extends CatalogModelCapability
       }
     }
 
-    // Agent-status plugin: simple + team whenever stamped — not mixed-gated.
+    // Runtime events are represented as HookEntry values and rendered through
+    // the same assembler and HookCapability writer as user/resource hooks.
     final agentStatus = ctx.agentStatus;
-    if (agentStatus != null && member != null && member.isValid) {
-      await _writeAgentStatusPlugin(paths: paths, opencodeDir: opencodeDir);
-      config = mergeOpencodeAgentStatusPlugin(
-        config,
-        member.id,
-        agentStatus.url,
-        token: agentStatus.token,
-        sessionId: agentStatus.sessionId,
-      );
-      changed = true;
-    }
+    final runtimeEventProvider =
+        agentStatus != null && member != null && member.isValid
+        ? RuntimeEventHookContributionProvider(
+            endpoint: agentStatus,
+            memberId: member.id,
+          )
+        : null;
 
-    if (!ctx.hooksAlreadyMaterialized) {
+    if (!ctx.hooksAlreadyMaterialized || runtimeEventProvider != null) {
       // User hooks bridge: generated JS plugin (event hook + tool-keyed hooks),
       // plus glue scripts under `<opencodeDir>/hooks/` (paths referenced by the
       // plugin's execFile commands). Plugin entry merges into the `plugin`
       // array, coexisting with agent-status / idle entries (dedup by path).
       final assembledHookEntries = await assembleHookEntries(
-        entries: ctx.hooks,
+        entries: ctx.hooksAlreadyMaterialized ? const [] : ctx.hooks,
         member: member,
-        hookLibraryProvider: ctx.hookLibraryProvider,
-        resourceHookProviders: ctx.resourceProviders.hooks,
+        hookLibraryProvider: ctx.hooksAlreadyMaterialized
+            ? null
+            : ctx.hookLibraryProvider,
+        runtimeEventProvider: runtimeEventProvider,
+        resourceHookProviders: ctx.hooksAlreadyMaterialized
+            ? const []
+            : ctx.resourceProviders.hooks,
       );
       if (assembledHookEntries.isNotEmpty) {
         final writer = const OpencodeHookWriter();
@@ -505,6 +509,7 @@ final class OpencodeProviderCapability extends CatalogModelCapability
                 hooksDir: hooksDir,
                 runner: paths.hostEnvironmentForProvision().scriptRunner,
                 glueBuilder: const GlueScriptBuilder(),
+                generatedScriptDirectory: opencodeDir,
               ),
             );
         final fragment =
@@ -512,9 +517,7 @@ final class OpencodeProviderCapability extends CatalogModelCapability
         if (fragment != null) {
           config = mergeOpencodePluginEntries(
             config,
-            ((fragment['plugin'] as List?) ?? const []).map(
-              (e) => e is String ? e : e.toString(),
-            ),
+            ((fragment['plugin'] as List?) ?? const []),
           );
           changed = true;
         }
@@ -550,7 +553,9 @@ final class OpencodeProviderCapability extends CatalogModelCapability
       final authContent = _authContentForLaunch(launchProvider);
       if (authContent != null) {
         environment[authContentEnv] = authContent;
-      } else if (OpencodeCredentialKindResolver.needsCredential(launchProvider)) {
+      } else if (OpencodeCredentialKindResolver.needsCredential(
+        launchProvider,
+      )) {
         warnings.add('opencode_credentials_missing');
       }
     }
@@ -595,21 +600,6 @@ final class OpencodeProviderCapability extends CatalogModelCapability
       return;
     }
     await paths.fs.atomicWrite(pluginPath, opencodeAwarenessPluginSource);
-  }
-
-  Future<void> _writeAgentStatusPlugin({
-    required ConfigProfileDelegate paths,
-    required String opencodeDir,
-  }) async {
-    final pluginPath = paths.joinWork(
-      opencodeDir,
-      opencodeAgentStatusPluginFileName,
-    );
-    final existing = await paths.fs.readString(pluginPath);
-    if (existing == opencodeAgentStatusPluginSource) {
-      return;
-    }
-    await paths.fs.atomicWrite(pluginPath, opencodeAgentStatusPluginSource);
   }
 
   static String _resolveOpencodeEffort({
@@ -681,62 +671,61 @@ Map<String, Object?> mergeOpencodeIdlePlugin(
   return {...config, 'plugin': plugins};
 }
 
-/// Merges opencode.json `plugin` entry for `/agent-status` reporting.
+/// Merges materialized OpenCode plugin entries into the `plugin` array.
 ///
-/// Install whenever [url] is stamped (simple + team) — not gated on mixed.
-/// Every connect stamps a fresh gateway port, so a prior entry for the same
-/// member (dead URL) is replaced instead of accumulating.
-@visibleForTesting
-Map<String, Object?> mergeOpencodeAgentStatusPlugin(
-  Map<String, Object?> config,
-  String memberId,
-  String url, {
-  String? token,
-  String? sessionId,
-}) {
-  final pluginPath = './$opencodeAgentStatusPluginFileName';
-  final options = <String, Object?>{'member': memberId, 'url': url};
-  if (sessionId != null && sessionId.isNotEmpty) {
-    options['session'] = sessionId;
-  }
-  if (token != null && token.isNotEmpty) {
-    options['token'] = token;
-  }
-  final entry = <Object?>[pluginPath, options];
-  final plugins = List<Object?>.from((config['plugin'] as List?) ?? const [])
-    ..removeWhere(
-      (e) =>
-          e is List &&
-          e.isNotEmpty &&
-          e[0] == pluginPath &&
-          e.length > 1 &&
-          e[1] is Map &&
-          (e[1] as Map)['member'] == memberId,
-    );
-  plugins.add(entry);
-  return {...config, 'plugin': plugins};
-}
-
-/// Merges materialized opencode plugin entry paths (`./plugins/<name>/<rel>`)
-/// into the `plugin` array. String entries are appended when absent; tuple
-/// entries (`[path, options]`, e.g. the idle/agent-status plugins) are
-/// preserved and matched by their leading path.
+/// String paths are appended once. Tuple entries (`[path, options]`) replace
+/// the existing tuple for the same path and member, so a reconnect updates its
+/// endpoint without accumulating stale seat-scoped runtime plugins.
 Map<String, Object?> mergeOpencodePluginEntries(
   Map<String, Object?> config,
-  Iterable<String> entryPaths,
+  Iterable<Object?> entries,
 ) {
-  if (entryPaths.isEmpty) return config;
+  if (entries.isEmpty) return config;
   final plugins = List<Object?>.from((config['plugin'] as List?) ?? const []);
-  final present = <Object?>{
-    for (final e in plugins)
-      if (e is String) e else if (e is List && e.isNotEmpty) e.first,
-  };
   var changed = false;
-  for (final path in entryPaths) {
-    if (present.contains(path)) continue;
-    plugins.add(path);
-    present.add(path);
-    changed = true;
+  for (final entry in entries) {
+    final String? path;
+    if (entry is String) {
+      path = entry;
+    } else if (entry is List && entry.isNotEmpty) {
+      path = entry.first?.toString();
+    } else {
+      path = null;
+    }
+    if (path == null || path.isEmpty) continue;
+    final memberId = entry is List && entry.length > 1 && entry[1] is Map
+        ? (entry[1] as Map)['member']
+        : null;
+    final matchingIndexes = <int>[
+      for (var index = 0; index < plugins.length; index++)
+        if (switch (plugins[index]) {
+          String existing => existing == path,
+          List existing when existing.isNotEmpty =>
+            existing.first == path &&
+                (memberId == null ||
+                    (existing.length > 1 &&
+                        existing[1] is Map &&
+                        (existing[1] as Map)['member'] == memberId)),
+          _ => false,
+        })
+          index,
+    ];
+    if (matchingIndexes.isEmpty) {
+      plugins.add(entry);
+      changed = true;
+      continue;
+    }
+    if (entry is List && memberId != null) {
+      final existingIndex = matchingIndexes.first;
+      if (plugins[existingIndex] != entry) {
+        plugins[existingIndex] = entry;
+        changed = true;
+      }
+      for (final index in matchingIndexes.skip(1).toList().reversed) {
+        plugins.removeAt(index);
+        changed = true;
+      }
+    }
   }
   if (!changed) return config;
   return {...config, 'plugin': plugins};

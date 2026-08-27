@@ -71,6 +71,46 @@ final class HttpHookAction extends HookAction {
   );
 }
 
+/// A target-native plugin artifact rendered by a [HookCapability].
+///
+/// Some CLIs expose runtime events only through their plugin API rather than
+/// a command or HTTP hook setting. Keeping that artifact as a [HookAction]
+/// preserves the shared provider → assembler → writer control plane.
+@immutable
+final class NativePluginHookAction extends HookAction {
+  NativePluginHookAction({
+    required this.fileName,
+    required this.source,
+    required this.pluginPath,
+    Map<String, Object?> pluginOptions = const {},
+  }) : pluginOptions = Map.unmodifiable(
+         Map<String, Object?>.from(pluginOptions),
+       );
+
+  final String fileName;
+  final String source;
+  final String pluginPath;
+  final Map<String, Object?> pluginOptions;
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is NativePluginHookAction &&
+          fileName == other.fileName &&
+          source == other.source &&
+          pluginPath == other.pluginPath &&
+          mapEquals(pluginOptions, other.pluginOptions);
+
+  @override
+  int get hashCode => Object.hash(
+    fileName,
+    source,
+    pluginPath,
+    Object.hashAllUnordered(pluginOptions.keys),
+    Object.hashAllUnordered(pluginOptions.values),
+  );
+}
+
 /// 统一 hook 表示：所有来源（用户库/插件/扩展/托管）的中间形态，
 /// 各 CLI HookWriter 的唯一输入。
 @immutable

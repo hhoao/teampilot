@@ -36,6 +36,7 @@ import '../catalog/providers/catalog_prompt_provider.dart';
 import '../catalog/providers/managed_catalog_skill_provider.dart';
 import '../resource/providers/catalog_skill_contribution_provider.dart';
 import '../resource/providers/plugin_skill_contribution_provider.dart';
+import '../resource/providers/runtime_event_hook_contribution_provider.dart';
 import '../resource/providers/endpoint_hook_contribution_provider.dart';
 import '../resource/providers/bus_awareness_hook_contribution_provider.dart';
 import '../resource/providers/extension_hook_contribution_provider.dart';
@@ -363,7 +364,7 @@ class ConfigProfileService implements ConfigProfileDelegate {
       }
       if (agentStatus != null) {
         managed.add(
-          AgentStatusHookContributionProvider(
+          RuntimeEventHookContributionProvider(
             endpoint: agentStatus,
             memberId: member.id,
           ),

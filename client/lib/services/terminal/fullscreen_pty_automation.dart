@@ -1,9 +1,8 @@
 import 'fullscreen_cr_ack_config.dart';
 import 'fullscreen_input_screen_probe.dart';
 import 'fullscreen_pty_delivery_port.dart';
-import 'fullscreen_reinject_guard.dart';
 import 'pty_automation_needle.dart';
-import 'pty_inject_ack_retry.dart';
+import 'pty_inject_ack_retry.dart' show PtyInjectAckTiming;
 import '../../utils/logging/logger.dart';
 
 /// Outcome of a full-screen paste+CR or CR-only automation pass.
@@ -101,7 +100,7 @@ class FullscreenPtyAutomation {
     return _locatePasteAck(port, needle) != null;
   }
 
-  /// Clear → paste → locate needle → CR until anchor clears.
+  /// Clear → paste → locate needle → one fenced CR.
   ///
   /// Always pastes on first deliver — never treat a pre-existing needle as
   /// staged input. After `--resume`, the same user text often still sits in
@@ -118,130 +117,58 @@ class FullscreenPtyAutomation {
     required Duration pasteSettle,
     bool Function()? isAcked,
   }) async {
+    if (port.isAborted) return FullscreenPtyDeliveryOutcome.aborted;
+    if (isAcked?.call() ?? false) {
+      return FullscreenPtyDeliveryOutcome.submitted;
+    }
+    bool canExecute() => !(isAcked?.call() ?? false);
     final needle = PtyAutomationNeedle.forText(text);
-    final maxReinject = _timing.reinjectMaxAttempts;
-
-    for (var reinject = 0; reinject <= maxReinject; reinject++) {
-      if (port.isAborted) return FullscreenPtyDeliveryOutcome.aborted;
-      if (isAcked?.call() ?? false) {
-        // Hook already confirmed the submit — never re-paste.
-        return FullscreenPtyDeliveryOutcome.submitted;
-      }
-
-      if (reinject > 0) {
-        await Future<void>.delayed(_timing.afterReinject);
-      }
-
-      await port.syncDisplayGrid();
-      await port.clearStagedInput();
-      await Future<void>.delayed(_timing.afterClear);
-      await port.pasteText(text);
-      final anchor = await _pollForNeedle(
-        port,
-        needle,
-        minSettle: pasteSettle + _timing.afterPaste + _extraSettleForLength(text),
-        pollTimeout: _pastePollBudget(text),
-      );
-
-      if (anchor == null) {
-        if (reinject < maxReinject) continue;
-        _logProbeMiss(port, needle, text, outcome: 'pasteNotFound');
-        return FullscreenPtyDeliveryOutcome.pasteNotFound;
-      }
-
-      await _settleAfterPasteAck(port, pasteSettle);
-
-      final crOutcome = await _pollCrUntilAnchorClears(
-        port,
-        anchor,
-        isAcked: isAcked,
-      );
-      switch (crOutcome) {
-        case FullscreenPtyDeliveryOutcome.submitted:
-          return FullscreenPtyDeliveryOutcome.submitted;
-        case FullscreenPtyDeliveryOutcome.aborted:
-          return FullscreenPtyDeliveryOutcome.aborted;
-        case FullscreenPtyDeliveryOutcome.crStuck:
-          if (await _shouldSkipReinject(port, needle, text)) {
-            return FullscreenPtyDeliveryOutcome.submitted;
-          }
-          if (reinject < maxReinject) continue;
-          return FullscreenPtyDeliveryOutcome.crStuck;
-        case FullscreenPtyDeliveryOutcome.pasteNotFound:
-          return FullscreenPtyDeliveryOutcome.crStuck;
-      }
-    }
-    return FullscreenPtyDeliveryOutcome.crStuck;
-  }
-
-  /// Cursor/Codex: first CR often already committed while grid ACK still fails.
-  /// Empty composer + residual needle ⇒ skip clear→paste (avoids duplicate user turns).
-  Future<bool> _shouldSkipReinject(
-    FullscreenPtyDeliveryPort port,
-    String needle,
-    String text,
-  ) async {
     await port.syncDisplayGrid();
-    final scanRows = _probeScanRows(port);
-    final skip = shouldSkipReinjectAfterCrStuck(
-      strategy: port.crAckConfig.strategy,
-      composerChromeEmpty: port.isComposerChromeEmpty(scanRows: scanRows),
-      needleStillVisible: port.locateNeedle(needle, scanRows: scanRows) != null,
-      needleStagedInComposer: port.isNeedleStagedInComposer(
-        needle,
-        scanRows: scanRows,
-      ),
+    await port.clearStagedInput(canExecute: canExecute);
+    await Future<void>.delayed(_timing.afterClear);
+    await port.pasteText(
+      text,
+      canExecute: canExecute,
     );
-    if (skip) {
-      appLogger.i(
-        '[pty] skip-reinject composerMovesDown empty+needle '
-        'textChars=${text.length}',
-      );
+    final anchor = await _pollForNeedle(
+      port,
+      needle,
+      minSettle: pasteSettle + _timing.afterPaste + _extraSettleForLength(text),
+      pollTimeout: _pastePollBudget(text),
+    );
+    if (anchor == null) {
+      _logProbeMiss(port, needle, text, outcome: 'pasteNotFound');
+      return FullscreenPtyDeliveryOutcome.pasteNotFound;
     }
-    return skip;
+    await _settleAfterPasteAck(port, pasteSettle);
+    return _pollCrUntilAnchorClears(
+      port,
+      anchor,
+      isAcked: isAcked,
+      canExecute: canExecute,
+    );
   }
 
   /// CR-only pass when [text] is already visible on the grid.
   Future<FullscreenPtyDeliveryOutcome> nudgeCrUntilClear({
     required FullscreenPtyDeliveryPort port,
     required String text,
+    bool Function()? isAcked,
   }) async {
     final needle = PtyAutomationNeedle.forText(text);
-    final maxRounds = _timing.nudgeMaxAttempts;
-
-    for (var round = 0; round <= maxRounds; round++) {
-      if (port.isAborted) return FullscreenPtyDeliveryOutcome.aborted;
-
-      await port.syncDisplayGrid();
-      final scanRows = _probeScanRows(port);
-      final anchor = port.locateNeedle(needle, scanRows: scanRows);
-      if (anchor == null) {
-        _logProbeMiss(port, needle, text, outcome: 'nudge-pasteNotFound');
-        return FullscreenPtyDeliveryOutcome.pasteNotFound;
-      }
-
-      final outcome = await _pollCrUntilAnchorClears(
-        port,
-        anchor,
-        maxAttempts: 0,
-      );
-      switch (outcome) {
-        case FullscreenPtyDeliveryOutcome.submitted:
-          return FullscreenPtyDeliveryOutcome.submitted;
-        case FullscreenPtyDeliveryOutcome.aborted:
-          return FullscreenPtyDeliveryOutcome.aborted;
-        case FullscreenPtyDeliveryOutcome.crStuck:
-        case FullscreenPtyDeliveryOutcome.pasteNotFound:
-          if (round < maxRounds) continue;
-          return FullscreenPtyDeliveryOutcome.crStuck;
-      }
+    if (port.isAborted) return FullscreenPtyDeliveryOutcome.aborted;
+    await port.syncDisplayGrid();
+    final scanRows = _probeScanRows(port);
+    final anchor = port.locateNeedle(needle, scanRows: scanRows);
+    if (anchor == null) {
+      _logProbeMiss(port, needle, text, outcome: 'nudge-pasteNotFound');
+      return FullscreenPtyDeliveryOutcome.pasteNotFound;
     }
-    return FullscreenPtyDeliveryOutcome.crStuck;
+    return _pollCrUntilAnchorClears(port, anchor, isAcked: isAcked);
   }
 
-  /// Retry always re-pastes; visible text can be transcript history after
-  /// resume, not staged input. When [isAcked] already confirmed the submit,
-  /// skip the paste entirely — the message is committed.
+  /// A caller-owned retry is CR-only. The terminal layer never re-pastes:
+  /// deciding whether a new staged command is safe belongs to delivery state.
   Future<FullscreenPtyDeliveryOutcome> retry({
     required FullscreenPtyDeliveryPort port,
     required String text,
@@ -251,47 +178,31 @@ class FullscreenPtyAutomation {
     if (isAcked?.call() ?? false) {
       return FullscreenPtyDeliveryOutcome.submitted;
     }
-    return deliverPasteAndSubmit(
-      port: port,
-      text: text,
-      pasteSettle: pasteSettle,
-      isAcked: isAcked,
-    );
+    return nudgeCrUntilClear(port: port, text: text, isAcked: isAcked);
   }
 
   Future<FullscreenPtyDeliveryOutcome> _pollCrUntilAnchorClears(
     FullscreenPtyDeliveryPort port,
     FullscreenPromptAnchor anchor, {
-    int? maxAttempts,
     bool Function()? isAcked,
+    bool Function()? canExecute,
   }) async {
+    final fence = canExecute ?? (() => !(isAcked?.call() ?? false));
     if (port.crAckConfig.strategy == FullscreenCrAckStrategy.timed) {
-      await port.submitCr();
+      await port.submitCr(canExecute: fence);
       await Future<void>.delayed(_timing.afterCr);
       return FullscreenPtyDeliveryOutcome.submitted;
     }
 
-    await port.submitCr();
+    await port.submitCr(canExecute: fence);
+    if (port.isAborted) return FullscreenPtyDeliveryOutcome.aborted;
+    await Future<void>.delayed(_timing.afterCr);
+    if (isAcked?.call() ?? false) return FullscreenPtyDeliveryOutcome.submitted;
     final scanRows = _probeScanRows(port);
-    final outcome = await ptyAckPollRetry(
-      settle: _timing.afterCr,
-      maxAttempts: maxAttempts ?? _timing.crMaxAttempts,
-      aborted: () => port.isAborted,
-      isAcked: (_) async {
-        // Hook-channel ACK is authoritative over the lagging grid probe: once
-        // the CLI confirmed the prompt, stop polling (and let callers skip the
-        // reinject) instead of burning crStuck attempts on a stale mirror.
-        if (isAcked?.call() ?? false) return true;
-        await port.syncDisplayGrid();
-        return port.isSubmittedAfterCr(anchor, scanRows: scanRows);
-      },
-      onRetry: (_) async => port.submitCr(),
-    );
-    return switch (outcome) {
-      PtyAckPollOutcome.acked => FullscreenPtyDeliveryOutcome.submitted,
-      PtyAckPollOutcome.aborted => FullscreenPtyDeliveryOutcome.aborted,
-      PtyAckPollOutcome.exhausted => FullscreenPtyDeliveryOutcome.crStuck,
-    };
+    await port.syncDisplayGrid();
+    return port.isSubmittedAfterCr(anchor, scanRows: scanRows)
+        ? FullscreenPtyDeliveryOutcome.submitted
+        : FullscreenPtyDeliveryOutcome.crStuck;
   }
 
   Future<void> _settleAfterPasteAck(

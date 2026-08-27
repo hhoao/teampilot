@@ -3270,5 +3270,9 @@
   "gitGraphRemoteBranches": "远程分支",
   "gitGraphTags": "标签",
   "gitGraphHashSearchEmptyHint": "已加载的提交中没有匹配该哈希的记录，请继续向下滚动或点击“加载更多”以载入更早的历史。",
-  "gitGraphConflictHint": "请先解决冲突并暂存相关文件，然后提交以继续。"
+  "gitGraphConflictHint": "请先解决冲突并暂存相关文件，然后提交以继续。",
+  "promptDeliveryUnknownTitle": "投递状态未知",
+  "promptDeliveryReviewMessage": "查看消息内容",
+  "promptDeliveryHideMessage": "收起消息",
+  "promptDeliveryResend": "重新发送"
 }

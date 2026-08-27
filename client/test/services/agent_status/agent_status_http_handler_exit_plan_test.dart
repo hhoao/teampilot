@@ -6,7 +6,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/cubits/agent_attention_cubit.dart';
 import 'package:teampilot/models/team_config.dart';
 import 'package:teampilot/services/agent_status/agent_attention_state.dart';
-import 'package:teampilot/services/agent_status/agent_status_http_handler.dart';
+import 'package:teampilot/services/agent_runtime/agent_event_gateway.dart';
 import 'package:teampilot/services/agent_status/exit_plan_mode_hook_gate.dart';
 import 'package:teampilot/services/team_bus/mcp/teammate_bus_mcp_config.dart';
 import 'package:teampilot/services/team_bus/mcp/teammate_bus_mcp_gateway.dart';
@@ -26,8 +26,8 @@ void main() {
     gate = ExitPlanModeHookGate();
     gateway = TeammateBusMcpGateway();
     await gateway.ensureStarted();
-    gateway.attachAgentStatusHandler(
-      AgentStatusHttpHandler(
+    gateway.attachAgentEventGateway(
+      AgentEventGateway.forAttention(
         attention: cubit,
         resolveCli: (_, __) => CliTool.claude,
         resolveSkipPermissions: (_, __) => false,
@@ -173,8 +173,8 @@ void main() {
       final soloGateway = TeammateBusMcpGateway();
       await soloGateway.ensureStarted();
       addTearDown(soloGateway.dispose);
-      soloGateway.attachAgentStatusHandler(
-        AgentStatusHttpHandler(
+      soloGateway.attachAgentEventGateway(
+        AgentEventGateway.forAttention(
           attention: soloCubit,
           resolveCli: (_, __) => CliTool.claude,
           resolveSkipPermissions: (_, __) => false,

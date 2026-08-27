@@ -11,6 +11,7 @@ import 'package:teampilot/services/cli/codex/provider/codex_hook_writer.dart';
 import 'package:teampilot/services/cli/opencode/capabilities/opencode_hook_writer.dart';
 import 'package:teampilot/services/cli/registry/capabilities/hook_capability.dart';
 import 'package:teampilot/services/resource/providers/endpoint_hook_contribution_provider.dart';
+import 'package:teampilot/services/resource/providers/runtime_event_hook_contribution_provider.dart';
 import 'package:teampilot/services/cli/registry/capabilities/mcp_capability.dart';
 import 'package:teampilot/services/cli/registry/capabilities/prompt_capability.dart';
 import 'package:teampilot/services/cli/registry/capabilities/skill_capability.dart';
@@ -356,7 +357,7 @@ void main() {
               cli: CliTool.opencode,
               injected: ResourceProviderSet(
                 hooks: [
-                  AgentStatusHookContributionProvider(
+                  RuntimeEventHookContributionProvider(
                     endpoint: const MemberAgentStatusEndpoint(
                       url: 'http://127.0.0.1:9/agent-status',
                     ),
@@ -368,7 +369,11 @@ void main() {
           );
 
       expect(report.hardDiagnostics, isEmpty);
-      expect(report.hooks, isEmpty);
+      // OpenCode has no native HTTP hooks, but its runtime plugin is still
+      // materialized through this assembly step.
+      expect(report.hooks.map((hook) => hook.id), [
+        'teampilot-runtime-event-plugin',
+      ]);
     },
   );
 
@@ -384,7 +389,7 @@ void main() {
               cli: CliTool.codex,
               injected: ResourceProviderSet(
                 hooks: [
-                  AgentStatusHookContributionProvider(
+                  RuntimeEventHookContributionProvider(
                     endpoint: const MemberAgentStatusEndpoint(
                       url: 'http://127.0.0.1:9/agent-status',
                     ),
@@ -404,7 +409,7 @@ void main() {
       );
       expect(
         toml,
-        contains('teampilot-http-teampilot-agent-status-preToolUse'),
+        contains('teampilot-http-teampilot-runtime-event-preToolUse'),
       );
       expect(
         toml,
