@@ -4,7 +4,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/services/terminal/observation/terminal_observation_bus.dart';
 import 'package:teampilot/services/terminal/observation/terminal_observation_events.dart';
 import 'package:teampilot/services/terminal/observation/terminal_observation_seat.dart';
-import 'package:teampilot/services/terminal/terminal_launch_controller.dart';
+import 'package:teampilot/services/terminal/terminal_launch_phase.dart';
 
 void main() {
   late TerminalObservationSeat seat;
@@ -95,6 +95,17 @@ void main() {
     );
     bus.dispatchOutput(Uint8List(0));
     expect(calls, 0);
+  });
+
+  test('cancelled output observer is not called', () {
+    final seen = <int>[];
+    final subscription = bus.addOutputObserver(
+      _Capture(seen),
+      phases: {TerminalLaunchPhase.running},
+    );
+    subscription.cancel();
+    bus.dispatchOutput(Uint8List.fromList([1]));
+    expect(seen, isEmpty);
   });
 }
 

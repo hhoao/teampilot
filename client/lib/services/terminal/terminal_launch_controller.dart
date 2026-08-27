@@ -13,13 +13,13 @@ import '../agent_status/agent_status_event.dart';
 import '../cli/cursor/capabilities/terminal_behavior.dart';
 import '../cli/cli_executable_validator.dart';
 import '../team/terminal_activity_tracker.dart';
+import 'terminal_launch_phase.dart';
 import 'terminal_startup_failure_detector.dart';
 import 'terminal_theme_mapper.dart';
 import 'terminal_transport.dart';
 import 'terminal_transport_starter.dart';
 
-/// PTY attach → confirm → running. See [onPtyOutput] and [_confirmProcessStarted].
-enum TerminalLaunchPhase { idle, spawning, confirming, running, failed }
+export 'terminal_launch_phase.dart';
 
 /// Owns transport spawn, startup timers, and launch-phase state machine.
 ///

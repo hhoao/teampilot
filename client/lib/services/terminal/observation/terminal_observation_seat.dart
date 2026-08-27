@@ -2,7 +2,7 @@ import '../../../cubits/agent_attention_cubit.dart';
 import '../../../models/team_config.dart';
 import '../../cli/registry/capabilities/terminal_behavior_capability.dart';
 import '../../team/terminal_activity_tracker.dart';
-import '../terminal_launch_controller.dart';
+import '../terminal_launch_phase.dart';
 
 /// Per-PTY context passed to observation handlers.
 final class TerminalObservationSeat {

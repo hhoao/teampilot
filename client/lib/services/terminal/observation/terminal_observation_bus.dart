@@ -1,7 +1,7 @@
 import 'dart:typed_data';
 
 import '../../../utils/logging/logger.dart';
-import '../terminal_launch_controller.dart';
+import '../terminal_launch_phase.dart';
 import 'terminal_observation_events.dart';
 import 'terminal_observation_seat.dart';
 
