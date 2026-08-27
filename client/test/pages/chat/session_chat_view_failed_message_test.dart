@@ -85,4 +85,109 @@ void main() {
 
     expect(history.runtime.messages, isEmpty);
   });
+
+  test('retry changes the existing failed bubble back to sending', () async {
+    final history = seat();
+    final failed = FailedMessageRecord(
+      id: 'failed-1',
+      text: 'try this again',
+      createdAt: DateTime.utc(2026),
+      status: FailedMessageStatus.failed,
+    );
+    await store.save('workspace-a', 'session-a', failed);
+    await history.hydratePendingUsers(
+      store: store,
+      workspaceId: 'workspace-a',
+      sessionId: 'session-a',
+    );
+
+    final retrying = await history.retryPendingUser(
+      store: store,
+      workspaceId: 'workspace-a',
+      sessionId: 'session-a',
+      record: failed,
+    );
+
+    expect(retrying.status, FailedMessageStatus.sending);
+    expect(await store.load('workspace-a', 'session-a'), [retrying]);
+    expect(history.runtime.messages, hasLength(1));
+    expect(history.runtime.messages.single.id, failed.id);
+    expect(
+      history.pendingDeliveryStatusFor(failed.id),
+      FailedMessageStatus.sending,
+    );
+  });
+
+  test('retry failure restores the persisted failed status', () async {
+    final history = seat();
+    final failed = FailedMessageRecord(
+      id: 'failed-1',
+      text: 'try this again',
+      createdAt: DateTime.utc(2026),
+      status: FailedMessageStatus.failed,
+    );
+    await store.save('workspace-a', 'session-a', failed);
+    await history.hydratePendingUsers(
+      store: store,
+      workspaceId: 'workspace-a',
+      sessionId: 'session-a',
+    );
+    final retrying = await history.retryPendingUser(
+      store: store,
+      workspaceId: 'workspace-a',
+      sessionId: 'session-a',
+      record: failed,
+    );
+
+    await history.markPendingFailed(
+      store: store,
+      workspaceId: 'workspace-a',
+      sessionId: 'session-a',
+      record: retrying,
+    );
+
+    expect(
+      (await store.load('workspace-a', 'session-a')).single.status,
+      FailedMessageStatus.failed,
+    );
+    expect(history.runtime.messages, hasLength(1));
+    expect(
+      history.pendingDeliveryStatusFor(failed.id),
+      FailedMessageStatus.failed,
+    );
+  });
+
+  test(
+    'retry accepts edited text while retaining the failed bubble id',
+    () async {
+      final history = seat();
+      final failed = FailedMessageRecord(
+        id: 'failed-1',
+        text: 'original text',
+        createdAt: DateTime.utc(2026),
+        status: FailedMessageStatus.failed,
+      );
+      await store.save('workspace-a', 'session-a', failed);
+      await history.hydratePendingUsers(
+        store: store,
+        workspaceId: 'workspace-a',
+        sessionId: 'session-a',
+      );
+
+      final retrying = await history.retryPendingUser(
+        store: store,
+        workspaceId: 'workspace-a',
+        sessionId: 'session-a',
+        record: failed.copyWith(text: 'edited text'),
+      );
+
+      expect(retrying.id, failed.id);
+      expect(retrying.text, 'edited text');
+      expect(history.runtime.messages, hasLength(1));
+      expect(
+        (history.runtime.messages.single.parts.single as AiTextPart).text,
+        'edited text',
+      );
+    },
+  );
 }

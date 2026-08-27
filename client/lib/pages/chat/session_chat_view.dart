@@ -23,6 +23,7 @@ import '../../l10n/l10n_extensions.dart';
 import '../../models/app_session.dart';
 import '../../models/cli_preset.dart';
 import '../../models/config_bundle.dart';
+import '../../models/failed_message_record.dart';
 import '../../models/landing_launch_context.dart';
 import '../../models/member_presence.dart';
 import '../../models/team_config.dart';
@@ -167,6 +168,7 @@ class _SessionChatViewState extends State<SessionChatView> {
   int _workspaceBundleGeneration = 0;
   late final WorkspaceProjectConfigRepository _projectConfigRepository;
   late final FailedMessageStore _failedMessageStore;
+  FailedMessageRecord? _editingFailedMessage;
 
   /// Host-owned Timer for [historyAwaitingIdleGrace]; latch lives on the seat.
   Timer? _awaitingIdleGraceTimer;
@@ -262,6 +264,7 @@ class _SessionChatViewState extends State<SessionChatView> {
     if (seatChanged) {
       unawaited(_stopLiveRefreshForSeatChange());
       _clearMailboxQueuedUi();
+      _editingFailedMessage = null;
       _subagentPreview.clear();
       _bindSeat();
       // Defer: load → runtime.setLoading sync-notifies seat listeners
@@ -866,12 +869,17 @@ class _SessionChatViewState extends State<SessionChatView> {
     );
     if (!delivered) return const HistoryContinueSubmitResult.failed();
 
-    return await _deliverComposeMessage(trimmed);
+    return await _deliverComposeMessage(
+      trimmed,
+      retryRecord: _editingFailedMessage,
+    );
   }
 
   Future<HistoryContinueSubmitResult> _deliverComposeMessage(
-    String text,
-  ) async {
+    String text, {
+    FailedMessageRecord? retryRecord,
+    bool clearCompose = true,
+  }) async {
     if (text.isEmpty) return const HistoryContinueSubmitResult.failed();
     final selectedMemberId = widget.selectedMemberId;
     if (AgentPermissionAttentionBanner.isSelectedSeatWaiting(
@@ -889,7 +897,15 @@ class _SessionChatViewState extends State<SessionChatView> {
     final peek =
         widget.peekContinueChannel?.call() ?? HistoryContinueChannel.pty;
     final optimisticPty = peek == HistoryContinueChannel.pty;
-    final pendingRecord = optimisticPty
+    final retryingRecord = retryRecord?.copyWith(text: text);
+    final pendingRecord = retryingRecord != null
+        ? await seat.retryPendingUser(
+            store: _failedMessageStore,
+            workspaceId: widget.session.workspaceId,
+            sessionId: widget.session.sessionId,
+            record: retryingRecord,
+          )
+        : optimisticPty
         ? await seat.persistPendingUser(
             store: _failedMessageStore,
             workspaceId: widget.session.workspaceId,
@@ -906,14 +922,16 @@ class _SessionChatViewState extends State<SessionChatView> {
       // The field must clear while delivery is in flight, but that temporary
       // UI state is not a user-cleared draft. Persist the message first and
       // suppress the controller listener until terminal delivery settles.
-      await composeDraftCache.saveSession(
-        widget.session.workspaceId,
-        widget.session.sessionId,
-        text,
-      );
-      _suppressComposeDraftPersistence = true;
-      _controller.clear();
-      _clip.clear();
+      if (clearCompose) {
+        await composeDraftCache.saveSession(
+          widget.session.workspaceId,
+          widget.session.sessionId,
+          text,
+        );
+        _suppressComposeDraftPersistence = true;
+        _controller.clear();
+        _clip.clear();
+      }
       if (mounted) setState(() {});
 
       final result = await _submitLock.run(() async {
@@ -937,19 +955,29 @@ class _SessionChatViewState extends State<SessionChatView> {
         // restored text exceeds the paste-collapse threshold, detection in
         // ComposeTriggerField re-collapses it into the clip — the block /
         // follow-up split is intentionally lost on a failed submit.
-        _clip.clear();
-        _controller
-          ..text = text
-          ..selection = TextSelection.collapsed(offset: text.length);
+        if (clearCompose) {
+          _clip.clear();
+          _controller
+            ..text = text
+            ..selection = TextSelection.collapsed(offset: text.length);
+        }
+        if (retryingRecord != null) {
+          _editingFailedMessage = retryingRecord.copyWith(
+            status: FailedMessageStatus.failed,
+          );
+        }
         setState(() {});
         return result;
       }
 
-      await composeDraftCache.clearSessionPersistent(
-        widget.session.workspaceId,
-        widget.session.sessionId,
-      );
-      composeDraftCache.clearSessionDraft(widget.session.sessionId);
+      if (clearCompose) {
+        await composeDraftCache.clearSessionPersistent(
+          widget.session.workspaceId,
+          widget.session.sessionId,
+        );
+        composeDraftCache.clearSessionDraft(widget.session.sessionId);
+      }
+      if (retryingRecord != null) _editingFailedMessage = null;
       if (!mounted) return result;
 
       if (result.isMailbox) {
@@ -970,7 +998,7 @@ class _SessionChatViewState extends State<SessionChatView> {
         return result;
       }
 
-      if (!optimisticPty) {
+      if (!optimisticPty && pendingRecord == null) {
         // Peek said mailbox but post-connect path was PTY — show the bubble now.
         seat.enqueuePendingUser(text);
         _syncAwaitingFromWorkingSessions(context.read<ChatCubit>().state);
@@ -981,6 +1009,58 @@ class _SessionChatViewState extends State<SessionChatView> {
       _historyContinueInFlight = false;
       _suppressComposeDraftPersistence = false;
     }
+  }
+
+  Future<FailedMessageRecord?> _loadFailedMessage(String messageId) async {
+    final seat = _seat;
+    if (seat == null) return null;
+    final scope = HistoryHydrationScope(
+      seat: seat,
+      sessionId: widget.session.sessionId,
+      memberId: widget.selectedMemberId,
+    );
+    final records = await _failedMessageStore.load(
+      widget.session.workspaceId,
+      widget.session.sessionId,
+    );
+    if (!mounted ||
+        !scope.isCurrent(
+          seat: _seat,
+          sessionId: widget.session.sessionId,
+          memberId: widget.selectedMemberId,
+        )) {
+      return null;
+    }
+    for (final record in records) {
+      if (record.id == messageId &&
+          record.status == FailedMessageStatus.failed) {
+        return record;
+      }
+    }
+    return null;
+  }
+
+  Future<void> _retryFailedMessage(String messageId) async {
+    if (_isSubmitting) return;
+    final record = await _loadFailedMessage(messageId);
+    if (record == null || !mounted) return;
+    await _deliverComposeMessage(
+      record.text,
+      retryRecord: record,
+      clearCompose: false,
+    );
+  }
+
+  Future<void> _editFailedMessage(String messageId) async {
+    final record = await _loadFailedMessage(messageId);
+    if (record == null || !mounted) return;
+    _editingFailedMessage = record;
+    _clip.clear();
+    _controller
+      ..text = record.text
+      ..selection = TextSelection.collapsed(offset: record.text.length);
+    _focusNode.requestFocus();
+    setState(() {});
   }
 
   void _cancelAwaitingIdleGrace() {
@@ -1304,6 +1384,12 @@ class _SessionChatViewState extends State<SessionChatView> {
                                           historyCap: historyCap,
                                           onRetry: () =>
                                               _loadHistory(force: true),
+                                          onRetryFailedMessage: (id) =>
+                                              unawaited(
+                                                _retryFailedMessage(id),
+                                              ),
+                                          onEditFailedMessage: (id) =>
+                                              unawaited(_editFailedMessage(id)),
                                           onCloseFind: _closeFind,
                                           onNavigateFind: _navigateFindTo,
                                         ),

@@ -16,6 +16,8 @@ Widget _harness({
   required AiHistoryState state,
   required AiThreadRuntime runtime,
   Map<String, FailedMessageStatus> pendingDeliveryStatuses = const {},
+  ValueChanged<String>? onRetryFailedMessage,
+  ValueChanged<String>? onEditFailedMessage,
 }) {
   return MaterialApp(
     localizationsDelegates: AppLocalizations.localizationsDelegates,
@@ -32,6 +34,8 @@ Widget _harness({
           onRetry: () {},
           onLoadOlder: () {},
           pendingDeliveryStatuses: pendingDeliveryStatuses,
+          onRetryFailedMessage: onRetryFailedMessage,
+          onEditFailedMessage: onEditFailedMessage,
         ),
       ),
     ),
@@ -119,6 +123,40 @@ void main() {
 
     expect(find.text('recover me'), findsOneWidget);
     expect(find.text('Failed'), findsOneWidget);
+  });
+
+  testWidgets('failed bubble exposes retry and edit-and-retry actions', (
+    tester,
+  ) async {
+    String? retryId;
+    String? editId;
+    final runtime = ExternalStoreAiThreadRuntime()
+      ..setMessages([
+        const AiMessage(
+          id: 'pending:failed',
+          role: AiRole.user,
+          parts: [AiTextPart(text: 'recover me')],
+        ),
+      ]);
+
+    await tester.pumpWidget(
+      _harness(
+        state: const AiHistoryState(status: AiHistoryViewStatus.ready),
+        runtime: runtime,
+        pendingDeliveryStatuses: const {
+          'pending:failed': FailedMessageStatus.failed,
+        },
+        onRetryFailedMessage: (id) => retryId = id,
+        onEditFailedMessage: (id) => editId = id,
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('Retry'));
+    await tester.tap(find.text('Edit and retry'));
+
+    expect(retryId, 'pending:failed');
+    expect(editId, 'pending:failed');
   });
 
   testWidgets('default prefs fold read but keep subagent standalone', (

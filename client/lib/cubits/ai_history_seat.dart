@@ -616,6 +616,45 @@ class AiHistorySeat extends Cubit<AiHistoryState> {
     return record;
   }
 
+  /// Reuses a failed optimistic bubble for another delivery attempt.
+  ///
+  /// The record id stays stable so the retry is rendered in place rather than
+  /// appending a duplicate outgoing message. [record.text] may be changed by
+  /// edit-and-retry before this transition is persisted.
+  Future<FailedMessageRecord> retryPendingUser({
+    required FailedMessageStore store,
+    required String workspaceId,
+    required String sessionId,
+    required FailedMessageRecord record,
+  }) async {
+    _bindFailedMessageStore(
+      store: store,
+      workspaceId: workspaceId,
+      sessionId: sessionId,
+    );
+    final retrying = record.copyWith(status: FailedMessageStatus.sending);
+    await store.save(workspaceId, sessionId, retrying);
+    final index = _pendingQueue.indexWhere(
+      (pending) => pending.id == retrying.id,
+    );
+    if (index < 0) {
+      enqueuePendingUser(
+        retrying.text,
+        id: retrying.id,
+        deliveryStatus: retrying.status,
+      );
+    } else {
+      _pendingQueue[index] = _PendingUser(
+        id: retrying.id,
+        text: retrying.text,
+        deliveryStatus: retrying.status,
+      );
+      _remergePendingsOntoRuntime();
+      emit(state.copyWith(awaitingAssistant: true));
+    }
+    return retrying;
+  }
+
   /// Restores delivery-state records after a history seat is freshly bound.
   Future<void> hydratePendingUsers({
     required FailedMessageStore store,

@@ -26,6 +26,8 @@ class SessionHistoryReviewMessages extends StatelessWidget {
     required this.onLoadOlder,
     this.liveChrome = SessionHistoryLiveChrome.none,
     this.pendingDeliveryStatuses = const {},
+    this.onRetryFailedMessage,
+    this.onEditFailedMessage,
     this.highlightMessageId,
     this.revealRequest,
     super.key,
@@ -37,6 +39,10 @@ class SessionHistoryReviewMessages extends StatelessWidget {
   final VoidCallback onLoadOlder;
   final SessionHistoryLiveChrome liveChrome;
   final Map<String, FailedMessageStatus> pendingDeliveryStatuses;
+
+  /// Actions for a persisted failed optimistic bubble.
+  final ValueChanged<String>? onRetryFailedMessage;
+  final ValueChanged<String>? onEditFailedMessage;
 
   /// Message id whose bubble gets a highlight ring (chat find current match).
   final String? highlightMessageId;
@@ -72,6 +78,8 @@ class SessionHistoryReviewMessages extends StatelessWidget {
               onLoadOlder: onLoadOlder,
               liveChrome: liveChrome,
               pendingDeliveryStatuses: pendingDeliveryStatuses,
+              onRetryFailedMessage: onRetryFailedMessage,
+              onEditFailedMessage: onEditFailedMessage,
               highlightMessageId: highlightMessageId,
               revealRequest: revealRequest,
             ),

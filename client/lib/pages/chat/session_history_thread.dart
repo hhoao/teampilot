@@ -46,6 +46,8 @@ class SessionHistoryThread extends StatefulWidget {
     this.onLoadOlder,
     this.liveChrome = SessionHistoryLiveChrome.none,
     this.pendingDeliveryStatuses = const {},
+    this.onRetryFailedMessage,
+    this.onEditFailedMessage,
     this.highlightMessageId,
     this.revealRequest,
     super.key,
@@ -59,6 +61,8 @@ class SessionHistoryThread extends StatefulWidget {
   /// Slim starting/running footer under the scroll surface.
   final SessionHistoryLiveChrome liveChrome;
   final Map<String, FailedMessageStatus> pendingDeliveryStatuses;
+  final ValueChanged<String>? onRetryFailedMessage;
+  final ValueChanged<String>? onEditFailedMessage;
 
   /// Message id whose bubble gets a highlight ring (chat find current match).
   final String? highlightMessageId;
@@ -681,7 +685,12 @@ class _SessionHistoryThreadState extends State<SessionHistoryThread> {
                               crossAxisAlignment: CrossAxisAlignment.end,
                               children: [
                                 result,
-                                _PendingDeliveryStatus(status: deliveryStatus),
+                                _PendingDeliveryStatus(
+                                  messageId: ai.id,
+                                  status: deliveryStatus,
+                                  onRetry: widget.onRetryFailedMessage,
+                                  onEditAndRetry: widget.onEditFailedMessage,
+                                ),
                               ],
                             );
                           }
@@ -727,9 +736,17 @@ class _SessionHistoryThreadState extends State<SessionHistoryThread> {
 }
 
 class _PendingDeliveryStatus extends StatelessWidget {
-  const _PendingDeliveryStatus({required this.status});
+  const _PendingDeliveryStatus({
+    required this.messageId,
+    required this.status,
+    this.onRetry,
+    this.onEditAndRetry,
+  });
 
+  final String messageId;
   final FailedMessageStatus status;
+  final ValueChanged<String>? onRetry;
+  final ValueChanged<String>? onEditAndRetry;
 
   @override
   Widget build(BuildContext context) {
@@ -740,9 +757,30 @@ class _PendingDeliveryStatus extends StatelessWidget {
     return Padding(
       key: ValueKey('session-history-delivery-${status.name}'),
       padding: const EdgeInsets.only(top: 2, right: 8, bottom: 8),
-      child: Text(
-        failed ? 'Failed' : 'Sending',
-        style: TpTextStyles.of(context).smColored(color),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.end,
+        children: [
+          Text(
+            failed ? 'Failed' : 'Sending',
+            style: TpTextStyles.of(context).smColored(color),
+          ),
+          if (failed && (onRetry != null || onEditAndRetry != null))
+            Wrap(
+              spacing: 4,
+              children: [
+                if (onRetry != null)
+                  TextButton(
+                    onPressed: () => onRetry!(messageId),
+                    child: const Text('Retry'),
+                  ),
+                if (onEditAndRetry != null)
+                  TextButton(
+                    onPressed: () => onEditAndRetry!(messageId),
+                    child: const Text('Edit and retry'),
+                  ),
+              ],
+            ),
+        ],
       ),
     );
   }

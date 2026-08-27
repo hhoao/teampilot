@@ -1,5 +1,5 @@
 import 'package:ai_message_core/ai_message_core.dart'
-    show ExternalStoreAiThreadRuntime;
+    show AiMessage, AiRole, AiTextPart, ExternalStoreAiThreadRuntime;
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -89,6 +89,7 @@ void _stubCubit<TState>(Cubit<TState> cubit, TState state) {
 
 void main() {
   late _MockAiHistorySeat seat;
+  late ExternalStoreAiThreadRuntime runtime;
 
   setUpAll(() {
     registerFallbackValue(_FakeFailedMessageStore());
@@ -131,9 +132,10 @@ void main() {
     composeDraftCache.clear();
 
     seat = _MockAiHistorySeat();
+    runtime = ExternalStoreAiThreadRuntime();
     _stubCubit(seat, const AiHistoryState());
     when(() => seat.subagentAttachments).thenReturn(const {});
-    when(() => seat.runtime).thenReturn(ExternalStoreAiThreadRuntime());
+    when(() => seat.runtime).thenReturn(runtime);
     when(() => seat.loadedMessages).thenReturn(const []);
     when(() => seat.pendingDeliveryStatuses).thenReturn(const {});
     when(
@@ -165,6 +167,17 @@ void main() {
         record: any(named: 'record'),
       ),
     ).thenAnswer((_) async {});
+    when(
+      () => seat.retryPendingUser(
+        store: any(named: 'store'),
+        workspaceId: any(named: 'workspaceId'),
+        sessionId: any(named: 'sessionId'),
+        record: any(named: 'record'),
+      ),
+    ).thenAnswer((invocation) async {
+      final record = invocation.namedArguments[#record] as FailedMessageRecord;
+      return record.copyWith(status: FailedMessageStatus.sending);
+    });
     when(
       () => seat.applyWorkingSessionSync(
         sessionWorking: any(named: 'sessionWorking'),
@@ -199,6 +212,7 @@ void main() {
     WidgetTester tester, {
     required AppSession session,
     Future<HistoryContinueSubmitResult> Function(String)? onSubmit,
+    FailedMessageStore? failedMessageStore,
   }) async {
     final workspace = Workspace(
       workspaceId: 'ws-1',
@@ -305,6 +319,7 @@ void main() {
                           ok: true,
                           channel: HistoryContinueChannel.pty,
                         ),
+                    failedMessageStore: failedMessageStore,
                     routeActive: false,
                   ),
                 ),
@@ -447,6 +462,142 @@ void main() {
       ).loadSession('ws-1', 's5'),
       isNull,
     );
+  });
+
+  testWidgets('Retry redelivers a failed bubble through the session callback', (
+    tester,
+  ) async {
+    final store = FailedMessageStore(
+      fs: AppStorage.fs,
+      rootPath: AppStorage.appDataRoot,
+    );
+    final record = FailedMessageRecord(
+      id: 'pending:retry',
+      text: 'retry this',
+      createdAt: DateTime.utc(2026),
+      status: FailedMessageStatus.failed,
+    );
+    await store.save('ws-1', 'retry-success', record);
+    runtime.setMessages([
+      const AiMessage(
+        id: 'pending:retry',
+        role: AiRole.user,
+        parts: [AiTextPart(text: 'retry this')],
+      ),
+    ]);
+    when(
+      () => seat.pendingDeliveryStatuses,
+    ).thenReturn(const {'pending:retry': FailedMessageStatus.failed});
+    var submitted = 0;
+
+    await pumpSession(
+      tester,
+      session: _session('retry-success'),
+      failedMessageStore: store,
+      onSubmit: (text) async {
+        submitted++;
+        expect(text, 'retry this');
+        return const HistoryContinueSubmitResult(
+          ok: true,
+          channel: HistoryContinueChannel.pty,
+        );
+      },
+    );
+
+    await tester.tap(find.text('Retry'));
+    await tester.pumpAndSettle();
+
+    expect(submitted, 1);
+    verify(
+      () => seat.retryPendingUser(
+        store: store,
+        workspaceId: 'ws-1',
+        sessionId: 'retry-success',
+        record: record,
+      ),
+    ).called(1);
+  });
+
+  testWidgets('Retry preserves a failed record when redelivery fails', (
+    tester,
+  ) async {
+    final store = FailedMessageStore(
+      fs: AppStorage.fs,
+      rootPath: AppStorage.appDataRoot,
+    );
+    final record = FailedMessageRecord(
+      id: 'pending:retry-failure',
+      text: 'retry this',
+      createdAt: DateTime.utc(2026),
+      status: FailedMessageStatus.failed,
+    );
+    await store.save('ws-1', 'retry-failure', record);
+    runtime.setMessages([
+      const AiMessage(
+        id: 'pending:retry-failure',
+        role: AiRole.user,
+        parts: [AiTextPart(text: 'retry this')],
+      ),
+    ]);
+    when(
+      () => seat.pendingDeliveryStatuses,
+    ).thenReturn(const {'pending:retry-failure': FailedMessageStatus.failed});
+
+    await pumpSession(
+      tester,
+      session: _session('retry-failure'),
+      failedMessageStore: store,
+      onSubmit: (_) async => const HistoryContinueSubmitResult.failed(),
+    );
+
+    await tester.tap(find.text('Retry'));
+    await tester.pumpAndSettle();
+
+    verify(
+      () => seat.markPendingFailed(
+        store: store,
+        workspaceId: 'ws-1',
+        sessionId: 'retry-failure',
+        record: record.copyWith(status: FailedMessageStatus.sending),
+      ),
+    ).called(1);
+  });
+
+  testWidgets('Edit and retry loads the failed text into the composer', (
+    tester,
+  ) async {
+    final store = FailedMessageStore(
+      fs: AppStorage.fs,
+      rootPath: AppStorage.appDataRoot,
+    );
+    final record = FailedMessageRecord(
+      id: 'pending:edit',
+      text: 'edit this first',
+      createdAt: DateTime.utc(2026),
+      status: FailedMessageStatus.failed,
+    );
+    await store.save('ws-1', 'edit-retry', record);
+    runtime.setMessages([
+      const AiMessage(
+        id: 'pending:edit',
+        role: AiRole.user,
+        parts: [AiTextPart(text: 'edit this first')],
+      ),
+    ]);
+    when(
+      () => seat.pendingDeliveryStatuses,
+    ).thenReturn(const {'pending:edit': FailedMessageStatus.failed});
+
+    await pumpSession(
+      tester,
+      session: _session('edit-retry'),
+      failedMessageStore: store,
+    );
+
+    await tester.tap(find.text('Edit and retry'));
+    await tester.pumpAndSettle();
+
+    expect(_composeField(tester).controller!.text, 'edit this first');
   });
 }
 
