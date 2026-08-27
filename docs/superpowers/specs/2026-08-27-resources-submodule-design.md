@@ -120,6 +120,10 @@ https://raw.githubusercontent.com/hhoao/teampilot-resources/main/
   skill-packs/<slug>/pack.json
 ```
 
+The registry URL helper receives paths relative to its `skill-packs` root, so
+the second request is constructed with `<slug>/pack.json` and is rendered as
+the full URL shown above.
+
 The initial index format remains the existing string-slug shape:
 
 ```json
@@ -214,4 +218,3 @@ The work is accepted when all of the following hold:
    isolation.
 7. `flutter analyze --no-fatal-infos --no-fatal-warnings` passes, followed by
    the repository's complete test command.
-
