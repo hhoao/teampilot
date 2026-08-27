@@ -7,6 +7,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:teampilot/cubits/ai_history_cubit.dart';
 import 'package:teampilot/cubits/layout_cubit.dart';
 import 'package:teampilot/l10n/app_localizations.dart';
+import 'package:teampilot/models/failed_message_record.dart';
 import 'package:teampilot/pages/chat/session_history_review_messages.dart';
 import 'package:teampilot/pages/chat/session_history_thread.dart';
 import 'package:teampilot/repositories/layout_repository.dart';
@@ -14,6 +15,9 @@ import 'package:teampilot/repositories/layout_repository.dart';
 Widget _harness({
   required AiHistoryState state,
   required AiThreadRuntime runtime,
+  Map<String, FailedMessageStatus> pendingDeliveryStatuses = const {},
+  ValueChanged<String>? onRetryFailedMessage,
+  ValueChanged<String>? onEditFailedMessage,
 }) {
   return MaterialApp(
     localizationsDelegates: AppLocalizations.localizationsDelegates,
@@ -29,6 +33,9 @@ Widget _harness({
           runtime: runtime,
           onRetry: () {},
           onLoadOlder: () {},
+          pendingDeliveryStatuses: pendingDeliveryStatuses,
+          onRetryFailedMessage: onRetryFailedMessage,
+          onEditFailedMessage: onEditFailedMessage,
         ),
       ),
     ),
@@ -89,6 +96,67 @@ void main() {
     expect(find.text('No prior messages for this member yet.'), findsNothing);
     expect(find.byType(SessionHistoryThread), findsOneWidget);
     expect(find.text('optimistic continue'), findsOneWidget);
+  });
+
+  testWidgets('persisted pending bubble renders its delivery status', (
+    tester,
+  ) async {
+    final runtime = ExternalStoreAiThreadRuntime()
+      ..setMessages([
+        const AiMessage(
+          id: 'pending:failed',
+          role: AiRole.user,
+          parts: [AiTextPart(text: 'recover me')],
+        ),
+      ]);
+
+    await tester.pumpWidget(
+      _harness(
+        state: const AiHistoryState(status: AiHistoryViewStatus.ready),
+        runtime: runtime,
+        pendingDeliveryStatuses: const {
+          'pending:failed': FailedMessageStatus.failed,
+        },
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('recover me'), findsOneWidget);
+    expect(find.text('Failed'), findsOneWidget);
+  });
+
+  testWidgets('failed bubble exposes retry and edit-and-retry actions', (
+    tester,
+  ) async {
+    String? retryId;
+    String? editId;
+    final runtime = ExternalStoreAiThreadRuntime()
+      ..setMessages([
+        const AiMessage(
+          id: 'pending:failed',
+          role: AiRole.user,
+          parts: [AiTextPart(text: 'recover me')],
+        ),
+      ]);
+
+    await tester.pumpWidget(
+      _harness(
+        state: const AiHistoryState(status: AiHistoryViewStatus.ready),
+        runtime: runtime,
+        pendingDeliveryStatuses: const {
+          'pending:failed': FailedMessageStatus.failed,
+        },
+        onRetryFailedMessage: (id) => retryId = id,
+        onEditFailedMessage: (id) => editId = id,
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('Retry'));
+    await tester.tap(find.text('Edit and retry'));
+
+    expect(retryId, 'pending:failed');
+    expect(editId, 'pending:failed');
   });
 
   testWidgets('default prefs fold read but keep subagent standalone', (

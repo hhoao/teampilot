@@ -23,6 +23,7 @@ import 'app_storage.dart';
 ///   automations/automations.json  # rules + run history for workspace
 ///   sessions/{sessionId}/
 ///     session.json
+///     failed-messages.json # outgoing delivery state, outside CLI transcripts
 ///     bus/mail/{memberId}.jsonl
 ///     bus/tasks.jsonl
 ///     runtime/{tool}/           # native / personal PTY CONFIG_DIR
@@ -94,6 +95,10 @@ class WorkspaceLayout {
 
   String sessionFile(String workspaceId, String sessionId) =>
       _ctx.join(sessionDir(workspaceId, sessionId), 'session.json');
+
+  /// Session-owned delivery state for optimistic outgoing messages.
+  String failedMessagesFile(String workspaceId, String sessionId) =>
+      _ctx.join(sessionDir(workspaceId, sessionId), 'failed-messages.json');
 
   String busDir(String workspaceId, String sessionId) =>
       _ctx.join(sessionDir(workspaceId, sessionId), 'bus');

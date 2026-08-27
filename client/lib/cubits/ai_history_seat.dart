@@ -7,6 +7,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:uuid/uuid.dart';
 
 import '../models/app_session.dart';
+import '../models/failed_message_record.dart';
 import '../models/team_config.dart';
 import '../models/workspace_launch_context.dart';
 import '../services/conversation_timeline/conversation_timeline.dart';
@@ -14,6 +15,7 @@ import '../services/conversation_timeline/mailbox_user_source.dart';
 import '../services/session/ai_history_loader.dart';
 import '../services/session/ai_history_message_dedup.dart';
 import '../services/session/ai_history_pending_text.dart';
+import '../services/session/failed_message_store.dart';
 import '../services/session/history_awaiting_working_sync.dart';
 import '../services/session/session_history_pagination.dart';
 import '../services/team_bus/persistence/bus_message_log.dart';
@@ -112,10 +114,15 @@ class AiHistoryState extends Equatable {
 }
 
 class _PendingUser {
-  const _PendingUser({required this.id, required this.text});
+  const _PendingUser({
+    required this.id,
+    required this.text,
+    this.deliveryStatus,
+  });
 
   final String id;
   final String text;
+  final FailedMessageStatus? deliveryStatus;
 }
 
 /// Per-seat History cubit: one [runtime] and tip/pending state per
@@ -194,6 +201,9 @@ class AiHistorySeat extends Cubit<AiHistoryState> {
   /// stay held while [awaitingAssistant] until idle or [tipHoldAfterAssistant].
   int _committedLength = 0;
   final List<_PendingUser> _pendingQueue = [];
+  FailedMessageStore? _failedMessageStore;
+  String? _failedMessageWorkspaceId;
+  String? _failedMessageSessionId;
   Timer? _tipHoldTimer;
   Timer? _turnEndSettleTimer;
 
@@ -367,10 +377,7 @@ class AiHistorySeat extends Cubit<AiHistoryState> {
       _lastCli = result.cli;
 
       final messages = result.messages;
-      final mailboxRecords = await _safeLoadMailboxRecords(
-        sessionId,
-        memberId,
-      );
+      final mailboxRecords = await _safeLoadMailboxRecords(sessionId, memberId);
       if (gen != _loadGeneration || isClosed) return;
       if (session.sessionId != (_lastSession?.sessionId ?? '') ||
           memberId != _lastMemberId) {
@@ -418,7 +425,9 @@ class AiHistorySeat extends Cubit<AiHistoryState> {
             _subagentAttachments,
             result.subagentAttachments,
           );
-      if (cliUnchanged && attachmentsUnchanged && _mailboxUnchanged(mailboxRecords)) {
+      if (cliUnchanged &&
+          attachmentsUnchanged &&
+          _mailboxUnchanged(mailboxRecords)) {
         _lastMailboxRecords = mailboxRecords;
         return;
       }
@@ -458,10 +467,7 @@ class AiHistorySeat extends Cubit<AiHistoryState> {
     final sessionId = session.sessionId;
 
     try {
-      final mailboxRecords = await _safeLoadMailboxRecords(
-        sessionId,
-        memberId,
-      );
+      final mailboxRecords = await _safeLoadMailboxRecords(sessionId, memberId);
       if (gen != _loadGeneration || isClosed) return;
       if (session.sessionId != (_lastSession?.sessionId ?? '') ||
           memberId != _lastMemberId) {
@@ -552,12 +558,20 @@ class AiHistorySeat extends Cubit<AiHistoryState> {
     return action;
   }
 
-  void enqueuePendingUser(String text) {
+  void enqueuePendingUser(
+    String text, {
+    String? id,
+    FailedMessageStatus? deliveryStatus,
+  }) {
     if (isClosed) return;
     // New user turn — need a fresh rising edge of working.
     _cancelTurnEndSettle();
     _sawWorkingWhileAwaiting = false;
-    final pending = _PendingUser(id: 'pending:${_uuid.v4()}', text: text);
+    final pending = _PendingUser(
+      id: id ?? 'pending:${_uuid.v4()}',
+      text: text,
+      deliveryStatus: deliveryStatus,
+    );
     _pendingQueue.add(pending);
     _remergePendingsOntoRuntime();
     // Empty / loading: promote to ready so History shows the pending bubble
@@ -573,6 +587,135 @@ class AiHistorySeat extends Cubit<AiHistoryState> {
     } else {
       emit(state.copyWith(awaitingAssistant: true));
     }
+  }
+
+  /// Writes an outgoing bubble before compose is cleared, then overlays that
+  /// exact persisted record rather than creating a second optimistic message.
+  Future<FailedMessageRecord> persistPendingUser({
+    required FailedMessageStore store,
+    required String workspaceId,
+    required String sessionId,
+    required String text,
+  }) async {
+    _bindFailedMessageStore(
+      store: store,
+      workspaceId: workspaceId,
+      sessionId: sessionId,
+    );
+    final record = FailedMessageRecord(
+      id: 'pending:${_uuid.v4()}',
+      text: text,
+      createdAt: DateTime.now().toUtc(),
+    );
+    await store.save(workspaceId, sessionId, record);
+    enqueuePendingUser(
+      record.text,
+      id: record.id,
+      deliveryStatus: record.status,
+    );
+    return record;
+  }
+
+  /// Reuses a failed optimistic bubble for another delivery attempt.
+  ///
+  /// The record id stays stable so the retry is rendered in place rather than
+  /// appending a duplicate outgoing message. [record.text] may be changed by
+  /// edit-and-retry before this transition is persisted.
+  Future<FailedMessageRecord> retryPendingUser({
+    required FailedMessageStore store,
+    required String workspaceId,
+    required String sessionId,
+    required FailedMessageRecord record,
+  }) async {
+    _bindFailedMessageStore(
+      store: store,
+      workspaceId: workspaceId,
+      sessionId: sessionId,
+    );
+    final retrying = record.copyWith(status: FailedMessageStatus.sending);
+    await store.save(workspaceId, sessionId, retrying);
+    final index = _pendingQueue.indexWhere(
+      (pending) => pending.id == retrying.id,
+    );
+    if (index < 0) {
+      enqueuePendingUser(
+        retrying.text,
+        id: retrying.id,
+        deliveryStatus: retrying.status,
+      );
+    } else {
+      _pendingQueue[index] = _PendingUser(
+        id: retrying.id,
+        text: retrying.text,
+        deliveryStatus: retrying.status,
+      );
+      _remergePendingsOntoRuntime();
+      emit(state.copyWith(awaitingAssistant: true));
+    }
+    return retrying;
+  }
+
+  /// Restores delivery-state records after a history seat is freshly bound.
+  Future<void> hydratePendingUsers({
+    required FailedMessageStore store,
+    required String workspaceId,
+    required String sessionId,
+  }) async {
+    _bindFailedMessageStore(
+      store: store,
+      workspaceId: workspaceId,
+      sessionId: sessionId,
+    );
+    final records = await store.load(workspaceId, sessionId);
+    if (isClosed) return;
+    for (final record in records) {
+      if (record.status == FailedMessageStatus.sent ||
+          _pendingQueue.any((pending) => pending.id == record.id)) {
+        continue;
+      }
+      enqueuePendingUser(
+        record.text,
+        id: record.id,
+        deliveryStatus: record.status,
+      );
+    }
+  }
+
+  FailedMessageStatus? pendingDeliveryStatusFor(String id) => _pendingQueue
+      .where((pending) => pending.id == id)
+      .map((pending) => pending.deliveryStatus)
+      .firstOrNull;
+
+  Map<String, FailedMessageStatus> get pendingDeliveryStatuses => {
+    for (final pending in _pendingQueue)
+      if (pending.deliveryStatus case final status?) pending.id: status,
+  };
+
+  /// Keeps the failed bubble in place for recovery instead of rolling it back.
+  Future<void> markPendingFailed({
+    required FailedMessageStore store,
+    required String workspaceId,
+    required String sessionId,
+    required FailedMessageRecord record,
+  }) async {
+    _bindFailedMessageStore(
+      store: store,
+      workspaceId: workspaceId,
+      sessionId: sessionId,
+    );
+    final failed = record.copyWith(status: FailedMessageStatus.failed);
+    await store.save(workspaceId, sessionId, failed);
+    final index = _pendingQueue.indexWhere(
+      (pending) => pending.id == record.id,
+    );
+    if (index < 0) return;
+    _pendingQueue[index] = _PendingUser(
+      id: failed.id,
+      text: failed.text,
+      deliveryStatus: failed.status,
+    );
+    _remergePendingsOntoRuntime();
+    emit(state.copyWith(awaitingAssistant: false));
   }
 
   /// Rolls back an optimistic pending when connect/inject fails.
@@ -868,7 +1011,8 @@ class AiHistorySeat extends Cubit<AiHistoryState> {
     if (result.removed.isNotEmpty) {
       final action = 'deduped';
       final ids = result.removed.map((m) => m.id).join(',');
-      final fingerprint = '$sessionId\u0000$memberId\u0000$action\u0000$ids'
+      final fingerprint =
+          '$sessionId\u0000$memberId\u0000$action\u0000$ids'
           '\u0000${result.messages.length}';
       if (fingerprint != _lastDedupeLogFingerprint) {
         _lastDedupeLogFingerprint = fingerprint;
@@ -887,7 +1031,8 @@ class AiHistorySeat extends Cubit<AiHistoryState> {
       final ids = result.undecidedPairs
           .map((p) => '${p.$1.id},${p.$2.id}')
           .join(',');
-      final fingerprint = '$sessionId\u0000$memberId\u0000$action\u0000$ids'
+      final fingerprint =
+          '$sessionId\u0000$memberId\u0000$action\u0000$ids'
           '\u0000${result.messages.length}';
       if (fingerprint != _lastKeptBothLogFingerprint) {
         _lastKeptBothLogFingerprint = fingerprint;
@@ -916,9 +1061,7 @@ class AiHistorySeat extends Cubit<AiHistoryState> {
         .trim();
     final tools = m.parts
         .whereType<AiToolCallPart>()
-        .map(
-          (t) => '${t.toolName}(${t.result != null ? 'result' : 'pending'})',
-        )
+        .map((t) => '${t.toolName}(${t.result != null ? 'result' : 'pending'})')
         .join(',');
     final shown = text.length > 80 ? '${text.substring(0, 80)}…' : text;
     return '${m.id}[${m.role.name}] text=$shown tools=$tools';
@@ -1016,11 +1159,45 @@ class AiHistorySeat extends Cubit<AiHistoryState> {
         if (m.role == AiRole.user) m,
     ];
     final appeared = math.max(0, userTurns.length - _lastUserTurnCount);
-    final drop = math.min(appeared, _pendingQueue.length);
-    if (drop > 0) {
-      _pendingQueue.removeRange(0, drop);
+    if (appeared > 0) {
+      var remaining = appeared;
+      final confirmed = <_PendingUser>[];
+      _pendingQueue.removeWhere((pending) {
+        // A failed delivery is terminal until explicit retry support exists;
+        // subsequent transcript turns belong to later sends, never this row.
+        if (pending.deliveryStatus == FailedMessageStatus.failed ||
+            remaining == 0) {
+          return false;
+        }
+        remaining--;
+        confirmed.add(pending);
+        return true;
+      });
+      for (final pending in confirmed) {
+        if (pending.deliveryStatus == FailedMessageStatus.sending) {
+          unawaited(_removePersistedPending(pending.id));
+        }
+      }
     }
     _lastUserTurnCount = userTurns.length;
+  }
+
+  void _bindFailedMessageStore({
+    required FailedMessageStore store,
+    required String workspaceId,
+    required String sessionId,
+  }) {
+    _failedMessageStore = store;
+    _failedMessageWorkspaceId = workspaceId;
+    _failedMessageSessionId = sessionId;
+  }
+
+  Future<void> _removePersistedPending(String recordId) async {
+    final store = _failedMessageStore;
+    final workspaceId = _failedMessageWorkspaceId;
+    final sessionId = _failedMessageSessionId;
+    if (store == null || workspaceId == null || sessionId == null) return;
+    await store.remove(workspaceId, sessionId, recordId);
   }
 
   /// Soft reload must not clear this — a turn may flush many assistant messages.
@@ -1041,6 +1218,7 @@ class AiHistorySeat extends Cubit<AiHistoryState> {
             id: p.id,
             role: AiRole.user,
             parts: [AiTextPart(text: p.text)],
+            createdAt: null,
           ),
     ];
     if (slice.isEmpty && overlay.isEmpty) {

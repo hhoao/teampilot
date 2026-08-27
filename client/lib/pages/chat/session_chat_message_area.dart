@@ -58,6 +58,8 @@ class SessionChatMessageArea extends StatelessWidget {
     required this.revealController,
     required this.historyCap,
     required this.onRetry,
+    required this.onRetryFailedMessage,
+    required this.onEditFailedMessage,
     required this.onCloseFind,
     required this.onNavigateFind,
     super.key,
@@ -82,6 +84,8 @@ class SessionChatMessageArea extends StatelessWidget {
   final ChatRevealController revealController;
   final AiHistoryCapability? historyCap;
   final VoidCallback onRetry;
+  final ValueChanged<String> onRetryFailedMessage;
+  final ValueChanged<String> onEditFailedMessage;
   final VoidCallback onCloseFind;
   final void Function(TranscriptHit) onNavigateFind;
 
@@ -275,6 +279,10 @@ class SessionChatMessageArea extends StatelessWidget {
                                     onRetry: onRetry,
                                     onLoadOlder: historySeat.loadOlder,
                                     liveChrome: liveChrome,
+                                    pendingDeliveryStatuses:
+                                        historySeat.pendingDeliveryStatuses,
+                                    onRetryFailedMessage: onRetryFailedMessage,
+                                    onEditFailedMessage: onEditFailedMessage,
                                     highlightMessageId: findHighlightId,
                                     revealRequest: revealController,
                                   ),

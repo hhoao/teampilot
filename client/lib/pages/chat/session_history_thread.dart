@@ -8,6 +8,7 @@ import 'package:flutter/scheduler.dart';
 import 'package:shared_ui/shared_ui.dart';
 
 import '../../l10n/l10n_extensions.dart';
+import '../../models/failed_message_record.dart';
 import 'chat_reveal_controller.dart';
 import 'history_scroll_cursor_lock.dart';
 import 'session_history_live_chrome.dart';
@@ -44,6 +45,9 @@ class SessionHistoryThread extends StatefulWidget {
     required this.isLoadingOlder,
     this.onLoadOlder,
     this.liveChrome = SessionHistoryLiveChrome.none,
+    this.pendingDeliveryStatuses = const {},
+    this.onRetryFailedMessage,
+    this.onEditFailedMessage,
     this.highlightMessageId,
     this.revealRequest,
     super.key,
@@ -56,6 +60,9 @@ class SessionHistoryThread extends StatefulWidget {
 
   /// Slim starting/running footer under the scroll surface.
   final SessionHistoryLiveChrome liveChrome;
+  final Map<String, FailedMessageStatus> pendingDeliveryStatuses;
+  final ValueChanged<String>? onRetryFailedMessage;
+  final ValueChanged<String>? onEditFailedMessage;
 
   /// Message id whose bubble gets a highlight ring (chat find current match).
   final String? highlightMessageId;
@@ -671,6 +678,22 @@ class _SessionHistoryThreadState extends State<SessionHistoryThread> {
                                   child: messageChild,
                                 )
                               : messageChild;
+                          final deliveryStatus =
+                              widget.pendingDeliveryStatuses[ai.id];
+                          if (deliveryStatus != null) {
+                            result = Column(
+                              crossAxisAlignment: CrossAxisAlignment.end,
+                              children: [
+                                result,
+                                _PendingDeliveryStatus(
+                                  messageId: ai.id,
+                                  status: deliveryStatus,
+                                  onRetry: widget.onRetryFailedMessage,
+                                  onEditAndRetry: widget.onEditFailedMessage,
+                                ),
+                              ],
+                            );
+                          }
                           // Chat find current match: ring the bubble so the jump
                           // target is obvious even when it is off-center.
                           if (ai.id == widget.highlightMessageId) {
@@ -708,6 +731,57 @@ class _SessionHistoryThreadState extends State<SessionHistoryThread> {
         if (_showNewMessagesChip && !_stickToEnd)
           _buildNewMessagesChip(context),
       ],
+    );
+  }
+}
+
+class _PendingDeliveryStatus extends StatelessWidget {
+  const _PendingDeliveryStatus({
+    required this.messageId,
+    required this.status,
+    this.onRetry,
+    this.onEditAndRetry,
+  });
+
+  final String messageId;
+  final FailedMessageStatus status;
+  final ValueChanged<String>? onRetry;
+  final ValueChanged<String>? onEditAndRetry;
+
+  @override
+  Widget build(BuildContext context) {
+    final failed = status == FailedMessageStatus.failed;
+    final color = failed
+        ? Theme.of(context).colorScheme.error
+        : Theme.of(context).colorScheme.onSurfaceVariant;
+    return Padding(
+      key: ValueKey('session-history-delivery-${status.name}'),
+      padding: const EdgeInsets.only(top: 2, right: 8, bottom: 8),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.end,
+        children: [
+          Text(
+            failed ? 'Failed' : 'Sending',
+            style: TpTextStyles.of(context).smColored(color),
+          ),
+          if (failed && (onRetry != null || onEditAndRetry != null))
+            Wrap(
+              spacing: 4,
+              children: [
+                if (onRetry != null)
+                  TextButton(
+                    onPressed: () => onRetry!(messageId),
+                    child: const Text('Retry'),
+                  ),
+                if (onEditAndRetry != null)
+                  TextButton(
+                    onPressed: () => onEditAndRetry!(messageId),
+                    child: const Text('Edit and retry'),
+                  ),
+              ],
+            ),
+        ],
+      ),
     );
   }
 }

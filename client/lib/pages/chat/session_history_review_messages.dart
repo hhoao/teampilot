@@ -4,6 +4,7 @@ import 'package:shared_ui/shared_ui.dart';
 
 import '../../cubits/ai_history_cubit.dart';
 import '../../l10n/l10n_extensions.dart';
+import '../../models/failed_message_record.dart';
 import 'chat_reveal_controller.dart';
 import 'session_history_live_chrome.dart';
 import 'session_history_thread.dart';
@@ -24,6 +25,9 @@ class SessionHistoryReviewMessages extends StatelessWidget {
     required this.onRetry,
     required this.onLoadOlder,
     this.liveChrome = SessionHistoryLiveChrome.none,
+    this.pendingDeliveryStatuses = const {},
+    this.onRetryFailedMessage,
+    this.onEditFailedMessage,
     this.highlightMessageId,
     this.revealRequest,
     super.key,
@@ -34,6 +38,11 @@ class SessionHistoryReviewMessages extends StatelessWidget {
   final VoidCallback onRetry;
   final VoidCallback onLoadOlder;
   final SessionHistoryLiveChrome liveChrome;
+  final Map<String, FailedMessageStatus> pendingDeliveryStatuses;
+
+  /// Actions for a persisted failed optimistic bubble.
+  final ValueChanged<String>? onRetryFailedMessage;
+  final ValueChanged<String>? onEditFailedMessage;
 
   /// Message id whose bubble gets a highlight ring (chat find current match).
   final String? highlightMessageId;
@@ -68,6 +77,9 @@ class SessionHistoryReviewMessages extends StatelessWidget {
               isLoadingOlder: state.isLoadingOlder,
               onLoadOlder: onLoadOlder,
               liveChrome: liveChrome,
+              pendingDeliveryStatuses: pendingDeliveryStatuses,
+              onRetryFailedMessage: onRetryFailedMessage,
+              onEditFailedMessage: onEditFailedMessage,
               highlightMessageId: highlightMessageId,
               revealRequest: revealRequest,
             ),
@@ -92,9 +104,9 @@ class SessionHistoryReviewMessages extends StatelessWidget {
             SizedBox(height: context.tpSpacing.md),
             Text(
               context.l10n.sessionHistoryLoading,
-              style: TpTextStyles.of(context).mdColored(
-                Theme.of(context).colorScheme.onSurfaceVariant,
-              ),
+              style: TpTextStyles.of(
+                context,
+              ).mdColored(Theme.of(context).colorScheme.onSurfaceVariant),
               textAlign: TextAlign.center,
             ),
           ],
@@ -104,9 +116,9 @@ class SessionHistoryReviewMessages extends StatelessWidget {
         icon: Icons.chat_bubble_outline_rounded,
         child: Text(
           context.l10n.sessionHistoryEmpty,
-          style: TpTextStyles.of(context).mdColored(
-            Theme.of(context).colorScheme.onSurfaceVariant,
-          ),
+          style: TpTextStyles.of(
+            context,
+          ).mdColored(Theme.of(context).colorScheme.onSurfaceVariant),
           textAlign: TextAlign.center,
         ),
       ),
@@ -117,18 +129,18 @@ class SessionHistoryReviewMessages extends StatelessWidget {
           children: [
             Text(
               context.l10n.sessionHistoryError,
-              style: TpTextStyles.of(context).mdColored(
-                Theme.of(context).colorScheme.error,
-              ),
+              style: TpTextStyles.of(
+                context,
+              ).mdColored(Theme.of(context).colorScheme.error),
               textAlign: TextAlign.center,
             ),
             if ((state.errorMessage?.trim() ?? '').isNotEmpty) ...[
               SizedBox(height: context.tpSpacing.sm),
               Text(
                 state.errorMessage!.trim(),
-                style: TpTextStyles.of(context).smColored(
-                  Theme.of(context).colorScheme.onSurfaceVariant,
-                ),
+                style: TpTextStyles.of(
+                  context,
+                ).smColored(Theme.of(context).colorScheme.onSurfaceVariant),
                 textAlign: TextAlign.center,
               ),
             ],
