@@ -46,6 +46,7 @@ import '../../services/compose/compose_prompt_enhance.dart';
 import 'session_chat_voice_controller.dart';
 import '../../services/follow_up/follow_up_queue.dart';
 import '../../services/session/ai_history_live_refresh_controller.dart';
+import '../../services/session/failed_message_store.dart';
 import '../../services/session/chat_transcript_find_controller.dart';
 import '../../services/session/history_seat_key.dart';
 import '../../services/session/history_awaiting_working_sync.dart';
@@ -90,6 +91,7 @@ class SessionChatView extends StatefulWidget {
     this.peekContinueChannel,
     this.routeActive = true,
     this.projectConfigRepository,
+    this.failedMessageStore,
     super.key,
   });
 
@@ -119,6 +121,9 @@ class SessionChatView extends StatefulWidget {
 
   /// Injectable for tests; defaults to the app storage-backed repository.
   final WorkspaceProjectConfigRepository? projectConfigRepository;
+
+  /// Injectable persisted delivery state for restart-safe optimistic bubbles.
+  final FailedMessageStore? failedMessageStore;
 
   @override
   State<SessionChatView> createState() => _SessionChatViewState();
@@ -160,6 +165,7 @@ class _SessionChatViewState extends State<SessionChatView> {
   ConfigBundle _workspaceBundle = const ConfigBundle();
   int _workspaceBundleGeneration = 0;
   late final WorkspaceProjectConfigRepository _projectConfigRepository;
+  late final FailedMessageStore _failedMessageStore;
 
   /// Host-owned Timer for [historyAwaitingIdleGrace]; latch lives on the seat.
   Timer? _awaitingIdleGraceTimer;
@@ -197,8 +203,12 @@ class _SessionChatViewState extends State<SessionChatView> {
     unawaited(_hydrateComposeDraft());
     _projectConfigRepository =
         widget.projectConfigRepository ?? WorkspaceProjectConfigRepository();
+    _failedMessageStore =
+        widget.failedMessageStore ??
+        FailedMessageStore(fs: AppStorage.fs, rootPath: AppStorage.appDataRoot);
     _bindSeat();
     _loadHistory();
+    unawaited(_hydratePersistedPendingUsers());
     unawaited(_loadWorkspaceProjectBundle());
   }
 
@@ -263,10 +273,21 @@ class _SessionChatViewState extends State<SessionChatView> {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (!mounted) return;
         _loadHistory();
+        unawaited(_hydratePersistedPendingUsers());
       });
     } else if (oldWidget.routeActive != widget.routeActive) {
       _maybeStartLiveRefreshForRunningPty();
     }
+  }
+
+  Future<void> _hydratePersistedPendingUsers() async {
+    final seat = _seat;
+    if (seat == null) return;
+    await seat.hydratePendingUsers(
+      store: _failedMessageStore,
+      workspaceId: widget.session.workspaceId,
+      sessionId: widget.session.sessionId,
+    );
   }
 
   String _mailboxSeatKey() => historySeatKey(
@@ -856,10 +877,18 @@ class _SessionChatViewState extends State<SessionChatView> {
     final peek =
         widget.peekContinueChannel?.call() ?? HistoryContinueChannel.pty;
     final optimisticPty = peek == HistoryContinueChannel.pty;
+    final pendingRecord = optimisticPty
+        ? await seat.persistPendingUser(
+            store: _failedMessageStore,
+            workspaceId: widget.session.workspaceId,
+            sessionId: widget.session.sessionId,
+            text: text,
+          )
+        : null;
+    if (!mounted) return const HistoryContinueSubmitResult.failed();
     _historyContinueInFlight = true;
     try {
       if (optimisticPty) {
-        seat.enqueuePendingUser(text);
         _syncAwaitingFromWorkingSessions(context.read<ChatCubit>().state);
       }
       // The field must clear while delivery is in flight, but that temporary
@@ -884,7 +913,14 @@ class _SessionChatViewState extends State<SessionChatView> {
       if (!result.ok) {
         _suppressComposeDraftPersistence = false;
         _cancelAwaitingIdleGrace();
-        if (optimisticPty) seat.removePendingMatching(text);
+        if (pendingRecord != null) {
+          await seat.markPendingFailed(
+            store: _failedMessageStore,
+            workspaceId: widget.session.workspaceId,
+            sessionId: widget.session.sessionId,
+            record: pendingRecord,
+          );
+        }
         // Clear the stale clip before restoring the composed text. If the
         // restored text exceeds the paste-collapse threshold, detection in
         // ComposeTriggerField re-collapses it into the clip — the block /
@@ -907,6 +943,13 @@ class _SessionChatViewState extends State<SessionChatView> {
       if (result.isMailbox) {
         _cancelAwaitingIdleGrace();
         if (optimisticPty) seat.removePendingMatching(text);
+        if (pendingRecord != null) {
+          await _failedMessageStore.remove(
+            widget.session.workspaceId,
+            widget.session.sessionId,
+            pendingRecord.id,
+          );
+        }
         final mailId = result.mailId!;
         _mailboxQueuedSeats[mailId] = _mailboxSeatKey();
         _mailboxQueued.add(PendingUserMessage(id: mailId, content: text));

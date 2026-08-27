@@ -23,6 +23,7 @@ import 'package:teampilot/cubits/workbench/workbench_cubit.dart';
 import 'package:teampilot/cubits/worktree_cubit.dart';
 import 'package:teampilot/l10n/app_localizations.dart';
 import 'package:teampilot/models/app_session.dart';
+import 'package:teampilot/models/failed_message_record.dart';
 import 'package:teampilot/models/team_config.dart';
 import 'package:teampilot/models/runtime_target.dart';
 import 'package:teampilot/models/workspace.dart';
@@ -37,6 +38,7 @@ import 'package:teampilot/services/compose/compose_draft_cache.dart';
 import 'package:teampilot/services/compose/compose_draft_store.dart';
 import 'package:teampilot/services/follow_up/follow_up_queue.dart';
 import 'package:teampilot/services/session/history_awaiting_working_sync.dart';
+import 'package:teampilot/services/session/failed_message_store.dart';
 import 'package:teampilot/services/session/session_lifecycle_service.dart';
 import 'package:teampilot/services/storage/app_storage.dart';
 import 'package:teampilot/theme/app_theme.dart';
@@ -71,6 +73,8 @@ class _MockEditorCubit extends Mock implements EditorCubit {}
 
 class _MockWorktreeCubit extends Mock implements WorktreeCubit {}
 
+class _FakeFailedMessageStore extends Fake implements FailedMessageStore {}
+
 class _MockMemberPresenceCubit extends Mock implements MemberPresenceCubit {}
 
 class _MockLayoutCubit extends Mock implements LayoutCubit {}
@@ -87,6 +91,14 @@ void main() {
   late _MockAiHistorySeat seat;
 
   setUpAll(() {
+    registerFallbackValue(_FakeFailedMessageStore());
+    registerFallbackValue(
+      FailedMessageRecord(
+        id: 'fallback',
+        text: '',
+        createdAt: DateTime.fromMillisecondsSinceEpoch(0, isUtc: true),
+      ),
+    );
     final fbWorkspace = Workspace(workspaceId: 'ws-fb', createdAt: 0);
     final fbSession = AppSession(
       sessionId: 'fb',
@@ -123,6 +135,36 @@ void main() {
     when(() => seat.subagentAttachments).thenReturn(const {});
     when(() => seat.runtime).thenReturn(ExternalStoreAiThreadRuntime());
     when(() => seat.loadedMessages).thenReturn(const []);
+    when(() => seat.pendingDeliveryStatuses).thenReturn(const {});
+    when(
+      () => seat.hydratePendingUsers(
+        store: any(named: 'store'),
+        workspaceId: any(named: 'workspaceId'),
+        sessionId: any(named: 'sessionId'),
+      ),
+    ).thenAnswer((_) async {});
+    when(
+      () => seat.persistPendingUser(
+        store: any(named: 'store'),
+        workspaceId: any(named: 'workspaceId'),
+        sessionId: any(named: 'sessionId'),
+        text: any(named: 'text'),
+      ),
+    ).thenAnswer((invocation) async {
+      return FailedMessageRecord(
+        id: 'pending:test',
+        text: invocation.namedArguments[#text] as String,
+        createdAt: DateTime.fromMillisecondsSinceEpoch(0, isUtc: true),
+      );
+    });
+    when(
+      () => seat.markPendingFailed(
+        store: any(named: 'store'),
+        workspaceId: any(named: 'workspaceId'),
+        sessionId: any(named: 'sessionId'),
+        record: any(named: 'record'),
+      ),
+    ).thenAnswer((_) async {});
     when(
       () => seat.applyWorkingSessionSync(
         sessionWorking: any(named: 'sessionWorking'),

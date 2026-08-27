@@ -275,6 +275,8 @@ class SessionChatMessageArea extends StatelessWidget {
                                     onRetry: onRetry,
                                     onLoadOlder: historySeat.loadOlder,
                                     liveChrome: liveChrome,
+                                    pendingDeliveryStatuses:
+                                        historySeat.pendingDeliveryStatuses,
                                     highlightMessageId: findHighlightId,
                                     revealRequest: revealController,
                                   ),

@@ -7,6 +7,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:teampilot/cubits/ai_history_cubit.dart';
 import 'package:teampilot/cubits/layout_cubit.dart';
 import 'package:teampilot/l10n/app_localizations.dart';
+import 'package:teampilot/models/failed_message_record.dart';
 import 'package:teampilot/pages/chat/session_history_review_messages.dart';
 import 'package:teampilot/pages/chat/session_history_thread.dart';
 import 'package:teampilot/repositories/layout_repository.dart';
@@ -14,6 +15,7 @@ import 'package:teampilot/repositories/layout_repository.dart';
 Widget _harness({
   required AiHistoryState state,
   required AiThreadRuntime runtime,
+  Map<String, FailedMessageStatus> pendingDeliveryStatuses = const {},
 }) {
   return MaterialApp(
     localizationsDelegates: AppLocalizations.localizationsDelegates,
@@ -29,6 +31,7 @@ Widget _harness({
           runtime: runtime,
           onRetry: () {},
           onLoadOlder: () {},
+          pendingDeliveryStatuses: pendingDeliveryStatuses,
         ),
       ),
     ),
@@ -89,6 +92,33 @@ void main() {
     expect(find.text('No prior messages for this member yet.'), findsNothing);
     expect(find.byType(SessionHistoryThread), findsOneWidget);
     expect(find.text('optimistic continue'), findsOneWidget);
+  });
+
+  testWidgets('persisted pending bubble renders its delivery status', (
+    tester,
+  ) async {
+    final runtime = ExternalStoreAiThreadRuntime()
+      ..setMessages([
+        const AiMessage(
+          id: 'pending:failed',
+          role: AiRole.user,
+          parts: [AiTextPart(text: 'recover me')],
+        ),
+      ]);
+
+    await tester.pumpWidget(
+      _harness(
+        state: const AiHistoryState(status: AiHistoryViewStatus.ready),
+        runtime: runtime,
+        pendingDeliveryStatuses: const {
+          'pending:failed': FailedMessageStatus.failed,
+        },
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('recover me'), findsOneWidget);
+    expect(find.text('Failed'), findsOneWidget);
   });
 
   testWidgets('default prefs fold read but keep subagent standalone', (
