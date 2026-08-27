@@ -2,7 +2,11 @@ import 'dart:convert';
 
 import 'package:ai_message_core/ai_message_core.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:teampilot/services/cli/claude/capabilities/history/ai_transcript.dart';
 import 'package:teampilot/services/cli/claude/capabilities/history/compatible_jsonl.dart';
+import 'package:teampilot/services/cli/codex/capabilities/history/ai_transcript.dart';
+import 'package:teampilot/services/cli/cursor/capabilities/history/ai_transcript.dart';
+import 'package:teampilot/services/cli/flashskyai/capabilities/history/ai_transcript.dart';
 import 'package:teampilot/services/session/ai_history_page.dart';
 import 'package:teampilot/services/session/ai_transcript_tail_reader.dart';
 import 'package:teampilot/services/session/jsonl_transcript_page_reader.dart';
@@ -344,6 +348,298 @@ void main() {
     expect(page.hasOlder, isFalse);
     expect(page.nextCursor, isNull);
   });
+
+  test(
+    'rejects a page with a tool result whose call is outside the window',
+    () async {
+      final fs = InMemoryFilesystem();
+      final path = '/transcript.jsonl';
+      await fs.writeString(
+        path,
+        [
+          _toolCallLine(),
+          for (var i = 0; i < 8; i++) _userLine('filler-$i', 'x' * 80),
+          _toolResultLine(),
+          _userLine('tail', 'newest'),
+        ].join(),
+      );
+      final page = await _claudeReader(
+        fs,
+        path,
+        windowSizes: const [180],
+      ).readLatest(ctx: _ctxFor(fs), limit: 1);
+
+      expect(
+        page,
+        isNull,
+        reason: 'an unclosed tool dependency must use full-parse fallback',
+      );
+    },
+  );
+
+  test('keeps an arbitrary adjacent assistant run on one page', () async {
+    final fs = InMemoryFilesystem();
+    final path = '/transcript.jsonl';
+    await fs.writeString(
+      path,
+      '${_assistantLine('a1', 'one')}'
+      '${_assistantLine('a2', 'two')}'
+      '${_assistantLine('a3', 'three')}'
+      '${_userLine('u1', 'done')}',
+    );
+    final page = await _claudeReader(
+      fs,
+      path,
+    ).readLatest(ctx: _ctxFor(fs), limit: 2);
+
+    expect(page, isNotNull);
+    expect(
+      [
+        for (final message in page!.messages)
+          [
+            for (final part in message.parts)
+              if (part is AiTextPart) part.text,
+          ],
+      ],
+      [
+        ['one', 'two', 'three'],
+        ['done'],
+      ],
+    );
+  });
+
+  test(
+    'rejects a page when an assistant run begins before its window',
+    () async {
+      final fs = InMemoryFilesystem();
+      final path = '/transcript.jsonl';
+      await fs.writeString(
+        path,
+        [
+          _userLine('u1', 'prefix'),
+          for (var i = 0; i < 4; i++) _assistantLine('a$i', 'x' * 50),
+        ].join(),
+      );
+
+      final page = await _claudeReader(
+        fs,
+        path,
+        windowSizes: const [120],
+      ).readLatest(ctx: _ctxFor(fs), limit: 1);
+
+      expect(
+        page,
+        isNull,
+        reason:
+            'a truncated assistant run cannot be equivalent to full parsing',
+      );
+    },
+  );
+
+  test('invalidates a cursor when an earlier same-size line changes', () async {
+    final fs = InMemoryFilesystem();
+    final path = '/transcript.jsonl';
+    final original = [
+      _userLine('u1', '11111'),
+      _userLine('u2', '22222'),
+      _userLine('u3', '33333'),
+      _userLine('u4', '44444'),
+    ].join();
+    await fs.writeString(path, original);
+    final reader = _claudeReader(fs, path);
+    final latest = await reader.readLatest(ctx: _ctxFor(fs), limit: 1);
+    expect(latest, isNotNull);
+    await fs.writeString(
+      path,
+      original.replaceFirst('"content":"11111"', '"content":"aaaaa"'),
+    );
+
+    expect(
+      await reader.readOlder(
+        ctx: _ctxFor(fs),
+        cursor: latest!.nextCursor!,
+        limit: 1,
+      ),
+      isNull,
+    );
+  });
+
+  test('page model rejects contradictory older metadata', () {
+    expect(
+      () => AiHistoryPage(
+        messages: const [],
+        hasOlder: true,
+        nextCursor: null,
+        sourceToken: 'source',
+        rebuilt: false,
+      ),
+      throwsArgumentError,
+    );
+  });
+
+  test('Claude and flashskyai pages match their full adapters', () async {
+    final fixture = [
+      _userLine('u1', 'hello'),
+      _assistantLine('a1', 'part one'),
+      _assistantLine('a1', 'part two'),
+      _userLine('u2', 'bye'),
+    ].join();
+    for (final setup in [
+      (
+        prefix: 'claude',
+        adapter: const ClaudeAiTranscriptAdapter(),
+        append: appendClaudeJsonlEvent,
+      ),
+      (
+        prefix: 'flashskyai',
+        adapter: const FlashskyaiAiTranscriptAdapter(),
+        append: appendClaudeJsonlEvent,
+      ),
+    ]) {
+      final fs = InMemoryFilesystem();
+      const path = '/transcript.jsonl';
+      await fs.writeString(path, fixture);
+      final reader = JsonlTranscriptPageReader(
+        fs: fs,
+        lineAppend: setup.append,
+        fallbackPrefix: setup.prefix,
+        decodeEvents: _syncDecoder(),
+        sourcePath: (_) async => path,
+      );
+      final page = await reader.readLatest(ctx: _ctxFor(fs), limit: 2);
+      final full = await setup.adapter.parse(
+        AiTranscriptBundle(
+          adapterId: setup.prefix,
+          fragments: [
+            AiTranscriptFragment(
+              name: 'fixture.jsonl',
+              bytes: utf8.encode(fixture),
+            ),
+          ],
+        ),
+      );
+      expect(page, isNotNull);
+      final older = await reader.readOlder(
+        ctx: _ctxFor(fs),
+        cursor: page!.nextCursor!,
+        limit: 2,
+      );
+      expect(older, isNotNull);
+      expect(
+        _messageShapes([...older!.messages, ...page.messages]),
+        _messageShapes(full),
+      );
+    }
+  });
+
+  test(
+    'Cursor latest and older pages match full adapter with tool parts',
+    () async {
+      const fixture =
+          '{"role":"user","message":{"id":"u1","content":"hello"}}\n'
+          '{"role":"assistant","message":{"id":"a1","content":['
+          '{"type":"text","text":"answer"},'
+          '{"type":"tool_use","id":"call-1","name":"read","input":{"path":"x"}}]}}\n'
+          '{"role":"user","message":{"id":"u2","content":"bye"}}\n';
+      final fs = InMemoryFilesystem();
+      const path = '/transcript.jsonl';
+      await fs.writeString(path, fixture);
+      final reader = JsonlTranscriptPageReader(
+        fs: fs,
+        lineAppend: appendCursorJsonlEvent,
+        fallbackPrefix: 'cursor',
+        decodeEvents: _syncDecoder(),
+        sourcePath: (_) async => path,
+      );
+      final latest = await reader.readLatest(ctx: _ctxFor(fs), limit: 2);
+      final full = await const CursorAiTranscriptAdapter().parse(
+        AiTranscriptBundle(
+          adapterId: 'cursor',
+          fragments: [
+            AiTranscriptFragment(
+              name: 'fixture.jsonl',
+              bytes: utf8.encode(fixture),
+            ),
+          ],
+        ),
+      );
+      expect(latest, isNotNull);
+      final older = await reader.readOlder(
+        ctx: _ctxFor(fs),
+        cursor: latest!.nextCursor!,
+        limit: 2,
+      );
+      expect(older, isNotNull);
+      expect(
+        _messageShapes([...older!.messages, ...latest.messages]),
+        _messageShapes(full),
+      );
+    },
+  );
+
+  test('Cursor pages match the full adapter including tool parts', () async {
+    const fixture =
+        '{"role":"user","message":{"id":"u1","content":"hello"}}\n'
+        '{"role":"assistant","message":{"id":"a1","content":['
+        '{"type":"text","text":"answer"},'
+        '{"type":"tool_use","id":"call-1","name":"read","input":{"path":"x"}}]}}\n';
+    final fs = InMemoryFilesystem();
+    const path = '/transcript.jsonl';
+    await fs.writeString(path, fixture);
+    final reader = JsonlTranscriptPageReader(
+      fs: fs,
+      lineAppend: appendCursorJsonlEvent,
+      fallbackPrefix: 'cursor',
+      decodeEvents: _syncDecoder(),
+      sourcePath: (_) async => path,
+    );
+    final page = await reader.readLatest(ctx: _ctxFor(fs), limit: 2);
+    final full = await const CursorAiTranscriptAdapter().parse(
+      AiTranscriptBundle(
+        adapterId: 'cursor',
+        fragments: [
+          AiTranscriptFragment(
+            name: 'fixture.jsonl',
+            bytes: utf8.encode(fixture),
+          ),
+        ],
+      ),
+    );
+    expect(page, isNotNull);
+    expect(_messageShapes(page!.messages), _messageShapes(full));
+  });
+
+  test('Codex fallback-id fixture safely uses the full adapter', () async {
+    const fixture =
+        '{"type":"event_msg","payload":{"type":"user_message",'
+        '"message":"hello"}}\n'
+        '{"type":"event_msg","payload":{"type":"agent_message",'
+        '"message":"answer"}}\n';
+    final fs = InMemoryFilesystem();
+    const path = '/transcript.jsonl';
+    await fs.writeString(path, fixture);
+    final reader = JsonlTranscriptPageReader(
+      fs: fs,
+      lineAppend: appendCodexJsonlEvent,
+      fallbackPrefix: 'codex',
+      decodeEvents: _syncDecoder(),
+      sourcePath: (_) async => path,
+    );
+    final page = await reader.readLatest(ctx: _ctxFor(fs), limit: 2);
+    final full = await const CodexAiTranscriptAdapter().parse(
+      AiTranscriptBundle(
+        adapterId: 'codex',
+        fragments: [
+          AiTranscriptFragment(
+            name: 'fixture.jsonl',
+            bytes: utf8.encode(fixture),
+          ),
+        ],
+      ),
+    );
+    expect(full.map((message) => message.id), ['codex-0', 'codex-1']);
+    expect(page, isNull);
+  });
 }
 
 String _userLine(String id, String text) =>
@@ -352,8 +648,52 @@ String _userLine(String id, String text) =>
 String _assistantLine(String id, String text) =>
     '{"type":"assistant","uuid":"$id","message":{"id":"$id","content":"$text"}}\n';
 
+String _toolCallLine() =>
+    '{"type":"assistant","uuid":"call-message","message":{"id":"call-message","content":[{"type":"tool_use","id":"call-1","name":"read","input":{"path":"x"}}]}}\n';
+
+String _toolResultLine() =>
+    '{"type":"user","uuid":"result-message","message":{"id":"result-message","content":[{"type":"tool_result","tool_use_id":"call-1","content":"result"}]}}\n';
+
 List<String> _texts(List<AiMessage> messages) => [
   for (final message in messages)
     for (final part in message.parts)
       if (part is AiTextPart) part.text,
+];
+
+JsonlTranscriptPageReader _claudeReader(
+  InMemoryFilesystem fs,
+  String path, {
+  List<int> windowSizes = const [64 * 1024, 256 * 1024],
+}) => JsonlTranscriptPageReader(
+  fs: fs,
+  lineAppend: appendClaudeJsonlEvent,
+  fallbackPrefix: 'claude',
+  decodeEvents: _syncDecoder(),
+  sourcePath: (_) async => path,
+  windowSizes: windowSizes,
+);
+
+SessionHistoryContext _ctxFor(InMemoryFilesystem fs) => SessionHistoryContext(
+  fs: fs,
+  taskId: 'task',
+  env: const {},
+  transcriptRoots: const [],
+  bucket: 'bucket',
+);
+
+List<List<Object?>> _messageShapes(List<AiMessage> messages) => [
+  for (final message in messages)
+    [
+      message.id,
+      message.role,
+      [
+        for (final part in message.parts)
+          if (part is AiTextPart)
+            ['text', part.text]
+          else if (part is AiReasoningPart)
+            ['reasoning', part.text]
+          else if (part is AiToolCallPart)
+            ['tool', part.toolCallId, part.toolName, part.args, part.result],
+      ],
+    ],
 ];

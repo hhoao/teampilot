@@ -1,6 +1,7 @@
 import 'dart:convert';
 
 import 'package:ai_message_core/ai_message_core.dart';
+import 'package:crypto/crypto.dart';
 
 import '../cli/registry/capabilities/ai_history_capability.dart';
 import '../io/filesystem.dart';
@@ -45,7 +46,8 @@ final class JsonlTranscriptPageReader implements AiTranscriptPageReader {
     final stat = await fs.stat(path);
     if (!stat.isFile) return null;
     final size = stat.size ?? 0;
-    final sourceToken = _sourceToken(path, size);
+    final sourceToken = await _sourceToken(path, size);
+    if (sourceToken == null) return null;
     if (size == 0) return _emptyPage(sourceToken: sourceToken, rebuilt: true);
 
     for (final window in _windowsFor(size)) {
@@ -77,6 +79,8 @@ final class JsonlTranscriptPageReader implements AiTranscriptPageReader {
     final source = _decodeSourceToken(cursor.sourceToken);
     if (source == null || source.path != path || source.size != size)
       return null;
+    final currentToken = await _sourceToken(path, size);
+    if (currentToken == null || currentToken != cursor.sourceToken) return null;
     if (cursor.offset <= 0 || cursor.offset > size) return null;
     final anchor = await _readLineAt(path, cursor.offset, size);
     if (anchor == null || _lineHash(anchor.bytes) != cursor.lineHash) {
@@ -121,21 +125,31 @@ final class JsonlTranscriptPageReader implements AiTranscriptPageReader {
     }
     final events = await _decodeEvents([for (final line in lines) line.bytes]);
     if (events.length != lines.length) return null;
-
+    // A complete JSONL line can still be the continuation of an assistant
+    // turn whose earlier events sit just before this byte window. The append
+    // contract may merge adjacent assistant events, so returning a page here
+    // would be observably different from the full adapter. Without the
+    // preceding event we cannot establish a logical boundary; use full parse.
+    if (lines.first.offset > 0 && _isAssistantEvent(events.first)) {
+      return null;
+    }
     final parsed = _parseFrom(events, 0);
-    if (parsed.fallbackUsed) return null;
+    if (parsed.fallbackUsed || parsed.unresolvedDependency) return null;
     final rawStart = _rawStartIndex(
       parsed.messageCounts,
       parsed.messages.length,
       limit,
     );
-    final contextStart = rawStart > 0 ? rawStart - 1 : rawStart;
+    var contextStart = rawStart > 0 ? rawStart - 1 : rawStart;
+    while (contextStart > 0 && _isAssistantEvent(events[contextStart - 1])) {
+      contextStart--;
+    }
     final contextual = _parseFrom(events, contextStart);
-    if (contextual.fallbackUsed) return null;
+    if (contextual.fallbackUsed || contextual.unresolvedDependency) return null;
     final plain = contextStart == rawStart
         ? contextual
         : _parseFrom(events, rawStart);
-    if (plain.fallbackUsed) return null;
+    if (plain.fallbackUsed || plain.unresolvedDependency) return null;
 
     final contextualMessages = finalizeAiMessagesForHistory(
       contextual.messages,
@@ -173,6 +187,7 @@ final class JsonlTranscriptPageReader implements AiTranscriptPageReader {
     final counts = <int>[];
     var fallbackSeq = 0;
     var fallbackUsed = false;
+    var unresolvedDependency = false;
     for (var i = start; i < events.length; i++) {
       final event = events[i];
       if (event != null) {
@@ -186,6 +201,9 @@ final class JsonlTranscriptPageReader implements AiTranscriptPageReader {
           },
         );
         if (!consumed) fallbackSeq = before;
+        if (_containsToolResult(event) && !consumed) {
+          unresolvedDependency = true;
+        }
       }
       counts.add(messages.length);
     }
@@ -193,7 +211,35 @@ final class JsonlTranscriptPageReader implements AiTranscriptPageReader {
       messages: messages,
       messageCounts: counts,
       fallbackUsed: fallbackUsed,
+      unresolvedDependency: unresolvedDependency,
     );
+  }
+
+  static bool _isAssistantEvent(Map<String, dynamic>? event) {
+    if (event == null) return false;
+    final role = event['role'] ?? event['type'];
+    return role == 'assistant' && event['message'] is Map;
+  }
+
+  static bool _containsToolResult(Map<String, dynamic> event) {
+    final message = event['message'];
+    if (message is Map && _contentContainsToolResult(message['content'])) {
+      return true;
+    }
+    final payload = event['payload'];
+    if (payload is Map) {
+      final type = payload['type'];
+      return type == 'function_call_output' || type == 'tool_result';
+    }
+    return false;
+  }
+
+  static bool _contentContainsToolResult(Object? content) {
+    if (content is! List) return false;
+    for (final block in content) {
+      if (block is Map && block['type'] == 'tool_result') return true;
+    }
+    return false;
   }
 
   int _rawStartIndex(List<int> counts, int messageCount, int limit) {
@@ -305,18 +351,36 @@ final class JsonlTranscriptPageReader implements AiTranscriptPageReader {
     rebuilt: rebuilt,
   );
 
-  static String _sourceToken(String path, int size) =>
-      base64Url.encode(utf8.encode(jsonEncode({'path': path, 'size': size})));
+  Future<String?> _sourceToken(String path, int size) async {
+    final bytes = await fs.readBytes(path);
+    if (bytes == null || bytes.length != size) return null;
+    return base64Url.encode(
+      utf8.encode(
+        jsonEncode({
+          'path': path,
+          'size': size,
+          'fingerprint': sha256.convert(bytes).toString(),
+        }),
+      ),
+    );
+  }
 
-  static ({String path, int size})? _decodeSourceToken(String token) {
+  static ({String path, int size, String fingerprint})? _decodeSourceToken(
+    String token,
+  ) {
     try {
       final decoded = jsonDecode(utf8.decode(base64Url.decode(token)));
       if (decoded is! Map ||
           decoded['path'] is! String ||
-          decoded['size'] is! int) {
+          decoded['size'] is! int ||
+          decoded['fingerprint'] is! String) {
         return null;
       }
-      return (path: decoded['path'] as String, size: decoded['size'] as int);
+      return (
+        path: decoded['path'] as String,
+        size: decoded['size'] as int,
+        fingerprint: decoded['fingerprint'] as String,
+      );
     } on Object {
       return null;
     }
@@ -376,9 +440,11 @@ final class _ParsedLines {
     required this.messages,
     required this.messageCounts,
     required this.fallbackUsed,
+    required this.unresolvedDependency,
   });
 
   final List<AiMessage> messages;
   final List<int> messageCounts;
   final bool fallbackUsed;
+  final bool unresolvedDependency;
 }

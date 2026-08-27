@@ -26,7 +26,11 @@ final class AiHistoryPage {
     required this.nextCursor,
     required this.sourceToken,
     required this.rebuilt,
-  }) : messages = List<AiMessage>.unmodifiable(messages);
+  }) : messages = List<AiMessage>.unmodifiable(messages) {
+    if (hasOlder && nextCursor == null) {
+      throw ArgumentError('hasOlder requires nextCursor');
+    }
+  }
 
   final List<AiMessage> messages;
   final bool hasOlder;
