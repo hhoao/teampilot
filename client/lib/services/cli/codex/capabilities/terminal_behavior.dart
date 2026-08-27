@@ -36,6 +36,9 @@ final class CodexTerminalBehavior implements TerminalBehaviorCapability {
       'Yes, continue',
       'Sign in with ChatGPT',
     ],
+    // Quiet window after chrome AND probe contents stop changing. Resume
+    // paints › / default · immediately, then streams history; CR during
+    // that replay is swallowed or stacked (double-send / stuck composer).
     readyDwell: Duration(seconds: 1),
   );
   @override

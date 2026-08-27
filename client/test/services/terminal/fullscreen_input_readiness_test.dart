@@ -65,4 +65,62 @@ void main() {
       isTrue,
     );
   });
+
+  test('history still painting restarts the Codex dwell', () {
+    var now = DateTime(2026, 8, 27, 16);
+    final watch = FullscreenInputSurfaceWatch(now: () => now);
+    final readiness = const CodexTerminalBehavior().inputReadiness;
+
+    // Resume paints composer chrome immediately, then streams transcript.
+    expect(
+      watch.observe(
+        readiness: readiness,
+        probeWindow: 'gpt-5.6-luna default · /tmp\n› ',
+      ),
+      isFalse,
+    );
+
+    now = now.add(const Duration(milliseconds: 800));
+    expect(
+      watch.observe(
+        readiness: readiness,
+        probeWindow: 'user: 提交吧\ngpt-5.6-luna default · /tmp\n› ',
+      ),
+      isFalse,
+      reason: 'dwell must restart while resume history is still painting',
+    );
+
+    now = now.add(const Duration(milliseconds: 800));
+    expect(
+      watch.observe(
+        readiness: readiness,
+        probeWindow: 'assistant: ok\nuser: 提交吧\ngpt-5.6-luna default · /tmp\n› ',
+      ),
+      isFalse,
+      reason: 'each new history frame must restart dwell',
+    );
+
+    const settled = 'assistant: ok\nuser: 提交吧\ngpt-5.6-luna default · /tmp\n› ';
+    now = now.add(const Duration(milliseconds: 999));
+    expect(
+      watch.observe(readiness: readiness, probeWindow: settled),
+      isFalse,
+    );
+    now = now.add(const Duration(milliseconds: 1));
+    expect(
+      watch.observe(readiness: readiness, probeWindow: settled),
+      isTrue,
+    );
+
+    // Delayed resume replay: chrome can sit still, then history starts later.
+    now = now.add(const Duration(milliseconds: 50));
+    expect(
+      watch.observe(
+        readiness: readiness,
+        probeWindow: 'later history\n$settled',
+      ),
+      isFalse,
+      reason: 'history starting after chrome was already ready must unready',
+    );
+  });
 }

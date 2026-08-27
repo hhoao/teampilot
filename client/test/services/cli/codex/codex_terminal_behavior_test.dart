@@ -45,7 +45,7 @@ void main() {
     });
 
     test(
-      'composer chrome must dwell before submit, matching real PTY boot',
+      'composer chrome must dwell on a stable probe before submit',
       () {
         expect(behavior.inputReadiness.readyDwell, const Duration(seconds: 1));
       },

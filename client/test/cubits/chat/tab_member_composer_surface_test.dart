@@ -79,6 +79,25 @@ void main() {
     );
   });
 
+  test('Codex resume history streaming keeps composer unready', () async {
+    final harness = await _ComposerHarness.connect(cli: CliTool.codex);
+    addTearDown(harness.dispose);
+
+    await harness.paintComposer();
+    await Future<void>.delayed(const Duration(milliseconds: 400));
+    await harness.paintHistory('user: 提交吧');
+    expect(
+      harness.delivery.isMemberComposerSurfaceReady(_sessionId, _memberId),
+      isFalse,
+      reason: 'streaming resume history must restart composer dwell',
+    );
+    await Future<void>.delayed(const Duration(seconds: 1));
+    expect(
+      harness.delivery.isMemberComposerSurfaceReady(_sessionId, _memberId),
+      isTrue,
+    );
+  });
+
   test('Claude boot frame is enough without composer chrome', () async {
     final harness = await _ComposerHarness.connect(cli: CliTool.claude);
     addTearDown(harness.dispose);
@@ -294,6 +313,19 @@ final class _ComposerHarness {
       window.contains('default ·') || window.contains('›'),
       isTrue,
       reason: 'composer chrome should land on the probe grid\n$window',
+    );
+  }
+
+  Future<void> paintHistory(String line) async {
+    await shell.emitPtyOutput('$line\r\n');
+    final window = await _waitForWindow(
+      shell.session,
+      (text) => text.contains(line),
+    );
+    expect(
+      window.contains(line),
+      isTrue,
+      reason: 'history line should land on the probe grid\n$window',
     );
   }
 
