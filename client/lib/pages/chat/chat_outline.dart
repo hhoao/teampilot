@@ -3,6 +3,8 @@ import 'package:ai_message_ui/ai_message_ui.dart';
 
 const int kChatOutlinePreviewLimit = 160;
 
+final RegExp _whitespaceCollapse = RegExp(r'\s+');
+
 enum ChatOutlineKind { userTurn }
 
 class ChatOutlineChrome {
@@ -48,6 +50,9 @@ List<ChatOutlineEntry> buildChatOutline(
           _previewFor(users[reuse].message, emptyPreview)) {
     reuse++;
   }
+  if (reuse == previous.length && reuse == users.length) {
+    return previous;
+  }
   return [
     ...previous.take(reuse),
     for (var i = reuse; i < users.length; i++)
@@ -87,7 +92,7 @@ String _previewFor(AiMessage message, String emptyPreview) {
     final t = part.text.trim();
     if (t.isEmpty) continue;
     if (buf.isNotEmpty) buf.write(' ');
-    buf.write(t.replaceAll(RegExp(r'\s+'), ' '));
+    buf.write(t.replaceAll(_whitespaceCollapse, ' '));
   }
   var text = buf.toString().trim();
   if (text.isEmpty) return emptyPreview;

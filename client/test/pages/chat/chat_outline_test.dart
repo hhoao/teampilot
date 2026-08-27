@@ -61,6 +61,17 @@ void main() {
     expect(entries[1].preview, 'Empty message');
   });
 
+  test('no-op rebuild reuses previous list identity', () {
+    final messages = [_user('u0', 'a'), _assistant('a0', 'x')];
+    final previous = buildChatOutline(messages, emptyPreview: 'Empty message');
+    final next = buildChatOutline(
+      messages,
+      emptyPreview: 'Empty message',
+      previous: previous,
+    );
+    expect(identical(next, previous), isTrue);
+  });
+
   test('prefix-preserving append reuses previous entry instances', () {
     final first = [_user('u0', 'a'), _assistant('a0', 'x')];
     final previous = buildChatOutline(first, emptyPreview: 'Empty message');
