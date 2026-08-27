@@ -19,6 +19,7 @@ class TabStrip extends Equatable {
     this.previewIds = const {},
     this.landingInitialText,
     this.landingInitialTextRevision = 0,
+    this.landingReferenceSessionId,
   });
 
   final List<WorkbenchTabId> order;
@@ -36,6 +37,9 @@ class TabStrip extends Equatable {
   /// compose, so text equality alone cannot represent the request.
   final int landingInitialTextRevision;
 
+  /// Session id whose persisted directory is named by [landingInitialText].
+  final String? landingReferenceSessionId;
+
   /// Landing / welcome shows when nothing is selected. Tabs may remain in the
   /// bar (open sessions) while the landing is displayed.
   bool get landingActive => activeId == null;
@@ -50,6 +54,7 @@ class TabStrip extends Equatable {
     Set<WorkbenchTabId>? previewIds,
     Object? landingInitialText = _unset,
     int? landingInitialTextRevision,
+    Object? landingReferenceSessionId = _unset,
   }) => TabStrip(
     order: order ?? this.order,
     activeId: activeId == _unset ? this.activeId : activeId as WorkbenchTabId?,
@@ -59,6 +64,9 @@ class TabStrip extends Equatable {
         : landingInitialText as String?,
     landingInitialTextRevision:
         landingInitialTextRevision ?? this.landingInitialTextRevision,
+    landingReferenceSessionId: landingReferenceSessionId == _unset
+        ? this.landingReferenceSessionId
+        : landingReferenceSessionId as String?,
   );
 
   @override
@@ -68,6 +76,7 @@ class TabStrip extends Equatable {
     previewIds,
     landingInitialText,
     landingInitialTextRevision,
+    landingReferenceSessionId,
   ];
 }
 
@@ -155,6 +164,11 @@ class TabStripReducer {
 
     order.removeAt(index);
     final previews = Set<WorkbenchTabId>.of(strip.previewIds)..remove(id);
+    final hasSession = order.any((tab) => tab.kind == WorkbenchTabKind.session);
+    final clearLandingReference =
+        order.isEmpty ||
+        (id.kind == WorkbenchTabKind.session &&
+            (id.id == strip.landingReferenceSessionId || !hasSession));
 
     WorkbenchTabId? active = strip.activeId;
     if (active == id) {
@@ -171,11 +185,12 @@ class TabStripReducer {
       activeId: active,
       previewIds: previews,
       landingInitialText:
-          order.isEmpty ||
-              (id.kind == WorkbenchTabKind.session &&
-                  !order.any((tab) => tab.kind == WorkbenchTabKind.session))
+          order.isEmpty || (id.kind == WorkbenchTabKind.session && !hasSession)
           ? null
           : strip.landingInitialText,
+      landingReferenceSessionId: clearLandingReference
+          ? null
+          : strip.landingReferenceSessionId,
     );
   }
 
@@ -217,12 +232,18 @@ class TabStripReducer {
     );
   }
 
-  TabStrip enterLanding(TabStrip strip, {String? initialText}) =>
-      strip.copyWith(
-        activeId: null,
-        landingInitialText: initialText,
-        landingInitialTextRevision: initialText == null
-            ? strip.landingInitialTextRevision
-            : strip.landingInitialTextRevision + 1,
-      );
+  TabStrip enterLanding(
+    TabStrip strip, {
+    String? initialText,
+    String? referencedSessionId,
+  }) => strip.copyWith(
+    activeId: null,
+    landingInitialText: initialText,
+    landingInitialTextRevision: initialText == null
+        ? strip.landingInitialTextRevision
+        : strip.landingInitialTextRevision + 1,
+    landingReferenceSessionId: referencedSessionId?.trim().isEmpty ?? true
+        ? null
+        : referencedSessionId!.trim(),
+  );
 }

@@ -246,12 +246,17 @@ Future<void> showWorkspaceComposeLanding(
   Workspace workspace, {
   required String tabScopeId,
   String? initialText,
+  String? referencedSessionId,
 }) async {
   final chat = context.read<ChatCubit>();
   if (chat.tabStore.activeWorkspaceId != tabScopeId) {
     chat.setActiveWorkspace(tabScopeId);
   }
-  chat.enterNewChat(tabScopeId, initialText: initialText);
+  chat.enterNewChat(
+    tabScopeId,
+    initialText: initialText,
+    referencedSessionId: referencedSessionId,
+  );
 }
 
 /// Opens the workspace Landing with a prompt that points the new conversation
@@ -277,6 +282,7 @@ Future<void> referenceWorkspaceSession(
       workspace,
       tabScopeId: session.workspaceId,
       initialText: '审查并继续完成该会话: $path',
+      referencedSessionId: session.sessionId,
     );
   } on Object catch (error, stackTrace) {
     appLogger.e(

@@ -212,11 +212,43 @@ class WorkbenchCubit extends Cubit<WorkbenchState> {
   /// No-op when the center strip is already in landing (activeId == null) and
   /// no new initial text is supplied. A supplied text replaces the current
   /// landing prefill even when Landing is already visible.
-  void enterLanding(String workspaceId, {String? initialText}) {
+  void enterLanding(
+    String workspaceId, {
+    String? initialText,
+    String? referencedSessionId,
+  }) {
     final bar = state.bar(workspaceId);
-    if (bar.center.landingActive && initialText == null) return;
-    final next = _r.enterLanding(bar.center, initialText: initialText);
+    if (bar.center.landingActive &&
+        initialText == null &&
+        referencedSessionId == null) {
+      return;
+    }
+    final next = _r.enterLanding(
+      bar.center,
+      initialText: initialText,
+      referencedSessionId: referencedSessionId,
+    );
     emit(state.withBar(workspaceId, bar.copyWith(center: next)));
+  }
+
+  /// Clears a Landing reference when its persisted Session is deleted, even
+  /// when that Session never had an open workbench tab.
+  void onSessionDeleted(String workspaceId, String sessionId) {
+    final center = state.bar(workspaceId).center;
+    if (center.landingReferenceSessionId != sessionId) return;
+    emit(
+      state.withBar(
+        workspaceId,
+        state
+            .bar(workspaceId)
+            .copyWith(
+              center: center.copyWith(
+                landingInitialText: null,
+                landingReferenceSessionId: null,
+              ),
+            ),
+      ),
+    );
   }
 
   void reorder(String workspaceId, int oldIndex, int newIndex) {
@@ -231,6 +263,17 @@ class WorkbenchCubit extends Cubit<WorkbenchState> {
   WorkbenchTabId? centerActiveId(String workspaceId) =>
       state.bar(workspaceId).center.activeId;
 
+  TabStrip _removeCenterTabs(
+    TabStrip center,
+    Iterable<WorkbenchTabId> removed,
+  ) {
+    var next = center;
+    for (final tab in removed) {
+      next = _r.remove(next, tab) ?? next;
+    }
+    return next;
+  }
+
   List<WorkbenchTabId> closeOthers(String workspaceId, WorkbenchTabId keep) {
     final bar = state.bar(workspaceId);
     final center = bar.center;
@@ -238,20 +281,8 @@ class WorkbenchCubit extends Cubit<WorkbenchState> {
     final removed = center.order
         .where((t) => t != keep)
         .toList(growable: false);
-    emit(
-      state.withBar(
-        workspaceId,
-        bar.copyWith(
-          center: center.copyWith(
-            order: [keep],
-            activeId: keep,
-            previewIds: center.previewIds.contains(keep)
-                ? {keep}
-                : const <WorkbenchTabId>{},
-          ),
-        ),
-      ),
-    );
+    final next = _removeCenterTabs(center, removed).copyWith(activeId: keep);
+    emit(state.withBar(workspaceId, bar.copyWith(center: next)));
     for (final tab in removed) {
       unawaited(_port.onTabRemoved(workspaceId, tab));
     }
@@ -259,29 +290,20 @@ class WorkbenchCubit extends Cubit<WorkbenchState> {
   }
 
   List<WorkbenchTabId> closeRight(String workspaceId, WorkbenchTabId anchor) {
-    final center = state.bar(workspaceId).center;
+    final bar = state.bar(workspaceId);
+    final center = bar.center;
     final index = center.order.indexOf(anchor);
     if (index < 0 || index >= center.order.length - 1) return const [];
-    final kept = center.order.sublist(0, index + 1);
     final removed = center.order.sublist(index + 1);
     final active = center.activeId;
     final nextActive = active != null && removed.contains(active)
         ? anchor
         : active;
-    emit(
-      state.withBar(
-        workspaceId,
-        state
-            .bar(workspaceId)
-            .copyWith(
-              center: center.copyWith(
-                order: kept,
-                activeId: nextActive,
-                previewIds: center.previewIds.where(kept.contains).toSet(),
-              ),
-            ),
-      ),
-    );
+    final next = _removeCenterTabs(
+      center,
+      removed,
+    ).copyWith(activeId: nextActive);
+    emit(state.withBar(workspaceId, bar.copyWith(center: next)));
     for (final tab in removed) {
       unawaited(_port.onTabRemoved(workspaceId, tab));
     }
@@ -305,6 +327,7 @@ class WorkbenchCubit extends Cubit<WorkbenchState> {
                 activeId: null,
                 previewIds: const {},
                 landingInitialText: null,
+                landingReferenceSessionId: null,
               ),
             ),
       ),

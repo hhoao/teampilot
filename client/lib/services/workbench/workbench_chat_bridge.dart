@@ -72,8 +72,21 @@ class WorkbenchChatBridge implements WorkbenchDomainPort, ChatWorkbenchPort {
   }
 
   @override
-  void enterLanding(String workspaceId, {String? initialText}) {
-    _workbench.enterLanding(workspaceId, initialText: initialText);
+  void enterLanding(
+    String workspaceId, {
+    String? initialText,
+    String? referencedSessionId,
+  }) {
+    _workbench.enterLanding(
+      workspaceId,
+      initialText: initialText,
+      referencedSessionId: referencedSessionId,
+    );
+  }
+
+  @override
+  void onSessionDeleted(String workspaceId, String sessionId) {
+    _workbench.onSessionDeleted(workspaceId, sessionId);
   }
 
   @override

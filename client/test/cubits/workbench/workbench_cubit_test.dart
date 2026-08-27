@@ -7,6 +7,8 @@ const _ws = 'ws';
 final _s1 = WorkbenchTabId.session('s1');
 final _s2 = WorkbenchTabId.session('s2');
 final _s3 = WorkbenchTabId.session('s3');
+final _f = WorkbenchTabId.file('/a.dart');
+final _d = WorkbenchTabId.diffChanges('/a.dart');
 
 void main() {
   late WorkbenchCubit cubit;
@@ -100,6 +102,32 @@ void main() {
       final removed = cubit.closeOthers(_ws, _s2);
       expect(removed, [_s1, _s3]);
       expect(cubit.state.bar(_ws).center.order, [_s2]);
+    });
+
+    test('closeOthers clears Landing prefill when a file remains', () {
+      cubit
+        ..openFile(_ws, '/a.dart')
+        ..openSession(_ws, 's1')
+        ..enterLanding(_ws, initialText: '审查并继续完成该会话: /data/session');
+
+      cubit.closeOthers(_ws, _f);
+
+      final center = cubit.state.bar(_ws).center;
+      expect(center.order, [_f]);
+      expect(center.landingInitialText, isNull);
+    });
+
+    test('closeRight clears Landing prefill when a diff remains', () {
+      cubit
+        ..openDiff(_ws, _d)
+        ..openSession(_ws, 's1')
+        ..enterLanding(_ws, initialText: '审查并继续完成该会话: /data/session');
+
+      cubit.closeRight(_ws, _d);
+
+      final center = cubit.state.bar(_ws).center;
+      expect(center.order, [_d]);
+      expect(center.landingInitialText, isNull);
     });
 
     test('closeAll clears a Landing prefill', () {

@@ -209,7 +209,14 @@ abstract class ChatWorkbenchPort {
   void onSessionTabClosed(String workspaceId, String sessionId);
 
   /// Show the new-chat landing for [workspaceId] (bar active → null).
-  void enterLanding(String workspaceId, {String? initialText});
+  void enterLanding(
+    String workspaceId, {
+    String? initialText,
+    String? referencedSessionId,
+  });
+
+  /// Clears a Landing reference after its persisted Session is deleted.
+  void onSessionDeleted(String workspaceId, String sessionId);
 
   /// Close every center tab for [workspaceId] (each removal tears down).
   void closeAll(String workspaceId);

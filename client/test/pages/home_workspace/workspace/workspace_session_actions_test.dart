@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -8,6 +10,7 @@ import 'package:teampilot/cubits/workbench/workbench_tab.dart';
 import 'package:teampilot/l10n/app_localizations.dart';
 import 'package:teampilot/models/app_session.dart';
 import 'package:teampilot/models/workspace.dart';
+import 'package:teampilot/models/workspace_folder.dart';
 import 'package:teampilot/repositories/session_repository.dart';
 import 'package:teampilot/pages/home_workspace/workspace/workspace_session_actions.dart';
 import 'package:teampilot/repositories/session_repository_fs.dart';
@@ -204,4 +207,66 @@ void main() {
     );
     expect(recorder.records.single.variant, TpToastVariant.error);
   });
+
+  testWidgets(
+    'deleting a referenced session clears Landing when its tab was never opened',
+    (tester) async {
+      final tmp = await Directory.systemTemp.createTemp(
+        'reference_session_delete_',
+      );
+      addTearDown(() => tmp.delete(recursive: true));
+      final repo = SessionRepository(rootDir: tmp.path);
+      final workspace = await repo.createWorkspace([
+        WorkspaceFolder(path: '/a'),
+      ]);
+      final session = (await repo.createSession(
+        workspace.workspaceId,
+        sessionTeam: '',
+        rosterMembers: const [],
+      )).session;
+      final chat = _RecordingChatCubit();
+      final workbench = WorkbenchCubit();
+      final bridge = WorkbenchChatBridge(workbench: workbench, chat: chat);
+      final contextKey = GlobalKey();
+      addTearDown(chat.close);
+      addTearDown(workbench.close);
+      workbench.port = bridge;
+      chat.workbenchPort = bridge;
+      chat.applyState(
+        chat.state.copyWith(workspaces: [workspace], sessions: [session]),
+      );
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: MultiRepositoryProvider(
+            providers: [
+              RepositoryProvider<SessionRepository>.value(value: repo),
+            ],
+            child: BlocProvider<ChatCubit>.value(
+              value: chat,
+              child: Builder(builder: (context) => SizedBox(key: contextKey)),
+            ),
+          ),
+        ),
+      );
+
+      await tester.runAsync(
+        () => referenceWorkspaceSession(
+          tester.element(find.byKey(contextKey)),
+          session,
+        ),
+      );
+      expect(
+        workbench.state.bar(workspace.workspaceId).center.landingInitialText,
+        isNotNull,
+      );
+
+      await chat.deleteSession(repo, session.sessionId);
+
+      expect(
+        workbench.state.bar(workspace.workspaceId).center.landingInitialText,
+        isNull,
+      );
+    },
+  );
 }
