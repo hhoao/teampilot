@@ -1,0 +1,69 @@
+import 'dart:async';
+
+import 'package:ai_message_core/ai_message_core.dart';
+
+import 'chat_reveal_controller.dart';
+
+class ChatMessageLocator {
+  ChatMessageLocator({
+    required this.loadedMessages,
+    required this.runtime,
+    required this.revealInWindow,
+    required this.revealController,
+    required this.onHighlight,
+    this.timeout = const Duration(milliseconds: 450),
+    Future<void> Function()? waitFrame,
+  }) : waitFrame = waitFrame ?? (() => Future<void>.value());
+
+  final List<AiMessage> Function() loadedMessages;
+  final AiThreadRuntime Function() runtime;
+  final void Function(int index) revealInWindow;
+  final ChatRevealController revealController;
+  final void Function(String? id) onHighlight;
+  final Duration timeout;
+  final Future<void> Function() waitFrame;
+
+  int _generation = 0;
+
+  void cancel() {
+    _generation++;
+  }
+
+  Future<void> locate({required String id, int? index}) async {
+    final gen = ++_generation;
+    final all = loadedMessages();
+    final resolved = all.indexWhere((m) => m.id == id);
+    if (resolved < 0) return;
+    revealInWindow(resolved);
+    if (!_contains(id)) {
+      final appeared = Completer<void>();
+      final sub = runtime().changes.listen((_) {
+        if (_contains(id) && !appeared.isCompleted) {
+          appeared.complete();
+        }
+      });
+      if (_contains(id) && !appeared.isCompleted) {
+        appeared.complete();
+      }
+      try {
+        await appeared.future.timeout(timeout);
+      } on TimeoutException {
+        return;
+      } finally {
+        await sub.cancel();
+      }
+    }
+    if (gen != _generation) return;
+    await waitFrame();
+    if (gen != _generation) return;
+    revealController.reveal(id);
+    onHighlight(id);
+  }
+
+  bool _contains(String id) {
+    for (final m in runtime().messages) {
+      if (m.id == id) return true;
+    }
+    return false;
+  }
+}
