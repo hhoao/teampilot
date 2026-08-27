@@ -212,19 +212,23 @@ void main() {
   testWidgets(
     'deleting a referenced session clears Landing when its tab was never opened',
     (tester) async {
-      final tmp = await Directory.systemTemp.createTemp(
-        'reference_session_delete_',
-      );
-      addTearDown(() => tmp.delete(recursive: true));
-      final repo = SessionRepository(rootDir: tmp.path);
-      final workspace = await repo.createWorkspace([
-        WorkspaceFolder(path: '/a'),
-      ]);
-      final session = (await repo.createSession(
-        workspace.workspaceId,
-        sessionTeam: '',
-        rosterMembers: const [],
-      )).session;
+      late Directory tmp;
+      late SessionRepository repo;
+      late Workspace workspace;
+      late AppSession session;
+      await tester.runAsync(() async {
+        tmp = await Directory.systemTemp.createTemp(
+          'reference_session_delete_',
+        );
+        addTearDown(() => tmp.deleteSync(recursive: true));
+        repo = SessionRepository(rootDir: tmp.path);
+        workspace = await repo.createWorkspace([WorkspaceFolder(path: '/a')]);
+        session = (await repo.createSession(
+          workspace.workspaceId,
+          sessionTeam: '',
+          rosterMembers: const [],
+        )).session;
+      });
       final chat = _RecordingChatCubit();
       final workbench = WorkbenchCubit();
       final bridge = WorkbenchChatBridge(workbench: workbench, chat: chat);
@@ -262,7 +266,7 @@ void main() {
         isNotNull,
       );
 
-      await chat.deleteSession(repo, session.sessionId);
+      await tester.runAsync(() => chat.deleteSession(repo, session.sessionId));
 
       expect(
         workbench.state.bar(workspace.workspaceId).center.landingInitialText,
