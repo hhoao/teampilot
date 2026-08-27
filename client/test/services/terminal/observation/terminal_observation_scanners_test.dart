@@ -52,6 +52,16 @@ void main() {
     expect(lines, ['hi']);
   });
 
+  test('UserLineSubmitted tolerates malformed UTF-8 before Enter', () {
+    final lines = <String>[];
+    bus.subscribe<UserLineSubmitted>((e) => lines.add(e.line));
+    bus.transformInput(
+      Uint8List.fromList([0xFF, 0xFE, ...utf8.encode('hi'), 0x0D]),
+    );
+    expect(lines, hasLength(1));
+    expect(lines.single, contains('hi'));
+  });
+
   test('throwing OscTitle handler does not skip a second subscriber', () {
     final later = <String>[];
     bus.subscribe<OscTitle>((e) {

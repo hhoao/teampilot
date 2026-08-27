@@ -19,7 +19,7 @@ final class UserLineScanner implements TerminalInputObserver {
   @override
   void onInput(Uint8List bytes, TerminalObservationSeat seat) {
     if (bytes.isEmpty) return;
-    _capture.feed(utf8.decode(bytes));
+    _capture.feed(utf8.decode(bytes, allowMalformed: true));
   }
 
   void reset() {
