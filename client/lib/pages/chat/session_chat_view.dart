@@ -207,8 +207,7 @@ class _SessionChatViewState extends State<SessionChatView> {
         widget.failedMessageStore ??
         FailedMessageStore(fs: AppStorage.fs, rootPath: AppStorage.appDataRoot);
     _bindSeat();
-    _loadHistory();
-    unawaited(_hydratePersistedPendingUsers());
+    unawaited(_loadHistoryThenHydratePersistedPendingUsers());
     unawaited(_loadWorkspaceProjectBundle());
   }
 
@@ -272,8 +271,7 @@ class _SessionChatViewState extends State<SessionChatView> {
       // already clears pendings when sessionId/memberId actually change.
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (!mounted) return;
-        _loadHistory();
-        unawaited(_hydratePersistedPendingUsers());
+        unawaited(_loadHistoryThenHydratePersistedPendingUsers());
       });
     } else if (oldWidget.routeActive != widget.routeActive) {
       _maybeStartLiveRefreshForRunningPty();
@@ -288,6 +286,15 @@ class _SessionChatViewState extends State<SessionChatView> {
       workspaceId: widget.session.workspaceId,
       sessionId: widget.session.sessionId,
     );
+  }
+
+  /// The CLI snapshot establishes the user-turn baseline used by FIFO
+  /// confirmation. Hydrating before it completes lets existing transcript
+  /// turns consume restored records as though they were freshly sent.
+  Future<void> _loadHistoryThenHydratePersistedPendingUsers() async {
+    await _loadHistory();
+    if (!mounted) return;
+    await _hydratePersistedPendingUsers();
   }
 
   String _mailboxSeatKey() => historySeatKey(
@@ -407,53 +414,43 @@ class _SessionChatViewState extends State<SessionChatView> {
     workspace: widget.workspace,
   );
 
-  void _loadHistory({bool force = false}) {
+  Future<void> _loadHistory({bool force = false}) async {
     final seat = _seat;
     if (seat == null) return;
     if (force) {
-      unawaited(
-        seat
-            .load(
-              session: widget.session,
-              memberId: widget.selectedMemberId,
-              launchContext: _launchContext,
-              team: widget.team,
-              workingDirectory: _workspaceRoot,
-              force: true,
-            )
-            .then((_) {
-              if (!mounted) return;
-              _maybeStartLiveRefreshForRunningPty();
-              // Seat owns the working latch across remount — sync (do not
-              // force-clear) so landing Starting survives long connects.
-              _syncAwaitingFromWorkingSessions(context.read<ChatCubit>().state);
-              if (seat.state.awaitingAssistant) {
-                unawaited(_startLiveRefresh(skipInitialRefresh: true));
-              }
-            }),
+      await seat.load(
+        session: widget.session,
+        memberId: widget.selectedMemberId,
+        launchContext: _launchContext,
+        team: widget.team,
+        workingDirectory: _workspaceRoot,
+        force: true,
       );
+      if (!mounted) return;
+      _maybeStartLiveRefreshForRunningPty();
+      // Seat owns the working latch across remount — sync (do not force-clear)
+      // so landing Starting survives long connects.
+      _syncAwaitingFromWorkingSessions(context.read<ChatCubit>().state);
+      if (seat.state.awaitingAssistant) {
+        unawaited(_startLiveRefresh(skipInitialRefresh: true));
+      }
       return;
     }
     // Soft when already ready for this seat — no loading flash / hard reload.
-    unawaited(
-      seat
-          .softReloadOrLoad(
-            session: widget.session,
-            memberId: widget.selectedMemberId,
-            launchContext: _launchContext,
-            team: widget.team,
-            workingDirectory: _workspaceRoot,
-          )
-          .then((_) {
-            if (!mounted) return;
-            _maybeStartLiveRefreshForRunningPty();
-            // Landing seed / continue awaiting: refresh while PTY runs offstage.
-            _syncAwaitingFromWorkingSessions(context.read<ChatCubit>().state);
-            if (seat.state.awaitingAssistant) {
-              unawaited(_startLiveRefresh(skipInitialRefresh: true));
-            }
-          }),
+    await seat.softReloadOrLoad(
+      session: widget.session,
+      memberId: widget.selectedMemberId,
+      launchContext: _launchContext,
+      team: widget.team,
+      workingDirectory: _workspaceRoot,
     );
+    if (!mounted) return;
+    _maybeStartLiveRefreshForRunningPty();
+    // Landing seed / continue awaiting: refresh while PTY runs offstage.
+    _syncAwaitingFromWorkingSessions(context.read<ChatCubit>().state);
+    if (seat.state.awaitingAssistant) {
+      unawaited(_startLiveRefresh(skipInitialRefresh: true));
+    }
   }
 
   /// PTY shells for Simple seats are keyed by [AppSession.sessionId].

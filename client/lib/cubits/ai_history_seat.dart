@@ -1120,12 +1120,22 @@ class AiHistorySeat extends Cubit<AiHistoryState> {
         if (m.role == AiRole.user) m,
     ];
     final appeared = math.max(0, userTurns.length - _lastUserTurnCount);
-    final drop = math.min(appeared, _pendingQueue.length);
-    if (drop > 0) {
-      final confirmed = _pendingQueue.sublist(0, drop);
-      _pendingQueue.removeRange(0, drop);
+    if (appeared > 0) {
+      var remaining = appeared;
+      final confirmed = <_PendingUser>[];
+      _pendingQueue.removeWhere((pending) {
+        // A failed delivery is terminal until explicit retry support exists;
+        // subsequent transcript turns belong to later sends, never this row.
+        if (pending.deliveryStatus == FailedMessageStatus.failed ||
+            remaining == 0) {
+          return false;
+        }
+        remaining--;
+        confirmed.add(pending);
+        return true;
+      });
       for (final pending in confirmed) {
-        if (pending.deliveryStatus != null) {
+        if (pending.deliveryStatus == FailedMessageStatus.sending) {
           unawaited(_removePersistedPending(pending.id));
         }
       }
