@@ -77,12 +77,13 @@ void main() {
     FakeAsync().run((async) {
       final runtime = ExternalStoreAiThreadRuntime();
       final controller = ChatRevealController();
+      var highlightCalls = 0;
       final locator = ChatMessageLocator(
         loadedMessages: () => [_user('u0')],
         runtime: () => runtime,
         revealInWindow: (_) {},
         revealController: controller,
-        onHighlight: (_) {},
+        onHighlight: (_) => highlightCalls++,
         timeout: const Duration(milliseconds: 450),
         waitFrame: () async {},
       );
@@ -91,6 +92,55 @@ void main() {
       async.elapse(const Duration(milliseconds: 451));
 
       expect(controller.targetMessageId, isNull);
+      expect(highlightCalls, 0);
     });
+  });
+
+  test('cancel during wait does not reveal', () async {
+    final runtime = ExternalStoreAiThreadRuntime();
+    final loaded = [_user('u0')];
+    final controller = ChatRevealController();
+    var highlightCalls = 0;
+    final locator = ChatMessageLocator(
+      loadedMessages: () => loaded,
+      runtime: () => runtime,
+      revealInWindow: (_) {},
+      revealController: controller,
+      onHighlight: (_) => highlightCalls++,
+      waitFrame: () async {},
+    );
+
+    final pending = locator.locate(id: 'u0');
+    locator.cancel();
+    runtime.setMessages([_user('u0')]);
+    await pending;
+
+    expect(controller.targetMessageId, isNull);
+    expect(highlightCalls, 0);
+  });
+
+  test('second locate wins while first is waiting', () async {
+    final runtime = ExternalStoreAiThreadRuntime()
+      ..setMessages([_user('u1')]);
+    final loaded = [_user('u0'), _user('u1')];
+    final controller = ChatRevealController();
+    String? highlight;
+    final locator = ChatMessageLocator(
+      loadedMessages: () => loaded,
+      runtime: () => runtime,
+      revealInWindow: (_) {},
+      revealController: controller,
+      onHighlight: (id) => highlight = id,
+      waitFrame: () async {},
+    );
+
+    final first = locator.locate(id: 'u0');
+    final second = locator.locate(id: 'u1');
+    runtime.setMessages([_user('u0'), _user('u1')]);
+    await first;
+    await second;
+
+    expect(controller.targetMessageId, 'u1');
+    expect(highlight, 'u1');
   });
 }

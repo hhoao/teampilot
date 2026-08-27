@@ -29,20 +29,22 @@ class ChatMessageLocator {
     _generation++;
   }
 
+  /// [index] is accepted for callers but ignored; resolution is by id only.
   Future<void> locate({required String id, int? index}) async {
     final gen = ++_generation;
     final all = loadedMessages();
     final resolved = all.indexWhere((m) => m.id == id);
     if (resolved < 0) return;
     revealInWindow(resolved);
-    if (!_contains(id)) {
+    final rt = runtime();
+    if (!_contains(rt, id)) {
       final appeared = Completer<void>();
-      final sub = runtime().changes.listen((_) {
-        if (_contains(id) && !appeared.isCompleted) {
+      final sub = rt.changes.listen((_) {
+        if (_contains(rt, id) && !appeared.isCompleted) {
           appeared.complete();
         }
       });
-      if (_contains(id) && !appeared.isCompleted) {
+      if (_contains(rt, id) && !appeared.isCompleted) {
         appeared.complete();
       }
       try {
@@ -60,8 +62,8 @@ class ChatMessageLocator {
     onHighlight(id);
   }
 
-  bool _contains(String id) {
-    for (final m in runtime().messages) {
+  bool _contains(AiThreadRuntime rt, String id) {
+    for (final m in rt.messages) {
       if (m.id == id) return true;
     }
     return false;
