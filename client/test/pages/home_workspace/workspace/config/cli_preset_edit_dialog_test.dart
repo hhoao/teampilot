@@ -401,4 +401,55 @@ void main() {
       anyElement(contains(longModel)),
     );
   });
+
+  testWidgets('edit dialog disables CLI select; add dialog leaves it enabled', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(1280, 1000);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    await pumpManageDialog(tester);
+
+    await tester.tap(find.byIcon(Icons.edit_outlined));
+    await tester.pumpAndSettle();
+
+    final editCli = tester.widget<TpSelect<String>>(
+      find.byKey(const Key('preset-cli-select')),
+    );
+    expect(editCli.enabled, isFalse);
+    expect(editCli.initialItem, CliTool.claude.value);
+
+    final l10n = AppLocalizations.of(
+      tester.element(find.byType(Scaffold).first),
+    );
+    await tester.tap(find.widgetWithText(TextButton, l10n.cancel).last);
+    await tester.pumpAndSettle();
+
+    await tester.tap(
+      find.widgetWithText(OutlinedButton, l10n.workspaceCliAddPresetTitle),
+    );
+    await tester.pumpAndSettle();
+
+    final addCli = tester.widget<TpSelect<String>>(
+      find.byKey(const Key('preset-cli-select')),
+    );
+    expect(addCli.enabled, isTrue);
+  });
+
+  testWidgets('edit dialog keeps provider select enabled', (tester) async {
+    tester.view.physicalSize = const Size(1280, 1000);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    await pumpManageDialog(tester);
+
+    await tester.tap(find.byIcon(Icons.edit_outlined));
+    await tester.pumpAndSettle();
+
+    final providerField = tester.widget<TpSelectFormField<String>>(
+      find.byType(TpSelectFormField<String>),
+    );
+    expect(providerField.enabled, isNot(false));
+  });
 }
