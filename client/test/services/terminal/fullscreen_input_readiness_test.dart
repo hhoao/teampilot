@@ -1,5 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/services/cli/codex/capabilities/terminal_behavior.dart';
+import 'package:teampilot/services/cli/cursor/capabilities/terminal_behavior.dart';
 import 'package:teampilot/services/terminal/fullscreen_input_readiness.dart';
 
 void main() {
@@ -31,10 +32,7 @@ void main() {
     );
 
     now = now.add(const Duration(milliseconds: 1));
-    expect(
-      watch.observe(readiness: readiness, probeWindow: '› hello'),
-      isTrue,
-    );
+    expect(watch.observe(readiness: readiness, probeWindow: '› hello'), isTrue);
   });
 
   test('losing composer chrome restarts the Codex dwell', () {
@@ -60,10 +58,7 @@ void main() {
     );
 
     now = now.add(const Duration(seconds: 1));
-    expect(
-      watch.observe(readiness: readiness, probeWindow: '› hello'),
-      isTrue,
-    );
+    expect(watch.observe(readiness: readiness, probeWindow: '› hello'), isTrue);
   });
 
   test('history still painting restarts the Codex dwell', () {
@@ -94,7 +89,8 @@ void main() {
     expect(
       watch.observe(
         readiness: readiness,
-        probeWindow: 'assistant: ok\nuser: 提交吧\ngpt-5.6-luna default · /tmp\n› ',
+        probeWindow:
+            'assistant: ok\nuser: 提交吧\ngpt-5.6-luna default · /tmp\n› ',
       ),
       isFalse,
       reason: 'each new history frame must restart dwell',
@@ -102,15 +98,9 @@ void main() {
 
     const settled = 'assistant: ok\nuser: 提交吧\ngpt-5.6-luna default · /tmp\n› ';
     now = now.add(const Duration(milliseconds: 999));
-    expect(
-      watch.observe(readiness: readiness, probeWindow: settled),
-      isFalse,
-    );
+    expect(watch.observe(readiness: readiness, probeWindow: settled), isFalse);
     now = now.add(const Duration(milliseconds: 1));
-    expect(
-      watch.observe(readiness: readiness, probeWindow: settled),
-      isTrue,
-    );
+    expect(watch.observe(readiness: readiness, probeWindow: settled), isTrue);
 
     // Delayed resume replay: chrome can sit still, then history starts later.
     now = now.add(const Duration(milliseconds: 50));
@@ -122,5 +112,32 @@ void main() {
       isFalse,
       reason: 'history starting after chrome was already ready must unready',
     );
+  });
+
+  test('Cursor startup flicker restarts dwell until the probe is stable', () {
+    var now = DateTime(2026, 8, 28, 16);
+    final watch = FullscreenInputSurfaceWatch(now: () => now);
+    final readiness = const CursorTerminalBehavior().inputReadiness;
+
+    expect(
+      watch.observe(readiness: readiness, probeWindow: '→ Plan, search'),
+      isFalse,
+    );
+
+    now = now.add(const Duration(milliseconds: 400));
+    expect(
+      watch.observe(
+        readiness: readiness,
+        probeWindow: 'thinking\n→ Plan, search',
+      ),
+      isFalse,
+      reason: 'full-screen redraws must restart dwell even if → is visible',
+    );
+
+    const settled = 'thinking\n→ Plan, search';
+    now = now.add(const Duration(milliseconds: 999));
+    expect(watch.observe(readiness: readiness, probeWindow: settled), isFalse);
+    now = now.add(const Duration(milliseconds: 1));
+    expect(watch.observe(readiness: readiness, probeWindow: settled), isTrue);
   });
 }

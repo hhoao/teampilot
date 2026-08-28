@@ -59,8 +59,13 @@ final class CursorTerminalBehavior
   @override
   String? get fullscreenComposerPrefix => '→';
   @override
-  FullscreenInputReadiness get inputReadiness =>
-      const FullscreenInputReadiness(readyNeedles: ['→']);
+  FullscreenInputReadiness get inputReadiness => const FullscreenInputReadiness(
+    readyNeedles: ['→'],
+    // Startup TUI full-screen redraws keep → visible while the probe is
+    // still flashing. Wait until chrome AND probe contents stop changing
+    // before paste+CR, same as Codex resume history replay.
+    readyDwell: Duration(seconds: 1),
+  );
   @override
   Duration get startupDeadline => const Duration(seconds: 45);
 

@@ -44,12 +44,9 @@ void main() {
       expect(behavior.inputReadiness.isReady('› '), isTrue);
     });
 
-    test(
-      'composer chrome must dwell on a stable probe before submit',
-      () {
-        expect(behavior.inputReadiness.readyDwell, const Duration(seconds: 1));
-      },
-    );
+    test('composer chrome must dwell on a stable probe before submit', () {
+      expect(behavior.inputReadiness.readyDwell, const Duration(seconds: 1));
+    });
 
     test('boot-gate needles match Codex first-run screens', () {
       expect(
@@ -72,6 +69,13 @@ void main() {
     expect(cursor.inputReadiness.waitsForSurface, isTrue);
     expect(cursor.inputReadiness.isReady('thinking'), isFalse);
     expect(cursor.inputReadiness.isReady('→ Plan, search'), isTrue);
+  });
+
+  test('Cursor composer chrome must dwell on a stable probe before submit', () {
+    expect(
+      const CursorTerminalBehavior().inputReadiness.readyDwell,
+      const Duration(seconds: 1),
+    );
   });
 
   test('Cursor allows 45s for cold plugin and catalog startup', () {

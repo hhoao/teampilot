@@ -98,6 +98,41 @@ void main() {
     );
   });
 
+  test('Cursor composer chrome is not ready until dwell elapses', () async {
+    final harness = await _ComposerHarness.connect(cli: CliTool.cursor);
+    addTearDown(harness.dispose);
+
+    await harness.paintCursorComposer();
+    expect(
+      harness.delivery.isMemberComposerSurfaceReady(_sessionId, _memberId),
+      isFalse,
+    );
+    await Future<void>.delayed(const Duration(seconds: 1));
+    expect(
+      harness.delivery.isMemberComposerSurfaceReady(_sessionId, _memberId),
+      isTrue,
+    );
+  });
+
+  test('Cursor full-screen flicker keeps composer unready', () async {
+    final harness = await _ComposerHarness.connect(cli: CliTool.cursor);
+    addTearDown(harness.dispose);
+
+    await harness.paintCursorComposer();
+    await Future<void>.delayed(const Duration(milliseconds: 400));
+    await harness.paintFlickerFrame('thinking');
+    expect(
+      harness.delivery.isMemberComposerSurfaceReady(_sessionId, _memberId),
+      isFalse,
+      reason: 'startup redraws must restart Cursor composer dwell',
+    );
+    await Future<void>.delayed(const Duration(seconds: 1));
+    expect(
+      harness.delivery.isMemberComposerSurfaceReady(_sessionId, _memberId),
+      isTrue,
+    );
+  });
+
   test('Claude boot frame is enough without composer chrome', () async {
     final harness = await _ComposerHarness.connect(cli: CliTool.claude);
     addTearDown(harness.dispose);
@@ -300,6 +335,32 @@ final class _ComposerHarness {
       window.contains('trust') || window.contains('Press enter'),
       isTrue,
       reason: 'trust screen should land on the probe grid\n$window',
+    );
+  }
+
+  Future<void> paintCursorComposer() async {
+    await shell.emitPtyOutput('→ Plan, search\r\n');
+    final window = await _waitForWindow(
+      shell.session,
+      (text) => text.contains('→'),
+    );
+    expect(
+      window.contains('→'),
+      isTrue,
+      reason: 'Cursor composer chrome should land on the probe grid\n$window',
+    );
+  }
+
+  Future<void> paintFlickerFrame(String line) async {
+    await shell.emitPtyOutput('$line\r\n');
+    final window = await _waitForWindow(
+      shell.session,
+      (text) => text.contains(line),
+    );
+    expect(
+      window.contains(line),
+      isTrue,
+      reason: 'flicker frame should land on the probe grid\n$window',
     );
   }
 

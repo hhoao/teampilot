@@ -4,10 +4,11 @@
 /// can paint splash / trust screens first; inject must wait for composer
 /// chrome or a status footer that only exists after those gates.
 ///
-/// Even after chrome appears, some TUIs (Codex) paint an interactive-looking
-/// composer before Enter is bound — and on `--resume` they paint that chrome
-/// immediately, then stream history into the transcript. [readyDwell] is the
-/// quiet window after needles match **and** the probe contents stop changing.
+/// Even after chrome appears, some TUIs (Codex, Cursor) paint an
+/// interactive-looking composer before Enter is bound. Codex `--resume`
+/// streams history after chrome; Cursor redraws the whole screen at
+/// startup. [readyDwell] is the quiet window after needles match **and**
+/// the probe contents stop changing.
 final class FullscreenInputReadiness {
   const FullscreenInputReadiness({
     this.readyNeedles = const [],
