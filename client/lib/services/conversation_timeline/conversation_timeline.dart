@@ -51,8 +51,7 @@ CliTimelineDelta computeCliTimelineDelta({
   for (var i = 0; i < previous.length; i++) {
     if (identical(previous[i], next[i])) continue;
     if (previous[i].id != next[i].id) return const CliTimelineInvalidated();
-    if (messageContentIdentity(previous[i]) ==
-        messageContentIdentity(next[i])) {
+    if (messagesCheapEqual(previous[i], next[i])) {
       continue;
     }
     if (i == previous.length - 1) {

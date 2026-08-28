@@ -32,4 +32,24 @@ void main() {
       'hello world',
     );
   });
+
+  test('reuseHistoryMessageIdentity uses cheap equality for large tool results', () {
+    final result = 'HEAD'.padRight(64, 'H') + ('x' * 4000) + 'TAIL'.padLeft(64, 'T');
+    AiMessage tool(String payload) => AiMessage(
+          id: 'a',
+          role: AiRole.assistant,
+          parts: [
+            AiToolCallPart(
+              toolCallId: 't1',
+              toolName: 'Bash',
+              result: payload,
+              status: AiToolCallStatus.complete,
+            ),
+          ],
+        );
+    final previous = [tool(result)];
+    final next = [tool(StringBuffer(result).toString())];
+    final reused = reuseHistoryMessageIdentity(previous: previous, next: next);
+    expect(identical(reused.single, previous.single), isTrue);
+  });
 }

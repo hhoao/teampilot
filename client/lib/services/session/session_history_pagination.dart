@@ -87,7 +87,7 @@ List<AiMessage> reuseHistoryMessageIdentity({
 AiMessage _reuseUnchangedMessage(AiMessage? previous, AiMessage next) {
   if (previous == null) return next;
   if (identical(previous, next)) return previous;
-  if (messageContentIdentity(previous) == messageContentIdentity(next)) {
+  if (messagesCheapEqual(previous, next)) {
     return previous;
   }
   return next;
