@@ -114,7 +114,7 @@ class WorkspaceComposeCard extends StatelessWidget {
 
   /// Optional paste-collapse buffer. When collapsed, a badge bar is rendered
   /// above the field; the at-file refs scan and the actions-row hasText account
-  /// for the block. Parents compute canSubmit/submit.
+  /// for the block. Parents pass launch-gate [canSubmit]; emptiness is local.
   final ComposeClip? clip;
 
   bool get _composeEnabled => switch (chrome) {
@@ -130,7 +130,10 @@ class WorkspaceComposeCard extends StatelessWidget {
   bool get _composeActionsEnabled =>
       _composeEnabled && !isSubmitting && !isEnhancing;
 
-  bool get _effectiveCanSubmit => _composeEnabled && canSubmit;
+  bool get _effectiveCanSubmit {
+    if (!_composeEnabled || !canSubmit) return false;
+    return controller.text.trim().isNotEmpty || (clip?.collapsed ?? false);
+  }
 
   String get _sendThrottleKey => switch (chrome) {
     UnboundComposeChrome() => 'workspace_chat_landing_send',

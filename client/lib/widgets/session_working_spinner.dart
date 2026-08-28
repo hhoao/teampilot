@@ -88,7 +88,8 @@ class SessionWaitingMarker extends StatelessWidget {
 /// while that session has a member in [MemberAvailability.working] (members panel).
 ///
 /// Pure UI: it animates on its own [AnimationController]; callers just mount it
-/// when the session is working and unmount it when idle.
+/// when the session is working and unmount it when idle. Animation ticks paint
+/// through [CustomPainter.repaint] — they must not rebuild widgets.
 class SessionWorkingSpinner extends StatefulWidget {
   const SessionWorkingSpinner({super.key, this.size = 14, this.color});
 
@@ -121,11 +122,8 @@ class _SessionWorkingSpinnerState extends State<SessionWorkingSpinner>
       width: widget.size,
       height: widget.size,
       child: RepaintBoundary(
-        child: AnimatedBuilder(
-          animation: _controller,
-          builder: (context, _) => CustomPaint(
-            painter: _GridWavePainter(phase: _controller.value, color: color),
-          ),
+        child: CustomPaint(
+          painter: _GridWavePainter(animation: _controller, color: color),
         ),
       ),
     );
@@ -133,10 +131,11 @@ class _SessionWorkingSpinnerState extends State<SessionWorkingSpinner>
 }
 
 class _GridWavePainter extends CustomPainter {
-  _GridWavePainter({required this.phase, required this.color});
+  _GridWavePainter({required this.animation, required this.color})
+    : super(repaint: animation);
 
   /// 0..1, one full diagonal sweep per cycle.
-  final double phase;
+  final Animation<double> animation;
   final Color color;
 
   static const int _n = 3;
@@ -153,7 +152,8 @@ class _GridWavePainter extends CustomPainter {
         // Diagonal index 0..(2*(n-1)) → 0..1 phase offset; the wave travels
         // top-left → bottom-right and loops smoothly via sin.
         final cellPhase = (row + col) / ((_n - 1) * 2);
-        final wave = 0.5 + 0.5 * math.sin(2 * math.pi * (phase - cellPhase));
+        final wave =
+            0.5 + 0.5 * math.sin(2 * math.pi * (animation.value - cellPhase));
         paint.color = color.withValues(alpha: 0.22 + 0.78 * wave);
         canvas.drawRRect(
           RRect.fromRectAndRadius(
@@ -168,5 +168,5 @@ class _GridWavePainter extends CustomPainter {
 
   @override
   bool shouldRepaint(_GridWavePainter old) =>
-      old.phase != phase || old.color != color;
+      old.animation != animation || old.color != color;
 }

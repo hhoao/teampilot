@@ -44,4 +44,38 @@ void main() {
     expect(CursorAuthArtifacts.cliConfigIndicatesLoggedIn(loggedIn), isTrue);
     expect(CursorAuthArtifacts.cliConfigIndicatesLoggedIn(loggedOut), isFalse);
   });
+
+  test('authJsonTokensEqual compares access and refresh tokens', () {
+    expect(
+      CursorAuthArtifacts.authJsonTokensEqual(
+        '{"accessToken":"at1","refreshToken":"rt1"}',
+        '{"accessToken":"at1","refreshToken":"rt1","extra":true}',
+      ),
+      isTrue,
+    );
+    expect(
+      CursorAuthArtifacts.authJsonTokensEqual(
+        '{"accessToken":"at1","refreshToken":"rt1"}',
+        '{"accessToken":"at-b","refreshToken":"rt-b"}',
+      ),
+      isFalse,
+    );
+  });
+
+  test('cliConfigAuthInfoEqual compares account identity', () {
+    expect(
+      CursorAuthArtifacts.cliConfigAuthInfoEqual(
+        '{"authInfo":{"userId":"u1","authId":"a1"},"model":"x"}',
+        '{"authInfo":{"userId":"u1","authId":"a1"}}',
+      ),
+      isTrue,
+    );
+    expect(
+      CursorAuthArtifacts.cliConfigAuthInfoEqual(
+        '{"authInfo":{"userId":"u1","authId":"a1"}}',
+        '{"authInfo":{"userId":"u-b","authId":"a-b"}}',
+      ),
+      isFalse,
+    );
+  });
 }

@@ -15,6 +15,7 @@ import '../../cubits/prompt_delivery_status_cubit.dart';
 import '../../cubits/plugin_cubit.dart';
 import '../../cubits/skill_cubit.dart';
 import '../../l10n/l10n_extensions.dart';
+import '../../models/app_provider_config.dart';
 import '../../models/app_session.dart';
 import '../../models/cli_preset.dart';
 import '../../models/config_bundle.dart';
@@ -58,11 +59,11 @@ import '../home_workspace/workspace/config/cli_presets_manage_dialog.dart';
 import '../home_workspace/workspace/workspace_landing_team_settings_dialog.dart';
 import 'agent_permission_attention_banner.dart';
 import 'compose_stop_visibility.dart';
+import 'session_seat_working.dart';
 import 'history_continue_delivery.dart';
 import 'history_mailbox_queued_strip.dart';
 import 'prompt_delivery_recovery_strip.dart';
 import 'session_chat_voice_controller.dart';
-import 'session_seat_working.dart';
 
 /// Self-contained compose section that reads its own cubits via
 /// [context.select], eliminating the need for the parent to pass computed
@@ -94,7 +95,6 @@ class SessionChatComposeSection extends StatelessWidget {
     required this.onAttach,
     required this.onEnhance,
     required this.onPasteImage,
-    required this.onComposeChanged,
     required this.routeActive,
     required this.onSubmit,
     super.key,
@@ -129,7 +129,6 @@ class SessionChatComposeSection extends StatelessWidget {
   final VoidCallback onAttach;
   final VoidCallback onEnhance;
   final Future<bool> Function() onPasteImage;
-  final VoidCallback onComposeChanged;
   final bool routeActive;
   final Future<HistoryContinueSubmitResult> Function(String message) onSubmit;
 
@@ -173,9 +172,6 @@ class SessionChatComposeSection extends StatelessWidget {
       session.sessionId,
       shellMemberId,
     );
-    final composeTextEmpty =
-        composeController.text.trim().isEmpty &&
-        !(composeClip?.collapsed ?? false);
     final lockedCli = _lockedCli(
       session: session,
       team: team,
@@ -187,18 +183,12 @@ class SessionChatComposeSection extends StatelessWidget {
             .capability<TerminalBehaviorCapability>(lockedCli)
             ?.supportsTurnInterrupt ??
         false;
-    final showComposeStop = shouldShowComposeStop(
-      memberWorking: memberWorking,
-      supportsTurnInterrupt: supportsTurnInterrupt,
-      composeTextEmpty: composeTextEmpty,
-    );
     final skillSyntax = registry.capability<SkillCapability>(lockedCli);
     final nativeCommands =
         registry.capability<NativeCommandCapability>(lockedCli)?.commands ??
         const <NativeCommand>[];
 
     // -- Derived values --------------------------------------------------
-    final canSubmit = !permissionWaiting && !composeTextEmpty && !isSubmitting;
     final sameCliPresets = presetsForCli(presets, lockedCli);
     final selectedPresetId = _selectedPresetId(
       session: session,
@@ -208,9 +198,10 @@ class SessionChatComposeSection extends StatelessWidget {
     final selectedPreset = selectedPresetId == null
         ? null
         : sameCliPresets.where((p) => p.id == selectedPresetId).firstOrNull;
-    final providerState = context.select<AppProviderCubit, AppProviderState>(
-      (c) => c.state,
-    );
+    final providerList = context
+        .select<AppProviderCubit, List<AppProviderConfig>>(
+          (c) => c.state.providersFor(lockedCli),
+        );
     final modelLabel = session.isSimple
         ? simpleLaunchChipLabel(
             presetName: selectedPreset?.name,
@@ -346,9 +337,7 @@ class SessionChatComposeSection extends StatelessWidget {
                           ? resolveComposeCascadeCliGroups(
                               registry: registry,
                               providersByCli: {
-                                lockedCli: providerState
-                                    .providersFor(lockedCli)
-                                    .toList(growable: false),
+                                lockedCli: providerList.toList(growable: false),
                               },
                               cliItems: [lockedCli],
                             )
@@ -387,8 +376,24 @@ class SessionChatComposeSection extends StatelessWidget {
                               emptyHintLabel: l10n.workspaceCliPresetsEmptyHint,
                             );
                       return ListenableBuilder(
-                        listenable: voiceController,
+                        listenable: Listenable.merge([
+                          composeController,
+                          voiceController,
+                          if (composeClip != null) composeClip!,
+                        ]),
                         builder: (context, _) {
+                          final composeTextEmpty =
+                              composeController.text.trim().isEmpty &&
+                              !(composeClip?.collapsed ?? false);
+                          final showComposeStop = shouldShowComposeStop(
+                            memberWorking: memberWorking,
+                            supportsTurnInterrupt: supportsTurnInterrupt,
+                            composeTextEmpty: composeTextEmpty,
+                          );
+                          final canSubmit =
+                              !permissionWaiting &&
+                              !composeTextEmpty &&
+                              !isSubmitting;
                           return WorkspaceComposeCard(
                             controller: composeController,
                             focusNode: composeFocusNode,
@@ -406,7 +411,7 @@ class SessionChatComposeSection extends StatelessWidget {
                                     composeController.text.trim(),
                               ),
                             ),
-                            onChanged: (_) => onComposeChanged(),
+                            onChanged: (_) {},
                             chrome: BoundComposeChrome(
                               composeEnabled: !permissionWaiting,
                               launchError: launchError,
@@ -595,7 +600,9 @@ class SessionChatComposeSection extends StatelessWidget {
 
   ExpertHubState? _readExpertHubState(BuildContext context) {
     try {
-      return context.select<ExpertHubCubit, ExpertHubState>((c) => c.state);
+      return context.select<ExpertHubCubit, ExpertHubState>(
+        (c) => ExpertHubState(allMembers: c.state.allMembers),
+      );
     } on ProviderNotFoundException {
       return null;
     }

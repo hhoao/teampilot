@@ -28,6 +28,7 @@ import '../../../utils/ui/app_keys.dart';
 import '../../../utils/workspace/workspace_active_context.dart';
 import '../../../utils/workspace/workspace_new_chat_active.dart';
 import '../../../widgets/right_tools/right_tools_panel.dart';
+import '../../../widgets/right_tools/right_tools_tool_preferences.dart';
 import '../../../widgets/right_tools/right_tools_tool_views.dart';
 import '../../../widgets/workspace_terminal_panel.dart';
 import '../../chat_page.dart';
@@ -378,14 +379,23 @@ class _WorkspaceRightToolsPane extends StatelessWidget {
       launchProfiles: context.read<LaunchProfileCubit>(),
       tabScopeId: tabScopeId,
     );
-    final layoutState = context.watch<LayoutCubit>().state;
+    final landingOverride = context.select<LayoutCubit, bool?>(
+      (c) => c.state.landingRightToolsOverride,
+    );
+    final layoutSlice = context.select<LayoutCubit, RightToolsLayoutSlice>((c) {
+      final prefs = c.state.preferences;
+      return RightToolsLayoutSlice(
+        rightToolsVisible: prefs.rightToolsVisible,
+        tools: RightToolsToolPreferences.from(prefs),
+      );
+    });
     final effectiveRight = composeLanding
-        ? (layoutState.landingRightToolsOverride ?? false)
-        : layoutState.preferences.rightToolsVisible;
+        ? (landingOverride ?? false)
+        : layoutSlice.rightToolsVisible;
     return RightToolsPanel(
       cwd: cwd,
       additionalPaths: additionalPaths,
-      preferences: layoutState.preferences.copyWith(
+      preferences: layoutSlice.panelPreferences.copyWith(
         rightToolsVisible: effectiveRight,
       ),
       panelKey: AppKeys.rightToolsPanel,

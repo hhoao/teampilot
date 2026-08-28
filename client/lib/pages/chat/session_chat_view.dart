@@ -56,10 +56,11 @@ import '../../services/terminal/pending_user_message.dart';
 import '../../theme/app_markdown_style_sheet.dart';
 import '../../utils/debug/debug_bloc_rebuild.dart';
 import '../../utils/logging/logger.dart';
+import '../../utils/session/session_chat_identity.dart';
 import '../../utils/team/team_member_naming.dart';
 import 'session_chat_compose_section.dart';
-import 'session_chat_message_area.dart';
 import 'session_seat_working.dart';
+import 'session_chat_message_area.dart';
 import 'agent_permission_attention_banner.dart';
 import 'chat_find_bar.dart';
 import 'chat_message_locator.dart';
@@ -194,9 +195,6 @@ class _SessionChatViewState extends State<SessionChatView> {
     super.initState();
     _focusNode = FocusNode(debugLabel: 'session_history_review_compose');
     _voice = SessionVoiceController(composeController: _controller);
-    _voice.onNeedsHostRebuild = () {
-      if (mounted) setState(() {});
-    };
     // Restore the cached session draft before attaching the change listener so
     // the restore does not notify _onComposeChanged (no setState during mount).
     final draft = composeDraftCache.sessionDraft(widget.session.sessionId);
@@ -403,10 +401,7 @@ class _SessionChatViewState extends State<SessionChatView> {
   }
 
   void _onComposeChanged() {
-    if (_suppressComposeDraftPersistence) {
-      if (mounted) setState(() {});
-      return;
-    }
+    if (_suppressComposeDraftPersistence) return;
     unawaited(
       composeDraftCache.saveSession(
         widget.session.workspaceId,
@@ -414,7 +409,6 @@ class _SessionChatViewState extends State<SessionChatView> {
         _controller.text,
       ),
     );
-    if (mounted) setState(() {});
   }
 
   Future<void> _hydrateComposeDraft() async {
@@ -660,7 +654,14 @@ class _SessionChatViewState extends State<SessionChatView> {
 
   /// Reactive snapshot for [build] only (`context.select`).
   AppSession? _watchCubitSession(BuildContext context) {
-    return context.select<ChatCubit, AppSession?>(_sessionFromCubit);
+    final identity = context.select<ChatCubit, SessionChatIdentity?>(
+      (c) => SessionChatIdentity.tryFromChatState(
+        c.state,
+        widget.session.sessionId,
+      ),
+    );
+    if (identity == null) return _sessionFromCubit(context.read<ChatCubit>());
+    return identity.applyTo(widget.session);
   }
 
   /// One-shot lookup for event handlers (`context.read`).
@@ -764,7 +765,6 @@ class _SessionChatViewState extends State<SessionChatView> {
       filesystem: AppStorage.fs,
     );
     if (!mounted) return;
-    setState(() {});
     _focusNode.requestFocus();
   }
 
@@ -774,7 +774,6 @@ class _SessionChatViewState extends State<SessionChatView> {
       controller: _controller,
       workspaceRoot: _workspaceRoot,
     );
-    if (pasted && mounted) setState(() {});
     return pasted;
   }
 
@@ -818,7 +817,6 @@ class _SessionChatViewState extends State<SessionChatView> {
       }
       _controller.text = enhanced;
       _controller.selection = TextSelection.collapsed(offset: enhanced.length);
-      setState(() {});
       _focusNode.requestFocus();
     } on HeadlessAiException catch (e) {
       if (!mounted) return;
@@ -1275,8 +1273,7 @@ class _SessionChatViewState extends State<SessionChatView> {
                                   markdown: buildAppMarkdownTokens(
                                     Theme.of(context),
                                     MarkdownProfile.compact,
-                                    // v1: window width, not chat column width.
-                                    width: MediaQuery.sizeOf(context).width,
+                                    width: columnWidth,
                                     mutedSurface: cs.surfaceContainerHighest
                                         .withValues(alpha: 0.55),
                                   ),
@@ -1456,8 +1453,6 @@ class _SessionChatViewState extends State<SessionChatView> {
                                             onEnhance: () =>
                                                 unawaited(_enhancePrompt()),
                                             onPasteImage: _pasteComposeImage,
-                                            onComposeChanged: () =>
-                                                setState(() {}),
                                             routeActive: widget.routeActive,
                                             onSubmit: _handleComposeSubmit,
                                           ),

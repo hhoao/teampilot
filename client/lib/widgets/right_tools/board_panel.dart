@@ -46,7 +46,7 @@ class BoardPanel extends StatelessWidget {
     final cs = Theme.of(context).colorScheme;
     final styles = TpTextStyles.of(context);
     final l10n = context.l10n;
-    final state = context.watch<BoardCubit>().state;
+    final state = context.select<BoardCubit, BoardState>((c) => c.state);
 
     if (state.total == 0) {
       return Center(
@@ -119,10 +119,7 @@ class _ColumnSection extends StatelessWidget {
                 style: styles.xsSemiboldSnugColored(cs.onSurfaceVariant),
               ),
               const SizedBox(width: 6),
-              Text(
-                '(${cards.length})',
-                style: styles.mutedXs,
-              ),
+              Text('(${cards.length})', style: styles.mutedXs),
             ],
           ),
         ),
@@ -168,9 +165,9 @@ class _CardTile extends StatelessWidget {
           children: [
             Text(
               '#${card.seq}',
-              style: styles.xsColored(cs.onSurfaceVariant).copyWith(
-                fontFeatures: const [FontFeature.tabularFigures()],
-              ),
+              style: styles
+                  .xsColored(cs.onSurfaceVariant)
+                  .copyWith(fontFeatures: const [FontFeature.tabularFigures()]),
             ),
             const SizedBox(width: 8),
             Expanded(
@@ -184,10 +181,7 @@ class _CardTile extends StatelessWidget {
                   ),
                   if (memberName.isNotEmpty) ...[
                     const SizedBox(height: 2),
-                    Text(
-                      '› $memberName',
-                      style: styles.mutedXs,
-                    ),
+                    Text('› $memberName', style: styles.mutedXs),
                   ],
                 ],
               ),

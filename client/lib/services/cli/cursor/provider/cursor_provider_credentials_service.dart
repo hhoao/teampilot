@@ -240,17 +240,36 @@ class CursorProviderCredentialsService {
     var anyLinked = false;
     var anyCopied = false;
 
+    void applyOutcome(_MemberAuthSyncOutcome outcome) {
+      switch (outcome) {
+        case _MemberAuthSyncOutcome.alreadyPresent:
+          return;
+        case _MemberAuthSyncOutcome.linked:
+          allAlreadyPresent = false;
+          anyLinked = true;
+        case _MemberAuthSyncOutcome.copied:
+          allAlreadyPresent = false;
+          anyCopied = true;
+      }
+    }
+
     for (final relativePath in await _cursorDirAuthFilesPresentAt(
       srcCursorDir,
     )) {
+      final src = _fs.pathContext.join(srcCursorDir, relativePath);
       final dest = _fs.pathContext.join(destCursorDir, relativePath);
+      if (!(await _fs.stat(src)).isFile) continue;
+
+      if (relativePath == CursorHomeLayout.cliConfigFileName) {
+        applyOutcome(await _syncCliConfigToMemberHome(src: src, dest: dest));
+        continue;
+      }
+
+      // Session-local optional files (tip flag, statsig cache): never overwrite.
       final destStat = await _fs.stat(dest);
       if (destStat.isFile || destStat.isSymlink) continue;
 
       allAlreadyPresent = false;
-      final src = _fs.pathContext.join(srcCursorDir, relativePath);
-      if (!(await _fs.stat(src)).isFile) continue;
-
       await _fs.ensureDir(_fs.pathContext.dirname(dest));
       if (await _fs.createSymlink(target: src, linkPath: dest)) {
         anyLinked = true;
@@ -262,26 +281,97 @@ class CursorProviderCredentialsService {
       anyCopied = true;
     }
 
-    final srcAuth = _layout.authJson(providerHomePath);
-    final destAuth = _layout.authJson(memberHome);
-    final destAuthStat = await _fs.stat(destAuth);
-    if (!destAuthStat.isFile) {
-      allAlreadyPresent = false;
-      final copied = await _copyFile(
-        src: srcAuth,
-        dest: destAuth,
-        replace: true,
-        required: true,
-      );
-      if (copied.ok) {
-        anyCopied = true;
-      }
-    }
+    applyOutcome(
+      await _syncAuthJsonToMemberHome(
+        src: _layout.authJson(providerHomePath),
+        dest: _layout.authJson(memberHome),
+      ),
+    );
 
     if (allAlreadyPresent) return CredentialLinkResult.alreadyPresent;
     if (anyLinked) return CredentialLinkResult.linked;
     if (anyCopied) return CredentialLinkResult.copied;
     return CredentialLinkResult.missing;
+  }
+
+  Future<_MemberAuthSyncOutcome> _syncCliConfigToMemberHome({
+    required String src,
+    required String dest,
+  }) async {
+    final destLstat = await _fs.lstat(dest);
+    if (destLstat.isSymlink) {
+      final target = await _fs.readSymlinkTarget(dest);
+      if (target != null &&
+          _fs.pathContext.normalize(target) ==
+              _fs.pathContext.normalize(src)) {
+        return _MemberAuthSyncOutcome.alreadyPresent;
+      }
+      await _fs.removeRecursive(dest);
+      await _fs.ensureDir(_fs.pathContext.dirname(dest));
+      if (await _fs.createSymlink(target: src, linkPath: dest)) {
+        return _MemberAuthSyncOutcome.linked;
+      }
+      return _copyAuthArtifact(src: src, dest: dest);
+    }
+
+    if (!destLstat.isFile) {
+      await _fs.ensureDir(_fs.pathContext.dirname(dest));
+      if (await _fs.createSymlink(target: src, linkPath: dest)) {
+        return _MemberAuthSyncOutcome.linked;
+      }
+      return _copyAuthArtifact(src: src, dest: dest);
+    }
+
+    // Overlay writes replace the provider symlink with a regular file. Merge
+    // authInfo so a provider switch does not wipe permissions / model stamps.
+    final srcRaw = await _readText(src);
+    if (srcRaw == null) return _MemberAuthSyncOutcome.alreadyPresent;
+    final destRaw = await _readText(dest) ?? '';
+    if (CursorAuthArtifacts.cliConfigAuthInfoEqual(srcRaw, destRaw)) {
+      return _MemberAuthSyncOutcome.alreadyPresent;
+    }
+    final destJson =
+        CursorCliConfigPolicy.parseConfigJson(destRaw) ?? <String, Object?>{};
+    final srcJson = CursorCliConfigPolicy.parseConfigJson(srcRaw) ?? const {};
+    destJson['authInfo'] = srcJson['authInfo'];
+    await _fs.ensureDir(_fs.pathContext.dirname(dest));
+    await _fs.atomicWrite(
+      dest,
+      const JsonEncoder.withIndent('  ').convert(destJson),
+    );
+    return _MemberAuthSyncOutcome.copied;
+  }
+
+  Future<_MemberAuthSyncOutcome> _syncAuthJsonToMemberHome({
+    required String src,
+    required String dest,
+  }) async {
+    final destStat = await _fs.stat(dest);
+    if (destStat.isFile) {
+      final srcRaw = await _readText(src);
+      final destRaw = await _readText(dest);
+      if (srcRaw != null &&
+          destRaw != null &&
+          CursorAuthArtifacts.authJsonTokensEqual(srcRaw, destRaw)) {
+        return _MemberAuthSyncOutcome.alreadyPresent;
+      }
+    }
+    return _copyAuthArtifact(src: src, dest: dest);
+  }
+
+  Future<_MemberAuthSyncOutcome> _copyAuthArtifact({
+    required String src,
+    required String dest,
+  }) async {
+    final copied = await _copyFile(
+      src: src,
+      dest: dest,
+      replace: true,
+      required: true,
+    );
+    return copied.ok
+        ? _MemberAuthSyncOutcome.copied
+        : _MemberAuthSyncOutcome.alreadyPresent;
   }
 
   Future<String> _resolveGlobalAuthPath(
@@ -495,3 +585,5 @@ class CursorProviderCredentialsService {
     }
   }
 }
+
+enum _MemberAuthSyncOutcome { alreadyPresent, linked, copied }

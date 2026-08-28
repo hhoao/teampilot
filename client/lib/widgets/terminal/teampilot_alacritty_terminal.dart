@@ -55,7 +55,8 @@ class TeampilotAlacrittyTerminal extends StatefulWidget {
       _TeampilotAlacrittyTerminalState();
 }
 
-class _TeampilotAlacrittyTerminalState extends State<TeampilotAlacrittyTerminal> {
+class _TeampilotAlacrittyTerminalState
+    extends State<TeampilotAlacrittyTerminal> {
   ModifierLatch? _modifierLatch;
   GlobalKey<TerminalViewState>? _fallbackViewKey;
 
@@ -75,7 +76,9 @@ class _TeampilotAlacrittyTerminalState extends State<TeampilotAlacrittyTerminal>
   }
 
   Map<ShortcutActivator, Intent> _terminalShortcuts(BuildContext context) {
-    final shortcutCubit = context.watch<ShortcutCubit>();
+    final shortcutState = context.select<ShortcutCubit, ShortcutState>(
+      (c) => c.state,
+    );
     var floatingPanelOpen = false;
     try {
       // select: ensureTab / tab changes must NOT rebuild every session terminal.
@@ -91,7 +94,7 @@ class _TeampilotAlacrittyTerminalState extends State<TeampilotAlacrittyTerminal>
     return <ShortcutActivator, Intent>{
       ...defaultTerminalShortcuts,
       ...terminalPassthroughShortcutOverlay(
-        effectiveByCommand: shortcutCubit.effective,
+        effectiveByCommand: shortcutState.effective,
         isMacOS: defaultIsMacOS(),
         context: overlayContext,
       ),
@@ -115,11 +118,9 @@ class _TeampilotAlacrittyTerminalState extends State<TeampilotAlacrittyTerminal>
       shortcuts: _terminalShortcuts(context),
       linkProviders: widget.linkProviders,
       modifierLatch: touchShell ? _latch : null,
-      primaryTapActivatesLink: context
-          .watch<SessionPreferencesCubit>()
-          .state
-          .preferences
-          .terminalLinkClickOpensInApp,
+      primaryTapActivatesLink: context.select<SessionPreferencesCubit, bool>(
+        (c) => c.state.preferences.terminalLinkClickOpensInApp,
+      ),
       onPtyResize: widget.onPtyResize,
       onTapDown: widget.onTapDown,
       onLinkActivate: widget.onLinkActivate,

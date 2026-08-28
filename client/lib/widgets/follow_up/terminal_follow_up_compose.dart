@@ -11,6 +11,7 @@ import '../../models/app_session.dart';
 import '../../models/team_config.dart';
 import '../../services/follow_up/follow_up_queue.dart';
 import '../../services/session/history_seat_key.dart';
+import '../../pages/chat/session_seat_working.dart';
 import 'follow_up_queue_strip.dart';
 
 /// Finder key for the terminal follow-up queue strip (no compose field).
@@ -102,6 +103,12 @@ class TerminalFollowUpComposeHost extends StatelessWidget {
     final shellMemberId = shellMemberIdForHistory(
       sessionId: session.sessionId,
       selectedMemberId: selectedMemberId,
+    );
+    watchSessionSeatWorking(
+      context,
+      workspaceId: session.workspaceId,
+      sessionId: session.sessionId,
+      memberId: shellMemberId,
     );
 
     return MultiBlocListener(

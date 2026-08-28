@@ -19,7 +19,6 @@ import '../../l10n/l10n_extensions.dart';
 import '../../models/app_session.dart';
 import '../../models/app_provider_config.dart';
 import '../../models/member_instance.dart';
-import '../../models/member_presence.dart';
 import '../../models/runtime_target.dart';
 import '../../models/team_config.dart';
 import '../../models/workspace.dart';
@@ -398,16 +397,22 @@ class _RightToolsToolViewsState extends State<RightToolsToolViews> {
     );
     final chatSlice = context.select<ChatCubit, RightToolsChatSlice>(
       (c) => RightToolsChatSlice.fromScope(
-        selectedMemberId:
-            scopedSelectedMemberId(workbench, c, widget.toolsScopeId),
+        selectedMemberId: scopedSelectedMemberId(
+          workbench,
+          c,
+          widget.toolsScopeId,
+        ),
         activeSessionId: activeSessionId,
-        hasActiveTab:
-            c.tabStore.tabsForWorkspace(widget.toolsScopeId).isNotEmpty,
+        hasActiveTab: c.tabStore
+            .tabsForWorkspace(widget.toolsScopeId)
+            .isNotEmpty,
         hasTeamBus: scopedTeamBus(workbench, c, widget.toolsScopeId) != null,
         memberSelectionVersion: c.state.memberSelectionVersion,
-        persistedSession:
-            scopedActiveChatTab(workbench, c, widget.toolsScopeId)
-                ?.persistedSession,
+        persistedSession: scopedActiveChatTab(
+          workbench,
+          c,
+          widget.toolsScopeId,
+        )?.persistedSession,
       ),
     );
 
@@ -442,10 +447,7 @@ class _RightToolsToolViewsState extends State<RightToolsToolViews> {
       );
     }
 
-    return TabbedPanel(
-      views: _cachedViews!,
-      scopeId: widget.toolsScopeId,
-    );
+    return TabbedPanel(views: _cachedViews!, scopeId: widget.toolsScopeId);
   }
 
   static MailboxCubit? _maybeMailboxCubit(BuildContext context) {
@@ -655,10 +657,6 @@ class _ScopedMembersPanelState extends State<_ScopedMembersPanel> {
 
   @override
   Widget build(BuildContext context) {
-    final presence = context
-        .select<MemberPresenceCubit, Map<String, MemberPresence>>(
-          (c) => c.state.presence,
-        );
     final providersByCli = context
         .select<AppProviderCubit, Map<CliTool, List<AppProviderConfig>>>(
           (c) => c.state.providersByCli,
@@ -666,7 +664,7 @@ class _ScopedMembersPanelState extends State<_ScopedMembersPanel> {
     return MembersPanel(
       team: widget.team,
       members: widget.members,
-      memberPresence: presence,
+      memberPresence: const {},
       providersByCli: providersByCli,
       selectedMemberId: widget.selectedMemberId,
       memberTargets: widget.memberTargets,
