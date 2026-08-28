@@ -1904,6 +1904,81 @@ void main() {
     expect(finder.hits.first.messageId, 'm-1');
   });
 
+  test(
+    'token-changed load before full index re-reads the latest page',
+    () async {
+      final all = _pagedHistoryMessages();
+      final recent = all.sublist(all.length - kSessionHistoryInitialTurns);
+      final older = all.sublist(0, all.length - kSessionHistoryInitialTurns);
+      final grown = [
+        ...recent,
+        const AiMessage(
+          id: 'm-stream',
+          role: AiRole.assistant,
+          parts: [AiTextPart(text: 'hello chunk')],
+        ),
+      ];
+      final parseGate = Completer<void>();
+      addTearDown(() {
+        if (!parseGate.isCompleted) parseGate.complete();
+      });
+      final adapter = _GatedParseAdapter(all, parseGate);
+      final reader = _FakePageReader(latest: recent, older: older);
+      final session = simpleSession();
+      mtimeToken = 'mtime-1';
+      final loader = buildLoader(
+        locator: _CountingLocator(
+          () async => const AiTranscriptBundle(
+            adapterId: 'claude',
+            fragments: [AiTranscriptFragment(name: 'canned.jsonl', bytes: [])],
+          ),
+        ),
+        registry: fakeAiHistoryRegistry(
+          cli: CliTool.claude,
+          adapter: adapter,
+          pageReader: reader,
+          locate: (_) async => const AiTranscriptBundle(
+            adapterId: 'claude',
+            fragments: [AiTranscriptFragment(name: 'canned.jsonl', bytes: [])],
+          ),
+        ),
+      );
+
+      final first = await loader.load(
+        session: session,
+        memberId: '',
+        launchContext: launchContextFor(session),
+      );
+      expect(reader.latestCalls, 1);
+      expect(first.isComplete, isFalse);
+      expect(first.messages.map((m) => m.id), recent.map((m) => m.id));
+
+      reader.latest = grown;
+      mtimeToken = 'mtime-2';
+      final second = await loader
+          .load(
+            session: session,
+            memberId: '',
+            launchContext: launchContextFor(session),
+          )
+          .timeout(
+            const Duration(seconds: 2),
+            onTimeout: () => fail(
+              'second load waited on full parse; should re-read the latest page',
+            ),
+          );
+
+      expect(
+        reader.latestCalls,
+        2,
+        reason: 'full index 尚未完成时,store 变动必须重读最近窗',
+      );
+      expect(second.messages.map((m) => m.id), grown.map((m) => m.id));
+      expect(second.isComplete, isFalse);
+      expect(parseGate.isCompleted, isFalse);
+    },
+  );
+
   test('loadOlder still prepends after background full index completes', () async {
     final all = _pagedHistoryMessages();
     final recent = all.sublist(all.length - kSessionHistoryInitialTurns);
@@ -2481,7 +2556,7 @@ class _GatedParseAdapter implements AiTranscriptAdapter {
 class _FakePageReader implements AiTranscriptPageReader {
   _FakePageReader({required this.latest, required this.older});
 
-  final List<AiMessage> latest;
+  List<AiMessage> latest;
   final List<AiMessage> older;
   var latestCalls = 0;
   var olderCalls = 0;

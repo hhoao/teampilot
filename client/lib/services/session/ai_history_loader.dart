@@ -683,9 +683,11 @@ final class AiHistoryLoader {
     }
 
     try {
-      if (!skipPaging &&
-          !_hasWarmIncremental(cacheKey) &&
-          !_messages.containsKey(cacheKey)) {
+      // Page-first until incremental/tail state is warm. Do not treat the
+      // published window (`_messages`) as a reason to skip: a later token
+      // change must re-read the latest page instead of falling through to a
+      // full locate/parse while the background index is still running.
+      if (!skipPaging && !_hasWarmIncremental(cacheKey)) {
         final paged = await _tryPageFirst(
           session: session,
           cacheKey: cacheKey,
@@ -695,7 +697,7 @@ final class AiHistoryLoader {
           token: token,
           effectiveMemberId: effectiveMemberId,
         );
-        if (paged != null) return paged;
+        if (paged != null && !_hasWarmIncremental(cacheKey)) return paged;
       }
 
       // 增量优先:数据库行级增量(如 opencode SQLite)——跳过全量 locate +
@@ -949,6 +951,7 @@ final class AiHistoryLoader {
         ),
       );
       if (page == null) return null;
+      if (_hasWarmIncremental(cacheKey)) return null;
       final messages = annotate(page.messages, cli: cli);
       final parentPath = await _parentPathHint(ctx);
       _parentPaths[cacheKey] = parentPath;

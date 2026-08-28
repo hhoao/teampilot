@@ -15,6 +15,7 @@ import 'package:teampilot/services/cli/opencode/capabilities/history/ai_transcri
 import 'package:teampilot/services/cli/opencode/capabilities/sqlite_worker_pool.dart';
 import 'package:teampilot/services/cli/registry/cli_tool_registry.dart';
 import 'package:teampilot/services/io/local_filesystem.dart';
+import 'package:teampilot/services/session/ai_history_load_result.dart';
 import 'package:teampilot/services/session/ai_history_locator.dart';
 import 'package:teampilot/services/session/ai_history_loader.dart';
 import 'package:teampilot/services/session/session_history_context.dart';
@@ -31,16 +32,19 @@ import '../../../../../support/post_frame_test_harness.dart';
 /// `loader.load()` 的路径完全一致。回答:"聊天界面跑的时候到底走全量
 /// 还是增量"。
 ///
-/// 行为(实现于 OpencodeHistoryIncrementalRefresher):
-///  - 首次 load = 全量 locate + parse,随后 seed 指纹对齐;
-///  - store 变动后 = DB 行级增量:只重读指纹变化的行,原地合并进同一
-///    List 实例,不再全量 locate / 全量 parse;
+/// 行为:
+///  - 首次 load = page-first 最近窗,不 locate;后台 full index 才全量
+///    locate + parse,并 seed [OpencodeHistoryIncrementalRefresher];
+///  - store 变动且增量已对齐 = DB 行级增量:只重读指纹变化的行,原地
+///    合并,不再全量 locate / 全量 parse;
+///  - 子 agent 附件按需 `loadSubagentAttachmentForSeat`,首屏不 eager
+///    inflate;
 ///  - 删除/压缩/schema 不兼容 = 回退全量。
 ///
 /// 判别信号:
-///  - locate 调用次数:增量后保持 1(不再全量 locate);
-///  - `identical(messages)`:增量原地合并,跨 refresh 复用同一 List 实例;
-///  - bundle hints:首次全量 locate 的 bundle 无 `incremental` 键。
+///  - locate 调用次数:page-first 为 0,full index 后为 1,增量后保持 1;
+///  - `identical(messages)`:增量原地合并,跨 refresh 复用未变化实例;
+///  - bundle hints:后台全量 locate 的 bundle 无 `incremental` 键。
 void main() {
   late Directory base;
   late LocalFilesystem fs;
@@ -401,6 +405,34 @@ void main() {
     );
   }
 
+  Future<AiHistoryLoadResult> warmFullIndex(
+    AiHistoryLoader loader,
+    AppSession session,
+  ) async {
+    final full = await loader.fullIndex(
+      sessionId: session.sessionId,
+      memberId: '',
+    );
+    expect(full, isNotNull, reason: 'page-first 必须调度后台 full index');
+    return full!;
+  }
+
+  Future<AiSubagentAttachment?> loadAttachment({
+    required AiHistoryLoader loader,
+    required AppSession session,
+    required WorkspaceLaunchContext ctx,
+    required String toolCallId,
+    required List<AiMessage> messages,
+  }) {
+    return loader.loadSubagentAttachmentForSeat(
+      session: session,
+      memberId: '',
+      launchContext: ctx,
+      toolCallId: toolCallId,
+      messages: messages,
+    );
+  }
+
   group('chat live refresh (modern schema, part.time_updated exists)', () {
     test('idle seat: token gate + seat memo skip locate/parse entirely', () async {
       openModernDb();
@@ -415,7 +447,11 @@ void main() {
         launchContext: ctx,
       );
       expect(first.messages, hasLength(2));
-      expect(locator.calls, 1, reason: '首次 load 必然全量 locate');
+      expect(locator.calls, 0, reason: '首屏 page-first,不 locate');
+      expect(first.isComplete, isFalse);
+
+      final full = await warmFullIndex(loader, session);
+      expect(locator.calls, 1, reason: '后台 full index 才全量 locate');
       expect(locator.lastCtx?.env['OPENCODE_DB'], dbPath);
       final firstBundle = locator.lastBundle!;
       expect(firstBundle.hints['source'], 'sqlite');
@@ -433,7 +469,7 @@ void main() {
       );
       expect(locator.calls, 1, reason: '未变化时连 locate 都不进');
       expect(
-        identical(second.messages, first.messages),
+        identical(second.messages, full.messages),
         isTrue,
         reason: '缓存命中必须复用同一 List 实例',
       );
@@ -467,6 +503,8 @@ void main() {
         memberId: '',
         launchContext: ctx,
       );
+      expect(locator.calls, 0, reason: '首屏 page-first');
+      final baseline = await warmFullIndex(loader, session);
       expect(locator.calls, 1);
 
       // CLI 流式写入:新增 assistant 消息 + 原地增长已有 text part 行
@@ -501,22 +539,23 @@ void main() {
         isTrue,
       );
       expect(
-        identical(second.messages, first.messages),
+        identical(second.messages, baseline.messages),
         isFalse,
         reason: '增量路径必须返回新 List 实例:state 列表被原地变异,若复用同一'
             '实例,seat 的 identical 判定("CLI 未变化")会把新内容当成没变而'
             '跳过,页面永远不出现增量消息',
       );
       expect(
-        identical(second.messages[0], first.messages[0]),
+        identical(second.messages[0], baseline.messages[0]),
         isTrue,
         reason: '未变化消息保持实例身份(附件/下游 identical 快速路径)',
       );
       expect(
         locator.lastBundle!.hints['source'],
         'sqlite',
-        reason: '首次 load 仍是全量 locate(增量从第二次 load 开始)',
+        reason: '后台 full index 仍是全量 locate(增量从 seed 之后的 load 开始)',
       );
+      expect(first.isComplete, isFalse);
     });
 
     test('task call appended after first load enters subagent attachments',
@@ -540,7 +579,17 @@ void main() {
         memberId: '',
         launchContext: ctx,
       );
-      expect(first.subagentAttachments.keys, contains('toolu_1'));
+      expect(first.subagentAttachments, isEmpty, reason: '首屏不 eager inflate');
+      final full = await warmFullIndex(loader, session);
+      final firstAttachment = await loadAttachment(
+        loader: loader,
+        session: session,
+        ctx: ctx,
+        toolCallId: 'toolu_1',
+        messages: full.messages,
+      );
+      expect(firstAttachment, isNotNull);
+      expect(firstAttachment!.toolCallId, 'toolu_1');
 
       // CLI 追加第二个 task 调用 + 第二个子会话:store 级增量只重读变化的
       // 行,不会重跑全量 parse——附件索引必须跟上新出现的调用。
@@ -559,8 +608,21 @@ void main() {
 
       expect(
         second.subagentAttachments.keys,
+        contains('toolu_1'),
+        reason: '已按需加载的附件在签名未变时必须保留',
+      );
+      final secondAttachment = await loadAttachment(
+        loader: loader,
+        session: session,
+        ctx: ctx,
+        toolCallId: 'toolu_2',
+        messages: second.messages,
+      );
+      expect(secondAttachment, isNotNull);
+      expect(
+        second.subagentAttachments.keys,
         containsAll(['toolu_1', 'toolu_2']),
-        reason: 'DB 增量 tick 后新出现的 task 调用必须进入附件索引——否则'
+        reason: 'DB 增量 tick 后新出现的 task 调用必须能按需 inflate——否则'
             '点击预览会提示"无法打开该子会话预览"(subagentPreviewUnavailable)',
       );
     });
@@ -586,7 +648,15 @@ void main() {
         memberId: '',
         launchContext: ctx,
       );
-      final firstAttachment = first.subagentAttachments['toolu_1'];
+      expect(first.subagentAttachments, isEmpty);
+      final full = await warmFullIndex(loader, session);
+      final firstAttachment = await loadAttachment(
+        loader: loader,
+        session: session,
+        ctx: ctx,
+        toolCallId: 'toolu_1',
+        messages: full.messages,
+      );
       expect(
         firstAttachment,
         isNotNull,
@@ -661,9 +731,16 @@ void main() {
         launchContext: ctx,
       );
 
-      final secondAttachment = second.subagentAttachments['toolu_1']!;
+      final secondAttachment = await loadAttachment(
+        loader: loader,
+        session: session,
+        ctx: ctx,
+        toolCallId: 'toolu_1',
+        messages: second.messages,
+      );
+      expect(secondAttachment, isNotNull);
       expect(
-        secondAttachment.messages,
+        secondAttachment!.messages,
         hasLength(2),
         reason: '调用完成(part 状态/结果变化)后必须重新解析,预览跟随到'
             '子会话的最新完整内容',
@@ -686,6 +763,8 @@ void main() {
         memberId: '',
         launchContext: ctx,
       );
+      expect(locator.calls, 0, reason: '首屏 page-first');
+      final baseline = await warmFullIndex(loader, session);
       expect(locator.calls, 1);
 
       // 只有一条流式 text 原地增长:行数不变,MAX(time_updated) 前进。
@@ -709,15 +788,16 @@ void main() {
         isTrue,
       );
       expect(
-        identical(second.messages, first.messages),
+        identical(second.messages, baseline.messages),
         isFalse,
         reason: '原地增长也必须返回新 List 实例(同 seat identical 判定问题)',
       );
       expect(
-        identical(second.messages[0], first.messages[0]),
+        identical(second.messages[0], baseline.messages[0]),
         isTrue,
         reason: '未变化消息保持实例身份',
       );
+      expect(first.isComplete, isFalse);
     });
 
     test('task child session becoming newest must not flip the seat transcript',
@@ -742,8 +822,10 @@ void main() {
         memberId: '',
         launchContext: ctx,
       );
-      expect(locator.calls, 1);
+      expect(locator.calls, 0, reason: '首屏 page-first');
       expect(first.messages, hasLength(2));
+      await warmFullIndex(loader, session);
+      expect(locator.calls, 1);
 
       // task 子会话创建并写入:time_updated 最新 → 旧实现把"最新会话"
       // 解析成子会话,指纹/重读全落在子会话上。
@@ -864,6 +946,8 @@ void main() {
         launchContext: ctx,
       );
       expect(first.messages, hasLength(2));
+      expect(locator.calls, 0, reason: '首屏 page-first');
+      await warmFullIndex(loader, session);
       expect(locator.calls, 1);
 
       // 压缩:删除一条 message(连同其 part)后新增一条。
@@ -941,6 +1025,8 @@ void main() {
         launchContext: ctx,
       );
       expect(first.messages, hasLength(2)); // user + assistant
+      expect(locator.calls, 0, reason: '首屏 page-first');
+      final baseline = await warmFullIndex(loader, session);
       expect(locator.calls, 1);
 
       // 流式分片:第二条 assistant 消息紧邻上一条(全量 parse 会合并)。
@@ -954,7 +1040,7 @@ void main() {
       );
       expect(locator.calls, 1, reason: '增量路径');
       expect(
-        identical(second.messages, first.messages),
+        identical(second.messages, baseline.messages),
         isFalse,
         reason: '增量 tick 必须返回新 List 实例,seat 才渲染新消息',
       );
