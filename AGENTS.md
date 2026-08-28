@@ -12,10 +12,8 @@ Guidance for Claude Code and other AI assistants working in this repository.
 | [docs/CODE_QUALITY.md](docs/CODE_QUALITY.md) | File size, layering, tests, Extension conventions |
 | [docs/DEBUGGING.md](docs/DEBUGGING.md) | Systematic debugging process |
 | [docs/cli-architecture.md](docs/cli-architecture.md) | **CLI architecture**: directory layout, capability pattern, adding a new CLI |
-| [docs/PERFORMANCE.md](docs/PERFORMANCE.md) | Progressive paint / UX jank optimization (`TpDeferred*`) |
 | [docs/PERFORMANCE_ANALYSIS.md](docs/PERFORMANCE_ANALYSIS.md) | DevTools performance JSON offline analysis (`tool/analyze_performance_json.dart`) |
 | [docs/workspace-storage-layout.md](docs/workspace-storage-layout.md) | On-disk layout under `<teampilotRoot>` |
-| [docs/tool-call-parsing-convention.md](docs/tool-call-parsing-convention.md) | **Tool call 解析约定**: ai_message_core 纯接口，解析实现 + CLI 配置放 client/lib/services |
 
 All app code lives under `client/lib/` (cubits, pages, repositories, services, models). Vendored deps: `client/packages/` (git submodules: xterm, flutter_pty_new, dartssh2, re-editor, flutter_alacritty, **shared_ui**). Cross-route UI primitives live in **`shared_ui`** as the **Tp** design system (`TpButton`, `TpInput`, `TpTheme`, …); see [client/packages/shared_ui/README.md](client/packages/shared_ui/README.md).
 
@@ -114,7 +112,7 @@ Provider catalogs: `providers/{tool}/providers.json` per CLI (`AppProviderReposi
 | `native` | Single CLI runs its own native multi-agent team; every member uses `team.cli` |
 | `mixed` | Cross-CLI team coordinated by **TeamBus**; each member may override `cli` (else falls back to `team.cli`) |
 
-**TeamBus** (`client/lib/services/team_bus/`) is an in-process message bus: router + per-member inbox + `PresenceReducer` + `BusEffect` + `CoordinationPolicy` (default leader-star). Each mixed session owns one `TeamBus` + `TeammateBusMcpHandler`; members reach it through the app-wide **`TeammateBusMcpGateway`** — loopback HTTP (`/mcp`, `/idle`) plus a multiplexed raw-socket port for long-blocking remote relays. `TabTeamBusCoordinator.installBusForTab` registers the session; `disposeSessionBus` unregisters. Local MCP configs send `X-Session`; remote tunnels send `X-Bus-Token`. See [docs/superpowers/specs/2026-07-02-teammate-bus-mcp-gateway-design.md](docs/superpowers/specs/2026-07-02-teammate-bus-mcp-gateway-design.md).
+**TeamBus** (`client/lib/services/team_bus/`) is an in-process message bus: router + per-member inbox + `PresenceReducer` + `BusEffect` + `CoordinationPolicy` (default leader-star). Each mixed session owns one `TeamBus` + `TeammateBusMcpHandler`; members reach it through the app-wide **`TeammateBusMcpGateway`** — loopback HTTP (`/mcp`, `/idle`) plus a multiplexed raw-socket port for long-blocking remote relays. `TabTeamBusCoordinator.installBusForTab` registers the session; `disposeSessionBus` unregisters. Local MCP configs send `X-Session`; remote tunnels send `X-Bus-Token`. ).
 
 - `effectiveForceWaitBeforeStop`: mixed teams **default off** for every CLI. Cursor cannot enable wait (doorbell delivery via stdin inject + `read_messages`).
 - `MemberPresenceCubit` / `MailboxCubit` / `BoardCubit` surface bus presence, messages, and task cards in the UI.
@@ -203,15 +201,13 @@ Session runtime dirs: `workspace/workspaces/{workspaceId}/sessions/{sessionId}/r
 
 See [docs/DEBUGGING.md](docs/DEBUGGING.md) for the systematic debugging process (search-first, root cause over workarounds, etc.).
 
-**UI jank / slow frames:** see [docs/PERFORMANCE.md](docs/PERFORMANCE.md) for progressive paint rules. Export a recording from DevTools Performance, then run `dart run tool/analyze_performance_json.dart <snapshot.json> --format summary` from `client/`. Full options: [docs/PERFORMANCE_ANALYSIS.md](docs/PERFORMANCE_ANALYSIS.md).
-
 ## Conventions
 
 Full guidelines: **[docs/CODE_QUALITY.md](docs/CODE_QUALITY.md)**. Summary:
 
 - Before claiming done: `cd client && flutter analyze --no-fatal-infos --no-fatal-warnings && dart run tool/run_tests.dart` (full setup: [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md)).
 - **Layering:** Route shells in `pages/`; **route-only** UI sections in `pages/<domain>/`; **cross-route design primitives** in `packages/shared_ui` as `Tp*`; **product/domain chrome** in `widgets/`; logic in `cubits/` + `services/` + `repositories/`; no `Process.run` or raw paths in UI; state is **`flutter_bloc` only** (not `provider`).
-- **Shared UI:** New buttons, inputs, selects, dialogs, forms, deferred-mount helpers, etc. go in `client/packages/shared_ui` (`Tp*` + `TpTheme`). Do not add generic controls under `client/lib/widgets/`. Progressive open timeline: [docs/PERFORMANCE.md](docs/PERFORMANCE.md).
+- **Shared UI:** New buttons, inputs, selects, dialogs, forms, deferred-mount helpers, etc. go in `client/packages/shared_ui` (`Tp*` + `TpTheme`). Do not add generic controls under `client/lib/widgets/`.
 - **File size (soft):** page shells ~400, cubits ~500, services ~600 lines — split oversized screens into `pages/<domain>/` section files; keep `build()` free of IO.
 - **Logging:** user errors → l10n; diagnostics → `AppLogger`; no `print`.
 - Paths: `AppStorage` / `RuntimeContextRegistry` — never `Directory.current` for default workspace directory.

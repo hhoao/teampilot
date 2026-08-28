@@ -186,6 +186,5 @@ First fix: **make boot warmup shape the same TextStyle fingerprints** (family / 
 
 ## Related docs
 
-- [PERFORMANCE.md](PERFORMANCE.md) — progressive paint / UX jank optimization
 - [DEBUGGING.md](DEBUGGING.md) — general bug investigation (search-first, root cause)
 - [DEVELOPMENT.md](DEVELOPMENT.md) — clone, `flutter run`, tests
