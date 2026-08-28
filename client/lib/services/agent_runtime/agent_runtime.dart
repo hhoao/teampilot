@@ -1,7 +1,6 @@
 import 'dart:async';
 
 import '../../utils/logging/logger.dart';
-import '../prompt_delivery/prompt_delivery.dart';
 import '../prompt_delivery/prompt_delivery_coordinator.dart';
 import 'agent_event_gateway.dart';
 import 'runtime_event.dart';
@@ -52,8 +51,8 @@ final class AgentRuntime {
         .then<void>((_) {}, onError: (Object error, StackTrace stackTrace) {
           // A failed delivery apply (store IO error or projection throw) would
           // otherwise silently leave the delivery submitIssued with the fence
-          // open and no recovery entry. Log loud so the missed re-application
-          // is visible to diagnostics.
+          // open. Log loud so the missed re-application is visible to
+          // diagnostics.
           appLogger.w(
             '[agent-runtime] coordinator event apply failed '
             'seat=${seat.sessionId}/${seat.memberId}: $error',
@@ -87,25 +86,6 @@ final class AgentRuntime {
       await settle(seat);
       await promptDeliveries.restoreSeat(seat);
     }
-  }
-
-  /// The seat-level recovery candidates for [sessionId]: the latest record
-  /// of each seat when it is explicitly unresolved (submittedUnknown). A
-  /// newer record always supersedes an older unknown — the compose section
-  /// offers review/retry only for these, and retry mints a NEW delivery id.
-  Future<List<PromptDelivery>> recoverableDeliveries(String sessionId) async {
-    final recoveries = <PromptDelivery>[];
-    for (final seat in await promptDeliveries.store.seatsForSession(
-      sessionId,
-    )) {
-      final history = await promptDeliveries.store.forSeat(seat);
-      if (history.isEmpty) continue;
-      final latest = history.last;
-      if (latest.state == PromptDeliveryState.submittedUnknown) {
-        recoveries.add(latest);
-      }
-    }
-    return recoveries;
   }
 
   Future<void> dispose() async {

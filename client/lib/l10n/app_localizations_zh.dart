@@ -1848,7 +1848,6 @@ class AppLocalizationsZh extends AppLocalizations {
   @override
   String get workspaceChatLandingAttach => '附加文件';
 
-
   @override
   String get workspaceChatLandingVoice => '语音输入';
 
@@ -1857,9 +1856,6 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get workspaceChatLandingVoiceStop => '停止录音';
-
-
-
 
   @override
   String get workspaceChatLandingVoiceUnavailable => '此设备不支持语音输入';
@@ -1922,6 +1918,12 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get sessionFailedTitle => '未能启动会话';
+
+  @override
+  String get sessionLaunchErrorReviewDetails => '查看详情';
+
+  @override
+  String get sessionLaunchErrorHideDetails => '收起详情';
 
   @override
   String get sessionRetryButton => '重试';
@@ -8033,18 +8035,6 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get gitGraphConflictHint => '请先解决冲突并暂存相关文件，然后提交以继续。';
-
-  @override
-  String get promptDeliveryUnknownTitle => '投递状态未知';
-
-  @override
-  String get promptDeliveryReviewMessage => '查看消息内容';
-
-  @override
-  String get promptDeliveryHideMessage => '收起消息';
-
-  @override
-  String get promptDeliveryResend => '重新发送';
 
   @override
   String get connectSettingsTitle => '手机';

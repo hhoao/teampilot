@@ -26,22 +26,34 @@ Widget _wrap(Widget child) {
 }
 
 void main() {
-  testWidgets('shows message and invokes onRetry', (tester) async {
-    var retried = false;
-    final view = presentSessionLaunchFailure('spawn failed')!;
-    await tester.pumpWidget(
-      _wrap(
-        SessionLaunchErrorBanner(
-          view: view,
-          onRetry: () => retried = true,
+  testWidgets(
+    'compose card shows title, hides details until reviewed, then retries',
+    (tester) async {
+      var retried = false;
+      final view = presentSessionLaunchFailure('spawn failed')!;
+      await tester.pumpWidget(
+        _wrap(
+          SessionLaunchErrorBanner(
+            view: view,
+            onRetry: () => retried = true,
+          ),
         ),
-      ),
-    );
-    expect(find.text('spawn failed'), findsOneWidget);
-    await tester.tap(find.byKey(AppKeys.sessionLaunchErrorRetryButton));
-    await tester.pump();
-    expect(retried, isTrue);
-  });
+      );
+
+      expect(find.text("Couldn't start session"), findsOneWidget);
+      expect(find.text('spawn failed'), findsNothing);
+      expect(find.text('View details'), findsOneWidget);
+
+      await tester.tap(find.byKey(AppKeys.sessionLaunchErrorReviewButton));
+      await tester.pumpAndSettle();
+      expect(find.text('spawn failed'), findsOneWidget);
+      expect(find.text('Hide details'), findsOneWidget);
+
+      await tester.tap(find.byKey(AppKeys.sessionLaunchErrorRetryButton));
+      await tester.pump();
+      expect(retried, isTrue);
+    },
+  );
 
   testWidgets('shows remap CTA for dead SSH', (tester) async {
     final view = presentSessionLaunchFailure(
@@ -58,7 +70,6 @@ void main() {
     );
     expect(find.text('Remap machine…'), findsOneWidget);
     expect(find.byKey(AppKeys.sessionLaunchErrorRetryButton), findsOneWidget);
-    expect(find.byType(TextButton), findsNWidgets(2));
   });
 
   testWidgets('disables retry while isRetrying', (tester) async {

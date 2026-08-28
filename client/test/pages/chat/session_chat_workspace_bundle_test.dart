@@ -129,6 +129,14 @@ void main() {
     when(() => seat.subagentAttachments).thenReturn(const {});
     when(() => seat.runtime).thenReturn(ExternalStoreAiThreadRuntime());
     when(() => seat.loadedMessages).thenReturn(const []);
+    when(() => seat.pendingDeliveryStatuses).thenReturn(const {});
+    when(
+      () => seat.hydratePendingUsers(
+        store: any(named: 'store'),
+        workspaceId: any(named: 'workspaceId'),
+        sessionId: any(named: 'sessionId'),
+      ),
+    ).thenAnswer((_) async {});
     when(() => seat.applyWorkingSessionSync(
           sessionWorking: any(named: 'sessionWorking'),
           sessionConnecting: any(named: 'sessionConnecting'),

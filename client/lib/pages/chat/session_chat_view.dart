@@ -1084,17 +1084,6 @@ class _SessionChatViewState extends State<SessionChatView> {
       sessionId: widget.session.sessionId,
       memberId: _shellMemberId,
     );
-    final askCardVisible = seatSelect<AgentAttentionCubit, bool>(
-      context,
-      (c) => AgentPermissionAttentionBanner.isSelectedSeatAskCard(
-        attention: c,
-        session: session,
-        selectedMemberId: selectedMemberId,
-        seatCli: lockedCli,
-        registry: registry,
-      ),
-    );
-
     return ShortcutFocus(
       // The chat page owns Mod+F (find bar). Claimed so the global workspace
       // search / other Mod+F global commands stay suppressed here.
@@ -1348,7 +1337,6 @@ class _SessionChatViewState extends State<SessionChatView> {
                                                 workspaceRoot: _workspaceRoot,
                                                 workspaceBundle:
                                                     _workspaceBundle,
-                                                askCardVisible: askCardVisible,
                                                 launchError: widget.launchError,
                                                 onRemapDeadTarget:
                                                     widget.onRemapDeadTarget,

@@ -3512,7 +3512,6 @@ abstract class AppLocalizations {
   /// **'Attach files'**
   String get workspaceChatLandingAttach;
 
-
   /// No description provided for @workspaceChatLandingVoice.
   ///
   /// In en, this message translates to:
@@ -3530,9 +3529,6 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Stop recording'**
   String get workspaceChatLandingVoiceStop;
-
-
-
 
   /// No description provided for @workspaceChatLandingVoiceUnavailable.
   ///
@@ -3635,6 +3631,18 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Couldn\'t start session'**
   String get sessionFailedTitle;
+
+  /// No description provided for @sessionLaunchErrorReviewDetails.
+  ///
+  /// In en, this message translates to:
+  /// **'View details'**
+  String get sessionLaunchErrorReviewDetails;
+
+  /// No description provided for @sessionLaunchErrorHideDetails.
+  ///
+  /// In en, this message translates to:
+  /// **'Hide details'**
+  String get sessionLaunchErrorHideDetails;
 
   /// No description provided for @sessionRetryButton.
   ///
@@ -14909,30 +14917,6 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Resolve the conflicts, stage the files, then commit to continue.'**
   String get gitGraphConflictHint;
-
-  /// No description provided for @promptDeliveryUnknownTitle.
-  ///
-  /// In en, this message translates to:
-  /// **'Delivery status unknown'**
-  String get promptDeliveryUnknownTitle;
-
-  /// No description provided for @promptDeliveryReviewMessage.
-  ///
-  /// In en, this message translates to:
-  /// **'Review message'**
-  String get promptDeliveryReviewMessage;
-
-  /// No description provided for @promptDeliveryHideMessage.
-  ///
-  /// In en, this message translates to:
-  /// **'Hide message'**
-  String get promptDeliveryHideMessage;
-
-  /// No description provided for @promptDeliveryResend.
-  ///
-  /// In en, this message translates to:
-  /// **'Resend'**
-  String get promptDeliveryResend;
 
   /// No description provided for @connectSettingsTitle.
   ///

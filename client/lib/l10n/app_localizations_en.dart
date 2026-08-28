@@ -1943,7 +1943,6 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get workspaceChatLandingAttach => 'Attach files';
 
-
   @override
   String get workspaceChatLandingVoice => 'Voice input';
 
@@ -1952,9 +1951,6 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get workspaceChatLandingVoiceStop => 'Stop recording';
-
-
-
 
   @override
   String get workspaceChatLandingVoiceUnavailable =>
@@ -2021,6 +2017,12 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get sessionFailedTitle => 'Couldn\'t start session';
+
+  @override
+  String get sessionLaunchErrorReviewDetails => 'View details';
+
+  @override
+  String get sessionLaunchErrorHideDetails => 'Hide details';
 
   @override
   String get sessionRetryButton => 'Try again';
@@ -8376,18 +8378,6 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get gitGraphConflictHint =>
       'Resolve the conflicts, stage the files, then commit to continue.';
-
-  @override
-  String get promptDeliveryUnknownTitle => 'Delivery status unknown';
-
-  @override
-  String get promptDeliveryReviewMessage => 'Review message';
-
-  @override
-  String get promptDeliveryHideMessage => 'Hide message';
-
-  @override
-  String get promptDeliveryResend => 'Resend';
 
   @override
   String get connectSettingsTitle => 'Phone';

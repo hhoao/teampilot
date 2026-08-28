@@ -280,6 +280,9 @@ class AppKeys {
   );
   static const chatInput = Key('chat-input');
   static const sessionLaunchErrorBanner = Key('session-launch-error-banner');
+  static const sessionLaunchErrorReviewButton = Key(
+    'session-launch-error-review-button',
+  );
   static const sessionLaunchErrorRetryButton = Key(
     'session-launch-error-retry-button',
   );

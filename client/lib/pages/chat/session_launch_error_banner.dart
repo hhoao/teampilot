@@ -9,8 +9,10 @@ import 'session_launch_failure_presenter.dart';
 ///
 /// [compact] is for the Terminal surface: a small top-right chip with a short
 /// title + actions. Detailed [view.message] stays visible in scrollback.
-/// Chat / compose keep the full-width detailed banner (`compact: false`).
-class SessionLaunchErrorBanner extends StatelessWidget {
+/// Chat / compose use a muted recovery-style card: title + expandable details
+/// + retry (and optional remap), so the raw error is not the first thing
+/// users see above the input.
+class SessionLaunchErrorBanner extends StatefulWidget {
   const SessionLaunchErrorBanner({
     required this.view,
     this.onRetry,
@@ -27,48 +29,133 @@ class SessionLaunchErrorBanner extends StatelessWidget {
   final bool compact;
 
   @override
+  State<SessionLaunchErrorBanner> createState() =>
+      _SessionLaunchErrorBannerState();
+}
+
+class _SessionLaunchErrorBannerState extends State<SessionLaunchErrorBanner> {
+  var _reviewing = false;
+
+  @override
   Widget build(BuildContext context) {
+    if (widget.compact) return _buildCompact(context);
+    return _buildComposeCard(context);
+  }
+
+  Widget _buildComposeCard(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
     final spacing = context.tpSpacing;
     final l10n = context.l10n;
-    final message = compact ? l10n.sessionFailedTitle : view.message;
+
+    return Container(
+      key: AppKeys.sessionLaunchErrorBanner,
+      padding: EdgeInsets.all(spacing.sm),
+      decoration: BoxDecoration(
+        color: cs.surfaceContainerHighest.withValues(alpha: 0.6),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: cs.outlineVariant),
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Row(
+            children: [
+              Icon(
+                Icons.error_outline_rounded,
+                size: 16,
+                color: cs.onSurfaceVariant,
+              ),
+              SizedBox(width: spacing.xs),
+              Expanded(
+                child: Text(
+                  l10n.sessionFailedTitle,
+                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                        fontWeight: FontWeight.w600,
+                      ),
+                ),
+              ),
+              TextButton(
+                key: AppKeys.sessionLaunchErrorReviewButton,
+                onPressed: () => setState(() => _reviewing = !_reviewing),
+                child: Text(
+                  _reviewing
+                      ? l10n.sessionLaunchErrorHideDetails
+                      : l10n.sessionLaunchErrorReviewDetails,
+                ),
+              ),
+              for (final action in widget.view.actions) ...[
+                SizedBox(width: spacing.xxs),
+                switch (action.kind) {
+                  SessionLaunchFailureActionKind.remapDeadSsh => TextButton(
+                    onPressed: widget.onRemapDeadTarget,
+                    child: Text(l10n.workspaceDeadTargetRemapFromLaunch),
+                  ),
+                  SessionLaunchFailureActionKind.retry => TextButton.icon(
+                    key: AppKeys.sessionLaunchErrorRetryButton,
+                    icon: const Icon(Icons.refresh_rounded, size: 16),
+                    label: Text(l10n.sessionRetryButton),
+                    onPressed: widget.isRetrying ? null : widget.onRetry,
+                  ),
+                },
+              ],
+            ],
+          ),
+          if (_reviewing)
+            Padding(
+              padding: EdgeInsets.only(top: spacing.xs),
+              child: Text(
+                widget.view.message,
+                style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                      color: cs.onSurfaceVariant,
+                    ),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildCompact(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    final spacing = context.tpSpacing;
+    final l10n = context.l10n;
 
     return DecoratedBox(
       key: AppKeys.sessionLaunchErrorBanner,
       decoration: BoxDecoration(
         color: cs.errorContainer.withValues(alpha: 0.35),
-        borderRadius: BorderRadius.circular(compact ? 10 : 12),
+        borderRadius: BorderRadius.circular(10),
         border: Border.all(color: cs.error.withValues(alpha: 0.35)),
       ),
       child: Padding(
         padding: EdgeInsets.symmetric(
           horizontal: spacing.md,
-          vertical: compact ? spacing.xs : spacing.sm,
+          vertical: spacing.xs,
         ),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              message,
+              l10n.sessionFailedTitle,
               style: TpTextStyles.of(context).smRelaxedColored(
                 cs.onErrorContainer,
               ),
             ),
-            for (final action in view.actions) ...[
-              SizedBox(height: compact ? 0 : spacing.xs),
+            for (final action in widget.view.actions) ...[
               Align(
                 alignment: Alignment.centerLeft,
                 child: switch (action.kind) {
                   SessionLaunchFailureActionKind.remapDeadSsh => TextButton(
-                    onPressed: onRemapDeadTarget,
-                    style: compact ? _compactButtonStyle : null,
+                    onPressed: widget.onRemapDeadTarget,
+                    style: _compactButtonStyle,
                     child: Text(l10n.workspaceDeadTargetRemapFromLaunch),
                   ),
                   SessionLaunchFailureActionKind.retry => TextButton(
                     key: AppKeys.sessionLaunchErrorRetryButton,
-                    onPressed: isRetrying ? null : onRetry,
-                    style: compact ? _compactButtonStyle : null,
+                    onPressed: widget.isRetrying ? null : widget.onRetry,
+                    style: _compactButtonStyle,
                     child: Text(l10n.sessionRetryButton),
                   ),
                 },

@@ -18,7 +18,6 @@ import '../cubits/automation_cubit.dart';
 import '../cubits/agent_attention_cubit.dart';
 import '../cubits/chat_cubit.dart';
 import '../cubits/session_groups_cubit.dart';
-import '../cubits/prompt_delivery_status_cubit.dart';
 import '../services/agent_runtime/agent_event_gateway.dart';
 import '../services/agent_runtime/agent_runtime.dart';
 import '../services/agent_runtime/runtime_event_journal.dart';
@@ -416,7 +415,6 @@ class AppShell {
     required this.agentAttentionCubit,
     required this.agentStatusSeatLookup,
     required this.agentRuntime,
-    required this.promptDeliveryStatusCubit,
     required this.mailboxCubit,
     required this.boardCubit,
     required this.aiHistoryCubit,
@@ -514,7 +512,6 @@ class AppShell {
   final AgentAttentionCubit agentAttentionCubit;
   final AgentStatusSeatLookup agentStatusSeatLookup;
   final AgentRuntime agentRuntime;
-  final PromptDeliveryStatusCubit promptDeliveryStatusCubit;
   final MailboxCubit mailboxCubit;
   final BoardCubit boardCubit;
   final AiHistoryCubit aiHistoryCubit;
@@ -1849,18 +1846,6 @@ Future<AppShell> buildAppShell({
     promptDeliveries: appScopedPromptDeliveries,
   );
   sessionLifecycleService.attachAgentRuntime(agentRuntime);
-  final promptDeliveryStatusCubit = PromptDeliveryStatusCubit(
-    runtime: agentRuntime,
-    resubmit: (sessionId, memberId, text) async {
-      final id = await chatCubit.sessionRuntime.deliverUserCommandToMember(
-        sessionId,
-        memberId,
-        text,
-        directToPty: true,
-      );
-      return id != null;
-    },
-  );
 
   // Bound after [WorkbenchCubit] exists; togglePanel aliases new-terminal UX
   // into the floating shell (Task 6 redirects the launcher to floating tabs).
@@ -2457,7 +2442,6 @@ Future<AppShell> buildAppShell({
     agentAttentionCubit: agentAttentionCubit,
     agentStatusSeatLookup: agentStatusSeatLookup,
     agentRuntime: agentRuntime,
-    promptDeliveryStatusCubit: promptDeliveryStatusCubit,
     mailboxCubit: mailboxCubit,
     boardCubit: boardCubit,
     aiHistoryCubit: aiHistoryCubit,

@@ -166,7 +166,9 @@ void main() {
     expect(opened.single, '/tmp/src/main.dart');
   });
 
-  testWidgets('bound chrome shows launch error banner', (tester) async {
+  testWidgets('bound chrome shows launch error card title, not raw error', (
+    tester,
+  ) async {
     await tester.pumpWidget(
       pumpCard(
         chrome: const BoundComposeChrome(
@@ -177,7 +179,8 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    expect(find.text('Something went wrong'), findsOneWidget);
+    expect(find.text("Couldn't start session"), findsOneWidget);
+    expect(find.text('Something went wrong'), findsNothing);
   });
 
   testWidgets('empty input shows voice in trailing slot; text shows send', (
