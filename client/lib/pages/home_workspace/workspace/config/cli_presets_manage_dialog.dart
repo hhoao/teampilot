@@ -133,16 +133,14 @@ class _PresetRow extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
+                TpEllipsisText(
                   preset.name,
                   style: styles.lgColored(cs.onSurface),
                 ),
                 const SizedBox(height: 2),
-                Text(
+                TpEllipsisText(
                   '$cliName · $subtitle',
                   style: styles.smColored(cs.onSurfaceVariant),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
                 ),
               ],
             ),

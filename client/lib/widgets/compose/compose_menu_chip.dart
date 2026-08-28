@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:shared_ui/shared_ui.dart';
 
 import '../../pages/home_workspace/workspace/workspace_chat_landing_palette.dart';
+
 /// Popover menu chip matching landing compose toolbar visuals.
 class ComposeMenuChip extends StatelessWidget {
   const ComposeMenuChip({
@@ -40,13 +41,12 @@ class ComposeMenuChip extends StatelessWidget {
           }
         },
       ),
-      buildMenuChildren: (context, controller) =>
-          buildTpActionMenuChildren(
-            context: context,
-            specs: specs,
-            menuController: controller,
-            onSelect: onSelected,
-          ),
+      buildMenuChildren: (context, controller) => buildTpActionMenuChildren(
+        context: context,
+        specs: specs,
+        menuController: controller,
+        onSelect: onSelected,
+      ),
     );
   }
 }
@@ -59,6 +59,7 @@ class ComposeToolbarChip extends StatelessWidget {
     required this.label,
     this.leading,
     this.onTap,
+    this.labelMaxWidth = 200,
     super.key,
   });
 
@@ -67,6 +68,7 @@ class ComposeToolbarChip extends StatelessWidget {
   final String label;
   final Widget? leading;
   final VoidCallback? onTap;
+  final double labelMaxWidth;
 
   static const double minHeight = 36;
 
@@ -74,9 +76,7 @@ class ComposeToolbarChip extends StatelessWidget {
   Widget build(BuildContext context) {
     final spacing = context.tpSpacing;
     final icons = context.tpIconSizes;
-    final labelStyle = TpTextStyles.of(
-      context,
-    ).smColored(palette.muted);
+    final labelStyle = TpTextStyles.of(context).smColored(palette.muted);
 
     return TpHover(
       backgroundColor: palette.chipFill,
@@ -95,7 +95,10 @@ class ComposeToolbarChip extends StatelessWidget {
             children: [
               leading ?? Icon(icon, size: icons.sm, color: palette.muted),
               SizedBox(width: spacing.xs),
-              Text(label, style: labelStyle),
+              ConstrainedBox(
+                constraints: BoxConstraints(maxWidth: labelMaxWidth),
+                child: TpEllipsisText(label, style: labelStyle),
+              ),
               Icon(
                 Icons.keyboard_arrow_down_rounded,
                 size: icons.md,

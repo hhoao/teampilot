@@ -1,6 +1,11 @@
+import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/models/team_config.dart';
+import 'package:teampilot/pages/home_workspace/workspace/workspace_chat_landing_palette.dart';
+import 'package:teampilot/widgets/compose/compose_menu_chip.dart';
 import 'package:teampilot/widgets/compose/compose_model_preset_chip.dart';
+
+final _palette = WorkspaceChatLandingPalette(ColorScheme.light());
 
 void main() {
   group('simpleLaunchChipLabel', () {
@@ -67,6 +72,53 @@ void main() {
         ),
         'Use preset',
       );
+    });
+  });
+
+  group('ComposeToolbarChip long label', () {
+    testWidgets('caps label width and reveals full text via Tooltip', (
+      tester,
+    ) async {
+      const label = 'deepseek-v4-pro[1m]-very-long-preset-name';
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: Align(
+              alignment: Alignment.centerLeft,
+              child: ComposeToolbarChip(
+                palette: _palette,
+                icon: Icons.abc,
+                label: label,
+                labelMaxWidth: 120,
+              ),
+            ),
+          ),
+        ),
+      );
+
+      final chipSize = tester.getSize(find.byType(ComposeToolbarChip));
+      expect(chipSize.width, lessThan(200));
+
+      final tooltip = find.byType(Tooltip);
+      expect(tooltip, findsOneWidget);
+      expect(tester.widget<Tooltip>(tooltip).message, label);
+    });
+
+    testWidgets('short label shows no Tooltip', (tester) async {
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: ComposeToolbarChip(
+              palette: _palette,
+              icon: Icons.abc,
+              label: 'sonnet',
+              labelMaxWidth: 120,
+            ),
+          ),
+        ),
+      );
+
+      expect(find.byType(Tooltip), findsNothing);
     });
   });
 }

@@ -292,4 +292,113 @@ void main() {
       isNot(contains('Named Preset')),
     );
   });
+
+  testWidgets('manage list ellipsizes long preset name and reveals full text', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(1280, 1000);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    const longName = 'deepseek-v4-pro[1m]-very-long-preset-name-overflow';
+    await fs.writeString(
+      '/cli-presets.json',
+      jsonEncode([
+        CliPreset(
+          id: 'preset-long',
+          name: longName,
+          cli: CliTool.claude,
+          provider: 'anthropic',
+          model: 'claude-sonnet-4-5',
+          createdAt: 1,
+          updatedAt: 1,
+        ).toJson(),
+      ]),
+    );
+    await seedProviderCatalog();
+    await cubit.load();
+    await tester.pumpWidget(
+      CliToolRegistryScope(
+        registry: CliToolRegistry.builtIn(),
+        child: MultiBlocProvider(
+          providers: [
+            BlocProvider.value(value: appProviderCubit),
+            BlocProvider.value(value: cubit),
+          ],
+          child: MaterialApp(
+            localizationsDelegates: AppLocalizations.localizationsDelegates,
+            supportedLocales: AppLocalizations.supportedLocales,
+            home: const Scaffold(body: CliPresetsManageDialog()),
+          ),
+        ),
+      ),
+    );
+    await tester.pump();
+
+    expect(find.text(longName), findsOneWidget);
+    final tooltip = find.byType(Tooltip);
+    expect(tooltip, findsWidgets);
+    final messages = tester
+        .widgetList<Tooltip>(tooltip)
+        .map((t) => t.message)
+        .toList();
+    expect(messages, contains(longName));
+    expect(messages, anyElement(contains('claude-sonnet-4-5')));
+  });
+
+  testWidgets('edit dialog model dropdown ellipsizes a long model id with '
+      'full-text Tooltip', (tester) async {
+    tester.view.physicalSize = const Size(1280, 1000);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    const longModel = 'deepseek-v4-pro[1m]-a-very-long-model-id-overflow';
+    await fs.writeString(
+      '/cli-presets.json',
+      jsonEncode([
+        CliPreset(
+          id: 'preset-long-model',
+          name: 'long-model preset',
+          cli: CliTool.claude,
+          provider: 'anthropic',
+          model: longModel,
+          createdAt: 1,
+          updatedAt: 1,
+        ).toJson(),
+      ]),
+    );
+    await seedProviderCatalog();
+    await cubit.load();
+    await appProviderCubit.load(reconcileCredentials: false);
+    await tester.pumpWidget(
+      CliToolRegistryScope(
+        registry: CliToolRegistry.builtIn(),
+        child: MultiBlocProvider(
+          providers: [
+            BlocProvider.value(value: appProviderCubit),
+            BlocProvider.value(value: cubit),
+          ],
+          child: MaterialApp(
+            localizationsDelegates: AppLocalizations.localizationsDelegates,
+            supportedLocales: AppLocalizations.supportedLocales,
+            home: const Scaffold(body: CliPresetsManageDialog()),
+          ),
+        ),
+      ),
+    );
+    await tester.pump();
+
+    await tester.tap(find.byIcon(Icons.edit_outlined));
+    await tester.pumpAndSettle();
+
+    final picker = modelSelectFinder();
+    expect(picker, findsOneWidget);
+    final tooltips = tester.widgetList<Tooltip>(find.byType(Tooltip));
+    expect(
+      tooltips.map((t) => t.message).toList(),
+      anyElement(contains(longModel)),
+    );
+  });
 }
