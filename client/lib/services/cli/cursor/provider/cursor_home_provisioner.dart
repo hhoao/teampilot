@@ -67,8 +67,10 @@ final class CursorHomeProvisioner {
     if (id != null && id.isNotEmpty) {
       await _credentials?.syncAuthToMemberHome(id, memberHome);
     }
-    // After auth sync: seed tip flag (sync skips existing files, so a
-    // provider copy without the tip cannot wipe this when we write last).
+    // After auth sync: seed tip flag last. Sync skips existing optional
+    // artifacts (agent-cli-state / statsig), so a provider copy without the
+    // tip cannot wipe this. Account files (auth.json / cli-config authInfo)
+    // are replaced when the session switches provider.
     await _ensureAgentCommandTipSuppressed(memberHome);
 
     if (!member.isValid) return;

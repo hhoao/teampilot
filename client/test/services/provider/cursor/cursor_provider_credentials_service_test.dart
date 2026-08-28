@@ -269,6 +269,98 @@ void main() {
     expect(utf8.decode(authBytes!), contains('at1'));
   });
 
+  test(
+    'syncAuthToMemberHome replaces auth when switching providers',
+    () async {
+      await writeLoggedInProvider('acct-a');
+      final bHome = fs.pathContext.join(
+        base,
+        'providers',
+        'cursor',
+        'acct-b',
+        'home',
+      );
+      await fs.writeString(
+        layout.cliConfig(bHome),
+        '{"authInfo":{"userId":"u-b","authId":"a-b"}}',
+      );
+      await fs.writeString(
+        layout.authJson(bHome),
+        '{"accessToken":"at-b","refreshToken":"rt-b"}',
+      );
+
+      const memberHome = '/data/tp/identities-runtime/t1/members/s1/cursor/home';
+      await service.syncAuthToMemberHome('acct-a', memberHome);
+      final result = await service.syncAuthToMemberHome('acct-b', memberHome);
+
+      expect(result, isNot(CredentialLinkResult.alreadyPresent));
+      final authBytes = await fs.readBytes(layout.authJson(memberHome));
+      expect(utf8.decode(authBytes!), contains('at-b'));
+      expect(
+        fs.symlinks[layout.cliConfig(memberHome)],
+        layout.cliConfig(bHome),
+      );
+    },
+  );
+
+  test(
+    'syncAuthToMemberHome merges new authInfo into overlaid cli-config',
+    () async {
+      await writeLoggedInProvider('acct-a');
+      final bHome = fs.pathContext.join(
+        base,
+        'providers',
+        'cursor',
+        'acct-b',
+        'home',
+      );
+      await fs.writeString(
+        layout.cliConfig(bHome),
+        '{"authInfo":{"userId":"u-b","authId":"a-b"}}',
+      );
+      await fs.writeString(
+        layout.authJson(bHome),
+        '{"accessToken":"at-b","refreshToken":"rt-b"}',
+      );
+
+      const memberHome = '/data/tp/identities-runtime/t1/members/s1/cursor/home';
+      await service.syncAuthToMemberHome('acct-a', memberHome);
+      await fs.removeRecursive(layout.cliConfig(memberHome));
+      await fs.writeString(
+        layout.cliConfig(memberHome),
+        jsonEncode({
+          'authInfo': {'userId': 'u1', 'authId': 'a1'},
+          'permissions': {
+            'allow': ['Mcp(teampilot-bus)'],
+          },
+          'model': 'keep-me',
+        }),
+      );
+
+      await service.syncAuthToMemberHome('acct-b', memberHome);
+
+      final authBytes = await fs.readBytes(layout.authJson(memberHome));
+      expect(utf8.decode(authBytes!), contains('at-b'));
+      final decoded =
+          jsonDecode((await fs.readString(layout.cliConfig(memberHome)))!)
+              as Map<String, Object?>;
+      expect((decoded['authInfo'] as Map)['userId'], 'u-b');
+      expect(decoded['model'], 'keep-me');
+      expect((decoded['permissions'] as Map)['allow'], ['Mcp(teampilot-bus)']);
+    },
+  );
+
+  test(
+    'syncAuthToMemberHome is alreadyPresent when same provider is already linked',
+    () async {
+      await writeLoggedInProvider('work');
+      const memberHome = '/data/tp/identities-runtime/t1/members/s1/cursor/home';
+      await service.syncAuthToMemberHome('work', memberHome);
+      final second = await service.syncAuthToMemberHome('work', memberHome);
+      expect(second, CredentialLinkResult.alreadyPresent);
+    },
+  );
+
   test('loginEnvironment sets HOME to provider home', () {
     final env = service.loginEnvironment('work');
     expect(

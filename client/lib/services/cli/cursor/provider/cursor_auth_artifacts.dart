@@ -72,6 +72,39 @@ abstract final class CursorAuthArtifacts {
     }
   }
 
+  /// True when both blobs carry the same OAuth access/refresh tokens.
+  static bool authJsonTokensEqual(String a, String b) {
+    try {
+      final decodedA = jsonDecode(a);
+      final decodedB = jsonDecode(b);
+      if (decodedA is! Map || decodedB is! Map) return false;
+      return (decodedA[_accessTokenKey]?.toString() ?? '') ==
+              (decodedB[_accessTokenKey]?.toString() ?? '') &&
+          (decodedA[_refreshTokenKey]?.toString() ?? '') ==
+              (decodedB[_refreshTokenKey]?.toString() ?? '');
+    } on Object {
+      return false;
+    }
+  }
+
+  /// True when both `cli-config.json` blobs name the same Cursor account.
+  static bool cliConfigAuthInfoEqual(String a, String b) {
+    try {
+      final decodedA = jsonDecode(a);
+      final decodedB = jsonDecode(b);
+      if (decodedA is! Map || decodedB is! Map) return false;
+      final infoA = decodedA[_authInfoKey];
+      final infoB = decodedB[_authInfoKey];
+      if (infoA is! Map || infoB is! Map) return identical(infoA, infoB);
+      return (infoA[_authIdKey]?.toString().trim() ?? '') ==
+              (infoB[_authIdKey]?.toString().trim() ?? '') &&
+          (infoA[_userIdKey]?.toString().trim() ?? '') ==
+              (infoB[_userIdKey]?.toString().trim() ?? '');
+    } on Object {
+      return false;
+    }
+  }
+
   /// Profile metadata only — not sufficient alone for [probe] ready state.
   static bool cliConfigIndicatesLoggedIn(String cliConfigJson) {
     try {

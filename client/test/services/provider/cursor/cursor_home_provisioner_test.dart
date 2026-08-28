@@ -243,6 +243,49 @@ void main() {
       },
     );
 
+    test(
+      'provision replaces auth when switching cursor providers',
+      () async {
+        const memberHome = '/data/tp/members/planner/cursor/home';
+        await writeLoggedInProvider('acct-a');
+        final bHome = fs.pathContext.join(
+          base,
+          'providers',
+          'cursor',
+          'acct-b',
+          'home',
+        );
+        await fs.writeString(
+          layout.cliConfig(bHome),
+          '{"authInfo":{"userId":"u-b","authId":"a-b"}}',
+        );
+        await fs.writeString(
+          layout.authJson(bHome),
+          '{"accessToken":"at-b","refreshToken":"rt-b"}',
+        );
+
+        await provisioner.provision(
+          memberHome: memberHome,
+          providerId: 'acct-a',
+          member: member,
+          busIdle: null,
+          forceTeamLeadDelegateMode: false,
+          mixed: false,
+        );
+        await provisioner.provision(
+          memberHome: memberHome,
+          providerId: 'acct-b',
+          member: member,
+          busIdle: null,
+          forceTeamLeadDelegateMode: false,
+          mixed: false,
+        );
+
+        final authBytes = await fs.readBytes(layout.authJson(memberHome));
+        expect(utf8.decode(authBytes!), contains('at-b'));
+      },
+    );
+
     test('provision merges team-bus MCP into existing mcp.json', () async {
       const memberHome = '/data/tp/members/planner/cursor/home';
       await fs.writeString(
