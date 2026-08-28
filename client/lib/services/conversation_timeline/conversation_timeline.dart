@@ -51,8 +51,7 @@ CliTimelineDelta computeCliTimelineDelta({
   for (var i = 0; i < previous.length; i++) {
     if (identical(previous[i], next[i])) continue;
     if (previous[i].id != next[i].id) return const CliTimelineInvalidated();
-    if (messageContentIdentity(previous[i]) ==
-        messageContentIdentity(next[i])) {
+    if (messagesCheapEqual(previous[i], next[i])) {
       continue;
     }
     if (i == previous.length - 1) {
@@ -62,10 +61,16 @@ CliTimelineDelta computeCliTimelineDelta({
     return const CliTimelineInvalidated();
   }
   if (lastReplaced) {
-    if (next.length != previous.length) {
-      return const CliTimelineInvalidated();
+    if (next.length == previous.length) {
+      return CliTimelineLastReplaced(message: next.last);
     }
-    return CliTimelineLastReplaced(message: next.last);
+    return CliTimelineLastReplacedAndAppended(
+      message: next[previous.length - 1],
+      events: [
+        for (var i = previous.length; i < next.length; i++)
+          _cliMessageToEvent(next[i], cliOrder: i),
+      ],
+    );
   }
   if (next.length == previous.length) return const CliTimelineUnchanged();
   return CliTimelineAppended(
@@ -172,23 +177,13 @@ SeatTimelineSnapshot buildConversationTimelineIncremental({
     return previous;
   }
 
-  final skipAllEvents =
-      cliDelta is CliTimelineLastReplaced &&
-      mailboxDelta is MailboxTimelineUnchanged;
-  final allEvents = skipAllEvents
-      ? const <TimelineEvent>[]
-      : [
-          ..._cliEventsFromMessages(cliMessages),
-          ...mailbox.events,
-        ];
-
   final snapshot = mergeTimelineIncremental(
     previous: previous,
     cliDelta: cliDelta,
     mailboxDelta: mailboxDelta,
-    allEvents: allEvents,
     unread: mailbox.unread,
     nextCliMessages: cliMessages,
+    mailboxEvents: mailbox.events,
   );
 
   return SeatTimelineSnapshot(

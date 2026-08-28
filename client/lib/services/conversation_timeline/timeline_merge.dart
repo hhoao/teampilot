@@ -64,6 +64,17 @@ class CliTimelineLastReplaced extends CliTimelineDelta {
   final AiMessage message;
 }
 
+/// Last CLI message content changed and the list also grew.
+class CliTimelineLastReplacedAndAppended extends CliTimelineDelta {
+  const CliTimelineLastReplacedAndAppended({
+    required this.message,
+    required this.events,
+  });
+
+  final AiMessage message;
+  final List<TimelineEvent> events;
+}
+
 class CliTimelineInvalidated extends CliTimelineDelta {
   const CliTimelineInvalidated();
 }
@@ -137,32 +148,105 @@ int _insertIndexForEvent(
   return messages.length;
 }
 
+TimelineSnapshot _fullTimelineMerge({
+  required List<AiMessage> nextCliMessages,
+  required List<TimelineEvent> mailboxEvents,
+  required List<UnreadUserMail> unread,
+}) {
+  final cliEvents = [
+    for (var i = 0; i < nextCliMessages.length; i++)
+      TimelineEvent(
+        id: nextCliMessages[i].id,
+        role: nextCliMessages[i].role,
+        parts: nextCliMessages[i].parts,
+        createdAt: nextCliMessages[i].createdAt,
+        source: 'cli',
+        deliveryChannel: nextCliMessages[i].deliveryChannel,
+        cliOrder: i,
+      ),
+  ];
+  return mergeTimeline(
+    events: [...cliEvents, ...mailboxEvents],
+    unread: unread,
+  );
+}
+
+TimelineSnapshot _tryAppendEvents({
+  required List<AiMessage> messages,
+  required List<TimelineEvent> newEvents,
+  required List<AiMessage> nextCliMessages,
+  required List<UnreadUserMail> unread,
+  required List<TimelineEvent> mailboxEvents,
+}) {
+  if (newEvents.isEmpty) {
+    return TimelineSnapshot(messages: messages, unreadUserMails: unread);
+  }
+  final existingIds = {for (final m in messages) m.id};
+  for (final event in newEvents) {
+    if (existingIds.contains(event.id)) {
+      return _fullTimelineMerge(
+        nextCliMessages: nextCliMessages,
+        mailboxEvents: mailboxEvents,
+        unread: unread,
+      );
+    }
+  }
+  final sorted = [...newEvents]..sort(_compareTimelineEvents);
+  for (final event in sorted) {
+    final insertAt = _insertIndexForEvent(messages, event, nextCliMessages);
+    messages.insert(insertAt, _messageFromEvent(event));
+  }
+  return TimelineSnapshot(messages: messages, unreadUserMails: unread);
+}
+
 /// Identity-preserving merge for append-only CLI/mailbox deltas. Falls back to
 /// [mergeTimeline] when order or content is invalidated.
 TimelineSnapshot mergeTimelineIncremental({
   required SeatTimelineSnapshot previous,
   required CliTimelineDelta cliDelta,
   required MailboxTimelineDelta mailboxDelta,
-  required List<TimelineEvent> allEvents,
   required List<UnreadUserMail> unread,
   required List<AiMessage> nextCliMessages,
+  required List<TimelineEvent> mailboxEvents,
 }) {
   if (cliDelta is CliTimelineInvalidated ||
       mailboxDelta is MailboxTimelineInvalidated) {
-    return mergeTimeline(events: allEvents, unread: unread);
+    return _fullTimelineMerge(
+      nextCliMessages: nextCliMessages,
+      mailboxEvents: mailboxEvents,
+      unread: unread,
+    );
   }
 
-  if (cliDelta is CliTimelineLastReplaced) {
-    if (mailboxDelta is MailboxTimelineAppended) {
-      return mergeTimeline(events: allEvents, unread: unread);
-    }
+  if (cliDelta is CliTimelineLastReplaced ||
+      cliDelta is CliTimelineLastReplacedAndAppended) {
+    final replaced = cliDelta is CliTimelineLastReplaced
+        ? cliDelta.message
+        : (cliDelta as CliTimelineLastReplacedAndAppended).message;
+    final extraCli = cliDelta is CliTimelineLastReplacedAndAppended
+        ? cliDelta.events
+        : const <TimelineEvent>[];
     final messages = List<AiMessage>.of(previous.snapshot.messages);
-    final index = messages.lastIndexWhere((m) => m.id == cliDelta.message.id);
+    final index = messages.lastIndexWhere((m) => m.id == replaced.id);
     if (index < 0) {
-      return mergeTimeline(events: allEvents, unread: unread);
+      return _fullTimelineMerge(
+        nextCliMessages: nextCliMessages,
+        mailboxEvents: mailboxEvents,
+        unread: unread,
+      );
     }
-    messages[index] = cliDelta.message;
-    return TimelineSnapshot(messages: messages, unreadUserMails: unread);
+    messages[index] = replaced;
+    final mailboxAppend = switch (mailboxDelta) {
+      MailboxTimelineAppended(:final events) => events,
+      _ => const <TimelineEvent>[],
+    };
+    return _tryAppendEvents(
+      messages: messages,
+      newEvents: [...extraCli, ...mailboxAppend],
+      nextCliMessages: nextCliMessages,
+      unread: unread,
+      mailboxEvents: mailboxEvents,
+    );
   }
 
   final cliAppend = switch (cliDelta) {
@@ -184,35 +268,11 @@ TimelineSnapshot mergeTimelineIncremental({
     );
   }
 
-  final existingIds = {for (final m in previous.snapshot.messages) m.id};
-  for (final event in [...cliAppend, ...mailboxAppend]) {
-    if (existingIds.contains(event.id)) {
-      return mergeTimeline(events: allEvents, unread: unread);
-    }
-  }
-
-  var messages = List<AiMessage>.from(previous.snapshot.messages);
-  final newEvents = [...cliAppend, ...mailboxAppend]
-    ..sort(_compareTimelineEvents);
-
-  for (final event in newEvents) {
-    final insertAt = _insertIndexForEvent(messages, event, nextCliMessages);
-    messages.insert(insertAt, _messageFromEvent(event));
-  }
-
-  final full = mergeTimeline(events: allEvents, unread: unread);
-  if (full.messages.length != messages.length ||
-      !_sameMessageIds(full.messages, messages)) {
-    return full;
-  }
-
-  return TimelineSnapshot(messages: messages, unreadUserMails: unread);
-}
-
-bool _sameMessageIds(List<AiMessage> a, List<AiMessage> b) {
-  if (a.length != b.length) return false;
-  for (var i = 0; i < a.length; i++) {
-    if (a[i].id != b[i].id) return false;
-  }
-  return true;
+  return _tryAppendEvents(
+    messages: List<AiMessage>.from(previous.snapshot.messages),
+    newEvents: [...cliAppend, ...mailboxAppend],
+    nextCliMessages: nextCliMessages,
+    unread: unread,
+    mailboxEvents: mailboxEvents,
+  );
 }

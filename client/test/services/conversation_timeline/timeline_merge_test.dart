@@ -88,9 +88,9 @@ void main() {
         previous: previous,
         cliDelta: cliDelta,
         mailboxDelta: const MailboxTimelineUnchanged(),
-        allEvents: allEvents,
         unread: const [],
         nextCliMessages: nextCli,
+        mailboxEvents: const [],
       );
 
       expect(merged.messages, hasLength(3));
@@ -141,9 +141,9 @@ void main() {
         previous: previous,
         cliDelta: const CliTimelineUnchanged(),
         mailboxDelta: mailboxDelta,
-        allEvents: allEvents,
         unread: const [],
         nextCliMessages: previous.cliMessages,
+        mailboxEvents: [mailbox],
       );
 
       expect(merged.messages.map((m) => m.id), [
@@ -215,9 +215,9 @@ void main() {
         previous: previous,
         cliDelta: CliTimelineLastReplaced(message: nextLast),
         mailboxDelta: const MailboxTimelineUnchanged(),
-        allEvents: const [],
         unread: const [],
         nextCliMessages: [initial.messages[0], nextLast],
+        mailboxEvents: const [],
       );
 
       expect(merged.messages, hasLength(2));
@@ -267,6 +267,201 @@ void main() {
       );
     });
 
+    test('last grow plus new message is LastReplacedAndAppended', () {
+      final first = AiMessage(
+        id: 'u',
+        role: AiRole.user,
+        parts: [AiTextPart(text: 'q')],
+      );
+      final a1 = AiMessage(
+        id: 'a',
+        role: AiRole.assistant,
+        parts: [AiTextPart(text: 'h')],
+      );
+      final a2 = AiMessage(
+        id: 'a',
+        role: AiRole.assistant,
+        parts: [AiTextPart(text: 'hello')],
+      );
+      final extra = AiMessage(
+        id: 'a2',
+        role: AiRole.assistant,
+        parts: [AiTextPart(text: 'next')],
+      );
+
+      final delta = computeCliTimelineDelta(
+        previous: [first, a1],
+        next: [first, a2, extra],
+      );
+
+      expect(delta, isA<CliTimelineLastReplacedAndAppended>());
+      final combined = delta as CliTimelineLastReplacedAndAppended;
+      expect(identical(combined.message, a2), isTrue);
+      expect(combined.events.single.id, 'a2');
+    });
+
+    test('LastReplacedAndAppended keeps prefix instances', () {
+      final t1 = DateTime.utc(2026, 1, 1, 10);
+      final t2 = DateTime.utc(2026, 1, 1, 11);
+      final t3 = DateTime.utc(2026, 1, 1, 12);
+      final initialEvents = [
+        cliEvent(id: 'cli-1', text: 'first', createdAt: t1, cliOrder: 0),
+        cliEvent(
+          id: 'cli-2',
+          text: 'h',
+          createdAt: t2,
+          cliOrder: 1,
+          role: AiRole.assistant,
+        ),
+      ];
+      final initial = mergeTimeline(events: initialEvents, unread: const []);
+      final previous = SeatTimelineSnapshot(
+        cliMessages: initial.messages,
+        mailboxRecords: const [],
+        snapshot: initial,
+      );
+      final nextLast = AiMessage(
+        id: 'cli-2',
+        role: AiRole.assistant,
+        parts: [AiTextPart(text: 'hello')],
+        createdAt: t2,
+      );
+      final appended = cliEvent(
+        id: 'cli-3',
+        text: 'third',
+        createdAt: t3,
+        cliOrder: 2,
+        role: AiRole.assistant,
+      );
+      final nextCli = [
+        initial.messages[0],
+        nextLast,
+        AiMessage(
+          id: 'cli-3',
+          role: AiRole.assistant,
+          parts: [AiTextPart(text: 'third')],
+          createdAt: t3,
+        ),
+      ];
+      final merged = mergeTimelineIncremental(
+        previous: previous,
+        cliDelta: CliTimelineLastReplacedAndAppended(
+          message: nextLast,
+          events: [appended],
+        ),
+        mailboxDelta: const MailboxTimelineUnchanged(),
+        unread: const [],
+        nextCliMessages: nextCli,
+        mailboxEvents: const [],
+      );
+      expect(merged.messages.map((m) => m.id), ['cli-1', 'cli-2', 'cli-3']);
+      expect(identical(merged.messages[0], initial.messages[0]), isTrue);
+      expect(identical(merged.messages[1], nextLast), isTrue);
+      expect(
+        mergeTimeline(
+          events: [...initialEvents, appended],
+          unread: const [],
+        ).messages.map((m) => m.id),
+        merged.messages.map((m) => m.id),
+      );
+    });
+
+    test('LastReplaced plus mailbox append keeps prefix instances', () {
+      final t1 = DateTime.utc(2026, 1, 1, 10);
+      final t2 = DateTime.utc(2026, 1, 1, 11);
+      final t3 = DateTime.utc(2026, 1, 1, 12);
+      final initialEvents = [
+        cliEvent(id: 'cli-1', text: 'first', createdAt: t1, cliOrder: 0),
+        cliEvent(
+          id: 'cli-2',
+          text: 'h',
+          createdAt: t2,
+          cliOrder: 1,
+          role: AiRole.assistant,
+        ),
+      ];
+      final initial = mergeTimeline(events: initialEvents, unread: const []);
+      final previous = SeatTimelineSnapshot(
+        cliMessages: initial.messages,
+        mailboxRecords: const [],
+        snapshot: initial,
+      );
+      final nextLast = AiMessage(
+        id: 'cli-2',
+        role: AiRole.assistant,
+        parts: [AiTextPart(text: 'hello')],
+        createdAt: t2,
+      );
+      final mailbox = mailboxEvent(
+        id: 'mail-1',
+        text: 'mailbox user',
+        createdAt: t3,
+      );
+      final merged = mergeTimelineIncremental(
+        previous: previous,
+        cliDelta: CliTimelineLastReplaced(message: nextLast),
+        mailboxDelta: MailboxTimelineAppended(
+          events: [mailbox],
+          unread: const [],
+        ),
+        unread: const [],
+        nextCliMessages: [initial.messages[0], nextLast],
+        mailboxEvents: [mailbox],
+      );
+      expect(merged.messages.map((m) => m.id), [
+        'cli-1',
+        'cli-2',
+        'mailbox:mail-1',
+      ]);
+      expect(identical(merged.messages[0], initial.messages[0]), isTrue);
+      expect(identical(merged.messages[1], nextLast), isTrue);
+    });
+
+    test('incremental builder last-grow plus append does not rewrite prefix', () {
+      final first = AiMessage(
+        id: 'u',
+        role: AiRole.user,
+        parts: [AiTextPart(text: 'q')],
+        createdAt: DateTime.utc(2026, 1, 1, 10),
+      );
+      final a1 = AiMessage(
+        id: 'a',
+        role: AiRole.assistant,
+        parts: [AiTextPart(text: 'h')],
+        createdAt: DateTime.utc(2026, 1, 1, 11),
+      );
+      final initial = buildConversationTimelineIncremental(
+        cliMessages: [first, a1],
+        mailboxRecords: const [],
+      );
+      final a2 = AiMessage(
+        id: 'a',
+        role: AiRole.assistant,
+        parts: [AiTextPart(text: 'hello')],
+        createdAt: DateTime.utc(2026, 1, 1, 11),
+      );
+      final extra = AiMessage(
+        id: 'b',
+        role: AiRole.assistant,
+        parts: [AiTextPart(text: 'next')],
+        createdAt: DateTime.utc(2026, 1, 1, 12),
+      );
+      final next = buildConversationTimelineIncremental(
+        previous: initial,
+        cliMessages: [first, a2, extra],
+        mailboxRecords: const [],
+      );
+      expect(next.snapshot.messages.map((m) => m.id), ['u', 'a', 'b']);
+      expect(
+        identical(next.snapshot.messages[0], initial.snapshot.messages[0]),
+        isTrue,
+      );
+      expect(
+        (next.snapshot.messages[1].parts.single as AiTextPart).text,
+        'hello',
+      );
+    });
+
     test('CLI rewrite falls back to full merge with fresh instances', () {
       final t1 = DateTime.utc(2026, 1, 1, 10);
       final initialEvents = [
@@ -280,16 +475,10 @@ void main() {
         snapshot: initial,
       );
 
-      final rewrittenEvents = [
-        cliEvent(id: 'cli-2', text: 'second', createdAt: t1, cliOrder: 0),
-        cliEvent(id: 'cli-1', text: 'first', createdAt: t1, cliOrder: 1),
-      ];
-
       final merged = mergeTimelineIncremental(
         previous: previous,
         cliDelta: const CliTimelineInvalidated(),
         mailboxDelta: const MailboxTimelineUnchanged(),
-        allEvents: rewrittenEvents,
         unread: const [],
         nextCliMessages: [
           AiMessage(
@@ -305,6 +494,7 @@ void main() {
             createdAt: t1,
           ),
         ],
+        mailboxEvents: const [],
       );
 
       expect(merged.messages.map((m) => m.id), ['cli-2', 'cli-1']);
