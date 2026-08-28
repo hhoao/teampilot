@@ -1,20 +1,13 @@
 import 'dart:async';
-import 'dart:convert';
-import 'dart:typed_data';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter_alacritty/flutter_alacritty.dart';
 
-import '../../cubits/agent_attention_cubit.dart';
 import '../../utils/logging/logger.dart';
-import '../../utils/terminal/osc_title_extractor.dart';
-import '../agent_status/agent_attention_state.dart';
-import '../agent_status/agent_status_event.dart';
-import '../cli/cursor/capabilities/terminal_behavior.dart';
 import '../cli/cli_executable_validator.dart';
 import '../team/terminal_activity_tracker.dart';
+import 'observation/terminal_observation_bus.dart';
 import 'terminal_launch_phase.dart';
-import 'terminal_startup_failure_detector.dart';
 import 'terminal_theme_mapper.dart';
 import 'terminal_transport.dart';
 import 'terminal_transport_starter.dart';
@@ -23,8 +16,9 @@ export 'terminal_launch_phase.dart';
 
 /// Owns transport spawn, startup timers, and launch-phase state machine.
 ///
-/// SRP: session facade delegates lifecycle; this class does not know about bus,
-/// links, or fullscreen input semantics.
+/// SRP: session facade delegates lifecycle; this class does not know about
+/// TeamBus, links, or fullscreen input semantics. PTY bytes and phase changes
+/// are forwarded to an optional [TerminalObservationBus].
 final class TerminalLaunchController {
   TerminalLaunchController({
     required this.engine,
@@ -51,13 +45,13 @@ final class TerminalLaunchController {
   final TerminalTheme? Function()? _terminalTheme;
 
   TerminalTransport? _transport;
+  TerminalObservationBus? _observation;
   var _phase = TerminalLaunchPhase.idle;
   var _startFailed = false;
   var _spawnRequested = false;
   var _transportStartGeneration = 0;
   var _disposed = false;
   String? _startupExecutable;
-  final _startupOutput = StringBuffer();
   Timer? _confirmFallbackTimer;
   Timer? _startupDeadlineTimer;
   StreamSubscription<Uint8List>? _outputSubscription;
@@ -73,45 +67,17 @@ final class TerminalLaunchController {
   void Function(String text)? writeToDisplay;
   void Function()? onConfirmedRunning;
 
-  /// Cursor-only OSC title → attention binding (null until [bindCursorTitleAttention]).
-  String? _cursorSessionId;
-  String? _cursorMemberId;
-  AgentAttentionCubit? _cursorAttention;
-  bool Function()? _cursorSkipPermissions;
-  OscTitleExtractor? _cursorOscTitles;
-  var _cursorTitleWaiting = false;
-
   bool get isDisposed => _disposed;
 
   /// Local PTY pid from the active transport, if any.
   int? get pid => _transport?.pid;
 
-  /// Enable live OSC title attention for a Cursor seat. No-op for other CLIs —
-  /// only call when the seat launches Cursor.
-  void bindCursorTitleAttention({
-    required String sessionId,
-    required String memberId,
-    required AgentAttentionCubit attention,
-    required bool Function() skipPermissions,
-  }) {
-    _cursorSessionId = sessionId;
-    _cursorMemberId = memberId;
-    _cursorAttention = attention;
-    _cursorSkipPermissions = skipPermissions;
-    _cursorOscTitles = OscTitleExtractor();
-    _cursorTitleWaiting = false;
+  void attachObservation(TerminalObservationBus? bus) {
+    _observation = bus;
   }
 
-  /// Drop Cursor title observation (disconnect / non-Cursor reconnect).
-  void clearCursorTitleAttention() {
-    _cursorSessionId = null;
-    _cursorMemberId = null;
-    _cursorAttention = null;
-    _cursorSkipPermissions = null;
-    _cursorOscTitles?.reset();
-    _cursorOscTitles = null;
-    _cursorTitleWaiting = false;
-  }
+  /// Seat observation modules call this to promote confirming → running.
+  void confirmProcessStartedForObservation() => _confirmProcessStarted();
 
   bool get startFailed => _startFailed;
   TerminalLaunchPhase get phase => _phase;
@@ -146,9 +112,9 @@ final class TerminalLaunchController {
 
   void beginStartup(String executable) {
     _startupExecutable = executable;
-    _startupOutput.clear();
     _phase = TerminalLaunchPhase.spawning;
     _startFailed = false;
+    _observation?.setPhase(TerminalLaunchPhase.spawning);
     _armStartupDeadline();
   }
 
@@ -204,73 +170,16 @@ final class TerminalLaunchController {
 
   void feedPtyBytes(Uint8List data) {
     if (data.isEmpty) return;
-    if (isConnected) {
-      activityTracker.notePtyBytes(data);
-    }
-    _observeCursorOscTitles(data);
+    _observation?.dispatchOutput(data);
     engine.feed(data);
-  }
-
-  void _observeCursorOscTitles(Uint8List data) {
-    final extractor = _cursorOscTitles;
-    final attention = _cursorAttention;
-    final sessionId = _cursorSessionId;
-    final memberId = _cursorMemberId;
-    final skipPermissions = _cursorSkipPermissions;
-    if (extractor == null ||
-        attention == null ||
-        sessionId == null ||
-        memberId == null ||
-        skipPermissions == null) {
-      return;
-    }
-
-    final text = utf8.decode(data, allowMalformed: true);
-    for (final title in extractor.push(text)) {
-      _applyCursorTitle(title, attention, sessionId, memberId, skipPermissions);
-    }
-  }
-
-  void _applyCursorTitle(
-    String title,
-    AgentAttentionCubit attention,
-    String sessionId,
-    String memberId,
-    bool Function() skipPermissions,
-  ) {
-    // Bare native title is a no-op so per-turn re-emissions cannot clear sticky
-    // waiting (Orca rule). Clear only on a non-native title that is not waiting.
-    if (isCursorNativeTitle(title)) return;
-
-    final classified = detectCursorTitleAttention(title);
-    if (classified == AgentSeatAttention.waiting) {
-      final skip = skipPermissions();
-      attention.applyEvent(
-        sessionId: sessionId,
-        memberId: memberId,
-        event: const AgentStatusEvent(state: AgentSeatAttention.waiting),
-        skipPermissions: skip,
-      );
-      if (!skip) _cursorTitleWaiting = true;
-      return;
-    }
-
-    if (_cursorTitleWaiting) {
-      attention.applyEvent(
-        sessionId: sessionId,
-        memberId: memberId,
-        event: const AgentStatusEvent(state: AgentSeatAttention.done),
-        skipPermissions: skipPermissions(),
-      );
-      _cursorTitleWaiting = false;
-    }
+    _observation?.notifyPainted();
   }
 
   void disconnect() {
     _transportStartGeneration++;
     _startFailed = false;
     _spawnRequested = false;
-    clearCursorTitleAttention();
+    attachObservation(null);
     _teardownPtyState();
     onProcessFailed = null;
     onProcessExited = null;
@@ -313,6 +222,7 @@ final class TerminalLaunchController {
   void _enterConfirmingPhase() {
     if (_phase != TerminalLaunchPhase.spawning) return;
     _phase = TerminalLaunchPhase.confirming;
+    _observation?.setPhase(TerminalLaunchPhase.confirming);
     _flushPendingPtyResize();
     _confirmFallbackTimer?.cancel();
     _confirmFallbackTimer = Timer(confirmFallback, _confirmProcessStarted);
@@ -398,20 +308,6 @@ final class TerminalLaunchController {
       _outputSubscription = transport.output.listen((Uint8List data) {
         if (data.isEmpty) return;
         feedPtyBytes(data);
-        final text = utf8.decode(data, allowMalformed: true);
-        if (!_starting || _startFailed) return;
-        _startupOutput.write(text);
-        final classified = TerminalStartupFailureDetector.classifyStartupFailure(
-          _startupOutput.toString(),
-          executable: executable,
-          validateLaunch: validateLaunch,
-        );
-        if (classified != null) {
-          appLogger.e('[terminal] CLI error: ${text.trim()}');
-          _handleStartFailure(classified);
-          return;
-        }
-        _confirmProcessStarted();
       });
 
       transport.done.then((code) {
@@ -421,17 +317,14 @@ final class TerminalLaunchController {
           return;
         }
         if (_starting && !_startFailed) {
-          final classified =
-              TerminalStartupFailureDetector.classifyStartupFailure(
-                _startupOutput.toString(),
-                executable: _startupExecutable ?? executable,
-                validateLaunch: validateLaunch,
-              );
+          if (_observation != null) {
+            _observation!.notifyProcessExited(code);
+            return;
+          }
           _handleStartFailure(
-            classified ??
-                (code == 0
-                    ? '[process exited unexpectedly during startup]'
-                    : '[process exited with code $code during startup]'),
+            code == 0
+                ? '[process exited unexpectedly during startup]'
+                : '[process exited with code $code during startup]',
           );
           return;
         }
@@ -492,6 +385,7 @@ final class TerminalLaunchController {
       return;
     }
     _phase = TerminalLaunchPhase.running;
+    _observation?.setPhase(TerminalLaunchPhase.running);
     activityTracker.reset();
     _cancelStartupTimers();
     final cliExecutable = _startupExecutable ?? defaultExecutable;
@@ -512,6 +406,7 @@ final class TerminalLaunchController {
     if (_startFailed) return;
     _startFailed = true;
     _phase = TerminalLaunchPhase.failed;
+    _observation?.setPhase(TerminalLaunchPhase.failed);
     _spawnRequested = false;
     _cancelStartupTimers();
     _outputSubscription?.cancel();
@@ -521,7 +416,6 @@ final class TerminalLaunchController {
     _transport?.close();
     _transport = null;
     _startupExecutable = null;
-    _startupOutput.clear();
     appLogger.e('[terminal] $message', error: error, stackTrace: stackTrace);
     writeToDisplay?.call('\r\n$message\r\n');
     onProcessFailed?.call(message);
@@ -537,7 +431,6 @@ final class TerminalLaunchController {
     _outputSubscription = null;
     _phase = TerminalLaunchPhase.idle;
     _startupExecutable = null;
-    _startupOutput.clear();
     onProcessStarted = null;
     activityTracker.reset();
   }
