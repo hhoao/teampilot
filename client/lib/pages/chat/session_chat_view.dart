@@ -157,6 +157,9 @@ class _SessionChatViewState extends State<SessionChatView> {
   var _mailboxQueuedClearToken = 0;
   final _submitBusy = ValueNotifier(false);
 
+  /// Hides compose Stop immediately; PTY idleAfter can stay "working" after Ctrl+C.
+  final _userStoppedTurn = ValueNotifier(false);
+
   /// Workspace-layer bundle (project-config.json) so the review compose slash
   /// menu shows the same skills/plugins/MCP as the landing compose.
   ConfigBundle _workspaceBundle = const ConfigBundle();
@@ -276,6 +279,7 @@ class _SessionChatViewState extends State<SessionChatView> {
         oldWidget.selectedMemberId != widget.selectedMemberId ||
         oldWidget.team?.id != widget.team?.id;
     if (seatChanged) {
+      _userStoppedTurn.value = false;
       _locator.cancel();
       _visibleOwnerId.value = null;
       _locateHighlightId = null;
@@ -392,6 +396,7 @@ class _SessionChatViewState extends State<SessionChatView> {
     _locator.cancel();
     _emptyRuntime.close();
     _submitBusy.dispose();
+    _userStoppedTurn.dispose();
     super.dispose();
   }
 
@@ -495,6 +500,20 @@ class _SessionChatViewState extends State<SessionChatView> {
       _shellMemberId,
       working: chat.isMemberWorking(widget.session.sessionId, _shellMemberId),
     );
+  }
+
+  void _onUserStoppedTurn() {
+    if (_userStoppedTurn.value) return;
+    _userStoppedTurn.value = true;
+    _seat?.flushHeldTip(endAwaiting: true);
+  }
+
+  void _clearStoppedTurnIfSeatIdle(ChatCubit chat) {
+    if (!_userStoppedTurn.value) return;
+    if (chat.isMemberWorking(widget.session.sessionId, _shellMemberId)) {
+      return;
+    }
+    _userStoppedTurn.value = false;
   }
 
   void _maybeStartLiveRefreshForRunningPty() {
@@ -764,10 +783,12 @@ class _SessionChatViewState extends State<SessionChatView> {
           session: widget.session,
           selectedMemberId: selectedMemberId,
         );
-    final memberWorking = chat.isMemberWorking(
-      widget.session.sessionId,
-      _shellMemberId,
-    );
+    final memberWorking =
+        chat.isMemberWorking(
+          widget.session.sessionId,
+          _shellMemberId,
+        ) &&
+        !_userStoppedTurn.value;
     final registry =
         CliToolRegistryScope.maybeOf(context) ?? CliToolRegistry.builtIn();
     final lockedCli = _lockedCli(
@@ -797,7 +818,10 @@ class _SessionChatViewState extends State<SessionChatView> {
         _clip.clear();
         _notifyFollowUpMemberWorking(chat);
       },
-      onDeliver: (_) => delivered = true,
+      onDeliver: (_) {
+        delivered = true;
+        _userStoppedTurn.value = false;
+      },
     );
     if (!delivered) return const HistoryContinueSubmitResult.failed();
 
@@ -1121,7 +1145,9 @@ class _SessionChatViewState extends State<SessionChatView> {
                 listener: (context, state) {
                   _syncAwaitingFromWorkingSessions(state);
                   _maybeStartLiveRefreshForRunningPty();
-                  _notifyFollowUpMemberWorking(context.read<ChatCubit>());
+                  final chat = context.read<ChatCubit>();
+                  _notifyFollowUpMemberWorking(chat);
+                  _clearStoppedTurnIfSeatIdle(chat);
                 },
               ),
               BlocListener<MemberPresenceCubit, MemberPresenceState>(
@@ -1227,7 +1253,10 @@ class _SessionChatViewState extends State<SessionChatView> {
                                   return const SizedBox.shrink();
                                 }
                                 return ListenableBuilder(
-                                  listenable: _subagentPreview,
+                                  listenable: Listenable.merge([
+                                    _subagentPreview,
+                                    _userStoppedTurn,
+                                  ]),
                                   builder: (context, _) {
                                     _subagentPreview.pruneToAvailable(
                                       historySeat.subagentAttachments.keys
@@ -1285,6 +1314,8 @@ class _SessionChatViewState extends State<SessionChatView> {
                                           selectedMemberId: selectedMemberId,
                                           shellMemberId: _shellMemberId,
                                           isSubmitting: _isSubmitting,
+                                          userStoppedTurn:
+                                              _userStoppedTurn.value,
                                           state: state,
                                           historySeat: historySeat,
                                           top: top,
@@ -1321,7 +1352,10 @@ class _SessionChatViewState extends State<SessionChatView> {
                                         ),
                                         if (top == null)
                                           ListenableBuilder(
-                                            listenable: _submitBusy,
+                                            listenable: Listenable.merge([
+                                              _submitBusy,
+                                              _userStoppedTurn,
+                                            ]),
                                             builder: (context, _) {
                                               return SessionChatComposeSection(
                                                 session: session,
@@ -1363,6 +1397,10 @@ class _SessionChatViewState extends State<SessionChatView> {
                                                     _pasteComposeImage,
                                                 routeActive: widget.routeActive,
                                                 onSubmit: _handleComposeSubmit,
+                                                userStoppedTurn:
+                                                    _userStoppedTurn.value,
+                                                onUserStoppedTurn:
+                                                    _onUserStoppedTurn,
                                               );
                                             },
                                           ),

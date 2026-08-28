@@ -92,6 +92,8 @@ class SessionChatComposeSection extends StatelessWidget {
     required this.onPasteImage,
     required this.routeActive,
     required this.onSubmit,
+    this.userStoppedTurn = false,
+    this.onUserStoppedTurn,
     super.key,
   });
 
@@ -123,6 +125,11 @@ class SessionChatComposeSection extends StatelessWidget {
   final Future<bool> Function() onPasteImage;
   final bool routeActive;
   final Future<HistoryContinueSubmitResult> Function(String message) onSubmit;
+
+  /// Compose Stop latch: hide Stop immediately while PTY idleAfter still
+  /// reports working (cancel redraw noise).
+  final bool userStoppedTurn;
+  final VoidCallback? onUserStoppedTurn;
 
   @override
   Widget build(BuildContext context) {
@@ -359,10 +366,13 @@ class SessionChatComposeSection extends StatelessWidget {
                           final composeTextEmpty =
                               composeController.text.trim().isEmpty &&
                               !(composeClip?.collapsed ?? false);
+                          final effectiveWorking =
+                              memberWorking && !userStoppedTurn;
                           final showComposeStop = shouldShowComposeStop(
                             memberWorking: memberWorking,
                             supportsTurnInterrupt: supportsTurnInterrupt,
                             composeTextEmpty: composeTextEmpty,
+                            userStoppedTurn: userStoppedTurn,
                           );
                           final canSubmit =
                               !permissionWaiting &&
@@ -372,7 +382,7 @@ class SessionChatComposeSection extends StatelessWidget {
                             controller: composeController,
                             focusNode: composeFocusNode,
                             clip: composeClip,
-                            hint: memberWorking
+                            hint: effectiveWorking
                                 ? l10n.sessionFollowUpAddPlaceholder
                                 : l10n.sessionHistoryComposeHint,
                             canSubmit: canSubmit,
@@ -457,13 +467,16 @@ class SessionChatComposeSection extends StatelessWidget {
                               showTeamSettingsAttention: teamSettingsAttention,
                               showStop: showComposeStop,
                               onStop: showComposeStop
-                                  ? () => unawaited(
-                                      _handleComposeStop(
-                                        context: context,
-                                        sessionId: session.sessionId,
-                                        shellMemberId: shellMemberId,
-                                      ),
-                                    )
+                                  ? () {
+                                      onUserStoppedTurn?.call();
+                                      unawaited(
+                                        _handleComposeStop(
+                                          context: context,
+                                          sessionId: session.sessionId,
+                                          shellMemberId: shellMemberId,
+                                        ),
+                                      );
+                                    }
                                   : null,
                             ),
                             dropTarget: dropTarget,
@@ -1023,11 +1036,11 @@ class SessionChatComposeSection extends StatelessWidget {
     required String shellMemberId,
   }) async {
     final chat = context.read<ChatCubit>();
+    chat.pauseFollowUpQueue(sessionId, shellMemberId);
     await chat.interruptSelectedMemberTurn(
       sessionId: sessionId,
       memberId: shellMemberId,
     );
-    chat.pauseFollowUpQueue(sessionId, shellMemberId);
   }
 
   static AppSession? _cubitSession(ChatCubit cubit, String sessionId) {

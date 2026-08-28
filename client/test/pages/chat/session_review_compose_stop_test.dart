@@ -84,6 +84,22 @@ void main() {
     expect(stopCalls, 1);
   });
 
+  testWidgets('second tap on stop is ignored while still showing stop', (
+    tester,
+  ) async {
+    var stopCalls = 0;
+    await pumpCompose(
+      tester: tester,
+      showStop: true,
+      onStop: () => stopCalls++,
+    );
+
+    await tester.tap(find.byIcon(Icons.stop_rounded));
+    await tester.tap(find.byIcon(Icons.stop_rounded));
+    await tester.pump();
+    expect(stopCalls, 1);
+  });
+
   testWidgets('shows send when showStop is false and input has text', (
     tester,
   ) async {

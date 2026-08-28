@@ -1047,18 +1047,17 @@ class ChatCubit extends Cubit<ChatState>
       globalPresets: _lifecycle.globalPresets,
     );
 
+    // Clear the seat before PTY writes so sidebar / compose Stop drop immediately
+    // instead of waiting for interrupt-plan gaps. An interrupted turn never
+    // reaches a CLI `Stop`/done hook (the PTY may die non-zero, or the CLI parks
+    // at a prompt), so without this the attention busy arm stays lit until TTL.
+    clearAgentStatusSeat(sessionId: sid, memberId: mid);
     await _turnInterrupt.interrupt(
       sessionId: sid,
       memberId: mid,
       shell: tab.memberShells[mid],
       cli: cli,
     );
-    // Why: an interrupted turn never reaches a CLI `Stop`/done hook (the PTY
-    // may die non-zero, or the CLI parks at a prompt), so the agent-status seat
-    // stays `working`/`waiting` and [TabWorkingAggregator]'s attention busy arm
-    // keeps the session lit as working until the 30-minute stale TTL. Clear the
-    // seat here so the sidebar / workbench chip drop the spinner immediately.
-    clearAgentStatusSeat(sessionId: sid, memberId: mid);
   }
 
   /// Answers AskUserQuestion via the CLI capability facade (PTY digit inject

@@ -50,6 +50,7 @@ class SessionChatMessageArea extends StatelessWidget {
     required this.selectedMemberId,
     required this.shellMemberId,
     required this.isSubmitting,
+    this.userStoppedTurn = false,
     required this.state,
     required this.historySeat,
     required this.top,
@@ -77,6 +78,7 @@ class SessionChatMessageArea extends StatelessWidget {
   final String selectedMemberId;
   final String shellMemberId;
   final bool isSubmitting;
+  final bool userStoppedTurn;
   final AiHistoryState state;
   final AiHistorySeat historySeat;
   final AiSubagentAttachment? top;
@@ -279,7 +281,7 @@ class SessionChatMessageArea extends StatelessWidget {
                                             awaitingAssistant:
                                                 state.awaitingAssistant,
                                             sessionWorking: sessionWorking,
-                                            userStoppedTurn: false,
+                                            userStoppedTurn: userStoppedTurn,
                                           ),
                                           memberRunning: memberRunning,
                                           sessionWorking: sessionWorking,

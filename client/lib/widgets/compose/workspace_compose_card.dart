@@ -326,7 +326,6 @@ class WorkspaceComposeCard extends StatelessWidget {
         chrome.showStop &&
         chrome.onStop != null) {
       return _StopButton(
-        palette: palette,
         tooltip: context.l10n.sessionHistoryComposeStop,
         onStop: chrome.onStop!,
       );
@@ -702,12 +701,10 @@ class _TeamSettingsButton extends StatelessWidget {
 
 class _StopButton extends StatefulWidget {
   const _StopButton({
-    required this.palette,
     required this.tooltip,
     required this.onStop,
   });
 
-  final WorkspaceChatLandingPalette palette;
   final String tooltip;
   final VoidCallback onStop;
 
@@ -730,6 +727,7 @@ class _StopButtonState extends State<_StopButton> {
   @override
   Widget build(BuildContext context) {
     final icons = context.tpIconSizes;
+    final cs = Theme.of(context).colorScheme;
 
     return Tooltip(
       message: widget.tooltip,
@@ -740,7 +738,7 @@ class _StopButtonState extends State<_StopButton> {
           shape: TpPressableShape.circle,
           width: _StopButton._size,
           height: _StopButton._size,
-          backgroundColor: widget.palette.sendActive,
+          backgroundColor: cs.error,
           enabled: !_stopping,
           onTap: _stopping
               ? null
@@ -748,7 +746,7 @@ class _StopButtonState extends State<_StopButton> {
           child: Center(
             child: Icon(
               Icons.stop_rounded,
-              color: widget.palette.sendIcon,
+              color: cs.onError,
               size: icons.md,
             ),
           ),

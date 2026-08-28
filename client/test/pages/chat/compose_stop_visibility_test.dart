@@ -47,4 +47,16 @@ void main() {
       isTrue,
     );
   });
+
+  test('shouldShowComposeStop hides once the user stopped even if still working', () {
+    expect(
+      shouldShowComposeStop(
+        memberWorking: true,
+        supportsTurnInterrupt: true,
+        composeTextEmpty: true,
+        userStoppedTurn: true,
+      ),
+      isFalse,
+    );
+  });
 }
