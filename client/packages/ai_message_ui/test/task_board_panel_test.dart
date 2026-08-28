@@ -244,6 +244,34 @@ void main() {
     expect(find.byType(SelectionArea), findsOneWidget);
   });
 
+  testWidgets(
+    'collapsed count pill is selection-disabled so taps are not stolen by drag',
+    (tester) async {
+      await tester.pumpWidget(
+        _host(
+          AiTaskBoardPanel(
+            items: [
+              _item('T1: done', AiTaskStatus.completed),
+              _item('T2: wait', AiTaskStatus.pending),
+            ],
+          ),
+        ),
+      );
+
+      expect(
+        find.ancestor(
+          of: find.text('1/2'),
+          matching: find.byType(SelectionDeadZone),
+        ),
+        findsOneWidget,
+      );
+
+      await tester.tap(find.text('1/2'));
+      await tester.pump();
+      expect(find.text('Tasks'), findsOneWidget);
+    },
+  );
+
   testWidgets('long task list is height-capped and scrolls internally', (
     tester,
   ) async {

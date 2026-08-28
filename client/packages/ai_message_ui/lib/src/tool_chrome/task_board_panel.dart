@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:shared_ui/shared_ui.dart';
 
 import '../strings.dart';
+import '../selection_dead_zone.dart';
 
 /// Floating task-board card pinned to the top-right of the chat message area.
 ///
@@ -96,45 +97,53 @@ class _AiTaskBoardPanelState extends State<AiTaskBoardPanel> {
     final activeSubject = active?.subject.trim();
     final showActive = activeSubject != null && activeSubject.isNotEmpty;
     final label = showActive ? activeSubject : countText;
-    return _chrome(
-      context: context,
-      borderRadius: BorderRadius.circular(999),
-      child: TpHover(
-        shape: TpPressableShape.stadium,
-        onTap: () => setState(() {
-          _expanded = true;
-          _showAll = false;
-        }),
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              if (showActive)
-                _TaskStatusIcon(
-                  status: AiTaskStatus.inProgress,
-                  color: scheme.primary,
-                )
-              else
-                Icon(Icons.task_alt_rounded, size: 16, color: scheme.primary),
-              const SizedBox(width: 6),
-              if (showActive)
-                ConstrainedBox(
-                  constraints: const BoxConstraints(maxWidth: 240),
-                  child: _OverflowTooltipText(
-                    text: label,
-                    maxLines: 1,
+    // Collapsed pill is chrome: keep taps from becoming text-selection drags
+    // under the outer SelectionArea (which makes the count hard to click).
+    return SelectionDeadZone(
+      child: _chrome(
+        context: context,
+        borderRadius: BorderRadius.circular(999),
+        child: TpHover(
+          shape: TpPressableShape.stadium,
+          onTap: () => setState(() {
+            _expanded = true;
+            _showAll = false;
+          }),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                if (showActive)
+                  _TaskStatusIcon(
+                    status: AiTaskStatus.inProgress,
+                    color: scheme.primary,
+                  )
+                else
+                  Icon(Icons.task_alt_rounded, size: 16, color: scheme.primary),
+                const SizedBox(width: 6),
+                if (showActive)
+                  ConstrainedBox(
+                    constraints: const BoxConstraints(maxWidth: 240),
+                    child: _OverflowTooltipText(
+                      text: label,
+                      maxLines: 1,
+                      style: TpTextStyles.of(context).smColored(scheme.onSurface),
+                    ),
+                  )
+                else
+                  Text(
+                    label,
                     style: TpTextStyles.of(context).smColored(scheme.onSurface),
                   ),
-                )
-              else
-                Text(
-                  label,
-                  style: TpTextStyles.of(context).smColored(scheme.onSurface),
+                const SizedBox(width: 2),
+                Icon(
+                  Icons.expand_more,
+                  size: 16,
+                  color: scheme.onSurfaceVariant,
                 ),
-              const SizedBox(width: 2),
-              Icon(Icons.expand_more, size: 16, color: scheme.onSurfaceVariant),
-            ],
+              ],
+            ),
           ),
         ),
       ),
@@ -177,18 +186,20 @@ class _AiTaskBoardPanelState extends State<AiTaskBoardPanel> {
                     ).smColored(scheme.onSurfaceVariant),
                   ),
                   const SizedBox(width: 4),
-                  TpHover(
-                    onTap: () => setState(() {
-                      _expanded = false;
-                      _showAll = false;
-                    }),
-                    borderRadius: BorderRadius.circular(6),
-                    child: Padding(
-                      padding: const EdgeInsets.all(4),
-                      child: Icon(
-                        Icons.close_fullscreen_rounded,
-                        size: 16,
-                        color: scheme.onSurfaceVariant,
+                  SelectionDeadZone(
+                    child: TpHover(
+                      onTap: () => setState(() {
+                        _expanded = false;
+                        _showAll = false;
+                      }),
+                      borderRadius: BorderRadius.circular(6),
+                      child: Padding(
+                        padding: const EdgeInsets.all(4),
+                        child: Icon(
+                          Icons.close_fullscreen_rounded,
+                          size: 16,
+                          color: scheme.onSurfaceVariant,
+                        ),
                       ),
                     ),
                   ),
@@ -211,31 +222,33 @@ class _AiTaskBoardPanelState extends State<AiTaskBoardPanel> {
               if (hasMore)
                 Padding(
                   padding: const EdgeInsets.only(top: 6),
-                  child: TpHover(
-                    onTap: () => setState(() => _showAll = !_showAll),
-                    borderRadius: BorderRadius.circular(4),
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(vertical: 2),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Text(
-                            _showAll
-                                ? strings.taskBoardShowLess
-                                : strings.taskBoardMoreLabel(
-                                    tasks.length - widget.maxVisible,
-                                  ),
-                            style: TpTextStyles.of(
-                              context,
-                            ).smColored(scheme.primary),
-                          ),
-                          const SizedBox(width: 2),
-                          Icon(
-                            _showAll ? Icons.expand_less : Icons.expand_more,
-                            size: 14,
-                            color: scheme.primary,
-                          ),
-                        ],
+                  child: SelectionDeadZone(
+                    child: TpHover(
+                      onTap: () => setState(() => _showAll = !_showAll),
+                      borderRadius: BorderRadius.circular(4),
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 2),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Text(
+                              _showAll
+                                  ? strings.taskBoardShowLess
+                                  : strings.taskBoardMoreLabel(
+                                      tasks.length - widget.maxVisible,
+                                    ),
+                              style: TpTextStyles.of(
+                                context,
+                              ).smColored(scheme.primary),
+                            ),
+                            const SizedBox(width: 2),
+                            Icon(
+                              _showAll ? Icons.expand_less : Icons.expand_more,
+                              size: 14,
+                              color: scheme.primary,
+                            ),
+                          ],
+                        ),
                       ),
                     ),
                   ),
