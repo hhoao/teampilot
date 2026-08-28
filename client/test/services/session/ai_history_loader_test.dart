@@ -13,6 +13,7 @@ import 'package:teampilot/models/workspace.dart';
 import 'package:teampilot/models/workspace_folder.dart';
 import 'package:teampilot/models/workspace_launch_context.dart';
 import 'package:teampilot/services/cli/registry/capabilities/ai_history_capability.dart';
+import 'package:teampilot/services/cli/claude/capabilities/history/compatible_side_resolver.dart';
 import 'package:teampilot/services/cli/claude/capabilities/history/ai_transcript.dart';
 import 'package:teampilot/services/cli/cursor/capabilities/history/ai_transcript.dart';
 import 'package:teampilot/services/cli/cursor/capabilities/history/terminal_tool_result_enricher.dart';
@@ -1331,6 +1332,113 @@ void main() {
       expect(resolver.resolveCount, 1);
     });
 
+    test('in-flight load dropped after side-token invalidation', () async {
+      mtimeToken = 'mtime-1';
+      final session = simpleSession();
+      final ctx = launchContextFor(session);
+      final bucket = RuntimeLayout.workspaceBucketForPrimaryPath(
+        '/work/project',
+      );
+      final toolRoot = layout.sessionRuntimeToolDir(
+        'ws-1',
+        session.sessionId,
+        'claude',
+      );
+      final projects = p.join(toolRoot, 'projects', bucket);
+      await Directory(projects).create(recursive: true);
+      final parentPath = p.join(projects, '${session.sessionId}.jsonl');
+      await File(parentPath).writeAsString('${_agentToolUseJsonl()}\n');
+
+      final subagentsDir = p.join(projects, session.sessionId, 'subagents');
+      await Directory(subagentsDir).create(recursive: true);
+      await File(
+        p.join(subagentsDir, 'agent-abc.meta.json'),
+      ).writeAsString(jsonEncode({'toolUseId': 'toolu_agent'}));
+      await File(
+        p.join(subagentsDir, 'agent-abc.jsonl'),
+      ).writeAsString(_sideTranscriptJsonl(lines: 1));
+
+      final gate = Completer<void>();
+      var fingerprint = 'fp-1';
+      final delegate = const ClaudeCompatibleSideResolver();
+      final resolver = _GatedSubagentSideResolver(
+        gate: gate,
+        fingerprintProvider: () => fingerprint,
+        resolveResult: SubagentSideResolveResult(
+          messages: [
+            AiMessage(
+              id: 'stale',
+              role: AiRole.assistant,
+              parts: const [AiTextPart(text: 'stale side')],
+            ),
+          ],
+          handle: const SubagentFileHandle('/stale.jsonl'),
+        ),
+        delegate: delegate,
+      );
+      final builtInCap =
+          CliToolRegistry.builtIn().capability<AiHistoryCapability>(
+            CliTool.claude,
+          )!;
+      final registry = fakeAiHistoryRegistry(
+        cli: CliTool.claude,
+        adapter: const ClaudeAiTranscriptAdapter(),
+        locate: builtInCap.locate,
+        subagentSideResolver: resolver,
+        subagentToolNames: builtInCap.subagentToolNames,
+      );
+      final loader = buildLoader(registry: registry);
+      final loaded = await loader.load(
+        session: session,
+        memberId: '',
+        launchContext: ctx,
+      );
+      final seat = await _resolveSeatForLoader(
+        session,
+        fs: fs,
+        layout: layout,
+        registry: registry,
+      );
+      final cacheKey = AiHistoryLoader.cacheKeyFor(session.sessionId, '');
+
+      final inFlight = loader.loadSubagentAttachment(
+        cacheKey: cacheKey,
+        toolCallId: 'toolu_agent',
+        ctx: seat.ctx,
+        capability: seat.cap,
+        messages: loaded.messages,
+        cli: seat.cli,
+      );
+      await Future<void>.delayed(Duration.zero);
+      expect(resolver.resolveCount, 1);
+
+      fingerprint = 'fp-2';
+      await loader.load(
+        session: session,
+        memberId: '',
+        launchContext: ctx,
+      );
+
+      gate.complete();
+      final attachment = await inFlight;
+      expect(attachment, isNull);
+
+      final fresh = await loader.loadSubagentAttachment(
+        cacheKey: cacheKey,
+        toolCallId: 'toolu_agent',
+        ctx: seat.ctx,
+        capability: seat.cap,
+        messages: loaded.messages,
+        cli: seat.cli,
+      );
+      expect(fresh, isNotNull);
+      expect(
+        (fresh!.messages.single.parts.single as AiTextPart).text,
+        'progress 0',
+      );
+      expect(resolver.resolveCount, 2);
+    });
+
     test('missing side transcript produces tool-result fallback', () async {
       mtimeToken = 'mtime-1';
       final session = simpleSession();
@@ -1966,6 +2074,48 @@ Future<_SeatResolve> _resolveSeatForLoader(
     teamId: null,
   );
   return _SeatResolve(ctx: ctx, cap: cap, cli: cli);
+}
+
+class _GatedSubagentSideResolver implements SubagentSideResolver {
+  _GatedSubagentSideResolver({
+    required this.gate,
+    required this.fingerprintProvider,
+    required this.resolveResult,
+    required this.delegate,
+  });
+
+  final Completer<void> gate;
+  final String Function() fingerprintProvider;
+  final SubagentSideResolveResult resolveResult;
+  final SubagentSideResolver delegate;
+  var resolveCount = 0;
+
+  @override
+  Future<SubagentSideResolveResult?> resolve({
+    required AiToolCallPart part,
+    required SessionHistoryContext ctx,
+    required SubagentSideHandle? parentHandle,
+    required String? rootTranscriptPath,
+    DateTime? toolCallAt,
+  }) async {
+    resolveCount++;
+    await gate.future;
+    if (resolveCount == 1) return resolveResult;
+    return delegate.resolve(
+      part: part,
+      ctx: ctx,
+      parentHandle: parentHandle,
+      rootTranscriptPath: rootTranscriptPath,
+      toolCallAt: toolCallAt,
+    );
+  }
+
+  @override
+  Future<String?> fingerprint({
+    required SessionHistoryContext ctx,
+    required String? rootTranscriptPath,
+  }) async =>
+      fingerprintProvider();
 }
 
 class _CountingSubagentSideResolver implements SubagentSideResolver {

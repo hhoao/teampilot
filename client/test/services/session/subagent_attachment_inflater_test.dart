@@ -595,6 +595,121 @@ void main() {
     );
   });
 
+  test('resolveByToolCallId finds workflow child in a later workflow run',
+      () async {
+    final fs = InMemoryFilesystem();
+    const firstRunId = 'wf_run1';
+    const secondRunId = 'wf_run2';
+    final childInSecond = subagentWorkflowChildToolCallId(
+      secondRunId,
+      'agent-b',
+    );
+
+    final messages = [
+      AiMessage(
+        id: 'root',
+        role: AiRole.assistant,
+        parts: [
+          const AiToolCallPart(
+            toolCallId: 'call_00_wf1',
+            toolName: 'Workflow',
+            args: {'script': 'first'},
+          ),
+          const AiToolCallPart(
+            toolCallId: 'call_00_wf2',
+            toolName: 'Workflow',
+            args: {'script': 'second'},
+          ),
+        ],
+      ),
+    ];
+
+    final cap = _MultiWorkflowCap(
+      const _MultiWorkflowStubResolver({
+        'call_00_wf1': firstRunId,
+        'call_00_wf2': secondRunId,
+      }),
+    );
+    final inflater = SubagentAttachmentInflater();
+
+    final attachment = await inflater.resolveByToolCallId(
+      toolCallId: childInSecond,
+      messages: messages,
+      ctx: _testCtx(fs),
+      capability: cap,
+      rootTranscriptPath: '/projects/enc/uuid.jsonl',
+    );
+
+    expect(attachment, isNotNull);
+    expect(attachment!.toolCallId, childInSecond);
+    expect(attachment.title, 'reviewer');
+    expect(
+      (attachment.messages.single.parts.single as AiTextPart).text,
+      'approved in second run',
+    );
+  });
+
+  test('resolveByToolCallId resolves nested side-transcript tool call ids',
+      () async {
+    final fs = InMemoryFilesystem();
+    final parentSide = claudeSubagentTranscriptPath(
+      subagentsDir: subagentsDir,
+      agentId: 'abc',
+    );
+    await fs.writeString(
+      claudeSubagentMetaPath(subagentsDir: subagentsDir, agentId: 'abc'),
+      jsonEncode({'toolUseId': 'toolu_parent'}),
+    );
+    await fs.writeString(
+      parentSide,
+      _agentToolJsonl(
+        toolCallId: 'toolu_child',
+        agentIdHint: null,
+        description: 'child work',
+      ),
+    );
+
+    final childSubagents = claudeSubagentsDirFor(parentSide);
+    await fs.writeString(
+      claudeSubagentMetaPath(subagentsDir: childSubagents, agentId: 'child'),
+      jsonEncode({'toolUseId': 'toolu_child'}),
+    );
+    await fs.writeString(
+      claudeSubagentTranscriptPath(
+        subagentsDir: childSubagents,
+        agentId: 'child',
+      ),
+      _userAssistantJsonl(user: 'nested', assistant: 'child done'),
+    );
+
+    final messages = [
+      AiMessage(
+        id: 'a1',
+        role: AiRole.assistant,
+        parts: [
+          const AiToolCallPart(
+            toolCallId: 'toolu_parent',
+            toolName: 'Agent',
+            args: {'description': 'parent'},
+          ),
+        ],
+      ),
+    ];
+
+    final attachment = await SubagentAttachmentInflater().resolveByToolCallId(
+      toolCallId: 'toolu_child',
+      messages: messages,
+      ctx: _testCtx(fs),
+      capability: _Cap(const ClaudeCompatibleSideResolver()),
+      rootTranscriptPath: parentPath,
+    );
+
+    expect(attachment, isNotNull);
+    expect(attachment!.toolCallId, 'toolu_child');
+    expect(attachment.source, AiSubagentAttachmentSource.sideTranscript);
+    expect(attachment.sidePath, endsWith('agent-child.jsonl'));
+  });
+
   group('loads one subagent attachment on demand', () {
     test('inflateOne resolves a single tool call at depth zero', () async {
       final fs = InMemoryFilesystem();
@@ -707,6 +822,146 @@ class _WorkflowCap implements AiHistoryCapability {
   @override
   AiToolCallCategoryResolver get categoryResolver =>
       _resolvers.categoryResolver;
+}
+
+class _MultiWorkflowCap implements AiHistoryCapability {
+  _MultiWorkflowCap(this.subagentSideResolver);
+
+  @override
+  Future<AiTranscriptBundle?> locate(SessionHistoryContext ctx) async => null;
+
+  @override
+  AiTranscriptAdapter get adapter => const ClaudeAiTranscriptAdapter();
+
+  @override
+  AiTranscriptLineAppend? get lineAppend => null;
+
+  @override
+  AiTranscriptPageReader? get pageReader => null;
+
+  @override
+  String get tailFallbackPrefix => 'test';
+
+  @override
+  Set<String> get subagentToolNames => const {'agent', 'task', 'workflow'};
+
+  @override
+  final SubagentSideResolver subagentSideResolver;
+
+  @override
+  ToolResultEnricher get toolResultEnricher => const NoOpToolResultEnricher();
+
+  @override
+  Future<String?> liveCacheToken(SessionHistoryContext ctx) async => null;
+
+  @override
+  AiTranscriptIncrementalRefresher? get incrementalRefresher => null;
+
+  @override
+  Map<String, String> sessionEnv({String? toolRoot}) => const {};
+
+  @override
+  ResumeBinding get binding => ResumeBinding.postCaptured;
+
+  @override
+  Future<String?> detectNativeId(ResumeContext ctx) async => null;
+
+  static const _resolvers = SharedToolCallResolvers();
+
+  @override
+  AiEditToolTargetResolver get editResolver => _resolvers.editResolver;
+
+  @override
+  AiToolFileTargetResolver get fileResolver => _resolvers.fileResolver;
+
+  @override
+  AiShellToolTargetResolver get shellResolver => _resolvers.shellResolver;
+
+  @override
+  AiToolCallCategoryResolver get categoryResolver =>
+      _resolvers.categoryResolver;
+}
+
+class _MultiWorkflowStubResolver implements SubagentSideResolver {
+  const _MultiWorkflowStubResolver(this._runIdsByToolCallId);
+
+  final Map<String, String> _runIdsByToolCallId;
+
+  @override
+  Future<SubagentSideResolveResult?> resolve({
+    required AiToolCallPart part,
+    required SessionHistoryContext ctx,
+    required SubagentSideHandle? parentHandle,
+    required String? rootTranscriptPath,
+    DateTime? toolCallAt,
+  }) async {
+    if (part.toolName.trim().toLowerCase() != 'workflow') return null;
+    final runId = _runIdsByToolCallId[part.toolCallId];
+    if (runId == null) return null;
+    if (runId == 'wf_run1') {
+      return SubagentSideResolveResult(
+        messages: const [],
+        handle: const SubagentFileHandle('/runs/wf_run1'),
+        workflow: SubagentWorkflowInfo(
+          runId: runId,
+          workflowName: 'first',
+          status: 'DONE',
+          phases: const ['A'],
+          agentCount: 1,
+          summary: 'first done',
+          agents: [
+            SubagentWorkflowAgent(
+              agentId: 'agent-a',
+              role: 'implementer',
+              status: 'DONE',
+              messages: [
+                AiMessage(
+                  id: 'a',
+                  role: AiRole.assistant,
+                  parts: const [AiTextPart(text: 'implemented in first run')],
+                ),
+              ],
+              handle: const SubagentFileHandle('/runs/wf_run1/agent-agent-a.jsonl'),
+            ),
+          ],
+        ),
+      );
+    }
+    return SubagentSideResolveResult(
+      messages: const [],
+      handle: const SubagentFileHandle('/runs/wf_run2'),
+      workflow: SubagentWorkflowInfo(
+        runId: runId,
+        workflowName: 'second',
+        status: 'DONE',
+        phases: const ['B'],
+        agentCount: 1,
+        summary: 'second done',
+        agents: [
+          SubagentWorkflowAgent(
+            agentId: 'agent-b',
+            role: 'reviewer',
+            status: 'approved',
+            messages: [
+              AiMessage(
+                id: 'b',
+                role: AiRole.assistant,
+                parts: const [AiTextPart(text: 'approved in second run')],
+              ),
+            ],
+            handle: const SubagentFileHandle('/runs/wf_run2/agent-agent-b.jsonl'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  @override
+  Future<String?> fingerprint({
+    required SessionHistoryContext ctx,
+    required String? rootTranscriptPath,
+  }) async =>
+      null;
 }
 
 class _WorkflowStubResolver implements SubagentSideResolver {

@@ -106,6 +106,12 @@ final class AiHistoryLoader {
   final _inflightSubagentLoads =
       <String, Future<AiSubagentAttachment?>>{};
 
+  /// Bumped when a seat's lazy attachment cache is cleared (side fingerprint).
+  final _subagentSeatGenerations = <String, int>{};
+
+  /// Bumped when signature prune drops one tool-call id.
+  final _subagentIdGenerations = <String, int>{};
+
   /// Lazy, single-flight subagent attachment resolution for one [toolCallId].
   Future<AiSubagentAttachment?> loadSubagentAttachment({
     required String cacheKey,
@@ -150,6 +156,8 @@ final class AiHistoryLoader {
     required List<AiMessage> messages,
     required CliTool cli,
   }) async {
+    final seatGen = _subagentSeatGeneration(cacheKey);
+    final idGen = _subagentIdGeneration(cacheKey, toolCallId);
     final rootTranscriptPath = _parentPaths[cacheKey];
     final path = rootTranscriptPath?.trim().isEmpty ?? true
         ? null
@@ -161,6 +169,10 @@ final class AiHistoryLoader {
       capability: capability,
       rootTranscriptPath: path,
     );
+    if (_subagentSeatGeneration(cacheKey) != seatGen ||
+        _subagentIdGeneration(cacheKey, toolCallId) != idGen) {
+      return null;
+    }
     if (attachment == null) return null;
 
     final annotated = annotateSubagentAttachments(
@@ -169,12 +181,35 @@ final class AiHistoryLoader {
     );
     attachment = annotated[toolCallId] ?? attachment;
 
+    if (_subagentSeatGeneration(cacheKey) != seatGen ||
+        _subagentIdGeneration(cacheKey, toolCallId) != idGen) {
+      return null;
+    }
+
     final cache = _attachments.putIfAbsent(cacheKey, () => {});
     cache[toolCallId] = attachment;
     if (attachment.workflow != null) {
       SubagentAttachmentInflater.addWorkflowChildren(attachment, cache);
     }
     return attachment;
+  }
+
+  int _subagentSeatGeneration(String cacheKey) =>
+      _subagentSeatGenerations[cacheKey] ?? 0;
+
+  int _subagentIdGeneration(String cacheKey, String toolCallId) =>
+      _subagentIdGenerations['$cacheKey\u0000$toolCallId'] ?? 0;
+
+  void _invalidateSubagentLoadsForSeat(String cacheKey) {
+    _subagentSeatGenerations[cacheKey] = _subagentSeatGeneration(cacheKey) + 1;
+    _inflightSubagentLoads.removeWhere((k, _) => k.startsWith('$cacheKey\u0000'));
+  }
+
+  void _invalidateSubagentLoadForId(String cacheKey, String toolCallId) {
+    final inflightKey = '$cacheKey\u0000$toolCallId';
+    _subagentIdGenerations[inflightKey] =
+        _subagentIdGeneration(cacheKey, toolCallId) + 1;
+    _inflightSubagentLoads.remove(inflightKey);
   }
 
   /// Seat-scoped cache key for [loadSubagentAttachment] callers.
@@ -251,6 +286,8 @@ final class AiHistoryLoader {
     _incrementalStates.clear();
     _inflightLoads.clear();
     _inflightSubagentLoads.clear();
+    _subagentSeatGenerations.clear();
+    _subagentIdGenerations.clear();
     _hasOlder.clear();
     _cursors.clear();
     _complete.clear();
@@ -403,6 +440,7 @@ final class AiHistoryLoader {
           _sideTokens[cacheKey] != null &&
           _sideTokens[cacheKey] != sideToken) {
         _attachments[cacheKey]?.clear();
+        _invalidateSubagentLoadsForSeat(cacheKey);
       }
       if (sideToken != null) _sideTokens[cacheKey] = sideToken;
       _attachmentSigs[cacheKey] = currentSigs;
@@ -424,6 +462,7 @@ final class AiHistoryLoader {
     for (final entry in prevSigs.entries) {
       if (currentSigs[entry.key] != entry.value) {
         attachments.remove(entry.key);
+        _invalidateSubagentLoadForId(cacheKey, entry.key);
       }
     }
   }
@@ -602,6 +641,7 @@ final class AiHistoryLoader {
         );
       }
       _attachments[cacheKey]?.clear();
+      _invalidateSubagentLoadsForSeat(cacheKey);
       _sideTokens[cacheKey] = sideToken;
       if (full != null) {
         final updated = AiHistoryLoadResult(
@@ -978,6 +1018,8 @@ final class AiHistoryLoader {
       _tailStates.remove(key);
       _incrementalStates.remove(key);
       _inflightSubagentLoads.removeWhere((k, _) => k.startsWith('$key\u0000'));
+      _subagentSeatGenerations.remove(key);
+      _subagentIdGenerations.removeWhere((k, _) => k.startsWith('$key\u0000'));
       _hasOlder.remove(key);
       _cursors.remove(key);
       _complete.remove(key);
@@ -997,6 +1039,8 @@ final class AiHistoryLoader {
     _tailStates.removeWhere((key, _) => key.startsWith(prefix));
     _incrementalStates.removeWhere((key, _) => key.startsWith(prefix));
     _inflightSubagentLoads.removeWhere((key, _) => key.startsWith(prefix));
+    _subagentSeatGenerations.removeWhere((key, _) => key.startsWith(prefix));
+    _subagentIdGenerations.removeWhere((key, _) => key.startsWith(prefix));
     _hasOlder.removeWhere((key, _) => key.startsWith(prefix));
     _cursors.removeWhere((key, _) => key.startsWith(prefix));
     _complete.removeWhere((key, _) => key.startsWith(prefix));

@@ -49,7 +49,8 @@ class SubagentAttachmentInflater {
   }
 
   /// Resolves a single attachment by [toolCallId], including workflow fan-out
-  /// child ids. Returns null when the id is not a known subagent tool call.
+  /// child ids and nested side-transcript subagents. Returns null when the id
+  /// is not a known subagent tool call.
   Future<AiSubagentAttachment?> resolveByToolCallId({
     required String toolCallId,
     required List<AiMessage> messages,
@@ -60,18 +61,40 @@ class SubagentAttachmentInflater {
     final id = toolCallId.trim();
     if (id.isEmpty) return null;
 
+    return _resolveInMessages(
+      toolCallId: id,
+      messages: messages,
+      ctx: ctx,
+      capability: capability,
+      rootTranscriptPath: rootTranscriptPath,
+      parentHandle: null,
+      depth: 0,
+    );
+  }
+
+  Future<AiSubagentAttachment?> _resolveInMessages({
+    required String toolCallId,
+    required List<AiMessage> messages,
+    required SessionHistoryContext ctx,
+    required AiHistoryCapability capability,
+    required String? rootTranscriptPath,
+    required SubagentSideHandle? parentHandle,
+    required int depth,
+  }) async {
     for (final message in messages) {
       for (final part in message.parts) {
         if (part is! AiToolCallPart) continue;
-        if (part.toolCallId.trim() != id) continue;
+        if (part.toolCallId.trim() != toolCallId) continue;
         final name = part.toolName.trim().toLowerCase();
         if (!capability.subagentToolNames.contains(name)) continue;
-        return inflateOne(
+        return _attachOne(
           part: part,
           toolCallAt: message.createdAt,
           ctx: ctx,
           capability: capability,
           rootTranscriptPath: rootTranscriptPath,
+          parentHandle: parentHandle,
+          depth: depth,
         );
       }
     }
@@ -80,16 +103,77 @@ class SubagentAttachmentInflater {
       for (final part in message.parts) {
         if (part is! AiToolCallPart) continue;
         if (part.toolName.trim().toLowerCase() != 'workflow') continue;
-        final parent = await inflateOne(
+        final parent = await _attachOne(
           part: part,
           toolCallAt: message.createdAt,
           ctx: ctx,
           capability: capability,
           rootTranscriptPath: rootTranscriptPath,
+          parentHandle: parentHandle,
+          depth: depth,
         );
         final children = <String, AiSubagentAttachment>{};
         _addWorkflowChildren(parent, children);
-        return children[id];
+        final child = children[toolCallId];
+        if (child != null) return child;
+      }
+    }
+
+    if (depth >= maxDepth) return null;
+
+    for (final message in messages) {
+      for (final part in message.parts) {
+        if (part is! AiToolCallPart) continue;
+        final name = part.toolName.trim().toLowerCase();
+        if (!capability.subagentToolNames.contains(name)) continue;
+        if (part.toolCallId.trim().isEmpty) continue;
+
+        final attachment = await _attachOne(
+          part: part,
+          toolCallAt: message.createdAt,
+          ctx: ctx,
+          capability: capability,
+          rootTranscriptPath: rootTranscriptPath,
+          parentHandle: parentHandle,
+          depth: depth,
+        );
+
+        final workflow = attachment.workflow;
+        if (workflow != null) {
+          final children = <String, AiSubagentAttachment>{};
+          _addWorkflowChildren(attachment, children);
+          final directChild = children[toolCallId];
+          if (directChild != null) return directChild;
+          for (final agent in workflow.agents) {
+            final childId = subagentWorkflowChildToolCallId(
+              workflow.runId,
+              agent.agentId,
+            );
+            final child = children[childId];
+            if (child == null) continue;
+            final found = await _resolveInMessages(
+              toolCallId: toolCallId,
+              messages: child.messages,
+              ctx: ctx,
+              capability: capability,
+              rootTranscriptPath: rootTranscriptPath,
+              parentHandle: child.handle,
+              depth: depth + 1,
+            );
+            if (found != null) return found;
+          }
+        } else {
+          final found = await _resolveInMessages(
+            toolCallId: toolCallId,
+            messages: attachment.messages,
+            ctx: ctx,
+            capability: capability,
+            rootTranscriptPath: rootTranscriptPath,
+            parentHandle: attachment.handle,
+            depth: depth + 1,
+          );
+          if (found != null) return found;
+        }
       }
     }
     return null;
