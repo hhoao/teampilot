@@ -70,3 +70,31 @@ List<String> splitLines(String text) {
   if (text.isEmpty) return const [];
   return text.split('\n');
 }
+
+/// Matches [splitLines] length without allocating the line list.
+int countSplitLines(String text) {
+  if (text.isEmpty) return 0;
+  var n = 1;
+  for (var i = 0; i < text.length; i++) {
+    if (text.codeUnitAt(i) == 0x0A) n++;
+  }
+  return n;
+}
+
+/// First [max] lines of [text] using the same split as [splitLines].
+List<String> takeSplitLines(String text, int max) {
+  if (text.isEmpty || max <= 0) return const [];
+  final out = <String>[];
+  var start = 0;
+  for (var i = 0; i < text.length; i++) {
+    if (text.codeUnitAt(i) != 0x0A) continue;
+    out.add(text.substring(start, i));
+    if (out.length >= max) return out;
+    start = i + 1;
+  }
+  out.add(text.substring(start));
+  return out;
+}
+
+/// Max [AiEditLine]s History cards materialize. Add/remove counts stay full.
+const kAiEditHunkMaxEncodedLines = 500;

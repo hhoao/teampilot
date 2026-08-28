@@ -74,6 +74,31 @@ void main() {
   // encode – basic parsing
   // ---------------------------------------------------------------------------
   group('encode', () {
+    test('caps encoded lines at 500 and keeps full add/remove counts', () {
+      final codec = _testCodec();
+      final buf = StringBuffer('--- a/big.dart\n+++ b/big.dart\n');
+      for (var i = 0; i < 400; i++) {
+        buf.writeln('-old $i');
+        buf.writeln('+new $i');
+      }
+      final hunk = codec.encode(
+        _makeToolCall(
+          toolName: 'ApplyPatch',
+          args: {
+            'file_path': 'big.dart',
+            'patch': buf.toString(),
+          },
+        ),
+      );
+      expect(hunk, isNotNull);
+      expect(hunk!.path, 'big.dart');
+      expect(hunk.removedCount, 400);
+      expect(hunk.addedCount, 400);
+      expect(hunk.lines.length, 500);
+      expect(hunk.lines.first.text, 'old 0');
+      expect(hunk.lines.last.text, 'new 249');
+    });
+
     test('parses +/- lines and context', () {
       final codec = _testCodec();
       final hunk = codec.encode(

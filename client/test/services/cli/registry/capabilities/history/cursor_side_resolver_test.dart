@@ -68,11 +68,7 @@ class _MtimeFilesystem extends InMemoryFilesystem {
   Future<FsStat> stat(String path) async {
     final base = await super.stat(path);
     if (!base.exists) return base;
-    return FsStat(
-      kind: base.kind,
-      size: base.size,
-      mtime: mtimes[path],
-    );
+    return FsStat(kind: base.kind, size: base.size, mtime: mtimes[path]);
   }
 }
 
@@ -129,7 +125,10 @@ void main() {
     );
     expect(result.messages, isNotEmpty);
     expect(
-      result.messages.where((m) => m.role == AiRole.user).first.parts
+      result.messages
+          .where((m) => m.role == AiRole.user)
+          .first
+          .parts
           .whereType<AiTextPart>()
           .single
           .text,
@@ -137,53 +136,58 @@ void main() {
     );
   });
 
-  test('prompt heuristic matches normalized sibling and excludes parent stem',
-      () async {
-    final fs = _MtimeFilesystem();
-    const childId = 'child-heuristic';
-    final reference = DateTime.utc(2026, 7, 28, 12, 0);
-    await fs.writeString(
-      _parentPath,
-      _cursorTranscript(firstUserText: 'parent-only prompt'),
-    );
-    fs.setMtime(_parentPath, reference);
-    await fs.writeString(
-      '$_root/$childId/$childId.jsonl',
-      _cursorTranscript(
-        firstUserText:
-            '<timestamp>Tue Jul 28 2026</timestamp>\n'
-            '<user_query>explore auth module</user_query>',
-        assistant: 'found routes',
-      ),
-    );
-    fs.setMtime(
-      '$_root/$childId/$childId.jsonl',
-      reference.add(const Duration(minutes: 2)),
-    );
+  test(
+    'prompt heuristic matches normalized sibling and excludes parent stem',
+    () async {
+      final fs = _MtimeFilesystem();
+      const childId = 'child-heuristic';
+      final reference = DateTime.utc(2026, 7, 28, 12, 0);
+      await fs.writeString(
+        _parentPath,
+        _cursorTranscript(firstUserText: 'parent-only prompt'),
+      );
+      fs.setMtime(_parentPath, reference);
+      await fs.writeString(
+        '$_root/$childId/$childId.jsonl',
+        _cursorTranscript(
+          firstUserText:
+              '<timestamp>Tue Jul 28 2026</timestamp>\n'
+              '<user_query>explore auth module</user_query>',
+          assistant: 'found routes',
+        ),
+      );
+      fs.setMtime(
+        '$_root/$childId/$childId.jsonl',
+        reference.add(const Duration(minutes: 2)),
+      );
 
-    final result = await _resolve(
-      fs: fs,
-      rootTranscriptPath: _parentPath,
-      part: const AiToolCallPart(
-        toolCallId: 'tool-2',
-        toolName: 'Task',
-        args: {'prompt': 'explore auth module'},
-      ),
-    );
+      final result = await _resolve(
+        fs: fs,
+        rootTranscriptPath: _parentPath,
+        part: const AiToolCallPart(
+          toolCallId: 'tool-2',
+          toolName: 'Task',
+          args: {'prompt': 'explore auth module'},
+        ),
+      );
 
-    expect(result, isNotNull);
-    expect(
-      (result!.handle as SubagentFileHandle).path,
-      '$_root/$childId/$childId.jsonl',
-    );
-    expect(
-      result.messages.where((m) => m.role == AiRole.assistant).first.parts
-          .whereType<AiTextPart>()
-          .single
-          .text,
-      'found routes',
-    );
-  });
+      expect(result, isNotNull);
+      expect(
+        (result!.handle as SubagentFileHandle).path,
+        '$_root/$childId/$childId.jsonl',
+      );
+      expect(
+        result.messages
+            .where((m) => m.role == AiRole.assistant)
+            .first
+            .parts
+            .whereType<AiTextPart>()
+            .single
+            .text,
+        'found routes',
+      );
+    },
+  );
 
   test('multiple prompt matches pick nearest mtime to parent', () async {
     final fs = _MtimeFilesystem();
@@ -340,10 +344,7 @@ void main() {
         part: const AiToolCallPart(
           toolCallId: 'tool-resume-miss',
           toolName: 'Task',
-          args: {
-            'resume': 'missing-child-uuid',
-            'prompt': prompt,
-          },
+          args: {'resume': 'missing-child-uuid', 'prompt': prompt},
         ),
       ),
       isNull,
@@ -366,17 +367,13 @@ void main() {
     fs.setMtime(_parentPath, parentMtime);
 
     final nearParentPath = '$_root/$nearParentId/$nearParentId.jsonl';
-    final nearToolCallPath =
-        '$_root/$nearToolCallId/$nearToolCallId.jsonl';
+    final nearToolCallPath = '$_root/$nearToolCallId/$nearToolCallId.jsonl';
 
     await fs.writeString(
       nearParentPath,
       _cursorTranscript(firstUserText: prompt, assistant: 'near parent'),
     );
-    fs.setMtime(
-      nearParentPath,
-      parentMtime.add(const Duration(minutes: 5)),
-    );
+    fs.setMtime(nearParentPath, parentMtime.add(const Duration(minutes: 5)));
 
     await fs.writeString(
       nearToolCallPath,
@@ -397,10 +394,7 @@ void main() {
       ),
     );
     expect(byParentClock, isNotNull);
-    expect(
-      (byParentClock!.handle as SubagentFileHandle).path,
-      nearParentPath,
-    );
+    expect((byParentClock!.handle as SubagentFileHandle).path, nearParentPath);
 
     final byToolCallClock = await _resolve(
       fs: fs,
@@ -457,34 +451,105 @@ void main() {
     );
   });
 
-  test('flat parent layout resolves resume under same agent-transcripts root',
-      () async {
-    final fs = InMemoryFilesystem();
-    const flatParent = '$_root/flat-parent.jsonl';
-    const childId = 'flat-child';
-    await fs.writeString(
-      flatParent,
-      _cursorTranscript(firstUserText: 'flat parent'),
-    );
-    await fs.writeString(
-      '$_root/$childId/$childId.jsonl',
-      _cursorTranscript(firstUserText: 'flat child', assistant: 'yes'),
-    );
+  test(
+    'flat parent layout resolves resume under same agent-transcripts root',
+    () async {
+      final fs = InMemoryFilesystem();
+      const flatParent = '$_root/flat-parent.jsonl';
+      const childId = 'flat-child';
+      await fs.writeString(
+        flatParent,
+        _cursorTranscript(firstUserText: 'flat parent'),
+      );
+      await fs.writeString(
+        '$_root/$childId/$childId.jsonl',
+        _cursorTranscript(firstUserText: 'flat child', assistant: 'yes'),
+      );
 
-    final result = await _resolve(
-      fs: fs,
-      rootTranscriptPath: flatParent,
-      part: const AiToolCallPart(
-        toolCallId: 'tool-flat',
-        toolName: 'agent',
-        args: {'agentId': childId},
-      ),
-    );
+      final result = await _resolve(
+        fs: fs,
+        rootTranscriptPath: flatParent,
+        part: const AiToolCallPart(
+          toolCallId: 'tool-flat',
+          toolName: 'agent',
+          args: {'agentId': childId},
+        ),
+      );
 
-    expect(result, isNotNull);
+      expect(result, isNotNull);
+      expect(
+        (result!.handle as SubagentFileHandle).path,
+        '$_root/$childId/$childId.jsonl',
+      );
+    },
+  );
+
+  test('fingerprint lists sibling transcripts with size and mtime', () async {
+    final fs = _MtimeFilesystem();
+    await fs.writeString(_parentPath, _cursorTranscript(firstUserText: 'p'));
+    const a = '$_root/child-a/child-a.jsonl';
+    const b = '$_root/child-b/child-b.jsonl';
+    await fs.writeString(a, 'aaa');
+    await fs.writeString(b, 'bbbb');
+    fs.setMtime(a, DateTime.utc(2026, 8, 1));
+    fs.setMtime(b, DateTime.utc(2026, 8, 2));
+
+    final token = await const CursorSideResolver().fingerprint(
+      ctx: _ctx(fs),
+      rootTranscriptPath: _parentPath,
+    );
     expect(
-      (result!.handle as SubagentFileHandle).path,
-      '$_root/$childId/$childId.jsonl',
+      token,
+      'child-a|3|2026-08-01T00:00:00.000Z\n'
+      'child-b|4|2026-08-02T00:00:00.000Z',
     );
   });
+
+  test('fingerprint ignores the parent stem and subagents dir', () async {
+    final fs = InMemoryFilesystem();
+    await fs.writeString(_parentPath, _cursorTranscript(firstUserText: 'p'));
+    await fs.writeString('$_root/child-a/child-a.jsonl', 'x');
+    await fs.writeString('$_root/subagents/agent-1.jsonl', 'y');
+
+    final token = await const CursorSideResolver().fingerprint(
+      ctx: _ctx(fs),
+      rootTranscriptPath: _parentPath,
+    );
+    expect(token, contains('child-a'));
+    expect(token, isNot(contains(_parentId)));
+    expect(token, isNot(contains('subagents')));
+  });
+
+  test('fingerprint stats sibling transcripts concurrently', () async {
+    final fs = _ConcurrentStatFilesystem();
+    await fs.writeString(_parentPath, _cursorTranscript(firstUserText: 'p'));
+    await fs.writeString('$_root/child-a/child-a.jsonl', 'aaa');
+    await fs.writeString('$_root/child-b/child-b.jsonl', 'bbbb');
+
+    final token = await const CursorSideResolver().fingerprint(
+      ctx: _ctx(fs),
+      rootTranscriptPath: _parentPath,
+    );
+
+    expect(token, contains('child-a'));
+    expect(token, contains('child-b'));
+    expect(fs.maxInFlight, greaterThanOrEqualTo(2));
+  });
+}
+
+class _ConcurrentStatFilesystem extends InMemoryFilesystem {
+  int _inFlight = 0;
+  int maxInFlight = 0;
+
+  @override
+  Future<FsStat> stat(String path) async {
+    _inFlight++;
+    if (_inFlight > maxInFlight) maxInFlight = _inFlight;
+    await Future<void>.delayed(Duration.zero);
+    try {
+      return await super.stat(path);
+    } finally {
+      _inFlight--;
+    }
+  }
 }

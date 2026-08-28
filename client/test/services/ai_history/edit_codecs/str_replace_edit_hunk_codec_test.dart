@@ -281,6 +281,30 @@ void main() {
       expect(hunk.removedCount, equals(0));
     });
 
+    test('caps encoded lines at 500 and keeps full add/remove counts', () {
+      final codec = _testCodec();
+      final oldLines = List.generate(400, (i) => 'old $i').join('\n');
+      final newLines = List.generate(400, (i) => 'new $i').join('\n');
+      final hunk = codec.encode(
+        _makeToolCall(
+          toolName: 'edit',
+          args: {
+            'file_path': '/f.txt',
+            'old_string': oldLines,
+            'new_string': newLines,
+          },
+        ),
+      );
+      expect(hunk, isNotNull);
+      expect(hunk!.removedCount, 400);
+      expect(hunk.addedCount, 400);
+      expect(hunk.lines.length, 500);
+      expect(hunk.lines.first.text, 'old 0');
+      expect(hunk.lines[399].text, 'old 399');
+      expect(hunk.lines[400].text, 'new 0');
+      expect(hunk.lines.last.text, 'new 99');
+    });
+
     test('missing new_string produces pure-remove hunk', () {
       final codec = _testCodec();
       final part = _makeToolCall(

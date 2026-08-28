@@ -48,6 +48,10 @@ String previewToolCardText(String text, {int lines = kAiToolCardPreviewLines}) {
 const int kAiToolPanelMaxChars = 50000;
 const String kAiToolPanelTruncationMarker = '\n… [truncated]';
 
+/// Collapsed shell cards switch to [previewToolCardText] above this size so
+/// [AiFadeExpandBody] does not layout tens of thousands of characters.
+const int kAiShellCollapsedPreviewMinChars = 2048;
+
 String capToolPanelText(String text, {int maxChars = kAiToolPanelMaxChars}) {
   if (text.length <= maxChars) return text;
   return '${text.substring(0, maxChars)}${kAiToolPanelTruncationMarker}';

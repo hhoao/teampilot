@@ -127,6 +127,48 @@ void main() {
     expect(notified, 0);
   });
 
+  test('does not re-derive when last message is replaced but task parts are identical',
+      () async {
+    final runtime = ExternalStoreAiThreadRuntime();
+    final create = _create('A', result: {'taskId': '1'});
+    var full = <AiMessage>[
+      AiMessage(id: 'm1', role: AiRole.assistant, parts: [create]),
+    ];
+    final controller = CliTaskBoardController(
+      runtime: runtime,
+      loadedMessages: () => full,
+    );
+    addTearDown(() {
+      controller.dispose();
+      runtime.close();
+    });
+    runtime.setMessages(full);
+    await Future<void>.delayed(Duration.zero);
+    expect(controller.board.totalCount, 1);
+
+    var notified = 0;
+    controller.addListener(() => notified++);
+    full = [
+      AiMessage(
+        id: 'm1',
+        role: AiRole.assistant,
+        parts: [
+          create,
+          const AiToolCallPart(
+            toolCallId: 'w',
+            toolName: 'Write',
+            args: {'path': 'a.txt', 'contents': 'x'},
+          ),
+        ],
+      ),
+    ];
+    runtime.setMessages(full);
+    await Future<void>.delayed(Duration.zero);
+    expect(notified, 0);
+    expect(controller.board.totalCount, 1);
+    expect(controller.board.tasks.single.subject, 'A');
+  });
+
   test('dispose cancels the runtime subscription', () async {
     final runtime = ExternalStoreAiThreadRuntime();
     var full = <AiMessage>[];

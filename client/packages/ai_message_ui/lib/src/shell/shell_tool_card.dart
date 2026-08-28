@@ -166,9 +166,14 @@ class _ShellTerminalBody extends StatelessWidget {
     // output would otherwise freeze the frame on every message mount.
     final cappedCommand = capToolPanelText(command);
     final rawOutput = part.result == null ? null : _stringify(part.result);
-    final output = (rawOutput != null && rawOutput.trim().isNotEmpty)
+    final hasOutput = rawOutput != null && rawOutput.trim().isNotEmpty;
+    final huge =
+        hasOutput && rawOutput.length > kAiShellCollapsedPreviewMinChars;
+    final output = !hasOutput
+        ? null
+        : (open || !huge)
         ? capToolPanelText(rawOutput)
-        : null;
+        : previewToolCardText(rawOutput);
     final outputColor = part.isError
         ? scheme.error
         : scheme.onSurface.withValues(alpha: 0.65);
@@ -177,6 +182,7 @@ class _ShellTerminalBody extends StatelessWidget {
       open: open,
       onToggle: onToggle,
       fadeColor: panelColor,
+      forceChrome: !open && huge,
       contentPadding: const EdgeInsets.all(10),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -199,10 +205,7 @@ class _ShellTerminalBody extends StatelessWidget {
           ),
           if (output != null) ...[
             const SizedBox(height: 8),
-            Text(
-              output,
-              style: mono.copyWith(color: outputColor),
-            ),
+            Text(output, style: mono.copyWith(color: outputColor)),
           ],
         ],
       ),
@@ -210,19 +213,13 @@ class _ShellTerminalBody extends StatelessWidget {
 
     return ClipRRect(
       borderRadius: BorderRadius.circular(radius),
-      child: ColoredBox(
-        color: panelColor,
-        child: body,
-      ),
+      child: ColoredBox(color: panelColor, child: body),
     );
   }
 }
 
 class _ShellExpandChevron extends StatelessWidget {
-  const _ShellExpandChevron({
-    required this.open,
-    required this.color,
-  });
+  const _ShellExpandChevron({required this.open, required this.color});
 
   final bool open;
   final Color color;

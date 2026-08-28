@@ -48,9 +48,20 @@ class StrReplaceEditHunkCodec implements AiEditHunkCodec {
     final newString = optionalString(args, newStringKeys);
     if (oldString == null && newString == null) return null;
 
-    final oldLines = oldString == null ? const <String>[] : splitLines(oldString);
-    final newLines = newString == null ? const <String>[] : splitLines(newString);
-    if (oldLines.isEmpty && newLines.isEmpty) return null;
+    final oldCount = oldString == null ? 0 : countSplitLines(oldString);
+    final newCount = newString == null ? 0 : countSplitLines(newString);
+    if (oldCount == 0 && newCount == 0) return null;
+
+    final oldBudget = oldCount < kAiEditHunkMaxEncodedLines
+        ? oldCount
+        : kAiEditHunkMaxEncodedLines;
+    final newBudget = kAiEditHunkMaxEncodedLines - oldBudget;
+    final oldLines = oldString == null || oldBudget == 0
+        ? const <String>[]
+        : takeSplitLines(oldString, oldBudget);
+    final newLines = newString == null || newBudget == 0
+        ? const <String>[]
+        : takeSplitLines(newString, newBudget);
 
     final startLine = firstPositiveInt(args, startLineKeys);
     final lines = <AiEditLine>[];
@@ -77,8 +88,8 @@ class StrReplaceEditHunkCodec implements AiEditHunkCodec {
     return AiEditHunk(
       path: path,
       lines: lines,
-      addedCount: newLines.length,
-      removedCount: oldLines.length,
+      addedCount: newCount,
+      removedCount: oldCount,
       startLine: startLine,
     );
   }

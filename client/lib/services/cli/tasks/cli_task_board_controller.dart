@@ -34,7 +34,9 @@ class CliTaskBoardController extends ChangeNotifier {
   void _onChanges() {
     final messages = _loadedMessages();
     if (_sameInstancesInOrder(messages, _last)) return;
+    final skipReduce = _sameTaskParts(messages, _last);
     _last = messages;
+    if (skipReduce) return;
     _board = reduceCliTaskBoard(messages);
     notifyListeners();
   }
@@ -46,6 +48,36 @@ class CliTaskBoardController extends ChangeNotifier {
       if (!identical(a[i], b[i])) return false;
     }
     return true;
+  }
+
+  /// Last-bubble live refresh often replaces the assistant message (Write,
+  /// Shell, …) while TaskCreate / TaskUpdate / TodoWrite parts stay the
+  /// same instances. Re-reducing the whole transcript on those ticks is
+  /// wasted work and notifies History for no task-board change.
+  static bool _sameTaskParts(List<AiMessage> a, List<AiMessage> b) {
+    final pa = _collectTaskParts(a);
+    final pb = _collectTaskParts(b);
+    if (pa.length != pb.length) return false;
+    for (var i = 0; i < pa.length; i++) {
+      if (!identical(pa[i], pb[i])) return false;
+    }
+    return true;
+  }
+
+  static List<AiToolCallPart> _collectTaskParts(List<AiMessage> messages) {
+    final parts = <AiToolCallPart>[];
+    for (final message in messages) {
+      for (final part in message.parts) {
+        if (part is! AiToolCallPart) continue;
+        switch (part.toolName.toLowerCase()) {
+          case 'taskcreate':
+          case 'taskupdate':
+          case 'todowrite':
+            parts.add(part);
+        }
+      }
+    }
+    return parts;
   }
 
   @override

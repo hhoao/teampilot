@@ -87,7 +87,7 @@ final class CursorSideResolver implements SubagentSideResolver {
     }
     entries.sort((a, b) => a.name.compareTo(b.name));
 
-    final parts = <String>[];
+    final candidates = <({String name, String path})>[];
     for (final entry in entries) {
       if (entry.name == excludeStem || entry.name == 'subagents') continue;
       final candidatePaths = <String>[];
@@ -102,12 +102,21 @@ final class CursorSideResolver implements SubagentSideResolver {
         if (path.basenameWithoutExtension(candidatePath) == excludeStem) {
           continue;
         }
-        final st = await ctx.fs.stat(candidatePath);
-        if (!st.isFile) continue;
-        parts.add(
-          '${entry.name}|${st.size ?? 0}|${st.mtime?.toUtc().toIso8601String() ?? ''}',
-        );
+        candidates.add((name: entry.name, path: candidatePath));
       }
+    }
+
+    final stats = await Future.wait([
+      for (final candidate in candidates) ctx.fs.stat(candidate.path),
+    ]);
+
+    final parts = <String>[];
+    for (var i = 0; i < candidates.length; i++) {
+      final st = stats[i];
+      if (!st.isFile) continue;
+      parts.add(
+        '${candidates[i].name}|${st.size ?? 0}|${st.mtime?.toUtc().toIso8601String() ?? ''}',
+      );
     }
     return parts.isEmpty ? null : parts.join('\n');
   }
@@ -178,8 +187,9 @@ Future<SubagentSideResolveResult?> _resolveByPromptHeuristic({
   final normalizedPrompt = normalizeCursorTaskPrompt(prompt);
   if (normalizedPrompt == null) return null;
 
-  final parentStem =
-      ctx.fs.pathContext.basenameWithoutExtension(parentTranscriptPath);
+  final parentStem = ctx.fs.pathContext.basenameWithoutExtension(
+    parentTranscriptPath,
+  );
   final parentMtime = (await ctx.fs.stat(parentTranscriptPath)).mtime;
   final referenceAt = toolCallAt ?? parentMtime;
   if (referenceAt == null) return null;

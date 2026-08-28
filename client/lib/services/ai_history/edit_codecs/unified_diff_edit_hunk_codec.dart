@@ -81,27 +81,39 @@ class UnifiedDiffEditHunkCodec implements AiEditHunkCodec {
 
       final prefix = rawLine[0];
       if (prefix == '+') {
-        lines.add(AiEditLine(
-          kind: AiEditLineKind.add,
-          text: rawLine.substring(1),
-        ));
+        _addEncodedLine(
+          lines,
+          AiEditLine(
+            kind: AiEditLineKind.add,
+            text: rawLine.substring(1),
+          ),
+        );
         addedCount++;
       } else if (prefix == '-') {
-        lines.add(AiEditLine(
-          kind: AiEditLineKind.remove,
-          text: rawLine.substring(1),
-        ));
+        _addEncodedLine(
+          lines,
+          AiEditLine(
+            kind: AiEditLineKind.remove,
+            text: rawLine.substring(1),
+          ),
+        );
         removedCount++;
       } else if (prefix == ' ') {
-        lines.add(AiEditLine(
-          kind: AiEditLineKind.context,
-          text: rawLine.substring(1),
-        ));
+        _addEncodedLine(
+          lines,
+          AiEditLine(
+            kind: AiEditLineKind.context,
+            text: rawLine.substring(1),
+          ),
+        );
       } else {
-        lines.add(AiEditLine(
-          kind: AiEditLineKind.context,
-          text: rawLine,
-        ));
+        _addEncodedLine(
+          lines,
+          AiEditLine(
+            kind: AiEditLineKind.context,
+            text: rawLine,
+          ),
+        );
       }
     }
 
@@ -114,6 +126,10 @@ class UnifiedDiffEditHunkCodec implements AiEditHunkCodec {
       removedCount: removedCount,
       startLine: startLine,
     );
+  }
+
+  static void _addEncodedLine(List<AiEditLine> lines, AiEditLine line) {
+    if (lines.length < kAiEditHunkMaxEncodedLines) lines.add(line);
   }
 
   /// When the tool is FREEFORM (e.g. codex `apply_patch`), the whole

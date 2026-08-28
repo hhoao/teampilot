@@ -62,6 +62,20 @@ void main() {
   });
 
   group('共享层基线族仍可解析（claude/flashskyai 同源面）', () {
+    test('editResolver returns the same target instance for the same part', () {
+      final call = part(
+        'Write',
+        args: {
+          'file_path': 'a.txt',
+          'content': List.generate(80, (i) => 'line $i').join('\n'),
+        },
+      );
+      final first = shared.editResolver.resolve(call);
+      final second = shared.editResolver.resolve(call);
+      expect(first, isNotNull);
+      expect(identical(first, second), isTrue);
+    });
+
     test('Edit{file_path, old_string, new_string} 解析出 hunk', () {
       final target = shared.editResolver.resolve(part(
         'Edit',

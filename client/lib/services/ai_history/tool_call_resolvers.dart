@@ -2,11 +2,16 @@ import 'package:ai_message_core/ai_message_core.dart';
 
 import 'edit_codecs/tool_args.dart';
 
+final Expando<AiEditToolTarget> _editTargetCache = Expando();
+
 /// Chains [codecs], tries each in order, and returns the first [AiEditHunk]
 /// any codec produces for [part].
 ///
 /// Each codec is asked `matches()` first; when it matches, `encode()` is
 /// called.  The first non-null hunk wins.
+///
+/// Successful results are cached on [part] identity so History `build()`
+/// does not re-split Write/Edit payloads every frame.
 class ConfigurableAiEditToolTargetResolver
     implements AiEditToolTargetResolver {
   const ConfigurableAiEditToolTargetResolver({required this.codecs});
@@ -16,10 +21,16 @@ class ConfigurableAiEditToolTargetResolver
 
   @override
   AiEditToolTarget? resolve(AiToolCallPart part) {
+    final cached = _editTargetCache[part];
+    if (cached != null) return cached;
     for (final codec in codecs) {
       if (!codec.matches(part.toolName)) continue;
       final hunk = codec.encode(part);
-      if (hunk != null) return AiEditToolTarget(hunk: hunk);
+      if (hunk != null) {
+        final target = AiEditToolTarget(hunk: hunk);
+        _editTargetCache[part] = target;
+        return target;
+      }
     }
     return null;
   }

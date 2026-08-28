@@ -23,8 +23,6 @@ class WriteEditHunkCodec implements AiEditHunkCodec {
   /// Argument keys for the file content.
   final List<String> contentKeys;
 
-  static const _maxEncodedLines = 500;
-
   @override
   bool matches(String toolName) =>
       toolNames.contains(toolName.toLowerCase());
@@ -41,24 +39,21 @@ class WriteEditHunkCodec implements AiEditHunkCodec {
     final contents = firstNonEmptyString(args, contentKeys);
     if (contents == null) return null;
 
-    final contentLines = splitLines(contents);
-    if (contentLines.isEmpty) return null;
+    final addedCount = countSplitLines(contents);
+    if (addedCount == 0) return null;
 
     final encodedLines = <AiEditLine>[];
-    final limit = contentLines.length < _maxEncodedLines
-        ? contentLines.length
-        : _maxEncodedLines;
-    for (var i = 0; i < limit; i++) {
+    for (final text in takeSplitLines(contents, kAiEditHunkMaxEncodedLines)) {
       encodedLines.add(AiEditLine(
         kind: AiEditLineKind.add,
-        text: contentLines[i],
+        text: text,
       ));
     }
 
     return AiEditHunk(
       path: path,
       lines: encodedLines,
-      addedCount: contentLines.length,
+      addedCount: addedCount,
       removedCount: 0,
     );
   }
