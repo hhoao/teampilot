@@ -23,6 +23,7 @@ import '../../models/cli_preset.dart';
 import '../../models/config_bundle.dart';
 import '../../models/failed_message_record.dart';
 import '../../models/landing_launch_context.dart';
+import '../../models/member_presence.dart';
 import '../../models/team_config.dart';
 import '../../models/workspace.dart';
 import '../../models/workspace_launch_context.dart';
