@@ -472,12 +472,54 @@ void main() {
     await tester.pumpWidget(
       _harness(runtime: store, liveChrome: SessionHistoryLiveChrome.running),
     );
-    // CircularProgressIndicator animates forever — do not pumpAndSettle.
+    // Indeterminate spinner animates forever — do not pumpAndSettle.
     await tester.pump();
 
     expect(find.byKey(kSessionHistoryRunningFooterKey), findsOneWidget);
     expect(find.text('Running…'), findsOneWidget);
   });
+
+  testWidgets(
+    'running footer spinner ticks paint without rebuilding widgets',
+    (tester) async {
+      final store = ExternalStoreAiThreadRuntime()
+        ..setMessages(_soloUserMessages(5));
+
+      await tester.pumpWidget(
+        _harness(runtime: store, liveChrome: SessionHistoryLiveChrome.running),
+      );
+      await tester.pump();
+
+      final paintFinder = find.descendant(
+        of: find.byKey(kSessionHistoryRunningFooterKey),
+        matching: find.byType(CustomPaint),
+      );
+      expect(paintFinder, findsOneWidget);
+      final paintBefore = tester.widget<CustomPaint>(paintFinder);
+      final painterBefore = paintBefore.painter;
+
+      await tester.pump(const Duration(milliseconds: 50));
+      await tester.pump(const Duration(milliseconds: 50));
+
+      expect(paintFinder, findsOneWidget);
+      final paintAfter = tester.widget<CustomPaint>(paintFinder);
+      expect(
+        identical(paintBefore, paintAfter),
+        isTrue,
+        reason:
+            'vsync ticks must repaint the running/starting spinner, not '
+            'rebuild CustomPaint / AnimatedBuilder',
+      );
+      expect(identical(painterBefore, paintAfter.painter), isTrue);
+      expect(
+        find.descendant(
+          of: find.byKey(kSessionHistoryRunningFooterKey),
+          matching: find.byType(CircularProgressIndicator),
+        ),
+        findsNothing,
+      );
+    },
+  );
 
   testWidgets('starting footer visible when liveChrome is starting', (
     tester,

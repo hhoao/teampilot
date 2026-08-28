@@ -589,13 +589,10 @@ class _SessionHistoryThreadState extends State<SessionHistoryThread> {
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            SizedBox(
-              width: 14,
-              height: 14,
-              child: CircularProgressIndicator(
-                strokeWidth: 2,
-                color: scheme.onSurfaceVariant,
-              ),
+            TpIndeterminateSpinner(
+              size: 14,
+              strokeWidth: 2,
+              color: scheme.onSurfaceVariant,
             ),
             const SizedBox(width: 10),
             Text(

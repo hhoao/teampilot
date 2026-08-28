@@ -7,6 +7,10 @@ import 'terminal_scrollbar_geometry.dart';
 /// History scrollbar mapped like VTE + GtkAdjustment.
 ///
 /// Ported from flutter_alacritty's example (not library API).
+///
+/// Thumb geometry paints via [CustomPainter.repaint] on [TerminalEngine.repaint]
+/// so PTY cell / history ticks do not rebuild [GestureDetector]. Widget rebuilds
+/// are reserved for track visibility (history empty / alt-screen) and drag.
 class TerminalHistoryScrollbar extends StatefulWidget {
   const TerminalHistoryScrollbar({
     required this.engine,
@@ -25,9 +29,7 @@ class TerminalHistoryScrollbar extends StatefulWidget {
 class _TerminalHistoryScrollbarState extends State<TerminalHistoryScrollbar> {
   bool _dragging = false;
   double? _dragPositionFraction;
-  double _lastScrollPos = 0;
-  int _lastHistorySize = 0;
-  int _lastModeFlags = 0;
+  late bool _trackVisible;
 
   /// Coalesce rapid drag events: only the latest target is applied.
   double? _pendingPositionFraction;
@@ -37,10 +39,7 @@ class _TerminalHistoryScrollbarState extends State<TerminalHistoryScrollbar> {
   @override
   void initState() {
     super.initState();
-    final grid = widget.engine.grid;
-    _lastScrollPos = grid.displayOffset + grid.scrollFraction;
-    _lastHistorySize = grid.historySize;
-    _lastModeFlags = grid.modeFlags;
+    _trackVisible = _isTrackVisible();
     widget.engine.repaint.addListener(_onGridChanged);
   }
 
@@ -50,10 +49,7 @@ class _TerminalHistoryScrollbarState extends State<TerminalHistoryScrollbar> {
     if (oldWidget.engine != widget.engine) {
       oldWidget.engine.repaint.removeListener(_onGridChanged);
       widget.engine.repaint.addListener(_onGridChanged);
-      final grid = widget.engine.grid;
-      _lastScrollPos = grid.displayOffset + grid.scrollFraction;
-      _lastHistorySize = grid.historySize;
-      _lastModeFlags = grid.modeFlags;
+      _trackVisible = _isTrackVisible();
     }
   }
 
@@ -63,19 +59,17 @@ class _TerminalHistoryScrollbarState extends State<TerminalHistoryScrollbar> {
     super.dispose();
   }
 
-  void _onGridChanged() {
-    if (!mounted || _dragging) return;
+  bool _isTrackVisible() {
     final grid = widget.engine.grid;
-    final scrollPos = grid.displayOffset + grid.scrollFraction;
-    if (scrollPos == _lastScrollPos &&
-        grid.modeFlags == _lastModeFlags &&
-        grid.historySize == _lastHistorySize) {
-      return;
+    return grid.historySize > 0 && (grid.modeFlags & kModeAltScreen) == 0;
+  }
+
+  void _onGridChanged() {
+    if (!mounted) return;
+    final visible = _isTrackVisible();
+    if (visible != _trackVisible) {
+      setState(() => _trackVisible = visible);
     }
-    _lastScrollPos = scrollPos;
-    _lastHistorySize = grid.historySize;
-    _lastModeFlags = grid.modeFlags;
-    setState(() {});
   }
 
   TerminalScrollbarGeometry _geometry(double trackHeight) {
@@ -153,11 +147,7 @@ class _TerminalHistoryScrollbarState extends State<TerminalHistoryScrollbar> {
 
   @override
   Widget build(BuildContext context) {
-    final grid = widget.engine.grid;
-    if (grid.modeFlags & kModeAltScreen != 0) {
-      return const SizedBox(width: 0);
-    }
-    if (grid.historySize <= 0) {
+    if (!_trackVisible) {
       return const SizedBox(width: 0);
     }
 
@@ -166,18 +156,13 @@ class _TerminalHistoryScrollbarState extends State<TerminalHistoryScrollbar> {
         final trackHeight = constraints.maxHeight;
         if (trackHeight <= 0) return const SizedBox(width: 0);
 
-        final geom = _geometry(trackHeight);
-        final thumbFraction = geom.positionFraction;
-        final paintFraction = _dragPositionFraction ?? thumbFraction;
-        final thumbTop = geom.thumbTopAt(paintFraction);
         final theme = ScrollbarTheme.of(context);
         final thickness = theme.thickness?.resolve({}) ?? 8.0;
         final radius = theme.radius ?? const Radius.circular(8);
         // Match Material [Scrollbar] defaults (same as file tree / panels).
         final onSurface = Theme.of(context).colorScheme.onSurface;
         final isDark = Theme.of(context).brightness == Brightness.dark;
-        final trackColor =
-            theme.trackColor?.resolve({}) ?? Colors.transparent;
+        final trackColor = theme.trackColor?.resolve({}) ?? Colors.transparent;
         final idleThumb = onSurface.withValues(alpha: isDark ? 0.3 : 0.1);
         final dragThumb = onSurface.withValues(alpha: isDark ? 0.75 : 0.6);
         final thumbColor =
@@ -213,8 +198,8 @@ class _TerminalHistoryScrollbarState extends State<TerminalHistoryScrollbar> {
             },
             child: CustomPaint(
               painter: _ScrollbarPainter(
-                thumbTop: thumbTop,
-                thumbHeight: geom.thumbHeight,
+                grid: widget.engine.grid,
+                dragPositionFraction: _dragPositionFraction,
                 trackWidth: thickness,
                 radius: radius,
                 trackColor: trackColor,
@@ -231,16 +216,16 @@ class _TerminalHistoryScrollbarState extends State<TerminalHistoryScrollbar> {
 
 class _ScrollbarPainter extends CustomPainter {
   _ScrollbarPainter({
-    required this.thumbTop,
-    required this.thumbHeight,
+    required this.grid,
+    required this.dragPositionFraction,
     required this.trackWidth,
     required this.radius,
     required this.trackColor,
     required this.thumbColor,
-  });
+  }) : super(repaint: grid);
 
-  final double thumbTop;
-  final double thumbHeight;
+  final TerminalGridView grid;
+  final double? dragPositionFraction;
   final double trackWidth;
   final Radius radius;
   final Color trackColor;
@@ -248,6 +233,17 @@ class _ScrollbarPainter extends CustomPainter {
 
   @override
   void paint(Canvas canvas, Size size) {
+    final geom = TerminalScrollbarGeometry(
+      historySize: grid.historySize,
+      viewportRows: grid.rows,
+      scrollOffsetLines: grid.displayOffset + grid.scrollFraction,
+      trackHeight: size.height,
+    );
+    if (!geom.visible) return;
+
+    final paintFraction = dragPositionFraction ?? geom.positionFraction;
+    final thumbTop = geom.thumbTopAt(paintFraction);
+
     final trackR = RRect.fromRectAndRadius(
       Rect.fromLTWH(size.width - trackWidth - 2, 0, trackWidth, size.height),
       radius,
@@ -259,7 +255,7 @@ class _ScrollbarPainter extends CustomPainter {
         size.width - trackWidth - 2,
         thumbTop,
         trackWidth,
-        thumbHeight.clamp(0, size.height),
+        geom.thumbHeight.clamp(0, size.height),
       ),
       radius,
     );
@@ -268,9 +264,10 @@ class _ScrollbarPainter extends CustomPainter {
 
   @override
   bool shouldRepaint(covariant _ScrollbarPainter old) =>
-      old.thumbTop != thumbTop ||
-      old.thumbHeight != thumbHeight ||
+      old.grid != grid ||
+      old.dragPositionFraction != dragPositionFraction ||
       old.trackWidth != trackWidth ||
       old.thumbColor != thumbColor ||
-      old.trackColor != trackColor;
+      old.trackColor != trackColor ||
+      old.radius != radius;
 }
