@@ -46,7 +46,22 @@ abstract interface class ToolResultIndexCache {
 
   /// True when [ToolResultEnricher.enrich] can apply replacements without
   /// decoding [contentLength] bytes of the identified transcript.
-  bool canReuseIndex({String? sourceToken, required int contentLength});
+  ///
+  /// [rootTranscriptPath] and [sourceToken] must use the same identity
+  /// [ToolResultEnricher.enrich] stores under.
+  bool canReuseIndex({
+    String? sourceToken,
+    String? rootTranscriptPath,
+    required int contentLength,
+  });
+
+  /// Decode batches produced by the most recent [ToolResultEnricher.enrich].
+  /// Zero when the index was reused without decoding.
+  int get lastDecodeBatches;
+
+  int get lastDecodeLines;
+
+  int get lastDecodeMicroseconds;
 
   /// Isolate-transfer snapshot of the in-memory index.
   Object? exportIndex();

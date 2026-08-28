@@ -22,6 +22,15 @@ final class ClaudeCompatibleToolResultEnricher
   final Map<String, _CachedToolResultIndex> _indexes = {};
 
   @override
+  var lastDecodeBatches = 0;
+
+  @override
+  var lastDecodeLines = 0;
+
+  @override
+  var lastDecodeMicroseconds = 0;
+
+  @override
   bool get requiresFilesystem => false;
 
   @override
@@ -44,8 +53,16 @@ final class ClaudeCompatibleToolResultEnricher
   }
 
   @override
-  bool canReuseIndex({String? sourceToken, required int contentLength}) {
-    final identity = _identityFromToken(sourceToken ?? '');
+  bool canReuseIndex({
+    String? sourceToken,
+    String? rootTranscriptPath,
+    required int contentLength,
+  }) {
+    final identity = _cacheIdentity(
+      sourceToken: sourceToken,
+      rootTranscriptPath: rootTranscriptPath,
+      bundle: null,
+    );
     if (identity.isEmpty) return false;
     final cached = _indexes[identity];
     return cached != null &&
@@ -116,6 +133,9 @@ final class ClaudeCompatibleToolResultEnricher
     required AiTranscriptBundle? bundle,
     String? sourceToken,
   }) async {
+    lastDecodeBatches = 0;
+    lastDecodeLines = 0;
+    lastDecodeMicroseconds = 0;
     try {
       final content = await _loadTranscriptContent(
         ctx: ctx,
@@ -196,7 +216,13 @@ final class ClaudeCompatibleToolResultEnricher
       lines.add(trimmed);
     }
     if (lines.isEmpty) return const {};
-    return _indexDecodedEvents(_decodeLines(lines));
+    final sw = Stopwatch()..start();
+    final events = _decodeLines(lines);
+    sw.stop();
+    lastDecodeBatches++;
+    lastDecodeLines += lines.length;
+    lastDecodeMicroseconds += sw.elapsedMicroseconds;
+    return _indexDecodedEvents(events);
   }
 }
 

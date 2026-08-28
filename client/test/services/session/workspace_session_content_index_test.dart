@@ -242,7 +242,7 @@ void main() {
           fragments: [
             AiTranscriptFragment(name: 's.jsonl', bytes: [0x7B, 0x7D]),
           ],
-          hints: {'cacheToken': 'tok-1'},
+          hints: {'cacheToken': '/proj/s.jsonl|2026-01-01T00:00:00.000Z|2'},
         ),
       );
       final index = WorkspaceSessionContentIndex(
@@ -255,7 +255,9 @@ void main() {
           required memberId,
           required token,
         }) {
-          if (token == 'tok-1') return cached;
+          if (token == '/proj/s.jsonl|2026-01-01T00:00:00.000Z|2') {
+            return cached;
+          }
           return null;
         },
       );

@@ -16,6 +16,7 @@ import '../cli/registry/capabilities/resume/pinned_transcript_probe.dart';
 import '../cli/registry/cli_tool_registry.dart';
 import '../storage/runtime_context.dart';
 import '../terminal/session_member_cli_resolver.dart';
+import 'ai_history_cache_token.dart';
 import 'ai_history_load_result.dart';
 import 'ai_history_load_timings.dart';
 import 'ai_history_locator.dart';
@@ -301,7 +302,7 @@ final class AiHistoryLoader {
     _pageClis.clear();
     _fullIndexFutures.clear();
     _fullIndexes.clear();
-    _invalidateToolResultIndexes();
+    _invalidateToolResultIndexes(all: true);
   }
 
   /// Cached seat messages when [token] still matches the last successful load.
@@ -312,7 +313,7 @@ final class AiHistoryLoader {
   }) {
     final key = _cacheKey(sessionId, memberId);
     if (_tokens[key] != token) return null;
-    return _fullIndexes[key]?.messages ?? _messages[key];
+    return _fullIndexes[key]?.messages;
   }
 
   /// Per-CLI tail reader for JSONL-style transcripts. Returns null when the
@@ -788,12 +789,9 @@ final class AiHistoryLoader {
       // Fresh parse: annotate tool call categories before inflating so that
       // both top-level messages and inflated attachments are covered. The
       // annotator is idempotent, so cache hits below return the same lists.
-      messages = _timedSync(
-        AiHistoryLoadPhase.merge,
-        () => annotateToolCallCategories(
-          messages,
-          resolver: _categoryResolverFor(cli),
-        ),
+      messages = annotateToolCallCategories(
+        messages,
+        resolver: _categoryResolverFor(cli),
       );
 
       final attachments = await _timed(
@@ -1143,26 +1141,17 @@ final class AiHistoryLoader {
     }
   }
 
-  T _timedSync<T>(AiHistoryLoadPhase phase, T Function() run) {
-    final timings = _timings;
-    if (timings == null) return run();
-    final sw = Stopwatch()..start();
-    try {
-      return run();
-    } finally {
-      sw.stop();
-      timings.record(phase, sw.elapsed);
+  void _invalidateToolResultIndexes({String? identity, bool all = false}) {
+    if (!all && (identity == null || identity.trim().isEmpty)) {
+      return;
     }
-  }
-
-  void _invalidateToolResultIndexes({String? identity}) {
     for (final cli in CliTool.values) {
       final enricher =
           _registry.capability<AiHistoryCapability>(cli)?.toolResultEnricher;
       final cache = enricher is ToolResultIndexCache
           ? enricher as ToolResultIndexCache
           : null;
-      cache?.invalidateIndex(sourceToken: identity);
+      cache?.invalidateIndex(sourceToken: all ? null : identity);
     }
   }
 
@@ -1192,6 +1181,7 @@ final class AiHistoryLoader {
         indexCache != null &&
         indexCache.canReuseIndex(
           sourceToken: sourceToken,
+          rootTranscriptPath: parentPath,
           contentLength: totalBytes,
         );
 
@@ -1218,10 +1208,17 @@ final class AiHistoryLoader {
       }
 
       final packed = await Isolate.run(() async {
+        final parseSw = Stopwatch()..start();
         var parsed = await adapter.parse(bundle);
+        parseSw.stop();
+        var enrichUs = 0;
+        var decodeBatches = 0;
+        var decodeLines = 0;
+        var decodeUs = 0;
         Object? index;
         if (!enricher.requiresFilesystem &&
             _needsToolResultEnrichment(parsed, enricher)) {
+          final enrichSw = Stopwatch()..start();
           parsed = await enricher.enrich(
             messages: parsed,
             ctx: null,
@@ -1229,14 +1226,38 @@ final class AiHistoryLoader {
             bundle: bundle,
             sourceToken: sourceToken,
           );
-          index = enricher is ToolResultIndexCache
-              ? (enricher as ToolResultIndexCache).exportIndex()
-              : null;
+          enrichSw.stop();
+          enrichUs = enrichSw.elapsedMicroseconds;
+          if (enricher is ToolResultIndexCache) {
+            final cache = enricher as ToolResultIndexCache;
+            decodeBatches = cache.lastDecodeBatches;
+            decodeLines = cache.lastDecodeLines;
+            decodeUs = cache.lastDecodeMicroseconds;
+            index = cache.exportIndex();
+          }
         }
-        return <Object?>[parsed, index];
+        return <Object?>[
+          parsed,
+          index,
+          parseSw.elapsedMicroseconds,
+          enrichUs,
+          decodeBatches,
+          decodeLines,
+          decodeUs,
+        ];
       }, debugName: 'history-loader');
       final messages = packed[0]! as List<AiMessage>;
       indexCache?.importIndex(packed[1]);
+      _recordTimedPhase(AiHistoryLoadPhase.parse, packed[2]! as int);
+      final enrichUs = packed[3]! as int;
+      if (enrichUs > 0) {
+        _recordTimedPhase(AiHistoryLoadPhase.enrich, enrichUs);
+      }
+      _recordDecodeCounts(
+        batches: packed[4]! as int,
+        lines: packed[5]! as int,
+        microseconds: packed[6]! as int,
+      );
       if (enricher.requiresFilesystem &&
           _needsToolResultEnrichment(messages, enricher)) {
         return _enrichMessages(
@@ -1275,8 +1296,8 @@ final class AiHistoryLoader {
     required String? parentPath,
     required AiTranscriptBundle? bundle,
     required String? sourceToken,
-  }) {
-    return _timed(
+  }) async {
+    final result = await _timed(
       AiHistoryLoadPhase.enrich,
       () => enricher.enrich(
         messages: messages,
@@ -1285,6 +1306,35 @@ final class AiHistoryLoader {
         bundle: bundle,
         sourceToken: sourceToken,
       ),
+    );
+    _recordIndexDecode(enricher);
+    return result;
+  }
+
+  void _recordTimedPhase(AiHistoryLoadPhase phase, int microseconds) {
+    _timings?.record(phase, Duration(microseconds: microseconds));
+  }
+
+  void _recordIndexDecode(ToolResultEnricher enricher) {
+    if (enricher is! ToolResultIndexCache) return;
+    final cache = enricher as ToolResultIndexCache;
+    _recordDecodeCounts(
+      batches: cache.lastDecodeBatches,
+      lines: cache.lastDecodeLines,
+      microseconds: cache.lastDecodeMicroseconds,
+    );
+  }
+
+  void _recordDecodeCounts({
+    required int batches,
+    required int lines,
+    required int microseconds,
+  }) {
+    if (batches <= 0) return;
+    _timings?.addDecoderBatch(lines: lines);
+    _timings?.record(
+      AiHistoryLoadPhase.decode,
+      Duration(microseconds: microseconds),
     );
   }
 
@@ -1331,7 +1381,8 @@ final class AiHistoryLoader {
         await cap.liveCacheToken(ctx) ?? _defaultCacheToken(ctx);
   }
 
-  /// Best-effort transcript mtime under common Claude/flashskyai layouts.
+  /// Best-effort transcript identity matching locate `cacheToken`
+  /// (`path|mtime|size`) under common Claude/flashskyai layouts.
   static Future<String?> _defaultCacheToken(SessionHistoryContext ctx) async {
     final probe = await probePinnedTranscript(
       fs: ctx.fs,
@@ -1346,8 +1397,8 @@ final class AiHistoryLoader {
     final path = probe.matchedPath;
     if (path == null) return null;
     final st = await ctx.fs.stat(path);
-    final mtime = st.mtime;
-    if (mtime != null) return mtime.toUtc().toIso8601String();
-    return path;
+    final size = st.size;
+    if (size == null) return null;
+    return aiHistoryPathCacheToken(fs: ctx.fs, path: path, byteLength: size);
   }
 }

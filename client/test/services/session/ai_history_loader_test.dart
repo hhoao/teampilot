@@ -29,6 +29,7 @@ import 'package:teampilot/services/cli/registry/cli_tool_registry.dart';
 import 'package:teampilot/services/session/session_history_context.dart';
 import 'package:teampilot/services/io/local_filesystem.dart';
 import 'package:teampilot/services/cli/tasks/cli_task_board.dart';
+import 'package:teampilot/services/session/ai_history_cache_token.dart';
 import 'package:teampilot/services/session/ai_history_load_result.dart';
 import 'package:teampilot/services/session/ai_history_load_timings.dart';
 import 'package:teampilot/services/session/ai_history_loader.dart';
@@ -570,17 +571,158 @@ void main() {
     expect(batches, 2);
   });
 
-  test('records load phase timings when enabled', () async {
-    final timings = AiHistoryLoadTimings();
-    final enricher = _RecordingEnricher();
+  test('invalidate of an unloaded seat keeps other tool-result indexes',
+      () async {
+    var batches = 0;
+    final enricher = ClaudeCompatibleToolResultEnricher(
+      decodeLines: (lines) {
+        batches++;
+        return [for (final line in lines) tryDecodeJsonlLine(line)];
+      },
+    );
+    const jsonl =
+        '{"type":"user","message":{"role":"user","content":[{"tool_use_id":"call_0","type":"tool_result","content":"tool output truncated","is_error":false}]},"toolUseResult":{"stdout":"pwd","stderr":"","exitCode":0}}\n';
     final registry = fakeAiHistoryRegistry(
       cli: CliTool.claude,
       adapter: _EchoAdapter(),
       toolResultEnricher: enricher,
-      locate: (_) async => const AiTranscriptBundle(
+      locate: (_) async => AiTranscriptBundle(
         adapterId: 'claude',
         fragments: [
-          AiTranscriptFragment(name: 't.jsonl', bytes: [1, 2, 3]),
+          AiTranscriptFragment(name: 't.jsonl', bytes: utf8.encode(jsonl)),
+        ],
+      ),
+    );
+    final loader = buildLoader(registry: registry);
+    final session = simpleSession();
+    final ctx = launchContextFor(session);
+
+    await loader.load(session: session, memberId: '', launchContext: ctx);
+    expect(batches, 1);
+
+    loader.invalidate(sessionId: 'other-session', memberId: '');
+    await loader.load(session: session, memberId: '', launchContext: ctx);
+    expect(
+      batches,
+      1,
+      reason: 'unloaded seat invalidate must not wipe other indexes',
+    );
+  });
+
+  test('messagesIfCached waits for the full index and matches locate token',
+      () async {
+    final all = _pagedHistoryMessages();
+    final recent = all.sublist(all.length - kSessionHistoryInitialTurns);
+    final older = all.sublist(0, all.length - kSessionHistoryInitialTurns);
+    final parseGate = Completer<void>();
+    final adapter = _GatedParseAdapter(all, parseGate);
+    const locateToken = '/proj/a.jsonl|2026-01-01T00:00:00.000Z|128';
+    mtimeToken = locateToken;
+    final session = simpleSession();
+    final loader = buildLoader(
+      registry: fakeAiHistoryRegistry(
+        cli: CliTool.claude,
+        adapter: adapter,
+        pageReader: _FakePageReader(latest: recent, older: older),
+        locate: (_) async => const AiTranscriptBundle(
+          adapterId: 'claude',
+          fragments: [AiTranscriptFragment(name: 'canned.jsonl', bytes: [])],
+          hints: {'cacheToken': locateToken},
+        ),
+      ),
+    );
+
+    await loader.load(
+      session: session,
+      memberId: '',
+      launchContext: launchContextFor(session),
+    );
+    expect(
+      loader.messagesIfCached(
+        sessionId: session.sessionId,
+        memberId: '',
+        token: locateToken,
+      ),
+      isNull,
+      reason: 'page-first window must not be treated as the search index',
+    );
+
+    parseGate.complete();
+    final full = await loader.fullIndex(
+      sessionId: session.sessionId,
+      memberId: '',
+    );
+    expect(full, isNotNull);
+    expect(
+      loader.messagesIfCached(
+        sessionId: session.sessionId,
+        memberId: '',
+        token: locateToken,
+      ),
+      same(full!.messages),
+    );
+    expect(
+      loader.messagesIfCached(
+        sessionId: session.sessionId,
+        memberId: '',
+        token: '2026-01-01T00:00:00.000Z',
+      ),
+      isNull,
+    );
+  });
+
+  test('default cache token matches locate path|mtime|size after full load',
+      () async {
+    final bucket = RuntimeLayout.workspaceBucketForPrimaryPath('/work/project');
+    final sessionId = 'sess-token';
+    final toolRoot = layout.sessionRuntimeToolDir('ws-1', sessionId, 'claude');
+    final projects = p.join(toolRoot, 'projects', bucket);
+    await Directory(projects).create(recursive: true);
+    final fixture = await File(
+      'test/fixtures/session_history/claude/basic.jsonl',
+    ).readAsBytes();
+    final transcriptPath = p.join(projects, '$sessionId.jsonl');
+    await File(transcriptPath).writeAsBytes(fixture);
+
+    final session = simpleSession(id: sessionId);
+    final loader = buildLoader(useCapabilityToken: true);
+    final ctx = launchContextFor(session);
+    await loader.load(session: session, memberId: '', launchContext: ctx);
+    final full = await loader.fullIndex(
+      sessionId: session.sessionId,
+      memberId: '',
+    );
+    expect(full, isNotNull);
+
+    final token = await aiHistoryPathCacheToken(
+      fs: fs,
+      path: transcriptPath,
+      byteLength: fixture.length,
+    );
+    expect(
+      loader.messagesIfCached(
+        sessionId: session.sessionId,
+        memberId: '',
+        token: token,
+      ),
+      isNotNull,
+      reason: 'search warm token must match the default loader token',
+    );
+  });
+
+  test('records load phase timings when enabled', () async {
+    final timings = AiHistoryLoadTimings();
+    const jsonl =
+        '{"type":"user","message":{"role":"user","content":[{"tool_use_id":"call_0","type":"tool_result","content":"tool output truncated","is_error":false}]},"toolUseResult":{"stdout":"pwd","stderr":"","exitCode":0}}\n';
+    final enricher = ClaudeCompatibleToolResultEnricher();
+    final registry = fakeAiHistoryRegistry(
+      cli: CliTool.claude,
+      adapter: _EchoAdapter(),
+      toolResultEnricher: enricher,
+      locate: (_) async => AiTranscriptBundle(
+        adapterId: 'claude',
+        fragments: [
+          AiTranscriptFragment(name: 't.jsonl', bytes: utf8.encode(jsonl)),
         ],
       ),
     );
@@ -594,7 +736,10 @@ void main() {
     expect(timings.order, contains(AiHistoryLoadPhase.locate));
     expect(timings.order, contains(AiHistoryLoadPhase.parse));
     expect(timings.order, contains(AiHistoryLoadPhase.enrich));
+    expect(timings.order, contains(AiHistoryLoadPhase.decode));
     expect(timings.order, contains(AiHistoryLoadPhase.firstPublish));
+    expect(timings.order, isNot(contains(AiHistoryLoadPhase.merge)));
+    expect(timings.decoderBatches, 1);
     expect(timings.sideTranscriptReads, 0);
     expect(
       timings.order.indexOf(AiHistoryLoadPhase.locate),

@@ -388,5 +388,54 @@ void main() {
         reason: 'rewrite/shrink must discard the index and decode the new file',
       );
     });
+
+    test('canReuseIndex follows path identity used by enrich', () async {
+      final counted = countingEnricher();
+      final jsonl =
+          '${truncatedUserLine(toolUseId: 'call_02', stdout: 'from path')}\n';
+      final bytes = utf8.encode(jsonl);
+      final path = await writeJsonl('session.jsonl', jsonl);
+      const loaderToken = '2026-01-01T00:00:00.000Z';
+
+      await enrich(
+        messages: truncatedBashMessage(),
+        rootTranscriptPath: path,
+        bundle: AiTranscriptBundle(
+          adapterId: 'claude',
+          fragments: [
+            AiTranscriptFragment(name: 'session.jsonl', bytes: bytes),
+          ],
+        ),
+        enricher: counted.enricher,
+        sourceToken: loaderToken,
+      );
+      expect(counted.batches(), 1);
+      expect(
+        counted.enricher.canReuseIndex(
+          sourceToken: loaderToken,
+          rootTranscriptPath: path,
+          contentLength: bytes.length,
+        ),
+        isTrue,
+      );
+
+      await enrich(
+        messages: truncatedBashMessage(),
+        rootTranscriptPath: path,
+        bundle: AiTranscriptBundle(
+          adapterId: 'claude',
+          fragments: [
+            AiTranscriptFragment(name: 'session.jsonl', bytes: bytes),
+          ],
+        ),
+        enricher: counted.enricher,
+        sourceToken: loaderToken,
+      );
+      expect(
+        counted.batches(),
+        1,
+        reason: 'path identity plus loader token must reuse the index',
+      );
+    });
   });
 }
