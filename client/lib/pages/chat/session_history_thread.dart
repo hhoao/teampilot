@@ -495,11 +495,7 @@ class _SessionHistoryThreadState extends State<SessionHistoryThread> {
     _captureOlderExtentIfWaiting();
 
     try {
-      try {
-        await widget.onLoadOlder!.call();
-      } catch (_) {
-        // Seat records a soft error; keep the current transcript mounted.
-      }
+      await widget.onLoadOlder!.call();
       await WidgetsBinding.instance.endOfFrame;
       if (!mounted || !_scrollController.hasClients) return;
       final capturedPixels = _olderPixelsBefore;

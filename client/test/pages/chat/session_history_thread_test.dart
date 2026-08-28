@@ -198,7 +198,7 @@ void main() {
 
       Future<void> onLoadOlder() async {
         loadStarted = true;
-        throw StateError('older page boom');
+        // Seat records a soft error and does not prepend.
       }
 
       await tester.pumpWidget(
@@ -217,6 +217,7 @@ void main() {
         await tester.pump(const Duration(milliseconds: 16));
       }
       expect(loadStarted, isTrue);
+      await pumpUntilSettled(tester);
 
       expect(find.text('msg 0'), findsOneWidget);
       expect(find.text('msg 39'), findsOneWidget);
