@@ -17,6 +17,7 @@ import '../cli/registry/cli_tool_registry.dart';
 import '../storage/runtime_context.dart';
 import '../terminal/session_member_cli_resolver.dart';
 import 'ai_history_cache_token.dart';
+import 'ai_history_incremental.dart';
 import 'ai_history_load_result.dart';
 import 'ai_history_load_timings.dart';
 import 'ai_history_locator.dart';
@@ -385,8 +386,10 @@ final class AiHistoryLoader {
   }) async {
     // Incrementally added/replaced parts are unannotated → annotate now
     // (idempotent on parts the previous load already covered).
-    final annotated = annotateToolCallCategories(
-      messages,
+    final previous = _messages[cacheKey];
+    final annotated = annotateChangedSuffix(
+      previous: previous,
+      next: messages,
       resolver: _categoryResolverFor(cli),
     );
     // 附件索引按需重建:任务调用集合(签名)与 side 数据都没有变化时复用
@@ -394,6 +397,22 @@ final class AiHistoryLoader {
     // 构建;新任务调用出现 / 调用完成(结果落库) / 运行中子 agent 的 side
     // 数据移动时才重新 inflate(resolver 内部 memo 保证未变化的子会话返回
     // 相同实例,重建代价被限制在真正变化的内容上)。
+    final capability = _registry.capability<AiHistoryCapability>(cli);
+    Map<String, String>? suffixSigs;
+    if (capability != null) {
+      final names = capability.subagentToolNames;
+      if (previous == null || messages.length < previous.length) {
+        suffixSigs = collectTaskCallSignatures(annotated, names);
+      } else {
+        suffixSigs = updateTaskCallSignatures(
+          previousSigs: _attachmentSigs[cacheKey] ?? const {},
+          previousMessages: previous,
+          nextMessages: annotated,
+          suffixStart: identicalPrefixLength(previous, messages),
+          subagentToolNames: names,
+        );
+      }
+    }
     final attachments = await _subagentAttachmentsFor(
       cacheKey: cacheKey,
       cli: cli,
@@ -401,6 +420,7 @@ final class AiHistoryLoader {
       messages: annotated,
       rootTranscriptPath: parentPath,
       cache: !indexOnly,
+      currentSigs: suffixSigs,
     );
     // 增量路径原地变异 state 的实时列表,annotate 无改动时返回的仍是
     // 同一个实例——seat 用 identical 判定"CLI 未变化"会把这个实例当成
@@ -436,17 +456,20 @@ final class AiHistoryLoader {
     required List<AiMessage> messages,
     required String? rootTranscriptPath,
     bool cache = true,
+    Map<String, String>? currentSigs,
   }) async {
     final capability = _registry.capability<AiHistoryCapability>(cli);
     if (capability == null) return const {};
-    final currentSigs = _taskCallSignatures(messages, capability);
+    final sigs =
+        currentSigs ??
+        collectTaskCallSignatures(messages, capability.subagentToolNames);
     if (cache) {
       final prevSigs = _attachmentSigs[cacheKey];
       if (prevSigs != null) {
         _pruneAttachmentsForSignatureChanges(
           cacheKey: cacheKey,
           prevSigs: prevSigs,
-          currentSigs: currentSigs,
+          currentSigs: sigs,
         );
       }
       final sideToken = await capability.subagentSideResolver.fingerprint(
@@ -460,7 +483,7 @@ final class AiHistoryLoader {
         _invalidateSubagentLoadsForSeat(cacheKey);
       }
       if (sideToken != null) _sideTokens[cacheKey] = sideToken;
-      _attachmentSigs[cacheKey] = currentSigs;
+      _attachmentSigs[cacheKey] = sigs;
     }
     if (cache) {
       return _attachments.putIfAbsent(cacheKey, () => {});
@@ -473,7 +496,7 @@ final class AiHistoryLoader {
     required Map<String, String> prevSigs,
     required Map<String, String> currentSigs,
   }) {
-    if (_sameTaskSignatures(prevSigs, currentSigs)) return;
+    if (sameTaskSignatures(prevSigs, currentSigs)) return;
     final attachments = _attachments[cacheKey];
     if (attachments == null || attachments.isEmpty) return;
     for (final entry in prevSigs.entries) {
@@ -482,66 +505,6 @@ final class AiHistoryLoader {
         _invalidateSubagentLoadForId(cacheKey, entry.key);
       }
     }
-  }
-
-  /// 任务调用签名快照([_attachmentSigs])与当前签名是否一致。
-  static bool _sameTaskSignatures(
-    Map<String, String> a,
-    Map<String, String> b,
-  ) {
-    if (identical(a, b)) return true;
-    if (a.length != b.length) return false;
-    for (final entry in a.entries) {
-      if (b[entry.key] != entry.value) return false;
-    }
-    return true;
-  }
-
-  static Map<String, String> _taskCallSignatures(
-    List<AiMessage> messages,
-    AiHistoryCapability capability,
-  ) {
-    final names = capability.subagentToolNames;
-    final out = <String, String>{};
-    for (final message in messages) {
-      for (final part in message.parts) {
-        if (part is! AiToolCallPart) continue;
-        if (!names.contains(part.toolName.trim().toLowerCase())) continue;
-        final id = part.toolCallId.trim();
-        if (id.isEmpty) continue;
-        out[id] = _taskCallSignature(part);
-      }
-    }
-    return out;
-  }
-
-  /// 截断的 part 内容签名:状态 + 错误标志 + 结果(长度分量 + 头 64 字符)
-  /// + 子 agent id。结果不整串拼接,签名构建 O(1),避免大 tool result 每
-  /// tick 全量字符串化;长度分量捕获流式追加/截断,头分量捕获同长替换。
-  ///
-  /// 子 agent id 分量覆盖 Codex 等「先出现 spawn 工具、后经 SubAgentActivity
-  /// 绑定 thread id」的路径:仅结果签名不变时也必须触发重新 inflate,否则
-  /// 会一直复用 degrade 附件。
-  ///
-  /// 状态按 [finalizeAiMessagesForHistory] 语义归一:未配对调用(结果为空)
-  /// 在全量 parse 后被归一为 incomplete,而增量 tail 直接 append 时仍保持
-  /// 默认的 complete——归一后同一条调用在两条路径上的签名才可比,否则
-  /// 每次 tail 增量都会被误判为"调用变了"而白白重 inflate。
-  static String _taskCallSignature(AiToolCallPart part) {
-    final result = part.result;
-    final raw = result is String ? result : (result?.toString() ?? '');
-    final head = raw.length > 64
-        ? '${raw.length}:${raw.substring(0, 64)}'
-        : raw;
-    final status = part.status;
-    final normalizedStatus =
-        (result == null &&
-            (status == AiToolCallStatus.running ||
-                (status == AiToolCallStatus.complete && !part.isError)))
-        ? AiToolCallStatus.incomplete
-        : status;
-    final agentId = subagentAgentIdFromPart(part) ?? '';
-    return '${normalizedStatus.name}|${part.isError}|$head|$agentId';
   }
 
   AiToolCallCategoryResolver _categoryResolverFor(CliTool cli) =>
@@ -826,7 +789,10 @@ final class AiHistoryLoader {
       if (skipPaging) return complete;
       _messages[cacheKey] = messages;
       _attachments.putIfAbsent(cacheKey, () => {});
-      _attachmentSigs[cacheKey] = _taskCallSignatures(messages, cap);
+      _attachmentSigs[cacheKey] = collectTaskCallSignatures(
+        messages,
+        cap.subagentToolNames,
+      );
       _tokens[cacheKey] = token ?? 'changed-$cacheKey';
       final sideToken = await cap.subagentSideResolver.fingerprint(
         ctx: ctx,
