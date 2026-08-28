@@ -16,6 +16,7 @@ class FakeTerminalSession extends TerminalSession {
   final lastResumeSessionIds = <String?>[];
   final lastAdditionalDirectoriesLists = <List<String>>[];
   final lastExtraEnvironments = <Map<String, String>?>[];
+  final lastObservations = <TerminalObservationAttach?>[];
 
   @override
   bool get isRunning => _running;
@@ -50,6 +51,7 @@ class FakeTerminalSession extends TerminalSession {
           ? null
           : Map<String, String>.from(extraEnvironment),
     );
+    lastObservations.add(observation);
     _running = true;
     if (resumeSessionId != null && resumeSessionId.isNotEmpty) {
       resumedSessions.add(resumeSessionId);

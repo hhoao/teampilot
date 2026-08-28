@@ -442,14 +442,15 @@ class SessionShellConnector {
       }
 
       // After SSH constraints may transform the security policy for root.
+      final skipPermissions = shellLaunch
+          .launchContext
+          .launchSecurityPolicy
+          .requiresDangerousExecution;
       _registerAgentStatusSeat(
         sessionId: activeSession.sessionId,
         memberId: agentStatusSeatMemberId,
         cli: launchCli,
-        skipPermissions: shellLaunch
-            .launchContext
-            .launchSecurityPolicy
-            .requiresDangerousExecution,
+        skipPermissions: skipPermissions,
         agentStatus: agentStatus,
       );
 
@@ -509,6 +510,13 @@ class SessionShellConnector {
         ),
         onEveryUserLineSubmitted: _delegate.autoTouchOnEveryPrompt(
           activeSession.sessionId,
+        ),
+        observation: TerminalObservationAttach(
+          sessionId: activeSession.sessionId,
+          memberId: agentStatusSeatMemberId,
+          cli: launchCli,
+          attention: _host.agentAttentionCubit,
+          skipPermissions: () => skipPermissions,
         ),
         onProcessFailed: (message) {
           if (remoteMemberKeyForRollback != null) {
