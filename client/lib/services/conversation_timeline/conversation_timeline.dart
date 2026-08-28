@@ -37,18 +37,35 @@ List<TimelineEvent> _cliEventsFromMessages(List<AiMessage> cliMessages) {
 }
 
 /// Compares CLI transcripts for append-only growth vs rewrite.
+///
+/// Unchanged prefix messages that are the same instance skip content
+/// fingerprints. A same-id content change on the last message is
+/// [CliTimelineLastReplaced] instead of invalidating the whole timeline.
 CliTimelineDelta computeCliTimelineDelta({
   required List<AiMessage> previous,
   required List<AiMessage> next,
 }) {
   if (identical(previous, next)) return const CliTimelineUnchanged();
   if (next.length < previous.length) return const CliTimelineInvalidated();
+  var lastReplaced = false;
   for (var i = 0; i < previous.length; i++) {
+    if (identical(previous[i], next[i])) continue;
     if (previous[i].id != next[i].id) return const CliTimelineInvalidated();
-    if (messageContentIdentity(previous[i]) !=
+    if (messageContentIdentity(previous[i]) ==
         messageContentIdentity(next[i])) {
+      continue;
+    }
+    if (i == previous.length - 1) {
+      lastReplaced = true;
+      continue;
+    }
+    return const CliTimelineInvalidated();
+  }
+  if (lastReplaced) {
+    if (next.length != previous.length) {
       return const CliTimelineInvalidated();
     }
+    return CliTimelineLastReplaced(message: next.last);
   }
   if (next.length == previous.length) return const CliTimelineUnchanged();
   return CliTimelineAppended(
@@ -126,12 +143,12 @@ SeatTimelineSnapshot buildConversationTimelineIncremental({
   required List<LoggedMessage> mailboxRecords,
 }) {
   final mailbox = partitionMailboxUserRecords(mailboxRecords);
-  final allEvents = [
-    ..._cliEventsFromMessages(cliMessages),
-    ...mailbox.events,
-  ];
 
   if (previous == null) {
+    final allEvents = [
+      ..._cliEventsFromMessages(cliMessages),
+      ...mailbox.events,
+    ];
     return SeatTimelineSnapshot(
       cliMessages: cliMessages,
       mailboxRecords: mailboxRecords,
@@ -154,6 +171,16 @@ SeatTimelineSnapshot buildConversationTimelineIncremental({
       identical(mailboxRecords, previous.mailboxRecords)) {
     return previous;
   }
+
+  final skipAllEvents =
+      cliDelta is CliTimelineLastReplaced &&
+      mailboxDelta is MailboxTimelineUnchanged;
+  final allEvents = skipAllEvents
+      ? const <TimelineEvent>[]
+      : [
+          ..._cliEventsFromMessages(cliMessages),
+          ...mailbox.events,
+        ];
 
   final snapshot = mergeTimelineIncremental(
     previous: previous,

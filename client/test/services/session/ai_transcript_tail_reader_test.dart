@@ -19,7 +19,6 @@ AiTranscriptTailReader _reader() => AiTranscriptTailReader(
       fallbackPrefix: 'claude',
       decodeEvents: _syncDecoder(),
       windowSizes: const [512, 2048], // 小窗口便于测试窗口扩展
-      fullReloadEvery: 30,
     );
 
 void main() {
@@ -76,9 +75,11 @@ void main() {
       path,
       '${metaLine()}\n${assistantLine('a1', 'part1 ')}\n${assistantLine('a1', 'part2')}\n',
     );
-    await reader.refresh(fs: fs, path: path, state: state);
+    final result = await reader.refresh(fs: fs, path: path, state: state);
     expect(identical(state.messages, first), isTrue,
         reason: '消息列表必须原地变异,实例保持不变');
+    expect(result.rebuilt, isFalse,
+        reason: '小文件追加不得因头指纹窗口随 size 变大而全量重建');
     expect(state.messages, hasLength(2));
     expect(
       (state.messages[1].parts.single as AiTextPart).text,
@@ -187,28 +188,73 @@ void main() {
     );
   });
 
-  test('fullReloadEvery triggers periodic full validation', () async {
+  test('repeated appends stay incremental without periodic full rebuild',
+      () async {
     await fs.writeString(path, '${userLine('u1', 'hi')}\n');
-    final reader = AiTranscriptTailReader(
-      lineAppend: appendClaudeJsonlEvent,
-      fallbackPrefix: 'claude',
-      decodeEvents: _syncDecoder(),
-      windowSizes: const [512, 2048],
-      fullReloadEvery: 3,
-    );
+    final reader = _reader();
     final state = TailReaderState();
     await reader.refresh(fs: fs, path: path, state: state);
-    for (var i = 0; i < 3; i++) {
+    for (var i = 0; i < 30; i++) {
       await fs.appendString(path, '${assistantLine('a$i', 'm$i')}\n');
-      await reader.refresh(fs: fs, path: path, state: state);
+      final result = await reader.refresh(fs: fs, path: path, state: state);
+      expect(
+        result.rebuilt,
+        isFalse,
+        reason: '成功增量不得按次数强制整文件重解析 (i=$i)',
+      );
     }
+    final idle = await reader.refresh(fs: fs, path: path, state: state);
+    expect(idle.rebuilt, isFalse);
+    expect(idle.changed, isFalse);
+  });
+
+  test('append after first parse stays incremental', () async {
+    await fs.writeString(path, '${userLine('u1', 'hi')}\n');
+    final reader = _reader();
+    final state = TailReaderState();
+    await reader.refresh(fs: fs, path: path, state: state);
+    final first = state.messages;
+
+    await fs.appendString(path, '${assistantLine('a1', 'tail')}\n');
+    final result = await reader.refresh(
+      fs: fs,
+      path: path,
+      state: state,
+    );
+    expect(result.rebuilt, isFalse);
+    expect(identical(state.messages, first), isTrue);
+    expect(
+      state.messages.map((m) => (m.parts.single as AiTextPart).text).toList(),
+      ['hi', 'tail'],
+    );
+  });
+
+  test('prefix rewrite with surviving tail anchor triggers full rebuild',
+      () async {
+    await fs.writeString(
+      path,
+      '${userLine('u1', 'hi')}\n${assistantLine('a1', 'ok')}\n',
+    );
+    final reader = _reader();
+    final state = TailReaderState();
+    await reader.refresh(fs: fs, path: path, state: state);
+    expect(
+      state.messages.map((m) => (m.parts.single as AiTextPart).text).toList(),
+      ['hi', 'ok'],
+    );
+
+    // Compact-style rewrite: first event changes, last consumed line stays so
+    // the tail anchor would still match.
+    await fs.writeString(
+      path,
+      '${userLine('u1', 'edited')}\n${assistantLine('a1', 'ok')}\n',
+    );
     final result = await reader.refresh(fs: fs, path: path, state: state);
-    expect(result.rebuilt, isTrue,
-        reason: '第 4 次 refresh 累积 3 次增量后应触发全量校验');
-    // 3 条相邻 assistant(a0/a1/a2)被 coalesce 合并成一条,连同 user 共 2 条。
-    expect(state.messages, hasLength(2));
-    expect(state.messages[1].parts.length, 3,
-        reason: '3 个分片合并进同一条 assistant');
+    expect(result.rebuilt, isTrue);
+    expect(
+      state.messages.map((m) => (m.parts.single as AiTextPart).text).toList(),
+      ['edited', 'ok'],
+    );
   });
 
   test('adjacent different-id assistant parts coalesce like full parse', () async {

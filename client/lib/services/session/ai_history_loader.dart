@@ -341,7 +341,6 @@ final class AiHistoryLoader {
     required CliTool cli,
     required SessionHistoryContext ctx,
     required String? parentPath,
-    bool force = false,
   }) async {
     if (parentPath == null || parentPath.isEmpty) return null;
     final reader = _tailReaderFor(cli);
@@ -351,7 +350,6 @@ final class AiHistoryLoader {
       fs: ctx.fs,
       path: parentPath,
       state: state,
-      force: force,
     );
     return state.messages;
   }
@@ -362,16 +360,12 @@ final class AiHistoryLoader {
     required String cacheKey,
     required CliTool cli,
     required SessionHistoryContext ctx,
-    bool force = false,
   }) async {
     final cap = _registry.capability<AiHistoryCapability>(cli);
     final refresher = cap?.incrementalRefresher;
     if (refresher == null) return null;
-    // Only refresh a state that seedFromFullParse already aligned. Creating an
-    // empty state here (especially on force:true full-index) made
-    // `_hasWarmIncremental` true before `_seen` was populated, so live
-    // refresh skipped paging and fell through to another full locate.
-    if (force) return null;
+    // After the first parse, a warm incremental cursor must keep going even
+    // when the caller asked for force (force only skips the mtime token cache).
     final state = _incrementalStates[cacheKey];
     if (state == null) return null;
     return refresher.refresh(ctx: ctx, state: state, force: false);
@@ -710,7 +704,6 @@ final class AiHistoryLoader {
         cacheKey: cacheKey,
         cli: cli,
         ctx: ctx,
-        force: force,
       );
       if (dbDelta != null) {
         final parentPath = dbDelta.parentPath;
@@ -750,7 +743,6 @@ final class AiHistoryLoader {
         cli: cli,
         ctx: ctx,
         parentPath: parentPath,
-        force: force,
       );
       if (tail != null) {
         return _finishIncremental(

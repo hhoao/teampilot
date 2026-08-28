@@ -71,12 +71,24 @@ List<AiMessage> prependOlderHistoryMessages({
   return [...prefix, ...recent];
 }
 
-/// Reuses [previous] instances whenever [next] carries the same message id.
+/// Reuses [previous] instances when id and content match. A same-id stream
+/// update (new instance, new parts) keeps [next] so live History can move.
 List<AiMessage> reuseHistoryMessageIdentity({
   required List<AiMessage> previous,
   required List<AiMessage> next,
 }) {
   if (previous.isEmpty) return next;
   final previousById = {for (final m in previous) m.id: m};
-  return [for (final m in next) previousById[m.id] ?? m];
+  return [
+    for (final m in next) _reuseUnchangedMessage(previousById[m.id], m),
+  ];
+}
+
+AiMessage _reuseUnchangedMessage(AiMessage? previous, AiMessage next) {
+  if (previous == null) return next;
+  if (identical(previous, next)) return previous;
+  if (messageContentIdentity(previous) == messageContentIdentity(next)) {
+    return previous;
+  }
+  return next;
 }

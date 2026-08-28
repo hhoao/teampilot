@@ -13,7 +13,10 @@ typedef EventDecoder =
 /// 状态([TailReaderState])由调用方持有:锚点 = 最后一条"被消费"的行的
 /// 整行字节 hash。每次 refresh 读尾部窗口,从锚点行之后逐事件
 /// [AiTranscriptLineAppend] 合并进 [TailReaderState.messages](原地变异)。
-/// 锚点找不到(重写/压缩/截断)→ 全量重建。
+/// 锚点找不到且头指纹也变了(重写/压缩/截断)→ 当作新文件首次解析。
+/// 文件头 [headFingerprintBytes] 字节指纹变化(compact 改了前缀但尾锚点
+/// 仍在)→ 同样当作新文件首次解析。热路径(含 force 刷新)只增量,不再
+/// 整文件重放。
 /// EOF 无 `\n` 的残留若能解码为完整 JSON 对象则当一行消费(与全量 parse
 /// 一致);半行仍推迟到下次补全。
 class AiTranscriptTailReader {
@@ -22,7 +25,6 @@ class AiTranscriptTailReader {
     required String fallbackPrefix,
     EventDecoder? decodeEvents,
     this.windowSizes = const [64 * 1024, 256 * 1024],
-    this.fullReloadEvery = 30,
   }) : _lineAppend = lineAppend,
        _fallbackPrefix = fallbackPrefix,
        _decodeEvents = decodeEvents ?? decodeJsonlLines;
@@ -36,8 +38,10 @@ class AiTranscriptTailReader {
   final EventDecoder _decodeEvents;
   final List<int> windowSizes;
 
-  /// 每多少次成功增量后强制一次全量校验。
-  final int fullReloadEvery;
+  /// 文件头指纹长度:检测「尾锚点仍在、但前缀被原地改写」。
+  /// 按首次全量时的实际字节数固定,追加不得扩大窗口,否则小文件
+  /// 每次 append 都会误判成前缀变化。
+  static const headFingerprintBytes = 256;
 
   static int _lineHash(List<int> line) {
     var hash = 0x811C9DC5;
@@ -51,25 +55,39 @@ class AiTranscriptTailReader {
     required Filesystem fs,
     required String path,
     required TailReaderState state,
-    bool force = false,
   }) async {
     final stat = await fs.stat(path);
     if (!stat.exists || stat.isDirectory) {
       state.path = null;
       state.anchorHash = null;
+      state.headFingerprint = null;
+      state.headFingerprintLength = 0;
       state.messages = [];
-      state.incrementalCount = 0;
       return const TailRefreshResult(changed: false, rebuilt: true);
     }
     final size = stat.size ?? 0;
     final pathChanged = state.path != path;
     state.path = path;
 
-    if (force || pathChanged || state.anchorHash == null) {
+    if (pathChanged) {
+      state.anchorHash = null;
+      state.headFingerprint = null;
+      state.headFingerprintLength = 0;
+      state.messages = [];
+      state.fallbackSeq = 0;
+    }
+    if (state.anchorHash == null) {
       return _fullReload(fs, path, size, state);
     }
 
-    if (state.incrementalCount >= fullReloadEvery) {
+    final head = await _headFingerprint(
+      fs,
+      path,
+      size,
+      length: state.headFingerprintLength,
+    );
+    if (size < state.headFingerprintLength ||
+        (state.headFingerprint != null && head != state.headFingerprint)) {
       return _fullReload(fs, path, size, state);
     }
 
@@ -82,7 +100,7 @@ class AiTranscriptTailReader {
       final applied = await _consumeFromAnchor(tail, state);
       if (applied != null) {
         coalesceAdjacentAssistantsInPlace(state.messages);
-        return _counted(applied, state);
+        return applied;
       }
     }
 
@@ -93,15 +111,31 @@ class AiTranscriptTailReader {
     final applied = await _consumeFromAnchor(whole, state);
     if (applied != null) {
       coalesceAdjacentAssistantsInPlace(state.messages);
-      return _counted(applied, state);
+      return applied;
     }
     // 全文件都找不到锚点(重写/压缩/截断)→ 全量重建。
     return _fullReload(fs, path, size, state);
   }
 
-  TailRefreshResult _counted(TailRefreshResult result, TailReaderState state) {
-    if (result.changed) state.incrementalCount++;
-    return result;
+  static (int hash, int length) _headFingerprintOf(List<int> bytes) {
+    if (bytes.isEmpty) return (0, 0);
+    final n = bytes.length < headFingerprintBytes
+        ? bytes.length
+        : headFingerprintBytes;
+    return (_lineHash(bytes.sublist(0, n)), n);
+  }
+
+  Future<int> _headFingerprint(
+    Filesystem fs,
+    String path,
+    int size, {
+    required int length,
+  }) async {
+    if (length <= 0 || size <= 0) return 0;
+    final n = size < length ? size : length;
+    final bytes = await fs.readBytesRange(path, 0, n);
+    if (bytes == null || bytes.isEmpty) return 0;
+    return _lineHash(bytes);
   }
 
   /// 尝试在 [bytes] 内找到锚点行并消费其后的新行。
@@ -203,7 +237,9 @@ class AiTranscriptTailReader {
     state.messages = messages;
     state.fallbackSeq = fallbackSeq;
     state.anchorHash = anchor;
-    state.incrementalCount = 0;
+    final head = _headFingerprintOf(bytes ?? const []);
+    state.headFingerprint = head.$1;
+    state.headFingerprintLength = head.$2;
     return TailRefreshResult(changed: true, rebuilt: true);
   }
 }
@@ -211,9 +247,10 @@ class AiTranscriptTailReader {
 class TailReaderState {
   String? path;
   int? anchorHash;
+  int? headFingerprint;
+  int headFingerprintLength = 0;
   List<AiMessage> messages = [];
   int fallbackSeq = 0;
-  int incrementalCount = 0;
 }
 
 class TailRefreshResult {

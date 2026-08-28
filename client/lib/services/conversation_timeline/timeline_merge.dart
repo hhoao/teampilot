@@ -57,6 +57,13 @@ class CliTimelineAppended extends CliTimelineDelta {
   final List<TimelineEvent> events;
 }
 
+/// Same-id in-place update of the last CLI message (streaming assistant).
+class CliTimelineLastReplaced extends CliTimelineDelta {
+  const CliTimelineLastReplaced({required this.message});
+
+  final AiMessage message;
+}
+
 class CliTimelineInvalidated extends CliTimelineDelta {
   const CliTimelineInvalidated();
 }
@@ -143,6 +150,19 @@ TimelineSnapshot mergeTimelineIncremental({
   if (cliDelta is CliTimelineInvalidated ||
       mailboxDelta is MailboxTimelineInvalidated) {
     return mergeTimeline(events: allEvents, unread: unread);
+  }
+
+  if (cliDelta is CliTimelineLastReplaced) {
+    if (mailboxDelta is MailboxTimelineAppended) {
+      return mergeTimeline(events: allEvents, unread: unread);
+    }
+    final messages = List<AiMessage>.of(previous.snapshot.messages);
+    final index = messages.lastIndexWhere((m) => m.id == cliDelta.message.id);
+    if (index < 0) {
+      return mergeTimeline(events: allEvents, unread: unread);
+    }
+    messages[index] = cliDelta.message;
+    return TimelineSnapshot(messages: messages, unreadUserMails: unread);
   }
 
   final cliAppend = switch (cliDelta) {

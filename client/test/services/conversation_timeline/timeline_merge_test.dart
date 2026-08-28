@@ -1,5 +1,6 @@
 import 'package:ai_message_core/ai_message_core.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:teampilot/services/conversation_timeline/conversation_timeline.dart';
 import 'package:teampilot/services/conversation_timeline/timeline_merge.dart';
 import 'package:teampilot/services/conversation_timeline/timeline_models.dart';
 
@@ -156,6 +157,113 @@ void main() {
       expect(
         mergeTimeline(events: allEvents, unread: const []).messages.map((m) => m.id),
         merged.messages.map((m) => m.id),
+      );
+    });
+
+    test('identical prefix skips content fingerprints', () {
+      final first = AiMessage(
+        id: 'cli-1',
+        role: AiRole.user,
+        parts: [AiTextPart(text: 'first')],
+      );
+      final streaming = AiMessage(
+        id: 'cli-2',
+        role: AiRole.assistant,
+        parts: [AiTextPart(text: 'hello')],
+      );
+      final previous = [first, streaming];
+      final nextLast = AiMessage(
+        id: 'cli-2',
+        role: AiRole.assistant,
+        parts: [AiTextPart(text: 'hello world')],
+      );
+      final next = [first, nextLast];
+
+      final delta = computeCliTimelineDelta(previous: previous, next: next);
+
+      expect(delta, isA<CliTimelineLastReplaced>());
+      expect((delta as CliTimelineLastReplaced).message, same(nextLast));
+    });
+
+    test('last-replaced CLI keeps prior AiMessage instances', () {
+      final t1 = DateTime.utc(2026, 1, 1, 10);
+      final t2 = DateTime.utc(2026, 1, 1, 11);
+      final initialEvents = [
+        cliEvent(id: 'cli-1', text: 'first', createdAt: t1, cliOrder: 0),
+        cliEvent(
+          id: 'cli-2',
+          text: 'hello',
+          createdAt: t2,
+          cliOrder: 1,
+          role: AiRole.assistant,
+        ),
+      ];
+      final initial = mergeTimeline(events: initialEvents, unread: const []);
+      final previous = SeatTimelineSnapshot(
+        cliMessages: initial.messages,
+        mailboxRecords: const [],
+        snapshot: initial,
+      );
+      final nextLast = AiMessage(
+        id: 'cli-2',
+        role: AiRole.assistant,
+        parts: [AiTextPart(text: 'hello world')],
+        createdAt: t2,
+      );
+
+      final merged = mergeTimelineIncremental(
+        previous: previous,
+        cliDelta: CliTimelineLastReplaced(message: nextLast),
+        mailboxDelta: const MailboxTimelineUnchanged(),
+        allEvents: const [],
+        unread: const [],
+        nextCliMessages: [initial.messages[0], nextLast],
+      );
+
+      expect(merged.messages, hasLength(2));
+      expect(identical(merged.messages[0], initial.messages[0]), isTrue);
+      expect(identical(merged.messages[1], nextLast), isTrue);
+      expect(
+        (merged.messages[1].parts.single as AiTextPart).text,
+        'hello world',
+      );
+    });
+
+    test('incremental builder replaces last assistant without rewriting prefix',
+        () {
+      final first = AiMessage(
+        id: 'u',
+        role: AiRole.user,
+        parts: [AiTextPart(text: 'q')],
+      );
+      final a1 = AiMessage(
+        id: 'a',
+        role: AiRole.assistant,
+        parts: [AiTextPart(text: 'h')],
+      );
+      final initial = buildConversationTimelineIncremental(
+        cliMessages: [first, a1],
+        mailboxRecords: const [],
+      );
+      final a2 = AiMessage(
+        id: 'a',
+        role: AiRole.assistant,
+        parts: [AiTextPart(text: 'hello')],
+      );
+      final next = buildConversationTimelineIncremental(
+        previous: initial,
+        cliMessages: [first, a2],
+        mailboxRecords: const [],
+      );
+
+      expect(next.snapshot.messages, hasLength(2));
+      expect(
+        identical(next.snapshot.messages[0], initial.snapshot.messages[0]),
+        isTrue,
+      );
+      expect(
+        (next.snapshot.messages[1].parts.single as AiTextPart).text,
+        'hello',
       );
     });
 

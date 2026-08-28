@@ -404,9 +404,9 @@ class AiHistorySeat extends Cubit<AiHistoryState> {
   /// Reuses [AiHistoryLoader] token cache (`force: false`) so unchanged
   /// transcripts skip locate/parse. Mailbox is still refreshed every call.
   ///
-  /// [force] skips the token cache and the JSONL tailer's incremental skip so
-  /// a turn-end settle can pick up a last line that landed after the previous
-  /// watch-driven reload.
+  /// [force] skips the mtime token cache so a turn-end settle can pick up a
+  /// last line that landed with an unchanged token. It does **not** re-parse
+  /// the whole JSONL; a warm tail cursor stays incremental.
   Future<void> softReload({bool force = false}) async {
     final session = _lastSession;
     final memberId = _lastMemberId;
