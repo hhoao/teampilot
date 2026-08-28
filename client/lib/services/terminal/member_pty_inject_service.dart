@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'fullscreen_cr_ack_config.dart';
 import 'fullscreen_pty_automation.dart';
 import 'terminal_fullscreen_pty_port.dart';
@@ -41,6 +43,7 @@ final class MemberPtyInjectService {
     required Duration pasteSettle,
     required bool Function() aborted,
     required FullscreenCrAckConfig crAckConfig,
+    Stream<void>? painted,
   }) => _run(
     sessionId,
     memberId,
@@ -52,6 +55,7 @@ final class MemberPtyInjectService {
         memberId: memberId,
         aborted: aborted,
         crAckConfig: crAckConfig,
+        painted: painted,
       ),
       text: text,
       pasteSettle: pasteSettle,
@@ -68,6 +72,7 @@ final class MemberPtyInjectService {
     required Duration pasteSettle,
     required bool Function() aborted,
     required FullscreenCrAckConfig crAckConfig,
+    Stream<void>? painted,
   }) => _run(
     sessionId,
     memberId,
@@ -79,6 +84,7 @@ final class MemberPtyInjectService {
         memberId: memberId,
         aborted: aborted,
         crAckConfig: crAckConfig,
+        painted: painted,
       ),
       text: text,
       pasteSettle: pasteSettle,
@@ -112,13 +118,14 @@ final class MemberPtyInjectService {
     required String memberId,
     required bool Function() aborted,
     required FullscreenCrAckConfig crAckConfig,
-  }) =>
-      TerminalFullscreenPtyPort(
-        input: input,
-        probe: probe,
-        aborted: () => isAbortRequested(sessionId, memberId) || aborted(),
-        crAckConfig: crAckConfig,
-      );
+    Stream<void>? painted,
+  }) => TerminalFullscreenPtyPort(
+    input: input,
+    probe: probe,
+    aborted: () => isAbortRequested(sessionId, memberId) || aborted(),
+    crAckConfig: crAckConfig,
+    painted: painted,
+  );
 
   static String _key(String sessionId, String memberId) =>
       '$sessionId:$memberId';

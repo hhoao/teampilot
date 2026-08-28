@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'fullscreen_cr_ack_config.dart';
 import 'fullscreen_input_screen_probe.dart';
 import 'fullscreen_pty_delivery_port.dart';
@@ -10,16 +12,20 @@ final class TerminalFullscreenPtyPort implements FullscreenPtyDeliveryPort {
     required TerminalInputController input,
     required TerminalScreenProbeController probe,
     required bool Function() aborted,
-    FullscreenCrAckConfig crAckConfig = const FullscreenCrAckConfig.productionDefault(),
+    FullscreenCrAckConfig crAckConfig =
+        const FullscreenCrAckConfig.productionDefault(),
+    Stream<void>? painted,
   }) : _input = input,
        _probe = probe,
        _aborted = aborted,
-       _crAckConfig = crAckConfig;
+       _crAckConfig = crAckConfig,
+       _painted = painted;
 
   final TerminalInputController _input;
   final TerminalScreenProbeController _probe;
   final bool Function() _aborted;
   final FullscreenCrAckConfig _crAckConfig;
+  final Stream<void>? _painted;
 
   @override
   bool get isAborted => _aborted();
@@ -32,6 +38,14 @@ final class TerminalFullscreenPtyPort implements FullscreenPtyDeliveryPort {
 
   @override
   Future<void> syncDisplayGrid() => _probe.syncDisplayGrid();
+
+  @override
+  Future<void> waitForPaint({required Duration timeout}) {
+    if (timeout <= Duration.zero) return Future<void>.value();
+    final painted = _painted;
+    if (painted == null) return Future<void>.value();
+    return painted.first.timeout(timeout, onTimeout: () {});
+  }
 
   @override
   FullscreenPromptAnchor? locateNeedle(String needle, {int scanRows = 24}) =>
@@ -50,7 +64,10 @@ final class TerminalFullscreenPtyPort implements FullscreenPtyDeliveryPort {
 
   @override
   bool isAtAnchor(FullscreenPromptAnchor anchor) =>
-      _probe.isFullscreenPromptAtAnchor(anchor, composerPrefix: _crAckConfig.composerPrefix);
+      _probe.isFullscreenPromptAtAnchor(
+        anchor,
+        composerPrefix: _crAckConfig.composerPrefix,
+      );
 
   @override
   bool isSubmittedAfterCr(FullscreenPromptAnchor anchor, {int scanRows = 24}) =>

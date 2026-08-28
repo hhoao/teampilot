@@ -148,6 +148,7 @@ void main() {
             input: session.input,
             probe: session.probe,
             aborted: () => false,
+            painted: session.observationPainted,
             crAckConfig: const FullscreenCrAckConfig(
               strategy: FullscreenCrAckStrategy.composerMovesDown,
               composerPrefix: '\u203a',

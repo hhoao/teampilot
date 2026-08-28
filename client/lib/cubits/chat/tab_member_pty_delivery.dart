@@ -41,8 +41,7 @@ final class TabMemberPtyDelivery {
        _coordinationFactory = coordinationFactory,
        _onAfterTurnLatched = onAfterTurnLatched,
        _onUserActivity = onUserActivity,
-       _promptDeliveries =
-           promptDeliveries ?? _tabPromptDeliveries(tabStore) {
+       _promptDeliveries = promptDeliveries ?? _tabPromptDeliveries(tabStore) {
     _ptyInject = ptyInject ?? MemberPtyInjectService();
   }
 
@@ -75,19 +74,23 @@ final class TabMemberPtyDelivery {
   }
 
   Future<void> syncMemberInputSurface(String sessionId, String memberId) async {
-    final shell =
-        _tabStore.openTabBySessionId(sessionId)?.memberShells[memberId];
+    final shell = _tabStore
+        .openTabBySessionId(sessionId)
+        ?.memberShells[memberId];
     if (shell == null) return;
     await shell.probe.syncDisplayGrid();
   }
 
   bool isMemberComposerSurfaceReady(String sessionId, String memberId) {
-    final shell =
-        _tabStore.openTabBySessionId(sessionId)?.memberShells[memberId];
+    final shell = _tabStore
+        .openTabBySessionId(sessionId)
+        ?.memberShells[memberId];
     if (shell == null || !shell.activityTracker.isBootFrameReady) {
       return false;
     }
-    final window = shell.probe.describeProbeWindow(scanRows: _composerProbeRows);
+    final window = shell.probe.describeProbeWindow(
+      scanRows: _composerProbeRows,
+    );
     final key = '$sessionId:$memberId';
     final watch = _surfaceWatches.putIfAbsent(
       key,
@@ -100,12 +103,15 @@ final class TabMemberPtyDelivery {
   }
 
   void maybeNudgeMemberBootGate(String sessionId, String memberId) {
-    final shell =
-        _tabStore.openTabBySessionId(sessionId)?.memberShells[memberId];
+    final shell = _tabStore
+        .openTabBySessionId(sessionId)
+        ?.memberShells[memberId];
     if (shell == null) return;
     final readiness = _behaviorFor(sessionId, memberId)?.inputReadiness;
     if (readiness == null || !readiness.waitsForSurface) return;
-    final window = shell.probe.describeProbeWindow(scanRows: _composerProbeRows);
+    final window = shell.probe.describeProbeWindow(
+      scanRows: _composerProbeRows,
+    );
     if (readiness.isReady(window)) return;
     if (!readiness.needsBootGateNudge(window)) return;
     final key = '$sessionId:$memberId';
@@ -140,7 +146,9 @@ final class TabMemberPtyDelivery {
     required bool automation,
     bool latchUserTurn = true,
   }) async {
-    final shell = _tabStore.openTabBySessionId(sessionId)?.memberShells[memberId];
+    final shell = _tabStore
+        .openTabBySessionId(sessionId)
+        ?.memberShells[memberId];
     if (shell == null) {
       appLogger.w(
         '[session-runtime] pty-inject skipped no-shell '
@@ -191,7 +199,9 @@ final class TabMemberPtyDelivery {
     String memberId,
     String notice,
   ) async {
-    final shell = _tabStore.openTabBySessionId(sessionId)?.memberShells[memberId];
+    final shell = _tabStore
+        .openTabBySessionId(sessionId)
+        ?.memberShells[memberId];
     if (shell == null) {
       appLogger.w(
         '[session-runtime] retry-delivery skipped no-shell '
@@ -220,7 +230,10 @@ final class TabMemberPtyDelivery {
         memberId,
         automation: false,
       );
-      await shell.input.submitFullScreenInput(trimmed, pasteSettleDelay: settle);
+      await shell.input.submitFullScreenInput(
+        trimmed,
+        pasteSettleDelay: settle,
+      );
       if (isMailDoorbell) {
         _reportMailDeliveryOutcome(
           sessionId,
@@ -230,11 +243,7 @@ final class TabMemberPtyDelivery {
       }
       return;
     }
-    final settle = _pasteSettleForMember(
-      sessionId,
-      memberId,
-      automation: true,
-    );
+    final settle = _pasteSettleForMember(sessionId, memberId, automation: true);
     final outcome = await _ptyInject.retry(
       input: shell.input,
       probe: shell.probe,
@@ -245,6 +254,7 @@ final class TabMemberPtyDelivery {
       aborted: () =>
           _ptyAckAborted(shell, sessionId: sessionId, memberId: memberId),
       crAckConfig: _crAckForMember(sessionId, memberId),
+      painted: shell.observationPainted,
     );
     if (isMailDoorbell) {
       _reportMailDeliveryOutcome(sessionId, memberId, outcome);
@@ -325,6 +335,7 @@ final class TabMemberPtyDelivery {
         aborted: () =>
             _ptyAckAborted(shell, sessionId: sessionId, memberId: memberId),
         crAckConfig: _crAckForMember(sessionId, memberId),
+        painted: shell.observationPainted,
       );
       if (isMailDoorbell) {
         _reportMailDeliveryOutcome(sessionId, memberId, outcome);
@@ -487,7 +498,6 @@ final class TabMemberPtyDelivery {
     _coordinationFactory.forMember(sessionId, memberId)?.latchTurnStarted();
     _onAfterTurnLatched?.call(sessionId, memberId);
   }
-
 }
 
 PromptDeliveryCoordinator _tabPromptDeliveries(ChatTabStore tabStore) =>

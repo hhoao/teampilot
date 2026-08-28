@@ -12,6 +12,9 @@ abstract interface class FullscreenPtyDeliveryPort {
 
   Future<void> syncDisplayGrid();
 
+  /// Completes on the next screen paint, or when [timeout] elapses.
+  Future<void> waitForPaint({required Duration timeout});
+
   FullscreenPromptAnchor? locateNeedle(String needle, {int scanRows = 24});
 
   /// Collapsed-paste chrome ACK when body text is hidden from the grid

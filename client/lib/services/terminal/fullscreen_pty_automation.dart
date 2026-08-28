@@ -126,10 +126,7 @@ class FullscreenPtyAutomation {
     await port.syncDisplayGrid();
     await port.clearStagedInput(canExecute: canExecute);
     await Future<void>.delayed(_timing.afterClear);
-    await port.pasteText(
-      text,
-      canExecute: canExecute,
-    );
+    await port.pasteText(text, canExecute: canExecute);
     final anchor = await _pollForNeedle(
       port,
       needle,
@@ -209,7 +206,8 @@ class FullscreenPtyAutomation {
     FullscreenPtyDeliveryPort port,
     Duration pasteSettle,
   ) async {
-    if (port.crAckConfig.strategy != FullscreenCrAckStrategy.composerMovesDown) {
+    if (port.crAckConfig.strategy !=
+        FullscreenCrAckStrategy.composerMovesDown) {
       return;
     }
     final extra = _timing.afterPasteAck > pasteSettle
@@ -244,9 +242,17 @@ class FullscreenPtyAutomation {
       await port.syncDisplayGrid();
       final anchor = _locatePasteAck(port, needle);
       if (anchor != null) return anchor;
-      if (_timing.pollInterval > Duration.zero) {
-        await Future<void>.delayed(_timing.pollInterval);
-      }
+      final remaining = deadline.difference(DateTime.now());
+      if (remaining <= Duration.zero) break;
+      final slice =
+          _timing.pollInterval <= Duration.zero ||
+              remaining < _timing.pollInterval
+          ? remaining
+          : _timing.pollInterval;
+      await Future.any<void>([
+        port.waitForPaint(timeout: slice),
+        if (_timing.pollInterval > Duration.zero) Future<void>.delayed(slice),
+      ]);
     }
     return null;
   }

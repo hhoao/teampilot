@@ -181,6 +181,9 @@ class TerminalSession {
   Stream<PendingUserMessage> get parkedUserSubmissions =>
       _parkedSubmissions.stream;
 
+  /// Screen-paint notifications from the seat observation bus, if attached.
+  Stream<void>? get observationPainted => _observationBus?.painted;
+
   bool isUnreadParkedMessage(String id) =>
       _teamBusIntercept?.isUnreadParkedMessage(id) ?? false;
 

@@ -78,70 +78,112 @@ void main() {
       expect(port.crCount, greaterThanOrEqualTo(1));
     });
 
-    test('accepts cursor submit when transcript keeps the submitted text', () async {
-      final port = _CursorTranscriptAfterSubmitPort();
+    test(
+      'accepts cursor submit when transcript keeps the submitted text',
+      () async {
+        final port = _CursorTranscriptAfterSubmitPort();
 
-      final outcome = await automation.deliverPasteAndSubmit(
-        port: port,
-        text: TeamBus.doorbellNotice,
-        pasteSettle: Duration.zero,
-      );
+        final outcome = await automation.deliverPasteAndSubmit(
+          port: port,
+          text: TeamBus.doorbellNotice,
+          pasteSettle: Duration.zero,
+        );
 
-      expect(
-        outcome,
-        FullscreenPtyDeliveryOutcome.submitted,
-        reason:
-            'cursor keeps the submitted prompt visible as transcript history '
-            'and paints a fresh composer below it',
-      );
-    });
+        expect(
+          outcome,
+          FullscreenPtyDeliveryOutcome.submitted,
+          reason:
+              'cursor keeps the submitted prompt visible as transcript history '
+              'and paints a fresh composer below it',
+        );
+      },
+    );
 
-    test('pastes even when resume transcript already shows the same text', () async {
-      // Simulates Cursor --resume: prior user line "hello" still near composer.
-      final port = FakeFullscreenPtyDeliveryPort()..staged = 'hello';
+    test(
+      'pastes even when resume transcript already shows the same text',
+      () async {
+        // Simulates Cursor --resume: prior user line "hello" still near composer.
+        final port = FakeFullscreenPtyDeliveryPort()..staged = 'hello';
 
-      final outcome = await automation.deliverPasteAndSubmit(
-        port: port,
-        text: 'hello',
-        pasteSettle: Duration.zero,
-      );
+        final outcome = await automation.deliverPasteAndSubmit(
+          port: port,
+          text: 'hello',
+          pasteSettle: Duration.zero,
+        );
 
-      expect(outcome, FullscreenPtyDeliveryOutcome.submitted);
-      expect(
-        port.pasteCount,
-        1,
-        reason:
-            'must not CR-only on a transcript false-positive; always paste '
-            'on first deliver',
-      );
-      expect(port.clearCount, greaterThanOrEqualTo(1));
-    });
+        expect(outcome, FullscreenPtyDeliveryOutcome.submitted);
+        expect(
+          port.pasteCount,
+          1,
+          reason:
+              'must not CR-only on a transcript false-positive; always paste '
+              'on first deliver',
+        );
+        expect(port.clearCount, greaterThanOrEqualTo(1));
+      },
+    );
 
-    test('composerMovesDown waits pasteSettle after needle before CR', () async {
-      final port = _TimestampedPastePort();
-      final delay = FullscreenPtyAutomation(timing: PtyAutomationTiming.instant());
+    test(
+      'paste ACK proceeds on waitForPaint without waiting pollInterval',
+      () async {
+        final port = _PaintWakePort();
+        final automation = FullscreenPtyAutomation(
+          timing: const PtyAutomationTiming(
+            afterClear: Duration.zero,
+            afterPaste: Duration.zero,
+            afterCr: Duration.zero,
+            afterReinject: Duration.zero,
+            crMaxAttempts: 2,
+            reinjectMaxAttempts: 1,
+            nudgeMaxAttempts: 2,
+            scanRows: 24,
+            pollTimeout: Duration(seconds: 2),
+            pollInterval: Duration(milliseconds: 200),
+          ),
+        );
+        final sw = Stopwatch()..start();
+        final outcome = await automation.deliverPasteAndSubmit(
+          port: port,
+          text: 'needle-text',
+          pasteSettle: Duration.zero,
+        );
+        sw.stop();
+        expect(outcome, FullscreenPtyDeliveryOutcome.submitted);
+        expect(sw.elapsedMilliseconds, lessThan(150));
+      },
+    );
 
-      await delay.deliverPasteAndSubmit(
-        port: port,
-        text: 'hello',
-        pasteSettle: const Duration(milliseconds: 80),
-      );
+    test(
+      'composerMovesDown waits pasteSettle after needle before CR',
+      () async {
+        final port = _TimestampedPastePort();
+        final delay = FullscreenPtyAutomation(
+          timing: PtyAutomationTiming.instant(),
+        );
 
-      expect(port.needleSeenAt, isNotNull);
-      expect(port.crAt, isNotNull);
-      expect(
-        port.crAt!.difference(port.needleSeenAt!).inMilliseconds,
-        greaterThanOrEqualTo(80),
-        reason:
-            'Codex/Cursor still in bracketed-paste when the needle first '
-            'paints; CR before paste-end becomes a newline, not submit',
-      );
-    });
+        await delay.deliverPasteAndSubmit(
+          port: port,
+          text: 'hello',
+          pasteSettle: const Duration(milliseconds: 80),
+        );
+
+        expect(port.needleSeenAt, isNotNull);
+        expect(port.crAt, isNotNull);
+        expect(
+          port.crAt!.difference(port.needleSeenAt!).inMilliseconds,
+          greaterThanOrEqualTo(80),
+          reason:
+              'Codex/Cursor still in bracketed-paste when the needle first '
+              'paints; CR before paste-end becomes a newline, not submit',
+        );
+      },
+    );
   });
 
   group('nudgeCrUntilClear', () {
     test('submits CR when text already visible', () async {
-      final port = FakeFullscreenPtyDeliveryPort()..staged = TeamBus.doorbellNotice;
+      final port = FakeFullscreenPtyDeliveryPort()
+        ..staged = TeamBus.doorbellNotice;
 
       final outcome = await automation.nudgeCrUntilClear(
         port: port,
@@ -195,55 +237,57 @@ void main() {
       expect(port.crCount, 1);
     });
 
-    test('skips re-paste entirely when hook already acked the submit', () async {
-      final port = FakeFullscreenPtyDeliveryPort();
+    test(
+      'skips re-paste entirely when hook already acked the submit',
+      () async {
+        final port = FakeFullscreenPtyDeliveryPort();
 
-      final outcome = await automation.retry(
-        port: port,
-        text: TeamBus.doorbellNotice,
-        pasteSettle: Duration.zero,
-        isAcked: () => true,
-      );
+        final outcome = await automation.retry(
+          port: port,
+          text: TeamBus.doorbellNotice,
+          pasteSettle: Duration.zero,
+          isAcked: () => true,
+        );
 
-      expect(
-        outcome,
-        FullscreenPtyDeliveryOutcome.submitted,
-        reason: 'hook confirmed the prompt already committed; retry re-paste '
-            'would duplicate the user row',
-      );
-      expect(port.pasteCount, 0);
-      expect(port.crCount, 0);
-    });
+        expect(
+          outcome,
+          FullscreenPtyDeliveryOutcome.submitted,
+          reason:
+              'hook confirmed the prompt already committed; retry re-paste '
+              'would duplicate the user row',
+        );
+        expect(port.pasteCount, 0);
+        expect(port.crCount, 0);
+      },
+    );
   });
 
   test('isTextVisible uses PtyAutomationNeedle', () {
-    final port = FakeFullscreenPtyDeliveryPort()
-      ..staged = '和你的队员打个招呼吧';
-    expect(
-      automation.isTextVisible(port, '和你的队员打个招呼吧'),
-      isTrue,
-    );
+    final port = FakeFullscreenPtyDeliveryPort()..staged = '和你的队员打个招呼吧';
+    expect(automation.isTextVisible(port, '和你的队员打个招呼吧'), isTrue);
   });
 
-  test('hook confirmation after first CR prevents all later automated CRs',
-      () async {
-    final port = _AnchorCellStuckButHookAckedPort(text: 'A');
-    var confirmed = false;
-    bool canExecute() {
-      if (port.crCount > 0) confirmed = true;
-      return !confirmed;
-    }
+  test(
+    'hook confirmation after first CR prevents all later automated CRs',
+    () async {
+      final port = _AnchorCellStuckButHookAckedPort(text: 'A');
+      var confirmed = false;
+      bool canExecute() {
+        if (port.crCount > 0) confirmed = true;
+        return !confirmed;
+      }
 
-    final outcome = await automation.deliverPasteAndSubmit(
-      port: port,
-      text: 'A',
-      pasteSettle: Duration.zero,
-      isAcked: () => !canExecute(),
-    );
+      final outcome = await automation.deliverPasteAndSubmit(
+        port: port,
+        text: 'A',
+        pasteSettle: Duration.zero,
+        isAcked: () => !canExecute(),
+      );
 
-    expect(outcome, FullscreenPtyDeliveryOutcome.submitted);
-    expect(port.crCount, 1);
-  });
+      expect(outcome, FullscreenPtyDeliveryOutcome.submitted);
+      expect(port.crCount, 1);
+    },
+  );
 }
 
 final class _TimestampedPastePort implements FullscreenPtyDeliveryPort {
@@ -270,6 +314,10 @@ final class _TimestampedPastePort implements FullscreenPtyDeliveryPort {
 
   @override
   Future<void> syncDisplayGrid() => _inner.syncDisplayGrid();
+
+  @override
+  Future<void> waitForPaint({required Duration timeout}) =>
+      _inner.waitForPaint(timeout: timeout);
 
   @override
   FullscreenPromptAnchor? locateNeedle(String needle, {int scanRows = 24}) {
@@ -336,6 +384,9 @@ final class _CursorTranscriptAfterSubmitPort
 
   @override
   Future<void> syncDisplayGrid() async {}
+
+  @override
+  Future<void> waitForPaint({required Duration timeout}) async {}
 
   @override
   FullscreenPromptAnchor? locateNeedle(String needle, {int scanRows = 24}) {
@@ -428,6 +479,9 @@ final class _ComposerMovesDownStuckButCommittedPort
   Future<void> syncDisplayGrid() async {}
 
   @override
+  Future<void> waitForPaint({required Duration timeout}) async {}
+
+  @override
   FullscreenPromptAnchor? locateNeedle(String needle, {int scanRows = 24}) {
     final hay = _composerBody ?? _transcript;
     if (hay == null || !hay.contains(needle)) return null;
@@ -511,6 +565,9 @@ final class _ComposerMovesDownStuckStagedThenAckPort
   Future<void> syncDisplayGrid() async {}
 
   @override
+  Future<void> waitForPaint({required Duration timeout}) async {}
+
+  @override
   FullscreenPromptAnchor? locateNeedle(String needle, {int scanRows = 24}) {
     if (staged == null || !staged!.contains(needle)) return null;
     return FullscreenPromptAnchor(
@@ -564,7 +621,8 @@ final class _ComposerMovesDownStuckStagedThenAckPort
   }
 
   @override
-  String describeProbeWindow({int scanRows = 24}) => 'staged=$staged round=$_round';
+  String describeProbeWindow({int scanRows = 24}) =>
+      'staged=$staged round=$_round';
 }
 
 /// First CR clears composer without leaving a needle (swallowed); reinject recovers.
@@ -592,6 +650,9 @@ final class _ComposerMovesDownEmptyNoNeedleThenAckPort
 
   @override
   Future<void> syncDisplayGrid() async {}
+
+  @override
+  Future<void> waitForPaint({required Duration timeout}) async {}
 
   @override
   FullscreenPromptAnchor? locateNeedle(String needle, {int scanRows = 24}) {
@@ -682,6 +743,9 @@ final class _AnchorCellStuckButHookAckedPort
   Future<void> syncDisplayGrid() async {}
 
   @override
+  Future<void> waitForPaint({required Duration timeout}) async {}
+
+  @override
   FullscreenPromptAnchor? locateNeedle(String needle, {int scanRows = 24}) {
     if (staged == null) return null;
     return FullscreenPromptAnchor(
@@ -732,4 +796,82 @@ final class _AnchorCellStuckButHookAckedPort
   @override
   String describeProbeWindow({int scanRows = 24}) =>
       'submitted=$submitted staged=$staged';
+}
+
+/// First locate after paste misses; [waitForPaint] reveals the needle immediately.
+final class _PaintWakePort implements FullscreenPtyDeliveryPort {
+  var _visible = false;
+  String? staged;
+  int pasteCount = 0;
+  int crCount = 0;
+
+  @override
+  bool get isAborted => false;
+
+  @override
+  int get viewportRows => 24;
+
+  @override
+  FullscreenCrAckConfig get crAckConfig =>
+      const FullscreenCrAckConfig.productionDefault();
+
+  @override
+  Future<void> syncDisplayGrid() async {}
+
+  @override
+  Future<void> waitForPaint({required Duration timeout}) async {
+    _visible = true;
+  }
+
+  @override
+  FullscreenPromptAnchor? locateNeedle(String needle, {int scanRows = 24}) {
+    if (!_visible || staged == null || !staged!.contains(needle)) return null;
+    return FullscreenPromptAnchor(
+      row: 0,
+      startCol: staged!.indexOf(needle),
+      needle: needle,
+    );
+  }
+
+  @override
+  FullscreenPromptAnchor? locateCollapsedPasteNeedle({int scanRows = 24}) =>
+      null;
+
+  @override
+  bool isAtAnchor(FullscreenPromptAnchor anchor) =>
+      _visible && staged != null && staged!.contains(anchor.needle);
+
+  @override
+  bool isSubmittedAfterCr(FullscreenPromptAnchor anchor, {int scanRows = 24}) =>
+      crCount > 0 && (staged == null || !staged!.contains(anchor.needle));
+
+  @override
+  bool isComposerChromeEmpty({int scanRows = 24}) =>
+      staged == null || staged!.trim().isEmpty;
+
+  @override
+  bool isNeedleStagedInComposer(String needle, {int scanRows = 24}) =>
+      staged != null && staged!.contains(needle);
+
+  @override
+  Future<void> clearStagedInput({bool Function()? canExecute}) async {
+    staged = null;
+    _visible = false;
+  }
+
+  @override
+  Future<void> pasteText(String text, {bool Function()? canExecute}) async {
+    pasteCount++;
+    staged = text;
+  }
+
+  @override
+  Future<void> submitCr({bool Function()? canExecute}) async {
+    crCount++;
+    staged = null;
+  }
+
+  @override
+  String describeProbeWindow({int scanRows = 24}) =>
+      'visible=$_visible staged=$staged';
 }
