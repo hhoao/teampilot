@@ -94,6 +94,7 @@ class SessionChatComposeSection extends StatelessWidget {
     required this.onSubmit,
     this.userStoppedTurn = false,
     this.onUserStoppedTurn,
+    this.turnStarting = false,
     super.key,
   });
 
@@ -130,6 +131,10 @@ class SessionChatComposeSection extends StatelessWidget {
   /// reports working (cancel redraw noise).
   final bool userStoppedTurn;
   final VoidCallback? onUserStoppedTurn;
+
+  /// History continue is awaiting connect / boot (Starting tip) — show Stop
+  /// even though the seat is not [memberWorking] yet.
+  final bool turnStarting;
 
   @override
   Widget build(BuildContext context) {
@@ -367,12 +372,14 @@ class SessionChatComposeSection extends StatelessWidget {
                               composeController.text.trim().isEmpty &&
                               !(composeClip?.collapsed ?? false);
                           final effectiveWorking =
-                              memberWorking && !userStoppedTurn;
+                              (memberWorking || turnStarting) &&
+                              !userStoppedTurn;
                           final showComposeStop = shouldShowComposeStop(
                             memberWorking: memberWorking,
                             supportsTurnInterrupt: supportsTurnInterrupt,
                             composeTextEmpty: composeTextEmpty,
                             userStoppedTurn: userStoppedTurn,
+                            turnStarting: turnStarting,
                           );
                           final canSubmit =
                               !permissionWaiting &&

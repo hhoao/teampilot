@@ -50,7 +50,7 @@ void main() {
     expect(writes, ['\x03']);
   });
 
-  test('no-op when shell disconnected', () async {
+  test('aborts inject but skips PTY when shell disconnected', () async {
     final aborted = <String>[];
     final writes = <String>[];
     final service = MemberTurnInterruptService(
@@ -64,7 +64,25 @@ void main() {
       shell: _FakeShell(connected: false),
       cli: CliTool.claude,
     );
-    expect(aborted, isEmpty);
+    expect(aborted, ['s1:m1']);
+    expect(writes, isEmpty);
+  });
+
+  test('aborts inject when shell is null (starting / not connected yet)', () async {
+    final aborted = <String>[];
+    final writes = <String>[];
+    final service = MemberTurnInterruptService(
+      cliToolRegistry: CliToolRegistry.builtIn(),
+      abortMemberInject: (s, m) => aborted.add('$s:$m'),
+      writePty: (_, text) => writes.add(text),
+    );
+    await service.interrupt(
+      sessionId: 's1',
+      memberId: 'm1',
+      shell: null,
+      cli: CliTool.claude,
+    );
+    expect(aborted, ['s1:m1']);
     expect(writes, isEmpty);
   });
 }

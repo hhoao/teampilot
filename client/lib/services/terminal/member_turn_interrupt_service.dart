@@ -30,14 +30,16 @@ final class MemberTurnInterruptService {
     required TerminalSession? shell,
     required CliTool cli,
   }) async {
+    // Always abort in-flight inject first — including Starting, when the shell
+    // is not connected yet but a History continue may already be queued.
+    _abortMemberInject(sessionId, memberId);
+
     if (shell == null || !shell.isConnected) {
       appLogger.d(
-        '[turn-interrupt] skip $sessionId:$memberId — shell not connected',
+        '[turn-interrupt] skip PTY $sessionId:$memberId — shell not connected',
       );
       return;
     }
-
-    _abortMemberInject(sessionId, memberId);
 
     final cap = _cliToolRegistry.capability<TerminalBehaviorCapability>(cli);
     if (cap == null || !cap.supportsTurnInterrupt) {

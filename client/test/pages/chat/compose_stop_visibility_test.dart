@@ -59,4 +59,26 @@ void main() {
       isFalse,
     );
   });
+
+  test('shouldShowComposeStop shows during starting even when not working yet', () {
+    expect(
+      shouldShowComposeStop(
+        memberWorking: false,
+        supportsTurnInterrupt: true,
+        composeTextEmpty: true,
+        turnStarting: true,
+      ),
+      isTrue,
+    );
+    expect(
+      shouldShowComposeStop(
+        memberWorking: false,
+        supportsTurnInterrupt: true,
+        composeTextEmpty: true,
+        turnStarting: true,
+        userStoppedTurn: true,
+      ),
+      isFalse,
+    );
+  });
 }

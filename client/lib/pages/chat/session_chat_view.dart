@@ -508,6 +508,19 @@ class _SessionChatViewState extends State<SessionChatView> {
     _seat?.flushHeldTip(endAwaiting: true);
   }
 
+  /// Starting tip without PTY working yet — still offer Stop to cancel wait.
+  bool _composeTurnStarting(ChatCubit chat) {
+    if (_userStoppedTurn.value) return false;
+    final rawWorking = chat.isMemberWorking(
+      widget.session.sessionId,
+      _shellMemberId,
+    );
+    if (rawWorking) return false;
+    return _isSubmitting ||
+        _historyContinueInFlight ||
+        (_seat?.state.awaitingAssistant ?? false);
+  }
+
   void _clearStoppedTurnIfSeatIdle(ChatCubit chat) {
     if (!_userStoppedTurn.value) return;
     if (chat.isMemberWorking(widget.session.sessionId, _shellMemberId)) {
@@ -962,6 +975,10 @@ class _SessionChatViewState extends State<SessionChatView> {
       _historyContinueInFlight = false;
       _submitBusy.value = false;
       _suppressComposeDraftPersistence = false;
+      // Stop during Starting may race deliver settle — keep tip cleared.
+      if (_userStoppedTurn.value) {
+        _seat?.flushHeldTip(endAwaiting: true);
+      }
     }
   }
 
@@ -1401,6 +1418,9 @@ class _SessionChatViewState extends State<SessionChatView> {
                                                     _userStoppedTurn.value,
                                                 onUserStoppedTurn:
                                                     _onUserStoppedTurn,
+                                                turnStarting: _composeTurnStarting(
+                                                  context.read<ChatCubit>(),
+                                                ),
                                               );
                                             },
                                           ),
