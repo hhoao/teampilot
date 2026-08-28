@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../cubits/cli_presets_cubit.dart';
+import '../../cubits/member_presence_cubit.dart';
 import '../../l10n/l10n_extensions.dart';
 import '../../models/app_provider_config.dart';
 import '../../models/cli_preset.dart';
@@ -22,6 +23,29 @@ import '../cli/cli_brand_icon.dart';
 import '../member_presence_indicator.dart';
 import '../team/team_lead_badge.dart';
 import '../workspace_folder_directory_row.dart';
+
+/// Per-member presence for the roster tile. Falls back to [fallback] when
+/// [MemberPresenceCubit] is not in scope (standalone widget tests).
+///
+/// Inactive keep-alive tabs wrap this panel in [TickerMode] off — [read]
+/// instead of [select] so idle-watch ticks do not rebuild every tile.
+MemberPresence watchMemberPresence(
+  BuildContext context, {
+  required String memberId,
+  Map<String, MemberPresence> fallback = const {},
+}) {
+  MemberPresence fromCubit(MemberPresenceCubit cubit) =>
+      cubit.memberPresenceFor(memberId);
+
+  try {
+    if (!TickerMode.valuesOf(context).enabled) {
+      return fromCubit(context.read<MemberPresenceCubit>());
+    }
+    return context.select<MemberPresenceCubit, MemberPresence>(fromCubit);
+  } on ProviderNotFoundException {
+    return fallback[memberId] ?? const MemberPresence.offline();
+  }
+}
 
 /// Team roster list panel.
 class MembersPanel extends StatelessWidget {
@@ -73,9 +97,7 @@ class MembersPanel extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
-    final styles = TpTextStyles.of(context);
     final l10n = context.l10n;
-    final registry = CliToolRegistryScope.maybeOf(context);
     final groups = groupByMachine
         ? groupMembersByMachine(members: members, memberTargets: memberTargets)
         : const <MembersMachineGroup>[];
@@ -117,110 +139,31 @@ class MembersPanel extends StatelessWidget {
                       runtimeTargets: runtimeTargets,
                     ),
                     for (final member in group.members)
-                      _memberTile(
-                        context,
+                      _MembersPanelTile(
+                        team: team,
                         member: member,
-                        cs: cs,
-                        styles: styles,
-                        l10n: l10n,
-                        registry: registry,
+                        memberPresence: memberPresence,
+                        providersByCli: providersByCli,
+                        selectedMemberId: selectedMemberId,
+                        onSelected: onSelected,
+                        onShowMenu: _showMemberMenu,
                       ),
                   ]
                 else
                   for (final member in members)
-                    _memberTile(
-                      context,
+                    _MembersPanelTile(
+                      team: team,
                       member: member,
-                      cs: cs,
-                      styles: styles,
-                      l10n: l10n,
-                      registry: registry,
+                      memberPresence: memberPresence,
+                      providersByCli: providersByCli,
+                      selectedMemberId: selectedMemberId,
+                      onSelected: onSelected,
+                      onShowMenu: _showMemberMenu,
                     ),
               ],
             ),
           ),
         ],
-      ),
-    );
-  }
-
-  Widget _memberTile(
-    BuildContext context, {
-    required TeamMemberConfig member,
-    required ColorScheme cs,
-    required TpTextStyles styles,
-    required AppLocalizations l10n,
-    required CliToolRegistry? registry,
-  }) {
-    final selected = member.id == selectedMemberId;
-    final presence =
-        memberPresence[member.id] ?? const MemberPresence.offline();
-    final statusLabel = memberPresenceStatusLabel(l10n, presence);
-    final presets = context.select<CliPresetsCubit, List<CliPreset>>(
-      (c) => c.state.presets,
-    );
-    final launch = resolveMemberLaunch(
-      team: team,
-      member: member,
-      globalPresets: presets,
-    );
-    final memberCli = launch.cli;
-    final catalogCli = _catalogCli(registry, memberCli);
-    final memberProvider = _memberProvider(
-      providersByCli[catalogCli] ?? const [],
-      launch.provider,
-    );
-    final brandLabel =
-        memberProvider?.name ?? _cliDisplayLabel(registry, memberCli, l10n);
-    final meta = [
-      brandLabel,
-      launch.model,
-    ].where((v) => v.isNotEmpty).join(' / ');
-    final subtitle = meta.isEmpty ? statusLabel : '$statusLabel · $meta';
-    final titleColor = selected ? cs.onSecondaryContainer : cs.onSurface;
-    final subtitleColor = selected
-        ? cs.onSecondaryContainer.withValues(alpha: 0.74)
-        : cs.onSurfaceVariant;
-    return Container(
-      key: AppKeys.memberRow(member.id),
-      margin: const EdgeInsets.only(bottom: 8),
-      child: GestureDetector(
-        behavior: HitTestBehavior.opaque,
-        onSecondaryTapDown: (d) => _showMemberMenu(context, l10n, member, d),
-        onLongPressStart: (d) => _showMemberMenu(
-          context,
-          l10n,
-          member,
-          TapDownDetails(globalPosition: d.globalPosition),
-        ),
-        child: Material(
-          color: selected ? cs.secondaryContainer : cs.workspaceInset,
-          borderRadius: BorderRadius.circular(8),
-          child: ListTile(
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(8),
-            ),
-            leading: memberProvider != null
-                ? ProviderBrandIcon.fromConfig(
-                    memberProvider,
-                    size: 28,
-                    borderRadius: 7,
-                  )
-                : CliBrandIcon(cli: memberCli, size: 28, borderRadius: 7),
-            title: MemberTitleRow(
-              member: member,
-              fallbackName: l10n.memberName,
-              style: styles.md,
-              textColor: titleColor,
-              compactBadge: true,
-            ),
-            textColor: titleColor,
-            iconColor: titleColor,
-            subtitle: Text(subtitle, style: styles.smColored(subtitleColor)),
-            trailing: MemberPresenceIndicator(presence: presence),
-            onTap: () => onSelected(member.id),
-          ),
-        ),
       ),
     );
   }
@@ -282,6 +225,114 @@ class MembersPanel extends StatelessWidget {
       case null:
         break;
     }
+  }
+}
+
+class _MembersPanelTile extends StatelessWidget {
+  const _MembersPanelTile({
+    required this.team,
+    required this.member,
+    required this.memberPresence,
+    required this.providersByCli,
+    required this.selectedMemberId,
+    required this.onSelected,
+    required this.onShowMenu,
+  });
+
+  final TeamProfile team;
+  final TeamMemberConfig member;
+  final Map<String, MemberPresence> memberPresence;
+  final Map<CliTool, List<AppProviderConfig>> providersByCli;
+  final String selectedMemberId;
+  final ValueChanged<String> onSelected;
+  final Future<void> Function(
+    BuildContext context,
+    AppLocalizations l10n,
+    TeamMemberConfig member,
+    TapDownDetails details,
+  )
+  onShowMenu;
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    final styles = TpTextStyles.of(context);
+    final l10n = context.l10n;
+    final registry = CliToolRegistryScope.maybeOf(context);
+    final selected = member.id == selectedMemberId;
+    final presence = watchMemberPresence(
+      context,
+      memberId: member.id,
+      fallback: memberPresence,
+    );
+    final statusLabel = memberPresenceStatusLabel(l10n, presence);
+    final presets = context.select<CliPresetsCubit, List<CliPreset>>(
+      (c) => c.state.presets,
+    );
+    final launch = resolveMemberLaunch(
+      team: team,
+      member: member,
+      globalPresets: presets,
+    );
+    final memberCli = launch.cli;
+    final catalogCli = _catalogCli(registry, memberCli);
+    final memberProvider = _memberProvider(
+      providersByCli[catalogCli] ?? const [],
+      launch.provider,
+    );
+    final brandLabel =
+        memberProvider?.name ?? _cliDisplayLabel(registry, memberCli, l10n);
+    final meta = [
+      brandLabel,
+      launch.model,
+    ].where((v) => v.isNotEmpty).join(' / ');
+    final subtitle = meta.isEmpty ? statusLabel : '$statusLabel · $meta';
+    final titleColor = selected ? cs.onSecondaryContainer : cs.onSurface;
+    final subtitleColor = selected
+        ? cs.onSecondaryContainer.withValues(alpha: 0.74)
+        : cs.onSurfaceVariant;
+    return Container(
+      key: AppKeys.memberRow(member.id),
+      margin: const EdgeInsets.only(bottom: 8),
+      child: GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onSecondaryTapDown: (d) => onShowMenu(context, l10n, member, d),
+        onLongPressStart: (d) => onShowMenu(
+          context,
+          l10n,
+          member,
+          TapDownDetails(globalPosition: d.globalPosition),
+        ),
+        child: Material(
+          color: selected ? cs.secondaryContainer : cs.workspaceInset,
+          borderRadius: BorderRadius.circular(8),
+          child: ListTile(
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(8),
+            ),
+            leading: memberProvider != null
+                ? ProviderBrandIcon.fromConfig(
+                    memberProvider,
+                    size: 28,
+                    borderRadius: 7,
+                  )
+                : CliBrandIcon(cli: memberCli, size: 28, borderRadius: 7),
+            title: MemberTitleRow(
+              member: member,
+              fallbackName: l10n.memberName,
+              style: styles.md,
+              textColor: titleColor,
+              compactBadge: true,
+            ),
+            textColor: titleColor,
+            iconColor: titleColor,
+            subtitle: Text(subtitle, style: styles.smColored(subtitleColor)),
+            trailing: MemberPresenceIndicator(presence: presence),
+            onTap: () => onSelected(member.id),
+          ),
+        ),
+      ),
+    );
   }
 }
 

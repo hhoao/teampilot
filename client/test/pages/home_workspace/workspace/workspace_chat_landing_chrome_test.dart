@@ -13,6 +13,7 @@ import 'package:teampilot/cubits/skill_cubit.dart';
 import 'package:teampilot/cubits/worktree_cubit.dart';
 import 'package:teampilot/l10n/app_localizations.dart';
 import 'package:teampilot/models/workspace.dart';
+import 'package:teampilot/pages/home_workspace/workspace/unbound_compose_body.dart';
 import 'package:teampilot/pages/home_workspace/workspace/workspace_chat_landing.dart';
 import 'package:teampilot/pages/home_workspace/workspace/workspace_landing_selectors.dart';
 import 'package:teampilot/services/cli/registry/cli_tool_registry.dart';
@@ -70,6 +71,7 @@ void main() {
     _stubCubit(skillCubit, const SkillState());
     _stubCubit(worktreeCubit, const WorktreeState());
     when(() => worktreeCubit.worktreesForProject(any())).thenReturn(const []);
+    when(() => chatCubit.remoteCliReadiness).thenReturn(null);
 
     final theme = buildDarkTheme();
     await tester.pumpWidget(
@@ -139,5 +141,27 @@ void main() {
       tester.getRect(back).left,
       greaterThanOrEqualTo(TpMobileChrome.leadingInset),
     );
+  });
+
+  testWidgets('landing compose typing does not rebuild UnboundComposeBody', (
+    tester,
+  ) async {
+    await pumpLanding(tester);
+
+    var bodyRebuilds = 0;
+    debugOnRebuildDirtyWidget = (element, _) {
+      if (element.widget is UnboundComposeBody) bodyRebuilds++;
+    };
+    addTearDown(() => debugOnRebuildDirtyWidget = null);
+
+    await tester.enterText(find.byType(TextField).first, 'hello');
+    await tester.pump();
+
+    expect(
+      bodyRebuilds,
+      0,
+      reason: 'keystrokes must not setState the landing compose body',
+    );
+    expect(find.byIcon(Icons.arrow_upward_rounded), findsOneWidget);
   });
 }

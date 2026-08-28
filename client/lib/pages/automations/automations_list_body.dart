@@ -323,9 +323,7 @@ class _FlatList extends StatelessWidget {
             final l10n = context.l10n;
             return ListView.builder(
               shrinkWrap: shrinkWrap,
-              physics: shrinkWrap
-                  ? const NeverScrollableScrollPhysics()
-                  : null,
+              physics: shrinkWrap ? const NeverScrollableScrollPhysics() : null,
               padding: const EdgeInsets.fromLTRB(0, 0, 0, 8),
               itemCount: automations.length,
               itemBuilder: (context, index) {
@@ -396,6 +394,7 @@ class _GroupedList extends StatelessWidget {
     final cs = Theme.of(context).colorScheme;
     final styles = TpTextStyles.of(context);
     return BlocBuilder<ChatCubit, ChatState>(
+      buildWhen: (prev, next) => !identical(prev.workspaces, next.workspaces),
       builder: (context, chatState) {
         return BlocBuilder<LaunchProfileCubit, LaunchProfileState>(
           builder: (context, profileState) {
@@ -424,12 +423,13 @@ class _GroupedList extends StatelessWidget {
                         ),
                       ),
                       ...group.automations.map((automation) {
-                        final runs = List<AutomationRun>.of(
-                          runsByAutomationId[automation.id] ?? const [],
-                        )..sort(
-                          (x, y) =>
-                              y.scheduledForMs.compareTo(x.scheduledForMs),
-                        );
+                        final runs =
+                            List<AutomationRun>.of(
+                              runsByAutomationId[automation.id] ?? const [],
+                            )..sort(
+                              (x, y) =>
+                                  y.scheduledForMs.compareTo(x.scheduledForMs),
+                            );
                         return AutomationRow(
                           automation: automation,
                           scopeSubtitle: automationScopeSubtitle(
@@ -595,7 +595,7 @@ class AutomationRow extends StatelessWidget {
                       ),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
-                      style: styles.xsColored(cs.onSurfaceVariant,),
+                      style: styles.xsColored(cs.onSurfaceVariant),
                     ),
                   ],
                   if (runCountLabel.isNotEmpty) ...[
@@ -604,7 +604,7 @@ class AutomationRow extends StatelessWidget {
                       runCountLabel,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
-                      style: styles.xsColored(cs.onSurfaceVariant,),
+                      style: styles.xsColored(cs.onSurfaceVariant),
                     ),
                   ],
                   if (automation.enabled) ...[
@@ -613,7 +613,8 @@ class AutomationRow extends StatelessWidget {
                       nextRunLabel,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
-                      style: styles.xsColored(cs.primary.withValues(alpha: 0.85),
+                      style: styles.xsColored(
+                        cs.primary.withValues(alpha: 0.85),
                       ),
                     ),
                   ],
@@ -729,10 +730,7 @@ class AutomationRunHistoryRow extends StatelessWidget {
               ),
             ),
             const SizedBox(width: 12),
-            Text(
-              label,
-              style: styles.smSemiboldColored(statusColor),
-            ),
+            Text(label, style: styles.smSemiboldColored(statusColor)),
           ],
         ),
       ),

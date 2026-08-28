@@ -21,6 +21,8 @@ void main() {
     FocusNode? focusNode,
     ValueChanged<String>? onOpenAtFile,
     ComposeClip? clip,
+    bool canSubmit = false,
+    VoidCallback? onSubmit,
   }) {
     final resolvedController = controller ?? TextEditingController();
     if (controller == null) addTearDown(resolvedController.dispose);
@@ -39,8 +41,8 @@ void main() {
           controller: resolvedController,
           focusNode: resolvedFocusNode,
           hint: 'Ask anything',
-          canSubmit: false,
-          onSubmit: () {},
+          canSubmit: canSubmit,
+          onSubmit: onSubmit ?? () {},
           onChanged: (_) {},
           chrome: chrome,
           dropTarget: dropTarget,
@@ -201,6 +203,32 @@ void main() {
     expect(find.byIcon(Icons.arrow_upward_rounded), findsOneWidget);
     expect(find.byIcon(Icons.mic_none_outlined), findsNothing);
   });
+
+  testWidgets(
+    'launch-ok canSubmit enables send from local text without parent rebuild',
+    (tester) async {
+      final controller = TextEditingController();
+      addTearDown(controller.dispose);
+      var submitted = false;
+
+      await tester.pumpWidget(
+        pumpCard(
+          chrome: unboundChrome,
+          controller: controller,
+          canSubmit: true,
+          onSubmit: () => submitted = true,
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      controller.text = 'hello';
+      await tester.pump();
+
+      await tester.tap(find.byIcon(Icons.arrow_upward_rounded));
+      await tester.pump();
+      expect(submitted, isTrue);
+    },
+  );
 
   testWidgets('renders paste clip bar only while clip is collapsed', (
     tester,

@@ -102,8 +102,9 @@ class _WorkspaceLandingLocationFieldsState
         preferWorktreePath: widget.workingDirectoryPath,
       );
       if (!mounted || generation != _syncGeneration) return;
-      final resolved = _worktreeResolver(cubit.state)
-          .resolveSelectedWorktreePath();
+      final resolved = _worktreeResolver(
+        cubit.state,
+      ).resolveSelectedWorktreePath();
       final normalized = normalizeWorkspacePath(resolved);
       final stored = widget.workingDirectoryPath?.trim() ?? '';
       if (stored.isEmpty || !workspacePathsEqual(stored, normalized)) {
@@ -133,8 +134,9 @@ class _WorkspaceLandingLocationFieldsState
       }
       await cubit.selectProject(projectPath);
       if (!mounted || generation != _syncGeneration) return;
-      final resolved = _worktreeResolver(cubit.state)
-          .resolveSelectedWorktreePath();
+      final resolved = _worktreeResolver(
+        cubit.state,
+      ).resolveSelectedWorktreePath();
       widget.onWorktreeChanged(normalizeWorkspacePath(resolved));
     } on ProviderNotFoundException {
       widget.onWorktreeChanged(projectPath);
@@ -152,7 +154,21 @@ class _WorkspaceLandingLocationFieldsState
     final projectResolver = _projectResolver;
     WorktreeState? worktreeState;
     try {
-      worktreeState = context.watch<WorktreeCubit>().state;
+      final bits = context
+          .select<WorktreeCubit, (String, List<GitWorktree>, String, bool)>(
+            (c) => (
+              c.state.repoPath,
+              c.state.worktrees,
+              c.state.currentWorktreePath,
+              c.state.loading,
+            ),
+          );
+      worktreeState = WorktreeState(
+        repoPath: bits.$1,
+        worktrees: bits.$2,
+        currentWorktreePath: bits.$3,
+        loading: bits.$4,
+      );
     } on ProviderNotFoundException {
       worktreeState = null;
     }

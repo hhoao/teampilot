@@ -24,6 +24,7 @@ import '../../../models/cli_preset.dart';
 import '../../../models/team_config.dart';
 import '../../../models/workspace.dart';
 import '../../../models/runtime_target.dart';
+import '../../../models/git_worktree.dart';
 import '../../../services/ai/headless_ai_service.dart';
 import '../../../services/compose/compose_at_file_refs.dart';
 import '../../../services/compose/compose_clip.dart';
@@ -804,7 +805,21 @@ class _UnboundComposeBodyState extends State<UnboundComposeBody> {
 
   WorktreeState? _worktreeState(BuildContext context) {
     try {
-      return context.watch<WorktreeCubit>().state;
+      final bits = context
+          .select<WorktreeCubit, (String, List<GitWorktree>, String, bool)>(
+            (c) => (
+              c.state.repoPath,
+              c.state.worktrees,
+              c.state.currentWorktreePath,
+              c.state.loading,
+            ),
+          );
+      return WorktreeState(
+        repoPath: bits.$1,
+        worktrees: bits.$2,
+        currentWorktreePath: bits.$3,
+        loading: bits.$4,
+      );
     } on ProviderNotFoundException {
       return null;
     }
@@ -944,7 +959,6 @@ class _UnboundComposeBodyState extends State<UnboundComposeBody> {
 
   bool get _canSubmit {
     if (widget.disabled || widget.isSubmitting) return false;
-    if (_controller.text.trim().isEmpty && !_clip.collapsed) return false;
     if (_launchWarningBlock is RemoteCliMissingLaunchBlock) return false;
     if (_conversationMode == _LandingConversationMode.team) {
       final teams = context.read<LaunchProfileCubit>().state.teams;
@@ -1311,7 +1325,9 @@ class _UnboundComposeBodyState extends State<UnboundComposeBody> {
 
   ExpertHubState? _expertHubState(BuildContext context) {
     try {
-      return context.watch<ExpertHubCubit>().state;
+      return context.select<ExpertHubCubit, ExpertHubState>(
+        (c) => ExpertHubState(allMembers: c.state.allMembers),
+      );
     } on ProviderNotFoundException {
       return null;
     }
@@ -1530,7 +1546,7 @@ class _UnboundComposeBodyState extends State<UnboundComposeBody> {
       isSubmitting: widget.isSubmitting,
       canSubmit: _canSubmit,
       onSubmit: _submit,
-      onChanged: (_) => setState(() {}),
+      onChanged: (_) {},
       chrome: UnboundComposeChrome(
         conversationModeLabel: _conversationModeLabel(l10n),
         autoChipLabel: _autoChipLabel(

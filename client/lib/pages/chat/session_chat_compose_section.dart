@@ -15,6 +15,7 @@ import '../../cubits/prompt_delivery_status_cubit.dart';
 import '../../cubits/plugin_cubit.dart';
 import '../../cubits/skill_cubit.dart';
 import '../../l10n/l10n_extensions.dart';
+import '../../models/app_provider_config.dart';
 import '../../models/app_session.dart';
 import '../../models/cli_preset.dart';
 import '../../models/config_bundle.dart';
@@ -197,9 +198,10 @@ class SessionChatComposeSection extends StatelessWidget {
     final selectedPreset = selectedPresetId == null
         ? null
         : sameCliPresets.where((p) => p.id == selectedPresetId).firstOrNull;
-    final providerState = context.select<AppProviderCubit, AppProviderState>(
-      (c) => c.state,
-    );
+    final providerList = context
+        .select<AppProviderCubit, List<AppProviderConfig>>(
+          (c) => c.state.providersFor(lockedCli),
+        );
     final modelLabel = session.isSimple
         ? simpleLaunchChipLabel(
             presetName: selectedPreset?.name,
@@ -335,9 +337,7 @@ class SessionChatComposeSection extends StatelessWidget {
                           ? resolveComposeCascadeCliGroups(
                               registry: registry,
                               providersByCli: {
-                                lockedCli: providerState
-                                    .providersFor(lockedCli)
-                                    .toList(growable: false),
+                                lockedCli: providerList.toList(growable: false),
                               },
                               cliItems: [lockedCli],
                             )
@@ -600,7 +600,9 @@ class SessionChatComposeSection extends StatelessWidget {
 
   ExpertHubState? _readExpertHubState(BuildContext context) {
     try {
-      return context.select<ExpertHubCubit, ExpertHubState>((c) => c.state);
+      return context.select<ExpertHubCubit, ExpertHubState>(
+        (c) => ExpertHubState(allMembers: c.state.allMembers),
+      );
     } on ProviderNotFoundException {
       return null;
     }

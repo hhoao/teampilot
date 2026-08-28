@@ -65,22 +65,28 @@ void main() {
     tearDownTestAppStorage();
   });
 
-  Future<void> pumpHost(WidgetTester tester) async {
+  Future<void> pumpHost(
+    WidgetTester tester, {
+    bool tickerEnabled = true,
+  }) async {
     await tester.pumpWidget(
       MaterialApp(
-        home: MultiBlocProvider(
-          providers: [
-            BlocProvider<ChatCubit>(lazy: false, create: (_) => chatCubit),
-            BlocProvider<MemberPresenceCubit>(
-              lazy: false,
-              create: (_) => presenceCubit,
-            ),
-            BlocProvider<WorkbenchCubit>(
-              lazy: false,
-              create: (_) => workbenchCubit,
-            ),
-          ],
-          child: const _Host(key: _hostKey),
+        home: TickerMode(
+          enabled: tickerEnabled,
+          child: MultiBlocProvider(
+            providers: [
+              BlocProvider<ChatCubit>(lazy: false, create: (_) => chatCubit),
+              BlocProvider<MemberPresenceCubit>(
+                lazy: false,
+                create: (_) => presenceCubit,
+              ),
+              BlocProvider<WorkbenchCubit>(
+                lazy: false,
+                create: (_) => workbenchCubit,
+              ),
+            ],
+            child: const _Host(key: _hostKey),
+          ),
         ),
       ),
     );
@@ -160,6 +166,49 @@ void main() {
       _host(tester).buildCount,
       greaterThan(builds),
       reason: 'this seat must rebuild when its own presence changes',
+    );
+  });
+
+  testWidgets(
+    'TickerMode off does not rebuild this seat on its own working bit',
+    (tester) async {
+      await pumpHost(tester, tickerEnabled: false);
+      final builds = _host(tester).buildCount;
+
+      chatCubit.updateWorkingSessionsForTest({_sessionId});
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 100));
+      expect(chatCubit.state.workingSessionIds, {_sessionId});
+
+      expect(
+        _host(tester).buildCount,
+        builds,
+        reason:
+            'keep-alive background seats must not subscribe to working ticks',
+      );
+    },
+  );
+
+  testWidgets('TickerMode off does not rebuild this seat on its own presence', (
+    tester,
+  ) async {
+    await pumpHost(tester, tickerEnabled: false);
+    final builds = _host(tester).buildCount;
+
+    presenceCubit.replace({
+      _memberId: const MemberPresence(
+        connection: MemberConnection.connected,
+        availability: MemberAvailability.working,
+      ),
+    });
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 100));
+
+    expect(
+      _host(tester).buildCount,
+      builds,
+      reason:
+          'keep-alive background seats must not subscribe to presence ticks',
     );
   });
 }

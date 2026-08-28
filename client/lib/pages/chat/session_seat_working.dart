@@ -24,12 +24,37 @@ class SessionSeatWorkingBits {
 }
 
 /// Leaf-safe subscriptions for this session seat. Call from `build`.
+///
+/// Keep-alive hosts wrap inactive workspace tabs in [TickerMode] off. Those
+/// seats still *build* under [TpKeepAliveLayer]; skip cubit [select]s so
+/// idle-watch ticks do not rebuild History / compose until the tab is
+/// foreground again. [TickerMode.valuesOf] keeps a dependency so becoming
+/// foreground rebuilds and re-subscribes.
 SessionSeatWorkingBits watchSessionSeatWorking(
   BuildContext context, {
   required String workspaceId,
   required String sessionId,
   required String memberId,
 }) {
+  MemberPresence presenceOf(MemberPresenceCubit cubit) {
+    if (memberId.isEmpty) return const MemberPresence.offline();
+    return cubit.state.presence[memberId] ?? const MemberPresence.offline();
+  }
+
+  if (!TickerMode.valuesOf(context).enabled) {
+    return SessionSeatWorkingBits(
+      activeCenterId: context.read<WorkbenchCubit>().centerActiveId(
+        workspaceId,
+      ),
+      sessionWorking: context
+          .read<ChatCubit>()
+          .state
+          .workingSessionIds
+          .contains(sessionId),
+      presence: presenceOf(context.read<MemberPresenceCubit>()),
+    );
+  }
+
   return SessionSeatWorkingBits(
     activeCenterId: context.select<WorkbenchCubit, WorkbenchTabId?>(
       (w) => w.centerActiveId(workspaceId),
@@ -37,10 +62,6 @@ SessionSeatWorkingBits watchSessionSeatWorking(
     sessionWorking: context.select<ChatCubit, bool>(
       (c) => c.state.workingSessionIds.contains(sessionId),
     ),
-    presence: context.select<MemberPresenceCubit, MemberPresence>(
-      (c) => memberId.isEmpty
-          ? const MemberPresence.offline()
-          : (c.state.presence[memberId] ?? const MemberPresence.offline()),
-    ),
+    presence: context.select<MemberPresenceCubit, MemberPresence>(presenceOf),
   );
 }
