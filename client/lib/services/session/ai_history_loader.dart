@@ -367,11 +367,14 @@ final class AiHistoryLoader {
     final cap = _registry.capability<AiHistoryCapability>(cli);
     final refresher = cap?.incrementalRefresher;
     if (refresher == null) return null;
-    final state = _incrementalStates.putIfAbsent(
-      cacheKey,
-      refresher.createState,
-    );
-    return refresher.refresh(ctx: ctx, state: state, force: force);
+    // Only refresh a state that seedFromFullParse already aligned. Creating an
+    // empty state here (especially on force:true full-index) made
+    // `_hasWarmIncremental` true before `_seen` was populated, so live
+    // refresh skipped paging and fell through to another full locate.
+    if (force) return null;
+    final state = _incrementalStates[cacheKey];
+    if (state == null) return null;
+    return refresher.refresh(ctx: ctx, state: state, force: false);
   }
 
   /// 增量路径(JSONL tail / DB 行级)共用的收尾:注解、附件膨胀、缓存落库。
@@ -811,15 +814,13 @@ final class AiHistoryLoader {
       // (只重读指纹变化的行,原地合并进 messages 同一实例)。
       final refresher = cap.incrementalRefresher;
       if (refresher != null) {
-        final incrementalState = _incrementalStates.putIfAbsent(
-          cacheKey,
-          refresher.createState,
-        );
+        final incrementalState = refresher.createState();
         await refresher.seedFromFullParse(
           ctx: ctx,
           messages: messages,
           state: incrementalState,
         );
+        _incrementalStates[cacheKey] = incrementalState;
       }
 
       final complete = AiHistoryLoadResult(
@@ -954,7 +955,6 @@ final class AiHistoryLoader {
       if (_hasWarmIncremental(cacheKey)) return null;
       final messages = annotate(page.messages, cli: cli);
       final parentPath = await _parentPathHint(ctx);
-      _parentPaths[cacheKey] = parentPath;
       final attachments = await _timed(
         AiHistoryLoadPhase.inflate,
         () => _subagentAttachmentsFor(
@@ -965,6 +965,8 @@ final class AiHistoryLoader {
           rootTranscriptPath: parentPath,
         ),
       );
+      if (_hasWarmIncremental(cacheKey)) return null;
+      _parentPaths[cacheKey] = parentPath;
       _messages[cacheKey] = messages;
       _attachments[cacheKey] = attachments;
       _tokens[cacheKey] = token ?? 'changed-$cacheKey';

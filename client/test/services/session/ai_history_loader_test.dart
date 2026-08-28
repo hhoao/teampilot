@@ -1976,6 +1976,13 @@ void main() {
       expect(second.messages.map((m) => m.id), grown.map((m) => m.id));
       expect(second.isComplete, isFalse);
       expect(parseGate.isCompleted, isFalse);
+      parseGate.complete();
+      final full = await loader.fullIndex(
+        sessionId: session.sessionId,
+        memberId: '',
+      );
+      expect(full, isNotNull);
+      expect(full!.isComplete, isTrue);
     },
   );
 

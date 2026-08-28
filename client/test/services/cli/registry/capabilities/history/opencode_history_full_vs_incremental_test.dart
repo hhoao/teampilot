@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
@@ -490,6 +491,72 @@ void main() {
       );
     });
 
+    test(
+      'token change before full index re-reads the page without locating',
+      () async {
+        openModernDb();
+        seedConversation();
+        final loader = buildLoader();
+        final session = opencodeSession();
+        final ctx = launchContextFor(session);
+        locator.locateGate = Completer<void>();
+        addTearDown(() {
+          final gate = locator.locateGate;
+          if (gate != null && !gate.isCompleted) gate.complete();
+        });
+
+        final first = await loader.load(
+          session: session,
+          memberId: '',
+          launchContext: ctx,
+        );
+        expect(locator.calls, 0, reason: '首屏 page-first');
+        expect(first.isComplete, isFalse);
+
+        // Background full index starts and blocks in locate. The previous
+        // hole put an empty incremental state in the map at that moment.
+        await Future<void>(() {});
+
+        writer.execute(
+          "UPDATE part SET data = ?, time_updated = 3000 WHERE id = 2",
+          [jsonEncode({'type': 'text', 'text': 'hello chunk'})],
+        );
+
+        final second = await loader
+            .load(
+              session: session,
+              memberId: '',
+              launchContext: ctx,
+            )
+            .timeout(
+              const Duration(seconds: 2),
+              onTimeout: () => fail(
+                'second load waited on full locate; empty incremental state '
+                'must not skip readLatest',
+              ),
+            );
+
+        expect(
+          second.isComplete,
+          isFalse,
+          reason: '分页窗口不得被提前标成 complete',
+        );
+        expect(
+          second.messages.any(
+            (m) => m.parts.any(
+              (p) => p is AiTextPart && p.text.contains('hello chunk'),
+            ),
+          ),
+          isTrue,
+        );
+        expect(
+          locator.calls,
+          0,
+          reason: 'live refresh 仍走 page-first,不 locate',
+        );
+      },
+    );
+
     test('streaming append (new rows + in-place growth): incremental in-place merge',
         () async {
       openModernDb();
@@ -610,6 +677,11 @@ void main() {
         second.subagentAttachments.keys,
         contains('toolu_1'),
         reason: '已按需加载的附件在签名未变时必须保留',
+      );
+      expect(
+        second.subagentAttachments.keys,
+        isNot(contains('toolu_2')),
+        reason: '增量 tick 不得 eager inflate 尚未打开的子会话',
       );
       final secondAttachment = await loadAttachment(
         loader: loader,
@@ -1062,6 +1134,7 @@ class _RecordingLocator extends AiHistoryLocator {
   _RecordingLocator() : super();
 
   int calls = 0;
+  Completer<void>? locateGate;
   SessionHistoryContext? lastCtx;
   AiTranscriptBundle? lastBundle;
   final List<AiTranscriptBundle> bundles = [];
@@ -1071,6 +1144,8 @@ class _RecordingLocator extends AiHistoryLocator {
     required SessionHistoryContext ctx,
     required CliTool cli,
   }) async {
+    final gate = locateGate;
+    if (gate != null) await gate.future;
     calls++;
     lastCtx = ctx;
     final bundle = await super.locate(ctx: ctx, cli: cli);
