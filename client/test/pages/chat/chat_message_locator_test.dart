@@ -34,6 +34,28 @@ void main() {
     expect(highlight, 'u1');
   });
 
+  test('locate without highlight still reveals', () async {
+    final runtime = ExternalStoreAiThreadRuntime()
+      ..setMessages([_user('u0'), _user('u1')]);
+    final loaded = [_user('u0'), _user('u1')];
+    final controller = ChatRevealController();
+    String? highlight = 'stale';
+    final locator = ChatMessageLocator(
+      loadedMessages: () => loaded,
+      runtime: () => runtime,
+      revealInWindow: (_) {},
+      revealController: controller,
+      onHighlight: (id) => highlight = id,
+      waitFrame: () async {},
+    );
+
+    await locator.locate(id: 'u1', highlight: false, animate: true);
+
+    expect(controller.targetMessageId, 'u1');
+    expect(controller.animate, isTrue);
+    expect(highlight, isNull);
+  });
+
   test('waits for runtime then reveals', () async {
     final runtime = ExternalStoreAiThreadRuntime();
     final loaded = [_user('u0')];

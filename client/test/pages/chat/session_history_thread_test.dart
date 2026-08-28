@@ -650,4 +650,55 @@ void main() {
 
     expect(owner.value, 'u0');
   });
+
+  testWidgets(
+    'visibleOwnerId notify with a sibling listener does not throw during build',
+    (tester) async {
+      final store = ExternalStoreAiThreadRuntime()
+        ..setMessages([
+          ...List.generate(
+            8,
+            (i) => AiMessage(
+              id: 'u$i',
+              role: AiRole.user,
+              parts: [AiTextPart(text: 'msg $i')],
+            ),
+          ),
+        ]);
+      final owner = ValueNotifier<String?>(null);
+      addTearDown(owner.dispose);
+
+      await tester.pumpWidget(
+        MaterialApp(
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
+          locale: const Locale('en'),
+          theme: ThemeData(extensions: [AiMessageTheme.test()]),
+          home: Scaffold(
+            body: SizedBox(
+              width: 600,
+              height: 160,
+              child: Stack(
+                children: [
+                  SessionHistoryThread(
+                    runtime: store,
+                    hasOlder: false,
+                    isLoadingOlder: false,
+                    visibleOwnerId: owner,
+                  ),
+                  ValueListenableBuilder<String?>(
+                    valueListenable: owner,
+                    builder: (context, _, _) => const SizedBox.shrink(),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      );
+      await pumpUntilSettled(tester);
+      expect(tester.takeException(), isNull);
+      expect(owner.value, isNotNull);
+    },
+  );
 }

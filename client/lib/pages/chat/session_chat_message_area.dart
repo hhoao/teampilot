@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:ai_message_core/ai_message_core.dart';
 import 'package:ai_message_ui/ai_message_ui.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/scheduler.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:shared_ui/shared_ui.dart';
 import 'package:tp_markdown/tp_markdown.dart';
@@ -156,211 +157,220 @@ class SessionChatMessageArea extends StatelessWidget {
       // Full-bleed scroll surface: margins beside the text
       // column still receive wheel / drag. Message width is
       // capped inside SessionHistoryThread.
-      child: Stack(
-        children: [
-          Positioned.fill(
-            child: SessionChatMarkdownLinkScope(
-              session: session,
-              workspace: workspace,
-              selectedMemberId: selectedMemberId,
-              hrefRoots: hrefRoots,
-              child: AiToolFileActionsScope(
-                actions: AiToolFileActions(
-                  fileResolver:
-                      toolResolvers?.fileResolver ?? _noopFileResolver,
-                  editResolver:
-                      toolResolvers?.editResolver ?? _noopEditResolver,
-                  shellResolver:
-                      toolResolvers?.shellResolver ?? _noopShellResolver,
-                  onOpenFile: (target) async {
-                    final fs = await resolveSessionMemberFilesystem(
-                      lifecycle: lifecycle,
-                      launchContext: launchContext,
-                      memberId: selectedMemberId,
-                      toolsScope: WorkspaceToolsScope.maybeOf(context),
-                    );
-                    if (!context.mounted) return;
-                    final coordinator = AiToolFileOpenCoordinator(
-                      opener: context.read<WorkbenchEditorOpener>(),
-                      editor: context.read<EditorCubit>(),
-                    );
-                    final result = await coordinator.openToolFile(
-                      workspaceId: session.workspaceId,
-                      target: target,
-                      sessionWorkingDirectory: sessionWorkingDirectory,
-                      workspaceFolderPaths: workspaceFolderPaths,
-                      fs: fs,
-                    );
-                    if (!context.mounted) return;
-                    if (result.isMissing) {
-                      AppToast.show(
-                        context,
-                        message: l10n.aiToolFileNotFound(target.path),
-                        variant: TpToastVariant.warning,
-                      );
-                    }
-                  },
-                  lineHighlighter: WorkspaceAiEditLineHighlighter(
-                    brightness: Theme.of(context).brightness,
-                  ),
-                ),
-                child: AiToolSubagentActionsScope(
-                  actions: AiToolSubagentActions(
-                    isSubagentTool: cap == null
-                        ? null
-                        : (name) => cap.subagentToolNames.contains(
-                            name.trim().toLowerCase(),
-                          ),
-                    onOpenSubagent: (id) async {
-                      final attachments = historySeat.subagentAttachments;
-                      if (!attachments.containsKey(id)) {
-                        if (!context.mounted) return;
-                        AppToast.show(
-                          context,
-                          message: l10n.subagentPreviewUnavailable,
-                          variant: TpToastVariant.warning,
+      child: LayoutBuilder(
+        builder: (context, paneConstraints) {
+          return Stack(
+            children: [
+              Positioned.fill(
+                child: SessionChatMarkdownLinkScope(
+                  session: session,
+                  workspace: workspace,
+                  selectedMemberId: selectedMemberId,
+                  hrefRoots: hrefRoots,
+                  child: AiToolFileActionsScope(
+                    actions: AiToolFileActions(
+                      fileResolver:
+                          toolResolvers?.fileResolver ?? _noopFileResolver,
+                      editResolver:
+                          toolResolvers?.editResolver ?? _noopEditResolver,
+                      shellResolver:
+                          toolResolvers?.shellResolver ?? _noopShellResolver,
+                      onOpenFile: (target) async {
+                        final fs = await resolveSessionMemberFilesystem(
+                          lifecycle: lifecycle,
+                          launchContext: launchContext,
+                          memberId: selectedMemberId,
+                          toolsScope: WorkspaceToolsScope.maybeOf(context),
                         );
-                        return;
-                      }
-                      subagentPreview.push(id);
-                    },
-                  ),
-                  child: AiSpecialToolActionsScope(
-                    actions: AiSpecialToolActions(
-                      taskResolver: TranscriptAiTaskToolResolver(
-                        contentById:
-                            taskBoardController?.board.contentById ?? const {},
-                      ),
-                      askUserResolver: const TranscriptAiAskUserResolver(),
-                      workflowResolver: AttachmentAiWorkflowResolver(
-                        attachments: historySeat.subagentAttachments,
+                        if (!context.mounted) return;
+                        final coordinator = AiToolFileOpenCoordinator(
+                          opener: context.read<WorkbenchEditorOpener>(),
+                          editor: context.read<EditorCubit>(),
+                        );
+                        final result = await coordinator.openToolFile(
+                          workspaceId: session.workspaceId,
+                          target: target,
+                          sessionWorkingDirectory: sessionWorkingDirectory,
+                          workspaceFolderPaths: workspaceFolderPaths,
+                          fs: fs,
+                        );
+                        if (!context.mounted) return;
+                        if (result.isMissing) {
+                          AppToast.show(
+                            context,
+                            message: l10n.aiToolFileNotFound(target.path),
+                            variant: TpToastVariant.warning,
+                          );
+                        }
+                      },
+                      lineHighlighter: WorkspaceAiEditLineHighlighter(
+                        brightness: Theme.of(context).brightness,
                       ),
                     ),
-                    child: AiMessageStringsScope(
-                      strings: aiMessageStringsFromL10n(l10n),
-                      child: AiToolCallFoldScope(
-                        shouldFold: (part) =>
-                            foldCategories.contains(part.category),
-                        child: Stack(
-                          children: [
-                            Builder(
-                              builder: (context) {
-                                // Read ChatCubit imperatively — no
-                                // context.select dependency. Enclosing
-                                // AiHistorySeat BlocBuilder already
-                                // rebuilds when awaitingAssistant
-                                // changes (synced with working state).
-                                final cubit = context.read<ChatCubit>();
-                                final sid = session.sessionId;
-                                final sessionWorking = cubit
-                                    .state
-                                    .workingSessionIds
-                                    .contains(sid);
-                                final sessionConnecting =
-                                    cubit.podFor(sid)?.phase.isLaunching ??
-                                    false;
-                                final memberRunning = cubit.isMemberRunning(
-                                  sessionId: sid,
-                                  memberId: shellMemberId,
-                                );
-                                final liveChrome =
-                                    SessionHistoryLiveChromeX.resolve(
-                                      turnInFlight: historyTurnInFlight(
-                                        isSubmitting: isSubmitting,
-                                        awaitingAssistant:
-                                            state.awaitingAssistant,
-                                        sessionWorking: sessionWorking,
-                                        userStoppedTurn: false,
-                                      ),
-                                      memberRunning: memberRunning,
-                                      sessionWorking: sessionWorking,
-                                      sessionConnecting: sessionConnecting,
-                                    );
-                                return MarkdownDisplayModeScope(
-                                  userMessageMode: prefs.userMessageMode,
-                                  codeBlockMode: prefs.chatCodeBlockMode,
-                                  child: SessionHistoryReviewMessages(
-                                    state: state,
-                                    runtime: historySeat.runtime,
-                                    onRetry: onRetry,
-                                    onLoadOlder: historySeat.loadOlder,
-                                    liveChrome: liveChrome,
-                                    pendingDeliveryStatuses:
-                                        historySeat.pendingDeliveryStatuses,
-                                    onRetryFailedMessage: onRetryFailedMessage,
-                                    highlightMessageId: highlightMessageId,
-                                    revealRequest: revealController,
-                                    visibleOwnerId: visibleOwnerId,
-                                  ),
-                                );
-                              },
-                            ),
-                            _ChatOutlineLayer(
-                              historySeat: historySeat,
-                              subagentPreviewOpen: top != null,
-                              visibleOwnerId: visibleOwnerId,
-                              onLocate: onLocateOutline,
-                            ),
-                            if (top != null)
-                              Positioned.fill(
-                                child: Material(
-                                  color: cs.surface,
-                                  child: AiHistoryRenderScope(
-                                    // History-review budget also
-                                    // guards subagent messages: a
-                                    // giant subagent turn collapses
-                                    // instead of freezing the
-                                    // preview open.
-                                    child: SubagentPreviewScaffold(
-                                      title: previewTitle,
-                                      messages: top!.messages,
-                                      emptyLabel: l10n.subagentPreviewEmpty,
-                                      backTooltip: l10n.subagentPreviewBack,
-                                      onBack: subagentPreview.popAndStopFollow,
-                                    ),
-                                  ),
-                                ),
+                    child: AiToolSubagentActionsScope(
+                      actions: AiToolSubagentActions(
+                        isSubagentTool: cap == null
+                            ? null
+                            : (name) => cap.subagentToolNames.contains(
+                                name.trim().toLowerCase(),
                               ),
-                            if (taskBoardController != null)
-                              Positioned(
-                                top: spacing.sm,
-                                right: spacing.sm,
-                                child: ListenableBuilder(
-                                  listenable: taskBoardController!,
-                                  builder: (context, _) {
-                                    final board = taskBoardController!.board;
-                                    if (board.totalCount == 0) {
-                                      return const SizedBox.shrink();
-                                    }
-                                    return AiTaskBoardPanel(
-                                      items: board.aiItems,
+                        onOpenSubagent: (id) async {
+                          final attachments = historySeat.subagentAttachments;
+                          if (!attachments.containsKey(id)) {
+                            if (!context.mounted) return;
+                            AppToast.show(
+                              context,
+                              message: l10n.subagentPreviewUnavailable,
+                              variant: TpToastVariant.warning,
+                            );
+                            return;
+                          }
+                          subagentPreview.push(id);
+                        },
+                      ),
+                      child: AiSpecialToolActionsScope(
+                        actions: AiSpecialToolActions(
+                          taskResolver: TranscriptAiTaskToolResolver(
+                            contentById:
+                                taskBoardController?.board.contentById ??
+                                const {},
+                          ),
+                          askUserResolver: const TranscriptAiAskUserResolver(),
+                          workflowResolver: AttachmentAiWorkflowResolver(
+                            attachments: historySeat.subagentAttachments,
+                          ),
+                        ),
+                        child: AiMessageStringsScope(
+                          strings: aiMessageStringsFromL10n(l10n),
+                          child: AiToolCallFoldScope(
+                            shouldFold: (part) =>
+                                foldCategories.contains(part.category),
+                            child: Stack(
+                              children: [
+                                Builder(
+                                  builder: (context) {
+                                    // Read ChatCubit imperatively — no
+                                    // context.select dependency. Enclosing
+                                    // AiHistorySeat BlocBuilder already
+                                    // rebuilds when awaitingAssistant
+                                    // changes (synced with working state).
+                                    final cubit = context.read<ChatCubit>();
+                                    final sid = session.sessionId;
+                                    final sessionWorking = cubit
+                                        .state
+                                        .workingSessionIds
+                                        .contains(sid);
+                                    final sessionConnecting =
+                                        cubit.podFor(sid)?.phase.isLaunching ??
+                                        false;
+                                    final memberRunning = cubit.isMemberRunning(
+                                      sessionId: sid,
+                                      memberId: shellMemberId,
+                                    );
+                                    final liveChrome =
+                                        SessionHistoryLiveChromeX.resolve(
+                                          turnInFlight: historyTurnInFlight(
+                                            isSubmitting: isSubmitting,
+                                            awaitingAssistant:
+                                                state.awaitingAssistant,
+                                            sessionWorking: sessionWorking,
+                                            userStoppedTurn: false,
+                                          ),
+                                          memberRunning: memberRunning,
+                                          sessionWorking: sessionWorking,
+                                          sessionConnecting: sessionConnecting,
+                                        );
+                                    return MarkdownDisplayModeScope(
+                                      userMessageMode: prefs.userMessageMode,
+                                      codeBlockMode: prefs.chatCodeBlockMode,
+                                      child: SessionHistoryReviewMessages(
+                                        state: state,
+                                        runtime: historySeat.runtime,
+                                        onRetry: onRetry,
+                                        onLoadOlder: historySeat.loadOlder,
+                                        liveChrome: liveChrome,
+                                        pendingDeliveryStatuses:
+                                            historySeat.pendingDeliveryStatuses,
+                                        onRetryFailedMessage:
+                                            onRetryFailedMessage,
+                                        highlightMessageId: highlightMessageId,
+                                        revealRequest: revealController,
+                                        visibleOwnerId: visibleOwnerId,
+                                      ),
                                     );
                                   },
                                 ),
-                              ),
-                          ],
+                                _ChatOutlineLayer(
+                                  historySeat: historySeat,
+                                  subagentPreviewOpen: top != null,
+                                  visibleOwnerId: visibleOwnerId,
+                                  onLocate: onLocateOutline,
+                                  paneWidth: paneConstraints.maxWidth,
+                                ),
+                                if (top != null)
+                                  Positioned.fill(
+                                    child: Material(
+                                      color: cs.surface,
+                                      child: AiHistoryRenderScope(
+                                        // History-review budget also
+                                        // guards subagent messages: a
+                                        // giant subagent turn collapses
+                                        // instead of freezing the
+                                        // preview open.
+                                        child: SubagentPreviewScaffold(
+                                          title: previewTitle,
+                                          messages: top!.messages,
+                                          emptyLabel: l10n.subagentPreviewEmpty,
+                                          backTooltip: l10n.subagentPreviewBack,
+                                          onBack:
+                                              subagentPreview.popAndStopFollow,
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                if (taskBoardController != null)
+                                  Positioned(
+                                    top: spacing.sm,
+                                    right: spacing.sm,
+                                    child: ListenableBuilder(
+                                      listenable: taskBoardController!,
+                                      builder: (context, _) {
+                                        final board =
+                                            taskBoardController!.board;
+                                        if (board.totalCount == 0) {
+                                          return const SizedBox.shrink();
+                                        }
+                                        return AiTaskBoardPanel(
+                                          items: board.aiItems,
+                                        );
+                                      },
+                                    ),
+                                  ),
+                              ],
+                            ),
+                          ),
                         ),
                       ),
                     ),
                   ),
                 ),
               ),
-            ),
-          ),
-          if (findVisible)
-            Positioned(
-              left: 0,
-              right: 0,
-              top: 0,
-              child: ChatFindBar(
-                controller: findController,
-                queryController: findQueryController,
-                focusNode: findFocusNode,
-                onNavigate: onNavigateFind,
-                onClose: onCloseFind,
-              ),
-            ),
-        ],
+              if (findVisible)
+                Positioned(
+                  left: 0,
+                  right: 0,
+                  top: 0,
+                  child: ChatFindBar(
+                    controller: findController,
+                    queryController: findQueryController,
+                    focusNode: findFocusNode,
+                    onNavigate: onNavigateFind,
+                    onClose: onCloseFind,
+                  ),
+                ),
+            ],
+          );
+        },
       ),
     );
   }
@@ -397,12 +407,14 @@ class _ChatOutlineLayer extends StatefulWidget {
     required this.subagentPreviewOpen,
     required this.visibleOwnerId,
     required this.onLocate,
+    required this.paneWidth,
   });
 
   final AiHistorySeat historySeat;
   final bool subagentPreviewOpen;
   final ValueNotifier<String?> visibleOwnerId;
   final ValueChanged<ChatOutlineEntry> onLocate;
+  final double paneWidth;
 
   @override
   State<_ChatOutlineLayer> createState() => _ChatOutlineLayerState();
@@ -449,13 +461,24 @@ class _ChatOutlineLayerState extends State<_ChatOutlineLayer> {
 
   void _refresh() {
     if (!mounted) return;
-    final next = buildChatOutline(
-      widget.historySeat.loadedMessages,
-      emptyPreview: context.l10n.chatUserMessageRailEmptyPreview,
-      previous: _outline,
-    );
-    if (identical(next, _outline)) return;
-    setState(() => _outline = next);
+    void apply() {
+      if (!mounted) return;
+      final next = buildChatOutline(
+        widget.historySeat.loadedMessages,
+        emptyPreview: context.l10n.chatUserMessageRailEmptyPreview,
+        previous: _outline,
+      );
+      if (identical(next, _outline)) return;
+      setState(() => _outline = next);
+    }
+
+    final phase = SchedulerBinding.instance.schedulerPhase;
+    if (phase == SchedulerPhase.idle ||
+        phase == SchedulerPhase.postFrameCallbacks) {
+      apply();
+      return;
+    }
+    WidgetsBinding.instance.addPostFrameCallback((_) => apply());
   }
 
   @override
@@ -472,6 +495,7 @@ class _ChatOutlineLayerState extends State<_ChatOutlineLayer> {
         threadVisible: true,
         subagentPreviewOpen: widget.subagentPreviewOpen,
         entries: _outline,
+        paneWidth: widget.paneWidth,
       ),
       entries: _outline,
       activeId: widget.visibleOwnerId,

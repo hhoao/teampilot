@@ -1398,6 +1398,8 @@ class _SessionChatViewState extends State<SessionChatView> {
                                             _locator.locate(
                                               id: e.id,
                                               index: e.messageIndex,
+                                              highlight: false,
+                                              animate: true,
                                             ),
                                           ),
                                           findController: _findController,

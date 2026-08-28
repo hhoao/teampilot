@@ -112,6 +112,8 @@ class _SessionHistoryThreadState extends State<SessionHistoryThread> {
   /// Message to reveal in the viewport (from [ChatRevealController]).
   String? _revealTargetId;
   int _revealEpoch = 0;
+  var _revealAnimate = false;
+  var _revealAnimating = false;
   ChatRevealController? _boundReveal;
 
   void _onRevealRequestChanged() {
@@ -120,6 +122,7 @@ class _SessionHistoryThreadState extends State<SessionHistoryThread> {
     if (request != null) {
       _revealTargetId = request.targetMessageId;
       _revealEpoch = request.epoch;
+      _revealAnimate = request.animate;
     }
     // Only unpin stick-to-end for a real targeted reveal; a bare open/close of
     // the find bar (clear()) must not unpin a live chat at the bottom.
@@ -271,6 +274,63 @@ class _SessionHistoryThreadState extends State<SessionHistoryThread> {
       _lastPixels = _scrollController.position.pixels;
       _lastMaxExtent = _scrollController.position.maxScrollExtent;
     }
+  }
+
+  void _scrollToReveal(double offset) {
+    if (!_scrollController.hasClients) return;
+    final max = _scrollController.position.maxScrollExtent;
+    final target = offset > max ? max : offset;
+    if (_revealAnimate) {
+      _animateTo(target);
+    } else {
+      _jumpTo(target);
+    }
+  }
+
+  void _animateTo(double offset) {
+    if (!_scrollController.hasClients) return;
+    final before = _scrollController.position.pixels;
+    if ((offset - before).abs() < 0.5) return;
+    _revealAnimating = true;
+    final distance = (offset - before).abs();
+    final ms = (240 + distance * 0.12).clamp(240, 480).round();
+    unawaited(
+      _scrollController
+          .animateTo(
+            offset,
+            duration: Duration(milliseconds: ms),
+            curve: Curves.easeInOutCubic,
+          )
+          .whenComplete(() {
+            _revealAnimating = false;
+            if (!_scrollController.hasClients) return;
+            _lastPixels = _scrollController.position.pixels;
+            _lastMaxExtent = _scrollController.position.maxScrollExtent;
+          }),
+    );
+  }
+
+  void _publishVisibleOwner(TurnVisibleRange range) {
+    final notifier = widget.visibleOwnerId;
+    if (notifier == null) return;
+    final next = range.lastIndex < range.firstIndex
+        ? null
+        : owningUserTurnId(_displayMessages, range.firstIndex);
+    if (notifier.value == next) return;
+    void apply() {
+      if (!mounted) return;
+      if (widget.visibleOwnerId != notifier) return;
+      if (notifier.value == next) return;
+      notifier.value = next;
+    }
+
+    final phase = SchedulerBinding.instance.schedulerPhase;
+    if (phase == SchedulerPhase.idle ||
+        phase == SchedulerPhase.postFrameCallbacks) {
+      apply();
+      return;
+    }
+    WidgetsBinding.instance.addPostFrameCallback((_) => apply());
   }
 
   void _onScrollTick() {
@@ -622,25 +682,12 @@ class _SessionHistoryThreadState extends State<SessionHistoryThread> {
                           }
                           // 16 = SingleChildScrollView top padding; the
                           // delivered offset is viewport-space document pixels.
-                          final target = offset + 16;
-                          final max =
-                              _scrollController.position.maxScrollExtent;
-                          _jumpTo(target > max ? max : target);
+                          _scrollToReveal(offset + 16);
                         },
-                        onVisibleRange: (range) {
-                          final notifier = widget.visibleOwnerId;
-                          if (notifier == null) return;
-                          if (range.lastIndex < range.firstIndex) {
-                            notifier.value = null;
-                            return;
-                          }
-                          notifier.value = owningUserTurnId(
-                            _displayMessages,
-                            range.firstIndex,
-                          );
-                        },
+                        onVisibleRange: _publishVisibleOwner,
                         suppressMeasureScrollCorrection: _stickToEnd,
                         onMeasureScrollCorrection: (delta) {
+                          if (_revealAnimating) return;
                           if (!_scrollController.hasClients ||
                               delta.abs() < 0.5) {
                             return;

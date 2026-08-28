@@ -1,6 +1,8 @@
 import 'package:ai_message_core/ai_message_core.dart';
 import 'package:ai_message_ui/ai_message_ui.dart';
 
+import '../../services/session/session_history_pagination.dart';
+
 const int kChatOutlinePreviewLimit = 160;
 
 final RegExp _whitespaceCollapse = RegExp(r'\s+');
@@ -81,7 +83,10 @@ bool shouldShowChatOutline({
   required bool threadVisible,
   required bool subagentPreviewOpen,
   required List<ChatOutlineEntry> entries,
+  double paneWidth = double.infinity,
+  double minPaneWidth = kSessionHistoryColumnMinWidth,
 }) {
+  if (paneWidth <= minPaneWidth) return false;
   return threadVisible && !subagentPreviewOpen && entries.isNotEmpty;
 }
 

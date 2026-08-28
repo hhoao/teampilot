@@ -30,7 +30,14 @@ class ChatMessageLocator {
   }
 
   /// [index] is accepted for callers but ignored; resolution is by id only.
-  Future<void> locate({required String id, int? index}) async {
+  /// Pass [highlight] false to scroll without the find-style ring.
+  /// Pass [animate] true for a smooth scroll (outline rail); find stays a jump.
+  Future<void> locate({
+    required String id,
+    int? index,
+    bool highlight = true,
+    bool animate = false,
+  }) async {
     final gen = ++_generation;
     final all = loadedMessages();
     final resolved = all.indexWhere((m) => m.id == id);
@@ -58,8 +65,8 @@ class ChatMessageLocator {
     if (gen != _generation) return;
     await waitFrame();
     if (gen != _generation) return;
-    revealController.reveal(id);
-    onHighlight(id);
+    revealController.reveal(id, animate: animate);
+    onHighlight(highlight ? id : null);
   }
 
   bool _contains(AiThreadRuntime rt, String id) {

@@ -1,6 +1,7 @@
 import 'package:ai_message_core/ai_message_core.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/pages/chat/chat_outline.dart';
+import 'package:teampilot/services/session/session_history_pagination.dart';
 
 AiMessage _user(String id, String text) => AiMessage(
   id: id,
@@ -138,6 +139,24 @@ void main() {
         entries: const [],
       ),
       isFalse,
+    );
+    expect(
+      shouldShowChatOutline(
+        threadVisible: true,
+        subagentPreviewOpen: false,
+        entries: entries,
+        paneWidth: kSessionHistoryColumnMinWidth,
+      ),
+      isFalse,
+    );
+    expect(
+      shouldShowChatOutline(
+        threadVisible: true,
+        subagentPreviewOpen: false,
+        entries: entries,
+        paneWidth: kSessionHistoryColumnMinWidth + 1,
+      ),
+      isTrue,
     );
   });
 }
