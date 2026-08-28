@@ -47,6 +47,7 @@ class _FakeTerminalSession extends TerminalSession {
     void Function(String line)? onEveryUserLineSubmitted,
     BusUserInputRouting? busUserInputRouting,
     String? executableOverride,
+    TerminalObservationAttach? observation,
   }) {
     _running = true;
     onProcessStarted?.call();
