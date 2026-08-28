@@ -117,7 +117,6 @@ class CliPresetsCubit extends Cubit<CliPresetsState> {
     final next = List<CliPreset>.from(state.presets);
     next[index] = next[index].copyWith(
       name: trimmedName,
-      cli: cli,
       provider: provider.trim(),
       model: model.trim(),
       effort: effort.trim(),
