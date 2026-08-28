@@ -38,14 +38,11 @@ class MailboxPanel extends StatelessWidget {
     final cs = Theme.of(context).colorScheme;
     final styles = TpTextStyles.of(context);
     final l10n = context.l10n;
-    final entries = context.watch<MailboxCubit>().state.entries;
+    final entries = context.select<MailboxCubit, List<BusFeedEntry>>(
+      (c) => c.state.entries,
+    );
     if (entries.isEmpty) {
-      return Center(
-        child: Text(
-          l10n.mailboxEmpty,
-          style: styles.mutedMd,
-        ),
-      );
+      return Center(child: Text(l10n.mailboxEmpty, style: styles.mutedMd));
     }
     return ListView.builder(
       padding: const EdgeInsets.symmetric(vertical: 6),
@@ -62,10 +59,7 @@ class MailboxPanel extends StatelessWidget {
               size: 18,
               color: e.isUnread ? cs.primary : cs.onSurfaceVariant,
             ),
-            title: Text(
-              '${e.from} → ${e.to}',
-              style: styles.xs,
-            ),
+            title: Text('${e.from} → ${e.to}', style: styles.xs),
             subtitle: Text(
               e.content,
               maxLines: 2,

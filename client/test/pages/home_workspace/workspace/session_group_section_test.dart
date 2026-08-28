@@ -12,6 +12,7 @@ import 'package:teampilot/models/session_group.dart';
 import 'package:teampilot/models/workspace.dart';
 import 'package:teampilot/models/workspace_folder.dart';
 import 'package:teampilot/pages/home_workspace/workspace/session_group_section.dart';
+import 'package:teampilot/pages/home_workspace/workspace/workspace_sidebar_probe.dart';
 import 'package:teampilot/repositories/session_repository.dart';
 import 'package:teampilot/utils/session/app_session_sort.dart';
 import 'package:teampilot/widgets/sidebar_session_tile.dart';
@@ -128,9 +129,10 @@ void main() {
 
     expect(find.text('待办'), findsOneWidget);
     expect(find.textContaining('2'), findsWidgets); // member count
-    final tiles = tester.widgetList<SidebarSessionTile>(
-      find.byType(SidebarSessionTile),
-    ).map((t) => t.session.sessionId).toList();
+    final tiles = tester
+        .widgetList<SidebarSessionTile>(find.byType(SidebarSessionTile))
+        .map((t) => t.session.sessionId)
+        .toList();
     expect(tiles, ['new', 'old']); // recentlyUpdated sort
   });
 
@@ -159,8 +161,7 @@ void main() {
     await pumpSection(
       tester,
       sessions: [
-        for (var i = 0; i < 12; i++)
-          _session('s$i', createdAt: 20 - i),
+        for (var i = 0; i < 12; i++) _session('s$i', createdAt: 20 - i),
       ],
       groups: [
         SessionGroup(
@@ -218,7 +219,9 @@ void main() {
     await pumpSection(
       tester,
       sessions: [_session('a'), _session('b')],
-      groups: const [SessionGroup(id: 'g1', name: 'G', sessionIds: ['a'])],
+      groups: const [
+        SessionGroup(id: 'g1', name: 'G', sessionIds: ['a']),
+      ],
     );
 
     // Mutated through the shared cubit after construction: the section's
@@ -243,5 +246,31 @@ void main() {
 
     expect(groupsCubit.state.groupById('g1')!.containsSession('a'), isTrue);
     expect(groupsCubit.state.groupById('g1')!.containsSession('b'), isTrue);
+  });
+
+  testWidgets('working-only chat emit does not rebuild group shell', (
+    tester,
+  ) async {
+    await pumpSection(
+      tester,
+      sessions: [_session('a')],
+      groups: const [
+        SessionGroup(id: 'g1', name: 'G', sessionIds: ['a']),
+      ],
+    );
+    final probe = tester.state<SidebarRebuildProbeState>(
+      find.byType(SidebarRebuildProbe),
+    );
+    final builds = probe.buildCount;
+
+    chatCubit.updateWorkingSessionsForTest({'a'});
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 16));
+
+    expect(
+      probe.buildCount,
+      builds,
+      reason: 'agent working ticks must not rebuild the group shell',
+    );
   });
 }

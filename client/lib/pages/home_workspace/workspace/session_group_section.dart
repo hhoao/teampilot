@@ -9,12 +9,13 @@ import 'package:shared_ui/shared_ui.dart';
 import '../../../cubits/chat_cubit.dart';
 import '../../../cubits/session_groups_cubit.dart';
 import '../../../l10n/l10n_extensions.dart';
-import '../../../models/app_session.dart';
 import '../../../models/session_group.dart';
 import '../../../models/workspace.dart';
 import '../../../utils/session/app_session_sort.dart';
+import '../../../utils/session/session_group_membership.dart';
 import '../../../widgets/sidebar_session_tile.dart';
 import 'workspace_session_actions.dart';
+import 'workspace_sidebar_probe.dart';
 import 'workspace_sidebar_row_metrics.dart';
 
 /// Approximate row height of a session tile in the sidebar list.
@@ -168,49 +169,41 @@ class SessionGroupSection extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // Watch both cubits: membership and collapse flags may change via the
-    // header menu or dialogs, and live sessions arrive through ChatCubit.
-    final current = _groupIn(context.watch<SessionGroupsCubit>().state);
-    final chatState = context.watch<ChatCubit>().state;
-    final liveMembers = _liveGroupMembers(chatState, current, workspace);
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        _SessionGroupHeader(
-          group: current,
-          liveMemberCount: liveMembers.length,
-          onToggleCollapse: () => _toggleCollapse(context),
-          onRename: () => unawaited(_rename(context)),
-          onDelete: () => unawaited(_confirmAndDelete(context)),
-          onAddSessions: () => unawaited(_openAddSessionsDialog(context)),
-        ),
-        if (!current.collapsed)
-          _SessionGroupMemberList(
+    final current = context.select<SessionGroupsCubit, SessionGroup>(
+      (c) => _groupIn(c.state),
+    );
+    final membership = context.select<ChatCubit, SessionGroupMembership>(
+      (c) => SessionGroupMembership.from(
+        chatState: c.state,
+        group: current,
+        workspace: workspace,
+      ),
+    );
+    return SidebarRebuildProbe(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          _SessionGroupHeader(
             group: current,
-            workspace: workspace,
-            tabScopeId: tabScopeId,
-            sessionSort: sessionSort,
-            highlightSessionId: highlightSessionId,
+            liveMemberCount: membership.length,
+            onToggleCollapse: () => _toggleCollapse(context),
+            onRename: () => unawaited(_rename(context)),
+            onDelete: () => unawaited(_confirmAndDelete(context)),
+            onAddSessions: () => unawaited(_openAddSessionsDialog(context)),
           ),
-      ],
+          if (!current.collapsed)
+            _SessionGroupMemberList(
+              group: current,
+              workspace: workspace,
+              tabScopeId: tabScopeId,
+              sessionSort: sessionSort,
+              highlightSessionId: highlightSessionId,
+            ),
+        ],
+      ),
     );
   }
 
-}
-
-/// Group member ids resolved to live sessions of [workspace]'s sidebar,
-/// preserving group order and dropping unknown/other-workspace ids.
-List<AppSession> _liveGroupMembers(
-  ChatState chatState,
-  SessionGroup group,
-  Workspace workspace,
-) {
-  final byId = {for (final s in chatState.sessions) s.sessionId: s};
-  return [
-    for (final id in group.sessionIds)
-      if (byId[id] case final session?)
-        if (session.workspaceId == workspace.workspaceId) session,
-  ];
 }
 
 class _SessionGroupHeader extends StatefulWidget {
@@ -379,9 +372,16 @@ class _SessionGroupMemberListState extends State<_SessionGroupMemberList> {
   @override
   Widget build(BuildContext context) {
     final l10n = context.l10n;
+    context.select<ChatCubit, SessionGroupMembership>(
+      (c) => SessionGroupMembership.from(
+        chatState: c.state,
+        group: widget.group,
+        workspace: widget.workspace,
+      ),
+    );
     final chatState = context.read<ChatCubit>().state;
     final all = sortAppSessions(
-      _liveGroupMembers(chatState, widget.group, widget.workspace),
+      liveGroupMembers(chatState, widget.group, widget.workspace),
       sort: widget.sessionSort,
     );
     if (all.isEmpty) {

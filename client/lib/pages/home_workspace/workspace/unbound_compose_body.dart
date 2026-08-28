@@ -1485,10 +1485,13 @@ class _UnboundComposeBodyState extends State<UnboundComposeBody> {
         orElse: () => widget.workspace,
       ),
     );
-    final presets = context.watch<CliPresetsCubit>().state.presets;
-    final teams = context.watch<LaunchProfileCubit>().state.teams;
-    final skills = context.watch<SkillCubit>().state.installed;
-    final plugins = context.watch<PluginCubit>().state.installed;
+    final presets = context.select((CliPresetsCubit c) => c.state.presets);
+    final identities = context.select(
+      (LaunchProfileCubit c) => c.state.identities,
+    );
+    final teams = identities.whereType<TeamProfile>().toList(growable: false);
+    final skills = context.select((SkillCubit c) => c.state.installed);
+    final plugins = context.select((PluginCubit c) => c.state.installed);
     final hubState = _expertHubState(context);
     final slashBundle = _slashBundleForDraft(_currentDraft(), teams, hubState);
     final isSimple = _conversationMode == _LandingConversationMode.simple;

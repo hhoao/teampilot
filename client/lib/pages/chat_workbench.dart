@@ -561,100 +561,104 @@ class _ChatWorkbenchBody extends StatelessWidget {
                   : null));
 
     // Keep Alacritty mounted across title-bar workspace tab switches; hide with
-    // [Offstage] so scrollback survives when the tab returns to foreground.
-    // Also keep it mounted while Chat is shown over a running PTY.
+    // [TpKeepAliveLayer] so scrollback survives without paying layout while
+    // the tab is in the background. Also keep it mounted while Chat is shown
+    // over a running PTY.
+    final chatOverlayHidesTerminal =
+        showSessionStarting || showChat || showRemoteProvision;
     return TpDeferredForegroundMount(
       active: terminalVisible,
       retainWhenInactive: true,
-      builder: (context) => Offstage(
-        offstage: !terminalVisible,
-        child: IgnorePointer(
-          ignoring: !terminalVisible,
-          child: Stack(
-            key: kChatWorkbenchTerminalStackKey,
-            fit: StackFit.expand,
-            children: [
-              if (mountTerminalForLayout)
-                Offstage(
-                  offstage:
-                      showSessionStarting || showChat || showRemoteProvision,
-                  child: buildRunningTerminal(
-                    session: session,
-                    terminalTheme: terminalTheme,
+      builder: (context) => TpKeepAliveLayer(
+        active: terminalVisible,
+        child: TickerMode(
+          enabled: terminalVisible,
+          child: IgnorePointer(
+            ignoring: !terminalVisible,
+            child: Stack(
+              key: kChatWorkbenchTerminalStackKey,
+              fit: StackFit.expand,
+              children: [
+                if (mountTerminalForLayout)
+                  TpKeepAliveLayer(
+                    active: !chatOverlayHidesTerminal,
+                    child: TickerMode(
+                      enabled: !chatOverlayHidesTerminal,
+                      child: buildRunningTerminal(
+                        session: session,
+                        terminalTheme: terminalTheme,
+                        chatCubit: chatCubit,
+                        isPersonal: isPersonalContext,
+                        team: resolvedTeam,
+                        appSession: appSession,
+                        historyMemberId: historyMemberId,
+                        autofocus: !chatOverlayHidesTerminal && terminalVisible,
+                      ),
+                    ),
+                  ),
+                if (showRemoteProvision)
+                  ChatWorkbenchRemoteProvisionView(
+                    progress: remoteProvision,
+                    memberLabel: _memberDisplayLabel(
+                      team: team,
+                      memberId: remoteProvision.memberId,
+                    ),
+                  )
+                else if (showChat)
+                  _buildSessionChatView(
+                    context,
                     chatCubit: chatCubit,
-                    isPersonal: isPersonalContext,
-                    team: resolvedTeam,
-                    appSession: appSession,
-                    historyMemberId: historyMemberId,
-                    autofocus:
-                        !showSessionStarting &&
-                        !showChat &&
-                        !showRemoteProvision &&
-                        terminalVisible,
-                  ),
-                ),
-              if (showRemoteProvision)
-                ChatWorkbenchRemoteProvisionView(
-                  progress: remoteProvision,
-                  memberLabel: _memberDisplayLabel(
                     team: team,
-                    memberId: remoteProvision.memberId,
+                    launchError: launchError,
+                    sessionConnectInProgress: sessionConnectInProgress,
+                  )
+                else if (showSessionStarting)
+                  ChatWorkbenchSessionLoadingView(
+                    message: context.l10n.sessionStarting,
                   ),
-                )
-              else if (showChat)
-                _buildSessionChatView(
-                  context,
-                  chatCubit: chatCubit,
-                  team: team,
-                  launchError: launchError,
-                  sessionConnectInProgress: sessionConnectInProgress,
-                )
-              else if (showSessionStarting)
-                ChatWorkbenchSessionLoadingView(
-                  message: context.l10n.sessionStarting,
-                ),
-              if (workbenchView == SessionWorkbenchView.terminal &&
-                  !mountTerminalForLayout &&
-                  overlay == ChatWorkbenchOverlay.none)
-                _buildTerminalPlaceholder(context, chatCubit: chatCubit),
-              if (showTerminalLaunchError && failure != null)
-                Positioned(
-                  top: 0,
-                  right: 0,
-                  child: Material(
-                    type: MaterialType.transparency,
-                    child: Padding(
-                      padding: EdgeInsets.all(context.tpSpacing.md),
-                      child: ConstrainedBox(
-                        constraints: const BoxConstraints(maxWidth: 260),
-                        child: SessionLaunchErrorBanner(
-                          view: failure,
-                          compact: true,
-                          isRetrying: sessionConnectInProgress,
-                          onRetry: () {
-                            final id = slice.activeSessionId;
-                            if (id == null || id.isEmpty) return;
-                            unawaited(chatCubit.retrySessionLaunch(id));
-                          },
-                          onRemapDeadTarget:
-                              deadSshTargetIdFromError(launchError) != null
-                              ? () {
-                                  final id = slice.activeSessionId;
-                                  if (id == null || id.isEmpty) return;
-                                  unawaited(
-                                    onRemapDeadTargetFromLaunch(
-                                      launchError: launchError!,
-                                      sessionId: id,
-                                    ),
-                                  );
-                                }
-                              : null,
+                if (workbenchView == SessionWorkbenchView.terminal &&
+                    !mountTerminalForLayout &&
+                    overlay == ChatWorkbenchOverlay.none)
+                  _buildTerminalPlaceholder(context, chatCubit: chatCubit),
+                if (showTerminalLaunchError && failure != null)
+                  Positioned(
+                    top: 0,
+                    right: 0,
+                    child: Material(
+                      type: MaterialType.transparency,
+                      child: Padding(
+                        padding: EdgeInsets.all(context.tpSpacing.md),
+                        child: ConstrainedBox(
+                          constraints: const BoxConstraints(maxWidth: 260),
+                          child: SessionLaunchErrorBanner(
+                            view: failure,
+                            compact: true,
+                            isRetrying: sessionConnectInProgress,
+                            onRetry: () {
+                              final id = slice.activeSessionId;
+                              if (id == null || id.isEmpty) return;
+                              unawaited(chatCubit.retrySessionLaunch(id));
+                            },
+                            onRemapDeadTarget:
+                                deadSshTargetIdFromError(launchError) != null
+                                ? () {
+                                    final id = slice.activeSessionId;
+                                    if (id == null || id.isEmpty) return;
+                                    unawaited(
+                                      onRemapDeadTargetFromLaunch(
+                                        launchError: launchError!,
+                                        sessionId: id,
+                                      ),
+                                    );
+                                  }
+                                : null,
+                          ),
                         ),
                       ),
                     ),
                   ),
-                ),
-            ],
+              ],
+            ),
           ),
         ),
       ),

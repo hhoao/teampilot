@@ -56,3 +56,36 @@ class RightToolsToolPreferences {
     boardVisible,
   );
 }
+
+/// Visibility + tool tabs for the right-tools pane — ignores sidebar widths,
+/// theme, and other [LayoutPreferences] fields so home-sidebar drag does not
+/// rebuild file-tree / git.
+@immutable
+class RightToolsLayoutSlice {
+  const RightToolsLayoutSlice({
+    required this.rightToolsVisible,
+    required this.tools,
+  });
+
+  final bool rightToolsVisible;
+  final RightToolsToolPreferences tools;
+
+  LayoutPreferences get panelPreferences => LayoutPreferences(
+    rightToolsVisible: rightToolsVisible,
+    fileTreeVisible: tools.fileTreeVisible,
+    gitVisible: tools.gitVisible,
+    searchVisible: tools.searchVisible,
+    membersVisible: tools.membersVisible,
+    boardVisible: tools.boardVisible,
+  );
+
+  @override
+  bool operator ==(Object other) {
+    return other is RightToolsLayoutSlice &&
+        rightToolsVisible == other.rightToolsVisible &&
+        tools == other.tools;
+  }
+
+  @override
+  int get hashCode => Object.hash(rightToolsVisible, tools);
+}

@@ -38,7 +38,9 @@ SessionSeatWorkingBits watchSessionSeatWorking(
       (c) => c.state.workingSessionIds.contains(sessionId),
     ),
     presence: context.select<MemberPresenceCubit, MemberPresence>(
-      (c) => c.state.presence[memberId] ?? const MemberPresence.offline(),
+      (c) => memberId.isEmpty
+          ? const MemberPresence.offline()
+          : (c.state.presence[memberId] ?? const MemberPresence.offline()),
     ),
   );
 }

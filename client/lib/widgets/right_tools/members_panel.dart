@@ -3,6 +3,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../cubits/cli_presets_cubit.dart';
 import '../../l10n/l10n_extensions.dart';
 import '../../models/app_provider_config.dart';
+import '../../models/cli_preset.dart';
 import '../../models/member_presence.dart';
 import '../../models/runtime_target.dart';
 import '../../models/team_config.dart';
@@ -155,7 +156,9 @@ class MembersPanel extends StatelessWidget {
     final presence =
         memberPresence[member.id] ?? const MemberPresence.offline();
     final statusLabel = memberPresenceStatusLabel(l10n, presence);
-    final presets = context.watch<CliPresetsCubit>().state.presets;
+    final presets = context.select<CliPresetsCubit, List<CliPreset>>(
+      (c) => c.state.presets,
+    );
     final launch = resolveMemberLaunch(
       team: team,
       member: member,
