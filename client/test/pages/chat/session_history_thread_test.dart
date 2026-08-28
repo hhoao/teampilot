@@ -98,14 +98,11 @@ void main() {
   testWidgets('drag-selecting beyond the top edge auto-scrolls the thread', (
     tester,
   ) async {
-      final store = ExternalStoreAiThreadRuntime()
-        ..setMessages(_soloUserMessages(120));
+    final store = ExternalStoreAiThreadRuntime()
+      ..setMessages(_soloUserMessages(120));
 
-      await tester.pumpWidget(_harness(runtime: store));
-      await pumpUntilSettled(
-        tester,
-        timeout: const Duration(seconds: 30),
-      );
+    await tester.pumpWidget(_harness(runtime: store));
+    await pumpUntilSettled(tester, timeout: const Duration(seconds: 30));
 
     final position = tester
         .state<ScrollableState>(find.byType(Scrollable).first)
@@ -642,13 +639,12 @@ void main() {
     expect(owner.value, isNotNull);
     // stick-to-end: first visible turn is a later user id (viewport still
     // shows more than one message, so not necessarily the last id).
-    expect(
-      List.generate(12, (i) => 'u$i'),
-      contains(owner.value),
-    );
+    expect(List.generate(12, (i) => 'u$i'), contains(owner.value));
     expect(owner.value, isNot('u0'));
 
-    tester.state<ScrollableState>(find.byType(Scrollable).first).position
+    tester
+        .state<ScrollableState>(find.byType(Scrollable).first)
+        .position
         .jumpTo(0);
     await tester.pumpAndSettle();
 

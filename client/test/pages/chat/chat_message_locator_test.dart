@@ -120,8 +120,7 @@ void main() {
   });
 
   test('second locate wins while first is waiting', () async {
-    final runtime = ExternalStoreAiThreadRuntime()
-      ..setMessages([_user('u1')]);
+    final runtime = ExternalStoreAiThreadRuntime()..setMessages([_user('u1')]);
     final loaded = [_user('u0'), _user('u1')];
     final controller = ChatRevealController();
     String? highlight;

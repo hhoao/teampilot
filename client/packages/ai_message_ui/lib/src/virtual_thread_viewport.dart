@@ -16,27 +16,36 @@ class VirtualThreadViewport extends StatefulWidget {
     this.header,
     this.overscan = 3,
     this.estimateHeight = 200,
+
     /// When true, measurement must not request scroll corrections upward.
     this.suppressMeasureScrollCorrection = false,
     this.onMeasureScrollCorrection,
+
     /// History opens stick-to-end: cold / estimate windows prefer the suffix.
     this.anchorEnd = false,
+
     /// When false, only spacers (estimated extent) — no message widgets.
     /// Hosts set true after the first jump-to-end so open does not build the
     /// wrong end of the thread under [SingleChildScrollView].
     this.mountTurns = true,
+
     /// How long recently scrolled-off turns keep their Element in an offstage
     /// freeze cache (Claude DOM-like). [Duration.zero] disables.
     this.keepAliveDuration = Duration.zero,
+
     /// Cap on offstage cached turns (does not widen the scroll Column).
     this.keepAliveMaxExtra = 12,
+
     /// Never shrink the mounted index range (Claude-like residency while scrolling).
     this.retainMountedTurns = false,
+
     /// After the first mount window, grow in chunks until every turn in
     /// [messages] is mounted (pagination already bounds the data window).
     this.fillDataWindow = false,
+
     /// Injectable clock (tests); defaults to [DateTime.now].
     this.clock,
+
     /// When [revealEpoch] changes and [revealMessageId] is non-null and present
     /// in [messages], compute the pixel offset of its turn and call
     /// [onRevealOffset] post-frame (estimate-based until that turn is measured).
@@ -74,6 +83,7 @@ class VirtualThreadViewport extends StatefulWidget {
   /// See constructor docs.
   final String? revealMessageId;
   final int revealEpoch;
+
   /// Delivered in viewport-space document pixels (header height included). The
   /// host must add its own outer scroll padding (e.g. SingleChildScrollView top
   /// padding) when jumping.
@@ -110,6 +120,7 @@ class _VirtualThreadViewportState extends State<VirtualThreadViewport> {
   final Map<String, DateTime> _keepAliveUntil = {};
   List<String> _offstageIds = const [];
   final Map<String, GlobalKey> _turnKeys = {};
+
   /// Cached message column per turn — identical [Widget] instances skip Element
   /// rebuild when softReload only changes another turn's content.
   final Map<String, _CachedTurnBody> _builtTurnBody = {};
@@ -183,8 +194,9 @@ class _VirtualThreadViewportState extends State<VirtualThreadViewport> {
       if (targetId != null && onOffset != null) {
         WidgetsBinding.instance.addPostFrameCallback((_) {
           if (!mounted) return;
-          final turnIndex =
-              _turns.indexWhere((t) => t.messageIds.contains(targetId));
+          final turnIndex = _turns.indexWhere(
+            (t) => t.messageIds.contains(targetId),
+          );
           if (turnIndex < 0) return;
           onOffset(_headerHeight + _cache.offsetBefore(_turns, turnIndex));
         });
@@ -221,9 +233,7 @@ class _VirtualThreadViewportState extends State<VirtualThreadViewport> {
     // Build a quick lookup of previous turns by id so we can skip identity
     // recomputation for turns that are unchanged (identical object + unchanged
     // message references + not the streaming tip).
-    final prevById = <String, ThreadTurn>{
-      for (final t in previous) t.id: t,
-    };
+    final prevById = <String, ThreadTurn>{for (final t in previous) t.id: t};
     final tipId = _turns.isNotEmpty ? _turns.last.id : null;
     for (final turn in _turns) {
       liveIds.add(turn.id);
@@ -260,9 +270,7 @@ class _VirtualThreadViewportState extends State<VirtualThreadViewport> {
   /// boundary. Unchanged turns keep their cached [Widget]s and skip
   /// [VirtualThreadViewport.messageBuilder] entirely.
   void _invalidateChangedTurnBodies(List<ThreadTurn> previous) {
-    final prevById = <String, ThreadTurn>{
-      for (final t in previous) t.id: t,
-    };
+    final prevById = <String, ThreadTurn>{for (final t in previous) t.id: t};
     final stale = <String>{};
     for (final turn in _turns) {
       final prev = prevById[turn.id];
@@ -298,7 +306,8 @@ class _VirtualThreadViewportState extends State<VirtualThreadViewport> {
   void _notifyVisibleRange(TurnVisibleRange visible) {
     final cb = widget.onVisibleRange;
     if (cb == null) return;
-    final turnId = visible.lastIndex < visible.firstIndex ||
+    final turnId =
+        visible.lastIndex < visible.firstIndex ||
             visible.firstIndex < 0 ||
             visible.firstIndex >= _turns.length
         ? null
@@ -440,13 +449,15 @@ class _VirtualThreadViewportState extends State<VirtualThreadViewport> {
           firstIndex: 0,
           lastIndex: last,
           paddingTop: 0,
-          paddingBottom: _cache.totalExtent(_turns) -
+          paddingBottom:
+              _cache.totalExtent(_turns) -
               _cache.offsetBefore(_turns, last + 1),
         );
       }
     }
 
-    final rangeChanged = range.firstIndex != _firstIndex ||
+    final rangeChanged =
+        range.firstIndex != _firstIndex ||
         range.lastIndex != _lastIndex ||
         range.paddingTop != _paddingTop ||
         range.paddingBottom != _paddingBottom;
@@ -496,8 +507,8 @@ class _VirtualThreadViewportState extends State<VirtualThreadViewport> {
       _firstIndex = first;
       _lastIndex = last;
       _paddingTop = _cache.offsetBefore(_turns, first);
-      _paddingBottom = _cache.totalExtent(_turns) -
-          _cache.offsetBefore(_turns, last + 1);
+      _paddingBottom =
+          _cache.totalExtent(_turns) - _cache.offsetBefore(_turns, last + 1);
     }
     // Allow fill to grow into newly prepended turns only.
     _fillScheduled = false;
@@ -505,7 +516,9 @@ class _VirtualThreadViewportState extends State<VirtualThreadViewport> {
 
   TurnVisibleRange _retainUnion(TurnVisibleRange ideal) {
     if (_lastIndex < _firstIndex || _turns.isEmpty) return ideal;
-    final first = ideal.firstIndex < _firstIndex ? ideal.firstIndex : _firstIndex;
+    final first = ideal.firstIndex < _firstIndex
+        ? ideal.firstIndex
+        : _firstIndex;
     final last = ideal.lastIndex > _lastIndex ? ideal.lastIndex : _lastIndex;
     return TurnVisibleRange(
       firstIndex: first,
@@ -551,8 +564,8 @@ class _VirtualThreadViewportState extends State<VirtualThreadViewport> {
         _firstIndex = first;
         _lastIndex = last;
         _paddingTop = _cache.offsetBefore(_turns, first);
-        _paddingBottom = _cache.totalExtent(_turns) -
-            _cache.offsetBefore(_turns, last + 1);
+        _paddingBottom =
+            _cache.totalExtent(_turns) - _cache.offsetBefore(_turns, last + 1);
       });
       if (first > 0 || last < _turns.length - 1) {
         _scheduleFillDataWindow();
@@ -581,7 +594,8 @@ class _VirtualThreadViewportState extends State<VirtualThreadViewport> {
       maxCached: widget.keepAliveMaxExtra,
     );
     _scheduleKeepAliveTick(result.nextExpiry, now);
-    final idsChanged = result.offstageIds.length != _offstageIds.length ||
+    final idsChanged =
+        result.offstageIds.length != _offstageIds.length ||
         !_listEquals(result.offstageIds, _offstageIds);
     if (idsChanged) {
       // Drop keys for fully evicted turns so Elements dispose.
@@ -643,9 +657,7 @@ class _VirtualThreadViewportState extends State<VirtualThreadViewport> {
         // Start of this turn (heights of turns before it); own height excluded.
         final turnStart = _cache.offsetBefore(_turns, turnIndex);
         final scrollInTurn = widget.scrollController.hasClients
-            ? _scrollPixelsInTurnSpace(
-                widget.scrollController.position.pixels,
-              )
+            ? _scrollPixelsInTurnSpace(widget.scrollController.position.pixels)
             : 0.0;
         // Only correct when the turn was fully above the viewport top.
         final fullyAbove = turnStart + before <= scrollInTurn;
@@ -735,10 +747,7 @@ class _VirtualThreadViewportState extends State<VirtualThreadViewport> {
 
     final children = <Widget>[
       if (widget.header != null)
-        _MeasuredBox(
-          onMeasured: _onHeaderMeasured,
-          child: widget.header!,
-        ),
+        _MeasuredBox(onMeasured: _onHeaderMeasured, child: widget.header!),
       if (offstageTurns.isNotEmpty)
         Offstage(
           offstage: true,
@@ -780,10 +789,7 @@ class _CachedTurnBody {
 }
 
 class _MeasuredBox extends StatefulWidget {
-  const _MeasuredBox({
-    required this.onMeasured,
-    required this.child,
-  });
+  const _MeasuredBox({required this.onMeasured, required this.child});
 
   final void Function(double height) onMeasured;
   final Widget child;

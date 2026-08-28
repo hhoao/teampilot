@@ -679,7 +679,8 @@ class _SessionHistoryThreadState extends State<SessionHistoryThread> {
                             actionBarReveal: deliveryFailed || ai.id == lastId
                                 ? AiActionBarReveal.always
                                 : AiActionBarReveal.hover,
-                            onRetryDelivery: deliveryFailed &&
+                            onRetryDelivery:
+                                deliveryFailed &&
                                     widget.onRetryFailedMessage != null
                                 ? () => widget.onRetryFailedMessage!(ai.id)
                                 : null,
