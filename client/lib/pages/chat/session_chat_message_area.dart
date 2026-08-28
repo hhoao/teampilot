@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:ai_message_core/ai_message_core.dart';
 import 'package:ai_message_ui/ai_message_ui.dart';
 import 'package:flutter/material.dart';
@@ -27,6 +29,8 @@ import '../../services/workspace/workspace_tools_scope.dart';
 import '../../widgets/app_toast/app_toast.dart';
 import 'ai_message_strings_from_l10n.dart';
 import 'chat_find_bar.dart';
+import 'chat_outline.dart';
+import 'chat_outline_rail.dart';
 import 'chat_reveal_controller.dart';
 import 'session_chat_markdown_link_scope.dart';
 import 'session_history_live_chrome.dart';
@@ -51,7 +55,9 @@ class SessionChatMessageArea extends StatelessWidget {
     required this.subagentPreview,
     required this.taskBoardController,
     required this.findVisible,
-    required this.findHighlightId,
+    required this.highlightMessageId,
+    required this.visibleOwnerId,
+    required this.onLocateOutline,
     required this.findController,
     required this.findQueryController,
     required this.findFocusNode,
@@ -76,7 +82,9 @@ class SessionChatMessageArea extends StatelessWidget {
   final SubagentPreviewController subagentPreview;
   final CliTaskBoardController? taskBoardController;
   final bool findVisible;
-  final String? findHighlightId;
+  final String? highlightMessageId;
+  final ValueNotifier<String?> visibleOwnerId;
+  final ValueChanged<ChatOutlineEntry> onLocateOutline;
   final ChatTranscriptFindController findController;
   final TextEditingController findQueryController;
   final FocusNode findFocusNode;
@@ -280,11 +288,18 @@ class SessionChatMessageArea extends StatelessWidget {
                                     pendingDeliveryStatuses:
                                         historySeat.pendingDeliveryStatuses,
                                     onRetryFailedMessage: onRetryFailedMessage,
-                                    highlightMessageId: findHighlightId,
+                                    highlightMessageId: highlightMessageId,
                                     revealRequest: revealController,
+                                    visibleOwnerId: visibleOwnerId,
                                   ),
                                 );
                               },
+                            ),
+                            _ChatOutlineLayer(
+                              historySeat: historySeat,
+                              subagentPreviewOpen: top != null,
+                              visibleOwnerId: visibleOwnerId,
+                              onLocate: onLocateOutline,
                             ),
                             if (top != null)
                               Positioned.fill(
@@ -374,4 +389,94 @@ class _NoopShellResolver implements AiShellToolTargetResolver {
 
   @override
   AiShellToolTarget? resolve(AiToolCallPart part) => null;
+}
+
+class _ChatOutlineLayer extends StatefulWidget {
+  const _ChatOutlineLayer({
+    required this.historySeat,
+    required this.subagentPreviewOpen,
+    required this.visibleOwnerId,
+    required this.onLocate,
+  });
+
+  final AiHistorySeat historySeat;
+  final bool subagentPreviewOpen;
+  final ValueNotifier<String?> visibleOwnerId;
+  final ValueChanged<ChatOutlineEntry> onLocate;
+
+  @override
+  State<_ChatOutlineLayer> createState() => _ChatOutlineLayerState();
+}
+
+class _ChatOutlineLayerState extends State<_ChatOutlineLayer> {
+  List<ChatOutlineEntry> _outline = const [];
+  StreamSubscription<void>? _runtimeSub;
+  StreamSubscription<AiHistoryState>? _seatSub;
+
+  @override
+  void initState() {
+    super.initState();
+    _listen();
+  }
+
+  @override
+  void didUpdateWidget(covariant _ChatOutlineLayer oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.historySeat != widget.historySeat) {
+      _unlisten();
+      _outline = const [];
+      _listen();
+    }
+  }
+
+  @override
+  void dispose() {
+    _unlisten();
+    super.dispose();
+  }
+
+  void _listen() {
+    _runtimeSub = widget.historySeat.runtime.changes.listen((_) => _refresh());
+    _seatSub = widget.historySeat.stream.listen((_) => _refresh());
+  }
+
+  void _unlisten() {
+    unawaited(_runtimeSub?.cancel() ?? Future<void>.value());
+    unawaited(_seatSub?.cancel() ?? Future<void>.value());
+    _runtimeSub = null;
+    _seatSub = null;
+  }
+
+  void _refresh() {
+    if (!mounted) return;
+    final next = buildChatOutline(
+      widget.historySeat.loadedMessages,
+      emptyPreview: context.l10n.chatUserMessageRailEmptyPreview,
+      previous: _outline,
+    );
+    if (identical(next, _outline)) return;
+    setState(() => _outline = next);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = context.l10n;
+    final next = buildChatOutline(
+      widget.historySeat.loadedMessages,
+      emptyPreview: l10n.chatUserMessageRailEmptyPreview,
+      previous: _outline,
+    );
+    _outline = next;
+    return ChatOutlineHost(
+      show: shouldShowChatOutline(
+        threadVisible: true,
+        subagentPreviewOpen: widget.subagentPreviewOpen,
+        entries: _outline,
+      ),
+      entries: _outline,
+      activeId: widget.visibleOwnerId,
+      onLocate: widget.onLocate,
+      semanticLabelFor: l10n.chatUserMessageRailSemanticLabel,
+    );
+  }
 }

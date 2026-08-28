@@ -7352,6 +7352,14 @@ class AppLocalizationsZh extends AppLocalizations {
   String get chatFindUseRegex => '使用正则表达式';
 
   @override
+  String get chatUserMessageRailEmptyPreview => '空消息';
+
+  @override
+  String chatUserMessageRailSemanticLabel(int index, int total) {
+    return '用户消息第 $index 条，共 $total 条';
+  }
+
+  @override
   String get htmlViewToggleEdit => '编辑';
 
   @override

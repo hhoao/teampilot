@@ -46,6 +46,7 @@ class ChatOutlineRail extends StatefulWidget {
     required this.activeId,
     required this.onLocate,
     this.footerBuilder,
+    this.semanticLabelFor,
     super.key,
   });
 
@@ -54,6 +55,7 @@ class ChatOutlineRail extends StatefulWidget {
   final ValueChanged<ChatOutlineEntry> onLocate;
   final Widget? Function(BuildContext context, ChatOutlineEntry entry)?
   footerBuilder;
+  final String Function(int index, int total)? semanticLabelFor;
 
   @override
   State<ChatOutlineRail> createState() => _ChatOutlineRailState();
@@ -247,161 +249,175 @@ class _ChatOutlineRailState extends State<ChatOutlineRail> {
   Widget build(BuildContext context) {
     if (widget.entries.isEmpty) return const SizedBox.shrink();
     final cs = Theme.of(context).colorScheme;
-    return Align(
-      alignment: Alignment.centerLeft,
-      child: SizedBox(
-        key: kChatOutlineRailKey,
-        width: kChatOutlineRailWidth,
-        child: Shortcuts(
-          shortcuts: const {
-            SingleActivator(LogicalKeyboardKey.arrowDown): _MoveOutlineIntent(
-              1,
-            ),
-            SingleActivator(LogicalKeyboardKey.arrowUp): _MoveOutlineIntent(-1),
-            SingleActivator(LogicalKeyboardKey.enter): _LocateOutlineIntent(),
-            SingleActivator(LogicalKeyboardKey.escape): _DismissOutlineIntent(),
-          },
-          child: Actions(
-            actions: {
-              _MoveOutlineIntent: CallbackAction<_MoveOutlineIntent>(
-                onInvoke: (intent) {
-                  _moveFocus(intent.delta);
-                  return null;
-                },
+    final semanticIndex = (_hoverIndex ?? _focusIndex) + 1;
+    final semanticLabel = widget.semanticLabelFor?.call(
+      semanticIndex,
+      widget.entries.length,
+    );
+    return Semantics(
+      container: true,
+      label: semanticLabel,
+      child: Align(
+        alignment: Alignment.centerLeft,
+        child: SizedBox(
+          key: kChatOutlineRailKey,
+          width: kChatOutlineRailWidth,
+          child: Shortcuts(
+            shortcuts: const {
+              SingleActivator(LogicalKeyboardKey.arrowDown): _MoveOutlineIntent(
+                1,
               ),
-              _LocateOutlineIntent: CallbackAction<_LocateOutlineIntent>(
-                onInvoke: (_) {
-                  _locateFocused();
-                  return null;
-                },
+              SingleActivator(LogicalKeyboardKey.arrowUp): _MoveOutlineIntent(
+                -1,
               ),
-              _DismissOutlineIntent: CallbackAction<_DismissOutlineIntent>(
-                onInvoke: (_) {
-                  _hidePreview();
-                  _focus.unfocus();
-                  return null;
-                },
-              ),
+              SingleActivator(LogicalKeyboardKey.enter): _LocateOutlineIntent(),
+              SingleActivator(LogicalKeyboardKey.escape):
+                  _DismissOutlineIntent(),
             },
-            child: Focus(
-              key: kChatOutlineRailFocusKey,
-              focusNode: _focus,
-              skipTraversal: true,
-              descendantsAreFocusable: false,
-              descendantsAreTraversable: false,
-              onFocusChange: (hasFocus) {
-                if (!hasFocus) _hidePreview();
+            child: Actions(
+              actions: {
+                _MoveOutlineIntent: CallbackAction<_MoveOutlineIntent>(
+                  onInvoke: (intent) {
+                    _moveFocus(intent.delta);
+                    return null;
+                  },
+                ),
+                _LocateOutlineIntent: CallbackAction<_LocateOutlineIntent>(
+                  onInvoke: (_) {
+                    _locateFocused();
+                    return null;
+                  },
+                ),
+                _DismissOutlineIntent: CallbackAction<_DismissOutlineIntent>(
+                  onInvoke: (_) {
+                    _hidePreview();
+                    _focus.unfocus();
+                    return null;
+                  },
+                ),
               },
-              onKeyEvent: (node, event) {
-                if (event is! KeyDownEvent) return KeyEventResult.ignored;
-                final key = event.logicalKey;
-                if (key == LogicalKeyboardKey.arrowDown) {
-                  _moveFocus(1);
-                  return KeyEventResult.handled;
-                }
-                if (key == LogicalKeyboardKey.arrowUp) {
-                  _moveFocus(-1);
-                  return KeyEventResult.handled;
-                }
-                if (key == LogicalKeyboardKey.enter) {
-                  _locateFocused();
-                  return KeyEventResult.handled;
-                }
-                if (key == LogicalKeyboardKey.escape) {
-                  _hidePreview();
-                  _focus.unfocus();
-                  return KeyEventResult.handled;
-                }
-                return KeyEventResult.ignored;
-              },
-              child: CompositedTransformTarget(
-                link: _link,
-                child: OverlayPortal(
-                  controller: _overlay,
-                  overlayChildBuilder: _buildOverlay,
-                  child: ValueListenableBuilder<String?>(
-                    valueListenable: widget.activeId,
-                    builder: (context, activeId, _) {
-                      return LayoutBuilder(
-                        builder: (context, constraints) {
-                          final count = widget.entries.length;
-                          final viewportH = constraints.maxHeight;
-                          final needsScroll =
-                              count * kChatOutlineMinTickGap > viewportH;
-                          final paintHeight = needsScroll
-                              ? count * kChatOutlineMinTickGap
-                              : viewportH;
-                          _paintSize = Size(kChatOutlineRailWidth, paintHeight);
-                          final activeIndex = _indexOfId(activeId);
-                          final locatedIndex = _indexOfId(_locatedId);
-                          final emphasized =
-                              _hoverIndex ??
-                              (_focus.hasFocus ? _focusIndex : null);
-                          final paint = _TickHitTarget(
-                            count: count,
-                            child: Listener(
-                              behavior: HitTestBehavior.deferToChild,
-                              onPointerHover: (e) {
-                                if (e.kind != PointerDeviceKind.mouse) {
-                                  return;
-                                }
-                                _onHover(e.localPosition, _paintSize);
-                              },
-                              child: GestureDetector(
-                                behavior: HitTestBehavior.opaque,
-                                onTapDown: (d) =>
-                                    _onTapAt(d.localPosition, _paintSize),
-                                onLongPressStart: (d) {
-                                  _focus.requestFocus();
-                                  final i = chatOutlineTickAt(
-                                    local: d.localPosition,
-                                    size: _paintSize,
-                                    count: count,
-                                  );
-                                  if (i != null) _showPreview(i);
+              child: Focus(
+                key: kChatOutlineRailFocusKey,
+                focusNode: _focus,
+                skipTraversal: true,
+                descendantsAreFocusable: false,
+                descendantsAreTraversable: false,
+                onFocusChange: (hasFocus) {
+                  if (!hasFocus) _hidePreview();
+                },
+                onKeyEvent: (node, event) {
+                  if (event is! KeyDownEvent) return KeyEventResult.ignored;
+                  final key = event.logicalKey;
+                  if (key == LogicalKeyboardKey.arrowDown) {
+                    _moveFocus(1);
+                    return KeyEventResult.handled;
+                  }
+                  if (key == LogicalKeyboardKey.arrowUp) {
+                    _moveFocus(-1);
+                    return KeyEventResult.handled;
+                  }
+                  if (key == LogicalKeyboardKey.enter) {
+                    _locateFocused();
+                    return KeyEventResult.handled;
+                  }
+                  if (key == LogicalKeyboardKey.escape) {
+                    _hidePreview();
+                    _focus.unfocus();
+                    return KeyEventResult.handled;
+                  }
+                  return KeyEventResult.ignored;
+                },
+                child: CompositedTransformTarget(
+                  link: _link,
+                  child: OverlayPortal(
+                    controller: _overlay,
+                    overlayChildBuilder: _buildOverlay,
+                    child: ValueListenableBuilder<String?>(
+                      valueListenable: widget.activeId,
+                      builder: (context, activeId, _) {
+                        return LayoutBuilder(
+                          builder: (context, constraints) {
+                            final count = widget.entries.length;
+                            final viewportH = constraints.maxHeight;
+                            final needsScroll =
+                                count * kChatOutlineMinTickGap > viewportH;
+                            final paintHeight = needsScroll
+                                ? count * kChatOutlineMinTickGap
+                                : viewportH;
+                            _paintSize = Size(
+                              kChatOutlineRailWidth,
+                              paintHeight,
+                            );
+                            final activeIndex = _indexOfId(activeId);
+                            final locatedIndex = _indexOfId(_locatedId);
+                            final emphasized =
+                                _hoverIndex ??
+                                (_focus.hasFocus ? _focusIndex : null);
+                            final paint = _TickHitTarget(
+                              count: count,
+                              child: Listener(
+                                behavior: HitTestBehavior.deferToChild,
+                                onPointerHover: (e) {
+                                  if (e.kind != PointerDeviceKind.mouse) {
+                                    return;
+                                  }
+                                  _onHover(e.localPosition, _paintSize);
                                 },
-                                child: MouseRegion(
-                                  onHover: (e) {
-                                    if (e.kind != PointerDeviceKind.mouse) {
-                                      return;
-                                    }
-                                    _onHover(e.localPosition, _paintSize);
-                                  },
-                                  onExit: (_) => _scheduleHide(),
-                                  child: CustomPaint(
-                                    size: Size(
-                                      kChatOutlineRailWidth,
-                                      paintHeight,
-                                    ),
-                                    painter: _ChatOutlineRailPainter(
+                                child: GestureDetector(
+                                  behavior: HitTestBehavior.opaque,
+                                  onTapDown: (d) =>
+                                      _onTapAt(d.localPosition, _paintSize),
+                                  onLongPressStart: (d) {
+                                    _focus.requestFocus();
+                                    final i = chatOutlineTickAt(
+                                      local: d.localPosition,
+                                      size: _paintSize,
                                       count: count,
-                                      emphasizedIndex: emphasized,
-                                      activeIndex: activeIndex,
-                                      locatedIndex: locatedIndex,
-                                      trackColor: cs.onSurfaceVariant
-                                          .withValues(alpha: 0.35),
-                                      tickColor: cs.onSurfaceVariant.withValues(
-                                        alpha: 0.7,
+                                    );
+                                    if (i != null) _showPreview(i);
+                                  },
+                                  child: MouseRegion(
+                                    onHover: (e) {
+                                      if (e.kind != PointerDeviceKind.mouse) {
+                                        return;
+                                      }
+                                      _onHover(e.localPosition, _paintSize);
+                                    },
+                                    onExit: (_) => _scheduleHide(),
+                                    child: CustomPaint(
+                                      size: Size(
+                                        kChatOutlineRailWidth,
+                                        paintHeight,
                                       ),
-                                      emphasisColor: cs.onSurface,
+                                      painter: _ChatOutlineRailPainter(
+                                        count: count,
+                                        emphasizedIndex: emphasized,
+                                        activeIndex: activeIndex,
+                                        locatedIndex: locatedIndex,
+                                        trackColor: cs.onSurfaceVariant
+                                            .withValues(alpha: 0.35),
+                                        tickColor: cs.onSurfaceVariant
+                                            .withValues(alpha: 0.7),
+                                        emphasisColor: cs.onSurface,
+                                      ),
                                     ),
                                   ),
                                 ),
                               ),
-                            ),
-                          );
-                          if (needsScroll) {
-                            return SingleChildScrollView(
-                              child: SizedBox(
-                                height: paintHeight,
-                                child: paint,
-                              ),
                             );
-                          }
-                          return paint;
-                        },
-                      );
-                    },
+                            if (needsScroll) {
+                              return SingleChildScrollView(
+                                child: SizedBox(
+                                  height: paintHeight,
+                                  child: paint,
+                                ),
+                              );
+                            }
+                            return paint;
+                          },
+                        );
+                      },
+                    ),
                   ),
                 ),
               ),
@@ -426,6 +442,7 @@ class ChatOutlineHost extends StatelessWidget {
     required this.activeId,
     required this.onLocate,
     this.footerBuilder,
+    this.semanticLabelFor,
     super.key,
   });
 
@@ -435,6 +452,7 @@ class ChatOutlineHost extends StatelessWidget {
   final ValueChanged<ChatOutlineEntry> onLocate;
   final Widget? Function(BuildContext context, ChatOutlineEntry entry)?
   footerBuilder;
+  final String Function(int index, int total)? semanticLabelFor;
 
   @override
   Widget build(BuildContext context) {
@@ -450,6 +468,7 @@ class ChatOutlineHost extends StatelessWidget {
         activeId: activeId,
         onLocate: onLocate,
         footerBuilder: footerBuilder,
+        semanticLabelFor: semanticLabelFor,
       ),
     );
   }

@@ -7660,6 +7660,14 @@ class AppLocalizationsEn extends AppLocalizations {
   String get chatFindUseRegex => 'Use regular expression';
 
   @override
+  String get chatUserMessageRailEmptyPreview => 'Empty message';
+
+  @override
+  String chatUserMessageRailSemanticLabel(int index, int total) {
+    return 'User message $index of $total';
+  }
+
+  @override
   String get htmlViewToggleEdit => 'Edit';
 
   @override

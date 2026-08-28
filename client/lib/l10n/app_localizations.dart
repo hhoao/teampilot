@@ -13640,6 +13640,18 @@ abstract class AppLocalizations {
   /// **'Use regular expression'**
   String get chatFindUseRegex;
 
+  /// No description provided for @chatUserMessageRailEmptyPreview.
+  ///
+  /// In en, this message translates to:
+  /// **'Empty message'**
+  String get chatUserMessageRailEmptyPreview;
+
+  /// No description provided for @chatUserMessageRailSemanticLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'User message {index} of {total}'**
+  String chatUserMessageRailSemanticLabel(int index, int total);
+
   /// No description provided for @htmlViewToggleEdit.
   ///
   /// In en, this message translates to:

@@ -62,6 +62,7 @@ import 'session_chat_message_area.dart';
 import 'session_seat_working.dart';
 import 'agent_permission_attention_banner.dart';
 import 'chat_find_bar.dart';
+import 'chat_message_locator.dart';
 import 'chat_reveal_controller.dart';
 import 'session_follow_up_compose_submit.dart';
 import 'history_continue_delivery.dart';
@@ -182,8 +183,11 @@ class _SessionChatViewState extends State<SessionChatView> {
     messagesProvider: () => _seat?.loadedMessages ?? const [],
   );
   final _revealController = ChatRevealController();
+  final _visibleOwnerId = ValueNotifier<String?>(null);
+  final _emptyRuntime = ExternalStoreAiThreadRuntime();
+  late final ChatMessageLocator _locator;
   bool _findVisible = false;
-  String? _findHighlightId;
+  String? _locateHighlightId;
 
   @override
   void initState() {
@@ -209,6 +213,24 @@ class _SessionChatViewState extends State<SessionChatView> {
     _failedMessageStore =
         widget.failedMessageStore ??
         FailedMessageStore(fs: AppStorage.fs, rootPath: AppStorage.appDataRoot);
+    _locator = ChatMessageLocator(
+      loadedMessages: () => _seat?.loadedMessages ?? const [],
+      runtime: () => _seat?.runtime ?? _emptyRuntime,
+      revealInWindow: (index) {
+        _seat?.revealMessage(index);
+      },
+      revealController: _revealController,
+      onHighlight: (id) {
+        if (mounted) setState(() => _locateHighlightId = id);
+      },
+      waitFrame: () {
+        final done = Completer<void>();
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (!done.isCompleted) done.complete();
+        });
+        return done.future;
+      },
+    );
     _bindSeat();
     unawaited(_loadHistoryThenHydratePersistedPendingUsers());
     unawaited(_loadWorkspaceProjectBundle());
@@ -262,6 +284,9 @@ class _SessionChatViewState extends State<SessionChatView> {
         oldWidget.selectedMemberId != widget.selectedMemberId ||
         oldWidget.team?.id != widget.team?.id;
     if (seatChanged) {
+      _locator.cancel();
+      _visibleOwnerId.value = null;
+      _locateHighlightId = null;
       unawaited(_stopLiveRefreshForSeatChange());
       _clearMailboxQueuedUi();
       _editingFailedMessage = null;
@@ -341,22 +366,13 @@ class _SessionChatViewState extends State<SessionChatView> {
     _findQueryController.clear();
     setState(() {
       _findVisible = false;
-      _findHighlightId = null;
+      _locateHighlightId = null;
     });
     _revealController.clear();
   }
 
   void _navigateFindTo(TranscriptHit hit) {
-    final seat = _seat;
-    if (seat != null) {
-      seat.revealMessage(hit.messageIndex);
-    }
-    setState(() => _findHighlightId = hit.messageId);
-    // Reveal after the frame so the seat's window update has reached the thread
-    // and the target message is in `displayMessages` when the offset is computed.
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted) _revealController.reveal(hit.messageId);
-    });
+    unawaited(_locator.locate(id: hit.messageId, index: hit.messageIndex));
   }
 
   @override
@@ -380,6 +396,9 @@ class _SessionChatViewState extends State<SessionChatView> {
     _findFocusNode.dispose();
     _findController.dispose();
     _revealController.dispose();
+    _visibleOwnerId.dispose();
+    _locator.cancel();
+    _emptyRuntime.close();
     super.dispose();
   }
 
@@ -1372,7 +1391,15 @@ class _SessionChatViewState extends State<SessionChatView> {
                                           taskBoardController:
                                               _taskBoardController,
                                           findVisible: _findVisible,
-                                          findHighlightId: _findHighlightId,
+                                          highlightMessageId:
+                                              _locateHighlightId,
+                                          visibleOwnerId: _visibleOwnerId,
+                                          onLocateOutline: (e) => unawaited(
+                                            _locator.locate(
+                                              id: e.id,
+                                              index: e.messageIndex,
+                                            ),
+                                          ),
                                           findController: _findController,
                                           findQueryController:
                                               _findQueryController,
