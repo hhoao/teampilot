@@ -594,6 +594,61 @@ void main() {
       isA<AiTextPart>(),
     );
   });
+
+  group('loads one subagent attachment on demand', () {
+    test('inflateOne resolves a single tool call at depth zero', () async {
+      final fs = InMemoryFilesystem();
+      await fs.writeString(
+        claudeSubagentMetaPath(subagentsDir: subagentsDir, agentId: 'abc'),
+        jsonEncode({'toolUseId': 'toolu_1'}),
+      );
+      await fs.writeString(
+        claudeSubagentTranscriptPath(
+          subagentsDir: subagentsDir,
+          agentId: 'abc',
+        ),
+        _userAssistantJsonl(user: 'explore', assistant: 'found auth'),
+      );
+
+      const part = AiToolCallPart(
+        toolCallId: 'toolu_1',
+        toolName: 'Agent',
+        args: {'description': 'Explore auth'},
+        result: 'summary',
+      );
+
+      final attachment = await SubagentAttachmentInflater().inflateOne(
+        part: part,
+        ctx: _testCtx(fs),
+        capability: _Cap(const ClaudeCompatibleSideResolver()),
+        rootTranscriptPath: parentPath,
+      );
+
+      expect(attachment.toolCallId, 'toolu_1');
+      expect(attachment.source, AiSubagentAttachmentSource.sideTranscript);
+      expect(attachment.messages, isNotEmpty);
+    });
+
+    test('inflateOne degrades to tool result when side transcript is missing',
+        () async {
+      const part = AiToolCallPart(
+        toolCallId: 'toolu_missing',
+        toolName: 'Agent',
+        args: {'description': 'offline'},
+        result: 'done offline',
+      );
+
+      final attachment = await SubagentAttachmentInflater().inflateOne(
+        part: part,
+        ctx: _testCtx(InMemoryFilesystem()),
+        capability: _Cap(const ClaudeCompatibleSideResolver()),
+        rootTranscriptPath: parentPath,
+      );
+
+      expect(attachment.source, AiSubagentAttachmentSource.toolResult);
+      expect(attachment.messages, isNotEmpty);
+    });
+  });
 }
 
 class _WorkflowCap implements AiHistoryCapability {

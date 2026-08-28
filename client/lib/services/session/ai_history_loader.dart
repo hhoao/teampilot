@@ -102,7 +102,112 @@ final class AiHistoryLoader {
   /// 在途 load 单飞表(cacheKey → future):并发触发合并,见 [load]。
   final _inflightLoads = <String, Future<AiHistoryLoadResult>>{};
 
-  /// Page-window metadata for [loadOlder] / first-paint results.
+  /// Per-seat lazy subagent attachment loads (cacheKey+toolCallId → future).
+  final _inflightSubagentLoads =
+      <String, Future<AiSubagentAttachment?>>{};
+
+  /// Lazy, single-flight subagent attachment resolution for one [toolCallId].
+  Future<AiSubagentAttachment?> loadSubagentAttachment({
+    required String cacheKey,
+    required String toolCallId,
+    required SessionHistoryContext ctx,
+    required AiHistoryCapability capability,
+    required List<AiMessage> messages,
+    required CliTool cli,
+  }) async {
+    final id = toolCallId.trim();
+    if (id.isEmpty) return null;
+
+    final cached = _attachments[cacheKey]?[id];
+    if (cached != null) return cached;
+
+    final inflightKey = '$cacheKey\u0000$id';
+    final inFlight = _inflightSubagentLoads[inflightKey];
+    if (inFlight != null) return inFlight;
+
+    final future = _loadSubagentAttachmentOnce(
+      cacheKey: cacheKey,
+      toolCallId: id,
+      ctx: ctx,
+      capability: capability,
+      messages: messages,
+      cli: cli,
+    );
+    _inflightSubagentLoads[inflightKey] = future;
+    future.whenComplete(() {
+      if (identical(_inflightSubagentLoads[inflightKey], future)) {
+        _inflightSubagentLoads.remove(inflightKey);
+      }
+    }).ignore();
+    return future;
+  }
+
+  Future<AiSubagentAttachment?> _loadSubagentAttachmentOnce({
+    required String cacheKey,
+    required String toolCallId,
+    required SessionHistoryContext ctx,
+    required AiHistoryCapability capability,
+    required List<AiMessage> messages,
+    required CliTool cli,
+  }) async {
+    final rootTranscriptPath = _parentPaths[cacheKey];
+    final path = rootTranscriptPath?.trim().isEmpty ?? true
+        ? null
+        : rootTranscriptPath;
+    var attachment = await const SubagentAttachmentInflater().resolveByToolCallId(
+      toolCallId: toolCallId,
+      messages: messages,
+      ctx: ctx,
+      capability: capability,
+      rootTranscriptPath: path,
+    );
+    if (attachment == null) return null;
+
+    final annotated = annotateSubagentAttachments(
+      {toolCallId: attachment},
+      resolver: _categoryResolverFor(cli),
+    );
+    attachment = annotated[toolCallId] ?? attachment;
+
+    final cache = _attachments.putIfAbsent(cacheKey, () => {});
+    cache[toolCallId] = attachment;
+    if (attachment.workflow != null) {
+      SubagentAttachmentInflater.addWorkflowChildren(attachment, cache);
+    }
+    return attachment;
+  }
+
+  /// Seat-scoped cache key for [loadSubagentAttachment] callers.
+  static String cacheKeyFor(String sessionId, String memberId) =>
+      _cacheKey(sessionId, memberId);
+
+  /// Resolves one subagent attachment using the seat's work-plane context.
+  Future<AiSubagentAttachment?> loadSubagentAttachmentForSeat({
+    required AppSession session,
+    required String memberId,
+    required WorkspaceLaunchContext launchContext,
+    required String toolCallId,
+    required List<AiMessage> messages,
+    TeamProfile? team,
+    String? workingDirectory,
+  }) async {
+    final seat = await _resolveSeat(
+      launchContext: launchContext,
+      memberId: memberId,
+      team: team,
+      workingDirectory: workingDirectory,
+    );
+    final cap = _registry.capability<AiHistoryCapability>(seat.cli);
+    if (cap == null) return null;
+    return loadSubagentAttachment(
+      cacheKey: _cacheKey(session.sessionId, seat.effectiveMemberId),
+      toolCallId: toolCallId,
+      ctx: seat.ctx,
+      capability: cap,
+      messages: messages,
+      cli: seat.cli,
+    );
+  }
   final _hasOlder = <String, bool>{};
   final _cursors = <String, AiHistoryCursor?>{};
   final _complete = <String, bool>{};
@@ -145,6 +250,7 @@ final class AiHistoryLoader {
     _tailStates.clear();
     _incrementalStates.clear();
     _inflightLoads.clear();
+    _inflightSubagentLoads.clear();
     _hasOlder.clear();
     _cursors.clear();
     _complete.clear();
@@ -267,9 +373,8 @@ final class AiHistoryLoader {
 
   /// 增量路径的附件索引刷新。
   ///
-  /// 复用条件:缓存存在、上次消息的任务调用签名与当前一致、且 side 数据
-  /// 指纹未移动(能指纹化的 CLI,如 claude 的 `subagents/` 目录)。命中时
-  /// 返回缓存 map 本身;否则整体重新 inflate 并替换缓存。
+  /// 首屏与增量 tick 只维护任务调用签名与 side 指纹,不 eager inflate。
+  /// 已 lazy-load 的条目在签名/side 未变时复用;变化时按 id 失效。
   Future<Map<String, AiSubagentAttachment>> _subagentAttachmentsFor({
     required String cacheKey,
     required CliTool cli,
@@ -280,44 +385,47 @@ final class AiHistoryLoader {
   }) async {
     final capability = _registry.capability<AiHistoryCapability>(cli);
     if (capability == null) return const {};
-    final cached = cache ? _attachments[cacheKey] : null;
-    final prevSigs = cache ? _attachmentSigs[cacheKey] : null;
-    String? sideToken;
-    if (cached != null &&
-        prevSigs != null &&
-        _sameTaskSignatures(
-          prevSigs,
-          _taskCallSignatures(messages, capability),
-        )) {
-      sideToken = await capability.subagentSideResolver.fingerprint(
+    final currentSigs = _taskCallSignatures(messages, capability);
+    if (cache) {
+      final prevSigs = _attachmentSigs[cacheKey];
+      if (prevSigs != null) {
+        _pruneAttachmentsForSignatureChanges(
+          cacheKey: cacheKey,
+          prevSigs: prevSigs,
+          currentSigs: currentSigs,
+        );
+      }
+      final sideToken = await capability.subagentSideResolver.fingerprint(
         ctx: ctx,
         rootTranscriptPath: rootTranscriptPath,
       );
-      if (sideToken == null || _sideTokens[cacheKey] == sideToken) {
-        return cached;
+      if (sideToken != null &&
+          _sideTokens[cacheKey] != null &&
+          _sideTokens[cacheKey] != sideToken) {
+        _attachments[cacheKey]?.clear();
+      }
+      if (sideToken != null) _sideTokens[cacheKey] = sideToken;
+      _attachmentSigs[cacheKey] = currentSigs;
+    }
+    if (cache) {
+      return _attachments.putIfAbsent(cacheKey, () => {});
+    }
+    return const {};
+  }
+
+  void _pruneAttachmentsForSignatureChanges({
+    required String cacheKey,
+    required Map<String, String> prevSigs,
+    required Map<String, String> currentSigs,
+  }) {
+    if (_sameTaskSignatures(prevSigs, currentSigs)) return;
+    final attachments = _attachments[cacheKey];
+    if (attachments == null || attachments.isEmpty) return;
+    for (final entry in prevSigs.entries) {
+      if (currentSigs[entry.key] != entry.value) {
+        attachments.remove(entry.key);
       }
     }
-    var attachments = await const SubagentAttachmentInflater().inflate(
-      messages: messages,
-      ctx: ctx,
-      capability: capability,
-      rootTranscriptPath: rootTranscriptPath,
-    );
-    attachments = annotateSubagentAttachments(
-      attachments,
-      resolver: _categoryResolverFor(cli),
-    );
-    if (!cache) return attachments;
-    _attachmentSigs[cacheKey] = _taskCallSignatures(messages, capability);
-    // 记录本次 inflate 时的 side 指纹,让后续 tick 的复用分支可比。首载走
-    // 增量 tail 路径时(全量 parse 路径在别处记录)也必须填充,否则第一次
-    // 复用判定永远误判"side 移动"。
-    sideToken ??= await capability.subagentSideResolver.fingerprint(
-      ctx: ctx,
-      rootTranscriptPath: rootTranscriptPath,
-    );
-    if (sideToken != null) _sideTokens[cacheKey] = sideToken;
-    return attachments;
   }
 
   /// 任务调用签名快照([_attachmentSigs])与当前签名是否一致。
@@ -493,25 +601,13 @@ final class AiHistoryLoader {
           subagentAttachments: cachedAttachments,
         );
       }
-      var attachments = await const SubagentAttachmentInflater().inflate(
-        messages: cachedMessages,
-        ctx: ctx,
-        capability: cap,
-        rootTranscriptPath: _parentPaths[cacheKey],
-      );
-      // Fresh parts from the re-inflate are unannotated → annotate now.
-      attachments = annotateSubagentAttachments(
-        attachments,
-        resolver: _categoryResolverFor(cli),
-      );
-      _attachments[cacheKey] = attachments;
-      _attachmentSigs[cacheKey] = _taskCallSignatures(cachedMessages, cap);
+      _attachments[cacheKey]?.clear();
       _sideTokens[cacheKey] = sideToken;
       if (full != null) {
         final updated = AiHistoryLoadResult(
           messages: cachedMessages,
           cli: cli,
-          subagentAttachments: attachments,
+          subagentAttachments: _attachments[cacheKey] ?? const {},
           isComplete: true,
         );
         _fullIndexes[cacheKey] = updated;
@@ -522,7 +618,7 @@ final class AiHistoryLoader {
         cacheKey: cacheKey,
         messages: cachedMessages,
         cli: cli,
-        subagentAttachments: attachments,
+        subagentAttachments: _attachments[cacheKey] ?? const {},
       );
     }
 
@@ -671,15 +767,12 @@ final class AiHistoryLoader {
         resolver: _categoryResolverFor(cli),
       );
 
-      var attachments = await const SubagentAttachmentInflater().inflate(
-        messages: messages,
+      final attachments = await _subagentAttachmentsFor(
+        cacheKey: cacheKey,
+        cli: cli,
         ctx: ctx,
-        capability: cap,
+        messages: messages,
         rootTranscriptPath: parentPath,
-      );
-      attachments = annotateSubagentAttachments(
-        attachments,
-        resolver: _categoryResolverFor(cli),
       );
 
       // 全量 parse 完成后对齐增量状态:让下一次 refresh 变成纯增量
@@ -707,7 +800,7 @@ final class AiHistoryLoader {
       _fullIndexFutures[cacheKey] = Future.value(complete);
       if (skipPaging) return complete;
       _messages[cacheKey] = messages;
-      _attachments[cacheKey] = attachments;
+      _attachments.putIfAbsent(cacheKey, () => {});
       _attachmentSigs[cacheKey] = _taskCallSignatures(messages, cap);
       _tokens[cacheKey] = token ?? 'changed-$cacheKey';
       final sideToken = await cap.subagentSideResolver.fingerprint(
@@ -884,6 +977,7 @@ final class AiHistoryLoader {
       _sideTokens.remove(key);
       _tailStates.remove(key);
       _incrementalStates.remove(key);
+      _inflightSubagentLoads.removeWhere((k, _) => k.startsWith('$key\u0000'));
       _hasOlder.remove(key);
       _cursors.remove(key);
       _complete.remove(key);
@@ -902,6 +996,7 @@ final class AiHistoryLoader {
     _sideTokens.removeWhere((key, _) => key.startsWith(prefix));
     _tailStates.removeWhere((key, _) => key.startsWith(prefix));
     _incrementalStates.removeWhere((key, _) => key.startsWith(prefix));
+    _inflightSubagentLoads.removeWhere((key, _) => key.startsWith(prefix));
     _hasOlder.removeWhere((key, _) => key.startsWith(prefix));
     _cursors.removeWhere((key, _) => key.startsWith(prefix));
     _complete.removeWhere((key, _) => key.startsWith(prefix));

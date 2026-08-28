@@ -3,6 +3,7 @@ import 'package:ai_message_ui/ai_message_ui.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/cubits/ai_history_cubit.dart';
+import 'package:teampilot/cubits/ai_history_seat.dart';
 import 'package:teampilot/l10n/app_localizations.dart';
 import 'package:teampilot/models/app_session.dart';
 import 'package:teampilot/models/runtime_target.dart';
@@ -14,6 +15,7 @@ import 'package:teampilot/pages/chat/session_history_thread.dart';
 import 'package:teampilot/services/io/local_filesystem.dart';
 import 'package:teampilot/services/session/ai_history_loader.dart';
 import 'package:teampilot/services/session/ai_history_locator.dart';
+import 'package:teampilot/services/cli/registry/capabilities/history/subagent_side_resolver.dart';
 import 'package:teampilot/services/session/session_history_context.dart';
 import 'package:teampilot/services/session/session_history_context_builder.dart';
 import 'package:teampilot/services/storage/app_storage.dart';
@@ -186,6 +188,69 @@ void main() {
       expect(find.textContaining('extra-B'), findsNothing);
     },
   );
+
+  test(
+    'loadSubagentAttachment only resolves the requested running id',
+    () async {
+      final resolver = _CountingSideResolver();
+      final session = simpleSession();
+      final agentMessages = [
+        AiMessage(
+          id: 'a1',
+          role: AiRole.assistant,
+          parts: [
+            const AiToolCallPart(
+              toolCallId: 'toolu_run',
+              toolName: 'Agent',
+              args: {'description': 'running'},
+              status: AiToolCallStatus.incomplete,
+            ),
+            const AiToolCallPart(
+              toolCallId: 'toolu_done',
+              toolName: 'Agent',
+              args: {'description': 'done'},
+              result: 'finished',
+            ),
+          ],
+        ),
+      ];
+      messagesBySession['sess-a'] = agentMessages;
+
+      final fs = LocalFilesystem();
+      final loader = AiHistoryLoader(
+        contextBuilder: const SessionHistoryContextBuilder(),
+        resolveWorkContext: (_, {String? memberId}) async => RuntimeContext(
+          target: RuntimeTarget.local(),
+          filesystem: fs,
+          home: '/tmp/ai-history-multi-seat-lazy',
+          cwd: '/tmp/ai-history-multi-seat-lazy',
+          appDataRoot: '/tmp/ai-history-multi-seat-lazy',
+          paths: AppPaths('/tmp/ai-history-multi-seat-lazy'),
+        ),
+        locator: locator,
+        registry: fakeAiHistoryRegistry(
+          cli: CliTool.claude,
+          adapter: _SessionMapAdapter(() => messagesBySession),
+          subagentSideResolver: resolver,
+          subagentToolNames: const {'agent', 'task'},
+        ),
+        resolveCacheToken: (_) async => 'token-1',
+      );
+      final seat = AiHistorySeat(loader: loader);
+      await seat.load(
+        session: session,
+        memberId: '',
+        launchContext: launchCtx(session),
+      );
+      expect(seat.subagentAttachments, isEmpty);
+      expect(resolver.resolveCount, 0);
+
+      final attachment = await seat.loadSubagentAttachment('toolu_run');
+      expect(attachment, isNotNull);
+      expect(resolver.resolveCount, 1);
+      expect(seat.subagentAttachments.keys, ['toolu_run']);
+    },
+  );
 }
 
 AiTranscriptBundle _bundleForSession(String sessionId) => AiTranscriptBundle(
@@ -223,4 +288,36 @@ class _ScriptedLocator extends AiHistoryLocator {
     final sessionId = ctx.sessionId?.trim() ?? '';
     return _bundleForSession(sessionId);
   }
+}
+
+class _CountingSideResolver implements SubagentSideResolver {
+  int resolveCount = 0;
+
+  @override
+  Future<SubagentSideResolveResult?> resolve({
+    required AiToolCallPart part,
+    required SessionHistoryContext ctx,
+    required SubagentSideHandle? parentHandle,
+    required String? rootTranscriptPath,
+    DateTime? toolCallAt,
+  }) async {
+    resolveCount++;
+    return SubagentSideResolveResult(
+      messages: [
+        AiMessage(
+          id: 'side-${part.toolCallId}',
+          role: AiRole.assistant,
+          parts: [AiTextPart(text: part.toolCallId)],
+        ),
+      ],
+      handle: SubagentFileHandle('/side/${part.toolCallId}.jsonl'),
+    );
+  }
+
+  @override
+  Future<String?> fingerprint({
+    required SessionHistoryContext ctx,
+    required String? rootTranscriptPath,
+  }) async =>
+      null;
 }

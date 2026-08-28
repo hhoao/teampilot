@@ -20,6 +20,7 @@ import 'package:teampilot/services/ai_history/tool_call_resolvers.dart';
 import 'package:teampilot/services/cli/opencode/capabilities/history/tool_output_backfill_enricher.dart';
 import 'package:teampilot/services/cli/opencode/capabilities/sqlite_worker_pool.dart';
 import 'package:teampilot/services/cli/registry/capabilities/cli_session_capability.dart';
+import 'package:teampilot/services/cli/registry/capabilities/history/subagent_side_resolver.dart';
 import 'package:teampilot/services/cli/registry/capabilities/history/tool_result_enricher.dart';
 import 'package:teampilot/services/cli/registry/cli_tool_registry.dart';
 import 'package:teampilot/services/session/session_history_context.dart';
@@ -834,7 +835,7 @@ void main() {
 
   group('incremental subagent attachment freshness', () {
     test(
-      'appended agent call after first load enters subagent attachments (tail path)',
+      'appended agent call after first load is lazy-loadable (tail path)',
       () async {
         mtimeToken = 'mtime-1';
         final session = simpleSession();
@@ -867,7 +868,7 @@ void main() {
           memberId: '',
           launchContext: ctx,
         );
-        expect(first.subagentAttachments.keys, contains('toolu_agent'));
+        expect(first.subagentAttachments, isEmpty);
         await loader.fullIndex(sessionId: session.sessionId, memberId: '');
 
         // CLI 流式追加:父 transcript 新出现一条 assistant 消息,内含第二个
@@ -898,12 +899,22 @@ void main() {
           launchContext: ctx,
         );
 
-        expect(
-          second.subagentAttachments.keys,
-          containsAll(['toolu_agent', 'toolu_agent2']),
-          reason: '增量 tick 后新出现的 agent 调用必须进入附件索引——否则点击'
-              '预览会提示"无法打开该子会话预览"(subagentPreviewUnavailable)',
+        expect(second.subagentAttachments, isEmpty);
+        final seat = await _resolveSeatForLoader(
+          session,
+          fs: fs,
+          layout: layout,
         );
+        final loaded = await loader.loadSubagentAttachment(
+          cacheKey: AiHistoryLoader.cacheKeyFor(session.sessionId, ''),
+          toolCallId: 'toolu_agent2',
+          ctx: seat.ctx,
+          capability: seat.cap,
+          messages: second.messages,
+          cli: seat.cli,
+        );
+        expect(loaded, isNotNull);
+        expect(loaded!.toolCallId, 'toolu_agent2');
       },
     );
 
@@ -941,7 +952,27 @@ void main() {
           memberId: '',
           launchContext: ctx,
         );
-        expect(first.subagentAttachments, isNotEmpty);
+        expect(first.subagentAttachments, isEmpty);
+        final seat = await _resolveSeatForLoader(
+          session,
+          fs: fs,
+          layout: layout,
+        );
+        final cacheKey = AiHistoryLoader.cacheKeyFor(session.sessionId, '');
+        await loader.loadSubagentAttachment(
+          cacheKey: cacheKey,
+          toolCallId: 'toolu_agent',
+          ctx: seat.ctx,
+          capability: seat.cap,
+          messages: first.messages,
+          cli: seat.cli,
+        );
+        final warmed = await loader.load(
+          session: session,
+          memberId: '',
+          launchContext: ctx,
+        );
+        expect(warmed.subagentAttachments, isNotEmpty);
         await loader.fullIndex(sessionId: session.sessionId, memberId: '');
 
         // 追加一条纯文本 user 行:增量路径触发,但任务调用集合没有变化。
@@ -962,7 +993,7 @@ void main() {
         );
 
         expect(
-          identical(second.subagentAttachments, first.subagentAttachments),
+          identical(second.subagentAttachments, warmed.subagentAttachments),
           isTrue,
           reason: '任务调用集合未变时增量 tick 必须复用同一附件 map 实例,'
               '否则 seat 的 identical / 内容比较每次都要重建(性能回归)',
@@ -971,7 +1002,7 @@ void main() {
     );
 
     test(
-      'completed agent call re-resolves its attachment (result lands)',
+      'completed agent call re-resolves its attachment on demand (result lands)',
       () async {
         mtimeToken = 'mtime-1';
         final session = simpleSession();
@@ -996,7 +1027,21 @@ void main() {
           memberId: '',
           launchContext: ctx,
         );
-        final degraded = first.subagentAttachments['toolu_agent'];
+        expect(first.subagentAttachments, isEmpty);
+        final seat = await _resolveSeatForLoader(
+          session,
+          fs: fs,
+          layout: layout,
+        );
+        final cacheKey = AiHistoryLoader.cacheKeyFor(session.sessionId, '');
+        final degraded = await loader.loadSubagentAttachment(
+          cacheKey: cacheKey,
+          toolCallId: 'toolu_agent',
+          ctx: seat.ctx,
+          capability: seat.cap,
+          messages: first.messages,
+          cli: seat.cli,
+        );
         expect(degraded, isNotNull);
         expect(
           degraded!.source,
@@ -1040,9 +1085,17 @@ void main() {
           launchContext: ctx,
         );
 
-        final reResolved = second.subagentAttachments['toolu_agent']!;
+        final reResolved = await loader.loadSubagentAttachment(
+          cacheKey: cacheKey,
+          toolCallId: 'toolu_agent',
+          ctx: seat.ctx,
+          capability: seat.cap,
+          messages: second.messages,
+          cli: seat.cli,
+        );
+        expect(reResolved, isNotNull);
         expect(
-          reResolved.source,
+          reResolved!.source,
           AiSubagentAttachmentSource.sideTranscript,
           reason: '调用完成(part 状态/结果变化)后必须重新解析,不能停留在'
               '退化占位——否则预览永远看不到真实的子会话内容',
@@ -1056,8 +1109,285 @@ void main() {
     );
   });
 
+  group('loads one subagent attachment on demand', () {
+    test('initial load makes zero side-resolver calls', () async {
+      mtimeToken = 'mtime-1';
+      final session = simpleSession();
+      final ctx = launchContextFor(session);
+      final bucket = RuntimeLayout.workspaceBucketForPrimaryPath(
+        '/work/project',
+      );
+      final toolRoot = layout.sessionRuntimeToolDir(
+        'ws-1',
+        session.sessionId,
+        'claude',
+      );
+      final projects = p.join(toolRoot, 'projects', bucket);
+      await Directory(projects).create(recursive: true);
+      final parentPath = p.join(projects, '${session.sessionId}.jsonl');
+      await File(parentPath).writeAsString('${_agentToolUseJsonl()}\n');
+
+      final subagentsDir = p.join(projects, session.sessionId, 'subagents');
+      await Directory(subagentsDir).create(recursive: true);
+      await File(
+        p.join(subagentsDir, 'agent-abc.meta.json'),
+      ).writeAsString(jsonEncode({'toolUseId': 'toolu_agent'}));
+      await File(
+        p.join(subagentsDir, 'agent-abc.jsonl'),
+      ).writeAsString(_sideTranscriptJsonl(lines: 1));
+
+      final resolver = _CountingSubagentSideResolver();
+      final builtInCap =
+          CliToolRegistry.builtIn().capability<AiHistoryCapability>(
+            CliTool.claude,
+          )!;
+      final registry = fakeAiHistoryRegistry(
+        cli: CliTool.claude,
+        adapter: const ClaudeAiTranscriptAdapter(),
+        locate: builtInCap.locate,
+        subagentSideResolver: resolver,
+        subagentToolNames: builtInCap.subagentToolNames,
+      );
+      final loader = buildLoader(registry: registry);
+      final result = await loader.load(
+        session: session,
+        memberId: '',
+        launchContext: ctx,
+      );
+
+      expect(result.subagentAttachments, isEmpty);
+      expect(resolver.resolveCount, 0);
+    });
+
+    test('two concurrent requests for one id share one resolver call', () async {
+      mtimeToken = 'mtime-1';
+      final session = simpleSession();
+      final ctx = launchContextFor(session);
+      final bucket = RuntimeLayout.workspaceBucketForPrimaryPath(
+        '/work/project',
+      );
+      final toolRoot = layout.sessionRuntimeToolDir(
+        'ws-1',
+        session.sessionId,
+        'claude',
+      );
+      final projects = p.join(toolRoot, 'projects', bucket);
+      await Directory(projects).create(recursive: true);
+      final parentPath = p.join(projects, '${session.sessionId}.jsonl');
+      await File(parentPath).writeAsString('${_agentToolUseJsonl()}\n');
+
+      final subagentsDir = p.join(projects, session.sessionId, 'subagents');
+      await Directory(subagentsDir).create(recursive: true);
+      await File(
+        p.join(subagentsDir, 'agent-abc.meta.json'),
+      ).writeAsString(jsonEncode({'toolUseId': 'toolu_agent'}));
+      await File(
+        p.join(subagentsDir, 'agent-abc.jsonl'),
+      ).writeAsString(_sideTranscriptJsonl(lines: 1));
+
+      final gate = Completer<void>();
+      final resolver = _CountingSubagentSideResolver(
+        onResolve: () async {
+          await gate.future;
+          return SubagentSideResolveResult(
+            messages: [
+              AiMessage(
+                id: 'side-1',
+                role: AiRole.assistant,
+                parts: const [AiTextPart(text: 'side')],
+              ),
+            ],
+            handle: const SubagentFileHandle('/side.jsonl'),
+          );
+        },
+      );
+      final builtInCap =
+          CliToolRegistry.builtIn().capability<AiHistoryCapability>(
+            CliTool.claude,
+          )!;
+      final registry = fakeAiHistoryRegistry(
+        cli: CliTool.claude,
+        adapter: const ClaudeAiTranscriptAdapter(),
+        locate: builtInCap.locate,
+        subagentSideResolver: resolver,
+        subagentToolNames: builtInCap.subagentToolNames,
+      );
+      final loader = buildLoader(registry: registry);
+      final loaded = await loader.load(
+        session: session,
+        memberId: '',
+        launchContext: ctx,
+      );
+      final seat = await _resolveSeatForLoader(
+        session,
+        fs: fs,
+        layout: layout,
+        registry: registry,
+      );
+      final cacheKey = AiHistoryLoader.cacheKeyFor(session.sessionId, '');
+      final args = (
+        cacheKey: cacheKey,
+        toolCallId: 'toolu_agent',
+        ctx: seat.ctx,
+        capability: seat.cap,
+        messages: loaded.messages,
+        cli: seat.cli,
+      );
+      expect(resolver.resolveCount, 0);
+      final a = loader.loadSubagentAttachment(
+        cacheKey: args.cacheKey,
+        toolCallId: args.toolCallId,
+        ctx: args.ctx,
+        capability: args.capability,
+        messages: args.messages,
+        cli: args.cli,
+      );
+      final b = loader.loadSubagentAttachment(
+        cacheKey: args.cacheKey,
+        toolCallId: args.toolCallId,
+        ctx: args.ctx,
+        capability: args.capability,
+        messages: args.messages,
+        cli: args.cli,
+      );
+      await Future<void>.delayed(Duration.zero);
+      expect(resolver.resolveCount, 1);
+      gate.complete();
+      final results = await Future.wait([a, b]);
+      expect(results[0], isNotNull);
+      expect(identical(results[0], results[1]), isTrue);
+      expect(resolver.resolveCount, 1);
+    });
+
+    test('successful request is cached', () async {
+      mtimeToken = 'mtime-1';
+      final session = simpleSession();
+      final ctx = launchContextFor(session);
+      final bucket = RuntimeLayout.workspaceBucketForPrimaryPath(
+        '/work/project',
+      );
+      final toolRoot = layout.sessionRuntimeToolDir(
+        'ws-1',
+        session.sessionId,
+        'claude',
+      );
+      final projects = p.join(toolRoot, 'projects', bucket);
+      await Directory(projects).create(recursive: true);
+      final parentPath = p.join(projects, '${session.sessionId}.jsonl');
+      await File(parentPath).writeAsString('${_agentToolUseJsonl()}\n');
+
+      final subagentsDir = p.join(projects, session.sessionId, 'subagents');
+      await Directory(subagentsDir).create(recursive: true);
+      await File(
+        p.join(subagentsDir, 'agent-abc.meta.json'),
+      ).writeAsString(jsonEncode({'toolUseId': 'toolu_agent'}));
+      await File(
+        p.join(subagentsDir, 'agent-abc.jsonl'),
+      ).writeAsString(_sideTranscriptJsonl(lines: 1));
+
+      final resolver = _CountingSubagentSideResolver();
+      final builtInCap =
+          CliToolRegistry.builtIn().capability<AiHistoryCapability>(
+            CliTool.claude,
+          )!;
+      final registry = fakeAiHistoryRegistry(
+        cli: CliTool.claude,
+        adapter: const ClaudeAiTranscriptAdapter(),
+        locate: builtInCap.locate,
+        subagentSideResolver: resolver,
+        subagentToolNames: builtInCap.subagentToolNames,
+      );
+      final loader = buildLoader(registry: registry);
+      final loaded = await loader.load(
+        session: session,
+        memberId: '',
+        launchContext: ctx,
+      );
+      final seat = await _resolveSeatForLoader(
+        session,
+        fs: fs,
+        layout: layout,
+        registry: registry,
+      );
+      final cacheKey = AiHistoryLoader.cacheKeyFor(session.sessionId, '');
+      final first = await loader.loadSubagentAttachment(
+        cacheKey: cacheKey,
+        toolCallId: 'toolu_agent',
+        ctx: seat.ctx,
+        capability: seat.cap,
+        messages: loaded.messages,
+        cli: seat.cli,
+      );
+      final second = await loader.loadSubagentAttachment(
+        cacheKey: cacheKey,
+        toolCallId: 'toolu_agent',
+        ctx: seat.ctx,
+        capability: seat.cap,
+        messages: loaded.messages,
+        cli: seat.cli,
+      );
+      expect(first, isNotNull);
+      expect(identical(first, second), isTrue);
+      expect(resolver.resolveCount, 1);
+    });
+
+    test('missing side transcript produces tool-result fallback', () async {
+      mtimeToken = 'mtime-1';
+      final session = simpleSession();
+      final ctx = launchContextFor(session);
+      final bucket = RuntimeLayout.workspaceBucketForPrimaryPath(
+        '/work/project',
+      );
+      final toolRoot = layout.sessionRuntimeToolDir(
+        'ws-1',
+        session.sessionId,
+        'claude',
+      );
+      final projects = p.join(toolRoot, 'projects', bucket);
+      await Directory(projects).create(recursive: true);
+      final parentPath = p.join(projects, '${session.sessionId}.jsonl');
+      await File(parentPath).writeAsString('${_agentToolUseJsonl()}\n');
+
+      final resolver = _CountingSubagentSideResolver();
+      final builtInCap =
+          CliToolRegistry.builtIn().capability<AiHistoryCapability>(
+            CliTool.claude,
+          )!;
+      final registry = fakeAiHistoryRegistry(
+        cli: CliTool.claude,
+        adapter: const ClaudeAiTranscriptAdapter(),
+        locate: builtInCap.locate,
+        subagentSideResolver: resolver,
+        subagentToolNames: builtInCap.subagentToolNames,
+      );
+      final loader = buildLoader(registry: registry);
+      final loaded = await loader.load(
+        session: session,
+        memberId: '',
+        launchContext: ctx,
+      );
+      final seat = await _resolveSeatForLoader(
+        session,
+        fs: fs,
+        layout: layout,
+        registry: registry,
+      );
+      final attachment = await loader.loadSubagentAttachment(
+        cacheKey: AiHistoryLoader.cacheKeyFor(session.sessionId, ''),
+        toolCallId: 'toolu_agent',
+        ctx: seat.ctx,
+        capability: seat.cap,
+        messages: loaded.messages,
+        cli: seat.cli,
+      );
+      expect(attachment, isNotNull);
+      expect(attachment!.source, AiSubagentAttachmentSource.toolResult);
+      expect(resolver.resolveCount, 1);
+    });
+  });
+
   test(
-    'running subagent side transcript growth re-inflates attachments while parent mtime is frozen',
+    'running subagent side transcript growth re-resolves on demand while parent mtime is frozen',
     () async {
       mtimeToken = 'mtime-1';
       // Parent transcript with an `agent` tool_use but no tool_result yet
@@ -1090,14 +1420,33 @@ void main() {
         memberId: '',
         launchContext: ctx,
       );
-      final firstAttachment = first.subagentAttachments['toolu_agent'];
+      expect(first.subagentAttachments, isEmpty);
+      final fullAfterFirst = await loader.fullIndex(
+        sessionId: session.sessionId,
+        memberId: '',
+      );
+      expect(fullAfterFirst, isNotNull);
+      final seat = await _resolveSeatForLoader(
+        session,
+        fs: fs,
+        layout: layout,
+      );
+      final cacheKey = AiHistoryLoader.cacheKeyFor(session.sessionId, '');
+      final firstAttachment = await loader.loadSubagentAttachment(
+        cacheKey: cacheKey,
+        toolCallId: 'toolu_agent',
+        ctx: seat.ctx,
+        capability: seat.cap,
+        messages: fullAfterFirst!.messages,
+        cli: seat.cli,
+      );
       expect(firstAttachment, isNotNull);
       expect(firstAttachment!.source, AiSubagentAttachmentSource.sideTranscript);
       expect(firstAttachment.messages, hasLength(1));
 
       // The running sub-agent appends its own transcript; the parent jsonl
-      // (and thus the cache token) does not move. The loader must re-inflate
-      // from the cached messages without re-parsing the parent.
+      // (and thus the cache token) does not move. Side fingerprint move clears
+      // the lazy cache; the next on-demand load picks up the growth.
       await File(
         p.join(subagentsDir, 'agent-abc.jsonl'),
       ).writeAsString(_sideTranscriptJsonl(lines: 2));
@@ -1107,27 +1456,44 @@ void main() {
         launchContext: ctx,
       );
       expect(
-        identical(second.messages, first.messages),
+        identical(second.messages, fullAfterFirst.messages),
         isTrue,
         reason: 'side-only change must reuse the cached parent parse',
       );
-      final secondAttachment = second.subagentAttachments['toolu_agent']!;
-      expect(secondAttachment.messages, hasLength(2));
+      expect(second.subagentAttachments, isEmpty);
+      final secondAttachment = await loader.loadSubagentAttachment(
+        cacheKey: cacheKey,
+        toolCallId: 'toolu_agent',
+        ctx: seat.ctx,
+        capability: seat.cap,
+        messages: second.messages,
+        cli: seat.cli,
+      );
+      expect(secondAttachment, isNotNull);
+      expect(secondAttachment!.messages, hasLength(2));
       expect(
         (secondAttachment.messages.last.parts.single as AiTextPart).text,
         'progress 1',
       );
 
-      // Side data stable again → same attachment map instance, no re-inflate.
+      // Side data stable again → cached attachment instance, no re-resolve.
       final third = await loader.load(
         session: session,
         memberId: '',
         launchContext: ctx,
       );
+      final thirdAttachment = await loader.loadSubagentAttachment(
+        cacheKey: cacheKey,
+        toolCallId: 'toolu_agent',
+        ctx: seat.ctx,
+        capability: seat.cap,
+        messages: third.messages,
+        cli: seat.cli,
+      );
       expect(
-        identical(third.subagentAttachments, second.subagentAttachments),
+        identical(thirdAttachment, secondAttachment),
         isTrue,
-        reason: 'unchanged side data must reuse the attachment map',
+        reason: 'unchanged side data must reuse the attachment instance',
       );
     },
   );
@@ -1562,6 +1928,71 @@ class _OpencodeMarkerAdapter implements AiTranscriptAdapter {
       ),
     ];
   }
+}
+
+class _SeatResolve {
+  const _SeatResolve({
+    required this.ctx,
+    required this.cap,
+    required this.cli,
+  });
+
+  final SessionHistoryContext ctx;
+  final AiHistoryCapability cap;
+  final CliTool cli;
+}
+
+Future<_SeatResolve> _resolveSeatForLoader(
+  AppSession session, {
+  required LocalFilesystem fs,
+  required RuntimeLayout layout,
+  CliToolRegistry? registry,
+}) async {
+  final reg = registry ?? CliToolRegistry.builtIn();
+  final builder = const SessionHistoryContextBuilder();
+  final cli = session.cli ?? CliTool.claude;
+  final cap = reg.capability<AiHistoryCapability>(cli);
+  if (cap == null) {
+    throw StateError('missing AiHistoryCapability for $cli');
+  }
+  final ctx = builder.build(
+    fs: fs,
+    layout: layout,
+    appDataRoot: layout.teampilotRoot,
+    session: session,
+    memberId: '',
+    cli: cli,
+    workingDirectory: null,
+    teamId: null,
+  );
+  return _SeatResolve(ctx: ctx, cap: cap, cli: cli);
+}
+
+class _CountingSubagentSideResolver implements SubagentSideResolver {
+  _CountingSubagentSideResolver({this.onResolve});
+
+  int resolveCount = 0;
+  final Future<SubagentSideResolveResult?> Function()? onResolve;
+
+  @override
+  Future<SubagentSideResolveResult?> resolve({
+    required AiToolCallPart part,
+    required SessionHistoryContext ctx,
+    required SubagentSideHandle? parentHandle,
+    required String? rootTranscriptPath,
+    DateTime? toolCallAt,
+  }) async {
+    resolveCount++;
+    if (onResolve != null) return onResolve!();
+    return null;
+  }
+
+  @override
+  Future<String?> fingerprint({
+    required SessionHistoryContext ctx,
+    required String? rootTranscriptPath,
+  }) async =>
+      'fp-static';
 }
 
 class _EchoAdapter implements AiTranscriptAdapter {

@@ -20,6 +20,7 @@ import '../services/session/ai_history_pending_text.dart';
 import '../services/session/failed_message_store.dart';
 import '../services/session/history_awaiting_working_sync.dart';
 import '../services/session/session_history_pagination.dart';
+import '../services/session/subagent_attachment_inflater.dart';
 import '../services/team_bus/persistence/bus_message_log.dart';
 import '../utils/logging/logger.dart';
 
@@ -200,6 +201,44 @@ class AiHistorySeat extends Cubit<AiHistoryState> {
   /// Inflated Agent/Task toolCallId → attachment index for the last load.
   Map<String, AiSubagentAttachment> get subagentAttachments =>
       Map.unmodifiable(_subagentAttachments);
+
+  /// Lazy-loads one subagent attachment and updates the seat cache + epoch.
+  Future<AiSubagentAttachment?> loadSubagentAttachment(String toolCallId) async {
+    final session = _lastSession;
+    final memberId = _lastMemberId;
+    final launchContext = _lastLaunchContext;
+    if (session == null || memberId == null || launchContext == null) {
+      return null;
+    }
+    final id = toolCallId.trim();
+    if (id.isEmpty) return null;
+    final cached = _subagentAttachments[id];
+    if (cached != null) return cached;
+
+    final attachment = await _loader.loadSubagentAttachmentForSeat(
+      session: session,
+      memberId: memberId,
+      launchContext: launchContext,
+      toolCallId: id,
+      messages: _cliMessages,
+      team: _lastTeam,
+      workingDirectory: _lastWorkingDirectory,
+    );
+    if (isClosed) return attachment;
+    if (attachment == null) return null;
+
+    final next = Map<String, AiSubagentAttachment>.of(_subagentAttachments)
+      ..[id] = attachment;
+    SubagentAttachmentInflater.addWorkflowChildren(attachment, next);
+    _setSubagentAttachments(next);
+    if (state.status == AiHistoryViewStatus.ready ||
+        state.status == AiHistoryViewStatus.empty) {
+      emit(
+        state.copyWith(subagentAttachmentEpoch: _subagentAttachmentEpoch),
+      );
+    }
+    return attachment;
+  }
 
   /// Prefix of [_allMessages] published to the thread. Trailing assistants may
   /// stay held while [awaitingAssistant] until idle or [tipHoldAfterAssistant].

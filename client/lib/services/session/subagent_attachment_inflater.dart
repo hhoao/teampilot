@@ -28,6 +28,100 @@ class SubagentAttachmentInflater {
     return out;
   }
 
+  /// Resolves one root-level subagent tool call (depth zero). Workflow child
+  /// ids are handled by [resolveByToolCallId].
+  Future<AiSubagentAttachment> inflateOne({
+    required AiToolCallPart part,
+    required SessionHistoryContext ctx,
+    required AiHistoryCapability capability,
+    required String? rootTranscriptPath,
+    DateTime? toolCallAt,
+  }) {
+    return _attachOne(
+      part: part,
+      toolCallAt: toolCallAt,
+      ctx: ctx,
+      capability: capability,
+      rootTranscriptPath: rootTranscriptPath,
+      parentHandle: null,
+      depth: 0,
+    );
+  }
+
+  /// Resolves a single attachment by [toolCallId], including workflow fan-out
+  /// child ids. Returns null when the id is not a known subagent tool call.
+  Future<AiSubagentAttachment?> resolveByToolCallId({
+    required String toolCallId,
+    required List<AiMessage> messages,
+    required SessionHistoryContext ctx,
+    required AiHistoryCapability capability,
+    required String? rootTranscriptPath,
+  }) async {
+    final id = toolCallId.trim();
+    if (id.isEmpty) return null;
+
+    for (final message in messages) {
+      for (final part in message.parts) {
+        if (part is! AiToolCallPart) continue;
+        if (part.toolCallId.trim() != id) continue;
+        final name = part.toolName.trim().toLowerCase();
+        if (!capability.subagentToolNames.contains(name)) continue;
+        return inflateOne(
+          part: part,
+          toolCallAt: message.createdAt,
+          ctx: ctx,
+          capability: capability,
+          rootTranscriptPath: rootTranscriptPath,
+        );
+      }
+    }
+
+    for (final message in messages) {
+      for (final part in message.parts) {
+        if (part is! AiToolCallPart) continue;
+        if (part.toolName.trim().toLowerCase() != 'workflow') continue;
+        final parent = await inflateOne(
+          part: part,
+          toolCallAt: message.createdAt,
+          ctx: ctx,
+          capability: capability,
+          rootTranscriptPath: rootTranscriptPath,
+        );
+        final children = <String, AiSubagentAttachment>{};
+        _addWorkflowChildren(parent, children);
+        return children[id];
+      }
+    }
+    return null;
+  }
+
+  static void addWorkflowChildren(
+    AiSubagentAttachment attachment,
+    Map<String, AiSubagentAttachment> out,
+  ) => _addWorkflowChildren(attachment, out);
+
+  static void _addWorkflowChildren(
+    AiSubagentAttachment attachment,
+    Map<String, AiSubagentAttachment> out,
+  ) {
+    final workflow = attachment.workflow;
+    if (workflow == null) return;
+    for (final agent in workflow.agents) {
+      final childId = subagentWorkflowChildToolCallId(
+        workflow.runId,
+        agent.agentId,
+      );
+      if (out.containsKey(childId)) continue;
+      out[childId] = AiSubagentAttachment(
+        toolCallId: childId,
+        messages: agent.messages,
+        source: AiSubagentAttachmentSource.sideTranscript,
+        title: agent.role,
+        handle: agent.handle,
+      );
+    }
+  }
+
   Future<void> _walk({
     required List<AiMessage> messages,
     required SessionHistoryContext ctx,
@@ -62,20 +156,14 @@ class SubagentAttachmentInflater {
         if (workflow != null) {
           // A Workflow run fans out into one preview entry per agent; each
           // agent transcript may itself nest further sub-agents.
+          _addWorkflowChildren(attachment, out);
           for (final agent in workflow.agents) {
             final childId = subagentWorkflowChildToolCallId(
               workflow.runId,
               agent.agentId,
             );
-            if (out.containsKey(childId)) continue;
-            final child = AiSubagentAttachment(
-              toolCallId: childId,
-              messages: agent.messages,
-              source: AiSubagentAttachmentSource.sideTranscript,
-              title: agent.role,
-              handle: agent.handle,
-            );
-            out[childId] = child;
+            final child = out[childId];
+            if (child == null) continue;
             await _walk(
               messages: child.messages,
               ctx: ctx,

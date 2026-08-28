@@ -218,9 +218,10 @@ class SessionChatMessageArea extends StatelessWidget {
                                 name.trim().toLowerCase(),
                               ),
                         onOpenSubagent: (id) async {
-                          final attachments = historySeat.subagentAttachments;
-                          if (!attachments.containsKey(id)) {
-                            if (!context.mounted) return;
+                          final attachment =
+                              await historySeat.loadSubagentAttachment(id);
+                          if (!context.mounted) return;
+                          if (attachment == null) {
                             AppToast.show(
                               context,
                               message: l10n.subagentPreviewUnavailable,

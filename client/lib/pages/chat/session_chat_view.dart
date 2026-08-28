@@ -1346,17 +1346,19 @@ class _SessionChatViewState extends State<SessionChatView> {
                                           prefEnabled:
                                               prefs.autoOpenSubagentPreview,
                                           runningIds: runningSubagentIds,
-                                          availableIds: historySeat
-                                              .subagentAttachments
-                                              .keys
+                                          availableIds: runningSubagentIds
                                               .toSet(),
                                         );
                                     if (pendingAuto != null) {
                                       final id = pendingAuto;
                                       // Deferred: never notify inside build.
                                       WidgetsBinding.instance
-                                          .addPostFrameCallback((_) {
+                                          .addPostFrameCallback((_) async {
                                             if (!mounted) return;
+                                            final attachment = await historySeat
+                                                .loadSubagentAttachment(id);
+                                            if (!mounted) return;
+                                            if (attachment == null) return;
                                             _subagentPreview.autoOpen(id);
                                           });
                                     }
@@ -1489,8 +1491,7 @@ class _SessionChatViewState extends State<SessionChatView> {
 }
 
 /// Subagent tool calls still in flight (newest-first), for auto-follow.
-/// Only ids whose attachment is inflated can be opened; [computeAutoFollow]
-/// re-checks against the attachment index.
+/// [computeAutoFollow] lazy-loads the selected id via [AiHistorySeat.loadSubagentAttachment].
 List<String> _runningSubagentIds(AiHistorySeat seat, AiHistoryCapability? cap) {
   if (cap == null) return const [];
   final names = cap.subagentToolNames;
