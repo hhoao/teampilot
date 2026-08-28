@@ -211,4 +211,99 @@ void main() {
           'keep-alive background seats must not subscribe to presence ticks',
     );
   });
+
+  group('seatSelect', _seatSelectTests);
+}
+
+class _IntCubit extends Cubit<int> {
+  _IntCubit() : super(0);
+
+  void bump() => emit(state + 1);
+}
+
+const _selectHostKey = Key('seat-select-host');
+
+class _SelectHost extends StatefulWidget {
+  const _SelectHost({super.key});
+
+  @override
+  State<_SelectHost> createState() => _SelectHostState();
+}
+
+class _SelectHostState extends State<_SelectHost> {
+  int buildCount = 0;
+
+  @override
+  Widget build(BuildContext context) {
+    buildCount++;
+    final n = seatSelect<_IntCubit, int>(context, (c) => c.state);
+    return Text('$n');
+  }
+}
+
+_SelectHostState _selectHost(WidgetTester tester) {
+  return tester.state<_SelectHostState>(find.byKey(_selectHostKey));
+}
+
+void _seatSelectTests() {
+  late _IntCubit cubit;
+
+  setUp(() {
+    cubit = _IntCubit();
+  });
+
+  tearDown(() async {
+    if (!cubit.isClosed) await cubit.close();
+  });
+
+  Future<void> pumpSelectHost(
+    WidgetTester tester, {
+    bool tickerEnabled = true,
+  }) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        home: TickerMode(
+          enabled: tickerEnabled,
+          child: BlocProvider<_IntCubit>(
+            lazy: false,
+            create: (_) => cubit,
+            child: const _SelectHost(key: _selectHostKey),
+          ),
+        ),
+      ),
+    );
+    await tester.pump();
+  }
+
+  testWidgets('TickerMode on rebuilds when seatSelect value changes', (
+    tester,
+  ) async {
+    await pumpSelectHost(tester);
+    final builds = _selectHost(tester).buildCount;
+
+    cubit.bump();
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 100));
+
+    expect(_selectHost(tester).buildCount, greaterThan(builds));
+    expect(find.text('1'), findsOneWidget);
+  });
+
+  testWidgets('TickerMode off does not subscribe via seatSelect', (
+    tester,
+  ) async {
+    await pumpSelectHost(tester, tickerEnabled: false);
+    final builds = _selectHost(tester).buildCount;
+
+    cubit.bump();
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 100));
+
+    expect(
+      _selectHost(tester).buildCount,
+      builds,
+      reason: 'keep-alive background seats must read, not select',
+    );
+    expect(find.text('0'), findsOneWidget);
+  });
 }

@@ -12,6 +12,7 @@ import '../../models/team_config.dart';
 import '../../utils/ui/app_keys.dart';
 import '../../cubits/chat/session_launch_retry.dart';
 import 'package:shared_ui/shared_ui.dart';
+import 'session_seat_working.dart';
 
 /// Tab-bar control to switch a session between Chat and Terminal.
 class SessionWorkbenchViewToggle extends StatelessWidget {
@@ -28,14 +29,15 @@ class SessionWorkbenchViewToggle extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final active = context.select<WorkbenchCubit, WorkbenchTabId?>(
+    final active = seatSelect<WorkbenchCubit, WorkbenchTabId?>(
+      context,
       (c) => c.centerActiveId(workspaceId),
     );
     if (active == null || active.kind != WorkbenchTabKind.session) {
       return const SizedBox.shrink();
     }
     final sessionId = active.id;
-    final view = context.select<ChatCubit, SessionWorkbenchView>((c) {
+    final view = seatSelect<ChatCubit, SessionWorkbenchView>(context, (c) {
       // The pod is the canonical view source (same read as the workbench
       // body); fall back to the tab during the thin-ChatCubit transition.
       final podView = c.podFor(sessionId)?.view;
@@ -115,5 +117,4 @@ class SessionWorkbenchViewToggle extends StatelessWidget {
     }
     return chat.tabStore.openTabBySessionId(sessionId)?.persistedSession;
   }
-
 }

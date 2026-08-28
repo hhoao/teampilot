@@ -9,6 +9,7 @@ import 'package:go_router/go_router.dart';
 import '../../cubits/chat_cubit.dart';
 import '../../l10n/l10n_extensions.dart';
 import '../../models/app_session.dart';
+import '../../utils/session/home_sessions_paint_view.dart';
 import '../../models/workspace.dart';
 import '../../models/workspace_tab_ref.dart';
 import '../../services/home_workspace/home_recent_workspaces_store.dart';
@@ -84,9 +85,7 @@ class _HomeLibrarySectionState extends State<HomeLibrarySection> {
     final allWorkspaces = context.select<ChatCubit, List<Workspace>>(
       (c) => c.state.workspaces,
     );
-    final sessions = context.select<ChatCubit, List<AppSession>>(
-      (c) => c.state.sessions,
-    );
+    final sessions = watchHomeLibrarySessions(context);
 
     final workspaces = isFavorites
         ? [

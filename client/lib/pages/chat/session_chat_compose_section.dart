@@ -138,19 +138,23 @@ class SessionChatComposeSection extends StatelessWidget {
     final spacing = context.tpSpacing;
 
     // -- Read cubits via context.select ----------------------------------
-    final skills = context.select<SkillCubit, List<Skill>>(
+    final skills = seatSelect<SkillCubit, List<Skill>>(
+      context,
       (c) => c.state.installed,
     );
-    final plugins = context.select<PluginCubit, List<Plugin>>(
+    final plugins = seatSelect<PluginCubit, List<Plugin>>(
+      context,
       (c) => c.state.installed,
     );
-    final presets = context.select<CliPresetsCubit, List<CliPreset>>(
+    final presets = seatSelect<CliPresetsCubit, List<CliPreset>>(
+      context,
       (c) => c.state.presets,
     );
     final team = _readLiveTeam(context);
     final hubState = _readExpertHubState(context);
 
-    final permissionWaiting = context.select<AgentAttentionCubit, bool>(
+    final permissionWaiting = seatSelect<AgentAttentionCubit, bool>(
+      context,
       (c) => AgentPermissionAttentionBanner.isSelectedSeatWaiting(
         attention: c,
         session: session,
@@ -198,10 +202,10 @@ class SessionChatComposeSection extends StatelessWidget {
     final selectedPreset = selectedPresetId == null
         ? null
         : sameCliPresets.where((p) => p.id == selectedPresetId).firstOrNull;
-    final providerList = context
-        .select<AppProviderCubit, List<AppProviderConfig>>(
-          (c) => c.state.providersFor(lockedCli),
-        );
+    final providerList = seatSelect<AppProviderCubit, List<AppProviderConfig>>(
+      context,
+      (c) => c.state.providersFor(lockedCli),
+    );
     final modelLabel = session.isSimple
         ? simpleLaunchChipLabel(
             presetName: selectedPreset?.name,
@@ -592,7 +596,7 @@ class SessionChatComposeSection extends StatelessWidget {
     if (session.isSimple) return null;
     final teamId = session.sessionTeam.trim();
     if (teamId.isEmpty) return null;
-    return context.select<LaunchProfileCubit, TeamProfile?>((c) {
+    return seatSelect<LaunchProfileCubit, TeamProfile?>(context, (c) {
       final profile = c.byId(teamId);
       return profile is TeamProfile ? profile : null;
     });
@@ -600,7 +604,8 @@ class SessionChatComposeSection extends StatelessWidget {
 
   ExpertHubState? _readExpertHubState(BuildContext context) {
     try {
-      return context.select<ExpertHubCubit, ExpertHubState>(
+      return seatSelect<ExpertHubCubit, ExpertHubState>(
+        context,
         (c) => ExpertHubState(allMembers: c.state.allMembers),
       );
     } on ProviderNotFoundException {
@@ -617,7 +622,8 @@ class SessionChatComposeSection extends StatelessWidget {
     required String memberId,
   }) {
     try {
-      return context.select<PromptDeliveryStatusCubit, PromptDeliveryRecovery?>(
+      return seatSelect<PromptDeliveryStatusCubit, PromptDeliveryRecovery?>(
+        context,
         (c) => c.state.recoveryFor(sessionId, memberId),
       );
     } on ProviderNotFoundException {

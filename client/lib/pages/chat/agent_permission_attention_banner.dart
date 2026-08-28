@@ -28,6 +28,7 @@ import '../../services/terminal/session_member_cli_resolver.dart';
 import '../../services/workbench/workbench_editor_opener.dart';
 import '../../utils/ui/app_keys.dart';
 import 'ai_message_strings_from_l10n.dart';
+import 'session_seat_working.dart';
 
 /// Compact card shown just above Chat compose when the seat needs Terminal
 /// confirmation. Does not auto-switch; CTA jumps to Terminal.
@@ -111,7 +112,9 @@ class AgentPermissionAttentionBanner extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final sessionId = session.sessionId;
-    final workbenchView = context.select<ChatCubit, SessionWorkbenchView>((c) {
+    final workbenchView = seatSelect<ChatCubit, SessionWorkbenchView>(context, (
+      c,
+    ) {
       final tab = c.tabStore.openTabBySessionId(sessionId);
       return tab?.workbenchView ?? SessionWorkbenchView.chat;
     });
@@ -123,7 +126,8 @@ class AgentPermissionAttentionBanner extends StatelessWidget {
       session: session,
       selectedMemberId: selectedMemberId,
     );
-    final entry = context.select<AgentAttentionCubit, AgentSeatAttentionEntry?>(
+    final entry = seatSelect<AgentAttentionCubit, AgentSeatAttentionEntry?>(
+      context,
       (c) => c.state.entryFor(sessionId: sessionId, memberId: seatId),
     );
     if (entry == null || entry.attention != AgentSeatAttention.waiting) {

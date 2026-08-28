@@ -219,24 +219,26 @@ class _MarkdownPreviewPaneState extends State<MarkdownPreviewPane> {
                         padding: widget.markdownPadding,
                         child: AiLineSpacedSelectionStyle(
                           child: SelectionArea(
-                            contextMenuBuilder:
-                                buildTpSelectionAreaContextMenu,
+                            contextMenuBuilder: buildTpSelectionAreaContextMenu,
                             child: MarkdownDisplayModeScope(
                               codeBlockMode: widget.codeBlockMode,
-                              child: VirtualMarkdownView(
-                                document: _document,
-                                tokens: buildAppMarkdownTokens(
-                                  Theme.of(context),
-                                  MarkdownProfile.document,
-                                  // v1: window width, not preview pane width.
-                                  width: MediaQuery.sizeOf(context).width,
-                                ),
-                                resolvers: widget.resolvers,
-                                // Natural-height block virtualization: a large .md file
-                                // previews without freezing (only visible blocks laid out).
-                                flatten: true,
-                                highlights: highlights,
-                                controller: _viewController,
+                              child: LayoutBuilder(
+                                builder: (context, constraints) {
+                                  return VirtualMarkdownView(
+                                    document: _document,
+                                    tokens: buildAppMarkdownTokens(
+                                      Theme.of(context),
+                                      MarkdownProfile.document,
+                                      width: constraints.maxWidth,
+                                    ),
+                                    resolvers: widget.resolvers,
+                                    // Natural-height block virtualization: a large .md file
+                                    // previews without freezing (only visible blocks laid out).
+                                    flatten: true,
+                                    highlights: highlights,
+                                    controller: _viewController,
+                                  );
+                                },
                               ),
                             ),
                           ),

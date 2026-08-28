@@ -10,6 +10,7 @@ import '../../l10n/l10n_extensions.dart';
 import '../../models/workspace.dart';
 import '../../models/app_session.dart';
 import '../../repositories/session_repository.dart';
+import '../../utils/session/home_sessions_paint_view.dart';
 import '../../utils/workspace/home_workspace_display.dart';
 import '../../utils/workspace/workspace_display_name.dart';
 import 'home_new_workspace_dialog.dart';
@@ -86,9 +87,7 @@ class WorkspacesListBody extends StatelessWidget {
     final workspaces = context.select<ChatCubit, List<Workspace>>(
       (c) => c.state.workspaces,
     );
-    final sessions = context.select<ChatCubit, List<AppSession>>(
-      (c) => c.state.sessions,
-    );
+    final sessions = watchHomeLibrarySessions(context);
 
     final suppressMotion = context.select<AppBootstrapCubit, bool>(
       (c) => c.state.suppressHomeEntryMotion,

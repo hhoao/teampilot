@@ -7,7 +7,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../cubits/chat_cubit.dart';
 import '../../l10n/l10n_extensions.dart';
 import '../../models/workspace.dart';
-import '../../models/app_session.dart';
+import '../../utils/session/home_sessions_paint_view.dart';
 import '../../services/home_workspace/workspace_display_prefs_store.dart';
 import '../../services/home_workspace/workspace_favorites_store.dart';
 import '../../theme/workspace_surface_layers.dart';
@@ -87,9 +87,7 @@ class _HomeAllWorkspacesPaneState extends State<HomeAllWorkspacesPane> {
     final workspaces = context.select<ChatCubit, List<Workspace>>(
       (c) => c.state.workspaces,
     );
-    final sessions = context.select<ChatCubit, List<AppSession>>(
-      (c) => c.state.sessions,
-    );
+    final sessions = watchHomeLibrarySessions(context);
 
     return ColoredBox(
       color: cs.workspaceCard,

@@ -23,13 +23,22 @@ class SessionSeatWorkingBits {
   final WorkbenchTabId? activeCenterId;
 }
 
-/// Leaf-safe subscriptions for this session seat. Call from `build`.
-///
 /// Keep-alive hosts wrap inactive workspace tabs in [TickerMode] off. Those
 /// seats still *build* under [TpKeepAliveLayer]; skip cubit [select]s so
 /// idle-watch ticks do not rebuild History / compose until the tab is
 /// foreground again. [TickerMode.valuesOf] keeps a dependency so becoming
 /// foreground rebuilds and re-subscribes.
+R seatSelect<B extends Object, R>(
+  BuildContext context,
+  R Function(B cubit) selector,
+) {
+  if (!TickerMode.valuesOf(context).enabled) {
+    return selector(context.read<B>());
+  }
+  return context.select<B, R>(selector);
+}
+
+/// Leaf-safe subscriptions for this session seat. Call from `build`.
 SessionSeatWorkingBits watchSessionSeatWorking(
   BuildContext context, {
   required String workspaceId,
@@ -41,27 +50,18 @@ SessionSeatWorkingBits watchSessionSeatWorking(
     return cubit.state.presence[memberId] ?? const MemberPresence.offline();
   }
 
-  if (!TickerMode.valuesOf(context).enabled) {
-    return SessionSeatWorkingBits(
-      activeCenterId: context.read<WorkbenchCubit>().centerActiveId(
-        workspaceId,
-      ),
-      sessionWorking: context
-          .read<ChatCubit>()
-          .state
-          .workingSessionIds
-          .contains(sessionId),
-      presence: presenceOf(context.read<MemberPresenceCubit>()),
-    );
-  }
-
   return SessionSeatWorkingBits(
-    activeCenterId: context.select<WorkbenchCubit, WorkbenchTabId?>(
+    activeCenterId: seatSelect<WorkbenchCubit, WorkbenchTabId?>(
+      context,
       (w) => w.centerActiveId(workspaceId),
     ),
-    sessionWorking: context.select<ChatCubit, bool>(
+    sessionWorking: seatSelect<ChatCubit, bool>(
+      context,
       (c) => c.state.workingSessionIds.contains(sessionId),
     ),
-    presence: context.select<MemberPresenceCubit, MemberPresence>(presenceOf),
+    presence: seatSelect<MemberPresenceCubit, MemberPresence>(
+      context,
+      presenceOf,
+    ),
   );
 }

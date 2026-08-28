@@ -35,6 +35,7 @@ import 'chat_outline_rail.dart';
 import 'chat_reveal_controller.dart';
 import 'session_chat_markdown_link_scope.dart';
 import 'session_history_live_chrome.dart';
+import 'session_seat_working.dart';
 import 'session_history_review_messages.dart';
 import 'subagent_preview_controller.dart';
 
@@ -102,20 +103,22 @@ class SessionChatMessageArea extends StatelessWidget {
     final spacing = context.tpSpacing;
     final cs = Theme.of(context).colorScheme;
     final lifecycle = context.read<ChatCubit>().lifecycle;
-    final prefs = context
-        .select<
+    final prefs =
+        seatSelect<
           LayoutCubit,
           ({
             ContentDisplayMode userMessageMode,
             ContentDisplayMode chatCodeBlockMode,
           })
         >(
+          context,
           (c) => (
             userMessageMode: c.state.preferences.chatUserMessageMode,
             chatCodeBlockMode: c.state.preferences.chatCodeBlockMode,
           ),
         );
-    final foldCategories = context.select<LayoutCubit, Set<AiToolCallCategory>>(
+    final foldCategories = seatSelect<LayoutCubit, Set<AiToolCallCategory>>(
+      context,
       (c) => c.state.preferences.foldToolCallCategories,
     );
 

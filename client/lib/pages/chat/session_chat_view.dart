@@ -161,7 +161,12 @@ class _SessionChatViewState extends State<SessionChatView> {
   /// mailId → seat key at queue time (guards wrong-seat timeline refresh).
   final Map<String, String> _mailboxQueuedSeats = {};
   var _mailboxQueuedClearToken = 0;
-  var _enhancing = false;
+  final _enhancing = ValueNotifier(false);
+  final _submitBusy = ValueNotifier(false);
+  late final Listenable _composeBusy = Listenable.merge([
+    _enhancing,
+    _submitBusy,
+  ]);
 
   /// Workspace-layer bundle (project-config.json) so the review compose slash
   /// menu shows the same skills/plugins/MCP as the landing compose.
@@ -397,6 +402,8 @@ class _SessionChatViewState extends State<SessionChatView> {
     _visibleOwnerId.dispose();
     _locator.cancel();
     _emptyRuntime.close();
+    _enhancing.dispose();
+    _submitBusy.dispose();
     super.dispose();
   }
 
@@ -429,7 +436,8 @@ class _SessionChatViewState extends State<SessionChatView> {
     );
   }
 
-  bool get _isSubmitting => _submitLock.isBusy || widget.isSubmitting;
+  bool get _isSubmitting =>
+      _submitBusy.value || _submitLock.isBusy || widget.isSubmitting;
 
   String get _workspaceRoot {
     final work = widget.session.workDirsForMember(
@@ -563,7 +571,6 @@ class _SessionChatViewState extends State<SessionChatView> {
         '|${widget.team?.id ?? ''}|${widget.workspace.workspaceId}';
     if (_liveRefresh != null && _liveRefreshScope == scope) {
       await _liveRefresh!.ensureStarted(skipInitialRefresh: true);
-      if (mounted) setState(() {});
       return;
     }
     try {
@@ -604,7 +611,6 @@ class _SessionChatViewState extends State<SessionChatView> {
         ),
       );
       await _liveRefresh!.ensureStarted(skipInitialRefresh: skipInitialRefresh);
-      if (mounted) setState(() {});
     } on Object catch (e, st) {
       // Live refresh is best-effort; seat load already surfaces History errors.
       // Avoid PlatformDispatcher noise when work-context resolve fails (e.g.
@@ -623,7 +629,6 @@ class _SessionChatViewState extends State<SessionChatView> {
     _liveRefresh = null;
     _liveRefreshScope = null;
     await previous?.stop();
-    if (mounted) setState(() {});
   }
 
   LandingLaunchContext _enhanceDraft([AppSession? live]) {
@@ -654,7 +659,8 @@ class _SessionChatViewState extends State<SessionChatView> {
 
   /// Reactive snapshot for [build] only (`context.select`).
   AppSession? _watchCubitSession(BuildContext context) {
-    final identity = context.select<ChatCubit, SessionChatIdentity?>(
+    final identity = seatSelect<ChatCubit, SessionChatIdentity?>(
+      context,
       (c) => SessionChatIdentity.tryFromChatState(
         c.state,
         widget.session.sessionId,
@@ -694,7 +700,7 @@ class _SessionChatViewState extends State<SessionChatView> {
     if (session.isSimple) return null;
     final teamId = session.sessionTeam.trim();
     if (teamId.isEmpty) return null;
-    return context.select<LaunchProfileCubit, TeamProfile?>((c) {
+    return seatSelect<LaunchProfileCubit, TeamProfile?>(context, (c) {
       final profile = c.byId(teamId);
       return profile is TeamProfile ? profile : widget.team;
     });
@@ -758,7 +764,7 @@ class _SessionChatViewState extends State<SessionChatView> {
   }
 
   Future<void> _attachFiles() async {
-    if (_isSubmitting || _enhancing) return;
+    if (_isSubmitting || _enhancing.value) return;
     await pickAndInsertComposeFileReferences(
       controller: _controller,
       workspaceRoot: _workspaceRoot,
@@ -769,7 +775,7 @@ class _SessionChatViewState extends State<SessionChatView> {
   }
 
   Future<bool> _pasteComposeImage() async {
-    if (_isSubmitting || _enhancing) return false;
+    if (_isSubmitting || _enhancing.value) return false;
     final pasted = await pasteComposeImageAttachment(
       controller: _controller,
       workspaceRoot: _workspaceRoot,
@@ -779,7 +785,7 @@ class _SessionChatViewState extends State<SessionChatView> {
 
   Future<void> _enhancePrompt() async {
     final draft = _controller.text.trim();
-    if (draft.isEmpty || _isSubmitting || _enhancing) return;
+    if (draft.isEmpty || _isSubmitting || _enhancing.value) return;
 
     final live = _readCubitSession(context) ?? widget.session;
     final setting = resolveLandingEnhanceSetting(
@@ -798,7 +804,7 @@ class _SessionChatViewState extends State<SessionChatView> {
       return;
     }
 
-    setState(() => _enhancing = true);
+    _enhancing.value = true;
     try {
       final result = await _headlessAi.run(
         setting: setting,
@@ -833,7 +839,7 @@ class _SessionChatViewState extends State<SessionChatView> {
         variant: TpToastVariant.warning,
       );
     } finally {
-      if (mounted) setState(() => _enhancing = false);
+      if (mounted) _enhancing.value = false;
     }
   }
 
@@ -880,7 +886,6 @@ class _SessionChatViewState extends State<SessionChatView> {
         _controller.clear();
         _clip.clear();
         _notifyFollowUpMemberWorking(chat);
-        if (mounted) setState(() {});
       },
       onDeliver: (_) => delivered = true,
     );
@@ -932,6 +937,7 @@ class _SessionChatViewState extends State<SessionChatView> {
         : null;
     if (!mounted) return const HistoryContinueSubmitResult.failed();
     _historyContinueInFlight = true;
+    _submitBusy.value = true;
     try {
       if (optimisticPty) {
         _syncAwaitingFromWorkingSessions(context.read<ChatCubit>().state);
@@ -949,14 +955,9 @@ class _SessionChatViewState extends State<SessionChatView> {
         _controller.clear();
         _clip.clear();
       }
-      if (mounted) setState(() {});
 
-      final result = await _submitLock.run(() async {
-        if (mounted) setState(() {});
-        return widget.onSubmit(text);
-      });
+      final result = await _submitLock.run(() => widget.onSubmit(text));
       if (!mounted) return const HistoryContinueSubmitResult.failed();
-      setState(() {});
       if (!result.ok) {
         _suppressComposeDraftPersistence = false;
         _cancelAwaitingIdleGrace();
@@ -1025,6 +1026,7 @@ class _SessionChatViewState extends State<SessionChatView> {
       return result;
     } finally {
       _historyContinueInFlight = false;
+      _submitBusy.value = false;
       _suppressComposeDraftPersistence = false;
     }
   }
@@ -1156,7 +1158,8 @@ class _SessionChatViewState extends State<SessionChatView> {
         CliToolRegistryScope.maybeOf(context) ?? CliToolRegistry.builtIn();
 
     // lockedCli is still needed by the parent for historyCap (subagent tools).
-    final presets = context.select<CliPresetsCubit, List<CliPreset>>(
+    final presets = seatSelect<CliPresetsCubit, List<CliPreset>>(
+      context,
       (c) => c.state.presets,
     );
     final lockedCli = _lockedCli(
@@ -1171,7 +1174,8 @@ class _SessionChatViewState extends State<SessionChatView> {
       sessionId: widget.session.sessionId,
       memberId: _shellMemberId,
     );
-    final askCardVisible = context.select<AgentAttentionCubit, bool>(
+    final askCardVisible = seatSelect<AgentAttentionCubit, bool>(
+      context,
       (c) => AgentPermissionAttentionBanner.isSelectedSeatAskCard(
         attention: c,
         session: session,
@@ -1415,46 +1419,55 @@ class _SessionChatViewState extends State<SessionChatView> {
                                           onNavigateFind: _navigateFindTo,
                                         ),
                                         if (top == null)
-                                          SessionChatComposeSection(
-                                            session: session,
-                                            workspace: widget.workspace,
-                                            selectedMemberId: selectedMemberId,
-                                            shellMemberId: _shellMemberId,
-                                            composeController: _controller,
-                                            composeClip: _clip,
-                                            composeFocusNode: _focusNode,
-                                            voiceController: _voice,
-                                            isSubmitting: _isSubmitting,
-                                            isEnhancing: _enhancing,
-                                            workspaceRoot: _workspaceRoot,
-                                            workspaceBundle: _workspaceBundle,
-                                            askCardVisible: askCardVisible,
-                                            launchError: widget.launchError,
-                                            onRemapDeadTarget:
-                                                widget.onRemapDeadTarget,
-                                            onRetry: widget.onRetry,
-                                            sessionConnectInProgress:
-                                                widget.sessionConnectInProgress,
-                                            isMailboxUnread:
-                                                widget.isMailboxUnread,
-                                            mailboxQueued: _mailboxQueued,
-                                            mailboxQueuedSeats:
-                                                _mailboxQueuedSeats,
-                                            mailboxQueuedClearToken:
-                                                _mailboxQueuedClearToken,
-                                            onMailboxConsumed: (mailId) {
-                                              if (!mounted) return;
-                                              unawaited(
-                                                _seat?.refreshMailboxTimeline(),
+                                          ListenableBuilder(
+                                            listenable: _composeBusy,
+                                            builder: (context, _) {
+                                              return SessionChatComposeSection(
+                                                session: session,
+                                                workspace: widget.workspace,
+                                                selectedMemberId:
+                                                    selectedMemberId,
+                                                shellMemberId: _shellMemberId,
+                                                composeController: _controller,
+                                                composeClip: _clip,
+                                                composeFocusNode: _focusNode,
+                                                voiceController: _voice,
+                                                isSubmitting: _isSubmitting,
+                                                isEnhancing: _enhancing.value,
+                                                workspaceRoot: _workspaceRoot,
+                                                workspaceBundle:
+                                                    _workspaceBundle,
+                                                askCardVisible: askCardVisible,
+                                                launchError: widget.launchError,
+                                                onRemapDeadTarget:
+                                                    widget.onRemapDeadTarget,
+                                                onRetry: widget.onRetry,
+                                                sessionConnectInProgress: widget
+                                                    .sessionConnectInProgress,
+                                                isMailboxUnread:
+                                                    widget.isMailboxUnread,
+                                                mailboxQueued: _mailboxQueued,
+                                                mailboxQueuedSeats:
+                                                    _mailboxQueuedSeats,
+                                                mailboxQueuedClearToken:
+                                                    _mailboxQueuedClearToken,
+                                                onMailboxConsumed: (mailId) {
+                                                  if (!mounted) return;
+                                                  unawaited(
+                                                    _seat
+                                                        ?.refreshMailboxTimeline(),
+                                                  );
+                                                },
+                                                onAttach: () =>
+                                                    unawaited(_attachFiles()),
+                                                onEnhance: () =>
+                                                    unawaited(_enhancePrompt()),
+                                                onPasteImage:
+                                                    _pasteComposeImage,
+                                                routeActive: widget.routeActive,
+                                                onSubmit: _handleComposeSubmit,
                                               );
                                             },
-                                            onAttach: () =>
-                                                unawaited(_attachFiles()),
-                                            onEnhance: () =>
-                                                unawaited(_enhancePrompt()),
-                                            onPasteImage: _pasteComposeImage,
-                                            routeActive: widget.routeActive,
-                                            onSubmit: _handleComposeSubmit,
                                           ),
                                       ],
                                     );
