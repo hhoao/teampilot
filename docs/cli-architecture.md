@@ -74,6 +74,7 @@ services/cli/
       team_behavior_capability.dart # TeamBehaviorCapability
       chat_interaction_capability.dart
       terminal_behavior_capability.dart
+      terminal_observation_contributor.dart  # 可选：PTY 观测绑定
       cli_executable_capability.dart
       headless_capability.dart
       ai_history_capability.dart
@@ -241,7 +242,7 @@ tool 列表。
 | `CliSessionCapability` | `registry/capabilities/cli_session_capability.dart` | 会话持久化/初始化/finalize、配置目录 |
 | `TeamBehaviorCapability` | `registry/capabilities/team_behavior_capability.dart` | 团队协作行为（native team、wait-before-stop、presence、agent 预设） |
 | `ChatInteractionCapability` | `registry/capabilities/chat_interaction_capability.dart` | Agent 状态归一化 + 结构化 ask / 审批 |
-| `TerminalBehaviorCapability` | `registry/capabilities/terminal_behavior_capability.dart` | turn interrupt、标题注意力、全屏输入 |
+| `TerminalBehaviorCapability` | `registry/capabilities/terminal_behavior_capability.dart` | turn interrupt、全屏输入与注入策略（观测走 TerminalObservationContributor） |
 | `CliExecutableCapability` | `registry/capabilities/cli_executable_capability.dart` | 可执行文件解析 / 安装 / UI |
 | `PluginCapability` | `registry/capabilities/plugin_capability.dart` | 插件物化 |
 
@@ -255,6 +256,7 @@ tool 列表。
 | `PromptCapability` | Prompt 目标物化；`PromptContributionProvider → PromptAssembler → materialize(document)`，staged launch 经 `CliResourceProvisioner` 编排，`PromptHubService` 仅作兼容 facade |
 | `HeadlessCapability` | 无头运行（一次性调用 + 供给） |
 | `AiHistoryCapability` | transcript 定位/解析、会话恢复、tool call 解析器 |
+| `TerminalObservationContributor` | 可选；在 `CliToolDefinition.capabilities` 上用 `is` 扫描。PTY detect/scan/listen 注册到 `TerminalObservationBus`。`TerminalLaunchController` 中禁止 `if (cli == …)` |
 | 团队能力细分 | `TeamBehaviorCapability.supportsNativeTeam`（仅 claude、flashskyai）、`agentPresetStyle`（agent 预设） |
 
 `CliSessionCapability.sessionConfigDir` 是所有历史定位 / 环境构造的**唯一**配置目录来源：如
@@ -341,7 +343,7 @@ mkdir -p services/cli/newcli/{capabilities/history,provider}
 
 ### 4. 实现可选的能力
 
-根据 CLI 特性决定是否实现：`capabilities/skill.dart`、`capabilities/mcp.dart`、`capabilities/hook.dart`、`capabilities/prompt.dart`、`capabilities/headless.dart`、`capabilities/history/`（`AiHistoryCapability` + tool call resolvers）、等等。
+根据 CLI 特性决定是否实现：`capabilities/skill.dart`、`capabilities/mcp.dart`、`capabilities/hook.dart`、`capabilities/prompt.dart`、`capabilities/headless.dart`、`capabilities/history/`（`AiHistoryCapability` + tool call resolvers）、等等。若 CLI 需要 PTY 观测（OSC 标题、输入过滤等），在已有能力类上实现 `TerminalObservationContributor`（通常是 `terminal_behavior.dart`），不要在 `TerminalLaunchController` 或 session 里按 `CliTool` 分支。
 
 ### 5. 创建 Provider 层（如需要）
 
@@ -495,6 +497,7 @@ for (final def in CliToolRegistry.builtIn().launchable)
 | `TeamBehaviorCapability` | `registry/capabilities/team_behavior_capability.dart` | 基础设施 | ✅ |
 | `ChatInteractionCapability` | `registry/capabilities/chat_interaction_capability.dart` | 基础设施 | ✅ |
 | `TerminalBehaviorCapability` | `registry/capabilities/terminal_behavior_capability.dart` | 基础设施 | ✅ |
+| `TerminalObservationContributor` | `registry/capabilities/terminal_observation_contributor.dart` | 基础设施 | - |
 | `CliExecutableCapability` | `registry/capabilities/cli_executable_capability.dart` | 基础设施 | ✅ |
 | `HeadlessCapability` | `registry/capabilities/headless_capability.dart` | 基础设施 | - |
 | `AiHistoryCapability` | `registry/capabilities/ai_history_capability.dart` | 基础设施 | - |
