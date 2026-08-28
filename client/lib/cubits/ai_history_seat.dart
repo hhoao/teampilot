@@ -12,6 +12,7 @@ import '../models/team_config.dart';
 import '../models/workspace_launch_context.dart';
 import '../services/conversation_timeline/conversation_timeline.dart';
 import '../services/conversation_timeline/mailbox_user_source.dart';
+import '../services/conversation_timeline/timeline_models.dart';
 import '../services/session/ai_history_load_result.dart';
 import '../services/session/ai_history_loader.dart';
 import '../services/session/ai_history_message_dedup.dart';
@@ -182,6 +183,9 @@ class AiHistorySeat extends Cubit<AiHistoryState> {
   /// CLI transcript nor the mailbox moved.
   List<LoggedMessage>? _lastMailboxRecords;
 
+  /// Cached merged timeline for identity-preserving incremental refresh.
+  SeatTimelineSnapshot? _cachedTimeline;
+
   /// 最近一次去重日志的指纹（session|member|action|ids|kept 数），
   /// 相同指纹不重复打日志（防刷屏）。按 action 独立：deduped 与 kept-both
   /// 互不抑制。
@@ -312,6 +316,7 @@ class AiHistorySeat extends Cubit<AiHistoryState> {
       _pageCursor = null;
       _sourceHasOlder = false;
       _lastUserTurnCount = 0;
+      _cachedTimeline = null;
       _clearSubagentAttachments();
       runtime.setLoading();
       emit(
@@ -453,11 +458,13 @@ class AiHistorySeat extends Cubit<AiHistoryState> {
         _lastMailboxRecords = mailboxRecords;
         if (!hasNewReadMailboxUsers) return;
 
-        final merged = buildConversationTimeline(
+        final cached = buildConversationTimelineIncremental(
+          previous: _cachedTimeline,
           cliMessages: _cliMessages,
           mailboxRecords: mailboxRecords,
-        ).messages;
-        _applySoftReloadMessages(merged, sessionId, memberId);
+        );
+        _cachedTimeline = cached;
+        _applySoftReloadMessages(cached.snapshot.messages, sessionId, memberId);
         return;
       }
 
@@ -492,11 +499,13 @@ class AiHistorySeat extends Cubit<AiHistoryState> {
       }
       _lastMailboxRecords = mailboxRecords;
       _setSubagentAttachments(result.subagentAttachments);
-      final merged = buildConversationTimeline(
+      final cached = buildConversationTimelineIncremental(
+        previous: _cachedTimeline,
         cliMessages: _cliMessages,
         mailboxRecords: mailboxRecords,
-      ).messages;
-      _applySoftReloadMessages(merged, sessionId, memberId);
+      );
+      _cachedTimeline = cached;
+      _applySoftReloadMessages(cached.snapshot.messages, sessionId, memberId);
     } catch (e, st) {
       appLogger.e(
         '[ai-history] seat softReload failed session=$sessionId '
@@ -530,12 +539,14 @@ class AiHistorySeat extends Cubit<AiHistoryState> {
         return;
       }
 
-      final merged = buildConversationTimeline(
+      final cached = buildConversationTimelineIncremental(
+        previous: _cachedTimeline,
         cliMessages: _cliMessages,
         mailboxRecords: mailboxRecords,
-      ).messages;
+      );
+      _cachedTimeline = cached;
       _lastMailboxRecords = mailboxRecords;
-      _applySoftReloadMessages(merged, sessionId, memberId);
+      _applySoftReloadMessages(cached.snapshot.messages, sessionId, memberId);
     } catch (e, st) {
       appLogger.e(
         '[ai-history] seat refreshMailboxTimeline failed session=$sessionId '
@@ -1084,10 +1095,13 @@ class AiHistorySeat extends Cubit<AiHistoryState> {
   ) async {
     final mailboxRecords = await _safeLoadMailboxRecords(sessionId, memberId);
     _lastMailboxRecords = mailboxRecords;
-    return buildConversationTimeline(
+    final cached = buildConversationTimelineIncremental(
+      previous: _cachedTimeline,
       cliMessages: cliMessages,
       mailboxRecords: mailboxRecords,
-    ).messages;
+    );
+    _cachedTimeline = cached;
+    return cached.snapshot.messages;
   }
 
   Future<List<LoggedMessage>> _safeLoadMailboxRecords(
@@ -1186,7 +1200,9 @@ class AiHistorySeat extends Cubit<AiHistoryState> {
       memberId: memberId,
       source: 'applySoftReloadMessages',
     );
-    final oldLength = _allMessages.length;
+    final previousMessages = _allMessages;
+    messages = reuseHistoryMessageIdentity(previous: previousMessages, next: messages);
+    final oldLength = previousMessages.length;
     final oldVisible = _visibleCount;
     final oldCommitted = _committedLength;
     final newLength = messages.length;

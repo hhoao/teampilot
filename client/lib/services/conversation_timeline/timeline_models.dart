@@ -1,5 +1,7 @@
 import 'package:ai_message_core/ai_message_core.dart';
 
+import '../team_bus/persistence/bus_message_log.dart';
+
 class TimelineSeat {
   const TimelineSeat({required this.sessionId, required this.memberId});
 
@@ -42,4 +44,18 @@ class TimelineSnapshot {
 
   final List<AiMessage> messages;
   final List<UnreadUserMail> unreadUserMails;
+}
+
+/// Cached seat timeline: CLI list identity, mailbox records, merged output.
+class SeatTimelineSnapshot {
+  const SeatTimelineSnapshot({
+    required this.cliMessages,
+    required this.mailboxRecords,
+    required this.snapshot,
+  });
+
+  /// Instance identity of the CLI transcript used for this merge.
+  final List<AiMessage> cliMessages;
+  final List<LoggedMessage> mailboxRecords;
+  final TimelineSnapshot snapshot;
 }

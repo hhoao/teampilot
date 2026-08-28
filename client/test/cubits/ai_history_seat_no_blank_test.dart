@@ -268,6 +268,69 @@ void main() {
     expect(seat.state.status, AiHistoryViewStatus.ready);
   });
 
+  group('timeline identity on refresh', () {
+    test('softReload with unchanged transcript preserves message instances', () async {
+      holderMessages = messages(2);
+      await seat.load(
+        session: session(),
+        memberId: '',
+        launchContext: ctx(session()),
+      );
+      final before = List<AiMessage>.from(seat.loadedMessages);
+
+      await seat.softReload();
+
+      expect(seat.loadedMessages, hasLength(2));
+      expect(identical(seat.loadedMessages[0], before[0]), isTrue);
+      expect(identical(seat.loadedMessages[1], before[1]), isTrue);
+    });
+
+    test('softReload append preserves prior message instances', () async {
+      holderMessages = messages(2);
+      await seat.load(
+        session: session(),
+        memberId: '',
+        launchContext: ctx(session()),
+      );
+      final beforeFirst = seat.loadedMessages[0];
+      final beforeSecond = seat.loadedMessages[1];
+
+      holderMessages = messages(3);
+      bumpCacheToken();
+      await seat.softReload();
+
+      expect(seat.loadedMessages, hasLength(3));
+      expect(identical(seat.loadedMessages[0], beforeFirst), isTrue);
+      expect(identical(seat.loadedMessages[1], beforeSecond), isTrue);
+    });
+
+    test(
+      'pending overlay survives unchanged softReload without altering CLI identity',
+      () async {
+        holderMessages = messages(2);
+        await seat.load(
+          session: session(),
+          memberId: '',
+          launchContext: ctx(session()),
+        );
+        final beforeCli = List<AiMessage>.from(seat.loadedMessages);
+
+        seat.enqueuePendingUser('typing...');
+        expect(seat.runtime.messages.last.id, startsWith('pending:'));
+
+        await seat.softReload();
+
+        expect(seat.loadedMessages, hasLength(2));
+        expect(identical(seat.loadedMessages[0], beforeCli[0]), isTrue);
+        expect(identical(seat.loadedMessages[1], beforeCli[1]), isTrue);
+        expect(
+          seat.runtime.messages.where((m) => m.id.startsWith('pending:')),
+          isNotEmpty,
+        );
+      },
+    );
+  });
+
   group('revealMessage', () {
     test(
       'expands the visible window to include a not-yet-loaded index',
