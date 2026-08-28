@@ -6,12 +6,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:shared_ui/shared_ui.dart';
-import '../../widgets/app_toast/app_toast.dart';
 import 'package:tp_markdown/tp_markdown.dart';
 
 import '../../cubits/ai_history_cubit.dart';
 import '../../cubits/agent_attention_cubit.dart';
-import '../../cubits/app_provider_cubit.dart';
 import '../../cubits/chat_cubit.dart';
 import '../../cubits/cli_presets_cubit.dart';
 import '../../cubits/layout_cubit.dart';
@@ -22,13 +20,11 @@ import '../../models/app_session.dart';
 import '../../models/cli_preset.dart';
 import '../../models/config_bundle.dart';
 import '../../models/failed_message_record.dart';
-import '../../models/landing_launch_context.dart';
 import '../../models/member_presence.dart';
 import '../../models/team_config.dart';
 import '../../models/workspace.dart';
 import '../../models/workspace_launch_context.dart';
 import '../../repositories/workspace_project_config_repository.dart';
-import '../../services/ai/headless_ai_service.dart';
 import '../../services/cli/preset_resolver.dart';
 import '../../services/commands/key_chord.dart';
 import '../../services/commands/shortcut_focus.dart';
@@ -41,7 +37,6 @@ import '../../services/cli/tasks/cli_task_board_controller.dart';
 import '../../services/compose/compose_clip.dart';
 import '../../services/compose/compose_draft_cache.dart';
 import '../../services/compose/compose_file_attach.dart';
-import '../../services/compose/compose_prompt_enhance.dart';
 import 'session_chat_voice_controller.dart';
 import '../../services/follow_up/follow_up_queue.dart';
 import '../../services/session/ai_history_live_refresh_controller.dart';
@@ -137,7 +132,6 @@ class _SessionChatViewState extends State<SessionChatView> {
   final _clip = ComposeClip();
   late final FocusNode _focusNode;
   late final SessionVoiceController _voice;
-  final _headlessAi = HeadlessAiService();
   final _subagentPreview = SubagentPreviewController();
   AiHistoryLiveRefreshController? _liveRefresh;
 
@@ -161,12 +155,7 @@ class _SessionChatViewState extends State<SessionChatView> {
   /// mailId → seat key at queue time (guards wrong-seat timeline refresh).
   final Map<String, String> _mailboxQueuedSeats = {};
   var _mailboxQueuedClearToken = 0;
-  final _enhancing = ValueNotifier(false);
   final _submitBusy = ValueNotifier(false);
-  late final Listenable _composeBusy = Listenable.merge([
-    _enhancing,
-    _submitBusy,
-  ]);
 
   /// Workspace-layer bundle (project-config.json) so the review compose slash
   /// menu shows the same skills/plugins/MCP as the landing compose.
@@ -402,7 +391,6 @@ class _SessionChatViewState extends State<SessionChatView> {
     _visibleOwnerId.dispose();
     _locator.cancel();
     _emptyRuntime.close();
-    _enhancing.dispose();
     _submitBusy.dispose();
     super.dispose();
   }
@@ -631,24 +619,6 @@ class _SessionChatViewState extends State<SessionChatView> {
     await previous?.stop();
   }
 
-  LandingLaunchContext _enhanceDraft([AppSession? live]) {
-    final session = live ?? widget.session;
-    final isPersonal = session.sessionTeam.trim().isEmpty;
-    return LandingLaunchContext(
-      isPersonal: isPersonal,
-      presetId: isPersonal
-          ? (session.presetId.trim().isEmpty ? null : session.presetId)
-          : null,
-      teamId: isPersonal ? null : session.sessionTeam,
-      expertKey: session.expertKey.trim().isEmpty ? null : session.expertKey,
-      workingDirectoryPath: _workspaceRoot,
-      cli: isPersonal ? session.cli : null,
-      provider: isPersonal ? session.provider : null,
-      model: isPersonal ? session.model : null,
-      effort: isPersonal ? session.effort : null,
-    );
-  }
-
   AppSession? _sessionFromCubit(ChatCubit cubit) {
     final id = widget.session.sessionId;
     for (final session in cubit.state.sessions) {
@@ -764,7 +734,7 @@ class _SessionChatViewState extends State<SessionChatView> {
   }
 
   Future<void> _attachFiles() async {
-    if (_isSubmitting || _enhancing.value) return;
+    if (_isSubmitting) return;
     await pickAndInsertComposeFileReferences(
       controller: _controller,
       workspaceRoot: _workspaceRoot,
@@ -775,72 +745,12 @@ class _SessionChatViewState extends State<SessionChatView> {
   }
 
   Future<bool> _pasteComposeImage() async {
-    if (_isSubmitting || _enhancing.value) return false;
+    if (_isSubmitting) return false;
     final pasted = await pasteComposeImageAttachment(
       controller: _controller,
       workspaceRoot: _workspaceRoot,
     );
     return pasted;
-  }
-
-  Future<void> _enhancePrompt() async {
-    final draft = _controller.text.trim();
-    if (draft.isEmpty || _isSubmitting || _enhancing.value) return;
-
-    final live = _readCubitSession(context) ?? widget.session;
-    final setting = resolveLandingEnhanceSetting(
-      draft: _enhanceDraft(live),
-      presets: context.read<CliPresetsCubit>().state.presets,
-      teams: context.read<LaunchProfileCubit>().state.teams,
-      appProviders: context.read<AppProviderCubit>().state,
-      registry: CliToolRegistryScope.of(context),
-    );
-    if (setting == null) {
-      AppToast.show(
-        context,
-        message: context.l10n.workspaceChatLandingEnhanceNotConfigured,
-        variant: TpToastVariant.warning,
-      );
-      return;
-    }
-
-    _enhancing.value = true;
-    try {
-      final result = await _headlessAi.run(
-        setting: setting,
-        prompt: buildComposeEnhancePrompt(draft),
-        workingDirectory: _workspaceRoot.isEmpty ? null : _workspaceRoot,
-      );
-      if (!mounted) return;
-      final enhanced = cleanComposeEnhanceOutput(result.text);
-      if (enhanced.isEmpty) {
-        AppToast.show(
-          context,
-          message: context.l10n.workspaceChatLandingEnhanceFailed,
-          variant: TpToastVariant.warning,
-        );
-        return;
-      }
-      _controller.text = enhanced;
-      _controller.selection = TextSelection.collapsed(offset: enhanced.length);
-      _focusNode.requestFocus();
-    } on HeadlessAiException catch (e) {
-      if (!mounted) return;
-      AppToast.show(
-        context,
-        message: e.message,
-        variant: TpToastVariant.warning,
-      );
-    } on Object {
-      if (!mounted) return;
-      AppToast.show(
-        context,
-        message: context.l10n.workspaceChatLandingEnhanceFailed,
-        variant: TpToastVariant.warning,
-      );
-    } finally {
-      if (mounted) _enhancing.value = false;
-    }
   }
 
   Future<HistoryContinueSubmitResult> _handleComposeSubmit(String text) async {
@@ -1422,7 +1332,7 @@ class _SessionChatViewState extends State<SessionChatView> {
                                         ),
                                         if (top == null)
                                           ListenableBuilder(
-                                            listenable: _composeBusy,
+                                            listenable: _submitBusy,
                                             builder: (context, _) {
                                               return SessionChatComposeSection(
                                                 session: session,
@@ -1435,7 +1345,6 @@ class _SessionChatViewState extends State<SessionChatView> {
                                                 composeFocusNode: _focusNode,
                                                 voiceController: _voice,
                                                 isSubmitting: _isSubmitting,
-                                                isEnhancing: _enhancing.value,
                                                 workspaceRoot: _workspaceRoot,
                                                 workspaceBundle:
                                                     _workspaceBundle,
@@ -1462,8 +1371,6 @@ class _SessionChatViewState extends State<SessionChatView> {
                                                 },
                                                 onAttach: () =>
                                                     unawaited(_attachFiles()),
-                                                onEnhance: () =>
-                                                    unawaited(_enhancePrompt()),
                                                 onPasteImage:
                                                     _pasteComposeImage,
                                                 routeActive: widget.routeActive,

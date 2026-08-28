@@ -50,16 +50,13 @@ class WorkspaceComposeCard extends StatelessWidget {
     required this.chrome,
     required this.dropTarget,
     required this.attachTooltip,
-    required this.enhanceTooltip,
     required this.voiceTooltip,
     required this.voiceCancelTooltip,
     required this.voiceStopTooltip,
-    required this.isEnhancing,
     required this.isVoiceListening,
     required this.voiceElapsed,
     required this.voiceSoundLevel,
     required this.onAttach,
-    required this.onEnhance,
     required this.onVoice,
     required this.onVoiceCancel,
     required this.onVoiceStop,
@@ -87,16 +84,13 @@ class WorkspaceComposeCard extends StatelessWidget {
   final ComposeChrome chrome;
   final WorkspaceDropTarget dropTarget;
   final String attachTooltip;
-  final String enhanceTooltip;
   final String voiceTooltip;
   final String voiceCancelTooltip;
   final String voiceStopTooltip;
-  final bool isEnhancing;
   final bool isVoiceListening;
   final Duration voiceElapsed;
   final double voiceSoundLevel;
   final VoidCallback onAttach;
-  final VoidCallback onEnhance;
   final VoidCallback onVoice;
   final VoidCallback onVoiceCancel;
   final VoidCallback onVoiceStop;
@@ -127,8 +121,7 @@ class WorkspaceComposeCard extends StatelessWidget {
     UnboundComposeChrome() => false,
   };
 
-  bool get _composeActionsEnabled =>
-      _composeEnabled && !isSubmitting && !isEnhancing;
+  bool get _composeActionsEnabled => _composeEnabled && !isSubmitting;
 
   bool get _effectiveCanSubmit {
     if (!_composeEnabled || !canSubmit) return false;
@@ -509,14 +502,6 @@ class WorkspaceComposeCard extends StatelessWidget {
         enabled: _composeActionsEnabled,
         onTap: onAttach,
       ),
-      _ComposeActionIcon(
-        palette: palette,
-        tooltip: enhanceTooltip,
-        icon: Icons.auto_awesome_outlined,
-        enabled: _composeActionsEnabled && hasText,
-        isLoading: isEnhancing,
-        onTap: onEnhance,
-      ),
       SizedBox(width: spacing.xs),
       _trailingComposeAction(
         context: context,
@@ -545,14 +530,6 @@ class WorkspaceComposeCard extends StatelessWidget {
         icon: Icons.add,
         enabled: _composeActionsEnabled,
         onTap: onAttach,
-      ),
-      _ComposeActionIcon(
-        palette: palette,
-        tooltip: enhanceTooltip,
-        icon: Icons.auto_awesome_outlined,
-        enabled: _composeActionsEnabled && hasText,
-        isLoading: isEnhancing,
-        onTap: onEnhance,
       ),
       Expanded(
         child: Align(
@@ -723,7 +700,7 @@ class _TeamSettingsButton extends StatelessWidget {
   }
 }
 
-class _StopButton extends StatelessWidget {
+class _StopButton extends StatefulWidget {
   const _StopButton({
     required this.palette,
     required this.tooltip,
@@ -737,24 +714,41 @@ class _StopButton extends StatelessWidget {
   static const double _size = 36;
 
   @override
+  State<_StopButton> createState() => _StopButtonState();
+}
+
+class _StopButtonState extends State<_StopButton> {
+  var _stopping = false;
+
+  void _handleStop() {
+    if (_stopping) return;
+    _stopping = true;
+    widget.onStop();
+    if (mounted) setState(() {});
+  }
+
+  @override
   Widget build(BuildContext context) {
     final icons = context.tpIconSizes;
 
     return Tooltip(
-      message: tooltip,
+      message: widget.tooltip,
       child: Semantics(
         button: true,
-        label: tooltip,
+        label: widget.tooltip,
         child: TpHover(
           shape: TpPressableShape.circle,
-          width: _size,
-          height: _size,
-          backgroundColor: palette.sendActive,
-          onTap: throttledOnPressed('session_review_compose_stop', onStop),
+          width: _StopButton._size,
+          height: _StopButton._size,
+          backgroundColor: widget.palette.sendActive,
+          enabled: !_stopping,
+          onTap: _stopping
+              ? null
+              : throttledOnPressed('session_review_compose_stop', _handleStop),
           child: Center(
             child: Icon(
               Icons.stop_rounded,
-              color: palette.sendIcon,
+              color: widget.palette.sendIcon,
               size: icons.md,
             ),
           ),
@@ -868,7 +862,6 @@ class _ComposeActionIcon extends StatelessWidget {
     required this.icon,
     required this.enabled,
     required this.onTap,
-    this.isLoading = false,
   });
 
   final WorkspaceChatLandingPalette palette;
@@ -876,14 +869,12 @@ class _ComposeActionIcon extends StatelessWidget {
   final IconData icon;
   final bool enabled;
   final VoidCallback onTap;
-  final bool isLoading;
 
   static const double _size = 36;
 
   @override
   Widget build(BuildContext context) {
     final icons = context.tpIconSizes;
-    final interactive = enabled && !isLoading;
     final color = !enabled ? palette.disabled : palette.muted;
 
     return Tooltip(
@@ -893,19 +884,10 @@ class _ComposeActionIcon extends StatelessWidget {
         width: _size,
         height: _size,
         backgroundColor: Colors.transparent,
-        enabled: interactive,
-        onTap: interactive ? onTap : null,
+        enabled: enabled,
+        onTap: enabled ? onTap : null,
         child: Center(
-          child: isLoading
-              ? SizedBox(
-                  width: icons.sm,
-                  height: icons.sm,
-                  child: CircularProgressIndicator(
-                    strokeWidth: 2,
-                    color: palette.muted,
-                  ),
-                )
-              : Icon(icon, size: icons.md, color: color),
+          child: Icon(icon, size: icons.md, color: color),
         ),
       ),
     );

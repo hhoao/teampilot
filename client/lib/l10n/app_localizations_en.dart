@@ -1943,8 +1943,6 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get workspaceChatLandingAttach => 'Attach files';
 
-  @override
-  String get workspaceChatLandingEnhance => 'Enhance prompt';
 
   @override
   String get workspaceChatLandingVoice => 'Voice input';
@@ -1955,16 +1953,8 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get workspaceChatLandingVoiceStop => 'Stop recording';
 
-  @override
-  String get workspaceChatLandingEnhanceEmpty =>
-      'Type a message before enhancing';
 
-  @override
-  String get workspaceChatLandingEnhanceNotConfigured =>
-      'Configure a CLI preset or team provider first';
 
-  @override
-  String get workspaceChatLandingEnhanceFailed => 'Could not enhance prompt';
 
   @override
   String get workspaceChatLandingVoiceUnavailable =>

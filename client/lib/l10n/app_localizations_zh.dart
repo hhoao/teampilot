@@ -1848,8 +1848,6 @@ class AppLocalizationsZh extends AppLocalizations {
   @override
   String get workspaceChatLandingAttach => '附加文件';
 
-  @override
-  String get workspaceChatLandingEnhance => '优化提示词';
 
   @override
   String get workspaceChatLandingVoice => '语音输入';
@@ -1860,15 +1858,8 @@ class AppLocalizationsZh extends AppLocalizations {
   @override
   String get workspaceChatLandingVoiceStop => '停止录音';
 
-  @override
-  String get workspaceChatLandingEnhanceEmpty => '请先输入内容再优化';
 
-  @override
-  String get workspaceChatLandingEnhanceNotConfigured =>
-      '请先配置 CLI 预设或团队 Provider';
 
-  @override
-  String get workspaceChatLandingEnhanceFailed => '无法优化提示词';
 
   @override
   String get workspaceChatLandingVoiceUnavailable => '此设备不支持语音输入';

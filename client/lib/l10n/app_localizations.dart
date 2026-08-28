@@ -3512,11 +3512,6 @@ abstract class AppLocalizations {
   /// **'Attach files'**
   String get workspaceChatLandingAttach;
 
-  /// No description provided for @workspaceChatLandingEnhance.
-  ///
-  /// In en, this message translates to:
-  /// **'Enhance prompt'**
-  String get workspaceChatLandingEnhance;
 
   /// No description provided for @workspaceChatLandingVoice.
   ///
@@ -3536,23 +3531,8 @@ abstract class AppLocalizations {
   /// **'Stop recording'**
   String get workspaceChatLandingVoiceStop;
 
-  /// No description provided for @workspaceChatLandingEnhanceEmpty.
-  ///
-  /// In en, this message translates to:
-  /// **'Type a message before enhancing'**
-  String get workspaceChatLandingEnhanceEmpty;
 
-  /// No description provided for @workspaceChatLandingEnhanceNotConfigured.
-  ///
-  /// In en, this message translates to:
-  /// **'Configure a CLI preset or team provider first'**
-  String get workspaceChatLandingEnhanceNotConfigured;
 
-  /// No description provided for @workspaceChatLandingEnhanceFailed.
-  ///
-  /// In en, this message translates to:
-  /// **'Could not enhance prompt'**
-  String get workspaceChatLandingEnhanceFailed;
 
   /// No description provided for @workspaceChatLandingVoiceUnavailable.
   ///

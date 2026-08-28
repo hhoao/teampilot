@@ -25,17 +25,15 @@ import '../../../models/team_config.dart';
 import '../../../models/workspace.dart';
 import '../../../models/runtime_target.dart';
 import '../../../models/git_worktree.dart';
-import '../../../services/ai/headless_ai_service.dart';
 import '../../../services/compose/compose_at_file_refs.dart';
 import '../../../services/compose/compose_clip.dart';
 import '../../../services/compose/compose_draft_cache.dart';
 import '../../../services/compose/compose_file_attach.dart';
 import '../../../services/compose/compose_file_drop_ingestor.dart';
-import '../../../services/storage/app_storage.dart';
 import '../../../services/compose/compose_landing_bundle.dart';
-import '../../../services/compose/compose_prompt_enhance.dart';
 import '../../../services/compose/compose_text_edit.dart';
 import '../../../services/compose/compose_voice_input.dart';
+import '../../../services/storage/app_storage.dart';
 import '../../../services/expert_hub/expert_capability_resolver.dart';
 import '../../../services/expert_hub/expert_hub_recent_store.dart';
 import '../../../services/expert_hub/expert_landing_preflight.dart';
@@ -117,7 +115,6 @@ class _UnboundComposeBodyState extends State<UnboundComposeBody> {
   final _clip = ComposeClip();
   late final FocusNode _focusNode;
   late final ComposeVoiceInput _voiceInput;
-  final _headlessAi = HeadlessAiService();
   var _suppressDraftSync = false;
 
   var _conversationMode = _LandingConversationMode.simple;
@@ -129,7 +126,6 @@ class _UnboundComposeBodyState extends State<UnboundComposeBody> {
   String? _selectedEffort;
   String? _selectedTeamId;
   String? _selectedExpertKey;
-  var _enhancing = false;
   var _voiceListening = false;
   var _voiceSoundLevel = 0.0;
   var _discardVoiceTranscript = false;
@@ -403,7 +399,7 @@ class _UnboundComposeBodyState extends State<UnboundComposeBody> {
   }
 
   Future<void> _attachFiles() async {
-    if (widget.isSubmitting || _enhancing) return;
+    if (widget.isSubmitting) return;
     await pickAndInsertComposeFileReferences(
       controller: _controller,
       workspaceRoot: _activeLaunchDirectory(),
@@ -429,7 +425,7 @@ class _UnboundComposeBodyState extends State<UnboundComposeBody> {
   }
 
   Future<bool> _pasteComposeImage() async {
-    if (widget.isSubmitting || _enhancing) return false;
+    if (widget.isSubmitting) return false;
     final pasted = await pasteComposeImageAttachment(
       controller: _controller,
       workspaceRoot: _activeLaunchDirectory(),
@@ -438,68 +434,8 @@ class _UnboundComposeBodyState extends State<UnboundComposeBody> {
     return pasted;
   }
 
-  Future<void> _enhancePrompt() async {
-    final draft = _controller.text.trim();
-    if (draft.isEmpty || widget.isSubmitting || _enhancing) return;
-
-    final setting = resolveLandingEnhanceSetting(
-      draft: _currentDraft(),
-      presets: context.read<CliPresetsCubit>().state.presets,
-      teams: context.read<LaunchProfileCubit>().state.teams,
-      appProviders: context.read<AppProviderCubit>().state,
-      registry: CliToolRegistryScope.of(context),
-    );
-    if (setting == null) {
-      AppToast.show(
-        context,
-        message: context.l10n.workspaceChatLandingEnhanceNotConfigured,
-        variant: TpToastVariant.warning,
-      );
-      return;
-    }
-
-    setState(() => _enhancing = true);
-    try {
-      final result = await _headlessAi.run(
-        setting: setting,
-        prompt: buildComposeEnhancePrompt(draft),
-        workingDirectory: _optionalLaunchDirectory(),
-      );
-      if (!mounted) return;
-      final enhanced = cleanComposeEnhanceOutput(result.text);
-      if (enhanced.isEmpty) {
-        AppToast.show(
-          context,
-          message: context.l10n.workspaceChatLandingEnhanceFailed,
-          variant: TpToastVariant.warning,
-        );
-        return;
-      }
-      _controller.text = enhanced;
-      _controller.selection = TextSelection.collapsed(offset: enhanced.length);
-      setState(() {});
-      _focusNode.requestFocus();
-    } on HeadlessAiException catch (e) {
-      if (!mounted) return;
-      AppToast.show(
-        context,
-        message: e.message,
-        variant: TpToastVariant.warning,
-      );
-    } on Object {
-      if (!mounted) return;
-      AppToast.show(
-        context,
-        message: context.l10n.workspaceChatLandingEnhanceFailed,
-        variant: TpToastVariant.warning,
-      );
-    } finally {
-      if (mounted) setState(() => _enhancing = false);
-    }
-  }
-
   Future<void> _toggleVoice() async {
-    if (widget.isSubmitting || _enhancing) return;
+    if (widget.isSubmitting) return;
 
     final available = await _voiceInput.initialize();
     if (!mounted) return;
@@ -912,11 +848,6 @@ class _UnboundComposeBodyState extends State<UnboundComposeBody> {
       worktreeState = null;
     }
     return _worktreeResolver(worktreeState).resolveSelectedWorktreePath();
-  }
-
-  String? _optionalLaunchDirectory() {
-    final path = _activeLaunchDirectory().trim();
-    return path.isEmpty ? null : path;
   }
 
   LandingLaunchContext _currentDraft() {
@@ -1614,16 +1545,13 @@ class _UnboundComposeBodyState extends State<UnboundComposeBody> {
       ),
       dropTarget: _composeDropIngestor(),
       attachTooltip: l10n.workspaceChatLandingAttach,
-      enhanceTooltip: l10n.workspaceChatLandingEnhance,
       voiceTooltip: l10n.workspaceChatLandingVoice,
       voiceCancelTooltip: l10n.workspaceChatLandingVoiceCancel,
       voiceStopTooltip: l10n.workspaceChatLandingVoiceStop,
-      isEnhancing: _enhancing,
       isVoiceListening: _voiceListening,
       voiceElapsed: _voiceElapsed,
       voiceSoundLevel: _voiceSoundLevel,
       onAttach: () => unawaited(_attachFiles()),
-      onEnhance: () => unawaited(_enhancePrompt()),
       onVoice: () => unawaited(_toggleVoice()),
       onVoiceCancel: () => unawaited(_cancelVoice()),
       onVoiceStop: () => unawaited(_stopVoice()),

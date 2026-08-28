@@ -79,7 +79,6 @@ class SessionChatComposeSection extends StatelessWidget {
     this.composeClip,
     required this.voiceController,
     required this.isSubmitting,
-    required this.isEnhancing,
     required this.workspaceRoot,
     required this.workspaceBundle,
     required this.askCardVisible,
@@ -93,7 +92,6 @@ class SessionChatComposeSection extends StatelessWidget {
     required this.mailboxQueuedClearToken,
     required this.onMailboxConsumed,
     required this.onAttach,
-    required this.onEnhance,
     required this.onPasteImage,
     required this.routeActive,
     required this.onSubmit,
@@ -113,7 +111,6 @@ class SessionChatComposeSection extends StatelessWidget {
   final ComposeClip? composeClip;
   final SessionVoiceController voiceController;
   final bool isSubmitting;
-  final bool isEnhancing;
   final String workspaceRoot;
   final ConfigBundle workspaceBundle;
   final bool askCardVisible;
@@ -127,7 +124,6 @@ class SessionChatComposeSection extends StatelessWidget {
   final int mailboxQueuedClearToken;
   final void Function(String mailId) onMailboxConsumed;
   final VoidCallback onAttach;
-  final VoidCallback onEnhance;
   final Future<bool> Function() onPasteImage;
   final bool routeActive;
   final Future<HistoryContinueSubmitResult> Function(String message) onSubmit;
@@ -499,20 +495,17 @@ class SessionChatComposeSection extends StatelessWidget {
                             dropTarget: dropTarget,
                             deferFieldMount: false,
                             attachTooltip: l10n.workspaceChatLandingAttach,
-                            enhanceTooltip: l10n.workspaceChatLandingEnhance,
                             voiceTooltip: l10n.workspaceChatLandingVoice,
                             voiceCancelTooltip:
                                 l10n.workspaceChatLandingVoiceCancel,
                             voiceStopTooltip:
                                 l10n.workspaceChatLandingVoiceStop,
-                            isEnhancing: isEnhancing,
                             isVoiceListening: voiceController.isListening,
                             voiceElapsed: voiceController.elapsed,
                             voiceSoundLevel: voiceController.soundLevel,
                             onAttach: onAttach,
-                            onEnhance: onEnhance,
                             onVoice: () {
-                              if (isSubmitting || isEnhancing) return;
+                              if (isSubmitting) return;
                               unawaited(
                                 voiceController
                                     .toggle(Localizations.localeOf(context))
