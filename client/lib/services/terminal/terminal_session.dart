@@ -322,8 +322,6 @@ class TerminalSession {
             ),
           )
         : null;
-    final forwardsColorScheme =
-        terminalBehavior?.forwardsColorSchemeReport ?? true;
     if (terminalBehavior != null) {
       _pathDropBehavior = terminalBehavior.pathDropBehavior;
     }
@@ -333,7 +331,7 @@ class TerminalSession {
       onEveryUserLineSubmitted: onEveryUserLineSubmitted,
       onTurnStart: markUserTurnStarted,
       busUserInputRouting: busUserInputRouting,
-      forwardsColorScheme: forwardsColorScheme,
+      forwardsColorScheme: true,
     );
 
     _launch.onProcessStarted = onProcessStarted;
