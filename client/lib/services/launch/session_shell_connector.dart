@@ -21,8 +21,6 @@ import '../../models/install_job/install_job_scope.dart';
 import '../../models/install_job/install_job_spec.dart';
 import '../../services/install/install_job_registry.dart';
 import '../../services/cli/installer_types.dart';
-import '../../services/cli/registry/capabilities/terminal_behavior_capability.dart';
-import '../../services/cli/registry/cli_tool_registry.dart';
 import '../../services/cli/preset_resolver.dart';
 import '../../services/launch/connect_shell_result.dart';
 import '../../services/launch/member_bus_mcp_transport_resolver.dart';
@@ -444,39 +442,17 @@ class SessionShellConnector {
       }
 
       // After SSH constraints may transform the security policy for root.
+      final skipPermissions = shellLaunch
+          .launchContext
+          .launchSecurityPolicy
+          .requiresDangerousExecution;
       _registerAgentStatusSeat(
         sessionId: activeSession.sessionId,
         memberId: agentStatusSeatMemberId,
         cli: launchCli,
-        skipPermissions: shellLaunch
-            .launchContext
-            .launchSecurityPolicy
-            .requiresDangerousExecution,
+        skipPermissions: skipPermissions,
         agentStatus: agentStatus,
       );
-      final titleAttention =
-          CliToolRegistry.builtIn()
-              .capability<TerminalBehaviorCapability>(launchCli)
-              ?.bindTitleAttention ??
-          false;
-      if (titleAttention) {
-        final attention = _host.agentAttentionCubit;
-        if (attention != null) {
-          final sessionId = activeSession.sessionId;
-          final memberId = agentStatusSeatMemberId;
-          shell.bindCursorTitleAttention(
-            sessionId: sessionId,
-            memberId: memberId,
-            attention: attention,
-            skipPermissions: () =>
-                _host.agentStatusSeatLookup?.resolveSkipPermissions(
-                  sessionId,
-                  memberId,
-                ) ??
-                false,
-          );
-        }
-      }
 
       final plan = shellLaunch.plan;
       appLogger.d(
@@ -534,6 +510,13 @@ class SessionShellConnector {
         ),
         onEveryUserLineSubmitted: _delegate.autoTouchOnEveryPrompt(
           activeSession.sessionId,
+        ),
+        observation: TerminalObservationAttach(
+          sessionId: activeSession.sessionId,
+          memberId: agentStatusSeatMemberId,
+          cli: launchCli,
+          attention: _host.agentAttentionCubit,
+          skipPermissions: () => skipPermissions,
         ),
         onProcessFailed: (message) {
           if (remoteMemberKeyForRollback != null) {

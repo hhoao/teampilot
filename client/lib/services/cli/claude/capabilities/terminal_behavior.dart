@@ -10,15 +10,11 @@ final class ClaudeTerminalBehavior implements TerminalBehaviorCapability {
   TurnInterruptPlan get interruptPlan =>
       const TurnInterruptPlan(steps: ['\x03']);
   @override
-  bool get bindTitleAttention => false;
-  @override
   bool get usesFullScreenInput => true;
   @override
   Duration get fullScreenPasteSettleDelay => const Duration(milliseconds: 10);
   @override
   bool get usesGridPasteAck => true;
-  @override
-  bool get forwardsColorSchemeReport => true;
   @override
   TerminalPathDropBehavior get pathDropBehavior =>
       TerminalPathDropBehavior.defaultFor(usesFullScreenInput: true);

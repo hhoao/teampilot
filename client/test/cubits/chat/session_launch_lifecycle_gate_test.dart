@@ -88,6 +88,7 @@ class _SpyTerminalSession extends TerminalSession {
     void Function(String line)? onEveryUserLineSubmitted,
     busUserInputRouting,
     String? executableOverride,
+    observation,
   }) {
     connectCalls++;
   }

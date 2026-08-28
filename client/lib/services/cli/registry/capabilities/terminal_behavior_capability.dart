@@ -40,12 +40,6 @@ abstract interface class TerminalBehaviorCapability implements CliCapability {
 
   TurnInterruptPlan get interruptPlan;
 
-  /// Whether the shell should bind a CLI-specific OSC title attention parser.
-  ///
-  /// Only Cursor returns `true` — it emits `cursor agent` via OSC title codes
-  /// to signal that agent attention is active.
-  bool get bindTitleAttention;
-
   bool get usesFullScreenInput;
 
   /// Delay between bracketed-paste content and the standalone CR in
@@ -57,12 +51,6 @@ abstract interface class TerminalBehaviorCapability implements CliCapability {
   /// False falls back to timed paste+CR for TUIs that stage input without
   /// echoing it into PTY output (none of the built-in CLIs currently need it).
   bool get usesGridPasteAck;
-
-  /// Whether the embedded terminal may forward the OSC 997 color-scheme report
-  /// (mode 2031) to this CLI's TUI. Most CLIs use it for live light/dark
-  /// theming; Cursor's TUI mishandles it (the report leaks into its input box),
-  /// so it is stripped for cursor.
-  bool get forwardsColorSchemeReport;
 
   /// How a file dropped onto this CLI's terminal is quoted and injected.
   TerminalPathDropBehavior get pathDropBehavior;

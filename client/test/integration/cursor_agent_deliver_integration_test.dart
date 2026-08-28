@@ -122,6 +122,7 @@ void main() {
             input: session.input,
             probe: session.probe,
             aborted: () => false,
+            painted: session.observationPainted,
           );
           final outcome = await automation.deliverPasteAndSubmit(
             port: port,
@@ -181,6 +182,7 @@ void main() {
         input: session.input,
         probe: session.probe,
         aborted: () => false,
+        painted: session.observationPainted,
         crAckConfig: FullscreenCrAckConfig(
           strategy: const CursorTerminalBehavior().fullscreenCrAckStrategy,
           composerPrefix:

@@ -11,11 +11,20 @@ import '../cli/cli_executable_validator.dart';
 import '../cli/preset_resolver.dart';
 import '../cli/cli_invocation.dart';
 import '../cli/registry/capabilities/terminal_behavior_capability.dart';
+import '../cli/registry/capabilities/terminal_observation_contributor.dart';
+import '../cli/registry/cli_capability.dart';
 import '../cli/registry/cli_tool_registry.dart';
 import '../session/launch_command_builder.dart';
 import '../session/shell_launch_spec.dart';
 import '../ssh/ssh_member_session.dart';
-import '../../cubits/agent_attention_cubit.dart';
+import 'observation/modules/activity_observation_module.dart';
+import 'observation/modules/launch_start_module.dart';
+import 'observation/modules/team_bus_intercept_module.dart';
+import 'observation/modules/user_line_module.dart';
+import 'observation/terminal_observation_attach.dart';
+import 'observation/terminal_observation_bus.dart';
+import 'observation/terminal_observation_installer.dart';
+import 'observation/terminal_observation_seat.dart';
 import 'pending_user_message.dart';
 import 'pty_launch_environment.dart';
 import 'terminal_input_controller.dart';
@@ -23,15 +32,16 @@ import 'terminal_launch_controller.dart';
 import 'terminal_screen_probe_controller.dart';
 import 'terminal_session_link_providers.dart';
 import 'terminal_transport_starter.dart';
-import 'terminal_user_input_pipeline.dart';
 import '../team/terminal_activity_tracker.dart';
 import '../team_bus/bus_user_line_capture.dart';
+import '../../models/team_config.dart';
 import '../../models/workspace_shell_launch_plan.dart';
 import '../workspace_dnd/runtime_target.dart';
 import '../../utils/logging/logger.dart';
 import '../../utils/logging/log_redaction.dart';
 import 'terminal_theme_mapper.dart';
 
+export 'observation/terminal_observation_attach.dart';
 export 'terminal_color_scheme_report.dart' show stripColorSchemeReport;
 export 'terminal_input_controller.dart';
 export 'terminal_screen_probe_controller.dart';
@@ -54,7 +64,6 @@ class TerminalSession {
     TerminalTheme? terminalTheme,
     RuntimeTarget? runtimeTarget,
     TerminalLaunchController? launchController,
-    TerminalUserInputPipeline? inputPipeline,
     TerminalInputController? inputController,
     TerminalScreenProbeController? probeController,
     TerminalSessionLinkProviders? linkProviders,
@@ -74,7 +83,6 @@ class TerminalSession {
        ),
        activityTracker =
            launchController?.activityTracker ?? TerminalActivityTracker(),
-       _inputPipeline = inputPipeline ?? TerminalUserInputPipeline(),
        _linkProvidersHolder = linkProviders {
     _terminalTheme = terminalTheme;
     _launch =
@@ -122,9 +130,13 @@ class TerminalSession {
   late final TerminalScreenProbeController probe;
 
   late final TerminalLaunchController _launch;
-  final TerminalUserInputPipeline _inputPipeline;
   final TerminalSessionLinkProviders? _linkProvidersHolder;
   TerminalSessionLinkProviders? _linkProviders;
+  final _parkedSubmissions = StreamController<PendingUserMessage>.broadcast();
+  final _observationInstaller = TerminalObservationInstaller();
+  TerminalObservationBus? _observationBus;
+  TerminalObservationBinding? _observationBinding;
+  TeamBusInterceptModule? _teamBusIntercept;
 
   bool _userTurnActive = false;
   bool get userTurnActive => _userTurnActive;
@@ -167,10 +179,13 @@ class TerminalSession {
           .build(_launchCwd);
 
   Stream<PendingUserMessage> get parkedUserSubmissions =>
-      _inputPipeline.parkedUserSubmissions;
+      _parkedSubmissions.stream;
+
+  /// Screen-paint notifications from the seat observation bus, if attached.
+  Stream<void>? get observationPainted => _observationBus?.painted;
 
   bool isUnreadParkedMessage(String id) =>
-      _inputPipeline.isUnreadParkedMessage(id);
+      _teamBusIntercept?.isUnreadParkedMessage(id) ?? false;
 
   bool get isDisposed => _launch.isDisposed;
   int get viewWidth => _launch.pendingViewportCols;
@@ -195,7 +210,7 @@ class TerminalSession {
   void _wireEngineOutput() {
     _engineOutputSubscription?.cancel();
     _engineOutputSubscription = engine.output.listen((data) {
-      final forward = _inputPipeline.transformEngineToPty(data);
+      final forward = _observationBus?.transformInput(data) ?? data;
       if (forward.isNotEmpty) {
         _launch.writeToPty(forward);
       }
@@ -238,6 +253,7 @@ class TerminalSession {
     void Function(String line)? onEveryUserLineSubmitted,
     BusUserInputRouting? busUserInputRouting,
     String? executableOverride,
+    TerminalObservationAttach? observation,
   }) {
     if (isDisposed) return;
     _prepareConnect(
@@ -314,26 +330,32 @@ class TerminalSession {
       '--------------------------------\n',
     );
 
-    final terminalBehavior = shellLaunch != null
-        ? CliToolRegistry.builtIn().capability<TerminalBehaviorCapability>(
-            stagedMemberLaunchCli(
-              shellLaunch.launchContext.team,
-              shellLaunch.launchContext.member,
-            ),
-          )
-        : null;
-    final forwardsColorScheme =
-        terminalBehavior?.forwardsColorSchemeReport ?? true;
+    final launchCli =
+        observation?.cli ??
+        (shellLaunch == null
+            ? null
+            : stagedMemberLaunchCli(
+                shellLaunch.launchContext.team,
+                shellLaunch.launchContext.member,
+              ));
+    final terminalBehavior = launchCli == null
+        ? null
+        : CliToolRegistry.builtIn().capability<TerminalBehaviorCapability>(
+            launchCli,
+          );
     if (terminalBehavior != null) {
       _pathDropBehavior = terminalBehavior.pathDropBehavior;
     }
 
-    _inputPipeline.install(
+    _bindObservation(
+      isWorkspaceShell: false,
+      startupExecutable: invocation.executable,
+      observation: observation,
+      launchCli: launchCli,
+      policy: terminalBehavior,
       onFirstUserLineSubmitted: onFirstUserLineSubmitted,
       onEveryUserLineSubmitted: onEveryUserLineSubmitted,
-      onTurnStart: markUserTurnStarted,
       busUserInputRouting: busUserInputRouting,
-      forwardsColorScheme: forwardsColorScheme,
     );
 
     _launch.onProcessStarted = onProcessStarted;
@@ -358,6 +380,8 @@ class TerminalSession {
   }) {
     if (_launch.isRunning || _launch.isConnecting) {
       disconnect();
+    } else {
+      _unbindObservation();
     }
     _launchCwd = workingDirectory;
     _invalidateLinkProviders();
@@ -418,7 +442,10 @@ class TerminalSession {
       }
     }
 
-    _inputPipeline.installWorkspaceShell();
+    _bindObservation(
+      isWorkspaceShell: true,
+      startupExecutable: plan.executable,
+    );
     _launch.beginStartup(plan.executable);
     _launch.spawnTransport(
       executable: plan.executable,
@@ -432,39 +459,99 @@ class TerminalSession {
 
   void disconnect() {
     _launch.disconnect();
+    _unbindObservation();
     _ptyEnvironment = null;
-    _inputPipeline.clear();
     _userTurnActive = false;
-  }
-
-  /// Cursor seats only: observe live OSC titles for permission attention.
-  void bindCursorTitleAttention({
-    required String sessionId,
-    required String memberId,
-    required AgentAttentionCubit attention,
-    required bool Function() skipPermissions,
-  }) {
-    _launch.bindCursorTitleAttention(
-      sessionId: sessionId,
-      memberId: memberId,
-      attention: attention,
-      skipPermissions: skipPermissions,
-    );
   }
 
   void dispose() {
     if (isDisposed) return;
     _launch.dispose();
+    _unbindObservation();
     _invalidateLinkProviders();
     _engineOutputSubscription?.cancel();
     _engineOutputSubscription = null;
     engine.dispose();
-    unawaited(_inputPipeline.close());
+    unawaited(_parkedSubmissions.close());
   }
 
   void _invalidateLinkProviders() {
     _linkProviders?.dispose();
     _linkProvidersHolder?.invalidate();
     _linkProviders = null;
+  }
+
+  void _bindObservation({
+    required bool isWorkspaceShell,
+    required String startupExecutable,
+    TerminalObservationAttach? observation,
+    CliTool? launchCli,
+    TerminalBehaviorCapability? policy,
+    void Function(String line)? onFirstUserLineSubmitted,
+    void Function(String line)? onEveryUserLineSubmitted,
+    BusUserInputRouting? busUserInputRouting,
+  }) {
+    _unbindObservation();
+    final seat = TerminalObservationSeat(
+      sessionId: observation?.sessionId ?? '',
+      memberId: observation?.memberId ?? '',
+      cli: launchCli ?? observation?.cli,
+      activityTracker: activityTracker,
+      attention: observation?.attention,
+      skipPermissions: observation?.skipPermissions,
+      policy: policy,
+      failLaunch: _launch.failLaunch,
+      confirmStarted: _launch.confirmProcessStartedForObservation,
+      startupExecutable: startupExecutable,
+      validateLaunch: validateLaunch,
+    );
+    final bus = TerminalObservationBus(seat: seat);
+    final modules = <TerminalObservationContributor>[
+      ActivityObservationModule(),
+      LaunchStartModule(),
+    ];
+    if (!isWorkspaceShell) {
+      modules.add(
+        UserLineModule(
+          onFirstUserLineSubmitted: onFirstUserLineSubmitted,
+          onEveryUserLineSubmitted: onEveryUserLineSubmitted,
+          onTurnStart: markUserTurnStarted,
+        ),
+      );
+      final routing = busUserInputRouting;
+      if (routing != null) {
+        final intercept = TeamBusInterceptModule(
+          routing: routing,
+          parkedSubmissions: _parkedSubmissions,
+        );
+        _teamBusIntercept = intercept;
+        modules.add(intercept);
+      }
+    }
+    _observationBus = bus;
+    _observationBinding = _observationInstaller.bind(
+      bus: bus,
+      seat: seat,
+      request: TerminalObservationConnectRequest(
+        isWorkspaceShell: isWorkspaceShell,
+        cliCapabilities: _cliCapabilities(launchCli ?? observation?.cli),
+        sessionModules: modules,
+      ),
+    );
+    _launch.attachObservation(bus);
+  }
+
+  Iterable<CliCapability> _cliCapabilities(CliTool? cli) {
+    if (cli == null) return const [];
+    return CliToolRegistry.builtIn().tryGet(cli)?.capabilities ?? const [];
+  }
+
+  void _unbindObservation() {
+    _launch.attachObservation(null);
+    _observationBinding?.unbind();
+    _observationBinding = null;
+    _observationBus?.dispose();
+    _observationBus = null;
+    _teamBusIntercept = null;
   }
 }
