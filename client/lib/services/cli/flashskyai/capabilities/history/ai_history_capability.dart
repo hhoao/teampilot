@@ -16,12 +16,15 @@ import 'ai_transcript.dart';
 final class FlashskyaiAiHistoryCapability implements AiHistoryCapability {
   const FlashskyaiAiHistoryCapability({
     this.subagentSideResolver = const ClaudeCompatibleSideResolver(),
-    this.toolResultEnricher = const ClaudeCompatibleToolResultEnricher(),
+    ToolResultEnricher? toolResultEnricher,
     this.pageFilesystem,
-  });
+  }) : _toolResultEnricher = toolResultEnricher;
 
   /// Test seam; production reads go through [SessionHistoryContext.fs].
   final Filesystem? pageFilesystem;
+  final ToolResultEnricher? _toolResultEnricher;
+
+  static final _defaultEnricher = ClaudeCompatibleToolResultEnricher();
 
   static const _resolvers = SharedToolCallResolvers();
 
@@ -56,7 +59,8 @@ final class FlashskyaiAiHistoryCapability implements AiHistoryCapability {
   final SubagentSideResolver subagentSideResolver;
 
   @override
-  final ToolResultEnricher toolResultEnricher;
+  ToolResultEnricher get toolResultEnricher =>
+      _toolResultEnricher ?? _defaultEnricher;
 
   @override
   Future<String?> liveCacheToken(SessionHistoryContext ctx) async => null;

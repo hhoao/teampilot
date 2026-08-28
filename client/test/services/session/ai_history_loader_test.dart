@@ -15,6 +15,8 @@ import 'package:teampilot/models/workspace_launch_context.dart';
 import 'package:teampilot/services/cli/registry/capabilities/ai_history_capability.dart';
 import 'package:teampilot/services/cli/claude/capabilities/history/compatible_side_resolver.dart';
 import 'package:teampilot/services/cli/claude/capabilities/history/ai_transcript.dart';
+import 'package:teampilot/services/cli/claude/capabilities/history/compatible_jsonl.dart';
+import 'package:teampilot/services/cli/claude/capabilities/history/compatible_tool_result_enricher.dart';
 import 'package:teampilot/services/cli/cursor/capabilities/history/ai_transcript.dart';
 import 'package:teampilot/services/cli/cursor/capabilities/history/terminal_tool_result_enricher.dart';
 import 'package:teampilot/services/ai_history/tool_call_resolvers.dart';
@@ -28,6 +30,7 @@ import 'package:teampilot/services/session/session_history_context.dart';
 import 'package:teampilot/services/io/local_filesystem.dart';
 import 'package:teampilot/services/cli/tasks/cli_task_board.dart';
 import 'package:teampilot/services/session/ai_history_load_result.dart';
+import 'package:teampilot/services/session/ai_history_load_timings.dart';
 import 'package:teampilot/services/session/ai_history_loader.dart';
 import 'package:teampilot/services/session/ai_history_locator.dart';
 import 'package:teampilot/services/session/ai_history_page.dart';
@@ -81,6 +84,7 @@ void main() {
     CliToolRegistry? registry,
     AiHistoryWorkContextResolver? resolveWorkContext,
     bool useCapabilityToken = false,
+    AiHistoryLoadTimings? timings,
   }) {
     final resolvedRegistry = registry ?? CliToolRegistry.builtIn();
     return AiHistoryLoader(
@@ -90,6 +94,7 @@ void main() {
       registry: resolvedRegistry,
       locator: locator ?? AiHistoryLocator(registry: resolvedRegistry),
       resolveCacheToken: useCapabilityToken ? null : (_) async => mtimeToken,
+      timings: timings,
     );
   }
 
@@ -524,8 +529,77 @@ void main() {
     );
 
     expect(enricher.calls, 1);
+    expect(enricher.lastSourceToken, mtimeToken);
     expect(result.messages, hasLength(1));
     expect(result.messages.single.id, 'enriched');
+  });
+
+  test('invalidate drops the tool-result index for the session', () async {
+    var batches = 0;
+    final enricher = ClaudeCompatibleToolResultEnricher(
+      decodeLines: (lines) {
+        batches++;
+        return [
+          for (final line in lines)
+            tryDecodeJsonlLine(line),
+        ];
+      },
+    );
+    const jsonl =
+        '{"type":"user","message":{"role":"user","content":[{"tool_use_id":"call_0","type":"tool_result","content":"tool output truncated","is_error":false}]},"toolUseResult":{"stdout":"pwd","stderr":"","exitCode":0}}\n';
+    final registry = fakeAiHistoryRegistry(
+      cli: CliTool.claude,
+      adapter: _EchoAdapter(),
+      toolResultEnricher: enricher,
+      locate: (_) async => AiTranscriptBundle(
+        adapterId: 'claude',
+        fragments: [
+          AiTranscriptFragment(name: 't.jsonl', bytes: utf8.encode(jsonl)),
+        ],
+      ),
+    );
+    final loader = buildLoader(registry: registry);
+    final session = simpleSession();
+    final ctx = launchContextFor(session);
+
+    await loader.load(session: session, memberId: '', launchContext: ctx);
+    expect(batches, 1);
+
+    loader.invalidate(sessionId: session.sessionId, memberId: '');
+    await loader.load(session: session, memberId: '', launchContext: ctx);
+    expect(batches, 2);
+  });
+
+  test('records load phase timings when enabled', () async {
+    final timings = AiHistoryLoadTimings();
+    final enricher = _RecordingEnricher();
+    final registry = fakeAiHistoryRegistry(
+      cli: CliTool.claude,
+      adapter: _EchoAdapter(),
+      toolResultEnricher: enricher,
+      locate: (_) async => const AiTranscriptBundle(
+        adapterId: 'claude',
+        fragments: [
+          AiTranscriptFragment(name: 't.jsonl', bytes: [1, 2, 3]),
+        ],
+      ),
+    );
+    final loader = buildLoader(registry: registry, timings: timings);
+    await loader.load(
+      session: simpleSession(),
+      memberId: '',
+      launchContext: launchContextFor(simpleSession()),
+    );
+
+    expect(timings.order, contains(AiHistoryLoadPhase.locate));
+    expect(timings.order, contains(AiHistoryLoadPhase.parse));
+    expect(timings.order, contains(AiHistoryLoadPhase.enrich));
+    expect(timings.order, contains(AiHistoryLoadPhase.firstPublish));
+    expect(timings.sideTranscriptReads, 0);
+    expect(
+      timings.order.indexOf(AiHistoryLoadPhase.locate),
+      lessThan(timings.order.indexOf(AiHistoryLoadPhase.firstPublish)),
+    );
   });
 
   test('cursor missing shell result triggers the gate and backfills from terminals',
@@ -1942,6 +2016,7 @@ class _HolderAdapter implements AiTranscriptAdapter {
 
 class _RecordingEnricher implements ToolResultEnricher {
   var calls = 0;
+  String? lastSourceToken;
 
   @override
   bool get requiresFilesystem => false;
@@ -1960,8 +2035,10 @@ class _RecordingEnricher implements ToolResultEnricher {
     required SessionHistoryContext? ctx,
     required String? rootTranscriptPath,
     required AiTranscriptBundle? bundle,
+    String? sourceToken,
   }) async {
     calls++;
+    lastSourceToken = sourceToken;
     return [
       AiMessage(
         id: 'enriched',
@@ -1993,6 +2070,7 @@ class _RecordingFsEnricher implements ToolResultEnricher {
     required SessionHistoryContext? ctx,
     required String? rootTranscriptPath,
     required AiTranscriptBundle? bundle,
+    String? sourceToken,
   }) async {
     calls++;
     sawCallerCtx = ctx != null;

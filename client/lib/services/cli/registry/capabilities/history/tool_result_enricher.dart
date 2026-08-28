@@ -25,12 +25,34 @@ abstract interface class ToolResultEnricher {
 
   /// [ctx] is null when running on the loader worker isolate; enrichers must
   /// not touch the filesystem in that case (guarded by [requiresFilesystem]).
+  ///
+  /// [sourceToken] is the loader's transcript identity token (path + version
+  /// and size). Cache-aware enrichers key their index by identity and use size
+  /// to reuse, append, or rebuild.
   Future<List<AiMessage>> enrich({
     required List<AiMessage> messages,
     required SessionHistoryContext? ctx,
     required String? rootTranscriptPath,
     required AiTranscriptBundle? bundle,
+    String? sourceToken,
   });
+}
+
+/// Optional in-memory tool-result index. Implemented by cache-aware enrichers
+/// so the loader can reuse, append, invalidate, and round-trip isolate work.
+abstract interface class ToolResultIndexCache {
+  /// Drops a cached index. Null [sourceToken] clears every entry.
+  void invalidateIndex({String? sourceToken});
+
+  /// True when [ToolResultEnricher.enrich] can apply replacements without
+  /// decoding [contentLength] bytes of the identified transcript.
+  bool canReuseIndex({String? sourceToken, required int contentLength});
+
+  /// Isolate-transfer snapshot of the in-memory index.
+  Object? exportIndex();
+
+  /// Installs an index produced on a worker isolate onto this instance.
+  void importIndex(Object? snapshot);
 }
 
 /// Canonical marker-shape gate shared by the interface default and marker-only
@@ -62,6 +84,7 @@ final class NoOpToolResultEnricher implements ToolResultEnricher {
     required SessionHistoryContext? ctx,
     required String? rootTranscriptPath,
     required AiTranscriptBundle? bundle,
+    String? sourceToken,
   }) async =>
       messages;
 }

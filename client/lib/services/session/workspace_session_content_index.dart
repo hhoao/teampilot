@@ -135,6 +135,7 @@ class WorkspaceSessionContentIndex {
     required RuntimeLayout layout,
     required String appDataRoot,
     CliToolRegistry? registry,
+    this.cachedHistoryMessages,
   }) : _fs = fs,
        _layout = layout,
        _appDataRoot = appDataRoot,
@@ -148,6 +149,15 @@ class WorkspaceSessionContentIndex {
   final String _appDataRoot;
   final CliToolRegistry _registry;
   final AiHistoryLocator _locator;
+
+  /// Chat-history messages for a seat when the transcript [token] still
+  /// matches. Warm reuses this instead of a second [AiTranscriptAdapter.parse].
+  final List<AiMessage>? Function({
+    required String sessionId,
+    required String memberId,
+    required String token,
+  })?
+  cachedHistoryMessages;
   static final String _keySeparator = String.fromCharCode(0);
 
   static const _contextBuilder = SessionHistoryContextBuilder();
@@ -225,10 +235,20 @@ class WorkspaceSessionContentIndex {
         _docs[key] = existing.copyWith(warmedAt: DateTime.now());
         return;
       }
-      final cap = _registry.capability<AiHistoryCapability>(located.cli);
-      final messages = cap == null
-          ? const <AiMessage>[]
-          : await cap.adapter.parse(located.bundle);
+      final cached = cachedHistoryMessages?.call(
+        sessionId: session.sessionId,
+        memberId: seat.memberId,
+        token: token,
+      );
+      List<AiMessage> messages;
+      if (cached != null) {
+        messages = cached;
+      } else {
+        final cap = _registry.capability<AiHistoryCapability>(located.cli);
+        messages = cap == null
+            ? const <AiMessage>[]
+            : await cap.adapter.parse(located.bundle);
+      }
       _docs[key] = _SeatDoc(
         doc: buildTranscriptDoc(messages),
         token: token,

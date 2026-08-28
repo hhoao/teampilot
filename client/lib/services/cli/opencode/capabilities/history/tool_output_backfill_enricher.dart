@@ -54,6 +54,7 @@ final class OpencodeToolOutputBackfillEnricher implements ToolResultEnricher {
     required SessionHistoryContext? ctx,
     required String? rootTranscriptPath,
     required AiTranscriptBundle? bundle,
+    String? sourceToken,
   }) async {
     final fs = ctx?.fs;
     if (fs == null) return messages;

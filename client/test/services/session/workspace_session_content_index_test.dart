@@ -7,6 +7,7 @@ import 'package:teampilot/models/workspace_folder.dart';
 import 'package:teampilot/services/session/workspace_session_content_index.dart';
 import 'package:teampilot/services/storage/runtime_layout.dart';
 
+import '../../support/fake_ai_history_registry.dart';
 import '../../support/in_memory_filesystem.dart';
 
 /// Bucket derived by [RuntimeLayout.workspaceBucketForPrimaryPath] for the
@@ -223,6 +224,51 @@ void main() {
       expect(matches.single.memberLabel, 'dev');
     });
 
+    test('warm reuses chat history messages when the source token matches',
+        () async {
+      var parseCalls = 0;
+      final cached = [
+        AiMessage(
+          id: 'cached',
+          role: AiRole.user,
+          parts: [AiTextPart(text: 'cached red widget')],
+        ),
+      ];
+      final registry = fakeAiHistoryRegistry(
+        cli: CliTool.claude,
+        adapter: _CountingParseAdapter(() => parseCalls++),
+        locate: (_) async => const AiTranscriptBundle(
+          adapterId: 'claude',
+          fragments: [
+            AiTranscriptFragment(name: 's.jsonl', bytes: [0x7B, 0x7D]),
+          ],
+          hints: {'cacheToken': 'tok-1'},
+        ),
+      );
+      final index = WorkspaceSessionContentIndex(
+        fs: fs,
+        layout: RuntimeLayout(teampilotRoot: root, fs: fs),
+        appDataRoot: root,
+        registry: registry,
+        cachedHistoryMessages: ({
+          required sessionId,
+          required memberId,
+          required token,
+        }) {
+          if (token == 'tok-1') return cached;
+          return null;
+        },
+      );
+      final sessions = [simpleSession()];
+
+      await index.warm(sessions: sessions);
+
+      expect(parseCalls, 0);
+      final matches = index.search('red', sessions: sessions);
+      expect(matches, hasLength(1));
+      expect(matches.single.snippet.toLowerCase(), contains('red'));
+    });
+
     test('invalidateSession drops a session so it no longer matches', () async {
       await writeSimpleTranscript('sess-1');
       final index = buildIndex();
@@ -244,3 +290,18 @@ const transcriptJsonl =
     '"text":"I will update settings_page.dart to use the brand color."},'
     '{"type":"tool_use","id":"t1","name":"Edit",'
     '"input":{"file":"settings_page.dart"}}]}}\n';
+
+class _CountingParseAdapter implements AiTranscriptAdapter {
+  _CountingParseAdapter(this._onParse);
+
+  final void Function() _onParse;
+
+  @override
+  String get id => 'counting';
+
+  @override
+  Future<List<AiMessage>> parse(AiTranscriptBundle bundle) async {
+    _onParse();
+    return const [];
+  }
+}

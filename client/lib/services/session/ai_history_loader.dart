@@ -17,10 +17,12 @@ import '../cli/registry/cli_tool_registry.dart';
 import '../storage/runtime_context.dart';
 import '../terminal/session_member_cli_resolver.dart';
 import 'ai_history_load_result.dart';
+import 'ai_history_load_timings.dart';
 import 'ai_history_locator.dart';
 import 'ai_history_page.dart';
 import 'ai_history_watch_meta.dart';
 import 'ai_transcript_tail_reader.dart';
+import 'jsonl_decode_worker.dart';
 import 'session_history_context.dart';
 import 'session_history_context_builder.dart';
 import 'session_history_pagination.dart';
@@ -57,6 +59,7 @@ final class AiHistoryLoader {
     AiHistoryLocator? locator,
     SessionHistoryCacheTokenResolver? resolveCacheToken,
     List<CliPreset> Function()? globalPresets,
+    AiHistoryLoadTimings? timings,
   }) : _contextBuilder = contextBuilder,
        _resolveWorkContext = resolveWorkContext,
        _registry = registry ?? CliToolRegistry.builtIn(),
@@ -64,7 +67,8 @@ final class AiHistoryLoader {
            locator ??
            AiHistoryLocator(registry: registry ?? CliToolRegistry.builtIn()),
        _resolveCacheToken = resolveCacheToken,
-       _globalPresets = globalPresets;
+       _globalPresets = globalPresets,
+       _timings = timings;
 
   final SessionHistoryContextBuilder _contextBuilder;
   final AiHistoryWorkContextResolver _resolveWorkContext;
@@ -72,6 +76,7 @@ final class AiHistoryLoader {
   final AiHistoryLocator _locator;
   final SessionHistoryCacheTokenResolver? _resolveCacheToken;
   final List<CliPreset> Function()? _globalPresets;
+  final AiHistoryLoadTimings? _timings;
 
   /// Per-seat cache: resolver token → messages → attachments.
   final _tokens = <String, String>{};
@@ -169,6 +174,7 @@ final class AiHistoryLoader {
       capability: capability,
       rootTranscriptPath: path,
     );
+    _timings?.addSideTranscriptRead();
     if (_subagentSeatGeneration(cacheKey) != seatGen ||
         _subagentIdGeneration(cacheKey, toolCallId) != idGen) {
       return null;
@@ -295,6 +301,18 @@ final class AiHistoryLoader {
     _pageClis.clear();
     _fullIndexFutures.clear();
     _fullIndexes.clear();
+    _invalidateToolResultIndexes();
+  }
+
+  /// Cached seat messages when [token] still matches the last successful load.
+  List<AiMessage>? messagesIfCached({
+    required String sessionId,
+    required String memberId,
+    required String token,
+  }) {
+    final key = _cacheKey(sessionId, memberId);
+    if (_tokens[key] != token) return null;
+    return _fullIndexes[key]?.messages ?? _messages[key];
   }
 
   /// Per-CLI tail reader for JSONL-style transcripts. Returns null when the
@@ -309,6 +327,7 @@ final class AiHistoryLoader {
       () => AiTranscriptTailReader(
         lineAppend: lineAppend,
         fallbackPrefix: history!.tailFallbackPrefix,
+        decodeEvents: _decodeEvents,
       ),
     );
   }
@@ -701,7 +720,10 @@ final class AiHistoryLoader {
         );
       }
 
-      final bundle = await _locator.locate(ctx: ctx, cli: cli);
+      final bundle = await _timed(
+        AiHistoryLoadPhase.locate,
+        () => _locator.locate(ctx: ctx, cli: cli),
+      );
       final watch = bundle == null
           ? null
           : AiHistoryWatchMeta.fromHints(bundle.hints);
@@ -753,66 +775,36 @@ final class AiHistoryLoader {
       // exists in the transcript.
       var messages = const <AiMessage>[];
       if (bundle != null) {
-        final adapter = cap.adapter;
-        final enricher = cap.toolResultEnricher;
-        final totalBytes = bundle.fragments.fold<int>(
-          0,
-          (sum, f) => sum + f.bytes.length,
+        messages = await _parseAndEnrich(
+          adapter: cap.adapter,
+          enricher: cap.toolResultEnricher,
+          bundle: bundle,
+          ctx: ctx,
+          parentPath: parentPath,
+          sourceToken: token,
         );
-        if (enableIsolateParse && totalBytes >= _isolateParseMinBytes) {
-          messages = await Isolate.run(() async {
-            var parsed = await adapter.parse(bundle);
-            // Bundle-only enrichers never touch ctx (guarded by
-            // requiresFilesystem), so null is safe on the worker isolate.
-            if (!enricher.requiresFilesystem &&
-                _needsToolResultEnrichment(parsed, enricher)) {
-              parsed = await enricher.enrich(
-                messages: parsed,
-                ctx: null,
-                rootTranscriptPath: parentPath,
-                bundle: bundle,
-              );
-            }
-            return parsed;
-          }, debugName: 'history-loader');
-          // Filesystem-backed enrichers cannot run on the worker isolate;
-          // apply them on the caller isolate where ctx is available.
-          if (enricher.requiresFilesystem &&
-              _needsToolResultEnrichment(messages, enricher)) {
-            messages = await enricher.enrich(
-              messages: messages,
-              ctx: ctx,
-              rootTranscriptPath: parentPath,
-              bundle: bundle,
-            );
-          }
-        } else {
-          messages = await adapter.parse(bundle);
-          if (_needsToolResultEnrichment(messages, enricher)) {
-            messages = await enricher.enrich(
-              messages: messages,
-              ctx: ctx,
-              rootTranscriptPath: parentPath,
-              bundle: bundle,
-            );
-          }
-        }
       }
 
       // Fresh parse: annotate tool call categories before inflating so that
       // both top-level messages and inflated attachments are covered. The
       // annotator is idempotent, so cache hits below return the same lists.
-      messages = annotateToolCallCategories(
-        messages,
-        resolver: _categoryResolverFor(cli),
+      messages = _timedSync(
+        AiHistoryLoadPhase.merge,
+        () => annotateToolCallCategories(
+          messages,
+          resolver: _categoryResolverFor(cli),
+        ),
       );
 
-      final attachments = await _subagentAttachmentsFor(
-        cacheKey: cacheKey,
-        cli: cli,
-        ctx: ctx,
-        messages: messages,
-        rootTranscriptPath: parentPath,
+      final attachments = await _timed(
+        AiHistoryLoadPhase.inflate,
+        () => _subagentAttachmentsFor(
+          cacheKey: cacheKey,
+          cli: cli,
+          ctx: ctx,
+          messages: messages,
+          rootTranscriptPath: parentPath,
+        ),
       );
 
       // 全量 parse 完成后对齐增量状态:让下一次 refresh 变成纯增量
@@ -849,6 +841,7 @@ final class AiHistoryLoader {
       );
       if (sideToken != null) _sideTokens[cacheKey] = sideToken;
       _markComplete(cacheKey);
+      _timings?.record(AiHistoryLoadPhase.firstPublish, Duration.zero);
       return complete;
     } on Object catch (e, st) {
       appLogger.e(
@@ -950,20 +943,26 @@ final class AiHistoryLoader {
     final reader = cap.pageReader;
     if (reader == null) return null;
     try {
-      final page = await reader.readLatest(
-        ctx: ctx,
-        limit: kSessionHistoryInitialTurns,
+      final page = await _timed(
+        AiHistoryLoadPhase.read,
+        () => reader.readLatest(
+          ctx: ctx,
+          limit: kSessionHistoryInitialTurns,
+        ),
       );
       if (page == null) return null;
       final messages = annotate(page.messages, cli: cli);
       final parentPath = await _parentPathHint(ctx);
       _parentPaths[cacheKey] = parentPath;
-      final attachments = await _subagentAttachmentsFor(
-        cacheKey: cacheKey,
-        cli: cli,
-        ctx: ctx,
-        messages: messages,
-        rootTranscriptPath: parentPath,
+      final attachments = await _timed(
+        AiHistoryLoadPhase.inflate,
+        () => _subagentAttachmentsFor(
+          cacheKey: cacheKey,
+          cli: cli,
+          ctx: ctx,
+          messages: messages,
+          rootTranscriptPath: parentPath,
+        ),
       );
       _messages[cacheKey] = messages;
       _attachments[cacheKey] = attachments;
@@ -987,7 +986,7 @@ final class AiHistoryLoader {
           );
         }),
       );
-      return AiHistoryLoadResult(
+      final published = AiHistoryLoadResult(
         messages: messages,
         cli: cli,
         subagentAttachments: attachments,
@@ -995,6 +994,8 @@ final class AiHistoryLoader {
         cursor: page.nextCursor,
         isComplete: false,
       );
+      _timings?.record(AiHistoryLoadPhase.firstPublish, Duration.zero);
+      return published;
     } on Object catch (e, st) {
       appLogger.w(
         '[ai-history] page reader failed, falling back to full parse '
@@ -1009,6 +1010,7 @@ final class AiHistoryLoader {
   void invalidate({required String sessionId, String? memberId}) {
     if (memberId != null) {
       final key = _cacheKey(sessionId, memberId);
+      _invalidateToolResultIndexes(identity: _indexIdentityFor(key));
       _tokens.remove(key);
       _messages.remove(key);
       _attachments.remove(key);
@@ -1030,6 +1032,11 @@ final class AiHistoryLoader {
       return;
     }
     final prefix = '${sessionId.trim()}\u0000';
+    for (final key in [..._parentPaths.keys, ..._tokens.keys]
+        .where((k) => k.startsWith(prefix))
+        .toSet()) {
+      _invalidateToolResultIndexes(identity: _indexIdentityFor(key));
+    }
     _tokens.removeWhere((key, _) => key.startsWith(prefix));
     _messages.removeWhere((key, _) => key.startsWith(prefix));
     _attachments.removeWhere((key, _) => key.startsWith(prefix));
@@ -1109,6 +1116,175 @@ final class AiHistoryLoader {
       cli: cli,
       effectiveMemberId: effectiveMemberId,
       ctx: ctx,
+    );
+  }
+
+  EventDecoder? get _decodeEvents {
+    final timings = _timings;
+    if (timings == null) return null;
+    return (lines) async {
+      timings.addDecoderBatch(lines: lines.length);
+      return decodeJsonlLines(lines);
+    };
+  }
+
+  Future<T> _timed<T>(
+    AiHistoryLoadPhase phase,
+    Future<T> Function() run,
+  ) async {
+    final timings = _timings;
+    if (timings == null) return run();
+    final sw = Stopwatch()..start();
+    try {
+      return await run();
+    } finally {
+      sw.stop();
+      timings.record(phase, sw.elapsed);
+    }
+  }
+
+  T _timedSync<T>(AiHistoryLoadPhase phase, T Function() run) {
+    final timings = _timings;
+    if (timings == null) return run();
+    final sw = Stopwatch()..start();
+    try {
+      return run();
+    } finally {
+      sw.stop();
+      timings.record(phase, sw.elapsed);
+    }
+  }
+
+  void _invalidateToolResultIndexes({String? identity}) {
+    for (final cli in CliTool.values) {
+      final enricher =
+          _registry.capability<AiHistoryCapability>(cli)?.toolResultEnricher;
+      final cache = enricher is ToolResultIndexCache
+          ? enricher as ToolResultIndexCache
+          : null;
+      cache?.invalidateIndex(sourceToken: identity);
+    }
+  }
+
+  String? _indexIdentityFor(String cacheKey) {
+    final path = _parentPaths[cacheKey]?.trim();
+    if (path != null && path.isNotEmpty) return path;
+    return _tokens[cacheKey];
+  }
+
+  Future<List<AiMessage>> _parseAndEnrich({
+    required AiTranscriptAdapter adapter,
+    required ToolResultEnricher enricher,
+    required AiTranscriptBundle bundle,
+    required SessionHistoryContext ctx,
+    required String? parentPath,
+    required String? sourceToken,
+  }) async {
+    final totalBytes = bundle.fragments.fold<int>(
+      0,
+      (sum, f) => sum + f.bytes.length,
+    );
+    final indexCache = enricher is ToolResultIndexCache
+        ? enricher as ToolResultIndexCache
+        : null;
+    final reuse =
+        !enricher.requiresFilesystem &&
+        indexCache != null &&
+        indexCache.canReuseIndex(
+          sourceToken: sourceToken,
+          contentLength: totalBytes,
+        );
+
+    if (enableIsolateParse && totalBytes >= _isolateParseMinBytes) {
+      if (reuse) {
+        final parsed = await _timed(
+          AiHistoryLoadPhase.parse,
+          () => Isolate.run(
+            () => adapter.parse(bundle),
+            debugName: 'history-loader',
+          ),
+        );
+        if (_needsToolResultEnrichment(parsed, enricher)) {
+          return _enrichMessages(
+            enricher: enricher,
+            messages: parsed,
+            ctx: ctx,
+            parentPath: parentPath,
+            bundle: bundle,
+            sourceToken: sourceToken,
+          );
+        }
+        return parsed;
+      }
+
+      final packed = await Isolate.run(() async {
+        var parsed = await adapter.parse(bundle);
+        Object? index;
+        if (!enricher.requiresFilesystem &&
+            _needsToolResultEnrichment(parsed, enricher)) {
+          parsed = await enricher.enrich(
+            messages: parsed,
+            ctx: null,
+            rootTranscriptPath: parentPath,
+            bundle: bundle,
+            sourceToken: sourceToken,
+          );
+          index = enricher is ToolResultIndexCache
+              ? (enricher as ToolResultIndexCache).exportIndex()
+              : null;
+        }
+        return <Object?>[parsed, index];
+      }, debugName: 'history-loader');
+      final messages = packed[0]! as List<AiMessage>;
+      indexCache?.importIndex(packed[1]);
+      if (enricher.requiresFilesystem &&
+          _needsToolResultEnrichment(messages, enricher)) {
+        return _enrichMessages(
+          enricher: enricher,
+          messages: messages,
+          ctx: ctx,
+          parentPath: parentPath,
+          bundle: bundle,
+          sourceToken: sourceToken,
+        );
+      }
+      return messages;
+    }
+
+    final parsed = await _timed(
+      AiHistoryLoadPhase.parse,
+      () => adapter.parse(bundle),
+    );
+    if (_needsToolResultEnrichment(parsed, enricher)) {
+      return _enrichMessages(
+        enricher: enricher,
+        messages: parsed,
+        ctx: ctx,
+        parentPath: parentPath,
+        bundle: bundle,
+        sourceToken: sourceToken,
+      );
+    }
+    return parsed;
+  }
+
+  Future<List<AiMessage>> _enrichMessages({
+    required ToolResultEnricher enricher,
+    required List<AiMessage> messages,
+    required SessionHistoryContext? ctx,
+    required String? parentPath,
+    required AiTranscriptBundle? bundle,
+    required String? sourceToken,
+  }) {
+    return _timed(
+      AiHistoryLoadPhase.enrich,
+      () => enricher.enrich(
+        messages: messages,
+        ctx: ctx,
+        rootTranscriptPath: parentPath,
+        bundle: bundle,
+        sourceToken: sourceToken,
+      ),
     );
   }
 

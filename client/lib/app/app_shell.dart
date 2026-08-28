@@ -2032,6 +2032,16 @@ Future<AppShell> buildAppShell({
     globalPresets: () => cliPresetsCubit.state.presets,
   );
   aiHistoryLoaderRef = aiHistoryLoader;
+  workspaceSearchIndexes.cachedHistoryMessages = ({
+    required sessionId,
+    required memberId,
+    required token,
+  }) =>
+      aiHistoryLoader.messagesIfCached(
+        sessionId: sessionId,
+        memberId: memberId,
+        token: token,
+      );
   // Pods own a per-session HistoryStore once the loader exists (ChatCubit is
   // constructed earlier); SessionChatView binds seats through the pod.
   chatCubit.historyLoader = aiHistoryLoader;
