@@ -878,44 +878,41 @@ void main() {
     expect(seatRuntime().messages.last.id, 'a-1');
   });
 
-  test('multiple in-flight sends reconcile FIFO as their turns land', () async {
+  test('enqueuePendingUser replaces the previous pending overlay', () async {
     holderMessages = messages(1);
     locator.emitBundle = true;
     await cubit.load(session: simpleSession(), memberId: '', launchContext: launchCtx(simpleSession()));
 
     cubit.enqueuePendingUser('a');
     cubit.enqueuePendingUser('b');
-    expect(
-      seatRuntime().messages.where((m) => m.id.startsWith('pending:')),
-      hasLength(2),
-    );
-
-    // Only the first send has landed so far — its turn confirms it, the second
-    // stays pending until its own turn appears.
-    holderMessages = [
-      ...messages(1),
-      const AiMessage(
-        id: 'u-a',
-        role: AiRole.user,
-        parts: [AiTextPart(text: 'a')],
-      ),
-    ];
-    bumpCacheToken();
-    await cubit.softReload();
-
     final pendings = seatRuntime().messages
         .where((m) => m.id.startsWith('pending:'))
         .toList();
     expect(pendings, hasLength(1));
     expect((pendings.single.parts.single as AiTextPart).text, 'b');
+  });
 
-    // Second send lands — its turn confirms it.
+  test('a new CLI assistant message clears the pending overlay', () async {
+    holderMessages = messages(1);
+    locator.emitBundle = true;
+    await cubit.load(
+      session: simpleSession(),
+      memberId: '',
+      launchContext: launchCtx(simpleSession()),
+    );
+
+    cubit.enqueuePendingUser('hello');
+    expect(
+      seatRuntime().messages.where((m) => m.id.startsWith('pending:')),
+      hasLength(1),
+    );
+
     holderMessages = [
-      ...holderMessages,
+      ...messages(1),
       const AiMessage(
-        id: 'u-b',
-        role: AiRole.user,
-        parts: [AiTextPart(text: 'b')],
+        id: 'a-1',
+        role: AiRole.assistant,
+        parts: [AiTextPart(text: 'hi')],
       ),
     ];
     bumpCacheToken();
@@ -924,6 +921,28 @@ void main() {
     expect(
       seatRuntime().messages.where((m) => m.id.startsWith('pending:')),
       isEmpty,
+    );
+  });
+
+  test('loadOlder prepend does not clear the pending overlay', () async {
+    holderMessages = messages(50);
+    locator.emitBundle = true;
+    await cubit.load(
+      session: simpleSession(),
+      memberId: '',
+      launchContext: launchCtx(simpleSession()),
+    );
+
+    cubit.enqueuePendingUser('keep-me');
+    cubit.loadOlder();
+
+    expect(
+      seatRuntime().messages.where((m) => m.id.startsWith('pending:')),
+      hasLength(1),
+    );
+    expect(
+      (seatRuntime().messages.last.parts.single as AiTextPart).text,
+      'keep-me',
     );
   });
 

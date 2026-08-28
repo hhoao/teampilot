@@ -41,6 +41,31 @@ void main() {
     );
   });
 
+  test('persistPendingUser replaces the previous sending bubble', () async {
+    final history = seat();
+    await history.persistPendingUser(
+      store: store,
+      workspaceId: 'workspace-a',
+      sessionId: 'session-a',
+      text: 'first',
+    );
+    final second = await history.persistPendingUser(
+      store: store,
+      workspaceId: 'workspace-a',
+      sessionId: 'session-a',
+      text: 'second',
+    );
+    await Future<void>.delayed(Duration.zero);
+
+    expect(history.runtime.messages, hasLength(1));
+    expect(history.runtime.messages.single.id, second.id);
+    expect(
+      (history.runtime.messages.single.parts.single as AiTextPart).text,
+      'second',
+    );
+    expect(await store.load('workspace-a', 'session-a'), [second]);
+  });
+
   test('hydrates a sending record as failed after reopen', () async {
     final record = FailedMessageRecord(
       id: 'pending:restart',

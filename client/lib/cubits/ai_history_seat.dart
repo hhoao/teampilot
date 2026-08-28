@@ -192,12 +192,13 @@ class AiHistorySeat extends Cubit<AiHistoryState> {
   String? _lastDedupeLogFingerprint;
   String? _lastKeptBothLogFingerprint;
 
-  /// CLI user-turn count of the last applied snapshot. CLI user turns that
-  /// newly appear past this baseline each confirm one outstanding optimistic
-  /// send (FIFO). Mailbox turns are deliberately excluded: they come from the
-  /// bus log, not from CLI-recorded sends, and mailbox sends roll back their
-  /// pending explicitly (see [removePendingMatching]).
-  int _lastUserTurnCount = 0;
+  /// Last CLI transcript tip id from the previous applied snapshot. A new
+  /// user or assistant (or any other CLI) message at the tip confirms and
+  /// drops the single optimistic pending. Prepends (loadOlder / fullIndex)
+  /// keep the same tip and must not clear it. Mailbox turns are excluded:
+  /// they come from the bus log and roll back via [removePendingMatching].
+  String? _lastCliTipId;
+  var _cliTipSeen = false;
 
   Map<String, AiSubagentAttachment> _subagentAttachments = {};
   int _subagentAttachmentEpoch = 0;
@@ -315,7 +316,8 @@ class AiHistorySeat extends Cubit<AiHistoryState> {
       _committedLength = 0;
       _pageCursor = null;
       _sourceHasOlder = false;
-      _lastUserTurnCount = 0;
+      _lastCliTipId = null;
+      _cliTipSeen = false;
       _cachedTimeline = null;
       _clearSubagentAttachments();
       runtime.setLoading();
@@ -645,7 +647,9 @@ class AiHistorySeat extends Cubit<AiHistoryState> {
       text: text,
       deliveryStatus: deliveryStatus,
     );
-    _pendingQueue.add(pending);
+    // One overlay at a time: a newer send drops any leftover bubble (including
+    // failed rows) so the thread cannot stack unmatched user messages.
+    _replacePendingQueue(pending);
     _remergePendingsOntoRuntime();
     // Empty / loading: promote to ready so History shows the pending bubble
     // instead of the empty / spinner pane (runtime already has the tip message).
@@ -1395,42 +1399,46 @@ class AiHistorySeat extends Cubit<AiHistoryState> {
     );
   }
 
-  /// Confirms optimistic sends by the count of CLI user turns that newly
-  /// appeared since the last applied snapshot, oldest pending first (FIFO).
-  ///
-  /// The CLI transcript is ground truth: every recorded user turn corresponds
-  /// to one sent message, in order. The pending text is deliberately not
-  /// compared — a CLI may rewrite what the user typed (a slash command expands
-  /// into `<command-message>/<command-name>/<command-args>` markup), so only
-  /// the turn count is meaningful. Counts [_cliMessages] (not the merged
-  /// timeline) so bus-log mailbox turns never consume a PTY send's pending.
+  /// Confirms the single optimistic pending when the CLI transcript tip
+  /// changes — a newly recorded user turn or any new CLI (assistant/tool)
+  /// message. The pending text is not compared: a CLI may rewrite what the
+  /// user typed (slash commands expand into command markup). Counts
+  /// [_cliMessages] (not the merged timeline) so bus-log mailbox turns never
+  /// consume a PTY send's pending.
   void _reconcilePendings() {
-    final userTurns = [
-      for (final m in _cliMessages)
-        if (m.role == AiRole.user) m,
-    ];
-    final appeared = math.max(0, userTurns.length - _lastUserTurnCount);
-    if (appeared > 0) {
-      var remaining = appeared;
-      final confirmed = <_PendingUser>[];
-      _pendingQueue.removeWhere((pending) {
-        // A failed delivery is terminal until explicit retry support exists;
-        // subsequent transcript turns belong to later sends, never this row.
-        if (pending.deliveryStatus == FailedMessageStatus.failed ||
-            remaining == 0) {
-          return false;
-        }
-        remaining--;
-        confirmed.add(pending);
-        return true;
-      });
-      for (final pending in confirmed) {
-        if (pending.deliveryStatus == FailedMessageStatus.sending) {
-          unawaited(_removePersistedPending(pending.id));
-        }
-      }
+    final tipId = _cliMessages.isEmpty ? null : _cliMessages.last.id;
+    if (!_cliTipSeen) {
+      _cliTipSeen = true;
+      _lastCliTipId = tipId;
+      return;
     }
-    _lastUserTurnCount = userTurns.length;
+    if (tipId != _lastCliTipId) {
+      _dropAllPendings(removePersisted: true);
+    }
+    _lastCliTipId = tipId;
+  }
+
+  void _replacePendingQueue(_PendingUser pending) {
+    final replaced = [
+      for (final previous in _pendingQueue)
+        if (previous.id != pending.id) previous,
+    ];
+    _pendingQueue
+      ..clear()
+      ..add(pending);
+    for (final previous in replaced) {
+      unawaited(_removePersistedPending(previous.id));
+    }
+  }
+
+  void _dropAllPendings({required bool removePersisted}) {
+    if (_pendingQueue.isEmpty) return;
+    final dropped = List<_PendingUser>.of(_pendingQueue);
+    _pendingQueue.clear();
+    if (!removePersisted) return;
+    for (final pending in dropped) {
+      unawaited(_removePersistedPending(pending.id));
+    }
   }
 
   void _bindFailedMessageStore({

@@ -195,7 +195,7 @@ void main() {
   });
 
   test(
-    'later CLI confirmation never consumes hydrated failed record',
+    'a new CLI message clears a hydrated failed pending overlay',
     () async {
       holderMessages = messages(1);
       final current = session();
@@ -224,15 +224,13 @@ void main() {
       holderMessages = messages(2);
       bumpCacheToken();
       await seat.softReload();
+      await Future<void>.delayed(Duration.zero);
 
       expect(
         seat.runtime.messages.map((message) => message.id),
-        contains(failed.id),
+        isNot(contains(failed.id)),
       );
-      expect(
-        await store.load(current.workspaceId, current.sessionId),
-        contains(failed),
-      );
+      expect(await store.load(current.workspaceId, current.sessionId), isEmpty);
     },
   );
 
