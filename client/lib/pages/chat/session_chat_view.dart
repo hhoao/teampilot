@@ -150,6 +150,9 @@ class _SessionChatViewState extends State<SessionChatView> {
   /// True from optimistic enqueue through connect/boot/inject settle so idle
   /// grace cannot blank tip chrome while History continue is still in flight.
   var _historyContinueInFlight = false;
+  /// Bumped whenever submit discards the compose draft so a late
+  /// [_hydrateComposeDraft] cannot seed text the user already sent.
+  var _composeDraftSeedGeneration = 0;
   var _suppressComposeDraftPersistence = false;
 
   /// mailId → seat key at queue time (guards wrong-seat timeline refresh).
@@ -412,12 +415,17 @@ class _SessionChatViewState extends State<SessionChatView> {
   }
 
   Future<void> _hydrateComposeDraft() async {
+    final generation = _composeDraftSeedGeneration;
     final draft = await composeDraftCache.hydrateSession(
       widget.session.workspaceId,
       widget.session.sessionId,
-      shouldSeed: () => mounted && _controller.text.isEmpty,
+      shouldSeed: () =>
+          mounted &&
+          generation == _composeDraftSeedGeneration &&
+          _controller.text.isEmpty,
     );
     if (!mounted ||
+        generation != _composeDraftSeedGeneration ||
         _controller.text.isNotEmpty ||
         draft == null ||
         draft.isEmpty) {
@@ -427,6 +435,32 @@ class _SessionChatViewState extends State<SessionChatView> {
       text: draft,
       selection: TextSelection.collapsed(offset: draft.length),
     );
+  }
+
+  /// Submission owns recovery via the optimistic / failed history bubble —
+  /// clear compose drafts as soon as send starts so remount/hydrate cannot
+  /// put the same text back into the field.
+  ///
+  /// When [holdListenerSuppress] is true (PTY deliver in flight), the compose
+  /// change listener stays muted until the caller clears
+  /// [_suppressComposeDraftPersistence]. Follow-up enqueue passes false so the
+  /// field is immediately editable again.
+  Future<void> _discardComposeDraftForSubmit({
+    bool holdListenerSuppress = true,
+  }) async {
+    _composeDraftSeedGeneration++;
+    _suppressComposeDraftPersistence = true;
+    composeDraftCache.clearSessionDraft(widget.session.sessionId);
+    await composeDraftCache.clearSessionPersistent(
+      widget.session.workspaceId,
+      widget.session.sessionId,
+    );
+    if (!mounted) return;
+    _controller.clear();
+    _clip.clear();
+    if (!holdListenerSuppress) {
+      _suppressComposeDraftPersistence = false;
+    }
   }
 
   bool get _isSubmitting =>
@@ -827,8 +861,9 @@ class _SessionChatViewState extends State<SessionChatView> {
       text: trimmed,
       onEnqueue: (queued) {
         chat.followUpQueue.enqueue(_followUpSeatKey, queued);
-        _controller.clear();
-        _clip.clear();
+        unawaited(
+          _discardComposeDraftForSubmit(holdListenerSuppress: false),
+        );
         _notifyFollowUpMemberWorking(chat);
       },
       onDeliver: (_) {
@@ -889,18 +924,10 @@ class _SessionChatViewState extends State<SessionChatView> {
       if (optimisticPty) {
         _syncAwaitingFromWorkingSessions(context.read<ChatCubit>().state);
       }
-      // The field must clear while delivery is in flight, but that temporary
-      // UI state is not a user-cleared draft. Persist the message first and
-      // suppress the controller listener until terminal delivery settles.
+      // Clear drafts as soon as send starts. Recovery for failed delivery is
+      // the optimistic / failed history bubble — not the compose field.
       if (clearCompose) {
-        await composeDraftCache.saveSession(
-          widget.session.workspaceId,
-          widget.session.sessionId,
-          text,
-        );
-        _suppressComposeDraftPersistence = true;
-        _controller.clear();
-        _clip.clear();
+        await _discardComposeDraftForSubmit();
       }
 
       final result = await _submitLock.run(() => widget.onSubmit(text));
@@ -916,14 +943,6 @@ class _SessionChatViewState extends State<SessionChatView> {
             record: pendingRecord,
           );
         }
-        if (clearCompose) {
-          _clip.clear();
-          await composeDraftCache.clearSessionPersistent(
-            widget.session.workspaceId,
-            widget.session.sessionId,
-          );
-          composeDraftCache.clearSessionDraft(widget.session.sessionId);
-        }
         if (retryingRecord != null) {
           _editingFailedMessage = retryingRecord.copyWith(
             status: FailedMessageStatus.failed,
@@ -933,13 +952,6 @@ class _SessionChatViewState extends State<SessionChatView> {
         return result;
       }
 
-      if (clearCompose) {
-        await composeDraftCache.clearSessionPersistent(
-          widget.session.workspaceId,
-          widget.session.sessionId,
-        );
-        composeDraftCache.clearSessionDraft(widget.session.sessionId);
-      }
       if (retryingRecord != null) _editingFailedMessage = null;
       if (!mounted) return result;
 
@@ -973,11 +985,13 @@ class _SessionChatViewState extends State<SessionChatView> {
       return result;
     } finally {
       _historyContinueInFlight = false;
-      _submitBusy.value = false;
-      _suppressComposeDraftPersistence = false;
-      // Stop during Starting may race deliver settle — keep tip cleared.
-      if (_userStoppedTurn.value) {
-        _seat?.flushHeldTip(endAwaiting: true);
+      if (mounted) {
+        _submitBusy.value = false;
+        _suppressComposeDraftPersistence = false;
+        // Stop during Starting may race deliver settle — keep tip cleared.
+        if (_userStoppedTurn.value) {
+          _seat?.flushHeldTip(endAwaiting: true);
+        }
       }
     }
   }

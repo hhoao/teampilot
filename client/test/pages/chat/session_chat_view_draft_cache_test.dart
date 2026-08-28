@@ -442,6 +442,59 @@ void main() {
     );
   });
 
+  testWidgets(
+    'submit discards the draft immediately so remount cannot refill compose',
+    (tester) async {
+      final session = _session('s-midflight');
+      final release = Completer<HistoryContinueSubmitResult>();
+      var sawDraftDuringSubmit = true;
+
+      await pumpSession(
+        tester,
+        session: session,
+        onSubmit: (_) async {
+          sawDraftDuringSubmit =
+              composeDraftCache.sessionDraft(session.sessionId) != null ||
+              (await ComposeDraftStore(
+                    fs: AppStorage.fs,
+                    rootPath: AppStorage.appDataRoot,
+                  ).loadSession('ws-1', session.sessionId)) !=
+                  null;
+          return release.future;
+        },
+      );
+
+      await tester.enterText(find.byType(TextField).first, 'in flight');
+      await tester.pump();
+      await tester.tap(find.byIcon(Icons.arrow_upward_rounded));
+      await tester.pump();
+
+      // Mid-delivery remount must not resurrect the typed text.
+      await tester.pumpWidget(const SizedBox.shrink());
+      await pumpSession(
+        tester,
+        session: session,
+        onSubmit: (_) async => const HistoryContinueSubmitResult(
+          ok: true,
+          channel: HistoryContinueChannel.pty,
+        ),
+      );
+      await _flushRealIo(tester);
+
+      expect(_composeField(tester).controller!.text, isEmpty);
+      expect(composeDraftCache.sessionDraft(session.sessionId), isNull);
+      expect(sawDraftDuringSubmit, isFalse);
+
+      release.complete(
+        const HistoryContinueSubmitResult(
+          ok: true,
+          channel: HistoryContinueChannel.pty,
+        ),
+      );
+      await tester.pumpAndSettle();
+    },
+  );
+
   testWidgets('successful session delivery removes the persisted draft', (
     tester,
   ) async {
