@@ -36,7 +36,7 @@ class SessionHistoryReviewMessages extends StatelessWidget {
   final AiHistoryState state;
   final AiThreadRuntime runtime;
   final VoidCallback onRetry;
-  final VoidCallback onLoadOlder;
+  final Future<void> Function() onLoadOlder;
   final SessionHistoryLiveChrome liveChrome;
   final Map<String, FailedMessageStatus> pendingDeliveryStatuses;
 

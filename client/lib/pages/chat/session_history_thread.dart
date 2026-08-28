@@ -57,7 +57,7 @@ class SessionHistoryThread extends StatefulWidget {
   final AiThreadRuntime runtime;
   final bool hasOlder;
   final bool isLoadingOlder;
-  final VoidCallback? onLoadOlder;
+  final Future<void> Function()? onLoadOlder;
 
   /// Slim starting/running footer under the scroll surface.
   final SessionHistoryLiveChrome liveChrome;
@@ -106,6 +106,13 @@ class _SessionHistoryThreadState extends State<SessionHistoryThread> {
 
   var _loadOlderInFlight = false;
   var _paginationArmed = true;
+
+  /// While awaiting/applying an older-page prepend, skip viewport-internal
+  /// measure correction so the thread applies extent correction once.
+  var _anchoringOlder = false;
+  int? _olderCaptureCount;
+  double? _olderPixelsBefore;
+  double? _olderMaxBefore;
 
   List<AiMessage> _messages = const [];
 
@@ -350,6 +357,16 @@ class _SessionHistoryThreadState extends State<SessionHistoryThread> {
 
     _lastPixels = pixels;
     _lastMaxExtent = max;
+    _captureOlderExtentIfWaiting();
+  }
+
+  void _captureOlderExtentIfWaiting() {
+    if (!_loadOlderInFlight) return;
+    if (_olderCaptureCount == null) return;
+    if (widget.runtime.messages.length != _olderCaptureCount) return;
+    if (!_scrollController.hasClients) return;
+    _olderPixelsBefore = _scrollController.position.pixels;
+    _olderMaxBefore = _scrollController.position.maxScrollExtent;
   }
 
   void _scheduleOpenAtEnd() {
@@ -471,33 +488,42 @@ class _SessionHistoryThreadState extends State<SessionHistoryThread> {
     if (!widget.hasOlder || widget.onLoadOlder == null) return;
     _loadOlderInFlight = true;
     _setStickToEnd(false);
+    _olderCaptureCount = widget.runtime.messages.length;
+    if (mounted) {
+      setState(() => _anchoringOlder = true);
+    }
+    _captureOlderExtentIfWaiting();
 
     try {
-      double? pixelsBefore;
-      double? maxBefore;
-      if (_scrollController.hasClients) {
-        pixelsBefore = _scrollController.position.pixels;
-        maxBefore = _scrollController.position.maxScrollExtent;
+      try {
+        await widget.onLoadOlder!.call();
+      } catch (_) {
+        // Seat records a soft error; keep the current transcript mounted.
       }
-
-      widget.onLoadOlder!.call();
-      // Runtime updates sync; wait a frame for setState + layout.
-      await Future<void>.delayed(Duration.zero);
       await WidgetsBinding.instance.endOfFrame;
-
       if (!mounted || !_scrollController.hasClients) return;
-      if (pixelsBefore == null || maxBefore == null) return;
+      final capturedPixels = _olderPixelsBefore;
+      final capturedMax = _olderMaxBefore;
+      if (capturedPixels == null || capturedMax == null) return;
 
       final maxAfter = _scrollController.position.maxScrollExtent;
-      final delta = maxAfter - maxBefore;
+      final delta = maxAfter - capturedMax;
       if (delta > 0.5) {
-        _jumpTo(pixelsBefore + delta);
+        _jumpTo(capturedPixels + delta);
       }
       if (!_scrollController.hasClients) return;
       _lastPixels = _scrollController.position.pixels;
       _lastMaxExtent = _scrollController.position.maxScrollExtent;
     } finally {
       _loadOlderInFlight = false;
+      _olderCaptureCount = null;
+      _olderPixelsBefore = null;
+      _olderMaxBefore = null;
+      if (mounted) {
+        setState(() => _anchoringOlder = false);
+      } else {
+        _anchoringOlder = false;
+      }
     }
   }
 
@@ -685,7 +711,8 @@ class _SessionHistoryThreadState extends State<SessionHistoryThread> {
                           _scrollToReveal(offset + 16);
                         },
                         onVisibleRange: _publishVisibleOwner,
-                        suppressMeasureScrollCorrection: _stickToEnd,
+                        suppressMeasureScrollCorrection:
+                            _stickToEnd || _anchoringOlder,
                         onMeasureScrollCorrection: (delta) {
                           if (_revealAnimating) return;
                           if (!_scrollController.hasClients ||

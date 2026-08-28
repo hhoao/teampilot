@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:ai_message_core/ai_message_core.dart';
 import 'package:ai_message_ui/ai_message_ui.dart';
 import 'package:flutter/gestures.dart' show PointerDeviceKind;
@@ -29,7 +31,7 @@ Widget _harness({
   bool hasOlder = false,
   bool isLoadingOlder = false,
   SessionHistoryLiveChrome liveChrome = SessionHistoryLiveChrome.none,
-  VoidCallback? onLoadOlder,
+  Future<void> Function()? onLoadOlder,
   ValueNotifier<String?>? visibleOwnerId,
 }) {
   return MaterialApp(
@@ -129,6 +131,100 @@ void main() {
   });
 
   testWidgets(
+    'keeps scroll position when loading older history',
+    (tester) async {
+      final recent = _soloUserMessages(40);
+      final older = List.generate(
+        20,
+        (i) => AiMessage(
+          id: 'old$i',
+          role: AiRole.user,
+          parts: [AiTextPart(text: 'old msg $i')],
+        ),
+      );
+      final store = ExternalStoreAiThreadRuntime()..setMessages(recent);
+      final loadGate = Completer<void>();
+      var loadStarted = false;
+
+      Future<void> onLoadOlder() async {
+        loadStarted = true;
+        await loadGate.future;
+        store.setMessages([...older, ...recent]);
+      }
+
+      await tester.pumpWidget(
+        _harness(runtime: store, hasOlder: true, onLoadOlder: onLoadOlder),
+      );
+      await pumpUntilSettled(tester);
+
+      final scrollable = find.byType(Scrollable).first;
+      for (var i = 0; i < 50; i++) {
+        await tester.drag(scrollable, const Offset(0, 400));
+        await tester.pump();
+      }
+      await pumpUntilSettled(tester);
+
+      for (var i = 0; i < 40 && !loadStarted; i++) {
+        await tester.pump(const Duration(milliseconds: 16));
+      }
+      expect(loadStarted, isTrue, reason: 'scroll near top must trigger load');
+
+      final anchorFinder = find.text('msg 0');
+      expect(anchorFinder, findsOneWidget);
+      final anchorYBefore = tester.getTopLeft(anchorFinder).dy;
+
+      loadGate.complete();
+      await pumpUntilSettled(
+        tester,
+        timeout: const Duration(seconds: 30),
+      );
+
+      expect(find.text('old msg 0'), findsOneWidget);
+      final anchorYAfter = tester.getTopLeft(anchorFinder).dy;
+      expect(
+        anchorYAfter,
+        closeTo(anchorYBefore, 2.0),
+        reason: 'prepend must not jump the anchor message on screen',
+      );
+    },
+  );
+
+  testWidgets(
+    'load older page failure leaves current messages mounted',
+    (tester) async {
+      final store = ExternalStoreAiThreadRuntime()
+        ..setMessages(_soloUserMessages(40));
+      var loadStarted = false;
+
+      Future<void> onLoadOlder() async {
+        loadStarted = true;
+        throw StateError('older page boom');
+      }
+
+      await tester.pumpWidget(
+        _harness(runtime: store, hasOlder: true, onLoadOlder: onLoadOlder),
+      );
+      await pumpUntilSettled(tester);
+
+      final scrollable = find.byType(Scrollable).first;
+      for (var i = 0; i < 50; i++) {
+        await tester.drag(scrollable, const Offset(0, 400));
+        await tester.pump();
+      }
+      await pumpUntilSettled(tester);
+
+      for (var i = 0; i < 40 && !loadStarted; i++) {
+        await tester.pump(const Duration(milliseconds: 16));
+      }
+      expect(loadStarted, isTrue);
+
+      expect(find.text('msg 0'), findsOneWidget);
+      expect(find.text('msg 39'), findsOneWidget);
+      expect(store.messages.length, 40);
+    },
+  );
+
+  testWidgets(
     'SessionHistoryThread with hasOlder exposes viewport header and load-older',
     (tester) async {
       var loadOlderCalls = 0;
@@ -139,7 +235,7 @@ void main() {
         _harness(
           runtime: store,
           hasOlder: true,
-          onLoadOlder: () => loadOlderCalls++,
+          onLoadOlder: () async => loadOlderCalls++,
         ),
       );
       await pumpUntilSettled(tester);
@@ -424,7 +520,7 @@ void main() {
                   runtime: store,
                   hasOlder: false,
                   isLoadingOlder: false,
-                  onLoadOlder: () {},
+                  onLoadOlder: () async {},
                 ),
               ),
               Builder(
@@ -512,7 +608,7 @@ void main() {
                 runtime: store,
                 hasOlder: false,
                 isLoadingOlder: false,
-                onLoadOlder: () {},
+                onLoadOlder: () async {},
               ),
             ),
           ),
@@ -553,7 +649,7 @@ void main() {
                   runtime: store,
                   hasOlder: false,
                   isLoadingOlder: false,
-                  onLoadOlder: () {},
+                  onLoadOlder: () async {},
                 ),
               ),
               LayoutBuilder(

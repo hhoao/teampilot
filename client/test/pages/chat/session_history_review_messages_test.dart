@@ -31,7 +31,7 @@ Widget _harness({
           state: state,
           runtime: runtime,
           onRetry: () {},
-          onLoadOlder: () {},
+          onLoadOlder: () async {},
           pendingDeliveryStatuses: pendingDeliveryStatuses,
           onRetryFailedMessage: onRetryFailedMessage,
         ),

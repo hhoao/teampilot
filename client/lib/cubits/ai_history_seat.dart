@@ -937,6 +937,8 @@ class AiHistorySeat extends Cubit<AiHistoryState> {
     );
   }
 
+  /// Loads the next older history page. [SessionHistoryThread] awaits this
+  /// before applying scroll anchoring so async seat/loader work finishes first.
   Future<void> loadOlder() async {
     if (state.status != AiHistoryViewStatus.ready) return;
     if (!state.hasOlder || state.isLoadingOlder) return;
