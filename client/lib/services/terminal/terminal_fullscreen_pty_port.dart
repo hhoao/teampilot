@@ -40,11 +40,15 @@ final class TerminalFullscreenPtyPort implements FullscreenPtyDeliveryPort {
   Future<void> syncDisplayGrid() => _probe.syncDisplayGrid();
 
   @override
-  Future<void> waitForPaint({required Duration timeout}) {
-    if (timeout <= Duration.zero) return Future<void>.value();
+  Future<void> waitForPaint({required Duration timeout}) async {
+    if (timeout <= Duration.zero) return;
     final painted = _painted;
-    if (painted == null) return Future<void>.value();
-    return painted.first.timeout(timeout, onTimeout: () {});
+    if (painted == null) return;
+    try {
+      await painted.first.timeout(timeout, onTimeout: () {});
+    } on StateError {
+      // Bus disposed / stream already closed — same as a paint timeout.
+    }
   }
 
   @override
