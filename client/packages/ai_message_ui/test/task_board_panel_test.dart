@@ -193,6 +193,48 @@ void main() {
     },
   );
 
+  testWidgets('collapsed and expanded cards draw a border and shadow', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      _host(
+        AiTaskBoardPanel(items: [_item('T1: first', AiTaskStatus.inProgress)]),
+      ),
+    );
+
+    ShapeBorder? panelShape() {
+      final materials = tester.widgetList<Material>(find.byType(Material));
+      for (final material in materials) {
+        final shape = material.shape;
+        if (shape is RoundedRectangleBorder && shape.side.width > 0) {
+          return shape;
+        }
+      }
+      return null;
+    }
+
+    BoxDecoration? panelShadow() {
+      final boxes = tester.widgetList<DecoratedBox>(find.byType(DecoratedBox));
+      for (final box in boxes) {
+        final decoration = box.decoration;
+        if (decoration is BoxDecoration &&
+            (decoration.boxShadow?.isNotEmpty ?? false)) {
+          return decoration;
+        }
+      }
+      return null;
+    }
+
+    expect(panelShape(), isNotNull);
+    expect(panelShadow(), isNotNull);
+
+    await tester.tap(find.text('T1: first'));
+    await tester.pump();
+
+    expect(panelShape(), isNotNull);
+    expect(panelShadow(), isNotNull);
+  });
+
   testWidgets('panel content is wrapped in a SelectionArea (copyable)', (
     tester,
   ) async {

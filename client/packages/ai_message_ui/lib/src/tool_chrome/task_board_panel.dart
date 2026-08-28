@@ -39,6 +39,45 @@ class _AiTaskBoardPanelState extends State<AiTaskBoardPanel> {
         .toDouble();
   }
 
+  /// Overlay chrome so the floating board reads against the chat surface.
+  Widget _chrome({
+    required BuildContext context,
+    required BorderRadius borderRadius,
+    required Widget child,
+  }) {
+    final scheme = Theme.of(context).colorScheme;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        borderRadius: borderRadius,
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: isDark ? 0.10 : 0.05),
+            blurRadius: 2,
+            offset: const Offset(0, 1),
+          ),
+          BoxShadow(
+            color: Colors.black.withValues(alpha: isDark ? 0.38 : 0.16),
+            blurRadius: 24,
+            offset: const Offset(0, 8),
+          ),
+        ],
+      ),
+      child: Material(
+        color: scheme.surfaceContainerHigh,
+        elevation: 0,
+        shape: RoundedRectangleBorder(
+          borderRadius: borderRadius,
+          side: BorderSide(
+            color: scheme.outlineVariant.withValues(alpha: 0.9),
+          ),
+        ),
+        clipBehavior: Clip.antiAlias,
+        child: child,
+      ),
+    );
+  }
+
   Widget _buildCollapsed(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
     final strings = AiMessageStrings.of(context);
@@ -57,10 +96,8 @@ class _AiTaskBoardPanelState extends State<AiTaskBoardPanel> {
     final activeSubject = active?.subject.trim();
     final showActive = activeSubject != null && activeSubject.isNotEmpty;
     final label = showActive ? activeSubject : countText;
-    return Material(
-      color: scheme.surface,
-      elevation: 3,
-      shadowColor: scheme.shadow,
+    return _chrome(
+      context: context,
       borderRadius: BorderRadius.circular(999),
       child: TpHover(
         shape: TpPressableShape.stadium,
@@ -113,10 +150,8 @@ class _AiTaskBoardPanelState extends State<AiTaskBoardPanel> {
     final completed = tasks
         .where((t) => t.status == AiTaskStatus.completed)
         .length;
-    return Material(
-      color: scheme.surface,
-      elevation: 4,
-      shadowColor: scheme.shadow,
+    return _chrome(
+      context: context,
       borderRadius: BorderRadius.circular(16),
       child: SizedBox(
         width: 320,

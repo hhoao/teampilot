@@ -250,6 +250,7 @@ class SessionChatMessageArea extends StatelessWidget {
                             shouldFold: (part) =>
                                 foldCategories.contains(part.category),
                             child: Stack(
+                              clipBehavior: Clip.none,
                               children: [
                                 Builder(
                                   builder: (context) {
