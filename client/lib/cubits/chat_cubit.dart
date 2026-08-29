@@ -70,6 +70,7 @@ import 'chat/chat_session_shell_factory.dart';
 import 'chat/chat_tab_store.dart';
 import 'chat/session_launch_service.dart';
 import 'chat/tab_member_materializer.dart';
+import 'chat/operator_delivery_in_flight.dart';
 import 'chat/tab_session_runtime_coordinator.dart';
 import 'chat/tab_team_bus_coordinator.dart';
 import 'layout_cubit.dart';
@@ -301,6 +302,12 @@ class ChatCubit extends Cubit<ChatState>
     );
   }
 
+  late final OperatorDeliveryInFlight _operatorDeliveryInFlight =
+      OperatorDeliveryInFlight(
+        onChanged: () {
+          if (!isClosed) _recomputeWorkingSessions();
+        },
+      );
   late final TabSessionRuntimeCoordinator _sessionRuntime =
       TabSessionRuntimeCoordinator(
         tabStore: _tabStore,
@@ -324,6 +331,8 @@ class ChatCubit extends Cubit<ChatState>
           }
           return attention.state.sessionIsAgentActive(sessionId);
         },
+        sessionBusyFromDeliveryInFlight: (sessionId) =>
+            _operatorDeliveryInFlight.isInFlight(sessionId),
         onAfterIdleWatchTick: () => unawaited(_onIdleWatchTick()),
         onAfterTurnLatched: _onOperatorTurnLatched,
         onUserActivity: _launchService.touchOnUserActivity,
@@ -790,6 +799,18 @@ class ChatCubit extends Cubit<ChatState>
     _syncFollowUpQueuesWithWorking();
   }
 
+  Future<T> withOperatorDeliveryInFlight<T>(
+    String sessionId,
+    Future<T> Function() action,
+  ) => _operatorDeliveryInFlight.run(sessionId, action);
+
+  void endOperatorDeliveryInFlight(String sessionId) =>
+      _operatorDeliveryInFlight.clear(sessionId);
+
+  @visibleForTesting
+  bool isOperatorDeliveryInFlight(String sessionId) =>
+      _operatorDeliveryInFlight.isInFlight(sessionId);
+
   void _syncFollowUpQueuesWithWorking() {
     if (isClosed) return;
     final seen = <String>{};
@@ -879,33 +900,36 @@ class ChatCubit extends Cubit<ChatState>
       );
     }
 
-    return submitSessionHistoryReviewMessage(
-      sessionId: sessionId,
-      memberId: shellMemberId,
-      message: message,
-      connectRequest: ExistingSessionConnect(
-        session: session,
-        team: team,
-        member: connectMember,
-        preserveWorkbenchView: preserveWorkbenchView,
+    return withOperatorDeliveryInFlight(
+      sessionId,
+      () => submitSessionHistoryReviewMessage(
+        sessionId: sessionId,
+        memberId: shellMemberId,
+        message: message,
+        connectRequest: ExistingSessionConnect(
+          session: session,
+          team: team,
+          member: connectMember,
+          preserveWorkbenchView: preserveWorkbenchView,
+        ),
+        resolveChannel: resolveChannel,
+        connectWorkspaceSession: connectWorkspaceSession,
+        ensureMemberInputReady: (sid, mid, {bool directToPty = false}) =>
+            _memberMaterializer.ensureMemberInputReady(
+              sid,
+              mid,
+              directToPty: directToPty,
+            ),
+        deliverUserCommandToMember:
+            (sid, mid, text, {bool directToPty = false}) =>
+                _sessionRuntime.deliverUserCommandToMember(
+                  sid,
+                  mid,
+                  text,
+                  directToPty: directToPty,
+                ),
+        applyFirstPromptTitle: applyFirstPromptTitle,
       ),
-      resolveChannel: resolveChannel,
-      connectWorkspaceSession: connectWorkspaceSession,
-      ensureMemberInputReady: (sid, mid, {bool directToPty = false}) =>
-          _memberMaterializer.ensureMemberInputReady(
-            sid,
-            mid,
-            directToPty: directToPty,
-          ),
-      deliverUserCommandToMember:
-          (sid, mid, text, {bool directToPty = false}) =>
-              _sessionRuntime.deliverUserCommandToMember(
-                sid,
-                mid,
-                text,
-                directToPty: directToPty,
-              ),
-      applyFirstPromptTitle: applyFirstPromptTitle,
     );
   }
 

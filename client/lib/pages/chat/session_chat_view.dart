@@ -540,6 +540,9 @@ class _SessionChatViewState extends State<SessionChatView> {
     if (_userStoppedTurn.value) return;
     _userStoppedTurn.value = true;
     _seat?.flushHeldTip(endAwaiting: true);
+    context.read<ChatCubit>().endOperatorDeliveryInFlight(
+      widget.session.sessionId,
+    );
   }
 
   /// Starting tip without PTY working yet — still offer Stop to cancel wait.

@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
@@ -421,5 +422,71 @@ void main() {
         );
       },
     );
+
+    test('withOperatorDeliveryInFlight lights workingSessionIds until done', () async {
+      final workspace = await repo.createWorkspace([
+        WorkspaceFolder(path: '/tmp'),
+      ]);
+      final session = (await repo.createSession(workspace.workspaceId)).session;
+      await cubit.loadWorkspaceData(repo);
+      await cubit.requestOpenSession(
+        SessionOpenRequest(
+          session: session,
+          workspace: workspace,
+          repo: repo,
+          connectImmediately: false,
+        ),
+      );
+      await drainPendingAsyncWork();
+
+      final gate = Completer<void>();
+      final done = cubit.withOperatorDeliveryInFlight(
+        session.sessionId,
+        () => gate.future,
+      );
+      await drainPendingAsyncWork();
+      expect(
+        cubit.state.workingSessionIds,
+        contains(session.sessionId),
+        reason: 'sidebar must stay busy during connect/composer wait',
+      );
+      expect(cubit.isOperatorDeliveryInFlight(session.sessionId), isTrue);
+
+      gate.complete();
+      await done;
+      await drainPendingAsyncWork();
+      expect(cubit.state.workingSessionIds, isEmpty);
+    });
+
+    test('endOperatorDeliveryInFlight clears spinner while wrap is outstanding', () async {
+      final workspace = await repo.createWorkspace([
+        WorkspaceFolder(path: '/tmp'),
+      ]);
+      final session = (await repo.createSession(workspace.workspaceId)).session;
+      await cubit.loadWorkspaceData(repo);
+      await cubit.requestOpenSession(
+        SessionOpenRequest(
+          session: session,
+          workspace: workspace,
+          repo: repo,
+          connectImmediately: false,
+        ),
+      );
+      await drainPendingAsyncWork();
+
+      final gate = Completer<void>();
+      final done = cubit.withOperatorDeliveryInFlight(
+        session.sessionId,
+        () => gate.future,
+      );
+      await drainPendingAsyncWork();
+      cubit.endOperatorDeliveryInFlight(session.sessionId);
+      await drainPendingAsyncWork();
+      expect(cubit.state.workingSessionIds, isEmpty);
+
+      gate.complete();
+      await done;
+      expect(cubit.state.workingSessionIds, isEmpty);
+    });
   });
 }

@@ -857,29 +857,32 @@ class _ChatWorkbenchBody extends StatelessWidget {
           preserveWorkbenchView: !switchToTerminal,
         );
 
-        return submitSessionHistoryReviewMessage(
-          sessionId: appSession.sessionId,
-          memberId: shellMemberId,
-          message: message,
-          connectRequest: connectRequest,
-          resolveChannel: resolveChannel,
-          connectWorkspaceSession: chatCubit.connectWorkspaceSession,
-          ensureMemberInputReady:
-              (sessionId, mid, {bool directToPty = false}) =>
-                  chatCubit.memberMaterializer.ensureMemberInputReady(
-                    sessionId,
-                    mid,
-                    directToPty: directToPty,
-                  ),
-          deliverUserCommandToMember:
-              (sessionId, mid, text, {bool directToPty = false}) =>
-                  chatCubit.sessionRuntime.deliverUserCommandToMember(
-                    sessionId,
-                    mid,
-                    text,
-                    directToPty: directToPty,
-                  ),
-          applyFirstPromptTitle: chatCubit.applyFirstPromptTitle,
+        return chatCubit.withOperatorDeliveryInFlight(
+          appSession.sessionId,
+          () => submitSessionHistoryReviewMessage(
+            sessionId: appSession.sessionId,
+            memberId: shellMemberId,
+            message: message,
+            connectRequest: connectRequest,
+            resolveChannel: resolveChannel,
+            connectWorkspaceSession: chatCubit.connectWorkspaceSession,
+            ensureMemberInputReady:
+                (sessionId, mid, {bool directToPty = false}) =>
+                    chatCubit.memberMaterializer.ensureMemberInputReady(
+                      sessionId,
+                      mid,
+                      directToPty: directToPty,
+                    ),
+            deliverUserCommandToMember:
+                (sessionId, mid, text, {bool directToPty = false}) =>
+                    chatCubit.sessionRuntime.deliverUserCommandToMember(
+                      sessionId,
+                      mid,
+                      text,
+                      directToPty: directToPty,
+                    ),
+            applyFirstPromptTitle: chatCubit.applyFirstPromptTitle,
+          ),
         );
       },
     );
