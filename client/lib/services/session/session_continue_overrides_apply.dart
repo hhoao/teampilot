@@ -15,8 +15,9 @@ LaunchSecurityPolicy resolveContinueSecurityPolicy({
 
 /// Launch-member merge order: base → optional team preset → continue overrides last.
 ///
-/// [withPreset] is team-only; Simple skips preset. Overrides always win over
-/// template preset for policy / provider / model / effort / presetId.
+/// [withPreset] is team-only; Simple skips preset. A matching live preset
+/// follows its current provider/model/effort instead of the stored snapshot.
+/// Detached, missing, or CLI-mismatched presets still stamp the snapshot.
 TeamMemberConfig finalizeSessionLaunchMember({
   required AppSession session,
   required TeamMemberConfig baseMember,
@@ -25,7 +26,11 @@ TeamMemberConfig finalizeSessionLaunchMember({
   CliPreset? preset,
   TeamMemberConfig Function(TeamMemberConfig, CliPreset?)? withPreset,
 }) {
-  final afterPreset = (!isSimple && preset != null && withPreset != null)
+  final afterPreset =
+          (!isSimple &&
+              preset != null &&
+              preset.cli == baseMember.cli &&
+              withPreset != null)
       ? withPreset(baseMember, preset)
       : baseMember;
   var merged = applySessionContinueOverrides(
@@ -96,6 +101,10 @@ TeamMemberConfig applySessionContinueOverrides({
 
   if (following) {
     return merged.copyWith(
+      provider: livePreset.provider,
+      model: livePreset.model,
+      effort: livePreset.effort,
+      updateEffort: true,
       activePresetId: followId,
       updateActivePresetId: true,
     );
