@@ -900,6 +900,10 @@ class ChatCubit extends Cubit<ChatState>
       );
     }
 
+    if (message.trim().isEmpty) {
+      return const HistoryContinueSubmitResult.failed();
+    }
+
     return withOperatorDeliveryInFlight(
       sessionId,
       () => submitSessionHistoryReviewMessage(

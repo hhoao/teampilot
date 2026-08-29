@@ -31,6 +31,9 @@ class _FakeSessionRepository implements SessionRepository {
 }
 
 class _RecordingBusGateway implements AutomationBusGateway {
+  _RecordingBusGateway({this.events});
+
+  final List<String>? events;
   final deliverCalls = <(String sessionId, String memberId, String message)>[];
   final ensureCalls = <(String sessionId, String memberId)>[];
 
@@ -40,11 +43,13 @@ class _RecordingBusGateway implements AutomationBusGateway {
     String memberId,
     String message,
   ) async {
+    events?.add('deliver:$sessionId');
     deliverCalls.add((sessionId, memberId, message));
   }
 
   @override
   Future<void> ensureMemberReady(String sessionId, String memberId) async {
+    events?.add('ensure:$sessionId');
     ensureCalls.add((sessionId, memberId));
   }
 }
@@ -141,8 +146,8 @@ void main() {
       name: 'Team',
       members: const [TeamMemberConfig(id: 'team-lead', name: 'Lead')],
     );
-    final bus = _RecordingBusGateway();
     final events = <String>[];
+    final bus = _RecordingBusGateway(events: events);
 
     final dispatcher = AutomationDispatcher(
       repository: repo,
@@ -168,10 +173,12 @@ void main() {
       _scheduledMessageAutomation(sessionId: 'sess-1'),
     );
 
-    expect(events, ['begin:sess-1', 'end:sess-1']);
-    expect(bus.ensureCalls, [('sess-1', 'team-lead')]);
-    expect(bus.deliverCalls, [('sess-1', 'team-lead', '/clear')]);
-    expect(events.indexOf('begin:sess-1'), lessThan(events.indexOf('end:sess-1')));
+    expect(events, [
+      'begin:sess-1',
+      'ensure:sess-1',
+      'deliver:sess-1',
+      'end:sess-1',
+    ]);
   });
 
   test('scheduledMessage skips when session is missing', () async {

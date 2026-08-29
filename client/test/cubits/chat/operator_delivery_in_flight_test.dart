@@ -53,6 +53,26 @@ void main() {
     expect(tracker.isInFlight('sess'), isFalse);
   });
 
+  test('stale wrap after clear must not drop a newer send', () async {
+    final tracker = OperatorDeliveryInFlight();
+    final gateA = Completer<void>();
+    final doneA = tracker.run('sess', () => gateA.future);
+    tracker.clear('sess');
+    final gateB = Completer<void>();
+    final doneB = tracker.run('sess', () => gateB.future);
+    expect(tracker.isInFlight('sess'), isTrue);
+    gateA.complete();
+    await doneA;
+    expect(
+      tracker.isInFlight('sess'),
+      isTrue,
+      reason: "A's finally must not decrement B's count",
+    );
+    gateB.complete();
+    await doneB;
+    expect(tracker.isInFlight('sess'), isFalse);
+  });
+
   test('empty session id is a no-op', () async {
     final tracker = OperatorDeliveryInFlight();
     await tracker.run('  ', () async {});

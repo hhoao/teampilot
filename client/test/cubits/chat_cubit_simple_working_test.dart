@@ -458,6 +458,35 @@ void main() {
       expect(cubit.state.workingSessionIds, isEmpty);
     });
 
+    test('empty operator message does not begin delivery in-flight', () async {
+      final workspace = await repo.createWorkspace([
+        WorkspaceFolder(path: '/tmp'),
+      ]);
+      final session = (await repo.createSession(workspace.workspaceId)).session;
+      await cubit.loadWorkspaceData(repo);
+      await cubit.requestOpenSession(
+        SessionOpenRequest(
+          session: session,
+          workspace: workspace,
+          repo: repo,
+          connectImmediately: false,
+        ),
+      );
+      await drainPendingAsyncWork();
+      final memberId = cubit.activeTab!.memberShells.keys.single;
+
+      final result = await cubit.submitSessionOperatorMessage(
+        sessionId: session.sessionId,
+        memberId: memberId,
+        message: '   ',
+      );
+      await drainPendingAsyncWork();
+
+      expect(result.ok, isFalse);
+      expect(cubit.isOperatorDeliveryInFlight(session.sessionId), isFalse);
+      expect(cubit.state.workingSessionIds, isEmpty);
+    });
+
     test('endOperatorDeliveryInFlight clears spinner while wrap is outstanding', () async {
       final workspace = await repo.createWorkspace([
         WorkspaceFolder(path: '/tmp'),
