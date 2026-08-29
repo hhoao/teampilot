@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:math';
 
 import '../agent_runtime/runtime_event.dart';
+import '../../utils/logging/logger.dart';
 import 'prompt_delivery.dart';
 import 'prompt_delivery_store.dart';
 
@@ -59,13 +60,12 @@ final class PromptDeliveryCoordinator {
   final Set<String> _submitInvalidatedIds = {};
 
   /// Creates the only non-terminal delivery allowed for [request.seat].
+  /// Recovers any leftover active record first so a later operator send
+  /// cannot stay wedged until the next launch restore.
   Future<PromptDelivery> submit(PromptDeliveryRequest request) => _serialized(
     request.seat,
     () async {
-      final active = await store.activeFor(request.seat);
-      if (active.isNotEmpty) {
-        throw StateError('A prompt delivery is already active for this seat.');
-      }
+      await _recoverActiveDeliveries(request.seat);
       final history = await store.forSeat(request.seat);
       final now = _clock();
       final normalizedText = normalizePromptText(request.text);
@@ -214,21 +214,33 @@ final class PromptDeliveryCoordinator {
   /// delivery whose submit was never issued (`created` / `waitingForInputSurface`
   /// / `staged`) is failed so it can never wedge the seat's only non-terminal
   /// slot or falsely re-glass a future submit.
-  Future<void> restoreSeat(RuntimeSeatKey seat) => _serialized(seat, () async {
+  Future<void> restoreSeat(RuntimeSeatKey seat) =>
+      _serialized(seat, () => _recoverActiveDeliveries(seat));
+
+  /// Closes every non-terminal record for [seat]. Caller must already hold
+  /// the seat lock: an unconfirmed `submitIssued` becomes unresolved because
+  /// a prior CR may have reached the process; anything that never issued
+  /// submit is failed so it cannot keep the only active slot.
+  Future<void> _recoverActiveDeliveries(RuntimeSeatKey seat) async {
     for (final delivery in await store.activeFor(seat)) {
       _liveStates[delivery.id] = delivery.state;
-      switch (delivery.state) {
-        case PromptDeliveryState.submitIssued:
-          await _transition(delivery, PromptDeliveryState.submittedUnknown);
-        case PromptDeliveryState.created:
-        case PromptDeliveryState.waitingForInputSurface:
-        case PromptDeliveryState.staged:
-          await _transition(delivery, PromptDeliveryState.failed);
-        default:
-          break;
-      }
+      final next = switch (delivery.state) {
+        PromptDeliveryState.submitIssued =>
+          PromptDeliveryState.submittedUnknown,
+        PromptDeliveryState.created ||
+        PromptDeliveryState.waitingForInputSurface ||
+        PromptDeliveryState.staged => PromptDeliveryState.failed,
+        _ => null,
+      };
+      if (next == null) continue;
+      appLogger.d(
+        '[prompt-delivery] recover active id=${delivery.id} '
+        'from=${delivery.state.name} to=${next.name} '
+        'session=${seat.sessionId} member=${seat.memberId}',
+      );
+      await _transition(delivery, next);
     }
-  });
+  }
 
   Future<PromptDelivery> failBeforeSubmit(String id, {String? reason}) =>
       _update(

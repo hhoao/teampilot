@@ -21,6 +21,29 @@ import '../../support/rust_lib_test_init.dart';
 void main() {
   setUpAll(initRustLibForTests);
 
+  test('unconfirmed first send does not block a later direct retry', () async {
+    final harness = _DeliveryHarness();
+
+    await harness.delivery.deliverUserCommandToMember(
+      's',
+      'm',
+      'first',
+      directToPty: true,
+    );
+    final id = await harness.delivery.deliverUserCommandToMember(
+      's',
+      'm',
+      'retry',
+      directToPty: true,
+    );
+
+    expect(id, isNotEmpty);
+    expect(
+      (harness.pty! as _RecordingPromptCommands).submittedPrompts,
+      ['first', 'retry'],
+    );
+  });
+
   test('one landing send with delayed Codex confirmation has one submit', () async {
     final harness = _DeliveryHarness();
 

@@ -50,13 +50,29 @@ void main() {
     expect((await store.read(second.id))!.state, PromptDeliveryState.created);
   });
 
-  test('permits only one non-terminal delivery for a seat', () async {
-    await coordinator.submit(request(text: 'first'));
+  test('a later submit recovers an unconfirmed issued delivery', () async {
+    final first = await coordinator.submit(request(text: 'first'));
+    await coordinator.issueSubmit(first.id);
 
-    await expectLater(
-      coordinator.submit(request(text: 'second')),
-      throwsA(isA<StateError>()),
+    final second = await coordinator.submit(request(text: 'second'));
+
+    expect(
+      (await store.read(first.id))!.state,
+      PromptDeliveryState.submittedUnknown,
     );
+    expect(second.state, PromptDeliveryState.created);
+    expect((await store.activeFor(seat)).single.id, second.id);
+  });
+
+  test('a later submit fails an unissued leftover and claims the seat',
+      () async {
+    final first = await coordinator.submit(request(text: 'stuck'));
+
+    final second = await coordinator.submit(request(text: 'retry'));
+
+    expect((await store.read(first.id))!.state, PromptDeliveryState.failed);
+    expect(second.text, 'retry');
+    expect((await store.activeFor(seat)).single.id, second.id);
   });
 
   test('does not confirm a delivery before its submit is issued', () async {
