@@ -1,4 +1,3 @@
-import 'package:teampilot/models/launch_security_policy.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/models/app_session.dart';
 import 'package:teampilot/models/cli_preset.dart';
@@ -113,7 +112,7 @@ void main() {
   });
 
   test(
-    'finalize then memberForLaunch keeps continue provider (team staging)',
+    'finalize then memberForLaunch follows live preset (team staging)',
     () {
       const base = TeamMemberConfig(
         id: 'builder-0',
@@ -149,8 +148,9 @@ void main() {
         preset: preset,
         withPreset: _memberWithPreset,
       );
-      expect(finalized.provider, 'override-provider');
-      expect(finalized.activePresetId, isNull);
+      expect(finalized.provider, 'preset-provider');
+      expect(finalized.model, 'preset-model');
+      expect(finalized.activePresetId, 'p-template');
 
       final team = TeamProfile(
         id: 'team',
@@ -165,24 +165,110 @@ void main() {
         globalPresets: const [preset],
       );
 
-      expect(staged.provider, 'override-provider');
-      expect(staged.model, 'override-model');
+      expect(staged.provider, 'preset-provider');
+      expect(staged.model, 'preset-model');
       expect(staged.launchSecurityPolicy.requiresDangerousExecution, isTrue);
-
-      // Old bug: leaving activePresetId set made memberForLaunch expand the
-      // template preset and wipe continue provider/model.
-      final buggy = memberForLaunch(
-        team: team,
-        member: finalized.copyWith(
-          activePresetId: 'p-template',
-          updateActivePresetId: true,
-        ),
-        globalPresets: const [preset],
-      );
-      expect(buggy.provider, 'preset-provider');
-      expect(buggy.provider, isNot(staged.provider));
     },
   );
+
+  test('finalize CLI-mismatched preset stamps snapshot without changing CLI', () {
+    const cursorPreset = CliPreset(
+      id: 'p-template',
+      name: 'Cursor template',
+      cli: CliTool.cursor,
+      provider: 'cursor-provider',
+      model: 'composer-2.5',
+      createdAt: 1,
+      updatedAt: 2,
+    );
+    const base = TeamMemberConfig(
+      id: 'builder-0',
+      name: 'Builder',
+      cli: CliTool.claude,
+      provider: 'base-provider',
+      model: 'base-model',
+    );
+    final session = AppSession(
+      sessionId: 's1',
+      workspaceId: 'w1',
+      sessionTeam: 'team',
+      createdAt: 1,
+      continueOverrides: const SessionContinueOverrides(
+        memberOverrides: {
+          'builder-0': SessionMemberContinueOverride(
+            presetId: 'p-template',
+            provider: 'snapshot-provider',
+            model: 'snapshot-model',
+          ),
+        },
+      ),
+    );
+
+    final finalized = finalizeSessionLaunchMember(
+      session: session,
+      baseMember: base,
+      memberId: 'builder-0',
+      isSimple: false,
+      preset: cursorPreset,
+      withPreset: _memberWithPreset,
+    );
+
+    expect(finalized.cli, CliTool.claude);
+    expect(finalized.provider, 'snapshot-provider');
+    expect(finalized.model, 'snapshot-model');
+    expect(finalized.activePresetId, isNull);
+  });
+
+  test('finalize follow writes an empty live preset effort', () {
+    const noEffortPreset = CliPreset(
+      id: 'p-template',
+      name: 'No effort',
+      cli: CliTool.claude,
+      provider: 'live-provider',
+      model: 'live-model',
+      effort: '',
+      createdAt: 1,
+      updatedAt: 2,
+    );
+    const base = TeamMemberConfig(
+      id: 'builder-0',
+      name: 'Builder',
+      cli: CliTool.claude,
+      provider: 'base-provider',
+      model: 'base-model',
+      effort: 'high',
+    );
+    final session = AppSession(
+      sessionId: 's1',
+      workspaceId: 'w1',
+      sessionTeam: 'team',
+      createdAt: 1,
+      continueOverrides: const SessionContinueOverrides(
+        memberOverrides: {
+          'builder-0': SessionMemberContinueOverride(
+            presetId: 'p-template',
+            provider: 'snapshot-provider',
+            model: 'snapshot-model',
+            effort: 'high',
+          ),
+        },
+      ),
+    );
+
+    final finalized = finalizeSessionLaunchMember(
+      session: session,
+      baseMember: base,
+      memberId: 'builder-0',
+      isSimple: false,
+      preset: noEffortPreset,
+      withPreset: _memberWithPreset,
+    );
+
+    expect(finalized.provider, 'live-provider');
+    expect(finalized.model, 'live-model');
+    expect(finalized.effort, '');
+    expect(finalized.activePresetId, 'p-template');
+  });
 
   test(
     'orchestrator then shell double-finalize still keeps overrides last',

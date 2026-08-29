@@ -5,8 +5,10 @@ import 'team_config.dart';
 
 /// Denormalized Simple (unteamed) launch identity.
 ///
-/// Persisted on [AppSession]. Create resolves once; reconnect must not
-/// re-fetch a global [CliPreset] for provider/model/cli.
+/// Persisted on [AppSession]. Create resolves once. Reconnect re-expands
+/// provider/model/effort from the global preset when [presetId] is non-empty
+/// (see [enrichSimpleLaunchIdentityFromPreset]). Empty [presetId] means the
+/// session was detached via Custom continue chrome and must keep these fields.
 @immutable
 class SimpleLaunchIdentity {
   const SimpleLaunchIdentity({
@@ -24,7 +26,8 @@ class SimpleLaunchIdentity {
   final String effort;
   final String expertKey;
 
-  /// Provenance only — which global preset was chosen at create.
+  /// Follow switch and provenance. Non-empty: reconnect expands this preset.
+  /// Empty: detached Custom launch; do not re-fetch a global preset.
   final String presetId;
 
   /// Create-time resolve: preset wins over explicit args; an empty provider is

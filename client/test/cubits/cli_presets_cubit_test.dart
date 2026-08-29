@@ -75,10 +75,33 @@ void main() {
 
     final updated = cubit.state.presets.first;
     expect(updated.name, 'Updated');
-    expect(updated.cli, CliTool.flashskyai);
+    expect(updated.cli, CliTool.claude);
     expect(updated.provider, 'p2');
     expect(updated.model, 'm2');
     expect(updated.effort, 'low');
+  });
+
+  test('updatePreset ignores cli argument', () async {
+    await cubit.load();
+    await cubit.addPreset(
+      name: 'Cursor',
+      cli: CliTool.cursor,
+      provider: 'cursor-account',
+      model: 'composer-2.5',
+    );
+    final id = cubit.state.presets.first.id;
+
+    await cubit.updatePreset(
+      id: id,
+      name: 'Cursor',
+      cli: CliTool.codex,
+      provider: 'other-account',
+      model: 'gpt-5',
+    );
+
+    expect(cubit.state.presets.single.cli, CliTool.cursor);
+    expect(cubit.state.presets.single.provider, 'other-account');
+    expect(cubit.state.presets.single.model, 'gpt-5');
   });
 
   test('deletePreset removes a preset', () async {

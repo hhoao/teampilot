@@ -151,12 +151,17 @@ class _CliPresetEditDialogState extends State<CliPresetEditDialog> {
               TpPreferenceRow(
                 title: l10n.teamCliLabel,
                 trailing: TpSelect<String>(
+                  key: const Key('preset-cli-select'),
                   items: [for (final def in registry.launchable) def.id.value],
                   initialItem: _cli.value,
                   decoration: dropdownDeco,
-                  enabled: widget.lockCli == null,
+                  enabled: widget.lockCli == null && !widget.isEditing,
                   onChanged: (value) {
-                    if (value == null || widget.lockCli != null) return;
+                    if (value == null ||
+                        widget.lockCli != null ||
+                        widget.isEditing) {
+                      return;
+                    }
                     setState(() {
                       _cli = CliTool.decode(value);
                       _providerId = '';
