@@ -48,6 +48,11 @@ class AutomationDispatcher {
     AutomationSessionLookup? sessionById,
     int Function()? nowMs,
     Duration memberReadyTimeout = const Duration(seconds: 60),
+    Future<T> Function<T>(
+      String sessionId,
+      Future<T> Function() action,
+    )?
+    runDeliveryInFlight,
   }) : _repository = repository,
        _scheduleCalculator = scheduleCalculator,
        _sessionRepository = sessionRepository,
@@ -59,7 +64,8 @@ class AutomationDispatcher {
        _resolveCliPreset = resolveCliPreset,
        _sessionById = sessionById,
        _nowMs = nowMs ?? _automationDefaultNowMs,
-       _memberReadyTimeout = memberReadyTimeout;
+       _memberReadyTimeout = memberReadyTimeout,
+       _runDeliveryInFlight = runDeliveryInFlight;
 
   static const _uuid = Uuid();
   static const _leadMemberId = 'team-lead';
@@ -78,6 +84,20 @@ class AutomationDispatcher {
   final AutomationSessionLookup? _sessionById;
   final int Function() _nowMs;
   final Duration _memberReadyTimeout;
+  final Future<T> Function<T>(
+    String sessionId,
+    Future<T> Function() action,
+  )?
+  _runDeliveryInFlight;
+
+  Future<T> _inFlight<T>(
+    String sessionId,
+    Future<T> Function() action,
+  ) {
+    final run = _runDeliveryInFlight;
+    if (run == null) return action();
+    return run(sessionId, action);
+  }
 
   Future<AutomationDispatchResult> dispatch(
     Automation automation, {
@@ -154,51 +174,53 @@ class AutomationDispatcher {
     final memberId = automation.isScheduledMessage
         ? await _resolveLeadMemberId(session)
         : await _resolveLaunchMemberId(automation, session);
-    final connected = await _ensureSessionConnected(
-      session,
-      memberId: memberId,
-    );
-    if (!connected) {
-      final failed = _finishRun(
+    return _inFlight(session.sessionId, () async {
+      final connected = await _ensureSessionConnected(
+        session,
+        memberId: memberId,
+      );
+      if (!connected) {
+        final failed = _finishRun(
+          pending,
+          AutomationRunStatus.dispatchFailed,
+          startedAtMs: startedAtMs,
+          sessionId: session.sessionId,
+          error: 'member_not_ready',
+        );
+        final updated = _advanceAutomationAfterRun(
+          automation,
+          lastRunAtMs: startedAtMs,
+        );
+        return (failed, updated);
+      }
+
+      await _busGateway.deliverUserCommandToMember(
+        session.sessionId,
+        memberId,
+        automation.message,
+      );
+      await _repository.upsertRun(
+        automation.workspaceId,
+        _finishRun(
+          pending,
+          AutomationRunStatus.dispatched,
+          startedAtMs: startedAtMs,
+          sessionId: session.sessionId,
+        ),
+      );
+      final completed = _finishRun(
         pending,
-        AutomationRunStatus.dispatchFailed,
+        AutomationRunStatus.completed,
         startedAtMs: startedAtMs,
         sessionId: session.sessionId,
-        error: 'member_not_ready',
       );
       final updated = _advanceAutomationAfterRun(
         automation,
         lastRunAtMs: startedAtMs,
+        dispatchedSessionId: session.sessionId,
       );
-      return (failed, updated);
-    }
-
-    await _busGateway.deliverUserCommandToMember(
-      session.sessionId,
-      memberId,
-      automation.message,
-    );
-    await _repository.upsertRun(
-      automation.workspaceId,
-      _finishRun(
-        pending,
-        AutomationRunStatus.dispatched,
-        startedAtMs: startedAtMs,
-        sessionId: session.sessionId,
-      ),
-    );
-    final completed = _finishRun(
-      pending,
-      AutomationRunStatus.completed,
-      startedAtMs: startedAtMs,
-      sessionId: session.sessionId,
-    );
-    final updated = _advanceAutomationAfterRun(
-      automation,
-      lastRunAtMs: startedAtMs,
-      dispatchedSessionId: session.sessionId,
-    );
-    return (completed, updated);
+      return (completed, updated);
+    });
   }
 
   Future<AppSession?> _resolveSession(Automation automation) async {

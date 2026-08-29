@@ -1931,6 +1931,7 @@ Future<AppShell> buildAppShell({
     sessionById: (sessionId, workspaceId) => chatCubit.state.sessions
         .where((s) => s.sessionId == sessionId && s.workspaceId == workspaceId)
         .firstOrNull,
+    runDeliveryInFlight: chatCubit.withOperatorDeliveryInFlight,
   );
   automationScheduler = AutomationScheduler(
     repository: automationRepo,

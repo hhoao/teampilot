@@ -126,6 +126,54 @@ void main() {
     expect(runs, hasLength(1));
   });
 
+  test('scheduledMessage wraps ensure+deliver in runDeliveryInFlight', () async {
+    final layout = WorkspaceLayout(teampilotRoot: AppStorage.paths.basePath);
+    final repo = AutomationRepository(fs: AppStorage.fs, layout: layout);
+    final session = AppSession(
+      sessionId: 'sess-1',
+      workspaceId: 'ws1',
+      sessionTeam: 'team-1',
+      createdAt: 1,
+    );
+    final workspace = Workspace(workspaceId: 'ws1', createdAt: 1);
+    final team = TeamProfile(
+      id: 'team-1',
+      name: 'Team',
+      members: const [TeamMemberConfig(id: 'team-lead', name: 'Lead')],
+    );
+    final bus = _RecordingBusGateway();
+    final events = <String>[];
+
+    final dispatcher = AutomationDispatcher(
+      repository: repo,
+      scheduleCalculator: AutomationScheduleCalculator(),
+      sessionRepository: _FakeSessionRepository([session]),
+      busGateway: bus,
+      requestOpenSession: (_) async => SessionOpenStatus.opened,
+      requestCreateAndOpenSession: (_) async => SessionOpenStatus.opened,
+      workspaceById: (_) => workspace,
+      teamById: (id) => id == 'team-1' ? team : null,
+      nowMs: () => 100,
+      runDeliveryInFlight: <T>(sessionId, action) async {
+        events.add('begin:$sessionId');
+        try {
+          return await action();
+        } finally {
+          events.add('end:$sessionId');
+        }
+      },
+    );
+
+    await dispatcher.dispatch(
+      _scheduledMessageAutomation(sessionId: 'sess-1'),
+    );
+
+    expect(events, ['begin:sess-1', 'end:sess-1']);
+    expect(bus.ensureCalls, [('sess-1', 'team-lead')]);
+    expect(bus.deliverCalls, [('sess-1', 'team-lead', '/clear')]);
+    expect(events.indexOf('begin:sess-1'), lessThan(events.indexOf('end:sess-1')));
+  });
+
   test('scheduledMessage skips when session is missing', () async {
     final layout = WorkspaceLayout(teampilotRoot: AppStorage.paths.basePath);
     final repo = AutomationRepository(fs: AppStorage.fs, layout: layout);

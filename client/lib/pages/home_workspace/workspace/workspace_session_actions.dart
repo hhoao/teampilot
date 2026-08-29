@@ -507,66 +507,68 @@ Future<bool> submitWorkspaceLandingMessage(
     );
   }
 
-  final connected = await _ensureLandingSessionConnected(
-    chatCubit: chatCubit,
-    session: session,
-    memberId: memberId,
-  );
-  if (!connected) {
-    appLogger.w(
-      'submitWorkspaceLandingMessage: member not ready '
-      'session=${session.sessionId} member=$memberId',
+  return chatCubit.withOperatorDeliveryInFlight(session.sessionId, () async {
+    final connected = await _ensureLandingSessionConnected(
+      chatCubit: chatCubit,
+      session: session,
+      memberId: memberId,
     );
-    if (pendingRecord != null) {
-      await chatCubit.markHistoryPendingFailed(
-        workspaceId: liveWorkspace.workspaceId,
-        sessionId: session.sessionId,
-        memberId: historyMemberId,
-        record: pendingRecord,
+    if (!connected) {
+      appLogger.w(
+        'submitWorkspaceLandingMessage: member not ready '
+        'session=${session.sessionId} member=$memberId',
       );
+      if (pendingRecord != null) {
+        await chatCubit.markHistoryPendingFailed(
+          workspaceId: liveWorkspace.workspaceId,
+          sessionId: session.sessionId,
+          memberId: historyMemberId,
+          record: pendingRecord,
+        );
+      }
+      if (context.mounted) {
+        AppToast.show(
+          context,
+          message: l10n.homeWorkspaceNewConversation,
+          variant: TpToastVariant.error,
+        );
+      }
+      return false;
     }
-    if (context.mounted) {
-      AppToast.show(
-        context,
-        message: l10n.homeWorkspaceNewConversation,
-        variant: TpToastVariant.error,
-      );
-    }
-    return false;
-  }
 
-  try {
-    await chatCubit.sessionRuntime.deliverUserCommandToMember(
-      session.sessionId,
-      memberId,
-      trimmed,
-      directToPty: true,
-    );
-    // Pending bubble stays until transcript reconcile — do not clear here.
-    return true;
-  } on Object catch (error, stackTrace) {
-    if (pendingRecord != null) {
-      await chatCubit.markHistoryPendingFailed(
-        workspaceId: liveWorkspace.workspaceId,
-        sessionId: session.sessionId,
-        memberId: historyMemberId,
-        record: pendingRecord,
+    try {
+      await chatCubit.sessionRuntime.deliverUserCommandToMember(
+        session.sessionId,
+        memberId,
+        trimmed,
+        directToPty: true,
       );
-    }
-    appLogger.e(
-      'submitWorkspaceLandingMessage',
-      error: error,
-      stackTrace: stackTrace,
-    );
-    if (context.mounted) {
-      AppToast.show(
-        context,
-        message: '${l10n.homeWorkspaceNewConversation}: $error',
-        variant: TpToastVariant.error,
+      // Pending bubble stays until transcript reconcile — do not clear here.
+      return true;
+    } on Object catch (error, stackTrace) {
+      if (pendingRecord != null) {
+        await chatCubit.markHistoryPendingFailed(
+          workspaceId: liveWorkspace.workspaceId,
+          sessionId: session.sessionId,
+          memberId: historyMemberId,
+          record: pendingRecord,
+        );
+      }
+      appLogger.e(
+        'submitWorkspaceLandingMessage',
+        error: error,
+        stackTrace: stackTrace,
       );
+      if (context.mounted) {
+        AppToast.show(
+          context,
+          message: '${l10n.homeWorkspaceNewConversation}: $error',
+          variant: TpToastVariant.error,
+        );
+      }
+      return false;
     }
-    return false;
-  }
+  });
 }
 
 Future<AppSession?> _sessionById({
