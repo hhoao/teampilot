@@ -14,6 +14,7 @@ final class FollowUpQueueDrainer {
 
   final _inFlight = <String>{};
   final _lastWorking = <String, bool>{};
+  final _pendingIdleDrain = <String>{};
 
   Future<void> onMemberWorkingChanged(
     String seat, {
@@ -22,7 +23,8 @@ final class FollowUpQueueDrainer {
     final prev = _lastWorking[seat];
     _lastWorking[seat] = working;
     if (working) return;
-    if (prev == true) {
+    final missedWhileBusy = _pendingIdleDrain.remove(seat);
+    if (prev == true || missedWhileBusy) {
       await _tryDrain(seat);
     }
   }
@@ -34,20 +36,33 @@ final class FollowUpQueueDrainer {
   }
 
   Future<void> _tryDrain(String seat) async {
-    if (_inFlight.contains(seat)) return;
-    final q = store.queueFor(seat);
-    if (q.drain != FollowUpDrainMode.armed || q.items.isEmpty) return;
-    final head = q.items.first;
+    if (_inFlight.contains(seat)) {
+      _pendingIdleDrain.add(seat);
+      return;
+    }
     _inFlight.add(seat);
     try {
-      final result = await deliver(seat, head.content);
-      if (result.ok) {
+      while (true) {
+        if (_lastWorking[seat] == true) return;
+        final q = store.queueFor(seat);
+        if (q.drain != FollowUpDrainMode.armed || q.items.isEmpty) return;
+        final head = q.items.first;
+        final result = await deliver(seat, head.content);
+        if (!result.ok) {
+          appLogger.d('follow-up drain failed seat=$seat id=${head.id}');
+          return;
+        }
         store.remove(seat, head.id);
-      } else {
-        appLogger.d('follow-up drain failed seat=$seat id=${head.id}');
+        // PTY deliver typically latches working before returning — stop and
+        // wait for the next idle edge. Mailbox / no-latch paths stay idle so
+        // keep draining remaining heads.
+        if (_lastWorking[seat] == true) return;
       }
     } finally {
       _inFlight.remove(seat);
+      if (_pendingIdleDrain.remove(seat) && _lastWorking[seat] != true) {
+        await _tryDrain(seat);
+      }
     }
   }
 }

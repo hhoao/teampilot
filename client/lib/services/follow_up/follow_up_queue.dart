@@ -62,6 +62,11 @@ final class InMemoryFollowUpQueueStore {
     final trimmed = content.trim();
     if (trimmed.isEmpty) return;
     final q = queueFor(seat);
+    // Stop may have paused an empty seat; the first new item should auto-drain
+    // again. Pausing with items still in the queue keeps paused.
+    final drain = q.items.isEmpty
+        ? FollowUpDrainMode.armed
+        : q.drain;
     _emit(
       seat,
       q.copyWith(
@@ -69,6 +74,7 @@ final class InMemoryFollowUpQueueStore {
           ...q.items,
           FollowUpQueuedMessage(id: _uuid.v4(), content: trimmed),
         ],
+        drain: drain,
       ),
     );
   }
@@ -110,8 +116,13 @@ final class InMemoryFollowUpQueueStore {
     );
   }
 
-  void pause(String seat) =>
-      _emit(seat, queueFor(seat).copyWith(drain: FollowUpDrainMode.paused));
+  void pause(String seat) {
+    final q = queueFor(seat);
+    // Do not stamp paused onto an empty seat — Stop-while-starting would
+    // otherwise poison later follow-ups so they never auto-drain.
+    if (q.items.isEmpty) return;
+    _emit(seat, q.copyWith(drain: FollowUpDrainMode.paused));
+  }
 
   void resume(String seat) =>
       _emit(seat, queueFor(seat).copyWith(drain: FollowUpDrainMode.armed));

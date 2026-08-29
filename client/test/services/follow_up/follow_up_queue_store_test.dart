@@ -43,6 +43,25 @@ void main() {
     expect(store.queueFor(seat).drain, FollowUpDrainMode.armed);
   });
 
+  test('pause on empty seat does not stick paused onto later enqueues', () {
+    final seat = followUpSeatKey('s1', 'm1');
+    store.pause(seat);
+    store.enqueue(seat, 'later');
+    expect(store.queueFor(seat).drain, FollowUpDrainMode.armed);
+    expect(store.queueFor(seat).items.single.content, 'later');
+  });
+
+  test('enqueue onto empty paused seat re-arms drain', () {
+    final seat = followUpSeatKey('s1', 'm1');
+    store.enqueue(seat, 'x');
+    store.pause(seat);
+    store.remove(seat, store.queueFor(seat).items.single.id);
+    expect(store.queueFor(seat).items, isEmpty);
+    expect(store.queueFor(seat).drain, FollowUpDrainMode.paused);
+    store.enqueue(seat, 'fresh');
+    expect(store.queueFor(seat).drain, FollowUpDrainMode.armed);
+  });
+
   test('clearSession drops all seats for that session', () {
     store.enqueue(followUpSeatKey('s1', 'm1'), 'a');
     store.enqueue(followUpSeatKey('s1', 'm2'), 'b');

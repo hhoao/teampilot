@@ -26,13 +26,29 @@ void main() {
     );
   });
 
-  test('idle edge drains one head then removes', () async {
+  test('idle edge drains one head then waits for next idle after latch', () async {
+    drainer = FollowUpQueueDrainer(
+      store: store,
+      deliver: (s, text) async {
+        delivered.add('$s::$text');
+        // PTY/operator deliver latches the seat busy before returning.
+        await drainer.onMemberWorkingChanged(seat, working: true);
+        return const HistoryContinueSubmitResult(
+          ok: true,
+          channel: HistoryContinueChannel.pty,
+        );
+      },
+    );
     store.enqueue(seat, 'one');
     store.enqueue(seat, 'two');
     drainer.onMemberWorkingChanged(seat, working: true);
     await drainer.onMemberWorkingChanged(seat, working: false);
     expect(delivered, ['$seat::one']);
     expect(store.queueFor(seat).items.map((e) => e.content), ['two']);
+
+    await drainer.onMemberWorkingChanged(seat, working: false);
+    expect(delivered, ['$seat::one', '$seat::two']);
+    expect(store.queueFor(seat).items, isEmpty);
   });
 
   test('paused blocks drain until resume', () async {
@@ -61,7 +77,7 @@ void main() {
     expect(store.queueFor(seat).items.single.content, 'keep');
   });
 
-  test('in-flight prevents concurrent second drain', () async {
+  test('idle edge during in-flight drains remaining after first completes', () async {
     final deliverStarted = Completer<void>();
     final releaseDeliver = Completer<void>();
     var deliverAttempts = 0;
@@ -70,8 +86,10 @@ void main() {
       store: store,
       deliver: (s, text) async {
         deliverAttempts++;
-        deliverStarted.complete();
-        await releaseDeliver.future;
+        if (deliverAttempts == 1) {
+          deliverStarted.complete();
+          await releaseDeliver.future;
+        }
         delivered.add('$s::$text');
         return const HistoryContinueSubmitResult(
           ok: true,
@@ -87,6 +105,8 @@ void main() {
     final firstDrain = drainer.onMemberWorkingChanged(seat, working: false);
     await deliverStarted.future;
 
+    // Spurious busy→idle while first deliver is still in flight must not
+    // permanently strand the rest of the queue.
     drainer.onMemberWorkingChanged(seat, working: true);
     final secondDrain = drainer.onMemberWorkingChanged(seat, working: false);
     await Future<void>.delayed(Duration.zero);
@@ -97,8 +117,18 @@ void main() {
     await firstDrain;
     await secondDrain;
 
-    expect(deliverAttempts, 1);
-    expect(delivered, ['$seat::one']);
-    expect(store.queueFor(seat).items.map((e) => e.content), ['two']);
+    expect(delivered, ['$seat::one', '$seat::two']);
+    expect(store.queueFor(seat).items, isEmpty);
+  });
+
+  test('successful drain while still idle continues with remaining heads', () async {
+    store.enqueue(seat, 'one');
+    store.enqueue(seat, 'two');
+    store.enqueue(seat, 'three');
+    drainer.onMemberWorkingChanged(seat, working: true);
+    await drainer.onMemberWorkingChanged(seat, working: false);
+
+    expect(delivered, ['$seat::one', '$seat::two', '$seat::three']);
+    expect(store.queueFor(seat).items, isEmpty);
   });
 }
