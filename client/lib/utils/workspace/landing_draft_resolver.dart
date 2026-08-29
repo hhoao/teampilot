@@ -47,29 +47,29 @@ SimpleLaunchIdentity resolveLandingSimpleLaunchIdentity({
 String? _officialProviderId(CliTool cli) =>
     CliToolRegistry.builtIn().defaultOfficialProviderId(cli);
 
-/// Expands [identity.presetId] into provider/model/effort when the session row
-/// only persisted the preset id (landing draft, legacy rows, or silent create).
+/// Expands [identity.presetId] into provider/model/effort when the session
+/// still follows that preset.
 ///
-/// When concrete provider/model are already pinned on the session, they are kept.
+/// Following = non-empty [SimpleLaunchIdentity.presetId]. Detached Custom
+/// rows have an empty presetId and are returned unchanged. If the preset is
+/// missing or its CLI does not match [identity.cli], pinned fields are kept.
 SimpleLaunchIdentity enrichSimpleLaunchIdentityFromPreset({
   required SimpleLaunchIdentity identity,
   required List<CliPreset> presets,
 }) {
   final presetId = identity.presetId.trim();
   if (presetId.isEmpty) return identity;
-  if (identity.model.trim().isNotEmpty &&
-      identity.provider.trim().isNotEmpty) {
-    return identity;
-  }
   final preset = presetById(presetId, presets);
   if (preset == null) return identity;
-  return SimpleLaunchIdentity.resolve(
+  if (preset.cli != identity.cli) return identity;
+  final resolved = SimpleLaunchIdentity.resolve(
     preset: preset,
     presetId: presetId,
     cli: identity.cli,
     expertKey: identity.expertKey,
     officialProviderId: _officialProviderId,
   );
+  return resolved.copyWith(cli: identity.cli);
 }
 
 /// Select a global preset and clear any custom four-tuple.

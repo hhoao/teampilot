@@ -356,12 +356,13 @@ void main() {
       expect(enriched.presetId, 'cursor-composer');
     });
 
-    test('keeps session-pinned provider and model when already set', () {
+    test('following identity takes live preset provider and model', () {
       const identity = SimpleLaunchIdentity(
         cli: CliTool.cursor,
         presetId: 'cursor-composer',
-        provider: 'custom-provider',
-        model: 'gpt-5.2',
+        provider: 'old-account',
+        model: 'old-model',
+        effort: 'low',
       );
 
       final enriched = enrichSimpleLaunchIdentityFromPreset(
@@ -369,8 +370,63 @@ void main() {
         presets: presets,
       );
 
-      expect(enriched.model, 'gpt-5.2');
-      expect(enriched.provider, 'custom-provider');
+      expect(enriched.provider, 'cursor-account');
+      expect(enriched.model, 'composer-2.5');
+      expect(enriched.effort, '');
+      expect(enriched.cli, CliTool.cursor);
+      expect(enriched.presetId, 'cursor-composer');
+    });
+
+    test('missing preset keeps pinned provider and model', () {
+      const identity = SimpleLaunchIdentity(
+        cli: CliTool.cursor,
+        presetId: 'gone',
+        provider: 'old-account',
+        model: 'old-model',
+      );
+
+      final enriched = enrichSimpleLaunchIdentityFromPreset(
+        identity: identity,
+        presets: presets,
+      );
+
+      expect(enriched.provider, 'old-account');
+      expect(enriched.model, 'old-model');
+      expect(enriched.presetId, 'gone');
+    });
+
+    test('preset CLI mismatch keeps pinned launch fields', () {
+      const identity = SimpleLaunchIdentity(
+        cli: CliTool.codex,
+        presetId: 'cursor-composer',
+        provider: 'openai',
+        model: 'gpt',
+      );
+
+      final enriched = enrichSimpleLaunchIdentityFromPreset(
+        identity: identity,
+        presets: presets,
+      );
+
+      expect(enriched.cli, CliTool.codex);
+      expect(enriched.provider, 'openai');
+      expect(enriched.model, 'gpt');
+    });
+
+    test('empty presetId does not expand', () {
+      const identity = SimpleLaunchIdentity(
+        cli: CliTool.cursor,
+        provider: 'pinned',
+        model: 'pinned-m',
+      );
+
+      final enriched = enrichSimpleLaunchIdentityFromPreset(
+        identity: identity,
+        presets: presets,
+      );
+
+      expect(enriched.provider, 'pinned');
+      expect(enriched.model, 'pinned-m');
     });
   });
 }
