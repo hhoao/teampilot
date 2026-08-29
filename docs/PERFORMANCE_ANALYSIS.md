@@ -12,10 +12,35 @@ dart run tool/analyze_performance_json.dart /path/to/snapshot.json [options]
 
 ## Capture a snapshot
 
+**Daily self-test (don't use DevTools Export).** The Performance page often freezes while recording, so Export is unusable. Dump from the VM instead while you use the app as usual:
+
+```bash
+cd client
+# Terminal 1 — run the app (driver lets the dump tool find the VM automatically)
+flutter run -d linux --dart-define=PERF_DRIVER=true
+# Terminal 2 — start recording, click around in the app, press Enter
+dart run tool/dump_live_perf.dart
+```
+
+Writes `build/perf_live_dump.json` by default. If the app is already running without the driver, paste the VM service URL from the `flutter run` console:
+
+```bash
+dart run tool/dump_live_perf.dart --vm-uri http://127.0.0.1:PORT/AUTH/
+# optional: --seconds 15   --output /tmp/jank.json
+```
+
+Do **not** open DevTools → Performance at the same time (it fights over the same timeline buffer). To inspect a flame chart later, open DevTools and **Load** the saved JSON (static file, no live refresh).
+
+**Scripted scenarios** (open a workspace / switch tabs) are separate; they navigate for you. See [Automated capture](#automated-capture-live-app--real-local-data) below.
+
+### DevTools UI export (optional)
+
+Only if the Performance page is still responsive:
+
 1. Open **Flutter DevTools → Performance** while the app is running (profile or debug).
 2. Reproduce the jank (e.g. open a tab, resize a panel).
-3. Click **Export** (upper-right of the frame chart).
-4. Save the `.json` file. Only exports originally produced by DevTools are supported.
+3. **Stop recording**, then click **Export** (upper-right of the frame chart).
+4. Save the `.json` file. Only exports originally produced by DevTools (or this repo's dump tools) are supported.
 
 Optional: enable **Rebuild Stats** in DevTools before recording if you need `rebuildCountModel` in the export (widget rebuild counts per frame).
 
@@ -156,6 +181,7 @@ The widest bar in DevTools is often a **Dart method** slice, not a named widget 
 
 ```
 client/tool/
+├── dump_live_perf.dart                    # Daily self-test dump (no DevTools Export)
 ├── analyze_performance_json.dart          # CLI entry
 └── performance_snapshot/
     ├── cli_args.dart                      # Argument parsing

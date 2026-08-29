@@ -248,12 +248,14 @@ class _ProviderUsageRow extends StatelessWidget {
     final status = snapshot?.status;
     final isError = status == ProviderUsageStatus.error;
     final isUnsupported = status == ProviderUsageStatus.unsupported;
-    final measure = snapshot?.measures.firstOrNull;
+    final quotaMeasures = [
+      for (final measure in snapshot?.measures ?? const <ProviderUsageMeasure>[])
+        if (ManagedProviderQuotaMeter.supports(provider.displayConfig, measure))
+          measure,
+    ];
     final value = _primaryMeasure(snapshot, provider.displayConfig);
     final statusText = _statusText(context, status);
-    final showQuotaMeter =
-        measure != null &&
-        ManagedProviderQuotaMeter.supports(provider.displayConfig, measure);
+    final showQuotaMeter = quotaMeasures.isNotEmpty;
 
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -289,11 +291,19 @@ class _ProviderUsageRow extends StatelessWidget {
                   ),
                   const SizedBox(height: 4),
                   if (showQuotaMeter)
-                    ManagedProviderQuotaMeter(
-                      measure: measure,
-                      display: provider.displayConfig,
-                      resetsAt: measure.resetsAt,
-                      warning: isError,
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        for (var i = 0; i < quotaMeasures.length; i++) ...[
+                          if (i > 0) const SizedBox(height: 8),
+                          ManagedProviderQuotaMeter(
+                            measure: quotaMeasures[i],
+                            display: provider.displayConfig,
+                            resetsAt: quotaMeasures[i].resetsAt,
+                            warning: isError,
+                          ),
+                        ],
+                      ],
                     )
                   else ...[
                       Wrap(

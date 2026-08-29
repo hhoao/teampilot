@@ -38,7 +38,7 @@ void main() {
 
     expect(find.byKey(const Key('managed-provider-quota-meter')), findsOneWidget);
     expect(find.byKey(const Key('managed-provider-usage-progress')), findsOneWidget);
-    expect(find.text('100% remaining'), findsOneWidget);
+    expect(find.text('5h · 100% remaining'), findsOneWidget);
     expect(find.textContaining('Resets in'), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
@@ -66,7 +66,7 @@ void main() {
     );
     await tester.pump();
 
-    expect(find.text('75剩余 %'), findsOneWidget);
+    expect(find.text('5h · 75剩余 %'), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
 

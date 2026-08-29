@@ -924,6 +924,48 @@ void main() {
     );
   });
 
+  test(
+    'a new user message clears pending even when the CLI tip id is unchanged',
+    () async {
+      holderMessages = [
+        const AiMessage(
+          id: 'm-0',
+          role: AiRole.user,
+          parts: [AiTextPart(text: 'msg-0')],
+        ),
+        const AiMessage(
+          id: 'a-1',
+          role: AiRole.assistant,
+          parts: [AiTextPart(text: 'hi')],
+        ),
+      ];
+      locator.emitBundle = true;
+      await cubit.load(
+        session: simpleSession(),
+        memberId: '',
+        launchContext: launchCtx(simpleSession()),
+      );
+
+      cubit.enqueuePendingUser('follow up');
+      holderMessages = [
+        holderMessages[0],
+        const AiMessage(
+          id: 'u-new',
+          role: AiRole.user,
+          parts: [AiTextPart(text: 'follow up')],
+        ),
+        holderMessages[1],
+      ];
+      bumpCacheToken();
+      await cubit.softReload();
+
+      expect(
+        seatRuntime().messages.where((m) => m.id.startsWith('pending:')),
+        isEmpty,
+      );
+    },
+  );
+
   test('loadOlder prepend does not clear the pending overlay', () async {
     holderMessages = messages(50);
     locator.emitBundle = true;

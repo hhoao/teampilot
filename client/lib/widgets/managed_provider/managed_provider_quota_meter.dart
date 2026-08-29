@@ -83,7 +83,9 @@ class ManagedProviderQuotaMeter extends StatelessWidget {
     if (places != null && value != '—') {
       value = _formatDecimal(value, places);
     }
-    return l10n.managedProvidersRemainingPercent(value);
+    final remaining = l10n.managedProvidersRemainingPercent(value);
+    final label = measure.label.trim();
+    return label.isEmpty ? remaining : '$label · $remaining';
   }
 
   @override

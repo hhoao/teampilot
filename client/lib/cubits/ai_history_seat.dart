@@ -192,13 +192,13 @@ class AiHistorySeat extends Cubit<AiHistoryState> {
   String? _lastDedupeLogFingerprint;
   String? _lastKeptBothLogFingerprint;
 
-  /// Last CLI transcript tip id from the previous applied snapshot. A new
-  /// user or assistant (or any other CLI) message at the tip confirms and
-  /// drops the single optimistic pending. Prepends (loadOlder / fullIndex)
-  /// keep the same tip and must not clear it. Mailbox turns are excluded:
-  /// they come from the bus log and roll back via [removePendingMatching].
-  String? _lastCliTipId;
-  var _cliTipSeen = false;
+  /// Applied timeline fingerprint. Any newly appeared user or CLI message
+  /// (id sequence or tip content) drops the single optimistic pending.
+  /// Mailbox turns count because they land in [_allMessages]. Prepends
+  /// (loadOlder / fullIndex) refresh this snapshot without clearing.
+  List<String> _lastAppliedIds = const [];
+  String? _lastAppliedTipContent;
+  var _appliedSnapshotSeen = false;
 
   Map<String, AiSubagentAttachment> _subagentAttachments = {};
   int _subagentAttachmentEpoch = 0;
@@ -316,8 +316,9 @@ class AiHistorySeat extends Cubit<AiHistoryState> {
       _committedLength = 0;
       _pageCursor = null;
       _sourceHasOlder = false;
-      _lastCliTipId = null;
-      _cliTipSeen = false;
+      _lastAppliedIds = const [];
+      _lastAppliedTipContent = null;
+      _appliedSnapshotSeen = false;
       _cachedTimeline = null;
       _clearSubagentAttachments();
       runtime.setLoading();
@@ -1025,6 +1026,7 @@ class AiHistorySeat extends Cubit<AiHistoryState> {
       _committedLength,
     );
     _remergePendingsOntoRuntime();
+    _rememberAppliedSnapshot();
     _emitReadyWindow(sessionId, memberId);
   }
 
@@ -1064,6 +1066,7 @@ class AiHistorySeat extends Cubit<AiHistoryState> {
       _pageCursor = null;
       _sourceHasOlder = false;
       _remergePendingsOntoRuntime();
+      _rememberAppliedSnapshot();
       if (state.status == AiHistoryViewStatus.ready ||
           state.status == AiHistoryViewStatus.empty) {
         _emitReadyWindow(sessionId, memberId);
@@ -1399,23 +1402,43 @@ class AiHistorySeat extends Cubit<AiHistoryState> {
     );
   }
 
-  /// Confirms the single optimistic pending when the CLI transcript tip
-  /// changes — a newly recorded user turn or any new CLI (assistant/tool)
-  /// message. The pending text is not compared: a CLI may rewrite what the
-  /// user typed (slash commands expand into command markup). Counts
-  /// [_cliMessages] (not the merged timeline) so bus-log mailbox turns never
-  /// consume a PTY send's pending.
+  /// Drops the optimistic pending when any user or CLI message newly appears
+  /// in the applied timeline. The pending text is not compared: a CLI may
+  /// rewrite what the user typed. First apply only records a baseline so a
+  /// seed/pending overlay survives the load that was already in flight.
   void _reconcilePendings() {
-    final tipId = _cliMessages.isEmpty ? null : _cliMessages.last.id;
-    if (!_cliTipSeen) {
-      _cliTipSeen = true;
-      _lastCliTipId = tipId;
+    final ids = [for (final message in _allMessages) message.id];
+    final tipContent = _allMessages.isEmpty
+        ? null
+        : messageContentIdentity(_allMessages.last);
+    if (!_appliedSnapshotSeen) {
+      _appliedSnapshotSeen = true;
+      _lastAppliedIds = ids;
+      _lastAppliedTipContent = tipContent;
       return;
     }
-    if (tipId != _lastCliTipId) {
+    if (!_sameStringList(ids, _lastAppliedIds) ||
+        tipContent != _lastAppliedTipContent) {
       _dropAllPendings(removePersisted: true);
     }
-    _lastCliTipId = tipId;
+    _lastAppliedIds = ids;
+    _lastAppliedTipContent = tipContent;
+  }
+
+  void _rememberAppliedSnapshot() {
+    _appliedSnapshotSeen = true;
+    _lastAppliedIds = [for (final message in _allMessages) message.id];
+    _lastAppliedTipContent = _allMessages.isEmpty
+        ? null
+        : messageContentIdentity(_allMessages.last);
+  }
+
+  static bool _sameStringList(List<String> a, List<String> b) {
+    if (a.length != b.length) return false;
+    for (var i = 0; i < a.length; i++) {
+      if (a[i] != b[i]) return false;
+    }
+    return true;
   }
 
   void _replacePendingQueue(_PendingUser pending) {

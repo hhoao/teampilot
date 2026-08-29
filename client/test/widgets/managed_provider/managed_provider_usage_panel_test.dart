@@ -223,6 +223,98 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
+  testWidgets('panel shows a quota meter for each Codex usage window', (
+    tester,
+  ) async {
+    final fs = InMemoryFilesystem();
+    final usage = ManagedProviderUsageRepository(
+      fs: fs,
+      cachePath: '/tp/usage-cache.json',
+      now: () => 100,
+    );
+    final providers = ManagedProviderRepository(
+      fs: fs,
+      configPath: '/tp/providers.json',
+      onProvidersDeleted: usage.deleteMany,
+    );
+    final coordinator = ManagedProviderUsageCoordinator(
+      providerRepository: providers,
+      usageRepository: usage,
+      registry: ManagedProviderUsageRegistry([_Adapter()]),
+      credentials: _NoCredentials(),
+      http: _NoHttp(),
+    );
+    final providerCubit = ManagedProviderCubit(repository: providers)
+      ..emit(
+        ManagedProviderState(
+          status: ManagedProviderLoadStatus.ready,
+          providers: [_codexProvider()],
+        ),
+      );
+    final usageCubit = ManagedProviderUsageCubit(coordinator: coordinator)
+      ..emit(
+        ManagedProviderUsageState(
+          status: ManagedProviderUsageLoadStatus.ready,
+          snapshots: {
+            'p1': ProviderUsageSnapshot(
+              providerId: 'p1',
+              status: ProviderUsageStatus.ready,
+              measures: [
+                ProviderUsageMeasure(
+                  label: '5h',
+                  kind: ProviderUsageMeasureKind.quota,
+                  total: '100',
+                  used: '10',
+                  remaining: '90',
+                  unit: '%',
+                  resetsAt: 1_800_000_000_000,
+                ),
+                ProviderUsageMeasure(
+                  label: 'Weekly',
+                  kind: ProviderUsageMeasureKind.quota,
+                  total: '100',
+                  used: '12',
+                  remaining: '88',
+                  unit: '%',
+                ),
+                ProviderUsageMeasure(
+                  label: 'Monthly',
+                  kind: ProviderUsageMeasureKind.quota,
+                  total: '100',
+                  used: '32',
+                  remaining: '68',
+                  unit: '%',
+                ),
+              ],
+            ),
+          },
+        ),
+      );
+    addTearDown(providerCubit.close);
+    addTearDown(usageCubit.close);
+
+    await tester.pumpWidget(
+      MaterialApp(
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
+        home: MultiBlocProvider(
+          providers: [
+            BlocProvider.value(value: providerCubit),
+            BlocProvider.value(value: usageCubit),
+          ],
+          child: const Scaffold(body: ManagedProviderUsagePanel()),
+        ),
+      ),
+    );
+    await tester.pump();
+
+    expect(find.byKey(const Key('managed-provider-quota-meter')), findsNWidgets(3));
+    expect(find.text('5h · 90% remaining'), findsOneWidget);
+    expect(find.text('Weekly · 88% remaining'), findsOneWidget);
+    expect(find.text('Monthly · 68% remaining'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+
   testWidgets('panel omits disabled providers from the list', (
     tester,
   ) async {
