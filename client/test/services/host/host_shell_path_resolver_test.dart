@@ -111,8 +111,48 @@ void main() {
     });
   });
 
+  group('shellCandidates', () {
+    test('uses \$SHELL path first, then zsh, then bash, deduped by basename',
+        () {
+      HostShellPathResolver.debugShellOverride = () => '/bin/bash';
+      expect(HostShellPathResolver.shellCandidates(), ['/bin/bash', 'zsh']);
+    });
+
+    test('does not also spawn basename zsh when \$SHELL is already zsh', () {
+      HostShellPathResolver.debugShellOverride = () => '/usr/bin/zsh';
+      expect(HostShellPathResolver.shellCandidates(), ['/usr/bin/zsh', 'bash']);
+    });
+
+    test('prepends a non-fallback \$SHELL path before zsh and bash', () {
+      HostShellPathResolver.debugShellOverride = () => '/usr/local/bin/fish';
+      expect(
+        HostShellPathResolver.shellCandidates(),
+        ['/usr/local/bin/fish', 'zsh', 'bash'],
+      );
+    });
+
+    test('falls back to zsh then bash when \$SHELL is empty', () {
+      HostShellPathResolver.debugShellOverride = () => '';
+      expect(HostShellPathResolver.shellCandidates(), ['zsh', 'bash']);
+    });
+  });
+
   group('resolve', () {
-    test('tries \$SHELL basename first, then zsh, then stops at first hit',
+    test('does not probe zsh when \$SHELL bash succeeds', () async {
+      HostShellPathResolver.debugShellOverride = () => '/bin/bash';
+      final invoked = <String>[];
+      final result = await HostShellPathResolver.resolve(
+        posixPlatformOverride: true,
+        starter: (executable, arguments) async {
+          invoked.add(executable);
+          return _FakeShell.success('${HostShellPathResolver.marker}/b/bin');
+        },
+      );
+      expect(result, '/b/bin');
+      expect(invoked, ['/bin/bash']);
+    });
+
+    test('tries \$SHELL path first, then zsh, then stops at first hit',
         () async {
       HostShellPathResolver.debugShellOverride = () => '/usr/local/bin/fish';
       final invoked = <String>[];
@@ -120,44 +160,52 @@ void main() {
         posixPlatformOverride: true,
         starter: (executable, arguments) async {
           invoked.add(executable);
-          if (executable == 'fish') {
+          if (executable == '/usr/local/bin/fish') {
             return _FakeShell.success('fish noise'); // parses to null
           }
           return _FakeShell.success('${HostShellPathResolver.marker}/z/bin');
         },
       );
       expect(result, '/z/bin');
-      expect(invoked, ['fish', 'zsh']);
+      expect(invoked, ['/usr/local/bin/fish', 'zsh']);
     });
 
     test('kills every shell when each times out', () async {
-      // Override SHELL so candidates dedupe to exactly ['zsh', 'bash'],
+      // Override SHELL so candidates dedupe to ['/bin/zsh', 'bash'],
       // regardless of the host environment.
       HostShellPathResolver.debugShellOverride = () => '/bin/zsh';
       final shells = <String, _FakeShell>{
-        'zsh': _FakeShell.hanging(),
+        '/bin/zsh': _FakeShell.hanging(),
         'bash': _FakeShell.hanging(),
       };
       final result = await HostShellPathResolver.resolve(
         posixPlatformOverride: true,
         timeout: const Duration(milliseconds: 10),
-        starter: (executable, arguments) async => shells[executable]!,
+        starter: (executable, arguments) async {
+          final shell = shells[executable];
+          if (shell == null) {
+            fail('unexpected executable: $executable');
+          }
+          return shell;
+        },
       );
       expect(result, isNull);
-      expect(shells['zsh']!.killed, isTrue);
+      expect(shells['/bin/zsh']!.killed, isTrue);
       expect(shells['bash']!.killed, isTrue);
     });
 
     test('falls through a hanging first shell to the next one', () async {
-      HostShellPathResolver.debugShellOverride = () => '/bin/zsh'; // → zsh,bash
+      HostShellPathResolver.debugShellOverride = () => '/bin/zsh'; // → /bin/zsh, bash
       final zsh = _FakeShell.hanging();
       final result = await HostShellPathResolver.resolve(
         posixPlatformOverride: true,
         timeout: const Duration(milliseconds: 10),
         starter: (executable, arguments) async =>
-            executable == 'zsh' ? zsh : _FakeShell.success(
-              '${HostShellPathResolver.marker}/b/bin',
-            ),
+            executable == '/bin/zsh'
+                ? zsh
+                : _FakeShell.success(
+                    '${HostShellPathResolver.marker}/b/bin',
+                  ),
       );
       expect(result, '/b/bin');
       expect(zsh.killed, isTrue);
@@ -174,10 +222,10 @@ void main() {
     });
 
     test('treats nonzero exit as probe failure', () async {
-      HostShellPathResolver.debugShellOverride = () => '/bin/zsh'; // → zsh,bash
+      HostShellPathResolver.debugShellOverride = () => '/bin/zsh'; // → /bin/zsh, bash
       final result = await HostShellPathResolver.resolve(
         posixPlatformOverride: true,
-        starter: (executable, arguments) async => executable == 'zsh'
+        starter: (executable, arguments) async => executable == '/bin/zsh'
             ? _FakeShell.failure()
             : _FakeShell.success('${HostShellPathResolver.marker}/b/bin'),
       );
@@ -206,7 +254,7 @@ void main() {
     });
 
     test('caches failure as null without retrying', () async {
-      // Deterministic candidates: ['zsh', 'bash'] regardless of host SHELL.
+      // Deterministic candidates: ['/bin/zsh', 'bash'] regardless of host SHELL.
       HostShellPathResolver.debugShellOverride = () => '/bin/zsh';
       var calls = 0;
       final result = await HostShellPathResolver.resolve(

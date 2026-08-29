@@ -60,16 +60,28 @@ abstract final class HostShellPathResolver {
 
   static bool _isPosixDesktop() => Platform.isMacOS || Platform.isLinux;
 
+  /// `$SHELL` (absolute path preserved) then `zsh` then `bash`, skipping
+  /// duplicate basenames so a bash user is not probed via missing `zsh`.
   static List<String> shellCandidates() {
     final shell =
         debugShellOverride?.call() ?? Platform.environment['SHELL'] ?? '';
-    final segments = shell.split('/');
-    final basename = segments.isEmpty ? '' : segments.last.trim();
-    return [
-      if (basename.isNotEmpty && !_fallbackShells.contains(basename))
-        basename,
-      ..._fallbackShells,
-    ];
+    final candidates = <String>[];
+    final seenBasenames = <String>{};
+
+    void add(String executable) {
+      final name = executable.trim();
+      if (name.isEmpty) return;
+      final basename = name.split('/').last;
+      if (basename.isEmpty || seenBasenames.contains(basename)) return;
+      seenBasenames.add(basename);
+      candidates.add(name);
+    }
+
+    add(shell);
+    for (final fallback in _fallbackShells) {
+      add(fallback);
+    }
+    return candidates;
   }
 
   static List<String> fallbackCandidateDirs() {
@@ -157,7 +169,7 @@ abstract final class HostShellPathResolver {
       final innerCommand = 'printf "%s" "$marker' r'$PATH"';
       process = await starter(shell, ['-ilc', innerCommand]);
     } on Object catch (error) {
-      appLogger.w('[shell-path] $shell -ilc failed to start: $error');
+      appLogger.d('[shell-path] $shell -ilc failed to start: $error');
       return null;
     }
 
