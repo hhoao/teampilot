@@ -2,8 +2,28 @@ import '../../models/app_session.dart';
 import '../../models/cli_preset.dart';
 import '../../models/session_continue_overrides.dart';
 import '../../models/team_config.dart';
+import '../../repositories/session_repository.dart';
 import '../../utils/workspace/landing_draft_resolver.dart';
 import '../cli/preset_resolver.dart';
+
+Future<void> persistFollowedSession({
+  required SessionRepository repo,
+  required AppSession patched,
+  required bool isSimple,
+}) {
+  if (isSimple) {
+    return repo.updateSimpleLaunchIdentity(
+      patched.sessionId,
+      provider: patched.provider,
+      model: patched.model,
+      effort: patched.effort,
+    );
+  }
+  return repo.updateContinueOverrides(
+    patched.sessionId,
+    patched.continueOverrides,
+  );
+}
 
 AppSession? staleFollowingSimpleSession({
   required AppSession session,

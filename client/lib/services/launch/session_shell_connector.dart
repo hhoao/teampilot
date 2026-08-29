@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:uuid/uuid.dart';
 
+import '../../cubits/chat/session_continue_overrides_controller.dart';
 import '../../cubits/chat/chat_tab_store.dart';
 import '../../cubits/chat/model/chat_tab.dart';
 import '../../cubits/chat/session_launch_host.dart';
@@ -25,6 +26,7 @@ import '../../services/cli/preset_resolver.dart';
 import '../../services/launch/connect_shell_result.dart';
 import '../../services/launch/member_bus_mcp_transport_resolver.dart';
 import '../../services/session/shell_launch_spec.dart';
+import '../../services/session/session_preset_follow_sync.dart';
 import '../../services/session/remote_ssh_launch_constraints.dart';
 import '../../services/ssh/ssh_member_session.dart';
 import '../../services/agent_status/member_agent_status_endpoint.dart';
@@ -171,7 +173,7 @@ class SessionShellConnector {
       }
     }
 
-    final activeSession = connectSession;
+    var activeSession = connectSession;
     final SessionMemberBinding? binding = team != null && member != null
         ? await _resolveMemberBinding(
             session: activeSession,
@@ -293,6 +295,12 @@ class SessionShellConnector {
             onProvisionProgress: onProgress,
           ),
         );
+        activeSession = await _syncFollowedPresetOnConnect(
+          session: activeSession,
+          tab: tab,
+          isPersonal: true,
+          memberId: activeSession.sessionId,
+        );
         shellLaunch = connectResult.shellLaunch;
         remoteCliPath = connectResult.remoteCliPath;
         launchWarnings.addAll(connectResult.warnings);
@@ -384,6 +392,13 @@ class SessionShellConnector {
             agentStatus: agentStatus,
             onProvisionProgress: onProgress,
           ),
+        );
+        activeSession = await _syncFollowedPresetOnConnect(
+          session: activeSession,
+          tab: tab,
+          isPersonal: false,
+          memberId: preflightMemberId,
+          lockedCli: launchCli,
         );
         shellLaunch = connectResult.shellLaunch;
         remoteCliPath = connectResult.remoteCliPath;
@@ -585,6 +600,44 @@ class SessionShellConnector {
       _host.failSessionConnect(tab.info.id, 'Failed to connect session: $e');
       return ConnectShellResult.failed;
     }
+  }
+
+  Future<AppSession> _syncFollowedPresetOnConnect({
+    required AppSession session,
+    required ChatTab tab,
+    required bool isPersonal,
+    required String memberId,
+    CliTool? lockedCli,
+  }) async {
+    final presets = _host.lifecycle.globalPresets;
+    final patched = isPersonal
+        ? staleFollowingSimpleSession(session: session, presets: presets)
+        : staleFollowingTeamSession(
+            session: session,
+            memberId: memberId,
+            presets: presets,
+            lockedCli: lockedCli,
+          );
+    if (patched == null) return session;
+    final repo = _host.sessionRepository;
+    if (repo != null) {
+      await persistFollowedSession(
+        repo: repo,
+        patched: patched,
+        isSimple: isPersonal,
+      );
+    }
+    if (_host.isClosed) return patched;
+    _host.replaceSessionSnapshot(patched);
+    final cached = tab.persistedSession;
+    if (cached != null && cached.sessionId == patched.sessionId) {
+      tab.persistedSession =
+          SessionContinueOverridesController.mergeOntoTabCache(
+            cached: cached,
+            patched: patched,
+          );
+    }
+    return patched;
   }
 
   Future<void> _persistNativeSessionId(
