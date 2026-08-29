@@ -2,7 +2,6 @@ import 'dart:convert';
 
 import '../../../models/provider_usage_snapshot.dart';
 import '../managed_provider_usage_adapter.dart';
-import 'official_subscription_adapter.dart';
 
 void throwOfficialHttpStatus(int statusCode) {
   if (statusCode == 401 || statusCode == 403) {
@@ -33,23 +32,6 @@ Map<String, Object?> decodeOfficialJsonObject(String body) {
       ManagedProviderUsageQueryErrorCode.responseParseFailed,
     );
   }
-}
-
-OfficialSubscriptionWindow officialPercentWindow({
-  required String label,
-  required num used,
-  int? resetsAt,
-}) {
-  final clamped = used.clamp(0, 100);
-  return OfficialSubscriptionWindow(
-    label: label,
-    kind: ProviderUsageMeasureKind.quota,
-    total: '100',
-    used: formatOfficialPercent(clamped),
-    remaining: formatOfficialPercent((100 - clamped).clamp(0, 100)),
-    unit: '%',
-    resetsAt: resetsAt,
-  );
 }
 
 String formatOfficialPercent(num value) {

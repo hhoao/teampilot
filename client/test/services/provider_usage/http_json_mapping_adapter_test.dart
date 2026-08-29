@@ -1,7 +1,9 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/models/managed_provider.dart';
 import 'package:teampilot/models/provider_usage_snapshot.dart';
+import 'package:teampilot/services/provider_usage/managed_provider_presets.dart';
 import 'package:teampilot/services/provider_usage/adapters/http_json_mapping_adapter.dart';
+import 'package:teampilot/services/provider_usage/cli_credential_source.dart';
 import 'package:teampilot/services/provider_usage/managed_provider_usage_adapter.dart';
 import 'package:teampilot/services/provider_usage/managed_provider_usage_registry.dart';
 
@@ -951,6 +953,327 @@ void main() {
     },
   );
 
+  test('maps named windows and skips paths that have no numbers', () async {
+    final adapter = HttpJsonMappingAdapter();
+    final provider = ManagedProvider(
+      id: 'p1',
+      name: 'Cursor',
+      kind: ManagedProviderKind.subscriptionQuota,
+      adapterId: 'http-json',
+      endpointConfig: ManagedProviderEndpointConfig(
+        url: 'https://cursor.com/api/usage-summary',
+        windows: const [
+          ManagedProviderUsageWindow(
+            label: 'Plan',
+            used: r'$.individualUsage.plan.totalPercentUsed',
+            unit: '%',
+            resetsAt: r'$.billingCycleEnd',
+          ),
+          ManagedProviderUsageWindow(
+            label: 'Team',
+            used: r'$.teamUsage.pooled.used',
+            total: r'$.teamUsage.pooled.limit',
+          ),
+        ],
+      ),
+    );
+    final snapshot = await adapter.fetch(
+      provider,
+      credentials: const _Resolver(null),
+      http: FakeProviderUsageHttpClient(
+        response: const ProviderUsageHttpResponse(
+          statusCode: 200,
+          body:
+              '{"billingCycleEnd":"2026-04-01T00:00:00Z","individualUsage":{"plan":{"totalPercentUsed":30}}}',
+        ),
+      ),
+      now: now,
+    );
+    expect(snapshot.measures, hasLength(1));
+    expect(snapshot.measures.single.label, 'Plan');
+    expect(snapshot.measures.single.used, '30');
+    expect(snapshot.measures.single.total, '100');
+    expect(snapshot.measures.single.unit, '%');
+  });
+
+  test(
+    'throws responseParseFailed when all named windows are missing numbers',
+    () async {
+      final adapter = HttpJsonMappingAdapter();
+      final provider = ManagedProvider(
+        id: 'p1',
+        name: 'Cursor',
+        kind: ManagedProviderKind.subscriptionQuota,
+        adapterId: 'http-json',
+        endpointConfig: ManagedProviderEndpointConfig(
+          url: 'https://cursor.com/api/usage-summary',
+          fieldMappings: {'remaining': r'$.remaining'},
+          windows: const [
+            ManagedProviderUsageWindow(
+              label: 'Plan',
+              used: r'$.individualUsage.plan.totalPercentUsed',
+              unit: '%',
+            ),
+            ManagedProviderUsageWindow(
+              label: 'Team',
+              used: r'$.teamUsage.pooled.used',
+              total: r'$.teamUsage.pooled.limit',
+            ),
+          ],
+        ),
+      );
+      final error = await _capture(
+        () => adapter.fetch(
+          provider,
+          credentials: const _Resolver(null),
+          http: FakeProviderUsageHttpClient(
+            response: const ProviderUsageHttpResponse(
+              statusCode: 200,
+              body: '{"remaining":"5.00"}',
+            ),
+          ),
+          now: now,
+        ),
+      );
+      expect(error, isA<ManagedProviderUsageQueryError>());
+      expect(
+        (error as ManagedProviderUsageQueryError).code,
+        ManagedProviderUsageQueryErrorCode.responseParseFailed,
+      );
+    },
+  );
+
+  test('omits templated headers whose value expands empty', () async {
+    final http = FakeProviderUsageHttpClient(
+      response: const ProviderUsageHttpResponse(
+        statusCode: 200,
+        body: '{"remaining":"1"}',
+      ),
+    );
+    await HttpJsonMappingAdapter().fetch(
+      ManagedProvider(
+        id: 'p1',
+        name: 'Codex',
+        kind: ManagedProviderKind.subscriptionQuota,
+        adapterId: 'http-json',
+        endpointConfig: ManagedProviderEndpointConfig(
+          url: 'https://chatgpt.com/backend-api/wham/usage',
+          credentialField: 'accessToken',
+          credentialName: 'Authorization',
+          credentialPrefix: 'Bearer ',
+          fieldMappings: {'remaining': r'$.remaining'},
+          headers: {
+            'ChatGPT-Account-Id': '{accountId}',
+            'Accept': 'application/json',
+          },
+        ),
+      ),
+      credentials: const _Resolver(_Credentials({'accessToken': 'tok'})),
+      http: http,
+      now: now,
+    );
+    expect(http.requests.single.headers['Authorization'], 'Bearer tok');
+    expect(http.requests.single.headers.containsKey('ChatGPT-Account-Id'), isFalse);
+    expect(http.requests.single.headers['Accept'], 'application/json');
+  });
+
+  test('builds cursor cookie from cli credential source', () async {
+    final http = FakeProviderUsageHttpClient(
+      response: const ProviderUsageHttpResponse(
+        statusCode: 200,
+        body: '{"individualUsage":{"plan":{"totalPercentUsed":30}}}',
+      ),
+    );
+    await HttpJsonMappingAdapter(
+      cliCredentials: CliCredentialSourceResolver(
+        readers: {
+          'cursor-account': _CliReader(
+            const _Credentials({
+              'accessToken': 'jwt-token',
+              'accountId': 'user',
+            }),
+          ),
+        },
+      ),
+    ).fetch(
+      ManagedProvider(
+        id: 'p1',
+        name: 'Cursor',
+        kind: ManagedProviderKind.subscriptionQuota,
+        adapterId: 'http-json',
+        endpointConfig: ManagedProviderEndpointConfig(
+          url: 'https://cursor.com/api/usage-summary',
+          credentialSource: 'cli:cursor-account',
+          credentialName: 'Cookie',
+          credentialTemplate:
+              'WorkosCursorSessionToken={accountId}::{accessToken}',
+          windows: const [
+            ManagedProviderUsageWindow(
+              label: 'Plan',
+              used: r'$.individualUsage.plan.totalPercentUsed',
+              unit: '%',
+            ),
+          ],
+        ),
+      ),
+      credentials: const _Resolver(null),
+      http: http,
+      now: now,
+    );
+    expect(
+      http.requests.single.headers['Cookie'],
+      'WorkosCursorSessionToken=user::jwt-token',
+    );
+  });
+
+  test('custom provider matches cursor cookie template behavior', () async {
+    final http = FakeProviderUsageHttpClient(
+      response: const ProviderUsageHttpResponse(
+        statusCode: 200,
+        body: '{"individualUsage":{"plan":{"totalPercentUsed":30}}}',
+      ),
+    );
+    await HttpJsonMappingAdapter(
+      cliCredentials: CliCredentialSourceResolver(
+        readers: {
+          'cursor-account': _CliReader(
+            const _Credentials({
+              'accessToken': 'jwt-token',
+              'accountId': 'user',
+            }),
+          ),
+        },
+      ),
+    ).fetch(
+      ManagedProvider(
+        id: 'custom-cursor',
+        name: 'My Cursor',
+        kind: ManagedProviderKind.customHttp,
+        adapterId: 'http-json',
+        endpointConfig: ManagedProviderEndpointConfig(
+          url: 'https://cursor.com/api/usage-summary',
+          credentialSource: 'cli:cursor-account',
+          credentialName: 'Cookie',
+          credentialTemplate:
+              'WorkosCursorSessionToken={accountId}::{accessToken}',
+          windows: const [
+            ManagedProviderUsageWindow(
+              label: 'Plan',
+              used: r'$.individualUsage.plan.totalPercentUsed',
+              unit: '%',
+            ),
+          ],
+        ),
+      ),
+      credentials: const _Resolver(null),
+      http: http,
+      now: now,
+    );
+    expect(
+      http.requests.single.headers['Cookie'],
+      'WorkosCursorSessionToken=user::jwt-token',
+    );
+  });
+
+  test('cursor preset template maps Plan Auto API windows', () async {
+    final preset = managedProviderPresetById('cursor')!;
+    final snapshot = await HttpJsonMappingAdapter(
+      cliCredentials: CliCredentialSourceResolver(
+        readers: {
+          'cursor-account': _CliReader(
+            const _Credentials({
+              'accessToken': 'jwt-token',
+              'accountId': 'user',
+            }),
+          ),
+        },
+      ),
+    ).fetch(
+      preset.template.copyWith(id: 'cursor'),
+      credentials: const _Resolver(null),
+      http: FakeProviderUsageHttpClient(
+        response: const ProviderUsageHttpResponse(
+          statusCode: 200,
+          body:
+              '{"billingCycleEnd":"2026-04-01T00:00:00Z","individualUsage":{"plan":{"totalPercentUsed":30,"autoPercentUsed":10,"apiPercentUsed":5}}}',
+        ),
+      ),
+      now: now,
+    );
+
+    expect(snapshot.measures.map((measure) => measure.label), [
+      'Plan',
+      'Auto',
+      'API',
+    ]);
+    expect(snapshot.measures.map((measure) => measure.used), ['30', '10', '5']);
+  });
+
+  test('claude preset template maps five hour and weekly windows', () async {
+    final preset = managedProviderPresetById('claude-code')!;
+    final snapshot = await HttpJsonMappingAdapter(
+      cliCredentials: CliCredentialSourceResolver(
+        readers: {
+          'claude-official': _CliReader(
+            const _Credentials({'accessToken': 'token'}),
+          ),
+        },
+      ),
+    ).fetch(
+      preset.template.copyWith(id: 'claude'),
+      credentials: const _Resolver(null),
+      http: FakeProviderUsageHttpClient(
+        response: const ProviderUsageHttpResponse(
+          statusCode: 200,
+          body:
+              '{"five_hour":{"utilization":20,"resets_at":"2026-04-01T00:00:00Z"},"seven_day":{"utilization":40,"resets_at":"2026-04-08T00:00:00Z"}}',
+        ),
+      ),
+      now: now,
+    );
+
+    expect(snapshot.measures.map((measure) => measure.label), ['5h', 'Weekly']);
+    expect(snapshot.measures.map((measure) => measure.used), ['20', '40']);
+  });
+
+  test('codex preset template maps primary secondary and monthly windows', () async {
+    final preset = managedProviderPresetById('codex')!;
+    final snapshot = await HttpJsonMappingAdapter(
+      cliCredentials: CliCredentialSourceResolver(
+        readers: {
+          'openai-official': _CliReader(
+            const _Credentials({
+              'accessToken': 'token',
+              'accountId': 'acct',
+            }),
+          ),
+        },
+      ),
+    ).fetch(
+      preset.template.copyWith(id: 'codex'),
+      credentials: const _Resolver(null),
+      http: FakeProviderUsageHttpClient(
+        response: const ProviderUsageHttpResponse(
+          statusCode: 200,
+          body:
+              '{"rate_limit":{"primary_window":{"used_percent":15,"reset_at":1711929600},"secondary_window":{"used_percent":25,"reset_at":1712534400}},"spend_control":{"individual_limit":{"used_percent":35,"reset_at":1714521600}}}',
+        ),
+      ),
+      now: now,
+    );
+
+    expect(snapshot.measures.map((measure) => measure.label), [
+      '5h',
+      'Weekly',
+      'Monthly',
+    ]);
+    expect(snapshot.measures.map((measure) => measure.used), [
+      '15',
+      '25',
+      '35',
+    ]);
+  });
+
   test('registry rejects duplicate IDs and exposes registered adapters', () {
     final first = _Adapter('http-json');
     final second = _Adapter('http-json');
@@ -1028,6 +1351,16 @@ class _ThrowingResolver implements ProviderCredentialResolver {
   Future<ProviderCredentialScope?> resolve(ManagedProvider provider) {
     throw StateError('resolver-secret');
   }
+}
+
+class _CliReader implements OfficialSubscriptionAuthReader {
+  const _CliReader(this.scope);
+
+  final ProviderCredentialScope scope;
+
+  @override
+  Future<ProviderCredentialScope?> read(ManagedProvider provider) async =>
+      scope;
 }
 
 class _NonJsonValue {

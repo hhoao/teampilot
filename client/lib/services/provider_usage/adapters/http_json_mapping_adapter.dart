@@ -3,7 +3,10 @@ import 'dart:io';
 
 import '../../../models/managed_provider.dart';
 import '../../../models/provider_usage_snapshot.dart';
+import '../cli_credential_source.dart';
+import '../http_json_template.dart';
 import '../managed_provider_usage_adapter.dart';
+import 'official_subscription_parse.dart';
 
 enum HttpJsonCredentialPlacement { header, query, jsonBody, unsupported }
 
@@ -44,8 +47,13 @@ class HttpJsonMappingConfig {
     this.defaultUnit,
     this.defaultCurrency,
     this.credential,
+    this.credentialSource = 'secret',
+    this.credentialTemplate,
+    this.credentialName,
+    this.credentialPlacement = 'header',
     this.headers = const {},
     this.body = const {},
+    this.windows = const [],
     this.staleAfter = const Duration(minutes: 10),
     this.adapterVersion,
   });
@@ -67,8 +75,13 @@ class HttpJsonMappingConfig {
   final String? defaultUnit;
   final String? defaultCurrency;
   final HttpJsonCredentialConfig? credential;
+  final String credentialSource;
+  final String? credentialTemplate;
+  final String? credentialName;
+  final String credentialPlacement;
   final Map<String, String> headers;
   final Map<String, Object?> body;
+  final List<ManagedProviderUsageWindow> windows;
   final Duration? staleAfter;
   final String? adapterVersion;
 
@@ -100,8 +113,13 @@ class HttpJsonMappingConfig {
               placement: _credentialPlacement(endpoint.credentialPlacement),
               prefix: endpoint.credentialPrefix,
             ),
+      credentialSource: endpoint.credentialSource,
+      credentialTemplate: endpoint.credentialTemplate,
+      credentialName: endpoint.credentialName,
+      credentialPlacement: endpoint.credentialPlacement,
       headers: endpoint.headers,
       body: endpoint.body,
+      windows: endpoint.windows,
     );
   }
 
@@ -115,9 +133,10 @@ class HttpJsonMappingConfig {
 }
 
 class HttpJsonMappingAdapter implements ManagedProviderUsageAdapter {
-  HttpJsonMappingAdapter({this.config});
+  HttpJsonMappingAdapter({this.config, this.cliCredentials});
 
   final HttpJsonMappingConfig? config;
+  final CliCredentialSourceResolver? cliCredentials;
 
   @override
   String get id => 'http-json';
@@ -170,26 +189,38 @@ class HttpJsonMappingAdapter implements ManagedProviderUsageAdapter {
         ManagedProviderUsageQueryErrorCode.responseParseFailed,
       );
     }
-    final measuresRoot = mapping.measuresPath == null
-        ? _PathLookup.presentValue(responseRoot.value)
-        : _lookupPath(responseRoot.value, mapping.measuresPath);
-    final items = mapping.measuresPath == null
-        ? [responseRoot.value]
-        : measuresRoot.present && measuresRoot.value is List
-        ? measuresRoot.value as List<Object?>
-        : !measuresRoot.present || measuresRoot.value == null
-        ? const []
-        : [measuresRoot.value];
-    if (items.isEmpty) {
-      throw const ManagedProviderUsageQueryError(
-        ManagedProviderUsageQueryErrorCode.responseParseFailed,
-      );
-    }
-
     final measures = <ProviderUsageMeasure>[];
     try {
-      for (final item in items) {
-        measures.add(_measure(item, mapping, provider));
+      if (mapping.windows.isNotEmpty) {
+        for (final window in mapping.windows) {
+          final measure = _measureFromWindow(
+            responseRoot.value,
+            window,
+            provider,
+          );
+          if (measure != null) {
+            measures.add(measure);
+          }
+        }
+      } else {
+        final measuresRoot = mapping.measuresPath == null
+            ? _PathLookup.presentValue(responseRoot.value)
+            : _lookupPath(responseRoot.value, mapping.measuresPath);
+        final items = mapping.measuresPath == null
+            ? [responseRoot.value]
+            : measuresRoot.present && measuresRoot.value is List
+            ? measuresRoot.value as List<Object?>
+            : !measuresRoot.present || measuresRoot.value == null
+            ? const []
+            : [measuresRoot.value];
+        if (items.isEmpty) {
+          throw const ManagedProviderUsageQueryError(
+            ManagedProviderUsageQueryErrorCode.responseParseFailed,
+          );
+        }
+        for (final item in items) {
+          measures.add(_measure(item, mapping, provider));
+        }
       }
     } on FormatException {
       throw const ManagedProviderUsageQueryError(
@@ -200,6 +231,11 @@ class HttpJsonMappingAdapter implements ManagedProviderUsageAdapter {
         ManagedProviderUsageQueryErrorCode.responseParseFailed,
       );
     } on Object {
+      throw const ManagedProviderUsageQueryError(
+        ManagedProviderUsageQueryErrorCode.responseParseFailed,
+      );
+    }
+    if (measures.isEmpty) {
       throw const ManagedProviderUsageQueryError(
         ManagedProviderUsageQueryErrorCode.responseParseFailed,
       );
@@ -240,42 +276,95 @@ class HttpJsonMappingAdapter implements ManagedProviderUsageAdapter {
       _validateRequestText(entry.key);
       _validateRequestText(entry.value);
     }
-    final headers = <String, String>{...mapping.headers};
+    final headers = <String, String>{};
     final body = Map<String, Object?>.from(mapping.body);
     var requestUri = uri;
     final credential = mapping.credential;
-    if (credential != null) {
-      _validateRequestText(credential.field);
-      _validateRequestText(credential.targetName);
-      if (credential.prefix != null) {
-        _validateRequestText(credential.prefix!);
-      }
+    final needsCredentialScope =
+        credential != null ||
+        mapping.credentialSource.startsWith('cli:') ||
+        (mapping.credentialTemplate != null &&
+            mapping.credentialTemplate!.trim().isNotEmpty) ||
+        mapping.headers.values.any((value) => value.contains('{'));
+    if (needsCredentialScope) {
       try {
-        final scope = await _resolveCredentials(credentials, provider);
-        final value = scope.valueFor(credential.field);
-        if (value == null || value.isEmpty || credential.targetName.isEmpty) {
-          throw const ManagedProviderUsageQueryError(
-            ManagedProviderUsageQueryErrorCode.missingCredential,
-          );
+        final scope = await _resolveCredentialScope(
+          mapping,
+          provider,
+          credentials,
+        );
+        final values = fillAccountIdFromJwt(_scopeToValues(scope));
+        for (final entry in mapping.headers.entries) {
+          final expanded = expandHttpJsonTemplate(entry.value, values);
+          if (expanded.isNotEmpty) {
+            headers[entry.key] = expanded;
+          }
         }
-        final supplied = '${credential.prefix ?? ''}$value';
-        _validateRequestText(supplied);
-        switch (credential.placement) {
-          case HttpJsonCredentialPlacement.header:
-            headers[credential.targetName] = supplied;
-          case HttpJsonCredentialPlacement.query:
-            requestUri = requestUri.replace(
-              queryParameters: {
-                ...requestUri.queryParameters,
-                credential.targetName: supplied,
-              },
-            );
-          case HttpJsonCredentialPlacement.jsonBody:
-            body[credential.targetName] = supplied;
-          case HttpJsonCredentialPlacement.unsupported:
+        if (credential != null) {
+          _validateRequestText(credential.field);
+          _validateRequestText(credential.targetName);
+          if (credential.prefix != null) {
+            _validateRequestText(credential.prefix!);
+          }
+          if (credential.targetName.isEmpty) {
             throw const ManagedProviderUsageQueryError(
-              ManagedProviderUsageQueryErrorCode.unsupported,
+              ManagedProviderUsageQueryErrorCode.missingCredential,
             );
+          }
+          final supplied = _credentialValue(mapping, credential, values);
+          _validateRequestText(supplied);
+          switch (credential.placement) {
+            case HttpJsonCredentialPlacement.header:
+              headers[credential.targetName] = supplied;
+            case HttpJsonCredentialPlacement.query:
+              requestUri = requestUri.replace(
+                queryParameters: {
+                  ...requestUri.queryParameters,
+                  credential.targetName: supplied,
+                },
+              );
+            case HttpJsonCredentialPlacement.jsonBody:
+              body[credential.targetName] = supplied;
+            case HttpJsonCredentialPlacement.unsupported:
+              throw const ManagedProviderUsageQueryError(
+                ManagedProviderUsageQueryErrorCode.unsupported,
+              );
+          }
+        } else {
+          final template = mapping.credentialTemplate?.trim();
+          final name = mapping.credentialName?.trim();
+          if (template != null &&
+              template.isNotEmpty &&
+              name != null &&
+              name.isNotEmpty) {
+            final supplied = expandHttpJsonTemplate(template, values);
+            if (supplied.isEmpty) {
+              throw const ManagedProviderUsageQueryError(
+                ManagedProviderUsageQueryErrorCode.missingCredential,
+              );
+            }
+            _validateRequestText(name);
+            _validateRequestText(supplied);
+            switch (HttpJsonMappingConfig._credentialPlacement(
+              mapping.credentialPlacement,
+            )) {
+              case HttpJsonCredentialPlacement.header:
+                headers[name] = supplied;
+              case HttpJsonCredentialPlacement.query:
+                requestUri = requestUri.replace(
+                  queryParameters: {
+                    ...requestUri.queryParameters,
+                    name: supplied,
+                  },
+                );
+              case HttpJsonCredentialPlacement.jsonBody:
+                body[name] = supplied;
+              case HttpJsonCredentialPlacement.unsupported:
+                throw const ManagedProviderUsageQueryError(
+                  ManagedProviderUsageQueryErrorCode.unsupported,
+                );
+            }
+          }
         }
       } on ManagedProviderUsageQueryError {
         rethrow;
@@ -284,6 +373,8 @@ class HttpJsonMappingAdapter implements ManagedProviderUsageAdapter {
           ManagedProviderUsageQueryErrorCode.missingCredential,
         );
       }
+    } else {
+      headers.addAll(mapping.headers);
     }
 
     final hasBody = method == 'POST' || body.isNotEmpty;
@@ -300,6 +391,58 @@ class HttpJsonMappingAdapter implements ManagedProviderUsageAdapter {
         ManagedProviderUsageQueryErrorCode.unsupported,
       );
     }
+  }
+
+  Future<ProviderCredentialScope> _resolveCredentialScope(
+    HttpJsonMappingConfig mapping,
+    ManagedProvider provider,
+    ProviderCredentialResolver credentials,
+  ) async {
+    if (mapping.credentialSource.startsWith('cli:')) {
+      final resolver = cliCredentials;
+      if (resolver == null) {
+        throw const ManagedProviderUsageQueryError(
+          ManagedProviderUsageQueryErrorCode.missingCredential,
+        );
+      }
+      return resolver.read(mapping.credentialSource);
+    }
+    return _resolveCredentials(credentials, provider);
+  }
+
+  static Map<String, String> _scopeToValues(ProviderCredentialScope scope) {
+    final values = <String, String>{};
+    for (final field in scope.fields) {
+      final value = scope.valueFor(field);
+      if (value != null && value.isNotEmpty) {
+        values[field] = value;
+      }
+    }
+    return values;
+  }
+
+  static String _credentialValue(
+    HttpJsonMappingConfig mapping,
+    HttpJsonCredentialConfig credential,
+    Map<String, String> values,
+  ) {
+    final template = mapping.credentialTemplate?.trim();
+    if (template != null && template.isNotEmpty) {
+      final expanded = expandHttpJsonTemplate(template, values);
+      if (expanded.isEmpty) {
+        throw const ManagedProviderUsageQueryError(
+          ManagedProviderUsageQueryErrorCode.missingCredential,
+        );
+      }
+      return expanded;
+    }
+    final value = values[credential.field];
+    if (value == null || value.isEmpty) {
+      throw const ManagedProviderUsageQueryError(
+        ManagedProviderUsageQueryErrorCode.missingCredential,
+      );
+    }
+    return '${credential.prefix ?? ''}$value';
   }
 
   Future<ProviderCredentialScope> _resolveCredentials(
@@ -321,6 +464,53 @@ class HttpJsonMappingAdapter implements ManagedProviderUsageAdapter {
         ManagedProviderUsageQueryErrorCode.missingCredential,
       );
     }
+  }
+
+  ProviderUsageMeasure? _measureFromWindow(
+    Object? root,
+    ManagedProviderUsageWindow window,
+    ManagedProvider provider,
+  ) {
+    final used = _windowNumericValue(_lookupPath(root, window.used));
+    final total = _windowNumericValue(_lookupPath(root, window.total));
+    final remaining = _windowNumericValue(_lookupPath(root, window.remaining));
+    if (used == null && total == null && remaining == null) {
+      return null;
+    }
+
+    var resolvedUsed = used;
+    var resolvedTotal = total;
+    var resolvedRemaining = remaining;
+    if (window.unit == '%' &&
+        resolvedUsed != null &&
+        resolvedTotal == null &&
+        resolvedRemaining == null) {
+      final percent =
+          readOfficialPercent(_lookupPath(root, window.used).value) ?? 0;
+      final clamped = percent.clamp(0, 100);
+      resolvedUsed = formatOfficialPercent(clamped);
+      resolvedTotal = '100';
+      resolvedRemaining = formatOfficialPercent(
+        (100 - clamped).clamp(0, 100),
+      );
+    }
+
+    final kind = window.kind == null || window.kind!.trim().isEmpty
+        ? ProviderUsageMeasureKind.quota
+        : ProviderUsageMeasureKind.fromJson(window.kind);
+    final resetsAt = window.resetsAt == null
+        ? null
+        : parseOfficialResetAt(_lookupPath(root, window.resetsAt).value);
+
+    return ProviderUsageMeasure(
+      label: window.label.isEmpty ? provider.name : window.label,
+      kind: kind,
+      total: resolvedTotal,
+      used: resolvedUsed,
+      remaining: resolvedRemaining,
+      unit: window.unit,
+      resetsAt: resetsAt,
+    );
   }
 
   ProviderUsageMeasure _measure(
@@ -417,6 +607,16 @@ class HttpJsonMappingAdapter implements ManagedProviderUsageAdapter {
     ]) {
       _parsePath(path);
     }
+    for (final window in config.windows) {
+      for (final path in [
+        window.used,
+        window.total,
+        window.remaining,
+        window.resetsAt,
+      ]) {
+        _parsePath(path);
+      }
+    }
   }
 
   static List<_PathToken> _parsePath(String? path) {
@@ -500,6 +700,23 @@ class HttpJsonMappingAdapter implements ManagedProviderUsageAdapter {
       throw const FormatException('invalid decimal value');
     }
     return value;
+  }
+
+  static String? _windowNumericValue(_PathLookup lookup) {
+    if (!lookup.present || lookup.value == null) return null;
+    final value = lookup.value;
+    if (value is num && value.isFinite) {
+      return formatOfficialPercent(value);
+    }
+    if (value is String) {
+      final trimmed = value.trim();
+      if (trimmed.isEmpty) return null;
+      if (RegExp(r'^-?\d+(?:\.\d+)?$').hasMatch(trimmed)) {
+        return trimmed;
+      }
+      return null;
+    }
+    return null;
   }
 
   static int? _timestampValue(_PathLookup lookup) {

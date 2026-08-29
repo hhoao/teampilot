@@ -330,7 +330,11 @@ void main() {
             id: 'codex',
             name: 'Codex',
             kind: ManagedProviderKind.subscriptionQuota,
-            adapterId: 'official-codex-subscription',
+            adapterId: 'http-json',
+            endpointConfig: ManagedProviderEndpointConfig(
+              url: 'https://chatgpt.com/backend-api/wham/usage',
+              credentialSource: 'cli:openai-official',
+            ),
           ),
         ],
       ),
@@ -487,9 +491,9 @@ void main() {
     );
     expect(
       find.byKey(const Key('managed-provider-section-query')),
-      findsNothing,
+      findsOneWidget,
     );
-    expect(find.byKey(const Key('managed-provider-endpoint')), findsNothing);
+    expect(find.byKey(const Key('managed-provider-endpoint')), findsOneWidget);
     expect(
       find.byKey(const Key('managed-provider-section-credentials')),
       findsOneWidget,
@@ -535,6 +539,61 @@ void main() {
       );
     },
   );
+
+  testWidgets(
+    'Cursor preset shows official login actions and endpoint URL field',
+    (tester) async {
+      providerCubit.emit(
+        ManagedProviderState(status: ManagedProviderLoadStatus.ready),
+      );
+      usageCubit.emit(
+        ManagedProviderUsageState(status: ManagedProviderUsageLoadStatus.ready),
+      );
+      await pumpPage(tester);
+
+      await openNewEditor(tester);
+      await applyPreset(tester, 'Cursor');
+
+      expect(
+        find.byKey(const Key('managed-provider-official-credentials')),
+        findsOneWidget,
+      );
+      expect(find.text('Sign in with Cursor'), findsOneWidget);
+      expect(
+        find.byKey(const Key('managed-provider-credential-secret')),
+        findsNothing,
+      );
+      expect(find.byKey(const Key('managed-provider-endpoint')), findsOneWidget);
+      expect(
+        find.text('https://cursor.com/api/usage-summary'),
+        findsOneWidget,
+      );
+    },
+  );
+
+  testWidgets('DeepSeek preset shows API key field without login bar', (
+    tester,
+  ) async {
+    providerCubit.emit(
+      ManagedProviderState(status: ManagedProviderLoadStatus.ready),
+    );
+    usageCubit.emit(
+      ManagedProviderUsageState(status: ManagedProviderUsageLoadStatus.ready),
+    );
+    await pumpPage(tester);
+
+    await openNewEditor(tester);
+    await applyPreset(tester, 'DeepSeek');
+
+    expect(
+      find.byKey(const Key('managed-provider-official-credentials')),
+      findsNothing,
+    );
+    expect(
+      find.byKey(const Key('managed-provider-credential-secret')),
+      findsOneWidget,
+    );
+  });
 
   testWidgets('DeepSeek preset starts with only required basics expanded', (
     tester,
@@ -917,20 +976,22 @@ void main() {
         find.byKey(const Key('managed-provider-endpoint')),
         'https://example.test/usage',
       );
-      // Sections stay mounted (non-lazy editor scroll view), so bring the
-      // credentials header into view directly and tap its visible header.
+      await tester.pumpAndSettle();
       final credentialsHeader = find.byKey(
         const Key('managed-provider-section-credentials'),
       );
-      await tester.ensureVisible(credentialsHeader);
-      await tester.pumpAndSettle();
-      final viewport = tester.getRect(_verticalScrollable());
-      if (!viewport.contains(tester.getCenter(credentialsHeader))) {
-        await tester.drag(_verticalScrollable(), const Offset(0, -200));
-        await tester.pumpAndSettle();
-      }
+      await tester.scrollUntilVisible(
+        credentialsHeader,
+        500,
+        scrollable: _verticalScrollable(),
+      );
       await tester.tap(credentialsHeader);
       await tester.pumpAndSettle();
+      await tester.scrollUntilVisible(
+        find.byKey(const Key('managed-provider-credential-name')),
+        500,
+        scrollable: _verticalScrollable(),
+      );
       await tester.enterText(
         find.byKey(const Key('managed-provider-credential-name')),
         'Authorization',
@@ -1381,7 +1442,7 @@ void main() {
     );
   });
 
-  testWidgets('list card shows brand mark and no wallet icon for Codex official', (
+  testWidgets('list card shows brand mark and no wallet icon for Codex', (
     tester,
   ) async {
     providerCubit.emit(
@@ -1392,7 +1453,11 @@ void main() {
             id: 'p1',
             name: 'Codex',
             kind: ManagedProviderKind.subscriptionQuota,
-            adapterId: 'official-codex-subscription',
+            adapterId: 'http-json',
+            endpointConfig: ManagedProviderEndpointConfig(
+              url: 'https://chatgpt.com/backend-api/wham/usage',
+              credentialSource: 'cli:openai-official',
+            ),
           ),
         ],
       ),

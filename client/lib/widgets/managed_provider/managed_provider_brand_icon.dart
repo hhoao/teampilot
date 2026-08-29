@@ -58,17 +58,21 @@ class ManagedProviderInitialsIcon extends ManagedProviderBrandIconSpec {
 ManagedProviderBrandIconSpec resolveManagedProviderBrandIcon(
   ManagedProvider provider,
 ) {
-  final adapter = provider.adapterId.trim();
-  if (adapter == 'official-codex-subscription') {
-    return const ManagedProviderBrandIconSpec.bundled('openai');
+  final host = Uri.tryParse(provider.endpointConfig.url)?.host.toLowerCase();
+  final name = provider.name.trim().toLowerCase();
+  if (host == 'cursor.com') {
+    return const ManagedProviderBrandIconSpec.bundled('cursor');
   }
-  if (adapter == 'official-claude-subscription') {
+  if (host == 'api.anthropic.com' ||
+      host == 'anthropic.com' ||
+      name == 'claude code' ||
+      name == 'claude') {
     return const ManagedProviderBrandIconSpec.bundled('claude');
   }
-  final host = Uri.tryParse(provider.endpointConfig.url)?.host.toLowerCase();
-  if (adapter == 'http-json' &&
-      (host == 'api.deepseek.com' ||
-          provider.name.trim().toLowerCase() == 'deepseek')) {
+  if (host == 'chatgpt.com' || host == 'openai.com') {
+    return const ManagedProviderBrandIconSpec.bundled('openai');
+  }
+  if (host == 'api.deepseek.com' || name == 'deepseek') {
     return const ManagedProviderBrandIconSpec.bundled('deepseek');
   }
   final iconUrl = provider.brand.iconUrl?.trim() ?? '';

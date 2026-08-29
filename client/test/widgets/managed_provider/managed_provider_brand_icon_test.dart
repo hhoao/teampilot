@@ -3,7 +3,7 @@ import 'package:teampilot/models/managed_provider.dart';
 import 'package:teampilot/widgets/managed_provider/managed_provider_brand_icon.dart';
 
 ManagedProvider _provider({
-  String adapterId = 'fake',
+  String adapterId = 'http-json',
   String name = 'Example',
   String url = 'https://example.test/usage',
 }) => ManagedProvider(
@@ -15,27 +15,39 @@ ManagedProvider _provider({
 );
 
 void main() {
-  test('official Codex uses bundled openai', () {
+  test('Codex host uses bundled openai', () {
     expect(
       resolveManagedProviderBrandIcon(
         _provider(
-          adapterId: 'official-codex-subscription',
           name: 'Codex',
+          url: 'https://chatgpt.com/backend-api/wham/usage',
         ).copyWith(kind: ManagedProviderKind.subscriptionQuota),
       ),
       const ManagedProviderBrandIconSpec.bundled('openai'),
     );
   });
 
-  test('official Claude uses bundled claude', () {
+  test('Claude host uses bundled claude', () {
     expect(
       resolveManagedProviderBrandIcon(
         _provider(
-          adapterId: 'official-claude-subscription',
           name: 'Claude Code',
+          url: 'https://api.anthropic.com/api/oauth/usage',
         ).copyWith(kind: ManagedProviderKind.subscriptionQuota),
       ),
       const ManagedProviderBrandIconSpec.bundled('claude'),
+    );
+  });
+
+  test('Cursor host uses bundled cursor', () {
+    expect(
+      resolveManagedProviderBrandIcon(
+        _provider(
+          name: 'Cursor',
+          url: 'https://cursor.com/api/usage-summary',
+        ).copyWith(kind: ManagedProviderKind.subscriptionQuota),
+      ),
+      const ManagedProviderBrandIconSpec.bundled('cursor'),
     );
   });
 
@@ -43,7 +55,6 @@ void main() {
     expect(
       resolveManagedProviderBrandIcon(
         _provider(
-          adapterId: 'http-json',
           name: 'Other',
           url: 'https://api.deepseek.com/user/balance',
         ),
@@ -52,13 +63,13 @@ void main() {
     );
     expect(
       resolveManagedProviderBrandIcon(
-        _provider(adapterId: 'http-json', name: 'DeepSeek'),
+        _provider(name: 'DeepSeek'),
       ),
       const ManagedProviderBrandIconSpec.bundled('deepseek'),
     );
   });
 
-  test('https brand.iconUrl wins after adapter maps', () {
+  test('https brand.iconUrl wins after host maps', () {
     expect(
       resolveManagedProviderBrandIcon(
         _provider().copyWith(
@@ -69,7 +80,7 @@ void main() {
     );
   });
 
-  test('unknown adapter falls back to initials', () {
+  test('unknown host falls back to initials', () {
     expect(
       resolveManagedProviderBrandIcon(_provider(name: 'Acme')),
       const ManagedProviderBrandIconSpec.initials('Acme'),

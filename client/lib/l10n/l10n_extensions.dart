@@ -55,6 +55,7 @@ extension AppLocalizationsX on AppLocalizations {
   String managedProviderPresetLabel(String id) => switch (id) {
     'codex' => managedProvidersQuickPresetCodex,
     'claude-code' => managedProvidersQuickPresetClaudeCode,
+    'cursor' => managedProvidersQuickPresetCursor,
     'deepseek' => managedProvidersQuickPresetDeepSeek,
     _ => id,
   };
@@ -62,6 +63,7 @@ extension AppLocalizationsX on AppLocalizations {
   String managedProviderPresetHint(String id) => switch (id) {
     'codex' => managedProvidersQuickPresetCodexHint,
     'claude-code' => managedProvidersQuickPresetClaudeCodeHint,
+    'cursor' => managedProvidersQuickPresetCursorHint,
     'deepseek' => managedProvidersQuickPresetDeepSeekHint,
     _ => '',
   };

@@ -55,6 +55,10 @@ class _ManagedProviderEditorPageState extends State<ManagedProviderEditorPage> {
   late final TextEditingController _credentialName;
   late final TextEditingController _credentialField;
   late final TextEditingController _credentialPlacement;
+  late final TextEditingController _credentialSource;
+  late final TextEditingController _credentialTemplate;
+  late final TextEditingController _headers;
+  late final TextEditingController _windows;
   late ManagedProviderKind _kind;
   late String _method;
   late bool _enabled;
@@ -102,6 +106,25 @@ class _ManagedProviderEditorPageState extends State<ManagedProviderEditorPage> {
     _credentialPlacement = TextEditingController(
       text: endpoint?.credentialPlacement ?? 'header',
     );
+    _credentialSource = TextEditingController(
+      text: endpoint?.credentialSource ?? 'secret',
+    );
+    _credentialTemplate = TextEditingController(
+      text: endpoint?.credentialTemplate ?? '',
+    );
+    _headers = TextEditingController(
+      text: _prettyJson(
+        endpoint?.headers.map((key, value) => MapEntry(key, value)) ??
+            const <String, Object?>{},
+      ),
+    );
+    _windows = TextEditingController(
+      text: endpoint == null || endpoint.windows.isEmpty
+          ? ''
+          : const JsonEncoder.withIndent('  ').convert(
+              endpoint.windows.map((window) => window.toJson()).toList(),
+            ),
+    );
     _credentialPrefix = endpoint?.credentialPrefix;
     _kind = provider?.kind == ManagedProviderKind.unknown
         ? ManagedProviderKind.customHttp
@@ -130,6 +153,10 @@ class _ManagedProviderEditorPageState extends State<ManagedProviderEditorPage> {
       _credentialName,
       _credentialField,
       _credentialPlacement,
+      _credentialSource,
+      _credentialTemplate,
+      _headers,
+      _windows,
     ]) {
       controller.dispose();
     }
@@ -190,6 +217,8 @@ class _ManagedProviderEditorPageState extends State<ManagedProviderEditorPage> {
                     measuresPathController: _measuresPath,
                     requestMappingController: _requestMapping,
                     fieldMappingsController: _fieldMappings,
+                    headersController: _headers,
+                    windowsController: _windows,
                     onMethodChanged: (value) => setState(() => _method = value),
                     strictEndpointResolver: () =>
                         _adapter.text.trim() == 'http-json' ||
@@ -206,15 +235,17 @@ class _ManagedProviderEditorPageState extends State<ManagedProviderEditorPage> {
                 badge: _credentialsInitiallyExpanded
                     ? l10n.managedProvidersSectionConfiguredBadge
                     : null,
-                child: _isOfficialSubscription
+                child: _isCliCredentialSource
                     ? ManagedProviderOfficialCredentials(
-                        adapterId: _adapter.text,
+                        credentialSource: _credentialSource.text.trim(),
                       )
                     : ManagedProviderCredentialsSection(
                         schema: _schema,
                         credentialNameController: _credentialName,
                         credentialFieldController: _credentialField,
                         credentialPlacementController: _credentialPlacement,
+                        credentialSourceController: _credentialSource,
+                        credentialTemplateController: _credentialTemplate,
                         credentialConfigured: _credentialRef.text
                             .trim()
                             .isNotEmpty,
@@ -345,6 +376,16 @@ class _ManagedProviderEditorPageState extends State<ManagedProviderEditorPage> {
       _credentialName.text = endpoint.credentialName ?? '';
       _credentialField.text = endpoint.credentialField ?? '';
       _credentialPlacement.text = endpoint.credentialPlacement;
+      _credentialSource.text = endpoint.credentialSource;
+      _credentialTemplate.text = endpoint.credentialTemplate ?? '';
+      _headers.text = _prettyJson(
+        endpoint.headers.map((key, value) => MapEntry(key, value)),
+      );
+      _windows.text = endpoint.windows.isEmpty
+          ? ''
+          : const JsonEncoder.withIndent('  ').convert(
+              endpoint.windows.map((window) => window.toJson()).toList(),
+            );
       _credentialPrefix = endpoint.credentialPrefix;
       _currency.text = display.currency ?? '';
       _unit.text = display.unit ?? '';
@@ -403,6 +444,14 @@ class _ManagedProviderEditorPageState extends State<ManagedProviderEditorPage> {
           : _measuresPath.text.trim(),
       body: decodeJsonObject(_requestMapping.text) ?? const {},
       fieldMappings: decodeJsonObject(_fieldMappings.text) ?? const {},
+      headers: _decodeHeaders(_headers.text),
+      windows: _decodeWindows(_windows.text),
+      credentialSource: _credentialSource.text.trim().isEmpty
+          ? 'secret'
+          : _credentialSource.text.trim(),
+      credentialTemplate: _credentialTemplate.text.trim().isEmpty
+          ? null
+          : _credentialTemplate.text.trim(),
       credentialName: _credentialName.text.trim().isEmpty
           ? null
           : _credentialName.text.trim(),
@@ -428,13 +477,17 @@ class _ManagedProviderEditorPageState extends State<ManagedProviderEditorPage> {
 
   bool get _queryInitiallyExpanded =>
       _kind == ManagedProviderKind.customHttp ||
-      _schema.firstQuery && _selectedPreset == null;
+      _credentialSource.text.trim().startsWith('cli:') ||
+      (_schema.firstQuery && _selectedPreset == null);
 
-  bool get _isOfficialSubscription =>
-      OfficialManagedProviderBinding.forAdapter(_adapter.text) != null;
+  bool get _isCliCredentialSource =>
+      OfficialManagedProviderBinding.forCredentialSource(
+        _credentialSource.text.trim(),
+      ) !=
+      null;
 
   bool get _credentialsInitiallyExpanded {
-    if (_isOfficialSubscription) return true;
+    if (_isCliCredentialSource) return true;
     final provider = _provider;
     if (provider == null) return false;
     final endpoint = provider.endpointConfig;
@@ -563,9 +616,16 @@ class _ManagedProviderEditorPageState extends State<ManagedProviderEditorPage> {
             ? null
             : _measuresPath.text.trim(),
         body: body,
-        headers: current?.endpointConfig.headers ?? const {},
+        headers: _decodeHeaders(_headers.text),
         fieldMappings: fieldMappings,
+        windows: _decodeWindows(_windows.text),
         unknownFields: current?.endpointConfig.unknownFields ?? const {},
+        credentialSource: _credentialSource.text.trim().isEmpty
+            ? 'secret'
+            : _credentialSource.text.trim(),
+        credentialTemplate: _credentialTemplate.text.trim().isEmpty
+            ? null
+            : _credentialTemplate.text.trim(),
         credentialName: _credentialName.text.trim().isEmpty
             ? null
             : _credentialName.text.trim(),
@@ -736,8 +796,15 @@ class _ManagedProviderEditorPageState extends State<ManagedProviderEditorPage> {
             ? null
             : _measuresPath.text.trim(),
         body: body,
-        headers: current?.endpointConfig.headers ?? const {},
+        headers: _decodeHeaders(_headers.text),
         fieldMappings: fieldMappings,
+        windows: _decodeWindows(_windows.text),
+        credentialSource: _credentialSource.text.trim().isEmpty
+            ? 'secret'
+            : _credentialSource.text.trim(),
+        credentialTemplate: _credentialTemplate.text.trim().isEmpty
+            ? null
+            : _credentialTemplate.text.trim(),
         credentialName: _credentialName.text.trim().isEmpty
             ? null
             : _credentialName.text.trim(),
@@ -772,6 +839,35 @@ class _ManagedProviderEditorPageState extends State<ManagedProviderEditorPage> {
   static String _prettyJson(Map<String, Object?> value) {
     if (value.isEmpty) return '{}';
     return const JsonEncoder.withIndent('  ').convert(value);
+  }
+
+  static Map<String, String> _decodeHeaders(String raw) {
+    final parsed = decodeJsonObject(raw);
+    if (parsed == null) return const {};
+    return {
+      for (final entry in parsed.entries)
+        if (entry.value is String) entry.key: entry.value as String,
+    };
+  }
+
+  static List<ManagedProviderUsageWindow> _decodeWindows(String raw) {
+    final trimmed = raw.trim();
+    if (trimmed.isEmpty) return const [];
+    try {
+      final decoded = jsonDecode(trimmed);
+      if (decoded is! List) return const [];
+      return [
+        for (final item in decoded)
+          if (item is Map<String, Object?>)
+            ManagedProviderUsageWindow.fromJson(item)
+          else if (item is Map)
+            ManagedProviderUsageWindow.fromJson(
+              item.map((key, value) => MapEntry(key.toString(), value)),
+            ),
+      ];
+    } on Object {
+      return const [];
+    }
   }
 }
 

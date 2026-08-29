@@ -68,6 +68,59 @@ class ManagedProviderBrand extends Equatable {
 }
 
 @immutable
+class ManagedProviderUsageWindow extends Equatable {
+  const ManagedProviderUsageWindow({
+    required this.label,
+    this.used,
+    this.total,
+    this.remaining,
+    this.resetsAt,
+    this.unit,
+    this.kind,
+  });
+
+  factory ManagedProviderUsageWindow.fromJson(Map<String, Object?> json) =>
+      ManagedProviderUsageWindow(
+        label: json['label'] as String? ?? '',
+        used: json['used'] as String?,
+        total: json['total'] as String?,
+        remaining: json['remaining'] as String?,
+        resetsAt: json['resetsAt'] as String?,
+        unit: json['unit'] as String?,
+        kind: json['kind'] as String?,
+      );
+
+  final String label;
+  final String? used;
+  final String? total;
+  final String? remaining;
+  final String? resetsAt;
+  final String? unit;
+  final String? kind;
+
+  Map<String, Object?> toJson() => {
+    'label': label,
+    if (used != null) 'used': used,
+    if (total != null) 'total': total,
+    if (remaining != null) 'remaining': remaining,
+    if (resetsAt != null) 'resetsAt': resetsAt,
+    if (unit != null) 'unit': unit,
+    if (kind != null) 'kind': kind,
+  };
+
+  @override
+  List<Object?> get props => [
+    label,
+    used,
+    total,
+    remaining,
+    resetsAt,
+    unit,
+    kind,
+  ];
+}
+
+@immutable
 class ManagedProviderEndpointConfig extends Equatable {
   factory ManagedProviderEndpointConfig({
     String url = '',
@@ -78,9 +131,12 @@ class ManagedProviderEndpointConfig extends Equatable {
     String? credentialName,
     String credentialPlacement = 'header',
     String? credentialPrefix,
+    String credentialSource = 'secret',
+    String? credentialTemplate,
     Map<String, String> headers = const {},
     Map<String, Object?> body = const {},
     Map<String, Object?> fieldMappings = const {},
+    List<ManagedProviderUsageWindow> windows = const [],
     bool hadUnsafeUrl = false,
     Map<String, Object?> unknownFields = const {},
   }) => ManagedProviderEndpointConfig._(
@@ -92,9 +148,12 @@ class ManagedProviderEndpointConfig extends Equatable {
     credentialName: _sanitizeOptionalText(credentialName),
     credentialPlacement: credentialPlacement.trim().toLowerCase(),
     credentialPrefix: _sanitizeOptionalText(credentialPrefix),
+    credentialSource: credentialSource.trim(),
+    credentialTemplate: _sanitizeOptionalText(credentialTemplate),
     headers: _freezeRequestHeaders(headers),
     body: _freezeFields(body, rejectCli: true),
     fieldMappings: _freezeMappingFields(fieldMappings),
+    windows: List.unmodifiable(windows),
     hadUnsafeUrl: hadUnsafeUrl || _hasUnsafeUrlParts(url),
     unknownFields: _freezeFields(unknownFields, rejectCli: true),
   );
@@ -108,10 +167,13 @@ class ManagedProviderEndpointConfig extends Equatable {
     this.credentialName,
     required this.credentialPlacement,
     this.credentialPrefix,
+    this.credentialSource = 'secret',
+    this.credentialTemplate,
     this.headers = const {},
     this.body = const {},
     required this.hadUnsafeUrl,
     this.fieldMappings = const {},
+    this.windows = const [],
     this.unknownFields = const {},
   });
 
@@ -126,11 +188,14 @@ class ManagedProviderEndpointConfig extends Equatable {
       credentialName: json['credentialName'] as String?,
       credentialPlacement: json['credentialPlacement'] as String? ?? 'header',
       credentialPrefix: json['credentialPrefix'] as String?,
+      credentialSource: json['credentialSource'] as String? ?? 'secret',
+      credentialTemplate: json['credentialTemplate'] as String?,
       headers: _parseStringMap(json['headers']),
       body: _parseObjectMap(json['body']),
       fieldMappings: mappings is Map
           ? Map<String, Object?>.from(mappings)
           : const {},
+      windows: _parseUsageWindows(json['windows']),
       hadUnsafeUrl: json['hadUnsafeUrl'] == true,
       unknownFields: _unknownFields(json, const {
         'url',
@@ -141,9 +206,12 @@ class ManagedProviderEndpointConfig extends Equatable {
         'credentialName',
         'credentialPlacement',
         'credentialPrefix',
+        'credentialSource',
+        'credentialTemplate',
         'headers',
         'body',
         'fieldMappings',
+        'windows',
         'hadUnsafeUrl',
       }, rejectCli: true),
     );
@@ -157,10 +225,13 @@ class ManagedProviderEndpointConfig extends Equatable {
   final String? credentialName;
   final String credentialPlacement;
   final String? credentialPrefix;
+  final String credentialSource;
+  final String? credentialTemplate;
   final Map<String, String> headers;
   final Map<String, Object?> body;
   final bool hadUnsafeUrl;
   final Map<String, Object?> fieldMappings;
+  final List<ManagedProviderUsageWindow> windows;
   final Map<String, Object?> unknownFields;
 
   Map<String, Object?> toJson() => {
@@ -173,11 +244,15 @@ class ManagedProviderEndpointConfig extends Equatable {
     if (credentialName != null) 'credentialName': credentialName,
     'credentialPlacement': credentialPlacement,
     if (credentialPrefix != null) 'credentialPrefix': credentialPrefix,
+    if (credentialSource != 'secret') 'credentialSource': credentialSource,
+    if (credentialTemplate != null) 'credentialTemplate': credentialTemplate,
     if (headers.isNotEmpty) 'headers': Map<String, String>.from(headers),
     if (body.isNotEmpty) 'body': _thawFields(body, rejectCli: true),
     if (hadUnsafeUrl) 'hadUnsafeUrl': true,
     if (fieldMappings.isNotEmpty)
       'fieldMappings': _thawMappingFields(fieldMappings),
+    if (windows.isNotEmpty)
+      'windows': windows.map((window) => window.toJson()).toList(),
   };
 
   @override
@@ -190,10 +265,13 @@ class ManagedProviderEndpointConfig extends Equatable {
     credentialName,
     credentialPlacement,
     credentialPrefix,
+    credentialSource,
+    credentialTemplate,
     headers,
     body,
     hadUnsafeUrl,
     fieldMappings,
+    windows,
     unknownFields,
   ];
 }
@@ -598,6 +676,15 @@ Map<String, Object?> _parseObjectMap(Object? raw) {
     for (final entry in raw.entries)
       if (entry.key is String) entry.key as String: entry.value,
   }, rejectCli: true);
+}
+
+List<ManagedProviderUsageWindow> _parseUsageWindows(Object? raw) {
+  if (raw is! List) return const [];
+  return List.unmodifiable([
+    for (final item in raw)
+      if (item is Map)
+        ManagedProviderUsageWindow.fromJson(Map<String, Object?>.from(item)),
+  ]);
 }
 
 Map<String, String> _freezeRequestHeaders(Map<String, String> headers) =>

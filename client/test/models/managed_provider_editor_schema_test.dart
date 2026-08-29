@@ -68,49 +68,59 @@ void main() {
   });
 
   test(
-    'legacy providers derive compatibility from kind adapter and endpoint',
+    'http-json subscription presets expose query and cli credential fields',
     () {
-      final official = ManagedProviderEditorSchema.fromProvider(
-        ManagedProvider(
-          id: 'codex',
-          name: 'Codex',
-          kind: ManagedProviderKind.subscriptionQuota,
-          adapterId: 'official-codex-subscription',
-        ),
+      final codex = ManagedProviderEditorSchema.fromProvider(
+        managedProviderPresetById('codex')!.template,
       );
 
-      expect(official.hasSection(ManagedProviderEditorSection.basics), isTrue);
-      expect(official.hasSection(ManagedProviderEditorSection.query), isFalse);
+      expect(codex.hasSection(ManagedProviderEditorSection.query), isTrue);
+      expect(codex.hasField('endpointConfig.url'), isTrue);
+      expect(codex.hasField('endpointConfig.headers'), isTrue);
+      expect(codex.hasField('endpointConfig.windows'), isTrue);
       expect(
-        official.hasSection(ManagedProviderEditorSection.credentials),
-        isTrue,
+        field(codex, 'endpointConfig.credentialSource').defaultValue,
+        'cli:openai-official',
       );
-      expect(official.hasSection(ManagedProviderEditorSection.display), isTrue);
       expect(
-        official.hasSection(ManagedProviderEditorSection.advanced),
-        isTrue,
-      );
-      expect(official.hasField('endpointConfig.url'), isFalse);
-      expect(field(official, 'kind').readOnly, isTrue);
-
-      final legacyHttp = ManagedProviderEditorSchema.fromProvider(
-        ManagedProvider(
-          id: 'legacy',
-          name: 'Legacy HTTP',
-          kind: ManagedProviderKind.apiBalance,
-          adapterId: 'legacy-adapter',
-          endpointConfig: ManagedProviderEndpointConfig(
-            url: 'https://legacy.example.test/usage',
-            responsePath: r'$.data',
-            measuresPath: r'$.data.balance',
-          ),
+        codex.fields.any(
+          (candidate) => candidate.kind == ManagedProviderEditorFieldKind.secret,
         ),
+        isFalse,
       );
 
-      expect(legacyHttp.hasSection(ManagedProviderEditorSection.query), isTrue);
-      expect(legacyHttp.hasField('endpointConfig.url'), isTrue);
+      final cursor = ManagedProviderEditorSchema.fromProvider(
+        managedProviderPresetById('cursor')!.template,
+      );
+      expect(
+        field(cursor, 'endpointConfig.credentialTemplate').defaultValue,
+        'WorkosCursorSessionToken={accountId}::{accessToken}',
+      );
+      expect(
+        field(cursor, 'endpointConfig.credentialSource').defaultValue,
+        'cli:cursor-account',
+      );
     },
   );
+
+  test('legacy HTTP providers derive compatibility from endpoint declaration', () {
+    final legacyHttp = ManagedProviderEditorSchema.fromProvider(
+      ManagedProvider(
+        id: 'legacy',
+        name: 'Legacy HTTP',
+        kind: ManagedProviderKind.apiBalance,
+        adapterId: 'legacy-adapter',
+        endpointConfig: ManagedProviderEndpointConfig(
+          url: 'https://legacy.example.test/usage',
+          responsePath: r'$.data',
+          measuresPath: r'$.data.balance',
+        ),
+      ),
+    );
+
+    expect(legacyHttp.hasSection(ManagedProviderEditorSection.query), isTrue);
+    expect(legacyHttp.hasField('endpointConfig.url'), isTrue);
+  });
 
   test('derived schema preserves credential reference default value', () {
     final schema = ManagedProviderEditorSchema.fromProvider(
@@ -126,56 +136,31 @@ void main() {
     expect(field(schema, 'credentialRef').defaultValue, 'managed-provider:p1');
   });
 
-  test('official subscriptions hide default HTTP credential metadata', () {
-    final official = ManagedProviderEditorSchema.fromProvider(
+  test('http-json presets expose credential metadata for manual providers', () {
+    final manual = ManagedProviderEditorSchema.fromProvider(
       ManagedProvider(
-        id: 'codex',
-        name: 'Codex',
-        kind: ManagedProviderKind.subscriptionQuota,
-        adapterId: 'official-codex-subscription',
-        credentialRef: 'managed-provider:codex',
-      ),
-    );
-
-    expect(
-      field(official, 'credentialRef').defaultValue,
-      'managed-provider:codex',
-    );
-    expect(official.hasField('endpointConfig.credentialName'), isFalse);
-    expect(official.hasField('endpointConfig.credentialField'), isFalse);
-    expect(official.hasField('endpointConfig.credentialPlacement'), isFalse);
-    expect(official.hasField('endpointConfig.credentialPrefix'), isFalse);
-
-    final legacyOfficial = ManagedProviderEditorSchema.fromProvider(
-      ManagedProvider(
-        id: 'claude',
-        name: 'Claude',
-        kind: ManagedProviderKind.subscriptionQuota,
-        adapterId: 'official-claude-subscription',
+        id: 'custom-codex',
+        name: 'Custom Codex',
+        kind: ManagedProviderKind.customHttp,
+        adapterId: 'http-json',
+        credentialRef: 'managed-provider:custom-codex',
         endpointConfig: ManagedProviderEndpointConfig(
+          url: 'https://chatgpt.com/backend-api/wham/usage',
           credentialName: 'Authorization',
-          credentialField: 'apiKey',
-          credentialPlacement: 'query',
+          credentialField: 'accessToken',
+          credentialPlacement: 'header',
           credentialPrefix: 'Bearer ',
         ),
       ),
     );
 
     expect(
-      field(legacyOfficial, 'endpointConfig.credentialName').defaultValue,
-      'Authorization',
+      field(manual, 'credentialRef').defaultValue,
+      'managed-provider:custom-codex',
     );
-    expect(
-      field(legacyOfficial, 'endpointConfig.credentialField').defaultValue,
-      'apiKey',
-    );
-    expect(
-      field(legacyOfficial, 'endpointConfig.credentialPlacement').defaultValue,
-      'query',
-    );
-    expect(
-      field(legacyOfficial, 'endpointConfig.credentialPrefix').defaultValue,
-      'Bearer ',
-    );
+    expect(field(manual, 'endpointConfig.credentialName').defaultValue, 'Authorization');
+    expect(field(manual, 'endpointConfig.credentialField').defaultValue, 'accessToken');
+    expect(field(manual, 'endpointConfig.credentialPlacement').defaultValue, 'header');
+    expect(field(manual, 'endpointConfig.credentialPrefix').defaultValue, 'Bearer ');
   });
 }

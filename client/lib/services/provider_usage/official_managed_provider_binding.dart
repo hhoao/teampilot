@@ -2,41 +2,49 @@ import '../../cubits/app_provider_cubit.dart';
 import '../../models/app_provider_config.dart';
 import '../cli/claude/provider_presets.dart';
 import '../cli/codex/provider_presets.dart';
-import 'adapters/claude_subscription_adapter.dart';
-import 'adapters/codex_subscription_adapter.dart';
+import '../cli/cursor/provider_presets.dart';
 
-/// Maps a Managed Provider official adapter to the CLI provider row used for
-/// login, import, and credential files.
+/// Maps a Managed Provider `cli:<id>` credential source to the CLI provider
+/// row used for login, import, and credential files.
 class OfficialManagedProviderBinding {
   const OfficialManagedProviderBinding({
-    required this.adapterId,
+    required this.credentialSource,
     required this.cli,
     required this.appProviderId,
     required this.template,
   });
 
-  final String adapterId;
+  final String credentialSource;
   final CliTool cli;
   final String appProviderId;
   final AppProviderConfig template;
 
-  static OfficialManagedProviderBinding? forAdapter(String adapterId) {
-    switch (adapterId.trim()) {
-      case CodexSubscriptionAdapter.stableAdapterId:
+  static OfficialManagedProviderBinding? forCredentialSource(String source) {
+    switch (source.trim()) {
+      case 'cli:openai-official':
         final preset = CodexProviderPresets.byId('openai-official');
         if (preset == null) return null;
         return OfficialManagedProviderBinding(
-          adapterId: CodexSubscriptionAdapter.stableAdapterId,
+          credentialSource: 'cli:openai-official',
           cli: CliTool.codex,
           appProviderId: preset.template.id,
           template: preset.template,
         );
-      case ClaudeSubscriptionAdapter.stableAdapterId:
+      case 'cli:claude-official':
         final preset = ClaudeProviderPresets.byId('claude-official');
         if (preset == null) return null;
         return OfficialManagedProviderBinding(
-          adapterId: ClaudeSubscriptionAdapter.stableAdapterId,
+          credentialSource: 'cli:claude-official',
           cli: CliTool.claude,
+          appProviderId: preset.template.id,
+          template: preset.template,
+        );
+      case 'cli:cursor-account':
+        final preset = CursorProviderPresets.byId('cursor-account');
+        if (preset == null) return null;
+        return OfficialManagedProviderBinding(
+          credentialSource: 'cli:cursor-account',
+          cli: CliTool.cursor,
           appProviderId: preset.template.id,
           template: preset.template,
         );

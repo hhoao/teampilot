@@ -140,6 +140,8 @@ class ManagedProviderQuerySection extends StatelessWidget {
     required this.measuresPathController,
     required this.requestMappingController,
     required this.fieldMappingsController,
+    required this.headersController,
+    required this.windowsController,
     required this.onMethodChanged,
     this.strictEndpointResolver = _defaultStrictEndpointResolver,
     super.key,
@@ -154,6 +156,8 @@ class ManagedProviderQuerySection extends StatelessWidget {
   final TextEditingController measuresPathController;
   final TextEditingController requestMappingController;
   final TextEditingController fieldMappingsController;
+  final TextEditingController headersController;
+  final TextEditingController windowsController;
   final ValueChanged<String> onMethodChanged;
 
   /// Evaluated inside the endpoint validator so the freshness of the adapter
@@ -263,6 +267,37 @@ class ManagedProviderQuerySection extends StatelessWidget {
             ).smColored(Theme.of(context).colorScheme.onSurfaceVariant),
           ),
         ],
+        if (schema.hasField('endpointConfig.headers')) ...[
+          const SizedBox(height: 12),
+          TpTextareaFormField(
+            key: const Key('managed-provider-headers'),
+            label: const Text('Headers'),
+            controller: headersController,
+            minHeight: 90,
+            maxHeight: 180,
+            decoration: const InputDecoration(hintText: '{"Accept": "application/json"}'),
+            validator: (value) {
+              final parsed = decodeJsonObject(value ?? '');
+              if (parsed == null || mappingContainsCredentialKey(parsed)) {
+                return context.l10n.managedProvidersRequestMappingError;
+              }
+              return null;
+            },
+          ),
+        ],
+        if (schema.hasField('endpointConfig.windows')) ...[
+          const SizedBox(height: 12),
+          TpTextareaFormField(
+            key: const Key('managed-provider-windows'),
+            label: const Text('Windows'),
+            controller: windowsController,
+            minHeight: 120,
+            maxHeight: 220,
+            decoration: InputDecoration(
+              hintText: r'[{"label":"Plan","used":"$.plan.used","unit":"%"}]',
+            ),
+          ),
+        ],
       ],
     );
   }
@@ -274,6 +309,8 @@ class ManagedProviderCredentialsSection extends StatelessWidget {
     required this.credentialNameController,
     required this.credentialFieldController,
     required this.credentialPlacementController,
+    required this.credentialSourceController,
+    required this.credentialTemplateController,
     required this.credentialConfigured,
     this.onCredentialFieldChanged,
     super.key,
@@ -283,6 +320,8 @@ class ManagedProviderCredentialsSection extends StatelessWidget {
   final TextEditingController credentialNameController;
   final TextEditingController credentialFieldController;
   final TextEditingController credentialPlacementController;
+  final TextEditingController credentialSourceController;
+  final TextEditingController credentialTemplateController;
   final bool credentialConfigured;
   final ValueChanged<String>? onCredentialFieldChanged;
 
@@ -292,7 +331,9 @@ class ManagedProviderCredentialsSection extends StatelessWidget {
     final hasMetadata =
         schema.hasField('endpointConfig.credentialName') ||
         schema.hasField('endpointConfig.credentialField') ||
-        schema.hasField('endpointConfig.credentialPlacement');
+        schema.hasField('endpointConfig.credentialPlacement') ||
+        schema.hasField('endpointConfig.credentialSource') ||
+        schema.hasField('endpointConfig.credentialTemplate');
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
@@ -329,6 +370,23 @@ class ManagedProviderCredentialsSection extends StatelessWidget {
             label: l10n.managedProvidersCredentialPlacement,
             controller: credentialPlacementController,
             hint: l10n.managedProvidersCredentialPlacementHint,
+          ),
+        ],
+        if (schema.hasField('endpointConfig.credentialSource')) ...[
+          const SizedBox(height: 12),
+          _ManagedProviderTextField(
+            fieldKey: const Key('managed-provider-credential-source'),
+            label: 'Credential source',
+            controller: credentialSourceController,
+            hint: 'secret or cli:cursor-account',
+          ),
+        ],
+        if (schema.hasField('endpointConfig.credentialTemplate')) ...[
+          const SizedBox(height: 12),
+          _ManagedProviderTextField(
+            fieldKey: const Key('managed-provider-credential-template'),
+            label: 'Credential template',
+            controller: credentialTemplateController,
           ),
         ],
       ],

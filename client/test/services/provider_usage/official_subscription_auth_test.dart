@@ -4,7 +4,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/models/managed_provider.dart';
 import 'package:teampilot/services/provider_usage/adapters/claude_official_subscription_auth.dart';
 import 'package:teampilot/services/provider_usage/adapters/codex_official_subscription_auth.dart';
-import 'package:teampilot/services/provider_usage/adapters/official_subscription_adapter.dart';
+import 'package:teampilot/services/provider_usage/cli_credential_source.dart';
 import 'package:teampilot/services/provider_usage/managed_provider_usage_adapter.dart';
 
 import '../../support/in_memory_filesystem.dart';

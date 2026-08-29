@@ -7532,15 +7532,19 @@ class AppLocalizationsZh extends AppLocalizations {
   String get managedProvidersQuickPresetCodex => 'Codex';
 
   @override
-  String get managedProvidersQuickPresetCodexHint =>
-      '在下方登录或导入凭据。用量查询走官方 ChatGPT Codex 配额接口。';
+  String get managedProvidersQuickPresetCodexHint => '登录或导入，或手填相同字段。';
 
   @override
   String get managedProvidersQuickPresetClaudeCode => 'Claude Code';
 
   @override
-  String get managedProvidersQuickPresetClaudeCodeHint =>
-      '在下方登录或导入凭据。用量查询走官方 Claude OAuth 配额接口。';
+  String get managedProvidersQuickPresetClaudeCodeHint => '登录或导入，或手填相同字段。';
+
+  @override
+  String get managedProvidersQuickPresetCursor => 'Cursor';
+
+  @override
+  String get managedProvidersQuickPresetCursorHint => '登录或导入，或手填相同字段。';
 
   @override
   String get managedProvidersQuickPresetDeepSeek => 'DeepSeek';

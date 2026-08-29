@@ -7,14 +7,14 @@ import '../../cubits/app_provider_cubit.dart';
 import '../../services/provider_usage/official_managed_provider_binding.dart';
 import '../../widgets/app_provider/provider_credential_action_bar.dart';
 
-/// Login / import / revoke for official Codex and Claude Managed Providers.
+/// Login / import / revoke for `cli:` Managed Provider credential sources.
 class ManagedProviderOfficialCredentials extends StatefulWidget {
   const ManagedProviderOfficialCredentials({
-    required this.adapterId,
+    required this.credentialSource,
     super.key,
   });
 
-  final String adapterId;
+  final String credentialSource;
 
   @override
   State<ManagedProviderOfficialCredentials> createState() =>
@@ -34,13 +34,15 @@ class _ManagedProviderOfficialCredentialsState
   @override
   void didUpdateWidget(covariant ManagedProviderOfficialCredentials oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (oldWidget.adapterId != widget.adapterId) {
+    if (oldWidget.credentialSource != widget.credentialSource) {
       unawaited(_ensure());
     }
   }
 
   Future<void> _ensure() async {
-    final binding = OfficialManagedProviderBinding.forAdapter(widget.adapterId);
+    final binding = OfficialManagedProviderBinding.forCredentialSource(
+      widget.credentialSource,
+    );
     if (binding == null || !mounted) return;
     await ensureOfficialAppProvider(
       cubit: context.read<AppProviderCubit>(),
@@ -50,7 +52,9 @@ class _ManagedProviderOfficialCredentialsState
 
   @override
   Widget build(BuildContext context) {
-    final binding = OfficialManagedProviderBinding.forAdapter(widget.adapterId);
+    final binding = OfficialManagedProviderBinding.forCredentialSource(
+      widget.credentialSource,
+    );
     if (binding == null) return const SizedBox.shrink();
     return BlocBuilder<AppProviderCubit, AppProviderState>(
       builder: (context, state) {

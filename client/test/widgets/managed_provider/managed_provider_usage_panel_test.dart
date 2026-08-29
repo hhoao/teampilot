@@ -73,7 +73,11 @@ ManagedProvider _codexProvider() => ManagedProvider(
   id: 'p1',
   name: 'Codex',
   kind: ManagedProviderKind.subscriptionQuota,
-  adapterId: 'official-codex-subscription',
+  adapterId: 'http-json',
+  endpointConfig: ManagedProviderEndpointConfig(
+    url: 'https://chatgpt.com/backend-api/wham/usage',
+    credentialSource: 'cli:openai-official',
+  ),
 );
 
 void main() {
