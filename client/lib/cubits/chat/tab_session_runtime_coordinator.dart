@@ -42,6 +42,7 @@ class TabSessionRuntimeCoordinator {
     String? Function()? activeSessionId,
     Map<String, MemberPresence> Function()? presence,
     bool Function(String sessionId)? sessionBusyFromAttention,
+    bool Function(String sessionId)? sessionBusyFromDeliveryInFlight,
     SessionWorkingResolver? sessionWorking,
     PromptDeliveryCoordinator? promptDeliveries,
   }) {
@@ -91,6 +92,7 @@ class TabSessionRuntimeCoordinator {
                     TerminalReclaimPolicy(idleAfter: Duration(seconds: reclaimSeconds())),
                 onDiscardMember: onReclaimMember,
                 sessionBusyFromAttention: sessionBusyFromAttention,
+                sessionBusyFromDeliveryInFlight: sessionBusyFromDeliveryInFlight,
                 isSessionPinned: isSessionPinned,
               ));
     final aggregator =
@@ -103,6 +105,7 @@ class TabSessionRuntimeCoordinator {
           activeSessionId: activeSessionId ?? () => null,
           presence: presence ?? () => const {},
           sessionBusyFromAttention: sessionBusyFromAttention,
+          sessionBusyFromDeliveryInFlight: sessionBusyFromDeliveryInFlight,
         );
     return TabSessionRuntimeCoordinator._(
       coordinationFactory: coordination,

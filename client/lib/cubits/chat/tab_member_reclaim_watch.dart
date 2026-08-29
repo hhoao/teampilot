@@ -22,6 +22,7 @@ class TabMemberReclaimWatch {
     required TerminalReclaimPolicy Function() policy,
     required void Function(String sessionId, String memberId) onDiscardMember,
     bool Function(String sessionId)? sessionBusyFromAttention,
+    bool Function(String sessionId)? sessionBusyFromDeliveryInFlight,
     bool Function(String sessionId)? isSessionPinned,
     DateTime Function()? now,
   }) : _tabStore = tabStore,
@@ -30,6 +31,7 @@ class TabMemberReclaimWatch {
        _policy = policy,
        _onDiscardMember = onDiscardMember,
        _sessionBusyFromAttention = sessionBusyFromAttention,
+       _sessionBusyFromDeliveryInFlight = sessionBusyFromDeliveryInFlight,
        _isSessionPinned = isSessionPinned,
        _now = now ?? DateTime.now;
 
@@ -39,6 +41,7 @@ class TabMemberReclaimWatch {
   final TerminalReclaimPolicy Function() _policy;
   final void Function(String sessionId, String memberId) _onDiscardMember;
   final bool Function(String sessionId)? _sessionBusyFromAttention;
+  final bool Function(String sessionId)? _sessionBusyFromDeliveryInFlight;
   final bool Function(String sessionId)? _isSessionPinned;
   final DateTime Function() _now;
 
@@ -124,7 +127,8 @@ class TabMemberReclaimWatch {
           tab.workbenchView == SessionWorkbenchView.terminal &&
           tab.selectedMemberId == memberId,
       inTurn: (bus?.isMemberInTurn(memberId) ?? shell.userTurnActive) ||
-          (_sessionBusyFromAttention?.call(tab.info.id) ?? false),
+          (_sessionBusyFromAttention?.call(tab.info.id) ?? false) ||
+          (_sessionBusyFromDeliveryInFlight?.call(tab.info.id) ?? false),
       hasUnread: (bus?.memberById(memberId)?.inbox.unreadCount ?? 0) > 0,
       isSessionPinned: _isSessionPinned?.call(tab.info.id) ??
           (tab.persistedSession?.pinned ?? false),

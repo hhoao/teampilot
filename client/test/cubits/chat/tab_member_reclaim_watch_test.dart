@@ -48,6 +48,7 @@ TabMemberReclaimWatch _watch(
   required void Function(String, String) onDiscard,
   required DateTime Function() now,
   bool Function(String sessionId)? isSessionPinned,
+  bool Function(String sessionId)? sessionBusyFromDeliveryInFlight,
 }) => TabMemberReclaimWatch(
   tabStore: store,
   reclaimEnabled: () => true,
@@ -55,6 +56,7 @@ TabMemberReclaimWatch _watch(
   policy: () => const TerminalReclaimPolicy(idleAfter: Duration(seconds: 2)),
   onDiscardMember: onDiscard,
   isSessionPinned: isSessionPinned,
+  sessionBusyFromDeliveryInFlight: sessionBusyFromDeliveryInFlight,
   now: now,
 );
 
@@ -162,6 +164,42 @@ void main() {
       store,
       onDiscard: (s, m) => discarded.add((s, m)),
       now: () => now,
+    );
+
+    watch.tick();
+    now = now.add(const Duration(seconds: 3));
+    watch.tick();
+
+    expect(discarded, isEmpty);
+  });
+
+  test('delivery in-flight protects an idle worker from reclaim', () {
+    final store = ChatTabStore();
+    final tab = _tabWithBus();
+    store.registerSession(tab);
+    final bus = _busWith(
+      'team-lead',
+      MemberLifecycle.running,
+      MemberActivity.turnDoneReady,
+    );
+    bus.declareMember(
+      AgentNode.test(
+        memberId: 'worker-1',
+        lifecycle: MemberLifecycle.running,
+        activity: MemberActivity.turnDoneBusWait,
+      ),
+    );
+    tab.teamBus = bus;
+    tab.memberShells['team-lead'] = _runningShell();
+    tab.memberShells['worker-1'] = _runningShell();
+
+    final discarded = <(String, String)>[];
+    var now = DateTime(2026, 8, 9, 12, 0, 0);
+    final watch = _watch(
+      store,
+      onDiscard: (s, m) => discarded.add((s, m)),
+      now: () => now,
+      sessionBusyFromDeliveryInFlight: (id) => id == 'sess',
     );
 
     watch.tick();

@@ -15,13 +15,15 @@ final class TabWorkingAggregator {
     required String? Function() activeSessionId,
     required Map<String, MemberPresence> Function() presence,
     bool Function(String sessionId)? sessionBusyFromAttention,
+    bool Function(String sessionId)? sessionBusyFromDeliveryInFlight,
   }) : _tabStore = tabStore,
        _sessionWorking = sessionWorking,
        _globalPresets = globalPresets,
        _activeTeam = activeTeam,
        _activeSessionId = activeSessionId,
        _presence = presence,
-       _sessionBusyFromAttention = sessionBusyFromAttention;
+       _sessionBusyFromAttention = sessionBusyFromAttention,
+       _sessionBusyFromDeliveryInFlight = sessionBusyFromDeliveryInFlight;
 
   final ChatTabStore _tabStore;
   final SessionWorkingResolver _sessionWorking;
@@ -30,6 +32,7 @@ final class TabWorkingAggregator {
   final String? Function() _activeSessionId;
   final Map<String, MemberPresence> Function() _presence;
   final bool Function(String sessionId)? _sessionBusyFromAttention;
+  final bool Function(String sessionId)? _sessionBusyFromDeliveryInFlight;
 
   Set<String> compute() {
     final working = <String>{};
@@ -55,7 +58,11 @@ final class TabWorkingAggregator {
       // approval the hook goes working but latch stays false without this OR.
       final attentionBusy =
           _sessionBusyFromAttention?.call(sessionId) ?? false;
-      if (sessionWorking || attentionBusy) working.add(sessionId);
+      final deliveryInFlight =
+          _sessionBusyFromDeliveryInFlight?.call(sessionId) ?? false;
+      if (sessionWorking || attentionBusy || deliveryInFlight) {
+        working.add(sessionId);
+      }
     }
     return working;
   }
