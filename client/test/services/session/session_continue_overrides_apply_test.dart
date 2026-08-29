@@ -1,6 +1,6 @@
-import 'package:teampilot/models/launch_security_policy.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/models/app_session.dart';
+import 'package:teampilot/models/cli_preset.dart';
 import 'package:teampilot/models/session_continue_overrides.dart';
 import 'package:teampilot/models/team_config.dart';
 import 'package:teampilot/services/session/session_continue_overrides_apply.dart';
@@ -48,7 +48,7 @@ void main() {
   });
 
   test(
-    'team merge applies provider/model/effort/preset and policy; CLI unchanged',
+    'team deleted-preset without livePreset stamps snapshot and policy; CLI unchanged',
     () {
       const base = TeamMemberConfig(
         id: 'builder-0',
@@ -92,6 +92,104 @@ void main() {
       expect(out.launchSecurityPolicy.requiresDangerousExecution, isFalse);
     },
   );
+
+  test(
+    'team follow with live preset keeps withPreset fields and activePresetId',
+    () {
+      const live = CliPreset(
+        id: 'p1',
+        name: 'Live',
+        cli: CliTool.claude,
+        provider: 'live-provider',
+        model: 'live-model',
+        effort: 'low',
+        createdAt: 1,
+        updatedAt: 2,
+      );
+      const base = TeamMemberConfig(
+        id: 'builder-0',
+        name: 'Builder',
+        cli: CliTool.claude,
+        provider: 'live-provider',
+        model: 'live-model',
+        effort: 'low',
+        launchSecurityPolicy: LaunchSecurityPolicy.fullAccess,
+      );
+      final session = AppSession(
+        sessionId: 's1',
+        workspaceId: 'w1',
+        sessionTeam: 'team',
+        createdAt: 1,
+        continueOverrides: const SessionContinueOverrides(
+          memberOverrides: {
+            'builder-0': SessionMemberContinueOverride(
+              presetId: 'p1',
+              provider: 'stale-provider',
+              model: 'stale-model',
+              effort: 'high',
+            ),
+          },
+        ),
+      );
+      final out = applySessionContinueOverrides(
+        baseMember: base,
+        session: session,
+        memberId: 'builder-0',
+        isSimple: false,
+        livePreset: live,
+      );
+      expect(out.provider, 'live-provider');
+      expect(out.model, 'live-model');
+      expect(out.effort, 'low');
+      expect(out.activePresetId, 'p1');
+      expect(out.cli, CliTool.claude);
+    },
+  );
+
+  test('team follow CLI mismatch still stamps snapshot', () {
+    const live = CliPreset(
+      id: 'p1',
+      name: 'Live',
+      cli: CliTool.cursor,
+      provider: 'cursor-account',
+      model: 'composer-2.5',
+      createdAt: 1,
+      updatedAt: 2,
+    );
+    const base = TeamMemberConfig(
+      id: 'builder-0',
+      name: 'Builder',
+      cli: CliTool.claude,
+      provider: 'keep',
+      model: 'keep-m',
+    );
+    final session = AppSession(
+      sessionId: 's1',
+      workspaceId: 'w1',
+      sessionTeam: 'team',
+      createdAt: 1,
+      continueOverrides: const SessionContinueOverrides(
+        memberOverrides: {
+          'builder-0': SessionMemberContinueOverride(
+            presetId: 'p1',
+            provider: 'snap',
+            model: 'snap-m',
+          ),
+        },
+      ),
+    );
+    final out = applySessionContinueOverrides(
+      baseMember: base,
+      session: session,
+      memberId: 'builder-0',
+      isSimple: false,
+      livePreset: live,
+    );
+    expect(out.provider, 'snap');
+    expect(out.model, 'snap-m');
+    expect(out.activePresetId, isNull);
+    expect(out.cli, CliTool.claude);
+  });
 
   test(
     'simple merge applies session-level policy; keeps base provider/model/cli',

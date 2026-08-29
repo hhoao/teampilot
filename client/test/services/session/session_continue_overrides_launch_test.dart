@@ -1,4 +1,3 @@
-import 'package:teampilot/models/launch_security_policy.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/models/app_session.dart';
 import 'package:teampilot/models/cli_preset.dart';
@@ -113,7 +112,7 @@ void main() {
   });
 
   test(
-    'finalize then memberForLaunch keeps continue provider (team staging)',
+    'finalize then memberForLaunch follows live preset (team staging)',
     () {
       const base = TeamMemberConfig(
         id: 'builder-0',
@@ -149,8 +148,9 @@ void main() {
         preset: preset,
         withPreset: _memberWithPreset,
       );
-      expect(finalized.provider, 'override-provider');
-      expect(finalized.activePresetId, isNull);
+      expect(finalized.provider, 'preset-provider');
+      expect(finalized.model, 'preset-model');
+      expect(finalized.activePresetId, 'p-template');
 
       final team = TeamProfile(
         id: 'team',
@@ -165,22 +165,9 @@ void main() {
         globalPresets: const [preset],
       );
 
-      expect(staged.provider, 'override-provider');
-      expect(staged.model, 'override-model');
+      expect(staged.provider, 'preset-provider');
+      expect(staged.model, 'preset-model');
       expect(staged.launchSecurityPolicy.requiresDangerousExecution, isTrue);
-
-      // Old bug: leaving activePresetId set made memberForLaunch expand the
-      // template preset and wipe continue provider/model.
-      final buggy = memberForLaunch(
-        team: team,
-        member: finalized.copyWith(
-          activePresetId: 'p-template',
-          updateActivePresetId: true,
-        ),
-        globalPresets: const [preset],
-      );
-      expect(buggy.provider, 'preset-provider');
-      expect(buggy.provider, isNot(staged.provider));
     },
   );
 

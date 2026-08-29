@@ -1,7 +1,5 @@
 import '../../models/app_session.dart';
 import '../../models/cli_preset.dart';
-import '../../models/launch_security_policy.dart';
-import '../../models/session_continue_overrides.dart';
 import '../../models/team_config.dart';
 
 LaunchSecurityPolicy resolveContinueSecurityPolicy({
@@ -35,6 +33,7 @@ TeamMemberConfig finalizeSessionLaunchMember({
     session: session,
     memberId: memberId,
     isSimple: isSimple,
+    livePreset: isSimple ? null : preset,
   );
   if (!isSimple) {
     final id = memberId.trim();
@@ -50,16 +49,16 @@ TeamMemberConfig finalizeSessionLaunchMember({
 /// Team: apply memberOverrides[memberId] provider/model/effort/presetId + policy.
 /// Never change [baseMember.cli].
 ///
-/// When concrete provider/model/effort are applied, clear [TeamMemberConfig.activePresetId]
-/// on the launch member so a later [memberForLaunch] cannot re-expand a template
-/// preset over those fields. [SessionMemberContinueOverride.presetId] remains for
-/// UI/persist; it is only copied onto the launch member when no concrete fields
-/// were overridden.
+/// When a member follows a matching live preset, do not reapply its stored
+/// provider/model/effort snapshot. Detached or missing presets still stamp
+/// concrete fields and clear [TeamMemberConfig.activePresetId] so a later
+/// [memberForLaunch] cannot re-expand a template preset over those fields.
 TeamMemberConfig applySessionContinueOverrides({
   required TeamMemberConfig baseMember,
   required AppSession session,
   required String memberId,
   required bool isSimple,
+  CliPreset? livePreset,
 }) {
   final overrides = session.continueOverrides;
 
@@ -87,6 +86,20 @@ TeamMemberConfig applySessionContinueOverrides({
   }
 
   var merged = baseMember.copyWith(launchSecurityPolicy: policy);
+  final followId = memberOverride.presetId?.trim() ?? '';
+  final liveId = livePreset?.id.trim() ?? '';
+  final following =
+      followId.isNotEmpty &&
+      livePreset != null &&
+      liveId == followId &&
+      livePreset.cli == baseMember.cli;
+
+  if (following) {
+    return merged.copyWith(
+      activePresetId: followId,
+      updateActivePresetId: true,
+    );
+  }
 
   final hasConcreteLaunchFields =
       memberOverride.provider != null ||
