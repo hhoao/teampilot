@@ -7839,14 +7839,21 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get managedProvidersQuickPresetCodexHint =>
-      'Sign in or import credentials below. Usage uses the official ChatGPT Codex quota API.';
+      'Sign in or import credentials below, or fill the same fields manually.';
 
   @override
   String get managedProvidersQuickPresetClaudeCode => 'Claude Code';
 
   @override
   String get managedProvidersQuickPresetClaudeCodeHint =>
-      'Sign in or import credentials below. Usage uses the official Claude OAuth quota API.';
+      'Sign in or import credentials below, or fill the same fields manually.';
+
+  @override
+  String get managedProvidersQuickPresetCursor => 'Cursor';
+
+  @override
+  String get managedProvidersQuickPresetCursorHint =>
+      'Sign in or import credentials below, or fill the same fields manually.';
 
   @override
   String get managedProvidersQuickPresetDeepSeek => 'DeepSeek';

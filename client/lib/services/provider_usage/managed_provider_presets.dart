@@ -176,7 +176,39 @@ final List<ManagedProviderPreset> builtInManagedProviderPresets =
           id: '',
           name: 'Codex',
           kind: ManagedProviderKind.subscriptionQuota,
-          adapterId: 'official-codex-subscription',
+          adapterId: 'http-json',
+          endpointConfig: ManagedProviderEndpointConfig(
+            url: 'https://chatgpt.com/backend-api/wham/usage',
+            credentialSource: 'cli:openai-official',
+            credentialField: 'accessToken',
+            credentialName: 'Authorization',
+            credentialPrefix: 'Bearer ',
+            headers: {
+              'User-Agent': 'codex-cli',
+              'Accept': 'application/json',
+              'ChatGPT-Account-Id': '{accountId}',
+            },
+            windows: const [
+              ManagedProviderUsageWindow(
+                label: '5h',
+                used: r'$.rate_limit.primary_window.used_percent',
+                resetsAt: r'$.rate_limit.primary_window.reset_at',
+                unit: '%',
+              ),
+              ManagedProviderUsageWindow(
+                label: 'Weekly',
+                used: r'$.rate_limit.secondary_window.used_percent',
+                resetsAt: r'$.rate_limit.secondary_window.reset_at',
+                unit: '%',
+              ),
+              ManagedProviderUsageWindow(
+                label: 'Monthly',
+                used: r'$.spend_control.individual_limit.used_percent',
+                resetsAt: r'$.spend_control.individual_limit.reset_at',
+                unit: '%',
+              ),
+            ],
+          ),
         ),
       ),
       ManagedProviderPreset(
@@ -187,7 +219,97 @@ final List<ManagedProviderPreset> builtInManagedProviderPresets =
           id: '',
           name: 'Claude Code',
           kind: ManagedProviderKind.subscriptionQuota,
-          adapterId: 'official-claude-subscription',
+          adapterId: 'http-json',
+          endpointConfig: ManagedProviderEndpointConfig(
+            url: 'https://api.anthropic.com/api/oauth/usage',
+            credentialSource: 'cli:claude-official',
+            credentialField: 'accessToken',
+            credentialName: 'Authorization',
+            credentialPrefix: 'Bearer ',
+            headers: {
+              'anthropic-beta': 'oauth-2025-04-20',
+              'Accept': 'application/json',
+              'User-Agent': 'claude-code/2.1.0',
+            },
+            windows: const [
+              ManagedProviderUsageWindow(
+                label: '5h',
+                used: r'$.five_hour.utilization',
+                resetsAt: r'$.five_hour.resets_at',
+                unit: '%',
+              ),
+              ManagedProviderUsageWindow(
+                label: 'Weekly',
+                used: r'$.seven_day.utilization',
+                resetsAt: r'$.seven_day.resets_at',
+                unit: '%',
+              ),
+              ManagedProviderUsageWindow(
+                label: 'Weekly Opus',
+                used: r'$.seven_day_opus.utilization',
+                resetsAt: r'$.seven_day_opus.resets_at',
+                unit: '%',
+              ),
+              ManagedProviderUsageWindow(
+                label: 'Weekly Sonnet',
+                used: r'$.seven_day_sonnet.utilization',
+                resetsAt: r'$.seven_day_sonnet.resets_at',
+                unit: '%',
+              ),
+            ],
+          ),
+        ),
+      ),
+      ManagedProviderPreset(
+        id: 'cursor',
+        labelId: 'cursor',
+        hintId: 'cursor',
+        template: ManagedProvider(
+          id: '',
+          name: 'Cursor',
+          kind: ManagedProviderKind.subscriptionQuota,
+          adapterId: 'http-json',
+          endpointConfig: ManagedProviderEndpointConfig(
+            url: 'https://cursor.com/api/usage-summary',
+            credentialSource: 'cli:cursor-account',
+            credentialName: 'Cookie',
+            credentialTemplate:
+                'WorkosCursorSessionToken={accountId}::{accessToken}',
+            headers: {
+              'Accept': 'application/json',
+              'Origin': 'https://cursor.com',
+              'Referer': 'https://cursor.com/dashboard',
+            },
+            windows: const [
+              ManagedProviderUsageWindow(
+                label: 'Plan',
+                used: r'$.individualUsage.plan.totalPercentUsed',
+                unit: '%',
+                resetsAt: r'$.billingCycleEnd',
+              ),
+              ManagedProviderUsageWindow(
+                label: 'Auto',
+                used: r'$.individualUsage.plan.autoPercentUsed',
+                unit: '%',
+              ),
+              ManagedProviderUsageWindow(
+                label: 'API',
+                used: r'$.individualUsage.plan.apiPercentUsed',
+                unit: '%',
+              ),
+              ManagedProviderUsageWindow(
+                label: 'On-demand',
+                used: r'$.individualUsage.onDemand.used',
+                total: r'$.individualUsage.onDemand.limit',
+              ),
+              ManagedProviderUsageWindow(
+                label: 'Team',
+                used: r'$.teamUsage.pooled.used',
+                total: r'$.teamUsage.pooled.limit',
+                resetsAt: r'$.billingCycleEnd',
+              ),
+            ],
+          ),
         ),
       ),
       ManagedProviderPreset(
@@ -217,7 +339,7 @@ final List<ManagedProviderPreset> builtInManagedProviderPresets =
         ),
         schema: _deepSeekEditorSchema,
       ),
-      ]);
+    ]);
 
 ManagedProviderPreset? managedProviderPresetById(String id) {
   for (final preset in builtInManagedProviderPresets) {

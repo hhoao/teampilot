@@ -2,7 +2,7 @@ import '../../../models/managed_provider.dart';
 import '../../io/filesystem.dart';
 import '../managed_provider_secret_store.dart';
 import 'official_credential_files.dart';
-import 'official_subscription_adapter.dart';
+import '../cli_credential_source.dart';
 
 class CodexOfficialSubscriptionAuthReader
     implements OfficialSubscriptionAuthReader {

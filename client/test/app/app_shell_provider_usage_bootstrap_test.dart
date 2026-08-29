@@ -7,7 +7,8 @@ import 'package:teampilot/models/provider_usage_snapshot.dart';
 import 'package:teampilot/repositories/managed_provider_repository.dart';
 import 'package:teampilot/repositories/managed_provider_usage_repository.dart';
 import 'package:teampilot/services/provider_usage/adapters/claude_official_subscription_auth.dart';
-import 'package:teampilot/services/provider_usage/adapters/claude_official_subscription_client.dart';
+import 'package:teampilot/services/provider_usage/adapters/http_json_mapping_adapter.dart';
+import 'package:teampilot/services/provider_usage/cli_credential_source.dart';
 import 'package:teampilot/services/provider_usage/managed_provider_usage_adapter.dart';
 import 'package:teampilot/services/provider_usage/managed_provider_usage_coordinator.dart'
     as coordinator;
@@ -21,62 +22,73 @@ import '../support/in_memory_filesystem.dart';
 void main() {
   tearDown(AppStorage.resetForTesting);
 
-  test('default registry exposes the official subscription adapters', () {
+  test('default registry exposes only the http-json adapter', () {
     final registry = buildDefaultManagedProviderUsageRegistry();
 
-    expect(registry.adapterFor('http-json'), isNotNull);
-    expect(registry.adapterFor('official-claude-subscription'), isNotNull);
-    expect(registry.adapterFor('official-codex-subscription'), isNotNull);
+    expect(registry.adapterFor('http-json'), isA<HttpJsonMappingAdapter>());
+    expect(registry.adapterFor('official-claude-subscription'), isNull);
+    expect(registry.adapterFor('official-codex-subscription'), isNull);
   });
 
   test(
-    'default official adapters fail closed with typed unsupported errors',
+    'http-json adapter without cli credentials fails closed for cli sources',
     () async {
       final registry = buildDefaultManagedProviderUsageRegistry();
-      for (final adapterId in const [
-        'official-claude-subscription',
-        'official-codex-subscription',
-      ]) {
-        final adapter = registry.adapterFor(adapterId)!;
-        final provider = ManagedProvider(
-          id: adapterId,
-          name: adapterId,
-          kind: ManagedProviderKind.subscriptionQuota,
-          adapterId: adapterId,
-        );
+      final adapter = registry.adapterFor('http-json')!;
 
-        await expectLater(
-          adapter.fetch(
-            provider,
-            credentials: _EmptyCredentials(),
-            http: _UnusedHttpClient(),
-            now: DateTime.fromMillisecondsSinceEpoch(1_700_000_000_000),
-          ),
-          throwsA(
-            isA<ManagedProviderUsageQueryError>().having(
-              (error) => error.code,
-              'code',
-              ManagedProviderUsageQueryErrorCode.unsupported,
+      await expectLater(
+        adapter.fetch(
+          ManagedProvider(
+            id: 'cursor',
+            name: 'Cursor',
+            kind: ManagedProviderKind.subscriptionQuota,
+            adapterId: 'http-json',
+            endpointConfig: ManagedProviderEndpointConfig(
+              url: 'https://cursor.com/api/usage-summary',
+              credentialSource: 'cli:cursor-account',
+              credentialName: 'Cookie',
+              credentialTemplate:
+                  'WorkosCursorSessionToken={accountId}::{accessToken}',
+              windows: const [
+                ManagedProviderUsageWindow(
+                  label: 'Plan',
+                  used: r'$.individualUsage.plan.totalPercentUsed',
+                  unit: '%',
+                ),
+              ],
             ),
           ),
-        );
-      }
+          credentials: _EmptyCredentials(),
+          http: _UnusedHttpClient(),
+          now: DateTime.fromMillisecondsSinceEpoch(1_700_000_000_000),
+        ),
+        throwsA(
+          isA<ManagedProviderUsageQueryError>().having(
+            (error) => error.code,
+            'code',
+            ManagedProviderUsageQueryErrorCode.missingCredential,
+          ),
+        ),
+      );
     },
   );
 
   test(
-    'file-backed official auth without credentials is missingCredential',
+    'file-backed cli auth resolves credentials for http-json fetch',
     () async {
       final fs = InMemoryFilesystem();
       final registry = buildDefaultManagedProviderUsageRegistry(
-        claudeAuthReader: ClaudeOfficialSubscriptionAuthReader(
-          fs: fs,
-          basePath: '/tp',
-          homeDirectory: () => '/home',
+        cliCredentials: CliCredentialSourceResolver(
+          readers: {
+            'claude-official': ClaudeOfficialSubscriptionAuthReader(
+              fs: fs,
+              basePath: '/tp',
+              homeDirectory: () => '/home',
+            ),
+          },
         ),
-        claudeClient: ClaudeOfficialSubscriptionClient(_UnusedHttpClient()),
       );
-      final adapter = registry.adapterFor('official-claude-subscription')!;
+      final adapter = registry.adapterFor('http-json')!;
 
       await expectLater(
         adapter.fetch(
@@ -84,7 +96,21 @@ void main() {
             id: 'claude',
             name: 'Claude',
             kind: ManagedProviderKind.subscriptionQuota,
-            adapterId: 'official-claude-subscription',
+            adapterId: 'http-json',
+            endpointConfig: ManagedProviderEndpointConfig(
+              url: 'https://api.anthropic.com/api/oauth/usage',
+              credentialSource: 'cli:claude-official',
+              credentialField: 'accessToken',
+              credentialName: 'Authorization',
+              credentialPrefix: 'Bearer ',
+              windows: const [
+                ManagedProviderUsageWindow(
+                  label: '5h',
+                  used: r'$.five_hour.utilization',
+                  unit: '%',
+                ),
+              ],
+            ),
           ),
           credentials: _EmptyCredentials(),
           http: _UnusedHttpClient(),

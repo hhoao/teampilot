@@ -297,6 +297,37 @@ void main() {
     });
   });
 
+  test('round-trips credential source template and windows', () {
+    final provider = ManagedProvider(
+      id: 'p1',
+      name: 'Cursor',
+      kind: ManagedProviderKind.subscriptionQuota,
+      adapterId: 'http-json',
+      endpointConfig: ManagedProviderEndpointConfig(
+        url: 'https://cursor.com/api/usage-summary',
+        credentialSource: 'cli:cursor-account',
+        credentialName: 'Cookie',
+        credentialTemplate:
+            'WorkosCursorSessionToken={accountId}::{accessToken}',
+        headers: {'Accept': 'application/json'},
+        windows: const [
+          ManagedProviderUsageWindow(
+            label: 'Plan',
+            used: r'$.individualUsage.plan.totalPercentUsed',
+            unit: '%',
+            resetsAt: r'$.billingCycleEnd',
+          ),
+        ],
+      ),
+    );
+
+    expect(ManagedProvider.fromJson(provider.toJson()), provider);
+    expect(
+      (provider.toJson()['endpointConfig'] as Map)['credentialSource'],
+      'cli:cursor-account',
+    );
+  });
+
   test('uses safe defaults for malformed provider numeric JSON', () {
     for (final value in [double.nan, double.infinity, 1.5]) {
       final provider = ManagedProvider.fromJson({

@@ -13967,7 +13967,7 @@ abstract class AppLocalizations {
   /// No description provided for @managedProvidersQuickPresetCodexHint.
   ///
   /// In en, this message translates to:
-  /// **'Sign in or import credentials below. Usage uses the official ChatGPT Codex quota API.'**
+  /// **'Sign in or import credentials below, or fill the same fields manually.'**
   String get managedProvidersQuickPresetCodexHint;
 
   /// No description provided for @managedProvidersQuickPresetClaudeCode.
@@ -13979,8 +13979,20 @@ abstract class AppLocalizations {
   /// No description provided for @managedProvidersQuickPresetClaudeCodeHint.
   ///
   /// In en, this message translates to:
-  /// **'Sign in or import credentials below. Usage uses the official Claude OAuth quota API.'**
+  /// **'Sign in or import credentials below, or fill the same fields manually.'**
   String get managedProvidersQuickPresetClaudeCodeHint;
+
+  /// No description provided for @managedProvidersQuickPresetCursor.
+  ///
+  /// In en, this message translates to:
+  /// **'Cursor'**
+  String get managedProvidersQuickPresetCursor;
+
+  /// No description provided for @managedProvidersQuickPresetCursorHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Sign in or import credentials below, or fill the same fields manually.'**
+  String get managedProvidersQuickPresetCursorHint;
 
   /// No description provided for @managedProvidersQuickPresetDeepSeek.
   ///

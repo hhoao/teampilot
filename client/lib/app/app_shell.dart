@@ -209,13 +209,10 @@ import '../services/provider_usage/managed_provider_usage_auto_refresh.dart';
 import '../services/provider_usage/managed_provider_usage_coordinator.dart';
 import '../services/provider_usage/managed_provider_usage_registry.dart';
 import '../services/provider_usage/adapters/claude_official_subscription_auth.dart';
-import '../services/provider_usage/adapters/claude_official_subscription_client.dart';
-import '../services/provider_usage/adapters/claude_subscription_adapter.dart';
 import '../services/provider_usage/adapters/codex_official_subscription_auth.dart';
-import '../services/provider_usage/adapters/codex_official_subscription_client.dart';
-import '../services/provider_usage/adapters/codex_subscription_adapter.dart';
+import '../services/provider_usage/adapters/cursor_official_subscription_auth.dart';
 import '../services/provider_usage/adapters/http_json_mapping_adapter.dart';
-import '../services/provider_usage/adapters/official_subscription_adapter.dart';
+import '../services/provider_usage/cli_credential_source.dart';
 import '../services/app/connection_mode_service.dart';
 import '../services/cli/remote_cli_locator.dart';
 import '../services/storage/runtime_context_resolver.dart';
@@ -361,48 +358,11 @@ class ManagedProviderControlPlaneLease {
 /// `unsupported` stubs. Production `buildAppShell` injects file-backed auth
 /// readers and the official usage HTTP clients.
 ManagedProviderUsageRegistry buildDefaultManagedProviderUsageRegistry({
-  OfficialSubscriptionAuthReader? claudeAuthReader,
-  OfficialSubscriptionClient? claudeClient,
-  OfficialSubscriptionAuthReader? codexAuthReader,
-  OfficialSubscriptionClient? codexClient,
+  CliCredentialSourceResolver? cliCredentials,
 }) {
-  final defaultAuthReader = _UnavailableOfficialSubscriptionAuthReader();
-  final defaultClient = _UnavailableOfficialSubscriptionClient();
   return ManagedProviderUsageRegistry([
-    HttpJsonMappingAdapter(),
-    ClaudeSubscriptionAdapter(
-      authReader: claudeAuthReader ?? defaultAuthReader,
-      client: claudeClient ?? defaultClient,
-    ),
-    CodexSubscriptionAdapter(
-      authReader: codexAuthReader ?? defaultAuthReader,
-      client: codexClient ?? defaultClient,
-    ),
+    HttpJsonMappingAdapter(cliCredentials: cliCredentials),
   ]);
-}
-
-class _UnavailableOfficialSubscriptionAuthReader
-    implements OfficialSubscriptionAuthReader {
-  @override
-  Future<ProviderCredentialScope?> read(ManagedProvider provider) {
-    throw const ManagedProviderUsageQueryError(
-      ManagedProviderUsageQueryErrorCode.unsupported,
-    );
-  }
-}
-
-class _UnavailableOfficialSubscriptionClient
-    implements OfficialSubscriptionClient {
-  @override
-  Future<OfficialSubscriptionResponse> fetch(
-    ManagedProvider provider, {
-    required ProviderCredentialScope credentials,
-    required DateTime now,
-  }) {
-    throw const ManagedProviderUsageQueryError(
-      ManagedProviderUsageQueryErrorCode.unsupported,
-    );
-  }
 }
 
 /// Fully wired app dependencies produced after async bootstrap.
@@ -612,10 +572,7 @@ Future<AppShell> buildAppShell({
   ManagedProviderCubit? managedProviderCubit,
   ManagedProviderUsageCubit? managedProviderUsageCubit,
   ProviderUsageHttpClient? managedProviderUsageHttpClient,
-  OfficialSubscriptionAuthReader? managedProviderClaudeAuthReader,
-  OfficialSubscriptionClient? managedProviderClaudeSubscriptionClient,
-  OfficialSubscriptionAuthReader? managedProviderCodexAuthReader,
-  OfficialSubscriptionClient? managedProviderCodexSubscriptionClient,
+  CliCredentialSourceResolver? managedProviderCliCredentials,
 }) async {
   final bootSw = Stopwatch()..start();
   void boot(String phase) =>
@@ -949,34 +906,27 @@ Future<AppShell> buildAppShell({
   final resolvedManagedProviderUsageRegistry =
       managedProviderUsageRegistry ??
       buildDefaultManagedProviderUsageRegistry(
-        claudeAuthReader:
-            managedProviderClaudeAuthReader ??
-            ClaudeOfficialSubscriptionAuthReader(
-              fs: AppStorage.fs,
-              basePath: AppStorage.paths.basePath,
-              homeDirectory: () => AppStorage.home,
+        cliCredentials:
+            managedProviderCliCredentials ??
+            CliCredentialSourceResolver(
+              readers: {
+                'claude-official': ClaudeOfficialSubscriptionAuthReader(
+                  fs: AppStorage.fs,
+                  basePath: AppStorage.paths.basePath,
+                  homeDirectory: () => AppStorage.home,
+                ),
+                'openai-official': CodexOfficialSubscriptionAuthReader(
+                  fs: AppStorage.fs,
+                  basePath: AppStorage.paths.basePath,
+                  homeDirectory: () => AppStorage.home,
+                ),
+                'cursor-account': CursorOfficialSubscriptionAuthReader(
+                  fs: AppStorage.fs,
+                  basePath: AppStorage.paths.basePath,
+                  homeDirectory: () => AppStorage.home,
+                ),
+              },
             ),
-        claudeClient:
-            managedProviderClaudeSubscriptionClient ??
-            (resolvedManagedProviderHttpClient == null
-                ? null
-                : ClaudeOfficialSubscriptionClient(
-                    resolvedManagedProviderHttpClient,
-                  )),
-        codexAuthReader:
-            managedProviderCodexAuthReader ??
-            CodexOfficialSubscriptionAuthReader(
-              fs: AppStorage.fs,
-              basePath: AppStorage.paths.basePath,
-              homeDirectory: () => AppStorage.home,
-            ),
-        codexClient:
-            managedProviderCodexSubscriptionClient ??
-            (resolvedManagedProviderHttpClient == null
-                ? null
-                : CodexOfficialSubscriptionClient(
-                    resolvedManagedProviderHttpClient,
-                  )),
       );
   final resolvedManagedProviderUsageCoordinator =
       managedProviderUsageCoordinator ??

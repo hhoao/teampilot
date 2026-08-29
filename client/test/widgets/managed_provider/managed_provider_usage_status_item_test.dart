@@ -173,18 +173,18 @@ void main() {
         id: 'p1',
         name: 'Codex',
         kind: ManagedProviderKind.subscriptionQuota,
-        adapterId: 'official-codex-subscription',
+        adapterId: 'http-json',
         endpointConfig: ManagedProviderEndpointConfig(
-          url: 'https://example.test/usage',
+          url: 'https://chatgpt.com/backend-api/wham/usage',
         ),
       );
       final claude = ManagedProvider(
         id: 'p2',
         name: 'Claude',
         kind: ManagedProviderKind.subscriptionQuota,
-        adapterId: 'official-claude-subscription',
+        adapterId: 'http-json',
         endpointConfig: ManagedProviderEndpointConfig(
-          url: 'https://example.test/usage',
+          url: 'https://api.anthropic.com/api/oauth/usage',
         ),
       );
       await pumpItem(
@@ -360,9 +360,9 @@ void main() {
         id: 'p1',
         name: 'Codex',
         kind: ManagedProviderKind.subscriptionQuota,
-        adapterId: 'official-codex-subscription',
+        adapterId: 'http-json',
         endpointConfig: ManagedProviderEndpointConfig(
-          url: 'https://example.test/usage',
+          url: 'https://chatgpt.com/backend-api/wham/usage',
         ),
       );
       await pumpItem(tester, providers: [codex], snapshots: {});
@@ -393,9 +393,9 @@ void main() {
         id: 'p1',
         name: 'Codex',
         kind: ManagedProviderKind.subscriptionQuota,
-        adapterId: 'official-codex-subscription',
+        adapterId: 'http-json',
         endpointConfig: ManagedProviderEndpointConfig(
-          url: 'https://example.test/usage',
+          url: 'https://chatgpt.com/backend-api/wham/usage',
         ),
       );
       await pumpItem(

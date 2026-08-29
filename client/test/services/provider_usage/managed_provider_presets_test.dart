@@ -8,18 +8,40 @@ void main() {
     expect(builtInManagedProviderPresets.map((preset) => preset.id), [
       'codex',
       'claude-code',
+      'cursor',
       'deepseek',
     ]);
 
     final codex = managedProviderPresetById('codex')!;
     expect(codex.template.name, 'Codex');
     expect(codex.template.kind, ManagedProviderKind.subscriptionQuota);
-    expect(codex.template.adapterId, 'official-codex-subscription');
+    expect(codex.template.adapterId, 'http-json');
+    expect(codex.template.endpointConfig.credentialSource, 'cli:openai-official');
 
     final claude = managedProviderPresetById('claude-code')!;
     expect(claude.template.name, 'Claude Code');
     expect(claude.template.kind, ManagedProviderKind.subscriptionQuota);
-    expect(claude.template.adapterId, 'official-claude-subscription');
+    expect(claude.template.adapterId, 'http-json');
+    expect(
+      claude.template.endpointConfig.credentialSource,
+      'cli:claude-official',
+    );
+
+    final cursor = managedProviderPresetById('cursor')!;
+    expect(cursor.template.adapterId, 'http-json');
+    expect(cursor.template.kind, ManagedProviderKind.subscriptionQuota);
+    expect(
+      cursor.template.endpointConfig.url,
+      'https://cursor.com/api/usage-summary',
+    );
+    expect(
+      cursor.template.endpointConfig.credentialSource,
+      'cli:cursor-account',
+    );
+    expect(
+      cursor.template.endpointConfig.credentialTemplate,
+      'WorkosCursorSessionToken={accountId}::{accessToken}',
+    );
   });
 
   test('DeepSeek preset is ready for an API key without containing one', () {

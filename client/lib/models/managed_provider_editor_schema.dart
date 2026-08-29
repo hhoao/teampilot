@@ -82,7 +82,7 @@ class ManagedProviderEditorSchema extends Equatable {
         kind: ManagedProviderEditorFieldKind.text,
         required: true,
         defaultValue: _defaultText(provider.adapterId),
-        readOnly: _isOfficialSubscriptionAdapter(provider.adapterId),
+        readOnly: provider.kind != ManagedProviderKind.customHttp,
       ),
       if (hasQuery) ..._queryFields(provider.endpointConfig),
       ..._credentialFields(
@@ -148,6 +148,34 @@ List<ManagedProviderEditorField> _queryFields(
       required: false,
       defaultValue: _defaultJson(endpoint.fieldMappings),
     ),
+    ManagedProviderEditorField(
+      key: 'endpointConfig.headers',
+      kind: ManagedProviderEditorFieldKind.json,
+      required: false,
+      defaultValue: _defaultJson(
+        endpoint.headers.map((key, value) => MapEntry(key, value)),
+      ),
+    ),
+    ManagedProviderEditorField(
+      key: 'endpointConfig.credentialSource',
+      kind: ManagedProviderEditorFieldKind.text,
+      required: false,
+      defaultValue: _defaultText(endpoint.credentialSource),
+    ),
+    ManagedProviderEditorField(
+      key: 'endpointConfig.credentialTemplate',
+      kind: ManagedProviderEditorFieldKind.text,
+      required: false,
+      defaultValue: _defaultText(endpoint.credentialTemplate),
+    ),
+    ManagedProviderEditorField(
+      key: 'endpointConfig.windows',
+      kind: ManagedProviderEditorFieldKind.json,
+      required: false,
+      defaultValue: endpoint.windows.isEmpty
+          ? null
+          : jsonEncode(endpoint.windows.map((window) => window.toJson()).toList()),
+    ),
   ];
   for (final entry in endpoint.fieldMappings.entries) {
     final value = entry.value;
@@ -178,8 +206,11 @@ List<ManagedProviderEditorField> _credentialFields(
       defaultValue: _defaultText(provider.credentialRef),
     ),
   ];
+  final isCliSource = endpoint.credentialSource.startsWith('cli:');
   final includeSecretField =
-      endpoint.credentialField != null && endpoint.credentialField!.isNotEmpty;
+      !isCliSource &&
+      endpoint.credentialField != null &&
+      endpoint.credentialField!.isNotEmpty;
   if (includeSecretField) {
     fields.add(
       ManagedProviderEditorField(
@@ -269,17 +300,18 @@ bool _usesHttpEditor(ManagedProvider provider) =>
     provider.adapterId == 'http-json' ||
     provider.kind == ManagedProviderKind.customHttp;
 
-bool _isOfficialSubscriptionAdapter(String adapterId) =>
-    adapterId == 'official-codex-subscription' ||
-    adapterId == 'official-claude-subscription';
-
 bool _hasEndpointDeclaration(ManagedProviderEndpointConfig endpoint) =>
     endpoint.url.isNotEmpty ||
     endpoint.method.toUpperCase() != 'GET' ||
     endpoint.responsePath != null && endpoint.responsePath!.isNotEmpty ||
     endpoint.measuresPath != null && endpoint.measuresPath!.isNotEmpty ||
     endpoint.body.isNotEmpty ||
-    endpoint.fieldMappings.isNotEmpty;
+    endpoint.fieldMappings.isNotEmpty ||
+    endpoint.headers.isNotEmpty ||
+    endpoint.windows.isNotEmpty ||
+    endpoint.credentialSource != 'secret' ||
+    (endpoint.credentialTemplate != null &&
+        endpoint.credentialTemplate!.isNotEmpty);
 
 String? _defaultText(String? value) =>
     value == null || value.isEmpty ? null : value;
