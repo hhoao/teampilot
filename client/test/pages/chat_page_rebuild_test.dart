@@ -136,7 +136,7 @@ void main() {
   });
 
   testWidgets(
-    'structural body does not rebuild when only workingSessionIds changes',
+    'structural body does not rebuild when only busySessionIds changes',
     (tester) async {
       tester.view.physicalSize = const Size(1600, 900);
       tester.view.devicePixelRatio = 1.0;

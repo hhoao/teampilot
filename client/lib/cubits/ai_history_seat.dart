@@ -256,7 +256,7 @@ class AiHistorySeat extends Cubit<AiHistoryState> {
   Timer? _turnEndSettleTimer;
 
   /// Survives History remount / softReload — widget State must not own this.
-  /// Latched true once we observe [workingSessionIds] while awaiting.
+  /// Latched true once we observe [busySessionIds] while awaiting.
   var _sawWorkingWhileAwaiting = false;
 
   AppSession? _lastSession;

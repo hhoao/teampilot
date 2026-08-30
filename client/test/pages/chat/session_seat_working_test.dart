@@ -102,7 +102,7 @@ void main() {
     chatCubit.updateWorkingSessionsForTest({'other'});
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 100));
-    expect(chatCubit.state.workingSessionIds, {'other'});
+    expect(chatCubit.state.busySessionIds, {'other'});
 
     expect(
       _host(tester).buildCount,
@@ -118,7 +118,7 @@ void main() {
     chatCubit.updateWorkingSessionsForTest({_sessionId});
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 100));
-    expect(chatCubit.state.workingSessionIds, {_sessionId});
+    expect(chatCubit.state.busySessionIds, {_sessionId});
 
     expect(
       _host(tester).buildCount,
@@ -178,7 +178,7 @@ void main() {
       chatCubit.updateWorkingSessionsForTest({_sessionId});
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 100));
-      expect(chatCubit.state.workingSessionIds, {_sessionId});
+      expect(chatCubit.state.busySessionIds, {_sessionId});
 
       expect(
         _host(tester).buildCount,

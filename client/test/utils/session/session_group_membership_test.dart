@@ -1,6 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/cubits/chat/model/chat_state.dart';
 import 'package:teampilot/models/app_session.dart';
+import 'package:teampilot/models/session_activity.dart';
 import 'package:teampilot/models/session_group.dart';
 import 'package:teampilot/models/workspace.dart';
 import 'package:teampilot/models/workspace_folder.dart';
@@ -50,7 +51,9 @@ void main() {
           _s('b', display: 'beta'),
           _s('c', display: 'other'),
         ],
-        workingSessionIds: {'a'},
+        sessionActivities: {
+          'a': const SessionActivity(reasons: {SessionBusyReason.inTurn}),
+        },
       ),
       group: group,
       workspace: _workspace,

@@ -89,7 +89,7 @@ void main() {
         cubit.debugTickIdleWatch();
         await drainPendingAsyncWork();
         expect(
-          cubit.state.workingSessionIds,
+          cubit.state.busySessionIds,
           contains(session.sessionId),
         );
 
@@ -98,10 +98,10 @@ void main() {
         await drainPendingAsyncWork();
 
         expect(
-          cubit.state.workingSessionIds,
+          cubit.state.busySessionIds,
           contains(session.sessionId),
           reason:
-              'background workspace session must stay in workingSessionIds',
+              'background workspace session must stay in busySessionIds',
         );
       },
     );

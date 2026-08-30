@@ -10,6 +10,7 @@ import 'package:teampilot/cubits/agent_attention_cubit.dart';
 import 'package:teampilot/cubits/chat_cubit.dart';
 import 'package:teampilot/cubits/member_presence_cubit.dart';
 import 'package:teampilot/models/member_presence.dart';
+import 'package:teampilot/models/session_activity.dart';
 import 'package:teampilot/models/workspace_folder.dart';
 import 'package:teampilot/repositories/session_repository.dart';
 import 'package:teampilot/services/agent_status/agent_attention_state.dart';
@@ -42,17 +43,20 @@ void main() {
     late Directory tmp;
     late SessionRepository repo;
     late ChatCubit cubit;
+    late AgentAttentionCubit attention;
     late PostFrameTestHarness postFrame;
 
     setUp(() async {
       tmp = await Directory.systemTemp.createTemp('it_idle_busy_mixed_');
       repo = SessionRepository(rootDir: tmp.path);
       postFrame = PostFrameTestHarness();
+      attention = AgentAttentionCubit(pruneInterval: null);
       cubit = ChatCubit(
         executableResolver: () => 'true',
         automationRepository: testAutomationRepository(),
         sessionRepository: repo,
         postFrameScheduler: postFrame.scheduler,
+        agentAttentionCubit: attention,
         terminalSessionFactory:
             ({required String executable, int scrollbackLines = 10000}) =>
                 RunningConnectedFakeShell(executable: executable),
@@ -63,6 +67,7 @@ void main() {
       await postFrame.flush();
       await drainPendingAsyncWork();
       await cubit.close();
+      await attention.close();
       await drainPendingAsyncWork();
       await deleteTempDirBestEffort(tmp);
     });
@@ -76,13 +81,13 @@ void main() {
       final bus = cubit.activeTab!.teamBus!;
 
       cubit.debugTickIdleWatch();
-      expect(cubit.state.workingSessionIds, isEmpty);
+      expect(cubit.state.busySessionIds, isEmpty);
 
       bus.markTurnStarted('worker-1');
       cubit.debugTickIdleWatch();
       await drainPendingAsyncWork();
       expect(
-        cubit.state.workingSessionIds,
+        cubit.state.busySessionIds,
         contains(opened.sessionId),
         reason: 'bus in-turn after submit should light the session spinner',
       );
@@ -91,7 +96,7 @@ void main() {
       cubit.debugTickIdleWatch();
       await drainPendingAsyncWork();
       expect(
-        cubit.state.workingSessionIds,
+        cubit.state.busySessionIds,
         isEmpty,
         reason: 'turn end should clear session working',
       );
@@ -112,7 +117,7 @@ void main() {
 
       cubit.debugTickIdleWatch();
       expect(
-        cubit.state.workingSessionIds,
+        cubit.state.busySessionIds,
         isEmpty,
         reason:
             'mixed mode must not infer working from PTY bytes (spinner repaint)',
@@ -123,41 +128,46 @@ void main() {
       cubit.debugTickIdleWatch();
       await drainPendingAsyncWork();
       expect(
-        cubit.state.workingSessionIds,
+        cubit.state.busySessionIds,
         contains(opened.sessionId),
-      );
-    });
-
-    test('HTTP POST /idle blocks CLI without ending bus turn', () async {
-      final opened = await openMixedSessionWithShells(
-        cubit: cubit,
-        repo: repo,
-        postFrame: postFrame,
-      );
-      final bus = cubit.activeTab!.teamBus!;
-      final mcp = cubit.teammateBusMcpEndpointForSession(opened.sessionId)!;
-      final idle = idleEndpointFromMcp(mcp);
-
-      bus.markTurnStarted('team-lead');
-      cubit.debugTickIdleWatch();
-      await drainPendingAsyncWork();
-      expect(
-        cubit.state.workingSessionIds,
-        contains(opened.sessionId),
-      );
-
-      await postMemberIdle(idle, 'team-lead', sessionId: opened.sessionId);
-      cubit.debugTickIdleWatch();
-      expect(bus.isMemberInTurn('team-lead'), isTrue);
-      expect(
-        cubit.state.workingSessionIds,
-        contains(opened.sessionId),
-        reason: 'Stop-hook /idle must not call onMemberIdle',
       );
     });
 
     test(
-      'PTY quiet after turn activity ends bus turn and may doorbell mid-turn mail',
+      'HTTP POST /idle ends Claude mixed bus turn when forceWait is off',
+      () async {
+        final opened = await openMixedSessionWithShells(
+          cubit: cubit,
+          repo: repo,
+          postFrame: postFrame,
+        );
+        final bus = cubit.activeTab!.teamBus!;
+        final mcp = cubit.teammateBusMcpEndpointForSession(opened.sessionId)!;
+        final idle = idleEndpointFromMcp(mcp);
+
+        bus.markTurnStarted('team-lead');
+        cubit.debugTickIdleWatch();
+        await drainPendingAsyncWork();
+        expect(
+          cubit.state.busySessionIds,
+          contains(opened.sessionId),
+        );
+
+        await postMemberIdle(idle, 'team-lead', sessionId: opened.sessionId);
+        cubit.debugTickIdleWatch();
+        await drainPendingAsyncWork();
+        expect(
+          bus.isMemberInTurn('team-lead'),
+          isFalse,
+          reason:
+              'mixed forceWait default off: Stop-hook /idle ends the bus turn',
+        );
+        expect(cubit.state.busySessionIds, isEmpty);
+      },
+    );
+
+    test(
+      'PTY quiet does not end Claude mixed bus turn; Stop/done doorbells mid-turn mail',
       () async {
         final opened = await openMixedSessionWithShells(
           cubit: cubit,
@@ -190,47 +200,97 @@ void main() {
         cubit.debugTickIdleWatch();
         await drainPendingAsyncWork();
 
+        expect(
+          bus.isMemberInTurn('worker-1'),
+          isTrue,
+          reason: 'Claude mixed: PTY quiet must not end the bus turn',
+        );
+        expect(
+          cubit.state.busySessionIds,
+          contains(opened.sessionId),
+        );
+        expect(
+          bus.memberById('worker-1')!.doorbelled,
+          isFalse,
+          reason: 'pending mail waits until Stop/done ends the turn',
+        );
+
+        attention.applyEvent(
+          sessionId: opened.sessionId,
+          memberId: 'worker-1',
+          event: const AgentStatusEvent(
+            state: AgentSeatAttention.done,
+            hookEventName: 'Stop',
+          ),
+          skipPermissions: false,
+        );
+        await drainPendingAsyncWork();
+
         expect(bus.isMemberInTurn('worker-1'), isFalse);
+        expect(cubit.state.busySessionIds, isEmpty);
         expect(
           bus.memberById('worker-1')!.doorbelled,
           isTrue,
-          reason: 'PTY quiet ends prior turn; pending mail doorbells at prompt',
+          reason: 'Stop/done ends the turn; pending mail doorbells at prompt',
         );
       },
     );
 
-    test('PTY quiet after turn activity ends mixed bus turn', () async {
-      final opened = await openMixedSessionWithShells(
-        cubit: cubit,
-        repo: repo,
-        postFrame: postFrame,
-      );
-      final bus = cubit.activeTab!.teamBus!;
-      final shell = cubit.activeTab!.memberShells['team-lead']!;
+    test(
+      'PTY quiet does not end Claude mixed bus turn; Stop/done does',
+      () async {
+        final opened = await openMixedSessionWithShells(
+          cubit: cubit,
+          repo: repo,
+          postFrame: postFrame,
+        );
+        final bus = cubit.activeTab!.teamBus!;
+        final shell = cubit.activeTab!.memberShells['team-lead']!;
 
-      bus.markTurnStarted('team-lead');
-      cubit.debugTickIdleWatch();
-      await drainPendingAsyncWork();
-      expect(
-        cubit.state.workingSessionIds,
-        contains(opened.sessionId),
-        reason: 'bus in-turn shows working before PTY quiet ends the turn',
-      );
+        bus.markTurnStarted('team-lead');
+        cubit.debugTickIdleWatch();
+        await drainPendingAsyncWork();
+        expect(
+          cubit.state.busySessionIds,
+          contains(opened.sessionId),
+          reason: 'bus in-turn shows working before PTY quiet',
+        );
 
-      shell.activityTracker.notePtyBytes(
-        Uint8List.fromList('agent output\n'.codeUnits),
-      );
-      simulateFingerprintQuietGap(shell);
-      cubit.debugTickIdleWatch();
-      await drainPendingAsyncWork();
-      expect(
-        bus.isMemberInTurn('team-lead'),
-        isFalse,
-        reason:
-            'mixed bus turn ends when PTY fingerprint is quiet after activity',
-      );
-      expect(cubit.state.workingSessionIds, isEmpty);
-    });
+        shell.activityTracker.notePtyBytes(
+          Uint8List.fromList('agent output\n'.codeUnits),
+        );
+        simulateFingerprintQuietGap(shell);
+        cubit.debugTickIdleWatch();
+        await drainPendingAsyncWork();
+        expect(
+          bus.isMemberInTurn('team-lead'),
+          isTrue,
+          reason: 'Claude mixed: PTY quiet must not end the bus turn',
+        );
+        expect(
+          cubit.state.busySessionIds,
+          contains(opened.sessionId),
+          reason: 'Claude mixed: busy stays after PTY quiet',
+        );
+
+        attention.applyEvent(
+          sessionId: opened.sessionId,
+          memberId: 'team-lead',
+          event: const AgentStatusEvent(
+            state: AgentSeatAttention.done,
+            hookEventName: 'Stop',
+          ),
+          skipPermissions: false,
+        );
+        await drainPendingAsyncWork();
+        expect(bus.isMemberInTurn('team-lead'), isFalse);
+        expect(cubit.state.busySessionIds, isEmpty);
+        expect(
+          cubit.state.sessionActivities[opened.sessionId]!.isReadyToChat,
+          isTrue,
+        );
+      },
+    );
 
     test('bus turn survives until idleAfter without PTY bytes', () async {
       final opened = await openMixedSessionWithShells(
@@ -245,14 +305,14 @@ void main() {
       await drainPendingAsyncWork();
       expect(bus.isMemberInTurn('team-lead'), isTrue);
       expect(
-        cubit.state.workingSessionIds,
+        cubit.state.busySessionIds,
         contains(opened.sessionId),
         reason: 'bus in-turn shows working even without PTY bytes',
       );
     });
 
     test(
-      'bus turn ends when member enters wait_for_message, not on Stop-hook',
+      'bus turn ends when member enters wait_for_message',
       () async {
         final opened = await openMixedSessionWithShells(
           cubit: cubit,
@@ -260,14 +320,8 @@ void main() {
           postFrame: postFrame,
         );
         final bus = cubit.activeTab!.teamBus!;
-        final mcp = cubit.teammateBusMcpEndpointForSession(opened.sessionId)!;
-        final idle = idleEndpointFromMcp(mcp);
 
         bus.markTurnStarted('team-lead');
-        cubit.debugTickIdleWatch();
-        expect(bus.isMemberInTurn('team-lead'), isTrue);
-
-        await postMemberIdle(idle, 'team-lead', sessionId: opened.sessionId);
         cubit.debugTickIdleWatch();
         expect(bus.isMemberInTurn('team-lead'), isTrue);
 
@@ -276,7 +330,7 @@ void main() {
         expect(bus.isWaitingForMessage('team-lead'), isTrue);
         expect(bus.isMemberInTurn('team-lead'), isFalse);
         cubit.debugTickIdleWatch();
-        expect(cubit.state.workingSessionIds, isEmpty);
+        expect(cubit.state.busySessionIds, isEmpty);
       },
     );
 
@@ -298,7 +352,7 @@ void main() {
         shell.activityTracker.markActive();
         cubit.debugTickIdleWatch();
         expect(
-          cubit.state.workingSessionIds,
+          cubit.state.busySessionIds,
           isEmpty,
           reason: 'wait_for_message parks the member as idle',
         );
@@ -378,7 +432,7 @@ void main() {
         );
         await drainPendingAsyncWork();
         expect(
-          cubit.state.workingSessionIds,
+          cubit.state.busySessionIds,
           contains(opened.sessionId),
           reason: 'hook working lights sidebar before park',
         );
@@ -390,7 +444,7 @@ void main() {
 
         expect(bus.isWaitingForMessage('team-lead'), isTrue);
         expect(
-          cubit.state.workingSessionIds,
+          cubit.state.busySessionIds,
           isEmpty,
           reason:
               'bus park must clear hook attention so sidebar matches members',
@@ -594,41 +648,67 @@ void main() {
       await deleteTempDirBestEffort(tmp);
     });
 
-    test('send lights working; quiet screen clears it', () async {
-      final workspace = await repo.createWorkspace([
-        WorkspaceFolder(path: '/tmp'),
-      ]);
-      final session = (await repo.createSession(workspace.workspaceId)).session;
-      await cubit.loadWorkspaceData(repo);
+    test(
+      'send lights Claude working; quiet keeps busy until Stop/done',
+      () async {
+        final workspace = await repo.createWorkspace([
+          WorkspaceFolder(path: '/tmp'),
+        ]);
+        final session = (await repo.createSession(
+          workspace.workspaceId,
+        )).session;
+        await cubit.loadWorkspaceData(repo);
 
-      await cubit.requestOpenSession(
-        SessionOpenRequest(
-          session: session,
-          workspace: workspace,
-          repo: repo,
-          connectImmediately: false,
-        ),
-      );
-      await drainPendingAsyncWork();
-      final tab = cubit.activeTab!;
-      final shell = tab.memberShells.values.single;
+        await cubit.requestOpenSession(
+          SessionOpenRequest(
+            session: session,
+            workspace: workspace,
+            repo: repo,
+            connectImmediately: false,
+          ),
+        );
+        await drainPendingAsyncWork();
+        final tab = cubit.activeTab!;
+        final memberId = tab.memberShells.keys.single;
+        final shell = tab.memberShells[memberId]!;
 
-      cubit.debugTickIdleWatch();
-      expect(cubit.state.workingSessionIds, isEmpty);
+        cubit.debugTickIdleWatch();
+        expect(cubit.state.busySessionIds, isEmpty);
 
-      shell.activityTracker.latchBootFrameReadyForTest(
-        DateTime.now().subtract(const Duration(seconds: 5)),
-      );
-      shell.markUserTurnStarted();
-      cubit.debugTickIdleWatch();
-      await drainPendingAsyncWork();
-      expect(cubit.state.workingSessionIds, contains(session.sessionId));
+        shell.activityTracker.latchBootFrameReadyForTest(
+          DateTime.now().subtract(const Duration(seconds: 5)),
+        );
+        shell.markUserTurnStarted();
+        cubit.debugTickIdleWatch();
+        await drainPendingAsyncWork();
+        expect(cubit.state.busySessionIds, contains(session.sessionId));
 
-      simulateFingerprintQuietGap(shell);
-      cubit.debugTickIdleWatch();
-      await drainPendingAsyncWork();
-      expect(cubit.state.workingSessionIds, isEmpty);
-    });
+        simulateFingerprintQuietGap(shell);
+        cubit.debugTickIdleWatch();
+        await drainPendingAsyncWork();
+        expect(
+          cubit.state.busySessionIds,
+          contains(session.sessionId),
+          reason: 'Claude PTY quiet must not clear busy',
+        );
+
+        attention.applyEvent(
+          sessionId: session.sessionId,
+          memberId: memberId,
+          event: const AgentStatusEvent(
+            state: AgentSeatAttention.done,
+            hookEventName: 'Stop',
+          ),
+          skipPermissions: false,
+        );
+        await drainPendingAsyncWork();
+        expect(cubit.state.busySessionIds, isEmpty);
+        expect(
+          cubit.state.sessionActivities[session.sessionId]!.isReadyToChat,
+          isTrue,
+        );
+      },
+    );
 
     test('PTY output alone does not light simple-mode working', () async {
       final workspace = await repo.createWorkspace([
@@ -651,7 +731,7 @@ void main() {
       shell.activityTracker.markActive();
       cubit.debugTickIdleWatch();
       expect(
-        cubit.state.workingSessionIds,
+        cubit.state.busySessionIds,
         isEmpty,
         reason: 'simple mode only lights working after user send',
       );
@@ -691,7 +771,7 @@ void main() {
       lifecycle('SubagentStart', 'b');
       await drainPendingAsyncWork();
       expect(
-        cubit.state.workingSessionIds,
+        cubit.state.busySessionIds,
         contains(session.sessionId),
         reason: 'delegated children light the session without PTY bytes',
       );
@@ -707,7 +787,7 @@ void main() {
       );
       await drainPendingAsyncWork();
       expect(
-        cubit.state.workingSessionIds,
+        cubit.state.busySessionIds,
         contains(session.sessionId),
         reason: 'parent Stop waits while both children still run',
       );
@@ -715,7 +795,7 @@ void main() {
       lifecycle('SubagentStop', 'a');
       await drainPendingAsyncWork();
       expect(
-        cubit.state.workingSessionIds,
+        cubit.state.busySessionIds,
         contains(session.sessionId),
         reason: 'one sibling still running keeps the session working',
       );
@@ -723,7 +803,7 @@ void main() {
       lifecycle('SubagentStop', 'b');
       await drainPendingAsyncWork();
       expect(
-        cubit.state.workingSessionIds,
+        cubit.state.busySessionIds,
         isNot(contains(session.sessionId)),
         reason: 'last child stopped after parent completion → idle',
       );

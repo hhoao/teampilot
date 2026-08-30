@@ -3,25 +3,25 @@ import 'package:teampilot/pages/chat/session_history_live_chrome.dart';
 
 void main() {
   group('historyTurnInFlight', () {
-    test('stop suppresses residual sessionWorking so Running chrome clears', () {
-      // Compose Stop clears awaiting; PTY may still look working for idleAfter.
+    test('stop suppresses residual sessionBusy so Running chrome clears', () {
+      // Compose Stop clears awaiting; PTY may still look busy for idleAfter.
       expect(
         historyTurnInFlight(
           isSubmitting: false,
           awaitingAssistant: false,
-          sessionWorking: true,
+          sessionBusy: true,
           userStoppedTurn: true,
         ),
         isFalse,
       );
     });
 
-    test('sessionWorking alone keeps turn in flight until Stop', () {
+    test('sessionBusy alone keeps turn in flight until Stop', () {
       expect(
         historyTurnInFlight(
           isSubmitting: false,
           awaitingAssistant: false,
-          sessionWorking: true,
+          sessionBusy: true,
           userStoppedTurn: false,
         ),
         isTrue,
@@ -34,7 +34,7 @@ void main() {
         historyTurnInFlight(
           isSubmitting: false,
           awaitingAssistant: true,
-          sessionWorking: false,
+          sessionBusy: false,
           userStoppedTurn: true,
         ),
         isTrue,
@@ -48,7 +48,6 @@ void main() {
         SessionHistoryLiveChromeX.resolve(
           turnInFlight: false,
           memberRunning: false,
-          sessionWorking: false,
           sessionConnecting: true,
         ),
         SessionHistoryLiveChrome.none,
@@ -60,7 +59,6 @@ void main() {
         SessionHistoryLiveChromeX.resolve(
           turnInFlight: true,
           memberRunning: false,
-          sessionWorking: false,
           sessionConnecting: true,
         ),
         SessionHistoryLiveChrome.starting,
@@ -72,8 +70,31 @@ void main() {
         SessionHistoryLiveChromeX.resolve(
           turnInFlight: true,
           memberRunning: false,
-          sessionWorking: false,
           sessionConnecting: false,
+        ),
+        SessionHistoryLiveChrome.starting,
+      );
+    });
+
+    test('starting when delivering and member not running yet', () {
+      expect(
+        SessionHistoryLiveChromeX.resolve(
+          turnInFlight: true,
+          memberRunning: false,
+          sessionConnecting: false,
+          isDelivering: true,
+        ),
+        SessionHistoryLiveChrome.starting,
+      );
+    });
+
+    test('starting when delivering even if member PTY is up', () {
+      expect(
+        SessionHistoryLiveChromeX.resolve(
+          turnInFlight: true,
+          memberRunning: true,
+          sessionConnecting: false,
+          isDelivering: true,
         ),
         SessionHistoryLiveChrome.starting,
       );
@@ -84,20 +105,44 @@ void main() {
         SessionHistoryLiveChromeX.resolve(
           turnInFlight: true,
           memberRunning: true,
-          sessionWorking: false,
           sessionConnecting: false,
         ),
         SessionHistoryLiveChrome.running,
       );
     });
 
-    test('running while session working even if connecting flag stale', () {
+    test('running when inTurn even if member not running yet', () {
       expect(
         SessionHistoryLiveChromeX.resolve(
           turnInFlight: true,
           memberRunning: false,
-          sessionWorking: true,
+          sessionConnecting: false,
+          isInTurn: true,
+        ),
+        SessionHistoryLiveChrome.running,
+      );
+    });
+
+    test('running when attention even if delivering', () {
+      expect(
+        SessionHistoryLiveChromeX.resolve(
+          turnInFlight: true,
+          memberRunning: false,
+          sessionConnecting: false,
+          isDelivering: true,
+          isAttention: true,
+        ),
+        SessionHistoryLiveChrome.running,
+      );
+    });
+
+    test('running while inTurn even if connecting flag stale', () {
+      expect(
+        SessionHistoryLiveChromeX.resolve(
+          turnInFlight: true,
+          memberRunning: false,
           sessionConnecting: true,
+          isInTurn: true,
         ),
         SessionHistoryLiveChrome.running,
       );

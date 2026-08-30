@@ -480,9 +480,9 @@ class _SidebarSessionTileState extends State<SidebarSessionTile> {
         : false;
     // Working (agent turn) OR launching (pod still provisioning/connecting) —
     // both show the sidebar spinner. Pod phase comes from the ChangeNotifier;
-    // workingSessionIds still from ChatState.
+    // busy still from ChatState.sessionActivities.
     final workingFromState = context.select<ChatCubit, bool>(
-      (cubit) => cubit.state.workingSessionIds.contains(sessionId),
+      (cubit) => cubit.state.isSessionBusy(sessionId),
     );
     final pod = context.read<ChatCubit>().ensurePodRuntime(sessionId);
     final waiting = context.select<AgentAttentionCubit, bool>(

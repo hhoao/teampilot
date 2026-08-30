@@ -14,12 +14,12 @@ class RunningSessionIds {
 
   factory RunningSessionIds.fromWorkspace({
     required List<AppSession> sessions,
-    required Set<String> workingSessionIds,
+    required Set<String> busySessionIds,
     required Set<String> openTabSessionIds,
   }) {
     final running = workspaceRunningSessions(
       sessions: sessions,
-      workingSessionIds: workingSessionIds,
+      busySessionIds: busySessionIds,
       openTabSessionIds: openTabSessionIds,
     );
     return RunningSessionIds([for (final s in running) s.sessionId]);

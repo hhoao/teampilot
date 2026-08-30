@@ -21,7 +21,7 @@ enum HistoryAwaitingWorkingAction {
   deferWhileStarting,
 }
 
-/// Pure decision for History Running/Starting vs sidebar [workingSessionIds].
+/// Pure decision for History Running/Starting vs sidebar [busySessionIds].
 ///
 /// Sidebar only uses working. History tip chrome also uses [awaitingAssistant],
 /// which must clear when the seat goes idle — including when the seat was
@@ -54,7 +54,7 @@ HistoryAwaitingWorkingAction resolveHistoryAwaitingWorkingAction({
   return HistoryAwaitingWorkingAction.scheduleGraceClear;
 }
 
-/// Grace before clearing awaiting when the seat never enters workingSessionIds
+/// Grace before clearing awaiting when the seat never enters busySessionIds
 /// (permission-only pause, missed latch). Long enough that submit→working lag
 /// does not drop Running chrome. Not used while the seat is still starting.
 const historyAwaitingIdleGrace = Duration(seconds: 4);

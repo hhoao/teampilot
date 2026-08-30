@@ -64,7 +64,7 @@ void main() {
     test(
       'awaiting + connect / PTY-down defers — keep Starting, no grace',
       () {
-        // Landing seed / first continue: workingSessionIds empty while connect
+        // Landing seed / first continue: busySessionIds empty while connect
         // runs. Must not grace-clear awaiting (connect often > 4s).
         expect(
           resolveHistoryAwaitingWorkingAction(

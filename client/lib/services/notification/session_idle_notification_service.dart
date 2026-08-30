@@ -32,7 +32,7 @@ class SessionIdleNotificationService {
     final focused = await _desktop.isAppFocused();
 
     for (final sessionId in ids) {
-      // Closing a working tab also leaves workingSessionIds; that is not idle.
+      // Closing a working tab also leaves busySessionIds; that is not idle.
       if (!openTabSessionIds.contains(sessionId)) continue;
 
       AppSession? session;

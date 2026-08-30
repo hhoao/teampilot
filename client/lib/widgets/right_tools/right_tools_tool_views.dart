@@ -100,16 +100,16 @@ class _WorkingSetDeltaState extends State<_WorkingSetDelta> {
   @override
   void initState() {
     super.initState();
-    _previous = context.read<ChatCubit>().state.workingSessionIds;
+    _previous = context.read<ChatCubit>().state.busySessionIds;
   }
 
   @override
   Widget build(BuildContext context) {
     return BlocListener<ChatCubit, ChatState>(
       listenWhen: (previous, next) =>
-          previous.workingSessionIds != next.workingSessionIds,
+          previous.sessionActivities != next.sessionActivities,
       listener: (context, state) {
-        final working = state.workingSessionIds;
+        final working = state.busySessionIds;
         if (_previous.difference(working).isNotEmpty) {
           widget.onTurnEnd();
         }

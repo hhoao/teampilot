@@ -46,7 +46,7 @@ void main() {
       );
       stampWorking(opened.attention, opened.sessionId, opened.sessionId);
       await drainPendingAsyncWork();
-      expect(opened.cubit.state.workingSessionIds, contains(opened.sessionId));
+      expect(opened.cubit.state.busySessionIds, contains(opened.sessionId));
 
       stampDone(
         opened.attention,
@@ -55,7 +55,7 @@ void main() {
         doneEventName: doneEvent[cli]!,
       );
       await drainPendingAsyncWork();
-      expect(opened.cubit.state.workingSessionIds, isEmpty);
+      expect(opened.cubit.state.busySessionIds, isEmpty);
       await opened.cubit.close();
       await opened.attention.close();
       await deleteTempDirBestEffort(tmp);
@@ -74,7 +74,7 @@ void main() {
       opened.shell.markUserTurnStarted();
       opened.cubit.debugTickIdleWatch();
       await drainPendingAsyncWork();
-      expect(opened.cubit.state.workingSessionIds, contains(opened.sessionId));
+      expect(opened.cubit.state.busySessionIds, contains(opened.sessionId));
 
       simulateFingerprintQuietGap(opened.shell);
       opened.cubit.debugTickIdleWatch();
@@ -88,7 +88,7 @@ void main() {
         CliTool.cursor: true,
       }[cli]!;
       expect(
-        opened.cubit.state.workingSessionIds.isEmpty,
+        opened.cubit.state.busySessionIds.isEmpty,
         shouldClear,
         reason: '$cli requiresPtyFallback=$shouldClear',
       );

@@ -718,7 +718,7 @@ void main() {
     addTearDown(attention.close);
 
     // Pod launching without any agent working yet — the sidebar must still
-    // show the starting spinner (derived from pod phase, not workingSessionIds).
+    // show the starting spinner (derived from pod phase, not busySessionIds).
     chatCubit
         .ensurePodRuntime(_session.sessionId)
         .setPhase(SessionPhase.connecting);

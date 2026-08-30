@@ -2,9 +2,12 @@ import 'dart:async';
 
 import 'package:flutter/foundation.dart';
 
+import '../../models/team_config.dart';
+import '../../services/session/pty_quiet_turn_end.dart';
 import '../../services/team/member_turn_idle_sync.dart';
 import '../../utils/logging/logger.dart';
 import 'chat_tab_store.dart';
+import 'model/chat_tab.dart';
 import 'tab_member_coordination_factory.dart';
 
 /// Cross-tab idle watch: TeamBus reengage and turn quiet sync.
@@ -13,17 +16,20 @@ final class TabSessionIdleWatch {
     required ChatTabStore tabStore,
     required TabMemberCoordinationFactory coordinationFactory,
     required bool Function() isClosed,
+    CliTool? Function(ChatTab tab, String memberId)? memberCli,
     VoidCallback? onAfterTick,
     void Function(String sessionId, String memberId)? onAfterTurnEnded,
   }) : _tabStore = tabStore,
        _coordinationFactory = coordinationFactory,
        _isClosed = isClosed,
+       _memberCli = memberCli,
        _onAfterTick = onAfterTick,
        _onAfterTurnEnded = onAfterTurnEnded;
 
   final ChatTabStore _tabStore;
   final TabMemberCoordinationFactory _coordinationFactory;
   final bool Function() _isClosed;
+  final CliTool? Function(ChatTab tab, String memberId)? _memberCli;
   final VoidCallback? _onAfterTick;
   final void Function(String sessionId, String memberId)? _onAfterTurnEnded;
 
@@ -80,6 +86,8 @@ final class TabSessionIdleWatch {
           shell: shell,
           wasInTurn: _wasInTurn,
           endTurn: () {
+            final cli = _memberCli?.call(tab, memberId);
+            if (cli == null || !ptyQuietEndsTurn(cli)) return;
             appLogger.d(
               '[idle-watch] end-turn member=$memberId '
               'session=${tab.info.id} '

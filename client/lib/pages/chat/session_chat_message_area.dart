@@ -256,23 +256,44 @@ class SessionChatMessageArea extends StatelessWidget {
                               children: [
                                 Builder(
                                   builder: (context) {
-                                    // Read ChatCubit imperatively — no
-                                    // context.select dependency. Enclosing
-                                    // AiHistorySeat BlocBuilder already
-                                    // rebuilds when awaitingAssistant
-                                    // changes (synced with working state).
-                                    final cubit = context.read<ChatCubit>();
                                     final sid = session.sessionId;
-                                    final sessionWorking = cubit
-                                        .state
-                                        .workingSessionIds
-                                        .contains(sid);
+                                    final activity = seatSelect<
+                                      ChatCubit,
+                                      ({
+                                        bool isBusy,
+                                        bool isDelivering,
+                                        bool isInTurn,
+                                        bool isAttention,
+                                      })
+                                    >(
+                                      context,
+                                      (c) {
+                                        final a =
+                                            c.state.sessionActivities[sid];
+                                        return (
+                                          isBusy: a?.isBusy ?? false,
+                                          isDelivering:
+                                              a?.isDelivering ?? false,
+                                          isInTurn: a?.isInTurn ?? false,
+                                          isAttention:
+                                              a?.isAttention ?? false,
+                                        );
+                                      },
+                                    );
                                     final sessionConnecting =
-                                        cubit.podFor(sid)?.phase.isLaunching ??
-                                        false;
-                                    final memberRunning = cubit.isMemberRunning(
-                                      sessionId: sid,
-                                      memberId: shellMemberId,
+                                        seatSelect<ChatCubit, bool>(
+                                      context,
+                                      (c) =>
+                                          c.podFor(sid)?.phase.isLaunching ??
+                                          false,
+                                    );
+                                    final memberRunning =
+                                        seatSelect<ChatCubit, bool>(
+                                      context,
+                                      (c) => c.isMemberRunning(
+                                        sessionId: sid,
+                                        memberId: shellMemberId,
+                                      ),
                                     );
                                     final liveChrome =
                                         SessionHistoryLiveChromeX.resolve(
@@ -280,12 +301,14 @@ class SessionChatMessageArea extends StatelessWidget {
                                             isSubmitting: isSubmitting,
                                             awaitingAssistant:
                                                 state.awaitingAssistant,
-                                            sessionWorking: sessionWorking,
+                                            sessionBusy: activity.isBusy,
                                             userStoppedTurn: userStoppedTurn,
                                           ),
                                           memberRunning: memberRunning,
-                                          sessionWorking: sessionWorking,
                                           sessionConnecting: sessionConnecting,
+                                          isDelivering: activity.isDelivering,
+                                          isInTurn: activity.isInTurn,
+                                          isAttention: activity.isAttention,
                                         );
                                     return MarkdownDisplayModeScope(
                                       userMessageMode: prefs.userMessageMode,

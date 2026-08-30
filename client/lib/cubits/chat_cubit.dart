@@ -9,6 +9,7 @@ import 'package:flutter_alacritty/flutter_alacritty.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../models/failed_message_record.dart';
+import '../models/session_activity.dart';
 import '../models/workspace.dart';
 import '../models/workspace_folder.dart';
 import '../models/workspace_launch_context.dart';
@@ -25,6 +26,7 @@ import '../services/workspace/workspace_icon_service.dart';
 import '../services/workspace/workspace_icon_storage.dart';
 import '../services/storage/app_storage.dart';
 import '../services/session/ai_history_loader.dart';
+import '../services/session/session_activity_reduce.dart';
 import '../services/session/failed_message_store.dart';
 import '../services/session/session_lifecycle_service.dart';
 import '../services/session/session_member_cli_locks.dart';
@@ -186,8 +188,13 @@ class ChatCubit extends Cubit<ChatState>
         );
     final attention = _agentAttentionCubit;
     if (attention != null) {
-      _agentAttentionSub = attention.stream.listen((_) {
-        if (!isClosed) _recomputeWorkingSessions();
+      var previous = attention.state;
+      _agentAttentionSub = attention.stream.listen((next) {
+        if (!isClosed) {
+          _endMemberTurnsForNewlyDoneSeats(previous, next);
+          _updateSessionActivities();
+        }
+        previous = next;
       });
     }
   }
@@ -306,9 +313,10 @@ class ChatCubit extends Cubit<ChatState>
   late final OperatorDeliveryInFlight _operatorDeliveryInFlight =
       OperatorDeliveryInFlight(
         onChanged: () {
-          if (!isClosed) _recomputeWorkingSessions();
+          if (!isClosed) _updateSessionActivities();
         },
       );
+  final _forcedDisposition = <String, SessionTurnDisposition>{};
   late final TabSessionRuntimeCoordinator _sessionRuntime =
       TabSessionRuntimeCoordinator(
         tabStore: _tabStore,
@@ -338,6 +346,24 @@ class ChatCubit extends Cubit<ChatState>
         onAfterTurnLatched: _onOperatorTurnLatched,
         onUserActivity: _launchService.touchOnUserActivity,
         onAfterTurnEnded: _onTurnEnded,
+        memberCli: (tab, memberId) {
+          final session = tab.persistedSession;
+          if (session == null) return null;
+          return SessionMemberCliResolver.resolve(
+            persistedSession: session,
+            team: _activeTeam,
+            memberId: memberId,
+            cliForMember: (team, id, {globalPresets = const []}) =>
+                memberLaunchCli(
+                  team: team,
+                  member:
+                      _rosterMemberFor(team, id) ??
+                      TeamMemberConfig(id: id, name: id),
+                  globalPresets: globalPresets,
+                ),
+            globalPresets: _lifecycle.globalPresets,
+          );
+        },
         reclaimEnabled: () => _reclaimIdleTerminalsEnabled?.call() ?? false,
         reclaimIdleAfterSeconds: () =>
             _reclaimIdleTerminalAfterSeconds?.call() ?? 180,
@@ -783,21 +809,31 @@ class ChatCubit extends Cubit<ChatState>
   void bindPresenceCubit(MemberPresenceCubit cubit) => _presenceCubit = cubit;
 
   /// Pushed after each idle-watch tick once member presence has been refreshed.
-  /// Session spinners follow the members panel ([MemberAvailability.working]).
-  void _updateWorkingSessions(Set<String> ids) {
-    if (isClosed || setEquals(ids, state.workingSessionIds)) return;
-    emit(state.copyWith(workingSessionIds: ids));
+  /// Session spinners follow [SessionActivity.isBusy] on [ChatState.sessionActivities].
+  void _updateSessionActivities() {
+    if (isClosed) return;
+    final reasons = _sessionRuntime.computeReasons();
+    final next = <String, SessionActivity>{};
+    for (final tab in _tabStore.openTabs) {
+      final id = tab.info.id;
+      final prev = state.sessionActivities[id] ?? const SessionActivity();
+      final forced = _forcedDisposition.remove(id);
+      next[id] = reduceSessionActivity(
+        previous: prev,
+        reasons: reasons[id] ?? const {},
+        forced: forced,
+      );
+    }
+    if (!mapEquals(next, state.sessionActivities)) {
+      emit(state.copyWith(sessionActivities: next));
+    }
+    _syncFollowUpQueuesWithWorking();
   }
 
   Future<void> _onIdleWatchTick() async {
     await _presenceCubit?.tickFromIdleWatch();
     if (isClosed) return;
-    _recomputeWorkingSessions();
-  }
-
-  void _recomputeWorkingSessions() {
-    _updateWorkingSessions(_sessionRuntime.recomputeWorkingSessions());
-    _syncFollowUpQueuesWithWorking();
+    _updateSessionActivities();
   }
 
   Future<T> withOperatorDeliveryInFlight<T>(
@@ -805,8 +841,12 @@ class ChatCubit extends Cubit<ChatState>
     Future<T> Function() action,
   ) => _operatorDeliveryInFlight.run(sessionId, action);
 
-  void endOperatorDeliveryInFlight(String sessionId) =>
-      _operatorDeliveryInFlight.clear(sessionId);
+  void endOperatorDeliveryInFlight(String sessionId) {
+    final id = sessionId.trim();
+    if (id.isEmpty) return;
+    _forcedDisposition[id] = SessionTurnDisposition.cancelled;
+    _operatorDeliveryInFlight.clear(id);
+  }
 
   @visibleForTesting
   bool isOperatorDeliveryInFlight(String sessionId) =>
@@ -962,7 +1002,7 @@ class ChatCubit extends Cubit<ChatState>
       // Clear any prior waiting/working seat so a fresh submit is not locked.
       attention.clearSeat(sessionId: sessionId, memberId: memberId);
     }
-    _recomputeWorkingSessions();
+    _updateSessionActivities();
   }
 
   /// PTY-quiet turn end — clears the attention working seat for CLIs whose
@@ -994,7 +1034,7 @@ class ChatCubit extends Cubit<ChatState>
     final bus = tab.teamBus;
     if (bus != null && bus.hasPendingDoorbell(memberId)) return;
     attention.clearWorkingIfWorking(sessionId: sessionId, memberId: memberId);
-    _recomputeWorkingSessions();
+    _updateSessionActivities();
   }
 
   /// Roster member by id from the active team, or null when the member is not
@@ -1020,9 +1060,42 @@ class ChatCubit extends Cubit<ChatState>
     );
   }
 
+  /// Seat attention just became [AgentSeatAttention.done] — end that member's
+  /// turn latch. PTY quiet no longer ends Claude/Codex/OpenCode/flashskyai;
+  /// Cursor still ends on quiet, and this path is idempotent if quiet won.
+  void _endMemberTurnsForNewlyDoneSeats(
+    AgentAttentionState previous,
+    AgentAttentionState next,
+  ) {
+    for (final entry in next.seats.entries) {
+      if (entry.value.attention != AgentSeatAttention.done) continue;
+      if (previous.seats[entry.key]?.attention == AgentSeatAttention.done) {
+        continue;
+      }
+      final sep = entry.key.indexOf('\u0000');
+      if (sep <= 0) continue;
+      final sessionId = entry.key.substring(0, sep);
+      final memberId = entry.key.substring(sep + 1);
+      if (memberId.isEmpty) continue;
+      _sessionRuntime.endMemberTurn(sessionId, memberId);
+    }
+  }
+
   @visibleForTesting
-  void updateWorkingSessionsForTest(Set<String> ids) =>
-      _updateWorkingSessions(ids);
+  void updateWorkingSessionsForTest(Set<String> ids) {
+    if (isClosed) return;
+    emit(
+      state.copyWith(
+        sessionActivities: {
+          for (final id in ids)
+            id: const SessionActivity(
+              reasons: {SessionBusyReason.inTurn},
+              hadTurn: true,
+            ),
+        },
+      ),
+    );
+  }
 
   @visibleForTesting
   void debugTickIdleWatch() => _sessionRuntime.debugTickIdleWatch();
@@ -1031,7 +1104,22 @@ class ChatCubit extends Cubit<ChatState>
   void debugTickReclaimWatch() => _sessionRuntime.debugTickReclaimWatch();
 
   @visibleForTesting
-  void debugRecomputeWorkingSessions() => _recomputeWorkingSessions();
+  void debugRecomputeWorkingSessions() => _updateSessionActivities();
+
+  /// Clears [SessionActivity.isReadyToChat] after idle-notify consumes it.
+  void acknowledgeSessionReady(String sessionId) {
+    if (isClosed) return;
+    final current = state.sessionActivities[sessionId];
+    if (current == null || current == const SessionActivity()) return;
+    emit(
+      state.copyWith(
+        sessionActivities: {
+          ...state.sessionActivities,
+          sessionId: const SessionActivity(),
+        },
+      ),
+    );
+  }
 
   /// Seat-level working for compose stop button (mirrors members panel rules).
   bool isMemberWorking(String sessionId, String memberId) {
@@ -1081,6 +1169,10 @@ class ChatCubit extends Cubit<ChatState>
     // reaches a CLI `Stop`/done hook (the PTY may die non-zero, or the CLI parks
     // at a prompt), so without this the attention busy arm stays lit until TTL.
     clearAgentStatusSeat(sessionId: sid, memberId: mid);
+    _sessionRuntime.endMemberTurn(sid, mid);
+    _forcedDisposition[sid] = SessionTurnDisposition.cancelled;
+    endOperatorDeliveryInFlight(sid);
+    _updateSessionActivities();
     await _turnInterrupt.interrupt(
       sessionId: sid,
       memberId: mid,
@@ -1818,7 +1910,7 @@ class ChatCubit extends Cubit<ChatState>
     _sessionRuntime.maybeStopIdleWatch();
     await _tearDownTab(tab);
     _pushPresenceTarget();
-    _updateWorkingSessions(_sessionRuntime.recomputeWorkingSessions());
+    _updateSessionActivities();
   }
 
   /// Registers a staged session runtime (bar presence is handled by the
@@ -1851,7 +1943,7 @@ class ChatCubit extends Cubit<ChatState>
         await teardownSession(id);
       }
     }
-    _updateWorkingSessions(_sessionRuntime.recomputeWorkingSessions());
+    _updateSessionActivities();
   }
 
   /// Sets Chat vs Terminal center body for an open session tab. The pod owns
@@ -1934,15 +2026,6 @@ class ChatCubit extends Cubit<ChatState>
       referencedSessionId: referencedSessionId,
     );
   }
-
-  /// Leaves new-chat mode. The bar's center-active is the single source —
-  /// selecting a session exits landing automatically; this is a no-op.
-  void exitNewChat() {}
-
-  /// Clears new-chat mode without selecting a session (e.g. opening a
-  /// file/diff tab). The bar recomputes active on open/activate, so landing
-  /// clears itself; kept so legacy callers compile.
-  void dismissNewChat() {}
 
   void syncTeam(TeamProfile team) {
     final tab = _activeTab;
@@ -2429,13 +2512,13 @@ class ChatCubit extends Cubit<ChatState>
     if (session != null && port != null) {
       port.onSessionDeleted(session.workspaceId, sessionId);
     }
-    final working = _sessionRuntime.recomputeWorkingSessions();
+    _updateSessionActivities();
     _emitSnapshot(
       _dataStore.deriveSnapshot(
         workspaces: state.workspaces,
         sessions: sessions,
       ),
-      base: state.copyWith(workingSessionIds: working),
+      base: state,
     );
     _emitSnapshot(
       await _dataStore.deleteSessionRecord(stateSnapshot(), repo, sessionId),

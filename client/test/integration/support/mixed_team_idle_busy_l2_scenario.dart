@@ -7,7 +7,7 @@ import 'mixed_team_idle_busy_assertions.dart';
 import 'mixed_team_integration_harness.dart';
 import 'mixed_team_task_scenario.dart';
 
-/// L2 idle/busy: real Claude PTY + ChatCubit.workingSessionIds + MemberPresence.
+/// L2 idle/busy: real Claude PTY + ChatCubit.busySessionIds + MemberPresence.
 abstract final class MixedTeamIdleBusyL2Scenario {
   /// Mixed session idle at prompt on real PTYs (no false-positive from spinner).
   static Future<void> runSessionIdleAtPrompt() => MixedTeamTaskScenario.run(

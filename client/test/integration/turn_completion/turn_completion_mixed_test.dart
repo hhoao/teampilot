@@ -98,7 +98,7 @@ void main() {
     cubit.debugTickIdleWatch();
     await drainPendingAsyncWork();
     expect(bus.isMemberInTurn('worker-1'), isTrue);
-    expect(cubit.state.workingSessionIds, contains(opened.sessionId));
+    expect(cubit.state.busySessionIds, contains(opened.sessionId));
 
     // Cursor stop hook POSTs /idle → bus turn must end (push CLI).
     final mcp = cubit.teammateBusMcpEndpointForSession(opened.sessionId)!;
@@ -112,7 +112,46 @@ void main() {
     cubit.debugTickIdleWatch();
     await drainPendingAsyncWork();
     expect(bus.isMemberInTurn('worker-1'), isFalse);
-    expect(cubit.state.workingSessionIds, isEmpty);
+    expect(cubit.state.busySessionIds, isEmpty);
+
+    await cubit.close();
+    await deleteTempDirBestEffort(tmp);
+  });
+
+  test('mixed cursor: PTY quiet ends bus turn and clears busy', () async {
+    final tmp = await Directory.systemTemp.createTemp('tc_mixed_');
+    final repo = SessionRepository(rootDir: tmp.path);
+    final postFrame = PostFrameTestHarness();
+    final cubit = ChatCubit(
+      executableResolver: () => 'true',
+      automationRepository: testAutomationRepository(),
+      sessionRepository: repo,
+      postFrameScheduler: postFrame.scheduler,
+      agentAttentionCubit: AgentAttentionCubit(pruneInterval: null),
+      terminalSessionFactory:
+          ({required String executable, int scrollbackLines = 10000}) =>
+              RunningConnectedFakeShell(executable: executable),
+    );
+
+    final opened = await openCursorMixedSession(
+      cubit: cubit,
+      repo: repo,
+      postFrame: postFrame,
+    );
+    final bus = cubit.activeTab!.teamBus!;
+    final shell = cubit.activeTab!.memberShells['worker-1']!;
+
+    bus.markTurnStarted('worker-1');
+    cubit.debugTickIdleWatch();
+    await drainPendingAsyncWork();
+    expect(bus.isMemberInTurn('worker-1'), isTrue);
+    expect(cubit.state.busySessionIds, contains(opened.sessionId));
+
+    simulateFingerprintQuietGap(shell);
+    cubit.debugTickIdleWatch();
+    await drainPendingAsyncWork();
+    expect(bus.isMemberInTurn('worker-1'), isFalse);
+    expect(cubit.state.busySessionIds, isEmpty);
 
     await cubit.close();
     await deleteTempDirBestEffort(tmp);

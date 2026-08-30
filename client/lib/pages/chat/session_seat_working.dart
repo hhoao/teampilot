@@ -57,7 +57,7 @@ SessionSeatWorkingBits watchSessionSeatWorking(
     ),
     sessionWorking: seatSelect<ChatCubit, bool>(
       context,
-      (c) => c.state.workingSessionIds.contains(sessionId),
+      (c) => c.state.isSessionBusy(sessionId),
     ),
     presence: seatSelect<MemberPresenceCubit, MemberPresence>(
       context,

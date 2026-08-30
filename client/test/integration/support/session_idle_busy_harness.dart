@@ -12,6 +12,7 @@ import 'package:teampilot/services/team_bus/mcp/teammate_bus_mcp_config.dart';
 import 'package:teampilot/services/terminal/terminal_session.dart';
 
 import 'connected_recording_shell.dart';
+import 'integration_prerequisites.dart';
 import '../../support/post_frame_test_harness.dart';
 
 /// Running + connected fake shell so idle-watch and presence treat it as live.
@@ -49,6 +50,7 @@ Future<void> postMemberIdle(
   String memberId, {
   required String sessionId,
 }) async {
+  IntegrationPrerequisites.resetHttpOverrides();
   final client = HttpClient();
   try {
     final req = await client.postUrl(idleEndpoint);

@@ -1058,7 +1058,7 @@ class _SessionChatViewState extends State<SessionChatView> {
       final cubit = context.read<ChatCubit>();
       final chat = cubit.state;
       final sid = widget.session.sessionId;
-      final working = chat.workingSessionIds.contains(sid);
+      final working = chat.isSessionBusy(sid);
       if (working) {
         // Working rose during grace — latch via normal sync.
         seat.applyWorkingSessionSync(
@@ -1083,7 +1083,7 @@ class _SessionChatViewState extends State<SessionChatView> {
     final sid = widget.session.sessionId;
     final chatCubit = cubit ?? context.read<ChatCubit>();
     final action = seat.applyWorkingSessionSync(
-      sessionWorking: chat.workingSessionIds.contains(sid),
+      sessionWorking: chat.isSessionBusy(sid),
       sessionConnecting: _podConnecting(chatCubit, sid),
       memberRunning: context.read<ChatCubit>().isMemberRunning(
         sessionId: sid,
@@ -1170,12 +1170,8 @@ class _SessionChatViewState extends State<SessionChatView> {
             listeners: [
               BlocListener<ChatCubit, ChatState>(
                 listenWhen: (previous, current) =>
-                    previous.workingSessionIds.contains(
-                      widget.session.sessionId,
-                    ) !=
-                    current.workingSessionIds.contains(
-                      widget.session.sessionId,
-                    ),
+                    previous.isSessionBusy(widget.session.sessionId) !=
+                    current.isSessionBusy(widget.session.sessionId),
                 listener: (context, state) {
                   _syncAwaitingFromWorkingSessions(state);
                   _maybeStartLiveRefreshForRunningPty();

@@ -53,12 +53,12 @@ Future<void> waitUntilSessionIdle({
   final deadline = DateTime.now().add(timeout);
   while (DateTime.now().isBefore(deadline)) {
     cubit.debugTickIdleWatch();
-    if (!cubit.state.workingSessionIds.contains(sessionId)) return;
+    if (!cubit.state.busySessionIds.contains(sessionId)) return;
     await Future<void>.delayed(const Duration(milliseconds: 200));
   }
   throw StateError(
-    'Timed out waiting for session $sessionId to leave workingSessionIds '
-    '(still: ${cubit.state.workingSessionIds})',
+    'Timed out waiting for session $sessionId to leave busySessionIds '
+    '(still: ${cubit.state.busySessionIds})',
   );
 }
 
@@ -83,13 +83,13 @@ Future<void> waitUntilBusCalmAndSessionIdle({
     }
     cubit.debugTickIdleWatch();
     final busCalm = bus == null || !bus.anyMemberInTurn;
-    final sessionCalm = !cubit.state.workingSessionIds.contains(sessionId);
+    final sessionCalm = !cubit.state.busySessionIds.contains(sessionId);
     if (busCalm && sessionCalm) return;
     await Future<void>.delayed(const Duration(milliseconds: 200));
   }
   throw StateError(
     'Timed out waiting for calm bus + session idle:\n'
-    'workingSessions=${cubit.state.workingSessionIds}\n'
+    'workingSessions=${cubit.state.busySessionIds}\n'
     '${formatRosterSnapshot(bus)}\n'
     'mcpWaitStreams=${gateway?.activeWaitStreamCountFor(sessionId) ?? 0}',
   );
@@ -120,7 +120,7 @@ Future<void> waitUntilMemberAvailability({
 void expectSessionIdle(ChatCubit cubit, String sessionId) {
   cubit.debugTickIdleWatch();
   expect(
-    cubit.state.workingSessionIds,
+    cubit.state.busySessionIds,
     isNot(contains(sessionId)),
     reason: 'mixed session should not show sidebar working spinner',
   );

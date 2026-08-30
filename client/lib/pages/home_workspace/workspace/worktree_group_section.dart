@@ -177,7 +177,7 @@ class WorktreeGroupSection extends StatelessWidget {
       sessions: sessionsForWorkspace(workspace, chatCubit.state.sessions),
     );
     // A running agent's cwd would vanish under it — make the user stop first.
-    final working = chatCubit.state.workingSessionIds;
+    final working = chatCubit.state.busySessionIds;
     final hasBusy = sessionsInGroup.any(
       (session) => working.contains(session.sessionId),
     );

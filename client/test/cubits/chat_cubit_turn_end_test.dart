@@ -29,8 +29,13 @@ void main() {
               RunningConnectedFakeShell(executable: executable),
     );
 
-    final workspace = await repo.createWorkspace([WorkspaceFolder(path: '/tmp')]);
-    final session = (await repo.createSession(workspace.workspaceId, cli: CliTool.cursor)).session;
+    final workspace = await repo.createWorkspace([
+      WorkspaceFolder(path: '/tmp'),
+    ]);
+    final session = (await repo.createSession(
+      workspace.workspaceId,
+      cli: CliTool.cursor,
+    )).session;
     await cubit.loadWorkspaceData(repo);
     await cubit.requestOpenSession(
       SessionOpenRequest(
@@ -61,7 +66,7 @@ void main() {
     shell.markUserTurnStarted();
     cubit.debugTickIdleWatch();
     await drainPendingAsyncWork();
-    expect(cubit.state.workingSessionIds, contains(session.sessionId));
+    expect(cubit.state.busySessionIds, contains(session.sessionId));
 
     // PTY goes quiet → turn-end fallback should clear the seat.
     simulateFingerprintQuietGap(shell);
@@ -75,11 +80,78 @@ void main() {
       ),
       isNull,
     );
-    expect(cubit.state.workingSessionIds, isEmpty);
+    expect(cubit.state.busySessionIds, isEmpty);
 
     await cubit.close();
     await attention.close();
     await postFrame.flush();
     await deleteTempDirBestEffort(tmp);
   });
+
+  test(
+    'personal Claude: Stop/done hook ends inTurn when PTY quiet does not',
+    () async {
+      final tmp = await Directory.systemTemp.createTemp('cubit_turn_end_');
+      final repo = SessionRepository(rootDir: tmp.path);
+      final attention = AgentAttentionCubit(pruneInterval: null);
+      final postFrame = PostFrameTestHarness();
+      final cubit = ChatCubit(
+        executableResolver: () => 'true',
+        automationRepository: testAutomationRepository(),
+        sessionRepository: repo,
+        postFrameScheduler: postFrame.scheduler,
+        agentAttentionCubit: attention,
+        terminalSessionFactory:
+            ({required String executable, int scrollbackLines = 10000}) =>
+                RunningConnectedFakeShell(executable: executable),
+      );
+
+      final workspace = await repo.createWorkspace([
+        WorkspaceFolder(path: '/tmp'),
+      ]);
+      final session = (await repo.createSession(workspace.workspaceId)).session;
+      await cubit.loadWorkspaceData(repo);
+      await cubit.requestOpenSession(
+        SessionOpenRequest(
+          session: session,
+          workspace: workspace,
+          repo: repo,
+          connectImmediately: false,
+        ),
+      );
+      await drainPendingAsyncWork();
+      final tab = cubit.activeTab!;
+      final memberId = tab.memberShells.keys.single;
+      final shell = tab.memberShells[memberId]!;
+      shell.activityTracker.latchBootFrameReadyForTest(
+        DateTime.now().subtract(const Duration(seconds: 5)),
+      );
+
+      shell.markUserTurnStarted();
+      cubit.debugRecomputeWorkingSessions();
+      expect(cubit.state.busySessionIds, contains(session.sessionId));
+
+      attention.applyEvent(
+        sessionId: session.sessionId,
+        memberId: memberId,
+        event: const AgentStatusEvent(
+          state: AgentSeatAttention.done,
+          hookEventName: 'Stop',
+        ),
+        skipPermissions: false,
+      );
+      await drainPendingAsyncWork();
+
+      expect(cubit.state.busySessionIds, isEmpty);
+      expect(
+        cubit.state.sessionActivities[session.sessionId]!.isReadyToChat,
+        isTrue,
+      );
+
+      await cubit.close();
+      await attention.close();
+      await postFrame.flush();
+      await deleteTempDirBestEffort(tmp);
+    },
+  );
 }

@@ -7,10 +7,10 @@ import '../../models/app_session.dart';
 /// preview tab.
 List<AppSession> workspaceRunningSessions({
   required List<AppSession> sessions,
-  required Set<String> workingSessionIds,
+  required Set<String> busySessionIds,
   required Set<String> openTabSessionIds,
 }) {
-  if (workingSessionIds.isEmpty && openTabSessionIds.isEmpty) {
+  if (busySessionIds.isEmpty && openTabSessionIds.isEmpty) {
     return const [];
   }
   final byId = {for (final s in sessions) s.sessionId: s};
@@ -25,7 +25,7 @@ List<AppSession> workspaceRunningSessions({
     }
   }
 
-  addIds(workingSessionIds);
+  addIds(busySessionIds);
   addIds(openTabSessionIds);
   return ordered;
 }

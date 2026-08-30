@@ -9,19 +9,19 @@ import 'package:shared_ui/shared_ui.dart';
 ///
 /// Counts build / layout calls per host per scenario:
 ///  1. session switch            (s0 → s3)
-///  2. background working change (workingSessionIds gains s2)
+///  2. background working change (busySessionIds gains s2)
 ///  3. background message emit   (messageVersion bumps for s2 only)
 ///  4. window resize             (global relayout)
 class _PerfState {
   const _PerfState({
     required this.activeSessionId,
-    this.workingSessionIds = const {},
+    this.busySessionIds = const {},
     this.structuralVersion = 0,
     this.messageVersionBySession = const {},
   });
 
   final String? activeSessionId;
-  final Set<String> workingSessionIds;
+  final Set<String> busySessionIds;
 
   /// Bumped on switch / session add-remove / selectedMember / launchError —
   /// mirrors the [ChatPageStructuralSignal] gate of ChatPageShell.
@@ -36,21 +36,21 @@ class _PerfCubit extends Cubit<_PerfState> {
 
   void switchSession(String id) => emit(_PerfState(
         activeSessionId: id,
-        workingSessionIds: state.workingSessionIds,
+        busySessionIds: state.busySessionIds,
         structuralVersion: state.structuralVersion + 1,
         messageVersionBySession: state.messageVersionBySession,
       ));
 
   void setWorking(Set<String> ids) => emit(_PerfState(
         activeSessionId: state.activeSessionId,
-        workingSessionIds: ids,
+        busySessionIds: ids,
         structuralVersion: state.structuralVersion,
         messageVersionBySession: state.messageVersionBySession,
       ));
 
   void emitMessage(String id) => emit(_PerfState(
         activeSessionId: state.activeSessionId,
-        workingSessionIds: state.workingSessionIds,
+        busySessionIds: state.busySessionIds,
         structuralVersion: state.structuralVersion,
         messageVersionBySession: {
           ...state.messageVersionBySession,
@@ -83,7 +83,7 @@ class _HeavyHost extends StatelessWidget {
   final String id;
   final _Counters counters;
 
-  /// `global` → watch (activeSessionId, workingSessionIds) like the current
+  /// `global` → watch (activeSessionId, busySessionIds) like the current
   /// session_chat_view / compose selects. `own` → own-session booleans only.
   final String selectScope;
 
@@ -92,13 +92,13 @@ class _HeavyHost extends StatelessWidget {
     counters.build(id);
     if (selectScope == 'global') {
       final _ = context.select<_PerfCubit, (String?, Set<String>)>(
-        (c) => (c.state.activeSessionId, c.state.workingSessionIds),
+        (c) => (c.state.activeSessionId, c.state.busySessionIds),
       );
     } else {
       final _ = context.select<_PerfCubit, bool>(
         (c) =>
             c.state.activeSessionId == id ||
-            c.state.workingSessionIds.contains(id),
+            c.state.busySessionIds.contains(id),
       );
     }
     final messageVersion = context.select<_PerfCubit, int>(

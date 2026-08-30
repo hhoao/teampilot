@@ -79,17 +79,17 @@ void main() {
   test('RunningSessionIds order-sensitive equality', () {
     final a = RunningSessionIds.fromWorkspace(
       sessions: [_s(id: 'a'), _s(id: 'b')],
-      workingSessionIds: {'b'},
+      busySessionIds: {'b'},
       openTabSessionIds: {'a'},
     );
     final same = RunningSessionIds.fromWorkspace(
       sessions: [_s(id: 'a'), _s(id: 'b')],
-      workingSessionIds: {'b'},
+      busySessionIds: {'b'},
       openTabSessionIds: {'a'},
     );
     final different = RunningSessionIds.fromWorkspace(
       sessions: [_s(id: 'a'), _s(id: 'b')],
-      workingSessionIds: {'a'},
+      busySessionIds: {'a'},
       openTabSessionIds: {'b'},
     );
     expect(a, same);

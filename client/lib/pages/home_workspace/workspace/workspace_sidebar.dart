@@ -390,7 +390,7 @@ class _RunningSessionsHost extends StatelessWidget {
         .map((tab) => tab.info.id);
     return RunningSessionIds.fromWorkspace(
       sessions: sessionsForWorkspace(workspace, state.sessions),
-      workingSessionIds: state.workingSessionIds,
+      busySessionIds: state.busySessionIds,
       openTabSessionIds: openTabSessionIdsForWorkspace(runningTabIds),
     );
   }

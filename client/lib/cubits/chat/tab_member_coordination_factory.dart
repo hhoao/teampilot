@@ -24,6 +24,21 @@ final class TabMemberCoordinationFactory {
 
   SessionWorkingResolver get sessionWorking => _sessionWorking;
 
+  /// Ends the seat turn the same way idle-watch does (`coordination.endTurn()`).
+  void endTurnForMember(String sessionId, String memberId) {
+    final tab = _tabStore.openTabBySessionId(sessionId);
+    if (tab == null) return;
+    final shell = tab.memberShells[memberId];
+    if (shell == null) return;
+    final isPersonal = _sessionWorking.isPersonalTab(tab);
+    forTabMember(
+      tab: tab,
+      memberId: memberId,
+      shell: shell,
+      isPersonal: isPersonal,
+    ).endTurn();
+  }
+
   MemberCoordination? forMember(
     String sessionId,
     String memberId, {

@@ -421,7 +421,7 @@ class WorkbenchStripTabChipState extends State<WorkbenchStripTabChip> {
     final working = sessionId == null
         ? widget.working
         : context.select<ChatCubit, bool>(
-            (c) => c.state.workingSessionIds.contains(sessionId),
+            (c) => c.state.isSessionBusy(sessionId),
           );
     final waiting = sessionId == null
         ? false

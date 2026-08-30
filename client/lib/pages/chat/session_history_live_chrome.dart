@@ -13,18 +13,18 @@ enum SessionHistoryLiveChrome {
 
 /// Whether History tip chrome should treat a turn as in flight.
 ///
-/// After compose Stop, [userStoppedTurn] suppresses residual [sessionWorking]
+/// After compose Stop, [userStoppedTurn] suppresses residual [sessionBusy]
 /// (PTY idleAfter / spinner noise) so "运行中…" clears immediately once
 /// [awaitingAssistant] is cleared by the Stop handler.
 bool historyTurnInFlight({
   required bool isSubmitting,
   required bool awaitingAssistant,
-  required bool sessionWorking,
+  required bool sessionBusy,
   required bool userStoppedTurn,
 }) {
   if (isSubmitting || awaitingAssistant) return true;
   if (userStoppedTurn) return false;
-  return sessionWorking;
+  return sessionBusy;
 }
 
 extension SessionHistoryLiveChromeX on SessionHistoryLiveChrome {
@@ -38,12 +38,14 @@ extension SessionHistoryLiveChromeX on SessionHistoryLiveChrome {
   static SessionHistoryLiveChrome resolve({
     required bool turnInFlight,
     required bool memberRunning,
-    required bool sessionWorking,
     required bool sessionConnecting,
+    bool isDelivering = false,
+    bool isInTurn = false,
+    bool isAttention = false,
   }) {
     if (!turnInFlight) return SessionHistoryLiveChrome.none;
-    if (sessionWorking) return SessionHistoryLiveChrome.running;
-    if (sessionConnecting || !memberRunning) {
+    if (isInTurn || isAttention) return SessionHistoryLiveChrome.running;
+    if (isDelivering || sessionConnecting || !memberRunning) {
       return SessionHistoryLiveChrome.starting;
     }
     return SessionHistoryLiveChrome.running;

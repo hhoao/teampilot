@@ -12,7 +12,7 @@ void main() {
   tearDown(tearDownIntegrationAppStorage);
 
   test(
-    'mixed session idle at prompt on real PTYs (workingSessionIds + presence)',
+    'mixed session idle at prompt on real PTYs (busySessionIds + presence)',
     MixedTeamIdleBusyL2Scenario.runSessionIdleAtPrompt,
   );
 

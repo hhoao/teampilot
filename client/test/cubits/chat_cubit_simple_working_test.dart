@@ -6,6 +6,8 @@ import 'package:teampilot/cubits/agent_attention_cubit.dart';
 import 'package:teampilot/cubits/chat_cubit.dart';
 import 'package:teampilot/cubits/member_presence_cubit.dart';
 import 'package:teampilot/models/member_presence.dart';
+import 'package:teampilot/models/session_activity.dart';
+import 'package:teampilot/models/team_config.dart';
 import 'package:teampilot/models/workspace_folder.dart';
 import 'package:teampilot/repositories/session_repository.dart';
 import 'package:teampilot/services/agent_status/agent_attention_state.dart';
@@ -74,7 +76,10 @@ void main() {
       final workspace = await repo.createWorkspace([
         WorkspaceFolder(path: '/tmp'),
       ]);
-      final session = (await repo.createSession(workspace.workspaceId)).session;
+      final session = (await repo.createSession(
+        workspace.workspaceId,
+        cli: CliTool.cursor,
+      )).session;
       await cubit.loadWorkspaceData(repo);
 
       await cubit.requestOpenSession(
@@ -92,7 +97,7 @@ void main() {
       // Idle before any send: not working.
       cubit.debugTickIdleWatch();
       await drainPendingAsyncWork();
-      expect(cubit.state.workingSessionIds, isEmpty);
+      expect(cubit.state.busySessionIds, isEmpty);
 
       // Send → turn starts; agent output makes the activity tracker active.
       shell.markUserTurnStarted();
@@ -101,7 +106,7 @@ void main() {
       cubit.debugTickIdleWatch();
       await drainPendingAsyncWork();
       expect(
-        cubit.state.workingSessionIds,
+        cubit.state.busySessionIds,
         contains(session.sessionId),
         reason: 'a send should light the working indicator',
       );
@@ -114,8 +119,72 @@ void main() {
       );
       cubit.debugTickIdleWatch();
       await drainPendingAsyncWork();
-      expect(cubit.state.workingSessionIds, isEmpty);
+      expect(cubit.state.busySessionIds, isEmpty);
     });
+
+    test(
+      'personal Claude: PTY quiet keeps busy until Stop/done',
+      () async {
+        final workspace = await repo.createWorkspace([
+          WorkspaceFolder(path: '/tmp'),
+        ]);
+        final session = (await repo.createSession(
+          workspace.workspaceId,
+        )).session;
+        await cubit.loadWorkspaceData(repo);
+
+        await cubit.requestOpenSession(
+          SessionOpenRequest(
+            session: session,
+            workspace: workspace,
+            repo: repo,
+            connectImmediately: false,
+          ),
+        );
+        await drainPendingAsyncWork();
+        final shell = created.single;
+        final memberId = cubit.activeTab!.memberShells.keys.single;
+
+        shell.markUserTurnStarted();
+        shell.activityTracker.isWorking;
+        shell.activityTracker.markActive();
+        cubit.debugTickIdleWatch();
+        await drainPendingAsyncWork();
+        expect(cubit.state.busySessionIds, contains(session.sessionId));
+
+        shell.activityTracker.notePtyBytes(
+          const [0x64, 0x6f, 0x6e, 0x65],
+          DateTime.now().subtract(const Duration(seconds: 5)),
+        );
+        cubit.debugTickIdleWatch();
+        await drainPendingAsyncWork();
+        expect(
+          cubit.state.busySessionIds,
+          contains(session.sessionId),
+          reason: 'Claude PTY quiet must not endTurn',
+        );
+        expect(
+          cubit.state.sessionActivities[session.sessionId]!.isReadyToChat,
+          isFalse,
+        );
+
+        attention.applyEvent(
+          sessionId: session.sessionId,
+          memberId: memberId,
+          event: const AgentStatusEvent(
+            state: AgentSeatAttention.done,
+            hookEventName: 'Stop',
+          ),
+          skipPermissions: false,
+        );
+        await drainPendingAsyncWork();
+        expect(cubit.state.busySessionIds, isEmpty);
+        expect(
+          cubit.state.sessionActivities[session.sessionId]!.isReadyToChat,
+          isTrue,
+        );
+      },
+    );
 
     test(
       'operator latch must not pin busy after PTY quiet (Cursor simple)',
@@ -123,7 +192,10 @@ void main() {
         final workspace = await repo.createWorkspace([
           WorkspaceFolder(path: '/tmp'),
         ]);
-        final session = (await repo.createSession(workspace.workspaceId)).session;
+        final session = (await repo.createSession(
+          workspace.workspaceId,
+          cli: CliTool.cursor,
+        )).session;
         await cubit.loadWorkspaceData(repo);
 
         await cubit.requestOpenSession(
@@ -145,16 +217,18 @@ void main() {
         shell.activityTracker.markActive();
         cubit.debugTickIdleWatch();
         await drainPendingAsyncWork();
-        expect(cubit.state.workingSessionIds, contains(session.sessionId));
+        expect(cubit.state.busySessionIds, contains(session.sessionId));
 
-        shell.activityTracker.notePtyBytes(
-          const [0x64, 0x6f, 0x6e, 0x65],
-          DateTime.now().subtract(const Duration(seconds: 5)),
-        );
+        shell.activityTracker.notePtyBytes(const [
+          0x64,
+          0x6f,
+          0x6e,
+          0x65,
+        ], DateTime.now().subtract(const Duration(seconds: 5)));
         cubit.debugTickIdleWatch();
         await drainPendingAsyncWork();
         expect(
-          cubit.state.workingSessionIds,
+          cubit.state.busySessionIds,
           isEmpty,
           reason:
               'CLIs without Stop/done must not stay busy via latch-stamped '
@@ -176,7 +250,9 @@ void main() {
         final workspace = await repo.createWorkspace([
           WorkspaceFolder(path: '/tmp'),
         ]);
-        final session = (await repo.createSession(workspace.workspaceId)).session;
+        final session = (await repo.createSession(
+          workspace.workspaceId,
+        )).session;
         await cubit.loadWorkspaceData(repo);
 
         await cubit.requestOpenSession(
@@ -222,7 +298,9 @@ void main() {
         final workspace = await repo.createWorkspace([
           WorkspaceFolder(path: '/tmp'),
         ]);
-        final session = (await repo.createSession(workspace.workspaceId)).session;
+        final session = (await repo.createSession(
+          workspace.workspaceId,
+        )).session;
         await cubit.loadWorkspaceData(repo);
 
         await cubit.requestOpenSession(
@@ -257,7 +335,7 @@ void main() {
         cubit.debugRecomputeWorkingSessions();
 
         expect(
-          cubit.state.workingSessionIds,
+          cubit.state.busySessionIds,
           contains(session.sessionId),
           reason: 'personal tab must not mirror unrelated team presence',
         );
@@ -290,7 +368,7 @@ void main() {
       // No manual tick — rely on the periodic timer started at tab open.
       await Future<void>.delayed(const Duration(milliseconds: 1300));
       expect(
-        cubit.state.workingSessionIds,
+        cubit.state.busySessionIds,
         contains(session.sessionId),
         reason: 'ensureIdleWatch must start the periodic timer at tab open',
       );
@@ -302,7 +380,9 @@ void main() {
         final workspace = await repo.createWorkspace([
           WorkspaceFolder(path: '/tmp'),
         ]);
-        final session = (await repo.createSession(workspace.workspaceId)).session;
+        final session = (await repo.createSession(
+          workspace.workspaceId,
+        )).session;
         await cubit.loadWorkspaceData(repo);
 
         await cubit.requestOpenSession(
@@ -321,11 +401,11 @@ void main() {
         shell.markUserTurnStarted();
         cubit.debugTickIdleWatch();
         await drainPendingAsyncWork();
-        expect(cubit.state.workingSessionIds, contains(session.sessionId));
+        expect(cubit.state.busySessionIds, contains(session.sessionId));
 
         shell.markUserTurnIdle();
         cubit.debugRecomputeWorkingSessions();
-        expect(cubit.state.workingSessionIds, isEmpty);
+        expect(cubit.state.busySessionIds, isEmpty);
 
         // Permission cleared → hook working (Orca). Latch stays false.
         attention.applyEvent(
@@ -341,7 +421,7 @@ void main() {
         );
         await drainPendingAsyncWork();
         expect(
-          cubit.state.workingSessionIds,
+          cubit.state.busySessionIds,
           contains(session.sessionId),
           reason: 'attention.working must light sidebar after permission',
         );
@@ -356,7 +436,7 @@ void main() {
           skipPermissions: false,
         );
         await drainPendingAsyncWork();
-        expect(cubit.state.workingSessionIds, isEmpty);
+        expect(cubit.state.busySessionIds, isEmpty);
       },
     );
 
@@ -366,7 +446,9 @@ void main() {
         final workspace = await repo.createWorkspace([
           WorkspaceFolder(path: '/tmp'),
         ]);
-        final session = (await repo.createSession(workspace.workspaceId)).session;
+        final session = (await repo.createSession(
+          workspace.workspaceId,
+        )).session;
         await cubit.loadWorkspaceData(repo);
 
         await cubit.requestOpenSession(
@@ -394,7 +476,7 @@ void main() {
         );
         await drainPendingAsyncWork();
         expect(
-          cubit.state.workingSessionIds,
+          cubit.state.busySessionIds,
           contains(session.sessionId),
           reason: 'attention.working lights the session before Stop',
         );
@@ -416,47 +498,61 @@ void main() {
           reason: 'Stop must clear the agent-status working seat',
         );
         expect(
-          cubit.state.workingSessionIds,
+          cubit.state.busySessionIds,
           isEmpty,
           reason: 'a terminated turn must not keep the session working',
         );
       },
     );
 
-    test('withOperatorDeliveryInFlight lights workingSessionIds until done', () async {
-      final workspace = await repo.createWorkspace([
-        WorkspaceFolder(path: '/tmp'),
-      ]);
-      final session = (await repo.createSession(workspace.workspaceId)).session;
-      await cubit.loadWorkspaceData(repo);
-      await cubit.requestOpenSession(
-        SessionOpenRequest(
-          session: session,
-          workspace: workspace,
-          repo: repo,
-          connectImmediately: false,
-        ),
-      );
-      await drainPendingAsyncWork();
+    test(
+      'withOperatorDeliveryInFlight lights busySessionIds until done',
+      () async {
+        final workspace = await repo.createWorkspace([
+          WorkspaceFolder(path: '/tmp'),
+        ]);
+        final session = (await repo.createSession(
+          workspace.workspaceId,
+        )).session;
+        await cubit.loadWorkspaceData(repo);
+        await cubit.requestOpenSession(
+          SessionOpenRequest(
+            session: session,
+            workspace: workspace,
+            repo: repo,
+            connectImmediately: false,
+          ),
+        );
+        await drainPendingAsyncWork();
 
-      final gate = Completer<void>();
-      final done = cubit.withOperatorDeliveryInFlight(
-        session.sessionId,
-        () => gate.future,
-      );
-      await drainPendingAsyncWork();
-      expect(
-        cubit.state.workingSessionIds,
-        contains(session.sessionId),
-        reason: 'sidebar must stay busy during connect/composer wait',
-      );
-      expect(cubit.isOperatorDeliveryInFlight(session.sessionId), isTrue);
+        final gate = Completer<void>();
+        final done = cubit.withOperatorDeliveryInFlight(
+          session.sessionId,
+          () => gate.future,
+        );
+        await drainPendingAsyncWork();
+        expect(
+          cubit.state.busySessionIds,
+          contains(session.sessionId),
+          reason: 'sidebar must stay busy during connect/composer wait',
+        );
+        final inflight =
+            cubit.state.sessionActivities[session.sessionId]!;
+        expect(inflight.isDelivering, isTrue);
+        expect(inflight.isInTurn, isFalse);
+        expect(inflight.isReadyToChat, isFalse);
+        expect(cubit.isOperatorDeliveryInFlight(session.sessionId), isTrue);
 
-      gate.complete();
-      await done;
-      await drainPendingAsyncWork();
-      expect(cubit.state.workingSessionIds, isEmpty);
-    });
+        gate.complete();
+        await done;
+        await drainPendingAsyncWork();
+        expect(cubit.state.busySessionIds, isEmpty);
+        final after = cubit.state.sessionActivities[session.sessionId]!;
+        expect(after.isBusy, isFalse);
+        expect(after.isReadyToChat, isFalse);
+        expect(after.disposition, SessionTurnDisposition.failed);
+      },
+    );
 
     test('empty operator message does not begin delivery in-flight', () async {
       final workspace = await repo.createWorkspace([
@@ -484,38 +580,51 @@ void main() {
 
       expect(result.ok, isFalse);
       expect(cubit.isOperatorDeliveryInFlight(session.sessionId), isFalse);
-      expect(cubit.state.workingSessionIds, isEmpty);
+      expect(cubit.state.busySessionIds, isEmpty);
     });
 
-    test('endOperatorDeliveryInFlight clears spinner while wrap is outstanding', () async {
-      final workspace = await repo.createWorkspace([
-        WorkspaceFolder(path: '/tmp'),
-      ]);
-      final session = (await repo.createSession(workspace.workspaceId)).session;
-      await cubit.loadWorkspaceData(repo);
-      await cubit.requestOpenSession(
-        SessionOpenRequest(
-          session: session,
-          workspace: workspace,
-          repo: repo,
-          connectImmediately: false,
-        ),
-      );
-      await drainPendingAsyncWork();
+    test(
+      'endOperatorDeliveryInFlight clears spinner while wrap is outstanding',
+      () async {
+        final workspace = await repo.createWorkspace([
+          WorkspaceFolder(path: '/tmp'),
+        ]);
+        final session = (await repo.createSession(
+          workspace.workspaceId,
+        )).session;
+        await cubit.loadWorkspaceData(repo);
+        await cubit.requestOpenSession(
+          SessionOpenRequest(
+            session: session,
+            workspace: workspace,
+            repo: repo,
+            connectImmediately: false,
+          ),
+        );
+        await drainPendingAsyncWork();
 
-      final gate = Completer<void>();
-      final done = cubit.withOperatorDeliveryInFlight(
-        session.sessionId,
-        () => gate.future,
-      );
-      await drainPendingAsyncWork();
-      cubit.endOperatorDeliveryInFlight(session.sessionId);
-      await drainPendingAsyncWork();
-      expect(cubit.state.workingSessionIds, isEmpty);
+        final gate = Completer<void>();
+        final done = cubit.withOperatorDeliveryInFlight(
+          session.sessionId,
+          () => gate.future,
+        );
+        await drainPendingAsyncWork();
+        cubit.endOperatorDeliveryInFlight(session.sessionId);
+        await drainPendingAsyncWork();
+        expect(cubit.state.busySessionIds, isEmpty);
+        expect(
+          cubit.state.sessionActivities[session.sessionId]!.isReadyToChat,
+          isFalse,
+        );
 
-      gate.complete();
-      await done;
-      expect(cubit.state.workingSessionIds, isEmpty);
-    });
+        gate.complete();
+        await done;
+        expect(cubit.state.busySessionIds, isEmpty);
+        expect(
+          cubit.state.sessionActivities[session.sessionId]!.isReadyToChat,
+          isFalse,
+        );
+      },
+    );
   });
 }

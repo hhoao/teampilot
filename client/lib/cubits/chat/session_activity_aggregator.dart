@@ -1,13 +1,14 @@
 import '../../models/cli_preset.dart';
 import '../../models/member_presence.dart';
+import '../../models/session_activity.dart';
 import '../../models/team_config.dart';
 import '../../services/team/session_working_resolver.dart';
 import 'chat_tab_store.dart';
 import 'model/chat_tab.dart';
 
-/// Aggregates [ChatState.workingSessionIds] from every open tab (all workspaces).
-final class TabWorkingAggregator {
-  TabWorkingAggregator({
+/// Aggregates per-session [SessionBusyReason] sets from every open tab.
+final class SessionActivityAggregator {
+  SessionActivityAggregator({
     required ChatTabStore tabStore,
     required SessionWorkingResolver sessionWorking,
     required List<CliPreset> Function() globalPresets,
@@ -34,13 +35,15 @@ final class TabWorkingAggregator {
   final bool Function(String sessionId)? _sessionBusyFromAttention;
   final bool Function(String sessionId)? _sessionBusyFromDeliveryInFlight;
 
-  Set<String> compute() {
-    final working = <String>{};
+  Map<String, Set<SessionBusyReason>> computeReasons() {
+    final reasonsBySession = <String, Set<SessionBusyReason>>{};
     final activeSessionId = _activeSessionId();
     final presence = _presence();
 
     for (final tab in _tabStore.openTabs) {
       final sessionId = tab.info.id;
+      final reasons = <SessionBusyReason>{};
+
       final usesPresenceSnapshot = _sessionWorking.usesPresenceSnapshotForTab(
         tab: tab,
         activeSessionId: activeSessionId,
@@ -53,18 +56,21 @@ final class TabWorkingAggregator {
               team: _teamForTab(tab),
               globalPresets: _globalPresets(),
             );
-      // Why: Orca sidebar follows agent-hook waiting/working; PTY idle-watch
-      // often ends the turn latch while a permission prompt is held, so after
-      // approval the hook goes working but latch stays false without this OR.
-      final attentionBusy =
-          _sessionBusyFromAttention?.call(sessionId) ?? false;
-      final deliveryInFlight =
-          _sessionBusyFromDeliveryInFlight?.call(sessionId) ?? false;
-      if (sessionWorking || attentionBusy || deliveryInFlight) {
-        working.add(sessionId);
+      if (sessionWorking) {
+        reasons.add(SessionBusyReason.inTurn);
       }
+
+      if (_sessionBusyFromAttention?.call(sessionId) ?? false) {
+        reasons.add(SessionBusyReason.attention);
+      }
+
+      if (_sessionBusyFromDeliveryInFlight?.call(sessionId) ?? false) {
+        reasons.add(SessionBusyReason.delivering);
+      }
+
+      reasonsBySession[sessionId] = reasons;
     }
-    return working;
+    return reasonsBySession;
   }
 
   TeamProfile? _teamForTab(ChatTab tab) {

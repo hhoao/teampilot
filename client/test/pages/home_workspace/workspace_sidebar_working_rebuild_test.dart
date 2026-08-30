@@ -127,9 +127,9 @@ void main() {
           sessions: [
             _session(id: 'a', display: 'Alpha'),
           ],
-          workingSessionIds: {'a'},
         ),
       );
+      chatCubit.updateWorkingSessionsForTest({'a'});
       await pumpSidebar(tester);
       expect(find.text('Running'), findsOneWidget);
     },

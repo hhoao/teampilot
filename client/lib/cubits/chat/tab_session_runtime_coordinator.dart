@@ -2,18 +2,22 @@ import 'package:flutter/foundation.dart';
 
 import '../../models/cli_preset.dart';
 import '../../models/member_presence.dart';
+import '../../models/session_activity.dart';
 import '../../models/team_config.dart';
+import '../../services/cli/preset_resolver.dart';
 import '../../services/prompt_delivery/prompt_delivery_coordinator.dart';
 import '../../services/team/session_working_resolver.dart';
 import '../../services/team_bus/team_bus.dart';
+import '../../services/terminal/session_member_cli_resolver.dart';
 import '../../services/terminal/terminal_reclaim_policy.dart';
 import 'chat_session_shell_factory.dart';
 import 'chat_tab_store.dart';
+import 'model/chat_tab.dart';
+import 'session_activity_aggregator.dart';
 import 'tab_member_coordination_factory.dart';
 import 'tab_member_pty_delivery.dart';
 import 'tab_member_reclaim_watch.dart';
 import 'tab_session_idle_watch.dart';
-import 'tab_working_aggregator.dart';
 
 /// Per-tab PTY delivery, automation retry, cross-tab idle watch, and working aggregation.
 ///
@@ -34,11 +38,12 @@ class TabSessionRuntimeCoordinator {
     int Function()? reclaimIdleAfterSeconds,
     void Function(String sessionId, String memberId)? onReclaimMember,
     bool Function(String sessionId)? isSessionPinned,
-    TabWorkingAggregator? workingAggregator,
+    SessionActivityAggregator? activityAggregator,
     VoidCallback? onAfterIdleWatchTick,
     void Function(String sessionId, String memberId)? onAfterTurnLatched,
     void Function(String sessionId)? onUserActivity,
     void Function(String sessionId, String memberId)? onAfterTurnEnded,
+    CliTool? Function(ChatTab tab, String memberId)? memberCli,
     String? Function()? activeSessionId,
     Map<String, MemberPresence> Function()? presence,
     bool Function(String sessionId)? sessionBusyFromAttention,
@@ -47,7 +52,8 @@ class TabSessionRuntimeCoordinator {
     PromptDeliveryCoordinator? promptDeliveries,
   }) {
     final working =
-        sessionWorking ?? coordinationFactory?.sessionWorking ??
+        sessionWorking ??
+        coordinationFactory?.sessionWorking ??
         SessionWorkingResolver();
     final coordination =
         coordinationFactory ??
@@ -76,6 +82,27 @@ class TabSessionRuntimeCoordinator {
           tabStore: tabStore,
           coordinationFactory: coordination,
           isClosed: isClosed,
+          memberCli:
+              memberCli ??
+              (tab, memberId) {
+                final session = tab.persistedSession;
+                if (session == null) return null;
+                return SessionMemberCliResolver.resolve(
+                  persistedSession: session,
+                  team: activeTeam(),
+                  memberId: memberId,
+                  globalPresets: globalPresets(),
+                  cliForMember: (team, id, {globalPresets = const []}) =>
+                      memberLaunchCli(
+                    team: team,
+                    member: team.members.firstWhere(
+                      (m) => m.id == id,
+                      orElse: () => TeamMemberConfig(id: id, name: id),
+                    ),
+                    globalPresets: globalPresets,
+                  ),
+                );
+              },
           onAfterTick: onAfterIdleWatchTick,
           onAfterTurnEnded: onAfterTurnEnded,
         );
@@ -88,16 +115,18 @@ class TabSessionRuntimeCoordinator {
                 tabStore: tabStore,
                 reclaimEnabled: reclaimEnabled ?? () => true,
                 activeTeam: activeTeam,
-                policy: () =>
-                    TerminalReclaimPolicy(idleAfter: Duration(seconds: reclaimSeconds())),
+                policy: () => TerminalReclaimPolicy(
+                  idleAfter: Duration(seconds: reclaimSeconds()),
+                ),
                 onDiscardMember: onReclaimMember,
                 sessionBusyFromAttention: sessionBusyFromAttention,
-                sessionBusyFromDeliveryInFlight: sessionBusyFromDeliveryInFlight,
+                sessionBusyFromDeliveryInFlight:
+                    sessionBusyFromDeliveryInFlight,
                 isSessionPinned: isSessionPinned,
               ));
     final aggregator =
-        workingAggregator ??
-        TabWorkingAggregator(
+        activityAggregator ??
+        SessionActivityAggregator(
           tabStore: tabStore,
           sessionWorking: working,
           globalPresets: globalPresets,
@@ -112,7 +141,7 @@ class TabSessionRuntimeCoordinator {
       delivery: ptyDelivery,
       idleWatch: idle,
       reclaimWatch: reclaim,
-      workingAggregator: aggregator,
+      activityAggregator: aggregator,
     );
   }
 
@@ -121,18 +150,18 @@ class TabSessionRuntimeCoordinator {
     required TabMemberPtyDelivery delivery,
     required TabSessionIdleWatch idleWatch,
     required TabMemberReclaimWatch? reclaimWatch,
-    required TabWorkingAggregator workingAggregator,
+    required SessionActivityAggregator activityAggregator,
   }) : _coordinationFactory = coordinationFactory,
        _delivery = delivery,
        _idleWatch = idleWatch,
        _reclaimWatch = reclaimWatch,
-       _workingAggregator = workingAggregator;
+       _activityAggregator = activityAggregator;
 
   final TabMemberCoordinationFactory _coordinationFactory;
   final TabMemberPtyDelivery _delivery;
   final TabSessionIdleWatch _idleWatch;
   final TabMemberReclaimWatch? _reclaimWatch;
-  final TabWorkingAggregator _workingAggregator;
+  final SessionActivityAggregator _activityAggregator;
 
   SessionWorkingResolver get sessionWorking =>
       _coordinationFactory.sessionWorking;
@@ -140,7 +169,8 @@ class TabSessionRuntimeCoordinator {
   void abortMemberInject(String sessionId, String memberId) =>
       _delivery.abortMemberInject(sessionId, memberId);
 
-  TeamBus? busForSession(String sessionId) => _delivery.busForSession(sessionId);
+  TeamBus? busForSession(String sessionId) =>
+      _delivery.busForSession(sessionId);
 
   bool isMemberReadyForAutomationInput(
     String sessionId,
@@ -171,14 +201,13 @@ class TabSessionRuntimeCoordinator {
     String text, {
     required bool automation,
     bool latchUserTurn = true,
-  }) =>
-      _delivery.deliverMemberStdin(
-        sessionId,
-        memberId,
-        text,
-        automation: automation,
-        latchUserTurn: latchUserTurn,
-      );
+  }) => _delivery.deliverMemberStdin(
+    sessionId,
+    memberId,
+    text,
+    automation: automation,
+    latchUserTurn: latchUserTurn,
+  );
 
   Future<void> retryMemberDelivery(
     String sessionId,
@@ -191,15 +220,19 @@ class TabSessionRuntimeCoordinator {
     String memberId,
     String message, {
     bool directToPty = false,
-  }) =>
-      _delivery.deliverUserCommandToMember(
-        sessionId,
-        memberId,
-        message,
-        directToPty: directToPty,
-      );
+  }) => _delivery.deliverUserCommandToMember(
+    sessionId,
+    memberId,
+    message,
+    directToPty: directToPty,
+  );
 
-  Set<String> recomputeWorkingSessions() => _workingAggregator.compute();
+  Map<String, Set<SessionBusyReason>> computeReasons() =>
+      _activityAggregator.computeReasons();
+
+  /// Ends the seat turn the same way idle-watch does (`coordination.endTurn()`).
+  void endMemberTurn(String sessionId, String memberId) =>
+      _coordinationFactory.endTurnForMember(sessionId, memberId);
 
   /// Starts both the idle-watch heartbeat and the reclaim watch; existing
   /// callers of [ensureIdleWatch] automatically drive the reclaim pass too.

@@ -115,8 +115,8 @@ class TerminalFollowUpComposeHost extends StatelessWidget {
       listeners: [
         BlocListener<ChatCubit, ChatState>(
           listenWhen: (previous, current) =>
-              previous.workingSessionIds.contains(session.sessionId) !=
-              current.workingSessionIds.contains(session.sessionId),
+              previous.isSessionBusy(session.sessionId) !=
+              current.isSessionBusy(session.sessionId),
           listener: (context, _) {
             final cubit = context.read<ChatCubit>();
             cubit.notifyFollowUpMemberWorking(

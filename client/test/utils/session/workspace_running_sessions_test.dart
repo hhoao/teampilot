@@ -17,7 +17,7 @@ void main() {
       final sessions = [session('a'), session('b'), session('c')];
       final result = workspaceRunningSessions(
         sessions: sessions,
-        workingSessionIds: {'b'},
+        busySessionIds: {'b'},
         openTabSessionIds: {'a', 'c'},
       );
       expect(result.map((s) => s.sessionId), ['b', 'a', 'c']);
@@ -27,7 +27,7 @@ void main() {
       expect(
         workspaceRunningSessions(
           sessions: [session('a')],
-          workingSessionIds: const {},
+          busySessionIds: const {},
           openTabSessionIds: const {},
         ),
         isEmpty,

@@ -3,7 +3,7 @@ import 'package:flutter/foundation.dart';
 import '../../cubits/chat/model/chat_state.dart';
 
 /// Narrow projection of [ChatState] for [ChatWorkbench] layout — ignores
-/// [ChatState.workingSessionIds], [ChatState.provisionVersion], and other
+/// [ChatState.sessionActivities], [ChatState.provisionVersion], and other
 /// sidebar-only / transient fields so agent-turn polling does not rebuild the
 /// terminal subtree.
 @immutable

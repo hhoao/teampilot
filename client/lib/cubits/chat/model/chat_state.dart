@@ -3,6 +3,7 @@ import 'package:flutter/widgets.dart';
 
 import '../../../models/workspace.dart';
 import '../../../models/app_session.dart';
+import '../../../models/session_activity.dart';
 import '../../../models/ssh_profile.dart';
 import '../../../models/team_config.dart';
 import '../../../services/team/team_config_launch_validator.dart';
@@ -38,7 +39,7 @@ class ChatState extends Equatable {
     this.snackbarMessage,
     this.sessionLaunchError,
     this.teamConfigValidation,
-    this.workingSessionIds = const {},
+    this.sessionActivities = const {},
   });
 
   final List<Workspace> workspaces;
@@ -70,10 +71,17 @@ class ChatState extends Equatable {
   /// the workbench surfaces a "go configure" dialog. Launch is not blocked.
   final TeamConfigValidation? teamConfigValidation;
 
-  /// Session ids with at least one member currently in a turn (TeamBus truth).
-  /// Drives the working spinner on session tabs and sidebar list items. Only
-  /// open, bus-backed (mixed) sessions appear here.
-  final Set<String> workingSessionIds;
+  /// Per-open-session activity snapshot (reasons + turn disposition).
+  /// Missing key means idle with no turn. Spinner consumers use [isBusy];
+  /// idle-notify uses [SessionActivity.isReadyToChat].
+  final Map<String, SessionActivity> sessionActivities;
+
+  Set<String> get busySessionIds => {
+    for (final e in sessionActivities.entries)
+      if (e.value.isBusy) e.key,
+  };
+
+  bool isSessionBusy(String id) => sessionActivities[id]?.isBusy ?? false;
 
   ChatState copyWith({
     List<Workspace>? workspaces,
@@ -89,7 +97,7 @@ class ChatState extends Equatable {
     bool clearSessionLaunchError = false,
     TeamConfigValidation? teamConfigValidation,
     bool clearTeamConfigValidation = false,
-    Set<String>? workingSessionIds,
+    Map<String, SessionActivity>? sessionActivities,
   }) {
     return ChatState(
       workspaces: workspaces ?? this.workspaces,
@@ -109,7 +117,7 @@ class ChatState extends Equatable {
       teamConfigValidation: clearTeamConfigValidation
           ? null
           : (teamConfigValidation ?? this.teamConfigValidation),
-      workingSessionIds: workingSessionIds ?? this.workingSessionIds,
+      sessionActivities: sessionActivities ?? this.sessionActivities,
     );
   }
 
@@ -125,6 +133,6 @@ class ChatState extends Equatable {
     snackbarMessage,
     sessionLaunchError,
     teamConfigValidation,
-    workingSessionIds,
+    sessionActivities,
   ];
 }
