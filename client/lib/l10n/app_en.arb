@@ -973,6 +973,11 @@
   "unknownFolder": "Unknown",
   "renameConversation": "Rename conversation",
   "deleteConversation": "Delete conversation",
+  "archiveConversation": "Archive",
+  "restoreConversation": "Restore",
+  "sessionArchiveTitle": "Archive",
+  "sessionArchiveEmpty": "No archived conversations",
+  "sessionArchiveEntryTooltip": "Archived conversations",
   "pinConversation": "Pin conversation",
   "unpinConversation": "Unpin conversation",
   "duplicateConversation": "Duplicate conversation",
@@ -3183,6 +3188,12 @@
   "shortcutsSessionCloseTab": "Close Session Tab",
   "shortcutsStripFocusTab": "Go to Tab {n}",
   "@shortcutsStripFocusTab": {
+    "placeholders": {
+      "n": { "type": "int" }
+    }
+  },
+  "shortcutsWorkspaceFocusTab": "Go to Workspace {n}",
+  "@shortcutsWorkspaceFocusTab": {
     "placeholders": {
       "n": { "type": "int" }
     }

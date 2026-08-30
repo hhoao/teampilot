@@ -152,6 +152,42 @@ List<WorktreeGroup> groupSessionsByWorktreeAcrossProjects({
   return _withDisambiguatedSidebarLabels(groups);
 }
 
+/// Rebuilds [group]'s membership from an unfiltered session source.
+///
+/// This preserves the same project ownership and longest-worktree-prefix rules
+/// used by [groupSessionsByWorktreeAcrossProjects].
+List<AppSession> unfilteredSessionsForWorktreeGroup({
+  required WorktreeGroup group,
+  required List<WorkspaceFolder> folders,
+  required Map<String, List<GitWorktree>> worktreesByProjectPath,
+  required List<AppSession> sessions,
+}) {
+  final targetWorktree = group.worktree;
+  if (targetWorktree == null) return const [];
+  final targetProject = group.projectFolderPath?.trim() ?? '';
+  final rebuilt = groupSessionsByWorktreeAcrossProjects(
+    folders: folders,
+    worktreesByProjectPath: worktreesByProjectPath,
+    sessions: sessions,
+  );
+  for (final candidate in rebuilt) {
+    final candidateWorktree = candidate.worktree;
+    if (candidateWorktree == null ||
+        !workspacePathsEqual(candidateWorktree.path, targetWorktree.path)) {
+      continue;
+    }
+    if (targetProject.isNotEmpty &&
+        !workspacePathsEqual(
+          candidate.projectFolderPath ?? '',
+          targetProject,
+        )) {
+      continue;
+    }
+    return candidate.sessions;
+  }
+  return const [];
+}
+
 List<WorktreeGroup> _withDisambiguatedSidebarLabels(List<WorktreeGroup> groups) {
   final branchCounts = <String, int>{};
   for (final group in groups) {

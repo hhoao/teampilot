@@ -12,14 +12,19 @@ final _workspace = Workspace(
   createdAt: 1,
 );
 
-AppSession _s(String id, {String display = '', String workspaceId = 'ws-1'}) =>
-    AppSession(
-      sessionId: id,
-      workspaceId: workspaceId,
-      display: display,
-      createdAt: 1,
-      updatedAt: 1,
-    );
+AppSession _s(
+  String id, {
+  String display = '',
+  String workspaceId = 'ws-1',
+  bool archived = false,
+}) => AppSession(
+  sessionId: id,
+  workspaceId: workspaceId,
+  display: display,
+  createdAt: 1,
+  updatedAt: 1,
+  archived: archived,
+);
 
 SessionGroup _group(List<String> ids) =>
     SessionGroup(id: 'g1', name: 'Group', sessionIds: ids);
@@ -66,5 +71,17 @@ void main() {
       workspace: _workspace,
     );
     expect(membership.sessionIds, ['a']);
+  });
+
+  test('membership excludes archived sessions', () {
+    final membership = SessionGroupMembership.from(
+      chatState: ChatState(
+        sessions: [_s('active'), _s('archived', archived: true)],
+      ),
+      group: _group(['active', 'archived']),
+      workspace: _workspace,
+    );
+
+    expect(membership.sessionIds, ['active']);
   });
 }

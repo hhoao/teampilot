@@ -903,6 +903,11 @@
   "unknownFolder": "未知",
   "renameConversation": "重命名对话",
   "deleteConversation": "删除对话",
+  "archiveConversation": "归档",
+  "restoreConversation": "恢复",
+  "sessionArchiveTitle": "归档",
+  "sessionArchiveEmpty": "暂无归档会话",
+  "sessionArchiveEntryTooltip": "归档会话",
   "pinConversation": "置顶对话",
   "unpinConversation": "取消置顶",
   "duplicateConversation": "复制对话",
@@ -2714,6 +2719,12 @@
   "shortcutsSessionCloseTab": "关闭会话标签",
   "shortcutsStripFocusTab": "切换到第 {n} 个标签",
   "@shortcutsStripFocusTab": {
+    "placeholders": {
+      "n": { "type": "int" }
+    }
+  },
+  "shortcutsWorkspaceFocusTab": "切换到第 {n} 个工作区",
+  "@shortcutsWorkspaceFocusTab": {
     "placeholders": {
       "n": { "type": "int" }
     }

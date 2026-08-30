@@ -2141,6 +2141,21 @@ class AppLocalizationsEn extends AppLocalizations {
   String get deleteConversation => 'Delete conversation';
 
   @override
+  String get archiveConversation => 'Archive';
+
+  @override
+  String get restoreConversation => 'Restore';
+
+  @override
+  String get sessionArchiveTitle => 'Archive';
+
+  @override
+  String get sessionArchiveEmpty => 'No archived conversations';
+
+  @override
+  String get sessionArchiveEntryTooltip => 'Archived conversations';
+
+  @override
   String get pinConversation => 'Pin conversation';
 
   @override
@@ -6923,6 +6938,11 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String shortcutsStripFocusTab(int n) {
     return 'Go to Tab $n';
+  }
+
+  @override
+  String shortcutsWorkspaceFocusTab(int n) {
+    return 'Go to Workspace $n';
   }
 
   @override

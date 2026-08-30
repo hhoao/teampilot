@@ -16,7 +16,9 @@ import '../../../services/storage/runtime_context.dart';
 import '../../../services/workspace/workspace_tools_scope.dart';
 import '../../../utils/session/app_session_sort.dart';
 import '../../../utils/session/session_reorder_merge.dart';
+import '../../../utils/session/session_project_grouping.dart';
 import '../../../utils/session/session_worktree_grouping.dart';
+import '../../../utils/session/workspace_sessions.dart';
 import '../../../utils/workspace/workspace_path_utils.dart';
 import '../../../widgets/app_toast/app_toast.dart';
 import 'package:shared_ui/shared_ui.dart';
@@ -164,9 +166,21 @@ class WorktreeGroupSection extends StatelessWidget {
     final repo = context.read<SessionRepository>();
     final cubit = context.read<WorktreeCubit>();
     final l10n = context.l10n;
+    final worktreesByProject = {
+      for (final folder in workspace.folders)
+        folder.path: cubit.worktreesForProject(folder.path),
+    };
+    final sessionsInGroup = unfilteredSessionsForWorktreeGroup(
+      group: group,
+      folders: workspace.folders,
+      worktreesByProjectPath: worktreesByProject,
+      sessions: sessionsForWorkspace(workspace, chatCubit.state.sessions),
+    );
     // A running agent's cwd would vanish under it — make the user stop first.
     final working = chatCubit.state.workingSessionIds;
-    final hasBusy = group.sessions.any((s) => working.contains(s.sessionId));
+    final hasBusy = sessionsInGroup.any(
+      (session) => working.contains(session.sessionId),
+    );
     if (hasBusy) {
       AppToast.show(
         context,
@@ -181,7 +195,7 @@ class WorktreeGroupSection extends StatelessWidget {
     final result = await showWorktreeDeleteDialog(
       context,
       branchLabel: branchLabel,
-      sessionCount: group.sessions.length,
+      sessionCount: sessionsInGroup.length,
       requireForce: dirty,
     );
     if (result == null) return;
@@ -198,7 +212,7 @@ class WorktreeGroupSection extends StatelessWidget {
           deleteBranch: result.deleteBranch,
           deleteSessions: result.deleteSessions,
         ),
-        sessionsInGroup: group.sessions,
+        sessionsInGroup: sessionsInGroup,
         deleteSession: (id) => chatCubit.deleteSession(repo, id),
       );
       await cubit.load(_repoPathForGroup(cubit), force: true);

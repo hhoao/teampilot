@@ -932,4 +932,25 @@ void main() {
     expect(untoggled!.pinned, isFalse);
     await tmp.delete(recursive: true);
   });
+
+  test('setSessionArchived persists archived flag', () async {
+    final tmp = await Directory.systemTemp.createTemp('repo_archive_test_');
+    final repo = SessionRepository(rootDir: tmp.path);
+    final ws = await repo.createWorkspace([WorkspaceFolder(path: '/p')]);
+    final created = await repo.createSession(ws.workspaceId);
+    expect(created.session.archived, isFalse);
+
+    final archived = await repo.setSessionArchived(created.session.sessionId, true);
+    expect(archived!.archived, isTrue);
+
+    final reloaded = await repo.loadSessions();
+    expect(
+      reloaded.singleWhere((s) => s.sessionId == created.session.sessionId).archived,
+      isTrue,
+    );
+
+    final restored = await repo.setSessionArchived(created.session.sessionId, false);
+    expect(restored!.archived, isFalse);
+    await tmp.delete(recursive: true);
+  });
 }

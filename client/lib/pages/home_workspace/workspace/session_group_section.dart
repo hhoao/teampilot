@@ -12,6 +12,7 @@ import '../../../l10n/l10n_extensions.dart';
 import '../../../models/session_group.dart';
 import '../../../models/workspace.dart';
 import '../../../utils/session/app_session_sort.dart';
+import '../../../utils/session/session_archive_filter.dart';
 import '../../../utils/session/session_group_membership.dart';
 import '../../../widgets/sidebar_session_tile.dart';
 import 'workspace_session_actions.dart';
@@ -109,12 +110,14 @@ class SessionGroupSection extends StatelessWidget {
     // Resolve membership now: prechecks and the Save diff must both start
     // from live state, not the constructor snapshot.
     final current = _groupIn(cubit.state);
-    final workspaceSessions = context
-        .read<ChatCubit>()
-        .state
-        .sessions
-        .where((s) => s.workspaceId == workspace.workspaceId)
-        .toList();
+    final workspaceSessions = activeSessions(
+      context
+          .read<ChatCubit>()
+          .state
+          .sessions
+          .where((s) => s.workspaceId == workspace.workspaceId)
+          .toList(),
+    );
     if (workspaceSessions.isEmpty) return;
 
     final selected = current.sessionIds.toSet();
@@ -140,7 +143,11 @@ class SessionGroupSection extends StatelessWidget {
                         ? selected.add(session.sessionId)
                         : selected.remove(session.sessionId),
                   ),
-                  title: Text(title, maxLines: 1, overflow: TextOverflow.ellipsis),
+                  title: Text(
+                    title,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
                 );
               },
             ),
@@ -203,7 +210,6 @@ class SessionGroupSection extends StatelessWidget {
       ),
     );
   }
-
 }
 
 class _SessionGroupHeader extends StatefulWidget {
@@ -302,8 +308,8 @@ class _SessionGroupHeaderState extends State<_SessionGroupHeader> {
                 child: Icon(
                   _showRowActions
                       ? collapsed
-                          ? Icons.chevron_right_rounded
-                          : Icons.expand_more_rounded
+                            ? Icons.chevron_right_rounded
+                            : Icons.expand_more_rounded
                       : Icons.label_outline,
                   size: icons.md,
                   color: cs.onSurfaceVariant,
@@ -332,9 +338,7 @@ class _SessionGroupHeaderState extends State<_SessionGroupHeader> {
             Text(
               ' · ${widget.liveMemberCount}',
               maxLines: 1,
-              style: TpTextStyles.of(
-                context,
-              ).mdColored(cs.onSurfaceVariant),
+              style: TpTextStyles.of(context).mdColored(cs.onSurfaceVariant),
             ),
           ],
         ),
@@ -381,7 +385,9 @@ class _SessionGroupMemberListState extends State<_SessionGroupMemberList> {
     );
     final chatState = context.read<ChatCubit>().state;
     final all = sortAppSessions(
-      liveGroupMembers(chatState, widget.group, widget.workspace),
+      activeSessions(
+        liveGroupMembers(chatState, widget.group, widget.workspace),
+      ),
       sort: widget.sessionSort,
     );
     if (all.isEmpty) {
@@ -466,16 +472,14 @@ class _SessionGroupMemberListState extends State<_SessionGroupMemberList> {
 /// Muted "more / less" row aligned with session tiles; hover fill matches
 /// [SidebarSessionTile] but slightly subtler.
 class _SessionGroupShowMoreRow extends StatefulWidget {
-  const _SessionGroupShowMoreRow({
-    required this.label,
-    required this.onTap,
-  });
+  const _SessionGroupShowMoreRow({required this.label, required this.onTap});
 
   final String label;
   final VoidCallback onTap;
 
   @override
-  State<_SessionGroupShowMoreRow> createState() => _SessionGroupShowMoreRowState();
+  State<_SessionGroupShowMoreRow> createState() =>
+      _SessionGroupShowMoreRowState();
 }
 
 class _SessionGroupShowMoreRowState extends State<_SessionGroupShowMoreRow> {
@@ -506,9 +510,9 @@ class _SessionGroupShowMoreRowState extends State<_SessionGroupShowMoreRow> {
                 widget.label,
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
-                style: TpTextStyles.of(context).mdColored(
-                  cs.onSurface.withValues(alpha: 0.55),
-                ),
+                style: TpTextStyles.of(
+                  context,
+                ).mdColored(cs.onSurface.withValues(alpha: 0.55)),
               ),
             ),
           ),

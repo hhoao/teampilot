@@ -1,7 +1,7 @@
 # Session archive — Design
 
 **Date:** 2026-08-30
-**Status:** Approved (conversation); awaiting spec review
+**Status:** Approved
 
 ## Problem
 

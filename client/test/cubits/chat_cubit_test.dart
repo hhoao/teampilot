@@ -1461,4 +1461,57 @@ void main() {
       },
     );
   });
+
+  group('archiveSession / unarchiveSession', () {
+    test('archiveSession sets archived without removing session', () async {
+      final tmp = await Directory.systemTemp.createTemp('chat_cubit_archive_');
+      final repo = SessionRepository(rootDir: tmp.path);
+      final postFrame = PostFrameTestHarness();
+      final cubit = ChatCubit(
+        executableResolver: () => 'true',
+        automationRepository: testAutomationRepository(),
+        sessionRepository: repo,
+        postFrameScheduler: postFrame.scheduler,
+      );
+      _registerTempCubitCleanup(tmp: tmp, cubit: cubit, postFrame: postFrame);
+
+      final ws = await repo.createWorkspace([WorkspaceFolder(path: '/p')]);
+      final created = await repo.createSession(ws.workspaceId);
+      await cubit.loadWorkspaceIndex(repo);
+      await cubit.ensureSessionsForWorkspace(ws.workspaceId);
+
+      await cubit.archiveSession(created.session.sessionId);
+
+      final patched = cubit.state.sessions.singleWhere(
+        (s) => s.sessionId == created.session.sessionId,
+      );
+      expect(patched.archived, isTrue);
+      expect(cubit.state.sessions, hasLength(1));
+    });
+
+    test('unarchiveSession clears archived', () async {
+      final tmp = await Directory.systemTemp.createTemp('chat_cubit_unarchive_');
+      final repo = SessionRepository(rootDir: tmp.path);
+      final postFrame = PostFrameTestHarness();
+      final cubit = ChatCubit(
+        executableResolver: () => 'true',
+        automationRepository: testAutomationRepository(),
+        sessionRepository: repo,
+        postFrameScheduler: postFrame.scheduler,
+      );
+      _registerTempCubitCleanup(tmp: tmp, cubit: cubit, postFrame: postFrame);
+
+      final ws = await repo.createWorkspace([WorkspaceFolder(path: '/p')]);
+      final created = await repo.createSession(ws.workspaceId);
+      await cubit.loadWorkspaceIndex(repo);
+      await cubit.ensureSessionsForWorkspace(ws.workspaceId);
+      await cubit.archiveSession(created.session.sessionId);
+      await cubit.unarchiveSession(created.session.sessionId);
+
+      final patched = cubit.state.sessions.singleWhere(
+        (s) => s.sessionId == created.session.sessionId,
+      );
+      expect(patched.archived, isFalse);
+    });
+  });
 }

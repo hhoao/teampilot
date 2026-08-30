@@ -2385,6 +2385,20 @@ class ChatCubit extends Cubit<ChatState>
     if (updated != null) replaceSessionSnapshot(updated);
   }
 
+  Future<void> archiveSession(String sessionId) async {
+    final repo = _sessionRepository;
+    if (repo == null) return;
+    final updated = await repo.setSessionArchived(sessionId, true);
+    if (updated != null) replaceSessionSnapshot(updated);
+  }
+
+  Future<void> unarchiveSession(String sessionId) async {
+    final repo = _sessionRepository;
+    if (repo == null) return;
+    final updated = await repo.setSessionArchived(sessionId, false);
+    if (updated != null) replaceSessionSnapshot(updated);
+  }
+
   Future<void> deleteSession(SessionRepository repo, String sessionId) async {
     final session = state.sessions
         .where((s) => s.sessionId == sessionId)

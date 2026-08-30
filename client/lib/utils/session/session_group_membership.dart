@@ -24,7 +24,7 @@ class SessionGroupMembership {
   }) {
     final inWorkspace = <String>{};
     for (final session in chatState.sessions) {
-      if (session.workspaceId == workspace.workspaceId) {
+      if (session.workspaceId == workspace.workspaceId && !session.archived) {
         inWorkspace.add(session.sessionId);
       }
     }

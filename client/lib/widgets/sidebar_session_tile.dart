@@ -30,11 +30,12 @@ import 'app_toast/app_toast.dart';
 import 'session_working_spinner.dart';
 import 'package:shared_ui/shared_ui.dart';
 
-/// Session row for sidebars: rename, delete, overflow menu, and context menu.
+/// Session row for sidebars: rename, archive, overflow menu, and context menu.
 class SidebarSessionTile extends StatefulWidget {
   const SidebarSessionTile({
     required this.session,
     required this.onTap,
+    this.archiveMode = false,
     this.highlightSessionId,
     this.tapThrottleKeyPrefix = 'sidebar_session',
     this.contentLeftInset = 0,
@@ -43,6 +44,7 @@ class SidebarSessionTile extends StatefulWidget {
   });
 
   final AppSession session;
+  final bool archiveMode;
 
   /// Activates / opens the session. May be async — when the row needs-you,
   /// the tile awaits this before [ChatCubit.selectMember] / Terminal jump so
@@ -73,21 +75,13 @@ class _SidebarSessionTileState extends State<SidebarSessionTile> {
   /// the overflow menu before a menu item can be selected.
   var _menuOpen = false;
 
-  /// First click on delete arms confirmation; second click on [l10n.confirm]
-  /// performs the delete (no dialog).
-  var _deleteArmed = false;
-
   /// True while a duplicate round-trip is awaited; disables the duplicate
   /// menu items and blocks re-entry until the fork (or its failure) lands.
   var _duplicateInFlight = false;
 
-  Timer? _deleteArmResetTimer;
-
   SessionRepository? _repo;
   ChatCubit? _chatCubit;
   var _sessionAutomationCount = 0;
-
-  static const _deleteArmTimeout = Duration(seconds: 4);
 
   @override
   void didChangeDependencies() {
@@ -111,44 +105,53 @@ class _SidebarSessionTileState extends State<SidebarSessionTile> {
     }
   }
 
-  @override
-  void dispose() {
-    _deleteArmResetTimer?.cancel();
-    super.dispose();
-  }
-
-  @override
-  void didUpdateWidget(covariant SidebarSessionTile oldWidget) {
-    super.didUpdateWidget(oldWidget);
-    if (oldWidget.session.sessionId != widget.session.sessionId) {
-      _disarmDelete();
-    }
-  }
-
-  void _armDelete() {
-    _deleteArmResetTimer?.cancel();
-    setState(() => _deleteArmed = true);
-    _deleteArmResetTimer = Timer(_deleteArmTimeout, () {
-      if (!mounted) return;
-      _disarmDelete();
-    });
-  }
-
-  void _disarmDelete() {
-    _deleteArmResetTimer?.cancel();
-    _deleteArmResetTimer = null;
-    if (!_deleteArmed || !mounted) return;
-    setState(() => _deleteArmed = false);
-  }
-
   Future<void> _executeDelete() async {
-    _deleteArmResetTimer?.cancel();
-    _deleteArmResetTimer = null;
-    _deleteArmed = false;
     final repo = _repo;
     final chatCubit = _chatCubit;
     if (repo == null || chatCubit == null) return;
     await chatCubit.deleteSession(repo, widget.session.sessionId);
+  }
+
+  Future<void> _confirmAndDelete(BuildContext context) async {
+    final l10n = context.l10n;
+    final name = widget.session.resolveDisplayTitle(
+      l10n.defaultNewChatSessionTitle,
+    );
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => TpDialog(
+        maxWidth: 480,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            TpDialogHeader(
+              title: l10n.deleteConversation,
+              onClose: () => Navigator.of(ctx).pop(false),
+            ),
+            const SizedBox(height: 16),
+            Text(l10n.deleteConversationConfirm(name)),
+            TpDialogActions(
+              children: [
+                TextButton(
+                  onPressed: () => Navigator.of(ctx).pop(false),
+                  child: Text(l10n.cancel),
+                ),
+                FilledButton(
+                  style: FilledButton.styleFrom(
+                    backgroundColor: Theme.of(ctx).colorScheme.error,
+                  ),
+                  onPressed: () => Navigator.of(ctx).pop(true),
+                  child: Text(l10n.delete),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+    if (confirmed != true || !mounted) return;
+    await _executeDelete();
   }
 
   List<TpActionMenuPopupItem<String>> _contextMenuItems(
@@ -205,14 +208,29 @@ class _SidebarSessionTileState extends State<SidebarSessionTile> {
         ),
       );
     }
-    items.add(
-      TpActionMenuPopupItem(
-        value: 'delete',
-        icon: Icons.delete_outline,
-        label: l10n.deleteConversation,
-        destructive: true,
-      ),
-    );
+    if (widget.archiveMode) {
+      items.addAll([
+        TpActionMenuPopupItem(
+          value: 'restore',
+          icon: Icons.unarchive_outlined,
+          label: l10n.restoreConversation,
+        ),
+        TpActionMenuPopupItem(
+          value: 'delete',
+          icon: Icons.delete_outline,
+          label: l10n.deleteConversation,
+          destructive: true,
+        ),
+      ]);
+    } else {
+      items.add(
+        TpActionMenuPopupItem(
+          value: 'archive',
+          icon: Icons.archive_outlined,
+          label: l10n.archiveConversation,
+        ),
+      );
+    }
     return items;
   }
 
@@ -292,8 +310,12 @@ class _SidebarSessionTileState extends State<SidebarSessionTile> {
         if (mounted) {
           _refreshSessionAutomationCount(context.read<AutomationCubit>().state);
         }
+      case 'archive':
+        await _chatCubit?.archiveSession(session.sessionId);
+      case 'restore':
+        await _chatCubit?.unarchiveSession(session.sessionId);
       case 'delete':
-        _armDelete();
+        await _confirmAndDelete(context);
     }
   }
 
@@ -426,8 +448,7 @@ class _SidebarSessionTileState extends State<SidebarSessionTile> {
     unawaited(_showSessionContextMenu(center));
   }
 
-  bool get _showSessionActions =>
-      _hovered || _menuOpen || _deleteArmed || Platform.isAndroid;
+  bool get _showSessionActions => _hovered || _menuOpen || Platform.isAndroid;
 
   /// Activates the session via [SidebarSessionTile.onTap]; when needs-you,
   /// awaits open first so [ChatCubit.selectMember] targets the opened tab,
@@ -535,7 +556,7 @@ class _SidebarSessionTileState extends State<SidebarSessionTile> {
       );
     }
 
-    // Trailing: coarse relative time + pin mark (idle), or delete + overflow (hover).
+    // Trailing: coarse relative time + pin mark (idle), or actions (hover).
     final int activityMs = rowContent.timestampMsForPaint;
     final Widget? idleTrailing =
         (!_showSessionActions && (activityMs > 0 || session.pinned))
@@ -555,16 +576,40 @@ class _SidebarSessionTileState extends State<SidebarSessionTile> {
         ? Row(
             mainAxisSize: MainAxisSize.min,
             children: [
-              _SessionDeleteAction(
-                armed: _deleteArmed,
-                confirmLabel: l10n.confirm,
-                deleteTooltip: l10n.deleteConversation,
-                onArm: _armDelete,
-                onConfirm: throttledAsync(
-                  'sidebar_delete_session_${session.sessionId}',
-                  _executeDelete,
+              if (widget.archiveMode) ...[
+                TpIconButton(
+                  icon: Icons.unarchive_outlined,
+                  compact: true,
+                  size: TpIconButton.kCompactSize,
+                  tooltip: l10n.restoreConversation,
+                  onTap: throttledAsync(
+                    'sidebar_restore_session_${session.sessionId}',
+                    () => context.read<ChatCubit>().unarchiveSession(
+                      session.sessionId,
+                    ),
+                  ),
                 ),
-              ),
+                TpIconButton(
+                  icon: Icons.delete_outline,
+                  compact: true,
+                  size: TpIconButton.kCompactSize,
+                  tooltip: l10n.deleteConversation,
+                  color: cs.error,
+                  onTap: () => unawaited(_confirmAndDelete(context)),
+                ),
+              ] else
+                TpIconButton(
+                  icon: Icons.archive_outlined,
+                  compact: true,
+                  size: TpIconButton.kCompactSize,
+                  tooltip: l10n.archiveConversation,
+                  onTap: throttledAsync(
+                    'sidebar_archive_session_${session.sessionId}',
+                    () => context.read<ChatCubit>().archiveSession(
+                      session.sessionId,
+                    ),
+                  ),
+                ),
               SizedBox(
                 width: TpIconButton.kDefaultSize,
                 height: TpIconButton.kDefaultSize,
@@ -612,13 +657,35 @@ class _SidebarSessionTileState extends State<SidebarSessionTile> {
                         referenceWorkspaceSession(context, session),
                       ),
                     ),
-                    TpActionMenuItem(
-                      icon: Icons.delete_outline,
-                      label: l10n.deleteConversation,
-                      destructive: true,
-                      menuController: controller,
-                      onTap: _armDelete,
-                    ),
+                    if (widget.archiveMode) ...[
+                      TpActionMenuItem(
+                        icon: Icons.unarchive_outlined,
+                        label: l10n.restoreConversation,
+                        menuController: controller,
+                        onTap: () => unawaited(
+                          context.read<ChatCubit>().unarchiveSession(
+                            session.sessionId,
+                          ),
+                        ),
+                      ),
+                      TpActionMenuItem(
+                        icon: Icons.delete_outline,
+                        label: l10n.deleteConversation,
+                        destructive: true,
+                        menuController: controller,
+                        onTap: () => unawaited(_confirmAndDelete(context)),
+                      ),
+                    ] else
+                      TpActionMenuItem(
+                        icon: Icons.archive_outlined,
+                        label: l10n.archiveConversation,
+                        menuController: controller,
+                        onTap: () => unawaited(
+                          context.read<ChatCubit>().archiveSession(
+                            session.sessionId,
+                          ),
+                        ),
+                      ),
                   ],
                 ),
               ),
@@ -637,7 +704,7 @@ class _SidebarSessionTileState extends State<SidebarSessionTile> {
     final Widget tile = Padding(
       padding: const EdgeInsets.only(bottom: 2),
       child: TpHoverRow(
-        forceShowTrailing: _menuOpen || _deleteArmed,
+        forceShowTrailing: _menuOpen,
         forceHover: _menuOpen,
         showTrailingOnMobile: true,
         padding: EdgeInsets.fromLTRB(8 + widget.contentLeftInset, 6, 8, 6),
@@ -765,37 +832,6 @@ class _SessionPinnedMark extends StatelessWidget {
         size: context.tpIconSizes.sm,
         color: cs.onSurfaceVariant.withValues(alpha: 0.55),
       ),
-    );
-  }
-}
-
-/// Delete control with a stable subtree: first tap arms, second tap confirms.
-class _SessionDeleteAction extends StatelessWidget {
-  const _SessionDeleteAction({
-    required this.armed,
-    required this.confirmLabel,
-    required this.deleteTooltip,
-    required this.onArm,
-    required this.onConfirm,
-  });
-
-  final bool armed;
-  final String confirmLabel;
-  final String deleteTooltip;
-  final VoidCallback onArm;
-  final VoidCallback onConfirm;
-
-  @override
-  Widget build(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
-    return TpIconButton(
-      icon: armed ? Icons.check : Icons.delete_outline,
-      compact: true,
-      size: TpIconButton.kCompactSize,
-      tooltip: armed ? confirmLabel : deleteTooltip,
-      color: armed ? cs.onError : cs.error,
-      backgroundColor: armed ? cs.error : null,
-      onTap: armed ? onConfirm : onArm,
     );
   }
 }

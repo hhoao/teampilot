@@ -1063,6 +1063,19 @@ class SessionRepository {
     });
   }
 
+  Future<AppSession?> setSessionArchived(String sessionId, bool archived) {
+    return _withSessionFile(sessionId, () async {
+      final fs = await _fs();
+      final existing = await _findSession(fs, sessionId);
+      if (existing == null) return null;
+      if (existing.archived == archived) return existing;
+      final now = DateTime.now().millisecondsSinceEpoch;
+      final updated = existing.copyWith(archived: archived, updatedAt: now);
+      await _writeSession(fs, updated);
+      return updated;
+    });
+  }
+
   Future<void> updateSessionTeam(String sessionId, String sessionTeam) {
     return _withSessionFile(sessionId, () async {
       final fs = await _fs();

@@ -3860,6 +3860,36 @@ abstract class AppLocalizations {
   /// **'Delete conversation'**
   String get deleteConversation;
 
+  /// No description provided for @archiveConversation.
+  ///
+  /// In en, this message translates to:
+  /// **'Archive'**
+  String get archiveConversation;
+
+  /// No description provided for @restoreConversation.
+  ///
+  /// In en, this message translates to:
+  /// **'Restore'**
+  String get restoreConversation;
+
+  /// No description provided for @sessionArchiveTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Archive'**
+  String get sessionArchiveTitle;
+
+  /// No description provided for @sessionArchiveEmpty.
+  ///
+  /// In en, this message translates to:
+  /// **'No archived conversations'**
+  String get sessionArchiveEmpty;
+
+  /// No description provided for @sessionArchiveEntryTooltip.
+  ///
+  /// In en, this message translates to:
+  /// **'Archived conversations'**
+  String get sessionArchiveEntryTooltip;
+
   /// No description provided for @pinConversation.
   ///
   /// In en, this message translates to:
@@ -12307,6 +12337,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Go to Tab {n}'**
   String shortcutsStripFocusTab(int n);
+
+  /// No description provided for @shortcutsWorkspaceFocusTab.
+  ///
+  /// In en, this message translates to:
+  /// **'Go to Workspace {n}'**
+  String shortcutsWorkspaceFocusTab(int n);
 
   /// No description provided for @shortcutsToggleSidebar.
   ///

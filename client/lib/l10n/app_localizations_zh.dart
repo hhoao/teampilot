@@ -2038,6 +2038,21 @@ class AppLocalizationsZh extends AppLocalizations {
   String get deleteConversation => '删除对话';
 
   @override
+  String get archiveConversation => '归档';
+
+  @override
+  String get restoreConversation => '恢复';
+
+  @override
+  String get sessionArchiveTitle => '归档';
+
+  @override
+  String get sessionArchiveEmpty => '暂无归档会话';
+
+  @override
+  String get sessionArchiveEntryTooltip => '归档会话';
+
+  @override
   String get pinConversation => '置顶对话';
 
   @override
@@ -6643,6 +6658,11 @@ class AppLocalizationsZh extends AppLocalizations {
   @override
   String shortcutsStripFocusTab(int n) {
     return '切换到第 $n 个标签';
+  }
+
+  @override
+  String shortcutsWorkspaceFocusTab(int n) {
+    return '切换到第 $n 个工作区';
   }
 
   @override

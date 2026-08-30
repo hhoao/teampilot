@@ -382,5 +382,60 @@ void main() {
         ['b-new', 'b-old'],
       );
     });
+
+    test('resolves archived sessions from an active-only worktree group', () {
+      const folders = [WorkspaceFolder(path: '/repo')];
+      final worktreesByProject = {
+        '/repo': [
+          const GitWorktree(
+            path: '/repo',
+            branch: 'refs/heads/main',
+            head: 'a',
+            isBare: false,
+            isMainWorktree: true,
+          ),
+          const GitWorktree(
+            path: '/worktrees/feature',
+            branch: 'refs/heads/feature',
+            head: 'b',
+            isBare: false,
+            isMainWorktree: false,
+          ),
+        ],
+      };
+      final active = AppSession(
+        sessionId: 'active',
+        workspaceId: 'w',
+        folders: const [WorkspaceFolder(path: '/worktrees/feature')],
+        createdAt: 1,
+      );
+      final archived = AppSession(
+        sessionId: 'archived',
+        workspaceId: 'w',
+        folders: const [WorkspaceFolder(path: '/worktrees/feature/subdir')],
+        createdAt: 1,
+        archived: true,
+      );
+      final activeGroups = groupSessionsByWorktreeAcrossProjects(
+        folders: folders,
+        worktreesByProjectPath: worktreesByProject,
+        sessions: [active],
+      );
+      final featureGroup = activeGroups.firstWhere(
+        (group) => group.worktree?.path == '/worktrees/feature',
+      );
+
+      final resolved = unfilteredSessionsForWorktreeGroup(
+        group: featureGroup,
+        folders: folders,
+        worktreesByProjectPath: worktreesByProject,
+        sessions: [active, archived],
+      );
+
+      expect(resolved.map((session) => session.sessionId), [
+        'active',
+        'archived',
+      ]);
+    });
   });
 }

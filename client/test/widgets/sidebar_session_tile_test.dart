@@ -82,6 +82,27 @@ class _RecordingChatCubit extends ChatCubit {
   }
 }
 
+class _ArchiveRecordingChatCubit extends _RecordingChatCubit {
+  final archivedSessionIds = <String>[];
+  final unarchivedSessionIds = <String>[];
+  final deletedSessionIds = <String>[];
+
+  @override
+  Future<void> archiveSession(String sessionId) async {
+    archivedSessionIds.add(sessionId);
+  }
+
+  @override
+  Future<void> unarchiveSession(String sessionId) async {
+    unarchivedSessionIds.add(sessionId);
+  }
+
+  @override
+  Future<void> deleteSession(SessionRepository repo, String sessionId) async {
+    deletedSessionIds.add(sessionId);
+  }
+}
+
 class _DuplicateRecordingChatCubit extends _RecordingChatCubit {
   _DuplicateRecordingChatCubit(this.recordedCalls);
 
@@ -199,6 +220,100 @@ Future<void> _dismissContextMenu(WidgetTester tester) async {
 void main() {
   setUp(setUpTestAppStorage);
   tearDown(tearDownTestAppStorage);
+
+  testWidgets('active mode archives on action tap', (tester) async {
+    debugDefaultTargetPlatformOverride = TargetPlatform.linux;
+    addTearDown(() => debugDefaultTargetPlatformOverride = null);
+    final chatCubit = _ArchiveRecordingChatCubit();
+    final (attention, automationCubit) = _tileCubits();
+    addTearDown(chatCubit.close);
+    addTearDown(automationCubit.close);
+    addTearDown(attention.close);
+
+    await tester.pumpWidget(
+      _host(
+        chatCubit: chatCubit,
+        automationCubit: automationCubit,
+        attentionCubit: attention,
+        sessionRepository: SessionRepository(),
+      ),
+    );
+    await tester.pump();
+
+    final mouse = await tester.createGesture(kind: PointerDeviceKind.mouse);
+    await mouse.addPointer(location: Offset.zero);
+    addTearDown(mouse.removePointer);
+    await tester.pump();
+    await mouse.moveTo(tester.getCenter(find.byType(TpHoverRow)));
+    await tester.pumpAndSettle();
+
+    expect(find.byIcon(Icons.archive_outlined), findsOneWidget);
+    expect(find.byIcon(Icons.delete_outline), findsNothing);
+    await tester.tap(find.byIcon(Icons.archive_outlined));
+    await tester.pump();
+
+    expect(chatCubit.archivedSessionIds, ['sess-1']);
+    debugDefaultTargetPlatformOverride = null;
+  });
+
+  testWidgets('archive mode delete confirms before deleting', (tester) async {
+    debugDefaultTargetPlatformOverride = TargetPlatform.linux;
+    addTearDown(() => debugDefaultTargetPlatformOverride = null);
+    final chatCubit = _ArchiveRecordingChatCubit();
+    final (attention, automationCubit) = _tileCubits();
+    addTearDown(chatCubit.close);
+    addTearDown(automationCubit.close);
+    addTearDown(attention.close);
+    final archived = _session.copyWith(archived: true, display: 'Old chat');
+
+    await tester.pumpWidget(
+      _host(
+        chatCubit: chatCubit,
+        automationCubit: automationCubit,
+        attentionCubit: attention,
+        sessionRepository: SessionRepository(),
+        child: SidebarSessionTile(
+          session: archived,
+          archiveMode: true,
+          onTap: () {},
+        ),
+      ),
+    );
+    await tester.pump();
+
+    final mouse = await tester.createGesture(kind: PointerDeviceKind.mouse);
+    await mouse.addPointer(location: Offset.zero);
+    addTearDown(mouse.removePointer);
+    await tester.pump();
+    await mouse.moveTo(tester.getCenter(find.byType(TpHoverRow)));
+    await tester.pumpAndSettle();
+
+    expect(find.byIcon(Icons.unarchive_outlined), findsOneWidget);
+    await tester.tap(find.byIcon(Icons.unarchive_outlined));
+    await tester.pump();
+    expect(chatCubit.unarchivedSessionIds, ['sess-1']);
+
+    await tester.tap(find.byIcon(Icons.delete_outline));
+    await tester.pumpAndSettle();
+
+    final l10n = AppLocalizations.of(
+      tester.element(find.byType(SidebarSessionTile)),
+    );
+    expect(
+      find.text(l10n.deleteConversationConfirm('Old chat')),
+      findsOneWidget,
+    );
+    await tester.tap(find.text(l10n.cancel));
+    await tester.pumpAndSettle();
+    expect(chatCubit.deletedSessionIds, isEmpty);
+
+    await tester.tap(find.byIcon(Icons.delete_outline));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text(l10n.delete));
+    await tester.pumpAndSettle();
+    expect(chatCubit.deletedSessionIds, ['sess-1']);
+    debugDefaultTargetPlatformOverride = null;
+  });
 
   testWidgets(
     'title Text follows ChatCubit SessionRowContent even if widget.session is stale',
@@ -546,9 +661,7 @@ void main() {
     addTearDown(automationCubit.close);
     addTearDown(attention.close);
 
-    chatCubit.emit(
-      chatCubit.state.copyWith(workingSessionIds: {_session.sessionId}),
-    );
+    chatCubit.updateWorkingSessionsForTest({_session.sessionId});
     attention.applyEvent(
       sessionId: _session.sessionId,
       memberId: 'seat-a',
@@ -579,9 +692,7 @@ void main() {
     addTearDown(automationCubit.close);
     addTearDown(attention.close);
 
-    chatCubit.emit(
-      chatCubit.state.copyWith(workingSessionIds: {_session.sessionId}),
-    );
+    chatCubit.updateWorkingSessionsForTest({_session.sessionId});
 
     await tester.pumpWidget(
       _host(

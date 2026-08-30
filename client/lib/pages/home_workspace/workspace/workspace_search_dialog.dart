@@ -16,6 +16,7 @@ import '../../../services/session/workspace_session_content_index.dart';
 import '../../../services/workbench/workbench_editor_opener.dart';
 import '../../../services/workspace/workspace_pane_policy.dart';
 import '../../../utils/debounce/debounce.dart';
+import '../../../utils/session/session_archive_filter.dart';
 import '../../../utils/session/workspace_sessions.dart';
 import '../../../utils/session/workspace_tab_session_scope.dart';
 import '../../../widgets/sidebar_session_tile.dart';
@@ -57,7 +58,9 @@ Future<void> showWorkspaceSearchDialog(
     final opener = context.read<WorkbenchEditorOpener>();
     final indexes = context.read<WorkspaceSearchIndexes>();
     final fallback = context.l10n.defaultNewChatSessionTitle;
-    final sessions = sessionsForWorkspace(workspace, chatCubit.state.sessions);
+    final sessions = activeSessions(
+      sessionsForWorkspace(workspace, chatCubit.state.sessions),
+    );
 
     await showTpDialog<void>(
       context: context,
@@ -130,11 +133,7 @@ enum _SearchFilter { all, conversations, files, content }
 /// One merged conversation result: a session plus, when it also matched by
 /// transcript content, the snippet and member label to show under the title.
 class _ConversationHit {
-  const _ConversationHit({
-    required this.session,
-    this.snippet,
-    this.source,
-  });
+  const _ConversationHit({required this.session, this.snippet, this.source});
 
   final AppSession session;
   final String? snippet;
@@ -354,9 +353,7 @@ class _WorkspaceSearchDialogState extends State<WorkspaceSearchDialog> {
             title: l10n.workspaceSearchTitle,
             onLeading: () => Navigator.of(context).maybePop(),
           ),
-          Expanded(
-            child: SafeArea(top: false, child: body),
-          ),
+          Expanded(child: SafeArea(top: false, child: body)),
         ],
       );
     }
@@ -413,9 +410,7 @@ class _WorkspaceSearchDialogState extends State<WorkspaceSearchDialog> {
     return ListView(
       shrinkWrap: shrinkWrap,
       children: [
-        WorkspaceSearchSectionHeader(
-          label: l10n.workspaceSearchRecentSessions,
-        ),
+        WorkspaceSearchSectionHeader(label: l10n.workspaceSearchRecentSessions),
         for (final session in shown)
           SidebarSessionTile(
             session: session,
@@ -475,7 +470,9 @@ class _WorkspaceSearchDialogState extends State<WorkspaceSearchDialog> {
     }
     if (hits.isEmpty) return out;
     out.add(
-      WorkspaceSearchSectionHeader(label: l10n.homeWorkspaceConversationsSection),
+      WorkspaceSearchSectionHeader(
+        label: l10n.homeWorkspaceConversationsSection,
+      ),
     );
     final shown = _conversationsExpanded
         ? hits
@@ -507,12 +504,16 @@ class _WorkspaceSearchDialogState extends State<WorkspaceSearchDialog> {
   List<Widget> _buildFilesSection(AppLocalizations l10n) {
     final out = <Widget>[];
     if (_searchingFiles) {
-      out.add(WorkspaceSearchSectionHeader(label: l10n.workspaceSearchFilesSection));
+      out.add(
+        WorkspaceSearchSectionHeader(label: l10n.workspaceSearchFilesSection),
+      );
       out.add(WorkspaceSearchStatusRow(label: l10n.workspaceSearchSearching));
       return out;
     }
     if (_fileMatches.isEmpty) return out;
-    out.add(WorkspaceSearchSectionHeader(label: l10n.workspaceSearchFilesSection));
+    out.add(
+      WorkspaceSearchSectionHeader(label: l10n.workspaceSearchFilesSection),
+    );
     final shown = _filesExpanded
         ? _fileMatches
         : _fileMatches.take(_maxFileResults).toList();

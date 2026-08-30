@@ -114,6 +114,7 @@ class AppSession {
     this.sortOrder = 0,
     this.expertKey = '',
     this.continueOverrides = const SessionContinueOverrides(),
+    this.archived = false,
   });
 
   factory AppSession({
@@ -140,6 +141,7 @@ class AppSession {
     String expertKey = '',
     SessionContinueOverrides continueOverrides =
         const SessionContinueOverrides(),
+    bool archived = false,
   }) {
     return AppSession._(
       sessionId: sessionId,
@@ -168,6 +170,7 @@ class AppSession {
       sortOrder: sortOrder,
       expertKey: expertKey.trim(),
       continueOverrides: continueOverrides,
+      archived: archived,
     );
   }
 
@@ -230,6 +233,7 @@ class AppSession {
             ? Map<String, Object?>.from(json['continueOverrides'] as Map)
             : null,
       ),
+      archived: json['archived'] as bool? ?? false,
     );
   }
 
@@ -303,6 +307,8 @@ class AppSession {
   /// Session-scoped continue chrome: permission + per-member model overrides.
   final SessionContinueOverrides continueOverrides;
 
+  final bool archived;
+
   /// True when this session has no team roster (Simple / unteamed).
   bool get isSimple => sessionTeam.trim().isEmpty;
 
@@ -362,6 +368,7 @@ class AppSession {
     int? sortOrder,
     String? expertKey,
     SessionContinueOverrides? continueOverrides,
+    bool? archived,
   }) {
     return AppSession(
       sessionId: sessionId ?? this.sessionId,
@@ -386,6 +393,7 @@ class AppSession {
       sortOrder: sortOrder ?? this.sortOrder,
       expertKey: expertKey ?? this.expertKey,
       continueOverrides: continueOverrides ?? this.continueOverrides,
+      archived: archived ?? this.archived,
     );
   }
 
@@ -416,6 +424,7 @@ class AppSession {
       if (expertKey.isNotEmpty) 'expertKey': expertKey,
       if (continueOverrides != const SessionContinueOverrides())
         'continueOverrides': continueOverrides.toJson(),
+      if (archived) 'archived': archived,
     };
   }
 
@@ -445,7 +454,8 @@ class AppSession {
             pinned == other.pinned &&
             sortOrder == other.sortOrder &&
             expertKey == other.expertKey &&
-            continueOverrides == other.continueOverrides;
+            continueOverrides == other.continueOverrides &&
+            archived == other.archived;
   }
 
   @override
@@ -474,5 +484,6 @@ class AppSession {
     sortOrder,
     expertKey,
     continueOverrides,
+    archived,
   ]);
 }

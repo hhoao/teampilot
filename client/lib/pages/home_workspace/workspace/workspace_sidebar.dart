@@ -32,6 +32,7 @@ import '../../../utils/ui/app_keys.dart';
 import '../../../utils/session/app_session_sort.dart';
 import '../../../utils/debounce/debounce.dart';
 import '../../../utils/session/running_session_ids.dart';
+import '../../../utils/session/session_archive_filter.dart';
 import '../../../utils/session/session_list_structure.dart';
 import '../../../utils/session/session_reorder_merge.dart';
 import '../../../utils/session/workspace_running_sessions.dart';
@@ -92,6 +93,7 @@ class WorkspaceSidebar extends StatefulWidget {
 
 class _WorkspaceSidebarState extends State<WorkspaceSidebar> {
   AppSessionSort _sessionSort = AppSessionSort.recentlyUpdated;
+  bool _showingArchive = false;
 
   @override
   Widget build(BuildContext context) {
@@ -103,30 +105,32 @@ class _WorkspaceSidebarState extends State<WorkspaceSidebar> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          WorkspaceAutomationsSection(workspace: widget.workspace),
-          const SizedBox(height: 12),
-          _SidebarActionTile(
-            key: AppKeys.newChatSidebarTile,
-            icon: Icons.edit_outlined,
-            label: l10n.homeWorkspaceNewConversation,
-            enabled: true,
-            onTap: throttledAsync(
-              'workspace_sidebar_new_chat',
-              () => _startNewConversation(context),
+          if (!_showingArchive) ...[
+            WorkspaceAutomationsSection(workspace: widget.workspace),
+            const SizedBox(height: 12),
+            _SidebarActionTile(
+              key: AppKeys.newChatSidebarTile,
+              icon: Icons.edit_outlined,
+              label: l10n.homeWorkspaceNewConversation,
+              enabled: true,
+              onTap: throttledAsync(
+                'workspace_sidebar_new_chat',
+                () => _startNewConversation(context),
+              ),
             ),
-          ),
-          const SizedBox(height: 4),
-          _SidebarActionTile(
-            key: AppKeys.searchSidebarTile,
-            icon: Icons.search_outlined,
-            label: l10n.workspaceSearchTitle,
-            enabled: true,
-            onTap: throttledTap(
-              'workspace_sidebar_search',
-              () => _openWorkspaceSearch(context),
+            const SizedBox(height: 4),
+            _SidebarActionTile(
+              key: AppKeys.searchSidebarTile,
+              icon: Icons.search_outlined,
+              label: l10n.workspaceSearchTitle,
+              enabled: true,
+              onTap: throttledTap(
+                'workspace_sidebar_search',
+                () => _openWorkspaceSearch(context),
+              ),
             ),
-          ),
-          const SizedBox(height: 14),
+            const SizedBox(height: 14),
+          ],
           _RunningSessionsHost(
             workspace: widget.workspace,
             tabScopeId: widget.tabScopeId,
@@ -136,68 +140,97 @@ class _WorkspaceSidebarState extends State<WorkspaceSidebar> {
             padding: const EdgeInsets.fromLTRB(4, 0, 0, 8),
             child: Row(
               children: [
+                if (_showingArchive) ...[
+                  TpIconButton(
+                    icon: Icons.arrow_back_rounded,
+                    compact: true,
+                    size: TpIconButton.kCompactSize,
+                    tooltip: l10n.back,
+                    onTap: () => setState(() => _showingArchive = false),
+                  ),
+                  const SizedBox(width: 8),
+                ],
                 Expanded(
                   child: Text(
-                    l10n.homeWorkspaceConversationsSection,
+                    _showingArchive
+                        ? l10n.sessionArchiveTitle
+                        : l10n.homeWorkspaceConversationsSection,
                     style: TpTextStyles.of(context).mutedSm,
                   ),
                 ),
-                _SessionSortButton(
-                  sort: _sessionSort,
-                  onChanged: (s) => setState(() => _sessionSort = s),
-                ),
-                const SizedBox(width: 2),
-                TpIconButton(
-                  icon: Icons.new_label_outlined,
-                  compact: true,
-                  size: TpIconButton.kCompactSize,
-                  tooltip: l10n.sessionGroupCreateTooltip,
-                  onTap: throttledTap(
-                    'workspace_sidebar_new_group',
-                    () => unawaited(_createSessionGroup(context)),
-                  ),
-                ),
-                if (toolsContext != null &&
-                    worktreeManagementEnabled(toolsContext)) ...[
-                  const SizedBox(width: 2),
-                  TpIconButton(
-                    icon: Icons.refresh_rounded,
-                    compact: true,
-                    size: TpIconButton.kCompactSize,
-                    tooltip: l10n.worktreeRefreshTooltip,
-                    onTap: throttledTap(
-                      'workspace_sidebar_refresh_worktrees',
-                      () {
-                        final cubit = context.read<WorktreeCubit>();
-                        final repoPath = cubit.state.repoPath.trim().isNotEmpty
-                            ? cubit.state.repoPath
-                            : widget.workspace.firstFolderPath;
-                        unawaited(cubit.load(repoPath, force: true));
-                      },
-                    ),
+                if (!_showingArchive) ...[
+                  _SessionSortButton(
+                    sort: _sessionSort,
+                    onChanged: (s) => setState(() => _sessionSort = s),
                   ),
                   const SizedBox(width: 2),
                   TpIconButton(
-                    icon: Icons.account_tree_outlined,
+                    icon: Icons.new_label_outlined,
                     compact: true,
                     size: TpIconButton.kCompactSize,
-                    tooltip: l10n.worktreeNewWorktreeTooltip,
+                    tooltip: l10n.sessionGroupCreateTooltip,
                     onTap: throttledTap(
-                      'workspace_sidebar_new_worktree',
-                      () => unawaited(_createWorktree(context)),
+                      'workspace_sidebar_new_group',
+                      () => unawaited(_createSessionGroup(context)),
                     ),
+                  ),
+                  if (toolsContext != null &&
+                      worktreeManagementEnabled(toolsContext)) ...[
+                    const SizedBox(width: 2),
+                    TpIconButton(
+                      icon: Icons.refresh_rounded,
+                      compact: true,
+                      size: TpIconButton.kCompactSize,
+                      tooltip: l10n.worktreeRefreshTooltip,
+                      onTap: throttledTap(
+                        'workspace_sidebar_refresh_worktrees',
+                        () {
+                          final cubit = context.read<WorktreeCubit>();
+                          final repoPath =
+                              cubit.state.repoPath.trim().isNotEmpty
+                              ? cubit.state.repoPath
+                              : widget.workspace.firstFolderPath;
+                          unawaited(cubit.load(repoPath, force: true));
+                        },
+                      ),
+                    ),
+                    const SizedBox(width: 2),
+                    TpIconButton(
+                      icon: Icons.account_tree_outlined,
+                      compact: true,
+                      size: TpIconButton.kCompactSize,
+                      tooltip: l10n.worktreeNewWorktreeTooltip,
+                      onTap: throttledTap(
+                        'workspace_sidebar_new_worktree',
+                        () => unawaited(_createWorktree(context)),
+                      ),
+                    ),
+                  ],
+                  const SizedBox(width: 2),
+                  TpIconButton(
+                    icon: Icons.archive_outlined,
+                    compact: true,
+                    size: TpIconButton.kCompactSize,
+                    tooltip: l10n.sessionArchiveEntryTooltip,
+                    onTap: () => setState(() => _showingArchive = true),
                   ),
                 ],
               ],
             ),
           ),
           Expanded(
-            child: _ConversationListHost(
-              workspace: widget.workspace,
-              tabScopeId: widget.tabScopeId,
-              sessionSort: _sessionSort,
-              onSessionsReordered: _onSessionsReordered,
-            ),
+            child: _showingArchive
+                ? _ArchivedConversationList(
+                    workspace: widget.workspace,
+                    tabScopeId: widget.tabScopeId,
+                    sessionSort: _sessionSort,
+                  )
+                : _ConversationListHost(
+                    workspace: widget.workspace,
+                    tabScopeId: widget.tabScopeId,
+                    sessionSort: _sessionSort,
+                    onSessionsReordered: _onSessionsReordered,
+                  ),
           ),
           if (widget.embedFooter) ...[
             const SizedBox(height: 8),
@@ -330,7 +363,9 @@ List<AppSession> _sessionsForStructure(
   Workspace workspace,
 ) {
   final byId = {
-    for (final session in sessionsForWorkspace(workspace, state.sessions))
+    for (final session in activeSessions(
+      sessionsForWorkspace(workspace, state.sessions),
+    ))
       session.sessionId: session,
   };
   return [
@@ -395,7 +430,7 @@ class _ConversationListHost extends StatelessWidget {
   Widget build(BuildContext context) {
     final structure = context.select<ChatCubit, SessionListStructure>(
       (c) => SessionListStructure.fromSessions(
-        sessionsForWorkspace(workspace, c.state.sessions),
+        activeSessions(sessionsForWorkspace(workspace, c.state.sessions)),
         sort: sessionSort,
       ),
     );
@@ -618,6 +653,54 @@ class _ConversationListHost extends StatelessWidget {
   }
 }
 
+class _ArchivedConversationList extends StatelessWidget {
+  const _ArchivedConversationList({
+    required this.workspace,
+    required this.tabScopeId,
+    required this.sessionSort,
+  });
+
+  final Workspace workspace;
+  final String tabScopeId;
+  final AppSessionSort sessionSort;
+
+  @override
+  Widget build(BuildContext context) {
+    final sessions = context.select<ChatCubit, List<AppSession>>(
+      (c) => sortAppSessions(
+        archivedSessions(sessionsForWorkspace(workspace, c.state.sessions)),
+        sort: sessionSort,
+      ),
+    );
+    if (sessions.isEmpty) {
+      return _EmptyConversations(label: context.l10n.sessionArchiveEmpty);
+    }
+    return ListView.builder(
+      padding: EdgeInsets.zero,
+      itemCount: sessions.length,
+      itemBuilder: (context, index) {
+        final session = sessions[index];
+        return SidebarSessionTile(
+          key: ValueKey('workspace-archived-session-${session.sessionId}'),
+          session: session,
+          archiveMode: true,
+          highlightSessionId: scopedActiveSessionId(
+            context.read<WorkbenchCubit>(),
+            tabScopeId,
+          ),
+          tapThrottleKeyPrefix: 'workspace_archived_session',
+          onTap: () => openWorkspaceSessionTab(
+            context,
+            workspace,
+            session,
+            tabScopeId: tabScopeId,
+          ),
+        );
+      },
+    );
+  }
+}
+
 class _RunningSessionsSection extends StatelessWidget {
   const _RunningSessionsSection({
     required this.sessionIds,
@@ -671,7 +754,6 @@ class _SidebarActionTile extends StatefulWidget {
     required this.label,
     required this.onTap,
     this.enabled = true,
-    this.disabledTooltip,
     super.key,
   });
 
@@ -679,7 +761,6 @@ class _SidebarActionTile extends StatefulWidget {
   final String label;
   final VoidCallback onTap;
   final bool enabled;
-  final String? disabledTooltip;
 
   @override
   State<_SidebarActionTile> createState() => _SidebarActionTileState();
@@ -710,9 +791,6 @@ class _SidebarActionTileState extends State<_SidebarActionTile> {
       ),
     );
 
-    if (!_enabled && widget.disabledTooltip != null) {
-      return Tooltip(message: widget.disabledTooltip!, child: tile);
-    }
     return tile;
   }
 }
