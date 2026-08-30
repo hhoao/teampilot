@@ -7,9 +7,6 @@ import '../../l10n/l10n_extensions.dart';
 import '../../models/config_bundle.dart';
 import '../../models/plugin.dart';
 import '../../models/skill.dart';
-import '../../pages/chat/session_launch_error_banner.dart';
-import '../../pages/chat/session_launch_error_visibility.dart';
-import '../../pages/chat/session_launch_failure_presenter.dart';
 import '../../pages/home_workspace/workspace/workspace_chat_landing_palette.dart';
 import '../../pages/home_workspace/workspace/workspace_chat_landing_voice_bar.dart';
 import '../../services/workspace_dnd/workspace_drop_target.dart';
@@ -186,8 +183,6 @@ class WorkspaceComposeCard extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            if (chrome is BoundComposeChrome)
-              ..._launchErrorBanner(context, chrome, spacing),
             if (clip != null)
               ListenableBuilder(
                 listenable: clip!,
@@ -288,31 +283,6 @@ class WorkspaceComposeCard extends StatelessWidget {
         : shell;
 
     return ComposeFileDropRegion(target: dropTarget, child: content);
-  }
-
-  List<Widget> _launchErrorBanner(
-    BuildContext context,
-    BoundComposeChrome chrome,
-    TpSpacing spacing,
-  ) {
-    final failure = presentSessionLaunchFailure(chrome.launchError);
-    if (!shouldShowSessionLaunchErrorBanner(
-          launchError: chrome.launchError,
-          sessionConnectInProgress: chrome.sessionConnectInProgress,
-        ) ||
-        failure == null) {
-      return const [];
-    }
-
-    return [
-      SessionLaunchErrorBanner(
-        view: failure,
-        onRetry: chrome.onRetry,
-        onRemapDeadTarget: chrome.onRemapDeadTarget,
-        isRetrying: chrome.sessionConnectInProgress,
-      ),
-      SizedBox(height: spacing.md),
-    ];
   }
 
   Widget? _trailingComposeAction({

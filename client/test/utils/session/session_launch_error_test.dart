@@ -26,10 +26,24 @@ void main() {
     expect(formatted, isNot(contains('version `GLIBC_2.28\'')));
   });
 
-  test('formatSessionLaunchError truncates long messages', () {
-    final raw = List<String>.generate(6, (i) => 'line $i').join('\n');
+  test('formatSessionLaunchError keeps long multi-line detail logs', () {
+    final raw = List<String>.generate(12, (i) => 'line $i').join('\n');
+    final formatted = formatSessionLaunchError(raw);
+    expect(formatted.endsWith('…'), isFalse);
+    expect(formatted.split('\n'), hasLength(12));
+    expect(formatted, contains('line 11'));
+  });
+
+  test('formatSessionLaunchError soft-caps extremely long dumps', () {
+    final raw = List<String>.generate(
+      kSessionLaunchErrorMaxDetailLines + 20,
+      (i) => 'line $i',
+    ).join('\n');
     final formatted = formatSessionLaunchError(raw);
     expect(formatted.endsWith('…'), isTrue);
-    expect(formatted.split('\n').length, lessThanOrEqualTo(5));
+    expect(
+      formatted.split('\n').length,
+      kSessionLaunchErrorMaxDetailLines + 1,
+    );
   });
 }

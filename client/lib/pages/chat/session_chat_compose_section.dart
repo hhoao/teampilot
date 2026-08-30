@@ -62,6 +62,9 @@ import 'session_seat_working.dart';
 import 'history_continue_delivery.dart';
 import 'history_mailbox_queued_strip.dart';
 import 'session_chat_voice_controller.dart';
+import 'session_launch_error_banner.dart';
+import 'session_launch_error_visibility.dart';
+import 'session_launch_failure_presenter.dart';
 
 /// Self-contained compose section that reads its own cubits via
 /// [context.select], eliminating the need for the parent to pass computed
@@ -314,6 +317,12 @@ class SessionChatComposeSection extends StatelessWidget {
                         onMailboxConsumed(msg.id);
                       },
                     ),
+                  // Same slot as the old delivery-recovery strip: above the
+                  // compose card, not inside it.
+                  ..._composeLaunchErrorStrip(
+                    context,
+                    spacing: spacing,
+                  ),
                   _CascadeCatalogLive(
                     registry: registry,
                     cli: lockedCli,
@@ -405,7 +414,6 @@ class SessionChatComposeSection extends StatelessWidget {
                             onChanged: (_) {},
                             chrome: BoundComposeChrome(
                               composeEnabled: !permissionWaiting,
-                              launchError: launchError,
                               onRemapDeadTarget: onRemapDeadTarget,
                               onRetry: onRetry,
                               sessionConnectInProgress:
@@ -558,6 +566,30 @@ class SessionChatComposeSection extends StatelessWidget {
   }
 
   // -- Helpers (instance methods) -------------------------------------------
+
+  /// Mirrors the old delivery-recovery slot: sit above the compose card.
+  List<Widget> _composeLaunchErrorStrip(
+    BuildContext context, {
+    required TpSpacing spacing,
+  }) {
+    final failure = presentSessionLaunchFailure(launchError);
+    if (!shouldShowSessionLaunchErrorBanner(
+          launchError: launchError,
+          sessionConnectInProgress: sessionConnectInProgress,
+        ) ||
+        failure == null) {
+      return const [];
+    }
+    return [
+      SessionLaunchErrorBanner(
+        view: failure,
+        onRetry: onRetry,
+        onRemapDeadTarget: onRemapDeadTarget,
+        isRetrying: sessionConnectInProgress,
+      ),
+      SizedBox(height: spacing.sm),
+    ];
+  }
 
   String _followUpSeatKey(String sessionId, String memberId) =>
       followUpSeatKey(sessionId, memberId);

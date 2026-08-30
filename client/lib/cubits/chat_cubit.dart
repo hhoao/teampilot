@@ -64,6 +64,7 @@ import '../utils/session/workspace_sessions.dart';
 import '../widgets/workspace_icon_picker_dialog.dart';
 import '../utils/logging/logger_utils.dart';
 import 'chat/session_launch_retry.dart';
+import 'chat/latest_failed_message.dart';
 import 'chat/chat_connect_state_mixin.dart';
 import 'chat/session_data_store.dart';
 import 'chat/chat_session_shell_factory.dart';
@@ -2066,6 +2067,71 @@ class ChatCubit extends Cubit<ChatState>
       return;
     }
     await connectWorkspaceSession(request);
+    if (isClosed) return;
+    final stillFailed =
+        (_tabStore.openTabBySessionId(id)?.info.launchError ?? '')
+            .trim()
+            .isNotEmpty;
+    if (stillFailed) return;
+    await _redeliverLatestFailedAfterLaunchRetry(session: session, tab: tab);
+  }
+
+  /// After launch Retry brings the PTY back, re-submit the newest failed
+  /// outgoing bubble so the user does not have to tap message Retry separately.
+  Future<void> _redeliverLatestFailedAfterLaunchRetry({
+    required AppSession session,
+    ChatTab? tab,
+  }) async {
+    final records = await _failedMessageStore.load(
+      session.workspaceId,
+      session.sessionId,
+    );
+    final failed = latestFailedMessageRecord(records);
+    if (failed == null) return;
+
+    final memberId = session.isSimple
+        ? session.sessionId
+        : () {
+            final selected = tab?.selectedMemberId.trim() ?? '';
+            return selected.isNotEmpty ? selected : session.sessionId;
+          }();
+
+    final history = ensurePodRuntime(session.sessionId).history;
+    final seat = history?.memberSeat(
+      sessionId: session.sessionId,
+      memberId: memberId,
+    );
+    if (seat != null) {
+      await seat.retryPendingUser(
+        store: _failedMessageStore,
+        workspaceId: session.workspaceId,
+        sessionId: session.sessionId,
+        record: failed,
+      );
+    }
+
+    final result = await submitSessionOperatorMessage(
+      sessionId: session.sessionId,
+      memberId: memberId,
+      message: failed.text,
+    );
+    if (result.ok) {
+      await clearHistoryPending(
+        workspaceId: session.workspaceId,
+        sessionId: session.sessionId,
+        memberId: memberId,
+        recordId: failed.id,
+      );
+      return;
+    }
+    if (seat != null) {
+      await markHistoryPendingFailed(
+        workspaceId: session.workspaceId,
+        sessionId: session.sessionId,
+        memberId: memberId,
+        record: failed,
+      );
+    }
   }
 
   void disconnectSession() {

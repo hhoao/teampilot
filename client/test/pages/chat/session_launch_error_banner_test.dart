@@ -106,4 +106,27 @@ void main() {
     expect(find.textContaining('libstdc++'), findsNothing);
     expect(find.byKey(AppKeys.sessionLaunchErrorRetryButton), findsOneWidget);
   });
+
+  testWidgets(
+    'compose card shows full multi-line detail when reviewed',
+    (tester) async {
+      final long = List<String>.generate(8, (i) => 'error line $i').join('\n');
+      final view = presentSessionLaunchFailure(long)!;
+      await tester.pumpWidget(
+        _wrap(
+          SessionLaunchErrorBanner(
+            view: view,
+            onRetry: () {},
+          ),
+        ),
+      );
+
+      await tester.tap(find.byKey(AppKeys.sessionLaunchErrorReviewButton));
+      await tester.pumpAndSettle();
+
+      expect(find.textContaining('error line 0'), findsOneWidget);
+      expect(find.textContaining('error line 7'), findsOneWidget);
+      expect(find.byType(SelectableText), findsOneWidget);
+    },
+  );
 }

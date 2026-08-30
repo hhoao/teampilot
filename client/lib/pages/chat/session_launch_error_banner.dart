@@ -104,11 +104,19 @@ class _SessionLaunchErrorBannerState extends State<SessionLaunchErrorBanner> {
           if (_reviewing)
             Padding(
               padding: EdgeInsets.only(top: spacing.xs),
-              child: Text(
-                widget.view.message,
-                style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                      color: cs.onSurfaceVariant,
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(maxHeight: 220),
+                child: Scrollbar(
+                  child: SingleChildScrollView(
+                    child: SelectableText(
+                      widget.view.message,
+                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                            color: cs.onSurfaceVariant,
+                            fontFamily: 'monospace',
+                          ),
                     ),
+                  ),
+                ),
               ),
             ),
         ],

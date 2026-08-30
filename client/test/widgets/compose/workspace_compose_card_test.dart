@@ -166,7 +166,7 @@ void main() {
     expect(opened.single, '/tmp/src/main.dart');
   });
 
-  testWidgets('bound chrome shows launch error card title, not raw error', (
+  testWidgets('bound chrome does not embed launch error inside the card', (
     tester,
   ) async {
     await tester.pumpWidget(
@@ -179,7 +179,8 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    expect(find.text("Couldn't start session"), findsOneWidget);
+    // Launch errors render above the card (compose section slot), not inside.
+    expect(find.text("Couldn't start session"), findsNothing);
     expect(find.text('Something went wrong'), findsNothing);
   });
 

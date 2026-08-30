@@ -1,6 +1,14 @@
 import '../../services/terminal/terminal_startup_failure_detector.dart';
 
-/// Formats raw terminal / launch errors for the session placeholder (P0).
+/// Soft ceiling so a pathological stderr dump cannot freeze the compose card.
+/// Expandable details are scrollable; this is only a safety bound.
+const kSessionLaunchErrorMaxDetailLines = 200;
+
+/// Formats raw terminal / launch errors for the session failure card.
+///
+/// Normalizes whitespace and rewrites known linker failures. Keeps the full
+/// detail text (up to [kSessionLaunchErrorMaxDetailLines]) so "View details"
+/// can show the complete log — do not silently trim to a 4-line preview.
 String formatSessionLaunchError(String raw) {
   var text = raw.trim();
   if (text.isEmpty) return text;
@@ -31,10 +39,8 @@ String formatSessionLaunchError(String raw) {
       .toList(growable: false);
 
   if (lines.isEmpty) return text;
-
-  const maxLines = 4;
-  if (lines.length <= maxLines) {
+  if (lines.length <= kSessionLaunchErrorMaxDetailLines) {
     return lines.join('\n');
   }
-  return '${lines.take(maxLines).join('\n')}\n…';
+  return '${lines.take(kSessionLaunchErrorMaxDetailLines).join('\n')}\n…';
 }
