@@ -54,78 +54,78 @@ MarkdownTokens buildAppMarkdownTokens(
   ) = switch (profile) {
     MarkdownProfile.document => (
         const TpScaledEdgeInsets(
-          sm: EdgeInsets.only(top: 24, bottom: 8),
-          xxl: EdgeInsets.only(top: 40, bottom: 8),
+          sm: EdgeInsets.only(top: 26, bottom: 10),
+          xxl: EdgeInsets.only(top: 42, bottom: 10),
         ).forWidth(width),
         const TpScaledEdgeInsets(
-          sm: EdgeInsets.only(top: 22, bottom: 8),
-          xxl: EdgeInsets.only(top: 36, bottom: 8),
+          sm: EdgeInsets.only(top: 24, bottom: 10),
+          xxl: EdgeInsets.only(top: 38, bottom: 10),
         ).forWidth(width),
         const TpScaledEdgeInsets(
-          sm: EdgeInsets.only(top: 20, bottom: 8),
-          xxl: EdgeInsets.only(top: 32, bottom: 8),
+          sm: EdgeInsets.only(top: 22, bottom: 10),
+          xxl: EdgeInsets.only(top: 34, bottom: 10),
         ).forWidth(width),
         const TpScaledEdgeInsets(
-          sm: EdgeInsets.only(top: 18, bottom: 8),
-          xxl: EdgeInsets.only(top: 28, bottom: 8),
+          sm: EdgeInsets.only(top: 20, bottom: 10),
+          xxl: EdgeInsets.only(top: 30, bottom: 10),
         ).forWidth(width),
         const TpScaledEdgeInsets(
-          sm: EdgeInsets.only(top: 18, bottom: 8),
-          xxl: EdgeInsets.only(top: 28, bottom: 8),
+          sm: EdgeInsets.only(top: 20, bottom: 10),
+          xxl: EdgeInsets.only(top: 30, bottom: 10),
         ).forWidth(width),
         const TpScaledEdgeInsets(
-          sm: EdgeInsets.only(top: 18, bottom: 8),
-          xxl: EdgeInsets.only(top: 28, bottom: 8),
+          sm: EdgeInsets.only(top: 20, bottom: 10),
+          xxl: EdgeInsets.only(top: 30, bottom: 10),
         ).forWidth(width),
         const TpScaledEdgeInsets(
-          sm: EdgeInsets.only(bottom: 12),
-          xxl: EdgeInsets.only(bottom: 16),
+          sm: EdgeInsets.only(bottom: 14),
+          xxl: EdgeInsets.only(bottom: 18),
         ).forWidth(width),
         const TpScaledEdgeInsets(
-          sm: EdgeInsets.only(bottom: 16),
-          xxl: EdgeInsets.only(bottom: 28),
+          sm: EdgeInsets.only(bottom: 18),
+          xxl: EdgeInsets.only(bottom: 30),
         ).forWidth(width),
         const TpScaledEdgeInsets(
-          sm: EdgeInsets.only(bottom: 16),
-          xxl: EdgeInsets.only(bottom: 28),
+          sm: EdgeInsets.only(bottom: 18),
+          xxl: EdgeInsets.only(bottom: 30),
         ).forWidth(width),
       ),
     MarkdownProfile.compact => (
         const TpScaledEdgeInsets(
-          sm: EdgeInsets.only(top: 12, bottom: 8),
-          xxl: EdgeInsets.only(top: 16, bottom: 8),
+          sm: EdgeInsets.only(top: 14, bottom: 10),
+          xxl: EdgeInsets.only(top: 18, bottom: 10),
         ).forWidth(width),
         const TpScaledEdgeInsets(
-          sm: EdgeInsets.only(top: 10, bottom: 8),
-          xxl: EdgeInsets.only(top: 12, bottom: 8),
+          sm: EdgeInsets.only(top: 12, bottom: 10),
+          xxl: EdgeInsets.only(top: 14, bottom: 10),
         ).forWidth(width),
         const TpScaledEdgeInsets(
-          sm: EdgeInsets.only(top: 6, bottom: 8),
-          xxl: EdgeInsets.only(top: 8, bottom: 8),
+          sm: EdgeInsets.only(top: 8, bottom: 10),
+          xxl: EdgeInsets.only(top: 10, bottom: 10),
         ).forWidth(width),
         const TpScaledEdgeInsets(
-          sm: EdgeInsets.only(top: 6, bottom: 8),
-          xxl: EdgeInsets.only(top: 8, bottom: 8),
+          sm: EdgeInsets.only(top: 8, bottom: 10),
+          xxl: EdgeInsets.only(top: 10, bottom: 10),
         ).forWidth(width),
         const TpScaledEdgeInsets(
-          sm: EdgeInsets.only(top: 6, bottom: 8),
-          xxl: EdgeInsets.only(top: 8, bottom: 8),
+          sm: EdgeInsets.only(top: 8, bottom: 10),
+          xxl: EdgeInsets.only(top: 10, bottom: 10),
         ).forWidth(width),
         const TpScaledEdgeInsets(
-          sm: EdgeInsets.only(top: 6, bottom: 8),
-          xxl: EdgeInsets.only(top: 8, bottom: 8),
+          sm: EdgeInsets.only(top: 8, bottom: 10),
+          xxl: EdgeInsets.only(top: 10, bottom: 10),
         ).forWidth(width),
         const TpScaledEdgeInsets(
-          sm: EdgeInsets.only(bottom: 8),
-          xxl: EdgeInsets.only(bottom: 12),
+          sm: EdgeInsets.only(bottom: 10),
+          xxl: EdgeInsets.only(bottom: 14),
         ).forWidth(width),
         const TpScaledEdgeInsets(
-          sm: EdgeInsets.only(bottom: 8),
-          xxl: EdgeInsets.only(bottom: 12),
+          sm: EdgeInsets.only(bottom: 10),
+          xxl: EdgeInsets.only(bottom: 14),
         ).forWidth(width),
         const TpScaledEdgeInsets(
-          sm: EdgeInsets.only(bottom: 8),
-          xxl: EdgeInsets.only(bottom: 12),
+          sm: EdgeInsets.only(bottom: 10),
+          xxl: EdgeInsets.only(bottom: 14),
         ).forWidth(width),
       ),
   };
@@ -162,7 +162,7 @@ MarkdownTokens buildAppMarkdownTokens(
     mutedSurface: muted,
     borderColor: scheme.outlineVariant.withValues(alpha: 0.45),
     codeBlockRadius: codeBlockRadius,
-    tableCellsPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+    tableCellsPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
     tableHeadBackground: scheme.onSurface.withValues(alpha: 0.04),
     tableBodyBackground: Colors.transparent,
     // Search match washes (preview find): quiet primary tint for hits, stronger
@@ -188,8 +188,8 @@ MarkdownTokens buildAppMarkdownTokens(
     horizontalRuleMargin: ruleMargin,
     imageMargin: blockMargin,
     rawLiteralMargin: blockMargin,
-    listItemGap: 8,
-    listIndent: 24,
+    listItemGap: 10,
+    listIndent: 26,
     // Mark policy from TpTextStyles scale (not raw FontWeight literals).
     strongWeight: styles.mdBold.fontWeight!,
     emphasisFontStyle: FontStyle.italic,

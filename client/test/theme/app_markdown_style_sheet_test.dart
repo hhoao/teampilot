@@ -42,38 +42,38 @@ void main() {
     expect(tokens.body.fontFamily, theme.extension<TpFontTheme>()!.uiFontFamily);
     expect(tokens.inlineCode.fontSize, tokens.body.fontSize);
     expect(tokens.inlineCode.height, tokens.body.height);
-    expect(tokens.listItemGap, 8);
+    expect(tokens.listItemGap, 10);
     expect(
       tokens.tableCellsPadding,
-      const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+      const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
     );
     expect(tokens.h1.height, 1.3);
     expect(tokens.h1.letterSpacing, -0.02);
     expect(tokens.h2.height, 1.3);
-    expect(tokens.marginOf(MarkdownBlockKind.heading1).top, 40);
-    expect(tokens.marginOf(MarkdownBlockKind.heading1).bottom, 8);
-    expect(tokens.marginOf(MarkdownBlockKind.heading2).top, 36);
-    expect(tokens.marginOf(MarkdownBlockKind.heading2).bottom, 8);
-    expect(tokens.marginOf(MarkdownBlockKind.heading3).top, 32);
-    expect(tokens.marginOf(MarkdownBlockKind.heading3).bottom, 8);
-    expect(tokens.marginOf(MarkdownBlockKind.heading4).top, 28);
-    expect(tokens.marginOf(MarkdownBlockKind.heading4).bottom, 8);
-    expect(tokens.marginOf(MarkdownBlockKind.heading5).top, 28);
-    expect(tokens.marginOf(MarkdownBlockKind.heading5).bottom, 8);
-    expect(tokens.marginOf(MarkdownBlockKind.heading6).top, 28);
-    expect(tokens.marginOf(MarkdownBlockKind.heading6).bottom, 8);
-    expect(tokens.marginOf(MarkdownBlockKind.paragraph).bottom, 16);
-    expect(tokens.marginOf(MarkdownBlockKind.code).bottom, 28);
-    expect(tokens.marginOf(MarkdownBlockKind.list).bottom, 28);
-    expect(tokens.marginOf(MarkdownBlockKind.blockquote).bottom, 28);
-    expect(tokens.marginOf(MarkdownBlockKind.table).top, 28);
-    expect(tokens.marginOf(MarkdownBlockKind.table).bottom, 28);
+    expect(tokens.marginOf(MarkdownBlockKind.heading1).top, 42);
+    expect(tokens.marginOf(MarkdownBlockKind.heading1).bottom, 10);
+    expect(tokens.marginOf(MarkdownBlockKind.heading2).top, 38);
+    expect(tokens.marginOf(MarkdownBlockKind.heading2).bottom, 10);
+    expect(tokens.marginOf(MarkdownBlockKind.heading3).top, 34);
+    expect(tokens.marginOf(MarkdownBlockKind.heading3).bottom, 10);
+    expect(tokens.marginOf(MarkdownBlockKind.heading4).top, 30);
+    expect(tokens.marginOf(MarkdownBlockKind.heading4).bottom, 10);
+    expect(tokens.marginOf(MarkdownBlockKind.heading5).top, 30);
+    expect(tokens.marginOf(MarkdownBlockKind.heading5).bottom, 10);
+    expect(tokens.marginOf(MarkdownBlockKind.heading6).top, 30);
+    expect(tokens.marginOf(MarkdownBlockKind.heading6).bottom, 10);
+    expect(tokens.marginOf(MarkdownBlockKind.paragraph).bottom, 18);
+    expect(tokens.marginOf(MarkdownBlockKind.code).bottom, 30);
+    expect(tokens.marginOf(MarkdownBlockKind.list).bottom, 30);
+    expect(tokens.marginOf(MarkdownBlockKind.blockquote).bottom, 30);
+    expect(tokens.marginOf(MarkdownBlockKind.table).top, 30);
+    expect(tokens.marginOf(MarkdownBlockKind.table).bottom, 30);
     expect(
       tokens.marginOf(MarkdownBlockKind.table).top,
       tokens.marginOf(MarkdownBlockKind.table).bottom,
     );
-    expect(tokens.marginOf(MarkdownBlockKind.horizontalRule).bottom, 28);
-    expect(tokens.listIndent, 24);
+    expect(tokens.marginOf(MarkdownBlockKind.horizontalRule).bottom, 30);
+    expect(tokens.listIndent, 26);
     expect(
       tokens.borderColor,
       theme.colorScheme.outlineVariant.withValues(alpha: 0.45),
@@ -118,10 +118,10 @@ void main() {
       compact.marginOf(MarkdownBlockKind.code).bottom,
       lessThan(document.marginOf(MarkdownBlockKind.code).bottom),
     );
-    expect(compact.marginOf(MarkdownBlockKind.heading1).top, 16);
-    expect(compact.marginOf(MarkdownBlockKind.heading2).top, 12);
-    expect(compact.marginOf(MarkdownBlockKind.paragraph).bottom, 12);
-    expect(compact.marginOf(MarkdownBlockKind.code).bottom, 12);
+    expect(compact.marginOf(MarkdownBlockKind.heading1).top, 18);
+    expect(compact.marginOf(MarkdownBlockKind.heading2).top, 14);
+    expect(compact.marginOf(MarkdownBlockKind.paragraph).bottom, 14);
+    expect(compact.marginOf(MarkdownBlockKind.code).bottom, 14);
   });
 
   test('document margins scale with width between sm and xxl', () {

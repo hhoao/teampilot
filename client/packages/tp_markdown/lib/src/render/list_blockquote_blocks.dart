@@ -30,7 +30,7 @@ Widget buildBlockquote(
       ),
     ),
     child: Padding(
-      padding: const EdgeInsets.only(left: 12),
+      padding: const EdgeInsets.only(left: 14),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [

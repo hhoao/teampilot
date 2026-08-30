@@ -216,7 +216,7 @@ class _MarkdownCodeBlockState extends State<_MarkdownCodeBlock> {
           ),
           child: SelectionContainer.disabled(
             child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
               child: Row(
                 children: [
                   Expanded(
@@ -349,7 +349,7 @@ class _MarkdownCodeBlockState extends State<_MarkdownCodeBlock> {
     return SingleChildScrollView(
       scrollDirection: Axis.horizontal,
       child: Padding(
-        padding: const EdgeInsets.fromLTRB(14, 10, 14, 12),
+        padding: const EdgeInsets.fromLTRB(16, 12, 16, 14),
         child: buildHighlightedCode(
           code,
           widget.tokens.codeBlock,
