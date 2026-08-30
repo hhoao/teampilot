@@ -1750,10 +1750,10 @@ class AppLocalizationsZh extends AppLocalizations {
   }
 
   @override
-  String get sessionWorkbenchShowChat => '显示聊天';
+  String get sessionWorkbenchViewChat => '聊天';
 
   @override
-  String get sessionWorkbenchShowTerminal => '显示终端';
+  String get sessionWorkbenchViewTerminal => '终端';
 
   @override
   String get sessionReadyTitle => '准备开始对话';
@@ -1794,7 +1794,7 @@ class AppLocalizationsZh extends AppLocalizations {
   String get composeNativeCommandHelp => '显示此 CLI 会话中可用的命令。';
 
   @override
-  String get workspaceChatLandingBackToStart => '返回启动页';
+  String get workspaceChatLandingBackToWorkbench => '返回工作台';
 
   @override
   String get workspaceChatLandingSelectWorkspace => '选择工作空间 >';
@@ -7563,44 +7563,46 @@ class AppLocalizationsZh extends AppLocalizations {
   String get managedProvidersQuickPresetDeepSeek => 'DeepSeek';
 
   @override
-  String get managedProvidersQuickPresetDeepSeekHint =>
-      '已配置余额 API；请补充 API Key 凭据。';
+  String get managedProvidersQuickPresetDeepSeekHint => '已配余额接口，需填密钥。';
+
+  @override
+  String get managedProvidersQuickPresetCustom => '自定义';
+
+  @override
+  String get managedProvidersQuickPresetCustomHint => '从零配置接口、凭据与显示格式。';
 
   @override
   String get managedProvidersBasicsSectionTitle => '基本信息';
 
   @override
-  String get managedProvidersBasicsSectionSubtitle => '先填写身份信息和必要密钥。';
+  String get managedProvidersBasicsSectionSubtitle => '命名与必要密钥。';
 
   @override
-  String get managedProvidersBasicsSummary => '选择预设、命名 Provider，并在需要时填写必要密钥。';
+  String get managedProvidersBasicsSummary => '选择预设、命名，并按需填写密钥。';
 
   @override
   String get managedProvidersQuerySectionTitle => '查询';
 
   @override
-  String get managedProvidersQuerySectionSubtitle =>
-      'HTTP 用量查询使用的 Endpoint 和 JSON 映射。';
+  String get managedProvidersQuerySectionSubtitle => '用量 API 与 JSON 解析。';
 
   @override
   String get managedProvidersCredentialsSectionTitle => '凭据详情';
 
   @override
-  String get managedProvidersCredentialsSectionSubtitle =>
-      '发送已存凭据时使用的 Header 或 Query 元数据。';
+  String get managedProvidersCredentialsSectionSubtitle => '凭据来源及写入请求的方式。';
 
   @override
   String get managedProvidersDisplaySectionTitle => '显示';
 
   @override
-  String get managedProvidersDisplaySectionSubtitle => '余额与配额的格式 fallback。';
+  String get managedProvidersDisplaySectionSubtitle => '余额与额度的显示格式。';
 
   @override
   String get managedProvidersAdvancedSectionTitle => '高级';
 
   @override
-  String get managedProvidersAdvancedSectionSubtitle =>
-      '适配器身份、Provider 类型和已保存引用。';
+  String get managedProvidersAdvancedSectionSubtitle => '适配器、类型与内部引用。';
 
   @override
   String get managedProvidersSectionConfiguredBadge => '已配置';
@@ -7633,25 +7635,88 @@ class AppLocalizationsZh extends AppLocalizations {
   String get managedProvidersKindCustomHttp => '自定义 HTTP';
 
   @override
-  String get managedProvidersEndpoint => 'Endpoint URL';
+  String get managedProvidersKindPresetLockedHelper => '当前预设或模板已锁定类型。';
 
   @override
-  String get managedProvidersEndpointHint => 'https://…';
+  String get managedProvidersEndpoint => '用量 API 地址';
 
   @override
-  String get managedProvidersMethod => '方法';
+  String get managedProvidersEndpointHint => 'https://api.example.com/usage';
 
   @override
-  String get managedProvidersResponsePath => '响应路径';
+  String get managedProvidersEndpointHelper => '获取用量数据的请求地址。';
 
   @override
-  String get managedProvidersMeasuresPath => '用量路径';
+  String get managedProvidersMethod => 'HTTP 方法';
 
   @override
-  String get managedProvidersRequestMapping => '请求体映射（JSON）';
+  String get managedProvidersMethodHelper => '一般为 GET。';
 
   @override
-  String get managedProvidersFieldMappings => '响应字段映射（JSON）';
+  String get managedProvidersResponsePath => '响应根路径（\$）';
+
+  @override
+  String get managedProvidersResponsePathHint => '\$.data';
+
+  @override
+  String get managedProvidersResponsePathHelper => '数据在嵌套层时用 \$ 先定位；留空从响应根解析。';
+
+  @override
+  String get managedProvidersMeasuresPath => '用量列表（\$）';
+
+  @override
+  String get managedProvidersMeasuresPathHint => '\$.balance_infos';
+
+  @override
+  String get managedProvidersMeasuresPathHelper => '每项一条余额的 \$ 路径（如 DeepSeek）。';
+
+  @override
+  String get managedProvidersRequestMapping => '请求体（JSON）';
+
+  @override
+  String get managedProvidersRequestMappingHelper => 'POST 时用；GET 留空。';
+
+  @override
+  String get managedProvidersFieldMappings => '列表项字段映射（JSON）';
+
+  @override
+  String get managedProvidersFieldMappingsHelper => '数组每项各字段在响应中的 \$ 路径。';
+
+  @override
+  String get managedProvidersHeaders => '请求头（JSON）';
+
+  @override
+  String get managedProvidersHeadersHint => 'Accept: application/json';
+
+  @override
+  String get managedProvidersHeadersHelper => '额外请求头；值可用花括号占位。';
+
+  @override
+  String get managedProvidersWindows => '额度窗口（JSON）';
+
+  @override
+  String get managedProvidersWindowsHint => 'JSON 数组；每项含 label 与 \$ 路径';
+
+  @override
+  String get managedProvidersWindowsHelper =>
+      '每条额度写一行。每项写 label 与 used / total / remaining / resetsAt 的 \$ 路径。数组项请写死下标，如 \$.balance_infos[0].total_balance。';
+
+  @override
+  String get managedProvidersFieldExampleLabel => '示例';
+
+  @override
+  String get managedProvidersJsonPathSeeAlso => '\$ 用法详见「查询」ℹ️';
+
+  @override
+  String get managedProvidersTemplateVariablesSeeAlsoQuery => '花括号用法详见「查询」ℹ️';
+
+  @override
+  String get managedProvidersTemplateVariablesSeeAlsoCredentials =>
+      '花括号用法详见「凭据详情」ℹ️';
+
+  @override
+  String get managedProvidersReferenceSyntaxHelper =>
+      '\$ — 从 HTTP 响应的 JSON 里读数\n\$ 表示整段响应，\$.字段名 用点号一层层往下取。\n例：\$.data、\$.balance_infos[0].total_balance、\$.rate_limit.used_percent\n\n用于「响应根路径」和额度窗口里的 used / total / remaining / resetsAt 等字段。\n\n花括号 — 往请求里填动态值（不是读响应）\n花括号内写变量名，发送时替换为凭据里的值。\n• accessToken — 访问令牌\n• accountId — 账号 ID\n• jwt.sub — JWT 的 sub\n\n用于请求头、Cookie、凭据模板。cli:… 登录后才有这些值。';
 
   @override
   String get managedProvidersCredentials => '凭据';
@@ -7676,28 +7741,59 @@ class AppLocalizationsZh extends AppLocalizations {
       '填入 Provider 的 API Key 或 Token';
 
   @override
-  String get managedProvidersCredentialSecretExistingHint => '留空以保留已保存密钥';
+  String get managedProvidersCredentialSecretExistingHint => '留空保留已保存密钥';
 
   @override
-  String get managedProvidersCredentialSecretHelper => '仅保存到安全存储；留空可保留已有密钥。';
+  String get managedProvidersCredentialSecretHelper => '留空保留已保存密钥。';
 
   @override
-  String get managedProvidersCredentialName => '凭据 Header/Query 名称';
+  String get managedProvidersCredentialName => '凭据参数名';
 
   @override
-  String get managedProvidersCredentialNameHint => 'Authorization 或 api-key';
+  String get managedProvidersCredentialNameHint => 'Authorization 或 Cookie';
 
   @override
-  String get managedProvidersCredentialField => '凭据响应字段';
+  String get managedProvidersCredentialNameHelper => '写入请求时的参数名。';
 
   @override
-  String get managedProvidersCredentialFieldHint => '可选的响应映射字段';
+  String get managedProvidersCredentialField => '密钥字段名';
+
+  @override
+  String get managedProvidersCredentialFieldHint => 'apiKey 或 accessToken';
+
+  @override
+  String get managedProvidersCredentialFieldHelper => '本地存储用的字段名。';
 
   @override
   String get managedProvidersCredentialPlacement => '凭据位置';
 
   @override
   String get managedProvidersCredentialPlacementHint => 'header 或 query';
+
+  @override
+  String get managedProvidersCredentialPlacementHelper => 'header 或 query。';
+
+  @override
+  String get managedProvidersCredentialSource => '凭据来源';
+
+  @override
+  String get managedProvidersCredentialSourceHint =>
+      'secret 或 cli:cursor-account';
+
+  @override
+  String get managedProvidersCredentialSourceHelper =>
+      'secret 读表单；cli:… 读 CLI 登录。';
+
+  @override
+  String get managedProvidersCredentialTemplate => '凭据拼接模板';
+
+  @override
+  String get managedProvidersCredentialTemplateHint =>
+      '例如 WorkosCursorSessionToken=user::token';
+
+  @override
+  String get managedProvidersCredentialTemplateHelper =>
+      '拼成最终凭据值，常用于 Cookie；用花括号填变量。';
 
   @override
   String get managedProvidersCredentialFieldRequired => '保存 API Key 前请先填写凭据字段。';
@@ -7718,17 +7814,16 @@ class AppLocalizationsZh extends AppLocalizations {
   String get managedProvidersDecimals => '小数位';
 
   @override
-  String get managedProvidersCurrencyMappingHelper =>
-      '配置响应映射后将动态读取货币；下方货币和单位仍可作为可编辑的 fallback。';
+  String get managedProvidersCurrencyMappingHelper => '已配置映射时从响应读取货币。';
 
   @override
-  String get managedProvidersDynamicCurrencyHelper => '货币将从已配置的响应映射中动态读取。';
+  String get managedProvidersDynamicCurrencyHelper => '货币从响应映射读取。';
 
   @override
   String get managedProvidersEnabledTitle => '启用';
 
   @override
-  String get managedProvidersEnabledSubtitle => '关闭后将从状态栏隐藏此 Provider，并停止所有查询。';
+  String get managedProvidersEnabledSubtitle => '关闭后隐藏并停止查询。';
 
   @override
   String get managedProvidersShowPercent => '显示百分比';

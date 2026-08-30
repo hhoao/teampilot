@@ -7,6 +7,7 @@ import 'package:shared_ui/shared_ui.dart';
 
 import '../../../cubits/chat_cubit.dart';
 import '../../../cubits/launch_profile_cubit.dart';
+import '../../../cubits/workbench/workbench_cubit.dart';
 import '../../../cubits/worktree_cubit.dart';
 import '../../../models/landing_launch_context.dart';
 import '../../../models/workspace.dart';
@@ -139,6 +140,11 @@ class _WorkspaceChatPaneState extends State<WorkspaceChatPane> {
       ),
     );
     final launching = _launchInFlight(context);
+    // The landing doubles as the workspace start page: the back control only
+    // exists when the landing was entered over a restorable workbench tab.
+    final canExitLanding = context.select<WorkbenchCubit, bool>(
+      (w) => w.canExitLanding(workspace.workspaceId),
+    );
     return SizedBox.expand(
       child: ColoredBox(
         color: cs.surface,
@@ -155,6 +161,10 @@ class _WorkspaceChatPaneState extends State<WorkspaceChatPane> {
             initialTextRevision: widget.initialTextRevision,
             referencedSessionId: widget.referencedSessionId,
             isSubmitting: launching,
+            showBackButton: canExitLanding,
+            onBack: () => context.read<WorkbenchCubit>().exitLanding(
+              workspace.workspaceId,
+            ),
             onSubmit: (message, draft) => unawaited(_submit(message, draft)),
           ),
         ),

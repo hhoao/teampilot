@@ -509,7 +509,7 @@ void main() {
       const secret = 'model-must-not-contain-this';
       final provider = _provider().copyWith(
         endpointConfig: ManagedProviderEndpointConfig(
-          fieldMappings: {'apiKey': secret, 'safe': 'data.safe'},
+          body: {'safe': 'data.safe'},
         ),
         unknownFields: {
           'futureCredential': 'Bearer $secret',

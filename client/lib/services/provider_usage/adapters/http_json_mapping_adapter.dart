@@ -33,19 +33,6 @@ class HttpJsonMappingConfig {
     this.method = 'GET',
     this.url = '',
     this.responsePath,
-    this.measuresPath,
-    this.labelPath,
-    this.kindPath,
-    this.totalPath,
-    this.usedPath,
-    this.remainingPath,
-    this.unitPath,
-    this.currencyPath,
-    this.resetsAtPath,
-    this.defaultLabel,
-    this.defaultKind = ProviderUsageMeasureKind.balance,
-    this.defaultUnit,
-    this.defaultCurrency,
     this.credential,
     this.credentialSource = 'secret',
     this.credentialTemplate,
@@ -61,19 +48,6 @@ class HttpJsonMappingConfig {
   final String method;
   final String url;
   final String? responsePath;
-  final String? measuresPath;
-  final String? labelPath;
-  final String? kindPath;
-  final String? totalPath;
-  final String? usedPath;
-  final String? remainingPath;
-  final String? unitPath;
-  final String? currencyPath;
-  final String? resetsAtPath;
-  final String? defaultLabel;
-  final ProviderUsageMeasureKind defaultKind;
-  final String? defaultUnit;
-  final String? defaultCurrency;
   final HttpJsonCredentialConfig? credential;
   final String credentialSource;
   final String? credentialTemplate;
@@ -87,24 +61,10 @@ class HttpJsonMappingConfig {
 
   factory HttpJsonMappingConfig.fromProvider(ManagedProvider provider) {
     final endpoint = provider.endpointConfig;
-    final mappings = endpoint.fieldMappings;
-    String? mapping(String key) =>
-        mappings[key] is String ? mappings[key] as String : null;
     return HttpJsonMappingConfig(
       method: endpoint.method,
       url: endpoint.hadUnsafeUrl ? '' : endpoint.url,
       responsePath: endpoint.responsePath,
-      measuresPath: endpoint.measuresPath,
-      labelPath: mapping('label'),
-      kindPath: mapping('kind'),
-      totalPath: mapping('total'),
-      usedPath: mapping('used'),
-      remainingPath: mapping('remaining'),
-      unitPath: mapping('unit'),
-      currencyPath: mapping('currency'),
-      resetsAtPath: mapping('resetsAt'),
-      defaultUnit: provider.displayConfig.unit,
-      defaultCurrency: provider.displayConfig.currency,
       credential: endpoint.credentialField == null
           ? null
           : HttpJsonCredentialConfig(
@@ -191,35 +151,19 @@ class HttpJsonMappingAdapter implements ManagedProviderUsageAdapter {
     }
     final measures = <ProviderUsageMeasure>[];
     try {
-      if (mapping.windows.isNotEmpty) {
-        for (final window in mapping.windows) {
-          final measure = _measureFromWindow(
-            responseRoot.value,
-            window,
-            provider,
-          );
-          if (measure != null) {
-            measures.add(measure);
-          }
-        }
-      } else {
-        final measuresRoot = mapping.measuresPath == null
-            ? _PathLookup.presentValue(responseRoot.value)
-            : _lookupPath(responseRoot.value, mapping.measuresPath);
-        final items = mapping.measuresPath == null
-            ? [responseRoot.value]
-            : measuresRoot.present && measuresRoot.value is List
-            ? measuresRoot.value as List<Object?>
-            : !measuresRoot.present || measuresRoot.value == null
-            ? const []
-            : [measuresRoot.value];
-        if (items.isEmpty) {
-          throw const ManagedProviderUsageQueryError(
-            ManagedProviderUsageQueryErrorCode.responseParseFailed,
-          );
-        }
-        for (final item in items) {
-          measures.add(_measure(item, mapping, provider));
+      if (mapping.windows.isEmpty) {
+        throw const ManagedProviderUsageQueryError(
+          ManagedProviderUsageQueryErrorCode.responseParseFailed,
+        );
+      }
+      for (final window in mapping.windows) {
+        final measure = _measureFromWindow(
+          responseRoot.value,
+          window,
+          provider,
+        );
+        if (measure != null) {
+          measures.add(measure);
         }
       }
     } on FormatException {
@@ -513,51 +457,6 @@ class HttpJsonMappingAdapter implements ManagedProviderUsageAdapter {
     );
   }
 
-  ProviderUsageMeasure _measure(
-    Object? item,
-    HttpJsonMappingConfig mapping,
-    ManagedProvider provider,
-  ) {
-    final labelLookup = _lookupPath(item, mapping.labelPath);
-    final label = labelLookup.present && labelLookup.value != null
-        ? _requiredString(labelLookup.value)
-        : mapping.defaultLabel ?? provider.name;
-    final kindLookup = _lookupPath(item, mapping.kindPath);
-    if (kindLookup.present &&
-        kindLookup.value != null &&
-        kindLookup.value is! String) {
-      throw const FormatException('invalid usage kind');
-    }
-    final resolvedKind = kindLookup.present && kindLookup.value != null
-        ? ProviderUsageMeasureKind.fromJson(kindLookup.value)
-        : mapping.defaultKind;
-    final total = _decimalValue(_lookupPath(item, mapping.totalPath));
-    final used = _decimalValue(_lookupPath(item, mapping.usedPath));
-    final remaining = _decimalValue(_lookupPath(item, mapping.remainingPath));
-    final unitLookup = _lookupPath(item, mapping.unitPath);
-    final unit = unitLookup.present && unitLookup.value != null
-        ? _requiredString(unitLookup.value)
-        : mapping.defaultUnit;
-    final currencyLookup = _lookupPath(item, mapping.currencyPath);
-    final currency = currencyLookup.present && currencyLookup.value != null
-        ? _requiredString(currencyLookup.value)
-        : mapping.defaultCurrency;
-    final resetsAt = _timestampValue(_lookupPath(item, mapping.resetsAtPath));
-    if (total == null && used == null && remaining == null) {
-      throw const FormatException('usage measure has no numeric fields');
-    }
-    return ProviderUsageMeasure(
-      label: label,
-      kind: resolvedKind,
-      total: total,
-      used: used,
-      remaining: remaining,
-      unit: unit,
-      currency: currency,
-      resetsAt: resetsAt,
-    );
-  }
-
   static Uri _validatedUri(String raw) {
     final uri = Uri.tryParse(raw.trim());
     final host = uri?.host.toLowerCase();
@@ -593,20 +492,7 @@ class HttpJsonMappingAdapter implements ManagedProviderUsageAdapter {
   }
 
   static void _validatePaths(HttpJsonMappingConfig config) {
-    for (final path in [
-      config.responsePath,
-      config.measuresPath,
-      config.labelPath,
-      config.kindPath,
-      config.totalPath,
-      config.usedPath,
-      config.remainingPath,
-      config.unitPath,
-      config.currencyPath,
-      config.resetsAtPath,
-    ]) {
-      _parsePath(path);
-    }
+    _parsePath(config.responsePath);
     for (final window in config.windows) {
       for (final path in [
         window.used,
@@ -681,27 +567,6 @@ class HttpJsonMappingAdapter implements ManagedProviderUsageAdapter {
     return _PathLookup.presentValue(current);
   }
 
-  static String _requiredString(Object? value) {
-    if (value is! String || value.isEmpty) {
-      throw const FormatException('invalid mapped string');
-    }
-    return value;
-  }
-
-  static String? _decimalValue(_PathLookup lookup) {
-    if (!lookup.present || lookup.value == null) return null;
-    final value = lookup.value;
-    // jsonDecode may materialize JSON decimals as double, losing their
-    // original lexeme and precision. Require mapped amounts to be strings.
-    if (value is! String || value.isEmpty) {
-      throw const FormatException('invalid decimal value');
-    }
-    if (!RegExp(r'^-?\d+(?:\.\d+)?$').hasMatch(value)) {
-      throw const FormatException('invalid decimal value');
-    }
-    return value;
-  }
-
   static String? _windowNumericValue(_PathLookup lookup) {
     if (!lookup.present || lookup.value == null) return null;
     final value = lookup.value;
@@ -717,22 +582,6 @@ class HttpJsonMappingAdapter implements ManagedProviderUsageAdapter {
       return null;
     }
     return null;
-  }
-
-  static int? _timestampValue(_PathLookup lookup) {
-    if (!lookup.present || lookup.value == null) return null;
-    final value = lookup.value;
-    if (value is int) return value;
-    if (value is num && value.isFinite && value == value.truncateToDouble()) {
-      return value.toInt();
-    }
-    if (value is String) {
-      final integral = int.tryParse(value);
-      if (integral != null) return integral;
-      final parsed = DateTime.tryParse(value);
-      if (parsed != null) return parsed.millisecondsSinceEpoch;
-    }
-    throw const FormatException('invalid reset timestamp');
   }
 
   static void _validateRequestText(String value) {

@@ -41,6 +41,7 @@ void main() {
     WidgetTester tester, {
     required ChatCubit chat,
     required WorkbenchCubit workbench,
+    required String sessionId,
   }) async {
     await tester.pumpWidget(
       MultiProvider(
@@ -51,10 +52,10 @@ void main() {
         child: MaterialApp(
           localizationsDelegates: AppLocalizations.localizationsDelegates,
           supportedLocales: AppLocalizations.supportedLocales,
-          home: const Scaffold(
+          home: Scaffold(
             body: SessionWorkbenchViewToggle(
               workspaceId: 'w1',
-              tabScopeId: 'w1',
+              sessionId: sessionId,
             ),
           ),
         ),
@@ -89,18 +90,34 @@ void main() {
     workbench.openSession('w1', sessionId);
   }
 
-  IconData toggleIcon(WidgetTester tester) {
-    final icon = tester.widget<Icon>(
+  testWidgets('capsule renders both Chat and Terminal segments',
+      (tester) async {
+    final chat = _RecordingChatCubit();
+    final workbench = WorkbenchCubit();
+    addTearDown(chat.close);
+    addTearDown(workbench.close);
+    surfaceSession(chat, workbench, sessionId: 's1');
+
+    await pumpToggle(tester, chat: chat, workbench: workbench, sessionId: 's1');
+
+    expect(
       find.descendant(
         of: find.byKey(AppKeys.sessionWorkbenchViewToggle),
-        matching: find.byType(Icon),
+        matching: find.text('Chat'),
       ),
+      findsOneWidget,
     );
-    return icon.icon!;
-  }
+    expect(
+      find.descendant(
+        of: find.byKey(AppKeys.sessionWorkbenchViewToggle),
+        matching: find.text('Terminal'),
+      ),
+      findsOneWidget,
+    );
+  });
 
   testWidgets(
-    'idle simple session: tapping show-terminal switches to Terminal and connects',
+    'idle simple session: tapping Terminal switches to Terminal and connects',
     (tester) async {
       final chat = _RecordingChatCubit();
       final workbench = WorkbenchCubit();
@@ -108,26 +125,23 @@ void main() {
       addTearDown(workbench.close);
       surfaceSession(chat, workbench, sessionId: 's1');
 
-      await pumpToggle(tester, chat: chat, workbench: workbench);
+      await pumpToggle(tester, chat: chat, workbench: workbench, sessionId: 's1');
 
-      // On Chat → toggle offers Terminal.
-      expect(toggleIcon(tester), Icons.terminal_rounded);
-
-      await tester.tap(find.byKey(AppKeys.sessionWorkbenchViewToggle));
+      await tester.tap(find.text('Terminal'));
       await tester.pump();
 
       expect(chat.connects, hasLength(1));
       final request = chat.connects.single as ExistingSessionConnect;
       expect(request.session.sessionId, 's1');
       expect(request.preserveWorkbenchView, isFalse);
-      // The toggle switched the tab's view to Terminal before connecting.
+      // The capsule switched the tab's view to Terminal before connecting.
       expect(chat.tabStore.openTabBySessionId('s1')!.workbenchView,
           SessionWorkbenchView.terminal);
     },
   );
 
   testWidgets(
-    'idle team session: show-terminal lazy-spawns only (no full connect)',
+    'idle team session: Terminal tap lazy-spawns only (no full connect)',
     (tester) async {
       final chat = _RecordingChatCubit();
       final workbench = WorkbenchCubit();
@@ -141,9 +155,14 @@ void main() {
         selectedMemberId: 'developer',
       );
 
-      await pumpToggle(tester, chat: chat, workbench: workbench);
+      await pumpToggle(
+        tester,
+        chat: chat,
+        workbench: workbench,
+        sessionId: 's-team',
+      );
 
-      await tester.tap(find.byKey(AppKeys.sessionWorkbenchViewToggle));
+      await tester.tap(find.text('Terminal'));
       await tester.pump();
 
       expect(chat.connects, isEmpty);
@@ -155,7 +174,7 @@ void main() {
   );
 
   testWidgets(
-    'connect that forced Terminal keeps the toggle (tab read) in sync',
+    'pod forced Terminal: tapping Chat switches the session back',
     (tester) async {
       final chat = _RecordingChatCubit();
       final workbench = WorkbenchCubit();
@@ -164,20 +183,24 @@ void main() {
       surfaceSession(chat, workbench, sessionId: 's1');
 
       // Connect-time force: the launch surface writes the pod view through the
-      // host port. The tab must follow so the toggle reports Terminal, not a
+      // host port. The tab must follow so the capsule reports Terminal, not a
       // stale Chat.
       chat.setPodView('s1', SessionWorkbenchView.terminal);
 
-      await pumpToggle(tester, chat: chat, workbench: workbench);
-
-      // Center (pod) shows Terminal → toggle offers Chat.
-      expect(toggleIcon(tester), Icons.chat_bubble_outline_rounded);
+      await pumpToggle(tester, chat: chat, workbench: workbench, sessionId: 's1');
       expect(chat.tabStore.openTabBySessionId('s1')!.workbenchView,
           SessionWorkbenchView.terminal);
+
+      await tester.tap(find.text('Chat'));
+      await tester.pump();
+
+      expect(chat.connects, isEmpty);
+      expect(chat.tabStore.openTabBySessionId('s1')!.workbenchView,
+          SessionWorkbenchView.chat);
     },
   );
 
-  testWidgets('toggle reads the pod view even when the tab copy is stale',
+  testWidgets('capsule reads the pod view even when the tab copy is stale',
       (tester) async {
     final chat = _RecordingChatCubit();
     final workbench = WorkbenchCubit();
@@ -186,13 +209,22 @@ void main() {
     surfaceSession(chat, workbench, sessionId: 's1');
 
     // Directly set the pod (canonical) to Terminal and leave the transition
-    // copy stale — the toggle must mirror the pod, like the workbench body.
+    // copy stale — the capsule must mirror the pod, like the workbench body.
     chat.ensurePodRuntime('s1').setView(SessionWorkbenchView.terminal);
     chat.tabStore.openTabBySessionId('s1')!.workbenchView =
         SessionWorkbenchView.chat;
 
-    await pumpToggle(tester, chat: chat, workbench: workbench);
+    await pumpToggle(tester, chat: chat, workbench: workbench, sessionId: 's1');
 
-    expect(toggleIcon(tester), Icons.chat_bubble_outline_rounded);
+    // Terminal is already active per the pod: tapping it again is a no-op
+    // (no reconnect, no state churn).
+    await tester.tap(find.text('Terminal'));
+    await tester.pump();
+
+    expect(chat.connects, isEmpty);
+    expect(
+      chat.ensurePodRuntime('s1').state.view,
+      SessionWorkbenchView.terminal,
+    );
   });
 }

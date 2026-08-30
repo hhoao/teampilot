@@ -47,6 +47,7 @@ import 'chat/session_history_review_submit.dart';
 import 'chat/session_launch_error_banner.dart';
 import 'chat/session_launch_error_visibility.dart';
 import 'chat/session_launch_failure_presenter.dart';
+import 'chat/session_workbench_view_toggle.dart';
 
 class ChatWorkbench extends StatefulWidget {
   const ChatWorkbench({
@@ -344,17 +345,14 @@ class _ChatWorkbenchBody extends StatelessWidget {
     );
     final terminalBackground = Color(0xFF000000 | terminalTheme.background);
     final chatCubit = context.read<ChatCubit>();
-    if (slice.activeSessionId == null) {
+    final activeId = slice.activeSessionId;
+    if (activeId == null) {
       return const Center(child: CircularProgressIndicator());
     }
 
     // Pod state (phase / view) is read from the pod ChangeNotifier, not from
     // ChatCubit — pod changes no longer trigger global ChatState emits.
-    final hostSessionId = slice.activeSessionId;
-    final activeId = slice.activeSessionId;
-    final pod = hostSessionId != null && hostSessionId.isNotEmpty
-        ? chatCubit.podRuntime(hostSessionId)
-        : null;
+    final pod = activeId.isNotEmpty ? chatCubit.podRuntime(activeId) : null;
 
     final launchError =
         routeActive && chatCubit.tabStore.activeWorkspaceId == tabScopeId
@@ -367,7 +365,7 @@ class _ChatWorkbenchBody extends StatelessWidget {
     bool readConnectInProgress() => pod?.state.phase.isLaunching ?? false;
 
     SessionWorkbenchView readWorkbenchView() {
-      if (activeId == null || activeId.isEmpty) {
+      if (activeId.isEmpty) {
         return SessionWorkbenchView.chat;
       }
       final podView = pod?.state.view;
@@ -380,6 +378,7 @@ class _ChatWorkbenchBody extends StatelessWidget {
       final connectInProgress = readConnectInProgress();
       final view = readWorkbenchView();
 
+      Widget body;
       final session = _resolveSession(
         chatCubit: chatCubit,
         slice: slice,
@@ -387,61 +386,79 @@ class _ChatWorkbenchBody extends StatelessWidget {
       );
       if (session == null) {
         if (view == SessionWorkbenchView.chat) {
-          return _buildSessionChatView(
+          body = _buildSessionChatView(
             context,
             chatCubit: chatCubit,
             team: team,
             launchError: launchError,
             sessionConnectInProgress: connectInProgress,
           );
-        }
-        final sid = slice.activeSessionId;
-        if (sid != null && sid.isNotEmpty) {
-          final tab = chatCubit.tabStore.openTabBySessionId(sid);
-          final appSession = tab?.persistedSession;
-          final isPersonal =
-              appSession != null && appSession.sessionTeam.trim().isEmpty;
-          if (isPersonal) {
-            return _buildTerminalPlaceholder(context, chatCubit: chatCubit);
+        } else {
+          var placeholder = false;
+          final sid = slice.activeSessionId;
+          if (sid != null && sid.isNotEmpty) {
+            final tab = chatCubit.tabStore.openTabBySessionId(sid);
+            final appSession = tab?.persistedSession;
+            placeholder =
+                appSession != null && appSession.sessionTeam.trim().isEmpty;
           }
+          body = placeholder
+              ? _buildTerminalPlaceholder(context, chatCubit: chatCubit)
+              : const Center(child: CircularProgressIndicator());
         }
-        return const Center(child: CircularProgressIndicator());
-      }
-      onSyncTerminalTheme(session, terminalTheme, slice.selectedMemberId);
+      } else {
+        onSyncTerminalTheme(session, terminalTheme, slice.selectedMemberId);
 
-      final memberId = slice.selectedMemberId.isNotEmpty
-          ? slice.selectedMemberId
-          : '';
-      final remoteProvision = context
-          .select<ChatCubit, MemberRemoteProvisionProgress?>((c) {
-            final sid = slice.activeSessionId;
-            if (sid == null || sid.isEmpty) return null;
-            final mid = memberId.isNotEmpty
-                ? memberId
-                : c.tabStore.openTabBySessionId(sid)?.selectedMemberId ?? '';
-            if (mid.isEmpty) return null;
-            return c.tabStore
-                .openTabBySessionId(sid)
-                ?.memberRemoteProvision[mid];
-          });
+        final memberId = slice.selectedMemberId.isNotEmpty
+            ? slice.selectedMemberId
+            : '';
+        final remoteProvision = context
+            .select<ChatCubit, MemberRemoteProvisionProgress?>((c) {
+              final sid = slice.activeSessionId;
+              if (sid == null || sid.isEmpty) return null;
+              final mid = memberId.isNotEmpty
+                  ? memberId
+                  : c.tabStore.openTabBySessionId(sid)?.selectedMemberId ?? '';
+              if (mid.isEmpty) return null;
+              return c.tabStore
+                  .openTabBySessionId(sid)
+                  ?.memberRemoteProvision[mid];
+            });
 
-      return Container(
-        key: AppKeys.chatWorkspace,
-        color: cs.surface,
-        child: ColoredBox(
-          color: terminalBackground,
-          child: _buildTerminalBody(
-            context,
-            session: session,
-            terminalTheme: terminalTheme,
-            chatCubit: chatCubit,
-            team: team,
-            sessionConnectInProgress: connectInProgress,
-            launchError: launchError,
-            workbenchView: view,
-            remoteProvision: remoteProvision,
+        body = Container(
+          key: AppKeys.chatWorkspace,
+          color: cs.surface,
+          child: ColoredBox(
+            color: terminalBackground,
+            child: _buildTerminalBody(
+              context,
+              session: session,
+              terminalTheme: terminalTheme,
+              chatCubit: chatCubit,
+              team: team,
+              sessionConnectInProgress: connectInProgress,
+              launchError: launchError,
+              workbenchView: view,
+              remoteProvision: remoteProvision,
+            ),
           ),
-        ),
+        );
+      }
+
+      return Stack(
+        fit: StackFit.expand,
+        children: [
+          body,
+          // Floating Chat/Terminal capsule — moved off the session tab bar.
+          Positioned(
+            top: context.tpSpacing.sm,
+            right: context.tpSpacing.sm,
+            child: SessionWorkbenchViewToggle(
+              workspaceId: workspaceId,
+              sessionId: activeId,
+            ),
+          ),
+        ],
       );
     }
 
@@ -622,7 +639,8 @@ class _ChatWorkbenchBody extends StatelessWidget {
                   _buildTerminalPlaceholder(context, chatCubit: chatCubit),
                 if (showTerminalLaunchError && failure != null)
                   Positioned(
-                    top: 0,
+                    // Below the floating Chat/Terminal capsule (top-right).
+                    top: 48,
                     right: 0,
                     child: Material(
                       type: MaterialType.transparency,

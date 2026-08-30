@@ -8,35 +8,25 @@ import '../../cubits/workbench/workbench_cubit.dart';
 import '../../cubits/workbench/workbench_tab.dart';
 import '../../l10n/l10n_extensions.dart';
 import '../../models/app_session.dart';
-import '../../models/team_config.dart';
 import '../../utils/ui/app_keys.dart';
 import '../../cubits/chat/session_launch_retry.dart';
 import 'package:shared_ui/shared_ui.dart';
 import 'session_seat_working.dart';
 
-/// Tab-bar control to switch a session between Chat and Terminal.
+/// Floating capsule in the chat page's top-right corner that switches a
+/// session between Chat and Terminal.
 class SessionWorkbenchViewToggle extends StatelessWidget {
   const SessionWorkbenchViewToggle({
     required this.workspaceId,
-    required this.tabScopeId,
-    this.team,
+    required this.sessionId,
     super.key,
   });
 
   final String workspaceId;
-  final String tabScopeId;
-  final TeamProfile? team;
+  final String sessionId;
 
   @override
   Widget build(BuildContext context) {
-    final active = seatSelect<WorkbenchCubit, WorkbenchTabId?>(
-      context,
-      (c) => c.centerActiveId(workspaceId),
-    );
-    if (active == null || active.kind != WorkbenchTabKind.session) {
-      return const SizedBox.shrink();
-    }
-    final sessionId = active.id;
     final view = seatSelect<ChatCubit, SessionWorkbenchView>(context, (c) {
       // The pod is the canonical view source (same read as the workbench
       // body); fall back to the tab during the thin-ChatCubit transition.
@@ -47,26 +37,25 @@ class SessionWorkbenchViewToggle extends StatelessWidget {
     });
     final showingChat = view == SessionWorkbenchView.chat;
     final l10n = context.l10n;
-    final cs = Theme.of(context).colorScheme;
 
-    return TpIconButton(
+    return TpSegmentedControl(
       key: AppKeys.sessionWorkbenchViewToggle,
-      icon: showingChat
-          ? Icons.terminal_rounded
-          : Icons.chat_bubble_outline_rounded,
-      tooltip: showingChat
-          ? l10n.sessionWorkbenchShowTerminal
-          : l10n.sessionWorkbenchShowChat,
-      color: cs.onSurfaceVariant,
-      onTap: () => unawaited(
-        _toggle(context, sessionId: sessionId, showingChat: showingChat),
-      ),
+      totalSwitches: 2,
+      initialLabelIndex: showingChat ? 0 : 1,
+      labels: [
+        l10n.sessionWorkbenchViewChat,
+        l10n.sessionWorkbenchViewTerminal,
+      ],
+      icons: const [Icons.chat_bubble_outline_rounded, Icons.terminal_rounded],
+      onToggle: (index) {
+        if (index == null || index == (showingChat ? 0 : 1)) return;
+        unawaited(_toggle(context, showingChat: showingChat));
+      },
     );
   }
 
   Future<void> _toggle(
     BuildContext context, {
-    required String sessionId,
     required bool showingChat,
   }) async {
     final chat = context.read<ChatCubit>();

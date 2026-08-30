@@ -4,6 +4,9 @@ import 'package:equatable/equatable.dart';
 import '../../models/managed_provider.dart';
 import '../../models/managed_provider_editor_schema.dart';
 
+/// Dropdown sentinel for the blank custom HTTP template (not persisted).
+const kManagedProviderQuickPresetCustomId = '__custom__';
+
 @immutable
 class ManagedProviderPreset extends Equatable {
   const ManagedProviderPreset({
@@ -51,6 +54,7 @@ const _deepSeekEditorSchema = ManagedProviderEditorSchema(
       kind: ManagedProviderEditorFieldKind.text,
       required: true,
       defaultValue: 'http-json',
+      readOnly: true,
     ),
     ManagedProviderEditorField(
       key: 'endpointConfig.url',
@@ -65,10 +69,20 @@ const _deepSeekEditorSchema = ManagedProviderEditorSchema(
       defaultValue: 'GET',
     ),
     ManagedProviderEditorField(
-      key: 'endpointConfig.measuresPath',
-      kind: ManagedProviderEditorFieldKind.text,
+      key: 'endpointConfig.windows',
+      kind: ManagedProviderEditorFieldKind.json,
       required: false,
-      defaultValue: r'$.balance_infos',
+      defaultValue:
+          r'''[
+  {
+    "label": "USD",
+    "remaining": "$.balance_infos[0].total_balance"
+  },
+  {
+    "label": "CNY",
+    "remaining": "$.balance_infos[1].total_balance"
+  }
+]''',
     ),
     ManagedProviderEditorField(
       key: 'endpointConfig.body',
@@ -76,63 +90,37 @@ const _deepSeekEditorSchema = ManagedProviderEditorSchema(
       required: false,
     ),
     ManagedProviderEditorField(
-      key: 'endpointConfig.fieldMappings',
-      kind: ManagedProviderEditorFieldKind.json,
-      required: false,
-      defaultValue:
-          r'{"label":"$.currency","remaining":"$.total_balance","currency":"$.currency"}',
-    ),
-    ManagedProviderEditorField(
-      key: 'endpointConfig.fieldMappings.label',
-      kind: ManagedProviderEditorFieldKind.text,
-      required: false,
-      defaultValue: r'$.currency',
-    ),
-    ManagedProviderEditorField(
-      key: 'endpointConfig.fieldMappings.remaining',
-      kind: ManagedProviderEditorFieldKind.text,
-      required: false,
-      defaultValue: r'$.total_balance',
-    ),
-    ManagedProviderEditorField(
-      key: 'endpointConfig.fieldMappings.currency',
-      kind: ManagedProviderEditorFieldKind.text,
-      required: false,
-      defaultValue: r'$.currency',
-    ),
-    ManagedProviderEditorField(
       key: 'apiKey',
       kind: ManagedProviderEditorFieldKind.secret,
       required: true,
-    ),
-    ManagedProviderEditorField(
-      key: 'credentialRef',
-      kind: ManagedProviderEditorFieldKind.text,
-      required: false,
     ),
     ManagedProviderEditorField(
       key: 'endpointConfig.credentialName',
       kind: ManagedProviderEditorFieldKind.text,
       required: false,
       defaultValue: 'Authorization',
+      readOnly: true,
     ),
     ManagedProviderEditorField(
       key: 'endpointConfig.credentialField',
       kind: ManagedProviderEditorFieldKind.text,
       required: false,
       defaultValue: 'apiKey',
+      readOnly: true,
     ),
     ManagedProviderEditorField(
       key: 'endpointConfig.credentialPlacement',
       kind: ManagedProviderEditorFieldKind.text,
       required: false,
       defaultValue: 'header',
+      readOnly: true,
     ),
     ManagedProviderEditorField(
       key: 'endpointConfig.credentialPrefix',
       kind: ManagedProviderEditorFieldKind.text,
       required: false,
       defaultValue: 'Bearer ',
+      readOnly: true,
     ),
     ManagedProviderEditorField(
       key: 'displayConfig.currency',
@@ -324,12 +312,16 @@ final List<ManagedProviderPreset> builtInManagedProviderPresets =
           endpointConfig: ManagedProviderEndpointConfig(
             url: 'https://api.deepseek.com/user/balance',
             method: 'GET',
-            measuresPath: r'$.balance_infos',
-            fieldMappings: {
-              'label': r'$.currency',
-              'remaining': r'$.total_balance',
-              'currency': r'$.currency',
-            },
+            windows: const [
+              ManagedProviderUsageWindow(
+                label: 'USD',
+                remaining: r'$.balance_infos[0].total_balance',
+              ),
+              ManagedProviderUsageWindow(
+                label: 'CNY',
+                remaining: r'$.balance_infos[1].total_balance',
+              ),
+            ],
             credentialName: 'Authorization',
             credentialField: 'apiKey',
             credentialPlacement: 'header',
@@ -340,6 +332,11 @@ final List<ManagedProviderPreset> builtInManagedProviderPresets =
         schema: _deepSeekEditorSchema,
       ),
     ]);
+
+final List<String> managedProviderQuickPresetOptionIds = List.unmodifiable([
+  ...builtInManagedProviderPresets.map((preset) => preset.id),
+  kManagedProviderQuickPresetCustomId,
+]);
 
 ManagedProviderPreset? managedProviderPresetById(String id) {
   for (final preset in builtInManagedProviderPresets) {

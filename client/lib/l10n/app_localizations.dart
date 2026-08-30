@@ -3320,17 +3320,17 @@ abstract class AppLocalizations {
   /// **'{title}'**
   String subagentPreviewTitleAgent(String title);
 
-  /// No description provided for @sessionWorkbenchShowChat.
+  /// No description provided for @sessionWorkbenchViewChat.
   ///
   /// In en, this message translates to:
-  /// **'Show Chat'**
-  String get sessionWorkbenchShowChat;
+  /// **'Chat'**
+  String get sessionWorkbenchViewChat;
 
-  /// No description provided for @sessionWorkbenchShowTerminal.
+  /// No description provided for @sessionWorkbenchViewTerminal.
   ///
   /// In en, this message translates to:
-  /// **'Show Terminal'**
-  String get sessionWorkbenchShowTerminal;
+  /// **'Terminal'**
+  String get sessionWorkbenchViewTerminal;
 
   /// No description provided for @sessionReadyTitle.
   ///
@@ -3404,11 +3404,11 @@ abstract class AppLocalizations {
   /// **'Show commands available in this CLI session.'**
   String get composeNativeCommandHelp;
 
-  /// No description provided for @workspaceChatLandingBackToStart.
+  /// No description provided for @workspaceChatLandingBackToWorkbench.
   ///
   /// In en, this message translates to:
-  /// **'Back to start'**
-  String get workspaceChatLandingBackToStart;
+  /// **'Back to workbench'**
+  String get workspaceChatLandingBackToWorkbench;
 
   /// No description provided for @workspaceChatLandingSelectWorkspace.
   ///
@@ -14039,8 +14039,20 @@ abstract class AppLocalizations {
   /// No description provided for @managedProvidersQuickPresetDeepSeekHint.
   ///
   /// In en, this message translates to:
-  /// **'Preconfigured for the balance API; add an API key credential.'**
+  /// **'Balance API preset; add a secret.'**
   String get managedProvidersQuickPresetDeepSeekHint;
+
+  /// No description provided for @managedProvidersQuickPresetCustom.
+  ///
+  /// In en, this message translates to:
+  /// **'Custom'**
+  String get managedProvidersQuickPresetCustom;
+
+  /// No description provided for @managedProvidersQuickPresetCustomHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Configure endpoint, credentials, and display from scratch.'**
+  String get managedProvidersQuickPresetCustomHint;
 
   /// No description provided for @managedProvidersBasicsSectionTitle.
   ///
@@ -14051,13 +14063,13 @@ abstract class AppLocalizations {
   /// No description provided for @managedProvidersBasicsSectionSubtitle.
   ///
   /// In en, this message translates to:
-  /// **'Start with identity and any required secret.'**
+  /// **'Name and any required secret.'**
   String get managedProvidersBasicsSectionSubtitle;
 
   /// No description provided for @managedProvidersBasicsSummary.
   ///
   /// In en, this message translates to:
-  /// **'Choose a preset, name the provider, and add the required secret when this provider needs one.'**
+  /// **'Pick a preset, name the provider, and add a secret if needed.'**
   String get managedProvidersBasicsSummary;
 
   /// No description provided for @managedProvidersQuerySectionTitle.
@@ -14069,7 +14081,7 @@ abstract class AppLocalizations {
   /// No description provided for @managedProvidersQuerySectionSubtitle.
   ///
   /// In en, this message translates to:
-  /// **'Endpoint and JSON mappings used by HTTP-based usage checks.'**
+  /// **'Usage API and JSON parsing.'**
   String get managedProvidersQuerySectionSubtitle;
 
   /// No description provided for @managedProvidersCredentialsSectionTitle.
@@ -14081,7 +14093,7 @@ abstract class AppLocalizations {
   /// No description provided for @managedProvidersCredentialsSectionSubtitle.
   ///
   /// In en, this message translates to:
-  /// **'Header or query metadata for sending stored credentials.'**
+  /// **'Credential source and how it is sent.'**
   String get managedProvidersCredentialsSectionSubtitle;
 
   /// No description provided for @managedProvidersDisplaySectionTitle.
@@ -14093,7 +14105,7 @@ abstract class AppLocalizations {
   /// No description provided for @managedProvidersDisplaySectionSubtitle.
   ///
   /// In en, this message translates to:
-  /// **'Formatting fallbacks for balances and quotas.'**
+  /// **'How balances and quotas are shown.'**
   String get managedProvidersDisplaySectionSubtitle;
 
   /// No description provided for @managedProvidersAdvancedSectionTitle.
@@ -14105,7 +14117,7 @@ abstract class AppLocalizations {
   /// No description provided for @managedProvidersAdvancedSectionSubtitle.
   ///
   /// In en, this message translates to:
-  /// **'Adapter identity, provider kind, and stored reference details.'**
+  /// **'Adapter, kind, and internal reference.'**
   String get managedProvidersAdvancedSectionSubtitle;
 
   /// No description provided for @managedProvidersSectionConfiguredBadge.
@@ -14168,47 +14180,167 @@ abstract class AppLocalizations {
   /// **'Custom HTTP'**
   String get managedProvidersKindCustomHttp;
 
+  /// No description provided for @managedProvidersKindPresetLockedHelper.
+  ///
+  /// In en, this message translates to:
+  /// **'Locked by the selected preset or provider template.'**
+  String get managedProvidersKindPresetLockedHelper;
+
   /// No description provided for @managedProvidersEndpoint.
   ///
   /// In en, this message translates to:
-  /// **'Endpoint URL'**
+  /// **'Usage API URL'**
   String get managedProvidersEndpoint;
 
   /// No description provided for @managedProvidersEndpointHint.
   ///
   /// In en, this message translates to:
-  /// **'https://…'**
+  /// **'https://api.example.com/usage'**
   String get managedProvidersEndpointHint;
+
+  /// No description provided for @managedProvidersEndpointHelper.
+  ///
+  /// In en, this message translates to:
+  /// **'URL used to fetch usage data.'**
+  String get managedProvidersEndpointHelper;
 
   /// No description provided for @managedProvidersMethod.
   ///
   /// In en, this message translates to:
-  /// **'Method'**
+  /// **'HTTP method'**
   String get managedProvidersMethod;
+
+  /// No description provided for @managedProvidersMethodHelper.
+  ///
+  /// In en, this message translates to:
+  /// **'Usually GET.'**
+  String get managedProvidersMethodHelper;
 
   /// No description provided for @managedProvidersResponsePath.
   ///
   /// In en, this message translates to:
-  /// **'Response path'**
+  /// **'Response root (\$)'**
   String get managedProvidersResponsePath;
+
+  /// No description provided for @managedProvidersResponsePathHint.
+  ///
+  /// In en, this message translates to:
+  /// **'\$.data'**
+  String get managedProvidersResponsePathHint;
+
+  /// No description provided for @managedProvidersResponsePathHelper.
+  ///
+  /// In en, this message translates to:
+  /// **'Use \$ to unwrap nested data; blank starts at the response root.'**
+  String get managedProvidersResponsePathHelper;
 
   /// No description provided for @managedProvidersMeasuresPath.
   ///
   /// In en, this message translates to:
-  /// **'Measures path'**
+  /// **'Usage list (\$)'**
   String get managedProvidersMeasuresPath;
+
+  /// No description provided for @managedProvidersMeasuresPathHint.
+  ///
+  /// In en, this message translates to:
+  /// **'\$.balance_infos'**
+  String get managedProvidersMeasuresPathHint;
+
+  /// No description provided for @managedProvidersMeasuresPathHelper.
+  ///
+  /// In en, this message translates to:
+  /// **'\$ path to a balance array (e.g. DeepSeek).'**
+  String get managedProvidersMeasuresPathHelper;
 
   /// No description provided for @managedProvidersRequestMapping.
   ///
   /// In en, this message translates to:
-  /// **'Request body mapping (JSON)'**
+  /// **'Request body (JSON)'**
   String get managedProvidersRequestMapping;
+
+  /// No description provided for @managedProvidersRequestMappingHelper.
+  ///
+  /// In en, this message translates to:
+  /// **'For POST; leave blank for GET.'**
+  String get managedProvidersRequestMappingHelper;
 
   /// No description provided for @managedProvidersFieldMappings.
   ///
   /// In en, this message translates to:
-  /// **'Response field mappings (JSON)'**
+  /// **'List item field mappings (JSON)'**
   String get managedProvidersFieldMappings;
+
+  /// No description provided for @managedProvidersFieldMappingsHelper.
+  ///
+  /// In en, this message translates to:
+  /// **'\$ path per field inside each array item.'**
+  String get managedProvidersFieldMappingsHelper;
+
+  /// No description provided for @managedProvidersHeaders.
+  ///
+  /// In en, this message translates to:
+  /// **'Request headers (JSON)'**
+  String get managedProvidersHeaders;
+
+  /// No description provided for @managedProvidersHeadersHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Accept: application/json'**
+  String get managedProvidersHeadersHint;
+
+  /// No description provided for @managedProvidersHeadersHelper.
+  ///
+  /// In en, this message translates to:
+  /// **'Extra headers; values may use brace placeholders.'**
+  String get managedProvidersHeadersHelper;
+
+  /// No description provided for @managedProvidersWindows.
+  ///
+  /// In en, this message translates to:
+  /// **'Quota windows (JSON)'**
+  String get managedProvidersWindows;
+
+  /// No description provided for @managedProvidersWindowsHint.
+  ///
+  /// In en, this message translates to:
+  /// **'JSON array; each item has label and \$ paths'**
+  String get managedProvidersWindowsHint;
+
+  /// No description provided for @managedProvidersWindowsHelper.
+  ///
+  /// In en, this message translates to:
+  /// **'One window per quota line. Write label and \$ paths for used / total / remaining / resetsAt. For array items, hard-code the index, e.g. \$.balance_infos[0].total_balance.'**
+  String get managedProvidersWindowsHelper;
+
+  /// No description provided for @managedProvidersFieldExampleLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Example'**
+  String get managedProvidersFieldExampleLabel;
+
+  /// No description provided for @managedProvidersJsonPathSeeAlso.
+  ///
+  /// In en, this message translates to:
+  /// **'See \$ syntax in Query ℹ️'**
+  String get managedProvidersJsonPathSeeAlso;
+
+  /// No description provided for @managedProvidersTemplateVariablesSeeAlsoQuery.
+  ///
+  /// In en, this message translates to:
+  /// **'See brace syntax in Query ℹ️'**
+  String get managedProvidersTemplateVariablesSeeAlsoQuery;
+
+  /// No description provided for @managedProvidersTemplateVariablesSeeAlsoCredentials.
+  ///
+  /// In en, this message translates to:
+  /// **'See brace syntax in Credentials ℹ️'**
+  String get managedProvidersTemplateVariablesSeeAlsoCredentials;
+
+  /// No description provided for @managedProvidersReferenceSyntaxHelper.
+  ///
+  /// In en, this message translates to:
+  /// **'\$ — read from the HTTP response JSON\n\$ is the whole response; \$.field descends with dots.\nE.g. \$.data, \$.balance_infos[0].total_balance, \$.rate_limit.used_percent\n\nUse \$ in response root and quota windows (used / total / remaining / resetsAt).\n\nBraces — fill dynamic values into the request (not from the response)\nPut a variable name inside braces; it is replaced when the request is sent.\n• accessToken — access token\n• accountId — account id\n• jwt.sub — JWT sub\n\nUsed in headers, cookies, and credential templates. Values come from cli:… login.'**
+  String get managedProvidersReferenceSyntaxHelper;
 
   /// No description provided for @managedProvidersCredentials.
   ///
@@ -14261,32 +14393,44 @@ abstract class AppLocalizations {
   /// No description provided for @managedProvidersCredentialSecretHelper.
   ///
   /// In en, this message translates to:
-  /// **'Saved only in secure storage; leave blank to keep the existing secret.'**
+  /// **'Leave blank to keep the stored secret.'**
   String get managedProvidersCredentialSecretHelper;
 
   /// No description provided for @managedProvidersCredentialName.
   ///
   /// In en, this message translates to:
-  /// **'Credential header/query name'**
+  /// **'Credential parameter name'**
   String get managedProvidersCredentialName;
 
   /// No description provided for @managedProvidersCredentialNameHint.
   ///
   /// In en, this message translates to:
-  /// **'Authorization or api-key'**
+  /// **'Authorization or Cookie'**
   String get managedProvidersCredentialNameHint;
+
+  /// No description provided for @managedProvidersCredentialNameHelper.
+  ///
+  /// In en, this message translates to:
+  /// **'Parameter name on the request.'**
+  String get managedProvidersCredentialNameHelper;
 
   /// No description provided for @managedProvidersCredentialField.
   ///
   /// In en, this message translates to:
-  /// **'Credential response field'**
+  /// **'Secret field name'**
   String get managedProvidersCredentialField;
 
   /// No description provided for @managedProvidersCredentialFieldHint.
   ///
   /// In en, this message translates to:
-  /// **'Optional response mapping field'**
+  /// **'apiKey or accessToken'**
   String get managedProvidersCredentialFieldHint;
+
+  /// No description provided for @managedProvidersCredentialFieldHelper.
+  ///
+  /// In en, this message translates to:
+  /// **'Field name in local storage.'**
+  String get managedProvidersCredentialFieldHelper;
 
   /// No description provided for @managedProvidersCredentialPlacement.
   ///
@@ -14299,6 +14443,48 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'header or query'**
   String get managedProvidersCredentialPlacementHint;
+
+  /// No description provided for @managedProvidersCredentialPlacementHelper.
+  ///
+  /// In en, this message translates to:
+  /// **'header or query.'**
+  String get managedProvidersCredentialPlacementHelper;
+
+  /// No description provided for @managedProvidersCredentialSource.
+  ///
+  /// In en, this message translates to:
+  /// **'Credential source'**
+  String get managedProvidersCredentialSource;
+
+  /// No description provided for @managedProvidersCredentialSourceHint.
+  ///
+  /// In en, this message translates to:
+  /// **'secret or cli:cursor-account'**
+  String get managedProvidersCredentialSourceHint;
+
+  /// No description provided for @managedProvidersCredentialSourceHelper.
+  ///
+  /// In en, this message translates to:
+  /// **'secret reads the form; cli:… reads CLI login.'**
+  String get managedProvidersCredentialSourceHelper;
+
+  /// No description provided for @managedProvidersCredentialTemplate.
+  ///
+  /// In en, this message translates to:
+  /// **'Credential template'**
+  String get managedProvidersCredentialTemplate;
+
+  /// No description provided for @managedProvidersCredentialTemplateHint.
+  ///
+  /// In en, this message translates to:
+  /// **'e.g. WorkosCursorSessionToken=user::token'**
+  String get managedProvidersCredentialTemplateHint;
+
+  /// No description provided for @managedProvidersCredentialTemplateHelper.
+  ///
+  /// In en, this message translates to:
+  /// **'Builds the final credential; often a Cookie with brace variables.'**
+  String get managedProvidersCredentialTemplateHelper;
 
   /// No description provided for @managedProvidersCredentialFieldRequired.
   ///
@@ -14339,13 +14525,13 @@ abstract class AppLocalizations {
   /// No description provided for @managedProvidersCurrencyMappingHelper.
   ///
   /// In en, this message translates to:
-  /// **'Currency is read from the response mapping when configured; the currency and unit below remain editable fallbacks.'**
+  /// **'Currency is read from the response mapping when set.'**
   String get managedProvidersCurrencyMappingHelper;
 
   /// No description provided for @managedProvidersDynamicCurrencyHelper.
   ///
   /// In en, this message translates to:
-  /// **'Currency will be read dynamically from the configured response mapping.'**
+  /// **'Currency comes from the response mapping.'**
   String get managedProvidersDynamicCurrencyHelper;
 
   /// No description provided for @managedProvidersEnabledTitle.
@@ -14357,7 +14543,7 @@ abstract class AppLocalizations {
   /// No description provided for @managedProvidersEnabledSubtitle.
   ///
   /// In en, this message translates to:
-  /// **'Turning this off hides this provider from the status bar and stops all querying.'**
+  /// **'Hides the provider and stops queries when off.'**
   String get managedProvidersEnabledSubtitle;
 
   /// No description provided for @managedProvidersShowPercent.

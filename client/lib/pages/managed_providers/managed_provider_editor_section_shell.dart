@@ -8,6 +8,7 @@ class ManagedProviderEditorSectionShell extends StatelessWidget {
     required this.initiallyExpanded,
     required this.child,
     this.badge,
+    this.referenceTip,
     super.key,
   });
 
@@ -16,6 +17,7 @@ class ManagedProviderEditorSectionShell extends StatelessWidget {
   final bool initiallyExpanded;
   final Widget child;
   final String? badge;
+  final String? referenceTip;
 
   @override
   Widget build(BuildContext context) {
@@ -48,6 +50,12 @@ class ManagedProviderEditorSectionShell extends StatelessWidget {
                 style: TpTextStyles.of(context).mdSemiboldTightSnug,
               ),
             ),
+            if (referenceTip != null && referenceTip!.trim().isNotEmpty) ...[
+              Padding(
+                padding: const EdgeInsetsDirectional.only(start: 6),
+                child: TpInfoTipIcon(message: referenceTip!),
+              ),
+            ],
             if (badge != null) _SectionBadge(label: badge!),
           ],
         ),

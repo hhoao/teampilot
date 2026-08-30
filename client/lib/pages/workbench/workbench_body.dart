@@ -7,15 +7,18 @@ import '../../cubits/workbench/workbench_cubit.dart';
 import '../../cubits/workbench/workbench_tab.dart';
 import '../../models/team_config.dart';
 import '../../models/workspace.dart';
-import '../../services/workbench/workbench_center_mode.dart';
 import '../chat/chat_workbench_slice.dart';
 import '../chat/keep_alive_session_stack.dart';
 import '../chat_workbench.dart';
 import 'diff_editor_surface.dart';
 import 'file_editor_surface.dart';
-import 'workbench_welcome_page.dart';
 
 /// Center workbench body: session / file / diff. Shell and run live floating.
+///
+/// The landing (workspace start page) is owned by the workspace split pane,
+/// which swaps this body out for the compose surface while the center strip
+/// is in landing — a null active here can only be the same-frame transient
+/// of that swap and paints nothing.
 class WorkbenchBody extends StatelessWidget {
   const WorkbenchBody({
     required this.workspaceId,
@@ -45,17 +48,10 @@ class WorkbenchBody extends StatelessWidget {
     final active = context.select<WorkbenchCubit, WorkbenchTabId?>(
       (c) => c.centerActiveId(workspaceId),
     );
-
-    // Compose mounts only via newChatActive IDE path; here we are never compose.
-    final centerMode = resolveWorkbenchCenterMode(
-      newChatActive: false,
-      activeTabId: active,
-    );
-    if (centerMode == WorkbenchCenterMode.welcome) {
-      return const WorkbenchWelcomePage();
+    if (active == null) {
+      return const SizedBox.shrink();
     }
-    final selected = active!;
-    if (!isCenterStripWorkbenchTab(selected.kind)) {
+    if (!isCenterStripWorkbenchTab(active.kind)) {
       assert(() {
         debugPrint(
           'WorkbenchBody: shell/run tabs must not be active on the '
@@ -63,13 +59,13 @@ class WorkbenchBody extends StatelessWidget {
         );
         return true;
       }());
-      return const WorkbenchWelcomePage();
+      return const SizedBox.shrink();
     }
 
     return Stack(
       fit: StackFit.expand,
       children: [
-        if (selected.kind == WorkbenchTabKind.session)
+        if (active.kind == WorkbenchTabKind.session)
           _SessionKeepAliveHosts(
             workspaceId: workspaceId,
             tabScopeId: tabScopeId,
@@ -80,17 +76,17 @@ class WorkbenchBody extends StatelessWidget {
             team: team,
             workbenchSlice: workbenchSlice,
           )
-        else if (selected.kind == WorkbenchTabKind.file)
+        else if (active.kind == WorkbenchTabKind.file)
           FileEditorSurface(
-            key: ValueKey(selected.id),
+            key: ValueKey(active.id),
             workspaceId: workspaceId,
-            path: selected.id,
+            path: active.id,
           )
-        else if (selected.kind == WorkbenchTabKind.diff)
+        else if (active.kind == WorkbenchTabKind.diff)
           DiffEditorSurface(
-            key: ValueKey(selected.id),
+            key: ValueKey(active.id),
             workspaceId: workspaceId,
-            diffKey: selected.id,
+            diffKey: active.id,
           ),
       ],
     );

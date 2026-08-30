@@ -4,6 +4,7 @@ import 'package:shared_ui/shared_ui.dart';
 import '../../l10n/l10n_extensions.dart';
 import '../../models/managed_provider.dart';
 import '../../models/provider_usage_snapshot.dart';
+import '../../services/provider_usage/adapters/official_subscription_parse.dart';
 import 'managed_provider_reset_countdown.dart';
 
 /// Compact quota meter: rounded progress bar with remaining % and reset time.
@@ -79,6 +80,12 @@ class ManagedProviderQuotaMeter extends StatelessWidget {
     AppLocalizations l10n,
   ) {
     var value = measure.remaining ?? measure.used ?? measure.total ?? '—';
+    if (value != '—' && _isPercentageMeasure(display, measure)) {
+      final parsed = double.tryParse(value);
+      if (parsed != null) {
+        value = formatOfficialPercent(parsed);
+      }
+    }
     final places = display.decimalPlaces;
     if (places != null && value != '—') {
       value = _formatDecimal(value, places);

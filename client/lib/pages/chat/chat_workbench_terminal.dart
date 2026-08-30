@@ -259,9 +259,10 @@ class _ChatWorkbenchRunningTerminalState
             ),
             if (widget.findVisible)
               Positioned(
+                // Below the floating Chat/Terminal capsule (top-right).
                 left: 8,
                 right: 8,
-                top: 8,
+                top: 48,
                 child: TerminalFindBar(
                   engine: widget.session.engine,
                   controller: widget.terminalController,

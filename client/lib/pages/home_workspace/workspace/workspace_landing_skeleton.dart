@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:shared_ui/shared_ui.dart';
 
+import 'workspace_chat_landing.dart';
+
 /// Lightweight center-pane placeholder while [WorkspaceChatLanding] mounts.
 ///
 /// Header bar stubs + compose card outline — no watches, no TextField.
@@ -24,7 +26,9 @@ class WorkspaceLandingSkeleton extends StatelessWidget {
               vertical: spacing.xxl,
             ),
             child: ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 880),
+              constraints: const BoxConstraints(
+                maxWidth: kWorkspaceLandingMaxWidth,
+              ),
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.stretch,

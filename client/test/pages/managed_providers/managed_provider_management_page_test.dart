@@ -443,33 +443,25 @@ void main() {
         find.byKey(const Key('managed-provider-decimal-places')),
       );
       expect(decimalsInput.controller!.text, '2');
-      final fieldMappings = tester.widget<TpTextareaFormField>(
+      await tester.scrollUntilVisible(
+        find.byKey(const Key('managed-provider-windows')),
+        500,
+        scrollable: _verticalScrollable(),
+      );
+      final windows = tester.widget<TpTextareaFormField>(
         find.byKey(
-          const Key('managed-provider-field-mappings'),
+          const Key('managed-provider-windows'),
           skipOffstage: false,
         ),
       );
       expect(
-        fieldMappings.controller!.text,
-        contains(r'"currency": "$.currency"'),
+        windows.controller!.text,
+        contains(r'$.balance_infos[0].total_balance'),
       );
-      await tester.scrollUntilVisible(
+      expect(
         find.byKey(const Key('managed-provider-section-advanced')),
-        500,
-        scrollable: _verticalScrollable(),
+        findsNothing,
       );
-      await tester.tap(
-        find.byKey(const Key('managed-provider-section-advanced')),
-        warnIfMissed: false,
-      );
-      await tester.pumpAndSettle();
-      final credentialRefInput = tester.widget<TpInput>(
-        find.byKey(
-          const Key('managed-provider-credential-ref'),
-          skipOffstage: false,
-        ),
-      );
-      expect(credentialRefInput.controller!.text, isEmpty);
     },
   );
 
@@ -510,7 +502,7 @@ void main() {
         const Key('managed-provider-section-advanced'),
         skipOffstage: false,
       ),
-      findsOneWidget,
+      findsNothing,
     );
   });
 
@@ -619,7 +611,7 @@ void main() {
     );
     expect(find.byKey(const Key('managed-provider-endpoint')), findsNothing);
     expect(
-      find.byKey(const Key('managed-provider-field-mappings')),
+      find.byKey(const Key('managed-provider-windows')),
       findsNothing,
     );
     expect(
@@ -1034,7 +1026,7 @@ void main() {
   );
 
   testWidgets(
-    'kind stays read-only for official presets and editable for custom HTTP',
+    'kind is editable only for custom HTTP advanced settings',
     (tester) async {
       providerCubit.emit(
         ManagedProviderState(status: ManagedProviderLoadStatus.ready),
@@ -1046,23 +1038,11 @@ void main() {
 
       await openNewEditor(tester);
       await applyPreset(tester, 'Codex');
-      await tester.scrollUntilVisible(
-        find.byKey(const Key('managed-provider-section-advanced')),
-        500,
-        scrollable: _verticalScrollable(),
-      );
-      await tester.tap(
-        find.byKey(const Key('managed-provider-section-advanced')),
-      );
-      await tester.pumpAndSettle();
       expect(
-        tester
-            .widget<TpSelect<ManagedProviderKind>>(
-              find.byKey(const Key('managed-provider-kind')),
-            )
-            .enabled,
-        isFalse,
+        find.byKey(const Key('managed-provider-section-advanced')),
+        findsNothing,
       );
+      expect(find.byKey(const Key('managed-provider-kind')), findsNothing);
 
       await tester.tap(find.byKey(const Key('managed-provider-editor-back')));
       await tester.pumpAndSettle();
@@ -1077,6 +1057,10 @@ void main() {
       );
       await tester.pumpAndSettle();
       expect(
+        find.byType(TpSelect<ManagedProviderKind>),
+        findsOneWidget,
+      );
+      expect(
         tester
             .widget<TpSelect<ManagedProviderKind>>(
               find.byKey(const Key('managed-provider-kind')),
@@ -1087,7 +1071,7 @@ void main() {
     },
   );
 
-  testWidgets('advanced adapter input follows schema readOnly metadata', (
+  testWidgets('advanced section appears only when adapter or kind is editable', (
     tester,
   ) async {
     providerCubit.emit(
@@ -1099,15 +1083,10 @@ void main() {
     await pumpPage(tester);
 
     await openNewEditor(tester);
-    await tester.scrollUntilVisible(
+    expect(
       find.byKey(const Key('managed-provider-section-advanced')),
-      500,
-      scrollable: _verticalScrollable(),
+      findsOneWidget,
     );
-    await tester.tap(
-      find.byKey(const Key('managed-provider-section-advanced')),
-    );
-    await tester.pumpAndSettle();
     expect(
       tester
           .widget<TpInputFormField>(
@@ -1121,22 +1100,9 @@ void main() {
     await tester.pumpAndSettle();
     await openNewEditor(tester);
     await applyPreset(tester, 'Codex');
-    await tester.scrollUntilVisible(
-      find.byKey(const Key('managed-provider-section-advanced')),
-      500,
-      scrollable: _verticalScrollable(),
-    );
-    await tester.tap(
-      find.byKey(const Key('managed-provider-section-advanced')),
-    );
-    await tester.pumpAndSettle();
     expect(
-      tester
-          .widget<TpInputFormField>(
-            find.byKey(const Key('managed-provider-adapter')),
-          )
-          .readOnly,
-      isTrue,
+      find.byKey(const Key('managed-provider-section-advanced')),
+      findsNothing,
     );
   });
 
@@ -1280,7 +1246,12 @@ void main() {
       endpointConfig: ManagedProviderEndpointConfig(
         url: 'https://example.test/usage',
         headers: {'X-Client': 'teampilot'},
-        fieldMappings: {'remaining': r'$.balance'},
+        windows: const [
+          ManagedProviderUsageWindow(
+            label: 'Usage',
+            remaining: r'$.balance',
+          ),
+        ],
         unknownFields: {'endpointExtension': 'keep'},
       ),
     );
@@ -1310,7 +1281,10 @@ void main() {
 
     final saved = (await providerRepository.load()).single;
     expect(saved.endpointConfig.headers, {'X-Client': 'teampilot'});
-    expect(saved.endpointConfig.fieldMappings, {'remaining': r'$.balance'});
+    expect(
+      saved.endpointConfig.windows.single.remaining,
+      r'$.balance',
+    );
     expect(saved.endpointConfig.unknownFields['endpointExtension'], 'keep');
     expect(saved.unknownFields['providerExtension'], 'keep');
   });
@@ -1538,9 +1512,7 @@ void main() {
         findsOneWidget,
       );
       expect(
-        find.text(
-          'Turning this off hides this provider from the status bar and stops all querying.',
-        ),
+        find.text('Hides the provider and stops queries when off.'),
         findsOneWidget,
       );
       expect(

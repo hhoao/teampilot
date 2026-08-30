@@ -333,14 +333,20 @@ void main() {
           url: 'https://example.test/usage?region=us',
           method: 'POST',
           responsePath: r'$.result',
-          measuresPath: r'$.data',
           credentialField: 'apiKey',
           credentialName: 'X-API-Key',
           credentialPlacement: 'header',
           credentialPrefix: 'Bearer ',
+          credentialSource: 'secret',
+          credentialTemplate: null,
           headers: {'X-Region': 'us'},
           body: {'scope': 'all'},
-          fieldMappings: {'remaining': r'$.remaining'},
+          windows: const [
+            ManagedProviderUsageWindow(
+              label: 'Usage',
+              remaining: r'$.remaining',
+            ),
+          ],
           hadUnsafeUrl: true,
         );
         await repo.upsert(_provider('p1').copyWith(endpointConfig: endpoint));
@@ -356,13 +362,18 @@ void main() {
     );
 
     test(
-      'clears response field mappings when an update submits an empty map',
+      'clears windows when an update submits an empty list',
       () async {
         await repo.upsert(
           _provider('p1').copyWith(
             endpointConfig: ManagedProviderEndpointConfig(
               url: 'https://example.test/usage',
-              fieldMappings: {'remaining': r'$.remaining'},
+              windows: const [
+                ManagedProviderUsageWindow(
+                  label: 'Usage',
+                  remaining: r'$.remaining',
+                ),
+              ],
             ),
           ),
         );
@@ -375,10 +386,7 @@ void main() {
           ),
         );
 
-        expect(
-          (await repo.load()).single.endpointConfig.fieldMappings,
-          isEmpty,
-        );
+        expect((await repo.load()).single.endpointConfig.windows, isEmpty);
       },
     );
 

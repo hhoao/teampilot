@@ -595,6 +595,9 @@ void main() {
     await tester.tap(
       find.byKey(const Key('managed-provider-usage-status-item')),
     );
+    await tester.pump();
+    expect(adapter.calls, 1);
+
     await tester.pumpAndSettle();
 
     final panel = tester.widget<SizedBox>(
@@ -605,7 +608,7 @@ void main() {
 
     await tester.tap(find.byKey(const Key('managed-provider-usage-refresh')));
     await tester.pump();
-    expect(adapter.calls, 1);
+    expect(adapter.calls, 2);
 
     await tester.tap(find.byKey(const Key('managed-provider-usage-manage')));
     expect(manageCalls, 1);

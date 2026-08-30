@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:shared_ui/shared_ui.dart';
@@ -52,6 +54,14 @@ class _ManagedProviderUsageStatusSegmentState
     super.dispose();
   }
 
+  void _onStatusTap(BuildContext context, {required bool hasProviders}) {
+    if (hasProviders &&
+        !context.read<ManagedProviderUsageCubit>().state.isRefreshing) {
+      unawaited(context.read<ManagedProviderUsageCubit>().refreshAll());
+    }
+    _popover.toggle();
+  }
+
   @override
   Widget build(BuildContext context) {
     return BlocBuilder<ManagedProviderCubit, ManagedProviderState>(
@@ -100,6 +110,13 @@ class _ManagedProviderUsageStatusSegmentState
                   menu.close();
                   widget.onManage?.call();
                 },
+                onRefresh: () {
+                  if (!usageState.isRefreshing) {
+                    unawaited(
+                      context.read<ManagedProviderUsageCubit>().refreshAll(),
+                    );
+                  }
+                },
               ),
               child: Tooltip(
                 message: summary.tooltip,
@@ -108,7 +125,10 @@ class _ManagedProviderUsageStatusSegmentState
                   label: summary.tooltip,
                   child: TpHover(
                     key: const Key('managed-provider-usage-status-item'),
-                    onTap: _popover.toggle,
+                    onTap: () => _onStatusTap(
+                      context,
+                      hasProviders: providers.isNotEmpty,
+                    ),
                     borderRadius: BorderRadius.circular(6),
                     backgroundColor: summary.selected
                         ? cs.onSurface.withValues(alpha: 0.08)

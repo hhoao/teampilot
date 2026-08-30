@@ -34,7 +34,6 @@ import 'chat_page_structural_signal.dart';
 import 'chat_page_shell_probe.dart';
 import 'chat_workbench_slice.dart';
 import 'session_tab_cli.dart';
-import 'session_workbench_view_toggle.dart';
 import 'team_config_incomplete_dialog.dart';
 
 Future<void> _showStripNewTerminalMenu({
@@ -385,14 +384,6 @@ class _ChatWorkspaceShell extends StatelessWidget {
                       );
                     }
                   : null,
-              tabBarTrailing: Padding(
-                padding: const EdgeInsets.only(left: 8),
-                child: SessionWorkbenchViewToggle(
-                  workspaceId: workspaceId,
-                  tabScopeId: tabScopeId,
-                  team: teamConfig,
-                ),
-              ),
               actions: isPersonalContext || teamConfig == null
                   ? const []
                   : _chatActions(context, teamConfig),

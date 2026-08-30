@@ -35,8 +35,12 @@ Map<String, Object?> decodeOfficialJsonObject(String body) {
 }
 
 String formatOfficialPercent(num value) {
-  if (value == value.roundToDouble()) return value.round().toString();
-  return value.toString();
+  if (!value.isFinite) return '0';
+  final rounded = (value * 10).roundToDouble() / 10;
+  if (rounded == rounded.roundToDouble()) {
+    return rounded.round().toString();
+  }
+  return rounded.toStringAsFixed(1);
 }
 
 num? readOfficialPercent(Object? raw) {

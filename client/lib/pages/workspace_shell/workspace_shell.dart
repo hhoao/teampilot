@@ -32,7 +32,6 @@ class WorkspaceShell extends StatelessWidget {
     this.newTerminalLabel = '',
     this.onNewConversation,
     this.onNewTerminal,
-    this.tabBarTrailing,
     super.key,
   });
 
@@ -63,9 +62,6 @@ class WorkspaceShell extends StatelessWidget {
   final String newTerminalLabel;
   final VoidCallback? onNewConversation;
   final void Function(Offset anchor)? onNewTerminal;
-
-  /// Extra controls on the right of the tab row (e.g. Chat/Terminal toggle).
-  final Widget? tabBarTrailing;
 
   @override
   Widget build(BuildContext context) {
@@ -147,13 +143,12 @@ class WorkspaceShell extends StatelessWidget {
                     onNewTerminal: onNewTerminal,
                   )
                 : null,
-            trailing: tabBarTrailing ??
-                (actions.isNotEmpty && showHeader
-                    ? Padding(
-                        padding: const EdgeInsets.only(left: 8),
-                        child: Wrap(spacing: 6, children: actions),
-                      )
-                    : null),
+            trailing: actions.isNotEmpty && showHeader
+                ? Padding(
+                    padding: const EdgeInsets.only(left: 8),
+                    child: Wrap(spacing: 6, children: actions),
+                  )
+                : null,
           ),
         if (tabs.isEmpty && !showNewChatButton && actions.isNotEmpty && showHeader)
           WorkspaceShellActionsBar(actions: actions),

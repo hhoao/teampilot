@@ -5,6 +5,7 @@ import '../../l10n/l10n_extensions.dart';
 import '../../models/managed_provider.dart';
 import '../../models/provider_usage_snapshot.dart';
 import '../../utils/managed_provider_error_localization.dart';
+import '../../services/provider_usage/adapters/official_subscription_parse.dart';
 
 /// Formats and presents cached Managed Provider usage without performing I/O.
 class ManagedProviderMeasureView extends StatelessWidget {
@@ -35,6 +36,12 @@ class ManagedProviderMeasureView extends StatelessWidget {
     ManagedProviderDisplayConfig display,
   ) {
     var value = measure.remaining ?? measure.used ?? measure.total ?? '—';
+    if (value != '—' && _isPercentMeasure(measure)) {
+      final parsed = double.tryParse(value);
+      if (parsed != null) {
+        value = formatOfficialPercent(parsed);
+      }
+    }
     final decimalPlaces = display.decimalPlaces;
     if (decimalPlaces != null && value != '—') {
       value = _formatDecimal(value, decimalPlaces);
@@ -48,6 +55,11 @@ class ManagedProviderMeasureView extends StatelessWidget {
         '%',
     ].join(' ');
     return suffix.isEmpty ? value : '$value $suffix';
+  }
+
+  static bool _isPercentMeasure(ProviderUsageMeasure measure) {
+    final unit = measure.unit?.trim().toLowerCase();
+    return unit == '%' || unit == 'percent' || unit == 'percentage';
   }
 
   static String statusLabel(AppLocalizations l10n, ProviderUsageStatus? status) {

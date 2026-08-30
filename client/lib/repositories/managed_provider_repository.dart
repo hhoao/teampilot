@@ -270,17 +270,15 @@ class ManagedProviderRepository {
       url: next.endpointConfig.url,
       method: next.endpointConfig.method,
       responsePath: next.endpointConfig.responsePath,
-      measuresPath: next.endpointConfig.measuresPath,
       credentialField: next.endpointConfig.credentialField,
       credentialName: next.endpointConfig.credentialName,
       credentialPlacement: next.endpointConfig.credentialPlacement,
       credentialPrefix: next.endpointConfig.credentialPrefix,
+      credentialSource: next.endpointConfig.credentialSource,
+      credentialTemplate: next.endpointConfig.credentialTemplate,
       headers: next.endpointConfig.headers,
       body: next.endpointConfig.body,
-      // Field mappings are an editor-owned document. An empty map is a
-      // meaningful update that clears the previous mapping, so do not merge
-      // this field with the prior value.
-      fieldMappings: next.endpointConfig.fieldMappings,
+      windows: next.endpointConfig.windows,
       hadUnsafeUrl: next.endpointConfig.hadUnsafeUrl,
       unknownFields: {
         ...previous.endpointConfig.unknownFields,

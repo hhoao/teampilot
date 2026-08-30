@@ -25,9 +25,6 @@ class AppKeys {
   static const membersPanel = Key('members-panel');
   static const fileTreePanel = Key('file-tree-panel');
   static const workspaceTerminalPanel = Key('workspace-terminal-panel');
-  static const workbenchWelcomePage = Key('workbench-welcome-page');
-  static Key workbenchWelcomeCommandRow(String commandId) =>
-      Key('workbench-welcome-command-$commandId');
   static const workspaceChatLandingBackButton = Key(
     'workspace-chat-landing-back-button',
   );

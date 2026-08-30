@@ -20,6 +20,7 @@ class TabStrip extends Equatable {
     this.landingInitialText,
     this.landingInitialTextRevision = 0,
     this.landingReferenceSessionId,
+    this.landingReturnTabId,
   });
 
   final List<WorkbenchTabId> order;
@@ -40,6 +41,13 @@ class TabStrip extends Equatable {
   /// Session id whose persisted directory is named by [landingInitialText].
   final String? landingReferenceSessionId;
 
+  /// The tab that was active when the landing was entered — the exit target
+  /// for the landing back control. Null when the landing was reached without
+  /// a prior active tab (fresh workspace). Reducer invariant: either null or
+  /// a member of [order] — captured on [TabStripReducer.enterLanding], cleared
+  /// whenever a tab is activated or the remembered tab itself is removed.
+  final WorkbenchTabId? landingReturnTabId;
+
   /// Landing / welcome shows when nothing is selected. Tabs may remain in the
   /// bar (open sessions) while the landing is displayed.
   bool get landingActive => activeId == null;
@@ -55,6 +63,7 @@ class TabStrip extends Equatable {
     Object? landingInitialText = _unset,
     int? landingInitialTextRevision,
     Object? landingReferenceSessionId = _unset,
+    Object? landingReturnTabId = _unset,
   }) => TabStrip(
     order: order ?? this.order,
     activeId: activeId == _unset ? this.activeId : activeId as WorkbenchTabId?,
@@ -67,6 +76,9 @@ class TabStrip extends Equatable {
     landingReferenceSessionId: landingReferenceSessionId == _unset
         ? this.landingReferenceSessionId
         : landingReferenceSessionId as String?,
+    landingReturnTabId: landingReturnTabId == _unset
+        ? this.landingReturnTabId
+        : landingReturnTabId as WorkbenchTabId?,
   );
 
   @override
@@ -77,6 +89,7 @@ class TabStrip extends Equatable {
     landingInitialText,
     landingInitialTextRevision,
     landingReferenceSessionId,
+    landingReturnTabId,
   ];
 }
 
@@ -108,6 +121,7 @@ class TabStripReducer {
             order: order,
             activeId: activate ? tab : strip.activeId,
             previewIds: previews,
+            landingReturnTabId: activate ? null : strip.landingReturnTabId,
           ),
           null,
         );
@@ -118,6 +132,7 @@ class TabStripReducer {
             order: order,
             activeId: activate ? tab : strip.activeId,
             previewIds: previews,
+            landingReturnTabId: activate ? null : strip.landingReturnTabId,
           ),
           null,
         );
@@ -150,6 +165,7 @@ class TabStripReducer {
         order: order,
         activeId: activate ? tab : strip.activeId,
         previewIds: previews,
+        landingReturnTabId: activate ? null : strip.landingReturnTabId,
       ),
       replaced,
     );
@@ -200,6 +216,9 @@ class TabStripReducer {
       landingReferenceSessionId: clearLandingPrefill
           ? null
           : strip.landingReferenceSessionId,
+      landingReturnTabId: strip.landingReturnTabId == id
+          ? null
+          : strip.landingReturnTabId,
     );
   }
 
@@ -228,6 +247,7 @@ class TabStripReducer {
       order: strip.order,
       activeId: id,
       previewIds: strip.previewIds,
+      landingReturnTabId: null,
     );
   }
 
@@ -241,6 +261,9 @@ class TabStripReducer {
     );
   }
 
+  /// Leaves the strip on the landing (activeId → null) without dropping tabs,
+  /// remembering the tab to return to when the landing back control fires.
+  /// Re-entering while already landing keeps the remembered target.
   TabStrip enterLanding(
     TabStrip strip, {
     String? initialText,
@@ -254,5 +277,6 @@ class TabStripReducer {
     landingReferenceSessionId: referencedSessionId?.trim().isEmpty ?? true
         ? null
         : referencedSessionId!.trim(),
+    landingReturnTabId: strip.activeId ?? strip.landingReturnTabId,
   );
 }

@@ -1,7 +1,6 @@
 import 'dart:async';
 
 import 'package:flutter_test/flutter_test.dart';
-import 'package:teampilot/cubits/chat_cubit.dart';
 import 'package:teampilot/cubits/editor_cubit.dart';
 import 'package:teampilot/cubits/floating_workspace/floating_panel_visibility.dart';
 import 'package:teampilot/cubits/floating_workspace/floating_workspace_cubit.dart';
@@ -13,7 +12,6 @@ import 'package:teampilot/services/io/filesystem.dart';
 import 'package:teampilot/services/workbench/workbench_editor_opener.dart';
 
 import '../../support/in_memory_filesystem.dart';
-import '../../support/post_frame_test_harness.dart';
 
 void main() {
   test('openFile activates floating tab before disk read finishes', () async {
@@ -229,20 +227,16 @@ void main() {
     expect(editor.state.bucket('ws').openFilePaths, contains('/repo/a.txt'));
   });
 
-  group('dismissNewChat on open', () {
-    setUp(setUpTestAppStorage);
-    tearDown(tearDownTestAppStorage);
-
-    test('openFile floating path does not dismiss compose', () async {
+  group('landing exit on open', () {
+    test('openFile floating path stays on the landing', () async {
       final fs = InMemoryFilesystem()..files['/repo/a.txt'] = 'hello';
       final editor = EditorCubit(fs: fs);
       final workbench = WorkbenchCubit();
       final floating = FloatingWorkspaceCubit();
-      final chat = _SpyChatCubit();
       addTearDown(editor.close);
       addTearDown(workbench.close);
       addTearDown(floating.close);
-      addTearDown(chat.close);
+      workbench.enterLanding('ws');
 
       final opener = WorkbenchEditorOpener(
         editor: editor,
@@ -250,22 +244,20 @@ void main() {
         floating: floating,
         markdownViewModes: MarkdownViewModeStore(),
         readMarkdownOpenMode: () => MarkdownOpenMode.preview,
-        chat: chat,
       );
       await opener.openFile('ws', '/repo/a.txt');
 
-      expect(chat.dismissNewChatCallCount, 0);
+      expect(workbench.state.bar('ws').center.landingActive, isTrue);
     });
 
-    test('openDiff floating path does not dismiss compose', () {
+    test('openDiff floating path stays on the landing', () {
       final editor = EditorCubit();
       final workbench = WorkbenchCubit();
       final floating = FloatingWorkspaceCubit();
-      final chat = _SpyChatCubit();
       addTearDown(editor.close);
       addTearDown(workbench.close);
       addTearDown(floating.close);
-      addTearDown(chat.close);
+      workbench.enterLanding('ws');
 
       final opener = WorkbenchEditorOpener(
         editor: editor,
@@ -273,7 +265,6 @@ void main() {
         floating: floating,
         markdownViewModes: MarkdownViewModeStore(),
         readMarkdownOpenMode: () => MarkdownOpenMode.preview,
-        chat: chat,
       );
       opener.openDiff(
         workspaceId: 'ws',
@@ -283,19 +274,18 @@ void main() {
         diffText: 'diff',
       );
 
-      expect(chat.dismissNewChatCallCount, 0);
+      expect(workbench.state.bar('ws').center.landingActive, isTrue);
     });
 
-    test('openFile center path dismisses compose', () async {
+    test('openFile center path exits the landing', () async {
       final fs = InMemoryFilesystem()..files['/repo/a.txt'] = 'hello';
       final editor = EditorCubit(fs: fs);
       final workbench = WorkbenchCubit();
       final floating = FloatingWorkspaceCubit();
-      final chat = _SpyChatCubit();
       addTearDown(editor.close);
       addTearDown(workbench.close);
       addTearDown(floating.close);
-      addTearDown(chat.close);
+      workbench.enterLanding('ws');
 
       final opener = WorkbenchEditorOpener(
         editor: editor,
@@ -304,22 +294,21 @@ void main() {
         markdownViewModes: MarkdownViewModeStore(),
         readMarkdownOpenMode: () => MarkdownOpenMode.preview,
         readFilePreviewInFloating: () => false,
-        chat: chat,
       );
       await opener.openFile('ws', '/repo/a.txt');
 
-      expect(chat.dismissNewChatCallCount, 1);
+      expect(workbench.state.bar('ws').center.landingActive, isFalse);
+      expect(workbench.centerActiveId('ws')?.kind, WorkbenchTabKind.file);
     });
 
-    test('openDiff center path dismisses compose', () {
+    test('openDiff center path exits the landing', () {
       final editor = EditorCubit();
       final workbench = WorkbenchCubit();
       final floating = FloatingWorkspaceCubit();
-      final chat = _SpyChatCubit();
       addTearDown(editor.close);
       addTearDown(workbench.close);
       addTearDown(floating.close);
-      addTearDown(chat.close);
+      workbench.enterLanding('ws');
 
       final opener = WorkbenchEditorOpener(
         editor: editor,
@@ -328,7 +317,6 @@ void main() {
         markdownViewModes: MarkdownViewModeStore(),
         readMarkdownOpenMode: () => MarkdownOpenMode.preview,
         readFilePreviewInFloating: () => false,
-        chat: chat,
       );
       opener.openDiff(
         workspaceId: 'ws',
@@ -338,25 +326,10 @@ void main() {
         diffText: 'diff',
       );
 
-      expect(chat.dismissNewChatCallCount, 1);
+      expect(workbench.state.bar('ws').center.landingActive, isFalse);
+      expect(workbench.centerActiveId('ws')?.kind, WorkbenchTabKind.diff);
     });
   });
-}
-
-class _SpyChatCubit extends ChatCubit {
-  _SpyChatCubit()
-    : super(
-        executableResolver: () => 'true',
-        automationRepository: testAutomationRepository(),
-      );
-
-  int dismissNewChatCallCount = 0;
-
-  @override
-  void dismissNewChat() {
-    dismissNewChatCallCount++;
-    super.dismissNewChat();
-  }
 }
 
 class _GatedFilesystem extends InMemoryFilesystem {

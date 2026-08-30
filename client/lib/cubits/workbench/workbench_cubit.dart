@@ -208,10 +208,11 @@ class WorkbenchCubit extends Cubit<WorkbenchState> {
     emit(state.withBar(workspaceId, bar.copyWith(center: next)));
   }
 
-  /// Shows the center landing (new-chat / welcome) without closing tabs.
+  /// Shows the center landing (new-chat / start) without closing tabs.
   /// No-op when the center strip is already in landing (activeId == null) and
   /// no new initial text is supplied. A supplied text replaces the current
-  /// landing prefill even when Landing is already visible.
+  /// landing prefill even when Landing is already visible. The tab active at
+  /// entry is remembered as the landing's return target ([exitLanding]).
   void enterLanding(
     String workspaceId, {
     String? initialText,
@@ -229,6 +230,26 @@ class WorkbenchCubit extends Cubit<WorkbenchState> {
       referencedSessionId: referencedSessionId,
     );
     emit(state.withBar(workspaceId, bar.copyWith(center: next)));
+  }
+
+  /// Whether the center landing has a tab to return to (the one active before
+  /// entering). Drives the landing back control's visibility.
+  bool canExitLanding(String workspaceId) {
+    final center = state.bar(workspaceId).center;
+    final target = center.landingReturnTabId;
+    return center.landingActive && target != null && center.contains(target);
+  }
+
+  /// Exits the center landing by re-activating the tab that was active before
+  /// it was entered (the landing back control). No-op when not landing or
+  /// when the remembered tab no longer exists — the landing then stays up,
+  /// because with nothing to return to it is the workspace start page.
+  void exitLanding(String workspaceId) {
+    final center = state.bar(workspaceId).center;
+    if (!center.landingActive) return;
+    final target = center.landingReturnTabId;
+    if (target == null || !center.contains(target)) return;
+    activate(workspaceId, target);
   }
 
   /// Clears a Landing reference when its persisted Session is deleted, even

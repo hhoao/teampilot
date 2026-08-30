@@ -7,6 +7,8 @@ import 'package:teampilot/services/provider_usage/cli_credential_source.dart';
 import 'package:teampilot/services/provider_usage/managed_provider_usage_adapter.dart';
 import 'package:teampilot/services/provider_usage/managed_provider_usage_registry.dart';
 
+import 'http_json_mapping_test_support.dart';
+
 void main() {
   final now = DateTime.fromMillisecondsSinceEpoch(1700000000000, isUtc: true);
 
@@ -21,14 +23,22 @@ void main() {
         ),
       );
       final adapter = HttpJsonMappingAdapter(
-        config: const HttpJsonMappingConfig(
-          method: 'GET',
+        config: mappingConfig(
           url: 'https://example.test/v1/balance',
-          measuresPath: r'$.data',
-          labelPath: r'$.planName',
-          remainingPath: r'$.remaining',
-          totalPath: r'$.total',
-          unitPath: r'$.unit',
+          windows: [
+            usageWindow(
+              label: '5h',
+              remaining: r'$.data[0].remaining',
+              total: r'$.data[0].total',
+              unit: 'USD',
+            ),
+            usageWindow(
+              label: 'weekly',
+              remaining: r'$.data[1].remaining',
+              total: r'$.data[1].total',
+              unit: 'USD',
+            ),
+          ],
         ),
       );
 
@@ -55,11 +65,7 @@ void main() {
     'marks a successful HTTP/JSON snapshot stale after ten minutes',
     () async {
       final adapter = HttpJsonMappingAdapter(
-        config: const HttpJsonMappingConfig(
-          method: 'GET',
-          url: 'https://example.test/usage',
-          remainingPath: r'$.remaining',
-        ),
+        config: mappingConfig(url: 'https://example.test/usage'),
       );
 
       final snapshot = await adapter.fetch(
@@ -91,16 +97,14 @@ void main() {
         ),
       );
       final adapter = HttpJsonMappingAdapter(
-        config: const HttpJsonMappingConfig(
+        config: mappingConfig(
           method: 'POST',
           url: 'https://example.test/usage',
-          credential: HttpJsonCredentialConfig(
+          credential: const HttpJsonCredentialConfig(
             field: 'apiKey',
             name: 'api_key',
             placement: HttpJsonCredentialPlacement.jsonBody,
           ),
-          labelPath: r'$.label',
-          remainingPath: r'$.remaining',
         ),
       );
 
@@ -136,15 +140,13 @@ void main() {
           ),
         );
         final adapter = HttpJsonMappingAdapter(
-          config: HttpJsonMappingConfig(
-            method: 'GET',
+          config: mappingConfig(
             url: 'https://example.test/usage?region=us',
             credential: HttpJsonCredentialConfig(
               field: 'apiKey',
               name: 'X-API-Key',
               placement: placement,
             ),
-            remainingPath: r'$.remaining',
           ),
         );
 
@@ -167,18 +169,20 @@ void main() {
     },
   );
 
-  test('supports scalar paths, unit, currency, and reset timestamps', () async {
+  test('supports window paths, unit, and reset timestamps', () async {
     final adapter = HttpJsonMappingAdapter(
-      config: const HttpJsonMappingConfig(
-        method: 'GET',
+      config: mappingConfig(
         url: 'https://example.test/usage',
         responsePath: r'$.result',
-        labelPath: r'$.name',
-        usedPath: r'$.used',
-        remainingPath: r'$.remaining',
-        unitPath: r'$.unit',
-        currencyPath: r'$.currency',
-        resetsAtPath: r'$.resetAt',
+        windows: [
+          usageWindow(
+            label: 'Balance',
+            used: r'$.used',
+            remaining: r'$.remaining',
+            unit: 'credits',
+            resetsAt: r'$.resetAt',
+          ),
+        ],
       ),
     );
 
@@ -200,7 +204,6 @@ void main() {
     expect(measure.used, '1.25');
     expect(measure.remaining, '8.75');
     expect(measure.unit, 'credits');
-    expect(measure.currency, 'USD');
     expect(
       measure.resetsAt,
       DateTime.parse('2026-08-19T00:00:00Z').millisecondsSinceEpoch,
@@ -210,11 +213,14 @@ void main() {
   test('accepts integral finite numeric reset timestamps', () async {
     final snapshot =
         await HttpJsonMappingAdapter(
-          config: const HttpJsonMappingConfig(
-            method: 'GET',
+          config: mappingConfig(
             url: 'https://example.test/usage',
-            remainingPath: r'$.remaining',
-            resetsAtPath: r'$.resetsAt',
+            windows: [
+              usageWindow(
+                remaining: r'$.remaining',
+                resetsAt: r'$.resetsAt',
+              ),
+            ],
           ),
         ).fetch(
           _provider(),
@@ -231,14 +237,10 @@ void main() {
     expect(snapshot.measures.single.resetsAt, 1700000000000);
   });
 
-  test('requires mapped decimal JSON values to be strings', () async {
+  test('skips windows without numeric values', () async {
     final exactSnapshot =
         await HttpJsonMappingAdapter(
-          config: const HttpJsonMappingConfig(
-            method: 'GET',
-            url: 'https://example.test/usage',
-            remainingPath: r'$.remaining',
-          ),
+          config: mappingConfig(url: 'https://example.test/usage'),
         ).fetch(
           _provider(),
           credentials: const _Resolver(null),
@@ -255,18 +257,14 @@ void main() {
     final error = await _capture(
       () =>
           HttpJsonMappingAdapter(
-            config: const HttpJsonMappingConfig(
-              method: 'GET',
-              url: 'https://example.test/usage',
-              remainingPath: r'$.remaining',
-            ),
+            config: mappingConfig(url: 'https://example.test/usage'),
           ).fetch(
             _provider(),
             credentials: const _Resolver(null),
             http: FakeProviderUsageHttpClient(
               response: const ProviderUsageHttpResponse(
                 statusCode: 200,
-                body: '{"remaining":1.2300000000000000000001}',
+                body: '{"remaining":"not-a-number"}',
               ),
             ),
             now: now,
@@ -280,107 +278,14 @@ void main() {
     );
   });
 
-  test('treats explicit null label and kind as absent', () async {
-    final snapshot =
-        await HttpJsonMappingAdapter(
-          config: const HttpJsonMappingConfig(
-            method: 'GET',
-            url: 'https://example.test/usage',
-            labelPath: r'$.label',
-            kindPath: r'$.kind',
-            remainingPath: r'$.remaining',
-            defaultLabel: 'Default balance',
-            defaultKind: ProviderUsageMeasureKind.quota,
-          ),
-        ).fetch(
-          _provider(),
-          credentials: const _Resolver(null),
-          http: FakeProviderUsageHttpClient(
-            response: const ProviderUsageHttpResponse(
-              statusCode: 200,
-              body: '{"label":null,"kind":null,"remaining":"1.00"}',
-            ),
-          ),
-          now: now,
-        );
-
-    expect(snapshot.measures.single.label, 'Default balance');
-    expect(snapshot.measures.single.kind, ProviderUsageMeasureKind.quota);
-  });
-
-  test('keeps a measure when an optional mapped field is absent', () async {
-    final adapter = HttpJsonMappingAdapter(
-      config: const HttpJsonMappingConfig(
-        method: 'GET',
-        url: 'https://example.test/usage',
-        labelPath: r'$.label',
-        remainingPath: r'$.remaining',
-        totalPath: r'$.missingTotal',
-        currencyPath: r'$.missingCurrency',
-      ),
-    );
-
-    final snapshot = await adapter.fetch(
-      _provider(),
-      credentials: const _Resolver(null),
-      http: FakeProviderUsageHttpClient(
-        response: const ProviderUsageHttpResponse(
-          statusCode: 200,
-          body: '{"label":"Balance","remaining":"4.00"}',
-        ),
-      ),
-      now: now,
-    );
-
-    expect(snapshot.measures.single.remaining, '4.00');
-    expect(snapshot.measures.single.total, isNull);
-    expect(snapshot.measures.single.currency, isNull);
-  });
-
-  test('treats explicit null optional mapped fields as absent', () async {
-    final adapter = HttpJsonMappingAdapter(
-      config: const HttpJsonMappingConfig(
-        method: 'GET',
-        url: 'https://example.test/usage',
-        totalPath: r'$.total',
-        usedPath: r'$.used',
-        remainingPath: r'$.remaining',
-        unitPath: r'$.unit',
-        currencyPath: r'$.currency',
-        resetsAtPath: r'$.resetsAt',
-      ),
-    );
-
-    final snapshot = await adapter.fetch(
-      _provider(),
-      credentials: const _Resolver(null),
-      http: FakeProviderUsageHttpClient(
-        response: const ProviderUsageHttpResponse(
-          statusCode: 200,
-          body:
-              '{"total":null,"used":null,"remaining":"4.00","unit":null,"currency":null,"resetsAt":null}',
-        ),
-      ),
-      now: now,
-    );
-
-    final measure = snapshot.measures.single;
-    expect(measure.total, isNull);
-    expect(measure.used, isNull);
-    expect(measure.remaining, '4.00');
-    expect(measure.unit, isNull);
-    expect(measure.currency, isNull);
-    expect(measure.resetsAt, isNull);
-  });
-
   test('rejects non-HTTPS non-loopback URLs before using the client', () async {
     final fakeHttp = FakeProviderUsageHttpClient(
       response: const ProviderUsageHttpResponse(statusCode: 200, body: '{}'),
     );
     final adapter = HttpJsonMappingAdapter(
-      config: const HttpJsonMappingConfig(
-        method: 'GET',
+      config: mappingConfig(
         url: 'http://example.test/usage',
+        windows: const [],
       ),
     );
 
@@ -436,10 +341,9 @@ void main() {
       final error = await _capture(
         () =>
             HttpJsonMappingAdapter(
-              config: HttpJsonMappingConfig(
-                method: 'GET',
+              config: mappingConfig(
                 url: url,
-                remainingPath: r'$.remaining',
+                windows: const [],
               ),
             ).fetch(
               _provider(),
@@ -468,10 +372,8 @@ void main() {
     );
 
     await HttpJsonMappingAdapter(
-      config: const HttpJsonMappingConfig(
-        method: 'GET',
+      config: mappingConfig(
         url: 'https://example.test/usage?tokenCount=2&region=us',
-        remainingPath: r'$.remaining',
       ),
     ).fetch(
       _provider(),
@@ -487,7 +389,12 @@ void main() {
     final provider = _provider().copyWith(
       endpointConfig: ManagedProviderEndpointConfig(
         url: 'https://example.test/usage?apiKey=query-secret',
-        fieldMappings: {'remaining': r'$.remaining'},
+        windows: const [
+          ManagedProviderUsageWindow(
+            label: 'Usage',
+            remaining: r'$.remaining',
+          ),
+        ],
       ),
     );
     final fakeHttp = FakeProviderUsageHttpClient(
@@ -529,11 +436,7 @@ void main() {
         ),
       );
       await HttpJsonMappingAdapter(
-        config: HttpJsonMappingConfig(
-          method: 'GET',
-          url: url,
-          remainingPath: r'$.remaining',
-        ),
+        config: mappingConfig(url: url),
       ).fetch(
         _provider(),
         credentials: const _Resolver(null),
@@ -554,11 +457,9 @@ void main() {
     final error = await _capture(
       () =>
           HttpJsonMappingAdapter(
-            config: const HttpJsonMappingConfig(
-              method: 'GET',
+            config: mappingConfig(
               url: 'https://example.test/usage',
-              measuresPath: r'$.data[0]junk',
-              remainingPath: r'$.remaining',
+              windows: [usageWindow(remaining: r'$.data[0]junk')],
             ),
           ).fetch(
             _provider(),
@@ -580,35 +481,18 @@ void main() {
     'maps present malformed mapped values to response parse errors',
     () async {
       final cases = <HttpJsonMappingConfig>[
-        const HttpJsonMappingConfig(
-          method: 'GET',
+        mappingConfig(
           url: 'https://example.test/usage',
-          remainingPath: r'$.remaining',
+          windows: [usageWindow(remaining: r'$.remaining')],
         ),
-        const HttpJsonMappingConfig(
-          method: 'GET',
+        mappingConfig(
           url: 'https://example.test/usage',
-          remainingPath: r'$.remaining',
-          unitPath: r'$.unit',
-        ),
-        const HttpJsonMappingConfig(
-          method: 'GET',
-          url: 'https://example.test/usage',
-          remainingPath: r'$.remaining',
-          currencyPath: r'$.currency',
-        ),
-        const HttpJsonMappingConfig(
-          method: 'GET',
-          url: 'https://example.test/usage',
-          remainingPath: r'$.remaining',
-          resetsAtPath: r'$.resetsAt',
+          windows: [usageWindow(remaining: r'$.missing')],
         ),
       ];
       final bodies = [
         '{"remaining":"not-decimal"}',
-        '{"remaining":"1.00","unit":42}',
-        '{"remaining":"1.00","currency":[]}',
-        '{"remaining":"1.00","resetsAt":"not-a-date"}',
+        '{"remaining":"1.00"}',
       ];
 
       for (var i = 0; i < cases.length; i++) {
@@ -636,10 +520,9 @@ void main() {
 
   test('maps missing credentials to a typed redacted error', () async {
     final adapter = HttpJsonMappingAdapter(
-      config: const HttpJsonMappingConfig(
-        method: 'GET',
+      config: mappingConfig(
         url: 'https://example.test/usage',
-        credential: HttpJsonCredentialConfig(field: 'apiKey'),
+        credential: const HttpJsonCredentialConfig(field: 'apiKey'),
       ),
     );
 
@@ -706,10 +589,7 @@ void main() {
         final error = await _capture(
           () =>
               HttpJsonMappingAdapter(
-                config: const HttpJsonMappingConfig(
-                  method: 'GET',
-                  url: 'https://example.test/usage',
-                ),
+                config: mappingConfig(url: 'https://example.test/usage'),
               ).fetch(
                 _provider(),
                 credentials: const _Resolver(null),
@@ -731,11 +611,9 @@ void main() {
       final resolverError = await _capture(
         () =>
             HttpJsonMappingAdapter(
-              config: const HttpJsonMappingConfig(
-                method: 'GET',
+              config: mappingConfig(
                 url: 'https://example.test/usage',
-                credential: HttpJsonCredentialConfig(field: 'apiKey'),
-                remainingPath: r'$.remaining',
+                credential: const HttpJsonCredentialConfig(field: 'apiKey'),
               ),
             ).fetch(
               _provider(),
@@ -759,11 +637,10 @@ void main() {
       final bodyError = await _capture(
         () =>
             HttpJsonMappingAdapter(
-              config: HttpJsonMappingConfig(
+              config: mappingConfig(
                 method: 'POST',
                 url: 'https://example.test/usage',
                 body: {'unsupported': _NonJsonValue()},
-                remainingPath: r'$.remaining',
               ),
             ).fetch(
               _provider(),
@@ -790,15 +667,14 @@ void main() {
     'validates method and credential placement before resolving credentials',
     () async {
       for (final config in [
-        const HttpJsonMappingConfig(
+        mappingConfig(
           method: 'PATCH',
           url: 'https://example.test/usage',
-          credential: HttpJsonCredentialConfig(field: 'apiKey'),
+          credential: const HttpJsonCredentialConfig(field: 'apiKey'),
         ),
-        const HttpJsonMappingConfig(
-          method: 'GET',
+        mappingConfig(
           url: 'https://example.test/usage',
-          credential: HttpJsonCredentialConfig(
+          credential: const HttpJsonCredentialConfig(
             field: 'apiKey',
             placement: HttpJsonCredentialPlacement.unsupported,
           ),
@@ -831,28 +707,24 @@ void main() {
     'rejects control characters in request headers and credentials',
     () async {
       final configs = [
-        const HttpJsonMappingConfig(
-          method: 'GET',
+        mappingConfig(
           url: 'https://example.test/usage',
           headers: {'X-Test': 'safe\r\nInjected: yes'},
         ),
-        const HttpJsonMappingConfig(
-          method: 'GET',
+        mappingConfig(
           url: 'https://example.test/usage',
           headers: {'X-Test\r\nInjected': 'safe'},
         ),
-        const HttpJsonMappingConfig(
-          method: 'GET',
+        mappingConfig(
           url: 'https://example.test/usage',
-          credential: HttpJsonCredentialConfig(
+          credential: const HttpJsonCredentialConfig(
             field: 'apiKey',
             name: 'X-API\nKey',
           ),
         ),
-        const HttpJsonMappingConfig(
-          method: 'GET',
+        mappingConfig(
           url: 'https://example.test/usage',
-          credential: HttpJsonCredentialConfig(
+          credential: const HttpJsonCredentialConfig(
             field: 'apiKey',
             prefix: 'Bearer\r\n',
           ),
@@ -883,10 +755,9 @@ void main() {
       final valueError = await _capture(
         () =>
             HttpJsonMappingAdapter(
-              config: const HttpJsonMappingConfig(
-                method: 'GET',
+              config: mappingConfig(
                 url: 'https://example.test/usage',
-                credential: HttpJsonCredentialConfig(field: 'apiKey'),
+                credential: const HttpJsonCredentialConfig(field: 'apiKey'),
               ),
             ).fetch(
               _provider(),
@@ -925,7 +796,12 @@ void main() {
           credentialPrefix: 'Bearer ',
           headers: {'X-Region': 'us'},
           body: {'scope': 'all'},
-          fieldMappings: {'remaining': r'$.remaining'},
+          windows: const [
+            ManagedProviderUsageWindow(
+              label: 'Usage',
+              remaining: r'$.remaining',
+            ),
+          ],
         ),
       );
       final fakeHttp = FakeProviderUsageHttpClient(
@@ -1007,7 +883,7 @@ void main() {
         adapterId: 'http-json',
         endpointConfig: ManagedProviderEndpointConfig(
           url: 'https://cursor.com/api/usage-summary',
-          fieldMappings: {'remaining': r'$.remaining'},
+          
           windows: const [
             ManagedProviderUsageWindow(
               label: 'Plan',
@@ -1061,7 +937,12 @@ void main() {
           credentialField: 'accessToken',
           credentialName: 'Authorization',
           credentialPrefix: 'Bearer ',
-          fieldMappings: {'remaining': r'$.remaining'},
+          windows: const [
+            ManagedProviderUsageWindow(
+              label: 'Usage',
+              remaining: r'$.remaining',
+            ),
+          ],
           headers: {
             'ChatGPT-Account-Id': '{accountId}',
             'Accept': 'application/json',

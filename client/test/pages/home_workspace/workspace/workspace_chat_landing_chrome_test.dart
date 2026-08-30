@@ -51,7 +51,10 @@ void main() {
   setUp(setUpTestAppStorage);
   tearDown(tearDownTestAppStorage);
 
-  Future<void> pumpLanding(WidgetTester tester) async {
+  Future<List<int>> pumpLanding(
+    WidgetTester tester, {
+    bool showBackButton = true,
+  }) async {
     final workspace = Workspace(workspaceId: 'workspace-1', createdAt: 1);
     final chatCubit = _MockChatCubit();
     final appProviderCubit = _MockAppProviderCubit();
@@ -61,6 +64,7 @@ void main() {
     final sessionPreferencesCubit = _MockSessionPreferencesCubit();
     final skillCubit = _MockSkillCubit();
     final worktreeCubit = _MockWorktreeCubit();
+    final backTaps = <int>[];
 
     _stubCubit(chatCubit, ChatState(workspaces: [workspace]));
     _stubCubit(appProviderCubit, const AppProviderState());
@@ -103,6 +107,8 @@ void main() {
                 child: Scaffold(
                   body: WorkspaceChatLanding(
                     workspace: workspace,
+                    showBackButton: showBackButton,
+                    onBack: () => backTaps.add(1),
                     onSubmit: (_, _) {},
                   ),
                 ),
@@ -114,6 +120,7 @@ void main() {
     );
     await tester.pump();
     await tester.pump();
+    return backTaps;
   }
 
   testWidgets('Landing page chrome shows back + header row + compose', (
@@ -123,6 +130,23 @@ void main() {
     expect(find.byKey(AppKeys.workspaceChatLandingBackButton), findsOneWidget);
     expect(find.byType(WorkspaceLandingHeaderRow), findsOneWidget);
     expect(find.byType(WorkspaceComposeCard), findsOneWidget);
+  });
+
+  testWidgets('landing without a back context hides the back control', (
+    tester,
+  ) async {
+    // Without a restorable workbench tab the landing IS the start page.
+    await pumpLanding(tester, showBackButton: false);
+    expect(find.byKey(AppKeys.workspaceChatLandingBackButton), findsNothing);
+  });
+
+  testWidgets('back control invokes the host exit callback', (tester) async {
+    final backTaps = await pumpLanding(tester);
+
+    await tester.tap(find.byKey(AppKeys.workspaceChatLandingBackButton));
+    await tester.pump();
+
+    expect(backTaps, [1]);
   });
 
   testWidgets('narrow landing back left edge respects mobile leading inset', (

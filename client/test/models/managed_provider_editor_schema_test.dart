@@ -24,8 +24,8 @@ void main() {
     expect(field(schema, 'apiKey').required, isTrue);
     expect(field(schema, 'kind').readOnly, isTrue);
     expect(
-      field(schema, 'endpointConfig.fieldMappings.currency').defaultValue,
-      r'$.currency',
+      field(schema, 'endpointConfig.windows').defaultValue,
+      contains(r'$.balance_infos[0].total_balance'),
     );
     expect(
       field(schema, 'displayConfig.decimalPlaces').kind,
@@ -60,7 +60,7 @@ void main() {
       ManagedProviderEditorFieldKind.json,
     );
     expect(
-      field(schema, 'endpointConfig.fieldMappings').kind,
+      field(schema, 'endpointConfig.windows').kind,
       ManagedProviderEditorFieldKind.json,
     );
     expect(field(schema, 'adapterId').readOnly, isFalse);
@@ -113,7 +113,12 @@ void main() {
         endpointConfig: ManagedProviderEndpointConfig(
           url: 'https://legacy.example.test/usage',
           responsePath: r'$.data',
-          measuresPath: r'$.data.balance',
+          windows: const [
+            ManagedProviderUsageWindow(
+              label: 'Balance',
+              remaining: r'$.data.balance',
+            ),
+          ],
         ),
       ),
     );
@@ -122,7 +127,7 @@ void main() {
     expect(legacyHttp.hasField('endpointConfig.url'), isTrue);
   });
 
-  test('derived schema preserves credential reference default value', () {
+  test('derived schema omits internal credential reference field', () {
     final schema = ManagedProviderEditorSchema.fromProvider(
       ManagedProvider(
         id: 'p1',
@@ -133,7 +138,7 @@ void main() {
       ),
     );
 
-    expect(field(schema, 'credentialRef').defaultValue, 'managed-provider:p1');
+    expect(schema.hasField('credentialRef'), isFalse);
   });
 
   test('http-json presets expose credential metadata for manual providers', () {
@@ -155,10 +160,9 @@ void main() {
     );
 
     expect(
-      field(manual, 'credentialRef').defaultValue,
-      'managed-provider:custom-codex',
+      field(manual, 'endpointConfig.credentialName').defaultValue,
+      'Authorization',
     );
-    expect(field(manual, 'endpointConfig.credentialName').defaultValue, 'Authorization');
     expect(field(manual, 'endpointConfig.credentialField').defaultValue, 'accessToken');
     expect(field(manual, 'endpointConfig.credentialPlacement').defaultValue, 'header');
     expect(field(manual, 'endpointConfig.credentialPrefix').defaultValue, 'Bearer ');

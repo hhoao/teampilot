@@ -88,14 +88,18 @@ void main() {
         url: 'https://example.test/usage?region=us',
         method: 'POST',
         responsePath: r'$.result',
-        measuresPath: r'$.plans',
         credentialField: 'apiKey',
         credentialName: 'X-API-Key',
         credentialPlacement: 'header',
         credentialPrefix: 'Bearer ',
         headers: {'X-Region': 'us', 'Authorization': 'Bearer header-secret'},
         body: {'scope': 'all', 'apiKey': 'body-secret'},
-        fieldMappings: {'label': r'$.name', 'remaining': r'$.remaining'},
+        windows: const [
+          ManagedProviderUsageWindow(
+            label: 'Usage',
+            remaining: r'$.remaining',
+          ),
+        ],
       ),
     );
 
@@ -112,10 +116,12 @@ void main() {
   });
 
   test('deep-copies and freezes caller-provided provider collections', () {
-    final mapping = <String, Object?>{
-      'token': 'data.token',
-      'nested': <String, Object?>{'value': 1},
-    };
+    final windows = <ManagedProviderUsageWindow>[
+      const ManagedProviderUsageWindow(
+        label: 'Usage',
+        remaining: r'$.remaining',
+      ),
+    ];
     final unknown = <String, Object?>{
       'safe': <String, Object?>{
         'items': <Object?>[1],
@@ -126,21 +132,19 @@ void main() {
       name: 'Example',
       kind: ManagedProviderKind.customHttp,
       adapterId: 'http-json',
-      endpointConfig: ManagedProviderEndpointConfig(fieldMappings: mapping),
+      endpointConfig: ManagedProviderEndpointConfig(windows: windows),
       unknownFields: unknown,
     );
 
-    (mapping['nested'] as Map<String, Object?>)['value'] = 2;
+    windows.add(
+      const ManagedProviderUsageWindow(label: 'Other', remaining: r'$.other'),
+    );
     (unknown['safe'] as Map<String, Object?>)['items'] = <Object?>[2];
 
-    expect(provider.endpointConfig.fieldMappings['nested'], {'value': 1});
+    expect(provider.endpointConfig.windows.single.label, 'Usage');
     expect(provider.unknownFields['safe'], {
       'items': [1],
     });
-    expect(
-      () => provider.endpointConfig.fieldMappings['new'] = 'value',
-      throwsUnsupportedError,
-    );
     expect(
       () => provider.unknownFields['new'] = 'value',
       throwsUnsupportedError,
@@ -163,9 +167,9 @@ void main() {
     expect(provider.unknownFields['future'], {'enabled': true});
   });
 
-  test('preserves safe future mapping keys while avoiding a CLI field', () {
+  test('preserves safe future body keys while avoiding a CLI field', () {
     final config = ManagedProviderEndpointConfig(
-      fieldMappings: {
+      body: {
         'token': 'data.token',
         'tokenCount': 'token',
         'apiKey': 'secret',
@@ -184,8 +188,7 @@ void main() {
     );
     final json = config.toJson();
 
-    expect(json['fieldMappings'], {
-      'token': 'data.token',
+    expect(json['body'], {
       'tokenCount': 'token',
       'nested': {'safe': 'data.safe'},
     });
@@ -193,7 +196,7 @@ void main() {
 
   test('redacts bearer credentials while preserving safe future values', () {
     final config = ManagedProviderEndpointConfig(
-      fieldMappings: {'safe': 'token', 'bearer': 'Bearer mapping-secret'},
+      body: {'safe': 'token', 'bearer': 'Bearer mapping-secret'},
     );
     final provider = ManagedProvider(
       id: 'p1',
@@ -215,12 +218,12 @@ void main() {
     final encoded = jsonEncode(json);
 
     expect(encoded, isNot(contains('secret')));
-    expect((json['endpointConfig'] as Map)['fieldMappings'], {'safe': 'token'});
+    expect((json['endpointConfig'] as Map)['body'], {'safe': 'token'});
     expect(json['safeFuture'], 'future value');
     expect(json.containsKey('futureCredential'), isFalse);
     expect(json['futureList'], [null, 'safe']);
-    expect(config.fieldMappings['safe'], 'token');
-    expect(config.fieldMappings.containsKey('bearer'), isFalse);
+    expect((config.body['safe']), 'token');
+    expect(config.body.containsKey('bearer'), isFalse);
   });
 
   test('sanitizes endpoint URL credentials while preserving safe URLs', () {
@@ -285,14 +288,14 @@ void main() {
     expect((json['brand'] as Map)['iconColor'], 'blue');
   });
 
-  test('filters nested cli mapping keys', () {
+  test('filters nested cli body keys', () {
     final config = ManagedProviderEndpointConfig(
-      fieldMappings: {
+      body: {
         'nested': {'cli': 'claude', 'safe': 'data.safe'},
       },
     );
 
-    expect(config.toJson()['fieldMappings'], {
+    expect(config.toJson()['body'], {
       'nested': {'safe': 'data.safe'},
     });
   });

@@ -52,12 +52,19 @@ void main() {
     expect(preset.template.adapterId, 'http-json');
     expect(endpoint.url, 'https://api.deepseek.com/user/balance');
     expect(endpoint.method, 'GET');
-    expect(endpoint.measuresPath, r'$.balance_infos');
-    expect(endpoint.fieldMappings, {
-      'label': r'$.currency',
-      'remaining': r'$.total_balance',
-      'currency': r'$.currency',
-    });
+    expect(
+      endpoint.windows,
+      const [
+        ManagedProviderUsageWindow(
+          label: 'USD',
+          remaining: r'$.balance_infos[0].total_balance',
+        ),
+        ManagedProviderUsageWindow(
+          label: 'CNY',
+          remaining: r'$.balance_infos[1].total_balance',
+        ),
+      ],
+    );
     expect(endpoint.credentialName, 'Authorization');
     expect(endpoint.credentialField, 'apiKey');
     expect(endpoint.credentialPlacement, 'header');
@@ -67,5 +74,15 @@ void main() {
 
   test('lookup returns null for unknown preset ids', () {
     expect(managedProviderPresetById('not-a-preset'), isNull);
+  });
+
+  test('quick preset options include built-ins and custom', () {
+    expect(managedProviderQuickPresetOptionIds, [
+      'codex',
+      'claude-code',
+      'cursor',
+      'deepseek',
+      kManagedProviderQuickPresetCustomId,
+    ]);
   });
 }

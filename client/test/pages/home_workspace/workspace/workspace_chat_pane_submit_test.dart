@@ -10,6 +10,8 @@ import 'package:teampilot/cubits/launch_profile_cubit.dart';
 import 'package:teampilot/cubits/plugin_cubit.dart';
 import 'package:teampilot/cubits/session_preferences_cubit.dart';
 import 'package:teampilot/cubits/skill_cubit.dart';
+import 'package:teampilot/cubits/workbench/workbench_cubit.dart';
+import 'package:teampilot/cubits/workbench/workbench_tab.dart';
 import 'package:teampilot/cubits/worktree_cubit.dart';
 import 'package:teampilot/cubits/session/session_phase.dart';
 import 'package:teampilot/cubits/session/session_pod.dart';
@@ -24,6 +26,7 @@ import 'package:teampilot/services/commands/command_bus.dart';
 import 'package:teampilot/services/compose/compose_draft_cache.dart';
 import 'package:teampilot/services/compose/compose_draft_store.dart';
 import 'package:teampilot/theme/app_theme.dart';
+import 'package:teampilot/utils/ui/app_keys.dart';
 
 import '../../../support/in_memory_filesystem.dart';
 import '../../../support/post_frame_test_harness.dart';
@@ -117,6 +120,8 @@ void main() {
       );
 
       final theme = buildDarkTheme();
+      final workbenchCubit = WorkbenchCubit();
+      addTearDown(workbenchCubit.close);
       await tester.pumpWidget(
         MultiRepositoryProvider(
           providers: [
@@ -134,6 +139,7 @@ void main() {
               ),
               BlocProvider<SkillCubit>.value(value: skillCubit),
               BlocProvider<WorktreeCubit>.value(value: worktreeCubit),
+              BlocProvider<WorkbenchCubit>.value(value: workbenchCubit),
             ],
             child: CliToolRegistryScope(
               registry: CliToolRegistry.builtIn(),
@@ -223,6 +229,48 @@ void main() {
     expect(drafts.cache.landingDraft(workspaceId), isNull);
     expect(await drafts.store.loadLanding(workspaceId), isNull);
   });
+
+  testWidgets('back control exits the landing to the remembered tab', (
+    tester,
+  ) async {
+    final workbench = WorkbenchCubit();
+    workbench.openSession('workspace-1', 'session-1');
+    workbench.enterLanding('workspace-1');
+
+    await tester.pumpWidget(
+      _pane(
+        submitter:
+            (
+              _,
+              _, {
+              required launch,
+              required message,
+              workingDirectory,
+              expertKey,
+            }) async => false,
+        drafts: _LandingDrafts(),
+        workbenchCubit: workbench,
+      ),
+    );
+    await _settleLanding(tester);
+
+    expect(
+      find.byKey(AppKeys.workspaceChatLandingBackButton),
+      findsOneWidget,
+    );
+
+    await tester.tap(find.byKey(AppKeys.workspaceChatLandingBackButton));
+    await tester.pump();
+
+    expect(
+      workbench.centerActiveId('workspace-1'),
+      WorkbenchTabId.session('session-1'),
+    );
+    expect(
+      find.byKey(AppKeys.workspaceChatLandingBackButton),
+      findsNothing,
+    );
+  });
 }
 
 Future<void> _settleLanding(WidgetTester tester) async {
@@ -244,7 +292,11 @@ Future<void> _submitLanding(WidgetTester tester, String message) async {
   await tester.pump();
 }
 
-Widget _pane({required dynamic submitter, required _LandingDrafts drafts}) {
+Widget _pane({
+  required dynamic submitter,
+  required _LandingDrafts drafts,
+  WorkbenchCubit? workbenchCubit,
+}) {
   final workspace = Workspace(workspaceId: 'workspace-1', createdAt: 1);
   final chatCubit = _MockChatCubit();
   final appProviderCubit = _MockAppProviderCubit();
@@ -254,6 +306,8 @@ Widget _pane({required dynamic submitter, required _LandingDrafts drafts}) {
   final sessionPreferencesCubit = _MockSessionPreferencesCubit();
   final skillCubit = _MockSkillCubit();
   final worktreeCubit = _MockWorktreeCubit();
+  final workbench = workbenchCubit ?? WorkbenchCubit();
+  addTearDown(workbench.close);
   _stubCubit(chatCubit, ChatState(workspaces: [workspace]));
   _stubCubit(appProviderCubit, const AppProviderState());
   _stubCubit(cliPresetsCubit, const CliPresetsState());
@@ -279,6 +333,7 @@ Widget _pane({required dynamic submitter, required _LandingDrafts drafts}) {
         ),
         BlocProvider<SkillCubit>.value(value: skillCubit),
         BlocProvider<WorktreeCubit>.value(value: worktreeCubit),
+        BlocProvider<WorkbenchCubit>.value(value: workbench),
       ],
       child: CliToolRegistryScope(
         registry: CliToolRegistry.builtIn(),

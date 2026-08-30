@@ -75,7 +75,6 @@ class WorkbenchEditorOpener {
     final tab = WorkbenchTabId.file(normalized);
     final replaced = _workbench.openFile(workspaceId, tab.id, preview: preview);
     _closeReplaced(workspaceId, replaced);
-    _chat?.dismissNewChat();
     await _editor.openFile(workspaceId, normalized, fs: fs);
   }
 
@@ -107,7 +106,6 @@ class WorkbenchEditorOpener {
     }
     final replaced = _workbench.openDiff(workspaceId, tab, preview: preview);
     _closeReplaced(workspaceId, replaced);
-    _chat?.dismissNewChat();
   }
 
   /// Opens a floating rendered html preview tab (no editor bucket entry).

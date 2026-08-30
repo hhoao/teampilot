@@ -1836,10 +1836,10 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
-  String get sessionWorkbenchShowChat => 'Show Chat';
+  String get sessionWorkbenchViewChat => 'Chat';
 
   @override
-  String get sessionWorkbenchShowTerminal => 'Show Terminal';
+  String get sessionWorkbenchViewTerminal => 'Terminal';
 
   @override
   String get sessionReadyTitle => 'Ready to chat';
@@ -1887,7 +1887,7 @@ class AppLocalizationsEn extends AppLocalizations {
       'Show commands available in this CLI session.';
 
   @override
-  String get workspaceChatLandingBackToStart => 'Back to start';
+  String get workspaceChatLandingBackToWorkbench => 'Back to workbench';
 
   @override
   String get workspaceChatLandingSelectWorkspace => 'Select workspace >';
@@ -7880,46 +7880,53 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get managedProvidersQuickPresetDeepSeekHint =>
-      'Preconfigured for the balance API; add an API key credential.';
+      'Balance API preset; add a secret.';
+
+  @override
+  String get managedProvidersQuickPresetCustom => 'Custom';
+
+  @override
+  String get managedProvidersQuickPresetCustomHint =>
+      'Configure endpoint, credentials, and display from scratch.';
 
   @override
   String get managedProvidersBasicsSectionTitle => 'Basics';
 
   @override
   String get managedProvidersBasicsSectionSubtitle =>
-      'Start with identity and any required secret.';
+      'Name and any required secret.';
 
   @override
   String get managedProvidersBasicsSummary =>
-      'Choose a preset, name the provider, and add the required secret when this provider needs one.';
+      'Pick a preset, name the provider, and add a secret if needed.';
 
   @override
   String get managedProvidersQuerySectionTitle => 'Query';
 
   @override
   String get managedProvidersQuerySectionSubtitle =>
-      'Endpoint and JSON mappings used by HTTP-based usage checks.';
+      'Usage API and JSON parsing.';
 
   @override
   String get managedProvidersCredentialsSectionTitle => 'Credential details';
 
   @override
   String get managedProvidersCredentialsSectionSubtitle =>
-      'Header or query metadata for sending stored credentials.';
+      'Credential source and how it is sent.';
 
   @override
   String get managedProvidersDisplaySectionTitle => 'Display';
 
   @override
   String get managedProvidersDisplaySectionSubtitle =>
-      'Formatting fallbacks for balances and quotas.';
+      'How balances and quotas are shown.';
 
   @override
   String get managedProvidersAdvancedSectionTitle => 'Advanced';
 
   @override
   String get managedProvidersAdvancedSectionSubtitle =>
-      'Adapter identity, provider kind, and stored reference details.';
+      'Adapter, kind, and internal reference.';
 
   @override
   String get managedProvidersSectionConfiguredBadge => 'Configured';
@@ -7953,25 +7960,96 @@ class AppLocalizationsEn extends AppLocalizations {
   String get managedProvidersKindCustomHttp => 'Custom HTTP';
 
   @override
-  String get managedProvidersEndpoint => 'Endpoint URL';
+  String get managedProvidersKindPresetLockedHelper =>
+      'Locked by the selected preset or provider template.';
 
   @override
-  String get managedProvidersEndpointHint => 'https://…';
+  String get managedProvidersEndpoint => 'Usage API URL';
 
   @override
-  String get managedProvidersMethod => 'Method';
+  String get managedProvidersEndpointHint => 'https://api.example.com/usage';
 
   @override
-  String get managedProvidersResponsePath => 'Response path';
+  String get managedProvidersEndpointHelper => 'URL used to fetch usage data.';
 
   @override
-  String get managedProvidersMeasuresPath => 'Measures path';
+  String get managedProvidersMethod => 'HTTP method';
 
   @override
-  String get managedProvidersRequestMapping => 'Request body mapping (JSON)';
+  String get managedProvidersMethodHelper => 'Usually GET.';
 
   @override
-  String get managedProvidersFieldMappings => 'Response field mappings (JSON)';
+  String get managedProvidersResponsePath => 'Response root (\$)';
+
+  @override
+  String get managedProvidersResponsePathHint => '\$.data';
+
+  @override
+  String get managedProvidersResponsePathHelper =>
+      'Use \$ to unwrap nested data; blank starts at the response root.';
+
+  @override
+  String get managedProvidersMeasuresPath => 'Usage list (\$)';
+
+  @override
+  String get managedProvidersMeasuresPathHint => '\$.balance_infos';
+
+  @override
+  String get managedProvidersMeasuresPathHelper =>
+      '\$ path to a balance array (e.g. DeepSeek).';
+
+  @override
+  String get managedProvidersRequestMapping => 'Request body (JSON)';
+
+  @override
+  String get managedProvidersRequestMappingHelper =>
+      'For POST; leave blank for GET.';
+
+  @override
+  String get managedProvidersFieldMappings => 'List item field mappings (JSON)';
+
+  @override
+  String get managedProvidersFieldMappingsHelper =>
+      '\$ path per field inside each array item.';
+
+  @override
+  String get managedProvidersHeaders => 'Request headers (JSON)';
+
+  @override
+  String get managedProvidersHeadersHint => 'Accept: application/json';
+
+  @override
+  String get managedProvidersHeadersHelper =>
+      'Extra headers; values may use brace placeholders.';
+
+  @override
+  String get managedProvidersWindows => 'Quota windows (JSON)';
+
+  @override
+  String get managedProvidersWindowsHint =>
+      'JSON array; each item has label and \$ paths';
+
+  @override
+  String get managedProvidersWindowsHelper =>
+      'One window per quota line. Write label and \$ paths for used / total / remaining / resetsAt. For array items, hard-code the index, e.g. \$.balance_infos[0].total_balance.';
+
+  @override
+  String get managedProvidersFieldExampleLabel => 'Example';
+
+  @override
+  String get managedProvidersJsonPathSeeAlso => 'See \$ syntax in Query ℹ️';
+
+  @override
+  String get managedProvidersTemplateVariablesSeeAlsoQuery =>
+      'See brace syntax in Query ℹ️';
+
+  @override
+  String get managedProvidersTemplateVariablesSeeAlsoCredentials =>
+      'See brace syntax in Credentials ℹ️';
+
+  @override
+  String get managedProvidersReferenceSyntaxHelper =>
+      '\$ — read from the HTTP response JSON\n\$ is the whole response; \$.field descends with dots.\nE.g. \$.data, \$.balance_infos[0].total_balance, \$.rate_limit.used_percent\n\nUse \$ in response root and quota windows (used / total / remaining / resetsAt).\n\nBraces — fill dynamic values into the request (not from the response)\nPut a variable name inside braces; it is replaced when the request is sent.\n• accessToken — access token\n• accountId — account id\n• jwt.sub — JWT sub\n\nUsed in headers, cookies, and credential templates. Values come from cli:… login.';
 
   @override
   String get managedProvidersCredentials => 'Credentials';
@@ -8003,26 +8081,58 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get managedProvidersCredentialSecretHelper =>
-      'Saved only in secure storage; leave blank to keep the existing secret.';
+      'Leave blank to keep the stored secret.';
 
   @override
-  String get managedProvidersCredentialName => 'Credential header/query name';
+  String get managedProvidersCredentialName => 'Credential parameter name';
 
   @override
-  String get managedProvidersCredentialNameHint => 'Authorization or api-key';
+  String get managedProvidersCredentialNameHint => 'Authorization or Cookie';
 
   @override
-  String get managedProvidersCredentialField => 'Credential response field';
+  String get managedProvidersCredentialNameHelper =>
+      'Parameter name on the request.';
 
   @override
-  String get managedProvidersCredentialFieldHint =>
-      'Optional response mapping field';
+  String get managedProvidersCredentialField => 'Secret field name';
+
+  @override
+  String get managedProvidersCredentialFieldHint => 'apiKey or accessToken';
+
+  @override
+  String get managedProvidersCredentialFieldHelper =>
+      'Field name in local storage.';
 
   @override
   String get managedProvidersCredentialPlacement => 'Credential placement';
 
   @override
   String get managedProvidersCredentialPlacementHint => 'header or query';
+
+  @override
+  String get managedProvidersCredentialPlacementHelper => 'header or query.';
+
+  @override
+  String get managedProvidersCredentialSource => 'Credential source';
+
+  @override
+  String get managedProvidersCredentialSourceHint =>
+      'secret or cli:cursor-account';
+
+  @override
+  String get managedProvidersCredentialSourceHelper =>
+      'secret reads the form; cli:… reads CLI login.';
+
+  @override
+  String get managedProvidersCredentialTemplate => 'Credential template';
+
+  @override
+  String get managedProvidersCredentialTemplateHint =>
+      'e.g. WorkosCursorSessionToken=user::token';
+
+  @override
+  String get managedProvidersCredentialTemplateHelper =>
+      'Builds the final credential; often a Cookie with brace variables.';
 
   @override
   String get managedProvidersCredentialFieldRequired =>
@@ -8046,18 +8156,18 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get managedProvidersCurrencyMappingHelper =>
-      'Currency is read from the response mapping when configured; the currency and unit below remain editable fallbacks.';
+      'Currency is read from the response mapping when set.';
 
   @override
   String get managedProvidersDynamicCurrencyHelper =>
-      'Currency will be read dynamically from the configured response mapping.';
+      'Currency comes from the response mapping.';
 
   @override
   String get managedProvidersEnabledTitle => 'Enabled';
 
   @override
   String get managedProvidersEnabledSubtitle =>
-      'Turning this off hides this provider from the status bar and stops all querying.';
+      'Hides the provider and stops queries when off.';
 
   @override
   String get managedProvidersShowPercent => 'Show percentage';

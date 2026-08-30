@@ -2538,8 +2538,7 @@ class TeamPilotBootstrap extends StatefulWidget {
   State<TeamPilotBootstrap> createState() => _TeamPilotBootstrapState();
 }
 
-class _TeamPilotBootstrapState extends State<TeamPilotBootstrap>
-    with WidgetsBindingObserver {
+class _TeamPilotBootstrapState extends State<TeamPilotBootstrap> {
   AppShell? _shell;
   Object? _error;
   var _retrying = false;
@@ -2548,7 +2547,6 @@ class _TeamPilotBootstrapState extends State<TeamPilotBootstrap>
   @override
   void initState() {
     super.initState();
-    WidgetsBinding.instance.addObserver(this);
     WidgetsBinding.instance.addPostFrameCallback((_) {
       unawaited(_start());
     });
@@ -2625,18 +2623,6 @@ class _TeamPilotBootstrapState extends State<TeamPilotBootstrap>
     await _start();
   }
 
-  @override
-  void didChangeAppLifecycleState(AppLifecycleState state) {
-    if (state == AppLifecycleState.resumed) {
-      unawaited(_refreshEnabledManagedProviders(_shell));
-    }
-  }
-
-  Future<void> _refreshEnabledManagedProviders(AppShell? shell) async {
-    if (shell == null) return;
-    await shell.managedProviderUsageCubit.refreshEnabled();
-  }
-
   Future<void> _chooseWorkEnvironmentAndRetry() async {
     if (_retrying) return;
     setState(() => _retrying = true);
@@ -2655,7 +2641,6 @@ class _TeamPilotBootstrapState extends State<TeamPilotBootstrap>
 
   @override
   void dispose() {
-    WidgetsBinding.instance.removeObserver(this);
     _usageAutoRefresh?.dispose();
     final shell = _shell;
     if (shell != null) {

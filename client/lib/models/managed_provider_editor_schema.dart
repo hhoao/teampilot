@@ -52,6 +52,22 @@ class ManagedProviderEditorSchema extends Equatable {
 
   bool hasField(String key) => fields.any((field) => field.key == key);
 
+  ManagedProviderEditorField? fieldFor(String key) {
+    for (final field in fields) {
+      if (field.key == key) return field;
+    }
+    return null;
+  }
+
+  /// Whether the field is part of the schema and user-editable in the UI.
+  bool isFieldEditable(String key) {
+    final field = fieldFor(key);
+    return field != null && !field.readOnly;
+  }
+
+  bool get hasEditableAdvancedFields =>
+      isFieldEditable('kind') || isFieldEditable('adapterId');
+
   static ManagedProviderEditorSchema fromProvider(ManagedProvider provider) {
     final usesHttpEditor = _usesHttpEditor(provider);
     final hasQuery =
@@ -84,7 +100,11 @@ class ManagedProviderEditorSchema extends Equatable {
         defaultValue: _defaultText(provider.adapterId),
         readOnly: provider.kind != ManagedProviderKind.customHttp,
       ),
-      if (hasQuery) ..._queryFields(provider.endpointConfig),
+      if (hasQuery)
+        ..._queryFields(
+          provider.endpointConfig,
+          metadataEditable: provider.kind == ManagedProviderKind.customHttp,
+        ),
       ..._credentialFields(
         provider,
         exposeHttpCredentialMetadata: usesHttpEditor,
@@ -109,8 +129,9 @@ class ManagedProviderEditorSchema extends Equatable {
 }
 
 List<ManagedProviderEditorField> _queryFields(
-  ManagedProviderEndpointConfig endpoint,
-) {
+  ManagedProviderEndpointConfig endpoint, {
+  required bool metadataEditable,
+}) {
   final fields = <ManagedProviderEditorField>[
     ManagedProviderEditorField(
       key: 'endpointConfig.url',
@@ -131,22 +152,10 @@ List<ManagedProviderEditorField> _queryFields(
       defaultValue: _defaultText(endpoint.responsePath),
     ),
     ManagedProviderEditorField(
-      key: 'endpointConfig.measuresPath',
-      kind: ManagedProviderEditorFieldKind.text,
-      required: false,
-      defaultValue: _defaultText(endpoint.measuresPath),
-    ),
-    ManagedProviderEditorField(
       key: 'endpointConfig.body',
       kind: ManagedProviderEditorFieldKind.json,
       required: false,
       defaultValue: _defaultJson(endpoint.body),
-    ),
-    ManagedProviderEditorField(
-      key: 'endpointConfig.fieldMappings',
-      kind: ManagedProviderEditorFieldKind.json,
-      required: false,
-      defaultValue: _defaultJson(endpoint.fieldMappings),
     ),
     ManagedProviderEditorField(
       key: 'endpointConfig.headers',
@@ -161,12 +170,14 @@ List<ManagedProviderEditorField> _queryFields(
       kind: ManagedProviderEditorFieldKind.text,
       required: false,
       defaultValue: _defaultText(endpoint.credentialSource),
+      readOnly: !metadataEditable,
     ),
     ManagedProviderEditorField(
       key: 'endpointConfig.credentialTemplate',
       kind: ManagedProviderEditorFieldKind.text,
       required: false,
       defaultValue: _defaultText(endpoint.credentialTemplate),
+      readOnly: !metadataEditable,
     ),
     ManagedProviderEditorField(
       key: 'endpointConfig.windows',
@@ -177,19 +188,6 @@ List<ManagedProviderEditorField> _queryFields(
           : jsonEncode(endpoint.windows.map((window) => window.toJson()).toList()),
     ),
   ];
-  for (final entry in endpoint.fieldMappings.entries) {
-    final value = entry.value;
-    if (value is String) {
-      fields.add(
-        ManagedProviderEditorField(
-          key: 'endpointConfig.fieldMappings.${entry.key}',
-          kind: ManagedProviderEditorFieldKind.text,
-          required: false,
-          defaultValue: value,
-        ),
-      );
-    }
-  }
   return fields;
 }
 
@@ -198,14 +196,8 @@ List<ManagedProviderEditorField> _credentialFields(
   required bool exposeHttpCredentialMetadata,
 }) {
   final endpoint = provider.endpointConfig;
-  final fields = <ManagedProviderEditorField>[
-    ManagedProviderEditorField(
-      key: 'credentialRef',
-      kind: ManagedProviderEditorFieldKind.text,
-      required: false,
-      defaultValue: _defaultText(provider.credentialRef),
-    ),
-  ];
+  final metadataEditable = provider.kind == ManagedProviderKind.customHttp;
+  final fields = <ManagedProviderEditorField>[];
   final isCliSource = endpoint.credentialSource.startsWith('cli:');
   final includeSecretField =
       !isCliSource &&
@@ -229,6 +221,7 @@ List<ManagedProviderEditorField> _credentialFields(
         kind: ManagedProviderEditorFieldKind.text,
         required: false,
         defaultValue: _defaultText(endpoint.credentialName),
+        readOnly: !metadataEditable,
       ),
     );
   }
@@ -239,6 +232,7 @@ List<ManagedProviderEditorField> _credentialFields(
         kind: ManagedProviderEditorFieldKind.text,
         required: false,
         defaultValue: _defaultText(endpoint.credentialField),
+        readOnly: !metadataEditable,
       ),
     );
   }
@@ -249,6 +243,7 @@ List<ManagedProviderEditorField> _credentialFields(
         kind: ManagedProviderEditorFieldKind.text,
         required: false,
         defaultValue: _defaultText(endpoint.credentialPlacement),
+        readOnly: !metadataEditable,
       ),
     );
   }
@@ -261,6 +256,7 @@ List<ManagedProviderEditorField> _credentialFields(
         kind: ManagedProviderEditorFieldKind.text,
         required: false,
         defaultValue: _defaultText(endpoint.credentialPrefix),
+        readOnly: !metadataEditable,
       ),
     );
   }
@@ -304,9 +300,7 @@ bool _hasEndpointDeclaration(ManagedProviderEndpointConfig endpoint) =>
     endpoint.url.isNotEmpty ||
     endpoint.method.toUpperCase() != 'GET' ||
     endpoint.responsePath != null && endpoint.responsePath!.isNotEmpty ||
-    endpoint.measuresPath != null && endpoint.measuresPath!.isNotEmpty ||
     endpoint.body.isNotEmpty ||
-    endpoint.fieldMappings.isNotEmpty ||
     endpoint.headers.isNotEmpty ||
     endpoint.windows.isNotEmpty ||
     endpoint.credentialSource != 'secret' ||

@@ -5,6 +5,7 @@ import 'package:flutter/widgets.dart';
 
 import '../models/managed_provider.dart';
 import '../models/team_config.dart';
+import '../services/provider_usage/managed_provider_presets.dart';
 import '../services/editor/editor_messages.dart';
 import 'app_localizations.dart';
 
@@ -57,6 +58,7 @@ extension AppLocalizationsX on AppLocalizations {
     'claude-code' => managedProvidersQuickPresetClaudeCode,
     'cursor' => managedProvidersQuickPresetCursor,
     'deepseek' => managedProvidersQuickPresetDeepSeek,
+    kManagedProviderQuickPresetCustomId => managedProvidersQuickPresetCustom,
     _ => id,
   };
 
@@ -65,6 +67,7 @@ extension AppLocalizationsX on AppLocalizations {
     'claude-code' => managedProvidersQuickPresetClaudeCodeHint,
     'cursor' => managedProvidersQuickPresetCursorHint,
     'deepseek' => managedProvidersQuickPresetDeepSeekHint,
+    kManagedProviderQuickPresetCustomId => managedProvidersQuickPresetCustomHint,
     _ => '',
   };
 

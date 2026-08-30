@@ -126,7 +126,6 @@ class ManagedProviderEndpointConfig extends Equatable {
     String url = '',
     String method = 'GET',
     String? responsePath,
-    String? measuresPath,
     String? credentialField,
     String? credentialName,
     String credentialPlacement = 'header',
@@ -135,7 +134,6 @@ class ManagedProviderEndpointConfig extends Equatable {
     String? credentialTemplate,
     Map<String, String> headers = const {},
     Map<String, Object?> body = const {},
-    Map<String, Object?> fieldMappings = const {},
     List<ManagedProviderUsageWindow> windows = const [],
     bool hadUnsafeUrl = false,
     Map<String, Object?> unknownFields = const {},
@@ -143,7 +141,6 @@ class ManagedProviderEndpointConfig extends Equatable {
     url: _sanitizeUrl(url),
     method: method,
     responsePath: responsePath,
-    measuresPath: measuresPath,
     credentialField: _sanitizeOptionalText(credentialField),
     credentialName: _sanitizeOptionalText(credentialName),
     credentialPlacement: credentialPlacement.trim().toLowerCase(),
@@ -152,7 +149,6 @@ class ManagedProviderEndpointConfig extends Equatable {
     credentialTemplate: _sanitizeOptionalText(credentialTemplate),
     headers: _freezeRequestHeaders(headers),
     body: _freezeFields(body, rejectCli: true),
-    fieldMappings: _freezeMappingFields(fieldMappings),
     windows: List.unmodifiable(windows),
     hadUnsafeUrl: hadUnsafeUrl || _hasUnsafeUrlParts(url),
     unknownFields: _freezeFields(unknownFields, rejectCli: true),
@@ -162,7 +158,6 @@ class ManagedProviderEndpointConfig extends Equatable {
     required this.url,
     required this.method,
     this.responsePath,
-    this.measuresPath,
     this.credentialField,
     this.credentialName,
     required this.credentialPlacement,
@@ -172,18 +167,15 @@ class ManagedProviderEndpointConfig extends Equatable {
     this.headers = const {},
     this.body = const {},
     required this.hadUnsafeUrl,
-    this.fieldMappings = const {},
     this.windows = const [],
     this.unknownFields = const {},
   });
 
   factory ManagedProviderEndpointConfig.fromJson(Map<String, Object?> json) {
-    final mappings = json['fieldMappings'];
     return ManagedProviderEndpointConfig(
       url: json['url'] as String? ?? '',
       method: json['method'] as String? ?? 'GET',
       responsePath: json['responsePath'] as String?,
-      measuresPath: json['measuresPath'] as String?,
       credentialField: json['credentialField'] as String?,
       credentialName: json['credentialName'] as String?,
       credentialPlacement: json['credentialPlacement'] as String? ?? 'header',
@@ -192,16 +184,12 @@ class ManagedProviderEndpointConfig extends Equatable {
       credentialTemplate: json['credentialTemplate'] as String?,
       headers: _parseStringMap(json['headers']),
       body: _parseObjectMap(json['body']),
-      fieldMappings: mappings is Map
-          ? Map<String, Object?>.from(mappings)
-          : const {},
       windows: _parseUsageWindows(json['windows']),
       hadUnsafeUrl: json['hadUnsafeUrl'] == true,
       unknownFields: _unknownFields(json, const {
         'url',
         'method',
         'responsePath',
-        'measuresPath',
         'credentialField',
         'credentialName',
         'credentialPlacement',
@@ -210,7 +198,6 @@ class ManagedProviderEndpointConfig extends Equatable {
         'credentialTemplate',
         'headers',
         'body',
-        'fieldMappings',
         'windows',
         'hadUnsafeUrl',
       }, rejectCli: true),
@@ -220,7 +207,6 @@ class ManagedProviderEndpointConfig extends Equatable {
   final String url;
   final String method;
   final String? responsePath;
-  final String? measuresPath;
   final String? credentialField;
   final String? credentialName;
   final String credentialPlacement;
@@ -230,7 +216,6 @@ class ManagedProviderEndpointConfig extends Equatable {
   final Map<String, String> headers;
   final Map<String, Object?> body;
   final bool hadUnsafeUrl;
-  final Map<String, Object?> fieldMappings;
   final List<ManagedProviderUsageWindow> windows;
   final Map<String, Object?> unknownFields;
 
@@ -239,7 +224,6 @@ class ManagedProviderEndpointConfig extends Equatable {
     'url': url,
     'method': method,
     if (responsePath != null) 'responsePath': responsePath,
-    if (measuresPath != null) 'measuresPath': measuresPath,
     if (credentialField != null) 'credentialField': credentialField,
     if (credentialName != null) 'credentialName': credentialName,
     'credentialPlacement': credentialPlacement,
@@ -249,8 +233,6 @@ class ManagedProviderEndpointConfig extends Equatable {
     if (headers.isNotEmpty) 'headers': Map<String, String>.from(headers),
     if (body.isNotEmpty) 'body': _thawFields(body, rejectCli: true),
     if (hadUnsafeUrl) 'hadUnsafeUrl': true,
-    if (fieldMappings.isNotEmpty)
-      'fieldMappings': _thawMappingFields(fieldMappings),
     if (windows.isNotEmpty)
       'windows': windows.map((window) => window.toJson()).toList(),
   };
@@ -260,7 +242,6 @@ class ManagedProviderEndpointConfig extends Equatable {
     url,
     method,
     responsePath,
-    measuresPath,
     credentialField,
     credentialName,
     credentialPlacement,
@@ -270,7 +251,6 @@ class ManagedProviderEndpointConfig extends Equatable {
     headers,
     body,
     hadUnsafeUrl,
-    fieldMappings,
     windows,
     unknownFields,
   ];
@@ -564,12 +544,6 @@ bool _containsCredentialMaterial(String value) => RegExp(
   caseSensitive: false,
 ).hasMatch(value);
 
-bool _isMappingCredentialKey(String key) =>
-    _isCredentialKey(key) && _normalizeKey(key) != 'token';
-
-bool _isMappingForbiddenKey(String key) =>
-    _normalizeKey(key) == 'cli' || _isMappingCredentialKey(key);
-
 String _sanitizeRequiredText(String value) =>
     _containsCredentialMaterial(value) ? '' : value;
 
@@ -702,51 +676,8 @@ class _RedactedMappingValue {
 
 const _redactedMappingValue = _RedactedMappingValue();
 
-Map<String, Object?> _freezeMappingFields(Map<String, Object?> fields) =>
-    Map.unmodifiable({
-      for (final entry in fields.entries)
-        if (!_isMappingForbiddenKey(entry.key))
-          ..._mappingEntry(entry.key, _freezeMappingValue(entry.value)),
-    });
-
 Map<String, Object?> _mappingEntry(String key, Object? value) =>
     value == _redactedMappingValue ? const {} : {key: value};
-
-Object? _freezeMappingValue(Object? value) {
-  if (value is Map) {
-    return _freezeMappingFields(Map<String, Object?>.from(value));
-  }
-  if (value is List) {
-    return List.unmodifiable(
-      value.map((item) {
-        final sanitized = _freezeMappingValue(item);
-        return sanitized == _redactedMappingValue ? null : sanitized;
-      }),
-    );
-  }
-  if (value is String &&
-      ((_isCredentialKey(value) && _normalizeKey(value) != 'token') ||
-          _containsCredentialMaterial(value))) {
-    return _redactedMappingValue;
-  }
-  return value;
-}
-
-Map<String, Object?> _thawMappingFields(Map<String, Object?> fields) => {
-  for (final entry in fields.entries) entry.key: _thawMappingValue(entry.value),
-};
-
-Object? _thawMappingValue(Object? value) {
-  if (value is Map) {
-    return {
-      for (final entry in value.entries)
-        if (entry.key is String)
-          entry.key as String: _thawMappingValue(entry.value),
-    };
-  }
-  if (value is List) return value.map(_thawMappingValue).toList();
-  return value;
-}
 
 bool _isForbiddenKey(
   String key, {

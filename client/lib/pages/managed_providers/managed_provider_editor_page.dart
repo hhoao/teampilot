@@ -16,6 +16,7 @@ import '../../services/provider_usage/managed_provider_secret_store.dart';
 import '../../services/provider_usage/official_managed_provider_binding.dart';
 import '../../widgets/app_toast/app_toast.dart';
 import '../../utils/managed_provider_error_localization.dart';
+import 'managed_provider_editor_field_examples.dart';
 import 'managed_provider_editor_section_shell.dart';
 import 'managed_provider_editor_sections.dart';
 import 'managed_provider_editor_validation.dart';
@@ -43,9 +44,7 @@ class _ManagedProviderEditorPageState extends State<ManagedProviderEditorPage> {
   late final TextEditingController _adapter;
   late final TextEditingController _endpoint;
   late final TextEditingController _responsePath;
-  late final TextEditingController _measuresPath;
   late final TextEditingController _requestMapping;
-  late final TextEditingController _fieldMappings;
   late final TextEditingController _currency;
   late final TextEditingController _unit;
   late final TextEditingController _decimalPlaces;
@@ -82,12 +81,8 @@ class _ManagedProviderEditorPageState extends State<ManagedProviderEditorPage> {
     _adapter = TextEditingController(text: provider?.adapterId ?? 'http-json');
     _endpoint = TextEditingController(text: endpoint?.url ?? '');
     _responsePath = TextEditingController(text: endpoint?.responsePath ?? '');
-    _measuresPath = TextEditingController(text: endpoint?.measuresPath ?? '');
     _requestMapping = TextEditingController(
       text: _prettyJson(endpoint?.body ?? const <String, Object?>{}),
-    );
-    _fieldMappings = TextEditingController(
-      text: _prettyJson(endpoint?.fieldMappings ?? const <String, Object?>{}),
     );
     _currency = TextEditingController(text: display?.currency ?? '');
     _unit = TextEditingController(text: display?.unit ?? '');
@@ -142,9 +137,7 @@ class _ManagedProviderEditorPageState extends State<ManagedProviderEditorPage> {
       _adapter,
       _endpoint,
       _responsePath,
-      _measuresPath,
       _requestMapping,
-      _fieldMappings,
       _currency,
       _unit,
       _decimalPlaces,
@@ -198,7 +191,7 @@ class _ManagedProviderEditorPageState extends State<ManagedProviderEditorPage> {
                   credentialSecretFocusNode: _credentialSecretFocus,
                   credentialConfigured: _credentialRef.text.trim().isNotEmpty,
                   enabled: _enabled,
-                  onPresetChanged: _applyPreset,
+                  onQuickPresetChanged: _handleQuickPresetChanged,
                   onEnabledChanged: _setEnabled,
                 ),
               ),
@@ -208,15 +201,14 @@ class _ManagedProviderEditorPageState extends State<ManagedProviderEditorPage> {
                   key: const Key('managed-provider-section-query'),
                   title: l10n.managedProvidersQuerySectionTitle,
                   subtitle: l10n.managedProvidersQuerySectionSubtitle,
+                  referenceTip: managedProviderHttpJsonReferenceTip(l10n),
                   initiallyExpanded: _queryInitiallyExpanded,
                   child: ManagedProviderQuerySection(
                     schema: _schema,
                     endpointController: _endpoint,
                     method: _method,
                     responsePathController: _responsePath,
-                    measuresPathController: _measuresPath,
                     requestMappingController: _requestMapping,
-                    fieldMappingsController: _fieldMappings,
                     headersController: _headers,
                     windowsController: _windows,
                     onMethodChanged: (value) => setState(() => _method = value),
@@ -231,6 +223,9 @@ class _ManagedProviderEditorPageState extends State<ManagedProviderEditorPage> {
                 key: const Key('managed-provider-section-credentials'),
                 title: l10n.managedProvidersCredentialsSectionTitle,
                 subtitle: l10n.managedProvidersCredentialsSectionSubtitle,
+                referenceTip: _isCliCredentialSource
+                    ? null
+                    : managedProviderHttpJsonReferenceTip(l10n),
                 initiallyExpanded: _credentialsInitiallyExpanded,
                 badge: _credentialsInitiallyExpanded
                     ? l10n.managedProvidersSectionConfiguredBadge
@@ -272,22 +267,22 @@ class _ManagedProviderEditorPageState extends State<ManagedProviderEditorPage> {
                 ),
               ),
               const SizedBox(height: 12),
-              ManagedProviderEditorSectionShell(
-                key: const Key('managed-provider-section-advanced'),
-                title: l10n.managedProvidersAdvancedSectionTitle,
-                subtitle: l10n.managedProvidersAdvancedSectionSubtitle,
-                initiallyExpanded: _advancedInitiallyExpanded,
-                badge: _advancedInitiallyExpanded
-                    ? l10n.managedProvidersSectionConfiguredBadge
-                    : null,
-                child: ManagedProviderAdvancedSection(
-                  schema: _schema,
-                  kind: _kind,
-                  adapterController: _adapter,
-                  credentialRefController: _credentialRef,
-                  onKindChanged: _setKind,
+              if (_schema.hasEditableAdvancedFields)
+                ManagedProviderEditorSectionShell(
+                  key: const Key('managed-provider-section-advanced'),
+                  title: l10n.managedProvidersAdvancedSectionTitle,
+                  subtitle: l10n.managedProvidersAdvancedSectionSubtitle,
+                  initiallyExpanded: _advancedInitiallyExpanded,
+                  badge: _advancedInitiallyExpanded
+                      ? l10n.managedProvidersSectionConfiguredBadge
+                      : null,
+                  child: ManagedProviderAdvancedSection(
+                    schema: _schema,
+                    kind: _kind,
+                    adapterController: _adapter,
+                    onKindChanged: _setKind,
+                  ),
                 ),
-              ),
               const SizedBox(height: 16),
               Row(
                 children: [
@@ -355,6 +350,47 @@ class _ManagedProviderEditorPageState extends State<ManagedProviderEditorPage> {
     );
   }
 
+  void _handleQuickPresetChanged(String id) {
+    if (id == kManagedProviderQuickPresetCustomId) {
+      _resetToCustomTemplate();
+      return;
+    }
+    final preset = managedProviderPresetById(id);
+    if (preset != null) {
+      _applyPreset(preset);
+    }
+  }
+
+  void _resetToCustomTemplate() {
+    setState(() {
+      _selectedPreset = null;
+      _name.clear();
+      _adapter.text = 'http-json';
+      _endpoint.clear();
+      _responsePath.clear();
+      _requestMapping.text = _prettyJson(const <String, Object?>{});
+      _kind = ManagedProviderKind.customHttp;
+      _method = 'GET';
+      _credentialRef.clear();
+      _credentialSecret.clear();
+      _credentialName.clear();
+      _credentialField.clear();
+      _credentialPlacement.text = 'header';
+      _credentialSource.text = 'secret';
+      _credentialTemplate.clear();
+      _headers.text = _prettyJson(const <String, Object?>{});
+      _windows.clear();
+      _credentialPrefix = null;
+      _currency.clear();
+      _unit.clear();
+      _decimalPlaces.clear();
+      _enabled = true;
+      _showPercent = false;
+      _schema = ManagedProviderEditorSchema.fromProvider(_draftProvider());
+      _formError = null;
+    });
+  }
+
   void _applyPreset(ManagedProviderPreset preset) {
     final template = preset.template;
     final endpoint = template.endpointConfig;
@@ -367,9 +403,7 @@ class _ManagedProviderEditorPageState extends State<ManagedProviderEditorPage> {
       _adapter.text = template.adapterId;
       _endpoint.text = endpoint.url;
       _responsePath.text = endpoint.responsePath ?? '';
-      _measuresPath.text = endpoint.measuresPath ?? '';
       _requestMapping.text = _prettyJson(endpoint.body);
-      _fieldMappings.text = _prettyJson(endpoint.fieldMappings);
       _kind = template.kind;
       _method = endpoint.method.toUpperCase();
       _credentialRef.clear();
@@ -426,7 +460,9 @@ class _ManagedProviderEditorPageState extends State<ManagedProviderEditorPage> {
     });
   }
 
-  ManagedProvider _draftProvider() => ManagedProvider(
+  ManagedProvider _draftProvider() {
+    final windows = _decodeWindows(_windows.text);
+    return ManagedProvider(
     id: _provider?.id ?? '',
     name: _name.text.trim(),
     kind: _kind,
@@ -439,13 +475,9 @@ class _ManagedProviderEditorPageState extends State<ManagedProviderEditorPage> {
       responsePath: _responsePath.text.trim().isEmpty
           ? null
           : _responsePath.text.trim(),
-      measuresPath: _measuresPath.text.trim().isEmpty
-          ? null
-          : _measuresPath.text.trim(),
       body: decodeJsonObject(_requestMapping.text) ?? const {},
-      fieldMappings: decodeJsonObject(_fieldMappings.text) ?? const {},
       headers: _decodeHeaders(_headers.text),
-      windows: _decodeWindows(_windows.text),
+      windows: windows,
       credentialSource: _credentialSource.text.trim().isEmpty
           ? 'secret'
           : _credentialSource.text.trim(),
@@ -473,7 +505,8 @@ class _ManagedProviderEditorPageState extends State<ManagedProviderEditorPage> {
       showPercent: _showPercent,
     ),
     enabled: _enabled,
-  );
+    );
+  }
 
   bool get _queryInitiallyExpanded =>
       _kind == ManagedProviderKind.customHttp ||
@@ -513,11 +546,11 @@ class _ManagedProviderEditorPageState extends State<ManagedProviderEditorPage> {
   }
 
   bool get _advancedInitiallyExpanded {
+    if (!_schema.hasEditableAdvancedFields) return false;
     final provider = _provider;
     if (provider == null) return false;
     return provider.adapterId != 'http-json' ||
-        provider.kind != ManagedProviderKind.customHttp ||
-        provider.credentialRef != null && provider.credentialRef!.isNotEmpty;
+        provider.kind != ManagedProviderKind.customHttp;
   }
 
   bool _schemaRequiresSecret(ManagedProviderEditorSchema schema) =>
@@ -533,8 +566,8 @@ class _ManagedProviderEditorPageState extends State<ManagedProviderEditorPage> {
     final adapter = _adapter.text.trim();
     final endpoint = _endpoint.text.trim();
     final body = decodeJsonObject(_requestMapping.text) ?? const {};
-    final fieldMappings = decodeJsonObject(_fieldMappings.text) ?? const {};
     final decimalPlaces = int.tryParse(_decimalPlaces.text.trim());
+    final windows = _decodeWindows(_windows.text);
 
     setState(() {
       _saving = true;
@@ -612,13 +645,9 @@ class _ManagedProviderEditorPageState extends State<ManagedProviderEditorPage> {
         responsePath: _responsePath.text.trim().isEmpty
             ? null
             : _responsePath.text.trim(),
-        measuresPath: _measuresPath.text.trim().isEmpty
-            ? null
-            : _measuresPath.text.trim(),
         body: body,
         headers: _decodeHeaders(_headers.text),
-        fieldMappings: fieldMappings,
-        windows: _decodeWindows(_windows.text),
+        windows: windows,
         unknownFields: current?.endpointConfig.unknownFields ?? const {},
         credentialSource: _credentialSource.text.trim().isEmpty
             ? 'secret'
@@ -756,7 +785,6 @@ class _ManagedProviderEditorPageState extends State<ManagedProviderEditorPage> {
     final adapter = _adapter.text.trim();
     final endpoint = _endpoint.text.trim();
     final body = decodeJsonObject(_requestMapping.text);
-    final fieldMappings = decodeJsonObject(_fieldMappings.text);
     if (name.isEmpty || adapter.isEmpty) {
       setState(
         () => _formError = context.l10n.managedProvidersNameAdapterError,
@@ -769,18 +797,13 @@ class _ManagedProviderEditorPageState extends State<ManagedProviderEditorPage> {
       );
       return null;
     }
-    if (fieldMappings == null || mappingContainsCredentialKey(fieldMappings)) {
-      setState(
-        () => _formError = context.l10n.managedProvidersFieldMappingError,
-      );
-      return null;
-    }
+    final windows = _decodeWindows(_windows.text);
+    final current = _provider;
     if ((adapter == 'http-json' || _kind == ManagedProviderKind.customHttp) &&
         !isAllowedManagedProviderEndpoint(endpoint, allowHttpLocalhost: true)) {
       setState(() => _formError = context.l10n.managedProvidersEndpointError);
       return null;
     }
-    final current = _provider;
     return ManagedProvider(
       id: current?.id ?? 'managed-query',
       name: name,
@@ -792,13 +815,9 @@ class _ManagedProviderEditorPageState extends State<ManagedProviderEditorPage> {
         responsePath: _responsePath.text.trim().isEmpty
             ? null
             : _responsePath.text.trim(),
-        measuresPath: _measuresPath.text.trim().isEmpty
-            ? null
-            : _measuresPath.text.trim(),
         body: body,
         headers: _decodeHeaders(_headers.text),
-        fieldMappings: fieldMappings,
-        windows: _decodeWindows(_windows.text),
+        windows: windows,
         credentialSource: _credentialSource.text.trim().isEmpty
             ? 'secret'
             : _credentialSource.text.trim(),
