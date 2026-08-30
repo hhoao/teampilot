@@ -121,6 +121,17 @@ class HomeShell extends StatefulWidget {
     if (idx == -1) return tabs.last;
     return tabs[(idx - 1 + tabs.length) % tabs.length];
   }
+
+  /// Tab to activate for `workbench.workspace.focusTabN`: the Nth open tab
+  /// (1-based, Alt+Shift+1…9 / Alt+Shift+0 → 10). Null when out of range.
+  @visibleForTesting
+  static WorkspaceTabRef? focusTabAt({
+    required List<WorkspaceTabRef> tabs,
+    required int oneBasedOrdinal,
+  }) {
+    if (oneBasedOrdinal < 1 || oneBasedOrdinal > tabs.length) return null;
+    return tabs[oneBasedOrdinal - 1];
+  }
 }
 
 class _HomeShellState extends State<HomeShell> {
@@ -137,6 +148,13 @@ class _HomeShellState extends State<HomeShell> {
 
   late CommandBus _commandBus;
   late WorkspaceChromeCommands _chromeCommands;
+
+  /// Stable handler references so dispose-time unregister cannot clobber a
+  /// later mount's registration (see [CommandBus.unregister]).
+  late final Map<String, CommandHandler> _workspaceFocusTabHandlers = {
+    for (var n = 1; n <= 10; n++)
+      CommandIds.workspaceFocusTab(n): () => _focusWorkspaceTab(n),
+  };
 
   @override
   void initState() {
@@ -175,6 +193,7 @@ class _HomeShellState extends State<HomeShell> {
         CommandIds.workspaceReopenClosed,
         _reopenClosedWorkspaceTab,
       );
+    _workspaceFocusTabHandlers.forEach(_commandBus.register);
     _chromeCommands
       ..nextWorkspaceTab = _nextWorkspaceTab
       ..prevWorkspaceTab = _prevWorkspaceTab
@@ -195,6 +214,14 @@ class _HomeShellState extends State<HomeShell> {
     final target = HomeShell.prevTab(
       tabs: _openTabs,
       activeTabKey: WorkspaceTabRef.fromLocation(widget.location)?.tabKey,
+    );
+    if (target != null) _selectTab(target);
+  }
+
+  void _focusWorkspaceTab(int ordinal) {
+    final target = HomeShell.focusTabAt(
+      tabs: _openTabs,
+      oneBasedOrdinal: ordinal,
     );
     if (target != null) _selectTab(target);
   }
@@ -248,6 +275,9 @@ class _HomeShellState extends State<HomeShell> {
         CommandIds.workspaceReopenClosed,
         _reopenClosedWorkspaceTab,
       );
+    _workspaceFocusTabHandlers.forEach(
+      (id, handler) => _commandBus.unregister(id, handler),
+    );
     _chromeCommands.clear();
     super.dispose();
   }

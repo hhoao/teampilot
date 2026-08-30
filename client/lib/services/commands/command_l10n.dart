@@ -12,9 +12,18 @@ String titleForCommand(AppLocalizations l10n, String commandId) {
   for (final def in CommandCatalog.v1) {
     if (def.id == commandId) {
       if (def.titleL10nKey == 'shortcutsStripFocusTab') {
-        final ordinal = _stripFocusTabOrdinal(commandId);
+        final ordinal = _ordinalSuffix(commandId, 'workbench.strip.focusTab');
         if (ordinal != null) {
           return l10n.shortcutsStripFocusTab(ordinal);
+        }
+      }
+      if (def.titleL10nKey == 'shortcutsWorkspaceFocusTab') {
+        final ordinal = _ordinalSuffix(
+          commandId,
+          'workbench.workspace.focusTab',
+        );
+        if (ordinal != null) {
+          return l10n.shortcutsWorkspaceFocusTab(ordinal);
         }
       }
       return _titleForKey(l10n, def.titleL10nKey) ?? commandId;
@@ -23,9 +32,9 @@ String titleForCommand(AppLocalizations l10n, String commandId) {
   return commandId;
 }
 
-/// Parses `workbench.strip.focusTabN` → N, or null if not a focus-tab id.
-int? _stripFocusTabOrdinal(String commandId) {
-  const prefix = 'workbench.strip.focusTab';
+/// Parses a `N` suffix after [prefix] (`…focusTabN`), or null if [commandId]
+/// is not an ordinal-command id.
+int? _ordinalSuffix(String commandId, String prefix) {
   if (!commandId.startsWith(prefix)) return null;
   return int.tryParse(commandId.substring(prefix.length));
 }

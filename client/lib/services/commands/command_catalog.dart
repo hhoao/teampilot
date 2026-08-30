@@ -58,6 +58,22 @@ abstract final class CommandCatalog {
       terminalPassthrough: true,
       titleL10nKey: 'shortcutsWorkspaceReopenClosed',
     ),
+    // Alt+Shift+1…9 → workspace tabs 1–9; Alt+Shift+0 → tab 10.
+    for (var n = 1; n <= 10; n++)
+      CommandDefinition(
+        id: CommandIds.workspaceFocusTab(n),
+        category: CommandCategory.navigation,
+        defaultChords: [
+          KeyChord(
+            key: n == 10 ? 'digit0' : 'digit$n',
+            mods: [KeyChordMod.alt, KeyChordMod.shift],
+          ),
+        ],
+        when: ShortcutWhen.hasOpenWorkspaceTabs,
+        terminalPassthrough: true,
+        // Resolved with ordinal in [titleForCommand].
+        titleL10nKey: 'shortcutsWorkspaceFocusTab',
+      ),
     CommandDefinition(
       id: CommandIds.workspaceSearch,
       category: CommandCategory.navigation,

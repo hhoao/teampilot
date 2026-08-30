@@ -7,6 +7,18 @@ abstract final class CommandIds {
   static const String workspaceReopenClosed = 'workbench.workspace.reopenClosed';
   static const String workspaceSearch = 'workbench.workspace.search';
 
+  /// 1-based ordinal → `workbench.workspace.focusTabN` (N = 1…10).
+  /// Bound to Alt+Shift+1…9 / Alt+Shift+0 (10th workspace tab).
+  static String workspaceFocusTab(int oneBased) {
+    assert(oneBased >= 1 && oneBased <= 10);
+    return 'workbench.workspace.focusTab$oneBased';
+  }
+
+  /// All [workspaceFocusTab] ids in ordinal order (1…10).
+  static final List<String> workspaceFocusTabs = [
+    for (var n = 1; n <= 10; n++) workspaceFocusTab(n),
+  ];
+
   /// Opens/focuses the right-tools content search panel.
   static const String workspaceContentSearch =
       'workbench.workspace.contentSearch';

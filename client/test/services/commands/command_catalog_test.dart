@@ -142,4 +142,38 @@ void main() {
       expect(def.terminalPassthrough, isTrue);
     }
   });
+
+  test('Alt+Shift+1…9 / Alt+Shift+0 focus workspace tabs by ordinal', () {
+    for (var n = 1; n <= 10; n++) {
+      final def = CommandCatalog.v1.singleWhere(
+        (c) => c.id == CommandIds.workspaceFocusTab(n),
+      );
+      expect(
+        def.defaultChords,
+        [
+          KeyChord(
+            key: n == 10 ? 'digit0' : 'digit$n',
+            mods: [KeyChordMod.alt, KeyChordMod.shift],
+          ),
+        ],
+      );
+      expect(def.when, ShortcutWhen.hasOpenWorkspaceTabs);
+      expect(def.terminalPassthrough, isTrue);
+    }
+  });
+
+  test('no default chord is double-bound across the v1 catalog', () {
+    final chords = <String, String>{};
+    for (final def in CommandCatalog.v1) {
+      for (final chord in def.defaultChords) {
+        final encoded =
+            '${chord.key}:${chord.mods.map((m) => m.name).join('+')}';
+        expect(
+          chords.putIfAbsent(encoded, () => def.id),
+          def.id,
+          reason: '$encoded is double-bound: ${chords[encoded]} vs ${def.id}',
+        );
+      }
+    }
+  });
 }

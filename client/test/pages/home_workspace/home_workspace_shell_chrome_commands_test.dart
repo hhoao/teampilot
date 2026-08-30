@@ -102,6 +102,30 @@ void main() {
     });
   });
 
+  group('HomeShell.focusTabAt', () {
+    test('is null with no open tabs', () {
+      expect(
+        HomeShell.focusTabAt(tabs: const [], oneBasedOrdinal: 1),
+        isNull,
+      );
+    });
+
+    test('picks the Nth open tab (1-based)', () {
+      const tabs = [_a, _b, _c];
+
+      expect(HomeShell.focusTabAt(tabs: tabs, oneBasedOrdinal: 1), _a);
+      expect(HomeShell.focusTabAt(tabs: tabs, oneBasedOrdinal: 2), _b);
+      expect(HomeShell.focusTabAt(tabs: tabs, oneBasedOrdinal: 3), _c);
+    });
+
+    test('is null out of range', () {
+      const tabs = [_a, _b, _c];
+
+      expect(HomeShell.focusTabAt(tabs: tabs, oneBasedOrdinal: 0), isNull);
+      expect(HomeShell.focusTabAt(tabs: tabs, oneBasedOrdinal: 4), isNull);
+    });
+  });
+
   group('WorkspaceChromeCommands wired through CommandBus (fake host)', () {
     // Mimics the contract HomeShell.initState/dispose establishes: assign
     // real callbacks + openTabCount into a shared WorkspaceChromeCommands,
@@ -145,11 +169,23 @@ void main() {
         if (target != null) selected = target;
       }
 
+      final focusTabHandlers = {
+        for (var n = 1; n <= 10; n++)
+          CommandIds.workspaceFocusTab(n): () {
+            final target = HomeShell.focusTabAt(
+              tabs: openTabs,
+              oneBasedOrdinal: n,
+            );
+            if (target != null) selected = target;
+          },
+      };
+
       bus
         ..register(CommandIds.workspaceNextTab, next)
         ..register(CommandIds.workspacePrevTab, prev)
         ..register(CommandIds.workspaceCloseTab, closeActive)
         ..register(CommandIds.workspaceReopenClosed, reopenClosed);
+      focusTabHandlers.forEach(bus.register);
       host
         ..nextWorkspaceTab = next
         ..prevWorkspaceTab = prev
@@ -181,6 +217,19 @@ void main() {
 
       bus.invoke(CommandIds.workspacePrevTab);
       expect(selected, _c);
+    });
+
+    test('workspace.focusTabN commands select the Nth open tab', () {
+      bus.invoke(CommandIds.workspaceFocusTab(3));
+      expect(selected, _c);
+
+      bus.invoke(CommandIds.workspaceFocusTab(1));
+      expect(selected, _a);
+    });
+
+    test('workspace.focusTabN command is a no-op out of range', () {
+      bus.invoke(CommandIds.workspaceFocusTab(4));
+      expect(selected, _a);
     });
 
     test('workspaceCloseTab command closes the active tab and updates openTabCount', () {
