@@ -4,17 +4,31 @@ import 'package:shared_ui/shared_ui.dart';
 
 import '../strings.dart';
 import '../selection_dead_zone.dart';
+import 'floating_capsule_chrome.dart';
 
 /// Floating task-board card pinned to the top-right of the chat message area.
 ///
 /// Collapsed to a small pill that shows the task currently in progress (or the
 /// count when nothing is in progress); tapping expands to a 320 px card (title,
 /// completed/total, status-icon + subject rows, "+N more").
+///
+/// [collapsedLeading] docks a chrome widget (e.g. the session's Chat/Terminal
+/// view toggle) into the collapsed pill, LEFT of the task data, so the two
+/// share one capsule. When [items] is empty the pill still renders — hosting
+/// only the leading widget — unless it is null.
 class AiTaskBoardPanel extends StatefulWidget {
-  const AiTaskBoardPanel({required this.items, this.maxVisible = 6, super.key});
+  const AiTaskBoardPanel({
+    required this.items,
+    this.maxVisible = 6,
+    this.collapsedLeading,
+    super.key,
+  });
 
   final List<AiTaskBoardItem> items;
   final int maxVisible;
+
+  /// Icon-only control shown at the left edge of the collapsed pill.
+  final Widget? collapsedLeading;
 
   @override
   State<AiTaskBoardPanel> createState() => _AiTaskBoardPanelState();
@@ -26,7 +40,15 @@ class _AiTaskBoardPanelState extends State<AiTaskBoardPanel> {
 
   @override
   Widget build(BuildContext context) {
-    if (widget.items.isEmpty) return const SizedBox.shrink();
+    final leading = widget.collapsedLeading;
+    if (widget.items.isEmpty) {
+      if (leading == null) return const SizedBox.shrink();
+      // No tasks yet: the docked control carries its own pill chrome
+      // (TpSegmentedControl); no outer task-board capsule to add.
+      return SelectionArea(
+        child: SelectionDeadZone(child: leading),
+      );
+    }
     // SelectionArea makes task content selectable / copyable.
     return SelectionArea(
       child: _expanded ? _buildExpanded(context) : _buildCollapsed(context),
@@ -46,36 +68,9 @@ class _AiTaskBoardPanelState extends State<AiTaskBoardPanel> {
     required BorderRadius borderRadius,
     required Widget child,
   }) {
-    final scheme = Theme.of(context).colorScheme;
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    return DecoratedBox(
-      decoration: BoxDecoration(
-        borderRadius: borderRadius,
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: isDark ? 0.10 : 0.05),
-            blurRadius: 2,
-            offset: const Offset(0, 1),
-          ),
-          BoxShadow(
-            color: Colors.black.withValues(alpha: isDark ? 0.38 : 0.16),
-            blurRadius: 24,
-            offset: const Offset(0, 8),
-          ),
-        ],
-      ),
-      child: Material(
-        color: scheme.surfaceContainerHigh,
-        elevation: 0,
-        shape: RoundedRectangleBorder(
-          borderRadius: borderRadius,
-          side: BorderSide(
-            color: scheme.outlineVariant.withValues(alpha: 0.9),
-          ),
-        ),
-        clipBehavior: Clip.antiAlias,
-        child: child,
-      ),
+    return AiFloatingCapsuleChrome(
+      borderRadius: borderRadius,
+      child: child,
     );
   }
 
@@ -97,6 +92,7 @@ class _AiTaskBoardPanelState extends State<AiTaskBoardPanel> {
     final activeSubject = active?.subject.trim();
     final showActive = activeSubject != null && activeSubject.isNotEmpty;
     final label = showActive ? activeSubject : countText;
+    final leading = widget.collapsedLeading;
     // Collapsed pill is chrome: keep taps from becoming text-selection drags
     // under the outer SelectionArea (which makes the count hard to click).
     return SelectionDeadZone(
@@ -114,6 +110,16 @@ class _AiTaskBoardPanelState extends State<AiTaskBoardPanel> {
             child: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
+                if (leading != null) ...[
+                  SelectionDeadZone(child: leading),
+                  const SizedBox(width: 4),
+                  Container(
+                    width: 1,
+                    height: 14,
+                    color: scheme.outlineVariant.withValues(alpha: 0.7),
+                  ),
+                  const SizedBox(width: 8),
+                ],
                 if (showActive)
                   _TaskStatusIcon(
                     status: AiTaskStatus.inProgress,

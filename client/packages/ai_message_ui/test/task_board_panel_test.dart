@@ -73,6 +73,50 @@ void main() {
     },
   );
 
+  testWidgets('collapsed pill docks collapsedLeading left of the task data', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      _host(
+        AiTaskBoardPanel(
+          items: [_item('T1: first', AiTaskStatus.inProgress)],
+          collapsedLeading: const Icon(
+            Icons.add_alert,
+            key: Key('leading-probe'),
+          ),
+        ),
+      ),
+    );
+
+    expect(find.byKey(const Key('leading-probe')), findsOneWidget);
+    expect(find.text('T1: first'), findsOneWidget);
+
+    // Expanded card shows only the task board; the docked control lives in
+    // the collapsed pill.
+    await tester.tap(find.text('T1: first'));
+    await tester.pump();
+    expect(find.text('Tasks'), findsOneWidget);
+    expect(find.byKey(const Key('leading-probe')), findsNothing);
+  });
+
+  testWidgets('empty board still hosts the collapsedLeading control', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      _host(
+        AiTaskBoardPanel(
+          items: const [],
+          collapsedLeading: const Icon(
+            Icons.add_alert,
+            key: Key('leading-probe'),
+          ),
+        ),
+      ),
+    );
+
+    expect(find.byKey(const Key('leading-probe')), findsOneWidget);
+  });
+
   testWidgets('completed tasks are struck through and counted', (tester) async {
     await tester.pumpWidget(
       _host(

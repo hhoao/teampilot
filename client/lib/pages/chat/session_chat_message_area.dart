@@ -102,7 +102,6 @@ class SessionChatMessageArea extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final l10n = context.l10n;
-    final spacing = context.tpSpacing;
     final cs = Theme.of(context).colorScheme;
     final lifecycle = context.read<ChatCubit>().lifecycle;
     final prefs =
@@ -356,24 +355,6 @@ class SessionChatMessageArea extends StatelessWidget {
                                               subagentPreview.popAndStopFollow,
                                         ),
                                       ),
-                                    ),
-                                  ),
-                                if (taskBoardController != null)
-                                  Positioned(
-                                    top: spacing.sm,
-                                    right: spacing.sm,
-                                    child: ListenableBuilder(
-                                      listenable: taskBoardController!,
-                                      builder: (context, _) {
-                                        final board =
-                                            taskBoardController!.board;
-                                        if (board.totalCount == 0) {
-                                          return const SizedBox.shrink();
-                                        }
-                                        return AiTaskBoardPanel(
-                                          items: board.aiItems,
-                                        );
-                                      },
                                     ),
                                   ),
                               ],

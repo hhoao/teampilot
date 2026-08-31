@@ -29,6 +29,7 @@ export 'src/special_tool_actions.dart';
 export 'src/tool_chrome/ask_user_question_bubble.dart';
 export 'src/tool_chrome/ask_user_question_card.dart';
 export 'src/tool_chrome/exit_plan_mode_card.dart';
+export 'src/tool_chrome/floating_capsule_chrome.dart';
 export 'src/tool_chrome/permission_card.dart';
 export 'src/tool_chrome/task_board_panel.dart';
 export 'src/tool_chrome/task_tool_card.dart';

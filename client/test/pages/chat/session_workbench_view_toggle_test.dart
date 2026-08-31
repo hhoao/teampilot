@@ -103,14 +103,14 @@ void main() {
     expect(
       find.descendant(
         of: find.byKey(AppKeys.sessionWorkbenchViewToggle),
-        matching: find.text('Chat'),
+        matching: find.byIcon(Icons.chat_bubble_outline_rounded),
       ),
       findsOneWidget,
     );
     expect(
       find.descendant(
         of: find.byKey(AppKeys.sessionWorkbenchViewToggle),
-        matching: find.text('Terminal'),
+        matching: find.byIcon(Icons.terminal_rounded),
       ),
       findsOneWidget,
     );
@@ -127,7 +127,7 @@ void main() {
 
       await pumpToggle(tester, chat: chat, workbench: workbench, sessionId: 's1');
 
-      await tester.tap(find.text('Terminal'));
+      await tester.tap(find.byIcon(Icons.terminal_rounded));
       await tester.pump();
 
       expect(chat.connects, hasLength(1));
@@ -162,7 +162,7 @@ void main() {
         sessionId: 's-team',
       );
 
-      await tester.tap(find.text('Terminal'));
+      await tester.tap(find.byIcon(Icons.terminal_rounded));
       await tester.pump();
 
       expect(chat.connects, isEmpty);
@@ -191,7 +191,7 @@ void main() {
       expect(chat.tabStore.openTabBySessionId('s1')!.workbenchView,
           SessionWorkbenchView.terminal);
 
-      await tester.tap(find.text('Chat'));
+      await tester.tap(find.byIcon(Icons.chat_bubble_outline_rounded));
       await tester.pump();
 
       expect(chat.connects, isEmpty);
@@ -218,7 +218,7 @@ void main() {
 
     // Terminal is already active per the pod: tapping it again is a no-op
     // (no reconnect, no state churn).
-    await tester.tap(find.text('Terminal'));
+    await tester.tap(find.byIcon(Icons.terminal_rounded));
     await tester.pump();
 
     expect(chat.connects, isEmpty);

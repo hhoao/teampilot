@@ -43,6 +43,7 @@ import '../../services/session/ai_history_live_refresh_controller.dart';
 import '../../services/session/failed_message_store.dart';
 import '../../services/session/chat_transcript_find_controller.dart';
 import '../../services/session/history_seat_key.dart';
+import 'ai_message_strings_from_l10n.dart';
 import '../../services/session/history_hydration_scope.dart';
 import '../../services/session/history_awaiting_working_sync.dart';
 import '../../services/session/session_history_pagination.dart';
@@ -90,6 +91,7 @@ class SessionChatView extends StatefulWidget {
     this.routeActive = true,
     this.projectConfigRepository,
     this.failedMessageStore,
+    this.viewToggle,
     super.key,
   });
 
@@ -122,6 +124,11 @@ class SessionChatView extends StatefulWidget {
 
   /// Injectable persisted delivery state for restart-safe optimistic bubbles.
   final FailedMessageStore? failedMessageStore;
+
+  /// Icon-only Chat/Terminal control docked into the top-right task-board
+  /// capsule. The host passes the bare [SessionWorkbenchViewIcons]; standalone
+  /// chrome lives in [SessionWorkbenchViewToggle] for non-chat surfaces.
+  final Widget? viewToggle;
 
   @override
   State<SessionChatView> createState() => _SessionChatViewState();
@@ -1118,6 +1125,31 @@ class _SessionChatViewState extends State<SessionChatView> {
 
   @override
   Widget build(BuildContext context) {
+    final viewToggle = widget.viewToggle;
+    if (viewToggle == null) return _buildContent(context);
+    final spacing = context.tpSpacing;
+    final controller = _taskBoardController;
+    Widget capsule() => AiMessageStringsScope(
+      strings: aiMessageStringsFromL10n(context.l10n),
+      child: controller == null
+          ? AiTaskBoardPanel(items: const [], collapsedLeading: viewToggle)
+          : ListenableBuilder(
+              listenable: controller,
+              builder: (context, _) => AiTaskBoardPanel(
+                items: controller.board.aiItems,
+                collapsedLeading: viewToggle,
+              ),
+            ),
+    );
+    return Stack(
+      children: [
+        Positioned.fill(child: _buildContent(context)),
+        Positioned(top: spacing.sm, right: spacing.sm, child: capsule()),
+      ],
+    );
+  }
+
+  Widget _buildContent(BuildContext context) {
     final l10n = context.l10n;
     final spacing = context.tpSpacing;
     final cs = Theme.of(context).colorScheme;

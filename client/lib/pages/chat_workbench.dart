@@ -377,6 +377,16 @@ class _ChatWorkbenchBody extends StatelessWidget {
     Widget buildPodDependentBody(BuildContext context) {
       final connectInProgress = readConnectInProgress();
       final view = readWorkbenchView();
+      // Chat docks bare icons into the task-board capsule; terminal and other
+      // overlays float the standalone pill chrome.
+      final dockedViewToggle = SessionWorkbenchViewIcons(
+        workspaceId: workspaceId,
+        sessionId: activeId,
+      );
+      final floatingViewToggle = SessionWorkbenchViewToggle(
+        workspaceId: workspaceId,
+        sessionId: activeId,
+      );
 
       Widget body;
       final session = _resolveSession(
@@ -392,6 +402,7 @@ class _ChatWorkbenchBody extends StatelessWidget {
             team: team,
             launchError: launchError,
             sessionConnectInProgress: connectInProgress,
+            viewToggle: dockedViewToggle,
           );
         } else {
           var placeholder = false;
@@ -440,6 +451,8 @@ class _ChatWorkbenchBody extends StatelessWidget {
               launchError: launchError,
               workbenchView: view,
               remoteProvision: remoteProvision,
+              dockedViewToggle: dockedViewToggle,
+              floatingViewToggle: floatingViewToggle,
             ),
           ),
         );
@@ -449,15 +462,15 @@ class _ChatWorkbenchBody extends StatelessWidget {
         fit: StackFit.expand,
         children: [
           body,
-          // Floating Chat/Terminal capsule — moved off the session tab bar.
-          Positioned(
-            top: context.tpSpacing.sm,
-            right: context.tpSpacing.sm,
-            child: SessionWorkbenchViewToggle(
-              workspaceId: workspaceId,
-              sessionId: activeId,
+          // Floating Chat/Terminal capsule for non-chat surfaces only; in the
+          // chat view the bare icons dock into the top-right task-board
+          // capsule instead (one capsule, no overlap).
+          if (view != SessionWorkbenchView.chat)
+            Positioned(
+              top: context.tpSpacing.sm,
+              right: context.tpSpacing.sm,
+              child: floatingViewToggle,
             ),
-          ),
         ],
       );
     }
@@ -533,6 +546,8 @@ class _ChatWorkbenchBody extends StatelessWidget {
     required String? launchError,
     required SessionWorkbenchView workbenchView,
     required MemberRemoteProvisionProgress? remoteProvision,
+    required Widget dockedViewToggle,
+    required Widget floatingViewToggle,
   }) {
     final routeForeground =
         routeActive && WorkspaceRouteActiveScope.routeActiveOf(context);
@@ -628,10 +643,20 @@ class _ChatWorkbenchBody extends StatelessWidget {
                     team: team,
                     launchError: launchError,
                     sessionConnectInProgress: sessionConnectInProgress,
+                    viewToggle: dockedViewToggle,
                   )
                 else if (showSessionStarting)
                   ChatWorkbenchSessionLoadingView(
                     message: context.l10n.sessionStarting,
+                  ),
+                if (workbenchView == SessionWorkbenchView.chat && !showChat)
+                  // Chat view is not hosting the merged task-board capsule
+                  // (remote provision / session starting) — float the toggle
+                  // so the view switch stays reachable.
+                  Positioned(
+                    top: context.tpSpacing.sm,
+                    right: context.tpSpacing.sm,
+                    child: floatingViewToggle,
                   ),
                 if (workbenchView == SessionWorkbenchView.terminal &&
                     !mountTerminalForLayout &&
@@ -774,6 +799,7 @@ class _ChatWorkbenchBody extends StatelessWidget {
     required TeamProfile? team,
     required String? launchError,
     required bool sessionConnectInProgress,
+    required Widget viewToggle,
   }) {
     final appSession = _resolveAppSession(chatCubit: chatCubit, slice: slice);
     if (appSession == null) {
@@ -816,6 +842,7 @@ class _ChatWorkbenchBody extends StatelessWidget {
 
     return SessionChatView(
       session: appSession,
+      viewToggle: viewToggle,
       workspace:
           chatCubit.state.workspaces
               .where((w) => w.workspaceId == workspaceId)
