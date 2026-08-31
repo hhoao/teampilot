@@ -167,6 +167,12 @@ void main() {
     await tester.pumpAndSettle();
     await tester.enterText(find.byType(TextField).at(0), 'My API');
     await tester.tap(find.text('Save'));
+    final raw = await _waitForRegistriesJson(
+      tester,
+      paths.basePath,
+      (value) => value.contains('My API'),
+    );
+    expect(raw, contains('My API'));
     await _flushRealIo(tester);
     await tester.pumpAndSettle();
     expect(find.text('@My API'), findsWidgets);
