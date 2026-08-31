@@ -90,6 +90,7 @@ dependencies:
   cached_network_image: ^3.4.1
   mobile_scanner: ^7.4.0
 dependency_overrides:
+  html: 0.15.6
   flutter_pty_new:
     path: packages/flutter_pty_new
   rust_lib_flutter_alacritty:
