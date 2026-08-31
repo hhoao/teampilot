@@ -2617,6 +2617,8 @@
   "automationsScheduleWeekdays": "工作日",
   "automationsScheduleWeekly": "每周",
   "automationsScheduleCustom": "自定义 cron",
+  "automationsScheduleOnce": "一次",
+  "automationsScheduleSummaryOnce": "一次，{time}",
   "automationsSchedule": "调度",
   "automationsSessionContextMenu": "定时消息…",
   "automationsManageSessionContextMenu": "管理定时消息",

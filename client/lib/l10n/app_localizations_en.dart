@@ -6598,6 +6598,14 @@ class AppLocalizationsEn extends AppLocalizations {
   String get automationsScheduleCustom => 'Custom cron';
 
   @override
+  String get automationsScheduleOnce => 'Once';
+
+  @override
+  String automationsScheduleSummaryOnce(String time) {
+    return 'Once at $time';
+  }
+
+  @override
   String get automationsSchedule => 'Schedule';
 
   @override

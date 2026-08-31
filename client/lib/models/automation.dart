@@ -7,7 +7,7 @@ import 'launch_security_policy.dart';
 
 enum AutomationAction { scheduledMessage, launchPrompt }
 
-enum AutomationSchedulePreset { hourly, daily, weekdays, weekly, custom }
+enum AutomationSchedulePreset { hourly, daily, weekdays, weekly, custom, once }
 
 enum AutomationRunStatus {
   pending,
@@ -74,6 +74,7 @@ class Automation {
     this.hourMinute = '09:00',
     required this.timezone,
     required this.dtstartMs,
+    this.runAtMs,
     this.enabled = true,
     this.nextRunAtMs,
     this.lastRunAtMs,
@@ -118,6 +119,7 @@ class Automation {
       hourMinute: json['hourMinute'] as String? ?? '09:00',
       timezone: _defaultAutomationTimezone(json['timezone']),
       dtstartMs: (json['dtstartMs'] as num?)?.toInt() ?? 0,
+      runAtMs: (json['runAtMs'] as num?)?.toInt(),
       enabled: json['enabled'] as bool? ?? true,
       nextRunAtMs: (json['nextRunAtMs'] as num?)?.toInt(),
       lastRunAtMs: (json['lastRunAtMs'] as num?)?.toInt(),
@@ -167,6 +169,9 @@ class Automation {
   final String hourMinute;
   final String timezone;
   final int dtstartMs;
+
+  /// One-shot run timestamp (epoch ms) — required when [preset] is [AutomationSchedulePreset.once].
+  final int? runAtMs;
   final bool enabled;
   final int? nextRunAtMs;
   final int? lastRunAtMs;
@@ -180,9 +185,15 @@ class Automation {
 
   bool get isLaunchPrompt => action == AutomationAction.launchPrompt;
 
-  bool get hasRunLimit => maxRunCount != null && maxRunCount! > 0;
+  bool get isOnce => preset == AutomationSchedulePreset.once;
 
-  bool get isRunLimitReached => hasRunLimit && runCount >= maxRunCount!;
+  bool get hasRunLimit => isOnce || (maxRunCount != null && maxRunCount! > 0);
+
+  /// Runs allowed — once presets are single-shot regardless of [maxRunCount].
+  int? get effectiveMaxRunCount => isOnce ? 1 : maxRunCount;
+
+  bool get isRunLimitReached =>
+      hasRunLimit && runCount >= (effectiveMaxRunCount ?? 0);
 
   LandingLaunchContext get launchContext => LandingLaunchContext(
     isPersonal: isPersonal,
@@ -242,6 +253,10 @@ class Automation {
         (dayOfWeek == null || dayOfWeek! < 1 || dayOfWeek! > 7)) {
       throw ArgumentError('weekly preset requires dayOfWeek 1..7');
     }
+    if (preset == AutomationSchedulePreset.once &&
+        (runAtMs == null || runAtMs! <= 0)) {
+      throw ArgumentError('once preset requires positive runAtMs');
+    }
     if (minute < 0 || minute > 59) {
       throw ArgumentError('minute must be 0..59');
     }
@@ -287,6 +302,8 @@ class Automation {
     String? hourMinute,
     String? timezone,
     int? dtstartMs,
+    int? runAtMs,
+    bool clearRunAtMs = false,
     bool? enabled,
     int? nextRunAtMs,
     bool clearNextRunAtMs = false,
@@ -326,6 +343,7 @@ class Automation {
       hourMinute: hourMinute ?? this.hourMinute,
       timezone: timezone ?? this.timezone,
       dtstartMs: dtstartMs ?? this.dtstartMs,
+      runAtMs: clearRunAtMs ? null : (runAtMs ?? this.runAtMs),
       enabled: enabled ?? this.enabled,
       nextRunAtMs: clearNextRunAtMs ? null : (nextRunAtMs ?? this.nextRunAtMs),
       lastRunAtMs: clearLastRunAtMs ? null : (lastRunAtMs ?? this.lastRunAtMs),
@@ -371,6 +389,7 @@ class Automation {
       'hourMinute': hourMinute,
       'timezone': timezone,
       'dtstartMs': dtstartMs,
+      if (runAtMs != null) 'runAtMs': runAtMs,
       'enabled': enabled,
       if (nextRunAtMs != null) 'nextRunAtMs': nextRunAtMs,
       if (lastRunAtMs != null) 'lastRunAtMs': lastRunAtMs,
@@ -409,6 +428,7 @@ class Automation {
             hourMinute == other.hourMinute &&
             timezone == other.timezone &&
             dtstartMs == other.dtstartMs &&
+            runAtMs == other.runAtMs &&
             enabled == other.enabled &&
             nextRunAtMs == other.nextRunAtMs &&
             lastRunAtMs == other.lastRunAtMs &&
@@ -443,6 +463,7 @@ class Automation {
     hourMinute,
     timezone,
     dtstartMs,
+    runAtMs,
     enabled,
     nextRunAtMs,
     lastRunAtMs,

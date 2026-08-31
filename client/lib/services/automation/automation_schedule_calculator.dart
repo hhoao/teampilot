@@ -48,6 +48,8 @@ class AutomationScheduleCalculator {
         return '$minute $hour * * $day';
       case AutomationSchedulePreset.custom:
         return automation.customCron?.trim() ?? '';
+      case AutomationSchedulePreset.once:
+        return '';
     }
   }
 
@@ -83,6 +85,8 @@ class AutomationScheduleCalculator {
         return automation.customCron?.trim().isNotEmpty == true
             ? automation.customCron!.trim()
             : 'Custom';
+      case AutomationSchedulePreset.once:
+        return 'Once';
     }
   }
 
@@ -95,6 +99,10 @@ class AutomationScheduleCalculator {
       automation.dtstartMs,
     );
     final anchor = after.isBefore(dtstart) ? dtstart : after;
+
+    if (automation.preset == AutomationSchedulePreset.once) {
+      return automation.runAtMs ?? 0;
+    }
 
     if (automation.preset == AutomationSchedulePreset.custom) {
       final cron = _parseCron(automation.customCron ?? '');
@@ -127,6 +135,8 @@ class AutomationScheduleCalculator {
           automation.dayOfWeek ?? 1,
         ).millisecondsSinceEpoch;
       case AutomationSchedulePreset.custom:
+        throw StateError('unreachable');
+      case AutomationSchedulePreset.once:
         throw StateError('unreachable');
     }
   }

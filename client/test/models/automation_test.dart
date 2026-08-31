@@ -189,6 +189,194 @@ void main() {
     );
   });
 
+  test('once round-trips runAtMs', () {
+    final a = Automation(
+      id: 'a1',
+      name: 'Once',
+      action: AutomationAction.scheduledMessage,
+      workspaceId: 'ws1',
+      sessionId: 's1',
+      message: '/clear',
+      preset: AutomationSchedulePreset.once,
+      runAtMs: 1_700_000_100_000,
+      hourMinute: '09:00',
+      timezone: 'UTC',
+      dtstartMs: 1_700_000_100_000,
+      enabled: true,
+      createdAtMs: 1,
+      updatedAtMs: 2,
+    );
+    a.validate();
+    final back = Automation.fromJson(a.toJson());
+    expect(back.preset, AutomationSchedulePreset.once);
+    expect(back.runAtMs, 1_700_000_100_000);
+    expect(back.hasRunLimit, isTrue);
+    expect(back.effectiveMaxRunCount, 1);
+    expect(back.isRunLimitReached, isFalse);
+    expect(back, a);
+  });
+
+  test('once requires runAtMs', () {
+    expect(
+      () => Automation(
+        id: 'x',
+        name: 'n',
+        action: AutomationAction.launchPrompt,
+        workspaceId: 'ws',
+        isPersonal: true,
+        presetId: 'preset-1',
+        targetMemberId: 'team-lead',
+        message: 'ping',
+        preset: AutomationSchedulePreset.once,
+        hourMinute: '09:00',
+        timezone: 'UTC',
+        dtstartMs: 0,
+        enabled: true,
+        createdAtMs: 0,
+        updatedAtMs: 0,
+      ).validate(),
+      throwsA(isA<ArgumentError>()),
+    );
+  });
+
+  test('once rejects non-positive runAtMs', () {
+    expect(
+      () => Automation(
+        id: 'x',
+        name: 'n',
+        action: AutomationAction.launchPrompt,
+        workspaceId: 'ws',
+        isPersonal: true,
+        presetId: 'preset-1',
+        targetMemberId: 'team-lead',
+        message: 'ping',
+        preset: AutomationSchedulePreset.once,
+        runAtMs: 0,
+        hourMinute: '09:00',
+        timezone: 'UTC',
+        dtstartMs: 0,
+        enabled: true,
+        createdAtMs: 0,
+        updatedAtMs: 0,
+      ).validate(),
+      throwsA(isA<ArgumentError>()),
+    );
+  });
+
+  test('non-once presets keep the stored maxRunCount', () {
+    final limited = Automation(
+      id: 'a1',
+      name: 'Limited',
+      action: AutomationAction.scheduledMessage,
+      workspaceId: 'ws1',
+      sessionId: 's1',
+      message: '/clear',
+      preset: AutomationSchedulePreset.daily,
+      hourMinute: '09:00',
+      timezone: 'UTC',
+      dtstartMs: 0,
+      enabled: true,
+      maxRunCount: 3,
+      createdAtMs: 1,
+      updatedAtMs: 2,
+    );
+    expect(limited.hasRunLimit, isTrue);
+    expect(limited.effectiveMaxRunCount, 3);
+    expect(limited.isRunLimitReached, isFalse);
+
+    final unlimited = Automation(
+      id: 'a2',
+      name: 'Unlimited',
+      action: AutomationAction.scheduledMessage,
+      workspaceId: 'ws1',
+      sessionId: 's1',
+      message: '/clear',
+      preset: AutomationSchedulePreset.daily,
+      hourMinute: '09:00',
+      timezone: 'UTC',
+      dtstartMs: 0,
+      enabled: true,
+      createdAtMs: 1,
+      updatedAtMs: 2,
+    );
+    expect(unlimited.hasRunLimit, isFalse);
+    expect(unlimited.effectiveMaxRunCount, isNull);
+  });
+
+  test('once reaches run limit without maxRunCount', () {
+    final a = Automation(
+      id: 'a1',
+      name: 'Once',
+      action: AutomationAction.scheduledMessage,
+      workspaceId: 'ws1',
+      sessionId: 's1',
+      message: '/clear',
+      preset: AutomationSchedulePreset.once,
+      runAtMs: 1_700_000_100_000,
+      hourMinute: '09:00',
+      timezone: 'UTC',
+      dtstartMs: 1_700_000_100_000,
+      enabled: true,
+      runCount: 1,
+      createdAtMs: 1,
+      updatedAtMs: 2,
+    );
+    expect(a.maxRunCount, isNull);
+    expect(a.hasRunLimit, isTrue);
+    expect(a.effectiveMaxRunCount, 1);
+    expect(a.isRunLimitReached, isTrue);
+  });
+
+  test('legacy automation without runAtMs parses null', () {
+    final a = Automation(
+      id: 'a1',
+      name: 'Daily',
+      action: AutomationAction.scheduledMessage,
+      workspaceId: 'ws1',
+      sessionId: 's1',
+      message: '/clear',
+      preset: AutomationSchedulePreset.daily,
+      hourMinute: '09:00',
+      timezone: 'UTC',
+      dtstartMs: 0,
+      enabled: true,
+      maxRunCount: 3,
+      createdAtMs: 1,
+      updatedAtMs: 2,
+    );
+    final json = a.toJson()..remove('runAtMs');
+    final back = Automation.fromJson(json);
+    expect(back.runAtMs, isNull);
+    expect(back.maxRunCount, 3);
+    expect(back.effectiveMaxRunCount, 3);
+  });
+
+  test('copyWith sets and clears runAtMs', () {
+    final a = Automation(
+      id: 'a1',
+      name: 'Once',
+      action: AutomationAction.scheduledMessage,
+      workspaceId: 'ws1',
+      sessionId: 's1',
+      message: '/clear',
+      preset: AutomationSchedulePreset.once,
+      runAtMs: 1_700_000_100_000,
+      hourMinute: '09:00',
+      timezone: 'UTC',
+      dtstartMs: 1_700_000_100_000,
+      enabled: true,
+      createdAtMs: 1,
+      updatedAtMs: 2,
+    );
+    final changed = a.copyWith(runAtMs: 5);
+    expect(changed.runAtMs, 5);
+    expect(changed, isNot(a));
+    final cleared = changed.copyWith(clearRunAtMs: true);
+    expect(cleared.runAtMs, isNull);
+    expect(cleared.preset, AutomationSchedulePreset.once);
+    expect(a.copyWith(runAtMs: a.runAtMs), a);
+  });
+
   test('AutomationRun round-trips JSON', () {
     const run = AutomationRun(
       id: 'r1',

@@ -6322,6 +6322,14 @@ class AppLocalizationsZh extends AppLocalizations {
   String get automationsScheduleCustom => '自定义 cron';
 
   @override
+  String get automationsScheduleOnce => '一次';
+
+  @override
+  String automationsScheduleSummaryOnce(String time) {
+    return '一次，$time';
+  }
+
+  @override
   String get automationsSchedule => '调度';
 
   @override

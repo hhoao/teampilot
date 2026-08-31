@@ -80,6 +80,7 @@ String localizedScheduleSummary(
       draft.customCron?.trim().isNotEmpty == true
           ? draft.customCron!.trim()
           : l10n.automationsScheduleCustom,
+    AutomationSchedulePreset.once => l10n.automationsScheduleSummaryOnce(time),
   };
 }
 
@@ -303,7 +304,8 @@ class _AutomationSchedulePickerState extends State<AutomationSchedulePicker> {
                         DateTime.saturday,
                         DateTime.sunday,
                       ],
-                      initialItem: state.value ?? draft.dayOfWeek ?? DateTime.monday,
+                      initialItem:
+                          state.value ?? draft.dayOfWeek ?? DateTime.monday,
                       decoration: TpSelectDecorations.themed(context),
                       itemLabel: (d) => _dayOfWeekLabel(l10n, d),
                       onChanged: (value) {
@@ -330,5 +332,6 @@ String _presetLabel(AppLocalizations l10n, AutomationSchedulePreset preset) {
     AutomationSchedulePreset.weekdays => l10n.automationsScheduleWeekdays,
     AutomationSchedulePreset.weekly => l10n.automationsScheduleWeekly,
     AutomationSchedulePreset.custom => l10n.automationsScheduleCustom,
+    AutomationSchedulePreset.once => l10n.automationsScheduleOnce,
   };
 }

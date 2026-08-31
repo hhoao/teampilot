@@ -11738,6 +11738,18 @@ abstract class AppLocalizations {
   /// **'Custom cron'**
   String get automationsScheduleCustom;
 
+  /// No description provided for @automationsScheduleOnce.
+  ///
+  /// In en, this message translates to:
+  /// **'Once'**
+  String get automationsScheduleOnce;
+
+  /// No description provided for @automationsScheduleSummaryOnce.
+  ///
+  /// In en, this message translates to:
+  /// **'Once at {time}'**
+  String automationsScheduleSummaryOnce(String time);
+
   /// No description provided for @automationsSchedule.
   ///
   /// In en, this message translates to:
