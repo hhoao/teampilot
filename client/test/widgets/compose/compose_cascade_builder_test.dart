@@ -148,7 +148,7 @@ void main() {
       );
     });
 
-    test('onModelsOpened receives cli, provider id and full config', () {
+    test('onModelsOpened fires from provider submenu onOpen', () {
       final config = provider('prov-1', name: 'Prov');
       Object? captured;
       final groups = [
@@ -180,13 +180,18 @@ void main() {
           captured = (cli, providerId, cfg);
         },
       );
-      // onOpen closures are attached to the spec; invoke via the submenu spec.
-      final modelSpec = specs.firstWhere((s) => s.isSubmenu).children!.first;
-      modelSpec.onOpen?.call();
+      // Refresh-on-open is wired to the provider submenu (model list), not
+      // the nested effort submenu under a model row.
+      final providerSpec = specs.firstWhere((s) => s.isSubmenu);
+      expect(providerSpec.label, 'Prov');
+      providerSpec.onOpen?.call();
       final tuple = captured! as (CliTool, String, AppProviderConfig);
       expect(tuple.$1, CliTool.claude);
       expect(tuple.$2, 'prov-1');
       expect(identical(tuple.$3, config), isTrue);
+
+      final modelSpec = providerSpec.children!.first;
+      expect(modelSpec.onOpen, isNull);
     });
 
     test('zero providers renders hint row and a single divider', () {

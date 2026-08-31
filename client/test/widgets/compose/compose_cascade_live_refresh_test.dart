@@ -29,7 +29,7 @@ import '../../support/post_frame_test_harness.dart';
 class _FakeRefreshableCapability implements RefreshableProviderModelCapability {
   final ChangeNotifier updates = ChangeNotifier();
 
-  var candidates = <String>['model-a'];
+  var candidates = <String>[];
   AppProviderConfig? lastProvider;
   String? lastProviderId;
   var refreshCalls = 0;
@@ -247,24 +247,23 @@ void main() {
     await tester.pump();
     await tester.pump();
 
-    // Open the auto chip menu → CLI group → provider → model submenu.
+    // Open the auto chip menu → CLI group → provider (model list) submenu.
     await tester.tap(find.text('Use preset'));
     await tester.pumpAndSettle();
     await tester.tap(find.text('claude'));
     await tester.pumpAndSettle();
-    await tester.tap(find.text('DeepSeek'));
-    await tester.pumpAndSettle();
-    expect(find.text('model-b'), findsNothing);
+    expect(capability.refreshCalls, 0);
+    expect(find.text('model-a'), findsNothing);
 
-    // Opening the model submenu triggers refresh-on-open with the provider.
-    await tester.tap(find.text('model-a'));
+    // Opening the provider submenu triggers refresh-on-open with the provider.
+    await tester.tap(find.text('DeepSeek'));
     await tester.pumpAndSettle();
 
     expect(capability.refreshCalls, 1);
     expect(capability.lastProviderId, 'deepseek-id');
     expect(capability.lastProvider?.id, 'deepseek-id');
 
-    // Refresh landed while the menu stayed open: new candidate visible.
+    // Refresh landed while the menu stayed open: new candidates visible.
     expect(find.text('model-a'), findsOneWidget);
     expect(find.text('model-b'), findsOneWidget);
   });

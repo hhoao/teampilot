@@ -234,7 +234,6 @@ List<TpActionMenuSpec> buildComposeModelCascadeMenuSpecs({
             TpActionMenuSpec.submenu(
               value: CascadeModelPick(cli: group.cli, providerId: p.id, modelId: model),
               label: model,
-              onOpen: () => onModelsOpened?.call(group.cli, p.id, p.config),
               children: [
                 TpActionMenuSpec.item(
                   value: CascadeModelPick(cli: group.cli, providerId: p.id,
@@ -268,6 +267,7 @@ List<TpActionMenuSpec> buildComposeModelCascadeMenuSpecs({
       value: p.id,
       label: p.name,
       searchable: true,
+      onOpen: () => onModelsOpened?.call(group.cli, p.id, p.config),
       children: providerChildren(group, p),
     );
   }
