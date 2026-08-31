@@ -209,7 +209,13 @@ class AiHistorySeat extends Cubit<AiHistoryState> {
       Map.unmodifiable(_subagentAttachments);
 
   /// Lazy-loads one subagent attachment and updates the seat cache + epoch.
-  Future<AiSubagentAttachment?> loadSubagentAttachment(String toolCallId) async {
+  ///
+  /// When [force] is true, bypasses the seat cache and re-resolves. A failed
+  /// or degraded side resolve keeps the previous materialized preview.
+  Future<AiSubagentAttachment?> loadSubagentAttachment(
+    String toolCallId, {
+    bool force = false,
+  }) async {
     final session = _lastSession;
     final memberId = _lastMemberId;
     final launchContext = _lastLaunchContext;
@@ -219,7 +225,7 @@ class AiHistorySeat extends Cubit<AiHistoryState> {
     final id = toolCallId.trim();
     if (id.isEmpty) return null;
     final cached = _subagentAttachments[id];
-    if (cached != null) return cached;
+    if (!force && cached != null) return cached;
 
     final attachment = await _loader.loadSubagentAttachmentForSeat(
       session: session,
@@ -230,7 +236,24 @@ class AiHistorySeat extends Cubit<AiHistoryState> {
       team: _lastTeam,
       workingDirectory: _lastWorkingDirectory,
     );
-    if (isClosed) return attachment;
+    if (isClosed) return attachment ?? cached;
+    final kept = _keepPriorSubagentAttachment(
+      cached: cached,
+      next: attachment,
+      force: force,
+    );
+    if (kept != null) {
+      await _loader.seedSubagentAttachmentForSeat(
+        session: session,
+        memberId: memberId,
+        launchContext: launchContext,
+        toolCallId: id,
+        attachment: kept,
+        team: _lastTeam,
+        workingDirectory: _lastWorkingDirectory,
+      );
+      return kept;
+    }
     if (attachment == null) return null;
 
     final next = Map<String, AiSubagentAttachment>.of(_subagentAttachments)
@@ -244,6 +267,22 @@ class AiHistorySeat extends Cubit<AiHistoryState> {
       );
     }
     return attachment;
+  }
+
+  /// On forced refresh, keep the last side-transcript preview when resolve
+  /// fails (null) or degrades to a tool-result stub.
+  static AiSubagentAttachment? _keepPriorSubagentAttachment({
+    required AiSubagentAttachment? cached,
+    required AiSubagentAttachment? next,
+    required bool force,
+  }) {
+    if (!force || cached == null) return null;
+    if (next == null) return cached;
+    if (cached.source == AiSubagentAttachmentSource.sideTranscript &&
+        next.source != AiSubagentAttachmentSource.sideTranscript) {
+      return cached;
+    }
+    return null;
   }
 
   /// Prefix of [_allMessages] published to the thread. Trailing assistants may
@@ -349,7 +388,16 @@ class AiHistorySeat extends Cubit<AiHistoryState> {
       _lastCli = result.cli;
       _pageCursor = result.cursor;
       _sourceHasOlder = result.hasOlder;
-      _setSubagentAttachments(result.subagentAttachments);
+      if (result.subagentAttachments.isNotEmpty) {
+        _setSubagentAttachments(result.subagentAttachments);
+      } else if (result.subagentSideIndexDirty &&
+          _subagentAttachments.isNotEmpty) {
+        await _refreshMaterializedSubagentAttachments();
+      } else if (!isRefresh) {
+        // Cold load already cleared seat attachments; apply the empty map.
+        _setSubagentAttachments(result.subagentAttachments);
+      }
+      // Refresh + empty + !dirty → preserve seat-owned lazy materializations.
       final merged = await _mergeWithMailbox(
         result.messages,
         session.sessionId,
@@ -479,20 +527,18 @@ class AiHistorySeat extends Cubit<AiHistoryState> {
       // isolate on each live refresh). After page-first hydrate, the cache may
       // still hand back the shorter recent page; treating that suffix as
       // unchanged keeps the longer full index for find / task-board consumers.
-      // The same instance test applies to the subagent attachment map; the
-      // loader may still re-inflate it from side transcripts while the CLI
-      // text is frozen (a running sub-agent appends its own transcript but the
-      // parent only moves when the tool result lands), so a content comparison
-      // covers that map too.
+      // Subagent attachments are lazy: an empty map means "no update" unless
+      // [AiHistoryLoadResult.subagentSideIndexDirty] asks for a refresh.
       final cliUnchanged =
           identical(messages, _cliMessages) || _isHydratedIndexSuffix(messages);
-      final attachmentsUnchanged = result.subagentAttachments.isNotEmpty
-          ? identical(result.subagentAttachments, _subagentAttachments) ||
+      final attachmentsUnchanged = result.subagentSideIndexDirty
+          ? false
+          : result.subagentAttachments.isEmpty ||
+                identical(result.subagentAttachments, _subagentAttachments) ||
                 _sameSubagentAttachments(
                   _subagentAttachments,
                   result.subagentAttachments,
-                )
-          : _subagentAttachments.isEmpty;
+                );
       if (cliUnchanged &&
           attachmentsUnchanged &&
           _mailboxUnchanged(mailboxRecords)) {
@@ -1063,7 +1109,9 @@ class AiHistorySeat extends Cubit<AiHistoryState> {
         next: full.messages,
       );
       _lastCli = full.cli;
-      _setSubagentAttachments(full.subagentAttachments);
+      if (full.subagentAttachments.isNotEmpty) {
+        _setSubagentAttachments(full.subagentAttachments);
+      }
       final merged = await _mergeWithMailbox(_cliMessages, sessionId, memberId);
       if (gen != _loadGeneration || isClosed) return;
       final previous = _allMessages;
@@ -1597,10 +1645,7 @@ class AiHistorySeat extends Cubit<AiHistoryState> {
   Future<void> _refreshMaterializedSubagentAttachments() async {
     final ids = List<String>.from(_subagentAttachments.keys);
     for (final id in ids) {
-      final next = Map<String, AiSubagentAttachment>.of(_subagentAttachments)
-        ..remove(id);
-      _subagentAttachments = next;
-      await loadSubagentAttachment(id);
+      await loadSubagentAttachment(id, force: true);
     }
   }
 

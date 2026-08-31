@@ -251,6 +251,33 @@ final class AiHistoryLoader {
       cli: seat.cli,
     );
   }
+
+  /// Puts [attachment] into the seat's lazy attachment cache (e.g. restore a
+  /// prior preview after a forced refresh degraded to a tool-result stub).
+  Future<void> seedSubagentAttachmentForSeat({
+    required AppSession session,
+    required String memberId,
+    required WorkspaceLaunchContext launchContext,
+    required String toolCallId,
+    required AiSubagentAttachment attachment,
+    TeamProfile? team,
+    String? workingDirectory,
+  }) async {
+    final seat = await _resolveSeat(
+      launchContext: launchContext,
+      memberId: memberId,
+      team: team,
+      workingDirectory: workingDirectory,
+    );
+    final cache = _attachments.putIfAbsent(
+      _cacheKey(session.sessionId, seat.effectiveMemberId),
+      () => {},
+    );
+    cache[toolCallId] = attachment;
+    if (attachment.workflow != null) {
+      SubagentAttachmentInflater.addWorkflowChildren(attachment, cache);
+    }
+  }
   final _hasOlder = <String, bool>{};
   final _cursors = <String, AiHistoryCursor?>{};
   final _complete = <String, bool>{};
@@ -623,22 +650,25 @@ final class AiHistoryLoader {
       _attachments[cacheKey]?.clear();
       _invalidateSubagentLoadsForSeat(cacheKey);
       _sideTokens[cacheKey] = sideToken;
+      // Keep the full-index entry on the live attachments map so later token
+      // hits observe lazy rematerializations instead of a baked-in empty map.
+      final liveAttachments = _attachments.putIfAbsent(cacheKey, () => {});
       if (full != null) {
-        final updated = AiHistoryLoadResult(
+        final indexed = AiHistoryLoadResult(
+          messages: cachedMessages,
+          cli: cli,
+          subagentAttachments: liveAttachments,
+          isComplete: true,
+        );
+        _fullIndexes[cacheKey] = indexed;
+        _fullIndexFutures[cacheKey] = Future.value(indexed);
+        return AiHistoryLoadResult(
           messages: cachedMessages,
           cli: cli,
           subagentAttachments: const {},
           isComplete: true,
           subagentSideIndexDirty: true,
         );
-        _fullIndexes[cacheKey] = AiHistoryLoadResult(
-          messages: cachedMessages,
-          cli: cli,
-          subagentAttachments: const {},
-          isComplete: true,
-        );
-        _fullIndexFutures[cacheKey] = Future.value(_fullIndexes[cacheKey]!);
-        return updated;
       }
       return _result(
         cacheKey: cacheKey,

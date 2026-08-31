@@ -61,6 +61,7 @@ class _MutableSideResolver implements SubagentSideResolver {
 
   final List<AiMessage> Function() messages;
   final String Function() token;
+  bool failResolve = false;
 
   @override
   Future<SubagentSideResolveResult?> resolve({
@@ -70,6 +71,7 @@ class _MutableSideResolver implements SubagentSideResolver {
     required String? rootTranscriptPath,
     DateTime? toolCallAt,
   }) async {
+    if (failResolve) return null;
     return SubagentSideResolveResult(
       messages: List.of(messages()),
       handle: const SubagentFileHandle('/side/agent-1.jsonl'),
@@ -88,6 +90,7 @@ void main() {
   late List<AiMessage> sideMessages;
   late String sideToken;
   late String cacheToken;
+  late _MutableSideResolver sideResolver;
   late AiHistoryLoader loader;
   late AiHistorySeat seat;
 
@@ -138,6 +141,10 @@ void main() {
     sideMessages = side(1);
     sideToken = 'fp-1';
     cacheToken = 'token-1';
+    sideResolver = _MutableSideResolver(
+      messages: () => sideMessages,
+      token: () => sideToken,
+    );
     final fs = LocalFilesystem();
     loader = AiHistoryLoader(
       contextBuilder: const SessionHistoryContextBuilder(),
@@ -153,10 +160,7 @@ void main() {
       registry: fakeAiHistoryRegistry(
         cli: CliTool.claude,
         adapter: _HolderAdapter(() => holderMessages),
-        subagentSideResolver: _MutableSideResolver(
-          messages: () => sideMessages,
-          token: () => sideToken,
-        ),
+        subagentSideResolver: sideResolver,
         subagentToolNames: const {'agent'},
       ),
       resolveCacheToken: (_) async => cacheToken,
@@ -202,4 +206,67 @@ void main() {
     await seat.softReload();
     expect(seat.state.subagentAttachmentEpoch, epochStable);
   });
+
+  test(
+    'load refresh after side dirty keeps materialized seat attachments',
+    () async {
+      await seat.load(
+        session: session(),
+        memberId: '',
+        launchContext: ctx(),
+      );
+      await seat.loadSubagentAttachment('toolu_agent');
+      expect(
+        seat.subagentAttachments['toolu_agent']!.messages,
+        hasLength(1),
+      );
+
+      sideMessages = side(2);
+      sideToken = 'fp-2';
+      await seat.softReload();
+      expect(
+        seat.subagentAttachments['toolu_agent']!.messages,
+        hasLength(2),
+      );
+
+      // Parent token still frozen. A subsequent seat.load refresh must not
+      // replace seat-owned lazy previews with the loader's empty map.
+      await seat.load(
+        session: session(),
+        memberId: '',
+        launchContext: ctx(),
+      );
+      expect(
+        seat.subagentAttachments['toolu_agent']!.messages,
+        hasLength(2),
+      );
+    },
+  );
+
+  test(
+    'failed side resolve during dirty softReload keeps prior preview',
+    () async {
+      await seat.load(
+        session: session(),
+        memberId: '',
+        launchContext: ctx(),
+      );
+      await seat.loadSubagentAttachment('toolu_agent');
+      final prior = seat.subagentAttachments['toolu_agent']!;
+      expect(prior.messages, hasLength(1));
+
+      sideToken = 'fp-2';
+      sideResolver.failResolve = true;
+      await seat.softReload();
+
+      expect(
+        seat.subagentAttachments['toolu_agent'],
+        same(prior),
+      );
+      expect(
+        seat.subagentAttachments['toolu_agent']!.messages,
+        hasLength(1),
+      );
+    },
+  );
 }
