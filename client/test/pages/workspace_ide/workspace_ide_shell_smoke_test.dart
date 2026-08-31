@@ -77,7 +77,9 @@ void main() {
   }
 
   testWidgets('three builders mount under the IDE shell', (tester) async {
-    await pumpShell(tester);
+    final layout = await pumpShell(tester);
+    await layout.setRightToolsVisible(true);
+    await pumpUntilIdle(tester);
     expect(find.text('left'), findsOneWidget);
     expect(find.byKey(centerKey), findsOneWidget);
     expect(find.byKey(rightKey), findsOneWidget);
@@ -87,6 +89,8 @@ void main() {
     tester,
   ) async {
     final layout = await pumpShell(tester);
+    await layout.setRightToolsVisible(true);
+    await pumpUntilIdle(tester);
 
     final centerBefore = tester.element(find.byKey(centerKey));
 
@@ -215,11 +219,12 @@ void main() {
     expect(expectedWidth, closeTo(450, 0.5));
     expect(expectedWidth, isNot(LayoutPreferences.defaultRightToolsWidth));
 
-    await pumpShell(
+    final layout = await pumpShell(
       tester,
       size: const Size(viewportWidth, 900),
       themeData: themeData,
     );
+    await layout.setRightToolsVisible(true);
     await pumpUntilIdle(tester);
 
     final drawerPanel = find.ancestor(
@@ -248,7 +253,7 @@ void main() {
     expect(find.text('left'), findsNothing);
     expect(layout.state.narrowLeftSuppressed, isTrue);
     expect(layout.state.preferences.rightToolsVisible, isTrue);
-    expect(rightBefore, isTrue);
+    expect(rightBefore, isFalse);
   });
 
   testWidgets('wide to narrow to wide with sidebarVisible docks left again', (

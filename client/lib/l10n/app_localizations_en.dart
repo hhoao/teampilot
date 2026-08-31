@@ -109,6 +109,10 @@ class AppLocalizationsEn extends AppLocalizations {
       'Show the team sessions list in the left sidebar.';
 
   @override
+  String get visibilityRightToolsHint =>
+      'Show the right tools panel when opening a session.';
+
+  @override
   String get visibilityMembersHint =>
       'Show the member list next to tools or terminals.';
 

@@ -290,6 +290,12 @@ abstract class AppLocalizations {
   /// **'Show the team sessions list in the left sidebar.'**
   String get visibilityTeamSessionsHint;
 
+  /// No description provided for @visibilityRightToolsHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Show the right tools panel when opening a session.'**
+  String get visibilityRightToolsHint;
+
   /// No description provided for @visibilityMembersHint.
   ///
   /// In en, this message translates to:

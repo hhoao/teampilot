@@ -51,7 +51,7 @@ class LayoutPreferences {
     this.gitVisible = true,
     this.searchVisible = true,
     this.boardVisible = true,
-    this.rightToolsVisible = true,
+    this.rightToolsVisible = false,
     this.sidebarVisible = true,
     this.rightToolsWidth = defaultRightToolsWidth,
     this.sidebarWidth = defaultSidebarWidth,
@@ -104,7 +104,7 @@ class LayoutPreferences {
       gitVisible: json['gitVisible'] as bool? ?? true,
       searchVisible: json['searchVisible'] as bool? ?? true,
       boardVisible: json['boardVisible'] as bool? ?? true,
-      rightToolsVisible: json['rightToolsVisible'] as bool? ?? true,
+      rightToolsVisible: json['rightToolsVisible'] as bool? ?? false,
       sidebarVisible: json['sidebarVisible'] as bool? ?? true,
       rightToolsWidth: _doubleValue(
         json['rightToolsWidth'],

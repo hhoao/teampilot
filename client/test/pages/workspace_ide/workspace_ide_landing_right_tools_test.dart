@@ -68,6 +68,7 @@ void main() {
   ) async {
     final layout = LayoutCubit();
     addTearDown(layout.close);
+    await layout.setRightToolsVisible(true);
     expect(layout.state.preferences.rightToolsVisible, isTrue);
 
     await pumpShell(tester, layout: layout, composeLanding: true);
@@ -82,6 +83,7 @@ void main() {
   ) async {
     final layout = LayoutCubit();
     addTearDown(layout.close);
+    expect(layout.state.preferences.rightToolsVisible, isFalse);
 
     await pumpShell(tester, layout: layout, composeLanding: true);
     expect(find.byKey(rightKey).hitTestable(), findsNothing);
@@ -90,7 +92,7 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.byKey(rightKey).hitTestable(), findsOneWidget);
-    expect(layout.state.preferences.rightToolsVisible, isTrue);
+    expect(layout.state.preferences.rightToolsVisible, isFalse);
     expect(layout.state.landingRightToolsOverride, isTrue);
   });
 
@@ -99,6 +101,7 @@ void main() {
   ) async {
     final layout = LayoutCubit();
     addTearDown(layout.close);
+    expect(layout.state.preferences.rightToolsVisible, isFalse);
 
     await pumpShell(tester, layout: layout, composeLanding: true);
     layout.setLandingRightToolsOverride(true);
@@ -108,8 +111,8 @@ void main() {
     await pumpShell(tester, layout: layout, composeLanding: false);
 
     expect(layout.state.landingRightToolsOverride, isNull);
-    expect(layout.state.preferences.rightToolsVisible, isTrue);
-    expect(find.byKey(rightKey).hitTestable(), findsOneWidget);
+    expect(layout.state.preferences.rightToolsVisible, isFalse);
+    expect(find.byKey(rightKey).hitTestable(), findsNothing);
   });
 
   testWidgets(

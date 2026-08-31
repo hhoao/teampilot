@@ -14,16 +14,26 @@ class LayoutRegionVisibilitySection extends StatelessWidget {
     final l10n = context.l10n;
     final controller = context.read<LayoutCubit>();
 
-    return BlocSelector<LayoutCubit, LayoutState, (bool, bool, bool, bool)>(
+    return BlocSelector<
+      LayoutCubit,
+      LayoutState,
+      (bool, bool, bool, bool, bool)
+    >(
       selector: (state) => (
+        state.preferences.rightToolsVisible,
         state.preferences.membersVisible,
         state.preferences.fileTreeVisible,
         state.preferences.gitVisible,
         state.preferences.boardVisible,
       ),
       builder: (context, visibility) {
-        final (membersVisible, fileTreeVisible, gitVisible, boardVisible) =
-            visibility;
+        final (
+          rightToolsVisible,
+          membersVisible,
+          fileTreeVisible,
+          gitVisible,
+          boardVisible,
+        ) = visibility;
 
         void setVisibility({
           bool? membersVisible,
@@ -33,10 +43,10 @@ class LayoutRegionVisibilitySection extends StatelessWidget {
         }) {
           controller.setRegionVisibility(
             appRailVisible: true,
-            membersVisible: membersVisible ?? visibility.$1,
-            fileTreeVisible: fileTreeVisible ?? visibility.$2,
-            gitVisible: gitVisible ?? visibility.$3,
-            boardVisible: boardVisible ?? visibility.$4,
+            membersVisible: membersVisible ?? visibility.$2,
+            fileTreeVisible: fileTreeVisible ?? visibility.$3,
+            gitVisible: gitVisible ?? visibility.$4,
+            boardVisible: boardVisible ?? visibility.$5,
           );
         }
 
@@ -44,6 +54,16 @@ class LayoutRegionVisibilitySection extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             TpSectionHeader(title: l10n.regionVisibility),
+            TpPreferenceRow(
+              title: l10n.rightTools,
+              subtitle: l10n.visibilityRightToolsHint,
+              trailing: Switch(
+                key: AppKeys.rightToolsVisibilitySwitch,
+                value: rightToolsVisible,
+                onChanged: controller.setRightToolsVisible,
+              ),
+              showDividerBelow: true,
+            ),
             TpPreferenceRow(
               title: l10n.members,
               subtitle: l10n.visibilityMembersHint,

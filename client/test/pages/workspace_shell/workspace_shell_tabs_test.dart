@@ -49,7 +49,7 @@ void main() {
       await tester.pump();
 
       expect(layout.state.landingRightToolsOverride, isTrue);
-      expect(layout.state.preferences.rightToolsVisible, isTrue);
+      expect(layout.state.preferences.rightToolsVisible, isFalse);
     },
   );
 }

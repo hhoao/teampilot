@@ -32,6 +32,7 @@
   "appRail": "App rail",
   "toolPlacementDescription": "Dock tool panels on the right or along the bottom edge.",
   "visibilityTeamSessionsHint": "Show the team sessions list in the left sidebar.",
+  "visibilityRightToolsHint": "Show the right tools panel when opening a session.",
   "visibilityMembersHint": "Show the member list next to tools or terminals.",
   "visibilityFileTreeHint": "Show the workspace file tree for quick navigation.",
   "visibilityGitHint": "Show the source control panel for the current repository.",

@@ -23,6 +23,20 @@ void main() {
     expect(parsed.toJson()['sidebarVisible'], isFalse);
   });
 
+  test('rightToolsVisible defaults false and round-trips', () {
+    expect(const LayoutPreferences().rightToolsVisible, isFalse);
+    expect(LayoutPreferences.fromJson(const {}).rightToolsVisible, isFalse);
+    final parsed = LayoutPreferences.fromJson(const {
+      'rightToolsVisible': true,
+    });
+    expect(parsed.rightToolsVisible, isTrue);
+    expect(parsed.toJson()['rightToolsVisible'], isTrue);
+    final restored = LayoutPreferences.fromJson(
+      const LayoutPreferences(rightToolsVisible: true).toJson(),
+    );
+    expect(restored.rightToolsVisible, isTrue);
+  });
+
   test('searchVisible defaults true and round-trips', () {
     expect(const LayoutPreferences().searchVisible, isTrue);
     expect(LayoutPreferences.fromJson(const {}).searchVisible, isTrue);

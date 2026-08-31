@@ -105,6 +105,9 @@ class AppLocalizationsZh extends AppLocalizations {
   String get visibilityTeamSessionsHint => '在左侧边栏显示团队会话列表。';
 
   @override
+  String get visibilityRightToolsHint => '打开会话时显示右侧工具栏。';
+
+  @override
   String get visibilityMembersHint => '在工具或终端旁显示成员列表。';
 
   @override

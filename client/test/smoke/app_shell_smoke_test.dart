@@ -96,8 +96,8 @@ void main() {
     final workbenchCtx = tester.element(find.byKey(AppKeys.chatWorkspace));
     final l10n = AppLocalizations.of(workbenchCtx);
     expect(find.text(l10n.workspaceChatLandingInputHint), findsOneWidget);
-    // Compose landing default-hides right tools (prefs stay visible).
-    expect(layoutCubit.state.preferences.rightToolsVisible, isTrue);
+    // Compose landing default-hides right tools (prefs default hidden).
+    expect(layoutCubit.state.preferences.rightToolsVisible, isFalse);
     expect(
       WorkspacePanePolicy.effective(
         preferences: layoutCubit.state.preferences,
@@ -135,8 +135,7 @@ void main() {
       isTrue,
     );
     await pumpPhaseTransitions(tester);
-    // Session exits compose: prefs dock restored. Prefer key mount over
-    // hitTestable — pane size sync can lag TpDeferredMountShell in smoke.
+    // Session exits compose: prefs dock restored (default: right tools hidden).
     final workbenchCubit = tester
         .element(find.byKey(AppKeys.chatWorkspace))
         .read<WorkbenchCubit>();
@@ -151,9 +150,9 @@ void main() {
         composeLanding: false,
         landingRightToolsOverride: layoutCubit.state.landingRightToolsOverride,
       ).dockRight,
-      isTrue,
+      isFalse,
     );
-    expect(find.byKey(AppKeys.rightToolsPanel), findsOneWidget);
+    expect(find.byKey(AppKeys.rightToolsPanel).hitTestable(), findsNothing);
   });
 
   testWidgets('renders settings shell with title bar and icon navigation', (
