@@ -11,7 +11,9 @@ void ensureAutomationTimezoneInitialized() {
   _timezoneInitialized = true;
 }
 
-tz.Location _resolveLocation(String timezone) {
+/// Resolves [timezone] to a `tz.Location`, falling back to UTC for unknown
+/// names. Initializes the timezone database on first use.
+tz.Location resolveAutomationLocation(String timezone) {
   ensureAutomationTimezoneInitialized();
   try {
     return tz.getLocation(timezone);
@@ -98,7 +100,7 @@ class AutomationScheduleCalculator {
       return runAt != null && runAt > afterMs ? runAt : null;
     }
 
-    final location = _resolveLocation(automation.timezone);
+    final location = resolveAutomationLocation(automation.timezone);
     final after = tz.TZDateTime.fromMillisecondsSinceEpoch(location, afterMs);
     final dtstart = tz.TZDateTime.fromMillisecondsSinceEpoch(
       location,
