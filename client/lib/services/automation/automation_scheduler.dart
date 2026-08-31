@@ -115,6 +115,9 @@ class AutomationScheduler {
       );
       final advanced = automation.copyWith(
         lastRunAtMs: now,
+        // Expired once schedules have no next occurrence — disable the
+        // automation instead of leaving it enabled with no next run.
+        enabled: next != null,
         nextRunAtMs: next,
         clearNextRunAtMs: next == null,
         updatedAtMs: now,

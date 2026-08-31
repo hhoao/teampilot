@@ -60,6 +60,28 @@ Automation _sampleAutomation({
   );
 }
 
+Automation _onceAutomation({
+  required String id,
+  required int runAtMs,
+  bool enabled = true,
+}) {
+  return Automation(
+    id: id,
+    name: 'Test $id',
+    action: AutomationAction.scheduledMessage,
+    workspaceId: 'ws1',
+    sessionId: 'sess-1',
+    message: 'ping',
+    preset: AutomationSchedulePreset.once,
+    timezone: 'UTC',
+    dtstartMs: runAtMs,
+    runAtMs: runAtMs,
+    enabled: enabled,
+    createdAtMs: 1,
+    updatedAtMs: 1,
+  );
+}
+
 void main() {
   setUp(setUpTestAppStorage);
   tearDown(tearDownTestAppStorage);
@@ -192,5 +214,91 @@ void main() {
       'personal',
       'team',
     ]));
+  });
+
+  test('save disables enabled once automation with past runAtMs', () async {
+    final layout = WorkspaceLayout(teampilotRoot: AppStorage.paths.basePath);
+    final repo = AutomationRepository(fs: AppStorage.fs, layout: layout);
+    final calculator = AutomationScheduleCalculator();
+    final dispatcher = AutomationDispatcher(
+      repository: repo,
+      scheduleCalculator: calculator,
+      sessionRepository: _FakeSessionRepository(),
+      busGateway: _NoopBusGateway(),
+      requestOpenSession: (_) async => SessionOpenStatus.opened,
+      requestCreateAndOpenSession: (_) async => SessionOpenStatus.opened,
+      workspaceById: (_) => Workspace(workspaceId: 'ws1', createdAt: 1),
+      teamById: (_) => null,
+      nowMs: () => 1_700_000_000_000,
+    );
+    final scheduler = AutomationScheduler(
+      repository: repo,
+      dispatcher: dispatcher,
+      scheduleCalculator: calculator,
+      nowMs: () => 1_700_000_000_000,
+    );
+    final cubit = AutomationCubit(
+      repository: repo,
+      scheduler: scheduler,
+      scheduleCalculator: calculator,
+      nowMs: () => 1_700_000_000_000,
+    );
+    addTearDown(cubit.close);
+
+    await cubit.load();
+    await cubit.save(
+      _onceAutomation(
+        id: 'a1',
+        runAtMs: 1_700_000_000_000 - 60_000,
+      ),
+    );
+
+    final saved = (await repo.listForWorkspace('ws1')).single;
+    expect(saved.enabled, isFalse);
+    expect(saved.nextRunAtMs, isNull);
+  });
+
+  test('toggleEnabled keeps expired once automation disabled', () async {
+    final layout = WorkspaceLayout(teampilotRoot: AppStorage.paths.basePath);
+    final repo = AutomationRepository(fs: AppStorage.fs, layout: layout);
+    final calculator = AutomationScheduleCalculator();
+    final dispatcher = AutomationDispatcher(
+      repository: repo,
+      scheduleCalculator: calculator,
+      sessionRepository: _FakeSessionRepository(),
+      busGateway: _NoopBusGateway(),
+      requestOpenSession: (_) async => SessionOpenStatus.opened,
+      requestCreateAndOpenSession: (_) async => SessionOpenStatus.opened,
+      workspaceById: (_) => Workspace(workspaceId: 'ws1', createdAt: 1),
+      teamById: (_) => null,
+      nowMs: () => 1_700_000_000_000,
+    );
+    final scheduler = AutomationScheduler(
+      repository: repo,
+      dispatcher: dispatcher,
+      scheduleCalculator: calculator,
+      nowMs: () => 1_700_000_000_000,
+    );
+    final cubit = AutomationCubit(
+      repository: repo,
+      scheduler: scheduler,
+      scheduleCalculator: calculator,
+      nowMs: () => 1_700_000_000_000,
+    );
+    addTearDown(cubit.close);
+
+    await repo.upsert(
+      _onceAutomation(
+        id: 'a1',
+        runAtMs: 1_700_000_000_000 - 60_000,
+        enabled: false,
+      ),
+    );
+    await cubit.loadForWorkspace('ws1');
+    await cubit.toggleEnabled('ws1', 'a1');
+
+    final item = cubit.state.automations.single;
+    expect(item.enabled, isFalse);
+    expect(item.nextRunAtMs, isNull);
   });
 }

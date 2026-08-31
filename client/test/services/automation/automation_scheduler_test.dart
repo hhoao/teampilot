@@ -174,4 +174,73 @@ void main() {
     expect(updated.nextRunAtMs! > 1_000, isTrue);
     expect(bus.deliverCount, 0);
   });
+
+  test('disables expired once automation missed beyond grace', () async {
+    final layout = WorkspaceLayout(teampilotRoot: AppStorage.paths.basePath);
+    final repo = AutomationRepository(fs: AppStorage.fs, layout: layout);
+    final bus = _RecordingBusGateway();
+    await repo.upsert(
+      _dueAutomation(nextRunAtMs: 1_000).copyWith(
+        preset: AutomationSchedulePreset.once,
+        runAtMs: 1_000,
+        missedRunGraceMinutes: 15,
+      ),
+    );
+
+    final scheduler = AutomationScheduler(
+      repository: repo,
+      dispatcher: _buildDispatcher(repo: repo, bus: bus, sessions: const []),
+      scheduleCalculator: AutomationScheduleCalculator(),
+      nowMs: () => 1_000 + (16 * 60 * 1000),
+    );
+
+    scheduler.start();
+    await scheduler.waitForIdle();
+    scheduler.stop();
+
+    final runs = await repo.runsFor('ws1', automationId: 'due-1');
+    expect(
+      runs.any((r) => r.status == AutomationRunStatus.skippedMissed),
+      isTrue,
+    );
+    final updated = (await repo.listForWorkspace('ws1')).single;
+    expect(updated.enabled, isFalse);
+    expect(updated.nextRunAtMs, isNull);
+    expect(bus.deliverCount, 0);
+  });
+
+  test('dispatches once automation missed within grace', () async {
+    final layout = WorkspaceLayout(teampilotRoot: AppStorage.paths.basePath);
+    final repo = AutomationRepository(fs: AppStorage.fs, layout: layout);
+    final bus = _RecordingBusGateway();
+    final session = AppSession(
+      sessionId: 'sess-1',
+      workspaceId: 'ws1',
+      sessionTeam: 'team-1',
+      createdAt: 1,
+    );
+    await repo.upsert(
+      _dueAutomation(nextRunAtMs: 1_000).copyWith(
+        preset: AutomationSchedulePreset.once,
+        runAtMs: 1_000,
+        missedRunGraceMinutes: 15,
+      ),
+    );
+
+    final scheduler = AutomationScheduler(
+      repository: repo,
+      dispatcher: _buildDispatcher(repo: repo, bus: bus, sessions: [session]),
+      scheduleCalculator: AutomationScheduleCalculator(),
+      nowMs: () => 1_000 + (5 * 60 * 1000),
+    );
+
+    scheduler.start();
+    await scheduler.waitForIdle();
+    scheduler.stop();
+
+    expect(bus.deliverCount, 1);
+    final updated = (await repo.listForWorkspace('ws1')).single;
+    expect(updated.enabled, isFalse);
+    expect(updated.nextRunAtMs, isNull);
+  });
 }

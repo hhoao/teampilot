@@ -140,6 +140,9 @@ class AutomationCubit extends Cubit<AutomationState> {
           afterMs: now,
         );
         next = next.copyWith(
+          // Expired once schedules have no next occurrence — disable instead
+          // of leaving the automation enabled with no next run.
+          enabled: nextMs != null,
           nextRunAtMs: nextMs,
           clearNextRunAtMs: nextMs == null,
         );
@@ -169,6 +172,9 @@ class AutomationCubit extends Cubit<AutomationState> {
     if (enabled) {
       final nextMs = _scheduleCalculator.computeNextRunAtMs(next, afterMs: now);
       next = next.copyWith(
+        // Expired once schedules have no next occurrence — stay disabled
+        // instead of enabling an automation that can never fire.
+        enabled: nextMs != null,
         nextRunAtMs: nextMs,
         clearNextRunAtMs: nextMs == null,
       );
