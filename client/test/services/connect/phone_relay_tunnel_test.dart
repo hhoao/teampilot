@@ -97,7 +97,10 @@ void main() {
     final socket = await Socket.connect('127.0.0.1', tunnel.port);
     await pumpUntil(() => relay.dialSides.isNotEmpty);
 
-    final tornDown = expectLater(socket.first, throwsA(anything));
+    final tornDown = expectLater(
+      socket.first.timeout(const Duration(seconds: 5)),
+      throwsA(anything),
+    );
     await tunnel.close();
     await tornDown;
 

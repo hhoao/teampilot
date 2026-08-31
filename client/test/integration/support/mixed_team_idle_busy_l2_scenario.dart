@@ -7,6 +7,7 @@ import 'bus_roster_assertions.dart';
 import 'mixed_team_idle_busy_assertions.dart';
 import 'mixed_team_integration_harness.dart';
 import 'mixed_team_task_scenario.dart';
+import 'session_idle_busy_harness.dart';
 
 /// L2 idle/busy: real Claude PTY + ChatCubit.busySessionIds + MemberPresence.
 abstract final class MixedTeamIdleBusyL2Scenario {
@@ -106,27 +107,20 @@ abstract final class MixedTeamIdleBusyL2Scenario {
       );
       final bus = ctx.harness.tabBus(ctx.session.sessionId)!;
       final gateway = ctx.harness.tabGateway(ctx.cubit);
-      // Worker idle-notify may doorbell leader; drain unread before parking.
+      // Worker idle-notify may doorbell leader; drain unread before settling.
       await bus.readMessages('team-lead', markRead: true, unreadOnly: true);
-      await waitUntilWorkerParked(
-        bus: bus,
-        gateway: gateway,
-        sessionId: ctx.session.sessionId,
-        memberId: kLeadMember.id,
-        allowSessionWaitStreams: false,
-        timeout: const Duration(seconds: 180),
-      );
-      await ctx.harness.waitForMemberShellQuiet(
-        ctx.cubit,
-        memberId: kLeadMember.id,
-        timeout: const Duration(seconds: 60),
-      );
-      await waitUntilBusCalmAndSessionIdle(
-        bus: bus,
+      final tab = ctx.cubit.tabStore.openTabBySessionId(ctx.session.sessionId);
+      if (tab != null) {
+        for (final shell in tab.memberShells.values) {
+          simulateFingerprintQuietGap(shell);
+        }
+      }
+      await waitUntilSessionIdle(
         cubit: ctx.cubit,
         sessionId: ctx.session.sessionId,
-        gateway: gateway,
+        timeout: const Duration(seconds: 180),
       );
+      expectSessionIdle(ctx.cubit, ctx.session.sessionId);
       await waitUntilMemberAvailability(
         presenceCubit: ctx.presenceCubit!,
         cubit: ctx.cubit,
