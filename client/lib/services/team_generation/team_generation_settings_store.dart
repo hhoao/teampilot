@@ -20,13 +20,13 @@ final class TeamGenerationSettingsStore {
     try {
       final raw = await _fs.readString(_path);
       if (raw == null || raw.trim().isEmpty) {
-        return const TeamGenerationSettings();
+        return TeamGenerationSettings();
       }
       return TeamGenerationSettings.fromJson(
         (jsonDecode(raw) as Map).cast<String, Object?>(),
       );
     } on Object {
-      return const TeamGenerationSettings();
+      return TeamGenerationSettings();
     }
   }
 

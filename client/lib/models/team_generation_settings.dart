@@ -3,13 +3,26 @@ import 'dart:convert';
 import 'package:crypto/crypto.dart';
 import 'package:flutter/foundation.dart';
 
+import '../services/cli/registry/capabilities/team_behavior_capability.dart';
 import '../services/cli/registry/cli_tool_registry.dart';
 import 'cli_preset.dart';
 import 'team_config.dart';
 
 @immutable
 final class GenerateModelPoolEntry {
-  const GenerateModelPoolEntry({
+  factory GenerateModelPoolEntry({
+    required String presetId,
+    String description = '',
+    List<String> tags = const [],
+  }) {
+    return GenerateModelPoolEntry._internal(
+      presetId: presetId,
+      description: description,
+      tags: _freezeTags(tags),
+    );
+  }
+
+  const GenerateModelPoolEntry._internal({
     required this.presetId,
     this.description = '',
     this.tags = const [],
@@ -19,10 +32,10 @@ final class GenerateModelPoolEntry {
     return GenerateModelPoolEntry(
       presetId: (json['presetId'] as String? ?? '').trim(),
       description: (json['description'] as String? ?? '').trim(),
-      tags: List.unmodifiable({
+      tags: [
         for (final value in (json['tags'] as List? ?? const []))
           if (value is String && value.trim().isNotEmpty) value.trim(),
-      }),
+      ],
     );
   }
 
@@ -64,7 +77,19 @@ final class GenerateModelPoolEntry {
 
 @immutable
 final class EffectiveGenerateModelPoolEntry {
-  const EffectiveGenerateModelPoolEntry({
+  factory EffectiveGenerateModelPoolEntry({
+    required int rank,
+    required GenerateModelPoolEntry source,
+    required CliPreset preset,
+  }) {
+    return EffectiveGenerateModelPoolEntry._internal(
+      rank: rank,
+      source: source,
+      preset: preset,
+    );
+  }
+
+  const EffectiveGenerateModelPoolEntry._internal({
     required this.rank,
     required this.source,
     required this.preset,
@@ -89,7 +114,21 @@ final class EffectiveGenerateModelPoolEntry {
 
 @immutable
 final class TeamGenerationSettings {
-  const TeamGenerationSettings({
+  factory TeamGenerationSettings({
+    int schemaVersion = 1,
+    TeamMode teamMode = TeamMode.mixed,
+    CliTool nativeCli = CliTool.claude,
+    List<GenerateModelPoolEntry> modelPool = const [],
+  }) {
+    return TeamGenerationSettings._internal(
+      schemaVersion: schemaVersion,
+      teamMode: teamMode,
+      nativeCli: nativeCli,
+      modelPool: _freezeModelPool(modelPool),
+    );
+  }
+
+  const TeamGenerationSettings._internal({
     this.schemaVersion = 1,
     this.teamMode = TeamMode.mixed,
     this.nativeCli = CliTool.claude,
@@ -184,7 +223,23 @@ final class TeamGenerationSettings {
 
 @immutable
 final class TeamGenerationSettingsSnapshot {
-  const TeamGenerationSettingsSnapshot({
+  factory TeamGenerationSettingsSnapshot({
+    required String revision,
+    required int capturedAt,
+    required TeamMode teamMode,
+    required CliTool nativeCli,
+    required List<EffectiveGenerateModelPoolEntry> modelPool,
+  }) {
+    return TeamGenerationSettingsSnapshot._internal(
+      revision: revision,
+      capturedAt: capturedAt,
+      teamMode: teamMode,
+      nativeCli: nativeCli,
+      modelPool: _freezeEffectiveModelPool(modelPool),
+    );
+  }
+
+  const TeamGenerationSettingsSnapshot._internal({
     required this.revision,
     required this.capturedAt,
     required this.teamMode,
@@ -221,7 +276,23 @@ final class TeamGenerationSettingsSnapshot {
 
 @immutable
 final class TeamGenerationGeneratorSnapshot {
-  const TeamGenerationGeneratorSnapshot({
+  factory TeamGenerationGeneratorSnapshot({
+    required String revision,
+    required int capturedAt,
+    required TeamMode teamMode,
+    required CliTool nativeCli,
+    required List<EffectiveGenerateModelPoolEntry> modelPool,
+  }) {
+    return TeamGenerationGeneratorSnapshot._internal(
+      revision: revision,
+      capturedAt: capturedAt,
+      teamMode: teamMode,
+      nativeCli: nativeCli,
+      modelPool: _freezeEffectiveModelPool(modelPool),
+    );
+  }
+
+  const TeamGenerationGeneratorSnapshot._internal({
     required this.revision,
     required this.capturedAt,
     required this.teamMode,
@@ -237,9 +308,7 @@ final class TeamGenerationGeneratorSnapshot {
       capturedAt: snapshot.capturedAt,
       teamMode: snapshot.teamMode,
       nativeCli: snapshot.nativeCli,
-      modelPool: List<EffectiveGenerateModelPoolEntry>.unmodifiable(
-        snapshot.modelPool,
-      ),
+      modelPool: snapshot.modelPool,
     );
   }
 
@@ -265,9 +334,12 @@ TeamGenerationSettingsSnapshot resolveTeamGenerationSettingsSnapshot({
         registry.tryGet(preset.cli)?.isLaunchSupported != true) {
       continue;
     }
-    if (normalizedSettings.teamMode == TeamMode.native &&
-        preset.cli != normalizedSettings.nativeCli) {
-      continue;
+    if (normalizedSettings.teamMode == TeamMode.native) {
+      final behavior = registry.capability<TeamBehaviorCapability>(preset.cli);
+      if (preset.cli != normalizedSettings.nativeCli ||
+          behavior?.supportsNativeTeam != true) {
+        continue;
+      }
     }
     effective.add(
       EffectiveGenerateModelPoolEntry(
@@ -306,10 +378,26 @@ TeamGenerationSettingsSnapshot resolveTeamGenerationSettingsSnapshot({
 }
 
 List<String> _normalizeTags(List<String> tags) {
+  return _freezeTags(tags);
+}
+
+List<String> _freezeTags(List<String> tags) {
   return List<String>.unmodifiable({
     for (final value in tags)
       if (value.trim().isNotEmpty) value.trim(),
   });
+}
+
+List<GenerateModelPoolEntry> _freezeModelPool(
+  List<GenerateModelPoolEntry> pool,
+) {
+  return List<GenerateModelPoolEntry>.unmodifiable(pool);
+}
+
+List<EffectiveGenerateModelPoolEntry> _freezeEffectiveModelPool(
+  List<EffectiveGenerateModelPoolEntry> pool,
+) {
+  return List<EffectiveGenerateModelPoolEntry>.unmodifiable(pool);
 }
 
 bool _sameList<T>(List<T> a, List<T> b) {
