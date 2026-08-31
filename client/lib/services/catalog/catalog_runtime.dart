@@ -140,6 +140,8 @@ class CatalogRuntime {
         for (final path in session.folderPaths)
           if (path.isNotEmpty) path,
       ],
+      purpose: session.purpose,
+      workflowId: session.workflowId,
     );
   }
 

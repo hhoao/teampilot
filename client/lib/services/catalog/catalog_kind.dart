@@ -12,7 +12,7 @@ enum CatalogOp {
   delete,
 }
 
-enum CatalogBindTo { workspace, team, expert }
+enum CatalogBindTo { workspace, team, expert, generation }
 
 class CatalogException implements Exception {
   CatalogException(this.code, this.message, {this.details});
@@ -47,12 +47,18 @@ class CatalogRequest {
     required this.arguments,
     required this.workFs,
     required this.allowedRoots,
+    this.workflowId = '',
   });
 
   final String sessionId;
   final String workspaceId;
   final String? memberId;
   final CatalogBindTo bindTo;
+
+  /// Team-generation workflow id; non-empty only for builder sessions that
+  /// pass `bind_to: generation`. Never model-supplied — resolved from the
+  /// persisted session by [CatalogRuntime.resolveCatalogSession].
+  final String workflowId;
   final bool overwrite;
   final Map<String, Object?> arguments;
   final Filesystem workFs;

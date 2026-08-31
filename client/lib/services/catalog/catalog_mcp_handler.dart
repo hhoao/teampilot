@@ -1,6 +1,7 @@
 import 'dart:convert';
 
 import '../io/filesystem.dart';
+import '../../models/app_session.dart';
 import '../team_bus/mcp/jsonrpc.dart';
 import '../team_bus/mcp/mcp_method.dart';
 import '../team_bus/mcp/toolkit/mcp_tool_response.dart';
@@ -17,6 +18,8 @@ class CatalogMcpSession {
     this.memberId,
     required this.workFs,
     required this.allowedRoots,
+    this.purpose = SessionPurpose.normal,
+    this.workflowId = '',
   });
 
   final String sessionId;
@@ -24,6 +27,12 @@ class CatalogMcpSession {
   final String? memberId;
   final Filesystem workFs;
   final List<String> allowedRoots;
+
+  /// Persisted session role; builders may stage into generation scope only.
+  final SessionPurpose purpose;
+
+  /// Builder workflow id (empty for normal sessions).
+  final String workflowId;
 }
 
 /// JSON-RPC handler for the teampilot catalog MCP server. Pure logic; no HTTP.
