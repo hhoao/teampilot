@@ -8,6 +8,7 @@ void main() {
       keys,
       {
         kBuiltinDefaultExpertKey,
+        kBuiltinTeamBuilderExpertKey,
         'teampilot/builtin/team-lead',
         'teampilot/builtin/developer',
         'teampilot/builtin/reviewer',

@@ -33,7 +33,7 @@ void main() {
     );
     expect(
       members.where((m) => m.source == ExpertMemberSource.builtin).length,
-      8,
+      9,
     );
   });
 

@@ -154,6 +154,17 @@ class LocalExpertStore {
     _knownKeys.remove(key);
   }
 
+  /// True when an on-disk record exists under [key] (index-aware fast path).
+  Future<bool> containsKey(String key) async {
+    if (!_knownKeys.contains(key)) return false;
+    try {
+      final text = await _fs.readString(_pathForKey(key));
+      return text != null && text.isNotEmpty;
+    } catch (_) {
+      return false;
+    }
+  }
+
   /// Shadow lookup: returns the local record for [key] if a clone or
   /// user-created expert exists. No disk I/O for keys absent from the index.
   Future<DiscoverableMember?> getByKey(String key) async {
