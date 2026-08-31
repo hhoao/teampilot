@@ -722,6 +722,10 @@ class ChatCubit extends Cubit<ChatState>
   TeammateBusMcpGateway get teammateBusMcpGateway => _teammateBusMcpGateway;
 
   @override
+  String? Function(AppSession session)? get teamGenerationTokenIssuer =>
+      null;
+
+  @override
   AgentStatusSeatLookup? get agentStatusSeatLookup => _agentStatusSeatLookup;
 
   @override

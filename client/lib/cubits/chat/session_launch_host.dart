@@ -127,6 +127,10 @@ abstract interface class SessionLaunchHost
 
   TeammateBusMcpGateway get teammateBusMcpGateway;
 
+  /// Issues/rotates the team-generation workflow token for a builder session
+  /// (null in tests / when generation is not wired).
+  String? Function(AppSession session)? get teamGenerationTokenIssuer => null;
+
   /// Seat CLI + skip-permissions map for `/agent-status` (null in tests).
   AgentStatusSeatLookup? get agentStatusSeatLookup;
 

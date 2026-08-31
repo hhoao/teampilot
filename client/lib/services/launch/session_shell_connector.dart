@@ -16,6 +16,7 @@ import '../../models/workspace.dart';
 import '../../models/workspace_launch_context.dart';
 import '../../repositories/session_repository.dart';
 import '../../services/catalog/catalog_mcp_transport.dart';
+import '../../services/team_generation/mcp/team_composer_mcp_transport.dart';
 import '../../models/install_job/install_cancel_policy.dart';
 import '../../models/install_job/install_job_key.dart';
 import '../../models/install_job/install_job_scope.dart';
@@ -284,7 +285,7 @@ class SessionShellConnector {
             launchTarget: launchTarget,
             extraMcpServers: _extraMcpServersWithCatalog(
               extra: const {},
-              sessionId: activeSession.sessionId,
+              session: activeSession,
               memberId: activeSession.sessionId,
               cli: launchCli,
               launchKind: launchTarget.kind,
@@ -371,7 +372,7 @@ class SessionShellConnector {
                           ),
                     }
                   : const {},
-              sessionId: activeSession.sessionId,
+              session: activeSession,
               memberId: launchMember.id,
               cli: launchCli,
               launchKind: launchTarget.kind,
@@ -1000,7 +1001,7 @@ class SessionShellConnector {
 
   Map<String, Map<String, Object?>> _extraMcpServersWithCatalog({
     required Map<String, Map<String, Object?>> extra,
-    required String sessionId,
+    required AppSession session,
     required String memberId,
     required CliTool cli,
     required RuntimeKind launchKind,
@@ -1011,18 +1012,62 @@ class SessionShellConnector {
       mixedRemoteBinding: mixedRemoteBinding,
       agentStatus: agentStatus,
     );
-    return extraMcpServersWithCatalog(
+    final servers = extraMcpServersWithCatalog(
       extra: extra,
       isRemoteSeat: usesSshTransport(launchKind),
       remoteBinding: remoteBinding,
       catalogConfig: () => resolveCatalogMcpTransportConfig(
         cliRegistry: _host.cliRegistry,
         catalogEndpoint: _host.teammateBusMcpGateway.catalogMcpEndpoint,
-        sessionId: sessionId,
+        sessionId: session.sessionId,
         memberId: memberId,
         cli: cli,
         remoteBinding: remoteBinding,
+        teamGenerationToken: _generationTokenFor(session),
       ),
+    );
+    // Purpose-aware composer injection: only builder sessions receive the
+    // Team Composer server. Token issuance failure aborts the connect (typed
+    // launch error) rather than launching an unauthorized builder.
+    final composer = _composerConfigFor(
+      session: session,
+      memberId: memberId,
+      cli: cli,
+      remoteBinding: remoteBinding,
+    );
+    if (composer != null) {
+      servers['team-composer'] = composer;
+    }
+    return servers;
+  }
+
+  /// Issues/rotates the workflow token for a builder session via the
+  /// authorizer injected at composition; null for normal sessions.
+  String? _generationTokenFor(AppSession session) {
+    if (session.purpose != SessionPurpose.teamGeneration) return null;
+    final issuer = _host.teamGenerationTokenIssuer;
+    return issuer?.call(session);
+  }
+
+  Map<String, Object?>? _composerConfigFor({
+    required AppSession session,
+    required String memberId,
+    required CliTool cli,
+    required RemoteBusBinding? remoteBinding,
+  }) {
+    if (session.purpose != SessionPurpose.teamGeneration) return null;
+    final token = _generationTokenFor(session);
+    if (token == null || token.isEmpty) {
+      throw StateError('team_generation_token_issue_failed');
+    }
+    return resolveTeamComposerMcpTransportConfig(
+      cliRegistry: _host.cliRegistry,
+      composerEndpoint: _host.teammateBusMcpGateway.teamComposerMcpEndpoint,
+      sessionId: session.sessionId,
+      memberId: memberId,
+      cli: cli,
+      workflowToken: token,
+      remoteBinding: remoteBinding,
     );
   }
 
