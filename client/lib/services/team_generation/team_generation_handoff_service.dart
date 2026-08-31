@@ -1,0 +1,227 @@
+import '../../models/team_config.dart';
+import '../../models/workspace.dart';
+import '../../services/agent_runtime/runtime_event.dart';
+import '../../utils/team/team_member_naming.dart';
+import '../prompt_delivery/prompt_delivery.dart';
+import '../prompt_delivery/prompt_delivery_coordinator.dart';
+import '../prompt_delivery/prompt_delivery_store.dart';
+import 'models/team_generation_job.dart';
+import 'team_generation_job_store.dart';
+import 'team_generation_session_port.dart';
+
+/// Raised when a tracked delivery is in an ambiguous state (submitIssued /
+/// submittedUnknown) without a succeeded workflow receipt. Recovery keeps
+/// both sessions and surfaces explicit user resolution — never auto-replay.
+final class PromptDeliveryUnknownException implements Exception {
+  PromptDeliveryUnknownException(this.deliveryId, this.message);
+
+  final String deliveryId;
+  final String message;
+
+  @override
+  String toString() => 'PromptDeliveryUnknownException($deliveryId): $message';
+}
+
+/// Outcome of one handoff run.
+final class TeamGenerationHandoffResult {
+  const TeamGenerationHandoffResult({
+    required this.destinationSessionId,
+    required this.deliveryId,
+  });
+
+  final String destinationSessionId;
+  final String deliveryId;
+}
+
+/// Idempotent destination session selection/open and exact prompt delivery.
+///
+/// Destination id and delivery ids are reserved from the job before any
+/// effect; crashes between receipts recover forward without duplicating
+/// sessions or replaying an ambiguous PTY write.
+final class TeamGenerationHandoffService {
+  TeamGenerationHandoffService({
+    required TeamGenerationJobStore jobStore,
+    required TeamGenerationSessionPort sessionPort,
+    required PromptDeliveryCoordinator promptCoordinator,
+    required PromptDeliveryStore promptStore,
+  }) : _jobStore = jobStore,
+       _sessionPort = sessionPort,
+       _promptCoordinator = promptCoordinator,
+       _promptStore = promptStore;
+
+  final TeamGenerationJobStore _jobStore;
+  final TeamGenerationSessionPort _sessionPort;
+  final PromptDeliveryCoordinator _promptCoordinator;
+  final PromptDeliveryStore _promptStore;
+
+  Future<TeamGenerationHandoffResult> handoff({
+    required Workspace workspace,
+    required TeamProfile team,
+    required String workflowId,
+  }) async {
+    final job = await _jobStore.read(workspace.workspaceId, workflowId);
+    if (job == null) {
+      throw StateError('missing workflow: $workflowId');
+    }
+    final destination = job.validatedDestination;
+    if (destination == null) {
+      throw StateError('workflow has no validated destination');
+    }
+
+    // Reserve/reuse the deterministic destination id (never regress phase).
+    final destinationSessionId = job.destinationSessionId.isNotEmpty
+        ? job.destinationSessionId
+        : teamGenerationStableId('teamgen-', workflowId);
+    final reservedJob = await _jobStore.mutate(
+      workspace.workspaceId,
+      workflowId,
+      (current) => current.copyWith(
+        destinationSessionId: destinationSessionId,
+        phase: _atLeast(current.phase, TeamGenerationPhase.launching),
+      ),
+    );
+
+    final existing = await _sessionPort.sessionById(destinationSessionId);
+    final openResult = existing == null
+        ? await _sessionPort.createDestination(
+            workspace: workspace,
+            team: team,
+            projectFolderPath: destination.projectFolderPath,
+            workingDirectoryPath: destination.workingDirectoryPath,
+            fixedSessionId: destinationSessionId,
+          )
+        : await _sessionPort.open(destinationSessionId);
+    if (!openResult.opened) {
+      throw StateError('destination session did not open: ${openResult.status}');
+    }
+    await _sessionPort.select(destinationSessionId);
+    await _jobStore.mutate(workspace.workspaceId, workflowId, (current) {
+      return current.copyWith(
+        receipts: {
+          ...current.receipts,
+          'destination': const TeamGenerationReceipt(
+            state: TeamGenerationReceiptState.succeeded,
+          ),
+        },
+      );
+    });
+
+    // Deliver the immutable original prompt to the canonical lead.
+    final deliveryId = reservedJob.receipts['promptDelivery']?.value.isNotEmpty ==
+            true
+        ? reservedJob.receipts['promptDelivery']!.value
+        : teamGenerationStableId('teamgen-prompt-${reservedJob.attempt}-', workflowId);
+    await _jobStore.mutate(workspace.workspaceId, workflowId, (current) {
+      return current.copyWith(
+        phase: _atLeast(current.phase, TeamGenerationPhase.delivering),
+        attempt: current.attempt,
+        receipts: {
+          ...current.receipts,
+          'promptDelivery': TeamGenerationReceipt(
+            state: TeamGenerationReceiptState.reserved,
+            value: current.receipts['promptDelivery']?.value.isNotEmpty == true
+                ? current.receipts['promptDelivery']!.value
+                : deliveryId,
+          ),
+        },
+      );
+    });
+
+    final effectiveDeliveryId =
+        (await _jobStore.read(workspace.workspaceId, workflowId))
+                ?.receipts['promptDelivery']!
+                .value ??
+            deliveryId;
+
+    final existingDelivery = await _promptStore.read(effectiveDeliveryId);
+    if (existingDelivery != null &&
+        (existingDelivery.state == PromptDeliveryState.submitIssued ||
+            existingDelivery.state == PromptDeliveryState.submittedUnknown)) {
+      // Ambiguous: never replay automatically.
+      final jobNow = await _jobStore.read(workspace.workspaceId, workflowId);
+      if (jobNow?.receipts['promptDeliveryDelivered']?.state !=
+          TeamGenerationReceiptState.succeeded) {
+        await _jobStore.mutate(workspace.workspaceId, workflowId, (current) {
+          return current.copyWith(
+            error: const TeamGenerationJobError(
+              code: 'prompt_delivery_unknown',
+            ),
+          );
+        });
+        throw PromptDeliveryUnknownException(
+          effectiveDeliveryId,
+          'submit outcome unresolved for $effectiveDeliveryId',
+        );
+      }
+    }
+
+    await _sessionPort.waitForInputReady(
+      destinationSessionId,
+      TeamMemberNaming.teamLeadName,
+      directToPty: true,
+    );
+
+    // Reuse the exact existing record when present (idempotent replay);
+    // otherwise create with the reserved id.
+    final delivery = existingDelivery != null
+        ? existingDelivery
+        : await _promptCoordinator.submit(
+            PromptDeliveryRequest(
+              seat: RuntimeSeatKey(
+                sessionId: destinationSessionId,
+                memberId: TeamMemberNaming.teamLeadName,
+              ),
+              cli: _leadCli(team),
+              text: job.originalPrompt,
+              deliveryId: effectiveDeliveryId,
+            ),
+          );
+
+    if (delivery.state == PromptDeliveryState.failed) {
+      // Explicit non-submit: reserve a new attempt next run.
+      await _jobStore.mutate(workspace.workspaceId, workflowId, (current) {
+        return current.copyWith(attempt: current.attempt + 1);
+      });
+      throw StateError('prompt delivery failed: ${delivery.failureReason}');
+    }
+
+    if (delivery.state == PromptDeliveryState.created ||
+        delivery.state == PromptDeliveryState.waitingForInputSurface ||
+        delivery.state == PromptDeliveryState.staged) {
+      await _promptCoordinator.stage(delivery.id);
+      await _promptCoordinator.issueSubmit(delivery.id);
+    }
+
+    await _jobStore.mutate(workspace.workspaceId, workflowId, (current) {
+      return current.copyWith(
+        phase: TeamGenerationPhase.delivered,
+        receipts: {
+          ...current.receipts,
+          'promptDeliveryDelivered': const TeamGenerationReceipt(
+            state: TeamGenerationReceiptState.succeeded,
+          ),
+        },
+      );
+    });
+
+    return TeamGenerationHandoffResult(
+      destinationSessionId: destinationSessionId,
+      deliveryId: effectiveDeliveryId,
+    );
+  }
+
+  CliTool _leadCli(TeamProfile team) {
+    if (team.teamMode == TeamMode.native) return team.cli;
+    return team.cli;
+  }
+
+  /// Forward-only phase guard: [to] wins unless the job already passed it.
+  TeamGenerationPhase _atLeast(
+    TeamGenerationPhase current,
+    TeamGenerationPhase to,
+  ) {
+    final fromRank = teamGenerationActivePhaseRank(current) ?? -1;
+    final toRank = teamGenerationActivePhaseRank(to) ?? -1;
+    return toRank >= fromRank ? to : current;
+  }
+}

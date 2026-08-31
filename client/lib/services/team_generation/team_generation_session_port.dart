@@ -1,0 +1,103 @@
+import '../../models/app_session.dart';
+import '../../models/simple_launch_identity.dart';
+import '../../models/team_config.dart';
+import '../../models/workspace.dart';
+import '../../utils/team/team_member_naming.dart';
+
+/// What the workflow needs from the Flutter session layer. Pure interface —
+/// the cubit adapter lives in `cubits/team/`.
+abstract interface class TeamGenerationSessionPort {
+  /// Creates the visible purpose-tagged Simple builder session.
+  Future<SessionPortOpenResult> createBuilder({
+    required Workspace workspace,
+    required SimpleLaunchIdentity identity,
+    required String projectFolderPath,
+    required String workingDirectoryPath,
+    required String workflowId,
+    required String fixedSessionId,
+    required String expertKey,
+    String emptyDisplayTitleFallback = 'Team Builder',
+    bool preserveWorkbenchView = true,
+  });
+
+  /// Creates (or reopens) the destination team session. Returns [opened]
+  /// exactly when the tab is surfaced and the team roster is ready to stage.
+  Future<SessionPortOpenResult> createDestination({
+    required Workspace workspace,
+    required TeamProfile team,
+    required String projectFolderPath,
+    required String workingDirectoryPath,
+    required String fixedSessionId,
+  });
+
+  Future<SessionPortOpenResult> open(String sessionId);
+
+  Future<void> select(String sessionId);
+
+  Future<AppSession?> sessionById(String sessionId);
+
+  /// Resolves when the lead's PTY surface can accept input.
+  Future<void> waitForInputReady(
+    String sessionId,
+    String memberId, {
+    required bool directToPty,
+  });
+
+  /// Tracked direct-to-PTY delivery with an explicit idempotency id.
+  Future<PortDeliveryOutcome> deliverTracked(
+    String sessionId,
+    String memberId,
+    String text, {
+    required bool directToPty,
+    required String deliveryId,
+  });
+
+  /// Purpose/workflow-checked builder deletion; never accepts arbitrary ids
+  /// from MCP input (validated by the caller against the job).
+  Future<bool> deleteBuilder(String sessionId, String workflowId);
+
+  /// Per-session activity stream used by the idle waiter.
+  Stream<PortActivity> activityStream(String sessionId);
+}
+
+final class SessionPortOpenResult {
+  const SessionPortOpenResult({
+    required this.status,
+    this.sessionId,
+  });
+
+  /// 'opened' | 'blocked...' | 'skipped' — mirrors SessionOpenStatus values
+  /// without importing the cubit layer here.
+  final String status;
+  final String? sessionId;
+
+  bool get opened => status == 'opened';
+}
+
+final class PortDeliveryOutcome {
+  const PortDeliveryOutcome({
+    required this.result,
+    this.deliveryState = '',
+  });
+
+  /// 'submitted' | 'dropped' | 'failed'.
+  final String result;
+  final String deliveryState;
+
+  bool get submitted => result == 'submitted';
+  bool get unknown => deliveryState == 'submitIssued' ||
+      deliveryState == 'submittedUnknown';
+}
+
+/// Ready/busy activity signal per session.
+final class PortActivity {
+  const PortActivity({required this.sessionId, required this.readyToChat});
+
+  final String sessionId;
+  final bool readyToChat;
+}
+
+/// Canonical member ids used by the port adapter.
+abstract final class TeamGenerationPortMembers {
+  static String get lead => TeamMemberNaming.teamLeadName;
+}

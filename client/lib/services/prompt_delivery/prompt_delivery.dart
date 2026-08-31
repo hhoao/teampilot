@@ -29,11 +29,17 @@ final class PromptDeliveryRequest {
     required this.seat,
     required this.cli,
     required this.text,
+    this.deliveryId,
   });
 
   final RuntimeSeatKey seat;
   final CliTool cli;
   final String text;
+
+  /// Explicit delivery id for workflow-tracked sends (team-generation
+  /// handoff). When provided, the coordinator returns the existing record
+  /// only if seat/cli/text match exactly; otherwise creates with this ID.
+  final String? deliveryId;
 }
 
 /// A durable snapshot of one prompt-delivery state machine.
