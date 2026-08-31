@@ -342,7 +342,11 @@ void main() {
           '"params":{"name":"wait_for_message","arguments":{}}}\n',
         ),
       );
-      await Future<void>.delayed(const Duration(milliseconds: 80));
+      final parkedDeadline = DateTime.now().add(const Duration(seconds: 5));
+      while (DateTime.now().isBefore(parkedDeadline)) {
+        if (bus.isWaitingForMessage('worker')) break;
+        await Future<void>.delayed(const Duration(milliseconds: 25));
+      }
       expect(bus.isWaitingForMessage('worker'), isTrue);
 
       // HTTP SSE pings every 20s; raw-socket emits nothing while parked.

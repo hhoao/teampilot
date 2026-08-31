@@ -330,7 +330,14 @@ void main() {
         await cubit.connect(_p1.id);
         final client = await harness.factory.clientForStorage(_p1);
         client.close();
-        await Future<void>.delayed(const Duration(milliseconds: 25));
+        final reconnectDeadline = DateTime.now().add(const Duration(seconds: 2));
+        while (DateTime.now().isBefore(reconnectDeadline)) {
+          if (harness.coordinator.monitorFor(_p1.id).state.status ==
+              RemoteConnectionStatus.reconnecting) {
+            break;
+          }
+          await Future<void>.delayed(const Duration(milliseconds: 10));
+        }
 
         expect(harness.factory.hasLiveStorageClient(_p1.id), isFalse);
         expect(

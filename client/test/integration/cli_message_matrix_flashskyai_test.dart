@@ -262,7 +262,7 @@ void main() {
           );
           await harness.waitForGatewayTurns(
             apiKey: leadScriptApiKey,
-            minTurns: before + 1,
+            minTurns: before + (i == prompts.length - 1 ? 2 : 1),
           );
           await harness.waitForPtyMarkers([markers[i]]);
           if (i < prompts.length - 1) {
