@@ -2,7 +2,6 @@ import 'dart:io';
 
 import 'package:path/path.dart' as p;
 
-import '../../../models/team_config.dart';
 import '../../resource/contribution/resource_origin.dart';
 import '../../resource/providers/skill_contribution_provider.dart';
 import '../../storage/app_storage.dart';
