@@ -187,9 +187,10 @@ class Automation {
 
   bool get isOnce => preset == AutomationSchedulePreset.once;
 
+  /// True for once schedules (implicit limit of 1) or when [maxRunCount] is set.
   bool get hasRunLimit => isOnce || (maxRunCount != null && maxRunCount! > 0);
 
-  /// Runs allowed — once presets are single-shot regardless of [maxRunCount].
+  /// Runs allowed — maps once to 1 regardless of any stored [maxRunCount].
   int? get effectiveMaxRunCount => isOnce ? 1 : maxRunCount;
 
   bool get isRunLimitReached =>

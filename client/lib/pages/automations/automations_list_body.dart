@@ -29,7 +29,7 @@ String formatAutomationRunCountLabel(
   if (automation.hasRunLimit) {
     return l10n.automationsRunCountLimited(
       automation.runCount,
-      automation.maxRunCount!,
+      automation.effectiveMaxRunCount!,
     );
   }
   if (automation.runCount > 0) {

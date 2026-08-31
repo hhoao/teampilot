@@ -327,6 +327,30 @@ void main() {
     expect(a.isRunLimitReached, isTrue);
   });
 
+  test('once overrides a stored maxRunCount greater than 1', () {
+    final a = Automation(
+      id: 'a1',
+      name: 'Once',
+      action: AutomationAction.scheduledMessage,
+      workspaceId: 'ws1',
+      sessionId: 's1',
+      message: '/clear',
+      preset: AutomationSchedulePreset.once,
+      runAtMs: 1_700_000_100_000,
+      hourMinute: '09:00',
+      timezone: 'UTC',
+      dtstartMs: 1_700_000_100_000,
+      enabled: true,
+      maxRunCount: 5,
+      runCount: 1,
+      createdAtMs: 1,
+      updatedAtMs: 2,
+    );
+    expect(a.hasRunLimit, isTrue);
+    expect(a.effectiveMaxRunCount, 1);
+    expect(a.isRunLimitReached, isTrue);
+  });
+
   test('legacy automation without runAtMs parses null', () {
     final a = Automation(
       id: 'a1',
@@ -344,9 +368,9 @@ void main() {
       createdAtMs: 1,
       updatedAtMs: 2,
     );
-    final json = a.toJson()..remove('runAtMs');
-    final back = Automation.fromJson(json);
+    final back = Automation.fromJson(a.toJson());
     expect(back.runAtMs, isNull);
+    expect(back.preset, AutomationSchedulePreset.daily);
     expect(back.maxRunCount, 3);
     expect(back.effectiveMaxRunCount, 3);
   });
