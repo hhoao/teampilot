@@ -90,8 +90,14 @@ class AutomationScheduleCalculator {
     }
   }
 
-  int computeNextRunAtMs(Automation automation, {required int afterMs}) {
+  int? computeNextRunAtMs(Automation automation, {required int afterMs}) {
     automation.validate();
+
+    if (automation.preset == AutomationSchedulePreset.once) {
+      final runAt = automation.runAtMs;
+      return runAt != null && runAt > afterMs ? runAt : null;
+    }
+
     final location = _resolveLocation(automation.timezone);
     final after = tz.TZDateTime.fromMillisecondsSinceEpoch(location, afterMs);
     final dtstart = tz.TZDateTime.fromMillisecondsSinceEpoch(
@@ -99,10 +105,6 @@ class AutomationScheduleCalculator {
       automation.dtstartMs,
     );
     final anchor = after.isBefore(dtstart) ? dtstart : after;
-
-    if (automation.preset == AutomationSchedulePreset.once) {
-      return automation.runAtMs ?? 0;
-    }
 
     if (automation.preset == AutomationSchedulePreset.custom) {
       final cron = _parseCron(automation.customCron ?? '');

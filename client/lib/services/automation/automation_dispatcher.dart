@@ -48,10 +48,7 @@ class AutomationDispatcher {
     AutomationSessionLookup? sessionById,
     int Function()? nowMs,
     Duration memberReadyTimeout = const Duration(seconds: 60),
-    Future<T> Function<T>(
-      String sessionId,
-      Future<T> Function() action,
-    )?
+    Future<T> Function<T>(String sessionId, Future<T> Function() action)?
     runDeliveryInFlight,
   }) : _repository = repository,
        _scheduleCalculator = scheduleCalculator,
@@ -84,16 +81,10 @@ class AutomationDispatcher {
   final AutomationSessionLookup? _sessionById;
   final int Function() _nowMs;
   final Duration _memberReadyTimeout;
-  final Future<T> Function<T>(
-    String sessionId,
-    Future<T> Function() action,
-  )?
+  final Future<T> Function<T>(String sessionId, Future<T> Function() action)?
   _runDeliveryInFlight;
 
-  Future<T> _inFlight<T>(
-    String sessionId,
-    Future<T> Function() action,
-  ) {
+  Future<T> _inFlight<T>(String sessionId, Future<T> Function() action) {
     final run = _runDeliveryInFlight;
     if (run == null) return action();
     return run(sessionId, action);
@@ -427,8 +418,8 @@ class AutomationDispatcher {
     String? dispatchedSessionId,
   }) {
     final nextRunCount = automation.runCount + 1;
-    final limitReached =
-        automation.hasRunLimit && nextRunCount >= automation.maxRunCount!;
+    final max = automation.effectiveMaxRunCount;
+    final limitReached = max != null && nextRunCount >= max;
     final stillEnabled = automation.enabled && !limitReached;
     final nextRunAtMs = stillEnabled
         ? _scheduleCalculator.computeNextRunAtMs(

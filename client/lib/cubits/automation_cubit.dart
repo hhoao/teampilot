@@ -91,10 +91,7 @@ class AutomationCubit extends Cubit<AutomationState> {
     }
   }
 
-  Future<void> loadForSession(
-    String workspaceId,
-    AppSession session,
-  ) async {
+  Future<void> loadForSession(String workspaceId, AppSession session) async {
     final scope = AutomationListScope.session(
       workspaceId,
       sessionId: session.sessionId,
@@ -138,11 +135,13 @@ class AutomationCubit extends Cubit<AutomationState> {
       if (next.isRunLimitReached) {
         next = next.copyWith(enabled: false, clearNextRunAtMs: true);
       } else {
+        final nextMs = _scheduleCalculator.computeNextRunAtMs(
+          next,
+          afterMs: now,
+        );
         next = next.copyWith(
-          nextRunAtMs: _scheduleCalculator.computeNextRunAtMs(
-            next,
-            afterMs: now,
-          ),
+          nextRunAtMs: nextMs,
+          clearNextRunAtMs: nextMs == null,
         );
       }
     } else {
@@ -168,8 +167,10 @@ class AutomationCubit extends Cubit<AutomationState> {
     if (enabled && automation.isRunLimitReached) return;
     var next = automation.copyWith(enabled: enabled, updatedAtMs: now);
     if (enabled) {
+      final nextMs = _scheduleCalculator.computeNextRunAtMs(next, afterMs: now);
       next = next.copyWith(
-        nextRunAtMs: _scheduleCalculator.computeNextRunAtMs(next, afterMs: now),
+        nextRunAtMs: nextMs,
+        clearNextRunAtMs: nextMs == null,
       );
     } else {
       next = next.copyWith(clearNextRunAtMs: true);
