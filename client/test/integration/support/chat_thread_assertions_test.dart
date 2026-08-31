@@ -225,7 +225,6 @@ void main() {
       memberId: '',
       launchContext: launchCtx(simpleSession()),
     );
-    cubit.enqueuePendingUser('pending-line');
     mailboxRecords = [
       LoggedMessage(
         seq: 0,
@@ -240,6 +239,7 @@ void main() {
       ),
     ];
     await cubit.refreshMailboxTimeline();
+    cubit.enqueuePendingUser('pending-line');
     final dump = dumpThread(cubit);
     expect(dump, contains('pending-line'));
     expect(dump, contains('mailbox-line'));

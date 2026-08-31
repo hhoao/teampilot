@@ -627,18 +627,25 @@ final class AiHistoryLoader {
         final updated = AiHistoryLoadResult(
           messages: cachedMessages,
           cli: cli,
-          subagentAttachments: _attachments[cacheKey] ?? const {},
+          subagentAttachments: const {},
+          isComplete: true,
+          subagentSideIndexDirty: true,
+        );
+        _fullIndexes[cacheKey] = AiHistoryLoadResult(
+          messages: cachedMessages,
+          cli: cli,
+          subagentAttachments: const {},
           isComplete: true,
         );
-        _fullIndexes[cacheKey] = updated;
-        _fullIndexFutures[cacheKey] = Future.value(updated);
+        _fullIndexFutures[cacheKey] = Future.value(_fullIndexes[cacheKey]!);
         return updated;
       }
       return _result(
         cacheKey: cacheKey,
         messages: cachedMessages,
         cli: cli,
-        subagentAttachments: _attachments[cacheKey] ?? const {},
+        subagentAttachments: const {},
+        subagentSideIndexDirty: true,
       );
     }
 
@@ -879,6 +886,7 @@ final class AiHistoryLoader {
     required List<AiMessage> messages,
     required CliTool cli,
     required Map<String, AiSubagentAttachment> subagentAttachments,
+    bool subagentSideIndexDirty = false,
   }) {
     return AiHistoryLoadResult(
       messages: messages,
@@ -887,6 +895,7 @@ final class AiHistoryLoader {
       hasOlder: _hasOlder[cacheKey] ?? false,
       cursor: _cursors[cacheKey],
       isComplete: _complete[cacheKey] ?? true,
+      subagentSideIndexDirty: subagentSideIndexDirty,
     );
   }
 

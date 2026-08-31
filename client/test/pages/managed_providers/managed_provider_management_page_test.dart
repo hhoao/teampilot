@@ -1087,10 +1087,25 @@ void main() {
       find.byKey(const Key('managed-provider-section-advanced')),
       findsOneWidget,
     );
+    await tester.scrollUntilVisible(
+      find.text('Advanced'),
+      500,
+      scrollable: _verticalScrollable(),
+    );
+    await tester.tap(find.text('Advanced'));
+    await tester.pumpAndSettle();
+    await tester.scrollUntilVisible(
+      find.byKey(const Key('managed-provider-adapter'), skipOffstage: false),
+      500,
+      scrollable: _verticalScrollable(),
+    );
     expect(
       tester
           .widget<TpInputFormField>(
-            find.byKey(const Key('managed-provider-adapter')),
+            find.byKey(
+              const Key('managed-provider-adapter'),
+              skipOffstage: false,
+            ),
           )
           .readOnly,
       isFalse,

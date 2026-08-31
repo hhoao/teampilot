@@ -12,11 +12,16 @@ class AiHistoryLoadResult {
     this.hasOlder = false,
     this.cursor,
     this.isComplete = true,
+    this.subagentSideIndexDirty = false,
   });
 
   final List<AiMessage> messages;
   final CliTool cli;
   final Map<String, AiSubagentAttachment> subagentAttachments;
+
+  /// True when the parent CLI token is unchanged but a sub-agent side
+  /// fingerprint moved — seat-owned lazy previews must refresh on demand.
+  final bool subagentSideIndexDirty;
 
   /// True when an older page (or an in-memory window) exists beyond [messages].
   final bool hasOlder;

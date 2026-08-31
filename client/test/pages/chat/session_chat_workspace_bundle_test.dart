@@ -41,6 +41,7 @@ import 'package:teampilot/services/commands/command_bus.dart';
 import 'package:teampilot/services/compose/compose_draft_cache.dart';
 import 'package:teampilot/services/compose/compose_slash_catalog.dart';
 import 'package:teampilot/services/follow_up/follow_up_queue.dart';
+import 'package:teampilot/services/session/failed_message_store.dart';
 import 'package:teampilot/services/session/history_awaiting_working_sync.dart';
 import 'package:teampilot/services/session/session_lifecycle_service.dart';
 import 'package:teampilot/services/storage/workspace_layout.dart';
@@ -84,6 +85,8 @@ class _MockLayoutCubit extends Mock implements LayoutCubit {}
 class _MockSessionLifecycleService extends Mock
     implements SessionLifecycleService {}
 
+class _FakeFailedMessageStore extends Fake implements FailedMessageStore {}
+
 void _stubCubit<TState>(Cubit<TState> cubit, TState state) {
   when(() => cubit.state).thenReturn(state);
   when(() => cubit.stream).thenAnswer((_) => Stream<TState>.empty());
@@ -118,6 +121,7 @@ void main() {
         members: [],
       ),
     );
+    registerFallbackValue(_FakeFailedMessageStore());
   });
 
   setUp(() {
@@ -130,6 +134,7 @@ void main() {
     when(() => seat.runtime).thenReturn(ExternalStoreAiThreadRuntime());
     when(() => seat.loadedMessages).thenReturn(const []);
     when(() => seat.pendingDeliveryStatuses).thenReturn(const {});
+    when(() => seat.hasOptimisticPending).thenReturn(false);
     when(
       () => seat.hydratePendingUsers(
         store: any(named: 'store'),

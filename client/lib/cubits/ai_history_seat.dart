@@ -486,12 +486,13 @@ class AiHistorySeat extends Cubit<AiHistoryState> {
       // covers that map too.
       final cliUnchanged =
           identical(messages, _cliMessages) || _isHydratedIndexSuffix(messages);
-      final attachmentsUnchanged =
-          identical(result.subagentAttachments, _subagentAttachments) ||
-          _sameSubagentAttachments(
-            _subagentAttachments,
-            result.subagentAttachments,
-          );
+      final attachmentsUnchanged = result.subagentAttachments.isNotEmpty
+          ? identical(result.subagentAttachments, _subagentAttachments) ||
+                _sameSubagentAttachments(
+                  _subagentAttachments,
+                  result.subagentAttachments,
+                )
+          : _subagentAttachments.isEmpty;
       if (cliUnchanged &&
           attachmentsUnchanged &&
           _mailboxUnchanged(mailboxRecords)) {
@@ -502,7 +503,14 @@ class AiHistorySeat extends Cubit<AiHistoryState> {
         _cliMessages = messages;
       }
       _lastMailboxRecords = mailboxRecords;
-      _setSubagentAttachments(result.subagentAttachments);
+      if (result.subagentAttachments.isNotEmpty) {
+        _setSubagentAttachments(result.subagentAttachments);
+      } else if (result.subagentSideIndexDirty &&
+          _subagentAttachments.isNotEmpty) {
+        await _refreshMaterializedSubagentAttachments();
+      } else if (!cliUnchanged && _subagentAttachments.isNotEmpty) {
+        _clearSubagentAttachments();
+      }
       final cached = buildConversationTimelineIncremental(
         previous: _cachedTimeline,
         cliMessages: _cliMessages,
@@ -1584,6 +1592,16 @@ class AiHistorySeat extends Cubit<AiHistoryState> {
   void _clearSubagentAttachments() {
     _subagentAttachments = {};
     _subagentAttachmentEpoch++;
+  }
+
+  Future<void> _refreshMaterializedSubagentAttachments() async {
+    final ids = List<String>.from(_subagentAttachments.keys);
+    for (final id in ids) {
+      final next = Map<String, AiSubagentAttachment>.of(_subagentAttachments)
+        ..remove(id);
+      _subagentAttachments = next;
+      await loadSubagentAttachment(id);
+    }
   }
 
   List<AiMessage> _visibleSlice() {

@@ -177,6 +177,7 @@ void main() {
       launchContext: ctx(),
     );
     expect(seat.state.status, AiHistoryViewStatus.ready);
+    await seat.loadSubagentAttachment('toolu_agent');
     expect(
       seat.subagentAttachments['toolu_agent']!.messages,
       hasLength(1),

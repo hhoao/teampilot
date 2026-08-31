@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:go_router/go_router.dart';
 import 'package:shared_ui/shared_ui.dart';
 import 'package:teampilot/cubits/chat_cubit.dart';
 import 'package:teampilot/cubits/workbench/workbench_cubit.dart';
@@ -122,17 +123,26 @@ void main() {
     chat.applyState(chat.state.copyWith(workspaces: [workspace]));
 
     await tester.pumpWidget(
-      MaterialApp(
-        home: MultiRepositoryProvider(
-          providers: [
-            RepositoryProvider<SessionRepository>.value(
-              value: SessionRepository(rootDir: '/teampilot'),
+      MaterialApp.router(
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
+        routerConfig: GoRouter(
+          routes: [
+            GoRoute(
+              path: '/',
+              builder: (context, state) => MultiRepositoryProvider(
+                providers: [
+                  RepositoryProvider<SessionRepository>.value(
+                    value: SessionRepository(rootDir: '/teampilot'),
+                  ),
+                ],
+                child: BlocProvider<ChatCubit>.value(
+                  value: chat,
+                  child: Builder(builder: (context) => SizedBox(key: contextKey)),
+                ),
+              ),
             ),
           ],
-          child: BlocProvider<ChatCubit>.value(
-            value: chat,
-            child: Builder(builder: (context) => SizedBox(key: contextKey)),
-          ),
         ),
       ),
     );
@@ -242,15 +252,26 @@ void main() {
       );
 
       await tester.pumpWidget(
-        MaterialApp(
-          home: MultiRepositoryProvider(
-            providers: [
-              RepositoryProvider<SessionRepository>.value(value: repo),
+        MaterialApp.router(
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
+          routerConfig: GoRouter(
+            routes: [
+              GoRoute(
+                path: '/',
+                builder: (context, state) => MultiRepositoryProvider(
+                  providers: [
+                    RepositoryProvider<SessionRepository>.value(value: repo),
+                  ],
+                  child: BlocProvider<ChatCubit>.value(
+                    value: chat,
+                    child: Builder(
+                      builder: (context) => SizedBox(key: contextKey),
+                    ),
+                  ),
+                ),
+              ),
             ],
-            child: BlocProvider<ChatCubit>.value(
-              value: chat,
-              child: Builder(builder: (context) => SizedBox(key: contextKey)),
-            ),
           ),
         ),
       );
