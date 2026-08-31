@@ -8708,4 +8708,165 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get connectError => 'Connect could not refresh pairing. Try again.';
+
+  @override
+  String get teamGenerateLaunch => 'Generate and launch';
+
+  @override
+  String get teamGenerateSettingsTitle => 'Generate and launch settings';
+
+  @override
+  String get teamGenerateGeneratorModel => 'Generator model';
+
+  @override
+  String get teamGenerateTeamMode => 'Team mode';
+
+  @override
+  String get teamGenerateNative => 'Native';
+
+  @override
+  String get teamGenerateMixed => 'Mixed';
+
+  @override
+  String get teamGenerateNativeCli => 'Native CLI';
+
+  @override
+  String get teamGenerateModelPool => 'Model configuration pool';
+
+  @override
+  String get teamGenerateAddModel => 'Add model configuration';
+
+  @override
+  String teamGenerateHiddenPresets(int count) {
+    return '$count configurations are hidden because they use another CLI.';
+  }
+
+  @override
+  String teamGenerateMissingPreset(String presetId) {
+    return 'Preset “$presetId” no longer exists.';
+  }
+
+  @override
+  String get teamGenerateDescription => 'Strengths and best uses';
+
+  @override
+  String get teamGenerateTags => 'Tags';
+
+  @override
+  String get teamGenerateMoveUp => 'Move up';
+
+  @override
+  String get teamGenerateMoveDown => 'Move down';
+
+  @override
+  String get teamGenerateRemove => 'Remove';
+
+  @override
+  String get teamGenerateCapabilityNote =>
+      'Team Builder will check workspace machines and may acquire skills, plugins, and MCP servers for the generated team.';
+
+  @override
+  String get teamGenerateErrorDescriptionRequired =>
+      'Describe the task to generate a team.';
+
+  @override
+  String get teamGenerateErrorAiNotConfigured =>
+      'Configure the generator model first.';
+
+  @override
+  String get teamGenerateErrorPoolEmpty =>
+      'Add at least one valid model configuration.';
+
+  @override
+  String get teamGenerateErrorGeneratorUnsupported =>
+      'The generator CLI must support sessions, skills, and MCP.';
+
+  @override
+  String get teamGenerateErrorNativeUnsupported =>
+      'The selected CLI does not support native teams.';
+
+  @override
+  String get teamGenerateOpenSettings => 'Open generation settings';
+
+  @override
+  String get teamGenerateBuilderTitle => 'Team Builder';
+
+  @override
+  String get teamGenerateCancel => 'Cancel generation';
+
+  @override
+  String get teamGenerateRetry => 'Retry';
+
+  @override
+  String get teamGenerateContinueSetup => 'Continue setup';
+
+  @override
+  String get teamGenerateCancelTitle => 'Cancel team generation?';
+
+  @override
+  String get teamGenerateCancelBody =>
+      'The temporary session and staged resources will be removed.';
+
+  @override
+  String get teamGeneratePhaseCreated => 'Preparing Team Builder…';
+
+  @override
+  String get teamGeneratePhaseProbing => 'Checking machines and CLIs…';
+
+  @override
+  String get teamGeneratePhasePlanning => 'Designing the team…';
+
+  @override
+  String get teamGeneratePhaseValidating => 'Validating the plan…';
+
+  @override
+  String get teamGeneratePhaseCommitting => 'Creating experts and team…';
+
+  @override
+  String get teamGeneratePhaseLaunching => 'Starting the generated team…';
+
+  @override
+  String get teamGeneratePhaseDelivering => 'Sending your task to the lead…';
+
+  @override
+  String get teamGeneratePhaseCleaning => 'Finishing and cleaning up…';
+
+  @override
+  String get teamGeneratePhaseFailed => 'Generation needs attention.';
+
+  @override
+  String get teamGenerateErrorTargetUnavailable =>
+      'A required machine or CLI is unavailable.';
+
+  @override
+  String get teamGenerateErrorStagingUnsupported =>
+      'This resource needs a manual installation step and cannot be staged safely.';
+
+  @override
+  String get teamGenerateErrorUserActionRequired =>
+      'Complete the required sign-in or configuration, then retry.';
+
+  @override
+  String get teamGenerateErrorPromptDeliveryUnknown =>
+      'TeamPilot cannot confirm whether the lead received the task.';
+
+  @override
+  String get teamGenerateErrorRecoveryIntegrity =>
+      'Recovery data could not be verified. The temporary session was kept.';
+
+  @override
+  String get teamGenerateOpenLeadSession => 'Open lead session';
+
+  @override
+  String get teamGenerateDeliveryArrived => 'It arrived';
+
+  @override
+  String get teamGenerateDeliverySendAgain => 'Send again…';
+
+  @override
+  String get teamGenerateDeliveryRetryTitle => 'Send the task again?';
+
+  @override
+  String get teamGenerateDeliveryRetryBody =>
+      'The lead might receive the task twice.';
 }

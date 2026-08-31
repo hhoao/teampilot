@@ -118,6 +118,7 @@ class _UnboundComposeBodyState extends State<UnboundComposeBody> {
   var _suppressDraftSync = false;
 
   var _conversationMode = _LandingConversationMode.simple;
+  var _generateLaunch = false;
   var _launchSecurityPolicy = LaunchSecurityPolicy.fullAccess;
   String? _selectedPresetId;
   CliTool? _selectedCli;
@@ -710,6 +711,7 @@ class _UnboundComposeBodyState extends State<UnboundComposeBody> {
     _conversationMode = draft.isPersonal
         ? _LandingConversationMode.simple
         : _LandingConversationMode.team;
+    _generateLaunch = draft.generateLaunch;
     _selectedTeamId = draft.teamId;
     _selectedPresetId = draft.presetId;
     _selectedCli = draft.cli;
@@ -864,6 +866,7 @@ class _UnboundComposeBodyState extends State<UnboundComposeBody> {
     final isSimple = _conversationMode == _LandingConversationMode.simple;
     return LandingLaunchContext(
       isPersonal: isSimple,
+      generateLaunch: !isSimple && _generateLaunch,
       presetId: _selectedPresetId,
       teamId: _selectedTeamId,
       expertKey: isSimple ? _selectedExpertKey : null,
@@ -1023,10 +1026,13 @@ class _UnboundComposeBodyState extends State<UnboundComposeBody> {
   }
 
   void _setConversationMode(_LandingConversationMode mode) {
-    if (_conversationMode == mode) return;
+    if (_conversationMode == mode && !_generateLaunch) return;
     setState(() {
       _conversationMode = mode;
+      // Selecting Simple or a concrete team clears generation mode without
+      // discarding the last concrete team id.
       if (mode == _LandingConversationMode.simple) {
+        _generateLaunch = false;
         _seedFirstPresetIfNeeded();
       }
     });
@@ -1142,11 +1148,20 @@ class _UnboundComposeBodyState extends State<UnboundComposeBody> {
   }
 
   void _onTeamChipSelected(Object? value) {
+    if (value == TeamLandingChipAction.generateLaunch) {
+      setState(() {
+        _conversationMode = _LandingConversationMode.team;
+        _generateLaunch = true;
+      });
+      _persistDraft();
+      return;
+    }
     if (value == TeamLandingChipAction.browseAll) {
       unawaited(_openTeamPicker());
       return;
     }
     if (value is String && value.isNotEmpty) {
+      setState(() => _generateLaunch = false);
       _selectTeam(value);
       unawaited(_touchRecentTeam(value));
     }
@@ -1417,7 +1432,9 @@ class _UnboundComposeBodyState extends State<UnboundComposeBody> {
     }
     return buildTeamLandingChipMenuSpecs(
       browseAllLabel: l10n.teamHubBrowseAll,
-      selectedTeamId: _selectedTeamId,
+      generateLaunchLabel: l10n.teamGenerateLaunch,
+      selectedTeamId: _generateLaunch ? null : _selectedTeamId,
+      generateLaunchSelected: _generateLaunch,
       recentTeams: recent,
     );
   }
