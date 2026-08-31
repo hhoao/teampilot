@@ -639,7 +639,22 @@ final class AiHistoryLoader {
         rootTranscriptPath: _parentPaths[cacheKey],
       );
       if (sideToken == null || _sideTokens[cacheKey] == sideToken) {
-        if (full != null) return full;
+        final liveAttachments = _attachments[cacheKey];
+        if (full != null) {
+          if (full.subagentAttachments.isEmpty &&
+              liveAttachments != null &&
+              liveAttachments.isNotEmpty) {
+            return AiHistoryLoadResult(
+              messages: full.messages,
+              cli: full.cli,
+              subagentAttachments: liveAttachments,
+              hasOlder: full.hasOlder,
+              cursor: full.cursor,
+              isComplete: full.isComplete,
+            );
+          }
+          return full;
+        }
         return _result(
           cacheKey: cacheKey,
           messages: cachedMessages,

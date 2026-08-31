@@ -108,6 +108,7 @@ void main() {
     final chat = _RecordingChatCubit();
     final workbench = WorkbenchCubit();
     final bridge = WorkbenchChatBridge(workbench: workbench, chat: chat);
+    final repo = SessionRepository(rootDir: '/teampilot');
     final workspace = Workspace(workspaceId: 'ws1', createdAt: 1);
     final session = AppSession(
       sessionId: 'sess-1',
@@ -115,6 +116,7 @@ void main() {
       createdAt: 1,
     );
     final contextKey = GlobalKey();
+    late String expectedSessionPath;
     addTearDown(chat.close);
     addTearDown(workbench.close);
     workbench.port = bridge;
@@ -133,7 +135,7 @@ void main() {
               builder: (context, state) => MultiRepositoryProvider(
                 providers: [
                   RepositoryProvider<SessionRepository>.value(
-                    value: SessionRepository(rootDir: '/teampilot'),
+                    value: repo,
                   ),
                 ],
                 child: BlocProvider<ChatCubit>.value(
@@ -147,20 +149,24 @@ void main() {
       ),
     );
 
-    await tester.runAsync(
-      () => referenceWorkspaceSession(
+    await tester.runAsync(() async {
+      final fs = await repo.fs();
+      expectedSessionPath = fs.layout.sessionDir(
+        workspace.workspaceId,
+        session.sessionId,
+      );
+      await referenceWorkspaceSession(
         tester.element(find.byKey(contextKey)),
         session,
-      ),
-    );
+      );
+    });
 
     final bar = workbench.state.bar(workspace.workspaceId);
     expect(bar.center.activeId, isNull);
     expect(bar.center.order, [WorkbenchTabId.session('existing')]);
     expect(
       bar.center.landingInitialText,
-      '审查并继续完成该会话: '
-      '/teampilot/workspace/workspaces/ws1/sessions/sess-1',
+      '审查并继续完成该会话: $expectedSessionPath',
     );
     expect(bar.center.landingReferenceSessionId, session.sessionId);
   });
