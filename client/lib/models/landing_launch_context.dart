@@ -10,6 +10,7 @@ class LandingLaunchContext {
 
   const LandingLaunchContext({
     required this.isPersonal,
+    bool generateLaunch = false,
     this.presetId,
     this.teamId,
     this.projectFolderPath,
@@ -20,10 +21,13 @@ class LandingLaunchContext {
     this.provider,
     this.model,
     this.effort,
-  });
+  }) : generateLaunch = !isPersonal && generateLaunch;
 
   /// True when launching Simple (unteamed) mode — empty [sessionTeam].
   final bool isPersonal;
+
+  /// True when Landing submits into the AI team-generation flow (team mode only).
+  final bool generateLaunch;
 
   /// Active preset when [isPersonal] is true.
   final String? presetId;
@@ -57,6 +61,7 @@ class LandingLaunchContext {
 
   LandingLaunchContext copyWith({
     bool? isPersonal,
+    bool? generateLaunch,
     Object? presetId = _unset,
     String? teamId,
     Object? projectFolderPath = _unset,
@@ -68,8 +73,10 @@ class LandingLaunchContext {
     Object? model = _unset,
     Object? effort = _unset,
   }) {
+    final nextPersonal = isPersonal ?? this.isPersonal;
     return LandingLaunchContext(
-      isPersonal: isPersonal ?? this.isPersonal,
+      isPersonal: nextPersonal,
+      generateLaunch: !nextPersonal && (generateLaunch ?? this.generateLaunch),
       presetId: presetId == _unset ? this.presetId : presetId as String?,
       teamId: teamId ?? this.teamId,
       projectFolderPath: projectFolderPath == _unset
@@ -92,6 +99,7 @@ class LandingLaunchContext {
       identical(this, other) ||
       other is LandingLaunchContext &&
           isPersonal == other.isPersonal &&
+          generateLaunch == other.generateLaunch &&
           presetId == other.presetId &&
           teamId == other.teamId &&
           projectFolderPath == other.projectFolderPath &&
@@ -106,6 +114,7 @@ class LandingLaunchContext {
   @override
   int get hashCode => Object.hash(
     isPersonal,
+    generateLaunch,
     presetId,
     teamId,
     projectFolderPath,

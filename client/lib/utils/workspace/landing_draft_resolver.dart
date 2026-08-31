@@ -136,6 +136,7 @@ Future<LandingLaunchContext> resolveLandingDraft({
   }
   return LandingLaunchContext(
     isPersonal: prefs.isPersonal,
+    generateLaunch: prefs.generateLaunch,
     presetId: prefs.presetId,
     teamId: prefs.teamId,
     projectFolderPath: prefs.projectFolderPath,
@@ -158,6 +159,7 @@ Future<void> persistLandingDraft(
     workspaceId,
     LandingPrefs(
       isPersonal: draft.isPersonal,
+      generateLaunch: draft.generateLaunch,
       presetId: draft.presetId,
       teamId: draft.teamId,
       projectFolderPath: draft.projectFolderPath,
