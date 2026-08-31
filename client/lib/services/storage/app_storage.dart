@@ -295,6 +295,13 @@ class AppPaths {
     String teampilotRoot,
   ) => _pathUnderTeampilotRoot(teampilotRoot, 'ui/open-workspace-tabs.json');
 
+  static String teamGenerationSettingsJsonForTeampilotRoot(
+    String teampilotRoot,
+  ) => _pathUnderTeampilotRoot(
+    teampilotRoot,
+    'ui/team-generation-settings.json',
+  );
+
   String get skillRepoCacheDir => skillRepoCacheDirForTeampilotRoot(basePath);
 
   String get skillPacksInstallDir =>
@@ -369,6 +376,9 @@ class AppPaths {
 
   String get homeWorkspaceOpenWorkspacesJson =>
       homeWorkspaceOpenWorkspacesJsonForTeampilotRoot(basePath);
+
+  String get teamGenerationSettingsJson =>
+      teamGenerationSettingsJsonForTeampilotRoot(basePath);
 
   static String worktreeUiPrefsJsonForTeampilotRoot(String teampilotRoot) =>
       _pathUnderTeampilotRoot(teampilotRoot, 'ui/worktree-ui-prefs.json');
