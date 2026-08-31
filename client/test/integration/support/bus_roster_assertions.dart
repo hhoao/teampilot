@@ -33,15 +33,19 @@ Future<void> waitUntilWorkerParked({
   required String memberId,
   Duration timeout = const Duration(seconds: 90),
   Duration stableFor = const Duration(milliseconds: 250),
+  bool allowSessionWaitStreams = true,
 }) async {
   final deadline = DateTime.now().add(timeout);
   DateTime? parkedSince;
   while (DateTime.now().isBefore(deadline)) {
     final snap = memberSnapshot(bus, memberId);
-    final streamOpen = (gateway?.activeWaitStreamCountFor(sessionId) ?? 0) > 0;
+    final streamOpen = allowSessionWaitStreams &&
+        (gateway?.activeWaitStreamCountFor(sessionId) ?? 0) > 0;
     final busWait = snap?.waitingForMessage ?? false;
     final parked =
-        streamOpen || busWait || snap?.activity.name == 'turnDoneBusWait';
+        busWait ||
+        snap?.activity.name == 'turnDoneBusWait' ||
+        streamOpen;
     if (parked) {
       parkedSince ??= DateTime.now();
       if (DateTime.now().difference(parkedSince) >= stableFor) return;

@@ -106,14 +106,20 @@ abstract final class MixedTeamIdleBusyL2Scenario {
       );
       final bus = ctx.harness.tabBus(ctx.session.sessionId)!;
       final gateway = ctx.harness.tabGateway(ctx.cubit);
-      // Leader mock ends on wait_for_message; park before idle-watch so
-      // claudeIsActive clears and busySessionIds can fall through.
+      // Leader mock ends on wait_for_message; do not treat the worker's
+      // session-wide wait stream as leader parked.
       await waitUntilWorkerParked(
         bus: bus,
         gateway: gateway,
         sessionId: ctx.session.sessionId,
         memberId: kLeadMember.id,
-        timeout: const Duration(seconds: 120),
+        allowSessionWaitStreams: false,
+        timeout: const Duration(seconds: 180),
+      );
+      await ctx.harness.waitForMemberShellQuiet(
+        ctx.cubit,
+        memberId: kLeadMember.id,
+        timeout: const Duration(seconds: 60),
       );
       // Worker idle-notify may doorbell leader; drain unread so PTY quiet can
       // fall through idle-deferred (doorbelled + unread) and end the turn.

@@ -41,9 +41,13 @@ void main() {
       () {
         final file = File(layout.sessionGroupsFile(workspaceId));
         if (!file.existsSync()) return false;
-        return predicate(
-          SessionGroupsFile.fromRawJson(file.readAsStringSync()).groups,
-        );
+        try {
+          return predicate(
+            SessionGroupsFile.fromRawJson(file.readAsStringSync()).groups,
+          );
+        } on FileSystemException {
+          return false;
+        }
       },
       pump: () => drainPendingAsyncWork(rounds: 1),
     );

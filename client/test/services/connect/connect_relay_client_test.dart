@@ -117,6 +117,7 @@ void main() {
 
     await relay.dropDesktop();
     await pumpUntil(() => starts >= 2);
+    await pumpUntil(() => client.isConnected);
 
     expect(starts, greaterThanOrEqualTo(2));
     expect(client.isConnected, isTrue);
@@ -124,9 +125,9 @@ void main() {
 }
 
 Future<void> pumpUntil(bool Function() condition) async {
-  for (var attempt = 0; attempt < 200; attempt++) {
+  for (var attempt = 0; attempt < 400; attempt++) {
     if (condition()) return;
-    await Future<void>.delayed(const Duration(milliseconds: 5));
+    await Future<void>.delayed(const Duration(milliseconds: 25));
   }
   fail('condition was never met');
 }

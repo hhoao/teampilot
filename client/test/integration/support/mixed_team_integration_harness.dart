@@ -40,6 +40,7 @@ import 'bus_task_assertions.dart';
 import 'cli_test_profile.dart';
 import 'docker_ssh_server.dart';
 import 'integration_prerequisites.dart';
+import 'session_idle_busy_harness.dart';
 
 const kItMixedClaudeTeamId = 'it-mixed-claude';
 const kMockLeaderProviderId = 'mock-leader';
@@ -570,6 +571,25 @@ class MixedTeamIntegrationHarness {
   TerminalSession? memberShell(ChatCubit cubit, String memberId) {
     cubit.selectMember(memberId);
     return cubit.currentSession;
+  }
+
+  /// Nudges PTY quiet detection until [memberId]'s shell stops reporting work.
+  Future<void> waitForMemberShellQuiet(
+    ChatCubit cubit, {
+    required String memberId,
+    Duration timeout = const Duration(seconds: 90),
+  }) async {
+    final deadline = DateTime.now().add(timeout);
+    while (DateTime.now().isBefore(deadline)) {
+      final shell = memberShell(cubit, memberId);
+      if (shell != null) {
+        simulateFingerprintQuietGap(shell);
+        if (!shell.activityTracker.isWorking) return;
+      }
+      cubit.debugTickIdleWatch();
+      await Future<void>.delayed(const Duration(milliseconds: 200));
+    }
+    throw StateError('Timed out waiting for $memberId shell quiet');
   }
 
   Future<void> waitForPingPong({

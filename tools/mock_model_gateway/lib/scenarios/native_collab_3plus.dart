@@ -24,7 +24,7 @@ import 'mixed_collab_3plus.dart'
 /// [TextTurn] is `end_turn` (native has no mixed Stop-hook chain), so the
 /// Claude native cell advances one tool→text segment per History compose:
 /// TeamCreate/TaskCreate→MARK_LEAD_1, TaskList→MARK_LEAD_2,
-/// TaskStop→MARK_LEAD_DONE.
+/// TaskGet→MARK_LEAD_DONE.
 Map<String, MockScenario> nativeCollab3PlusScenarios() => {
       leadScriptApiKey: MockScenario(
         turns: [
@@ -49,8 +49,8 @@ Map<String, MockScenario> nativeCollab3PlusScenarios() => {
           ),
           TextTurn(markLead2),
           ToolUseTurn(
-            id: 'tu_task_stop',
-            toolRef: 'native.TaskStop',
+            id: 'tu_task_get',
+            toolRef: 'native.TaskGet',
             input: {},
           ),
           TextTurn(markLeadDone),
