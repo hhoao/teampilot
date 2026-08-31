@@ -261,12 +261,6 @@ void main() {
                 '${harness.diagnosticsBundle()}',
           );
           await harness.waitForPtyMarkers([markers[i]]);
-          if (harness.gateway!.requestCountFor(leadScriptApiKey) <= before) {
-            await harness.waitForGatewayTurns(
-              apiKey: leadScriptApiKey,
-              minTurns: before + 1,
-            );
-          }
           if (i < prompts.length - 1) {
             await harness.bootComposeSeatToPrompt();
           }

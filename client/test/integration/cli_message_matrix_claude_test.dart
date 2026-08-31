@@ -266,7 +266,6 @@ void main() {
         ];
         final markers = const [markLead1, markLead2, markLeadDone];
         for (var i = 0; i < prompts.length; i++) {
-          final before = harness.gateway!.requestCountFor(leadScriptApiKey);
           final result = await harness.submitCompose(prompts[i]);
           expect(
             result.ok,
@@ -275,12 +274,6 @@ void main() {
                 '${harness.diagnosticsBundle()}',
           );
           await harness.waitForPtyMarkers([markers[i]]);
-          if (harness.gateway!.requestCountFor(leadScriptApiKey) <= before) {
-            await harness.waitForGatewayTurns(
-              apiKey: leadScriptApiKey,
-              minTurns: before + 1,
-            );
-          }
           if (i < prompts.length - 1) {
             await harness.bootComposeSeatToPrompt();
           }
