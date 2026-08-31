@@ -84,6 +84,11 @@ void main() {
   );
 
   group('applyLocalLoginShellPath', () {
+    if (Platform.isWindows) {
+      test('skipped on Windows — POSIX colon PATH semantics', () {},
+          skip: 'POSIX colon PATH semantics');
+      return;
+    }
     late Directory tempDir;
     late String candidateA;
     late String candidateB;

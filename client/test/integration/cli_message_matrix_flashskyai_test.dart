@@ -244,7 +244,7 @@ void main() {
         // native_collab_3plus interleaves tools with TextTurns. A TextTurn is
         // end_turn (no mixed Stop-hook chain), so each History compose advances
         // one tool→text segment: TeamCreate/TaskCreate→MARK_LEAD_1, then
-        // TaskList→MARK_LEAD_2, then TeamDelete→MARK_LEAD_DONE.
+        // TaskList→MARK_LEAD_2, then TaskStop→MARK_LEAD_DONE.
         const prompts = [
           'matrix native turn one please coordinate',
           'matrix native turn two please continue',

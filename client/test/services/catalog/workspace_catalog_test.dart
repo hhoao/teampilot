@@ -105,6 +105,7 @@ void main() {
     final fs = await repo.fs();
     final raw = await fs.readText(fs.sessionFile(ws.workspaceId, created.session.sessionId));
     expect(jsonDecode(raw!)['display'], 'New Title');
+    await catalog.trustProvisioningFor(ws.workspaceId);
   });
 
   test('createWorkspaceWithFirstSession persists team pins into catalog memory', () async {

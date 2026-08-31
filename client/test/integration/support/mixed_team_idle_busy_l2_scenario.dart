@@ -3,6 +3,7 @@ import 'package:mock_model_gateway/scenarios/task_complete_mixed_claude.dart';
 import 'package:mock_model_gateway/scenarios/task_dispatch_mixed_claude.dart';
 import 'package:teampilot/models/member_presence.dart';
 
+import 'bus_roster_assertions.dart';
 import 'mixed_team_idle_busy_assertions.dart';
 import 'mixed_team_integration_harness.dart';
 import 'mixed_team_task_scenario.dart';
@@ -104,6 +105,16 @@ abstract final class MixedTeamIdleBusyL2Scenario {
         sessionId: ctx.session.sessionId,
       );
       final bus = ctx.harness.tabBus(ctx.session.sessionId)!;
+      final gateway = ctx.harness.tabGateway(ctx.cubit);
+      // Leader mock ends on wait_for_message; park before idle-watch so
+      // claudeIsActive clears and busySessionIds can fall through.
+      await waitUntilWorkerParked(
+        bus: bus,
+        gateway: gateway,
+        sessionId: ctx.session.sessionId,
+        memberId: kLeadMember.id,
+        timeout: const Duration(seconds: 120),
+      );
       // Worker idle-notify may doorbell leader; drain unread so PTY quiet can
       // fall through idle-deferred (doorbelled + unread) and end the turn.
       await bus.readMessages('team-lead', markRead: true, unreadOnly: true);
@@ -111,7 +122,7 @@ abstract final class MixedTeamIdleBusyL2Scenario {
         bus: bus,
         cubit: ctx.cubit,
         sessionId: ctx.session.sessionId,
-        gateway: ctx.harness.tabGateway(ctx.cubit),
+        gateway: gateway,
       );
       await waitUntilMemberAvailability(
         presenceCubit: ctx.presenceCubit!,

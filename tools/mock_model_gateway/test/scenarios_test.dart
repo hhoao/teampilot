@@ -99,7 +99,7 @@ void main() {
         containsAll([
           'native.TeamCreate',
           'native.TaskCreate',
-          'native.TeamDelete',
+          'native.TaskStop',
         ]),
       );
       expect(

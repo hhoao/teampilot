@@ -14,9 +14,9 @@ import 'mixed_collab_3plus.dart'
 /// Profile `toolName` maps them to on-wire names, e.g.:
 /// - `native.TeamCreate` → `TeamCreate`
 /// - `native.TaskCreate` → `TaskCreate`
-/// - `native.TaskUpdate` → `TaskUpdate`
-/// - `native.TeamDelete` → `TeamDelete`
-/// (also: SendMessage, TaskList, TaskGet, TaskStop, TaskOutput as needed)
+/// - `native.TaskList` → `TaskList`
+/// - `native.TaskStop` → `TaskStop`
+/// (also: SendMessage, TaskGet, TaskUpdate, TaskOutput as needed)
 ///
 /// Shape: lead dispatch → worker reply → lead close-out, with ≥3 lead texts.
 ///
@@ -24,7 +24,7 @@ import 'mixed_collab_3plus.dart'
 /// [TextTurn] is `end_turn` (native has no mixed Stop-hook chain), so the
 /// Claude native cell advances one tool→text segment per History compose:
 /// TeamCreate/TaskCreate→MARK_LEAD_1, TaskList→MARK_LEAD_2,
-/// TeamDelete→MARK_LEAD_DONE.
+/// TaskStop→MARK_LEAD_DONE.
 Map<String, MockScenario> nativeCollab3PlusScenarios() => {
       leadScriptApiKey: MockScenario(
         turns: [
@@ -49,8 +49,8 @@ Map<String, MockScenario> nativeCollab3PlusScenarios() => {
           ),
           TextTurn(markLead2),
           ToolUseTurn(
-            id: 'tu_team_delete',
-            toolRef: 'native.TeamDelete',
+            id: 'tu_task_stop',
+            toolRef: 'native.TaskStop',
             input: {},
           ),
           TextTurn(markLeadDone),

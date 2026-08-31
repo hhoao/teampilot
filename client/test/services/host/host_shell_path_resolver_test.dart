@@ -287,10 +287,13 @@ void main() {
     });
   });
 
-  test('fallbackCandidateDirs includes homebrew, usr/local and ~/.local/bin',
-      () {
-    final dirs = HostShellPathResolver.fallbackCandidateDirs();
-    expect(dirs.take(2), ['/opt/homebrew/bin', '/usr/local/bin']);
-    expect(dirs.where((d) => d.endsWith('/.local/bin')), isNotEmpty);
-  });
+  test(
+    'fallbackCandidateDirs includes homebrew, usr/local and ~/.local/bin',
+    () {
+      final dirs = HostShellPathResolver.fallbackCandidateDirs();
+      expect(dirs.take(2), ['/opt/homebrew/bin', '/usr/local/bin']);
+      expect(dirs.where((d) => d.endsWith('/.local/bin')), isNotEmpty);
+    },
+    skip: Platform.isWindows ? 'POSIX HOME/.local/bin paths' : false,
+  );
 }

@@ -45,6 +45,7 @@ void main() {
     () async {
       client = buildClient();
       await client.start(url: relay.baseUrl, hostId: 'h1');
+      await relay.waitForDesktop();
 
       relay.pushDial(
         channel: 'ssh',
@@ -76,6 +77,7 @@ void main() {
     () async {
       client = buildClient(validateDial: (_) async => false);
       await client.start(url: relay.baseUrl, hostId: 'h1');
+      await relay.waitForDesktop();
 
       relay.pushDial(channel: 'ssh', spliceId: 's2', deviceId: 'pixel-1');
 
@@ -92,6 +94,7 @@ void main() {
       retryDelay: const Duration(milliseconds: 5),
     );
     await client.start(url: relay.baseUrl, hostId: 'h1');
+    await relay.waitForDesktop();
 
     relay.pushDial(channel: 'pair', spliceId: 's3');
 
@@ -109,10 +112,11 @@ void main() {
       },
     );
     await client.start(url: relay.baseUrl, hostId: 'h1');
+    await relay.waitForDesktop();
     expect(starts, 1);
 
     await relay.dropDesktop();
-    await Future<void>.delayed(const Duration(milliseconds: 60));
+    await pumpUntil(() => starts >= 2);
 
     expect(starts, greaterThanOrEqualTo(2));
     expect(client.isConnected, isTrue);
@@ -167,6 +171,8 @@ class _FakeRelay {
 
   Uri get baseUrl =>
       Uri(scheme: 'ws', host: '127.0.0.1', port: _server?.port ?? 0);
+
+  Future<void> waitForDesktop() => pumpUntil(() => _desktopSide != null);
 
   void pushDial({
     required String channel,
