@@ -106,6 +106,16 @@ void main() {
       );
       expect(ms, DateTime.utc(2026, 1, 1, 15, 30).millisecondsSinceEpoch);
     });
+
+    test('resolves local times inside a DST gap forward past the gap', () {
+      // 2026-03-08 02:30 does not exist in America/New_York (spring forward).
+      final ms = combineLocalDateAndTimeToMs(
+        date: DateTime(2026, 3, 8),
+        time: const TimeOfDay(hour: 2, minute: 30),
+        timezone: 'America/New_York',
+      );
+      expect(ms, DateTime.utc(2026, 3, 8, 7, 30).millisecondsSinceEpoch);
+    });
   });
 
   group('countdownToRunAtMs', () {

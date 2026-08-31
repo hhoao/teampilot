@@ -13,14 +13,11 @@ DateTime defaultOnceDateTime(DateTime now) =>
 
 /// Rounds [now] up to the next quarter hour as a [TimeOfDay].
 ///
-/// Times already exactly on a quarter boundary roll forward to the next one;
-/// otherwise the result is the next 0/15/30/45 boundary (may roll past midnight
-/// into 00:00).
+/// An exact 0/15/30/45 boundary rolls to the next one; the result may roll
+/// past midnight into 00:00.
 TimeOfDay roundUpToNextQuarterHour(DateTime now) {
-  final exactOnQuarter =
-      now.minute % 15 == 0 && now.second == 0 && now.millisecond == 0;
   final totalMinutes = now.hour * 60 + now.minute;
-  final next = exactOnQuarter ? totalMinutes + 15 : _ceilToQuarter(totalMinutes);
+  final next = _ceilToQuarter(totalMinutes);
   final wrapped = next % (24 * 60);
   return TimeOfDay(hour: wrapped ~/ 60, minute: wrapped % 60);
 }
@@ -35,7 +32,9 @@ String formatHourMinute(TimeOfDay t) =>
     '${t.hour.toString().padLeft(2, '0')}:${t.minute.toString().padLeft(2, '0')}';
 
 /// Composes a wall-clock [date] + [time] in [timezone] into epoch
-/// milliseconds, falling back to UTC when [timezone] is unknown.
+/// milliseconds, falling back to UTC when [timezone] is unknown. Local times
+/// inside a DST gap resolve forward past the gap; ambiguous times resolve to
+/// the earlier occurrence.
 int combineLocalDateAndTimeToMs({
   required DateTime date,
   required TimeOfDay time,
