@@ -20,6 +20,7 @@ import '../../models/workspace_topology.dart';
 import '../../models/workspace_launch_context.dart';
 import '../team_bus/member_bus_idle_endpoint.dart';
 import '../agent_status/member_agent_status_endpoint.dart';
+import '../resource/resource_provider_set.dart';
 import '../storage/app_storage.dart';
 import '../storage/runtime_layout.dart';
 import '../storage/work_target_canonicalizer.dart';
@@ -512,6 +513,8 @@ class SessionLifecycleService {
     Map<String, Map<String, Object?>>? extraMcpServers,
     MemberBusIdleEndpoint? busIdle,
     MemberAgentStatusEndpoint? agentStatus,
+    ResourceProviderSet Function(AppSession session, ResourceProviderSet defaults)?
+    resourceProviderResolver,
   }) async {
     final sessionId = session.sessionId.trim();
     final isSimple = plan.mode == SessionRuntimeMode.simple;
@@ -598,6 +601,11 @@ class SessionLifecycleService {
       extraMcpServers: extraMcpServers,
       busIdle: busIdle,
       agentStatus: agentStatus,
+      injectedResourceProviders: isSimple
+          ? (resourceProviderResolver != null
+                ? resourceProviderResolver(session, ResourceProviderSet.empty)
+                : ResourceProviderSet.empty)
+          : ResourceProviderSet.empty,
     );
     final packStore = SkillPackInstallStore();
     final packPaths = await packStore.pathExportsForSkills(
@@ -824,6 +832,7 @@ class SessionLifecycleService {
     Map<String, Map<String, Object?>>? extraMcpServers,
     MemberBusIdleEndpoint? busIdle,
     MemberAgentStatusEndpoint? agentStatus,
+    ResourceProviderSet injectedResourceProviders = ResourceProviderSet.empty,
   }) async {
     final catalog = WorkspaceLaunchContext(
       session: session,
@@ -850,6 +859,7 @@ class SessionLifecycleService {
         extraMcpServers: extraMcpServers,
         busIdle: busIdle,
         agentStatus: agentStatus,
+        injectedResourceProviders: injectedResourceProviders,
       );
       return _PreparedLaunch(
         env: outcome.environment,
