@@ -695,6 +695,8 @@ class SessionRepository {
   Future<({AppSession session, Workspace workspace})> createSession(
     String workspaceId, {
     String sessionTeam = '',
+    SessionPurpose purpose = SessionPurpose.normal,
+    String workflowId = '',
     List<TeamMemberConfig> rosterMembers = const [],
     Map<String, CliTool> memberClis = const {},
     CliTool? cli,
@@ -809,6 +811,15 @@ class SessionRepository {
     final sessionId = pinnedId.isNotEmpty ? pinnedId : const Uuid().v4();
     final now = DateTime.now().millisecondsSinceEpoch;
     final resolvedExpertKey = expertKey?.trim() ?? '';
+    final resolvedWorkflowId = purpose == SessionPurpose.teamGeneration
+        ? (workflowId.trim().isEmpty || !isValidTeamGenerationWorkflowId(workflowId.trim())
+              ? throw ArgumentError.value(
+                  workflowId,
+                  'workflowId',
+                  'teamGeneration sessions require a valid workflow id',
+                )
+              : workflowId.trim())
+        : '';
     final session = AppSession(
       sessionId: sessionId,
       workspaceId: workspaceId,
@@ -837,6 +848,8 @@ class SessionRepository {
       updatedAt: now,
       expertKey: resolvedExpertKey,
       continueOverrides: continueOverrides ?? const SessionContinueOverrides(),
+      purpose: purpose,
+      workflowId: resolvedWorkflowId,
     );
     await fs.ensureSessionDir(workspaceId, sessionId);
     mark('ensure-dir');

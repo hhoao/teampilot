@@ -209,6 +209,8 @@ class _MaterializeRepo extends Fake implements SessionRepository {
   Future<({AppSession session, Workspace workspace})> createSession(
     String workspaceId, {
     String sessionTeam = '',
+    SessionPurpose purpose = SessionPurpose.normal,
+    String workflowId = '',
     List<TeamMemberConfig> rosterMembers = const [],
     Map<String, CliTool> memberClis = const {},
     CliTool? cli,

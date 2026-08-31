@@ -231,6 +231,8 @@ class SessionLaunchService
     final persisted = (await repo.createSession(
       session.workspaceId,
       sessionTeam: params.sessionTeamId,
+      purpose: params.purpose,
+      workflowId: params.workflowId,
       rosterMembers: params.rosterMembers,
       memberClis: memberClis,
       cli: params.simpleIdentity?.cli ?? params.cli,

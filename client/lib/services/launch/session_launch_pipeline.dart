@@ -195,6 +195,15 @@ class SessionLaunchPipeline {
     final sessionId = fixedId != null && fixedId.isNotEmpty
         ? fixedId
         : _uuid.v4();
+    final requestWorkflowId = request.workflowId.trim();
+    if (request.purpose == SessionPurpose.teamGeneration &&
+        !isValidTeamGenerationWorkflowId(requestWorkflowId)) {
+      throw ArgumentError.value(
+        requestWorkflowId,
+        'workflowId',
+        'teamGeneration sessions require a valid workflow id',
+      );
+    }
     var provisional = buildProvisionalSession(
       sessionId: sessionId,
       workspace: request.workspace,
@@ -205,6 +214,8 @@ class SessionLaunchPipeline {
       sessionTeamId: sessionTeamId,
       expertKey: request.expertKey,
       home: _host.lifecycle.currentHome,
+      purpose: request.purpose,
+      workflowId: requestWorkflowId,
     );
 
     // Team sessions need provisional member bindings so history loading (which
@@ -240,6 +251,8 @@ class SessionLaunchPipeline {
 
     final persistParams = SessionPersistParams(
       sessionTeamId: sessionTeamId,
+      purpose: request.purpose,
+      workflowId: requestWorkflowId,
       rosterMembers: request.isPersonal
           ? const []
           : (request.team?.members ?? const []),

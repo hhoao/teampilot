@@ -89,6 +89,29 @@ int _sessionBindingOrdinal(String instanceId, String typeId) {
 
 enum AppSessionLaunchState { created, started }
 
+/// Durable session role. Persisted as a string; unknown values fail closed
+/// to [normal] so old/future writers never gain generation privileges.
+enum SessionPurpose {
+  normal('normal'),
+  teamGeneration('teamGeneration');
+
+  const SessionPurpose(this.value);
+  final String value;
+
+  static SessionPurpose decode(Object? raw) {
+    final value = raw?.toString().trim() ?? '';
+    return SessionPurpose.values.firstWhere(
+      (purpose) => purpose.value == value,
+      orElse: () => SessionPurpose.normal,
+    );
+  }
+}
+
+/// Builder workflow IDs become directory names under
+/// `team-generation/<workflowId>/`, so only safe single-segment names pass.
+bool isValidTeamGenerationWorkflowId(String value) =>
+    RegExp(r'^[A-Za-z0-9][A-Za-z0-9_-]{0,127}$').hasMatch(value);
+
 @immutable
 class AppSession {
   const AppSession._({
@@ -115,7 +138,9 @@ class AppSession {
     this.expertKey = '',
     this.continueOverrides = const SessionContinueOverrides(),
     this.archived = false,
-  });
+    this.purpose = SessionPurpose.normal,
+    String workflowId = '',
+  }) : workflowId = purpose == SessionPurpose.teamGeneration ? workflowId : '';
 
   factory AppSession({
     required String sessionId,
@@ -142,6 +167,8 @@ class AppSession {
     SessionContinueOverrides continueOverrides =
         const SessionContinueOverrides(),
     bool archived = false,
+    SessionPurpose purpose = SessionPurpose.normal,
+    String workflowId = '',
   }) {
     return AppSession._(
       sessionId: sessionId,
@@ -171,6 +198,8 @@ class AppSession {
       expertKey: expertKey.trim(),
       continueOverrides: continueOverrides,
       archived: archived,
+      purpose: purpose,
+      workflowId: workflowId,
     );
   }
 
@@ -234,6 +263,8 @@ class AppSession {
             : null,
       ),
       archived: json['archived'] as bool? ?? false,
+      purpose: SessionPurpose.decode(json['purpose']),
+      workflowId: json['workflowId'] as String? ?? '',
     );
   }
 
@@ -309,6 +340,13 @@ class AppSession {
 
   final bool archived;
 
+  /// What this session is for; only teamGeneration sessions carry a non-empty
+  /// [workflowId].
+  final SessionPurpose purpose;
+
+  /// Workflow this session belongs to (builder sessions only; otherwise '').
+  final String workflowId;
+
   /// True when this session has no team roster (Simple / unteamed).
   bool get isSimple => sessionTeam.trim().isEmpty;
 
@@ -369,7 +407,10 @@ class AppSession {
     String? expertKey,
     SessionContinueOverrides? continueOverrides,
     bool? archived,
+    SessionPurpose? purpose,
+    String? workflowId,
   }) {
+    final nextPurpose = purpose ?? this.purpose;
     return AppSession(
       sessionId: sessionId ?? this.sessionId,
       workspaceId: workspaceId ?? this.workspaceId,
@@ -394,6 +435,10 @@ class AppSession {
       expertKey: expertKey ?? this.expertKey,
       continueOverrides: continueOverrides ?? this.continueOverrides,
       archived: archived ?? this.archived,
+      purpose: nextPurpose,
+      workflowId: nextPurpose == SessionPurpose.teamGeneration
+          ? (workflowId ?? this.workflowId).trim()
+          : '',
     );
   }
 
@@ -425,6 +470,8 @@ class AppSession {
       if (continueOverrides != const SessionContinueOverrides())
         'continueOverrides': continueOverrides.toJson(),
       if (archived) 'archived': archived,
+      if (purpose != SessionPurpose.normal) 'purpose': purpose.value,
+      if (workflowId.isNotEmpty) 'workflowId': workflowId,
     };
   }
 
@@ -455,7 +502,9 @@ class AppSession {
             sortOrder == other.sortOrder &&
             expertKey == other.expertKey &&
             continueOverrides == other.continueOverrides &&
-            archived == other.archived;
+            archived == other.archived &&
+            purpose == other.purpose &&
+            workflowId == other.workflowId;
   }
 
   @override
@@ -485,5 +534,7 @@ class AppSession {
     expertKey,
     continueOverrides,
     archived,
+    purpose,
+    workflowId,
   ]);
 }

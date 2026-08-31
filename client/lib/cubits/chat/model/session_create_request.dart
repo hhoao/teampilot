@@ -1,3 +1,4 @@
+import '../../../models/app_session.dart';
 import '../../../models/simple_launch_identity.dart';
 import '../../../models/session_continue_overrides.dart';
 import '../../../models/team_config.dart';
@@ -9,6 +10,8 @@ class SessionCreateRequest {
   const SessionCreateRequest({
     required this.workspace,
     required this.isPersonal,
+    this.purpose = SessionPurpose.normal,
+    this.workflowId = '',
     this.team,
     this.member,
     this.repo,
@@ -26,6 +29,13 @@ class SessionCreateRequest {
 
   /// True for Simple (unteamed) launch — empty [sessionTeam].
   final bool isPersonal;
+
+  /// Durable role of the new session (builder sessions use teamGeneration).
+  final SessionPurpose purpose;
+
+  /// Team-generation workflow id when [purpose] is teamGeneration.
+  final String workflowId;
+
   final TeamProfile? team;
   final TeamMemberConfig? member;
   final SessionRepository? repo;
