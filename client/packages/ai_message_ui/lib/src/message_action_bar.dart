@@ -211,7 +211,7 @@ class _AiMessageActionBarState extends State<AiMessageActionBar> {
           _LiteIconAction(
             label: strings.retryDelivery,
             icon: Icons.refresh_rounded,
-            color: color,
+            color: scheme.error,
             onPressed: widget.onRetryDelivery,
           ),
         _LiteIconAction(

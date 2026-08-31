@@ -3,6 +3,9 @@ description: Flutter Thread/Message/Part UI for ai_message_core.
 version: 0.1.0
 publish_to: none
 
+flutter:
+  uses-material-design: true
+
 environment:
   sdk: ^3.8.1
   flutter: ">=3.27.0"

@@ -106,7 +106,6 @@ abstract final class MixedTeamIdleBusyL2Scenario {
         sessionId: ctx.session.sessionId,
       );
       final bus = ctx.harness.tabBus(ctx.session.sessionId)!;
-      final gateway = ctx.harness.tabGateway(ctx.cubit);
       // Worker idle-notify may doorbell leader; drain unread before settling.
       await bus.readMessages('team-lead', markRead: true, unreadOnly: true);
       final tab = ctx.cubit.tabStore.openTabBySessionId(ctx.session.sessionId);

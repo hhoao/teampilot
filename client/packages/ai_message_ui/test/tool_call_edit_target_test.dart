@@ -31,12 +31,43 @@ class _TestFileResolver implements AiToolFileTargetResolver {
 class _TestEditResolver implements AiEditToolTargetResolver {
   const _TestEditResolver();
 
+  /// Mirrors the client's [StrReplaceEditHunkCodec] for the args shapes used
+  /// here: builds a remove-line per old_string line and an add-line per
+  /// new_string line (plus the pre-image line count for the badges).
   @override
   AiEditToolTarget? resolve(AiToolCallPart part) {
     final path = part.args?['file_path'] as String? ??
         part.args?['path'] as String?;
     if (path == null) return null;
-    return AiEditToolTarget(hunk: AiEditHunk(path: path, lines: []));
+    final oldString = part.args?['old_string'] as String?;
+    final newString = part.args?['new_string'] as String?;
+    if (oldString == null && newString == null) return null;
+    final startLine = part.args?['start_line'] as int?;
+    final oldLines = (oldString ?? '').split('\n');
+    final newLines = (newString ?? '').split('\n');
+    // Mirror the codec: gutter numbers advance across remove rows then add rows.
+    var lineNumber = startLine;
+    AiEditLine numbered(AiEditLineKind kind, String text) {
+      final line = AiEditLine(kind: kind, text: text, lineNumber: lineNumber);
+      if (lineNumber != null) {
+        lineNumber = (lineNumber ?? 0) + 1;
+      }
+      return line;
+    }
+
+    final lines = <AiEditLine>[
+      for (final text in oldLines) numbered(AiEditLineKind.remove, text),
+      for (final text in newLines) numbered(AiEditLineKind.add, text),
+    ];
+    return AiEditToolTarget(
+      hunk: AiEditHunk(
+        path: path,
+        lines: lines,
+        addedCount: oldString == null ? 0 : newLines.length,
+        removedCount: newString == null ? 0 : oldLines.length,
+        startLine: startLine,
+      ),
+    );
   }
 }
 
@@ -72,20 +103,27 @@ void main() {
     tester,
   ) async {
     await tester.pumpWidget(
-      const MaterialApp(
-        home: Scaffold(
-          body: AiToolCallPartView(
-            part: AiToolCallPart(
-              toolCallId: '1',
-              toolName: 'StrReplace',
-              args: {
-                'file_path': 'lib/tp_sidebar_provider.dart',
-                'old_string': 'final double mobileBreakpoint;',
-                'new_string':
-                    'final double mobileBreakpoint;\nfinal bool edgeOpenEnabled;',
-                'start_line': 40,
-              },
-              result: 'ok',
+      MaterialApp(
+        home: AiToolFileActionsScope(
+          actions: AiToolFileActions(
+            fileResolver: const _TestFileResolver(),
+            editResolver: const _TestEditResolver(),
+            shellResolver: const _TestShellResolver(),
+          ),
+          child: const Scaffold(
+            body: AiToolCallPartView(
+              part: AiToolCallPart(
+                toolCallId: '1',
+                toolName: 'StrReplace',
+                args: {
+                  'file_path': 'lib/tp_sidebar_provider.dart',
+                  'old_string': 'final double mobileBreakpoint;',
+                  'new_string':
+                      'final double mobileBreakpoint;\nfinal bool edgeOpenEnabled;',
+                  'start_line': 40,
+                },
+                result: 'ok',
+              ),
             ),
           ),
         ),
@@ -101,17 +139,24 @@ void main() {
 
   testWidgets('tap diff line does not toggle expand', (tester) async {
     await tester.pumpWidget(
-      const MaterialApp(
-        home: Scaffold(
-          body: AiToolCallPartView(
-            part: AiToolCallPart(
-              toolCallId: '1',
-              toolName: 'StrReplace',
-              args: {
-                'file_path': 'lib/a.dart',
-                'old_string': 'l1\nl2\nl3\nl4\nl5\nl6',
-                'new_string': 'l1\nl2\nl3\nl4\nl5\nlate-line',
-              },
+      MaterialApp(
+        home: AiToolFileActionsScope(
+          actions: AiToolFileActions(
+            fileResolver: const _TestFileResolver(),
+            editResolver: const _TestEditResolver(),
+            shellResolver: const _TestShellResolver(),
+          ),
+          child: const Scaffold(
+            body: AiToolCallPartView(
+              part: AiToolCallPart(
+                toolCallId: '1',
+                toolName: 'StrReplace',
+                args: {
+                  'file_path': 'lib/a.dart',
+                  'old_string': 'l1\nl2\nl3\nl4\nl5\nl6',
+                  'new_string': 'l1\nl2\nl3\nl4\nl5\nlate-line',
+                },
+              ),
             ),
           ),
         ),
@@ -168,18 +213,25 @@ void main() {
   testWidgets('gutter and +/- prefix are selection-disabled', (tester) async {
     await tester.pumpWidget(
       MaterialApp(
-        home: Scaffold(
-          body: SelectionArea(
-            child: AiToolCallPartView(
-              part: AiToolCallPart(
-                toolCallId: '1',
-                toolName: 'StrReplace',
-                args: {
-                  'file_path': 'lib/a.dart',
-                  'old_string': 'old',
-                  'new_string': 'new',
-                  'start_line': 10,
-                },
+        home: AiToolFileActionsScope(
+          actions: AiToolFileActions(
+            fileResolver: const _TestFileResolver(),
+            editResolver: const _TestEditResolver(),
+            shellResolver: const _TestShellResolver(),
+          ),
+          child: Scaffold(
+            body: SelectionArea(
+              child: AiToolCallPartView(
+                part: AiToolCallPart(
+                  toolCallId: '1',
+                  toolName: 'StrReplace',
+                  args: {
+                    'file_path': 'lib/a.dart',
+                    'old_string': 'old',
+                    'new_string': 'new',
+                    'start_line': 10,
+                  },
+                ),
               ),
             ),
           ),
@@ -264,18 +316,25 @@ void main() {
     tester,
   ) async {
     await tester.pumpWidget(
-      const MaterialApp(
-        home: Scaffold(
-          body: AiToolCallPartView(
-            part: AiToolCallPart(
-              toolCallId: '1',
-              toolName: 'StrReplace',
-              args: {
-                'file_path': 'lib/a.dart',
-                'old_string': 'l1\nl2\nl3\nl4\nl5\nl6',
-                'new_string': 'l1\nl2\nl3\nl4\nl5\nlate-line',
-              },
-              result: 'ok',
+      MaterialApp(
+        home: AiToolFileActionsScope(
+          actions: AiToolFileActions(
+            fileResolver: const _TestFileResolver(),
+            editResolver: const _TestEditResolver(),
+            shellResolver: const _TestShellResolver(),
+          ),
+          child: const Scaffold(
+            body: AiToolCallPartView(
+              part: AiToolCallPart(
+                toolCallId: '1',
+                toolName: 'StrReplace',
+                args: {
+                  'file_path': 'lib/a.dart',
+                  'old_string': 'l1\nl2\nl3\nl4\nl5\nl6',
+                  'new_string': 'l1\nl2\nl3\nl4\nl5\nlate-line',
+                },
+                result: 'ok',
+              ),
             ),
           ),
         ),
@@ -294,17 +353,24 @@ void main() {
 
   testWidgets('body fade chevron tap toggles expand once', (tester) async {
     await tester.pumpWidget(
-      const MaterialApp(
-        home: Scaffold(
-          body: AiToolCallPartView(
-            part: AiToolCallPart(
-              toolCallId: '1',
-              toolName: 'StrReplace',
-              args: {
-                'file_path': 'lib/a.dart',
-                'old_string': 'l1\nl2\nl3\nl4\nl5\nl6',
-                'new_string': 'l1\nl2\nl3\nl4\nl5\nlate-line',
-              },
+      MaterialApp(
+        home: AiToolFileActionsScope(
+          actions: AiToolFileActions(
+            fileResolver: const _TestFileResolver(),
+            editResolver: const _TestEditResolver(),
+            shellResolver: const _TestShellResolver(),
+          ),
+          child: const Scaffold(
+            body: AiToolCallPartView(
+              part: AiToolCallPart(
+                toolCallId: '1',
+                toolName: 'StrReplace',
+                args: {
+                  'file_path': 'lib/a.dart',
+                  'old_string': 'l1\nl2\nl3\nl4\nl5\nl6',
+                  'new_string': 'l1\nl2\nl3\nl4\nl5\nlate-line',
+                },
+              ),
             ),
           ),
         ),
@@ -329,17 +395,24 @@ void main() {
 
     await tester.pumpWidget(
       MaterialApp(
-        home: Scaffold(
-          body: AiToolCallPartView(
-            initiallyExpanded: true,
-            part: AiToolCallPart(
-              toolCallId: '1',
-              toolName: 'StrReplace',
-              args: {
-                'file_path': 'lib/a.dart',
-                'old_string': 'short',
-                'new_string': longLine,
-              },
+        home: AiToolFileActionsScope(
+          actions: AiToolFileActions(
+            fileResolver: const _TestFileResolver(),
+            editResolver: const _TestEditResolver(),
+            shellResolver: const _TestShellResolver(),
+          ),
+          child: Scaffold(
+            body: AiToolCallPartView(
+              initiallyExpanded: true,
+              part: AiToolCallPart(
+                toolCallId: '1',
+                toolName: 'StrReplace',
+                args: {
+                  'file_path': 'lib/a.dart',
+                  'old_string': 'short',
+                  'new_string': longLine,
+                },
+              ),
             ),
           ),
         ),
@@ -356,6 +429,9 @@ void main() {
       MaterialApp(
         home: AiToolFileActionsScope(
           actions: AiToolFileActions(
+            fileResolver: const _TestFileResolver(),
+            editResolver: const _TestEditResolver(),
+            shellResolver: const _TestShellResolver(),
             onOpenFile: (t) async => opened = t,
           ),
           child: const Scaffold(
@@ -403,13 +479,20 @@ void main() {
 
   testWidgets('Read still uses summary chrome', (tester) async {
     await tester.pumpWidget(
-      const MaterialApp(
-        home: Scaffold(
-          body: AiToolCallPartView(
-            part: AiToolCallPart(
-              toolCallId: '1',
-              toolName: 'Read',
-              args: {'file_path': 'lib/foo.dart'},
+      MaterialApp(
+        home: AiToolFileActionsScope(
+          actions: AiToolFileActions(
+            fileResolver: const _TestFileResolver(),
+            editResolver: const _TestEditResolver(),
+            shellResolver: const _TestShellResolver(),
+          ),
+          child: const Scaffold(
+            body: AiToolCallPartView(
+              part: AiToolCallPart(
+                toolCallId: '1',
+                toolName: 'Read',
+                args: {'file_path': 'lib/foo.dart'},
+              ),
             ),
           ),
         ),
@@ -425,18 +508,25 @@ void main() {
     tester,
   ) async {
     await tester.pumpWidget(
-      const MaterialApp(
-        home: Scaffold(
-          body: AiToolCallPartView(
-            part: AiToolCallPart(
-              toolCallId: '1',
-              toolName: 'Bash',
-              args: {
-                'command': 'git status --short',
-                'description': 'Check worktree git state',
-              },
-              result: ' M client/lib/a.dart',
-              status: AiToolCallStatus.complete,
+      MaterialApp(
+        home: AiToolFileActionsScope(
+          actions: AiToolFileActions(
+            fileResolver: const _TestFileResolver(),
+            editResolver: const _TestEditResolver(),
+            shellResolver: const _TestShellResolver(),
+          ),
+          child: const Scaffold(
+            body: AiToolCallPartView(
+              part: AiToolCallPart(
+                toolCallId: '1',
+                toolName: 'Bash',
+                args: {
+                  'command': 'git status --short',
+                  'description': 'Check worktree git state',
+                },
+                result: ' M client/lib/a.dart',
+                status: AiToolCallStatus.complete,
+              ),
             ),
           ),
         ),

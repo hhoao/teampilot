@@ -252,7 +252,6 @@ void main() {
         ];
         final markers = const [markLead1, markLead2, markLeadDone];
         for (var i = 0; i < prompts.length; i++) {
-          final before = harness.gateway!.requestCountFor(leadScriptApiKey);
           final result = await harness.submitCompose(prompts[i]);
           expect(
             result.ok,

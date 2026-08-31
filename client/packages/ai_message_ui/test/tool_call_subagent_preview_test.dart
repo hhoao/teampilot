@@ -46,20 +46,27 @@ void main() {
     String? openedId;
     await tester.pumpWidget(
       MaterialApp(
-        home: AiToolSubagentActionsScope(
-          actions: AiToolSubagentActions(
-            onOpenSubagent: (id) async => openedId = id,
+        home: AiToolFileActionsScope(
+          actions: AiToolFileActions(
+            fileResolver: const _TestFileResolver(),
+            editResolver: const _TestEditResolver(),
+            shellResolver: const _TestShellResolver(),
           ),
-          child: const Scaffold(
-            body: AiToolCallPartView(
-              part: AiToolCallPart(
-                toolCallId: 'agent-1',
-                toolName: 'Agent',
-                args: {
-                  'description': 'Explore auth',
-                  'prompt': 'long prompt',
-                },
-                result: 'subagent done',
+          child: AiToolSubagentActionsScope(
+            actions: AiToolSubagentActions(
+              onOpenSubagent: (id) async => openedId = id,
+            ),
+            child: const Scaffold(
+              body: AiToolCallPartView(
+                part: AiToolCallPart(
+                  toolCallId: 'agent-1',
+                  toolName: 'Agent',
+                  args: {
+                    'description': 'Explore auth',
+                    'prompt': 'long prompt',
+                  },
+                  result: 'subagent done',
+                ),
               ),
             ),
           ),
@@ -170,16 +177,23 @@ void main() {
   testWidgets('Bash with command uses shell chrome', (tester) async {
     await tester.pumpWidget(
       MaterialApp(
-        home: AiToolSubagentActionsScope(
-          actions: AiToolSubagentActions(
-            onOpenSubagent: (_) async {},
+        home: AiToolFileActionsScope(
+          actions: AiToolFileActions(
+            fileResolver: const _TestFileResolver(),
+            editResolver: const _TestEditResolver(),
+            shellResolver: const _TestShellResolver(),
           ),
-          child: const Scaffold(
-            body: AiToolCallPartView(
-              part: AiToolCallPart(
-                toolCallId: '1',
-                toolName: 'Bash',
-                args: {'command': 'ls'},
+          child: AiToolSubagentActionsScope(
+            actions: AiToolSubagentActions(
+              onOpenSubagent: (_) async {},
+            ),
+            child: const Scaffold(
+              body: AiToolCallPartView(
+                part: AiToolCallPart(
+                  toolCallId: '1',
+                  toolName: 'Bash',
+                  args: {'command': 'ls'},
+                ),
               ),
             ),
           ),
@@ -292,6 +306,9 @@ void main() {
         home: Scaffold(
           body: AiToolFileActionsScope(
             actions: AiToolFileActions(
+              fileResolver: const _TestFileResolver(),
+              editResolver: const _TestEditResolver(),
+              shellResolver: const _TestShellResolver(),
               onOpenFile: (t) async => openedFile = t,
             ),
             child: AiToolSubagentActionsScope(

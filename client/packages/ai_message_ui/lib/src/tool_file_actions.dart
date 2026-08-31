@@ -1,6 +1,7 @@
 import 'package:ai_message_core/ai_message_core.dart';
 import 'package:flutter/material.dart';
 
+import 'default_tool_resolvers.dart';
 import 'edit/edit_line_highlighter.dart';
 
 /// Host-injected resolvers + open handler for tool-call targets.
@@ -20,10 +21,13 @@ class AiToolFileActions {
   final Future<void> Function(AiToolFileTarget target)? onOpenFile;
   final AiEditLineHighlighter lineHighlighter;
 
+  /// Without a scope the package falls back to its built-in file resolver so
+  /// read/write summary chrome still renders; edit and shell targets stay
+  /// host-owned.
   static const _fallback = AiToolFileActions(
-    fileResolver: _NoopFileResolver(),
-    editResolver: _NoopEditResolver(),
-    shellResolver: _NoopShellResolver(),
+    fileResolver: DefaultAiToolFileTargetResolver(),
+    editResolver: NoopEditToolTargetResolver(),
+    shellResolver: DefaultAiShellToolTargetResolver(),
   );
 
   static AiToolFileActions of(BuildContext context) {
@@ -32,27 +36,6 @@ class AiToolFileActions {
             ?.actions ??
         _fallback;
   }
-}
-
-class _NoopFileResolver implements AiToolFileTargetResolver {
-  const _NoopFileResolver();
-
-  @override
-  AiToolFileTarget? resolve(AiToolCallPart part) => null;
-}
-
-class _NoopEditResolver implements AiEditToolTargetResolver {
-  const _NoopEditResolver();
-
-  @override
-  AiEditToolTarget? resolve(AiToolCallPart part) => null;
-}
-
-class _NoopShellResolver implements AiShellToolTargetResolver {
-  const _NoopShellResolver();
-
-  @override
-  AiShellToolTarget? resolve(AiToolCallPart part) => null;
 }
 
 class AiToolFileActionsScope extends StatelessWidget {

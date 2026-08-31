@@ -8,6 +8,16 @@ class AiToolSubagentActions {
     this.isSubagentTool,
   });
 
+  /// Union of every built-in CLI's `subagentToolNames` (Claude, Codex, Cursor,
+  /// FlashskyAI, OpenCode). Used when the host does not inject a predicate so
+  /// subagent chrome still matches cross-CLI tool names by default.
+  static const defaultSubagentToolNames = {
+    'agent',
+    'task',
+    'workflow',
+    'spawn_agent',
+  };
+
   final Future<void> Function(String toolCallId)? onOpenSubagent;
   final bool Function(String toolName)? isSubagentTool;
 

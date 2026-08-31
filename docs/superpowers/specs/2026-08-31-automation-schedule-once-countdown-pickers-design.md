@@ -54,9 +54,9 @@ Automation model / JSON
 
 ### `TpTimePicker`
 
-- Align with `ShadTimePicker` **primary** (24h): hour + minute fields (step or typed).
+- Align with `ShadTimePicker` **primary** (24h): hour + minute fields (typed digits with clamping; optional step buttons if they fit the Tp control density).
 - **Hide seconds by default** (scheduling only needs minutes).
-- `initialValue` / `onChanged` use `TimeOfDay` (or a thin `TpTimeOfDay` if needed).
+- `initialValue` / `onChanged` use Flutter `TimeOfDay` (no parallel type).
 - Optional trailing clock icon.
 - No `.period` (12h) variant in this iteration.
 

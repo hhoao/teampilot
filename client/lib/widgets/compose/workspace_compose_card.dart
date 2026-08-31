@@ -694,10 +694,13 @@ class _StopButtonState extends State<_StopButton> {
     if (mounted) setState(() {});
   }
 
+  /// Fixed stop chrome — red fill / white icon in every theme.
+  static const _fill = Color(0xFFE53935);
+  static const _icon = Colors.white;
+
   @override
   Widget build(BuildContext context) {
     final icons = context.tpIconSizes;
-    final cs = Theme.of(context).colorScheme;
 
     return Tooltip(
       message: widget.tooltip,
@@ -708,7 +711,8 @@ class _StopButtonState extends State<_StopButton> {
           shape: TpPressableShape.circle,
           width: _StopButton._size,
           height: _StopButton._size,
-          backgroundColor: cs.error,
+          backgroundColor: _fill,
+          hoverColor: Colors.white.withValues(alpha: 0.14),
           enabled: !_stopping,
           onTap: _stopping
               ? null
@@ -716,7 +720,7 @@ class _StopButtonState extends State<_StopButton> {
           child: Center(
             child: Icon(
               Icons.stop_rounded,
-              color: cs.onError,
+              color: _icon,
               size: icons.md,
             ),
           ),
