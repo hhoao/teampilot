@@ -26,7 +26,9 @@ mixin ChatConnectStateMixin on Cubit<ChatState> {
 
   void beginSessionConnect(String sessionId) {
     appLogger.d('[session-launch] connecting start session=$sessionId');
-    clearLaunchError(sessionId);
+    // Keep any existing launchError so the compose failure card stays up during
+    // Retry (with a spinner). Success clears via [finishSessionConnect]; a new
+    // failure replaces the message via [failSessionConnect].
     if (sessionId == 'pending') {
       // Pre-session materialization (no real pod exists yet).
       setMaterializingInFlight(true);
@@ -88,6 +90,7 @@ mixin ChatConnectStateMixin on Cubit<ChatState> {
   }
 
   void finishSessionConnect(String sessionId) {
+    clearLaunchError(sessionId);
     updateTabRunning(sessionId);
     if (isClosed) return;
     if (sessionId == 'pending') {

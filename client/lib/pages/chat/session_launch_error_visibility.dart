@@ -4,7 +4,8 @@ bool shouldShowSessionLaunchErrorBanner({
   required String? launchError,
   required bool sessionConnectInProgress,
 }) {
-  if (sessionConnectInProgress) return false;
+  // Keep the failure card visible while Retry reconnects so the Retry button
+  // can show a spinner. Ordinary connect/send has no launchError — no card.
   final text = launchError?.trim() ?? '';
   return text.isNotEmpty;
 }

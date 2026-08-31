@@ -568,18 +568,13 @@ class SessionChatComposeSection extends StatelessWidget {
   // -- Helpers (instance methods) -------------------------------------------
 
   /// Mirrors the old delivery-recovery slot: sit above the compose card.
+  ///
+  /// Only when a launch failure is stored — never for ordinary send/connect.
+  /// While Retry is in flight the same card stays up with a spinner.
   List<Widget> _composeLaunchErrorStrip(
     BuildContext context, {
     required TpSpacing spacing,
   }) {
-    // Chat stays on the chat overlay during Retry, so show an explicit
-    // reconnecting strip — the full-pane session-starting spinner never mounts.
-    if (sessionConnectInProgress) {
-      return [
-        const SessionLaunchReconnectStrip(),
-        SizedBox(height: spacing.sm),
-      ];
-    }
     final failure = presentSessionLaunchFailure(launchError);
     if (!shouldShowSessionLaunchErrorBanner(
           launchError: launchError,

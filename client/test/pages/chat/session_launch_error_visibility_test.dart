@@ -3,13 +3,13 @@ import 'package:teampilot/pages/chat/chat_workbench_overlay.dart';
 import 'package:teampilot/pages/chat/session_launch_error_visibility.dart';
 
 void main() {
-  test('hidden while connecting even if error set', () {
+  test('shown while reconnecting after a failure so Retry can spin', () {
     expect(
       shouldShowSessionLaunchErrorBanner(
         launchError: 'boom',
         sessionConnectInProgress: true,
       ),
-      isFalse,
+      isTrue,
     );
   });
 
@@ -23,7 +23,14 @@ void main() {
     );
   });
 
-  test('hidden when no error', () {
+  test('hidden when no error even if connecting (ordinary send/connect)', () {
+    expect(
+      shouldShowSessionLaunchErrorBanner(
+        launchError: null,
+        sessionConnectInProgress: true,
+      ),
+      isFalse,
+    );
     expect(
       shouldShowSessionLaunchErrorBanner(
         launchError: null,
