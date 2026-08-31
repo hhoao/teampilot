@@ -194,6 +194,45 @@ void main() {
     );
   });
 
+  test('hydrate drops sending when transcript text matches', () async {
+    holderMessages = [
+      const AiMessage(
+        id: 'u-match',
+        role: AiRole.user,
+        parts: [AiTextPart(text: 'same text')],
+      ),
+    ];
+    final current = session();
+    await seat.load(
+      session: current,
+      memberId: '',
+      launchContext: ctx(current),
+    );
+    final store = FailedMessageStore(
+      fs: InMemoryFilesystem(),
+      rootPath: '/teampilot',
+    );
+    final record = FailedMessageRecord(
+      id: 'pending:matched',
+      text: 'same text',
+      createdAt: DateTime.utc(2026),
+      status: FailedMessageStatus.sending,
+    );
+    await store.save(current.workspaceId, current.sessionId, record);
+
+    await seat.hydratePendingUsers(
+      store: store,
+      workspaceId: current.workspaceId,
+      sessionId: current.sessionId,
+    );
+
+    expect(
+      seat.runtime.messages.where((m) => m.id.startsWith('pending:')),
+      isEmpty,
+    );
+    expect(await store.load(current.workspaceId, current.sessionId), isEmpty);
+  });
+
   test(
     'a new CLI message clears a hydrated failed pending overlay',
     () async {
@@ -300,6 +339,41 @@ void main() {
       expect(seat.loadedMessages, hasLength(3));
       expect(identical(seat.loadedMessages[0], beforeFirst), isTrue);
       expect(identical(seat.loadedMessages[1], beforeSecond), isTrue);
+    });
+
+test('softReload tip growth after persist drops pending overlay', () async {
+      holderMessages = messages(1);
+      final current = session();
+      await seat.load(
+        session: current,
+        memberId: '',
+        launchContext: ctx(current),
+      );
+      final store = FailedMessageStore(
+        fs: InMemoryFilesystem(),
+        rootPath: '/teampilot',
+      );
+      await seat.persistPendingUser(
+        store: store,
+        workspaceId: current.workspaceId,
+        sessionId: current.sessionId,
+        text: 'in flight',
+      );
+      expect(
+        seat.runtime.messages.where((m) => m.id.startsWith('pending:')),
+        isNotEmpty,
+      );
+
+      holderMessages = messages(2);
+      bumpCacheToken();
+      await seat.softReload();
+      await Future<void>.delayed(Duration.zero);
+
+      expect(
+        seat.runtime.messages.where((m) => m.id.startsWith('pending:')),
+        isEmpty,
+      );
+      expect(await store.load(current.workspaceId, current.sessionId), isEmpty);
     });
 
     test(

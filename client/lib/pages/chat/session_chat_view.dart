@@ -580,9 +580,12 @@ class _SessionChatViewState extends State<SessionChatView> {
       unawaited(_liveRefresh?.stop() ?? Future<void>.value());
       return;
     }
-    // softReloadOrLoad already refreshed once on this load path — attach the
-    // change signal without stacking ensureStarted → refreshNow softReload.
-    unawaited(_startLiveRefresh(skipInitialRefresh: true));
+    final seat = _seat;
+    final skip = shouldSkipLiveRefreshInitialSoftReload(
+      hasOptimisticPending: seat?.hasOptimisticPending ?? false,
+      awaitingAssistant: seat?.state.awaitingAssistant ?? false,
+    );
+    unawaited(_startLiveRefresh(skipInitialRefresh: skip));
   }
 
   Future<void> _startLiveRefresh({bool skipInitialRefresh = false}) {
@@ -627,7 +630,7 @@ class _SessionChatViewState extends State<SessionChatView> {
         '${widget.session.sessionId}|${widget.selectedMemberId}'
         '|${widget.team?.id ?? ''}|${widget.workspace.workspaceId}';
     if (_liveRefresh != null && _liveRefreshScope == scope) {
-      await _liveRefresh!.ensureStarted(skipInitialRefresh: true);
+      await _liveRefresh!.ensureStarted(skipInitialRefresh: skipInitialRefresh);
       return;
     }
     try {

@@ -45,4 +45,36 @@ void main() {
       );
     });
   });
+
+  group('shouldSkipLiveRefreshInitialSoftReload', () {
+    test('skips when idle', () {
+      expect(
+        shouldSkipLiveRefreshInitialSoftReload(
+          hasOptimisticPending: false,
+          awaitingAssistant: false,
+        ),
+        isTrue,
+      );
+    });
+
+    test('does not skip with optimistic pending', () {
+      expect(
+        shouldSkipLiveRefreshInitialSoftReload(
+          hasOptimisticPending: true,
+          awaitingAssistant: false,
+        ),
+        isFalse,
+      );
+    });
+
+    test('does not skip while awaiting assistant', () {
+      expect(
+        shouldSkipLiveRefreshInitialSoftReload(
+          hasOptimisticPending: false,
+          awaitingAssistant: true,
+        ),
+        isFalse,
+      );
+    });
+  });
 }

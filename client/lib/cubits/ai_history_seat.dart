@@ -17,6 +17,7 @@ import '../services/session/ai_history_load_result.dart';
 import '../services/session/ai_history_loader.dart';
 import '../services/session/ai_history_message_dedup.dart';
 import '../services/session/ai_history_page.dart';
+import '../services/session/ai_history_pending_confirm.dart';
 import '../services/session/ai_history_pending_text.dart';
 import '../services/session/failed_message_store.dart';
 import '../services/session/history_awaiting_working_sync.dart';
@@ -751,6 +752,14 @@ class AiHistorySeat extends Cubit<AiHistoryState> {
           _pendingQueue.any((pending) => pending.id == record.id)) {
         continue;
       }
+      // Transcript already owns this send — silent success, no overlay.
+      if (transcriptConfirmsPendingRecord(
+        record: record,
+        messages: _allMessages,
+      )) {
+        await store.remove(workspaceId, sessionId, record.id);
+        continue;
+      }
       // Stale sending rows never completed delivery — treat as failed on
       // reopen so we do not latch Starting/connect chrome or FIFO-consume
       // a later successful send against this bubble.
@@ -1025,8 +1034,8 @@ class AiHistorySeat extends Cubit<AiHistoryState> {
       _visibleCount + math.max(added, result.messages.length),
       _committedLength,
     );
+    _syncAppliedSnapshotAfterStructuralEdit();
     _remergePendingsOntoRuntime();
-    _rememberAppliedSnapshot();
     _emitReadyWindow(sessionId, memberId);
   }
 
@@ -1065,11 +1074,12 @@ class AiHistorySeat extends Cubit<AiHistoryState> {
       }
       _pageCursor = null;
       _sourceHasOlder = false;
-      _remergePendingsOntoRuntime();
-      _rememberAppliedSnapshot();
+      _syncAppliedSnapshotAfterStructuralEdit();
       if (state.status == AiHistoryViewStatus.ready ||
           state.status == AiHistoryViewStatus.empty) {
         _emitReadyWindow(sessionId, memberId);
+      } else {
+        _remergePendingsOntoRuntime();
       }
     } on Object catch (e, st) {
       appLogger.w(
@@ -1425,12 +1435,20 @@ class AiHistorySeat extends Cubit<AiHistoryState> {
     _lastAppliedTipContent = tipContent;
   }
 
-  void _rememberAppliedSnapshot() {
-    _appliedSnapshotSeen = true;
-    _lastAppliedIds = [for (final message in _allMessages) message.id];
-    _lastAppliedTipContent = _allMessages.isEmpty
+  /// fullIndex / loadOlder: update the applied baseline. Drop optimistic
+  /// pendings only when the **tip** changes — prepends keep the same tip and
+  /// must not clear an in-flight overlay.
+  void _syncAppliedSnapshotAfterStructuralEdit() {
+    final ids = [for (final message in _allMessages) message.id];
+    final tipContent = _allMessages.isEmpty
         ? null
         : messageContentIdentity(_allMessages.last);
+    if (_appliedSnapshotSeen && tipContent != _lastAppliedTipContent) {
+      _dropAllPendings(removePersisted: true);
+    }
+    _appliedSnapshotSeen = true;
+    _lastAppliedIds = ids;
+    _lastAppliedTipContent = tipContent;
   }
 
   static bool _sameStringList(List<String> a, List<String> b) {

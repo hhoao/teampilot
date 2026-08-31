@@ -23,3 +23,14 @@ bool isHistorySeatHot({
   required bool isMemberRunning,
 }) =>
     routeActive || isMemberRunning;
+
+/// Whether cold→hot live refresh may skip the initial softReload.
+///
+/// Idle tab switches stay cheap. Leftover optimistic pending or an awaiting
+/// turn must softReload once so transcript tips that landed while cold are
+/// reconciled.
+bool shouldSkipLiveRefreshInitialSoftReload({
+  required bool hasOptimisticPending,
+  required bool awaitingAssistant,
+}) =>
+    !hasOptimisticPending && !awaitingAssistant;
