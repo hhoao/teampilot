@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/cubits/chat/model/chat_tab.dart';
 import 'package:teampilot/cubits/chat/model/session_connect_request.dart';
@@ -35,10 +37,18 @@ class _RecordingChatCubit extends ChatCubit {
       _ => '',
     };
     if (sessionId.isEmpty) return;
+    // Mirror production: connect returns before the shell finishes, then the
+    // pod leaves launching. Redelivery must wait for settle.
+    beginSessionConnect(sessionId);
     if (connectSucceeds) {
-      clearLaunchError(sessionId);
+      scheduleMicrotask(() {
+        clearLaunchError(sessionId);
+        finishSessionConnect(sessionId);
+      });
     } else {
-      failSessionConnect(sessionId, 'still broken');
+      scheduleMicrotask(() {
+        failSessionConnect(sessionId, 'still broken');
+      });
     }
   }
 

@@ -89,6 +89,34 @@ void main() {
     expect(failures, ['[process exited with code 1 during startup]']);
   });
 
+  test('process exit while starting includes recent PTY output', () {
+    final failures = <String>[];
+    seat = TerminalObservationSeat(
+      sessionId: 's',
+      memberId: 'm',
+      phase: TerminalLaunchPhase.confirming,
+      failLaunch: failures.add,
+      confirmStarted: () {},
+    );
+    bus = TerminalObservationBus(seat: seat);
+    // Classifier returns null so exit path keeps the raw output.
+    LaunchStartModule(
+      classify: (text, {required executable, required validateLaunch}) => null,
+    ).bind(bus, seat);
+    bus.dispatchOutput(
+      Uint8List.fromList(
+        utf8.encode('Error: [unavailable] connect ETIMEDOUT 28.0.0.8:443'),
+      ),
+    );
+    bus.notifyProcessExited(1);
+    expect(failures, hasLength(1));
+    expect(
+      failures.single,
+      'Error: [unavailable] connect ETIMEDOUT 28.0.0.8:443\n\n'
+      '[process exited with code 1 during startup]',
+    );
+  });
+
   test('process exit code 0 uses unexpected-startup message', () {
     final failures = <String>[];
     seat = TerminalObservationSeat(

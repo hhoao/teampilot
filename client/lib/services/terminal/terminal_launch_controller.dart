@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:convert';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter_alacritty/flutter_alacritty.dart';
@@ -7,7 +8,9 @@ import '../../utils/logging/logger.dart';
 import '../cli/cli_executable_validator.dart';
 import '../team/terminal_activity_tracker.dart';
 import 'observation/terminal_observation_bus.dart';
+import 'process_exit_failure_message.dart';
 import 'terminal_launch_phase.dart';
+import 'terminal_output_buffer.dart';
 import 'terminal_theme_mapper.dart';
 import 'terminal_transport.dart';
 import 'terminal_transport_starter.dart';
@@ -46,6 +49,7 @@ final class TerminalLaunchController {
 
   TerminalTransport? _transport;
   TerminalObservationBus? _observation;
+  final _recentOutput = TerminalOutputBuffer();
   var _phase = TerminalLaunchPhase.idle;
   var _startFailed = false;
   var _spawnRequested = false;
@@ -114,6 +118,7 @@ final class TerminalLaunchController {
     _startupExecutable = executable;
     _phase = TerminalLaunchPhase.spawning;
     _startFailed = false;
+    _recentOutput.clear();
     _observation?.setPhase(TerminalLaunchPhase.spawning);
     _armStartupDeadline();
   }
@@ -170,6 +175,7 @@ final class TerminalLaunchController {
 
   void feedPtyBytes(Uint8List data) {
     if (data.isEmpty) return;
+    _recentOutput.add(utf8.decode(data, allowMalformed: true));
     _observation?.dispatchOutput(data);
     engine.feed(data);
     _observation?.notifyPainted();
@@ -322,9 +328,11 @@ final class TerminalLaunchController {
             return;
           }
           _handleStartFailure(
-            code == 0
-                ? '[process exited unexpectedly during startup]'
-                : '[process exited with code $code during startup]',
+            composeProcessExitFailureMessage(
+              code: code,
+              recentOutput: _recentOutput.drainAll(),
+              duringStartup: true,
+            ),
           );
           return;
         }
@@ -332,7 +340,10 @@ final class TerminalLaunchController {
           return;
         }
         if (code != 0) {
-          final message = '[process exited with code $code]';
+          final message = composeProcessExitFailureMessage(
+            code: code,
+            recentOutput: _recentOutput.drainAll(),
+          );
           appLogger.w(
             '[terminal] $message '
             '(executable: ${CliExecutableValidator.cliDisplayName(executable)})',

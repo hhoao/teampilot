@@ -87,6 +87,7 @@ void main() {
       find.byKey(AppKeys.sessionLaunchErrorRetryButton),
     );
     expect(button.onPressed, isNull);
+    expect(find.byType(CircularProgressIndicator), findsOneWidget);
   });
 
   testWidgets('compact shows short title, not raw error', (tester) async {

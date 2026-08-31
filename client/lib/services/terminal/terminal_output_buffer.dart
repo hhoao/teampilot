@@ -71,6 +71,12 @@ final class TerminalOutputBuffer {
     return take(_pendingChars);
   }
 
+  /// Drop buffered text without returning it (e.g. on a fresh spawn).
+  void clear() {
+    _chunks.clear();
+    _pendingChars = 0;
+  }
+
   bool _isHighSurrogateBoundary(String value, int index) {
     if (index <= 0 || index >= value.length) {
       return false;

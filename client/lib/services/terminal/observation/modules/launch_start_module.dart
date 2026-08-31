@@ -3,6 +3,7 @@ import 'dart:typed_data';
 
 import '../../../../utils/logging/logger.dart';
 import '../../../cli/registry/capabilities/terminal_observation_contributor.dart';
+import '../../process_exit_failure_message.dart';
 import '../../terminal_launch_phase.dart';
 import '../../terminal_startup_failure_detector.dart';
 import '../terminal_observation_bus.dart';
@@ -60,9 +61,11 @@ final class LaunchStartModule implements TerminalObservationContributor {
       }
       seat.failLaunch?.call(
         classified ??
-            (code == 0
-                ? '[process exited unexpectedly during startup]'
-                : '[process exited with code $code during startup]'),
+            composeProcessExitFailureMessage(
+              code: code,
+              recentOutput: startupOutput.toString(),
+              duringStartup: true,
+            ),
       );
     });
     return CallbackObservationBinding(() {

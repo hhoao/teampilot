@@ -387,6 +387,53 @@ void main() {
     );
   });
 
+  test('non-zero exit includes recent PTY stderr in failure message', () async {
+    final handle = _FakeTransport();
+    String? failedMessage;
+
+    final session = TerminalSession(
+      executable: _ptyTestExecutable,
+      validateLaunch: false,
+      transportStarter:
+          (
+            executable, {
+            required arguments,
+            required workingDirectory,
+            required columns,
+            required rows,
+            environment,
+          }) {
+            return Future.value(handle);
+          },
+    );
+    addTearDown(() async {
+      session.dispose();
+      await handle.outputController.close();
+    });
+
+    session.connect(
+      workingDirectory: Directory.systemTemp.path,
+      onProcessFailed: (message) => failedMessage = message,
+    );
+    session.onViewportResize(80, 24);
+    await Future<void>.delayed(const Duration(milliseconds: 300));
+
+    handle.outputController.add(
+      Uint8List.fromList(
+        utf8.encode('Error: [unavailable] connect ETIMEDOUT 28.0.0.8:443\r\n'),
+      ),
+    );
+    await Future<void>.delayed(const Duration(milliseconds: 50));
+
+    handle.doneCompleter.complete(1);
+    await Future<void>.delayed(Duration.zero);
+    await handle.done;
+
+    expect(failedMessage, isNotNull);
+    expect(failedMessage, contains('ETIMEDOUT 28.0.0.8:443'));
+    expect(failedMessage, contains('[process exited with code 1]'));
+  });
+
   test('non-zero exit without onProcessFailed still clears running', () async {
     final handle = _FakeTransport();
     var exited = false;

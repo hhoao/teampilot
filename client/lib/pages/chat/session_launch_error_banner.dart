@@ -93,7 +93,16 @@ class _SessionLaunchErrorBannerState extends State<SessionLaunchErrorBanner> {
                   ),
                   SessionLaunchFailureActionKind.retry => TextButton.icon(
                     key: AppKeys.sessionLaunchErrorRetryButton,
-                    icon: const Icon(Icons.refresh_rounded, size: 16),
+                    icon: widget.isRetrying
+                        ? SizedBox(
+                            width: 14,
+                            height: 14,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              color: cs.primary,
+                            ),
+                          )
+                        : const Icon(Icons.refresh_rounded, size: 16),
                     label: Text(l10n.sessionRetryButton),
                     onPressed: widget.isRetrying ? null : widget.onRetry,
                   ),
@@ -160,11 +169,21 @@ class _SessionLaunchErrorBannerState extends State<SessionLaunchErrorBanner> {
                     style: _compactButtonStyle,
                     child: Text(l10n.workspaceDeadTargetRemapFromLaunch),
                   ),
-                  SessionLaunchFailureActionKind.retry => TextButton(
+                  SessionLaunchFailureActionKind.retry => TextButton.icon(
                     key: AppKeys.sessionLaunchErrorRetryButton,
                     onPressed: widget.isRetrying ? null : widget.onRetry,
                     style: _compactButtonStyle,
-                    child: Text(l10n.sessionRetryButton),
+                    icon: widget.isRetrying
+                        ? SizedBox(
+                            width: 12,
+                            height: 12,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              color: cs.onErrorContainer,
+                            ),
+                          )
+                        : const SizedBox.shrink(),
+                    label: Text(l10n.sessionRetryButton),
                   ),
                 },
               ),
@@ -181,4 +200,47 @@ class _SessionLaunchErrorBannerState extends State<SessionLaunchErrorBanner> {
     tapTargetSize: MaterialTapTargetSize.shrinkWrap,
     visualDensity: VisualDensity.compact,
   );
+}
+
+/// Shown above compose while launch Retry is connecting (Chat keeps the chat
+/// overlay, so there is no full-pane session-starting spinner).
+class SessionLaunchReconnectStrip extends StatelessWidget {
+  const SessionLaunchReconnectStrip({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    final spacing = context.tpSpacing;
+    final l10n = context.l10n;
+    return Container(
+      key: AppKeys.sessionLaunchReconnectStrip,
+      padding: EdgeInsets.all(spacing.sm),
+      decoration: BoxDecoration(
+        color: cs.surfaceContainerHighest.withValues(alpha: 0.6),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: cs.outlineVariant),
+      ),
+      child: Row(
+        children: [
+          SizedBox(
+            width: 14,
+            height: 14,
+            child: CircularProgressIndicator(
+              strokeWidth: 2,
+              color: cs.primary,
+            ),
+          ),
+          SizedBox(width: spacing.xs),
+          Expanded(
+            child: Text(
+              l10n.sessionStarting,
+              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                    fontWeight: FontWeight.w600,
+                  ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
 }

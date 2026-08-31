@@ -572,6 +572,14 @@ class SessionChatComposeSection extends StatelessWidget {
     BuildContext context, {
     required TpSpacing spacing,
   }) {
+    // Chat stays on the chat overlay during Retry, so show an explicit
+    // reconnecting strip — the full-pane session-starting spinner never mounts.
+    if (sessionConnectInProgress) {
+      return [
+        const SessionLaunchReconnectStrip(),
+        SizedBox(height: spacing.sm),
+      ];
+    }
     final failure = presentSessionLaunchFailure(launchError);
     if (!shouldShowSessionLaunchErrorBanner(
           launchError: launchError,

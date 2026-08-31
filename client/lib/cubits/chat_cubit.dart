@@ -67,6 +67,7 @@ import '../widgets/workspace_icon_picker_dialog.dart';
 import '../utils/logging/logger_utils.dart';
 import 'chat/session_launch_retry.dart';
 import 'chat/latest_failed_message.dart';
+import 'chat/session_connect_settle.dart';
 import 'chat/chat_connect_state_mixin.dart';
 import 'chat/session_data_store.dart';
 import 'chat/chat_session_shell_factory.dart';
@@ -2149,7 +2150,17 @@ class ChatCubit extends Cubit<ChatState>
       );
       return;
     }
+    // Surface connecting immediately so Chat/sidebar show a spinner. The
+    // pipeline also begins connect, but that happens inside unawaited prep.
+    beginSessionConnect(id);
     await connectWorkspaceSession(request);
+    if (isClosed) return;
+    // connectWorkspaceSession returns when tab surfacing schedules async shell
+    // prep — wait until the pod leaves launching before redelivery.
+    await awaitSessionConnectSettle(
+      isConnecting: () => isSessionConnecting(id),
+      isClosed: () => isClosed,
+    );
     if (isClosed) return;
     final stillFailed =
         (_tabStore.openTabBySessionId(id)?.info.launchError ?? '')

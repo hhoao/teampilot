@@ -46,4 +46,13 @@ void main() {
       kSessionLaunchErrorMaxDetailLines + 1,
     );
   });
+
+  test('formatSessionLaunchError keeps PTY stderr above the exit stub', () {
+    const raw =
+        'Error: [unavailable] connect ETIMEDOUT 28.0.0.8:443\n\n'
+        '[process exited with code 1]';
+    final formatted = formatSessionLaunchError(raw);
+    expect(formatted, contains('ETIMEDOUT 28.0.0.8:443'));
+    expect(formatted, contains('process exited with code 1'));
+  });
 }
