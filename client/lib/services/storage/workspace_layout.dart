@@ -1,5 +1,6 @@
 import 'package:path/path.dart' as p;
 
+import '../../models/app_session.dart';
 import '../io/filesystem.dart';
 import 'app_storage.dart';
 
@@ -115,6 +116,22 @@ class WorkspaceLayout {
   String busTasksFile(String workspaceId, String sessionId) =>
       _ctx.join(busTasksDir(workspaceId, sessionId), 'tasks.jsonl');
 
+  /// Generation workflow root: `<workspace>/team-generation/<workflowId>/`.
+  String teamGenerationDir(String workspaceId) =>
+      _ctx.join(workspaceDir(workspaceId), 'team-generation');
+
+  String teamGenerationWorkflowDir(String workspaceId, String workflowId) =>
+      _ctx.join(
+        teamGenerationDir(workspaceId),
+        requireValidTeamGenerationWorkflowId(workflowId),
+      );
+
+  String teamGenerationJobFile(String workspaceId, String workflowId) =>
+      _ctx.join(teamGenerationWorkflowDir(workspaceId, workflowId), 'job.json');
+
+  /// Uncommitted workflow payloads (staged catalog resources, probes).
+  String teamGenerationStagingDir(String workspaceId, String workflowId) =>
+      _ctx.join(teamGenerationWorkflowDir(workspaceId, workflowId), 'staging');
   String sessionRuntimeDir(String workspaceId, String sessionId) =>
       _ctx.join(sessionDir(workspaceId, sessionId), 'runtime');
 

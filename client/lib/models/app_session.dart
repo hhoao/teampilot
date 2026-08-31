@@ -112,6 +112,15 @@ enum SessionPurpose {
 bool isValidTeamGenerationWorkflowId(String value) =>
     RegExp(r'^[A-Za-z0-9][A-Za-z0-9_-]{0,127}$').hasMatch(value);
 
+/// Layout seam: throws before path joining when [value] could escape the
+/// generation directory.
+String requireValidTeamGenerationWorkflowId(String value) {
+  if (!isValidTeamGenerationWorkflowId(value)) {
+    throw ArgumentError.value(value, 'workflowId', 'invalid workflow id');
+  }
+  return value;
+}
+
 @immutable
 class AppSession {
   const AppSession._({

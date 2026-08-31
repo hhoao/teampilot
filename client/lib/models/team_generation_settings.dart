@@ -253,6 +253,67 @@ final class TeamGenerationSettingsSnapshot {
   final CliTool nativeCli;
   final List<EffectiveGenerateModelPoolEntry> modelPool;
 
+  factory TeamGenerationSettingsSnapshot.fromJson(Map<String, Object?> json) {
+    TeamMode decodeMode() {
+      final raw = json['teamMode']?.toString().trim() ?? '';
+      return TeamMode.values.firstWhere(
+        (mode) => mode.value == raw,
+        orElse: () => TeamMode.mixed,
+      );
+    }
+
+    CliTool decodeCli() => CliTool.parse(json['nativeCli']);
+    final rawPool = json['modelPool'];
+    return TeamGenerationSettingsSnapshot(
+      revision: json['revision'] as String? ?? '',
+      capturedAt: (json['capturedAt'] as num?)?.toInt() ?? 0,
+      teamMode: decodeMode(),
+      nativeCli: decodeCli(),
+      modelPool: [
+        for (final value in rawPool is List ? rawPool : const [])
+          if (value is Map)
+            EffectiveGenerateModelPoolEntry(
+              rank: (value['rank'] as num?)?.toInt() ?? 0,
+              source: GenerateModelPoolEntry.fromJson(
+                ((value['source'] as Map?) ?? const {}).cast<String, Object?>(),
+              ),
+              preset: CliPreset(
+                id: value['id'] as String? ?? '',
+                name: value['name'] as String? ?? '',
+                cli: CliTool.parse(value['cli']),
+                provider: value['provider'] as String? ?? '',
+                model: value['model'] as String? ?? '',
+                effort: value['effort'] as String? ?? '',
+                createdAt: 0,
+                updatedAt: 0,
+              ),
+            ),
+      ],
+    );
+  }
+
+  Map<String, Object?> toJson() => {
+    'revision': revision,
+    'capturedAt': capturedAt,
+    'teamMode': teamMode.value,
+    'nativeCli': nativeCli.value,
+    'modelPool': [
+      for (final entry in modelPool)
+        {
+          'rank': entry.rank,
+          'source': entry.source.toJson(),
+          'preset': {
+            'id': entry.preset.id,
+            'name': entry.preset.name,
+            'cli': entry.preset.cli.value,
+            'provider': entry.preset.provider,
+            'model': entry.preset.model,
+            'effort': entry.preset.effort,
+          },
+        },
+    ],
+  };
+
   @override
   bool operator ==(Object other) {
     return identical(this, other) ||
