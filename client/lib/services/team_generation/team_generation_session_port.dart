@@ -4,7 +4,13 @@ import '../../models/team_config.dart';
 import '../../models/workspace.dart';
 import '../../utils/team/team_member_naming.dart';
 
-/// What the workflow needs from the Flutter session layer. Pure interface —
+/// Canonical kickoff envelope delivered to the visible Builder session.
+String buildTeamGenerationKickoff(String originalPrompt) =>
+    'Build and launch the optimal TeamPilot team for the task below.\n'
+    'Follow the managed Team Builder skill and use Team Composer until '
+    'finalize_team_generation succeeds.\n\n'
+    '$originalPrompt';
+
 /// the cubit adapter lives in `cubits/team/`.
 abstract interface class TeamGenerationSessionPort {
   /// Creates the visible purpose-tagged Simple builder session.
@@ -43,6 +49,15 @@ abstract interface class TeamGenerationSessionPort {
     required bool directToPty,
   });
 
+  /// Persists the visible user-history bubble before its tracked PTY submit.
+  /// [deliveryId] correlates the pending record with the durable delivery.
+  Future<void> persistHistoryPending(
+    String sessionId,
+    String memberId,
+    String text, {
+    required String deliveryId,
+  });
+
   /// Tracked direct-to-PTY delivery with an explicit idempotency id.
   Future<PortDeliveryOutcome> deliverTracked(
     String sessionId,
@@ -61,10 +76,7 @@ abstract interface class TeamGenerationSessionPort {
 }
 
 final class SessionPortOpenResult {
-  const SessionPortOpenResult({
-    required this.status,
-    this.sessionId,
-  });
+  const SessionPortOpenResult({required this.status, this.sessionId});
 
   /// 'opened' | 'blocked...' | 'skipped' — mirrors SessionOpenStatus values
   /// without importing the cubit layer here.
@@ -75,18 +87,15 @@ final class SessionPortOpenResult {
 }
 
 final class PortDeliveryOutcome {
-  const PortDeliveryOutcome({
-    required this.result,
-    this.deliveryState = '',
-  });
+  const PortDeliveryOutcome({required this.result, this.deliveryState = ''});
 
   /// 'submitted' | 'dropped' | 'failed'.
   final String result;
   final String deliveryState;
 
   bool get submitted => result == 'submitted';
-  bool get unknown => deliveryState == 'submitIssued' ||
-      deliveryState == 'submittedUnknown';
+  bool get unknown =>
+      deliveryState == 'submitIssued' || deliveryState == 'submittedUnknown';
 }
 
 /// Ready/busy activity signal per session.

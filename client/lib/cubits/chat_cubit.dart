@@ -241,6 +241,7 @@ class ChatCubit extends Cubit<ChatState>
   final String Function()? _termuxDisconnectedWorkOpsMessageResolver;
   final RuntimeTarget Function()? _termuxGateHomeResolver;
   final PromptDeliveryCoordinator? Function()? _promptDeliveries;
+  String? Function(AppSession session)? _teamGenerationTokenIssuer;
   final TeammateBusMcpGateway _teammateBusMcpGateway;
   final AgentStatusSeatLookup? _agentStatusSeatLookup;
   final AgentAttentionCubit? _agentAttentionCubit;
@@ -574,6 +575,7 @@ class ChatCubit extends Cubit<ChatState>
     required String sessionId,
     required String memberId,
     required String text,
+    String? deliveryId,
   }) async {
     final trimmed = text.trim();
     if (trimmed.isEmpty ||
@@ -589,6 +591,7 @@ class ChatCubit extends Cubit<ChatState>
       workspaceId: workspaceId,
       sessionId: sessionId,
       text: trimmed,
+      deliveryId: deliveryId,
     );
   }
 
@@ -723,7 +726,13 @@ class ChatCubit extends Cubit<ChatState>
 
   @override
   String? Function(AppSession session)? get teamGenerationTokenIssuer =>
-      null;
+      _teamGenerationTokenIssuer;
+
+  void setTeamGenerationTokenIssuer(
+    String? Function(AppSession session)? issuer,
+  ) {
+    _teamGenerationTokenIssuer = issuer;
+  }
 
   @override
   AgentStatusSeatLookup? get agentStatusSeatLookup => _agentStatusSeatLookup;

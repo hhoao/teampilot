@@ -12,10 +12,9 @@ class _FakePort implements TeamGenerationSessionPort {
   final _controllers = <String, StreamController<PortActivity>>{};
 
   void emit(String sessionId, bool ready) {
-    _controllers.putIfAbsent(
-      sessionId,
-      StreamController<PortActivity>.broadcast,
-    ).add(PortActivity(sessionId: sessionId, readyToChat: ready));
+    _controllers
+        .putIfAbsent(sessionId, StreamController<PortActivity>.broadcast)
+        .add(PortActivity(sessionId: sessionId, readyToChat: ready));
   }
 
   @override
@@ -29,8 +28,7 @@ class _FakePort implements TeamGenerationSessionPort {
     required String expertKey,
     String emptyDisplayTitleFallback = 'Team Builder',
     bool preserveWorkbenchView = true,
-  }) async =>
-      const SessionPortOpenResult(status: 'opened');
+  }) async => const SessionPortOpenResult(status: 'opened');
 
   @override
   Future<SessionPortOpenResult> createDestination({
@@ -39,8 +37,7 @@ class _FakePort implements TeamGenerationSessionPort {
     required String projectFolderPath,
     required String workingDirectoryPath,
     required String fixedSessionId,
-  }) async =>
-      const SessionPortOpenResult(status: 'opened');
+  }) async => const SessionPortOpenResult(status: 'opened');
 
   @override
   Future<SessionPortOpenResult> open(String sessionId) async =>
@@ -60,25 +57,29 @@ class _FakePort implements TeamGenerationSessionPort {
   }) async {}
 
   @override
+  Future<void> persistHistoryPending(
+    String sessionId,
+    String memberId,
+    String text, {
+    required String deliveryId,
+  }) async {}
+
+  @override
   Future<PortDeliveryOutcome> deliverTracked(
     String sessionId,
     String memberId,
     String text, {
     required bool directToPty,
     required String deliveryId,
-  }) async =>
-      const PortDeliveryOutcome(result: 'submitted');
+  }) async => const PortDeliveryOutcome(result: 'submitted');
 
   @override
-  Future<bool> deleteBuilder(String sessionId, String workflowId) async =>
-      true;
+  Future<bool> deleteBuilder(String sessionId, String workflowId) async => true;
 
   @override
-  Stream<PortActivity> activityStream(String sessionId) =>
-      _controllers.putIfAbsent(
-        sessionId,
-        StreamController<PortActivity>.broadcast,
-      ).stream;
+  Stream<PortActivity> activityStream(String sessionId) => _controllers
+      .putIfAbsent(sessionId, StreamController<PortActivity>.broadcast)
+      .stream;
 }
 
 void main() {
@@ -113,11 +114,6 @@ void main() {
       });
     });
 
-    expect(
-      await waiting,
-      TeamGenerationBuilderIdleResult.idle,
-    );
+    expect(await waiting, TeamGenerationBuilderIdleResult.idle);
   });
 }
-
-

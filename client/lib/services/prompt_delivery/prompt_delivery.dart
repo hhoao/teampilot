@@ -106,3 +106,17 @@ final class PromptDelivery {
 /// the exact user-authored prompt for terminal injection and recovery UI.
 String normalizePromptText(String text) =>
     text.trim().replaceAll(RegExp(r'\s+'), ' ');
+
+/// The tracked PTY boundary's submission report. It preserves the durable
+/// record state while distinguishing an issued CR from an unresolved delivery.
+final class PromptDeliverySubmission {
+  const PromptDeliverySubmission({
+    required this.deliveryId,
+    required this.submitted,
+    required this.state,
+  });
+
+  final String deliveryId;
+  final bool submitted;
+  final String state;
+}

@@ -33,8 +33,7 @@ class _FakePort implements TeamGenerationSessionPort {
     required String expertKey,
     String emptyDisplayTitleFallback = 'Team Builder',
     bool preserveWorkbenchView = true,
-  }) async =>
-      const SessionPortOpenResult(status: 'opened');
+  }) async => const SessionPortOpenResult(status: 'opened');
 
   @override
   Future<SessionPortOpenResult> createDestination({
@@ -43,8 +42,7 @@ class _FakePort implements TeamGenerationSessionPort {
     required String projectFolderPath,
     required String workingDirectoryPath,
     required String fixedSessionId,
-  }) async =>
-      const SessionPortOpenResult(status: 'opened');
+  }) async => const SessionPortOpenResult(status: 'opened');
 
   @override
   Future<SessionPortOpenResult> open(String sessionId) async =>
@@ -56,8 +54,8 @@ class _FakePort implements TeamGenerationSessionPort {
   @override
   Future<AppSession?> sessionById(String sessionId) async =>
       knownSessions.contains(sessionId)
-          ? AppSession(sessionId: sessionId, workspaceId: 'ws', createdAt: 1)
-          : null;
+      ? AppSession(sessionId: sessionId, workspaceId: 'ws', createdAt: 1)
+      : null;
 
   @override
   Future<void> waitForInputReady(
@@ -67,14 +65,21 @@ class _FakePort implements TeamGenerationSessionPort {
   }) async {}
 
   @override
+  Future<void> persistHistoryPending(
+    String sessionId,
+    String memberId,
+    String text, {
+    required String deliveryId,
+  }) async {}
+
+  @override
   Future<PortDeliveryOutcome> deliverTracked(
     String sessionId,
     String memberId,
     String text, {
     required bool directToPty,
     required String deliveryId,
-  }) async =>
-      const PortDeliveryOutcome(result: 'submitted');
+  }) async => const PortDeliveryOutcome(result: 'submitted');
 
   @override
   Future<bool> deleteBuilder(String sessionId, String workflowId) async {
@@ -86,18 +91,15 @@ class _FakePort implements TeamGenerationSessionPort {
   final _controllers = <String, StreamController<PortActivity>>{};
 
   void emit(String sessionId, bool ready) {
-    _controllers.putIfAbsent(
-      sessionId,
-      StreamController<PortActivity>.broadcast,
-    ).add(PortActivity(sessionId: sessionId, readyToChat: ready));
+    _controllers
+        .putIfAbsent(sessionId, StreamController<PortActivity>.broadcast)
+        .add(PortActivity(sessionId: sessionId, readyToChat: ready));
   }
 
   @override
-  Stream<PortActivity> activityStream(String sessionId) =>
-      _controllers.putIfAbsent(
-        sessionId,
-        StreamController<PortActivity>.broadcast,
-      ).stream;
+  Stream<PortActivity> activityStream(String sessionId) => _controllers
+      .putIfAbsent(sessionId, StreamController<PortActivity>.broadcast)
+      .stream;
 }
 
 void main() {
@@ -107,13 +109,13 @@ void main() {
   final revoked = <String>[];
 
   TeamGenerationCleanupService service() => TeamGenerationCleanupService(
-        jobStore: store,
-        sessionPort: port,
-        idleWaiter: TeamGenerationBuilderIdleWaiter(sessionPort: port),
-        revokeToken: revoked.add,
-        idleTimeout: const Duration(seconds: 5),
-        quietWindow: const Duration(milliseconds: 50),
-      );
+    jobStore: store,
+    sessionPort: port,
+    idleWaiter: TeamGenerationBuilderIdleWaiter(sessionPort: port),
+    revokeToken: revoked.add,
+    idleTimeout: const Duration(seconds: 5),
+    quietWindow: const Duration(milliseconds: 50),
+  );
 
   Future<void> seedJob({
     required Map<String, TeamGenerationReceipt> receipts,
@@ -173,27 +175,34 @@ void main() {
     };
 
     var n = 0;
-    for (final missing in ['promptDeliveryDelivered', 'finalizeResponseFlushed']) {
+    for (final missing in [
+      'promptDeliveryDelivered',
+      'finalizeResponseFlushed',
+    ]) {
       n++;
       final receipts = <String, TeamGenerationReceipt>{...allReceipts}
         ..remove(missing);
       await seedJob(receipts: receipts, workflowId: 'wf-$n');
-      final result = await service().cleanup(workspaceId: 'ws', workflowId: 'wf-$n');
+      final result = await service().cleanup(
+        workspaceId: 'ws',
+        workflowId: 'wf-$n',
+      );
       expect(result, TeamGenerationCleanupResult.deferred);
       expect(port.deletedSessions, isEmpty);
     }
   });
 
-  test('deletes builder, revokes token, and compacts job once gated',
-      () async {
-    await seedJob(receipts: {
-      'promptDeliveryDelivered': const TeamGenerationReceipt(
-        state: TeamGenerationReceiptState.succeeded,
-      ),
-      'finalizeResponseFlushed': const TeamGenerationReceipt(
-        state: TeamGenerationReceiptState.succeeded,
-      ),
-    });
+  test('deletes builder, revokes token, and compacts job once gated', () async {
+    await seedJob(
+      receipts: {
+        'promptDeliveryDelivered': const TeamGenerationReceipt(
+          state: TeamGenerationReceiptState.succeeded,
+        ),
+        'finalizeResponseFlushed': const TeamGenerationReceipt(
+          state: TeamGenerationReceiptState.succeeded,
+        ),
+      },
+    );
 
     // Builder emits a ready activity so the idle waiter settles after the
     // quiet window.
@@ -214,14 +223,16 @@ void main() {
   });
 
   test('idle timeout defers and retains recoverable builder', () async {
-    await seedJob(receipts: {
-      'promptDeliveryDelivered': const TeamGenerationReceipt(
-        state: TeamGenerationReceiptState.succeeded,
-      ),
-      'finalizeResponseFlushed': const TeamGenerationReceipt(
-        state: TeamGenerationReceiptState.succeeded,
-      ),
-    });
+    await seedJob(
+      receipts: {
+        'promptDeliveryDelivered': const TeamGenerationReceipt(
+          state: TeamGenerationReceiptState.succeeded,
+        ),
+        'finalizeResponseFlushed': const TeamGenerationReceipt(
+          state: TeamGenerationReceiptState.succeeded,
+        ),
+      },
+    );
 
     final result = await service().cleanup(workspaceId: 'ws', workflowId: 'wf');
 

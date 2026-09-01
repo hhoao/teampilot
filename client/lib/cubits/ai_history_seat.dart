@@ -738,18 +738,31 @@ class AiHistorySeat extends Cubit<AiHistoryState> {
     required String workspaceId,
     required String sessionId,
     required String text,
+    String? deliveryId,
   }) async {
     _bindFailedMessageStore(
       store: store,
       workspaceId: workspaceId,
       sessionId: sessionId,
     );
-    final record = FailedMessageRecord(
-      id: 'pending:${_uuid.v4()}',
-      text: text,
-      createdAt: DateTime.now().toUtc(),
-    );
-    await store.save(workspaceId, sessionId, record);
+    final correlationId = deliveryId?.trim() ?? '';
+    final existing = correlationId.isEmpty
+        ? null
+        : (await store.load(
+            workspaceId,
+            sessionId,
+          )).where((record) => record.deliveryId == correlationId).firstOrNull;
+    final record =
+        existing ??
+        FailedMessageRecord(
+          id: 'pending:${_uuid.v4()}',
+          text: text,
+          createdAt: DateTime.now().toUtc(),
+          deliveryId: correlationId.isEmpty ? null : correlationId,
+        );
+    if (existing == null) {
+      await store.save(workspaceId, sessionId, record);
+    }
     enqueuePendingUser(
       record.text,
       id: record.id,

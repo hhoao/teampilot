@@ -1,7 +1,11 @@
+import 'dart:async';
+
+import '../../models/cli_preset.dart';
 import '../../models/simple_launch_identity.dart';
 import '../../models/team_generation_settings.dart';
 import '../../models/workspace.dart';
 import 'generated_team_plan_validator.dart';
+import 'generated_team_commit_service.dart';
 import 'models/team_generation_job.dart';
 import 'team_generation_cleanup_service.dart';
 import 'team_generation_compatibility.dart';
@@ -21,7 +25,8 @@ final class TeamGenerationPreflightIssue {
 
   @override
   bool operator ==(Object other) =>
-      identical(this, other) || other is TeamGenerationPreflightIssue && code == other.code;
+      identical(this, other) ||
+      other is TeamGenerationPreflightIssue && code == other.code;
 
   @override
   int get hashCode => code.hashCode;
@@ -60,18 +65,32 @@ final class TeamGenerationCoordinator {
     required TeamGenerationHandoffService handoffService,
     required TeamGenerationCleanupService cleanupService,
     required TeamGenerationRecoveryService recoveryService,
+    required GeneratedTeamCommitService commitService,
     required String Function() uuidFactory,
+    Future<Workspace?> Function(String workspaceId)? workspaceResolver,
+    List<CliPreset> Function()? presets,
   }) : _jobStore = jobStore,
        _settingsStore = settingsStore,
        _sessionPort = sessionPort,
        _compatibility = compatibility,
+       _handoffService = handoffService,
+       _cleanupService = cleanupService,
+       _commitService = commitService,
+       _workspaceResolver = workspaceResolver ?? ((_) async => null),
+       _presets = presets ?? (() => const <CliPreset>[]),
        _uuidFactory = uuidFactory;
 
   final TeamGenerationJobStore _jobStore;
   final TeamGenerationSettingsStore _settingsStore;
   final TeamGenerationSessionPort _sessionPort;
   final TeamGenerationCompatibility _compatibility;
+  final TeamGenerationHandoffService _handoffService;
+  final TeamGenerationCleanupService _cleanupService;
+  final GeneratedTeamCommitService _commitService;
+  final Future<Workspace?> Function(String workspaceId) _workspaceResolver;
+  final List<CliPreset> Function() _presets;
   final String Function() _uuidFactory;
+  final Map<String, Future<void>> _completionTails = {};
 
   Future<TeamGenerationPreflightResult> preflight({
     required Workspace workspace,
@@ -84,7 +103,7 @@ final class TeamGenerationCoordinator {
     final settings = await _settingsStore.load();
     final snapshot = resolveTeamGenerationSettingsSnapshot(
       settings: settings,
-      presets: const [],
+      presets: _presets(),
       registry: _compatibility.registry,
       capturedAt: 0,
     );
@@ -113,11 +132,14 @@ final class TeamGenerationCoordinator {
     String workspaceRevision = '',
   }) async {
     final workflowId = _uuidFactory();
-    final builderSessionId = teamGenerationStableId('teamgen-builder-', workflowId);
+    final builderSessionId = teamGenerationStableId(
+      'teamgen-builder-',
+      workflowId,
+    );
     final settings = await _settingsStore.load();
     final snapshot = resolveTeamGenerationSettingsSnapshot(
       settings: settings,
-      presets: const [],
+      presets: _presets(),
       registry: _compatibility.registry,
       capturedAt: DateTime.now().millisecondsSinceEpoch,
     );
@@ -126,7 +148,10 @@ final class TeamGenerationCoordinator {
       workflowId: workflowId,
       builderSessionId: builderSessionId,
       originalPrompt: originalPrompt,
-      generator: TeamGenerationJobGenerator.fromSettings(snapshot),
+      generator: TeamGenerationJobGenerator.fromSettings(
+        snapshot,
+        generatorPresetId: generatorPresetId,
+      ),
       settings: snapshot,
       launch: TeamGenerationLaunchSnapshot(
         projectFolderPath: projectFolderPath,
@@ -140,11 +165,9 @@ final class TeamGenerationCoordinator {
     );
     await _sessionPort.createBuilder(
       workspace: workspace,
-      identity: SimpleLaunchIdentity(
+      identity: SimpleLaunchIdentity.resolve(
+        preset: _presets().where((p) => p.id == generatorPresetId).firstOrNull,
         cli: snapshot.nativeCli,
-        provider: '',
-        model: '',
-        effort: '',
         expertKey: 'teampilot/builtin/team-builder',
         presetId: generatorPresetId,
       ),
@@ -154,6 +177,41 @@ final class TeamGenerationCoordinator {
       fixedSessionId: builderSessionId,
       expertKey: 'teampilot/builtin/team-builder',
     );
+    await _sessionPort.waitForInputReady(
+      builderSessionId,
+      builderSessionId,
+      directToPty: true,
+    );
+    final kickoff = buildTeamGenerationKickoff(originalPrompt);
+    final kickoffId = teamGenerationStableId('teamgen-kickoff-', workflowId);
+    await _sessionPort.persistHistoryPending(
+      builderSessionId,
+      builderSessionId,
+      kickoff,
+      deliveryId: kickoffId,
+    );
+    final kickoffResult = await _sessionPort.deliverTracked(
+      builderSessionId,
+      builderSessionId,
+      kickoff,
+      directToPty: true,
+      deliveryId: kickoffId,
+    );
+    if (!kickoffResult.submitted) {
+      throw StateError('team-generation builder kickoff failed');
+    }
+    await _jobStore.mutate(workspace.workspaceId, workflowId, (current) {
+      return current.copyWith(
+        phase: TeamGenerationPhase.planning,
+        receipts: {
+          ...current.receipts,
+          'builderKickoff': TeamGenerationReceipt(
+            state: TeamGenerationReceiptState.succeeded,
+            value: kickoffId,
+          ),
+        },
+      );
+    });
     return TeamGenerationStartResult(
       workflowId: workflowId,
       builderSessionId: builderSessionId,
@@ -172,9 +230,73 @@ final class TeamGenerationCoordinator {
     if (job == null || job.validatedRevision != revision) {
       throw StateError('finalize rejected: stale revision');
     }
-    // The composer handler's afterResponseFlushed callback drives commit and
-    // handoff; the coordinator's finalize entry only verifies eligibility.
+    await completeAccepted(job, idempotencyKey);
   }
+
+  Future<void> completeAccepted(
+    TeamGenerationJob accepted,
+    String idempotencyKey,
+  ) {
+    final key = '${accepted.workspaceId}/${accepted.workflowId}';
+    final previous = _completionTails[key] ?? Future<void>.value();
+    final result = previous.then((_) async {
+      final current = await _jobStore.read(
+        accepted.workspaceId,
+        accepted.workflowId,
+      );
+      if (current == null || current.phase == TeamGenerationPhase.complete) {
+        return;
+      }
+      final workspace = await _workspaceFor(current.workspaceId);
+      if (workspace == null) throw StateError('generation workspace missing');
+      final committed = await _commitService.commit(
+        workspace: workspace,
+        workflowId: current.workflowId,
+        validatedRevision: current.validatedRevision,
+      );
+      await _handoffService.handoff(
+        workspace: workspace,
+        team: committed.team,
+        workflowId: current.workflowId,
+      );
+      final afterHandoff = await _jobStore.read(
+        current.workspaceId,
+        current.workflowId,
+      );
+      if (afterHandoff == null ||
+          afterHandoff.phase == TeamGenerationPhase.complete) {
+        return;
+      }
+      if (afterHandoff.receipts['finalizeResponseFlushed']?.state !=
+          TeamGenerationReceiptState.succeeded) {
+        await _jobStore.recordReceipt(
+          current.workspaceId,
+          current.workflowId,
+          'finalizeResponseFlushed',
+          const TeamGenerationReceipt(
+            state: TeamGenerationReceiptState.succeeded,
+          ),
+        );
+      }
+      await _cleanupService.cleanup(
+        workspaceId: current.workspaceId,
+        workflowId: current.workflowId,
+      );
+    });
+    final tail = result.then<void>((_) {}, onError: (_) {});
+    _completionTails[key] = tail;
+    unawaited(
+      tail.then((_) {
+        if (identical(_completionTails[key], tail)) {
+          _completionTails.remove(key);
+        }
+      }),
+    );
+    return result;
+  }
+
+  Future<Workspace?> _workspaceFor(String workspaceId) =>
+      _workspaceResolver(workspaceId);
 
   Future<void> cancel({
     required String workspaceId,
@@ -182,7 +304,8 @@ final class TeamGenerationCoordinator {
   }) async {
     final job = await _jobStore.read(workspaceId, workflowId);
     if (job == null) return;
-    if (job.receipts['profile']?.state == TeamGenerationReceiptState.succeeded) {
+    if (job.receipts['profile']?.state ==
+        TeamGenerationReceiptState.succeeded) {
       throw StateError('cancel_too_late');
     }
     await _jobStore.beginCancel(workspaceId, workflowId);
@@ -192,6 +315,5 @@ final class TeamGenerationCoordinator {
   Future<void> retry({
     required String workspaceId,
     required String workflowId,
-  }) =>
-      _jobStore.resumeFailed(workspaceId, workflowId).then((_) {});
+  }) => _jobStore.resumeFailed(workspaceId, workflowId).then((_) {});
 }

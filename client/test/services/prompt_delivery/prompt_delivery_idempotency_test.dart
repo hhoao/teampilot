@@ -37,16 +37,10 @@ void main() {
   setUp(() {
     store = MemoryPromptDeliveryStore();
     commands = _RecordingCommands();
-    coordinator = PromptDeliveryCoordinator(
-      store: store,
-      commands: commands,
-    );
+    coordinator = PromptDeliveryCoordinator(store: store, commands: commands);
   });
 
-  PromptDeliveryRequest request({
-    required String text,
-    String? deliveryId,
-  }) =>
+  PromptDeliveryRequest request({required String text, String? deliveryId}) =>
       PromptDeliveryRequest(
         seat: seat,
         cli: CliTool.codex,
@@ -54,28 +48,33 @@ void main() {
         deliveryId: deliveryId,
       );
 
-  test('explicit delivery id returns the same record and never resubmits',
-      () async {
-    final first = await coordinator.submit(
-      request(text: 'exact\nrequest', deliveryId: 'teamgen-wf-0'),
-    );
-    await coordinator.stage(first.id);
-    await coordinator.issueSubmit(first.id);
-    final submitsAfterFirst = commands.submitCount;
+  test(
+    'explicit delivery id returns the same record and never resubmits',
+    () async {
+      final first = await coordinator.submit(
+        request(text: 'exact\nrequest', deliveryId: 'teamgen-wf-0'),
+      );
+      await coordinator.stage(first.id);
+      await coordinator.issueSubmit(first.id);
+      final submitsAfterFirst = commands.submitCount;
 
-    final restored = await coordinator.submit(
-      request(text: 'exact\nrequest', deliveryId: 'teamgen-wf-0'),
-    );
+      final restored = await coordinator.submit(
+        request(text: 'exact\nrequest', deliveryId: 'teamgen-wf-0'),
+      );
 
-    expect(restored.id, first.id);
-    expect(restored.state, PromptDeliveryState.submitIssued);
-    expect(commands.submitCount, submitsAfterFirst);
-  });
+      expect(restored.id, first.id);
+      expect(restored.state, PromptDeliveryState.submitIssued);
+      final stored = await store.forSeat(seat);
+      expect(stored, hasLength(1));
+      expect(stored.single.id, first.id);
+      expect(stored.single.state, PromptDeliveryState.submitIssued);
+      expect(commands.submitCount, 1);
+      expect(commands.submitCount, submitsAfterFirst);
+    },
+  );
 
   test('explicit delivery id rejects a mismatched seat or text', () async {
-    await coordinator.submit(
-      request(text: 'one', deliveryId: 'fixed'),
-    );
+    await coordinator.submit(request(text: 'one', deliveryId: 'fixed'));
     expect(
       () => coordinator.submit(request(text: 'two', deliveryId: 'fixed')),
       throwsA(isA<StateError>()),

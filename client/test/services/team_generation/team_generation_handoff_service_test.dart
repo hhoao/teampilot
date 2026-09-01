@@ -38,8 +38,7 @@ class _FakePort implements TeamGenerationSessionPort {
     required String expertKey,
     String emptyDisplayTitleFallback = 'Team Builder',
     bool preserveWorkbenchView = true,
-  }) async =>
-      const SessionPortOpenResult(status: 'opened');
+  }) async => const SessionPortOpenResult(status: 'opened');
 
   @override
   Future<SessionPortOpenResult> createDestination({
@@ -68,8 +67,8 @@ class _FakePort implements TeamGenerationSessionPort {
   @override
   Future<AppSession?> sessionById(String sessionId) async =>
       knownSessions.contains(sessionId)
-          ? AppSession(sessionId: sessionId, workspaceId: 'ws', createdAt: 1)
-          : null;
+      ? AppSession(sessionId: sessionId, workspaceId: 'ws', createdAt: 1)
+      : null;
 
   @override
   Future<void> waitForInputReady(
@@ -79,6 +78,14 @@ class _FakePort implements TeamGenerationSessionPort {
   }) async {
     readyCalls.add('$sessionId/$memberId/$directToPty');
   }
+
+  @override
+  Future<void> persistHistoryPending(
+    String sessionId,
+    String memberId,
+    String text, {
+    required String deliveryId,
+  }) async {}
 
   @override
   Future<PortDeliveryOutcome> deliverTracked(
@@ -106,19 +113,19 @@ void main() {
   late TeamGenerationHandoffService service;
 
   Workspace workspace() => Workspace(
-        workspaceId: 'ws',
-        folders: const [WorkspaceFolder(path: '/proj', targetId: 'local')],
-        createdAt: 1,
-        updatedAt: 1,
-      );
+    workspaceId: 'ws',
+    folders: const [WorkspaceFolder(path: '/proj', targetId: 'local')],
+    createdAt: 1,
+    updatedAt: 1,
+  );
 
   TeamProfile team() => TeamProfile(
-        id: 'generated-team',
-        name: 'Generated Team',
-        cli: CliTool.claude,
-        teamMode: TeamMode.mixed,
-        createdAt: 1,
-      );
+    id: 'generated-team',
+    name: 'Generated Team',
+    cli: CliTool.claude,
+    teamMode: TeamMode.mixed,
+    createdAt: 1,
+  );
 
   setUp(() async {
     fs = InMemoryFilesystem();
@@ -172,44 +179,50 @@ void main() {
     );
   });
 
-  test('creates one team session, selects it, and delivers exactly once',
-      () async {
-    final result = await service.handoff(
-      workspace: workspace(),
-      team: team(),
-      workflowId: 'wf',
-    );
+  test(
+    'creates one team session, selects it, and delivers exactly once',
+    () async {
+      final result = await service.handoff(
+        workspace: workspace(),
+        team: team(),
+        workflowId: 'wf',
+      );
 
-    expect(port.createRequests, hasLength(1));
-    expect(port.createRequests.single, result.destinationSessionId);
-    expect(port.selected, [result.destinationSessionId]);
-    expect(port.readyCalls.single, endsWith('team-lead/true'));
+      expect(port.createRequests, hasLength(1));
+      expect(port.createRequests.single, result.destinationSessionId);
+      expect(port.selected, [result.destinationSessionId]);
+      expect(port.readyCalls.single, endsWith('team-lead/true'));
 
-    final job = await store.read('ws', 'wf');
-    expect(job!.phase, TeamGenerationPhase.delivered);
-    expect(job.receipts['promptDeliveryDelivered']!.state,
-        TeamGenerationReceiptState.succeeded);
-    expect(job.originalPrompt, 'exact\nrequest');
-  });
+      final job = await store.read('ws', 'wf');
+      expect(job!.phase, TeamGenerationPhase.delivered);
+      expect(
+        job.receipts['promptDeliveryDelivered']!.state,
+        TeamGenerationReceiptState.succeeded,
+      );
+      expect(job.originalPrompt, 'exact\nrequest');
+    },
+  );
 
-  test('recovery reuses destination id and does not duplicate sessions',
-      () async {
-    final first = await service.handoff(
-      workspace: workspace(),
-      team: team(),
-      workflowId: 'wf',
-    );
-    final createCount = port.createRequests.length;
+  test(
+    'recovery reuses destination id and does not duplicate sessions',
+    () async {
+      final first = await service.handoff(
+        workspace: workspace(),
+        team: team(),
+        workflowId: 'wf',
+      );
+      final createCount = port.createRequests.length;
 
-    final second = await service.handoff(
-      workspace: workspace(),
-      team: team(),
-      workflowId: 'wf',
-    );
+      final second = await service.handoff(
+        workspace: workspace(),
+        team: team(),
+        workflowId: 'wf',
+      );
 
-    expect(second.destinationSessionId, first.destinationSessionId);
-    expect(port.createRequests.length, createCount);
-  });
+      expect(second.destinationSessionId, first.destinationSessionId);
+      expect(port.createRequests.length, createCount);
+    },
+  );
 }
 
 class _NoopCommands implements PromptDeliveryCommands {
@@ -223,6 +236,5 @@ class _NoopCommands implements PromptDeliveryCommands {
   Future<PromptSubmissionResult> submit(
     PromptDelivery delivery, {
     required bool Function() canExecute,
-  }) async =>
-      PromptSubmissionResult.submitted;
+  }) async => PromptSubmissionResult.submitted;
 }
