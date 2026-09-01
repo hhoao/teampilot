@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 
 import '../../l10n/l10n_extensions.dart';
 import '../../models/automation.dart';
 import '../../services/automation/automation_schedule_calculator.dart';
 import '../../services/automation/automation_schedule_defaults.dart';
+import 'automation_schedule_picker_modes.dart';
 import 'package:shared_ui/shared_ui.dart';
 
 /// Schedule fields edited by [AutomationEditorDialog].
@@ -106,6 +106,8 @@ class AutomationScheduleDraft {
 
 AutomationScheduleDraft scheduleDraftFromAutomation(Automation automation) {
   final once = automation.preset == AutomationSchedulePreset.once;
+  // Stored runAtMs is composed in the automation timezone at save time; the
+  // edit draft works in local wall clock, matching what the user picked.
   final runAt = once && automation.runAtMs != null
       ? DateTime.fromMillisecondsSinceEpoch(automation.runAtMs!)
       : null;
@@ -116,8 +118,12 @@ AutomationScheduleDraft scheduleDraftFromAutomation(Automation automation) {
     preset: automation.preset,
     minute: automation.minute,
     hourMinute: automation.hourMinute,
-    onceDate: runAt == null ? null : DateTime(runAt.year, runAt.month, runAt.day),
-    onceTime: runAt == null ? null : TimeOfDay(hour: runAt.hour, minute: runAt.minute),
+    onceDate: runAt == null
+        ? null
+        : DateTime(runAt.year, runAt.month, runAt.day),
+    onceTime: runAt == null
+        ? null
+        : TimeOfDay(hour: runAt.hour, minute: runAt.minute),
     dayOfWeek: automation.dayOfWeek,
     customCron: automation.customCron,
     timezone: automation.timezone,
@@ -133,7 +139,9 @@ String localizedScheduleSummary(
     final time = draft.onceTime;
     if (date != null && time != null) {
       return l10n.automationsScheduleSummaryOnce(
-        '${_formatDate(date)} ${formatHourMinute(time)}',
+        formatAutomationScheduleDateTime(
+          DateTime(date.year, date.month, date.day, time.hour, time.minute),
+        ),
       );
     }
     return l10n.automationsScheduleOnce;
@@ -141,7 +149,7 @@ String localizedScheduleSummary(
   if (draft.mode == AutomationScheduleMode.countdown) {
     // Countdown drafts only exist transiently during create; the absolute
     // target is not known here, so render the raw delay label.
-    return _countdownLabel(l10n, draft.countdownMinutes ?? 0);
+    return countdownDelayLabel(l10n, draft.countdownMinutes ?? 0);
   }
   final (hour, minute) = parseHourMinute(draft.hourMinute);
   final time =
@@ -156,7 +164,7 @@ String localizedScheduleSummary(
     AutomationSchedulePreset.weekdays =>
       l10n.automationsScheduleSummaryWeekdays(time),
     AutomationSchedulePreset.weekly => l10n.automationsScheduleSummaryWeekly(
-      _dayOfWeekLabel(l10n, draft.dayOfWeek ?? DateTime.monday),
+      dayOfWeekScheduleLabel(l10n, draft.dayOfWeek ?? DateTime.monday),
       time,
     ),
     AutomationSchedulePreset.custom =>
@@ -167,7 +175,9 @@ String localizedScheduleSummary(
   };
 }
 
-String _countdownLabel(AppLocalizations l10n, int minutes) {
+/// Chip / summary label for a countdown delay: whole hours render as `{hours} h`,
+/// everything else as `{minutes} min`.
+String countdownDelayLabel(AppLocalizations l10n, int minutes) {
   if (minutes > 0 && minutes % 60 == 0) {
     return l10n.automationsCountdownHours(minutes ~/ 60);
   }
@@ -176,18 +186,19 @@ String _countdownLabel(AppLocalizations l10n, int minutes) {
 
 /// Zero-padded `yyyy-MM-dd`, kept locale-independent so saved schedule strings
 /// round-trip like the `HH:mm` times do.
-String _formatDate(DateTime date) =>
+String formatAutomationScheduleDate(DateTime date) =>
     '${date.year.toString().padLeft(4, '0')}-'
     '${date.month.toString().padLeft(2, '0')}-'
     '${date.day.toString().padLeft(2, '0')}';
 
-/// `_formatDate` + zero-padded `HH:mm`, for previews and summaries.
-String _formatLocalDateTime(DateTime dateTime) =>
-    '${_formatDate(dateTime)} '
+/// [formatAutomationScheduleDate] + zero-padded `HH:mm`, for previews and
+/// summaries.
+String formatAutomationScheduleDateTime(DateTime dateTime) =>
+    '${formatAutomationScheduleDate(dateTime)} '
     '${dateTime.hour.toString().padLeft(2, '0')}:'
     '${dateTime.minute.toString().padLeft(2, '0')}';
 
-String _dayOfWeekLabel(AppLocalizations l10n, int dayOfWeek) {
+String dayOfWeekScheduleLabel(AppLocalizations l10n, int dayOfWeek) {
   return switch (dayOfWeek) {
     DateTime.monday => l10n.automationsDayMonday,
     DateTime.tuesday => l10n.automationsDayTuesday,
@@ -199,7 +210,8 @@ String _dayOfWeekLabel(AppLocalizations l10n, int dayOfWeek) {
   };
 }
 
-/// Inline [TpFormField] rows for automation schedule editing.
+/// Inline [TpFormField] rows for automation schedule editing. Mode rows live
+/// in `automation_schedule_picker_modes.dart`.
 class AutomationSchedulePicker extends StatefulWidget {
   AutomationSchedulePicker({
     required this.draft,
@@ -222,44 +234,7 @@ class AutomationSchedulePicker extends StatefulWidget {
 }
 
 class _AutomationSchedulePickerState extends State<AutomationSchedulePicker> {
-  late final TextEditingController _customCronCtl;
-  late final TextEditingController _countdownCtl;
-
-  /// True while the countdown custom field is being edited, so the value stays
-  /// in the field (not the chips) until it parses.
-  bool _countdownCustomActive = false;
-
   AutomationScheduleDraft get _draft => widget.draft;
-
-  @override
-  void initState() {
-    super.initState();
-    _customCronCtl = TextEditingController(text: widget.draft.customCron ?? '');
-    _countdownCtl = TextEditingController(
-      text: widget.draft.countdownMinutes?.toString() ?? '',
-    );
-  }
-
-  @override
-  void didUpdateWidget(covariant AutomationSchedulePicker oldWidget) {
-    super.didUpdateWidget(oldWidget);
-    if (oldWidget.draft.customCron != widget.draft.customCron &&
-        _customCronCtl.text != (widget.draft.customCron ?? '')) {
-      _customCronCtl.text = widget.draft.customCron ?? '';
-    }
-    final minutes = _draft.countdownMinutes;
-    if (!_countdownCustomActive &&
-        _countdownCtl.text != (minutes?.toString() ?? '')) {
-      _countdownCtl.text = minutes?.toString() ?? '';
-    }
-  }
-
-  @override
-  void dispose() {
-    _customCronCtl.dispose();
-    _countdownCtl.dispose();
-    super.dispose();
-  }
 
   void _emit(AutomationScheduleDraft next) {
     widget.onChanged(next);
@@ -316,16 +291,21 @@ class _AutomationSchedulePickerState extends State<AutomationSchedulePicker> {
         ),
         const SizedBox(height: 12),
         switch (draft.mode) {
-          AutomationScheduleMode.once => _buildOnceRows(l10n, draft, inline),
-          AutomationScheduleMode.countdown => _buildCountdownRows(
-            l10n,
-            draft,
-            inline,
+          AutomationScheduleMode.once => AutomationScheduleOnceRows(
+            draft: draft,
+            labelWidth: widget.labelWidth,
+            onChanged: _emit,
           ),
-          AutomationScheduleMode.recurring => _buildRecurringRows(
-            l10n,
-            draft,
-            inline,
+          AutomationScheduleMode.countdown => AutomationScheduleCountdownRows(
+            draft: draft,
+            labelWidth: widget.labelWidth,
+            onChanged: _emit,
+          ),
+          AutomationScheduleMode.recurring => AutomationScheduleRecurringRows(
+            draft: draft,
+            labelWidth: widget.labelWidth,
+            onChanged: _emit,
+            calculator: widget.calculator,
           ),
         },
       ],
@@ -356,308 +336,9 @@ class _AutomationSchedulePickerState extends State<AutomationSchedulePicker> {
         );
     }
   }
-
-  Widget _buildOnceRows(
-    AppLocalizations l10n,
-    AutomationScheduleDraft draft,
-    TpFormFieldLayoutStyle inline,
-  ) {
-    final now = DateTime.now();
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        TpFormField<DateTime>(
-          key: ValueKey('schedule-once-date-${_formatDate(draft.onceDate ?? now)}'),
-          id: 'scheduleOnceDate',
-          initialValue: draft.onceDate ?? now,
-          label: Text(l10n.automationsScheduleDate),
-          layoutStyle: inline,
-          labelWidth: widget.labelWidth,
-          builder: (state) {
-            final selected = state.value ?? draft.onceDate ?? now;
-            return TpDatePicker(
-              key: ValueKey('schedule-once-date-picker-$selected'),
-              firstDate: DateTime(now.year, now.month, now.day),
-              lastDate: now.add(const Duration(days: 365)),
-              selected: selected,
-              onChanged: (date) {
-                if (date == null) return;
-                state.didChange(date);
-                _emit(draft.copyWith(onceDate: date));
-              },
-              triggerBuilder: (context, isOpen) => _FieldTrigger(
-                label: _formatDate(selected),
-                isOpen: isOpen,
-              ),
-            );
-          },
-        ),
-        const SizedBox(height: 12),
-        TpFormField<TimeOfDay>(
-          id: 'scheduleOnceTime',
-          initialValue: draft.onceTime ?? TimeOfDay(hour: 9, minute: 0),
-          label: Text(l10n.automationsTime),
-          layoutStyle: inline,
-          labelWidth: widget.labelWidth,
-          builder: (state) {
-            return TpTimePicker(
-              initialValue: state.value ?? draft.onceTime,
-              onChanged: (time) {
-                state.didChange(time);
-                _emit(draft.copyWith(onceTime: time));
-              },
-            );
-          },
-        ),
-      ],
-    );
-  }
-
-  Widget _buildCountdownRows(
-    AppLocalizations l10n,
-    AutomationScheduleDraft draft,
-    TpFormFieldLayoutStyle inline,
-  ) {
-    final minutes = draft.countdownMinutes ?? 15;
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        Wrap(
-          spacing: 8,
-          runSpacing: 8,
-          children: [
-            for (final quick in const [5, 15, 30, 60, 120])
-              ChoiceChip(
-                label: Text(_countdownLabel(l10n, quick)),
-                selected: minutes == quick && !_countdownCustomActive,
-                visualDensity: VisualDensity.compact,
-                onSelected: (_) {
-                  setState(() => _countdownCustomActive = false);
-                  _countdownCtl.text = quick.toString();
-                  _emit(draft.copyWith(countdownMinutes: quick));
-                },
-              ),
-          ],
-        ),
-        const SizedBox(height: 12),
-        TpFormField<String>(
-          id: 'scheduleCountdownMinutes',
-          initialValue: _countdownCtl.text,
-          label: Text(l10n.automationsCountdownCustom),
-          layoutStyle: inline,
-          labelWidth: widget.labelWidth,
-          builder: (state) {
-            return TextField(
-              controller: _countdownCtl,
-              focusNode: state.focusNode,
-              keyboardType: TextInputType.number,
-              inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-              onChanged: (value) {
-                state.didChange(value);
-                final parsed = int.tryParse(value.trim());
-                setState(() => _countdownCustomActive = value.trim().isNotEmpty);
-                if (parsed == null || parsed <= 0) {
-                  // Keep typing; nothing meaningful to emit yet.
-                  return;
-                }
-                _emit(draft.copyWith(countdownMinutes: parsed));
-              },
-              decoration: InputDecoration(
-                errorText: state.hasError ? '' : null,
-                errorStyle: const TextStyle(height: 0, fontSize: 0),
-              ),
-            );
-          },
-        ),
-        const SizedBox(height: 8),
-        Text(
-          l10n.automationsCountdownPreview(
-            _formatLocalDateTime(
-              DateTime.fromMillisecondsSinceEpoch(
-                countdownToRunAtMs(
-                  durationMinutes: minutes,
-                  now: DateTime.now(),
-                ),
-              ),
-            ),
-          ),
-          style: Theme.of(context).textTheme.bodySmall?.copyWith(
-            color: Theme.of(context).colorScheme.onSurfaceVariant,
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildRecurringRows(
-    AppLocalizations l10n,
-    AutomationScheduleDraft draft,
-    TpFormFieldLayoutStyle inline,
-  ) {
-    final presets = AutomationSchedulePreset.values
-        .where((p) => p != AutomationSchedulePreset.once)
-        .toList();
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        TpFormField<AutomationSchedulePreset>(
-          key: ValueKey('schedule-preset-${draft.preset.name}'),
-          id: 'schedulePreset',
-          initialValue: draft.preset,
-          label: Text(l10n.automationsSchedule),
-          layoutStyle: inline,
-          labelWidth: widget.labelWidth,
-          builder: (state) {
-            return TpSelect<AutomationSchedulePreset>(
-              items: presets,
-              initialItem: state.value ?? draft.preset,
-              decoration: TpSelectDecorations.themed(context),
-              itemLabel: (p) => _presetLabel(l10n, p),
-              onChanged: (value) {
-                if (value == null) return;
-                state.didChange(value);
-                _emit(
-                  draft.copyWith(
-                    preset: value,
-                    clearDayOfWeek: value != AutomationSchedulePreset.weekly,
-                    clearCustomCron: value != AutomationSchedulePreset.custom,
-                  ),
-                );
-              },
-            );
-          },
-        ),
-        const SizedBox(height: 12),
-        switch (draft.preset) {
-          AutomationSchedulePreset.hourly => TpFormField<int>(
-            id: 'scheduleMinute',
-            initialValue: draft.minute,
-            label: Text(l10n.automationsTime),
-            layoutStyle: inline,
-            labelWidth: widget.labelWidth,
-            builder: (state) {
-              return TpSelect<int>(
-                items: List<int>.generate(60, (i) => i),
-                initialItem: (state.value ?? draft.minute).clamp(0, 59),
-                decoration: TpSelectDecorations.themed(context),
-                itemLabel: (m) => l10n.automationsScheduleSummaryHourly(m),
-                onChanged: (value) {
-                  if (value == null) return;
-                  state.didChange(value);
-                  _emit(draft.copyWith(minute: value));
-                },
-              );
-            },
-          ),
-          AutomationSchedulePreset.custom => TpFormField<String>(
-            id: 'scheduleCustomCron',
-            initialValue: draft.customCron ?? '',
-            label: Text(l10n.automationsCustomCron),
-            layoutStyle: inline,
-            labelWidth: widget.labelWidth,
-            validator: (value) {
-              final cron = value?.trim() ?? '';
-              if (!widget.calculator.isValidCron(cron)) {
-                return l10n.automationsInvalidCron;
-              }
-              return null;
-            },
-            builder: (state) {
-              return TextField(
-                controller: _customCronCtl,
-                focusNode: state.focusNode,
-                onChanged: (value) {
-                  state.didChange(value);
-                  _emit(draft.copyWith(customCron: value.trim()));
-                },
-                decoration: InputDecoration(
-                  hintText: '0 */2 * * *',
-                  errorText: state.hasError ? '' : null,
-                  errorStyle: const TextStyle(height: 0, fontSize: 0),
-                ),
-              );
-            },
-          ),
-          _ => Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              TpFormField<String>(
-                id: 'scheduleHourMinute',
-                initialValue: draft.hourMinute,
-                label: Text(l10n.automationsTime),
-                layoutStyle: inline,
-                labelWidth: widget.labelWidth,
-                validator: (value) {
-                  try {
-                    parseHourMinute(value ?? '');
-                    return null;
-                  } on Object {
-                    return l10n.automationsInvalidTime;
-                  }
-                },
-                builder: (state) {
-                  final (hour, minute) = _parseDraftHourMinute(
-                    state.value ?? draft.hourMinute,
-                  );
-                  return TpTimePicker(
-                    initialValue: TimeOfDay(hour: hour, minute: minute),
-                    onChanged: (time) {
-                      final formatted = formatHourMinute(time);
-                      state.didChange(formatted);
-                      _emit(draft.copyWith(hourMinute: formatted));
-                    },
-                  );
-                },
-              ),
-              if (draft.preset == AutomationSchedulePreset.weekly) ...[
-                const SizedBox(height: 12),
-                TpFormField<int>(
-                  id: 'scheduleDayOfWeek',
-                  initialValue: draft.dayOfWeek ?? DateTime.monday,
-                  label: Text(l10n.automationsScheduleWeekly),
-                  layoutStyle: inline,
-                  labelWidth: widget.labelWidth,
-                  builder: (state) {
-                    return TpSelect<int>(
-                      items: const [
-                        DateTime.monday,
-                        DateTime.tuesday,
-                        DateTime.wednesday,
-                        DateTime.thursday,
-                        DateTime.friday,
-                        DateTime.saturday,
-                        DateTime.sunday,
-                      ],
-                      initialItem:
-                          state.value ?? draft.dayOfWeek ?? DateTime.monday,
-                      decoration: TpSelectDecorations.themed(context),
-                      itemLabel: (d) => _dayOfWeekLabel(l10n, d),
-                      onChanged: (value) {
-                        if (value == null) return;
-                        state.didChange(value);
-                        _emit(draft.copyWith(dayOfWeek: value));
-                      },
-                    );
-                  },
-                ),
-              ],
-            ],
-          ),
-        },
-      ],
-    );
-  }
-
-  (int, int) _parseDraftHourMinute(String raw) {
-    try {
-      return parseHourMinute(raw);
-    } on Object {
-      return (9, 0);
-    }
-  }
 }
 
-String _presetLabel(AppLocalizations l10n, AutomationSchedulePreset preset) {
+String schedulePresetLabel(AppLocalizations l10n, AutomationSchedulePreset preset) {
   return switch (preset) {
     AutomationSchedulePreset.hourly => l10n.automationsScheduleHourly,
     AutomationSchedulePreset.daily => l10n.automationsScheduleDaily,
@@ -666,42 +347,4 @@ String _presetLabel(AppLocalizations l10n, AutomationSchedulePreset preset) {
     AutomationSchedulePreset.custom => l10n.automationsScheduleCustom,
     AutomationSchedulePreset.once => l10n.automationsScheduleOnce,
   };
-}
-
-/// Bordered, field-styled trigger for the once-mode [TpDatePicker] so the row
-/// reads like the other inline form controls.
-class _FieldTrigger extends StatelessWidget {
-  const _FieldTrigger({required this.label, required this.isOpen});
-
-  final String label;
-  final bool isOpen;
-
-  @override
-  Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
-    return Container(
-      height: 36,
-      padding: const EdgeInsets.symmetric(horizontal: 10),
-      alignment: Alignment.centerLeft,
-      decoration: BoxDecoration(
-        color: scheme.surfaceContainer,
-        borderRadius: BorderRadius.circular(context.tpTheme.control.radius),
-        border: Border.all(
-          color: isOpen ? scheme.primary : scheme.outlineVariant,
-        ),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(
-            Icons.calendar_today_outlined,
-            size: context.tpIconSizes.sm,
-            color: scheme.onSurfaceVariant,
-          ),
-          const SizedBox(width: 6),
-          Text(label, style: TpTextStyles.of(context).sm),
-        ],
-      ),
-    );
-  }
 }
