@@ -10,47 +10,67 @@ import 'package:teampilot/services/team_generation/providers/team_builder_skill_
 import '../../support/in_memory_filesystem.dart';
 
 void main() {
-  test('managed builder skill source and materialized mirror are identical',
-      () async {
-    final provider = ManagedTeamBuilderSkillProvider();
-    final resource = await provider.resolve(
-      ManagedTeamBuilderSkillProvider.skillId,
-    );
+  test(
+    'managed builder skill source and materialized mirror are identical',
+    () async {
+      final provider = ManagedTeamBuilderSkillProvider();
+      final resource = await provider.resolve(
+        ManagedTeamBuilderSkillProvider.skillId,
+      );
 
-    final mirror = await File(
-      'lib/services/team_generation/managed_skills/team-builder/SKILL.md',
-    ).readAsString();
+      final mirror = await File(
+        'lib/services/team_generation/managed_skills/team-builder/SKILL.md',
+      ).readAsString();
 
-    expect(resource, isNotNull);
-    expect(resource!.content, teamBuilderSkillMd);
-    expect(mirror, teamBuilderSkillMd);
-    expect(mirror, contains('finalize_team_generation'));
-  });
+      expect(resource, isNotNull);
+      expect(resource!.content, teamBuilderSkillMd);
+      expect(mirror, teamBuilderSkillMd);
+      for (final marker in const [
+        'get_generation_context',
+        'probe_workspace_targets',
+        'validate_team_plan',
+        'finalize_team_generation',
+        '2–5',
+        'team-lead',
+        'Catalog MCP',
+        'Never edit TeamPilot JSON manifests',
+        'inputs, outputs, launch configuration, and required resources',
+        'After `finalize_team_generation` is accepted, **stop**',
+        'implement the original task',
+        'MCP failures are ordinary tool errors',
+      ]) {
+        expect(mirror, contains(marker));
+      }
+      expect(mirror, isNot(contains('TeamCreate')));
+    },
+  );
 
-  test('provider supplies skill contribution with directory artifact',
-      () async {
-    final fs = InMemoryFilesystem();
-    const targetConfigDir = '/session/config';
-    final provider = ManagedTeamBuilderSkillProvider();
-    final contributions = await provider.provide(
-      SkillProviderContext(
-        cli: CliTool.claude,
-        filesystem: fs,
-        targetConfigDir: targetConfigDir,
-      ),
-    );
+  test(
+    'provider supplies skill contribution with directory artifact',
+    () async {
+      final fs = InMemoryFilesystem();
+      const targetConfigDir = '/session/config';
+      final provider = ManagedTeamBuilderSkillProvider();
+      final contributions = await provider.provide(
+        SkillProviderContext(
+          cli: CliTool.claude,
+          filesystem: fs,
+          targetConfigDir: targetConfigDir,
+        ),
+      );
 
-    final contribution = contributions.single;
-    expect(contribution.id, ManagedTeamBuilderSkillProvider.skillId);
-    expect(contribution.origin.kind, ResourceOriginKind.managed);
-    expect(contribution.artifact, isA<SkillDirectoryArtifact>());
+      final contribution = contributions.single;
+      expect(contribution.id, ManagedTeamBuilderSkillProvider.skillId);
+      expect(contribution.origin.kind, ResourceOriginKind.managed);
+      expect(contribution.artifact, isA<SkillDirectoryArtifact>());
 
-    final dir =
-        (contribution.artifact! as SkillDirectoryArtifact).sourceDirectory;
-    final written = await fs.readString('$dir/SKILL.md');
-    expect(written, teamBuilderSkillMd);
-    expect(dir, contains('.teampilot-managed'));
-  });
+      final dir =
+          (contribution.artifact! as SkillDirectoryArtifact).sourceDirectory;
+      final written = await fs.readString('$dir/SKILL.md');
+      expect(written, teamBuilderSkillMd);
+      expect(dir, contains('.teampilot-managed'));
+    },
+  );
 
   test('resolve returns null for unrelated skill ids', () async {
     final provider = ManagedTeamBuilderSkillProvider();
