@@ -2,6 +2,7 @@ import '../../utils/logging/logger.dart';
 import 'models/team_generation_job.dart';
 import 'team_generation_job_store.dart';
 import 'team_generation_session_port.dart';
+
 /// Recovery actions per job state (plan Task 13 step 7 matrix).
 enum RecoveryAction {
   cancelOrphanPrecommit,
@@ -69,9 +70,7 @@ final class TeamGenerationRecoveryService {
       observed.add((job.workflowId, RecoveryAction.markIntegrityError));
       await _jobStore.mutate(job.workspaceId, job.workflowId, (current) {
         return current.copyWith(
-          error: const TeamGenerationJobError(
-            code: 'recovery_integrity_error',
-          ),
+          error: const TeamGenerationJobError(code: 'recovery_integrity_error'),
         );
       });
       return;
@@ -98,6 +97,7 @@ final class TeamGenerationRecoveryService {
           await _jobStore.beginCancel(job.workspaceId, job.workflowId);
         } else {
           await _sessionPort.open(job.builderSessionId);
+          await _recoverBuilderKickoff(job);
         }
       case RecoveryAction.commitForwardRetainBuilder:
       case RecoveryAction.commitForward:
@@ -143,4 +143,50 @@ final class TeamGenerationRecoveryService {
 
   bool _succeeded(TeamGenerationJob job, String key) =>
       job.receipts[key]?.state == TeamGenerationReceiptState.succeeded;
+
+  /// Replays the one durable builder kickoff only when its receipt is absent.
+  /// The stable delivery id lets history and PTY delivery recover a crash
+  /// between either side effect and the receipt write without re-submitting.
+  Future<void> _recoverBuilderKickoff(TeamGenerationJob job) async {
+    if (_succeeded(job, 'builderKickoff')) return;
+    final sessionId = job.builderSessionId;
+    final kickoff = buildTeamGenerationKickoff(job.originalPrompt);
+    final kickoffId = teamGenerationStableId(
+      'teamgen-kickoff-',
+      job.workflowId,
+    );
+    await _sessionPort.waitForInputReady(
+      sessionId,
+      sessionId,
+      directToPty: true,
+    );
+    await _sessionPort.persistHistoryPending(
+      sessionId,
+      sessionId,
+      kickoff,
+      deliveryId: kickoffId,
+    );
+    final result = await _sessionPort.deliverTracked(
+      sessionId,
+      sessionId,
+      kickoff,
+      directToPty: true,
+      deliveryId: kickoffId,
+    );
+    if (!result.submitted) {
+      throw StateError('team-generation recovery builder kickoff failed');
+    }
+    await _jobStore.mutate(job.workspaceId, job.workflowId, (current) {
+      return current.copyWith(
+        phase: TeamGenerationPhase.planning,
+        receipts: {
+          ...current.receipts,
+          'builderKickoff': TeamGenerationReceipt(
+            state: TeamGenerationReceiptState.succeeded,
+            value: kickoffId,
+          ),
+        },
+      );
+    });
+  }
 }

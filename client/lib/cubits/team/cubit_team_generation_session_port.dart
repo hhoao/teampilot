@@ -204,7 +204,7 @@ final class CubitTeamGenerationSessionPort
     if (session == null) {
       throw StateError('team-generation history session missing: $sessionId');
     }
-    await _chatCubit.persistHistoryPending(
+    final record = await _chatCubit.persistHistoryPending(
       workspaceId: session.workspaceId,
       sessionId: sessionId,
       // Simple sessions use the unscoped history seat, exactly like landing.
@@ -212,6 +212,11 @@ final class CubitTeamGenerationSessionPort
       text: text,
       deliveryId: deliveryId,
     );
+    if (record == null) {
+      throw StateError(
+        'team-generation history seed could not persist: $sessionId',
+      );
+    }
   }
 
   @override
