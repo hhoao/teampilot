@@ -30,15 +30,6 @@ void main() {
     'teamGenerateContinueSetup',
     'teamGenerateCancelTitle',
     'teamGenerateCancelBody',
-    'teamGeneratePhaseCreated',
-    'teamGeneratePhaseProbing',
-    'teamGeneratePhasePlanning',
-    'teamGeneratePhaseValidating',
-    'teamGeneratePhaseCommitting',
-    'teamGeneratePhaseLaunching',
-    'teamGeneratePhaseDelivering',
-    'teamGeneratePhaseCleaning',
-    'teamGeneratePhaseFailed',
     'teamGenerateErrorDescriptionRequired',
     'teamGenerateErrorAiNotConfigured',
     'teamGenerateErrorPoolEmpty',
@@ -89,4 +80,5 @@ void main() {
       }
     }
   });
+
 }

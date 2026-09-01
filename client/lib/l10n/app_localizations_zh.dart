@@ -8430,33 +8430,6 @@ class AppLocalizationsZh extends AppLocalizations {
   String get teamGenerateCancelBody => '临时会话和暂存资源将被移除。';
 
   @override
-  String get teamGeneratePhaseCreated => '正在准备团队构建器…';
-
-  @override
-  String get teamGeneratePhaseProbing => '正在检查机器和 CLI…';
-
-  @override
-  String get teamGeneratePhasePlanning => '正在设计团队…';
-
-  @override
-  String get teamGeneratePhaseValidating => '正在验证方案…';
-
-  @override
-  String get teamGeneratePhaseCommitting => '正在创建专家和团队…';
-
-  @override
-  String get teamGeneratePhaseLaunching => '正在启动生成的团队…';
-
-  @override
-  String get teamGeneratePhaseDelivering => '正在将任务发送给负责人…';
-
-  @override
-  String get teamGeneratePhaseCleaning => '正在完成并清理…';
-
-  @override
-  String get teamGeneratePhaseFailed => '生成过程需要处理。';
-
-  @override
   String get teamGenerateErrorTargetUnavailable => '所需机器或 CLI 当前不可用。';
 
   @override

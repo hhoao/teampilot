@@ -15674,60 +15674,6 @@ abstract class AppLocalizations {
   /// **'The temporary session and staged resources will be removed.'**
   String get teamGenerateCancelBody;
 
-  /// No description provided for @teamGeneratePhaseCreated.
-  ///
-  /// In en, this message translates to:
-  /// **'Preparing Team Builder…'**
-  String get teamGeneratePhaseCreated;
-
-  /// No description provided for @teamGeneratePhaseProbing.
-  ///
-  /// In en, this message translates to:
-  /// **'Checking machines and CLIs…'**
-  String get teamGeneratePhaseProbing;
-
-  /// No description provided for @teamGeneratePhasePlanning.
-  ///
-  /// In en, this message translates to:
-  /// **'Designing the team…'**
-  String get teamGeneratePhasePlanning;
-
-  /// No description provided for @teamGeneratePhaseValidating.
-  ///
-  /// In en, this message translates to:
-  /// **'Validating the plan…'**
-  String get teamGeneratePhaseValidating;
-
-  /// No description provided for @teamGeneratePhaseCommitting.
-  ///
-  /// In en, this message translates to:
-  /// **'Creating experts and team…'**
-  String get teamGeneratePhaseCommitting;
-
-  /// No description provided for @teamGeneratePhaseLaunching.
-  ///
-  /// In en, this message translates to:
-  /// **'Starting the generated team…'**
-  String get teamGeneratePhaseLaunching;
-
-  /// No description provided for @teamGeneratePhaseDelivering.
-  ///
-  /// In en, this message translates to:
-  /// **'Sending your task to the lead…'**
-  String get teamGeneratePhaseDelivering;
-
-  /// No description provided for @teamGeneratePhaseCleaning.
-  ///
-  /// In en, this message translates to:
-  /// **'Finishing and cleaning up…'**
-  String get teamGeneratePhaseCleaning;
-
-  /// No description provided for @teamGeneratePhaseFailed.
-  ///
-  /// In en, this message translates to:
-  /// **'Generation needs attention.'**
-  String get teamGeneratePhaseFailed;
-
   /// No description provided for @teamGenerateErrorTargetUnavailable.
   ///
   /// In en, this message translates to:

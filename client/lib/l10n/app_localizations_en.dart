@@ -8808,33 +8808,6 @@ class AppLocalizationsEn extends AppLocalizations {
       'The temporary session and staged resources will be removed.';
 
   @override
-  String get teamGeneratePhaseCreated => 'Preparing Team Builder…';
-
-  @override
-  String get teamGeneratePhaseProbing => 'Checking machines and CLIs…';
-
-  @override
-  String get teamGeneratePhasePlanning => 'Designing the team…';
-
-  @override
-  String get teamGeneratePhaseValidating => 'Validating the plan…';
-
-  @override
-  String get teamGeneratePhaseCommitting => 'Creating experts and team…';
-
-  @override
-  String get teamGeneratePhaseLaunching => 'Starting the generated team…';
-
-  @override
-  String get teamGeneratePhaseDelivering => 'Sending your task to the lead…';
-
-  @override
-  String get teamGeneratePhaseCleaning => 'Finishing and cleaning up…';
-
-  @override
-  String get teamGeneratePhaseFailed => 'Generation needs attention.';
-
-  @override
   String get teamGenerateErrorTargetUnavailable =>
       'A required machine or CLI is unavailable.';
 
