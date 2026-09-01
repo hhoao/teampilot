@@ -1,0 +1,89 @@
+import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+
+import '../../../cubits/ai_feature_settings_cubit.dart';
+import '../../../models/landing_launch_context.dart';
+import '../../../cubits/workbench/workbench_cubit.dart';
+import '../../../models/ai_feature_setting.dart';
+import '../../../models/workspace.dart';
+import '../../../services/team_generation/team_generation_coordinator.dart';
+import '../../../utils/logging/logger.dart';
+import 'workspace_session_actions.dart';
+
+/// Generation-mode landing submit: preflight → create job → open the visible
+/// purpose-tagged builder session.
+///
+/// Returns true when the builder opened (the landing input clears only then;
+/// on preflight failure the text is preserved and the localized error shows).
+Future<bool> submitWorkspaceLandingGeneration(
+  BuildContext context,
+  Workspace workspace, {
+  required LandingLaunchContext launch,
+  required String message,
+  String? workingDirectory,
+}) async {
+  final trimmed = message.trim();
+  if (trimmed.isEmpty) return false;
+
+  final coordinator = context.read<TeamGenerationCoordinator?>();
+  if (coordinator == null) {
+    appLogger.w(
+      '[team-generation] landing submit: coordinator not wired; '
+      'falling back to a plain session',
+    );
+    return submitWorkspaceLandingMessage(
+      context,
+      workspace,
+      launch: launch,
+      message: message,
+      workingDirectory: workingDirectory,
+    );
+  }
+
+  final preflight = await coordinator.preflight(
+    workspace: workspace,
+    originalPrompt: trimmed,
+  );
+  if (preflight.issues.isNotEmpty) {
+    if (context.mounted) {
+      showWorkspaceLandingGenerationPreflight(context, preflight.issues);
+    }
+    return false;
+  }
+
+  final generatorSetting = context
+      .read<AiFeatureSettingsCubit>()
+      .state
+      .settingFor(AiFeatureId.teamGenerate);
+  final result = await coordinator.start(
+    workspace: workspace,
+    originalPrompt: trimmed,
+    generatorPresetId: generatorSetting?.activePresetId ?? '',
+    projectFolderPath: launch.projectFolderPath ?? workspace.firstFolderPath,
+    workingDirectoryPath:
+        workingDirectory ?? launch.workingDirectoryPath ?? workspace.firstFolderPath,
+    folderIds: [for (final f in workspace.folders) f.path],
+    targetIds: [for (final f in workspace.folders) f.targetId],
+  );
+  if (context.mounted) {
+    context.read<WorkbenchCubit>().openSession(
+          workspace.workspaceId,
+          result.builderSessionId,
+        );
+  }
+  return true;
+}
+
+/// Localized preflight surface shown above the landing input on issues.
+void showWorkspaceLandingGenerationPreflight(
+  BuildContext context,
+  List<TeamGenerationPreflightIssue> issues,
+) {
+  ScaffoldMessenger.maybeOf(context)?.showSnackBar(
+    SnackBar(
+      content: Text(
+        'generation preflight: ${issues.map((issue) => issue.code).join(', ')}',
+      ),
+    ),
+  );
+}

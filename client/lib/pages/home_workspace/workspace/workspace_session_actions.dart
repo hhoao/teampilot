@@ -362,6 +362,8 @@ Future<bool> submitWorkspaceLandingMessage(
   required String message,
   String? workingDirectory,
   String? expertKey,
+  SessionPurpose purpose = SessionPurpose.normal,
+  String workflowId = '',
   void Function(String sessionId)? onSessionOpened,
 }) async {
   final trimmed = message.trim();
@@ -433,6 +435,8 @@ Future<bool> submitWorkspaceLandingMessage(
     ),
     // Default preference keeps Chat; coordinator forces Terminal when false.
     preserveWorkbenchView: !switchToTerminal,
+    purpose: purpose,
+    workflowId: workflowId,
   );
   if (status == null) return false;
   if (status != SessionOpenStatus.opened) {
@@ -658,6 +662,8 @@ Future<SessionOpenStatus?> _requestCreateWorkspaceConversation(
   String? expertKey,
   SessionContinueOverrides? continueOverrides,
   bool preserveWorkbenchView = false,
+  SessionPurpose purpose = SessionPurpose.normal,
+  String workflowId = '',
 }) async {
   final chatCubit = context.read<ChatCubit>();
   final repo = context.read<SessionRepository>();
@@ -694,6 +700,8 @@ Future<SessionOpenStatus?> _requestCreateWorkspaceConversation(
         expertKey: expertKey,
         continueOverrides: continueOverrides,
         preserveWorkbenchView: preserveWorkbenchView,
+        purpose: purpose,
+        workflowId: workflowId,
       ),
     );
   } on Object catch (error, stackTrace) {

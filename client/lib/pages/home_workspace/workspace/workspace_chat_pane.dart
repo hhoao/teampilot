@@ -16,6 +16,7 @@ import '../../../utils/workspace/landing_draft_resolver.dart';
 import '../../../services/compose/compose_draft_cache.dart';
 import 'workspace_chat_landing.dart';
 import 'workspace_landing_skeleton.dart';
+import 'workspace_landing_generation_submit.dart';
 import 'workspace_session_actions.dart';
 
 typedef WorkspaceLandingMessageSubmitter =
@@ -98,7 +99,7 @@ class _WorkspaceChatPaneState extends State<WorkspaceChatPane> {
       }
 
       final launchProfiles = context.read<LaunchProfileCubit>();
-      if (!draft.isPersonal) {
+      if (!draft.isPersonal && !draft.generateLaunch) {
         final teamId = draft.teamId?.trim() ?? '';
         if (teamId.isNotEmpty) {
           await launchProfiles.selectTeam(teamId, silent: true);
@@ -107,6 +108,22 @@ class _WorkspaceChatPaneState extends State<WorkspaceChatPane> {
 
       await widget.landingDraftPersister(workspace.workspaceId, draft);
       if (!mounted) return;
+
+      // Generation mode: branch before concrete-team submit. The exact
+      // composed text becomes the workflow's original prompt.
+      if (draft.generateLaunch && !draft.isPersonal) {
+        final delivered = await submitWorkspaceLandingGeneration(
+          context,
+          workspace,
+          launch: draft,
+          message: message,
+          workingDirectory: workingDirectory,
+        );
+        if (delivered) {
+          await widget.landingDraftCleaner(workspace.workspaceId);
+        }
+        return;
+      }
 
       final delivered = await widget.submitter(
         context,
