@@ -104,6 +104,56 @@ void main() {
     expect(find.text('Session'), findsOneWidget);
   });
 
+  testWidgets('showTabBar false hides the strip and new-chat button', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      _wrapShell(
+        const WorkspaceShell(
+          showHeader: false,
+          breadcrumb: 'Team / Chat',
+          title: 'Chat',
+          subtitle: 'Terminal',
+          actions: [],
+          showTabBar: false,
+          showNewChatButton: true,
+          newChatTooltip: 'New',
+          newConversationLabel: 'New Conversation',
+          newTerminalLabel: 'New terminal',
+          tabs: [TabInfo(id: 's1', title: 'Session')],
+          child: Text('Session body'),
+        ),
+      ),
+    );
+
+    expect(find.byType(WorkspaceShellTabRow), findsNothing);
+    expect(find.byType(WorkspaceShellNewChatButton), findsNothing);
+    expect(find.text('Session body'), findsOneWidget);
+  });
+
+  testWidgets('showTabBar defaults to true (strip renders)', (tester) async {
+    await tester.pumpWidget(
+      _wrapShell(
+        const WorkspaceShell(
+          showHeader: false,
+          breadcrumb: 'Team / Chat',
+          title: 'Chat',
+          subtitle: 'Terminal',
+          actions: [],
+          showNewChatButton: true,
+          newChatTooltip: 'New',
+          newConversationLabel: 'New Conversation',
+          newTerminalLabel: 'New terminal',
+          tabs: [TabInfo(id: 's1', title: 'Session')],
+          child: Text('Session body'),
+        ),
+      ),
+    );
+
+    expect(find.byType(WorkspaceShellTabRow), findsOneWidget);
+    expect(find.byType(WorkspaceShellNewChatButton), findsOneWidget);
+  });
+
   testWidgets('new-chat button sits after the last tab chip', (tester) async {
     await tester.pumpWidget(
       _wrapShell(

@@ -27,6 +27,7 @@ class WorkspaceShell extends StatelessWidget {
     this.onTabPin,
     this.onTabsReorder,
     this.showNewChatButton = false,
+    this.showTabBar = true,
     this.newChatTooltip = '',
     this.newConversationLabel = '',
     this.newTerminalLabel = '',
@@ -57,6 +58,8 @@ class WorkspaceShell extends StatelessWidget {
 
   /// "+" action at the end of the session tab row — New conversation / terminal.
   final bool showNewChatButton;
+  /// Master switch for the center tab strip; false skips the row entirely.
+  final bool showTabBar;
   final String newChatTooltip;
   final String newConversationLabel;
   final String newTerminalLabel;
@@ -123,7 +126,7 @@ class WorkspaceShell extends StatelessWidget {
               ],
             ),
           ),
-        if (tabs.isNotEmpty || showNewChatButton)
+        if (showTabBar && (tabs.isNotEmpty || showNewChatButton))
           WorkspaceShellTabRow(
             tabs: tabs,
             activeIndex: activeTabIndex,

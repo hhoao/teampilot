@@ -10,6 +10,7 @@ import '../../cubits/chat/model/chat_tab.dart';
 import '../../cubits/cli_presets_cubit.dart';
 import '../../cubits/editor_cubit.dart';
 import '../../cubits/launch_profile_cubit.dart';
+import '../../cubits/layout_cubit.dart';
 import '../../cubits/workbench/workbench_cubit.dart';
 import '../../cubits/workbench/workbench_tab.dart';
 import '../../l10n/l10n_extensions.dart';
@@ -274,8 +275,12 @@ class _ChatWorkspaceShell extends StatelessWidget {
                       .indexOf(activeId)
                       .clamp(0, tabs.isEmpty ? 0 : tabs.length - 1);
 
+            final showTabBar = context.select<LayoutCubit, bool>(
+              (c) => c.state.preferences.sessionTabBarVisible,
+            );
             return WorkspaceShell(
               showHeader: false,
+              showTabBar: showTabBar,
               breadcrumb: isPersonalContext
                   ? 'Personal / Chat / Shell chat workbench'
                   : '${teamConfig?.name ?? 'Team'} / Chat / Shell chat workbench',
