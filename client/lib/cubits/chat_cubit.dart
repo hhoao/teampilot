@@ -576,6 +576,7 @@ class ChatCubit extends Cubit<ChatState>
     required String memberId,
     required String text,
     String? deliveryId,
+    bool preserveText = false,
   }) async {
     final trimmed = text.trim();
     if (trimmed.isEmpty ||
@@ -590,7 +591,7 @@ class ChatCubit extends Cubit<ChatState>
       store: _failedMessageStore,
       workspaceId: workspaceId,
       sessionId: sessionId,
-      text: trimmed,
+      text: preserveText ? text : trimmed,
       deliveryId: deliveryId,
     );
   }

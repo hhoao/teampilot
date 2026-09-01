@@ -217,6 +217,45 @@ void main() {
   );
 
   test(
+    'handoff retains leading and trailing original prompt whitespace',
+    () async {
+      const originalPrompt = '  exact\nrequest  ';
+      final originalJob = (await store.read('ws', 'wf'))!;
+      await store.create(
+        workspaceId: 'ws',
+        workflowId: 'wf-whitespace',
+        builderSessionId: originalJob.builderSessionId,
+        originalPrompt: originalPrompt,
+        generator: originalJob.generator,
+        settings: originalJob.settings,
+        launch: originalJob.launch,
+      );
+      await store.mutate(
+        'ws',
+        'wf-whitespace',
+        (job) => job.copyWith(
+          validatedRevision: 'valid-rev',
+          validatedDestinationJson: const {
+            'folderId': '/proj',
+            'projectFolderPath': '/proj',
+            'workingDirectoryPath': '/proj',
+            'leadTargetId': 'local',
+          },
+        ),
+      );
+
+      final result = await service.handoff(
+        workspace: workspace(),
+        team: team(),
+        workflowId: 'wf-whitespace',
+      );
+
+      expect(port.historyByDeliveryId, {result.deliveryId: originalPrompt});
+      expect((await promptStore.read(result.deliveryId))!.text, originalPrompt);
+    },
+  );
+
+  test(
     'creates one team session, selects it, and delivers exactly once',
     () async {
       final result = await service.handoff(

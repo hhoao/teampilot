@@ -211,6 +211,7 @@ final class CubitTeamGenerationSessionPort
       memberId: session.isSimple ? '' : memberId,
       text: text,
       deliveryId: deliveryId,
+      preserveText: true,
     );
     if (record == null) {
       throw StateError(
