@@ -44,4 +44,21 @@ void main() {
       isFalse,
     );
   });
+
+  test('setSessionTabBarVisible toggles and persists', () async {
+    final prefs = await SharedPreferences.getInstance();
+    final cubit = LayoutCubit(repository: LayoutRepository(prefs));
+    await cubit.load();
+
+    await cubit.setSessionTabBarVisible(false);
+    expect(cubit.state.preferences.sessionTabBarVisible, isFalse);
+
+    await cubit.setSessionTabBarVisible(true);
+    expect(cubit.state.preferences.sessionTabBarVisible, isTrue);
+
+    // Reload from the repository to prove persistence.
+    final reloaded = LayoutCubit(repository: LayoutRepository(prefs));
+    await reloaded.load();
+    expect(reloaded.state.preferences.sessionTabBarVisible, isTrue);
+  });
 }

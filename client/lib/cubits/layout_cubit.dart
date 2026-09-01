@@ -221,6 +221,9 @@ class LayoutCubit extends Cubit<LayoutState> {
   Future<void> toggleSidebar() =>
       setSidebarVisible(!state.preferences.sidebarVisible);
 
+  Future<void> setSessionTabBarVisible(bool visible) =>
+      _save(state.preferences.copyWith(sessionTabBarVisible: visible));
+
   void setLandingRightToolsOverride(bool visible) {
     emit(state.copyWith(landingRightToolsOverride: visible));
   }
