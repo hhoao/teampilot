@@ -43,6 +43,7 @@ import '../launch/session_runtime_plan.dart';
 import '../launch/session_runtime_plan_builder.dart';
 import '../expert_hub/builtin_member_templates.dart';
 import '../skill/skill_pack_install_store.dart';
+import '../team_generation/providers/managed_team_builder_skill_provider.dart';
 import 'session_continue_overrides_apply.dart';
 import 'shell_launch_spec.dart';
 
@@ -116,6 +117,20 @@ class SessionLifecycleService {
 
   /// Current app home target (local, SSH, or WSL).
   RuntimeTarget get currentHome => _homeTarget();
+
+  /// Adds app-managed resources for sessions with a dedicated purpose.
+  ResourceProviderSet resourceProvidersForSession(
+    AppSession session,
+    ResourceProviderSet defaults,
+  ) {
+    if (session.purpose != SessionPurpose.teamGeneration) return defaults;
+    return ResourceProviderSet(
+      prompts: defaults.prompts,
+      skills: [...defaults.skills, ManagedTeamBuilderSkillProvider()],
+      mcp: defaults.mcp,
+      hooks: defaults.hooks,
+    );
+  }
 
   /// Late-bound app-scoped runtime composition. When attached, every launch
   /// preparation first replays the session's durable journal + delivery
@@ -513,7 +528,10 @@ class SessionLifecycleService {
     Map<String, Map<String, Object?>>? extraMcpServers,
     MemberBusIdleEndpoint? busIdle,
     MemberAgentStatusEndpoint? agentStatus,
-    ResourceProviderSet Function(AppSession session, ResourceProviderSet defaults)?
+    ResourceProviderSet Function(
+      AppSession session,
+      ResourceProviderSet defaults,
+    )?
     resourceProviderResolver,
   }) async {
     final sessionId = session.sessionId.trim();
@@ -602,9 +620,11 @@ class SessionLifecycleService {
       busIdle: busIdle,
       agentStatus: agentStatus,
       injectedResourceProviders: isSimple
-          ? (resourceProviderResolver != null
-                ? resourceProviderResolver(session, ResourceProviderSet.empty)
-                : ResourceProviderSet.empty)
+          ? (resourceProviderResolver?.call(
+                  session,
+                  ResourceProviderSet.empty,
+                ) ??
+                resourceProvidersForSession(session, ResourceProviderSet.empty))
           : ResourceProviderSet.empty,
     );
     final packStore = SkillPackInstallStore();
