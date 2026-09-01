@@ -36,6 +36,7 @@ void main() {
       String message, {
       HistoryContinueChannel channel = HistoryContinueChannel.pty,
       String? mailboxMailId = 'mail-1',
+      String? ptyDeliveryId = 'prompt-1',
     }) {
       return submitSessionHistoryReviewMessage(
         sessionId: 'sess-1',
@@ -53,7 +54,7 @@ void main() {
         deliverUserCommandToMember:
             (sessionId, memberId, text, {bool directToPty = false}) async {
               deliverCalls.add((sessionId, memberId, text, directToPty));
-              return directToPty ? null : mailboxMailId;
+              return directToPty ? ptyDeliveryId : mailboxMailId;
             },
         applyFirstPromptTitle: (sessionId, firstPrompt) async {
           titleCalls.add((sessionId, firstPrompt));
@@ -81,6 +82,17 @@ void main() {
       expect(deliverCalls, [('sess-1', 'member-1', 'continue here', true)]);
       expect(titleCalls, [('sess-1', 'continue here')]);
       expect(openSessionCalls, 0);
+    });
+
+    test('pty fails when the terminal cannot confirm submission', () async {
+      final result = await runSubmit(
+        'continue here',
+        ptyDeliveryId: null,
+      );
+
+      expect(result.ok, isFalse);
+      expect(result.channel, HistoryContinueChannel.pty);
+      expect(titleCalls, isEmpty);
     });
 
     test(

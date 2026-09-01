@@ -8,8 +8,12 @@ import 'prompt_delivery_store.dart';
 
 /// Outcome one terminal adapter reports for a single submit attempt.
 enum PromptSubmissionResult {
-  /// The paste and its terminating CR were both written to the PTY.
+  /// The paste and its terminating CR were accepted by the terminal adapter.
   submitted,
+
+  /// The adapter wrote or attempted input, but could not prove that the CLI
+  /// submitted it.
+  unconfirmed,
 
   /// The delivery fence dropped the command before or during the write.
   dropped,
@@ -118,9 +122,9 @@ final class PromptDeliveryCoordinator {
 
   /// Persists `submitIssued` before asking the terminal adapter to issue CR,
   /// then owns the adapter's explicit outcome: only `submitted` leaves the
-  /// record awaiting confirmation. `dropped` and `failed` close the record
-  /// immediately so a later weak prompt event can never mis-confirm a
-  /// delivery whose CR never happened.
+  /// record awaiting confirmation. `unconfirmed`, `dropped`, and `failed`
+  /// close the record immediately so a later weak prompt event can never
+  /// mis-confirm a delivery whose submit was not proven.
   Future<PromptSubmissionResult> issueSubmit(String id) async {
     // Claimed before the first await: an abort racing this persist is
     // otherwise invisible (the live fence is not submitIssued yet).
@@ -142,10 +146,7 @@ final class PromptDeliveryCoordinator {
     }
     if (_submitInvalidatedIds.remove(id)) {
       _submitPendingIds.remove(id);
-      await _transition(
-        delivery,
-        PromptDeliveryState.submittedUnknown,
-      );
+      await _transition(delivery, PromptDeliveryState.submittedUnknown);
       return PromptSubmissionResult.dropped;
     }
     _submitPendingIds.remove(id);
@@ -158,6 +159,8 @@ final class PromptDeliveryCoordinator {
     switch (result) {
       case PromptSubmissionResult.submitted:
         break;
+      case PromptSubmissionResult.unconfirmed:
+        await _transitionIfUnconfirmed(id, PromptDeliveryState.submittedUnknown);
       case PromptSubmissionResult.dropped:
         await _transitionIfUnconfirmed(id, PromptDeliveryState.submittedUnknown);
       case PromptSubmissionResult.failed:

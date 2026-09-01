@@ -142,12 +142,19 @@ Future<HistoryContinueSubmitResult> submitSessionHistoryReviewMessage({
   }
 
   try {
-    await deliverUserCommandToMember(
+    final deliveryId = await deliverUserCommandToMember(
       sessionId,
       memberId,
       trimmed,
       directToPty: true,
     );
+    if (deliveryId == null || deliveryId.trim().isEmpty) {
+      appLogger.w(
+        'submitSessionHistoryReviewMessage: terminal submit unconfirmed '
+        'session=$sessionId member=$memberId',
+      );
+      return const HistoryContinueSubmitResult.failed();
+    }
     // Review inject bypasses FirstUserLineCapture (keyboard path only).
     await applyFirstPromptTitle(sessionId, trimmed);
     return const HistoryContinueSubmitResult(

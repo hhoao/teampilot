@@ -14,6 +14,7 @@ import '../../services/prompt_delivery/prompt_delivery_coordinator.dart';
 import '../../services/prompt_delivery/prompt_delivery_store.dart';
 import '../../services/terminal/session_member_cli_resolver.dart';
 import '../../services/terminal/terminal_input_command_queue.dart';
+import '../../services/terminal/terminal_fullscreen_pty_port.dart';
 import '../../services/terminal/terminal_session.dart';
 import '../../utils/logging/logger.dart';
 import 'chat_session_shell_factory.dart';
@@ -265,8 +266,9 @@ final class TabMemberPtyDelivery {
   /// the member prompt (compose landing, automation, first prompt).
   ///
   /// Returns the mailbox message id when routed via TeamBus, or the durable
-  /// prompt-delivery id when [directToPty] is true. Returns `null` when the
-  /// direct delivery was interrupted before it could be issued.
+  /// prompt-delivery id when [directToPty] is true and the terminal adapter
+  /// confirms submission. Returns `null` when the direct delivery is dropped,
+  /// unconfirmed, or interrupted before it could be issued.
   /// When [directToPty] is false and no bus is installed, returns `null`
   /// without falling back to PTY inject (caller must not treat that as success).
   Future<String?> deliverUserCommandToMember(
@@ -306,7 +308,7 @@ final class TabMemberPtyDelivery {
         _directTurnLatched.add(delivery.id)) {
       _markMemberTurnStartedOnSubmitSuccess(sessionId, memberId);
     }
-    return delivery.id;
+    return result == PromptSubmissionResult.submitted ? delivery.id : null;
   }
 
   Future<void> _deliverFullScreen({
@@ -510,9 +512,13 @@ PromptDeliveryCoordinator _tabPromptDeliveries(ChatTabStore tabStore) =>
 /// persistent coordinator. Its writes still flow through the fenced terminal
 /// command queue and are controlled by the coordinator's delivery id.
 final class TabPromptDeliveryCommands implements PromptDeliveryCommands {
-  const TabPromptDeliveryCommands(this._tabStore);
+  TabPromptDeliveryCommands(
+    this._tabStore, {
+    FullscreenPtyAutomation? automation,
+  }) : _automation = automation ?? FullscreenPtyAutomation();
 
   final ChatTabStore _tabStore;
+  final FullscreenPtyAutomation _automation;
 
   @override
   Future<void> stage(
@@ -529,6 +535,40 @@ final class TabPromptDeliveryCommands implements PromptDeliveryCommands {
         .openTabBySessionId(delivery.seat.sessionId)
         ?.memberShells[delivery.seat.memberId];
     if (shell == null) return PromptSubmissionResult.failed;
+    final behavior = CliToolRegistry.builtIn()
+        .capability<TerminalBehaviorCapability>(delivery.cli);
+    if (behavior?.usesFullScreenInput == true &&
+        behavior?.usesGridPasteAck == true) {
+      final outcome = await _automation.deliverPasteAndSubmit(
+        port: TerminalFullscreenPtyPort(
+          input: shell.input,
+          probe: shell.probe,
+          aborted: () => !shell.isConnected || !canExecute(),
+          crAckConfig: FullscreenCrAckConfig(
+            strategy:
+                behavior?.fullscreenCrAckStrategy ??
+                FullscreenCrAckStrategy.anchorCellClears,
+            composerPrefix: behavior?.fullscreenComposerPrefix,
+          ),
+          painted: shell.observationPainted,
+        ),
+        text: delivery.text,
+        pasteSettle:
+            behavior?.fullScreenPasteSettleDelay ??
+            TerminalInputController.fullScreenSubmitDelay,
+      );
+      switch (outcome) {
+        case FullscreenPtyDeliveryOutcome.submitted:
+          return PromptSubmissionResult.submitted;
+        case FullscreenPtyDeliveryOutcome.aborted:
+          return canExecute()
+              ? PromptSubmissionResult.unconfirmed
+              : PromptSubmissionResult.dropped;
+        case FullscreenPtyDeliveryOutcome.pasteNotFound:
+        case FullscreenPtyDeliveryOutcome.crStuck:
+          return PromptSubmissionResult.unconfirmed;
+      }
+    }
     final result = await shell.input.submitFullScreenInput(
       delivery.text,
       canExecute: canExecute,

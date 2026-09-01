@@ -13,6 +13,7 @@ import 'package:teampilot/services/agent_runtime/runtime_event.dart';
 import 'package:teampilot/services/prompt_delivery/prompt_delivery.dart';
 import 'package:teampilot/services/prompt_delivery/prompt_delivery_coordinator.dart';
 import 'package:teampilot/services/prompt_delivery/prompt_delivery_store.dart';
+import 'package:teampilot/services/terminal/fullscreen_pty_automation.dart';
 import 'package:teampilot/services/terminal/terminal_input_command_queue.dart';
 
 import '../../integration/support/connected_recording_shell.dart';
@@ -106,6 +107,67 @@ void main() {
     expect(afterTurn, ['s:m']);
   });
 
+  test('direct fullscreen submit waits for the grid submit ACK', () async {
+    final shell = await ConnectedRecordingShell.connect();
+    addTearDown(shell.dispose);
+    final tabStore = _DeliveryHarness._connectedTabStore(shell);
+    final commands = TabPromptDeliveryCommands(
+      tabStore,
+      automation: FullscreenPtyAutomation(
+        timing: PtyAutomationTiming.instant(),
+      ),
+    );
+    const text = 'inspect this';
+    final delivery = PromptDelivery(
+      id: 'delivery-direct-grid-ack',
+      seat: const RuntimeSeatKey(sessionId: 's', memberId: 'm'),
+      cli: CliTool.codex,
+      text: text,
+      normalizedText: text,
+      promptEpoch: 1,
+      state: PromptDeliveryState.submitIssued,
+      createdAt: DateTime(2026, 1, 1),
+      updatedAt: DateTime(2026, 1, 1),
+    );
+
+    await shell.emitPtyOutput('gpt-5.6-luna default · /tmp\r\n›\r\n');
+    var completed = false;
+    final submit = commands.submit(delivery, canExecute: () => true).then((
+      result,
+    ) {
+      completed = true;
+      return result;
+    });
+
+    await Future<void>.delayed(const Duration(milliseconds: 50));
+    expect(
+      completed,
+      isFalse,
+      reason: 'PTY writes alone are not proof that Codex accepted the prompt',
+    );
+
+    await shell.emitPtyOutput('› $text\r\n');
+    unawaited(_emitCodexSubmitFrameAfterCr(shell, text));
+
+    expect(await submit, PromptSubmissionResult.submitted);
+  });
+
+  test('unconfirmed direct submit does not return a successful delivery id',
+      () async {
+    final harness = _DeliveryHarness.withCommands(
+      _UnconfirmedPromptCommands(),
+    );
+
+    final id = await harness.delivery.deliverUserCommandToMember(
+      's',
+      'm',
+      'inspect this',
+      directToPty: true,
+    );
+
+    expect(id, isNull);
+  });
+
   test('interrupt racing delivery creation prevents any direct PTY write',
       () async {
     final commands = _RecordingPromptCommands();
@@ -185,6 +247,22 @@ void main() {
     expect(afterTurn, isEmpty);
     expect(shell.ptyInputJoined.endsWith('\r'), isFalse);
   });
+}
+
+Future<void> _emitCodexSubmitFrameAfterCr(
+  ConnectedRecordingShell shell,
+  String text,
+) async {
+  final deadline = DateTime.now().add(const Duration(seconds: 2));
+  while (!shell.ptyInputJoined.contains('\r')) {
+    if (DateTime.now().isAfter(deadline)) {
+      fail('direct fullscreen submit never wrote CR');
+    }
+    await Future<void>.delayed(const Duration(milliseconds: 1));
+  }
+  // The staged row is row 4 in the synthetic screen. Replace that row with
+  // transcript text and paint a fresh composer below it.
+  await shell.emitPtyOutput('\x1b[4;1H\x1b[2K$text\r\n›\r\n');
 }
 
 final class _DeliveryHarness {
@@ -376,6 +454,21 @@ final class _RecordingPromptCommands implements PromptDeliveryCommands {
     submittedPrompts.add(delivery.text);
     return PromptSubmissionResult.submitted;
   }
+}
+
+final class _UnconfirmedPromptCommands implements PromptDeliveryCommands {
+  @override
+  Future<void> stage(
+    PromptDelivery delivery, {
+    required bool Function() canExecute,
+  }) async {}
+
+  @override
+  Future<PromptSubmissionResult> submit(
+    PromptDelivery delivery, {
+    required bool Function() canExecute,
+  }) async =>
+      PromptSubmissionResult.unconfirmed;
 }
 
 final class _GatedCreationStore implements PromptDeliveryStore {

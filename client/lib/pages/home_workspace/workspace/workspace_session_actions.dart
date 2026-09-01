@@ -537,12 +537,34 @@ Future<bool> submitWorkspaceLandingMessage(
     }
 
     try {
-      await chatCubit.sessionRuntime.deliverUserCommandToMember(
+      final deliveryId = await chatCubit.sessionRuntime.deliverUserCommandToMember(
         session.sessionId,
         memberId,
         trimmed,
         directToPty: true,
       );
+      if (deliveryId == null || deliveryId.trim().isEmpty) {
+        if (pendingRecord != null) {
+          await chatCubit.markHistoryPendingFailed(
+            workspaceId: liveWorkspace.workspaceId,
+            sessionId: session.sessionId,
+            memberId: historyMemberId,
+            record: pendingRecord,
+          );
+        }
+        appLogger.w(
+          'submitWorkspaceLandingMessage: terminal submit unconfirmed '
+          'session=${session.sessionId} member=$memberId',
+        );
+        if (context.mounted) {
+          AppToast.show(
+            context,
+            message: l10n.homeWorkspaceNewConversation,
+            variant: TpToastVariant.error,
+          );
+        }
+        return false;
+      }
       // Pending bubble stays until transcript reconcile — do not clear here.
       return true;
     } on Object catch (error, stackTrace) {
