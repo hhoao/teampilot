@@ -52,6 +52,7 @@ class LayoutPreferences {
     this.searchVisible = true,
     this.boardVisible = true,
     this.rightToolsVisible = false,
+    this.sessionTabBarVisible = true,
     this.sidebarVisible = true,
     this.rightToolsWidth = defaultRightToolsWidth,
     this.sidebarWidth = defaultSidebarWidth,
@@ -105,6 +106,7 @@ class LayoutPreferences {
       searchVisible: json['searchVisible'] as bool? ?? true,
       boardVisible: json['boardVisible'] as bool? ?? true,
       rightToolsVisible: json['rightToolsVisible'] as bool? ?? false,
+      sessionTabBarVisible: json['sessionTabBarVisible'] as bool? ?? true,
       sidebarVisible: json['sidebarVisible'] as bool? ?? true,
       rightToolsWidth: _doubleValue(
         json['rightToolsWidth'],
@@ -250,6 +252,7 @@ class LayoutPreferences {
   final bool searchVisible;
   final bool boardVisible;
   final bool rightToolsVisible;
+  final bool sessionTabBarVisible;
   final bool sidebarVisible;
   final double rightToolsWidth;
   final double sidebarWidth;
@@ -304,6 +307,7 @@ class LayoutPreferences {
     bool? searchVisible,
     bool? boardVisible,
     bool? rightToolsVisible,
+    bool? sessionTabBarVisible,
     bool? sidebarVisible,
     double? rightToolsWidth,
     double? sidebarWidth,
@@ -352,6 +356,7 @@ class LayoutPreferences {
       searchVisible: searchVisible ?? this.searchVisible,
       boardVisible: boardVisible ?? this.boardVisible,
       rightToolsVisible: rightToolsVisible ?? this.rightToolsVisible,
+      sessionTabBarVisible: sessionTabBarVisible ?? this.sessionTabBarVisible,
       sidebarVisible: sidebarVisible ?? this.sidebarVisible,
       rightToolsWidth: (rightToolsWidth ?? this.rightToolsWidth).clamp(
         minRightToolsWidth,
@@ -439,6 +444,7 @@ class LayoutPreferences {
       searchVisible: searchVisible,
       boardVisible: boardVisible,
       rightToolsVisible: rightToolsVisible,
+      sessionTabBarVisible: sessionTabBarVisible,
       sidebarVisible: sidebarVisible,
       rightToolsWidth: rightToolsWidth,
       sidebarWidth: sidebarWidth,
@@ -489,6 +495,7 @@ class LayoutPreferences {
       'searchVisible': searchVisible,
       'boardVisible': boardVisible,
       'rightToolsVisible': rightToolsVisible,
+      'sessionTabBarVisible': sessionTabBarVisible,
       'sidebarVisible': sidebarVisible,
       'rightToolsWidth': rightToolsWidth,
       'sidebarWidth': sidebarWidth,

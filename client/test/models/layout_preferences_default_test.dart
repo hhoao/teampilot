@@ -37,6 +37,20 @@ void main() {
     expect(restored.rightToolsVisible, isTrue);
   });
 
+  test('sessionTabBarVisible defaults true and round-trips', () {
+    expect(const LayoutPreferences().sessionTabBarVisible, isTrue);
+    expect(LayoutPreferences.fromJson(const {}).sessionTabBarVisible, isTrue);
+    final parsed = LayoutPreferences.fromJson(const {
+      'sessionTabBarVisible': false,
+    });
+    expect(parsed.sessionTabBarVisible, isFalse);
+    expect(parsed.toJson()['sessionTabBarVisible'], isFalse);
+    final restored = LayoutPreferences.fromJson(
+      const LayoutPreferences(sessionTabBarVisible: false).toJson(),
+    );
+    expect(restored.sessionTabBarVisible, isFalse);
+  });
+
   test('searchVisible defaults true and round-trips', () {
     expect(const LayoutPreferences().searchVisible, isTrue);
     expect(LayoutPreferences.fromJson(const {}).searchVisible, isTrue);
