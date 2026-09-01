@@ -25,6 +25,8 @@ class _FakePort implements TeamGenerationSessionPort {
   final selected = <String>[];
   final readyCalls = <String>[];
   final deliveryCalls = <String>[];
+  final historySeedCalls = <String>[];
+  final historyByDeliveryId = <String, String>{};
   final knownSessions = <String>{};
 
   @override
@@ -85,7 +87,10 @@ class _FakePort implements TeamGenerationSessionPort {
     String memberId,
     String text, {
     required String deliveryId,
-  }) async {}
+  }) async {
+    historySeedCalls.add('$sessionId/$memberId/$deliveryId/$text');
+    historyByDeliveryId.putIfAbsent(deliveryId, () => text);
+  }
 
   @override
   Future<PortDeliveryOutcome> deliverTracked(
@@ -110,6 +115,7 @@ void main() {
   late InMemoryFilesystem fs;
   late TeamGenerationJobStore store;
   late _FakePort port;
+  late MemoryPromptDeliveryStore promptStore;
   late TeamGenerationHandoffService service;
 
   Workspace workspace() => Workspace(
@@ -168,16 +174,47 @@ void main() {
       );
     });
     port = _FakePort();
+    promptStore = MemoryPromptDeliveryStore();
     service = TeamGenerationHandoffService(
       jobStore: store,
       sessionPort: port,
       promptCoordinator: PromptDeliveryCoordinator(
-        store: MemoryPromptDeliveryStore(),
+        store: promptStore,
         commands: _NoopCommands(),
       ),
-      promptStore: MemoryPromptDeliveryStore(),
+      promptStore: promptStore,
     );
   });
+
+  test(
+    'seeds the raw original prompt with the reserved delivery id before handoff submit',
+    () async {
+      final first = await service.handoff(
+        workspace: workspace(),
+        team: team(),
+        workflowId: 'wf',
+      );
+
+      expect(port.historySeedCalls, [
+        '${first.destinationSessionId}/team-lead/${first.deliveryId}/'
+            'exact\nrequest',
+      ]);
+      expect(port.historyByDeliveryId, {first.deliveryId: 'exact\nrequest'});
+      final delivery = await promptStore.read(first.deliveryId);
+      expect(delivery!.text, 'exact\nrequest');
+      expect(delivery.id, first.deliveryId);
+
+      final resumed = await service.handoff(
+        workspace: workspace(),
+        team: team(),
+        workflowId: 'wf',
+      );
+
+      expect(resumed.deliveryId, first.deliveryId);
+      expect(port.historyByDeliveryId, {first.deliveryId: 'exact\nrequest'});
+      expect(port.historySeedCalls, hasLength(2));
+    },
+  );
 
   test(
     'creates one team session, selects it, and delivers exactly once',

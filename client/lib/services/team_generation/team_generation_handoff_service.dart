@@ -92,7 +92,9 @@ final class TeamGenerationHandoffService {
           )
         : await _sessionPort.open(destinationSessionId);
     if (!openResult.opened) {
-      throw StateError('destination session did not open: ${openResult.status}');
+      throw StateError(
+        'destination session did not open: ${openResult.status}',
+      );
     }
     await _sessionPort.select(destinationSessionId);
     await _jobStore.mutate(workspace.workspaceId, workflowId, (current) {
@@ -107,10 +109,13 @@ final class TeamGenerationHandoffService {
     });
 
     // Deliver the immutable original prompt to the canonical lead.
-    final deliveryId = reservedJob.receipts['promptDelivery']?.value.isNotEmpty ==
-            true
+    final deliveryId =
+        reservedJob.receipts['promptDelivery']?.value.isNotEmpty == true
         ? reservedJob.receipts['promptDelivery']!.value
-        : teamGenerationStableId('teamgen-prompt-${reservedJob.attempt}-', workflowId);
+        : teamGenerationStableId(
+            'teamgen-prompt-${reservedJob.attempt}-',
+            workflowId,
+          );
     await _jobStore.mutate(workspace.workspaceId, workflowId, (current) {
       return current.copyWith(
         phase: _atLeast(current.phase, TeamGenerationPhase.delivering),
@@ -128,10 +133,11 @@ final class TeamGenerationHandoffService {
     });
 
     final effectiveDeliveryId =
-        (await _jobStore.read(workspace.workspaceId, workflowId))
-                ?.receipts['promptDelivery']!
-                .value ??
-            deliveryId;
+        (await _jobStore.read(
+          workspace.workspaceId,
+          workflowId,
+        ))?.receipts['promptDelivery']!.value ??
+        deliveryId;
 
     final existingDelivery = await _promptStore.read(effectiveDeliveryId);
     if (existingDelivery != null &&
@@ -159,6 +165,16 @@ final class TeamGenerationHandoffService {
       destinationSessionId,
       TeamMemberNaming.teamLeadName,
       directToPty: true,
+    );
+
+    // The destination conversation must show the same immutable user prompt
+    // the lead receives. Re-seeding with the stable delivery id reuses the
+    // pending record when this workflow resumes.
+    await _sessionPort.persistHistoryPending(
+      destinationSessionId,
+      TeamMemberNaming.teamLeadName,
+      job.originalPrompt,
+      deliveryId: effectiveDeliveryId,
     );
 
     // Reuse the exact existing record when present (idempotent replay);

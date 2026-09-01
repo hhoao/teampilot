@@ -347,9 +347,22 @@ void main() {
 
       expect(events[3], startsWith('profilePersisted:'));
       expect(events[4], 'destinationCreated');
-      expect(events[5], 'prompt:team-lead:Build the release plan');
-      expect(events[6], 'builderDeleted');
-      expect(events, hasLength(7));
+      final destinationId = teamGenerationStableId(
+        'teamgen-',
+        started.workflowId,
+      );
+      final handoffDeliveryId = teamGenerationStableId(
+        'teamgen-prompt-0-',
+        started.workflowId,
+      );
+      expect(
+        events[5],
+        'history:$destinationId:team-lead:$handoffDeliveryId:'
+        'Build the release plan',
+      );
+      expect(events[6], 'prompt:team-lead:Build the release plan');
+      expect(events[7], 'builderDeleted');
+      expect(events, hasLength(8));
       expect((await profileRepository.loadTeamProfiles()), hasLength(1));
       expect(
         (await jobStore.read('ws', started.workflowId))!.phase,
