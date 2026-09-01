@@ -73,9 +73,7 @@ List<DiscoverableMember> builtinExpertMembers() => [
         'Team Composer until valid, and call finalize_team_generation exactly '
         'once. Never edit TeamPilot manifests or deliver the original task '
         'yourself. Stop after finalization is accepted.',
-    skillDeps: _skills([
-      ('team-builder', 'Team Builder'),
-    ]),
+    skillDeps: [managedSkillDep(kManagedTeamBuilderSkillId, 'Team Builder')],
   ),
   _builtinMember(
     slug: 'team-lead',
