@@ -39,7 +39,9 @@ delivery of the original task.
 4. Use the Catalog MCP to search and read skills, plugins, and MCP servers.
    Acquire a missing resource only when it is genuinely necessary, and make
    that acquisition generation-scoped (`bind_to: generation`). Do not install,
-   bind, or modify catalog resources globally.
+   bind, or modify catalog resources globally. Use only resource identifiers
+   returned by Catalog MCP search/read or already listed in frozen generation
+   context. Never invent Catalog resource IDs.
 5. Call `probe_workspace_targets` before assigning machines. Assign a member
    only to a currently available probed target that supports its selected CLI.
 6. Call `validate_team_plan` with the complete draft. Inspect every returned
