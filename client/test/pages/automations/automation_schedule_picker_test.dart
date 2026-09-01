@@ -58,15 +58,16 @@ Widget _wrap(Widget child) {
     home: TpTheme(
       data: TpThemeData.fromColorScheme(scheme, scale: 1.0),
       child: Scaffold(
-        body: TpForm(
-          child: SingleChildScrollView(child: child),
-        ),
+        body: TpForm(child: SingleChildScrollView(child: child)),
       ),
     ),
   );
 }
 
-Future<_HostState> _pumpPicker(WidgetTester tester, AutomationScheduleDraft draft) async {
+Future<_HostState> _pumpPicker(
+  WidgetTester tester,
+  AutomationScheduleDraft draft,
+) async {
   tester.view.physicalSize = const Size(900, 800);
   tester.view.devicePixelRatio = 1.0;
   addTearDown(tester.view.resetPhysicalSize);
@@ -83,18 +84,14 @@ void main() {
   ) async {
     await _pumpPicker(tester, _onceDraft());
 
-    final segmented = tester
-        .widget<TpSegmentedPicker<AutomationScheduleMode>>(
-          find.byType(TpSegmentedPicker<AutomationScheduleMode>),
-        );
-    expect(
-      segmented.segments.map((s) => s.value),
-      [
-        AutomationScheduleMode.once,
-        AutomationScheduleMode.countdown,
-        AutomationScheduleMode.recurring,
-      ],
+    final segmented = tester.widget<TpSegmentedPicker<AutomationScheduleMode>>(
+      find.byType(TpSegmentedPicker<AutomationScheduleMode>),
     );
+    expect(segmented.segments.map((s) => s.value), [
+      AutomationScheduleMode.once,
+      AutomationScheduleMode.countdown,
+      AutomationScheduleMode.recurring,
+    ]);
     // Dialog host is narrow; the three modes must stay a visible pill.
     expect(segmented.mobileBreakpoint, 0);
     expect(find.text(_l10n.automationsScheduleModeOnce), findsOneWidget);
@@ -135,6 +132,71 @@ void main() {
     );
   });
 
+  testWidgets('switching to once seeds a missing once slot with defaults', (
+    tester,
+  ) async {
+    // A recurring-only draft has never had a once date/time; entering once
+    // mode must seed them (instead of the rows falling back to a 09:00
+    // placeholder) so the emitted draft always carries a complete slot.
+    final host = await _pumpPicker(
+      tester,
+      AutomationScheduleDraft(
+        mode: AutomationScheduleMode.recurring,
+        preset: AutomationSchedulePreset.daily,
+        minute: 0,
+        hourMinute: '09:00',
+        timezone: 'UTC',
+      ),
+    );
+
+    await tester.tap(find.text(_l10n.automationsScheduleModeOnce));
+    await tester.pump();
+
+    final emitted = host.emissions.last;
+    expect(emitted.mode, AutomationScheduleMode.once);
+    expect(emitted.onceDate, isNotNull);
+    expect(emitted.onceTime, isNotNull);
+
+    // Seed contract: 15 minutes out from now, matching defaultOnceDateTime.
+    final seeded = DateTime.now().add(const Duration(minutes: 15));
+    expect(emitted.onceDate, DateTime(seeded.year, seeded.month, seeded.day));
+    expect(
+      emitted.onceTime,
+      TimeOfDay(hour: seeded.hour, minute: seeded.minute),
+    );
+  });
+
+  testWidgets('custom cron field keeps trailing space through host echo', (
+    tester,
+  ) async {
+    final host = await _pumpPicker(tester, _onceDraft());
+
+    await tester.tap(find.text(_l10n.automationsScheduleModeRecurring));
+    await tester.pump();
+    // Open the preset select and pick Custom so the cron TextField mounts.
+    await tester.tap(find.byType(TpSelect<AutomationSchedulePreset>));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text(_l10n.automationsScheduleCustom).last);
+    await tester.pumpAndSettle();
+
+    final field = find.byWidgetPredicate(
+      (w) => w is TextField && w.decoration?.hintText == '0 */2 * * *',
+    );
+    expect(field, findsOneWidget);
+
+    // Type like a user would: '0' commits the draft, then a trailing space.
+    await tester.enterText(field, '0');
+    await tester.pump();
+    await tester.enterText(field, '0 ');
+    // Host setState echoes the trimmed draft back through didUpdateWidget;
+    // the two-clause guard must not resync (and eat the space) in that case.
+    await tester.pump();
+
+    final text = tester.widget<TextField>(field).controller!.text;
+    expect(text, '0 ');
+    expect(host.emissions.last.customCron, '0');
+  });
+
   testWidgets('countdown mode emits minutes and shows a run preview', (
     tester,
   ) async {
@@ -153,40 +215,48 @@ void main() {
       find.byWidgetPredicate(
         (w) =>
             w is Text &&
-            RegExp(r'^Runs at \d{4}-\d{2}-\d{2} \d{2}:\d{2}$').hasMatch(
-              w.data ?? '',
-            ),
+            RegExp(
+              r'^Runs at \d{4}-\d{2}-\d{2} \d{2}:\d{2}$',
+            ).hasMatch(w.data ?? ''),
       ),
       findsOneWidget,
     );
   });
 
-  test('scheduleDraftFromAutomation maps once runAtMs to local date and time', () {
-    final runAtMs =
-        DateTime(2026, 9, 3, 14, 30).millisecondsSinceEpoch;
-    final draft = scheduleDraftFromAutomation(
-      sampleAutomation(
-        id: 'once-1',
-        workspaceId: 'ws1',
-        preset: AutomationSchedulePreset.once,
-        runAtMs: runAtMs,
-      ),
-    );
+  test(
+    'scheduleDraftFromAutomation maps once runAtMs to local date and time',
+    () {
+      final runAtMs = DateTime(2026, 9, 3, 14, 30).millisecondsSinceEpoch;
+      final draft = scheduleDraftFromAutomation(
+        sampleAutomation(
+          id: 'once-1',
+          workspaceId: 'ws1',
+          preset: AutomationSchedulePreset.once,
+          runAtMs: runAtMs,
+        ),
+      );
 
-    expect(draft.mode, AutomationScheduleMode.once);
-    expect(draft.onceDate, DateTime(2026, 9, 3));
-    expect(draft.onceTime, const TimeOfDay(hour: 14, minute: 30));
-  });
+      expect(draft.mode, AutomationScheduleMode.once);
+      expect(draft.onceDate, DateTime(2026, 9, 3));
+      expect(draft.onceTime, const TimeOfDay(hour: 14, minute: 30));
+      // Carried verbatim so the save path can round-trip the stored target
+      // without recomposing it from local wall clock.
+      expect(draft.runAtMs, runAtMs);
+    },
+  );
 
-  test('scheduleDraftFromAutomation maps recurring presets to recurring mode', () {
-    final draft = scheduleDraftFromAutomation(
-      sampleAutomation(id: 'daily-1', workspaceId: 'ws1'),
-    );
+  test(
+    'scheduleDraftFromAutomation maps recurring presets to recurring mode',
+    () {
+      final draft = scheduleDraftFromAutomation(
+        sampleAutomation(id: 'daily-1', workspaceId: 'ws1'),
+      );
 
-    expect(draft.mode, AutomationScheduleMode.recurring);
-    expect(draft.preset, AutomationSchedulePreset.daily);
-    expect(draft.onceDate, isNull);
-  });
+      expect(draft.mode, AutomationScheduleMode.recurring);
+      expect(draft.preset, AutomationSchedulePreset.daily);
+      expect(draft.onceDate, isNull);
+    },
+  );
 
   test('forCreate seeds once defaults from the provided now', () {
     final draft = AutomationScheduleDraft.forCreate(
@@ -222,7 +292,9 @@ void main() {
 
     final daily = localizedScheduleSummary(
       _l10n,
-      scheduleDraftFromAutomation(sampleAutomation(id: 'd', workspaceId: 'ws1')),
+      scheduleDraftFromAutomation(
+        sampleAutomation(id: 'd', workspaceId: 'ws1'),
+      ),
     );
     expect(daily, 'Daily at 09:00');
   });

@@ -30,6 +30,7 @@ class AutomationScheduleDraft {
     this.countdownMinutes,
     this.dayOfWeek,
     this.customCron,
+    this.runAtMs,
     required this.timezone,
   });
 
@@ -69,6 +70,12 @@ class AutomationScheduleDraft {
   final int? countdownMinutes;
   final int? dayOfWeek;
   final String? customCron;
+
+  /// Raw stored target for once schedules; the save path reuses it verbatim
+  /// when the user has not changed onceDate/onceTime (see
+  /// AutomationEditorDialog _save).
+  final int? runAtMs;
+
   final String timezone;
 
   AutomationScheduleDraft copyWith({
@@ -85,6 +92,8 @@ class AutomationScheduleDraft {
     bool clearDayOfWeek = false,
     String? customCron,
     bool clearCustomCron = false,
+    int? runAtMs,
+    bool clearRunAtMs = false,
     String? timezone,
   }) {
     return AutomationScheduleDraft(
@@ -99,6 +108,7 @@ class AutomationScheduleDraft {
           : (countdownMinutes ?? this.countdownMinutes),
       dayOfWeek: clearDayOfWeek ? null : (dayOfWeek ?? this.dayOfWeek),
       customCron: clearCustomCron ? null : (customCron ?? this.customCron),
+      runAtMs: clearRunAtMs ? null : (runAtMs ?? this.runAtMs),
       timezone: timezone ?? this.timezone,
     );
   }
@@ -112,9 +122,7 @@ AutomationScheduleDraft scheduleDraftFromAutomation(Automation automation) {
       ? DateTime.fromMillisecondsSinceEpoch(automation.runAtMs!)
       : null;
   return AutomationScheduleDraft(
-    mode: once
-        ? AutomationScheduleMode.once
-        : AutomationScheduleMode.recurring,
+    mode: once ? AutomationScheduleMode.once : AutomationScheduleMode.recurring,
     preset: automation.preset,
     minute: automation.minute,
     hourMinute: automation.hourMinute,
@@ -126,6 +134,9 @@ AutomationScheduleDraft scheduleDraftFromAutomation(Automation automation) {
         : TimeOfDay(hour: runAt.hour, minute: runAt.minute),
     dayOfWeek: automation.dayOfWeek,
     customCron: automation.customCron,
+    // Carried verbatim so the save path can reuse the stored target when the
+    // user has not touched onceDate/onceTime (Task 7 _save).
+    runAtMs: automation.runAtMs,
     timezone: automation.timezone,
   );
 }
@@ -313,19 +324,31 @@ class _AutomationSchedulePickerState extends State<AutomationSchedulePicker> {
   }
 
   /// Once ⇔ preset once stay in sync; recurring falls back to the daily
-  /// preset the editor has always defaulted to.
+  /// preset the editor has always defaulted to. A recurring draft that never
+  /// had a once slot is seeded 15 minutes out so the once/countdown rows do
+  /// not fall back to a 09:00 placeholder.
   AutomationScheduleDraft _draftForMode(
     AutomationScheduleDraft draft,
     AutomationScheduleMode mode,
   ) {
+    final needsOnceSlot =
+        mode == AutomationScheduleMode.once ||
+        mode == AutomationScheduleMode.countdown;
+    final seeded =
+        needsOnceSlot && draft.onceDate == null && draft.onceTime == null
+        ? _withOnceDefaults(draft)
+        : draft;
     switch (mode) {
       case AutomationScheduleMode.once:
-        return draft.copyWith(mode: mode, preset: AutomationSchedulePreset.once);
-      case AutomationScheduleMode.countdown:
-        return draft.copyWith(
+        return seeded.copyWith(
           mode: mode,
           preset: AutomationSchedulePreset.once,
-          countdownMinutes: draft.countdownMinutes ?? 15,
+        );
+      case AutomationScheduleMode.countdown:
+        return seeded.copyWith(
+          mode: mode,
+          preset: AutomationSchedulePreset.once,
+          countdownMinutes: seeded.countdownMinutes ?? 15,
         );
       case AutomationScheduleMode.recurring:
         return draft.copyWith(
@@ -336,9 +359,20 @@ class _AutomationSchedulePickerState extends State<AutomationSchedulePicker> {
         );
     }
   }
+
+  AutomationScheduleDraft _withOnceDefaults(AutomationScheduleDraft draft) {
+    final onceAt = defaultOnceDateTime(DateTime.now());
+    return draft.copyWith(
+      onceDate: DateTime(onceAt.year, onceAt.month, onceAt.day),
+      onceTime: TimeOfDay(hour: onceAt.hour, minute: onceAt.minute),
+    );
+  }
 }
 
-String schedulePresetLabel(AppLocalizations l10n, AutomationSchedulePreset preset) {
+String schedulePresetLabel(
+  AppLocalizations l10n,
+  AutomationSchedulePreset preset,
+) {
   return switch (preset) {
     AutomationSchedulePreset.hourly => l10n.automationsScheduleHourly,
     AutomationSchedulePreset.daily => l10n.automationsScheduleDaily,

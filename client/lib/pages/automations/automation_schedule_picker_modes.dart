@@ -40,7 +40,7 @@ class AutomationScheduleOnceRows extends StatelessWidget {
           builder: (state) {
             final selected = state.value ?? draft.onceDate ?? now;
             return TpDatePicker(
-              key: ValueKey('schedule-once-date-picker-$selected'),
+              key: const ValueKey('schedule-once-date-picker'),
               firstDate: DateTime(now.year, now.month, now.day),
               lastDate: now.add(const Duration(days: 365)),
               selected: selected,
@@ -114,7 +114,12 @@ class _AutomationScheduleCountdownRowsState
   void didUpdateWidget(covariant AutomationScheduleCountdownRows oldWidget) {
     super.didUpdateWidget(oldWidget);
     final minutes = widget.draft.countdownMinutes;
-    if (!_customActive && _minutesCtl.text != (minutes?.toString() ?? '')) {
+    // Same draft-change guard as the cron field: the digitsOnly formatter keeps
+    // typed text parseable, but an unconditional sync would still clobber the
+    // field mid-edit whenever the host rebuilds for an unrelated reason.
+    if (oldWidget.draft.countdownMinutes != widget.draft.countdownMinutes &&
+        !_customActive &&
+        _minutesCtl.text != (minutes?.toString() ?? '')) {
       _minutesCtl.text = minutes?.toString() ?? '';
     }
   }
@@ -226,16 +231,17 @@ class _AutomationScheduleRecurringRowsState
   @override
   void initState() {
     super.initState();
-    _customCronCtl = TextEditingController(
-      text: widget.draft.customCron ?? '',
-    );
+    _customCronCtl = TextEditingController(text: widget.draft.customCron ?? '');
   }
 
   @override
   void didUpdateWidget(covariant AutomationScheduleRecurringRows oldWidget) {
     super.didUpdateWidget(oldWidget);
     final cron = widget.draft.customCron;
-    if (_customCronCtl.text != (cron ?? '')) {
+    // Only resync when the draft itself changed: the emitted cron is trimmed,
+    // so echoing back on every rebuild would eat spaces the user is typing.
+    if (oldWidget.draft.customCron != widget.draft.customCron &&
+        _customCronCtl.text != (cron ?? '')) {
       _customCronCtl.text = cron ?? '';
     }
   }
