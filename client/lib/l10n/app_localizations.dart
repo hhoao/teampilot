@@ -11756,6 +11756,60 @@ abstract class AppLocalizations {
   /// **'Schedule'**
   String get automationsSchedule;
 
+  /// No description provided for @automationsScheduleModeOnce.
+  ///
+  /// In en, this message translates to:
+  /// **'Once'**
+  String get automationsScheduleModeOnce;
+
+  /// No description provided for @automationsScheduleModeCountdown.
+  ///
+  /// In en, this message translates to:
+  /// **'Countdown'**
+  String get automationsScheduleModeCountdown;
+
+  /// No description provided for @automationsScheduleModeRecurring.
+  ///
+  /// In en, this message translates to:
+  /// **'Recurring'**
+  String get automationsScheduleModeRecurring;
+
+  /// No description provided for @automationsScheduleDate.
+  ///
+  /// In en, this message translates to:
+  /// **'Date'**
+  String get automationsScheduleDate;
+
+  /// No description provided for @automationsCountdownMinutes.
+  ///
+  /// In en, this message translates to:
+  /// **'{minutes} min'**
+  String automationsCountdownMinutes(int minutes);
+
+  /// No description provided for @automationsCountdownHours.
+  ///
+  /// In en, this message translates to:
+  /// **'{hours} h'**
+  String automationsCountdownHours(int hours);
+
+  /// No description provided for @automationsCountdownCustom.
+  ///
+  /// In en, this message translates to:
+  /// **'Custom'**
+  String get automationsCountdownCustom;
+
+  /// No description provided for @automationsCountdownPreview.
+  ///
+  /// In en, this message translates to:
+  /// **'Runs at {dateTime}'**
+  String automationsCountdownPreview(String dateTime);
+
+  /// No description provided for @automationsSchedulePastTime.
+  ///
+  /// In en, this message translates to:
+  /// **'Choose a time in the future'**
+  String get automationsSchedulePastTime;
+
   /// No description provided for @automationsSessionContextMenu.
   ///
   /// In en, this message translates to:

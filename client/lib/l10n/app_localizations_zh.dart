@@ -6333,6 +6333,39 @@ class AppLocalizationsZh extends AppLocalizations {
   String get automationsSchedule => '调度';
 
   @override
+  String get automationsScheduleModeOnce => '一次';
+
+  @override
+  String get automationsScheduleModeCountdown => '倒计时';
+
+  @override
+  String get automationsScheduleModeRecurring => '循环';
+
+  @override
+  String get automationsScheduleDate => '日期';
+
+  @override
+  String automationsCountdownMinutes(int minutes) {
+    return '$minutes 分钟';
+  }
+
+  @override
+  String automationsCountdownHours(int hours) {
+    return '$hours 小时';
+  }
+
+  @override
+  String get automationsCountdownCustom => '自定义';
+
+  @override
+  String automationsCountdownPreview(String dateTime) {
+    return '将在 $dateTime 执行';
+  }
+
+  @override
+  String get automationsSchedulePastTime => '请选择未来的时间';
+
+  @override
   String get automationsSessionContextMenu => '定时消息…';
 
   @override
