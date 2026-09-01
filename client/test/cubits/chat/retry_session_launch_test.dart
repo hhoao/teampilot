@@ -1,17 +1,28 @@
 import 'dart:async';
 
+import 'package:ai_message_core/ai_message_core.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/cubits/chat/model/chat_tab.dart';
 import 'package:teampilot/cubits/chat/model/session_connect_request.dart';
 import 'package:teampilot/cubits/chat_cubit.dart';
 import 'package:teampilot/models/app_session.dart';
 import 'package:teampilot/models/failed_message_record.dart';
+import 'package:teampilot/models/runtime_target.dart';
+import 'package:teampilot/models/team_config.dart';
+import 'package:teampilot/models/workspace.dart';
 import 'package:teampilot/models/workspace_folder.dart';
+import 'package:teampilot/models/workspace_launch_context.dart';
 import 'package:teampilot/pages/chat/history_continue_delivery.dart';
 import 'package:teampilot/repositories/session_repository.dart';
+import 'package:teampilot/services/io/local_filesystem.dart';
+import 'package:teampilot/services/session/ai_history_loader.dart';
+import 'package:teampilot/services/session/ai_history_locator.dart';
 import 'package:teampilot/services/session/failed_message_store.dart';
+import 'package:teampilot/services/session/session_history_context.dart';
 import 'package:teampilot/services/storage/app_storage.dart';
+import 'package:teampilot/services/storage/runtime_context.dart';
 
+import '../../support/fake_ai_history_registry.dart';
 import '../../support/post_frame_test_harness.dart';
 
 class _RecordingChatCubit extends ChatCubit {
@@ -79,7 +90,42 @@ AppSession _session(String id) => AppSession(
   updatedAt: 1,
 );
 
+/// Adapter returning whatever the mutable [messages] closure holds at parse
+/// time, so the seat can be loaded with canned transcript content.
+class _HolderAdapter implements AiTranscriptAdapter {
+  _HolderAdapter(this.messages);
+
+  final List<AiMessage> Function() messages;
+
+  @override
+  String get id => 'claude';
+
+  @override
+  Future<List<AiMessage>> parse(AiTranscriptBundle bundle) async =>
+      List.of(messages());
+}
+
+/// Locator that hands back a canned bundle when [emitBundle] is true.
+class _ScriptedLocator extends AiHistoryLocator {
+  bool emitBundle = false;
+
+  @override
+  Future<AiTranscriptBundle?> locate({
+    required SessionHistoryContext ctx,
+    required CliTool cli,
+  }) async {
+    if (!emitBundle) return null;
+    return const AiTranscriptBundle(
+      adapterId: 'claude',
+      fragments: [AiTranscriptFragment(name: 'canned.jsonl', bytes: [])],
+    );
+  }
+}
+
 void main() {
+  // Transcript content served by the scripted adapter for the confirm test.
+  var holderMessages = <AiMessage>[];
+
   setUp(setUpTestAppStorage);
   tearDown(tearDownTestAppStorage);
 
@@ -225,6 +271,90 @@ void main() {
         session.sessionId,
       );
       expect(remaining.single.id, 'pending:keep');
+    },
+  );
+
+  test(
+    'redelivery confirms a transcript-confirmed record instead of resubmitting',
+    () async {
+      final cubit = _RecordingChatCubit();
+      addTearDown(cubit.close);
+
+      final session = _session('s-dup');
+      cubit.tabStore.setActiveWorkspaceId('w1');
+      cubit.tabStore.registerSession(
+        ChatTab(
+          info: ChatTabInfo(id: session.sessionId, title: 'S', subtitle: ''),
+          cliTeamName: '',
+        )..persistedSession = session,
+      );
+      // Wire a real loader-backed history store so the seat can hold transcript
+      // messages for the confirm check.
+      holderMessages = [
+        AiMessage(
+          id: 'u1',
+          role: AiRole.user,
+          parts: const [AiTextPart(text: 'already delivered prompt')],
+          createdAt: DateTime.utc(2026, 1, 2, 10),
+        ),
+      ];
+      cubit.historyLoader = AiHistoryLoader(
+        resolveWorkContext: (_, {String? memberId}) async => RuntimeContext(
+          target: RuntimeTarget.local(),
+          filesystem: LocalFilesystem(),
+          home: '/tmp/retry-redelivery',
+          cwd: '/tmp/retry-redelivery',
+          appDataRoot: '/tmp/retry-redelivery',
+          paths: AppPaths('/tmp/retry-redelivery'),
+        ),
+        locator: _ScriptedLocator()..emitBundle = true,
+        registry: fakeAiHistoryRegistry(
+          cli: CliTool.claude,
+          adapter: _HolderAdapter(() => holderMessages),
+        ),
+        resolveCacheToken: (_) async => 'token-1',
+      );
+
+      final store = FailedMessageStore(
+        fs: AppStorage.fs,
+        rootPath: AppStorage.appDataRoot,
+      );
+      // The PTY died after the CLI ingested the prompt but before the status
+      // flipped: the transcript already holds the text as a user turn.
+      await store.save(
+        session.workspaceId,
+        session.sessionId,
+        FailedMessageRecord(
+          id: 'pending:dup',
+          text: 'already delivered prompt',
+          createdAt: DateTime.utc(2026, 1, 2, 10),
+          status: FailedMessageStatus.sending,
+        ),
+      );
+      final seat = cubit.ensurePodRuntime(
+        session.sessionId,
+      ).history!.memberSeat(sessionId: session.sessionId, memberId: session.sessionId);
+      await seat.load(
+        session: session,
+        memberId: session.sessionId,
+        launchContext: WorkspaceLaunchContext(
+          workspace: Workspace(
+            workspaceId: session.workspaceId,
+            folders: session.folders,
+            createdAt: 0,
+          ),
+          session: session,
+        ),
+      );
+
+      await cubit.retrySessionLaunch(session.sessionId);
+
+      expect(cubit.operatorMessages, isEmpty);
+      final remaining = await store.load(
+        session.workspaceId,
+        session.sessionId,
+      );
+      expect(remaining, isEmpty);
     },
   );
 }

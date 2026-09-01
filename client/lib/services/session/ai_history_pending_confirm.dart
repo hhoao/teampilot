@@ -11,9 +11,12 @@ const Duration kPendingConfirmClockSkew = Duration(seconds: 2);
 /// drop it (silent success) instead of restoring a failed overlay.
 ///
 /// Either signal confirms:
-/// - a non-pending user message with [AiMessage.createdAt] >= record.createdAt
-///   minus [skew], or
-/// - normalized plain text equal to the record text.
+/// - normalized plain text of some loaded user message **contains** the record
+///   text (the primary signal; covers missing CLI timestamps and CLI rewrites
+///   that append context around the typed prompt), or
+/// - the newest user turn sits at/after `record.createdAt - skew` and no user
+///   turn with different text opened a **later** send window. A later
+///   unrelated send (B after a failed A) must not confirm-and-delete A.
 bool transcriptConfirmsPendingRecord({
   required FailedMessageRecord record,
   required List<AiMessage> messages,
@@ -22,15 +25,27 @@ bool transcriptConfirmsPendingRecord({
   final target = normalizeAiHistoryPendingText(record.text);
   if (target.isEmpty) return false;
   final earliest = record.createdAt.subtract(skew);
+
+  var sawUserTurnAtOrAfterRecord = false;
+  var sawLaterDifferentSend = false;
   for (final message in messages) {
     if (message.role != AiRole.user) continue;
     if (message.id.startsWith('pending:')) continue;
-    final created = message.createdAt;
-    if (created != null && !created.isBefore(earliest)) return true;
     final text = normalizeAiHistoryPendingText(
       message.parts.whereType<AiTextPart>().map((p) => p.text).join(' '),
     );
-    if (text.isNotEmpty && text == target) return true;
+    if (text.contains(target)) return true;
+    final created = message.createdAt;
+    if (created == null) continue;
+    if (!created.isBefore(earliest)) sawUserTurnAtOrAfterRecord = true;
+    // A turn landing after the record's window with text that does not cover
+    // the record is evidence of a *newer* send — its window starts after the
+    // record's, so it cannot be the confirmation of this one.
+    if (created.isAfter(record.createdAt) &&
+        text.isNotEmpty &&
+        !text.contains(target)) {
+      sawLaterDifferentSend = true;
+    }
   }
-  return false;
+  return sawUserTurnAtOrAfterRecord && !sawLaterDifferentSend;
 }

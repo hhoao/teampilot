@@ -67,6 +67,8 @@ import '../widgets/workspace_icon_picker_dialog.dart';
 import '../utils/logging/logger_utils.dart';
 import 'chat/session_launch_retry.dart';
 import 'chat/latest_failed_message.dart';
+import '../services/session/ai_history_pending_confirm.dart';
+import '../utils/team/team_member_naming.dart';
 import 'chat/session_connect_settle.dart';
 import 'chat/chat_connect_state_mixin.dart';
 import 'chat/session_data_store.dart';
@@ -2157,11 +2159,20 @@ class ChatCubit extends Cubit<ChatState>
     if (isClosed) return;
     // connectWorkspaceSession returns when tab surfacing schedules async shell
     // prep — wait until the pod leaves launching before redelivery.
-    await awaitSessionConnectSettle(
+    final settled = await awaitSessionConnectSettle(
       isConnecting: () => isSessionConnecting(id),
       isClosed: () => isClosed,
     );
-    if (isClosed) return;
+    if (!settled) {
+      // Closed, or still connecting after the settle timeout (e.g. a hung SSH
+      // target) — the launch outcome is unknown, so do not redeliver on top of
+      // an in-flight connect.
+      AppLogger.instance.i(
+        '[session-launch] retry connect did not settle session=$id; '
+        'skipping redelivery',
+      );
+      return;
+    }
     final stillFailed =
         (_tabStore.openTabBySessionId(id)?.info.launchError ?? '')
             .trim()
@@ -2172,6 +2183,15 @@ class ChatCubit extends Cubit<ChatState>
 
   /// After launch Retry brings the PTY back, re-submit the newest failed
   /// outgoing bubble so the user does not have to tap message Retry separately.
+  ///
+  /// Guards:
+  /// - A record whose text already appears in the loaded transcript is treated
+  ///   as delivered (the launch died after the CLI received it but before the
+  ///   status flipped) and removed silently instead of resubmitted.
+  /// - Team sessions keep [tab.selectedMemberId] targeting only when it
+  ///   resolves against the live roster; otherwise redelivery is skipped
+  ///   rather than guessing a member ([FailedMessageRecord] has no member
+  ///   dimension, so a wrong guess would deliver to the wrong seat).
   Future<void> _redeliverLatestFailedAfterLaunchRetry({
     required AppSession session,
     ChatTab? tab,
@@ -2185,16 +2205,41 @@ class ChatCubit extends Cubit<ChatState>
 
     final memberId = session.isSimple
         ? session.sessionId
-        : () {
-            final selected = tab?.selectedMemberId.trim() ?? '';
-            return selected.isNotEmpty ? selected : session.sessionId;
-          }();
+        : await _resolveRedeliveryMemberId(session);
+    if (memberId == null) {
+      AppLogger.instance.w(
+        '[session-launch] skip redelivery for team session '
+        '${session.sessionId}: selected member could not be resolved',
+      );
+      return;
+    }
 
     final history = ensurePodRuntime(session.sessionId).history;
     final seat = history?.memberSeat(
       sessionId: session.sessionId,
       memberId: memberId,
     );
+
+    // The transcript may already own this send when the PTY died after the
+    // CLI ingested it — resubmitting would duplicate the prompt.
+    if (seat != null &&
+        transcriptConfirmsPendingRecord(
+          record: failed,
+          messages: seat.loadedMessages,
+        )) {
+      AppLogger.instance.i(
+        '[session-launch] redelivery skipped: transcript already holds '
+        'record ${failed.id}',
+      );
+      await clearHistoryPending(
+        workspaceId: session.workspaceId,
+        sessionId: session.sessionId,
+        memberId: memberId,
+        recordId: failed.id,
+      );
+      return;
+    }
+
     if (seat != null) {
       await seat.retryPendingUser(
         store: _failedMessageStore,
@@ -2226,6 +2271,24 @@ class ChatCubit extends Cubit<ChatState>
         record: failed,
       );
     }
+  }
+
+  /// Redelivery target for a team session: keep the operator's selected seat
+  /// when it exists on the live roster, else fall back to the team lead from
+  /// the team profile; null when nothing resolves (never fall back to the raw
+  /// session id — that is not a team member id).
+  Future<String?> _resolveRedeliveryMemberId(AppSession session) async {
+    final selected =
+        _tabStore.openTabBySessionId(session.sessionId)?.selectedMemberId ??
+        '';
+    if (selected.trim().isNotEmpty) return selected;
+    final teamId = session.sessionTeam.trim();
+    if (teamId.isEmpty) return session.sessionId;
+    final team = await teamProfileById(teamId);
+    final lead = team?.members
+        .where(TeamMemberNaming.isTeamLead)
+        .firstOrNull;
+    return lead?.id;
   }
 
   void disconnectSession() {

@@ -3,7 +3,6 @@ import 'package:mock_model_gateway/scenarios/task_complete_mixed_claude.dart';
 import 'package:mock_model_gateway/scenarios/task_dispatch_mixed_claude.dart';
 import 'package:teampilot/models/member_presence.dart';
 
-import 'bus_roster_assertions.dart';
 import 'mixed_team_idle_busy_assertions.dart';
 import 'mixed_team_integration_harness.dart';
 import 'mixed_team_task_scenario.dart';

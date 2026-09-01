@@ -5,7 +5,7 @@ void main() {
   test('awaitSessionConnectSettle returns once isConnecting is false', () async {
     var connecting = true;
     var polls = 0;
-    await awaitSessionConnectSettle(
+    final settled = await awaitSessionConnectSettle(
       isConnecting: () => connecting,
       isClosed: () => false,
       pollInterval: const Duration(milliseconds: 1),
@@ -14,13 +14,14 @@ void main() {
         if (polls >= 2) connecting = false;
       },
     );
+    expect(settled, isTrue);
     expect(polls, 2);
     expect(connecting, isFalse);
   });
 
-  test('awaitSessionConnectSettle stops when closed', () async {
+  test('awaitSessionConnectSettle reports not settled when closed', () async {
     var polls = 0;
-    await awaitSessionConnectSettle(
+    final settled = await awaitSessionConnectSettle(
       isConnecting: () => true,
       isClosed: () => polls >= 1,
       pollInterval: const Duration(milliseconds: 1),
@@ -28,13 +29,14 @@ void main() {
         polls++;
       },
     );
+    expect(settled, isFalse);
     expect(polls, 1);
   });
 
-  test('awaitSessionConnectSettle stops at timeout', () async {
+  test('awaitSessionConnectSettle reports not settled at timeout', () async {
     var now = DateTime.utc(2026, 1, 1);
     var polls = 0;
-    await awaitSessionConnectSettle(
+    final settled = await awaitSessionConnectSettle(
       isConnecting: () => true,
       isClosed: () => false,
       pollInterval: const Duration(milliseconds: 10),
@@ -45,6 +47,7 @@ void main() {
         now = now.add(d);
       },
     );
+    expect(settled, isFalse);
     expect(polls, greaterThanOrEqualTo(2));
     expect(polls, lessThan(10));
   });
