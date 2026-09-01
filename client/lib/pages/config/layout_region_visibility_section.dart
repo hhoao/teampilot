@@ -17,10 +17,11 @@ class LayoutRegionVisibilitySection extends StatelessWidget {
     return BlocSelector<
       LayoutCubit,
       LayoutState,
-      (bool, bool, bool, bool, bool)
+      (bool, bool, bool, bool, bool, bool)
     >(
       selector: (state) => (
         state.preferences.rightToolsVisible,
+        state.preferences.sessionTabBarVisible,
         state.preferences.membersVisible,
         state.preferences.fileTreeVisible,
         state.preferences.gitVisible,
@@ -29,6 +30,7 @@ class LayoutRegionVisibilitySection extends StatelessWidget {
       builder: (context, visibility) {
         final (
           rightToolsVisible,
+          sessionTabBarVisible,
           membersVisible,
           fileTreeVisible,
           gitVisible,
@@ -43,10 +45,10 @@ class LayoutRegionVisibilitySection extends StatelessWidget {
         }) {
           controller.setRegionVisibility(
             appRailVisible: true,
-            membersVisible: membersVisible ?? visibility.$2,
-            fileTreeVisible: fileTreeVisible ?? visibility.$3,
-            gitVisible: gitVisible ?? visibility.$4,
-            boardVisible: boardVisible ?? visibility.$5,
+            membersVisible: membersVisible ?? visibility.$3,
+            fileTreeVisible: fileTreeVisible ?? visibility.$4,
+            gitVisible: gitVisible ?? visibility.$5,
+            boardVisible: boardVisible ?? visibility.$6,
           );
         }
 
@@ -61,6 +63,16 @@ class LayoutRegionVisibilitySection extends StatelessWidget {
                 key: AppKeys.rightToolsVisibilitySwitch,
                 value: rightToolsVisible,
                 onChanged: controller.setRightToolsVisible,
+              ),
+              showDividerBelow: true,
+            ),
+            TpPreferenceRow(
+              title: l10n.sessionTabBarTitle,
+              subtitle: l10n.sessionTabBarVisibilityHint,
+              trailing: Switch(
+                key: AppKeys.sessionTabBarVisibilitySwitch,
+                value: sessionTabBarVisible,
+                onChanged: controller.setSessionTabBarVisible,
               ),
               showDividerBelow: true,
             ),

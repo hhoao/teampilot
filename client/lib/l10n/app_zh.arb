@@ -33,6 +33,8 @@
   "toolPlacementDescription": "将工具面板固定在右侧或沿底部边缘排列。",
   "visibilityTeamSessionsHint": "在左侧边栏显示团队会话列表。",
   "visibilityRightToolsHint": "打开会话时显示右侧工具栏。",
+  "sessionTabBarTitle": "会话标签栏",
+  "sessionTabBarVisibilityHint": "在工作台中心列上方显示标签栏。",
   "visibilityMembersHint": "在工具或终端旁显示成员列表。",
   "visibilityFileTreeHint": "显示工作区文件树以便快速浏览。",
   "visibilityGitHint": "显示当前仓库的源代码管理面板。",

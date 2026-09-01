@@ -296,6 +296,18 @@ abstract class AppLocalizations {
   /// **'Show the right tools panel when opening a session.'**
   String get visibilityRightToolsHint;
 
+  /// No description provided for @sessionTabBarTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Session tab bar'**
+  String get sessionTabBarTitle;
+
+  /// No description provided for @sessionTabBarVisibilityHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Show the tab strip above the workbench center column.'**
+  String get sessionTabBarVisibilityHint;
+
   /// No description provided for @visibilityMembersHint.
   ///
   /// In en, this message translates to:

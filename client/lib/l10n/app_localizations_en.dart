@@ -113,6 +113,13 @@ class AppLocalizationsEn extends AppLocalizations {
       'Show the right tools panel when opening a session.';
 
   @override
+  String get sessionTabBarTitle => 'Session tab bar';
+
+  @override
+  String get sessionTabBarVisibilityHint =>
+      'Show the tab strip above the workbench center column.';
+
+  @override
   String get visibilityMembersHint =>
       'Show the member list next to tools or terminals.';
 

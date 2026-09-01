@@ -36,6 +36,9 @@ class AppKeys {
   static const membersVisibilitySwitch = Key('members-visibility-switch');
   static const fileTreeVisibilitySwitch = Key('file-tree-visibility-switch');
   static const boardVisibilitySwitch = Key('boardVisibilitySwitch');
+  static const sessionTabBarVisibilitySwitch = Key(
+    'session-tab-bar-visibility-switch',
+  );
   static const autoLaunchAllMembersOnConnectSwitch = Key(
     'auto-launch-all-members-on-connect-switch',
   );
