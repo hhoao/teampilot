@@ -141,6 +141,51 @@ AutomationScheduleDraft scheduleDraftFromAutomation(Automation automation) {
   );
 }
 
+/// Absolute target (epoch ms) the draft's schedule resolves to, or null when
+/// the draft carries no once slot.
+///
+/// For [AutomationScheduleMode.once], an untouched edit round-trips the draft's
+/// raw [AutomationScheduleDraft.runAtMs] verbatim instead of recomposing the
+/// local wall clock — recomposing can shift the instant when the stored
+/// timezone differs from the device zone. Once onceDate/onceTime diverge from
+/// the values derived from that stored target, the user has edited them and
+/// the fields are composed fresh through [combineLocalDateAndTimeToMs]. For
+/// [AutomationScheduleMode.countdown] the target is relative, so it is always
+/// [countdownToRunAtMs] from [now]. Recurring drafts resolve to null; the save
+/// path clears `runAtMs` for them.
+int? resolveDraftRunAtMs(
+  AutomationScheduleDraft draft, {
+  required DateTime now,
+}) {
+  switch (draft.mode) {
+    case AutomationScheduleMode.countdown:
+      return countdownToRunAtMs(
+        durationMinutes: draft.countdownMinutes ?? 15,
+        now: now,
+      );
+    case AutomationScheduleMode.once:
+      final date = draft.onceDate;
+      final time = draft.onceTime;
+      if (date == null || time == null) return null;
+      final storedMs = draft.runAtMs;
+      if (storedMs != null) {
+        final stored = DateTime.fromMillisecondsSinceEpoch(storedMs);
+        final matchesStored =
+            DateTime(stored.year, stored.month, stored.day) == date &&
+            stored.hour == time.hour &&
+            stored.minute == time.minute;
+        if (matchesStored) return storedMs;
+      }
+      return combineLocalDateAndTimeToMs(
+        date: date,
+        time: time,
+        timezone: draft.timezone,
+      );
+    case AutomationScheduleMode.recurring:
+      return null;
+  }
+}
+
 String localizedScheduleSummary(
   AppLocalizations l10n,
   AutomationScheduleDraft draft,

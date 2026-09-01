@@ -298,4 +298,112 @@ void main() {
     );
     expect(daily, 'Daily at 09:00');
   });
+
+  group('resolveDraftRunAtMs', () {
+    test(
+      'reuses the raw stored target while once date and time are untouched',
+      () {
+        final runAtMs = DateTime(2026, 9, 3, 14, 30).millisecondsSinceEpoch;
+        final draft = scheduleDraftFromAutomation(
+          sampleAutomation(
+            id: 'once-raw',
+            workspaceId: 'ws1',
+            preset: AutomationSchedulePreset.once,
+            runAtMs: runAtMs,
+          ),
+        );
+
+        // Recomposing wall clock through the draft timezone can shift the
+        // instant; the untouched draft must carry the stored ms verbatim.
+        expect(resolveDraftRunAtMs(draft, now: DateTime(2026, 9, 1)), runAtMs);
+      },
+    );
+
+    test('recomposes from date and time after the user changes the time', () {
+      final runAtMs = DateTime(2026, 9, 3, 14, 30).millisecondsSinceEpoch;
+      final draft = scheduleDraftFromAutomation(
+        sampleAutomation(
+          id: 'once-time',
+          workspaceId: 'ws1',
+          preset: AutomationSchedulePreset.once,
+          runAtMs: runAtMs,
+        ),
+      ).copyWith(onceTime: const TimeOfDay(hour: 16, minute: 45));
+
+      final resolved = resolveDraftRunAtMs(draft, now: DateTime(2026, 9, 1));
+      expect(resolved, isNot(runAtMs));
+      expect(
+        resolved,
+        combineLocalDateAndTimeToMs(
+          date: draft.onceDate!,
+          time: const TimeOfDay(hour: 16, minute: 45),
+          timezone: draft.timezone,
+        ),
+      );
+    });
+
+    test('recomposes from date and time after the user changes the date', () {
+      final runAtMs = DateTime(2026, 9, 3, 14, 30).millisecondsSinceEpoch;
+      final draft = scheduleDraftFromAutomation(
+        sampleAutomation(
+          id: 'once-date',
+          workspaceId: 'ws1',
+          preset: AutomationSchedulePreset.once,
+          runAtMs: runAtMs,
+        ),
+      ).copyWith(onceDate: DateTime(2026, 9, 10));
+
+      final resolved = resolveDraftRunAtMs(draft, now: DateTime(2026, 9, 1));
+      expect(resolved, isNot(runAtMs));
+      expect(
+        resolved,
+        combineLocalDateAndTimeToMs(
+          date: DateTime(2026, 9, 10),
+          time: draft.onceTime!,
+          timezone: draft.timezone,
+        ),
+      );
+    });
+
+    test('composes the countdown target from now', () {
+      final draft = _onceDraft().copyWith(
+        mode: AutomationScheduleMode.countdown,
+        countdownMinutes: 20,
+      );
+
+      expect(
+        resolveDraftRunAtMs(draft, now: DateTime(2026, 9, 1, 10, 0)),
+        DateTime(2026, 9, 1, 10, 20).millisecondsSinceEpoch,
+      );
+    });
+
+    test('returns null without a once slot or for recurring drafts', () {
+      expect(
+        resolveDraftRunAtMs(
+          AutomationScheduleDraft(
+            mode: AutomationScheduleMode.once,
+            preset: AutomationSchedulePreset.once,
+            minute: 0,
+            hourMinute: '09:00',
+            timezone: 'UTC',
+          ),
+          now: DateTime(2026, 9, 1),
+        ),
+        isNull,
+      );
+      expect(
+        resolveDraftRunAtMs(
+          AutomationScheduleDraft(
+            mode: AutomationScheduleMode.recurring,
+            preset: AutomationSchedulePreset.daily,
+            minute: 0,
+            hourMinute: '09:00',
+            timezone: 'UTC',
+          ),
+          now: DateTime(2026, 9, 1),
+        ),
+        isNull,
+      );
+    });
+  });
 }

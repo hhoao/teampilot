@@ -5,19 +5,19 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/cubits/automation_cubit.dart';
 import 'package:teampilot/cubits/chat_cubit.dart';
-import 'package:teampilot/cubits/chat/model/chat_state.dart';
 import 'package:teampilot/cubits/cli_presets_cubit.dart';
 import 'package:teampilot/cubits/expert_hub_cubit.dart';
 import 'package:teampilot/cubits/launch_profile_cubit.dart';
 import 'package:teampilot/cubits/session_preferences_cubit.dart';
-import 'package:teampilot/cubits/team/model/launch_profile_state.dart';
 import 'package:teampilot/l10n/app_localizations.dart';
+import 'package:teampilot/models/automation.dart';
 import 'package:teampilot/models/cli_preset.dart';
 import 'package:teampilot/models/discoverable_member.dart';
 import 'package:teampilot/models/team_config.dart';
 import 'package:teampilot/models/workspace.dart';
 import 'package:teampilot/models/workspace_folder.dart';
 import 'package:teampilot/pages/automations/automation_editor_dialog.dart';
+import 'package:teampilot/services/automation/automation_schedule_defaults.dart';
 import 'package:teampilot/repositories/cli_presets_repository.dart';
 import 'package:teampilot/repositories/session_repository.dart';
 import 'package:teampilot/services/cli/registry/cli_tool_registry.dart';
@@ -409,4 +409,309 @@ void main() {
     expect(find.text(l10n.automationsValidationRequired), findsWidgets);
     expect(setup.cubit.state.automations, isEmpty);
   });
+
+  testWidgets('create dialog defaults to once mode and hides run limit', (
+    tester,
+  ) async {
+    final setup = testAutomationSetup();
+    addTearDown(setup.cubit.close);
+
+    await tester.pumpWidget(
+      _host(
+        cubit: setup.cubit,
+        child: AutomationEditorDialog(
+          kind: AutomationEditorKind.scheduledMessage,
+          workspaceId: 'ws1',
+          sessionId: 'sess-1',
+          defaultName: 'Daily ping',
+        ),
+      ),
+    );
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 200));
+
+    final l10n = AppLocalizations.of(
+      tester.element(find.byType(AutomationEditorDialog)),
+    );
+
+    final segmented = tester.widget<TpSegmentedPicker<AutomationScheduleMode>>(
+      find.byType(TpSegmentedPicker<AutomationScheduleMode>),
+    );
+    expect(segmented.selected, AutomationScheduleMode.once);
+    expect(find.byType(TpDatePicker), findsOneWidget);
+    expect(find.byType(TpTimePicker), findsOneWidget);
+    expect(find.text(l10n.automationsMaxRunCount), findsNothing);
+  });
+
+  testWidgets(
+    'saving a once draft stores runAtMs with an implicit limit of 1',
+    (tester) async {
+      final setup = testAutomationSetup();
+      addTearDown(setup.cubit.close);
+
+      await tester.pumpWidget(
+        _host(
+          cubit: setup.cubit,
+          child: AutomationEditorDialog(
+            kind: AutomationEditorKind.scheduledMessage,
+            workspaceId: 'ws1',
+            sessionId: 'sess-1',
+            defaultName: 'Daily ping',
+          ),
+        ),
+      );
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 200));
+
+      await tester.enterText(find.byType(TextField).first, 'hello');
+      await tester.enterText(find.byType(TpTextarea), 'ping');
+      await tester.pump();
+
+      await tester.runAsync(() async {
+        await tester.tap(find.text(l10nOfDialog(tester).save));
+        await pumpUntilClosed(tester);
+      });
+
+      expect(setup.cubit.state.automations, hasLength(1));
+      final saved = setup.cubit.state.automations.single;
+      expect(saved.preset, AutomationSchedulePreset.once);
+      expect(saved.runAtMs, isNotNull);
+      expect(
+        saved.runAtMs!,
+        greaterThan(DateTime.now().millisecondsSinceEpoch),
+      );
+      expect(saved.maxRunCount, 1);
+      expect(saved.dtstartMs, saved.runAtMs);
+      expect(saved.enabled, isTrue);
+      expect(saved.nextRunAtMs, saved.runAtMs);
+    },
+  );
+
+  testWidgets('countdown save composes now plus the delay', (tester) async {
+    final setup = testAutomationSetup();
+    addTearDown(setup.cubit.close);
+
+    await tester.pumpWidget(
+      _host(
+        cubit: setup.cubit,
+        child: AutomationEditorDialog(
+          kind: AutomationEditorKind.scheduledMessage,
+          workspaceId: 'ws1',
+          sessionId: 'sess-1',
+          defaultName: 'Daily ping',
+        ),
+      ),
+    );
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 200));
+
+    final l10n = l10nOfDialog(tester);
+
+    await tester.enterText(find.byType(TextField).first, 'hello');
+    await tester.enterText(find.byType(TpTextarea), 'ping');
+    await tester.tap(find.text(l10n.automationsScheduleModeCountdown));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 200));
+
+    final before = DateTime.now();
+    await tester.runAsync(() async {
+      await tester.tap(find.text(l10n.save));
+      await pumpUntilClosed(tester);
+    });
+    final after = DateTime.now();
+
+    expect(setup.cubit.state.automations, hasLength(1));
+    final saved = setup.cubit.state.automations.single;
+    expect(saved.preset, AutomationSchedulePreset.once);
+    expect(saved.maxRunCount, 1);
+    expect(saved.dtstartMs, saved.runAtMs);
+    // Default chip is 15 minutes; the saved target must land between the
+    // pre-save and post-save wall clocks plus the delay.
+    expect(
+      saved.runAtMs,
+      inInclusiveRange(
+        before.add(const Duration(minutes: 15)).millisecondsSinceEpoch,
+        after.add(const Duration(minutes: 15)).millisecondsSinceEpoch,
+      ),
+    );
+  });
+
+  testWidgets('run limit field shows for recurring and stays hidden for once', (
+    tester,
+  ) async {
+    final setup = testAutomationSetup();
+    addTearDown(setup.cubit.close);
+
+    await tester.pumpWidget(
+      _host(
+        cubit: setup.cubit,
+        child: AutomationEditorDialog(
+          kind: AutomationEditorKind.scheduledMessage,
+          workspaceId: 'ws1',
+          sessionId: 'sess-1',
+          defaultName: 'Daily ping',
+        ),
+      ),
+    );
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 200));
+
+    final l10n = l10nOfDialog(tester);
+    expect(find.text(l10n.automationsMaxRunCount), findsNothing);
+
+    await tester.tap(find.text(l10n.automationsScheduleModeRecurring));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 200));
+    expect(find.text(l10n.automationsMaxRunCount), findsOneWidget);
+  });
+
+  testWidgets('saving an expired once automation unchanged is rejected', (
+    tester,
+  ) async {
+    final setup = testAutomationSetup();
+    await tester.runAsync(() async {
+      await setup.cubit.loadForWorkspace('ws1');
+      // Seed through the cubit so the fixture matches real app state: an
+      // expired once schedule is disabled on save (Task 4 semantics).
+      await setup.cubit.save(
+        sampleAutomation(
+          id: 'expired',
+          workspaceId: 'ws1',
+          sessionId: 'sess-1',
+          preset: AutomationSchedulePreset.once,
+          runAtMs: DateTime.now()
+              .subtract(const Duration(hours: 2))
+              .millisecondsSinceEpoch,
+        ),
+      );
+    });
+    addTearDown(setup.cubit.close);
+
+    await tester.pumpWidget(
+      _host(
+        cubit: setup.cubit,
+        child: AutomationEditorDialog(
+          kind: AutomationEditorKind.scheduledMessage,
+          workspaceId: 'ws1',
+          sessionId: 'sess-1',
+          initial: setup.cubit.state.automations
+              .where((a) => a.id == 'expired')
+              .first,
+        ),
+      ),
+    );
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 200));
+
+    final l10n = l10nOfDialog(tester);
+
+    await tester.enterText(find.byType(TpTextarea), 'ping');
+    await tester.pump();
+    await tester.runAsync(() async {
+      await tester.tap(find.text(l10n.save));
+      await drainPendingAsyncWork();
+    });
+    await tester.pump();
+
+    // Unchanged expired target: the stored ms round-trips, the save is
+    // rejected, and the dialog stays open on the once time field.
+    expect(find.text(l10n.automationsSchedulePastTime), findsOneWidget);
+    expect(
+      setup.cubit.state.automations.where((a) => a.id == 'expired').single,
+      isA<Automation>()
+          .having((a) => a.enabled, 'enabled', false)
+          .having((a) => a.message, 'message', 'hello'),
+    );
+  });
+
+  testWidgets('changing the time on an expired once automation re-runs it', (
+    tester,
+  ) async {
+    final setup = testAutomationSetup();
+    final initialRunAt = DateTime.now()
+        .subtract(const Duration(hours: 2))
+        .millisecondsSinceEpoch;
+    await tester.runAsync(() async {
+      await setup.cubit.loadForWorkspace('ws1');
+      // Seed through the cubit for real app state: expired once, disabled,
+      // with a run already counted against it.
+      await setup.cubit.save(
+        sampleAutomation(
+          id: 'expired-rerun',
+          workspaceId: 'ws1',
+          sessionId: 'sess-1',
+          preset: AutomationSchedulePreset.once,
+          runAtMs: initialRunAt,
+        ).copyWith(runCount: 1),
+      );
+      await setup.cubit.toggleEnabled('ws1', 'expired-rerun');
+    });
+    addTearDown(setup.cubit.close);
+
+    await tester.pumpWidget(
+      _host(
+        cubit: setup.cubit,
+        child: AutomationEditorDialog(
+          kind: AutomationEditorKind.scheduledMessage,
+          workspaceId: 'ws1',
+          sessionId: 'sess-1',
+          initial: setup.cubit.state.automations
+              .where((a) => a.id == 'expired-rerun')
+              .first,
+        ),
+      ),
+    );
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 200));
+
+    final l10n = l10nOfDialog(tester);
+
+    // Re-arm the automation in the UI: flip the (disabled) enabled switch
+    // back on, then move the target well into the future (23:59 today; the
+    // wall clock is at least two hours before that because the stored target
+    // was now-2h).
+    final enabledSwitch = find.byType(Switch).first;
+    await tester.tap(enabledSwitch);
+    await tester.pump();
+    await tester.enterText(find.byKey(const Key('tp-time-picker-hour')), '23');
+    await tester.enterText(
+      find.byKey(const Key('tp-time-picker-minute')),
+      '59',
+    );
+    await tester.pump();
+
+    await tester.runAsync(() async {
+      await tester.tap(find.text(l10n.save));
+      await pumpUntilClosed(tester);
+    });
+
+    final saved = setup.cubit.state.automations
+        .where((a) => a.id == 'expired-rerun')
+        .single;
+    expect(saved.runAtMs, isNot(initialRunAt));
+    expect(saved.runAtMs, greaterThan(DateTime.now().millisecondsSinceEpoch));
+    // Time changed on a once schedule → runCount resets so it can fire again.
+    expect(saved.runCount, 0);
+    expect(saved.enabled, isTrue);
+    expect(saved.maxRunCount, 1);
+  });
+}
+
+AppLocalizations l10nOfDialog(WidgetTester tester) =>
+    AppLocalizations.of(tester.element(find.byType(AutomationEditorDialog)));
+
+/// Drains until the editor dialog pops after a successful save (the dialog
+/// closes itself once [AutomationCubit.save] resolves; repository IO runs
+/// outside the fake clock). A rejected save keeps the dialog open and the
+/// deadline exhausts harmlessly.
+Future<void> pumpUntilClosed(
+  WidgetTester tester, {
+  Duration timeout = const Duration(seconds: 5),
+}) async {
+  final deadline = DateTime.now().add(timeout);
+  while (find.byType(AutomationEditorDialog).evaluate().isNotEmpty &&
+      DateTime.now().isBefore(deadline)) {
+    await tester.pump(const Duration(milliseconds: 10));
+    await drainPendingAsyncWork();
+  }
 }

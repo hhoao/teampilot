@@ -12,12 +12,12 @@ import '../../cubits/launch_profile_cubit.dart';
 import '../../cubits/session_preferences_cubit.dart';
 import '../../l10n/l10n_extensions.dart';
 import '../../models/automation.dart';
-import '../../models/launch_security_policy.dart';
 import '../../models/team_config.dart';
 import '../../models/workspace.dart';
 import '../../pages/home_workspace/workspace/workspace_landing_selectors.dart';
 import '../../services/automation/automation_launch_session_binding.dart';
 import '../../services/automation/automation_schedule_calculator.dart';
+import '../../services/automation/automation_schedule_defaults.dart';
 import '../../services/workspace/workspace_pane_policy.dart';
 import '../../utils/workspace/landing_draft_resolver.dart';
 import '../../utils/workspace/workspace_path_utils.dart';
@@ -140,11 +140,9 @@ class _AutomationEditorDialogState extends State<AutomationEditorDialog> {
     _enabled = initial?.enabled ?? true;
     _schedule = initial != null
         ? scheduleDraftFromAutomation(initial)
-        : AutomationScheduleDraft(
-            preset: AutomationSchedulePreset.daily,
-            minute: 0,
-            hourMinute: '09:00',
+        : AutomationScheduleDraft.forCreate(
             timezone: DateTime.now().timeZoneName,
+            now: DateTime.now(),
           );
 
     if (!_isScheduledMessage && initial == null) {
@@ -303,6 +301,49 @@ class _AutomationEditorDialogState extends State<AutomationEditorDialog> {
     super.dispose();
   }
 
+  /// Schedule fields for the [Automation] constructor, resolved from the draft
+  /// mode. Once/countdown collapse to the `once` preset with an implicit run
+  /// limit of 1; recurring keeps the preset fields and clears the one-shot
+  /// target. A null [runAtMs] in a once/countdown mode means the save must be
+  /// aborted (past target — the error is already set on the field).
+  ({AutomationSchedulePreset preset, int? runAtMs, int runCount, bool abort})
+  _resolveScheduleSave(TpFormState form, AppLocalizations l10n, DateTime now) {
+    final draft = _schedule;
+    switch (draft.mode) {
+      case AutomationScheduleMode.once:
+      case AutomationScheduleMode.countdown:
+        final runAtMs = resolveDraftRunAtMs(draft, now: now);
+        if (runAtMs == null || runAtMs <= now.millisecondsSinceEpoch) {
+          form.setFieldError(
+            'scheduleOnceTime',
+            l10n.automationsSchedulePastTime,
+          );
+          return (
+            preset: AutomationSchedulePreset.once,
+            runAtMs: null,
+            runCount: 0,
+            abort: true,
+          );
+        }
+        // A changed target re-arms the automation: clear any run count the
+        // stored schedule accumulated so it can fire again.
+        final changed = draft.runAtMs != null && runAtMs != draft.runAtMs;
+        return (
+          preset: AutomationSchedulePreset.once,
+          runAtMs: runAtMs,
+          runCount: changed ? 0 : (widget.initial?.runCount ?? 0),
+          abort: false,
+        );
+      case AutomationScheduleMode.recurring:
+        return (
+          preset: draft.preset,
+          runAtMs: null,
+          runCount: widget.initial?.runCount ?? 0,
+          abort: false,
+        );
+    }
+  }
+
   Future<void> _save() async {
     final form = _formKey.currentState;
     if (form == null || !form.validate()) return;
@@ -316,7 +357,17 @@ class _AutomationEditorDialogState extends State<AutomationEditorDialog> {
       maxRunCount = int.tryParse(maxRunRaw);
     }
 
-    final nowMs = DateTime.now().millisecondsSinceEpoch;
+    final now = DateTime.now();
+    final nowMs = now.millisecondsSinceEpoch;
+    final l10n = context.l10n;
+    final schedule = _resolveScheduleSave(form, l10n, now);
+    if (schedule.abort) return;
+    final isOnceSchedule = schedule.runAtMs != null;
+    if (isOnceSchedule) {
+      // Once/countdown always fire exactly once; the run-limit field is
+      // hidden for them and its content must not leak into the save.
+      maxRunCount = 1;
+    }
     final workspaceId = widget.initial?.workspaceId ?? widget.workspaceId ?? '';
     final launchSessionId = _isScheduledMessage
         ? (widget.initial?.sessionId ?? widget.sessionId)
@@ -328,6 +379,13 @@ class _AutomationEditorDialogState extends State<AutomationEditorDialog> {
     final workspace = _workspace;
     final projectFolderPath = _resolvedProjectFolderPath(workspace);
     final workingDirectoryPath = _resolvedWorkingDirectoryPath(workspace);
+
+    // Keep hourMinute parseable for the calculator/summary paths; once saves
+    // carry the picked (or countdown-derived) time of day.
+    String hourMinute = _schedule.hourMinute;
+    if (isOnceSchedule && _schedule.onceTime != null) {
+      hourMinute = formatHourMinute(_schedule.onceTime!);
+    }
 
     var automation = Automation(
       id: widget.initial?.id ?? const Uuid().v4(),
@@ -349,18 +407,21 @@ class _AutomationEditorDialogState extends State<AutomationEditorDialog> {
       targetMemberId: _isPersonal ? 'team-lead' : _targetMemberId,
       message: message,
       reuseSession: _isScheduledMessage ? false : _reuseSession,
-      preset: _schedule.preset,
-      customCron: _schedule.customCron,
-      dayOfWeek: _schedule.dayOfWeek,
+      preset: schedule.preset,
+      customCron: isOnceSchedule ? null : _schedule.customCron,
+      dayOfWeek: isOnceSchedule ? null : _schedule.dayOfWeek,
       minute: _schedule.minute,
-      hourMinute: _schedule.hourMinute,
+      hourMinute: hourMinute,
       timezone: _schedule.timezone,
-      dtstartMs: widget.initial?.dtstartMs ?? nowMs,
+      dtstartMs: isOnceSchedule
+          ? schedule.runAtMs!
+          : (widget.initial?.dtstartMs ?? nowMs),
+      runAtMs: schedule.runAtMs,
       enabled: _enabled,
       nextRunAtMs: widget.initial?.nextRunAtMs,
       lastRunAtMs: widget.initial?.lastRunAtMs,
       maxRunCount: maxRunCount,
-      runCount: widget.initial?.runCount ?? 0,
+      runCount: schedule.runCount,
       createdAtMs: widget.initial?.createdAtMs ?? nowMs,
       updatedAtMs: nowMs,
     );
