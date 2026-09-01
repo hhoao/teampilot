@@ -10,10 +10,12 @@ import 'package:teampilot/cubits/workbench/workbench_cubit.dart';
 import 'package:teampilot/cubits/workbench/workbench_tab.dart';
 import 'package:teampilot/l10n/app_localizations.dart';
 import 'package:teampilot/models/app_session.dart';
+import 'package:teampilot/models/landing_launch_context.dart';
 import 'package:teampilot/models/workspace.dart';
 import 'package:teampilot/models/workspace_folder.dart';
 import 'package:teampilot/repositories/session_repository.dart';
 import 'package:teampilot/pages/home_workspace/workspace/workspace_session_actions.dart';
+import 'package:teampilot/pages/home_workspace/workspace/workspace_landing_generation_submit.dart';
 import 'package:teampilot/repositories/session_repository_fs.dart';
 import 'package:teampilot/services/workbench/workbench_chat_bridge.dart';
 import 'package:teampilot/services/notification/notification_recorder.dart';
@@ -101,6 +103,39 @@ void main() {
 
     expect(chat.prompts, [('sess-1', 'fix the title')]);
   });
+
+  testWidgets(
+    'generation without a coordinator reports a launch error without a plain session',
+    (tester) async {
+      final chat = _RecordingChatCubit();
+      final contextKey = GlobalKey();
+      final workspace = Workspace(workspaceId: 'ws1', createdAt: 1);
+      addTearDown(chat.close);
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: BlocProvider<ChatCubit>.value(
+            value: chat,
+            child: Builder(builder: (context) => SizedBox(key: contextKey)),
+          ),
+        ),
+      );
+
+      final submitted = await submitWorkspaceLandingGeneration(
+        tester.element(find.byKey(contextKey)),
+        workspace,
+        launch: const LandingLaunchContext(
+          isPersonal: false,
+          generateLaunch: true,
+        ),
+        message: 'Plan the release',
+      );
+
+      expect(submitted, isFalse);
+      expect(chat.prompts, isEmpty);
+      expect(chat.state.sessionLaunchError, contains('generation workflow'));
+    },
+  );
 
   testWidgets('referenceWorkspaceSession opens Landing with the session path', (
     tester,

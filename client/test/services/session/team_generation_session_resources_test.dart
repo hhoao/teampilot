@@ -1,4 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
+import 'package:teampilot/app/team_generation_graph.dart';
 import 'package:teampilot/models/app_session.dart';
 import 'package:teampilot/models/team_generation_settings.dart';
 import 'package:teampilot/services/resource/resource_provider_set.dart';
@@ -27,7 +28,10 @@ void main() {
         createdAt: 1,
       );
 
-      final lifecycle = SessionLifecycleService();
+      final lifecycle = SessionLifecycleService(
+        resourceProviderResolver:
+            TeamGenerationGraph.resourceProvidersForSession,
+      );
       final builderDefaults = lifecycle.resourceProvidersForSession(
         builderSession,
         ResourceProviderSet.empty,

@@ -43,13 +43,17 @@ import '../launch/session_runtime_plan.dart';
 import '../launch/session_runtime_plan_builder.dart';
 import '../expert_hub/builtin_member_templates.dart';
 import '../skill/skill_pack_install_store.dart';
-import '../team_generation/providers/managed_team_builder_skill_provider.dart';
 import 'session_continue_overrides_apply.dart';
 import 'shell_launch_spec.dart';
 
 export 'shell_launch_spec.dart';
 
 typedef StorageRootsResolver = Future<RuntimeContext> Function();
+typedef SessionResourceProviderResolver =
+    ResourceProviderSet Function(
+      AppSession session,
+      ResourceProviderSet defaults,
+    );
 
 class SessionLifecycleService {
   static final _defaultCliRegistry = () {
@@ -74,6 +78,7 @@ class SessionLifecycleService {
     SessionRuntimePlanBuilder? runtimePlanBuilder,
     RuntimeTarget Function()? homeTarget,
     String Function(CliTool cli)? cliExecutableResolver,
+    SessionResourceProviderResolver? resourceProviderResolver,
   }) : _appDataBasePath = appDataBasePath,
        _configProfileService = configProfileService,
        _storageRootsResolver = storageRootsResolver,
@@ -88,7 +93,8 @@ class SessionLifecycleService {
        _projectConfigRepository = projectConfigRepository,
        _runtimePlanBuilder = runtimePlanBuilder,
        _homeTarget = homeTarget ?? RuntimeTarget.local,
-       _cliExecutableResolver = cliExecutableResolver;
+       _cliExecutableResolver = cliExecutableResolver,
+       _resourceProviderResolver = resourceProviderResolver;
 
   final String? _appDataBasePath;
   final ConfigProfileService? _configProfileService;
@@ -114,22 +120,23 @@ class SessionLifecycleService {
   final RuntimeTarget Function() _homeTarget;
   final String Function(CliTool cli)? _cliExecutableResolver;
   SessionRuntimePlanBuilder? _runtimePlanBuilder;
+  SessionResourceProviderResolver? _resourceProviderResolver;
 
   /// Current app home target (local, SSH, or WSL).
   RuntimeTarget get currentHome => _homeTarget();
 
-  /// Adds app-managed resources for sessions with a dedicated purpose.
+  /// Resolves the app-composed resources for a session. The lifecycle itself
+  /// stays purpose-agnostic; app workflows inject their scoped providers.
   ResourceProviderSet resourceProvidersForSession(
     AppSession session,
     ResourceProviderSet defaults,
+  ) => _resourceProviderResolver?.call(session, defaults) ?? defaults;
+
+  /// Late-bind app workflow resources once composition has finished.
+  void attachResourceProviderResolver(
+    SessionResourceProviderResolver resolver,
   ) {
-    if (session.purpose != SessionPurpose.teamGeneration) return defaults;
-    return ResourceProviderSet(
-      prompts: defaults.prompts,
-      skills: [...defaults.skills, ManagedTeamBuilderSkillProvider()],
-      mcp: defaults.mcp,
-      hooks: defaults.hooks,
-    );
+    _resourceProviderResolver = resolver;
   }
 
   /// Late-bound app-scoped runtime composition. When attached, every launch
@@ -528,11 +535,6 @@ class SessionLifecycleService {
     Map<String, Map<String, Object?>>? extraMcpServers,
     MemberBusIdleEndpoint? busIdle,
     MemberAgentStatusEndpoint? agentStatus,
-    ResourceProviderSet Function(
-      AppSession session,
-      ResourceProviderSet defaults,
-    )?
-    resourceProviderResolver,
   }) async {
     final sessionId = session.sessionId.trim();
     final isSimple = plan.mode == SessionRuntimeMode.simple;
@@ -620,11 +622,7 @@ class SessionLifecycleService {
       busIdle: busIdle,
       agentStatus: agentStatus,
       injectedResourceProviders: isSimple
-          ? (resourceProviderResolver?.call(
-                  session,
-                  ResourceProviderSet.empty,
-                ) ??
-                resourceProvidersForSession(session, ResourceProviderSet.empty))
+          ? resourceProvidersForSession(session, ResourceProviderSet.empty)
           : ResourceProviderSet.empty,
     );
     final packStore = SkillPackInstallStore();

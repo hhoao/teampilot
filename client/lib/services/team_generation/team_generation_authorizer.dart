@@ -48,11 +48,17 @@ final class TeamGenerationAuthorizer {
       '${DateTime.now().microsecondsSinceEpoch.toRadixString(36)}-'
       '${const Uuid().v4()}';
 
-  /// Rotates the workflow token: any prior token is revoked, the job must be
-  /// active, and the persisted session must be this workflow's builder.
-  Future<String> issue(TeamGenerationPrincipal principal) async {
+  /// Issues a token synchronously for the launch connector. Authorization is
+  /// still checked asynchronously on every Composer request.
+  String issueForSession(TeamGenerationPrincipal principal) {
     final token = _tokenFactory();
     _digests[principal.workflowId] = _digestOf(token);
+    return token;
+  }
+
+  /// Rotates the workflow token and verifies the persisted builder binding.
+  Future<String> issue(TeamGenerationPrincipal principal) async {
+    final token = issueForSession(principal);
     try {
       final authorized = await authorize(principal: principal, token: token);
       if (!authorized) {

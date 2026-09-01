@@ -11,6 +11,8 @@ import 'package:shared_ui/shared_ui.dart';
 import 'package:window_manager/window_manager.dart';
 
 import 'app/app_shell.dart';
+import 'app/team_generation_graph.dart';
+import 'services/team_generation/team_generation_coordinator.dart';
 import 'services/install/install_job_registry.dart';
 import 'app/ui_zoom_baseline.dart';
 import 'app/home_index_prefetch.dart';
@@ -698,6 +700,12 @@ void main() async {
                 RepositoryProvider<InstallJobRegistry>.value(
                   value: shell.installJobRegistry,
                 ),
+                if (shell.teamGenerationGraph case final graph?) ...[
+                  RepositoryProvider<TeamGenerationCoordinator>.value(
+                    value: graph.coordinator,
+                  ),
+                  RepositoryProvider<TeamGenerationGraph>.value(value: graph),
+                ],
                 RepositoryProvider<FloatingSurfaceRegistry>.value(
                   value: shell.floatingSurfaceRegistry,
                 ),

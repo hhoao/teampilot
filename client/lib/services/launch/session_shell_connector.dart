@@ -1012,6 +1012,9 @@ class SessionShellConnector {
       mixedRemoteBinding: mixedRemoteBinding,
       agentStatus: agentStatus,
     );
+    final teamGenerationToken = session.purpose == SessionPurpose.teamGeneration
+        ? _requiredGenerationTokenFor(session)
+        : null;
     final servers = extraMcpServersWithCatalog(
       extra: extra,
       isRemoteSeat: usesSshTransport(launchKind),
@@ -1023,7 +1026,7 @@ class SessionShellConnector {
         memberId: memberId,
         cli: cli,
         remoteBinding: remoteBinding,
-        teamGenerationToken: _generationTokenFor(session),
+        teamGenerationToken: teamGenerationToken,
       ),
     );
     // Purpose-aware composer injection: only builder sessions receive the
@@ -1034,6 +1037,7 @@ class SessionShellConnector {
       memberId: memberId,
       cli: cli,
       remoteBinding: remoteBinding,
+      workflowToken: teamGenerationToken,
     );
     if (composer != null) {
       servers['team-composer'] = composer;
@@ -1049,14 +1053,23 @@ class SessionShellConnector {
     return issuer?.call(session);
   }
 
+  String _requiredGenerationTokenFor(AppSession session) {
+    final token = _generationTokenFor(session);
+    if (token == null || token.isEmpty) {
+      throw StateError('team_generation_token_issue_failed');
+    }
+    return token;
+  }
+
   Map<String, Object?>? _composerConfigFor({
     required AppSession session,
     required String memberId,
     required CliTool cli,
     required RemoteBusBinding? remoteBinding,
+    required String? workflowToken,
   }) {
     if (session.purpose != SessionPurpose.teamGeneration) return null;
-    final token = _generationTokenFor(session);
+    final token = workflowToken;
     if (token == null || token.isEmpty) {
       throw StateError('team_generation_token_issue_failed');
     }

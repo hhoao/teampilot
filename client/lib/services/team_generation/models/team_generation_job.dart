@@ -191,10 +191,11 @@ final class TeamGenerationJobGenerator {
   });
 
   factory TeamGenerationJobGenerator.fromSettings(
-    TeamGenerationSettingsSnapshot snapshot,
-  ) {
+    TeamGenerationSettingsSnapshot snapshot, {
+    String generatorPresetId = '',
+  }) {
     return TeamGenerationJobGenerator(
-      generatorPresetId: '',
+      generatorPresetId: generatorPresetId,
       settingsRevision: snapshot.revision,
       teamModeValue: snapshot.teamMode.value,
       nativeCliValue: snapshot.nativeCli.value,

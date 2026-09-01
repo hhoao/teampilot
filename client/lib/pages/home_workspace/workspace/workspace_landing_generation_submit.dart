@@ -2,13 +2,13 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../../cubits/ai_feature_settings_cubit.dart';
+import '../../../cubits/chat_cubit.dart';
 import '../../../models/landing_launch_context.dart';
 import '../../../cubits/workbench/workbench_cubit.dart';
 import '../../../models/ai_feature_setting.dart';
 import '../../../models/workspace.dart';
 import '../../../services/team_generation/team_generation_coordinator.dart';
 import '../../../utils/logging/logger.dart';
-import 'workspace_session_actions.dart';
 
 /// Generation-mode landing submit: preflight → create job → open the visible
 /// purpose-tagged builder session.
@@ -28,16 +28,13 @@ Future<bool> submitWorkspaceLandingGeneration(
   final coordinator = context.read<TeamGenerationCoordinator?>();
   if (coordinator == null) {
     appLogger.w(
-      '[team-generation] landing submit: coordinator not wired; '
-      'falling back to a plain session',
+      '[team-generation] landing submit rejected: coordinator not wired',
     );
-    return submitWorkspaceLandingMessage(
-      context,
-      workspace,
-      launch: launch,
-      message: message,
-      workingDirectory: workingDirectory,
+    context.read<ChatCubit>().failSessionConnect(
+      'pending',
+      'Team generation workflow is unavailable. Restart TeamPilot and try again.',
     );
+    return false;
   }
 
   final preflight = await coordinator.preflight(
@@ -55,23 +52,40 @@ Future<bool> submitWorkspaceLandingGeneration(
       .read<AiFeatureSettingsCubit>()
       .state
       .settingFor(AiFeatureId.teamGenerate);
-  final result = await coordinator.start(
-    workspace: workspace,
-    originalPrompt: trimmed,
-    generatorPresetId: generatorSetting?.activePresetId ?? '',
-    projectFolderPath: launch.projectFolderPath ?? workspace.firstFolderPath,
-    workingDirectoryPath:
-        workingDirectory ?? launch.workingDirectoryPath ?? workspace.firstFolderPath,
-    folderIds: [for (final f in workspace.folders) f.path],
-    targetIds: [for (final f in workspace.folders) f.targetId],
-  );
-  if (context.mounted) {
-    context.read<WorkbenchCubit>().openSession(
-          workspace.workspaceId,
-          result.builderSessionId,
-        );
+  try {
+    final result = await coordinator.start(
+      workspace: workspace,
+      originalPrompt: trimmed,
+      generatorPresetId: generatorSetting?.activePresetId ?? '',
+      projectFolderPath: launch.projectFolderPath ?? workspace.firstFolderPath,
+      workingDirectoryPath:
+          workingDirectory ??
+          launch.workingDirectoryPath ??
+          workspace.firstFolderPath,
+      folderIds: [for (final f in workspace.folders) f.path],
+      targetIds: [for (final f in workspace.folders) f.targetId],
+    );
+    if (context.mounted) {
+      context.read<WorkbenchCubit>().openSession(
+        workspace.workspaceId,
+        result.builderSessionId,
+      );
+    }
+    return true;
+  } on Object catch (error, stackTrace) {
+    appLogger.e(
+      '[team-generation] landing start failed',
+      error: error,
+      stackTrace: stackTrace,
+    );
+    if (context.mounted) {
+      context.read<ChatCubit>().failSessionConnect(
+        'pending',
+        'Team generation could not start: $error',
+      );
+    }
+    return false;
   }
-  return true;
 }
 
 /// Localized preflight surface shown above the landing input on issues.
