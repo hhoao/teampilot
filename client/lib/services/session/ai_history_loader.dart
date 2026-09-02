@@ -1,6 +1,7 @@
 import 'dart:isolate';
 
 import 'package:ai_message_core/ai_message_core.dart';
+import 'package:flutter/foundation.dart';
 
 import '../../models/app_session.dart';
 import '../../models/cli_preset.dart';
@@ -293,8 +294,8 @@ final class AiHistoryLoader {
   static const _isolateParseMinBytes = 256 * 1024;
 
   /// Switch to disable worker-isolate parsing of heavy transcripts (everything
-  /// then parses on the caller / UI isolate). Temporarily off while
-  /// investigating isolate issues.
+  /// then parses on the caller / UI isolate). Debug builds already skip
+  /// isolate parse — see `_parseAndEnrich` (`kDebugMode` guard).
   static bool enableIsolateParse = true;
 
   /// Work-plane context for the seat (live refresh binds this FS).
@@ -1202,7 +1203,12 @@ final class AiHistoryLoader {
           contentLength: totalBytes,
         );
 
-    if (enableIsolateParse && totalBytes >= _isolateParseMinBytes) {
+    // Linux/Android debug: cold Isolate.run can hang forever (child never
+    // resumes) and tear down the VM service — same class of failure as the
+    // boot index readers. Keep large-parse off-isolate in profile/release only.
+    if (enableIsolateParse &&
+        !kDebugMode &&
+        totalBytes >= _isolateParseMinBytes) {
       if (reuse) {
         final parsed = await _timed(
           AiHistoryLoadPhase.parse,
