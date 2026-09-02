@@ -129,9 +129,18 @@ void main() {
     channel.remoteWrite(
       utf8.encode(_idleHttpPost(memberId: 'worker', token: binding.token)),
     );
-    await Future<void>.delayed(const Duration(milliseconds: 120));
-
-    expect(channel.sentText, contains('"decision":"block"'));
+    // Windows CI often delivers chunked HTTP as headers then body across
+    // separate socket events; a fixed delay races the body chunk.
+    final deadline = DateTime.now().add(const Duration(seconds: 5));
+    while (!channel.sentText.contains('"decision":"block"')) {
+      if (DateTime.now().isAfter(deadline)) {
+        fail(
+          'idle tunnel response missing decision=block; got:\n'
+          '${channel.sentText}',
+        );
+      }
+      await Future<void>.delayed(const Duration(milliseconds: 10));
+    }
     expect(channel.sentText, contains('wait_for_message'));
   });
 
