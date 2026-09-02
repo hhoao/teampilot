@@ -262,6 +262,55 @@ void main() {
       expect(modelRows.any((s) => s.value is CascadeCustomModelRequest), isFalse);
     });
 
+    test('omits save preset when showSavePreset is false', () {
+      final specs = buildComposeModelCascadeMenuSpecs(
+        presets: const [],
+        selectedPresetId: null,
+        emptyHintLabel: 'empty',
+        emptyProvidersLabel: 'none',
+        presetsLabel: 'Presets',
+        defaultEffortLabel: 'Default',
+        customModelIdLabel: 'Custom',
+        noModelsLabel: 'No models',
+        savePresetLabel: 'Save',
+        managePresetsLabel: 'Manage',
+        cliGroups: const [],
+        groupByCli: true,
+        showSavePreset: false,
+        showManagePresets: true,
+      );
+      final labels = specs.map((s) => s.label).whereType<String>().toList();
+      expect(labels, isNot(contains('Save')));
+      expect(labels, contains('Manage'));
+    });
+
+    test('omits manage presets when showManagePresets is false', () {
+      final specs = buildComposeModelCascadeMenuSpecs(
+        presets: const [],
+        selectedPresetId: null,
+        emptyHintLabel: 'empty',
+        emptyProvidersLabel: 'none',
+        presetsLabel: 'Presets',
+        defaultEffortLabel: 'Default',
+        customModelIdLabel: 'Custom',
+        noModelsLabel: 'No models',
+        savePresetLabel: 'Save',
+        managePresetsLabel: 'Manage',
+        cliGroups: const [],
+        groupByCli: true,
+        showSavePreset: true,
+        showManagePresets: false,
+      );
+      expect(
+        specs.any((s) => s.value == ComposeModelPresetChipAction.savePreset),
+        isTrue,
+      );
+      expect(
+        specs.any((s) => s.value == ComposeModelPresetChipAction.manage),
+        isFalse,
+      );
+    });
+
     test('empty model catalog shows disabled row but keeps custom entry', () {
       final specs = buildComposeModelCascadeMenuSpecs(
         presets: const [],
