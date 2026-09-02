@@ -452,6 +452,7 @@ class WorkbenchStripTabChipState extends State<WorkbenchStripTabChip> {
 
     return TpTabChip(
       title: title,
+      tooltip: widget.filePath,
       active: widget.active,
       preview: widget.preview,
       working: working || waiting,

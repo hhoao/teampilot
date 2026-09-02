@@ -1,10 +1,13 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:shared_ui/shared_ui.dart';
+import '../../../../cubits/chat_cubit.dart';
 import '../../../../widgets/app_toast/app_toast.dart';
 
 import '../../../io/file_path_actions.dart';
+import '../../open_workspace_terminal_at_path.dart';
 import '../workbench_tab_menu_context.dart';
 import '../workbench_tab_menu_source.dart';
 
@@ -99,12 +102,16 @@ class FilePathTabMenuSource implements WorkbenchTabMenuSource {
   }
 
   Future<void> _openInTerminal(WorkbenchTabMenuContext ctx, String path) async {
-    final ok = await FilePathActions.openInTerminal(
+    final buildContext = ctx.buildContext;
+    if (buildContext == null) return;
+    final workspaceId = buildContext.read<ChatCubit>().tabStore.activeWorkspaceId;
+    final ok = await openWorkspaceTerminalAtPath(
+      context: buildContext,
+      workspaceId: workspaceId,
       targetPath: path,
       isDirectory: false,
     );
-    final buildContext = ctx.buildContext;
-    if (buildContext == null || !buildContext.mounted) return;
+    if (!buildContext.mounted) return;
     if (!ok) {
       AppToast.show(
         buildContext,

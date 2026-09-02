@@ -27,6 +27,30 @@ Future<void> _openContextMenu(WidgetTester tester) async {
 }
 
 void main() {
+  testWidgets('file tab tooltip shows full path when title is basename', (
+    tester,
+  ) async {
+    const fullPath = '/ws/project/lib/a.dart';
+    await tester.pumpWidget(
+      _wrap(
+        WorkbenchStripTabChip(
+          title: 'a.dart',
+          active: true,
+          kind: WorkbenchTabKind.file,
+          tabId: fullPath,
+          filePath: fullPath,
+          workspaceRoot: '/ws',
+          onTap: () {},
+          onClose: () {},
+        ),
+      ),
+    );
+
+    final tooltip = find.byType(Tooltip);
+    expect(tooltip, findsOneWidget);
+    expect(tester.widget<Tooltip>(tooltip).message, fullPath);
+  });
+
   testWidgets('file tab menu shows copy path above close', (tester) async {
     await tester.pumpWidget(
       _wrap(

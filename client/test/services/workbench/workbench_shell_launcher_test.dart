@@ -224,6 +224,29 @@ void main() {
       },
     );
 
+    test('openAtPath opens shell tab at file parent directory', () async {
+      final launcher = _launcher(
+        chat: chat,
+        workbench: workbench,
+        floating: floating,
+        registry: registry,
+      );
+
+      const filePath = '/tmp/proj/lib/main.dart';
+      final ok = await launcher.openAtPath(
+        workspaceId: 'ws',
+        targetPath: filePath,
+        isDirectory: false,
+      );
+
+      expect(ok, isTrue);
+      final entry = registry.groupFor('ws').entries.single;
+      expect(entry.cwd, '/tmp/proj/lib');
+      expect(workbench.state.bar('ws').floating.order, [
+        WorkbenchTabId.shell(entry.id),
+      ]);
+    });
+
     test('SSH spec does not store a local-only workspace cwd', () async {
       final launcher = _launcher(
         chat: chat,

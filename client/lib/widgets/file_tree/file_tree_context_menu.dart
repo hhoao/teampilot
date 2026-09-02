@@ -10,6 +10,7 @@ import '../../l10n/l10n_extensions.dart';
 import '../../services/editor/file_editor_theme.dart';
 import '../../services/io/file_path_actions.dart';
 import '../../services/storage/runtime_context.dart';
+import '../../services/workbench/open_workspace_terminal_at_path.dart';
 import '../../services/workbench/workbench_editor_opener.dart';
 import '../../utils/debounce/debounce.dart';
 /// Right-click menu for a file-tree row.
@@ -180,7 +181,9 @@ abstract final class FileTreeContextMenu {
           workContext: workContext,
         );
       case 'terminal':
-        final ok = await FilePathActions.openInTerminal(
+        final ok = await openWorkspaceTerminalAtPath(
+          context: context,
+          workspaceId: workspaceId,
           targetPath: targetPath,
           isDirectory: isDirectory,
         );
@@ -291,7 +294,9 @@ abstract final class FileTreeContextMenu {
       case 'toggle_hidden':
         cubit.toggleShowHidden();
       case 'terminal':
-        final ok = await FilePathActions.openInTerminal(
+        final ok = await openWorkspaceTerminalAtPath(
+          context: context,
+          workspaceId: workspaceId,
           targetPath: targetRootDir,
           isDirectory: true,
         );

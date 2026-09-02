@@ -13,6 +13,7 @@ import '../../models/runtime_target.dart';
 import '../../models/workspace_folder.dart';
 import '../../models/workspace_terminal_session_spec.dart';
 import '../host/host_interactive_shell.dart';
+import '../io/system_folder_opener.dart';
 import '../terminal/terminal_theme_for_launch.dart';
 import '../terminal/workspace_shell_connector.dart';
 import '../terminal/workspace_terminal_connect_coordinator.dart';
@@ -160,6 +161,56 @@ class WorkbenchShellLauncher {
       activeId: strip.activeId,
       registryActiveEntryId: _registry.groupFor(workspaceId).activeId,
     );
+  }
+
+  /// Opens a new floating workspace shell tab whose cwd is [targetPath] (file →
+  /// parent directory). Returns false when the path cannot be resolved.
+  Future<bool> openAtPath({
+    required String workspaceId,
+    required String targetPath,
+    required bool isDirectory,
+    List<WorkspaceFolder> folders = const [],
+    String? sshConnectFailedMessage,
+    bool Function()? mounted,
+  }) async {
+    final dir = _terminalWorkingDirectory(targetPath, isDirectory: isDirectory);
+    if (dir == null) return false;
+
+    final trimmedWorkspaceId = workspaceId.trim();
+    if (trimmedWorkspaceId.isEmpty) return false;
+
+    final workspace = _chat.state.workspaces
+        .where((w) => w.workspaceId == trimmedWorkspaceId)
+        .firstOrNull;
+    final resolvedFolders = folders.isNotEmpty
+        ? folders
+        : (workspace?.folders ?? const <WorkspaceFolder>[]);
+    final spec = defaultSessionSpecFor(
+      cwd: dir,
+      folders: resolvedFolders,
+      fallbackLocalShell: _fallbackLocalShell(),
+      home: _homeTarget(),
+    );
+    final entry = await openAndSelect(
+      workspaceId: trimmedWorkspaceId,
+      tabScopeId: trimmedWorkspaceId,
+      cwd: dir,
+      spec: spec,
+      folders: resolvedFolders,
+      sshConnectFailedMessage: sshConnectFailedMessage,
+      mounted: mounted,
+    );
+    return entry != null;
+  }
+
+  static String? _terminalWorkingDirectory(
+    String targetPath, {
+    required bool isDirectory,
+  }) {
+    final dir = isDirectory
+        ? targetPath.trim()
+        : SystemFolderOpener.revealPathForFile(targetPath);
+    return dir.trim().isEmpty ? null : dir;
   }
 
   /// Focus most-recent shell, or open a default local/SSH/WSL shell for cwd.
