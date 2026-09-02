@@ -276,9 +276,15 @@ void main() {
         workspaceResolver: (_) async => workspace,
       );
 
+      const originalRequest = 'Build the release plan';
+      const expectedKickoff =
+          'Build and launch the optimal TeamPilot team for the task below.\n'
+          'Follow the managed Team Builder skill and use Team Composer until '
+          'finalize_team_generation succeeds.\n\n'
+          'Build the release plan';
       final started = await coordinator.start(
         workspace: workspace,
-        originalPrompt: 'Build the release plan',
+        originalPrompt: originalRequest,
         generatorPresetId: preset.id,
         projectFolderPath: '/proj',
         workingDirectoryPath: '/proj',
@@ -286,7 +292,6 @@ void main() {
         targetIds: const ['local'],
       );
       expect(events[0], 'builderCreated');
-      final kickoff = buildTeamGenerationKickoff('Build the release plan');
       final kickoffId = teamGenerationStableId(
         'teamgen-kickoff-',
         started.workflowId,
@@ -294,12 +299,12 @@ void main() {
       expect(
         events[1],
         'history:${started.builderSessionId}:${started.builderSessionId}:'
-        '$kickoffId:$kickoff',
+        '$kickoffId:$expectedKickoff',
       );
       expect(
         events[2],
         'deliverTracked:${started.builderSessionId}:${started.builderSessionId}:'
-        '$kickoffId:$kickoff',
+        '$kickoffId:$expectedKickoff',
       );
 
       await jobStore.mutate('ws', started.workflowId, (job) {
@@ -357,10 +362,9 @@ void main() {
       );
       expect(
         events[5],
-        'history:$destinationId:team-lead:$handoffDeliveryId:'
-        'Build the release plan',
+        'history:$destinationId:team-lead:$handoffDeliveryId:$originalRequest',
       );
-      expect(events[6], 'prompt:team-lead:Build the release plan');
+      expect(events[6], 'prompt:team-lead:$originalRequest');
       expect(events[7], 'builderDeleted');
       expect(events, hasLength(8));
       expect((await profileRepository.loadTeamProfiles()), hasLength(1));
