@@ -664,7 +664,12 @@ class _SessionHistoryThreadState extends State<SessionHistoryThread> {
             contextMenuBuilder: buildTpSelectionAreaContextMenu,
             child: SingleChildScrollView(
               controller: _scrollController,
-              padding: const EdgeInsets.fromLTRB(0, 16, 0, 24),
+              padding: EdgeInsets.fromLTRB(
+                0,
+                aiTheme.threadTopPadding,
+                0,
+                aiTheme.threadBottomPadding,
+              ),
               // Width chrome outside [VirtualThreadViewport]: turn bodies are
               // cached and would keep a stale per-message ConstrainedBox.
               child: Align(
@@ -699,9 +704,9 @@ class _SessionHistoryThreadState extends State<SessionHistoryThread> {
                           if (!_scrollController.hasClients || offset < 0) {
                             return;
                           }
-                          // 16 = SingleChildScrollView top padding; the
-                          // delivered offset is viewport-space document pixels.
-                          _scrollToReveal(offset + 16);
+                          // threadTopPadding = SingleChildScrollView top padding;
+                          // the delivered offset is viewport-space document pixels.
+                          _scrollToReveal(offset + aiTheme.threadTopPadding);
                         },
                         onVisibleRange: _publishVisibleOwner,
                         suppressMeasureScrollCorrection:

@@ -50,7 +50,7 @@ void main() {
     expect(cubit.state.preferences.rightToolsVisible, isTrue);
   });
 
-  testWidgets('session tab bar switch defaults on and updates cubit', (
+  testWidgets('session tab bar switch defaults off and updates cubit', (
     tester,
   ) async {
     final prefs = await SharedPreferences.getInstance();
@@ -77,13 +77,13 @@ void main() {
 
     final switchFinder = find.byKey(AppKeys.sessionTabBarVisibilitySwitch);
     expect(switchFinder, findsOneWidget);
-    expect(tester.widget<Switch>(switchFinder).value, isTrue);
-    expect(cubit.state.preferences.sessionTabBarVisible, isTrue);
+    expect(tester.widget<Switch>(switchFinder).value, isFalse);
+    expect(cubit.state.preferences.sessionTabBarVisible, isFalse);
 
     await tester.tap(switchFinder);
     await tester.pumpAndSettle();
 
-    expect(tester.widget<Switch>(switchFinder).value, isFalse);
-    expect(cubit.state.preferences.sessionTabBarVisible, isFalse);
+    expect(tester.widget<Switch>(switchFinder).value, isTrue);
+    expect(cubit.state.preferences.sessionTabBarVisible, isTrue);
   });
 }

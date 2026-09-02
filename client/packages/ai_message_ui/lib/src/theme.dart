@@ -5,9 +5,9 @@ import 'package:tp_markdown/tp_markdown.dart';
 /// Content padding inside the user bubble. The collapsed mask (fade + chevron)
 /// is edge-to-edge (flush) while regular content keeps this padding.
 const EdgeInsets kUserBubbleContentPadding = EdgeInsets.fromLTRB(
-  14,
-  10,
-  14,
+  24,
+  12,
+  24,
   12,
 );
 
@@ -39,6 +39,9 @@ class AiMessageTheme extends ThemeExtension<AiMessageTheme> {
     // assistant-ui: --thread-max-width 44rem ≈ 704
     this.threadMaxWidth = 704,
     this.threadHorizontalPadding = 16,
+    this.threadTopPadding = 48,
+    this.threadBottomPadding = 24,
+    this.userMessageTopInset = 8,
     this.cotExpandReasoningOnOpen = false,
     this.cotExpandToolsOnOpen = false,
   });
@@ -60,6 +63,9 @@ class AiMessageTheme extends ThemeExtension<AiMessageTheme> {
     double codeBlockRadius = 12,
     double threadMaxWidth = 704,
     double threadHorizontalPadding = 16,
+    double threadTopPadding = 48,
+    double threadBottomPadding = 24,
+    double userMessageTopInset = 8,
     bool cotExpandReasoningOnOpen = false,
     bool cotExpandToolsOnOpen = false,
   }) {
@@ -82,6 +88,9 @@ class AiMessageTheme extends ThemeExtension<AiMessageTheme> {
       codeBlockRadius: codeBlockRadius,
       threadMaxWidth: threadMaxWidth,
       threadHorizontalPadding: threadHorizontalPadding,
+      threadTopPadding: threadTopPadding,
+      threadBottomPadding: threadBottomPadding,
+      userMessageTopInset: userMessageTopInset,
       cotExpandReasoningOnOpen: cotExpandReasoningOnOpen,
       cotExpandToolsOnOpen: cotExpandToolsOnOpen,
     );
@@ -105,6 +114,9 @@ class AiMessageTheme extends ThemeExtension<AiMessageTheme> {
   final double codeBlockRadius;
   final double threadMaxWidth;
   final double threadHorizontalPadding;
+  final double threadTopPadding;
+  final double threadBottomPadding;
+  final double userMessageTopInset;
   final bool cotExpandReasoningOnOpen;
   final bool cotExpandToolsOnOpen;
 
@@ -148,6 +160,9 @@ class AiMessageTheme extends ThemeExtension<AiMessageTheme> {
     double? codeBlockRadius,
     double? threadMaxWidth,
     double? threadHorizontalPadding,
+    double? threadTopPadding,
+    double? threadBottomPadding,
+    double? userMessageTopInset,
     bool? cotExpandReasoningOnOpen,
     bool? cotExpandToolsOnOpen,
   }) {
@@ -168,6 +183,9 @@ class AiMessageTheme extends ThemeExtension<AiMessageTheme> {
       threadMaxWidth: threadMaxWidth ?? this.threadMaxWidth,
       threadHorizontalPadding:
           threadHorizontalPadding ?? this.threadHorizontalPadding,
+      threadTopPadding: threadTopPadding ?? this.threadTopPadding,
+      threadBottomPadding: threadBottomPadding ?? this.threadBottomPadding,
+      userMessageTopInset: userMessageTopInset ?? this.userMessageTopInset,
       cotExpandReasoningOnOpen:
           cotExpandReasoningOnOpen ?? this.cotExpandReasoningOnOpen,
       cotExpandToolsOnOpen: cotExpandToolsOnOpen ?? this.cotExpandToolsOnOpen,
@@ -180,32 +198,49 @@ class AiMessageTheme extends ThemeExtension<AiMessageTheme> {
     return AiMessageTheme(
       markdown: t < 0.5 ? markdown : other.markdown,
       userBubbleColor: Color.lerp(userBubbleColor, other.userBubbleColor, t),
-      userBubbleForeground:
-          Color.lerp(userBubbleForeground, other.userBubbleForeground, t),
+      userBubbleForeground: Color.lerp(
+        userBubbleForeground,
+        other.userBubbleForeground,
+        t,
+      ),
       mutedSurface: Color.lerp(mutedSurface, other.mutedSurface, t),
       toolTriggerColor: Color.lerp(toolTriggerColor, other.toolTriggerColor, t),
       toolPanelColor: Color.lerp(toolPanelColor, other.toolPanelColor, t),
-      reasoningBorderColor:
-          Color.lerp(reasoningBorderColor, other.reasoningBorderColor, t),
+      reasoningBorderColor: Color.lerp(
+        reasoningBorderColor,
+        other.reasoningBorderColor,
+        t,
+      ),
       messageSpacing:
           messageSpacing + (other.messageSpacing - messageSpacing) * t,
       partSpacing: partSpacing + (other.partSpacing - partSpacing) * t,
       userBubbleRadius:
           userBubbleRadius + (other.userBubbleRadius - userBubbleRadius) * t,
-      userBubbleMaxWidth: userBubbleMaxWidth +
+      userBubbleMaxWidth:
+          userBubbleMaxWidth +
           (other.userBubbleMaxWidth - userBubbleMaxWidth) * t,
       panelRadius: panelRadius + (other.panelRadius - panelRadius) * t,
       codeBlockRadius:
           codeBlockRadius + (other.codeBlockRadius - codeBlockRadius) * t,
       threadMaxWidth:
           threadMaxWidth + (other.threadMaxWidth - threadMaxWidth) * t,
-      threadHorizontalPadding: threadHorizontalPadding +
+      threadHorizontalPadding:
+          threadHorizontalPadding +
           (other.threadHorizontalPadding - threadHorizontalPadding) * t,
+      threadTopPadding:
+          threadTopPadding + (other.threadTopPadding - threadTopPadding) * t,
+      threadBottomPadding:
+          threadBottomPadding +
+          (other.threadBottomPadding - threadBottomPadding) * t,
+      userMessageTopInset:
+          userMessageTopInset +
+          (other.userMessageTopInset - userMessageTopInset) * t,
       cotExpandReasoningOnOpen: t < 0.5
           ? cotExpandReasoningOnOpen
           : other.cotExpandReasoningOnOpen,
-      cotExpandToolsOnOpen:
-          t < 0.5 ? cotExpandToolsOnOpen : other.cotExpandToolsOnOpen,
+      cotExpandToolsOnOpen: t < 0.5
+          ? cotExpandToolsOnOpen
+          : other.cotExpandToolsOnOpen,
     );
   }
 }

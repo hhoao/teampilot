@@ -37,9 +37,9 @@ void main() {
     expect(restored.rightToolsVisible, isTrue);
   });
 
-  test('sessionTabBarVisible defaults true and round-trips', () {
-    expect(const LayoutPreferences().sessionTabBarVisible, isTrue);
-    expect(LayoutPreferences.fromJson(const {}).sessionTabBarVisible, isTrue);
+  test('sessionTabBarVisible defaults false and round-trips', () {
+    expect(const LayoutPreferences().sessionTabBarVisible, isFalse);
+    expect(LayoutPreferences.fromJson(const {}).sessionTabBarVisible, isFalse);
     final parsed = LayoutPreferences.fromJson(const {
       'sessionTabBarVisible': false,
     });

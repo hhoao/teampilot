@@ -52,7 +52,7 @@ class LayoutPreferences {
     this.searchVisible = true,
     this.boardVisible = true,
     this.rightToolsVisible = false,
-    this.sessionTabBarVisible = true,
+    this.sessionTabBarVisible = false,
     this.sidebarVisible = true,
     this.rightToolsWidth = defaultRightToolsWidth,
     this.sidebarWidth = defaultSidebarWidth,
@@ -106,7 +106,7 @@ class LayoutPreferences {
       searchVisible: json['searchVisible'] as bool? ?? true,
       boardVisible: json['boardVisible'] as bool? ?? true,
       rightToolsVisible: json['rightToolsVisible'] as bool? ?? false,
-      sessionTabBarVisible: json['sessionTabBarVisible'] as bool? ?? true,
+      sessionTabBarVisible: json['sessionTabBarVisible'] as bool? ?? false,
       sidebarVisible: json['sidebarVisible'] as bool? ?? true,
       rightToolsWidth: _doubleValue(
         json['rightToolsWidth'],

@@ -99,7 +99,12 @@ class _AiMessageViewState extends State<AiMessageView> {
         widget.actionBarReveal == AiActionBarReveal.hover;
 
     final body = Padding(
-      padding: EdgeInsets.only(bottom: aiTheme.messageSpacing),
+      padding: EdgeInsets.only(
+        top: widget.message.role == AiRole.user
+            ? aiTheme.userMessageTopInset
+            : 0,
+        bottom: aiTheme.messageSpacing,
+      ),
       child: RepaintBoundary(
         child: switch (widget.message.role) {
           AiRole.user => _UserBubble(

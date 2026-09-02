@@ -484,7 +484,12 @@ class _AiThreadState extends State<AiThread> {
                     ignoring: !_listVisible,
                     child: ListView.builder(
                       controller: _scrollController,
-                      padding: const EdgeInsets.fromLTRB(0, 16, 0, 24),
+                      padding: EdgeInsets.fromLTRB(
+                        0,
+                        aiTheme.threadTopPadding,
+                        0,
+                        aiTheme.threadBottomPadding,
+                      ),
                       itemCount: _messages.length + sentinelCount,
                       itemBuilder: (context, index) {
                         if (widget.hasOlder && index == 0) {
