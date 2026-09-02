@@ -231,7 +231,8 @@ class _UserBubble extends StatelessWidget {
           final bubbleCap = canFitActionBar
               ? (threadMax - actionBarReserve).clamp(0.0, threadMax)
               : threadMax;
-          final bubbleMax = (threadMax * 0.85).clamp(0.0, bubbleCap);
+          final bubbleMax =
+              aiTheme.userBubbleMaxWidth.clamp(0.0, bubbleCap);
           return Row(
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.center,

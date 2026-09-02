@@ -11,6 +11,10 @@ const EdgeInsets kUserBubbleContentPadding = EdgeInsets.fromLTRB(
   12,
 );
 
+/// Max width for a user message bubble (content + padding), independent of
+/// thread/column width. Narrow threads still clamp via action-bar reserve.
+const double kUserBubbleMaxWidth = 800;
+
 /// Theme tokens aligned with assistant-ui Thread / Message / ToolFallback.
 ///
 /// Hosts **must** supply [markdown] from their warmup-aligned typography
@@ -29,6 +33,7 @@ class AiMessageTheme extends ThemeExtension<AiMessageTheme> {
     this.messageSpacing = 24,
     this.partSpacing = 8,
     this.userBubbleRadius = 12,
+    this.userBubbleMaxWidth = kUserBubbleMaxWidth,
     this.panelRadius = 8,
     this.codeBlockRadius = 12,
     // assistant-ui: --thread-max-width 44rem ≈ 704
@@ -50,6 +55,7 @@ class AiMessageTheme extends ThemeExtension<AiMessageTheme> {
     double messageSpacing = 24,
     double partSpacing = 8,
     double userBubbleRadius = 12,
+    double userBubbleMaxWidth = kUserBubbleMaxWidth,
     double panelRadius = 8,
     double codeBlockRadius = 12,
     double threadMaxWidth = 704,
@@ -71,6 +77,7 @@ class AiMessageTheme extends ThemeExtension<AiMessageTheme> {
       messageSpacing: messageSpacing,
       partSpacing: partSpacing,
       userBubbleRadius: userBubbleRadius,
+      userBubbleMaxWidth: userBubbleMaxWidth,
       panelRadius: panelRadius,
       codeBlockRadius: codeBlockRadius,
       threadMaxWidth: threadMaxWidth,
@@ -93,6 +100,7 @@ class AiMessageTheme extends ThemeExtension<AiMessageTheme> {
   final double messageSpacing;
   final double partSpacing;
   final double userBubbleRadius;
+  final double userBubbleMaxWidth;
   final double panelRadius;
   final double codeBlockRadius;
   final double threadMaxWidth;
@@ -135,6 +143,7 @@ class AiMessageTheme extends ThemeExtension<AiMessageTheme> {
     double? messageSpacing,
     double? partSpacing,
     double? userBubbleRadius,
+    double? userBubbleMaxWidth,
     double? panelRadius,
     double? codeBlockRadius,
     double? threadMaxWidth,
@@ -153,6 +162,7 @@ class AiMessageTheme extends ThemeExtension<AiMessageTheme> {
       messageSpacing: messageSpacing ?? this.messageSpacing,
       partSpacing: partSpacing ?? this.partSpacing,
       userBubbleRadius: userBubbleRadius ?? this.userBubbleRadius,
+      userBubbleMaxWidth: userBubbleMaxWidth ?? this.userBubbleMaxWidth,
       panelRadius: panelRadius ?? this.panelRadius,
       codeBlockRadius: codeBlockRadius ?? this.codeBlockRadius,
       threadMaxWidth: threadMaxWidth ?? this.threadMaxWidth,
@@ -182,6 +192,8 @@ class AiMessageTheme extends ThemeExtension<AiMessageTheme> {
       partSpacing: partSpacing + (other.partSpacing - partSpacing) * t,
       userBubbleRadius:
           userBubbleRadius + (other.userBubbleRadius - userBubbleRadius) * t,
+      userBubbleMaxWidth: userBubbleMaxWidth +
+          (other.userBubbleMaxWidth - userBubbleMaxWidth) * t,
       panelRadius: panelRadius + (other.panelRadius - panelRadius) * t,
       codeBlockRadius:
           codeBlockRadius + (other.codeBlockRadius - codeBlockRadius) * t,

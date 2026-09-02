@@ -51,7 +51,7 @@ void main() {
     expect(assistantAlign.alignment, Alignment.centerLeft);
   });
 
-  testWidgets('short user bubble shrinks to content; long caps at 85%', (
+  testWidgets('short user bubble shrinks to content; long caps in narrow thread', (
     tester,
   ) async {
     await tester.pumpWidget(
@@ -108,9 +108,53 @@ void main() {
 
     expect(shortBubble.width, lessThan(80));
     expect(shortBubble.width, lessThan(longBubble.width));
-    // Action bar reserves 80px, so cap is min(85%, thread − reserve) = 320 here.
+    // Action bar reserves 80px on a 400px thread → cap 320.
     expect(longBubble.width, closeTo(320, 8));
-    expect(longBubble.width, lessThanOrEqualTo(400 * 0.85 + 1));
+    expect(longBubble.width, lessThan(kUserBubbleMaxWidth));
+  });
+
+  testWidgets('user bubble max width is fixed on wide threads', (tester) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: ThemeData(
+          extensions: [AiMessageTheme.test()],
+        ),
+        home: Scaffold(
+          body: SizedBox(
+            width: 1000,
+            child: AiMessageView(
+              showActionBar: false,
+              message: AiMessage(
+                id: 'long',
+                role: AiRole.user,
+                parts: [
+                  AiTextPart(
+                    text: List.filled(
+                      24,
+                      'this is a much longer user message that should wrap '
+                      'inside the fixed max bubble width instead of growing '
+                      'with the thread column',
+                    ).join(' '),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+
+    final bubble = tester.getSize(
+      find
+          .ancestor(
+            of: find.textContaining('fixed max bubble width'),
+            matching: find.byType(ColoredBox),
+          )
+          .first,
+    );
+
+    expect(bubble.width, closeTo(kUserBubbleMaxWidth, 8));
+    expect(bubble.width, lessThan(1000 * 0.85));
   });
 
   testWidgets('tool fallback shows Used tool label; tap expands args/result', (
