@@ -46,7 +46,7 @@ import '../../services/session/history_seat_key.dart';
 import 'ai_message_strings_from_l10n.dart';
 import '../../services/session/history_hydration_scope.dart';
 import '../../services/session/history_awaiting_working_sync.dart';
-import '../../services/session/session_history_pagination.dart';
+import 'pinned_session_history_column_width.dart';
 import '../../services/storage/app_storage.dart';
 import '../../services/terminal/pending_user_message.dart';
 import '../../theme/app_markdown_style_sheet.dart';
@@ -1253,38 +1253,40 @@ class _SessionChatViewState extends State<SessionChatView> {
                       final expandTools = prefs.expandTools;
                       return LayoutBuilder(
                         builder: (context, constraints) {
-                          final columnWidth = resolveSessionHistoryColumnWidth(
-                            constraints.maxWidth,
-                          );
-                          return Theme(
-                            data: Theme.of(context).copyWith(
-                              extensions: [
-                                for (final ext in Theme.of(
-                                  context,
-                                ).extensions.values)
-                                  if (ext is! AiMessageTheme) ext,
-                                AiMessageTheme.of(context).copyWith(
-                                  markdown: buildAppMarkdownTokens(
-                                    Theme.of(context),
-                                    MarkdownProfile.compact,
-                                    width: columnWidth,
-                                    mutedSurface: cs.surfaceContainerHighest
-                                        .withValues(alpha: 0.55),
-                                  ),
-                                  userBubbleColor: cs.surfaceContainerHighest,
-                                  userBubbleForeground: cs.onSurface,
-                                  mutedSurface: cs.surfaceContainerHighest
-                                      .withValues(alpha: 0.55),
-                                  toolTriggerColor: cs.onSurfaceVariant,
-                                  messageSpacing: 24,
-                                  threadMaxWidth: columnWidth,
-                                  threadHorizontalPadding: spacing.md,
-                                  cotExpandReasoningOnOpen: expandReasoning,
-                                  cotExpandToolsOnOpen: expandTools,
+                          return PinnedSessionHistoryColumnWidth(
+                            availableWidth: constraints.maxWidth,
+                            builder: (context, columnWidth) {
+                              return Theme(
+                                data: Theme.of(context).copyWith(
+                                  extensions: [
+                                    for (final ext in Theme.of(
+                                      context,
+                                    ).extensions.values)
+                                      if (ext is! AiMessageTheme) ext,
+                                    AiMessageTheme.of(context).copyWith(
+                                      markdown: buildAppMarkdownTokens(
+                                        Theme.of(context),
+                                        MarkdownProfile.compact,
+                                        width: columnWidth,
+                                        mutedSurface: cs
+                                            .surfaceContainerHighest
+                                            .withValues(alpha: 0.55),
+                                      ),
+                                      userBubbleColor:
+                                          cs.surfaceContainerHighest,
+                                      userBubbleForeground: cs.onSurface,
+                                      mutedSurface: cs.surfaceContainerHighest
+                                          .withValues(alpha: 0.55),
+                                      toolTriggerColor: cs.onSurfaceVariant,
+                                      messageSpacing: 24,
+                                      threadMaxWidth: columnWidth,
+                                      threadHorizontalPadding: spacing.md,
+                                      cotExpandReasoningOnOpen: expandReasoning,
+                                      cotExpandToolsOnOpen: expandTools,
+                                    ),
+                                  ],
                                 ),
-                              ],
-                            ),
-                            child: BlocBuilder<AiHistorySeat, AiHistoryState>(
+                                child: BlocBuilder<AiHistorySeat, AiHistoryState>(
                               bloc: _seat,
                               // Skip totalMessageCount-only tip growth — thread listens to
                               // runtime. Rebuild for chrome / overlay / awaiting flips.
@@ -1478,6 +1480,8 @@ class _SessionChatViewState extends State<SessionChatView> {
                                 );
                               },
                             ),
+                          );
+                            },
                           );
                         },
                       );
