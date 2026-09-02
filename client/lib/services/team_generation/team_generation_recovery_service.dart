@@ -2,6 +2,7 @@ import '../../utils/logging/logger.dart';
 import 'models/team_generation_job.dart';
 import 'team_generation_job_store.dart';
 import 'team_generation_session_port.dart';
+import 'team_generation_recovery_port.dart';
 
 /// Recovery actions per job state (plan Task 13 step 7 matrix).
 enum RecoveryAction {
@@ -19,7 +20,8 @@ enum RecoveryAction {
 ///
 /// No destructive guessing: malformed or cross-workspace references are
 /// retained and flagged; the destination and profile are never deleted.
-final class TeamGenerationRecoveryService {
+final class TeamGenerationRecoveryService
+    implements TeamGenerationRecoveryPort {
   TeamGenerationRecoveryService({
     required TeamGenerationJobStore jobStore,
     required TeamGenerationSessionPort sessionPort,
@@ -32,15 +34,16 @@ final class TeamGenerationRecoveryService {
   /// Observations recorded for tests and diagnostics.
   final observed = <(String, RecoveryAction)>[];
 
-  Future<void> recoverAll() async {
-    final jobs = await _jobStore.listAll('all-workspaces-scan-placeholder');
-    for (final job in jobs) {
-      await _recover(job);
+  @override
+  Future<void> recoverAll(Iterable<String> workspaceIds) async {
+    for (final workspaceId in workspaceIds) {
+      await recoverWorkspace(workspaceId);
     }
   }
 
   /// Recovers all workflows in one workspace (used by the app bootstrap per
   /// workspace directory scan).
+  @override
   Future<void> recoverWorkspace(String workspaceId) async {
     List<TeamGenerationJob> jobs;
     try {

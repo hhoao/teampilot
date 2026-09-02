@@ -16,6 +16,8 @@ import 'package:teampilot/services/team_generation/mcp/team_composer_mcp_handler
 import 'package:teampilot/services/team_generation/providers/managed_team_builder_skill_provider.dart';
 import 'package:teampilot/services/team_generation/team_generation_authorizer.dart';
 import 'package:teampilot/services/team_generation/team_generation_coordinator.dart';
+import 'package:teampilot/services/team_generation/team_generation_recovery_service.dart';
+import 'package:teampilot/services/team_generation/catalog/catalog_generation_stager.dart';
 
 import '../support/post_frame_test_harness.dart';
 
@@ -23,16 +25,36 @@ class _TargetRegistry extends Fake implements RuntimeTargetRegistry {}
 
 class _RemoteCliReadiness extends Fake implements RemoteCliReadinessService {}
 
+class _RecordingRecovery implements TeamGenerationRecoveryPort {
+  _RecordingRecovery({this.error});
+
+  final Object? error;
+  final workspaceIds = <String>[];
+
+  @override
+  Future<void> recoverAll(Iterable<String> workspaceIds) async {
+    this.workspaceIds.addAll(workspaceIds);
+    if (error != null) throw error!;
+  }
+
+  @override
+  Future<void> recoverWorkspace(String workspaceId) async {
+    workspaceIds.add(workspaceId);
+  }
+}
+
 class _RecordingBootstrapPort {
   int tokenIssuerAttachments = 0;
   int resourceResolverAttachments = 0;
   int composerHandlerAttachments = 0;
   int principalResolverAttachments = 0;
+  int catalogStagerAttachments = 0;
   String? Function(AppSession session)? tokenIssuer;
   SessionResourceProviderResolver? resourceProviderResolver;
   TeamComposerMcpHandler? composerHandler;
   TeamGenerationAuthorizer? authorizer;
   TeamComposerPrincipalFactory? principalResolver;
+  CatalogGenerationStager? catalogStager;
 
   TeamGenerationGraphBootstrapPort get port => TeamGenerationGraphBootstrapPort(
     setTokenIssuer: (issuer) {
@@ -51,6 +73,10 @@ class _RecordingBootstrapPort {
     setComposerPrincipalResolver: (resolver) {
       principalResolverAttachments++;
       principalResolver = resolver;
+    },
+    attachCatalogGenerationStager: (stager) {
+      catalogStagerAttachments++;
+      catalogStager = stager;
     },
   );
 }
@@ -107,6 +133,8 @@ void main() {
       expect(recording.composerHandler, same(graph.composerHandler));
       expect(recording.authorizer, same(graph.authorizer));
       expect(recording.principalResolverAttachments, 1);
+      expect(recording.catalogStagerAttachments, 1);
+      expect(recording.catalogStager, same(graph.catalogStager));
 
       final builder = AppSession(
         sessionId: 'builder',
@@ -162,4 +190,33 @@ void main() {
       );
     },
   );
+
+  test('bootstrap recovery scans discovered workspaces once ready', () async {
+    final recovery = _RecordingRecovery();
+
+    await runTeamGenerationBootstrapRecovery(
+      recovery: recovery,
+      workspaceIds: const ['ws-a', 'ws-b'],
+    );
+
+    expect(recovery.workspaceIds, ['ws-a', 'ws-b']);
+  });
+
+  test('bootstrap recovery reports failures through startup diagnostics', () async {
+    final failure = StateError('recovery failed');
+    Object? loggedError;
+    StackTrace? loggedStackTrace;
+
+    await runTeamGenerationBootstrapRecovery(
+      recovery: _RecordingRecovery(error: failure),
+      workspaceIds: const ['ws'],
+      diagnosticLogger: (error, stackTrace) {
+        loggedError = error;
+        loggedStackTrace = stackTrace;
+      },
+    );
+
+    expect(loggedError, same(failure));
+    expect(loggedStackTrace, isNotNull);
+  });
 }

@@ -52,6 +52,19 @@ final class TeamGenerationStartResult {
   final String builderSessionId;
 }
 
+/// Carries the durable builder ID to the landing error path after a builder
+/// connect/kickoff failure.
+final class TeamGenerationStartException implements Exception {
+  TeamGenerationStartException(this.builderSessionId, this.cause);
+
+  final String builderSessionId;
+  final Object cause;
+
+  @override
+  String toString() =>
+      'TeamGenerationStartException($builderSessionId): $cause';
+}
+
 /// Orchestrates the generation workflow: preflight → visible builder →
 /// (MCP-driven) finalize → commit → handoff → cleanup; plus cancel/retry.
 final class TeamGenerationCoordinator {
@@ -163,55 +176,68 @@ final class TeamGenerationCoordinator {
         capturedAt: snapshot.capturedAt,
       ),
     );
-    await _sessionPort.createBuilder(
-      workspace: workspace,
-      identity: SimpleLaunchIdentity.resolve(
-        preset: _presets().where((p) => p.id == generatorPresetId).firstOrNull,
-        cli: snapshot.nativeCli,
+    try {
+      await _sessionPort.createBuilder(
+        workspace: workspace,
+        identity: SimpleLaunchIdentity.resolve(
+          preset: _presets()
+              .where((p) => p.id == generatorPresetId)
+              .firstOrNull,
+          cli: snapshot.nativeCli,
+          expertKey: 'teampilot/builtin/team-builder',
+          presetId: generatorPresetId,
+        ),
+        projectFolderPath: projectFolderPath,
+        workingDirectoryPath: workingDirectoryPath,
+        workflowId: workflowId,
+        fixedSessionId: builderSessionId,
         expertKey: 'teampilot/builtin/team-builder',
-        presetId: generatorPresetId,
-      ),
-      projectFolderPath: projectFolderPath,
-      workingDirectoryPath: workingDirectoryPath,
-      workflowId: workflowId,
-      fixedSessionId: builderSessionId,
-      expertKey: 'teampilot/builtin/team-builder',
-    );
-    await _sessionPort.waitForInputReady(
-      builderSessionId,
-      builderSessionId,
-      directToPty: true,
-    );
-    final kickoff = buildTeamGenerationKickoff(originalPrompt);
-    final kickoffId = teamGenerationStableId('teamgen-kickoff-', workflowId);
-    await _sessionPort.persistHistoryPending(
-      builderSessionId,
-      builderSessionId,
-      kickoff,
-      deliveryId: kickoffId,
-    );
-    final kickoffResult = await _sessionPort.deliverTracked(
-      builderSessionId,
-      builderSessionId,
-      kickoff,
-      directToPty: true,
-      deliveryId: kickoffId,
-    );
-    if (!kickoffResult.submitted) {
-      throw StateError('team-generation builder kickoff failed');
-    }
-    await _jobStore.mutate(workspace.workspaceId, workflowId, (current) {
-      return current.copyWith(
-        phase: TeamGenerationPhase.planning,
-        receipts: {
-          ...current.receipts,
-          'builderKickoff': TeamGenerationReceipt(
-            state: TeamGenerationReceiptState.succeeded,
-            value: kickoffId,
-          ),
-        },
       );
-    });
+      await _sessionPort.waitForInputReady(
+        builderSessionId,
+        builderSessionId,
+        directToPty: true,
+      );
+      final kickoff = buildTeamGenerationKickoff(originalPrompt);
+      final kickoffId = teamGenerationStableId('teamgen-kickoff-', workflowId);
+      await _sessionPort.persistHistoryPending(
+        builderSessionId,
+        builderSessionId,
+        kickoff,
+        deliveryId: kickoffId,
+      );
+      final kickoffResult = await _sessionPort.deliverTracked(
+        builderSessionId,
+        builderSessionId,
+        kickoff,
+        directToPty: true,
+        deliveryId: kickoffId,
+      );
+      if (!kickoffResult.submitted) {
+        throw StateError('team-generation builder kickoff failed');
+      }
+      await _jobStore.mutate(workspace.workspaceId, workflowId, (current) {
+        return current.copyWith(
+          phase: TeamGenerationPhase.planning,
+          receipts: {
+            ...current.receipts,
+            'builderKickoff': TeamGenerationReceipt(
+              state: TeamGenerationReceiptState.succeeded,
+              value: kickoffId,
+            ),
+          },
+        );
+      });
+    } on Object catch (error) {
+      await _jobStore.mutate(workspace.workspaceId, workflowId, (current) {
+        return current.copyWith(
+          phase: TeamGenerationPhase.failed,
+          resumePhase: current.phase,
+          error: const TeamGenerationJobError(code: 'builder_start_failed'),
+        );
+      });
+      throw TeamGenerationStartException(builderSessionId, error);
+    }
     return TeamGenerationStartResult(
       workflowId: workflowId,
       builderSessionId: builderSessionId,

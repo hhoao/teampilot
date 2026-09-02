@@ -1,4 +1,5 @@
 import '../io/filesystem.dart';
+import '../../models/app_session.dart';
 
 enum CatalogOp {
   search,
@@ -47,6 +48,7 @@ class CatalogRequest {
     required this.arguments,
     required this.workFs,
     required this.allowedRoots,
+    this.purpose = SessionPurpose.normal,
     this.workflowId = '',
   });
 
@@ -63,6 +65,20 @@ class CatalogRequest {
   final Map<String, Object?> arguments;
   final Filesystem workFs;
   final List<String> allowedRoots;
+
+  /// Persisted session purpose used to authorize generation-only mutations.
+  final SessionPurpose purpose;
+}
+
+/// Workflow-scoped mutation seam. It keeps the catalog transport independent
+/// from the generation implementation while ensuring builder mutations never
+/// reach normal catalog modules before commit.
+abstract interface class CatalogGenerationMutationHandler {
+  Future<CatalogResult> handleMcpMutation({
+    required String kind,
+    required CatalogOp op,
+    required CatalogRequest request,
+  });
 }
 
 class CatalogResult {

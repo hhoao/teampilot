@@ -11,9 +11,12 @@ import '../../services/team_generation/team_generation_compatibility.dart';
 import '../../services/team_generation/team_generation_handoff_service.dart';
 import '../../services/team_generation/team_generation_job_store.dart';
 import '../../services/team_generation/team_generation_recovery_service.dart';
+import '../../services/team_generation/team_generation_recovery_port.dart';
 import '../../services/team_generation/team_generation_settings_store.dart';
 import '../../services/team_generation/mcp/team_composer_mcp_handler.dart';
 import '../../services/team_generation/team_generation_workflow_executor.dart';
+import '../../services/team_generation/catalog/catalog_generation_stager.dart';
+import '../../services/catalog/catalog_kind_registry.dart';
 import '../../services/team_generation/team_target_probe_service.dart';
 import '../../services/team_generation/runtime_team_target_probe_runner.dart';
 import '../../services/remote/remote_cli_readiness.dart';
@@ -30,6 +33,7 @@ import '../cubits/workbench/workbench_cubit.dart';
 import '../../services/cli/registry/cli_tool_registry.dart';
 import '../../services/storage/app_storage.dart';
 import '../../models/team_config.dart';
+import '../../utils/logging/logger.dart';
 
 import '../../services/team_generation/models/team_target_probe.dart';
 
@@ -41,6 +45,8 @@ import '../cubits/chat_cubit.dart';
 /// Control-plane holder for the team-generation workflow graph. Built once in
 /// [buildAppShell]; services receive interfaces, the coordinator and settings
 /// store are exposed for the landing UI.
+export '../services/team_generation/team_generation_recovery_port.dart';
+
 final class TeamGenerationGraph {
   TeamGenerationGraph({
     required this.coordinator,
@@ -48,6 +54,8 @@ final class TeamGenerationGraph {
     required this.authorizer,
     required this.jobStore,
     required this.composerHandler,
+    required this.catalogStager,
+    required this.recoveryService,
   });
 
   final TeamGenerationCoordinator coordinator;
@@ -55,6 +63,8 @@ final class TeamGenerationGraph {
   final TeamGenerationAuthorizer authorizer;
   final TeamGenerationJobStore jobStore;
   final TeamComposerMcpHandler composerHandler;
+  final CatalogGenerationStager catalogStager;
+  final TeamGenerationRecoveryService recoveryService;
 
   /// Builder-only resource injection owned by the generation composition
   /// graph. Normal Simple and Team sessions retain their ordinary resources.
@@ -102,6 +112,7 @@ final class TeamGenerationGraphBootstrapPort {
     required this.attachResourceProviderResolver,
     required this.attachComposerHandler,
     required this.setComposerPrincipalResolver,
+    required this.attachCatalogGenerationStager,
   });
 
   final void Function(String? Function(AppSession session) issuer)
@@ -115,6 +126,8 @@ final class TeamGenerationGraphBootstrapPort {
   attachComposerHandler;
   final void Function(TeamComposerPrincipalFactory resolver)
   setComposerPrincipalResolver;
+  final void Function(CatalogGenerationStager stager)
+  attachCatalogGenerationStager;
 }
 
 /// Attaches one graph-owned generation workflow to app-scoped consumers.
@@ -145,6 +158,7 @@ final class TeamGenerationGraphBootstrap {
       authorizer: graph.authorizer,
     );
     port.setComposerPrincipalResolver(principalResolver);
+    port.attachCatalogGenerationStager(graph.catalogStager);
   }
 }
 
@@ -194,8 +208,15 @@ TeamGenerationGraph buildTeamGenerationGraph({
   required CliToolRegistry cliToolRegistry,
   required RuntimeTargetRegistry targetRegistry,
   required RemoteCliReadinessService remoteCliReadiness,
+  CatalogKindRegistry? catalogRegistry,
 }) {
   final jobStore = TeamGenerationJobStore();
+  final workflowExecutor = TeamGenerationWorkflowExecutor();
+  final catalogStager = CatalogGenerationStager(
+    jobStore: jobStore,
+    executor: workflowExecutor,
+    registry: catalogRegistry,
+  );
   final settingsStore = TeamGenerationSettingsStore();
   final authorizer = TeamGenerationAuthorizer(
     sessionLookup: SessionRepoLookup(sessionRepo),
@@ -221,6 +242,7 @@ TeamGenerationGraph buildTeamGenerationGraph({
     sessionRepository: sessionRepo,
     resourceProvisioner: NoopResourceProvisioner(),
     publisher: CubitGeneratedTeamStatePublisher(teamCubit),
+    resourcePromoter: catalogStager,
   );
   final promptDeliveryStore = FilePromptDeliveryStore(
     root: AppStorage.fs.pathContext.join(
@@ -352,5 +374,29 @@ TeamGenerationGraph buildTeamGenerationGraph({
     authorizer: authorizer,
     jobStore: jobStore,
     composerHandler: handler,
+    catalogStager: catalogStager,
+    recoveryService: recoveryService,
+  );
+}
+
+/// Runs recovery only over workspace IDs discovered by the normal app
+/// bootstrap. It deliberately never invents a placeholder workspace.
+Future<void> runTeamGenerationBootstrapRecovery({
+  required TeamGenerationRecoveryPort recovery,
+  required Iterable<String> workspaceIds,
+  void Function(Object error, StackTrace stackTrace)? diagnosticLogger,
+}) async {
+  try {
+    await recovery.recoverAll(workspaceIds);
+  } on Object catch (error, stackTrace) {
+    (diagnosticLogger ?? _logTeamGenerationRecoveryFailure)(error, stackTrace);
+  }
+}
+
+void _logTeamGenerationRecoveryFailure(Object error, StackTrace stackTrace) {
+  appLogger.e(
+    '[team-generation] bootstrap recovery failed',
+    error: error,
+    stackTrace: stackTrace,
   );
 }

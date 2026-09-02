@@ -108,38 +108,12 @@ final class TeamGenerationHandoffService {
       );
     });
 
-    // Deliver the immutable original prompt to the canonical lead.
-    final deliveryId =
-        reservedJob.receipts['promptDelivery']?.value.isNotEmpty == true
-        ? reservedJob.receipts['promptDelivery']!.value
-        : teamGenerationStableId(
-            'teamgen-prompt-${reservedJob.attempt}-',
-            workflowId,
-          );
-    await _jobStore.mutate(workspace.workspaceId, workflowId, (current) {
-      return current.copyWith(
-        phase: _atLeast(current.phase, TeamGenerationPhase.delivering),
-        attempt: current.attempt,
-        receipts: {
-          ...current.receipts,
-          'promptDelivery': TeamGenerationReceipt(
-            state: TeamGenerationReceiptState.reserved,
-            value: current.receipts['promptDelivery']?.value.isNotEmpty == true
-                ? current.receipts['promptDelivery']!.value
-                : deliveryId,
-          ),
-        },
-      );
-    });
-
-    final effectiveDeliveryId =
-        (await _jobStore.read(
-          workspace.workspaceId,
-          workflowId,
-        ))?.receipts['promptDelivery']!.value ??
-        deliveryId;
-
-    final existingDelivery = await _promptStore.read(effectiveDeliveryId);
+    // Deliver the immutable original prompt to the canonical lead. A failed
+    // pre-submit delivery receives a new attempt/id; unresolved submit states
+    // are intentionally never replayed.
+    var current = reservedJob;
+    var deliveryId = _deliveryIdFor(current, workflowId);
+    var existingDelivery = await _promptStore.read(deliveryId);
     if (existingDelivery != null &&
         (existingDelivery.state == PromptDeliveryState.submitIssued ||
             existingDelivery.state == PromptDeliveryState.submittedUnknown)) {
@@ -155,11 +129,47 @@ final class TeamGenerationHandoffService {
           );
         });
         throw PromptDeliveryUnknownException(
-          effectiveDeliveryId,
-          'submit outcome unresolved for $effectiveDeliveryId',
+          deliveryId,
+          'submit outcome unresolved for $deliveryId',
         );
       }
     }
+    if (existingDelivery?.state == PromptDeliveryState.failed) {
+      current = await _jobStore.mutate(workspace.workspaceId, workflowId, (
+        job,
+      ) {
+        final attempt = job.attempt + 1;
+        return job.copyWith(
+          attempt: attempt,
+          receipts: {
+            ...job.receipts,
+            'promptDelivery': TeamGenerationReceipt(
+              state: TeamGenerationReceiptState.reserved,
+              value: _deliveryIdForAttempt(attempt, workflowId),
+            ),
+          },
+        );
+      });
+      deliveryId = _deliveryIdFor(current, workflowId);
+      throw StateError(
+        'prompt delivery failed: ${existingDelivery?.failureReason}',
+      );
+    }
+    current = await _jobStore.mutate(workspace.workspaceId, workflowId, (job) {
+      return job.copyWith(
+        phase: _atLeast(job.phase, TeamGenerationPhase.delivering),
+        receipts: {
+          ...job.receipts,
+          'promptDelivery': TeamGenerationReceipt(
+            state: TeamGenerationReceiptState.reserved,
+            value: job.receipts['promptDelivery']?.value.isNotEmpty == true
+                ? job.receipts['promptDelivery']!.value
+                : _deliveryIdForAttempt(job.attempt, workflowId),
+          ),
+        },
+      );
+    });
+    final effectiveDeliveryId = _deliveryIdFor(current, workflowId);
 
     await _sessionPort.waitForInputReady(
       destinationSessionId,
@@ -201,11 +211,34 @@ final class TeamGenerationHandoffService {
       throw StateError('prompt delivery failed: ${delivery.failureReason}');
     }
 
+    PromptSubmissionResult? submission;
     if (delivery.state == PromptDeliveryState.created ||
         delivery.state == PromptDeliveryState.waitingForInputSurface ||
         delivery.state == PromptDeliveryState.staged) {
       await _promptCoordinator.stage(delivery.id);
-      await _promptCoordinator.issueSubmit(delivery.id);
+      submission = await _promptCoordinator.issueSubmit(delivery.id);
+    }
+
+    final completedDelivery = await _promptStore.read(effectiveDeliveryId);
+    if (submission != PromptSubmissionResult.submitted &&
+        completedDelivery?.state == PromptDeliveryState.submittedUnknown) {
+      await _jobStore.mutate(workspace.workspaceId, workflowId, (job) {
+        return job.copyWith(
+          error: const TeamGenerationJobError(code: 'prompt_delivery_unknown'),
+        );
+      });
+      throw PromptDeliveryUnknownException(
+        effectiveDeliveryId,
+        'submit outcome unresolved for $effectiveDeliveryId',
+      );
+    }
+    if (completedDelivery?.state == PromptDeliveryState.failed) {
+      await _jobStore.mutate(workspace.workspaceId, workflowId, (job) {
+        return job.copyWith(attempt: job.attempt + 1);
+      });
+      throw StateError(
+        'prompt delivery failed: ${completedDelivery?.failureReason}',
+      );
     }
 
     await _jobStore.mutate(workspace.workspaceId, workflowId, (current) {
@@ -230,6 +263,15 @@ final class TeamGenerationHandoffService {
     if (team.teamMode == TeamMode.native) return team.cli;
     return team.cli;
   }
+
+  String _deliveryIdFor(TeamGenerationJob job, String workflowId) {
+    final receipt = job.receipts['promptDelivery'];
+    if (receipt?.value.isNotEmpty == true) return receipt!.value;
+    return _deliveryIdForAttempt(job.attempt, workflowId);
+  }
+
+  String _deliveryIdForAttempt(int attempt, String workflowId) =>
+      teamGenerationStableId('teamgen-prompt-$attempt-', workflowId);
 
   /// Forward-only phase guard: [to] wins unless the job already passed it.
   TeamGenerationPhase _atLeast(

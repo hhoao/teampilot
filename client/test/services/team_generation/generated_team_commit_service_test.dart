@@ -40,6 +40,7 @@ class _RecordingPublisher implements GeneratedTeamStatePublisher {
 
 class _FakeSessionRepository extends Fake implements SessionRepository {
   final placements = <String>[];
+  final placementTargets = <MemberTargetAssignments>[];
 
   @override
   Future<Workspace?> updateWorkspaceMemberPlacement(
@@ -48,6 +49,7 @@ class _FakeSessionRepository extends Fake implements SessionRepository {
     required MemberTargetAssignments targets,
   }) async {
     placements.add('$workspaceId/$teamId');
+    placementTargets.add(Map<String, String>.from(targets));
     return null;
   }
 }
@@ -62,6 +64,7 @@ void main() {
   late _RecordingProvisioner provisioner;
   late _RecordingPublisher publisher;
   late _FakeSessionRepository sessionRepository;
+  late LaunchProfileRepository profileRepository;
 
   Workspace workspace() => Workspace(
         workspaceId: 'ws',
@@ -146,12 +149,13 @@ void main() {
     provisioner = _RecordingProvisioner();
     publisher = _RecordingPublisher();
     sessionRepository = _FakeSessionRepository();
+    profileRepository = LaunchProfileRepository();
   });
 
   GeneratedTeamCommitService service() => GeneratedTeamCommitService(
         jobStore: store,
         expertStore: expertStore,
-        profileRepository: LaunchProfileRepository(),
+        profileRepository: profileRepository,
         sessionRepository: sessionRepository,
         resourceProvisioner: provisioner,
         publisher: publisher,
@@ -194,5 +198,82 @@ void main() {
 
     expect(second.team.id, first.team.id);
     expect(sessionRepository.placements.length, placementsAfterFirst + 1);
+  });
+
+  test('persists one stable unique expert per normalized roster role', () async {
+    final result = await service().commit(
+      workspace: workspace(),
+      workflowId: 'wf-12345678',
+      validatedRevision: 'valid-rev',
+    );
+
+    final experts = await expertStore.loadAll();
+    final expertKeys = experts.map((expert) => expert.key).toSet();
+    final rosterKeys = result.team.roster.map((slot) => slot.expertKey).toSet();
+    expect(experts, hasLength(2));
+    expect(rosterKeys, hasLength(2));
+    expect(rosterKeys, expertKeys);
+    expect(rosterKeys.any((key) => key.endsWith('/team-lead')), isTrue);
+    expect(rosterKeys.any((key) => key.endsWith('/worker')), isTrue);
+  });
+
+  test('persists validated per-role replicas and placement targets', () async {
+    final original = (await store.read('ws', 'wf-12345678'))!;
+    final plan = Map<String, Object?>.from(original.normalizedPlanJson!);
+    plan['members'] = [
+      {
+        'name': 'team-lead',
+        'role': 'Delivery Lead',
+        'responsibilities': 'Own integration',
+        'workingMethod': 'Delegate',
+        'presetId': '',
+        'replicas': 1,
+        'placement': {'local': 1},
+      },
+      {
+        'name': 'worker',
+        'role': 'Worker',
+        'responsibilities': 'Implements tasks',
+        'workingMethod': 'Test-first',
+        'presetId': '',
+        'replicas': 2,
+        'placement': {'local': 1, 'ssh-1': 1},
+      },
+    ];
+    await store.mutate(
+      'ws',
+      'wf-12345678',
+      (job) => job.copyWith(normalizedPlanJson: plan),
+    );
+    final mixedWorkspace = Workspace(
+      workspaceId: 'ws',
+      folders: const [
+        WorkspaceFolder(path: '/proj', targetId: 'local'),
+        WorkspaceFolder(path: '/remote', targetId: 'ssh-1'),
+      ],
+      createdAt: 1,
+      updatedAt: 1,
+    );
+
+    final result = await service().commit(
+      workspace: mixedWorkspace,
+      workflowId: 'wf-12345678',
+      validatedRevision: 'valid-rev',
+    );
+
+    final worker = result.team.roster.singleWhere((slot) => slot.id == 'worker');
+    expect(worker.overrides.replicas, 2);
+    expect(sessionRepository.placementTargets.single, {
+      'team-lead': 'local',
+      'worker-0': 'local',
+      'worker-1': 'ssh-1',
+    });
+    final persisted = (await profileRepository.loadTeamProfiles()).singleWhere(
+      (profile) => profile.id == result.team.id,
+    );
+    expect(
+      persisted.roster.singleWhere((slot) => slot.id == 'worker').overrides.replicas,
+      2,
+    );
   });
 }

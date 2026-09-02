@@ -3,6 +3,7 @@ import '../../models/discoverable_team.dart';
 import '../../models/team_config.dart';
 import '../../models/team_roster_slot.dart';
 import '../../models/workspace.dart';
+import '../../models/workspace_topology.dart';
 import '../../repositories/launch_profile_repository.dart';
 import '../../repositories/session_repository.dart';
 import '../../services/expert_hub/local_expert_store.dart';
@@ -17,6 +18,20 @@ import '../../utils/team/team_member_naming.dart';
 /// composition layer; tests supply fakes.
 abstract interface class TeamProfileResourceProvisioner {
   Future<void> provision(TeamProfile team);
+}
+
+/// Promotes builder-owned catalog payloads once the generated profile is
+/// durable. Normal catalog mutations stay outside this workflow.
+abstract interface class TeamGenerationResourcePromoter {
+  Future<void> promote({
+    required String workspaceId,
+    required String workflowId,
+  });
+
+  Future<bool> isPromotionComplete({
+    required String workspaceId,
+    required String workflowId,
+  });
 }
 
 /// Result of a successful or partially-failed commit.
@@ -35,8 +50,11 @@ final class GeneratedTeamCommitResult {
 /// Raised when a commit step fails; [profilePersisted] marks the
 /// forward-recovery boundary (plan: profile receipt succeeded).
 final class TeamGenerationCommitException implements Exception {
-  TeamGenerationCommitException(this.code, this.message,
-      {required this.profilePersisted});
+  TeamGenerationCommitException(
+    this.code,
+    this.message, {
+    required this.profilePersisted,
+  });
 
   final String code;
   final String message;
@@ -60,12 +78,14 @@ final class GeneratedTeamCommitService {
     required SessionRepository sessionRepository,
     required TeamProfileResourceProvisioner resourceProvisioner,
     required GeneratedTeamStatePublisher publisher,
+    TeamGenerationResourcePromoter? resourcePromoter,
   }) : _jobStore = jobStore,
        _expertStore = expertStore,
        _profileRepository = profileRepository,
        _sessionRepository = sessionRepository,
        _resourceProvisioner = resourceProvisioner,
-       _publisher = publisher;
+       _publisher = publisher,
+       _resourcePromoter = resourcePromoter;
 
   final TeamGenerationJobStore _jobStore;
   final LocalExpertStore _expertStore;
@@ -73,6 +93,7 @@ final class GeneratedTeamCommitService {
   final SessionRepository _sessionRepository;
   final TeamProfileResourceProvisioner _resourceProvisioner;
   final GeneratedTeamStatePublisher _publisher;
+  final TeamGenerationResourcePromoter? _resourcePromoter;
 
   /// Commits the validated plan recorded on the job.
   Future<GeneratedTeamCommitResult> commit({
@@ -110,8 +131,10 @@ final class GeneratedTeamCommitService {
         workflowId: workflowId,
         effect: 'promote',
         run: () async {
-          // Staged payloads were promoted by the stager at finalize; this
-          // receipt marks promotion completion.
+          await _resourcePromoter?.promote(
+            workspaceId: workspace.workspaceId,
+            workflowId: workflowId,
+          );
           return reservation.teamId;
         },
       );
@@ -124,14 +147,14 @@ final class GeneratedTeamCommitService {
         run: () async {
           final existingKeys = await _expertStore.loadAll();
           final known = existingKeys.map((member) => member.key).toSet();
-          for (final member in _generatedMembers(job)) {
+          for (final member in _generatedMembers(job, reservation)) {
             final key = member.key;
             if (!known.add(key)) continue;
             if (!await _expertStore.containsKey(key)) {
               await _expertStore.putClone(member);
             }
           }
-          return '${_generatedMembers(job).length}';
+          return '${_generatedMembers(job, reservation).length}';
         },
       );
 
@@ -156,10 +179,7 @@ final class GeneratedTeamCommitService {
       // 5. Placement + provision + publication: forward recovery from here.
       try {
         final folders = workspace.folders;
-        final placement = <String, Map<String, int>>{
-          for (final folder in folders)
-            if (folder.targetId.isNotEmpty) folder.targetId: {'team-lead': 1},
-        };
+        final placement = _validatedPlacement(job, team);
         final prepared = prepareMemberPlacementSave(
           team: team,
           folders: folders,
@@ -243,7 +263,7 @@ final class GeneratedTeamCommitService {
       value = await run();
     } on Object catch (e) {
       // Ambiguous exception: check whether the effect actually landed.
-      final landed = await _verifyEffect(workspaceId, workflowId, effect, run);
+      final landed = await _verifyEffect(workspaceId, workflowId, effect);
       await _jobStore.mutate(workspaceId, workflowId, (current) {
         return current.copyWith(
           receipts: {
@@ -279,12 +299,38 @@ final class GeneratedTeamCommitService {
     String workspaceId,
     String workflowId,
     String effect,
-    Future<String> Function() run,
   ) async {
-    // Receipt verification re-reads repositories per effect type; the simple
-    // re-run contract here is: reservation effect landed when a receipt says
-    // so. Individual effects verify through their repository reads above.
-    return false;
+    final job = await _jobStore.read(workspaceId, workflowId);
+    if (job == null) return false;
+    switch (effect) {
+      case 'expert':
+        return Future.wait(
+          _generatedMembers(
+            job,
+            job.teamReservation ?? _reserve(workflowId, job),
+          ).map((member) => _expertStore.containsKey(member.key)),
+        ).then((exists) => exists.every((value) => value));
+      case 'profile':
+        final teamId = job.teamReservation?.teamId ?? job.teamId;
+        if (teamId.isEmpty) return false;
+        return (await _profileRepository.loadTeamProfiles()).any(
+          (profile) => profile.id == teamId,
+        );
+      case 'promote':
+        return _resourcePromoter?.isPromotionComplete(
+              workspaceId: workspaceId,
+              workflowId: workflowId,
+            ) ??
+            job.stagedResources
+                .where((resource) => resource.stagedPath.isNotEmpty)
+                .isEmpty;
+      case 'provision':
+        // Provisioning has no durable observable effect outside its own
+        // receipt, so an exception must remain failed rather than replayed.
+        return false;
+      default:
+        return false;
+    }
   }
 
   Future<String?> _succeededReceipt(
@@ -306,7 +352,8 @@ final class GeneratedTeamCommitService {
   ) {
     final digest = teamGenerationStableId('', workflowId).substring(0, 8);
     final baseName = job.normalizedPlanJson?['team'] is Map
-        ? (((job.normalizedPlanJson!['team'] as Map)['name'] as String?) ?? 'Team')
+        ? (((job.normalizedPlanJson!['team'] as Map)['name'] as String?) ??
+              'Team')
         : 'Team';
     var teamName = baseName.trim().isEmpty ? 'Team' : baseName.trim();
     var teamId = TeamMemberNaming.slugTeamId(teamName);
@@ -319,24 +366,29 @@ final class GeneratedTeamCommitService {
     );
   }
 
-  List<DiscoverableMember> _generatedMembers(TeamGenerationJob job) {
+  List<DiscoverableMember> _generatedMembers(
+    TeamGenerationJob job,
+    TeamGenerationTeamReservation reservation,
+  ) {
     final planJson = job.normalizedPlanJson;
     if (planJson == null || planJson['members'] is! List) return const [];
     return [
       for (final raw in planJson['members'] as List)
         if (raw is Map)
-          DiscoverableMember(
-            key: 'local/generated/$workflowPlaceholder',
-            name: '${raw['role'] ?? raw['name'] ?? 'Member'}',
-            description: '${raw['responsibilities'] ?? ''}',
-            category: 'Generated',
-            source: ExpertMemberSource.local,
-            member: DiscoverableTeamMember(
-              name: '${raw['name'] ?? 'member'}',
-              responsibilities: '${raw['responsibilities'] ?? ''}',
-              playbook: '${raw['workingMethod'] ?? ''}',
+          if (_normalizedMemberId(raw).isNotEmpty)
+            DiscoverableMember(
+              key:
+                  'local/generated/${reservation.workflowDigest}/${_normalizedMemberId(raw)}',
+              name: '${raw['role'] ?? raw['name'] ?? 'Member'}',
+              description: '${raw['responsibilities'] ?? ''}',
+              category: 'Generated',
+              source: ExpertMemberSource.local,
+              member: DiscoverableTeamMember(
+                name: '${raw['name'] ?? 'member'}',
+                responsibilities: '${raw['responsibilities'] ?? ''}',
+                playbook: '${raw['workingMethod'] ?? ''}',
+              ),
             ),
-          ),
     ];
   }
 
@@ -349,19 +401,18 @@ final class GeneratedTeamCommitService {
     if (planJson['members'] is List) {
       for (final raw in planJson['members'] as List) {
         if (raw is! Map) continue;
-        final name = '${raw['name'] ?? 'member'}';
-        final id = name == 'team-lead'
-            ? 'team-lead'
-            : TeamMemberNaming.slugMemberName(name);
+        final id = _normalizedMemberId(raw);
+        if (id.isEmpty) continue;
         final explicit = '${raw['presetId'] ?? ''}';
         roster.add(
           TeamRosterSlot(
             id: id,
-            expertKey: 'local/generated/${reservation.workflowDigest}',
+            expertKey: 'local/generated/${reservation.workflowDigest}/$id',
             overrides: TeamRosterSlotOverrides(
               activePresetId: explicit.isEmpty
                   ? TeamProfile.inheritPresetId
                   : explicit,
+              replicas: _replicas(raw),
             ),
           ),
         );
@@ -372,6 +423,7 @@ final class GeneratedTeamCommitService {
       id: reservation.teamId,
       name: reservation.teamName,
       roster: roster,
+      members: _teamMembers(planJson),
       cli: mode == TeamMode.native
           ? job.settings.nativeCli
           : (job.settings.modelPool.isNotEmpty
@@ -381,9 +433,9 @@ final class GeneratedTeamCommitService {
       activePresetId: job.settings.modelPool.isNotEmpty
           ? job.settings.modelPool.first.preset.id
           : null,
-      skillIds: _resourceIds(planJson, 'skillIds'),
-      pluginIds: _resourceIds(planJson, 'pluginIds'),
-      mcpServerIds: _resourceIds(planJson, 'mcpServerIds'),
+      skillIds: _resourceIdsWithStaged(job, 'skill', 'skillIds'),
+      pluginIds: _resourceIdsWithStaged(job, 'plugin', 'pluginIds'),
+      mcpServerIds: _resourceIdsWithStaged(job, 'mcp', 'mcpServerIds'),
       createdAt: job.createdAt,
     );
   }
@@ -397,9 +449,81 @@ final class GeneratedTeamCommitService {
     ];
   }
 
+  List<TeamMemberConfig> _teamMembers(Map<String, Object?> planJson) {
+    final members = planJson['members'];
+    if (members is! List) return const [];
+    return [
+      for (final raw in members)
+        if (raw is Map)
+          if (_normalizedMemberId(raw).isNotEmpty)
+            TeamMemberConfig(
+              id: _normalizedMemberId(raw),
+              name: '${raw['role'] ?? raw['name'] ?? ''}',
+              agentType: '${raw['role'] ?? ''}',
+              responsibilities: '${raw['responsibilities'] ?? ''}',
+              playbook: '${raw['workingMethod'] ?? ''}',
+              replicas: _replicas(raw),
+              activePresetId: '${raw['presetId'] ?? ''}'.isEmpty
+                  ? TeamProfile.inheritPresetId
+                  : '${raw['presetId']}',
+            ),
+    ];
+  }
+
+  List<String> _resourceIdsWithStaged(
+    TeamGenerationJob job,
+    String kind,
+    String key,
+  ) => {
+    ..._resourceIds(job.normalizedPlanJson ?? const {}, key),
+    for (final resource in job.stagedResources)
+      if (resource.kind == kind && resource.refId.isNotEmpty) resource.refId,
+  }.toList();
+
+  MemberPlacementByTarget _validatedPlacement(
+    TeamGenerationJob job,
+    TeamProfile team,
+  ) {
+    final members = job.normalizedPlanJson?['members'];
+    if (members is! List) return const {};
+    final placement = <String, Map<String, int>>{};
+    for (final raw in members) {
+      if (raw is! Map) continue;
+      final id = _normalizedMemberId(raw);
+      if (id.isEmpty || !team.roster.any((slot) => slot.id == id)) {
+        continue;
+      }
+      final counts = raw['placement'];
+      if (counts is! Map) continue;
+      for (final entry in counts.entries) {
+        final targetId = '${entry.key}'.trim();
+        final replicas = entry.value is num ? entry.value.toInt() : 0;
+        if (targetId.isEmpty || replicas < 1) continue;
+        (placement[targetId] ??= <String, int>{})[id] = replicas;
+      }
+    }
+    return placement;
+  }
+
+  String _normalizedMemberId(Map raw) {
+    final name = '${raw['name'] ?? ''}';
+    return TeamMemberNaming.isTeamLeadName(name)
+        ? TeamMemberNaming.teamLeadName
+        : TeamMemberNaming.slugMemberName(name);
+  }
+
+  int _replicas(Map raw) {
+    final value = raw['replicas'];
+    return value is num ? value.toInt().clamp(0, 999) : 1;
+  }
+
   Future<void> _compensateExperts(TeamGenerationJob job) async {
     try {
-      final keys = _generatedMembers(job).map((member) => member.key).toSet();
+      final reservation = job.teamReservation ?? _reserve(job.workflowId, job);
+      final keys = _generatedMembers(
+        job,
+        reservation,
+      ).map((member) => member.key).toSet();
       for (final key in keys) {
         if (await _expertStore.containsKey(key)) {
           await _expertStore.delete(key);
@@ -418,5 +542,3 @@ abstract interface class GeneratedTeamStatePublisher {
     required Workspace workspace,
   });
 }
-
-const workflowPlaceholder = 'generated';

@@ -114,12 +114,80 @@ class _FakePort implements TeamGenerationSessionPort {
   Stream<PortActivity> activityStream(String sessionId) => const Stream.empty();
 }
 
+class _ResultCommands implements PromptDeliveryCommands {
+  _ResultCommands(this.result);
+
+  final PromptSubmissionResult result;
+  int submits = 0;
+
+  @override
+  Future<void> stage(
+    PromptDelivery delivery, {
+    required bool Function() canExecute,
+  }) async {}
+
+  @override
+  Future<PromptSubmissionResult> submit(
+    PromptDelivery delivery, {
+    required bool Function() canExecute,
+  }) async {
+    submits++;
+    return result;
+  }
+}
+
 void main() {
   late InMemoryFilesystem fs;
   late TeamGenerationJobStore store;
   late _FakePort port;
   late MemoryPromptDeliveryStore promptStore;
   late TeamGenerationHandoffService service;
+
+  TeamGenerationHandoffService serviceWith(PromptDeliveryCommands commands) =>
+      TeamGenerationHandoffService(
+        jobStore: store,
+        sessionPort: port,
+        promptCoordinator: PromptDeliveryCoordinator(
+          store: promptStore,
+          commands: commands,
+        ),
+        promptStore: promptStore,
+      );
+
+  Future<String> reserveDelivery(PromptDeliveryState state) async {
+    final destinationId = teamGenerationStableId('teamgen-', 'wf');
+    port.knownSessions.add(destinationId);
+    final deliveryId = teamGenerationStableId('teamgen-prompt-0-', 'wf');
+    await promptStore.save(
+      PromptDelivery(
+        id: deliveryId,
+        seat: RuntimeSeatKey(
+          sessionId: destinationId,
+          memberId: 'team-lead',
+        ),
+        cli: CliTool.claude,
+        text: 'exact\nrequest',
+        normalizedText: 'exact request',
+        promptEpoch: 1,
+        state: state,
+        createdAt: DateTime(2026),
+        updatedAt: DateTime(2026),
+        failureReason: state == PromptDeliveryState.failed ? 'failed' : null,
+      ),
+    );
+    await store.mutate('ws', 'wf', (job) {
+      return job.copyWith(
+        receipts: {
+          ...job.receipts,
+          'promptDelivery': TeamGenerationReceipt(
+            state: TeamGenerationReceiptState.reserved,
+            value: deliveryId,
+          ),
+        },
+      );
+    });
+    return deliveryId;
+  }
 
   Workspace workspace() => Workspace(
     workspaceId: 'ws',
@@ -218,6 +286,84 @@ void main() {
       expect(port.historySeedCalls, hasLength(2));
     },
   );
+
+  test('failed delivery reserves a genuinely new id for the next attempt', () async {
+    final failedId = await reserveDelivery(PromptDeliveryState.failed);
+    final commands = _ResultCommands(PromptSubmissionResult.submitted);
+    final retryingService = serviceWith(commands);
+
+    await expectLater(
+      retryingService.handoff(
+        workspace: workspace(),
+        team: team(),
+        workflowId: 'wf',
+      ),
+      throwsStateError,
+    );
+    final afterFailure = (await store.read('ws', 'wf'))!;
+    final nextId = afterFailure.receipts['promptDelivery']!.value;
+    expect(afterFailure.attempt, 1);
+    expect(nextId, isNot(failedId));
+
+    final retried = await retryingService.handoff(
+      workspace: workspace(),
+      team: team(),
+      workflowId: 'wf',
+    );
+    expect(retried.deliveryId, nextId);
+    expect(commands.submits, 1);
+  });
+
+  for (final ambiguousState in const [
+    PromptDeliveryState.submitIssued,
+    PromptDeliveryState.submittedUnknown,
+  ]) {
+    test('$ambiguousState is never replayed without a succeeded receipt', () async {
+      final deliveryId = await reserveDelivery(ambiguousState);
+      final commands = _ResultCommands(PromptSubmissionResult.submitted);
+
+      await expectLater(
+        serviceWith(commands).handoff(
+          workspace: workspace(),
+          team: team(),
+          workflowId: 'wf',
+        ),
+        throwsA(
+          isA<PromptDeliveryUnknownException>().having(
+            (error) => error.deliveryId,
+            'deliveryId',
+            deliveryId,
+          ),
+        ),
+      );
+
+      expect(commands.submits, 0);
+      expect(port.historySeedCalls, isEmpty);
+      final job = await store.read('ws', 'wf');
+      expect(job!.receipts['promptDeliveryDelivered'], isNull);
+    });
+  }
+
+  test('a dropped submit stays unknown and never records delivered', () async {
+    final commands = _ResultCommands(PromptSubmissionResult.dropped);
+
+    await expectLater(
+      serviceWith(commands).handoff(
+        workspace: workspace(),
+        team: team(),
+        workflowId: 'wf',
+      ),
+      throwsA(isA<PromptDeliveryUnknownException>()),
+    );
+
+    final job = await store.read('ws', 'wf');
+    expect(job!.receipts['promptDeliveryDelivered'], isNull);
+    final deliveryId = job.receipts['promptDelivery']!.value;
+    expect(
+      (await promptStore.read(deliveryId))!.state,
+      PromptDeliveryState.submittedUnknown,
+    );
+  });
 
   test(
     'handoff retains leading and trailing original prompt whitespace',

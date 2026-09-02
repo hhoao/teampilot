@@ -83,6 +83,9 @@ Future<bool> submitWorkspaceLandingGeneration(
     reportTeamGenerationStartFailure(
       chatCubit: chatCubit,
       userMessage: userMessage,
+      sessionId: error is TeamGenerationStartException
+          ? error.builderSessionId
+          : 'pending',
       error: error,
       stackTrace: stackTrace,
     );
@@ -96,13 +99,14 @@ typedef TeamGenerationDiagnosticLogger =
 void reportTeamGenerationStartFailure({
   required ChatCubit? chatCubit,
   required String? userMessage,
+  String sessionId = 'pending',
   required Object error,
   required StackTrace stackTrace,
   TeamGenerationDiagnosticLogger? diagnosticLogger,
 }) {
   (diagnosticLogger ?? _logTeamGenerationStartFailure)(error, stackTrace);
   if (chatCubit == null || userMessage == null) return;
-  chatCubit.failSessionConnect('pending', userMessage);
+  chatCubit.failSessionConnect(sessionId, userMessage);
 }
 
 void _logTeamGenerationStartFailure(Object error, StackTrace stackTrace) {
@@ -121,8 +125,26 @@ void showWorkspaceLandingGenerationPreflight(
   ScaffoldMessenger.maybeOf(context)?.showSnackBar(
     SnackBar(
       content: Text(
-        'generation preflight: ${issues.map((issue) => issue.code).join(', ')}',
+        issues
+            .map(
+              (issue) => teamGenerationPreflightIssueMessage(
+                AppLocalizations.of(context),
+                issue.code,
+              ),
+            )
+            .join('\n'),
       ),
     ),
   );
 }
+
+String teamGenerationPreflightIssueMessage(
+  AppLocalizations l10n,
+  String code,
+) => switch (code) {
+  'description_required' => l10n.teamGenerateErrorDescriptionRequired,
+  'model_pool_empty' => l10n.teamGenerateErrorPoolEmpty,
+  'generator_mcp_unsupported' => l10n.teamGenerateErrorGeneratorUnsupported,
+  'native_team_unsupported' => l10n.teamGenerateErrorNativeUnsupported,
+  _ => l10n.teamGenerateErrorStartFailed,
+};
