@@ -2622,6 +2622,7 @@
   "automationsScheduleOnce": "一次",
   "automationsScheduleSummaryOnce": "一次，{time}",
   "automationsSchedule": "调度",
+  "automationsScheduleType": "类型",
   "automationsScheduleModeOnce": "一次",
   "automationsScheduleModeCountdown": "倒计时",
   "automationsScheduleModeRecurring": "循环",

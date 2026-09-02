@@ -6616,6 +6616,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get automationsSchedule => 'Schedule';
 
   @override
+  String get automationsScheduleType => 'Type';
+
+  @override
   String get automationsScheduleModeOnce => 'Once';
 
   @override

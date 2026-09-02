@@ -6339,6 +6339,9 @@ class AppLocalizationsZh extends AppLocalizations {
   String get automationsSchedule => '调度';
 
   @override
+  String get automationsScheduleType => '类型';
+
+  @override
   String get automationsScheduleModeOnce => '一次';
 
   @override

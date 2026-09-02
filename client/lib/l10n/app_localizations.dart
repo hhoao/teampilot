@@ -11768,6 +11768,12 @@ abstract class AppLocalizations {
   /// **'Schedule'**
   String get automationsSchedule;
 
+  /// No description provided for @automationsScheduleType.
+  ///
+  /// In en, this message translates to:
+  /// **'Type'**
+  String get automationsScheduleType;
+
   /// No description provided for @automationsScheduleModeOnce.
   ///
   /// In en, this message translates to:

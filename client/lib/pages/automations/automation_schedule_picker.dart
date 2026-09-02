@@ -231,6 +231,9 @@ String localizedScheduleSummary(
   };
 }
 
+/// Preset countdown delays (minutes) shown in the duration select.
+const kCountdownQuickPickMinutes = [5, 15, 30, 60, 120];
+
 /// Chip / summary label for a countdown delay: whole hours render as `{hours} h`,
 /// everything else as `{minutes} min`.
 String countdownDelayLabel(AppLocalizations l10n, int minutes) {
@@ -238,6 +241,23 @@ String countdownDelayLabel(AppLocalizations l10n, int minutes) {
     return l10n.automationsCountdownHours(minutes ~/ 60);
   }
   return l10n.automationsCountdownMinutes(minutes);
+}
+
+/// Parses a countdown duration from a select value or custom input.
+int? parseCountdownMinutesSelectValue(AppLocalizations l10n, String raw) {
+  final trimmed = raw.trim();
+  if (trimmed.isEmpty) return null;
+  final direct = int.tryParse(trimmed);
+  if (direct != null && direct > 0) return direct;
+  for (final minutes in kCountdownQuickPickMinutes) {
+    if (trimmed == countdownDelayLabel(l10n, minutes)) return minutes;
+  }
+  final match = RegExp(r'^(\d+)').firstMatch(trimmed);
+  if (match != null) {
+    final parsed = int.tryParse(match.group(1)!);
+    if (parsed != null && parsed > 0) return parsed;
+  }
+  return null;
 }
 
 /// Zero-padded `yyyy-MM-dd`, kept locale-independent so saved schedule strings
@@ -309,36 +329,17 @@ class _AutomationSchedulePickerState extends State<AutomationSchedulePicker> {
           key: ValueKey('schedule-mode-${draft.mode.name}'),
           id: 'scheduleMode',
           initialValue: draft.mode,
-          label: Text(l10n.automationsSchedule),
+          label: Text(l10n.automationsScheduleType),
           layoutStyle: inline,
           labelWidth: widget.labelWidth,
           builder: (state) {
-            // The editor is a dialog (narrow viewport); mobileBreakpoint 0
-            // keeps all three modes visible as a pill instead of collapsing
-            // into a compact select that hides two of them.
-            return TpSegmentedPicker<AutomationScheduleMode>(
-              mobileBreakpoint: 0,
-              scrollable: false,
-              alignment: Alignment.centerLeft,
-              segments: [
-                TpSegmentedOption(
-                  value: AutomationScheduleMode.once,
-                  label: l10n.automationsScheduleModeOnce,
-                  icon: Icons.schedule_outlined,
-                ),
-                TpSegmentedOption(
-                  value: AutomationScheduleMode.countdown,
-                  label: l10n.automationsScheduleModeCountdown,
-                  icon: Icons.timer_outlined,
-                ),
-                TpSegmentedOption(
-                  value: AutomationScheduleMode.recurring,
-                  label: l10n.automationsScheduleModeRecurring,
-                  icon: Icons.repeat_outlined,
-                ),
-              ],
-              selected: state.value ?? draft.mode,
+            return TpSelect<AutomationScheduleMode>(
+              items: AutomationScheduleMode.values,
+              initialItem: state.value ?? draft.mode,
+              decoration: TpSelectDecorations.themed(context),
+              itemLabel: (mode) => scheduleModeLabel(l10n, mode),
               onChanged: (mode) {
+                if (mode == null) return;
                 state.didChange(mode);
                 _emit(_draftForMode(draft, mode));
               },
@@ -412,6 +413,17 @@ class _AutomationSchedulePickerState extends State<AutomationSchedulePicker> {
       onceTime: TimeOfDay(hour: onceAt.hour, minute: onceAt.minute),
     );
   }
+}
+
+String scheduleModeLabel(
+  AppLocalizations l10n,
+  AutomationScheduleMode mode,
+) {
+  return switch (mode) {
+    AutomationScheduleMode.once => l10n.automationsScheduleModeOnce,
+    AutomationScheduleMode.countdown => l10n.automationsScheduleModeCountdown,
+    AutomationScheduleMode.recurring => l10n.automationsScheduleModeRecurring,
+  };
 }
 
 String schedulePresetLabel(

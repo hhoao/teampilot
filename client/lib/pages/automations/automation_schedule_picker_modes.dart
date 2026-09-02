@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 
 import '../../l10n/l10n_extensions.dart';
 import '../../models/automation.dart';
@@ -78,9 +77,9 @@ class AutomationScheduleOnceRows extends StatelessWidget {
   }
 }
 
-/// Quick-pick chips + custom minutes field + absolute-run preview for
+/// Duration select with preset options and custom minutes for
 /// [AutomationScheduleMode.countdown].
-class AutomationScheduleCountdownRows extends StatefulWidget {
+class AutomationScheduleCountdownRows extends StatelessWidget {
   const AutomationScheduleCountdownRows({
     required this.draft,
     required this.labelWidth,
@@ -93,99 +92,42 @@ class AutomationScheduleCountdownRows extends StatefulWidget {
   final ValueChanged<AutomationScheduleDraft> onChanged;
 
   @override
-  State<AutomationScheduleCountdownRows> createState() =>
-      _AutomationScheduleCountdownRowsState();
-}
-
-class _AutomationScheduleCountdownRowsState
-    extends State<AutomationScheduleCountdownRows> {
-  late final TextEditingController _minutesCtl;
-  bool _customActive = false;
-
-  @override
-  void initState() {
-    super.initState();
-    _minutesCtl = TextEditingController(
-      text: widget.draft.countdownMinutes?.toString() ?? '',
-    );
-  }
-
-  @override
-  void didUpdateWidget(covariant AutomationScheduleCountdownRows oldWidget) {
-    super.didUpdateWidget(oldWidget);
-    final minutes = widget.draft.countdownMinutes;
-    // Same draft-change guard as the cron field: the digitsOnly formatter keeps
-    // typed text parseable, but an unconditional sync would still clobber the
-    // field mid-edit whenever the host rebuilds for an unrelated reason.
-    if (oldWidget.draft.countdownMinutes != widget.draft.countdownMinutes &&
-        !_customActive &&
-        _minutesCtl.text != (minutes?.toString() ?? '')) {
-      _minutesCtl.text = minutes?.toString() ?? '';
-    }
-  }
-
-  @override
-  void dispose() {
-    _minutesCtl.dispose();
-    super.dispose();
-  }
-
-  @override
   Widget build(BuildContext context) {
     final l10n = context.l10n;
-    final draft = widget.draft;
+    final draft = this.draft;
     final minutes = draft.countdownMinutes ?? 15;
+    final selectValue = countdownDelayLabel(l10n, minutes);
+    final presetItems = kCountdownQuickPickMinutes
+        .map((m) => countdownDelayLabel(l10n, m))
+        .toList();
     final runAt = DateTime.fromMillisecondsSinceEpoch(
       countdownToRunAtMs(durationMinutes: minutes, now: DateTime.now()),
     );
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        Wrap(
-          spacing: 8,
-          runSpacing: 8,
-          children: [
-            for (final quick in const [5, 15, 30, 60, 120])
-              ChoiceChip(
-                label: Text(countdownDelayLabel(l10n, quick)),
-                selected: minutes == quick && !_customActive,
-                visualDensity: VisualDensity.compact,
-                onSelected: (_) {
-                  setState(() => _customActive = false);
-                  _minutesCtl.text = quick.toString();
-                  widget.onChanged(draft.copyWith(countdownMinutes: quick));
-                },
-              ),
-          ],
-        ),
-        const SizedBox(height: 12),
         TpFormField<String>(
           id: 'scheduleCountdownMinutes',
-          initialValue: _minutesCtl.text,
-          label: Text(l10n.automationsCountdownCustom),
+          initialValue: selectValue,
+          label: Text(l10n.automationsTime),
           layoutStyle: TpFormFieldLayoutStyle.inline,
-          labelWidth: widget.labelWidth,
+          labelWidth: labelWidth,
           builder: (state) {
-            return TextField(
-              controller: _minutesCtl,
-              focusNode: state.focusNode,
-              keyboardType: TextInputType.number,
-              inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+            return TpSelectWithCustomInput(
+              value: selectValue,
+              items: presetItems,
+              hintText: l10n.automationsTime,
+              decoration: TpSelectDecorations.themed(context),
+              searchable: false,
+              customInputTooltip: l10n.automationsCountdownCustom,
+              cancelLabel: l10n.cancel,
+              confirmLabel: l10n.confirm,
               onChanged: (value) {
                 state.didChange(value);
-                final trimmed = value.trim();
-                final parsed = int.tryParse(trimmed);
-                setState(() => _customActive = trimmed.isNotEmpty);
-                if (parsed == null || parsed <= 0) {
-                  // Keep typing; nothing meaningful to emit yet.
-                  return;
-                }
-                widget.onChanged(draft.copyWith(countdownMinutes: parsed));
+                final parsed = parseCountdownMinutesSelectValue(l10n, value);
+                if (parsed == null) return;
+                onChanged(draft.copyWith(countdownMinutes: parsed));
               },
-              decoration: InputDecoration(
-                errorText: state.hasError ? '' : null,
-                errorStyle: const TextStyle(height: 0, fontSize: 0),
-              ),
             );
           },
         ),
@@ -447,11 +389,11 @@ class _DateFieldTrigger extends StatelessWidget {
         children: [
           Icon(
             Icons.calendar_today_outlined,
-            size: context.tpIconSizes.sm,
+            size: context.tpIconSizes.md,
             color: scheme.onSurfaceVariant,
           ),
           const SizedBox(width: 6),
-          Text(label, style: TpTextStyles.of(context).sm),
+          Text(label, style: TpTextStyles.of(context).md),
         ],
       ),
     );

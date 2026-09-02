@@ -17,6 +17,7 @@ import 'package:teampilot/models/team_config.dart';
 import 'package:teampilot/models/workspace.dart';
 import 'package:teampilot/models/workspace_folder.dart';
 import 'package:teampilot/pages/automations/automation_editor_dialog.dart';
+import 'package:teampilot/pages/automations/automation_schedule_picker.dart';
 import 'package:teampilot/services/automation/automation_schedule_defaults.dart';
 import 'package:teampilot/repositories/cli_presets_repository.dart';
 import 'package:teampilot/repositories/session_repository.dart';
@@ -434,10 +435,10 @@ void main() {
       tester.element(find.byType(AutomationEditorDialog)),
     );
 
-    final segmented = tester.widget<TpSegmentedPicker<AutomationScheduleMode>>(
-      find.byType(TpSegmentedPicker<AutomationScheduleMode>),
+    final modeSelect = tester.widget<TpSelect<AutomationScheduleMode>>(
+      find.byType(TpSelect<AutomationScheduleMode>),
     );
-    expect(segmented.selected, AutomationScheduleMode.once);
+    expect(modeSelect.initialItem, AutomationScheduleMode.once);
     expect(find.byType(TpDatePicker), findsOneWidget);
     expect(find.byType(TpTimePicker), findsOneWidget);
     expect(find.text(l10n.automationsMaxRunCount), findsNothing);
@@ -509,7 +510,11 @@ void main() {
 
     await tester.enterText(find.byType(TextField).first, 'hello');
     await tester.enterText(find.byType(TpTextarea), 'ping');
-    await tester.tap(find.text(l10n.automationsScheduleModeCountdown));
+    await selectScheduleModeInDialog(
+      tester,
+      l10n,
+      AutomationScheduleMode.countdown,
+    );
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 200));
 
@@ -559,7 +564,11 @@ void main() {
     final l10n = l10nOfDialog(tester);
     expect(find.text(l10n.automationsMaxRunCount), findsNothing);
 
-    await tester.tap(find.text(l10n.automationsScheduleModeRecurring));
+    await selectScheduleModeInDialog(
+      tester,
+      l10n,
+      AutomationScheduleMode.recurring,
+    );
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 200));
     expect(find.text(l10n.automationsMaxRunCount), findsOneWidget);
@@ -679,8 +688,7 @@ void main() {
     await tester.pump();
     final enabledSwitch = find.byType(Switch).first;
     expect(tester.widget<Switch>(enabledSwitch).onChanged, isNotNull);
-    await tester.tap(enabledSwitch);
-    await tester.pump();
+    await tapEnabledSwitch(tester);
 
     await tester.runAsync(() async {
       await tester.tap(find.text(l10n.save));
@@ -755,8 +763,7 @@ void main() {
       await tester.pump();
       final enabledSwitch = find.byType(Switch).first;
       expect(tester.widget<Switch>(enabledSwitch).onChanged, isNotNull);
-      await tester.tap(enabledSwitch);
-      await tester.pump();
+      await tapEnabledSwitch(tester);
 
       await tester.runAsync(() async {
         await tester.tap(find.text(l10n.save));
@@ -813,7 +820,11 @@ void main() {
 
       final l10n = l10nOfDialog(tester);
 
-      await tester.tap(find.text(l10n.automationsScheduleModeOnce));
+      await selectScheduleModeInDialog(
+        tester,
+        l10n,
+        AutomationScheduleMode.once,
+      );
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 200));
 
@@ -887,13 +898,16 @@ void main() {
 
     // Converting to recurring releases the once limit lock (the run-limit
     // field is empty in recurring mode), so the switch is operable again.
-    await tester.tap(find.text(l10n.automationsScheduleModeRecurring));
+    await selectScheduleModeInDialog(
+      tester,
+      l10n,
+      AutomationScheduleMode.recurring,
+    );
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 200));
     final enabledSwitch = find.byType(Switch).first;
     expect(tester.widget<Switch>(enabledSwitch).onChanged, isNotNull);
-    await tester.tap(enabledSwitch);
-    await tester.pump();
+    await tapEnabledSwitch(tester);
 
     await tester.runAsync(() async {
       await tester.tap(find.text(l10n.save));
@@ -1018,8 +1032,7 @@ void main() {
         '59',
       );
       await tester.pump();
-      await tester.tap(find.byType(Switch).first);
-      await tester.pump();
+      await tapEnabledSwitch(tester);
       await tester.runAsync(() async {
         await tester.tap(find.text(l10n.save));
         await pumpUntilClosed(tester);
@@ -1044,6 +1057,25 @@ void main() {
 
 AppLocalizations l10nOfDialog(WidgetTester tester) =>
     AppLocalizations.of(tester.element(find.byType(AutomationEditorDialog)));
+
+Future<void> selectScheduleModeInDialog(
+  WidgetTester tester,
+  AppLocalizations l10n,
+  AutomationScheduleMode mode,
+) async {
+  await tester.tap(find.byType(TpSelect<AutomationScheduleMode>));
+  await tester.pumpAndSettle();
+  await tester.tap(find.text(scheduleModeLabel(l10n, mode)).last);
+  await tester.pumpAndSettle();
+}
+
+Future<void> tapEnabledSwitch(WidgetTester tester) async {
+  final switchFinder = find.byType(Switch).first;
+  await tester.ensureVisible(switchFinder);
+  await tester.pumpAndSettle();
+  await tester.tap(switchFinder);
+  await tester.pump();
+}
 
 /// Drains until the editor dialog pops after a successful save (the dialog
 /// closes itself once [AutomationCubit.save] resolves; repository IO runs
