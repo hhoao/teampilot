@@ -1060,16 +1060,25 @@ class _SessionChatViewState extends State<SessionChatView> {
         widget.session.sessionId,
       ),
       retryFailed: (record) async {
+        if (!mounted) return true;
+        final permissionWaiting =
+            AgentPermissionAttentionBanner.isSelectedSeatWaiting(
+              attention: context.read<AgentAttentionCubit>(),
+              session: widget.session,
+              selectedMemberId: widget.selectedMemberId,
+            );
+        if (_seat == null || permissionWaiting) return false;
         if (_isSubmitting || !_retryingFailedMessageIds.add(record.id)) {
-          return;
+          return true;
         }
         try {
-          if (!mounted) return;
+          if (!mounted) return true;
           await _deliverComposeMessage(
             record.text,
             retryRecord: record,
             clearCompose: false,
           );
+          return true;
         } finally {
           _retryingFailedMessageIds.remove(record.id);
         }

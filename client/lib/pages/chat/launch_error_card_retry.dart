@@ -5,7 +5,7 @@ import '../../models/failed_message_record.dart';
 /// bubble path, or reconnect-only when nothing to redeliver.
 Future<void> runLaunchErrorCardRetry({
   required Future<List<FailedMessageRecord>> Function() loadRecords,
-  required Future<void> Function(FailedMessageRecord record) retryFailed,
+  required Future<bool> Function(FailedMessageRecord record) retryFailed,
   required void Function() reconnectOnly,
 }) async {
   final latest = latestFailedMessageRecord(await loadRecords());
@@ -13,5 +13,6 @@ Future<void> runLaunchErrorCardRetry({
     reconnectOnly();
     return;
   }
-  await retryFailed(latest);
+  final handled = await retryFailed(latest);
+  if (!handled) reconnectOnly();
 }

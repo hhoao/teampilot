@@ -10,6 +10,7 @@ void main() {
       loadRecords: () async => const [],
       retryFailed: (_) async {
         retries++;
+        return true;
       },
       reconnectOnly: () => reconnect++,
     );
@@ -34,7 +35,10 @@ void main() {
           status: FailedMessageStatus.failed,
         ),
       ],
-      retryFailed: (r) async => seen = r,
+      retryFailed: (r) async {
+        seen = r;
+        return true;
+      },
       reconnectOnly: () {},
     );
     expect(seen?.id, 'pending:new');
@@ -51,9 +55,29 @@ void main() {
           status: FailedMessageStatus.sending,
         ),
       ],
-      retryFailed: (r) async => seen = r,
+      retryFailed: (r) async {
+        seen = r;
+        return true;
+      },
       reconnectOnly: () {},
     );
     expect(seen?.id, 'pending:send');
+  });
+
+  test('unhandled failed retry falls back to reconnectOnly', () async {
+    var reconnect = 0;
+    await runLaunchErrorCardRetry(
+      loadRecords: () async => [
+        FailedMessageRecord(
+          id: 'pending:blocked',
+          text: 'retry me',
+          createdAt: DateTime.utc(2026, 1, 1),
+          status: FailedMessageStatus.failed,
+        ),
+      ],
+      retryFailed: (_) async => false,
+      reconnectOnly: () => reconnect++,
+    );
+    expect(reconnect, 1);
   });
 }
