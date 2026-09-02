@@ -179,6 +179,7 @@ final class TeamGenerationRecoveryService
       'teamgen-kickoff-',
       job.workflowId,
     );
+    await _sessionPort.select(sessionId);
     await _sessionPort.waitForInputReady(
       sessionId,
       sessionId,

@@ -121,8 +121,17 @@ final class GeneratedTeamPlanValidator {
     plan = _normalizePlacements(plan);
 
     final frozen = input.settings;
-    final poolById = {
-      for (final entry in frozen.modelPool) entry.preset.id: entry,
+    final poolById = <String, EffectiveGenerateModelPoolEntry>{
+      for (final entry in frozen.modelPool)
+        if ((entry.preset.id.isNotEmpty
+                ? entry.preset.id
+                : entry.source.presetId)
+            .trim()
+            .isNotEmpty)
+          (entry.preset.id.isNotEmpty
+                  ? entry.preset.id
+                  : entry.source.presetId)
+              .trim(): entry,
     };
     if (poolById.isEmpty) {
       issues.add(_error('model_pool_empty'));

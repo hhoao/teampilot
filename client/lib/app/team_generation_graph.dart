@@ -3,7 +3,6 @@ import '../../repositories/session_repository.dart';
 import '../../services/expert_hub/local_expert_store.dart';
 import '../../services/team_generation/generated_team_commit_service.dart';
 import '../../services/team_generation/generated_team_plan_validator.dart';
-import '../../services/team_generation/models/team_generation_job.dart';
 import '../../services/team_generation/team_generation_authorizer.dart';
 import '../../services/team_generation/team_generation_builder_idle_waiter.dart';
 import '../../services/team_generation/team_generation_cleanup_service.dart';
@@ -11,8 +10,6 @@ import '../../services/team_generation/team_generation_coordinator.dart';
 import '../../services/team_generation/team_generation_compatibility.dart';
 import '../../services/team_generation/team_generation_handoff_service.dart';
 import '../../services/team_generation/team_generation_job_store.dart';
-import '../../services/team_generation/team_generation_recovery_service.dart';
-import '../../services/team_generation/team_generation_recovery_port.dart';
 import '../../services/team_generation/team_generation_settings_store.dart';
 import '../../services/team_generation/mcp/team_composer_mcp_handler.dart';
 import '../../services/team_generation/team_generation_workflow_executor.dart';
@@ -34,8 +31,8 @@ import '../cubits/workbench/workbench_cubit.dart';
 import '../../services/cli/registry/cli_tool_registry.dart';
 import '../../services/storage/app_storage.dart';
 import '../../models/team_config.dart';
-import '../../utils/logging/logger.dart';
 
+import '../../services/team_generation/team_generation_context_payload.dart';
 import '../../services/team_generation/models/team_target_probe.dart';
 
 import '../cubits/chat/tab_member_pty_delivery.dart';
@@ -46,7 +43,6 @@ import '../cubits/chat_cubit.dart';
 /// Control-plane holder for the team-generation workflow graph. Built once in
 /// [buildAppShell]; services receive interfaces, the coordinator and settings
 /// store are exposed for the landing UI.
-export '../services/team_generation/team_generation_recovery_port.dart';
 
 final class TeamGenerationGraph {
   TeamGenerationGraph({
@@ -56,7 +52,6 @@ final class TeamGenerationGraph {
     required this.jobStore,
     required this.composerHandler,
     required this.catalogStager,
-    required this.recoveryService,
   });
 
   final TeamGenerationCoordinator coordinator;
@@ -65,7 +60,6 @@ final class TeamGenerationGraph {
   final TeamGenerationJobStore jobStore;
   final TeamComposerMcpHandler composerHandler;
   final CatalogGenerationStager catalogStager;
-  final TeamGenerationRecoveryService recoveryService;
 
   /// Builder-only resource injection owned by the generation composition
   /// graph. Normal Simple and Team sessions retain their ordinary resources.
@@ -199,62 +193,6 @@ final class NoopResourceProvisioner implements TeamProfileResourceProvisioner {
   Future<void> provision(TeamProfile team) async {}
 }
 
-final class _TeamGenerationRecoveryForwarder
-    implements TeamGenerationRecoveryForwarder {
-  _TeamGenerationRecoveryForwarder({
-    required GeneratedTeamCommitService commitService,
-    required TeamGenerationHandoffService handoffService,
-    required TeamGenerationCleanupService cleanupService,
-    required Future<Workspace?> Function(String workspaceId) workspaceResolver,
-  }) : _commitService = commitService,
-       _handoffService = handoffService,
-       _cleanupService = cleanupService,
-       _workspaceResolver = workspaceResolver;
-
-  final GeneratedTeamCommitService _commitService;
-  final TeamGenerationHandoffService _handoffService;
-  final TeamGenerationCleanupService _cleanupService;
-  final Future<Workspace?> Function(String workspaceId) _workspaceResolver;
-
-  @override
-  Future<void> commitForward(
-    TeamGenerationJob job, {
-    required bool retainBuilder,
-  }) async {
-    await _commitAndHandoff(job);
-    if (!retainBuilder) await cleanupForward(job);
-  }
-
-  @override
-  Future<void> launchForward(TeamGenerationJob job) async {
-    await _commitAndHandoff(job);
-    await cleanupForward(job);
-  }
-
-  @override
-  Future<void> cleanupForward(TeamGenerationJob job) async {
-    await _cleanupService.cleanup(
-      workspaceId: job.workspaceId,
-      workflowId: job.workflowId,
-    );
-  }
-
-  Future<void> _commitAndHandoff(TeamGenerationJob job) async {
-    final workspace = await _workspaceResolver(job.workspaceId);
-    if (workspace == null) throw StateError('generation workspace missing');
-    final committed = await _commitService.commit(
-      workspace: workspace,
-      workflowId: job.workflowId,
-      validatedRevision: job.validatedRevision,
-    );
-    await _handoffService.handoff(
-      workspace: workspace,
-      team: committed.team,
-      workflowId: job.workflowId,
-    );
-  }
-}
-
 /// Builds the team-generation object graph in dependency order.
 TeamGenerationGraph buildTeamGenerationGraph({
   required ChatCubit chatCubit,
@@ -331,16 +269,6 @@ TeamGenerationGraph buildTeamGenerationGraph({
     return null;
   }
 
-  final recoveryService = TeamGenerationRecoveryService(
-    jobStore: jobStore,
-    sessionPort: sessionPort,
-    forwarder: _TeamGenerationRecoveryForwarder(
-      commitService: commitService,
-      handoffService: handoffService,
-      cleanupService: cleanupService,
-      workspaceResolver: workspaceResolver,
-    ),
-  );
   final coordinator = TeamGenerationCoordinator(
     jobStore: jobStore,
     settingsStore: settingsStore,
@@ -356,24 +284,10 @@ TeamGenerationGraph buildTeamGenerationGraph({
     workspaceResolver: workspaceResolver,
   );
   final handler = TeamComposerMcpHandler(
-    context: TeamComposerHandlerContext(
+    context: TeamComposerToolContext(
       jobStore: jobStore,
       executor: TeamGenerationWorkflowExecutor(),
-      contextProvider: (job) async => {
-        'workflowId': job.workflowId,
-        'originalPrompt': job.originalPrompt,
-        'settingsRevision': job.settings.revision,
-        'modelPool': [
-          for (final entry in job.settings.modelPool)
-            {
-              'rank': entry.rank,
-              'presetId': entry.preset.id,
-              'description': entry.source.description,
-              'tags': entry.source.tags,
-            },
-        ],
-        'launch': job.launch.toJson(),
-      },
+      contextProvider: (job) async => teamGenerationContextPayload(job),
       probeRunner: (job) async =>
           job.probeSnapshotJson ??
           (await probeService.probe(
@@ -400,7 +314,7 @@ TeamGenerationGraph buildTeamGenerationGraph({
             existingExpertKeys: const {},
             presetDigests: {
               for (final entry in job.settings.modelPool)
-                entry.preset.id: [
+                effectiveTeamGenerationPresetId(entry): [
                   'cli:',
                   entry.preset.cli.value,
                   'provider:',
@@ -440,29 +354,5 @@ TeamGenerationGraph buildTeamGenerationGraph({
     jobStore: jobStore,
     composerHandler: handler,
     catalogStager: catalogStager,
-    recoveryService: recoveryService,
-  );
-}
-
-/// Runs recovery only over workspace IDs discovered by the normal app
-/// bootstrap. It deliberately never invents a placeholder workspace.
-Future<void> runTeamGenerationBootstrapRecovery({
-  required TeamGenerationRecoveryPort recovery,
-  required Future<Iterable<String>> workspaceIdsAfterDiscovery,
-  void Function(Object error, StackTrace stackTrace)? diagnosticLogger,
-}) async {
-  try {
-    final workspaceIds = await workspaceIdsAfterDiscovery;
-    await recovery.recoverAll(workspaceIds);
-  } on Object catch (error, stackTrace) {
-    (diagnosticLogger ?? _logTeamGenerationRecoveryFailure)(error, stackTrace);
-  }
-}
-
-void _logTeamGenerationRecoveryFailure(Object error, StackTrace stackTrace) {
-  appLogger.e(
-    '[team-generation] bootstrap recovery failed',
-    error: error,
-    stackTrace: stackTrace,
   );
 }

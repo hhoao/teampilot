@@ -85,6 +85,58 @@ void main() {
     expect(secondSnapshot.modelPool.single.source.tags, ['reasoning']);
     expect(secondSnapshot.revision, firstSnapshot.revision);
   });
+
+  test('settings snapshot round-trip keeps nested preset ids', () {
+    final snapshot = resolveTeamGenerationSettingsSnapshot(
+      settings: TeamGenerationSettings(
+        teamMode: TeamMode.mixed,
+        modelPool: [
+          GenerateModelPoolEntry(
+            presetId: 'claude-strong',
+            description: 'lead',
+            tags: ['strong'],
+          ),
+        ],
+      ),
+      presets: [_preset('claude-strong', CliTool.claude)],
+      registry: CliToolRegistry.builtIn(),
+      capturedAt: 42,
+    );
+
+    final reloaded = TeamGenerationSettingsSnapshot.fromJson(snapshot.toJson());
+    expect(reloaded.modelPool.single.preset.id, 'claude-strong');
+    expect(reloaded.modelPool.single.source.presetId, 'claude-strong');
+    expect(reloaded.teamMode, TeamMode.mixed);
+  });
+
+  test('settings snapshot recovers preset id from source when nested id empty', () {
+    final reloaded = TeamGenerationSettingsSnapshot.fromJson({
+      'revision': 'r1',
+      'capturedAt': 1,
+      'teamMode': 'mixed',
+      'nativeCli': 'claude',
+      'modelPool': [
+        {
+          'rank': 1,
+          'source': {
+            'presetId': 'claude-strong',
+            'description': 'lead',
+            'tags': <String>[],
+          },
+          'preset': {
+            'id': '',
+            'name': 'claude-strong',
+            'cli': 'claude',
+            'provider': 'p',
+            'model': 'm',
+            'effort': '',
+          },
+        },
+      ],
+    });
+
+    expect(reloaded.modelPool.single.preset.id, 'claude-strong');
+  });
 }
 
 CliPreset _preset(String id, CliTool cli) {

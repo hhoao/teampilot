@@ -39,7 +39,7 @@ final class CubitTeamGenerationSessionPort
     required String fixedSessionId,
     required String expertKey,
     String emptyDisplayTitleFallback = 'Team Builder',
-    bool preserveWorkbenchView = true,
+    bool preserveWorkbenchView = false,
   }) async {
     final status = await _openSession(
       workspace: workspace,

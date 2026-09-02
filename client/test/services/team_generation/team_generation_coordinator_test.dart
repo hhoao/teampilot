@@ -49,7 +49,9 @@ class _RecordingSessionPort implements TeamGenerationSessionPort {
     String emptyDisplayTitleFallback = 'Team Builder',
     bool preserveWorkbenchView = true,
   }) async {
-    events.add('builderCreated');
+    events.add(
+      'builderCreated:preserveWorkbenchView=$preserveWorkbenchView',
+    );
     sessions[fixedSessionId] = AppSession(
       sessionId: fixedSessionId,
       workspaceId: workspace.workspaceId,
@@ -86,8 +88,9 @@ class _RecordingSessionPort implements TeamGenerationSessionPort {
       SessionPortOpenResult(status: 'opened', sessionId: sessionId);
 
   @override
-  Future<void> select(String sessionId) async {}
-
+  Future<void> select(String sessionId) async {
+    events.add('select:$sessionId');
+  }
   @override
   Future<AppSession?> sessionById(String sessionId) async =>
       sessions[sessionId];
@@ -325,18 +328,19 @@ void main() {
         folderIds: const ['/proj'],
         targetIds: const ['local'],
       );
-      expect(events[0], 'builderCreated');
+      expect(events[0], 'builderCreated:preserveWorkbenchView=false');
+      expect(events[1], 'select:${started.builderSessionId}');
       final kickoffId = teamGenerationStableId(
         'teamgen-kickoff-',
         started.workflowId,
       );
       expect(
-        events[1],
+        events[2],
         'history:${started.builderSessionId}:${started.builderSessionId}:'
         '$kickoffId:$expectedKickoff',
       );
       expect(
-        events[2],
+        events[3],
         'deliverTracked:${started.builderSessionId}:${started.builderSessionId}:'
         '$kickoffId:$expectedKickoff',
       );
@@ -384,8 +388,8 @@ void main() {
       final accepted = await jobStore.read('ws', started.workflowId);
       await coordinator.completeAccepted(accepted!, 'finalize-key');
 
-      expect(events[3], startsWith('profilePersisted:'));
-      expect(events[4], 'destinationCreated');
+      expect(events[4], startsWith('profilePersisted:'));
+      expect(events[5], 'destinationCreated');
       final destinationId = teamGenerationStableId(
         'teamgen-',
         started.workflowId,
@@ -394,13 +398,14 @@ void main() {
         'teamgen-prompt-0-',
         started.workflowId,
       );
+      expect(events[6], 'select:$destinationId');
       expect(
-        events[5],
+        events[7],
         'history:$destinationId:team-lead:$handoffDeliveryId:$originalRequest',
       );
-      expect(events[6], 'prompt:team-lead:$originalRequest');
-      expect(events[7], 'builderDeleted');
-      expect(events, hasLength(8));
+      expect(events[8], 'prompt:team-lead:$originalRequest');
+      expect(events[9], 'builderDeleted');
+      expect(events, hasLength(10));
       expect((await profileRepository.loadTeamProfiles()), hasLength(1));
       expect(
         (await jobStore.read('ws', started.workflowId))!.phase,

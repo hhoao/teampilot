@@ -1,16 +1,19 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/app/team_generation_graph.dart';
 import 'package:teampilot/models/app_session.dart';
+import 'package:teampilot/models/config_bundle.dart';
 import 'package:teampilot/models/runtime_target.dart';
 import 'package:teampilot/models/team_config.dart';
 import 'package:teampilot/models/team_generation_settings.dart';
 import 'package:teampilot/services/catalog/catalog_mcp_constants.dart';
 import 'package:teampilot/services/cli/registry/cli_tool_registry.dart';
+import 'package:teampilot/services/launch/manifest_executor.dart';
 import 'package:teampilot/services/launch/session_shell_connector.dart';
 import 'package:teampilot/services/resource/contribution/resource_origin.dart';
 import 'package:teampilot/services/resource/resource_provider_set.dart';
 import 'package:teampilot/services/resource/providers/skill_contribution_provider.dart';
 import 'package:teampilot/services/session/session_lifecycle_service.dart';
+import 'package:teampilot/services/storage/app_storage.dart';
 import 'package:teampilot/services/team_generation/mcp/team_composer_mcp_constants.dart';
 import 'package:teampilot/services/team_generation/providers/managed_team_builder_skill_provider.dart';
 import 'package:teampilot/services/team_generation/providers/team_builder_skill_md.dart';
@@ -154,6 +157,84 @@ void main() {
             .skills,
         isEmpty,
       );
+    },
+  );
+
+  test(
+    'stageSimpleSessionLaunch with builder injection materializes team-builder '
+    'into the Cursor skills dir',
+    () async {
+      final builder = AppSession(
+        sessionId: 'builder-cursor',
+        workspaceId: 'ws',
+        purpose: SessionPurpose.teamGeneration,
+        workflowId: 'wf',
+        cli: CliTool.cursor,
+        createdAt: 1,
+      );
+      final lifecycle = SessionLifecycleService(
+        appDataBasePath: AppStorage.paths.basePath,
+        resourceProviderResolver:
+            TeamGenerationGraph.resourceProvidersForSession,
+      );
+      final roots = await lifecycle.resolveWorkContextForTargetId('local');
+      final svc = await lifecycle.configProfileServiceFor(roots);
+      final injected = lifecycle.resourceProvidersForSession(
+        builder,
+        ResourceProviderSet.empty,
+      );
+      expect(injected.skills, isNotEmpty);
+
+      final staged = await svc.stageSimpleSessionLaunch(
+        readDelegate: roots.fs,
+        workTeampilotRoot: roots.appDataRoot,
+        workspaceId: builder.workspaceId,
+        sessionId: builder.sessionId,
+        runtimeBundle: const ConfigBundle(),
+        member: TeamMemberConfig(
+          id: builder.sessionId,
+          name: 'Team Builder',
+          cli: CliTool.cursor,
+        ),
+        injectedResourceProviders: injected,
+      );
+      await const ManifestExecutor().flush(
+        manifest: staged.manifest,
+        targetFs: roots.fs,
+        sourceFs: roots.fs,
+      );
+
+      final managedSkill = roots.fs.pathContext.join(
+        roots.appDataRoot,
+        'workspace',
+        'workspaces',
+        builder.workspaceId,
+        'sessions',
+        builder.sessionId,
+        'runtime',
+        'cursor',
+        'home',
+        '.cursor',
+        '.teampilot-managed',
+        ManagedTeamBuilderSkillProvider.skillId,
+        'SKILL.md',
+      );
+      final linkedSkill = roots.fs.pathContext.join(
+        roots.appDataRoot,
+        'workspace',
+        'workspaces',
+        builder.workspaceId,
+        'sessions',
+        builder.sessionId,
+        'runtime',
+        'cursor',
+        'home',
+        '.cursor',
+        'skills-cursor',
+        ManagedTeamBuilderSkillProvider.skillId,
+      );
+      expect(await roots.fs.readString(managedSkill), teamBuilderSkillMd);
+      expect((await roots.fs.stat(linkedSkill)).exists, isTrue);
     },
   );
 }

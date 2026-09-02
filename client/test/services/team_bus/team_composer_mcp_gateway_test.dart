@@ -1,4 +1,3 @@
-import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
@@ -8,8 +7,6 @@ import 'package:teampilot/models/team_config.dart';
 import 'package:teampilot/models/team_generation_settings.dart';
 import 'package:teampilot/services/cli/registry/cli_tool_registry.dart';
 import 'package:teampilot/services/storage/workspace_layout.dart';
-import 'package:teampilot/services/team_bus/mcp/jsonrpc.dart';
-import 'package:teampilot/services/team_bus/mcp/mcp_method.dart';
 import 'package:teampilot/services/team_bus/mcp/teammate_bus_mcp_gateway.dart';
 import 'package:teampilot/services/team_generation/mcp/team_composer_mcp_constants.dart';
 import 'package:teampilot/services/team_generation/mcp/team_composer_mcp_handler.dart';
@@ -33,12 +30,16 @@ class _StaticSessionLookup implements TeamGenerationSessionLookup {
 }
 
 void main() {
+  setUpAll(() {
+    HttpOverrides.global = null;
+  });
+
   late InMemoryFilesystem fs;
   late TeamGenerationJobStore jobStore;
   late TeamGenerationAuthorizer authorizer;
   late TeammateBusMcpGateway gateway;
-  late HttpServer probeServer;
   late TeamComposerMcpHandler handler;
+  late HttpClient client;
   late String token;
   final handlerCalls = <String>[];
 
@@ -124,74 +125,11 @@ void main() {
         workflowId: 'wf',
       ),
     );
-
-    // A raw probe server that forwards into the gateway's route is not
-    // directly reachable here, so tests drive the private path through a
-    // loopback HttpServer that mimics the gateway routing contract.
-    probeServer = await HttpServer.bind(InternetAddress.loopbackIPv4, 0);
-    probeServer.listen((request) async {
-      final body = await utf8.decoder.bind(request).join();
-      final rpc = JsonRpcRequest.tryParse(body);
-      if (request.uri.path != TeamComposerMcpConstants.mcpPath ||
-          rpc == null ||
-          rpc.method != McpMethod.toolsCall) {
-        request.response.statusCode = 404;
-        await request.response.close();
-        return;
-      }
-      final sessionHeader =
-          request.headers.value(TeamComposerMcpConstants.sessionHeader) ?? '';
-      final tokenHeader =
-          request.headers.value(TeamComposerMcpConstants.tokenHeader) ?? '';
-      final principal = sessionHeader == 'builder'
-          ? const ComposerPrincipal(
-              sessionId: 'builder',
-              workspaceId: 'ws',
-              workflowId: 'wf',
-            )
-          : null;
-      final authorized = principal != null &&
-          await authorizer.authorize(
-            principal: TeamGenerationPrincipal(
-              sessionId: principal.sessionId,
-              workspaceId: principal.workspaceId,
-              workflowId: principal.workflowId,
-            ),
-            token: tokenHeader,
-          );
-      if (!authorized) {
-        request.response
-          ..statusCode = 200
-          ..headers.contentType = ContentType.json
-          ..write(
-            JsonRpcResponse.error(
-              rpc.id,
-              TeamComposerRpcErrorCode.unauthorized,
-              'unauthorized',
-            ).encode(),
-          );
-        await request.response.close();
-        return;
-      }
-      final result = await handler.handleToolCall(
-        requestId: rpc.id,
-        toolName: rpc.params[McpParams.toolName] as String? ?? '',
-        arguments: rpc.toolArguments,
-        principal: principal,
-      );
-      request.response
-        ..statusCode = 200
-        ..headers.contentType = ContentType.json
-        ..write(jsonEncode(result.response));
-      await request.response.close();
-      final cb = result.afterResponseFlushed;
-      if (cb != null) {
-        unawaited(cb());
-      }    });
+    client = HttpClient();
   });
 
   tearDown(() async {
-    await probeServer.close(force: true);
+    client.close(force: true);
     await gateway.dispose();
     authorizer.revoke('wf');
   });
@@ -199,15 +137,11 @@ void main() {
   Future<Map<String, Object?>> postJsonRpc({
     String? session,
     String? withToken,
-    required String tool,
-    Map<String, Object?> arguments = const {},
+    required String method,
+    Map<String, Object?> params = const {},
+    Object? id = 1,
   }) async {
-    final client = HttpClient();
-    final request = await client.postUrl(
-      Uri.parse(
-        'http://127.0.0.1:${probeServer.port}${TeamComposerMcpConstants.mcpPath}',
-      ),
-    );
+    final request = await client.postUrl(gateway.teamComposerMcpEndpoint);
     if (session != null) {
       request.headers.set(TeamComposerMcpConstants.sessionHeader, session);
     }
@@ -218,20 +152,68 @@ void main() {
       utf8.encode(
         jsonEncode({
           'jsonrpc': '2.0',
-          'id': 1,
-          'method': 'tools/call',
-          'params': {'name': tool, 'arguments': arguments},
+          if (id != null) 'id': id,
+          'method': method,
+          'params': params,
         }),
       ),
     );
     final response = await request.close();
     final body = await utf8.decoder.bind(response).join();
-    client.close();
+    if (body.isEmpty) return const {};
     return (jsonDecode(body) as Map).cast<String, Object?>();
   }
 
-  test('gateway rejects absent token before handler dispatch', () async {
+  Future<Map<String, Object?>> callTool({
+    String? session,
+    String? withToken,
+    required String tool,
+    Map<String, Object?> arguments = const {},
+  }) =>
+      postJsonRpc(
+        session: session,
+        withToken: withToken,
+        method: 'tools/call',
+        params: {'name': tool, 'arguments': arguments},
+      );
+
+  test('initialize succeeds without workflow token', () async {
     final response = await postJsonRpc(
+      method: 'initialize',
+      params: {
+        'protocolVersion': '2025-06-18',
+        'capabilities': <String, Object?>{},
+        'clientInfo': {'name': 'cursor', 'version': '1'},
+      },
+    );
+    expect(response['error'], isNull);
+    final result = response['result'] as Map?;
+    expect(result?['serverInfo'], isA<Map>());
+    expect((result?['serverInfo'] as Map?)?['name'], 'team-composer');
+    expect(handlerCalls, isEmpty);
+  });
+
+  test('tools/list advertises four composer tools without token', () async {
+    final response = await postJsonRpc(method: 'tools/list');
+    expect(response['error'], isNull);
+    final tools = (response['result'] as Map?)?['tools'] as List? ?? const [];
+    expect(
+      tools.map((t) => (t as Map)['name']).toSet(),
+      TeamComposerToolName.all.toSet(),
+    );
+    final validate = tools.cast<Map>().firstWhere(
+      (tool) => tool['name'] == TeamComposerToolName.validatePlan,
+    );
+    expect(validate['outputSchema'], isA<Map>());
+    expect(validate['annotations'], isA<Map>());
+    expect(
+      ((validate['inputSchema'] as Map)['properties'] as Map)['plan'],
+      isA<Map>(),
+    );
+  });
+
+  test('gateway rejects absent token before handler dispatch', () async {
+    final response = await callTool(
       session: 'builder',
       tool: 'get_generation_context',
     );
@@ -241,7 +223,7 @@ void main() {
   });
 
   test('authorized builder calls get_generation_context', () async {
-    final response = await postJsonRpc(
+    final response = await callTool(
       session: 'builder',
       withToken: token,
       tool: 'get_generation_context',
@@ -251,7 +233,7 @@ void main() {
   });
 
   test('wrong session is rejected', () async {
-    final response = await postJsonRpc(
+    final response = await callTool(
       session: 'normal',
       withToken: token,
       tool: 'get_generation_context',

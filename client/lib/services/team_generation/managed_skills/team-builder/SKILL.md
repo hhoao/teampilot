@@ -17,15 +17,16 @@ delivery of the original task.
 ## Workflow (follow strictly, in order)
 
 1. Call `get_generation_context` first, before analysis or planning. Use its
-   frozen task, requested mode, ranked model pool, workspace folders and
-   targets, probes, staged resources, constraints, and plan schema. Do not
-   re-read mutable settings or re-derive frozen values.
-2. Design the smallest useful roster: **2–5** distinct roles, with exactly one
-   canonical `team-lead`. Give every role non-overlapping responsibilities,
-   inputs, outputs, launch configuration, and required resources. Do not add a
-   role without concrete value. Express the role contract in the plan's
-   supported responsibility and working-method fields; never invent schema
-   fields. Select only frozen preset and target IDs.
+   frozen task, `requestedMode` / `teamMode`, ranked `modelPool`, `launch`,
+   `constraints`, and `planSchema`. Do not re-read mutable settings or
+   re-derive frozen values. Do not invent schema fields outside `planSchema`.
+2. Design the smallest useful roster: **2–5** distinct roles. Exactly one
+   member must have `name` equal to `team-lead` (lead `replicas` must be 1);
+   other members use distinct non-lead names. `team.mode` must equal the
+   frozen `requestedMode` (for example `mixed` or `native`) — never invent
+   modes such as `parallel` or `sequential`. Give every role non-overlapping
+   responsibilities and working methods using only the plan's supported
+   fields. Select only frozen `presetId` and probed target IDs.
 3. Treat model-pool **rank 1 as the strongest** configuration. Prefer earlier
    presets for `team-lead` and other critical roles, later presets for lighter
    roles, and reuse a preset when that is the best fit. Use the frozen launch
@@ -38,17 +39,23 @@ delivery of the original task.
    context. Never invent Catalog resource IDs.
 5. Call `probe_workspace_targets` before assigning machines. Assign a member
    only to a currently available probed target that supports its selected CLI.
-6. Call `validate_team_plan` with the complete draft. Inspect every returned
-   issue or error, correct the plan, and validate again until `valid: true`.
-   MCP failures are ordinary tool errors: inspect their returned details and
-   recover when possible as an agent decision. Do not encode or wait for a
-   coordinator retry count.
+6. Draft the **complete** plan against `planSchema` from context before any
+   validate call. Do **not** probe the schema with empty or partial plans, and
+   do not use `validate_team_plan` as field-by-field discovery. Call
+   `validate_team_plan` once with the full draft, fix **all** returned issues
+   in one revision, then validate again. Prefer ≤3 validate rounds. MCP
+   failures are ordinary tool errors: inspect returned details and recover
+   when possible. Do not encode or wait for a coordinator retry count.
 7. Only after a successful validation, call `finalize_team_generation` exactly
    once with the validated plan, its `validationRevision`, and one idempotency
    key. Do not finalize an invalid or changed plan.
 
 ## Hard rules
 
+- The managed `team-builder` skill is already mounted in this session. Do not
+  search the filesystem, git history, or prior rollouts for Team Builder docs,
+  plan schema examples, or `finalize_team_generation` usage. Use Team Composer
+  tools and the frozen `get_generation_context` payload only.
 - Never edit TeamPilot JSON manifests (profiles, project-config, jobs), app
   data, resource manifests, or any other control-plane file. All persistence
   is performed through Team Composer and Catalog MCP tools.

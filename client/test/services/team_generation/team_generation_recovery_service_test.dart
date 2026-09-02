@@ -47,7 +47,9 @@ class _RecordingPort implements TeamGenerationSessionPort {
   }
 
   @override
-  Future<void> select(String sessionId) async {}
+  Future<void> select(String sessionId) async {
+    events.add('select:$sessionId');
+  }
 
   @override
   Future<AppSession?> sessionById(String sessionId) async =>
@@ -206,6 +208,7 @@ void main() {
       final kickoffId = teamGenerationStableId('teamgen-kickoff-', workflowId);
       expect(port.events, [
         'open:$builderSessionId',
+        'select:$builderSessionId',
         'ready:$builderSessionId:$builderSessionId',
         'history:$builderSessionId:$builderSessionId:$kickoffId:$kickoff',
         'deliver:$builderSessionId:$builderSessionId:$kickoffId:$kickoff',

@@ -13,6 +13,37 @@ final class GeneratedTeamPlan {
   static const int schemaVersion = 1;
   static const int maxPayloadBytes = 128 * 1024;
 
+  /// Frozen wire contract exposed by `get_generation_context` so builders draft
+  /// a complete plan before the first `validate_team_plan` call.
+  static const Map<String, Object?> wireSchema = {
+    'schemaVersion': schemaVersion,
+    'topLevelKeys': ['schemaVersion', 'team', 'members', 'resources'],
+    'teamKeys': ['name', 'description', 'mode'],
+    'memberKeys': [
+      'name',
+      'role',
+      'responsibilities',
+      'workingMethod',
+      'presetId',
+      'replicas',
+      'placement',
+    ],
+    'resourceKeys': ['skillIds', 'pluginIds', 'mcpServerIds'],
+    'leadMemberName': 'team-lead',
+    'memberCount': {'min': 2, 'max': 5},
+    'replicas': {'min': 1, 'max': 8},
+    'leadReplicas': 1,
+    'modeMustEqualRequestedMode': true,
+    'notes': [
+      'Unknown keys are rejected at every level.',
+      'Member name for the lead must be exactly "team-lead" (not only role).',
+      'team.mode must equal requestedMode from generation context.',
+      'presetId must reference a frozen modelPool entry; blank inherits default.',
+      'placement maps targetId -> replica count; probe before choosing targets.',
+      'Do not put members/resources at the top level without team.',
+    ],
+  };
+
   const GeneratedTeamPlan({
     required this.teamName,
     required this.teamDescription,

@@ -13,7 +13,8 @@ String buildTeamGenerationKickoff(String originalPrompt) =>
 
 /// the cubit adapter lives in `cubits/team/`.
 abstract interface class TeamGenerationSessionPort {
-  /// Creates the visible purpose-tagged Simple builder session.
+  /// Creates the purpose-tagged Simple builder session and surfaces it in the
+  /// workbench (same visibility contract as a normal landing send).
   Future<SessionPortOpenResult> createBuilder({
     required Workspace workspace,
     required SimpleLaunchIdentity identity,
@@ -23,7 +24,7 @@ abstract interface class TeamGenerationSessionPort {
     required String fixedSessionId,
     required String expertKey,
     String emptyDisplayTitleFallback = 'Team Builder',
-    bool preserveWorkbenchView = true,
+    bool preserveWorkbenchView = false,
   });
 
   /// Creates (or reopens) the destination team session. Returns [opened]

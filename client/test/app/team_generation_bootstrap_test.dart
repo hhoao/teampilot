@@ -1,5 +1,3 @@
-import 'dart:async';
-
 import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/app/team_generation_graph.dart';
 import 'package:teampilot/cubits/chat_cubit.dart';
@@ -18,7 +16,6 @@ import 'package:teampilot/services/team_generation/mcp/team_composer_mcp_handler
 import 'package:teampilot/services/team_generation/providers/managed_team_builder_skill_provider.dart';
 import 'package:teampilot/services/team_generation/team_generation_authorizer.dart';
 import 'package:teampilot/services/team_generation/team_generation_coordinator.dart';
-import 'package:teampilot/services/team_generation/team_generation_recovery_service.dart';
 import 'package:teampilot/services/team_generation/catalog/catalog_generation_stager.dart';
 
 import '../support/post_frame_test_harness.dart';
@@ -26,24 +23,6 @@ import '../support/post_frame_test_harness.dart';
 class _TargetRegistry extends Fake implements RuntimeTargetRegistry {}
 
 class _RemoteCliReadiness extends Fake implements RemoteCliReadinessService {}
-
-class _RecordingRecovery implements TeamGenerationRecoveryPort {
-  _RecordingRecovery({this.error});
-
-  final Object? error;
-  final workspaceIds = <String>[];
-
-  @override
-  Future<void> recoverAll(Iterable<String> workspaceIds) async {
-    this.workspaceIds.addAll(workspaceIds);
-    if (error != null) throw error!;
-  }
-
-  @override
-  Future<void> recoverWorkspace(String workspaceId) async {
-    workspaceIds.add(workspaceId);
-  }
-}
 
 class _RecordingBootstrapPort {
   int tokenIssuerAttachments = 0;
@@ -190,44 +169,6 @@ void main() {
         ),
         isNull,
       );
-    },
-  );
-
-  test('bootstrap recovery scans discovered workspaces once ready', () async {
-    final recovery = _RecordingRecovery();
-    final discovery = Completer<Iterable<String>>();
-
-    final running = runTeamGenerationBootstrapRecovery(
-      recovery: recovery,
-      workspaceIdsAfterDiscovery: discovery.future,
-    );
-    await Future<void>.delayed(Duration.zero);
-    expect(recovery.workspaceIds, isEmpty);
-
-    discovery.complete(const ['ws-a', 'ws-b']);
-    await running;
-
-    expect(recovery.workspaceIds, ['ws-a', 'ws-b']);
-  });
-
-  test(
-    'bootstrap recovery reports failures through startup diagnostics',
-    () async {
-      final failure = StateError('recovery failed');
-      Object? loggedError;
-      StackTrace? loggedStackTrace;
-
-      await runTeamGenerationBootstrapRecovery(
-        recovery: _RecordingRecovery(error: failure),
-        workspaceIdsAfterDiscovery: Future.value(const ['ws']),
-        diagnosticLogger: (error, stackTrace) {
-          loggedError = error;
-          loggedStackTrace = stackTrace;
-        },
-      );
-
-      expect(loggedError, same(failure));
-      expect(loggedStackTrace, isNotNull);
     },
   );
 }

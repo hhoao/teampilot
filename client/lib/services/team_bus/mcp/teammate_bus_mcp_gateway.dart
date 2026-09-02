@@ -113,8 +113,10 @@ class TeammateBusMcpGateway {
     _resolveCatalogSession = resolveSession;
   }
 
-  /// Attaches the Team Composer MCP handler plus its authorizer. Requests
-  /// missing a valid workflow token are rejected before handler dispatch.
+  /// Attaches the Team Composer MCP handler plus its authorizer.
+  ///
+  /// Handshake methods (`initialize`, `tools/list`, …) are served without a
+  /// token; `tools/call` still requires a valid workflow token + principal.
   void attachTeamComposerHandler({
     required TeamComposerMcpHandler handler,
     required TeamGenerationAuthorizer authorizer,
@@ -440,15 +442,27 @@ class TeammateBusMcpGateway {
       return;
     }
 
+    // Cursor (and other MCP clients) handshake with initialize / tools/list
+    // before any tools/call. Those methods must not require the workflow
+    // token — rejecting them surfaces as "Team Composer authorization failed"
+    // and the agent falls back to exploring the repo for finalize helpers.
+    if (rpc.method != McpMethod.toolsCall) {
+      final res = handler.handleProtocol(rpc);
+      if (rpc.isNotification || res == null) {
+        request.response.statusCode = HttpStatus.accepted;
+        await request.response.close();
+        return;
+      }
+      await _writeJsonRpc(request, res);
+      return;
+    }
+
     final sessionId = _resolveSessionId(request);
     final token = _headerValue(
       request.headers,
       TeamComposerMcpConstants.tokenHeader,
     );
-    if (sessionId == null ||
-        sessionId.isEmpty ||
-        token.isEmpty ||
-        rpc.method != McpMethod.toolsCall) {
+    if (sessionId == null || sessionId.isEmpty || token.isEmpty) {
       await respondUnauthorized('Team Composer authorization failed');
       return;
     }
@@ -498,7 +512,6 @@ class TeammateBusMcpGateway {
       principal: principal,
     );
     await _writeJsonRpc(request, _asJsonRpc(result.response));
-    await request.response.close();
     final callback = result.afterResponseFlushed;
     if (callback != null) {
       unawaited(_runTeamGenerationPostFlush(callback));

@@ -153,7 +153,7 @@ void main() {
     },
   );
 
-  test('hydrates stale sending as failed without latching awaiting', () async {
+  test('hydrates sending pending and latches awaiting', () async {
     holderMessages = messages(1);
     final current = session();
     await seat.load(
@@ -183,14 +183,14 @@ void main() {
       seat.runtime.messages.map((message) => message.id),
       containsAll(['m-0', record.id]),
     );
-    expect(seat.state.awaitingAssistant, isFalse);
+    expect(seat.state.awaitingAssistant, isTrue);
     expect(
       seat.pendingDeliveryStatusFor(record.id),
-      FailedMessageStatus.failed,
+      FailedMessageStatus.sending,
     );
     expect(
       (await store.load(current.workspaceId, current.sessionId)).single.status,
-      FailedMessageStatus.failed,
+      FailedMessageStatus.sending,
     );
   });
 

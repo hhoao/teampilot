@@ -32,14 +32,16 @@ void main() {
         'finalize_team_generation',
         '2–5',
         'team-lead',
+        'planSchema',
+        'requestedMode',
         'Catalog MCP',
         'Team Composer MCP',
         'Never invent Catalog resource IDs.',
         'Never edit TeamPilot JSON manifests',
-        'inputs, outputs, launch configuration, and required resources',
+        'Do **not** probe the schema with empty or partial plans',
+        'Prefer ≤3 validate rounds',
         'After `finalize_team_generation` is accepted, **stop**',
         'implement the original task',
-        'MCP failures are ordinary tool errors',
       ]) {
         expect(mirror, contains(marker));
       }

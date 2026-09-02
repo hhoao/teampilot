@@ -14,6 +14,7 @@ import '../cli/claude/team_roster_service.dart';
 import '../cli/claude/capabilities/mcp_project_cleanup.dart';
 import '../cli/preset_resolver.dart';
 import '../provider/config_profile_service.dart';
+import '../resource/resource_provider_set.dart';
 import '../session/session_continue_overrides_apply.dart';
 import '../session/session_launch_config_snapshot.dart';
 import '../session/session_lifecycle_service.dart';
@@ -263,6 +264,9 @@ class SessionConnectOrchestrator {
 
     late final ({TeamLaunchOutcome outcome, LaunchManifest manifest}) staged;
     if (isSimple) {
+      // Purpose-scoped providers (e.g. managed team-builder skill) must be
+      // injected here — this is the live Simple staging path. Lifecycle's
+      // prepareSimpleSessionLaunch is not used for connect.
       staged = await catalogProfile.stageSimpleSessionLaunch(
         readDelegate: offHome ? homeContext().fs : workContext.fs,
         workTeampilotRoot: workContext.appDataRoot,
@@ -279,6 +283,10 @@ class SessionConnectOrchestrator {
         extraMcpServers: extraMcpServers,
         busIdle: busIdle,
         agentStatus: agentStatus,
+        injectedResourceProviders: lifecycle.resourceProvidersForSession(
+          session,
+          ResourceProviderSet.empty,
+        ),
       );
     } else {
       final teamId = team!.id.trim();

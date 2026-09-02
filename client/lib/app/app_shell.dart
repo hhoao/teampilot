@@ -2154,7 +2154,6 @@ Future<AppShell> buildAppShell({
       }
     }
 
-    var teamGenerationRecoveryStarted = false;
     Future<void> bootstrapAppData() async {
       await notificationBootstrap;
       final indexReady = bootstrapCubit?.state.homeIndexReady ?? false;
@@ -2202,17 +2201,8 @@ Future<AppShell> buildAppShell({
         }
         bootstrapCubit?.markHomeIndexReady();
       }
-      final recoveryGraph = teamGenerationGraph;
-      if (!teamGenerationRecoveryStarted && recoveryGraph != null) {
-        teamGenerationRecoveryStarted = true;
-        await runTeamGenerationBootstrapRecovery(
-          recovery: recoveryGraph.recoveryService,
-          workspaceIdsAfterDiscovery: Future.value([
-            for (final workspace in chatCubit.state.workspaces)
-              workspace.workspaceId,
-          ]),
-        );
-      }
+      // Team-generation jobs are not auto-resumed at cold start. Incomplete
+      // builder/destination sessions reconnect only when the user opens them.
       await reconnectHomeSshIfNeeded();
       await yieldUiFrame();
       // Managed Provider cache hydration is deliberately background work. The

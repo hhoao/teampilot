@@ -8,8 +8,10 @@ import 'package:teampilot/services/storage/workspace_layout.dart';
 import 'package:teampilot/services/team_generation/mcp/team_composer_mcp_handler.dart';
 import 'package:teampilot/services/team_generation/models/team_generation_job.dart';
 import 'package:teampilot/services/team_generation/models/team_generation_launch.dart';
+import 'package:teampilot/services/team_generation/team_generation_context_payload.dart';
 import 'package:teampilot/services/team_generation/team_generation_job_store.dart';
 import 'package:teampilot/services/team_generation/team_generation_workflow_executor.dart';
+import 'package:teampilot/utils/team/team_member_naming.dart';
 
 import '../../support/in_memory_filesystem.dart';
 import '../../support/post_frame_test_harness.dart';
@@ -58,17 +60,7 @@ void main() {
       context: TeamComposerHandlerContext(
         jobStore: store,
         executor: TeamGenerationWorkflowExecutor(),
-        contextProvider: (job) async => {
-          'originalPrompt': job.originalPrompt,
-          'settingsRevision': job.settings.revision,
-          'modelPool': [
-            for (final entry in job.settings.modelPool)
-              {
-                'rank': entry.rank,
-                'presetId': entry.preset.id,
-              },
-          ],
-        },
+        contextProvider: (job) async => teamGenerationContextPayload(job),
         probeRunner: (job) async => const {},
         planValidator: (job, plan) async => const PlanValidationOutcome(
           valid: true,
@@ -91,8 +83,13 @@ void main() {
             as Map<String, Object?>;
     expect(structured['originalPrompt'], 'exact task');
     expect(structured['settingsRevision'], settings.revision);
+    expect(structured['requestedMode'], TeamMode.mixed.value);
+    expect(structured['planSchema'], isA<Map>());
+    expect(
+      (structured['constraints'] as Map)['leadMemberName'],
+      TeamMemberNaming.teamLeadName,
+    );
     expect(jsonEncode(result.response), isNot(contains('apiKey')));
     expect(jsonEncode(result.response), isNot(contains('token-1')));
-    expect(TeamMode.mixed.value, isNotEmpty);
   });
 }

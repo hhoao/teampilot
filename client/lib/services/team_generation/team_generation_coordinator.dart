@@ -208,7 +208,11 @@ final class TeamGenerationCoordinator {
         workflowId: workflowId,
         fixedSessionId: builderSessionId,
         expertKey: 'teampilot/builtin/team-builder',
+        // Surface the builder before kickoff so Chat owns the seat when the
+        // pending user bubble is persisted (same order as normal landing send).
+        preserveWorkbenchView: false,
       );
+      await _sessionPort.select(builderSessionId);
       await _sessionPort.waitForInputReady(
         builderSessionId,
         builderSessionId,

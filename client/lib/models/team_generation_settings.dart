@@ -272,23 +272,34 @@ final class TeamGenerationSettingsSnapshot {
       modelPool: [
         for (final value in rawPool is List ? rawPool : const [])
           if (value is Map)
-            EffectiveGenerateModelPoolEntry(
-              rank: (value['rank'] as num?)?.toInt() ?? 0,
-              source: GenerateModelPoolEntry.fromJson(
-                ((value['source'] as Map?) ?? const {}).cast<String, Object?>(),
-              ),
-              preset: CliPreset(
-                id: value['id'] as String? ?? '',
-                name: value['name'] as String? ?? '',
-                cli: CliTool.parse(value['cli']),
-                provider: value['provider'] as String? ?? '',
-                model: value['model'] as String? ?? '',
-                effort: value['effort'] as String? ?? '',
-                createdAt: 0,
-                updatedAt: 0,
-              ),
-            ),
+            _effectivePoolEntryFromJson(value.cast<String, Object?>()),
       ],
+    );
+  }
+
+  static EffectiveGenerateModelPoolEntry _effectivePoolEntryFromJson(
+    Map<String, Object?> entry,
+  ) {
+    final presetMap =
+        ((entry['preset'] as Map?) ?? const {}).cast<String, Object?>();
+    final source = GenerateModelPoolEntry.fromJson(
+      ((entry['source'] as Map?) ?? const {}).cast<String, Object?>(),
+    );
+    final nestedId = (presetMap['id'] as String?)?.trim() ?? '';
+    final presetId = nestedId.isNotEmpty ? nestedId : source.presetId;
+    return EffectiveGenerateModelPoolEntry(
+      rank: (entry['rank'] as num?)?.toInt() ?? 0,
+      source: source,
+      preset: CliPreset(
+        id: presetId,
+        name: presetMap['name'] as String? ?? '',
+        cli: CliTool.parse(presetMap['cli']),
+        provider: presetMap['provider'] as String? ?? '',
+        model: presetMap['model'] as String? ?? '',
+        effort: presetMap['effort'] as String? ?? '',
+        createdAt: 0,
+        updatedAt: 0,
+      ),
     );
   }
 
