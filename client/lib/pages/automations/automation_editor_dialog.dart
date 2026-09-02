@@ -141,7 +141,7 @@ class _AutomationEditorDialogState extends State<AutomationEditorDialog> {
     _schedule = initial != null
         ? scheduleDraftFromAutomation(initial)
         : AutomationScheduleDraft.forCreate(
-            timezone: DateTime.now().timeZoneName,
+            timezone: resolveDeviceTimezoneIdentifier(),
             now: DateTime.now(),
           );
 

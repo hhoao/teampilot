@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:teampilot/services/automation/automation_schedule_calculator.dart';
 import 'package:teampilot/services/automation/automation_schedule_defaults.dart';
+import 'package:timezone/timezone.dart' as tz;
 
 void main() {
   group('AutomationScheduleMode', () {
@@ -125,6 +127,30 @@ void main() {
         now: DateTime(2026, 1, 1, 10, 0),
       );
       expect(ms, DateTime(2026, 1, 1, 10, 15).millisecondsSinceEpoch);
+    });
+  });
+
+  group('resolveDeviceTimezoneIdentifier', () {
+    test('resolves to a location with the device current offset', () {
+      final id = resolveDeviceTimezoneIdentifier();
+      expect(id, isNotEmpty);
+      final loc = resolveAutomationLocation(id);
+      expect(
+        tz.TZDateTime.now(loc).timeZoneOffset,
+        DateTime.now().timeZoneOffset,
+      );
+    });
+
+    test('composes the device-local wall clock for a once schedule', () {
+      // Regression: a device timezone name like 'CST' or 'China Standard Time'
+      // is not an IANA identifier, and used to compose once targets in UTC.
+      final id = resolveDeviceTimezoneIdentifier();
+      final ms = combineLocalDateAndTimeToMs(
+        date: DateTime(2026, 1, 1),
+        time: const TimeOfDay(hour: 10, minute: 0),
+        timezone: id,
+      );
+      expect(ms, DateTime(2026, 1, 1, 10, 0).millisecondsSinceEpoch);
     });
   });
 }

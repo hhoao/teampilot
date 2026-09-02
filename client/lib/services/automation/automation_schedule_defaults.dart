@@ -2,6 +2,80 @@ import 'package:flutter/material.dart';
 import 'package:timezone/timezone.dart' as tz;
 
 import 'automation_schedule_calculator.dart';
+/// Best-effort resolvable timezone identifier for the device: the IANA name
+/// when the [timezone] package can map it, otherwise a fixed-offset name the
+/// package accepts, else 'UTC'.
+///
+/// `DateTime.now().timeZoneName` yields abbreviations ('CST') or Windows
+/// names ('China Standard Time') that the tz database cannot resolve, which
+/// used to compose once schedules on UTC wall-time. The tz database also has
+/// no `Etc/GMT±N` entries, so the fallback reuses the nearest real zone that
+/// currently matches the device offset — no DST fidelity, but wall-clock
+/// composition is correct until the zone next changes offset.
+String resolveDeviceTimezoneIdentifier() {
+  final name = DateTime.now().timeZoneName.trim();
+  final offset = DateTime.now().timeZoneOffset;
+  if (name.isNotEmpty && _resolvesWithOffset(name, offset)) return name;
+  if (offset == Duration.zero) return 'UTC';
+  final candidate = _nearestZoneWithOffset(offset);
+  if (candidate != null) return candidate;
+  return 'UTC';
+}
+
+bool _resolvesWithOffset(String name, Duration offset) {
+  final location = resolveAutomationLocation(name);
+  return location.currentTimeZone.offset == offset.inMilliseconds;
+}
+
+String? _nearestZoneWithOffset(Duration offset) {
+  final target = offset.inMilliseconds;
+  // Kept as a plain loop over the pre-sorted key list; determinism matters
+  // more than a fancy selection here.
+  String? best;
+  for (final key in _candidateZoneNames()) {
+    final location = resolveAutomationLocation(key);
+    if (location.currentTimeZone.offset != target) continue;
+    best ??= key;
+  }
+  return best;
+}
+
+const _offsetCandidateZoneNames = [
+  // Africa
+  'Africa/Abidjan', 'Africa/Algiers', 'Africa/Cairo', 'Africa/Casablanca',
+  'Africa/Johannesburg', 'Africa/Lagos', 'Africa/Nairobi',
+  // America
+  'America/Anchorage', 'America/Argentina/Buenos_Aires', 'America/Bogota',
+  'America/Chicago', 'America/Denver', 'America/Detroit', 'America/Edmonton',
+  'America/Halifax', 'America/Lima', 'America/Los_Angeles', 'America/Mexico_City',
+  'America/New_York', 'America/Phoenix', 'America/Santiago', 'America/Sao_Paulo',
+  'America/St_Johns', 'America/Toronto', 'America/Vancouver', 'America/Winnipeg',
+  // Asia / Pacific
+  'Asia/Bangkok', 'Asia/Dhaka', 'Asia/Dubai', 'Asia/Ho_Chi_Minh', 'Asia/Hong_Kong',
+  'Asia/Jakarta', 'Asia/Jerusalem', 'Asia/Kathmandu', 'Asia/Kolkata',
+  'Asia/Kuala_Lumpur', 'Asia/Manila', 'Asia/Seoul', 'Asia/Shanghai', 'Asia/Singapore',
+  'Asia/Taipei', 'Asia/Tehran', 'Asia/Tokyo', 'Asia/Yekaterinburg',
+  'Australia/Adelaide', 'Australia/Brisbane', 'Australia/Darwin',
+  'Australia/Hobart', 'Australia/Melbourne', 'Australia/Perth', 'Australia/Sydney',
+  'Pacific/Auckland', 'Pacific/Fiji', 'Pacific/Guam', 'Pacific/Honolulu',
+  'Pacific/Kiritimati', 'Pacific/Pago_Pago', 'Pacific/Port_Moresby',
+  // Europe / Atlantic
+  'Europe/Amsterdam', 'Europe/Athens', 'Europe/Berlin', 'Europe/Brussels',
+  'Europe/Bucharest', 'Europe/Budapest', 'Europe/Copenhagen', 'Europe/Dublin',
+  'Europe/Helsinki', 'Europe/Istanbul', 'Europe/Kyiv', 'Europe/Lisbon',
+  'Europe/London', 'Europe/Madrid', 'Europe/Moscow', 'Europe/Oslo', 'Europe/Paris',
+  'Europe/Prague', 'Europe/Rome', 'Europe/Stockholm', 'Europe/Vienna', 'Europe/Warsaw',
+  'Europe/Zurich', 'Atlantic/Azores', 'Atlantic/Reykjavik',
+  // Fixed / reference zones
+  'UTC', 'Etc/UTC', 'GMT', 'Etc/GMT', 'UCT',
+];
+
+Iterable<String> _candidateZoneNames() sync* {
+  final database = tz.timeZoneDatabase;
+  for (final name in _offsetCandidateZoneNames) {
+    if (database.locations.containsKey(name)) yield name;
+  }
+}
 
 /// Editor-facing schedule modes: one-shot date+time, relative countdown, or
 /// the recurring presets already modeled by [AutomationSchedulePreset].
