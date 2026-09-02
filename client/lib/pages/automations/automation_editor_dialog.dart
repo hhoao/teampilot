@@ -106,7 +106,7 @@ class _AutomationEditorDialogState extends State<AutomationEditorDialog> {
     final draft = _schedule;
     if (draft.mode != AutomationScheduleMode.recurring) {
       final resolved = resolveDraftRunAtMs(draft, now: DateTime.now());
-      final changed = resolved != null && resolved != draft.runAtMs;
+      final changed = _targetChanged(resolved);
       final runCount = changed ? 0 : (widget.initial?.runCount ?? 0);
       return runCount >= 1;
     }
@@ -117,6 +117,17 @@ class _AutomationEditorDialogState extends State<AutomationEditorDialog> {
     if (maxRun == null || maxRun < 1) return false;
     return runCount >= maxRun;
   }
+
+  /// Whether the resolved once/countdown target differs from the persisted
+  /// one. Comparing against [Automation.initial]'s stored `runAtMs` (not the
+  /// draft's) is what makes conversion count as a change: a recurring origin
+  /// has no stored target, so any resolved once target re-arms it and clears
+  /// the accumulated runCount.
+  ///
+  /// Keep in sync with [_resolveScheduleSave] — the switch lock and the save
+  /// path must agree on when a schedule re-arms.
+  bool _targetChanged(int? resolvedRunAtMs) =>
+      resolvedRunAtMs != null && resolvedRunAtMs != widget.initial?.runAtMs;
 
   TeamProfile? get _selectedTeam {
     final id = _teamId?.trim() ?? '';
@@ -328,8 +339,9 @@ class _AutomationEditorDialogState extends State<AutomationEditorDialog> {
       case AutomationScheduleMode.countdown:
         final runAtMs = resolveDraftRunAtMs(draft, now: now);
         if (runAtMs == null || runAtMs <= now.millisecondsSinceEpoch) {
-          form.setFieldError(
-            'scheduleOnceTime',
+          // The once time field only exists in these modes, but guard the
+          // lookup anyway so a torn-down picker can never throw here.
+          form.fields['scheduleOnceTime']?.setError(
             l10n.automationsSchedulePastTime,
           );
           return (
@@ -340,8 +352,10 @@ class _AutomationEditorDialogState extends State<AutomationEditorDialog> {
           );
         }
         // A changed target re-arms the automation: clear any run count the
-        // stored schedule accumulated so it can fire again.
-        final changed = draft.runAtMs != null && runAtMs != draft.runAtMs;
+        // stored schedule accumulated so it can fire again. Same predicate as
+        // the switch lock above — conversion from recurring counts as a change
+        // because the persisted automation has no runAtMs to match.
+        final changed = _targetChanged(runAtMs);
         return (
           preset: AutomationSchedulePreset.once,
           runAtMs: runAtMs,
@@ -400,11 +414,16 @@ class _AutomationEditorDialogState extends State<AutomationEditorDialog> {
     final projectFolderPath = _resolvedProjectFolderPath(workspace);
     final workingDirectoryPath = _resolvedWorkingDirectoryPath(workspace);
 
-    // Keep hourMinute parseable for the calculator/summary paths; once saves
-    // carry the picked (or countdown-derived) time of day.
+    // Keep hourMinute parseable for the calculator/summary paths; once/countdown
+    // saves carry the time of day of the resolved target (for countdown the
+    // drafted `hourMinute` is just the recurring default, not the target).
     String hourMinute = _schedule.hourMinute;
-    if (isOnceSchedule && _schedule.onceTime != null) {
-      hourMinute = formatHourMinute(_schedule.onceTime!);
+    if (isOnceSchedule && schedule.runAtMs != null) {
+      hourMinute = formatHourMinute(
+        TimeOfDay.fromDateTime(
+          DateTime.fromMillisecondsSinceEpoch(schedule.runAtMs!),
+        ),
+      );
     }
 
     var automation = Automation(

@@ -744,7 +744,10 @@ void main() {
       // and must become operable once the schedule is re-armed: the run
       // limit applies to the runCount the automation will save with, and
       // changing the target zeroes it.
-      await tester.enterText(find.byKey(const Key('tp-time-picker-hour')), '23');
+      await tester.enterText(
+        find.byKey(const Key('tp-time-picker-hour')),
+        '23',
+      );
       await tester.enterText(
         find.byKey(const Key('tp-time-picker-minute')),
         '59',
@@ -771,6 +774,144 @@ void main() {
       expect(saved.enabled, isTrue);
     },
   );
+
+  testWidgets(
+    'converting a fired recurring automation to once resets its run count',
+    (tester) async {
+      final setup = testAutomationSetup();
+      await tester.runAsync(() async {
+        await setup.cubit.loadForWorkspace('ws1');
+        // Seed through the cubit for real app state: a daily automation that
+        // already accumulated runs. Its timezone is the device zone so the
+        // once slot the picker seeds (now + 15 minutes) composes into the
+        // future whatever the host offset is.
+        await setup.cubit.save(
+          sampleAutomation(
+            id: 'recurring-to-once',
+            workspaceId: 'ws1',
+            sessionId: 'sess-1',
+          ).copyWith(runCount: 3, timezone: resolveDeviceTimezoneIdentifier()),
+        );
+      });
+      addTearDown(setup.cubit.close);
+
+      await tester.pumpWidget(
+        _host(
+          cubit: setup.cubit,
+          child: AutomationEditorDialog(
+            kind: AutomationEditorKind.scheduledMessage,
+            workspaceId: 'ws1',
+            sessionId: 'sess-1',
+            initial: setup.cubit.state.automations
+                .where((a) => a.id == 'recurring-to-once')
+                .first,
+          ),
+        ),
+      );
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 200));
+
+      final l10n = l10nOfDialog(tester);
+
+      await tester.tap(find.text(l10n.automationsScheduleModeOnce));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 200));
+
+      await tester.enterText(find.byType(TextField).first, 'hello');
+      await tester.enterText(find.byType(TpTextarea), 'ping');
+      await tester.pump();
+
+      await tester.runAsync(() async {
+        await tester.tap(find.text(l10n.save));
+        await pumpUntilClosed(tester);
+      });
+
+      final saved = setup.cubit.state.automations
+          .where((a) => a.id == 'recurring-to-once')
+          .single;
+      expect(saved.preset, AutomationSchedulePreset.once);
+      expect(saved.runAtMs, isNotNull);
+      expect(
+        saved.runAtMs!,
+        greaterThan(DateTime.now().millisecondsSinceEpoch),
+      );
+      // The stale recurring run count must not leak into the once schedule —
+      // against the implicit limit of 1 it would disable it on save forever.
+      expect(saved.runCount, 0);
+      expect(saved.maxRunCount, 1);
+      expect(saved.enabled, isTrue);
+    },
+  );
+
+  testWidgets('converting once back to recurring clears the one-shot target', (
+    tester,
+  ) async {
+    final setup = testAutomationSetup();
+    final seededRunAt = DateTime.now()
+        .add(const Duration(hours: 2))
+        .millisecondsSinceEpoch;
+    await tester.runAsync(() async {
+      await setup.cubit.loadForWorkspace('ws1');
+      // Seed through the cubit for real app state: a once schedule that
+      // already fired and was retired by its implicit limit, still carrying
+      // a future target.
+      await setup.cubit.save(
+        sampleAutomation(
+          id: 'once-to-recurring',
+          workspaceId: 'ws1',
+          sessionId: 'sess-1',
+          preset: AutomationSchedulePreset.once,
+          runAtMs: seededRunAt,
+        ).copyWith(runCount: 1, dtstartMs: seededRunAt),
+      );
+    });
+    addTearDown(setup.cubit.close);
+
+    await tester.pumpWidget(
+      _host(
+        cubit: setup.cubit,
+        child: AutomationEditorDialog(
+          kind: AutomationEditorKind.scheduledMessage,
+          workspaceId: 'ws1',
+          sessionId: 'sess-1',
+          initial: setup.cubit.state.automations
+              .where((a) => a.id == 'once-to-recurring')
+              .first,
+        ),
+      ),
+    );
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 200));
+
+    final l10n = l10nOfDialog(tester);
+
+    // Converting to recurring releases the once limit lock (the run-limit
+    // field is empty in recurring mode), so the switch is operable again.
+    await tester.tap(find.text(l10n.automationsScheduleModeRecurring));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 200));
+    final enabledSwitch = find.byType(Switch).first;
+    expect(tester.widget<Switch>(enabledSwitch).onChanged, isNotNull);
+    await tester.tap(enabledSwitch);
+    await tester.pump();
+
+    await tester.runAsync(() async {
+      await tester.tap(find.text(l10n.save));
+      await pumpUntilClosed(tester);
+    });
+
+    final saved = setup.cubit.state.automations
+        .where((a) => a.id == 'once-to-recurring')
+        .single;
+    expect(saved.preset, AutomationSchedulePreset.daily);
+    // The one-shot target is gone (toJson omits a null runAtMs).
+    expect(saved.runAtMs, isNull);
+    expect(saved.dtstartMs, seededRunAt);
+    // Converting does not reset the run count — only a changed once target
+    // does.
+    expect(saved.runCount, 1);
+    expect(saved.enabled, isTrue);
+  });
 
   testWidgets(
     'fired once automation with unchanged target keeps its limit lock',
@@ -868,7 +1009,10 @@ void main() {
       // next save validates and succeeds instead of being bricked. The
       // automation was disabled by the earlier expiry, so flip the (now
       // unlocked) switch back on too.
-      await tester.enterText(find.byKey(const Key('tp-time-picker-hour')), '23');
+      await tester.enterText(
+        find.byKey(const Key('tp-time-picker-hour')),
+        '23',
+      );
       await tester.enterText(
         find.byKey(const Key('tp-time-picker-minute')),
         '59',
@@ -883,9 +1027,15 @@ void main() {
 
       expect(find.byType(AutomationEditorDialog), findsNothing);
       expect(
-        setup.cubit.state.automations.where((a) => a.id == 'stale-error').single,
+        setup.cubit.state.automations
+            .where((a) => a.id == 'stale-error')
+            .single,
         isA<Automation>()
-            .having((a) => a.runAtMs, 'runAtMs', greaterThan(DateTime.now().millisecondsSinceEpoch))
+            .having(
+              (a) => a.runAtMs,
+              'runAtMs',
+              greaterThan(DateTime.now().millisecondsSinceEpoch),
+            )
             .having((a) => a.enabled, 'enabled', isTrue),
       );
     },
