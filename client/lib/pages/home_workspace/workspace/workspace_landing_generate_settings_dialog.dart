@@ -37,6 +37,16 @@ Future<void> showWorkspaceLandingGenerateSettingsDialog(
   );
 }
 
+@visibleForTesting
+SimpleLaunchFourTuple? constrainGenerateSettingsGenerator({
+  required SimpleLaunchFourTuple? generator,
+  required TeamMode teamMode,
+  required CliTool nativeCli,
+}) {
+  if (teamMode == TeamMode.native && generator?.cli != nativeCli) return null;
+  return generator;
+}
+
 class _GenerateSettingsDialog extends StatefulWidget {
   const _GenerateSettingsDialog({
     required this.presets,
@@ -99,6 +109,11 @@ class _GenerateSettingsDialogState extends State<_GenerateSettingsDialog> {
       _nativeCli = nativeClis.contains(settings.nativeCli)
           ? settings.nativeCli
           : (nativeClis.firstOrNull ?? CliTool.claude);
+      _generator = constrainGenerateSettingsGenerator(
+        generator: _generator,
+        teamMode: _teamMode,
+        nativeCli: _nativeCli,
+      );
       _rows
         ..clear()
         ..addAll([
@@ -143,7 +158,11 @@ class _GenerateSettingsDialogState extends State<_GenerateSettingsDialog> {
   }
 
   AiFeatureSetting? get _draftGeneratorSetting {
-    final generator = _generator;
+    final generator = constrainGenerateSettingsGenerator(
+      generator: _generator,
+      teamMode: _teamMode,
+      nativeCli: _nativeCli,
+    );
     if (generator == null) return null;
     return AiFeatureSetting(
       activePresetId: null,
@@ -222,6 +241,11 @@ class _GenerateSettingsDialogState extends State<_GenerateSettingsDialog> {
                       } else if (!nativeClis.contains(_nativeCli)) {
                         _nativeCli = nativeClis.firstOrNull ?? CliTool.claude;
                       }
+                      _generator = constrainGenerateSettingsGenerator(
+                        generator: _generator,
+                        teamMode: _teamMode,
+                        nativeCli: _nativeCli,
+                      );
                     }
                   });
                 },
@@ -240,7 +264,14 @@ class _GenerateSettingsDialogState extends State<_GenerateSettingsDialog> {
                   ],
                   onChanged: (value) {
                     if (value == null) return;
-                    setState(() => _nativeCli = value);
+                    setState(() {
+                      _nativeCli = value;
+                      _generator = constrainGenerateSettingsGenerator(
+                        generator: _generator,
+                        teamMode: _teamMode,
+                        nativeCli: _nativeCli,
+                      );
+                    });
                   },
                 ),
               ],
@@ -446,7 +477,12 @@ class _GenerateSettingsDialogState extends State<_GenerateSettingsDialog> {
   }
 
   Future<void> _save(BuildContext context) async {
-    final generator = _generator!;
+    final generator = constrainGenerateSettingsGenerator(
+      generator: _generator,
+      teamMode: _teamMode,
+      nativeCli: _nativeCli,
+    );
+    if (generator == null) return;
     await context.read<AiFeatureSettingsCubit>().updateSetting(
       AiFeatureId.teamGenerate,
       AiFeatureSetting(
