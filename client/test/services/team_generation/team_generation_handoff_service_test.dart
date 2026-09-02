@@ -20,6 +20,7 @@ import 'package:teampilot/services/storage/workspace_layout.dart';
 import '../../support/in_memory_filesystem.dart';
 
 class _FakePort implements TeamGenerationSessionPort {
+  String destinationStatus = 'opened';
   final createRequests = <String>[];
   final openRequests = <String>[];
   final selected = <String>[];
@@ -51,8 +52,10 @@ class _FakePort implements TeamGenerationSessionPort {
     required String fixedSessionId,
   }) async {
     createRequests.add(fixedSessionId);
-    knownSessions.add(fixedSessionId);
-    return const SessionPortOpenResult(status: 'opened');
+    if (destinationStatus == 'opened') {
+      knownSessions.add(fixedSessionId);
+    }
+    return SessionPortOpenResult(status: destinationStatus);
   }
 
   @override
@@ -297,6 +300,47 @@ void main() {
 
       expect(second.destinationSessionId, first.destinationSessionId);
       expect(port.createRequests.length, createCount);
+    },
+  );
+
+  test(
+    'missingTeamMember destination keeps the workflow recoverable with builder evidence',
+    () async {
+      await store.mutate('ws', 'wf', (job) {
+        return job.copyWith(
+          receipts: {
+            ...job.receipts,
+            'builderKickoff': const TeamGenerationReceipt(
+              state: TeamGenerationReceiptState.succeeded,
+              value: 'builder-kickoff',
+            ),
+          },
+        );
+      });
+      port.destinationStatus = 'missingTeamMember';
+
+      await expectLater(
+        service.handoff(workspace: workspace(), team: team(), workflowId: 'wf'),
+        throwsA(
+          isA<StateError>().having(
+            (error) => error.message,
+            'message',
+            contains('missingTeamMember'),
+          ),
+        ),
+      );
+
+      final job = (await store.read('ws', 'wf'))!;
+      expect(job.isActive, isTrue);
+      expect(job.phase, TeamGenerationPhase.launching);
+      expect(job.builderSessionId, 'builder');
+      expect(
+        job.receipts['builderKickoff']!.state,
+        TeamGenerationReceiptState.succeeded,
+      );
+      expect(job.receipts['destination'], isNull);
+      expect(port.historySeedCalls, isEmpty);
+      expect(port.deliveryCalls, isEmpty);
     },
   );
 }

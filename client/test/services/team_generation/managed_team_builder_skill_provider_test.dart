@@ -33,6 +33,7 @@ void main() {
         '2–5',
         'team-lead',
         'Catalog MCP',
+        'Team Composer MCP',
         'Never invent Catalog resource IDs.',
         'Never edit TeamPilot JSON manifests',
         'inputs, outputs, launch configuration, and required resources',
