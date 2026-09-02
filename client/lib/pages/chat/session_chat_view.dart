@@ -53,6 +53,7 @@ import '../../utils/debug/debug_bloc_rebuild.dart';
 import '../../utils/logging/logger.dart';
 import '../../utils/session/session_chat_identity.dart';
 import '../../utils/team/team_member_naming.dart';
+import 'launch_error_card_retry.dart';
 import 'session_chat_compose_section.dart';
 import 'session_seat_working.dart';
 import 'session_chat_message_area.dart';
@@ -1052,6 +1053,31 @@ class _SessionChatViewState extends State<SessionChatView> {
     }
   }
 
+  Future<void> _retryLaunchOrLatestFailed() async {
+    await runLaunchErrorCardRetry(
+      loadRecords: () => _failedMessageStore.load(
+        widget.session.workspaceId,
+        widget.session.sessionId,
+      ),
+      retryFailed: (record) async {
+        if (_isSubmitting || !_retryingFailedMessageIds.add(record.id)) {
+          return;
+        }
+        try {
+          if (!mounted) return;
+          await _deliverComposeMessage(
+            record.text,
+            retryRecord: record,
+            clearCompose: false,
+          );
+        } finally {
+          _retryingFailedMessageIds.remove(record.id);
+        }
+      },
+      reconnectOnly: () => widget.onRetry?.call(),
+    );
+  }
+
   void _cancelAwaitingIdleGrace() {
     _awaitingIdleGraceTimer?.cancel();
     _awaitingIdleGraceTimer = null;
@@ -1410,7 +1436,9 @@ class _SessionChatViewState extends State<SessionChatView> {
                                                 launchError: widget.launchError,
                                                 onRemapDeadTarget:
                                                     widget.onRemapDeadTarget,
-                                                onRetry: widget.onRetry,
+                                                onRetry: () => unawaited(
+                                                  _retryLaunchOrLatestFailed(),
+                                                ),
                                                 sessionConnectInProgress: widget
                                                     .sessionConnectInProgress,
                                                 isMailboxUnread:
