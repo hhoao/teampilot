@@ -196,10 +196,49 @@ class FullscreenPtyAutomation {
     await Future<void>.delayed(_timing.afterCr);
     if (isAcked?.call() ?? false) return FullscreenPtyDeliveryOutcome.submitted;
     final scanRows = _probeScanRows(port);
-    await port.syncDisplayGrid();
-    return port.isSubmittedAfterCr(anchor, scanRows: scanRows)
+    return await _pollForCrAck(
+          port,
+          anchor,
+          scanRows: scanRows,
+          isAcked: isAcked,
+        )
         ? FullscreenPtyDeliveryOutcome.submitted
         : FullscreenPtyDeliveryOutcome.crStuck;
+  }
+
+  /// Grid paint can lag the CR write (real TUI + synthetic test shells). Poll
+  /// like paste ACK so a late submit frame is not reported as [crStuck].
+  Future<bool> _pollForCrAck(
+    FullscreenPtyDeliveryPort port,
+    FullscreenPromptAnchor anchor, {
+    required int scanRows,
+    bool Function()? isAcked,
+  }) async {
+    final timeout = _timing.pollTimeout;
+    if (timeout <= Duration.zero) {
+      await port.syncDisplayGrid();
+      return port.isSubmittedAfterCr(anchor, scanRows: scanRows);
+    }
+    final deadline = DateTime.now().add(timeout);
+    while (DateTime.now().isBefore(deadline)) {
+      if (port.isAborted) return false;
+      if (isAcked?.call() ?? false) return true;
+      await port.syncDisplayGrid();
+      if (port.isSubmittedAfterCr(anchor, scanRows: scanRows)) return true;
+      final remaining = deadline.difference(DateTime.now());
+      if (remaining <= Duration.zero) break;
+      final slice =
+          _timing.pollInterval <= Duration.zero ||
+              remaining < _timing.pollInterval
+          ? remaining
+          : _timing.pollInterval;
+      await Future.any<void>([
+        port.waitForPaint(timeout: slice),
+        if (_timing.pollInterval > Duration.zero) Future<void>.delayed(slice),
+      ]);
+    }
+    await port.syncDisplayGrid();
+    return port.isSubmittedAfterCr(anchor, scanRows: scanRows);
   }
 
   Future<void> _settleAfterPasteAck(

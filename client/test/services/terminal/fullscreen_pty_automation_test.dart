@@ -154,6 +154,37 @@ void main() {
     );
 
     test(
+      'CR ACK proceeds on waitForPaint when submit frame arrives late',
+      () async {
+        final port = _LateCrAckPaintPort();
+        final automation = FullscreenPtyAutomation(
+          timing: const PtyAutomationTiming(
+            afterClear: Duration.zero,
+            afterPaste: Duration.zero,
+            afterCr: Duration.zero,
+            afterReinject: Duration.zero,
+            crMaxAttempts: 2,
+            reinjectMaxAttempts: 1,
+            nudgeMaxAttempts: 2,
+            scanRows: 24,
+            pollTimeout: Duration(seconds: 2),
+            pollInterval: Duration(milliseconds: 200),
+          ),
+        );
+        final sw = Stopwatch()..start();
+        final outcome = await automation.deliverPasteAndSubmit(
+          port: port,
+          text: 'inspect this',
+          pasteSettle: Duration.zero,
+        );
+        sw.stop();
+        expect(outcome, FullscreenPtyDeliveryOutcome.submitted);
+        expect(sw.elapsedMilliseconds, lessThan(150));
+        expect(port.crAckPaintWaits, greaterThan(0));
+      },
+    );
+
+    test(
       'composerMovesDown waits pasteSettle after needle before CR',
       () async {
         final port = _TimestampedPastePort();
@@ -874,4 +905,89 @@ final class _PaintWakePort implements FullscreenPtyDeliveryPort {
   @override
   String describeProbeWindow({int scanRows = 24}) =>
       'visible=$_visible staged=$staged';
+}
+
+/// Staged text is visible immediately after paste, but the CR submit frame only
+/// appears on the first [waitForPaint] — mirrors ConnectedRecordingShell tests
+/// that paint the composerMovesDown ACK asynchronously after CR.
+final class _LateCrAckPaintPort implements FullscreenPtyDeliveryPort {
+  String? staged;
+  var _crAckVisible = false;
+  int pasteCount = 0;
+  int crCount = 0;
+  int crAckPaintWaits = 0;
+
+  @override
+  bool get isAborted => false;
+
+  @override
+  int get viewportRows => 24;
+
+  @override
+  FullscreenCrAckConfig get crAckConfig => const FullscreenCrAckConfig(
+    strategy: FullscreenCrAckStrategy.composerMovesDown,
+    composerPrefix: '\u203a',
+  );
+
+  @override
+  Future<void> syncDisplayGrid() async {}
+
+  @override
+  Future<void> waitForPaint({required Duration timeout}) async {
+    if (crCount > 0 && !_crAckVisible) {
+      crAckPaintWaits++;
+      _crAckVisible = true;
+      staged = null;
+    }
+  }
+
+  @override
+  FullscreenPromptAnchor? locateNeedle(String needle, {int scanRows = 24}) {
+    if (staged == null || !staged!.contains(needle)) return null;
+    return FullscreenPromptAnchor(
+      row: 0,
+      startCol: staged!.indexOf(needle),
+      needle: needle,
+    );
+  }
+
+  @override
+  FullscreenPromptAnchor? locateCollapsedPasteNeedle({int scanRows = 24}) =>
+      null;
+
+  @override
+  bool isAtAnchor(FullscreenPromptAnchor anchor) =>
+      staged != null && staged!.contains(anchor.needle);
+
+  @override
+  bool isSubmittedAfterCr(FullscreenPromptAnchor anchor, {int scanRows = 24}) =>
+      _crAckVisible;
+
+  @override
+  bool isComposerChromeEmpty({int scanRows = 24}) =>
+      staged == null || staged!.trim().isEmpty;
+
+  @override
+  bool isNeedleStagedInComposer(String needle, {int scanRows = 24}) =>
+      staged != null && staged!.contains(needle);
+
+  @override
+  Future<void> clearStagedInput({bool Function()? canExecute}) async {
+    staged = null;
+  }
+
+  @override
+  Future<void> pasteText(String value, {bool Function()? canExecute}) async {
+    pasteCount++;
+    staged = value;
+  }
+
+  @override
+  Future<void> submitCr({bool Function()? canExecute}) async {
+    crCount++;
+  }
+
+  @override
+  String describeProbeWindow({int scanRows = 24}) =>
+      'staged=$staged cr=$crCount crAck=$_crAckVisible';
 }

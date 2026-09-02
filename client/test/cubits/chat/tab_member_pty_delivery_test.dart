@@ -114,7 +114,21 @@ void main() {
     final commands = TabPromptDeliveryCommands(
       tabStore,
       automation: FullscreenPtyAutomation(
-        timing: PtyAutomationTiming.instant(),
+        // Non-zero CR poll window: ConnectedRecordingShell paints the submit
+        // frame asynchronously after CR, which races instant()'s one-shot ACK
+        // check on slower CI hosts (seen on macOS).
+        timing: const PtyAutomationTiming(
+          afterClear: Duration.zero,
+          afterPaste: Duration.zero,
+          afterCr: Duration.zero,
+          afterReinject: Duration.zero,
+          crMaxAttempts: 2,
+          reinjectMaxAttempts: 1,
+          nudgeMaxAttempts: 2,
+          scanRows: 24,
+          pollTimeout: Duration(seconds: 2),
+          pollInterval: Duration(milliseconds: 5),
+        ),
       ),
     );
     const text = 'inspect this';
