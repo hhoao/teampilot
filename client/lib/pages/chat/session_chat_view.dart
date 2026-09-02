@@ -63,6 +63,7 @@ import 'chat_message_locator.dart';
 import 'chat_reveal_controller.dart';
 import 'session_follow_up_compose_submit.dart';
 import 'history_continue_delivery.dart';
+import 'operator_history_send.dart';
 import 'session_history_review_submit.dart';
 import 'subagent_preview_controller.dart';
 
@@ -153,10 +154,12 @@ class _SessionChatViewState extends State<SessionChatView> {
 
   final _submitLock = HistoryContinueSubmitLock();
   final _mailboxQueued = StreamController<PendingUserMessage>.broadcast();
+  late final StreamSubscription<OperatorMailboxQueuedEvent> _operatorMailboxSub;
 
   /// True from optimistic enqueue through connect/boot/inject settle so idle
   /// grace cannot blank tip chrome while History continue is still in flight.
   var _historyContinueInFlight = false;
+
   /// Bumped whenever submit discards the compose draft so a late
   /// [_hydrateComposeDraft] cannot seed text the user already sent.
   var _composeDraftSeedGeneration = 0;
@@ -237,6 +240,20 @@ class _SessionChatViewState extends State<SessionChatView> {
       },
     );
     _bindSeat();
+    _operatorMailboxSub = context
+        .read<ChatCubit>()
+        .operatorMailboxQueued
+        .listen((event) {
+          if (!mounted ||
+              event.sessionId != widget.session.sessionId ||
+              event.memberId != _shellMemberId) {
+            return;
+          }
+          _mailboxQueuedSeats[event.mailId] = _mailboxSeatKey();
+          _mailboxQueued.add(
+            PendingUserMessage(id: event.mailId, content: event.text),
+          );
+        });
     unawaited(_loadHistoryThenHydratePersistedPendingUsers());
     unawaited(_loadWorkspaceProjectBundle());
   }
@@ -385,6 +402,7 @@ class _SessionChatViewState extends State<SessionChatView> {
   void dispose() {
     _awaitingIdleGraceTimer?.cancel();
     _awaitingIdleGraceTimer = null;
+    unawaited(_operatorMailboxSub.cancel());
     _controller.removeListener(_onComposeChanged);
     _voice.dispose();
     final live = _liveRefresh;
