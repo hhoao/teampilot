@@ -60,6 +60,7 @@ import '../services/compose/compose_draft_cache.dart';
 import '../services/follow_up/follow_up_queue.dart';
 import '../services/follow_up/follow_up_queue_drainer.dart';
 import '../pages/chat/history_continue_delivery.dart';
+import '../pages/chat/operator_history_send.dart';
 import '../pages/chat/session_chat_continue_seat.dart';
 import '../pages/chat/session_history_review_submit.dart';
 import '../utils/session/workspace_sessions.dart';
@@ -201,6 +202,11 @@ class ChatCubit extends Cubit<ChatState>
 
   /// Fired when History should drop cache / reload (disconnect or switch back).
   void Function(String sessionId)? onSessionHistoryStale;
+
+  final _operatorMailboxQueued =
+      StreamController<OperatorMailboxQueuedEvent>.broadcast();
+  Stream<OperatorMailboxQueuedEvent> get operatorMailboxQueued =>
+      _operatorMailboxQueued.stream;
 
   /// Fired when a session tab is torn down so History can dispose its seats.
   void Function(String sessionId)? onHistorySeatsDispose;
@@ -931,16 +937,6 @@ class ChatCubit extends Cubit<ChatState>
         ? session.sessionId
         : (connectMember?.id ?? memberId);
 
-    HistoryContinueChannel resolveChannel() {
-      final bus = _sessionRuntime.busForSession(sessionId);
-      return resolveHistoryContinueChannel(
-        teamBusInstalled: bus != null,
-        memberWaitingForMessage:
-            bus?.isWaitingForMessage(shellMemberId) ?? false,
-        memberInTurn: bus?.isMemberInTurn(shellMemberId) ?? false,
-      );
-    }
-
     if (message.trim().isEmpty) {
       return const HistoryContinueSubmitResult.failed();
     }
@@ -957,7 +953,8 @@ class ChatCubit extends Cubit<ChatState>
           member: connectMember,
           preserveWorkbenchView: preserveWorkbenchView,
         ),
-        resolveChannel: resolveChannel,
+        resolveChannel: () =>
+            resolveOperatorMessageChannel(sessionId, shellMemberId),
         connectWorkspaceSession: connectWorkspaceSession,
         ensureMemberInputReady: (sid, mid, {bool directToPty = false}) =>
             _memberMaterializer.ensureMemberInputReady(
@@ -978,16 +975,86 @@ class ChatCubit extends Cubit<ChatState>
     );
   }
 
+  @protected
+  HistoryContinueChannel resolveOperatorMessageChannel(
+    String sessionId,
+    String shellMemberId,
+  ) {
+    final bus = _sessionRuntime.busForSession(sessionId);
+    return resolveHistoryContinueChannel(
+      teamBusInstalled: bus != null,
+      memberWaitingForMessage: bus?.isWaitingForMessage(shellMemberId) ?? false,
+      memberInTurn: bus?.isMemberInTurn(shellMemberId) ?? false,
+    );
+  }
+
   Future<HistoryContinueSubmitResult> _deliverFollowUpAtSeat(
     String seat,
     String content,
   ) async {
     final parsed = parseFollowUpSeatKey(seat);
     if (parsed == null) return const HistoryContinueSubmitResult.failed();
-    return submitSessionOperatorMessage(
-      sessionId: parsed.$1,
-      memberId: parsed.$2,
-      message: content,
+
+    final sessionId = parsed.$1;
+    final memberId = parsed.$2;
+    final session = _tabStore.openTabBySessionId(sessionId)?.persistedSession;
+    if (session == null) {
+      return const HistoryContinueSubmitResult.failed();
+    }
+
+    final isPersonal = session.sessionTeam.trim().isEmpty;
+    TeamProfile? team;
+    if (!isPersonal) {
+      team = await teamProfileById(session.sessionTeam);
+    }
+    final connectMember = !isPersonal && team != null
+        ? resolveSessionChatContinueMember(
+            session: session,
+            team: team,
+            selectedMemberId: memberId,
+          )
+        : null;
+    final shellMemberId = isPersonal
+        ? session.sessionId
+        : (connectMember?.id ?? memberId);
+    final workspaceId = session.workspaceId;
+
+    return runOperatorHistorySend(
+      sessionId: sessionId,
+      memberId: shellMemberId,
+      text: content,
+      ports: (
+        resolveChannel: () async =>
+            resolveOperatorMessageChannel(sessionId, shellMemberId),
+        persistPending: (text) => persistHistoryPending(
+          workspaceId: workspaceId,
+          sessionId: sessionId,
+          memberId: shellMemberId,
+          text: text,
+        ),
+        markFailed: (record) => markHistoryPendingFailed(
+          workspaceId: workspaceId,
+          sessionId: sessionId,
+          memberId: shellMemberId,
+          record: record,
+        ),
+        deliver: (text) => submitSessionOperatorMessage(
+          sessionId: sessionId,
+          memberId: shellMemberId,
+          message: text,
+        ),
+        onPtyDelivered: () => onSessionHistoryStale?.call(sessionId),
+        onMailboxQueued: (event) {
+          if (!_operatorMailboxQueued.isClosed) {
+            _operatorMailboxQueued.add(event);
+          }
+        },
+        refreshMailboxTimeline: () async {
+          await podRuntime(sessionId)?.history
+              ?.seatOf(sessionId: sessionId, memberId: shellMemberId)
+              ?.refreshMailboxTimeline();
+        },
+      ),
     );
   }
 
@@ -2545,6 +2612,7 @@ class ChatCubit extends Cubit<ChatState>
     }
     await Future.wait(busDisposals);
     _tabStore.clear();
+    await _operatorMailboxQueued.close();
     await super.close();
   }
 }
