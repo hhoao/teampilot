@@ -17,10 +17,10 @@ import '../../support/in_memory_filesystem.dart';
 import '../../support/post_frame_test_harness.dart';
 
 ComposerPrincipal principal() => const ComposerPrincipal(
-      sessionId: 'builder',
-      workspaceId: 'ws',
-      workflowId: 'wf',
-    );
+  sessionId: 'builder',
+  workspaceId: 'ws',
+  workflowId: 'wf',
+);
 
 void main() {
   setUp(setUpTestAppStorage);
@@ -91,5 +91,77 @@ void main() {
     );
     expect(jsonEncode(result.response), isNot(contains('apiKey')));
     expect(jsonEncode(result.response), isNot(contains('token-1')));
+  });
+
+  test('context exposes frozen pool entry ids and four-tuples', () {
+    final source = GenerateModelPoolEntry(
+      id: 'pool-1',
+      cli: CliTool.codex,
+      provider: 'openai',
+      model: 'gpt-5',
+      effort: 'high',
+      description: 'strong reasoning',
+      tags: const ['reasoning'],
+    );
+    final job = TeamGenerationJob(
+      workflowId: 'wf',
+      workspaceId: 'ws',
+      builderSessionId: 'builder',
+      destinationSessionId: '',
+      teamId: '',
+      originalPrompt: 'task',
+      generator: const TeamGenerationJobGenerator(
+        generatorPresetId: 'generator',
+        settingsRevision: 'rev',
+        teamModeValue: 'mixed',
+        nativeCliValue: 'claude',
+      ),
+      settings: TeamGenerationSettingsSnapshot(
+        revision: 'rev',
+        capturedAt: 1,
+        teamMode: TeamMode.mixed,
+        nativeCli: CliTool.claude,
+        modelPool: [
+          EffectiveGenerateModelPoolEntry(
+            rank: 1,
+            source: source,
+            preset: syntheticPoolPreset(source),
+          ),
+        ],
+      ),
+      launch: const TeamGenerationLaunchSnapshot(
+        projectFolderPath: '/proj',
+        workingDirectoryPath: '/proj',
+        launchSecurityPolicyValue: 'sandbox',
+        folderIds: ['/proj'],
+        targetIds: ['local'],
+        workspaceRevision: 'workspace-rev',
+        capturedAt: 1,
+      ),
+      phase: TeamGenerationPhase.created,
+      resumePhase: TeamGenerationPhase.created,
+      attempt: 0,
+      probeSnapshotJson: null,
+      normalizedPlanJson: null,
+      planRevision: '',
+      validatedRevision: '',
+      validatedDestinationJson: null,
+      finalizeIdempotencyKey: '',
+      receipts: const {},
+      stagedResources: const [],
+      teamReservation: null,
+      error: null,
+      createdAt: 1,
+      updatedAt: 1,
+    );
+
+    final pool = teamGenerationContextPayload(job)['modelPool'] as List;
+    final row = pool.single as Map<String, Object?>;
+    expect(row['id'], 'pool-1');
+    expect(row['presetId'], row['id']);
+    expect(row, containsPair('cli', 'codex'));
+    expect(row, containsPair('provider', 'openai'));
+    expect(row, containsPair('model', 'gpt-5'));
+    expect(row, containsPair('effort', 'high'));
   });
 }

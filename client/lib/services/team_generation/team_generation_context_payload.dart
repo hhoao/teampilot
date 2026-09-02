@@ -28,7 +28,8 @@ Map<String, Object?> teamGenerationContextPayload(TeamGenerationJob job) {
       for (final entry in job.settings.modelPool)
         {
           'rank': entry.rank,
-          'presetId': effectiveTeamGenerationPresetId(entry),
+          'id': effectiveTeamGenerationPoolEntryId(entry),
+          'presetId': effectiveTeamGenerationPoolEntryId(entry),
           'cli': entry.preset.cli.value,
           'provider': entry.preset.provider,
           'model': entry.preset.model,
@@ -41,6 +42,6 @@ Map<String, Object?> teamGenerationContextPayload(TeamGenerationJob job) {
   };
 }
 
-String effectiveTeamGenerationPresetId(EffectiveGenerateModelPoolEntry entry) {
-  return entry.preset.id.isNotEmpty ? entry.preset.id : entry.source.presetId;
-}
+String effectiveTeamGenerationPoolEntryId(
+  EffectiveGenerateModelPoolEntry entry,
+) => entry.preset.id.isNotEmpty ? entry.preset.id : entry.source.id;

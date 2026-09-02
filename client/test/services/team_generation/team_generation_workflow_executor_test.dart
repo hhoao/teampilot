@@ -234,7 +234,15 @@ void main() {
       await settingsStore.save(
         TeamGenerationSettings(
           teamMode: TeamMode.mixed,
-          modelPool: [GenerateModelPoolEntry(presetId: preset.id)],
+          modelPool: [
+            GenerateModelPoolEntry(
+              id: preset.id,
+              cli: preset.cli,
+              provider: preset.provider,
+              model: preset.model,
+              effort: preset.effort,
+            ),
+          ],
         ),
       );
       final workspace = Workspace(

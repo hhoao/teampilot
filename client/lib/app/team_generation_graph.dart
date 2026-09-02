@@ -314,7 +314,7 @@ TeamGenerationGraph buildTeamGenerationGraph({
             existingExpertKeys: const {},
             presetDigests: {
               for (final entry in job.settings.modelPool)
-                effectiveTeamGenerationPresetId(entry): [
+                effectiveTeamGenerationPoolEntryId(entry): [
                   'cli:',
                   entry.preset.cli.value,
                   'provider:',

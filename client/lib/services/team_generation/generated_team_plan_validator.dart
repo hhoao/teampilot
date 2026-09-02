@@ -8,6 +8,7 @@ import '../../utils/team/team_member_naming.dart';
 import 'models/generated_team_plan.dart';
 import 'models/team_generation_launch.dart';
 import 'models/team_target_probe.dart';
+import 'team_generation_context_payload.dart';
 
 /// Pure validator result with bounded preview data (no credentials/paths).
 final class GeneratedTeamValidationResult {
@@ -123,15 +124,8 @@ final class GeneratedTeamPlanValidator {
     final frozen = input.settings;
     final poolById = <String, EffectiveGenerateModelPoolEntry>{
       for (final entry in frozen.modelPool)
-        if ((entry.preset.id.isNotEmpty
-                ? entry.preset.id
-                : entry.source.presetId)
-            .trim()
-            .isNotEmpty)
-          (entry.preset.id.isNotEmpty
-                  ? entry.preset.id
-                  : entry.source.presetId)
-              .trim(): entry,
+        if (effectiveTeamGenerationPoolEntryId(entry).trim().isNotEmpty)
+          effectiveTeamGenerationPoolEntryId(entry).trim(): entry,
     };
     if (poolById.isEmpty) {
       issues.add(_error('model_pool_empty'));
@@ -216,7 +210,7 @@ final class GeneratedTeamPlanValidator {
     for (final member in plan.members) {
       final presetId = member.presetId.isEmpty
           ? (frozen.modelPool.isNotEmpty
-                ? frozen.modelPool.first.preset.id
+                ? effectiveTeamGenerationPoolEntryId(frozen.modelPool.first)
                 : '')
           : member.presetId;
       final entry = poolById[presetId];
@@ -292,7 +286,7 @@ final class GeneratedTeamPlanValidator {
     }
     final activePresetId = frozen.modelPool.isEmpty
         ? ''
-        : frozen.modelPool.first.preset.id;
+        : effectiveTeamGenerationPoolEntryId(frozen.modelPool.first);
     final destination = valid ? _destinationLaunch(input, plan) : null;
     return GeneratedTeamValidationResult(
       isValid: valid,

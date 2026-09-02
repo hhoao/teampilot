@@ -1,6 +1,9 @@
 import 'dart:convert';
 
 import 'package:flutter_test/flutter_test.dart';
+import 'package:teampilot/models/cli_preset.dart';
+import 'package:teampilot/models/team_config.dart';
+import 'package:teampilot/models/team_generation_settings.dart';
 import 'package:teampilot/services/team_generation/team_generation_settings_store.dart';
 
 import '../../support/in_memory_filesystem.dart';
@@ -39,11 +42,26 @@ void main() {
 
       final loaded = await store.load();
 
-      expect(loaded.modelPool.map((entry) => entry.presetId), [
-        'strong',
-        'missing',
-      ]);
+      expect(loaded.modelPool.map((entry) => entry.id), ['strong', 'missing']);
+      expect(loaded.modelPool.first.legacyPresetId, 'strong');
       expect(loaded.modelPool.first.description, 'lead');
+
+      final hydrated = hydrateTeamGenerationSettings(
+        settings: loaded,
+        presets: const [
+          CliPreset(
+            id: 'strong',
+            name: 'Strong',
+            cli: CliTool.claude,
+            provider: 'anthropic',
+            model: 'opus',
+            effort: 'high',
+            createdAt: 0,
+            updatedAt: 0,
+          ),
+        ],
+      );
+      expect(hydrated.modelPool.first.model, isNotEmpty);
     },
   );
 }

@@ -13,19 +13,24 @@ import 'package:teampilot/services/cli/registry/cli_tool_registry.dart';
 import 'package:teampilot/services/team_generation/team_generation_compatibility.dart';
 
 CliPreset preset(String id, CliTool cli) => CliPreset(
-      id: id,
-      name: id,
-      cli: cli,
-      provider: 'official',
-      model: 'model',
-      createdAt: 0,
-      updatedAt: 0,
-    );
+  id: id,
+  name: id,
+  cli: cli,
+  provider: 'official',
+  model: 'model',
+  createdAt: 0,
+  updatedAt: 0,
+);
 
 EffectiveGenerateModelPoolEntry poolEntry(String id, CliTool cli) =>
     EffectiveGenerateModelPoolEntry(
       rank: 1,
-      source: GenerateModelPoolEntry(presetId: id),
+      source: GenerateModelPoolEntry(
+        id: id,
+        cli: cli,
+        provider: 'official',
+        model: 'model',
+      ),
       preset: preset(id, cli),
     );
 
@@ -49,23 +54,20 @@ class _SessionCap implements CliSessionCapability {
   const _SessionCap();
 
   @override
-  dynamic noSuchMethod(Invocation invocation) => throw UnimplementedError(
-        '${invocation.memberName}',
-      );
+  dynamic noSuchMethod(Invocation invocation) =>
+      throw UnimplementedError('${invocation.memberName}');
 }
 
 class _SkillCap implements SkillCapability {
   @override
-  dynamic noSuchMethod(Invocation invocation) => throw UnimplementedError(
-        '${invocation.memberName}',
-      );
+  dynamic noSuchMethod(Invocation invocation) =>
+      throw UnimplementedError('${invocation.memberName}');
 }
 
 class _McpCap implements McpCapability {
   @override
-  dynamic noSuchMethod(Invocation invocation) => throw UnimplementedError(
-        '${invocation.memberName}',
-      );
+  dynamic noSuchMethod(Invocation invocation) =>
+      throw UnimplementedError('${invocation.memberName}');
 }
 
 class _NativeCap implements TeamBehaviorCapability {
@@ -101,9 +103,7 @@ CliToolRegistry registryWith({
   registry.register(
     _FakeDefinition(
       CliTool.codex,
-      caps: launch
-          ? caps
-          : const <CliCapability>[],
+      caps: launch ? caps : const <CliCapability>[],
     ),
   );
   return registry;
@@ -125,17 +125,22 @@ void main() {
     expect(result.builderSecurityPolicy, isNotNull);
   });
 
-  test('generator accepts a fully capable cli and never grants full access',
-      () {
-    final compatibility = TeamGenerationCompatibility(
-      registry: registryWith(),
-    );
-    final result = compatibility.evaluateGenerator(
-      preset: preset('gen', CliTool.codex),
-    );
-    expect(result.isCompatible, isTrue);
-    expect(result.builderSecurityPolicy, isNot(LaunchSecurityPolicy.fullAccess));
-  });
+  test(
+    'generator accepts a fully capable cli and never grants full access',
+    () {
+      final compatibility = TeamGenerationCompatibility(
+        registry: registryWith(),
+      );
+      final result = compatibility.evaluateGenerator(
+        preset: preset('gen', CliTool.codex),
+      );
+      expect(result.isCompatible, isTrue);
+      expect(
+        result.builderSecurityPolicy,
+        isNot(LaunchSecurityPolicy.fullAccess),
+      );
+    },
+  );
 
   test('native pool requires one native-team-capable cli', () {
     final compatibility = TeamGenerationCompatibility(
@@ -146,8 +151,10 @@ void main() {
       nativeCli: CliTool.codex,
       pool: [poolEntry('codex', CliTool.codex)],
     );
-    expect(result.issues.map((issue) => issue.code),
-        contains('native_team_unsupported'));
+    expect(
+      result.issues.map((issue) => issue.code),
+      contains('native_team_unsupported'),
+    );
   });
 
   test('mixed pool may span launchable clis', () {
@@ -166,9 +173,7 @@ void main() {
   });
 
   test('empty pool reports model_pool_empty', () {
-    final compatibility = TeamGenerationCompatibility(
-      registry: registryWith(),
-    );
+    final compatibility = TeamGenerationCompatibility(registry: registryWith());
     final result = compatibility.evaluateTeamPool(
       mode: TeamMode.mixed,
       nativeCli: CliTool.claude,

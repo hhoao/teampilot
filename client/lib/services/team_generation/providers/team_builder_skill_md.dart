@@ -32,11 +32,12 @@ delivery of the original task.
    frozen `requestedMode` (for example `mixed` or `native`) — never invent
    modes such as `parallel` or `sequential`. Give every role non-overlapping
    responsibilities and working methods using only the plan's supported
-   fields. Select only frozen `presetId` and probed target IDs.
+   fields. Select only frozen modelPool entry ids (`presetId` / `id`) and
+   probed target IDs.
 3. Treat model-pool **rank 1 as the strongest** configuration. Prefer earlier
-   presets for `team-lead` and other critical roles, later presets for lighter
-   roles, and reuse a preset when that is the best fit. Use the frozen launch
-   constraints to choose each role's preset, replica count, and placement.
+   entries for `team-lead` and other critical roles, later entries for lighter
+   roles, and reuse an entry when that is the best fit. Use the frozen launch
+   constraints to choose each role's pool entry, replica count, and placement.
 4. Use the Catalog MCP to search and read skills, plugins, and MCP servers.
    Acquire a missing resource only when it is genuinely necessary, and make
    that acquisition generation-scoped (`bind_to: generation`). Do not install,

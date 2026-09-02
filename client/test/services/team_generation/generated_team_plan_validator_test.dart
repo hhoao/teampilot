@@ -30,12 +30,22 @@ GeneratedTeamValidationInput input({
     modelPool: [
       EffectiveGenerateModelPoolEntry(
         rank: 1,
-        source: GenerateModelPoolEntry(presetId: 'claude-strong'),
+        source: GenerateModelPoolEntry(
+          id: 'claude-strong',
+          cli: CliTool.claude,
+          provider: 'official',
+          model: 'model',
+        ),
         preset: preset('claude-strong', CliTool.claude),
       ),
       EffectiveGenerateModelPoolEntry(
         rank: 2,
-        source: GenerateModelPoolEntry(presetId: 'codex-fast'),
+        source: GenerateModelPoolEntry(
+          id: 'codex-fast',
+          cli: CliTool.codex,
+          provider: 'official',
+          model: 'model',
+        ),
         preset: preset('codex-fast', CliTool.codex),
       ),
     ],

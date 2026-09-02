@@ -49,9 +49,7 @@ class _RecordingSessionPort implements TeamGenerationSessionPort {
     String emptyDisplayTitleFallback = 'Team Builder',
     bool preserveWorkbenchView = true,
   }) async {
-    events.add(
-      'builderCreated:preserveWorkbenchView=$preserveWorkbenchView',
-    );
+    events.add('builderCreated:preserveWorkbenchView=$preserveWorkbenchView');
     sessions[fixedSessionId] = AppSession(
       sessionId: fixedSessionId,
       workspaceId: workspace.workspaceId,
@@ -91,6 +89,7 @@ class _RecordingSessionPort implements TeamGenerationSessionPort {
   Future<void> select(String sessionId) async {
     events.add('select:$sessionId');
   }
+
   @override
   Future<AppSession?> sessionById(String sessionId) async =>
       sessions[sessionId];
@@ -226,7 +225,15 @@ void main() {
       await settingsStore.save(
         TeamGenerationSettings(
           teamMode: TeamMode.mixed,
-          modelPool: [GenerateModelPoolEntry(presetId: preset.id)],
+          modelPool: [
+            GenerateModelPoolEntry(
+              id: preset.id,
+              cli: preset.cli,
+              provider: preset.provider,
+              model: preset.model,
+              effort: preset.effort,
+            ),
+          ],
         ),
       );
       final compatibility = TeamGenerationCompatibility(
