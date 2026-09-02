@@ -1038,6 +1038,12 @@ class ChatCubit extends Cubit<ChatState>
           memberId: shellMemberId,
           record: record,
         ),
+        clearPending: (record) => clearHistoryPending(
+          workspaceId: workspaceId,
+          sessionId: sessionId,
+          memberId: shellMemberId,
+          recordId: record.id,
+        ),
         deliver: (text) => submitSessionOperatorMessage(
           sessionId: sessionId,
           memberId: shellMemberId,

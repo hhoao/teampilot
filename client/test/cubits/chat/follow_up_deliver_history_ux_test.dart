@@ -27,7 +27,8 @@ void main() {
     () async {
       final stale = <String>[];
       cubit.onSessionHistoryStale = stale.add;
-      cubit.channel = HistoryContinueChannel.pty;
+      cubit.peekChannel = HistoryContinueChannel.pty;
+      cubit.deliveryChannel = HistoryContinueChannel.pty;
       cubit.enqueueFollowUp('follow up');
 
       await cubit.resumeFollowUpQueue('session-1', 'selected-member');
@@ -43,7 +44,8 @@ void main() {
   test(
     'mailbox follow-up emits once and does not persist History pending',
     () async {
-      cubit.channel = HistoryContinueChannel.mailbox;
+      cubit.peekChannel = HistoryContinueChannel.mailbox;
+      cubit.deliveryChannel = HistoryContinueChannel.mailbox;
       cubit.enqueueFollowUp('mail follow up');
       final queued = cubit.operatorMailboxQueued.first;
 
@@ -58,6 +60,29 @@ void main() {
       expect(event.text, 'mail follow up');
     },
   );
+
+  test(
+    'follow-up uses mailbox result UX when initial channel peek was PTY',
+    () async {
+      final stale = <String>[];
+      cubit.onSessionHistoryStale = stale.add;
+      cubit.peekChannel = HistoryContinueChannel.pty;
+      cubit.deliveryChannel = HistoryContinueChannel.mailbox;
+      cubit.enqueueFollowUp('channel flipped');
+      final queued = cubit.operatorMailboxQueued.first;
+
+      await cubit.resumeFollowUpQueue('session-1', 'selected-member');
+      final event = await queued;
+
+      expect(cubit.calls, [
+        'persist:workspace-1:session-1:session-1:channel flipped',
+        'deliver:session-1:session-1:channel flipped',
+        'clear:workspace-1:session-1:session-1:pending-1',
+      ]);
+      expect(stale, isEmpty);
+      expect(event.mailId, 'mail-1');
+    },
+  );
 }
 
 final class _RecordingChatCubit extends ChatCubit {
@@ -67,7 +92,8 @@ final class _RecordingChatCubit extends ChatCubit {
         automationRepository: testAutomationRepository(),
       );
 
-  HistoryContinueChannel channel = HistoryContinueChannel.pty;
+  HistoryContinueChannel peekChannel = HistoryContinueChannel.pty;
+  HistoryContinueChannel deliveryChannel = HistoryContinueChannel.pty;
   final calls = <String>[];
   var persistCount = 0;
 
@@ -103,7 +129,7 @@ final class _RecordingChatCubit extends ChatCubit {
   HistoryContinueChannel resolveOperatorMessageChannel(
     String sessionId,
     String shellMemberId,
-  ) => channel;
+  ) => peekChannel;
 
   @override
   Future<FailedMessageRecord?> persistHistoryPending({
@@ -123,6 +149,16 @@ final class _RecordingChatCubit extends ChatCubit {
   }
 
   @override
+  Future<void> clearHistoryPending({
+    required String workspaceId,
+    required String sessionId,
+    required String memberId,
+    required String recordId,
+  }) async {
+    calls.add('clear:$workspaceId:$sessionId:$memberId:$recordId');
+  }
+
+  @override
   Future<HistoryContinueSubmitResult> submitSessionOperatorMessage({
     required String sessionId,
     required String memberId,
@@ -132,8 +168,10 @@ final class _RecordingChatCubit extends ChatCubit {
     calls.add('deliver:$sessionId:$memberId:$message');
     return HistoryContinueSubmitResult(
       ok: true,
-      channel: channel,
-      mailId: channel == HistoryContinueChannel.mailbox ? 'mail-1' : null,
+      channel: deliveryChannel,
+      mailId: deliveryChannel == HistoryContinueChannel.mailbox
+          ? 'mail-1'
+          : null,
     );
   }
 }
