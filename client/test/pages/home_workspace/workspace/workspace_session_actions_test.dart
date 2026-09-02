@@ -188,6 +188,27 @@ void main() {
     expect(loggedStackTrace, same(stackTrace));
   });
 
+  test('generation start failures log when user reporting is unavailable', () {
+    final error = StateError('failure after navigation');
+    final stackTrace = StackTrace.current;
+    Object? loggedError;
+    StackTrace? loggedStackTrace;
+
+    reportTeamGenerationStartFailure(
+      chatCubit: null,
+      userMessage: null,
+      error: error,
+      stackTrace: stackTrace,
+      diagnosticLogger: (error, stackTrace) {
+        loggedError = error;
+        loggedStackTrace = stackTrace;
+      },
+    );
+
+    expect(loggedError, same(error));
+    expect(loggedStackTrace, same(stackTrace));
+  });
+
   testWidgets('generation wiring failures use the active locale', (
     tester,
   ) async {

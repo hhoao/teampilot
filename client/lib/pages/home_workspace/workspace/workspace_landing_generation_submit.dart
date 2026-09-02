@@ -74,14 +74,18 @@ Future<bool> submitWorkspaceLandingGeneration(
     }
     return true;
   } on Object catch (error, stackTrace) {
+    ChatCubit? chatCubit;
+    String? userMessage;
     if (context.mounted) {
-      reportTeamGenerationStartFailure(
-        chatCubit: context.read<ChatCubit>(),
-        userMessage: AppLocalizations.of(context).teamGenerateErrorStartFailed,
-        error: error,
-        stackTrace: stackTrace,
-      );
+      chatCubit = context.read<ChatCubit>();
+      userMessage = AppLocalizations.of(context).teamGenerateErrorStartFailed;
     }
+    reportTeamGenerationStartFailure(
+      chatCubit: chatCubit,
+      userMessage: userMessage,
+      error: error,
+      stackTrace: stackTrace,
+    );
     return false;
   }
 }
@@ -90,13 +94,14 @@ typedef TeamGenerationDiagnosticLogger =
     void Function(Object error, StackTrace stackTrace);
 
 void reportTeamGenerationStartFailure({
-  required ChatCubit chatCubit,
-  required String userMessage,
+  required ChatCubit? chatCubit,
+  required String? userMessage,
   required Object error,
   required StackTrace stackTrace,
   TeamGenerationDiagnosticLogger? diagnosticLogger,
 }) {
   (diagnosticLogger ?? _logTeamGenerationStartFailure)(error, stackTrace);
+  if (chatCubit == null || userMessage == null) return;
   chatCubit.failSessionConnect('pending', userMessage);
 }
 
