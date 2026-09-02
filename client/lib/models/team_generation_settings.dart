@@ -2,6 +2,7 @@ import 'dart:convert';
 
 import 'package:crypto/crypto.dart';
 import 'package:flutter/foundation.dart';
+import 'package:uuid/uuid.dart';
 
 import '../services/cli/registry/capabilities/team_behavior_capability.dart';
 import '../services/cli/registry/cli_tool_registry.dart';
@@ -11,53 +12,142 @@ import 'team_config.dart';
 @immutable
 final class GenerateModelPoolEntry {
   factory GenerateModelPoolEntry({
-    required String presetId,
+    String? id,
+    CliTool? cli,
+    String provider = '',
+    String model = '',
+    String effort = '',
     String description = '',
     List<String> tags = const [],
+    @Deprecated('Use the inline id/cli/provider/model fields') String? presetId,
   }) {
+    final normalizedLegacyPresetId = presetId?.trim() ?? '';
+    if (normalizedLegacyPresetId.isNotEmpty &&
+        id == null &&
+        cli == null &&
+        provider.trim().isEmpty &&
+        model.trim().isEmpty) {
+      return GenerateModelPoolEntry._internal(
+        id: normalizedLegacyPresetId,
+        cli: CliTool.claude,
+        provider: '',
+        model: '',
+        effort: effort.trim(),
+        description: description.trim(),
+        tags: _freezeTags(tags),
+        legacyPresetId: normalizedLegacyPresetId,
+      );
+    }
+    final normalizedId = (id ?? '').trim();
     return GenerateModelPoolEntry._internal(
-      presetId: presetId,
-      description: description,
+      id: normalizedId.isEmpty ? const Uuid().v4() : normalizedId,
+      cli: cli ?? CliTool.claude,
+      provider: provider.trim(),
+      model: model.trim(),
+      effort: effort.trim(),
+      description: description.trim(),
       tags: _freezeTags(tags),
     );
   }
 
   const GenerateModelPoolEntry._internal({
-    required this.presetId,
+    required this.id,
+    required this.cli,
+    required this.provider,
+    required this.model,
+    this.effort = '',
     this.description = '',
     this.tags = const [],
+    this.legacyPresetId,
   });
 
   factory GenerateModelPoolEntry.fromJson(Map<String, Object?> json) {
-    return GenerateModelPoolEntry(
-      presetId: (json['presetId'] as String? ?? '').trim(),
-      description: (json['description'] as String? ?? '').trim(),
-      tags: [
-        for (final value in (json['tags'] as List? ?? const []))
-          if (value is String && value.trim().isNotEmpty) value.trim(),
-      ],
+    final cli = CliTool.tryParse(json['cli']?.toString());
+    final provider = (json['provider'] as String? ?? '').trim();
+    final model = (json['model'] as String? ?? '').trim();
+    final effort = (json['effort'] as String? ?? '').trim();
+    final description = (json['description'] as String? ?? '').trim();
+    final tags = [
+      for (final value in (json['tags'] as List? ?? const []))
+        if (value is String && value.trim().isNotEmpty) value.trim(),
+    ];
+    if (cli != null && (provider.isNotEmpty || model.isNotEmpty)) {
+      return GenerateModelPoolEntry(
+        id: (json['id'] as String? ?? '').trim(),
+        cli: cli,
+        provider: provider,
+        model: model,
+        effort: effort,
+        description: description,
+        tags: tags,
+      );
+    }
+
+    final legacyPresetId = (json['presetId'] as String? ?? '').trim();
+    return GenerateModelPoolEntry._internal(
+      id: legacyPresetId.isNotEmpty
+          ? legacyPresetId
+          : (json['id'] as String? ?? '').trim(),
+      cli: cli ?? CliTool.claude,
+      provider: provider,
+      model: model,
+      effort: effort,
+      description: description,
+      tags: _freezeTags(tags),
+      legacyPresetId: legacyPresetId.isEmpty ? null : legacyPresetId,
     );
   }
 
-  final String presetId;
+  final String id;
+  final CliTool cli;
+  final String provider;
+  final String model;
+  final String effort;
   final String description;
   final List<String> tags;
+  final String? legacyPresetId;
+
+  @Deprecated('Use id')
+  String get presetId => legacyPresetId ?? id;
+
+  bool get isInline =>
+      legacyPresetId == null &&
+      id.isNotEmpty &&
+      provider.isNotEmpty &&
+      model.isNotEmpty;
 
   GenerateModelPoolEntry normalized() {
-    if (presetId.trim() == presetId &&
+    final normalizedTags = _normalizeTags(tags);
+    final normalizedLegacyPresetId = legacyPresetId?.trim();
+    if (id.trim() == id &&
+        provider.trim() == provider &&
+        model.trim() == model &&
+        effort.trim() == effort &&
         description.trim() == description &&
-        _sameList(tags, _normalizeTags(tags))) {
+        normalizedLegacyPresetId == legacyPresetId &&
+        _sameList(tags, normalizedTags)) {
       return this;
     }
-    return GenerateModelPoolEntry(
-      presetId: presetId.trim(),
+    return GenerateModelPoolEntry._internal(
+      id: id.trim(),
+      cli: cli,
+      provider: provider.trim(),
+      model: model.trim(),
+      effort: effort.trim(),
       description: description.trim(),
-      tags: _normalizeTags(tags),
+      tags: normalizedTags,
+      legacyPresetId: normalizedLegacyPresetId?.isEmpty == true
+          ? null
+          : normalizedLegacyPresetId,
     );
   }
 
   Map<String, Object?> toJson() => {
-    'presetId': presetId,
+    'id': id,
+    'cli': cli.value,
+    'provider': provider,
+    'model': model,
+    if (effort.isNotEmpty) 'effort': effort,
     if (description.isNotEmpty) 'description': description,
     if (tags.isNotEmpty) 'tags': tags,
   };
@@ -66,13 +156,27 @@ final class GenerateModelPoolEntry {
   bool operator ==(Object other) {
     return identical(this, other) ||
         other is GenerateModelPoolEntry &&
-            presetId == other.presetId &&
+            id == other.id &&
+            cli == other.cli &&
+            provider == other.provider &&
+            model == other.model &&
+            effort == other.effort &&
             description == other.description &&
-            listEquals(tags, other.tags);
+            listEquals(tags, other.tags) &&
+            legacyPresetId == other.legacyPresetId;
   }
 
   @override
-  int get hashCode => Object.hash(presetId, description, Object.hashAll(tags));
+  int get hashCode => Object.hash(
+    id,
+    cli,
+    provider,
+    model,
+    effort,
+    description,
+    Object.hashAll(tags),
+    legacyPresetId,
+  );
 }
 
 @immutable
@@ -163,14 +267,13 @@ final class TeamGenerationSettings {
 
   TeamGenerationSettings normalized() {
     final normalizedPool = <GenerateModelPoolEntry>[];
-    final seenPresetIds = <String>{};
+    final seenIds = <String>{};
     for (final entry in modelPool) {
       final normalized = entry.normalized();
-      if (normalized.presetId.isEmpty ||
-          seenPresetIds.contains(normalized.presetId)) {
+      if (normalized.id.isEmpty || seenIds.contains(normalized.id)) {
         continue;
       }
-      seenPresetIds.add(normalized.presetId);
+      seenIds.add(normalized.id);
       normalizedPool.add(normalized);
     }
     final immutablePool = List<GenerateModelPoolEntry>.unmodifiable(
@@ -280,13 +383,13 @@ final class TeamGenerationSettingsSnapshot {
   static EffectiveGenerateModelPoolEntry _effectivePoolEntryFromJson(
     Map<String, Object?> entry,
   ) {
-    final presetMap =
-        ((entry['preset'] as Map?) ?? const {}).cast<String, Object?>();
+    final presetMap = ((entry['preset'] as Map?) ?? const {})
+        .cast<String, Object?>();
     final source = GenerateModelPoolEntry.fromJson(
       ((entry['source'] as Map?) ?? const {}).cast<String, Object?>(),
     );
     final nestedId = (presetMap['id'] as String?)?.trim() ?? '';
-    final presetId = nestedId.isNotEmpty ? nestedId : source.presetId;
+    final presetId = nestedId.isNotEmpty ? nestedId : source.id;
     return EffectiveGenerateModelPoolEntry(
       rank: (entry['rank'] as num?)?.toInt() ?? 0,
       source: source,
@@ -391,24 +494,77 @@ final class TeamGenerationGeneratorSnapshot {
   final List<EffectiveGenerateModelPoolEntry> modelPool;
 }
 
+TeamGenerationSettings hydrateTeamGenerationSettings({
+  required TeamGenerationSettings settings,
+  required List<CliPreset> presets,
+}) {
+  final normalizedSettings = settings.normalized();
+  final presetsById = {
+    for (final preset in presets)
+      if (preset.id.trim().isNotEmpty) preset.id.trim(): preset,
+  };
+  return TeamGenerationSettings(
+    schemaVersion: normalizedSettings.schemaVersion,
+    teamMode: normalizedSettings.teamMode,
+    nativeCli: normalizedSettings.nativeCli,
+    modelPool: [
+      for (final entry in normalizedSettings.modelPool)
+        if (entry.legacyPresetId case final legacyPresetId?)
+          if (presetsById[legacyPresetId] case final preset?)
+            GenerateModelPoolEntry(
+              id: entry.id,
+              cli: preset.cli,
+              provider: preset.provider,
+              model: preset.model,
+              effort: preset.effort,
+              description: entry.description,
+              tags: entry.tags,
+            )
+          else
+            entry
+        else
+          entry,
+    ],
+  ).normalized();
+}
+
+CliPreset syntheticPoolPreset(GenerateModelPoolEntry entry) {
+  final summary = [
+    entry.provider,
+    entry.model,
+    if (entry.effort.isNotEmpty) entry.effort,
+  ].join(' / ');
+  return CliPreset(
+    id: entry.id,
+    name: summary,
+    cli: entry.cli,
+    provider: entry.provider,
+    model: entry.model,
+    effort: entry.effort,
+    createdAt: 0,
+    updatedAt: 0,
+  );
+}
+
 TeamGenerationSettingsSnapshot resolveTeamGenerationSettingsSnapshot({
   required TeamGenerationSettings settings,
   required List<CliPreset> presets,
   required CliToolRegistry registry,
   required int capturedAt,
 }) {
-  final normalizedSettings = settings.normalized();
-  final byId = {for (final preset in presets) preset.id.trim(): preset};
+  final normalizedSettings = hydrateTeamGenerationSettings(
+    settings: settings,
+    presets: presets,
+  );
   final effective = <EffectiveGenerateModelPoolEntry>[];
   for (final entry in normalizedSettings.modelPool) {
-    final preset = byId[entry.presetId.trim()];
-    if (preset == null ||
-        registry.tryGet(preset.cli)?.isLaunchSupported != true) {
+    if (!entry.isInline ||
+        registry.tryGet(entry.cli)?.isLaunchSupported != true) {
       continue;
     }
     if (normalizedSettings.teamMode == TeamMode.native) {
-      final behavior = registry.capability<TeamBehaviorCapability>(preset.cli);
-      if (preset.cli != normalizedSettings.nativeCli ||
+      final behavior = registry.capability<TeamBehaviorCapability>(entry.cli);
+      if (entry.cli != normalizedSettings.nativeCli ||
           behavior?.supportsNativeTeam != true) {
         continue;
       }
@@ -417,7 +573,7 @@ TeamGenerationSettingsSnapshot resolveTeamGenerationSettingsSnapshot({
       EffectiveGenerateModelPoolEntry(
         rank: effective.length + 1,
         source: entry,
-        preset: preset,
+        preset: syntheticPoolPreset(entry),
       ),
     );
   }
