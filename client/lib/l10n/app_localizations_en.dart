@@ -6605,7 +6605,48 @@ class AppLocalizationsEn extends AppLocalizations {
   String get automationsScheduleCustom => 'Custom cron';
 
   @override
+  String get automationsScheduleOnce => 'Once';
+
+  @override
+  String automationsScheduleSummaryOnce(String time) {
+    return 'Once at $time';
+  }
+
+  @override
   String get automationsSchedule => 'Schedule';
+
+  @override
+  String get automationsScheduleModeOnce => 'Once';
+
+  @override
+  String get automationsScheduleModeCountdown => 'Countdown';
+
+  @override
+  String get automationsScheduleModeRecurring => 'Recurring';
+
+  @override
+  String get automationsScheduleDate => 'Date';
+
+  @override
+  String automationsCountdownMinutes(int minutes) {
+    return '$minutes min';
+  }
+
+  @override
+  String automationsCountdownHours(int hours) {
+    return '$hours h';
+  }
+
+  @override
+  String get automationsCountdownCustom => 'Custom';
+
+  @override
+  String automationsCountdownPreview(String dateTime) {
+    return 'Runs at $dateTime';
+  }
+
+  @override
+  String get automationsSchedulePastTime => 'Choose a time in the future';
 
   @override
   String get automationsSessionContextMenu => 'Scheduled message…';

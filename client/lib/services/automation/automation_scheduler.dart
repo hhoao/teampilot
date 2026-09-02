@@ -109,12 +109,17 @@ class AutomationScheduler {
         error: 'missed_run_grace_exceeded',
       );
       await _repository.upsertRun(automation.workspaceId, skippedRun);
+      final next = _scheduleCalculator.computeNextRunAtMs(
+        automation,
+        afterMs: now,
+      );
       final advanced = automation.copyWith(
         lastRunAtMs: now,
-        nextRunAtMs: _scheduleCalculator.computeNextRunAtMs(
-          automation,
-          afterMs: now,
-        ),
+        // Expired once schedules have no next occurrence — disable the
+        // automation instead of leaving it enabled with no next run.
+        enabled: next != null,
+        nextRunAtMs: next,
+        clearNextRunAtMs: next == null,
         updatedAtMs: now,
       );
       await _repository.upsert(advanced);
@@ -144,10 +149,12 @@ class AutomationScheduler {
   }) async {
     if (automation.isRunLimitReached) return;
     final now = _nowMs();
+    final next = automation.enabled
+        ? _scheduleCalculator.computeNextRunAtMs(automation, afterMs: now)
+        : null;
     final claimed = automation.copyWith(
-      nextRunAtMs: automation.enabled
-          ? _scheduleCalculator.computeNextRunAtMs(automation, afterMs: now)
-          : automation.nextRunAtMs,
+      nextRunAtMs: automation.enabled ? next : automation.nextRunAtMs,
+      clearNextRunAtMs: automation.enabled && next == null,
       updatedAtMs: now,
     );
     await _repository.upsert(claimed);

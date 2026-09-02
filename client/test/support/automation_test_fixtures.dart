@@ -7,6 +7,8 @@ Automation sampleAutomation({
   String? presetId = 'preset-1',
   String? teamId,
   String? sessionId,
+  AutomationSchedulePreset preset = AutomationSchedulePreset.daily,
+  int? runAtMs,
 }) {
   return Automation(
     id: id,
@@ -20,7 +22,8 @@ Automation sampleAutomation({
     teamId: !isPersonal ? teamId : null,
     sessionId: sessionId,
     message: 'hello',
-    preset: AutomationSchedulePreset.daily,
+    preset: preset,
+    runAtMs: runAtMs,
     hourMinute: '09:00',
     timezone: 'UTC',
     dtstartMs: 1,

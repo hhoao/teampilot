@@ -1,65 +1,212 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 
 import '../../l10n/l10n_extensions.dart';
 import '../../models/automation.dart';
 import '../../services/automation/automation_schedule_calculator.dart';
+import '../../services/automation/automation_schedule_defaults.dart';
+import 'automation_schedule_picker_modes.dart';
 import 'package:shared_ui/shared_ui.dart';
 
 /// Schedule fields edited by [AutomationEditorDialog].
+///
+/// [mode] selects which picker rows are shown: a one-shot date+time
+/// ([AutomationScheduleMode.once]), a relative delay
+/// ([AutomationScheduleMode.countdown], create-only — it is composed into an
+/// absolute `runAtMs` when the automation is saved), or the recurring presets
+/// ([AutomationScheduleMode.recurring]). Mode and [preset] stay in sync:
+/// mode once ⇔ preset once.
+///
+/// For once mode, [onceDate] + [onceTime] are local wall-clock values; the
+/// automation's [timezone] is applied when the saved `runAtMs` is composed
+/// (see `combineLocalDateAndTimeToMs`), not here.
 class AutomationScheduleDraft {
   const AutomationScheduleDraft({
     required this.preset,
     required this.minute,
     required this.hourMinute,
+    this.mode = AutomationScheduleMode.recurring,
+    this.onceDate,
+    this.onceTime,
+    this.countdownMinutes,
     this.dayOfWeek,
     this.customCron,
+    this.runAtMs,
     required this.timezone,
   });
 
+  /// Factory for the create flow: once mode seeded 15 minutes out, plus the
+  /// recurring defaults the editor has always shown.
+  factory AutomationScheduleDraft.forCreate({
+    required String timezone,
+    DateTime? now,
+  }) {
+    final current = now ?? DateTime.now();
+    final onceAt = defaultOnceDateTime(current);
+    return AutomationScheduleDraft(
+      mode: AutomationScheduleMode.once,
+      preset: AutomationSchedulePreset.once,
+      minute: 0,
+      hourMinute: formatHourMinute(roundUpToNextQuarterHour(current)),
+      timezone: timezone,
+      onceDate: DateTime(onceAt.year, onceAt.month, onceAt.day),
+      onceTime: TimeOfDay(hour: onceAt.hour, minute: onceAt.minute),
+      countdownMinutes: 15,
+    );
+  }
+
+  final AutomationScheduleMode mode;
   final AutomationSchedulePreset preset;
   final int minute;
   final String hourMinute;
+
+  /// Calendar day for once mode (local wall clock); null otherwise.
+  final DateTime? onceDate;
+
+  /// Time of day for once mode; null for recurring drafts that never had a
+  /// once time.
+  final TimeOfDay? onceTime;
+
+  /// Countdown length in minutes; only meaningful in countdown mode.
+  final int? countdownMinutes;
   final int? dayOfWeek;
   final String? customCron;
+
+  /// Raw stored target for once schedules; the save path reuses it verbatim
+  /// when the user has not changed onceDate/onceTime (see
+  /// AutomationEditorDialog _save).
+  final int? runAtMs;
+
   final String timezone;
 
   AutomationScheduleDraft copyWith({
+    AutomationScheduleMode? mode,
     AutomationSchedulePreset? preset,
     int? minute,
     String? hourMinute,
+    DateTime? onceDate,
+    bool clearOnceDate = false,
+    TimeOfDay? onceTime,
+    int? countdownMinutes,
+    bool clearCountdownMinutes = false,
     int? dayOfWeek,
     bool clearDayOfWeek = false,
     String? customCron,
     bool clearCustomCron = false,
+    int? runAtMs,
+    bool clearRunAtMs = false,
     String? timezone,
   }) {
     return AutomationScheduleDraft(
+      mode: mode ?? this.mode,
       preset: preset ?? this.preset,
       minute: minute ?? this.minute,
       hourMinute: hourMinute ?? this.hourMinute,
+      onceDate: clearOnceDate ? null : (onceDate ?? this.onceDate),
+      onceTime: onceTime ?? this.onceTime,
+      countdownMinutes: clearCountdownMinutes
+          ? null
+          : (countdownMinutes ?? this.countdownMinutes),
       dayOfWeek: clearDayOfWeek ? null : (dayOfWeek ?? this.dayOfWeek),
       customCron: clearCustomCron ? null : (customCron ?? this.customCron),
+      runAtMs: clearRunAtMs ? null : (runAtMs ?? this.runAtMs),
       timezone: timezone ?? this.timezone,
     );
   }
 }
 
 AutomationScheduleDraft scheduleDraftFromAutomation(Automation automation) {
+  final once = automation.preset == AutomationSchedulePreset.once;
+  // Stored runAtMs is composed in the automation timezone at save time; the
+  // edit draft works in local wall clock, matching what the user picked.
+  final runAt = once && automation.runAtMs != null
+      ? DateTime.fromMillisecondsSinceEpoch(automation.runAtMs!)
+      : null;
   return AutomationScheduleDraft(
+    mode: once ? AutomationScheduleMode.once : AutomationScheduleMode.recurring,
     preset: automation.preset,
     minute: automation.minute,
     hourMinute: automation.hourMinute,
+    onceDate: runAt == null
+        ? null
+        : DateTime(runAt.year, runAt.month, runAt.day),
+    onceTime: runAt == null
+        ? null
+        : TimeOfDay(hour: runAt.hour, minute: runAt.minute),
     dayOfWeek: automation.dayOfWeek,
     customCron: automation.customCron,
+    // Carried verbatim so the save path can reuse the stored target when the
+    // user has not touched onceDate/onceTime (Task 7 _save).
+    runAtMs: automation.runAtMs,
     timezone: automation.timezone,
   );
+}
+
+/// Absolute target (epoch ms) the draft's schedule resolves to, or null when
+/// the draft carries no once slot.
+///
+/// For [AutomationScheduleMode.once], an untouched edit round-trips the draft's
+/// raw [AutomationScheduleDraft.runAtMs] verbatim instead of recomposing the
+/// local wall clock — recomposing can shift the instant when the stored
+/// timezone differs from the device zone. Once onceDate/onceTime diverge from
+/// the values derived from that stored target, the user has edited them and
+/// the fields are composed fresh through [combineLocalDateAndTimeToMs]. For
+/// [AutomationScheduleMode.countdown] the target is relative, so it is always
+/// [countdownToRunAtMs] from [now]. Recurring drafts resolve to null; the save
+/// path clears `runAtMs` for them.
+int? resolveDraftRunAtMs(
+  AutomationScheduleDraft draft, {
+  required DateTime now,
+}) {
+  switch (draft.mode) {
+    case AutomationScheduleMode.countdown:
+      return countdownToRunAtMs(
+        durationMinutes: draft.countdownMinutes ?? 15,
+        now: now,
+      );
+    case AutomationScheduleMode.once:
+      final date = draft.onceDate;
+      final time = draft.onceTime;
+      if (date == null || time == null) return null;
+      final storedMs = draft.runAtMs;
+      if (storedMs != null) {
+        final stored = DateTime.fromMillisecondsSinceEpoch(storedMs);
+        final matchesStored =
+            DateTime(stored.year, stored.month, stored.day) == date &&
+            stored.hour == time.hour &&
+            stored.minute == time.minute;
+        if (matchesStored) return storedMs;
+      }
+      return combineLocalDateAndTimeToMs(
+        date: date,
+        time: time,
+        timezone: draft.timezone,
+      );
+    case AutomationScheduleMode.recurring:
+      return null;
+  }
 }
 
 String localizedScheduleSummary(
   AppLocalizations l10n,
   AutomationScheduleDraft draft,
 ) {
+  if (draft.mode == AutomationScheduleMode.once) {
+    final date = draft.onceDate;
+    final time = draft.onceTime;
+    if (date != null && time != null) {
+      return l10n.automationsScheduleSummaryOnce(
+        formatAutomationScheduleDateTime(
+          DateTime(date.year, date.month, date.day, time.hour, time.minute),
+        ),
+      );
+    }
+    return l10n.automationsScheduleOnce;
+  }
+  if (draft.mode == AutomationScheduleMode.countdown) {
+    // Countdown drafts only exist transiently during create; the absolute
+    // target is not known here, so render the raw delay label.
+    return countdownDelayLabel(l10n, draft.countdownMinutes ?? 0);
+  }
   final (hour, minute) = parseHourMinute(draft.hourMinute);
   final time =
       '${hour.toString().padLeft(2, '0')}:${minute.toString().padLeft(2, '0')}';
@@ -73,17 +220,41 @@ String localizedScheduleSummary(
     AutomationSchedulePreset.weekdays =>
       l10n.automationsScheduleSummaryWeekdays(time),
     AutomationSchedulePreset.weekly => l10n.automationsScheduleSummaryWeekly(
-      _dayOfWeekLabel(l10n, draft.dayOfWeek ?? DateTime.monday),
+      dayOfWeekScheduleLabel(l10n, draft.dayOfWeek ?? DateTime.monday),
       time,
     ),
     AutomationSchedulePreset.custom =>
       draft.customCron?.trim().isNotEmpty == true
           ? draft.customCron!.trim()
           : l10n.automationsScheduleCustom,
+    AutomationSchedulePreset.once => l10n.automationsScheduleSummaryOnce(time),
   };
 }
 
-String _dayOfWeekLabel(AppLocalizations l10n, int dayOfWeek) {
+/// Chip / summary label for a countdown delay: whole hours render as `{hours} h`,
+/// everything else as `{minutes} min`.
+String countdownDelayLabel(AppLocalizations l10n, int minutes) {
+  if (minutes > 0 && minutes % 60 == 0) {
+    return l10n.automationsCountdownHours(minutes ~/ 60);
+  }
+  return l10n.automationsCountdownMinutes(minutes);
+}
+
+/// Zero-padded `yyyy-MM-dd`, kept locale-independent so saved schedule strings
+/// round-trip like the `HH:mm` times do.
+String formatAutomationScheduleDate(DateTime date) =>
+    '${date.year.toString().padLeft(4, '0')}-'
+    '${date.month.toString().padLeft(2, '0')}-'
+    '${date.day.toString().padLeft(2, '0')}';
+
+/// [formatAutomationScheduleDate] + zero-padded `HH:mm`, for previews and
+/// summaries.
+String formatAutomationScheduleDateTime(DateTime dateTime) =>
+    '${formatAutomationScheduleDate(dateTime)} '
+    '${dateTime.hour.toString().padLeft(2, '0')}:'
+    '${dateTime.minute.toString().padLeft(2, '0')}';
+
+String dayOfWeekScheduleLabel(AppLocalizations l10n, int dayOfWeek) {
   return switch (dayOfWeek) {
     DateTime.monday => l10n.automationsDayMonday,
     DateTime.tuesday => l10n.automationsDayTuesday,
@@ -95,7 +266,8 @@ String _dayOfWeekLabel(AppLocalizations l10n, int dayOfWeek) {
   };
 }
 
-/// Inline [TpFormField] rows for automation schedule editing.
+/// Inline [TpFormField] rows for automation schedule editing. Mode rows live
+/// in `automation_schedule_picker_modes.dart`.
 class AutomationSchedulePicker extends StatefulWidget {
   AutomationSchedulePicker({
     required this.draft,
@@ -118,37 +290,7 @@ class AutomationSchedulePicker extends StatefulWidget {
 }
 
 class _AutomationSchedulePickerState extends State<AutomationSchedulePicker> {
-  late final TextEditingController _hourMinuteCtl;
-  late final TextEditingController _customCronCtl;
-
   AutomationScheduleDraft get _draft => widget.draft;
-
-  @override
-  void initState() {
-    super.initState();
-    _hourMinuteCtl = TextEditingController(text: widget.draft.hourMinute);
-    _customCronCtl = TextEditingController(text: widget.draft.customCron ?? '');
-  }
-
-  @override
-  void didUpdateWidget(covariant AutomationSchedulePicker oldWidget) {
-    super.didUpdateWidget(oldWidget);
-    if (oldWidget.draft.hourMinute != widget.draft.hourMinute &&
-        _hourMinuteCtl.text != widget.draft.hourMinute) {
-      _hourMinuteCtl.text = widget.draft.hourMinute;
-    }
-    if (oldWidget.draft.customCron != widget.draft.customCron &&
-        _customCronCtl.text != (widget.draft.customCron ?? '')) {
-      _customCronCtl.text = widget.draft.customCron ?? '';
-    }
-  }
-
-  @override
-  void dispose() {
-    _hourMinuteCtl.dispose();
-    _customCronCtl.dispose();
-    super.dispose();
-  }
 
   void _emit(AutomationScheduleDraft next) {
     widget.onChanged(next);
@@ -158,177 +300,130 @@ class _AutomationSchedulePickerState extends State<AutomationSchedulePicker> {
   Widget build(BuildContext context) {
     final l10n = context.l10n;
     final draft = _draft;
-    final presets = AutomationSchedulePreset.values;
     final inline = TpFormFieldLayoutStyle.inline;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        TpFormField<AutomationSchedulePreset>(
-          key: ValueKey('schedule-preset-${draft.preset.name}'),
-          id: 'schedulePreset',
-          initialValue: draft.preset,
+        TpFormField<AutomationScheduleMode>(
+          key: ValueKey('schedule-mode-${draft.mode.name}'),
+          id: 'scheduleMode',
+          initialValue: draft.mode,
           label: Text(l10n.automationsSchedule),
           layoutStyle: inline,
           labelWidth: widget.labelWidth,
           builder: (state) {
-            return TpSelect<AutomationSchedulePreset>(
-              items: presets,
-              initialItem: state.value ?? draft.preset,
-              decoration: TpSelectDecorations.themed(context),
-              itemLabel: (p) => _presetLabel(l10n, p),
-              onChanged: (value) {
-                if (value == null) return;
-                state.didChange(value);
-                _emit(
-                  draft.copyWith(
-                    preset: value,
-                    clearDayOfWeek: value != AutomationSchedulePreset.weekly,
-                    clearCustomCron: value != AutomationSchedulePreset.custom,
-                  ),
-                );
+            // The editor is a dialog (narrow viewport); mobileBreakpoint 0
+            // keeps all three modes visible as a pill instead of collapsing
+            // into a compact select that hides two of them.
+            return TpSegmentedPicker<AutomationScheduleMode>(
+              mobileBreakpoint: 0,
+              scrollable: false,
+              alignment: Alignment.centerLeft,
+              segments: [
+                TpSegmentedOption(
+                  value: AutomationScheduleMode.once,
+                  label: l10n.automationsScheduleModeOnce,
+                  icon: Icons.schedule_outlined,
+                ),
+                TpSegmentedOption(
+                  value: AutomationScheduleMode.countdown,
+                  label: l10n.automationsScheduleModeCountdown,
+                  icon: Icons.timer_outlined,
+                ),
+                TpSegmentedOption(
+                  value: AutomationScheduleMode.recurring,
+                  label: l10n.automationsScheduleModeRecurring,
+                  icon: Icons.repeat_outlined,
+                ),
+              ],
+              selected: state.value ?? draft.mode,
+              onChanged: (mode) {
+                state.didChange(mode);
+                _emit(_draftForMode(draft, mode));
               },
             );
           },
         ),
         const SizedBox(height: 12),
-        switch (draft.preset) {
-          AutomationSchedulePreset.hourly => TpFormField<int>(
-            id: 'scheduleMinute',
-            initialValue: draft.minute,
-            label: Text(l10n.automationsTime),
-            layoutStyle: inline,
+        switch (draft.mode) {
+          AutomationScheduleMode.once => AutomationScheduleOnceRows(
+            draft: draft,
             labelWidth: widget.labelWidth,
-            builder: (state) {
-              return TpSelect<int>(
-                items: List<int>.generate(60, (i) => i),
-                initialItem: (state.value ?? draft.minute).clamp(0, 59),
-                decoration: TpSelectDecorations.themed(context),
-                itemLabel: (m) => l10n.automationsScheduleSummaryHourly(m),
-                onChanged: (value) {
-                  if (value == null) return;
-                  state.didChange(value);
-                  _emit(draft.copyWith(minute: value));
-                },
-              );
-            },
+            onChanged: _emit,
           ),
-          AutomationSchedulePreset.custom => TpFormField<String>(
-            id: 'scheduleCustomCron',
-            initialValue: draft.customCron ?? '',
-            label: Text(l10n.automationsCustomCron),
-            layoutStyle: inline,
+          AutomationScheduleMode.countdown => AutomationScheduleCountdownRows(
+            draft: draft,
             labelWidth: widget.labelWidth,
-            validator: (value) {
-              final cron = value?.trim() ?? '';
-              if (!widget.calculator.isValidCron(cron)) {
-                return l10n.automationsInvalidCron;
-              }
-              return null;
-            },
-            builder: (state) {
-              return TextField(
-                controller: _customCronCtl,
-                focusNode: state.focusNode,
-                onChanged: (value) {
-                  state.didChange(value);
-                  _emit(draft.copyWith(customCron: value.trim()));
-                },
-                decoration: InputDecoration(
-                  hintText: '0 */2 * * *',
-                  errorText: state.hasError ? '' : null,
-                  errorStyle: const TextStyle(height: 0, fontSize: 0),
-                ),
-              );
-            },
+            onChanged: _emit,
           ),
-          _ => Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              TpFormField<String>(
-                id: 'scheduleHourMinute',
-                initialValue: draft.hourMinute,
-                label: Text(l10n.automationsTime),
-                layoutStyle: inline,
-                labelWidth: widget.labelWidth,
-                validator: (value) {
-                  try {
-                    parseHourMinute(value ?? '');
-                    return null;
-                  } on Object {
-                    return l10n.automationsInvalidTime;
-                  }
-                },
-                builder: (state) {
-                  return TextField(
-                    controller: _hourMinuteCtl,
-                    focusNode: state.focusNode,
-                    keyboardType: TextInputType.datetime,
-                    inputFormatters: [
-                      FilteringTextInputFormatter.allow(RegExp(r'[0-9:]')),
-                    ],
-                    onChanged: (value) {
-                      state.didChange(value);
-                      try {
-                        parseHourMinute(value);
-                        _emit(draft.copyWith(hourMinute: value));
-                      } on Object {
-                        // Keep typing; field validator runs on save.
-                      }
-                    },
-                    decoration: InputDecoration(
-                      hintText: '09:00',
-                      errorText: state.hasError ? '' : null,
-                      errorStyle: const TextStyle(height: 0, fontSize: 0),
-                    ),
-                  );
-                },
-              ),
-              if (draft.preset == AutomationSchedulePreset.weekly) ...[
-                const SizedBox(height: 12),
-                TpFormField<int>(
-                  id: 'scheduleDayOfWeek',
-                  initialValue: draft.dayOfWeek ?? DateTime.monday,
-                  label: Text(l10n.automationsScheduleWeekly),
-                  layoutStyle: inline,
-                  labelWidth: widget.labelWidth,
-                  builder: (state) {
-                    return TpSelect<int>(
-                      items: const [
-                        DateTime.monday,
-                        DateTime.tuesday,
-                        DateTime.wednesday,
-                        DateTime.thursday,
-                        DateTime.friday,
-                        DateTime.saturday,
-                        DateTime.sunday,
-                      ],
-                      initialItem: state.value ?? draft.dayOfWeek ?? DateTime.monday,
-                      decoration: TpSelectDecorations.themed(context),
-                      itemLabel: (d) => _dayOfWeekLabel(l10n, d),
-                      onChanged: (value) {
-                        if (value == null) return;
-                        state.didChange(value);
-                        _emit(draft.copyWith(dayOfWeek: value));
-                      },
-                    );
-                  },
-                ),
-              ],
-            ],
+          AutomationScheduleMode.recurring => AutomationScheduleRecurringRows(
+            draft: draft,
+            labelWidth: widget.labelWidth,
+            onChanged: _emit,
+            calculator: widget.calculator,
           ),
         },
       ],
     );
   }
+
+  /// Once ⇔ preset once stay in sync; recurring falls back to the daily
+  /// preset the editor has always defaulted to. A recurring draft that never
+  /// had a once slot is seeded 15 minutes out so the once/countdown rows do
+  /// not fall back to a 09:00 placeholder.
+  AutomationScheduleDraft _draftForMode(
+    AutomationScheduleDraft draft,
+    AutomationScheduleMode mode,
+  ) {
+    final needsOnceSlot =
+        mode == AutomationScheduleMode.once ||
+        mode == AutomationScheduleMode.countdown;
+    final seeded =
+        needsOnceSlot && draft.onceDate == null && draft.onceTime == null
+        ? _withOnceDefaults(draft)
+        : draft;
+    switch (mode) {
+      case AutomationScheduleMode.once:
+        return seeded.copyWith(
+          mode: mode,
+          preset: AutomationSchedulePreset.once,
+        );
+      case AutomationScheduleMode.countdown:
+        return seeded.copyWith(
+          mode: mode,
+          preset: AutomationSchedulePreset.once,
+          countdownMinutes: seeded.countdownMinutes ?? 15,
+        );
+      case AutomationScheduleMode.recurring:
+        return draft.copyWith(
+          mode: mode,
+          preset: draft.preset == AutomationSchedulePreset.once
+              ? AutomationSchedulePreset.daily
+              : draft.preset,
+        );
+    }
+  }
+
+  AutomationScheduleDraft _withOnceDefaults(AutomationScheduleDraft draft) {
+    final onceAt = defaultOnceDateTime(DateTime.now());
+    return draft.copyWith(
+      onceDate: DateTime(onceAt.year, onceAt.month, onceAt.day),
+      onceTime: TimeOfDay(hour: onceAt.hour, minute: onceAt.minute),
+    );
+  }
 }
 
-String _presetLabel(AppLocalizations l10n, AutomationSchedulePreset preset) {
+String schedulePresetLabel(
+  AppLocalizations l10n,
+  AutomationSchedulePreset preset,
+) {
   return switch (preset) {
     AutomationSchedulePreset.hourly => l10n.automationsScheduleHourly,
     AutomationSchedulePreset.daily => l10n.automationsScheduleDaily,
     AutomationSchedulePreset.weekdays => l10n.automationsScheduleWeekdays,
     AutomationSchedulePreset.weekly => l10n.automationsScheduleWeekly,
     AutomationSchedulePreset.custom => l10n.automationsScheduleCustom,
+    AutomationSchedulePreset.once => l10n.automationsScheduleOnce,
   };
 }

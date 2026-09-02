@@ -11,7 +11,9 @@ void ensureAutomationTimezoneInitialized() {
   _timezoneInitialized = true;
 }
 
-tz.Location _resolveLocation(String timezone) {
+/// Resolves [timezone] to a `tz.Location`, falling back to UTC for unknown
+/// names. Initializes the timezone database on first use.
+tz.Location resolveAutomationLocation(String timezone) {
   ensureAutomationTimezoneInitialized();
   try {
     return tz.getLocation(timezone);
@@ -48,6 +50,8 @@ class AutomationScheduleCalculator {
         return '$minute $hour * * $day';
       case AutomationSchedulePreset.custom:
         return automation.customCron?.trim() ?? '';
+      case AutomationSchedulePreset.once:
+        return '';
     }
   }
 
@@ -83,12 +87,20 @@ class AutomationScheduleCalculator {
         return automation.customCron?.trim().isNotEmpty == true
             ? automation.customCron!.trim()
             : 'Custom';
+      case AutomationSchedulePreset.once:
+        return 'Once';
     }
   }
 
-  int computeNextRunAtMs(Automation automation, {required int afterMs}) {
+  int? computeNextRunAtMs(Automation automation, {required int afterMs}) {
     automation.validate();
-    final location = _resolveLocation(automation.timezone);
+
+    if (automation.preset == AutomationSchedulePreset.once) {
+      final runAt = automation.runAtMs;
+      return runAt != null && runAt > afterMs ? runAt : null;
+    }
+
+    final location = resolveAutomationLocation(automation.timezone);
     final after = tz.TZDateTime.fromMillisecondsSinceEpoch(location, afterMs);
     final dtstart = tz.TZDateTime.fromMillisecondsSinceEpoch(
       location,
@@ -127,6 +139,8 @@ class AutomationScheduleCalculator {
           automation.dayOfWeek ?? 1,
         ).millisecondsSinceEpoch;
       case AutomationSchedulePreset.custom:
+        throw StateError('unreachable');
+      case AutomationSchedulePreset.once:
         throw StateError('unreachable');
     }
   }

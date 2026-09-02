@@ -5,6 +5,7 @@ import '../../l10n/l10n_extensions.dart';
 import '../../models/workspace.dart';
 import '../../models/launch_security_policy.dart';
 import '../../services/automation/automation_schedule_calculator.dart';
+import '../../services/automation/automation_schedule_defaults.dart';
 import 'package:shared_ui/shared_ui.dart';
 import 'automation_editor_launch_section.dart';
 import 'automation_schedule_picker.dart';
@@ -175,40 +176,44 @@ class AutomationEditorFormBody extends StatelessWidget {
           labelWidth: kAutomationEditorFormLabelWidth,
           onChanged: onScheduleChanged,
         ),
-        const SizedBox(height: 12),
-        TpFormField<String>(
-          id: 'maxRunCount',
-          initialValue: maxRunCountController.text,
-          label: Text(l10n.automationsMaxRunCount),
-          description: Text(l10n.automationsMaxRunCountHint),
-          layoutStyle: TpFormFieldLayoutStyle.inline,
-          labelWidth: kAutomationEditorFormLabelWidth,
-          validator: (v) {
-            final raw = v?.trim() ?? '';
-            if (raw.isEmpty) return null;
-            final parsed = int.tryParse(raw);
-            if (parsed == null || parsed < 1) {
-              return l10n.automationsInvalidMaxRunCount;
-            }
-            return null;
-          },
-          builder: (state) {
-            return TextField(
-              controller: maxRunCountController,
-              focusNode: state.focusNode,
-              keyboardType: TextInputType.number,
-              inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-              onChanged: (value) {
-                state.didChange(value);
-                onMaxRunCountChanged?.call();
-              },
-              decoration: InputDecoration(
-                errorText: state.hasError ? '' : null,
-                errorStyle: const TextStyle(height: 0, fontSize: 0),
-              ),
-            );
-          },
-        ),
+        // Once/countdown schedules fire exactly once, so the run limit has
+        // nothing to configure — saving stores the implicit maxRunCount of 1.
+        if (schedule.mode == AutomationScheduleMode.recurring) ...[
+          const SizedBox(height: 12),
+          TpFormField<String>(
+            id: 'maxRunCount',
+            initialValue: maxRunCountController.text,
+            label: Text(l10n.automationsMaxRunCount),
+            description: Text(l10n.automationsMaxRunCountHint),
+            layoutStyle: TpFormFieldLayoutStyle.inline,
+            labelWidth: kAutomationEditorFormLabelWidth,
+            validator: (v) {
+              final raw = v?.trim() ?? '';
+              if (raw.isEmpty) return null;
+              final parsed = int.tryParse(raw);
+              if (parsed == null || parsed < 1) {
+                return l10n.automationsInvalidMaxRunCount;
+              }
+              return null;
+            },
+            builder: (state) {
+              return TextField(
+                controller: maxRunCountController,
+                focusNode: state.focusNode,
+                keyboardType: TextInputType.number,
+                inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                onChanged: (value) {
+                  state.didChange(value);
+                  onMaxRunCountChanged?.call();
+                },
+                decoration: InputDecoration(
+                  errorText: state.hasError ? '' : null,
+                  errorStyle: const TextStyle(height: 0, fontSize: 0),
+                ),
+              );
+            },
+          ),
+        ],
         const SizedBox(height: 12),
         TpFormField<bool>(
           key: ValueKey('enabled-$enabled-$runLimitReached'),
