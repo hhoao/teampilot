@@ -16,6 +16,18 @@ enum RecoveryAction {
   markIntegrityError,
 }
 
+/// Idempotent post-finalize effects used by bootstrap recovery.
+abstract interface class TeamGenerationRecoveryForwarder {
+  Future<void> commitForward(
+    TeamGenerationJob job, {
+    required bool retainBuilder,
+  });
+
+  Future<void> launchForward(TeamGenerationJob job);
+
+  Future<void> cleanupForward(TeamGenerationJob job);
+}
+
 /// Bootstrap scan and pre-/post-commit recovery policy.
 ///
 /// No destructive guessing: malformed or cross-workspace references are
@@ -25,11 +37,14 @@ final class TeamGenerationRecoveryService
   TeamGenerationRecoveryService({
     required TeamGenerationJobStore jobStore,
     required TeamGenerationSessionPort sessionPort,
+    required TeamGenerationRecoveryForwarder forwarder,
   }) : _jobStore = jobStore,
-       _sessionPort = sessionPort;
+       _sessionPort = sessionPort,
+       _forwarder = forwarder;
 
   final TeamGenerationJobStore _jobStore;
   final TeamGenerationSessionPort _sessionPort;
+  final TeamGenerationRecoveryForwarder _forwarder;
 
   /// Observations recorded for tests and diagnostics.
   final observed = <(String, RecoveryAction)>[];
@@ -103,12 +118,18 @@ final class TeamGenerationRecoveryService
           await _recoverBuilderKickoff(job);
         }
       case RecoveryAction.commitForwardRetainBuilder:
+        final builder = await _sessionPort.sessionById(job.builderSessionId);
+        if (builder != null) await _sessionPort.open(job.builderSessionId);
+        await _forwarder.commitForward(job, retainBuilder: true);
       case RecoveryAction.commitForward:
+        final current = job.phase == TeamGenerationPhase.failed
+            ? await _jobStore.resumeFailed(job.workspaceId, job.workflowId)
+            : job;
+        await _forwarder.commitForward(current, retainBuilder: false);
       case RecoveryAction.launchForward:
-        // Idempotent forward steps run through the coordinator/commit/handoff
-        // services; recovery only records the intent here.
-        break;
+        await _forwarder.launchForward(job);
       case RecoveryAction.cleanupForward:
+        await _forwarder.cleanupForward(job);
       case RecoveryAction.deferCleanup:
         break;
       case RecoveryAction.markIntegrityError:

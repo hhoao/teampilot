@@ -209,35 +209,58 @@ void main() {
     expect(loggedStackTrace, same(stackTrace));
   });
 
-  test('generation preflight codes map to localized copy with a safe fallback', () {
-    final en = lookupAppLocalizations(const Locale('en'));
-    final zh = lookupAppLocalizations(const Locale('zh'));
+  test(
+    'generation preflight codes map to localized copy with a safe fallback',
+    () {
+      final en = lookupAppLocalizations(const Locale('en'));
+      final zh = lookupAppLocalizations(const Locale('zh'));
 
-    expect(
-      teamGenerationPreflightIssueMessage(en, 'description_required'),
-      en.teamGenerateErrorDescriptionRequired,
-    );
-    expect(
-      teamGenerationPreflightIssueMessage(en, 'model_pool_empty'),
-      en.teamGenerateErrorPoolEmpty,
-    );
-    expect(
-      teamGenerationPreflightIssueMessage(en, 'generator_mcp_unsupported'),
-      en.teamGenerateErrorGeneratorUnsupported,
-    );
-    expect(
-      teamGenerationPreflightIssueMessage(zh, 'native_team_unsupported'),
-      zh.teamGenerateErrorNativeUnsupported,
-    );
-    expect(
-      teamGenerationPreflightIssueMessage(zh, 'future_unknown_code'),
-      zh.teamGenerateErrorStartFailed,
-    );
-    expect(
-      teamGenerationPreflightIssueMessage(zh, 'future_unknown_code'),
-      isNot(contains('future_unknown_code')),
-    );
-  });
+      expect(
+        teamGenerationPreflightIssueMessage(en, 'description_required'),
+        en.teamGenerateErrorDescriptionRequired,
+      );
+      expect(
+        teamGenerationPreflightIssueMessage(en, 'model_pool_empty'),
+        en.teamGenerateErrorPoolEmpty,
+      );
+      expect(
+        {
+          for (final code in const [
+            'generator_launch_unsupported',
+            'generator_session_unsupported',
+            'generator_skill_unsupported',
+            'generator_mcp_unsupported',
+            'pool_launch_unsupported',
+            'pool_session_unsupported',
+          ])
+            teamGenerationPreflightIssueMessage(en, code),
+        },
+        {en.teamGenerateErrorGeneratorUnsupported},
+      );
+      expect(
+        teamGenerationPreflightIssueMessage(en, 'generator_not_configured'),
+        en.teamGenerateErrorAiNotConfigured,
+      );
+      expect(
+        {
+          for (final code in const [
+            'native_pool_cli_mismatch',
+            'native_team_unsupported',
+          ])
+            teamGenerationPreflightIssueMessage(zh, code),
+        },
+        {zh.teamGenerateErrorNativeUnsupported},
+      );
+      expect(
+        teamGenerationPreflightIssueMessage(zh, 'future_unknown_code'),
+        zh.teamGenerateErrorStartFailed,
+      );
+      expect(
+        teamGenerationPreflightIssueMessage(zh, 'future_unknown_code'),
+        isNot(contains('future_unknown_code')),
+      );
+    },
+  );
 
   testWidgets('generation wiring failures use the active locale', (
     tester,

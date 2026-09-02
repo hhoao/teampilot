@@ -14,6 +14,7 @@ import 'support/fake_catalog_module.dart';
 class _RecordingGenerationMutationHandler
     implements CatalogGenerationMutationHandler {
   CatalogRequest? request;
+  CatalogOp? op;
 
   @override
   Future<CatalogResult> handleMcpMutation({
@@ -22,6 +23,7 @@ class _RecordingGenerationMutationHandler
     required CatalogRequest request,
   }) async {
     this.request = request;
+    this.op = op;
     return CatalogResult.ok(
       kind: kind,
       ids: const ['x'],
@@ -29,6 +31,22 @@ class _RecordingGenerationMutationHandler
       boundTo: CatalogBindTo.generation,
     );
   }
+}
+
+class _DestructiveCatalogModule extends FakeCatalogModule {
+  _DestructiveCatalogModule() : super(kind: 'skill');
+
+  @override
+  List<CatalogToolSpec> advertise() => [
+    ...super.advertise(),
+    for (final name in const ['update_skill', 'unbind_skill', 'delete_skill'])
+      CatalogToolSpec(
+        name: name,
+        description: name,
+        inputSchema: const {'type': 'object', 'properties': {}},
+        mutating: true,
+      ),
+  ];
 }
 
 void main() {
@@ -238,4 +256,36 @@ void main() {
       expect(generation.request!.workflowId, 'workflow');
     },
   );
+
+  test('generation scope rejects destructive catalog mutations', () async {
+    final generation = _RecordingGenerationMutationHandler();
+    final module = _DestructiveCatalogModule();
+    final h = CatalogMcpHandler(
+      registry: CatalogKindRegistry()..register(module),
+      generationMutationHandler: generation,
+    );
+
+    for (final name in const ['update_skill', 'unbind_skill', 'delete_skill']) {
+      generation.request = null;
+      generation.op = null;
+      final res = await h.handle(
+        JsonRpcRequest(
+          id: name,
+          method: 'tools/call',
+          params: {
+            'name': name,
+            'arguments': const {'id': 'global-skill', 'bind_to': 'generation'},
+          },
+        ),
+        builderSession(),
+      );
+
+      expect(res!.result!['isError'], isTrue, reason: name);
+      final text = (res.result!['content'] as List).first['text'] as String;
+      expect(text, contains('code=generation_mutation_forbidden'));
+      expect(generation.request, isNull, reason: name);
+      expect(generation.op, isNull, reason: name);
+      expect(module.lastOp, isNull, reason: name);
+    }
+  });
 }

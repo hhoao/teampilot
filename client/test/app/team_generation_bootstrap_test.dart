@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/app/team_generation_graph.dart';
 import 'package:teampilot/cubits/chat_cubit.dart';
@@ -193,30 +195,39 @@ void main() {
 
   test('bootstrap recovery scans discovered workspaces once ready', () async {
     final recovery = _RecordingRecovery();
+    final discovery = Completer<Iterable<String>>();
 
-    await runTeamGenerationBootstrapRecovery(
+    final running = runTeamGenerationBootstrapRecovery(
       recovery: recovery,
-      workspaceIds: const ['ws-a', 'ws-b'],
+      workspaceIdsAfterDiscovery: discovery.future,
     );
+    await Future<void>.delayed(Duration.zero);
+    expect(recovery.workspaceIds, isEmpty);
+
+    discovery.complete(const ['ws-a', 'ws-b']);
+    await running;
 
     expect(recovery.workspaceIds, ['ws-a', 'ws-b']);
   });
 
-  test('bootstrap recovery reports failures through startup diagnostics', () async {
-    final failure = StateError('recovery failed');
-    Object? loggedError;
-    StackTrace? loggedStackTrace;
+  test(
+    'bootstrap recovery reports failures through startup diagnostics',
+    () async {
+      final failure = StateError('recovery failed');
+      Object? loggedError;
+      StackTrace? loggedStackTrace;
 
-    await runTeamGenerationBootstrapRecovery(
-      recovery: _RecordingRecovery(error: failure),
-      workspaceIds: const ['ws'],
-      diagnosticLogger: (error, stackTrace) {
-        loggedError = error;
-        loggedStackTrace = stackTrace;
-      },
-    );
+      await runTeamGenerationBootstrapRecovery(
+        recovery: _RecordingRecovery(error: failure),
+        workspaceIdsAfterDiscovery: Future.value(const ['ws']),
+        diagnosticLogger: (error, stackTrace) {
+          loggedError = error;
+          loggedStackTrace = stackTrace;
+        },
+      );
 
-    expect(loggedError, same(failure));
-    expect(loggedStackTrace, isNotNull);
-  });
+      expect(loggedError, same(failure));
+      expect(loggedStackTrace, isNotNull);
+    },
+  );
 }

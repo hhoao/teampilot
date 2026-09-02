@@ -91,6 +91,74 @@ class _RecordingPort implements TeamGenerationSessionPort {
   Stream<PortActivity> activityStream(String sessionId) => const Stream.empty();
 }
 
+class _RecordingForwarder implements TeamGenerationRecoveryForwarder {
+  final events = <String>[];
+
+  @override
+  Future<void> commitForward(
+    TeamGenerationJob job, {
+    required bool retainBuilder,
+  }) async {
+    events.add('commit:${job.workflowId}:retain=$retainBuilder');
+  }
+
+  @override
+  Future<void> launchForward(TeamGenerationJob job) async {
+    events.add('launch:${job.workflowId}');
+  }
+
+  @override
+  Future<void> cleanupForward(TeamGenerationJob job) async {
+    events.add('cleanup:${job.workflowId}');
+  }
+}
+
+Future<TeamGenerationJobStore> _seedRecoveryJob({
+  required InMemoryFilesystem fs,
+  required String workflowId,
+  required TeamGenerationPhase phase,
+  required Map<String, TeamGenerationReceipt> receipts,
+}) async {
+  final store = TeamGenerationJobStore(
+    fs: fs,
+    layout: WorkspaceLayout(teampilotRoot: '/tp', fs: fs),
+  );
+  final settings = resolveTeamGenerationSettingsSnapshot(
+    settings: TeamGenerationSettings(teamMode: TeamMode.mixed),
+    presets: const <CliPreset>[],
+    registry: CliToolRegistry.builtIn(),
+    capturedAt: 1,
+  );
+  await store.create(
+    workspaceId: 'ws',
+    workflowId: workflowId,
+    builderSessionId: 'builder-$workflowId',
+    originalPrompt: 'Plan the release',
+    generator: TeamGenerationJobGenerator.fromSettings(settings),
+    settings: settings,
+    launch: const TeamGenerationLaunchSnapshot(
+      projectFolderPath: '/proj',
+      workingDirectoryPath: '/proj',
+      launchSecurityPolicyValue: 'cliDefault',
+      folderIds: <String>[],
+      targetIds: <String>['local'],
+      workspaceRevision: '',
+      capturedAt: 1,
+    ),
+  );
+  await store.mutate('ws', workflowId, (job) {
+    return job.copyWith(
+      phase: phase,
+      destinationSessionId:
+          receipts['destination']?.state == TeamGenerationReceiptState.succeeded
+          ? 'destination-$workflowId'
+          : '',
+      receipts: receipts,
+    );
+  });
+  return store;
+}
+
 void main() {
   test(
     'recovery replays a crash after builder history seed before delivery',
@@ -129,6 +197,7 @@ void main() {
       final recovery = TeamGenerationRecoveryService(
         jobStore: store,
         sessionPort: port,
+        forwarder: _RecordingForwarder(),
       );
 
       await recovery.recoverWorkspace('ws');
@@ -153,6 +222,80 @@ void main() {
       expect(
         port.events.where((event) => event.startsWith('deliver:')),
         hasLength(1),
+      );
+    },
+  );
+
+  test(
+    'recovery executes durable commit launch and cleanup forwards',
+    () async {
+      final fs = InMemoryFilesystem();
+      const succeeded = TeamGenerationReceipt(
+        state: TeamGenerationReceiptState.succeeded,
+      );
+      final cases =
+          <
+            ({
+              String workflowId,
+              TeamGenerationPhase phase,
+              Map<String, TeamGenerationReceipt> receipts,
+            })
+          >[
+            (
+              workflowId: 'workflow-retain-12345678',
+              phase: TeamGenerationPhase.committing,
+              receipts: const {'finalizeAccepted': succeeded},
+            ),
+            (
+              workflowId: 'workflow-commit-12345678',
+              phase: TeamGenerationPhase.committing,
+              receipts: const {
+                'finalizeAccepted': succeeded,
+                'finalizeResponseFlushed': succeeded,
+              },
+            ),
+            (
+              workflowId: 'workflow-launch-12345678',
+              phase: TeamGenerationPhase.committing,
+              receipts: const {'profile': succeeded},
+            ),
+            (
+              workflowId: 'workflow-cleanup-12345678',
+              phase: TeamGenerationPhase.delivered,
+              receipts: const {
+                'profile': succeeded,
+                'destination': succeeded,
+                'finalizeResponseFlushed': succeeded,
+                'promptDeliveryDelivered': succeeded,
+              },
+            ),
+          ];
+      TeamGenerationJobStore? store;
+      for (final recoveryCase in cases) {
+        store = await _seedRecoveryJob(
+          fs: fs,
+          workflowId: recoveryCase.workflowId,
+          phase: recoveryCase.phase,
+          receipts: recoveryCase.receipts,
+        );
+      }
+      final forwarder = _RecordingForwarder();
+      final recovery = TeamGenerationRecoveryService(
+        jobStore: store!,
+        sessionPort: _RecordingPort(),
+        forwarder: forwarder,
+      );
+
+      await recovery.recoverWorkspace('ws');
+
+      expect(
+        forwarder.events,
+        unorderedEquals(const [
+          'commit:workflow-retain-12345678:retain=true',
+          'commit:workflow-commit-12345678:retain=false',
+          'launch:workflow-launch-12345678',
+          'cleanup:workflow-cleanup-12345678',
+        ]),
       );
     },
   );

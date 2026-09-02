@@ -112,8 +112,8 @@ final class TeamGenerationHandoffService {
     // pre-submit delivery receives a new attempt/id; unresolved submit states
     // are intentionally never replayed.
     var current = reservedJob;
-    var deliveryId = _deliveryIdFor(current, workflowId);
-    var existingDelivery = await _promptStore.read(deliveryId);
+    final deliveryId = _deliveryIdFor(current, workflowId);
+    final existingDelivery = await _promptStore.read(deliveryId);
     if (existingDelivery != null &&
         (existingDelivery.state == PromptDeliveryState.submitIssued ||
             existingDelivery.state == PromptDeliveryState.submittedUnknown)) {
@@ -135,22 +135,7 @@ final class TeamGenerationHandoffService {
       }
     }
     if (existingDelivery?.state == PromptDeliveryState.failed) {
-      current = await _jobStore.mutate(workspace.workspaceId, workflowId, (
-        job,
-      ) {
-        final attempt = job.attempt + 1;
-        return job.copyWith(
-          attempt: attempt,
-          receipts: {
-            ...job.receipts,
-            'promptDelivery': TeamGenerationReceipt(
-              state: TeamGenerationReceiptState.reserved,
-              value: _deliveryIdForAttempt(attempt, workflowId),
-            ),
-          },
-        );
-      });
-      deliveryId = _deliveryIdFor(current, workflowId);
+      await _reserveNextDeliveryAttempt(workspace.workspaceId, workflowId);
       throw StateError(
         'prompt delivery failed: ${existingDelivery?.failureReason}',
       );
@@ -205,9 +190,7 @@ final class TeamGenerationHandoffService {
 
     if (delivery.state == PromptDeliveryState.failed) {
       // Explicit non-submit: reserve a new attempt next run.
-      await _jobStore.mutate(workspace.workspaceId, workflowId, (current) {
-        return current.copyWith(attempt: current.attempt + 1);
-      });
+      await _reserveNextDeliveryAttempt(workspace.workspaceId, workflowId);
       throw StateError('prompt delivery failed: ${delivery.failureReason}');
     }
 
@@ -233,9 +216,7 @@ final class TeamGenerationHandoffService {
       );
     }
     if (completedDelivery?.state == PromptDeliveryState.failed) {
-      await _jobStore.mutate(workspace.workspaceId, workflowId, (job) {
-        return job.copyWith(attempt: job.attempt + 1);
-      });
+      await _reserveNextDeliveryAttempt(workspace.workspaceId, workflowId);
       throw StateError(
         'prompt delivery failed: ${completedDelivery?.failureReason}',
       );
@@ -272,6 +253,25 @@ final class TeamGenerationHandoffService {
 
   String _deliveryIdForAttempt(int attempt, String workflowId) =>
       teamGenerationStableId('teamgen-prompt-$attempt-', workflowId);
+
+  Future<TeamGenerationJob> _reserveNextDeliveryAttempt(
+    String workspaceId,
+    String workflowId,
+  ) {
+    return _jobStore.mutate(workspaceId, workflowId, (job) {
+      final attempt = job.attempt + 1;
+      return job.copyWith(
+        attempt: attempt,
+        receipts: {
+          ...job.receipts,
+          'promptDelivery': TeamGenerationReceipt(
+            state: TeamGenerationReceiptState.reserved,
+            value: _deliveryIdForAttempt(attempt, workflowId),
+          ),
+        },
+      );
+    });
+  }
 
   /// Forward-only phase guard: [to] wins unless the job already passed it.
   TeamGenerationPhase _atLeast(

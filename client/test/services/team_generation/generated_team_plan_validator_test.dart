@@ -8,14 +8,14 @@ import 'package:teampilot/services/team_generation/models/team_target_probe.dart
 import 'package:teampilot/utils/team/team_member_naming.dart';
 
 CliPreset preset(String id, CliTool cli) => CliPreset(
-      id: id,
-      name: id,
-      cli: cli,
-      provider: 'official',
-      model: 'model',
-      createdAt: 0,
-      updatedAt: 0,
-    );
+  id: id,
+  name: id,
+  cli: cli,
+  provider: 'official',
+  model: 'model',
+  createdAt: 0,
+  updatedAt: 0,
+);
 
 GeneratedTeamValidationInput input({
   String memberPreset = 'claude-strong',
@@ -80,11 +80,15 @@ GeneratedTeamValidationInput input({
 }
 
 String _digest(CliPreset preset) => [
-      'cli:', preset.cli.value,
-      'provider:', preset.provider,
-      'model:', preset.model,
-      'effort:', preset.effort,
-    ].join('|');
+  'cli:',
+  preset.cli.value,
+  'provider:',
+  preset.provider,
+  'model:',
+  preset.model,
+  'effort:',
+  preset.effort,
+].join('|');
 
 Map<String, Object?> planJson({
   int memberCount = 2,
@@ -100,10 +104,10 @@ Map<String, Object?> planJson({
       'role': 'Delivery Lead',
       'responsibilities': 'Own decomposition and integration',
       'workingMethod': 'Delegate, review evidence, integrate',
-        if (memberPreset != null) 'presetId': memberPreset,
-        'replicas': 1,
-        if (leadPlacement != null) 'placement': leadPlacement,
-      });
+      if (memberPreset != null) 'presetId': memberPreset,
+      'replicas': 1,
+      if (leadPlacement != null) 'placement': leadPlacement,
+    });
   }
   for (var i = members.length; i < memberCount; i++) {
     members.add({
@@ -165,7 +169,10 @@ void main() {
       result.issueCodes,
       containsAll(['member_count_out_of_range', 'lead_count_invalid']),
     );
-    expect(result.issueCodes.where((code) => code == 'duplicate_member_id'), everyElement(anything));
+    expect(
+      result.issueCodes.where((code) => code == 'duplicate_member_id'),
+      everyElement(anything),
+    );
   });
 
   test('rejects live preset drift and unavailable mixed placement', () async {
@@ -191,6 +198,32 @@ void main() {
     final lead = result.roster.first;
     expect(lead.overridesPresetId, TeamProfile.inheritPresetId);
     expect(lead.cli, isNull);
+  });
+
+  test('rejects a worker whose placement is missing', () async {
+    final result = await validator.validate(
+      input: input(),
+      planJson: planJson(workerPlacement: null),
+    );
+
+    expect(result.isValid, isFalse);
+    expect(result.issueCodes, contains('placement_sum_mismatch'));
+    expect(
+      result.issues
+          .singleWhere((issue) => issue.code == 'placement_sum_mismatch')
+          .detail,
+      contains('worker-1'),
+    );
+  });
+
+  test('canonicalizes placement before returning the commit plan', () async {
+    final result = await validator.validate(
+      input: input(),
+      planJson: planJson(workerPlacement: const {'': 1, 'local': 0}),
+    );
+
+    expect(result.isValid, isTrue);
+    expect(result.normalizedPlan.members.last.placement, {'local': 1});
   });
 }
 

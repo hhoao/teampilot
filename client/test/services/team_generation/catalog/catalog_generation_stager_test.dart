@@ -123,7 +123,7 @@ void main() {
   );
 
   test(
-    'promotion persists staged payload and applies it in workspace scope',
+    'promotion persists staged payload and applies it in team scope',
     () async {
       final globalModule = FakeCatalogModule(kind: 'skill');
       final promotingStager = CatalogGenerationStager(
@@ -150,10 +150,37 @@ void main() {
       await promotingStager.promote(workspaceId: 'ws', workflowId: 'wf');
 
       expect(globalModule.lastOp, CatalogOp.create);
-      expect(globalModule.lastRequest!.bindTo, CatalogBindTo.workspace);
+      expect(globalModule.lastRequest!.bindTo, CatalogBindTo.team);
       expect(await fs.readString(staged.stagedPath), isNull);
     },
   );
+
+  test('stager rejects destructive mutations when called directly', () async {
+    for (final op in const [
+      CatalogOp.update,
+      CatalogOp.unbind,
+      CatalogOp.delete,
+    ]) {
+      await expectLater(
+        stager.handleMcpMutation(
+          kind: 'skill',
+          op: op,
+          request: request({'id': 'global-skill'}),
+        ),
+        throwsA(
+          isA<CatalogException>()
+              .having(
+                (error) => error.code,
+                'code',
+                'generation_mutation_forbidden',
+              )
+              .having((error) => error.message, 'message', contains(op.name)),
+        ),
+      );
+    }
+
+    expect((await store.read('ws', 'wf'))!.stagedResources, isEmpty);
+  });
 
   test('inactive workflow rejects staging', () async {
     await store.beginCancel('ws', 'wf');

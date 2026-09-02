@@ -31,9 +31,7 @@ final class GeneratedTeamValidationResult {
   final String activePresetId;
   final GeneratedDestinationLaunch? destinationLaunch;
 
-  List<String> get issueCodes => [
-    for (final issue in issues) issue.code,
-  ];
+  List<String> get issueCodes => [for (final issue in issues) issue.code];
 }
 
 /// Lightweight roster preview row derived during validation.
@@ -120,6 +118,7 @@ final class GeneratedTeamPlanValidator {
         destinationLaunch: null,
       );
     }
+    plan = _normalizePlacements(plan);
 
     final frozen = input.settings;
     final poolById = {
@@ -207,11 +206,13 @@ final class GeneratedTeamPlanValidator {
     // Placement: targets probed/current, counts sum to replicas, CLI facts.
     for (final member in plan.members) {
       final presetId = member.presetId.isEmpty
-          ? (frozen.modelPool.isNotEmpty ? frozen.modelPool.first.preset.id : '')
+          ? (frozen.modelPool.isNotEmpty
+                ? frozen.modelPool.first.preset.id
+                : '')
           : member.presetId;
       final entry = poolById[presetId];
       final sum = member.placement.values.fold(0, (a, b) => a + b);
-      if (member.placement.isNotEmpty && sum != member.replicas) {
+      if (sum != member.replicas) {
         issues.add(
           _error(
             'placement_sum_mismatch',
@@ -223,9 +224,7 @@ final class GeneratedTeamPlanValidator {
         final target = input.probe.byTarget(entry0.key);
         if (target == null ||
             target.status != TeamTargetProbeStatus.available) {
-          issues.add(
-            _error('target_cli_unavailable', detail: entry0.key),
-          );
+          issues.add(_error('target_cli_unavailable', detail: entry0.key));
           continue;
         }
         if (entry != null) {
@@ -311,22 +310,18 @@ final class GeneratedTeamPlanValidator {
   }
 
   String _presetDigest(CliPreset preset) => [
-        'cli:',
-        preset.cli.value,
-        'provider:',
-        preset.provider,
-        'model:',
-        preset.model,
-        'effort:',
-        preset.effort,
-      ].join('|');
+    'cli:',
+    preset.cli.value,
+    'provider:',
+    preset.provider,
+    'model:',
+    preset.model,
+    'effort:',
+    preset.effort,
+  ].join('|');
 
   String _expertKey(String role, String responsibilities, String method) =>
-      'local/generated/${generatedExpertKeyFrom(generatedExpertKeyJson({
-        'role': role,
-        'responsibilities': responsibilities,
-        'workingMethod': method,
-      }))}';
+      'local/generated/${generatedExpertKeyFrom(generatedExpertKeyJson({'role': role, 'responsibilities': responsibilities, 'workingMethod': method}))}';
 
   GeneratedDestinationLaunch? _destinationLaunch(
     GeneratedTeamValidationInput input,
@@ -336,20 +331,22 @@ final class GeneratedTeamPlanValidator {
     final lead = plan.members
         .where((member) => member.name == TeamMemberNaming.teamLeadName)
         .firstOrNull;
-    final leadTarget = lead?.placement.entries
+    final leadTarget =
+        lead?.placement.entries
             .where((entry) => entry.value > 0)
             .map((entry) => entry.key)
             .firstOrNull ??
         WorkspaceFolder.localTargetId;
-    final matching = input.currentFolders.where(
-      (folder) => _canonical(folder.targetId) == leadTarget,
-    ).toList()
-      ..sort((a, b) => a.path.compareTo(b.path));
+    final matching =
+        input.currentFolders
+            .where((folder) => _canonical(folder.targetId) == leadTarget)
+            .toList()
+          ..sort((a, b) => a.path.compareTo(b.path));
     final folder = matching.isNotEmpty
         ? matching.first
         : (input.currentFolders.toList()
-          ..sort((a, b) => a.path.compareTo(b.path)))
-            .first;
+                ..sort((a, b) => a.path.compareTo(b.path)))
+              .first;
     return GeneratedDestinationLaunch(
       folderId: folder.path,
       projectFolderPath: folder.path,
@@ -361,6 +358,40 @@ final class GeneratedTeamPlanValidator {
   String _canonical(String targetId) {
     final trimmed = targetId.trim();
     return trimmed.isEmpty ? WorkspaceFolder.localTargetId : trimmed;
+  }
+
+  GeneratedTeamPlan _normalizePlacements(GeneratedTeamPlan plan) {
+    return GeneratedTeamPlan(
+      teamName: plan.teamName,
+      teamDescription: plan.teamDescription,
+      mode: plan.mode,
+      members: [
+        for (final member in plan.members)
+          GeneratedTeamMemberPlan(
+            name: member.name,
+            role: member.role,
+            responsibilities: member.responsibilities,
+            workingMethod: member.workingMethod,
+            presetId: member.presetId,
+            replicas: member.replicas,
+            placement: _normalizePlacement(member.placement),
+          ),
+      ],
+      skillIds: plan.skillIds,
+      pluginIds: plan.pluginIds,
+      mcpServerIds: plan.mcpServerIds,
+      revision: '',
+    );
+  }
+
+  Map<String, int> _normalizePlacement(Map<String, int> placement) {
+    final normalized = <String, int>{};
+    for (final entry in placement.entries) {
+      if (entry.value < 1) continue;
+      final targetId = _canonical(entry.key);
+      normalized[targetId] = (normalized[targetId] ?? 0) + entry.value;
+    }
+    return normalized;
   }
 
   TeamGenerationIssue _error(String code, {String detail = ''}) =>

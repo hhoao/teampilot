@@ -59,6 +59,12 @@ final class CatalogGenerationStager
     required CatalogRequest request,
   }) {
     return executor.run(request.workspaceId, request.workflowId, () async {
+      if (!catalogGenerationAcquisitionOps.contains(op)) {
+        throw CatalogException(
+          'generation_mutation_forbidden',
+          '${op.name} is not allowed in generation scope',
+        );
+      }
       final job = await jobStore.read(request.workspaceId, request.workflowId);
       if (job == null || !job.isActive) {
         throw CatalogException(
@@ -155,7 +161,7 @@ final class CatalogGenerationStager
           CatalogRequest(
             sessionId: 'team-generation-commit',
             workspaceId: workspaceId,
-            bindTo: CatalogBindTo.workspace,
+            bindTo: CatalogBindTo.team,
             overwrite: payload['overwrite'] == true,
             arguments: args,
             workFs: _fs,

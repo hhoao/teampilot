@@ -1889,15 +1889,6 @@ Future<AppShell> buildAppShell({
         },
       ).attach();
       teamGenerationGraph = graph;
-      unawaited(
-        runTeamGenerationBootstrapRecovery(
-          recovery: graph.recoveryService,
-          workspaceIds: [
-            for (final workspace in chatCubit.state.workspaces)
-              workspace.workspaceId,
-          ],
-        ),
-      );
     } on Object catch (e, st) {
       appLogger.w(
         '[team-generation] wiring failed; generation disabled: $e\n$st',
@@ -2163,6 +2154,7 @@ Future<AppShell> buildAppShell({
       }
     }
 
+    var teamGenerationRecoveryStarted = false;
     Future<void> bootstrapAppData() async {
       await notificationBootstrap;
       final indexReady = bootstrapCubit?.state.homeIndexReady ?? false;
@@ -2209,6 +2201,17 @@ Future<AppShell> buildAppShell({
           );
         }
         bootstrapCubit?.markHomeIndexReady();
+      }
+      final recoveryGraph = teamGenerationGraph;
+      if (!teamGenerationRecoveryStarted && recoveryGraph != null) {
+        teamGenerationRecoveryStarted = true;
+        await runTeamGenerationBootstrapRecovery(
+          recovery: recoveryGraph.recoveryService,
+          workspaceIdsAfterDiscovery: Future.value([
+            for (final workspace in chatCubit.state.workspaces)
+              workspace.workspaceId,
+          ]),
+        );
       }
       await reconnectHomeSshIfNeeded();
       await yieldUiFrame();

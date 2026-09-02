@@ -117,7 +117,7 @@ class _FakePort implements TeamGenerationSessionPort {
 class _ResultCommands implements PromptDeliveryCommands {
   _ResultCommands(this.result);
 
-  final PromptSubmissionResult result;
+  PromptSubmissionResult result;
   int submits = 0;
 
   @override
@@ -161,10 +161,7 @@ void main() {
     await promptStore.save(
       PromptDelivery(
         id: deliveryId,
-        seat: RuntimeSeatKey(
-          sessionId: destinationId,
-          memberId: 'team-lead',
-        ),
+        seat: RuntimeSeatKey(sessionId: destinationId, memberId: 'team-lead'),
         cli: CliTool.claude,
         text: 'exact\nrequest',
         normalizedText: 'exact request',
@@ -287,9 +284,38 @@ void main() {
     },
   );
 
-  test('failed delivery reserves a genuinely new id for the next attempt', () async {
-    final failedId = await reserveDelivery(PromptDeliveryState.failed);
-    final commands = _ResultCommands(PromptSubmissionResult.submitted);
+  test(
+    'failed delivery reserves a genuinely new id for the next attempt',
+    () async {
+      final failedId = await reserveDelivery(PromptDeliveryState.failed);
+      final commands = _ResultCommands(PromptSubmissionResult.submitted);
+      final retryingService = serviceWith(commands);
+
+      await expectLater(
+        retryingService.handoff(
+          workspace: workspace(),
+          team: team(),
+          workflowId: 'wf',
+        ),
+        throwsStateError,
+      );
+      final afterFailure = (await store.read('ws', 'wf'))!;
+      final nextId = afterFailure.receipts['promptDelivery']!.value;
+      expect(afterFailure.attempt, 1);
+      expect(nextId, isNot(failedId));
+
+      final retried = await retryingService.handoff(
+        workspace: workspace(),
+        team: team(),
+        workflowId: 'wf',
+      );
+      expect(retried.deliveryId, nextId);
+      expect(commands.submits, 1);
+    },
+  );
+
+  test('submit failure lets the next call use the replacement id', () async {
+    final commands = _ResultCommands(PromptSubmissionResult.failed);
     final retryingService = serviceWith(commands);
 
     await expectLater(
@@ -301,58 +327,60 @@ void main() {
       throwsStateError,
     );
     final afterFailure = (await store.read('ws', 'wf'))!;
-    final nextId = afterFailure.receipts['promptDelivery']!.value;
+    final failedId = teamGenerationStableId('teamgen-prompt-0-', 'wf');
+    final replacementId = afterFailure.receipts['promptDelivery']!.value;
     expect(afterFailure.attempt, 1);
-    expect(nextId, isNot(failedId));
+    expect(replacementId, isNot(failedId));
 
+    commands.result = PromptSubmissionResult.submitted;
     final retried = await retryingService.handoff(
       workspace: workspace(),
       team: team(),
       workflowId: 'wf',
     );
-    expect(retried.deliveryId, nextId);
-    expect(commands.submits, 1);
+
+    expect(retried.deliveryId, replacementId);
+    expect(commands.submits, 2);
   });
 
   for (final ambiguousState in const [
     PromptDeliveryState.submitIssued,
     PromptDeliveryState.submittedUnknown,
   ]) {
-    test('$ambiguousState is never replayed without a succeeded receipt', () async {
-      final deliveryId = await reserveDelivery(ambiguousState);
-      final commands = _ResultCommands(PromptSubmissionResult.submitted);
+    test(
+      '$ambiguousState is never replayed without a succeeded receipt',
+      () async {
+        final deliveryId = await reserveDelivery(ambiguousState);
+        final commands = _ResultCommands(PromptSubmissionResult.submitted);
 
-      await expectLater(
-        serviceWith(commands).handoff(
-          workspace: workspace(),
-          team: team(),
-          workflowId: 'wf',
-        ),
-        throwsA(
-          isA<PromptDeliveryUnknownException>().having(
-            (error) => error.deliveryId,
-            'deliveryId',
-            deliveryId,
+        await expectLater(
+          serviceWith(
+            commands,
+          ).handoff(workspace: workspace(), team: team(), workflowId: 'wf'),
+          throwsA(
+            isA<PromptDeliveryUnknownException>().having(
+              (error) => error.deliveryId,
+              'deliveryId',
+              deliveryId,
+            ),
           ),
-        ),
-      );
+        );
 
-      expect(commands.submits, 0);
-      expect(port.historySeedCalls, isEmpty);
-      final job = await store.read('ws', 'wf');
-      expect(job!.receipts['promptDeliveryDelivered'], isNull);
-    });
+        expect(commands.submits, 0);
+        expect(port.historySeedCalls, isEmpty);
+        final job = await store.read('ws', 'wf');
+        expect(job!.receipts['promptDeliveryDelivered'], isNull);
+      },
+    );
   }
 
   test('a dropped submit stays unknown and never records delivered', () async {
     final commands = _ResultCommands(PromptSubmissionResult.dropped);
 
     await expectLater(
-      serviceWith(commands).handoff(
-        workspace: workspace(),
-        team: team(),
-        workflowId: 'wf',
-      ),
+      serviceWith(
+        commands,
+      ).handoff(workspace: workspace(), team: team(), workflowId: 'wf'),
       throwsA(isA<PromptDeliveryUnknownException>()),
     );
 

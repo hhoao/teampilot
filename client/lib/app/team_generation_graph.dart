@@ -3,6 +3,7 @@ import '../../repositories/session_repository.dart';
 import '../../services/expert_hub/local_expert_store.dart';
 import '../../services/team_generation/generated_team_commit_service.dart';
 import '../../services/team_generation/generated_team_plan_validator.dart';
+import '../../services/team_generation/models/team_generation_job.dart';
 import '../../services/team_generation/team_generation_authorizer.dart';
 import '../../services/team_generation/team_generation_builder_idle_waiter.dart';
 import '../../services/team_generation/team_generation_cleanup_service.dart';
@@ -198,6 +199,62 @@ final class NoopResourceProvisioner implements TeamProfileResourceProvisioner {
   Future<void> provision(TeamProfile team) async {}
 }
 
+final class _TeamGenerationRecoveryForwarder
+    implements TeamGenerationRecoveryForwarder {
+  _TeamGenerationRecoveryForwarder({
+    required GeneratedTeamCommitService commitService,
+    required TeamGenerationHandoffService handoffService,
+    required TeamGenerationCleanupService cleanupService,
+    required Future<Workspace?> Function(String workspaceId) workspaceResolver,
+  }) : _commitService = commitService,
+       _handoffService = handoffService,
+       _cleanupService = cleanupService,
+       _workspaceResolver = workspaceResolver;
+
+  final GeneratedTeamCommitService _commitService;
+  final TeamGenerationHandoffService _handoffService;
+  final TeamGenerationCleanupService _cleanupService;
+  final Future<Workspace?> Function(String workspaceId) _workspaceResolver;
+
+  @override
+  Future<void> commitForward(
+    TeamGenerationJob job, {
+    required bool retainBuilder,
+  }) async {
+    await _commitAndHandoff(job);
+    if (!retainBuilder) await cleanupForward(job);
+  }
+
+  @override
+  Future<void> launchForward(TeamGenerationJob job) async {
+    await _commitAndHandoff(job);
+    await cleanupForward(job);
+  }
+
+  @override
+  Future<void> cleanupForward(TeamGenerationJob job) async {
+    await _cleanupService.cleanup(
+      workspaceId: job.workspaceId,
+      workflowId: job.workflowId,
+    );
+  }
+
+  Future<void> _commitAndHandoff(TeamGenerationJob job) async {
+    final workspace = await _workspaceResolver(job.workspaceId);
+    if (workspace == null) throw StateError('generation workspace missing');
+    final committed = await _commitService.commit(
+      workspace: workspace,
+      workflowId: job.workflowId,
+      validatedRevision: job.validatedRevision,
+    );
+    await _handoffService.handoff(
+      workspace: workspace,
+      team: committed.team,
+      workflowId: job.workflowId,
+    );
+  }
+}
+
 /// Builds the team-generation object graph in dependency order.
 TeamGenerationGraph buildTeamGenerationGraph({
   required ChatCubit chatCubit,
@@ -261,9 +318,28 @@ TeamGenerationGraph buildTeamGenerationGraph({
     promptCoordinator: promptCoordinator,
     promptStore: promptDeliveryStore,
   );
+  final cleanupService = TeamGenerationCleanupService(
+    jobStore: jobStore,
+    sessionPort: sessionPort,
+    idleWaiter: TeamGenerationBuilderIdleWaiter(sessionPort: sessionPort),
+    revokeToken: authorizer.revoke,
+  );
+  Future<Workspace?> workspaceResolver(String workspaceId) async {
+    for (final workspace in chatCubit.state.workspaces) {
+      if (workspace.workspaceId == workspaceId) return workspace;
+    }
+    return null;
+  }
+
   final recoveryService = TeamGenerationRecoveryService(
     jobStore: jobStore,
     sessionPort: sessionPort,
+    forwarder: _TeamGenerationRecoveryForwarder(
+      commitService: commitService,
+      handoffService: handoffService,
+      cleanupService: cleanupService,
+      workspaceResolver: workspaceResolver,
+    ),
   );
   final coordinator = TeamGenerationCoordinator(
     jobStore: jobStore,
@@ -273,22 +349,11 @@ TeamGenerationGraph buildTeamGenerationGraph({
     probeService: probeService,
     planValidator: validator,
     handoffService: handoffService,
-    cleanupService: TeamGenerationCleanupService(
-      jobStore: jobStore,
-      sessionPort: sessionPort,
-      idleWaiter: TeamGenerationBuilderIdleWaiter(sessionPort: sessionPort),
-      revokeToken: authorizer.revoke,
-    ),
-    recoveryService: recoveryService,
+    cleanupService: cleanupService,
     commitService: commitService,
     uuidFactory: () => const Uuid().v4(),
     presets: () => chatCubit.lifecycle.globalPresets,
-    workspaceResolver: (workspaceId) async {
-      for (final workspace in chatCubit.state.workspaces) {
-        if (workspace.workspaceId == workspaceId) return workspace;
-      }
-      return null;
-    },
+    workspaceResolver: workspaceResolver,
   );
   final handler = TeamComposerMcpHandler(
     context: TeamComposerHandlerContext(
@@ -383,10 +448,11 @@ TeamGenerationGraph buildTeamGenerationGraph({
 /// bootstrap. It deliberately never invents a placeholder workspace.
 Future<void> runTeamGenerationBootstrapRecovery({
   required TeamGenerationRecoveryPort recovery,
-  required Iterable<String> workspaceIds,
+  required Future<Iterable<String>> workspaceIdsAfterDiscovery,
   void Function(Object error, StackTrace stackTrace)? diagnosticLogger,
 }) async {
   try {
+    final workspaceIds = await workspaceIdsAfterDiscovery;
     await recovery.recoverAll(workspaceIds);
   } on Object catch (error, stackTrace) {
     (diagnosticLogger ?? _logTeamGenerationRecoveryFailure)(error, stackTrace);

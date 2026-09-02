@@ -13,6 +13,12 @@ enum CatalogOp {
   delete,
 }
 
+const catalogGenerationAcquisitionOps = <CatalogOp>{
+  CatalogOp.install,
+  CatalogOp.importPath,
+  CatalogOp.create,
+};
+
 enum CatalogBindTo { workspace, team, expert, generation }
 
 class CatalogException implements Exception {

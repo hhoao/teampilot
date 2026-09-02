@@ -24,9 +24,7 @@ import 'package:teampilot/services/team_generation/team_generation_coordinator.d
 import 'package:teampilot/services/team_generation/team_generation_handoff_service.dart';
 import 'package:teampilot/services/team_generation/mcp/team_composer_mcp_constants.dart';
 import 'package:teampilot/services/team_generation/mcp/team_composer_mcp_handler.dart';
-import 'package:teampilot/services/team_generation/models/team_generation_job.dart';
 import 'package:teampilot/services/team_generation/team_generation_job_store.dart';
-import 'package:teampilot/services/team_generation/team_generation_recovery_service.dart';
 import 'package:teampilot/services/team_generation/team_generation_session_port.dart';
 import 'package:teampilot/services/team_generation/team_generation_settings_store.dart';
 import 'package:teampilot/services/team_generation/team_target_probe_service.dart';
@@ -271,10 +269,6 @@ void main() {
           sessionPort: port,
           idleWaiter: TeamGenerationBuilderIdleWaiter(sessionPort: port),
           revokeToken: (_) {},
-        ),
-        recoveryService: TeamGenerationRecoveryService(
-          jobStore: store,
-          sessionPort: port,
         ),
         commitService: GeneratedTeamCommitService(
           jobStore: store,

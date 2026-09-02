@@ -67,9 +67,11 @@ void main() {
   CatalogRequest req({
     Map<String, Object?> arguments = const {},
     List<String>? allowedRoots,
+    CatalogBindTo bindTo = CatalogBindTo.workspace,
   }) => CatalogRequest(
     sessionId: 's',
     workspaceId: workspaceId,
+    bindTo: bindTo,
     arguments: arguments,
     workFs: workFs,
     allowedRoots: allowedRoots ?? [workRoot.path],
@@ -125,6 +127,25 @@ void main() {
       await sub.cancel();
     },
   );
+
+  test('team-scoped create installs without binding the workspace', () async {
+    final result = await module.handle(
+      CatalogOp.create,
+      req(
+        bindTo: CatalogBindTo.team,
+        arguments: {
+          'name': 'Generated Skill',
+          'directory': 'generated-skill',
+          'body': 'Generated team only.',
+        },
+      ),
+    );
+
+    expect(result.ids, ['local:generated-skill']);
+    expect(result.boundTo, CatalogBindTo.team);
+    expect(File(installedSkillMd('generated-skill')).existsSync(), isTrue);
+    expect((await configRepo.load(workspaceId)).bundle.skillIds, isEmpty);
+  });
 
   test('import_skill copies a SKILL.md directory and binds', () async {
     final src = Directory(p.join(workRoot.path, 'my-skill'))..createSync();

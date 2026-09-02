@@ -38,9 +38,15 @@ Future<bool> submitWorkspaceLandingGeneration(
     return false;
   }
 
+  final generatorSetting = context
+      .read<AiFeatureSettingsCubit>()
+      .state
+      .settingFor(AiFeatureId.teamGenerate);
+  final generatorPresetId = generatorSetting?.activePresetId ?? '';
   final preflight = await coordinator.preflight(
     workspace: workspace,
     originalPrompt: trimmed,
+    generatorPresetId: generatorPresetId,
   );
   if (preflight.issues.isNotEmpty) {
     if (context.mounted) {
@@ -49,15 +55,11 @@ Future<bool> submitWorkspaceLandingGeneration(
     return false;
   }
 
-  final generatorSetting = context
-      .read<AiFeatureSettingsCubit>()
-      .state
-      .settingFor(AiFeatureId.teamGenerate);
   try {
     final result = await coordinator.start(
       workspace: workspace,
       originalPrompt: trimmed,
-      generatorPresetId: generatorSetting?.activePresetId ?? '',
+      generatorPresetId: generatorPresetId,
       projectFolderPath: launch.projectFolderPath ?? workspace.firstFolderPath,
       workingDirectoryPath:
           workingDirectory ??
@@ -143,8 +145,15 @@ String teamGenerationPreflightIssueMessage(
   String code,
 ) => switch (code) {
   'description_required' => l10n.teamGenerateErrorDescriptionRequired,
+  'generator_not_configured' => l10n.teamGenerateErrorAiNotConfigured,
   'model_pool_empty' => l10n.teamGenerateErrorPoolEmpty,
-  'generator_mcp_unsupported' => l10n.teamGenerateErrorGeneratorUnsupported,
+  'generator_launch_unsupported' ||
+  'generator_session_unsupported' ||
+  'generator_skill_unsupported' ||
+  'generator_mcp_unsupported' ||
+  'pool_launch_unsupported' ||
+  'pool_session_unsupported' => l10n.teamGenerateErrorGeneratorUnsupported,
+  'native_pool_cli_mismatch' ||
   'native_team_unsupported' => l10n.teamGenerateErrorNativeUnsupported,
   _ => l10n.teamGenerateErrorStartFailed,
 };

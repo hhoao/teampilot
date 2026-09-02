@@ -24,7 +24,6 @@ import 'package:teampilot/services/team_generation/team_generation_compatibility
 import 'package:teampilot/services/team_generation/team_generation_coordinator.dart';
 import 'package:teampilot/services/team_generation/team_generation_handoff_service.dart';
 import 'package:teampilot/services/team_generation/team_generation_job_store.dart';
-import 'package:teampilot/services/team_generation/team_generation_recovery_service.dart';
 import 'package:teampilot/services/team_generation/team_generation_session_port.dart';
 import 'package:teampilot/services/team_generation/team_generation_settings_store.dart';
 import 'package:teampilot/services/team_generation/team_target_probe_service.dart';
@@ -266,14 +265,49 @@ void main() {
         planValidator: GeneratedTeamPlanValidator(),
         handoffService: handoff,
         cleanupService: cleanup,
-        recoveryService: TeamGenerationRecoveryService(
-          jobStore: jobStore,
-          sessionPort: port,
-        ),
         commitService: commit,
         uuidFactory: () => 'workflow-12345678',
         presets: () => [preset],
         workspaceResolver: (_) async => workspace,
+      );
+
+      final missingGenerator = await coordinator.preflight(
+        workspace: workspace,
+        originalPrompt: 'Build the release plan',
+        generatorPresetId: '',
+      );
+      expect(
+        missingGenerator.issues.map((issue) => issue.code),
+        contains('generator_not_configured'),
+      );
+      final supportedGenerator = await coordinator.preflight(
+        workspace: workspace,
+        originalPrompt: 'Build the release plan',
+        generatorPresetId: preset.id,
+      );
+      expect(supportedGenerator.ok, isTrue);
+      final unsupportedCoordinator = TeamGenerationCoordinator(
+        jobStore: jobStore,
+        settingsStore: settingsStore,
+        sessionPort: port,
+        compatibility: TeamGenerationCompatibility(registry: CliToolRegistry()),
+        probeService: probeService,
+        planValidator: GeneratedTeamPlanValidator(),
+        handoffService: handoff,
+        cleanupService: cleanup,
+        commitService: commit,
+        uuidFactory: () => 'workflow-unsupported',
+        presets: () => [preset],
+        workspaceResolver: (_) async => workspace,
+      );
+      final unsupportedGenerator = await unsupportedCoordinator.preflight(
+        workspace: workspace,
+        originalPrompt: 'Build the release plan',
+        generatorPresetId: preset.id,
+      );
+      expect(
+        unsupportedGenerator.issues.map((issue) => issue.code),
+        contains('generator_launch_unsupported'),
       );
 
       const originalRequest = 'Build the release plan';

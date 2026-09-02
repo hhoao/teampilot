@@ -12,7 +12,6 @@ import 'team_generation_compatibility.dart';
 import 'team_generation_handoff_service.dart';
 import 'team_generation_job_store.dart';
 import 'models/team_generation_launch.dart';
-import 'team_generation_recovery_service.dart';
 import 'team_generation_session_port.dart';
 import 'team_generation_settings_store.dart';
 import 'team_target_probe_service.dart';
@@ -77,7 +76,6 @@ final class TeamGenerationCoordinator {
     required GeneratedTeamPlanValidator planValidator,
     required TeamGenerationHandoffService handoffService,
     required TeamGenerationCleanupService cleanupService,
-    required TeamGenerationRecoveryService recoveryService,
     required GeneratedTeamCommitService commitService,
     required String Function() uuidFactory,
     Future<Workspace?> Function(String workspaceId)? workspaceResolver,
@@ -108,20 +106,38 @@ final class TeamGenerationCoordinator {
   Future<TeamGenerationPreflightResult> preflight({
     required Workspace workspace,
     required String originalPrompt,
+    required String generatorPresetId,
   }) async {
     final issues = <TeamGenerationPreflightIssue>[];
-    if (originalPrompt.trim().isEmpty) {
-      issues.add(const TeamGenerationPreflightIssue('description_required'));
+    void addIssue(String code) {
+      if (issues.any((issue) => issue.code == code)) return;
+      issues.add(TeamGenerationPreflightIssue(code));
     }
+
+    if (originalPrompt.trim().isEmpty) {
+      addIssue('description_required');
+    }
+    final presets = _presets();
     final settings = await _settingsStore.load();
     final snapshot = resolveTeamGenerationSettingsSnapshot(
       settings: settings,
-      presets: _presets(),
+      presets: presets,
       registry: _compatibility.registry,
       capturedAt: 0,
     );
-    if (snapshot.modelPool.isEmpty) {
-      issues.add(const TeamGenerationPreflightIssue('model_pool_empty'));
+    final generatorId = generatorPresetId.trim();
+    final generator = presets
+        .where((preset) => preset.id == generatorId)
+        .firstOrNull;
+    if (generatorId.isEmpty || generator == null) {
+      addIssue('generator_not_configured');
+    } else {
+      final generatorResult = _compatibility.evaluateGenerator(
+        preset: generator,
+      );
+      for (final issue in generatorResult.issues) {
+        addIssue(issue.code);
+      }
     }
     final poolResult = _compatibility.evaluateTeamPool(
       mode: snapshot.teamMode,
@@ -129,7 +145,7 @@ final class TeamGenerationCoordinator {
       pool: snapshot.modelPool,
     );
     for (final issue in poolResult.issues) {
-      issues.add(TeamGenerationPreflightIssue(issue.code));
+      addIssue(issue.code);
     }
     return TeamGenerationPreflightResult(issues);
   }
