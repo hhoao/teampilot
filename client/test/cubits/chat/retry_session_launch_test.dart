@@ -38,7 +38,7 @@ class _RecordingChatCubit extends ChatCubit {
     };
     if (sessionId.isEmpty) return;
     // Mirror production: connect returns before the shell finishes, then the
-    // pod leaves launching. Redelivery must wait for settle.
+    // pod leaves launching. Callers wait for settle before completing retry.
     beginSessionConnect(sessionId);
     if (connectSucceeds) {
       scheduleMicrotask(() {

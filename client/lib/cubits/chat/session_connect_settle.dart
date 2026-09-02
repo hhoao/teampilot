@@ -7,8 +7,8 @@
 /// Returns `true` when the connect settled (left the in-flight window) and
 /// `false` when the wait gave up: the cubit closed, or [timeout] elapsed while
 /// the session was still connecting. Callers must not treat a `false` return
-/// as "connect finished" — e.g. launch-retry redelivery skips redelivering the
-/// failed message unless this returned true.
+/// as "connect finished" — e.g. [retrySessionLaunch] may return while the
+/// session is still connecting if settle timed out or the cubit closed.
 Future<bool> awaitSessionConnectSettle({
   required bool Function() isConnecting,
   required bool Function() isClosed,
