@@ -1,17 +1,20 @@
 import 'package:flutter/material.dart';
 import 'package:timezone/timezone.dart' as tz;
 
+import '../../utils/logging/logger.dart';
 import 'automation_schedule_calculator.dart';
 /// Best-effort resolvable timezone identifier for the device: the IANA name
-/// when the [timezone] package can map it, otherwise a fixed-offset name the
-/// package accepts, else 'UTC'.
+/// when the [timezone] package can map it, otherwise the first curated zone
+/// whose current offset matches the device offset, else 'UTC'.
 ///
 /// `DateTime.now().timeZoneName` yields abbreviations ('CST') or Windows
 /// names ('China Standard Time') that the tz database cannot resolve, which
 /// used to compose once schedules on UTC wall-time. The tz database also has
-/// no `Etc/GMT±N` entries, so the fallback reuses the nearest real zone that
+/// no `Etc/GMT±N` entries, so the fallback reuses the first curated zone that
 /// currently matches the device offset — no DST fidelity, but wall-clock
-/// composition is correct until the zone next changes offset.
+/// composition is correct until the zone next changes offset. When no
+/// curated zone matches (a handful of :30/:45 offsets), the result degrades
+/// to 'UTC' and the fallback is logged for diagnosability.
 String resolveDeviceTimezoneIdentifier() {
   final name = DateTime.now().timeZoneName.trim();
   final offset = DateTime.now().timeZoneOffset;
@@ -19,6 +22,10 @@ String resolveDeviceTimezoneIdentifier() {
   if (offset == Duration.zero) return 'UTC';
   final candidate = _nearestZoneWithOffset(offset);
   if (candidate != null) return candidate;
+  appLogger.w(
+    '[automations] no curated zone matches device offset $offset; '
+    'composing schedules on UTC',
+  );
   return 'UTC';
 }
 
@@ -52,13 +59,15 @@ const _offsetCandidateZoneNames = [
   'America/St_Johns', 'America/Toronto', 'America/Vancouver', 'America/Winnipeg',
   // Asia / Pacific
   'Asia/Bangkok', 'Asia/Dhaka', 'Asia/Dubai', 'Asia/Ho_Chi_Minh', 'Asia/Hong_Kong',
-  'Asia/Jakarta', 'Asia/Jerusalem', 'Asia/Kathmandu', 'Asia/Kolkata',
+  'Asia/Jakarta', 'Asia/Jerusalem', 'Asia/Kabul', 'Asia/Kathmandu', 'Asia/Kolkata',
   'Asia/Kuala_Lumpur', 'Asia/Manila', 'Asia/Seoul', 'Asia/Shanghai', 'Asia/Singapore',
   'Asia/Taipei', 'Asia/Tehran', 'Asia/Tokyo', 'Asia/Yekaterinburg',
   'Australia/Adelaide', 'Australia/Brisbane', 'Australia/Darwin',
-  'Australia/Hobart', 'Australia/Melbourne', 'Australia/Perth', 'Australia/Sydney',
-  'Pacific/Auckland', 'Pacific/Fiji', 'Pacific/Guam', 'Pacific/Honolulu',
-  'Pacific/Kiritimati', 'Pacific/Pago_Pago', 'Pacific/Port_Moresby',
+  'Australia/Eucla', 'Australia/Hobart', 'Australia/Melbourne', 'Australia/Perth',
+  'Australia/Sydney',
+  'Pacific/Auckland', 'Pacific/Chatham', 'Pacific/Fiji', 'Pacific/Guam',
+  'Pacific/Honolulu', 'Pacific/Kiritimati', 'Pacific/Marquesas',
+  'Pacific/Pago_Pago', 'Pacific/Port_Moresby',
   // Europe / Atlantic
   'Europe/Amsterdam', 'Europe/Athens', 'Europe/Berlin', 'Europe/Brussels',
   'Europe/Bucharest', 'Europe/Budapest', 'Europe/Copenhagen', 'Europe/Dublin',
@@ -66,8 +75,8 @@ const _offsetCandidateZoneNames = [
   'Europe/London', 'Europe/Madrid', 'Europe/Moscow', 'Europe/Oslo', 'Europe/Paris',
   'Europe/Prague', 'Europe/Rome', 'Europe/Stockholm', 'Europe/Vienna', 'Europe/Warsaw',
   'Europe/Zurich', 'Atlantic/Azores', 'Atlantic/Reykjavik',
-  // Fixed / reference zones
-  'UTC', 'Etc/UTC', 'GMT', 'Etc/GMT', 'UCT',
+  // Fixed / reference zones (Etc/* and UCT are absent from this tzdb build)
+  'UTC', 'GMT',
 ];
 
 Iterable<String> _candidateZoneNames() sync* {
