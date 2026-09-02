@@ -95,7 +95,21 @@ class _AutomationEditorDialogState extends State<AutomationEditorDialog> {
 
   bool get _isEditing => widget.initial != null;
 
+  /// Whether the automation would still be run-limited after saving.
+  ///
+  /// For recurring modes this is the legacy check against the run-limit field.
+  /// For once/countdown the field is hidden and the implicit limit of 1 is
+  /// applied to the runCount the save would store — which resets to 0 when
+  /// the user re-arms the schedule by changing its target — so a fired once
+  /// automation is not permanently locked disabled.
   bool get _runLimitReached {
+    final draft = _schedule;
+    if (draft.mode != AutomationScheduleMode.recurring) {
+      final resolved = resolveDraftRunAtMs(draft, now: DateTime.now());
+      final changed = resolved != null && resolved != draft.runAtMs;
+      final runCount = changed ? 0 : (widget.initial?.runCount ?? 0);
+      return runCount >= 1;
+    }
     final runCount = widget.initial?.runCount ?? 0;
     final maxRunRaw = _maxRunCountCtl.text.trim();
     if (maxRunRaw.isEmpty) return false;
@@ -346,7 +360,13 @@ class _AutomationEditorDialogState extends State<AutomationEditorDialog> {
 
   Future<void> _save() async {
     final form = _formKey.currentState;
-    if (form == null || !form.validate()) return;
+    if (form == null) return;
+    // A previous rejected save may have left a forced field error behind;
+    // clear it so this validation reflects the current field values. The
+    // once-time field only exists while the picker shows the once/countdown
+    // rows, so guard the lookup.
+    form.fields['scheduleOnceTime']?.setError(null);
+    if (!form.validate()) return;
 
     final name = _nameCtl.text.trim();
     final message = _messageCtl.text.trim();

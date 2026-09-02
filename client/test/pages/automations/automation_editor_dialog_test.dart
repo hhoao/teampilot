@@ -666,18 +666,20 @@ void main() {
 
     final l10n = l10nOfDialog(tester);
 
-    // Re-arm the automation in the UI: flip the (disabled) enabled switch
-    // back on, then move the target well into the future (23:59 today; the
-    // wall clock is at least two hours before that because the stored target
-    // was now-2h).
-    final enabledSwitch = find.byType(Switch).first;
-    await tester.tap(enabledSwitch);
-    await tester.pump();
+    // Re-arm the automation in the UI: move the target well into the future
+    // first (23:59 today; the wall clock is at least two hours before that
+    // because the stored target was now-2h). The run-limit lock applies to
+    // the unchanged expired target, so the enabled switch only becomes
+    // operable once the schedule is re-armed; flip it back on afterwards.
     await tester.enterText(find.byKey(const Key('tp-time-picker-hour')), '23');
     await tester.enterText(
       find.byKey(const Key('tp-time-picker-minute')),
       '59',
     );
+    await tester.pump();
+    final enabledSwitch = find.byType(Switch).first;
+    expect(tester.widget<Switch>(enabledSwitch).onChanged, isNotNull);
+    await tester.tap(enabledSwitch);
     await tester.pump();
 
     await tester.runAsync(() async {
@@ -695,6 +697,199 @@ void main() {
     expect(saved.enabled, isTrue);
     expect(saved.maxRunCount, 1);
   });
+
+  testWidgets(
+    're-arming a fired once automation with an implicit run limit re-enables it',
+    (tester) async {
+      final setup = testAutomationSetup();
+      final initialRunAt = DateTime.now()
+          .subtract(const Duration(hours: 2))
+          .millisecondsSinceEpoch;
+      await tester.runAsync(() async {
+        await setup.cubit.loadForWorkspace('ws1');
+        // Seed through the cubit for real app state: the automation already
+        // fired, so it carries maxRunCount 1 with runCount 1 and was disabled
+        // by the run-limit rule on save.
+        await setup.cubit.save(
+          sampleAutomation(
+            id: 'fired-limit',
+            workspaceId: 'ws1',
+            sessionId: 'sess-1',
+            preset: AutomationSchedulePreset.once,
+            runAtMs: initialRunAt,
+          ).copyWith(maxRunCount: 1, runCount: 1, enabled: false),
+        );
+      });
+      addTearDown(setup.cubit.close);
+
+      await tester.pumpWidget(
+        _host(
+          cubit: setup.cubit,
+          child: AutomationEditorDialog(
+            kind: AutomationEditorKind.scheduledMessage,
+            workspaceId: 'ws1',
+            sessionId: 'sess-1',
+            initial: setup.cubit.state.automations
+                .where((a) => a.id == 'fired-limit')
+                .first,
+          ),
+        ),
+      );
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 200));
+
+      final l10n = l10nOfDialog(tester);
+
+      // The enabled switch is locked while the unchanged target is expired,
+      // and must become operable once the schedule is re-armed: the run
+      // limit applies to the runCount the automation will save with, and
+      // changing the target zeroes it.
+      await tester.enterText(find.byKey(const Key('tp-time-picker-hour')), '23');
+      await tester.enterText(
+        find.byKey(const Key('tp-time-picker-minute')),
+        '59',
+      );
+      await tester.pump();
+      final enabledSwitch = find.byType(Switch).first;
+      expect(tester.widget<Switch>(enabledSwitch).onChanged, isNotNull);
+      await tester.tap(enabledSwitch);
+      await tester.pump();
+
+      await tester.runAsync(() async {
+        await tester.tap(find.text(l10n.save));
+        await pumpUntilClosed(tester);
+      });
+
+      final saved = setup.cubit.state.automations
+          .where((a) => a.id == 'fired-limit')
+          .single;
+      expect(saved.preset, AutomationSchedulePreset.once);
+      expect(saved.runAtMs, isNot(initialRunAt));
+      expect(saved.runAtMs, greaterThan(DateTime.now().millisecondsSinceEpoch));
+      expect(saved.maxRunCount, 1);
+      expect(saved.runCount, 0);
+      expect(saved.enabled, isTrue);
+    },
+  );
+
+  testWidgets(
+    'fired once automation with unchanged target keeps its limit lock',
+    (tester) async {
+      final setup = testAutomationSetup();
+      final initialRunAt = DateTime.now()
+          .subtract(const Duration(hours: 2))
+          .millisecondsSinceEpoch;
+      await tester.runAsync(() async {
+        await setup.cubit.loadForWorkspace('ws1');
+        await setup.cubit.save(
+          sampleAutomation(
+            id: 'fired-stale',
+            workspaceId: 'ws1',
+            sessionId: 'sess-1',
+            preset: AutomationSchedulePreset.once,
+            runAtMs: initialRunAt,
+          ).copyWith(maxRunCount: 1, runCount: 1, enabled: false),
+        );
+      });
+      addTearDown(setup.cubit.close);
+
+      await tester.pumpWidget(
+        _host(
+          cubit: setup.cubit,
+          child: AutomationEditorDialog(
+            kind: AutomationEditorKind.scheduledMessage,
+            workspaceId: 'ws1',
+            sessionId: 'sess-1',
+            initial: setup.cubit.state.automations
+                .where((a) => a.id == 'fired-stale')
+                .first,
+          ),
+        ),
+      );
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 200));
+
+      // Unchanged expired target: the limit still applies to the stored
+      // runCount, so the switch stays locked off.
+      final enabledSwitch = find.byType(Switch).first;
+      expect(tester.widget<Switch>(enabledSwitch).onChanged, isNull);
+      expect(setup.cubit.state.automations.length, 1);
+    },
+  );
+
+  testWidgets(
+    'past-time error clears when the target is moved into the future',
+    (tester) async {
+      final setup = testAutomationSetup();
+      await tester.runAsync(() async {
+        await setup.cubit.loadForWorkspace('ws1');
+        await setup.cubit.save(
+          sampleAutomation(
+            id: 'stale-error',
+            workspaceId: 'ws1',
+            sessionId: 'sess-1',
+            preset: AutomationSchedulePreset.once,
+            runAtMs: DateTime.now()
+                .subtract(const Duration(hours: 2))
+                .millisecondsSinceEpoch,
+          ),
+        );
+      });
+      addTearDown(setup.cubit.close);
+
+      await tester.pumpWidget(
+        _host(
+          cubit: setup.cubit,
+          child: AutomationEditorDialog(
+            kind: AutomationEditorKind.scheduledMessage,
+            workspaceId: 'ws1',
+            sessionId: 'sess-1',
+            initial: setup.cubit.state.automations
+                .where((a) => a.id == 'stale-error')
+                .first,
+          ),
+        ),
+      );
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 200));
+
+      final l10n = l10nOfDialog(tester);
+
+      // First save with the unchanged expired target: rejected with the
+      // past-time error on the once time field.
+      await tester.runAsync(() async {
+        await tester.tap(find.text(l10n.save));
+        await drainPendingAsyncWork();
+      });
+      await tester.pump();
+      expect(find.text(l10n.automationsSchedulePastTime), findsOneWidget);
+
+      // Moving the target into the future must clear that stale error so the
+      // next save validates and succeeds instead of being bricked. The
+      // automation was disabled by the earlier expiry, so flip the (now
+      // unlocked) switch back on too.
+      await tester.enterText(find.byKey(const Key('tp-time-picker-hour')), '23');
+      await tester.enterText(
+        find.byKey(const Key('tp-time-picker-minute')),
+        '59',
+      );
+      await tester.pump();
+      await tester.tap(find.byType(Switch).first);
+      await tester.pump();
+      await tester.runAsync(() async {
+        await tester.tap(find.text(l10n.save));
+        await pumpUntilClosed(tester);
+      });
+
+      expect(find.byType(AutomationEditorDialog), findsNothing);
+      expect(
+        setup.cubit.state.automations.where((a) => a.id == 'stale-error').single,
+        isA<Automation>()
+            .having((a) => a.runAtMs, 'runAtMs', greaterThan(DateTime.now().millisecondsSinceEpoch))
+            .having((a) => a.enabled, 'enabled', isTrue),
+      );
+    },
+  );
 }
 
 AppLocalizations l10nOfDialog(WidgetTester tester) =>
