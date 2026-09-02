@@ -38,6 +38,7 @@ void main() {
         'deliver:session-1:session-1:follow up',
       ]);
       expect(stale, ['session-1']);
+      expect(cubit.podHistorySoftReloads, ['session-1:session-1']);
     },
   );
 
@@ -95,6 +96,7 @@ final class _RecordingChatCubit extends ChatCubit {
   HistoryContinueChannel peekChannel = HistoryContinueChannel.pty;
   HistoryContinueChannel deliveryChannel = HistoryContinueChannel.pty;
   final calls = <String>[];
+  final podHistorySoftReloads = <String>[];
   var persistCount = 0;
 
   void registerPersonalSession() {
@@ -130,6 +132,11 @@ final class _RecordingChatCubit extends ChatCubit {
     String sessionId,
     String shellMemberId,
   ) => peekChannel;
+
+  @override
+  void softReloadPodHistorySeat(String sessionId, String memberId) {
+    podHistorySoftReloads.add('$sessionId:$memberId');
+  }
 
   @override
   Future<FailedMessageRecord?> persistHistoryPending({

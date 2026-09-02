@@ -1049,7 +1049,10 @@ class ChatCubit extends Cubit<ChatState>
           memberId: shellMemberId,
           message: text,
         ),
-        onPtyDelivered: () => onSessionHistoryStale?.call(sessionId),
+        onPtyDelivered: () {
+          onSessionHistoryStale?.call(sessionId);
+          softReloadPodHistorySeat(sessionId, shellMemberId);
+        },
         onMailboxQueued: (event) {
           if (!_operatorMailboxQueued.isClosed) {
             _operatorMailboxQueued.add(event);
@@ -1061,6 +1064,16 @@ class ChatCubit extends Cubit<ChatState>
               ?.refreshMailboxTimeline();
         },
       ),
+    );
+  }
+
+  @protected
+  void softReloadPodHistorySeat(String sessionId, String memberId) {
+    unawaited(
+      podRuntime(sessionId)?.history
+              ?.memberSeat(sessionId: sessionId, memberId: memberId)
+              .softReload(force: true) ??
+          Future<void>.value(),
     );
   }
 
