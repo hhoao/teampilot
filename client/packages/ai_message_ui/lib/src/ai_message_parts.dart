@@ -1,6 +1,7 @@
 import 'package:ai_message_core/ai_message_core.dart';
 import 'package:flutter/material.dart';
 
+import 'message_role_scope.dart';
 import 'part_grouping.dart';
 import 'part_registry.dart';
 import 'parts/chain_of_thought_view.dart';
@@ -29,8 +30,13 @@ class AiMessageParts extends StatelessWidget {
     final gap = AiMessageTheme.of(context).partSpacing;
     final shouldFold = AiToolCallFoldScope.maybeOf(context)?.shouldFold;
     final nodes = groupMessageParts(parts, shouldFold: shouldFold);
+    // User bubbles size to content (capped upstream). Assistant tool cards need
+    // the full thread width.
+    final crossAxisAlignment = AiMessageRoleScope.of(context) == AiRole.user
+        ? CrossAxisAlignment.start
+        : CrossAxisAlignment.stretch;
     return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
+      crossAxisAlignment: crossAxisAlignment,
       mainAxisSize: MainAxisSize.min,
       children: [
         for (var i = 0; i < nodes.length; i++) ...[

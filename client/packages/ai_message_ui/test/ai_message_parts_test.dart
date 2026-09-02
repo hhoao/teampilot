@@ -51,7 +51,7 @@ void main() {
     expect(assistantAlign.alignment, Alignment.centerLeft);
   });
 
-  testWidgets('user bubble caps at max width without IntrinsicWidth', (
+  testWidgets('short user bubble shrinks to content; long caps at 85%', (
     tester,
   ) async {
     await tester.pumpWidget(
@@ -106,10 +106,10 @@ void main() {
           .first,
     );
 
-    expect(shortBubble.width, greaterThan(100));
-    expect(longBubble.width, closeTo(shortBubble.width, 1));
-    // Cap at ~85% of 400 — both bubbles share the max-width constraint.
-    expect(shortBubble.width, lessThanOrEqualTo(400 * 0.85 + 1));
+    expect(shortBubble.width, lessThan(80));
+    expect(shortBubble.width, lessThan(longBubble.width));
+    // Action bar reserves 80px, so cap is min(85%, thread − reserve) = 320 here.
+    expect(longBubble.width, closeTo(320, 8));
     expect(longBubble.width, lessThanOrEqualTo(400 * 0.85 + 1));
   });
 
