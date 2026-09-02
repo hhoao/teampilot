@@ -9,7 +9,7 @@ const int kSessionHistoryOlderPageSize = 20;
 const double kSessionHistoryColumnMinWidth = 1080;
 
 /// Chat column ceiling.
-const double kSessionHistoryColumnMaxWidth = 1600;
+const double kSessionHistoryColumnMaxWidth = 1460;
 
 /// First pane excess required to leave min and jump chat by
 /// [kSessionHistoryColumnFirstJumpGrowth].
@@ -66,7 +66,10 @@ List<AiMessage> prependOlderHistoryMessages({
   if (older.isEmpty) return recent;
   if (recent.isEmpty) return List<AiMessage>.of(older);
   final recentIds = {for (final m in recent) m.id};
-  final prefix = [for (final m in older) if (!recentIds.contains(m.id)) m];
+  final prefix = [
+    for (final m in older)
+      if (!recentIds.contains(m.id)) m,
+  ];
   if (prefix.isEmpty) return recent;
   return [...prefix, ...recent];
 }
@@ -79,9 +82,7 @@ List<AiMessage> reuseHistoryMessageIdentity({
 }) {
   if (previous.isEmpty) return next;
   final previousById = {for (final m in previous) m.id: m};
-  return [
-    for (final m in next) _reuseUnchangedMessage(previousById[m.id], m),
-  ];
+  return [for (final m in next) _reuseUnchangedMessage(previousById[m.id], m)];
 }
 
 AiMessage _reuseUnchangedMessage(AiMessage? previous, AiMessage next) {
