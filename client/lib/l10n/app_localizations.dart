@@ -15632,6 +15632,18 @@ abstract class AppLocalizations {
   /// **'The selected CLI does not support native teams.'**
   String get teamGenerateErrorNativeUnsupported;
 
+  /// No description provided for @teamGenerateErrorUnavailable.
+  ///
+  /// In en, this message translates to:
+  /// **'Team generation is unavailable right now. Restart TeamPilot and try again.'**
+  String get teamGenerateErrorUnavailable;
+
+  /// No description provided for @teamGenerateErrorStartFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Team generation could not start. Try again.'**
+  String get teamGenerateErrorStartFailed;
+
   /// No description provided for @teamGenerateOpenSettings.
   ///
   /// In en, this message translates to:

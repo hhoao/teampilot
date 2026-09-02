@@ -3752,6 +3752,8 @@
   "teamGenerateErrorPoolEmpty": "请至少添加一个有效的模型配置。",
   "teamGenerateErrorGeneratorUnsupported": "生成 CLI 必须支持会话、技能和 MCP。",
   "teamGenerateErrorNativeUnsupported": "所选 CLI 不支持原生团队。",
+  "teamGenerateErrorUnavailable": "团队生成当前不可用。请重启 TeamPilot 后重试。",
+  "teamGenerateErrorStartFailed": "无法启动团队生成。请重试。",
   "teamGenerateOpenSettings": "打开生成设置",
   "teamGenerateBuilderTitle": "团队构建器",
   "teamGenerateCancel": "取消生成",

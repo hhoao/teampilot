@@ -8409,6 +8409,12 @@ class AppLocalizationsZh extends AppLocalizations {
   String get teamGenerateErrorNativeUnsupported => '所选 CLI 不支持原生团队。';
 
   @override
+  String get teamGenerateErrorUnavailable => '团队生成当前不可用。请重启 TeamPilot 后重试。';
+
+  @override
+  String get teamGenerateErrorStartFailed => '无法启动团队生成。请重试。';
+
+  @override
   String get teamGenerateOpenSettings => '打开生成设置';
 
   @override

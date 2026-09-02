@@ -8786,6 +8786,14 @@ class AppLocalizationsEn extends AppLocalizations {
       'The selected CLI does not support native teams.';
 
   @override
+  String get teamGenerateErrorUnavailable =>
+      'Team generation is unavailable right now. Restart TeamPilot and try again.';
+
+  @override
+  String get teamGenerateErrorStartFailed =>
+      'Team generation could not start. Try again.';
+
+  @override
   String get teamGenerateOpenSettings => 'Open generation settings';
 
   @override

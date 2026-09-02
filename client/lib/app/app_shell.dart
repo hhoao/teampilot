@@ -1837,7 +1837,7 @@ Future<AppShell> buildAppShell({
   // so the cubit session port can bind both; services receive interfaces only.
   TeamGenerationGraph? teamGenerationGraph;
   try {
-    teamGenerationGraph = buildTeamGenerationGraph(
+    final graph = buildTeamGenerationGraph(
       chatCubit: chatCubit,
       workbenchCubit: workbenchCubit,
       teamCubit: teamCubit,
@@ -1847,35 +1847,40 @@ Future<AppShell> buildAppShell({
       targetRegistry: runtimeTargetRegistry,
       remoteCliReadiness: remoteCliReadiness,
     );
+    TeamGenerationGraphBootstrap(
+      graph: graph,
+      port: TeamGenerationGraphBootstrapPort(
+        setTokenIssuer: chatCubit.setTeamGenerationTokenIssuer,
+        attachResourceProviderResolver:
+            sessionLifecycleService.attachResourceProviderResolver,
+        attachComposerHandler: ({required handler, required authorizer}) {
+          teammateBusMcpGateway.attachTeamComposerHandler(
+            handler: handler,
+            authorizer: authorizer,
+          );
+        },
+        setComposerPrincipalResolver:
+            teammateBusMcpGateway.setTeamComposerPrincipalResolver,
+      ),
+      principalResolver: (sessionId) async {
+        final session = await sessionRepo.findById(sessionId);
+        if (session == null ||
+            session.purpose != SessionPurpose.teamGeneration ||
+            session.workflowId.isEmpty) {
+          return null;
+        }
+        return ComposerPrincipal(
+          sessionId: session.sessionId,
+          workspaceId: session.workspaceId,
+          workflowId: session.workflowId,
+        );
+      },
+    ).attach();
+    teamGenerationGraph = graph;
   } on Object catch (e, st) {
     appLogger.w(
       '[team-generation] wiring failed; generation disabled: $e\n$st',
     );
-  }
-  chatCubit.setTeamGenerationTokenIssuer(
-    teamGenerationGraph?.tokenForSession,
-  );
-  if (teamGenerationGraph != null) {
-    sessionLifecycleService.attachResourceProviderResolver(
-      TeamGenerationGraph.resourceProvidersForSession,
-    );
-    teammateBusMcpGateway.attachTeamComposerHandler(
-      handler: teamGenerationGraph.composerHandler,
-      authorizer: teamGenerationGraph.authorizer,
-    );
-    teammateBusMcpGateway.setTeamComposerPrincipalResolver((sessionId) async {
-      final session = await sessionRepo.findById(sessionId);
-      if (session == null ||
-          session.purpose != SessionPurpose.teamGeneration ||
-          session.workflowId.isEmpty) {
-        return null;
-      }
-      return ComposerPrincipal(
-        sessionId: session.sessionId,
-        workspaceId: session.workspaceId,
-        workflowId: session.workflowId,
-      );
-    });
   }
 
   registerLayoutCommands(

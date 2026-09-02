@@ -44,6 +44,30 @@ import '../../utils/logging/logger.dart';
 
 typedef TermuxWorkOpsBlockResolver = String? Function(RuntimeTarget target);
 
+/// One workflow token shared by the Catalog and Team Composer transports for
+/// a single builder connect.
+final class TeamGenerationMcpAccess {
+  const TeamGenerationMcpAccess({
+    required this.catalogToken,
+    required this.composerToken,
+  });
+
+  final String catalogToken;
+  final String composerToken;
+}
+
+TeamGenerationMcpAccess? issueTeamGenerationMcpAccess({
+  required AppSession session,
+  required String? Function(AppSession session)? tokenIssuer,
+}) {
+  if (session.purpose != SessionPurpose.teamGeneration) return null;
+  final token = tokenIssuer?.call(session);
+  if (token == null || token.isEmpty) {
+    throw StateError('team_generation_token_issue_failed');
+  }
+  return TeamGenerationMcpAccess(catalogToken: token, composerToken: token);
+}
+
 /// Hooks [SessionShellConnector] delegates back to [SessionLaunchService].
 abstract interface class SessionShellConnectorDelegate {
   WorkspaceLaunchContext launchContextFor(AppSession session);
@@ -1012,9 +1036,10 @@ class SessionShellConnector {
       mixedRemoteBinding: mixedRemoteBinding,
       agentStatus: agentStatus,
     );
-    final teamGenerationToken = session.purpose == SessionPurpose.teamGeneration
-        ? _requiredGenerationTokenFor(session)
-        : null;
+    final teamGenerationAccess = issueTeamGenerationMcpAccess(
+      session: session,
+      tokenIssuer: _host.teamGenerationTokenIssuer,
+    );
     final servers = extraMcpServersWithCatalog(
       extra: extra,
       isRemoteSeat: usesSshTransport(launchKind),
@@ -1026,7 +1051,7 @@ class SessionShellConnector {
         memberId: memberId,
         cli: cli,
         remoteBinding: remoteBinding,
-        teamGenerationToken: teamGenerationToken,
+        teamGenerationToken: teamGenerationAccess?.catalogToken,
       ),
     );
     // Purpose-aware composer injection: only builder sessions receive the
@@ -1037,28 +1062,12 @@ class SessionShellConnector {
       memberId: memberId,
       cli: cli,
       remoteBinding: remoteBinding,
-      workflowToken: teamGenerationToken,
+      workflowToken: teamGenerationAccess?.composerToken,
     );
     if (composer != null) {
       servers['team-composer'] = composer;
     }
     return servers;
-  }
-
-  /// Issues/rotates the workflow token for a builder session via the
-  /// authorizer injected at composition; null for normal sessions.
-  String? _generationTokenFor(AppSession session) {
-    if (session.purpose != SessionPurpose.teamGeneration) return null;
-    final issuer = _host.teamGenerationTokenIssuer;
-    return issuer?.call(session);
-  }
-
-  String _requiredGenerationTokenFor(AppSession session) {
-    final token = _generationTokenFor(session);
-    if (token == null || token.isEmpty) {
-      throw StateError('team_generation_token_issue_failed');
-    }
-    return token;
   }
 
   Map<String, Object?>? _composerConfigFor({

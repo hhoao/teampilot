@@ -114,6 +114,8 @@ void main() {
 
       await tester.pumpWidget(
         MaterialApp(
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
           home: BlocProvider<ChatCubit>.value(
             value: chat,
             child: Builder(builder: (context) => SizedBox(key: contextKey)),
@@ -133,9 +135,91 @@ void main() {
 
       expect(submitted, isFalse);
       expect(chat.prompts, isEmpty);
-      expect(chat.state.sessionLaunchError, contains('generation workflow'));
+      expect(
+        chat.state.sessionLaunchError,
+        'Team generation is unavailable right now. Restart TeamPilot and try again.',
+      );
     },
   );
+
+  testWidgets('generation start failures never expose diagnostic details', (
+    tester,
+  ) async {
+    final chat = _RecordingChatCubit();
+    final error = StateError('internal path: /private/workflow.json');
+    final stackTrace = StackTrace.current;
+    Object? loggedError;
+    StackTrace? loggedStackTrace;
+    addTearDown(chat.close);
+
+    await tester.pumpWidget(
+      MaterialApp(
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
+        home: BlocProvider<ChatCubit>.value(
+          value: chat,
+          child: Builder(
+            builder: (context) {
+              reportTeamGenerationStartFailure(
+                chatCubit: context.read<ChatCubit>(),
+                userMessage: AppLocalizations.of(
+                  context,
+                ).teamGenerateErrorStartFailed,
+                error: error,
+                stackTrace: stackTrace,
+                diagnosticLogger: (error, stackTrace) {
+                  loggedError = error;
+                  loggedStackTrace = stackTrace;
+                },
+              );
+              return const SizedBox();
+            },
+          ),
+        ),
+      ),
+    );
+
+    expect(
+      chat.state.sessionLaunchError,
+      'Team generation could not start. Try again.',
+    );
+    expect(chat.state.sessionLaunchError, isNot(contains('/private/')));
+    expect(loggedError, same(error));
+    expect(loggedStackTrace, same(stackTrace));
+  });
+
+  testWidgets('generation wiring failures use the active locale', (
+    tester,
+  ) async {
+    final chat = _RecordingChatCubit();
+    final contextKey = GlobalKey();
+    final workspace = Workspace(workspaceId: 'ws1', createdAt: 1);
+    addTearDown(chat.close);
+
+    await tester.pumpWidget(
+      MaterialApp(
+        locale: const Locale('zh'),
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
+        home: BlocProvider<ChatCubit>.value(
+          value: chat,
+          child: Builder(builder: (context) => SizedBox(key: contextKey)),
+        ),
+      ),
+    );
+
+    await submitWorkspaceLandingGeneration(
+      tester.element(find.byKey(contextKey)),
+      workspace,
+      launch: const LandingLaunchContext(
+        isPersonal: false,
+        generateLaunch: true,
+      ),
+      message: 'Plan the release',
+    );
+
+    expect(chat.state.sessionLaunchError, '团队生成当前不可用。请重启 TeamPilot 后重试。');
+  });
 
   testWidgets('referenceWorkspaceSession opens Landing with the session path', (
     tester,
@@ -169,13 +253,13 @@ void main() {
               path: '/',
               builder: (context, state) => MultiRepositoryProvider(
                 providers: [
-                  RepositoryProvider<SessionRepository>.value(
-                    value: repo,
-                  ),
+                  RepositoryProvider<SessionRepository>.value(value: repo),
                 ],
                 child: BlocProvider<ChatCubit>.value(
                   value: chat,
-                  child: Builder(builder: (context) => SizedBox(key: contextKey)),
+                  child: Builder(
+                    builder: (context) => SizedBox(key: contextKey),
+                  ),
                 ),
               ),
             ),
@@ -199,10 +283,7 @@ void main() {
     final bar = workbench.state.bar(workspace.workspaceId);
     expect(bar.center.activeId, isNull);
     expect(bar.center.order, [WorkbenchTabId.session('existing')]);
-    expect(
-      bar.center.landingInitialText,
-      '审查并继续完成该会话: $expectedSessionPath',
-    );
+    expect(bar.center.landingInitialText, '审查并继续完成该会话: $expectedSessionPath');
     expect(bar.center.landingReferenceSessionId, session.sessionId);
   });
 

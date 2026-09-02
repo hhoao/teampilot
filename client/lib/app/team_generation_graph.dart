@@ -18,6 +18,7 @@ import '../../services/team_generation/team_target_probe_service.dart';
 import '../../services/team_generation/runtime_team_target_probe_runner.dart';
 import '../../services/remote/remote_cli_readiness.dart';
 import '../../services/resource/resource_provider_set.dart';
+import '../../services/session/session_lifecycle_service.dart';
 import '../../services/storage/runtime_target_registry.dart';
 import '../../services/team_generation/providers/managed_team_builder_skill_provider.dart';
 import '../../repositories/launch_profile_repository.dart';
@@ -89,6 +90,61 @@ final class TeamGenerationGraph {
         workflowId: session.workflowId,
       ),
     );
+  }
+}
+
+/// App-owned attachment points for the generation graph. Keeping these as
+/// callbacks makes the production bootstrap wiring observable without
+/// constructing the full [AppShell].
+final class TeamGenerationGraphBootstrapPort {
+  const TeamGenerationGraphBootstrapPort({
+    required this.setTokenIssuer,
+    required this.attachResourceProviderResolver,
+    required this.attachComposerHandler,
+    required this.setComposerPrincipalResolver,
+  });
+
+  final void Function(String? Function(AppSession session) issuer)
+  setTokenIssuer;
+  final void Function(SessionResourceProviderResolver resolver)
+  attachResourceProviderResolver;
+  final void Function({
+    required TeamComposerMcpHandler handler,
+    required TeamGenerationAuthorizer authorizer,
+  })
+  attachComposerHandler;
+  final void Function(TeamComposerPrincipalFactory resolver)
+  setComposerPrincipalResolver;
+}
+
+/// Attaches one graph-owned generation workflow to app-scoped consumers.
+/// Repeated calls are ignored so no handler or resolver is registered twice.
+final class TeamGenerationGraphBootstrap {
+  TeamGenerationGraphBootstrap({
+    required this.graph,
+    required this.port,
+    required this.principalResolver,
+  });
+
+  final TeamGenerationGraph graph;
+  final TeamGenerationGraphBootstrapPort port;
+  final TeamComposerPrincipalFactory principalResolver;
+  bool _attached = false;
+
+  TeamGenerationCoordinator get coordinator => graph.coordinator;
+
+  void attach() {
+    if (_attached) return;
+    _attached = true;
+    port.setTokenIssuer(graph.tokenForSession);
+    port.attachResourceProviderResolver(
+      TeamGenerationGraph.resourceProvidersForSession,
+    );
+    port.attachComposerHandler(
+      handler: graph.composerHandler,
+      authorizer: graph.authorizer,
+    );
+    port.setComposerPrincipalResolver(principalResolver);
   }
 }
 

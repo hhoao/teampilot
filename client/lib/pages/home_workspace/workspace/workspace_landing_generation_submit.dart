@@ -5,6 +5,7 @@ import '../../../cubits/ai_feature_settings_cubit.dart';
 import '../../../cubits/chat_cubit.dart';
 import '../../../models/landing_launch_context.dart';
 import '../../../cubits/workbench/workbench_cubit.dart';
+import '../../../l10n/app_localizations.dart';
 import '../../../models/ai_feature_setting.dart';
 import '../../../models/workspace.dart';
 import '../../../services/team_generation/team_generation_coordinator.dart';
@@ -32,7 +33,7 @@ Future<bool> submitWorkspaceLandingGeneration(
     );
     context.read<ChatCubit>().failSessionConnect(
       'pending',
-      'Team generation workflow is unavailable. Restart TeamPilot and try again.',
+      AppLocalizations.of(context).teamGenerateErrorUnavailable,
     );
     return false;
   }
@@ -73,19 +74,38 @@ Future<bool> submitWorkspaceLandingGeneration(
     }
     return true;
   } on Object catch (error, stackTrace) {
-    appLogger.e(
-      '[team-generation] landing start failed',
-      error: error,
-      stackTrace: stackTrace,
-    );
     if (context.mounted) {
-      context.read<ChatCubit>().failSessionConnect(
-        'pending',
-        'Team generation could not start: $error',
+      reportTeamGenerationStartFailure(
+        chatCubit: context.read<ChatCubit>(),
+        userMessage: AppLocalizations.of(context).teamGenerateErrorStartFailed,
+        error: error,
+        stackTrace: stackTrace,
       );
     }
     return false;
   }
+}
+
+typedef TeamGenerationDiagnosticLogger =
+    void Function(Object error, StackTrace stackTrace);
+
+void reportTeamGenerationStartFailure({
+  required ChatCubit chatCubit,
+  required String userMessage,
+  required Object error,
+  required StackTrace stackTrace,
+  TeamGenerationDiagnosticLogger? diagnosticLogger,
+}) {
+  (diagnosticLogger ?? _logTeamGenerationStartFailure)(error, stackTrace);
+  chatCubit.failSessionConnect('pending', userMessage);
+}
+
+void _logTeamGenerationStartFailure(Object error, StackTrace stackTrace) {
+  appLogger.e(
+    '[team-generation] landing start failed',
+    error: error,
+    stackTrace: stackTrace,
+  );
 }
 
 /// Localized preflight surface shown above the landing input on issues.
