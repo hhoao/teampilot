@@ -1,21 +1,28 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:shared_ui/shared_ui.dart';
+import 'package:uuid/uuid.dart';
 
+import '../../../cubits/ai_feature_settings_cubit.dart';
+import '../../../cubits/app_provider_cubit.dart';
 import '../../../l10n/l10n_extensions.dart';
 import '../../../models/ai_feature_setting.dart';
 import '../../../models/cli_preset.dart';
 import '../../../models/team_config.dart';
 import '../../../models/team_generation_settings.dart';
+import '../../../services/ai/ai_feature_setting_resolver.dart';
 import '../../../services/cli/registry/cli_tool_registry.dart';
+import '../../../services/cli/registry/cli_tool_registry_scope.dart';
 import '../../../services/team_generation/team_generation_settings_store.dart';
+import '../../../widgets/cli_launch_config/launch_four_tuple_picker.dart';
+import '../../../widgets/compose/compose_model_preset_chip.dart';
 
 /// Global generation settings editor: generator model (AI feature), team mode
 /// (native/mixed), native CLI (native mode only), and the ranked model pool.
 ///
-/// In native mode, non-matching valid rows are retained in storage and shown
-/// as a hidden count; broken references stay visible in error color with a
-/// removal action. Save is disabled while the effective pool is empty, a
-/// visible reference is invalid, or generator configuration is missing.
+/// In native mode, non-matching rows are retained in storage and represented
+/// by a hidden count. Generator and pool selections are stored as inline
+/// CLI/provider/model/effort tuples.
 Future<void> showWorkspaceLandingGenerateSettingsDialog(
   BuildContext context, {
   required List<CliPreset> presets,
@@ -49,6 +56,8 @@ class _GenerateSettingsDialogState extends State<_GenerateSettingsDialog> {
   CliTool _nativeCli = CliTool.claude;
   final List<_PoolRow> _rows = [];
   final _store = TeamGenerationSettingsStore();
+  SimpleLaunchFourTuple? _generator;
+  bool _generatorInitialized = false;
 
   @override
   void initState() {
@@ -56,18 +65,50 @@ class _GenerateSettingsDialogState extends State<_GenerateSettingsDialog> {
     _loadInitial();
   }
 
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (_generatorInitialized) return;
+    _generatorInitialized = true;
+    final stored = widget.generatorSetting;
+    if (stored == null) return;
+    final resolved = resolveAiFeatureSetting(
+      stored: stored,
+      appProviders: context.read<AppProviderCubit>().state,
+      registry: _registry,
+      globalPresets: widget.presets,
+    );
+    _generator = SimpleLaunchFourTuple(
+      cli: resolved.cli,
+      providerId: resolved.providerId,
+      modelId: resolved.model,
+      effort: resolved.effort,
+    );
+  }
+
   Future<void> _loadInitial() async {
-    final settings = await _store.load();
+    final loaded = await _store.load();
+    final settings = hydrateTeamGenerationSettings(
+      settings: loaded,
+      presets: widget.presets,
+    );
     if (!mounted) return;
+    final nativeClis = _nativeCliItems;
     setState(() {
       _teamMode = settings.teamMode;
-      _nativeCli = settings.nativeCli;
+      _nativeCli = nativeClis.contains(settings.nativeCli)
+          ? settings.nativeCli
+          : (nativeClis.firstOrNull ?? CliTool.claude);
       _rows
         ..clear()
         ..addAll([
           for (final entry in settings.modelPool)
             _PoolRow(
-              presetId: entry.presetId,
+              id: entry.id,
+              cli: entry.cli,
+              provider: entry.provider,
+              model: entry.model,
+              effort: entry.effort,
               description: entry.description,
               tags: [...entry.tags],
             ),
@@ -75,45 +116,57 @@ class _GenerateSettingsDialogState extends State<_GenerateSettingsDialog> {
     });
   }
 
-  List<CliPreset> get _visiblePresets {
-    if (_teamMode != TeamMode.native) return widget.presets;
-    return [
-      for (final preset in widget.presets)
-        if (preset.cli == _nativeCli) preset,
-    ];
-  }
+  CliToolRegistry get _registry =>
+      CliToolRegistryScope.maybeOf(context) ?? CliToolRegistry.builtIn();
+
+  List<CliTool> get _launchableCliItems =>
+      _registry.launchable.map((definition) => definition.id).toList();
+
+  List<CliTool> get _nativeCliItems => _registry.nativeTeamLaunchable
+      .map((definition) => definition.id)
+      .toList();
+
+  List<CliTool> get _pickerCliItems =>
+      _teamMode == TeamMode.native ? [_nativeCli] : _launchableCliItems;
+
+  bool _isVisibleRow(_PoolRow row) =>
+      _teamMode != TeamMode.native || row.cli == _nativeCli;
+
+  bool _isConfiguredRow(_PoolRow row) =>
+      row.id.trim().isNotEmpty &&
+      row.provider.trim().isNotEmpty &&
+      row.model.trim().isNotEmpty;
 
   int get _hiddenCount {
     if (_teamMode != TeamMode.native) return 0;
-    final validNonMatching = _rows
-        .where((row) => _presetFor(row.presetId) != null)
-        .where((row) => _presetFor(row.presetId)!.cli != _nativeCli)
-        .length;
-    return validNonMatching;
+    return _rows.where((row) => !_isVisibleRow(row)).length;
   }
 
-  CliPreset? _presetFor(String presetId) {
-    final id = presetId.trim();
-    if (id.isEmpty) return null;
-    return widget.presets.where((preset) => preset.id == id).firstOrNull;
+  AiFeatureSetting? get _draftGeneratorSetting {
+    final generator = _generator;
+    if (generator == null) return null;
+    return AiFeatureSetting(
+      activePresetId: null,
+      cli: generator.cli,
+      providerId: generator.providerId,
+      model: generator.modelId,
+      effort: generator.effort,
+    );
   }
 
-  bool get _hasInvalidVisibleRow =>
-      _rows.any((row) => _presetFor(row.presetId) == null);
-
-  bool get _canSave =>
-      _effectiveRows.isNotEmpty &&
-      !_hasInvalidVisibleRow &&
-      widget.generatorSetting != null;
+  bool get _canSave {
+    return _effectiveRows.isNotEmpty &&
+        aiFeatureIsConfigured(
+          stored: _draftGeneratorSetting,
+          registry: _registry,
+          appProviders: context.read<AppProviderCubit>().state,
+          globalPresets: widget.presets,
+        );
+  }
 
   /// Rows surviving the native filter; the stored pool keeps everything.
-  List<_PoolRow> get _effectiveRows {
-    if (_teamMode != TeamMode.native) return _rows;
-    return [
-      for (final row in _rows)
-        if (_presetFor(row.presetId)?.cli == _nativeCli) row,
-    ];
-  }
+  List<_PoolRow> get _effectiveRows =>
+      _rows.where(_isVisibleRow).where(_isConfiguredRow).toList();
 
   @override
   Widget build(BuildContext context) {
@@ -129,23 +182,19 @@ class _GenerateSettingsDialogState extends State<_GenerateSettingsDialog> {
             crossAxisAlignment: CrossAxisAlignment.start,
             mainAxisSize: MainAxisSize.min,
             children: [
-              // Generator model (AI feature row).
               Text(l10n.teamGenerateGeneratorModel, style: styles.mdSemibold),
               const SizedBox(height: 4),
-              Text(
-                widget.generatorSetting == null
-                    ? l10n.teamGenerateErrorAiNotConfigured
-                    : '${widget.generatorSetting!.cli.value} · '
-                        '${widget.generatorSetting!.model}',
-                style: styles.smMedium.copyWith(
-                  color: widget.generatorSetting == null
-                      ? cs.error
-                      : cs.onSurfaceVariant,
-                ),
+              LaunchFourTuplePicker(
+                value: _generator,
+                cliItems: _pickerCliItems,
+                presets: widget.presets,
+                onChanged: (value) => setState(() => _generator = value),
+                showManagePresets: false,
+                showSavePreset: false,
+                emptyLabel: l10n.teamGenerateErrorAiNotConfigured,
               ),
               const SizedBox(height: 16),
 
-              // Team mode segmented selection.
               Text(l10n.teamGenerateTeamMode, style: styles.mdSemibold),
               const SizedBox(height: 4),
               SegmentedButton<TeamMode>(
@@ -163,14 +212,16 @@ class _GenerateSettingsDialogState extends State<_GenerateSettingsDialog> {
                 onSelectionChanged: (selection) {
                   setState(() {
                     _teamMode = selection.first;
-                    if (_teamMode == TeamMode.native &&
-                        _effectiveRows.isEmpty) {
-                      // Default to the first valid stored pool preset's CLI.
-                      final firstValid = _rows
-                          .map((row) => _presetFor(row.presetId))
-                          .whereType<CliPreset>()
+                    if (_teamMode == TeamMode.native) {
+                      final nativeClis = _nativeCliItems;
+                      final firstMatching = _rows
+                          .where((row) => nativeClis.contains(row.cli))
                           .firstOrNull;
-                      if (firstValid != null) _nativeCli = firstValid.cli;
+                      if (firstMatching != null) {
+                        _nativeCli = firstMatching.cli;
+                      } else if (!nativeClis.contains(_nativeCli)) {
+                        _nativeCli = nativeClis.firstOrNull ?? CliTool.claude;
+                      }
                     }
                   });
                 },
@@ -184,8 +235,7 @@ class _GenerateSettingsDialogState extends State<_GenerateSettingsDialog> {
                     border: const OutlineInputBorder(),
                   ),
                   items: [
-                    for (final tool in CliToolRegistry.builtIn().launchable
-                        .map((definition) => definition.id))
+                    for (final tool in _nativeCliItems)
                       DropdownMenuItem(value: tool, child: Text(tool.value)),
                   ],
                   onChanged: (value) {
@@ -196,20 +246,17 @@ class _GenerateSettingsDialogState extends State<_GenerateSettingsDialog> {
               ],
               const SizedBox(height: 16),
 
-              // Ranked model pool.
               Text(l10n.teamGenerateModelPool, style: styles.mdSemibold),
               if (_teamMode == TeamMode.native && _hiddenCount > 0) ...[
                 const SizedBox(height: 4),
                 Text(
                   l10n.teamGenerateHiddenPresets(_hiddenCount),
-                  style: styles.smMedium.copyWith(
-                    color: cs.onSurfaceVariant,
-                  ),
+                  style: styles.smMedium.copyWith(color: cs.onSurfaceVariant),
                 ),
               ],
               const SizedBox(height: 8),
               for (var i = 0; i < _rows.length; i++)
-                _poolRowTile(context, i),
+                if (_isVisibleRow(_rows[i])) _poolRowTile(context, i),
               const SizedBox(height: 8),
               OutlinedButton.icon(
                 onPressed: _addModel,
@@ -243,10 +290,7 @@ class _GenerateSettingsDialogState extends State<_GenerateSettingsDialog> {
     final cs = Theme.of(context).colorScheme;
     final styles = TpTextStyles.of(context);
     final row = _rows[index];
-    final preset = _presetFor(row.presetId);
-    final invalid = preset == null;
-    final hiddenInNative =
-        _teamMode == TeamMode.native && preset != null && preset.cli != _nativeCli;
+    final invalid = !_isConfiguredRow(row);
 
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 4),
@@ -258,7 +302,9 @@ class _GenerateSettingsDialogState extends State<_GenerateSettingsDialog> {
               : Theme.of(context).colorScheme.surfaceContainerHighest,
           borderRadius: BorderRadius.circular(8),
           border: Border.all(
-            color: invalid ? cs.error : cs.outlineVariant.withValues(alpha: 0.5),
+            color: invalid
+                ? cs.error
+                : cs.outlineVariant.withValues(alpha: 0.5),
           ),
         ),
         child: Column(
@@ -269,15 +315,28 @@ class _GenerateSettingsDialogState extends State<_GenerateSettingsDialog> {
                 Text('${index + 1}.', style: styles.smMedium),
                 const SizedBox(width: 6),
                 Expanded(
-                  child: Text(
-                    invalid
-                        ? l10n.teamGenerateMissingPreset(row.presetId)
-                        : '${preset.name} · ${preset.cli.value} · '
-                            '${preset.provider}/${preset.model}'
-                            '${preset.effort.isEmpty ? '' : '/${preset.effort}'}',
-                    style: styles.smMedium.copyWith(
-                      color: invalid ? cs.error : null,
-                    ),
+                  child: LaunchFourTuplePicker(
+                    value: invalid
+                        ? null
+                        : SimpleLaunchFourTuple(
+                            cli: row.cli,
+                            providerId: row.provider,
+                            modelId: row.model,
+                            effort: row.effort,
+                          ),
+                    cliItems: _pickerCliItems,
+                    presets: widget.presets,
+                    onChanged: (value) {
+                      setState(() {
+                        row.cli = value.cli;
+                        row.provider = value.providerId;
+                        row.model = value.modelId;
+                        row.effort = value.effort;
+                      });
+                    },
+                    showManagePresets: false,
+                    showSavePreset: false,
+                    emptyLabel: l10n.teamGenerateAddModel,
                   ),
                 ),
                 IconButton(
@@ -285,10 +344,10 @@ class _GenerateSettingsDialogState extends State<_GenerateSettingsDialog> {
                   onPressed: index == 0
                       ? null
                       : () => setState(() {
-                            final tmp = _rows[index - 1];
-                            _rows[index - 1] = _rows[index];
-                            _rows[index] = tmp;
-                          }),
+                          final tmp = _rows[index - 1];
+                          _rows[index - 1] = _rows[index];
+                          _rows[index] = tmp;
+                        }),
                   icon: const Icon(Icons.arrow_upward, size: 18),
                 ),
                 IconButton(
@@ -296,17 +355,20 @@ class _GenerateSettingsDialogState extends State<_GenerateSettingsDialog> {
                   onPressed: index == _rows.length - 1
                       ? null
                       : () => setState(() {
-                            final tmp = _rows[index + 1];
-                            _rows[index + 1] = _rows[index];
-                            _rows[index] = tmp;
-                          }),
+                          final tmp = _rows[index + 1];
+                          _rows[index + 1] = _rows[index];
+                          _rows[index] = tmp;
+                        }),
                   icon: const Icon(Icons.arrow_downward, size: 18),
                 ),
                 IconButton(
                   tooltip: l10n.teamGenerateRemove,
                   onPressed: () => setState(() => _rows.removeAt(index)),
-                  icon: Icon(Icons.remove_circle_outline,
-                      size: 18, color: cs.error),
+                  icon: Icon(
+                    Icons.remove_circle_outline,
+                    size: 18,
+                    color: cs.error,
+                  ),
                 ),
               ],
             ),
@@ -320,8 +382,7 @@ class _GenerateSettingsDialogState extends State<_GenerateSettingsDialog> {
                       labelText: l10n.teamGenerateDescription,
                       border: const OutlineInputBorder(),
                     ),
-                    onChanged: (value) => _rows[index] =
-                        _PoolRow(presetId: row.presetId, description: value, tags: row.tags),
+                    onChanged: (value) => row.description = value,
                   ),
                 ),
                 const SizedBox(width: 8),
@@ -333,26 +394,16 @@ class _GenerateSettingsDialogState extends State<_GenerateSettingsDialog> {
                       labelText: l10n.teamGenerateTags,
                       border: const OutlineInputBorder(),
                     ),
-                    onChanged: (value) => _rows[index] = _PoolRow(
-                      presetId: row.presetId,
-                      description: row.description,
-                      tags: [
+                    onChanged: (value) {
+                      row.tags = [
                         for (final tag in value.split(','))
                           if (tag.trim().isNotEmpty) tag.trim(),
-                      ],
-                    ),
+                      ];
+                    },
                   ),
                 ),
               ],
             ),
-            if (hiddenInNative)
-              Padding(
-                padding: const EdgeInsets.only(top: 4),
-                child: Text(
-                  l10n.teamGenerateHiddenPresets(1),
-                  style: styles.smMedium.copyWith(color: cs.onSurfaceVariant),
-                ),
-              ),
           ],
         ),
       ),
@@ -360,64 +411,89 @@ class _GenerateSettingsDialogState extends State<_GenerateSettingsDialog> {
   }
 
   Future<void> _addModel() async {
-    final l10n = context.l10n;
-    final candidates = _visiblePresets
-        .where((preset) => !_rows.any((row) => row.presetId == preset.id))
-        .toList();
-    if (candidates.isEmpty) {
-      ScaffoldMessenger.maybeOf(context)?.showSnackBar(
-        SnackBar(content: Text(l10n.teamGenerateErrorPoolEmpty)),
-      );
-      return;
-    }
-    final selected = await showDialog<CliPreset>(
+    final selected = await showDialog<SimpleLaunchFourTuple>(
       context: context,
       builder: (dialogContext) => SimpleDialog(
-        title: Text(l10n.teamGenerateAddModel),
+        title: Text(context.l10n.teamGenerateAddModel),
         children: [
-          for (final preset in candidates)
-            SimpleDialogOption(
-              onPressed: () => Navigator.of(dialogContext).pop(preset),
-              child: Text(
-                '${preset.name} · ${preset.cli.value} · '
-                '${preset.provider}/${preset.model}',
-              ),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            child: LaunchFourTuplePicker(
+              value: null,
+              cliItems: _pickerCliItems,
+              presets: widget.presets,
+              onChanged: (value) => Navigator.of(dialogContext).pop(value),
+              showManagePresets: false,
+              showSavePreset: false,
+              emptyLabel: context.l10n.teamGenerateAddModel,
             ),
+          ),
         ],
       ),
     );
     if (selected == null) return;
     setState(() {
-      _rows.add(_PoolRow(presetId: selected.id));
+      _rows.add(
+        _PoolRow(
+          id: const Uuid().v4(),
+          cli: selected.cli,
+          provider: selected.providerId,
+          model: selected.modelId,
+          effort: selected.effort,
+        ),
+      );
     });
   }
 
   Future<void> _save(BuildContext context) async {
-    final settings = TeamGenerationSettings(
-      teamMode: _teamMode,
-      nativeCli: _nativeCli,
-      modelPool: [
-        for (final row in _rows)
-          GenerateModelPoolEntry(
-            presetId: row.presetId,
-            description: row.description,
-            tags: row.tags,
-          ),
-      ],
+    final generator = _generator!;
+    await context.read<AiFeatureSettingsCubit>().updateSetting(
+      AiFeatureId.teamGenerate,
+      AiFeatureSetting(
+        activePresetId: null,
+        cli: generator.cli,
+        providerId: generator.providerId,
+        model: generator.modelId,
+        effort: generator.effort,
+      ),
     );
-    await _store.save(settings);
+    await _store.save(
+      TeamGenerationSettings(
+        teamMode: _teamMode,
+        nativeCli: _nativeCli,
+        modelPool: _rows.map((row) => row.toEntry()).toList(),
+      ),
+    );
     if (context.mounted) Navigator.of(context).pop();
   }
 }
 
 class _PoolRow {
   _PoolRow({
-    required this.presetId,
+    required this.id,
+    required this.cli,
+    required this.provider,
+    required this.model,
+    this.effort = '',
     this.description = '',
-    this.tags = const [],
-  });
+    List<String>? tags,
+  }) : tags = tags ?? [];
 
-  final String presetId;
-  final String description;
-  final List<String> tags;
+  String id;
+  CliTool cli;
+  String provider;
+  String model;
+  String effort;
+  String description;
+  List<String> tags;
+
+  GenerateModelPoolEntry toEntry() => GenerateModelPoolEntry(
+    id: id,
+    cli: cli,
+    provider: provider,
+    model: model,
+    effort: effort,
+    description: description,
+    tags: tags,
+  );
 }

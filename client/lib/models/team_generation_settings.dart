@@ -2,7 +2,6 @@ import 'dart:convert';
 
 import 'package:crypto/crypto.dart';
 import 'package:flutter/foundation.dart';
-import 'package:uuid/uuid.dart';
 
 import '../services/cli/registry/capabilities/team_behavior_capability.dart';
 import '../services/cli/registry/cli_tool_registry.dart';
@@ -12,36 +11,17 @@ import 'team_config.dart';
 @immutable
 final class GenerateModelPoolEntry {
   factory GenerateModelPoolEntry({
-    String? id,
-    CliTool? cli,
+    required String id,
+    required CliTool cli,
     String provider = '',
     String model = '',
     String effort = '',
     String description = '',
     List<String> tags = const [],
-    @Deprecated('Use the inline id/cli/provider/model fields') String? presetId,
   }) {
-    final normalizedLegacyPresetId = presetId?.trim() ?? '';
-    if (normalizedLegacyPresetId.isNotEmpty &&
-        id == null &&
-        cli == null &&
-        provider.trim().isEmpty &&
-        model.trim().isEmpty) {
-      return GenerateModelPoolEntry._internal(
-        id: normalizedLegacyPresetId,
-        cli: CliTool.claude,
-        provider: '',
-        model: '',
-        effort: effort.trim(),
-        description: description.trim(),
-        tags: _freezeTags(tags),
-        legacyPresetId: normalizedLegacyPresetId,
-      );
-    }
-    final normalizedId = (id ?? '').trim();
     return GenerateModelPoolEntry._internal(
-      id: normalizedId.isEmpty ? const Uuid().v4() : normalizedId,
-      cli: cli ?? CliTool.claude,
+      id: id.trim(),
+      cli: cli,
       provider: provider.trim(),
       model: model.trim(),
       effort: effort.trim(),
@@ -106,9 +86,6 @@ final class GenerateModelPoolEntry {
   final String description;
   final List<String> tags;
   final String? legacyPresetId;
-
-  @Deprecated('Use id')
-  String get presetId => legacyPresetId ?? id;
 
   bool get isInline =>
       legacyPresetId == null &&
