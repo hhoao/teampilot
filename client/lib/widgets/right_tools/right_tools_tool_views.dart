@@ -39,6 +39,7 @@ import 'board_panel.dart';
 import 'file_tree_panel.dart';
 import 'mailbox_panel.dart';
 import 'members_panel.dart';
+import 'right_tool_ids.dart';
 import 'right_tools_tool_preferences.dart';
 import 'search_panel.dart';
 import 'tabbed_panel.dart';
@@ -504,6 +505,7 @@ class _RightToolsToolViewsState extends State<RightToolsToolViews> {
       }
       views.add(
         ToolView(
+          id: RightToolIds.members,
           icon: Icons.groups_outlined,
           label: l10n.members,
           child: _ScopedMembersPanel(
@@ -526,6 +528,7 @@ class _RightToolsToolViewsState extends State<RightToolsToolViews> {
     if (widget.preferences.fileTreeVisible) {
       views.add(
         ToolView(
+          id: RightToolIds.fileTree,
           icon: Icons.folder_outlined,
           label: l10n.fileTree,
           child: FileTreePanel(
@@ -541,6 +544,7 @@ class _RightToolsToolViewsState extends State<RightToolsToolViews> {
     if (widget.preferences.gitVisible) {
       views.add(
         ToolView(
+          id: RightToolIds.git,
           icon: Icons.account_tree_outlined,
           label: l10n.sourceControl,
           child: GitSourceControlPanel(
@@ -555,6 +559,7 @@ class _RightToolsToolViewsState extends State<RightToolsToolViews> {
     if (mailboxGate.showMailbox && team != null) {
       views.add(
         ToolView(
+          id: RightToolIds.mailbox,
           icon: Icons.mail_outline,
           label: l10n.mailbox,
           badgeCount: mailboxGate.unreadCount,
@@ -566,6 +571,7 @@ class _RightToolsToolViewsState extends State<RightToolsToolViews> {
     if (mailboxGate.showBoard && team != null) {
       views.add(
         ToolView(
+          id: RightToolIds.board,
           icon: Icons.view_kanban_outlined,
           label: l10n.board,
           child: BoardPanel(team: team, cwd: widget.cwd),
@@ -579,6 +585,7 @@ class _RightToolsToolViewsState extends State<RightToolsToolViews> {
       final fs = widget.workContext.filesystem;
       views.add(
         ToolView(
+          id: RightToolIds.search,
           icon: Icons.search_outlined,
           label: l10n.workspaceSearchPanel,
           child: BlocProvider(

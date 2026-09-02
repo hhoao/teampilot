@@ -3,43 +3,57 @@ import 'package:teampilot/cubits/workspace_tools_cubit.dart';
 
 void main() {
   group('WorkspaceToolsCubit', () {
-    test('defaults a workspace to selected index 0', () {
+    test('defaults to an empty open set', () {
       final cubit = WorkspaceToolsCubit();
-      expect(cubit.selectedIndexFor('p1'), 0);
+      expect(cubit.openIdsFor('p1'), isEmpty);
+      expect(cubit.selectedIdFor('p1'), isNull);
       addTearDown(cubit.close);
     });
 
-    test('remembers a per-workspace selected index', () {
+    test('ensureOpenAndSelect opens and selects a tool', () {
       final cubit = WorkspaceToolsCubit();
-      cubit.setSelectedIndex('p1', 2);
-      cubit.setSelectedIndex('p2', 1);
-      expect(cubit.selectedIndexFor('p1'), 2);
-      expect(cubit.selectedIndexFor('p2'), 1);
-      expect(cubit.selectedIndexFor('p3'), 0);
+      cubit.ensureOpenAndSelect('p1', 'fileTree');
+      cubit.ensureOpenAndSelect('p1', 'git');
+      expect(cubit.openIdsFor('p1'), ['fileTree', 'git']);
+      expect(cubit.selectedIdFor('p1'), 'git');
+      cubit.ensureOpenAndSelect('p1', 'fileTree');
+      expect(cubit.openIdsFor('p1'), ['fileTree', 'git']);
+      expect(cubit.selectedIdFor('p1'), 'fileTree');
       addTearDown(cubit.close);
     });
 
-    test('emits a new state when a selection changes', () {
+    test('closeTool selects a neighbor and clears when empty', () {
       final cubit = WorkspaceToolsCubit();
-      final seen = <Map<String, int>>[];
-      final sub = cubit.stream.listen(
-        (s) => seen.add(Map.of(s.selectedByWorkspace)),
-      );
-      cubit.setSelectedIndex('p1', 3);
-      cubit.setSelectedIndex('p1', 3); // no-op, same value
-      return Future<void>.delayed(Duration.zero, () {
-        expect(seen.length, 1);
-        expect(seen.single['p1'], 3);
-        sub.cancel();
-        cubit.close();
-      });
+      cubit.ensureOpenAndSelect('p1', 'a');
+      cubit.ensureOpenAndSelect('p1', 'b');
+      cubit.ensureOpenAndSelect('p1', 'c');
+      cubit.selectTool('p1', 'b');
+      cubit.closeTool('p1', 'b');
+      expect(cubit.openIdsFor('p1'), ['a', 'c']);
+      expect(cubit.selectedIdFor('p1'), 'a');
+      cubit.closeTool('p1', 'a');
+      cubit.closeTool('p1', 'c');
+      expect(cubit.openIdsFor('p1'), isEmpty);
+      expect(cubit.selectedIdFor('p1'), isNull);
+      addTearDown(cubit.close);
+    });
+
+    test('pruneToAvailable drops missing ids', () {
+      final cubit = WorkspaceToolsCubit();
+      cubit.ensureOpenAndSelect('p1', 'members');
+      cubit.ensureOpenAndSelect('p1', 'fileTree');
+      cubit.pruneToAvailable('p1', const ['fileTree', 'git']);
+      expect(cubit.openIdsFor('p1'), ['fileTree']);
+      expect(cubit.selectedIdFor('p1'), 'fileTree');
+      addTearDown(cubit.close);
     });
 
     test('removeWorkspace drops the stored selection', () {
       final cubit = WorkspaceToolsCubit();
-      cubit.setSelectedIndex('p1', 2);
+      cubit.ensureOpenAndSelect('p1', 'git');
       cubit.removeWorkspace('p1');
-      expect(cubit.selectedIndexFor('p1'), 0);
+      expect(cubit.openIdsFor('p1'), isEmpty);
+      expect(cubit.selectedIdFor('p1'), isNull);
       addTearDown(cubit.close);
     });
   });

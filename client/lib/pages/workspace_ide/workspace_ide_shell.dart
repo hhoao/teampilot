@@ -337,6 +337,7 @@ class _WorkspaceIdeShellState extends State<WorkspaceIdeShell> {
       );
     }
     _applied = s;
+    _layoutSnapshot = s;
     // Re-apply viewport caps after prefs sizes so a large persisted width cannot
     // crush the main column when the window is narrower than before.
     if (!_rowController.isResizing) {
@@ -515,28 +516,78 @@ class _WorkspaceIdeShellState extends State<WorkspaceIdeShell> {
     );
   }
 
+  /// Cached side-pane subtrees so [PaneController] show/hide (which notifies
+  /// [MultiPane] → [setState]) does not recreate [widget.left]/[widget.right]
+  /// and force tool-panel rebuilds. Clip animation keeps the same child.
+  Widget? _cachedLeftPane;
+  Widget? _cachedLeftSource;
+  Widget? _cachedRightPane;
+  Widget? _cachedRightSource;
+  var _cachedSidePanesNarrow = false;
+
+  void _invalidateSidePaneCache() {
+    _cachedLeftPane = null;
+    _cachedLeftSource = null;
+    _cachedRightPane = null;
+    _cachedRightSource = null;
+  }
+
+  Widget _stableSidePane({
+    required Widget source,
+    required bool leadingOuter,
+    required bool trailingOuter,
+    required Widget? cachedPane,
+    required Widget? cachedSource,
+    required void Function(Widget pane, Widget source) store,
+  }) {
+    if (_narrow) {
+      _cachedSidePanesNarrow = true;
+      _invalidateSidePaneCache();
+      return const SizedBox.shrink();
+    }
+    if (_cachedSidePanesNarrow) {
+      _invalidateSidePaneCache();
+      _cachedSidePanesNarrow = false;
+    }
+    if (cachedPane != null && identical(cachedSource, source)) {
+      return cachedPane;
+    }
+    final pane = _sideChrome(
+      child: source,
+      leadingOuter: leadingOuter,
+      trailingOuter: trailingOuter,
+    );
+    store(pane, source);
+    return pane;
+  }
+
   Widget _rowPaneBuilder(BuildContext context, String id, double progress) {
     return switch (id) {
-      _leftId =>
-        _narrow
-            ? const SizedBox.shrink()
-            : !_leftDocked
-            ? widget.left
-            : _sideChrome(
-                child: widget.left,
-                leadingOuter: true,
-                trailingOuter: false,
-              ),
-      _rightId =>
-        _narrow
-            ? const SizedBox.shrink()
-            : !_rightDocked
-            ? widget.right
-            : _sideChrome(
-                child: widget.right,
-                leadingOuter: false,
-                trailingOuter: true,
-              ),
+      _leftId => _stableSidePane(
+        source: widget.left,
+        leadingOuter: true,
+        trailingOuter: false,
+        cachedPane: _cachedLeftPane,
+        cachedSource: _cachedLeftSource,
+        store: (pane, source) {
+          _cachedLeftPane = pane;
+          _cachedLeftSource = source;
+        },
+      ),
+      // Always keep side chrome — toggling dockRight used to swap
+      // `_sideChrome(child: right)` ↔ `right`, which remounted tools.
+      // Visibility is only [PaneController] slot width (clip), not structure.
+      _rightId => _stableSidePane(
+        source: widget.right,
+        leadingOuter: false,
+        trailingOuter: true,
+        cachedPane: _cachedRightPane,
+        cachedSource: _cachedRightSource,
+        store: (pane, source) {
+          _cachedRightPane = pane;
+          _cachedRightSource = source;
+        },
+      ),
       _ => _centerChrome(),
     };
   }

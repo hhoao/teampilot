@@ -66,6 +66,15 @@ class AppLocalizationsZh extends AppLocalizations {
   String get rightToolsPanelHidden => '隐藏工具栏';
 
   @override
+  String get rightToolsOpenTabTitle => '打开标签页';
+
+  @override
+  String get rightToolsOpenTabSubtitle => '选择要在侧边面板中打开的标签。';
+
+  @override
+  String get rightToolsOpenTabEmpty => '所有工具均已打开。';
+
+  @override
   String get sidebarPanelVisible => '显示侧边栏';
 
   @override

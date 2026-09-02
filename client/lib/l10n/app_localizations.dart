@@ -212,6 +212,24 @@ abstract class AppLocalizations {
   /// **'Hide tools panel'**
   String get rightToolsPanelHidden;
 
+  /// No description provided for @rightToolsOpenTabTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Open a tab'**
+  String get rightToolsOpenTabTitle;
+
+  /// No description provided for @rightToolsOpenTabSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Choose a tool to open in the side panel.'**
+  String get rightToolsOpenTabSubtitle;
+
+  /// No description provided for @rightToolsOpenTabEmpty.
+  ///
+  /// In en, this message translates to:
+  /// **'All tools are already open.'**
+  String get rightToolsOpenTabEmpty;
+
   /// No description provided for @sidebarPanelVisible.
   ///
   /// In en, this message translates to:

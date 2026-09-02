@@ -7,12 +7,12 @@ import 'package:shared_ui/shared_ui.dart';
 import '../../../cubits/chat_cubit.dart';
 import '../../../cubits/launch_profile_cubit.dart';
 import '../../../cubits/layout_cubit.dart';
-import '../../../cubits/mailbox_cubit.dart';
 import '../../../cubits/workbench/workbench_cubit.dart';
 import '../../../cubits/run_cubit.dart';
 import '../../../cubits/session_groups_cubit.dart';
 import '../../../cubits/worktree_cubit.dart';
 import '../../../cubits/workspace_tools_cubit.dart';
+import '../../../models/layout_preferences.dart';
 import '../../../models/workspace.dart';
 import '../../../services/commands/run_command_registrar.dart';
 import '../../../services/commands/workspace_content_search_command_registrar.dart';
@@ -27,9 +27,9 @@ import '../../../utils/session/workspace_tab_session_scope.dart';
 import '../../../utils/ui/app_keys.dart';
 import '../../../utils/workspace/workspace_active_context.dart';
 import '../../../utils/workspace/workspace_new_chat_active.dart';
+import '../../../widgets/right_tools/right_tool_ids.dart';
 import '../../../widgets/right_tools/right_tools_panel.dart';
 import '../../../widgets/right_tools/right_tools_tool_preferences.dart';
-import '../../../widgets/right_tools/right_tools_tool_views.dart';
 import '../../../widgets/workspace_terminal_panel.dart';
 import '../../chat_page.dart';
 import '../../../widgets/workbench/workbench_shell_run_sync.dart';
@@ -153,43 +153,9 @@ class _WorkspaceSplitPaneState extends State<WorkspaceSplitPane> {
       layout.setRightToolsVisible(true);
     }
 
-    final chat = context.read<ChatCubit>();
-    final active = WorkspaceActiveContext.resolve(
-      workbench: workbench,
-      chat: chat,
-      launchProfiles: context.read<LaunchProfileCubit>(),
-      tabScopeId: widget.tabScopeId,
-    );
-
-    MailboxCubit? mailboxCubit;
-    try {
-      mailboxCubit = context.read<MailboxCubit>();
-    } on Object {
-      mailboxCubit = null;
-    }
-    final team = active.team;
-    final mailboxGate = RightToolsMailboxGate.resolve(
-      isPersonalContext: active.isPersonal,
-      team: team,
-      hasTeamBus:
-          scopedTeamBus(workbench, chat, widget.tabScopeId) != null &&
-          mailboxCubit != null,
-      boardVisible: prefs.boardVisible,
-      unreadCount: 0,
-    );
-    // Mirrors the view order in RightToolsToolViews._buildViews: members,
-    // fileTree, git, mailbox, board, then search last.
-    final index = searchToolIndex(
-      isPersonalContext: active.isPersonal,
-      membersVisible: prefs.membersVisible && team != null,
-      fileTreeVisible: prefs.fileTreeVisible,
-      gitVisible: prefs.gitVisible,
-      showMailbox: mailboxGate.showMailbox,
-      showBoard: mailboxGate.showBoard,
-    );
-    context.read<WorkspaceToolsCubit>().setSelectedIndex(
+    context.read<WorkspaceToolsCubit>().ensureOpenAndSelect(
       widget.tabScopeId,
-      index,
+      RightToolIds.search,
     );
 
     // Defer the focus bump until the search panel has (re)mounted so it is
@@ -364,10 +330,6 @@ class _WorkspaceRightToolsPane extends StatelessWidget {
     final chat = context.read<ChatCubit>();
     // Select only the fields this right-tools pane actually reads — avoids
     // rebuilding the tools subtree on every session working-state change.
-    // composeLanding comes from the bar (single owner of landing state).
-    final composeLanding = context.select<WorkbenchCubit, bool>(
-      (w) => workspaceNewChatActive(w, tabScopeId),
-    );
     // Rebuild whenever the bar's center-active session changes so the
     // team/personal context is never stale after a direct session switch.
     final _ = context.select<WorkbenchCubit, String?>(
@@ -379,24 +341,20 @@ class _WorkspaceRightToolsPane extends StatelessWidget {
       launchProfiles: context.read<LaunchProfileCubit>(),
       tabScopeId: tabScopeId,
     );
-    final landingOverride = context.select<LayoutCubit, bool?>(
-      (c) => c.state.landingRightToolsOverride,
-    );
-    final layoutSlice = context.select<LayoutCubit, RightToolsLayoutSlice>((c) {
-      final prefs = c.state.preferences;
-      return RightToolsLayoutSlice(
-        rightToolsVisible: prefs.rightToolsVisible,
-        tools: RightToolsToolPreferences.from(prefs),
-      );
+    final tools = context.select<LayoutCubit, RightToolsToolPreferences>((c) {
+      return RightToolsToolPreferences.from(c.state.preferences);
     });
-    final effectiveRight = composeLanding
-        ? (landingOverride ?? false)
-        : layoutSlice.rightToolsVisible;
+    // Do NOT select rightToolsVisible here: MultiPane clips the slot. Selecting
+    // visibility would rebuild [RightToolsPanel] on every show/hide.
     return RightToolsPanel(
       cwd: cwd,
       additionalPaths: additionalPaths,
-      preferences: layoutSlice.panelPreferences.copyWith(
-        rightToolsVisible: effectiveRight,
+      preferences: LayoutPreferences(
+        fileTreeVisible: tools.fileTreeVisible,
+        gitVisible: tools.gitVisible,
+        searchVisible: tools.searchVisible,
+        membersVisible: tools.membersVisible,
+        boardVisible: tools.boardVisible,
       ),
       panelKey: AppKeys.rightToolsPanel,
       dismissDrawerOnAction: false,

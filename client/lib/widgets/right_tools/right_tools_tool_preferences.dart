@@ -21,7 +21,11 @@ class RightToolsToolPreferences {
 
   /// True when any right-tools tab needs [RightToolsLifecycleHost].
   bool get needsLifecycleHost =>
-      fileTreeVisible || gitVisible || membersVisible || boardVisible;
+      fileTreeVisible ||
+      gitVisible ||
+      membersVisible ||
+      boardVisible ||
+      searchVisible;
 
   /// True when file-tree or git panels need disk watchers / refresh.
   bool get needsDiskSideEffects => fileTreeVisible || gitVisible;

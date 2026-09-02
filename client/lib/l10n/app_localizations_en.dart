@@ -68,6 +68,16 @@ class AppLocalizationsEn extends AppLocalizations {
   String get rightToolsPanelHidden => 'Hide tools panel';
 
   @override
+  String get rightToolsOpenTabTitle => 'Open a tab';
+
+  @override
+  String get rightToolsOpenTabSubtitle =>
+      'Choose a tool to open in the side panel.';
+
+  @override
+  String get rightToolsOpenTabEmpty => 'All tools are already open.';
+
+  @override
   String get sidebarPanelVisible => 'Show sidebar';
 
   @override

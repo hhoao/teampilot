@@ -113,10 +113,13 @@ class _RightToolsPanelState extends State<RightToolsPanel> {
 
   @override
   Widget build(BuildContext context) {
-    if (!widget.preferences.rightToolsVisible ||
-        !_toolPreferences.needsLifecycleHost) {
+    if (!_toolPreferences.needsLifecycleHost) {
       return const SizedBox.shrink();
     }
+    // Drawer semantics: stay mounted and keep laying out at the pane's full
+    // pixel width. [MultiPane] already clips the slot 0↔width; skipping layout
+    // while hidden (TpKeepAliveLayer) forced a cold layout on show and felt
+    // like a rebuild/fade-in instead of a slide reveal.
     return RightToolsLifecycleHost(
       cwd: widget.cwd,
       additionalPaths: widget.additionalPaths,
