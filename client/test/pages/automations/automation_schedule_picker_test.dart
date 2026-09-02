@@ -258,6 +258,28 @@ void main() {
     },
   );
 
+  test(
+    'list summary for a saved once automation shows the stored date-time',
+    () {
+      final runAtMs = DateTime(2026, 9, 3, 14, 30).millisecondsSinceEpoch;
+      final automation = sampleAutomation(
+        id: 'once-summary',
+        workspaceId: 'ws1',
+        preset: AutomationSchedulePreset.once,
+        runAtMs: runAtMs,
+      );
+
+      // Exactly the expression AutomationsListBody renders per row, so a
+      // stale hourMinute fallback ('Once at 09:00') fails here.
+      final summary = localizedScheduleSummary(
+        _l10n,
+        scheduleDraftFromAutomation(automation),
+      );
+
+      expect(summary, 'Once at 2026-09-03 14:30');
+    },
+  );
+
   test('forCreate seeds once defaults from the provided now', () {
     final draft = AutomationScheduleDraft.forCreate(
       timezone: 'UTC',
