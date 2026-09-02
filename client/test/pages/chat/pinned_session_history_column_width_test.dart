@@ -1,44 +1,84 @@
+import 'package:ai_message_ui/ai_message_ui.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:shared_ui/shared_ui.dart';
 import 'package:teampilot/pages/chat/pinned_session_history_column_width.dart';
+import 'package:teampilot/theme/app_theme.dart';
 
 void main() {
-  testWidgets('rebuilds builder only when resolved column width changes', (
+  ThemeData appTheme() => buildLightTheme();
+
+  testWidgets('parent rebuilds still refresh child when width is unchanged', (
     tester,
   ) async {
-    var builds = 0;
-    late void Function(void Function()) setWidth;
-    var available = 1480.0;
+    var label = 'a';
+    late void Function(void Function()) setLabel;
 
     await tester.pumpWidget(
       MaterialApp(
-        home: StatefulBuilder(
-          builder: (context, setState) {
-            setWidth = setState;
-            return PinnedSessionHistoryColumnWidth(
-              availableWidth: available,
-              builder: (context, columnWidth) {
-                builds++;
-                return Text('$columnWidth');
-              },
-            );
-          },
+        theme: appTheme(),
+        home: TpTheme(
+          data: TpThemeData.fromColorScheme(appTheme().colorScheme, scale: 1),
+          child: StatefulBuilder(
+            builder: (context, setState) {
+              setLabel = setState;
+              return PinnedSessionHistoryColumnWidth(
+                availableWidth: 1480,
+                expandReasoning: false,
+                expandTools: false,
+                child: Text(label),
+              );
+            },
+          ),
         ),
       ),
     );
 
-    expect(builds, 1);
-    expect(find.text('1280.0'), findsOneWidget);
+    expect(find.text('a'), findsOneWidget);
+    setLabel(() => label = 'b');
+    await tester.pump();
+    expect(find.text('b'), findsOneWidget);
+  });
 
-    // Same stepped bucket (hold at 1280) — no rebuild.
+  testWidgets('width bucket changes still rebuild the themed child', (
+    tester,
+  ) async {
+    var available = 1480.0;
+    late void Function(void Function()) setWidth;
+
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: appTheme(),
+        home: TpTheme(
+          data: TpThemeData.fromColorScheme(appTheme().colorScheme, scale: 1),
+          child: StatefulBuilder(
+            builder: (context, setState) {
+              setWidth = setState;
+              return PinnedSessionHistoryColumnWidth(
+                availableWidth: available,
+                expandReasoning: false,
+                expandTools: false,
+                child: Builder(
+                  builder: (context) {
+                    final width = AiMessageTheme.of(context).threadMaxWidth;
+                    return Text('w=$width');
+                  },
+                ),
+              );
+            },
+          ),
+        ),
+      ),
+    );
+
+    expect(find.text('w=1280.0'), findsOneWidget);
+
     setWidth(() => available = 1500);
     await tester.pump();
-    expect(builds, 1);
+    expect(find.text('w=1280.0'), findsOneWidget);
 
-    // Cross into next step — rebuild once.
     setWidth(() => available = 1680);
     await tester.pump();
-    expect(builds, 2);
-    expect(find.text('1480.0'), findsOneWidget);
+    expect(find.text('w=1480.0'), findsOneWidget);
   });
 }
