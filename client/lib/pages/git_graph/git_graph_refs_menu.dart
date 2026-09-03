@@ -25,9 +25,14 @@ class _RefEntry {
 /// 远程：仅展示，checkout 暂不可用（v1）；标签：推送 / 删除）。写操作经
 /// [GitGraphActionsController]。
 class GitGraphRefsMenu extends StatefulWidget {
-  const GitGraphRefsMenu({super.key, required this.state});
+  const GitGraphRefsMenu({
+    super.key,
+    required this.state,
+    required this.workspaceId,
+  });
 
   final GitGraphState state;
+  final String workspaceId;
 
   @override
   State<GitGraphRefsMenu> createState() => _GitGraphRefsMenuState();

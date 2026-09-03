@@ -24,7 +24,8 @@ Widget _host(GitGraphCubit cubit, GitGraphState state) => MaterialApp(
       body: Column(
         children: [
           BlocBuilder<GitGraphCubit, GitGraphState>(
-            builder: (context, state) => GitGraphToolbar(state: state),
+            builder: (context, state) =>
+                GitGraphToolbar(state: state, workspaceId: 'ws'),
           ),
         ],
       ),
@@ -45,7 +46,7 @@ Widget _narrowHost(GitGraphCubit cubit) => MaterialApp(
       body: SizedBox(
         width: 300,
         child: BlocBuilder<GitGraphCubit, GitGraphState>(
-          builder: (context, state) => GitGraphToolbar(state: state),
+          builder: (context, state) => GitGraphToolbar(state: state, workspaceId: 'ws'),
         ),
       ),
     ),

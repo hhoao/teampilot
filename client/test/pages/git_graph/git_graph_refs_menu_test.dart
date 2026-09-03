@@ -38,7 +38,9 @@ void main() {
         home: BlocProvider.value(
           value: cubit,
           child: Scaffold(
-            body: Center(child: GitGraphRefsMenu(state: cubit.state)),
+            body: Center(
+              child: GitGraphRefsMenu(state: cubit.state, workspaceId: 'ws'),
+            ),
           ),
         ),
       ),
@@ -88,7 +90,9 @@ void main() {
         home: BlocProvider.value(
           value: cubit,
           child: Scaffold(
-            body: Center(child: GitGraphRefsMenu(state: cubit.state)),
+            body: Center(
+              child: GitGraphRefsMenu(state: cubit.state, workspaceId: 'ws'),
+            ),
           ),
         ),
       ),
