@@ -302,32 +302,40 @@ void main() {
     );
   });
 
-  test('suffix fallback ids make the page source unavailable', () async {
-    final fs = InMemoryFilesystem();
-    final path = '/transcript.jsonl';
-    await fs.writeString(
-      path,
-      '{"type":"user","uuid":"u-1","message":{"content":"one"}}\n'
-      '{"type":"user","message":{"content":"two needs fallback"}}\n',
-    );
-    final reader = JsonlTranscriptPageReader(
-      fs: fs,
-      lineAppend: appendClaudeJsonlEvent,
-      fallbackPrefix: 'claude',
-      decodeEvents: _syncDecoder(),
-      sourcePath: (_) async => path,
-      windowSizes: const [24],
-    );
-    final ctx = SessionHistoryContext(
-      fs: fs,
-      taskId: 'task',
-      env: const {},
-      transcriptRoots: const [],
-      bucket: 'bucket',
-    );
+  test(
+    'suffix fallback ids are rejected on a partial window but recover at byte 0',
+    () async {
+      final fs = InMemoryFilesystem();
+      final path = '/transcript.jsonl';
+      await fs.writeString(
+        path,
+        '{"type":"user","uuid":"u-1","message":{"content":"one"}}\n'
+        '{"type":"user","message":{"content":"two needs fallback"}}\n',
+      );
+      final reader = JsonlTranscriptPageReader(
+        fs: fs,
+        lineAppend: appendClaudeJsonlEvent,
+        fallbackPrefix: 'claude',
+        decodeEvents: _syncDecoder(),
+        sourcePath: (_) async => path,
+        windowSizes: const [24, 64 * 1024],
+      );
+      final ctx = SessionHistoryContext(
+        fs: fs,
+        taskId: 'task',
+        env: const {},
+        transcriptRoots: const [],
+        bucket: 'bucket',
+      );
 
-    expect(await reader.readLatest(ctx: ctx, limit: 1), isNull);
-  });
+      // limit covers the whole transcript so parseStart stays at byte 0 and
+      // fallback ids match the full adapter sequence.
+      final page = await reader.readLatest(ctx: ctx, limit: 2);
+      expect(page, isNotNull);
+      expect(page!.messages, hasLength(2));
+      expect(page.hasOlder, isFalse);
+    },
+  );
 
   test('empty JSONL source returns an empty latest page', () async {
     final fs = InMemoryFilesystem();
@@ -356,7 +364,7 @@ void main() {
   });
 
   test(
-    'rejects a page with a tool result whose call is outside the window',
+    'grows the window when a tool result depends on an earlier call',
     () async {
       final fs = InMemoryFilesystem();
       final path = '/transcript.jsonl';
@@ -369,22 +377,47 @@ void main() {
           _userLine('tail', 'newest'),
         ].join(),
       );
+      // First window is too small to include the tool_use; the reader must
+      // enlarge instead of aborting to the loader's full-file parse.
+      // limit must cover the tool_use→result span so contextual parseStart
+      // stays dependency-complete (mirrors kSessionHistoryInitialTurns).
       final page = await _claudeReader(
         fs,
         path,
-        windowSizes: const [180],
-      ).readLatest(ctx: _ctxFor(fs), limit: 1);
+        windowSizes: const [180, 64 * 1024],
+      ).readLatest(ctx: _ctxFor(fs), limit: 15);
 
-      expect(
-        page,
-        isNull,
-        reason: 'an unclosed tool dependency must use full-parse fallback',
-      );
+      expect(page, isNotNull);
+      expect(_texts(page!.messages), contains('newest'));
     },
   );
 
   test(
-    'rejects a Codex custom tool result whose call is outside the window',
+    'byte-0 windows tolerate orphan tool results left by compaction',
+    () async {
+      final fs = InMemoryFilesystem();
+      final path = '/transcript.jsonl';
+      await fs.writeString(
+        path,
+        [
+          for (var i = 0; i < 2; i++) _userLine('filler-$i', 'x' * 40),
+          _toolResultLine(),
+          _userLine('tail', 'newest'),
+        ].join(),
+      );
+      final page = await _claudeReader(
+        fs,
+        path,
+        windowSizes: const [64 * 1024],
+      ).readLatest(ctx: _ctxFor(fs), limit: 1);
+
+      expect(page, isNotNull);
+      expect(_texts(page!.messages), contains('newest'));
+    },
+  );
+
+  test(
+    'Codex custom tool result outside a suffix window grows to byte 0',
     () async {
       final fs = InMemoryFilesystem();
       const path = '/transcript.jsonl';
@@ -405,7 +438,8 @@ void main() {
         windowSizes: const [160],
       ).readLatest(ctx: _ctxFor(fs), limit: 1);
 
-      expect(page, isNull);
+      // Suffix cannot bind the output; byte-0 matches full-parse tolerance.
+      expect(page, isNotNull);
     },
   );
 
@@ -441,7 +475,7 @@ void main() {
   });
 
   test(
-    'rejects a page when an assistant run begins before its window',
+    'recovers a truncated assistant run by growing to the full file',
     () async {
       final fs = InMemoryFilesystem();
       final path = '/transcript.jsonl';
@@ -459,17 +493,15 @@ void main() {
         windowSizes: const [120],
       ).readLatest(ctx: _ctxFor(fs), limit: 1);
 
-      expect(
-        page,
-        isNull,
-        reason:
-            'a truncated assistant run cannot be equivalent to full parsing',
-      );
+      expect(page, isNotNull);
+      // limit=1 keeps a cursor into older turns even after the full-file
+      // window recovers the truncated assistant prefix.
+      expect(page!.messages, isNotEmpty);
     },
   );
 
   test(
-    'rejects a page when noise precedes a truncated assistant run',
+    'recovers when noise precedes a truncated assistant run',
     () async {
       final fs = InMemoryFilesystem();
       const path = '/transcript.jsonl';
@@ -489,7 +521,8 @@ void main() {
         windowSizes: const [120],
       ).readLatest(ctx: _ctxFor(fs), limit: 1);
 
-      expect(page, isNull);
+      expect(page, isNotNull);
+      expect(page!.messages, isNotEmpty);
     },
   );
 
@@ -706,6 +739,43 @@ void main() {
     expect(page, isNotNull);
     expect(page!.messages.map((message) => message.id), ['codex-0', 'codex-1']);
   });
+
+  test(
+    'byte-0 scan attaches completeMessages when raw turns exceed limit',
+    () async {
+      final fs = InMemoryFilesystem();
+      const path = '/transcript.jsonl';
+      // Many discrete user turns so raw + finalized counts both exceed limit.
+      // Codex rollouts also hit this path via fallback-heavy mid-slice parses.
+      final buffer = StringBuffer();
+      for (var i = 0; i < 40; i++) {
+        buffer.write(
+          '{"type":"event_msg","payload":{"type":"user_message",'
+          '"message":"turn-$i"}}\n',
+        );
+      }
+      await fs.writeString(path, buffer.toString());
+      final page = await JsonlTranscriptPageReader(
+        fs: fs,
+        lineAppend: appendCodexJsonlEvent,
+        fallbackPrefix: 'codex',
+        decodeEvents: _syncDecoder(),
+        sourcePath: (_) async => path,
+        windowSizes: const [64],
+      ).readLatest(ctx: _ctxFor(fs), limit: 5);
+
+      expect(page, isNotNull);
+      expect(page!.completeMessages, isNotNull);
+      expect(page.completeMessages, hasLength(40));
+      expect(page.messages, hasLength(5));
+      expect(
+        page.messages.map((m) => m.id),
+        page.completeMessages!
+            .sublist(page.completeMessages!.length - 5)
+            .map((m) => m.id),
+      );
+    },
+  );
 
   test('uses stat source version without a full-transcript read', () async {
     final fs = _VersionedInMemoryFilesystem();

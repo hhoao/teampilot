@@ -3,6 +3,10 @@
 /// Production loaders leave [AiHistoryLoader] timings unset; nothing is
 /// recorded and live refresh does not log. Tests inject an instance and assert
 /// counts, identity, and order — never wall-clock milliseconds.
+///
+/// Debug builds always emit a one-line `[ai-history-timing]` summary for cold
+/// loads so first-paint regressions are visible in app logs without a test
+/// harness.
 enum AiHistoryLoadPhase {
   locate,
   read,

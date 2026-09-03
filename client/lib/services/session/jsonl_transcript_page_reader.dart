@@ -24,7 +24,7 @@ final class JsonlTranscriptPageReader implements AiTranscriptPageReader {
     required AiTranscriptSourcePath sourcePath,
     AiTranscriptSourceVersion? sourceVersion,
     EventDecoder? decodeEvents,
-    this.windowSizes = const [64 * 1024, 256 * 1024],
+    this.windowSizes = const [256 * 1024, 1024 * 1024],
   }) : _lineAppend = lineAppend,
        _fallbackPrefix = fallbackPrefix,
        _decodeEvents = decodeEvents ?? decodeJsonlLines,
@@ -66,7 +66,9 @@ final class JsonlTranscriptPageReader implements AiTranscriptPageReader {
         sourceToken: sourceToken,
         rebuilt: true,
       );
-      if (page == null) return null;
+      // Unsafe suffix (orphan tool_result / fallback ids) → grow the window.
+      // Only give up after the full-file window also fails.
+      if (page == null) continue;
       if (page.messages.length >= limit || window >= size) return page;
     }
     return null;
@@ -109,7 +111,7 @@ final class JsonlTranscriptPageReader implements AiTranscriptPageReader {
         sourceToken: cursor.sourceToken,
         rebuilt: false,
       );
-      if (page == null) return null;
+      if (page == null) continue;
       if (page.messages.length >= limit || window >= cursor.offset) return page;
     }
     return null;
@@ -137,24 +139,25 @@ final class JsonlTranscriptPageReader implements AiTranscriptPageReader {
     if (events.length != lines.length) return null;
     final parsed = _parseFrom(events, 0);
     final prefixComplete = lines.first.offset == 0;
-    // Suffix fallback ids cannot be proven equivalent without the prefix.
-    // A window that starts at byte zero assigns the same sequence as
-    // adapter.parse of that complete source.
-    if (parsed.unresolvedDependency ||
+    // Suffix windows: orphan tool_result / fallback ids cannot be proven.
+    // Byte-0 windows match adapter.parse, including compaction leftovers
+    // whose tool_use was removed — those orphans must not force a second
+    // full-file decode via the loader fallback.
+    if ((!prefixComplete && parsed.unresolvedDependency) ||
         _unsafeFallback(
           fallbackUsed: parsed.fallbackUsed,
           prefixComplete: prefixComplete,
-          parseStart: 0,
         )) {
       return null;
     }
     // Ignore decoded noise and inspect the first event that the injected CLI
-    // append semantics actually turns into a logical message. If that event
-    // produces an assistant message after byte zero, it may be a continuation
-    // of an omitted assistant fragment and cannot be paged safely.
+    // append semantics actually turns into a logical message. On a suffix
+    // window, an assistant as the first consumed role may continue an omitted
+    // fragment. On a byte-0 window, preamble lines (session_meta, etc.) make
+    // the first message offset > 0 even when the transcript is complete.
     final firstConsumedIndex = parsed.firstConsumedIndex;
-    if (firstConsumedIndex != null &&
-        lines[firstConsumedIndex].offset > 0 &&
+    if (!prefixComplete &&
+        firstConsumedIndex != null &&
         parsed.firstConsumedRole == AiRole.assistant) {
       return null;
     }
@@ -170,26 +173,27 @@ final class JsonlTranscriptPageReader implements AiTranscriptPageReader {
       contextStart--;
     }
     final contextual = _parseFrom(events, contextStart);
-    if (contextual.unresolvedDependency ||
+    if ((!prefixComplete && contextual.unresolvedDependency) ||
         _unsafeFallback(
           fallbackUsed: contextual.fallbackUsed,
           prefixComplete: prefixComplete,
-          parseStart: contextStart,
         )) {
       return null;
     }
     final plain = contextStart == rawStart
         ? contextual
         : _parseFrom(events, rawStart);
-    if (plain.unresolvedDependency ||
+    if ((!prefixComplete && plain.unresolvedDependency) ||
         _unsafeFallback(
           fallbackUsed: plain.fallbackUsed,
           prefixComplete: prefixComplete,
-          parseStart: rawStart,
         )) {
       return null;
     }
 
+    final completeMessages = prefixComplete
+        ? finalizeAiMessagesForHistory(List<AiMessage>.of(parsed.messages))
+        : null;
     final contextualMessages = finalizeAiMessagesForHistory(
       contextual.messages,
     );
@@ -200,9 +204,15 @@ final class JsonlTranscriptPageReader implements AiTranscriptPageReader {
     final needsContext =
         contextStart != rawStart &&
         !_sameMessages(contextualWindow, plainMessages);
-    final output = contextualMessages.length > limit
-        ? contextualMessages.sublist(contextualMessages.length - limit)
-        : contextualMessages;
+    // Prefer the byte-0 finalize when available so first-paint ids match the
+    // complete index (mid-slice fallback sequences renumber from zero).
+    final output = completeMessages != null
+        ? (completeMessages.length > limit
+              ? completeMessages.sublist(completeMessages.length - limit)
+              : completeMessages)
+        : (contextualMessages.length > limit
+              ? contextualMessages.sublist(contextualMessages.length - limit)
+              : contextualMessages);
     final cursorLineIndex = needsContext ? contextStart : rawStart;
     final cursorLine = lines[cursorLineIndex];
     final hasOlder = cursorLine.offset > 0;
@@ -218,6 +228,7 @@ final class JsonlTranscriptPageReader implements AiTranscriptPageReader {
           : null,
       sourceToken: sourceToken,
       rebuilt: rebuilt,
+      completeMessages: completeMessages,
     );
   }
 
@@ -293,10 +304,13 @@ final class JsonlTranscriptPageReader implements AiTranscriptPageReader {
   static bool _unsafeFallback({
     required bool fallbackUsed,
     required bool prefixComplete,
-    required int parseStart,
   }) {
     if (!fallbackUsed) return false;
-    return !(prefixComplete && parseStart == 0);
+    // Byte-0 windows already own the full prefix. Mid-slice fallback ids are
+    // provisional for pagination cursors; [AiHistoryPage.completeMessages]
+    // carries the adapter-equivalent full finalize for the loader.
+    if (prefixComplete) return false;
+    return true;
   }
 
   int _rawStartIndex(List<int> counts, int messageCount, int limit) {

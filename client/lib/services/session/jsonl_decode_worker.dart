@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:isolate';
 
+import 'package:flutter/foundation.dart';
 import 'package:meta/meta.dart';
 
 /// JSONL 批解码的常驻 worker(全局共享一个实例)。
@@ -31,9 +32,28 @@ class JsonlDecodeWorker {
   Future<List<Map<String, dynamic>?>> decode(List<List<int>> lines) async {
     if (lines.isEmpty) return const [];
 
+    // Large cold transcripts (Codex rollouts can be multi-MB) pay more to
+    // copy into the resident worker than they save — decode in-place.
+    var totalBytes = 0;
+    for (final line in lines) {
+      totalBytes += line.length;
+      if (totalBytes >= _syncDecodeMinBytes) {
+        return decodeJsonlLinesSync(lines);
+      }
+    }
+
+    final sw = Stopwatch()..start();
+    final neededSpawn = _worker == null || _worker!.isDead;
     try {
       final worker = _ensureWorker();
-      return await worker.decode(lines, readyTimeout: readyTimeout);
+      final result = await worker.decode(lines, readyTimeout: readyTimeout);
+      if (kDebugMode && sw.elapsedMilliseconds >= 50) {
+        debugPrint(
+          '[ai-history-timing] jsonl-decode lines=${lines.length} '
+          'spawn=$neededSpawn ms=${sw.elapsedMilliseconds}',
+        );
+      }
+      return result;
     } on TimeoutException {
       _discardWorker();
       return decodeJsonlLinesSync(lines);
@@ -42,6 +62,8 @@ class JsonlDecodeWorker {
       return decodeJsonlLinesSync(lines);
     }
   }
+
+  static const _syncDecodeMinBytes = 64 * 1024;
 
   _JsonlWorker _ensureWorker() {
     final existing = _worker;

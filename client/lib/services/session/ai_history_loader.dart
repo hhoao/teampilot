@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:isolate';
 
 import 'package:ai_message_core/ai_message_core.dart';
@@ -917,6 +918,23 @@ final class AiHistoryLoader {
     return _fullIndexFutures[cacheKey];
   }
 
+  /// Waits until the JSONL tail / DB incremental cursor is warm for [sessionId].
+  ///
+  /// Page-first hits that already cover byte 0 seed the cursor in the
+  /// background after first paint; tests that append then soft-reload need
+  /// this barrier so the second load takes the identity-preserving path.
+  @visibleForTesting
+  Future<void> debugAwaitTailWarm({
+    required String sessionId,
+    required String memberId,
+  }) async {
+    final cacheKey = _cacheKey(sessionId, memberId);
+    for (var i = 0; i < 200; i++) {
+      if (_hasWarmIncremental(cacheKey)) return;
+      await Future<void>.delayed(const Duration(milliseconds: 5));
+    }
+  }
+
   bool _hasWarmIncremental(String cacheKey) =>
       _tailStates.containsKey(cacheKey) ||
       _incrementalStates.containsKey(cacheKey);
@@ -957,6 +975,10 @@ final class AiHistoryLoader {
     final reader = cap.pageReader;
     if (reader == null) return null;
     try {
+      // Prefer a recent page for first paint. Grow windows on orphan
+      // tool_result / fallback-id edges; only the full-file window may return
+      // null and trigger the loader's locate+parse fallback.
+      final pageSw = Stopwatch()..start();
       final page = await _timed(
         AiHistoryLoadPhase.read,
         () => reader.readLatest(
@@ -964,9 +986,19 @@ final class AiHistoryLoader {
           limit: kSessionHistoryInitialTurns,
         ),
       );
-      if (page == null) return null;
+      final readMs = pageSw.elapsedMilliseconds;
+      if (page == null) {
+        if (kDebugMode) {
+          appLogger.i(
+            '[ai-history-timing] page-first miss cli=${cli.name} '
+            'readMs=$readMs → full parse',
+          );
+        }
+        return null;
+      }
       if (_hasWarmIncremental(cacheKey)) return null;
-      final messages = annotate(page.messages, cli: cli);
+      final pageMessages = page.completeMessages ?? page.messages;
+      final messages = annotate(pageMessages, cli: cli);
       final parentPath = await _parentPathHint(ctx);
       final attachments = await _timed(
         AiHistoryLoadPhase.inflate,
@@ -983,34 +1015,73 @@ final class AiHistoryLoader {
       _messages[cacheKey] = messages;
       _attachments[cacheKey] = attachments;
       _tokens[cacheKey] = token ?? 'changed-$cacheKey';
-      _hasOlder[cacheKey] = page.hasOlder;
-      _cursors[cacheKey] = page.nextCursor;
-      _complete[cacheKey] = false;
+      _hasOlder[cacheKey] = page.completeMessages != null ? false : page.hasOlder;
+      _cursors[cacheKey] =
+          page.completeMessages != null ? null : page.nextCursor;
       _pageContexts[cacheKey] = ctx;
       _pageClis[cacheKey] = cli;
-      _fullIndexFutures.putIfAbsent(
-        cacheKey,
-        () => Future(() {
-          return _loadOnce(
-            session: session,
-            cli: cli,
-            effectiveMemberId: effectiveMemberId,
-            ctx: ctx,
-            cacheKey: cacheKey,
-            force: true,
-            skipPaging: true,
+      // Byte-0 scans already hold the full finalize — do not decode again.
+      final pageComplete =
+          page.completeMessages != null || !page.hasOlder;
+      if (pageComplete) {
+        // Latest page already covered byte 0 — treat as the full index so we
+        // do not decode the same transcript again on a background force load.
+        _markComplete(cacheKey);
+        final complete = AiHistoryLoadResult(
+          messages: messages,
+          cli: cli,
+          subagentAttachments: attachments,
+          hasOlder: false,
+          isComplete: true,
+        );
+        _fullIndexes[cacheKey] = complete;
+        _fullIndexFutures[cacheKey] = Future.value(complete);
+        // Warm the JSONL tail cursor without blocking first paint. Live
+        // refresh / identity-preserving appends need [_tailStates] seeded.
+        if (parentPath.isNotEmpty) {
+          unawaited(
+            _tryIncrementalLoad(
+              cacheKey: cacheKey,
+              cli: cli,
+              ctx: ctx,
+              parentPath: parentPath,
+            ),
           );
-        }),
-      );
+        }
+      } else {
+        _complete[cacheKey] = false;
+        _fullIndexFutures.putIfAbsent(
+          cacheKey,
+          () => Future(() {
+            return _loadOnce(
+              session: session,
+              cli: cli,
+              effectiveMemberId: effectiveMemberId,
+              ctx: ctx,
+              cacheKey: cacheKey,
+              force: true,
+              skipPaging: true,
+            );
+          }),
+        );
+      }
       final published = AiHistoryLoadResult(
         messages: messages,
         cli: cli,
         subagentAttachments: attachments,
-        hasOlder: page.hasOlder,
-        cursor: page.nextCursor,
-        isComplete: false,
+        hasOlder: page.completeMessages != null ? false : page.hasOlder,
+        cursor: page.completeMessages != null ? null : page.nextCursor,
+        isComplete: pageComplete,
       );
       _timings?.record(AiHistoryLoadPhase.firstPublish, Duration.zero);
+      if (kDebugMode) {
+        appLogger.i(
+          '[ai-history-timing] page-first hit cli=${cli.name} '
+          'msgs=${messages.length} hasOlder=${published.hasOlder} '
+          'complete=$pageComplete '
+          'readMs=$readMs totalMs=${pageSw.elapsedMilliseconds}',
+        );
+      }
       return published;
     } on Object catch (e, st) {
       appLogger.w(

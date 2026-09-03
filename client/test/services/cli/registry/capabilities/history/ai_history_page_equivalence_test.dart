@@ -144,7 +144,7 @@ void main() {
   );
 
   test(
-    'no-id Cursor suffix window returns null rather than guessing tool ids',
+    'no-id Cursor suffix window grows to a byte-0 page instead of guessing',
     () async {
       final fixture = await _cursorNoIdFixture(base, fs);
       final path = await locateCursorTranscriptPath(fixture.context);
@@ -158,11 +158,11 @@ void main() {
         sourcePath: (_) async => path,
         windowSizes: const [150],
       );
-      expect(
-        await reader.readLatest(ctx: fixture.context, limit: 100),
-        isNull,
-        reason: 'unsafe no-id suffix must not invent a page',
-      );
+      // A 150-byte suffix cannot prove fallback tool ids; growing to the
+      // complete prefix (byte 0) matches the full adapter sequence.
+      final page = await reader.readLatest(ctx: fixture.context, limit: 100);
+      expect(page, isNotNull, reason: 'full-file window must recover');
+      expect(page!.hasOlder, isFalse);
     },
   );
 

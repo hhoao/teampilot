@@ -26,7 +26,11 @@ final class AiHistoryPage {
     required this.nextCursor,
     required this.sourceToken,
     required this.rebuilt,
-  }) : messages = List<AiMessage>.unmodifiable(messages) {
+    List<AiMessage>? completeMessages,
+  }) : messages = List<AiMessage>.unmodifiable(messages),
+       completeMessages = completeMessages == null
+           ? null
+           : List<AiMessage>.unmodifiable(completeMessages) {
     if (hasOlder && nextCursor == null) {
       throw ArgumentError('hasOlder requires nextCursor');
     }
@@ -37,4 +41,10 @@ final class AiHistoryPage {
   final AiHistoryCursor? nextCursor;
   final String sourceToken;
   final bool rebuilt;
+
+  /// Full finalized transcript when the reader scanned from byte 0.
+  ///
+  /// Lets the loader publish a complete index without decoding the same
+  /// JSONL again after a paginated first-paint window.
+  final List<AiMessage>? completeMessages;
 }

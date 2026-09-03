@@ -269,6 +269,12 @@ void main() {
 
       expect(result.messages, isNotEmpty);
       await loader.fullIndex(sessionId: session.sessionId, memberId: '');
+      // Page-first may skip locate; watch meta still resolves via work FS.
+      final meta = await loader.resolveWatchMeta(
+        launchContext: launchContextFor(session),
+        memberId: '',
+      );
+      expect(meta, isNotNull);
       expect(locatedCtx?.fs, same(workFs));
       expect(locatedCtx?.fs, isNot(same(fs)));
     } finally {
@@ -1025,6 +1031,10 @@ void main() {
     );
     expect(indexed, isNotNull);
     expect(indexed!.messages, hasLength(1));
+    await loader.debugAwaitTailWarm(
+      sessionId: session.sessionId,
+      memberId: '',
+    );
 
     // 追加流式分片 + 元数据行
     await File(transcriptPath).writeAsString(

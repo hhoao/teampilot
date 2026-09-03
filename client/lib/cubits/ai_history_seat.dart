@@ -3,6 +3,7 @@ import 'dart:math' as math;
 
 import 'package:ai_message_core/ai_message_core.dart';
 import 'package:equatable/equatable.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:uuid/uuid.dart';
 
@@ -373,6 +374,7 @@ class AiHistorySeat extends Cubit<AiHistoryState> {
       );
     }
 
+    final loadSw = Stopwatch()..start();
     try {
       final result = await _loader.load(
         session: session,
@@ -383,6 +385,7 @@ class AiHistorySeat extends Cubit<AiHistoryState> {
         force: force,
       );
       if (gen != _loadGeneration || isClosed) return;
+      final loaderMs = loadSw.elapsedMilliseconds;
       _cliMessages = result.messages;
       _lastCli = result.cli;
       _pageCursor = result.cursor;
@@ -404,6 +407,15 @@ class AiHistorySeat extends Cubit<AiHistoryState> {
       );
       if (gen != _loadGeneration || isClosed) return;
       _applyMessages(merged, session.sessionId, memberId);
+      if (kDebugMode && !isRefresh) {
+        appLogger.i(
+          '[ai-history-timing] seat cold-load '
+          'session=${session.sessionId} member=$memberId '
+          'cli=${result.cli.name} msgs=${result.messages.length} '
+          'complete=${result.isComplete} hasOlder=${result.hasOlder} '
+          'loaderMs=$loaderMs totalMs=${loadSw.elapsedMilliseconds}',
+        );
+      }
       if (!result.isComplete) {
         unawaited(_hydrateFullIndex(gen, session.sessionId, memberId));
       }
