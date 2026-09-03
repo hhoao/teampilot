@@ -208,7 +208,7 @@ class _GenerateSettingsDialogState extends State<_GenerateSettingsDialog> {
                 cliItems: _pickerCliItems,
                 presets: widget.presets,
                 onChanged: (value) => setState(() => _generator = value),
-                showManagePresets: false,
+                showManagePresets: true,
                 showSavePreset: false,
                 emptyLabel: l10n.teamGenerateErrorAiNotConfigured,
               ),
@@ -365,7 +365,7 @@ class _GenerateSettingsDialogState extends State<_GenerateSettingsDialog> {
                         row.effort = value.effort;
                       });
                     },
-                    showManagePresets: false,
+                    showManagePresets: true,
                     showSavePreset: false,
                     emptyLabel: l10n.teamGenerateAddModel,
                   ),
@@ -454,7 +454,7 @@ class _GenerateSettingsDialogState extends State<_GenerateSettingsDialog> {
               cliItems: _pickerCliItems,
               presets: widget.presets,
               onChanged: (value) => Navigator.of(dialogContext).pop(value),
-              showManagePresets: false,
+              showManagePresets: true,
               showSavePreset: false,
               emptyLabel: context.l10n.teamGenerateAddModel,
             ),
