@@ -1,6 +1,7 @@
 import '../../models/discoverable_member.dart';
 import '../../models/discoverable_team.dart';
 import '../../models/team_config.dart';
+import '../../models/team_generation_settings.dart';
 import '../../models/team_roster_slot.dart';
 import '../../models/workspace.dart';
 import '../../models/workspace_topology.dart';
@@ -9,6 +10,7 @@ import '../../repositories/session_repository.dart';
 import '../../services/expert_hub/local_expert_store.dart';
 import '../../services/launch/member_placement_save.dart';
 import '../../services/team_generation/models/team_generation_job.dart';
+import '../../services/team_generation/team_generation_context_payload.dart';
 import '../../services/team_generation/team_generation_job_store.dart';
 import '../../utils/logging/logger.dart';
 import '../../utils/team/team_member_naming.dart';
@@ -397,46 +399,96 @@ final class GeneratedTeamCommitService {
     TeamGenerationTeamReservation reservation,
   ) {
     final planJson = job.normalizedPlanJson ?? const {};
+    final mode = job.settings.teamMode;
+    final defaultEntry = job.settings.modelPool.isEmpty
+        ? null
+        : job.settings.modelPool.first;
+    final teamCli = mode == TeamMode.native
+        ? job.settings.nativeCli
+        : (defaultEntry?.preset.cli ?? CliTool.claude);
     final roster = <TeamRosterSlot>[];
     if (planJson['members'] is List) {
       for (final raw in planJson['members'] as List) {
         if (raw is! Map) continue;
         final id = _normalizedMemberId(raw);
         if (id.isEmpty) continue;
-        final explicit = '${raw['presetId'] ?? ''}';
         roster.add(
           TeamRosterSlot(
             id: id,
             expertKey: 'local/generated/${reservation.workflowDigest}/$id',
-            overrides: TeamRosterSlotOverrides(
-              activePresetId: explicit.isEmpty
-                  ? TeamProfile.inheritPresetId
-                  : explicit,
-              replicas: _replicas(raw),
-            ),
+            overrides: _rosterOverrides(job, raw, mode),
           ),
         );
       }
     }
-    final mode = job.settings.teamMode;
-    return TeamProfile(
+    final team = TeamProfile(
       id: reservation.teamId,
       name: reservation.teamName,
       roster: roster,
-      members: _teamMembers(planJson),
-      cli: mode == TeamMode.native
-          ? job.settings.nativeCli
-          : (job.settings.modelPool.isNotEmpty
-                ? job.settings.modelPool.first.preset.cli
-                : CliTool.claude),
+      members: _teamMembers(job, planJson, mode),
+      cli: teamCli,
       teamMode: mode,
-      activePresetId: job.settings.modelPool.isNotEmpty
-          ? job.settings.modelPool.first.preset.id
-          : null,
+      // Pool entries are frozen inline four-tuples, not global `CliPreset`
+      // rows, so they are stamped as custom launch defaults instead.
+      activePresetId: null,
       skillIds: _resourceIdsWithStaged(job, 'skill', 'skillIds'),
       pluginIds: _resourceIdsWithStaged(job, 'plugin', 'pluginIds'),
       mcpServerIds: _resourceIdsWithStaged(job, 'mcp', 'mcpServerIds'),
       createdAt: job.createdAt,
+    );
+    if (defaultEntry == null) return team;
+    return team.withLaunchDefaultsForCli(
+      cli: teamCli,
+      providerId: defaultEntry.preset.provider,
+      model: defaultEntry.preset.model,
+      effort: defaultEntry.preset.effort,
+    );
+  }
+
+  /// Frozen pool entry for a plan `presetId`, or null when the id is empty or
+  /// refers to something outside the frozen pool (e.g. a global preset id).
+  EffectiveGenerateModelPoolEntry? _poolEntry(
+    TeamGenerationJob job,
+    String presetId,
+  ) {
+    final id = presetId.trim();
+    if (id.isEmpty) return null;
+    for (final entry in job.settings.modelPool) {
+      if (effectiveTeamGenerationPoolEntryId(entry).trim() == id ||
+          entry.preset.id.trim() == id ||
+          entry.source.id.trim() == id) {
+        return entry;
+      }
+    }
+    return null;
+  }
+
+  TeamRosterSlotOverrides _rosterOverrides(
+    TeamGenerationJob job,
+    Map raw,
+    TeamMode mode,
+  ) {
+    final explicit = '${raw['presetId'] ?? ''}'.trim();
+    final replicas = _replicas(raw);
+    if (explicit.isEmpty) {
+      return TeamRosterSlotOverrides(
+        activePresetId: TeamProfile.inheritPresetId,
+        replicas: replicas,
+      );
+    }
+    final entry = _poolEntry(job, explicit);
+    if (entry == null) {
+      return TeamRosterSlotOverrides(
+        activePresetId: explicit,
+        replicas: replicas,
+      );
+    }
+    return TeamRosterSlotOverrides(
+      provider: entry.preset.provider,
+      model: entry.preset.model,
+      effort: entry.preset.effort,
+      cli: mode == TeamMode.mixed ? entry.preset.cli : null,
+      replicas: replicas,
     );
   }
 
@@ -449,25 +501,45 @@ final class GeneratedTeamCommitService {
     ];
   }
 
-  List<TeamMemberConfig> _teamMembers(Map<String, Object?> planJson) {
+  List<TeamMemberConfig> _teamMembers(
+    TeamGenerationJob job,
+    Map<String, Object?> planJson,
+    TeamMode mode,
+  ) {
     final members = planJson['members'];
     if (members is! List) return const [];
     return [
       for (final raw in members)
         if (raw is Map)
           if (_normalizedMemberId(raw).isNotEmpty)
-            TeamMemberConfig(
-              id: _normalizedMemberId(raw),
-              name: '${raw['role'] ?? raw['name'] ?? ''}',
-              agentType: '${raw['role'] ?? ''}',
-              responsibilities: '${raw['responsibilities'] ?? ''}',
-              playbook: '${raw['workingMethod'] ?? ''}',
-              replicas: _replicas(raw),
-              activePresetId: '${raw['presetId'] ?? ''}'.isEmpty
-                  ? TeamProfile.inheritPresetId
-                  : '${raw['presetId']}',
-            ),
+            _teamMember(job, raw, mode),
     ];
+  }
+
+  TeamMemberConfig _teamMember(
+    TeamGenerationJob job,
+    Map raw,
+    TeamMode mode,
+  ) {
+    final explicit = '${raw['presetId'] ?? ''}'.trim();
+    final entry = _poolEntry(job, explicit);
+    return TeamMemberConfig(
+      id: _normalizedMemberId(raw),
+      name: '${raw['role'] ?? raw['name'] ?? ''}',
+      agentType: '${raw['role'] ?? ''}',
+      responsibilities: '${raw['responsibilities'] ?? ''}',
+      playbook: '${raw['workingMethod'] ?? ''}',
+      replicas: _replicas(raw),
+      provider: entry?.preset.provider ?? '',
+      model: entry?.preset.model ?? '',
+      effort: entry?.preset.effort ?? '',
+      cli: entry != null && mode == TeamMode.mixed ? entry.preset.cli : null,
+      // Inline pool entries are not global presets: stamp the four-tuple as
+      // custom config so launch resolution never looks up a pool UUID.
+      activePresetId: explicit.isEmpty
+          ? TeamProfile.inheritPresetId
+          : (entry != null ? null : explicit),
+    );
   }
 
   List<String> _resourceIdsWithStaged(
