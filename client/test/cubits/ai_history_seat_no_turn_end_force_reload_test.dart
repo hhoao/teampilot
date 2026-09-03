@@ -90,7 +90,7 @@ void main() {
   });
 
   test(
-    'turn-end settle force-reloads last assistant when cache token is frozen',
+    'flushHeldTip endAwaiting does not softReload under frozen cache token',
     () async {
       locator.emitBundle = true;
       final session = simpleSession();
@@ -106,14 +106,6 @@ void main() {
       expect(seat.state.totalMessageCount, 2);
 
       messagesBySession['sess-a'] = transcript('A', withFinal: true);
-      await seat.softReload();
-      expect(
-        seat.runtime.messages.last.parts.whereType<AiTextPart>().map(
-          (p) => p.text,
-        ),
-        ['tools-A'],
-        reason: 'frozen token must skip live softReload',
-      );
 
       seat.enqueuePendingUser('ask-A');
       seat.applyWorkingSessionSync(sessionWorking: true);
@@ -122,85 +114,23 @@ void main() {
         HistoryAwaitingWorkingAction.clearAwaiting,
       );
       await pumpEventQueue();
+      // Guard against a re-added delayed settle (900ms > former settle window).
+      await Future<void>.delayed(const Duration(milliseconds: 900));
+      await pumpEventQueue();
 
       expect(
         seat.loadedMessages
             .where((m) => m.role == AiRole.assistant)
-            .expand((m) => m.parts.whereType<AiTextPart>().map((p) => p.text)),
-        contains('final-A'),
+            .expand(
+              (m) => m.parts.whereType<AiTextPart>().map((p) => p.text),
+            ),
+        ['tools-A'],
+        reason:
+            'turn-end chrome must not force-reload; live watch owns late flush',
       );
+      expect(seat.state.awaitingAssistant, isFalse);
     },
   );
-
-  test('delayed settle picks up transcript flushed after the idle edge', () async {
-    locator.emitBundle = true;
-    final session = simpleSession();
-    await cubit.load(
-      session: session,
-      memberId: '',
-      launchContext: launchCtx(session),
-    );
-    final seat = cubit.ensureSeat(
-      sessionId: session.sessionId,
-      selectedMemberId: '',
-    );
-
-    seat.enqueuePendingUser('ask-A');
-    seat.applyWorkingSessionSync(sessionWorking: true);
-    seat.applyWorkingSessionSync(sessionWorking: false);
-    await pumpEventQueue();
-    expect(
-      seat.loadedMessages
-          .where((m) => m.role == AiRole.assistant)
-          .expand((m) => m.parts.whereType<AiTextPart>().map((p) => p.text)),
-      ['tools-A'],
-    );
-
-    messagesBySession['sess-a'] = transcript('A', withFinal: true);
-    await Future<void>.delayed(
-      historyTurnEndSettleDelay + const Duration(milliseconds: 50),
-    );
-    await pumpEventQueue();
-    expect(
-      seat.loadedMessages
-          .where((m) => m.role == AiRole.assistant)
-          .expand((m) => m.parts.whereType<AiTextPart>().map((p) => p.text)),
-      contains('final-A'),
-    );
-  });
-
-  test('new user turn cancels delayed turn-end settle', () async {
-    locator.emitBundle = true;
-    final session = simpleSession();
-    await cubit.load(
-      session: session,
-      memberId: '',
-      launchContext: launchCtx(session),
-    );
-    final seat = cubit.ensureSeat(
-      sessionId: session.sessionId,
-      selectedMemberId: '',
-    );
-
-    seat.enqueuePendingUser('ask-A');
-    seat.applyWorkingSessionSync(sessionWorking: true);
-    seat.applyWorkingSessionSync(sessionWorking: false);
-    await pumpEventQueue();
-
-    seat.enqueuePendingUser('next');
-    messagesBySession['sess-a'] = transcript('A', withFinal: true);
-    await Future<void>.delayed(
-      historyTurnEndSettleDelay + const Duration(milliseconds: 50),
-    );
-    await pumpEventQueue();
-    expect(
-      seat.loadedMessages
-          .where((m) => m.role == AiRole.assistant)
-          .expand((m) => m.parts.whereType<AiTextPart>().map((p) => p.text)),
-      ['tools-A'],
-      reason: 'delayed settle must not run after a new turn starts',
-    );
-  });
 }
 
 AiTranscriptBundle _bundleForSession(String sessionId) => AiTranscriptBundle(

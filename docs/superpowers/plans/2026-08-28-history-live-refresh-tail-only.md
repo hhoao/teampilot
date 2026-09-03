@@ -927,7 +927,7 @@ cd /home/hhoa/git/hhoa/teampilot/client && flutter test \
   test/services/ai_history/tool_call_category_annotator_test.dart \
   test/services/conversation_timeline/timeline_merge_test.dart \
   test/services/session/session_history_pagination_test.dart \
-  test/cubits/ai_history_seat_turn_end_settle_test.dart
+  test/cubits/ai_history_seat_no_turn_end_force_reload_test.dart
 ```
 
 Expected: PASS.

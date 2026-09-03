@@ -1,7 +1,8 @@
 # History turn-end settle — Design
 
 **Date:** 2026-08-19
-**Status:** Approved (design B)
+**Status:** Layer 1 approved; Layer 2 **superseded** by
+[2026-09-03-remove-history-turn-end-force-settle-design](2026-09-03-remove-history-turn-end-force-settle-design.md)
 
 ## Problem
 
@@ -59,6 +60,8 @@ No CLI dialect here; `lineAppend` still decides which events become messages
 
 ### Layer 2 — Seat settle (shared)
 
+**Superseded 2026-09-03 — seat force settle removed.**
+
 `AiHistorySeat` owns awaiting. `flushHeldTip(endAwaiting: true)` is the
 single turn-end commit (working falling edge and idle-grace both call it).
 
@@ -82,9 +85,11 @@ preserves today's live-refresh path.
 
 - Tailer: complete JSON at EOF without `\n` is consumed; half-written still
   deferred; appending `\n` after a consumed remainder does not duplicate.
-- Seat: frozen cache token hides a new disk event from `softReload()`;
-  `flushHeldTip(endAwaiting: true)` force-settle reveals it; a new enqueue
-  cancels the delayed settle.
+- Seat (Layer 2 superseded): see
+  [2026-09-03-remove-history-turn-end-force-settle-design](2026-09-03-remove-history-turn-end-force-settle-design.md).
+  `ai_history_seat_no_turn_end_force_reload_test.dart` asserts turn-end chrome
+  does not force-reload under a frozen token; late flush is owned by live watch
+  (`ai_history_live_refresh_controller_test.dart`).
 
 ## Rollout
 

@@ -280,8 +280,10 @@ Do not use wall-clock thresholds.
 
 **Regression**
 
-- Existing last-replaced, append identity, pagination reuse, and
-  turn-end settle tests stay green.
+- Existing last-replaced, append identity, pagination reuse, and the
+  no-force-reload seat (`ai_history_seat_no_turn_end_force_reload_test`) /
+  live-watch late-flush (`ai_history_live_refresh_controller_test`) tests
+  stay green.
 
 ## Acceptance criteria
 

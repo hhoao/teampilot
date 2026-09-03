@@ -58,8 +58,3 @@ HistoryAwaitingWorkingAction resolveHistoryAwaitingWorkingAction({
 /// (permission-only pause, missed latch). Long enough that submit→working lag
 /// does not drop Running chrome. Not used while the seat is still starting.
 const historyAwaitingIdleGrace = Duration(seconds: 4);
-
-/// Delay before the second force-reload after a turn ends, so a CLI that
-/// flushes transcript after PTY quiet is still picked up. Immediate settle
-/// already ran; this is the late-write catch. Not used while awaiting.
-const historyTurnEndSettleDelay = Duration(milliseconds: 800);
