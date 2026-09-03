@@ -393,12 +393,10 @@ class SessionLaunchPipeline {
           workspaceCwd: workspaceCwd,
         );
         if (_host.isClosed) return LaunchCompleted();
-        if (team.teamMode == TeamMode.mixed) {
-          final tab = _activeTab();
-          if (tab != null) {
-            for (final member in validMembers) {
-              _scheduleMemberConnect(team, member, tab);
-            }
+        final tab = _activeTab();
+        if (tab != null) {
+          for (final member in validMembers) {
+            _scheduleMemberConnect(team, member, tab);
           }
         }
       } on Object catch (e, st) {
@@ -545,7 +543,10 @@ class SessionLaunchPipeline {
       _appendLocalTab(team, emitChange: true);
     }
 
-    if (_autoLaunchAllMembersOnConnect()) {
+    if (shouldLaunchAllMembers(
+      team: team,
+      autoLaunchAllMembersOnConnect: _autoLaunchAllMembersOnConnect(),
+    )) {
       final keepId = _selectedMemberIdOrDefault(team);
       if (keepId.isEmpty) {
         _failNoMemberSelected(team);
@@ -581,7 +582,10 @@ class SessionLaunchPipeline {
     if (restartTab != null) {
       _host.clearAgentStatusSession(restartTab.info.id);
     }
-    if (_autoLaunchAllMembersOnConnect()) {
+    if (shouldLaunchAllMembers(
+      team: team,
+      autoLaunchAllMembersOnConnect: _autoLaunchAllMembersOnConnect(),
+    )) {
       final keepId = _selectedMemberIdOrDefault(team);
       final tab = restartTab ?? _activeTab();
       if (tab != null) {
