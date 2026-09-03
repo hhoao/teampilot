@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/cubits/git_graph_cubit.dart';
+import 'package:teampilot/cubits/layout_cubit.dart';
 import 'package:teampilot/l10n/app_localizations.dart';
 import 'package:teampilot/models/git_graph.dart';
 import 'package:teampilot/pages/git_graph/git_graph_toolbar.dart';
@@ -14,8 +15,11 @@ Widget _host(GitGraphCubit cubit, GitGraphState state) => MaterialApp(
   localizationsDelegates: AppLocalizations.localizationsDelegates,
   supportedLocales: AppLocalizations.supportedLocales,
   locale: const Locale('en'),
-  home: BlocProvider.value(
-    value: cubit,
+  home: MultiBlocProvider(
+    providers: [
+      BlocProvider.value(value: cubit),
+      BlocProvider(create: (_) => LayoutCubit()),
+    ],
     child: Scaffold(
       body: Column(
         children: [
@@ -32,8 +36,11 @@ Widget _narrowHost(GitGraphCubit cubit) => MaterialApp(
   localizationsDelegates: AppLocalizations.localizationsDelegates,
   supportedLocales: AppLocalizations.supportedLocales,
   locale: const Locale('en'),
-  home: BlocProvider.value(
-    value: cubit,
+  home: MultiBlocProvider(
+    providers: [
+      BlocProvider.value(value: cubit),
+      BlocProvider(create: (_) => LayoutCubit()),
+    ],
     child: Scaffold(
       body: SizedBox(
         width: 300,

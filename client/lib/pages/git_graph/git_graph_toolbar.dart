@@ -6,6 +6,7 @@ import 'package:shared_ui/shared_ui.dart';
 
 import '../../cubits/git_graph_actions_controller.dart';
 import '../../cubits/git_graph_cubit.dart';
+import '../../cubits/layout_cubit.dart';
 import '../../l10n/l10n_extensions.dart';
 import '../../models/git_graph.dart';
 import 'git_graph_menus.dart';
@@ -21,6 +22,9 @@ class GitGraphToolbar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final l10n = context.l10n;
+    final headerVisible = context.select<LayoutCubit, bool>(
+      (cubit) => cubit.state.preferences.gitGraphHeaderVisible,
+    );
     return Container(
       height: 40,
       padding: const EdgeInsets.symmetric(horizontal: 8),
@@ -77,6 +81,18 @@ class GitGraphToolbar extends StatelessWidget {
           ),
           const SizedBox(width: 8),
           Expanded(child: _searchField(context)),
+          const SizedBox(width: 4),
+          TpIconButton(
+            icon: Icons.view_column_outlined,
+            tooltip: headerVisible
+                ? l10n.gitGraphHideColumnHeader
+                : l10n.gitGraphShowColumnHeader,
+            compact: true,
+            selected: headerVisible,
+            onTap: () => context.read<LayoutCubit>().setGitGraphHeaderVisible(
+              !headerVisible,
+            ),
+          ),
           const SizedBox(width: 4),
           TpIconButton(
             icon: Icons.refresh_rounded,

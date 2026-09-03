@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/cubits/git_graph_cubit.dart';
+import 'package:teampilot/cubits/layout_cubit.dart';
 import 'package:teampilot/l10n/app_localizations.dart';
 import 'package:teampilot/models/git_graph.dart';
 import 'package:teampilot/pages/git_graph/git_graph_pane.dart';
@@ -22,6 +23,7 @@ Widget host(GitGraphCubit cubit, {WorkbenchEditorOpener? opener}) =>
       home: MultiProvider(
         providers: [
           BlocProvider.value(value: cubit),
+          BlocProvider(create: (_) => LayoutCubit()),
           if (opener != null) Provider<WorkbenchEditorOpener>.value(value: opener),
         ],
         child: const Scaffold(
@@ -230,6 +232,7 @@ void main() {
       localizationsDelegates: AppLocalizations.localizationsDelegates,
       home: MultiProvider(
         providers: [
+          BlocProvider(create: (_) => LayoutCubit()),
           Provider<GitRepoStore>.value(value: store),
           ListenableProvider<WorkspaceToolsScopeRegistry>.value(
             value: registry,

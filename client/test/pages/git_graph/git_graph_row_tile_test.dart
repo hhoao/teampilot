@@ -27,7 +27,11 @@ void main() {
       SizedBox(
         height: 26,
         width: 600,
-        child: GitGraphRowTile(row: makeRow('abc'), selected: false, onTap: () {}),
+        child: GitGraphRowTile(
+          row: makeRow('abc'),
+          selected: false,
+          onTap: () {},
+        ),
       ),
     );
     expect(find.text('add feature'), findsOneWidget);
@@ -42,10 +46,13 @@ void main() {
         height: 26,
         width: 600,
         child: GitGraphRowTile(
-          row: makeRow('abc', refs: [
-            const GitRefDecoration(GitRefDecorationKind.head, 'main'),
-            const GitRefDecoration(GitRefDecorationKind.tag, 'v1'),
-          ]),
+          row: makeRow(
+            'abc',
+            refs: [
+              const GitRefDecoration(GitRefDecorationKind.head, 'main'),
+              const GitRefDecoration(GitRefDecorationKind.tag, 'v1'),
+            ],
+          ),
           selected: false,
           onTap: () {},
         ),
@@ -55,7 +62,9 @@ void main() {
     expect(find.text('v1'), findsOneWidget);
   });
 
-  testWidgets('commit row does not overflow with long metadata', (tester) async {
+  testWidgets('commit row does not overflow with long metadata', (
+    tester,
+  ) async {
     await pump(
       tester,
       SizedBox(
@@ -85,6 +94,87 @@ void main() {
     );
 
     expect(tester.takeException(), isNull);
+  });
+
+  testWidgets(
+    'subject keeps remaining space; refs/author do not take equal flex',
+    (tester) async {
+      // Regression: wrapping refs/author/date in Flexible(flex:1) made them
+      // fight the subject Expanded for equal shares, so messages looked uneven.
+      const subject = 'subject-needs-most-of-the-row-width-here';
+      await pump(
+        tester,
+        SizedBox(
+          height: 28,
+          width: 600,
+          child: GitGraphRowTile(
+            row: GitCommitRow(
+              edges: const [GitGraphEdge(0, 0, 0)],
+              node: const GitGraphNode(0, 0),
+              hash: 'abc',
+              parents: const ['p'],
+              authorName: 'Ann',
+              authorEmail: 'ann@x',
+              authorDate: DateTime.utc(2026, 8, 25, 10, 30),
+              subject: subject,
+              refs: const [
+                GitRefDecoration(
+                  GitRefDecorationKind.localBranch,
+                  'feature/agentic-team-generate-long',
+                ),
+              ],
+            ),
+            selected: false,
+            onTap: () {},
+          ),
+        ),
+      );
+
+      final subjectWidth = tester.getSize(find.text(subject)).width;
+      final authorWidth = tester.getSize(find.text('Ann')).width;
+      expect(subjectWidth, greaterThan(250));
+      expect(authorWidth, lessThan(60));
+    },
+  );
+
+  testWidgets('columns are Date then Author then short hash', (tester) async {
+    await pump(
+      tester,
+      SizedBox(
+        height: 28,
+        width: 700,
+        child: GitGraphRowTile(
+          row: makeRow('abcdef12deadbeef'),
+          selected: false,
+          onTap: () {},
+        ),
+      ),
+    );
+    expect(find.text('abcdef12'), findsOneWidget);
+    final dateDx = tester.getTopLeft(find.textContaining('08/25')).dx;
+    final authorDx = tester.getTopLeft(find.text('Ann')).dx;
+    final hashDx = tester.getTopLeft(find.text('abcdef12')).dx;
+    expect(dateDx, lessThan(authorDx));
+    expect(authorDx, lessThan(hashDx));
+  });
+
+  testWidgets('commit hash tap invokes onCommitHashTap', (tester) async {
+    var tapped = false;
+    await pump(
+      tester,
+      SizedBox(
+        height: 28,
+        width: 700,
+        child: GitGraphRowTile(
+          row: makeRow('abcdef12deadbeef'),
+          selected: false,
+          onTap: () {},
+          onCommitHashTap: () => tapped = true,
+        ),
+      ),
+    );
+    await tester.tap(find.text('abcdef12'));
+    expect(tapped, isTrue);
   });
 
   testWidgets('tap fires callback', (tester) async {

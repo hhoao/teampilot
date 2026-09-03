@@ -1,11 +1,13 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:shared_ui/shared_ui.dart';
 
 import '../../cubits/git_graph_actions_controller.dart';
 import '../../cubits/git_graph_cubit.dart';
+import '../../cubits/layout_cubit.dart';
 import '../../l10n/l10n_extensions.dart';
 import '../../models/git_graph.dart';
 import '../../services/git/git_repo_store.dart';
@@ -13,6 +15,9 @@ import '../../services/storage/runtime_context.dart';
 import '../../services/workbench/workbench_editor_opener.dart';
 import '../../services/workspace/workspace_tools_scope.dart';
 import '../../services/workspace/workspace_tools_scope_registry.dart';
+import '../../widgets/app_toast/app_toast.dart';
+import 'git_graph_column_header.dart';
+import 'git_graph_columns.dart';
 import 'git_graph_detail_pane.dart';
 import 'git_graph_menus.dart';
 import 'git_graph_row_tile.dart';
@@ -136,7 +141,6 @@ class _GitGraphPaneState extends State<GitGraphPane> {
     return ctx;
   }
 
-
   /// 祖先已提供 cubit（surface / 测试宿主）时直接复用，不经过 store。
   static GitGraphCubit? _providedCubit(BuildContext context) {
     try {
@@ -154,6 +158,9 @@ class _PaneBody extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final headerVisible = context.select<LayoutCubit, bool>(
+      (cubit) => cubit.state.preferences.gitGraphHeaderVisible,
+    );
     return BlocBuilder<GitGraphCubit, GitGraphState>(
       builder: (context, state) {
         if (!state.gitAvailable && !state.isRefreshing) {
@@ -167,7 +174,16 @@ class _PaneBody extends StatelessWidget {
               child: Column(
                 children: [
                   GitGraphToolbar(state: state),
-                  Expanded(child: _GraphList(state: state, workspaceId: workspaceId)),
+                  if (headerVisible)
+                    GitGraphColumnHeader(
+                      graphWidth: GitGraphColumns.graphWidthFor(maxLane: 0),
+                      onHide: () => context
+                          .read<LayoutCubit>()
+                          .setGitGraphHeaderVisible(false),
+                    ),
+                  Expanded(
+                    child: _GraphList(state: state, workspaceId: workspaceId),
+                  ),
                   if (state.errorMessage != null ||
                       state.currentBranch.isNotEmpty)
                     _StatusBar(state: state),
@@ -264,7 +280,6 @@ class _GraphListState extends State<_GraphList> {
     }
   }
 
-
   @override
   Widget build(BuildContext context) {
     final state = widget.state;
@@ -339,6 +354,7 @@ class _GraphListState extends State<_GraphList> {
           row: row,
           selected: state.selectedHash == row.hash,
           onTap: () => cubit.selectCommit(row.hash),
+          onCommitHashTap: () => unawaited(_copyHash(tileContext, row.hash)),
           onSecondaryTapUp: (details) => unawaited(
             showCommitContextMenu(
               tileContext,
@@ -360,6 +376,12 @@ class _GraphListState extends State<_GraphList> {
         ),
       ),
     );
+  }
+
+  Future<void> _copyHash(BuildContext context, String hash) async {
+    await Clipboard.setData(ClipboardData(text: hash));
+    if (!context.mounted) return;
+    context.showAppToast(context.l10n.gitGraphHashCopied);
   }
 }
 
@@ -400,25 +422,56 @@ class _UncommittedTile extends StatelessWidget {
           child: Row(
             children: [
               SizedBox(
-                width: 24,
-                child: Icon(Icons.edit_note_rounded, size: 18, color: cs.primary),
-              ),
-              const SizedBox(width: 6),
-              Text(
-                context.l10n.gitGraphUncommittedChanges,
-                style: TpTextStyles.of(context)
-                    .xsColored(cs.onSurfaceVariant)
-                    .copyWith(fontStyle: FontStyle.italic),
-              ),
-              const SizedBox(width: 6),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
-                decoration: BoxDecoration(
-                  color: badgeColor,
-                  borderRadius: BorderRadius.circular(8),
+                width: GitGraphColumns.graphWidthFor(maxLane: 0),
+                child: Icon(
+                  Icons.edit_note_rounded,
+                  size: 18,
+                  color: cs.primary,
                 ),
-                child: Text('$dirtyCount', style: TpTextStyles.of(context).xs),
               ),
+              const SizedBox(width: GitGraphColumns.afterGraphGap),
+              Expanded(
+                flex: GitGraphColumns.descriptionFlex,
+                child: Row(
+                  children: [
+                    Text(
+                      context.l10n.gitGraphUncommittedChanges,
+                      style: TpTextStyles.of(context)
+                          .xsColored(cs.onSurfaceVariant)
+                          .copyWith(fontStyle: FontStyle.italic),
+                    ),
+                    const SizedBox(width: 6),
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 5,
+                        vertical: 1,
+                      ),
+                      decoration: BoxDecoration(
+                        color: badgeColor,
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Text(
+                        '$dirtyCount',
+                        style: TpTextStyles.of(context).xs,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: GitGraphColumns.metaGap),
+              const Flexible(
+                flex: GitGraphColumns.dateFlex,
+                fit: FlexFit.loose,
+                child: SizedBox(width: double.infinity),
+              ),
+              const SizedBox(width: GitGraphColumns.metaGap),
+              const Flexible(
+                flex: GitGraphColumns.authorFlex,
+                fit: FlexFit.loose,
+                child: SizedBox(width: double.infinity),
+              ),
+              const SizedBox(width: GitGraphColumns.metaGap),
+              const SizedBox(width: GitGraphColumns.commitWidth),
             ],
           ),
         ),

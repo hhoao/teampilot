@@ -49,6 +49,7 @@ class LayoutPreferences {
     this.membersVisible = true,
     this.fileTreeVisible = true,
     this.gitVisible = true,
+    this.gitGraphHeaderVisible = true,
     this.searchVisible = true,
     this.boardVisible = true,
     this.rightToolsVisible = false,
@@ -103,6 +104,8 @@ class LayoutPreferences {
       membersVisible: json['membersVisible'] as bool? ?? true,
       fileTreeVisible: json['fileTreeVisible'] as bool? ?? true,
       gitVisible: json['gitVisible'] as bool? ?? true,
+      gitGraphHeaderVisible:
+          json['gitGraphHeaderVisible'] as bool? ?? true,
       searchVisible: json['searchVisible'] as bool? ?? true,
       boardVisible: json['boardVisible'] as bool? ?? true,
       rightToolsVisible: json['rightToolsVisible'] as bool? ?? false,
@@ -249,6 +252,7 @@ class LayoutPreferences {
   final bool membersVisible;
   final bool fileTreeVisible;
   final bool gitVisible;
+  final bool gitGraphHeaderVisible;
   final bool searchVisible;
   final bool boardVisible;
   final bool rightToolsVisible;
@@ -304,6 +308,7 @@ class LayoutPreferences {
     bool? membersVisible,
     bool? fileTreeVisible,
     bool? gitVisible,
+    bool? gitGraphHeaderVisible,
     bool? searchVisible,
     bool? boardVisible,
     bool? rightToolsVisible,
@@ -353,6 +358,8 @@ class LayoutPreferences {
       membersVisible: membersVisible ?? this.membersVisible,
       fileTreeVisible: fileTreeVisible ?? this.fileTreeVisible,
       gitVisible: gitVisible ?? this.gitVisible,
+      gitGraphHeaderVisible:
+          gitGraphHeaderVisible ?? this.gitGraphHeaderVisible,
       searchVisible: searchVisible ?? this.searchVisible,
       boardVisible: boardVisible ?? this.boardVisible,
       rightToolsVisible: rightToolsVisible ?? this.rightToolsVisible,
@@ -441,6 +448,7 @@ class LayoutPreferences {
       membersVisible: true,
       fileTreeVisible: false,
       gitVisible: gitVisible,
+      gitGraphHeaderVisible: gitGraphHeaderVisible,
       searchVisible: searchVisible,
       boardVisible: boardVisible,
       rightToolsVisible: rightToolsVisible,
@@ -492,6 +500,7 @@ class LayoutPreferences {
       'membersVisible': membersVisible,
       'fileTreeVisible': fileTreeVisible,
       'gitVisible': gitVisible,
+      'gitGraphHeaderVisible': gitGraphHeaderVisible,
       'searchVisible': searchVisible,
       'boardVisible': boardVisible,
       'rightToolsVisible': rightToolsVisible,

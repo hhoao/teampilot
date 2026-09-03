@@ -15266,6 +15266,48 @@ abstract class AppLocalizations {
   /// **'Resolve the conflicts, stage the files, then commit to continue.'**
   String get gitGraphConflictHint;
 
+  /// No description provided for @gitGraphColumnGraph.
+  ///
+  /// In en, this message translates to:
+  /// **'Graph'**
+  String get gitGraphColumnGraph;
+
+  /// No description provided for @gitGraphColumnDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Description'**
+  String get gitGraphColumnDescription;
+
+  /// No description provided for @gitGraphColumnDate.
+  ///
+  /// In en, this message translates to:
+  /// **'Date'**
+  String get gitGraphColumnDate;
+
+  /// No description provided for @gitGraphColumnAuthor.
+  ///
+  /// In en, this message translates to:
+  /// **'Author'**
+  String get gitGraphColumnAuthor;
+
+  /// No description provided for @gitGraphColumnCommit.
+  ///
+  /// In en, this message translates to:
+  /// **'Commit'**
+  String get gitGraphColumnCommit;
+
+  /// No description provided for @gitGraphShowColumnHeader.
+  ///
+  /// In en, this message translates to:
+  /// **'Show column header'**
+  String get gitGraphShowColumnHeader;
+
+  /// No description provided for @gitGraphHideColumnHeader.
+  ///
+  /// In en, this message translates to:
+  /// **'Hide column header'**
+  String get gitGraphHideColumnHeader;
+
   /// No description provided for @connectSettingsTitle.
   ///
   /// In en, this message translates to:

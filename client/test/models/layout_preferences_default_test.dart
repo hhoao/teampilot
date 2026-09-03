@@ -339,6 +339,16 @@ void main() {
     );
   });
 
+  test('gitGraphHeaderVisible defaults true and round-trips', () {
+    expect(LayoutPreferences.fromJson(const {}).gitGraphHeaderVisible, isTrue);
+    final parsed = LayoutPreferences.fromJson(const {
+      'gitGraphHeaderVisible': false,
+    });
+    expect(parsed.gitGraphHeaderVisible, isFalse);
+    final restored = LayoutPreferences.fromJson(parsed.toJson());
+    expect(restored.gitGraphHeaderVisible, isFalse);
+  });
+
   test('autoOpenSubagentPreview defaults false and round-trips', () {
     expect(const LayoutPreferences().autoOpenSubagentPreview, isFalse);
     expect(

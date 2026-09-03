@@ -8221,6 +8221,27 @@ class AppLocalizationsZh extends AppLocalizations {
   String get gitGraphConflictHint => '请先解决冲突并暂存相关文件，然后提交以继续。';
 
   @override
+  String get gitGraphColumnGraph => '图';
+
+  @override
+  String get gitGraphColumnDescription => '说明';
+
+  @override
+  String get gitGraphColumnDate => '日期';
+
+  @override
+  String get gitGraphColumnAuthor => '作者';
+
+  @override
+  String get gitGraphColumnCommit => '提交';
+
+  @override
+  String get gitGraphShowColumnHeader => '显示列头';
+
+  @override
+  String get gitGraphHideColumnHeader => '隐藏列头';
+
+  @override
   String get connectSettingsTitle => '手机';
 
   @override

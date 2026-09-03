@@ -8585,6 +8585,27 @@ class AppLocalizationsEn extends AppLocalizations {
       'Resolve the conflicts, stage the files, then commit to continue.';
 
   @override
+  String get gitGraphColumnGraph => 'Graph';
+
+  @override
+  String get gitGraphColumnDescription => 'Description';
+
+  @override
+  String get gitGraphColumnDate => 'Date';
+
+  @override
+  String get gitGraphColumnAuthor => 'Author';
+
+  @override
+  String get gitGraphColumnCommit => 'Commit';
+
+  @override
+  String get gitGraphShowColumnHeader => 'Show column header';
+
+  @override
+  String get gitGraphHideColumnHeader => 'Hide column header';
+
+  @override
   String get connectSettingsTitle => 'Phone';
 
   @override

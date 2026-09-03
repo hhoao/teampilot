@@ -92,6 +92,9 @@ class LayoutCubit extends Cubit<LayoutState> {
   Future<void> setPreset(LayoutPreset preset) =>
       _save(state.preferences.copyWith(preset: preset));
 
+  Future<void> setGitGraphHeaderVisible(bool visible) =>
+      _save(state.preferences.copyWith(gitGraphHeaderVisible: visible));
+
   Future<void> setRegionVisibility({
     required bool appRailVisible,
     required bool membersVisible,
