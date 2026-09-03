@@ -27,6 +27,11 @@ void main() {
   );
 
   test(
+    'send_message materializes declared worker and doorbells mail on fresh PTY',
+    MixedTeamTaskScenario.runDoorbellMaterialize,
+  );
+
+  test(
     'worker update_task(done) after wait_for_message claim over real Claude PTYs',
     MixedTeamTaskScenario.runTaskCompleteCycle,
   );

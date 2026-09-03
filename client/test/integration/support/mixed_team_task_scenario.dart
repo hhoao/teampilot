@@ -2,6 +2,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:mock_model_gateway/core/turns.dart';
 import 'package:teampilot/cubits/member_presence_cubit.dart';
 import 'package:mock_model_gateway/scenarios/doorbell_dispatch_mixed_claude.dart';
+import 'package:mock_model_gateway/scenarios/doorbell_materialize_mixed_claude.dart';
 import 'package:mock_model_gateway/scenarios/mail_priority_mixed_claude.dart';
 import 'package:mock_model_gateway/scenarios/task_complete_mixed_claude.dart';
 import 'package:mock_model_gateway/scenarios/task_dispatch_mixed_claude.dart';
@@ -10,6 +11,7 @@ import 'package:teampilot/models/app_session.dart';
 import 'package:teampilot/models/workspace_folder.dart';
 import 'package:teampilot/repositories/session_repository.dart';
 import 'package:teampilot/services/storage/app_storage.dart';
+import 'package:teampilot/services/team_bus/agent_node.dart';
 
 import '../../support/post_frame_test_harness.dart';
 import 'bus_mail_assertions.dart';
@@ -130,6 +132,60 @@ abstract final class MixedTeamTaskScenario {
         workspaceId: ctx.session.workspaceId,
         sessionId: ctx.session.sessionId,
         title: 'doorbell-widget',
+      );
+    },
+  );
+
+  /// Lead-only warm PTY; worker stays declared until `send_message` materializes
+  /// it and rings the mail doorbell on the fresh composer (no worker kickoff).
+  static Future<void> runDoorbellMaterialize() => run(
+    scenarios: doorbellMaterializeMixedClaudeScenarios(),
+    readyMemberIds: const ['team-lead'],
+    afterReady: (ctx) async {
+      final bus = ctx.harness.tabBus(ctx.session.sessionId);
+      final tab = ctx.cubit.tabStore.openTabBySessionId(ctx.session.sessionId)!;
+      expect(
+        bus?.memberById(kWorkerMember.id)?.lifecycle,
+        MemberLifecycle.declared,
+        reason: 'worker must still be declared before materialize send',
+      );
+      expect(
+        tab.memberShells.containsKey(kWorkerMember.id),
+        isFalse,
+        reason: 'must not lazy-select/spawn worker before lead send',
+      );
+    },
+    kickoff: (ctx) => ctx.harness.submitLeaderKickoffOnly(
+      ctx.cubit,
+      postFrame: ctx.postFrame,
+      kickoff: doorbellMaterializeLeaderKickoff,
+    ),
+    verify: (ctx) async {
+      await ctx.harness.waitForWorkerMail(
+        workspaceId: ctx.session.workspaceId,
+        sessionId: ctx.session.sessionId,
+        fromMemberId: kLeadMember.id,
+        content: doorbellMaterializeMail,
+      );
+      await ctx.harness.waitForLeaderMail(
+        workspaceId: ctx.session.workspaceId,
+        sessionId: ctx.session.sessionId,
+        fromMemberId: kWorkerMember.id,
+        content: doorbellMaterializeAck,
+      );
+
+      final bus = ctx.harness.tabBus(ctx.session.sessionId);
+      final worker = bus?.memberById(kWorkerMember.id);
+      expect(worker?.lifecycle, MemberLifecycle.running);
+      expect(
+        worker?.inbox.isEmpty,
+        isTrue,
+        reason: 'doorbell path must let worker read_messages consume mail',
+      );
+      expect(
+        bus?.pendingDoorbellNoticeFor(kWorkerMember.id),
+        isNull,
+        reason: 'mail doorbell obligation clears after consume',
       );
     },
   );
@@ -396,11 +452,15 @@ abstract final class MixedTeamTaskScenario {
       );
 
   /// Shared L2 session bootstrap (real Claude PTY + mock model gateway).
+  ///
+  /// [readyMemberIds] defaults to lead+worker. Pass lead-only to keep the
+  /// worker `declared` until TeamBus materialize (doorbell-on-spawn path).
   static Future<void> run({
     required Map<String, MockScenario> scenarios,
     MixedTeamKickoff? kickoff,
     Future<void> Function(MixedTeamScenarioCtx ctx)? afterReady,
     Future<void> Function(MixedTeamScenarioCtx ctx)? verify,
+    List<String> readyMemberIds = const ['team-lead', 'developer'],
     bool withPresence = false,
     bool Function()? reclaimIdleTerminalsEnabled,
     int Function()? reclaimIdleTerminalAfterSeconds,
@@ -451,10 +511,7 @@ abstract final class MixedTeamTaskScenario {
       );
       await drainPendingAsyncWork();
       await postFrame.flush();
-      await harness.waitUntilMembersReady(cubit, [
-        kLeadMember.id,
-        kWorkerMember.id,
-      ]);
+      await harness.waitUntilMembersReady(cubit, readyMemberIds);
 
       final ctx = MixedTeamScenarioCtx(
         harness: harness,

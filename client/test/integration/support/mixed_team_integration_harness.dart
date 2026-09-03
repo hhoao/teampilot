@@ -507,6 +507,21 @@ class MixedTeamIntegrationHarness {
     await _submitWorkerKickoff(cubit, kickoff: kickoff);
   }
 
+  /// Leader-only kickoff — does not [selectMember] the worker (avoids lazy
+  /// spawn before TeamBus materialize+doorbell).
+  Future<void> submitLeaderKickoffOnly(
+    ChatCubit cubit, {
+    PostFrameTestHarness? postFrame,
+    String kickoff = 'Coordinate the team.',
+  }) async {
+    _resetMockScenarios();
+    await _submitLeaderKickoff(
+      cubit,
+      postFrame: postFrame,
+      kickoff: kickoff,
+    );
+  }
+
   Future<void> _submitWorkerKickoff(
     ChatCubit cubit, {
     String kickoff = 'Start idle loop.',
