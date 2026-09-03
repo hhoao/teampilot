@@ -1593,19 +1593,15 @@ void main() {
         'Team Cursor',
       );
       await _scrollToEditorBottom(tester);
-      await tester.runAsync(() async {
-        tester
-            .widget<TpButton>(find.byKey(const Key('managed-provider-save')))
-            .onPressed!
-            .call();
-        await Future<void>.delayed(const Duration(milliseconds: 100));
-      });
+      await tester.tap(find.byKey(const Key('managed-provider-save')));
+      await tester.pumpAndSettle();
+      await tester.runAsync(
+        () => Future<void>.delayed(const Duration(milliseconds: 50)),
+      );
+      // Advance past the saved-success toast auto-dismiss timer.
+      await tester.pump(const Duration(seconds: 3));
       await tester.pumpAndSettle();
 
-      debugPrint('FORM ERROR: ' + (find.byKey(const Key('managed-provider-editor-error')).evaluate().isEmpty ? 'none' : tester.widget<Text>(find.descendant(of: find.byKey(const Key('managed-provider-editor-error')), matching: find.byType(Text))).data!));
-      debugPrint('PROVIDERS: ' + providerCubit.state.providers.length.toString());
-      final errorTexts = find.byWidgetPredicate((w) => w is Text && (w.data?.contains('Enter ') == true || w.data?.contains('required') == true || w.data?.contains('missing') == true));
-      debugPrint('FIELD ERRORS: ' + tester.widgetList<Text>(errorTexts).map((t) => t.data).join(' | '));
       final cursorRows = appProviderCubit.state.providersFor(CliTool.cursor);
       expect(
         cursorRows.any((row) => row.id.startsWith('cursor-mp-')),

@@ -71,6 +71,11 @@ class _ManagedProviderEditorPageState extends State<ManagedProviderEditorPage> {
 
   ManagedProvider? get _provider => widget.provider;
 
+  /// Stable id for the entry across the editor session: new entries get it
+  /// at editor open so the per-entry CLI credential row can bind (and be
+  /// logged into) even before the first save.
+  late final String _entryId = _provider?.id ?? 'managed-${DateTime.now().millisecondsSinceEpoch}';
+
   @override
   void initState() {
     super.initState();
@@ -233,6 +238,8 @@ class _ManagedProviderEditorPageState extends State<ManagedProviderEditorPage> {
                 child: _isCliCredentialSource
                     ? ManagedProviderOfficialCredentials(
                         credentialSource: _credentialSource.text.trim(),
+                        managedProviderId: _entryId,
+                        managedProviderName: _name.text.trim(),
                       )
                     : ManagedProviderCredentialsSection(
                         schema: _schema,
@@ -581,7 +588,7 @@ class _ManagedProviderEditorPageState extends State<ManagedProviderEditorPage> {
     final now = DateTime.now().millisecondsSinceEpoch;
     final current = _provider;
     final shouldRunFirstQuery = current == null && _schema.firstQuery;
-    final providerId = current?.id ?? 'managed-$now';
+    final providerId = _entryId;
     final credentialField = _credentialField.text.trim();
     var credentialRef = _credentialRef.text.trim();
     final credentialSecret = _credentialSecret.text.trim();
