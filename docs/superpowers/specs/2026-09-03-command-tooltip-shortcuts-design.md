@@ -94,8 +94,8 @@ without restarting the app.
 ## Testing
 
 1. **`command_tooltip_test.dart`**
-   - Default catalog binding appends formatted chord
-   - Unbound / empty overrides → label only
+   - Default catalog binding (no overrides) appends formatted chord
+   - Explicit unbind override for the command → label only
    - Missing `ShortcutCubit` → label only
    - Double-tap Shift formats via `formatKeyChord`
 2. **Widget tests** for sidebar / right-tools toggles: tooltip message
