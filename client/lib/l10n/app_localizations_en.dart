@@ -8716,6 +8716,24 @@ class AppLocalizationsEn extends AppLocalizations {
   String get teamGenerateSettingsTitle => 'Generate and launch settings';
 
   @override
+  String get teamGenerateSettingsSubtitle =>
+      'How Team Builder plans the roster, and which model configurations it may assign.';
+
+  @override
+  String get teamGenerateModelPoolHint =>
+      'Rank 1 is strongest. Prefer earlier entries for the team lead.';
+
+  @override
+  String get teamGenerateEmptyPool =>
+      'No configurations yet. Add the strongest one first.';
+
+  @override
+  String get teamGeneratePickPreset => 'Choose a preset';
+
+  @override
+  String get teamGenerateLoading => 'Loading settings…';
+
+  @override
   String get teamGenerateGeneratorModel => 'Generator model';
 
   @override

@@ -19,7 +19,7 @@ Users want both pool entries and the generator to work like the Simple compose c
 - Pool entries store **inline** `cli / provider / model / effort` (plus description/tags), not a live preset binding.
 - Selecting a preset **snapshots** into that four-tuple immediately.
 - Generator model uses the **same picker UX** and saves as inline `AiFeatureSetting` with `activePresetId: null`.
-- Native team mode: pickers only expose the frozen/selected `nativeCli`.
+- Native team mode: **model-pool** pickers only expose the frozen/selected `nativeCli`. The **generator** picker stays on all launchable CLIs (it builds the plan; it is not a roster member).
 - Extract a reusable **`LaunchFourTuplePicker`** so settings (and later Simple compose) share one control.
 
 ## Non-goals
@@ -37,7 +37,7 @@ Users want both pool entries and the generator to work like the Simple compose c
 | Preset selection | Snapshot at pick time; do not keep `activePresetId` / live bind |
 | Generator storage | Same inline four-tuple into `AiFeatureId.teamGenerate` |
 | UI approach | Extract `LaunchFourTuplePicker` wrapping existing cascade menu helpers |
-| Native CLI filter | `cliItems = [nativeCli]` when `teamMode == native` |
+| Native CLI filter | Pool `cliItems = [nativeCli]` when `teamMode == native`; generator unrestricted among launchable |
 | Plan wire field | Keep member `presetId` name; meaning = frozen pool entry `id` |
 
 ## Data model
@@ -105,7 +105,8 @@ Simple compose is **not** required to switch in this PR.
 
 ### Native mode
 
-- When `teamMode == native`, picker `cliItems = [nativeCli]`.
+- When `teamMode == native`, **pool** picker `cliItems = [nativeCli]`.
+- Generator picker always uses launchable CLIs (not tied to native mode).
 - Changing `nativeCli` keeps existing hide/effective-pool filtering for non-matching rows.
 - Native CLI dropdown remains limited to `registry.nativeTeamLaunchable`.
 
@@ -133,6 +134,6 @@ Simple compose is **not** required to switch in this PR.
 ## Success criteria
 
 - Pool can add a custom model without creating a named preset.
-- Native mode cannot pick another CLI in pool/generator pickers.
+- Native mode cannot pick another CLI in **pool** pickers; generator may still use any launchable CLI.
 - Generator uses the cascade picker and persists inline config.
 - Legacy settings load; generate flow still validates against frozen pool ids.

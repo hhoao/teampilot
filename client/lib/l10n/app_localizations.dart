@@ -15512,6 +15512,36 @@ abstract class AppLocalizations {
   /// **'Generate and launch settings'**
   String get teamGenerateSettingsTitle;
 
+  /// No description provided for @teamGenerateSettingsSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'How Team Builder plans the roster, and which model configurations it may assign.'**
+  String get teamGenerateSettingsSubtitle;
+
+  /// No description provided for @teamGenerateModelPoolHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Rank 1 is strongest. Prefer earlier entries for the team lead.'**
+  String get teamGenerateModelPoolHint;
+
+  /// No description provided for @teamGenerateEmptyPool.
+  ///
+  /// In en, this message translates to:
+  /// **'No configurations yet. Add the strongest one first.'**
+  String get teamGenerateEmptyPool;
+
+  /// No description provided for @teamGeneratePickPreset.
+  ///
+  /// In en, this message translates to:
+  /// **'Choose a preset'**
+  String get teamGeneratePickPreset;
+
+  /// No description provided for @teamGenerateLoading.
+  ///
+  /// In en, this message translates to:
+  /// **'Loading settings…'**
+  String get teamGenerateLoading;
+
   /// No description provided for @teamGenerateGeneratorModel.
   ///
   /// In en, this message translates to:

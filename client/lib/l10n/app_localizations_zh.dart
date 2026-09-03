@@ -8344,6 +8344,21 @@ class AppLocalizationsZh extends AppLocalizations {
   String get teamGenerateSettingsTitle => '生成并启动设置';
 
   @override
+  String get teamGenerateSettingsSubtitle => '设定团队构建器如何规划阵容，以及可分配的模型配置。';
+
+  @override
+  String get teamGenerateModelPoolHint => '排名 1 最强。关键角色（如 team-lead）优先用靠前的配置。';
+
+  @override
+  String get teamGenerateEmptyPool => '还没有配置。请先添加最强的一项。';
+
+  @override
+  String get teamGeneratePickPreset => '选择预设';
+
+  @override
+  String get teamGenerateLoading => '正在加载设置…';
+
+  @override
   String get teamGenerateGeneratorModel => '生成模型';
 
   @override

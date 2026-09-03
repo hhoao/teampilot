@@ -1,49 +1,30 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/models/team_config.dart';
-import 'package:teampilot/pages/home_workspace/workspace/workspace_landing_generate_settings_dialog.dart';
-import 'package:teampilot/widgets/compose/compose_model_preset_chip.dart';
+import 'package:teampilot/services/cli/registry/cli_tool_registry.dart';
 
 void main() {
-  const codexGenerator = SimpleLaunchFourTuple(
-    cli: CliTool.codex,
-    providerId: 'openai',
-    modelId: 'gpt-5',
-    effort: 'high',
-  );
-  const flashskyGenerator = SimpleLaunchFourTuple(
-    cli: CliTool.flashskyai,
-    providerId: 'anthropic',
-    modelId: 'claude-sonnet',
-    effort: '',
-  );
+  test('native team launchable excludes non-native clis like codex', () {
+    final registry = CliToolRegistry.builtIn();
+    final nativeIds = {
+      for (final definition in registry.nativeTeamLaunchable) definition.id,
+    };
 
-  test('native mode clears a generator from another cli', () {
-    final constrained = constrainGenerateSettingsGenerator(
-      generator: codexGenerator,
-      teamMode: TeamMode.native,
-      nativeCli: CliTool.claude,
-    );
-
-    expect(constrained, isNull);
+    expect(nativeIds, contains(CliTool.claude));
+    expect(nativeIds, isNot(contains(CliTool.codex)));
+    expect(nativeIds, isNot(contains(CliTool.cursor)));
   });
 
-  test('native mode keeps a generator from nativeCli', () {
-    final constrained = constrainGenerateSettingsGenerator(
-      generator: flashskyGenerator,
-      teamMode: TeamMode.native,
-      nativeCli: CliTool.flashskyai,
-    );
+  test('generator may use any launchable cli even when native team is locked', () {
+    final registry = CliToolRegistry.builtIn();
+    final launchable = {
+      for (final definition in registry.launchable) definition.id,
+    };
+    final native = {
+      for (final definition in registry.nativeTeamLaunchable) definition.id,
+    };
 
-    expect(constrained, same(flashskyGenerator));
-  });
-
-  test('mixed mode keeps a generator from any cli', () {
-    final constrained = constrainGenerateSettingsGenerator(
-      generator: codexGenerator,
-      teamMode: TeamMode.mixed,
-      nativeCli: CliTool.claude,
-    );
-
-    expect(constrained, same(codexGenerator));
+    // Product rule: pool is native-filtered; generator is not.
+    expect(launchable.difference(native), isNotEmpty);
+    expect(launchable, contains(CliTool.codex));
   });
 }
