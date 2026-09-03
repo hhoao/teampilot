@@ -1,44 +1,36 @@
 import '../../../models/managed_provider.dart';
 import '../../io/filesystem.dart';
-import '../managed_provider_secret_store.dart';
-import 'official_credential_files.dart';
 import '../cli_credential_source.dart';
+import '../managed_provider_usage_adapter.dart';
+import 'official_credential_files.dart';
 
 class CodexOfficialSubscriptionAuthReader
     implements OfficialSubscriptionAuthReader {
   CodexOfficialSubscriptionAuthReader({
     required Filesystem fs,
     required String basePath,
-    required String Function() homeDirectory,
   }) : _fs = fs,
-       _basePath = basePath,
-       _homeDirectory = homeDirectory;
+       _basePath = basePath;
 
   final Filesystem _fs;
   final String _basePath;
-  final String Function() _homeDirectory;
 
   @override
   Future<ProviderCredentialScope?> read(ManagedProvider provider) async {
-    final paths = [
-      _fs.pathContext.join(
-        _basePath,
-        'providers',
-        'codex',
-        'openai-official',
-        'auth.json',
-      ),
-      _fs.pathContext.join(_homeDirectory().trim(), '.codex', 'auth.json'),
-    ];
-    for (final path in paths) {
-      final json = await readOfficialCredentialJson(_fs, path);
-      final tokens = _codexTokens(json);
-      if (tokens != null) {
-        return ManagedProviderAccessTokenScope(
-          accessToken: tokens.accessToken,
-          accountId: tokens.accountId,
-        );
-      }
+    final path = _fs.pathContext.join(
+      _basePath,
+      'providers',
+      'codex',
+      provider.id.trim(),
+      'auth.json',
+    );
+    final json = await readOfficialCredentialJson(_fs, path);
+    final tokens = _codexTokens(json);
+    if (tokens != null) {
+      return ManagedProviderAccessTokenScope(
+        accessToken: tokens.accessToken,
+        accountId: tokens.accountId,
+      );
     }
     missingOfficialCredential();
   }

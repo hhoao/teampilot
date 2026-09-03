@@ -4,30 +4,33 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/models/managed_provider.dart';
 import 'package:teampilot/services/provider_usage/adapters/claude_official_subscription_auth.dart';
 import 'package:teampilot/services/provider_usage/adapters/codex_official_subscription_auth.dart';
-import 'package:teampilot/services/provider_usage/cli_credential_source.dart';
+import 'package:teampilot/services/provider_usage/adapters/cursor_official_subscription_auth.dart';
+import 'package:teampilot/services/cli/cursor/provider/cursor_home_layout.dart';
 import 'package:teampilot/services/provider_usage/managed_provider_usage_adapter.dart';
 
 import '../../support/in_memory_filesystem.dart';
 
-ManagedProvider _provider(String adapterId) => ManagedProvider(
-  id: 'p1',
+ManagedProvider _provider(String rowId) => ManagedProvider(
+  id: rowId,
   name: 'Official',
   kind: ManagedProviderKind.subscriptionQuota,
-  adapterId: adapterId,
+  adapterId: 'http-json',
 );
 
 void main() {
   late InMemoryFilesystem fs;
+  late CursorHomeLayout layout;
 
   setUp(() {
     fs = InMemoryFilesystem();
+    layout = CursorHomeLayout(pathContext: fs.pathContext);
   });
 
-  test('Claude auth prefers the isolated TeamPilot credential file', () async {
+  test('Claude auth reads only the per-entry isolated credential file', () async {
     await fs.writeString(
-      '/tp/providers/claude/claude-official/.credentials.json',
+      '/tp/providers/claude/claude-mp-managed-1/.credentials.json',
       jsonEncode({
-        'claudeAiOauth': {'accessToken': 'isolated-token'},
+        'claudeAiOauth': {'accessToken': 'per-entry-token'},
       }),
     );
     await fs.writeString(
@@ -40,14 +43,13 @@ void main() {
     final scope = await ClaudeOfficialSubscriptionAuthReader(
       fs: fs,
       basePath: '/tp',
-      homeDirectory: () => '/home',
-    ).read(_provider('official-claude-subscription'));
+    ).read(_provider('claude-mp-managed-1'));
 
-    expect(scope?.valueFor('accessToken'), 'isolated-token');
-    expect(scope.toString(), isNot(contains('isolated-token')));
+    expect(scope?.valueFor('accessToken'), 'per-entry-token');
+    expect(scope.toString(), isNot(contains('per-entry-token')));
   });
 
-  test('Claude auth falls back to ~/.claude credentials', () async {
+  test('Claude auth never falls back to ~/.claude credentials', () async {
     await fs.writeString(
       '/home/.claude/.credentials.json',
       jsonEncode({
@@ -55,48 +57,9 @@ void main() {
       }),
     );
 
-    final scope = await ClaudeOfficialSubscriptionAuthReader(
-      fs: fs,
-      basePath: '/tp',
-      homeDirectory: () => '/home',
-    ).read(_provider('official-claude-subscription'));
-
-    expect(scope?.valueFor('accessToken'), 'global-token');
-  });
-
-  test('Codex auth skips non-chatgpt auth_mode files', () async {
-    await fs.writeString(
-      '/tp/providers/codex/openai-official/auth.json',
-      jsonEncode({
-        'auth_mode': 'apikey',
-        'tokens': {'access_token': 'api-mode'},
-      }),
-    );
-    await fs.writeString(
-      '/home/.codex/auth.json',
-      jsonEncode({
-        'auth_mode': 'chatgpt',
-        'tokens': {'access_token': 'oauth-token', 'account_id': 'acct-1'},
-      }),
-    );
-
-    final scope = await CodexOfficialSubscriptionAuthReader(
-      fs: fs,
-      basePath: '/tp',
-      homeDirectory: () => '/home',
-    ).read(_provider('official-codex-subscription'));
-
-    expect(scope?.valueFor('accessToken'), 'oauth-token');
-    expect(scope?.valueFor('accountId'), 'acct-1');
-  });
-
-  test('missing official auth is a typed secret-free failure', () async {
     await expectLater(
-      ClaudeOfficialSubscriptionAuthReader(
-        fs: fs,
-        basePath: '/tp',
-        homeDirectory: () => '/home',
-      ).read(_provider('official-claude-subscription')),
+      ClaudeOfficialSubscriptionAuthReader(fs: fs, basePath: '/tp')
+          .read(_provider('claude-mp-managed-1')),
       throwsA(
         isA<ManagedProviderUsageQueryError>().having(
           (error) => error.code,
@@ -105,5 +68,110 @@ void main() {
         ),
       ),
     );
+  });
+
+  test('Codex auth reads only the per-entry isolated auth.json', () async {
+    await fs.writeString(
+      '/tp/providers/codex/codex-mp-managed-1/auth.json',
+      jsonEncode({
+        'auth_mode': 'chatgpt',
+        'tokens': {'access_token': 'per-entry', 'account_id': 'acct-1'},
+      }),
+    );
+    await fs.writeString(
+      '/home/.codex/auth.json',
+      jsonEncode({
+        'auth_mode': 'chatgpt',
+        'tokens': {'access_token': 'global', 'account_id': 'acct-g'},
+      }),
+    );
+
+    final scope = await CodexOfficialSubscriptionAuthReader(
+      fs: fs,
+      basePath: '/tp',
+    ).read(_provider('codex-mp-managed-1'));
+
+    expect(scope?.valueFor('accessToken'), 'per-entry');
+    expect(scope?.valueFor('accountId'), 'acct-1');
+  });
+
+  test('Codex auth never falls back to ~/.codex and skips apikey mode',
+      () async {
+    await fs.writeString(
+      '/home/.codex/auth.json',
+      jsonEncode({
+        'auth_mode': 'apikey',
+        'tokens': {'access_token': 'api-mode'},
+      }),
+    );
+
+    await expectLater(
+      CodexOfficialSubscriptionAuthReader(fs: fs, basePath: '/tp')
+          .read(_provider('codex-mp-managed-1')),
+      throwsA(
+        isA<ManagedProviderUsageQueryError>().having(
+          (error) => error.code,
+          'code',
+          ManagedProviderUsageQueryErrorCode.missingCredential,
+        ),
+      ),
+    );
+  });
+
+  test('Cursor auth reads only the per-entry isolated auth.json', () async {
+    final home = '/tp/providers/cursor/cursor-mp-managed-1/home';
+    await fs.writeString(
+      layout.authJson(home),
+      jsonEncode({'accessToken': 'per-entry-cursor', 'userId': 'user-1'}),
+    );
+    // Global IDE login exists — must be ignored.
+    await fs.writeString(
+      layout.authJson('/home'),
+      jsonEncode({'accessToken': 'global-cursor'}),
+    );
+
+    final scope = await CursorOfficialSubscriptionAuthReader(
+      fs: fs,
+      basePath: '/tp',
+    ).read(_provider('cursor-mp-managed-1'));
+
+    expect(scope?.valueFor('accessToken'), 'per-entry-cursor');
+    expect(scope?.valueFor('accountId'), 'user-1');
+  });
+
+  test('Cursor auth never falls back to global cursor auth.json', () async {
+    await fs.writeString(
+      layout.authJson('/home'),
+      jsonEncode({'accessToken': 'global-cursor'}),
+    );
+
+    await expectLater(
+      CursorOfficialSubscriptionAuthReader(fs: fs, basePath: '/tp')
+          .read(_provider('cursor-mp-managed-1')),
+      throwsA(
+        isA<ManagedProviderUsageQueryError>().having(
+          (error) => error.code,
+          'code',
+          ManagedProviderUsageQueryErrorCode.missingCredential,
+        ),
+      ),
+    );
+  });
+
+  test('Legacy shared rows still resolve through the isolated directory',
+      () async {
+    await fs.writeString(
+      '/tp/providers/claude/claude-official/.credentials.json',
+      jsonEncode({
+        'claudeAiOauth': {'accessToken': 'legacy-row-token'},
+      }),
+    );
+
+    final scope = await ClaudeOfficialSubscriptionAuthReader(
+      fs: fs,
+      basePath: '/tp',
+    ).read(_provider('claude-official'));
+
+    expect(scope?.valueFor('accessToken'), 'legacy-row-token');
   });
 }

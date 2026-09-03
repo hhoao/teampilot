@@ -914,17 +914,14 @@ Future<AppShell> buildAppShell({
                 'claude-official': ClaudeOfficialSubscriptionAuthReader(
                   fs: AppStorage.fs,
                   basePath: AppStorage.paths.basePath,
-                  homeDirectory: () => AppStorage.home,
                 ),
                 'openai-official': CodexOfficialSubscriptionAuthReader(
                   fs: AppStorage.fs,
                   basePath: AppStorage.paths.basePath,
-                  homeDirectory: () => AppStorage.home,
                 ),
                 'cursor-account': CursorOfficialSubscriptionAuthReader(
                   fs: AppStorage.fs,
                   basePath: AppStorage.paths.basePath,
-                  homeDirectory: () => AppStorage.home,
                 ),
               },
             ),

@@ -83,7 +83,6 @@ void main() {
             'claude-official': ClaudeOfficialSubscriptionAuthReader(
               fs: fs,
               basePath: '/tp',
-              homeDirectory: () => '/home',
             ),
           },
         ),

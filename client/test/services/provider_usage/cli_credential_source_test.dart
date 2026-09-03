@@ -26,7 +26,6 @@ void main() {
         'cursor-account': CursorOfficialSubscriptionAuthReader(
           fs: fs,
           basePath: '/tp',
-          homeDirectory: () => '/home',
         ),
       },
     ).read('cli:cursor-account');
