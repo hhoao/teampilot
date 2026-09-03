@@ -362,6 +362,8 @@ class _GraphListState extends State<_GraphList> {
               row,
               actions,
               state,
+              workspaceId: widget.workspaceId,
+              repoRoot: state.repoRoot,
             ),
           ),
           onLongPress: () {
@@ -370,7 +372,15 @@ class _GraphListState extends State<_GraphList> {
                 ? box.localToGlobal(box.size.center(Offset.zero))
                 : Offset.zero;
             unawaited(
-              showCommitContextMenu(tileContext, center, row, actions, state),
+              showCommitContextMenu(
+                tileContext,
+                center,
+                row,
+                actions,
+                state,
+                workspaceId: widget.workspaceId,
+                repoRoot: state.repoRoot,
+              ),
             );
           },
         ),

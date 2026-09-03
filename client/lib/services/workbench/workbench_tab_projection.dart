@@ -54,8 +54,9 @@ List<TabInfo> projectWorkbenchTabs({
         WorkbenchTabKind.shell ||
         WorkbenchTabKind.run ||
         WorkbenchTabKind.htmlPreview ||
-        WorkbenchTabKind.gitGraph => throw StateError(
-          'shell/run/htmlPreview/gitGraph tabs are filtered before center-strip projection',
+        WorkbenchTabKind.gitGraph ||
+        WorkbenchTabKind.gitCompare => throw StateError(
+          'shell/run/htmlPreview/gitGraph/gitCompare tabs are filtered before center-strip projection',
         ),
       },
   ];
@@ -65,9 +66,5 @@ String _diffTitle(WorkbenchTabId tab, WorkspaceEditorBucket bucket) {
   final state = bucket.openDiffs[tab.id];
   final base = state?.title ?? p.basename(tab.diffAbsolutePath ?? tab.id);
   if (state == null) return base;
-  return switch (state.source) {
-    WorkbenchDiffSource.staged => '$base (staged)',
-    WorkbenchDiffSource.unstaged => base,
-    WorkbenchDiffSource.changes => base,
-  };
+  return state.staged ? '$base (staged)' : base;
 }

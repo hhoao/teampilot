@@ -9,8 +9,8 @@ import 'package:teampilot/cubits/ai_feature_settings_cubit.dart';
 import 'package:teampilot/cubits/editor_cubit.dart';
 import 'package:teampilot/cubits/floating_workspace/floating_workspace_cubit.dart';
 import 'package:teampilot/cubits/workbench/workbench_cubit.dart';
-import 'package:teampilot/cubits/workbench/workbench_tab.dart';
 import 'package:teampilot/l10n/app_localizations.dart';
+import 'package:teampilot/models/diff_identity.dart';
 import 'package:teampilot/models/git_status.dart';
 import 'package:teampilot/models/layout_preferences.dart';
 import 'package:teampilot/repositories/app_settings_repository.dart';
@@ -116,15 +116,14 @@ class _RecordingOpener extends WorkbenchEditorOpener {
   @override
   void openDiff({
     required String workspaceId,
-    required String absolutePath,
-    required WorkbenchDiffSource source,
+    required DiffIdentity identity,
     required String title,
     required String diffText,
     DiffReload? reloadDiff,
     Future<void> Function()? onWorkingTreeWritten,
     bool preview = true,
   }) {
-    openedDiffs.add(absolutePath);
+    openedDiffs.add(identity.absolutePath);
   }
 }
 

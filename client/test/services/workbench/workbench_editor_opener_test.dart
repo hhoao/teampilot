@@ -6,6 +6,7 @@ import 'package:teampilot/cubits/floating_workspace/floating_panel_visibility.da
 import 'package:teampilot/cubits/floating_workspace/floating_workspace_cubit.dart';
 import 'package:teampilot/cubits/workbench/workbench_cubit.dart';
 import 'package:teampilot/cubits/workbench/workbench_tab.dart';
+import 'package:teampilot/models/diff_identity.dart';
 import 'package:teampilot/models/layout_preferences.dart';
 import 'package:teampilot/services/editor/markdown_view_mode_store.dart';
 import 'package:teampilot/services/io/filesystem.dart';
@@ -148,16 +149,12 @@ void main() {
     );
     opener.openDiff(
       workspaceId: 'ws',
-      absolutePath: '/repo/a.txt',
-      source: WorkbenchDiffSource.changes,
+      identity: const ScmDiffIdentity('/repo/a.txt', ScmDiffMode.changes),
       title: 'a.txt',
       diffText: 'diff',
     );
 
-    final diffKey = WorkbenchTabId.diffKey(
-      '/repo/a.txt',
-      source: WorkbenchDiffSource.changes,
-    );
+    const diffKey = '/repo/a.txt::scm.changes';
     expect(workbench.state.bar('ws').center.order, isEmpty);
     expect(
       workbench.state.bar('ws').floating.order.any(
@@ -187,15 +184,14 @@ void main() {
     );
     opener.openDiff(
       workspaceId: 'ws',
-      absolutePath: '/repo/a.txt',
-      source: WorkbenchDiffSource.changes,
+      identity: const ScmDiffIdentity('/repo/a.txt', ScmDiffMode.changes),
       title: 'a.txt',
       diffText: 'diff',
     );
 
     expect(
       workbench.centerActiveId('ws'),
-      WorkbenchTabId.diff('/repo/a.txt', source: WorkbenchDiffSource.changes),
+      WorkbenchTabId.diffChanges('/repo/a.txt'),
     );
     expect(workbench.state.bar('ws').floating.order, isEmpty);
   });
@@ -268,8 +264,7 @@ void main() {
       );
       opener.openDiff(
         workspaceId: 'ws',
-        absolutePath: '/repo/a.txt',
-        source: WorkbenchDiffSource.changes,
+        identity: const ScmDiffIdentity('/repo/a.txt', ScmDiffMode.changes),
         title: 'a.txt',
         diffText: 'diff',
       );
@@ -320,8 +315,7 @@ void main() {
       );
       opener.openDiff(
         workspaceId: 'ws',
-        absolutePath: '/repo/a.txt',
-        source: WorkbenchDiffSource.changes,
+        identity: const ScmDiffIdentity('/repo/a.txt', ScmDiffMode.changes),
         title: 'a.txt',
         diffText: 'diff',
       );

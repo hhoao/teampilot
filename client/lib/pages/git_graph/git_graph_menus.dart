@@ -5,7 +5,10 @@ import 'package:shared_ui/shared_ui.dart';
 import '../../cubits/git_graph_actions_controller.dart';
 import '../../cubits/git_graph_cubit.dart';
 import '../../l10n/l10n_extensions.dart';
+import '../../models/git_compare.dart';
 import '../../models/git_graph.dart';
+import '../git_compare/git_compare_refs.dart';
+import '../git_compare/open_git_compare.dart';
 
 /// 行级右键 / 长按菜单：checkout 本地分支或该提交（分离 HEAD）、重命名 / 删除 /
 /// 合并本地分支、删除 / 推送标签、在此建分支 / 标签、cherry-pick、revert、
@@ -16,8 +19,10 @@ Future<void> showCommitContextMenu(
   Offset position,
   GitCommitRow row,
   GitGraphActionsController actions,
-  GitGraphState state,
-) async {
+  GitGraphState state, {
+  required String workspaceId,
+  required String repoRoot,
+}) async {
   String? localBranch;
   String? tagName;
   for (final ref in row.refs) {
@@ -103,6 +108,21 @@ Future<void> showCommitContextMenu(
       await actions.resetTo(row.hash, mode: GitResetMode.soft);
     case 'reset-mixed':
       await actions.resetTo(row.hash, mode: GitResetMode.mixed);
+    case 'diff-working-tree':
+      final refs = gitCompareRefsForCommit(row);
+      openGitCompareTab(
+        context,
+        workspaceId: workspaceId,
+        spec: GitCompareSpec(
+          repoRoot: repoRoot,
+          left: GitCompareRef(
+            refs.compareRef,
+            titleOverride:
+                refs.titleRef == refs.compareRef ? null : refs.titleRef,
+          ),
+          right: const GitCompareWorkingTree(),
+        ),
+      );
     case 'copy-hash':
       await _copyAndNotify(
         context,
@@ -207,6 +227,11 @@ List<TpActionMenuSpec> _menuSpecs(
     destructive: true,
   ),
   const TpActionMenuSpec.divider(),
+  TpActionMenuSpec.item(
+    value: 'diff-working-tree',
+    icon: Icons.difference_outlined,
+    label: l10n.gitGraphShowDiffWithWorkingTree,
+  ),
   TpActionMenuSpec.item(
     value: 'copy-hash',
     icon: Icons.copy,

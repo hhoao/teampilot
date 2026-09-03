@@ -11,6 +11,7 @@ class FloatingSurfaceRegistry {
     FloatingSurface? run,
     FloatingSurface? html,
     FloatingSurface? gitGraph,
+    FloatingSurface? gitCompare,
   }) => FloatingSurfaceRegistry([
     terminal,
     file,
@@ -18,6 +19,7 @@ class FloatingSurfaceRegistry {
     if (run != null) run,
     if (html != null) html,
     if (gitGraph != null) gitGraph,
+    if (gitCompare != null) gitCompare,
   ]);
 
   final Map<String, FloatingSurface> _byId;

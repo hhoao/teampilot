@@ -127,6 +127,9 @@ abstract final class WorkbenchShellActions {
       case WorkbenchTabKind.gitGraph:
         // Floating git graph tabs close through the floating panel path.
         break;
+      case WorkbenchTabKind.gitCompare:
+        // Floating git compare tabs close through the floating panel path.
+        break;
     }
     await workbench.close(workspaceId, tab);
   }
@@ -221,6 +224,8 @@ abstract final class WorkbenchShellActions {
       case WorkbenchTabKind.htmlPreview:
         break;
       case WorkbenchTabKind.gitGraph:
+        break;
+      case WorkbenchTabKind.gitCompare:
         break;
     }
   }

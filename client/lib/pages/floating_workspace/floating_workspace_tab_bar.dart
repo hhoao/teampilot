@@ -23,8 +23,10 @@ import 'floating_workspace_new_terminal_menu.dart';
     ),
     'diffPreview' => () {
       final key = tab.payload is String ? tab.payload as String : null;
-      final parsed = key == null ? null : WorkbenchTabId.parseDiffKey(key);
-      return (WorkbenchTabKind.diff, parsed?.$1);
+      final parsed = key == null
+          ? null
+          : WorkbenchTabId.parseDiffStorageKey(key);
+      return (WorkbenchTabKind.diff, parsed?.absolutePath);
     }(),
     'terminal' => (WorkbenchTabKind.shell, null),
     'htmlPreview' => (
@@ -35,6 +37,7 @@ import 'floating_workspace_new_terminal_menu.dart';
       WorkbenchTabKind.gitGraph,
       tab.payload is String ? tab.payload as String : null,
     ),
+    'gitCompare' => (WorkbenchTabKind.gitCompare, null),
     _ => (WorkbenchTabKind.run, null),
   };
 }
@@ -137,6 +140,7 @@ class FloatingWorkspaceTabBar extends StatelessWidget {
       'diffPreview' => Icons.difference_outlined,
       'htmlPreview' => Icons.preview_outlined,
       'gitGraph' => Icons.account_tree_outlined,
+      'gitCompare' => Icons.difference_outlined,
       _ => Icons.widgets_outlined,
     };
   }

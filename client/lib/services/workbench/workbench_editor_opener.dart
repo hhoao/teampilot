@@ -5,6 +5,7 @@ import '../../cubits/editor_cubit.dart';
 import '../../cubits/floating_workspace/floating_workspace_cubit.dart';
 import '../../cubits/workbench/workbench_cubit.dart';
 import '../../cubits/workbench/workbench_tab.dart';
+import '../../models/diff_identity.dart';
 import '../../models/layout_preferences.dart';
 import '../editor/file_editor_theme.dart';
 import '../editor/html_view_mode_store.dart';
@@ -80,8 +81,7 @@ class WorkbenchEditorOpener {
 
   void openDiff({
     required String workspaceId,
-    required String absolutePath,
-    required WorkbenchDiffSource source,
+    required DiffIdentity identity,
     required String title,
     required String diffText,
     DiffReload? reloadDiff,
@@ -90,14 +90,13 @@ class WorkbenchEditorOpener {
   }) {
     _editor.openDiff(
       workspaceId: workspaceId,
-      absolutePath: absolutePath,
-      source: source,
+      identity: identity,
       title: title,
       diffText: diffText,
       reloadDiff: reloadDiff,
       onWorkingTreeWritten: onWorkingTreeWritten,
     );
-    final tab = WorkbenchTabId.diff(absolutePath, source: source);
+    final tab = WorkbenchTabId.diff(identity);
     if (_readFilePreviewInFloating()) {
       _floating.ensureOpen();
       _floating.setActiveWorkspace(workspaceId);
@@ -139,8 +138,33 @@ class WorkbenchEditorOpener {
     }
     openDiff(
       workspaceId: workspaceId,
-      absolutePath: path,
-      source: WorkbenchDiffSource.changes,
+      identity: ScmDiffIdentity(path, ScmDiffMode.changes),
+      title: title ?? p.basename(path),
+      diffText: diffText,
+      reloadDiff: (ignoreWhitespace, fullContext) => loadDiff(
+        ignoreWhitespace: ignoreWhitespace,
+        fullContext: fullContext,
+      ),
+      preview: preview,
+    );
+  }
+
+  /// Opens a git-compare file diff tab (left/right sides from [identity]).
+  Future<void> openCompareDiff({
+    required String workspaceId,
+    required CompareDiffIdentity identity,
+    required Future<String?> Function({bool ignoreWhitespace, bool fullContext})
+    loadDiff,
+    String? title,
+    bool preview = true,
+  }) async {
+    final path = identity.absolutePath.trim();
+    if (path.isEmpty) return;
+    final diffText =
+        await loadDiff(ignoreWhitespace: false, fullContext: true) ?? '';
+    openDiff(
+      workspaceId: workspaceId,
+      identity: identity,
       title: title ?? p.basename(path),
       diffText: diffText,
       reloadDiff: (ignoreWhitespace, fullContext) => loadDiff(
@@ -164,6 +188,7 @@ class WorkbenchEditorOpener {
       case WorkbenchTabKind.run:
       case WorkbenchTabKind.htmlPreview:
       case WorkbenchTabKind.gitGraph:
+      case WorkbenchTabKind.gitCompare:
         break;
     }
   }

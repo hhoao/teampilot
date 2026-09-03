@@ -1,4 +1,6 @@
+import '../../models/git_compare.dart';
 import '../../models/git_graph.dart';
+import '../../models/git_status.dart';
 import '../../utils/logging/logger.dart';
 import '../storage/runtime_context.dart';
 import 'git_command_runner.dart';
@@ -41,6 +43,21 @@ class GitHistoryService {
       throw GitException(detail.isEmpty ? 'git ${args.first} failed' : detail);
     }
     return result.stdout;
+  }
+
+  /// `git diff` exits 1 when the sides differ; treat that as success.
+  Future<String> _runDiff(String dir, List<String> args) async {
+    final result = await _runner.runInDirectory(dir, args);
+    if (result.exitCode == 0 || result.exitCode == 1) {
+      return result.stdout;
+    }
+    final err = result.stderr.trim();
+    final out = result.stdout.trim();
+    final detail = err.isEmpty ? out : err;
+    appLogger.d(
+      '[GitHistory] ${args.join(' ')} exit ${result.exitCode}: $detail',
+    );
+    throw GitException(detail.isEmpty ? 'git ${args.first} failed' : detail);
   }
 
   Future<List<String>> remotes(String dir) async =>
@@ -272,5 +289,132 @@ class GitHistoryService {
             );
           }(),
     ];
+  }
+
+  /// Changed paths between [from] and [to]. Working-tree compares also include
+  /// untracked files (excluding paths already listed by name-status).
+  Future<List<GitFileChange>> listDiffFiles(
+    String dir,
+    GitCompareSide from,
+    GitCompareSide to,
+  ) async {
+    if (from is! GitCompareRef) {
+      throw GitException('listDiffFiles requires a ref on the from side');
+    }
+
+    final args = <String>[
+      'diff',
+      '--name-status',
+      '--find-renames',
+      from.nameOrHash,
+      if (to is GitCompareRef) to.nameOrHash,
+    ];
+    final out = await _runDiff(dir, args);
+    final files = _parseNameStatus(out);
+    final seen = {for (final f in files) f.path};
+
+    if (to is GitCompareWorkingTree) {
+      final untrackedOut = await _run(dir, [
+        'ls-files',
+        '--others',
+        '--exclude-standard',
+      ]);
+      for (final line in untrackedOut.split('\n')) {
+        final path = line.trim();
+        if (path.isEmpty || seen.contains(path)) continue;
+        files.add(
+          GitFileChange(
+            path: path,
+            kind: GitChangeKind.untracked,
+            staged: false,
+          ),
+        );
+      }
+    }
+    return files;
+  }
+
+  Future<String> fileDiff(
+    String dir,
+    GitCompareSide from,
+    GitCompareSide to,
+    String path, {
+    bool ignoreWhitespace = false,
+    bool fullContext = false,
+    bool untracked = false,
+  }) async {
+    final context = fullContext ? '-U1000000' : null;
+    if (untracked) {
+      return _runDiff(dir, [
+        'diff',
+        '--no-index',
+        '--no-color',
+        if (ignoreWhitespace) '-w',
+        if (context != null) context,
+        '/dev/null',
+        path,
+      ]);
+    }
+    if (from is! GitCompareRef) {
+      throw GitException('fileDiff requires a ref on the from side');
+    }
+    if (to is GitCompareWorkingTree) {
+      return _runDiff(dir, [
+        'diff',
+        '--no-color',
+        if (ignoreWhitespace) '-w',
+        if (context != null) context,
+        from.nameOrHash,
+        '--',
+        path,
+      ]);
+    }
+    if (to is GitCompareRef) {
+      return _runDiff(dir, [
+        'diff',
+        '--no-color',
+        if (ignoreWhitespace) '-w',
+        if (context != null) context,
+        from.nameOrHash,
+        to.nameOrHash,
+        '--',
+        path,
+      ]);
+    }
+    throw GitException('unsupported compare sides for fileDiff');
+  }
+
+  List<GitFileChange> _parseNameStatus(String out) {
+    final files = <GitFileChange>[];
+    for (final line in out.split('\n')) {
+      final trimmed = line.trim();
+      if (trimmed.isEmpty) continue;
+      final parts = trimmed.split('\t');
+      if (parts.isEmpty) continue;
+      final statusLetter = parts.first.trim();
+      final letter = statusLetter.isEmpty ? '' : statusLetter[0];
+      final kind = switch (letter) {
+        'A' => GitChangeKind.added,
+        'M' => GitChangeKind.modified,
+        'D' => GitChangeKind.deleted,
+        'R' => GitChangeKind.renamed,
+        _ => GitChangeKind.modified,
+      };
+      if (kind == GitChangeKind.renamed && parts.length >= 3) {
+        files.add(
+          GitFileChange(
+            path: parts[2],
+            kind: kind,
+            staged: false,
+            originalPath: parts[1],
+          ),
+        );
+      } else if (parts.length >= 2) {
+        files.add(
+          GitFileChange(path: parts[1], kind: kind, staged: false),
+        );
+      }
+    }
+    return files;
   }
 }

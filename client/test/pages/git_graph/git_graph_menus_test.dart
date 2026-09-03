@@ -2,9 +2,13 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_ui/shared_ui.dart';
+import 'package:teampilot/cubits/floating_workspace/floating_workspace_cubit.dart';
 import 'package:teampilot/cubits/git_graph_actions_controller.dart';
 import 'package:teampilot/cubits/git_graph_cubit.dart';
+import 'package:teampilot/cubits/workbench/workbench_cubit.dart';
+import 'package:teampilot/cubits/workbench/workbench_tab.dart';
 import 'package:teampilot/l10n/app_localizations.dart';
+import 'package:teampilot/models/git_compare.dart';
 import 'package:teampilot/models/git_graph.dart';
 import 'package:teampilot/pages/git_graph/git_graph_menus.dart';
 
@@ -84,6 +88,8 @@ void main() {
                 graphCommitRow('c1'),
                 controller,
                 cubit.state,
+                workspaceId: 'ws',
+                repoRoot: '/repo',
               ),
               child: const Text('open'),
             ),
@@ -172,6 +178,122 @@ void main() {
     await tester.pumpAndSettle();
     expect(actions.calls.single, ['checkout-commit', 'deadbeef']);
   });
+
+  testWidgets('menu shows Show Diff with Working Tree item', (tester) async {
+    final actions = RecordingGraphActions();
+    await _pumpMenuHost(tester, actions, graphCommitRow('c1'));
+    expect(find.text('Show Diff with Working Tree'), findsOneWidget);
+  });
+
+  testWidgets('diff-working-tree menu opens git compare tab for branch', (
+    tester,
+  ) async {
+    final workbench = WorkbenchCubit();
+    final floating = FloatingWorkspaceCubit();
+    addTearDown(workbench.close);
+    addTearDown(floating.close);
+
+    final actions = RecordingGraphActions();
+    final row = graphCommitRow(
+      'abcdef1234567890',
+      refs: const [
+        GitRefDecoration(GitRefDecorationKind.localBranch, 'main'),
+      ],
+    );
+    await _pumpCompareMenuHost(tester, actions, row, workbench, floating);
+    await tester.tap(find.text('Show Diff with Working Tree'));
+    await tester.pumpAndSettle();
+
+    expect(
+      workbench.state.bar('ws').floating.order.map((t) => t.kind),
+      contains(WorkbenchTabKind.gitCompare),
+    );
+    final tabId = workbench.state.bar('ws').floating.order
+        .firstWhere((t) => t.kind == WorkbenchTabKind.gitCompare)
+        .id;
+    final spec = GitCompareSpec.tryParseTabId(tabId);
+    expect(spec?.repoRoot, '/repo');
+    expect(spec?.left, const GitCompareRef('main'));
+    expect(spec?.right, const GitCompareWorkingTree());
+  });
+
+  testWidgets('diff-working-tree menu uses commit hash when no branch', (
+    tester,
+  ) async {
+    final workbench = WorkbenchCubit();
+    final floating = FloatingWorkspaceCubit();
+    addTearDown(workbench.close);
+    addTearDown(floating.close);
+
+    final actions = RecordingGraphActions();
+    await _pumpCompareMenuHost(
+      tester,
+      actions,
+      graphCommitRow('abcdef1234567890'),
+      workbench,
+      floating,
+    );
+    await tester.tap(find.text('Show Diff with Working Tree'));
+    await tester.pumpAndSettle();
+
+    final tabId = workbench.state.bar('ws').floating.order
+        .firstWhere((t) => t.kind == WorkbenchTabKind.gitCompare)
+        .id;
+    final spec = GitCompareSpec.tryParseTabId(tabId);
+    expect(spec?.left, const GitCompareRef('abcdef1234567890'));
+    expect(spec?.right, const GitCompareWorkingTree());
+  });
+}
+
+Future<void> _pumpCompareMenuHost(
+  WidgetTester tester,
+  RecordingGraphActions actions,
+  GitCommitRow row,
+  WorkbenchCubit workbench,
+  FloatingWorkspaceCubit floating,
+) async {
+  tester.view.physicalSize = const Size(900, 1400);
+  tester.view.devicePixelRatio = 1.0;
+  addTearDown(tester.view.reset);
+  final cubit = GitGraphCubit(
+    history: FakeHistoryForGraph(rows: [graphCommitRow('c0')]),
+    git: FakeGitForGraph(repoStatus()),
+    actions: actions,
+  );
+  addTearDown(cubit.close);
+  await cubit.setRepoRoot('/repo');
+  final controller = GitGraphActionsController(cubit: cubit);
+  await tester.pumpWidget(
+    MultiRepositoryProvider(
+      providers: [
+        RepositoryProvider.value(value: workbench),
+        RepositoryProvider.value(value: floating),
+      ],
+      child: MaterialApp(
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
+        locale: const Locale('en'),
+        home: Builder(
+          builder: (context) => Center(
+            child: TextButton(
+              onPressed: () => showCommitContextMenu(
+                context,
+                const Offset(200, 200),
+                row,
+                controller,
+                cubit.state,
+                workspaceId: 'ws',
+                repoRoot: '/repo',
+              ),
+              child: const Text('open'),
+            ),
+          ),
+        ),
+      ),
+    ),
+  );
+  await tester.tap(find.text('open'));
+  await tester.pumpAndSettle();
 }
 
 Future<void> _pumpMenuHost(
@@ -203,6 +325,8 @@ Future<void> _pumpMenuHost(
               row,
               controller,
               cubit.state,
+              workspaceId: 'ws',
+              repoRoot: '/repo',
             ),
             child: const Text('open'),
           ),
