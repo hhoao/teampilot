@@ -8609,6 +8609,14 @@ class AppLocalizationsEn extends AppLocalizations {
   String get gitGraphShowDiffWithWorkingTree => 'Show Diff with Working Tree';
 
   @override
+  String get gitGraphCompareWith => 'Compare with…';
+
+  @override
+  String gitGraphCompareWorkingTree(String branch) {
+    return 'Working Tree ($branch)';
+  }
+
+  @override
   String get gitCompareWorkingTree => 'Working Tree';
 
   @override

@@ -8245,6 +8245,14 @@ class AppLocalizationsZh extends AppLocalizations {
   String get gitGraphShowDiffWithWorkingTree => '与工作区比较差异';
 
   @override
+  String get gitGraphCompareWith => '与…比较';
+
+  @override
+  String gitGraphCompareWorkingTree(String branch) {
+    return '工作区（$branch）';
+  }
+
+  @override
   String get gitCompareWorkingTree => '工作区';
 
   @override

@@ -7,6 +7,8 @@ import 'package:shared_ui/shared_ui.dart';
 import '../../cubits/git_graph_actions_controller.dart';
 import '../../cubits/git_graph_cubit.dart';
 import '../../l10n/l10n_extensions.dart';
+import '../../models/git_compare.dart';
+import '../git_compare/open_git_compare.dart';
 import 'git_graph_menus.dart';
 
 /// 弹层条目所属分区。
@@ -58,6 +60,11 @@ class _GitGraphRefsMenuState extends State<GitGraphRefsMenu> {
           label: l10n.gitGraphViewBranchHistory,
         ),
         TpActionMenuSpec.item(
+          value: 'compare',
+          icon: Icons.difference_outlined,
+          label: l10n.gitGraphCompareWith,
+        ),
+        TpActionMenuSpec.item(
           value: 'rename',
           icon: Icons.drive_file_rename_outline,
           label: l10n.gitGraphRenameBranch,
@@ -76,6 +83,11 @@ class _GitGraphRefsMenuState extends State<GitGraphRefsMenu> {
           label: l10n.gitGraphCheckoutBranch(entry.name),
           enabled: false,
         ),
+        TpActionMenuSpec.item(
+          value: 'compare',
+          icon: Icons.difference_outlined,
+          label: l10n.gitGraphCompareWith,
+        ),
       ],
       _RefSection.tag => [
         TpActionMenuSpec.item(
@@ -88,6 +100,11 @@ class _GitGraphRefsMenuState extends State<GitGraphRefsMenu> {
           icon: Icons.delete_outline,
           label: l10n.gitGraphDeleteTag(entry.name),
           destructive: true,
+        ),
+        TpActionMenuSpec.item(
+          value: 'compare',
+          icon: Icons.difference_outlined,
+          label: l10n.gitGraphCompareWith,
         ),
       ],
     };
@@ -113,7 +130,113 @@ class _GitGraphRefsMenuState extends State<GitGraphRefsMenu> {
         await controller.pushTag(entry.name);
       case 'delete':
         await _confirmDelete(controller, entry);
+      case 'compare':
+        await _openCompareTargetMenu(entry);
     }
+  }
+
+  static const String _kWorkingTreeTarget = '__wt__';
+
+  /// 二级目标菜单：首条工作区（当前分支），其后本地 / 远程 / 标签三分区；
+  /// 源 ref 自身置灰。选中后打开 gitCompare 浮动 tab（left = 源，right = 目标）。
+  /// 走 [showTpActionMenuOverlay] + [buildTpActionMenuChildren]：`FromSpecs`
+  /// 变体不渲染 `TpActionMenuSpec.scroll` 分区（label 为 null 的空条目）。
+  Future<void> _openCompareTargetMenu(_RefEntry source) async {
+    if (!mounted) return;
+    final l10n = context.l10n;
+    final target = await showTpActionMenuOverlay<String>(
+      context: context,
+      globalPosition: _buttonGlobalPosition(),
+      useRootNavigator: true,
+      transitionDuration: const Duration(milliseconds: 160),
+      transitionCurve: Curves.easeOutCubic,
+      menuBuilder: (overlayContext, complete) {
+        final children = buildTpActionMenuChildren(
+          context: overlayContext,
+          specs: _compareTargetSpecs(l10n, source),
+          menuController: TpActionMenuController(TpPopoverController()),
+          onSelect: (value) => complete(value as String?),
+        );
+        return DecoratedBox(
+          decoration: TpActionMenuMetrics.panelDecoration(overlayContext),
+          child: Padding(
+            padding: TpActionMenuMetrics.panelPadding,
+            child: TpActionMenuPanel(
+              minWidth: 200,
+              menuAnchorShell: true,
+              children: children,
+            ),
+          ),
+        );
+      },
+    );
+    if (target == null || !mounted) return;
+    openGitCompareTab(
+      context,
+      workspaceId: widget.workspaceId,
+      spec: GitCompareSpec(
+        repoRoot: widget.state.repoRoot,
+        left: GitCompareRef(source.name),
+        right: target == _kWorkingTreeTarget
+            ? const GitCompareWorkingTree()
+            : GitCompareRef(target),
+      ),
+    );
+  }
+
+  List<TpActionMenuSpec> _compareTargetSpecs(
+    AppLocalizations l10n,
+    _RefEntry source,
+  ) {
+    final state = widget.state;
+    final locals = state.branches.where((b) => !b.isRemote);
+    final remotes = state.branches.where((b) => b.isRemote);
+    return [
+      TpActionMenuSpec.item(
+        value: _kWorkingTreeTarget,
+        icon: Icons.difference_outlined,
+        label: l10n.gitGraphCompareWorkingTree(
+          state.currentBranch.isEmpty ? 'HEAD' : state.currentBranch,
+        ),
+      ),
+      const TpActionMenuSpec.divider(),
+      if (locals.isNotEmpty) ...[
+        _sectionHeader(Icons.call_split, l10n.gitGraphLocalBranches),
+        TpActionMenuSpec.scroll(children: [
+          for (final branch in locals)
+            TpActionMenuSpec.item(
+              value: branch.name,
+              icon: Icons.call_split_outlined,
+              label: branch.name,
+              enabled: branch.name != source.name,
+            ),
+        ]),
+      ],
+      if (remotes.isNotEmpty) ...[
+        _sectionHeader(Icons.cloud_outlined, l10n.gitGraphRemoteBranches),
+        TpActionMenuSpec.scroll(children: [
+          for (final branch in remotes)
+            TpActionMenuSpec.item(
+              value: branch.name,
+              icon: Icons.cloud_outlined,
+              label: branch.name,
+              enabled: branch.name != source.name,
+            ),
+        ]),
+      ],
+      if (state.tags.isNotEmpty) ...[
+        _sectionHeader(Icons.sell_outlined, l10n.gitGraphTags),
+        TpActionMenuSpec.scroll(children: [
+          for (final tag in state.tags)
+            TpActionMenuSpec.item(
+              value: tag.name,
+              icon: Icons.sell_outlined,
+              label: tag.name,
+              enabled: tag.name != source.name,
+            ),
+        ]),
+      ],
+    ];
   }
 
   Future<void> _confirmDelete(
