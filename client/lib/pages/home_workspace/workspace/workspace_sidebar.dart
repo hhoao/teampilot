@@ -8,6 +8,7 @@ import 'package:shared_ui/shared_ui.dart';
 import '../../../cubits/chat_cubit.dart';
 import '../../../cubits/layout_cubit.dart';
 import '../../../cubits/session_groups_cubit.dart';
+import '../../../cubits/shortcut_cubit.dart';
 import '../../../cubits/workbench/workbench_cubit.dart';
 import '../../../cubits/worktree_cubit.dart';
 import '../../../l10n/l10n_extensions.dart';
@@ -16,6 +17,9 @@ import '../../../models/git_worktree.dart';
 import '../../../models/session_group.dart';
 import '../../../models/workspace.dart';
 import '../../../pages/home_workspace/home_workspace_route.dart';
+import '../../../services/commands/command_ids.dart';
+import '../../../services/commands/command_tooltip.dart';
+import '../../../services/commands/key_chord.dart';
 import '../../../services/git/git_worktree_service.dart';
 import '../../../services/io/local_filesystem.dart';
 import '../../../services/storage/app_storage.dart';
@@ -119,15 +123,27 @@ class _WorkspaceSidebarState extends State<WorkspaceSidebar> {
               ),
             ),
             const SizedBox(height: 4),
-            _SidebarActionTile(
-              key: AppKeys.searchSidebarTile,
-              icon: Icons.search_outlined,
-              label: l10n.workspaceSearchTitle,
-              enabled: true,
-              onTap: throttledTap(
-                'workspace_sidebar_search',
-                () => _openWorkspaceSearch(context),
-              ),
+            Builder(
+              builder: (context) {
+                context.select<ShortcutCubit, Map<String, List<KeyChord>>>(
+                  (c) => c.state.overrides,
+                );
+                return _SidebarActionTile(
+                  key: AppKeys.searchSidebarTile,
+                  icon: Icons.search_outlined,
+                  label: l10n.workspaceSearchTitle,
+                  tooltip: commandTooltip(
+                    context,
+                    l10n.workspaceSearchTitle,
+                    CommandIds.workspaceSearch,
+                  ),
+                  enabled: true,
+                  onTap: throttledTap(
+                    'workspace_sidebar_search',
+                    () => _openWorkspaceSearch(context),
+                  ),
+                );
+              },
             ),
             const SizedBox(height: 14),
           ],
@@ -754,6 +770,7 @@ class _SidebarActionTile extends StatefulWidget {
     required this.label,
     required this.onTap,
     this.enabled = true,
+    this.tooltip,
     super.key,
   });
 
@@ -761,6 +778,7 @@ class _SidebarActionTile extends StatefulWidget {
   final String label;
   final VoidCallback onTap;
   final bool enabled;
+  final String? tooltip;
 
   @override
   State<_SidebarActionTile> createState() => _SidebarActionTileState();
@@ -791,7 +809,9 @@ class _SidebarActionTileState extends State<_SidebarActionTile> {
       ),
     );
 
-    return tile;
+    final tip = widget.tooltip;
+    if (tip == null || tip.isEmpty) return tile;
+    return Tooltip(message: tip, child: tile);
   }
 }
 
