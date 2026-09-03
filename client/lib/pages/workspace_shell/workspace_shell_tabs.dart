@@ -9,10 +9,14 @@ import '../../models/team_config.dart';
 import '../../cubits/agent_attention_cubit.dart';
 import '../../cubits/chat_cubit.dart';
 import '../../cubits/layout_cubit.dart';
+import '../../cubits/shortcut_cubit.dart';
 import '../../cubits/workbench/workbench_cubit.dart';
 import '../../cubits/workbench/workbench_tab.dart';
 import '../../l10n/l10n_extensions.dart';
 import '../../services/cli/registry/cli_tool_registry_scope.dart';
+import '../../services/commands/command_ids.dart';
+import '../../services/commands/command_tooltip.dart';
+import '../../services/commands/key_chord.dart';
 import '../../services/io/file_path_actions.dart';
 import '../../services/storage/runtime_context.dart';
 import '../../services/workbench/tab_menu/default_workbench_tab_menu_sources.dart';
@@ -61,6 +65,9 @@ class WorkspaceShellRightToolsVisibilityToggle extends StatelessWidget {
   Widget build(BuildContext context) {
     final l10n = context.l10n;
     final cs = Theme.of(context).colorScheme;
+    context.select<ShortcutCubit, Map<String, List<KeyChord>>>(
+      (c) => c.state.overrides,
+    );
     final composeLanding = context.select<WorkbenchCubit, bool>(
       (w) => w.state.bar(workspaceId).center.landingActive,
     );
@@ -75,9 +82,11 @@ class WorkspaceShellRightToolsVisibilityToggle extends StatelessWidget {
         return TpIconButton(
           key: AppKeys.rightToolsVisibilityButton,
           icon: Icons.vertical_split_outlined,
-          tooltip: visible
-              ? l10n.rightToolsPanelHidden
-              : l10n.rightToolsPanelVisible,
+          tooltip: commandTooltip(
+            context,
+            visible ? l10n.rightToolsPanelHidden : l10n.rightToolsPanelVisible,
+            CommandIds.toggleSecondarySidebar,
+          ),
           color: visible ? cs.primary : cs.onSurfaceVariant,
           backgroundColor: Colors.transparent,
           onTap: () => context.read<LayoutCubit>().toggleRightTools(
@@ -95,6 +104,9 @@ class WorkspaceShellSidebarVisibilityToggle extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final l10n = context.l10n;
+    context.select<ShortcutCubit, Map<String, List<KeyChord>>>(
+      (c) => c.state.overrides,
+    );
     return BlocBuilder<LayoutCubit, LayoutState>(
       buildWhen: (a, b) =>
           a.preferences.sidebarVisible != b.preferences.sidebarVisible ||
@@ -105,9 +117,13 @@ class WorkspaceShellSidebarVisibilityToggle extends StatelessWidget {
         return TpIconButton(
           key: AppKeys.sidebarVisibilityButton,
           icon: Icons.view_sidebar_outlined,
-          tooltip: effectiveOpen
-              ? l10n.sidebarPanelHidden
-              : l10n.sidebarPanelVisible,
+          tooltip: commandTooltip(
+            context,
+            effectiveOpen
+                ? l10n.sidebarPanelHidden
+                : l10n.sidebarPanelVisible,
+            CommandIds.toggleSidebar,
+          ),
           selected: effectiveOpen,
           onTap: () {
             final layout = context.read<LayoutCubit>();
