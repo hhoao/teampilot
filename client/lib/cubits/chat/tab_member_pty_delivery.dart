@@ -160,7 +160,6 @@ final class TabMemberPtyDelivery {
     final trimmed = text.trim();
     if (trimmed.isEmpty) return;
     final isMailDoorbell = !latchUserTurn && _isMailDoorbellText(trimmed);
-    if (isMailDoorbell && !_beginMailDelivery(sessionId, memberId)) return;
 
     final isOperatorTurn = latchUserTurn;
     final usesFullScreen = _memberUsesFullScreen(sessionId, memberId);
@@ -174,9 +173,12 @@ final class TabMemberPtyDelivery {
     if (usesFullScreen) {
       if (isMailDoorbell) {
         await shell.probe.syncDisplayGrid();
-      }
-      if (_deferMailDoorbellIfBooting(sessionId, memberId, shell, trimmed)) {
-        return;
+        // Defer before Started: a missed paste must not burn attempts or
+        // leave inFlight while the composer is still booting.
+        if (_deferMailDoorbellIfBooting(sessionId, memberId, shell, trimmed)) {
+          return;
+        }
+        if (!_beginMailDelivery(sessionId, memberId)) return;
       }
       await _deliverFullScreen(
         sessionId: sessionId,
@@ -214,12 +216,12 @@ final class TabMemberPtyDelivery {
     final trimmed = notice.trim();
     if (trimmed.isEmpty) return;
     final isMailDoorbell = _isMailDoorbellText(trimmed);
-    if (isMailDoorbell && !_beginMailDelivery(sessionId, memberId)) return;
     if (isMailDoorbell) {
       await shell.probe.syncDisplayGrid();
-    }
-    if (_deferMailDoorbellIfBooting(sessionId, memberId, shell, trimmed)) {
-      return;
+      if (_deferMailDoorbellIfBooting(sessionId, memberId, shell, trimmed)) {
+        return;
+      }
+      if (!_beginMailDelivery(sessionId, memberId)) return;
     }
     appLogger.d(
       '[session-runtime] retry-delivery member=$memberId session=$sessionId '

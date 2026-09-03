@@ -239,7 +239,7 @@ void main() {
   });
 
   group('retry', () {
-    test('does not re-paste when text is not visible', () async {
+    test('re-pastes when text is not visible on the grid', () async {
       final port = FakeFullscreenPtyDeliveryPort();
 
       final outcome = await automation.retry(
@@ -248,8 +248,15 @@ void main() {
         pasteSettle: Duration.zero,
       );
 
-      expect(outcome, FullscreenPtyDeliveryOutcome.pasteNotFound);
-      expect(port.pasteCount, 0);
+      expect(outcome, FullscreenPtyDeliveryOutcome.submitted);
+      expect(
+        port.pasteCount,
+        1,
+        reason:
+            'deferred / pasteNotFound retries must re-paste; CR-only leaves '
+            'the composer empty forever',
+      );
+      expect(port.crCount, 1);
     });
 
     test('only nudges CR when text is already visible', () async {

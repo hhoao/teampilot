@@ -12,6 +12,7 @@ import 'package:teampilot/cubits/chat/tab_session_runtime_coordinator.dart';
 import 'package:teampilot/models/app_session.dart';
 import 'package:teampilot/models/team_config.dart';
 import 'package:teampilot/services/team_bus/team_bus.dart';
+import 'package:teampilot/services/terminal/fullscreen_pty_automation.dart';
 import 'package:teampilot/services/terminal/member_pty_inject_service.dart';
 import 'package:teampilot/services/terminal/terminal_session.dart';
 
@@ -167,6 +168,65 @@ void main() {
   });
 
   test(
+    'Codex deferred doorbell re-pastes on retry after composer is ready',
+    () async {
+      final harness = await _ComposerHarness.connect(
+        cli: CliTool.codex,
+        ptyInject: MemberPtyInjectService(
+          automation: FullscreenPtyAutomation(
+            timing: PtyAutomationTiming.instant(),
+          ),
+        ),
+      );
+      addTearDown(harness.dispose);
+
+      await harness.paintTrustScreen();
+      await harness.delivery
+          .deliverMemberStdin(
+            _sessionId,
+            _memberId,
+            TeamBus.doorbellNotice,
+            automation: true,
+            latchUserTurn: false,
+          )
+          .timeout(const Duration(seconds: 2));
+      expect(
+        harness.shell.ptyInputJoined.contains(TeamBus.doorbellNotice),
+        isFalse,
+        reason: 'splash must not receive the doorbell paste',
+      );
+
+      await harness.paintComposer();
+      expect(
+        harness.delivery.isMemberComposerSurfaceReady(_sessionId, _memberId),
+        isFalse,
+        reason: 'first observe starts Codex composer dwell',
+      );
+      await Future<void>.delayed(const Duration(seconds: 1));
+      expect(
+        harness.delivery.isMemberComposerSurfaceReady(_sessionId, _memberId),
+        isTrue,
+      );
+
+      await harness.delivery
+          .retryMemberDelivery(
+            _sessionId,
+            _memberId,
+            TeamBus.doorbellNotice,
+          )
+          .timeout(const Duration(seconds: 5));
+
+      expect(
+        harness.shell.ptyInputJoined.contains(TeamBus.doorbellNotice),
+        isTrue,
+        reason:
+            'retry after surface-ready must paste; CR-only leaves mail '
+            'undelivered forever (mixed team mute)',
+      );
+    },
+  );
+
+  test(
     'ensureMemberInputReady waits for Codex composer then proceeds',
     () async {
       final harness = await _ComposerHarness.connect(cli: CliTool.codex);
@@ -259,7 +319,10 @@ final class _ComposerHarness {
   final MemberPtyInjectService ptyInject;
   final TabMemberMaterializer materializer;
 
-  static Future<_ComposerHarness> connect({required CliTool cli}) async {
+  static Future<_ComposerHarness> connect({
+    required CliTool cli,
+    MemberPtyInjectService? ptyInject,
+  }) async {
     final store = ChatTabStore();
     store.setActiveWorkspaceId('ws-1');
     final tab =
@@ -283,7 +346,7 @@ final class _ComposerHarness {
       DateTime.now().subtract(const Duration(seconds: 5)),
     );
 
-    final ptyInject = MemberPtyInjectService();
+    final inject = ptyInject ?? MemberPtyInjectService();
     final delivery = TabMemberPtyDelivery(
       tabStore: store,
       shellFactory: ChatSessionShellFactory(executableResolver: () => 'true'),
@@ -295,7 +358,7 @@ final class _ComposerHarness {
         globalPresets: () => const [],
         activeTeam: () => null,
       ),
-      ptyInject: ptyInject,
+      ptyInject: inject,
     );
     final runtime = TabSessionRuntimeCoordinator(
       tabStore: store,
@@ -318,7 +381,7 @@ final class _ComposerHarness {
       store: store,
       shell: shell,
       delivery: delivery,
-      ptyInject: ptyInject,
+      ptyInject: inject,
       materializer: materializer,
     );
   }

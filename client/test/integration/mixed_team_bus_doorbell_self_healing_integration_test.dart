@@ -15,6 +15,12 @@ const _workers = ['architect', 'builder-0', 'builder-1', 'reviewer'];
 /// 回归:lead 广播 + 惰性连接的 worker → 全部成员最终消费并 park,
 /// 无人被假标为 in-turn(诚实状态:MaterializeCompleted → turnDoneReady,
 /// 门铃投递失败也不再让成员永久 stuck active)。
+///
+/// 注意:本文件只测 TeamBus 状态机(FakeMemberLauncher),不覆盖 PTY paste。
+/// 门铃 defer→retry 必须重贴的契约在
+/// `tab_member_composer_surface_test` /
+/// `fullscreen_pty_automation_test` —— 这里假 launcher 永远无法发现
+/// "CR-only after deferred paste" 这类 mute 回归。
 void main() {
   late TeamBus bus;
   late FakeMemberLauncher launcher;

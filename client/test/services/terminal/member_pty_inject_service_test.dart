@@ -21,7 +21,7 @@ final class _CrStuckAutomation extends FullscreenPtyAutomation {
 }
 
 void main() {
-  test('mailbox retry delegates one CR-only attempt to TeamBus caller', () async {
+  test('mailbox retry delegates one attempt to automation', () async {
     final automation = _CrStuckAutomation();
     final service = MemberPtyInjectService(automation: automation);
     final session = TerminalSession(

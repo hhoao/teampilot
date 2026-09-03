@@ -62,7 +62,8 @@ final class MemberPtyInjectService {
     ),
   );
 
-  /// A TeamBus-owned retry is CR-only; it never re-pastes mailbox text.
+  /// TeamBus-owned retry: CR-only when paste is already staged; otherwise
+  /// re-pastes (see [FullscreenPtyAutomation.retry]).
   Future<FullscreenPtyDeliveryOutcome> retry({
     required TerminalInputController input,
     required TerminalScreenProbeController probe,

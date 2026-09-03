@@ -164,8 +164,12 @@ class FullscreenPtyAutomation {
     return _pollCrUntilAnchorClears(port, anchor, isAcked: isAcked);
   }
 
-  /// A caller-owned retry is CR-only. The terminal layer never re-pastes:
-  /// deciding whether a new staged command is safe belongs to delivery state.
+  /// Complete a prior delivery attempt.
+  ///
+  /// If the paste is already staged on the grid, only CR (swallowed-submit case).
+  /// If the needle is absent — deferred surface, pasteNotFound, or cleared
+  /// composer — re-run [deliverPasteAndSubmit]. CR-only forever after a miss
+  /// leaves mixed-team mail mute.
   Future<FullscreenPtyDeliveryOutcome> retry({
     required FullscreenPtyDeliveryPort port,
     required String text,
@@ -175,7 +179,17 @@ class FullscreenPtyAutomation {
     if (isAcked?.call() ?? false) {
       return FullscreenPtyDeliveryOutcome.submitted;
     }
-    return nudgeCrUntilClear(port: port, text: text, isAcked: isAcked);
+    await port.syncDisplayGrid();
+    final needle = PtyAutomationNeedle.forText(text);
+    if (_locatePasteAck(port, needle) != null) {
+      return nudgeCrUntilClear(port: port, text: text, isAcked: isAcked);
+    }
+    return deliverPasteAndSubmit(
+      port: port,
+      text: text,
+      pasteSettle: pasteSettle,
+      isAcked: isAcked,
+    );
   }
 
   Future<FullscreenPtyDeliveryOutcome> _pollCrUntilAnchorClears(
