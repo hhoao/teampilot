@@ -10,7 +10,6 @@ import '../../../cubits/layout_cubit.dart';
 import '../../../cubits/session_groups_cubit.dart';
 import '../../../cubits/shortcut_cubit.dart';
 import '../../../cubits/workbench/workbench_cubit.dart';
-import '../../../cubits/workbench/workbench_tab.dart';
 import '../../../cubits/worktree_cubit.dart';
 import '../../../l10n/l10n_extensions.dart';
 import '../../../models/app_session.dart';
@@ -399,18 +398,17 @@ class _RunningSessionsHost extends StatelessWidget {
   final Workspace workspace;
   final String tabScopeId;
 
-  List<String> _openSessionTabIds(WorkbenchState workbenchState) => [
-    for (final tab in workbenchState.bar(tabScopeId).center.order)
-      if (tab.kind == WorkbenchTabKind.session) tab.id,
-  ];
-
   @override
   Widget build(BuildContext context) {
-    final workbenchState = context.watch<WorkbenchCubit>().state;
+    final openTabIds = context.select<WorkbenchCubit, OpenSessionTabIds>(
+      (c) => OpenSessionTabIds.fromCenterBarOrder(
+        c.state.bar(tabScopeId).center.order,
+      ),
+    );
     final running = context.select<ChatCubit, RunningSessionIds>(
       (c) => RunningSessionIds.fromOpenSessionTabs(
         sessions: sessionsForWorkspace(workspace, c.state.sessions),
-        openTabSessionIdsInOrder: _openSessionTabIds(workbenchState),
+        openTabSessionIdsInOrder: openTabIds.ids,
       ),
     );
     return SidebarRebuildProbe(

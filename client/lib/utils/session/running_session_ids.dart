@@ -1,7 +1,47 @@
 import 'package:flutter/foundation.dart';
 
+import '../../cubits/workbench/workbench_tab.dart';
 import '../../models/app_session.dart';
 import 'workspace_running_sessions.dart';
+
+/// Order-sensitive open session tab ids from the center workbench strip.
+@immutable
+class OpenSessionTabIds {
+  const OpenSessionTabIds(this.ids);
+
+  final List<String> ids;
+
+  factory OpenSessionTabIds.fromCenterBarOrder(List<WorkbenchTabId> order) {
+    return OpenSessionTabIds([
+      for (final tab in order)
+        if (tab.kind == WorkbenchTabKind.session &&
+            tab.id.isNotEmpty &&
+            !tab.id.startsWith('local-'))
+          tab.id,
+    ]);
+  }
+
+  @override
+  bool operator ==(Object other) {
+    if (other is! OpenSessionTabIds) return false;
+    final a = ids;
+    final b = other.ids;
+    if (a.length != b.length) return false;
+    for (var i = 0; i < a.length; i++) {
+      if (a[i] != b[i]) return false;
+    }
+    return true;
+  }
+
+  @override
+  int get hashCode {
+    var hash = 0;
+    for (final id in ids) {
+      hash = Object.hash(hash, id);
+    }
+    return hash;
+  }
+}
 
 /// Order-sensitive Running-strip membership for [context.select].
 @immutable

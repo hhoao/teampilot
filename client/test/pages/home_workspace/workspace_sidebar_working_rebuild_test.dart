@@ -229,4 +229,41 @@ void main() {
       );
     },
   );
+
+  testWidgets(
+    'activating another center tab does not rebuild open-tab host',
+    (tester) async {
+      chatCubit.emit(
+        chatCubit.state.copyWith(
+          sessions: [
+            _session(id: 'a', display: 'Alpha'),
+          ],
+        ),
+      );
+      workbenchCubit.openSession(_workspace.workspaceId, 'a');
+      workbenchCubit.openFile(_workspace.workspaceId, '/tmp/readme.md');
+
+      await pumpSidebar(tester);
+
+      final runningProbe = _probeState(
+        tester,
+        WorkspaceSidebarKeys.runningHostProbe,
+      );
+      final runningBuilds = runningProbe.buildCount;
+
+      workbenchCubit.openFile(
+        _workspace.workspaceId,
+        '/tmp/readme.md',
+        activate: true,
+      );
+      await tester.pump();
+
+      expect(
+        runningProbe.buildCount,
+        runningBuilds,
+        reason: 'open-tab host must ignore non-session bar changes',
+      );
+      expect(find.text('Open'), findsOneWidget);
+    },
+  );
 }

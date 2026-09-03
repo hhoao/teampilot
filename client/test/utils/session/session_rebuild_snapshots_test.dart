@@ -1,4 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
+import 'package:teampilot/cubits/workbench/workbench_tab.dart';
 import 'package:teampilot/models/app_session.dart';
 import 'package:teampilot/models/workspace_folder.dart';
 import 'package:teampilot/utils/session/app_session_sort.dart';
@@ -95,6 +96,16 @@ void main() {
     expect(a, same);
     expect(a.ids, ['b', 'a']);
     expect(a, isNot(different));
+  });
+
+  test('OpenSessionTabIds ignores non-session and local tabs', () {
+    final ids = OpenSessionTabIds.fromCenterBarOrder([
+      WorkbenchTabId.session('a'),
+      WorkbenchTabId.file('/tmp/x'),
+      WorkbenchTabId.session('local-scratch'),
+      WorkbenchTabId.session('b'),
+    ]);
+    expect(ids.ids, ['a', 'b']);
   });
 
   test('RunningSessionIds.fromOpenSessionTabs preserves bar order', () {
