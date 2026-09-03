@@ -173,7 +173,7 @@ class _PaneBody extends StatelessWidget {
             Expanded(
               child: Column(
                 children: [
-                  GitGraphToolbar(state: state),
+                  GitGraphToolbar(state: state, workspaceId: workspaceId),
                   if (headerVisible)
                     GitGraphColumnHeader(
                       graphWidth: GitGraphColumns.graphWidthFor(maxLane: 0),

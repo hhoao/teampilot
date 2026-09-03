@@ -15,9 +15,14 @@ import 'git_graph_refs_menu.dart';
 /// 图面板顶部工具条：分支与标签、范围切换、fetch/pull/push、stash、搜索 + 模式、刷新。
 /// 无状态：所有回调走 [GitGraphCubit] / [GitGraphActionsController]，不做 IO。
 class GitGraphToolbar extends StatelessWidget {
-  const GitGraphToolbar({super.key, required this.state});
+  const GitGraphToolbar({
+    super.key,
+    required this.state,
+    required this.workspaceId,
+  });
 
   final GitGraphState state;
+  final String workspaceId;
 
   @override
   Widget build(BuildContext context) {
@@ -45,7 +50,7 @@ class GitGraphToolbar extends StatelessWidget {
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    GitGraphRefsMenu(state: state),
+                    GitGraphRefsMenu(state: state, workspaceId: workspaceId),
                     const SizedBox(width: 6),
                     _branchScopeButton(context),
                     if (state.branchFilter != null) ...[

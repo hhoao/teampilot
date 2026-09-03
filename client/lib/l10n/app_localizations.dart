@@ -15320,6 +15320,18 @@ abstract class AppLocalizations {
   /// **'Show Diff with Working Tree'**
   String get gitGraphShowDiffWithWorkingTree;
 
+  /// No description provided for @gitGraphCompareWith.
+  ///
+  /// In en, this message translates to:
+  /// **'Compare with…'**
+  String get gitGraphCompareWith;
+
+  /// No description provided for @gitGraphCompareWorkingTree.
+  ///
+  /// In en, this message translates to:
+  /// **'Working Tree ({branch})'**
+  String gitGraphCompareWorkingTree(String branch);
+
   /// No description provided for @gitCompareWorkingTree.
   ///
   /// In en, this message translates to:
