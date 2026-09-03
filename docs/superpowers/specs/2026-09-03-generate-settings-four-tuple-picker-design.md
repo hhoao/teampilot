@@ -19,6 +19,7 @@ Users want both pool entries and the generator to work like the Simple compose c
 - Pool entries store **inline** `cli / provider / model / effort` (plus description/tags), not a live preset binding.
 - Selecting a preset **snapshots** into that four-tuple immediately.
 - Generator model uses the **same picker UX** and saves as inline `AiFeatureSetting` with `activePresetId: null`.
+- Landing submit / coordinator preflight resolve that inline setting (not a global preset id) into the builder `SimpleLaunchIdentity`.
 - Native team mode: **model-pool** pickers only expose the frozen/selected `nativeCli`. The **generator** picker stays on all launchable CLIs (it builds the plan; it is not a roster member).
 - Extract a reusable **`LaunchFourTuplePicker`** so settings (and later Simple compose) share one control.
 

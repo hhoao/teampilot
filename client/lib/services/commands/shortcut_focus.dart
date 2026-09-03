@@ -51,9 +51,16 @@ class ShortcutFocus extends InheritedWidget {
   /// (e.g. from a [FocusNode.context] on every key event) does not register a
   /// spurious rebuild dependency.
   static ShortcutFocus? maybeOf(BuildContext context) {
-    final element = context
-        .getElementForInheritedWidgetOfExactType<ShortcutFocus>();
-    return element?.widget as ShortcutFocus?;
+    // Key handlers can run while primary focus still points at a deactivated
+    // dialog/route element (e.g. Escape dismissing a modal). Ancestor lookup
+    // asserts in that state; treat as "no ShortcutFocus".
+    try {
+      final element = context
+          .getElementForInheritedWidgetOfExactType<ShortcutFocus>();
+      return element?.widget as ShortcutFocus?;
+    } catch (_) {
+      return null;
+    }
   }
 
   /// Union of [claims] over every [ShortcutFocus] ancestor of [context]
@@ -61,11 +68,15 @@ class ShortcutFocus extends InheritedWidget {
   /// not register a rebuild dependency.
   static Set<KeyChord> claimsOf(BuildContext context) {
     final result = <KeyChord>{};
-    context.visitAncestorElements((element) {
-      final widget = element.widget;
-      if (widget is ShortcutFocus) result.addAll(widget.claims);
-      return true;
-    });
+    try {
+      context.visitAncestorElements((element) {
+        final widget = element.widget;
+        if (widget is ShortcutFocus) result.addAll(widget.claims);
+        return true;
+      });
+    } catch (_) {
+      return const {};
+    }
     return result;
   }
 

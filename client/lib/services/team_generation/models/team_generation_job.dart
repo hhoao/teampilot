@@ -211,8 +211,8 @@ final class TeamGenerationJobGenerator {
     );
   }
 
-  /// Resolved once from the AI feature setting during preflight; empty when
-  /// the feature has no pinned preset (provenance only, never credentials).
+  /// Optional preset id when the generator was bound to a named preset;
+  /// empty for inline four-tuple AI feature settings (provenance only).
   final String generatorPresetId;
   final String settingsRevision;
   final String teamModeValue;

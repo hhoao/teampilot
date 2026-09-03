@@ -2,12 +2,17 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../../cubits/ai_feature_settings_cubit.dart';
+import '../../../cubits/app_provider_cubit.dart';
 import '../../../cubits/chat_cubit.dart';
+import '../../../cubits/cli_presets_cubit.dart';
 import '../../../models/landing_launch_context.dart';
 import '../../../cubits/workbench/workbench_cubit.dart';
 import '../../../l10n/app_localizations.dart';
 import '../../../models/ai_feature_setting.dart';
+import '../../../models/simple_launch_identity.dart';
 import '../../../models/workspace.dart';
+import '../../../services/ai/ai_feature_setting_resolver.dart';
+import '../../../services/cli/registry/cli_tool_registry_scope.dart';
 import '../../../services/team_generation/team_generation_coordinator.dart';
 import '../../../utils/logging/logger.dart';
 
@@ -42,11 +47,27 @@ Future<bool> submitWorkspaceLandingGeneration(
       .read<AiFeatureSettingsCubit>()
       .state
       .settingFor(AiFeatureId.teamGenerate);
-  final generatorPresetId = generatorSetting?.activePresetId ?? '';
+  final appProviders = context.read<AppProviderCubit>().state;
+  final registry = CliToolRegistryScope.of(context);
+  final presets = context.read<CliPresetsCubit>().state.presets;
+  final generatorConfigured = aiFeatureIsConfigured(
+    stored: generatorSetting,
+    registry: registry,
+    appProviders: appProviders,
+    globalPresets: presets,
+  );
+  final resolvedGenerator = generatorConfigured
+      ? resolveAiFeatureSetting(
+          stored: generatorSetting,
+          appProviders: appProviders,
+          registry: registry,
+          globalPresets: presets,
+        )
+      : null;
   final preflight = await coordinator.preflight(
     workspace: workspace,
     originalPrompt: trimmed,
-    generatorPresetId: generatorPresetId,
+    generatorCli: resolvedGenerator?.cli,
   );
   if (preflight.issues.isNotEmpty) {
     if (context.mounted) {
@@ -55,11 +76,20 @@ Future<bool> submitWorkspaceLandingGeneration(
     return false;
   }
 
+  final generatorIdentity = SimpleLaunchIdentity.resolve(
+    cli: resolvedGenerator!.cli,
+    provider: resolvedGenerator.providerId,
+    model: resolvedGenerator.model,
+    effort: resolvedGenerator.effort,
+    expertKey: 'teampilot/builtin/team-builder',
+    presetId: resolvedGenerator.activePresetId,
+  );
+
   try {
     final result = await coordinator.start(
       workspace: workspace,
       originalPrompt: trimmed,
-      generatorPresetId: generatorPresetId,
+      generatorIdentity: generatorIdentity,
       projectFolderPath: launch.projectFolderPath ?? workspace.firstFolderPath,
       workingDirectoryPath:
           workingDirectory ??

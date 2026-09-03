@@ -373,11 +373,17 @@ final class TabMemberPtyDelivery {
     return PromptDeliverySubmission(
       deliveryId: delivery.id,
       submitted: result == PromptSubmissionResult.submitted,
-      state: result == PromptSubmissionResult.submitted
-          ? PromptDeliveryState.submitIssued.name
-          : result == PromptSubmissionResult.dropped
-          ? PromptDeliveryState.submittedUnknown.name
-          : PromptDeliveryState.failed.name,
+      // unconfirmed/dropped both mean "CR may have reached the TUI" — align
+      // with PromptDeliveryCoordinator's submittedUnknown transition so
+      // team-generation kickoff can keep the job active.
+      state: switch (result) {
+        PromptSubmissionResult.submitted =>
+          PromptDeliveryState.submitIssued.name,
+        PromptSubmissionResult.dropped ||
+        PromptSubmissionResult.unconfirmed =>
+          PromptDeliveryState.submittedUnknown.name,
+        PromptSubmissionResult.failed => PromptDeliveryState.failed.name,
+      },
     );
   }
 

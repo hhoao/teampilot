@@ -2,6 +2,7 @@ import 'dart:async';
 
 import '../../models/cli_preset.dart';
 import '../../models/simple_launch_identity.dart';
+import '../../models/team_config.dart';
 import '../../models/team_generation_settings.dart';
 import '../../models/workspace.dart';
 import 'generated_team_plan_validator.dart';
@@ -106,7 +107,8 @@ final class TeamGenerationCoordinator {
   Future<TeamGenerationPreflightResult> preflight({
     required Workspace workspace,
     required String originalPrompt,
-    required String generatorPresetId,
+    /// Resolved generator CLI; null means the AI feature is not configured.
+    CliTool? generatorCli,
   }) async {
     final issues = <TeamGenerationPreflightIssue>[];
     void addIssue(String code) {
@@ -125,16 +127,11 @@ final class TeamGenerationCoordinator {
       registry: _compatibility.registry,
       capturedAt: 0,
     );
-    final generatorId = generatorPresetId.trim();
-    final generator = presets
-        .where((preset) => preset.id == generatorId)
-        .firstOrNull;
-    if (generatorId.isEmpty || generator == null) {
+    final cli = generatorCli;
+    if (cli == null) {
       addIssue('generator_not_configured');
     } else {
-      final generatorResult = _compatibility.evaluateGenerator(
-        preset: generator,
-      );
+      final generatorResult = _compatibility.evaluateGenerator(cli: cli);
       for (final issue in generatorResult.issues) {
         addIssue(issue.code);
       }
@@ -153,7 +150,7 @@ final class TeamGenerationCoordinator {
   Future<TeamGenerationStartResult> start({
     required Workspace workspace,
     required String originalPrompt,
-    required String generatorPresetId,
+    required SimpleLaunchIdentity generatorIdentity,
     required String projectFolderPath,
     required String workingDirectoryPath,
     required List<String> folderIds,
@@ -179,7 +176,7 @@ final class TeamGenerationCoordinator {
       originalPrompt: originalPrompt,
       generator: TeamGenerationJobGenerator.fromSettings(
         snapshot,
-        generatorPresetId: generatorPresetId,
+        generatorPresetId: generatorIdentity.presetId,
       ),
       settings: snapshot,
       launch: TeamGenerationLaunchSnapshot(
@@ -195,14 +192,7 @@ final class TeamGenerationCoordinator {
     try {
       await _sessionPort.createBuilder(
         workspace: workspace,
-        identity: SimpleLaunchIdentity.resolve(
-          preset: _presets()
-              .where((p) => p.id == generatorPresetId)
-              .firstOrNull,
-          cli: snapshot.nativeCli,
-          expertKey: 'teampilot/builtin/team-builder',
-          presetId: generatorPresetId,
-        ),
+        identity: generatorIdentity,
         projectFolderPath: projectFolderPath,
         workingDirectoryPath: workingDirectoryPath,
         workflowId: workflowId,
@@ -226,14 +216,27 @@ final class TeamGenerationCoordinator {
         kickoff,
         deliveryId: kickoffId,
       );
-      final kickoffResult = await _sessionPort.deliverTracked(
+      var kickoffResult = await _sessionPort.deliverTracked(
         builderSessionId,
         builderSessionId,
         kickoff,
         directToPty: true,
         deliveryId: kickoffId,
       );
-      if (!kickoffResult.submitted) {
+      // Cursor/Codex CR ACK is flaky: paste often lands while grid ACK reports
+      // unconfirmed. Hard-failing the job then blocks Team Composer auth even
+      // though the builder session keeps running — retry once, then accept
+      // submittedUnknown as a live workflow.
+      if (!kickoffResult.acceptedForKickoff) {
+        kickoffResult = await _sessionPort.deliverTracked(
+          builderSessionId,
+          builderSessionId,
+          kickoff,
+          directToPty: true,
+          deliveryId: kickoffId,
+        );
+      }
+      if (!kickoffResult.acceptedForKickoff) {
         throw StateError('team-generation builder kickoff failed');
       }
       await _jobStore.mutate(workspace.workspaceId, workflowId, (current) {
@@ -242,7 +245,9 @@ final class TeamGenerationCoordinator {
           receipts: {
             ...current.receipts,
             'builderKickoff': TeamGenerationReceipt(
-              state: TeamGenerationReceiptState.succeeded,
+              state: kickoffResult.submitted
+                  ? TeamGenerationReceiptState.succeeded
+                  : TeamGenerationReceiptState.unknown,
               value: kickoffId,
             ),
           },

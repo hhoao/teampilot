@@ -6,6 +6,7 @@ import '../../models/simple_launch_identity.dart';
 import '../../models/team_config.dart';
 import '../../models/workspace.dart';
 import '../../repositories/session_repository.dart';
+import '../../services/prompt_delivery/prompt_delivery.dart';
 import '../../services/team_generation/team_generation_session_port.dart';
 import '../../utils/logging/logger.dart';
 import '../../utils/team/team_member_naming.dart';
@@ -236,10 +237,14 @@ final class CubitTeamGenerationSessionPort
           text,
           deliveryId: deliveryId,
         );
-    return PortDeliveryOutcome(
-      result: delivery.submitted ? 'submitted' : 'failed',
-      deliveryState: delivery.state,
-    );
+    final state = delivery.state;
+    final result = delivery.submitted
+        ? 'submitted'
+        : (state == PromptDeliveryState.submittedUnknown.name ||
+              state == PromptDeliveryState.submitIssued.name)
+        ? 'dropped'
+        : 'failed';
+    return PortDeliveryOutcome(result: result, deliveryState: state);
   }
 
   @override

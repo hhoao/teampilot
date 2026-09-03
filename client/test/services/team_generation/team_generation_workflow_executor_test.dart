@@ -293,7 +293,10 @@ void main() {
       final started = await coordinator.start(
         workspace: workspace,
         originalPrompt: 'Create a release team',
-        generatorPresetId: preset.id,
+        generatorIdentity: SimpleLaunchIdentity.resolve(
+          preset: preset,
+          expertKey: 'teampilot/builtin/team-builder',
+        ),
         projectFolderPath: '/proj',
         workingDirectoryPath: '/proj',
         folderIds: const ['/proj'],

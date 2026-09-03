@@ -114,9 +114,7 @@ void main() {
     final compatibility = TeamGenerationCompatibility(
       registry: registryWith(mcp: false),
     );
-    final result = compatibility.evaluateGenerator(
-      preset: preset('gen', CliTool.codex),
-    );
+    final result = compatibility.evaluateGenerator(cli: CliTool.codex);
     expect(result.isCompatible, isFalse);
     expect(
       result.issues.map((issue) => issue.code),
@@ -131,9 +129,7 @@ void main() {
       final compatibility = TeamGenerationCompatibility(
         registry: registryWith(),
       );
-      final result = compatibility.evaluateGenerator(
-        preset: preset('gen', CliTool.codex),
-      );
+      final result = compatibility.evaluateGenerator(cli: CliTool.codex);
       expect(result.isCompatible, isTrue);
       expect(
         result.builderSecurityPolicy,

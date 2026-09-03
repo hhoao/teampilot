@@ -34,6 +34,11 @@ import '../../support/in_memory_filesystem.dart';
 import '../../support/post_frame_test_harness.dart';
 
 class _RecordingSessionPort implements TeamGenerationSessionPort {
+  _RecordingSessionPort({this.kickoffOutcomes});
+
+  /// When set, each builder deliverTracked consumes the next outcome.
+  final List<PortDeliveryOutcome>? kickoffOutcomes;
+  var _kickoffOutcomeIndex = 0;
   final events = <String>[];
   final sessions = <String, AppSession>{};
 
@@ -121,6 +126,15 @@ class _RecordingSessionPort implements TeamGenerationSessionPort {
   }) async {
     if (sessionId.startsWith('teamgen-builder-')) {
       events.add('deliverTracked:$sessionId:$memberId:$deliveryId:$text');
+      final outcomes = kickoffOutcomes;
+      if (outcomes != null && outcomes.isNotEmpty) {
+        final index = _kickoffOutcomeIndex < outcomes.length
+            ? _kickoffOutcomeIndex
+            : outcomes.length - 1;
+        _kickoffOutcomeIndex++;
+        return outcomes[index];
+      }
+      return const PortDeliveryOutcome(result: 'submitted');
     }
     return const PortDeliveryOutcome(result: 'submitted');
   }
@@ -284,7 +298,7 @@ void main() {
       final missingGenerator = await coordinator.preflight(
         workspace: workspace,
         originalPrompt: 'Build the release plan',
-        generatorPresetId: '',
+        generatorCli: null,
       );
       expect(
         missingGenerator.issues.map((issue) => issue.code),
@@ -293,7 +307,7 @@ void main() {
       final supportedGenerator = await coordinator.preflight(
         workspace: workspace,
         originalPrompt: 'Build the release plan',
-        generatorPresetId: preset.id,
+        generatorCli: preset.cli,
       );
       expect(supportedGenerator.ok, isTrue);
       final unsupportedCoordinator = TeamGenerationCoordinator(
@@ -313,7 +327,7 @@ void main() {
       final unsupportedGenerator = await unsupportedCoordinator.preflight(
         workspace: workspace,
         originalPrompt: 'Build the release plan',
-        generatorPresetId: preset.id,
+        generatorCli: preset.cli,
       );
       expect(
         unsupportedGenerator.issues.map((issue) => issue.code),
@@ -329,7 +343,10 @@ void main() {
       final started = await coordinator.start(
         workspace: workspace,
         originalPrompt: originalRequest,
-        generatorPresetId: preset.id,
+        generatorIdentity: SimpleLaunchIdentity.resolve(
+          preset: preset,
+          expertKey: 'teampilot/builtin/team-builder',
+        ),
         projectFolderPath: '/proj',
         workingDirectoryPath: '/proj',
         folderIds: const ['/proj'],
@@ -417,6 +434,127 @@ void main() {
       expect(
         (await jobStore.read('ws', started.workflowId))!.phase,
         TeamGenerationPhase.complete,
+      );
+    },
+  );
+
+  test(
+    'keeps generation job active when builder kickoff CR ACK is unknown',
+    () async {
+      final fs = InMemoryFilesystem();
+      final layout = WorkspaceLayout(teampilotRoot: '/tp', fs: fs);
+      final jobStore = TeamGenerationJobStore(fs: fs, layout: layout);
+      final settingsStore = TeamGenerationSettingsStore(
+        fs: fs,
+        pathOverride: '/tp/settings.json',
+      );
+      final port = _RecordingSessionPort(
+        kickoffOutcomes: const [
+          PortDeliveryOutcome(result: 'failed', deliveryState: 'failed'),
+          PortDeliveryOutcome(
+            result: 'failed',
+            deliveryState: 'submittedUnknown',
+          ),
+        ],
+      );
+      final workspace = Workspace(
+        workspaceId: 'ws',
+        folders: const [WorkspaceFolder(path: '/proj', targetId: 'local')],
+        createdAt: 1,
+        updatedAt: 1,
+      );
+      final preset = CliPreset(
+        id: 'generator',
+        name: 'Generator',
+        cli: CliTool.claude,
+        provider: 'official',
+        model: 'strong',
+        createdAt: 1,
+        updatedAt: 1,
+      );
+      await settingsStore.save(
+        TeamGenerationSettings(
+          teamMode: TeamMode.mixed,
+          modelPool: [
+            GenerateModelPoolEntry(
+              id: preset.id,
+              cli: preset.cli,
+              provider: preset.provider,
+              model: preset.model,
+              effort: preset.effort,
+            ),
+          ],
+        ),
+      );
+      final profileRepository = testLaunchProfileRepository(
+        await Directory.systemTemp.createTemp('team_generation_profiles_unk_'),
+      );
+      final events = port.events;
+      final promptStore = MemoryPromptDeliveryStore();
+      final promptCoordinator = PromptDeliveryCoordinator(
+        store: promptStore,
+        commands: _RecordingPromptCommands(events),
+      );
+      final coordinator = TeamGenerationCoordinator(
+        jobStore: jobStore,
+        settingsStore: settingsStore,
+        sessionPort: port,
+        compatibility: TeamGenerationCompatibility(
+          registry: CliToolRegistry.builtIn(),
+        ),
+        probeService: TeamTargetProbeService(runner: _EmptyProbeRunner()),
+        planValidator: GeneratedTeamPlanValidator(),
+        handoffService: TeamGenerationHandoffService(
+          jobStore: jobStore,
+          sessionPort: port,
+          promptCoordinator: promptCoordinator,
+          promptStore: promptStore,
+        ),
+        cleanupService: TeamGenerationCleanupService(
+          jobStore: jobStore,
+          sessionPort: port,
+          idleWaiter: TeamGenerationBuilderIdleWaiter(sessionPort: port),
+          revokeToken: (_) {},
+          quietWindow: Duration.zero,
+          idleTimeout: const Duration(seconds: 1),
+        ),
+        commitService: GeneratedTeamCommitService(
+          jobStore: jobStore,
+          expertStore: LocalExpertStore(fs: fs, dirOverride: '/tp/experts'),
+          profileRepository: profileRepository,
+          sessionRepository: _FakeSessionRepository(),
+          resourceProvisioner: _RecordingProvisioner(),
+          publisher: _RecordingPublisher(events),
+        ),
+        uuidFactory: () => 'workflow-unknown-ack',
+        presets: () => [preset],
+        workspaceResolver: (_) async => workspace,
+      );
+
+      final started = await coordinator.start(
+        workspace: workspace,
+        originalPrompt: 'Build the release plan',
+        generatorIdentity: SimpleLaunchIdentity.resolve(
+          preset: preset,
+          expertKey: 'teampilot/builtin/team-builder',
+        ),
+        projectFolderPath: '/proj',
+        workingDirectoryPath: '/proj',
+        folderIds: const ['/proj'],
+        targetIds: const ['local'],
+      );
+      final job = await jobStore.read('ws', started.workflowId);
+      expect(job, isNotNull);
+      expect(job!.phase, TeamGenerationPhase.planning);
+      expect(job.isActive, isTrue);
+      expect(
+        job.receipts['builderKickoff']!.state,
+        TeamGenerationReceiptState.unknown,
+      );
+      // Retry once after the first unknown/failed kickoff report.
+      expect(
+        events.where((e) => e.startsWith('deliverTracked:')).length,
+        2,
       );
     },
   );

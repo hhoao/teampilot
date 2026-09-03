@@ -1,4 +1,3 @@
-import '../../models/cli_preset.dart';
 import '../../models/team_config.dart';
 import '../../models/team_generation_settings.dart';
 import '../cli/registry/capabilities/cli_session_capability.dart';
@@ -61,10 +60,10 @@ final class TeamGenerationCompatibility {
   final CliToolRegistry registry;
 
   TeamGenerationCompatibilityResult evaluateGenerator({
-    required CliPreset preset,
+    required CliTool cli,
   }) {
     final issues = <TeamGenerationIssue>[];
-    final definition = registry.tryGet(preset.cli);
+    final definition = registry.tryGet(cli);
     if (definition == null || !definition.isLaunchSupported) {
       issues.add(
         const TeamGenerationIssue(code: 'generator_launch_unsupported'),
@@ -74,24 +73,24 @@ final class TeamGenerationCompatibility {
         builderSecurityPolicy: LaunchSecurityPolicy.cliDefault,
       );
     }
-    if (registry.capability<CliSessionCapability>(preset.cli) == null) {
+    if (registry.capability<CliSessionCapability>(cli) == null) {
       issues.add(
         const TeamGenerationIssue(code: 'generator_session_unsupported'),
       );
     }
-    if (registry.capability<SkillCapability>(preset.cli) == null) {
+    if (registry.capability<SkillCapability>(cli) == null) {
       issues.add(
         const TeamGenerationIssue(code: 'generator_skill_unsupported'),
       );
     }
-    if (registry.capability<McpCapability>(preset.cli) == null) {
+    if (registry.capability<McpCapability>(cli) == null) {
       issues.add(
         const TeamGenerationIssue(code: 'generator_mcp_unsupported'),
       );
     }
     return TeamGenerationCompatibilityResult(
       issues: issues,
-      builderSecurityPolicy: _builderSecurityPolicy(preset.cli),
+      builderSecurityPolicy: _builderSecurityPolicy(cli),
     );
   }
 

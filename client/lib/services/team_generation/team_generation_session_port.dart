@@ -96,7 +96,12 @@ final class PortDeliveryOutcome {
 
   bool get submitted => result == 'submitted';
   bool get unknown =>
-      deliveryState == 'submitIssued' || deliveryState == 'submittedUnknown';
+      result == 'dropped' ||
+      deliveryState == 'submitIssued' ||
+      deliveryState == 'submittedUnknown';
+
+  /// Kickoff may proceed when CR ACK is flaky but the prompt likely landed.
+  bool get acceptedForKickoff => submitted || unknown;
 }
 
 /// Ready/busy activity signal per session.
