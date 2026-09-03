@@ -1,8 +1,10 @@
+import 'dart:async';
+
 import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/cubits/app_provider_cubit.dart';
 import 'package:teampilot/cubits/managed_provider_cubit.dart';
+import 'package:teampilot/models/app_provider_config.dart';
 import 'package:teampilot/models/managed_provider.dart';
-import 'package:teampilot/models/team_config.dart';
 import 'package:teampilot/repositories/app_provider_repository.dart';
 import 'package:teampilot/repositories/managed_provider_repository.dart';
 
@@ -15,6 +17,7 @@ void main() {
 
   setUp(() {
     fs = InMemoryFilesystem();
+    usageRepoStub.reset();
     repo = ManagedProviderRepository(
       fs: fs,
       configPath: '/tp/managed-providers.json',
@@ -115,9 +118,70 @@ void main() {
     await cubit.close();
     await appCubit.close();
   });
+
+  test(
+    'load migration does not delete a provider upserted during load',
+    () async {
+      await repo.save([entry(id: 'managed-legacy')]);
+      final appCubit = _GatedAppProviderCubit(
+        repository: AppProviderRepository(fs: fs, basePath: '/tp'),
+      );
+      final cubit = ManagedProviderCubit(
+        repository: repo,
+        appProviderCubit: appCubit,
+      );
+
+      // Start the load; it parks inside the migration's CLI-row ensure so the
+      // upsert below lands between the load's catalog read and its save.
+      final loadFuture = cubit.load();
+      await Future<void>.delayed(Duration.zero);
+      await cubit.upsert(entry(id: 'managed-new', source: 'secret'));
+      appCubit.releaseRowEnsure();
+      await loadFuture;
+
+      expect(cubit.state.providerFor('managed-legacy'), isNotNull);
+      expect(cubit.state.providerFor('managed-new'), isNotNull);
+      final persisted = await repo.load();
+      expect(
+        persisted.map((provider) => provider.id),
+        containsAll(['managed-legacy', 'managed-new']),
+      );
+      // The deletion barrier must never classify the concurrent upsert as
+      // removed just because the migration save had a stale catalog view.
+      expect(usageRepoStub.deletedIds, isEmpty);
+      await cubit.close();
+      await appCubit.close();
+    },
+  );
 }
 
 /// Minimal stub matching ManagedProviderUsageRepository.deleteMany.
 class _UsageRepoStub {
-  Future<void> deleteMany(List<String> ids) async {}
+  final deletedIds = <String>[];
+
+  void reset() => deletedIds.clear();
+
+  Future<void> deleteMany(List<String> ids) async {
+    deletedIds.addAll(ids);
+  }
+}
+
+/// [AppProviderCubit] whose first CLI-row upsert blocks until released, so a
+/// test can deterministically interleave a managed-provider mutation with the
+/// load migration path.
+class _GatedAppProviderCubit extends AppProviderCubit {
+  _GatedAppProviderCubit({required super.repository})
+    : _rowEnsureGate = Completer<void>();
+
+  final Completer<void> _rowEnsureGate;
+
+  void releaseRowEnsure() {
+    if (!_rowEnsureGate.isCompleted) _rowEnsureGate.complete();
+  }
+
+  @override
+  Future<bool> upsertProvider(AppProviderConfig provider) async {
+    await _rowEnsureGate.future;
+    return super.upsertProvider(provider);
+  }
 }

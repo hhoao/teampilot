@@ -115,7 +115,43 @@ class ManagedProviderCubit extends Cubit<ManagedProviderState> {
         migrated.add(next);
       }
       if (changed) {
-        await _repository.save(migrated);
+        // Persist the migration through the serialized mutation tail: a
+        // concurrent upsert that landed between the load's catalog read and
+        // this save must not be classified as removed by the repository's
+        // deletion barrier. Re-read inside the lock and merge so the save
+        // never shrinks — or grows — the catalog away from the current disk
+        // state (entries deleted while the load ran stay deleted).
+        await _serializeMutation(() async {
+          final current = await _repository.load();
+          final merged = <String, ManagedProvider>{
+            for (final provider in current) provider.id: provider,
+          };
+          for (final provider in migrated) {
+            if (!merged.containsKey(provider.id)) continue;
+            merged[provider.id] = provider;
+          }
+          await _repository.save(merged.values.toList());
+        }, errorCode: ManagedProviderErrorCode.loadFailed);
+        if (isClosed) return;
+        // The serialized save bumped the catalog revision, and concurrent
+        // mutations may have landed while the load ran. Merge the live state
+        // (authoritative for concurrent mutations) over a fresh disk read
+        // instead of clobbering it with the load's stale view.
+        final byId = <String, ManagedProvider>{
+          for (final provider in await _repository.load())
+            provider.id: provider,
+        };
+        for (final provider in state.providers) {
+          byId[provider.id] = provider;
+        }
+        emit(
+          state.copyWith(
+            status: ManagedProviderLoadStatus.ready,
+            providers: byId.values.toList(),
+            clearError: true,
+          ),
+        );
+        return;
       }
       if (isClosed || revision != _catalogRevision) return;
       emit(

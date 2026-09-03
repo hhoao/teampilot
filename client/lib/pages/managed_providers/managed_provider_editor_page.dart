@@ -10,10 +10,10 @@ import '../../l10n/l10n_extensions.dart';
 import '../../models/managed_provider.dart';
 import '../../models/managed_provider_editor_schema.dart';
 import '../../models/provider_usage_snapshot.dart';
+import '../../services/provider_usage/managed_provider_cli_binding.dart';
 import '../../services/provider_usage/managed_provider_credential_transaction.dart';
 import '../../services/provider_usage/managed_provider_presets.dart';
 import '../../services/provider_usage/managed_provider_secret_store.dart';
-import '../../services/provider_usage/official_managed_provider_binding.dart';
 import '../../widgets/app_toast/app_toast.dart';
 import '../../utils/managed_provider_error_localization.dart';
 import 'managed_provider_editor_field_examples.dart';
@@ -521,7 +521,7 @@ class _ManagedProviderEditorPageState extends State<ManagedProviderEditorPage> {
       (_schema.firstQuery && _selectedPreset == null);
 
   bool get _isCliCredentialSource =>
-      OfficialManagedProviderBinding.forCredentialSource(
+      ManagedProviderCliBinding().cliForCredentialSource(
         _credentialSource.text.trim(),
       ) !=
       null;

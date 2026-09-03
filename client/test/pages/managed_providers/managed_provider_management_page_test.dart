@@ -1615,6 +1615,55 @@ void main() {
     },
   );
 
+  testWidgets(
+    'reopened per-entry provider still shows the official login bar',
+    (tester) async {
+      providerCubit = ManagedProviderCubit(
+        repository: providerRepository,
+        appProviderCubit: appProviderCubit,
+      );
+      providerCubit.emit(
+        ManagedProviderState(status: ManagedProviderLoadStatus.ready),
+      );
+      usageCubit.emit(
+        ManagedProviderUsageState(status: ManagedProviderUsageLoadStatus.ready),
+      );
+      await pumpPage(tester);
+
+      await openNewEditor(tester);
+      await applyPreset(tester, 'Cursor');
+      await tester.enterText(
+        find.byKey(const Key('managed-provider-name')),
+        'Reopen Cursor',
+      );
+      await _scrollToEditorBottom(tester);
+      await tester.tap(find.byKey(const Key('managed-provider-save')));
+      await tester.pumpAndSettle();
+      await tester.runAsync(
+        () => Future<void>.delayed(const Duration(milliseconds: 50)),
+      );
+      // Advance past the saved-success toast auto-dismiss timer.
+      await tester.pump(const Duration(seconds: 3));
+      await tester.pumpAndSettle();
+
+      final saved = providerCubit.state.providers.single;
+      expect(
+        saved.endpointConfig.credentialSource,
+        startsWith('cli:cursor-mp-'),
+      );
+
+      // Re-open the editor for the saved per-entry provider from the list.
+      await tester.tap(find.byIcon(Icons.edit_outlined).first);
+      await tester.pumpAndSettle();
+
+      expect(
+        find.byKey(const Key('managed-provider-official-credentials')),
+        findsOneWidget,
+      );
+      expect(find.text('Sign in with Cursor'), findsOneWidget);
+    },
+  );
+
   testWidgets('list pause disables provider without removing the card', (
     tester,
   ) async {
