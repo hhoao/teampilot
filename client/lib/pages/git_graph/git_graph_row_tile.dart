@@ -7,7 +7,7 @@ import 'git_graph_columns.dart';
 import 'git_graph_lane_painter.dart';
 
 /// 提交图单行：graph 片元 + 文本列。spacer 行用 [GitGraphSpacerTile]。
-class GitGraphRowTile extends StatelessWidget {
+class GitGraphRowTile extends StatefulWidget {
   const GitGraphRowTile({
     super.key,
     required this.row,
@@ -49,134 +49,155 @@ class GitGraphRowTile extends StatelessWidget {
   final DateFormat? dateFormat;
 
   @override
+  State<GitGraphRowTile> createState() => _GitGraphRowTileState();
+}
+
+class _GitGraphRowTileState extends State<GitGraphRowTile> {
+  bool _hovered = false;
+
+  @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final cs = theme.colorScheme;
-    final bg = selected ? cs.primary.withValues(alpha: 0.12) : null;
-    return GestureDetector(
-      behavior: HitTestBehavior.opaque,
-      onTap: onTap,
-      onLongPress: onLongPress,
-      onSecondaryTapUp: onSecondaryTapUp == null
-          ? null
-          : (details) => onSecondaryTapUp!(
-              TapDownDetails(
-                globalPosition: details.globalPosition,
-                localPosition: details.localPosition,
-                kind: details.kind,
-              ),
-            ),
-      child: Container(
-        height: GitGraphColumns.rowHeight,
-        color: bg,
-        padding: const EdgeInsets.only(right: GitGraphColumns.trailingPadding),
-        child: Row(
-          children: [
-            SizedBox(
-              width: _graphWidth(),
-              child: CustomPaint(
-                size: const Size(double.infinity, GitGraphColumns.rowHeight),
-                painter: GitGraphLanePainter(
-                  edges: row.edges,
-                  node: row.node,
-                  palette: palette,
+    final styles = TpTextStyles.of(context);
+    final metaStyle = styles.mdColored(cs.onSurfaceVariant);
+    final bg = widget.selected
+        ? cs.primary.withValues(alpha: 0.12)
+        : _hovered
+        ? cs.onSurface.withValues(alpha: 0.06)
+        : null;
+    return MouseRegion(
+      cursor: SystemMouseCursors.click,
+      onEnter: (_) => setState(() => _hovered = true),
+      onExit: (_) => setState(() => _hovered = false),
+      child: GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onTap: widget.onTap,
+        onLongPress: widget.onLongPress,
+        onSecondaryTapUp: widget.onSecondaryTapUp == null
+            ? null
+            : (details) => widget.onSecondaryTapUp!(
+                TapDownDetails(
+                  globalPosition: details.globalPosition,
+                  localPosition: details.localPosition,
+                  kind: details.kind,
                 ),
               ),
-            ),
-            const SizedBox(width: GitGraphColumns.afterGraphGap),
-            Expanded(
-              flex: GitGraphColumns.descriptionFlex,
-              child: Row(
-                children: [
-                  if (row.refs.isNotEmpty)
-                    Flexible(
-                      flex: GitGraphColumns.refsFlex,
-                      fit: FlexFit.loose,
-                      child: SingleChildScrollView(
-                        scrollDirection: Axis.horizontal,
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            for (final r in row.refs)
-                              _RefChip(
-                                decoration: r,
-                                laneColor: palette[row.node.colorIndex],
-                              ),
-                          ],
+        child: Container(
+          color: bg,
+          padding: const EdgeInsets.symmetric(
+            horizontal: GitGraphColumns.horizontalPadding,
+            vertical: GitGraphColumns.rowVerticalPadding,
+          ),
+          child: SizedBox(
+            height: GitGraphColumns.rowHeight,
+            child: Row(
+            children: [
+              SizedBox(
+                width: _graphWidth(),
+                child: CustomPaint(
+                  size: const Size(
+                    double.infinity,
+                    GitGraphColumns.rowHeight,
+                  ),
+                  painter: GitGraphLanePainter(
+                    edges: widget.row.edges,
+                    node: widget.row.node,
+                    palette: widget.palette,
+                  ),
+                ),
+              ),
+              const SizedBox(width: GitGraphColumns.afterGraphGap),
+              Expanded(
+                flex: GitGraphColumns.descriptionFlex,
+                child: Row(
+                  children: [
+                    if (widget.row.refs.isNotEmpty)
+                      Flexible(
+                        flex: GitGraphColumns.refsFlex,
+                        fit: FlexFit.loose,
+                        child: SingleChildScrollView(
+                          scrollDirection: Axis.horizontal,
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              for (final r in widget.row.refs)
+                                _RefChip(
+                                  decoration: r,
+                                  laneColor: widget
+                                      .palette[widget.row.node.colorIndex],
+                                ),
+                            ],
+                          ),
                         ),
                       ),
+                    Expanded(
+                      flex: GitGraphColumns.descriptionFlex,
+                      child: Text(
+                        widget.row.subject,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: styles.md,
+                      ),
                     ),
-                  Expanded(
-                    flex: GitGraphColumns.descriptionFlex,
+                  ],
+                ),
+              ),
+              const SizedBox(width: GitGraphColumns.metaGap),
+              Flexible(
+                flex: GitGraphColumns.dateFlex,
+                fit: FlexFit.loose,
+                child: SizedBox(
+                  width: double.infinity,
+                  child: Align(
+                    alignment: Alignment.centerLeft,
                     child: Text(
-                      row.subject,
+                      (widget.dateFormat ?? DateFormat('MM/dd HH:mm')).format(
+                        widget.row.authorDate.toLocal(),
+                      ),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
-                      style: TpTextStyles.of(context).sm,
+                      softWrap: false,
+                      style: metaStyle,
                     ),
                   ),
-                ],
+                ),
               ),
-            ),
-            const SizedBox(width: GitGraphColumns.metaGap),
-            Flexible(
-              flex: GitGraphColumns.dateFlex,
-              fit: FlexFit.loose,
-              child: SizedBox(
-                width: double.infinity,
-                child: Align(
-                  alignment: Alignment.centerLeft,
-                  child: Text(
-                    (dateFormat ?? DateFormat('MM/dd HH:mm')).format(
-                      row.authorDate.toLocal(),
+              const SizedBox(width: GitGraphColumns.metaGap),
+              Flexible(
+                flex: GitGraphColumns.authorFlex,
+                fit: FlexFit.loose,
+                child: SizedBox(
+                  width: double.infinity,
+                  child: Align(
+                    alignment: Alignment.centerLeft,
+                    child: Text(
+                      widget.row.authorName,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      softWrap: false,
+                      style: metaStyle,
                     ),
+                  ),
+                ),
+              ),
+              const SizedBox(width: GitGraphColumns.metaGap),
+              SizedBox(
+                width: GitGraphColumns.commitWidth,
+                child: GestureDetector(
+                  onTap: widget.onCommitHashTap,
+                  child: Text(
+                    GitGraphColumns.shortHash(widget.row.hash),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     softWrap: false,
-                    style: TpTextStyles.of(
-                      context,
-                    ).xsColored(cs.onSurfaceVariant),
+                    style: styles.monoColored(cs.onSurfaceVariant),
                   ),
                 ),
               ),
-            ),
-            const SizedBox(width: GitGraphColumns.metaGap),
-            Flexible(
-              flex: GitGraphColumns.authorFlex,
-              fit: FlexFit.loose,
-              child: SizedBox(
-                width: double.infinity,
-                child: Align(
-                  alignment: Alignment.centerLeft,
-                  child: Text(
-                    row.authorName,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    softWrap: false,
-                    style: TpTextStyles.of(
-                      context,
-                    ).xsColored(cs.onSurfaceVariant),
-                  ),
-                ),
-              ),
-            ),
-            const SizedBox(width: GitGraphColumns.metaGap),
-            SizedBox(
-              width: GitGraphColumns.commitWidth,
-              child: GestureDetector(
-                onTap: onCommitHashTap,
-                child: Text(
-                  GitGraphColumns.shortHash(row.hash),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  softWrap: false,
-                  style: TpTextStyles.of(
-                    context,
-                  ).monoColored(cs.onSurfaceVariant),
-                ),
-              ),
-            ),
-          ],
+            ],
+          ),
+          ),
         ),
       ),
     );
@@ -184,9 +205,9 @@ class GitGraphRowTile extends StatelessWidget {
 
   double _graphWidth() {
     final maxLane = [
-      for (final e in row.edges) e.fromLane,
-      for (final e in row.edges) e.toLane,
-      row.node.lane,
+      for (final e in widget.row.edges) e.fromLane,
+      for (final e in widget.row.edges) e.toLane,
+      widget.row.node.lane,
     ].reduce((a, b) => a > b ? a : b);
     return GitGraphColumns.graphWidthFor(maxLane: maxLane);
   }
@@ -207,7 +228,8 @@ class _RefChip extends StatelessWidget {
       GitRefDecorationKind.head => Colors.amber,
       GitRefDecorationKind.localBranch ||
       GitRefDecorationKind.remoteBranch ||
-      GitRefDecorationKind.tag => laneColor ?? Colors.lightBlueAccent,
+      GitRefDecorationKind.tag =>
+        laneColor ?? Colors.lightBlueAccent,
     };
     return Padding(
       padding: const EdgeInsets.only(right: 4),
@@ -227,13 +249,13 @@ class _RefChip extends StatelessWidget {
                 GitRefDecorationKind.tag => Icons.sell_outlined,
                 _ => Icons.call_split_rounded,
               },
-              size: 9,
+              size: 12,
               color: colors,
             ),
             const SizedBox(width: 2),
             Text(
               decoration.name.isEmpty ? 'HEAD' : decoration.name,
-              style: TpTextStyles.of(context).xsColored(colors),
+              style: TpTextStyles.of(context).mdColored(colors),
             ),
           ],
         ),

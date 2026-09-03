@@ -8,6 +8,7 @@ import 'package:teampilot/cubits/managed_provider_cubit.dart';
 import 'package:teampilot/cubits/managed_provider_usage_cubit.dart';
 import 'package:teampilot/l10n/app_localizations.dart';
 import 'package:teampilot/models/managed_provider.dart';
+import 'package:teampilot/models/team_config.dart';
 import 'package:teampilot/models/provider_usage_snapshot.dart';
 import 'package:teampilot/pages/managed_providers/managed_provider_management_page.dart';
 import 'package:teampilot/widgets/settings/workspace_pane_header.dart';
@@ -1556,6 +1557,65 @@ void main() {
         findsOneWidget,
       );
       expect(find.text('Disabled'), findsOneWidget);
+    },
+  );
+
+  testWidgets(
+    'Cursor preset login binds to a per-entry dedicated row',
+    (tester) async {
+      providerCubit = ManagedProviderCubit(
+        repository: providerRepository,
+        appProviderCubit: appProviderCubit,
+      );
+      providerCubit.emit(
+        ManagedProviderState(status: ManagedProviderLoadStatus.ready),
+      );
+      usageCubit.emit(
+        ManagedProviderUsageState(status: ManagedProviderUsageLoadStatus.ready),
+      );
+      await pumpPage(tester);
+
+      await openNewEditor(tester);
+      await applyPreset(tester, 'Cursor');
+
+      // The official credentials bar is present and reads the per-entry
+      // binding (row id appears in the AppProviderCubit after login flow
+      // start — here we assert the source field shows the per-entry form).
+      expect(
+        find.byKey(const Key('managed-provider-official-credentials')),
+        findsOneWidget,
+      );
+      expect(find.text('Sign in with Cursor'), findsOneWidget);
+
+      // Save the entry; the dedicated cursor row must be created.
+      await tester.enterText(
+        find.byKey(const Key('managed-provider-name')),
+        'Team Cursor',
+      );
+      await _scrollToEditorBottom(tester);
+      await tester.runAsync(() async {
+        tester
+            .widget<TpButton>(find.byKey(const Key('managed-provider-save')))
+            .onPressed!
+            .call();
+        await Future<void>.delayed(const Duration(milliseconds: 100));
+      });
+      await tester.pumpAndSettle();
+
+      debugPrint('FORM ERROR: ' + (find.byKey(const Key('managed-provider-editor-error')).evaluate().isEmpty ? 'none' : tester.widget<Text>(find.descendant(of: find.byKey(const Key('managed-provider-editor-error')), matching: find.byType(Text))).data!));
+      debugPrint('PROVIDERS: ' + providerCubit.state.providers.length.toString());
+      final errorTexts = find.byWidgetPredicate((w) => w is Text && (w.data?.contains('Enter ') == true || w.data?.contains('required') == true || w.data?.contains('missing') == true));
+      debugPrint('FIELD ERRORS: ' + tester.widgetList<Text>(errorTexts).map((t) => t.data).join(' | '));
+      final cursorRows = appProviderCubit.state.providersFor(CliTool.cursor);
+      expect(
+        cursorRows.any((row) => row.id.startsWith('cursor-mp-')),
+        isTrue,
+      );
+      final saved = providerCubit.state.providers.first;
+      expect(
+        saved.endpointConfig.credentialSource,
+        startsWith('cli:cursor-mp-'),
+      );
     },
   );
 

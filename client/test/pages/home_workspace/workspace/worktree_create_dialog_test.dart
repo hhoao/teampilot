@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_ui/shared_ui.dart';
@@ -284,5 +286,89 @@ void main() {
     expect(result, isNull);
     expect(find.byType(AlertDialog), findsOneWidget);
     expect(find.text(l10n.formFieldRequired), findsOneWidget);
+  });
+
+  testWidgets('onSubmit keeps dialog open with progress until complete', (
+    tester,
+  ) async {
+    WorktreeCreateResult? result;
+    final completer = Completer<void>();
+
+    await tester.pumpWidget(
+      _host(
+        home: Builder(
+          builder: (context) => Scaffold(
+            body: TextButton(
+              onPressed: () async {
+                result = await showWorktreeCreateDialog(
+                  context,
+                  repoName: 'repo',
+                  repoPath: '/repo',
+                  layout: ({required repoName, required branch}) =>
+                      '/root/worktrees/$repoName/$branch',
+                  branchLoader: _loader,
+                  onSubmit: (_) => completer.future,
+                );
+              },
+              child: const Text('open'),
+            ),
+          ),
+        ),
+      ),
+    );
+
+    await tester.tap(find.text('open'));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('Create'));
+    await tester.pump();
+
+    expect(find.text('Creating…'), findsOneWidget);
+    expect(find.byType(CircularProgressIndicator), findsWidgets);
+    expect(result, isNull);
+
+    completer.complete();
+    await tester.pumpAndSettle();
+
+    expect(result, isNotNull);
+    expect(result!.branch, 'main-wt');
+    expect(find.byType(AlertDialog), findsNothing);
+  });
+
+  testWidgets('onSubmit failure shows error and re-enables the form', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      _host(
+        home: Builder(
+          builder: (context) => Scaffold(
+            body: TextButton(
+              onPressed: () async {
+                await showWorktreeCreateDialog(
+                  context,
+                  repoName: 'repo',
+                  repoPath: '/repo',
+                  layout: ({required repoName, required branch}) =>
+                      '/root/worktrees/$repoName/$branch',
+                  branchLoader: _loader,
+                  onSubmit: (_) => Future<void>.error('disk full'),
+                );
+              },
+              child: const Text('open'),
+            ),
+          ),
+        ),
+      ),
+    );
+
+    await tester.tap(find.text('open'));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('Create'));
+    await tester.pumpAndSettle();
+
+    expect(find.textContaining('disk full'), findsOneWidget);
+    expect(find.text('Create'), findsOneWidget);
+    expect(find.byType(AlertDialog), findsOneWidget);
   });
 }

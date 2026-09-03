@@ -28,13 +28,23 @@ FileTreeDropHit resolveFileTreeDropDest({
   }
 
   final normalizedDest = pathContext.normalize(destDir);
-  if (sourcePaths.isNotEmpty &&
-      _isOntoSelfOrDescendant(
-        pathContext: pathContext,
-        destDir: normalizedDest,
-        sourcePaths: sourcePaths,
-      )) {
-    return const FileTreeDropHit(destDir: null, rejectedReason: 'ontoSelf');
+  if (sourcePaths.isNotEmpty) {
+    if (_isOntoSelfOrDescendant(
+      pathContext: pathContext,
+      destDir: normalizedDest,
+      sourcePaths: sourcePaths,
+    )) {
+      return const FileTreeDropHit(destDir: null, rejectedReason: 'ontoSelf');
+    }
+    if (_allSourcesAlreadyInDestDir(
+      pathContext: pathContext,
+      destDir: normalizedDest,
+      sourcePaths: sourcePaths,
+    )) {
+      // Dropping back into the folder the items already live in is a no-op,
+      // not a conflict — ignore silently instead of prompting to overwrite.
+      return const FileTreeDropHit(destDir: null, rejectedReason: 'sameDir');
+    }
   }
 
   return FileTreeDropHit(destDir: normalizedDest);
@@ -78,6 +88,51 @@ bool _pathsEqual(p.Context ctx, String a, String b) {
   final right = ctx.normalize(b);
   if (ctx.equals(left, right)) return true;
   return left.toLowerCase() == right.toLowerCase();
+}
+
+/// True when every source's parent directory is [destDir] — dropping there
+/// would move/copy each item onto itself.
+bool _allSourcesAlreadyInDestDir({
+  required p.Context pathContext,
+  required String destDir,
+  required List<String> sourcePaths,
+}) {
+  for (final source in sourcePaths) {
+    final normalizedSource = pathContext.normalize(source);
+    if (!_pathsEqual(
+      pathContext,
+      pathContext.dirname(normalizedSource),
+      destDir,
+    )) {
+      return false;
+    }
+  }
+  return true;
+}
+
+/// Applies the in-tree source checks (ontoSelf / sameDir) to a band-resolved
+/// root destination. Returns the rejected hit, or `null` when the drop is OK.
+FileTreeDropHit? fileTreeRootDestRejection({
+  required p.Context pathContext,
+  required String destDir,
+  required List<String> sourcePaths,
+}) {
+  if (sourcePaths.isEmpty) return null;
+  if (_isOntoSelfOrDescendant(
+    pathContext: pathContext,
+    destDir: destDir,
+    sourcePaths: sourcePaths,
+  )) {
+    return const FileTreeDropHit(destDir: null, rejectedReason: 'ontoSelf');
+  }
+  if (_allSourcesAlreadyInDestDir(
+    pathContext: pathContext,
+    destDir: destDir,
+    sourcePaths: sourcePaths,
+  )) {
+    return const FileTreeDropHit(destDir: null, rejectedReason: 'sameDir');
+  }
+  return null;
 }
 
 bool _isWithin(p.Context ctx, {required String parent, required String child}) {

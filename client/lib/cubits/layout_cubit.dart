@@ -82,10 +82,15 @@ class LayoutCubit extends Cubit<LayoutState> {
   }
 
   Future<void> _save(LayoutPreferences preferences) async {
-    emit(state.copyWith(preferences: preferences));
+    final merged = _persistedLastOpenedWorkspaceId == null
+        ? preferences
+        : preferences.copyWith(
+            lastOpenedWorkspaceId: _persistedLastOpenedWorkspaceId,
+          );
+    emit(state.copyWith(preferences: merged));
     // Keep JSON field for compat but never persist a visible bottom dock.
     await _repository?.save(
-      preferences.copyWith(workspaceTerminalVisible: false),
+      merged.copyWith(workspaceTerminalVisible: false),
     );
   }
 
@@ -116,9 +121,31 @@ class LayoutCubit extends Cubit<LayoutState> {
   Future<void> setWorkspaceEntryMode(WorkspaceEntryMode mode) =>
       _save(state.preferences.copyWith(workspaceEntryMode: mode));
 
-  Future<void> setLastOpenedWorkspaceId(String workspaceId) => _save(
-    state.preferences.copyWith(lastOpenedWorkspaceId: workspaceId.trim()),
-  );
+  /// Last workspace id persisted via [setLastOpenedWorkspaceId], tracked
+  /// outside [LayoutState]. Nothing in the UI reacts to this field live (it
+  /// only feeds startup entry-mode resolution), so persisting it does not
+  /// emit — an emit would rebuild every [LayoutCubit] consumer on each
+  /// workspace tab switch. [_save] merges it back so later saves cannot
+  /// clobber the persisted value.
+  String? _persistedLastOpenedWorkspaceId;
+
+  /// Persists the last opened workspace without emitting a new state.
+  Future<void> setLastOpenedWorkspaceId(String workspaceId) async {
+    final id = workspaceId.trim();
+    if (id.isEmpty) return;
+    if (id == _persistedLastOpenedWorkspaceId) return;
+    if (_persistedLastOpenedWorkspaceId == null &&
+        id == state.preferences.lastOpenedWorkspaceId) {
+      return;
+    }
+    _persistedLastOpenedWorkspaceId = id;
+    await _repository?.save(
+      state.preferences.copyWith(
+        lastOpenedWorkspaceId: id,
+        workspaceTerminalVisible: false,
+      ),
+    );
+  }
 
   Future<void> setRightToolsWidth(double width) =>
       _save(state.preferences.copyWith(rightToolsWidth: width));

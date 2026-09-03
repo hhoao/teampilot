@@ -14,8 +14,14 @@ export '../../../services/git/worktree_branch_options.dart'
 typedef BranchListLoader =
     Future<List<WorktreeBranchOption>> Function(String repoPath);
 
-/// Collects inputs for creating a git worktree. Pure UI — it does NOT run git;
-/// the caller performs `git worktree add` with the returned result.
+/// Runs `git worktree add` (and any follow-up refresh) while the dialog shows
+/// a submitting state. When omitted, the dialog pops with [WorktreeCreateResult]
+/// immediately (used in tests and simple callers).
+typedef WorktreeCreateSubmit =
+    Future<void> Function(WorktreeCreateResult result);
+
+/// Collects inputs for creating a git worktree. When [onSubmit] is set, the
+/// dialog stays open with a progress affordance until it completes.
 Future<WorktreeCreateResult?> showWorktreeCreateDialog(
   BuildContext context, {
   required String repoName,
@@ -23,15 +29,18 @@ Future<WorktreeCreateResult?> showWorktreeCreateDialog(
   required WorktreeLayoutPathResolver layout,
   required BranchListLoader branchLoader,
   List<String> existingWorktreePaths = const [],
+  WorktreeCreateSubmit? onSubmit,
 }) {
   return showDialog<WorktreeCreateResult>(
     context: context,
+    barrierDismissible: onSubmit == null,
     builder: (_) => _WorktreeCreateDialog(
       repoName: repoName,
       repoPath: repoPath,
       layout: layout,
       branchLoader: branchLoader,
       existingWorktreePaths: existingWorktreePaths,
+      onSubmit: onSubmit,
     ),
   );
 }
@@ -64,6 +73,7 @@ class _WorktreeCreateDialog extends StatefulWidget {
     required this.layout,
     required this.branchLoader,
     required this.existingWorktreePaths,
+    this.onSubmit,
   });
 
   final String repoName;
@@ -71,6 +81,7 @@ class _WorktreeCreateDialog extends StatefulWidget {
   final WorktreeLayoutPathResolver layout;
   final BranchListLoader branchLoader;
   final List<String> existingWorktreePaths;
+  final WorktreeCreateSubmit? onSubmit;
 
   @override
   State<_WorktreeCreateDialog> createState() => _WorktreeCreateDialogState();
@@ -82,6 +93,8 @@ class _WorktreeCreateDialogState extends State<_WorktreeCreateDialog> {
   String _selectorValue = '';
   List<WorktreeBranchOption> _branchOptions = const [];
   bool _loadingBranches = true;
+  bool _submitting = false;
+  String? _submitError;
   bool _nameUserEdited = false;
   String? _lastProgrammaticName;
 
@@ -162,10 +175,38 @@ class _WorktreeCreateDialogState extends State<_WorktreeCreateDialog> {
     worktreePath: _previewPath,
   );
 
+  Future<void> _submit() async {
+    if (_submitting) return;
+    if (!(_formKey.currentState?.validate() ?? false)) return;
+    final result = _buildResult();
+    final onSubmit = widget.onSubmit;
+    if (onSubmit == null) {
+      Navigator.of(context).pop(result);
+      return;
+    }
+    setState(() {
+      _submitting = true;
+      _submitError = null;
+    });
+    try {
+      await onSubmit(result);
+      if (!mounted) return;
+      Navigator.of(context).pop(result);
+    } on Object catch (error) {
+      if (!mounted) return;
+      setState(() {
+        _submitting = false;
+        _submitError = context.l10n.worktreeCreateFailed(error.toString());
+      });
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final l10n = context.l10n;
     final theme = Theme.of(context);
+    final styles = TpTextStyles(theme);
+    final inputsEnabled = !_submitting;
     return AlertDialog(
       title: Text(l10n.worktreeCreateTitle),
       content: SizedBox(
@@ -180,6 +221,7 @@ class _WorktreeCreateDialogState extends State<_WorktreeCreateDialog> {
                 key: const Key('worktree-branch-field'),
                 controller: _branch,
                 autofocus: true,
+                enabled: inputsEnabled,
                 decoration: InputDecoration(
                   labelText: l10n.worktreeBranchLabel,
                   suffixIcon: Row(
@@ -198,7 +240,7 @@ class _WorktreeCreateDialogState extends State<_WorktreeCreateDialog> {
                         icon: Icons.casino_outlined,
                         size: TpIconButton.kCompactSize,
                         tooltip: l10n.worktreeRandomNameTooltip,
-                        onTap: _applyRandomName,
+                        onTap: inputsEnabled ? _applyRandomName : null,
                       ),
                     ],
                   ),
@@ -209,23 +251,36 @@ class _WorktreeCreateDialogState extends State<_WorktreeCreateDialog> {
                         : null,
               ),
               const SizedBox(height: 12),
-              TpSelectWithCustomInput(
-                value: _selectorValue,
-                items: _selectorItems,
-                onChanged: _onSelectorChanged,
-                hintText: l10n.worktreeBaseSelectorHint,
-                decoration: TpSelectDecorations.themed(context),
-                customInputTooltip: l10n.worktreeBaseSelectorHint,
+              IgnorePointer(
+                ignoring: !inputsEnabled,
+                child: Opacity(
+                  opacity: inputsEnabled ? 1 : 0.5,
+                  child: TpSelectWithCustomInput(
+                    value: _selectorValue,
+                    items: _selectorItems,
+                    onChanged: _onSelectorChanged,
+                    hintText: l10n.worktreeBaseSelectorHint,
+                    decoration: TpSelectDecorations.themed(context),
+                    customInputTooltip: l10n.worktreeBaseSelectorHint,
+                  ),
+                ),
               ),
               const SizedBox(height: 12),
               if (_previewPath.isNotEmpty) ...[
-                Text(l10n.worktreePathLabel, style: TpTextStyles(theme).xs),
+                Text(l10n.worktreePathLabel, style: styles.xs),
                 const SizedBox(height: 2),
                 Text(
                   _previewPath,
-                  style: TpTextStyles(theme).sm,
+                  style: styles.sm,
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,
+                ),
+                const SizedBox(height: 8),
+              ],
+              if (_submitError case final error?) ...[
+                Text(
+                  error,
+                  style: styles.smColored(theme.colorScheme.error),
                 ),
                 const SizedBox(height: 8),
               ],
@@ -235,15 +290,28 @@ class _WorktreeCreateDialogState extends State<_WorktreeCreateDialog> {
       ),
       actions: [
         TextButton(
-          onPressed: () => Navigator.of(context).pop(),
+          onPressed: inputsEnabled ? () => Navigator.of(context).pop() : null,
           child: Text(MaterialLocalizations.of(context).cancelButtonLabel),
         ),
         FilledButton(
-          onPressed: () {
-            if (!(_formKey.currentState?.validate() ?? false)) return;
-            Navigator.of(context).pop(_buildResult());
-          },
-          child: Text(l10n.worktreeCreateAction),
+          onPressed: inputsEnabled ? _submit : null,
+          child: _submitting
+              ? Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    SizedBox(
+                      width: 16,
+                      height: 16,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        color: theme.colorScheme.onPrimary,
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Text(l10n.worktreeCreating),
+                  ],
+                )
+              : Text(l10n.worktreeCreateAction),
         ),
       ],
     );

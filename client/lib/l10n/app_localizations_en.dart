@@ -6497,6 +6497,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get worktreeCreateAction => 'Create';
 
   @override
+  String get worktreeCreating => 'Creating…';
+
+  @override
   String worktreeCreateFailed(Object error) {
     return 'Failed to create worktree: $error';
   }

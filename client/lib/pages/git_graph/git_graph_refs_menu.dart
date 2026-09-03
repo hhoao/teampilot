@@ -202,24 +202,22 @@ class _GitGraphRefsMenuState extends State<GitGraphRefsMenu> {
   @override
   Widget build(BuildContext context) {
     final l10n = context.l10n;
+    final cs = Theme.of(context).colorScheme;
     return Tooltip(
       message: l10n.gitGraphBranchesTags,
       child: TpActionMenuIconAnchor(
         minWidth: 200,
         triggerBuilder: (context, controller) {
-          return GestureDetector(
-            behavior: HitTestBehavior.opaque,
-            onTap: () =>
+          return TpButton(
+            key: _buttonKey,
+            variant: TpButtonVariant.outline,
+            size: TpControlSize.small,
+            onPressed: () =>
                 controller.isOpen ? controller.close() : controller.open(),
-            // 与相邻图标按钮同宽的紧凑入口，避免挤爆工具条。
-            child: Container(
-              key: _buttonKey,
-              padding: const EdgeInsets.symmetric(horizontal: 4),
-              child: Icon(
-                Icons.account_tree_outlined,
-                size: 17,
-                color: Theme.of(context).colorScheme.onSurfaceVariant,
-              ),
+            child: Icon(
+              Icons.account_tree_outlined,
+              size: 14,
+              color: cs.onSurfaceVariant,
             ),
           );
         },

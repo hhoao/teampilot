@@ -97,6 +97,60 @@ void main() {
       expect(hit.rejectedReason, 'ontoSelf');
     });
 
+    test('ignores in-tree drop onto the source own folder', () {
+      final hit = resolveFileTreeDropDest(
+        kind: FileTreeDropRowKind.folder,
+        rowPath: folder,
+        pathContext: ctx,
+        sourcePaths: [file],
+      );
+
+      expect(hit.isValid, isFalse);
+      expect(hit.destDir, isNull);
+      expect(hit.rejectedReason, 'sameDir');
+    });
+
+    test('ignores in-tree drop onto a sibling file row in the same folder',
+        () {
+      const sibling = '/workspace/lib/other.dart';
+      final hit = resolveFileTreeDropDest(
+        kind: FileTreeDropRowKind.file,
+        rowPath: sibling,
+        pathContext: ctx,
+        sourcePaths: [file],
+      );
+
+      expect(hit.isValid, isFalse);
+      expect(hit.destDir, isNull);
+      expect(hit.rejectedReason, 'sameDir');
+    });
+
+    test('ignores drop onto root when all sources sit at the root level', () {
+      const rootFile = '/workspace/pubspec.yaml';
+      final hit = resolveFileTreeDropDest(
+        kind: FileTreeDropRowKind.rootChrome,
+        rowPath: root,
+        pathContext: ctx,
+        sourcePaths: [rootFile],
+      );
+
+      expect(hit.isValid, isFalse);
+      expect(hit.rejectedReason, 'sameDir');
+    });
+
+    test('still allows drop when only some sources are already in dest dir',
+        () {
+      final hit = resolveFileTreeDropDest(
+        kind: FileTreeDropRowKind.folder,
+        rowPath: folder,
+        pathContext: ctx,
+        sourcePaths: [file, '/workspace/other.dart'],
+      );
+
+      expect(hit.isValid, isTrue);
+      expect(hit.destDir, folder);
+    });
+
     test('allows external drop without source paths', () {
       final hit = resolveFileTreeDropDest(
         kind: FileTreeDropRowKind.folder,

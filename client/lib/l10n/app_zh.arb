@@ -2587,6 +2587,7 @@
   "worktreeBranchLabel": "分支名",
   "worktreePathLabel": "位置",
   "worktreeCreateAction": "创建",
+  "worktreeCreating": "正在创建…",
   "worktreeCreateFailed": "创建 worktree 失败：{error}",
   "worktreeBaseSelectorHint": "分支或基线",
   "worktreeRandomNameTooltip": "随机名称",

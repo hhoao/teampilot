@@ -6,6 +6,7 @@ import 'package:teampilot/cubits/git_graph_cubit.dart';
 import 'package:teampilot/cubits/layout_cubit.dart';
 import 'package:teampilot/l10n/app_localizations.dart';
 import 'package:teampilot/pages/git_graph/git_graph_column_header.dart';
+import 'package:teampilot/pages/git_graph/git_graph_columns.dart';
 import 'package:teampilot/pages/git_graph/git_graph_pane.dart';
 
 import '../../support/git_graph_test_fakes.dart';
@@ -139,14 +140,20 @@ void main() {
           of: find.byIcon(Icons.edit_note_rounded),
           matching: find.byWidgetPredicate(
             (widget) =>
-                widget is Container && widget.constraints?.maxHeight == 26,
+                widget is Container &&
+                widget.padding ==
+                    const EdgeInsets.symmetric(
+                      horizontal: GitGraphColumns.horizontalPadding,
+                      vertical: GitGraphColumns.rowVerticalPadding,
+                    ),
           ),
         )
         .first;
     final commitSlot = find.descendant(
       of: uncommittedRow,
       matching: find.byWidgetPredicate(
-        (widget) => widget is SizedBox && widget.width == 72,
+        (widget) =>
+            widget is SizedBox && widget.width == GitGraphColumns.commitWidth,
       ),
     );
 

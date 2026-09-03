@@ -1,5 +1,7 @@
 import 'dart:async';
 
+import 'package:path/path.dart' as p;
+
 import 'import_models.dart';
 import '../io/filesystem.dart';
 
@@ -114,6 +116,17 @@ class WorkspaceImportService {
         plan.destDir,
         pathContext.basename(source.path),
       );
+
+      if (_pathsEqual(pathContext, destPath, source.path)) {
+        // Destination is the item itself (dropped back into its own folder):
+        // a no-op — skip without a conflict prompt, and never delete it.
+        skipped++;
+        remainingConflicts--;
+        completedItems++;
+        emitProgress(currentName: pathContext.basename(source.path));
+        continue;
+      }
+
       final destStat = await fs.stat(destPath);
 
       if (destStat.exists) {
@@ -534,5 +547,13 @@ class WorkspaceImportService {
     if (stat.exists) {
       await fs.removeRecursive(path);
     }
+  }
+
+  /// Case-insensitive path equality, mirroring the drop hit-test comparison.
+  static bool _pathsEqual(p.Context ctx, String a, String b) {
+    final left = ctx.normalize(a);
+    final right = ctx.normalize(b);
+    if (ctx.equals(left, right)) return true;
+    return left.toLowerCase() == right.toLowerCase();
   }
 }

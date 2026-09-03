@@ -8,6 +8,7 @@ import 'package:integration_test/integration_test.dart';
 import 'package:teampilot/cubits/chat_cubit.dart';
 import 'package:teampilot/models/workspace.dart';
 import 'package:teampilot/models/workspace_folder.dart';
+import 'package:teampilot/pages/home_workspace/home_workspace_title_bar.dart';
 import 'package:teampilot/router/app_router.dart';
 import 'package:teampilot/utils/ui/app_keys.dart';
 
@@ -95,23 +96,32 @@ void main() {
     await pumpPerformanceFrames(tester);
     expect(find.byKey(AppKeys.chatWorkspace), findsOneWidget);
 
-    // Open second workspace tab, then switch back and forth.
+    // Open second workspace tab, then switch back and forth. Title-bar tab
+    // strip and workspace sidebar each render the display name.
     appRouter.go('/home-v2/workspace/${workspaceB.workspaceId}');
     await pumpPerformanceFrames(tester);
-    expect(find.text('Alpha'), findsOneWidget);
-    expect(find.text('Beta'), findsOneWidget);
+    expect(find.text('Alpha'), findsWidgets);
+    expect(find.text('Beta'), findsWidgets);
 
-    await tester.tap(find.text('Alpha'));
+    // Tab taps must target the title-bar strip; the sidebar shows the same
+    // display names.
+    Finder titleBarTab(String name) => find.descendant(
+          of: find.byType(HomeTitleBar),
+          matching: find.text(name),
+        );
+
+    await tester.tap(titleBarTab('Alpha'));
     await pumpPerformanceFrames(tester);
-    expect(find.byKey(AppKeys.chatWorkspace), findsOneWidget);
+    // Both open tabs keep a mounted chat workspace body.
+    expect(find.byKey(AppKeys.chatWorkspace), findsWidgets);
 
-    await tester.tap(find.text('Beta'));
+    await tester.tap(titleBarTab('Beta'));
     await pumpPerformanceFrames(tester);
 
-    await tester.tap(find.text('Alpha'));
+    await tester.tap(titleBarTab('Alpha'));
     await pumpPerformanceFrames(tester);
 
-    await tester.tap(find.text('Beta'));
+    await tester.tap(titleBarTab('Beta'));
     await pumpPerformanceFrames(tester);
 
     await capture.stopAndWrite(outputPath);

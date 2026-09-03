@@ -74,6 +74,26 @@ final class ExitPlanModeHookGate {
     return completer != null && !completer.isCompleted;
   }
 
+  /// Completes every held hook for one seat (plan approval without a
+  /// tool_use_id — e.g. the card re-rendered from a PermissionRequest event).
+  bool completeSeat({
+    required String sessionId,
+    required String memberId,
+    required ExitPlanModeHookReply reply,
+  }) {
+    final prefix = '${sessionId.trim()}/${memberId.trim()}/';
+    var completed = false;
+    for (final key in _waiters.keys.toList()) {
+      if (!key.startsWith(prefix)) continue;
+      final c = _waiters.remove(key);
+      if (c != null && !c.isCompleted) {
+        c.complete(reply);
+        completed = true;
+      }
+    }
+    return completed;
+  }
+
   void clearSeat({required String sessionId, required String memberId}) {
     final prefix = '${sessionId.trim()}/${memberId.trim()}/';
     final doomed = <String>[];

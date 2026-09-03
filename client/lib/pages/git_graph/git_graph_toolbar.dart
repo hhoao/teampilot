@@ -12,7 +12,7 @@ import '../../models/git_graph.dart';
 import 'git_graph_menus.dart';
 import 'git_graph_refs_menu.dart';
 
-/// 图面板顶部工具条：分支范围切换、fetch/pull/push、stash 弹层、搜索 + 模式、刷新。
+/// 图面板顶部工具条：分支与标签、范围切换、fetch/pull/push、stash、搜索 + 模式、刷新。
 /// 无状态：所有回调走 [GitGraphCubit] / [GitGraphActionsController]，不做 IO。
 class GitGraphToolbar extends StatelessWidget {
   const GitGraphToolbar({super.key, required this.state});
@@ -26,8 +26,8 @@ class GitGraphToolbar extends StatelessWidget {
       (cubit) => cubit.state.preferences.gitGraphHeaderVisible,
     );
     return Container(
-      height: 40,
-      padding: const EdgeInsets.symmetric(horizontal: 8),
+      height: 44,
+      padding: const EdgeInsets.symmetric(horizontal: 12),
       decoration: BoxDecoration(
         border: Border(
           bottom: BorderSide(
@@ -37,50 +37,52 @@ class GitGraphToolbar extends StatelessWidget {
       ),
       child: Row(
         children: [
-          Flexible(
-            fit: FlexFit.loose,
-            child: SingleChildScrollView(
-              scrollDirection: Axis.horizontal,
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  _branchScopeButton(context),
-                  if (state.branchFilter != null) ...[
+          Expanded(
+            flex: 3,
+            child: ClipRect(
+              child: SingleChildScrollView(
+                scrollDirection: Axis.horizontal,
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    GitGraphRefsMenu(state: state),
                     const SizedBox(width: 6),
-                    _branchFilterChip(context),
+                    _branchScopeButton(context),
+                    if (state.branchFilter != null) ...[
+                      const SizedBox(width: 6),
+                      _branchFilterChip(context),
+                    ],
+                    const SizedBox(width: 6),
+                    TpIconButton(
+                      icon: Icons.cloud_download_outlined,
+                      tooltip: l10n.gitGraphFetch,
+                      compact: true,
+                      onTap: () =>
+                          _runAction(context, (actions) => actions.fetchAll()),
+                    ),
+                    TpIconButton(
+                      icon: Icons.arrow_downward_rounded,
+                      tooltip: l10n.gitGraphPull,
+                      compact: true,
+                      onTap: () =>
+                          _runAction(context, (actions) => actions.pull()),
+                    ),
+                    TpIconButton(
+                      icon: Icons.arrow_upward_rounded,
+                      tooltip: l10n.gitGraphPush,
+                      compact: true,
+                      onTap: () =>
+                          _runAction(context, (actions) => actions.push()),
+                    ),
+                    const SizedBox(width: 4),
+                    _StashMenu(state: state),
                   ],
-                  const SizedBox(width: 6),
-                  TpIconButton(
-                    icon: Icons.cloud_download_outlined,
-                    tooltip: l10n.gitGraphFetch,
-                    compact: true,
-                    onTap: () =>
-                        _runAction(context, (actions) => actions.fetchAll()),
-                  ),
-                  TpIconButton(
-                    icon: Icons.arrow_downward_rounded,
-                    tooltip: l10n.gitGraphPull,
-                    compact: true,
-                    onTap: () =>
-                        _runAction(context, (actions) => actions.pull()),
-                  ),
-                  TpIconButton(
-                    icon: Icons.arrow_upward_rounded,
-                    tooltip: l10n.gitGraphPush,
-                    compact: true,
-                    onTap: () =>
-                        _runAction(context, (actions) => actions.push()),
-                  ),
-                  const SizedBox(width: 4),
-                  _StashMenu(state: state),
-                  const SizedBox(width: 4),
-                  GitGraphRefsMenu(state: state),
-                ],
+                ),
               ),
             ),
           ),
           const SizedBox(width: 8),
-          Expanded(child: _searchField(context)),
+          Expanded(flex: 2, child: _searchField(context)),
           const SizedBox(width: 4),
           TpIconButton(
             icon: Icons.view_column_outlined,
@@ -108,25 +110,17 @@ class GitGraphToolbar extends StatelessWidget {
   /// all → `--all`；current → revisionRange `HEAD`。
   Widget _branchScopeButton(BuildContext context) {
     final l10n = context.l10n;
-    return SegmentedButton<bool>(
-      segments: [
-        ButtonSegment(value: false, label: Text(l10n.gitGraphAllBranches)),
-        ButtonSegment(value: true, label: Text(l10n.gitGraphCurrentBranch)),
-      ],
-      selected: {state.currentOnly},
-      onSelectionChanged: (selection) => context
-          .read<GitGraphCubit>()
-          .setShowOnlyCurrentBranch(selection.first),
-      showSelectedIcon: false,
-      style: ButtonStyle(
-        visualDensity: VisualDensity.compact,
-        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-        side: WidgetStatePropertyAll(BorderSide(style: BorderStyle.none)),
-        overlayColor: WidgetStatePropertyAll(Colors.transparent),
-        minimumSize: WidgetStatePropertyAll(Size(0, 26)),
-        padding: WidgetStatePropertyAll(EdgeInsets.symmetric(horizontal: 8)),
-        textStyle: WidgetStatePropertyAll(TpTextStyles.of(context).xs),
-      ),
+    return TpSegmentedControl(
+      totalSwitches: 2,
+      initialLabelIndex: state.currentOnly ? 1 : 0,
+      labels: [l10n.gitGraphAllBranches, l10n.gitGraphCurrentBranch],
+      variant: TpSegmentedControlVariant.outlined,
+      minHeight: 28,
+      minWidth: 64,
+      onToggle: (index) {
+        if (index == null) return;
+        context.read<GitGraphCubit>().setShowOnlyCurrentBranch(index == 1);
+      },
     );
   }
 
@@ -161,7 +155,7 @@ class GitGraphToolbar extends StatelessWidget {
                 softWrap: false,
                 style: TpTextStyles.of(
                   context,
-                ).xsColored(cs.onPrimaryContainer),
+                ).mdColored(cs.onPrimaryContainer),
               ),
             ),
             const SizedBox(width: 2),
@@ -185,14 +179,15 @@ class GitGraphToolbar extends StatelessWidget {
     return TpInput(
       initialValue: state.searchQuery.isEmpty ? null : state.searchQuery,
       textInputAction: TextInputAction.search,
+      style: TpTextStyles.of(context).md,
       decoration: InputDecoration(
         hintText: l10n.gitGraphSearchHint,
         prefixIcon: Icon(
           Icons.search_rounded,
-          size: 15,
+          size: 16,
           color: Theme.of(context).colorScheme.onSurfaceVariant,
         ),
-        prefixIconConstraints: const BoxConstraints(minWidth: 26),
+        prefixIconConstraints: const BoxConstraints(minWidth: 28),
         suffixIcon: Padding(
           padding: const EdgeInsets.only(right: 4),
           child: _modeDropdown(context),
@@ -229,8 +224,8 @@ class GitGraphToolbar extends StatelessWidget {
           buttonHoverColor: Theme.of(
             context,
           ).colorScheme.onSurface.withValues(alpha: 0.04),
-          headerStyle: TpTextStyles.of(context).xs,
-          listItemStyle: TpTextStyles.of(context).sm,
+          headerStyle: TpTextStyles.of(context).md,
+          listItemStyle: TpTextStyles.of(context).md,
           suffixIconSize: context.tpIconSizes.sm,
         ),
         onChanged: (mode) {
@@ -328,37 +323,34 @@ class _StashMenuState extends State<_StashMenu> {
   @override
   Widget build(BuildContext context) {
     final l10n = context.l10n;
+    final cs = Theme.of(context).colorScheme;
     return Tooltip(
       message: l10n.gitGraphStash,
       child: TpActionMenuIconAnchor(
         minWidth: 220,
         triggerBuilder: (context, controller) {
-          return GestureDetector(
-            behavior: HitTestBehavior.opaque,
-            onTap: () =>
+          return TpButton(
+            key: _buttonKey,
+            variant: TpButtonVariant.outline,
+            size: TpControlSize.small,
+            onPressed: () =>
                 controller.isOpen ? controller.close() : controller.open(),
-            child: Container(
-              key: _buttonKey,
-              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(6),
-                border: Border.all(
-                  color: Theme.of(context).colorScheme.outlineVariant,
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(
+                  Icons.inventory_2_outlined,
+                  size: 14,
+                  color: cs.onSurfaceVariant,
                 ),
-              ),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Icon(
-                    Icons.inventory_2_outlined,
-                    size: 14,
-                    color: Theme.of(context).colorScheme.onSurfaceVariant,
-                  ),
-                  const SizedBox(width: 3),
-                  Text(l10n.gitGraphStash, style: TpTextStyles.of(context).xs),
-                  const Icon(Icons.arrow_drop_down_rounded, size: 14),
-                ],
-              ),
+                const SizedBox(width: 4),
+                Text(l10n.gitGraphStash, style: TpTextStyles.of(context).md),
+                Icon(
+                  Icons.arrow_drop_down_rounded,
+                  size: 16,
+                  color: cs.onSurfaceVariant,
+                ),
+              ],
             ),
           );
         },

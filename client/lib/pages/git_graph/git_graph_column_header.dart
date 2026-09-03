@@ -20,7 +20,7 @@ class GitGraphColumnHeader extends StatelessWidget {
     final colorScheme = Theme.of(context).colorScheme;
     final textStyle = TpTextStyles.of(
       context,
-    ).xsColored(colorScheme.onSurfaceVariant);
+    ).mdColored(colorScheme.onSurfaceVariant);
 
     return GestureDetector(
       behavior: HitTestBehavior.opaque,
@@ -30,12 +30,16 @@ class GitGraphColumnHeader extends StatelessWidget {
         l10n.gitGraphHideColumnHeader,
       ),
       child: Container(
-        height: GitGraphColumns.headerHeight,
-        padding: const EdgeInsets.only(right: GitGraphColumns.trailingPadding),
+        padding: const EdgeInsets.symmetric(
+          horizontal: GitGraphColumns.horizontalPadding,
+          vertical: GitGraphColumns.headerVerticalPadding,
+        ),
         decoration: BoxDecoration(
           border: Border(bottom: BorderSide(color: colorScheme.outlineVariant)),
         ),
-        child: Row(
+        child: SizedBox(
+          height: GitGraphColumns.headerHeight,
+          child: Row(
           children: [
             SizedBox(
               width: graphWidth,
@@ -85,6 +89,7 @@ class GitGraphColumnHeader extends StatelessWidget {
               child: _HeaderLabel(l10n.gitGraphColumnCommit, style: textStyle),
             ),
           ],
+        ),
         ),
       ),
     );

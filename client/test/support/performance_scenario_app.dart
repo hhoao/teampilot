@@ -12,10 +12,16 @@ import 'package:teampilot/cubits/chat_cubit.dart';
 import 'package:teampilot/cubits/board_cubit.dart';
 import 'package:teampilot/cubits/cli_presets_cubit.dart';
 import 'package:teampilot/cubits/mailbox_cubit.dart';
+import 'package:teampilot/cubits/managed_provider_cubit.dart';
+import 'package:teampilot/cubits/managed_provider_usage_cubit.dart';
 import 'package:teampilot/cubits/mcp_cubit.dart';
 import 'package:teampilot/cubits/app_update_cubit.dart';
+import 'package:teampilot/cubits/session_groups_cubit.dart';
+import 'package:teampilot/cubits/ssh_connection_cubit.dart';
 import 'package:teampilot/cubits/ssh_profile_cubit.dart';
 import 'package:teampilot/repositories/cli_presets_repository.dart';
+import 'package:teampilot/repositories/managed_provider_repository.dart';
+import 'package:teampilot/repositories/managed_provider_usage_repository.dart';
 import 'package:teampilot/repositories/mcp_repository.dart';
 import 'package:teampilot/cubits/config_cubit.dart';
 import 'package:teampilot/cubits/editor_cubit.dart';
@@ -36,6 +42,7 @@ import 'package:teampilot/utils/session/workspace_tab_session_scope.dart';
 import 'package:teampilot/app/ui_zoom_baseline.dart';
 import 'package:teampilot/main.dart';
 import 'package:teampilot/models/llm_config.dart';
+import 'package:teampilot/models/managed_provider.dart';
 import 'package:teampilot/models/runtime_target.dart';
 import 'package:teampilot/pages/home_workspace/workspace_chrome_commands.dart';
 import 'package:teampilot/repositories/app_provider_repository.dart';
@@ -70,6 +77,10 @@ import 'package:teampilot/services/run/workspace_run_platform_factory.dart';
 import 'package:teampilot/services/ssh/ssh_client_factory.dart';
 import 'package:teampilot/services/ssh/ssh_connection_events.dart';
 import 'package:teampilot/services/ssh/ssh_profile_connection_coordinator.dart';
+import 'package:teampilot/services/provider_usage/managed_provider_secret_store.dart';
+import 'package:teampilot/services/provider_usage/managed_provider_usage_adapter.dart';
+import 'package:teampilot/services/provider_usage/managed_provider_usage_coordinator.dart';
+import 'package:teampilot/services/provider_usage/managed_provider_usage_registry.dart';
 import 'package:teampilot/services/storage/home_target_controller.dart';
 import 'package:teampilot/services/terminal/terminal_session.dart';
 import 'package:teampilot/services/terminal/terminal_transport_factory.dart';
@@ -77,6 +88,7 @@ import 'package:teampilot/services/terminal/workspace_shell_connector.dart';
 import 'package:teampilot/services/terminal/workspace_terminal_registry.dart';
 import 'package:teampilot/services/workspace/workspace_run_registry.dart';
 import 'package:teampilot/services/workspace/workspace_tools_scope_registry.dart';
+import 'package:teampilot/services/workspace/workspace_session_groups_registry.dart';
 import 'package:teampilot/services/workspace/workspace_worktree_registry.dart';
 
 import '../support/in_memory_filesystem.dart';
@@ -150,6 +162,21 @@ class PerformanceScenarioApp {
         ),
       ),
     );
+    final sshProfileConnectionCoordinator = SshProfileConnectionCoordinator(
+      factory: sshClientFactory,
+      events: sshEvents,
+      profileResolver: (_) => null,
+    );
+    final managedProviderFs = InMemoryFilesystem();
+    final managedUsageRepository = ManagedProviderUsageRepository(
+      fs: managedProviderFs,
+      cachePath: '/test/managed-provider-usage.json',
+    );
+    final managedProviderRepository = ManagedProviderRepository(
+      fs: managedProviderFs,
+      configPath: '/test/managed-providers.json',
+      onProvidersDeleted: managedUsageRepository.deleteMany,
+    );
 
     return BlocProvider(
       create: (_) {
@@ -192,11 +219,16 @@ class PerformanceScenarioApp {
           RepositoryProvider<SshProfileRepository>(
             create: (_) => SshProfileRepository(),
           ),
-          RepositoryProvider<SshProfileConnectionCoordinator>(
-            create: (_) => SshProfileConnectionCoordinator(
-              factory: sshClientFactory,
-              events: sshEvents,
-              profileResolver: (_) => null,
+          RepositoryProvider<SshProfileConnectionCoordinator>.value(
+            value: sshProfileConnectionCoordinator,
+          ),
+          RepositoryProvider<WorkspaceSessionGroupsRegistry>.value(
+            value: WorkspaceSessionGroupsRegistry(
+              cubitFactory: () => SessionGroupsCubit(
+                knownSessionIds: () => {
+                  for (final s in chat.state.sessions) s.sessionId,
+                },
+              ),
             ),
           ),
           RepositoryProvider<GitRepoStore>(create: (_) => GitRepoStore()),
@@ -319,6 +351,28 @@ class PerformanceScenarioApp {
                 credentialStore: InMemorySshCredentialStore(),
               ),
             ),
+            BlocProvider(
+              create: (_) => SshConnectionCubit(
+                factory: sshClientFactory,
+                coordinator: sshProfileConnectionCoordinator,
+              ),
+            ),
+            BlocProvider(
+              create: (_) => ManagedProviderCubit(
+                repository: managedProviderRepository,
+              ),
+            ),
+            BlocProvider(
+              create: (_) => ManagedProviderUsageCubit(
+                coordinator: ManagedProviderUsageCoordinator(
+                  providerRepository: managedProviderRepository,
+                  usageRepository: managedUsageRepository,
+                  registry: ManagedProviderUsageRegistry(),
+                  credentials: _ScenarioProviderCredentials(),
+                  http: _ScenarioProviderHttp(),
+                ),
+              ),
+            ),
           ],
           child: CliToolRegistryScope(
             registry: CliToolRegistry.builtIn(),
@@ -335,6 +389,20 @@ class PerformanceFakeTerminalSession extends TerminalSession {
     super.executable = performanceTestExecutable,
     super.scrollbackLines = 10000,
   });
+}
+
+class _ScenarioProviderCredentials implements ProviderCredentialResolver {
+  @override
+  Future<ManagedProviderCredentialScope> resolve(
+    ManagedProvider provider,
+  ) async => ManagedProviderCredentialScope(const {});
+}
+
+class _ScenarioProviderHttp implements ProviderUsageHttpClient {
+  @override
+  Future<ProviderUsageHttpResponse> send(ProviderUsageHttpRequest request) {
+    return Future.error(StateError('HTTP unused in performance scenario'));
+  }
 }
 
 Future<LaunchProfileCubit> createPerformanceTeamCubit(

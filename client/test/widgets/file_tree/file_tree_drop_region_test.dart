@@ -94,6 +94,15 @@ void main() {
       );
     });
 
+    test('sameDir → ignore (silent no-op)', () {
+      expect(
+        resolveFileTreeDropAcceptAction(
+          const FileTreeDropHit(destDir: null, rejectedReason: 'sameDir'),
+        ),
+        FileTreeDropAcceptAction.ignore,
+      );
+    });
+
     test('other invalid → ignore', () {
       expect(
         resolveFileTreeDropAcceptAction(const FileTreeDropHit(destDir: null)),
@@ -265,6 +274,33 @@ void main() {
       expect(
         resolveFileTreeDropAcceptAction(hit),
         FileTreeDropAcceptAction.rejectSelf,
+      );
+    });
+
+    test('in-tree empty-area drop into own root folder is ignored', () {
+      final rows = [
+        _row(path: '/proj/src', name: 'src', isDirectory: true),
+        _row(
+          path: '/proj/src/a.txt',
+          name: 'a.txt',
+          isDirectory: false,
+          depth: 1,
+        ),
+      ];
+
+      final hit = resolveFileTreePanelDropHit(
+        contentY: kFileTreeRowExtent * 3,
+        visibleRows: rows,
+        rootPaths: const ['/proj'],
+        pathContextFor: (_) => ctx,
+        sourcePaths: const ['/proj/root.txt'],
+      );
+
+      expect(hit.isValid, isFalse);
+      expect(hit.rejectedReason, 'sameDir');
+      expect(
+        resolveFileTreeDropAcceptAction(hit),
+        FileTreeDropAcceptAction.ignore,
       );
     });
 

@@ -6222,6 +6222,9 @@ class AppLocalizationsZh extends AppLocalizations {
   String get worktreeCreateAction => '创建';
 
   @override
+  String get worktreeCreating => '正在创建…';
+
+  @override
   String worktreeCreateFailed(Object error) {
     return '创建 worktree 失败：$error';
   }

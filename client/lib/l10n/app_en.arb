@@ -3015,6 +3015,7 @@
   "worktreeBranchLabel": "Branch name",
   "worktreePathLabel": "Location",
   "worktreeCreateAction": "Create",
+  "worktreeCreating": "Creating…",
   "worktreeCreateFailed": "Failed to create worktree: {error}",
   "@worktreeCreateFailed": { "placeholders": { "error": {} } },
   "worktreeBaseSelectorHint": "Branch or ref",

@@ -74,7 +74,14 @@ List<HookEntry> managedRuntimeEventHookEntries({
           ),
           headers: headers,
         ),
-        timeout: event == HookEvent.preToolUse
+        // PreToolUse holds for chat approval (AskUserQuestion / ExitPlanMode).
+        // PermissionRequest shares the long cap so an ExitPlanMode plan
+        // confirmation can be held for an in-chat decision; other tools'
+        // events are answered `{}` immediately by the gateway, so the cap is
+        // never reached for them.
+        timeout:
+            event == HookEvent.preToolUse ||
+                event == HookEvent.permissionRequest
             ? const Duration(days: 1)
             : const Duration(seconds: 5),
       ),

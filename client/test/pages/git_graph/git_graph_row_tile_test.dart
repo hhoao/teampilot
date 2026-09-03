@@ -1,3 +1,4 @@
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/models/git_graph.dart';
@@ -25,7 +26,7 @@ void main() {
     await pump(
       tester,
       SizedBox(
-        height: 26,
+        height: 48,
         width: 600,
         child: GitGraphRowTile(
           row: makeRow('abc'),
@@ -43,7 +44,7 @@ void main() {
     await pump(
       tester,
       SizedBox(
-        height: 26,
+        height: 48,
         width: 600,
         child: GitGraphRowTile(
           row: makeRow(
@@ -68,7 +69,7 @@ void main() {
     await pump(
       tester,
       SizedBox(
-        height: 26,
+        height: 48,
         width: 220,
         child: GitGraphRowTile(
           row: GitCommitRow(
@@ -105,7 +106,7 @@ void main() {
       await pump(
         tester,
         SizedBox(
-          height: 28,
+          height: 48,
           width: 600,
           child: GitGraphRowTile(
             row: GitCommitRow(
@@ -141,7 +142,7 @@ void main() {
     await pump(
       tester,
       SizedBox(
-        height: 28,
+        height: 48,
         width: 700,
         child: GitGraphRowTile(
           row: makeRow('abcdef12deadbeef'),
@@ -163,7 +164,7 @@ void main() {
     await pump(
       tester,
       SizedBox(
-        height: 28,
+        height: 48,
         width: 700,
         child: GitGraphRowTile(
           row: makeRow('abcdef12deadbeef'),
@@ -182,7 +183,7 @@ void main() {
     await pump(
       tester,
       SizedBox(
-        height: 26,
+        height: 48,
         width: 600,
         child: GitGraphRowTile(
           row: makeRow('abc'),
@@ -193,5 +194,43 @@ void main() {
     );
     await tester.tap(find.text('add feature'));
     expect(tapped, isTrue);
+  });
+
+  testWidgets('hover paints a highlight background', (tester) async {
+    await pump(
+      tester,
+      SizedBox(
+        height: 48,
+        width: 600,
+        child: GitGraphRowTile(
+          row: makeRow('abc'),
+          selected: false,
+          onTap: () {},
+        ),
+      ),
+    );
+
+    Color? containerColor() {
+      final container = tester.widget<Container>(
+        find
+            .descendant(
+              of: find.byType(GitGraphRowTile),
+              matching: find.byType(Container),
+            )
+            .first,
+      );
+      return container.color;
+    }
+
+    expect(containerColor(), isNull);
+
+    final gesture = await tester.createGesture(kind: PointerDeviceKind.mouse);
+    await gesture.addPointer(location: Offset.zero);
+    addTearDown(gesture.removePointer);
+    await tester.pump();
+    await gesture.moveTo(tester.getCenter(find.byType(GitGraphRowTile)));
+    await tester.pumpAndSettle();
+
+    expect(containerColor(), isNotNull);
   });
 }

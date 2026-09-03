@@ -11,6 +11,7 @@ import 'package:teampilot/services/commands/shortcut_context.dart';
 import 'package:teampilot/services/commands/shortcut_dispatcher.dart';
 import 'package:teampilot/services/cli/registry/capabilities/native_command_capability.dart';
 import 'package:teampilot/services/compose/compose_clip.dart';
+import 'package:teampilot/services/compose/compose_text_edit.dart';
 import 'package:shared_ui/shared_ui.dart';
 import 'package:teampilot/widgets/compose/compose_trigger_field.dart';
 
@@ -322,6 +323,127 @@ void main() {
 
     expect(controller.text, 'hello after resize');
     expect(find.text('hello after resize'), findsWidgets);
+  });
+
+  group('image paste', () {
+    Future<void> pumpFieldForPaste(
+      WidgetTester tester, {
+      required TextEditingController controller,
+      required FocusNode focusNode,
+      required Future<bool> Function() onPasteImage,
+    }) async {
+      final bus = CommandBus();
+      await tester.pumpWidget(
+        RepositoryProvider<CommandBus>.value(
+          value: bus,
+          child: MaterialApp(
+            localizationsDelegates: AppLocalizations.localizationsDelegates,
+            supportedLocales: AppLocalizations.supportedLocales,
+            home: Scaffold(
+              body: ComposeTriggerField(
+                controller: controller,
+                focusNode: focusNode,
+                hint: 'Ask anything',
+                enabled: true,
+                onChanged: (_) {},
+                onSubmit: () {},
+                canSubmit: () => true,
+                workspaceRoot: '/tmp',
+                skills: const [],
+                plugins: const [],
+                slashBundle: const ConfigBundle(),
+                mutedColor: Colors.black,
+                hintColor: Colors.grey,
+                onPasteImage: onPasteImage,
+              ),
+            ),
+          ),
+        ),
+      );
+      focusNode.requestFocus();
+      await tester.pump();
+    }
+
+    Future<void> pressCtrlV(WidgetTester tester) async {
+      await tester.sendKeyDownEvent(LogicalKeyboardKey.controlLeft);
+      await tester.pump();
+      await tester.sendKeyDownEvent(LogicalKeyboardKey.keyV);
+      await tester.pump();
+      await tester.sendKeyUpEvent(LogicalKeyboardKey.keyV);
+      await tester.sendKeyUpEvent(LogicalKeyboardKey.controlLeft);
+      await tester.pump();
+    }
+
+    // Mirrors a real GNOME/Explorer "copy image file" clipboard: image bytes
+    // AND the file path as text. The image import inserts the `@` reference;
+    // the default EditableText paste must not also insert the bare path.
+    testWidgets(
+      'image paste does not also paste the clipboard path as text',
+      (tester) async {
+        final controller = TextEditingController();
+        final focusNode = FocusNode();
+        addTearDown(controller.dispose);
+        addTearDown(focusNode.dispose);
+
+        // The clipboard text side of the copy: the bare file path.
+        await tester.runAsync(() async {
+          await Clipboard.setData(
+            const ClipboardData(text: '/home/user/pictures/cat.png'),
+          );
+        });
+
+        await pumpFieldForPaste(
+          tester,
+          controller: controller,
+          focusNode: focusNode,
+          onPasteImage: () async {
+            // Image import: inserts the @-reference like the real handler.
+            controller.value = insertTextAtSelection(
+              controller,
+              '@/tmp/attachments/imported.png ',
+            );
+            return true;
+          },
+        );
+
+        await pressCtrlV(tester);
+
+        expect(
+          controller.text,
+          '@/tmp/attachments/imported.png ',
+          reason:
+              'Image paste must swallow the paste key so the clipboard path '
+              'text is not inserted a second time.',
+        );
+      },
+    );
+
+    testWidgets(
+      'plain text paste still works when no image is on the clipboard',
+      (tester) async {
+        final controller = TextEditingController();
+        final focusNode = FocusNode();
+        addTearDown(controller.dispose);
+        addTearDown(focusNode.dispose);
+
+        await tester.runAsync(() async {
+          await Clipboard.setData(
+            const ClipboardData(text: 'just plain text'),
+          );
+        });
+
+        await pumpFieldForPaste(
+          tester,
+          controller: controller,
+          focusNode: focusNode,
+          onPasteImage: () async => false,
+        );
+
+        await pressCtrlV(tester);
+
+        expect(controller.text, 'just plain text');
+      },
+    );
   });
 
   group('paste collapse', () {

@@ -341,9 +341,25 @@ class _WorkspacePageState extends State<WorkspacePage> {
     );
   }
 
+  /// Inputs that determine the live page body. When unchanged, [build]
+  /// returns the previously built subtree instance so Flutter skips
+  /// rebuilding the whole (heavy) workspace tree on tab switches — the tree
+  /// stays mounted and live while inactive, so cubit-driven updates keep
+  /// flowing into it between builds.
+  ({WorkspaceSection section, WorkspaceConfigSection configSection, bool visitedManage})?
+  _livePageInputs;
+
   Widget _buildAndCacheLivePage(BuildContext context) {
+    final inputs = (
+      section: _section,
+      configSection: _configSection(context),
+      visitedManage: _visitedManage,
+    );
+    final frozen = _frozenPage;
+    if (frozen != null && inputs == _livePageInputs) return frozen;
     final built = _buildLivePage(context);
     _frozenPage = built;
+    _livePageInputs = inputs;
     return built;
   }
 

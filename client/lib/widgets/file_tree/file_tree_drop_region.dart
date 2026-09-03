@@ -110,7 +110,13 @@ FileTreeDropHit resolveFileTreePanelDropHit({
     }
     if (rootPaths.length == 1) {
       final root = rootPaths.first;
-      return FileTreeDropHit(destDir: pathContextFor(root).normalize(root));
+      final dest = pathContextFor(root).normalize(root);
+      return fileTreeRootDestRejection(
+            pathContext: pathContextFor(root),
+            destDir: dest,
+            sourcePaths: sourcePaths,
+          ) ??
+          FileTreeDropHit(destDir: dest);
     }
     final bands = [
       for (var i = 0; i < rootPaths.length; i++)
@@ -121,7 +127,13 @@ FileTreeDropHit resolveFileTreePanelDropHit({
         ),
     ];
     final dest = resolveNearestRootDest(localY: contentY, rootBands: bands);
-    return FileTreeDropHit(destDir: pathContextFor(dest).normalize(dest));
+    final pathContext = pathContextFor(dest);
+    return fileTreeRootDestRejection(
+          pathContext: pathContext,
+          destDir: pathContext.normalize(dest),
+          sourcePaths: sourcePaths,
+        ) ??
+        FileTreeDropHit(destDir: pathContext.normalize(dest));
   }
 
   final index = contentY < 0 ? -1 : (contentY / rowExtent).floor();
@@ -144,7 +156,13 @@ FileTreeDropHit resolveFileTreePanelDropHit({
     return const FileTreeDropHit(destDir: null);
   }
   final dest = resolveNearestRootDest(localY: contentY, rootBands: bands);
-  return FileTreeDropHit(destDir: pathContextFor(dest).normalize(dest));
+  final pathContext = pathContextFor(dest);
+  return fileTreeRootDestRejection(
+        pathContext: pathContext,
+        destDir: pathContext.normalize(dest),
+        sourcePaths: sourcePaths,
+      ) ??
+      FileTreeDropHit(destDir: pathContext.normalize(dest));
 }
 
 enum FileTreeDropAcceptAction { ingest, rejectSelf, ignore }
@@ -154,6 +172,8 @@ FileTreeDropAcceptAction resolveFileTreeDropAcceptAction(FileTreeDropHit hit) {
   if (hit.rejectedReason == 'ontoSelf') {
     return FileTreeDropAcceptAction.rejectSelf;
   }
+  // 'sameDir' (dropped back into the folder it already lives in) and any
+  // other invalid hit are silent no-ops.
   return FileTreeDropAcceptAction.ignore;
 }
 

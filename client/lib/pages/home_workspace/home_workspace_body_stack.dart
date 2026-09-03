@@ -6,7 +6,9 @@ import '../../cubits/chat_cubit.dart';
 import '../../cubits/workspace_landing_context_cubit.dart';
 import '../../models/workspace.dart';
 import '../../models/workspace_tab_ref.dart';
+import '../team_config/team_config_section.dart';
 import 'home_route_active_scope.dart';
+import 'home_workspace_global_section.dart';
 import 'home_workspace_route.dart';
 import 'home_workspace_page.dart';
 import 'workspace/workspace_page.dart';
@@ -57,19 +59,47 @@ class HomeWorkspaceBodyStack extends StatelessWidget {
   }
 }
 
-class _HomePageLayer extends StatelessWidget {
+/// Caches the [HomePage] instance by its route-derived inputs. Workspace tab
+/// switches rebuild the body stack with a new location, but the home page's
+/// inputs are all null while a workspace tab is active — returning the same
+/// widget instance skips rebuilding the whole (kept-alive, inactive) home
+/// subtree on every switch.
+class _HomePageLayer extends StatefulWidget {
   const _HomePageLayer({required this.location});
 
   final String location;
 
   @override
+  State<_HomePageLayer> createState() => _HomePageLayerState();
+}
+
+class _HomePageLayerState extends State<_HomePageLayer> {
+  ({
+    TeamConfigSection? section,
+    String? memberId,
+    HomeGlobalView? globalView,
+  })?
+  _inputs;
+  Widget? _page;
+
+  @override
   Widget build(BuildContext context) {
-    return HomePage(
-      key: const ValueKey('home-v2-body'),
-      initialSection: HomeWorkspaceRoute.homeTeamSection(location),
-      initialMemberId: HomeWorkspaceRoute.homeMemberId(location),
-      initialGlobalView: HomeWorkspaceRoute.homeGlobalView(location),
+    final inputs = (
+      section: HomeWorkspaceRoute.homeTeamSection(widget.location),
+      memberId: HomeWorkspaceRoute.homeMemberId(widget.location),
+      globalView: HomeWorkspaceRoute.homeGlobalView(widget.location),
     );
+    final cached = _page;
+    if (cached != null && inputs == _inputs) return cached;
+    final page = HomePage(
+      key: const ValueKey('home-v2-body'),
+      initialSection: inputs.section,
+      initialMemberId: inputs.memberId,
+      initialGlobalView: inputs.globalView,
+    );
+    _inputs = inputs;
+    _page = page;
+    return page;
   }
 }
 

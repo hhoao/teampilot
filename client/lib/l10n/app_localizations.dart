@@ -11558,6 +11558,12 @@ abstract class AppLocalizations {
   /// **'Create'**
   String get worktreeCreateAction;
 
+  /// No description provided for @worktreeCreating.
+  ///
+  /// In en, this message translates to:
+  /// **'Creating…'**
+  String get worktreeCreating;
+
   /// No description provided for @worktreeCreateFailed.
   ///
   /// In en, this message translates to:

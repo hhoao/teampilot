@@ -395,18 +395,25 @@ class _GraphListState extends State<_GraphList> {
   }
 }
 
-class _UncommittedTile extends StatelessWidget {
+class _UncommittedTile extends StatefulWidget {
   const _UncommittedTile({required this.dirtyCount, required this.workspaceId});
 
   final int dirtyCount;
   final String workspaceId;
+
+  @override
+  State<_UncommittedTile> createState() => _UncommittedTileState();
+}
+
+class _UncommittedTileState extends State<_UncommittedTile> {
+  bool _hovered = false;
 
   /// 打开与 source control 面板一致的未提交 changes diff（整树，working
   /// tree vs HEAD）。
   Future<void> _openChangesDiff(BuildContext context) async {
     final cubit = context.read<GitGraphCubit>();
     await context.read<WorkbenchEditorOpener>().openChangesDiff(
-      workspaceId: workspaceId,
+      workspaceId: widget.workspaceId,
       absolutePath: cubit.state.repoRoot,
       title: context.l10n.gitGraphUncommittedChanges,
       loadDiff: ({ignoreWhitespace = false, fullContext = false}) =>
@@ -421,15 +428,23 @@ class _UncommittedTile extends StatelessWidget {
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
     final badgeColor = cs.primary.withValues(alpha: 0.16);
+    final bg = _hovered ? cs.onSurface.withValues(alpha: 0.06) : null;
     return MouseRegion(
       cursor: SystemMouseCursors.click,
+      onEnter: (_) => setState(() => _hovered = true),
+      onExit: (_) => setState(() => _hovered = false),
       child: GestureDetector(
         behavior: HitTestBehavior.opaque,
         onTap: () => unawaited(_openChangesDiff(context)),
         child: Container(
-          height: 26,
-          padding: const EdgeInsets.only(right: 12),
-          child: Row(
+          color: bg,
+          padding: const EdgeInsets.symmetric(
+            horizontal: GitGraphColumns.horizontalPadding,
+            vertical: GitGraphColumns.rowVerticalPadding,
+          ),
+          child: SizedBox(
+            height: GitGraphColumns.rowHeight,
+            child: Row(
             children: [
               SizedBox(
                 width: GitGraphColumns.graphWidthFor(maxLane: 0),
@@ -446,9 +461,9 @@ class _UncommittedTile extends StatelessWidget {
                   children: [
                     Text(
                       context.l10n.gitGraphUncommittedChanges,
-                      style: TpTextStyles.of(context)
-                          .xsColored(cs.onSurfaceVariant)
-                          .copyWith(fontStyle: FontStyle.italic),
+                      style: TpTextStyles.of(
+                        context,
+                      ).mdColored(cs.onSurfaceVariant),
                     ),
                     const SizedBox(width: 6),
                     Container(
@@ -461,8 +476,8 @@ class _UncommittedTile extends StatelessWidget {
                         borderRadius: BorderRadius.circular(8),
                       ),
                       child: Text(
-                        '$dirtyCount',
-                        style: TpTextStyles.of(context).xs,
+                        '${widget.dirtyCount}',
+                        style: TpTextStyles.of(context).md,
                       ),
                     ),
                   ],
@@ -483,6 +498,7 @@ class _UncommittedTile extends StatelessWidget {
               const SizedBox(width: GitGraphColumns.metaGap),
               const SizedBox(width: GitGraphColumns.commitWidth),
             ],
+          ),
           ),
         ),
       ),
