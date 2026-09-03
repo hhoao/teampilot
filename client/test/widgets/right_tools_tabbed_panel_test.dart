@@ -54,6 +54,126 @@ void main() {
     expect(find.byIcon(Icons.add), findsNothing);
   });
 
+  testWidgets('picker tiles and tab chips use click cursor on hover', (
+    tester,
+  ) async {
+    final toolsCubit = WorkspaceToolsCubit()
+      ..ensureOpenAndSelect('ws-1', 'members');
+    addTearDown(toolsCubit.close);
+    await tester.pumpWidget(
+      _wrap(
+        TabbedPanel(
+          scopeId: 'ws-1',
+          views: const [
+            ToolView(
+              id: 'members',
+              icon: Icons.groups_outlined,
+              label: 'Members',
+              child: Text('members-body'),
+            ),
+            ToolView(
+              id: 'mailbox',
+              icon: Icons.mail_outline,
+              label: 'Mailbox',
+              child: Text('mailbox-body'),
+            ),
+          ],
+        ),
+        toolsCubit: toolsCubit,
+      ),
+    );
+
+    final tabTpHover = find.ancestor(
+      of: find.byIcon(Icons.groups_outlined),
+      matching: find.byType(TpHover),
+    );
+    final tabHover = tester.widget<MouseRegion>(
+      find
+          .descendant(
+            of: tabTpHover,
+            matching: find.byType(MouseRegion),
+          )
+          .first,
+    );
+    expect(tabHover.cursor, SystemMouseCursors.click);
+
+    await tester.tap(find.byIcon(Icons.add));
+    await tester.pump();
+
+    final pickerTpHover = find.ancestor(
+      of: find.text('Mailbox').last,
+      matching: find.byType(TpHover),
+    );
+    final pickerHover = tester.widget<MouseRegion>(
+      find
+          .descendant(
+            of: pickerTpHover,
+            matching: find.byType(MouseRegion),
+          )
+          .first,
+    );
+    expect(pickerHover.cursor, SystemMouseCursors.click);
+  });
+
+  testWidgets('open tab strip shows icon only with label in tooltip', (
+    tester,
+  ) async {
+    final toolsCubit = WorkspaceToolsCubit()
+      ..ensureOpenAndSelect('ws-1', 'members');
+    addTearDown(toolsCubit.close);
+    await tester.pumpWidget(
+      _wrap(
+        TabbedPanel(
+          scopeId: 'ws-1',
+          views: const [
+            ToolView(
+              id: 'members',
+              icon: Icons.groups_outlined,
+              label: 'Members',
+              child: Text('members-body'),
+            ),
+          ],
+        ),
+        toolsCubit: toolsCubit,
+      ),
+    );
+
+    expect(find.text('Members'), findsNothing);
+    final tooltip = tester.widget<Tooltip>(
+      find.ancestor(
+        of: find.byIcon(Icons.groups_outlined),
+        matching: find.byType(Tooltip),
+      ),
+    );
+    expect(tooltip.message, 'Members');
+  });
+
+  testWidgets('open tab title uses xl text style', (tester) async {
+    final toolsCubit = WorkspaceToolsCubit();
+    addTearDown(toolsCubit.close);
+    await tester.pumpWidget(
+      _wrap(
+        const TabbedPanel(
+          views: [
+            ToolView(
+              id: 'members',
+              icon: Icons.groups_outlined,
+              label: 'Members',
+              child: Text('members-body'),
+            ),
+          ],
+        ),
+        toolsCubit: toolsCubit,
+      ),
+    );
+
+    final title = tester.widget<Text>(find.text('Open a tab'));
+    final styles = TpTextStyles.of(
+      tester.element(find.text('Open a tab')),
+    );
+    expect(title.style?.fontSize, styles.xl.fontSize);
+  });
+
   testWidgets('opening a picker tile mounts and keeps the body', (
     tester,
   ) async {

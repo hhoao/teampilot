@@ -57,6 +57,28 @@ class WorkspaceToolsCubit extends Cubit<WorkspaceToolsState> {
     );
   }
 
+  /// Opens [toolIds] when the scope has no open tabs yet (first visit).
+  void openDefaultsIfEmpty(
+    String scopeId,
+    List<String> toolIds, {
+    String? selectId,
+  }) {
+    if (toolIds.isEmpty) return;
+    final existing = state.openIdsByScope[scopeId];
+    if (existing != null && existing.isNotEmpty) return;
+    final open = List<String>.of(toolIds);
+    final selected =
+        selectId != null && open.contains(selectId) ? selectId : open.first;
+    emit(
+      state.copyWith(
+        openIdsByScope: Map<String, List<String>>.of(state.openIdsByScope)
+          ..[scopeId] = open,
+        selectedIdByScope: Map<String, String?>.of(state.selectedIdByScope)
+          ..[scopeId] = selected,
+      ),
+    );
+  }
+
   void selectTool(String scopeId, String toolId) {
     final open = state.openIdsByScope[scopeId] ?? const <String>[];
     if (!open.contains(toolId)) {

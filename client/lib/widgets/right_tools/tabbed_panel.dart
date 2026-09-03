@@ -287,67 +287,57 @@ class _OpenTabChip extends StatelessWidget {
     final color = active ? cs.primary : cs.onSurfaceVariant;
     return Tooltip(
       message: view.label,
-      child: Material(
-        color: Colors.transparent,
-        child: InkWell(
-          onTap: onSelect,
-          child: Container(
-            height: 40,
-            padding: const EdgeInsetsDirectional.only(start: 10, end: 4),
-            decoration: BoxDecoration(
-              border: Border(
-                bottom: BorderSide(
-                  color: active ? cs.primary : Colors.transparent,
-                  width: 2,
-                ),
+      waitDuration: const Duration(milliseconds: 400),
+      child: TpHover(
+        onTap: onSelect,
+        height: 40,
+        borderRadius: BorderRadius.zero,
+        hoverColor: cs.onSurface.withValues(alpha: 0.05),
+        child: Container(
+          padding: const EdgeInsetsDirectional.only(start: 8, end: 4),
+          decoration: BoxDecoration(
+            border: Border(
+              bottom: BorderSide(
+                color: active ? cs.primary : Colors.transparent,
+                width: 2,
               ),
             ),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Icon(view.icon, size: context.tpIconSizes.sm, color: color),
-                const SizedBox(width: 6),
-                ConstrainedBox(
-                  constraints: const BoxConstraints(maxWidth: 120),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(view.icon, size: context.tpIconSizes.md, color: color),
+              if (view.badgeCount > 0) ...[
+                const SizedBox(width: 4),
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 4,
+                    vertical: 1,
+                  ),
+                  decoration: BoxDecoration(
+                    color: cs.error,
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  constraints: const BoxConstraints(minWidth: 14),
                   child: Text(
-                    view.label,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: styles.sm.copyWith(color: color),
-                  ),
-                ),
-                if (view.badgeCount > 0) ...[
-                  const SizedBox(width: 4),
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 4,
-                      vertical: 1,
-                    ),
-                    decoration: BoxDecoration(
-                      color: cs.error,
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    constraints: const BoxConstraints(minWidth: 14),
-                    child: Text(
-                      '${view.badgeCount}',
-                      textAlign: TextAlign.center,
-                      style: styles.xsSemiboldSnugColored(cs.onError),
-                    ),
-                  ),
-                ],
-                TpHover(
-                  width: 24,
-                  height: 24,
-                  borderRadius: BorderRadius.circular(4),
-                  onTap: onClose,
-                  child: Icon(
-                    Icons.close,
-                    size: 14,
-                    color: cs.onSurfaceVariant,
+                    '${view.badgeCount}',
+                    textAlign: TextAlign.center,
+                    style: styles.xsSemiboldSnugColored(cs.onError),
                   ),
                 ),
               ],
-            ),
+              TpHover(
+                width: 24,
+                height: 24,
+                borderRadius: BorderRadius.circular(4),
+                onTap: onClose,
+                child: Icon(
+                  Icons.close,
+                  size: 14,
+                  color: cs.onSurfaceVariant,
+                ),
+              ),
+            ],
           ),
         ),
       ),
@@ -387,26 +377,27 @@ class _OpenTabPicker extends StatelessWidget {
               Text(
                 l10n.rightToolsOpenTabTitle,
                 textAlign: TextAlign.center,
-                style: styles.lgSemibold,
+                style: styles.xl,
               ),
-              SizedBox(height: spacing.xs),
+              SizedBox(height: spacing.sm),
               Text(
                 l10n.rightToolsOpenTabSubtitle,
                 textAlign: TextAlign.center,
                 style: styles.smColored(cs.onSurfaceVariant),
               ),
-              SizedBox(height: spacing.md),
+              SizedBox(height: spacing.xl),
               for (final view in views) ...[
                 _PickerTile(view: view, onTap: () => onOpen(view.id)),
                 SizedBox(height: spacing.sm),
               ],
+              SizedBox(height: spacing.lg),
             ],
           ),
         );
         return SingleChildScrollView(
           padding: EdgeInsets.symmetric(
             horizontal: spacing.md,
-            vertical: spacing.md,
+            vertical: spacing.xl,
           ),
           child: ConstrainedBox(
             constraints: BoxConstraints(minHeight: constraints.maxHeight),
@@ -429,26 +420,24 @@ class _PickerTile extends StatelessWidget {
     final cs = Theme.of(context).colorScheme;
     final styles = TpTextStyles.of(context);
     final spacing = context.tpSpacing;
-    return Material(
-      color: cs.surfaceContainerHighest.withValues(alpha: 0.55),
+    return TpHover(
+      onTap: onTap,
       borderRadius: BorderRadius.circular(10),
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(10),
-        child: Padding(
-          padding: EdgeInsets.symmetric(
-            horizontal: spacing.md,
-            vertical: spacing.md,
-          ),
-          child: Row(
-            children: [
-              Icon(view.icon, size: context.tpIconSizes.md, color: cs.onSurface),
-              SizedBox(width: spacing.sm),
-              Expanded(
-                child: Text(view.label, style: styles.mdSemibold),
-              ),
-            ],
-          ),
+      backgroundColor: cs.surfaceContainerHighest.withValues(alpha: 0.55),
+      hoverColor: cs.onSurface.withValues(alpha: 0.06),
+      child: Padding(
+        padding: EdgeInsets.symmetric(
+          horizontal: spacing.md,
+          vertical: spacing.md,
+        ),
+        child: Row(
+          children: [
+            Icon(view.icon, size: context.tpIconSizes.md, color: cs.onSurface),
+            SizedBox(width: spacing.sm),
+            Expanded(
+              child: Text(view.label, style: styles.md),
+            ),
+          ],
         ),
       ),
     );

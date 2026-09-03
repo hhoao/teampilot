@@ -14,6 +14,7 @@ import '../../cubits/chat/model/session_workbench_view.dart';
 import '../../cubits/file_tree_cubit.dart';
 import '../../cubits/mailbox_cubit.dart';
 import '../../cubits/member_presence_cubit.dart';
+import '../../cubits/workspace_tools_cubit.dart';
 import '../../utils/session/workspace_tab_session_scope.dart';
 import '../../l10n/l10n_extensions.dart';
 import '../../models/app_session.dart';
@@ -364,6 +365,41 @@ class _RightToolsViewsCacheKey {
 class _RightToolsToolViewsState extends State<RightToolsToolViews> {
   _RightToolsViewsCacheKey? _cacheKey;
   List<ToolView>? _cachedViews;
+  var _mixedDefaultsSeeded = false;
+
+  @override
+  void didUpdateWidget(covariant RightToolsToolViews oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.toolsScopeId != widget.toolsScopeId) {
+      _mixedDefaultsSeeded = false;
+    }
+  }
+
+  void _seedMixedTeamDefaultsIfNeeded(
+    BuildContext context,
+    List<ToolView> views,
+  ) {
+    if (_mixedDefaultsSeeded) return;
+    final team = widget.team;
+    if (widget.isPersonalContext || team?.teamMode != TeamMode.mixed) return;
+
+    final available = views.map((v) => v.id).toSet();
+    final defaults = [
+      for (final id in RightToolIds.mixedTeamDefaults)
+        if (available.contains(id)) id,
+    ];
+    if (defaults.isEmpty) return;
+
+    _mixedDefaultsSeeded = true;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      context.read<WorkspaceToolsCubit>().openDefaultsIfEmpty(
+        widget.toolsScopeId,
+        defaults,
+        selectId: RightToolIds.members,
+      );
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -447,6 +483,8 @@ class _RightToolsToolViewsState extends State<RightToolsToolViews> {
         mailboxGate: mailboxGate,
       );
     }
+
+    _seedMixedTeamDefaultsIfNeeded(context, _cachedViews!);
 
     return TabbedPanel(views: _cachedViews!, scopeId: widget.toolsScopeId);
   }

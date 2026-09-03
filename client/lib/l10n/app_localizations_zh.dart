@@ -69,7 +69,7 @@ class AppLocalizationsZh extends AppLocalizations {
   String get rightToolsOpenTabTitle => '打开标签页';
 
   @override
-  String get rightToolsOpenTabSubtitle => '选择要在侧边面板中打开的标签。';
+  String get rightToolsOpenTabSubtitle => '选择要在侧边面板中打开的标签';
 
   @override
   String get rightToolsOpenTabEmpty => '所有工具均已打开。';

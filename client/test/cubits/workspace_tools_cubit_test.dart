@@ -48,6 +48,20 @@ void main() {
       addTearDown(cubit.close);
     });
 
+    test('openDefaultsIfEmpty seeds only when the scope is empty', () {
+      final cubit = WorkspaceToolsCubit();
+      cubit.openDefaultsIfEmpty(
+        'p1',
+        const ['members', 'mailbox', 'board'],
+        selectId: 'members',
+      );
+      expect(cubit.openIdsFor('p1'), ['members', 'mailbox', 'board']);
+      expect(cubit.selectedIdFor('p1'), 'members');
+      cubit.openDefaultsIfEmpty('p1', const ['git']);
+      expect(cubit.openIdsFor('p1'), ['members', 'mailbox', 'board']);
+      addTearDown(cubit.close);
+    });
+
     test('removeWorkspace drops the stored selection', () {
       final cubit = WorkspaceToolsCubit();
       cubit.ensureOpenAndSelect('p1', 'git');

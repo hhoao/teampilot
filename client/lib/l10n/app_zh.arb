@@ -20,7 +20,7 @@
   "rightToolsPanelVisible": "显示工具栏",
   "rightToolsPanelHidden": "隐藏工具栏",
   "rightToolsOpenTabTitle": "打开标签页",
-  "rightToolsOpenTabSubtitle": "选择要在侧边面板中打开的标签。",
+  "rightToolsOpenTabSubtitle": "选择要在侧边面板中打开的标签",
   "rightToolsOpenTabEmpty": "所有工具均已打开。",
   "sidebarPanelVisible": "显示侧边栏",
   "sidebarPanelHidden": "隐藏侧边栏",
