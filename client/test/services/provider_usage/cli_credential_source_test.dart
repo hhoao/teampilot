@@ -1,7 +1,6 @@
 import 'dart:convert';
 
 import 'package:flutter_test/flutter_test.dart';
-import 'package:teampilot/models/managed_provider.dart';
 import 'package:teampilot/services/cli/cursor/provider/cursor_home_layout.dart';
 import 'package:teampilot/services/provider_usage/adapters/claude_official_subscription_auth.dart';
 import 'package:teampilot/services/provider_usage/adapters/cursor_official_subscription_auth.dart';

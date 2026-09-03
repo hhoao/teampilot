@@ -84,7 +84,6 @@ import '../services/connect/paired_relay_tunnel_registry.dart';
 import '../cubits/layout_cubit.dart';
 import '../cubits/floating_workspace/floating_workspace_cubit.dart';
 import '../models/layout_preferences.dart';
-import '../models/managed_provider.dart';
 import '../cubits/workspace_tools_cubit.dart';
 import '../cubits/llm_config_cubit.dart';
 import '../cubits/managed_provider_cubit.dart';
