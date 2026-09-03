@@ -11,6 +11,18 @@ Future<String> aiHistoryPathCacheToken({
   return '$path|$mtime|$byteLength';
 }
 
+/// [aiHistoryPathCacheToken] when [path] exists and has a known size; else null.
+Future<String?> aiHistoryPathLiveCacheToken({
+  required Filesystem fs,
+  required String? path,
+}) async {
+  if (path == null || path.isEmpty) return null;
+  final st = await fs.stat(path);
+  final size = st.size;
+  if (size == null) return null;
+  return aiHistoryPathCacheToken(fs: fs, path: path, byteLength: size);
+}
+
 /// Fingerprint of `*.txt` files in [dir] (sorted by basename).
 ///
 /// Missing/unlistable dir or no `*.txt` → [emptySentinel] (stable).

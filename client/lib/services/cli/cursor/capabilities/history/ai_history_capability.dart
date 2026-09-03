@@ -5,6 +5,7 @@ import 'package:path/path.dart' as p;
 
 import '../../../registry/capabilities/ai_history_capability.dart';
 import '../../../../io/filesystem.dart';
+import '../../../../session/ai_history_cache_token.dart';
 import '../../../../session/jsonl_transcript_page_reader.dart';
 import '../../../../session/session_history_context.dart';
 import '../../../registry/capabilities/history/subagent_side_resolver.dart';
@@ -62,7 +63,14 @@ final class CursorAiHistoryCapability implements AiHistoryCapability {
       CursorTerminalToolResultEnricher(shellResolver: shellResolver);
 
   @override
-  Future<String?> liveCacheToken(SessionHistoryContext ctx) async => null;
+  Future<String?> resolveParentTranscriptPath(SessionHistoryContext ctx) =>
+      locateCursorTranscriptPath(ctx);
+
+  @override
+  Future<String?> liveCacheToken(SessionHistoryContext ctx) async {
+    final path = await resolveParentTranscriptPath(ctx);
+    return aiHistoryPathLiveCacheToken(fs: ctx.fs, path: path);
+  }
 
   @override
   AiTranscriptIncrementalRefresher? get incrementalRefresher => null;

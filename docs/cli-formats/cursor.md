@@ -17,7 +17,7 @@ adapter `client/lib/services/cli/cursor/capabilities/history/{ai_transcript,side
 | 位置 | `{configDir}/projects/{project}/agent-transcripts/{chatId}/{chatId}.jsonl`（nested，夹具实测）；源码亦支持扁平 `agent-transcripts/{chatId}.jsonl`（flat）。projectRoot = `projects/{project}`；定位时遍历所有 project 目录、两种形态都试 |
 | 文件格式 | JSONL（每行一个事件，UTF-8；坏 JSON 行静默跳过） |
 | 解析入口 | `CursorAiTranscriptAdapter` / `CursorAiHistoryCapability`（`ai_transcript.dart`） |
-| 增量能力 | **有**——`lineAppend = appendCursorJsonlEvent`（全量 parse 与增量 tailer 共用同一逐事件函数，零分叉）；`tailFallbackPrefix = 'cursor'`；`liveCacheToken` 返回 null |
+| 增量能力 | **有**——`lineAppend = appendCursorJsonlEvent`（全量 parse 与增量 tailer 共用同一逐事件函数，零分叉）；`tailFallbackPrefix = 'cursor'`；`resolveParentTranscriptPath` = `locateCursorTranscriptPath`；`liveCacheToken` = 该路径的 `path|mtime|size`（loader softReload 短路与 JSONL tail warm-seed 共用，避免 Claude pinned probe miss 后每次 page-first 全量解码） |
 | cache token | `transcriptToken|terminalsFingerprint`——transcript 字节 hash 与 `{projectRoot}/terminals/` 目录指纹（`*.txt` 的 name/size/mtime）拼接；`changeWatchRoot` = projectRoot |
 
 ## 消息 schema

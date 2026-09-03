@@ -156,11 +156,21 @@ abstract interface class AiHistoryCapability implements CliCapability {
   SubagentSideResolver get subagentSideResolver;
   ToolResultEnricher get toolResultEnricher;
 
+  /// Parent JSONL path used for cache tokens and tail warm-seed.
+  ///
+  /// Null → the loader falls back to the Claude/flashskyai pinned-transcript
+  /// probe (`projects/` / `workspaces/`). Post-captured JSONL CLIs (Cursor,
+  /// Codex) whose transcripts sit outside that layout must return the same
+  /// path their [pageReader] / locate use.
+  Future<String?> resolveParentTranscriptPath(SessionHistoryContext ctx) async =>
+      null;
+
   /// Cheap live cache token for the loader's seat cache. Null → the loader
-  /// falls back to its default pinned-transcript probe. Implementers whose
-  /// transcript lives outside the probed JSONL layout (e.g. OpenCode's
-  /// SQLite store) return their own fingerprint so unchanged data skips the
-  /// full locate + parse + subagent inflate on every live refresh.
+  /// falls back to its default path token ([resolveParentTranscriptPath] or
+  /// the pinned-transcript probe). Implementers whose transcript lives outside
+  /// a simple path|mtime|size fingerprint (e.g. OpenCode's SQLite store)
+  /// return their own fingerprint so unchanged data skips the full locate +
+  /// parse + subagent inflate on every live refresh.
   Future<String?> liveCacheToken(SessionHistoryContext ctx) async => null;
 
   /// 数据库行级增量刷新器(非 JSONL 存储,如 opencode SQLite)。默认 null:

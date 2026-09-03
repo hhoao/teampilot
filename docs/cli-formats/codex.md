@@ -13,7 +13,7 @@ adapter `client/lib/services/cli/codex/capabilities/history/{ai_transcript,ai_hi
 | 会话关联 | `pickCodexRootRollout`：文件名 UUID 正则同前；`persistedNativeId` 命中**根** rollout 时用之，否则在根会话中按全路径字典序取最大（时间戳前缀 ⇒ 最新）。**永不绑定 spawn_agent 子会话**——子 rollout 的首行 `session_meta` 带 `parent_thread_id` / `thread_source=subagent` / `source.subagent`（与 OpenCode `parent_id IS NULL` 同语义）。已持久化的子 uuid 会被忽略并回退到根。扫描跳过路径含 `subagents` 段的文件 |
 | 文件格式 | JSONL（每行一个事件，UTF-8，`utf8.decode` allowMalformed） |
 | 解析入口 | `CodexAiTranscriptAdapter` / `CodexAiHistoryCapability`（`ai_transcript.dart` / `ai_history_capability.dart`） |
-| 增量能力 | **有**——`lineAppend = appendCodexJsonlEvent`（全量 parse 与增量 tailer 共用同一逐事件函数，零分叉）；`tailFallbackPrefix = 'codex'`；`liveCacheToken` 返回 null（无活动缓存 token） |
+| 增量能力 | **有**——`lineAppend = appendCodexJsonlEvent`（全量 parse 与增量 tailer 共用同一逐事件函数，零分叉）；`tailFallbackPrefix = 'codex'`；`resolveParentTranscriptPath` = `locateCodexTranscriptPath`；`liveCacheToken` = 该路径的 `path|mtime|size` |
 
 ## 消息 schema
 

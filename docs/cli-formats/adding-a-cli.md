@@ -77,7 +77,8 @@ abstract interface class AiHistoryCapability implements CliCapability {
   Set<String> get subagentToolNames;             // lowercase 工具名
   SubagentSideResolver get subagentSideResolver;
   ToolResultEnricher get toolResultEnricher;
-  Future<String?> liveCacheToken(ctx);           // 可选；null → loader 默认 pinned-transcript probe
+  Future<String?> resolveParentTranscriptPath(ctx); // 可选；null → loader 默认 pinned probe（Cursor/Codex 必须实现）
+  Future<String?> liveCacheToken(ctx);           // 可选；null → loader 用 resolveParentTranscriptPath 或 pinned probe 的 path|mtime|size
 }
 
 typedef AiTranscriptLineAppend = bool Function(

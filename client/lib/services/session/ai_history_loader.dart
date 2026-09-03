@@ -999,7 +999,7 @@ final class AiHistoryLoader {
       if (_hasWarmIncremental(cacheKey)) return null;
       final pageMessages = page.completeMessages ?? page.messages;
       final messages = annotate(pageMessages, cli: cli);
-      final parentPath = await _parentPathHint(ctx);
+      final parentPath = await _parentPathHint(ctx, cap);
       final attachments = await _timed(
         AiHistoryLoadPhase.inflate,
         () => _subagentAttachmentsFor(
@@ -1435,9 +1435,16 @@ final class AiHistoryLoader {
   static String _cacheKey(String sessionId, String memberId) =>
       '${sessionId.trim()}\u0000${memberId.trim()}';
 
-  /// Cheap parent-transcript path for first-paint attachment inflate. Stats
-  /// only — never reads transcript bytes.
-  static Future<String> _parentPathHint(SessionHistoryContext ctx) async {
+  /// Cheap parent-transcript path for first-paint attachment inflate and JSONL
+  /// tail warm-seed. Prefers the capability's own locator (Cursor/Codex), else
+  /// the Claude/flashskyai pinned probe. Stats-only — never reads transcript
+  /// bytes.
+  static Future<String> _parentPathHint(
+    SessionHistoryContext ctx,
+    AiHistoryCapability cap,
+  ) async {
+    final resolved = await cap.resolveParentTranscriptPath(ctx);
+    if (resolved != null && resolved.isNotEmpty) return resolved;
     final probe = await probePinnedTranscript(
       fs: ctx.fs,
       toolRoots: ctx.transcriptRoots,
@@ -1466,33 +1473,33 @@ final class AiHistoryLoader {
   }
 
   /// Default token resolver: the capability's own cheap live fingerprint
-  /// first (OpenCode SQLite store), else the pinned-transcript probe used by
-  /// the JSONL CLIs.
+  /// first (OpenCode SQLite / Cursor+Codex path token), else the path token
+  /// from [resolveParentTranscriptPath] or the pinned-transcript probe.
   static SessionHistoryCacheTokenResolver _defaultTokenResolverFor(
     AiHistoryCapability cap,
   ) {
     return (ctx) async =>
-        await cap.liveCacheToken(ctx) ?? _defaultCacheToken(ctx);
+        await cap.liveCacheToken(ctx) ?? _defaultCacheToken(ctx, cap);
   }
 
-  /// Best-effort transcript identity matching locate `cacheToken`
-  /// (`path|mtime|size`) under common Claude/flashskyai layouts.
-  static Future<String?> _defaultCacheToken(SessionHistoryContext ctx) async {
-    final probe = await probePinnedTranscript(
-      fs: ctx.fs,
-      toolRoots: ctx.transcriptRoots,
-      sessionId: ctx.taskId,
-      bucket: ctx.bucket,
-      layoutSegments: const ['projects', 'workspaces'],
-      // Cache token tracks the transcript file's own mtime; a `{sessionId}/`
-      // sidecar directory would invalidate on unrelated workflow writes.
-      matchDirectories: false,
-    );
-    final path = probe.matchedPath;
-    if (path == null) return null;
-    final st = await ctx.fs.stat(path);
-    final size = st.size;
-    if (size == null) return null;
-    return aiHistoryPathCacheToken(fs: ctx.fs, path: path, byteLength: size);
+  /// Transcript identity `path|mtime|size` for JSONL CLIs.
+  static Future<String?> _defaultCacheToken(
+    SessionHistoryContext ctx,
+    AiHistoryCapability cap,
+  ) async {
+    final resolved = await cap.resolveParentTranscriptPath(ctx);
+    final path = (resolved != null && resolved.isNotEmpty)
+        ? resolved
+        : (await probePinnedTranscript(
+            fs: ctx.fs,
+            toolRoots: ctx.transcriptRoots,
+            sessionId: ctx.taskId,
+            bucket: ctx.bucket,
+            layoutSegments: const ['projects', 'workspaces'],
+            // Cache token tracks the transcript file's own mtime; a `{sessionId}/`
+            // sidecar directory would invalidate on unrelated workflow writes.
+            matchDirectories: false,
+          )).matchedPath;
+    return aiHistoryPathLiveCacheToken(fs: ctx.fs, path: path);
   }
 }

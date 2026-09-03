@@ -53,6 +53,10 @@ final class FakeAiHistoryCapability implements AiHistoryCapability {
   final ToolResultEnricher toolResultEnricher;
 
   @override
+  Future<String?> resolveParentTranscriptPath(SessionHistoryContext ctx) async =>
+      null;
+
+  @override
   Future<String?> liveCacheToken(SessionHistoryContext ctx) =>
       liveCacheTokenFn?.call(ctx) ?? Future.value(null);
 

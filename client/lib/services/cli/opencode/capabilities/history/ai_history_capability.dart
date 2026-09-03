@@ -57,6 +57,10 @@ final class OpencodeAiHistoryCapability implements AiHistoryCapability {
   final ToolResultEnricher toolResultEnricher;
 
   @override
+  Future<String?> resolveParentTranscriptPath(SessionHistoryContext ctx) async =>
+      null;
+
+  @override
   Future<String?> liveCacheToken(SessionHistoryContext ctx) =>
       liveCacheTokenImpl(ctx);
 

@@ -52,6 +52,10 @@ class _Cap implements AiHistoryCapability {
   ToolResultEnricher get toolResultEnricher => const NoOpToolResultEnricher();
 
   @override
+  Future<String?> resolveParentTranscriptPath(SessionHistoryContext ctx) async =>
+      null;
+
+  @override
   Future<String?> liveCacheToken(SessionHistoryContext ctx) async => null;
 
   @override
@@ -794,6 +798,10 @@ class _WorkflowCap implements AiHistoryCapability {
   ToolResultEnricher get toolResultEnricher => const NoOpToolResultEnricher();
 
   @override
+  Future<String?> resolveParentTranscriptPath(SessionHistoryContext ctx) async =>
+      null;
+
+  @override
   Future<String?> liveCacheToken(SessionHistoryContext ctx) async => null;
 
   @override
@@ -850,6 +858,10 @@ class _MultiWorkflowCap implements AiHistoryCapability {
 
   @override
   ToolResultEnricher get toolResultEnricher => const NoOpToolResultEnricher();
+
+  @override
+  Future<String?> resolveParentTranscriptPath(SessionHistoryContext ctx) async =>
+      null;
 
   @override
   Future<String?> liveCacheToken(SessionHistoryContext ctx) async => null;

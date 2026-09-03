@@ -61,6 +61,10 @@ final class ClaudeAiHistoryCapability implements AiHistoryCapability {
       _toolResultEnricher ?? _defaultEnricher;
 
   @override
+  Future<String?> resolveParentTranscriptPath(SessionHistoryContext ctx) async =>
+      null;
+
+  @override
   Future<String?> liveCacheToken(SessionHistoryContext ctx) async => null;
 
   @override
