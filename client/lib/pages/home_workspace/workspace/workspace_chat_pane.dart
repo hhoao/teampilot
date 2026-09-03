@@ -26,6 +26,7 @@ typedef WorkspaceLandingMessageSubmitter =
       required String message,
       String? workingDirectory,
       String? expertKey,
+      void Function(String sessionId)? onSessionOpened,
     });
 
 typedef WorkspaceLandingDraftPersister =
@@ -115,6 +116,14 @@ class _WorkspaceChatPaneState extends State<WorkspaceChatPane> {
         message: message,
         workingDirectory: workingDirectory,
         expertKey: draft.expertKey,
+        // The conversation owns the message once its tab is staged — the
+        // pending-record / terminal runtime is the retry vehicle, not the
+        // landing draft. Clear immediately so the draft cannot resurrect the
+        // sent text while the (possibly minutes-long) connect + deliver phase
+        // is still in flight.
+        onSessionOpened: (_) {
+          unawaited(widget.landingDraftCleaner(workspace.workspaceId));
+        },
       );
       if (delivered) {
         await widget.landingDraftCleaner(workspace.workspaceId);

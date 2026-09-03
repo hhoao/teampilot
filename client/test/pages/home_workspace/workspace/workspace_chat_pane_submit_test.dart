@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -190,6 +192,7 @@ void main() {
               required message,
               workingDirectory,
               expertKey,
+              onSessionOpened,
             }) async => false,
         drafts: drafts,
       ),
@@ -218,7 +221,45 @@ void main() {
               required message,
               workingDirectory,
               expertKey,
+              onSessionOpened,
             }) async => true,
+        drafts: drafts,
+      ),
+    );
+    await _settleLanding(tester);
+
+    await _submitLanding(tester, draft);
+
+    expect(drafts.cache.landingDraft(workspaceId), isNull);
+    expect(await drafts.store.loadLanding(workspaceId), isNull);
+  });
+
+  testWidgets('session open clears landing drafts without waiting for delivery', (
+    tester,
+  ) async {
+    const workspaceId = 'workspace-1';
+    const draft = 'staged message';
+    final drafts = _LandingDrafts();
+    await drafts.seed(workspaceId, draft);
+
+    // Delivery stays unresolved (connect + deliver can take minutes) — the
+    // draft must already be gone once the session owns the message.
+    final delivery = Completer<bool>();
+    await tester.pumpWidget(
+      _pane(
+        submitter:
+            (
+              _,
+              _, {
+              required launch,
+              required message,
+              workingDirectory,
+              expertKey,
+              void Function(String sessionId)? onSessionOpened,
+            }) async {
+              onSessionOpened?.call('session-1');
+              return delivery.future;
+            },
         drafts: drafts,
       ),
     );
@@ -247,6 +288,7 @@ void main() {
               required message,
               workingDirectory,
               expertKey,
+              onSessionOpened,
             }) async => false,
         drafts: _LandingDrafts(),
         workbenchCubit: workbench,
@@ -293,7 +335,7 @@ Future<void> _submitLanding(WidgetTester tester, String message) async {
 }
 
 Widget _pane({
-  required dynamic submitter,
+  required WorkspaceLandingMessageSubmitter submitter,
   required _LandingDrafts drafts,
   WorkbenchCubit? workbenchCubit,
 }) {
