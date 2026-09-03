@@ -48,8 +48,6 @@ void main() {
         '/repo/a',
         '--add-dir',
         '/repo/b',
-        '--model',
-        'gpt-5.2',
         '--approve-mcps',
         '--force',
         '--team-flag',
@@ -81,7 +79,7 @@ void main() {
     );
   });
 
-  test('Cursor passes --model for explicit picker ids', () {
+  test('Cursor omits --model; picker id is stamped into cli-config only', () {
     expect(
       _assemble(
         team: const TeamProfile(id: 'team', name: 'Team', cli: CliTool.cursor),
@@ -92,7 +90,7 @@ void main() {
           launchSecurityPolicy: LaunchSecurityPolicy.cliDefault,
         ),
       ),
-      containsAllInOrder(['--model', 'composer-2.5']),
+      isNot(contains('--model')),
     );
     expect(
       _assemble(
@@ -104,11 +102,8 @@ void main() {
           launchSecurityPolicy: LaunchSecurityPolicy.cliDefault,
         ),
       ),
-      containsAllInOrder(['--model', 'cursor-grok-4.6-high']),
+      isNot(contains('--model')),
     );
-  });
-
-  test('Cursor omits --model for auto and blank member models', () {
     expect(
       _assemble(
         team: const TeamProfile(id: 'team', name: 'Team', cli: CliTool.cursor),
@@ -117,13 +112,6 @@ void main() {
           name: 'Member',
           model: 'auto',
         ),
-      ),
-      isNot(contains('--model')),
-    );
-    expect(
-      _assemble(
-        team: const TeamProfile(id: 'team', name: 'Team', cli: CliTool.cursor),
-        member: const TeamMemberConfig(id: 'member', name: 'Member'),
       ),
       isNot(contains('--model')),
     );

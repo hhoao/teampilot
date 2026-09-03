@@ -36,7 +36,7 @@ void main() {
     expect(cap.extractText(ProcessResult(0, 0, ' out ', '')), 'out');
   });
 
-  test('cursor: -p prompt with --model + CURSOR_CONFIG_DIR', () {
+  test('cursor: -p prompt without --model + CURSOR_CONFIG_DIR', () {
     const cap = CursorHeadlessCapability();
     final run = ctx();
     final args = const CliLaunchArgAssembler().assembleHeadless(
@@ -44,7 +44,7 @@ void main() {
       run,
     );
     expect(args, containsAllInOrder(['-p', 'P']));
-    expect(args, containsAllInOrder(['--model', 'm']));
+    expect(args, isNot(contains('--model')));
     expect(cap.buildEnvironment(run)['CURSOR_CONFIG_DIR'], '/tmp/c');
   });
 

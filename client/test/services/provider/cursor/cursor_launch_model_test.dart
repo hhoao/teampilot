@@ -58,10 +58,29 @@ void main() {
       expect(stamped['hasChangedDefaultModel'], isTrue);
       expect((stamped['model'] as Map)['modelId'], 'grok-4.6');
       expect((stamped['selectedModel'] as Map)['modelId'], 'grok-4.6');
+      expect((stamped['selectedModel'] as Map)['parameters'], [
+        {'id': 'effort', 'value': 'high'},
+        {'id': 'fast', 'value': 'false'},
+      ]);
       expect((stamped['modelParameters'] as Map)['grok-4.6'], [
         {'id': 'effort', 'value': 'high'},
         {'id': 'fast', 'value': 'false'},
       ]);
+    });
+
+    test('always stamps selectedModel.parameters even when empty', () {
+      final stamped = CursorLaunchModel.applyToConfig(
+        <String, Object?>{'version': 1},
+        'composer-2.5',
+      );
+
+      expect((stamped['model'] as Map)['modelId'], 'composer-2.5');
+      expect(stamped['selectedModel'], {
+        'modelId': 'composer-2.5',
+        'parameters': <Map<String, String>>[],
+      });
+      expect(stamped['hasChangedDefaultModel'], isTrue);
+      expect(stamped.containsKey('modelParameters'), isFalse);
     });
 
     test('leaves config unchanged for blank picker ids', () {

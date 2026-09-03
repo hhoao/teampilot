@@ -2,6 +2,13 @@ import '../../registry/launch/cli_launch_arg_contribution.dart';
 import '../../registry/launch/cli_launch_arg_provider.dart';
 import '../../registry/launch/cli_launch_context.dart';
 
+/// Cursor interactive / headless launch no longer passes `--model`.
+///
+/// Picker ids are stamped into isolated `cli-config.json` via
+/// [CursorLaunchModel] during home provision. Passing `--model` made
+/// cursor-agent exit when its live catalog was still empty
+/// (`Cannot use this model: … Available models:`). Cursor now keeps the
+/// stamped selection without argv, so we omit the flag.
 final class CursorModelLaunch implements CliLaunchArgProvider {
   const CursorModelLaunch();
 
@@ -9,16 +16,6 @@ final class CursorModelLaunch implements CliLaunchArgProvider {
   Iterable<CliLaunchArgContribution> buildLaunchArgs(
     CliLaunchContext context,
   ) sync* {
-    final model = context.member.model.trim();
-    // Auto is cursor-agent's default; omit --model so startup does not fight
-    // cli-config. Explicit picker ids (composer-2.5, cursor-grok-4.6-high, …)
-    // are passed on the argv so cursor-agent cannot revert to Auto after load.
-    if (model.isEmpty || model == 'auto') return;
-
-    yield CliLaunchArgContribution(
-      key: 'cursor-model',
-      phase: LaunchArgPhase.model,
-      args: ['--model', model],
-    );
+    // Intentionally empty — model comes from stamped cli-config only.
   }
 }

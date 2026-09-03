@@ -1,10 +1,9 @@
-/// Maps TeamPilot picker ids (cursor-agent `--model` slugs) to the native
+/// Maps TeamPilot picker ids (cursor-agent model slugs) to the native
 /// `cli-config.json` `modelId` + parameters cursor-agent persists after a
 /// successful catalog load.
 ///
-/// Interactive launch also passes the picker slug as `--model` so cursor-agent
-/// cannot revert to Auto after startup. This mapping is still stamped into
-/// isolated `cli-config.json` as a secondary path.
+/// Launch argv no longer passes `--model` (live-catalog races caused hard
+/// exits). The stamped `cli-config.json` is the sole selection path.
 final class CursorLaunchModel {
   const CursorLaunchModel({required this.modelId, required this.parameters});
 
@@ -63,9 +62,12 @@ final class CursorLaunchModel {
     final stamped = Map<String, Object?>.from(config);
     stamped['hasChangedDefaultModel'] = true;
     stamped['model'] = <String, Object?>{'modelId': parsed.modelId};
+    // cursor-agent Zod requires `selectedModel.parameters` (array). Omitting
+    // it makes FileBasedConfigProvider rename cli-config.json → .bad and
+    // regenerate defaults (Auto). Always stamp parameters, even when empty.
     stamped['selectedModel'] = <String, Object?>{
       'modelId': parsed.modelId,
-      if (parsed.parameters.isNotEmpty) 'parameters': parsed.parameters,
+      'parameters': parsed.parameters,
     };
     if (parsed.parameters.isNotEmpty) {
       final modelParameters = Map<String, Object?>.from(

@@ -479,10 +479,10 @@ void main() {
           jsonDecode((await fs.readString(layout.cliConfig(memberHome)))!)
               as Map<String, Object?>;
       expect((cliConfig['model'] as Map)['modelId'], 'composer-2.5');
-      expect(
-        (cliConfig['selectedModel'] as Map)['modelId'],
-        'composer-2.5',
-      );
+      expect(cliConfig['selectedModel'], {
+        'modelId': 'composer-2.5',
+        'parameters': <Object?>[],
+      });
       expect(cliConfig['hasChangedDefaultModel'], isTrue);
     });
 
