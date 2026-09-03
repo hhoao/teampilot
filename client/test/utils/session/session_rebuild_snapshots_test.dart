@@ -96,4 +96,13 @@ void main() {
     expect(a.ids, ['b', 'a']);
     expect(a, isNot(different));
   });
+
+  test('RunningSessionIds.fromOpenSessionTabs preserves bar order', () {
+    final sessions = [_s(id: 'a'), _s(id: 'b'), _s(id: 'c')];
+    final ids = RunningSessionIds.fromOpenSessionTabs(
+      sessions: sessions,
+      openTabSessionIdsInOrder: ['c', 'a', 'local-x', 'a', 'missing'],
+    );
+    expect(ids.ids, ['c', 'a']);
+  });
 }

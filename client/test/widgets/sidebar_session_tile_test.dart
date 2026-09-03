@@ -18,6 +18,7 @@ import 'package:teampilot/cubits/workbench/workbench_tab.dart';
 import 'package:teampilot/l10n/app_localizations.dart';
 import 'package:teampilot/models/app_session.dart';
 import 'package:teampilot/models/automation.dart';
+import 'package:teampilot/models/session_activity.dart';
 import 'package:teampilot/models/session_group.dart';
 import 'package:teampilot/repositories/session_repository.dart';
 import 'package:teampilot/services/agent_status/agent_attention_state.dart';
@@ -86,6 +87,7 @@ class _ArchiveRecordingChatCubit extends _RecordingChatCubit {
   final archivedSessionIds = <String>[];
   final unarchivedSessionIds = <String>[];
   final deletedSessionIds = <String>[];
+  final closedSessionIds = <String>[];
 
   @override
   Future<void> archiveSession(String sessionId) async {
@@ -100,6 +102,11 @@ class _ArchiveRecordingChatCubit extends _RecordingChatCubit {
   @override
   Future<void> deleteSession(SessionRepository repo, String sessionId) async {
     deletedSessionIds.add(sessionId);
+  }
+
+  @override
+  void closeSessionTab(String sessionId) {
+    closedSessionIds.add(sessionId);
   }
 }
 
@@ -220,6 +227,86 @@ Future<void> _dismissContextMenu(WidgetTester tester) async {
 void main() {
   setUp(setUpTestAppStorage);
   tearDown(tearDownTestAppStorage);
+
+  testWidgets('open session shows close on hover and in context menu', (
+    tester,
+  ) async {
+    debugDefaultTargetPlatformOverride = TargetPlatform.linux;
+    addTearDown(() => debugDefaultTargetPlatformOverride = null);
+    final chatCubit = _ArchiveRecordingChatCubit();
+    chatCubit.applyState(
+      chatCubit.state.copyWith(
+        sessionActivities: {
+          _session.sessionId: const SessionActivity(),
+        },
+      ),
+    );
+    final (attention, automationCubit) = _tileCubits();
+    addTearDown(chatCubit.close);
+    addTearDown(automationCubit.close);
+    addTearDown(attention.close);
+
+    await tester.pumpWidget(
+      _host(
+        chatCubit: chatCubit,
+        automationCubit: automationCubit,
+        attentionCubit: attention,
+        sessionRepository: SessionRepository(),
+        locale: const Locale('zh'),
+      ),
+    );
+    await tester.pump();
+
+    await _openContextMenu(tester);
+    final l10n = AppLocalizations.of(
+      tester.element(find.byType(SidebarSessionTile)),
+    );
+    expect(find.text(l10n.closeConversation), findsOneWidget);
+    await tester.tap(find.text(l10n.closeConversation));
+    await tester.pump();
+    expect(chatCubit.closedSessionIds, ['sess-1']);
+
+    final mouse = await tester.createGesture(kind: PointerDeviceKind.mouse);
+    await mouse.addPointer(location: Offset.zero);
+    addTearDown(mouse.removePointer);
+    await tester.pump();
+    await mouse.moveTo(tester.getCenter(find.byType(TpHoverRow)));
+    await tester.pumpAndSettle();
+
+    expect(find.byIcon(Icons.close), findsOneWidget);
+    await tester.tap(find.byIcon(Icons.close));
+    await tester.pump();
+    expect(chatCubit.closedSessionIds, ['sess-1', 'sess-1']);
+    debugDefaultTargetPlatformOverride = null;
+  });
+
+  testWidgets('idle session without open tab hides close actions', (
+    tester,
+  ) async {
+    final chatCubit = _ArchiveRecordingChatCubit();
+    final (attention, automationCubit) = _tileCubits();
+    addTearDown(chatCubit.close);
+    addTearDown(automationCubit.close);
+    addTearDown(attention.close);
+
+    await tester.pumpWidget(
+      _host(
+        chatCubit: chatCubit,
+        automationCubit: automationCubit,
+        attentionCubit: attention,
+        sessionRepository: SessionRepository(),
+        locale: const Locale('zh'),
+      ),
+    );
+    await tester.pump();
+
+    await _openContextMenu(tester);
+    final l10n = AppLocalizations.of(
+      tester.element(find.byType(SidebarSessionTile)),
+    );
+    expect(find.text(l10n.closeConversation), findsNothing);
+    await _dismissContextMenu(tester);
+  });
 
   testWidgets('active mode archives on action tap', (tester) async {
     debugDefaultTargetPlatformOverride = TargetPlatform.linux;

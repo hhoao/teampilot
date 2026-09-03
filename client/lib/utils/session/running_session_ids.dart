@@ -25,6 +25,24 @@ class RunningSessionIds {
     return RunningSessionIds([for (final s in running) s.sessionId]);
   }
 
+  /// Sidebar open-session strip: center workbench session tabs in bar order.
+  factory RunningSessionIds.fromOpenSessionTabs({
+    required List<AppSession> sessions,
+    required List<String> openTabSessionIdsInOrder,
+  }) {
+    if (openTabSessionIdsInOrder.isEmpty) {
+      return const RunningSessionIds([]);
+    }
+    final known = {for (final s in sessions) s.sessionId};
+    final ids = <String>[];
+    final seen = <String>{};
+    for (final id in openTabSessionIdsInOrder) {
+      if (id.isEmpty || id.startsWith('local-') || !seen.add(id)) continue;
+      if (known.contains(id)) ids.add(id);
+    }
+    return RunningSessionIds(ids);
+  }
+
   @override
   bool operator ==(Object other) {
     if (other is! RunningSessionIds) return false;

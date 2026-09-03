@@ -10,6 +10,7 @@ import '../../../cubits/layout_cubit.dart';
 import '../../../cubits/session_groups_cubit.dart';
 import '../../../cubits/shortcut_cubit.dart';
 import '../../../cubits/workbench/workbench_cubit.dart';
+import '../../../cubits/workbench/workbench_tab.dart';
 import '../../../cubits/worktree_cubit.dart';
 import '../../../l10n/l10n_extensions.dart';
 import '../../../models/app_session.dart';
@@ -39,7 +40,6 @@ import '../../../utils/session/running_session_ids.dart';
 import '../../../utils/session/session_archive_filter.dart';
 import '../../../utils/session/session_list_structure.dart';
 import '../../../utils/session/session_reorder_merge.dart';
-import '../../../utils/session/workspace_running_sessions.dart';
 import '../../../utils/session/workspace_sessions.dart';
 import '../../../utils/session/workspace_tab_session_scope.dart';
 import 'workspace_sidebar_probe.dart';
@@ -399,22 +399,19 @@ class _RunningSessionsHost extends StatelessWidget {
   final Workspace workspace;
   final String tabScopeId;
 
-  RunningSessionIds _runningIds(ChatState state, ChatCubit chatCubit) {
-    final runningTabIds = chatCubit.tabStore
-        .tabsForWorkspace(tabScopeId)
-        .where((tab) => tab.isRunning)
-        .map((tab) => tab.info.id);
-    return RunningSessionIds.fromWorkspace(
-      sessions: sessionsForWorkspace(workspace, state.sessions),
-      busySessionIds: state.busySessionIds,
-      openTabSessionIds: openTabSessionIdsForWorkspace(runningTabIds),
-    );
-  }
+  List<String> _openSessionTabIds(WorkbenchState workbenchState) => [
+    for (final tab in workbenchState.bar(tabScopeId).center.order)
+      if (tab.kind == WorkbenchTabKind.session) tab.id,
+  ];
 
   @override
   Widget build(BuildContext context) {
+    final workbenchState = context.watch<WorkbenchCubit>().state;
     final running = context.select<ChatCubit, RunningSessionIds>(
-      (c) => _runningIds(c.state, c),
+      (c) => RunningSessionIds.fromOpenSessionTabs(
+        sessions: sessionsForWorkspace(workspace, c.state.sessions),
+        openTabSessionIdsInOrder: _openSessionTabIds(workbenchState),
+      ),
     );
     return SidebarRebuildProbe(
       key: const Key('workspace-sidebar-running-host-probe'),

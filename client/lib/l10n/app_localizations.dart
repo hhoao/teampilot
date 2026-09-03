@@ -1895,7 +1895,7 @@ abstract class AppLocalizations {
   /// No description provided for @workspaceRunningSessionsSection.
   ///
   /// In en, this message translates to:
-  /// **'Running'**
+  /// **'Open'**
   String get workspaceRunningSessionsSection;
 
   /// No description provided for @homeWorkspaceWorkspaceAgent.
@@ -3901,6 +3901,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Archive'**
   String get archiveConversation;
+
+  /// No description provided for @closeConversation.
+  ///
+  /// In en, this message translates to:
+  /// **'Close conversation'**
+  String get closeConversation;
 
   /// No description provided for @restoreConversation.
   ///

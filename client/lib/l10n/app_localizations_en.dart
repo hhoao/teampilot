@@ -994,7 +994,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get homeWorkspaceConversationsSection => 'Conversations';
 
   @override
-  String get workspaceRunningSessionsSection => 'Running';
+  String get workspaceRunningSessionsSection => 'Open';
 
   @override
   String get homeWorkspaceWorkspaceAgent => 'Agent';
@@ -2163,6 +2163,9 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get archiveConversation => 'Archive';
+
+  @override
+  String get closeConversation => 'Close conversation';
 
   @override
   String get restoreConversation => 'Restore';

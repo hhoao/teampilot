@@ -952,7 +952,7 @@ class AppLocalizationsZh extends AppLocalizations {
   String get homeWorkspaceConversationsSection => '对话';
 
   @override
-  String get workspaceRunningSessionsSection => '正在运行';
+  String get workspaceRunningSessionsSection => '已打开';
 
   @override
   String get homeWorkspaceWorkspaceAgent => '智能体';
@@ -2057,6 +2057,9 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get archiveConversation => '归档';
+
+  @override
+  String get closeConversation => '关闭会话';
 
   @override
   String get restoreConversation => '恢复';

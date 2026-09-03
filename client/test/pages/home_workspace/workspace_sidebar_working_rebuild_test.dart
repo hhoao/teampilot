@@ -5,6 +5,7 @@ import 'package:teampilot/cubits/agent_attention_cubit.dart';
 import 'package:teampilot/cubits/automation_cubit.dart';
 import 'package:teampilot/cubits/chat_cubit.dart';
 import 'package:teampilot/cubits/session_groups_cubit.dart';
+import 'package:teampilot/cubits/shortcut_cubit.dart';
 import 'package:teampilot/cubits/worktree_cubit.dart';
 import 'package:teampilot/cubits/workbench/workbench_cubit.dart';
 import 'package:teampilot/l10n/app_localizations.dart';
@@ -14,6 +15,7 @@ import 'package:teampilot/models/workspace_folder.dart';
 import 'package:teampilot/pages/home_workspace/workspace/workspace_sidebar.dart';
 import 'package:teampilot/pages/home_workspace/workspace/workspace_sidebar_probe.dart';
 import 'package:teampilot/repositories/session_repository.dart';
+import 'package:teampilot/repositories/keybinding_repository.dart';
 import 'package:teampilot/widgets/session_working_spinner.dart';
 
 import '../../support/post_frame_test_harness.dart';
@@ -46,6 +48,8 @@ SidebarRebuildProbeState _probeState(WidgetTester tester, Key key) {
 
 void main() {
   late ChatCubit chatCubit;
+  late WorkbenchCubit workbenchCubit;
+  late ShortcutCubit shortcutCubit;
   late AutomationCubit automationCubit;
   late WorktreeCubit worktreeCubit;
   late AgentAttentionCubit attentionCubit;
@@ -58,6 +62,8 @@ void main() {
       executableResolver: () => 'claude',
       sessionRepository: sessionRepository,
     );
+    workbenchCubit = WorkbenchCubit();
+    shortcutCubit = ShortcutCubit(repository: KeybindingRepository());
     automationCubit = testAutomationCubit();
     worktreeCubit = WorktreeCubit();
     attentionCubit = AgentAttentionCubit(pruneInterval: null);
@@ -65,6 +71,8 @@ void main() {
 
   tearDown(() async {
     if (!chatCubit.isClosed) await chatCubit.close();
+    if (!workbenchCubit.isClosed) await workbenchCubit.close();
+    if (!shortcutCubit.isClosed) await shortcutCubit.close();
     if (!automationCubit.isClosed) await automationCubit.close();
     if (!worktreeCubit.isClosed) await worktreeCubit.close();
     if (!attentionCubit.isClosed) await attentionCubit.close();
@@ -94,7 +102,8 @@ void main() {
                   lazy: false,
                   create: (_) => chatCubit,
                 ),
-                BlocProvider<WorkbenchCubit>(create: (_) => WorkbenchCubit()),
+                BlocProvider<WorkbenchCubit>.value(value: workbenchCubit),
+                BlocProvider<ShortcutCubit>.value(value: shortcutCubit),
                 BlocProvider<AutomationCubit>.value(value: automationCubit),
                 BlocProvider<WorktreeCubit>.value(value: worktreeCubit),
                 BlocProvider<AgentAttentionCubit>.value(value: attentionCubit),
@@ -120,7 +129,7 @@ void main() {
   }
 
   testWidgets(
-    'running strip visible when working before mount',
+    'open strip visible when session tab is open in the workbench bar',
     (tester) async {
       chatCubit.emit(
         chatCubit.state.copyWith(
@@ -129,14 +138,18 @@ void main() {
           ],
         ),
       );
-      chatCubit.updateWorkingSessionsForTest({'a'});
+      workbenchCubit.openSession(_workspace.workspaceId, 'a');
       await pumpSidebar(tester);
-      expect(find.text('Running'), findsOneWidget);
+      expect(find.text('Open'), findsOneWidget);
+      expect(
+        find.byKey(const ValueKey('workspace-running-session-a')),
+        findsOneWidget,
+      );
     },
   );
 
   testWidgets(
-    'working-only emit rebuilds running host but not conversation list shell',
+    'working-only emit does not rebuild open-tab host',
     (tester) async {
       chatCubit.emit(
         chatCubit.state.copyWith(
@@ -146,6 +159,7 @@ void main() {
           ],
         ),
       );
+      workbenchCubit.openSession(_workspace.workspaceId, 'a');
 
       await pumpSidebar(tester);
 
@@ -174,7 +188,7 @@ void main() {
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 100));
 
-      expect(find.text('Running'), findsOneWidget);
+      expect(find.text('Open'), findsOneWidget);
       expect(
         conversationProbe.buildCount,
         conversationBuilds,
@@ -187,8 +201,8 @@ void main() {
       );
       expect(
         runningProbe.buildCount,
-        greaterThan(runningBuilds),
-        reason: 'running host must rebuild when membership changes',
+        runningBuilds,
+        reason: 'open-tab host must not rebuild when membership is unchanged',
       );
 
       final alphaTile = find.byKey(
