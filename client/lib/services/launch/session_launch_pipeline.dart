@@ -385,18 +385,22 @@ class SessionLaunchPipeline {
 
     if (_tabStore.activeTabsIsEmpty && r != null) {
       try {
+        final initialMember = validMembers.first;
         await _materializer.materializeTeamSession(
           team,
           r,
           connectImmediately: true,
-          memberForInitialShell: validMembers.first,
+          memberForInitialShell: initialMember,
           workspaceCwd: workspaceCwd,
         );
         if (_host.isClosed) return LaunchCompleted();
         final tab = _activeTab();
         if (tab != null) {
+          // The materializer already schedules the initial member's shell
+          // connect; scheduling it here too would connect that shell twice.
           for (final member in validMembers) {
-            _scheduleMemberConnect(team, member, tab);
+            if (member.id == initialMember.id) continue;
+            _scheduleMemberConnect(team, member, tab, selectMember: false);
           }
         }
       } on Object catch (e, st) {
@@ -410,7 +414,9 @@ class SessionLaunchPipeline {
 
     final tab = _ensureActiveSessionTab(team, emitChange: true);
     for (final member in validMembers) {
-      _scheduleMemberConnect(team, member, tab);
+      // Callers own the final member selection (see _connectTeamSession /
+      // _restartTeamSession); background members must not stomp it.
+      _scheduleMemberConnect(team, member, tab, selectMember: false);
     }
     return LaunchCompleted();
   }

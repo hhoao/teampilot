@@ -267,7 +267,7 @@ void main() {
   );
 
   test(
-    'chat cubit connectSession starts only selected member by default',
+    'chat cubit connectSession native team starts all members with pref off',
     () async {
       final tmp = await Directory.systemTemp.createTemp('connect_one_');
       addTearDown(() => _deleteTempDirBestEffort(tmp));
@@ -302,6 +302,7 @@ void main() {
                   scrollbackLines: scrollbackLines,
                 ),
         postFrameScheduler: postFrame.scheduler,
+        autoLaunchAllMembersOnConnect: () => false,
       );
       addTearDown(() => _tearDownChatCubitWithSessionPersist(cubit, postFrame));
       await cubit.loadWorkspaceData(repo);
@@ -313,8 +314,10 @@ void main() {
 
       expect(cubit.tabStore.openTabs.length, 1);
       final tab = cubit.tabStore.openTabs.single;
+      // Native teams launch every member shell regardless of the
+      // auto-launch preference.
       expect(cubit.isMemberRunning(sessionId: tab.info.id, memberId: 'team-lead'), isTrue);
-      expect(cubit.isMemberRunning(sessionId: tab.info.id, memberId: 'dev'), isFalse);
+      expect(cubit.isMemberRunning(sessionId: tab.info.id, memberId: 'dev'), isTrue);
       expect(tab.selectedMemberId, 'team-lead');
     },
   );

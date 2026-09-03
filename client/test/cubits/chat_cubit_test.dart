@@ -1287,14 +1287,20 @@ void main() {
           ),
         );
         await drainPendingAsyncWork();
+        // Native teams auto-launch every member: m-dev's shell already
+        // connected during the initial open, so the explicit member tap only
+        // selects it without queueing a second connect.
         await drainPostFrameQueue(scheduled);
         scheduled.clear();
 
+        // Native teams auto-launch every member on first open, so m-dev's
+        // shell is already running: the explicit member tap only selects the
+        // member and never queues another connect.
         await cubit.openMemberTab(team, team.members[1]);
-        expect(scheduled, hasLength(1));
+        expect(scheduled, isEmpty);
 
         await cubit.openMemberTab(team, team.members[1]);
-        expect(scheduled, hasLength(1));
+        expect(scheduled, isEmpty);
 
         await drainPostFrameQueue(scheduled);
 

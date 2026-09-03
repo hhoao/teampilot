@@ -415,7 +415,11 @@ class SessionLaunchService
             if (!request.isPersonal &&
                 team != null &&
                 member != null &&
-                _h.autoLaunchAllMembersOnConnect?.call() == true) {
+                shouldLaunchAllMembers(
+                  team: team,
+                  autoLaunchAllMembersOnConnect:
+                      _h.autoLaunchAllMembersOnConnect?.call() == true,
+                )) {
               _launchRemainingMembersForTab(team, member.id, tab);
             }
             _h.updateTabRunning(tab.info.id);
@@ -482,9 +486,19 @@ class SessionLaunchService
             .where((m) => m.isValid);
     for (final candidate in instances) {
       if (candidate.id == keepSelectedMemberId) continue;
-      _memberConnectScheduler.schedule(team, candidate, tab);
+      _memberConnectScheduler.schedule(
+        team,
+        candidate,
+        tab,
+        selectMember: false,
+      );
     }
-    if (instances.any((m) => m.id == keepSelectedMemberId)) {
+    // Only re-assert selection for the connected member when no other member
+    // owns the tab selection (e.g. a later explicit member switch while the
+    // first shell was still connecting).
+    if (instances.any((m) => m.id == keepSelectedMemberId) &&
+        (tab.selectedMemberId == null ||
+            tab.selectedMemberId == keepSelectedMemberId)) {
       _h.selectMember(keepSelectedMemberId);
     }
   }
@@ -657,8 +671,14 @@ class SessionLaunchService
   void scheduleMemberConnect(
     TeamProfile team,
     TeamMemberConfig member,
-    ChatTab tab,
-  ) => _memberConnectScheduler.schedule(team, member, tab);
+    ChatTab tab, {
+    bool selectMember = true,
+  }) => _memberConnectScheduler.schedule(
+    team,
+    member,
+    tab,
+    selectMember: selectMember,
+  );
 
   /// True when another launch path already owns PTY connect for [memberId].
   bool isMemberConnectOwnedElsewhere(String sessionId, String memberId) {

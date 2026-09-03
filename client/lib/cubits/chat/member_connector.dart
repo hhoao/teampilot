@@ -6,6 +6,7 @@ abstract interface class MemberConnector {
   void scheduleMemberConnect(
     TeamProfile team,
     TeamMemberConfig member,
-    ChatTab tab,
-  );
+    ChatTab tab, {
+    bool selectMember = true,
+  });
 }

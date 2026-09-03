@@ -74,12 +74,19 @@ class SessionMemberConnectScheduler {
     );
   }
 
-  void schedule(TeamProfile team, TeamMemberConfig member, ChatTab tab) {
+  void schedule(
+    TeamProfile team,
+    TeamMemberConfig member,
+    ChatTab tab, {
+    bool selectMember = true,
+  }) {
     appLogger.d(
       '[session-launch] scheduleMemberConnect '
       'session=${tab.info.id} member=${member.id} team=${team.id}',
     );
-    _host.assignSelectedMember(tab, member.id);
+    if (selectMember) {
+      _host.assignSelectedMember(tab, member.id);
+    }
     final session = tab.persistedSession ?? _sessionForMemberConnect(tab, team);
     final shell = memberShellForConnect(
       tab: tab,

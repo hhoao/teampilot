@@ -218,7 +218,9 @@ SessionLaunchPipeline _pipelineForAllMembers({
     ),
     tabSurface: tabSurface,
     materializer: materializer,
-    scheduleMemberConnect: (t, member, tab) => onScheduleMemberConnect(member),
+    scheduleMemberConnect:
+          (t, member, tab, {selectMember = true}) =>
+              onScheduleMemberConnect(member),
     disconnectSession: () {},
     ensureSession: (_) => null,
     appendLocalTab: (_, {required emitChange}) =>
