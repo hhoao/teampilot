@@ -6,7 +6,7 @@
 
 ## Goal
 
-从 Git Graph 对任意提交（有本地分支时优先以分支名展示）发起 **Show Diff with Working Tree**，在浮动工作区打开独立「对比文件列表」tab，列出该 ref 与当前 working tree 的全部不同文件；点击文件再开现有浮动 Diff tab。模型按一等「对比」能力设计，便于后续 Swap、ref↔ref、左右分屏。
+从 Git Graph 对任意提交（有本地分支时优先以分支名作为 git 操作数与标题）发起 **Show Diff with Working Tree**，在浮动工作区打开独立「对比文件列表」tab，列出该 ref 与当前 working tree 的全部不同文件；点击文件再开现有浮动 Diff tab。模型按一等「对比」能力设计，便于后续 Swap、ref↔ref、左右分屏。
 
 参考：JetBrains IDEA「Changes Between \<branch\> and Current Working Tree」。
 
