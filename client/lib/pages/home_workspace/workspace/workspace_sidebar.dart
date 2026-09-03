@@ -28,7 +28,6 @@ import '../../../services/workspace/workspace_tools_scope.dart';
 import '../../../utils/session/session_project_grouping.dart';
 import '../../../utils/session/session_worktree_grouping.dart';
 import '../../../utils/workspace/workspace_chrome_profile.dart';
-import '../../../widgets/app_toast/app_toast.dart';
 import 'session_group_section.dart';
 import 'worktree_create_dialog.dart';
 import 'worktree_group_section.dart';
@@ -321,7 +320,6 @@ class _WorkspaceSidebarState extends State<WorkspaceSidebar> {
 
   Future<void> _createWorktree(BuildContext context) async {
     final cubit = context.read<WorktreeCubit>();
-    final l10n = context.l10n;
     final tools = WorkspaceToolsScope.of(context).tools;
     if (tools == null) return;
     final repoPath =
@@ -329,33 +327,25 @@ class _WorkspaceSidebarState extends State<WorkspaceSidebar> {
         ? context.read<WorktreeCubit>().state.repoPath
         : widget.workspace.firstFolderPath;
     final layout = WorkspaceLayout(teampilotRoot: AppStorage.paths.basePath);
-    final result = await showWorktreeCreateDialog(
+    await showWorktreeCreateDialog(
       context,
       repoName: _basename(repoPath),
       repoPath: repoPath,
       layout: layout.worktreePathFor,
       branchLoader: branchListLoaderFor(tools.context),
       existingWorktreePaths: [for (final wt in cubit.state.worktrees) wt.path],
+      onSubmit: (result) async {
+        await GitWorktreeService.forContext(tools.context).add(
+          repoPath,
+          result.worktreePath,
+          branch: result.branch,
+          baseRef: result.baseRef,
+          existingBranch: result.existingBranch,
+        );
+        await cubit.load(repoPath, force: true);
+        cubit.setCurrentWorktree(result.worktreePath);
+      },
     );
-    if (result == null) return;
-    try {
-      await GitWorktreeService.forContext(tools.context).add(
-        repoPath,
-        result.worktreePath,
-        branch: result.branch,
-        baseRef: result.baseRef,
-        existingBranch: result.existingBranch,
-      );
-      await cubit.load(repoPath, force: true);
-      cubit.setCurrentWorktree(result.worktreePath);
-    } on Object catch (error) {
-      if (!context.mounted) return;
-      AppToast.show(
-        context,
-        message: l10n.worktreeCreateFailed(error.toString()),
-        variant: TpToastVariant.error,
-      );
-    }
   }
 
   static String _basename(String path) {
@@ -403,6 +393,7 @@ class _RunningSessionsHost extends StatelessWidget {
     final openTabIds = context.select<WorkbenchCubit, OpenSessionTabIds>(
       (c) => OpenSessionTabIds.fromCenterBarOrder(
         c.state.bar(tabScopeId).center.order,
+        previewIds: c.state.bar(tabScopeId).center.previewIds,
       ),
     );
     final running = context.select<ChatCubit, RunningSessionIds>(
