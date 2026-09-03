@@ -911,15 +911,15 @@ Future<AppShell> buildAppShell({
             managedProviderCliCredentials ??
             CliCredentialSourceResolver(
               readers: {
-                'claude-official': ClaudeOfficialSubscriptionAuthReader(
+                'claude': ClaudeOfficialSubscriptionAuthReader(
                   fs: AppStorage.fs,
                   basePath: AppStorage.paths.basePath,
                 ),
-                'openai-official': CodexOfficialSubscriptionAuthReader(
+                'codex': CodexOfficialSubscriptionAuthReader(
                   fs: AppStorage.fs,
                   basePath: AppStorage.paths.basePath,
                 ),
-                'cursor-account': CursorOfficialSubscriptionAuthReader(
+                'cursor': CursorOfficialSubscriptionAuthReader(
                   fs: AppStorage.fs,
                   basePath: AppStorage.paths.basePath,
                 ),

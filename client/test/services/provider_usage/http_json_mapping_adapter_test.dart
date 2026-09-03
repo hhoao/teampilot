@@ -968,7 +968,7 @@ void main() {
     await HttpJsonMappingAdapter(
       cliCredentials: CliCredentialSourceResolver(
         readers: {
-          'cursor-account': _CliReader(
+          'cursor': _CliReader(
             const _Credentials({
               'accessToken': 'jwt-token',
               'accountId': 'user',
@@ -1017,7 +1017,7 @@ void main() {
     await HttpJsonMappingAdapter(
       cliCredentials: CliCredentialSourceResolver(
         readers: {
-          'cursor-account': _CliReader(
+          'cursor': _CliReader(
             const _Credentials({
               'accessToken': 'jwt-token',
               'accountId': 'user',
@@ -1061,7 +1061,7 @@ void main() {
     final snapshot = await HttpJsonMappingAdapter(
       cliCredentials: CliCredentialSourceResolver(
         readers: {
-          'cursor-account': _CliReader(
+          'cursor': _CliReader(
             const _Credentials({
               'accessToken': 'jwt-token',
               'accountId': 'user',
@@ -1095,7 +1095,7 @@ void main() {
     final snapshot = await HttpJsonMappingAdapter(
       cliCredentials: CliCredentialSourceResolver(
         readers: {
-          'claude-official': _CliReader(
+          'claude': _CliReader(
             const _Credentials({'accessToken': 'token'}),
           ),
         },
@@ -1122,7 +1122,7 @@ void main() {
     final snapshot = await HttpJsonMappingAdapter(
       cliCredentials: CliCredentialSourceResolver(
         readers: {
-          'openai-official': _CliReader(
+          'codex': _CliReader(
             const _Credentials({
               'accessToken': 'token',
               'accountId': 'acct',

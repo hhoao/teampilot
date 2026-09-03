@@ -1,4 +1,5 @@
 import '../../models/managed_provider.dart';
+import 'managed_provider_cli_binding.dart';
 import 'managed_provider_usage_adapter.dart';
 
 /// Reads CLI-owned authentication for `cli:<id>` credential sources.
@@ -21,16 +22,25 @@ class CliCredentialSourceResolver {
         ManagedProviderUsageQueryErrorCode.missingCredential,
       );
     }
-    final id = source.substring(prefix.length);
-    final reader = readers[id];
+    final rowId = source.substring(prefix.length).trim();
+    if (rowId.isEmpty) {
+      throw const ManagedProviderUsageQueryError(
+        ManagedProviderUsageQueryErrorCode.missingCredential,
+      );
+    }
+    // Readers are keyed by CLI value; any row id (per-entry or legacy)
+    // resolves through its CLI's reader, which reads the isolated
+    // `providers/<cli>/<rowId>/` directory.
+    final cli = ManagedProviderCliBinding().cliForCredentialSource(source);
+    final reader = cli == null ? null : readers[cli.value];
     if (reader == null) {
       throw const ManagedProviderUsageQueryError(
         ManagedProviderUsageQueryErrorCode.missingCredential,
       );
     }
     final dummy = ManagedProvider(
-      id: id,
-      name: id,
+      id: rowId,
+      name: rowId,
       kind: ManagedProviderKind.subscriptionQuota,
       adapterId: 'http-json',
     );

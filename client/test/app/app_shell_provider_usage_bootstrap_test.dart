@@ -80,7 +80,7 @@ void main() {
       final registry = buildDefaultManagedProviderUsageRegistry(
         cliCredentials: CliCredentialSourceResolver(
           readers: {
-            'claude-official': ClaudeOfficialSubscriptionAuthReader(
+            'claude': ClaudeOfficialSubscriptionAuthReader(
               fs: fs,
               basePath: '/tp',
             ),
