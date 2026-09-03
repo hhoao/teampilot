@@ -65,9 +65,5 @@ String _diffTitle(WorkbenchTabId tab, WorkspaceEditorBucket bucket) {
   final state = bucket.openDiffs[tab.id];
   final base = state?.title ?? p.basename(tab.diffAbsolutePath ?? tab.id);
   if (state == null) return base;
-  return switch (state.source) {
-    WorkbenchDiffSource.staged => '$base (staged)',
-    WorkbenchDiffSource.unstaged => base,
-    WorkbenchDiffSource.changes => base,
-  };
+  return state.staged ? '$base (staged)' : base;
 }

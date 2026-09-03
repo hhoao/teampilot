@@ -52,7 +52,7 @@ class _DiffEditorSurfaceState extends State<DiffEditorSurface> {
     if (!mounted) return;
     final editor = context.read<EditorCubit>();
     final tab = editor.state.bucket(widget.workspaceId).openDiffs[widget.diffKey];
-    if (tab == null || tab.source != WorkbenchDiffSource.unstaged) return;
+    if (tab == null || !tab.writable) return;
 
     final diskText = await editor.readWorkingTreeText(tab.absolutePath);
     if (!mounted) return;
@@ -69,7 +69,7 @@ class _DiffEditorSurfaceState extends State<DiffEditorSurface> {
   }
 
   void _scheduleWritableBindIfNeeded(DiffTabState tab) {
-    if (tab.source != WorkbenchDiffSource.unstaged) return;
+    if (!tab.writable) return;
     if (tab.diffText == _boundDiffText) return;
     WidgetsBinding.instance.addPostFrameCallback((_) => _syncWritableBind());
   }
@@ -144,11 +144,9 @@ class _DiffEditorSurfaceState extends State<DiffEditorSurface> {
 
     _scheduleWritableBindIfNeeded(tab);
 
-    final stagedLabel = tab.source == WorkbenchDiffSource.staged
-        ? ' (staged)'
-        : '';
+    final stagedLabel = tab.staged ? ' (staged)' : '';
     final reload = context.read<EditorCubit>().diffReloadFor(widget.diffKey);
-    final isWritable = tab.source == WorkbenchDiffSource.unstaged;
+    final isWritable = tab.writable;
     final canonicalText = context.select<EditorCubit, String?>(
       (c) => c.diffCanonicalFor(widget.diffKey),
     );

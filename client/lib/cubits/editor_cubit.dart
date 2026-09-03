@@ -7,6 +7,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:path/path.dart' as p;
 import 'package:re_editor/re_editor.dart';
 
+import '../models/diff_identity.dart';
 import '../services/diff/diff_hunk_applier.dart';
 import '../services/diff/diff_model.dart';
 import '../services/editor/code_line_selection_for_lines.dart';
@@ -19,37 +20,38 @@ import '../services/editor_platform/language_registry.dart';
 import '../services/editor_platform/worker_protocol.dart';
 import '../services/io/filesystem.dart';
 import '../services/storage/app_storage.dart';
-import 'workbench/workbench_tab.dart';
 
 class DiffTabState extends Equatable {
   const DiffTabState({
-    required this.absolutePath,
-    required this.source,
+    required this.identity,
     required this.title,
     required this.diffText,
   });
 
-  final String absolutePath;
-  final WorkbenchDiffSource source;
+  final DiffIdentity identity;
   final String title;
   final String diffText;
 
-  bool get staged => source == WorkbenchDiffSource.staged;
+  String get absolutePath => identity.absolutePath;
 
-  String get key =>
-      WorkbenchTabId.diffKey(absolutePath, source: source);
+  bool get staged =>
+      identity is ScmDiffIdentity &&
+      (identity as ScmDiffIdentity).mode == ScmDiffMode.staged;
+
+  bool get writable => identity.isWritableWorkingTree;
+
+  String get key => identity.storageKey;
 
   DiffTabState copyWith({String? diffText, String? title}) {
     return DiffTabState(
-      absolutePath: absolutePath,
-      source: source,
+      identity: identity,
       title: title ?? this.title,
       diffText: diffText ?? this.diffText,
     );
   }
 
   @override
-  List<Object?> get props => [absolutePath, source, title, diffText];
+  List<Object?> get props => [identity, title, diffText];
 }
 
 class WorkspaceEditorBucket extends Equatable {
@@ -652,18 +654,16 @@ class EditorCubit extends Cubit<EditorState> {
 
   void openDiff({
     required String workspaceId,
-    required String absolutePath,
-    required WorkbenchDiffSource source,
+    required DiffIdentity identity,
     required String title,
     required String diffText,
     DiffReload? reloadDiff,
     Future<void> Function()? onWorkingTreeWritten,
   }) {
-    final key = WorkbenchTabId.diffKey(absolutePath, source: source);
+    final key = identity.storageKey;
     final bucket = state.bucket(workspaceId);
     final tab = DiffTabState(
-      absolutePath: absolutePath,
-      source: source,
+      identity: identity,
       title: title,
       diffText: diffText,
     );

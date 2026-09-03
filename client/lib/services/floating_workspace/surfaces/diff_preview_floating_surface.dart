@@ -4,6 +4,7 @@ import 'package:path/path.dart' as p;
 import '../../../cubits/editor_cubit.dart';
 import '../../../cubits/floating_workspace/floating_workspace_cubit.dart';
 import '../../../cubits/workbench/workbench_tab.dart';
+import '../../../models/diff_identity.dart';
 import '../../../models/floating_workspace_tab.dart';
 import '../../../pages/workbench/diff_editor_surface.dart';
 import '../floating_surface.dart';
@@ -36,10 +37,8 @@ class DiffPreviewFloatingSurface extends FloatingSurface {
     final diffKey = payload is String ? payload.trim() : '';
     final parsed = diffKey.isEmpty
         ? null
-        : WorkbenchTabId.parseDiffKey(diffKey);
-    final title = parsed == null
-        ? 'Diff'
-        : _diffTitle(parsed.$1, parsed.$2);
+        : WorkbenchTabId.parseDiffStorageKey(diffKey);
+    final title = parsed == null ? 'Diff' : _diffTitle(parsed);
     return FloatingTab(
       id: diffKey.isEmpty ? 'diff:' : floatingDiffTabId(diffKey),
       surfaceId: id,
@@ -80,11 +79,12 @@ class DiffPreviewFloatingSurface extends FloatingSurface {
 /// Floating tab id for a workbench-compatible [diffKey].
 String floatingDiffTabId(String diffKey) => 'diff:$diffKey';
 
-String _diffTitle(String absolutePath, WorkbenchDiffSource source) {
-  final base = p.basename(absolutePath);
-  return switch (source) {
-    WorkbenchDiffSource.staged => '$base (staged)',
-    WorkbenchDiffSource.unstaged => base,
-    WorkbenchDiffSource.changes => base,
+String _diffTitle(DiffIdentity identity) {
+  final base = p.basename(identity.absolutePath);
+  return switch (identity) {
+    ScmDiffIdentity(mode: ScmDiffMode.staged) => '$base (staged)',
+    ScmDiffIdentity() => base,
+    CompareDiffIdentity(:final left, :final right) =>
+      '$base (${left.titleLabel()} ↔ ${right.titleLabel()})',
   };
 }

@@ -4,7 +4,7 @@ import 'dart:io';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/cubits/editor_cubit.dart';
-import 'package:teampilot/cubits/workbench/workbench_tab.dart';
+import 'package:teampilot/models/diff_identity.dart';
 import 'package:teampilot/services/diff/diff_engine.dart';
 import 'package:teampilot/services/diff/diff_model.dart';
 import 'package:teampilot/services/editor/editor_messages.dart';
@@ -84,15 +84,13 @@ void main() {
 
     cubit.openDiff(
       workspaceId: ws,
-      absolutePath: '/repo/a.dart',
-      source: WorkbenchDiffSource.unstaged,
+      identity: const ScmDiffIdentity('/repo/a.dart', ScmDiffMode.unstaged),
       title: 'a.dart',
       diffText: 'diff --git a',
     );
     cubit.openDiff(
       workspaceId: ws,
-      absolutePath: '/repo/a.dart',
-      source: WorkbenchDiffSource.staged,
+      identity: const ScmDiffIdentity('/repo/a.dart', ScmDiffMode.staged),
       title: 'a.dart',
       diffText: 'diff --git b',
     );
@@ -100,10 +98,11 @@ void main() {
     final bucket = cubit.state.bucket(ws);
     expect(bucket.openDiffs.length, 2);
     expect(
-      bucket.openDiffs[WorkbenchTabId.diffKey(
+      bucket
+          .openDiffs[const ScmDiffIdentity(
             '/repo/a.dart',
-            source: WorkbenchDiffSource.unstaged,
-          )]
+            ScmDiffMode.unstaged,
+          ).storageKey]
           ?.diffText,
       'diff --git a',
     );
@@ -115,10 +114,7 @@ void main() {
 
     cubit.closeDiff(
       ws,
-      WorkbenchTabId.diffKey(
-        '/repo/a.dart',
-        source: WorkbenchDiffSource.unstaged,
-      ),
+      const ScmDiffIdentity('/repo/a.dart', ScmDiffMode.unstaged).storageKey,
     );
     expect(cubit.state.bucket(ws).openDiffs.length, 1);
     expect(cubit.state.bucket(ws).openFilePaths, [file.path]);
@@ -283,10 +279,8 @@ void main() {
 
   group('writable unstaged diff', () {
     const path = '/repo/a.txt';
-    final diffKey = WorkbenchTabId.diffKey(
-      path,
-      source: WorkbenchDiffSource.unstaged,
-    );
+    const identity = ScmDiffIdentity(path, ScmDiffMode.unstaged);
+    final diffKey = identity.storageKey;
 
     Future<EditorCubit> cubitWithDiff({
       required InMemoryFilesystem fs,
@@ -299,8 +293,7 @@ void main() {
       addTearDown(cubit.close);
       cubit.openDiff(
         workspaceId: ws,
-        absolutePath: path,
-        source: WorkbenchDiffSource.unstaged,
+        identity: identity,
         title: 'a.txt',
         diffText: 'initial',
         reloadDiff: reloadDiff,
@@ -342,8 +335,7 @@ void main() {
       addTearDown(cubit.close);
       cubit.openDiff(
         workspaceId: ws,
-        absolutePath: path,
-        source: WorkbenchDiffSource.unstaged,
+        identity: identity,
         title: 'a.txt',
         diffText: 'initial',
         onWorkingTreeWritten: () async {
@@ -590,10 +582,8 @@ void main() {
 
   group('file and diff buffer sync', () {
     const path = '/repo/a.txt';
-    final diffKey = WorkbenchTabId.diffKey(
-      path,
-      source: WorkbenchDiffSource.unstaged,
-    );
+    const identity = ScmDiffIdentity(path, ScmDiffMode.unstaged);
+    final diffKey = identity.storageKey;
 
     Future<EditorCubit> cubitWithOpenFileAndDiff({
       required InMemoryFilesystem fs,
@@ -607,8 +597,7 @@ void main() {
       await cubit.openFile(ws, path);
       cubit.openDiff(
         workspaceId: ws,
-        absolutePath: path,
-        source: WorkbenchDiffSource.unstaged,
+        identity: identity,
         title: 'a.txt',
         diffText: 'initial',
         reloadDiff: reloadDiff,

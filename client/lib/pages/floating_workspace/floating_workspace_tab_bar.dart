@@ -23,8 +23,10 @@ import 'floating_workspace_new_terminal_menu.dart';
     ),
     'diffPreview' => () {
       final key = tab.payload is String ? tab.payload as String : null;
-      final parsed = key == null ? null : WorkbenchTabId.parseDiffKey(key);
-      return (WorkbenchTabKind.diff, parsed?.$1);
+      final parsed = key == null
+          ? null
+          : WorkbenchTabId.parseDiffStorageKey(key);
+      return (WorkbenchTabKind.diff, parsed?.absolutePath);
     }(),
     'terminal' => (WorkbenchTabKind.shell, null),
     'htmlPreview' => (

@@ -5,6 +5,7 @@ import '../../cubits/editor_cubit.dart';
 import '../../cubits/floating_workspace/floating_workspace_cubit.dart';
 import '../../cubits/workbench/workbench_cubit.dart';
 import '../../cubits/workbench/workbench_tab.dart';
+import '../../models/diff_identity.dart';
 import '../../models/layout_preferences.dart';
 import '../editor/file_editor_theme.dart';
 import '../editor/html_view_mode_store.dart';
@@ -80,8 +81,7 @@ class WorkbenchEditorOpener {
 
   void openDiff({
     required String workspaceId,
-    required String absolutePath,
-    required WorkbenchDiffSource source,
+    required DiffIdentity identity,
     required String title,
     required String diffText,
     DiffReload? reloadDiff,
@@ -90,14 +90,13 @@ class WorkbenchEditorOpener {
   }) {
     _editor.openDiff(
       workspaceId: workspaceId,
-      absolutePath: absolutePath,
-      source: source,
+      identity: identity,
       title: title,
       diffText: diffText,
       reloadDiff: reloadDiff,
       onWorkingTreeWritten: onWorkingTreeWritten,
     );
-    final tab = WorkbenchTabId.diff(absolutePath, source: source);
+    final tab = WorkbenchTabId.diff(identity);
     if (_readFilePreviewInFloating()) {
       _floating.ensureOpen();
       _floating.setActiveWorkspace(workspaceId);
@@ -139,8 +138,7 @@ class WorkbenchEditorOpener {
     }
     openDiff(
       workspaceId: workspaceId,
-      absolutePath: path,
-      source: WorkbenchDiffSource.changes,
+      identity: ScmDiffIdentity(path, ScmDiffMode.changes),
       title: title ?? p.basename(path),
       diffText: diffText,
       reloadDiff: (ignoreWhitespace, fullContext) => loadDiff(

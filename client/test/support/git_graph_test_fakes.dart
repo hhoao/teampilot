@@ -9,7 +9,7 @@ class FakeHistoryForGraph implements GitHistoryService {
   FakeHistoryForGraph({
     this.rows = const [],
     this.detail,
-    this.fileDiff =
+    this.commitFileDiffText =
         'diff --git a/a.dart b/a.dart\n'
         '--- a/a.dart\n'
         '+++ b/a.dart\n'
@@ -25,7 +25,7 @@ class FakeHistoryForGraph implements GitHistoryService {
   final GitCommitDetail? detail;
 
   /// `commitFileDiff` 返回的固定 diff 文本。
-  final String fileDiff;
+  final String commitFileDiffText;
 
   /// 为真时按请求的 limit 循环填满每页，模拟“仍有更多提交”的大仓库。
   final bool fullPages;
@@ -73,7 +73,7 @@ class FakeHistoryForGraph implements GitHistoryService {
     required String hash,
     String? parent,
     required String path,
-  }) async => fileDiff;
+  }) async => commitFileDiffText;
 
   @override
   Future<List<GitBranchInfo>> branches(String dir) async => branchInfos;
