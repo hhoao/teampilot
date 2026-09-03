@@ -293,51 +293,57 @@ class _OpenTabChip extends StatelessWidget {
         height: 40,
         borderRadius: BorderRadius.zero,
         hoverColor: cs.onSurface.withValues(alpha: 0.05),
-        child: Container(
-          padding: const EdgeInsetsDirectional.only(start: 8, end: 4),
-          decoration: BoxDecoration(
-            border: Border(
-              bottom: BorderSide(
-                color: active ? cs.primary : Colors.transparent,
-                width: 2,
+        // Stretch to the strip height so the active bottom border sits flush
+        // with the edge; TpHover centers a content-sized child by default.
+        child: SizedBox(
+          height: double.infinity,
+          child: Container(
+            padding: const EdgeInsetsDirectional.only(start: 8, end: 4),
+            alignment: Alignment.center,
+            decoration: BoxDecoration(
+              border: Border(
+                bottom: BorderSide(
+                  color: active ? cs.primary : Colors.transparent,
+                  width: 2,
+                ),
               ),
             ),
-          ),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(view.icon, size: context.tpIconSizes.md, color: color),
-              if (view.badgeCount > 0) ...[
-                const SizedBox(width: 4),
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 4,
-                    vertical: 1,
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(view.icon, size: context.tpIconSizes.md, color: color),
+                if (view.badgeCount > 0) ...[
+                  const SizedBox(width: 4),
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 4,
+                      vertical: 1,
+                    ),
+                    decoration: BoxDecoration(
+                      color: cs.error,
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    constraints: const BoxConstraints(minWidth: 14),
+                    child: Text(
+                      '${view.badgeCount}',
+                      textAlign: TextAlign.center,
+                      style: styles.xsSemiboldSnugColored(cs.onError),
+                    ),
                   ),
-                  decoration: BoxDecoration(
-                    color: cs.error,
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  constraints: const BoxConstraints(minWidth: 14),
-                  child: Text(
-                    '${view.badgeCount}',
-                    textAlign: TextAlign.center,
-                    style: styles.xsSemiboldSnugColored(cs.onError),
+                ],
+                TpHover(
+                  width: 24,
+                  height: 24,
+                  borderRadius: BorderRadius.circular(4),
+                  onTap: onClose,
+                  child: Icon(
+                    Icons.close,
+                    size: 14,
+                    color: cs.onSurfaceVariant,
                   ),
                 ),
               ],
-              TpHover(
-                width: 24,
-                height: 24,
-                borderRadius: BorderRadius.circular(4),
-                onTap: onClose,
-                child: Icon(
-                  Icons.close,
-                  size: 14,
-                  color: cs.onSurfaceVariant,
-                ),
-              ),
-            ],
+            ),
           ),
         ),
       ),

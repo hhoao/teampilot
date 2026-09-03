@@ -148,6 +148,51 @@ void main() {
     expect(tooltip.message, 'Members');
   });
 
+  testWidgets('active tab bottom border sits flush with the strip edge', (
+    tester,
+  ) async {
+    final toolsCubit = WorkspaceToolsCubit()
+      ..ensureOpenAndSelect('ws-1', 'members');
+    addTearDown(toolsCubit.close);
+    await tester.pumpWidget(
+      _wrap(
+        TabbedPanel(
+          scopeId: 'ws-1',
+          views: const [
+            ToolView(
+              id: 'members',
+              icon: Icons.groups_outlined,
+              label: 'Members',
+              child: Text('members-body'),
+            ),
+          ],
+        ),
+        toolsCubit: toolsCubit,
+      ),
+    );
+
+    final tabTpHover = find.ancestor(
+      of: find.byIcon(Icons.groups_outlined),
+      matching: find.byType(TpHover),
+    );
+    final borderContainer = find.descendant(
+      of: tabTpHover,
+      matching: find.byWidgetPredicate((widget) {
+        if (widget is! Container) return false;
+        final border = widget.decoration;
+        if (border is! BoxDecoration) return false;
+        final bottom = border.border?.bottom;
+        return bottom != null && bottom.width == 2 && bottom.color.a > 0;
+      }),
+    );
+
+    expect(borderContainer, findsOneWidget);
+    final hoverRect = tester.getRect(tabTpHover.first);
+    final borderRect = tester.getRect(borderContainer);
+    expect(borderRect.bottom, hoverRect.bottom);
+    expect(borderRect.height, hoverRect.height);
+  });
+
   testWidgets('open tab title uses xl text style', (tester) async {
     final toolsCubit = WorkspaceToolsCubit();
     addTearDown(toolsCubit.close);
