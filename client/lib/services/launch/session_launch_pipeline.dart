@@ -657,3 +657,14 @@ bool shouldSerializeConnect({
   }
   return isMaterializingInFlight;
 }
+
+/// Whether connecting this team must launch every valid member shell.
+///
+/// Native teams break when any member is missing (the CLI coordinates the
+/// roster itself), so they always launch all members regardless of the
+/// user preference. Mixed teams honor [autoLaunchAllMembersOnConnect].
+@visibleForTesting
+bool shouldLaunchAllMembers({
+  required TeamProfile team,
+  required bool autoLaunchAllMembersOnConnect,
+}) => team.teamMode != TeamMode.mixed || autoLaunchAllMembersOnConnect;
