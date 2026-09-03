@@ -360,7 +360,7 @@ SessionLaunchPipeline _pipelineForStaging({
     ),
     tabSurface: tabSurface,
     materializer: materializer,
-    scheduleMemberConnect: (_, __, ___) {},
+    scheduleMemberConnect: (_, __, ___, {selectMember = true}) {},
     disconnectSession: () {},
     ensureSession: (_) => null,
     appendLocalTab: (_, {required emitChange}) =>

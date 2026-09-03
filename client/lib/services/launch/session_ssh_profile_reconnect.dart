@@ -11,7 +11,12 @@ import '../../utils/logging/logger.dart';
 import 'session_launch_workspace_index.dart';
 
 typedef ScheduleMemberConnectFn =
-    void Function(TeamProfile team, TeamMemberConfig member, ChatTab tab);
+    void Function(
+      TeamProfile team,
+      TeamMemberConfig member,
+      ChatTab tab, {
+      bool selectMember,
+    });
 
 /// Reconnects open session tabs after an SSH profile change.
 class SessionSshProfileReconnect {

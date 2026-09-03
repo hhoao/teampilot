@@ -385,20 +385,22 @@ class SessionLaunchPipeline {
 
     if (_tabStore.activeTabsIsEmpty && r != null) {
       try {
+        final initialMember = validMembers.first;
         await _materializer.materializeTeamSession(
           team,
           r,
           connectImmediately: true,
-          memberForInitialShell: validMembers.first,
+          memberForInitialShell: initialMember,
           workspaceCwd: workspaceCwd,
         );
         if (_host.isClosed) return LaunchCompleted();
-        if (team.teamMode == TeamMode.mixed) {
-          final tab = _activeTab();
-          if (tab != null) {
-            for (final member in validMembers) {
-              _scheduleMemberConnect(team, member, tab);
-            }
+        final tab = _activeTab();
+        if (tab != null) {
+          // The materializer already schedules the initial member's shell
+          // connect; scheduling it here too would connect that shell twice.
+          for (final member in validMembers) {
+            if (member.id == initialMember.id) continue;
+            _scheduleMemberConnect(team, member, tab, selectMember: false);
           }
         }
       } on Object catch (e, st) {
@@ -412,7 +414,9 @@ class SessionLaunchPipeline {
 
     final tab = _ensureActiveSessionTab(team, emitChange: true);
     for (final member in validMembers) {
-      _scheduleMemberConnect(team, member, tab);
+      // Callers own the final member selection (see _connectTeamSession /
+      // _restartTeamSession); background members must not stomp it.
+      _scheduleMemberConnect(team, member, tab, selectMember: false);
     }
     return LaunchCompleted();
   }
@@ -545,7 +549,10 @@ class SessionLaunchPipeline {
       _appendLocalTab(team, emitChange: true);
     }
 
-    if (_autoLaunchAllMembersOnConnect()) {
+    if (shouldLaunchAllMembers(
+      team: team,
+      autoLaunchAllMembersOnConnect: _autoLaunchAllMembersOnConnect(),
+    )) {
       final keepId = _selectedMemberIdOrDefault(team);
       if (keepId.isEmpty) {
         _failNoMemberSelected(team);
@@ -581,7 +588,10 @@ class SessionLaunchPipeline {
     if (restartTab != null) {
       _host.clearAgentStatusSession(restartTab.info.id);
     }
-    if (_autoLaunchAllMembersOnConnect()) {
+    if (shouldLaunchAllMembers(
+      team: team,
+      autoLaunchAllMembersOnConnect: _autoLaunchAllMembersOnConnect(),
+    )) {
       final keepId = _selectedMemberIdOrDefault(team);
       final tab = restartTab ?? _activeTab();
       if (tab != null) {
@@ -657,3 +667,14 @@ bool shouldSerializeConnect({
   }
   return isMaterializingInFlight;
 }
+
+/// Whether connecting this team must launch every valid member shell.
+///
+/// Native teams break when any member is missing (the CLI coordinates the
+/// roster itself), so they always launch all members regardless of the
+/// user preference. Mixed teams honor [autoLaunchAllMembersOnConnect].
+@visibleForTesting
+bool shouldLaunchAllMembers({
+  required TeamProfile team,
+  required bool autoLaunchAllMembersOnConnect,
+}) => team.teamMode != TeamMode.mixed || autoLaunchAllMembersOnConnect;

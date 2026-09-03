@@ -11,7 +11,12 @@ import '../../services/launch/connect_shell_result.dart';
 import '../../utils/logging/logger.dart';
 
 typedef ScheduleMemberConnectFn =
-    void Function(TeamProfile team, TeamMemberConfig member, ChatTab tab);
+    void Function(
+      TeamProfile team,
+      TeamMemberConfig member,
+      ChatTab tab, {
+      bool selectMember,
+    });
 
 /// Lifecycle gate evaluation, deferred retries, and direct-PTY readiness checks.
 class SessionLifecycleConnectCoordinator {

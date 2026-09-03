@@ -21,7 +21,12 @@ import 'session_tab_connect_prep.dart';
 import 'session_tab_surface_coordinator.dart';
 
 typedef ScheduleMemberConnectFn =
-    void Function(TeamProfile team, TeamMemberConfig member, ChatTab tab);
+    void Function(
+      TeamProfile team,
+      TeamMemberConfig member,
+      ChatTab tab, {
+      bool selectMember,
+    });
 
 /// Dependencies required to wire tab surface, materializer, and pipeline.
 class SessionLaunchBundleDeps {
