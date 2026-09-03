@@ -149,6 +149,32 @@ class WorkbenchEditorOpener {
     );
   }
 
+  /// Opens a git-compare file diff tab (left/right sides from [identity]).
+  Future<void> openCompareDiff({
+    required String workspaceId,
+    required CompareDiffIdentity identity,
+    required Future<String?> Function({bool ignoreWhitespace, bool fullContext})
+    loadDiff,
+    String? title,
+    bool preview = true,
+  }) async {
+    final path = identity.absolutePath.trim();
+    if (path.isEmpty) return;
+    final diffText =
+        await loadDiff(ignoreWhitespace: false, fullContext: true) ?? '';
+    openDiff(
+      workspaceId: workspaceId,
+      identity: identity,
+      title: title ?? p.basename(path),
+      diffText: diffText,
+      reloadDiff: (ignoreWhitespace, fullContext) => loadDiff(
+        ignoreWhitespace: ignoreWhitespace,
+        fullContext: fullContext,
+      ),
+      preview: preview,
+    );
+  }
+
   void _closeReplaced(String workspaceId, WorkbenchTabId? replaced) {
     if (replaced == null) return;
     switch (replaced.kind) {
