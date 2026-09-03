@@ -54,8 +54,9 @@ List<TabInfo> projectWorkbenchTabs({
         WorkbenchTabKind.shell ||
         WorkbenchTabKind.run ||
         WorkbenchTabKind.htmlPreview ||
-        WorkbenchTabKind.gitGraph => throw StateError(
-          'shell/run/htmlPreview/gitGraph tabs are filtered before center-strip projection',
+        WorkbenchTabKind.gitGraph ||
+        WorkbenchTabKind.gitCompare => throw StateError(
+          'shell/run/htmlPreview/gitGraph/gitCompare tabs are filtered before center-strip projection',
         ),
       },
   ];

@@ -162,6 +162,7 @@ class WorkbenchEditorOpener {
       case WorkbenchTabKind.run:
       case WorkbenchTabKind.htmlPreview:
       case WorkbenchTabKind.gitGraph:
+      case WorkbenchTabKind.gitCompare:
         break;
     }
   }

@@ -1,8 +1,18 @@
 import 'package:equatable/equatable.dart';
 
 import '../../models/diff_identity.dart';
+import '../../models/git_compare.dart';
 
-enum WorkbenchTabKind { session, file, diff, shell, run, htmlPreview, gitGraph }
+enum WorkbenchTabKind {
+  session,
+  file,
+  diff,
+  shell,
+  run,
+  htmlPreview,
+  gitGraph,
+  gitCompare,
+}
 
 /// Floating panel surface id for [kind], or null when the kind hosts on the
 /// center strip (session) rather than the floating panel.
@@ -13,6 +23,7 @@ String? surfaceIdFor(WorkbenchTabKind kind) => switch (kind) {
   WorkbenchTabKind.diff => 'diffPreview',
   WorkbenchTabKind.htmlPreview => 'htmlPreview',
   WorkbenchTabKind.gitGraph => 'gitGraph',
+  WorkbenchTabKind.gitCompare => 'gitCompare',
   WorkbenchTabKind.session => null,
 };
 
@@ -68,6 +79,11 @@ class WorkbenchTabId extends Equatable {
   /// Git Graph 浮动页：id 即仓库根绝对路径。
   factory WorkbenchTabId.gitGraph(String repoRoot) =>
       WorkbenchTabId._(WorkbenchTabKind.gitGraph, repoRoot);
+
+  /// Git Compare 浮动页：id 编码 repoRoot + 双侧 side，供仅有 id 时通过
+  /// [GitCompareSpec.tryParseTabId] 还原 spec。
+  factory WorkbenchTabId.gitCompare(GitCompareSpec spec) =>
+      WorkbenchTabId._(WorkbenchTabKind.gitCompare, spec.tabId);
 
   static DiffIdentity? parseDiffStorageKey(String key) =>
       DiffIdentity.parseStorageKey(key);
