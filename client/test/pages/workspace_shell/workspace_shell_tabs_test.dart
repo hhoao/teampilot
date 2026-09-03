@@ -67,7 +67,7 @@ void main() {
       );
       final l10n = AppLocalizations.of(
         tester.element(find.byKey(AppKeys.rightToolsVisibilityButton)),
-      )!;
+      );
       expect(
         button.tooltip,
         '${l10n.rightToolsPanelVisible} ($expectedChord)',

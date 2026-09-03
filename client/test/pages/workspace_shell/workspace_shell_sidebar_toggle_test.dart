@@ -7,7 +7,6 @@ import 'package:teampilot/cubits/shortcut_cubit.dart';
 import 'package:teampilot/l10n/app_localizations.dart';
 import 'package:teampilot/pages/workspace_shell/workspace_shell_tabs.dart';
 import 'package:teampilot/repositories/keybinding_repository.dart';
-import 'package:teampilot/services/commands/command_ids.dart';
 import 'package:teampilot/services/commands/key_chord.dart';
 import 'package:teampilot/services/commands/key_chord_formatter.dart';
 import 'package:teampilot/utils/ui/app_keys.dart';
@@ -62,7 +61,7 @@ void main() {
       );
       final l10n = AppLocalizations.of(
         tester.element(find.byKey(AppKeys.sidebarVisibilityButton)),
-      )!;
+      );
       expect(
         tester
             .widget<TpIconButton>(find.byKey(AppKeys.sidebarVisibilityButton))

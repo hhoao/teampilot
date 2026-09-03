@@ -114,7 +114,7 @@ void main() {
     );
     final l10n = AppLocalizations.of(
       tester.element(find.byKey(AppKeys.searchSidebarTile)),
-    )!;
+    );
     final tooltip = tester.widget<Tooltip>(
       find.descendant(
         of: find.byKey(AppKeys.searchSidebarTile),
