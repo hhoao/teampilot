@@ -8585,6 +8585,23 @@ class AppLocalizationsEn extends AppLocalizations {
       'Resolve the conflicts, stage the files, then commit to continue.';
 
   @override
+  String get gitGraphShowDiffWithWorkingTree => 'Show Diff with Working Tree';
+
+  @override
+  String get gitCompareWorkingTree => 'Working Tree';
+
+  @override
+  String gitCompareSubtitle(String ref) {
+    return 'Difference between $ref and current working tree';
+  }
+
+  @override
+  String get gitCompareEmpty => 'No differences';
+
+  @override
+  String get gitCompareLoadError => 'Could not load differences';
+
+  @override
   String get connectSettingsTitle => 'Phone';
 
   @override

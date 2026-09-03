@@ -8221,6 +8221,23 @@ class AppLocalizationsZh extends AppLocalizations {
   String get gitGraphConflictHint => '请先解决冲突并暂存相关文件，然后提交以继续。';
 
   @override
+  String get gitGraphShowDiffWithWorkingTree => '与工作区比较差异';
+
+  @override
+  String get gitCompareWorkingTree => '工作区';
+
+  @override
+  String gitCompareSubtitle(String ref) {
+    return '$ref 与当前工作区的差异';
+  }
+
+  @override
+  String get gitCompareEmpty => '没有差异';
+
+  @override
+  String get gitCompareLoadError => '无法加载差异';
+
+  @override
   String get connectSettingsTitle => '手机';
 
   @override

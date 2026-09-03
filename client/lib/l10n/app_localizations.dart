@@ -15266,6 +15266,36 @@ abstract class AppLocalizations {
   /// **'Resolve the conflicts, stage the files, then commit to continue.'**
   String get gitGraphConflictHint;
 
+  /// No description provided for @gitGraphShowDiffWithWorkingTree.
+  ///
+  /// In en, this message translates to:
+  /// **'Show Diff with Working Tree'**
+  String get gitGraphShowDiffWithWorkingTree;
+
+  /// No description provided for @gitCompareWorkingTree.
+  ///
+  /// In en, this message translates to:
+  /// **'Working Tree'**
+  String get gitCompareWorkingTree;
+
+  /// No description provided for @gitCompareSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Difference between {ref} and current working tree'**
+  String gitCompareSubtitle(String ref);
+
+  /// No description provided for @gitCompareEmpty.
+  ///
+  /// In en, this message translates to:
+  /// **'No differences'**
+  String get gitCompareEmpty;
+
+  /// No description provided for @gitCompareLoadError.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not load differences'**
+  String get gitCompareLoadError;
+
   /// No description provided for @connectSettingsTitle.
   ///
   /// In en, this message translates to:
