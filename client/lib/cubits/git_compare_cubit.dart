@@ -3,6 +3,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../models/git_compare.dart';
 import '../models/git_status.dart';
+import '../services/git/git_changes_visible_rows.dart';
 import '../services/git/git_history_service.dart';
 import '../services/git/git_service.dart' show GitException;
 
@@ -76,7 +77,17 @@ class GitCompareCubit extends Cubit<GitCompareState> {
         state.spec.right,
       );
       if (gen != _loadGen || isClosed) return;
-      emit(state.copyWith(files: files, loading: false, error: null));
+      final expanded = state.expandedFolderPaths.isEmpty
+          ? gitChangesDefaultExpandedFolders(files)
+          : state.expandedFolderPaths;
+      emit(
+        state.copyWith(
+          files: files,
+          loading: false,
+          error: null,
+          expandedFolderPaths: expanded,
+        ),
+      );
     } on GitException catch (e) {
       if (gen != _loadGen || isClosed) return;
       emit(state.copyWith(loading: false, error: e.message));

@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 
+import '../../../cubits/floating_workspace/floating_workspace_cubit.dart';
 import '../../../models/floating_workspace_tab.dart';
 import '../../../models/git_compare.dart';
+import '../../../pages/git_compare/git_compare_pane.dart';
 import '../floating_surface.dart';
 
 /// 浮动面板中的 Git Compare 页。payload 通常是 [GitCompareSpec.tabId]
@@ -43,8 +46,10 @@ class GitCompareFloatingSurface extends FloatingSurface {
   Widget build(BuildContext context, FloatingTab tab) {
     final spec = tab.payload;
     if (spec is! GitCompareSpec) return const SizedBox.shrink();
-    // TODO(task-7/8): swap for GitComparePane + BlocProvider<GitCompareCubit>.
-    return Center(child: Text(spec.tabTitle()));
+    final workspaceId =
+        context.read<FloatingWorkspaceCubit>().state.activeWorkspaceId;
+    if (workspaceId.isEmpty) return const SizedBox.shrink();
+    return GitComparePane(workspaceId: workspaceId, spec: spec);
   }
 
   @override
