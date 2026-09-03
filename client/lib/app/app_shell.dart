@@ -942,10 +942,26 @@ Future<AppShell> buildAppShell({
       ManagedProviderUsageCubit(
         coordinator: resolvedManagedProviderUsageCoordinator,
       );
+  // Credential-login URL opener shared by the app provider cubit and the
+  // per-CLI credential host runner; declared before the managed-provider
+  // control plane so AppProviderCubit can be constructed above it.
+  Future<void> openCredentialLoginUrl(Uri uri) async {
+    await launchUrl(uri, mode: LaunchMode.externalApplication);
+  }
+
+  // Constructed before the managed-provider control plane so
+  // ManagedProviderCubit can ensure dedicated per-entry CLI provider rows;
+  // only needs sessionPreferencesCubit and openCredentialLoginUrl.
+  appProviderCubit = AppProviderCubit(
+    flashskyaiExecutablePath: sessionPreferencesCubit.resolveExecutable,
+    openCredentialLoginUrl: openCredentialLoginUrl,
+  );
+
   final resolvedManagedProviderCubit =
       managedProviderCubit ??
       ManagedProviderCubit(
         repository: resolvedManagedProviderRepository,
+        appProviderCubit: appProviderCubit,
         onProviderDeletedState:
             resolvedManagedProviderUsageCubit.removeProvider,
         onProviderDeletedCredentialCleanup: (provider) async {
@@ -1024,10 +1040,6 @@ Future<AppShell> buildAppShell({
     AppStorage.bindHome(runtimeContextRegistry.home());
     await persistSshHomePathCacheIfLive();
   };
-
-  Future<void> openCredentialLoginUrl(Uri uri) async {
-    await launchUrl(uri, mode: LaunchMode.externalApplication);
-  }
 
   void onCredentialLoginHint(CredentialLoginProgress progress) {
     appProviderCubit.reportCredentialLoginProgress(progress);
@@ -1119,11 +1131,6 @@ Future<AppShell> buildAppShell({
     isLocalAcquireSupported: () =>
         AppStorage.context.mode == StorageBackendMode.native,
     repoCache: skillRepoCache,
-  );
-
-  appProviderCubit = AppProviderCubit(
-    flashskyaiExecutablePath: sessionPreferencesCubit.resolveExecutable,
-    openCredentialLoginUrl: openCredentialLoginUrl,
   );
 
   llmConfigCubit = LlmConfigCubit(
