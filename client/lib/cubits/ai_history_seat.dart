@@ -293,7 +293,6 @@ class AiHistorySeat extends Cubit<AiHistoryState> {
   String? _failedMessageWorkspaceId;
   String? _failedMessageSessionId;
   Timer? _tipHoldTimer;
-  Timer? _turnEndSettleTimer;
 
   /// Survives History remount / softReload — widget State must not own this.
   /// Latched true once we observe [busySessionIds] while awaiting.
@@ -456,9 +455,8 @@ class AiHistorySeat extends Cubit<AiHistoryState> {
   /// Reuses [AiHistoryLoader] token cache (`force: false`) so unchanged
   /// transcripts skip locate/parse. Mailbox is still refreshed every call.
   ///
-  /// [force] skips the mtime token cache so a turn-end settle can pick up a
-  /// last line that landed with an unchanged token. It does **not** re-parse
-  /// the whole JSONL; a warm tail cursor stays incremental.
+  /// [force] skips the mtime token cache. It does **not** re-parse the whole
+  /// JSONL; a warm tail cursor stays incremental.
   Future<void> softReload({bool force = false}) async {
     final session = _lastSession;
     final memberId = _lastMemberId;
@@ -695,7 +693,6 @@ class AiHistorySeat extends Cubit<AiHistoryState> {
     final latchAwaiting = _pendingDeliveryLatchesAwaiting(deliveryStatus);
     if (latchAwaiting) {
       // New user turn — need a fresh rising edge of working.
-      _cancelTurnEndSettle();
       _sawWorkingWhileAwaiting = false;
     }
     final pending = _PendingUser(
@@ -957,7 +954,6 @@ class AiHistorySeat extends Cubit<AiHistoryState> {
           isLoadingOlder: false,
         ),
       );
-      _scheduleTurnEndSettle();
       return;
     }
 
@@ -1414,24 +1410,6 @@ class AiHistorySeat extends Cubit<AiHistoryState> {
     _tipHoldTimer = null;
   }
 
-  void _cancelTurnEndSettle() {
-    _turnEndSettleTimer?.cancel();
-    _turnEndSettleTimer = null;
-  }
-
-  /// Immediate force-reload plus one delayed pass for CLIs that flush
-  /// transcript after PTY quiet. Cancelled by a new user turn or [close].
-  void _scheduleTurnEndSettle() {
-    if (isClosed) return;
-    unawaited(softReload(force: true));
-    _turnEndSettleTimer?.cancel();
-    _turnEndSettleTimer = Timer(historyTurnEndSettleDelay, () {
-      _turnEndSettleTimer = null;
-      if (isClosed || state.awaitingAssistant) return;
-      unawaited(softReload(force: true));
-    });
-  }
-
   void _scheduleTipHoldFlush() {
     _cancelTipHoldTimer();
     if (!hasHeldAssistantTip) return;
@@ -1664,7 +1642,6 @@ class AiHistorySeat extends Cubit<AiHistoryState> {
   @override
   Future<void> close() {
     _cancelTipHoldTimer();
-    _cancelTurnEndSettle();
     runtime.close();
     return super.close();
   }

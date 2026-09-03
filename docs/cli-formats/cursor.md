@@ -101,4 +101,4 @@ Cursor 的 agent transcript 中工具调用后**可能没有** `tool_result` 行
 - **thinking 块不映射**：block switch 只认 text/tool_use/tool_result，其他类型静默 continue（与 Claude 的 thinking → AiReasoningPart 不同）。
 - **id 优先级与 Claude 相反**：cursor 先事件 `uuid`/`id` 后 `message.id`；两套 adapter 不能互读对方 JSONL 的 id 语义。
 - **坏 JSON 行**：静默跳过（`_tryDecodeObject` 失败 continue）。
-- **回合结束的最后一行**：真实 agent-transcript 常在 PTY quiet 之后才追加最终 assistant 文本，且文件末行可能没有 `\n`。增量 tailer 在 EOF 把完整 JSON 当一行消费（半行仍推迟）；History seat 在 `flushHeldTip(endAwaiting: true)` 时 `softReload(force: true)`（立即 + 800ms settle），不走 `invalidate`。见 [history-turn-end-settle-design](../superpowers/specs/2026-08-19-history-turn-end-settle-design.md)。
+- **回合结束的最后一行**：真实 agent-transcript 常在 PTY quiet 之后才追加最终 assistant 文本，且文件末行可能没有 `\n`。增量 tailer 在 EOF 把完整 JSON 当一行消费（半行仍推迟）；late flush 由 History live watch → `softReload(force: false)` 拾取，不再在 `flushHeldTip` 上 force settle。见 [remove-history-turn-end-force-settle-design](../superpowers/specs/2026-09-03-remove-history-turn-end-force-settle-design.md)。

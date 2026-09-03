@@ -131,6 +131,13 @@ void main() {
           for (final m in e.value) {
             buf.write(m.id);
             buf.write('|');
+            for (final p in m.parts) {
+              if (p is AiTextPart) {
+                // Mirrors production path|mtime|size: in-place part append advances token.
+                buf.write(p.text);
+                buf.write(',');
+              }
+            }
           }
           buf.write(';');
         }
@@ -558,6 +565,75 @@ void main() {
 
     await controller.stop();
   });
+
+  test(
+    'live change reveals late flush after turn-end chrome clears',
+    () async {
+      locator.emitBundle = true;
+      final session = simpleSession();
+      messagesBySession[session.sessionId] = [
+        const AiMessage(
+          id: 'u-A',
+          role: AiRole.user,
+          parts: [AiTextPart(text: 'ask-A')],
+        ),
+        const AiMessage(
+          id: 'a-A',
+          role: AiRole.assistant,
+          parts: [AiTextPart(text: 'tools-A')],
+        ),
+      ];
+      await cubit.load(
+        session: session,
+        memberId: '',
+        launchContext: launchCtx(session),
+      );
+      final seat = seatFor(session);
+      expect(seat.state.totalMessageCount, 2);
+
+      // Simulate turn chrome clear without seat settle reload.
+      seat.enqueuePendingUser('ask-A');
+      seat.applyWorkingSessionSync(sessionWorking: true);
+      seat.applyWorkingSessionSync(sessionWorking: false);
+      await pumpEventQueue();
+      expect(seat.state.awaitingAssistant, isFalse);
+
+      final controller = buildController(
+        seat: seat,
+        reloadMinInterval: Duration.zero,
+      );
+      await controller.start(skipInitialRefresh: true);
+
+      messagesBySession[session.sessionId] = [
+        const AiMessage(
+          id: 'u-A',
+          role: AiRole.user,
+          parts: [AiTextPart(text: 'ask-A')],
+        ),
+        const AiMessage(
+          id: 'a-A',
+          role: AiRole.assistant,
+          parts: [
+            AiTextPart(text: 'tools-A'),
+            AiTextPart(text: 'final-A'),
+          ],
+        ),
+      ];
+      lastSignal!.fire();
+      await pumpEventQueue();
+
+      expect(
+        seat.loadedMessages
+            .where((m) => m.role == AiRole.assistant)
+            .expand(
+              (m) => m.parts.whereType<AiTextPart>().map((p) => p.text),
+            ),
+        contains('final-A'),
+        reason: 'late flush must arrive via live softReload(force: false)',
+      );
+      await controller.stop();
+    },
+  );
 }
 
 AiTranscriptBundle _dummyBundle([String sessionId = 'sess-a']) =>
