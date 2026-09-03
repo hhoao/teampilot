@@ -2888,7 +2888,7 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get autoLaunchAllMembersDescription =>
-      '开启后，点击连接或重启会为每个有效成员启动终端；关闭则仅启动当前选中的成员。';
+      '仅对混合团队生效：开启后连接或重启会为每个有效成员启动终端；native 团队始终全员启动。';
 
   @override
   String get memberTerminalReclaimedTitle => '终端已回收以释放内存';

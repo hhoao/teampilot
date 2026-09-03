@@ -3024,7 +3024,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get autoLaunchAllMembersDescription =>
-      'When enabled, Connect and Restart launch every valid member shell; otherwise only the selected member starts.';
+      'Mixed teams only: when enabled, Connect and Restart launch every valid member shell; native teams always launch all members.';
 
   @override
   String get memberTerminalReclaimedTitle =>

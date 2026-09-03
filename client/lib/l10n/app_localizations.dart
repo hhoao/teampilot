@@ -5435,7 +5435,7 @@ abstract class AppLocalizations {
   /// No description provided for @autoLaunchAllMembersDescription.
   ///
   /// In en, this message translates to:
-  /// **'When enabled, Connect and Restart launch every valid member shell; otherwise only the selected member starts.'**
+  /// **'Mixed teams only: when enabled, Connect and Restart launch every valid member shell; native teams always launch all members.'**
   String get autoLaunchAllMembersDescription;
 
   /// No description provided for @memberTerminalReclaimedTitle.
