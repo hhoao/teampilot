@@ -378,5 +378,75 @@ void main() {
       expect(cubit.state.tasks.single.errorDetail, contains('boom'));
       expect(recorder.records.single.variant, TpToastVariant.error);
     });
+
+    test(
+      'closing the cubit mid-clone does not throw and still completes the activity',
+      () async {
+        final (progress, recorder) = _progress();
+        final fake = _FakeService()..gate = Completer<void>();
+        final cubit = RepoCloneCubit(
+          progressActivityCubit: progress,
+          service: fake,
+          uuid: () => 'id-1',
+        );
+
+        cubit.startClone(_request());
+        await cubit.close();
+
+        fake.gate!.complete();
+        await _pumpUntil(() => progress.state.activities.isEmpty);
+
+        // No unhandled zone error (the test itself would fail) and the
+        // app-scoped activity finished: removed + recorded in history.
+        expect(progress.state.activities, isEmpty);
+        expect(recorder.records.single.title, 'Cloned r');
+        expect(recorder.records.single.message, '/src/r');
+        expect(recorder.records.single.variant, TpToastVariant.success);
+      },
+    );
+
+    test(
+      'raced already-exists failure never triggers second-pass cleanup',
+      () async {
+        final (progress, _) = _progress();
+        final fake = _FakeService();
+        fake.result = const RepoCloneResult(
+          outcome: RepoCloneOutcome.failed,
+          destPath: '/src/r',
+          errorDetail:
+              "fatal: destination path '/src/r' already exists and is not an "
+              'empty directory.',
+        );
+        final fs = InMemoryFilesystem();
+        await fs.ensureDir('/src/r');
+        final cubit = _cubit(progress, fake, cleanupFs: (targetId) async => fs);
+
+        cubit.startClone(_request());
+        await _pumpUntil(
+          () => cubit.state.tasks.single.phase == RepoCloneTaskPhase.failed,
+        );
+
+        final stat = await fs.stat('/src/r');
+        expect(stat.kind, FsEntityKind.directory);
+      },
+    );
+
+    test('closing mid-clone makes the gateway see isCancelled true', () async {
+      final (progress, _) = _progress();
+      final fake = _FakeService()..gate = Completer<void>();
+      final cubit = RepoCloneCubit(
+        progressActivityCubit: progress,
+        service: fake,
+        uuid: () => 'id-1',
+      );
+
+      cubit.startClone(_request());
+      expect(fake.isCancelled!(), isFalse);
+      await cubit.close();
+      expect(fake.isCancelled!(), isTrue);
+
+      fake.gate!.complete();
+      await _pumpUntil(() => progress.state.activities.isEmpty);
+    });
   });
 }

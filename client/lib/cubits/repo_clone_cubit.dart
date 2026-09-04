@@ -128,6 +128,13 @@ class RepoCloneCubit extends Cubit<RepoCloneState> {
   /// them (the service itself also never cleans those up).
   static const Set<String> _precheckMarkers = {'dest-exists', 'git-missing'};
 
+  /// Git's "fatal: destination path ... already exists and is not an empty
+  /// directory" — belt-and-braces twin of the service's pre-existing-dir guard:
+  /// when the raced dir appeared between the pre-check and the clone, the
+  /// error text says so and the second cleanup pass must preserve it (same
+  /// string the service matches on).
+  static const String _alreadyExistsNeedle = 'already exists';
+
   /// Fire-and-forget: start a clone; errors land in [state] as a failed task.
   void startClone(RepoCloneRequest request) {
     final id = _uuid();
@@ -183,6 +190,34 @@ class RepoCloneCubit extends Cubit<RepoCloneState> {
   }
 
   Future<void> _run(RepoCloneTask task, RepoCloneRequest request) async {
+    // startClone is fire-and-forget: nothing may escape this future. If the
+    // cubit closed mid-clone (page dispose) the state emit is skipped but the
+    // app-scoped progress activity is still completed below so the
+    // notification history and activity lifecycle finish cleanly.
+    try {
+      await _runGuarded(task, request);
+    } catch (error, stackTrace) {
+      appLogger.d(
+        '[RepoClone] task ${task.id} unexpected failure: $error\n$stackTrace',
+      );
+      try {
+        _progressActivityCubit.complete(
+          task.id,
+          outcome: ProgressActivityPhase.failed,
+          errorMessage: error.toString(),
+          historyTitle: 'Clone failed',
+          historyMessage: error.toString(),
+        );
+      } catch (completeError) {
+        appLogger.d(
+          '[RepoClone] task ${task.id} activity completion failed: '
+          '$completeError',
+        );
+      }
+    }
+  }
+
+  Future<void> _runGuarded(RepoCloneTask task, RepoCloneRequest request) async {
     final gateway = _service;
     if (gateway == null) {
       _finish(
@@ -223,8 +258,13 @@ class RepoCloneCubit extends Cubit<RepoCloneState> {
     }
 
     // Second best-effort cleanup pass (the service already did its own).
+    // Pre-check markers (`dest-exists` / `git-missing`) may point at
+    // pre-existing user directories; a raced "already exists" git failure
+    // means someone else created the dir after our pre-check — both must be
+    // preserved.
     if (result.outcome != RepoCloneOutcome.succeeded &&
-        !_precheckMarkers.contains(result.errorDetail)) {
+        !_precheckMarkers.contains(result.errorDetail) &&
+        !(result.errorDetail?.contains(_alreadyExistsNeedle) ?? false)) {
       await _cleanupPartial(task.targetId, result.destPath);
     }
 
@@ -247,6 +287,9 @@ class RepoCloneCubit extends Cubit<RepoCloneState> {
       appendToChoice: phase == RepoCloneTaskPhase.succeeded,
     );
 
+    // The activity cubit is app-scoped and outlives this cubit: complete it
+    // even when we are closed (the emit above was skipped) so the
+    // notification history and activity lifecycle finish cleanly.
     _progressActivityCubit.complete(
       task.id,
       outcome: switch (result.outcome) {
@@ -255,17 +298,15 @@ class RepoCloneCubit extends Cubit<RepoCloneState> {
         RepoCloneOutcome.cancelled => ProgressActivityPhase.cancelled,
       },
       errorMessage: result.errorDetail,
-      historyTitle: switch (phase) {
-        RepoCloneTaskPhase.succeeded => 'Cloned ${task.dirName}',
-        RepoCloneTaskPhase.failed => 'Clone failed',
-        RepoCloneTaskPhase.cancelled => 'Clone cancelled',
-        RepoCloneTaskPhase.cloning => 'Cloning ${task.dirName}',
+      historyTitle: switch (result.outcome) {
+        RepoCloneOutcome.succeeded => 'Cloned ${task.dirName}',
+        RepoCloneOutcome.failed => 'Clone failed',
+        RepoCloneOutcome.cancelled => 'Clone cancelled',
       },
-      historyMessage: switch (phase) {
-        RepoCloneTaskPhase.succeeded => result.destPath,
-        RepoCloneTaskPhase.failed => result.errorDetail ?? result.destPath,
-        RepoCloneTaskPhase.cancelled => result.destPath,
-        RepoCloneTaskPhase.cloning => result.destPath,
+      historyMessage: switch (result.outcome) {
+        RepoCloneOutcome.succeeded => result.destPath,
+        RepoCloneOutcome.failed => result.errorDetail ?? result.destPath,
+        RepoCloneOutcome.cancelled => result.destPath,
       },
     );
 
@@ -273,6 +314,9 @@ class RepoCloneCubit extends Cubit<RepoCloneState> {
   }
 
   void _emitFinished(RepoCloneTask finished, {required bool appendToChoice}) {
+    // Closed cubit: bloc throws StateError on post-close emits. The caller
+    // still completes the progress activity; only the state mirror is lost.
+    if (isClosed) return;
     emit(
       RepoCloneState(
         tasks: [
@@ -314,7 +358,12 @@ class RepoCloneCubit extends Cubit<RepoCloneState> {
 
   @override
   Future<void> close() {
-    _cancelFlags.clear();
+    // Closing implies cancel-requested for every in-flight clone: their
+    // `isCancelled` polls keep reporting true (and a cancel requested before
+    // close is not forgotten). The map dies with the object anyway.
+    for (final id in _cancelFlags.keys.toList()) {
+      _cancelFlags[id] = true;
+    }
     return super.close();
   }
 }
