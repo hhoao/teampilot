@@ -347,6 +347,62 @@ void main() {
       expect(port.crCount, 1, reason: 'no extra CR after hook confirmation');
     },
   );
+
+  test(
+    'mention text dismisses the autocomplete popup before CR',
+    () async {
+      // Regression (2026-09-04, verified against real Claude Code 2.1.211 in
+      // a PTY): pasting text containing "@path" opens the file-mention
+      // autocomplete; the submit CR is consumed by the popup, the message is
+      // never committed, and the CR-ack poll reports crStuck. Dismissing the
+      // popup with ESC before CR lets the CR submit normally.
+      final port = _MentionPopupSwallowsCrPort();
+
+      final outcome = await automation.deliverPasteAndSubmit(
+        port: port,
+        text: '看下这个文件 @/etc/hostname',
+        pasteSettle: Duration.zero,
+        dismissMentionPopup: true,
+      );
+
+      expect(outcome, FullscreenPtyDeliveryOutcome.submitted);
+      expect(port.dismissCount, 1, reason: 'ESC sent before the CR');
+      expect(port.crCount, 1);
+    },
+  );
+
+  test(
+    'plain text without @ does not send the popup dismiss ESC',
+    () async {
+      final port = _MentionPopupSwallowsCrPort();
+
+      final outcome = await automation.deliverPasteAndSubmit(
+        port: port,
+        text: 'no mention here',
+        pasteSettle: Duration.zero,
+        dismissMentionPopup: true,
+      );
+
+      expect(outcome, FullscreenPtyDeliveryOutcome.submitted);
+      expect(port.dismissCount, 0);
+    },
+  );
+
+  test(
+    'mention text without the dismiss flag keeps CR-only behavior',
+    () async {
+      final port = _MentionPopupSwallowsCrPort();
+
+      final outcome = await automation.deliverPasteAndSubmit(
+        port: port,
+        text: '看下这个文件 @/etc/hostname',
+        pasteSettle: Duration.zero,
+      );
+
+      expect(outcome, FullscreenPtyDeliveryOutcome.crStuck);
+      expect(port.dismissCount, 0);
+    },
+  );
 }
 
 final class _TimestampedPastePort implements FullscreenPtyDeliveryPort {
@@ -417,6 +473,9 @@ final class _TimestampedPastePort implements FullscreenPtyDeliveryPort {
     crAt ??= DateTime.now();
     await _inner.submitCr();
   }
+
+  @override
+  Future<void> dismissComposerPopup() async {}
 
   @override
   String describeProbeWindow({int scanRows = 24}) =>
@@ -501,6 +560,9 @@ final class _CursorTranscriptAfterSubmitPort
     crCount++;
     _submitted = true;
   }
+
+  @override
+  Future<void> dismissComposerPopup() async {}
 
   @override
   String describeProbeWindow({int scanRows = 24}) {
@@ -592,6 +654,9 @@ final class _ComposerMovesDownStuckButCommittedPort
   }
 
   @override
+  Future<void> dismissComposerPopup() async {}
+
+  @override
   String describeProbeWindow({int scanRows = 24}) =>
       'transcript=$_transcript composer=$_composerBody';
 }
@@ -678,6 +743,9 @@ final class _ComposerMovesDownStuckStagedThenAckPort
     }
     // First round: leave staged so guard does not fire.
   }
+
+  @override
+  Future<void> dismissComposerPopup() async {}
 
   @override
   String describeProbeWindow({int scanRows = 24}) =>
@@ -768,6 +836,9 @@ final class _ComposerMovesDownEmptyNoNeedleThenAckPort
   }
 
   @override
+  Future<void> dismissComposerPopup() async {}
+
+  @override
   String describeProbeWindow({int scanRows = 24}) =>
       'staged=$staged paste=$pasteCount';
 }
@@ -853,8 +924,103 @@ final class _AnchorCellStuckButHookAckedPort
   }
 
   @override
+  Future<void> dismissComposerPopup() async {}
+
+  @override
   String describeProbeWindow({int scanRows = 24}) =>
       'submitted=$submitted staged=$staged';
+}
+
+/// Claude Code @-mention popup: paste ACKs (needle visible via the popup's
+/// rendering of the path), but CR is consumed selecting from the popup —
+/// staged text stays in the composer and the anchor never clears. Only after
+/// [dismissComposerPopup] (ESC) does CR submit.
+final class _MentionPopupSwallowsCrPort implements FullscreenPtyDeliveryPort {
+  String? staged;
+  bool popupOpen = false;
+  int pasteCount = 0;
+  int crCount = 0;
+  int dismissCount = 0;
+
+  @override
+  bool get isAborted => false;
+
+  @override
+  int get viewportRows => 24;
+
+  @override
+  FullscreenCrAckConfig get crAckConfig => const FullscreenCrAckConfig(
+    strategy: FullscreenCrAckStrategy.anchorCellClears,
+    composerPrefix: '❯',
+  );
+
+  @override
+  Future<void> syncDisplayGrid() async {}
+
+  @override
+  Future<void> waitForPaint({required Duration timeout}) async {}
+
+  @override
+  FullscreenPromptAnchor? locateNeedle(String needle, {int scanRows = 24}) {
+    // The popup renders the path candidates, so the needle is "visible".
+    if (staged == null || !staged!.contains(needle)) return null;
+    return FullscreenPromptAnchor(
+      row: 0,
+      startCol: staged!.indexOf(needle),
+      needle: needle,
+    );
+  }
+
+  @override
+  FullscreenPromptAnchor? locateCollapsedPasteNeedle({int scanRows = 24}) =>
+      null;
+
+  @override
+  bool isAtAnchor(FullscreenPromptAnchor anchor) =>
+      staged != null && staged!.contains(anchor.needle);
+
+  @override
+  bool isSubmittedAfterCr(FullscreenPromptAnchor anchor, {int scanRows = 24}) =>
+      crCount > 0 && !popupOpen && staged == null;
+
+  @override
+  bool isComposerChromeEmpty({int scanRows = 24}) => staged == null;
+
+  @override
+  bool isNeedleStagedInComposer(String needle, {int scanRows = 24}) =>
+      staged != null && staged!.contains(needle);
+
+  @override
+  Future<void> clearStagedInput({bool Function()? canExecute}) async {
+    staged = null;
+  }
+
+  @override
+  Future<void> pasteText(String value, {bool Function()? canExecute}) async {
+    pasteCount++;
+    staged = value;
+    popupOpen = value.contains('@');
+  }
+
+  @override
+  Future<void> submitCr({bool Function()? canExecute}) async {
+    if (popupOpen) {
+      // CR is consumed by the popup (moves its selection) — not a submit.
+      return;
+    }
+    crCount++;
+    staged = null;
+  }
+
+  @override
+  Future<void> dismissComposerPopup() async {
+    dismissCount++;
+    popupOpen = false;
+  }
+
+  @override
+  String describeProbeWindow({int scanRows = 24}) =>
+      'staged=$staged popup=$popupOpen cr=$crCount';
 }
 
 /// First CR commits, then the delivery fence (closed by the concurrent hook
@@ -928,6 +1094,9 @@ final class _AbortedAfterHookAckPort implements FullscreenPtyDeliveryPort {
   Future<void> submitCr({bool Function()? canExecute}) async {
     crCount++;
   }
+
+  @override
+  Future<void> dismissComposerPopup() async {}
 
   @override
   String describeProbeWindow({int scanRows = 24}) =>
@@ -1006,6 +1175,9 @@ final class _PaintWakePort implements FullscreenPtyDeliveryPort {
     crCount++;
     staged = null;
   }
+
+  @override
+  Future<void> dismissComposerPopup() async {}
 
   @override
   String describeProbeWindow({int scanRows = 24}) =>
@@ -1091,6 +1263,9 @@ final class _LateCrAckPaintPort implements FullscreenPtyDeliveryPort {
   Future<void> submitCr({bool Function()? canExecute}) async {
     crCount++;
   }
+
+  @override
+  Future<void> dismissComposerPopup() async {}
 
   @override
   String describeProbeWindow({int scanRows = 24}) =>

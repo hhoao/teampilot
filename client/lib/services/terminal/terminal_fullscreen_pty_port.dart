@@ -116,6 +116,9 @@ final class TerminalFullscreenPtyPort implements FullscreenPtyDeliveryPort {
       _input.submitPendingCr(canExecute: canExecute);
 
   @override
+  Future<void> dismissComposerPopup() => _input.writeEscape();
+
+  @override
   String describeProbeWindow({int scanRows = 24}) =>
       _probe.describeProbeWindow(scanRows: scanRows);
 }

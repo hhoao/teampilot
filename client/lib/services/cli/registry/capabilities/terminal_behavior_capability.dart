@@ -65,6 +65,11 @@ abstract interface class TerminalBehaviorCapability implements CliCapability {
   /// [FullscreenCrAckStrategy.composerMovesDown] CR ACK.
   String? get fullscreenComposerPrefix;
 
+  /// Whether the composer opens an autocomplete popup on "@" in pasted text
+  /// that consumes the submit CR (Claude Code file-mention). When true, grid
+  /// automation sends ESC before the CR for text containing "@".
+  bool get mentionAutocompletePopup;
+
   /// When the TUI is ready for paste+CR. Default is boot-frame-only.
   FullscreenInputReadiness get inputReadiness;
 

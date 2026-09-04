@@ -24,6 +24,9 @@ final class CodexTerminalBehavior implements TerminalBehaviorCapability {
   @override
   String? get fullscreenComposerPrefix => '\u203a';
   @override
+  bool get mentionAutocompletePopup => false;
+
+  @override
   FullscreenInputReadiness get inputReadiness => const FullscreenInputReadiness(
     readyNeedles: ['default \u00b7', '\u203a'],
     bootGateNeedles: [

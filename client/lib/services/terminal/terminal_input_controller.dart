@@ -78,4 +78,7 @@ final class TerminalInputController implements TerminalTextSink {
 
   Future<void> submitPendingCr({bool Function()? canExecute}) =>
       _fullscreen.submitPendingCr(canExecute: canExecute);
+
+  /// Writes a bare ESC to dismiss a composer popup (mention autocomplete).
+  Future<void> writeEscape() => _fullscreen.writeEscape();
 }

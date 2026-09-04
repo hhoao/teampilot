@@ -24,6 +24,9 @@ final class OpencodeTerminalBehavior implements TerminalBehaviorCapability {
   @override
   String? get fullscreenComposerPrefix => '\u2503';
   @override
+  bool get mentionAutocompletePopup => false;
+
+  @override
   FullscreenInputReadiness get inputReadiness =>
       FullscreenInputReadiness.bootFrameOnly;
   @override
