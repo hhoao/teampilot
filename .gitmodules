@@ -24,7 +24,7 @@
 	url = https://github.com/hhoao/shared_ui.git
 	branch = main
 [submodule "third_party/fastforge"]
-	path = third_party/fastforge
+	path = client/third_party/fastforge
 	url = https://github.com/hhoao/fastforge.git
 	branch = feat/appimage-startup-wm-class
 [submodule "resources"]
