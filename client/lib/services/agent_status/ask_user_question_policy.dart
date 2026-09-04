@@ -2,9 +2,11 @@ import 'agent_permission_request.dart';
 import 'ask_user_question.dart';
 import '../cli/registry/capabilities/chat_interaction_capability.dart';
 
-/// Whether the chat should render an OpenCode permission card (allow once /
+/// Whether the chat should render an in-chat permission card (allow once /
 /// always / reject) for the given capability and parsed permission payload
-/// (vs a generic attention banner).
+/// (vs a generic attention banner). This covers both reply channels: the
+/// OpenCode plugin-SDK card (correlated by request id) and the Claude-family
+/// held-hook card (correlated by the gate's seat key).
 bool shouldShowPermissionCard({
   required ChatInteractionCapability? capability,
   required AgentPermissionRequest? permissionRequest,
@@ -18,8 +20,10 @@ bool shouldShowPermissionCard({
     return false;
   }
 
-  // Correlating the reply back to opencode needs the permission request id.
-  if (askRequestId == null || askRequestId.isEmpty) {
+  // The plugin-SDK channel (OpenCode) correlates replies by request id; the
+  // hook-hold channel (Claude family) correlates by the gate's seat key.
+  if (capability.answerKind == AskUserAnswerKind.pluginSdkReply &&
+      (askRequestId == null || askRequestId.isEmpty)) {
     return false;
   }
 
