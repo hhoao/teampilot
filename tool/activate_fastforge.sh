@@ -1,15 +1,15 @@
 #!/usr/bin/env bash
-# Activate TeamPilot's forked fastforge (third_party/fastforge) with local
+# Activate TeamPilot's forked fastforge (client/third_party/fastforge) with local
 # flutter_app_packager so AppImage packaging emits StartupWMClass.
 # Upstream PR: https://github.com/fastforgedev/fastforge/pull/360
 set -euo pipefail
 
 ROOT=$(cd "$(dirname "$0")/.." && pwd)
-FF="$ROOT/third_party/fastforge"
+FF="$ROOT/client/third_party/fastforge"
 CLI="$FF/packages/fastforge"
 
 if [[ ! -d "$CLI" ]]; then
-  echo "Missing $CLI — run: git submodule update --init third_party/fastforge" >&2
+  echo "Missing $CLI — run: git submodule update --init client/third_party/fastforge" >&2
   exit 1
 fi
 

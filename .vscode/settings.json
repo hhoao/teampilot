@@ -1,5 +1,10 @@
 {
   "commentTranslate.hover.enabled": false,
+  "dart.analysisExcludedFolders": [
+    "client/third_party",
+    "client/packages",
+    "client/build"
+  ],
   "dart.env": {
     "PUB_HOSTED_URL": "https://pub.flutter-io.cn"
   },

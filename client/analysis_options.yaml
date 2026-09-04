@@ -7,9 +7,11 @@
 
 # Vendored fork: keep CI/app analysis focused on teampilot sources; xterm is
 # still compiled and tested via app imports and `flutter test`/`flutter build`.
+# third_party/fastforge is a packaging tool submodule, not app sources.
 analyzer:
   exclude:
     - packages/**
+    - third_party/**
     - build/**
     - android/**
     - ios/**
