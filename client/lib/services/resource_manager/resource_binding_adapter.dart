@@ -1,7 +1,9 @@
 import '../../cubits/chat/model/chat_tab.dart';
+import '../../l10n/app_localizations.dart';
 import '../../models/git_worktree.dart';
 import '../../models/team_config.dart';
 import '../../models/workspace.dart';
+import '../../utils/session/session_display_title.dart';
 import '../terminal/workspace_terminal_registry.dart';
 import 'resource_binding.dart';
 import 'resource_binding_collector.dart';
@@ -140,12 +142,12 @@ String resourceManagerMemberName({
 
 String resourceManagerSessionTitle(
   ChatTab tab, {
-  required String emptyFallback,
+  required AppLocalizations l10n,
 }) {
   final session = tab.persistedSession;
   if (session != null) {
-    return session.resolveDisplayTitle(emptyFallback);
+    return sessionListDisplayTitle(session, l10n);
   }
   final title = tab.info.title.trim();
-  return title.isNotEmpty ? title : emptyFallback;
+  return title.isNotEmpty ? title : l10n.defaultNewChatSessionTitle;
 }

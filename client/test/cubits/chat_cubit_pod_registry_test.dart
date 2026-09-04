@@ -143,11 +143,57 @@ void main() {
       );
 
       expect(reloaded.runtime.messages.single.id, record.id);
+      // Sending rows survive reopen undemoted — team-generation builder
+      // workflows rely on them staying in flight across reconnects.
       expect(
         reloaded.pendingDeliveryStatusFor(record.id),
-        FailedMessageStatus.failed,
+        FailedMessageStatus.sending,
       );
-      expect(reloaded.state.awaitingAssistant, isFalse);
+      expect(reloaded.state.awaitingAssistant, isTrue);
+    },
+  );
+
+  test(
+    'persistHistoryPending reuses one pending bubble for a delivery id',
+    () async {
+      const workspaceId = 'ws-1';
+      const sessionId = 's1';
+      const deliveryId = 'teamgen-kickoff-123';
+      const text = 'Build the optimal team';
+
+      final first = await cubit.persistHistoryPending(
+        workspaceId: workspaceId,
+        sessionId: sessionId,
+        memberId: '',
+        text: text,
+        deliveryId: deliveryId,
+      );
+      final repeated = await cubit.persistHistoryPending(
+        workspaceId: workspaceId,
+        sessionId: sessionId,
+        memberId: '',
+        text: text,
+        deliveryId: deliveryId,
+      );
+
+      expect(repeated!.id, first!.id);
+      expect(repeated.deliveryId, deliveryId);
+      expect(
+        await FailedMessageStore(
+          fs: AppStorage.fs,
+          rootPath: AppStorage.appDataRoot,
+        ).load(workspaceId, sessionId),
+        [first],
+      );
+      expect(
+        cubit
+            .podRuntime(sessionId)!
+            .history!
+            .memberSeat(sessionId: sessionId, memberId: '')
+            .runtime
+            .messages,
+        hasLength(1),
+      );
     },
   );
 

@@ -87,6 +87,8 @@ class SessionPromptMetadataSync {
       }
     }
     if (session == null || session.display.trim().isNotEmpty) return;
+    // Builder kickoff is an app-owned envelope, not an operator title source.
+    if (session.purpose == SessionPurpose.teamGeneration) return;
     final title = deriveSessionTitleFromFirstPrompt(firstPrompt);
     if (title.isEmpty) return;
     await _host.renameSession(repo, sessionId, title);

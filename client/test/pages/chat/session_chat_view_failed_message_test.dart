@@ -66,7 +66,7 @@ void main() {
     expect(await store.load('workspace-a', 'session-a'), [second]);
   });
 
-  test('hydrates a sending record as failed after reopen', () async {
+  test('hydrates a sending record as still sending after reopen', () async {
     final record = FailedMessageRecord(
       id: 'pending:restart',
       text: 'survives restart',
@@ -82,15 +82,17 @@ void main() {
       sessionId: 'session-a',
     );
 
+    // Sending rows stay in flight across reopen — team-generation builder
+    // workflows resume delivery instead of surfacing a failed bubble.
     expect(history.runtime.messages.single.id, record.id);
     expect(
       history.pendingDeliveryStatusFor(record.id),
-      FailedMessageStatus.failed,
+      FailedMessageStatus.sending,
     );
-    expect(history.state.awaitingAssistant, isFalse);
+    expect(history.state.awaitingAssistant, isTrue);
     expect(
       (await store.load('workspace-a', 'session-a')).single.status,
-      FailedMessageStatus.failed,
+      FailedMessageStatus.sending,
     );
   });
 

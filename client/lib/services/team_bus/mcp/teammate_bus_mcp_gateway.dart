@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 import 'dart:math';
@@ -8,6 +9,9 @@ import '../../agent_runtime/agent_event_gateway.dart';
 import '../../agent_status/ask_user_answer_pending_store.dart';
 import '../../catalog/catalog_mcp_constants.dart';
 import '../../catalog/catalog_mcp_handler.dart';
+import '../../team_generation/mcp/team_composer_mcp_constants.dart';
+import '../../team_generation/mcp/team_composer_mcp_handler.dart';
+import '../../team_generation/team_generation_authorizer.dart';
 import 'jsonrpc.dart';
 import 'mcp_method.dart';
 import 'toolkit/mcp_tool_response.dart';
@@ -32,6 +36,8 @@ class TeammateBusMcpGateway {
   AskUserAnswerPendingStore? _askUserAnswerStore;
   CatalogMcpHandler? _catalogHandler;
   Future<CatalogMcpSession?> Function(String sessionId)? _resolveCatalogSession;
+  TeamComposerMcpHandler? _teamComposerHandler;
+  TeamGenerationAuthorizer? _teamGenerationAuthorizer;
   HttpServer? _http;
   BusRawSocketServer? _rawSocket;
 
@@ -107,6 +113,22 @@ class TeammateBusMcpGateway {
     _resolveCatalogSession = resolveSession;
   }
 
+  /// Attaches the Team Composer MCP handler plus its authorizer.
+  ///
+  /// Handshake methods (`initialize`, `tools/list`, …) are served without a
+  /// token; `tools/call` still requires a valid workflow token + principal.
+  void attachTeamComposerHandler({
+    required TeamComposerMcpHandler handler,
+    required TeamGenerationAuthorizer authorizer,
+  }) {
+    _teamComposerHandler = handler;
+    _teamGenerationAuthorizer = authorizer;
+  }
+
+  Uri get teamComposerMcpEndpoint => Uri.parse(
+    'http://127.0.0.1:${_http!.port}${TeamComposerMcpConstants.mcpPath}',
+  );
+
   /// Status-only session auth (no TeamBus MCP `_delegates` entry required).
   ///
   /// Returns the remote [X-Bus-Token] value (provided, existing, or generated).
@@ -181,6 +203,14 @@ class TeammateBusMcpGateway {
       // missing X-Session is a JSON-RPC/tool error in HTTP 200, not 400.
       if (request.method == 'POST' && request.uri.path == catalogMcpPath) {
         await _handleCatalogMcp(request);
+        return;
+      }
+
+      // Team Composer MCP: authorized builder sessions only. Token and
+      // principal checks run before any handler dispatch.
+      if (request.method == 'POST' &&
+          request.uri.path == TeamComposerMcpConstants.mcpPath) {
+        await _handleTeamComposerMcp(request);
         return;
       }
 
@@ -373,6 +403,165 @@ class TeammateBusMcpGateway {
     await _writeJsonRpc(request, res);
   }
 
+  Future<void> _handleTeamComposerMcp(HttpRequest request) async {
+    final handler = _teamComposerHandler;
+    final authorizer = _teamGenerationAuthorizer;
+    final body = await utf8.decoder.bind(request).join();
+    final rpc = JsonRpcRequest.tryParse(body);
+
+    Future<void> respondUnauthorized(String message) async {
+      request.response
+        ..statusCode = HttpStatus.ok
+        ..headers.contentType = ContentType('application', 'json', charset: 'utf-8')
+        ..write(
+          JsonRpcResponse.error(
+            rpc?.id,
+            TeamComposerRpcErrorCode.unauthorized,
+            message,
+          ).encode(),
+        );
+      await request.response.close();
+    }
+
+    if (handler == null || authorizer == null) {
+      await respondUnauthorized('Team Composer MCP is not attached');
+      return;
+    }
+    if (rpc == null) {
+      request.response
+        ..statusCode = HttpStatus.ok
+        ..headers.contentType = ContentType('application', 'json', charset: 'utf-8')
+        ..write(
+          JsonRpcResponse.error(
+            null,
+            JsonRpcErrorCode.invalidParams,
+            'Invalid JSON-RPC request',
+          ).encode(),
+        );
+      await request.response.close();
+      return;
+    }
+
+    // Cursor (and other MCP clients) handshake with initialize / tools/list
+    // before any tools/call. Those methods must not require the workflow
+    // token — rejecting them surfaces as "Team Composer authorization failed"
+    // and the agent falls back to exploring the repo for finalize helpers.
+    if (rpc.method != McpMethod.toolsCall) {
+      final res = handler.handleProtocol(rpc);
+      if (rpc.isNotification || res == null) {
+        request.response.statusCode = HttpStatus.accepted;
+        await request.response.close();
+        return;
+      }
+      await _writeJsonRpc(request, res);
+      return;
+    }
+
+    final sessionId = _resolveSessionId(request);
+    final token = _headerValue(
+      request.headers,
+      TeamComposerMcpConstants.tokenHeader,
+    );
+    if (sessionId == null || sessionId.isEmpty || token.isEmpty) {
+      await respondUnauthorized('Team Composer authorization failed');
+      return;
+    }
+
+    final toolName = rpc.params[McpParams.toolName];
+    if (toolName is! String ||
+        !TeamComposerToolName.all.contains(toolName)) {
+      final res = await handler.handleToolCall(
+        requestId: rpc.id,
+        toolName: toolName is String ? toolName : '',
+        arguments: rpc.toolArguments,
+        principal: const ComposerPrincipal(
+          sessionId: '',
+          workspaceId: '',
+          workflowId: '',
+        ),
+      );
+      await _writeJsonRpc(request, _asJsonRpc(res.response));
+      return;
+    }
+
+    // Resolve the builder workflow for this session via the authorizer's
+    // job-store-backed principal lookup: the injected resolver supplies the
+    // builder session binding.
+    final principal = await _resolveComposerPrincipal(sessionId);
+    if (principal == null) {
+      await respondUnauthorized('Session is not a team-generation builder');
+      return;
+    }
+    final authorized = await authorizer.authorize(
+      principal: TeamGenerationPrincipal(
+        sessionId: principal.sessionId,
+        workspaceId: principal.workspaceId,
+        workflowId: principal.workflowId,
+      ),
+      token: token,
+    );
+    if (!authorized) {
+      await respondUnauthorized('Team Composer authorization failed');
+      return;
+    }
+
+    final result = await handler.handleToolCall(
+      requestId: rpc.id,
+      toolName: toolName,
+      arguments: rpc.toolArguments,
+      principal: principal,
+    );
+    await _writeJsonRpc(request, _asJsonRpc(result.response));
+    final callback = result.afterResponseFlushed;
+    if (callback != null) {
+      unawaited(_runTeamGenerationPostFlush(callback));
+    }
+  }
+
+  Future<void> _runTeamGenerationPostFlush(
+    Future<void> Function() callback,
+  ) async {
+    try {
+      await callback();
+    } catch (e, st) {
+      appLoggerTeamComposerWarning(e, st);
+    }
+  }
+
+  /// Resolves the composer principal for a builder session. Overridable in
+  /// tests; the app wiring injects a session-repository-backed resolver.
+  Future<ComposerPrincipal?> _resolveComposerPrincipal(String sessionId) async {
+    final resolver = _composerPrincipalResolver;
+    if (resolver == null) return null;
+    return resolver(sessionId);
+  }
+
+  Future<ComposerPrincipal?> Function(String sessionId)?
+  _composerPrincipalResolver;
+
+  /// Injects the principal resolver used to map `X-Session` to the builder
+  /// session's workspace/workflow. Without it no composer request is served.
+  void setTeamComposerPrincipalResolver(
+    Future<ComposerPrincipal?> Function(String sessionId) resolver,
+  ) {
+    _composerPrincipalResolver = resolver;
+  }
+
+  JsonRpcResponse _asJsonRpc(Map<String, Object?> payload) {
+    final result = payload['result'];
+    if (result is Map) {
+      return JsonRpcResponse.result(
+        payload['id'],
+        result.cast<String, Object?>(),
+      );
+    }
+    return JsonRpcResponse.error(
+      payload['id'],
+      JsonRpcErrorCode.serverError,
+      'Invalid composer response',
+    );
+  }
+
   Future<void> _writeJsonRpc(
     HttpRequest request,
     JsonRpcResponse response,
@@ -438,4 +627,14 @@ String _headerValue(HttpHeaders headers, String name) {
 String _randomStatusToken() {
   final rng = Random.secure();
   return List.generate(24, (_) => rng.nextInt(16).toRadixString(16)).join();
+}
+
+void appLoggerTeamComposerWarning(Object error, StackTrace stackTrace) {
+  // Routed through the shared app logger when available; composer post-flush
+  // failures must never crash the gateway isolate.
+  assert(() {
+    // ignore: avoid_print
+    print('[team-composer] post-flush failure: $error');
+    return true;
+  }());
 }

@@ -220,6 +220,8 @@ List<TpActionMenuSpec> buildComposeModelCascadeMenuSpecs({
   required bool groupByCli,
   void Function(CliTool cli, String providerId, AppProviderConfig config)?
   onModelsOpened,
+  bool showSavePreset = true,
+  bool showManagePresets = true,
 }) {
   List<TpActionMenuSpec> providerChildren(ComposeCascadeCliGroup group,
       ComposeCascadeProvider p) {
@@ -311,12 +313,14 @@ List<TpActionMenuSpec> buildComposeModelCascadeMenuSpecs({
             children: [for (final p in group.providers) providerSpec(group, p)],
           ),
     if (hasProviderRows) const TpActionMenuSpec.divider(),
-    TpActionMenuSpec.item(
-      value: ComposeModelPresetChipAction.savePreset,
-      icon: Icons.bookmark_add_outlined, label: savePresetLabel),
-    TpActionMenuSpec.item(
-      value: ComposeModelPresetChipAction.manage,
-      icon: Icons.add, label: managePresetsLabel),
+    if (showSavePreset)
+      TpActionMenuSpec.item(
+        value: ComposeModelPresetChipAction.savePreset,
+        icon: Icons.bookmark_add_outlined, label: savePresetLabel),
+    if (showManagePresets)
+      TpActionMenuSpec.item(
+        value: ComposeModelPresetChipAction.manage,
+        icon: Icons.add, label: managePresetsLabel),
   ];
   return specs;
 }

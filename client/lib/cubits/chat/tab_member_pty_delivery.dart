@@ -278,6 +278,7 @@ final class TabMemberPtyDelivery {
     String memberId,
     String message, {
     bool directToPty = false,
+    String? deliveryId,
   }) async {
     if (message.trim().isEmpty) return null;
     _onUserActivity?.call(sessionId);
@@ -288,8 +289,6 @@ final class TabMemberPtyDelivery {
       return id.isEmpty ? null : id;
     }
     final key = _seatKey(sessionId, memberId);
-    // Claimed before the first await so an interrupt racing record creation is
-    // observable even though no delivery id is registered for the seat yet.
     final epoch = (_directEpochBySeat[key] ?? 0) + 1;
     _directEpochBySeat[key] = epoch;
     final delivery = await _promptDeliveries.submit(
@@ -297,6 +296,7 @@ final class TabMemberPtyDelivery {
         seat: RuntimeSeatKey(sessionId: sessionId, memberId: memberId),
         cli: _memberCli(sessionId, memberId),
         text: message,
+        deliveryId: deliveryId,
       ),
     );
     if (_directEpochBySeat[key] != epoch) {
@@ -311,6 +311,80 @@ final class TabMemberPtyDelivery {
       _markMemberTurnStartedOnSubmitSuccess(sessionId, memberId);
     }
     return result == PromptSubmissionResult.submitted ? delivery.id : null;
+  }
+
+  /// Delivers a direct prompt with a caller-owned idempotency id.
+  Future<PromptDeliverySubmission> deliverTrackedUserCommandToMember(
+    String sessionId,
+    String memberId,
+    String message, {
+    required String deliveryId,
+  }) async {
+    final text = message.trim();
+    if (text.isEmpty) {
+      return const PromptDeliverySubmission(
+        deliveryId: '',
+        submitted: false,
+        state: 'failed',
+      );
+    }
+    _onUserActivity?.call(sessionId);
+    final key = _seatKey(sessionId, memberId);
+    final delivery = await _promptDeliveries.submit(
+      PromptDeliveryRequest(
+        seat: RuntimeSeatKey(sessionId: sessionId, memberId: memberId),
+        cli: _memberCli(sessionId, memberId),
+        text: message,
+        deliveryId: deliveryId,
+      ),
+    );
+    if (delivery.state == PromptDeliveryState.submitIssued ||
+        delivery.state == PromptDeliveryState.confirmed) {
+      return PromptDeliverySubmission(
+        deliveryId: delivery.id,
+        submitted: true,
+        state: delivery.state.name,
+      );
+    }
+    if (!delivery.state.canIssueSubmit) {
+      return PromptDeliverySubmission(
+        deliveryId: delivery.id,
+        submitted: false,
+        state: delivery.state.name,
+      );
+    }
+    final epoch = (_directEpochBySeat[key] ?? 0) + 1;
+    _directEpochBySeat[key] = epoch;
+    if (_directEpochBySeat[key] != epoch) {
+      await _promptDeliveries.failBeforeSubmit(delivery.id);
+      return PromptDeliverySubmission(
+        deliveryId: delivery.id,
+        submitted: false,
+        state: 'failed',
+      );
+    }
+    _directDeliveryBySeat[key] = delivery.id;
+    final result = await _promptDeliveries.issueSubmit(delivery.id);
+    if (_directDeliveryBySeat[key] == delivery.id &&
+        result == PromptSubmissionResult.submitted &&
+        _directTurnLatched.add(delivery.id)) {
+      _markMemberTurnStartedOnSubmitSuccess(sessionId, memberId);
+    }
+    return PromptDeliverySubmission(
+      deliveryId: delivery.id,
+      submitted: result == PromptSubmissionResult.submitted,
+      // unconfirmed/dropped both mean "CR may have reached the TUI" — align
+      // with PromptDeliveryCoordinator's submittedUnknown transition so
+      // team-generation kickoff can keep the job active.
+      state: switch (result) {
+        PromptSubmissionResult.submitted =>
+          PromptDeliveryState.submitIssued.name,
+        PromptSubmissionResult.dropped ||
+        PromptSubmissionResult.unconfirmed =>
+          PromptDeliveryState.submittedUnknown.name,
+        PromptSubmissionResult.failed => PromptDeliveryState.failed.name,
+      },
+    );
   }
 
   Future<void> _deliverFullScreen({

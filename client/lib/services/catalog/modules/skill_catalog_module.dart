@@ -362,6 +362,7 @@ class SkillCatalogModule implements CatalogKindModule {
   }
 
   Future<void> _bindIds(CatalogRequest req, List<String> ids) {
+    if (req.bindTo == CatalogBindTo.team) return Future.value();
     return binder.bindIds(
       workspaceId: req.workspaceId,
       bindTo: req.bindTo,

@@ -17,6 +17,8 @@ AppSession buildProvisionalSession({
   String sessionTeamId = '',
   String? expertKey,
   RuntimeTarget? home,
+  SessionPurpose purpose = SessionPurpose.normal,
+  String workflowId = '',
 }) {
   final now = DateTime.now().millisecondsSinceEpoch;
   final trimmedTeam = sessionTeamId.trim();
@@ -58,5 +60,7 @@ AppSession buildProvisionalSession({
     expertKey: identity?.expertKey.isNotEmpty == true
         ? identity!.expertKey
         : (expertKey?.trim() ?? ''),
+    purpose: purpose,
+    workflowId: workflowId,
   );
 }

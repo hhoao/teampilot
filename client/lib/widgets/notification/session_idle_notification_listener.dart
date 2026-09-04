@@ -76,7 +76,7 @@ class _SessionIdleNotificationListenerState
         openTabSessionIds: {
           for (final tab in chat.tabStore.openTabs) tab.info.id,
         },
-        emptySessionTitle: l10n.defaultNewChatSessionTitle,
+        l10n: l10n,
         notificationSubtitle: l10n.sessionIdleNotificationSubtitle,
         notificationBadge: l10n.sessionIdleNotificationTitle,
         systemNotificationEnabled: notifyOnSessionIdle,

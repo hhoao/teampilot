@@ -1,7 +1,9 @@
+import '../../l10n/app_localizations.dart';
 import '../../models/app_session.dart';
 import '../../pages/home_workspace/home_workspace_route.dart';
 import 'package:shared_ui/shared_ui.dart';
 import '../../utils/logging/logger.dart';
+import '../../utils/session/session_display_title.dart';
 import 'desktop_system_notifier.dart';
 import 'notification_recorder.dart';
 
@@ -20,7 +22,7 @@ class SessionIdleNotificationService {
     required Iterable<String> sessionIds,
     required List<AppSession> sessions,
     required Iterable<String> openTabSessionIds,
-    required String emptySessionTitle,
+    required AppLocalizations l10n,
     required String notificationSubtitle,
     required String notificationBadge,
     bool systemNotificationEnabled = true,
@@ -44,7 +46,7 @@ class SessionIdleNotificationService {
       }
       if (session == null) continue;
 
-      final sessionTitle = session.resolveDisplayTitle(emptySessionTitle);
+      final sessionTitle = sessionListDisplayTitle(session, l10n);
       final payload = HomeWorkspaceRoute.sessionLocation(
         workspaceId: session.workspaceId,
         sessionId: session.sessionId,

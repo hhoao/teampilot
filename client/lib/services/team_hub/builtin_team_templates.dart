@@ -16,6 +16,17 @@ SkillDependencyRef superpowersSkillDep(String slug, String displayName) =>
       name: displayName,
     );
 
+/// App-managed skill ref whose stable id is supplied by TeamPilot directly.
+SkillDependencyRef managedSkillDep(String id, String displayName) =>
+    SkillDependencyRef(
+      repoOwner: '',
+      repoName: '',
+      repoBranch: '',
+      directory: '',
+      name: displayName,
+      id: id,
+    );
+
 String _builtinExpertKey(String slug) => '$kBuiltinTeamHubKeyPrefix/$slug';
 
 /// Four-member mixed team that mirrors the Superpowers workflow with a

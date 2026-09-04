@@ -5,6 +5,7 @@ import '../../models/member_presence.dart';
 import '../../models/session_activity.dart';
 import '../../models/team_config.dart';
 import '../../services/cli/preset_resolver.dart';
+import '../../services/prompt_delivery/prompt_delivery.dart';
 import '../../services/prompt_delivery/prompt_delivery_coordinator.dart';
 import '../../services/team/session_working_resolver.dart';
 import '../../services/team_bus/team_bus.dart';
@@ -94,13 +95,13 @@ class TabSessionRuntimeCoordinator {
                   globalPresets: globalPresets(),
                   cliForMember: (team, id, {globalPresets = const []}) =>
                       memberLaunchCli(
-                    team: team,
-                    member: team.members.firstWhere(
-                      (m) => m.id == id,
-                      orElse: () => TeamMemberConfig(id: id, name: id),
-                    ),
-                    globalPresets: globalPresets,
-                  ),
+                        team: team,
+                        member: team.members.firstWhere(
+                          (m) => m.id == id,
+                          orElse: () => TeamMemberConfig(id: id, name: id),
+                        ),
+                        globalPresets: globalPresets,
+                      ),
                 );
               },
           onAfterTick: onAfterIdleWatchTick,
@@ -225,6 +226,18 @@ class TabSessionRuntimeCoordinator {
     memberId,
     message,
     directToPty: directToPty,
+  );
+
+  Future<PromptDeliverySubmission> deliverTrackedUserCommandToMember(
+    String sessionId,
+    String memberId,
+    String message, {
+    required String deliveryId,
+  }) => _delivery.deliverTrackedUserCommandToMember(
+    sessionId,
+    memberId,
+    message,
+    deliveryId: deliveryId,
   );
 
   Map<String, Set<SessionBusyReason>> computeReasons() =>

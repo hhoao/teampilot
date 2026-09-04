@@ -5,15 +5,19 @@ import 'package:shared_ui/shared_ui.dart';
 const kTeamLandingChipRecentLimit = 5;
 
 /// Actions other than a concrete team id in the Landing team chip menu.
-enum TeamLandingChipAction { browseAll }
+enum TeamLandingChipAction { generateLaunch, browseAll }
 
-/// Builds Landing team-chip menu: recent (≤5) → divider → browse all.
+/// Builds Landing team-chip menu: recent (≤5) → divider → generate-and-launch
+/// → browse all.
 List<TpActionMenuSpec> buildTeamLandingChipMenuSpecs({
   required String browseAllLabel,
+  String? generateLaunchLabel,
   required String? selectedTeamId,
+  bool generateLaunchSelected = false,
   required List<({String id, String name})> recentTeams,
 }) {
   final selected = selectedTeamId?.trim() ?? '';
+  final includeGenerate = generateLaunchLabel != null;
 
   final specs = <TpActionMenuSpec>[];
 
@@ -34,6 +38,16 @@ List<TpActionMenuSpec> buildTeamLandingChipMenuSpecs({
   }
 
   specs.add(const TpActionMenuSpec.divider());
+  if (includeGenerate) {
+    specs.add(
+      TpActionMenuSpec.item(
+        value: TeamLandingChipAction.generateLaunch,
+        icon: Icons.auto_awesome_outlined,
+        label: generateLaunchLabel,
+        selected: generateLaunchSelected,
+      ),
+    );
+  }
   specs.add(
     TpActionMenuSpec.item(
       value: TeamLandingChipAction.browseAll,

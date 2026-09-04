@@ -17,6 +17,7 @@ final class _PausedAutomation extends FullscreenPtyAutomation {
     required String text,
     required Duration pasteSettle,
     bool Function()? isAcked,
+    bool dismissMentionPopup = false,
   }) async {
     started.complete();
     await release.future;

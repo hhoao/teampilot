@@ -1,4 +1,5 @@
 import '../io/filesystem.dart';
+import '../../models/app_session.dart';
 
 enum CatalogOp {
   search,
@@ -12,7 +13,13 @@ enum CatalogOp {
   delete,
 }
 
-enum CatalogBindTo { workspace, team, expert }
+const catalogGenerationAcquisitionOps = <CatalogOp>{
+  CatalogOp.install,
+  CatalogOp.importPath,
+  CatalogOp.create,
+};
+
+enum CatalogBindTo { workspace, team, expert, generation }
 
 class CatalogException implements Exception {
   CatalogException(this.code, this.message, {this.details});
@@ -47,16 +54,37 @@ class CatalogRequest {
     required this.arguments,
     required this.workFs,
     required this.allowedRoots,
+    this.purpose = SessionPurpose.normal,
+    this.workflowId = '',
   });
 
   final String sessionId;
   final String workspaceId;
   final String? memberId;
   final CatalogBindTo bindTo;
+
+  /// Team-generation workflow id; non-empty only for builder sessions that
+  /// pass `bind_to: generation`. Never model-supplied — resolved from the
+  /// persisted session by [CatalogRuntime.resolveCatalogSession].
+  final String workflowId;
   final bool overwrite;
   final Map<String, Object?> arguments;
   final Filesystem workFs;
   final List<String> allowedRoots;
+
+  /// Persisted session purpose used to authorize generation-only mutations.
+  final SessionPurpose purpose;
+}
+
+/// Workflow-scoped mutation seam. It keeps the catalog transport independent
+/// from the generation implementation while ensuring builder mutations never
+/// reach normal catalog modules before commit.
+abstract interface class CatalogGenerationMutationHandler {
+  Future<CatalogResult> handleMcpMutation({
+    required String kind,
+    required CatalogOp op,
+    required CatalogRequest request,
+  });
 }
 
 class CatalogResult {

@@ -8390,4 +8390,148 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get connectError => '无法刷新配对信息，请重试。';
+
+  @override
+  String get teamGenerateLaunch => '生成并启动';
+
+  @override
+  String get teamGenerateSettingsTitle => '生成并启动设置';
+
+  @override
+  String get teamGenerateSettingsSubtitle => '设定团队构建器如何规划阵容，以及可分配的模型配置。';
+
+  @override
+  String get teamGenerateModelPoolHint => '排名 1 最强。关键角色（如 team-lead）优先用靠前的配置。';
+
+  @override
+  String get teamGenerateEmptyPool => '还没有配置。请先添加最强的一项。';
+
+  @override
+  String get teamGeneratePickPreset => '选择预设';
+
+  @override
+  String get teamGenerateLoading => '正在加载设置…';
+
+  @override
+  String get teamGenerateGeneratorModel => '生成模型';
+
+  @override
+  String get teamGenerateTeamMode => '团队模式';
+
+  @override
+  String get teamGenerateNative => '原生';
+
+  @override
+  String get teamGenerateMixed => '混合';
+
+  @override
+  String get teamGenerateNativeCli => '原生 CLI';
+
+  @override
+  String get teamGenerateModelPool => '模型配置池';
+
+  @override
+  String get teamGenerateAddModel => '添加模型配置';
+
+  @override
+  String teamGenerateHiddenPresets(int count) {
+    return '$count 个配置因使用其他 CLI 而隐藏。';
+  }
+
+  @override
+  String teamGenerateMissingPreset(String presetId) {
+    return '预设“$presetId”已不存在。';
+  }
+
+  @override
+  String get teamGenerateDescription => '强项与适用场景';
+
+  @override
+  String get teamGenerateTags => '标签';
+
+  @override
+  String get teamGenerateMoveUp => '上移';
+
+  @override
+  String get teamGenerateMoveDown => '下移';
+
+  @override
+  String get teamGenerateRemove => '移除';
+
+  @override
+  String get teamGenerateCapabilityNote =>
+      '团队构建器将检查工作区机器，并可能为生成的团队获取技能、插件和 MCP 服务器。';
+
+  @override
+  String get teamGenerateErrorDescriptionRequired => '请先描述需要团队处理的任务。';
+
+  @override
+  String get teamGenerateErrorAiNotConfigured => '请先配置生成模型。';
+
+  @override
+  String get teamGenerateErrorPoolEmpty => '请至少添加一个有效的模型配置。';
+
+  @override
+  String get teamGenerateErrorGeneratorUnsupported => '生成 CLI 必须支持会话、技能和 MCP。';
+
+  @override
+  String get teamGenerateErrorNativeUnsupported => '所选 CLI 不支持原生团队。';
+
+  @override
+  String get teamGenerateErrorUnavailable => '团队生成当前不可用。请重启 TeamPilot 后重试。';
+
+  @override
+  String get teamGenerateErrorStartFailed => '无法启动团队生成。请重试。';
+
+  @override
+  String get teamGenerateOpenSettings => '打开生成设置';
+
+  @override
+  String get teamGenerateBuilderTitle => '团队构建器';
+
+  @override
+  String get teamGenerateCancel => '取消生成';
+
+  @override
+  String get teamGenerateRetry => '重试';
+
+  @override
+  String get teamGenerateContinueSetup => '继续配置';
+
+  @override
+  String get teamGenerateCancelTitle => '取消团队生成？';
+
+  @override
+  String get teamGenerateCancelBody => '临时会话和暂存资源将被移除。';
+
+  @override
+  String get teamGenerateErrorTargetUnavailable => '所需机器或 CLI 当前不可用。';
+
+  @override
+  String get teamGenerateErrorStagingUnsupported => '此资源需要人工安装，无法安全暂存。';
+
+  @override
+  String get teamGenerateErrorUserActionRequired => '请完成所需的登录或配置，然后重试。';
+
+  @override
+  String get teamGenerateErrorPromptDeliveryUnknown =>
+      'TeamPilot 无法确认负责人是否已收到任务。';
+
+  @override
+  String get teamGenerateErrorRecoveryIntegrity => '无法验证恢复数据，临时会话已保留。';
+
+  @override
+  String get teamGenerateOpenLeadSession => '打开负责人会话';
+
+  @override
+  String get teamGenerateDeliveryArrived => '已收到';
+
+  @override
+  String get teamGenerateDeliverySendAgain => '再次发送…';
+
+  @override
+  String get teamGenerateDeliveryRetryTitle => '再次发送任务？';
+
+  @override
+  String get teamGenerateDeliveryRetryBody => '负责人可能会收到两次任务。';
 }

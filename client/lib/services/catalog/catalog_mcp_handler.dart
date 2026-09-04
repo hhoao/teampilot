@@ -1,6 +1,7 @@
 import 'dart:convert';
 
 import '../io/filesystem.dart';
+import '../../models/app_session.dart';
 import '../team_bus/mcp/jsonrpc.dart';
 import '../team_bus/mcp/mcp_method.dart';
 import '../team_bus/mcp/toolkit/mcp_tool_response.dart';
@@ -17,6 +18,8 @@ class CatalogMcpSession {
     this.memberId,
     required this.workFs,
     required this.allowedRoots,
+    this.purpose = SessionPurpose.normal,
+    this.workflowId = '',
   });
 
   final String sessionId;
@@ -24,14 +27,30 @@ class CatalogMcpSession {
   final String? memberId;
   final Filesystem workFs;
   final List<String> allowedRoots;
+
+  /// Persisted session role; builders may stage into generation scope only.
+  final SessionPurpose purpose;
+
+  /// Builder workflow id (empty for normal sessions).
+  final String workflowId;
 }
 
 /// JSON-RPC handler for the teampilot catalog MCP server. Pure logic; no HTTP.
 class CatalogMcpHandler {
-  CatalogMcpHandler({required CatalogKindRegistry registry})
-    : _registry = registry;
+  CatalogMcpHandler({
+    required CatalogKindRegistry registry,
+    CatalogGenerationMutationHandler? generationMutationHandler,
+  }) : _registry = registry,
+       _generationMutationHandler = generationMutationHandler;
 
   final CatalogKindRegistry _registry;
+  CatalogGenerationMutationHandler? _generationMutationHandler;
+
+  void attachGenerationMutationHandler(
+    CatalogGenerationMutationHandler handler,
+  ) {
+    _generationMutationHandler = handler;
+  }
 
   static const protocolVersion = '2025-06-18';
   static const serverName = catalogMcpServerName;
@@ -85,19 +104,23 @@ class CatalogMcpHandler {
     }
     try {
       final arguments = req.toolArguments;
-      final result = await _registry.dispatch(
-        name,
-        CatalogRequest(
-          sessionId: session.sessionId,
-          workspaceId: session.workspaceId,
-          memberId: session.memberId,
-          bindTo: _parseBindTo(arguments['bind_to']),
-          overwrite: arguments['overwrite'] == true,
-          arguments: arguments,
-          workFs: session.workFs,
-          allowedRoots: session.allowedRoots,
-        ),
+      final bindTo = _parseBindTo(arguments['bind_to']);
+      final request = CatalogRequest(
+        sessionId: session.sessionId,
+        workspaceId: session.workspaceId,
+        memberId: session.memberId,
+        bindTo: bindTo,
+        overwrite: arguments['overwrite'] == true,
+        arguments: arguments,
+        workFs: session.workFs,
+        allowedRoots: session.allowedRoots,
+        purpose: session.purpose,
+        workflowId: session.workflowId,
       );
+      final route = _registry.routeFor(name);
+      final result = bindTo == CatalogBindTo.generation
+          ? await _dispatchGeneration(route, request)
+          : await _registry.dispatch(name, request);
       return McpToolResponse.ok(req.id, jsonEncode(_resultToJson(result)));
     } on CatalogException catch (e) {
       return McpToolResponse.toolError(req.id, 'code=${e.code} ${e.message}');
@@ -115,9 +138,54 @@ class CatalogMcpHandler {
     if (raw is String && raw == CatalogBindTo.workspace.name) {
       return CatalogBindTo.workspace;
     }
+    if (raw is String && raw == CatalogBindTo.generation.name) {
+      return CatalogBindTo.generation;
+    }
     throw CatalogException(
       'bind_scope_unsupported',
       'bind_to other than workspace is not supported',
+    );
+  }
+
+  Future<CatalogResult> _dispatchGeneration(
+    ({String kind, CatalogOp op})? route,
+    CatalogRequest request,
+  ) async {
+    if (request.purpose != SessionPurpose.teamGeneration ||
+        request.workflowId.isEmpty) {
+      throw CatalogException(
+        'bind_scope_unsupported',
+        'generation scope is only available to Team Builder sessions',
+      );
+    }
+    if (route == null ||
+        const {
+          CatalogOp.search,
+          CatalogOp.list,
+          CatalogOp.read,
+        }.contains(route.op)) {
+      throw CatalogException(
+        'bind_scope_unsupported',
+        'generation scope accepts catalog mutations only',
+      );
+    }
+    if (!catalogGenerationAcquisitionOps.contains(route.op)) {
+      throw CatalogException(
+        'generation_mutation_forbidden',
+        '${route.op.name} is not allowed in generation scope',
+      );
+    }
+    final handler = _generationMutationHandler;
+    if (handler == null) {
+      throw CatalogException(
+        'generation_staging_unsupported',
+        'generation staging is unavailable',
+      );
+    }
+    return handler.handleMcpMutation(
+      kind: route.kind,
+      op: route.op,
+      request: request,
     );
   }
 

@@ -23,6 +23,7 @@ import '../services/io/file_path_actions.dart';
 import '../services/storage/app_storage.dart';
 import '../services/storage/runtime_context.dart';
 import '../utils/logging/logger.dart';
+import '../utils/session/session_display_title.dart';
 import '../utils/session/session_row_content.dart';
 import '../utils/ui/coarse_relative_time.dart';
 import '../utils/debounce/debounce.dart';
@@ -135,9 +136,7 @@ class _SidebarSessionTileState extends State<SidebarSessionTile> {
 
   Future<void> _confirmAndDelete(BuildContext context) async {
     final l10n = context.l10n;
-    final name = widget.session.resolveDisplayTitle(
-      l10n.defaultNewChatSessionTitle,
-    );
+    final name = sessionListDisplayTitle(widget.session, l10n);
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (ctx) => TpDialog(
@@ -317,9 +316,7 @@ class _SidebarSessionTileState extends State<SidebarSessionTile> {
       case 'open_directory':
         await _openSessionDirectory(session);
       case 'schedule':
-        final title = session.resolveDisplayTitle(
-          l10n.defaultNewChatSessionTitle,
-        );
+        final title = sessionListDisplayTitle(session, l10n);
         final saved = await AutomationEditorDialog.show(
           context,
           kind: AutomationEditorKind.scheduledMessage,
@@ -370,9 +367,7 @@ class _SidebarSessionTileState extends State<SidebarSessionTile> {
     final repo = _repo;
     if (chatCubit == null || repo == null) return;
     if (_duplicateInFlight) return;
-    final baseTitle = session.display.isNotEmpty
-        ? session.display
-        : l10n.defaultNewChatSessionTitle;
+    final baseTitle = sessionListDisplayTitle(session, l10n);
     _duplicateInFlight = true;
     try {
       try {
@@ -550,9 +545,7 @@ class _SidebarSessionTileState extends State<SidebarSessionTile> {
     );
     final l10n = context.l10n;
     final cs = Theme.of(context).colorScheme;
-    final paintedTitle = rowContent.titleForPaint.isNotEmpty
-        ? rowContent.titleForPaint
-        : l10n.defaultNewChatSessionTitle;
+    final paintedTitle = rowContent.titleForPaint(l10n);
 
     // Leading area: shared 24×24 slot — indicator (idle) ↔ drag handle (hover).
     // Waiting (needs-you) wins over working spinner — distinct tertiary hand icon.
@@ -857,7 +850,7 @@ class _SidebarSessionTileState extends State<SidebarSessionTile> {
     final name = await showTpTextPromptDialog(
       context,
       title: l10n.renameConversationTitle,
-      initialText: session.resolveDisplayTitle(l10n.defaultNewChatSessionTitle),
+      initialText: sessionListDisplayTitle(session, l10n),
       labelText: l10n.conversationName,
       confirmLabel: l10n.save,
     );

@@ -121,6 +121,27 @@ void main() {
     },
   );
 
+  test('persistLandingDraft round-trips generate launch in team mode', () async {
+    final store = LandingPrefsStore(
+      fs: InMemoryFilesystem(),
+      pathOverride: '/prefs.json',
+    );
+    const draft = LandingLaunchContext(
+      isPersonal: false,
+      generateLaunch: true,
+      teamId: 'last-team',
+    );
+
+    await persistLandingDraft(workspace.workspaceId, draft, store: store);
+
+    final resolved = await resolveLandingDraft(
+      workspaceId: workspace.workspaceId,
+      store: store,
+    );
+    expect(resolved.generateLaunch, isTrue);
+    expect(resolved.teamId, 'last-team');
+  });
+
   test('persistLandingDraft round-trips custom four-tuple', () async {
     final store = LandingPrefsStore(
       fs: InMemoryFilesystem(),

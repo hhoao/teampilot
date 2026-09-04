@@ -21,6 +21,7 @@ Map<String, Object?> resolveCatalogMcpTransportConfig({
   required CliTool cli,
   RemoteBusBinding? remoteBinding,
   String? Function()? bridgeLocator,
+  String? teamGenerationToken,
 }) {
   if (remoteBinding != null) {
     return {
@@ -31,6 +32,8 @@ Map<String, Object?> resolveCatalogMcpTransportConfig({
         teammateBusMcpMemberHeader: memberId,
         teammateBusMcpSessionHeader: sessionId,
         teammateBusTokenHeader: remoteBinding.token,
+        if (teamGenerationToken != null && teamGenerationToken.isNotEmpty)
+          'X-Team-Generation-Token': teamGenerationToken,
       },
     };
   }

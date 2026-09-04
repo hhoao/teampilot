@@ -444,15 +444,12 @@ class WorkbenchStripTabChipState extends State<WorkbenchStripTabChip> {
         : context.select<AgentAttentionCubit, bool>(
             (c) => c.state.sessionHasWaiting(sessionId),
           );
-    final rawTitle = sessionId == null
+    final l10n = context.l10n;
+    final title = sessionId == null
         ? widget.title
-        : context.select<ChatCubit, String>(
-            (c) =>
-                SessionRowContent.fromChatState(c.state, sessionId).titleForPaint,
-          );
-    final title = rawTitle.isNotEmpty
-        ? rawTitle
-        : context.l10n.defaultNewChatSessionTitle;
+        : context.select<ChatCubit, SessionRowContent>(
+            (c) => SessionRowContent.fromChatState(c.state, sessionId),
+          ).titleForPaint(l10n);
     final cs = Theme.of(context).colorScheme;
     // Session tabs inject the same indicator as the sidebar list; run/other
     // tabs keep TpTabChip's default CircularProgressIndicator.

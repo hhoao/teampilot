@@ -8,6 +8,7 @@ void main() {
       keys,
       {
         kBuiltinDefaultExpertKey,
+        kBuiltinTeamBuilderExpertKey,
         'teampilot/builtin/team-lead',
         'teampilot/builtin/developer',
         'teampilot/builtin/reviewer',
@@ -66,11 +67,37 @@ void main() {
   test('builtin skillDeps use obra/superpowers portable refs', () {
     for (final member in builtinExpertMembers()) {
       for (final dep in member.skillDeps) {
+        if (member.key == kBuiltinTeamBuilderExpertKey) continue;
         expect(dep.repoOwner, 'obra');
         expect(dep.repoName, 'superpowers');
         expect(dep.directory, startsWith('skills/'));
         expect(dep.expectedLocalId, startsWith('obra/superpowers:'));
       }
     }
+  });
+
+  test('Team Builder uses its managed skill identity', () {
+    final builder = builtinExpertMembers().firstWhere(
+      (member) => member.key == kBuiltinTeamBuilderExpertKey,
+    );
+
+    expect(builder.skillDeps, hasLength(1));
+    final dependency = builder.skillDeps.single;
+    expect(dependency.expectedLocalId, kManagedTeamBuilderSkillId);
+    expect(dependency.repoOwner, isEmpty);
+    expect(dependency.repoName, isEmpty);
+    expect(dependency.repoBranch, isEmpty);
+    expect(dependency.directory, isEmpty);
+  });
+
+  test('default expert retains the Superpowers catalog identity', () {
+    final defaultExpert = builtinExpertMembers().firstWhere(
+      (member) => member.key == kBuiltinDefaultExpertKey,
+    );
+
+    expect(
+      defaultExpert.skillDeps.single.expectedLocalId,
+      'obra/superpowers:using-superpowers',
+    );
   });
 }

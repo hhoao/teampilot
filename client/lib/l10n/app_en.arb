@@ -54,16 +54,28 @@
   "extensionStatusReady": "Ready",
   "extensionStatusReadyVersion": "Ready ({version})",
   "@extensionStatusReadyVersion": {
-    "placeholders": { "version": { "type": "String" } }
+    "placeholders": {
+      "version": {
+        "type": "String"
+      }
+    }
   },
   "extensionStatusDependencyMissing": "Missing dependency",
   "extensionStatusDependencyMissingNamed": "Missing: {deps}",
   "@extensionStatusDependencyMissingNamed": {
-    "placeholders": { "deps": { "type": "String" } }
+    "placeholders": {
+      "deps": {
+        "type": "String"
+      }
+    }
   },
   "extensionDependencyMissingHint": "Needs {deps} on your PATH. Install it, then re-check.",
   "@extensionDependencyMissingHint": {
-    "placeholders": { "deps": { "type": "String" } }
+    "placeholders": {
+      "deps": {
+        "type": "String"
+      }
+    }
   },
   "extensionCopyCommand": "Copy",
   "extensionCommandCopied": "Command copied to clipboard",
@@ -150,7 +162,9 @@
   "composePasteClipLines": "{lines} lines",
   "@composePasteClipLines": {
     "placeholders": {
-      "lines": { "type": "int" }
+      "lines": {
+        "type": "int"
+      }
     }
   },
   "composePasteClipEdit": "Edit pasted text",
@@ -158,7 +172,9 @@
   "composePasteEditorTitle": "Edit pasted text · {lines} lines",
   "@composePasteEditorTitle": {
     "placeholders": {
-      "lines": { "type": "int" }
+      "lines": {
+        "type": "int"
+      }
     }
   },
   "composePasteEditorDone": "Done",
@@ -523,32 +539,48 @@
   "workspaceSkillsAssignedCount": "{assigned} of {total} enabled for this workspace",
   "@workspaceSkillsAssignedCount": {
     "placeholders": {
-      "assigned": {"type": "int"},
-      "total": {"type": "int"}
+      "assigned": {
+        "type": "int"
+      },
+      "total": {
+        "type": "int"
+      }
     }
   },
   "workspaceSkillsManage": "Manage skills",
   "workspaceHooksAssignedCount": "{assigned} of {total} enabled for this workspace",
   "@workspaceHooksAssignedCount": {
     "placeholders": {
-      "assigned": {"type": "int"},
-      "total": {"type": "int"}
+      "assigned": {
+        "type": "int"
+      },
+      "total": {
+        "type": "int"
+      }
     }
   },
   "workspaceHooksManage": "Manage hooks",
   "workspaceMcpAssignedCount": "{assigned} of {total} enabled for this workspace",
   "@workspaceMcpAssignedCount": {
     "placeholders": {
-      "assigned": {"type": "int"},
-      "total": {"type": "int"}
+      "assigned": {
+        "type": "int"
+      },
+      "total": {
+        "type": "int"
+      }
     }
   },
   "workspaceMcpManage": "Manage MCP",
   "workspacePluginsAssignedCount": "{assigned} of {total} linked to this workspace",
   "@workspacePluginsAssignedCount": {
     "placeholders": {
-      "assigned": {"type": "int"},
-      "total": {"type": "int"}
+      "assigned": {
+        "type": "int"
+      },
+      "total": {
+        "type": "int"
+      }
     }
   },
   "workspacePluginsManage": "Manage plugins",
@@ -707,7 +739,9 @@
   "askUserQuestionBubbleAsked": "{count, plural, one{Asked {count} question} other{Asked {count} questions}}",
   "@askUserQuestionBubbleAsked": {
     "placeholders": {
-      "count": { "type": "int" }
+      "count": {
+        "type": "int"
+      }
     }
   },
   "askUserQuestionBubbleUnanswered": "Unanswered",
@@ -724,7 +758,9 @@
   "agentAskQuestionTabFallback": "Q{index}",
   "@agentAskQuestionTabFallback": {
     "placeholders": {
-      "index": { "type": "int" }
+      "index": {
+        "type": "int"
+      }
     }
   },
   "opencodePermissionTitle": "OpenCode needs your permission",
@@ -902,8 +938,12 @@
   "landingLaunchRemoteCliMissingDetail": "{cli} on {host}",
   "@landingLaunchRemoteCliMissingDetail": {
     "placeholders": {
-      "cli": { "type": "String" },
-      "host": { "type": "String" }
+      "cli": {
+        "type": "String"
+      },
+      "host": {
+        "type": "String"
+      }
     }
   },
   "remoteCliMachineReadinessTitle": "Required CLIs on this machine",
@@ -911,21 +951,31 @@
   "remoteCliMachineReadinessReady": "{cli} ready at {path}",
   "@remoteCliMachineReadinessReady": {
     "placeholders": {
-      "cli": { "type": "String" },
-      "path": { "type": "String" }
+      "cli": {
+        "type": "String"
+      },
+      "path": {
+        "type": "String"
+      }
     }
   },
   "remoteCliMachineReadinessMissing": "{cli} not found — install or set a manual path",
   "@remoteCliMachineReadinessMissing": {
     "placeholders": {
-      "cli": { "type": "String" }
+      "cli": {
+        "type": "String"
+      }
     }
   },
   "remoteCliMachineReadinessFailed": "{cli}: {message}",
   "@remoteCliMachineReadinessFailed": {
     "placeholders": {
-      "cli": { "type": "String" },
-      "message": { "type": "String" }
+      "cli": {
+        "type": "String"
+      },
+      "message": {
+        "type": "String"
+      }
     }
   },
   "remoteCliMachineReadinessInstallHint": "Use Install for each missing CLI, or set a manual path in target settings.",
@@ -1038,7 +1088,9 @@
   "sshHostsPillCount": "{count, plural, =1{1 host} other{{count} hosts}}",
   "@sshHostsPillCount": {
     "placeholders": {
-      "count": { "type": "int" }
+      "count": {
+        "type": "int"
+      }
     }
   },
   "sshHostsPillConnecting": "Connecting…",
@@ -1056,21 +1108,57 @@
   "sshProfileTestFailedHostKey": "Host key was not trusted",
   "sshProfileTestFailedAuth": "Authentication failed",
   "sshProfileTestFailedAborted": "Connection closed before login: {detail}",
-  "@sshProfileTestFailedAborted": { "placeholders": { "detail": { "type": "String" } } },
+  "@sshProfileTestFailedAborted": {
+    "placeholders": {
+      "detail": {
+        "type": "String"
+      }
+    }
+  },
   "sshProfileTestFailedDetail": "Connection test failed: {detail}",
-  "@sshProfileTestFailedDetail": { "placeholders": { "detail": { "type": "String" } } },
+  "@sshProfileTestFailedDetail": {
+    "placeholders": {
+      "detail": {
+        "type": "String"
+      }
+    }
+  },
   "sshProfileConnectSuccess": "Connected to {host}",
-  "@sshProfileConnectSuccess": { "placeholders": { "host": { "type": "String" } } },
+  "@sshProfileConnectSuccess": {
+    "placeholders": {
+      "host": {
+        "type": "String"
+      }
+    }
+  },
   "sshHostKeyUnknownTitle": "Verify SSH host key",
   "sshHostKeyUnknownBody": "TeamPilot has not seen {host} before. Confirm the fingerprint matches this machine before trusting it.",
-  "@sshHostKeyUnknownBody": { "placeholders": { "host": { "type": "String" } } },
+  "@sshHostKeyUnknownBody": {
+    "placeholders": {
+      "host": {
+        "type": "String"
+      }
+    }
+  },
   "sshHostKeyMismatchTitle": "SSH host key changed",
   "sshHostKeyMismatchBody": "The host key for {host} does not match the one TeamPilot saved earlier. This can happen after a reinstall — or if someone is intercepting the connection.",
-  "@sshHostKeyMismatchBody": { "placeholders": { "host": { "type": "String" } } },
+  "@sshHostKeyMismatchBody": {
+    "placeholders": {
+      "host": {
+        "type": "String"
+      }
+    }
+  },
   "sshHostKeyFingerprintLabel": "Fingerprint",
   "sshHostKeyPreviousFingerprintLabel": "Previously trusted",
   "sshHostKeyKeyTypeLabel": "Key type: {keyType}",
-  "@sshHostKeyKeyTypeLabel": { "placeholders": { "keyType": { "type": "String" } } },
+  "@sshHostKeyKeyTypeLabel": {
+    "placeholders": {
+      "keyType": {
+        "type": "String"
+      }
+    }
+  },
   "sshHostKeyTrust": "Trust and continue",
   "sshHostKeyReplaceTrust": "Replace and trust",
   "sshProfileFormTitleNew": "New SSH target",
@@ -1110,13 +1198,21 @@
   "cliExecutablePathLocate": "Locate",
   "cliExecutablePathLocateFailed": "Could not find {name} on PATH.",
   "@cliExecutablePathLocateFailed": {
-    "placeholders": { "name": { "type": "String" } }
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
   },
   "cliExecutablePathLocateSuccess": "Located {name} at {path}.",
   "@cliExecutablePathLocateSuccess": {
     "placeholders": {
-      "name": { "type": "String" },
-      "path": { "type": "String" }
+      "name": {
+        "type": "String"
+      },
+      "path": {
+        "type": "String"
+      }
     }
   },
   "cliExecutablePathLocateRemoteUnsupported": "Remote locate is not supported for this tool.",
@@ -1133,23 +1229,47 @@
   "sessionRemoteProvisionPreparingOnHost": "Preparing remote environment ({host})",
   "@sessionRemoteProvisionPreparingOnHost": {
     "placeholders": {
-      "host": { "type": "String" }
+      "host": {
+        "type": "String"
+      }
     }
   },
   "sessionRemoteProvisionTitle": "Preparing {member} on {host}",
   "@sessionRemoteProvisionTitle": {
     "placeholders": {
-      "member": { "type": "String" },
-      "host": { "type": "String" }
+      "member": {
+        "type": "String"
+      },
+      "host": {
+        "type": "String"
+      }
     }
   },
   "sessionRemoteProvisionFailed": "Remote setup failed",
   "cliExecutablePathLabelFor": "{cli} CLI path",
-  "@cliExecutablePathLabelFor": { "placeholders": { "cli": { "type": "String" } } },
+  "@cliExecutablePathLabelFor": {
+    "placeholders": {
+      "cli": {
+        "type": "String"
+      }
+    }
+  },
   "cliExecutablePathDescriptionFor": "Absolute path to the {cli} executable. Leave empty to use the one on PATH.",
-  "@cliExecutablePathDescriptionFor": { "placeholders": { "cli": { "type": "String" } } },
+  "@cliExecutablePathDescriptionFor": {
+    "placeholders": {
+      "cli": {
+        "type": "String"
+      }
+    }
+  },
   "cliExecutablePathDescriptionSshFor": "Absolute path to {cli} on the remote SSH host. Leave empty to auto-discover over SSH.",
-  "@cliExecutablePathDescriptionSshFor": { "placeholders": { "cli": { "type": "String" } } },
+  "@cliExecutablePathDescriptionSshFor": {
+    "placeholders": {
+      "cli": {
+        "type": "String"
+      }
+    }
+  },
   "claudeCliExecutablePathLabel": "Claude Code CLI path",
   "claudeCliExecutablePathDescription": "Absolute path to the Claude Code executable. Leave empty to use the one on PATH.",
   "claudeCliExecutablePathDescriptionSsh": "Absolute path to Claude Code on the remote SSH host. Leave empty to resolve claude from the remote PATH.",
@@ -1346,7 +1466,11 @@
   "terminalLinkClickOpensInAppDescription": "Left-click links and file paths to open them in TeamPilot instead of the running program. Ctrl/Cmd-click always opens in app.",
   "terminalParkedSendPending": "Sent, awaiting receipt: {content}",
   "@terminalParkedSendPending": {
-    "placeholders": { "content": { "type": "String" } }
+    "placeholders": {
+      "content": {
+        "type": "String"
+      }
+    }
   },
   "terminalParkedSendDismiss": "Dismiss",
   "mailbox": "Mailbox",
@@ -1382,20 +1506,32 @@
   "notifyOnSessionIdleDescription": "When a session finishes a turn and becomes idle, show an OS notification in addition to the in-app notification center.",
   "memberTargetAssignmentTitle": "Member machine",
   "memberTargetAssignmentSubtitle": "Which machine {member} runs on (its assigned workspace folders).",
-  "@memberTargetAssignmentSubtitle": { "placeholders": { "member": {} } },
+  "@memberTargetAssignmentSubtitle": {
+    "placeholders": {
+      "member": {}
+    }
+  },
   "memberTargetAssignmentInherit": "Inherit workspace folders",
   "memberAssignFoldersAction": "Assign folders…",
   "credentialPushOptInTitle": "Push credentials to this machine",
   "credentialPushOptInSubtitle": "Provider keys for remote member authentication.",
   "credentialPushConfirmTitle": "Push credentials to remote host?",
   "credentialPushConfirmBody": "Provider keys will be written to the remote host {host}. Only enable this for machines you trust. Rotating a key requires re-pushing to every opted-in machine.",
-  "@credentialPushConfirmBody": { "placeholders": { "host": {} } },
+  "@credentialPushConfirmBody": {
+    "placeholders": {
+      "host": {}
+    }
+  },
   "credentialPushConfirmAction": "Push credentials",
   "rootSandboxEnvOptInTitle": "Inject IS_SANDBOX for root",
   "rootSandboxEnvOptInSubtitle": "Keep skip-permissions when Claude runs as root.",
   "rootSandboxEnvConfirmTitle": "Enable root sandbox env?",
   "rootSandboxEnvConfirmBody": "TeamPilot will set IS_SANDBOX=1 when launching Claude as root on {host}, keeping --dangerously-skip-permissions. Only enable on machines you trust.",
-  "@rootSandboxEnvConfirmBody": { "placeholders": { "host": {} } },
+  "@rootSandboxEnvConfirmBody": {
+    "placeholders": {
+      "host": {}
+    }
+  },
   "rootSandboxEnvConfirmAction": "Enable",
   "workspaceTargetTitle": "Workspace machine",
   "workspaceTargetSubtitle": "The machine this workspace's folders live and run on. Sessions launch on this target; switching does not move files.",
@@ -1421,14 +1557,20 @@
   "mixedWorkspaceMemberPlacementProgress": "{placed} / {total} assigned",
   "@mixedWorkspaceMemberPlacementProgress": {
     "placeholders": {
-      "placed": { "type": "int" },
-      "total": { "type": "int" }
+      "placed": {
+        "type": "int"
+      },
+      "total": {
+        "type": "int"
+      }
     }
   },
   "mixedWorkspaceMemberPlacementOnMachine": "{count} on this machine",
   "@mixedWorkspaceMemberPlacementOnMachine": {
     "placeholders": {
-      "count": { "type": "int" }
+      "count": {
+        "type": "int"
+      }
     }
   },
   "workspaceFolderTargetLabel": "Machine",
@@ -1648,28 +1790,42 @@
   "providerCredentialsFailureSourceMissing": "Credential file not found: {path}",
   "@providerCredentialsFailureSourceMissing": {
     "placeholders": {
-      "path": { "type": "String" }
+      "path": {
+        "type": "String"
+      }
     }
   },
   "providerCredentialsFailureSourceUnreadable": "Could not read credential file: {path}",
   "@providerCredentialsFailureSourceUnreadable": {
     "placeholders": {
-      "path": { "type": "String" }
+      "path": {
+        "type": "String"
+      }
     }
   },
   "providerCredentialsFailureProviderEntryMissing": "No credential for \"{providerId}\" in {path}",
   "@providerCredentialsFailureProviderEntryMissing": {
     "placeholders": {
-      "providerId": { "type": "String" },
-      "path": { "type": "String" }
+      "providerId": {
+        "type": "String"
+      },
+      "path": {
+        "type": "String"
+      }
     }
   },
   "providerCredentialsFailureProviderEntryMissingWithKeys": "No credential for \"{providerId}\" in {path}. Available: {keys}",
   "@providerCredentialsFailureProviderEntryMissingWithKeys": {
     "placeholders": {
-      "providerId": { "type": "String" },
-      "path": { "type": "String" },
-      "keys": { "type": "String" }
+      "providerId": {
+        "type": "String"
+      },
+      "path": {
+        "type": "String"
+      },
+      "keys": {
+        "type": "String"
+      }
     }
   },
   "providerCredentialsFailureInvalidCredential": "Credential format is invalid or incomplete",
@@ -1677,19 +1833,25 @@
   "providerCredentialsFailureRequiredFileMissing": "Required file missing: {path}",
   "@providerCredentialsFailureRequiredFileMissing": {
     "placeholders": {
-      "path": { "type": "String" }
+      "path": {
+        "type": "String"
+      }
     }
   },
   "providerCredentialsFailureLoginFailed": "Login failed (exit code {exitCode})",
   "@providerCredentialsFailureLoginFailed": {
     "placeholders": {
-      "exitCode": { "type": "int" }
+      "exitCode": {
+        "type": "int"
+      }
     }
   },
   "providerCredentialsFailureLoginProcessError": "Could not run login command: {detail}",
   "@providerCredentialsFailureLoginProcessError": {
     "placeholders": {
-      "detail": { "type": "String" }
+      "detail": {
+        "type": "String"
+      }
     }
   },
   "providerCredentialsFailureRevokeFailed": "Could not sign out or remove credentials",
@@ -1700,7 +1862,9 @@
   "teamConfigIncompleteBody": "Team \"{team}\" is missing settings needed to launch. The session still starts, but agents may fail without them:",
   "@teamConfigIncompleteBody": {
     "placeholders": {
-      "team": { "type": "String" }
+      "team": {
+        "type": "String"
+      }
     }
   },
   "teamConfigIncompleteGoConfigure": "Configure team",
@@ -1714,8 +1878,12 @@
   "teamConfigIssueSemanticLabel": "{subject} is missing: {aspects}",
   "@teamConfigIssueSemanticLabel": {
     "placeholders": {
-      "subject": { "type": "String" },
-      "aspects": { "type": "String" }
+      "subject": {
+        "type": "String"
+      },
+      "aspects": {
+        "type": "String"
+      }
     }
   },
   "noModelsUsingProvider": "No models are using this provider.",
@@ -1836,13 +2004,17 @@
   "skillsCardStars": "{count} stars",
   "@skillsCardStars": {
     "placeholders": {
-      "count": {"type": "int"}
+      "count": {
+        "type": "int"
+      }
     }
   },
   "skillsCardUpdatedAt": "Updated {date}",
   "@skillsCardUpdatedAt": {
     "placeholders": {
-      "date": {"type": "String"}
+      "date": {
+        "type": "String"
+      }
     }
   },
   "skillsSearchPlaceholder": "Search skills…",
@@ -2105,7 +2277,9 @@
   "myTeamsMemberCount": "{count, plural, =1{1 member} other{{count} members}}",
   "@myTeamsMemberCount": {
     "placeholders": {
-      "count": { "type": "int" }
+      "count": {
+        "type": "int"
+      }
     }
   },
   "myTeamsCreatedAt": "Created {date}",
@@ -2225,7 +2399,9 @@
   "expertEditorNonPortableSkipped": "Skipped {count} local-only item(s) without portable provenance.",
   "@expertEditorNonPortableSkipped": {
     "placeholders": {
-      "count": {"type": "int"}
+      "count": {
+        "type": "int"
+      }
     }
   },
   "expertEditorOrphanDeps": "Attached (not installed locally)",
@@ -2242,26 +2418,48 @@
   "teamHubClone": "Clone to my teams",
   "teamHubCloning": "Cloning…",
   "teamHubCloneSuccess": "Cloned \"{name}\".",
-  "@teamHubCloneSuccess": { "placeholders": { "name": {} } },
+  "@teamHubCloneSuccess": {
+    "placeholders": {
+      "name": {}
+    }
+  },
   "teamHubCloneSuccessWithDeps": "Cloned \"{name}\". Installed {skillCount} skills, {pluginCount} plugins, and {mcpCount} MCP servers, and cloned {expertCount} experts.",
   "@teamHubCloneSuccessWithDeps": {
     "placeholders": {
       "name": {},
-      "skillCount": {"type": "int"},
-      "pluginCount": {"type": "int"},
-      "mcpCount": {"type": "int"},
-      "expertCount": {"type": "int"}
+      "skillCount": {
+        "type": "int"
+      },
+      "pluginCount": {
+        "type": "int"
+      },
+      "mcpCount": {
+        "type": "int"
+      },
+      "expertCount": {
+        "type": "int"
+      }
     }
   },
   "teamHubClonePartial": "Cloned \"{name}\". Installed {skillCount} skills, {pluginCount} plugins, {mcpCount} MCP servers, cloned {expertCount} experts. {failedCount} could not be installed: {failedNames}.",
   "@teamHubClonePartial": {
     "placeholders": {
       "name": {},
-      "skillCount": {"type": "int"},
-      "pluginCount": {"type": "int"},
-      "mcpCount": {"type": "int"},
-      "expertCount": {"type": "int"},
-      "failedCount": {"type": "int"},
+      "skillCount": {
+        "type": "int"
+      },
+      "pluginCount": {
+        "type": "int"
+      },
+      "mcpCount": {
+        "type": "int"
+      },
+      "expertCount": {
+        "type": "int"
+      },
+      "failedCount": {
+        "type": "int"
+      },
       "failedNames": {}
     }
   },
@@ -2312,20 +2510,30 @@
   "expertHubPlaybook": "Playbook",
   "expertHubCapabilities": "Capabilities",
   "expertHubAddSuccess": "Added \"{name}\" to team.",
-  "@expertHubAddSuccess": { "placeholders": { "name": {} } },
+  "@expertHubAddSuccess": {
+    "placeholders": {
+      "name": {}
+    }
+  },
   "expertHubAddSuccessWithSkills": "Added \"{name}\". Installed {skillCount} skills.",
   "@expertHubAddSuccessWithSkills": {
     "placeholders": {
       "name": {},
-      "skillCount": {"type": "int"}
+      "skillCount": {
+        "type": "int"
+      }
     }
   },
   "expertHubAddPartial": "Added \"{name}\". Installed {skillCount} skills. {failedCount} could not be installed: {failedNames}.",
   "@expertHubAddPartial": {
     "placeholders": {
       "name": {},
-      "skillCount": {"type": "int"},
-      "failedCount": {"type": "int"},
+      "skillCount": {
+        "type": "int"
+      },
+      "failedCount": {
+        "type": "int"
+      },
       "failedNames": {}
     }
   },
@@ -2339,7 +2547,9 @@
   "@expertHubPreflightPartial": {
     "placeholders": {
       "name": {},
-      "failedCount": {"type": "int"},
+      "failedCount": {
+        "type": "int"
+      },
       "failedNames": {}
     }
   },
@@ -2350,8 +2560,12 @@
   "teamMcpAssignedCount": "{assigned} of {total} enabled",
   "@teamMcpAssignedCount": {
     "placeholders": {
-      "assigned": {"type": "int"},
-      "total": {"type": "int"}
+      "assigned": {
+        "type": "int"
+      },
+      "total": {
+        "type": "int"
+      }
     }
   },
   "teamMcpManage": "All MCP servers",
@@ -2385,7 +2599,9 @@
   "hookImportDone": "{count, plural, =1{Import {count} hook} other{Import {count} hooks}}",
   "@hookImportDone": {
     "placeholders": {
-      "count": {"type": "int"}
+      "count": {
+        "type": "int"
+      }
     }
   },
   "hookImportDoneToast": "Hooks imported",
@@ -2395,7 +2611,9 @@
   "hookInstalledCount": "{count} installed",
   "@hookInstalledCount": {
     "placeholders": {
-      "count": {"type": "int"}
+      "count": {
+        "type": "int"
+      }
     }
   },
   "mcpNavRegistries": "Registry",
@@ -2403,7 +2621,9 @@
   "mcpInstalledCount": "{count} installed",
   "@mcpInstalledCount": {
     "placeholders": {
-      "count": {"type": "int"}
+      "count": {
+        "type": "int"
+      }
     }
   },
   "mcpNoInstalled": "No MCP servers installed yet",
@@ -2420,7 +2640,9 @@
   "mcpRegistryResetConfirm": "Reset \"{name}\" to the default API URL?",
   "@mcpRegistryResetConfirm": {
     "placeholders": {
-      "name": {"type": "String"}
+      "name": {
+        "type": "String"
+      }
     }
   },
   "mcpRepoApiUrlLabel": "API base URL",
@@ -2431,7 +2653,9 @@
   "mcpRepoTestFailed": "Connection failed: {error}",
   "@mcpRepoTestFailed": {
     "placeholders": {
-      "error": {"type": "String"}
+      "error": {
+        "type": "String"
+      }
     }
   },
   "mcpRepoDisabledHint": "This catalog source is disabled. Enable it under Registries.",
@@ -2461,8 +2685,12 @@
   "mcpImportSummary": "{added} new, {conflicts} conflicts",
   "@mcpImportSummary": {
     "placeholders": {
-      "added": {"type": "int"},
-      "conflicts": {"type": "int"}
+      "added": {
+        "type": "int"
+      },
+      "conflicts": {
+        "type": "int"
+      }
     }
   },
   "mcpImportOverwrite": "Overwrite conflicts",
@@ -2478,13 +2706,17 @@
   "mcpConfiguredCount": "{count} MCP server(s) configured",
   "@mcpConfiguredCount": {
     "placeholders": {
-      "count": {"type": "int"}
+      "count": {
+        "type": "int"
+      }
     }
   },
   "mcpOAuthConnectTitle": "Connect {name}",
   "@mcpOAuthConnectTitle": {
     "placeholders": {
-      "name": {"type": "String"}
+      "name": {
+        "type": "String"
+      }
     }
   },
   "mcpOAuthConnectHint": "Sign in with the MCP provider in your browser. Tokens are stored in Claude Code format under app config (same as /mcp → Authenticate).",
@@ -2739,8 +2971,12 @@
   "onboardingProgress": "Step {current} of {total}",
   "@onboardingProgress": {
     "placeholders": {
-      "current": { "type": "int" },
-      "total": { "type": "int" }
+      "current": {
+        "type": "int"
+      },
+      "total": {
+        "type": "int"
+      }
     }
   },
   "onboardingSkip": "Skip",
@@ -2788,7 +3024,11 @@
   "logViewerCompactView": "Compact view",
   "logViewerLineCount": "{count} lines",
   "@logViewerLineCount": {
-    "placeholders": { "count": { "type": "int" } }
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
   },
   "logViewerActionsMenu": "More actions",
   "logViewerRefresh": "Refresh",
@@ -2800,20 +3040,36 @@
   "logViewerPendingBody": "Buffered entries waiting for file logging:",
   "logViewerLoadFilesFailed": "Failed to list logs: {error}",
   "@logViewerLoadFilesFailed": {
-    "placeholders": { "error": { "type": "String" } }
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
   },
   "logViewerReadFailed": "Failed to read log: {error}",
   "@logViewerReadFailed": {
-    "placeholders": { "error": { "type": "String" } }
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
   },
   "logViewerClearDone": "Old log files removed",
   "logViewerClearFailed": "Cleanup failed: {error}",
   "@logViewerClearFailed": {
-    "placeholders": { "error": { "type": "String" } }
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
   },
   "logViewerPathCopied": "Copied path: {name}",
   "@logViewerPathCopied": {
-    "placeholders": { "name": { "type": "String" } }
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
   },
   "initErrorTitle": "Startup failed",
   "initErrorDetails": "Error details",
@@ -2827,8 +3083,12 @@
   "initErrorVersion": "Version {version} ({build})",
   "@initErrorVersion": {
     "placeholders": {
-      "version": { "type": "String" },
-      "build": { "type": "String" }
+      "version": {
+        "type": "String"
+      },
+      "build": {
+        "type": "String"
+      }
     }
   },
   "diffIgnoreWhitespace": "Ignore whitespace",
@@ -2844,8 +3104,12 @@
   "diffChangeCounter": "{current} / {total}",
   "@diffChangeCounter": {
     "placeholders": {
-      "current": { "type": "int" },
-      "total": { "type": "int" }
+      "current": {
+        "type": "int"
+      },
+      "total": {
+        "type": "int"
+      }
     }
   },
   "diffApplyHunkTooltip": "Apply change to working tree",
@@ -2908,7 +3172,9 @@
   "progressActivitiesMany": "{count, plural, =1{1 activity in progress} other{{count} activities in progress}}",
   "@progressActivitiesMany": {
     "placeholders": {
-      "count": { "type": "int" }
+      "count": {
+        "type": "int"
+      }
     }
   },
   "progressActivitiesPanelTitle": "Activities in progress",
@@ -2922,19 +3188,25 @@
   "notificationTimeMinutesAgo": "{minutes} min ago",
   "@notificationTimeMinutesAgo": {
     "placeholders": {
-      "minutes": { "type": "int" }
+      "minutes": {
+        "type": "int"
+      }
     }
   },
   "notificationTimeHoursAgo": "{hours} h ago",
   "@notificationTimeHoursAgo": {
     "placeholders": {
-      "hours": { "type": "int" }
+      "hours": {
+        "type": "int"
+      }
     }
   },
   "notificationTimeDaysAgo": "{days} d ago",
   "@notificationTimeDaysAgo": {
     "placeholders": {
-      "days": { "type": "int" }
+      "days": {
+        "type": "int"
+      }
     }
   },
   "memberDetailTitle": "Member detail",
@@ -2956,7 +3228,9 @@
   "memberDetailOpenConfigDirFailedOnHost": "Couldn't open the config directory on {host}. The remote host may have no desktop file manager.",
   "@memberDetailOpenConfigDirFailedOnHost": {
     "placeholders": {
-      "host": { "type": "String" }
+      "host": {
+        "type": "String"
+      }
     }
   },
   "memberDetailSectionEmpty": "None",
@@ -3021,19 +3295,35 @@
   "worktreeCreateAction": "Create",
   "worktreeCreating": "Creating…",
   "worktreeCreateFailed": "Failed to create worktree: {error}",
-  "@worktreeCreateFailed": { "placeholders": { "error": {} } },
+  "@worktreeCreateFailed": {
+    "placeholders": {
+      "error": {}
+    }
+  },
   "worktreeBaseSelectorHint": "Branch or ref",
   "worktreeRandomNameTooltip": "Random name",
   "worktreeDeleteTitle": "Remove worktree",
   "worktreeDeleteBody": "Remove the worktree for {branch}?",
-  "@worktreeDeleteBody": { "placeholders": { "branch": {} } },
+  "@worktreeDeleteBody": {
+    "placeholders": {
+      "branch": {}
+    }
+  },
   "worktreeDeleteForce": "Force-remove even if it has uncommitted changes",
   "worktreeDeleteBranchToo": "Also delete the branch",
   "worktreeDeleteSessionsToo": "Also delete the {count} conversations in this worktree",
-  "@worktreeDeleteSessionsToo": { "placeholders": { "count": {} } },
+  "@worktreeDeleteSessionsToo": {
+    "placeholders": {
+      "count": {}
+    }
+  },
   "worktreeDeleteAction": "Remove",
   "worktreeDeleteFailed": "Failed to remove worktree: {error}",
-  "@worktreeDeleteFailed": { "placeholders": { "error": {} } },
+  "@worktreeDeleteFailed": {
+    "placeholders": {
+      "error": {}
+    }
+  },
   "worktreeOrphanGroup": "Other",
   "worktreeNewWorktreeTooltip": "New worktree",
   "worktreeRefreshTooltip": "Refresh worktrees",
@@ -3041,7 +3331,11 @@
   "worktreeMenuCopyPath": "Copy path",
   "worktreeMenuRemove": "Remove worktree",
   "worktreeShowMore": "Show {count} more",
-  "@worktreeShowMore": { "placeholders": { "count": {} } },
+  "@worktreeShowMore": {
+    "placeholders": {
+      "count": {}
+    }
+  },
   "worktreeMore": "More",
   "worktreeShowLess": "Show less",
   "worktreeDeleteBusyWarning": "Stop the running conversations in this worktree before removing it.",
@@ -3054,9 +3348,13 @@
   "sessionGroupAddSessionsTitle": "Add conversations",
   "sessionGroupEmpty": "No conversations",
   "automationsTitle": "Automations",
-  "@automationsTitle": { "description": "Title for automations management UI" },
+  "@automationsTitle": {
+    "description": "Title for automations management UI"
+  },
   "automationsSubtitle": "Schedule messages and prompts across workspaces and sessions.",
-  "@automationsSubtitle": { "description": "Subtitle for automations management page" },
+  "@automationsSubtitle": {
+    "description": "Subtitle for automations management page"
+  },
   "automationsNew": "New automation",
   "automationsScheduleHourly": "Hourly",
   "automationsScheduleDaily": "Daily",
@@ -3083,7 +3381,13 @@
   "automationsSessionContextMenu": "Scheduled message…",
   "automationsManageSessionContextMenu": "Manage scheduled messages",
   "automationsNextRun": "Next run: {time}",
-  "@automationsNextRun": { "placeholders": { "time": { "type": "String" } } },
+  "@automationsNextRun": {
+    "placeholders": {
+      "time": {
+        "type": "String"
+      }
+    }
+  },
   "automationsNextRunNone": "No upcoming run",
   "automationsRunNow": "Run now",
   "automationsRunHistory": "Run history",
@@ -3104,13 +3408,17 @@
   "automationsReuseSessionSubtitleBound": "Bound to session {sessionId}",
   "@automationsReuseSessionSubtitleBound": {
     "placeholders": {
-      "sessionId": { "type": "String" }
+      "sessionId": {
+        "type": "String"
+      }
     }
   },
   "automationsReuseSessionListHint": "Reuses conversation {sessionId}",
   "@automationsReuseSessionListHint": {
     "placeholders": {
-      "sessionId": { "type": "String" }
+      "sessionId": {
+        "type": "String"
+      }
     }
   },
   "automationsTargetMember": "Target member",
@@ -3126,10 +3434,22 @@
   "automationsEditTitle": "Edit automation",
   "automationsCompactTitle": "Scheduled message",
   "automationsHeaderCount": "Automations · {count}",
-  "@automationsHeaderCount": { "placeholders": { "count": { "type": "int" } } },
+  "@automationsHeaderCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
   "automationsSidebarTitle": "Automations",
   "automationsSidebarWithNextRun": "Automations · {time}",
-  "@automationsSidebarWithNextRun": { "placeholders": { "time": { "type": "String" } } },
+  "@automationsSidebarWithNextRun": {
+    "placeholders": {
+      "time": {
+        "type": "String"
+      }
+    }
+  },
   "automationsFilterAll": "All",
   "automationsFilterEnabled": "Enabled only",
   "automationsFilterDisabled": "Disabled only",
@@ -3146,13 +3466,40 @@
   "automationsShowFilter": "Show filters",
   "automationsHideFilter": "Hide filters",
   "automationsScheduleSummaryHourly": "Hourly at :{minute}",
-  "@automationsScheduleSummaryHourly": { "placeholders": { "minute": { "type": "int" } } },
+  "@automationsScheduleSummaryHourly": {
+    "placeholders": {
+      "minute": {
+        "type": "int"
+      }
+    }
+  },
   "automationsScheduleSummaryDaily": "Daily at {time}",
-  "@automationsScheduleSummaryDaily": { "placeholders": { "time": { "type": "String" } } },
+  "@automationsScheduleSummaryDaily": {
+    "placeholders": {
+      "time": {
+        "type": "String"
+      }
+    }
+  },
   "automationsScheduleSummaryWeekdays": "Weekdays at {time}",
-  "@automationsScheduleSummaryWeekdays": { "placeholders": { "time": { "type": "String" } } },
+  "@automationsScheduleSummaryWeekdays": {
+    "placeholders": {
+      "time": {
+        "type": "String"
+      }
+    }
+  },
   "automationsScheduleSummaryWeekly": "Weekly on {day} at {time}",
-  "@automationsScheduleSummaryWeekly": { "placeholders": { "day": { "type": "String" }, "time": { "type": "String" } } },
+  "@automationsScheduleSummaryWeekly": {
+    "placeholders": {
+      "day": {
+        "type": "String"
+      },
+      "time": {
+        "type": "String"
+      }
+    }
+  },
   "automationsDayMonday": "Monday",
   "automationsDayTuesday": "Tuesday",
   "automationsDayWednesday": "Wednesday",
@@ -3161,48 +3508,123 @@
   "automationsDaySaturday": "Saturday",
   "automationsDaySunday": "Sunday",
   "automationsSessionDefaultName": "{title} — scheduled message",
-  "@automationsSessionDefaultName": { "placeholders": { "title": { "type": "String" } } },
+  "@automationsSessionDefaultName": {
+    "placeholders": {
+      "title": {
+        "type": "String"
+      }
+    }
+  },
   "automationsRunStatusCompleted": "Completed",
   "automationsRunStatusPending": "Pending",
   "automationsRunStatusDispatching": "Dispatching",
   "automationsRunStatusDispatched": "Dispatched",
   "automationsRunStatusSkippedMissed": "Skipped — missed window",
   "automationsMaxRunCount": "Run limit",
-  "@automationsMaxRunCount": { "description": "Label for optional max automation run count" },
+  "@automationsMaxRunCount": {
+    "description": "Label for optional max automation run count"
+  },
   "automationsMaxRunCountHint": "Leave empty for unlimited",
-  "@automationsMaxRunCountHint": { "description": "Hint for run limit field" },
+  "@automationsMaxRunCountHint": {
+    "description": "Hint for run limit field"
+  },
   "automationsInvalidMaxRunCount": "Run limit must be a positive number",
-  "@automationsInvalidMaxRunCount": { "description": "Validation error for run limit field" },
+  "@automationsInvalidMaxRunCount": {
+    "description": "Validation error for run limit field"
+  },
   "automationsRunCountUnlimited": "Ran {count} times",
-  "@automationsRunCountUnlimited": { "placeholders": { "count": { "type": "int" } } },
+  "@automationsRunCountUnlimited": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
   "automationsRunCountLimited": "Ran {count} / {max}",
-  "@automationsRunCountLimited": { "placeholders": { "count": { "type": "int" }, "max": { "type": "int" } } },
+  "@automationsRunCountLimited": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      },
+      "max": {
+        "type": "int"
+      }
+    }
+  },
   "automationsScopeModePersonal": "Personal · {profile}",
-  "@automationsScopeModePersonal": { "placeholders": { "profile": { "type": "String" } } },
+  "@automationsScopeModePersonal": {
+    "placeholders": {
+      "profile": {
+        "type": "String"
+      }
+    }
+  },
   "automationsScopeModeTeam": "Team · {team}",
-  "@automationsScopeModeTeam": { "placeholders": { "team": { "type": "String" } } },
+  "@automationsScopeModeTeam": {
+    "placeholders": {
+      "team": {
+        "type": "String"
+      }
+    }
+  },
   "automationsScopePersonal": "Personal · {preset}",
-  "@automationsScopePersonal": { "placeholders": { "preset": { "type": "String" } } },
+  "@automationsScopePersonal": {
+    "placeholders": {
+      "preset": {
+        "type": "String"
+      }
+    }
+  },
   "automationsScopeTeam": "Team · {team} · {member}",
-  "@automationsScopeTeam": { "placeholders": { "team": { "type": "String" }, "member": { "type": "String" } } },
+  "@automationsScopeTeam": {
+    "placeholders": {
+      "team": {
+        "type": "String"
+      },
+      "member": {
+        "type": "String"
+      }
+    }
+  },
   "automationsScopeTeamMember": "Team · {member}",
-  "@automationsScopeTeamMember": { "placeholders": { "member": { "type": "String" } } },
+  "@automationsScopeTeamMember": {
+    "placeholders": {
+      "member": {
+        "type": "String"
+      }
+    }
+  },
   "automationsScopeScheduledMessage": "Scheduled message · {sessionId}",
-  "@automationsScopeScheduledMessage": { "placeholders": { "sessionId": { "type": "String" } } },
+  "@automationsScopeScheduledMessage": {
+    "placeholders": {
+      "sessionId": {
+        "type": "String"
+      }
+    }
+  },
   "automationsLaunchMode": "Conversation mode",
-  "@automationsLaunchMode": { "description": "Simple vs team launch mode for automation editor" },
+  "@automationsLaunchMode": {
+    "description": "Simple vs team launch mode for automation editor"
+  },
   "automationsLaunchProject": "Project",
-  "@automationsLaunchProject": { "description": "Workspace project folder for launch-prompt automations" },
+  "@automationsLaunchProject": {
+    "description": "Workspace project folder for launch-prompt automations"
+  },
   "automationsLaunchWorktree": "Worktree",
-  "@automationsLaunchWorktree": { "description": "Git worktree cwd for launch-prompt automations" },
+  "@automationsLaunchWorktree": {
+    "description": "Git worktree cwd for launch-prompt automations"
+  },
   "automationsPermissions": "Permissions",
-  "@automationsPermissions": { "description": "Session permission level for launch-prompt automations" },
+  "@automationsPermissions": {
+    "description": "Session permission level for launch-prompt automations"
+  },
   "automationsPermissionsAskReadOnly": "Ask · read-only · trusted hooks",
   "automationsPermissionsAutoApproveWorkspaceWrite": "Auto-approve · workspace write · trusted hooks",
   "automationsPermissionsCustom": "Custom security policy",
   "automationsLaunchProfile": "Launch identity",
-  "@automationsLaunchProfile": { "description": "Deprecated — use automationsLaunchMode" },
-
+  "@automationsLaunchProfile": {
+    "description": "Deprecated — use automationsLaunchMode"
+  },
   "shortcutsWorkspaceNextTab": "Next Workspace Tab",
   "shortcutsWorkspacePrevTab": "Previous Workspace Tab",
   "shortcutsWorkspaceCloseTab": "Close Workspace Tab",
@@ -3217,13 +3639,17 @@
   "shortcutsStripFocusTab": "Go to Tab {n}",
   "@shortcutsStripFocusTab": {
     "placeholders": {
-      "n": { "type": "int" }
+      "n": {
+        "type": "int"
+      }
     }
   },
   "shortcutsWorkspaceFocusTab": "Go to Workspace {n}",
   "@shortcutsWorkspaceFocusTab": {
     "placeholders": {
-      "n": { "type": "int" }
+      "n": {
+        "type": "int"
+      }
     }
   },
   "shortcutsToggleSidebar": "Toggle Sidebar",
@@ -3240,14 +3666,12 @@
   "shortcutsComposeSubmit": "Send Message",
   "shortcutsComposeNewline": "Insert Newline",
   "shortcutsShowCheatsheet": "Show Keyboard Shortcuts",
-
   "shortcutsCategoryNavigation": "Navigation",
   "shortcutsCategoryTabs": "Tabs",
   "shortcutsCategoryView": "View",
   "shortcutsCategoryZoom": "Zoom",
   "shortcutsCategoryCompose": "Compose",
   "shortcutsCategoryMeta": "General",
-
   "shortcutsSettingsTitle": "Keyboard Shortcuts",
   "shortcutsPageSubtitle": "View and customize keyboard shortcuts for navigation, tabs, zoom, and compose.",
   "shortcutsSearchHint": "Search shortcuts",
@@ -3266,7 +3690,13 @@
   "shortcutsImportInvalidFile": "That file isn't a valid shortcuts export.",
   "shortcutsImportConflictTitle": "Replace Conflicting Shortcuts?",
   "shortcutsImportConflictMessage": "The imported shortcuts conflict with {count} existing binding(s). Replace them?",
-  "@shortcutsImportConflictMessage": { "placeholders": { "count": { "type": "int" } } },
+  "@shortcutsImportConflictMessage": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
   "shortcutsCheatsheetButton": "View Cheatsheet",
   "shortcutsCheatsheetTitle": "Keyboard Shortcuts",
   "shortcutsCheatsheetEmpty": "No shortcuts match your search.",
@@ -3274,10 +3704,15 @@
   "shortcutsPressShortcutHint": "Press a key combination to bind it. Press Escape to cancel, Backspace to unbind.",
   "shortcutsPressShortcutUnsupportedKey": "That key can't be bound.",
   "shortcutsConflictMessage": "Already used by \"{title}\".",
-  "@shortcutsConflictMessage": { "placeholders": { "title": { "type": "String" } } },
+  "@shortcutsConflictMessage": {
+    "placeholders": {
+      "title": {
+        "type": "String"
+      }
+    }
+  },
   "shortcutsReplaceAction": "Replace",
   "shortcutsConflictBadgeTooltip": "Conflicts with another shortcut",
-
   "runAction": "Run",
   "runStop": "Stop",
   "runRestart": "Restart",
@@ -3292,13 +3727,17 @@
   "runCompoundConfiguration": "{name} (compound)",
   "@runCompoundConfiguration": {
     "placeholders": {
-      "name": { "type": "String" }
+      "name": {
+        "type": "String"
+      }
     }
   },
   "runSuggestedConfiguration": "{name} (Suggested)",
   "@runSuggestedConfiguration": {
     "placeholders": {
-      "name": { "type": "String" }
+      "name": {
+        "type": "String"
+      }
     }
   },
   "runAcceptRecommendation": "Add suggested configuration to launch.json",
@@ -3311,7 +3750,9 @@
   "runStopSessionMessage": "\"{name}\" is still running. Stop it and close this tab?",
   "@runStopSessionMessage": {
     "placeholders": {
-      "name": { "type": "String" }
+      "name": {
+        "type": "String"
+      }
     }
   },
   "runStopAndClose": "Stop and close",
@@ -3322,19 +3763,25 @@
   "runTypeUnknown": "Unknown launch type: {type}",
   "@runTypeUnknown": {
     "placeholders": {
-      "type": { "type": "String" }
+      "type": {
+        "type": "String"
+      }
     }
   },
   "runTypeUnavailable": "Launch type \"{type}\" is not available on this target",
   "@runTypeUnavailable": {
     "placeholders": {
-      "type": { "type": "String" }
+      "type": {
+        "type": "String"
+      }
     }
   },
   "runTypeUnavailableRemote": "Launch type \"{type}\" is not available on remote targets",
   "@runTypeUnavailableRemote": {
     "placeholders": {
-      "type": { "type": "String" }
+      "type": {
+        "type": "String"
+      }
     }
   },
   "runErrorNoConfiguration": "No configuration selected",
@@ -3349,7 +3796,9 @@
   "runDeleteConfigurationConfirm": "Delete configuration \"{name}\"?",
   "@runDeleteConfigurationConfirm": {
     "placeholders": {
-      "name": { "type": "String" }
+      "name": {
+        "type": "String"
+      }
     }
   },
   "runStopAndDelete": "Stop and delete",
@@ -3395,18 +3844,18 @@
   "runValidationAllowMultipleInstancesMustBeBoolean": "Allow multiple instances must be a boolean",
   "runValidationActivateToolWindowMustBeBoolean": "Activate tool window must be a boolean",
   "runValidationFocusToolWindowMustBeBoolean": "Focus tool window must be a boolean",
-
   "shortcutsRunSelected": "Run Selected Configuration",
   "shortcutsRunStop": "Stop Run",
   "shortcutsRunRestart": "Restart Run",
   "shortcutsCategoryRun": "Run",
-
   "resourceManagerTitle": "Resource Manager",
   "resourceManagerPanelTitle": "Resource Manager - Sessions",
   "resourceManagerTooltip": "Resource Manager - {count} running sessions",
   "@resourceManagerTooltip": {
     "placeholders": {
-      "count": { "type": "int" }
+      "count": {
+        "type": "int"
+      }
     }
   },
   "resourceManagerTooltipHint": "Running sessions across all workspaces.",
@@ -3424,20 +3873,23 @@
   "resourceManagerSystemMemoryPercent": "{percent}% system memory",
   "@resourceManagerSystemMemoryPercent": {
     "placeholders": {
-      "percent": { "type": "String" }
+      "percent": {
+        "type": "String"
+      }
     }
   },
   "resourceManagerTerminalsCount": "{count} running sessions",
   "@resourceManagerTerminalsCount": {
     "placeholders": {
-      "count": { "type": "int" }
+      "count": {
+        "type": "int"
+      }
     }
   },
   "resourceManagerEmptyTree": "Nothing running right now.",
   "resourceManagerAppProcess": "App",
   "resourceManagerMetricsError": "Could not refresh process metrics.",
   "resourceManagerKillFailed": "Could not kill session.",
-
   "floatingWorkspaceNewTerminal": "New Terminal",
   "floatingWorkspaceOpenFile": "Open File",
   "floatingWorkspaceMinimize": "Minimize",
@@ -3445,12 +3897,10 @@
   "floatingWorkspaceCloseTab": "Close tab",
   "floatingWorkspaceAddTooltip": "Open in floating workspace",
   "floatingWorkspaceToggleTooltip": "Floating workspace",
-
   "filePreviewHostTitle": "File preview",
   "filePreviewHostDescription": "Open files in the floating workspace or the center workbench.",
   "filePreviewHostFloating": "Floating",
   "filePreviewHostCenter": "Center",
-
   "termuxSetupTitle": "Termux setup",
   "termuxSetupIntro": "Install Termux, paste one setup script, then connect TeamPilot to the local SSH server.",
   "termuxSetupStepInstallTermux": "1. Install Termux",
@@ -3475,7 +3925,9 @@
   "termuxSetupConnectFailedWithDetail": "Could not connect to Termux: {detail}",
   "@termuxSetupConnectFailedWithDetail": {
     "placeholders": {
-      "detail": { "type": "String" }
+      "detail": {
+        "type": "String"
+      }
     }
   },
   "termuxSetupClearSetup": "Clear setup",
@@ -3494,7 +3946,9 @@
   "androidWorkEnvironmentSelectorTermuxWithUser": "Termux · {username}",
   "@androidWorkEnvironmentSelectorTermuxWithUser": {
     "placeholders": {
-      "username": { "type": "String" }
+      "username": {
+        "type": "String"
+      }
     }
   },
   "androidWorkEnvironmentSelectorManageTermux": "Termux setup…",
@@ -3502,13 +3956,21 @@
   "cliTaskBoardCount": "{completed}/{total}",
   "@cliTaskBoardCount": {
     "placeholders": {
-      "completed": { "type": "int" },
-      "total": { "type": "int" }
+      "completed": {
+        "type": "int"
+      },
+      "total": {
+        "type": "int"
+      }
     }
   },
   "cliTaskBoardMore": "… +{count} more",
   "@cliTaskBoardMore": {
-    "placeholders": { "count": { "type": "int" } }
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
   },
   "cliTaskStatusPending": "Pending",
   "cliTaskStatusInProgress": "In progress",
@@ -3529,8 +3991,12 @@
   "chatUserMessageRailSemanticLabel": "User message {index} of {total}",
   "@chatUserMessageRailSemanticLabel": {
     "placeholders": {
-      "index": { "type": "int" },
-      "total": { "type": "int" }
+      "index": {
+        "type": "int"
+      },
+      "total": {
+        "type": "int"
+      }
     }
   },
   "htmlViewToggleEdit": "Edit",
@@ -3559,8 +4025,12 @@
   "catalogSourceWarningEntry": "{source}: {error}",
   "@catalogSourceWarningEntry": {
     "placeholders": {
-      "source": { "type": "String" },
-      "error": { "type": "String" }
+      "source": {
+        "type": "String"
+      },
+      "error": {
+        "type": "String"
+      }
     }
   },
   "catalogSortAccessibilityLabel": "Sort catalog entries",
@@ -3568,20 +4038,28 @@
   "catalogSourceWarningAccessibilityLabel": "{count} catalog source(s) failed to load",
   "@catalogSourceWarningAccessibilityLabel": {
     "placeholders": {
-      "count": { "type": "int" }
+      "count": {
+        "type": "int"
+      }
     }
   },
   "catalogMissingMetricAccessibilityLabel": "{label}: no data available",
   "@catalogMissingMetricAccessibilityLabel": {
     "placeholders": {
-      "label": { "type": "String" }
+      "label": {
+        "type": "String"
+      }
     }
   },
   "catalogCardAccessibilityLabel": "{name}, from {source}",
   "@catalogCardAccessibilityLabel": {
     "placeholders": {
-      "name": { "type": "String" },
-      "source": { "type": "String" }
+      "name": {
+        "type": "String"
+      },
+      "source": {
+        "type": "String"
+      }
     }
   },
   "retry": "Retry",
@@ -3774,7 +4252,13 @@
   "gitGraphHashCopied": "Hash copied to clipboard",
   "gitGraphSubjectCopied": "Subject copied to clipboard",
   "gitGraphCheckoutBranch": "Checkout {branch}",
-  "@gitGraphCheckoutBranch": { "placeholders": { "branch": { "type": "String" } } },
+  "@gitGraphCheckoutBranch": {
+    "placeholders": {
+      "branch": {
+        "type": "String"
+      }
+    }
+  },
   "gitGraphViewBranchHistory": "View this branch's history",
   "gitGraphCreateBranchHere": "Create branch here",
   "gitGraphCreateTagHere": "Create tag here",
@@ -3793,33 +4277,93 @@
   "gitGraphTagMessageLabel": "Message (optional)",
   "gitGraphCreate": "Create",
   "gitGraphRevertConfirmBody": "Revert commit {hash}? A new commit undoing it will be created.",
-  "@gitGraphRevertConfirmBody": { "placeholders": { "hash": { "type": "String" } } },
+  "@gitGraphRevertConfirmBody": {
+    "placeholders": {
+      "hash": {
+        "type": "String"
+      }
+    }
+  },
   "gitGraphResetHardConfirmBody": "Hard reset moves \"{branch}\" to this commit and discards ALL uncommitted changes. Type \"{branch}\" to confirm.",
-  "@gitGraphResetHardConfirmBody": { "placeholders": { "branch": { "type": "String" } } },
+  "@gitGraphResetHardConfirmBody": {
+    "placeholders": {
+      "branch": {
+        "type": "String"
+      }
+    }
+  },
   "gitGraphStashPop": "Pop",
   "gitGraphStashApply": "Apply",
   "gitGraphStashDrop": "Drop",
   "gitGraphStashDropConfirmBody": "Drop {selector}? This cannot be undone.",
-  "@gitGraphStashDropConfirmBody": { "placeholders": { "selector": { "type": "String" } } },
+  "@gitGraphStashDropConfirmBody": {
+    "placeholders": {
+      "selector": {
+        "type": "String"
+      }
+    }
+  },
   "gitGraphRenameBranch": "Rename branch…",
   "gitGraphRenameBranchTitle": "Rename branch",
   "gitGraphDeleteBranch": "Delete branch {name}",
-  "@gitGraphDeleteBranch": { "placeholders": { "name": { "type": "String" } } },
+  "@gitGraphDeleteBranch": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
   "gitGraphDeleteBranchTitle": "Delete branch",
   "gitGraphDeleteBranchConfirmBody": "Delete branch \"{name}\"? Commits only reachable from it may become unreachable. This cannot be undone.",
-  "@gitGraphDeleteBranchConfirmBody": { "placeholders": { "name": { "type": "String" } } },
+  "@gitGraphDeleteBranchConfirmBody": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
   "gitGraphMergeIntoCurrent": "Merge {branch} into current branch",
-  "@gitGraphMergeIntoCurrent": { "placeholders": { "branch": { "type": "String" } } },
+  "@gitGraphMergeIntoCurrent": {
+    "placeholders": {
+      "branch": {
+        "type": "String"
+      }
+    }
+  },
   "gitGraphCheckoutCommit": "Checkout this commit (detached HEAD)",
   "gitGraphCheckoutCommitConfirmBody": "Checkout {hash} with detached HEAD?",
-  "@gitGraphCheckoutCommitConfirmBody": { "placeholders": { "hash": { "type": "String" } } },
+  "@gitGraphCheckoutCommitConfirmBody": {
+    "placeholders": {
+      "hash": {
+        "type": "String"
+      }
+    }
+  },
   "gitGraphDeleteTag": "Delete tag {name}",
-  "@gitGraphDeleteTag": { "placeholders": { "name": { "type": "String" } } },
+  "@gitGraphDeleteTag": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
   "gitGraphDeleteTagTitle": "Delete tag",
   "gitGraphDeleteTagConfirmBody": "Delete tag \"{name}\"? This cannot be undone.",
-  "@gitGraphDeleteTagConfirmBody": { "placeholders": { "name": { "type": "String" } } },
+  "@gitGraphDeleteTagConfirmBody": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
   "gitGraphPushTag": "Push tag {name}",
-  "@gitGraphPushTag": { "placeholders": { "name": { "type": "String" } } },
+  "@gitGraphPushTag": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
   "gitGraphBranchesTags": "Branches & tags",
   "gitGraphLocalBranches": "Local branches",
   "gitGraphRemoteBranches": "Remote branches",
@@ -3880,5 +4424,65 @@
   "connectPairedDevicesTitle": "Paired devices",
   "connectNoPairedDevices": "No phones are paired yet.",
   "connectRevokeDevice": "Revoke",
-  "connectError": "Connect could not refresh pairing. Try again."
+  "connectError": "Connect could not refresh pairing. Try again.",
+  "teamGenerateLaunch": "Generate and launch",
+  "teamGenerateSettingsTitle": "Generate and launch settings",
+  "teamGenerateSettingsSubtitle": "How Team Builder plans the roster, and which model configurations it may assign.",
+  "teamGenerateModelPoolHint": "Rank 1 is strongest. Prefer earlier entries for the team lead.",
+  "teamGenerateEmptyPool": "No configurations yet. Add the strongest one first.",
+  "teamGeneratePickPreset": "Choose a preset",
+  "teamGenerateLoading": "Loading settings…",
+  "teamGenerateGeneratorModel": "Generator model",
+  "teamGenerateTeamMode": "Team mode",
+  "teamGenerateNative": "Native",
+  "teamGenerateMixed": "Mixed",
+  "teamGenerateNativeCli": "Native CLI",
+  "teamGenerateModelPool": "Model configuration pool",
+  "teamGenerateAddModel": "Add model configuration",
+  "teamGenerateHiddenPresets": "{count} configurations are hidden because they use another CLI.",
+  "@teamGenerateHiddenPresets": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "teamGenerateMissingPreset": "Preset “{presetId}” no longer exists.",
+  "@teamGenerateMissingPreset": {
+    "placeholders": {
+      "presetId": {
+        "type": "String"
+      }
+    }
+  },
+  "teamGenerateDescription": "Strengths and best uses",
+  "teamGenerateTags": "Tags",
+  "teamGenerateMoveUp": "Move up",
+  "teamGenerateMoveDown": "Move down",
+  "teamGenerateRemove": "Remove",
+  "teamGenerateCapabilityNote": "Team Builder will check workspace machines and may acquire skills, plugins, and MCP servers for the generated team.",
+  "teamGenerateErrorDescriptionRequired": "Describe the task to generate a team.",
+  "teamGenerateErrorAiNotConfigured": "Configure the generator model first.",
+  "teamGenerateErrorPoolEmpty": "Add at least one valid model configuration.",
+  "teamGenerateErrorGeneratorUnsupported": "The generator CLI must support sessions, skills, and MCP.",
+  "teamGenerateErrorNativeUnsupported": "The selected CLI does not support native teams.",
+  "teamGenerateErrorUnavailable": "Team generation is unavailable right now. Restart TeamPilot and try again.",
+  "teamGenerateErrorStartFailed": "Team generation could not start. Try again.",
+  "teamGenerateOpenSettings": "Open generation settings",
+  "teamGenerateBuilderTitle": "Team Builder",
+  "teamGenerateCancel": "Cancel generation",
+  "teamGenerateRetry": "Retry",
+  "teamGenerateContinueSetup": "Continue setup",
+  "teamGenerateCancelTitle": "Cancel team generation?",
+  "teamGenerateCancelBody": "The temporary session and staged resources will be removed.",
+  "teamGenerateErrorTargetUnavailable": "A required machine or CLI is unavailable.",
+  "teamGenerateErrorStagingUnsupported": "This resource needs a manual installation step and cannot be staged safely.",
+  "teamGenerateErrorUserActionRequired": "Complete the required sign-in or configuration, then retry.",
+  "teamGenerateErrorPromptDeliveryUnknown": "TeamPilot cannot confirm whether the lead received the task.",
+  "teamGenerateErrorRecoveryIntegrity": "Recovery data could not be verified. The temporary session was kept.",
+  "teamGenerateOpenLeadSession": "Open lead session",
+  "teamGenerateDeliveryArrived": "It arrived",
+  "teamGenerateDeliverySendAgain": "Send again…",
+  "teamGenerateDeliveryRetryTitle": "Send the task again?",
+  "teamGenerateDeliveryRetryBody": "The lead might receive the task twice."
 }

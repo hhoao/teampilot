@@ -24,6 +24,34 @@ class RuntimeTargetRegistry {
   final bool isWindows;
   final bool isAndroid;
 
+  /// Finds one target without reconciling or writing the persisted catalog.
+  Future<RuntimeTarget?> findById(
+    String targetId, {
+    String wslDistro = '',
+  }) async {
+    final normalized = targetId.trim();
+    if (normalized == RuntimeTarget.localId) return RuntimeTarget.local();
+    if (isAndroid &&
+        normalized == RuntimeTarget.termuxDefaultId &&
+        (_hasTermuxConfig?.call() ?? false)) {
+      return RuntimeTarget.termux();
+    }
+    if (isWindows && normalized.startsWith('wsl:')) {
+      final distro = wslDistroOfId(normalized) ?? '';
+      if (distro.isNotEmpty &&
+          (wslDistro.trim().isEmpty || distro == wslDistro.trim())) {
+        return RuntimeTarget.wsl(distro);
+      }
+    }
+    final profiles = await _sshProfileRepo.loadAll();
+    for (final profile in profiles) {
+      if ('ssh:${profile.id}' == normalized) {
+        return RuntimeTarget.ssh(profile.id, label: profile.name);
+      }
+    }
+    return null;
+  }
+
   /// Merge persisted ssh targets with live ssh_profiles (add new, prune orphans;
   /// write back if changed) plus implicit local / wsl entries.
   Future<List<RuntimeTarget>> listTargets({String wslDistro = ''}) async {

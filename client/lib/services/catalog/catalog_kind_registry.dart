@@ -33,6 +33,9 @@ class CatalogKindRegistry {
 
   CatalogKindModule? module(String kind) => _modules[kind];
 
+  ({String kind, CatalogOp op})? routeFor(String toolName) =>
+      _advertisedRoutes()[toolName];
+
   List<CatalogToolSpec> allTools() {
     final tools = <CatalogToolSpec>[_listInstalledTool];
     for (final module in _modules.values) {

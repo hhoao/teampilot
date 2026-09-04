@@ -5,6 +5,12 @@ import '../team_hub/builtin_team_templates.dart';
 /// Built-in expert key for Simple launch when no expert is selected.
 const kBuiltinDefaultExpertKey = '$kBuiltinTeamHubKeyPrefix/default';
 
+/// Stable expert key of the app-owned Team Builder (generation workflow).
+const kBuiltinTeamBuilderExpertKey = '$kBuiltinTeamHubKeyPrefix/team-builder';
+
+/// Managed builder skill id materialized only into builder sessions.
+const kManagedTeamBuilderSkillId = 'team-builder';
+
 DiscoverableMember _builtinMember({
   required String slug,
   required String name,
@@ -52,6 +58,22 @@ List<DiscoverableMember> builtinExpertMembers() => [
     skillDeps: _skills([
       ('using-superpowers', 'Using Superpowers'),
     ]),
+  ),
+  _builtinMember(
+    slug: 'team-builder',
+    name: 'Team Builder',
+    description:
+        'App-owned builder that designs and finalizes a generated team '
+        'through the Team Composer MCP, then hands control back to TeamPilot.',
+    category: 'Workflow',
+    prompt:
+        'You are the TeamPilot Team Builder. Follow the managed team-builder '
+        'skill strictly: read generation context, probe workspace targets, '
+        'design 2-5 roles over the ranked model pool, validate the plan with '
+        'Team Composer until valid, and call finalize_team_generation exactly '
+        'once. Never edit TeamPilot manifests or deliver the original task '
+        'yourself. Stop after finalization is accepted.',
+    skillDeps: [managedSkillDep(kManagedTeamBuilderSkillId, 'Team Builder')],
   ),
   _builtinMember(
     slug: 'team-lead',

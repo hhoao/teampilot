@@ -67,15 +67,36 @@ final class PromptDeliveryCoordinator {
   /// Creates the only non-terminal delivery allowed for [request.seat].
   /// Recovers any leftover active record first so a later operator send
   /// cannot stay wedged until the next launch restore.
+  ///
+  /// With an explicit [PromptDeliveryRequest.deliveryId], an existing record
+  /// with the same id is returned verbatim only when seat, CLI, and exact
+  /// text match; a mismatch throws so callers cannot silently retarget a
+  /// tracked delivery.
   Future<PromptDelivery> submit(PromptDeliveryRequest request) => _serialized(
     request.seat,
     () async {
+      final explicitId = request.deliveryId?.trim() ?? '';
+      if (explicitId.isNotEmpty) {
+        final existing = await store.read(explicitId);
+        if (existing != null) {
+          if (existing.seat != request.seat ||
+              existing.cli != request.cli ||
+              existing.text != request.text) {
+            throw StateError(
+              'delivery id $explicitId already exists for a different '
+              'seat/cli/text',
+            );
+          }
+          _liveStates[existing.id] = existing.state;
+          return existing;
+        }
+      }
       await _recoverActiveDeliveries(request.seat);
       final history = await store.forSeat(request.seat);
       final now = _clock();
       final normalizedText = normalizePromptText(request.text);
       final delivery = PromptDelivery(
-        id: _idGenerator(),
+        id: explicitId.isNotEmpty ? explicitId : _idGenerator(),
         seat: request.seat,
         cli: request.cli,
         text: request.text,

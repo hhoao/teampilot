@@ -16,6 +16,8 @@ import '../../models/workspace.dart';
 import '../../models/workspace_launch_context.dart';
 import '../../repositories/session_repository.dart';
 import '../../services/catalog/catalog_mcp_transport.dart';
+import '../../services/cli/registry/cli_tool_registry.dart';
+import '../../services/team_generation/mcp/team_composer_mcp_transport.dart';
 import '../../models/install_job/install_cancel_policy.dart';
 import '../../models/install_job/install_job_key.dart';
 import '../../models/install_job/install_job_scope.dart';
@@ -42,6 +44,100 @@ import '../../services/terminal/terminal_theme_for_launch.dart';
 import '../../utils/logging/logger.dart';
 
 typedef TermuxWorkOpsBlockResolver = String? Function(RuntimeTarget target);
+
+/// One workflow token shared by the Catalog and Team Composer transports for
+/// a single builder connect.
+final class TeamGenerationMcpAccess {
+  const TeamGenerationMcpAccess({
+    required this.catalogToken,
+    required this.composerToken,
+  });
+
+  final String catalogToken;
+  final String composerToken;
+}
+
+TeamGenerationMcpAccess? issueTeamGenerationMcpAccess({
+  required AppSession session,
+  required String? Function(AppSession session)? tokenIssuer,
+}) {
+  if (session.purpose != SessionPurpose.teamGeneration) return null;
+  final token = tokenIssuer?.call(session);
+  if (token == null || token.isEmpty) {
+    throw StateError('team_generation_token_issue_failed');
+  }
+  return TeamGenerationMcpAccess(catalogToken: token, composerToken: token);
+}
+
+/// Composes the app-owned MCP servers inserted during one runtime launch.
+///
+/// Catalog is available to every reachable seat. Team Composer is deliberately
+/// restricted to the purpose-tagged generation Builder and receives the same
+/// ephemeral workflow token that the launch host issued for that Builder.
+Map<String, Map<String, Object?>> composeRuntimeExtraMcpServers({
+  required Map<String, Map<String, Object?>> extra,
+  required AppSession session,
+  required String memberId,
+  required CliTool cli,
+  required RuntimeKind launchKind,
+  required CliToolRegistry cliRegistry,
+  required Uri catalogEndpoint,
+  required Uri composerEndpoint,
+  required String? Function(AppSession session)? teamGenerationTokenIssuer,
+  RemoteBusBinding? mixedRemoteBinding,
+  MemberAgentStatusEndpoint? agentStatus,
+}) {
+  final remoteBinding = _catalogRemoteBindingForRuntime(
+    mixedRemoteBinding: mixedRemoteBinding,
+    agentStatus: agentStatus,
+  );
+  final teamGenerationAccess = issueTeamGenerationMcpAccess(
+    session: session,
+    tokenIssuer: teamGenerationTokenIssuer,
+  );
+  final servers = extraMcpServersWithCatalog(
+    extra: extra,
+    isRemoteSeat: usesSshTransport(launchKind),
+    remoteBinding: remoteBinding,
+    catalogConfig: () => resolveCatalogMcpTransportConfig(
+      cliRegistry: cliRegistry,
+      catalogEndpoint: catalogEndpoint,
+      sessionId: session.sessionId,
+      memberId: memberId,
+      cli: cli,
+      remoteBinding: remoteBinding,
+      teamGenerationToken: teamGenerationAccess?.catalogToken,
+    ),
+  );
+  if (session.purpose == SessionPurpose.teamGeneration) {
+    final token = teamGenerationAccess?.composerToken;
+    if (token == null || token.isEmpty) {
+      throw StateError('team_generation_token_issue_failed');
+    }
+    servers['team-composer'] = resolveTeamComposerMcpTransportConfig(
+      cliRegistry: cliRegistry,
+      composerEndpoint: composerEndpoint,
+      sessionId: session.sessionId,
+      memberId: memberId,
+      cli: cli,
+      workflowToken: token,
+      remoteBinding: remoteBinding,
+    );
+  }
+  return servers;
+}
+
+RemoteBusBinding? _catalogRemoteBindingForRuntime({
+  required RemoteBusBinding? mixedRemoteBinding,
+  required MemberAgentStatusEndpoint? agentStatus,
+}) {
+  if (mixedRemoteBinding != null) return mixedRemoteBinding;
+  if (agentStatus == null || !agentStatus.isRemote) return null;
+  final port = agentStatus.port;
+  final token = agentStatus.token?.trim() ?? '';
+  if (port == null || token.isEmpty) return null;
+  return RemoteBusBinding(token: token, idleHttpTunnelPort: port);
+}
 
 /// Hooks [SessionShellConnector] delegates back to [SessionLaunchService].
 abstract interface class SessionShellConnectorDelegate {
@@ -284,7 +380,7 @@ class SessionShellConnector {
             launchTarget: launchTarget,
             extraMcpServers: _extraMcpServersWithCatalog(
               extra: const {},
-              sessionId: activeSession.sessionId,
+              session: activeSession,
               memberId: activeSession.sessionId,
               cli: launchCli,
               launchKind: launchTarget.kind,
@@ -371,7 +467,7 @@ class SessionShellConnector {
                           ),
                     }
                   : const {},
-              sessionId: activeSession.sessionId,
+              session: activeSession,
               memberId: launchMember.id,
               cli: launchCli,
               launchKind: launchTarget.kind,
@@ -1000,45 +1096,25 @@ class SessionShellConnector {
 
   Map<String, Map<String, Object?>> _extraMcpServersWithCatalog({
     required Map<String, Map<String, Object?>> extra,
-    required String sessionId,
+    required AppSession session,
     required String memberId,
     required CliTool cli,
     required RuntimeKind launchKind,
     required RemoteBusBinding? mixedRemoteBinding,
     required MemberAgentStatusEndpoint? agentStatus,
-  }) {
-    final remoteBinding = _catalogRemoteBinding(
-      mixedRemoteBinding: mixedRemoteBinding,
-      agentStatus: agentStatus,
-    );
-    return extraMcpServersWithCatalog(
-      extra: extra,
-      isRemoteSeat: usesSshTransport(launchKind),
-      remoteBinding: remoteBinding,
-      catalogConfig: () => resolveCatalogMcpTransportConfig(
-        cliRegistry: _host.cliRegistry,
-        catalogEndpoint: _host.teammateBusMcpGateway.catalogMcpEndpoint,
-        sessionId: sessionId,
-        memberId: memberId,
-        cli: cli,
-        remoteBinding: remoteBinding,
-      ),
-    );
-  }
-
-  /// Mixed remote bus binding wins; otherwise reuse the agent-status HTTP
-  /// tunnel port (simple / native SSH). Local PTY keeps [remoteBinding] null.
-  RemoteBusBinding? _catalogRemoteBinding({
-    required RemoteBusBinding? mixedRemoteBinding,
-    required MemberAgentStatusEndpoint? agentStatus,
-  }) {
-    if (mixedRemoteBinding != null) return mixedRemoteBinding;
-    if (agentStatus == null || !agentStatus.isRemote) return null;
-    final port = agentStatus.port;
-    final token = agentStatus.token?.trim() ?? '';
-    if (port == null || token.isEmpty) return null;
-    return RemoteBusBinding(token: token, idleHttpTunnelPort: port);
-  }
+  }) => composeRuntimeExtraMcpServers(
+    extra: extra,
+    session: session,
+    memberId: memberId,
+    cli: cli,
+    launchKind: launchKind,
+    cliRegistry: _host.cliRegistry,
+    catalogEndpoint: _host.teammateBusMcpGateway.catalogMcpEndpoint,
+    composerEndpoint: _host.teammateBusMcpGateway.teamComposerMcpEndpoint,
+    teamGenerationTokenIssuer: _host.teamGenerationTokenIssuer,
+    mixedRemoteBinding: mixedRemoteBinding,
+    agentStatus: agentStatus,
+  );
 
   /// Builds [MemberAgentStatusEndpoint] for a seat. Soft-fails status-only SSH
   /// tunnels (launch continues without attention).

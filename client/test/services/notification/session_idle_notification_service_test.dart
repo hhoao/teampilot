@@ -1,4 +1,6 @@
+import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:teampilot/l10n/app_localizations.dart';
 import 'package:teampilot/models/app_session.dart';
 import 'package:teampilot/services/notification/desktop_system_notifier.dart';
 import 'package:teampilot/services/notification/notification_recorder.dart';
@@ -61,7 +63,7 @@ void main() {
         ),
       ],
       openTabSessionIds: const {'s1'},
-      emptySessionTitle: 'New Chat',
+      l10n: lookupAppLocalizations(const Locale('en')),
       notificationSubtitle: 'Ready for your next message',
       notificationBadge: 'Agent ready',
       activeSessionId: 'other',
@@ -106,7 +108,7 @@ void main() {
           AppSession(sessionId: 's1', workspaceId: 'w1', createdAt: 0),
         ],
         openTabSessionIds: const {'s1'},
-        emptySessionTitle: 'New Chat',
+        l10n: lookupAppLocalizations(const Locale('en')),
         notificationSubtitle: 'Ready for your next message',
         notificationBadge: 'Agent ready',
         activeSessionId: 's1',
@@ -147,7 +149,7 @@ void main() {
           ),
         ],
         openTabSessionIds: const {'s1'},
-        emptySessionTitle: 'New Chat',
+        l10n: lookupAppLocalizations(const Locale('en')),
         notificationSubtitle: 'Ready for your next message',
         notificationBadge: 'Agent ready',
         activeSessionId: 'other',
@@ -189,7 +191,7 @@ void main() {
           ),
         ],
         openTabSessionIds: const {'s1'},
-        emptySessionTitle: 'New Chat',
+        l10n: lookupAppLocalizations(const Locale('en')),
         notificationSubtitle: 'Ready for your next message',
         notificationBadge: 'Agent ready',
         systemNotificationEnabled: false,
@@ -215,7 +217,7 @@ void main() {
       sessionIds: {'gone'},
       sessions: const [],
       openTabSessionIds: const {'gone'},
-      emptySessionTitle: 'New Chat',
+      l10n: lookupAppLocalizations(const Locale('en')),
       notificationSubtitle: 'Ready',
       notificationBadge: 'Agent ready',
     );
@@ -253,7 +255,7 @@ void main() {
           ),
         ],
         openTabSessionIds: const {},
-        emptySessionTitle: 'New Chat',
+        l10n: lookupAppLocalizations(const Locale('en')),
         notificationSubtitle: 'Ready for your next message',
         notificationBadge: 'Agent ready',
         activeSessionId: 'other',

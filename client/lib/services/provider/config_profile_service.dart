@@ -891,6 +891,7 @@ class ConfigProfileService implements ConfigProfileDelegate {
     Map<String, String>? resourceEnvironment,
     String workingDirectory = '',
     Iterable<String> additionalDirectories = const [],
+    ResourceProviderSet injectedResourceProviders = ResourceProviderSet.empty,
   }) async {
     final trimmedWorkspaceId = workspaceId.trim();
     final trimmedSessionId = sessionId.trim();
@@ -1032,8 +1033,8 @@ class ConfigProfileService implements ConfigProfileDelegate {
           layout: layout,
           configDir: configDir,
           resourceProviders: ResourceProviderSet(
-            prompts: providers.prompts,
-            skills: providers.skills,
+            prompts: [...providers.prompts, ...injectedResourceProviders.prompts],
+            skills: [...providers.skills, ...injectedResourceProviders.skills],
             mcp: mcpProviders.providers.mcp,
             hooks: hookProviders.hooks,
           ),
@@ -1183,6 +1184,7 @@ class ConfigProfileService implements ConfigProfileDelegate {
     Map<String, Map<String, Object?>>? extraMcpServers,
     MemberBusIdleEndpoint? busIdle,
     MemberAgentStatusEndpoint? agentStatus,
+    ResourceProviderSet injectedResourceProviders = ResourceProviderSet.empty,
   }) async {
     final manifestCtx = workPathContextFor(
       readDelegate: readDelegate,
@@ -1234,6 +1236,7 @@ class ConfigProfileService implements ConfigProfileDelegate {
         workingDirectory: workingDirectory,
         additionalDirectories: additionalDirectories,
       ),
+      injectedResourceProviders: injectedResourceProviders,
     );
     appLogger.d(
       '[session-launch] stage-simple apply-fs '
@@ -1277,6 +1280,7 @@ class ConfigProfileService implements ConfigProfileDelegate {
     MemberBusIdleEndpoint? busIdle,
     MemberAgentStatusEndpoint? agentStatus,
     ManifestExecutor? manifestExecutor,
+    ResourceProviderSet injectedResourceProviders = ResourceProviderSet.empty,
   }) async {
     final staged = await stageSimpleSessionLaunch(
       readDelegate: fs,
@@ -1290,6 +1294,7 @@ class ConfigProfileService implements ConfigProfileDelegate {
       extraMcpServers: extraMcpServers,
       busIdle: busIdle,
       agentStatus: agentStatus,
+      injectedResourceProviders: injectedResourceProviders,
     );
     final executor = manifestExecutor ?? const ManifestExecutor();
     await executor.flush(manifest: staged.manifest, targetFs: fs, sourceFs: fs);

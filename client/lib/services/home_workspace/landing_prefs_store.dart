@@ -9,6 +9,7 @@ import '../storage/app_storage.dart';
 class LandingPrefs {
   const LandingPrefs({
     this.isPersonal = true,
+    this.generateLaunch = false,
     this.presetId,
     this.teamId,
     this.projectFolderPath,
@@ -22,6 +23,10 @@ class LandingPrefs {
   });
 
   final bool isPersonal;
+
+  /// True when the landing submit enters the AI team-generation flow.
+  final bool generateLaunch;
+
   final String? presetId;
   final String? teamId;
   final String? projectFolderPath;
@@ -35,6 +40,7 @@ class LandingPrefs {
 
   Map<String, Object?> toJson() => {
     'isPersonal': isPersonal,
+    if (generateLaunch) 'generateLaunch': generateLaunch,
     if (presetId != null && presetId!.isNotEmpty) 'presetId': presetId,
     if (teamId != null && teamId!.isNotEmpty) 'teamId': teamId,
     if (projectFolderPath != null && projectFolderPath!.isNotEmpty)
@@ -75,6 +81,7 @@ class LandingPrefsStore {
         final m = value.cast<String, Object?>();
         out[entry.key] = LandingPrefs(
           isPersonal: m['isPersonal'] as bool? ?? true,
+          generateLaunch: m['generateLaunch'] as bool? ?? false,
           presetId: m['presetId'] as String?,
           teamId: m['teamId'] as String?,
           projectFolderPath: m['projectFolderPath'] as String?,

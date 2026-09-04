@@ -164,15 +164,14 @@ class _GlobalResourceManagerHostState extends State<GlobalResourceManagerHost> {
     if (!mounted) return const [];
     final chat = context.read<ChatCubit>();
     final registry = context.read<WorkspaceTerminalRegistry>();
-    final emptyTitle = context.l10n.defaultNewChatSessionTitle;
+    final l10n = context.l10n;
     final profiles = context.read<LaunchProfileCubit>();
 
     return collectLiveResourceBindingsAllWorkspaces(
       workspaces: chat.state.workspaces,
       allTabs: chat.tabStore.openTabs,
       terminalRegistry: registry,
-      sessionTitle: (tab) =>
-          resourceManagerSessionTitle(tab, emptyFallback: emptyTitle),
+      sessionTitle: (tab) => resourceManagerSessionTitle(tab, l10n: l10n),
       memberName: (tab, memberId) {
         final teamId = tab.persistedSession?.sessionTeam.trim() ?? '';
         TeamProfile? team;

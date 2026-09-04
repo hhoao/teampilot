@@ -17,6 +17,7 @@ import '../../../services/workbench/workbench_editor_opener.dart';
 import '../../../services/workspace/workspace_pane_policy.dart';
 import '../../../utils/debounce/debounce.dart';
 import '../../../utils/session/session_archive_filter.dart';
+import '../../../utils/session/session_display_title.dart';
 import '../../../utils/session/workspace_sessions.dart';
 import '../../../utils/session/workspace_tab_session_scope.dart';
 import '../../../widgets/sidebar_session_tile.dart';
@@ -272,7 +273,7 @@ class _WorkspaceSearchDialogState extends State<WorkspaceSearchDialog> {
     final titleHits = filterSessionsByQuery(
       widget.sessions,
       query: _query,
-      emptyTitleFallback: widget.emptyTitleFallback,
+      l10n: context.l10n,
     );
     final contentById = <String, WorkspaceSessionContentMatch>{};
     for (final match in _contentMatches) {
@@ -480,7 +481,7 @@ class _WorkspaceSearchDialogState extends State<WorkspaceSearchDialog> {
     for (final hit in shown) {
       out.add(
         WorkspaceSearchConversationRow(
-          title: hit.session.resolveDisplayTitle(widget.emptyTitleFallback),
+          title: sessionListDisplayTitle(hit.session, l10n),
           query: _query,
           snippet: hit.snippet,
           source: hit.source,

@@ -141,7 +141,9 @@
   "composePasteClipLines": "{lines} 行",
   "@composePasteClipLines": {
     "placeholders": {
-      "lines": { "type": "int" }
+      "lines": {
+        "type": "int"
+      }
     }
   },
   "composePasteClipEdit": "编辑已粘贴文本",
@@ -149,7 +151,9 @@
   "composePasteEditorTitle": "编辑已粘贴文本 · {lines} 行",
   "@composePasteEditorTitle": {
     "placeholders": {
-      "lines": { "type": "int" }
+      "lines": {
+        "type": "int"
+      }
     }
   },
   "composePasteEditorDone": "完成",
@@ -498,32 +502,48 @@
   "workspaceSkillsAssignedCount": "已为本工作区启用 {assigned}/{total}",
   "@workspaceSkillsAssignedCount": {
     "placeholders": {
-      "assigned": {"type": "int"},
-      "total": {"type": "int"}
+      "assigned": {
+        "type": "int"
+      },
+      "total": {
+        "type": "int"
+      }
     }
   },
   "workspaceSkillsManage": "管理 Skills",
   "workspaceHooksAssignedCount": "已为本工作区启用 {assigned}/{total}",
   "@workspaceHooksAssignedCount": {
     "placeholders": {
-      "assigned": {"type": "int"},
-      "total": {"type": "int"}
+      "assigned": {
+        "type": "int"
+      },
+      "total": {
+        "type": "int"
+      }
     }
   },
   "workspaceHooksManage": "管理 Hooks",
   "workspaceMcpAssignedCount": "已为本工作区启用 {assigned}/{total}",
   "@workspaceMcpAssignedCount": {
     "placeholders": {
-      "assigned": {"type": "int"},
-      "total": {"type": "int"}
+      "assigned": {
+        "type": "int"
+      },
+      "total": {
+        "type": "int"
+      }
     }
   },
   "workspaceMcpManage": "管理 MCP",
   "workspacePluginsAssignedCount": "已为本工作区选用 {assigned}/{total}",
   "@workspacePluginsAssignedCount": {
     "placeholders": {
-      "assigned": {"type": "int"},
-      "total": {"type": "int"}
+      "assigned": {
+        "type": "int"
+      },
+      "total": {
+        "type": "int"
+      }
     }
   },
   "workspacePluginsManage": "管理插件",
@@ -669,7 +689,9 @@
   "askUserQuestionBubbleAsked": "已询问 {count} 个问题",
   "@askUserQuestionBubbleAsked": {
     "placeholders": {
-      "count": { "type": "int" }
+      "count": {
+        "type": "int"
+      }
     }
   },
   "askUserQuestionBubbleUnanswered": "未回答",
@@ -686,7 +708,9 @@
   "agentAskQuestionTabFallback": "问题{index}",
   "@agentAskQuestionTabFallback": {
     "placeholders": {
-      "index": { "type": "int" }
+      "index": {
+        "type": "int"
+      }
     }
   },
   "opencodePermissionTitle": "OpenCode 需要你的授权",
@@ -836,8 +860,12 @@
   "landingLaunchRemoteCliMissingDetail": "{host} 上缺少 {cli}",
   "@landingLaunchRemoteCliMissingDetail": {
     "placeholders": {
-      "cli": { "type": "String" },
-      "host": { "type": "String" }
+      "cli": {
+        "type": "String"
+      },
+      "host": {
+        "type": "String"
+      }
     }
   },
   "remoteCliMachineReadinessTitle": "此机器上需要的 CLI",
@@ -845,21 +873,31 @@
   "remoteCliMachineReadinessReady": "{cli} 已就绪：{path}",
   "@remoteCliMachineReadinessReady": {
     "placeholders": {
-      "cli": { "type": "String" },
-      "path": { "type": "String" }
+      "cli": {
+        "type": "String"
+      },
+      "path": {
+        "type": "String"
+      }
     }
   },
   "remoteCliMachineReadinessMissing": "未找到 {cli} — 请安装或设置手动路径",
   "@remoteCliMachineReadinessMissing": {
     "placeholders": {
-      "cli": { "type": "String" }
+      "cli": {
+        "type": "String"
+      }
     }
   },
   "remoteCliMachineReadinessFailed": "{cli}：{message}",
   "@remoteCliMachineReadinessFailed": {
     "placeholders": {
-      "cli": { "type": "String" },
-      "message": { "type": "String" }
+      "cli": {
+        "type": "String"
+      },
+      "message": {
+        "type": "String"
+      }
     }
   },
   "remoteCliMachineReadinessInstallHint": "对每个缺失的 CLI 点击安装，或在目标设置中指定手动路径。",
@@ -958,7 +996,9 @@
   "sshHostsPillCount": "{count} 台主机",
   "@sshHostsPillCount": {
     "placeholders": {
-      "count": { "type": "int" }
+      "count": {
+        "type": "int"
+      }
     }
   },
   "sshHostsPillConnecting": "连接中…",
@@ -976,21 +1016,57 @@
   "sshProfileTestFailedHostKey": "主机密钥未获信任",
   "sshProfileTestFailedAuth": "身份验证失败",
   "sshProfileTestFailedAborted": "登录前连接已断开：{detail}",
-  "@sshProfileTestFailedAborted": { "placeholders": { "detail": { "type": "String" } } },
+  "@sshProfileTestFailedAborted": {
+    "placeholders": {
+      "detail": {
+        "type": "String"
+      }
+    }
+  },
   "sshProfileTestFailedDetail": "连接测试失败：{detail}",
-  "@sshProfileTestFailedDetail": { "placeholders": { "detail": { "type": "String" } } },
+  "@sshProfileTestFailedDetail": {
+    "placeholders": {
+      "detail": {
+        "type": "String"
+      }
+    }
+  },
   "sshProfileConnectSuccess": "已连接到 {host}",
-  "@sshProfileConnectSuccess": { "placeholders": { "host": { "type": "String" } } },
+  "@sshProfileConnectSuccess": {
+    "placeholders": {
+      "host": {
+        "type": "String"
+      }
+    }
+  },
   "sshHostKeyUnknownTitle": "验证 SSH 主机密钥",
   "sshHostKeyUnknownBody": "TeamPilot 尚未见过 {host}。请确认指纹与该机器一致后再信任。",
-  "@sshHostKeyUnknownBody": { "placeholders": { "host": { "type": "String" } } },
+  "@sshHostKeyUnknownBody": {
+    "placeholders": {
+      "host": {
+        "type": "String"
+      }
+    }
+  },
   "sshHostKeyMismatchTitle": "SSH 主机密钥已变更",
   "sshHostKeyMismatchBody": "{host} 的主机密钥与 TeamPilot 先前保存的不一致。可能是系统重装，也可能是连接被劫持。",
-  "@sshHostKeyMismatchBody": { "placeholders": { "host": { "type": "String" } } },
+  "@sshHostKeyMismatchBody": {
+    "placeholders": {
+      "host": {
+        "type": "String"
+      }
+    }
+  },
   "sshHostKeyFingerprintLabel": "指纹",
   "sshHostKeyPreviousFingerprintLabel": "先前信任的指纹",
   "sshHostKeyKeyTypeLabel": "密钥类型：{keyType}",
-  "@sshHostKeyKeyTypeLabel": { "placeholders": { "keyType": { "type": "String" } } },
+  "@sshHostKeyKeyTypeLabel": {
+    "placeholders": {
+      "keyType": {
+        "type": "String"
+      }
+    }
+  },
   "sshHostKeyTrust": "信任并继续",
   "sshHostKeyReplaceTrust": "替换并信任",
   "sshProfileFormTitleNew": "新的 SSH 目标",
@@ -1030,13 +1106,21 @@
   "cliExecutablePathLocate": "定位",
   "cliExecutablePathLocateFailed": "未能在 PATH 上找到 {name}。",
   "@cliExecutablePathLocateFailed": {
-    "placeholders": { "name": { "type": "String" } }
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
   },
   "cliExecutablePathLocateSuccess": "已定位 {name}：{path}。",
   "@cliExecutablePathLocateSuccess": {
     "placeholders": {
-      "name": { "type": "String" },
-      "path": { "type": "String" }
+      "name": {
+        "type": "String"
+      },
+      "path": {
+        "type": "String"
+      }
     }
   },
   "cliExecutablePathLocateRemoteUnsupported": "远程工作面不支持定位此工具。",
@@ -1053,23 +1137,47 @@
   "sessionRemoteProvisionPreparingOnHost": "正在准备远程环境（{host}）",
   "@sessionRemoteProvisionPreparingOnHost": {
     "placeholders": {
-      "host": { "type": "String" }
+      "host": {
+        "type": "String"
+      }
     }
   },
   "sessionRemoteProvisionTitle": "正在准备 {member}（{host}）",
   "@sessionRemoteProvisionTitle": {
     "placeholders": {
-      "member": { "type": "String" },
-      "host": { "type": "String" }
+      "member": {
+        "type": "String"
+      },
+      "host": {
+        "type": "String"
+      }
     }
   },
   "sessionRemoteProvisionFailed": "远程准备失败",
   "cliExecutablePathLabelFor": "{cli} CLI 路径",
-  "@cliExecutablePathLabelFor": { "placeholders": { "cli": { "type": "String" } } },
+  "@cliExecutablePathLabelFor": {
+    "placeholders": {
+      "cli": {
+        "type": "String"
+      }
+    }
+  },
   "cliExecutablePathDescriptionFor": "{cli} 可执行文件的绝对路径。留空则使用 PATH 中查找到的版本。",
-  "@cliExecutablePathDescriptionFor": { "placeholders": { "cli": { "type": "String" } } },
+  "@cliExecutablePathDescriptionFor": {
+    "placeholders": {
+      "cli": {
+        "type": "String"
+      }
+    }
+  },
   "cliExecutablePathDescriptionSshFor": "远程 SSH 主机上 {cli} 的绝对路径。留空则通过 SSH 自动探测。",
-  "@cliExecutablePathDescriptionSshFor": { "placeholders": { "cli": { "type": "String" } } },
+  "@cliExecutablePathDescriptionSshFor": {
+    "placeholders": {
+      "cli": {
+        "type": "String"
+      }
+    }
+  },
   "claudeCliExecutablePathLabel": "Claude Code CLI 路径",
   "claudeCliExecutablePathDescription": "Claude Code 可执行文件的绝对路径。留空则使用 PATH 中查找到的版本。",
   "claudeCliExecutablePathDescriptionSsh": "远程 SSH 主机上 Claude Code 的绝对路径。留空则从远端 PATH 解析 claude。",
@@ -1235,7 +1343,11 @@
   "terminalLinkClickOpensInAppDescription": "左键点击链接和文件路径时在 TeamPilot 内打开，而不是交给正在运行的程序。Ctrl/Cmd+点击始终在应用内打开。",
   "terminalParkedSendPending": "已发送，等待接收：{content}",
   "@terminalParkedSendPending": {
-    "placeholders": { "content": { "type": "String" } }
+    "placeholders": {
+      "content": {
+        "type": "String"
+      }
+    }
   },
   "terminalParkedSendDismiss": "关闭",
   "mailbox": "信箱",
@@ -1271,20 +1383,32 @@
   "notifyOnSessionIdleDescription": "会话结束一轮工作并进入空闲时，除应用内通知中心外，同时发送操作系统通知。",
   "memberTargetAssignmentTitle": "成员所在机器",
   "memberTargetAssignmentSubtitle": "{member} 运行所在的机器（其分配的工作区目录）。",
-  "@memberTargetAssignmentSubtitle": { "placeholders": { "member": {} } },
+  "@memberTargetAssignmentSubtitle": {
+    "placeholders": {
+      "member": {}
+    }
+  },
   "memberTargetAssignmentInherit": "继承工作区目录",
   "memberAssignFoldersAction": "分配目录…",
   "credentialPushOptInTitle": "把凭证推送到此机器",
   "credentialPushOptInSubtitle": "供远程成员认证使用。",
   "credentialPushConfirmTitle": "确认把凭证推送到远程主机？",
   "credentialPushConfirmBody": "provider 密钥将写入远程主机 {host}。请仅对你信任的机器开启。轮换密钥后需重推到每台已开启的机器。",
-  "@credentialPushConfirmBody": { "placeholders": { "host": {} } },
+  "@credentialPushConfirmBody": {
+    "placeholders": {
+      "host": {}
+    }
+  },
   "credentialPushConfirmAction": "推送凭证",
   "rootSandboxEnvOptInTitle": "为 root 注入 IS_SANDBOX",
   "rootSandboxEnvOptInSubtitle": "root 启动 Claude 时保留 skip-permissions。",
   "rootSandboxEnvConfirmTitle": "确认为 root 启用 sandbox 环境变量？",
   "rootSandboxEnvConfirmBody": "在 {host} 上以 root 启动 Claude 时，TeamPilot 将设置 IS_SANDBOX=1 并保留 --dangerously-skip-permissions。请仅对你信任的机器开启。",
-  "@rootSandboxEnvConfirmBody": { "placeholders": { "host": {} } },
+  "@rootSandboxEnvConfirmBody": {
+    "placeholders": {
+      "host": {}
+    }
+  },
   "rootSandboxEnvConfirmAction": "启用",
   "workspaceTargetTitle": "工作区所在机器",
   "workspaceTargetSubtitle": "该工作区的目录所在并运行的机器。会话在此 target 上启动；切换不会移动文件。",
@@ -1310,14 +1434,20 @@
   "mixedWorkspaceMemberPlacementProgress": "已分配 {placed} / {total}",
   "@mixedWorkspaceMemberPlacementProgress": {
     "placeholders": {
-      "placed": { "type": "int" },
-      "total": { "type": "int" }
+      "placed": {
+        "type": "int"
+      },
+      "total": {
+        "type": "int"
+      }
     }
   },
   "mixedWorkspaceMemberPlacementOnMachine": "本机 {count} 个",
   "@mixedWorkspaceMemberPlacementOnMachine": {
     "placeholders": {
-      "count": { "type": "int" }
+      "count": {
+        "type": "int"
+      }
     }
   },
   "workspaceFolderTargetLabel": "所在机器",
@@ -1451,28 +1581,42 @@
   "providerCredentialsFailureSourceMissing": "未找到凭据文件：{path}",
   "@providerCredentialsFailureSourceMissing": {
     "placeholders": {
-      "path": { "type": "String" }
+      "path": {
+        "type": "String"
+      }
     }
   },
   "providerCredentialsFailureSourceUnreadable": "无法读取凭据文件：{path}",
   "@providerCredentialsFailureSourceUnreadable": {
     "placeholders": {
-      "path": { "type": "String" }
+      "path": {
+        "type": "String"
+      }
     }
   },
   "providerCredentialsFailureProviderEntryMissing": "在 {path} 中未找到 \"{providerId}\" 的凭据",
   "@providerCredentialsFailureProviderEntryMissing": {
     "placeholders": {
-      "providerId": { "type": "String" },
-      "path": { "type": "String" }
+      "providerId": {
+        "type": "String"
+      },
+      "path": {
+        "type": "String"
+      }
     }
   },
   "providerCredentialsFailureProviderEntryMissingWithKeys": "在 {path} 中未找到 \"{providerId}\" 的凭据。已有：{keys}",
   "@providerCredentialsFailureProviderEntryMissingWithKeys": {
     "placeholders": {
-      "providerId": { "type": "String" },
-      "path": { "type": "String" },
-      "keys": { "type": "String" }
+      "providerId": {
+        "type": "String"
+      },
+      "path": {
+        "type": "String"
+      },
+      "keys": {
+        "type": "String"
+      }
     }
   },
   "providerCredentialsFailureInvalidCredential": "凭据格式无效或不完整",
@@ -1480,19 +1624,25 @@
   "providerCredentialsFailureRequiredFileMissing": "缺少必需文件：{path}",
   "@providerCredentialsFailureRequiredFileMissing": {
     "placeholders": {
-      "path": { "type": "String" }
+      "path": {
+        "type": "String"
+      }
     }
   },
   "providerCredentialsFailureLoginFailed": "登录失败（退出码 {exitCode}）",
   "@providerCredentialsFailureLoginFailed": {
     "placeholders": {
-      "exitCode": { "type": "int" }
+      "exitCode": {
+        "type": "int"
+      }
     }
   },
   "providerCredentialsFailureLoginProcessError": "无法运行登录命令：{detail}",
   "@providerCredentialsFailureLoginProcessError": {
     "placeholders": {
-      "detail": { "type": "String" }
+      "detail": {
+        "type": "String"
+      }
     }
   },
   "providerCredentialsFailureRevokeFailed": "无法退出登录或删除凭据",
@@ -1503,7 +1653,9 @@
   "teamConfigIncompleteBody": "团队“{team}”缺少启动所需的配置。会话仍会启动，但缺少这些配置时智能体可能无法正常工作：",
   "@teamConfigIncompleteBody": {
     "placeholders": {
-      "team": { "type": "String" }
+      "team": {
+        "type": "String"
+      }
     }
   },
   "teamConfigIncompleteGoConfigure": "前往配置",
@@ -1517,8 +1669,12 @@
   "teamConfigIssueSemanticLabel": "{subject}缺少：{aspects}",
   "@teamConfigIssueSemanticLabel": {
     "placeholders": {
-      "subject": { "type": "String" },
-      "aspects": { "type": "String" }
+      "subject": {
+        "type": "String"
+      },
+      "aspects": {
+        "type": "String"
+      }
     }
   },
   "noModelsUsingProvider": "没有模型使用此提供商。",
@@ -1618,13 +1774,17 @@
   "skillsCardStars": "{count} 星",
   "@skillsCardStars": {
     "placeholders": {
-      "count": {"type": "int"}
+      "count": {
+        "type": "int"
+      }
     }
   },
   "skillsCardUpdatedAt": "更新于 {date}",
   "@skillsCardUpdatedAt": {
     "placeholders": {
-      "date": {"type": "String"}
+      "date": {
+        "type": "String"
+      }
     }
   },
   "skillsSearchPlaceholder": "搜索 Skill…",
@@ -1756,8 +1916,12 @@
   "teamHooksAssignedCount": "已启用 {assigned}/{total}",
   "@teamHooksAssignedCount": {
     "placeholders": {
-      "assigned": {"type": "int"},
-      "total": {"type": "int"}
+      "assigned": {
+        "type": "int"
+      },
+      "total": {
+        "type": "int"
+      }
     }
   },
   "teamHooksManage": "管理 Hooks",
@@ -1889,7 +2053,9 @@
   "expertEditorNonPortableSkipped": "已跳过 {count} 个没有可移植来源的本地项。",
   "@expertEditorNonPortableSkipped": {
     "placeholders": {
-      "count": {"type": "int"}
+      "count": {
+        "type": "int"
+      }
     }
   },
   "expertEditorOrphanDeps": "已挂载（本机未安装）",
@@ -1910,21 +2076,39 @@
   "@teamHubCloneSuccessWithDeps": {
     "placeholders": {
       "name": {},
-      "skillCount": {"type": "int"},
-      "pluginCount": {"type": "int"},
-      "mcpCount": {"type": "int"},
-      "expertCount": {"type": "int"}
+      "skillCount": {
+        "type": "int"
+      },
+      "pluginCount": {
+        "type": "int"
+      },
+      "mcpCount": {
+        "type": "int"
+      },
+      "expertCount": {
+        "type": "int"
+      }
     }
   },
   "teamHubClonePartial": "已克隆「{name}」。已安装 {skillCount} 个 Skill、{pluginCount} 个插件、{mcpCount} 个 MCP 服务,克隆了 {expertCount} 个专家;{failedCount} 个未能安装:{failedNames}。",
   "@teamHubClonePartial": {
     "placeholders": {
       "name": {},
-      "skillCount": {"type": "int"},
-      "pluginCount": {"type": "int"},
-      "mcpCount": {"type": "int"},
-      "expertCount": {"type": "int"},
-      "failedCount": {"type": "int"},
+      "skillCount": {
+        "type": "int"
+      },
+      "pluginCount": {
+        "type": "int"
+      },
+      "mcpCount": {
+        "type": "int"
+      },
+      "expertCount": {
+        "type": "int"
+      },
+      "failedCount": {
+        "type": "int"
+      },
       "failedNames": {}
     }
   },
@@ -1975,20 +2159,30 @@
   "expertHubPlaybook": "工作手册",
   "expertHubCapabilities": "能力",
   "expertHubAddSuccess": "已将「{name}」添加到团队。",
-  "@expertHubAddSuccess": { "placeholders": { "name": {} } },
+  "@expertHubAddSuccess": {
+    "placeholders": {
+      "name": {}
+    }
+  },
   "expertHubAddSuccessWithSkills": "已添加「{name}」。安装了 {skillCount} 个技能。",
   "@expertHubAddSuccessWithSkills": {
     "placeholders": {
       "name": {},
-      "skillCount": {"type": "int"}
+      "skillCount": {
+        "type": "int"
+      }
     }
   },
   "expertHubAddPartial": "已添加「{name}」。安装了 {skillCount} 个技能。{failedCount} 个无法安装：{failedNames}。",
   "@expertHubAddPartial": {
     "placeholders": {
       "name": {},
-      "skillCount": {"type": "int"},
-      "failedCount": {"type": "int"},
+      "skillCount": {
+        "type": "int"
+      },
+      "failedCount": {
+        "type": "int"
+      },
       "failedNames": {}
     }
   },
@@ -2002,7 +2196,9 @@
   "@expertHubPreflightPartial": {
     "placeholders": {
       "name": {},
-      "failedCount": {"type": "int"},
+      "failedCount": {
+        "type": "int"
+      },
       "failedNames": {}
     }
   },
@@ -2013,8 +2209,12 @@
   "teamMcpAssignedCount": "已启用 {assigned}/{total}",
   "@teamMcpAssignedCount": {
     "placeholders": {
-      "assigned": {"type": "int"},
-      "total": {"type": "int"}
+      "assigned": {
+        "type": "int"
+      },
+      "total": {
+        "type": "int"
+      }
     }
   },
   "teamMcpManage": "管理 MCP",
@@ -2048,7 +2248,9 @@
   "hookImportDone": "导入 {count} 条",
   "@hookImportDone": {
     "placeholders": {
-      "count": {"type": "int"}
+      "count": {
+        "type": "int"
+      }
     }
   },
   "hookImportDoneToast": "已导入 hooks",
@@ -2058,7 +2260,9 @@
   "hookInstalledCount": "已安装 {count}",
   "@hookInstalledCount": {
     "placeholders": {
-      "count": {"type": "int"}
+      "count": {
+        "type": "int"
+      }
     }
   },
   "mcpNavRegistries": "注册中心",
@@ -2066,7 +2270,9 @@
   "mcpInstalledCount": "已安装 {count}",
   "@mcpInstalledCount": {
     "placeholders": {
-      "count": {"type": "int"}
+      "count": {
+        "type": "int"
+      }
     }
   },
   "mcpNoInstalled": "还没有安装 MCP 服务器",
@@ -2083,7 +2289,9 @@
   "mcpRegistryResetConfirm": "将「{name}」恢复为默认 API 地址？",
   "@mcpRegistryResetConfirm": {
     "placeholders": {
-      "name": {"type": "String"}
+      "name": {
+        "type": "String"
+      }
     }
   },
   "mcpRepoApiUrlLabel": "API 基础地址",
@@ -2094,7 +2302,9 @@
   "mcpRepoTestFailed": "连接失败：{error}",
   "@mcpRepoTestFailed": {
     "placeholders": {
-      "error": {"type": "String"}
+      "error": {
+        "type": "String"
+      }
     }
   },
   "mcpRepoDisabledHint": "该目录源已禁用，请在「仓库」中启用。",
@@ -2124,8 +2334,12 @@
   "mcpImportSummary": "新增 {added} 个，冲突 {conflicts} 个",
   "@mcpImportSummary": {
     "placeholders": {
-      "added": {"type": "int"},
-      "conflicts": {"type": "int"}
+      "added": {
+        "type": "int"
+      },
+      "conflicts": {
+        "type": "int"
+      }
     }
   },
   "mcpImportOverwrite": "覆盖冲突项",
@@ -2141,13 +2355,17 @@
   "mcpConfiguredCount": "已配置 {count} 个 MCP 服务器",
   "@mcpConfiguredCount": {
     "placeholders": {
-      "count": {"type": "int"}
+      "count": {
+        "type": "int"
+      }
     }
   },
   "mcpOAuthConnectTitle": "连接 {name}",
   "@mcpOAuthConnectTitle": {
     "placeholders": {
-      "name": {"type": "String"}
+      "name": {
+        "type": "String"
+      }
     }
   },
   "mcpOAuthConnectHint": "在浏览器中完成 MCP 提供商登录。令牌按 Claude Code 格式写入应用配置目录（等同终端 /mcp → Authenticate）。",
@@ -2371,8 +2589,12 @@
   "onboardingProgress": "第 {current} / {total} 步",
   "@onboardingProgress": {
     "placeholders": {
-      "current": { "type": "int" },
-      "total": { "type": "int" }
+      "current": {
+        "type": "int"
+      },
+      "total": {
+        "type": "int"
+      }
     }
   },
   "onboardingSkip": "跳过",
@@ -2455,8 +2677,12 @@
   "diffChangeCounter": "{current} / {total}",
   "@diffChangeCounter": {
     "placeholders": {
-      "current": { "type": "int" },
-      "total": { "type": "int" }
+      "current": {
+        "type": "int"
+      },
+      "total": {
+        "type": "int"
+      }
     }
   },
   "diffApplyHunkTooltip": "应用到工作区",
@@ -2519,7 +2745,9 @@
   "progressActivitiesMany": "{count, plural, other{{count} 个活动进行中}}",
   "@progressActivitiesMany": {
     "placeholders": {
-      "count": { "type": "int" }
+      "count": {
+        "type": "int"
+      }
     }
   },
   "progressActivitiesPanelTitle": "进行中的活动",
@@ -2533,19 +2761,25 @@
   "notificationTimeMinutesAgo": "{minutes} 分钟",
   "@notificationTimeMinutesAgo": {
     "placeholders": {
-      "minutes": { "type": "int" }
+      "minutes": {
+        "type": "int"
+      }
     }
   },
   "notificationTimeHoursAgo": "{hours} 小时",
   "@notificationTimeHoursAgo": {
     "placeholders": {
-      "hours": { "type": "int" }
+      "hours": {
+        "type": "int"
+      }
     }
   },
   "notificationTimeDaysAgo": "{days} 天",
   "@notificationTimeDaysAgo": {
     "placeholders": {
-      "days": { "type": "int" }
+      "days": {
+        "type": "int"
+      }
     }
   },
   "memberDetailTitle": "成员详情",
@@ -2567,7 +2801,9 @@
   "memberDetailOpenConfigDirFailedOnHost": "无法在 {host} 上打开配置目录，远程主机可能没有桌面文件管理器。",
   "@memberDetailOpenConfigDirFailedOnHost": {
     "placeholders": {
-      "host": { "type": "String" }
+      "host": {
+        "type": "String"
+      }
     }
   },
   "memberDetailSectionEmpty": "无",
@@ -2729,7 +2965,6 @@
   "automationsPermissionsAutoApproveWorkspaceWrite": "自动批准 · 工作区写入 · 仅信任钩子",
   "automationsPermissionsCustom": "自定义安全策略",
   "automationsLaunchProfile": "启动身份",
-
   "shortcutsWorkspaceNextTab": "下一个工作区标签",
   "shortcutsWorkspacePrevTab": "上一个工作区标签",
   "shortcutsWorkspaceCloseTab": "关闭工作区标签",
@@ -2744,13 +2979,17 @@
   "shortcutsStripFocusTab": "切换到第 {n} 个标签",
   "@shortcutsStripFocusTab": {
     "placeholders": {
-      "n": { "type": "int" }
+      "n": {
+        "type": "int"
+      }
     }
   },
   "shortcutsWorkspaceFocusTab": "切换到第 {n} 个工作区",
   "@shortcutsWorkspaceFocusTab": {
     "placeholders": {
-      "n": { "type": "int" }
+      "n": {
+        "type": "int"
+      }
     }
   },
   "shortcutsToggleSidebar": "切换侧边栏",
@@ -2767,14 +3006,12 @@
   "shortcutsComposeSubmit": "发送消息",
   "shortcutsComposeNewline": "插入换行",
   "shortcutsShowCheatsheet": "显示键盘快捷键",
-
   "shortcutsCategoryNavigation": "导航",
   "shortcutsCategoryTabs": "标签",
   "shortcutsCategoryView": "视图",
   "shortcutsCategoryZoom": "缩放",
   "shortcutsCategoryCompose": "输入框",
   "shortcutsCategoryMeta": "通用",
-
   "shortcutsSettingsTitle": "键盘快捷键",
   "shortcutsPageSubtitle": "查看并自定义导航、标签、缩放和输入框的键盘快捷键。",
   "shortcutsSearchHint": "搜索快捷键",
@@ -2802,7 +3039,6 @@
   "shortcutsConflictMessage": "已被“{title}”使用。",
   "shortcutsReplaceAction": "替换",
   "shortcutsConflictBadgeTooltip": "与另一个快捷键冲突",
-
   "runAction": "运行",
   "runStop": "停止",
   "runRestart": "重新运行",
@@ -2817,13 +3053,17 @@
   "runCompoundConfiguration": "{name}（组合）",
   "@runCompoundConfiguration": {
     "placeholders": {
-      "name": { "type": "String" }
+      "name": {
+        "type": "String"
+      }
     }
   },
   "runSuggestedConfiguration": "{name}（建议）",
   "@runSuggestedConfiguration": {
     "placeholders": {
-      "name": { "type": "String" }
+      "name": {
+        "type": "String"
+      }
     }
   },
   "runAcceptRecommendation": "将建议配置添加到 launch.json",
@@ -2836,7 +3076,9 @@
   "runStopSessionMessage": "“{name}”仍在运行。停止并关闭此标签页？",
   "@runStopSessionMessage": {
     "placeholders": {
-      "name": { "type": "String" }
+      "name": {
+        "type": "String"
+      }
     }
   },
   "runStopAndClose": "停止并关闭",
@@ -2847,19 +3089,25 @@
   "runTypeUnknown": "未知启动类型：{type}",
   "@runTypeUnknown": {
     "placeholders": {
-      "type": { "type": "String" }
+      "type": {
+        "type": "String"
+      }
     }
   },
   "runTypeUnavailable": "启动类型“{type}”在此目标上不可用",
   "@runTypeUnavailable": {
     "placeholders": {
-      "type": { "type": "String" }
+      "type": {
+        "type": "String"
+      }
     }
   },
   "runTypeUnavailableRemote": "启动类型“{type}”在远程目标上不可用",
   "@runTypeUnavailableRemote": {
     "placeholders": {
-      "type": { "type": "String" }
+      "type": {
+        "type": "String"
+      }
     }
   },
   "runErrorNoConfiguration": "未选择配置",
@@ -2874,7 +3122,9 @@
   "runDeleteConfigurationConfirm": "删除配置“{name}”？",
   "@runDeleteConfigurationConfirm": {
     "placeholders": {
-      "name": { "type": "String" }
+      "name": {
+        "type": "String"
+      }
     }
   },
   "runStopAndDelete": "停止并删除",
@@ -2920,18 +3170,18 @@
   "runValidationAllowMultipleInstancesMustBeBoolean": "允许运行多个实例必须是布尔值",
   "runValidationActivateToolWindowMustBeBoolean": "激活工具窗口必须是布尔值",
   "runValidationFocusToolWindowMustBeBoolean": "聚焦工具窗口必须是布尔值",
-
   "shortcutsRunSelected": "运行所选配置",
   "shortcutsRunStop": "停止运行",
   "shortcutsRunRestart": "重新运行",
   "shortcutsCategoryRun": "运行",
-
   "resourceManagerTitle": "资源管理器",
   "resourceManagerPanelTitle": "资源管理器 - 会话",
   "resourceManagerTooltip": "资源管理器 - {count} 个运行中会话",
   "@resourceManagerTooltip": {
     "placeholders": {
-      "count": { "type": "int" }
+      "count": {
+        "type": "int"
+      }
     }
   },
   "resourceManagerTooltipHint": "跨所有工作区的运行中会话。",
@@ -2949,20 +3199,23 @@
   "resourceManagerSystemMemoryPercent": "系统内存 {percent}%",
   "@resourceManagerSystemMemoryPercent": {
     "placeholders": {
-      "percent": { "type": "String" }
+      "percent": {
+        "type": "String"
+      }
     }
   },
   "resourceManagerTerminalsCount": "{count} 个运行中会话",
   "@resourceManagerTerminalsCount": {
     "placeholders": {
-      "count": { "type": "int" }
+      "count": {
+        "type": "int"
+      }
     }
   },
   "resourceManagerEmptyTree": "当前没有运行中的会话。",
   "resourceManagerAppProcess": "应用",
   "resourceManagerMetricsError": "无法刷新进程指标。",
   "resourceManagerKillFailed": "无法结束会话。",
-
   "floatingWorkspaceNewTerminal": "新 Terminal",
   "floatingWorkspaceOpenFile": "打开文件",
   "floatingWorkspaceMinimize": "最小化",
@@ -2970,12 +3223,10 @@
   "floatingWorkspaceCloseTab": "关闭标签",
   "floatingWorkspaceAddTooltip": "在浮动工作区打开",
   "floatingWorkspaceToggleTooltip": "浮动工作区",
-
   "filePreviewHostTitle": "文件预览位置",
   "filePreviewHostDescription": "在浮动工作区或中间工作台打开文件。",
   "filePreviewHostFloating": "浮动",
   "filePreviewHostCenter": "中间",
-
   "termuxSetupTitle": "Termux 设置",
   "termuxSetupIntro": "安装 Termux，粘贴一条配置脚本，然后连接 TeamPilot 的本地 SSH 服务。",
   "termuxSetupStepInstallTermux": "1. 安装 Termux",
@@ -3000,7 +3251,9 @@
   "termuxSetupConnectFailedWithDetail": "无法连接到 Termux：{detail}",
   "@termuxSetupConnectFailedWithDetail": {
     "placeholders": {
-      "detail": { "type": "String" }
+      "detail": {
+        "type": "String"
+      }
     }
   },
   "termuxSetupClearSetup": "清除设置",
@@ -3022,13 +3275,21 @@
   "cliTaskBoardCount": "{completed}/{total}",
   "@cliTaskBoardCount": {
     "placeholders": {
-      "completed": { "type": "int" },
-      "total": { "type": "int" }
+      "completed": {
+        "type": "int"
+      },
+      "total": {
+        "type": "int"
+      }
     }
   },
   "cliTaskBoardMore": "… +{count} 更多",
   "@cliTaskBoardMore": {
-    "placeholders": { "count": { "type": "int" } }
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
   },
   "cliTaskStatusPending": "待处理",
   "cliTaskStatusInProgress": "进行中",
@@ -3073,8 +3334,12 @@
   "catalogSourceWarningEntry": "{source}：{error}",
   "@catalogSourceWarningEntry": {
     "placeholders": {
-      "source": { "type": "String" },
-      "error": { "type": "String" }
+      "source": {
+        "type": "String"
+      },
+      "error": {
+        "type": "String"
+      }
     }
   },
   "catalogSortAccessibilityLabel": "排列目录条目",
@@ -3082,20 +3347,28 @@
   "catalogSourceWarningAccessibilityLabel": "有 {count} 个目录源加载失败",
   "@catalogSourceWarningAccessibilityLabel": {
     "placeholders": {
-      "count": { "type": "int" }
+      "count": {
+        "type": "int"
+      }
     }
   },
   "catalogMissingMetricAccessibilityLabel": "{label}：暂无可用数据",
   "@catalogMissingMetricAccessibilityLabel": {
     "placeholders": {
-      "label": { "type": "String" }
+      "label": {
+        "type": "String"
+      }
     }
   },
   "catalogCardAccessibilityLabel": "{name}，来源：{source}",
   "@catalogCardAccessibilityLabel": {
     "placeholders": {
-      "name": { "type": "String" },
-      "source": { "type": "String" }
+      "name": {
+        "type": "String"
+      },
+      "source": {
+        "type": "String"
+      }
     }
   },
   "retry": "重试",
@@ -3288,7 +3561,13 @@
   "gitGraphHashCopied": "哈希已复制到剪贴板",
   "gitGraphSubjectCopied": "说明已复制到剪贴板",
   "gitGraphCheckoutBranch": "检出 {branch}",
-  "@gitGraphCheckoutBranch": { "placeholders": { "branch": { "type": "String" } } },
+  "@gitGraphCheckoutBranch": {
+    "placeholders": {
+      "branch": {
+        "type": "String"
+      }
+    }
+  },
   "gitGraphViewBranchHistory": "查看此分支历史",
   "gitGraphCreateBranchHere": "在此创建分支",
   "gitGraphCreateTagHere": "在此创建标签",
@@ -3307,33 +3586,93 @@
   "gitGraphTagMessageLabel": "说明（可选）",
   "gitGraphCreate": "创建",
   "gitGraphRevertConfirmBody": "确定回退提交 {hash} 吗？将创建一个撤销该提交的新提交。",
-  "@gitGraphRevertConfirmBody": { "placeholders": { "hash": { "type": "String" } } },
+  "@gitGraphRevertConfirmBody": {
+    "placeholders": {
+      "hash": {
+        "type": "String"
+      }
+    }
+  },
   "gitGraphResetHardConfirmBody": "硬重置会把“{branch}”移动到此提交，并丢弃所有未提交的更改。输入“{branch}”以确认。",
-  "@gitGraphResetHardConfirmBody": { "placeholders": { "branch": { "type": "String" } } },
+  "@gitGraphResetHardConfirmBody": {
+    "placeholders": {
+      "branch": {
+        "type": "String"
+      }
+    }
+  },
   "gitGraphStashPop": "弹出",
   "gitGraphStashApply": "应用",
   "gitGraphStashDrop": "丢弃",
   "gitGraphStashDropConfirmBody": "确定丢弃 {selector} 吗？此操作无法撤销。",
-  "@gitGraphStashDropConfirmBody": { "placeholders": { "selector": { "type": "String" } } },
+  "@gitGraphStashDropConfirmBody": {
+    "placeholders": {
+      "selector": {
+        "type": "String"
+      }
+    }
+  },
   "gitGraphRenameBranch": "重命名分支…",
   "gitGraphRenameBranchTitle": "重命名分支",
   "gitGraphDeleteBranch": "删除分支 {name}",
-  "@gitGraphDeleteBranch": { "placeholders": { "name": { "type": "String" } } },
+  "@gitGraphDeleteBranch": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
   "gitGraphDeleteBranchTitle": "删除分支",
   "gitGraphDeleteBranchConfirmBody": "确定删除分支“{name}”吗？仅能从该分支到达的提交可能变得不可达，此操作无法撤销。",
-  "@gitGraphDeleteBranchConfirmBody": { "placeholders": { "name": { "type": "String" } } },
+  "@gitGraphDeleteBranchConfirmBody": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
   "gitGraphMergeIntoCurrent": "合并 {branch} 到当前分支",
-  "@gitGraphMergeIntoCurrent": { "placeholders": { "branch": { "type": "String" } } },
+  "@gitGraphMergeIntoCurrent": {
+    "placeholders": {
+      "branch": {
+        "type": "String"
+      }
+    }
+  },
   "gitGraphCheckoutCommit": "检出该提交（分离 HEAD）",
   "gitGraphCheckoutCommitConfirmBody": "以分离 HEAD 状态检出 {hash} 吗？",
-  "@gitGraphCheckoutCommitConfirmBody": { "placeholders": { "hash": { "type": "String" } } },
+  "@gitGraphCheckoutCommitConfirmBody": {
+    "placeholders": {
+      "hash": {
+        "type": "String"
+      }
+    }
+  },
   "gitGraphDeleteTag": "删除标签 {name}",
-  "@gitGraphDeleteTag": { "placeholders": { "name": { "type": "String" } } },
+  "@gitGraphDeleteTag": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
   "gitGraphDeleteTagTitle": "删除标签",
   "gitGraphDeleteTagConfirmBody": "确定删除标签“{name}”吗？此操作无法撤销。",
-  "@gitGraphDeleteTagConfirmBody": { "placeholders": { "name": { "type": "String" } } },
+  "@gitGraphDeleteTagConfirmBody": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
   "gitGraphPushTag": "推送标签 {name}",
-  "@gitGraphPushTag": { "placeholders": { "name": { "type": "String" } } },
+  "@gitGraphPushTag": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
   "gitGraphBranchesTags": "分支与标签",
   "gitGraphLocalBranches": "本地分支",
   "gitGraphRemoteBranches": "远程分支",
@@ -3394,5 +3733,65 @@
   "connectPairedDevicesTitle": "已配对设备",
   "connectNoPairedDevices": "尚未配对手机。",
   "connectRevokeDevice": "撤销",
-  "connectError": "无法刷新配对信息，请重试。"
+  "connectError": "无法刷新配对信息，请重试。",
+  "teamGenerateLaunch": "生成并启动",
+  "teamGenerateSettingsTitle": "生成并启动设置",
+  "teamGenerateSettingsSubtitle": "设定团队构建器如何规划阵容，以及可分配的模型配置。",
+  "teamGenerateModelPoolHint": "排名 1 最强。关键角色（如 team-lead）优先用靠前的配置。",
+  "teamGenerateEmptyPool": "还没有配置。请先添加最强的一项。",
+  "teamGeneratePickPreset": "选择预设",
+  "teamGenerateLoading": "正在加载设置…",
+  "teamGenerateGeneratorModel": "生成模型",
+  "teamGenerateTeamMode": "团队模式",
+  "teamGenerateNative": "原生",
+  "teamGenerateMixed": "混合",
+  "teamGenerateNativeCli": "原生 CLI",
+  "teamGenerateModelPool": "模型配置池",
+  "teamGenerateAddModel": "添加模型配置",
+  "teamGenerateHiddenPresets": "{count} 个配置因使用其他 CLI 而隐藏。",
+  "@teamGenerateHiddenPresets": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "teamGenerateMissingPreset": "预设“{presetId}”已不存在。",
+  "@teamGenerateMissingPreset": {
+    "placeholders": {
+      "presetId": {
+        "type": "String"
+      }
+    }
+  },
+  "teamGenerateDescription": "强项与适用场景",
+  "teamGenerateTags": "标签",
+  "teamGenerateMoveUp": "上移",
+  "teamGenerateMoveDown": "下移",
+  "teamGenerateRemove": "移除",
+  "teamGenerateCapabilityNote": "团队构建器将检查工作区机器，并可能为生成的团队获取技能、插件和 MCP 服务器。",
+  "teamGenerateErrorDescriptionRequired": "请先描述需要团队处理的任务。",
+  "teamGenerateErrorAiNotConfigured": "请先配置生成模型。",
+  "teamGenerateErrorPoolEmpty": "请至少添加一个有效的模型配置。",
+  "teamGenerateErrorGeneratorUnsupported": "生成 CLI 必须支持会话、技能和 MCP。",
+  "teamGenerateErrorNativeUnsupported": "所选 CLI 不支持原生团队。",
+  "teamGenerateErrorUnavailable": "团队生成当前不可用。请重启 TeamPilot 后重试。",
+  "teamGenerateErrorStartFailed": "无法启动团队生成。请重试。",
+  "teamGenerateOpenSettings": "打开生成设置",
+  "teamGenerateBuilderTitle": "团队构建器",
+  "teamGenerateCancel": "取消生成",
+  "teamGenerateRetry": "重试",
+  "teamGenerateContinueSetup": "继续配置",
+  "teamGenerateCancelTitle": "取消团队生成？",
+  "teamGenerateCancelBody": "临时会话和暂存资源将被移除。",
+  "teamGenerateErrorTargetUnavailable": "所需机器或 CLI 当前不可用。",
+  "teamGenerateErrorStagingUnsupported": "此资源需要人工安装，无法安全暂存。",
+  "teamGenerateErrorUserActionRequired": "请完成所需的登录或配置，然后重试。",
+  "teamGenerateErrorPromptDeliveryUnknown": "TeamPilot 无法确认负责人是否已收到任务。",
+  "teamGenerateErrorRecoveryIntegrity": "无法验证恢复数据，临时会话已保留。",
+  "teamGenerateOpenLeadSession": "打开负责人会话",
+  "teamGenerateDeliveryArrived": "已收到",
+  "teamGenerateDeliverySendAgain": "再次发送…",
+  "teamGenerateDeliveryRetryTitle": "再次发送任务？",
+  "teamGenerateDeliveryRetryBody": "负责人可能会收到两次任务。"
 }

@@ -64,6 +64,31 @@ void main() {
     );
   });
 
+  test('tracked workflow delivery id reuses one PTY submission', () async {
+    final harness = _DeliveryHarness();
+
+    final first = await harness.delivery.deliverTrackedUserCommandToMember(
+      's',
+      'm',
+      'Build the optimal TeamPilot team',
+      deliveryId: 'teamgen-kickoff-workflow-123',
+    );
+    final repeated = await harness.delivery.deliverTrackedUserCommandToMember(
+      's',
+      'm',
+      'Build the optimal TeamPilot team',
+      deliveryId: 'teamgen-kickoff-workflow-123',
+    );
+
+    expect(first.submitted, isTrue);
+    expect(repeated.submitted, isTrue);
+    expect(repeated.deliveryId, first.deliveryId);
+    expect(
+      (harness.pty! as _RecordingPromptCommands).submittedPrompts,
+      ['Build the optimal TeamPilot team'],
+    );
+  });
+
   test('interrupt invalidates a queued direct prompt before its PTY write',
       () async {
     final commands = _BlockedQueuedPromptCommands();

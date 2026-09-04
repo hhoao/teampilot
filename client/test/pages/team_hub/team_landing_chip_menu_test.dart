@@ -47,5 +47,41 @@ void main() {
           .toList();
       expect(recent, hasLength(kTeamLandingChipRecentLimit));
     });
+
+    test('menu places Generate and launch after a divider and before Browse all',
+        () {
+      final specs = buildTeamLandingChipMenuSpecs(
+        generateLaunchLabel: 'Generate and launch',
+        browseAllLabel: 'Browse all',
+        selectedTeamId: null,
+        generateLaunchSelected: true,
+        recentTeams: const [],
+      );
+      expect(specs.map((s) => s.isDivider ? '|' : s.label).toList(), [
+        '|',
+        'Generate and launch',
+        'Browse all',
+      ]);
+      expect(
+        specs.where((s) => s.value == TeamLandingChipAction.generateLaunch).single.selected,
+        isTrue,
+      );
+    });
+
+    test('recent teams stay ahead of generation and browse-all entries', () {
+      final specs = buildTeamLandingChipMenuSpecs(
+        generateLaunchLabel: 'Generate and launch',
+        browseAllLabel: 'Browse all',
+        selectedTeamId: 't1',
+        generateLaunchSelected: false,
+        recentTeams: const [(id: 't1', name: 'Alpha')],
+      );
+      expect(specs.map((s) => s.isDivider ? '|' : s.label).toList(), [
+        'Alpha',
+        '|',
+        'Generate and launch',
+        'Browse all',
+      ]);
+    });
   });
 }

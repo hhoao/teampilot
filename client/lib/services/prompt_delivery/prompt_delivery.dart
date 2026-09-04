@@ -29,11 +29,17 @@ final class PromptDeliveryRequest {
     required this.seat,
     required this.cli,
     required this.text,
+    this.deliveryId,
   });
 
   final RuntimeSeatKey seat;
   final CliTool cli;
   final String text;
+
+  /// Explicit delivery id for workflow-tracked sends (team-generation
+  /// handoff). When provided, the coordinator returns the existing record
+  /// only if seat/cli/text match exactly; otherwise creates with this ID.
+  final String? deliveryId;
 }
 
 /// A durable snapshot of one prompt-delivery state machine.
@@ -100,3 +106,17 @@ final class PromptDelivery {
 /// the exact user-authored prompt for terminal injection and recovery UI.
 String normalizePromptText(String text) =>
     text.trim().replaceAll(RegExp(r'\s+'), ' ');
+
+/// The tracked PTY boundary's submission report. It preserves the durable
+/// record state while distinguishing an issued CR from an unresolved delivery.
+final class PromptDeliverySubmission {
+  const PromptDeliverySubmission({
+    required this.deliveryId,
+    required this.submitted,
+    required this.state,
+  });
+
+  final String deliveryId;
+  final bool submitted;
+  final String state;
+}

@@ -15595,6 +15595,282 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Connect could not refresh pairing. Try again.'**
   String get connectError;
+
+  /// No description provided for @teamGenerateLaunch.
+  ///
+  /// In en, this message translates to:
+  /// **'Generate and launch'**
+  String get teamGenerateLaunch;
+
+  /// No description provided for @teamGenerateSettingsTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Generate and launch settings'**
+  String get teamGenerateSettingsTitle;
+
+  /// No description provided for @teamGenerateSettingsSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'How Team Builder plans the roster, and which model configurations it may assign.'**
+  String get teamGenerateSettingsSubtitle;
+
+  /// No description provided for @teamGenerateModelPoolHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Rank 1 is strongest. Prefer earlier entries for the team lead.'**
+  String get teamGenerateModelPoolHint;
+
+  /// No description provided for @teamGenerateEmptyPool.
+  ///
+  /// In en, this message translates to:
+  /// **'No configurations yet. Add the strongest one first.'**
+  String get teamGenerateEmptyPool;
+
+  /// No description provided for @teamGeneratePickPreset.
+  ///
+  /// In en, this message translates to:
+  /// **'Choose a preset'**
+  String get teamGeneratePickPreset;
+
+  /// No description provided for @teamGenerateLoading.
+  ///
+  /// In en, this message translates to:
+  /// **'Loading settings…'**
+  String get teamGenerateLoading;
+
+  /// No description provided for @teamGenerateGeneratorModel.
+  ///
+  /// In en, this message translates to:
+  /// **'Generator model'**
+  String get teamGenerateGeneratorModel;
+
+  /// No description provided for @teamGenerateTeamMode.
+  ///
+  /// In en, this message translates to:
+  /// **'Team mode'**
+  String get teamGenerateTeamMode;
+
+  /// No description provided for @teamGenerateNative.
+  ///
+  /// In en, this message translates to:
+  /// **'Native'**
+  String get teamGenerateNative;
+
+  /// No description provided for @teamGenerateMixed.
+  ///
+  /// In en, this message translates to:
+  /// **'Mixed'**
+  String get teamGenerateMixed;
+
+  /// No description provided for @teamGenerateNativeCli.
+  ///
+  /// In en, this message translates to:
+  /// **'Native CLI'**
+  String get teamGenerateNativeCli;
+
+  /// No description provided for @teamGenerateModelPool.
+  ///
+  /// In en, this message translates to:
+  /// **'Model configuration pool'**
+  String get teamGenerateModelPool;
+
+  /// No description provided for @teamGenerateAddModel.
+  ///
+  /// In en, this message translates to:
+  /// **'Add model configuration'**
+  String get teamGenerateAddModel;
+
+  /// No description provided for @teamGenerateHiddenPresets.
+  ///
+  /// In en, this message translates to:
+  /// **'{count} configurations are hidden because they use another CLI.'**
+  String teamGenerateHiddenPresets(int count);
+
+  /// No description provided for @teamGenerateMissingPreset.
+  ///
+  /// In en, this message translates to:
+  /// **'Preset “{presetId}” no longer exists.'**
+  String teamGenerateMissingPreset(String presetId);
+
+  /// No description provided for @teamGenerateDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Strengths and best uses'**
+  String get teamGenerateDescription;
+
+  /// No description provided for @teamGenerateTags.
+  ///
+  /// In en, this message translates to:
+  /// **'Tags'**
+  String get teamGenerateTags;
+
+  /// No description provided for @teamGenerateMoveUp.
+  ///
+  /// In en, this message translates to:
+  /// **'Move up'**
+  String get teamGenerateMoveUp;
+
+  /// No description provided for @teamGenerateMoveDown.
+  ///
+  /// In en, this message translates to:
+  /// **'Move down'**
+  String get teamGenerateMoveDown;
+
+  /// No description provided for @teamGenerateRemove.
+  ///
+  /// In en, this message translates to:
+  /// **'Remove'**
+  String get teamGenerateRemove;
+
+  /// No description provided for @teamGenerateCapabilityNote.
+  ///
+  /// In en, this message translates to:
+  /// **'Team Builder will check workspace machines and may acquire skills, plugins, and MCP servers for the generated team.'**
+  String get teamGenerateCapabilityNote;
+
+  /// No description provided for @teamGenerateErrorDescriptionRequired.
+  ///
+  /// In en, this message translates to:
+  /// **'Describe the task to generate a team.'**
+  String get teamGenerateErrorDescriptionRequired;
+
+  /// No description provided for @teamGenerateErrorAiNotConfigured.
+  ///
+  /// In en, this message translates to:
+  /// **'Configure the generator model first.'**
+  String get teamGenerateErrorAiNotConfigured;
+
+  /// No description provided for @teamGenerateErrorPoolEmpty.
+  ///
+  /// In en, this message translates to:
+  /// **'Add at least one valid model configuration.'**
+  String get teamGenerateErrorPoolEmpty;
+
+  /// No description provided for @teamGenerateErrorGeneratorUnsupported.
+  ///
+  /// In en, this message translates to:
+  /// **'The generator CLI must support sessions, skills, and MCP.'**
+  String get teamGenerateErrorGeneratorUnsupported;
+
+  /// No description provided for @teamGenerateErrorNativeUnsupported.
+  ///
+  /// In en, this message translates to:
+  /// **'The selected CLI does not support native teams.'**
+  String get teamGenerateErrorNativeUnsupported;
+
+  /// No description provided for @teamGenerateErrorUnavailable.
+  ///
+  /// In en, this message translates to:
+  /// **'Team generation is unavailable right now. Restart TeamPilot and try again.'**
+  String get teamGenerateErrorUnavailable;
+
+  /// No description provided for @teamGenerateErrorStartFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Team generation could not start. Try again.'**
+  String get teamGenerateErrorStartFailed;
+
+  /// No description provided for @teamGenerateOpenSettings.
+  ///
+  /// In en, this message translates to:
+  /// **'Open generation settings'**
+  String get teamGenerateOpenSettings;
+
+  /// No description provided for @teamGenerateBuilderTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Team Builder'**
+  String get teamGenerateBuilderTitle;
+
+  /// No description provided for @teamGenerateCancel.
+  ///
+  /// In en, this message translates to:
+  /// **'Cancel generation'**
+  String get teamGenerateCancel;
+
+  /// No description provided for @teamGenerateRetry.
+  ///
+  /// In en, this message translates to:
+  /// **'Retry'**
+  String get teamGenerateRetry;
+
+  /// No description provided for @teamGenerateContinueSetup.
+  ///
+  /// In en, this message translates to:
+  /// **'Continue setup'**
+  String get teamGenerateContinueSetup;
+
+  /// No description provided for @teamGenerateCancelTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Cancel team generation?'**
+  String get teamGenerateCancelTitle;
+
+  /// No description provided for @teamGenerateCancelBody.
+  ///
+  /// In en, this message translates to:
+  /// **'The temporary session and staged resources will be removed.'**
+  String get teamGenerateCancelBody;
+
+  /// No description provided for @teamGenerateErrorTargetUnavailable.
+  ///
+  /// In en, this message translates to:
+  /// **'A required machine or CLI is unavailable.'**
+  String get teamGenerateErrorTargetUnavailable;
+
+  /// No description provided for @teamGenerateErrorStagingUnsupported.
+  ///
+  /// In en, this message translates to:
+  /// **'This resource needs a manual installation step and cannot be staged safely.'**
+  String get teamGenerateErrorStagingUnsupported;
+
+  /// No description provided for @teamGenerateErrorUserActionRequired.
+  ///
+  /// In en, this message translates to:
+  /// **'Complete the required sign-in or configuration, then retry.'**
+  String get teamGenerateErrorUserActionRequired;
+
+  /// No description provided for @teamGenerateErrorPromptDeliveryUnknown.
+  ///
+  /// In en, this message translates to:
+  /// **'TeamPilot cannot confirm whether the lead received the task.'**
+  String get teamGenerateErrorPromptDeliveryUnknown;
+
+  /// No description provided for @teamGenerateErrorRecoveryIntegrity.
+  ///
+  /// In en, this message translates to:
+  /// **'Recovery data could not be verified. The temporary session was kept.'**
+  String get teamGenerateErrorRecoveryIntegrity;
+
+  /// No description provided for @teamGenerateOpenLeadSession.
+  ///
+  /// In en, this message translates to:
+  /// **'Open lead session'**
+  String get teamGenerateOpenLeadSession;
+
+  /// No description provided for @teamGenerateDeliveryArrived.
+  ///
+  /// In en, this message translates to:
+  /// **'It arrived'**
+  String get teamGenerateDeliveryArrived;
+
+  /// No description provided for @teamGenerateDeliverySendAgain.
+  ///
+  /// In en, this message translates to:
+  /// **'Send again…'**
+  String get teamGenerateDeliverySendAgain;
+
+  /// No description provided for @teamGenerateDeliveryRetryTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Send the task again?'**
+  String get teamGenerateDeliveryRetryTitle;
+
+  /// No description provided for @teamGenerateDeliveryRetryBody.
+  ///
+  /// In en, this message translates to:
+  /// **'The lead might receive the task twice.'**
+  String get teamGenerateDeliveryRetryBody;
 }
 
 class _AppLocalizationsDelegate

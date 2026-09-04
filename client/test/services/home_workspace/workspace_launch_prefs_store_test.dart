@@ -32,6 +32,34 @@ void main() {
     expect(loaded?.launchSecurityPolicy.requiresDangerousExecution, isTrue);
   });
 
+  test('generate launch survives prefs round trip in team mode', () async {
+    final fs = InMemoryFilesystem();
+    final store = LandingPrefsStore(fs: fs, pathOverride: '/prefs.json');
+    await store.save(
+      'workspace-1',
+      const LandingPrefs(
+        isPersonal: false,
+        generateLaunch: true,
+        teamId: 'last-team',
+      ),
+    );
+    final loaded = await store.prefsFor('workspace-1');
+    expect(loaded?.generateLaunch, isTrue);
+    expect(loaded?.teamId, 'last-team');
+  });
+
+  test('old JSON without generateLaunch defaults to false', () async {
+    final fs = InMemoryFilesystem();
+    await fs.writeString(
+      '/prefs.json',
+      '{"ws-old":{"isPersonal":false,"teamId":"team-1"}}',
+    );
+    final store = LandingPrefsStore(fs: fs, pathOverride: '/prefs.json');
+
+    final loaded = await store.prefsFor('ws-old');
+    expect(loaded?.generateLaunch, isFalse);
+  });
+
   test('persists the normalized launch security policy object', () async {
     final fs = InMemoryFilesystem();
     final store = LandingPrefsStore(fs: fs, pathOverride: '/prefs.json');

@@ -738,18 +738,31 @@ class AiHistorySeat extends Cubit<AiHistoryState> {
     required String workspaceId,
     required String sessionId,
     required String text,
+    String? deliveryId,
   }) async {
     _bindFailedMessageStore(
       store: store,
       workspaceId: workspaceId,
       sessionId: sessionId,
     );
-    final record = FailedMessageRecord(
-      id: 'pending:${_uuid.v4()}',
-      text: text,
-      createdAt: DateTime.now().toUtc(),
-    );
-    await store.save(workspaceId, sessionId, record);
+    final correlationId = deliveryId?.trim() ?? '';
+    final existing = correlationId.isEmpty
+        ? null
+        : (await store.load(
+            workspaceId,
+            sessionId,
+          )).where((record) => record.deliveryId == correlationId).firstOrNull;
+    final record =
+        existing ??
+        FailedMessageRecord(
+          id: 'pending:${_uuid.v4()}',
+          text: text,
+          createdAt: DateTime.now().toUtc(),
+          deliveryId: correlationId.isEmpty ? null : correlationId,
+        );
+    if (existing == null) {
+      await store.save(workspaceId, sessionId, record);
+    }
     enqueuePendingUser(
       record.text,
       id: record.id,
@@ -823,19 +836,10 @@ class AiHistorySeat extends Cubit<AiHistoryState> {
         await store.remove(workspaceId, sessionId, record.id);
         continue;
       }
-      // Stale sending rows never completed delivery — treat as failed on
-      // reopen so we do not latch Starting/connect chrome or FIFO-consume
-      // a later successful send against this bubble.
-      final restored = record.status == FailedMessageStatus.sending
-          ? record.copyWith(status: FailedMessageStatus.failed)
-          : record;
-      if (restored.status != record.status) {
-        await store.save(workspaceId, sessionId, restored);
-      }
       enqueuePendingUser(
-        restored.text,
-        id: restored.id,
-        deliveryStatus: restored.status,
+        record.text,
+        id: record.id,
+        deliveryStatus: record.status,
       );
     }
   }

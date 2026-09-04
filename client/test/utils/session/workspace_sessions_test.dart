@@ -1,16 +1,19 @@
+import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:teampilot/l10n/app_localizations.dart';
 import 'package:teampilot/models/workspace.dart';
 import 'package:teampilot/models/workspace_folder.dart';
 import 'package:teampilot/models/app_session.dart';
 import 'package:teampilot/utils/session/workspace_sessions.dart';
 
 void main() {
-  const fallback = 'New chat';
+  final l10n = lookupAppLocalizations(const Locale('en'));
 
   AppSession session({
     required String id,
     required String workspaceId,
     String display = '',
+    SessionPurpose purpose = SessionPurpose.normal,
   }) {
     return AppSession(
       sessionId: id,
@@ -18,6 +21,7 @@ void main() {
       folders: const [WorkspaceFolder(path: '/tmp')],
       display: display,
       createdAt: 1,
+      purpose: purpose,
     );
   }
 
@@ -83,7 +87,7 @@ void main() {
     final filtered = filterSessionsByQuery(
       sessions,
       query: 'login',
-      emptyTitleFallback: fallback,
+      l10n: l10n,
     );
 
     expect(filtered.map((s) => s.sessionId).toList(), ['s1']);
@@ -98,7 +102,7 @@ void main() {
     final filtered = filterSessionsByQuery(
       sessions,
       query: 'abc',
-      emptyTitleFallback: fallback,
+      l10n: l10n,
     );
 
     expect(filtered.map((s) => s.sessionId).toList(), ['abc-123']);
@@ -126,9 +130,28 @@ void main() {
     final filtered = filterSessionsByQuery(
       sessions,
       query: '   ',
-      emptyTitleFallback: fallback,
+      l10n: l10n,
     );
 
     expect(filtered, sessions);
+  });
+
+  test('filterSessionsByQuery matches team builder localized title', () {
+    final sessions = [
+      session(
+        id: 'builder',
+        workspaceId: 'p1',
+        purpose: SessionPurpose.teamGeneration,
+      ),
+      session(id: 'normal', workspaceId: 'p1'),
+    ];
+
+    final filtered = filterSessionsByQuery(
+      sessions,
+      query: 'team builder',
+      l10n: l10n,
+    );
+
+    expect(filtered.map((s) => s.sessionId).toList(), ['builder']);
   });
 }

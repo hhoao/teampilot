@@ -10,6 +10,7 @@ class FailedMessageRecord extends Equatable {
     required this.text,
     required this.createdAt,
     this.status = FailedMessageStatus.sending,
+    this.deliveryId,
   });
 
   final String id;
@@ -17,16 +18,22 @@ class FailedMessageRecord extends Equatable {
   final DateTime createdAt;
   final FailedMessageStatus status;
 
+  /// Durable prompt-delivery correlation for workflow-owned sends.
+  final String? deliveryId;
+
   FailedMessageRecord copyWith({
     String? id,
     String? text,
     DateTime? createdAt,
     FailedMessageStatus? status,
+    String? deliveryId,
+    bool clearDeliveryId = false,
   }) => FailedMessageRecord(
     id: id ?? this.id,
     text: text ?? this.text,
     createdAt: createdAt ?? this.createdAt,
     status: status ?? this.status,
+    deliveryId: clearDeliveryId ? null : deliveryId ?? this.deliveryId,
   );
 
   Map<String, Object?> toJson() => {
@@ -34,6 +41,7 @@ class FailedMessageRecord extends Equatable {
     'text': text,
     'createdAt': createdAt.toUtc().toIso8601String(),
     'status': status.name,
+    if (deliveryId case final id? when id.isNotEmpty) 'deliveryId': id,
   };
 
   static FailedMessageRecord? fromJson(Map<String, Object?> json) {
@@ -57,9 +65,10 @@ class FailedMessageRecord extends Equatable {
       text: text,
       createdAt: createdAt.toUtc(),
       status: status,
+      deliveryId: json['deliveryId'] as String?,
     );
   }
 
   @override
-  List<Object?> get props => [id, text, createdAt, status];
+  List<Object?> get props => [id, text, createdAt, status, deliveryId];
 }

@@ -11,6 +11,7 @@ import 'package:posix/posix.dart' as posix;
 import '../cubits/app_bootstrap_cubit.dart';
 import 'app_data_bootstrap.dart';
 import 'home_index_prefetch.dart';
+import 'team_generation_graph.dart';
 import '../cubits/app_provider_cubit.dart';
 import '../cubits/app_update_cubit.dart';
 import '../cubits/remote_download_catalog_cubit.dart';
@@ -32,6 +33,8 @@ import '../services/agent_status/exit_plan_mode_hook_gate.dart';
 import '../services/agent_status/general_permission_request_gate.dart';
 import '../services/terminal/ask_user_question_answer_service.dart';
 import '../services/terminal/exit_plan_mode_approval_service.dart';
+import '../services/team_generation/mcp/team_composer_mcp_handler.dart';
+import '../models/app_session.dart';
 import '../services/catalog/catalog_runtime.dart';
 import '../services/catalog/catalog_production.dart';
 import '../services/team_bus/mcp/teammate_bus_mcp_gateway.dart';
@@ -373,6 +376,7 @@ class AppShell {
     required this.homeTargetController,
     required this.directoryPicker,
     required this.chatCubit,
+    this.teamGenerationGraph,
     required this.memberPresenceCubit,
     required this.agentAttentionCubit,
     required this.agentStatusSeatLookup,
@@ -470,6 +474,7 @@ class AppShell {
   final HomeTargetController homeTargetController;
   final WorkspaceDirectoryPicker directoryPicker;
   final ChatCubit chatCubit;
+  final TeamGenerationGraph? teamGenerationGraph;
   final MemberPresenceCubit memberPresenceCubit;
   final AgentAttentionCubit agentAttentionCubit;
   final AgentStatusSeatLookup agentStatusSeatLookup;
@@ -1884,6 +1889,60 @@ Future<AppShell> buildAppShell({
       onOpenFile: openFloatingFilePicker,
     );
     final workbenchCubit = WorkbenchCubit();
+
+    // Team-generation workflow graph. Built after chatCubit and workbenchCubit
+    // so the cubit session port can bind both; services receive interfaces only.
+    TeamGenerationGraph? teamGenerationGraph;
+    try {
+      final graph = buildTeamGenerationGraph(
+        chatCubit: chatCubit,
+        workbenchCubit: workbenchCubit,
+        teamCubit: teamCubit,
+        sessionRepo: sessionRepo,
+        identityRepository: identityRepository,
+        cliToolRegistry: cliToolRegistry,
+        targetRegistry: runtimeTargetRegistry,
+        remoteCliReadiness: remoteCliReadiness,
+        catalogRegistry: catalogRuntime.registry,
+      );
+      TeamGenerationGraphBootstrap(
+        graph: graph,
+        port: TeamGenerationGraphBootstrapPort(
+          setTokenIssuer: chatCubit.setTeamGenerationTokenIssuer,
+          attachResourceProviderResolver:
+              sessionLifecycleService.attachResourceProviderResolver,
+          attachComposerHandler: ({required handler, required authorizer}) {
+            teammateBusMcpGateway.attachTeamComposerHandler(
+              handler: handler,
+              authorizer: authorizer,
+            );
+          },
+          setComposerPrincipalResolver:
+              teammateBusMcpGateway.setTeamComposerPrincipalResolver,
+          attachCatalogGenerationStager:
+              catalogRuntime.handler.attachGenerationMutationHandler,
+        ),
+        principalResolver: (sessionId) async {
+          final session = await sessionRepo.findById(sessionId);
+          if (session == null ||
+              session.purpose != SessionPurpose.teamGeneration ||
+              session.workflowId.isEmpty) {
+            return null;
+          }
+          return ComposerPrincipal(
+            sessionId: session.sessionId,
+            workspaceId: session.workspaceId,
+            workflowId: session.workflowId,
+          );
+        },
+      ).attach();
+      teamGenerationGraph = graph;
+    } on Object catch (e, st) {
+      appLogger.w(
+        '[team-generation] wiring failed; generation disabled: $e\n$st',
+      );
+    }
+
     registerLayoutCommands(
       commandBus,
       layoutCubit,
@@ -2190,6 +2249,8 @@ Future<AppShell> buildAppShell({
         }
         bootstrapCubit?.markHomeIndexReady();
       }
+      // Team-generation jobs are not auto-resumed at cold start. Incomplete
+      // builder/destination sessions reconnect only when the user opens them.
       await reconnectHomeSshIfNeeded();
       await yieldUiFrame();
       // Managed Provider cache hydration is deliberately background work. The
@@ -2450,6 +2511,7 @@ Future<AppShell> buildAppShell({
       homeTargetController: homeTargetController,
       directoryPicker: directoryPicker,
       chatCubit: chatCubit,
+      teamGenerationGraph: teamGenerationGraph,
       memberPresenceCubit: memberPresenceCubit,
       agentAttentionCubit: agentAttentionCubit,
       agentStatusSeatLookup: agentStatusSeatLookup,

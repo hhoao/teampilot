@@ -9,6 +9,7 @@ import '../../../widgets/app_toast/app_toast.dart';
 
 import '../../../cubits/app_provider_cubit.dart';
 import '../../../cubits/chat_cubit.dart';
+import '../../../cubits/ai_feature_settings_cubit.dart';
 import '../../../cubits/cli_presets_cubit.dart';
 import '../../../cubits/expert_hub_cubit.dart';
 import '../../../cubits/launch_profile_cubit.dart';
@@ -20,6 +21,7 @@ import '../../../models/config_bundle.dart';
 import '../../../models/landing_launch_context.dart';
 import '../../../models/launch_security_policy.dart';
 import '../../../l10n/l10n_extensions.dart';
+import '../../../models/ai_feature_setting.dart';
 import '../../../models/cli_preset.dart';
 import '../../../models/team_config.dart';
 import '../../../models/workspace.dart';
@@ -64,6 +66,7 @@ import '../../team_hub/team_landing_chip_menu.dart';
 import '../../team_hub/team_landing_picker_sheet.dart';
 import 'config/cli_preset_edit_dialog.dart';
 import 'config/cli_presets_manage_dialog.dart';
+import 'workspace_landing_generate_settings_dialog.dart';
 import 'workspace_landing_launch_feedback.dart';
 import 'workspace_landing_selectors.dart';
 import 'workspace_landing_team_settings_dialog.dart';
@@ -118,6 +121,7 @@ class _UnboundComposeBodyState extends State<UnboundComposeBody> {
   var _suppressDraftSync = false;
 
   var _conversationMode = _LandingConversationMode.simple;
+  var _generateLaunch = false;
   var _launchSecurityPolicy = LaunchSecurityPolicy.fullAccess;
   String? _selectedPresetId;
   CliTool? _selectedCli;
@@ -710,6 +714,7 @@ class _UnboundComposeBodyState extends State<UnboundComposeBody> {
     _conversationMode = draft.isPersonal
         ? _LandingConversationMode.simple
         : _LandingConversationMode.team;
+    _generateLaunch = draft.generateLaunch;
     _selectedTeamId = draft.teamId;
     _selectedPresetId = draft.presetId;
     _selectedCli = draft.cli;
@@ -864,6 +869,7 @@ class _UnboundComposeBodyState extends State<UnboundComposeBody> {
     final isSimple = _conversationMode == _LandingConversationMode.simple;
     return LandingLaunchContext(
       isPersonal: isSimple,
+      generateLaunch: !isSimple && _generateLaunch,
       presetId: _selectedPresetId,
       teamId: _selectedTeamId,
       expertKey: isSimple ? _selectedExpertKey : null,
@@ -916,6 +922,14 @@ class _UnboundComposeBodyState extends State<UnboundComposeBody> {
   Future<void> _submitAfterLaunchGate() async {
     final text = _clip.composeMessage(_controller.text.trim());
     if (text.isEmpty || widget.disabled || widget.isSubmitting) return;
+
+    // Generation mode branches before concrete-team readiness/machine gates:
+    // no selected-team validation, no streaming New-Team overlay.
+    if (_conversationMode == _LandingConversationMode.team && _generateLaunch) {
+      widget.onSubmit(text, _currentDraft());
+      _clip.clear();
+      return;
+    }
 
     if (_conversationMode == _LandingConversationMode.team) {
       final teams = context.read<LaunchProfileCubit>().state.teams;
@@ -1023,10 +1037,13 @@ class _UnboundComposeBodyState extends State<UnboundComposeBody> {
   }
 
   void _setConversationMode(_LandingConversationMode mode) {
-    if (_conversationMode == mode) return;
+    if (_conversationMode == mode && !_generateLaunch) return;
     setState(() {
       _conversationMode = mode;
+      // Selecting Simple or a concrete team clears generation mode without
+      // discarding the last concrete team id.
       if (mode == _LandingConversationMode.simple) {
+        _generateLaunch = false;
         _seedFirstPresetIfNeeded();
       }
     });
@@ -1142,11 +1159,20 @@ class _UnboundComposeBodyState extends State<UnboundComposeBody> {
   }
 
   void _onTeamChipSelected(Object? value) {
+    if (value == TeamLandingChipAction.generateLaunch) {
+      setState(() {
+        _conversationMode = _LandingConversationMode.team;
+        _generateLaunch = true;
+      });
+      _persistDraft();
+      return;
+    }
     if (value == TeamLandingChipAction.browseAll) {
       unawaited(_openTeamPicker());
       return;
     }
     if (value is String && value.isNotEmpty) {
+      setState(() => _generateLaunch = false);
       _selectTeam(value);
       unawaited(_touchRecentTeam(value));
     }
@@ -1156,6 +1182,19 @@ class _UnboundComposeBodyState extends State<UnboundComposeBody> {
     final id = _selectedTeamId?.trim() ?? '';
     if (id.isEmpty) return null;
     return teams.where((team) => team.id == id).firstOrNull;
+  }
+
+  Future<void> _openGenerateSettings() async {
+    final generatorSetting =
+        context.read<AiFeatureSettingsCubit>().state.settingFor(
+              AiFeatureId.teamGenerate,
+            );
+    final presets = context.read<CliPresetsCubit>().state.presets;
+    await showWorkspaceLandingGenerateSettingsDialog(
+      context,
+      presets: presets,
+      generatorSetting: generatorSetting,
+    );
   }
 
   Future<void> _openTeamSettings(List<TeamProfile> teams) async {
@@ -1318,6 +1357,10 @@ class _UnboundComposeBodyState extends State<UnboundComposeBody> {
       );
     }
 
+    if (_generateLaunch) {
+      return l10n.teamGenerateLaunch;
+    }
+
     final team = teams.where((t) => t.id == _selectedTeamId).firstOrNull;
     return team?.name.trim().isNotEmpty == true
         ? team!.name.trim()
@@ -1417,7 +1460,9 @@ class _UnboundComposeBodyState extends State<UnboundComposeBody> {
     }
     return buildTeamLandingChipMenuSpecs(
       browseAllLabel: l10n.teamHubBrowseAll,
-      selectedTeamId: _selectedTeamId,
+      generateLaunchLabel: l10n.teamGenerateLaunch,
+      selectedTeamId: _generateLaunch ? null : _selectedTeamId,
+      generateLaunchSelected: _generateLaunch,
       recentTeams: recent,
     );
   }
@@ -1532,11 +1577,16 @@ class _UnboundComposeBodyState extends State<UnboundComposeBody> {
         expertChipLabel: isSimple ? _expertChipLabel(l10n, hubState) : null,
         expertChipSpecs: isSimple ? _expertChipSpecs(l10n, hubState) : const [],
         onExpertChipSelected: isSimple ? _onExpertChipSelected : null,
-        teamSettingsTooltip: selectedTeam != null ? l10n.teamSettings : null,
-        onTeamSettings: selectedTeam != null
-            ? () => unawaited(_openTeamSettings(teams))
-            : null,
+        teamSettingsTooltip: _generateLaunch
+            ? l10n.teamGenerateOpenSettings
+            : (selectedTeam != null ? l10n.teamSettings : null),
+        onTeamSettings: _generateLaunch
+            ? () => unawaited(_openGenerateSettings())
+            : (selectedTeam != null
+                  ? () => unawaited(_openTeamSettings(teams))
+                  : null),
         showTeamSettingsAttention:
+            !_generateLaunch &&
             selectedTeam != null &&
             landingTeamSettingsNeedsAttention(
               workspace: launchWorkspace,
