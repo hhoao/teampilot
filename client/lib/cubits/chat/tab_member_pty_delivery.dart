@@ -564,6 +564,7 @@ final class TabPromptDeliveryCommands implements PromptDeliveryCommands {
             behavior?.fullScreenPasteSettleDelay ??
             TerminalInputController.fullScreenSubmitDelay,
         isAcked: isAcked,
+        dismissMentionPopup: behavior?.mentionAutocompletePopup ?? false,
       );
       switch (outcome) {
         case FullscreenPtyDeliveryOutcome.submitted:

@@ -59,6 +59,9 @@ final class CursorTerminalBehavior
   @override
   String? get fullscreenComposerPrefix => '→';
   @override
+  bool get mentionAutocompletePopup => false;
+
+  @override
   FullscreenInputReadiness get inputReadiness => const FullscreenInputReadiness(
     readyNeedles: ['→'],
     // Startup TUI full-screen redraws keep → visible while the probe is

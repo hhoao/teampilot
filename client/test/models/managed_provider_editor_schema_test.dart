@@ -80,7 +80,7 @@ void main() {
       expect(codex.hasField('endpointConfig.windows'), isTrue);
       expect(
         field(codex, 'endpointConfig.credentialSource').defaultValue,
-        'cli:openai-official',
+        'cli:codex',
       );
       expect(
         codex.fields.any(
@@ -98,7 +98,7 @@ void main() {
       );
       expect(
         field(cursor, 'endpointConfig.credentialSource').defaultValue,
-        'cli:cursor-account',
+        'cli:cursor',
       );
     },
   );

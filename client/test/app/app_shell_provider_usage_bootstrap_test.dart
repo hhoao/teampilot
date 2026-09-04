@@ -98,7 +98,7 @@ void main() {
             adapterId: 'http-json',
             endpointConfig: ManagedProviderEndpointConfig(
               url: 'https://api.anthropic.com/api/oauth/usage',
-              credentialSource: 'cli:claude-official',
+              credentialSource: 'cli:claude-mp-p1',
               credentialField: 'accessToken',
               credentialName: 'Authorization',
               credentialPrefix: 'Bearer ',

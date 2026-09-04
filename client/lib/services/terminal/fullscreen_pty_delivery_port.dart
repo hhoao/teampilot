@@ -37,6 +37,11 @@ abstract interface class FullscreenPtyDeliveryPort {
 
   Future<void> submitCr({bool Function()? canExecute});
 
+  /// Dismisses a composer popup that would consume the submit CR — e.g.
+  /// Claude Code's file-mention autocomplete after pasting "@path" text.
+  /// Writes ESC; harmless when no popup is open.
+  Future<void> dismissComposerPopup();
+
   /// Bottom [scanRows] of the mirror grid for ACK-miss diagnostics.
   String describeProbeWindow({int scanRows = 24});
 }

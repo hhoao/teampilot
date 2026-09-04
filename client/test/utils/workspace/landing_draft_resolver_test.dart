@@ -229,14 +229,16 @@ void main() {
       expect(identity.expertKey, 'expert/b');
     });
 
-    test('empty draft falls back to Claude official provider', () {
+    test('empty draft leaves provider unset for CLI-side resolution', () {
       final identity = resolveLandingSimpleLaunchIdentity(
         presets: const [],
         expertKey: 'expert/c',
       );
 
       expect(identity.cli, CliTool.claude);
-      expect(identity.provider, 'claude-official');
+      // No default official provider ids: the launch flow resolves the
+      // provider from the live catalog when none is pinned.
+      expect(identity.provider, isEmpty);
       expect(identity.presetId, isEmpty);
       expect(identity.expertKey, 'expert/c');
     });

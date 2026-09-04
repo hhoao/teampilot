@@ -8,7 +8,9 @@ import '../../registry/capabilities/runtime_event_capability.dart';
 
 /// PTY picker answer flow — Claude Code surfaces AskUserQuestion through the
 /// embedded terminal, and holds the `PreToolUse` HTTP hook to reply with the
-/// official `permissionDecision` for ExitPlanMode approval.
+/// official `permissionDecision` for ExitPlanMode approval. General
+/// `PermissionRequest` hooks are also held so the in-chat permission card can
+/// answer them with a `decision` payload.
 final class ClaudeChatInteraction
     implements ChatInteractionCapability, RuntimeEventCapability {
   const ClaudeChatInteraction();
@@ -56,7 +58,7 @@ final class ClaudeChatInteraction
   bool get supportsMultiQuestionInChat => true;
 
   @override
-  bool get supportsInChatPermissionReply => false;
+  bool get supportsInChatPermissionReply => true;
 
   @override
   AskUserAnswerKind get answerKind => AskUserAnswerKind.ptyPicker;

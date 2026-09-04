@@ -118,6 +118,14 @@ final class FakeFullscreenPtyDeliveryPort implements FullscreenPtyDeliveryPort {
     }
   }
 
+  /// Tests that care override this; default no-op like a bare ESC.
+  int dismissCount = 0;
+
+  @override
+  Future<void> dismissComposerPopup() async {
+    dismissCount++;
+  }
+
   @override
   String describeProbeWindow({int scanRows = 24}) =>
       staged == null ? '<empty staged>' : 'staged="$staged"';

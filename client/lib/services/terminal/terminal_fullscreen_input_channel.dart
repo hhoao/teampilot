@@ -133,6 +133,19 @@ final class TerminalFullscreenInputChannel {
     return next;
   }
 
+  /// Bare ESC — dismisses a composer popup (e.g. Claude Code file-mention
+  /// autocomplete after an "@path" paste) that would consume the submit CR.
+  Future<void> writeEscape() {
+    appLogger.d('[terminal] dismiss-composer-popup esc');
+    final next = _ptySubmitChain.then((_) async {
+      await _commands.enqueue(
+        TerminalInputCommand.bytes('\x1b', canExecute: _always),
+      );
+    });
+    _ptySubmitChain = next.catchError((_) {});
+    return next;
+  }
+
   void writeln(String text, {required void Function() onTurnStart}) {
     onTurnStart();
     unawaited(

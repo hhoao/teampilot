@@ -89,6 +89,17 @@ class _RightToolsLifecycleHostState extends State<RightToolsLifecycleHost> {
 
   StreamSubscription<Set<String>>? _diskWatchSub;
   Timer? _diskPollTimer;
+
+  /// Poll always runs, even alongside a live watcher: on Linux
+  /// `Directory.watch(recursive: true)` does not deliver nested events (see
+  /// `LocalFilesystem.watchTree`), so a "supported" watcher still misses
+  /// `.git` writes and nested edits — the poll is the guaranteed refresh path.
+  /// `git status` measures ~0.1s on large repos, so a short interval is fine;
+  /// [GitCubit.refresh] coalesces tick overlap into one trailing run.
+  static const _watchedPollInterval = Duration(seconds: 5);
+
+  /// Watcher-less backends (SSH/SFTP) poll purely over the network, so they
+  /// keep the historical slower cadence.
   static const _diskPollInterval = Duration(seconds: 15);
 
   bool _scopeSyncScheduled = false;
@@ -161,12 +172,18 @@ class _RightToolsLifecycleHostState extends State<RightToolsLifecycleHost> {
   void _attachDiskListeners() {
     if (!widget.preferences.needsDiskSideEffects) return;
 
+    // Watcher events stay the fast path where the OS delivers them; the poll
+    // timer below always runs as the correctness backstop (Linux recursive
+    // watch silently misses nested changes, incl. everything under `.git`).
     final watcher = _fsWatcher;
-    if (watcher?.isSupported ?? false) {
+    final watcherSupported = watcher?.isSupported ?? false;
+    if (watcherSupported) {
       _diskWatchSub = watcher!.onChanged.listen(_onDiskChanged);
-    } else {
-      _diskPollTimer = Timer.periodic(_diskPollInterval, (_) => _onDiskPoll());
     }
+    _diskPollTimer = Timer.periodic(
+      watcherSupported ? _watchedPollInterval : _diskPollInterval,
+      (_) => _onDiskPoll(),
+    );
   }
 
   @override

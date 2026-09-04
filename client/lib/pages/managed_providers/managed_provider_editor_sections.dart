@@ -393,7 +393,7 @@ class ManagedProviderCredentialsSection extends StatelessWidget {
             tip: managedProviderFieldTip(
               l10n,
               explanation: l10n.managedProvidersCredentialSourceHelper,
-              example: 'cli:cursor-account',
+              example: 'cli:cursor-mp-<entry>',
               seeAlso: l10n.managedProvidersTemplateVariablesSeeAlsoCredentials,
             ),
           ),

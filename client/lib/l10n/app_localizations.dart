@@ -2900,6 +2900,12 @@ abstract class AppLocalizations {
   /// **'Open Terminal'**
   String get agentPermissionOpenTerminal;
 
+  /// No description provided for @agentPermissionAlwaysAllowRule.
+  ///
+  /// In en, this message translates to:
+  /// **'Always allow {rule}'**
+  String agentPermissionAlwaysAllowRule(Object rule);
+
   /// No description provided for @exitPlanModeTitle.
   ///
   /// In en, this message translates to:
@@ -14579,7 +14585,7 @@ abstract class AppLocalizations {
   /// No description provided for @managedProvidersCredentialSourceHint.
   ///
   /// In en, this message translates to:
-  /// **'secret or cli:cursor-account'**
+  /// **'secret or cli:cursor-mp-<entry>'**
   String get managedProvidersCredentialSourceHint;
 
   /// No description provided for @managedProvidersCredentialSourceHelper.

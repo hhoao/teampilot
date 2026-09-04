@@ -167,7 +167,7 @@ final List<ManagedProviderPreset> builtInManagedProviderPresets =
           adapterId: 'http-json',
           endpointConfig: ManagedProviderEndpointConfig(
             url: 'https://chatgpt.com/backend-api/wham/usage',
-            credentialSource: 'cli:openai-official',
+            credentialSource: 'cli:codex',
             credentialField: 'accessToken',
             credentialName: 'Authorization',
             credentialPrefix: 'Bearer ',
@@ -210,7 +210,7 @@ final List<ManagedProviderPreset> builtInManagedProviderPresets =
           adapterId: 'http-json',
           endpointConfig: ManagedProviderEndpointConfig(
             url: 'https://api.anthropic.com/api/oauth/usage',
-            credentialSource: 'cli:claude-official',
+            credentialSource: 'cli:claude',
             credentialField: 'accessToken',
             credentialName: 'Authorization',
             credentialPrefix: 'Bearer ',
@@ -259,7 +259,7 @@ final List<ManagedProviderPreset> builtInManagedProviderPresets =
           adapterId: 'http-json',
           endpointConfig: ManagedProviderEndpointConfig(
             url: 'https://cursor.com/api/usage-summary',
-            credentialSource: 'cli:cursor-account',
+            credentialSource: 'cli:cursor',
             credentialName: 'Cookie',
             credentialTemplate:
                 'WorkosCursorSessionToken={accountId}::{accessToken}',

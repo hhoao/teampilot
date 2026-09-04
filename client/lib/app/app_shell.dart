@@ -29,6 +29,7 @@ import '../services/agent_status/agent_status_seat_lookup.dart';
 import '../services/agent_status/ask_user_answer_pending_store.dart';
 import '../services/agent_status/ask_user_question_hook_gate.dart';
 import '../services/agent_status/exit_plan_mode_hook_gate.dart';
+import '../services/agent_status/general_permission_request_gate.dart';
 import '../services/terminal/ask_user_question_answer_service.dart';
 import '../services/terminal/exit_plan_mode_approval_service.dart';
 import '../services/catalog/catalog_runtime.dart';
@@ -204,6 +205,7 @@ import '../services/cli/cursor/provider/cursor_provider_credentials_service.dart
 import '../cubits/chat/tab_member_pty_delivery.dart';
 import '../services/provider/provider_credential_host_runner.dart';
 import '../services/provider_usage/managed_provider_secret_store.dart';
+import '../services/provider_usage/managed_provider_cli_row_janitor.dart';
 import '../services/provider_usage/managed_provider_usage_adapter.dart';
 import '../services/provider_usage/managed_provider_usage_auto_refresh.dart';
 import '../services/provider_usage/managed_provider_usage_coordinator.dart';
@@ -957,11 +959,21 @@ Future<AppShell> buildAppShell({
     openCredentialLoginUrl: openCredentialLoginUrl,
   );
 
+  // Reclaims dedicated CLI provider rows and their isolated HOME
+  // directories: from the managed-provider delete hook and the one-shot
+  // startup sweep below.
+  final managedProviderCliRowJanitor = ManagedProviderCliRowJanitor(
+    fs: AppStorage.fs,
+    basePath: AppStorage.paths.basePath,
+    appProviderCubit: appProviderCubit,
+  );
+
   final resolvedManagedProviderCubit =
       managedProviderCubit ??
       ManagedProviderCubit(
         repository: resolvedManagedProviderRepository,
         appProviderCubit: appProviderCubit,
+        rowJanitor: managedProviderCliRowJanitor,
         onProviderDeletedState:
             resolvedManagedProviderUsageCubit.removeProvider,
         onProviderDeletedCredentialCleanup: (provider) async {
@@ -991,6 +1003,24 @@ Future<AppShell> buildAppShell({
   );
   final managedProviderControlPlaneLease = ManagedProviderControlPlaneLease(
     managedProviderControlPlane,
+  );
+
+  // One-shot startup sweep: reclaim orphaned `-mp-` rows and the legacy
+  // shared rows. Fire-and-forget and failure-tolerant — the control plane
+  // is fully usable without it.
+  unawaited(
+    () async {
+      try {
+        final entries = await resolvedManagedProviderRepository.load();
+        await managedProviderCliRowJanitor.sweep(entries: entries);
+      } on Object catch (error, stackTrace) {
+        appLogger.w(
+          '[managed-provider] cli row sweep failed: $error',
+          error: error,
+          stackTrace: stackTrace,
+        );
+      }
+    }(),
   );
 
   try {
@@ -1635,9 +1665,11 @@ Future<AppShell> buildAppShell({
     final askUserAnswerPendingStore = AskUserAnswerPendingStore();
     teammateBusMcpGateway.attachAskUserAnswerStore(askUserAnswerPendingStore);
     final askUserQuestionHookGate = AskUserQuestionHookGate();
+    final generalPermissionRequestGate = GeneralPermissionRequestGate();
     final askUserQuestionAnswerService = AskUserQuestionAnswerService(
       store: askUserAnswerPendingStore,
       hookGate: askUserQuestionHookGate,
+      generalPermissionGate: generalPermissionRequestGate,
     );
     final exitPlanModeHookGate = ExitPlanModeHookGate();
     final exitPlanPermissionRequestGate = ExitPlanPermissionRequestGate();
@@ -1656,6 +1688,9 @@ Future<AppShell> buildAppShell({
       hookGate: exitPlanModeHookGate,
       permissionGate: exitPlanPermissionRequestGate,
     );
+    final generalPermissionProjection = GeneralPermissionRuntimeEventProjection(
+      gate: generalPermissionRequestGate,
+    );
     final runtimeProjections = [
       RuntimeEventProjection.attention(
         attention: agentAttentionCubit,
@@ -1663,6 +1698,7 @@ Future<AppShell> buildAppShell({
       ),
       askUserQuestionProjection,
       exitPlanModeProjection,
+      generalPermissionProjection,
     ];
     final agentEventGateway = AgentEventGateway(
       journal: FileRuntimeEventJournal(
@@ -1675,7 +1711,11 @@ Future<AppShell> buildAppShell({
       stream: agentRuntimeStream,
       resolveCli: agentStatusSeatLookup.resolveCli,
       projections: runtimeProjections,
-      responders: [askUserQuestionProjection, exitPlanModeProjection],
+      responders: [
+        askUserQuestionProjection,
+        exitPlanModeProjection,
+        generalPermissionProjection,
+      ],
     );
     teammateBusMcpGateway.attachAgentEventGateway(agentEventGateway);
 
@@ -1733,6 +1773,7 @@ Future<AppShell> buildAppShell({
       agentAttentionCubit: agentAttentionCubit,
       askUserAnswerPendingStore: askUserAnswerPendingStore,
       askUserQuestionAnswerService: askUserQuestionAnswerService,
+      generalPermissionGate: generalPermissionRequestGate,
       exitPlanApprovalService: exitPlanModeApprovalService,
       sessionRepository: sessionRepo,
       lifecycleService: sessionLifecycleService,

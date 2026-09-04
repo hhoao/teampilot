@@ -10,15 +10,15 @@ import 'package:teampilot/services/provider_usage/managed_provider_usage_adapter
 import '../../support/in_memory_filesystem.dart';
 
 void main() {
-  test('cli:cursor-account prefers isolated auth.json', () async {
+  test('cli:cursor-mp-p1 resolves the isolated auth.json', () async {
     final fs = InMemoryFilesystem();
     final layout = CursorHomeLayout(pathContext: fs.pathContext);
     await fs.writeString(
-      layout.authJson('/tp/providers/cursor/cursor-account/home'),
+      layout.authJson('/tp/providers/cursor/cursor-mp-p1/home'),
       jsonEncode({'accessToken': 'isolated-cursor'}),
     );
     await fs.writeString(
-      layout.cliConfig('/tp/providers/cursor/cursor-account/home'),
+      layout.cliConfig('/tp/providers/cursor/cursor-mp-p1/home'),
       jsonEncode({'authInfo': {'userId': 'user_isolated'}}),
     );
     final scope = await CliCredentialSourceResolver(
@@ -28,7 +28,7 @@ void main() {
           basePath: '/tp',
         ),
       },
-    ).read('cli:cursor-account');
+    ).read('cli:cursor-mp-p1');
     expect(scope.valueFor('accessToken'), 'isolated-cursor');
     expect(scope.valueFor('accountId'), 'user_isolated');
   });
@@ -83,23 +83,28 @@ void main() {
     expect(scope.valueFor('accessToken'), 'entry-token');
   });
 
-  test('legacy cursor-account source resolves through the cursor reader',
-      () async {
+  test('legacy cursor-account source is missingCredential', () async {
     final fs = InMemoryFilesystem();
     final layout = CursorHomeLayout(pathContext: fs.pathContext);
     await fs.writeString(
       layout.authJson('/tp/providers/cursor/cursor-account/home'),
       jsonEncode({'accessToken': 'legacy-token'}),
     );
-    final scope = await CliCredentialSourceResolver(
-      readers: {
-        'cursor': CursorOfficialSubscriptionAuthReader(
-          fs: fs,
-          basePath: '/tp',
-        ),
-      },
-    ).read('cli:cursor-account');
-    expect(scope.valueFor('accessToken'), 'legacy-token');
+    await expectLater(
+      CliCredentialSourceResolver(
+        readers: {
+          'cursor': CursorOfficialSubscriptionAuthReader(
+            fs: fs,
+            basePath: '/tp',
+          ),
+        },
+      ).read('cli:cursor-account'),
+      throwsA(isA<ManagedProviderUsageQueryError>().having(
+        (e) => e.code,
+        'code',
+        ManagedProviderUsageQueryErrorCode.missingCredential,
+      )),
+    );
   });
 
   test('unmapped cli still reports missingCredential', () async {

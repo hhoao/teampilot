@@ -111,11 +111,17 @@ class FullscreenPtyAutomation {
   /// the authoritative "message already submitted" signal. When it flips true
   /// mid-poll (grid probe lagging the real commit), reinject must NOT re-paste:
   /// that is exactly how a single send becomes multiple user rows / bubbles.
+  ///
+  /// [dismissMentionPopup] (optional): send ESC before the CR when [text]
+  /// contains "@". Claude Code's file-mention autocomplete opens on "@path"
+  /// pastes and consumes the submit CR (message never committed; verified
+  /// against real Claude Code 2.1.211 in a PTY — 2026-09-04).
   Future<FullscreenPtyDeliveryOutcome> deliverPasteAndSubmit({
     required FullscreenPtyDeliveryPort port,
     required String text,
     required Duration pasteSettle,
     bool Function()? isAcked,
+    bool dismissMentionPopup = false,
   }) async {
     if (isAcked?.call() ?? false) {
       return FullscreenPtyDeliveryOutcome.submitted;
@@ -138,6 +144,11 @@ class FullscreenPtyAutomation {
       return FullscreenPtyDeliveryOutcome.pasteNotFound;
     }
     await _settleAfterPasteAck(port, pasteSettle);
+    if (dismissMentionPopup && text.contains('@')) {
+      // Mention autocomplete swallows the submit CR; close it first.
+      // Harmless when no popup opened (bare ESC in the composer).
+      await port.dismissComposerPopup();
+    }
     return _pollCrUntilAnchorClears(
       port,
       anchor,

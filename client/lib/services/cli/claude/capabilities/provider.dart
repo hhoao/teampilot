@@ -96,7 +96,7 @@ final class ClaudeProviderCapability extends CatalogModelCapability
   CliTool get catalogCli => CliTool.claude;
 
   @override
-  String? get defaultOfficialProviderId => 'claude-official';
+  String? get defaultOfficialProviderId => null;
 
   @override
   Future<ProviderCatalogSnapshot> loadFromLiveSources(
@@ -803,8 +803,8 @@ final class ClaudeProviderCapability extends CatalogModelCapability
 
   /// Default Claude provider when Simple launch has none pinned.
   ///
-  /// Prefer Anthropic official (`claude-official` / official category) so
-  /// OAuth credentials can be linked; sole-provider fallback last.
+  /// Prefer an Anthropic official provider (official category) so OAuth
+  /// credentials can be linked; sole-provider fallback last.
   Future<String?> _resolveDefaultClaudeProviderId(
     ConfigProfilePaths catalog,
   ) async {
@@ -814,9 +814,6 @@ final class ClaudeProviderCapability extends CatalogModelCapability
     if (providers.isEmpty) return null;
     if (providers.length == 1) return providers.first.id;
 
-    for (final provider in providers) {
-      if (provider.id.trim() == 'claude-official') return provider.id;
-    }
     for (final provider in providers) {
       if (isOfficialClaudeProvider(provider)) return provider.id;
     }

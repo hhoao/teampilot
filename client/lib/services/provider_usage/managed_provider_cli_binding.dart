@@ -7,19 +7,19 @@ import '../cli/cursor/provider_presets.dart';
 ///
 /// A managed-provider entry that uses an official CLI credential source owns
 /// a dedicated CLI provider row (`<cli>-mp-<managedProviderId>`) whose
-/// isolated HOME holds that entry's login. Legacy shared sources
-/// (`cli:cursor-account`, `cli:claude-official`, `cli:openai-official`) are
-/// recognized and migrated to per-entry sources.
+/// isolated HOME holds that entry's login. Only per-entry sources are
+/// recognized: preset templates carry an intent source (`cli:cursor`) that
+/// the editor / cubit expands to the per-entry source before persistence.
 class ManagedProviderCliBinding {
   const ManagedProviderCliBinding();
 
-  static const _legacyByCli = <CliTool, String>{
-    CliTool.cursor: 'cursor-account',
-    CliTool.claude: 'claude-official',
-    CliTool.codex: 'openai-official',
+  static const _officialClis = <CliTool>{
+    CliTool.cursor,
+    CliTool.claude,
+    CliTool.codex,
   };
 
-  static const _legacyTemplates = <CliTool, AppProviderConfig Function()>{
+  static const _officialTemplates = <CliTool, AppProviderConfig Function()>{
     CliTool.cursor: _cursorTemplate,
     CliTool.claude: _claudeTemplate,
     CliTool.codex: _codexTemplate,
@@ -34,21 +34,20 @@ class ManagedProviderCliBinding {
   static AppProviderConfig _codexTemplate() =>
       CodexProviderPresets.byId('openai-official')!.template;
 
+  /// CLI for a per-entry credential source (`cli:<cli>-mp-<entryId>`).
+  ///
+  /// Legacy shared sources (`cli:cursor-account`, …) and intent sources
+  /// (`cli:cursor`) return null — only per-entry sources are valid here.
   CliTool? cliForCredentialSource(String source) {
     final rowId = rowIdForCredentialSource(source);
     if (rowId == null) return null;
-    for (final cli in _legacyByCli.keys) {
+    for (final cli in _officialClis) {
       // `<cli>-mp-` with an empty trailing provider id segment is malformed.
       if (rowId == '${cli.value}-mp-') return null;
       if (rowId.startsWith('${cli.value}-mp-')) return cli;
-      if (_legacyByCli[cli] == rowId) return cli;
     }
     return null;
   }
-
-  bool isPerEntrySource(String source) =>
-      cliForCredentialSource(source) != null &&
-      (rowIdForCredentialSource(source) ?? '').contains('-mp-');
 
   String? rowIdForCredentialSource(String source) {
     const prefix = 'cli:';
@@ -57,20 +56,24 @@ class ManagedProviderCliBinding {
     return rowId.isEmpty ? null : rowId;
   }
 
-  String? legacySourceForCli(CliTool cli) {
-    final rowId = _legacyByCli[cli];
-    return rowId == null ? null : 'cli:$rowId';
+  /// CLI named by a preset intent source (`cli:cursor`, `cli:claude`,
+  /// `cli:codex`). Row sources and unknown values return null.
+  CliTool? intentCliForSource(String source) {
+    final trimmed = source.trim();
+    for (final cli in _officialClis) {
+      if (trimmed == 'cli:${cli.value}') return cli;
+    }
+    return null;
   }
 
-  /// Rewrites a legacy shared source to the entry's per-entry source, or
-  /// `null` when [source] is already per-entry, non-`cli:`, or unknown.
-  String? migrateCredentialSource({
+  /// Expands an intent source to the entry's per-entry source, or null when
+  /// [source] is not an intent source (already per-entry, legacy, non-cli).
+  String? resolveIntentSource({
     required String source,
     required String managedProviderId,
   }) {
-    final cli = cliForCredentialSource(source);
-    if (cli == null || isPerEntrySource(source)) return null;
-    if (rowIdForCredentialSource(source) != _legacyByCli[cli]) return null;
+    final cli = intentCliForSource(source);
+    if (cli == null) return null;
     return 'cli:${managedProviderCliRowId(cli, managedProviderId)}';
   }
 
@@ -81,7 +84,7 @@ class ManagedProviderCliBinding {
     String managedProviderId,
     String managedProviderName,
   ) {
-    final templateFactory = _legacyTemplates[cli];
+    final templateFactory = _officialTemplates[cli];
     if (templateFactory == null) return null;
     final preset = templateFactory();
     return preset.copyWith(

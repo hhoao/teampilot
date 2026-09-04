@@ -25,6 +25,9 @@ final class FlashskyaiTerminalBehavior implements TerminalBehaviorCapability {
   @override
   String? get fullscreenComposerPrefix => '\u276f';
   @override
+  bool get mentionAutocompletePopup => true;
+
+  @override
   FullscreenInputReadiness get inputReadiness =>
       FullscreenInputReadiness.bootFrameOnly;
   @override

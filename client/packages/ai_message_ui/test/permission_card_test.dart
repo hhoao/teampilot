@@ -22,7 +22,7 @@ void main() {
       _host(
         AiPermissionCard(
           description: 'Run `npm install`',
-          showAlwaysAllow: true,
+          alwaysOptions: const ['Always allow'],
           onReply: (_) async => const AiInteractiveOk(),
           onAnswerInTerminal: () {},
         ),
@@ -37,79 +37,80 @@ void main() {
     expect(find.text('Reject'), findsOneWidget);
   });
 
-  testWidgets('Allow once replies "once"', (tester) async {
-    final replies = <String>[];
+  testWidgets('tapping allow once replies allowOnce', (tester) async {
+    AiPermissionReply? captured;
     await tester.pumpWidget(
       _host(
         AiPermissionCard(
           description: 'Run `npm install`',
+          alwaysOptions: const ['Always allow'],
           onReply: (reply) async {
-            replies.add(reply);
+            captured = reply;
             return const AiInteractiveOk();
           },
           onAnswerInTerminal: () {},
         ),
       ),
     );
-    await tester.pumpAndSettle();
-
     await tester.tap(find.byKey(AiPermissionCard.allowOnceButtonKey));
     await tester.pumpAndSettle();
-
-    expect(replies, ['once']);
+    expect(captured!.kind, AiPermissionReplyKind.allowOnce);
   });
 
-  testWidgets('Always allow replies "always"', (tester) async {
-    final replies = <String>[];
+  testWidgets('tapping the always button replies with the option index', (
+    tester,
+  ) async {
+    AiPermissionReply? captured;
     await tester.pumpWidget(
       _host(
         AiPermissionCard(
-          description: 'Run `npm install`',
-          showAlwaysAllow: true,
+          description: 'Bash rm -rf node_modules',
+          alwaysOptions: const [
+            'Always allow Bash(rm -rf node_modules)',
+            'Always allow Bash',
+          ],
           onReply: (reply) async {
-            replies.add(reply);
+            captured = reply;
             return const AiInteractiveOk();
           },
           onAnswerInTerminal: () {},
         ),
       ),
     );
+    await tester.tap(
+      find.byKey(AiPermissionCard.alwaysButtonKey),
+    ); // first option
     await tester.pumpAndSettle();
-
-    await tester.tap(find.byKey(AiPermissionCard.alwaysButtonKey));
+    expect(captured!.kind, AiPermissionReplyKind.always);
+    expect(captured!.alwaysOptionIndex, 0);
+    // second always button is keyed by index
+    await tester.tap(find.byKey(const Key('opencode-permission-always-1')));
     await tester.pumpAndSettle();
-
-    expect(replies, ['always']);
+    expect(captured!.alwaysOptionIndex, 1);
   });
 
-  testWidgets('Always allow hidden when showAlwaysAllow is false', (
-    tester,
-  ) async {
+  testWidgets('no always buttons when alwaysOptions is empty', (tester) async {
     await tester.pumpWidget(
       _host(
         AiPermissionCard(
           description: 'Run `npm install`',
-          onReply: (_) async => const AiInteractiveOk(),
+          onReply: (reply) async => const AiInteractiveOk(),
           onAnswerInTerminal: () {},
         ),
       ),
     );
-    await tester.pumpAndSettle();
-
     expect(find.byKey(AiPermissionCard.alwaysButtonKey), findsNothing);
-    expect(find.byKey(AiPermissionCard.allowOnceButtonKey), findsOneWidget);
-    expect(find.byKey(AiPermissionCard.rejectButtonKey), findsOneWidget);
   });
 
-  testWidgets('Reject replies "reject"', (tester) async {
-    final replies = <String>[];
+  testWidgets('Reject replies reject', (tester) async {
+    AiPermissionReply? captured;
     await tester.pumpWidget(
       _host(
         AiPermissionCard(
           description: 'Run `npm install`',
-          showAlwaysAllow: true,
+          alwaysOptions: const ['Always allow'],
           onReply: (reply) async {
-            replies.add(reply);
+            captured = reply;
             return const AiInteractiveOk();
           },
           onAnswerInTerminal: () {},
@@ -121,7 +122,8 @@ void main() {
     await tester.tap(find.byKey(AiPermissionCard.rejectButtonKey));
     await tester.pumpAndSettle();
 
-    expect(replies, ['reject']);
+    expect(captured!.kind, AiPermissionReplyKind.reject);
+    expect(captured!.alwaysOptionIndex, isNull);
   });
 
   testWidgets('failed reply shows inline error', (tester) async {
@@ -129,7 +131,7 @@ void main() {
       _host(
         AiPermissionCard(
           description: 'Run `npm install`',
-          showAlwaysAllow: true,
+          alwaysOptions: const ['Always allow'],
           onReply: (_) async => const AiInteractiveFailed('unsupported'),
           onAnswerInTerminal: () {},
         ),

@@ -404,6 +404,10 @@ class _ManagedProviderEditorPageState extends State<ManagedProviderEditorPage> {
     final display = template.displayConfig;
     final schema =
         preset.schema ?? ManagedProviderEditorSchema.fromProvider(template);
+    final presetSource = endpoint.credentialSource;
+    final intentCli = ManagedProviderCliBinding().intentCliForSource(
+      presetSource,
+    );
     setState(() {
       _selectedPreset = preset;
       _name.text = template.name;
@@ -417,7 +421,9 @@ class _ManagedProviderEditorPageState extends State<ManagedProviderEditorPage> {
       _credentialName.text = endpoint.credentialName ?? '';
       _credentialField.text = endpoint.credentialField ?? '';
       _credentialPlacement.text = endpoint.credentialPlacement;
-      _credentialSource.text = endpoint.credentialSource;
+      _credentialSource.text = intentCli == null
+          ? presetSource
+          : 'cli:${managedProviderCliRowId(intentCli, _entryId)}';
       _credentialTemplate.text = endpoint.credentialTemplate ?? '';
       _headers.text = _prettyJson(
         endpoint.headers.map((key, value) => MapEntry(key, value)),

@@ -15,6 +15,7 @@ import '../../models/app_session.dart';
 import '../../models/cli_preset.dart';
 import '../../models/team_config.dart';
 import '../../services/agent_status/agent_attention_state.dart';
+import '../../services/agent_status/agent_permission_request.dart';
 import '../../services/agent_status/ask_user_question_policy.dart';
 import '../../services/agent_status/exit_plan_mode.dart';
 import '../../services/cli/preset_resolver.dart';
@@ -195,29 +196,54 @@ class AgentPermissionAttentionBanner extends StatelessWidget {
           askRequestId: askRequestId,
         ) &&
         permissionRequest != null) {
+      final alwaysOptions = [
+        for (final option in permissionRequest.always)
+          option.payload == null
+              ? context.l10n.opencodePermissionAllowAlways
+              : context.l10n.agentPermissionAlwaysAllowRule(option.label),
+      ];
       return _withStrings(
         context,
         AiPermissionCard(
           description: permissionRequest.description,
-          showAlwaysAllow: permissionRequest.always.isNotEmpty,
+          alwaysOptions: alwaysOptions,
           externalError: entry.askReplyError,
           onReply: (reply) async {
+            final alwaysIndex = reply.alwaysOptionIndex;
             final result = await context
                 .read<ChatCubit>()
                 .answerPermissionRequest(
                   sessionId: sessionId,
                   memberId: seatId,
-                  permissionRequestId: askRequestId!,
-                  reply: reply,
+                  permissionRequestId: askRequestId,
+                  kind: switch (reply.kind) {
+                    AiPermissionReplyKind.allowOnce =>
+                      AgentPermissionReplyKind.allowOnce,
+                    AiPermissionReplyKind.always =>
+                      AgentPermissionReplyKind.always,
+                    AiPermissionReplyKind.reject =>
+                      AgentPermissionReplyKind.reject,
+                  },
+                  alwaysPayload: alwaysIndex == null
+                      ? null
+                      : permissionRequest.always[alwaysIndex].payload,
                 );
             return _fromAskUser(result);
           },
-          onAnswerInTerminal: () => _openTerminal(
-            context,
-            sessionId: sessionId,
-            seatId: seatId,
-            selectedMemberId: selectedMemberId,
-          ),
+          onAnswerInTerminal: () {
+            unawaited(
+              context.read<ChatCubit>().releasePermissionToTerminal(
+                    sessionId: sessionId,
+                    memberId: seatId,
+                  ),
+            );
+            _openTerminal(
+              context,
+              sessionId: sessionId,
+              seatId: seatId,
+              selectedMemberId: selectedMemberId,
+            );
+          },
         ),
       );
     }

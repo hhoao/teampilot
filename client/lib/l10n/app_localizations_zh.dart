@@ -1494,6 +1494,11 @@ class AppLocalizationsZh extends AppLocalizations {
   String get agentPermissionOpenTerminal => '打开终端';
 
   @override
+  String agentPermissionAlwaysAllowRule(Object rule) {
+    return '始终允许 $rule';
+  }
+
+  @override
   String get exitPlanModeTitle => '计划已就绪，等待批准';
 
   @override
@@ -7846,7 +7851,7 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get managedProvidersCredentialSourceHint =>
-      'secret 或 cli:cursor-account';
+      'secret 或 cli:cursor-mp-<entry>';
 
   @override
   String get managedProvidersCredentialSourceHelper =>

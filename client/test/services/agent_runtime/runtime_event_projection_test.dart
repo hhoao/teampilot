@@ -7,6 +7,7 @@ import 'package:teampilot/services/agent_runtime/seat_event_stream.dart';
 import 'package:teampilot/services/agent_status/agent_attention_state.dart';
 import 'package:teampilot/services/agent_status/ask_user_question_hook_gate.dart';
 import 'package:teampilot/services/agent_status/exit_plan_mode_hook_gate.dart';
+import 'package:teampilot/services/agent_status/general_permission_request_gate.dart';
 
 void main() {
   test('projection applies each seat sequence once', () async {
@@ -310,6 +311,117 @@ void main() {
       expect(projection.responseFor(event), isNull);
     },
   );
+
+  test(
+    'general permission projection holds PermissionRequest and answers via the gate',
+    () async {
+      final stream = SeatEventStream();
+      final gate = GeneralPermissionRequestGate();
+      const seat = RuntimeSeatKey(sessionId: 'session', memberId: 'member');
+      final projection = GeneralPermissionRuntimeEventProjection(gate: gate);
+      final subscription = projection.attach(stream, seat);
+      addTearDown(subscription.cancel);
+      addTearDown(stream.close);
+      final event = RuntimeEventEnvelope(
+        seat: seat,
+        cli: CliTool.claude,
+        kind: RuntimeEventKind.statusReported,
+        occurredAt: DateTime.utc(2026, 9, 4),
+        raw: const {
+          'hook_event_name': 'PermissionRequest',
+          'tool_name': 'Bash',
+          'tool_input': {'command': 'rm -rf node_modules'},
+          'permission_suggestions': [
+            {
+              'type': 'addRules',
+              'rules': [
+                {'toolName': 'Bash', 'ruleContent': 'rm -rf node_modules'},
+              ],
+              'behavior': 'allow',
+              'destination': 'localSettings',
+            },
+          ],
+        },
+        sequence: 1,
+      );
+
+      stream.publish(event);
+      await pumpEventQueue();
+      expect(gate.hasWaiter(sessionId: 'session', memberId: 'member'), isTrue);
+      final pending = projection.responseFor(event);
+      expect(pending, isNotNull);
+      expect(
+        gate.complete(
+          sessionId: 'session',
+          memberId: 'member',
+          reply: const GeneralPermissionRequestReply.allow(),
+        ),
+        isTrue,
+      );
+      expect(await pending, {
+        'hookSpecificOutput': {
+          'hookEventName': 'PermissionRequest',
+          'decision': {'behavior': 'allow'},
+        },
+      });
+    },
+  );
+
+  test('general permission projection never holds ExitPlanMode requests',
+      () async {
+    final stream = SeatEventStream();
+    final gate = GeneralPermissionRequestGate();
+    const seat = RuntimeSeatKey(sessionId: 'session', memberId: 'member');
+    final projection = GeneralPermissionRuntimeEventProjection(gate: gate);
+    final subscription = projection.attach(stream, seat);
+    addTearDown(subscription.cancel);
+    addTearDown(stream.close);
+    final event = RuntimeEventEnvelope(
+      seat: seat,
+      cli: CliTool.claude,
+      kind: RuntimeEventKind.statusReported,
+      occurredAt: DateTime.utc(2026, 9, 4),
+      raw: const {
+        'hook_event_name': 'PermissionRequest',
+        'tool_name': 'ExitPlanMode',
+        'tool_input': {'plan': '1. Ship it.'},
+      },
+      sequence: 1,
+    );
+
+    stream.publish(event);
+    await pumpEventQueue();
+    expect(gate.hasWaiter(sessionId: 'session', memberId: 'member'), isFalse);
+    expect(projection.responseFor(event), isNull);
+  });
+
+  test('general permission projection skips CLIs without in-chat reply',
+      () async {
+    final stream = SeatEventStream();
+    final gate = GeneralPermissionRequestGate();
+    const seat = RuntimeSeatKey(sessionId: 'session', memberId: 'member');
+    final projection = GeneralPermissionRuntimeEventProjection(gate: gate);
+    final subscription = projection.attach(stream, seat);
+    addTearDown(subscription.cancel);
+    addTearDown(stream.close);
+    final event = RuntimeEventEnvelope(
+      seat: seat,
+      cli: CliTool.cursor, // supportsInChatPermissionReply == false
+      kind: RuntimeEventKind.statusReported,
+      occurredAt: DateTime.utc(2026, 9, 4),
+      raw: const {
+        'hook_event_name': 'PermissionRequest',
+        'tool_name': 'Bash',
+        'tool_input': {'command': 'ls'},
+      },
+      sequence: 1,
+    );
+
+    stream.publish(event);
+    await pumpEventQueue();
+    expect(gate.hasWaiter(sessionId: 'session', memberId: 'member'), isFalse);
+    expect(projection.responseFor(event), isNull);
+  });
 }
 
 RuntimeEventEnvelope _event(RuntimeSeatKey seat, int sequence) =>

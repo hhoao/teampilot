@@ -4,14 +4,33 @@ import 'package:shared_ui/shared_ui.dart';
 
 import '../strings.dart';
 
+enum AiPermissionReplyKind { allowOnce, always, reject }
+
+/// Card reply: [kind] plus the selected always-option index (when the kind
+/// is [AiPermissionReplyKind.always]). The host owns option payloads.
+final class AiPermissionReply {
+  const AiPermissionReply.allowOnce()
+    : kind = AiPermissionReplyKind.allowOnce,
+      alwaysOptionIndex = null;
+  const AiPermissionReply.always(int optionIndex)
+    : kind = AiPermissionReplyKind.always,
+      alwaysOptionIndex = optionIndex;
+  const AiPermissionReply.reject()
+    : kind = AiPermissionReplyKind.reject,
+      alwaysOptionIndex = null;
+
+  final AiPermissionReplyKind kind;
+  final int? alwaysOptionIndex;
+}
+
 /// Interactive permission card — Allow once / Always allow / Reject, answered
-/// in chat via host [onReply] (`once` / `always` / `reject`).
+/// in chat via host [onReply] with a typed [AiPermissionReply].
 class AiPermissionCard extends StatefulWidget {
   const AiPermissionCard({
     required this.description,
     required this.onReply,
     required this.onAnswerInTerminal,
-    this.showAlwaysAllow = false,
+    this.alwaysOptions = const [],
     this.externalError,
     super.key,
   });
@@ -25,8 +44,10 @@ class AiPermissionCard extends StatefulWidget {
   static const inlineErrorKey = Key('opencode-permission-inline-error');
 
   final String description;
-  final bool showAlwaysAllow;
-  final Future<AiInteractiveResult> Function(String reply) onReply;
+
+  /// Host-supplied "always allow" option labels (empty = no always buttons).
+  final List<String> alwaysOptions;
+  final Future<AiInteractiveResult> Function(AiPermissionReply reply) onReply;
   final VoidCallback onAnswerInTerminal;
 
   /// Host-side error (e.g. attention cubit `askReplyError`), shown when the
@@ -41,7 +62,7 @@ class _AiPermissionCardState extends State<AiPermissionCard> {
   var _answering = false;
   String? _inlineError;
 
-  Future<void> _reply(String reply) async {
+  Future<void> _reply(AiPermissionReply reply) async {
     if (_answering) return;
     setState(() {
       _answering = true;
@@ -60,12 +81,14 @@ class _AiPermissionCardState extends State<AiPermissionCard> {
       return;
     }
     if (!mounted) return;
-    if (result is AiInteractiveFailed) {
-      setState(() {
-        _answering = false;
+    // The host unmounts the card on success; re-enable locally so the card
+    // stays usable if it survives (e.g. an out-of-date attention entry).
+    setState(() {
+      _answering = false;
+      if (result is AiInteractiveFailed) {
         _inlineError = strings.permissionAnswerFailed;
-      });
-    }
+      }
+    });
   }
 
   @override
@@ -139,24 +162,34 @@ class _AiPermissionCardState extends State<AiPermissionCard> {
                 ),
               ],
               SizedBox(height: spacing.lg),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.end,
+              // Wrap (not Row): multiple host-supplied always options can
+              // exceed one line on narrow chat panes.
+              Wrap(
+                alignment: WrapAlignment.end,
+                runSpacing: spacing.sm,
                 children: [
                   TpButton(
                     key: AiPermissionCard.rejectButtonKey,
                     variant: TpButtonVariant.ghost,
                     size: TpControlSize.medium,
-                    onPressed: _answering ? null : () => _reply('reject'),
+                    onPressed: _answering
+                        ? null
+                        : () => _reply(const AiPermissionReply.reject()),
                     child: Text(strings.permissionReject),
                   ),
-                  if (widget.showAlwaysAllow) ...[
+                  for (final (index, label)
+                      in widget.alwaysOptions.indexed) ...[
                     SizedBox(width: spacing.sm),
                     TpButton(
-                      key: AiPermissionCard.alwaysButtonKey,
+                      key: index == 0
+                          ? AiPermissionCard.alwaysButtonKey
+                          : ValueKey('opencode-permission-always-$index'),
                       variant: TpButtonVariant.primary,
                       size: TpControlSize.medium,
-                      onPressed: _answering ? null : () => _reply('always'),
-                      child: Text(strings.permissionAllowAlways),
+                      onPressed: _answering
+                          ? null
+                          : () => _reply(AiPermissionReply.always(index)),
+                      child: Text(label),
                     ),
                   ],
                   SizedBox(width: spacing.sm),
@@ -164,7 +197,9 @@ class _AiPermissionCardState extends State<AiPermissionCard> {
                     key: AiPermissionCard.allowOnceButtonKey,
                     variant: TpButtonVariant.primary,
                     size: TpControlSize.medium,
-                    onPressed: _answering ? null : () => _reply('once'),
+                    onPressed: _answering
+                        ? null
+                        : () => _reply(const AiPermissionReply.allowOnce()),
                     child: Text(strings.permissionAllowOnce),
                   ),
                 ],

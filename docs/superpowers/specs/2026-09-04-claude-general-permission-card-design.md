@@ -151,6 +151,12 @@ class AgentPermissionAlwaysOption {
 - `AiPermissionCard.onReply` generalizes from a string to (reply kind +
   selected option).
 
+Implementation note (accepted deviation): the card now re-enables its
+buttons after a successful reply (previously permanently disabled). This
+enables multi-option always flows on stale attention entries; in-flight taps
+stay guarded by the answering latch and `markAskAnswered` dismisses the card
+synchronously on success, so the double-answer window is negligible.
+
 ### Policy gating (`shouldShowPermissionCard`)
 
 The current policy rejects cards when `askRequestId` is empty. That
@@ -179,9 +185,12 @@ native dialog's esc: Claude receives the reason and adapts).
 - `ClaudeChatInteraction` / flashskyai / codex:
   `supportsInChatPermissionReply => true` (whole family). `answerKind`
   unchanged.
-- Gate wired into the existing `app_shell.dart` `clearSeat` / `clearSession`
-  lifecycle points (tab close / session end → deny fallback, no dangling
-  hooks).
+- Gate lifecycle follows the existing gate precedent (shipped
+  `ExitPlanPermissionRequestGate`): no explicit session-end clearing in
+  production; held waiters self-remove via deny-on-replace (a newer request on
+  the same seat) or the 24h timeout, and the CLI process ending closes the
+  HTTP connection anyway. The gate exposes `clearSeat` / `clearSession` for
+  future lifecycle wiring if it ever becomes necessary.
 - Hook injection, 1-day entry timeout, `{}` immediate answers for unheld
   events — all current behavior, no changes.
 - `permission_sticky` already covers general-permission waiting stickiness

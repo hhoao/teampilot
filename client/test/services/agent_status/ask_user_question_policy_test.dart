@@ -1,10 +1,13 @@
 import 'package:flutter_test/flutter_test.dart';
+import 'package:teampilot/models/team_config.dart';
 import 'package:teampilot/services/agent_status/agent_permission_request.dart';
 import 'package:teampilot/services/agent_status/ask_user_question.dart';
 import 'package:teampilot/services/agent_status/ask_user_question_policy.dart';
 import 'package:teampilot/services/cli/claude/capabilities/chat_interaction.dart';
 import 'package:teampilot/services/cli/cursor/capabilities/chat_interaction.dart';
 import 'package:teampilot/services/cli/opencode/capabilities/chat_interaction.dart';
+import 'package:teampilot/services/cli/registry/capabilities/chat_interaction_capability.dart';
+import 'package:teampilot/services/cli/registry/cli_tool_registry.dart';
 
 void main() {
   const permissionRequest = AgentPermissionRequest(
@@ -192,10 +195,21 @@ void main() {
       );
     });
 
-    test('Claude / pty capability returns false', () {
+    test('Claude family capability returns true', () {
       expect(
         shouldShowPermissionCard(
           capability: const ClaudeChatInteraction(),
+          permissionRequest: permissionRequest,
+          askRequestId: 'perm-1',
+        ),
+        isTrue,
+      );
+    });
+
+    test('Cursor capability (no in-chat reply) returns false', () {
+      expect(
+        shouldShowPermissionCard(
+          capability: const CursorChatInteraction(),
           permissionRequest: permissionRequest,
           askRequestId: 'perm-1',
         ),
@@ -231,6 +245,38 @@ void main() {
           capability: const OpencodeChatInteraction(),
           permissionRequest: null,
           askRequestId: 'perm-1',
+        ),
+        isFalse,
+      );
+    });
+
+    test('hook-hold channel needs no request id', () {
+      final claude = CliToolRegistry.builtIn()
+          .capability<ChatInteractionCapability>(CliTool.claude);
+      expect(
+        shouldShowPermissionCard(
+          capability: claude,
+          permissionRequest: AgentPermissionRequest(
+            id: '',
+            description: 'Bash rm -rf node_modules',
+          ),
+          askRequestId: null,
+        ),
+        isTrue,
+      );
+    });
+
+    test('plugin-SDK channel still requires a request id', () {
+      final opencode = CliToolRegistry.builtIn()
+          .capability<ChatInteractionCapability>(CliTool.opencode);
+      expect(
+        shouldShowPermissionCard(
+          capability: opencode,
+          permissionRequest: AgentPermissionRequest(
+            id: '',
+            description: 'Run `npm install`',
+          ),
+          askRequestId: null,
         ),
         isFalse,
       );

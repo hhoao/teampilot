@@ -6,6 +6,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import '../models/managed_provider.dart';
 import '../repositories/managed_provider_repository.dart';
 import '../services/provider_usage/managed_provider_cli_binding.dart';
+import '../services/provider_usage/managed_provider_cli_row_janitor.dart';
 import 'app_provider_cubit.dart';
 
 enum ManagedProviderLoadStatus { initial, loading, ready, error }
@@ -64,11 +65,13 @@ class ManagedProviderCubit extends Cubit<ManagedProviderState> {
     onProviderDeletedCredentialCleanup,
     AppProviderCubit? appProviderCubit,
     ManagedProviderCliBinding binding = const ManagedProviderCliBinding(),
+    ManagedProviderCliRowJanitor? rowJanitor,
   }) : _repository = repository,
        _onProviderDeletedState = onProviderDeletedState,
        _onProviderDeletedCredentialCleanup = onProviderDeletedCredentialCleanup,
        _appProviderCubit = appProviderCubit,
        _binding = binding,
+       _rowJanitor = rowJanitor,
        super(ManagedProviderState());
 
   final ManagedProviderRepository _repository;
@@ -77,6 +80,7 @@ class ManagedProviderCubit extends Cubit<ManagedProviderState> {
   _onProviderDeletedCredentialCleanup;
   final AppProviderCubit? _appProviderCubit;
   final ManagedProviderCliBinding _binding;
+  final ManagedProviderCliRowJanitor? _rowJanitor;
   Future<void>? _loadFlight;
   Future<void> _mutationTail = Future<void>.value();
   int _catalogRevision = 0;
@@ -107,57 +111,10 @@ class ManagedProviderCubit extends Cubit<ManagedProviderState> {
     try {
       final providers = await _repository.load();
       if (isClosed || revision != _catalogRevision) return;
-      final migrated = <ManagedProvider>[];
-      var changed = false;
-      for (final provider in providers) {
-        final next = await _ensurePerEntryBinding(provider);
-        changed = changed || next != provider;
-        migrated.add(next);
-      }
-      if (changed) {
-        // Persist the migration through the serialized mutation tail: a
-        // concurrent upsert that landed between the load's catalog read and
-        // this save must not be classified as removed by the repository's
-        // deletion barrier. Re-read inside the lock and merge so the save
-        // never shrinks — or grows — the catalog away from the current disk
-        // state (entries deleted while the load ran stay deleted).
-        await _serializeMutation(() async {
-          final current = await _repository.load();
-          final merged = <String, ManagedProvider>{
-            for (final provider in current) provider.id: provider,
-          };
-          for (final provider in migrated) {
-            if (!merged.containsKey(provider.id)) continue;
-            merged[provider.id] = provider;
-          }
-          await _repository.save(merged.values.toList());
-        }, errorCode: ManagedProviderErrorCode.loadFailed);
-        if (isClosed) return;
-        // The serialized save bumped the catalog revision, and concurrent
-        // mutations may have landed while the load ran. Merge the live state
-        // (authoritative for concurrent mutations) over a fresh disk read
-        // instead of clobbering it with the load's stale view.
-        final byId = <String, ManagedProvider>{
-          for (final provider in await _repository.load())
-            provider.id: provider,
-        };
-        for (final provider in state.providers) {
-          byId[provider.id] = provider;
-        }
-        emit(
-          state.copyWith(
-            status: ManagedProviderLoadStatus.ready,
-            providers: byId.values.toList(),
-            clearError: true,
-          ),
-        );
-        return;
-      }
-      if (isClosed || revision != _catalogRevision) return;
       emit(
         state.copyWith(
           status: ManagedProviderLoadStatus.ready,
-          providers: migrated,
+          providers: providers,
           clearError: true,
         ),
       );
@@ -190,21 +147,19 @@ class ManagedProviderCubit extends Cubit<ManagedProviderState> {
       return;
     }
     final trimmed = provider.copyWith(id: provider.id.trim());
-    final normalized = await _ensurePerEntryBinding(trimmed);
+    final normalized = await _bindIntentSource(trimmed);
     await _serializeMutation(() async {
       await _repository.upsert(normalized);
       _replace(normalized);
     }, errorCode: ManagedProviderErrorCode.saveFailed);
   }
 
-  /// Rewrites legacy `cli:` sources to the per-entry source and ensures the
-  /// dedicated CLI provider row exists. Returns the (possibly rewritten)
-  /// provider.
-  Future<ManagedProvider> _ensurePerEntryBinding(
-    ManagedProvider provider,
-  ) async {
+  /// Expands a preset intent source (`cli:cursor`) to the per-entry source
+  /// and ensures the dedicated CLI provider row exists. Legacy and already
+  /// per-entry sources pass through unchanged.
+  Future<ManagedProvider> _bindIntentSource(ManagedProvider provider) async {
     final source = provider.endpointConfig.credentialSource.trim();
-    final next = _binding.migrateCredentialSource(
+    final next = _binding.resolveIntentSource(
       source: source,
       managedProviderId: provider.id,
     );
@@ -212,28 +167,32 @@ class ManagedProviderCubit extends Cubit<ManagedProviderState> {
       await _ensureCliRow(provider);
       return provider;
     }
-    final endpointConfig = provider.endpointConfig;
-    final provider0 = provider.copyWith(
-      endpointConfig: ManagedProviderEndpointConfig(
-        url: endpointConfig.url,
-        method: endpointConfig.method,
-        responsePath: endpointConfig.responsePath,
-        credentialField: endpointConfig.credentialField,
-        credentialName: endpointConfig.credentialName,
-        credentialPlacement: endpointConfig.credentialPlacement,
-        credentialPrefix: endpointConfig.credentialPrefix,
-        credentialSource: next,
-        credentialTemplate: endpointConfig.credentialTemplate,
-        headers: endpointConfig.headers,
-        body: endpointConfig.body,
-        windows: endpointConfig.windows,
-        hadUnsafeUrl: endpointConfig.hadUnsafeUrl,
-        unknownFields: endpointConfig.unknownFields,
-      ),
+    final bound = provider.copyWith(
+      endpointConfig: _withCredentialSource(provider.endpointConfig, next),
     );
-    await _ensureCliRow(provider0);
-    return provider0;
+    await _ensureCliRow(bound);
+    return bound;
   }
+
+  static ManagedProviderEndpointConfig _withCredentialSource(
+    ManagedProviderEndpointConfig config,
+    String credentialSource,
+  ) => ManagedProviderEndpointConfig(
+    url: config.url,
+    method: config.method,
+    responsePath: config.responsePath,
+    credentialField: config.credentialField,
+    credentialName: config.credentialName,
+    credentialPlacement: config.credentialPlacement,
+    credentialPrefix: config.credentialPrefix,
+    credentialSource: credentialSource,
+    credentialTemplate: config.credentialTemplate,
+    headers: config.headers,
+    body: config.body,
+    windows: config.windows,
+    hadUnsafeUrl: config.hadUnsafeUrl,
+    unknownFields: config.unknownFields,
+  );
 
   Future<void> _ensureCliRow(ManagedProvider provider) async {
     final appCubit = _appProviderCubit;
@@ -292,6 +251,7 @@ class ManagedProviderCubit extends Cubit<ManagedProviderState> {
       if (onProviderDeletedState != null) {
         await onProviderDeletedState(id);
       }
+      await _removeDedicatedCliRow(provider);
       if (isClosed) return;
       emit(
         state.copyWith(
@@ -301,6 +261,19 @@ class ManagedProviderCubit extends Cubit<ManagedProviderState> {
         ),
       );
     }, errorCode: ManagedProviderErrorCode.deleteFailed);
+  }
+
+  /// Best-effort removal of the entry's dedicated CLI row and its isolated
+  /// HOME directory. Failures are logged by the janitor and never fail the
+  /// entry deletion.
+  Future<void> _removeDedicatedCliRow(ManagedProvider? provider) async {
+    final janitor = _rowJanitor;
+    if (janitor == null || provider == null) return;
+    final source = provider.endpointConfig.credentialSource.trim();
+    final cli = _binding.cliForCredentialSource(source);
+    final rowId = _binding.rowIdForCredentialSource(source);
+    if (cli == null || rowId == null) return;
+    await janitor.removeDedicatedRow(cli: cli, rowId: rowId);
   }
 
   Future<void> _serializeMutation(

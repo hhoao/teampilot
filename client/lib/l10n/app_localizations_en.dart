@@ -1565,6 +1565,11 @@ class AppLocalizationsEn extends AppLocalizations {
   String get agentPermissionOpenTerminal => 'Open Terminal';
 
   @override
+  String agentPermissionAlwaysAllowRule(Object rule) {
+    return 'Always allow $rule';
+  }
+
+  @override
   String get exitPlanModeTitle => 'Plan ready for approval';
 
   @override
@@ -8188,7 +8193,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get managedProvidersCredentialSourceHint =>
-      'secret or cli:cursor-account';
+      'secret or cli:cursor-mp-<entry>';
 
   @override
   String get managedProvidersCredentialSourceHelper =>

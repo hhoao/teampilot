@@ -1,5 +1,7 @@
 import 'dart:async';
 
+import 'package:teampilot/services/agent_status/seat_hold_gate.dart';
+
 /// Reply for a held Claude-family ExitPlanMode `PreToolUse` HTTP hook.
 final class ExitPlanModeHookReply {
   const ExitPlanModeHookReply.allow() : deny = false;
@@ -153,7 +155,12 @@ final class ExitPlanPermissionRequestReply {
 /// the user already approved (or rejected) from the chat card auto-applies to
 /// the hook that arrives afterwards, without re-prompting.
 final class ExitPlanPermissionRequestGate {
-  final _waiters = <String, Completer<ExitPlanPermissionRequestReply>>{};
+  ExitPlanPermissionRequestGate()
+    : _hold = SeatHoldGate<ExitPlanPermissionRequestReply>(
+        staleReply: () => const ExitPlanPermissionRequestReply.deny(),
+      );
+
+  final SeatHoldGate<ExitPlanPermissionRequestReply> _hold;
   final _remembered = <String, _RememberedPlanDecision>{};
 
   /// Waits for [complete] for one seat. A remembered decision for the same
@@ -173,23 +180,11 @@ final class ExitPlanPermissionRequestGate {
           ? const ExitPlanPermissionRequestReply.deny()
           : const ExitPlanPermissionRequestReply.allow();
     }
-
-    final existing = _waiters.remove(key);
-    if (existing != null && !existing.isCompleted) {
-      existing.complete(const ExitPlanPermissionRequestReply.deny());
-    }
-    final completer = Completer<ExitPlanPermissionRequestReply>();
-    _waiters[key] = completer;
-    try {
-      return await completer.future.timeout(timeout);
-    } on TimeoutException {
-      return null;
-    } finally {
-      final current = _waiters[key];
-      if (identical(current, completer)) {
-        _waiters.remove(key);
-      }
-    }
+    return _hold.wait(
+      sessionId: sessionId,
+      memberId: memberId,
+      timeout: timeout,
+    );
   }
 
   /// Returns true when a waiter was completed (hook still open).
@@ -197,17 +192,14 @@ final class ExitPlanPermissionRequestGate {
     required String sessionId,
     required String memberId,
     required ExitPlanPermissionRequestReply reply,
-  }) {
-    final completer = _waiters.remove(_key(sessionId, memberId));
-    if (completer == null || completer.isCompleted) return false;
-    completer.complete(reply);
-    return true;
-  }
+  }) => _hold.complete(
+    sessionId: sessionId,
+    memberId: memberId,
+    reply: reply,
+  );
 
-  bool hasWaiter({required String sessionId, required String memberId}) {
-    final completer = _waiters[_key(sessionId, memberId)];
-    return completer != null && !completer.isCompleted;
-  }
+  bool hasWaiter({required String sessionId, required String memberId}) =>
+      _hold.hasWaiter(sessionId: sessionId, memberId: memberId);
 
   /// Stores a chat-card decision for a PermissionRequest hook that has not
   /// arrived yet (single-slot per seat; overwritten by later decisions).
@@ -232,27 +224,14 @@ final class ExitPlanPermissionRequestGate {
   }
 
   void clearSeat({required String sessionId, required String memberId}) {
-    final key = _key(sessionId, memberId);
-    _remembered.remove(key);
-    final completer = _waiters.remove(key);
-    if (completer != null && !completer.isCompleted) {
-      completer.complete(const ExitPlanPermissionRequestReply.deny());
-    }
+    _remembered.remove(_key(sessionId, memberId));
+    _hold.clearSeat(sessionId: sessionId, memberId: memberId);
   }
 
   void clearSession(String sessionId) {
     final prefix = '${sessionId.trim()}/';
     _remembered.removeWhere((key, _) => key.startsWith(prefix));
-    final doomed = <String>[];
-    for (final key in _waiters.keys) {
-      if (key.startsWith(prefix)) doomed.add(key);
-    }
-    for (final key in doomed) {
-      final c = _waiters.remove(key);
-      if (c != null && !c.isCompleted) {
-        c.complete(const ExitPlanPermissionRequestReply.deny());
-      }
-    }
+    _hold.clearSession(sessionId);
   }
 
   String _key(String sessionId, String memberId) =>

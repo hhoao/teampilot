@@ -984,7 +984,7 @@ void main() {
         adapterId: 'http-json',
         endpointConfig: ManagedProviderEndpointConfig(
           url: 'https://cursor.com/api/usage-summary',
-          credentialSource: 'cli:cursor-account',
+          credentialSource: 'cli:cursor-mp-p1',
           credentialName: 'Cookie',
           credentialTemplate:
               'WorkosCursorSessionToken={accountId}::{accessToken}',
@@ -1033,7 +1033,7 @@ void main() {
         adapterId: 'http-json',
         endpointConfig: ManagedProviderEndpointConfig(
           url: 'https://cursor.com/api/usage-summary',
-          credentialSource: 'cli:cursor-account',
+          credentialSource: 'cli:cursor-mp-p1',
           credentialName: 'Cookie',
           credentialTemplate:
               'WorkosCursorSessionToken={accountId}::{accessToken}',
@@ -1070,7 +1070,13 @@ void main() {
         },
       ),
     ).fetch(
-      preset.template.copyWith(id: 'cursor'),
+      preset.template.copyWith(
+        id: 'cursor',
+        endpointConfig: _withCredentialSource(
+          preset.template.endpointConfig,
+          'cli:cursor-mp-p1',
+        ),
+      ),
       credentials: const _Resolver(null),
       http: FakeProviderUsageHttpClient(
         response: const ProviderUsageHttpResponse(
@@ -1101,7 +1107,13 @@ void main() {
         },
       ),
     ).fetch(
-      preset.template.copyWith(id: 'claude'),
+      preset.template.copyWith(
+        id: 'claude',
+        endpointConfig: _withCredentialSource(
+          preset.template.endpointConfig,
+          'cli:claude-mp-p1',
+        ),
+      ),
       credentials: const _Resolver(null),
       http: FakeProviderUsageHttpClient(
         response: const ProviderUsageHttpResponse(
@@ -1131,7 +1143,13 @@ void main() {
         },
       ),
     ).fetch(
-      preset.template.copyWith(id: 'codex'),
+      preset.template.copyWith(
+        id: 'codex',
+        endpointConfig: _withCredentialSource(
+          preset.template.endpointConfig,
+          'cli:codex-mp-p1',
+        ),
+      ),
       credentials: const _Resolver(null),
       http: FakeProviderUsageHttpClient(
         response: const ProviderUsageHttpResponse(
@@ -1243,6 +1261,28 @@ class _CliReader implements OfficialSubscriptionAuthReader {
   Future<ProviderCredentialScope?> read(ManagedProvider provider) async =>
       scope;
 }
+
+/// Preset templates carry the intent source (`cli:cursor`); tests resolve
+/// credentials, so they must fetch with the per-entry form instead.
+ManagedProviderEndpointConfig _withCredentialSource(
+  ManagedProviderEndpointConfig config,
+  String credentialSource,
+) => ManagedProviderEndpointConfig(
+  url: config.url,
+  method: config.method,
+  responsePath: config.responsePath,
+  credentialField: config.credentialField,
+  credentialName: config.credentialName,
+  credentialPlacement: config.credentialPlacement,
+  credentialPrefix: config.credentialPrefix,
+  credentialSource: credentialSource,
+  credentialTemplate: config.credentialTemplate,
+  headers: config.headers,
+  body: config.body,
+  windows: config.windows,
+  hadUnsafeUrl: config.hadUnsafeUrl,
+  unknownFields: config.unknownFields,
+);
 
 class _NonJsonValue {
   @override

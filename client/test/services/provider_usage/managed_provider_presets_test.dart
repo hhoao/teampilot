@@ -16,7 +16,7 @@ void main() {
     expect(codex.template.name, 'Codex');
     expect(codex.template.kind, ManagedProviderKind.subscriptionQuota);
     expect(codex.template.adapterId, 'http-json');
-    expect(codex.template.endpointConfig.credentialSource, 'cli:openai-official');
+    expect(codex.template.endpointConfig.credentialSource, 'cli:codex');
 
     final claude = managedProviderPresetById('claude-code')!;
     expect(claude.template.name, 'Claude Code');
@@ -24,7 +24,7 @@ void main() {
     expect(claude.template.adapterId, 'http-json');
     expect(
       claude.template.endpointConfig.credentialSource,
-      'cli:claude-official',
+      'cli:claude',
     );
 
     final cursor = managedProviderPresetById('cursor')!;
@@ -36,7 +36,7 @@ void main() {
     );
     expect(
       cursor.template.endpointConfig.credentialSource,
-      'cli:cursor-account',
+      'cli:cursor',
     );
     expect(
       cursor.template.endpointConfig.credentialTemplate,
