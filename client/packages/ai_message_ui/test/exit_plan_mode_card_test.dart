@@ -17,7 +17,9 @@ Widget _host(Widget child) {
 }
 
 void main() {
-  testWidgets('renders markdown plan and opens terminal', (tester) async {
+  testWidgets('compact card hides plan content and opens terminal', (
+    tester,
+  ) async {
     var opened = false;
     await tester.pumpWidget(
       _host(
@@ -32,35 +34,51 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.byKey(AiExitPlanModeCard.cardKey), findsOneWidget);
-    expect(find.byType(MarkdownView), findsOneWidget);
+    expect(
+      find.byType(MarkdownView),
+      findsNothing,
+      reason: 'plan content renders only in the floating preview',
+    );
+    expect(find.byKey(AiExitPlanModeCard.viewPlanButtonKey), findsOneWidget);
     expect(find.text('/tmp/plan.md'), findsOneWidget);
     expect(find.byKey(AiExitPlanModeCard.approveButtonKey), findsNothing);
+    expect(
+      find.byKey(AiExitPlanModeCard.openTerminalButtonKey),
+      findsOneWidget,
+    );
 
     await tester.tap(find.byKey(AiExitPlanModeCard.openTerminalButtonKey));
     await tester.pumpAndSettle();
     expect(opened, isTrue);
   });
 
-  testWidgets('expand/collapse toggles', (tester) async {
+  testWidgets('view plan opens the floating preview with markdown', (
+    tester,
+  ) async {
     await tester.pumpWidget(
       _host(
         AiExitPlanModeCard(
-          planText: 'Long plan text here.',
+          planText: '1. Refactor the launcher.',
           onOpenTerminal: () {},
           onOpenPlanFile: (_) {},
         ),
       ),
     );
     await tester.pumpAndSettle();
-    expect(find.byKey(AiExitPlanModeCard.expandButtonKey), findsOneWidget);
-    expect(find.text('Expand'), findsOneWidget);
 
-    await tester.tap(find.byKey(AiExitPlanModeCard.expandButtonKey));
+    await tester.tap(find.byKey(AiExitPlanModeCard.viewPlanButtonKey));
     await tester.pumpAndSettle();
-    expect(find.text('Collapse'), findsOneWidget);
+
+    expect(find.byKey(AiExitPlanModeCard.previewDialogKey), findsOneWidget);
+    expect(find.byType(MarkdownView), findsOneWidget);
+
+    // Close via the dialog header close button.
+    await tester.tap(find.byIcon(Icons.close_rounded));
+    await tester.pumpAndSettle();
+    expect(find.byKey(AiExitPlanModeCard.previewDialogKey), findsNothing);
   });
 
-  testWidgets('copy button copies plan text', (tester) async {
+  testWidgets('copy button in preview copies plan text', (tester) async {
     final copied = <String>[];
     tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(
       SystemChannels.platform,
@@ -89,6 +107,9 @@ void main() {
     );
     await tester.pumpAndSettle();
 
+    await tester.tap(find.byKey(AiExitPlanModeCard.viewPlanButtonKey));
+    await tester.pumpAndSettle();
+
     await tester.tap(find.byKey(AiExitPlanModeCard.copyPlanButtonKey));
     await tester.pumpAndSettle();
     expect(copied, ['Copy me']);
@@ -111,6 +132,31 @@ void main() {
     await tester.tap(find.text('/tmp/plan.md'));
     await tester.pumpAndSettle();
     expect(openedPath, '/tmp/plan.md');
+  });
+
+  testWidgets('preview footer opens the plan file and closes the dialog', (
+    tester,
+  ) async {
+    String? openedPath;
+    await tester.pumpWidget(
+      _host(
+        AiExitPlanModeCard(
+          planText: 'plan',
+          planFilePath: '/tmp/plan.md',
+          onOpenTerminal: () {},
+          onOpenPlanFile: (p) => openedPath = p,
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byKey(AiExitPlanModeCard.viewPlanButtonKey));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('Open plan file'));
+    await tester.pumpAndSettle();
+    expect(openedPath, '/tmp/plan.md');
+    expect(find.byKey(AiExitPlanModeCard.previewDialogKey), findsNothing);
   });
 
   testWidgets('in-chat approve/reject visible and approve shows error', (

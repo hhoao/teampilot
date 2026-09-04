@@ -48,6 +48,7 @@ final class AgentEventGateway {
     resolveSkipPermissions,
     AskUserQuestionHookGate? askUserHookGate,
     ExitPlanModeHookGate? exitPlanModeHookGate,
+    ExitPlanPermissionRequestGate? exitPlanPermissionRequestGate,
     CliToolRegistry? registry,
     DateTime Function()? clock,
   }) {
@@ -62,6 +63,9 @@ final class AgentEventGateway {
         ? null
         : ExitPlanModeRuntimeEventProjection(
             hookGate: exitPlanModeHookGate,
+            permissionGate:
+                exitPlanPermissionRequestGate ??
+                ExitPlanPermissionRequestGate(),
             registry: effectiveRegistry,
           );
     return AgentEventGateway(

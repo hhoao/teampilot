@@ -1420,20 +1420,25 @@ class ChatCubit extends Cubit<ChatState>
   }
 
   /// Approves the pending Claude `ExitPlanMode` plan from the chat card
-  /// (completes the held PreToolUse hook with allow). On success,
-  /// optimistically dismisses the waiting attention.
+  /// (completes the held PreToolUse hook, and the follow-up PermissionRequest
+  /// hook when present). On success, optimistically dismisses the waiting
+  /// attention.
   Future<ExitPlanApprovalResult> approveExitPlanMode({
     required String sessionId,
     required String memberId,
     required String toolUseId,
+    String? planText,
+    String? planFilePath,
   }) async {
     final result = await _exitPlanApproval.approve(
       sessionId: sessionId,
       memberId: memberId,
       toolUseId: toolUseId,
+      planText: planText,
+      planFilePath: planFilePath,
     );
     if (result is ExitPlanApprovalOk) {
-      _agentAttentionCubit?.dismissWaiting(
+      _agentAttentionCubit?.dismissWaitingPlanApproval(
         sessionId: sessionId,
         memberId: memberId,
       );
@@ -1447,14 +1452,18 @@ class ChatCubit extends Cubit<ChatState>
     required String sessionId,
     required String memberId,
     required String toolUseId,
+    String? planText,
+    String? planFilePath,
   }) async {
     final result = await _exitPlanApproval.reject(
       sessionId: sessionId,
       memberId: memberId,
       toolUseId: toolUseId,
+      planText: planText,
+      planFilePath: planFilePath,
     );
     if (result is ExitPlanApprovalOk) {
-      _agentAttentionCubit?.dismissWaiting(
+      _agentAttentionCubit?.dismissWaitingPlanApproval(
         sessionId: sessionId,
         memberId: memberId,
       );

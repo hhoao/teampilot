@@ -18,12 +18,14 @@ void main() {
 
   late AgentAttentionCubit cubit;
   late ExitPlanModeHookGate gate;
+  late ExitPlanPermissionRequestGate permissionGate;
   late TeammateBusMcpGateway gateway;
   late HttpClient client;
 
   setUp(() async {
     cubit = AgentAttentionCubit(pruneInterval: null);
     gate = ExitPlanModeHookGate();
+    permissionGate = ExitPlanPermissionRequestGate();
     gateway = TeammateBusMcpGateway();
     await gateway.ensureStarted();
     gateway.attachAgentEventGateway(
@@ -32,6 +34,7 @@ void main() {
         resolveCli: (_, __) => CliTool.claude,
         resolveSkipPermissions: (_, __) => false,
         exitPlanModeHookGate: gate,
+        exitPlanPermissionRequestGate: permissionGate,
       ),
     );
     client = HttpClient();
@@ -164,6 +167,95 @@ void main() {
     expect(hook['permissionDecision'], 'deny');
     expect(hook['permissionDecisionReason'], 'User rejected the plan');
   });
+
+  test(
+    'PermissionRequest hold → allow → decision allow (skips native TUI)',
+    () async {
+      const sessionId = 'ep-s3';
+      const memberId = 'm1';
+      gateway.registerAgentStatusSession(sessionId: sessionId);
+
+      final responseFuture = postExitPlan(
+        sessionId: sessionId,
+        memberId: memberId,
+        body: const {
+          'hook_event_name': 'PermissionRequest',
+          'tool_name': 'ExitPlanMode',
+          'tool_input': {'plan': '1. Do x.'},
+        },
+      );
+
+      final deadline = DateTime.now().add(const Duration(seconds: 5));
+      while (DateTime.now().isBefore(deadline)) {
+        if (permissionGate.hasWaiter(
+          sessionId: sessionId,
+          memberId: memberId,
+        )) {
+          break;
+        }
+        await Future<void>.delayed(const Duration(milliseconds: 20));
+      }
+      expect(
+        permissionGate.hasWaiter(sessionId: sessionId, memberId: memberId),
+        isTrue,
+      );
+      expect(
+        cubit.state.attentionFor(sessionId: sessionId, memberId: memberId),
+        AgentSeatAttention.waiting,
+      );
+
+      expect(
+        permissionGate.complete(
+          sessionId: sessionId,
+          memberId: memberId,
+          reply: const ExitPlanPermissionRequestReply.allow(),
+        ),
+        isTrue,
+      );
+
+      final resp = await responseFuture.timeout(const Duration(seconds: 5));
+      expect(resp.statusCode, HttpStatus.ok);
+      final decoded =
+          jsonDecode(await resp.transform(utf8.decoder).join()) as Map;
+      final hook = decoded['hookSpecificOutput'] as Map;
+      expect(hook['hookEventName'], 'PermissionRequest');
+      expect((hook['decision'] as Map)['behavior'], 'allow');
+    },
+  );
+
+  test(
+    'PermissionRequest after chat approval auto-applies the remembered decision',
+    () async {
+      const sessionId = 'ep-s4';
+      const memberId = 'm1';
+      gateway.registerAgentStatusSession(sessionId: sessionId);
+
+      // The plan was approved from the chat card before the PermissionRequest
+      // hook arrived — the gate remembers the decision.
+      permissionGate.remember(
+        sessionId: sessionId,
+        memberId: memberId,
+        deny: false,
+        planFingerprint: '1. Auto-applied plan.',
+      );
+
+      final resp = await postExitPlan(
+        sessionId: sessionId,
+        memberId: memberId,
+        body: const {
+          'hook_event_name': 'PermissionRequest',
+          'tool_name': 'ExitPlanMode',
+          'tool_input': {'plan': '1. Auto-applied plan.'},
+        },
+      ).timeout(const Duration(seconds: 5));
+      expect(resp.statusCode, HttpStatus.ok);
+      final decoded =
+          jsonDecode(await resp.transform(utf8.decoder).join()) as Map;
+      final hook = decoded['hookSpecificOutput'] as Map;
+      expect(hook['hookEventName'], 'PermissionRequest');
+      expect((hook['decision'] as Map)['behavior'], 'allow');
+    },
+  );
 
   test(
     'ExitPlan without gate still returns empty 200 and keeps waiting',

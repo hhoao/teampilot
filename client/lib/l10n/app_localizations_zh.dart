@@ -1506,10 +1506,10 @@ class AppLocalizationsZh extends AppLocalizations {
   String get exitPlanModeCopyPlan => '复制计划';
 
   @override
-  String get exitPlanModeExpand => '展开';
+  String get exitPlanModeViewPlan => '查看计划';
 
   @override
-  String get exitPlanModeCollapse => '收起';
+  String get exitPlanModePreviewTitle => '计划预览';
 
   @override
   String get exitPlanModeOpenPlanFile => '打开计划文件';

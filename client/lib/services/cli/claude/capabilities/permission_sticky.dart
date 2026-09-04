@@ -1,5 +1,6 @@
 import '../../../agent_status/agent_attention_state.dart';
 import '../../../agent_status/agent_status_event.dart';
+import '../../../agent_status/exit_plan_mode.dart';
 
 /// Orca `shouldKeepClaudePermissionVisible`: keep sticky waiting unless the
 /// next hook resumes the approved tool or carries an explicit user prompt.
@@ -18,6 +19,20 @@ bool shouldKeepClaudePermissionVisible(
   if (prevHook.isEmpty || nextHook.isEmpty) return false;
   if (next.hasExplicitPrompt) return false;
   if (isClaudePermissionResumingApprovedTool(previous, next)) return false;
+  // ExitPlanMode approval is a turn-level gate: the main agent is blocked
+  // while the plan confirmation is pending, so any main-agent tool activity
+  // means the plan was resolved (in chat, in the TUI, or by hook timeout).
+  // `PermissionRequest` echoes carry no tool_use_id / agent_id, so the
+  // resuming-tool match above cannot see them — clear instead of sticking.
+  // Subagent events carry `agent_id` and must not clear the waiting card.
+  if (isExitPlanModeTool(previous.toolName) &&
+      exitPlanModeFingerprint(
+        planText: previous.planText,
+        planFilePath: previous.planFilePath,
+      ).isNotEmpty &&
+      _trimOrNull(next.toolAgentId) == null) {
+    return false;
+  }
   // Why: Claude can run subagents concurrently in one seat. Keep permission
   // sticky unless the next hook has a source-level execution id that the
   // PermissionRequest event itself does not expose.

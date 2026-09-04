@@ -137,11 +137,13 @@ final class ExitPlanModeRuntimeEventProjection extends RuntimeEventProjection
     implements RuntimeEventHookResponderProjection {
   ExitPlanModeRuntimeEventProjection({
     required this.hookGate,
+    required this.permissionGate,
     CliToolRegistry? registry,
   }) : _registry = registry ?? CliToolRegistry.builtIn(),
        super(onEvent: (_) {});
 
   final ExitPlanModeHookGate hookGate;
+  final ExitPlanPermissionRequestGate permissionGate;
   final CliToolRegistry _registry;
   final _responses = <(RuntimeSeatKey, int), Future<Map<String, Object?>?>>{};
 
@@ -160,26 +162,51 @@ final class ExitPlanModeRuntimeEventProjection extends RuntimeEventProjection
     final hasPlan =
         (status?.planText?.trim() ?? '').isNotEmpty ||
         (status?.planFilePath?.trim() ?? '').isNotEmpty;
-    if (status?.hookEventName?.trim() != 'PreToolUse' ||
-        !isExitPlanModeTool(status?.toolName) ||
-        toolUseId.isEmpty ||
+    if (!isExitPlanModeTool(status?.toolName) ||
         !hasPlan ||
         capability?.supportsInChatApproval != true) {
       return;
     }
+    final hookEvent = status?.hookEventName?.trim();
     final key = (event.seat, event.sequence);
     // A restore replay or duplicate publication must not re-register a stale
     // hold for the same seat/sequence whose HTTP request is long gone.
     // Kept after completion so [responseFor] still returns the held future;
     // entries are bounded by distinct PreToolUse sequences per seat.
     if (_responses.containsKey(key)) return;
-    _responses[key] = hookGate
-        .wait(
-          sessionId: event.seat.sessionId,
-          memberId: event.seat.memberId,
-          toolUseId: toolUseId,
-        )
-        .then((reply) => reply?.toHookResponse());
+    if (hookEvent == 'PreToolUse') {
+      if (toolUseId.isEmpty) return;
+      // A fresh plan prompt invalidates any remembered decision for the seat.
+      permissionGate.forget(
+        sessionId: event.seat.sessionId,
+        memberId: event.seat.memberId,
+      );
+      _responses[key] = hookGate
+          .wait(
+            sessionId: event.seat.sessionId,
+            memberId: event.seat.memberId,
+            toolUseId: toolUseId,
+          )
+          .then((reply) => reply?.toHookResponse());
+      return;
+    }
+    // Claude's native plan confirmation (`PermissionRequest`, no
+    // tool_use_id): hold the hook so the chat card can return the official
+    // `decision` object instead of falling through to the TUI prompt.
+    if (hookEvent == 'PermissionRequest') {
+      final fingerprint = exitPlanModeFingerprint(
+        planText: status?.planText,
+        planFilePath: status?.planFilePath,
+      );
+      if (fingerprint.isEmpty) return;
+      _responses[key] = permissionGate
+          .wait(
+            sessionId: event.seat.sessionId,
+            memberId: event.seat.memberId,
+            planFingerprint: fingerprint,
+          )
+          .then((reply) => reply?.toHookResponse());
+    }
   }
 
   @override

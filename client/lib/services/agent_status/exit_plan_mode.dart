@@ -34,6 +34,15 @@ AgentStatusEvent preserveExitPlanModePayload(
   );
 }
 
+/// Correlates the ExitPlanMode `PreToolUse` event with the follow-up
+/// `PermissionRequest` echo (no `tool_use_id`): prefer the plan text, else the
+/// plan file path. Empty when the event carries neither.
+String exitPlanModeFingerprint({String? planText, String? planFilePath}) {
+  final text = planText?.trim() ?? '';
+  if (text.isNotEmpty) return text;
+  return planFilePath?.trim() ?? '';
+}
+
 /// Reads the Claude `ExitPlanMode` plan body from `tool_input`.
 ///
 /// Lenient by design: the CLI schema has drifted between versions (`plan`,

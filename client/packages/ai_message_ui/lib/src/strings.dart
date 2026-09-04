@@ -51,8 +51,8 @@ class AiMessageStrings {
     this.exitPlanApprove = 'Approve',
     this.exitPlanReject = 'Reject',
     this.exitPlanCopy = 'Copy plan',
-    this.exitPlanExpand = 'Expand',
-    this.exitPlanCollapse = 'Collapse',
+    this.exitPlanViewPlan = 'View plan',
+    this.exitPlanPreviewTitle = 'Plan preview',
     this.exitPlanOpenFile = 'Open plan file',
     this.exitPlanApproveFailed = 'Couldn\'t approve the plan',
     this.exitPlanRejectFailed = 'Couldn\'t reject the plan',
@@ -111,8 +111,8 @@ class AiMessageStrings {
   final String exitPlanApprove;
   final String exitPlanReject;
   final String exitPlanCopy;
-  final String exitPlanExpand;
-  final String exitPlanCollapse;
+  final String exitPlanViewPlan;
+  final String exitPlanPreviewTitle;
   final String exitPlanOpenFile;
   final String exitPlanApproveFailed;
   final String exitPlanRejectFailed;

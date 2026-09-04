@@ -233,7 +233,14 @@ class AgentPermissionAttentionBanner extends StatelessWidget {
       final supportsInChatApproval =
           exitPlanCapability?.supportsInChatApproval ?? false;
       final toolUseId = lastEvent?.toolUseId?.trim() ?? '';
-      final inChatApproval = supportsInChatApproval && toolUseId.isNotEmpty;
+      // PermissionRequest plan confirmations carry no tool_use_id but are
+      // held by ExitPlanPermissionRequestGate (seat-keyed), so they are
+      // actionable from chat too.
+      final isHeldPermissionRequest =
+          lastEvent?.hookEventName == 'PermissionRequest';
+      final inChatApproval =
+          supportsInChatApproval &&
+          (toolUseId.isNotEmpty || isHeldPermissionRequest);
       return _withStrings(
         context,
         AiExitPlanModeCard(
@@ -247,6 +254,10 @@ class AgentPermissionAttentionBanner extends StatelessWidget {
                         sessionId: sessionId,
                         memberId: seatId,
                         toolUseId: toolUseId,
+                        planText: planText,
+                        planFilePath: planFilePath.isEmpty
+                            ? null
+                            : planFilePath,
                       );
                   return _fromExitPlan(result);
                 }
@@ -259,6 +270,10 @@ class AgentPermissionAttentionBanner extends StatelessWidget {
                         sessionId: sessionId,
                         memberId: seatId,
                         toolUseId: toolUseId,
+                        planText: planText,
+                        planFilePath: planFilePath.isEmpty
+                            ? null
+                            : planFilePath,
                       );
                   return _fromExitPlan(result);
                 }

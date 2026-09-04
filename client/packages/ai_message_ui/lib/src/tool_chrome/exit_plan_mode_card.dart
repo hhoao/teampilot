@@ -7,9 +7,13 @@ import 'package:tp_markdown/tp_markdown.dart';
 import '../strings.dart';
 import '../theme.dart';
 
-/// Chat card for Claude `ExitPlanMode`: Markdown plan, expand/collapse, copy,
-/// clickable plan file, and (when [onApprove]/[onReject] are provided) an
-/// in-chat Approve / Reject footer.
+/// Chat card for Claude `ExitPlanMode`: compact summary row with a floating
+/// plan preview, clickable plan file, and (when [onApprove]/[onReject] are
+/// provided) an in-chat Approve / Reject footer.
+///
+/// The plan itself renders in a modal preview ([showTpDialog]) opened via the
+/// view-plan affordance — the card stays as small as the other interactive
+/// cards.
 class AiExitPlanModeCard extends StatefulWidget {
   const AiExitPlanModeCard({
     required this.planText,
@@ -25,7 +29,8 @@ class AiExitPlanModeCard extends StatefulWidget {
   static const approveButtonKey = Key('exit-plan-mode-approve-button');
   static const rejectButtonKey = Key('exit-plan-mode-reject-button');
   static const copyPlanButtonKey = Key('exit-plan-mode-copy-plan-button');
-  static const expandButtonKey = Key('exit-plan-mode-expand-button');
+  static const viewPlanButtonKey = Key('exit-plan-mode-view-plan-button');
+  static const previewDialogKey = Key('exit-plan-mode-preview-dialog');
   static const openPlanFileButtonKey = Key(
     'exit-plan-mode-open-plan-file-button',
   );
@@ -48,7 +53,6 @@ class AiExitPlanModeCard extends StatefulWidget {
 }
 
 class _AiExitPlanModeCardState extends State<AiExitPlanModeCard> {
-  var _expanded = false;
   var _approving = false;
   String? _inlineError;
 
@@ -98,6 +102,51 @@ class _AiExitPlanModeCardState extends State<AiExitPlanModeCard> {
     await Clipboard.setData(ClipboardData(text: widget.planText));
   }
 
+  Future<void> _openPreview() async {
+    final strings = AiMessageStrings.of(context);
+    final path = widget.planFilePath?.trim() ?? '';
+    await showTpDialog(
+      context: context,
+      builder: (dialogContext) => TpDialog(
+        key: AiExitPlanModeCard.previewDialogKey,
+        maxWidth: 720,
+        maxHeight: 640,
+        child: TpDialogPinnedLayout(
+          header: TpDialogHeader(
+            title: strings.exitPlanPreviewTitle,
+            trailing: TpIconButton(
+              key: AiExitPlanModeCard.copyPlanButtonKey,
+              icon: Icons.copy_rounded,
+              tooltip: strings.exitPlanCopy,
+              compact: true,
+              color: Theme.of(dialogContext).colorScheme.onSurfaceVariant,
+              onTap: _copyPlan,
+            ),
+          ),
+          body: MarkdownView(
+            document: compileMarkdown(widget.planText),
+            tokens: AiMessageTheme.of(dialogContext).markdown,
+          ),
+          footer: path.isEmpty
+              ? null
+              : TpDialogActions(
+                  children: [
+                    TpButton(
+                      variant: TpButtonVariant.ghost,
+                      size: TpControlSize.medium,
+                      onPressed: () {
+                        Navigator.of(dialogContext).pop();
+                        widget.onOpenPlanFile(path);
+                      },
+                      child: Text(strings.exitPlanOpenFile),
+                    ),
+                  ],
+                ),
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
@@ -111,140 +160,127 @@ class _AiExitPlanModeCardState extends State<AiExitPlanModeCard> {
       padding: EdgeInsets.only(bottom: spacing.sm),
       child: Material(
         key: AiExitPlanModeCard.cardKey,
-        elevation: 2,
-        shadowColor: cs.shadow.withValues(alpha: 0.28),
-        color: cs.surfaceContainerHigh,
-        borderRadius: BorderRadius.circular(radius),
+        elevation: 0,
+        color: cs.surface,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(radius + 4),
+          side: BorderSide(color: cs.outlineVariant.withValues(alpha: 0.55)),
+        ),
         child: Padding(
           padding: EdgeInsets.fromLTRB(
-            spacing.md,
-            spacing.sm,
-            spacing.sm,
-            spacing.sm,
+            spacing.lg,
+            spacing.lg,
+            spacing.lg,
+            spacing.lg,
           ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             mainAxisSize: MainAxisSize.min,
             children: [
               Row(
+                crossAxisAlignment: CrossAxisAlignment.center,
                 children: [
-                  Icon(Icons.fact_check_rounded, size: 16, color: cs.tertiary),
+                  Icon(Icons.fact_check_rounded, size: 18, color: cs.tertiary),
                   SizedBox(width: spacing.sm),
                   Expanded(
                     child: Text(
                       strings.exitPlanTitle,
-                      style: styles.smColored(cs.onSurface),
+                      style: styles.smColored(cs.onSurfaceVariant),
                     ),
                   ),
+                  SizedBox(width: spacing.md),
                   TpIconButton(
-                    key: AiExitPlanModeCard.copyPlanButtonKey,
-                    icon: Icons.copy_rounded,
-                    tooltip: strings.exitPlanCopy,
+                    icon: Icons.terminal_rounded,
+                    tooltip: strings.permissionOpenTerminal,
                     compact: true,
                     size: TpIconButton.kCompactSize,
                     color: cs.onSurfaceVariant.withValues(alpha: 0.75),
                     borderRadius: radius,
-                    onTap: widget.planText.isEmpty ? null : _copyPlan,
+                    enabled: !_approving,
+                    onTap: widget.onOpenTerminal,
                   ),
                 ],
               ),
-              if (widget.planText.isNotEmpty) ...[
-                SizedBox(height: spacing.sm),
-                AnimatedSize(
-                  duration: const Duration(milliseconds: 180),
-                  curve: Curves.easeInOut,
-                  child: Container(
-                    constraints: _expanded
-                        ? null
-                        : const BoxConstraints(maxHeight: 160),
-                    padding: EdgeInsets.all(spacing.sm),
-                    decoration: BoxDecoration(
-                      color: cs.surfaceContainerLow,
-                      borderRadius: BorderRadius.circular(radius),
-                    ),
-                    child: SingleChildScrollView(
-                      child: MarkdownView(
-                        document: compileMarkdown(widget.planText),
-                        tokens: AiMessageTheme.of(context).markdown,
-                      ),
-                    ),
-                  ),
-                ),
-                Align(
-                  alignment: Alignment.centerRight,
-                  child: TextButton(
-                    key: AiExitPlanModeCard.expandButtonKey,
-                    onPressed: () => setState(() => _expanded = !_expanded),
-                    child: Text(
-                      _expanded
-                          ? strings.exitPlanCollapse
-                          : strings.exitPlanExpand,
-                    ),
-                  ),
-                ),
-              ],
-              if (path.isNotEmpty) ...[
-                SizedBox(height: spacing.sm),
-                Tooltip(
-                  key: AiExitPlanModeCard.openPlanFileButtonKey,
-                  message: strings.exitPlanOpenFile,
-                  child: TpHover(
-                    borderRadius: BorderRadius.circular(radius),
-                    onTap: () => widget.onOpenPlanFile(path),
-                    child: Padding(
-                      padding: EdgeInsets.symmetric(
-                        horizontal: spacing.xs,
-                        vertical: spacing.xs,
-                      ),
+              SizedBox(height: spacing.md),
+              Row(
+                children: [
+                  if (widget.planText.isNotEmpty)
+                    TpButton(
+                      key: AiExitPlanModeCard.viewPlanButtonKey,
+                      variant: TpButtonVariant.ghost,
+                      size: TpControlSize.small,
+                      onPressed: _openPreview,
                       child: Row(
+                        mainAxisSize: MainAxisSize.min,
                         children: [
                           Icon(
-                            Icons.description_outlined,
+                            Icons.visibility_outlined,
                             size: 14,
                             color: cs.onSurfaceVariant,
                           ),
                           SizedBox(width: spacing.xs),
-                          Expanded(
-                            child: Text(
-                              path,
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                              style: styles.xsColored(cs.onSurfaceVariant),
-                            ),
-                          ),
+                          Text(strings.exitPlanViewPlan),
                         ],
                       ),
                     ),
-                  ),
-                ),
-              ],
+                  if (widget.planText.isNotEmpty && path.isNotEmpty)
+                    SizedBox(width: spacing.sm),
+                  if (path.isNotEmpty)
+                    Expanded(
+                      child: Tooltip(
+                        key: AiExitPlanModeCard.openPlanFileButtonKey,
+                        message: strings.exitPlanOpenFile,
+                        child: TpHover(
+                          borderRadius: BorderRadius.circular(radius),
+                          onTap: () => widget.onOpenPlanFile(path),
+                          child: Padding(
+                            padding: EdgeInsets.symmetric(
+                              horizontal: spacing.xs,
+                              vertical: spacing.xs,
+                            ),
+                            child: Row(
+                              children: [
+                                Icon(
+                                  Icons.description_outlined,
+                                  size: 14,
+                                  color: cs.onSurfaceVariant,
+                                ),
+                                SizedBox(width: spacing.xs),
+                                Expanded(
+                                  child: Text(
+                                    path,
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: styles.xsColored(
+                                      cs.onSurfaceVariant,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                ],
+              ),
               if (_inlineError != null) ...[
-                SizedBox(height: spacing.sm),
+                SizedBox(height: spacing.md),
                 Text(
                   _inlineError!,
                   key: AiExitPlanModeCard.inlineErrorKey,
-                  style: styles.smColored(cs.error),
+                  style: styles.mdColored(cs.error),
                 ),
               ],
-              SizedBox(height: spacing.sm),
+              SizedBox(height: spacing.md),
               if (_canApprove) ...[
                 Row(
+                  mainAxisAlignment: MainAxisAlignment.end,
                   children: [
-                    TpIconButton(
-                      key: AiExitPlanModeCard.openTerminalButtonKey,
-                      icon: Icons.terminal_rounded,
-                      tooltip: strings.permissionOpenTerminal,
-                      compact: true,
-                      size: TpIconButton.kCompactSize,
-                      color: cs.onSurfaceVariant.withValues(alpha: 0.75),
-                      borderRadius: radius,
-                      onTap: widget.onOpenTerminal,
-                    ),
-                    const Spacer(),
                     TpButton(
                       key: AiExitPlanModeCard.rejectButtonKey,
                       variant: TpButtonVariant.ghost,
-                      size: TpControlSize.small,
+                      size: TpControlSize.medium,
                       onPressed: _approving ? null : _reject,
                       child: Text(strings.exitPlanReject),
                     ),
@@ -252,7 +288,7 @@ class _AiExitPlanModeCardState extends State<AiExitPlanModeCard> {
                     TpButton(
                       key: AiExitPlanModeCard.approveButtonKey,
                       variant: TpButtonVariant.primary,
-                      size: TpControlSize.small,
+                      size: TpControlSize.medium,
                       onPressed: _approving ? null : _approve,
                       child: Text(strings.exitPlanApprove),
                     ),
@@ -264,7 +300,7 @@ class _AiExitPlanModeCardState extends State<AiExitPlanModeCard> {
                   child: TpButton(
                     key: AiExitPlanModeCard.openTerminalButtonKey,
                     variant: TpButtonVariant.primary,
-                    size: TpControlSize.small,
+                    size: TpControlSize.medium,
                     onPressed: widget.onOpenTerminal,
                     child: Text(strings.permissionOpenTerminal),
                   ),

@@ -41,7 +41,10 @@ class _RecordingChatCubit extends ChatCubit {
   }
 }
 
-AppSession _simpleSession({String id = 'sess-1', CliTool cli = CliTool.claude}) {
+AppSession _simpleSession({
+  String id = 'sess-1',
+  CliTool cli = CliTool.claude,
+}) {
   return AppSession(
     sessionId: id,
     workspaceId: 'ws-1',
@@ -210,7 +213,12 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.byKey(AppKeys.exitPlanModeCard), findsOneWidget);
-    expect(find.textContaining('Refactor the launcher'), findsOneWidget);
+    expect(
+      find.textContaining('Refactor the launcher'),
+      findsNothing,
+      reason: 'plan content renders only in the floating preview',
+    );
+    expect(find.byKey(AppKeys.exitPlanModeViewPlanButton), findsOneWidget);
     expect(find.text('/tmp/plan.md'), findsOneWidget);
 
     await tester.tap(find.byKey(AppKeys.agentPermissionOpenTerminalButton));
@@ -219,6 +227,52 @@ void main() {
     expect(chat.workbenchViews, [
       (session.sessionId, SessionWorkbenchView.terminal),
     ]);
+  });
+
+  testWidgets('PermissionRequest plan echo card keeps approve buttons', (
+    tester,
+  ) async {
+    final session = _simpleSession(id: 'sess-plan-echo');
+    final chat = _RecordingChatCubit();
+    addTearDown(chat.close);
+    chat.tabStore.setActiveWorkspaceId(session.workspaceId);
+    chat.tabStore.registerSession(
+      ChatTab(
+        info: ChatTabInfo(
+          id: session.sessionId,
+          title: 'Chat',
+          subtitle: 'simple',
+        ),
+        cliTeamName: '',
+        workbenchView: SessionWorkbenchView.chat,
+      ),
+    );
+
+    final attention = AgentAttentionCubit(pruneInterval: null);
+    addTearDown(attention.close);
+    attention.applyEvent(
+      sessionId: session.sessionId,
+      memberId: session.sessionId,
+      event: const AgentStatusEvent(
+        state: AgentSeatAttention.waiting,
+        hookEventName: 'PermissionRequest',
+        toolName: 'ExitPlanMode',
+        planText: '1. Revised plan.',
+        planFilePath: '/tmp/plan-2.md',
+      ),
+      skipPermissions: false,
+    );
+
+    await tester.pumpWidget(
+      _harness(chat: chat, attention: attention, session: session),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.byKey(AppKeys.exitPlanModeCard), findsOneWidget);
+    // The seat-keyed permission gate makes this actionable from chat even
+    // though the event carries no tool_use_id.
+    expect(find.byKey(AppKeys.exitPlanModeApproveButton), findsOneWidget);
+    expect(find.byKey(AppKeys.exitPlanModeRejectButton), findsOneWidget);
   });
 
   testWidgets('opencode permission.asked shows permission card', (

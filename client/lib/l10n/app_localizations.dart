@@ -2924,17 +2924,17 @@ abstract class AppLocalizations {
   /// **'Copy plan'**
   String get exitPlanModeCopyPlan;
 
-  /// No description provided for @exitPlanModeExpand.
+  /// No description provided for @exitPlanModeViewPlan.
   ///
   /// In en, this message translates to:
-  /// **'Expand'**
-  String get exitPlanModeExpand;
+  /// **'View plan'**
+  String get exitPlanModeViewPlan;
 
-  /// No description provided for @exitPlanModeCollapse.
+  /// No description provided for @exitPlanModePreviewTitle.
   ///
   /// In en, this message translates to:
-  /// **'Collapse'**
-  String get exitPlanModeCollapse;
+  /// **'Plan preview'**
+  String get exitPlanModePreviewTitle;
 
   /// No description provided for @exitPlanModeOpenPlanFile.
   ///

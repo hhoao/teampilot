@@ -103,11 +103,11 @@ void main() {
         sequence: 1,
       );
 
-    stream.publish(event);
-    final firstResponse = projection.responseFor(event);
-    stream.publish(event);
-    await pumpEventQueue();
-    expect(projection.responseFor(event), same(firstResponse));
+      stream.publish(event);
+      final firstResponse = projection.responseFor(event);
+      stream.publish(event);
+      await pumpEventQueue();
+      expect(projection.responseFor(event), same(firstResponse));
       expect(
         gate.hasWaiter(
           sessionId: 'session',
@@ -136,7 +136,10 @@ void main() {
       final stream = SeatEventStream();
       final gate = ExitPlanModeHookGate();
       const seat = RuntimeSeatKey(sessionId: 'session', memberId: 'member');
-      final projection = ExitPlanModeRuntimeEventProjection(hookGate: gate);
+      final projection = ExitPlanModeRuntimeEventProjection(
+        hookGate: gate,
+        permissionGate: ExitPlanPermissionRequestGate(),
+      );
       final subscription = projection.attach(stream, seat);
       addTearDown(subscription.cancel);
       addTearDown(stream.close);
@@ -154,11 +157,11 @@ void main() {
         sequence: 1,
       );
 
-    stream.publish(event);
-    final firstResponse = projection.responseFor(event);
-    stream.publish(event);
-    await pumpEventQueue();
-    expect(projection.responseFor(event), same(firstResponse));
+      stream.publish(event);
+      final firstResponse = projection.responseFor(event);
+      stream.publish(event);
+      await pumpEventQueue();
+      expect(projection.responseFor(event), same(firstResponse));
       expect(
         gate.hasWaiter(
           sessionId: 'session',
@@ -178,6 +181,133 @@ void main() {
       );
       final response = await projection.responseFor(event);
       expect(response!['hookSpecificOutput'], isA<Map>());
+    },
+  );
+
+  test(
+    'plan responder projection holds PermissionRequest plan confirmations',
+    () async {
+      final stream = SeatEventStream();
+      final permissionGate = ExitPlanPermissionRequestGate();
+      const seat = RuntimeSeatKey(sessionId: 'session', memberId: 'member');
+      final projection = ExitPlanModeRuntimeEventProjection(
+        hookGate: ExitPlanModeHookGate(),
+        permissionGate: permissionGate,
+      );
+      final subscription = projection.attach(stream, seat);
+      addTearDown(subscription.cancel);
+      addTearDown(stream.close);
+      final event = RuntimeEventEnvelope(
+        seat: seat,
+        cli: CliTool.claude,
+        kind: RuntimeEventKind.statusReported,
+        occurredAt: DateTime.utc(2026, 8, 25),
+        raw: const {
+          'hook_event_name': 'PermissionRequest',
+          'tool_name': 'ExitPlanMode',
+          'tool_input': {'plan': '1. Ship it.'},
+        },
+        sequence: 1,
+      );
+
+      stream.publish(event);
+      await pumpEventQueue();
+      expect(projection.responseFor(event), isNotNull);
+      expect(
+        permissionGate.complete(
+          sessionId: 'session',
+          memberId: 'member',
+          reply: const ExitPlanPermissionRequestReply.allow(),
+        ),
+        isTrue,
+      );
+      final response = await projection.responseFor(event);
+      expect(response, {
+        'hookSpecificOutput': {
+          'hookEventName': 'PermissionRequest',
+          'decision': {'behavior': 'allow'},
+        },
+      });
+    },
+  );
+
+  test(
+    'plan responder projection forgets stale decisions on a fresh PreToolUse',
+    () async {
+      final stream = SeatEventStream();
+      final permissionGate = ExitPlanPermissionRequestGate();
+      const seat = RuntimeSeatKey(sessionId: 'session', memberId: 'member');
+      final projection = ExitPlanModeRuntimeEventProjection(
+        hookGate: ExitPlanModeHookGate(),
+        permissionGate: permissionGate,
+      );
+      final subscription = projection.attach(stream, seat);
+      addTearDown(subscription.cancel);
+      addTearDown(stream.close);
+
+      permissionGate.remember(
+        sessionId: 'session',
+        memberId: 'member',
+        deny: false,
+        planFingerprint: '1. Old decision.',
+      );
+
+      stream.publish(
+        RuntimeEventEnvelope(
+          seat: seat,
+          cli: CliTool.claude,
+          kind: RuntimeEventKind.statusReported,
+          occurredAt: DateTime.utc(2026, 8, 25),
+          raw: const {
+            'hook_event_name': 'PreToolUse',
+            'tool_name': 'ExitPlanMode',
+            'tool_use_id': 'plan-2',
+            'tool_input': {'plan': '1. Old decision.'},
+          },
+          sequence: 2,
+        ),
+      );
+      await pumpEventQueue();
+
+      final echo = await permissionGate.wait(
+        sessionId: 'session',
+        memberId: 'member',
+        planFingerprint: '1. Old decision.',
+        timeout: const Duration(milliseconds: 30),
+      );
+      expect(echo, isNull, reason: 'fresh prompt dropped the old decision');
+    },
+  );
+
+  test(
+    'plan responder projection does not hold non-plan PermissionRequest events',
+    () async {
+      final stream = SeatEventStream();
+      final permissionGate = ExitPlanPermissionRequestGate();
+      const seat = RuntimeSeatKey(sessionId: 'session', memberId: 'member');
+      final projection = ExitPlanModeRuntimeEventProjection(
+        hookGate: ExitPlanModeHookGate(),
+        permissionGate: permissionGate,
+      );
+      final subscription = projection.attach(stream, seat);
+      addTearDown(subscription.cancel);
+      addTearDown(stream.close);
+      final event = RuntimeEventEnvelope(
+        seat: seat,
+        cli: CliTool.claude,
+        kind: RuntimeEventKind.statusReported,
+        occurredAt: DateTime.utc(2026, 8, 25),
+        raw: const {
+          'hook_event_name': 'PermissionRequest',
+          'tool_name': 'Bash',
+          'tool_input': {'command': 'npm install'},
+        },
+        sequence: 1,
+      );
+
+      stream.publish(event);
+      await pumpEventQueue();
+      expect(projection.responseFor(event), isNull);
     },
   );
 }

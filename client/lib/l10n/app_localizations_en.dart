@@ -1577,10 +1577,10 @@ class AppLocalizationsEn extends AppLocalizations {
   String get exitPlanModeCopyPlan => 'Copy plan';
 
   @override
-  String get exitPlanModeExpand => 'Expand';
+  String get exitPlanModeViewPlan => 'View plan';
 
   @override
-  String get exitPlanModeCollapse => 'Collapse';
+  String get exitPlanModePreviewTitle => 'Plan preview';
 
   @override
   String get exitPlanModeOpenPlanFile => 'Open plan file';

@@ -1152,5 +1152,150 @@ void main() {
         );
       });
     });
+
+    group('ExitPlanMode approval echo suppression', () {
+      void applyPlan(c, AgentStatusEvent event) => c.applyEvent(
+        sessionId: 's1',
+        memberId: 'm1',
+        event: event,
+        skipPermissions: false,
+      );
+
+      test('PermissionRequest echo of a dismissed plan stays working', () {
+        final c = _cubit();
+        applyPlan(
+          c,
+          const AgentStatusEvent(
+            state: AgentSeatAttention.waiting,
+            hookEventName: 'PreToolUse',
+            toolName: 'ExitPlanMode',
+            toolUseId: 'toolu-plan-1',
+            planText: '1. Ship it.',
+          ),
+        );
+        expect(
+          c.state.attentionFor(sessionId: 's1', memberId: 'm1'),
+          AgentSeatAttention.waiting,
+        );
+
+        // Approved on the chat card.
+        c.dismissWaitingPlanApproval(sessionId: 's1', memberId: 'm1');
+        expect(
+          c.state.attentionFor(sessionId: 's1', memberId: 'm1'),
+          AgentSeatAttention.working,
+        );
+
+        // Claude's follow-up native plan confirmation (PermissionRequest,
+        // no tool_use_id, same plan) must not re-light the card.
+        applyPlan(
+          c,
+          const AgentStatusEvent(
+            state: AgentSeatAttention.waiting,
+            hookEventName: 'PermissionRequest',
+            toolName: 'ExitPlanMode',
+            planText: '1. Ship it.',
+          ),
+        );
+        expect(
+          c.state.attentionFor(sessionId: 's1', memberId: 'm1'),
+          AgentSeatAttention.working,
+          reason: 'same-plan PermissionRequest echo is suppressed',
+        );
+      });
+
+      test('a different plan in the echo re-lights the card', () {
+        final c = _cubit();
+        applyPlan(
+          c,
+          const AgentStatusEvent(
+            state: AgentSeatAttention.waiting,
+            hookEventName: 'PreToolUse',
+            toolName: 'ExitPlanMode',
+            toolUseId: 'toolu-plan-2',
+            planText: '1. Original plan.',
+          ),
+        );
+        c.dismissWaitingPlanApproval(sessionId: 's1', memberId: 'm1');
+
+        applyPlan(
+          c,
+          const AgentStatusEvent(
+            state: AgentSeatAttention.waiting,
+            hookEventName: 'PermissionRequest',
+            toolName: 'ExitPlanMode',
+            planText: '1. Revised plan.',
+          ),
+        );
+        expect(
+          c.state.attentionFor(sessionId: 's1', memberId: 'm1'),
+          AgentSeatAttention.waiting,
+          reason: 'a different plan is a fresh confirmation',
+        );
+      });
+
+      test('a new PreToolUse plan prompt after dismissal waits again', () {
+        final c = _cubit();
+        applyPlan(
+          c,
+          const AgentStatusEvent(
+            state: AgentSeatAttention.waiting,
+            hookEventName: 'PreToolUse',
+            toolName: 'ExitPlanMode',
+            toolUseId: 'toolu-plan-3',
+            planText: '1. Same plan text.',
+          ),
+        );
+        c.dismissWaitingPlanApproval(sessionId: 's1', memberId: 'm1');
+
+        applyPlan(
+          c,
+          const AgentStatusEvent(
+            state: AgentSeatAttention.waiting,
+            hookEventName: 'PreToolUse',
+            toolName: 'ExitPlanMode',
+            toolUseId: 'toolu-plan-4',
+            planText: '1. Same plan text.',
+          ),
+        );
+        expect(
+          c.state.attentionFor(sessionId: 's1', memberId: 'm1'),
+          AgentSeatAttention.waiting,
+          reason: 'a fresh PreToolUse prompt clears the dismissed fingerprint',
+        );
+      });
+
+      test('plan waiting clears on later main-agent tool activity', () {
+        final c = _cubit();
+        applyPlan(
+          c,
+          const AgentStatusEvent(
+            state: AgentSeatAttention.waiting,
+            hookEventName: 'PermissionRequest',
+            toolName: 'ExitPlanMode',
+            planText: '1. Ship it.',
+          ),
+        );
+        expect(
+          c.state.attentionFor(sessionId: 's1', memberId: 'm1'),
+          AgentSeatAttention.waiting,
+        );
+
+        // Answered in the terminal: Claude resumes with unrelated tool work.
+        applyPlan(
+          c,
+          const AgentStatusEvent(
+            state: AgentSeatAttention.working,
+            hookEventName: 'PreToolUse',
+            toolName: 'Edit',
+            toolUseId: 'toolu-edit-1',
+          ),
+        );
+        expect(
+          c.state.attentionFor(sessionId: 's1', memberId: 'm1'),
+          AgentSeatAttention.working,
+          reason: 'plan confirmation is a turn-level gate — clear, not stick',
+        );
+      });
+    });
   });
 }

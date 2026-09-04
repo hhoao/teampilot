@@ -32,7 +32,9 @@ class AppKeys {
   static const contextSidebarVisibilitySwitch = Key(
     'context-sidebar-visibility-switch',
   );
-  static const rightToolsVisibilitySwitch = Key('right-tools-visibility-switch');
+  static const rightToolsVisibilitySwitch = Key(
+    'right-tools-visibility-switch',
+  );
   static const membersVisibilitySwitch = Key('members-visibility-switch');
   static const fileTreeVisibilitySwitch = Key('file-tree-visibility-switch');
   static const boardVisibilitySwitch = Key('boardVisibilitySwitch');
@@ -83,7 +85,10 @@ class AppKeys {
   static const exitPlanModeCopyPlanButton = Key(
     'exit-plan-mode-copy-plan-button',
   );
-  static const exitPlanModeExpandButton = Key('exit-plan-mode-expand-button');
+  static const exitPlanModeViewPlanButton = Key(
+    'exit-plan-mode-view-plan-button',
+  );
+  static const exitPlanModePreviewDialog = Key('exit-plan-mode-preview-dialog');
   static const exitPlanModeOpenPlanFileButton = Key(
     'exit-plan-mode-open-plan-file-button',
   );

@@ -25,6 +25,7 @@ class AgentSeatAttentionEntry extends Equatable {
     this.lastEvent,
     this.dismissedAskRequestId,
     this.askReplyError,
+    this.dismissedPlanFingerprint,
     this.activeSubagentIds = const <String>{},
     this.parentStopPending = false,
   });
@@ -38,6 +39,11 @@ class AgentSeatAttentionEntry extends Equatable {
   /// Ask id optimistically dismissed via [AgentAttentionCubit.markAskAnswered].
   /// Same-id waiting events are ignored until restore or a new ask arrives.
   final String? dismissedAskRequestId;
+
+  /// Plan fingerprint of an ExitPlanMode approval/rejection answered from the
+  /// chat card. Same-plan `PermissionRequest` waiting echoes are ignored so
+  /// the card does not reappear for a plan the user already decided.
+  final String? dismissedPlanFingerprint;
 
   /// Optional error from `question.reply_failed` after optimistic dismiss.
   final String? askReplyError;
@@ -58,6 +64,7 @@ class AgentSeatAttentionEntry extends Equatable {
     lastEvent,
     dismissedAskRequestId,
     askReplyError,
+    dismissedPlanFingerprint,
     activeSubagentIds,
     parentStopPending,
   ];
@@ -201,6 +208,7 @@ class AgentAttentionCubit extends Cubit<AgentAttentionState> {
       lastEvent: existing.lastEvent,
       dismissedAskRequestId: askRequestId,
       askReplyError: null,
+      dismissedPlanFingerprint: existing.dismissedPlanFingerprint,
       activeSubagentIds: existing.activeSubagentIds,
       parentStopPending: existing.parentStopPending,
     );
@@ -208,18 +216,31 @@ class AgentAttentionCubit extends Cubit<AgentAttentionState> {
   }
 
   /// Optimistically drop a waiting seat back to working (plan approved /
-  /// rejected) while retaining [AgentSeatAttentionEntry.lastEvent].
-  void dismissWaiting({required String sessionId, required String memberId}) {
+  /// rejected from the chat card) while retaining
+  /// [AgentSeatAttentionEntry.lastEvent]. Records the plan fingerprint so
+  /// same-plan `PermissionRequest` waiting echoes (Claude's second, native
+  /// plan confirmation) do not re-light the card.
+  void dismissWaitingPlanApproval({
+    required String sessionId,
+    required String memberId,
+  }) {
     final key = agentSeatKey(sessionId: sessionId, memberId: memberId);
     final existing = state.seats[key];
     if (existing == null || existing.attention != AgentSeatAttention.waiting) {
       return;
     }
+    final lastEvent = existing.lastEvent;
     final seats = Map<String, AgentSeatAttentionEntry>.of(state.seats);
     seats[key] = AgentSeatAttentionEntry(
       attention: AgentSeatAttention.working,
       updatedAt: _clock(),
-      lastEvent: existing.lastEvent,
+      lastEvent: lastEvent,
+      dismissedPlanFingerprint: lastEvent == null
+          ? null
+          : exitPlanModeFingerprint(
+              planText: lastEvent.planText,
+              planFilePath: lastEvent.planFilePath,
+            ),
       activeSubagentIds: existing.activeSubagentIds,
       parentStopPending: existing.parentStopPending,
     );
@@ -301,6 +322,7 @@ class AgentAttentionCubit extends Cubit<AgentAttentionState> {
               lastEvent: existingEntry.lastEvent,
               dismissedAskRequestId: existingEntry.dismissedAskRequestId,
               askReplyError: existingEntry.askReplyError,
+              dismissedPlanFingerprint: existingEntry.dismissedPlanFingerprint,
               activeSubagentIds: existingEntry.activeSubagentIds,
               parentStopPending: true,
             )
@@ -308,6 +330,7 @@ class AgentAttentionCubit extends Cubit<AgentAttentionState> {
               attention: AgentSeatAttention.working,
               updatedAt: now,
               lastEvent: event,
+              dismissedPlanFingerprint: existingEntry.dismissedPlanFingerprint,
               activeSubagentIds: existingEntry.activeSubagentIds,
               parentStopPending: true,
             );
@@ -323,6 +346,37 @@ class AgentAttentionCubit extends Cubit<AgentAttentionState> {
         event.askRequestId == dismissedId) {
       if (pruned != state) emit(pruned);
       return;
+    }
+
+    // Ignore the `PermissionRequest` echo of a plan the user already approved
+    // / rejected on the chat card (Claude's second, native plan confirmation).
+    // The held hook is auto-answered by `ExitPlanPermissionRequestGate`; this
+    // only keeps the dismissed card from re-lighting.
+    final dismissedPlanFingerprint = existingEntry?.dismissedPlanFingerprint;
+    if (event.state == AgentSeatAttention.waiting &&
+        event.hookEventName == 'PermissionRequest' &&
+        isExitPlanModeTool(event.toolName) &&
+        dismissedPlanFingerprint != null &&
+        dismissedPlanFingerprint.isNotEmpty) {
+      final echoFingerprint = exitPlanModeFingerprint(
+        planText: event.planText ?? previous?.planText,
+        planFilePath: event.planFilePath ?? previous?.planFilePath,
+      );
+      if (echoFingerprint == dismissedPlanFingerprint) {
+        final seats = Map<String, AgentSeatAttentionEntry>.of(pruned.seats);
+        seats[key] = AgentSeatAttentionEntry(
+          attention: AgentSeatAttention.working,
+          updatedAt: now,
+          lastEvent: existingEntry!.lastEvent,
+          dismissedAskRequestId: existingEntry.dismissedAskRequestId,
+          askReplyError: existingEntry.askReplyError,
+          dismissedPlanFingerprint: dismissedPlanFingerprint,
+          activeSubagentIds: existingEntry.activeSubagentIds,
+          parentStopPending: existingEntry.parentStopPending,
+        );
+        emit(AgentAttentionState(seats: seats, clock: _clock));
+        return;
+      }
     }
 
     // Restore waiting ask card after reply_failed (keep prior questions).
@@ -343,6 +397,7 @@ class AgentAttentionCubit extends Cubit<AgentAttentionState> {
           lastEvent: existingEntry.lastEvent,
           dismissedAskRequestId: null,
           askReplyError: event.message,
+          dismissedPlanFingerprint: existingEntry.dismissedPlanFingerprint,
           activeSubagentIds: existingEntry.activeSubagentIds,
           parentStopPending: existingEntry.parentStopPending,
         );
@@ -374,6 +429,7 @@ class AgentAttentionCubit extends Cubit<AgentAttentionState> {
           lastEvent: existingEntry.lastEvent,
           dismissedAskRequestId: null,
           askReplyError: null,
+          dismissedPlanFingerprint: existingEntry.dismissedPlanFingerprint,
           activeSubagentIds: existingEntry.activeSubagentIds,
           parentStopPending: existingEntry.parentStopPending,
         );
@@ -405,10 +461,18 @@ class AgentAttentionCubit extends Cubit<AgentAttentionState> {
     // 新用户回合（UserPromptSubmit）重置上一回合的子 agent 跟踪，避免旧
     // 集合/pending 泄漏；其余通用事件保留跟踪（父 pending 不被中途活动清掉）。
     final startsNewTurn = effective.hasExplicitPrompt;
+    // 新的计划确认提示（未被回显抑制吸收的 waiting ExitPlanMode 事件）
+    // 作废上一轮已决策计划的 fingerprint，避免错误抑制新一轮确认。
+    final isFreshPlanPrompt =
+        effective.state == AgentSeatAttention.waiting &&
+        isExitPlanModeTool(effective.toolName);
     seats[key] = AgentSeatAttentionEntry(
       attention: effective.state,
       updatedAt: now,
       lastEvent: effective,
+      dismissedPlanFingerprint: startsNewTurn || isFreshPlanPrompt
+          ? null
+          : existingEntry?.dismissedPlanFingerprint,
       activeSubagentIds: startsNewTurn
           ? const <String>{}
           : existingEntry?.activeSubagentIds ?? const <String>{},
@@ -454,6 +518,7 @@ class AgentAttentionCubit extends Cubit<AgentAttentionState> {
         lastEvent: keepWaiting ? existing.lastEvent : event,
         dismissedAskRequestId: existing.dismissedAskRequestId,
         askReplyError: existing.askReplyError,
+        dismissedPlanFingerprint: existing.dismissedPlanFingerprint,
         activeSubagentIds: remaining,
         parentStopPending: turnOver ? false : existing.parentStopPending,
       );
@@ -474,6 +539,7 @@ class AgentAttentionCubit extends Cubit<AgentAttentionState> {
       lastEvent: keepWaitingCard ? existing.lastEvent : event,
       dismissedAskRequestId: existing?.dismissedAskRequestId,
       askReplyError: existing?.askReplyError,
+      dismissedPlanFingerprint: existing?.dismissedPlanFingerprint,
       activeSubagentIds: added,
       parentStopPending: existing?.parentStopPending ?? false,
     );
