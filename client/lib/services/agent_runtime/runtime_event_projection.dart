@@ -7,6 +7,7 @@ import '../agent_status/ask_user_question_hook_gate.dart';
 import '../agent_status/agent_status_event.dart';
 import '../agent_status/exit_plan_mode.dart';
 import '../agent_status/exit_plan_mode_hook_gate.dart';
+import '../agent_status/general_permission_request_gate.dart';
 import '../cli/registry/capabilities/chat_interaction_capability.dart';
 import '../cli/registry/cli_tool_registry.dart';
 import 'runtime_event.dart';
@@ -207,6 +208,53 @@ final class ExitPlanModeRuntimeEventProjection extends RuntimeEventProjection
           )
           .then((reply) => reply?.toHookResponse());
     }
+  }
+
+  @override
+  Future<Map<String, Object?>?>? responseFor(RuntimeEventEnvelope event) =>
+      _responses[(event.seat, event.sequence)];
+}
+
+/// Holds Claude-family general `PermissionRequest` hooks for the chat
+/// permission card. Routing is strictly complementary to
+/// [ExitPlanModeRuntimeEventProjection]: ExitPlanMode / AskUserQuestion
+/// permission requests belong to the plan / ask gates and are skipped here.
+final class GeneralPermissionRuntimeEventProjection extends RuntimeEventProjection
+    implements RuntimeEventHookResponderProjection {
+  GeneralPermissionRuntimeEventProjection({
+    required this.gate,
+    CliToolRegistry? registry,
+  }) : _registry = registry ?? CliToolRegistry.builtIn(),
+       super(onEvent: (_) {});
+
+  final GeneralPermissionRequestGate gate;
+  final CliToolRegistry _registry;
+  final _responses = <(RuntimeSeatKey, int), Future<Map<String, Object?>?>>{};
+
+  @override
+  void apply(RuntimeEventEnvelope event) {
+    final cursor = cursorFor(event.seat);
+    super.apply(event);
+    if (event.sequence <= cursor) return;
+    final raw = event.raw;
+    if (raw == null) return;
+    final capability = _registry.capability<ChatInteractionCapability>(
+      event.cli,
+    );
+    if (capability?.supportsInChatPermissionReply != true) return;
+    final status = capability?.normalize(raw);
+    if (status?.hookEventName?.trim() != 'PermissionRequest') return;
+    if (isExitPlanModeTool(status?.toolName) ||
+        isAskUserQuestionTool(status?.toolName)) {
+      return;
+    }
+    if (status?.permissionRequest == null) return;
+    final key = (event.seat, event.sequence);
+    // Replay/duplicate guard, same rationale as the sibling projections.
+    if (_responses.containsKey(key)) return;
+    _responses[key] = gate
+        .wait(sessionId: event.seat.sessionId, memberId: event.seat.memberId)
+        .then((reply) => reply?.toHookResponse());
   }
 
   @override

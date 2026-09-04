@@ -8,6 +8,7 @@ import '../../utils/logging/logger.dart';
 import '../../cubits/agent_attention_cubit.dart';
 import '../agent_status/ask_user_question_hook_gate.dart';
 import '../agent_status/exit_plan_mode_hook_gate.dart';
+import '../agent_status/general_permission_request_gate.dart';
 import '../cli/registry/capabilities/chat_interaction_capability.dart';
 import '../cli/registry/capabilities/runtime_event_capability.dart';
 import '../cli/registry/cli_tool_registry.dart';
@@ -49,6 +50,7 @@ final class AgentEventGateway {
     AskUserQuestionHookGate? askUserHookGate,
     ExitPlanModeHookGate? exitPlanModeHookGate,
     ExitPlanPermissionRequestGate? exitPlanPermissionRequestGate,
+    GeneralPermissionRequestGate? generalPermissionGate,
     CliToolRegistry? registry,
     DateTime Function()? clock,
   }) {
@@ -68,6 +70,12 @@ final class AgentEventGateway {
                 ExitPlanPermissionRequestGate(),
             registry: effectiveRegistry,
           );
+    final generalPermissionProjection = generalPermissionGate == null
+        ? null
+        : GeneralPermissionRuntimeEventProjection(
+            gate: generalPermissionGate,
+            registry: effectiveRegistry,
+          );
     return AgentEventGateway(
       journal: MemoryRuntimeEventJournal(),
       stream: SeatEventStream(),
@@ -82,10 +90,12 @@ final class AgentEventGateway {
         ),
         if (questionProjection != null) questionProjection,
         if (planProjection != null) planProjection,
+        if (generalPermissionProjection != null) generalPermissionProjection,
       ],
       responders: [
         if (questionProjection != null) questionProjection,
         if (planProjection != null) planProjection,
+        if (generalPermissionProjection != null) generalPermissionProjection,
       ],
     );
   }

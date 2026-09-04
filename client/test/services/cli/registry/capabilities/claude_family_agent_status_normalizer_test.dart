@@ -42,5 +42,23 @@ void main() {
       expect(status.permissionRequest, isNull);
       expect(status.planText, isNotNull); // plan card path, unchanged
     });
+
+    test('PermissionRequest for AskUserQuestion keeps the question payload',
+        () {
+      final status = const ClaudeFamilyAgentStatusNormalizer().normalize({
+        'hook_event_name': 'PermissionRequest',
+        'tool_name': 'AskUserQuestion',
+        'tool_input': {
+          'questions': [
+            {'question': 'Continue?', 'options': ['Yes', 'No']},
+          ],
+        },
+      });
+      expect(status, isNotNull);
+      expect(status!.state, AgentSeatAttention.waiting);
+      expect(status.permissionRequest, isNull);
+      expect(status.askUserQuestions, isNotNull);
+      expect(status.askUserQuestions!.first.question, 'Continue?');
+    });
   });
 }
