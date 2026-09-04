@@ -199,7 +199,9 @@ class AgentPermissionAttentionBanner extends StatelessWidget {
         context,
         AiPermissionCard(
           description: permissionRequest.description,
-          showAlwaysAllow: permissionRequest.always.isNotEmpty,
+          alwaysOptions: permissionRequest.always
+              .map((option) => option.label)
+              .toList(),
           externalError: entry.askReplyError,
           onReply: (reply) async {
             final result = await context
@@ -208,7 +210,11 @@ class AgentPermissionAttentionBanner extends StatelessWidget {
                   sessionId: sessionId,
                   memberId: seatId,
                   permissionRequestId: askRequestId!,
-                  reply: reply,
+                  reply: switch (reply.kind) {
+                    AiPermissionReplyKind.allowOnce => 'once',
+                    AiPermissionReplyKind.always => 'always',
+                    AiPermissionReplyKind.reject => 'reject',
+                  },
                 );
             return _fromAskUser(result);
           },
