@@ -10,6 +10,7 @@ import 'package:teampilot/cubits/agent_attention_cubit.dart';
 import 'package:teampilot/cubits/automation_cubit.dart';
 import 'package:teampilot/cubits/automation_state.dart';
 import 'package:teampilot/cubits/chat/model/chat_tab.dart';
+import 'package:teampilot/cubits/chat/model/chat_tab_info.dart';
 import 'package:teampilot/cubits/chat_cubit.dart';
 import 'package:teampilot/cubits/session/session_phase.dart';
 import 'package:teampilot/cubits/session_groups_cubit.dart';
@@ -234,6 +235,14 @@ void main() {
     debugDefaultTargetPlatformOverride = TargetPlatform.linux;
     addTearDown(() => debugDefaultTargetPlatformOverride = null);
     final chatCubit = _ArchiveRecordingChatCubit();
+    // Close actions only apply to sessions with an open workbench tab
+    // (see _sessionIsRunning): register one with a pending member connect.
+    chatCubit.tabStore.registerSession(
+      ChatTab(
+        info: ChatTabInfo(id: _session.sessionId, title: 't', subtitle: ''),
+        cliTeamName: _session.sessionId,
+      )..membersPendingConnect.add('member-1'),
+    );
     chatCubit.applyState(
       chatCubit.state.copyWith(
         sessionActivities: {

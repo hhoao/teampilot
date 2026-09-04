@@ -19,16 +19,16 @@ void main() {
       expect(resolveSessionHistoryColumnWidth(1679), 1280);
     });
 
-    test('later jumps: each +200 available → +200 chat', () {
-      expect(resolveSessionHistoryColumnWidth(1680), 1480);
-      expect(resolveSessionHistoryColumnWidth(1879), 1480);
-      expect(resolveSessionHistoryColumnWidth(1880), 1600);
+    test('later jumps clamp at the 1460 ceiling', () {
+      expect(resolveSessionHistoryColumnWidth(1680), 1460);
+      expect(resolveSessionHistoryColumnWidth(1879), 1460);
+      expect(resolveSessionHistoryColumnWidth(1880), 1460);
     });
 
-    test('caps chat width at 1600', () {
-      expect(resolveSessionHistoryColumnWidth(1880), 1600);
-      expect(resolveSessionHistoryColumnWidth(2200), 1600);
-      expect(resolveSessionHistoryColumnWidth(double.infinity), 1600);
+    test('caps chat width at 1460', () {
+      expect(resolveSessionHistoryColumnWidth(1880), 1460);
+      expect(resolveSessionHistoryColumnWidth(2200), 1460);
+      expect(resolveSessionHistoryColumnWidth(double.infinity), 1460);
     });
 
     test('non-positive available resolves to zero', () {

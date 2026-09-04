@@ -33,6 +33,8 @@ import 'package:teampilot/models/workspace_folder.dart';
 import 'package:teampilot/models/workspace_launch_context.dart';
 import 'package:teampilot/models/workspace_project_config.dart';
 import 'package:teampilot/pages/chat/history_continue_delivery.dart';
+import 'package:teampilot/pages/chat/operator_history_send.dart'
+    show OperatorMailboxQueuedEvent;
 import 'package:teampilot/pages/chat/session_chat_view.dart';
 import 'package:teampilot/repositories/workspace_project_config_repository.dart';
 import 'package:teampilot/services/cli/registry/cli_tool_registry.dart';
@@ -245,6 +247,9 @@ void main() {
       InMemoryFollowUpQueueStore(),
     );
     when(() => chatCubit.tabStore).thenReturn(ChatTabStore());
+    when(
+      () => chatCubit.operatorMailboxQueued,
+    ).thenAnswer((_) => const Stream<OperatorMailboxQueuedEvent>.empty());
     when(() => aiHistoryCubit.ensureSeat(
           sessionId: any(named: 'sessionId'),
           selectedMemberId: any(named: 'selectedMemberId'),

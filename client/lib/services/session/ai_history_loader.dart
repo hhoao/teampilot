@@ -1027,6 +1027,24 @@ final class AiHistoryLoader {
         // Latest page already covered byte 0 — treat as the full index so we
         // do not decode the same transcript again on a background force load.
         _markComplete(cacheKey);
+        // Align the row-level incremental state with the page result, the
+        // same way a full parse would (see _loadOnce). Without this seed,
+        // later refreshes fall back to page re-reads: they lose
+        // unchanged-message identity and re-resolve the session each tick,
+        // which flips "newest session" fallback seats onto task child
+        // sessions.
+        final refresher = cap.incrementalRefresher;
+        if (refresher != null) {
+          final incrementalState = refresher.createState();
+          await refresher.seedFromFullParse(
+            ctx: ctx,
+            // The refresher merges into this list in place; page result
+            // lists may be unmodifiable.
+            messages: List<AiMessage>.of(messages),
+            state: incrementalState,
+          );
+          _incrementalStates[cacheKey] = incrementalState;
+        }
         final complete = AiHistoryLoadResult(
           messages: messages,
           cli: cli,

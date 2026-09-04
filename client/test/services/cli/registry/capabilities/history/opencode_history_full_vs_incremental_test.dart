@@ -34,8 +34,9 @@ import '../../../../../support/post_frame_test_harness.dart';
 /// 还是增量"。
 ///
 /// 行为:
-///  - 首次 load = page-first 最近窗,不 locate;后台 full index 才全量
-///    locate + parse,并 seed [OpencodeHistoryIncrementalRefresher];
+///  - 首次 load = page-first 最近窗,不 locate;page 已覆盖全部消息时直接
+///    complete 并复用解码结果,不再二次 locate(9aa9a172e 免二次解码);
+///    后台 full index 才 seed [OpencodeHistoryIncrementalRefresher];
 ///  - store 变动且增量已对齐 = DB 行级增量:只重读指纹变化的行,原地
 ///    合并,不再全量 locate / 全量 parse;
 ///  - 子 agent 附件按需 `loadSubagentAttachmentForSeat`,首屏不 eager
@@ -43,9 +44,8 @@ import '../../../../../support/post_frame_test_harness.dart';
 ///  - 删除/压缩/schema 不兼容 = 回退全量。
 ///
 /// 判别信号:
-///  - locate 调用次数:page-first 为 0,full index 后为 1,增量后保持 1;
-///  - `identical(messages)`:增量原地合并,跨 refresh 复用未变化实例;
-///  - bundle hints:后台全量 locate 的 bundle 无 `incremental` 键。
+///  - locate 调用次数:page-first 为 0,增量后保持 0;只有回退全量才 >0;
+///  - `identical(messages)`:增量原地合并,跨 refresh 复用未变化实例。
 void main() {
   late Directory base;
   late LocalFilesystem fs;
@@ -449,17 +449,22 @@ void main() {
       );
       expect(first.messages, hasLength(2));
       expect(locator.calls, 0, reason: '首屏 page-first,不 locate');
-      expect(first.isComplete, isFalse);
+      expect(
+        first.isComplete,
+        isTrue,
+        reason: '首页已覆盖全部消息 → 直接 complete(免二次解码)',
+      );
 
       final full = await warmFullIndex(loader, session);
-      expect(locator.calls, 1, reason: '后台 full index 才全量 locate');
-      expect(locator.lastCtx?.env['OPENCODE_DB'], dbPath);
-      final firstBundle = locator.lastBundle!;
-      expect(firstBundle.hints['source'], 'sqlite');
       expect(
-        firstBundle.hints['incremental'],
-        isNull,
-        reason: 'loader 不会走 locateOpencodeTranscriptIncremental',
+        locator.calls,
+        0,
+        reason: 'page 已覆盖全文 → full index 复用 page 结果,不再二次 locate',
+      );
+      expect(
+        identical(full.messages, first.messages),
+        isTrue,
+        reason: 'double-decode 规避:full index 复用 page-first 的解码实例',
       );
 
       // 聊天界面空闲轮询:store 级 token 未变 → 缓存命中,零 locate。
@@ -468,7 +473,7 @@ void main() {
         memberId: '',
         launchContext: ctx,
       );
-      expect(locator.calls, 1, reason: '未变化时连 locate 都不进');
+      expect(locator.calls, 0, reason: '未变化时连 locate 都不进');
       expect(
         identical(second.messages, full.messages),
         isTrue,
@@ -476,12 +481,20 @@ void main() {
       );
 
       // seat 级 _parentBundles memo:直接 locate 两次,指纹未变 → 同一实例。
+      final locateCtx = const SessionHistoryContextBuilder().build(
+        fs: fs,
+        layout: layout,
+        appDataRoot: base.path,
+        session: session,
+        memberId: '',
+        cli: CliTool.opencode,
+      );
       final b1 = await locator.locate(
-        ctx: locator.lastCtx!,
+        ctx: locateCtx,
         cli: CliTool.opencode,
       );
       final b2 = await locator.locate(
-        ctx: locator.lastCtx!,
+        ctx: locateCtx,
         cli: CliTool.opencode,
       );
       expect(
@@ -499,11 +512,6 @@ void main() {
         final loader = buildLoader();
         final session = opencodeSession();
         final ctx = launchContextFor(session);
-        locator.locateGate = Completer<void>();
-        addTearDown(() {
-          final gate = locator.locateGate;
-          if (gate != null && !gate.isCompleted) gate.complete();
-        });
 
         final first = await loader.load(
           session: session,
@@ -511,11 +519,11 @@ void main() {
           launchContext: ctx,
         );
         expect(locator.calls, 0, reason: '首屏 page-first');
-        expect(first.isComplete, isFalse);
-
-        // Background full index starts and blocks in locate. The previous
-        // hole put an empty incremental state in the map at that moment.
-        await Future<void>(() {});
+        expect(
+          first.isComplete,
+          isTrue,
+          reason: '首页覆盖全部消息 → 直接 complete',
+        );
 
         writer.execute(
           "UPDATE part SET data = ?, time_updated = 3000 WHERE id = 2",
@@ -538,8 +546,8 @@ void main() {
 
         expect(
           second.isComplete,
-          isFalse,
-          reason: '分页窗口不得被提前标成 complete',
+          isTrue,
+          reason: '重读后的 page 仍覆盖全部消息 → complete',
         );
         expect(
           second.messages.any(
@@ -572,7 +580,7 @@ void main() {
       );
       expect(locator.calls, 0, reason: '首屏 page-first');
       final baseline = await warmFullIndex(loader, session);
-      expect(locator.calls, 1);
+      expect(locator.calls, 0, reason: 'full index 复用 page 结果,不 locate');
 
       // CLI 流式写入:新增 assistant 消息 + 原地增长已有 text part 行
       // (time_updated 前进,count 与行内容都变)。
@@ -588,7 +596,7 @@ void main() {
         memberId: '',
         launchContext: ctx,
       );
-      expect(locator.calls, 1, reason: 'store 动了 → 走 DB 行级增量,不再全量 locate');
+      expect(locator.calls, 0, reason: 'store 动了 → 走 DB 行级增量,不 locate');
       expect(
         second.messages.any(
           (m) => m.parts.any(
@@ -617,12 +625,7 @@ void main() {
         isTrue,
         reason: '未变化消息保持实例身份(附件/下游 identical 快速路径)',
       );
-      expect(
-        locator.lastBundle!.hints['source'],
-        'sqlite',
-        reason: '后台 full index 仍是全量 locate(增量从 seed 之后的 load 开始)',
-      );
-      expect(first.isComplete, isFalse);
+      expect(first.isComplete, isTrue);
     });
 
     test('task call appended after first load enters subagent attachments',
@@ -837,7 +840,7 @@ void main() {
       );
       expect(locator.calls, 0, reason: '首屏 page-first');
       final baseline = await warmFullIndex(loader, session);
-      expect(locator.calls, 1);
+      expect(locator.calls, 0);
 
       // 只有一条流式 text 原地增长:行数不变,MAX(time_updated) 前进。
       writer.execute(
@@ -850,7 +853,7 @@ void main() {
         memberId: '',
         launchContext: ctx,
       );
-      expect(locator.calls, 1, reason: '原地增长 → 行级增量,不再全量 locate');
+      expect(locator.calls, 0, reason: '原地增长 → 行级增量,不 locate');
       expect(
         second.messages.any(
           (m) => m.parts.any(
@@ -869,7 +872,7 @@ void main() {
         isTrue,
         reason: '未变化消息保持实例身份',
       );
-      expect(first.isComplete, isFalse);
+      expect(first.isComplete, isTrue);
     });
 
     test('task child session becoming newest must not flip the seat transcript',
@@ -897,7 +900,7 @@ void main() {
       expect(locator.calls, 0, reason: '首屏 page-first');
       expect(first.messages, hasLength(2));
       await warmFullIndex(loader, session);
-      expect(locator.calls, 1);
+      expect(locator.calls, 0);
 
       // task 子会话创建并写入:time_updated 最新 → 旧实现把"最新会话"
       // 解析成子会话,指纹/重读全落在子会话上。
@@ -939,7 +942,7 @@ void main() {
       );
       expect(
         locator.calls,
-        1,
+        0,
         reason: '子会话变成最新会话不得触发全量回退(旧实现每轮重复解析)',
       );
       expect(
@@ -1020,7 +1023,7 @@ void main() {
       expect(first.messages, hasLength(2));
       expect(locator.calls, 0, reason: '首屏 page-first');
       await warmFullIndex(loader, session);
-      expect(locator.calls, 1);
+      expect(locator.calls, 0);
 
       // 压缩:删除一条 message(连同其 part)后新增一条。
       writer.execute('DELETE FROM part WHERE message_id = 2');
@@ -1035,7 +1038,7 @@ void main() {
       );
       expect(
         locator.calls,
-        2,
+        1,
         reason: '删除无法用增量表达 → 回退全量重建',
       );
       expect(
@@ -1062,7 +1065,7 @@ void main() {
         memberId: '',
         launchContext: ctx,
       );
-      expect(locator.calls, 2, reason: '重建后回到增量路径,不再全量');
+      expect(locator.calls, 1, reason: '重建后回到增量路径,不再全量');
       expect(
         identical(third.messages, second.messages),
         isFalse,
@@ -1099,7 +1102,7 @@ void main() {
       expect(first.messages, hasLength(2)); // user + assistant
       expect(locator.calls, 0, reason: '首屏 page-first');
       final baseline = await warmFullIndex(loader, session);
-      expect(locator.calls, 1);
+      expect(locator.calls, 0);
 
       // 流式分片:第二条 assistant 消息紧邻上一条(全量 parse 会合并)。
       insertMessage(id: 3, role: 'assistant', created: 3000);
@@ -1110,7 +1113,7 @@ void main() {
         memberId: '',
         launchContext: ctx,
       );
-      expect(locator.calls, 1, reason: '增量路径');
+      expect(locator.calls, 0, reason: '增量路径');
       expect(
         identical(second.messages, baseline.messages),
         isFalse,
