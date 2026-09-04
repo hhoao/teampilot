@@ -1,4 +1,5 @@
 import '../../../agent_status/agent_attention_state.dart';
+import '../../../agent_status/agent_permission_request.dart';
 import '../../../agent_status/agent_status_event.dart';
 import '../../../agent_status/agent_status_tool_input.dart';
 import '../../../agent_status/ask_user_question.dart';
@@ -49,6 +50,17 @@ final class ClaudeFamilyAgentStatusNormalizer {
     // correlation works the same as OpenCode request_id.
     final askRequestId = askUser ? toolUseId : null;
 
+    // General Claude-family permission request (not AskUserQuestion /
+    // ExitPlanMode, which have their own card paths).
+    final permissionRequest =
+        eventName == 'PermissionRequest' && !askUser && !exitPlan
+            ? parseClaudePermissionRequest(
+                body,
+                toolName: toolName ?? '',
+                toolInputPreview: toolInput,
+              )
+            : null;
+
     AgentStatusEvent build(AgentSeatAttention state, {bool explicit = false}) =>
         AgentStatusEvent(
           state: state,
@@ -64,6 +76,7 @@ final class ClaudeFamilyAgentStatusNormalizer {
           askRequestId: askRequestId,
           planText: planText,
           planFilePath: planFilePath,
+          permissionRequest: permissionRequest,
         );
 
     return switch (eventName) {
