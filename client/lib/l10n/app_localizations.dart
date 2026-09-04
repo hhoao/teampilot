@@ -14579,7 +14579,7 @@ abstract class AppLocalizations {
   /// No description provided for @managedProvidersCredentialSourceHint.
   ///
   /// In en, this message translates to:
-  /// **'secret or cli:cursor-account'**
+  /// **'secret or cli:cursor-mp-<entry>'**
   String get managedProvidersCredentialSourceHint;
 
   /// No description provided for @managedProvidersCredentialSourceHelper.

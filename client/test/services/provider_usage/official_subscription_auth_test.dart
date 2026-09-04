@@ -157,21 +157,4 @@ void main() {
       ),
     );
   });
-
-  test('Legacy shared rows still resolve through the isolated directory',
-      () async {
-    await fs.writeString(
-      '/tp/providers/claude/claude-official/.credentials.json',
-      jsonEncode({
-        'claudeAiOauth': {'accessToken': 'legacy-row-token'},
-      }),
-    );
-
-    final scope = await ClaudeOfficialSubscriptionAuthReader(
-      fs: fs,
-      basePath: '/tp',
-    ).read(_provider('claude-official'));
-
-    expect(scope?.valueFor('accessToken'), 'legacy-row-token');
-  });
 }

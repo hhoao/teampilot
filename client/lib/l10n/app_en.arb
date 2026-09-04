@@ -3681,7 +3681,7 @@
   "managedProvidersCredentialPlacementHint": "header or query",
   "managedProvidersCredentialPlacementHelper": "header or query.",
   "managedProvidersCredentialSource": "Credential source",
-  "managedProvidersCredentialSourceHint": "secret or cli:cursor-account",
+  "managedProvidersCredentialSourceHint": "secret or cli:cursor-mp-<entry>",
   "managedProvidersCredentialSourceHelper": "secret reads the form; cli:… reads CLI login.",
   "managedProvidersCredentialTemplate": "Credential template",
   "managedProvidersCredentialTemplateHint": "e.g. WorkosCursorSessionToken=user::token",

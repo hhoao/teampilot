@@ -8188,7 +8188,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get managedProvidersCredentialSourceHint =>
-      'secret or cli:cursor-account';
+      'secret or cli:cursor-mp-<entry>';
 
   @override
   String get managedProvidersCredentialSourceHelper =>

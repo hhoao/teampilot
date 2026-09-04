@@ -7846,7 +7846,7 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get managedProvidersCredentialSourceHint =>
-      'secret 或 cli:cursor-account';
+      'secret 或 cli:cursor-mp-<entry>';
 
   @override
   String get managedProvidersCredentialSourceHelper =>

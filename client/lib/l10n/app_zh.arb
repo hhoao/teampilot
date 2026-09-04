@@ -3198,7 +3198,7 @@
   "managedProvidersCredentialPlacementHint": "header 或 query",
   "managedProvidersCredentialPlacementHelper": "header 或 query。",
   "managedProvidersCredentialSource": "凭据来源",
-  "managedProvidersCredentialSourceHint": "secret 或 cli:cursor-account",
+  "managedProvidersCredentialSourceHint": "secret 或 cli:cursor-mp-<entry>",
   "managedProvidersCredentialSourceHelper": "secret 读表单；cli:… 读 CLI 登录。",
   "managedProvidersCredentialTemplate": "凭据拼接模板",
   "managedProvidersCredentialTemplateHint": "例如 WorkosCursorSessionToken=user::token",
