@@ -55,6 +55,18 @@ class SessionPodState {
     );
   }
 
+  /// Same fields with [revision] bumped — for state that lives outside the
+  /// pod (tab / member-shell liveness) so bound selectors re-evaluate.
+  SessionPodState withRevisionBumped() => SessionPodState(
+    sessionId: sessionId,
+    workspaceId: workspaceId,
+    phase: phase,
+    launchError: launchError,
+    selectedMemberId: selectedMemberId,
+    view: view,
+    revision: revision + 1,
+  );
+
   @override
   bool operator ==(Object other) =>
       other is SessionPodState &&
@@ -133,5 +145,15 @@ class SessionPod extends ChangeNotifier {
     if (_state.view == view) return;
     _state = _state.copyWith(view: view);
     if (!_inBatch) notifyListeners();
+  }
+
+  /// Notifies listeners that state derived outside this pod changed (member
+  /// shell liveness, tab running flags). Pod-owned fields are untouched —
+  /// this only makes workbench listeners re-read terminal liveness so a
+  /// discarded / disconnected shell does not linger as a dead surface.
+  void notifyExternalStateChanged() {
+    if (_inBatch) return;
+    _state = _state.withRevisionBumped();
+    notifyListeners();
   }
 }

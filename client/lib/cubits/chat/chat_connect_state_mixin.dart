@@ -104,6 +104,10 @@ mixin ChatConnectStateMixin on Cubit<ChatState> {
     final tab = tabStore.openTabBySessionId(tabId);
     if (tab == null) return;
     tab.info = tab.info.copyWith(isRunning: tab.isRunning);
+    // Terminal liveness (member shells) lives outside pod state; notify the
+    // pod so workbench listeners re-read it instead of keeping a discarded /
+    // disconnected shell mounted as an unresponsive surface.
+    podRuntime(tab.info.id)?.notifyExternalStateChanged();
     onTabRunningChanged();
   }
 
