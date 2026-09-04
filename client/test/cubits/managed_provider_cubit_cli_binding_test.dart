@@ -1,10 +1,12 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/cubits/app_provider_cubit.dart';
 import 'package:teampilot/cubits/managed_provider_cubit.dart';
+import 'package:teampilot/models/app_provider_config.dart';
 import 'package:teampilot/models/managed_provider.dart';
 import 'package:teampilot/models/team_config.dart';
 import 'package:teampilot/repositories/app_provider_repository.dart';
 import 'package:teampilot/repositories/managed_provider_repository.dart';
+import 'package:teampilot/services/provider_usage/managed_provider_cli_row_janitor.dart';
 
 import '../support/in_memory_filesystem.dart';
 
@@ -114,6 +116,80 @@ void main() {
     expect(
       persisted.first.endpointConfig.credentialSource,
       'cli:cursor-account',
+    );
+    await cubit.close();
+    await appCubit.close();
+  });
+
+  test('delete removes the dedicated CLI row and its directory', () async {
+    final appCubit = _appCubit();
+    final janitor = ManagedProviderCliRowJanitor(
+      fs: fs,
+      basePath: '/tp',
+      appProviderCubit: appCubit,
+    );
+    final cubit = ManagedProviderCubit(
+      repository: repo,
+      appProviderCubit: appCubit,
+      rowJanitor: janitor,
+    );
+    await cubit.upsert(_entry(id: 'managed-4'));
+    await fs.ensureDir('/tp/providers/cursor/cursor-mp-managed-4/home');
+
+    await cubit.delete('managed-4');
+
+    expect(cubit.state.providerFor('managed-4'), isNull);
+    expect(
+      appCubit.state
+          .providersFor(CliTool.cursor)
+          .any((row) => row.id == 'cursor-mp-managed-4'),
+      isFalse,
+    );
+    expect(
+      (await fs.stat('/tp/providers/cursor/cursor-mp-managed-4')).exists,
+      isFalse,
+    );
+    await cubit.close();
+    await appCubit.close();
+  });
+
+  test('delete of a non-cli entry has no CLI side effects', () async {
+    final appCubit = _appCubit();
+    await appCubit.upsertProvider(AppProviderConfig(
+      id: 'cursor-keep',
+      cli: CliTool.cursor,
+      name: 'Keep',
+    ));
+    final janitor = ManagedProviderCliRowJanitor(
+      fs: fs,
+      basePath: '/tp',
+      appProviderCubit: appCubit,
+    );
+    final cubit = ManagedProviderCubit(
+      repository: repo,
+      appProviderCubit: appCubit,
+      rowJanitor: janitor,
+    );
+    await repo.save([
+      ManagedProvider(
+        id: 'managed-5',
+        name: 'API balance',
+        kind: ManagedProviderKind.apiBalance,
+        adapterId: 'http-json',
+        endpointConfig: ManagedProviderEndpointConfig(
+          url: 'https://example.test/usage',
+          credentialSource: 'secret',
+        ),
+      ),
+    ]);
+
+    await cubit.delete('managed-5');
+
+    expect(
+      appCubit.state
+          .providersFor(CliTool.cursor)
+          .any((row) => row.id == 'cursor-keep'),
+      isTrue,
     );
     await cubit.close();
     await appCubit.close();

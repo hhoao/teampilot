@@ -6,6 +6,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import '../models/managed_provider.dart';
 import '../repositories/managed_provider_repository.dart';
 import '../services/provider_usage/managed_provider_cli_binding.dart';
+import '../services/provider_usage/managed_provider_cli_row_janitor.dart';
 import 'app_provider_cubit.dart';
 
 enum ManagedProviderLoadStatus { initial, loading, ready, error }
@@ -64,11 +65,13 @@ class ManagedProviderCubit extends Cubit<ManagedProviderState> {
     onProviderDeletedCredentialCleanup,
     AppProviderCubit? appProviderCubit,
     ManagedProviderCliBinding binding = const ManagedProviderCliBinding(),
+    ManagedProviderCliRowJanitor? rowJanitor,
   }) : _repository = repository,
        _onProviderDeletedState = onProviderDeletedState,
        _onProviderDeletedCredentialCleanup = onProviderDeletedCredentialCleanup,
        _appProviderCubit = appProviderCubit,
        _binding = binding,
+       _rowJanitor = rowJanitor,
        super(ManagedProviderState());
 
   final ManagedProviderRepository _repository;
@@ -77,6 +80,7 @@ class ManagedProviderCubit extends Cubit<ManagedProviderState> {
   _onProviderDeletedCredentialCleanup;
   final AppProviderCubit? _appProviderCubit;
   final ManagedProviderCliBinding _binding;
+  final ManagedProviderCliRowJanitor? _rowJanitor;
   Future<void>? _loadFlight;
   Future<void> _mutationTail = Future<void>.value();
   int _catalogRevision = 0;
@@ -247,6 +251,7 @@ class ManagedProviderCubit extends Cubit<ManagedProviderState> {
       if (onProviderDeletedState != null) {
         await onProviderDeletedState(id);
       }
+      await _removeDedicatedCliRow(provider);
       if (isClosed) return;
       emit(
         state.copyWith(
@@ -256,6 +261,19 @@ class ManagedProviderCubit extends Cubit<ManagedProviderState> {
         ),
       );
     }, errorCode: ManagedProviderErrorCode.deleteFailed);
+  }
+
+  /// Best-effort removal of the entry's dedicated CLI row and its isolated
+  /// HOME directory. Failures are logged by the janitor and never fail the
+  /// entry deletion.
+  Future<void> _removeDedicatedCliRow(ManagedProvider? provider) async {
+    final janitor = _rowJanitor;
+    if (janitor == null || provider == null) return;
+    final source = provider.endpointConfig.credentialSource.trim();
+    final cli = _binding.cliForCredentialSource(source);
+    final rowId = _binding.rowIdForCredentialSource(source);
+    if (cli == null || rowId == null) return;
+    await janitor.removeDedicatedRow(cli: cli, rowId: rowId);
   }
 
   Future<void> _serializeMutation(

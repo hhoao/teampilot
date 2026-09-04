@@ -360,6 +360,33 @@ class AppProviderCubit extends Cubit<AppProviderState> {
     );
   }
 
+  /// Providers for [cli], loading from the repository on first access.
+  Future<List<AppProviderConfig>> loadProvidersFor(CliTool cli) async =>
+      state.providersByCli[cli] ?? await _repository.loadProviders(cli);
+
+  /// Removes one provider row for an explicit CLI (unlike [deleteProvider],
+  /// which operates on the currently selected CLI).
+  Future<void> removeProviderRow(CliTool cli, String providerId) async {
+    final trimmed = providerId.trim();
+    if (trimmed.isEmpty) return;
+    final current = await loadProvidersFor(cli);
+    final filtered = current.where((p) => p.id != trimmed).toList();
+    if (filtered.length == current.length) return;
+    await _repository.saveProviders(cli, filtered);
+    emit(
+      state.copyWith(
+        providersByCli: {...state.providersByCli, cli: filtered},
+        selectedProviderIdByCli: {
+          ...state.selectedProviderIdByCli,
+          cli: filtered.any((p) => p.id == state.selectedProviderIdByCli[cli])
+              ? state.selectedProviderIdByCli[cli]
+              : filtered.firstOrNull?.id,
+        },
+        statusMessage: 'Provider removed.',
+      ),
+    );
+  }
+
   Future<CredentialActionResult> runProviderCredentialAction({
     required AppProviderConfig provider,
     required ProviderCredentialActionKind kind,

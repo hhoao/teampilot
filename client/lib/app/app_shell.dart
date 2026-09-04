@@ -204,6 +204,7 @@ import '../services/cli/cursor/provider/cursor_provider_credentials_service.dart
 import '../cubits/chat/tab_member_pty_delivery.dart';
 import '../services/provider/provider_credential_host_runner.dart';
 import '../services/provider_usage/managed_provider_secret_store.dart';
+import '../services/provider_usage/managed_provider_cli_row_janitor.dart';
 import '../services/provider_usage/managed_provider_usage_adapter.dart';
 import '../services/provider_usage/managed_provider_usage_auto_refresh.dart';
 import '../services/provider_usage/managed_provider_usage_coordinator.dart';
@@ -957,11 +958,21 @@ Future<AppShell> buildAppShell({
     openCredentialLoginUrl: openCredentialLoginUrl,
   );
 
+  // Reclaims dedicated CLI provider rows and their isolated HOME
+  // directories: from the managed-provider delete hook and the one-shot
+  // startup sweep below.
+  final managedProviderCliRowJanitor = ManagedProviderCliRowJanitor(
+    fs: AppStorage.fs,
+    basePath: AppStorage.paths.basePath,
+    appProviderCubit: appProviderCubit,
+  );
+
   final resolvedManagedProviderCubit =
       managedProviderCubit ??
       ManagedProviderCubit(
         repository: resolvedManagedProviderRepository,
         appProviderCubit: appProviderCubit,
+        rowJanitor: managedProviderCliRowJanitor,
         onProviderDeletedState:
             resolvedManagedProviderUsageCubit.removeProvider,
         onProviderDeletedCredentialCleanup: (provider) async {
@@ -991,6 +1002,24 @@ Future<AppShell> buildAppShell({
   );
   final managedProviderControlPlaneLease = ManagedProviderControlPlaneLease(
     managedProviderControlPlane,
+  );
+
+  // One-shot startup sweep: reclaim orphaned `-mp-` rows and the legacy
+  // shared rows. Fire-and-forget and failure-tolerant — the control plane
+  // is fully usable without it.
+  unawaited(
+    () async {
+      try {
+        final entries = await resolvedManagedProviderRepository.load();
+        await managedProviderCliRowJanitor.sweep(entries: entries);
+      } on Object catch (error, stackTrace) {
+        appLogger.w(
+          '[managed-provider] cli row sweep failed: $error',
+          error: error,
+          stackTrace: stackTrace,
+        );
+      }
+    }(),
   );
 
   try {
