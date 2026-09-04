@@ -1,8 +1,10 @@
 import '../../models/team_config.dart';
 import '../../utils/logging/logger.dart';
+import '../agent_status/agent_permission_request.dart';
 import '../agent_status/ask_user_answer_pending_store.dart';
 import '../agent_status/ask_user_question.dart';
 import '../agent_status/ask_user_question_hook_gate.dart';
+import '../agent_status/general_permission_request_gate.dart';
 import '../cli/registry/capabilities/chat_interaction_capability.dart';
 import '../cli/registry/cli_tool_registry.dart';
 import 'member_turn_interrupt_service.dart';
@@ -21,9 +23,11 @@ final class AskUserAnswerFailed extends AskUserAnswerResult {
   final String reason;
 }
 
-/// Facade that answers / cancels AskUserQuestion by CLI capability:
-/// Claude-family prefers held PreToolUse hook reply ([AskUserQuestionHookGate]),
-/// then PTY digit inject; OpenCode uses the pending store.
+/// Facade that answers / cancels AskUserQuestion and permission requests by
+/// CLI capability: Claude-family prefers held hook replies (AskUserQuestion →
+/// [AskUserQuestionHookGate], general PermissionRequest →
+/// [GeneralPermissionRequestGate]), then PTY digit inject; OpenCode uses the
+/// pending store.
 final class AskUserQuestionAnswerService {
   AskUserQuestionAnswerService({
     MemberPtyWriter? writePty,
@@ -31,17 +35,20 @@ final class AskUserQuestionAnswerService {
     CliToolRegistry? registry,
     AskUserAnswerPendingStore? store,
     AskUserQuestionHookGate? hookGate,
+    GeneralPermissionRequestGate? generalPermissionGate,
   }) : _writePty = writePty ?? ((shell, text) => shell.input.writeToPty(text)),
        _delay = delay ?? Future<void>.delayed,
        _registry = registry ?? CliToolRegistry.builtIn(),
        _store = store ?? AskUserAnswerPendingStore(),
-       _hookGate = hookGate;
+       _hookGate = hookGate,
+       _generalPermissionGate = generalPermissionGate;
 
   final MemberPtyWriter _writePty;
   final Future<void> Function(Duration delay) _delay;
   final CliToolRegistry _registry;
   final AskUserAnswerPendingStore _store;
   final AskUserQuestionHookGate? _hookGate;
+  final GeneralPermissionRequestGate? _generalPermissionGate;
 
   /// Gap between the selection digit and the trailing Enter, letting the
   /// picker close in raw mode before the Enter lands on the prompt line.
@@ -123,36 +130,77 @@ final class AskUserQuestionAnswerService {
     }
   }
 
-  /// Answers an OpenCode permission request via the pending store. [reply]
-  /// is `once` | `always` | `reject` — the plugin delivers it to
-  /// `POST /permission/{requestID}/reply`.
+  /// Answers a permission request. OpenCode (plugin SDK channel) maps the kind
+  /// to its `once` / `always` / `reject` string; the Claude family (hook-hold
+  /// channel) completes the held `PermissionRequest` hook with the official
+  /// decision — allow-once, allow + echoed suggestion (`alwaysPayload`), or
+  /// deny with a message.
   Future<AskUserAnswerResult> answerPermission({
     required CliTool cli,
     required String sessionId,
     required String memberId,
-    required String? requestId,
-    required String reply,
+    String? requestId,
+    required AgentPermissionReplyKind kind,
+    Object? alwaysPayload,
   }) async {
-    final kind = _answerKind(cli);
-    if (kind != AskUserAnswerKind.pluginSdkReply) {
-      return const AskUserAnswerFailed('unsupported');
+    final channel = _answerKind(cli);
+    if (channel == AskUserAnswerKind.pluginSdkReply) {
+      final id = requestId?.trim() ?? '';
+      if (id.isEmpty) {
+        return const AskUserAnswerFailed('missing_request_id');
+      }
+      final reply = switch (kind) {
+        AgentPermissionReplyKind.allowOnce => 'once',
+        AgentPermissionReplyKind.always => 'always',
+        AgentPermissionReplyKind.reject => 'reject',
+      };
+      _store.put(
+        sessionId: sessionId,
+        memberId: memberId,
+        entry: AskUserAnswerPendingEntry(requestId: id, permissionReply: reply),
+      );
+      return const AskUserAnswerOk();
     }
-    final id = requestId?.trim() ?? '';
-    if (id.isEmpty) {
-      return const AskUserAnswerFailed('missing_request_id');
+    final gate = _generalPermissionGate;
+    if (gate == null) return const AskUserAnswerFailed('unsupported');
+    final GeneralPermissionRequestReply reply;
+    switch (kind) {
+      case AgentPermissionReplyKind.allowOnce:
+        reply = const GeneralPermissionRequestReply.allow();
+      case AgentPermissionReplyKind.always:
+        reply = GeneralPermissionRequestReply.allow(
+          updatedPermissions: alwaysPayload is Map<String, Object?>
+              ? [alwaysPayload]
+              : const [],
+        );
+      case AgentPermissionReplyKind.reject:
+        reply = const GeneralPermissionRequestReply.deny(
+          'User denied via TeamPilot',
+        );
     }
-    if (reply != 'once' && reply != 'always' && reply != 'reject') {
-      return const AskUserAnswerFailed('invalid_permission_reply');
-    }
-    _store.put(
+    final completed = gate.complete(
       sessionId: sessionId,
       memberId: memberId,
-      entry: AskUserAnswerPendingEntry(
-        requestId: id,
-        permissionReply: reply,
-      ),
+      reply: reply,
     );
-    return const AskUserAnswerOk();
+    return completed
+        ? const AskUserAnswerOk()
+        : const AskUserAnswerFailed('no_pending_permission');
+  }
+
+  /// Releases a held Claude-family permission hook so the gateway answers `{}`
+  /// and the native TUI prompt appears (card "answer in terminal").
+  Future<AskUserAnswerResult> releasePermission({
+    required CliTool cli,
+    required String sessionId,
+    required String memberId,
+  }) async {
+    final gate = _generalPermissionGate;
+    if (gate == null) return const AskUserAnswerFailed('unsupported');
+    final released = gate.releaseHold(sessionId: sessionId, memberId: memberId);
+    return released
+        ? const AskUserAnswerOk()
+        : const AskUserAnswerFailed('no_pending_permission');
   }
 
   AskUserAnswerKind _answerKind(CliTool cli) {

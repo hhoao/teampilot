@@ -1494,6 +1494,11 @@ class AppLocalizationsZh extends AppLocalizations {
   String get agentPermissionOpenTerminal => '打开终端';
 
   @override
+  String agentPermissionAlwaysAllowRule(Object rule) {
+    return '始终允许 $rule';
+  }
+
+  @override
   String get exitPlanModeTitle => '计划已就绪，等待批准';
 
   @override

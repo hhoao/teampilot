@@ -13,6 +13,7 @@ import 'package:teampilot/pages/chat/agent_permission_attention_banner.dart';
 import 'package:teampilot/services/agent_status/agent_attention_state.dart';
 import 'package:teampilot/services/agent_status/agent_permission_request.dart';
 import 'package:teampilot/services/agent_status/agent_status_event.dart';
+import 'package:teampilot/services/terminal/ask_user_question_answer_service.dart';
 import 'package:teampilot/theme/app_typography_scale.dart';
 import 'package:teampilot/utils/ui/app_keys.dart';
 
@@ -38,6 +39,36 @@ class _RecordingChatCubit extends ChatCubit {
   void selectMember(String memberId, {String? tabScopeId}) {
     selectedMembers.add(memberId);
     super.selectMember(memberId);
+  }
+}
+
+class _PermissionRecordingChatCubit extends _RecordingChatCubit {
+  final permissionKinds = <AgentPermissionReplyKind>[];
+  final permissionPayloads = <Object?>[];
+  final permissionRequestIds = <String?>[];
+  final releasedSeats = <(String, String)>[];
+
+  @override
+  Future<AskUserAnswerResult> answerPermissionRequest({
+    required String sessionId,
+    required String memberId,
+    String? permissionRequestId,
+    required AgentPermissionReplyKind kind,
+    Object? alwaysPayload,
+  }) async {
+    permissionKinds.add(kind);
+    permissionPayloads.add(alwaysPayload);
+    permissionRequestIds.add(permissionRequestId);
+    return const AskUserAnswerOk();
+  }
+
+  @override
+  Future<AskUserAnswerResult> releasePermissionToTerminal({
+    required String sessionId,
+    required String memberId,
+  }) async {
+    releasedSeats.add((sessionId, memberId));
+    return const AskUserAnswerOk();
   }
 }
 
@@ -321,6 +352,152 @@ void main() {
     expect(find.textContaining('npm install'), findsWidgets);
     // Terminal banner must not double-render for the interactive card.
     expect(find.byKey(AppKeys.agentPermissionAttentionBanner), findsNothing);
+  });
+
+  testWidgets('claude PermissionRequest hook shows card and routes typed '
+      'replies', (tester) async {
+    final session = _simpleSession(id: 'sess-claude-perm', cli: CliTool.claude);
+    final chat = _PermissionRecordingChatCubit();
+    addTearDown(chat.close);
+    chat.tabStore.setActiveWorkspaceId(session.workspaceId);
+    chat.tabStore.registerSession(
+      ChatTab(
+        info: ChatTabInfo(
+          id: session.sessionId,
+          title: 'Chat',
+          subtitle: 'simple',
+        ),
+        cliTeamName: '',
+        workbenchView: SessionWorkbenchView.chat,
+      ),
+    );
+
+    final alwaysPayload = {
+      'type': 'addRules',
+      'rules': [
+        {'toolName': 'Bash', 'ruleContent': 'rm -rf node_modules'},
+      ],
+      'behavior': 'allow',
+      'destination': 'localSettings',
+    };
+    final attention = AgentAttentionCubit(pruneInterval: null);
+    addTearDown(attention.close);
+    // Hook-hold channel: no askRequestId — replies correlate by gate seat key.
+    attention.applyEvent(
+      sessionId: session.sessionId,
+      memberId: session.sessionId,
+      event: AgentStatusEvent(
+        state: AgentSeatAttention.waiting,
+        hookEventName: 'PermissionRequest',
+        toolName: 'Bash',
+        permissionRequest: AgentPermissionRequest(
+          id: '',
+          description: 'Bash rm -rf node_modules',
+          always: [
+            AgentPermissionAlwaysOption(
+              label: 'Bash(rm -rf node_modules)',
+              payload: alwaysPayload,
+            ),
+          ],
+        ),
+      ),
+      skipPermissions: false,
+    );
+
+    await tester.pumpWidget(
+      _harness(chat: chat, attention: attention, session: session),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.byKey(AppKeys.opencodePermissionCard), findsOneWidget);
+    expect(find.byKey(AppKeys.agentPermissionAttentionBanner), findsNothing);
+    // Claude-family always options are rule-wrapped.
+    expect(
+      find.text('Always allow Bash(rm -rf node_modules)'),
+      findsOneWidget,
+    );
+
+    await tester.tap(find.byKey(AppKeys.opencodePermissionAllowOnceButton));
+    await tester.pumpAndSettle();
+
+    expect(chat.permissionKinds, [AgentPermissionReplyKind.allowOnce]);
+    expect(chat.permissionPayloads.single, isNull);
+    expect(chat.permissionRequestIds.single, isNull);
+
+    // "Answer in terminal" releases the held hook, then switches views.
+    await tester.tap(find.byIcon(Icons.terminal_rounded));
+    await tester.pumpAndSettle();
+
+    expect(chat.releasedSeats, [(session.sessionId, session.sessionId)]);
+    expect(chat.workbenchViews.last, (
+      session.sessionId,
+      SessionWorkbenchView.terminal,
+    ));
+  });
+
+  testWidgets('claude always reply forwards the selected option payload', (
+    tester,
+  ) async {
+    final session = _simpleSession(
+      id: 'sess-claude-always',
+      cli: CliTool.claude,
+    );
+    final chat = _PermissionRecordingChatCubit();
+    addTearDown(chat.close);
+    chat.tabStore.setActiveWorkspaceId(session.workspaceId);
+    chat.tabStore.registerSession(
+      ChatTab(
+        info: ChatTabInfo(
+          id: session.sessionId,
+          title: 'Chat',
+          subtitle: 'simple',
+        ),
+        cliTeamName: '',
+        workbenchView: SessionWorkbenchView.chat,
+      ),
+    );
+
+    final alwaysPayload = {
+      'type': 'addRules',
+      'rules': [
+        {'toolName': 'Bash', 'ruleContent': 'npm install'},
+      ],
+      'behavior': 'allow',
+      'destination': 'localSettings',
+    };
+    final attention = AgentAttentionCubit(pruneInterval: null);
+    addTearDown(attention.close);
+    attention.applyEvent(
+      sessionId: session.sessionId,
+      memberId: session.sessionId,
+      event: AgentStatusEvent(
+        state: AgentSeatAttention.waiting,
+        hookEventName: 'PermissionRequest',
+        toolName: 'Bash',
+        permissionRequest: AgentPermissionRequest(
+          id: '',
+          description: 'Bash npm install',
+          always: [
+            AgentPermissionAlwaysOption(
+              label: 'Bash(npm install)',
+              payload: alwaysPayload,
+            ),
+          ],
+        ),
+      ),
+      skipPermissions: false,
+    );
+
+    await tester.pumpWidget(
+      _harness(chat: chat, attention: attention, session: session),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byKey(AppKeys.opencodePermissionAlwaysButton));
+    await tester.pumpAndSettle();
+
+    expect(chat.permissionKinds, [AgentPermissionReplyKind.always]);
+    expect(chat.permissionPayloads.single, alwaysPayload);
   });
 
   testWidgets('banner hidden when workbench is Terminal', (tester) async {

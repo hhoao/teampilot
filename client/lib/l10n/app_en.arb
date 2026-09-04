@@ -689,6 +689,10 @@
   "sessionHistorySoftReloadError": "Couldn't refresh conversation history.",
   "agentPermissionAttentionBanner": "This agent needs confirmation in the Terminal.",
   "agentPermissionOpenTerminal": "Open Terminal",
+  "agentPermissionAlwaysAllowRule": "Always allow {rule}",
+  "@agentPermissionAlwaysAllowRule": {
+    "placeholders": { "rule": {} }
+  },
   "exitPlanModeTitle": "Plan ready for approval",
   "exitPlanModeApprove": "Approve",
   "exitPlanModeReject": "Reject",

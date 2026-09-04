@@ -1,7 +1,9 @@
 import 'package:flutter_alacritty/flutter_alacritty.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/models/team_config.dart';
+import 'package:teampilot/services/agent_status/agent_permission_request.dart';
 import 'package:teampilot/services/agent_status/ask_user_answer_pending_store.dart';
+import 'package:teampilot/services/agent_status/general_permission_request_gate.dart';
 import 'package:teampilot/services/cli/claude/capabilities/chat_interaction.dart';
 import 'package:teampilot/services/cli/cursor/capabilities/chat_interaction.dart';
 import 'package:teampilot/services/cli/opencode/capabilities/chat_interaction.dart';
@@ -296,7 +298,7 @@ void main() {
       sessionId: 'sess-a',
       memberId: 'member-1',
       requestId: 'perm-1',
-      reply: 'always',
+      kind: AgentPermissionReplyKind.always,
     );
 
     expect(result, isA<AskUserAnswerOk>());
@@ -326,35 +328,14 @@ void main() {
       sessionId: 'sess-a',
       memberId: 'member-1',
       requestId: null,
-      reply: 'once',
+      kind: AgentPermissionReplyKind.allowOnce,
     );
 
     expect(result, isA<AskUserAnswerFailed>());
     expect((result as AskUserAnswerFailed).reason, 'missing_request_id');
   });
 
-  test('answerPermission invalid reply returns failed', () async {
-    final store = AskUserAnswerPendingStore();
-    final service = AskUserQuestionAnswerService(
-      registry: _registryWith(
-        const OpencodeChatInteraction(),
-        cli: CliTool.opencode,
-      ),
-      store: store,
-    );
-    final result = await service.answerPermission(
-      cli: CliTool.opencode,
-      sessionId: 'sess-a',
-      memberId: 'member-1',
-      requestId: 'perm-1',
-      reply: 'maybe',
-    );
-
-    expect(result, isA<AskUserAnswerFailed>());
-    expect((result as AskUserAnswerFailed).reason, 'invalid_permission_reply');
-  });
-
-  test('answerPermission unsupported cli returns failed', () async {
+  test('answerPermission unsupported cli without gate returns failed', () async {
     final store = AskUserAnswerPendingStore();
     final service = AskUserQuestionAnswerService(
       registry: _registryWith(
@@ -368,7 +349,7 @@ void main() {
       sessionId: 'sess-a',
       memberId: 'member-1',
       requestId: 'perm-1',
-      reply: 'once',
+      kind: AgentPermissionReplyKind.allowOnce,
     );
 
     expect(result, isA<AskUserAnswerFailed>());
@@ -381,6 +362,114 @@ void main() {
       ),
       isNull,
     );
+  });
+
+  test('hook-hold channel completes the gate with an allow reply', () async {
+    final gate = GeneralPermissionRequestGate();
+    final service = AskUserQuestionAnswerService(generalPermissionGate: gate);
+    final held = gate.wait(sessionId: 's', memberId: 'm');
+    final result = await service.answerPermission(
+      cli: CliTool.claude,
+      sessionId: 's',
+      memberId: 'm',
+      kind: AgentPermissionReplyKind.allowOnce,
+    );
+    expect(result, isA<AskUserAnswerOk>());
+    final reply = await held;
+    expect(reply, isNotNull);
+    expect(reply!.deny, isFalse);
+  });
+
+  test('hook-hold always echoes the suggestion payload', () async {
+    final gate = GeneralPermissionRequestGate();
+    final service = AskUserQuestionAnswerService(generalPermissionGate: gate);
+    final held = gate.wait(sessionId: 's', memberId: 'm');
+    await service.answerPermission(
+      cli: CliTool.claude,
+      sessionId: 's',
+      memberId: 'm',
+      kind: AgentPermissionReplyKind.always,
+      alwaysPayload: {
+        'type': 'addRules',
+        'rules': [
+          {'toolName': 'Bash', 'ruleContent': 'rm -rf node_modules'},
+        ],
+        'behavior': 'allow',
+        'destination': 'localSettings',
+      },
+    );
+    final reply = await held;
+    expect(reply!.updatedPermissions, hasLength(1));
+  });
+
+  test('hook-hold deny completes the gate with a deny reply', () async {
+    final gate = GeneralPermissionRequestGate();
+    final service = AskUserQuestionAnswerService(generalPermissionGate: gate);
+    final held = gate.wait(sessionId: 's', memberId: 'm');
+    final result = await service.answerPermission(
+      cli: CliTool.claude,
+      sessionId: 's',
+      memberId: 'm',
+      kind: AgentPermissionReplyKind.reject,
+    );
+    expect(result, isA<AskUserAnswerOk>());
+    final reply = await held;
+    expect(reply, isNotNull);
+    expect(reply!.deny, isTrue);
+    expect(reply.message, isNotNull);
+  });
+
+  test('hook-hold without a held waiter returns failed', () async {
+    final gate = GeneralPermissionRequestGate();
+    final service = AskUserQuestionAnswerService(generalPermissionGate: gate);
+    final result = await service.answerPermission(
+      cli: CliTool.claude,
+      sessionId: 's',
+      memberId: 'm',
+      kind: AgentPermissionReplyKind.allowOnce,
+    );
+    expect(result, isA<AskUserAnswerFailed>());
+    expect((result as AskUserAnswerFailed).reason, 'no_pending_permission');
+  });
+
+  test('releasePermission falls through to the native TUI', () async {
+    final gate = GeneralPermissionRequestGate();
+    final service = AskUserQuestionAnswerService(generalPermissionGate: gate);
+    final held = gate.wait(sessionId: 's', memberId: 'm');
+    final result = await service.releasePermission(
+      cli: CliTool.claude,
+      sessionId: 's',
+      memberId: 'm',
+    );
+    expect(result, isA<AskUserAnswerOk>());
+    expect(await held, isNull);
+  });
+
+  test('releasePermission without a hold returns failed', () async {
+    final gate = GeneralPermissionRequestGate();
+    final service = AskUserQuestionAnswerService(generalPermissionGate: gate);
+    final result = await service.releasePermission(
+      cli: CliTool.claude,
+      sessionId: 's',
+      memberId: 'm',
+    );
+    expect(result, isA<AskUserAnswerFailed>());
+    expect((result as AskUserAnswerFailed).reason, 'no_pending_permission');
+  });
+
+  test('plugin-SDK channel keeps the string reply path', () async {
+    final store = AskUserAnswerPendingStore();
+    final service = AskUserQuestionAnswerService(store: store);
+    final result = await service.answerPermission(
+      cli: CliTool.opencode,
+      sessionId: 's',
+      memberId: 'm',
+      requestId: 'perm-1',
+      kind: AgentPermissionReplyKind.always,
+    );
+    expect(result, isA<AskUserAnswerOk>());
+    final entry = store.take(sessionId: 's', memberId: 'm', requestId: 'perm-1');
+    expect(entry?.permissionReply, 'always');
   });
 
   test('none capability returns failed', () async {

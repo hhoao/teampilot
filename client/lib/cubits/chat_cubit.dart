@@ -36,9 +36,11 @@ import '../services/team_bus/artifacts/artifact_transfer_service.dart';
 import '../services/team_bus/mcp/teammate_bus_mcp_gateway.dart';
 import '../services/team_bus/remote/remote_bus_binding_resolver.dart';
 import '../services/agent_status/agent_attention_state.dart';
+import '../services/agent_status/agent_permission_request.dart';
 import '../services/agent_status/agent_status_event.dart';
 import '../services/agent_status/agent_status_seat_lookup.dart';
 import '../services/agent_status/ask_user_answer_pending_store.dart';
+import '../services/agent_status/general_permission_request_gate.dart';
 import '../services/prompt_delivery/prompt_delivery_coordinator.dart';
 import 'agent_attention_cubit.dart';
 import '../services/launch/launch_factory.dart';
@@ -127,6 +129,7 @@ class ChatCubit extends Cubit<ChatState>
     AgentAttentionCubit? agentAttentionCubit,
     AskUserAnswerPendingStore? askUserAnswerPendingStore,
     AskUserQuestionAnswerService? askUserQuestionAnswerService,
+    GeneralPermissionRequestGate? generalPermissionGate,
     ExitPlanModeApprovalService? exitPlanApprovalService,
     InMemoryFollowUpQueueStore? followUpQueueStore,
     FollowUpQueueDrainer? followUpQueueDrainer,
@@ -180,7 +183,10 @@ class ChatCubit extends Cubit<ChatState>
         exitPlanApprovalService ?? ExitPlanModeApprovalService();
     _askUserAnswer =
         askUserQuestionAnswerService ??
-        AskUserQuestionAnswerService(store: askUserAnswerPendingStore);
+        AskUserQuestionAnswerService(
+          store: askUserAnswerPendingStore,
+          generalPermissionGate: generalPermissionGate,
+        );
     _followUpDrainer =
         followUpQueueDrainer ??
         FollowUpQueueDrainer(
@@ -1372,8 +1378,11 @@ class ChatCubit extends Cubit<ChatState>
     return result;
   }
 
-  /// Answers an OpenCode permission request from the chat card via the
-  /// pending store. [reply] is `once` | `always` | `reject`.
+  /// Answers a permission request from the chat card. OpenCode (plugin SDK
+  /// channel) maps [AgentPermissionReplyKind] to its `once` / `always` /
+  /// `reject` string via the pending store; the Claude family (hook-hold
+  /// channel) completes the held `PermissionRequest` hook — `alwaysPayload`
+  /// echoes the selected suggestion's `permission_suggestions` entry.
   ///
   /// On [AskUserAnswerOk], optimistically dismisses the waiting card via
   /// [AgentAttentionCubit.markAskAnswered]. Failures leave attention unchanged.
@@ -1381,7 +1390,8 @@ class ChatCubit extends Cubit<ChatState>
     required String sessionId,
     required String memberId,
     String? permissionRequestId,
-    required String reply,
+    required AgentPermissionReplyKind kind,
+    Object? alwaysPayload,
   }) async {
     final tab = _tabStore.openTabBySessionId(sessionId);
     if (tab == null) {
@@ -1408,7 +1418,8 @@ class ChatCubit extends Cubit<ChatState>
       sessionId: sessionId,
       memberId: mid,
       requestId: resolvedRequestId,
-      reply: reply,
+      kind: kind,
+      alwaysPayload: alwaysPayload,
     );
     if (result is AskUserAnswerOk) {
       _agentAttentionCubit?.markAskAnswered(
@@ -1417,6 +1428,34 @@ class ChatCubit extends Cubit<ChatState>
       );
     }
     return result;
+  }
+
+  /// Releases the seat's held Claude-family permission hook (card "answer in
+  /// terminal"): the gateway answers `{}` and the native TUI prompt appears.
+  Future<AskUserAnswerResult> releasePermissionToTerminal({
+    required String sessionId,
+    required String memberId,
+  }) async {
+    final tab = _tabStore.openTabBySessionId(sessionId);
+    if (tab == null) {
+      return const AskUserAnswerFailed('session_not_found');
+    }
+    final mid = memberId.trim();
+    if (mid.isEmpty) {
+      return const AskUserAnswerFailed('member_not_found');
+    }
+    final cli = SessionMemberCliResolver.resolve(
+      persistedSession: tab.persistedSession,
+      team: _teamForSessionTab(tab),
+      memberId: mid,
+      cliForMember: _shellFactory.cliForMember,
+      globalPresets: _lifecycle.globalPresets,
+    );
+    return _askUserAnswer.releasePermission(
+      cli: cli,
+      sessionId: sessionId,
+      memberId: mid,
+    );
   }
 
   /// Approves the pending Claude `ExitPlanMode` plan from the chat card

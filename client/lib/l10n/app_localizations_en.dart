@@ -1565,6 +1565,11 @@ class AppLocalizationsEn extends AppLocalizations {
   String get agentPermissionOpenTerminal => 'Open Terminal';
 
   @override
+  String agentPermissionAlwaysAllowRule(Object rule) {
+    return 'Always allow $rule';
+  }
+
+  @override
   String get exitPlanModeTitle => 'Plan ready for approval';
 
   @override

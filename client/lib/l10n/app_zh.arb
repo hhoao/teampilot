@@ -654,6 +654,7 @@
   "sessionHistorySoftReloadError": "无法刷新对话历史。",
   "agentPermissionAttentionBanner": "此智能体需要在终端中确认。",
   "agentPermissionOpenTerminal": "打开终端",
+  "agentPermissionAlwaysAllowRule": "始终允许 {rule}",
   "exitPlanModeTitle": "计划已就绪，等待批准",
   "exitPlanModeApprove": "批准",
   "exitPlanModeReject": "拒绝",

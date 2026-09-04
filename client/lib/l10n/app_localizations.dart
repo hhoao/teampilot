@@ -2900,6 +2900,12 @@ abstract class AppLocalizations {
   /// **'Open Terminal'**
   String get agentPermissionOpenTerminal;
 
+  /// No description provided for @agentPermissionAlwaysAllowRule.
+  ///
+  /// In en, this message translates to:
+  /// **'Always allow {rule}'**
+  String agentPermissionAlwaysAllowRule(Object rule);
+
   /// No description provided for @exitPlanModeTitle.
   ///
   /// In en, this message translates to:

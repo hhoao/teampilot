@@ -298,7 +298,7 @@ void main() {
         final result = await cubit.answerPermissionRequest(
           sessionId: sessionId,
           memberId: sessionId,
-          reply: 'always',
+          kind: AgentPermissionReplyKind.always,
         );
 
         expect(result, isA<AskUserAnswerOk>());
@@ -333,7 +333,7 @@ void main() {
       final result = await cubit.answerPermissionRequest(
         sessionId: sessionId,
         memberId: sessionId,
-        reply: 'once',
+        kind: AgentPermissionReplyKind.allowOnce,
       );
 
       expect(result, isA<AskUserAnswerFailed>());
