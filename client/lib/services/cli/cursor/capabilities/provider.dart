@@ -64,7 +64,7 @@ final class CursorProviderCapability extends CatalogModelCapability
   CliTool get catalogCli => CliTool.cursor;
 
   @override
-  String? get defaultOfficialProviderId => 'cursor-account';
+  String? get defaultOfficialProviderId => null;
 
   @override
   Future<ProviderCatalogSnapshot> loadFromLiveSources(

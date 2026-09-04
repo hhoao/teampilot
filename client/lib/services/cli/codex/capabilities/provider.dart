@@ -85,7 +85,7 @@ final class CodexProviderCapability extends CatalogModelCapability
   CliTool get catalogCli => CliTool.codex;
 
   @override
-  String? get defaultOfficialProviderId => 'openai-official';
+  String? get defaultOfficialProviderId => null;
 
   @override
   Future<ProviderCatalogSnapshot> loadFromLiveSources(
