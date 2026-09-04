@@ -11,7 +11,7 @@ Widget _host({required VoidCallback onHide}) => MaterialApp(
   locale: const Locale('en'),
   home: Scaffold(
     body: GitGraphColumnHeader(
-      graphWidth: GitGraphColumns.graphWidthFor(maxLane: 0),
+      graphWidth: GitGraphColumns.graphWidthFor(maxSlot: 0),
       onHide: onHide,
     ),
   ),

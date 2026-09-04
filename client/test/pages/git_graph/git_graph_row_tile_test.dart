@@ -196,6 +196,70 @@ void main() {
     expect(tapped, isTrue);
   });
 
+  testWidgets('lane painter spans the full row height for cross-row edges', (
+    tester,
+  ) async {
+    // 回归：painter 曾被 vertical padding 内缩（32/40），相邻行之间留下 8px
+    // 空白带，竖线呈虚线状。连线必须画满整行才能跨行连续。
+    await pump(
+      tester,
+      SizedBox(
+        width: 600,
+        child: Column(
+          children: [
+            GitGraphRowTile(row: makeRow('a'), selected: false, onTap: () {}),
+            GitGraphRowTile(row: makeRow('b'), selected: false, onTap: () {}),
+          ],
+        ),
+      ),
+    );
+
+    final painters = find.descendant(
+      of: find.byType(GitGraphRowTile),
+      matching: find.byType(CustomPaint),
+    );
+    expect(painters, findsNWidgets(2));
+    final top = tester.getRect(painters.at(0));
+    final bottom = tester.getRect(painters.at(1));
+    expect(top.top, 0);
+    expect(top.bottom, bottom.top);
+  });
+
+  testWidgets('spacer painter shares the commit painter horizontal origin', (
+    tester,
+  ) async {
+    // 回归：spacer 行没有 horizontalPadding，曲线整体左移 12px（≈ 一个
+    // lane 宽），与提交行的竖线/节点接不上。
+    await pump(
+      tester,
+      SizedBox(
+        width: 600,
+        child: Column(
+          children: [
+            GitGraphRowTile(row: makeRow('a'), selected: false, onTap: () {}),
+            GitGraphSpacerTile(
+              row: const GitGraphSpacerRow(edges: [GitGraphEdge(0, 0, 0)]),
+            ),
+          ],
+        ),
+      ),
+    );
+
+    final commitPainters = find.descendant(
+      of: find.byType(GitGraphRowTile),
+      matching: find.byType(CustomPaint),
+    );
+    final spacerPainters = find.descendant(
+      of: find.byType(GitGraphSpacerTile),
+      matching: find.byType(CustomPaint),
+    );
+    expect(commitPainters, findsOneWidget);
+    expect(spacerPainters, findsOneWidget);
+    final commitDx = tester.getTopLeft(commitPainters).dx;
+    final spacerDx = tester.getTopLeft(spacerPainters).dx;
+    expect(spacerDx, commitDx);
+  });
+
   testWidgets('hover paints a highlight background', (tester) async {
     await pump(
       tester,

@@ -87,10 +87,9 @@ class _GitGraphRowTileState extends State<GitGraphRowTile> {
           color: bg,
           padding: const EdgeInsets.symmetric(
             horizontal: GitGraphColumns.horizontalPadding,
-            vertical: GitGraphColumns.rowVerticalPadding,
           ),
           child: SizedBox(
-            height: GitGraphColumns.rowHeight,
+            height: GitGraphColumns.rowTileHeight,
             child: Row(
             children: [
               SizedBox(
@@ -98,7 +97,7 @@ class _GitGraphRowTileState extends State<GitGraphRowTile> {
                 child: CustomPaint(
                   size: const Size(
                     double.infinity,
-                    GitGraphColumns.rowHeight,
+                    GitGraphColumns.rowTileHeight,
                   ),
                   painter: GitGraphLanePainter(
                     edges: widget.row.edges,
@@ -204,12 +203,11 @@ class _GitGraphRowTileState extends State<GitGraphRowTile> {
   }
 
   double _graphWidth() {
-    final maxLane = [
-      for (final e in widget.row.edges) e.fromLane,
-      for (final e in widget.row.edges) e.toLane,
-      widget.row.node.lane,
+    final maxSlot = [
+      for (final e in widget.row.edges) ...[e.fromSlot, e.toSlot],
+      widget.row.node.slot,
     ].reduce((a, b) => a > b ? a : b);
-    return GitGraphColumns.graphWidthFor(maxLane: maxLane);
+    return GitGraphColumns.graphWidthFor(maxSlot: maxSlot);
   }
 }
 
@@ -264,7 +262,8 @@ class _RefChip extends StatelessWidget {
   }
 }
 
-/// 无提交的纯连线行（半高）。
+/// 无提交的纯连线行（半高）。水平起点必须与提交行的 painter 一致
+/// （同一 [GitGraphColumns.horizontalPadding]），否则曲线整体错位一个 lane。
 class GitGraphSpacerTile extends StatelessWidget {
   const GitGraphSpacerTile({
     super.key,
@@ -278,11 +277,16 @@ class GitGraphSpacerTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return IgnorePointer(
-      child: SizedBox(
-        height: 16,
-        child: CustomPaint(
-          size: const Size(double.infinity, 16),
-          painter: GitGraphLanePainter(edges: row.edges, palette: palette),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(
+          horizontal: GitGraphColumns.horizontalPadding,
+        ),
+        child: SizedBox(
+          height: 16,
+          child: CustomPaint(
+            size: const Size(double.infinity, 16),
+            painter: GitGraphLanePainter(edges: row.edges, palette: palette),
+          ),
         ),
       ),
     );

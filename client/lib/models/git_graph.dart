@@ -16,29 +16,32 @@ class GitRefDecoration extends Equatable {
   List<Object?> get props => [kind, name];
 }
 
-/// 图上单个提交节点：所在 lane + 解析期分配的调色板序号。
+/// 图上单个提交节点：所在 slot + 解析期分配的调色板序号。
+///
+/// slot 即 `git log --graph` 的字符列号（偶数 = lane 中心，奇数 = lane 间空隙）。
 class GitGraphNode extends Equatable {
-  const GitGraphNode(this.lane, this.colorIndex);
+  const GitGraphNode(this.slot, this.colorIndex);
 
-  final int lane;
+  final int slot;
   final int colorIndex;
 
   @override
-  List<Object?> get props => [lane, colorIndex];
+  List<Object?> get props => [slot, colorIndex];
 }
 
-/// 一行内的一段连线：from=行顶 lane，to=行底 lane；相等画竖线，不等画 S 曲线。
+/// 一行内的一段连线：from=行顶 slot，to=行底 slot；相等画竖线，不等画 S 曲线。
+/// 偶数 slot 是 lane 中心；奇数 slot 是 lane 间空隙（跨 lane 穿越/交换的中转位）。
 class GitGraphEdge extends Equatable {
-  const GitGraphEdge(this.fromLane, this.toLane, this.colorIndex);
+  const GitGraphEdge(this.fromSlot, this.toSlot, this.colorIndex);
 
-  final int fromLane;
-  final int toLane;
+  final int fromSlot;
+  final int toSlot;
   final int colorIndex;
 
-  bool get isStraight => fromLane == toLane;
+  bool get isStraight => fromSlot == toSlot;
 
   @override
-  List<Object?> get props => [fromLane, toLane, colorIndex];
+  List<Object?> get props => [fromSlot, toSlot, colorIndex];
 }
 
 sealed class GitGraphRow extends Equatable {

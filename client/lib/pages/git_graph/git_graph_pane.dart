@@ -176,7 +176,7 @@ class _PaneBody extends StatelessWidget {
                   GitGraphToolbar(state: state, workspaceId: workspaceId),
                   if (headerVisible)
                     GitGraphColumnHeader(
-                      graphWidth: GitGraphColumns.graphWidthFor(maxLane: 0),
+                      graphWidth: GitGraphColumns.graphWidthFor(maxSlot: 0),
                       onHide: () => context
                           .read<LayoutCubit>()
                           .setGitGraphHeaderVisible(false),
@@ -447,7 +447,7 @@ class _UncommittedTileState extends State<_UncommittedTile> {
             child: Row(
             children: [
               SizedBox(
-                width: GitGraphColumns.graphWidthFor(maxLane: 0),
+                width: GitGraphColumns.graphWidthFor(maxSlot: 0),
                 child: Icon(
                   Icons.edit_note_rounded,
                   size: 18,

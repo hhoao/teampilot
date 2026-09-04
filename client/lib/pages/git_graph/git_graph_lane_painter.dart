@@ -21,7 +21,10 @@ class GitGraphLanePainter extends CustomPainter {
 
   Color _colorOf(int index) => palette[index % palette.length];
 
-  double _x(int lane) => laneWidth / 2 + lane * laneWidth;
+  /// slot = `--graph` 字符列号：偶数是 lane 中心，奇数是 lane 间空隙
+  /// （半 lane 偏移，跨 lane 穿越/交换的中转位）。
+  double _x(int slot) =>
+      laneWidth / 2 + (slot >> 1) * laneWidth + (slot & 1) * laneWidth / 2;
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -32,8 +35,8 @@ class GitGraphLanePainter extends CustomPainter {
         ..style = PaintingStyle.stroke
         ..strokeWidth = 2
         ..strokeCap = StrokeCap.round;
-      final x0 = _x(edge.fromLane);
-      final x1 = _x(edge.toLane);
+      final x0 = _x(edge.fromSlot);
+      final x1 = _x(edge.toSlot);
       if (edge.isStraight) {
         canvas.drawLine(Offset(x0, 0), Offset(x1, h), paint);
       } else {
@@ -46,7 +49,7 @@ class GitGraphLanePainter extends CustomPainter {
     final n = node;
     if (n != null) {
       final color = _colorOf(n.colorIndex);
-      final center = Offset(_x(n.lane), h / 2);
+      final center = Offset(_x(n.slot), h / 2);
       final fill = Paint()..color = color;
       canvas.drawCircle(center, nodeRadius, fill);
       final ring = Paint()
