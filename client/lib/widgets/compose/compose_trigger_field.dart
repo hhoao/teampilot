@@ -25,6 +25,14 @@ import '../../services/keyboard/compose_keyboard_shortcut_handler.dart';
 import '../../services/inline_token/inline_token_palette.dart';
 import 'package:shared_ui/shared_ui.dart';
 
+/// Paste key pressed in the compose field. Re-routes Ctrl/Cmd+V out of
+/// EditableText's default [PasteTextIntent] so a clipboard image can be
+/// imported *without* the clipboard's text side (e.g. the file path GNOME
+/// writes alongside copied image files) also being pasted as bare text.
+class ComposePasteImageIntent extends Intent {
+  const ComposePasteImageIntent();
+}
+
 sealed class ComposeTriggerSuggestion {}
 
 final class ComposeTriggerFileSuggestion extends ComposeTriggerSuggestion {
@@ -110,7 +118,6 @@ class _ComposeTriggerFieldState extends State<ComposeTriggerField> {
     _lastLineCount = ComposeClip.countLines(widget.controller.text);
     widget.controller.addListener(_handleControllerChanged);
     widget.focusNode.addListener(_handleFocusChanged);
-    HardwareKeyboard.instance.addHandler(_handleHardwareKey);
     if (widget.focusNode.hasFocus) {
       _registerComposeCommands();
     }
@@ -146,9 +153,8 @@ class _ComposeTriggerFieldState extends State<ComposeTriggerField> {
 
   @override
   void dispose() {
-    _searchDebounce?.cancel();
     _focusClearTimer?.cancel();
-    HardwareKeyboard.instance.removeHandler(_handleHardwareKey);
+    _searchDebounce?.cancel();
     widget.controller.removeListener(_handleControllerChanged);
     widget.focusNode.removeListener(_handleFocusChanged);
     _unregisterComposeCommands();
@@ -187,21 +193,6 @@ class _ComposeTriggerFieldState extends State<ComposeTriggerField> {
             canSubmit: widget.canSubmit,
           )
         : null;
-  }
-
-  bool _handleHardwareKey(KeyEvent event) {
-    if (widget.onPasteImage == null || !widget.focusNode.hasFocus) {
-      return false;
-    }
-    if (event is! KeyDownEvent || !_isPasteShortcut(event)) {
-      return false;
-    }
-    unawaited(_handlePasteShortcut());
-    // Never claim handled and never insert clipboard text here.
-    // [HardwareKeyboard] handlers do not stop [EditableText] paste
-    // (Shortcuts/Actions still run — see terminal_passthrough_shortcuts.dart).
-    // Claiming handled + insertTextAtSelection duplicated every Ctrl/Cmd+V.
-    return false;
   }
 
   void _handleFocusChanged() {
@@ -444,22 +435,49 @@ class _ComposeTriggerFieldState extends State<ComposeTriggerField> {
     return KeyEventResult.ignored;
   }
 
-  bool _isPasteShortcut(KeyEvent event) {
-    return event.logicalKey == LogicalKeyboardKey.keyV &&
-        (HardwareKeyboard.instance.isControlPressed ||
-            HardwareKeyboard.instance.isMetaPressed);
+  /// Ctrl/Cmd+V handler from [_pasteImageShortcuts]. Tries the image import
+  /// first; when an image is imported the key is fully swallowed so
+  /// [EditableText]'s default paste cannot also insert the clipboard's text
+  /// side (the file path a file manager writes next to copied image bytes).
+  /// With no image on the clipboard, falls back to the default text paste.
+  Future<Object?> _invokePasteImage(ComposePasteImageIntent intent) async {
+    final onPasteImage = widget.onPasteImage;
+    if (onPasteImage == null) {
+      _fallbackPasteText();
+      return null;
+    }
+    final pastedImage = await onPasteImage();
+    if (pastedImage) {
+      // Image imported: refresh attachments / token chips.
+      widget.onChanged(widget.controller.text);
+      if (mounted) setState(() {});
+      return null;
+    }
+    _fallbackPasteText();
+    return null;
   }
 
-  Future<void> _handlePasteShortcut() async {
-    final onPasteImage = widget.onPasteImage;
-    if (onPasteImage == null) return;
-    final pastedImage = await onPasteImage();
-    if (!pastedImage) return;
-    // Text paste is left to [EditableText]. Only react when an image was
-    // imported so attachments / token chips refresh.
-    widget.onChanged(widget.controller.text);
-    if (mounted) setState(() {});
+  void _fallbackPasteText() {
+    if (!mounted) return;
+    // The clipboard probe awaited; make sure focus is still inside this
+    // field before re-dispatching, or the text would paste elsewhere.
+    if (!widget.focusNode.hasFocus) return;
+    final focusContext = widget.focusNode.context;
+    if (focusContext == null) return;
+    // Re-dispatch the default paste intent for the (still) focused field.
+    Actions.maybeInvoke(
+      focusContext,
+      const PasteTextIntent(SelectionChangedCause.keyboard),
+    );
   }
+
+  Map<ShortcutActivator, Intent> get _pasteImageShortcuts =>
+      <ShortcutActivator, Intent>{
+        const SingleActivator(LogicalKeyboardKey.keyV, control: true):
+            const ComposePasteImageIntent(),
+        const SingleActivator(LogicalKeyboardKey.keyV, meta: true):
+            const ComposePasteImageIntent(),
+      };
 
   @override
   Widget build(BuildContext context) {
@@ -478,43 +496,60 @@ class _ComposeTriggerFieldState extends State<ComposeTriggerField> {
 
     return ShortcutFocus(
       kind: ShortcutFocusKind.compose,
-      child: TpTextareaShell(
-        minHeight: minH,
-        maxHeight: maxH,
-        initialHeight: minH,
-        resizable: true,
-        textStyle: textStyle,
-        focusNode: widget.focusNode,
-        builder: (context, lineCount) {
-          return TpTokenTextField(
-            fieldKey: _fieldKey,
-            controller: widget.controller,
-            focusNode: widget.focusNode,
-            hint: widget.hint,
-            enabled: widget.enabled,
-            onChanged: widget.onChanged,
+      child: Shortcuts(
+        // Inner Shortcuts wins over the app-level DefaultTextEditingShortcuts:
+        // the paste chord resolves to ComposePasteImageIntent first, so an
+        // image import can swallow the key entirely instead of racing the
+        // default PasteTextIntent (which pasted the clipboard's text side —
+        // the file path next to copied image bytes — a second time).
+        debugLabel: '<Compose Image Paste Shortcuts>',
+        shortcuts: _pasteImageShortcuts,
+        child: Actions(
+          actions: <Type, Action<Intent>>{
+            ComposePasteImageIntent: CallbackAction<ComposePasteImageIntent>(
+              onInvoke: _invokePasteImage,
+            ),
+          },
+          child: TpTextareaShell(
+            minHeight: minH,
+            maxHeight: maxH,
+            initialHeight: minH,
+            resizable: true,
             textStyle: textStyle,
-            hintStyle: styles.mdColored(widget.hintColor),
-            cursorColor: widget.mutedColor,
-            tokenPattern: defaultInlineTokenPattern,
-            resolveTokenPalette: resolveSlashAtTokenPalette,
-            // Fill the shell so blank viewport areas remain tappable.
-            expands: true,
-            minLines: lineCount,
-            maxLines: lineCount,
-            onKeyEvent: _handleComposeKey,
-            overlayVisible: _overlayVisible,
-            overlayAnchor: _menuAnchor,
-            overlayBuilder: _overlayVisible
-                ? (context) => _ComposeTriggerSuggestionPanel(
-                    suggestions: _suggestions,
-                    selectedIndex: _selectedIndex,
-                    onSelected: _selectSuggestion,
-                    onHover: (index) => setState(() => _selectedIndex = index),
-                  )
-                : null,
-          );
-        },
+            focusNode: widget.focusNode,
+            builder: (context, lineCount) {
+              return TpTokenTextField(
+                fieldKey: _fieldKey,
+                controller: widget.controller,
+                focusNode: widget.focusNode,
+                hint: widget.hint,
+                enabled: widget.enabled,
+                onChanged: widget.onChanged,
+                textStyle: textStyle,
+                hintStyle: styles.mdColored(widget.hintColor),
+                cursorColor: widget.mutedColor,
+                tokenPattern: defaultInlineTokenPattern,
+                resolveTokenPalette: resolveSlashAtTokenPalette,
+                // Fill the shell so blank viewport areas remain tappable.
+                expands: true,
+                minLines: lineCount,
+                maxLines: lineCount,
+                onKeyEvent: _handleComposeKey,
+                overlayVisible: _overlayVisible,
+                overlayAnchor: _menuAnchor,
+                overlayBuilder: _overlayVisible
+                    ? (context) => _ComposeTriggerSuggestionPanel(
+                        suggestions: _suggestions,
+                        selectedIndex: _selectedIndex,
+                        onSelected: _selectSuggestion,
+                        onHover: (index) =>
+                            setState(() => _selectedIndex = index),
+                      )
+                    : null,
+              );
+            },
+          ),
+        ),
       ),
     );
   }
