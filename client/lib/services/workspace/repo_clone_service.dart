@@ -82,27 +82,45 @@ abstract interface class RepoCloneHostRunner {
 /// [RemoteHostOneShotRunner] from the resolved context's backend mode the
 /// same way `hostOneShotRunnerForContext` does. The context resolver is
 /// injected (DI wiring, Task 4) — this file never touches `AppStorage`.
+///
+/// Targets are resolved through the injected [RunTargetResolver] (the same
+/// home-aware resolution the clone's run plan uses), so `checkGit` /
+/// `filesystemFor` always act on the machine the clone actually spawns on —
+/// a bare `local` id on an SSH-home device resolves to SSH here too.
 class DefaultRepoCloneHostRunner implements RepoCloneHostRunner {
   DefaultRepoCloneHostRunner({
     Future<RuntimeContext> Function(RuntimeTarget target)? contextFor,
-  }) : _contextFor = contextFor;
+    RunTargetResolver? resolver,
+  }) : _contextFor = contextFor,
+       _resolver = resolver;
 
   final Future<RuntimeContext> Function(RuntimeTarget target)? _contextFor;
+  final RunTargetResolver? _resolver;
 
-  Future<RuntimeContext> _context(RuntimeTarget target) async {
-    final resolver = _contextFor;
-    if (resolver == null) {
+  /// Home-aware target resolution matching `RunTargetResolver.resolve`.
+  /// The folder path is irrelevant to target resolution; `filesystemFor`
+  /// only carries a target id.
+  RuntimeTarget _resolveTarget(String targetId) {
+    final resolver = _resolver;
+    if (resolver != null) {
+      return resolver.targetFor(WorkspaceFolder(path: '', targetId: targetId));
+    }
+    return WorkTargetCanonicalizer.fromId(targetId);
+  }
+
+  Future<RuntimeContext> _context(String targetId) async {
+    final contextFor = _contextFor;
+    if (contextFor == null) {
       throw StateError(
         'DefaultRepoCloneHostRunner requires a RuntimeContext resolver',
       );
     }
-    return resolver(target);
+    return contextFor(_resolveTarget(targetId));
   }
 
   @override
   Future<HostRunResult> checkGit(RepoCloneRequest request) async {
-    final target = WorkTargetCanonicalizer.fromId(request.targetId);
-    final ctx = await _context(target);
+    final ctx = await _context(request.targetId);
     final runner = _runnerForContext(ctx);
     return runner.run(
       HostRunRequest(
@@ -115,8 +133,7 @@ class DefaultRepoCloneHostRunner implements RepoCloneHostRunner {
 
   @override
   Future<Filesystem> filesystemFor(String targetId) async {
-    final target = WorkTargetCanonicalizer.fromId(targetId);
-    final ctx = await _context(target);
+    final ctx = await _context(targetId);
     return ctx.filesystem;
   }
 
@@ -171,10 +188,15 @@ class RepoCloneService {
     );
 
     if (isCancelled()) {
-      return _finishCancelled(destPath, fs, didStart: false);
+      return _finishCancelled(destPath, fs, mayRemovePartial: false);
     }
 
     // Destination pre-check: anything already occupying the name is an error.
+    // `destWasAbsent` records that the clone owns this name — only then is
+    // failure-path cleanup allowed to remove it (see I-1: a raced
+    // "destination path already exists" failure must never delete a
+    // pre-existing user directory).
+    var destWasAbsent = false;
     try {
       final stat = await fs.stat(destPath);
       if (stat.exists) {
@@ -185,6 +207,7 @@ class RepoCloneService {
           errorDetail: _kDestExistsMarker,
         );
       }
+      destWasAbsent = stat.kind == FsEntityKind.notFound;
     } catch (error) {
       appLogger.d('[RepoClone] stat failed for $destPath: $error');
     }
@@ -215,17 +238,22 @@ class RepoCloneService {
       if (isCancelled()) {
         cancelRequested = true;
       }
+      // Progress lives on stderr; stdout is never a git progress stream.
+      final isStderr = output.category == 'stderr';
       for (final line in output.data.split(RegExp(r'[\r\n]'))) {
         if (line.isEmpty) continue;
-        errorTail.add(line);
-        if (errorTail.length > _errorTailLines) {
-          errorTail.removeAt(0);
+        if (isStderr) {
+          errorTail.add(line);
+          if (errorTail.length > _errorTailLines) {
+            errorTail.removeAt(0);
+          }
         }
-        final parsed = repoCloneParseFraction(line);
+        final parsed = isStderr ? repoCloneParseFraction(line) : null;
         if (parsed != null) {
           lastFraction = parsed;
           hasFraction = true;
         }
+        if (!isStderr) continue;
         onProgress(
           RepoCloneProgress(
             fraction: parsed ?? (hasFraction ? lastFraction : null),
@@ -244,28 +272,57 @@ class RepoCloneService {
       return stopFuture ?? Future<void>.value();
     }
 
+    // Cleanup is only safe when the pre-check proved the destination was
+    // absent AND git did not report a raced "already exists" failure —
+    // otherwise removeRecursive could destroy a pre-existing user directory.
+    var mayRemovePartial = destWasAbsent;
+
     Future<RepoCloneResult> finishCancelled() {
       appLogger.d('[RepoClone] cancelled; stopping git process');
       return requestStop().then((_) async {
         final exitCode = await runRef!.exitCode;
         appLogger.d('[RepoClone] cancelled clone exited with $exitCode');
-        return _finishCancelled(destPath, fs, didStart: true);
+        // The clone may have finished successfully before cancellation was
+        // observed — report success and keep the result on disk.
+        if (exitCode == 0) {
+          return RepoCloneResult(
+            outcome: RepoCloneOutcome.succeeded,
+            destPath: destPath,
+          );
+        }
+        return _finishCancelled(
+          destPath,
+          fs,
+          mayRemovePartial: mayRemovePartial,
+        );
       });
     }
 
-    final run = await _executor.start(
-      sessionId: _repoCloneSessionId,
-      command: 'git',
-      args: [
-        'clone',
-        '--progress',
-        '--',
-        request.url,
-        request.dirName,
-      ],
-      plan: plan,
-      onOutput: handleOutput,
-    );
+    final ProcessRunResult run;
+    try {
+      run = await _executor.start(
+        sessionId: _repoCloneSessionId,
+        command: 'git',
+        args: [
+          'clone',
+          '--progress',
+          '--',
+          request.url,
+          request.dirName,
+        ],
+        plan: plan,
+        onOutput: handleOutput,
+      );
+    } catch (error) {
+      // Spawn failures (e.g. missing SSH profile) surface as a failed
+      // outcome rather than an uncaught StateError out of clone().
+      appLogger.d('[RepoClone] failed to spawn git: $error');
+      return RepoCloneResult(
+        outcome: RepoCloneOutcome.failed,
+        destPath: destPath,
+        errorDetail: error.toString(),
+      );
+    }
     runRef = run;
 
     // Let buffered stdout/stderr events flush so progress + cancellation
@@ -292,7 +349,19 @@ class RepoCloneService {
     }
 
     appLogger.d('[RepoClone] clone failed with exit $exitCode');
-    await _cleanupPartial(fs, destPath);
+    // Belt and braces (I-1): never clean up when git itself reported a raced
+    // "destination path already exists" failure.
+    if (errorTail.join('\n').contains('already exists')) {
+      mayRemovePartial = false;
+    }
+    if (mayRemovePartial) {
+      await _cleanupPartial(fs, destPath);
+    } else {
+      appLogger.d(
+        '[RepoClone] skipping partial cleanup for $destPath '
+        '(destination was not confirmed absent or already-exists failure)',
+      );
+    }
     return RepoCloneResult(
       outcome: RepoCloneOutcome.failed,
       destPath: destPath,
@@ -302,13 +371,13 @@ class RepoCloneService {
     );
   }
 
-  RepoCloneResult _finishCancelled(
+  Future<RepoCloneResult> _finishCancelled(
     String destPath,
     Filesystem fs, {
-    required bool didStart,
-  }) {
-    if (didStart) {
-      _cleanupPartial(fs, destPath);
+    required bool mayRemovePartial,
+  }) async {
+    if (mayRemovePartial) {
+      await _cleanupPartial(fs, destPath);
     }
     return RepoCloneResult(
       outcome: RepoCloneOutcome.cancelled,
@@ -316,12 +385,10 @@ class RepoCloneService {
     );
   }
 
-  /// Yields through the microtask queue so buffered stream events (each
-  /// delivered as its own microtask) are observed before the next decision.
+  /// Yields a macrotask turn so IO-delivered stream chunks (timer/event
+  /// queue) flush before the next decision reads progress/cancel state.
   Future<void> _pumpEventLoop() async {
-    for (var i = 0; i < 2; i++) {
-      await Future<void>.microtask(() {});
-    }
+    await Future<void>.delayed(Duration.zero);
   }
 
   /// Best-effort removal of a partially cloned directory (git may leave one

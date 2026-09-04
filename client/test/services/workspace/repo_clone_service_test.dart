@@ -9,8 +9,12 @@ import 'package:teampilot/services/run/process_run_executor.dart';
 import 'package:teampilot/services/workspace/repo_clone_service.dart';
 
 class _FakeHandle implements ProcessRunHandle {
-  _FakeHandle(this.exit, {List<String> stderrLines = const []})
-    : stderr = _linesStream(stderrLines);
+  _FakeHandle(
+    this.exit, {
+    List<String> stderrLines = const [],
+    List<String> stdoutLines = const [],
+  }) : stderr = _linesStream(stderrLines),
+       stdout = _linesStream(stdoutLines);
 
   static Stream<List<int>> _linesStream(List<String> lines) {
     final ctrl = StreamController<List<int>>();
@@ -24,16 +28,17 @@ class _FakeHandle implements ProcessRunHandle {
   }
 
   final int exit;
-  var killed = false;
 
   @override
   Future<int> get exitCode => Future.value(exit);
 
   @override
-  Stream<List<int>> get stdout => const Stream.empty();
+  final Stream<List<int>> stdout;
 
   @override
   final Stream<List<int>> stderr;
+
+  var killed = false;
 
   @override
   void kill() => killed = true;
@@ -66,6 +71,7 @@ class _ControllableHandle implements ProcessRunHandle {
 class _RecordingSpawner {
   final calls = <({String executable, List<String> arguments})>[];
   ProcessRunHandle pendingHandle = _FakeHandle(0);
+  Object? pendingError;
 
   ProcessSpawner get spawner =>
       ({
@@ -77,6 +83,8 @@ class _RecordingSpawner {
         bool includeParentEnvironment = true,
       }) async {
         calls.add((executable: executable, arguments: arguments));
+        final error = pendingError;
+        if (error != null) throw error;
         return pendingHandle;
       };
 }
@@ -375,9 +383,10 @@ void main() {
       stderrLines: ['Receiving objects:   5% (1/20)'],
     );
     final spawner = _RecordingSpawner()..pendingHandle = handle;
+    final host = _FakeHostRunner();
     final service = RepoCloneService(
       executor: ProcessRunExecutor(spawner: spawner.spawner),
-      hostRunner: _FakeHostRunner(),
+      hostRunner: host,
     );
     var cancelled = false;
     final cloneFuture = service.clone(
@@ -387,14 +396,185 @@ void main() {
         parentDir: '/src',
         dirName: 'r',
       ),
-      onProgress: (_) => cancelled = true,
+      // First progress line means git is running and has created the dir.
+      onProgress: (_) {
+        host.fs.dirs.add('/src/r');
+        cancelled = true;
+      },
       isCancelled: () => cancelled,
     );
-    // Let the first stderr event arrive and flip the cancellation flag.
-    await Future<void>.delayed(Duration.zero);
+    // The first stderr event flips the cancellation flag; the service's
+    // macrotask pump then observes it and kills the process. Poll turns of
+    // the event loop until the kill lands (the service's internal pump timer
+    // may be queued after this test's own timers).
+    while (!handle.killed) {
+      await Future<void>.delayed(Duration.zero);
+    }
     expect(handle.killed, isTrue);
     handle.completeExit(130);
     final result = await cloneFuture;
     expect(result.outcome, RepoCloneOutcome.cancelled);
+    // Cancelled cleanup is awaited and removes the partial clone.
+    expect(host.fs.deleted, ['/src/r']);
   });
+
+  test('clone failure with already-exists stderr never deletes destination',
+      () async {
+    // Race: pre-check stat said absent, but git finds a non-empty directory
+    // and fails — the pre-existing directory must survive.
+    final spawner = _RecordingSpawner()
+      ..pendingHandle = _FakeHandle(
+        128,
+        stderrLines: [
+          "fatal: destination path 'r' already exists and is not an empty "
+          'directory.',
+        ],
+      );
+    final host = _FakeHostRunner();
+    final service = RepoCloneService(
+      executor: ProcessRunExecutor(spawner: spawner.spawner),
+      hostRunner: host,
+    );
+    final result = await service.clone(
+      RepoCloneRequest(
+        url: 'https://github.com/o/r.git',
+        targetId: 'local',
+        parentDir: '/src',
+        dirName: 'r',
+      ),
+      // The raced directory exists by the time git reports the failure.
+      onProgress: (_) => host.fs.dirs.add('/src/r'),
+      isCancelled: () => false,
+    );
+    expect(result.outcome, RepoCloneOutcome.failed);
+    expect(result.errorDetail, contains('already exists'));
+    expect(host.fs.deleted, isEmpty);
+  });
+
+  test('clone failure skips cleanup when pre-check stat threw', () async {
+    // stat errors on the pre-check (permissions / transport hiccup):
+    // absence unproven, so a failure must not risk deleting anything.
+    final host = _StatThrowsHostRunner();
+    final spawner = _RecordingSpawner()
+      ..pendingHandle = _FakeHandle(128, stderrLines: ['fatal: bad repo']);
+    final service = RepoCloneService(
+      executor: ProcessRunExecutor(spawner: spawner.spawner),
+      hostRunner: host,
+    );
+    final result = await service.clone(
+      RepoCloneRequest(
+        url: 'https://github.com/o/r.git',
+        targetId: 'local',
+        parentDir: '/src',
+        dirName: 'r',
+      ),
+      onProgress: (_) {},
+      isCancelled: () => false,
+    );
+    expect(result.outcome, RepoCloneOutcome.failed);
+    expect(result.errorDetail, contains('fatal: bad repo'));
+    expect(host.fs.deleted, isEmpty);
+  });
+
+  test('spawn StateError surfaces as failed outcome, not an exception', () async {
+    final spawner = _RecordingSpawner()
+      ..pendingError = StateError('SSH process execution is not configured');
+    final service = RepoCloneService(
+      executor: ProcessRunExecutor(spawner: spawner.spawner),
+      hostRunner: _FakeHostRunner(),
+    );
+    final result = await service.clone(
+      RepoCloneRequest(
+        url: 'https://github.com/o/r.git',
+        targetId: 'local',
+        parentDir: '/src',
+        dirName: 'r',
+      ),
+      onProgress: (_) {},
+      isCancelled: () => false,
+    );
+    expect(result.outcome, RepoCloneOutcome.failed);
+    expect(
+      result.errorDetail,
+      contains('SSH process execution is not configured'),
+    );
+  });
+
+  test('stdout lines do not produce progress or fractions', () async {
+    // A percent line on stdout (never a git --progress stream) must not be
+    // parsed as progress; the stderr line must be.
+    final spawner = _RecordingSpawner()
+      ..pendingHandle = _FakeHandle(
+        0,
+        stdoutLines: ['Receiving objects:  99% (999/999), 9 MiB'],
+        stderrLines: ['Receiving objects:  45% (56/123), 3.2 MiB'],
+      );
+    final progress = <RepoCloneProgress>[];
+    final service = RepoCloneService(
+      executor: ProcessRunExecutor(spawner: spawner.spawner),
+      hostRunner: _FakeHostRunner(),
+    );
+    await service.clone(
+      RepoCloneRequest(
+        url: 'https://github.com/o/r.git',
+        targetId: 'local',
+        parentDir: '/src',
+        dirName: 'r',
+      ),
+      onProgress: progress.add,
+      isCancelled: () => false,
+    );
+    expect(progress.where((p) => p.fraction == 0.99), isEmpty);
+    expect(progress.where((p) => p.subtitle?.contains('99%') ?? false),
+        isEmpty);
+    expect(progress.where((p) => p.fraction == 0.45), isNotEmpty);
+  });
+
+  test('clone cancelled after success exit reports succeeded and keeps dir',
+      () async {
+    // Cancellation is observed only after git already exited 0 — the clone
+    // completed and must not be reported cancelled or deleted.
+    final handle = _ControllableHandle();
+    final spawner = _RecordingSpawner()..pendingHandle = handle;
+    final host = _FakeHostRunner();
+    final service = RepoCloneService(
+      executor: ProcessRunExecutor(spawner: spawner.spawner),
+      hostRunner: host,
+    );
+    var cancelled = false;
+    final cloneFuture = service.clone(
+      RepoCloneRequest(
+        url: 'https://github.com/o/r.git',
+        targetId: 'local',
+        parentDir: '/src',
+        dirName: 'r',
+      ),
+      onProgress: (_) => host.fs.dirs.add('/src/r'),
+      isCancelled: () => cancelled,
+    );
+    await Future<void>.delayed(Duration.zero);
+    handle.completeExit(0);
+    cancelled = true; // Flips after exit 0, before the result is judged.
+    final result = await cloneFuture;
+    expect(result.outcome, RepoCloneOutcome.succeeded);
+    expect(host.fs.deleted, isEmpty);
+  });
+}
+
+/// Host runner whose stat() throws — simulates transport/permission errors
+/// during the destination pre-check.
+class _StatThrowsHostRunner implements RepoCloneHostRunner {
+  final fs = _StatThrowsFs();
+
+  @override
+  Future<HostRunResult> checkGit(RepoCloneRequest request) async =>
+      HostRunResult(exitCode: 0, stdout: 'git version 2.43.0', stderr: '');
+
+  @override
+  Future<Filesystem> filesystemFor(String targetId) async => fs;
+}
+
+class _StatThrowsFs extends _FakeFs {
+  @override
+  Future<FsStat> stat(String path) async => throw Exception('stat failed');
 }
