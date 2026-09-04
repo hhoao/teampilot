@@ -50,23 +50,33 @@ class GitChangesTreeList extends StatefulWidget {
 }
 
 class _GitChangesTreeListState extends State<GitChangesTreeList> {
-  var _hoverEnabled = true;
+  /// Muted while the list scrolls so rows sliding under the pointer do not
+  /// flash hover fills. A [ValueNotifier] (not setState) so flipping it never
+  /// rebuilds the list — tiles listen individually and only repaint their
+  /// hover surface.
+  final _hoverEnabled = ValueNotifier<bool>(true);
   var _activeScrolls = 0;
 
   bool _onScrollNotification(ScrollNotification notification) {
     if (notification.depth != 0) return false;
     if (notification is ScrollStartNotification) {
       _activeScrolls++;
-      if (_hoverEnabled) setState(() => _hoverEnabled = false);
+      _hoverEnabled.value = false;
       return false;
     }
     if (notification is ScrollEndNotification) {
       _activeScrolls = (_activeScrolls - 1).clamp(0, 1 << 30);
-      if (_activeScrolls == 0 && !_hoverEnabled) {
-        setState(() => _hoverEnabled = true);
+      if (_activeScrolls == 0) {
+        _hoverEnabled.value = true;
       }
     }
     return false;
+  }
+
+  @override
+  void dispose() {
+    _hoverEnabled.dispose();
+    super.dispose();
   }
 
   Future<void> _confirmDiscardFolder(String folderPath) async {
@@ -230,8 +240,7 @@ class _GitChangesTreeListState extends State<GitChangesTreeList> {
         subtreeSelectedCount: row.subtreeSelectedCount,
         subtreeTotalCount: row.subtreeTotalCount,
         cubit: widget.cubit,
-        hoverEnabled: _hoverEnabled,
-        onStage: () => unawaited(
+        hoverEnabled: _hoverEnabled,        onStage: () => unawaited(
           widget.cubit.selectFolder(row.folderPath!, section),
         ),
         onUnstage: () => unawaited(
@@ -249,8 +258,7 @@ class _GitChangesTreeListState extends State<GitChangesTreeList> {
       change: change,
       depth: row.depth,
       selected: widget.selectedPath == change.path,
-      hoverEnabled: _hoverEnabled,
-      onSelect: () => widget.onSelect(change.path),
+      hoverEnabled: _hoverEnabled,      onSelect: () => widget.onSelect(change.path),
       onOpenDiff: () => widget.onOpenDiff(change),
       onOpenFile: canOpenFile ? () => widget.onOpenFile!(change) : null,
       onStage: () => unawaited(widget.cubit.selectPath(change.path)),
