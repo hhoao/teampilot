@@ -5,15 +5,9 @@ import 'package:teampilot/services/agent_runtime/runtime_event.dart';
 import 'package:teampilot/services/agent_runtime/runtime_event_projection.dart';
 import 'package:teampilot/services/agent_runtime/seat_event_stream.dart';
 import 'package:teampilot/services/agent_status/agent_attention_state.dart';
-import 'package:teampilot/services/agent_status/agent_status_event.dart';
 import 'package:teampilot/services/agent_status/ask_user_question_hook_gate.dart';
 import 'package:teampilot/services/agent_status/exit_plan_mode_hook_gate.dart';
 import 'package:teampilot/services/agent_status/general_permission_request_gate.dart';
-import 'package:teampilot/services/cli/registry/capabilities/chat_interaction_capability.dart';
-import 'package:teampilot/services/cli/registry/capabilities/claude_family_agent_status_normalizer.dart';
-import 'package:teampilot/services/cli/registry/cli_capability.dart';
-import 'package:teampilot/services/cli/registry/cli_tool_definition.dart';
-import 'package:teampilot/services/cli/registry/cli_tool_registry.dart';
 
 void main() {
   test('projection applies each seat sequence once', () async {
@@ -324,12 +318,7 @@ void main() {
       final stream = SeatEventStream();
       final gate = GeneralPermissionRequestGate();
       const seat = RuntimeSeatKey(sessionId: 'session', memberId: 'member');
-      // Task 6 flips the real Claude-family flag; until then this test
-      // injects a registry whose claude capability reports in-chat replies.
-      final projection = GeneralPermissionRuntimeEventProjection(
-        gate: gate,
-        registry: _claudePermissionReplyRegistry(),
-      );
+      final projection = GeneralPermissionRuntimeEventProjection(gate: gate);
       final subscription = projection.attach(stream, seat);
       addTearDown(subscription.cancel);
       addTearDown(stream.close);
@@ -383,10 +372,7 @@ void main() {
     final stream = SeatEventStream();
     final gate = GeneralPermissionRequestGate();
     const seat = RuntimeSeatKey(sessionId: 'session', memberId: 'member');
-    final projection = GeneralPermissionRuntimeEventProjection(
-      gate: gate,
-      registry: _claudePermissionReplyRegistry(),
-    );
+    final projection = GeneralPermissionRuntimeEventProjection(gate: gate);
     final subscription = projection.attach(stream, seat);
     addTearDown(subscription.cancel);
     addTearDown(stream.close);
@@ -446,70 +432,3 @@ RuntimeEventEnvelope _event(RuntimeSeatKey seat, int sequence) =>
       occurredAt: DateTime.utc(2026, 8, 25),
       sequence: sequence,
     );
-
-/// Claude-family capability that reports in-chat permission replies.
-///
-/// The real `ClaudeChatInteraction.supportsInChatPermissionReply` stays false
-/// until Task 6 flips the family flags, so the hold-path tests inject this
-/// registry instead of relying on the built-in registry.
-CliToolRegistry _claudePermissionReplyRegistry() {
-  final registry = CliToolRegistry();
-  registry.register(
-    _SingleCapabilityCliToolDefinition(
-      id: CliTool.claude,
-      capability: const _ClaudePermissionReplyCapability(),
-    ),
-  );
-  return registry;
-}
-
-final class _SingleCapabilityCliToolDefinition implements CliToolDefinition {
-  const _SingleCapabilityCliToolDefinition({
-    required this.id,
-    required this.capability,
-  });
-
-  @override
-  final CliTool id;
-
-  final CliCapability capability;
-
-  @override
-  bool get isLaunchSupported => false;
-
-  @override
-  Iterable<CliCapability> get capabilities => [capability];
-}
-
-final class _ClaudePermissionReplyCapability
-    implements ChatInteractionCapability {
-  const _ClaudePermissionReplyCapability();
-
-  @override
-  AgentStatusEvent? normalize(Map<String, Object?> body) =>
-      const ClaudeFamilyAgentStatusNormalizer().normalize(body);
-
-  @override
-  bool get supportsStructuredAsk => true;
-
-  @override
-  bool get supportsInChatAnswer => true;
-
-  @override
-  bool get supportsMultiSelectInChat => true;
-
-  @override
-  bool get supportsMultiQuestionInChat => true;
-
-  @override
-  bool get supportsInChatPermissionReply => true;
-
-  @override
-  AskUserAnswerKind get answerKind => AskUserAnswerKind.ptyPicker;
-
-  @override
-  bool get supportsInChatApproval => true;
-
-  @override
-  ExitPlanApprovalKind get approvalKind => ExitPlanApprovalKind.hookReply;
-}

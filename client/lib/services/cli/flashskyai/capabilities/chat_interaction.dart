@@ -56,7 +56,7 @@ final class FlashskyaiChatInteraction
   bool get supportsMultiQuestionInChat => true;
 
   @override
-  bool get supportsInChatPermissionReply => false;
+  bool get supportsInChatPermissionReply => true;
 
   @override
   AskUserAnswerKind get answerKind => AskUserAnswerKind.ptyPicker;

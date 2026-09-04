@@ -192,10 +192,21 @@ void main() {
       );
     });
 
-    test('Claude / pty capability returns false', () {
+    test('Claude family capability returns true', () {
       expect(
         shouldShowPermissionCard(
           capability: const ClaudeChatInteraction(),
+          permissionRequest: permissionRequest,
+          askRequestId: 'perm-1',
+        ),
+        isTrue,
+      );
+    });
+
+    test('Cursor capability (no in-chat reply) returns false', () {
+      expect(
+        shouldShowPermissionCard(
+          capability: const CursorChatInteraction(),
           permissionRequest: permissionRequest,
           askRequestId: 'perm-1',
         ),

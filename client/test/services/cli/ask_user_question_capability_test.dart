@@ -11,7 +11,7 @@ void main() {
     expect(cap.supportsInChatAnswer, isTrue);
     expect(cap.supportsMultiSelectInChat, isTrue);
     expect(cap.supportsMultiQuestionInChat, isTrue);
-    expect(cap.supportsInChatPermissionReply, isFalse);
+    expect(cap.supportsInChatPermissionReply, isTrue);
     expect(cap.answerKind, AskUserAnswerKind.ptyPicker);
     expect(cap.supportsInChatApproval, isTrue);
     expect(cap.approvalKind, ExitPlanApprovalKind.hookReply);
@@ -24,7 +24,7 @@ void main() {
     expect(cap.supportsInChatAnswer, isTrue);
     expect(cap.supportsMultiSelectInChat, isTrue);
     expect(cap.supportsMultiQuestionInChat, isTrue);
-    expect(cap.supportsInChatPermissionReply, isFalse);
+    expect(cap.supportsInChatPermissionReply, isTrue);
     expect(cap.answerKind, AskUserAnswerKind.ptyPicker);
     expect(cap.supportsInChatApproval, isTrue);
     expect(cap.approvalKind, ExitPlanApprovalKind.hookReply);
@@ -37,10 +37,26 @@ void main() {
     expect(cap.supportsInChatAnswer, isTrue);
     expect(cap.supportsMultiSelectInChat, isTrue);
     expect(cap.supportsMultiQuestionInChat, isTrue);
-    expect(cap.supportsInChatPermissionReply, isFalse);
+    expect(cap.supportsInChatPermissionReply, isTrue);
     expect(cap.answerKind, AskUserAnswerKind.ptyPicker);
     expect(cap.supportsInChatApproval, isFalse);
     expect(cap.approvalKind, ExitPlanApprovalKind.none);
+  });
+
+  test('Claude family supports in-chat permission replies', () {
+    final registry = CliToolRegistry.builtIn();
+    for (final cli in [CliTool.claude, CliTool.flashskyai, CliTool.codex]) {
+      final capability = registry.capability<ChatInteractionCapability>(cli);
+      expect(capability?.supportsInChatPermissionReply, isTrue,
+          reason: '$cli should support the held PermissionRequest card');
+    }
+    // Cursor and OpenCode semantics unchanged (OpenCode already true via SDK).
+    expect(
+      registry
+          .capability<ChatInteractionCapability>(CliTool.cursor)
+          ?.supportsInChatPermissionReply,
+      isFalse,
+    );
   });
 
   test('opencode supports pluginSdkReply + multi', () {
