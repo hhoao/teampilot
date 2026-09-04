@@ -42,7 +42,8 @@ Map<String, MockScenario> doorbellMaterializeMixedClaudeScenarios() => {
           ToolUseTurn(
             id: 'tu_read_mail',
             toolRef: 'teambus.read_messages',
-            input: {'unread_only': true},
+            // The doorbell notice asks for mark_read so the inbox drains.
+            input: {'unread_only': true, 'mark_read': true},
           ),
           ToolUseTurn(
             id: 'tu_ack',

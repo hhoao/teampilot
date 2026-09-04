@@ -78,6 +78,7 @@ Future<bool> waitForBusMail({
   required BusMailRowPredicate where,
   Duration timeout = const Duration(seconds: 30),
   Duration pollInterval = const Duration(milliseconds: 200),
+  Future<void> Function()? pump,
 }) async {
   final deadline = DateTime.now().add(timeout);
   while (DateTime.now().isBefore(deadline)) {
@@ -88,6 +89,10 @@ Future<bool> waitForBusMail({
       memberId: memberId,
     );
     if (rows.any(where)) return true;
+    // Member connects queued by the materialize path run on the post-frame
+    // scheduler; keep frames pumping while polling (no-op in the real app,
+    // where the UI pumps frames continuously).
+    if (pump != null) await pump();
     await Future<void>.delayed(pollInterval);
   }
   return false;

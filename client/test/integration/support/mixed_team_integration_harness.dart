@@ -138,13 +138,14 @@ class MixedTeamIntegrationHarness {
     required PostFrameTestHarness postFrame,
     bool Function()? reclaimIdleTerminalsEnabled,
     int Function()? reclaimIdleTerminalAfterSeconds,
+    bool autoLaunchAllMembersOnConnect = true,
   }) {
     final created = ChatCubit(
       executableResolver: () => claudePath,
       automationRepository: testAutomationRepository(),
       cliExecutableResolver: (_) => claudePath,
       postFrameScheduler: postFrame.scheduler,
-      autoLaunchAllMembersOnConnect: () => true,
+      autoLaunchAllMembersOnConnect: () => autoLaunchAllMembersOnConnect,
       reclaimIdleTerminalsEnabled: reclaimIdleTerminalsEnabled,
       reclaimIdleTerminalAfterSeconds: reclaimIdleTerminalAfterSeconds,
       sessionRepository: SessionRepository(),
@@ -670,6 +671,7 @@ class MixedTeamIntegrationHarness {
     required String fromMemberId,
     required String content,
     Duration timeout = const Duration(seconds: 90),
+    Future<void> Function()? pump,
   }) async {
     final ok = await waitForBusMail(
       teampilotRoot: AppStorage.paths.basePath,
@@ -677,6 +679,7 @@ class MixedTeamIntegrationHarness {
       sessionId: sessionId,
       memberId: kWorkerMember.id,
       timeout: timeout,
+      pump: pump,
       where: (row) => row['from'] == fromMemberId && row['content'] == content,
     );
     if (!ok) {
@@ -692,6 +695,7 @@ class MixedTeamIntegrationHarness {
     required String fromMemberId,
     required String content,
     Duration timeout = const Duration(seconds: 90),
+    Future<void> Function()? pump,
   }) async {
     final ok = await waitForBusMail(
       teampilotRoot: AppStorage.paths.basePath,
@@ -699,6 +703,7 @@ class MixedTeamIntegrationHarness {
       sessionId: sessionId,
       memberId: kLeadMember.id,
       timeout: timeout,
+      pump: pump,
       where: (row) => row['from'] == fromMemberId && row['content'] == content,
     );
     if (!ok) {

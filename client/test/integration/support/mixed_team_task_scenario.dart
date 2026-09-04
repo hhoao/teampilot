@@ -141,6 +141,9 @@ abstract final class MixedTeamTaskScenario {
   static Future<void> runDoorbellMaterialize() => run(
     scenarios: doorbellMaterializeMixedClaudeScenarios(),
     readyMemberIds: const ['team-lead'],
+    // Auto-launch would spawn the worker at open and break the premise that
+    // the first mail materializes it.
+    autoLaunchAllMembersOnConnect: false,
     afterReady: (ctx) async {
       final bus = ctx.harness.tabBus(ctx.session.sessionId);
       final tab = ctx.cubit.tabStore.openTabBySessionId(ctx.session.sessionId)!;
@@ -161,17 +164,26 @@ abstract final class MixedTeamTaskScenario {
       kickoff: doorbellMaterializeLeaderKickoff,
     ),
     verify: (ctx) async {
+      // The worker member connect queued by the send_message materialize
+      // path runs on the post-frame scheduler — pump frames while polling,
+      // the way the real UI would.
+      Future<void> pump() async {
+        await ctx.postFrame.flush();
+      }
+
       await ctx.harness.waitForWorkerMail(
         workspaceId: ctx.session.workspaceId,
         sessionId: ctx.session.sessionId,
         fromMemberId: kLeadMember.id,
         content: doorbellMaterializeMail,
+        pump: pump,
       );
       await ctx.harness.waitForLeaderMail(
         workspaceId: ctx.session.workspaceId,
         sessionId: ctx.session.sessionId,
         fromMemberId: kWorkerMember.id,
         content: doorbellMaterializeAck,
+        pump: pump,
       );
 
       final bus = ctx.harness.tabBus(ctx.session.sessionId);
@@ -464,6 +476,7 @@ abstract final class MixedTeamTaskScenario {
     bool withPresence = false,
     bool Function()? reclaimIdleTerminalsEnabled,
     int Function()? reclaimIdleTerminalAfterSeconds,
+    bool autoLaunchAllMembersOnConnect = true,
   }) async {
     IntegrationPrerequisites.skipUnlessNativePty();
     final claudePath = IntegrationPrerequisites.requireClaudePath()!;
@@ -481,6 +494,7 @@ abstract final class MixedTeamTaskScenario {
         postFrame: postFrame,
         reclaimIdleTerminalsEnabled: reclaimIdleTerminalsEnabled,
         reclaimIdleTerminalAfterSeconds: reclaimIdleTerminalAfterSeconds,
+        autoLaunchAllMembersOnConnect: autoLaunchAllMembersOnConnect,
       );
       if (withPresence) {
         presenceCubit = MemberPresenceCubit();
