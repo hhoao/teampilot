@@ -602,8 +602,21 @@ class _FileTreeList extends StatefulWidget {
 }
 
 class _FileTreeListState extends State<_FileTreeList> {
-  var _hoverEnabled = true;
+  /// Muted while the list scrolls so rows sliding under the pointer do not
+  /// flash hover fills. A [ValueNotifier] (not setState) so flipping it never
+  /// rebuilds the list — rows listen individually and only repaint their hover
+  /// surface.
+  final _hoverEnabled = ValueNotifier<bool>(true);
   var _activeScrolls = 0;
+
+  // Memoized fileTreeMinContentWidth inputs: the measurement sorts and shapes
+  // text for up to 32 candidate rows, which is too costly to repeat on every
+  // rebuild (the rows list instance is stable between tree-state changes).
+  List<FileTreeVisibleRow>? _widthRows;
+  TextStyle? _widthLabelStyle;
+  TextStyle? _widthEmptyLabelStyle;
+  TextScaler? _widthTextScaler;
+  double _widthResult = 0;
 
   bool _desktopShellActionsFor(RuntimeContext ctx) {
     if (kIsWeb) return false;
@@ -620,16 +633,47 @@ class _FileTreeListState extends State<_FileTreeList> {
     if (notification.depth != 0) return false;
     if (notification is ScrollStartNotification) {
       _activeScrolls++;
-      if (_hoverEnabled) setState(() => _hoverEnabled = false);
+      _hoverEnabled.value = false;
       return false;
     }
     if (notification is ScrollEndNotification) {
       _activeScrolls = (_activeScrolls - 1).clamp(0, 1 << 30);
-      if (_activeScrolls == 0 && !_hoverEnabled) {
-        setState(() => _hoverEnabled = true);
+      if (_activeScrolls == 0) {
+        _hoverEnabled.value = true;
       }
     }
     return false;
+  }
+
+  double _contentWidth({
+    required List<FileTreeVisibleRow> rows,
+    required TextStyle labelStyle,
+    required TextStyle emptyLabelStyle,
+    required TextScaler textScaler,
+  }) {
+    if (identical(rows, _widthRows) &&
+        labelStyle == _widthLabelStyle &&
+        emptyLabelStyle == _widthEmptyLabelStyle &&
+        textScaler == _widthTextScaler) {
+      return _widthResult;
+    }
+    _widthResult = fileTreeMinContentWidth(
+      rows: rows,
+      labelStyle: labelStyle,
+      emptyLabelStyle: emptyLabelStyle,
+      textScaler: textScaler,
+    );
+    _widthRows = rows;
+    _widthLabelStyle = labelStyle;
+    _widthEmptyLabelStyle = emptyLabelStyle;
+    _widthTextScaler = textScaler;
+    return _widthResult;
+  }
+
+  @override
+  void dispose() {
+    _hoverEnabled.dispose();
+    super.dispose();
   }
 
   @override
@@ -649,7 +693,7 @@ class _FileTreeListState extends State<_FileTreeList> {
         final emptyLabelStyle = TpTextStyles.of(context).xs;
         final contentWidth = math.max(
           constraints.maxWidth,
-          fileTreeMinContentWidth(
+          _contentWidth(
             rows: rows,
             labelStyle: labelStyle,
             emptyLabelStyle: emptyLabelStyle,
