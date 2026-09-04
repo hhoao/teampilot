@@ -11,6 +11,7 @@ import '../../cubits/chat_cubit.dart';
 import '../../cubits/floating_workspace/floating_workspace_cubit.dart';
 import '../../cubits/layout_cubit.dart';
 import '../../cubits/launch_profile_cubit.dart';
+import '../../cubits/repo_clone_cubit.dart';
 import '../../cubits/run_cubit.dart';
 import '../../cubits/session_preferences_cubit.dart';
 import '../../cubits/workbench/workbench_cubit.dart';
@@ -43,6 +44,7 @@ import '../../widgets/ssh/ssh_home_disconnected_banner.dart';
 import '../../widgets/termux/termux_disconnected_banner.dart';
 import '../floating_workspace/floating_workspace_host.dart';
 import '../../repositories/session_repository.dart';
+import 'clone_completed_dialog.dart';
 import 'clone_repository_dialog.dart';
 import 'home_new_workspace_dialog.dart';
 import 'home_workspace_body_stack.dart';
@@ -143,6 +145,11 @@ class _HomeShellState extends State<HomeShell> {
   late List<WorkspaceTabRef> _openTabs;
   List<HomeClosedWorkspaceEntry> _recentlyClosed = const [];
 
+  /// Id of the clone-completion choice currently (or last) presented; guards
+  /// the [RepoCloneCubit] BlocListener against re-presenting the same dialog
+  /// on rebuilds while it is open.
+  String? _lastPresentedCloneChoiceId;
+
   /// Last in-tab location (incl. query) so Home ↔ workspace tab switches restore
   /// manage/section deep links instead of dropping back to the bare workspace path.
   final Map<String, String> _tabRestorableLocations = {};
@@ -190,10 +197,7 @@ class _HomeShellState extends State<HomeShell> {
       ..register(CommandIds.workspaceNextTab, _nextWorkspaceTab)
       ..register(CommandIds.workspacePrevTab, _prevWorkspaceTab)
       ..register(CommandIds.workspaceCloseTab, _closeActiveWorkspaceTab)
-      ..register(
-        CommandIds.workspaceReopenClosed,
-        _reopenClosedWorkspaceTab,
-      );
+      ..register(CommandIds.workspaceReopenClosed, _reopenClosedWorkspaceTab);
     _workspaceFocusTabHandlers.forEach(_commandBus.register);
     _chromeCommands
       ..nextWorkspaceTab = _nextWorkspaceTab
@@ -250,9 +254,7 @@ class _HomeShellState extends State<HomeShell> {
       if (tab == null) {
         // Home / global views: card padding only (covers full card width).
         final isMobile = TpSidebarScope.maybeOf(context)?.isMobile ?? false;
-        insets.update(
-          FloatingMaximizeInsets.cardSafeArea(isMobile: isMobile),
-        );
+        insets.update(FloatingMaximizeInsets.cardSafeArea(isMobile: isMobile));
       }
     } catch (_) {
       // Provider may be absent in isolated widget tests.
@@ -272,10 +274,7 @@ class _HomeShellState extends State<HomeShell> {
       ..unregister(CommandIds.workspaceNextTab, _nextWorkspaceTab)
       ..unregister(CommandIds.workspacePrevTab, _prevWorkspaceTab)
       ..unregister(CommandIds.workspaceCloseTab, _closeActiveWorkspaceTab)
-      ..unregister(
-        CommandIds.workspaceReopenClosed,
-        _reopenClosedWorkspaceTab,
-      );
+      ..unregister(CommandIds.workspaceReopenClosed, _reopenClosedWorkspaceTab);
     _workspaceFocusTabHandlers.forEach(
       (id, handler) => _commandBus.unregister(id, handler),
     );
@@ -428,9 +427,9 @@ class _HomeShellState extends State<HomeShell> {
 
     context.read<WorkspaceFileTreeStore>().removeWorkspace(tab.workspaceId);
     context.read<WorkspaceWorktreeRegistry>().removeWorkspace(tab.workspaceId);
-    context
-        .read<WorkspaceSessionGroupsRegistry>()
-        .removeWorkspace(tab.workspaceId);
+    context.read<WorkspaceSessionGroupsRegistry>().removeWorkspace(
+      tab.workspaceId,
+    );
 
     if (running == 0) {
       chat.closeTabsForWorkspace(tab.tabKey);
@@ -536,76 +535,85 @@ class _HomeShellState extends State<HomeShell> {
 
   @override
   Widget build(BuildContext context) {
-    return BlocListener<SessionPreferencesCubit, SessionPreferencesState>(
-      listenWhen: (previous, next) =>
-          previous.preferences.scopeSessionsToSelectedTeam !=
-          next.preferences.scopeSessionsToSelectedTeam,
-      listener: (context, _) => _syncTeamSessionScope(context),
-      child: BlocListener<LaunchProfileCubit, LaunchProfileState>(
+    return BlocListener<RepoCloneCubit, RepoCloneState>(
+      listener: (context, state) {
+        final task = state.pendingChoice.firstOrNull;
+        if (task == null || task.id == _lastPresentedCloneChoiceId) return;
+        _lastPresentedCloneChoiceId = task.id;
+        unawaited(showCloneCompletedDialog(context, task: task));
+      },
+      child: BlocListener<SessionPreferencesCubit, SessionPreferencesState>(
         listenWhen: (previous, next) =>
-            previous.selectedTeam?.id != next.selectedTeam?.id,
+            previous.preferences.scopeSessionsToSelectedTeam !=
+            next.preferences.scopeSessionsToSelectedTeam,
         listener: (context, _) => _syncTeamSessionScope(context),
-        child: TpSidebarProvider(
-          mobileBreakpoint: WorkspacePanePolicy.narrowBreakpointWidth,
-          child: Scaffold(
-            backgroundColor: Theme.of(context).colorScheme.workspacePageChrome(
-              WorkspaceTabRef.fromLocation(widget.location) == null
-                  ? WorkspacePageChrome.home
-                  : WorkspacePageChrome.workspace,
-            ),
-            body: Column(
-              children: [
-                _HomeShellTitleBar(
-                  location: widget.location,
-                  openTabs: _openTabs,
-                  recentlyClosed: _recentlyClosed,
-                  onHomeTap: _goHome,
-                  onSelectTab: (tabKey) {
-                    final tab = _openTabs
-                        .where((t) => t.tabKey == tabKey)
-                        .firstOrNull;
-                    if (tab != null) _selectTab(tab);
-                  },
-                  onCloseTab: (tabKey) => unawaited(_closeTab(tabKey)),
-                  onCloseAllTabs: () => unawaited(_closeAllTabs()),
-                  onReopenClosedTab: (tabKey) =>
-                      unawaited(_reopenClosedTab(tabKey)),
-                  onCreateWorkspace: () {
-                    unawaited(
-                      showHomeNewWorkspaceDialog(
-                        context,
-                        chatCubit: context.read<ChatCubit>(),
-                        repository: context.read<SessionRepository>(),
-                      ),
-                    );
-                  },
-                  onCloneRepository: () {
-                    unawaited(showCloneRepositoryDialog(context));
-                  },
-                ),
-                const TermuxDisconnectedBanner(),
-                const SshHomeDisconnectedBanner(),
-              Expanded(
-                child: SafeArea(
-                  top: false,
-                  bottom: false,
-                  child: FloatingWorkspaceHost(
-                    child: HomeTabScope(
-                      openWorkspace: (id, {activate = true}) =>
-                          _openWorkspace(id, activate: activate),
-                      child: GlobalResourceManagerHost(
-                        child: HomeWorkspaceBodyStack(
-                          location: widget.location,
-                          openTabs: _openTabs,
+        child: BlocListener<LaunchProfileCubit, LaunchProfileState>(
+          listenWhen: (previous, next) =>
+              previous.selectedTeam?.id != next.selectedTeam?.id,
+          listener: (context, _) => _syncTeamSessionScope(context),
+          child: TpSidebarProvider(
+            mobileBreakpoint: WorkspacePanePolicy.narrowBreakpointWidth,
+            child: Scaffold(
+              backgroundColor: Theme.of(context).colorScheme
+                  .workspacePageChrome(
+                    WorkspaceTabRef.fromLocation(widget.location) == null
+                        ? WorkspacePageChrome.home
+                        : WorkspacePageChrome.workspace,
+                  ),
+              body: Column(
+                children: [
+                  _HomeShellTitleBar(
+                    location: widget.location,
+                    openTabs: _openTabs,
+                    recentlyClosed: _recentlyClosed,
+                    onHomeTap: _goHome,
+                    onSelectTab: (tabKey) {
+                      final tab = _openTabs
+                          .where((t) => t.tabKey == tabKey)
+                          .firstOrNull;
+                      if (tab != null) _selectTab(tab);
+                    },
+                    onCloseTab: (tabKey) => unawaited(_closeTab(tabKey)),
+                    onCloseAllTabs: () => unawaited(_closeAllTabs()),
+                    onReopenClosedTab: (tabKey) =>
+                        unawaited(_reopenClosedTab(tabKey)),
+                    onCreateWorkspace: () {
+                      unawaited(
+                        showHomeNewWorkspaceDialog(
+                          context,
+                          chatCubit: context.read<ChatCubit>(),
+                          repository: context.read<SessionRepository>(),
+                        ),
+                      );
+                    },
+                    onCloneRepository: () {
+                      unawaited(showCloneRepositoryDialog(context));
+                    },
+                  ),
+                  const TermuxDisconnectedBanner(),
+                  const SshHomeDisconnectedBanner(),
+                  Expanded(
+                    child: SafeArea(
+                      top: false,
+                      bottom: false,
+                      child: FloatingWorkspaceHost(
+                        child: HomeTabScope(
+                          openWorkspace: (id, {activate = true}) =>
+                              _openWorkspace(id, activate: activate),
+                          child: GlobalResourceManagerHost(
+                            child: HomeWorkspaceBodyStack(
+                              location: widget.location,
+                              openTabs: _openTabs,
+                            ),
+                          ),
                         ),
                       ),
                     ),
                   ),
-                ),
+                ],
               ),
-            ],
+            ),
           ),
-        ),
         ),
       ),
     );
