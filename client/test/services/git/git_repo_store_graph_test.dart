@@ -18,35 +18,51 @@ class _SpyGraphCubit extends GitGraphCubit {
 }
 
 void main() {
-  test('refreshGraphs warms a graph cubit per root and skips empty roots', () {
+  test('refreshGraphs creates nothing and skips unmounted graph cubits', () {
     final store = GitRepoStore(
       graphCubitFactory: (root, workContext) => _SpyGraphCubit(),
     );
     addTearDown(store.dispose);
     final context = testRuntimeContext('/home');
 
+    // 轮询不得为无人查看的 root 创建 graph cubit（一次图刷新约 5 个子进程）。
     store.refreshGraphs(['', '/repo-a', '/repo-b'], workContext: context);
-    final cubitA = store.graphCubitFor('/repo-a', workContext: context);
-    final cubitB = store.graphCubitFor('/repo-b', workContext: context);
+    final cubitA =
+        store.graphCubitFor('/repo-a', workContext: context)
+            as _SpyGraphCubit;
+    // 仅 graphCubitFor 挂载预热（setRepoRoot→refresh）。
+    expect(cubitA.refreshCalls, 1);
 
-    // 各 2 次：graphCubitFor 预热（setRepoRoot→refresh）+ refreshGraphs 轮询。
-    expect(cubitA, isA<_SpyGraphCubit>().having((c) => c.refreshCalls, 'refreshCalls', 2));
-    expect(cubitB, isA<_SpyGraphCubit>().having((c) => c.refreshCalls, 'refreshCalls', 2));
+    store.refreshGraphs(['/repo-a'], workContext: context);
+    // 无面板监听 → 轮询跳过。
+    expect(cubitA.refreshCalls, 1);
+
+    void listener() {}
+    cubitA.addListener(listener); // 面板挂载中
+    store.refreshGraphs(['/repo-a'], workContext: context);
+    expect(cubitA.refreshCalls, 2);
+
+    cubitA.removeListener(listener); // 面板卸载
+    store.refreshGraphs(['/repo-a'], workContext: context);
+    expect(cubitA.refreshCalls, 2);
   });
 
-  test('refreshGraphs reuses retained cubits across calls', () {
+  test('refreshGraphs refreshes mounted cubits across poll rounds', () {
     final store = GitRepoStore(
       graphCubitFactory: (root, workContext) => _SpyGraphCubit(),
     );
     addTearDown(store.dispose);
     final context = testRuntimeContext('/home');
 
-    store.refreshGraphs(['/repo'], workContext: context);
-    store.refreshGraphs(['/repo'], workContext: context);
+    final cubit =
+        store.graphCubitFor('/repo', workContext: context) as _SpyGraphCubit;
+    void listener() {}
+    cubit.addListener(listener);
 
-    final cubit = store.graphCubitFor('/repo', workContext: context);
+    store.refreshGraphs(['/repo'], workContext: context);
+    store.refreshGraphs(['/repo'], workContext: context);
     // 预热 1 + 两轮轮询各 1。
-    expect(cubit, isA<_SpyGraphCubit>().having((c) => c.refreshCalls, 'refreshCalls', 3));
+    expect(cubit.refreshCalls, 3);
   });
 
   test('eviction skips graph cubits with active listeners', () {

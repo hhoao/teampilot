@@ -121,15 +121,24 @@ class GitRepoStore {
     }
   }
 
-  /// Triggers a coalesced refresh of the graph cubits for every [roots] entry
-  /// on [workContext], so open graph panes track poll-driven status updates.
+  /// Refreshes the graph cubits for every [roots] entry on [workContext], so
+  /// open graph panes track poll-driven status updates.
+  ///
+  /// Only cubits with a mounted pane ([GitGraphCubit.hasActiveListeners]) are
+  /// refreshed — a graph refresh costs ~5 subprocesses (graph rows, status,
+  /// branches, tags, stashes), so the poll must not warm graphs nobody is
+  /// viewing. Panes create + warm their cubit via [graphCubitFor] on mount.
   void refreshGraphs(
     Iterable<String> roots, {
     required RuntimeContext workContext,
   }) {
     for (final root in roots) {
       if (root.isEmpty) continue;
-      unawaited(graphCubitFor(root, workContext: workContext).refresh());
+      final cubit = _graphCubits[_cacheKey(root, workContext)];
+      if (cubit == null || cubit.isClosed || !cubit.hasActiveListeners) {
+        continue;
+      }
+      unawaited(cubit.refresh());
     }
   }
 
