@@ -156,8 +156,20 @@ const String _kGitMissingMarker = 'git-missing';
 const int _errorTailLines = 40;
 const String _repoCloneSessionId = 'repo-clone';
 
+/// Seam used by [RepoCloneCubit] (and tests): one `git clone` invocation.
+///
+/// Extracted so the cubit depends on the clone contract, not the concrete
+/// [RepoCloneService]; fakes in tests implement this interface.
+abstract interface class RepoCloneGateway {
+  Future<RepoCloneResult> clone(
+    RepoCloneRequest request, {
+    required void Function(RepoCloneProgress progress) onProgress,
+    required bool Function() isCancelled,
+  });
+}
+
 /// Clones a repository URL into a folder on a local / WSL / SSH run target.
-class RepoCloneService {
+class RepoCloneService implements RepoCloneGateway {
   RepoCloneService({
     RunTargetResolver? resolver,
     ProcessRunExecutor? executor,
@@ -170,6 +182,11 @@ class RepoCloneService {
   final ProcessRunExecutor _executor;
   final RepoCloneHostRunner _hostRunner;
 
+  /// Exposed for cubit-level best-effort cleanup of partial clones
+  /// ([RepoCloneHostRunner.filesystemFor]).
+  RepoCloneHostRunner get hostRunner => _hostRunner;
+
+  @override
   Future<RepoCloneResult> clone(
     RepoCloneRequest request, {
     required void Function(RepoCloneProgress progress) onProgress,
@@ -303,13 +320,7 @@ class RepoCloneService {
       run = await _executor.start(
         sessionId: _repoCloneSessionId,
         command: 'git',
-        args: [
-          'clone',
-          '--progress',
-          '--',
-          request.url,
-          request.dirName,
-        ],
+        args: ['clone', '--progress', '--', request.url, request.dirName],
         plan: plan,
         onOutput: handleOutput,
       );
