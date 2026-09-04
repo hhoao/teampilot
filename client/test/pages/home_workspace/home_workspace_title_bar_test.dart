@@ -8,6 +8,7 @@ import 'package:teampilot/cubits/layout_cubit.dart';
 import 'package:teampilot/cubits/notification_cubit.dart';
 import 'package:teampilot/cubits/workbench/workbench_cubit.dart';
 import 'package:teampilot/cubits/progress_activity_cubit.dart';
+import 'package:teampilot/cubits/shortcut_cubit.dart';
 import 'package:teampilot/l10n/app_localizations.dart';
 import 'package:teampilot/pages/home_workspace/home_workspace_title_bar.dart';
 import 'package:teampilot/pages/workspace_shell/workspace_shell_tabs.dart';
@@ -40,6 +41,7 @@ Widget _wrapTitleBar({
         BlocProvider<LayoutCubit>.value(value: layoutCubit)
       else
         BlocProvider(create: (_) => LayoutCubit()),
+      BlocProvider(create: (_) => ShortcutCubit()),
     ],
     child: child,
   );

@@ -79,6 +79,7 @@ void main() {
 
     setWidth(() => available = 1680);
     await tester.pump();
-    expect(find.text('w=1480.0'), findsOneWidget);
+    // 1680 resolves to 1480 before the 1460 ceiling clamps it.
+    expect(find.text('w=1460.0'), findsOneWidget);
   });
 }

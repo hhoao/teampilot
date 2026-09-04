@@ -5,6 +5,7 @@ import 'package:teampilot/cubits/agent_attention_cubit.dart';
 import 'package:teampilot/cubits/automation_cubit.dart';
 import 'package:teampilot/cubits/chat_cubit.dart';
 import 'package:teampilot/cubits/session_groups_cubit.dart';
+import 'package:teampilot/cubits/shortcut_cubit.dart';
 import 'package:teampilot/cubits/workbench/workbench_cubit.dart';
 import 'package:teampilot/cubits/worktree_cubit.dart';
 import 'package:teampilot/l10n/app_localizations.dart';
@@ -79,6 +80,7 @@ void main() {
                 BlocProvider<SessionGroupsCubit>(
                   create: (_) => SessionGroupsCubit(),
                 ),
+                BlocProvider(create: (_) => ShortcutCubit()),
               ],
               child: SizedBox(
                 width: 320,

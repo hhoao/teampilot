@@ -107,11 +107,20 @@ void main() {
       expect(shellA.isRunning, isTrue);
       expect(shellB.isRunning, isTrue);
 
+      // The workbench body listens to the pod; the kill must notify it so
+      // B's dead terminal swaps to the not-started placeholder instead of
+      // staying mounted as an unresponsive surface.
+      final pod = cubit.podRuntime(sessionB.sessionId)!;
+      var podNotifications = 0;
+      pod.addListener(() => podNotifications++);
+
       cubit.disconnectMemberShell(sessionB.sessionId, memberId);
 
       expect(shellB.isRunning, isFalse);
       expect(shellA.isRunning, isTrue);
       expect(tabB.memberShells.containsKey(memberId), isTrue);
+      expect(podNotifications, greaterThan(0),
+        reason: 'pod listeners re-read terminal liveness after the kill');
     },
   );
 }

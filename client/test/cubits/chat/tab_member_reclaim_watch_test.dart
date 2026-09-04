@@ -31,6 +31,23 @@ ChatTab _tabWithBus() {
   return tab;
 }
 
+/// Simple (unteamed) session tab: one shell keyed by session id, selected.
+ChatTab _simpleTab({required SessionWorkbenchView view}) {
+  final tab = ChatTab(
+    info: ChatTabInfo(id: 'sess', title: 't', subtitle: 's'),
+    cliTeamName: 'ct',
+  );
+  tab.persistedSession = AppSession(
+    sessionId: 'sess',
+    workspaceId: 'ws',
+    createdAt: 1,
+    sessionTeam: '',
+  );
+  tab.selectedMemberId = 'sess';
+  tab.workbenchView = view;
+  return tab;
+}
+
 TeamBus _busWith(String memberId, MemberLifecycle lifecycle, MemberActivity activity) {
   final bus = TeamBus(launcher: FakeMemberLauncher());
   bus.declareMember(
@@ -49,10 +66,11 @@ TabMemberReclaimWatch _watch(
   required DateTime Function() now,
   bool Function(String sessionId)? isSessionPinned,
   bool Function(String sessionId)? sessionBusyFromDeliveryInFlight,
+  TeamProfile? Function()? team,
 }) => TabMemberReclaimWatch(
   tabStore: store,
   reclaimEnabled: () => true,
-  activeTeam: () => _team,
+  activeTeam: team ?? (() => _team),
   policy: () => const TerminalReclaimPolicy(idleAfter: Duration(seconds: 2)),
   onDiscardMember: onDiscard,
   isSessionPinned: isSessionPinned,
@@ -207,6 +225,50 @@ void main() {
     watch.tick();
 
     expect(discarded, isEmpty);
+  });
+
+  test('simple session terminal shown in terminal view is never reclaimed', () {
+    final store = ChatTabStore();
+    final tab = _simpleTab(view: SessionWorkbenchView.terminal);
+    store.registerSession(tab);
+    tab.memberShells['sess'] = _runningShell();
+
+    final discarded = <(String, String)>[];
+    var now = DateTime(2026, 8, 9, 12, 0, 0);
+    final watch = _watch(
+      store,
+      onDiscard: (s, m) => discarded.add((s, m)),
+      now: () => now,
+      team: () => null,
+    );
+
+    watch.tick(); // seeds idleSince
+    now = now.add(const Duration(seconds: 3));
+    watch.tick();
+
+    expect(discarded, isEmpty, reason: 'the displayed terminal stays live');
+  });
+
+  test('simple session terminal hidden behind chat view is reclaimed', () {
+    final store = ChatTabStore();
+    final tab = _simpleTab(view: SessionWorkbenchView.chat);
+    store.registerSession(tab);
+    tab.memberShells['sess'] = _runningShell();
+
+    final discarded = <(String, String)>[];
+    var now = DateTime(2026, 8, 9, 12, 0, 0);
+    final watch = _watch(
+      store,
+      onDiscard: (s, m) => discarded.add((s, m)),
+      now: () => now,
+      team: () => null,
+    );
+
+    watch.tick(); // seeds idleSince
+    now = now.add(const Duration(seconds: 3));
+    watch.tick();
+
+    expect(discarded, contains(('sess', 'sess')));
   });
 }
 

@@ -79,12 +79,21 @@ void main() {
     tab.selectedMemberId = memberId;
     expect(shell.isRunning, isTrue);
 
+    // The workbench body listens to the pod; the discard must notify it so
+    // the dead terminal swaps to the reclaimed placeholder instead of
+    // staying mounted as an unresponsive surface.
+    final pod = cubit.podRuntime(session.sessionId)!;
+    var podNotifications = 0;
+    pod.addListener(() => podNotifications++);
+
     cubit.discardMemberTerminal(session.sessionId, memberId);
 
     expect(tab.memberShells.containsKey(memberId), isFalse,
       reason: 'reclaimed shell is removed from the live member shells');
     expect(tab.reclaimedMemberIds, contains(memberId));
     expect(shell.isRunning, isFalse, reason: 'shell transport is disconnected');
+    expect(podNotifications, greaterThan(0),
+      reason: 'pod listeners re-read terminal liveness after discard');
   });
 
   test('discardMemberTerminal is a no-op when the shell is not running', () async {

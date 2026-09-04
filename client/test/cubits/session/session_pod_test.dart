@@ -81,4 +81,21 @@ void main() {
     pod.setView(SessionWorkbenchView.terminal); // no-op
     expect(pod.state.revision, 1);
   });
+
+  test('notifyExternalStateChanged bumps revision and notifies', () {
+    var notifications = 0;
+    final pod = SessionPod(sessionId: 'a', workspaceId: 'w');
+    pod.setPhase(SessionPhase.running);
+    pod.setView(SessionWorkbenchView.terminal);
+    pod.addListener(() => notifications++);
+    final before = pod.state;
+
+    pod.notifyExternalStateChanged();
+
+    expect(notifications, 1, reason: 'listeners re-read external state');
+    expect(pod.state.revision, before.revision + 1);
+    expect(pod.state.phase, before.phase, reason: 'pod fields are untouched');
+    expect(pod.state.view, before.view);
+    expect(pod.state, isNot(before), reason: 'selectors see a new state');
+  });
 }

@@ -391,6 +391,10 @@ void main() {
         sessions: const [],
       );
 
+      // The session tab strip is hidden by default (90f08f6d3); this test
+      // asserts on tab titles, so opt the layout back in.
+      await layoutCubit.setSessionTabBarVisible(true);
+
       _openSessionTab(
         chatCubit,
         workbenchCubit,
