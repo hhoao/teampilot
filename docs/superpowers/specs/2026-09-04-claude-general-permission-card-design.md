@@ -82,9 +82,11 @@ guarded by the existing test suite.
 
 ### `GeneralPermissionRequestGate`
 
-`SeatHoldGate<GeneralPermissionRequestReply>` plus storage of the latest held
-request payload (raw `permission_suggestions` entries) so the answer can echo
-them back.
+A `SeatHoldGate<GeneralPermissionRequestReply>`. The gate holds only the
+reply future — the echo payload (`permission_suggestions`) travels through
+`AgentPermissionRequest` in attention state, and the card callback carries
+the selected option's `payload` up to `ChatCubit`, which builds the reply.
+No duplicate payload storage in the gate.
 
 ### `GeneralPermissionRequestReply`
 
@@ -149,6 +151,13 @@ class AgentPermissionAlwaysOption {
 - `AiPermissionCard.onReply` generalizes from a string to (reply kind +
   selected option).
 
+### Policy gating (`shouldShowPermissionCard`)
+
+The current policy rejects cards when `askRequestId` is empty. That
+correlation id only exists for the plugin-SDK channel (OpenCode). The check
+becomes channel-conditional: request id required for `pluginSdkReply`, not
+required for the hook-hold channel (correlation is the gate's seat key).
+
 ## Answer Routing
 
 `ChatCubit.answerPermissionRequest` routes per interaction kind:
@@ -196,8 +205,8 @@ Following existing patterns (`exit_plan_mode_hook_gate_test`,
 
 1. `SeatHoldGate` primitive unit tests (wait/complete/releaseHold/clear,
    stale-waiter replacement).
-2. `GeneralPermissionRequestGate` tests (payload retention, suggestion echo,
-   releaseHold).
+2. `GeneralPermissionRequestGate` tests (suggestion echo via card-callback
+   payload, releaseHold).
 3. Projection routing mutual exclusion (ExitPlanMode vs general, all three
    family CLIs; non-supporting CLIs never held).
 4. Normalizer tests (suggestions parsing, ExitPlanMode exclusion).
