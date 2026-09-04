@@ -15871,6 +15871,150 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'The lead might receive the task twice.'**
   String get teamGenerateDeliveryRetryBody;
+
+  /// No description provided for @cloneRepositoryMenu.
+  ///
+  /// In en, this message translates to:
+  /// **'Clone Repository…'**
+  String get cloneRepositoryMenu;
+
+  /// No description provided for @cloneRepositorySubmit.
+  ///
+  /// In en, this message translates to:
+  /// **'Clone'**
+  String get cloneRepositorySubmit;
+
+  /// No description provided for @cloneRepositoryTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Clone Repository'**
+  String get cloneRepositoryTitle;
+
+  /// No description provided for @cloneRepositoryUrlLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Repository URL'**
+  String get cloneRepositoryUrlLabel;
+
+  /// No description provided for @cloneRepositoryUrlHint.
+  ///
+  /// In en, this message translates to:
+  /// **'https://github.com/owner/repo.git'**
+  String get cloneRepositoryUrlHint;
+
+  /// No description provided for @cloneRepositoryUrlInvalid.
+  ///
+  /// In en, this message translates to:
+  /// **'Enter a valid git URL (https://, git@, git://, ssh://)'**
+  String get cloneRepositoryUrlInvalid;
+
+  /// No description provided for @cloneRepositoryTargetLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Clone to target'**
+  String get cloneRepositoryTargetLabel;
+
+  /// No description provided for @cloneRepositoryParentDirLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Clone into folder'**
+  String get cloneRepositoryParentDirLabel;
+
+  /// No description provided for @cloneRepositoryParentDirRequired.
+  ///
+  /// In en, this message translates to:
+  /// **'Choose a destination folder'**
+  String get cloneRepositoryParentDirRequired;
+
+  /// No description provided for @cloneRepositoryDirNameLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Folder name'**
+  String get cloneRepositoryDirNameLabel;
+
+  /// No description provided for @cloneRepositoryDirNameRequired.
+  ///
+  /// In en, this message translates to:
+  /// **'Enter a folder name'**
+  String get cloneRepositoryDirNameRequired;
+
+  /// No description provided for @cloneRepositoryDestExists.
+  ///
+  /// In en, this message translates to:
+  /// **'Folder already exists and is not empty'**
+  String get cloneRepositoryDestExists;
+
+  /// No description provided for @cloneRepositoryGitMissing.
+  ///
+  /// In en, this message translates to:
+  /// **'git was not found on the selected target machine'**
+  String get cloneRepositoryGitMissing;
+
+  /// No description provided for @cloneRepositoryStarted.
+  ///
+  /// In en, this message translates to:
+  /// **'Cloning {url} started'**
+  String cloneRepositoryStarted(Object url);
+
+  /// No description provided for @cloneRepositoryProgressTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Cloning {repo}'**
+  String cloneRepositoryProgressTitle(Object repo);
+
+  /// No description provided for @cloneRepositorySucceeded.
+  ///
+  /// In en, this message translates to:
+  /// **'Cloned {repo}'**
+  String cloneRepositorySucceeded(Object repo);
+
+  /// No description provided for @cloneRepositoryFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Clone failed: {repo}'**
+  String cloneRepositoryFailed(Object repo);
+
+  /// No description provided for @cloneRepositoryCancelled.
+  ///
+  /// In en, this message translates to:
+  /// **'Clone cancelled: {repo}'**
+  String cloneRepositoryCancelled(Object repo);
+
+  /// No description provided for @cloneRepositoryCompletedTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Clone complete'**
+  String get cloneRepositoryCompletedTitle;
+
+  /// No description provided for @cloneRepositoryCompletedBody.
+  ///
+  /// In en, this message translates to:
+  /// **'{path} is ready.'**
+  String cloneRepositoryCompletedBody(Object path);
+
+  /// No description provided for @cloneRepositoryCreateWorkspace.
+  ///
+  /// In en, this message translates to:
+  /// **'New workspace'**
+  String get cloneRepositoryCreateWorkspace;
+
+  /// No description provided for @cloneRepositoryAddToWorkspace.
+  ///
+  /// In en, this message translates to:
+  /// **'Add to existing workspace…'**
+  String get cloneRepositoryAddToWorkspace;
+
+  /// No description provided for @cloneRepositoryChooseWorkspace.
+  ///
+  /// In en, this message translates to:
+  /// **'Choose a workspace'**
+  String get cloneRepositoryChooseWorkspace;
+
+  /// No description provided for @cloneRepositoryAddToExistingSucceeded.
+  ///
+  /// In en, this message translates to:
+  /// **'Added {repo} to workspace {workspace}'**
+  String cloneRepositoryAddToExistingSucceeded(Object repo, Object workspace);
 }
 
 class _AppLocalizationsDelegate
