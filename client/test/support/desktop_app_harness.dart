@@ -25,6 +25,7 @@ import 'package:teampilot/cubits/floating_workspace/floating_workspace_cubit.dar
 import 'package:teampilot/cubits/notification_cubit.dart';
 import 'package:teampilot/cubits/plugin_cubit.dart';
 import 'package:teampilot/cubits/progress_activity_cubit.dart';
+import 'package:teampilot/cubits/repo_clone_cubit.dart';
 import 'package:teampilot/cubits/session_preferences_cubit.dart';
 import 'package:teampilot/cubits/shortcut_cubit.dart';
 import 'package:teampilot/cubits/ssh_connection_cubit.dart';
@@ -81,6 +82,7 @@ import 'package:teampilot/services/session/ai_history_loader.dart';
 import 'package:teampilot/services/storage/app_storage.dart';
 import 'package:teampilot/services/storage/home_target_controller.dart';
 import 'package:teampilot/services/storage/runtime_context.dart';
+import 'package:teampilot/services/workspace/repo_clone_service.dart';
 import 'package:teampilot/services/terminal/terminal_transport_factory.dart';
 import 'package:teampilot/services/terminal/workspace_shell_connector.dart';
 import 'package:teampilot/services/terminal/workspace_terminal_registry.dart';
@@ -391,6 +393,14 @@ Widget buildTestApp({
         BlocProvider(create: (_) => WorkspaceToolsCubit()),
         BlocProvider.value(value: notificationCubit),
         BlocProvider.value(value: progressActivityCubit),
+        // HomeShell listens to RepoCloneCubit; provide one over a fake gateway
+        // so no real `git` process can ever spawn from harness-driven tests.
+        BlocProvider(
+          create: (_) => RepoCloneCubit(
+            progressActivityCubit: progressActivityCubit,
+            service: _HarnessRepoCloneGateway(),
+          ),
+        ),
         BlocProvider(create: (_) => FloatingWorkspaceCubit()),
         BlocProvider(
           create: (_) => SshConnectionCubit(
@@ -483,6 +493,21 @@ Future<LaunchProfileCubit> createTeamCubit({TeamLauncher? launcher}) async {
   );
   await cubit.load();
   return cubit;
+}
+
+/// No-op [RepoCloneGateway]: cancels immediately without spawning anything.
+class _HarnessRepoCloneGateway implements RepoCloneGateway {
+  @override
+  Future<RepoCloneResult> clone(
+    RepoCloneRequest request, {
+    required void Function(RepoCloneProgress progress) onProgress,
+    required bool Function() isCancelled,
+  }) async {
+    return RepoCloneResult(
+      outcome: RepoCloneOutcome.cancelled,
+      destPath: request.parentDir,
+    );
+  }
 }
 
 class _HarnessProviderCredentials implements ProviderCredentialResolver {
