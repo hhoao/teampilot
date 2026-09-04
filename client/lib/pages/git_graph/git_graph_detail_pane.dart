@@ -192,7 +192,7 @@ class _FileRow extends StatelessWidget {
       borderRadius: BorderRadius.circular(6),
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
       child: SizedBox(
-        height: 22,
+        height: 28,
         child: Row(
           children: [
             Container(
@@ -217,7 +217,7 @@ class _FileRow extends StatelessWidget {
                 _label,
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
-                style: TpTextStyles.of(context).sm,
+                style: TpTextStyles.of(context).md,
               ),
             ),
           ],
