@@ -43,6 +43,7 @@ import '../../widgets/ssh/ssh_home_disconnected_banner.dart';
 import '../../widgets/termux/termux_disconnected_banner.dart';
 import '../floating_workspace/floating_workspace_host.dart';
 import '../../repositories/session_repository.dart';
+import 'clone_repository_dialog.dart';
 import 'home_new_workspace_dialog.dart';
 import 'home_workspace_body_stack.dart';
 import 'home_workspace_tab_scope.dart';
@@ -578,6 +579,9 @@ class _HomeShellState extends State<HomeShell> {
                       ),
                     );
                   },
+                  onCloneRepository: () {
+                    unawaited(showCloneRepositoryDialog(context));
+                  },
                 ),
                 const TermuxDisconnectedBanner(),
                 const SshHomeDisconnectedBanner(),
@@ -626,6 +630,7 @@ class _HomeShellTitleBar extends StatelessWidget {
     required this.onCloseAllTabs,
     required this.onReopenClosedTab,
     required this.onCreateWorkspace,
+    this.onCloneRepository,
   });
 
   final String location;
@@ -637,6 +642,7 @@ class _HomeShellTitleBar extends StatelessWidget {
   final VoidCallback onCloseAllTabs;
   final ValueChanged<String> onReopenClosedTab;
   final VoidCallback onCreateWorkspace;
+  final VoidCallback? onCloneRepository;
 
   @override
   Widget build(BuildContext context) {
@@ -677,6 +683,7 @@ class _HomeShellTitleBar extends StatelessWidget {
       onCloseAllTabs: onCloseAllTabs,
       onReopenClosedTab: onReopenClosedTab,
       onCreateWorkspace: onCreateWorkspace,
+      onCloneRepository: onCloneRepository,
     );
   }
 

@@ -24,6 +24,7 @@ class HomeWorkspaceSwitcherMenu extends StatefulWidget {
     this.workspaces = const [],
     this.launchProfiles = const [],
     this.onCreate,
+    this.onCloneRepository,
     this.onSelectOpen,
     this.onReopenClosed,
     super.key,
@@ -35,6 +36,9 @@ class HomeWorkspaceSwitcherMenu extends StatefulWidget {
   final List<Workspace> workspaces;
   final List<LaunchProfile> launchProfiles;
   final VoidCallback? onCreate;
+
+  /// Opens the "Clone Repository" dialog.
+  final VoidCallback? onCloneRepository;
   final ValueChanged<String>? onSelectOpen;
   final ValueChanged<String>? onReopenClosed;
 
@@ -97,6 +101,13 @@ class _HomeWorkspaceSwitcherMenuState extends State<HomeWorkspaceSwitcherMenu> {
     _popoverController.hide();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       widget.onCreate?.call();
+    });
+  }
+
+  void _onCloneTap() {
+    _popoverController.hide();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      widget.onCloneRepository?.call();
     });
   }
 
@@ -175,6 +186,12 @@ class _HomeWorkspaceSwitcherMenuState extends State<HomeWorkspaceSwitcherMenu> {
               label: l10n.newWorkspace,
               menuController: _menuController,
               onTap: _onCreateTap,
+            ),
+            TpActionMenuItem(
+              icon: Icons.download_outlined,
+              label: l10n.cloneRepositoryMenu,
+              menuController: _menuController,
+              onTap: _onCloneTap,
             ),
             ConstrainedBox(
               constraints: const BoxConstraints(
