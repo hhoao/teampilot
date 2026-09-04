@@ -272,6 +272,118 @@ void main() {
       },
     );
 
+    test(
+      'precheck-skipped cancel never triggers second-pass cleanup (C1)',
+      () async {
+        final (progress, _) = _progress();
+        final fake = _FakeService();
+        fake.result = const RepoCloneResult(
+          outcome: RepoCloneOutcome.cancelled,
+          destPath: '/src/r',
+          errorDetail: 'precheck-skipped',
+        );
+        final fs = InMemoryFilesystem();
+        await fs.ensureDir('/src/r');
+        final cubit = _cubit(progress, fake, cleanupFs: (targetId) async => fs);
+
+        cubit.startClone(_request());
+        await _pumpUntil(
+          () => cubit.state.tasks.single.phase == RepoCloneTaskPhase.cancelled,
+        );
+
+        final stat = await fs.stat('/src/r');
+        expect(stat.kind, FsEntityKind.directory);
+      },
+    );
+
+    test(
+      'dest-exists history record shows friendly text, not the raw marker (I1)',
+      () async {
+        final (progress, recorder) = _progress();
+        final fake = _FakeService();
+        fake.result = const RepoCloneResult(
+          outcome: RepoCloneOutcome.failed,
+          destPath: '/src/r',
+          errorDetail: 'dest-exists',
+        );
+        final cubit = _cubit(progress, fake);
+
+        cubit.startClone(_request());
+        await _pumpUntil(
+          () => cubit.state.tasks.single.phase == RepoCloneTaskPhase.failed,
+        );
+
+        expect(recorder.records.single.message, isNot('dest-exists'));
+        expect(
+          recorder.records.single.message,
+          'Destination folder already exists and is not empty',
+        );
+      },
+    );
+
+    test('git-missing history record shows friendly text (I1)', () async {
+      final (progress, recorder) = _progress();
+      final fake = _FakeService();
+      fake.result = const RepoCloneResult(
+        outcome: RepoCloneOutcome.failed,
+        destPath: '/src/r',
+        errorDetail: 'git-missing',
+      );
+      final cubit = _cubit(progress, fake);
+
+      cubit.startClone(_request());
+      await _pumpUntil(
+        () => cubit.state.tasks.single.phase == RepoCloneTaskPhase.failed,
+      );
+
+      expect(recorder.records.single.message, isNot('git-missing'));
+      expect(
+        recorder.records.single.message,
+        'git was not found on the selected target machine',
+      );
+    });
+
+    test('non-marker stderr tails pass through verbatim in history (I1)', () async {
+      final (progress, recorder) = _progress();
+      final fake = _FakeService();
+      fake.result = const RepoCloneResult(
+        outcome: RepoCloneOutcome.failed,
+        destPath: '/src/r',
+        errorDetail: 'fatal: could not read Username',
+      );
+      final cubit = _cubit(progress, fake);
+
+      cubit.startClone(_request());
+      await _pumpUntil(
+        () => cubit.state.tasks.single.phase == RepoCloneTaskPhase.failed,
+      );
+
+      expect(
+        recorder.records.single.message,
+        'fatal: could not read Username',
+      );
+    });
+
+    test('startClone preserves pendingChoice from earlier successes (M1)', () async {
+      final (progress, _) = _progress();
+      final fake = _FakeService();
+      final ids = ['id-1', 'id-2'];
+      final cubit = _cubit(progress, fake, uuid: () => ids.removeAt(0));
+
+      cubit.startClone(_request());
+      await _pumpUntil(
+        () => cubit.state.tasks.single.phase == RepoCloneTaskPhase.succeeded,
+      );
+      expect(cubit.state.pendingChoice.single.id, 'id-1');
+
+      cubit.startClone(_request());
+
+      expect(cubit.state.tasks, hasLength(2));
+      expect(cubit.state.tasks.last.phase, RepoCloneTaskPhase.cloning);
+      // The earlier succeeded clone still awaits its new-vs-add choice.
+      expect(cubit.state.pendingChoice.single.id, 'id-1');
+    });
+
     test('taskById finds tasks across the lifecycle', () async {
       final (progress, _) = _progress();
       final cubit = _cubit(progress, _FakeService());

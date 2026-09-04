@@ -63,7 +63,7 @@ class RepoCloneResult {
   final RepoCloneOutcome outcome;
 
   /// Git stderr tail on failure, or a stable marker
-  /// (`dest-exists` / `git-missing`).
+  /// (`dest-exists` / `git-missing` / `precheck-skipped`).
   final String? errorDetail;
 }
 
@@ -153,6 +153,10 @@ class DefaultRepoCloneHostRunner implements RepoCloneHostRunner {
 /// Stable failure markers surfaced through [RepoCloneResult.errorDetail].
 const String _kDestExistsMarker = 'dest-exists';
 const String _kGitMissingMarker = 'git-missing';
+/// Cancelled before the destination pre-check ran: the pre-check never
+/// proved the destination absent, so a pre-existing directory may sit at
+/// `destPath` — cleanup passes must treat it as untouchable.
+const String _kPrecheckSkippedMarker = 'precheck-skipped';
 const int _errorTailLines = 40;
 const String _repoCloneSessionId = 'repo-clone';
 
@@ -205,7 +209,17 @@ class RepoCloneService implements RepoCloneGateway {
     );
 
     if (isCancelled()) {
-      return _finishCancelled(destPath, fs, mayRemovePartial: false);
+      // Cancelled before the destination pre-check ran: the pre-check never
+      // proved the destination absent (and no partial clone was started), so
+      // a pre-existing user directory may sit at destPath. The
+      // `precheck-skipped` marker tells the cubit's second cleanup pass to
+      // leave it alone (C1).
+      return _finishCancelled(
+        destPath,
+        fs,
+        mayRemovePartial: false,
+        errorDetail: _kPrecheckSkippedMarker,
+      );
     }
 
     // Destination pre-check: anything already occupying the name is an error.
@@ -307,11 +321,15 @@ class RepoCloneService implements RepoCloneGateway {
             destPath: destPath,
           );
         }
-        return _finishCancelled(
-          destPath,
-          fs,
-          mayRemovePartial: mayRemovePartial,
-        );
+        // Belt and braces (T2, twin of the failure path's guard): a
+        // cancelled clone whose git stderr reported a raced "already
+        // exists" must never be cleaned up either — the directory may
+        // pre-exist the clone.
+        var mayRemove = mayRemovePartial;
+        if (errorTail.join('\n').contains('already exists')) {
+          mayRemove = false;
+        }
+        return _finishCancelled(destPath, fs, mayRemovePartial: mayRemove);
       });
     }
 
@@ -386,6 +404,7 @@ class RepoCloneService implements RepoCloneGateway {
     String destPath,
     Filesystem fs, {
     required bool mayRemovePartial,
+    String? errorDetail,
   }) async {
     if (mayRemovePartial) {
       await _cleanupPartial(fs, destPath);
@@ -393,6 +412,7 @@ class RepoCloneService implements RepoCloneGateway {
     return RepoCloneResult(
       outcome: RepoCloneOutcome.cancelled,
       destPath: destPath,
+      errorDetail: errorDetail,
     );
   }
 

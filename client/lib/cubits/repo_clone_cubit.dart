@@ -37,8 +37,9 @@ class RepoCloneTask extends Equatable {
   final String dirName;
   final RepoCloneTaskPhase phase;
 
-  /// Git stderr tail, or a stable marker (`dest-exists` / `git-missing`) —
-  /// mapped to l10n by the UI, never localized here.
+  /// Git stderr tail, or a stable marker (`dest-exists` / `git-missing` /
+  /// `precheck-skipped`) — markers are translated to plain English for
+  /// history records by the cubit; full l10n stays in the UI layers.
   final String? errorDetail;
   final DateTime? createdAt;
 
@@ -123,10 +124,25 @@ class RepoCloneCubit extends Cubit<RepoCloneState> {
 
   final Map<String, bool> _cancelFlags = {};
 
-  /// Pre-check failures (`dest-exists` / `git-missing`): the destination may
-  /// be a pre-existing user directory — the second cleanup pass must skip
-  /// them (the service itself also never cleans those up).
-  static const Set<String> _precheckMarkers = {'dest-exists', 'git-missing'};
+  /// Pre-check failures (`dest-exists` / `git-missing`) and cancels that
+  /// bypassed the pre-check entirely (`precheck-skipped`): the destination
+  /// may be a pre-existing user directory — the second cleanup pass must
+  /// skip them (the service itself also never cleans those up).
+  static const Set<String> _precheckMarkers = {
+    'dest-exists',
+    'git-missing',
+    'precheck-skipped',
+  };
+
+  /// Marker → plain-English history message (the cubit cannot read context
+  /// l10n): internal markers must never surface raw in the notification
+  /// history. Non-marker stderr tails pass through verbatim. The friendly
+  /// l10n keys (`cloneRepositoryDestExists` / `cloneRepositoryGitMissing`)
+  /// remain for a future UI-layer mapping of [RepoCloneTask.errorDetail].
+  static const Map<String, String> _markerHistoryMessages = {
+    'dest-exists': 'Destination folder already exists and is not empty',
+    'git-missing': 'git was not found on the selected target machine',
+  };
 
   /// Git's "fatal: destination path ... already exists and is not an empty
   /// directory" — belt-and-braces twin of the service's pre-existing-dir guard:
@@ -149,7 +165,14 @@ class RepoCloneCubit extends Cubit<RepoCloneState> {
       createdAt: now,
     );
     _cancelFlags[id] = false;
-    emit(RepoCloneState(tasks: [...state.tasks, task]));
+    // Preserve pending choices from earlier succeeded clones (M1): a new
+    // clone must not wipe them.
+    emit(
+      RepoCloneState(
+        tasks: [...state.tasks, task],
+        pendingChoice: state.pendingChoice,
+      ),
+    );
     _progressActivityCubit.start(
       ProgressActivity(
         id: id,
@@ -290,6 +313,7 @@ class RepoCloneCubit extends Cubit<RepoCloneState> {
     // The activity cubit is app-scoped and outlives this cubit: complete it
     // even when we are closed (the emit above was skipped) so the
     // notification history and activity lifecycle finish cleanly.
+    final friendlyDetail = _friendlyErrorDetail(result.errorDetail);
     _progressActivityCubit.complete(
       task.id,
       outcome: switch (result.outcome) {
@@ -297,7 +321,7 @@ class RepoCloneCubit extends Cubit<RepoCloneState> {
         RepoCloneOutcome.failed => ProgressActivityPhase.failed,
         RepoCloneOutcome.cancelled => ProgressActivityPhase.cancelled,
       },
-      errorMessage: result.errorDetail,
+      errorMessage: friendlyDetail,
       historyTitle: switch (result.outcome) {
         RepoCloneOutcome.succeeded => 'Cloned ${task.dirName}',
         RepoCloneOutcome.failed => 'Clone failed',
@@ -305,12 +329,20 @@ class RepoCloneCubit extends Cubit<RepoCloneState> {
       },
       historyMessage: switch (result.outcome) {
         RepoCloneOutcome.succeeded => result.destPath,
-        RepoCloneOutcome.failed => result.errorDetail ?? result.destPath,
+        RepoCloneOutcome.failed => friendlyDetail ?? result.destPath,
         RepoCloneOutcome.cancelled => result.destPath,
       },
     );
 
     _cancelFlags.remove(task.id);
+  }
+
+  /// Internal markers → plain-English history strings (I1): raw markers must
+  /// never reach the notification history. Everything else (stderr tails,
+  /// spawn errors) is already user-legible and passes through verbatim.
+  String? _friendlyErrorDetail(String? errorDetail) {
+    if (errorDetail == null) return null;
+    return _markerHistoryMessages[errorDetail] ?? errorDetail;
   }
 
   void _emitFinished(RepoCloneTask finished, {required bool appendToChoice}) {

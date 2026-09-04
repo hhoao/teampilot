@@ -530,6 +530,79 @@ void main() {
     expect(progress.where((p) => p.fraction == 0.45), isNotEmpty);
   });
 
+  test(
+    'early cancel before the pre-check never deletes a pre-existing dest (C1)',
+    () async {
+      // The destination pre-exists (e.g. an earlier successful clone); the
+      // user cancels while the target filesystem resolves, before the
+      // pre-check stat runs. The pre-existing directory must survive.
+      final host = _FakeHostRunner()..fs.dirs.add('/src/r');
+      final spawner = _RecordingSpawner();
+      final service = RepoCloneService(
+        executor: ProcessRunExecutor(spawner: spawner.spawner),
+        hostRunner: host,
+      );
+      final result = await service.clone(
+        RepoCloneRequest(
+          url: 'https://github.com/o/r.git',
+          targetId: 'local',
+          parentDir: '/src',
+          dirName: 'r',
+        ),
+        onProgress: (_) {},
+        isCancelled: () => true,
+      );
+      expect(result.outcome, RepoCloneOutcome.cancelled);
+      expect(result.destPath, '/src/r');
+      // Marker tells the cubit's second cleanup pass the pre-check never ran.
+      expect(result.errorDetail, 'precheck-skipped');
+      expect(host.fs.deleted, isEmpty);
+      expect(spawner.calls, isEmpty);
+    },
+  );
+
+  test(
+    'cancelled clone with already-exists stderr never deletes destination (T2)',
+    () async {
+      // Race: pre-check stat said absent, git reports a raced "already
+      // exists" failure, and the user cancels around the same time — the
+      // pre-existing directory must survive.
+      final handle = _ControllableHandle(
+        stderrLines: [
+          "fatal: destination path 'r' already exists and is not an empty "
+              'directory.',
+        ],
+      );
+      final spawner = _RecordingSpawner()..pendingHandle = handle;
+      final host = _FakeHostRunner();
+      final service = RepoCloneService(
+        executor: ProcessRunExecutor(spawner: spawner.spawner),
+        hostRunner: host,
+      );
+      var cancelled = false;
+      final cloneFuture = service.clone(
+        RepoCloneRequest(
+          url: 'https://github.com/o/r.git',
+          targetId: 'local',
+          parentDir: '/src',
+          dirName: 'r',
+        ),
+        onProgress: (_) {
+          host.fs.dirs.add('/src/r');
+          cancelled = true;
+        },
+        isCancelled: () => cancelled,
+      );
+      while (!handle.killed) {
+        await Future<void>.delayed(Duration.zero);
+      }
+      handle.completeExit(130);
+      final result = await cloneFuture;
+      expect(result.outcome, RepoCloneOutcome.cancelled);
+      expect(host.fs.deleted, isEmpty);
+    },
+  );
+
   test('clone cancelled after success exit reports succeeded and keeps dir',
       () async {
     // Cancellation is observed only after git already exited 0 — the clone
