@@ -73,7 +73,7 @@ const _kLightTitle = Color(0xff4078f2);
 const _kLightBuiltin = Color(0xffc18401);
 
 const _atomOneDarkScopes = <String, TextStyle>{
-  'comment': TextStyle(color: _kDarkComment, fontStyle: FontStyle.italic),
+  'comment': TextStyle(color: _kDarkComment),
 
   'keyword': TextStyle(color: _kDarkKeyword),
   'operator': TextStyle(color: _kDarkForeground),
@@ -109,7 +109,7 @@ const _atomOneDarkScopes = <String, TextStyle>{
 };
 
 const _atomOneLightScopes = <String, TextStyle>{
-  'comment': TextStyle(color: _kLightComment, fontStyle: FontStyle.italic),
+  'comment': TextStyle(color: _kLightComment),
 
   'keyword': TextStyle(color: _kLightKeyword),
   'operator': TextStyle(color: _kLightForeground),
