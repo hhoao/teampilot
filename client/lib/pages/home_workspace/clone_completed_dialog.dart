@@ -10,6 +10,7 @@ import '../../models/workspace.dart';
 import '../../models/workspace_folder.dart';
 import '../../repositories/launch_profile_repository.dart';
 import '../../repositories/session_repository.dart';
+import '../../utils/logging/logger.dart';
 import '../../widgets/app_toast/app_toast.dart';
 
 /// What the user picked in the clone-completion dialog.
@@ -37,28 +38,42 @@ Future<void> showCloneCompletedDialog(
     context: context,
     builder: (_) => CloneCompletedDialog(task: task),
   );
-  switch (action) {
-    case null:
-      // Dismissed (header close / barrier): plain skip.
-      repoCloneCubit.dismissChoice(task.id);
-      return;
-    case CloneCompletionAction.newWorkspace:
-      final workspaceId = await chatCubit.createWorkspaceWithFirstSession(
-        [WorkspaceFolder(path: task.destPath, targetId: task.targetId)],
-        sessionRepository,
-        sessionTeamId: '',
-        display: task.dirName,
-        allowDuplicate: true,
-        identityRepository: identityRepository,
-      );
-      if (context.mounted) context.go('/home-v2/workspace/$workspaceId');
-    case CloneCompletionAction.addToWorkspace:
-      // The inner picker already performed the add + success toast.
-      if (context.mounted) {
-        await _showCloneAddToWorkspaceDialog(context, task);
-      }
+  try {
+    switch (action) {
+      case CloneCompletionAction.newWorkspace:
+        final workspaceId = await chatCubit.createWorkspaceWithFirstSession(
+          [WorkspaceFolder(path: task.destPath, targetId: task.targetId)],
+          sessionRepository,
+          sessionTeamId: '',
+          display: task.dirName,
+          allowDuplicate: true,
+          identityRepository: identityRepository,
+        );
+        if (context.mounted) context.go('/home-v2/workspace/$workspaceId');
+      case CloneCompletionAction.addToWorkspace:
+        // The inner picker already performed the add + success toast.
+        if (context.mounted) {
+          await _showCloneAddToWorkspaceDialog(context, task);
+        }
+      case null:
+        // Dismissed (header close / barrier): plain skip.
+        return;
+    }
+  } catch (error, stackTrace) {
+    // The wiring (workspace create / folder add) failed: log it — no
+    // generic clone-failure l10n key exists and none may be added here.
+    appLogger.e(
+      'clone completion wiring failed for task ${task.id} '
+      '(${task.destPath})',
+      error: error,
+      stackTrace: stackTrace,
+    );
+  } finally {
+    // Every exit path — skip return, successful wiring, or a throw — must
+    // release the pending choice, or the shell's presentation guard would
+    // block every future clone-completion dialog for this session.
+    repoCloneCubit.dismissChoice(task.id);
   }
-  repoCloneCubit.dismissChoice(task.id);
 }
 
 Future<void> _showCloneAddToWorkspaceDialog(

@@ -1,12 +1,21 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_ui/shared_ui.dart';
+import 'package:teampilot/cubits/chat_cubit.dart';
+import 'package:teampilot/cubits/progress_activity_cubit.dart';
 import 'package:teampilot/cubits/repo_clone_cubit.dart';
 import 'package:teampilot/l10n/app_localizations.dart';
+import 'package:teampilot/models/team_config.dart';
 import 'package:teampilot/models/workspace.dart';
 import 'package:teampilot/models/workspace_folder.dart';
 import 'package:teampilot/pages/home_workspace/clone_completed_dialog.dart';
+import 'package:teampilot/repositories/launch_profile_repository.dart';
+import 'package:teampilot/repositories/session_repository.dart';
+import 'package:teampilot/services/notification/notification_recorder.dart';
 import 'package:teampilot/widgets/app_toast/app_toast.dart';
+
+import '../../support/post_frame_test_harness.dart';
 
 Widget _harness({GlobalKey<NavigatorState>? navigatorKey, Widget? home}) {
   final theme = ThemeData(useMaterial3: true);
@@ -118,11 +127,9 @@ void main() {
     ).then((value) => popped = value);
     await tester.pumpAndSettle();
 
-    final dialog = tester.widget<TpDialog>(find.byType(TpDialog));
-    // Header close is rendered as an icon button inside the dialog header.
-    expect(find.byType(TpDialog), findsOneWidget);
-    expect(dialog.maxWidth, 480);
-    navigatorKey.currentState!.pop();
+    // Tap the real header close affordance (TpDialogHeader's icon button).
+    expect(find.byIcon(Icons.close_rounded), findsOneWidget);
+    await tester.tap(find.byIcon(Icons.close_rounded));
     await tester.pumpAndSettle();
     expect(popped, isNull);
   });
@@ -164,4 +171,124 @@ void main() {
 
     expect(popped, isTrue, reason: 'tapping a workspace must pop the picker');
   });
+
+  testWidgets(
+    'wiring failure still dismisses the pending choice exactly once',
+    (tester) async {
+      final progressCubit = ProgressActivityCubit(
+        historyRecorder: _NoopNotificationRecorder(),
+      );
+      addTearDown(progressCubit.close);
+      final repoCloneCubit = _RecordingRepoCloneCubit(progressCubit);
+      addTearDown(repoCloneCubit.close);
+      final chatCubit = _ThrowingChatCubit();
+      addTearDown(chatCubit.close);
+      final sessionRepository = SessionRepository();
+      final identityRepository = LaunchProfileRepository();
+
+      late BuildContext dialogContext;
+      final theme = ThemeData(useMaterial3: true);
+      await tester.pumpWidget(
+        TpTheme(
+          data: TpThemeData.fromColorScheme(theme.colorScheme, scale: 1.0),
+          child: MultiRepositoryProvider(
+            providers: [
+              RepositoryProvider.value(value: sessionRepository),
+              RepositoryProvider.value(value: identityRepository),
+            ],
+            child: MultiBlocProvider(
+              providers: [
+                BlocProvider<RepoCloneCubit>.value(value: repoCloneCubit),
+                BlocProvider<ChatCubit>.value(value: chatCubit),
+              ],
+              child: MaterialApp(
+                localizationsDelegates: AppLocalizations.localizationsDelegates,
+                supportedLocales: AppLocalizations.supportedLocales,
+                theme: theme,
+                home: Scaffold(
+                  body: Center(
+                    child: Builder(
+                      builder: (context) {
+                        dialogContext = context;
+                        return const SizedBox.shrink();
+                      },
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ),
+      );
+
+      final dialog = showCloneCompletedDialog(
+        dialogContext,
+        task: _task(),
+      );
+      await tester.pumpAndSettle();
+
+      // The new-workspace wiring throws — the dialog future must still
+      // complete normally (error caught + logged, not rethrown) and the
+      // pending choice must be released so future clones can present.
+      await tester.tap(find.text(l10n.cloneRepositoryCreateWorkspace));
+      await tester.pumpAndSettle();
+      await dialog;
+
+      expect(repoCloneCubit.dismissCount, 1);
+      expect(
+        repoCloneCubit.dismissedTaskIds,
+        ['task-1'],
+      );
+    },
+  );
+}
+
+class _NoopNotificationRecorder implements NotificationRecorder {
+  @override
+  void record({
+    required String message,
+    required TpToastVariant variant,
+    String title = '',
+    String payload = '',
+  }) {}
+}
+
+/// Counts [RepoCloneCubit.dismissChoice] calls instead of mutating state.
+class _RecordingRepoCloneCubit extends RepoCloneCubit {
+  _RecordingRepoCloneCubit(ProgressActivityCubit progressActivityCubit)
+    : super(progressActivityCubit: progressActivityCubit);
+
+  int dismissCount = 0;
+  final List<String> dismissedTaskIds = [];
+
+  @override
+  void dismissChoice(String taskId) {
+    dismissCount++;
+    dismissedTaskIds.add(taskId);
+  }
+}
+
+/// [ChatCubit] whose workspace-create wiring always throws, simulating a
+/// repository/session failure after the user picks "New workspace".
+class _ThrowingChatCubit extends ChatCubit {
+  _ThrowingChatCubit()
+    : super(
+        executableResolver: () => 'true',
+        automationRepository: testAutomationRepository(),
+      );
+
+  @override
+  Future<String> createWorkspaceWithFirstSession(
+    List<WorkspaceFolder> folders,
+    SessionRepository repo, {
+    String sessionTeamId = '',
+    List<TeamMemberConfig> rosterMembers = const [],
+    Map<String, CliTool> memberClis = const {},
+    TeamProfile? team,
+    String display = '',
+    bool allowDuplicate = false,
+    LaunchProfileRepository? identityRepository,
+  }) async {
+    throw StateError('simulated workspace wiring failure');
+  }
 }
