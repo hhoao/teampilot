@@ -49,6 +49,7 @@ import '../cubits/mailbox_cubit.dart';
 import '../cubits/member_presence_cubit.dart';
 import '../cubits/notification_cubit.dart';
 import '../cubits/progress_activity_cubit.dart';
+import '../cubits/repo_clone_cubit.dart';
 import '../services/app/app_update_service.dart';
 import '../models/install_job/install_cancel_policy.dart';
 import '../models/install_job/install_job_spec.dart';
@@ -198,6 +199,7 @@ import '../services/cli/cursor/cursor_bootstrap_entry.dart';
 import '../services/cli/opencode/opencode_bootstrap_entry.dart';
 import '../services/host/host_one_shot_runner_for_context.dart';
 import '../services/host/host_process_starter_for_context.dart';
+import '../services/host/process_run_handle.dart';
 import '../services/host/host_shell_path_resolver.dart';
 import '../services/cli/claude/provider/claude_provider_credentials_service.dart';
 import '../services/cli/codex/provider/codex_provider_credentials_service.dart';
@@ -258,8 +260,11 @@ import '../services/terminal/terminal_transport_factory.dart';
 import '../services/file_tree/workspace_file_tree_store.dart';
 import '../services/git/git_command_runner.dart';
 import '../services/git/git_repo_store.dart';
+import '../services/workspace/repo_clone_service.dart';
 import '../services/workspace/workspace_tools_scope_registry.dart';
 import '../services/workspace/workspace_run_registry.dart';
+import '../services/run/process_run_executor.dart';
+import '../services/run/run_target_resolver.dart';
 import '../services/run/workspace_run_platform_factory.dart';
 import '../services/search/workspace_search_indexes.dart';
 import '../services/workspace/workspace_worktree_registry.dart';
@@ -386,6 +391,7 @@ class AppShell {
     required this.aiHistoryCubit,
     required this.notificationCubit,
     required this.progressActivityCubit,
+    required this.repoCloneCubit,
     required this.installJobRegistry,
     required this.editorCubit,
     required this.workbenchCubit,
@@ -484,6 +490,7 @@ class AppShell {
   final AiHistoryCubit aiHistoryCubit;
   final NotificationCubit notificationCubit;
   final ProgressActivityCubit progressActivityCubit;
+  final RepoCloneCubit repoCloneCubit;
   final InstallJobRegistry installJobRegistry;
   final EditorCubit editorCubit;
   final WorkbenchCubit workbenchCubit;
@@ -1310,6 +1317,37 @@ Future<AppShell> buildAppShell({
     NotificationRecorder.install(notificationCubit);
     final progressActivityCubit = ProgressActivityCubit(
       historyRecorder: notificationCubit,
+    );
+
+    // Repo clone executor: one shared SSH exec spawner for both the clone
+    // process (ProcessRunExecutor) and the host runner's context resolution
+    // (mirrors WorkspaceRunPlatformFactory's spawner).
+    Future<ProcessRunHandle> repoCloneSshSpawner({
+      required String sshProfileId,
+      required String shellCommand,
+    }) async {
+      final SshProfile? profile = await sshProfileRepo.findById(sshProfileId);
+      if (profile == null) {
+        throw StateError('SSH profile not found for this run target');
+      }
+      final client = await sshClientFactory.clientForStorage(profile);
+      final session = await client.execute(shellCommand);
+      return SshProcessRunHandle(session);
+    }
+
+    final repoCloneHostRunner = DefaultRepoCloneHostRunner(
+      contextFor: runtimeContextRegistry.forTarget,
+      resolver: RunTargetResolver(homeTarget: defaultTargetResolver),
+    );
+    final repoCloneService = RepoCloneService(
+      resolver: RunTargetResolver(homeTarget: defaultTargetResolver),
+      executor: ProcessRunExecutor(sshSpawner: repoCloneSshSpawner),
+      hostRunner: repoCloneHostRunner,
+    );
+    final repoCloneCubit = RepoCloneCubit(
+      progressActivityCubit: progressActivityCubit,
+      service: repoCloneService,
+      cleanupFs: repoCloneHostRunner.filesystemFor,
     );
     final installJobRunnerRegistry = InstallJobRunnerRegistry(
       runners: [
@@ -2521,6 +2559,7 @@ Future<AppShell> buildAppShell({
       aiHistoryCubit: aiHistoryCubit,
       notificationCubit: notificationCubit,
       progressActivityCubit: progressActivityCubit,
+      repoCloneCubit: repoCloneCubit,
       installJobRegistry: installJobRegistry,
       editorCubit: editorCubit,
       workbenchCubit: workbenchCubit,

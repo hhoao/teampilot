@@ -29,6 +29,7 @@ import 'cubits/layout_cubit.dart';
 import 'cubits/mailbox_cubit.dart';
 import 'cubits/notification_cubit.dart';
 import 'cubits/progress_activity_cubit.dart';
+import 'cubits/repo_clone_cubit.dart';
 import 'cubits/ai_history_cubit.dart';
 import 'cubits/shortcut_cubit.dart';
 import 'l10n/l10n_extensions.dart';
@@ -267,6 +268,7 @@ class _AppShutdownScope extends StatefulWidget {
     required this.aiHistoryCubit,
     required this.notificationCubit,
     required this.progressActivityCubit,
+    required this.repoCloneCubit,
     required this.installJobRegistry,
     required this.sshConnectionCubit,
     required this.termuxCubit,
@@ -287,6 +289,7 @@ class _AppShutdownScope extends StatefulWidget {
   final AiHistoryCubit aiHistoryCubit;
   final NotificationCubit notificationCubit;
   final ProgressActivityCubit progressActivityCubit;
+  final RepoCloneCubit repoCloneCubit;
   final InstallJobRegistry installJobRegistry;
   final SshConnectionCubit sshConnectionCubit;
   final TermuxCubit termuxCubit;
@@ -313,6 +316,7 @@ class _AppShutdownScopeState extends State<_AppShutdownScope> {
     unawaited(widget.aiHistoryCubit.close());
     unawaited(widget.notificationCubit.close());
     unawaited(widget.progressActivityCubit.close());
+    unawaited(widget.repoCloneCubit.close());
     widget.installJobRegistry.dispose();
     unawaited(widget.sshConnectionCubit.close());
     unawaited(widget.termuxCubit.close());
@@ -579,6 +583,7 @@ void main() async {
             aiHistoryCubit: shell.aiHistoryCubit,
             notificationCubit: shell.notificationCubit,
             progressActivityCubit: shell.progressActivityCubit,
+            repoCloneCubit: shell.repoCloneCubit,
             installJobRegistry: shell.installJobRegistry,
             sshConnectionCubit: shell.sshConnectionCubit,
             termuxCubit: shell.termuxCubit,
@@ -724,6 +729,7 @@ void main() async {
                   BlocProvider.value(value: shell.aiHistoryCubit),
                   BlocProvider.value(value: shell.notificationCubit),
                   BlocProvider.value(value: shell.progressActivityCubit),
+                  BlocProvider.value(value: shell.repoCloneCubit),
                   BlocProvider.value(value: shell.editorCubit),
                   BlocProvider.value(value: shell.workbenchCubit),
                   BlocProvider.value(value: shell.floatingWorkspaceCubit),
