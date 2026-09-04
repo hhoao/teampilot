@@ -28,9 +28,10 @@ class CliCredentialSourceResolver {
         ManagedProviderUsageQueryErrorCode.missingCredential,
       );
     }
-    // Readers are keyed by CLI value; any row id (per-entry or legacy)
-    // resolves through its CLI's reader, which reads the isolated
-    // `providers/<cli>/<rowId>/` directory.
+    // Readers are keyed by CLI value; only per-entry row ids
+    // (`<cli>-mp-<id>`) resolve through their CLI's reader, which reads the
+    // isolated `providers/<cli>/<rowId>/` directory. Legacy ids resolve to
+    // no reader (missingCredential).
     final cli = ManagedProviderCliBinding().cliForCredentialSource(source);
     final reader = cli == null ? null : readers[cli.value];
     if (reader == null) {

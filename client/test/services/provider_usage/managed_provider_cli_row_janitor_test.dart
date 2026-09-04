@@ -74,7 +74,7 @@ void main() {
       appProviderCubit: appCubit,
     ).removeDedicatedRow(cli: CliTool.codex, rowId: 'codex-mp-none');
     // No throw; nothing to assert beyond reaching here.
-  }, skip: false);
+  });
 
   test('sweep reclaims orphan -mp- rows and shared rows, keeps live ones',
       () async {
@@ -100,6 +100,77 @@ void main() {
     );
     expect(
       (await fs.stat('/tp/providers/cursor/cursor-account')).exists,
+      isFalse,
+    );
+  });
+
+  test('sweep writes the shared-rows-swept marker', () async {
+    await appCubit.upsertProvider(_row('cursor-account'));
+    await fs.ensureDir('/tp/providers/cursor/cursor-account/home');
+
+    await ManagedProviderCliRowJanitor(
+      fs: fs,
+      basePath: '/tp',
+      appProviderCubit: appCubit,
+    ).sweep(entries: const []);
+
+    expect((await fs.stat('/tp/providers/.managed-provider-shared-rows-swept')).exists,
+        isTrue);
+    expect(
+      appCubit.state.providersFor(CliTool.cursor).any((r) => r.id == 'cursor-account'),
+      isFalse,
+    );
+  });
+
+  test('second sweep keeps a re-created shared row and its credentials',
+      () async {
+    await appCubit.upsertProvider(_row('cursor-account'));
+
+    final janitor = ManagedProviderCliRowJanitor(
+      fs: fs,
+      basePath: '/tp',
+      appProviderCubit: appCubit,
+    );
+    await janitor.sweep(entries: const []);
+
+    // User re-adds the official preset through the provider UI and logs in.
+    await appCubit.upsertProvider(_row('cursor-account'));
+    await fs.ensureDir('/tp/providers/cursor/cursor-account/home/.config/cursor');
+    await fs.writeString(
+      '/tp/providers/cursor/cursor-account/home/.config/cursor/auth.json',
+      '{"accessToken":"tok"}',
+    );
+
+    await janitor.sweep(entries: const []);
+
+    expect(
+      appCubit.state.providersFor(CliTool.cursor).any((r) => r.id == 'cursor-account'),
+      isTrue,
+    );
+    expect((await fs.stat('/tp/providers/cursor/cursor-account')).exists, isTrue);
+  });
+
+  test('second sweep still reclaims orphan -mp- rows', () async {
+    final janitor = ManagedProviderCliRowJanitor(
+      fs: fs,
+      basePath: '/tp',
+      appProviderCubit: appCubit,
+    );
+    await janitor.sweep(entries: const []);
+
+    await appCubit.upsertProvider(_row('cursor-mp-managed-late'));
+    await fs.ensureDir('/tp/providers/cursor/cursor-mp-managed-late/home');
+
+    await janitor.sweep(entries: const []);
+
+    expect(
+      appCubit.state
+          .providersFor(CliTool.cursor)
+          .any((row) => row.id == 'cursor-mp-managed-late'),
+      isFalse,
+    );
+    expect(
+      (await fs.stat('/tp/providers/cursor/cursor-mp-managed-late')).exists,
       isFalse,
     );
   });
