@@ -114,19 +114,12 @@ class TabStripReducer {
 
     final existing = order.indexOf(tab);
     if (existing >= 0) {
-      if (!preview) {
+      // Re-open of an already-present tab: pin stays pinned (a preview
+      // re-open must not demote it — that would silently drop the session
+      // from surfaces that mirror only pinned tabs) and order is kept.
+      // Only a tab that is *already* a preview may re-enter the preview slot.
+      if (!preview || !previews.contains(tab)) {
         previews.remove(tab);
-        return (
-          strip.copyWith(
-            order: order,
-            activeId: activate ? tab : strip.activeId,
-            previewIds: previews,
-            landingReturnTabId: activate ? null : strip.landingReturnTabId,
-          ),
-          null,
-        );
-      }
-      if (previews.contains(tab)) {
         return (
           strip.copyWith(
             order: order,

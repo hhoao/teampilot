@@ -35,6 +35,19 @@ void main() {
       expect(s2.previewIds, isEmpty);
       expect(s2.activeId, _s1);
     });
+
+    test('does not demote a pinned tab on a preview re-open', () {
+      // Sidebar click on an already-open idle session re-opens it with
+      // preview: true (non-running reuse). A pinned tab must stay pinned —
+      // demoting it would drop the session from the sidebar open strip.
+      final (s1, _) = r.add(empty, _s1, preview: false);
+      final (s2, _) = r.add(s1, _s2, preview: false);
+      final (s3, replaced) = r.add(s2, _s1, preview: true);
+      expect(replaced, isNull);
+      expect(s3.order, [_s1, _s2]);
+      expect(s3.previewIds, isEmpty);
+      expect(s3.activeId, _s1);
+    });
   });
 
   group('remove', () {
