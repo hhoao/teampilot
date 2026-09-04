@@ -18,12 +18,13 @@ void main() {
         ManagedTeamBuilderSkillProvider.skillId,
       );
 
-      final mirror = await File(
+      // git checkout on Windows converts the mirror to CRLF; compare LF-normalized.
+      final mirror = (await File(
         'lib/services/team_generation/managed_skills/team-builder/SKILL.md',
-      ).readAsString();
+      ).readAsString()).replaceAll('\r\n', '\n');
 
       expect(resource, isNotNull);
-      expect(resource!.content, teamBuilderSkillMd);
+      expect(resource!.content.replaceAll('\r\n', '\n'), teamBuilderSkillMd);
       expect(mirror, teamBuilderSkillMd);
       for (final marker in const [
         'get_generation_context',

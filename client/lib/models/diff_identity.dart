@@ -21,6 +21,9 @@ sealed class DiffIdentity extends Equatable {
   String get absolutePath;
 
   /// Stable workbench tab id / editor bucket map key.
+  ///
+  /// Paths are normalized to `/` separators so keys stay stable across
+  /// platforms (`p.join` yields `\` on Windows).
   String get storageKey;
 
   /// True when the right-hand side is the on-disk working tree and the user
@@ -32,6 +35,10 @@ sealed class DiffIdentity extends Equatable {
       _parseScm(key) ?? _parseCompare(key);
 }
 
+/// Storage keys use `/` separators so they stay stable across platforms
+/// (`p.join` yields `\` on Windows).
+String _keyPath(String path) => path.replaceAll('\\', '/');
+
 final class ScmDiffIdentity extends DiffIdentity {
   const ScmDiffIdentity(this.absolutePath, this.mode);
 
@@ -41,7 +48,7 @@ final class ScmDiffIdentity extends DiffIdentity {
   final ScmDiffMode mode;
 
   @override
-  String get storageKey => '$absolutePath::scm.${mode.name}';
+  String get storageKey => '${_keyPath(absolutePath)}::scm.${mode.name}';
 
   @override
   bool get isWritableWorkingTree => mode == ScmDiffMode.unstaged;
@@ -67,7 +74,8 @@ final class CompareDiffIdentity extends DiffIdentity {
 
   @override
   String get storageKey =>
-      '$absolutePath::compare:$repoRoot|${left.idKey}|${right.idKey}';
+      '${_keyPath(absolutePath)}::compare:${_keyPath(repoRoot)}'
+      '|${left.idKey}|${right.idKey}';
 
   @override
   bool get isWritableWorkingTree => false;

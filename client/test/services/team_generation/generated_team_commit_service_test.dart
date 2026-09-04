@@ -57,7 +57,13 @@ class _FakeSessionRepository extends Fake implements SessionRepository {
 
 void main() {
   setUp(setUpTestAppStorage);
-  tearDown(tearDownTestAppStorage);
+  tearDown(() async {
+    // LaunchProfileRepository.loadAll schedules a snapshot revalidation that
+    // reads AppStorage paths; let it settle before the test storage is torn
+    // down (Windows CI hit "failed after test completion" here).
+    await pumpEventQueue();
+    tearDownTestAppStorage();
+  });
 
   late InMemoryFilesystem fs;
   late TeamGenerationJobStore store;
