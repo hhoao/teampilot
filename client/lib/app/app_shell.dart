@@ -29,6 +29,7 @@ import '../services/agent_status/agent_status_seat_lookup.dart';
 import '../services/agent_status/ask_user_answer_pending_store.dart';
 import '../services/agent_status/ask_user_question_hook_gate.dart';
 import '../services/agent_status/exit_plan_mode_hook_gate.dart';
+import '../services/agent_status/general_permission_request_gate.dart';
 import '../services/terminal/ask_user_question_answer_service.dart';
 import '../services/terminal/exit_plan_mode_approval_service.dart';
 import '../services/catalog/catalog_runtime.dart';
@@ -1664,9 +1665,11 @@ Future<AppShell> buildAppShell({
     final askUserAnswerPendingStore = AskUserAnswerPendingStore();
     teammateBusMcpGateway.attachAskUserAnswerStore(askUserAnswerPendingStore);
     final askUserQuestionHookGate = AskUserQuestionHookGate();
+    final generalPermissionRequestGate = GeneralPermissionRequestGate();
     final askUserQuestionAnswerService = AskUserQuestionAnswerService(
       store: askUserAnswerPendingStore,
       hookGate: askUserQuestionHookGate,
+      generalPermissionGate: generalPermissionRequestGate,
     );
     final exitPlanModeHookGate = ExitPlanModeHookGate();
     final exitPlanPermissionRequestGate = ExitPlanPermissionRequestGate();
@@ -1685,6 +1688,9 @@ Future<AppShell> buildAppShell({
       hookGate: exitPlanModeHookGate,
       permissionGate: exitPlanPermissionRequestGate,
     );
+    final generalPermissionProjection = GeneralPermissionRuntimeEventProjection(
+      gate: generalPermissionRequestGate,
+    );
     final runtimeProjections = [
       RuntimeEventProjection.attention(
         attention: agentAttentionCubit,
@@ -1692,6 +1698,7 @@ Future<AppShell> buildAppShell({
       ),
       askUserQuestionProjection,
       exitPlanModeProjection,
+      generalPermissionProjection,
     ];
     final agentEventGateway = AgentEventGateway(
       journal: FileRuntimeEventJournal(
@@ -1704,7 +1711,11 @@ Future<AppShell> buildAppShell({
       stream: agentRuntimeStream,
       resolveCli: agentStatusSeatLookup.resolveCli,
       projections: runtimeProjections,
-      responders: [askUserQuestionProjection, exitPlanModeProjection],
+      responders: [
+        askUserQuestionProjection,
+        exitPlanModeProjection,
+        generalPermissionProjection,
+      ],
     );
     teammateBusMcpGateway.attachAgentEventGateway(agentEventGateway);
 
@@ -1762,6 +1773,7 @@ Future<AppShell> buildAppShell({
       agentAttentionCubit: agentAttentionCubit,
       askUserAnswerPendingStore: askUserAnswerPendingStore,
       askUserQuestionAnswerService: askUserQuestionAnswerService,
+      generalPermissionGate: generalPermissionRequestGate,
       exitPlanApprovalService: exitPlanModeApprovalService,
       sessionRepository: sessionRepo,
       lifecycleService: sessionLifecycleService,
