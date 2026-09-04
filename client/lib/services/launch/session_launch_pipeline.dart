@@ -218,6 +218,16 @@ class SessionLaunchPipeline {
       workflowId: requestWorkflowId,
     );
 
+    // Destination team sessions should show the team name immediately — the
+    // emptyDisplayTitleFallback is team.name from createDestination. Generic
+    // "New Chat" fallbacks stay off disk so locale can still resolve them.
+    if (!request.isPersonal && request.team != null) {
+      final titled = request.emptyDisplayTitleFallback.trim();
+      if (titled.isNotEmpty) {
+        provisional = provisional.copyWith(display: titled);
+      }
+    }
+
     // Team sessions need provisional member bindings so history loading (which
     // fires immediately after the UI mounts) can resolve session.requireBinding
     // before persistence completes asynchronously.

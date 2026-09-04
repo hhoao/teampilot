@@ -144,6 +144,8 @@ final class _RecordingChatCubit extends ChatCubit {
     required String sessionId,
     required String memberId,
     required String text,
+    String? deliveryId,
+    bool preserveText = false,
   }) async {
     persistCount += 1;
     calls.add('persist:$workspaceId:$sessionId:$memberId:$text');

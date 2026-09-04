@@ -13,6 +13,7 @@ import '../../../models/session_group.dart';
 import '../../../models/workspace.dart';
 import '../../../utils/session/app_session_sort.dart';
 import '../../../utils/session/session_archive_filter.dart';
+import '../../../utils/session/session_display_title.dart';
 import '../../../utils/session/session_group_membership.dart';
 import '../../../widgets/sidebar_session_tile.dart';
 import 'workspace_session_actions.dart';
@@ -133,9 +134,7 @@ class SessionGroupSection extends StatelessWidget {
               itemCount: workspaceSessions.length,
               itemBuilder: (dialogContext, index) {
                 final session = workspaceSessions[index];
-                final title = session.resolveDisplayTitle(
-                  l10n.defaultNewChatSessionTitle,
-                );
+                final title = sessionListDisplayTitle(session, l10n);
                 return CheckboxListTile(
                   value: selected.contains(session.sessionId),
                   onChanged: (checked) => setState(

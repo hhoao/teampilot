@@ -1,5 +1,7 @@
+import '../../l10n/app_localizations.dart';
 import '../../models/workspace.dart';
 import '../../models/app_session.dart';
+import 'session_display_title.dart';
 
 /// Sessions for [workspace] in workspace order, then any orphans for that workspace.
 List<AppSession> sessionsForWorkspace(
@@ -43,27 +45,22 @@ Map<String, List<AppSession>> groupSessionsByWorkspaceId(List<AppSession> all) {
 List<AppSession> filterSessionsByQuery(
   List<AppSession> sessions, {
   required String query,
-  required String emptyTitleFallback,
+  required AppLocalizations l10n,
 }) {
   final q = query.trim().toLowerCase();
   if (q.isEmpty) return sessions;
   return [
     for (final session in sessions)
-      if (_sessionMatchesQuery(
-        session,
-        query: q,
-        emptyTitleFallback: emptyTitleFallback,
-      ))
-        session,
+      if (_sessionMatchesQuery(session, query: q, l10n: l10n)) session,
   ];
 }
 
 bool _sessionMatchesQuery(
   AppSession session, {
   required String query,
-  required String emptyTitleFallback,
+  required AppLocalizations l10n,
 }) {
-  final title = session.resolveDisplayTitle(emptyTitleFallback).toLowerCase();
+  final title = sessionListDisplayTitle(session, l10n).toLowerCase();
   if (title.contains(query)) return true;
   if (session.display.toLowerCase().contains(query)) return true;
   return session.sessionId.toLowerCase().contains(query);
