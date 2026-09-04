@@ -777,6 +777,23 @@ final class AiHistoryLoader {
       // transcript each time. The mtime token above skips the work when nothing
       // changed.
       //
+      // Debug aid: this is the slow path — log the trigger (force / token
+      // miss / incremental unavailable) so development can see when a seat
+      // degrades to a full load.
+      if (kDebugMode) {
+        appLogger.i(
+          '[ai-history-full] full parse triggered cli=${cli.name} '
+          'session=${session.sessionId} member=$effectiveMemberId '
+          'force=$force skipPaging=$skipPaging '
+          'tokenNull=${token == null} '
+          'tokenChanged=${token != null && _tokens[cacheKey] != token} '
+          'parentPath=${parentPath == null || parentPath.isEmpty ? 'none' : parentPath} '
+          'lineAppend=${cap.lineAppend != null} '
+          'dbRefresher=${cap.incrementalRefresher != null} '
+          'dbState=${_incrementalStates.containsKey(cacheKey)}',
+        );
+      }
+      //
       // Heavy transcripts parse on a worker isolate so the UI thread never
       // spends tens of ms re-decoding a large JSONL on live refresh. Isolate
       // spawn + transfer have a fixed ~ms cost, so small bundles parse in place
@@ -1068,6 +1085,14 @@ final class AiHistoryLoader {
         }
       } else {
         _complete[cacheKey] = false;
+        if (kDebugMode) {
+          appLogger.i(
+            '[ai-history-full] scheduling background full index '
+            '(page-first window incomplete) cli=${cli.name} '
+            'session=${session.sessionId} member=$effectiveMemberId '
+            'msgs=${messages.length}',
+          );
+        }
         _fullIndexFutures.putIfAbsent(
           cacheKey,
           () => Future(() {
