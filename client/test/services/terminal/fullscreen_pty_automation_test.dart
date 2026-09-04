@@ -326,6 +326,27 @@ void main() {
       expect(port.crCount, 1);
     },
   );
+
+  test(
+    'hook ack checked before abort when confirmation closes the fence',
+    () async {
+      // Regression: the delivery fence closes when the hook confirms the
+      // submit (state leaves submitIssued). The aborted() port predicate
+      // consulted !canExecute() and read as "aborted" even though the message
+      // was committed — isAcked must be consulted first.
+      final port = _AbortedAfterHookAckPort();
+
+      final outcome = await automation.deliverPasteAndSubmit(
+        port: port,
+        text: 'A',
+        pasteSettle: Duration.zero,
+        isAcked: () => port.crCount > 0,
+      );
+
+      expect(outcome, FullscreenPtyDeliveryOutcome.submitted);
+      expect(port.crCount, 1, reason: 'no extra CR after hook confirmation');
+    },
+  );
 }
 
 final class _TimestampedPastePort implements FullscreenPtyDeliveryPort {
@@ -834,6 +855,83 @@ final class _AnchorCellStuckButHookAckedPort
   @override
   String describeProbeWindow({int scanRows = 24}) =>
       'submitted=$submitted staged=$staged';
+}
+
+/// First CR commits, then the delivery fence (closed by the concurrent hook
+/// confirmation) makes [isAborted] read true while the mirror grid stays stale
+/// and never ACKs. isAcked is the authoritative submit signal.
+final class _AbortedAfterHookAckPort implements FullscreenPtyDeliveryPort {
+  String? staged;
+  int pasteCount = 0;
+  int crCount = 0;
+
+  @override
+  bool get isAborted => crCount > 0;
+
+  @override
+  int get viewportRows => 24;
+
+  @override
+  FullscreenCrAckConfig get crAckConfig => const FullscreenCrAckConfig(
+    strategy: FullscreenCrAckStrategy.anchorCellClears,
+    composerPrefix: '›',
+  );
+
+  @override
+  Future<void> syncDisplayGrid() async {}
+
+  @override
+  Future<void> waitForPaint({required Duration timeout}) async {}
+
+  @override
+  FullscreenPromptAnchor? locateNeedle(String needle, {int scanRows = 24}) {
+    if (staged == null || !staged!.contains(needle)) return null;
+    return FullscreenPromptAnchor(
+      row: 0,
+      startCol: staged!.indexOf(needle),
+      needle: needle,
+    );
+  }
+
+  @override
+  FullscreenPromptAnchor? locateCollapsedPasteNeedle({int scanRows = 24}) =>
+      null;
+
+  @override
+  bool isAtAnchor(FullscreenPromptAnchor anchor) =>
+      staged != null && staged!.contains(anchor.needle);
+
+  @override
+  bool isSubmittedAfterCr(FullscreenPromptAnchor anchor, {int scanRows = 24}) =>
+      // Stale mirror: never reflects the commit.
+      false;
+
+  @override
+  bool isComposerChromeEmpty({int scanRows = 24}) => crCount > 0;
+
+  @override
+  bool isNeedleStagedInComposer(String needle, {int scanRows = 24}) =>
+      crCount == 0 && staged != null && staged!.contains(needle);
+
+  @override
+  Future<void> clearStagedInput({bool Function()? canExecute}) async {
+    staged = null;
+  }
+
+  @override
+  Future<void> pasteText(String value, {bool Function()? canExecute}) async {
+    pasteCount++;
+    staged = value;
+  }
+
+  @override
+  Future<void> submitCr({bool Function()? canExecute}) async {
+    crCount++;
+  }
+
+  @override
+  String describeProbeWindow({int scanRows = 24}) =>
+      'staged=$staged cr=$crCount';
 }
 
 /// First locate after paste misses; [waitForPaint] reveals the needle immediately.

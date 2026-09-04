@@ -532,6 +532,7 @@ final class TabPromptDeliveryCommands implements PromptDeliveryCommands {
   Future<PromptSubmissionResult> submit(
     PromptDelivery delivery, {
     required bool Function() canExecute,
+    bool Function()? isAcked,
   }) async {
     final shell = _tabStore
         .openTabBySessionId(delivery.seat.sessionId)
@@ -545,7 +546,11 @@ final class TabPromptDeliveryCommands implements PromptDeliveryCommands {
         port: TerminalFullscreenPtyPort(
           input: shell.input,
           probe: shell.probe,
-          aborted: () => !shell.isConnected || !canExecute(),
+          // NOT !canExecute(): the delivery fence closes when the hook
+          // confirms the submit (state leaves submitIssued); that is a
+          // success, not an abort. Real aborts are shell death, and the
+          // queue's own canExecute fence still drops obsolete writes.
+          aborted: () => !shell.isConnected,
           crAckConfig: FullscreenCrAckConfig(
             strategy:
                 behavior?.fullscreenCrAckStrategy ??
@@ -558,16 +563,22 @@ final class TabPromptDeliveryCommands implements PromptDeliveryCommands {
         pasteSettle:
             behavior?.fullScreenPasteSettleDelay ??
             TerminalInputController.fullScreenSubmitDelay,
+        isAcked: isAcked,
       );
       switch (outcome) {
         case FullscreenPtyDeliveryOutcome.submitted:
           return PromptSubmissionResult.submitted;
         case FullscreenPtyDeliveryOutcome.aborted:
-          return canExecute()
-              ? PromptSubmissionResult.unconfirmed
-              : PromptSubmissionResult.dropped;
+          return isAcked?.call() ?? false
+              ? PromptSubmissionResult.submitted
+              : (canExecute()
+                    ? PromptSubmissionResult.unconfirmed
+                    : PromptSubmissionResult.dropped);
         case FullscreenPtyDeliveryOutcome.pasteNotFound:
         case FullscreenPtyDeliveryOutcome.crStuck:
+          if (isAcked?.call() ?? false) {
+            return PromptSubmissionResult.submitted;
+          }
           return PromptSubmissionResult.unconfirmed;
       }
     }

@@ -306,6 +306,7 @@ final class _RecordingPromptDeliveryCommands implements PromptDeliveryCommands {
   Future<PromptSubmissionResult> submit(
     PromptDelivery delivery, {
     required bool Function() canExecute,
+    bool Function()? isAcked,
   }) async {
     if (!canExecute()) return PromptSubmissionResult.dropped;
     ptyWrites.add(delivery.text);

@@ -33,6 +33,7 @@ abstract interface class PromptDeliveryCommands {
   Future<PromptSubmissionResult> submit(
     PromptDelivery delivery, {
     required bool Function() canExecute,
+    bool Function()? isAcked,
   });
 }
 
@@ -155,11 +156,22 @@ final class PromptDeliveryCoordinator {
       canExecute: () =>
           canExecute(id, PromptDeliveryState.submitIssued) &&
           !_submitInvalidatedIds.contains(id),
+      // The hook-channel prompt-submit confirmation: authoritative "message
+      // committed" signal for adapters that probe a grid mirror lagging the
+      // real commit. Read from live state so a confirmation racing the
+      // adapter's poll is observed in the same submit call.
+      isAcked: () => _liveStates[id] == PromptDeliveryState.confirmed,
     );
     switch (result) {
       case PromptSubmissionResult.submitted:
         break;
       case PromptSubmissionResult.unconfirmed:
+        // The hook may have confirmed the delivery while the adapter was
+        // still probing a stale grid mirror: the prompt really was committed,
+        // so the operator must hear success, not an unconfirmed failure.
+        if (_liveStates[id] == PromptDeliveryState.confirmed) {
+          return PromptSubmissionResult.submitted;
+        }
         await _transitionIfUnconfirmed(id, PromptDeliveryState.submittedUnknown);
       case PromptSubmissionResult.dropped:
         await _transitionIfUnconfirmed(id, PromptDeliveryState.submittedUnknown);

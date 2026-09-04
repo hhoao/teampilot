@@ -182,6 +182,68 @@ void main() {
     expect(id, isNull);
   });
 
+  test(
+    'hook confirmation racing a stale grid ACK returns a delivery id',
+    () async {
+      // Regression (2026-09-04): the CR-ack poll reads the delivery fence
+      // through the port's aborted predicate; the hook confirmation closes
+      // that fence (state leaves submitIssued) so the poll reported aborted /
+      // crStuck and the operator saw "terminal submit unconfirmed" even
+      // though the CLI committed the prompt. isAcked must be authoritative.
+      final shell = await ConnectedRecordingShell.connect();
+      addTearDown(shell.dispose);
+      final tabStore = _DeliveryHarness._connectedTabStore(shell);
+      final commands = TabPromptDeliveryCommands(
+        tabStore,
+        // Non-zero CR poll window so the hook confirmation can land while
+        // the poll is still waiting on the (stale) grid.
+        automation: FullscreenPtyAutomation(
+          timing: const PtyAutomationTiming(
+            afterClear: Duration.zero,
+            afterPaste: Duration.zero,
+            afterCr: Duration.zero,
+            afterReinject: Duration.zero,
+            crMaxAttempts: 2,
+            reinjectMaxAttempts: 1,
+            nudgeMaxAttempts: 2,
+            scanRows: 24,
+            pollTimeout: Duration(seconds: 2),
+            pollInterval: Duration(milliseconds: 5),
+          ),
+        ),
+      );
+      final coordinator = PromptDeliveryCoordinator(
+        store: MemoryPromptDeliveryStore(),
+        commands: commands,
+      );
+      const seat = RuntimeSeatKey(sessionId: 's', memberId: 'm');
+      const text = 'inspect this';
+
+      await shell.emitPtyOutput('gpt-5.6-luna default · /tmp\r\n›\r\n');
+      final delivery = await coordinator.submit(
+        PromptDeliveryRequest(seat: seat, cli: CliTool.codex, text: text),
+      );
+      final issuing = coordinator.issueSubmit(delivery.id);
+      // Stage the composer row so the paste needle ACKs; the CR then commits
+      // but the grid never repaints (stale mirror) — only the
+      // UserPromptSubmit hook confirms the delivery.
+      await shell.emitPtyOutput('› $text\r\n');
+      await Future<void>.delayed(const Duration(milliseconds: 50));
+      await coordinator.onRuntimeEvent(
+        RuntimeEventEnvelope(
+          seat: seat,
+          cli: CliTool.codex,
+          kind: RuntimeEventKind.promptSubmitted,
+          occurredAt: DateTime.utc(2026, 8, 25),
+          prompt: text,
+          sequence: 1,
+        ),
+      );
+
+      expect(await issuing, PromptSubmissionResult.submitted);
+    },
+  );
+
   test('interrupt racing delivery creation prevents any direct PTY write',
       () async {
     final commands = _RecordingPromptCommands();
@@ -228,39 +290,43 @@ void main() {
     expect(afterTurn, isEmpty);
   });
 
-  test('fence-dropped direct submit does not latch the operator turn',
-      () async {
-    final shell = await ConnectedRecordingShell.connect();
-    addTearDown(shell.dispose);
-    final afterTurn = <String>[];
-    final harness = _DeliveryHarness.connectedReal(
-      shell: shell,
-      onAfterTurnLatched: (sessionId, memberId) {
-        afterTurn.add('$sessionId:$memberId');
-      },
-    );
+  test(
+    'hook-confirmed submit latches the turn but drops the obsolete CR',
+    () async {
+      final shell = await ConnectedRecordingShell.connect();
+      addTearDown(shell.dispose);
+      final afterTurn = <String>[];
+      final harness = _DeliveryHarness.connectedReal(
+        shell: shell,
+        onAfterTurnLatched: (sessionId, memberId) {
+          afterTurn.add('$sessionId:$memberId');
+        },
+      );
 
-    final send = harness.delivery.deliverUserCommandToMember(
-      's',
-      'm',
-      'inspect this',
-      directToPty: true,
-    );
-    const pasteMarker = '\x1b[200~';
-    final deadline = DateTime.now().add(const Duration(seconds: 5));
-    while (!shell.ptyInputJoined.contains(pasteMarker)) {
-      if (DateTime.now().isAfter(deadline)) {
-        fail('paste never reached the PTY');
+      final send = harness.delivery.deliverUserCommandToMember(
+        's',
+        'm',
+        'inspect this',
+        directToPty: true,
+      );
+      const pasteMarker = '\x1b[200~';
+      final deadline = DateTime.now().add(const Duration(seconds: 5));
+      while (!shell.ptyInputJoined.contains(pasteMarker)) {
+        if (DateTime.now().isAfter(deadline)) {
+          fail('paste never reached the PTY');
+        }
+        await Future<void>.delayed(const Duration(milliseconds: 1));
       }
-      await Future<void>.delayed(const Duration(milliseconds: 1));
-    }
-    // Confirming mid-submit drops the pending CR through the delivery fence.
-    await harness.publishCodexPromptSubmitted('inspect this');
-    await send;
+      // The CLI committed the prompt mid-submit; the pending CR is now
+      // obsolete and the delivery fence must still drop it (no duplicate
+      // submit), while the confirmed prompt latches the operator turn.
+      await harness.publishCodexPromptSubmitted('inspect this');
+      await send;
 
-    expect(afterTurn, isEmpty);
-    expect(shell.ptyInputJoined.endsWith('\r'), isFalse);
-  });
+      expect(afterTurn, ['s:m']);
+      expect(shell.ptyInputJoined.endsWith('\r'), isFalse);
+    },
+  );
 }
 
 Future<void> _emitCodexSubmitFrameAfterCr(
@@ -438,6 +504,7 @@ final class _BlockedQueuedPromptCommands implements PromptDeliveryCommands {
   Future<PromptSubmissionResult> submit(
     PromptDelivery delivery, {
     required bool Function() canExecute,
+    bool Function()? isAcked,
   }) async {
     submitStarted.complete();
     await release.future;
@@ -463,6 +530,7 @@ final class _RecordingPromptCommands implements PromptDeliveryCommands {
   Future<PromptSubmissionResult> submit(
     PromptDelivery delivery, {
     required bool Function() canExecute,
+    bool Function()? isAcked,
   }) async {
     if (!canExecute()) return PromptSubmissionResult.dropped;
     submittedPrompts.add(delivery.text);
@@ -481,6 +549,7 @@ final class _UnconfirmedPromptCommands implements PromptDeliveryCommands {
   Future<PromptSubmissionResult> submit(
     PromptDelivery delivery, {
     required bool Function() canExecute,
+    bool Function()? isAcked,
   }) async =>
       PromptSubmissionResult.unconfirmed;
 }

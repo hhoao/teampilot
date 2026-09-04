@@ -117,10 +117,10 @@ class FullscreenPtyAutomation {
     required Duration pasteSettle,
     bool Function()? isAcked,
   }) async {
-    if (port.isAborted) return FullscreenPtyDeliveryOutcome.aborted;
     if (isAcked?.call() ?? false) {
       return FullscreenPtyDeliveryOutcome.submitted;
     }
+    if (port.isAborted) return FullscreenPtyDeliveryOutcome.aborted;
     bool canExecute() => !(isAcked?.call() ?? false);
     final needle = PtyAutomationNeedle.forText(text);
     await port.syncDisplayGrid();
@@ -153,6 +153,9 @@ class FullscreenPtyAutomation {
     bool Function()? isAcked,
   }) async {
     final needle = PtyAutomationNeedle.forText(text);
+    if (isAcked?.call() ?? false) {
+      return FullscreenPtyDeliveryOutcome.submitted;
+    }
     if (port.isAborted) return FullscreenPtyDeliveryOutcome.aborted;
     await port.syncDisplayGrid();
     final scanRows = _probeScanRows(port);
@@ -197,27 +200,69 @@ class FullscreenPtyAutomation {
     FullscreenPromptAnchor anchor, {
     bool Function()? isAcked,
     bool Function()? canExecute,
-  }) async {
+  }) {
     final fence = canExecute ?? (() => !(isAcked?.call() ?? false));
     if (port.crAckConfig.strategy == FullscreenCrAckStrategy.timed) {
-      await port.submitCr(canExecute: fence);
-      await Future<void>.delayed(_timing.afterCr);
-      return FullscreenPtyDeliveryOutcome.submitted;
+      return _timedCr(port, fence, isAcked: isAcked);
     }
+    return _anchoredCr(port, anchor, fence, isAcked: isAcked);
+  }
 
+  Future<FullscreenPtyDeliveryOutcome> _timedCr(
+    FullscreenPtyDeliveryPort port,
+    bool Function() fence, {
+    bool Function()? isAcked,
+  }) async {
+    // isAcked is authoritative: a hook confirmation closes the delivery fence
+    // (state leaves submitIssued) which reads as "aborted" through port
+    // predicates — a committed prompt must still report submitted.
+    if (isAcked?.call() ?? false) return FullscreenPtyDeliveryOutcome.submitted;
+    if (port.isAborted) return FullscreenPtyDeliveryOutcome.aborted;
     await port.submitCr(canExecute: fence);
+    await Future<void>.delayed(_timing.afterCr);
+    return FullscreenPtyDeliveryOutcome.submitted;
+  }
+
+  Future<FullscreenPtyDeliveryOutcome> _anchoredCr(
+    FullscreenPtyDeliveryPort port,
+    FullscreenPromptAnchor anchor,
+    bool Function() fence, {
+    bool Function()? isAcked,
+  }) async {
+    if (isAcked?.call() ?? false) return FullscreenPtyDeliveryOutcome.submitted;
+    if (port.isAborted) return FullscreenPtyDeliveryOutcome.aborted;
+    await port.submitCr(canExecute: fence);
+    // The submit fence may close while the CR write is in flight (hook
+    // confirmation); that is a success, not an abort.
+    if (isAcked?.call() ?? false) return FullscreenPtyDeliveryOutcome.submitted;
     if (port.isAborted) return FullscreenPtyDeliveryOutcome.aborted;
     await Future<void>.delayed(_timing.afterCr);
     if (isAcked?.call() ?? false) return FullscreenPtyDeliveryOutcome.submitted;
     final scanRows = _probeScanRows(port);
-    return await _pollForCrAck(
-          port,
-          anchor,
-          scanRows: scanRows,
-          isAcked: isAcked,
-        )
+    final acked = await _pollForCrAck(
+      port,
+      anchor,
+      scanRows: scanRows,
+      isAcked: isAcked,
+    );
+    if (!acked) {
+      _logCrStuck(port, anchor);
+    }
+    return acked
         ? FullscreenPtyDeliveryOutcome.submitted
         : FullscreenPtyDeliveryOutcome.crStuck;
+  }
+
+  /// CR-ack miss: the anchor never cleared and no hook confirmation arrived.
+  /// Logs the probe window so a future miss (@-mention autocomplete popup
+  /// swallowing the CR, trust dialog, splash screen) is diagnosable offline.
+  void _logCrStuck(FullscreenPtyDeliveryPort port, FullscreenPromptAnchor anchor) {
+    final scanRows = _probeScanRows(port);
+    appLogger.w(
+      '[team-bus] pty-cr-stuck anchor=$anchor scanRows=$scanRows '
+      'viewportRows=${port.viewportRows} strategy=${port.crAckConfig.strategy}\n'
+      '${port.describeProbeWindow(scanRows: scanRows)}',
+    );
   }
 
   /// Grid paint can lag the CR write (real TUI + synthetic test shells). Poll
@@ -235,8 +280,8 @@ class FullscreenPtyAutomation {
     }
     final deadline = DateTime.now().add(timeout);
     while (DateTime.now().isBefore(deadline)) {
-      if (port.isAborted) return false;
       if (isAcked?.call() ?? false) return true;
+      if (port.isAborted) return false;
       await port.syncDisplayGrid();
       if (port.isSubmittedAfterCr(anchor, scanRows: scanRows)) return true;
       final remaining = deadline.difference(DateTime.now());

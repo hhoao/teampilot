@@ -196,6 +196,33 @@ void main() {
     },
   );
 
+  test(
+    'hook confirmation racing an unconfirmed submit outcome reports submitted',
+    () async {
+      // The terminal adapter could not prove the submit from the grid (stale
+      // mirror), but the UserPromptSubmit hook confirmed the delivery while
+      // the adapter's submit was still in flight. The operator must not be
+      // told the send failed when the CLI committed the prompt.
+      final racingCommands = _RacingHookAckCommands();
+      final racing = PromptDeliveryCoordinator(
+        store: store,
+        commands: racingCommands,
+        clock: () => now,
+      );
+
+      final delivery = await racing.submit(request(text: 'same'));
+      racingCommands.hookAck = () =>
+          racing.onRuntimeEvent(promptSubmitted(text: 'same'));
+      final result = await racing.issueSubmit(delivery.id);
+
+      expect(result, PromptSubmissionResult.submitted);
+      expect(
+        (await store.read(delivery.id))!.state,
+        PromptDeliveryState.confirmed,
+      );
+    },
+  );
+
   test('a dropped submit cannot be weakly confirmed afterwards', () async {
     final outcomeCommands = _OutcomePromptDeliveryCommands(
       PromptSubmissionResult.dropped,
@@ -372,6 +399,29 @@ final class _GatedSaveStore implements PromptDeliveryStore {
       _inner.seatsForSession(sessionId);
 }
 
+/// Reports [PromptSubmissionResult.unconfirmed] from the grid after first
+/// invoking [hookAck] — the UserPromptSubmit hook confirmed the prompt while
+/// the adapter was still probing a stale mirror.
+final class _RacingHookAckCommands implements PromptDeliveryCommands {
+  Future<void> Function()? hookAck;
+
+  @override
+  Future<void> stage(
+    PromptDelivery delivery, {
+    required bool Function() canExecute,
+  }) async {}
+
+  @override
+  Future<PromptSubmissionResult> submit(
+    PromptDelivery delivery, {
+    required bool Function() canExecute,
+    bool Function()? isAcked,
+  }) async {
+    await hookAck?.call();
+    return PromptSubmissionResult.unconfirmed;
+  }
+}
+
 final class _OutcomePromptDeliveryCommands implements PromptDeliveryCommands {
   _OutcomePromptDeliveryCommands(this.outcome);
 
@@ -388,6 +438,7 @@ final class _OutcomePromptDeliveryCommands implements PromptDeliveryCommands {
   Future<PromptSubmissionResult> submit(
     PromptDelivery delivery, {
     required bool Function() canExecute,
+    bool Function()? isAcked,
   }) async {
     submitAttempts++;
     return outcome;
@@ -415,6 +466,7 @@ final class _FakePromptDeliveryCommands implements PromptDeliveryCommands {
   Future<PromptSubmissionResult> submit(
     PromptDelivery delivery, {
     required bool Function() canExecute,
+    bool Function()? isAcked,
   }) async {
     _submitFences.add(canExecute);
     writes.add('submit:${delivery.id}');
