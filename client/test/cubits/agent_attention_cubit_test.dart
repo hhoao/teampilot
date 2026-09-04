@@ -772,7 +772,7 @@ void main() {
           id: 'perm-1',
           description: 'Run `npm install`',
           patterns: ['npm'],
-          always: ['npm install'],
+          always: [AgentPermissionAlwaysOption(label: 'npm install')],
         ),
       );
 

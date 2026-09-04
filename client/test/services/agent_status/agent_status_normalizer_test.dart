@@ -163,7 +163,10 @@ void main() {
       expect(p.id, 'perm-1');
       expect(p.description, 'Run `npm install`');
       expect(p.patterns, ['npm']);
-      expect(p.always, ['npm', 'npm install']);
+      expect(p.always.map((option) => option.label).toList(), [
+        'npm',
+        'npm install',
+      ]);
       expect(p.sessionID, 'ses_abc');
       expect(p.toolMessageID, 'msg-1');
       expect(p.toolCallID, 'call-1');
@@ -412,7 +415,7 @@ void main() {
       expect(normalize(cli: CliTool.claude, body: {}), isNull);
     });
 
-// Why working (not null): the attention cubit tracks child ids and keeps
+    // Why working (not null): the attention cubit tracks child ids and keeps
     // the parent seat working until every subagent stops — a child completion
     // must reach the cubit instead of being dropped here.
     test('Codex SubagentStart and SubagentStop retain the child id', () {

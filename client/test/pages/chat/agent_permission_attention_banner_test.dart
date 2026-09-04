@@ -306,7 +306,7 @@ void main() {
         permissionRequest: AgentPermissionRequest(
           id: 'perm-1',
           description: 'Run `npm install`',
-          always: ['npm install'],
+          always: [AgentPermissionAlwaysOption(label: 'npm install')],
         ),
       ),
       skipPermissions: false,
