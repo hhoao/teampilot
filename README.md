@@ -14,21 +14,22 @@
   <a href="#license">License</a> •
   <a href="#community">Community</a>
 </p>
-
 <div align="center">
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-AGPL--3.0-blue.svg" alt="License"></a>
   <a href="https://github.com/hhoao/teampilot/releases"><img src="https://img.shields.io/github/v/release/hhoao/teampilot?logo=github&label=Release" alt="TeamPilot Release"></a>
   <a href="https://github.com/hhoao/teampilot/stargazers"><img src="https://img.shields.io/github/stars/hhoao/teampilot?logo=github&label=Stars" alt="TeamPilot Stars"></a>
   <a href="https://github.com/hhoao/teampilot/actions/workflows/client-verify.yml"><img src="https://github.com/hhoao/teampilot/actions/workflows/client-verify.yml/badge.svg" alt="TeamPilot CI"></a>
   <br>
-  <a href="https://github.com/hhoao/teampilot/releases"><img src="https://img.shields.io/badge/Linux-FCC624?logo=linux&logoColor=black" alt="Linux"></a>
-  <a href="https://github.com/hhoao/teampilot/releases"><img src="https://img.shields.io/badge/macOS-000000?logo=apple&logoColor=white" alt="macOS"></a>
-  <a href="https://github.com/hhoao/teampilot/releases"><img src="https://img.shields.io/badge/Windows-0078D6?logo=windows&logoColor=white" alt="Windows"></a>
-  <a href="https://github.com/hhoao/teampilot/releases"><img src="https://img.shields.io/badge/Android-3DDC84?logo=android&logoColor=black" alt="Android"></a>
+  <a href="https://github.com/hhoao/teampilot/releases"><img src="https://img.shields.io/badge/downloads-0078D6?logo=downloads&logoColor=white" alt="downloads"></a>
   <a href="https://qm.qq.com/"><img src="https://img.shields.io/badge/QQ%20群-1016450915-0099FF?logo=tencentqq&logoColor=white" alt="TeamPilot QQ Group"></a>
   <a href="https://discord.com/channels/1518523215767666719/1518523216912449669"><img src="https://img.shields.io/badge/Discord-加入群组-5865F2?logo=discord&logoColor=white" alt="TeamPilot Discord"></a>
 </div>
+
+
+
 **TeamPilot** is an easy-to-use, cross-platform (including mobile) agent workbench that integrates mainstream agent CLIs (Claude Code, Codex, etc.). It works as a conversational assistant and as a full-featured agent-driven IDE. It wraps a UI layer over today's popular agent CLIs: chat transcripts become visual, and config files are isolated across multiple layers. It manages global agent-CLI capabilities as well as workspace-specific Skills, MCP, and Hooks in one place, lets you configure multiple providers per CLI so every session can quickly use any custom model from any CLI, and adds unique expert assistants plus the ability to coordinate multiple agent CLIs across machines — giving anyone highly convenient, customizable conversations.
+
+
 
 ![readme-overview-1](./assets/readme-overview-1.png)
 

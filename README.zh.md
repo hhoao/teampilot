@@ -14,21 +14,22 @@
   <a href="#许可证">许可证</a> •
   <a href="#社区">社区</a>
 </p>
-
 <div align="center">
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-AGPL--3.0-blue.svg" alt="License"></a>
   <a href="https://github.com/hhoao/teampilot/releases"><img src="https://img.shields.io/github/v/release/hhoao/teampilot?logo=github&label=Release" alt="TeamPilot Release"></a>
   <a href="https://github.com/hhoao/teampilot/stargazers"><img src="https://img.shields.io/github/stars/hhoao/teampilot?logo=github&label=Stars" alt="TeamPilot Stars"></a>
   <a href="https://github.com/hhoao/teampilot/actions/workflows/client-verify.yml"><img src="https://github.com/hhoao/teampilot/actions/workflows/client-verify.yml/badge.svg" alt="TeamPilot CI"></a>
   <br>
-  <a href="https://github.com/hhoao/teampilot/releases"><img src="https://img.shields.io/badge/Linux-FCC624?logo=linux&logoColor=black" alt="Linux"></a>
-  <a href="https://github.com/hhoao/teampilot/releases"><img src="https://img.shields.io/badge/macOS-000000?logo=apple&logoColor=white" alt="macOS"></a>
-  <a href="https://github.com/hhoao/teampilot/releases"><img src="https://img.shields.io/badge/Windows-0078D6?logo=windows&logoColor=white" alt="Windows"></a>
-  <a href="https://github.com/hhoao/teampilot/releases"><img src="https://img.shields.io/badge/Android-3DDC84?logo=android&logoColor=black" alt="Android"></a>
+  <a href="https://github.com/hhoao/teampilot/releases"><img src="https://img.shields.io/badge/downloads-0078D6?logo=downloads&logoColor=white" alt="downloads"></a>
   <a href="https://qm.qq.com/"><img src="https://img.shields.io/badge/QQ%20群-1016450915-0099FF?logo=tencentqq&logoColor=white" alt="TeamPilot QQ Group"></a>
   <a href="https://discord.com/channels/1518523215767666719/1518523216912449669"><img src="https://img.shields.io/badge/Discord-加入群组-5865F2?logo=discord&logoColor=white" alt="TeamPilot Discord"></a>
 </div>
+
+
+
 **TeamPilot** 是一个集成主流 Agent CLI （Claude code、Codex等）的全平台（兼移动端）用户易用的 Agent 工作台， 它可以作为一个对话助手，也可以作为一个功能齐全的 Agent 驱动的 IDE。它在目前流行的 Agent CLI 之上封装一个 UI 层，将它们的聊天记录可视化、配置文件多层隔离化，它能在一个地方管理全 Agent CLI 全局、不同的工作区之间特定的Skills、MCP、Hooks，以及可以给每个Agent CLI配置多种供应商，以让每个会话都能快速使用所有 CLI 的所有自定义模型，同时它还具有独特的专家助手和能让所有 Agent CLI 在多台机器协同工作的功能，它能给任何人提供非常方便的定制化对话能力。
+
+
 
 ![readme-overview-1](./assets/readme-overview-1.png)
 
