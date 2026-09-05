@@ -88,6 +88,7 @@ class LayoutPreferences {
     this.floatingToggleDy,
     this.floatingMaximized = false,
     this.filePreviewHost = FilePreviewHost.floating,
+    this.floatingPreviewTabs = true,
     this.foldToolCallCategories = defaultFoldToolCallCategories,
   });
 
@@ -189,6 +190,7 @@ class LayoutPreferences {
       filePreviewHost:
           _enumValue(FilePreviewHost.values, json['filePreviewHost']) ??
           FilePreviewHost.floating,
+      floatingPreviewTabs: json['floatingPreviewTabs'] as bool? ?? true,
       foldToolCallCategories: _categorySet(json['foldToolCallCategories']),
     ).withAtLeastOneToolVisible();
   }
@@ -298,6 +300,10 @@ class LayoutPreferences {
   final bool floatingMaximized;
   final FilePreviewHost filePreviewHost;
 
+  /// Floating strip preview slot: file/diff previews share one replaceable
+  /// tab until promoted/pinned. Default on.
+  final bool floatingPreviewTabs;
+
   final Set<AiToolCallCategory> foldToolCallCategories;
 
   LayoutPreferences copyWith({
@@ -347,6 +353,7 @@ class LayoutPreferences {
     double? floatingToggleDy,
     bool? floatingMaximized,
     FilePreviewHost? filePreviewHost,
+    bool? floatingPreviewTabs,
     Set<AiToolCallCategory>? foldToolCallCategories,
   }) {
     return LayoutPreferences(
@@ -431,6 +438,7 @@ class LayoutPreferences {
       floatingToggleDy: floatingToggleDy ?? this.floatingToggleDy,
       floatingMaximized: floatingMaximized ?? this.floatingMaximized,
       filePreviewHost: filePreviewHost ?? this.filePreviewHost,
+      floatingPreviewTabs: floatingPreviewTabs ?? this.floatingPreviewTabs,
       foldToolCallCategories:
           foldToolCallCategories ?? this.foldToolCallCategories,
     ).withAtLeastOneToolVisible();
@@ -539,6 +547,7 @@ class LayoutPreferences {
       'floatingToggleDy': floatingToggleDy,
       'floatingMaximized': floatingMaximized,
       'filePreviewHost': filePreviewHost.name,
+      'floatingPreviewTabs': floatingPreviewTabs,
       'foldToolCallCategories': foldToolCallCategories
           .map((c) => c.name)
           .toList(),

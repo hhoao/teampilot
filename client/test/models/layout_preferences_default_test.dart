@@ -365,4 +365,23 @@ void main() {
     );
     expect(restored.autoOpenSubagentPreview, isTrue);
   });
+
+  test('floatingPreviewTabs defaults to true and round-trips', () {
+    expect(const LayoutPreferences().floatingPreviewTabs, isTrue);
+    final off = const LayoutPreferences().copyWith(
+      floatingPreviewTabs: false,
+    );
+    expect(off.toJson()['floatingPreviewTabs'], false);
+    expect(
+      LayoutPreferences.fromJson(off.toJson()).floatingPreviewTabs,
+      isFalse,
+    );
+  });
+
+  test('fromJson tolerates missing floatingPreviewTabs', () {
+    expect(
+      LayoutPreferences.fromJson(const {}).floatingPreviewTabs,
+      isTrue,
+    );
+  });
 }

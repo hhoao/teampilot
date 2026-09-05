@@ -234,6 +234,17 @@ class LayoutAppearanceInLayoutSection extends StatelessWidget {
                   ),
                   showDividerBelow: true,
                 ),
+                TpPreferenceRow(
+                  title: l10n.floatingPreviewTabsTitle,
+                  subtitle: l10n.floatingPreviewTabsDescription,
+                  trailing: Switch(
+                    value: context.select<LayoutCubit, bool>(
+                      (c) => c.state.preferences.floatingPreviewTabs,
+                    ),
+                    onChanged: controller.setFloatingPreviewTabs,
+                  ),
+                  showDividerBelow: true,
+                ),
                 TpSectionHeader(title: l10n.thinkingProcessSectionTitle),
                 TpPreferenceRow(
                   title: l10n.cotExpandReasoningOnOpenTitle,

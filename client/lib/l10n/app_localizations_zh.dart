@@ -7266,6 +7266,13 @@ class AppLocalizationsZh extends AppLocalizations {
   String get filePreviewHostCenter => '中间';
 
   @override
+  String get floatingPreviewTabsTitle => '单个预览标签页';
+
+  @override
+  String get floatingPreviewTabsDescription =>
+      '文件与 diff 预览在浮动面板中共享一个可替换的标签页，固定后保留。';
+
+  @override
   String get termuxSetupTitle => 'Termux 设置';
 
   @override

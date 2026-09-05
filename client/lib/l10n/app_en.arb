@@ -3903,6 +3903,8 @@
   "filePreviewHostDescription": "Open files in the floating workspace or the center workbench.",
   "filePreviewHostFloating": "Floating",
   "filePreviewHostCenter": "Center",
+  "floatingPreviewTabsTitle": "Single preview tab",
+  "floatingPreviewTabsDescription": "File and diff previews share one replaceable tab in the floating panel until pinned.",
   "termuxSetupTitle": "Termux setup",
   "termuxSetupIntro": "Install Termux, paste one setup script, then connect TeamPilot to the local SSH server.",
   "termuxSetupStepInstallTermux": "1. Install Termux",
