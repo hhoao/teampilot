@@ -293,7 +293,7 @@ packages:
       path: "packages/dartssh2"
       relative: true
     source: path
-    version: "2.22.2"
+    version: "4.1.0"
   dbus:
     dependency: transitive
     description:
