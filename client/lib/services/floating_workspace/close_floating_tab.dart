@@ -29,6 +29,12 @@ Future<void> closeFloatingTab({
   await workbench.close(workspaceId, id);
 }
 
+/// Whether [id] is pinned on the floating strip — pinned tabs survive user
+/// bulk close actions (closeOthers / closeRight / closeAll) until unpinned.
+bool _isPinned(WorkbenchCubit workbench, String workspaceId, WorkbenchTabId id) {
+  return workbench.state.bar(workspaceId).floating.pinnedIds.contains(id);
+}
+
 /// Close every floating tab except [keepId], respecting each surface's
 /// [canClose]. [order] is snapshotted so removals do not shift iteration.
 Future<void> closeOtherFloatingTabs({
@@ -40,7 +46,7 @@ Future<void> closeOtherFloatingTabs({
 }) async {
   final order = List<WorkbenchTabId>.of(workbench.floatingOrder(workspaceId));
   for (final id in order) {
-    if (id == keepId) continue;
+    if (id == keepId || _isPinned(workbench, workspaceId, id)) continue;
     await closeFloatingTabByBarId(
       workbench: workbench,
       workspaceId: workspaceId,
@@ -64,6 +70,7 @@ Future<void> closeFloatingTabsToTheRight({
   if (index < 0 || index >= order.length - 1) return;
   final toClose = order.sublist(index + 1);
   for (final id in toClose) {
+    if (_isPinned(workbench, workspaceId, id)) continue;
     await closeFloatingTabByBarId(
       workbench: workbench,
       workspaceId: workspaceId,
@@ -83,6 +90,7 @@ Future<void> closeAllFloatingTabs({
 }) async {
   final order = List<WorkbenchTabId>.of(workbench.floatingOrder(workspaceId));
   for (final id in order) {
+    if (_isPinned(workbench, workspaceId, id)) continue;
     await closeFloatingTabByBarId(
       workbench: workbench,
       workspaceId: workspaceId,
