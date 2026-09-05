@@ -17,6 +17,7 @@ class TabStrip extends Equatable {
     this.order = const [],
     this.activeId,
     this.previewIds = const {},
+    this.pinnedIds = const {},
     this.landingInitialText,
     this.landingInitialTextRevision = 0,
     this.landingReferenceSessionId,
@@ -28,6 +29,10 @@ class TabStrip extends Equatable {
 
   /// Tabs that are still preview (replaceable) until pinned.
   final Set<WorkbenchTabId> previewIds;
+
+  /// Tabs pinned by the user — protected from user close actions
+  /// (closeOthers / closeRight / closeAll) until unpinned.
+  final Set<WorkbenchTabId> pinnedIds;
 
   /// Optional text to seed the landing compose with on its next render.
   final String? landingInitialText;
@@ -60,6 +65,7 @@ class TabStrip extends Equatable {
     List<WorkbenchTabId>? order,
     Object? activeId = _unset,
     Set<WorkbenchTabId>? previewIds,
+    Set<WorkbenchTabId>? pinnedIds,
     Object? landingInitialText = _unset,
     int? landingInitialTextRevision,
     Object? landingReferenceSessionId = _unset,
@@ -68,6 +74,7 @@ class TabStrip extends Equatable {
     order: order ?? this.order,
     activeId: activeId == _unset ? this.activeId : activeId as WorkbenchTabId?,
     previewIds: previewIds ?? this.previewIds,
+    pinnedIds: pinnedIds ?? this.pinnedIds,
     landingInitialText: landingInitialText == _unset
         ? this.landingInitialText
         : landingInitialText as String?,
@@ -86,6 +93,7 @@ class TabStrip extends Equatable {
     order,
     activeId,
     previewIds,
+    pinnedIds,
     landingInitialText,
     landingInitialTextRevision,
     landingReferenceSessionId,
@@ -101,8 +109,8 @@ class TabStripReducer {
 
   /// Adds [tab]. When already present and [preview] is false, it is pinned and
   /// activated. When [preview] is true and another preview exists, that preview
-  /// is replaced in place and returned. Otherwise the tab is appended at the
-  /// end (new tabs surface last).
+  /// is replaced in place and returned (pinned tabs are never victims).
+  /// Otherwise the tab is appended at the end (new tabs surface last).
   (TabStrip, WorkbenchTabId?) add(
     TabStrip strip,
     WorkbenchTabId tab, {
@@ -111,6 +119,7 @@ class TabStripReducer {
   }) {
     final order = List<WorkbenchTabId>.of(strip.order);
     final previews = Set<WorkbenchTabId>.of(strip.previewIds);
+    final pinneds = Set<WorkbenchTabId>.of(strip.pinnedIds);
 
     final existing = order.indexOf(tab);
     if (existing >= 0) {
@@ -125,6 +134,7 @@ class TabStripReducer {
             order: order,
             activeId: activate ? tab : strip.activeId,
             previewIds: previews,
+            pinnedIds: pinneds,
             landingReturnTabId: activate ? null : strip.landingReturnTabId,
           ),
           null,
@@ -136,7 +146,7 @@ class TabStripReducer {
     WorkbenchTabId? replaced;
     if (preview) {
       for (final candidate in order) {
-        if (previews.contains(candidate)) {
+        if (previews.contains(candidate) && !pinneds.contains(candidate)) {
           replaced = candidate;
           break;
         }
@@ -158,6 +168,7 @@ class TabStripReducer {
         order: order,
         activeId: activate ? tab : strip.activeId,
         previewIds: previews,
+        pinnedIds: pinneds,
         landingReturnTabId: activate ? null : strip.landingReturnTabId,
       ),
       replaced,
@@ -173,6 +184,7 @@ class TabStripReducer {
 
     order.removeAt(index);
     final previews = Set<WorkbenchTabId>.of(strip.previewIds)..remove(id);
+    final pinneds = Set<WorkbenchTabId>.of(strip.pinnedIds)..remove(id);
     final hasSession = order.any((tab) => tab.kind == WorkbenchTabKind.session);
     final removedSessionIsReferenceSource =
         id.kind == WorkbenchTabKind.session &&
@@ -204,6 +216,7 @@ class TabStripReducer {
       order: order,
       activeId: active,
       previewIds: previews,
+      pinnedIds: pinneds,
       landingInitialText: clearLandingPrefill ? null : strip.landingInitialText,
       landingInitialTextRevision: nextLandingRevision,
       landingReferenceSessionId: clearLandingPrefill
@@ -244,13 +257,45 @@ class TabStripReducer {
     );
   }
 
+  /// Pins [id] (normal → pinned). No-op when [id] is absent, already
+  /// pinned, or still a preview.
   TabStrip pin(TabStrip strip, WorkbenchTabId id) {
+    if (!strip.order.contains(id) ||
+        strip.pinnedIds.contains(id) ||
+        strip.previewIds.contains(id)) {
+      return strip;
+    }
+    final pinneds = Set<WorkbenchTabId>.of(strip.pinnedIds)..add(id);
+    return strip.copyWith(
+      order: strip.order,
+      activeId: strip.activeId,
+      previewIds: strip.previewIds,
+      pinnedIds: pinneds,
+    );
+  }
+
+  /// Unpins [id] (pinned → normal). No-op when not pinned.
+  TabStrip unpin(TabStrip strip, WorkbenchTabId id) {
+    if (!strip.pinnedIds.contains(id)) return strip;
+    final pinneds = Set<WorkbenchTabId>.of(strip.pinnedIds)..remove(id);
+    return strip.copyWith(
+      order: strip.order,
+      activeId: strip.activeId,
+      previewIds: strip.previewIds,
+      pinnedIds: pinneds,
+    );
+  }
+
+  /// Promotes [id] out of the preview set (preview → normal). No-op when
+  /// absent or not a preview.
+  TabStrip promote(TabStrip strip, WorkbenchTabId id) {
     if (!strip.previewIds.contains(id)) return strip;
     final previews = Set<WorkbenchTabId>.of(strip.previewIds)..remove(id);
     return strip.copyWith(
       order: strip.order,
       activeId: strip.activeId,
       previewIds: previews,
+      pinnedIds: strip.pinnedIds,
     );
   }
 
