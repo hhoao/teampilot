@@ -1014,6 +1014,7 @@
   "sshProfileTestSuccess": "连接成功",
   "sshProfileTestFailed": "连接测试失败",
   "sshProfileTestFailedHostKey": "主机密钥未获信任",
+  "sshPenaltyRefused": "服务器暂时拒绝了连接（触发了防暴力破解保护），请等待约一分钟后重试。",
   "sshProfileTestFailedAuth": "身份验证失败",
   "sshProfileTestFailedAborted": "登录前连接已断开：{detail}",
   "@sshProfileTestFailedAborted": {

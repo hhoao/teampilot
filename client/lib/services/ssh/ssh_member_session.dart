@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:dartssh2/dartssh2.dart';
 
 import '../../models/ssh_profile.dart';
@@ -59,7 +61,7 @@ class SshMemberSession {
         client,
         reason: SshTransportCloseReason.memberSessionClosed,
       );
-      client.close();
+      unawaited(client.disconnect());
     }
   }
 }

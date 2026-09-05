@@ -7,6 +7,7 @@ import '../../utils/logging/logger.dart';
 import '../remote/remote_connection_monitor.dart';
 import 'ssh_client_factory.dart';
 import 'ssh_connection_events.dart';
+import 'ssh_connection_failure.dart';
 import 'ssh_profile_reconnect_policy.dart';
 import 'ssh_transport_close.dart';
 import 'ssh_transport_close_policy.dart';
@@ -244,7 +245,7 @@ class SshProfileConnectionCoordinator {
     return true;
   }
 
-  void _scheduleReconnect(String profileId) {
+  void _scheduleReconnect(String profileId, {bool penaltyRefusal = false}) {
     if (_disposed ||
         _reconnectInFlight[profileId] == true ||
         _userDisconnectLatched.contains(profileId)) {
@@ -261,8 +262,11 @@ class SshProfileConnectionCoordinator {
       return;
     }
 
+    final delay = penaltyRefusal
+        ? policy.penaltyBackoff
+        : policy.delayForAttempt(attempts);
     _reconnectTimers[profileId]?.cancel();
-    _reconnectTimers[profileId] = Timer(policy.delayForAttempt(attempts), () {
+    _reconnectTimers[profileId] = Timer(delay, () {
       unawaited(_runReconnect(profile));
     });
   }
@@ -284,13 +288,17 @@ class SshProfileConnectionCoordinator {
       '[ssh] profile $profileId reconnect attempt $attempt/${policy.maxAttempts}',
     );
 
+    // Rescheduling must happen after the finally block clears the in-flight
+    // flag — scheduling while it is still set is a silent no-op.
+    var reschedule = false;
+    var reschedulePenalty = false;
     try {
       await reconnectStorage(profile);
       if (_userDisconnectLatched.contains(profileId)) {
         _factory.disconnectProfile(
-      profileId,
-      reason: SshTransportCloseReason.userDisconnect,
-    );
+          profileId,
+          reason: SshTransportCloseReason.userDisconnect,
+        );
         monitor.reconnectFailed();
         return;
       }
@@ -303,9 +311,9 @@ class SshProfileConnectionCoordinator {
       }
       if (_userDisconnectLatched.contains(profileId)) {
         _factory.disconnectProfile(
-      profileId,
-      reason: SshTransportCloseReason.userDisconnect,
-    );
+          profileId,
+          reason: SshTransportCloseReason.userDisconnect,
+        );
         monitor.reconnectFailed();
         return;
       }
@@ -318,16 +326,26 @@ class SshProfileConnectionCoordinator {
         return;
       }
       monitor.reconnectFailed();
+      reschedulePenalty = isSshdPenaltyRefusal(error);
       appLogger.w(
-        '[ssh] profile $profileId reconnect failed: $error',
+        '[ssh] profile $profileId reconnect failed'
+        '${reschedulePenalty ? ' (sshd penalty refusal)' : ''}: $error',
         error: error,
         stackTrace: stackTrace,
       );
       if (!_shouldSkipReconnect(error)) {
-        _scheduleReconnect(profileId);
+        if (reschedulePenalty) {
+          // A penalty refusal is a temporary external condition, not a real
+          // failure: don't burn an attempt, and wait out the penalty window.
+          _reconnectAttempts.remove(profileId);
+        }
+        reschedule = true;
       }
     } finally {
       _reconnectInFlight[profileId] = false;
+    }
+    if (reschedule) {
+      _scheduleReconnect(profileId, penaltyRefusal: reschedulePenalty);
     }
   }
 

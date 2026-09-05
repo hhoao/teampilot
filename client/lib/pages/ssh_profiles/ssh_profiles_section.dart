@@ -90,7 +90,7 @@ class _SshProfilesSectionState extends State<SshProfilesSection> {
         host.errorDetail!.isNotEmpty) {
       AppToast.show(
         context,
-        message: host.errorDetail!,
+        message: sshErrorDetailUserMessage(host.errorDetail, context.l10n),
         variant: TpToastVariant.error,
       );
     }

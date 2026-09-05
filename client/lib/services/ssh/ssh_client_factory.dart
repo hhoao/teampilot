@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:collection';
 import 'dart:convert';
 import 'dart:io';
 import 'dart:typed_data';
@@ -70,6 +71,7 @@ class SshClientFactory {
     void Function(String storageKey, String fingerprintHex)? onHostKeyPersist,
     SshClientConnector? connector,
     SshDialTargetResolver? dialTargetResolver,
+    int maxConcurrentHandshakes = 3,
   }) : _credentialStore = credentialStore,
        _knownHostRepository = knownHostRepository,
        _events = events ?? SshConnectionEvents(),
@@ -81,7 +83,8 @@ class SshClientFactory {
          onHostKeyPersist: onHostKeyPersist,
        ),
        _connector = connector,
-       _dialTargetResolver = dialTargetResolver;
+       _dialTargetResolver = dialTargetResolver,
+       _handshakeGate = _HandshakeGate(maxConcurrentHandshakes);
 
   final SshCredentialStore _credentialStore;
   final SshKnownHostRepository _knownHostRepository;
@@ -92,6 +95,7 @@ class SshClientFactory {
   final SshHostKeyTrustPolicy _hostKeyTrustPolicy;
   final SshClientConnector? _connector;
   final SshDialTargetResolver? _dialTargetResolver;
+  final _HandshakeGate _handshakeGate;
   final Map<String, _PooledConnection> _pool = {};
   final Map<String, SftpClient> _sftpByProfile = {};
   final Set<SSHClient> _watchedClients = {};
@@ -278,7 +282,7 @@ class SshClientFactory {
       if (lifecycle != null && reason != null) {
         lifecycle.pendingLocalCloseReason = reason;
       }
-      cached.client.close();
+      unawaited(cached.client.disconnect());
     }
     if (wasLive) {
       _notifyPoolChange(profileId);
@@ -345,7 +349,7 @@ class SshClientFactory {
         if (lifecycle != null) {
           lifecycle.pendingLocalCloseReason = reason;
         }
-        cached.client.close();
+        unawaited(cached.client.disconnect());
       }
     }
     _pool.clear();
@@ -378,7 +382,9 @@ class SshClientFactory {
       await client.authenticated;
     } finally {
       if (!client.isClosed) {
-        client.close();
+        // Not awaited: teardown must not block the caller — the transport's
+        // socket close can outlive it.
+        unawaited(client.disconnect());
       }
     }
   }
@@ -417,9 +423,19 @@ class SshClientFactory {
     SshProfile profile, {
     Duration timeout = const Duration(seconds: 10),
   }) async {
-    return _connector != null
-        ? await _connector!(profile, timeout: timeout)
-        : await _openClient(profile, timeout: timeout);
+    final key = profile.hostIdentifier;
+    await _handshakeGate.acquire(key);
+    try {
+      final client =
+          _connector != null
+          ? await _connector!(profile, timeout: timeout)
+          : await _openClient(profile, timeout: timeout);
+      _releaseGateWhenSettled(key, client);
+      return client;
+    } on Object {
+      _handshakeGate.release(key);
+      rethrow;
+    }
   }
 
   /// Opens a fresh, caller-owned SSH connection for one member session plane.
@@ -446,11 +462,31 @@ class SshClientFactory {
     required SshTransportPlane plane,
     Duration timeout = const Duration(seconds: 10),
   }) async {
-    final client = _connector != null
-        ? await _connector!(profile, timeout: timeout)
-        : await _openClient(profile, timeout: timeout);
+    final key = profile.hostIdentifier;
+    await _handshakeGate.acquire(key);
+    final SSHClient client;
+    try {
+      client =
+          _connector != null
+          ? await _connector!(profile, timeout: timeout)
+          : await _openClient(profile, timeout: timeout);
+    } on Object {
+      _handshakeGate.release(key);
+      rethrow;
+    }
+    _releaseGateWhenSettled(key, client);
     _attachTransportLifecycle(profile.id, client, plane);
     return client;
+  }
+
+  /// A handshake slot is held until the connection authenticates, fails, or
+  /// closes — every unauthenticated connection counts against the server's
+  /// `MaxStartups` budget, not just the ones still dialing.
+  void _releaseGateWhenSettled(String key, SSHClient client) {
+    client.authenticated.then<void>(
+      (_) {},
+      onError: (_) {},
+    ).whenComplete(() => _handshakeGate.release(key));
   }
 
   Future<SSHClient> _openClient(
@@ -484,6 +520,8 @@ class SshClientFactory {
           onVerifyHostKey: hostKeyVerifier,
           onKeepAliveFailed: (error, stackTrace) =>
               _handleKeepAliveFailed(profile.id, error, stackTrace),
+          handshakeTimeout: timeout,
+          authTimeout: timeout,
         );
       case SshAuthType.privateKey:
         final privateKey = await _credentialStore.loadPrivateKey(profile.id);
@@ -504,7 +542,51 @@ class SshClientFactory {
           onVerifyHostKey: hostKeyVerifier,
           onKeepAliveFailed: (error, stackTrace) =>
               _handleKeepAliveFailed(profile.id, error, stackTrace),
+          handshakeTimeout: timeout,
+          authTimeout: timeout,
         );
+    }
+  }
+}
+
+/// Bounds concurrent SSH handshakes per dial target.
+///
+/// Every unauthenticated connection counts against the server's `MaxStartups`
+/// budget (default 10) and — when it stalls — against its `LoginGraceTime`
+/// before `PerSourcePenalties` kicks in. A reconnect storm (storage pool plus
+/// every member terminal redialing at once) must therefore never open them
+/// all simultaneously; candidates queue per host until a slot settles.
+class _HandshakeGate {
+  _HandshakeGate(this.maxConcurrent);
+
+  final int maxConcurrent;
+  final Map<String, int> _active = {};
+  final Map<String, Queue<Completer<void>>> _waiting = {};
+
+  Future<void> acquire(String key) {
+    final active = _active[key] ?? 0;
+    if (active < maxConcurrent) {
+      _active[key] = active + 1;
+      return Future.value();
+    }
+    final waiter = Completer<void>();
+    _waiting.putIfAbsent(key, Queue<Completer<void>>.new).add(waiter);
+    return waiter.future;
+  }
+
+  void release(String key) {
+    final queue = _waiting[key];
+    if (queue != null && queue.isNotEmpty) {
+      queue.removeFirst().complete();
+      // The slot transfers directly to the next waiter.
+      return;
+    }
+    final active = (_active[key] ?? 1) - 1;
+    if (active <= 0) {
+      _active.remove(key);
+      _waiting.remove(key);
+    } else {
+      _active[key] = active;
     }
   }
 }

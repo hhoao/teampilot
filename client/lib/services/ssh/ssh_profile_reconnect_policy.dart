@@ -5,6 +5,7 @@ class SshProfileReconnectPolicy {
     this.initialDelay = const Duration(seconds: 2),
     this.maxDelay = const Duration(seconds: 30),
     this.disconnectCoalesce = const Duration(milliseconds: 150),
+    this.penaltyBackoff = const Duration(seconds: 30),
   });
 
   final int maxAttempts;
@@ -14,6 +15,11 @@ class SshProfileReconnectPolicy {
   /// Window to merge multiple TCP drops (storage + member planes) into one
   /// disconnect signal per profile.
   final Duration disconnectCoalesce;
+
+  /// Delay used instead of [delayForAttempt] when the last failure was an
+  /// sshd `PerSourcePenalties` refusal. OpenSSH's default penalty is 20s and
+  /// accumulates on repeat, so a normal 2s first retry just feeds it.
+  final Duration penaltyBackoff;
 
   Duration delayForAttempt(int attempt) {
     if (attempt <= 0) return initialDelay;

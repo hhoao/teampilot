@@ -300,6 +300,50 @@ void main() {
     await coordinator.dispose();
   });
 
+  test('sshd penalty refusals reset attempts and keep retrying', () async {
+    var createCount = 0;
+    const profile = SshProfile(
+      id: 'p1',
+      name: 'dev',
+      host: 'example.com',
+      username: 'alice',
+    );
+
+    final events = SshConnectionEvents();
+    final factory = SshClientFactory(
+      credentialStore: InMemorySshCredentialStore(),
+      knownHostRepository: InMemorySshKnownHostRepository(),
+      events: events,
+      connector: (profile, {timeout = const Duration(seconds: 10)}) async {
+        createCount += 1;
+        if (createCount == 1) {
+          return _InstantAuthClient();
+        }
+        throw SSHHandshakeError('Invalid version: Not allowed at this time');
+      },
+    );
+    final coordinator = SshProfileConnectionCoordinator(
+      factory: factory,
+      events: events,
+      profileResolver: (_) => profile,
+      // maxAttempts 1: a normal failure would stop after the first retry, so
+      // reaching a third create proves penalty refusals reset the count.
+      policy: const SshProfileReconnectPolicy(
+        disconnectCoalesce: Duration(milliseconds: 10),
+        initialDelay: Duration(milliseconds: 5),
+        penaltyBackoff: Duration(milliseconds: 40),
+        maxAttempts: 1,
+      ),
+    );
+
+    final client = await factory.clientForStorage(profile);
+    client.close();
+
+    await waitUntil(() => createCount >= 3, timeout: const Duration(seconds: 5));
+    expect(createCount, greaterThanOrEqualTo(3));
+    await coordinator.dispose();
+  });
+
   test('userConnect clears latch and opens storage pool', () async {
     const profile = SshProfile(
       id: 'p1',

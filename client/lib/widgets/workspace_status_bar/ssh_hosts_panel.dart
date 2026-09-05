@@ -6,6 +6,7 @@ import 'package:shared_ui/shared_ui.dart';
 
 import '../../cubits/ssh_connection_cubit.dart';
 import '../../l10n/l10n_extensions.dart';
+import '../../services/ssh/ssh_connection_failure.dart';
 
 /// Open Remote Hosts popover body (header, host rows, Manage).
 class SshHostsPanel extends StatelessWidget {
@@ -123,7 +124,7 @@ class _HostRow extends StatelessWidget {
         detail != null &&
         detail.isNotEmpty;
     final subtitle = showDetail
-        ? '${l10n.sshHostsRowKind} · ${_statusLabel(context)} · $detail'
+        ? '${l10n.sshHostsRowKind} · ${_statusLabel(context)} · ${sshErrorDetailUserMessage(detail, l10n)}'
         : '${l10n.sshHostsRowKind} · ${_statusLabel(context)}';
 
     return Padding(

@@ -4256,6 +4256,12 @@ abstract class AppLocalizations {
   /// **'Host key was not trusted'**
   String get sshProfileTestFailedHostKey;
 
+  /// No description provided for @sshPenaltyRefused.
+  ///
+  /// In en, this message translates to:
+  /// **'The server temporarily refused the connection (its anti-brute-force protection was triggered). Wait about a minute and try again.'**
+  String get sshPenaltyRefused;
+
   /// No description provided for @sshProfileTestFailedAuth.
   ///
   /// In en, this message translates to:

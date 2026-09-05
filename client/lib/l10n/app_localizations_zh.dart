@@ -2242,6 +2242,9 @@ class AppLocalizationsZh extends AppLocalizations {
   String get sshProfileTestFailedHostKey => '主机密钥未获信任';
 
   @override
+  String get sshPenaltyRefused => '服务器暂时拒绝了连接（触发了防暴力破解保护），请等待约一分钟后重试。';
+
+  @override
   String get sshProfileTestFailedAuth => '身份验证失败';
 
   @override

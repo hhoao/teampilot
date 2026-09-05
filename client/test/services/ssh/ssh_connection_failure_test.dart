@@ -30,4 +30,32 @@ void main() {
       l10n.sshProfileTestFailedAuth,
     );
   });
+
+  test('detects sshd PerSourcePenalties refusals', () {
+    final penalty = SSHHandshakeError('Invalid version: Not allowed at this time');
+    expect(isSshdPenaltyRefusal(penalty), isTrue);
+    expect(
+      sshConnectionFailureUserMessage(penalty, l10n),
+      l10n.sshPenaltyRefused,
+    );
+
+    final otherHandshake = SSHHandshakeError('Invalid version: HTTP/1.1 400');
+    expect(isSshdPenaltyRefusal(otherHandshake), isFalse);
+    expect(isSshdPenaltyRefusal(SSHAuthFailError('no')), isFalse);
+  });
+
+  test('maps stored penalty detail strings for display', () {
+    expect(
+      sshErrorDetailUserMessage(
+        'SSHHandshakeError(Invalid version: Not allowed at this time)',
+        l10n,
+      ),
+      l10n.sshPenaltyRefused,
+    );
+    expect(
+      sshErrorDetailUserMessage('SocketException: connection refused', l10n),
+      'SocketException: connection refused',
+    );
+    expect(sshErrorDetailUserMessage(null, l10n), '');
+  });
 }

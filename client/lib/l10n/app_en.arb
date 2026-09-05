@@ -1106,6 +1106,7 @@
   "sshProfileTestSuccess": "Connection successful",
   "sshProfileTestFailed": "Connection test failed",
   "sshProfileTestFailedHostKey": "Host key was not trusted",
+  "sshPenaltyRefused": "The server temporarily refused the connection (its anti-brute-force protection was triggered). Wait about a minute and try again.",
   "sshProfileTestFailedAuth": "Authentication failed",
   "sshProfileTestFailedAborted": "Connection closed before login: {detail}",
   "@sshProfileTestFailedAborted": {

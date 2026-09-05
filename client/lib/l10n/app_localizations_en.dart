@@ -2360,6 +2360,10 @@ class AppLocalizationsEn extends AppLocalizations {
   String get sshProfileTestFailedHostKey => 'Host key was not trusted';
 
   @override
+  String get sshPenaltyRefused =>
+      'The server temporarily refused the connection (its anti-brute-force protection was triggered). Wait about a minute and try again.';
+
+  @override
   String get sshProfileTestFailedAuth => 'Authentication failed';
 
   @override

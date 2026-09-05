@@ -90,6 +90,8 @@ void main() {
     final client = await factory.clientForStorage(profile);
     factory.disconnectProfile('p1');
 
+    // Graceful disconnect is asynchronous (SSH_MSG_DISCONNECT then close).
+    await client.done;
     expect(client.isClosed, isTrue);
 
     await factory.clientForStorage(profile);
@@ -259,6 +261,98 @@ void main() {
     expect(factory.hasLiveStorageClient(profile.id), isFalse);
     await sub.cancel();
   });
+
+  test('handshake gate bounds concurrent connects per profile', () async {
+    var inFlight = 0;
+    var maxInFlight = 0;
+    final factory = SshClientFactory(
+      credentialStore: InMemorySshCredentialStore(),
+      knownHostRepository: InMemorySshKnownHostRepository(),
+      maxConcurrentHandshakes: 2,
+      connector: (profile, {timeout = const Duration(seconds: 10)}) async {
+        inFlight += 1;
+        if (inFlight > maxInFlight) maxInFlight = inFlight;
+        await Future<void>.delayed(const Duration(milliseconds: 20));
+        inFlight -= 1;
+        return _InstantAuthClient();
+      },
+    );
+
+    const profile = SshProfile(
+      id: 'p1',
+      name: 'dev',
+      host: 'example.com',
+      username: 'alice',
+    );
+
+    final clients = await Future.wait([
+      for (var i = 0; i < 6; i++) factory.createMemberClient(profile),
+    ]);
+    expect(clients.length, 6);
+    expect(maxInFlight, 2);
+  });
+
+  test('handshake gate slots are per profile host', () async {
+    var inFlight = 0;
+    var maxInFlight = 0;
+    final factory = SshClientFactory(
+      credentialStore: InMemorySshCredentialStore(),
+      knownHostRepository: InMemorySshKnownHostRepository(),
+      maxConcurrentHandshakes: 1,
+      connector: (profile, {timeout = const Duration(seconds: 10)}) async {
+        inFlight += 1;
+        if (inFlight > maxInFlight) maxInFlight = inFlight;
+        await Future<void>.delayed(const Duration(milliseconds: 20));
+        inFlight -= 1;
+        return _InstantAuthClient();
+      },
+    );
+
+    const first = SshProfile(
+      id: 'p1',
+      name: 'dev',
+      host: 'one.example.com',
+      username: 'alice',
+    );
+    const second = SshProfile(
+      id: 'p2',
+      name: 'prod',
+      host: 'two.example.com',
+      username: 'alice',
+    );
+
+    await Future.wait([
+      factory.createMemberClient(first),
+      factory.createMemberClient(second),
+    ]);
+    expect(maxInFlight, 2);
+  });
+
+  test('disconnectProfile tears down with a protocol-level disconnect', () async {
+    final disconnected = <String>[];
+    final factory = SshClientFactory(
+      credentialStore: InMemorySshCredentialStore(),
+      knownHostRepository: InMemorySshKnownHostRepository(),
+      connector: (profile, {timeout = const Duration(seconds: 10)}) async {
+        return _RecordingDisconnectClient(disconnected, profile.id);
+      },
+    );
+
+    const profile = SshProfile(
+      id: 'p1',
+      name: 'dev',
+      host: 'example.com',
+      username: 'alice',
+    );
+
+    await factory.clientForStorage(profile);
+    expect(factory.hasLiveStorageClient(profile.id), isTrue);
+
+    factory.disconnectProfile(profile.id);
+    await Future<void>.delayed(Duration.zero);
+    expect(disconnected, [profile.id]);
+    expect(factory.hasLiveStorageClient(profile.id), isFalse);
+  });
 }
 
 class _ProbeFailClient extends SSHClient {
@@ -286,6 +380,26 @@ class _InstantAuthClient extends SSHClient {
 
   @override
   Future<void> ping() async {}
+}
+
+class _RecordingDisconnectClient extends SSHClient {
+  _RecordingDisconnectClient(this._disconnected, this._profileId)
+    : super(_FakeSSHSocket(), username: 'test');
+
+  final List<String> _disconnected;
+  final String _profileId;
+
+  @override
+  Future<void> get authenticated => Future.value();
+
+  @override
+  Future<void> ping() async {}
+
+  @override
+  Future<void> disconnect() async {
+    _disconnected.add(_profileId);
+    await close();
+  }
 }
 
 class _DelayedAuthClient extends SSHClient {
