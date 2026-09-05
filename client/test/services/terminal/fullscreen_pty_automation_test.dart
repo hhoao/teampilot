@@ -403,6 +403,52 @@ void main() {
       expect(port.dismissCount, 0);
     },
   );
+
+  test(
+    'waits after popup-dismiss ESC before the submit CR',
+    () async {
+      // Regression (2026-09-05, verified against real Claude Code 2.1.211 in
+      // a PTY): the ESC written by dismissComposerPopup followed immediately
+      // by the CR is read by the TUI as one chunk and parsed as ESC+CR =
+      // Alt+Enter — insert-newline. The message stays staged in the composer
+      // with a blank line below it and the submit never commits (chat UI
+      // stuck "waiting"). ≥100ms between the ESC and the CR submits normally
+      // (50ms still fails), so the automation must settle after the ESC.
+      final port = _MentionPopupSwallowsCrPort();
+      final escAware = FullscreenPtyAutomation(
+        timing: const PtyAutomationTiming(
+          afterClear: Duration.zero,
+          afterPaste: Duration.zero,
+          afterCr: Duration.zero,
+          afterReinject: Duration.zero,
+          crMaxAttempts: 2,
+          reinjectMaxAttempts: 1,
+          nudgeMaxAttempts: 2,
+          scanRows: 24,
+          pollTimeout: Duration.zero,
+          afterDismissPopup: Duration(milliseconds: 80),
+        ),
+      );
+
+      final outcome = await escAware.deliverPasteAndSubmit(
+        port: port,
+        text: '看下这个文件 @/etc/hostname',
+        pasteSettle: Duration.zero,
+        dismissMentionPopup: true,
+      );
+
+      expect(outcome, FullscreenPtyDeliveryOutcome.submitted);
+      expect(port.dismissAt, isNotNull);
+      expect(port.crAt, isNotNull);
+      expect(
+        port.crAt!.difference(port.dismissAt!).inMilliseconds,
+        greaterThanOrEqualTo(80),
+        reason:
+            'ESC immediately followed by CR coalesces into Alt+Enter in the '
+            'Ink composer — the CR becomes a newline instead of a submit',
+      );
+    },
+  );
 }
 
 final class _TimestampedPastePort implements FullscreenPtyDeliveryPort {
@@ -941,6 +987,8 @@ final class _MentionPopupSwallowsCrPort implements FullscreenPtyDeliveryPort {
   int pasteCount = 0;
   int crCount = 0;
   int dismissCount = 0;
+  DateTime? dismissAt;
+  DateTime? crAt;
 
   @override
   bool get isAborted => false;
@@ -1004,6 +1052,7 @@ final class _MentionPopupSwallowsCrPort implements FullscreenPtyDeliveryPort {
 
   @override
   Future<void> submitCr({bool Function()? canExecute}) async {
+    crAt ??= DateTime.now();
     if (popupOpen) {
       // CR is consumed by the popup (moves its selection) — not a submit.
       return;
@@ -1015,6 +1064,7 @@ final class _MentionPopupSwallowsCrPort implements FullscreenPtyDeliveryPort {
   @override
   Future<void> dismissComposerPopup() async {
     dismissCount++;
+    dismissAt ??= DateTime.now();
     popupOpen = false;
   }
 

@@ -34,6 +34,7 @@ class PtyAutomationTiming {
     this.pollTimeout = const Duration(seconds: 3),
     this.pollInterval = const Duration(milliseconds: 100),
     this.afterPasteAck = Duration.zero,
+    this.afterDismissPopup = Duration.zero,
   });
 
   factory PtyAutomationTiming.production() => const PtyAutomationTiming(
@@ -48,6 +49,7 @@ class PtyAutomationTiming {
     pollTimeout: Duration(seconds: 3),
     pollInterval: Duration(milliseconds: 100),
     afterPasteAck: Duration(milliseconds: 800),
+    afterDismissPopup: Duration(milliseconds: 150),
   );
 
   factory PtyAutomationTiming.instant() => const PtyAutomationTiming(
@@ -61,6 +63,7 @@ class PtyAutomationTiming {
     scanRows: 24,
     pollTimeout: Duration.zero,
     pollInterval: Duration.zero,
+    afterDismissPopup: Duration.zero,
   );
 
   final Duration afterClear;
@@ -78,6 +81,13 @@ class PtyAutomationTiming {
   /// the TUI paints staged text while still inside bracketed-paste (Codex /
   /// Cursor over SSH); a CR in that window becomes a newline, not submit.
   final Duration afterPasteAck;
+
+  /// Pause between the popup-dismiss ESC and the submit CR. The two writes
+  /// land back-to-back in the TUI's stdin and coalesce into ESC+CR =
+  /// Alt+Enter (insert-newline) instead of two keystrokes — the message
+  /// stays staged in the composer and never submits (verified against real
+  /// Claude Code 2.1.211: 50ms gap still fails, 100ms+ submits).
+  final Duration afterDismissPopup;
 }
 
 /// Content-based full-screen PTY delivery: paste → grid ACK → CR → anchor ACK.
@@ -148,6 +158,13 @@ class FullscreenPtyAutomation {
       // Mention autocomplete swallows the submit CR; close it first.
       // Harmless when no popup opened (bare ESC in the composer).
       await port.dismissComposerPopup();
+      // Let the TUI parse the ESC as its own keystroke before the CR lands;
+      // back-to-back ESC+CR reads as Alt+Enter = newline, not submit.
+      await Future<void>.delayed(
+        _timing.afterDismissPopup > Duration.zero
+            ? _timing.afterDismissPopup
+            : const Duration(milliseconds: 150),
+      );
     }
     return _pollCrUntilAnchorClears(
       port,
