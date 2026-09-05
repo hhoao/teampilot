@@ -1,144 +1,84 @@
 # TeamPilot
 
-[简体中文](README.zh.md) · [Development guide](docs/DEVELOPMENT.md) · Architecture & AI: [AGENTS.md](AGENTS.md)
+<p align="center">
+  <img src="assets/icon.svg" alt="TeamPilot" width="100"/>
+</p>
 
-**TeamPilot** is a desktop client based on terminal AI Agent Team. Its centerpiece is **team capabilities**: assign **a model — and even a different CLI — per member** for tiered collaboration (save tokens, implement fast, review accurately), plus roles, prompts, skills, and plugins in the GUI—then launch **one embedded terminal per member** that talks to agents through Claude Code, Codex, opencode, cursor, or flashskyai, locally or over SSH. **Workspaces** and **sessions** attach that team (or a solo personal identity) to a repo folder and conversation.
 
-![App preview](assets/image.png)
-![App preview](assets/image1.png)
+<p align="center">
+  <a href="README.zh.md">简体中文</a> •
+  <a href="#core-features">Core Features</a> •
+  <a href="#installation">Installation</a> •
+  <a href="#supported-clis">Supported CLIs</a> •
+  <a href="#development">Development</a> •
+  <a href="#license">License</a> •
+  <a href="#community">Community</a>
+</p>
 
-## Two ways to work
+<div align="center">
+  <a href="LICENSE"><img src="https://img.shields.io/badge/license-AGPL--3.0-blue.svg" alt="License"></a>
+  <a href="https://github.com/hhoao/teampilot/releases"><img src="https://img.shields.io/github/v/release/hhoao/teampilot?logo=github&label=Release" alt="TeamPilot Release"></a>
+  <a href="https://github.com/hhoao/teampilot/stargazers"><img src="https://img.shields.io/github/stars/hhoao/teampilot?logo=github&label=Stars" alt="TeamPilot Stars"></a>
+  <a href="https://github.com/hhoao/teampilot/actions/workflows/client-verify.yml"><img src="https://github.com/hhoao/teampilot/actions/workflows/client-verify.yml/badge.svg" alt="TeamPilot CI"></a>
+  <br>
+  <a href="https://github.com/hhoao/teampilot/releases"><img src="https://img.shields.io/badge/Linux-FCC624?logo=linux&logoColor=black" alt="Linux"></a>
+  <a href="https://github.com/hhoao/teampilot/releases"><img src="https://img.shields.io/badge/macOS-000000?logo=apple&logoColor=white" alt="macOS"></a>
+  <a href="https://github.com/hhoao/teampilot/releases"><img src="https://img.shields.io/badge/Windows-0078D6?logo=windows&logoColor=white" alt="Windows"></a>
+  <a href="https://github.com/hhoao/teampilot/releases"><img src="https://img.shields.io/badge/Android-3DDC84?logo=android&logoColor=black" alt="Android"></a>
+  <a href="https://qm.qq.com/"><img src="https://img.shields.io/badge/QQ%20群-1016450915-0099FF?logo=tencentqq&logoColor=white" alt="TeamPilot QQ Group"></a>
+  <a href="https://discord.com/channels/1518523215767666719/1518523216912449669"><img src="https://img.shields.io/badge/Discord-加入群组-5865F2?logo=discord&logoColor=white" alt="TeamPilot Discord"></a>
+</div>
+**TeamPilot** is an easy-to-use, cross-platform (including mobile) agent workbench that integrates mainstream agent CLIs (Claude Code, Codex, etc.). It works as a conversational assistant and as a full-featured agent-driven IDE. It wraps a UI layer over today's popular agent CLIs: chat transcripts become visual, and config files are isolated across multiple layers. It manages global agent-CLI capabilities as well as workspace-specific Skills, MCP, and Hooks in one place, lets you configure multiple providers per CLI so every session can quickly use any custom model from any CLI, and adds unique expert assistants plus the ability to coordinate multiple agent CLIs across machines — giving anyone highly convenient, customizable conversations.
 
-| Mode | When | What you get |
-|------|------|--------------|
-| **Simple mode** (personal) | You just want one agent in a repo | Skip the team roster—launch a **single CLI** and start chatting. No member list to build. |
-| **Team mode** | Multi-agent / tiered or mixed-CLI collaboration | Define a team once, then run **one terminal per member** in parallel. This is TeamPilot's centerpiece (below). |
+![readme-overview-1](./assets/readme-overview-1.png)
 
-**Simple mode is not stripped-down.** A personal workspace still gives you the full config surface—you just skip the multi-member roster:
+![readme-overview-2](./assets/readme-overview-2.png)
 
-- **Multiple CLIs and models, switchable.** Each CLI (Claude Code, Codex, opencode, cursor, flashskyai) keeps **its own provider + model + reasoning-effort** on your **personal launch identity**, so you can configure several models per tool and switch the active CLI/model without retuning globally—the same tiering benefit as teams, for a single agent.
-- **CLI presets**: Save frequent CLI + model combos as named presets and switch with one click. 
-- **Per-identity agent** plus **per-workspace skills, plugins, MCP, and extensions**—the personal identity carries prompt and model tiering; capability bindings mount on the workspace. Skills / MCP / plugins are installed once in the global library and shared across CLIs.
-- **A permanent built-in *Personal assistant* identity**, plus any workspaces you open on a repo—all alongside team-backed workspaces. Start simple and graduate to a team when a task needs it.
+## Core Features
 
-## Core feature: team configuration
+### One agent client, every platform
 
-Team configuration is what sets TeamPilot apart from a single terminal and hand-typed flags: **define the team first, then work in parallel from the chat workbench**.
+Today's agent CLIs — Codex, Claude Code, and the rest — are richest on the desktop, while their mobile offerings are mostly chat-only. TeamPilot is built with Flutter and abstracts multiple filesystem implementations internally, so you get the same full feature set on desktop and mobile.
 
-| Piece | Purpose |
-|-------|---------|
-| **Team** | A full multi-agent preset: pick a coordination mode (single-CLI **native** team, or **mixed** cross-CLI), team-level CLI options, and the skills/plugins bound to this team only. |
-| **Member** | A role inside the team (e.g. `team-lead`, developer, reviewer): **its own** model, provider, system prompt, launch flags—and, in mixed mode, its own CLI. Connecting a session **spawns a separate PTY per member**—models and context do not mix. |
-| **Skills / plugins** | Capabilities attached per team; at launch they are written into an isolated CLI config tree that member terminals inherit. |
+### Multi-CLI capability abstraction and isolation
 
-### Per-member model tiers: save tokens, split the work
+TeamPilot's multi-CLI abstraction turns the Skills, MCP, Hooks, and plugin management of different agents into a visual management UI — install and enable a capability once, then use it from any CLI while chatting. TeamPilot also configures multiple providers and credentials per agent CLI, so users with several accounts or provider APIs can switch models instantly and stay focused on development.
 
-Using one model for everything either burns premium tokens on trivial edits or underpowers planning and cross-checking. TeamPilot lets **each member run a different model tier** in parallel—mixing capability, speed, and cost in the same team:
+### A full-featured agent development environment
 
-| Role (example) | Typical tier | Good for |
-|----------------|--------------|----------|
-| Lead / planning | High (e.g. Opus, flagship) | Requirements, design docs, scope and acceptance criteria |
-| Implementation | Fast / light (e.g. Haiku, small models) | Bulk edits, scaffolding, getting the happy path working |
-| Review | Mid (e.g. Sonnet) | Code review, gap checks against the plan, cross-file consistency |
+TeamPilot provides the usual agent-IDE capabilities, including but not limited to: agent usage monitoring, automations, post-task notifications, a file tree and code editor, source control (Git commit graph, viewing commit info, committing, cross-branch file-diff comparison), workspaces, session content search, a code/doc reading editor, terminal tools, quick launch, and more.
 
-This is not coding-only: docs, research, ops triage, or any **multi-step pipeline** can use the same pattern—strong models to **think and specify**, light models to **execute quickly**, mid-tier models to **verify and align cross-cutting constraints**—so you spend less on tokens, ship faster, and hit complex **cross-module / cross-functional** goals without one chat playing architect, worker, and QA at once.
+<p align="center">
+  <img src="./assets/readme-banner.png" alt="TeamPilot" width="640"/>
+</p>
 
-**Typical workflows:**
+### An easy-to-use interface
 
-- **Tiered models**: Set different providers/models for `team-lead`, implementer, and reviewer; switch member tabs to switch terminal and model—no global retuning each time.
-- **Parallel roles**: `team-lead` coordinates and delegates (Claude Code expects a member named exactly `team-lead`); other members handle implementation, review, etc.—switch terminals in one window.
-- **Mixed CLIs**: In a **mixed** team, members can run different CLIs (Claude Code, Codex, opencode, cursor, flashskyai) and still coordinate through an in-process team bus—use each tool where it's strongest.
-- **Machine assignment**: On the landing **Machine assignment** panel (and workspace member targets), pin each replica to **local** or an **SSH** host. Mixed sessions only start pinned instances; unpinned roles stay off the bus until you place them.
-- **Scenario presets**: Maintain teams for “daily dev”, “deep refactor”, “docs”—switch teams instead of retyping models and prompts. Browse and import shareable templates from **Team Hub** / **Expert Hub** (below).
-- **Session binding**: Opening a workspace session injects the active launch identity into CLI args (e.g. `--team-name` / per-member session id, per-member `CONFIG_DIR`) and can resume prior CLI sessions.
+Every agent CLI runs only in a terminal, which is hard to operate and offers a poor user experience — and juggling multiple CLIs leaves you exhausted from switching. TeamPilot integrates the popular agent CLIs into one UI so you can develop with more focus and efficiency.
 
-Configure under **Settings → Team configuration** (route `/team-config`), or edit a team from **My Teams** on the home sidebar. Team launch identities persist under `launch-profiles/{id}/profile.json`; per-identity runtime CLI trees under `identities-runtime/{profileId}/`. See [workspace storage layout](docs/workspace-storage-layout.md).
+### Expert assistants
 
-### Discover, reuse, and publish
+Default agent setups rarely match the skills real-world experts bring, and Skills, prompts, and MCP are hard to configure and switch quickly. TeamPilot provides expert configuration: define multiple powerful, unique experts, and when enabled each applies to the current chat session without conflicting with others — switch between them instantly while chatting.
 
-Home sidebar globals (`/home-v2?global=…`) cover local libraries and public catalogs:
+### Multi-agent-CLI expert team collaboration
 
-| View | What it is |
-|------|------------|
-| **My Teams** | Your local team launch identities—create, edit, and open team config. |
-| **My Experts** | Reusable expert personas (prompts / defaults) you can attach across teams. |
-| **Team Hub** | Browse public team templates and clone them into My Teams (skills/plugins/MCP deps can install with the clone). |
-| **Expert Hub** | Browse public expert templates and add them to My Experts. |
+Using a single model throughout either burns premium tokens on trivial edits or underpowers planning and cross-module verification. TeamPilot lets **each member bind its own model tier**, running agents of different intelligence / speed / cost in parallel within one team:
 
-Public Team Hub, Expert Hub, and Skill Pack catalogs are maintained in [`hhoao/teampilot-resources`](https://github.com/hhoao/teampilot-resources) and tracked here under [`resources/`](resources/) (`team-hub/`, `member-hub/`, `skill-packs/`). Consumers fetch only indexed manifests from that repository, and Hub uploads open PRs against it when a GitHub token is configured.
+A team is composed of multiple experts, each **independently** specifying its CLI, model, provider, system prompt, launch flags, and machine. While chatting, each member has its own context and configuration, and they communicate with each other to get the work done.
 
-## Workspace & built-in IDE
+![readme-team-collaboration](./assets/readme-team-collaboration.png)
 
-TeamPilot is more than “several agent terminals in one window”—you can browse the repo, edit files, review diffs, and commit Git in the same UI, side by side with embedded terminals. The workspace sidebar groups sessions by **worktree**; the right tools panel offers a file tree, source control, members, mailbox, and more—less hopping between an IDE and a terminal.
+### High performance
 
-### Git worktree
+TeamPilot is built with Flutter and optimized internally — every click stays silky, every session starts fast, and the UI remains smooth even after a thousand conversation turns.
 
-For workspaces bound to a Git repo, TeamPilot supports a native **git worktree** workflow (desktop local / WSL; create/remove is not available over SSH / Android):
+### Complete remote development capability
 
-| Capability | What it does |
-|------------|--------------|
-| **Group by branch** | Sidebar sessions fold under each worktree; selecting a branch switches the active working directory—the file tree and Git panel follow. |
-| **Create worktree** | Spin off a new branch or check out an existing one; the default path is `worktrees/<repo>/<branch>` under app data, adjustable in the dialog. |
-| **Remove worktree** | Optional force (when there are uncommitted changes), optional branch deletion, optional deletion of sessions under that worktree. |
-| **Start chatting** | Optionally “start a conversation here” after creation to launch an agent in the new worktree immediately. |
+TeamPilot supports remote conversations in many scenarios: connect to a remote environment over SSH right from the mobile app at startup; keep multiple SSH profiles and pick one when creating a workspace for remote development; mix local and remote folders in the same workspace and switch environments mid-conversation; or configure a team so local and remote members develop together.
 
-Useful for parallel feature branches or giving each agent session its own checkout without disturbing the main tree.
+### Extensibility (work in progress)
 
-### CLI presets
-
-A **preset** saves “which CLI + which provider / model / reasoning-effort” as a reusable named profile so you do not re-pick everything each time you chat:
-
-| Context | How to use |
-|---------|------------|
-| **Personal workspace** | Pick the **active preset** on the **Agent** config page; the preset sets the default CLI and model tier, while per-CLI provider + model + effort maps remain available for fine-tuning. |
-| **Team** | Teams can assign a **default preset** per member; in **native** mode presets are usually locked to the team CLI, in **mixed** mode members can use presets for different CLIs. |
-| **Manage** | The **Manage presets** dialog creates, edits, and deletes entries—each with name, CLI, provider, model, and effort. |
-
-Typical pattern: presets for “quick edits”, “deep planning”, and “cheap bulk work”—switch tasks without touching global provider settings.
-
-### Skills / MCP / plugins: global library + cross-CLI reuse
-
-Capabilities use a **two-layer model**—install and enable in the app-level **global library**, then **check the ones you want** on a workspace / team identity; at session launch TeamPilot writes each target CLI’s isolated config in that tool’s format, so the **same checked list** works for Claude Code, Codex, opencode, cursor, flashskyai, and every other supported CLI:
-
-| Layer | Role |
-|-------|------|
-| **Global library** | Browse, install, and enable skills, plugins, and MCP server definitions from the home sidebar or `/skills`, `/plugins`, `/mcp`. |
-| **Identity / workspace mount** | A personal or team identity’s `ConfigBundle` stores `skillIds` / `pluginIds` / `mcpServerIds`; personal and team workspace config pages let you toggle a subset. |
-| **Per-CLI provisioning** | Each CLI uses registry writers / provisioners for its format (e.g. Claude-shaped `mcpServers`, Codex TOML, opencode config dirs); member terminals inherit on launch. |
-
-**Maintain the library once**—no reinstalling the same MCP for every CLI. Switch CLIs or run a mixed team: keep the same capability selection on the identity and TeamPilot materializes per-tool configs. **Extensions** have a separate install/enable flow, keyed by identity id.
-
-### Built-in IDE features
-
-The right tools panel and editor area provide common IDE workflows on the same working directory as agent terminals. Disk changes refresh the file tree and Git status (live watch on local / WSL; polling on SSH after agent turns, etc.):
-
-| Module | Features |
-|--------|----------|
-| **File tree** | Browse the workspace; multi-root folders (VS Code–style fold headers), filter, new file/folder, copy/cut/paste, rename, delete, copy path, open with system app, **reveal active editor file**. |
-| **Code editor** | Multi-tab embedded editor based on **re-editor**; open from the file tree or Git diff, dirty markers for unsaved edits, save prompt on close. |
-| **Source control (Git)** | VS Code–style change list: stage / unstage, stage by file or folder, discard, branch switch, inline **diff view** (syntax highlight + hunk navigation), commit message + **commit**; ✨ **AI-generated commit messages** for staged changes (configurable in settings). |
-| **Workspace search** | Sidebar search across session titles and file contents—jump to a chat or file quickly. |
-| **Team collaboration panels** | In team mode: **members** list, **mailbox** (TeamBus messages), and **board** (mixed-team task status; tap a card to open that member’s terminal). |
-
-Personal workspaces default to file tree + Git; team workspaces add members, mailbox, board, and related collaboration views.
-
-## Why TeamPilot?
-
-### Skills & plugins
-
-- **Skills**: Install and enable in the **global library**; when mounted on a personal identity or team, every member terminal under that identity shares the same capabilities.
-- **Plugins**: Visual install and management; check which plugins to enable in workspace / team config—written into each CLI’s directory on launch so environments stay aligned.
-
-### Chat workbench
-
-- **Multi-tab terminal**: Several members and/or sessions in one window instead of many OS terminal tabs.
-- **Workspaces & sessions**: Organize by repo folder and chat, with the **selected launch identity** (personal or team) bound to that work.
-- **Auto session titles**: See what each chat is about in the sidebar.
-- **Right tools panel**: File tree, Git, member list, and prompts next to the chat with less context switching.
-
-### Settings & integrations
-
-- **RTK (optional)**: Can be enabled in settings to reduce session overhead and stretch usable context.
+RTK, CodeGraph
 
 ## Installation
 
@@ -154,7 +94,7 @@ sudo dpkg -i teampilot-*-linux.deb
 sudo apt install -f
 ```
 
-Launch **TeamPilot** from the app menu. Uninstall: `sudo apt remove teampilot` (exact package name is in the deb metadata).
+Launch **TeamPilot** from the app menu after installing. Uninstall: `sudo apt remove teampilot` (exact package name is in the deb metadata).
 
 **AppImage (portable)**
 
@@ -163,82 +103,82 @@ chmod +x teampilot-*-linux.AppImage
 ./teampilot-*-linux.AppImage
 ```
 
-Requires `libfuse2` on many distros (`sudo apt install libfuse2` on Ubuntu 22.04+). For menu/Dock integration, use [AppImageLauncher](https://github.com/TheAssassin/AppImageLauncher).
-
-On desktop, agents run in a **local PTY** by default. You can switch to **SSH** in settings so the CLI runs on a remote host.
-
 ### macOS
 
 1. Download `teampilot-*-macos.dmg`.
 2. Open the DMG and drag **TeamPilot** into **Applications**.
-3. If Gatekeeper blocks the first launch: allow it under **System Settings → Privacy & Security**, or right‑click the app → **Open**.
+3. If Gatekeeper blocks the first launch: allow it under **System Settings → Privacy & Security**, or right-click the app → **Open**.
 
 ### Windows
 
-Pick one artifact from the same release:
+Pick one installer from the same release (usually all are provided):
 
 | File | Notes |
 |------|--------|
-| `*-windows-setup.exe` | **Recommended**: Inno Setup installer with shortcuts |
-| `*.msix` | For sideloading / managed deployment |
-| `*.zip` | Portable: extract and run `TeamPilot.exe` |
+| `*-windows-setup.exe` | **Recommended**: Inno Setup wizard, creates shortcuts automatically |
+| `*.msix` | For sideloading / managed deployment environments |
+| `*.zip` | Portable: extract and run `TeamPilot.exe`, no registry writes |
 
-If your CLI lives in **WSL**, point app data or the CLI path at WSL in settings. **SSH** to a remote Linux dev box is also supported.
+If your CLI lives in **WSL**, point app data or the CLI path at WSL in settings; you can also configure **SSH** in settings to reach a remote Linux dev box.
 
 ### Android
 
-Android does **not** run a local PTY. You connect over **SSH** to a machine that already has your agent CLI installed.
+Android does **not** run a local PTY — connect over **SSH** to a Linux/macOS/Windows (WSL) host that already has your target agent CLI installed.
 
-1. Download `teampilot-*-arm64-v8a.apk` (most phones) or `teampilot-*-armeabi-v7a.apk`.
+1. Download `teampilot-*-arm64-v8a.apk` (most newer phones) or `teampilot-*-armeabi-v7a.apk` per your CPU architecture.
 2. Allow installs from unknown sources, then install the APK.
-3. In **Settings**, configure SSH host, user, and key (or password).
-4. On the remote host, ensure the CLI is installed and works in the shell you get after SSH login.
+3. Open the app and configure SSH host, user, and key (or password) under **Settings**.
+4. Make sure the CLI is installed on the remote and works in the shell you get after SSH login.
 
 ## Supported CLIs
 
 | CLI | Terminal sessions | Provider config | Notes |
 |-----|-------------------|-----------------|-------|
-| **Claude Code** | Yes | Yes | Default team CLI; onboarding can detect/install. |
-| **Codex** | Yes | Yes | Launchable; joins mixed teams via the team bus. |
-| **opencode** | Yes | Yes | Config via `OPENCODE_CONFIG_DIR`. |
-| **cursor** | Yes | Yes | `cursor-agent`; HOME-isolated per member. |
-| **flashskyai** | Yes | Yes | Path resolved at startup. |
+| **Claude Code** | ✅ | ✅ | Default team CLI; onboarding can detect/install. |
+| **Codex** | ✅ | ✅ | Launchable; joins mixed teams via the team bus. |
+| **opencode** | ✅ | ✅ | Config via `OPENCODE_CONFIG_DIR`. |
+| **cursor** | ✅ | ✅ | `cursor-agent`; HOME isolated per member. |
+| **flashskyai** | ✅ | ✅ | Path auto-detected at app startup. |
 
-## Before you start
 
-After [installation](#installation), on the machine where agents actually run (local desktop, or the SSH host on Android):
 
-| Item | Notes |
-|------|--------|
-| **Your agent CLI** | Whichever CLI your team uses (Claude Code, Codex, opencode, cursor, flashskyai) on the login shell **PATH**, or set the CLI path under **Settings → Session** |
-
-First launch can run the built-in CLI detection. Installers are built by CI; building from source: **[Development guide](docs/DEVELOPMENT.md)**.
-
-## More documentation
+## Development
 
 | Doc | Audience | Topic |
-|-----|----------|--------|
-| [Development guide](docs/DEVELOPMENT.md) | Contributors / maintainers | Setup, run, test, package, CI |
-| [AGENTS.md](AGENTS.md) | Contributors / AI | Repo layout, architecture, conventions |
-| [Workspace storage layout](docs/workspace-storage-layout.md) | Contributors / AI | On-disk paths under `<teampilotRoot>` |
+|-----|----------|-------|
+| [Development guide](docs/DEVELOPMENT.md) | Contributors / maintainers | Setup, run, test, packaging, CI |
+| [AGENTS.md](AGENTS.md) | Contributors / AI | Repo layout, architecture conventions |
 
-## Terminal
 
-Embedded terminals use **[flutter_alacritty](https://github.com/hhoao/flutter_alacritty)** — a Flutter widget backed by an Alacritty-based Rust engine .
+
+## References
+
+* Embedded terminals use **[flutter_alacritty](https://github.com/hhoao/flutter_alacritty)** — a Flutter widget backed by an Alacritty-based Rust engine.
+
+
 
 ## Acknowledgements
 
 - File icons: [Material Icon Theme](https://github.com/material-extensions/vscode-material-icon-theme) (MIT) by Philipp Kief / material-extensions.
 
+
+
 ## License
 
 This project is licensed under the [GNU Affero General Public License v3.0](LICENSE).
 
+
+
 ## Community
 
-| Channel | Link |
-|---------|------|
-| **QQ group** | `1016450915` |
-| **Discord** | [Join the server](https://discord.com/channels/1518523215767666719/1518523216912449669) |
+- **QQ Group**：[112856301](https://qm.qq.com/q/ScSC18EPaE)
+
+- **Discord**：[Join the server](https://discord.com/channels/1518523215767666719/1518523216912449669)
+
+  
+
+<p align="left">
+  <img src="./assets/readme-qq-qrcode.jpg" alt="QQ 群二维码" width="220"/>
+</p>
 
 Questions, usage tips, and feedback are welcome.

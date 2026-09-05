@@ -1,144 +1,84 @@
 # TeamPilot
 
-[English](README.md) · [开发指南](docs/DEVELOPMENT.md) · 架构与 AI 约定见 [AGENTS.md](AGENTS.md)
+<p align="center">
+  <img src="assets/icon.svg" alt="TeamPilot" width="100"/>
+</p>
 
-**TeamPilot** 是基于终端 AI Agent 封装的面向团队易用的桌面客户端。它的核心是 **团队能力**：在 GUI 里为每位成员单独指定模型、提示词、乃至不同的 CLI，按角色分档协作（省 Token、快实现、准验收），并一键为每个成员启动独立内嵌终端，通过本机或远程的 Claude Code、Codex、opencode、cursor、flashskyai 等 CLI 与 Agent 协作；**工作区**与**会话**则负责把这套团队（或单人个人身份）绑定到具体仓库目录与对话上。
 
-![应用预览](assets/image.png)
-![应用预览](assets/image1.png)
+<p align="center">
+  <a href="README.md">English</a> •
+  <a href="#核心功能">核心功能</a> •
+  <a href="#安装">安装</a> •
+  <a href="#支持的-cli">支持的 CLI</a> •
+  <a href="#开发">开发</a> •
+  <a href="#许可证">许可证</a> •
+  <a href="#社区">社区</a>
+</p>
 
-## 两种用法
+<div align="center">
+  <a href="LICENSE"><img src="https://img.shields.io/badge/license-AGPL--3.0-blue.svg" alt="License"></a>
+  <a href="https://github.com/hhoao/teampilot/releases"><img src="https://img.shields.io/github/v/release/hhoao/teampilot?logo=github&label=Release" alt="TeamPilot Release"></a>
+  <a href="https://github.com/hhoao/teampilot/stargazers"><img src="https://img.shields.io/github/stars/hhoao/teampilot?logo=github&label=Stars" alt="TeamPilot Stars"></a>
+  <a href="https://github.com/hhoao/teampilot/actions/workflows/client-verify.yml"><img src="https://github.com/hhoao/teampilot/actions/workflows/client-verify.yml/badge.svg" alt="TeamPilot CI"></a>
+  <br>
+  <a href="https://github.com/hhoao/teampilot/releases"><img src="https://img.shields.io/badge/Linux-FCC624?logo=linux&logoColor=black" alt="Linux"></a>
+  <a href="https://github.com/hhoao/teampilot/releases"><img src="https://img.shields.io/badge/macOS-000000?logo=apple&logoColor=white" alt="macOS"></a>
+  <a href="https://github.com/hhoao/teampilot/releases"><img src="https://img.shields.io/badge/Windows-0078D6?logo=windows&logoColor=white" alt="Windows"></a>
+  <a href="https://github.com/hhoao/teampilot/releases"><img src="https://img.shields.io/badge/Android-3DDC84?logo=android&logoColor=black" alt="Android"></a>
+  <a href="https://qm.qq.com/"><img src="https://img.shields.io/badge/QQ%20群-1016450915-0099FF?logo=tencentqq&logoColor=white" alt="TeamPilot QQ Group"></a>
+  <a href="https://discord.com/channels/1518523215767666719/1518523216912449669"><img src="https://img.shields.io/badge/Discord-加入群组-5865F2?logo=discord&logoColor=white" alt="TeamPilot Discord"></a>
+</div>
+**TeamPilot** 是一个集成主流 Agent CLI （Claude code、Codex等）的全平台（兼移动端）用户易用的 Agent 工作台， 它可以作为一个对话助手，也可以作为一个功能齐全的 Agent 驱动的 IDE。它在目前流行的 Agent CLI 之上封装一个 UI 层，将它们的聊天记录可视化、配置文件多层隔离化，它能在一个地方管理全 Agent CLI 全局、不同的工作区之间特定的Skills、MCP、Hooks，以及可以给每个Agent CLI配置多种供应商，以让每个会话都能快速使用所有 CLI 的所有自定义模型，同时它还具有独特的专家助手和能让所有 Agent CLI 在多台机器协同工作的功能，它能给任何人提供非常方便的定制化对话能力。
 
-| 模式 | 适用场景 | 你得到什么 |
-|------|----------|------------|
-| **简单模式**（个人） | 只想在某个仓库里跑一个 Agent | 跳过组队——直接拉起**单个 CLI** 开聊，无需搭建成员名册。 |
-| **团队模式** | 多 Agent / 分档协作 / 混合 CLI | 先配好团队，再**每个成员一个终端**并行工作。这是 TeamPilot 的核心能力（见下文）。 |
+![readme-overview-1](./assets/readme-overview-1.png)
 
-**简单模式不是阉割版。** 个人工作区同样拥有完整的配置能力，只是省去了多成员名册：
+![readme-overview-2](./assets/readme-overview-2.png)
 
-- **多 CLI、多模型，可随时切换。** 每个 CLI（Claude Code、Codex、opencode、cursor、flashskyai）在**个人启动身份**上各自保存**自己的 Provider + 模型 + 推理力度（effort）**，所以可以为每个工具配置多套模型、随时切换当前 CLI/模型，无需改全局设置——单 Agent 也能享受和团队一样的分档收益。
-- **CLI 预设**：把常用 CLI + 模型组合保存为具名预设，一键切换。
-- **按身份的 Agent** 与**按工作区的技能、插件、MCP、扩展**——个人身份承载提示词与模型分档；能力挂载在工作区上。技能 / MCP / 插件在全局库安装一次，各 CLI 共用。
-- **一个永久内置的 *个人助手* 身份**，加上你在任意仓库上打开的工作区，与团队工作区并列摆放——先用简单模式起步，等任务需要时再升级成团队。
+## 核心功能
 
-## 核心功能：团队配置
+### 全平台一致的 Agent 客户端
 
-团队配置是 TeamPilot 与「单终端 + 手写参数」方式的根本区别——**先配好团队，再在聊天工作台里按成员并行工作**。
+目前市面上的无论是Codex、Claude Code，它们都只有在桌面客户端拥有最丰富的功能，而移动端大多只能对话聊天，而 Teampilot 使用 Flutter，内部抽离了多个文件系统实现，让用户无论是在桌面端还是移动端，都能体验完整一致的功能。
 
-| 配置项 | 作用 |
-|--------|------|
-| **团队** | 一套完整的多 Agent 方案：选择协调模式（单 CLI 的 **native** 原生团队，或跨 CLI 的 **mixed** 混合团队）、团队级参数，并绑定该团队专用的技能与插件。 |
-| **成员** | 团队内的角色（如 `team-lead`、开发者、审查者）：**各自独立**指定模型、Provider、系统提示词与启动参数——在混合模式下还可指定各自的 CLI；连接会话时为**每位成员单独 spawn 一个 PTY 终端**，模型与上下文互不混用。 |
-| **技能 / 插件** | 按团队挂载能力扩展；启动时写入该团队隔离的 CLI 配置目录，成员终端自动继承。 |
+### 多 CLI 功能抽象隔离
 
-### 按成员隔离模型：省 Token、分档协作
+TeamPilot的多 CLI功能抽象隔离，将不同 Agent 的 Skills、MCP、Hooks、插件管理都抽象成可视化的用户管理界面，用户只需要在管理界面安装启用相应的功能，即可在聊天时在不同CLI体验到相应的功能，同时 Teampilot 还可以给 Agent CLI 配置多个不同的供应商和凭据，让有多个账户、供应商API的用户可以快速切换模型，专注开发。
+
+### 功能齐全的Agent开发环境
+
+TeamPilot提供常见Agent IDE 能力，包括但不限于，Agent用量查询监听、自动化、任务完成后提示、文件树代码编辑器，源代码管理，（Git 提交图、查看Commit信息、Commit、多分支文件改动对比)、工作区、会话内容搜索、代码文档阅读编辑器、终端工具、快速启动等等。
+
+<p align="center">
+  <img src="./assets/readme-banner.png" alt="弧迹" width="640"/>
+</p>
+
+### 易用的用户界面
+
+所有的Agent CLI只能在终端中运行，它们都让用户难以操作使用，用户体验差，而且多个 CLI 会让用户来回切换心力疲惫，TeamPilot将目前常用的Agent CLI都集成到了一个用户界面，让用户开发更加专注和高效。
+
+### 专家助手
+
+默认的 Agent 开发往往难以拥有和匹配现实生活中专家精通的能力和需求，而Skills、Prompt、MCP又难以快速配置和切换，Teampilot提供了专家配置功能，让用户可以高度自定义配置多个强力独特的专家，它们启用后都能应用到当前的聊天会话中，不会和其他的会话冲突，可以在对话时快速切换使用。
+
+### 和多 Agent CLI 专家团队协作
 
 若全程只用一个模型，往往要么在简单改动上浪费高价 Token，要么在方案与跨模块核对上力不从心。TeamPilot 让**每个成员绑定自己的模型档位**，在同一团队里并行跑不同「智商 / 速度 / 成本」的 Agent：
 
-| 角色示例 | 常见模型档位 | 适合做什么 |
-|----------|--------------|------------|
-| 统筹 / 方案 | 高级（如 Opus、旗舰档） | 拆需求、写技术方案、定边界与验收标准 |
-| 实现 | 轻量 / 快速（如 Haiku、小模型） | 按方案批量改代码、补样板、跑通主路径 |
-| 审查 | 中级（如 Sonnet） | Code review、对照方案查漏、跨文件 / 跨模块一致性 |
+团队由多个专家组成，**各自独立**指定不同的CLI、模型、Provider、系统提示词、启动参数以及所处的机器，聊天时每个成员会有不同的上下文，不同的配置进行相互通信完成工作。
 
-这不限于写代码：文档起草、调研汇总、运维排障等**任意多步流水线**都可以这样拆——用强模型把需求「想清楚、写清楚」，用轻模型「快执行」，用中级模型「验结果、对齐跨领域约束」，在控制成本的同时加快落地，也更易**精准完成跨模块、跨职能的复杂需求**（而不必让同一个会话又当架构师又当苦力又当质检）。
+![readme-team-collaboration](./assets/readme-team-collaboration.png)
 
-**典型用法：**
+### 高性能
 
-- **模型分档**：为 `team-lead`、实现位、审查位分别配置不同 Provider / 模型；切换成员标签即切换终端与模型，无需反复改全局设置。
-- **分工协作**：`team-lead` 负责统筹与委派（Claude Code 要求存在名为 `team-lead` 的成员），其他成员承担实现、审查等子任务，在同一窗口内切换终端即可。
-- **混合 CLI**：在 **mixed** 团队中，成员可运行不同的 CLI（Claude Code、Codex、opencode、cursor、flashskyai），并通过进程内消息总线协调——让每个工具各尽所长。
-- **机器分配**：在落地页的 **机器分配** 面板（以及工作区成员目标）里，把每个副本钉到 **本机** 或某个 **SSH** 主机。混合会话只会启动已钉扎的实例；未分配的角色不会进总线，直到你完成放置。
-- **场景切换**：为「日常开发」「深度重构」「文档撰写」各建一个团队，换任务时切换团队，无需重配模型与提示词。也可从 **团队中心** / **专家中心**（见下）浏览并导入可分享模板。
-- **与会话联动**：打开工作区会话时，TeamPilot 将当前启动身份注入启动参数（如 `--team-name`、每位成员的会话 id、独立 `CONFIG_DIR`），并支持恢复历史 CLI 会话。
+Teampilot使用了Flutter开发，内部进行了多处优化，它让用户界面的每一个点击都丝滑流畅、每个会话都能快速启动，而且即使对话千轮用户界面还是流畅依旧。
 
-设置入口：**设置 → 团队配置**（路由 `/team-config`），或从主页侧栏 **我的团队** 打开编辑。团队启动身份保存在 `launch-profiles/{id}/profile.json`；按身份隔离的运行时 CLI 目录在 `identities-runtime/{profileId}/` 下。详见[工作区存储布局](docs/workspace-storage-layout.md)。
+### 完备的远程开发能力
 
-### 发现、复用与发布
+Teampilot提供多种场景远程对话的能力，可以在移动端 app 启动时通过 ssh 连接远程环境，可以配置多个ssh配置，在创建工作区时选中使用进行远程开放，还可以在一个工作区同时包含本地和远程目录，可快速切换环境对话，也可以配置团队让远程和本地协调开发。
 
-主页侧栏全局视图（`/home-v2?global=…`）覆盖本地库与公开目录：
+### 扩展能力（还在开发）
 
-| 视图 | 作用 |
-|------|------|
-| **我的团队** | 本地团队启动身份——创建、编辑并打开团队配置。 |
-| **我的专家** | 可跨团队复用的专家人设（提示词 / 默认项）。 |
-| **团队中心**（Team Hub） | 浏览公开团队模板并克隆到「我的团队」（克隆时可一并安装技能 / 插件 / MCP 依赖）。 |
-| **专家中心**（Expert Hub） | 浏览公开专家模板并加入「我的专家」。 |
-
-公开的团队中心、专家中心与技能包目录统一维护在 [`hhoao/teampilot-resources`](https://github.com/hhoao/teampilot-resources)，本仓库通过 [`resources/`](resources/) 子模块跟踪（内含 `team-hub/`、`member-hub/`、`skill-packs/`）。客户端只按索引拉取清单；在「我的团队 / 我的专家」中配置好 GitHub token 后，可 **上传** 本地团队或专家，向该 registry 发起 PR。
-
-## 工作区与内置 IDE
-
-TeamPilot 不只是「多开几个 Agent 终端」——同一个窗口里就能完成常见的仓库浏览、改文件、看 diff、提交 Git，并与内嵌终端并排使用。工作区侧栏按 **worktree** 分组会话；右侧工具栏提供文件树、源代码管理、成员与邮箱等面板，减少在 IDE 与终端之间来回切换。
-
-### Git Worktree
-
-在绑定 Git 仓库的工作区里，TeamPilot 原生支持 **git worktree** 工作流（桌面本机 / WSL；SSH / Android 端不提供创建与删除）：
-
-| 能力 | 说明 |
-|------|------|
-| **按分支分组** | 侧栏会话按 worktree 折叠分组；选中某一分支即切换当前工作目录，文件树与 Git 面板随之跟随。 |
-| **创建 worktree** | 从主仓库派生新分支或检出已有分支；目录默认落在应用数据下的 `worktrees/<仓库名>/<分支>`，也可在对话框中调整路径。 |
-| **删除 worktree** | 支持强制删除（有未提交改动时）、可选同时删除分支、可选一并删除该 worktree 下的会话。 |
-| **一键开聊** | 创建时可勾选「创建后在此开始一个会话」，在新 worktree 里直接拉起 Agent。 |
-
-适合并行开发多个功能分支、或在不影响主工作区的前提下让不同 Agent 会话各自占用独立检出目录。
-
-### CLI 预设
-
-**预设**把「用哪个 CLI + 哪套 Provider / 模型 / 推理力度」保存成可复用的具名方案，避免每次开聊重复点选：
-
-| 场景 | 用法 |
-|------|------|
-| **个人工作区** | 在 **Agent** 配置页选择**当前预设**；预设决定默认 CLI 与模型档位，仍可配合「每个 CLI 各自保存 Provider + 模型 + effort」做细调。 |
-| **团队** | 团队可为成员指定**默认预设**；native 模式下预设通常锁定团队 CLI，mixed 模式下可为不同成员配置不同 CLI 的预设。 |
-| **管理** | **管理预设**对话框集中新建、编辑、删除；每条预设包含名称、CLI、Provider、模型与 effort。 |
-
-典型做法：为「日常小改」「深度方案」「廉价批量实现」各建一条预设，换任务时一键切换，而不必改全局 Provider 设置。
-
-### 技能 / MCP / 插件：全局库 + 跨 CLI 复用
-
-能力资源采用**两层结构**——先在应用级**全局库**安装与启用，再在工作区 / 团队身份上**勾选挂载**；启动会话时 TeamPilot 按目标 CLI 的格式写入各自隔离的配置目录，**同一份勾选列表**可复用到 Claude Code、Codex、opencode、cursor、flashskyai 等全部支持的 CLI：
-
-| 层级 | 作用 |
-|------|------|
-| **全局库** | 在主页侧栏或 `/skills`、`/plugins`、`/mcp` 集中浏览、安装、启用技能、插件与 MCP 服务器定义。 |
-| **身份 / 工作区挂载** | 个人身份或团队身份的 `ConfigBundle` 记录要启用的 `skillIds` / `pluginIds` / `mcpServerIds`；个人与团队工作区配置页均可勾选子集。 |
-| **按 CLI 下发** | 各 CLI 通过注册表内的专用 writer / provisioner 生成对应格式（如 Claude 形 `mcpServers`、Codex TOML、opencode 配置目录等），成员终端启动时自动继承。 |
-
-因此：**库只维护一份**，不必为每个 CLI 重复安装同一套 MCP；换 CLI 或开混合团队时，只要在身份上勾选同一组能力，落地配置由 TeamPilot 按工具分别生成。扩展（Extensions）另有独立安装与启用流程，按身份 id 关联。
-
-### 内置 IDE 能力
-
-右侧工具栏与编辑区提供常见 IDE 能力，与 Agent 终端共享同一工作目录，磁盘变更会联动刷新文件树与 Git 状态（本机 / WSL 实时监听；SSH 端在 Agent 回合结束等时机轮询刷新）：
-
-| 模块 | 能力 |
-|------|------|
-| **文件树** | 浏览工作区目录；支持多根文件夹（VS Code 式折叠头）、过滤、新建文件/文件夹、复制/剪切/粘贴、重命名、删除、复制路径、用系统应用打开、**定位当前编辑文件**。 |
-| **代码编辑器** | 基于 **re-editor** 的多标签内嵌编辑器；从文件树或 Git diff 打开文件，未保存改动有脏标记，关闭前提示保存。 |
-| **源代码管理（Git）** | VS Code 风格的变更列表：暂存 / 取消暂存、按文件或目录暂存、放弃更改、分支切换、内联 **diff 视图**（语法高亮与行间导航）、填写提交说明并 **提交**；可对暂存变更用 ✨ **AI 生成提交说明**（可在设置中配置）。 |
-| **工作区搜索** | 侧栏搜索入口：同时检索会话标题与仓库内文件内容，快速跳转到对应对话或文件。 |
-| **团队协作面板** | 团队模式下还可打开**成员**列表、**邮箱**（TeamBus 消息）与**看板**（混合团队任务状态，点击卡片可跳到对应成员终端）。 |
-
-个人工作区默认展示文件树与 Git；团队工作区在此基础上增加成员、邮箱、看板等协作视图。
-
-## 为什么选择 TeamPilot？
-
-### 技能与插件
-
-- **技能（Skills）**：在**全局库**安装与启用；挂载到个人身份或团队后，该身份下所有成员终端共享同一套能力。
-- **插件（Plugins）**：可视化安装与管理；在工作区 / 团队配置中勾选要启用的插件，启动时写入各 CLI 对应目录，减少成员间环境不一致。
-
-### 聊天与工作台
-
-- **多标签终端**：多个成员 / 会话放在一个窗口里推进，少开一堆系统终端。
-- **工作区与会话**：按仓库目录和对话整理记录，并把**当前选中的启动身份**（个人或团队）绑定到该次工作。
-- **自动会话标题**：侧栏一眼看出每条对话在聊什么。
-- **右侧工具栏**：文件树、Git、成员列表与提示词就在聊天旁，减少来回切换。
-
-### 设置与集成
-
-- **RTK（可选）**：可在设置中开启，帮助压缩会话占用、延长可用上下文。
+RTK、CodeGraph
 
 ## 安装
 
@@ -162,10 +102,6 @@ sudo apt install -f
 chmod +x teampilot-*-linux.AppImage
 ./teampilot-*-linux.AppImage
 ```
-
-需要 `libfuse2`（Ubuntu 22.04+ 常需 `sudo apt install libfuse2`）。若希望写入开始菜单 / Dock，可配合 [AppImageLauncher](https://github.com/TheAssassin/AppImageLauncher)。
-
-桌面端默认在本机以 PTY 直接启动 Agent CLI 终端；也可在设置中改用 **SSH** 连接远端主机（CLI 在远端运行）。
 
 ### macOS
 
@@ -204,41 +140,45 @@ Android 版**不运行本机 PTY**，需通过 **SSH** 连接已安装目标 Age
 | **cursor** | ✅ | ✅ | `cursor-agent`；按成员隔离 HOME。 |
 | **flashskyai** | ✅ | ✅ | 应用启动时自动探测路径。 |
 
-## 使用前准备
 
-完成[安装](#安装)后，在**运行 TeamPilot 的机器**（桌面为本机，Android 为 SSH 所连远端）准备：
 
-| 项目 | 说明 |
-|------|------|
-| **你的 Agent CLI** | 团队所用的 CLI（Claude Code、Codex、opencode、cursor、flashskyai）已安装且在登录 shell 的 **PATH** 中，或在 **设置 → 会话** 中填写 CLI 绝对路径 |
-
-首次启动可按引导检测 CLI。安装包由 CI 自动构建；从源码编译见 **[开发指南](docs/DEVELOPMENT.md)**。
-
-## 更多文档
+## 开发
 
 | 文档 | 读者 | 内容 |
 |------|------|------|
 | [开发指南](docs/DEVELOPMENT.md) | 贡献者 / 维护者 | 环境、本地运行、测试、打包与 CI |
 | [AGENTS.md](AGENTS.md) | 贡献者 / AI | 仓库结构、架构约定 |
-| [工作区存储布局](docs/workspace-storage-layout.md) | 贡献者 / AI | `<teampilotRoot>` 下的磁盘路径 |
 
-## 终端
 
-内嵌终端使用 **[flutter_alacritty](https://github.com/hhoao/flutter_alacritty)** — 一个基于 Alacritty 的 Rust 引擎驱动的 Flutter 组件。
+
+## 引用
+
+* 内嵌终端使用 **[flutter_alacritty](https://github.com/hhoao/flutter_alacritty)** — 一个基于 Alacritty 的 Rust 引擎驱动的 Flutter 组件。
+
+
 
 ## 致谢
 
 - 文件图标：[Material Icon Theme](https://github.com/material-extensions/vscode-material-icon-theme)（MIT 协议），作者 Philipp Kief / material-extensions。
 
+
+
 ## 许可证
 
 本项目采用 [GNU Affero General Public License v3.0](LICENSE)。
 
+
+
 ## 社区
 
-| 渠道 | 链接 |
-|------|------|
-| **QQ 群** | `1016450915` |
-| **Discord** | [加入频道](https://discord.com/channels/1518523215767666719/1518523216912449669) |
+- **QQ 群**：[112856301](https://qm.qq.com/q/ScSC18EPaE)
+
+- **Discord**：[加入群组](https://discord.com/channels/1518523215767666719/1518523216912449669)
+
+  
+
+<p align="left">
+  <img src="./assets/readme-qq-qrcode.jpg" alt="QQ 群二维码" width="220"/>
+</p>
 
 欢迎反馈问题、交流用法与贡献想法。
