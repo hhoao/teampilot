@@ -19,7 +19,6 @@ class ChatPageStructuralSignal {
     required this.selectedMemberId,
     required this.memberSelectionVersion,
     required this.sessionLaunchError,
-    required this.pinnedBySessionId,
   });
 
   final List<String> tabIds;
@@ -30,7 +29,6 @@ class ChatPageStructuralSignal {
   /// switches even though [selectedMemberId] is mutated on [ChatTab] before emit.
   final int memberSelectionVersion;
   final String? sessionLaunchError;
-  final Map<String, bool> pinnedBySessionId;
 
   @override
   bool operator ==(Object other) {
@@ -40,11 +38,7 @@ class ChatPageStructuralSignal {
         newChatActive == other.newChatActive &&
         selectedMemberId == other.selectedMemberId &&
         memberSelectionVersion == other.memberSelectionVersion &&
-        sessionLaunchError == other.sessionLaunchError &&
-        const MapEquality<String, bool>().equals(
-          pinnedBySessionId,
-          other.pinnedBySessionId,
-        );
+        sessionLaunchError == other.sessionLaunchError;
   }
 
   @override
@@ -55,7 +49,6 @@ class ChatPageStructuralSignal {
     selectedMemberId,
     memberSelectionVersion,
     sessionLaunchError,
-    const MapEquality<String, bool>().hash(pinnedBySessionId),
   );
 }
 
@@ -85,17 +78,5 @@ ChatPageStructuralSignal chatPageStructuralSignal({
     sessionLaunchError: isForeground
         ? (activeTab?.info.launchError ?? state.sessionLaunchError)
         : activeTab?.info.launchError,
-    pinnedBySessionId: _pinnedForTabIds(state, tabIds),
   );
-}
-
-Map<String, bool> _pinnedForTabIds(ChatState state, List<String> tabIds) {
-  final ids = tabIds.toSet();
-  final pinned = <String, bool>{};
-  for (final session in state.sessions) {
-    if (ids.contains(session.sessionId)) {
-      pinned[session.sessionId] = session.pinned;
-    }
-  }
-  return pinned;
 }
