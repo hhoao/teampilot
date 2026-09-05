@@ -22,6 +22,7 @@ class WorkbenchTabMenuContext {
     this.onCloseRight,
     this.onCloseAll,
     this.onPin,
+    this.onUnpin,
     this.workContext,
   });
 
@@ -51,6 +52,9 @@ class WorkbenchTabMenuContext {
   /// Closes every tab in the workspace's strip.
   final VoidCallback? onCloseAll;
   final VoidCallback? onPin;
+
+  /// Unpins a pinned tab (context-menu unpin entry).
+  final VoidCallback? onUnpin;
 
   final RuntimeContext? workContext;
 }

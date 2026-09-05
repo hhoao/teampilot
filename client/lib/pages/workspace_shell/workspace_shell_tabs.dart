@@ -338,6 +338,8 @@ class WorkbenchStripTabChip extends StatefulWidget {
     this.onCloseRight,
     this.onCloseAll,
     this.onPin,
+    this.onUnpin,
+    this.onDoubleTap,
     this.working = false,
     this.preview = false,
     this.pinnable = false,
@@ -370,6 +372,12 @@ class WorkbenchStripTabChip extends StatefulWidget {
   /// Closes every tab in the workspace's strip.
   final VoidCallback? onCloseAll;
   final VoidCallback? onPin;
+
+  /// Unpins a pinned tab (pin icon / context menu).
+  final VoidCallback? onUnpin;
+
+  /// Double-tap: promote when preview, toggle pin otherwise.
+  final VoidCallback? onDoubleTap;
   final IconData icon;
   final CliTool? cli;
   final Color? accentColor;
@@ -397,6 +405,7 @@ class WorkbenchStripTabChipState extends State<WorkbenchStripTabChip> {
       onCloseRight: widget.onCloseRight,
       onCloseAll: widget.onCloseAll,
       onPin: widget.onPin,
+      onUnpin: widget.onUnpin,
     );
     return WorkbenchTabMenuComposer.compose(
       widget.menuSources ?? defaultWorkbenchTabMenuSources(),
@@ -468,11 +477,14 @@ class WorkbenchStripTabChipState extends State<WorkbenchStripTabChip> {
       tooltip: widget.filePath,
       active: widget.active,
       preview: widget.preview,
+      pinned: widget.pinned,
       working: working || waiting,
       workingIndicator: workingIndicator,
       accentColor: widget.accentColor,
       onTap: widget.onTap,
       onClose: widget.onClose,
+      onUnpin: widget.onUnpin,
+      onDoubleTap: widget.onDoubleTap,
       onSecondaryTapDown: _showTabContextMenuAtTap,
       onLongPress: defaultTargetPlatform == TargetPlatform.android
           ? _showTabContextMenuAtChipCenter
