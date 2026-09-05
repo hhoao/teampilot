@@ -10,6 +10,8 @@ import 'package:teampilot/services/host/host_one_shot_runner.dart';
 import 'package:teampilot/services/io/local_filesystem.dart';
 import 'package:teampilot/services/storage/app_storage.dart';
 
+import '../../support/faithful_shell_exec.dart';
+
 SSHRunResult _sshOk(String stdout, {int exitCode = 0}) {
   final bytes = utf8.encode(stdout);
   return SSHRunResult(
@@ -59,6 +61,68 @@ void main() {
       expect(commands.single, contains('command -v git'));
     });
 
+    test('isAvailable true when remote host has git (real shell semantics)', () async {
+      // The probe must not swallow `command -v` output while still requiring
+      // non-empty stdout as the success signal (SSH exit status can be null).
+      final runner = RemoteGitCommandRunner(
+        hostKey: 'probe-git-present',
+        execShell: faithfulShellExec,
+      );
+
+      expect(await runner.isAvailable, isTrue);
+    });
+
+    test('isAvailable false when remote host lacks git', () async {
+      final runner = RemoteGitCommandRunner(
+        hostKey: 'probe-git-missing',
+        execShell: (cmd) => faithfulShellExec(cmd, path: '/nonexistent'),
+      );
+
+      expect(await runner.isAvailable, isFalse);
+    });
+
+    test('isAvailable true for configured absolute executable (real shell semantics)', () async {
+      final runner = RemoteGitCommandRunner(
+        hostKey: 'probe-exe-absolute',
+        gitExecutable: '/bin/sh',
+        execShell: faithfulShellExec,
+      );
+
+      expect(await runner.isAvailable, isTrue);
+    });
+
+    test('isAvailable true for configured bare name on PATH (real shell semantics)', () async {
+      final runner = RemoteGitCommandRunner(
+        hostKey: 'probe-exe-bare',
+        gitExecutable: 'sh',
+        execShell: faithfulShellExec,
+      );
+
+      expect(await runner.isAvailable, isTrue);
+    });
+
+    test('isAvailable false for configured missing path (real shell semantics)', () async {
+      final runner = RemoteGitCommandRunner(
+        hostKey: 'probe-exe-missing',
+        gitExecutable: '/nonexistent/git-x',
+        execShell: faithfulShellExec,
+      );
+
+      expect(await runner.isAvailable, isFalse);
+    });
+
+    test('isAvailable false for configured non-executable path (real shell semantics)', () async {
+      // `command -v` echoes non-executable paths, so the probe must gate
+      // slash-paths on `test -x` instead.
+      final runner = RemoteGitCommandRunner(
+        hostKey: 'probe-exe-not-executable',
+        gitExecutable: '/etc/hostname',
+        execShell: faithfulShellExec,
+      );
+
+      expect(await runner.isAvailable, isFalse);
+    });
+
     test('runInDirectory shell-quotes repo path and args', () async {
       final commands = <String>[];
       final runner = RemoteGitCommandRunner(
@@ -81,6 +145,21 @@ void main() {
   });
 
   group('WslGitCommandRunner', () {
+    test('isAvailable true when git exists in the distro (real shell semantics)', () async {
+      // The probe must not swallow `command -v` output while still requiring
+      // non-empty stdout as the success signal.
+      final runner = WslGitCommandRunner(
+        distro: 'Ubuntu',
+        wslRunner: (exe, args, {stdoutEncoding, stderrEncoding}) async {
+          final cmdIndex = args.indexOf('-lc');
+          final cmd = cmdIndex >= 0 ? args[cmdIndex + 1] : '';
+          return Process.run('sh', ['-c', cmd]);
+        },
+      );
+
+      expect(await runner.isAvailable, isTrue);
+    });
+
     test('runInDirectory invokes wsl.exe git -C', () async {
       final calls = <List<String>>[];
       final runner = WslGitCommandRunner(

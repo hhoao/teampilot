@@ -183,7 +183,7 @@ class WslGitCommandRunner implements GitCommandRunner {
     final result = await _host.run(
       const HostRunRequest(
         executable: 'sh',
-        arguments: ['-lc', 'command -v git >/dev/null 2>&1 || which git'],
+        arguments: ['-lc', 'command -v git 2>/dev/null || which git 2>/dev/null'],
       ),
     );
     return result.succeeded && result.stdout.trim().isNotEmpty;
@@ -238,12 +238,16 @@ class RemoteGitCommandRunner implements GitCommandRunner {
 
   Future<bool> _probeAvailability() async {
     final exe = _git;
+    // Probe over stdout, not exit status: SSH servers may omit exit status
+    // (sshRunSucceeded treats null as success), so a silent probe cannot
+    // distinguish installed from missing. Slash-paths must pass `test -x`
+    // because `command -v` echoes non-executable paths.
     final probe = _exe != null
-        ? "test -x '$exe' || command -v '$exe' >/dev/null 2>&1"
-        : 'command -v git >/dev/null 2>&1 || which git 2>/dev/null';
+        ? "test -x '$exe' && printf '%s\\n' x || "
+            "{ case '$exe' in */*) exit 1;; *) command -v '$exe' 2>/dev/null;; esac; }"
+        : 'command -v git 2>/dev/null || which git 2>/dev/null';
     final result = await _execShell(probe);
     if (sshRunFailed(result)) return false;
-    if (_exe != null) return true;
     return utf8.decode(result.stdout, allowMalformed: true).trim().isNotEmpty;
   }
 
