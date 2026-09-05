@@ -215,10 +215,12 @@ class LogViewerBody extends StatelessWidget {
 
     return ColoredBox(
       color: cs.workspaceCode,
-      child: LogViewerLineList(
-        lines: displayedLines,
-        wrapLines: wrapLines,
-        scrollController: scrollController,
+      child: SelectionArea(
+        child: LogViewerLineList(
+          lines: displayedLines,
+          wrapLines: wrapLines,
+          scrollController: scrollController,
+        ),
       ),
     );
   }

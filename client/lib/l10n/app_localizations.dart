@@ -10916,6 +10916,18 @@ abstract class AppLocalizations {
   /// **'Copy log path'**
   String get logViewerCopyPath;
 
+  /// No description provided for @logViewerCopyAll.
+  ///
+  /// In en, this message translates to:
+  /// **'Copy all logs'**
+  String get logViewerCopyAll;
+
+  /// No description provided for @logViewerAllCopied.
+  ///
+  /// In en, this message translates to:
+  /// **'All filtered logs copied'**
+  String get logViewerAllCopied;
+
   /// No description provided for @logViewerClearOld.
   ///
   /// In en, this message translates to:
@@ -15481,6 +15493,30 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'The camera scanner is unavailable. Paste the code instead.'**
   String get connectScannerUnavailable;
+
+  /// No description provided for @connectScannerPermissionDenied.
+  ///
+  /// In en, this message translates to:
+  /// **'Camera permission is required to scan QR codes.'**
+  String get connectScannerPermissionDenied;
+
+  /// No description provided for @connectScannerHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Hold 10–30 cm from the desktop QR. Pinch to zoom; use the flashlight in dim light.'**
+  String get connectScannerHint;
+
+  /// No description provided for @connectOpenSettings.
+  ///
+  /// In en, this message translates to:
+  /// **'Open settings'**
+  String get connectOpenSettings;
+
+  /// No description provided for @connectQrEnlargeHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Tap the QR code to enlarge it for easier scanning.'**
+  String get connectQrEnlargeHint;
 
   /// No description provided for @connectCheckAgain.
   ///

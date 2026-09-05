@@ -6122,6 +6122,12 @@ class AppLocalizationsEn extends AppLocalizations {
   String get logViewerCopyPath => 'Copy log path';
 
   @override
+  String get logViewerCopyAll => 'Copy all logs';
+
+  @override
+  String get logViewerAllCopied => 'All filtered logs copied';
+
+  @override
   String get logViewerClearOld => 'Remove old logs';
 
   @override
@@ -8702,6 +8708,21 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get connectScannerUnavailable =>
       'The camera scanner is unavailable. Paste the code instead.';
+
+  @override
+  String get connectScannerPermissionDenied =>
+      'Camera permission is required to scan QR codes.';
+
+  @override
+  String get connectScannerHint =>
+      'Hold 10–30 cm from the desktop QR. Pinch to zoom; use the flashlight in dim light.';
+
+  @override
+  String get connectOpenSettings => 'Open settings';
+
+  @override
+  String get connectQrEnlargeHint =>
+      'Tap the QR code to enlarge it for easier scanning.';
 
   @override
   String get connectCheckAgain => 'Check again';

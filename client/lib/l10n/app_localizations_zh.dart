@@ -5862,6 +5862,12 @@ class AppLocalizationsZh extends AppLocalizations {
   String get logViewerCopyPath => '复制日志路径';
 
   @override
+  String get logViewerCopyAll => '复制全部日志';
+
+  @override
+  String get logViewerAllCopied => '已复制全部过滤后的日志';
+
+  @override
   String get logViewerClearOld => '清理过期日志';
 
   @override
@@ -8333,6 +8339,18 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get connectScannerUnavailable => '相机扫描器不可用，请改为粘贴配对码。';
+
+  @override
+  String get connectScannerPermissionDenied => '需要相机权限才能扫描二维码。';
+
+  @override
+  String get connectScannerHint => '距离桌面二维码 10–30 cm；双指捏合可缩放，光线不足时打开手电筒。';
+
+  @override
+  String get connectOpenSettings => '去设置';
+
+  @override
+  String get connectQrEnlargeHint => '点击二维码可放大后再扫。';
 
   @override
   String get connectCheckAgain => '重新检查';

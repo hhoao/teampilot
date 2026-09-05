@@ -23,6 +23,7 @@ class LogViewerToolbar extends StatelessWidget {
     required this.onWrapLinesChanged,
     required this.onRefresh,
     required this.onCopyPath,
+    required this.onCopyAll,
     required this.onClearOld,
     required this.onReverseOrderChanged,
     super.key,
@@ -43,6 +44,7 @@ class LogViewerToolbar extends StatelessWidget {
   final ValueChanged<bool> onWrapLinesChanged;
   final Future<void> Function() onRefresh;
   final Future<void> Function() onCopyPath;
+  final Future<void> Function() onCopyAll;
   final Future<void> Function() onClearOld;
   final ValueChanged<bool> onReverseOrderChanged;
 
@@ -157,6 +159,11 @@ class LogViewerToolbar extends StatelessWidget {
                           label: l10n.logViewerCopyPath,
                         ),
                         TpActionMenuSpec.item(
+                          value: 'copyAll',
+                          icon: Icons.copy_all_outlined,
+                          label: l10n.logViewerCopyAll,
+                        ),
+                        TpActionMenuSpec.item(
                           value: 'clear',
                           icon: Icons.cleaning_services_outlined,
                           label: l10n.logViewerClearOld,
@@ -174,6 +181,8 @@ class LogViewerToolbar extends StatelessWidget {
                             await onRefresh();
                           case 'copy':
                             await onCopyPath();
+                          case 'copyAll':
+                            await onCopyAll();
                           case 'clear':
                             await onClearOld();
                           case 'reverse':

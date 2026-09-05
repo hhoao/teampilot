@@ -187,6 +187,19 @@ class LogViewerPanelState extends State<LogViewerPanel> {
     );
   }
 
+  Future<void> _copyAllLogs() async {
+    if (_filteredLinesCache.isEmpty) return;
+    await Clipboard.setData(
+      ClipboardData(text: _filteredLinesCache.join('\n')),
+    );
+    if (!mounted) return;
+    AppToast.show(
+      context,
+      message: context.l10n.logViewerAllCopied,
+      variant: TpToastVariant.success,
+    );
+  }
+
   Future<void> _clearOldLogs() async {
     final l10n = context.l10n;
     try {
@@ -256,6 +269,7 @@ class LogViewerPanelState extends State<LogViewerPanel> {
             onWrapLinesChanged: (value) => setState(() => _wrapLines = value),
             onRefresh: _loadLogFiles,
             onCopyPath: _copyLogPath,
+            onCopyAll: _copyAllLogs,
             onClearOld: _clearOldLogs,
             onReverseOrderChanged: (value) =>
                 unawaited(_onReverseOrderChanged(value)),
