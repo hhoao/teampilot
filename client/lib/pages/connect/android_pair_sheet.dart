@@ -8,6 +8,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
+import 'package:permission_handler/permission_handler.dart' show openAppSettings;
 import 'package:shared_ui/shared_ui.dart';
 
 import '../../cubits/ssh_connection_cubit.dart';
@@ -406,6 +407,9 @@ class _AndroidQrScannerPageState extends State<_AndroidQrScannerPage> {
     formats: const [BarcodeFormat.qrCode],
   );
   var _finished = false;
+  var _torchOn = false;
+  var _zoom = 0.0;
+  var _pinchZoomBase = 0.0;
 
   @override
   void dispose() {
@@ -413,7 +417,34 @@ class _AndroidQrScannerPageState extends State<_AndroidQrScannerPage> {
     super.dispose();
   }
 
+  static Uint8List? _qrBytes(Barcode barcode) =>
+      switch (barcode.rawDecodedBytes) {
+        DecodedBarcodeBytes(:final bytes) => bytes,
+        DecodedVisionBarcodeBytes(:final bytes) => bytes,
+        null => null,
+      };
+
+  /// True when [bytes] are the UTF-8 encoding of [value], i.e. the barcode
+  /// carries plain text rather than the binary pairing payload.
+  static bool _isUtf8Text(Uint8List bytes, String? value) {
+    if (value == null) return false;
+    final encoded = utf8.encode(value);
+    if (encoded.length != bytes.length) return false;
+    for (var i = 0; i < bytes.length; i++) {
+      if (encoded[i] != bytes[i]) return false;
+    }
+    return true;
+  }
+
   String? _payload(Barcode barcode) {
+    final bytes = _qrBytes(barcode);
+    if (bytes != null && bytes.isNotEmpty) {
+      // Binary QR: hand off as base64url text with the 'r' prefix so the
+      // sheet's String-only seam keeps working.
+      if (!_isUtf8Text(bytes, barcode.rawValue)) {
+        return 'r${base64Url.encode(bytes).replaceAll('=', '')}';
+      }
+    }
     final raw = barcode.rawValue?.trim();
     if (raw != null && raw.isNotEmpty) {
       return raw;
@@ -437,32 +468,136 @@ class _AndroidQrScannerPageState extends State<_AndroidQrScannerPage> {
     Navigator.of(context).pop(value);
   }
 
+  Future<void> _toggleTorch() async {
+    try {
+      await _controller.toggleTorch();
+      if (mounted) setState(() => _torchOn = !_torchOn);
+    } on Object {
+      // Torch unsupported on this device; keep the toggle unchanged.
+    }
+  }
+
+  Future<void> _applyZoom(double zoom) async {
+    final clamped = zoom.clamp(0.0, 1.0);
+    if (clamped == _zoom) return;
+    _zoom = clamped;
+    try {
+      await _controller.setZoomScale(clamped);
+    } on Object {
+      // Zoom unsupported; keep the local state so pinch stays responsive.
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final l10n = context.l10n;
     return Scaffold(
       appBar: AppBar(title: Text(l10n.connectScanQr)),
-      body: MobileScanner(
-        controller: _controller,
-        onDetect: _detected,
-        errorBuilder: (context, _) => Center(
-          child: Padding(
-            padding: const EdgeInsets.all(24),
-            child: Text(
-              l10n.connectScannerUnavailable,
+      body: LayoutBuilder(
+        builder: (context, constraints) {
+          final layout = constraints.biggest;
+          final windowSize = layout.shortestSide * 0.7;
+          final scanWindow = Rect.fromCenter(
+            center: layout.center(Offset.zero),
+            width: windowSize,
+            height: windowSize,
+          );
+          return Stack(
+            children: [
+              GestureDetector(
+                // Pinch-to-zoom: dense desktop QRs need the camera pulled in.
+                behavior: HitTestBehavior.opaque,
+                onScaleStart: (_) => _pinchZoomBase = _zoom,
+                onScaleUpdate: (details) =>
+                    unawaited(_applyZoom(_pinchZoomBase * details.scale)),
+                child: MobileScanner(
+                  controller: _controller,
+                  onDetect: _detected,
+                  // Restrict detection to the framed area; full-frame scanning
+                  // wastes decode budget on background clutter.
+                  scanWindow: scanWindow,
+                  errorBuilder: (context, error) =>
+                      _ScannerErrorView(error: error),
+                ),
+              ),
+              IgnorePointer(
+                child: Center(
+                  child: Container(
+                    width: windowSize,
+                    height: windowSize,
+                    decoration: BoxDecoration(
+                      border: Border.all(color: Colors.white, width: 3),
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                  ),
+                ),
+              ),
+              SafeArea(
+                child: Align(
+                  alignment: Alignment.bottomCenter,
+                  child: Padding(
+                    padding: const EdgeInsets.only(bottom: 24),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        FloatingActionButton.small(
+                          onPressed: _toggleTorch,
+                          child: Icon(
+                            _torchOn ? Icons.flash_off : Icons.flash_on,
+                          ),
+                        ),
+                        const SizedBox(height: 12),
+                        Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 32),
+                          child: Text(
+                            l10n.connectScannerHint,
+                            textAlign: TextAlign.center,
+                            style: const TextStyle(color: Colors.white),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          );
+        },
+      ),
+    );
+  }
+}
+
+class _ScannerErrorView extends StatelessWidget {
+  const _ScannerErrorView({this.error});
+
+  final MobileScannerException? error;
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = context.l10n;
+    final denied =
+        error?.errorCode == MobileScannerErrorCode.permissionDenied;
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              denied
+                  ? l10n.connectScannerPermissionDenied
+                  : l10n.connectScannerUnavailable,
               textAlign: TextAlign.center,
             ),
-          ),
-        ),
-        overlayBuilder: (context, constraints) => Center(
-          child: Container(
-            width: constraints.maxWidth * 0.7,
-            height: constraints.maxWidth * 0.7,
-            decoration: BoxDecoration(
-              border: Border.all(color: Colors.white, width: 3),
-              borderRadius: BorderRadius.circular(16),
-            ),
-          ),
+            if (denied) ...[
+              const SizedBox(height: 16),
+              TpButton(
+                onPressed: openAppSettings,
+                child: Text(l10n.connectOpenSettings),
+              ),
+            ],
+          ],
         ),
       ),
     );

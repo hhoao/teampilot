@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'dart:io';
+import 'dart:typed_data';
 
 import '../../models/ssh_reachability.dart';
 
@@ -129,6 +130,19 @@ class SshPairingOffer {
     return 'z${base64Url.encode(compressed).replaceAll('=', '')}';
   }
 
+  /// Binary QR payload: `0x7A` marker + raw-deflate of the compact JSON.
+  ///
+  /// Raw bytes (no base64 layer) keep the QR module grid coarse — the string
+  /// form above inflates ~1.33x inside the QR's byte mode.
+  List<int> get qrBytes => [
+    _binaryMarker,
+    ...ZLibEncoder(raw: true).convert(
+      utf8.encode(jsonEncode(_toCompactQrJson())),
+    ),
+  ];
+
+  static const int _binaryMarker = 0x7A;
+
   String encode() => 'teampilot://pair-ssh?code=$bareCode';
 
   /// Omits reconstructable fields to keep the QR module grid coarser.
@@ -150,6 +164,116 @@ class SshPairingOffer {
     };
   }
 
+  /// Short-key variant of [_toQrJson]; every saved byte coarsens the QR grid.
+  Map<String, Object?> _toCompactQrJson() {
+    return {
+      'v': v,
+      'h': hostId,
+      'u': username,
+      'a': appDataRoot,
+      'e': endpoints
+          .map(
+            (endpoint) => {
+              'k': _endpointKindCode(endpoint.kind),
+              'h': endpoint.host,
+              'p': endpoint.port,
+            },
+          )
+          .toList(),
+      'f': hostKeyFingerprints.map(_stripFingerprintPrefix).toList(),
+      'g': {
+        't': pairing.token,
+        'c': _compactCertPin(pairing.tlsCertSha256),
+        'p': Uri.parse(pairing.url).port,
+      },
+      if (relay != null) 'r': {'u': relay!.url},
+    };
+  }
+
+  static String _endpointKindCode(SshEndpointKind kind) => switch (kind) {
+    SshEndpointKind.lan => 'l',
+    SshEndpointKind.extra => 'x',
+    SshEndpointKind.relay => 'r',
+  };
+
+  static SshEndpointKind? _endpointKindFromCode(String code) => switch (code) {
+    'l' => SshEndpointKind.lan,
+    'x' => SshEndpointKind.extra,
+    'r' => SshEndpointKind.relay,
+    _ => null,
+  };
+
+  /// `SHA256:<body>` → `<body>`; the prefix is re-added when decoding.
+  static String _stripFingerprintPrefix(String fingerprint) => fingerprint
+      .startsWith('SHA256:')
+      ? fingerprint.substring('SHA256:'.length)
+      : fingerprint;
+
+  /// A 64-char hex pin becomes base64url of the raw bytes (43 chars);
+  /// anything else (test fixtures) is kept verbatim.
+  static String _compactCertPin(String pin) {
+    if (!RegExp(r'^[0-9a-fA-F]{64}$').hasMatch(pin)) return pin;
+    return base64Url.encode(_hexDecode(pin)).replaceAll('=', '');
+  }
+
+  static String _expandCertPin(String value) {
+    // base64url of 32 bytes is exactly 43 chars without padding.
+    if (value.length != 43) return value;
+    try {
+      final padded = value.padRight((value.length + 3) ~/ 4 * 4, '=');
+      return _hexEncode(base64Url.decode(padded));
+    } on Object {
+      return value;
+    }
+  }
+
+  /// Expands the short-key compact form into the full-key JSON understood by
+  /// [fromJson]. Detected by `h` presence; full-key offers pass through.
+  static Map<String, Object?> _expandCompactQrJson(Map<String, Object?> json) {
+    if (json['h'] == null || json['hostId'] != null) return json;
+    final endpoints =
+        (json['e'] as List?)
+            ?.whereType<Map>()
+            .map((entry) {
+              final endpoint = entry.cast<String, Object?>();
+              return {
+                'kind': _endpointKindFromCode(endpoint['k'] as String? ?? '')
+                    ?.name,
+                'host': endpoint['h'],
+                'port': endpoint['p'],
+              };
+            })
+            .where((endpoint) => endpoint['kind'] != null)
+            .toList();
+    Map<String, Object?> pairing = const {};
+    final pairingRaw = json['g'];
+    if (pairingRaw is Map) {
+      final compact = Map<String, Object?>.from(
+        pairingRaw.cast<String, Object?>(),
+      );
+      pairing = {
+        'token': compact['t'],
+        'tlsCertSha256': _expandCertPin(compact['c'] as String? ?? ''),
+        'port': compact['p'],
+      };
+    }
+    final relayRaw = json['r'];
+    return {
+      'v': json['v'],
+      'hostId': json['h'],
+      'username': json['u'],
+      'appDataRoot': json['a'],
+      'endpoints': endpoints,
+      'hostKeyFingerprints':
+          (json['f'] as List?)
+              ?.whereType<String>()
+              .map((body) => 'SHA256:$body')
+              .toList(),
+      'pairing': pairing,
+      if (relayRaw is Map) 'relay': {'url': relayRaw['u']},
+    };
+  }
+
   Map<String, Object?> toJson() => {
     'v': v,
     'hostId': hostId,
@@ -168,6 +292,12 @@ class SshPairingOffer {
       throw const SshPairingOfferFormatException('missing pairing code');
     }
     try {
+      if (code.startsWith('r')) {
+        // Binary QR payload relayed as base64url text by the scanner page.
+        return decodeBytes(
+          Uint8List.fromList(_base64UrlDecodeBytes(code.substring(1))),
+        );
+      }
       final decoded = _decodeCodePayload(code);
       return SshPairingOffer.fromJson(_normalizeDecodedJson(decoded));
     } on SshPairingOfferFormatException {
@@ -175,6 +305,40 @@ class SshPairingOffer {
     } on Object {
       throw const SshPairingOfferFormatException('invalid pairing code');
     }
+  }
+
+  /// Decodes raw QR content bytes: either the binary compact form from
+  /// [qrBytes] (marker + raw deflate), or any text payload (legacy `z` code,
+  /// bare code, deep link) encoded as UTF-8.
+  static SshPairingOffer decodeBytes(Uint8List bytes) {
+    if (bytes.isNotEmpty && bytes.first == _binaryMarker) {
+      try {
+        final jsonText = utf8.decode(
+          ZLibDecoder(raw: true).convert(bytes.sublist(1)),
+        );
+        final decoded = jsonDecode(jsonText);
+        if (decoded is! Map) {
+          throw const SshPairingOfferFormatException('offer must be an object');
+        }
+        return SshPairingOffer.fromJson(
+          _normalizeDecodedJson(_expandCompactQrJson(decoded.cast<String, Object?>())),
+        );
+      } on SshPairingOfferFormatException {
+        rethrow;
+      } on Object {
+        // Not a binary payload after all — fall through to the text path.
+      }
+    }
+    try {
+      return decode(utf8.decode(bytes));
+    } on Object {
+      throw const SshPairingOfferFormatException('invalid pairing code');
+    }
+  }
+
+  static List<int> _base64UrlDecodeBytes(String value) {
+    final padded = value.padRight((value.length + 3) ~/ 4 * 4, '=');
+    return base64Url.decode(padded);
   }
 
   static String? _extractCode(String input) {
@@ -319,3 +483,12 @@ String _hostId(String value) {
   }
   return value;
 }
+
+List<int> _hexDecode(String hex) => [
+  for (var i = 0; i + 1 < hex.length; i += 2)
+    int.parse(hex.substring(i, i + 2), radix: 16),
+];
+
+String _hexEncode(List<int> bytes) => bytes
+    .map((byte) => byte.toRadixString(16).padLeft(2, '0'))
+    .join();

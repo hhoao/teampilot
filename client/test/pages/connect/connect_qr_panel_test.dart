@@ -61,11 +61,14 @@ Widget _harness(ConnectState state) {
         controlScale: AppTypographyScale.standard.multiplier,
       ),
       child: Scaffold(
-        body: ConnectQrPanel(
-          state: state,
-          onCheckSshd: () {},
-          onCopyLink: () {},
-          onRegenerate: () {},
+        // Mirror ConnectSection, which hosts the panel inside a scroll view.
+        body: SingleChildScrollView(
+          child: ConnectQrPanel(
+            state: state,
+            onCheckSshd: () {},
+            onCopyLink: () {},
+            onRegenerate: () {},
+          ),
         ),
       ),
     ),
@@ -93,6 +96,51 @@ void main() {
 
     expect(find.byKey(AppKeys.connectQrCode), findsOneWidget);
     expect(find.byKey(AppKeys.connectSshdEnableCta), findsNothing);
+  });
+
+  testWidgets('fullscreen QR dialog fits wide-but-short windows', (
+    tester,
+  ) async {
+    // shortestSide picks the width here, so a screen-sized square QR is
+    // taller than the dialog's height budget.
+    await tester.binding.setSurfaceSize(const Size(1000, 500));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+
+    await tester.pumpWidget(
+      _harness(ConnectState(sshd: _sshd(listening: true), offer: _offer())),
+    );
+    // The panel lives in a scroll view in the app (ConnectSection), so it is
+    // never height-constrained; mirror that here.
+    await tester.dragUntilVisible(
+      find.byKey(AppKeys.connectQrCode),
+      find.byType(Scrollable),
+      const Offset(0, -50),
+    );
+    await tester.tap(find.byKey(AppKeys.connectQrCode));
+    await tester.pumpAndSettle();
+
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('fullscreen QR dialog stays in budget at large text scale', (
+    tester,
+  ) async {
+    // zh locales and accessibility text scales render the hint taller than
+    // any fixed allowance; the QR must yield to the real hint height.
+    await tester.binding.setSurfaceSize(const Size(1000, 800));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+    tester.platformDispatcher.textScaleFactorTestValue = 2.5;
+    addTearDown(
+      () => tester.platformDispatcher.textScaleFactorTestValue = 1.0,
+    );
+
+    await tester.pumpWidget(
+      _harness(ConnectState(sshd: _sshd(listening: true), offer: _offer())),
+    );
+    await tester.tap(find.byKey(AppKeys.connectQrCode));
+    await tester.pumpAndSettle();
+
+    expect(tester.takeException(), isNull);
   });
 
   testWidgets('Android guidance does not require a desktop ConnectCubit', (

@@ -1,6 +1,12 @@
+import 'dart:convert';
+import 'dart:typed_data';
+
 import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/models/ssh_reachability.dart';
 import 'package:teampilot/services/connect/ssh_pairing_offer.dart';
+
+String base64UrlEncodeNoPad(List<int> bytes) =>
+    base64Url.encode(bytes).replaceAll('=', '');
 
 SshPairingOffer _offer({SshRelayOffer? relay}) {
   return SshPairingOffer(
@@ -26,11 +32,22 @@ SshPairingOffer _offer({SshRelayOffer? relay}) {
       token: 'abcdefghijklmnopqrstuvwxyz0123456789ABCDE',
       expiresAt: 1770000000000,
       url: 'https://192.168.1.20:2768/pair',
-      tlsCertSha256: 'deadbeef',
+      tlsCertSha256:
+          '0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef',
     ),
     relay: relay,
   );
 }
+
+SshPairingOffer _offerWithRelay() => _offer(
+  relay: const SshRelayOffer(
+    v: 1,
+    url: 'wss://relay.example.test/ws',
+    hostId: 'AbCdEf0123_-xyZ9',
+    inviteToken: 'abcdefghijklmnopqrstuvwxyz0123456789ABCDE',
+    inviteExpiresAt: 1770000000000,
+  ),
+);
 
 void main() {
   test('bare code round-trips from QR payload', () {
@@ -54,6 +71,63 @@ void main() {
     expect(decoded.relay?.url, 'wss://relay.example.test/ws');
     expect(offer.qrPayload.startsWith('z'), isTrue);
     expect(offer.qrPayload.length, lessThan(offer.bareCode.length * 0.75));
+  });
+
+  test('binary QR bytes round-trip through decodeBytes', () {
+    final offer = _offerWithRelay();
+    final decoded = SshPairingOffer.decodeBytes(
+      Uint8List.fromList(offer.qrBytes),
+    );
+    expect(decoded.username, 'alice');
+    expect(decoded.hostId, 'AbCdEf0123_-xyZ9');
+    expect(decoded.appDataRoot, '/home/alice/.local/share/com.hhoa.teampilot');
+    expect(
+      decoded.endpoints.map((endpoint) => (endpoint.kind, endpoint.port)),
+      [
+        (SshEndpointKind.lan, 22),
+        (SshEndpointKind.extra, 2222),
+      ],
+    );
+    expect(
+      decoded.hostKeyFingerprints,
+      const ['SHA256:abcdefgh'],
+    );
+    expect(decoded.pairing.token, offer.pairing.token);
+    expect(decoded.pairing.tlsCertSha256, offer.pairing.tlsCertSha256);
+    expect(decoded.pairing.url, 'https://192.168.1.20:2768/pair');
+    expect(decoded.relay?.url, 'wss://relay.example.test/ws');
+  });
+
+  test('binary QR bytes stay small enough for a coarse module grid', () {
+    final offer = _offerWithRelay();
+    // ~230 bytes fits QR version 10-M (213+ codewords); the legacy string
+    // form was ~350 chars in the denser byte-mode grid.
+    expect(offer.qrBytes.length, lessThan(260));
+    expect(offer.qrBytes.first, 0x7A);
+  });
+
+  test('scanner relay string form ("r" prefix) decodes the binary payload', () {
+    final offer = _offer();
+    final relayed =
+        'r${base64UrlEncodeNoPad(Uint8List.fromList(offer.qrBytes))}';
+    final decoded = SshPairingOffer.decode(relayed);
+    expect(decoded.username, 'alice');
+    expect(decoded.pairing.tlsCertSha256, offer.pairing.tlsCertSha256);
+  });
+
+  test('decodeBytes falls back to text payloads encoded as UTF-8', () {
+    final offer = _offer();
+    final decoded = SshPairingOffer.decodeBytes(
+      Uint8List.fromList(utf8.encode(offer.qrPayload)),
+    );
+    expect(decoded.username, 'alice');
+    expect(decoded.pairing.url, 'https://192.168.1.20:2768/pair');
+    expect(
+      SshPairingOffer.decodeBytes(
+        Uint8List.fromList(utf8.encode(offer.encode())),
+      ).displayName,
+      'alice-laptop',
+    );
   });
 
   test('round-trips deep link and bare code', () {
