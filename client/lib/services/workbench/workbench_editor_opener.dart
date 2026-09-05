@@ -25,6 +25,7 @@ class WorkbenchEditorOpener {
     HtmlViewModeStore? htmlViewModes,
     required MarkdownOpenMode Function() readMarkdownOpenMode,
     bool Function()? readFilePreviewInFloating,
+    bool Function()? readFloatingPreviewTabs,
     ChatCubit? chat,
   }) : _editor = editor,
        _workbench = workbench,
@@ -32,6 +33,8 @@ class WorkbenchEditorOpener {
        _readMarkdownOpenMode = readMarkdownOpenMode,
        _readFilePreviewInFloating =
            readFilePreviewInFloating ?? (() => true),
+       _readFloatingPreviewTabs =
+           readFloatingPreviewTabs ?? (() => true),
        _chat = chat,
        htmlViewModes = htmlViewModes ?? HtmlViewModeStore();
 
@@ -43,6 +46,39 @@ class WorkbenchEditorOpener {
   final HtmlViewModeStore htmlViewModes;
   final MarkdownOpenMode Function() _readMarkdownOpenMode;
   final bool Function() _readFilePreviewInFloating;
+  final bool Function() _readFloatingPreviewTabs;
+
+  /// Opens [tab] on the floating strip through the preview slot when
+  /// enabled. A dirty preview-slot tab is promoted (kept) instead of
+  /// replaced, so unsaved content is never dropped by a new preview.
+  void _openFloatingPreviewTab(String workspaceId, WorkbenchTabId tab) {
+    _floating.ensureOpen();
+    _floating.setActiveWorkspace(workspaceId);
+    if (!_readFloatingPreviewTabs()) {
+      _workbench.openFloating(workspaceId, tab, activate: true);
+      return;
+    }
+    _promoteDirtyFloatingPreview(workspaceId);
+    final replaced = _workbench.openFloating(
+      workspaceId,
+      tab,
+      preview: true,
+      activate: true,
+    );
+    _closeReplaced(workspaceId, replaced);
+  }
+
+  /// Promotes the current floating preview tab when its file is dirty, so
+  /// the reducer never replaces a tab with unsaved content.
+  void _promoteDirtyFloatingPreview(String workspaceId) {
+    final strip = _workbench.state.bar(workspaceId).floating;
+    for (final id in strip.previewIds) {
+      final path = id.filePath;
+      if (path != null && _editor.state.bucket(workspaceId).isDirty(path)) {
+        _workbench.promote(workspaceId, id);
+      }
+    }
+  }
 
   Future<void> openFile(
     String workspaceId,
@@ -62,13 +98,7 @@ class WorkbenchEditorOpener {
     }
 
     if (_readFilePreviewInFloating()) {
-      _floating.ensureOpen();
-      _floating.setActiveWorkspace(workspaceId);
-      _workbench.openFloating(
-        workspaceId,
-        WorkbenchTabId.file(normalized),
-        activate: true,
-      );
+      _openFloatingPreviewTab(workspaceId, WorkbenchTabId.file(normalized));
       await _editor.openFile(workspaceId, normalized, fs: fs);
       return;
     }
@@ -98,9 +128,7 @@ class WorkbenchEditorOpener {
     );
     final tab = WorkbenchTabId.diff(identity);
     if (_readFilePreviewInFloating()) {
-      _floating.ensureOpen();
-      _floating.setActiveWorkspace(workspaceId);
-      _workbench.openFloating(workspaceId, tab, activate: true);
+      _openFloatingPreviewTab(workspaceId, tab);
       return;
     }
     final replaced = _workbench.openDiff(workspaceId, tab, preview: preview);

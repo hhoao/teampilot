@@ -223,6 +223,120 @@ void main() {
     expect(editor.state.bucket('ws').openFilePaths, contains('/repo/a.txt'));
   });
 
+  group('floating preview slot', () {
+    test('openFile reuses the floating preview slot (pref on)', () async {
+      final fs = InMemoryFilesystem()
+        ..files['/repo/a.txt'] = 'hello'
+        ..files['/repo/b.txt'] = 'world';
+      final editor = EditorCubit(fs: fs);
+      final workbench = WorkbenchCubit();
+      final floating = FloatingWorkspaceCubit();
+      addTearDown(editor.close);
+      addTearDown(workbench.close);
+      addTearDown(floating.close);
+
+      final opener = WorkbenchEditorOpener(
+        editor: editor,
+        workbench: workbench,
+        floating: floating,
+        markdownViewModes: MarkdownViewModeStore(),
+        readMarkdownOpenMode: () => MarkdownOpenMode.preview,
+      );
+      await opener.openFile('ws', '/repo/a.txt');
+      await opener.openFile('ws', '/repo/b.txt');
+
+      final floatingFiles = workbench.state.bar('ws').floating.order
+          .where((t) => t.kind == WorkbenchTabKind.file)
+          .toList();
+      expect(floatingFiles, [WorkbenchTabId.file('/repo/b.txt')]);
+      // The replaced file is closed in the editor bucket.
+      expect(
+        editor.state.bucket('ws').openFilePaths,
+        isNot(contains('/repo/a.txt')),
+      );
+      expect(editor.state.bucket('ws').openFilePaths, contains('/repo/b.txt'));
+    });
+
+    test('openFile opens normal tabs when pref off', () async {
+      final fs = InMemoryFilesystem()
+        ..files['/repo/a.txt'] = 'hello'
+        ..files['/repo/b.txt'] = 'world';
+      final editor = EditorCubit(fs: fs);
+      final workbench = WorkbenchCubit();
+      final floating = FloatingWorkspaceCubit();
+      addTearDown(editor.close);
+      addTearDown(workbench.close);
+      addTearDown(floating.close);
+
+      final opener = WorkbenchEditorOpener(
+        editor: editor,
+        workbench: workbench,
+        floating: floating,
+        markdownViewModes: MarkdownViewModeStore(),
+        readMarkdownOpenMode: () => MarkdownOpenMode.preview,
+        readFloatingPreviewTabs: () => false,
+      );
+      await opener.openFile('ws', '/repo/a.txt');
+      await opener.openFile('ws', '/repo/b.txt');
+
+      expect(
+        workbench.state.bar('ws').floating.order
+            .where((t) => t.kind == WorkbenchTabKind.file)
+            .length,
+        2,
+      );
+    });
+
+    test('openFile does not replace a dirty preview tab', () async {
+      final fs = InMemoryFilesystem()
+        ..files['/repo/a.txt'] = 'hello'
+        ..files['/repo/b.txt'] = 'world';
+      final editor = EditorCubit(fs: fs);
+      final workbench = WorkbenchCubit();
+      final floating = FloatingWorkspaceCubit();
+      addTearDown(editor.close);
+      addTearDown(workbench.close);
+      addTearDown(floating.close);
+
+      final opener = WorkbenchEditorOpener(
+        editor: editor,
+        workbench: workbench,
+        floating: floating,
+        markdownViewModes: MarkdownViewModeStore(),
+        readMarkdownOpenMode: () => MarkdownOpenMode.preview,
+      );
+      await opener.openFile('ws', '/repo/a.txt');
+      // Simulate the user editing /repo/a.txt. The controller listener is
+      // attached after the async colorize step, so flush the microtasks.
+      final controller = editor.controllerFor('ws', '/repo/a.txt');
+      expect(controller, isNotNull);
+      controller!.text = 'hello!';
+      await Future<void>.delayed(Duration.zero);
+      await Future<void>.delayed(Duration.zero);
+      expect(editor.state.bucket('ws').isDirty('/repo/a.txt'), isTrue);
+
+      await opener.openFile('ws', '/repo/b.txt');
+
+      // Dirty tab was promoted (not replaced, not closed); the new file
+      // becomes the next preview (VSCode semantics: the slot persists).
+      expect(
+        workbench.state.bar('ws').floating.previewIds,
+        {WorkbenchTabId.file('/repo/b.txt')},
+      );
+      final floatingFiles = workbench.state.bar('ws').floating.order
+          .where((t) => t.kind == WorkbenchTabKind.file)
+          .toList();
+      expect(floatingFiles, [
+        WorkbenchTabId.file('/repo/a.txt'),
+        WorkbenchTabId.file('/repo/b.txt'),
+      ]);
+      expect(
+        editor.state.bucket('ws').openFilePaths,
+        contains('/repo/a.txt'),
+      );
+    });
+  });
+
   group('landing exit on open', () {
     test('openFile floating path stays on the landing', () async {
       final fs = InMemoryFilesystem()..files['/repo/a.txt'] = 'hello';
