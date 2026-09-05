@@ -8,6 +8,7 @@ enum ProgressActivityKind {
   hubClone,
   packAcquire,
   cliProvision,
+  repoClone,
 }
 
 enum ProgressActivityPhase {

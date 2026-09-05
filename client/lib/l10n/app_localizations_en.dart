@@ -8922,4 +8922,93 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get teamGenerateDeliveryRetryBody =>
       'The lead might receive the task twice.';
+
+  @override
+  String get cloneRepositoryMenu => 'Clone Repository…';
+
+  @override
+  String get cloneRepositorySubmit => 'Clone';
+
+  @override
+  String get cloneRepositoryTitle => 'Clone Repository';
+
+  @override
+  String get cloneRepositoryUrlLabel => 'Repository URL';
+
+  @override
+  String get cloneRepositoryUrlHint => 'https://github.com/owner/repo.git';
+
+  @override
+  String get cloneRepositoryUrlInvalid =>
+      'Enter a valid git URL (https://, git@, git://, ssh://)';
+
+  @override
+  String get cloneRepositoryTargetLabel => 'Clone to target';
+
+  @override
+  String get cloneRepositoryParentDirLabel => 'Clone into folder';
+
+  @override
+  String get cloneRepositoryParentDirRequired => 'Choose a destination folder';
+
+  @override
+  String get cloneRepositoryDirNameLabel => 'Folder name';
+
+  @override
+  String get cloneRepositoryDirNameRequired => 'Enter a folder name';
+
+  @override
+  String get cloneRepositoryDestExists =>
+      'Folder already exists and is not empty';
+
+  @override
+  String get cloneRepositoryGitMissing =>
+      'git was not found on the selected target machine';
+
+  @override
+  String cloneRepositoryStarted(Object url) {
+    return 'Cloning $url started';
+  }
+
+  @override
+  String cloneRepositoryProgressTitle(Object repo) {
+    return 'Cloning $repo';
+  }
+
+  @override
+  String cloneRepositorySucceeded(Object repo) {
+    return 'Cloned $repo';
+  }
+
+  @override
+  String cloneRepositoryFailed(Object repo) {
+    return 'Clone failed: $repo';
+  }
+
+  @override
+  String cloneRepositoryCancelled(Object repo) {
+    return 'Clone cancelled: $repo';
+  }
+
+  @override
+  String get cloneRepositoryCompletedTitle => 'Clone complete';
+
+  @override
+  String cloneRepositoryCompletedBody(Object path) {
+    return '$path is ready.';
+  }
+
+  @override
+  String get cloneRepositoryCreateWorkspace => 'New workspace';
+
+  @override
+  String get cloneRepositoryAddToWorkspace => 'Add to existing workspace…';
+
+  @override
+  String get cloneRepositoryChooseWorkspace => 'Choose a workspace';
+
+  @override
+  String cloneRepositoryAddToExistingSucceeded(Object repo, Object workspace) {
+    return 'Added $repo to workspace $workspace';
+  }
 }

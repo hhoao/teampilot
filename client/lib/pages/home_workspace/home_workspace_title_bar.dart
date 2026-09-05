@@ -198,6 +198,7 @@ class HomeTitleBar extends StatefulWidget {
     this.onCloseAllTabs,
     this.onReopenClosedTab,
     this.onCreateWorkspace,
+    this.onCloneRepository,
     super.key,
   });
 
@@ -230,6 +231,9 @@ class HomeTitleBar extends StatefulWidget {
   final VoidCallback? onCloseAllTabs;
   final ValueChanged<String>? onReopenClosedTab;
   final VoidCallback? onCreateWorkspace;
+
+  /// Opens the "Clone Repository" dialog from the ⋯ switcher menu.
+  final VoidCallback? onCloneRepository;
 
   @override
   State<HomeTitleBar> createState() => _HomeTitleBarState();
@@ -350,6 +354,7 @@ class _HomeTitleBarState extends State<HomeTitleBar> with WindowListener {
                         onCreate: widget.onCreateWorkspace,
                         onSelectOpen: widget.onSelectTab,
                         onReopenClosed: widget.onReopenClosedTab,
+                        onCloneRepository: widget.onCloneRepository,
                       ),
                       Expanded(
                         child: showWindowControls
@@ -420,6 +425,7 @@ class _HomeTitleBarState extends State<HomeTitleBar> with WindowListener {
                                     onCreate: widget.onCreateWorkspace,
                                     onSelectOpen: widget.onSelectTab,
                                     onReopenClosed: widget.onReopenClosedTab,
+                                    onCloneRepository: widget.onCloneRepository,
                                   ),
                                 ),
                               ],

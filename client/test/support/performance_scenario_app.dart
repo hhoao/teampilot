@@ -33,6 +33,7 @@ import 'package:teampilot/cubits/member_presence_cubit.dart';
 import 'package:teampilot/cubits/notification_cubit.dart';
 import 'package:teampilot/cubits/plugin_cubit.dart';
 import 'package:teampilot/cubits/progress_activity_cubit.dart';
+import 'package:teampilot/cubits/repo_clone_cubit.dart';
 import 'package:teampilot/cubits/session_preferences_cubit.dart';
 import 'package:teampilot/cubits/shortcut_cubit.dart';
 import 'package:teampilot/cubits/floating_workspace/floating_workspace_cubit.dart';
@@ -82,6 +83,7 @@ import 'package:teampilot/services/provider_usage/managed_provider_usage_adapter
 import 'package:teampilot/services/provider_usage/managed_provider_usage_coordinator.dart';
 import 'package:teampilot/services/provider_usage/managed_provider_usage_registry.dart';
 import 'package:teampilot/services/storage/home_target_controller.dart';
+import 'package:teampilot/services/workspace/repo_clone_service.dart';
 import 'package:teampilot/services/terminal/terminal_session.dart';
 import 'package:teampilot/services/terminal/terminal_transport_factory.dart';
 import 'package:teampilot/services/terminal/workspace_shell_connector.dart';
@@ -307,6 +309,14 @@ class PerformanceScenarioApp {
                 historyRecorder: context.read<NotificationCubit>(),
               ),
             ),
+            // HomeShell listens to RepoCloneCubit; provide one over a fake
+            // gateway so no real `git` process can spawn from perf scenarios.
+            BlocProvider(
+              create: (context) => RepoCloneCubit(
+                progressActivityCubit: context.read<ProgressActivityCubit>(),
+                service: _ScenarioRepoCloneGateway(),
+              ),
+            ),
             BlocProvider(create: (_) => FloatingWorkspaceCubit()),
             BlocProvider(create: (_) => ShortcutCubit()),
             BlocProvider(create: (_) => testSkillCubit()),
@@ -389,6 +399,21 @@ class PerformanceFakeTerminalSession extends TerminalSession {
     super.executable = performanceTestExecutable,
     super.scrollbackLines = 10000,
   });
+}
+
+/// No-op [RepoCloneGateway]: cancels immediately without spawning anything.
+class _ScenarioRepoCloneGateway implements RepoCloneGateway {
+  @override
+  Future<RepoCloneResult> clone(
+    RepoCloneRequest request, {
+    required void Function(RepoCloneProgress progress) onProgress,
+    required bool Function() isCancelled,
+  }) async {
+    return RepoCloneResult(
+      outcome: RepoCloneOutcome.cancelled,
+      destPath: request.parentDir,
+    );
+  }
 }
 
 class _ScenarioProviderCredentials implements ProviderCredentialResolver {

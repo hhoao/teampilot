@@ -8534,4 +8534,91 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get teamGenerateDeliveryRetryBody => '负责人可能会收到两次任务。';
+
+  @override
+  String get cloneRepositoryMenu => '克隆仓库…';
+
+  @override
+  String get cloneRepositorySubmit => '克隆';
+
+  @override
+  String get cloneRepositoryTitle => '克隆仓库';
+
+  @override
+  String get cloneRepositoryUrlLabel => '仓库 URL';
+
+  @override
+  String get cloneRepositoryUrlHint => 'https://github.com/owner/repo.git';
+
+  @override
+  String get cloneRepositoryUrlInvalid =>
+      '请输入有效的 git URL（https://、git@、git://、ssh://）';
+
+  @override
+  String get cloneRepositoryTargetLabel => '克隆到目标';
+
+  @override
+  String get cloneRepositoryParentDirLabel => '克隆到文件夹';
+
+  @override
+  String get cloneRepositoryParentDirRequired => '请选择目标文件夹';
+
+  @override
+  String get cloneRepositoryDirNameLabel => '文件夹名称';
+
+  @override
+  String get cloneRepositoryDirNameRequired => '请输入文件夹名称';
+
+  @override
+  String get cloneRepositoryDestExists => '文件夹已存在且不为空';
+
+  @override
+  String get cloneRepositoryGitMissing => '所选目标机器上未找到 git';
+
+  @override
+  String cloneRepositoryStarted(Object url) {
+    return '已开始克隆 $url';
+  }
+
+  @override
+  String cloneRepositoryProgressTitle(Object repo) {
+    return '正在克隆 $repo';
+  }
+
+  @override
+  String cloneRepositorySucceeded(Object repo) {
+    return '已克隆 $repo';
+  }
+
+  @override
+  String cloneRepositoryFailed(Object repo) {
+    return '克隆失败：$repo';
+  }
+
+  @override
+  String cloneRepositoryCancelled(Object repo) {
+    return '已取消克隆：$repo';
+  }
+
+  @override
+  String get cloneRepositoryCompletedTitle => '克隆完成';
+
+  @override
+  String cloneRepositoryCompletedBody(Object path) {
+    return '$path 已就绪。';
+  }
+
+  @override
+  String get cloneRepositoryCreateWorkspace => '新建工作区';
+
+  @override
+  String get cloneRepositoryAddToWorkspace => '加入现有工作区…';
+
+  @override
+  String get cloneRepositoryChooseWorkspace => '选择工作区';
+
+  @override
+  String cloneRepositoryAddToExistingSucceeded(Object repo, Object workspace) {
+    return '已将 $repo 加入工作区 $workspace';
+  }
 }

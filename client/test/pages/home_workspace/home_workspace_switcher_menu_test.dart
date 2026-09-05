@@ -89,6 +89,31 @@ void main() {
     expect(created, isTrue);
   });
 
+  testWidgets('menu shows clone repository item and fires callback', (
+    tester,
+  ) async {
+    var fired = false;
+    await tester.pumpWidget(
+      _wrap(
+        HomeWorkspaceSwitcherMenu(
+          openTabs: const [],
+          recentlyClosed: const [],
+          onCreate: () {},
+          onCloneRepository: () => fired = true,
+          onSelectOpen: (_) {},
+          onReopenClosed: (_) {},
+        ),
+      ),
+    );
+    await tester.tap(find.byIcon(Icons.more_horiz));
+    await tester.pumpAndSettle();
+    final l10n = lookupAppLocalizations(const Locale('en'));
+    expect(find.text(l10n.cloneRepositoryMenu), findsOneWidget);
+    await tester.tap(find.text(l10n.cloneRepositoryMenu));
+    await tester.pumpAndSettle();
+    expect(fired, isTrue);
+  });
+
   testWidgets('tap open tab invokes onSelectOpen', (tester) async {
     String? selected;
     await tester.pumpWidget(
