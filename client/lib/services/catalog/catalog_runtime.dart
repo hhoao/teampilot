@@ -67,7 +67,7 @@ class CatalogRuntime {
   }) {
     // Shim-era fallback: keep the AppStorage-deferring default for callers
     // (tests, catalog domain) not yet threading [storage]; removed in 6-C.
-    final home = storage ?? HomeStorage(AppStorage.context);
+    final home = storage ?? AppStorage.tolerantHome;
     final mutationBus = bus ?? CatalogMutationBus();
     final configRepo = workspaceConfig ?? WorkspaceProjectConfigRepository(storage: home);
     final binder = CatalogWorkspaceBinder(repo: configRepo);

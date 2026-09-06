@@ -147,12 +147,9 @@ void main() {
 
     AppStorage.installForTesting(filesystem: firstFs, paths: firstPaths);
     final providerRepository = ManagedProviderRepository(
-      storage: fakeHomeStorage(filesystem: firstFs),
       onProvidersDeleted: (_) async {},
     );
-    final usageRepository = ManagedProviderUsageRepository(
-      storage: fakeHomeStorage(filesystem: firstFs),
-    );
+    final usageRepository = ManagedProviderUsageRepository();
     await providerRepository.save([provider]);
     await usageRepository.save(snapshot);
 

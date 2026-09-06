@@ -10,7 +10,6 @@ import '../remote/remote_app_data_materializer.dart';
 import '../session/session_lifecycle_service.dart';
 import '../ssh/ssh_client_factory.dart';
 import '../storage/app_storage.dart';
-import '../storage/home_storage.dart';
 import '../storage/runtime_context.dart';
 import 'session_connect_orchestrator.dart';
 import 'session_runtime_plan_builder.dart';
@@ -106,7 +105,7 @@ SessionConnectOrchestrator buildDefaultSessionConnectOrchestrator({
           installMcp: (_) async => null,
         ),
         workspaceProjectConfig: WorkspaceProjectConfigRepository(
-          storage: HomeStorage(AppStorage.context),
+          storage: AppStorage.tolerantHome,
         ),
       );
 

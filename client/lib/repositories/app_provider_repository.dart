@@ -12,7 +12,6 @@ import '../services/cli/codex/provider_persistence.dart';
 import '../services/cli/cursor/provider_persistence.dart';
 import '../services/cli/flashskyai/provider_persistence.dart';
 import '../services/cli/opencode/provider_persistence.dart';
-import '../services/storage/app_storage.dart';
 import '../services/storage/home_storage.dart';
 import 'provider_persistence/provider_persistence_strategy.dart';
 
@@ -50,8 +49,7 @@ class AppProviderRepository {
   /// and the pre-6-C test harness construct this repository without
   /// [storage]; defer to the bound home context exactly like the AppStorage
   /// shim did. Removed once those batches thread [storage].
-  HomeStorage get _storage =>
-      _storageOverride ?? HomeStorage(AppStorage.context);
+  HomeStorage get _storage => _storageOverride ?? AppStorage.tolerantHome;
 
   String _diskCacheKey(CliTool cli) => '$_basePath:${cli.value}';
 

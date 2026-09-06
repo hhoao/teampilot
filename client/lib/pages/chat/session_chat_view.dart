@@ -48,7 +48,6 @@ import '../../services/session/history_hydration_scope.dart';
 import '../../services/session/history_awaiting_working_sync.dart';
 import 'pinned_session_history_column_width.dart';
 import '../../services/storage/app_storage.dart';
-import '../../services/storage/home_storage.dart';
 import '../../services/terminal/pending_user_message.dart';
 import '../../utils/debug/debug_bloc_rebuild.dart';
 import '../../utils/logging/logger.dart';
@@ -222,7 +221,7 @@ class _SessionChatViewState extends State<SessionChatView> {
         // Shim-era fallback: keeps pre-6-C widget tests constructing this view
         // without a repository working against the bound home context.
         WorkspaceProjectConfigRepository(
-          storage: HomeStorage(AppStorage.context),
+          storage: AppStorage.tolerantHome,
         );
     _failedMessageStore =
         widget.failedMessageStore ??

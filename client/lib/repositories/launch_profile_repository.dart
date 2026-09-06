@@ -29,8 +29,7 @@ class LaunchProfileRepository {
   /// without [storage]; defer to the bound home context exactly like the
   /// AppStorage shim did. Production (app_shell) always injects [storage].
   /// Removed in 6-C together with the harness migration.
-  HomeStorage get _storage =>
-      _storageOverride ?? HomeStorage(AppStorage.context);
+  HomeStorage get _storage => _storageOverride ?? AppStorage.tolerantHome;
   static final Map<String, List<LaunchProfile>> _loadAllByRoot = {};
   Future<void>? _revalidationFuture;
 

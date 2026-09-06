@@ -51,10 +51,10 @@ class SessionRepository {
 
   /// Shim-era fallback: the pre-6-C test harness constructs this repository
   /// without [storage]; defer to the bound home context exactly like the
-  /// AppStorage shim did. Production (app_shell) always injects [storage].
+  /// AppStorage shim did (tolerant when nothing is bound — `rootDir`-only
+  /// tests never read it). Production (app_shell) always injects [storage].
   /// Removed in 6-C together with the harness migration.
-  HomeStorage get _storage =>
-      _storageOverride ?? HomeStorage(AppStorage.context);
+  HomeStorage get _storage => _storageOverride ?? AppStorage.tolerantHome;
 
   final _sessionFileLocks = LockPool();
   static final Map<String, List<Workspace>> _workspacesIndexByRoot = {};

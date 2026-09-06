@@ -21,8 +21,7 @@ class McpRepository {
   /// 6/10) construct this repository without [storage]; defer to the bound
   /// home context exactly like the AppStorage shim did. Removed once those
   /// batches thread [storage].
-  HomeStorage get _storage =>
-      _storageOverride ?? HomeStorage(AppStorage.context);
+  HomeStorage get _storage => _storageOverride ?? AppStorage.tolerantHome;
 
   List<McpServer>? _cache;
 

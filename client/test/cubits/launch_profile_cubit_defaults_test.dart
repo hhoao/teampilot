@@ -28,6 +28,12 @@ class _BuiltinExpertSource implements ExpertHubSource {
 }
 
 void main() {
+  // This group binds its own AppStorage-backed home (no per-test rootDirs), so
+  // the migrated constructors need the harness storage rather than a bare
+  // fallback.
+  setUp(setUpTestAppStorage);
+  tearDown(tearDownTestAppStorage);
+
   test('team cubit manages teams', () async {
     final tmp = await Directory.systemTemp.createTemp('teams_cubit_');
     final appData = await Directory.systemTemp.createTemp('teams_cubit_app_');

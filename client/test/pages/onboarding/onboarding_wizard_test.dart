@@ -113,6 +113,11 @@ void main() {
   });
 
   group('OnboardingService.applyDefaultPreset', () {
+    // This group hands the migrated constructors `testHomeStorage`, so the
+    // harness storage must be bound (matches the pre-6-C shim behavior).
+    setUp(setUpTestAppStorage);
+    tearDown(tearDownTestAppStorage);
+
     test('applies preset to personal identities and teams', () async {
       final dir = await Directory.systemTemp.createTemp('onboarding-preset_');
       final teamRepo = LaunchProfileRepository(

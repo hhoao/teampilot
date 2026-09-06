@@ -44,6 +44,44 @@ class AppStorage {
         'AppStorage home not bound; call AppStorage.bindHome() at bootstrap.',
       ));
 
+  /// Shim-era tolerant fallback for consumers constructed without an injected
+  /// [HomeStorage] (pre-6-C tests): the bound home facade when one exists,
+  /// otherwise a native default context over [LocalFilesystem] — the same
+  /// tolerance the legacy `fs` getter had when nothing was bound. Deleted in
+  /// 6-C together with the rest of this shim.
+  static HomeStorage get tolerantHome {
+    final facade = _homeStorage;
+    if (facade != null) return facade;
+    final legacy = _legacyHome;
+    if (legacy != null) return HomeStorage(legacy);
+    return _unboundNativeHome;
+  }
+
+  /// The [tolerantHome] context used when nothing is bound at all. Roots point
+  /// at a system-temp directory so a stray unbound write stays out of the real
+  /// home; pre-6-C only `fs` was reachable unbound (everything else threw), so
+  /// the path values only matter to code that would previously have failed.
+  static final HomeStorage _unboundNativeHome = HomeStorage(
+    RuntimeContext(
+      target: RuntimeTarget.local(),
+      filesystem: LocalFilesystem(),
+      home: _unboundNativeRoot,
+      cwd: _unboundNativeRoot,
+      appDataRoot: _unboundNativeRoot,
+      paths: AppPaths(_unboundNativeRoot),
+    ),
+  );
+
+  static final String _unboundNativeRoot = () {
+    final root = p.join(Directory.systemTemp.path, 'teampilot-unbound-home');
+    try {
+      Directory(root).createSync(recursive: true);
+    } on Object {
+      // Read-only temp / sandboxed host: the path still works for joins.
+    }
+    return root;
+  }();
+
   static Filesystem get fs => _bound?.filesystem ?? LocalFilesystem();
 
   static AppPaths get paths => context.paths;

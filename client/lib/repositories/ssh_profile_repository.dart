@@ -24,8 +24,7 @@ class SshProfileRepository {
   /// Shim-era fallback: the pre-6-C test harness and the device-local control
   /// plane construct this repository without [storage]; defer to the bound
   /// home context exactly like the AppStorage shim did. Removed in 6-C.
-  HomeStorage get _storage =>
-      _storageOverride ?? HomeStorage(AppStorage.context);
+  HomeStorage get _storage => _storageOverride ?? AppStorage.tolerantHome;
 
   String get _root => _rootDirOverride ?? _storage.paths.sshProfilesDir;
 

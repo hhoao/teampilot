@@ -30,6 +30,7 @@ import 'package:teampilot/cubits/session_preferences_cubit.dart';
 import 'package:teampilot/cubits/shortcut_cubit.dart';
 import 'package:teampilot/cubits/ssh_connection_cubit.dart';
 import 'package:teampilot/cubits/workbench/workbench_cubit.dart';
+import 'package:teampilot/models/discoverable_member.dart';
 import 'package:teampilot/services/workbench/workbench_chat_bridge.dart';
 import 'package:teampilot/cubits/workspace_tools_cubit.dart';
 import 'package:teampilot/main.dart';
@@ -62,6 +63,9 @@ import 'package:teampilot/services/commands/workspace_content_search_command_reg
 import 'package:teampilot/services/extension/builtin_manifests.dart';
 import 'package:teampilot/services/extension/extension_acquisition_engine.dart';
 import 'package:teampilot/services/extension/extension_detector.dart';
+import 'package:teampilot/services/expert_hub/builtin_member_templates.dart';
+import 'package:teampilot/services/expert_hub/expert_hub_catalog.dart';
+import 'package:teampilot/services/expert_hub/expert_hub_source.dart';
 import 'package:teampilot/services/file_tree/workspace_file_tree_store.dart';
 import 'package:teampilot/services/git/git_command_runner.dart';
 import 'package:teampilot/services/git/git_repo_store.dart';
@@ -97,6 +101,22 @@ import 'test_git_command_runner.dart';
 import 'test_home_target_controller.dart';
 
 String desktopHarnessExecutable() => 'flashskyai';
+
+/// Offline source returning only the built-in experts so roster slots
+/// (`teampilot/builtin/*`) materialize without touching the network. Mirrors
+/// production wiring where the shell always attaches a catalog to the team
+/// cubit (app_shell.attachCatalog) — since b467c7e55 materialization is
+/// skipped entirely without one, leaving default teams member-less.
+class _BuiltinExpertSource implements ExpertHubSource {
+  @override
+  Future<List<DiscoverableMember>> fetchMembers({
+    bool forceRefresh = false,
+  }) async => builtinExpertMembers();
+
+  @override
+  Future<List<String>> categories({bool forceRefresh = false}) async =>
+      const [];
+}
 
 late Directory desktopHarnessSessionRepoDir;
 late SessionRepository desktopHarnessSessionRepo;
@@ -499,7 +519,7 @@ Future<LaunchProfileCubit> createTeamCubit({TeamLauncher? launcher}) async {
     launcher: launcher ?? (_, __) async {},
     appDataBasePath: appData.path,
     configProfileService: ConfigProfileService(basePath: appData.path),
-  );
+  )..attachCatalog(ExpertHubCatalog(source: _BuiltinExpertSource()));
   await cubit.load();
   return cubit;
 }

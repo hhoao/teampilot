@@ -36,7 +36,6 @@ import '../../../services/compose/compose_landing_bundle.dart';
 import '../../../services/compose/compose_text_edit.dart';
 import '../../../services/compose/compose_voice_input.dart';
 import '../../../services/storage/app_storage.dart';
-import '../../../services/storage/home_storage.dart';
 import '../../../services/expert_hub/expert_capability_resolver.dart';
 import '../../../services/expert_hub/expert_hub_recent_store.dart';
 import '../../../services/expert_hub/expert_landing_preflight.dart';
@@ -481,7 +480,7 @@ class _UnboundComposeBodyState extends State<UnboundComposeBody> {
       // Shim-era fallback: constructs against the bound home context until
       // the workspace bundle is threaded from the parent (removed in 6-C).
       final config = await WorkspaceProjectConfigRepository(
-        storage: HomeStorage(AppStorage.context),
+        storage: AppStorage.tolerantHome,
       ).load(widget.workspace.workspaceId);
       if (!mounted || generation != _workspaceBundleGeneration) return;
       setState(() => _workspaceProjectBundle = config.bundle);

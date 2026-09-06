@@ -2,6 +2,7 @@ import 'dart:convert';
 
 import '../models/provider_usage_snapshot.dart';
 import '../services/io/filesystem.dart';
+import '../services/storage/app_storage.dart';
 import '../services/storage/home_storage.dart';
 import 'managed_provider_id_deletion_barrier.dart';
 import 'managed_provider_storage_lock.dart';
@@ -9,19 +10,25 @@ import 'managed_provider_storage_lock.dart';
 /// Persists normalized usage snapshots independently from provider config.
 class ManagedProviderUsageRepository {
   ManagedProviderUsageRepository({
-    required HomeStorage storage,
+    HomeStorage? storage,
     Filesystem? fs,
     String? cachePath,
     int Function()? now,
   }) : _fsOverride = fs,
        _cachePathOverride = cachePath,
-       _storage = storage,
+       _storageOverride = storage,
        _now = now ?? _epochMilliseconds;
 
   final Filesystem? _fsOverride;
   final String? _cachePathOverride;
-  final HomeStorage _storage;
+  final HomeStorage? _storageOverride;
   final int Function() _now;
+
+  /// Shim-era fallback: bare constructions (tests, provider-usage bootstrap)
+  /// defer to the current AppStorage binding per operation — matching the
+  /// pre-6-C dynamic reads. Removed in 6-C together with the harness
+  /// migration.
+  HomeStorage get _storage => _storageOverride ?? AppStorage.tolerantHome;
 
   Filesystem get _fs => _fsOverride ?? _storage.fs;
 
