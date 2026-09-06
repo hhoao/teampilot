@@ -235,8 +235,8 @@ void main() {
     debugDefaultTargetPlatformOverride = TargetPlatform.linux;
     addTearDown(() => debugDefaultTargetPlatformOverride = null);
     final chatCubit = _ArchiveRecordingChatCubit();
-    // Close actions only apply to sessions with an open workbench tab
-    // (see _sessionIsRunning): register one with a pending member connect.
+    // Close actions apply to sessions with an open workbench tab
+    // (see _sessionHasOpenTab): register one with a pending member connect.
     chatCubit.tabStore.registerSession(
       ChatTab(
         info: ChatTabInfo(id: _session.sessionId, title: 't', subtitle: ''),
@@ -245,9 +245,7 @@ void main() {
     );
     chatCubit.applyState(
       chatCubit.state.copyWith(
-        sessionActivities: {
-          _session.sessionId: const SessionActivity(),
-        },
+        sessionActivities: {_session.sessionId: const SessionActivity()},
       ),
     );
     final (attention, automationCubit) = _tileCubits();
@@ -286,6 +284,101 @@ void main() {
     await tester.tap(find.byIcon(Icons.close));
     await tester.pump();
     expect(chatCubit.closedSessionIds, ['sess-1', 'sess-1']);
+    debugDefaultTargetPlatformOverride = null;
+  });
+
+  testWidgets('open tab without running terminal still shows close actions', (
+    tester,
+  ) async {
+    debugDefaultTargetPlatformOverride = TargetPlatform.linux;
+    addTearDown(() => debugDefaultTargetPlatformOverride = null);
+    final chatCubit = _ArchiveRecordingChatCubit();
+    // Tab is open but idle: no live terminal, no pending connect, not busy.
+    chatCubit.tabStore.registerSession(
+      ChatTab(
+        info: ChatTabInfo(id: _session.sessionId, title: 't', subtitle: ''),
+        cliTeamName: _session.sessionId,
+      ),
+    );
+    final (attention, automationCubit) = _tileCubits();
+    addTearDown(chatCubit.close);
+    addTearDown(automationCubit.close);
+    addTearDown(attention.close);
+
+    await tester.pumpWidget(
+      _host(
+        chatCubit: chatCubit,
+        automationCubit: automationCubit,
+        attentionCubit: attention,
+        sessionRepository: SessionRepository(),
+        locale: const Locale('zh'),
+      ),
+    );
+    await tester.pump();
+
+    final mouse = await tester.createGesture(kind: PointerDeviceKind.mouse);
+    await mouse.addPointer(location: Offset.zero);
+    addTearDown(mouse.removePointer);
+    await tester.pump();
+    await mouse.moveTo(tester.getCenter(find.byType(TpHoverRow)));
+    await tester.pumpAndSettle();
+
+    expect(find.byIcon(Icons.close), findsOneWidget);
+    await tester.tap(find.byIcon(Icons.close));
+    await tester.pump();
+    expect(chatCubit.closedSessionIds, ['sess-1']);
+
+    await _openContextMenu(tester);
+    final l10n = AppLocalizations.of(
+      tester.element(find.byType(SidebarSessionTile)),
+    );
+    expect(find.text(l10n.closeConversation), findsOneWidget);
+    await _dismissContextMenu(tester);
+    debugDefaultTargetPlatformOverride = null;
+  });
+
+  testWidgets('archive mode with open tab shows close action', (tester) async {
+    debugDefaultTargetPlatformOverride = TargetPlatform.linux;
+    addTearDown(() => debugDefaultTargetPlatformOverride = null);
+    final chatCubit = _ArchiveRecordingChatCubit();
+    chatCubit.tabStore.registerSession(
+      ChatTab(
+        info: ChatTabInfo(id: _session.sessionId, title: 't', subtitle: ''),
+        cliTeamName: _session.sessionId,
+      ),
+    );
+    final (attention, automationCubit) = _tileCubits();
+    addTearDown(chatCubit.close);
+    addTearDown(automationCubit.close);
+    addTearDown(attention.close);
+    final archived = _session.copyWith(archived: true, display: 'Old chat');
+
+    await tester.pumpWidget(
+      _host(
+        chatCubit: chatCubit,
+        automationCubit: automationCubit,
+        attentionCubit: attention,
+        sessionRepository: SessionRepository(),
+        child: SidebarSessionTile(
+          session: archived,
+          archiveMode: true,
+          onTap: () {},
+        ),
+      ),
+    );
+    await tester.pump();
+
+    final mouse = await tester.createGesture(kind: PointerDeviceKind.mouse);
+    await mouse.addPointer(location: Offset.zero);
+    addTearDown(mouse.removePointer);
+    await tester.pump();
+    await mouse.moveTo(tester.getCenter(find.byType(TpHoverRow)));
+    await tester.pumpAndSettle();
+
+    expect(find.byIcon(Icons.close), findsOneWidget);
+    await tester.tap(find.byIcon(Icons.close));
+    await tester.pump();
+    expect(chatCubit.closedSessionIds, ['sess-1']);
     debugDefaultTargetPlatformOverride = null;
   });
 

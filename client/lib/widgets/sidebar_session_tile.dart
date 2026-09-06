@@ -117,22 +117,11 @@ class _SidebarSessionTileState extends State<SidebarSessionTile> {
     _chatCubit?.closeSessionTab(widget.session.sessionId);
   }
 
-  /// Agent connected, connecting, or mid-turn — matches when close tab is meaningful.
-  bool _sessionIsRunning(
-    ChatCubit chat,
-    String sessionId, {
-    required bool launching,
-  }) {
-    final tab = chat.tabStore.openTabBySessionId(sessionId);
-    if (tab == null) return false;
-    return tab.isRunning ||
-        tab.membersPendingConnect.isNotEmpty ||
-        launching ||
-        chat.state.isSessionBusy(sessionId);
-  }
-
-  bool _sessionIsClosable({required bool sessionIsRunning}) =>
-      !widget.archiveMode && sessionIsRunning;
+  /// Any open workbench tab is closable — close removes the tab (and tears
+  /// the session down), independent of whether the terminal is currently
+  /// running, reclaimed for idle, or exited.
+  bool _sessionHasOpenTab(ChatCubit chat, String sessionId) =>
+      chat.tabStore.openTabBySessionId(sessionId) != null;
 
   Future<void> _confirmAndDelete(BuildContext context) async {
     final l10n = context.l10n;
@@ -177,7 +166,7 @@ class _SidebarSessionTileState extends State<SidebarSessionTile> {
   List<TpActionMenuPopupItem<String>> _contextMenuItems(
     AppLocalizations l10n,
     AppSession session, {
-    required bool sessionIsRunning,
+    required bool hasOpenTab,
   }) {
     final items = <TpActionMenuPopupItem<String>>[
       TpActionMenuPopupItem(
@@ -236,6 +225,12 @@ class _SidebarSessionTileState extends State<SidebarSessionTile> {
           icon: Icons.unarchive_outlined,
           label: l10n.restoreConversation,
         ),
+        if (hasOpenTab)
+          TpActionMenuPopupItem(
+            value: 'close',
+            icon: Icons.close,
+            label: l10n.closeConversation,
+          ),
         TpActionMenuPopupItem(
           value: 'delete',
           icon: Icons.delete_outline,
@@ -244,7 +239,7 @@ class _SidebarSessionTileState extends State<SidebarSessionTile> {
         ),
       ]);
     } else {
-      if (_sessionIsClosable(sessionIsRunning: sessionIsRunning)) {
+      if (hasOpenTab) {
         items.add(
           TpActionMenuPopupItem(
             value: 'close',
@@ -411,17 +406,11 @@ class _SidebarSessionTileState extends State<SidebarSessionTile> {
 
     final l10n = context.l10n;
     final session = widget.session;
-    final chat = context.read<ChatCubit>();
-    final sessionIsRunning = _sessionIsRunning(
-      chat,
+    final hasOpenTab = _sessionHasOpenTab(
+      context.read<ChatCubit>(),
       session.sessionId,
-      launching: chat.ensurePodRuntime(session.sessionId).state.phase.isLaunching,
     );
-    final menuItems = _contextMenuItems(
-      l10n,
-      session,
-      sessionIsRunning: sessionIsRunning,
-    );
+    final menuItems = _contextMenuItems(l10n, session, hasOpenTab: hasOpenTab);
     setState(() => _menuOpen = true);
     final selected = await showTpActionMenuAtTap<String>(
       context: context,
@@ -444,17 +433,11 @@ class _SidebarSessionTileState extends State<SidebarSessionTile> {
 
     final l10n = context.l10n;
     final session = widget.session;
-    final chat = context.read<ChatCubit>();
-    final sessionIsRunning = _sessionIsRunning(
-      chat,
+    final hasOpenTab = _sessionHasOpenTab(
+      context.read<ChatCubit>(),
       session.sessionId,
-      launching: chat.ensurePodRuntime(session.sessionId).state.phase.isLaunching,
     );
-    final menuItems = _contextMenuItems(
-      l10n,
-      session,
-      sessionIsRunning: sessionIsRunning,
-    );
+    final menuItems = _contextMenuItems(l10n, session, hasOpenTab: hasOpenTab);
     setState(() => _menuOpen = true);
     final selected = await showTpActionMenu<String>(
       context: context,
@@ -532,12 +515,8 @@ class _SidebarSessionTileState extends State<SidebarSessionTile> {
     final workingFromState = context.select<ChatCubit, bool>(
       (cubit) => cubit.state.isSessionBusy(sessionId),
     );
-    final sessionIsRunning = context.select<ChatCubit, bool>(
-      (cubit) => _sessionIsRunning(
-        cubit,
-        sessionId,
-        launching: cubit.ensurePodRuntime(sessionId).state.phase.isLaunching,
-      ),
+    final hasOpenTab = context.select<ChatCubit, bool>(
+      (cubit) => _sessionHasOpenTab(cubit, sessionId),
     );
     final pod = context.read<ChatCubit>().ensurePodRuntime(sessionId);
     final waiting = context.select<AgentAttentionCubit, bool>(
@@ -630,6 +609,17 @@ class _SidebarSessionTileState extends State<SidebarSessionTile> {
             mainAxisSize: MainAxisSize.min,
             children: [
               if (widget.archiveMode) ...[
+                if (hasOpenTab)
+                  TpIconButton(
+                    icon: Icons.close,
+                    compact: true,
+                    size: TpIconButton.kCompactSize,
+                    tooltip: l10n.closeConversation,
+                    onTap: throttledAsync(
+                      'sidebar_close_session_${session.sessionId}',
+                      _closeSession,
+                    ),
+                  ),
                 TpIconButton(
                   icon: Icons.unarchive_outlined,
                   compact: true,
@@ -651,7 +641,7 @@ class _SidebarSessionTileState extends State<SidebarSessionTile> {
                   onTap: () => unawaited(_confirmAndDelete(context)),
                 ),
               ] else ...[
-                if (_sessionIsClosable(sessionIsRunning: sessionIsRunning))
+                if (hasOpenTab)
                   TpIconButton(
                     icon: Icons.close,
                     compact: true,
@@ -733,6 +723,13 @@ class _SidebarSessionTileState extends State<SidebarSessionTile> {
                           ),
                         ),
                       ),
+                      if (hasOpenTab)
+                        TpActionMenuItem(
+                          icon: Icons.close,
+                          label: l10n.closeConversation,
+                          menuController: controller,
+                          onTap: () => unawaited(_closeSession()),
+                        ),
                       TpActionMenuItem(
                         icon: Icons.delete_outline,
                         label: l10n.deleteConversation,
@@ -741,7 +738,7 @@ class _SidebarSessionTileState extends State<SidebarSessionTile> {
                         onTap: () => unawaited(_confirmAndDelete(context)),
                       ),
                     ] else ...[
-                      if (_sessionIsClosable(sessionIsRunning: sessionIsRunning))
+                      if (hasOpenTab)
                         TpActionMenuItem(
                           icon: Icons.close,
                           label: l10n.closeConversation,
