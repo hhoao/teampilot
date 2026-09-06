@@ -84,6 +84,12 @@ class SshProfileCubit extends Cubit<SshProfileState> {
   /// them collapses three repository reads into one.
   Future<void>? _loadFuture;
 
+  /// Monotonic token for in-flight CLI path discoveries. [saveProfile] and
+  /// [selectProfile] bump it, so a discovery that was already suspended at an
+  /// await when the profile changed discards its results instead of caching
+  /// and applying paths that belong to a superseded host/selection.
+  int _discoveryGeneration = 0;
+
   Future<void> load() => _loadFuture ??= _doLoad().whenComplete(() {
     _loadFuture = null;
   });
@@ -132,6 +138,9 @@ class SshProfileCubit extends Cubit<SshProfileState> {
     final profile = state.profiles.firstWhere((p) => p.id == profileId);
     await _profileRepository.saveSelectedProfileId(profileId);
     emit(state.copyWith(selectedProfileId: profileId));
+    // A discovery still in flight for the previously selected profile must
+    // not apply its paths after this selection.
+    _discoveryGeneration++;
     unawaited(_discoverRemoteCliPath(profile));
   }
 
@@ -147,6 +156,10 @@ class SshProfileCubit extends Cubit<SshProfileState> {
             sshHomeConnectionFingerprint(profile)) {
       await _remoteCliPathCache?.invalidate(profile.id);
     }
+    // The reload below re-discovers for the updated profile; a discovery
+    // still in flight for the old connection must not cache or apply its
+    // paths (it would resurrect the just-invalidated entry).
+    _discoveryGeneration++;
     _invalidateProfileConnection?.call(profile.id);
     await _profileRepository.save(profile);
     await load();
@@ -200,26 +213,37 @@ class SshProfileCubit extends Cubit<SshProfileState> {
         apply == null) {
       return;
     }
+    final generation = _discoveryGeneration;
     final cache = _remoteCliPathCache;
     if (cache != null) {
       try {
         final cached = await cache.load(profile.id);
+        if (_staleDiscovery(generation, profile)) return;
         if (cached.isNotEmpty) {
           for (final entry in cached.entries) {
+            if (_staleDiscovery(generation, profile)) return;
             await apply(entry.key, entry.value);
           }
           return;
         }
-      } on Object {
+      } on Object catch (error, stackTrace) {
         // Cache read failures fall through to a live probe below.
+        Logger().w(
+          'Remote CLI cache read failed for ${profile.hostIdentifier}, '
+          'falling back to a live probe',
+          error: error,
+          stackTrace: stackTrace,
+        );
       }
     }
     try {
       final located = await locate(profile);
+      if (_staleDiscovery(generation, profile)) return;
       if (cache != null && located.isNotEmpty) {
         await cache.save(profile.id, located);
       }
       for (final entry in located.entries) {
+        if (_staleDiscovery(generation, profile)) return;
         await apply(entry.key, entry.value);
       }
     } on Object catch (error, stackTrace) {
@@ -229,5 +253,15 @@ class SshProfileCubit extends Cubit<SshProfileState> {
         stackTrace: stackTrace,
       );
     }
+  }
+
+  /// True when [saveProfile]/[selectProfile] superseded the discovery that
+  /// captured [generation] — its remaining results must be dropped.
+  bool _staleDiscovery(int generation, SshProfile profile) {
+    if (_discoveryGeneration == generation) return false;
+    Logger().w(
+      'Discarded stale remote CLI discovery for ${profile.hostIdentifier}',
+    );
+    return true;
   }
 }
