@@ -15,13 +15,18 @@ import 'package:dartssh2/dartssh2.dart';
 /// `/bin/sh` is the remote-host stand-in on POSIX hosts; Windows has none,
 /// so we fall back to `sh`/`bash` from Git for Windows (CI runners always
 /// have it on PATH — their default shell is Git bash).
+///
+/// [path] simulates the remote host's PATH. It is assigned INSIDE the shell
+/// command (`PATH=…; cmd`), not via the child environment: bash rebuilds a
+/// default PATH at startup when the inherited one looks unusable (msys bash
+/// on Windows repopulates PATH with its own mingw64/bin, where git lives),
+/// but an explicit assignment in the script body cannot be self-healed.
 Future<SSHRunResult> faithfulShellExec(String command, {String? path}) async {
   final shell = _posixShell;
-  final result = await Process.run(
-    shell,
-    ['-c', command],
-    environment: path == null ? null : {'PATH': path},
-  );
+  final result = await Process.run(shell, [
+    '-c',
+    [if (path != null) "PATH='$path'; " else '', command].join(''),
+  ]);
   final stdoutBytes = utf8.encode(result.stdout as String);
   final stderrBytes = utf8.encode(result.stderr as String);
   return SSHRunResult(
