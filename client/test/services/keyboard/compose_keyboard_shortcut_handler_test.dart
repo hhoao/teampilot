@@ -54,7 +54,10 @@ void main() {
     expect(controller.selection, const TextSelection.collapsed(offset: 2));
   });
 
-  ShortcutDispatcher buildComposeDispatcher(CommandBus bus) {
+  ShortcutDispatcher buildComposeDispatcher(
+    CommandBus bus, {
+    bool Function()? isImeComposing,
+  }) {
     return ShortcutDispatcher(
       bus: bus,
       effectiveChords: (commandId) => CommandCatalog.v1
@@ -63,6 +66,7 @@ void main() {
       context: () =>
           const ShortcutContext(inCompose: true, inTextInput: true),
       isMacOS: () => false,
+      isImeComposing: isImeComposing,
     );
   }
 
@@ -124,6 +128,57 @@ void main() {
 
       dispatcher.handle(keyDown(LogicalKeyboardKey.enter));
 
+      expect(submitted, isFalse);
+      expect(controller.text, 'hi\n');
+      unregister();
+    });
+
+    test('Enter during IME composition does not submit', () {
+      final bus = CommandBus();
+      final controller = TextEditingController(text: 'nihao');
+      var submitted = false;
+      final unregister = ComposeCommandBindings.register(
+        bus: bus,
+        controller: controller,
+        onSubmit: () => submitted = true,
+        canSubmit: () => true,
+      );
+      final dispatcher = buildComposeDispatcher(
+        bus,
+        isImeComposing: () => true,
+      );
+
+      // Bare Enter belongs to the IME (commits the raw composition) — the
+      // dispatcher must not claim it and must not fire compose.submit.
+      final handled = dispatcher.handle(keyDown(LogicalKeyboardKey.enter));
+
+      expect(handled, isFalse);
+      expect(submitted, isFalse);
+      unregister();
+    });
+
+    test('Ctrl+Enter during IME composition still inserts a newline', () {
+      final bus = CommandBus();
+      final controller = TextEditingController(text: 'hi');
+      var submitted = false;
+      final unregister = ComposeCommandBindings.register(
+        bus: bus,
+        controller: controller,
+        onSubmit: () => submitted = true,
+        canSubmit: () => true,
+      );
+      final dispatcher = buildComposeDispatcher(
+        bus,
+        isImeComposing: () => true,
+      );
+
+      // Modifier combos stay app-owned even mid-composition.
+      pressModifier(LogicalKeyboardKey.controlLeft);
+      addTearDown(() => releaseModifier(LogicalKeyboardKey.controlLeft));
+
+      final handled = dispatcher.handle(keyDown(LogicalKeyboardKey.enter));
+
+      expect(handled, isTrue);
       expect(submitted, isFalse);
       expect(controller.text, 'hi\n');
       unregister();
