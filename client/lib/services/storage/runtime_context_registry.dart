@@ -77,6 +77,19 @@ class RuntimeContextRegistry {
     if (shouldNotify) await _onEvict?.call(targetId);
   }
 
+  /// Evict [context] only if it is still the cached instance for its target.
+  ///
+  /// Safe to call after a newer context for the same target id was already
+  /// materialized (e.g. a HomeStorage retire callback firing after a same-id
+  /// rebind): the stale instance is a no-op and the replacement stays cached.
+  Future<void> disposeContext(
+    RuntimeContext context, {
+    bool notifyEvict = true,
+  }) async {
+    if (!identical(_cache[context.target.id], context)) return;
+    await dispose(context.target.id, notifyEvict: notifyEvict);
+  }
+
   /// Rebind the home target (user switched home device).
   Future<void> rebindHome(RuntimeTarget homeTarget) async {
     _homeTarget = homeTarget;

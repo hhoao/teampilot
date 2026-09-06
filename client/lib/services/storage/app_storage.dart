@@ -6,6 +6,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../../models/runtime_target.dart';
 import '../io/filesystem.dart';
 import '../io/local_filesystem.dart';
+import 'home_storage.dart';
 import 'runtime_context.dart';
 
 /// Global business storage facade for the **control plane**: forwards to the
@@ -15,23 +16,35 @@ import 'runtime_context.dart';
 class AppStorage {
   AppStorage._();
 
-  static RuntimeContext? _home;
+  // ---- temporary migration shim — deleted in sub-task 6-C ----
+  // When a HomeStorage is bound (bootstrap does so right after bindHome), it
+  // is the source of truth: every getter forwards to its *current* context so
+  // home swaps published via HomeStorage.swap propagate to unmigrated
+  // consumers automatically. The legacy `_legacyHome` field only serves paths
+  // that bind a context directly (tests via installForTesting).
+  static HomeStorage? _homeStorage;
+  static RuntimeContext? _legacyHome;
 
   /// Bind the home context (control plane). Synchronous so test setup stays
   /// non-async; the registry calls this after ensureHome/rebindHome.
-  static void bindHome(RuntimeContext home) => _home = home;
+  static void bindHome(RuntimeContext home) => _legacyHome = home;
 
-  static void unbindHome() => _home = null;
+  /// Bind the versioned home facade; thereafter this global forwards to it.
+  static void bindHomeStorage(HomeStorage storage) => _homeStorage = storage;
 
-  static bool get isInstalled => _home != null;
+  static void unbindHome() => _legacyHome = null;
+
+  static RuntimeContext? get _bound => _homeStorage?.context ?? _legacyHome;
+
+  static bool get isInstalled => _bound != null;
 
   static RuntimeContext get context =>
-      _home ??
+      _bound ??
       (throw StateError(
         'AppStorage home not bound; call AppStorage.bindHome() at bootstrap.',
       ));
 
-  static Filesystem get fs => _home?.filesystem ?? LocalFilesystem();
+  static Filesystem get fs => _bound?.filesystem ?? LocalFilesystem();
 
   static AppPaths get paths => context.paths;
 
@@ -53,6 +66,7 @@ class AppStorage {
     String home = '/home/test',
     String cwd = '/home/test',
   }) {
+    _homeStorage = null; // test install wins over any bound facade
     bindHome(
       RuntimeContext(
         target: RuntimeTarget.local(),
@@ -67,7 +81,10 @@ class AppStorage {
   }
 
   @visibleForTesting
-  static void resetForTesting() => unbindHome();
+  static void resetForTesting() {
+    _homeStorage = null;
+    unbindHome();
+  }
 }
 
 @immutable

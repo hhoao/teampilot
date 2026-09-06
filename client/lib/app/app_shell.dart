@@ -227,6 +227,7 @@ import '../services/storage/runtime_context_resolver.dart';
 import '../services/storage/runtime_context_registry.dart';
 import '../services/storage/home_storage_invalidator.dart';
 import '../services/storage/home_target_controller.dart';
+import '../services/storage/home_storage.dart';
 import '../services/storage/workspace_directory_picker.dart';
 import '../services/storage/home_target_store.dart';
 import '../services/storage/runtime_target_registry.dart';
@@ -895,6 +896,15 @@ Future<AppShell> buildAppShell({
     await termuxConfigStore.save(updated);
   }
   AppStorage.bindHome(homeCtx);
+  // Versioned, drain-safe home facade: home swaps publish through it and the
+  // outgoing context is retired (registry evict → drain-safe SSH disconnect)
+  // only after the new context is live. AppStorage forwards to it, so the
+  // unmigrated call sites follow every swap automatically (shim era).
+  final homeStorage = HomeStorage(
+    homeCtx,
+    retire: (old) => runtimeContextRegistry.disposeContext(old),
+  );
+  AppStorage.bindHomeStorage(homeStorage);
   boot(
     'home context installed '
     '(${AppStorage.context.mode}, home=${homeTarget.id}, '
@@ -1058,14 +1068,19 @@ Future<AppShell> buildAppShell({
     }
 
     // Persists the chosen home id, rebinds the registry home, and republishes it
-    // on AppStorage.
+    // through homeStorage (AppStorage forwards to it).
     Future<void> setHomeTarget(String id) async {
       await managedProviderControlPlane.invalidateForStorageContextChange();
       await homeTargetStore.save(id);
       homeTarget = homeTargetFromId(id);
+      // Drop any cached wrapper for the destination target so rebindHome
+      // materializes a fresh context (unchanged from the pre-swap sequence).
       await runtimeContextRegistry.dispose(id);
       await runtimeContextRegistry.rebindHome(homeTarget);
-      AppStorage.bindHome(runtimeContextRegistry.home());
+      // Publish the new home plane synchronously, then retire the outgoing
+      // context — its registry entry is evicted and the SSH transport closed
+      // only after in-flight ops drain (Task 5 deferred close).
+      await homeStorage.swap(runtimeContextRegistry.home());
       await persistSshHomePathCacheIfLive();
     }
 
@@ -1083,7 +1098,10 @@ Future<AppShell> buildAppShell({
         notifyEvict: false,
       );
       await runtimeContextRegistry.rebindHome(defaultTargetResolver());
-      AppStorage.bindHome(runtimeContextRegistry.home());
+      // Fresh wrapper for the same target: swap publishes it and retires the
+      // stale wrapper, but the retire is a no-op in the registry (the cached
+      // instance is already the fresh one) so the SSH pool stays connected.
+      await homeStorage.swap(runtimeContextRegistry.home());
       await persistSshHomePathCacheIfLive();
     };
 
