@@ -9,6 +9,8 @@ import 'package:tp_markdown/tp_markdown.dart';
 
 import '../../services/commands/key_chord.dart';
 import '../../services/commands/shortcut_focus.dart';
+import '../../services/editor/markdown_http_image_urls.dart';
+import '../../services/editor/markdown_network_image_store.dart';
 import '../../services/editor/markdown_preview_find_controller.dart';
 import '../../theme/app_markdown_style_sheet.dart' show buildAppMarkdownTokens;
 import '../../widgets/scroll_cursor_lock.dart';
@@ -58,6 +60,7 @@ class MarkdownPreviewPane extends StatefulWidget {
 
 class _MarkdownPreviewPaneState extends State<MarkdownPreviewPane> {
   static const _hoverResumeIdle = Duration(milliseconds: 160);
+  static const _imagePrefetchIdle = Duration(milliseconds: 280);
 
   late String _data = widget.controller.text;
 
@@ -72,6 +75,7 @@ class _MarkdownPreviewPaneState extends State<MarkdownPreviewPane> {
   /// flicker as markdown scrolls under a stationary pointer.
   final ValueNotifier<bool> _hoverEffectsEnabled = ValueNotifier(true);
   Timer? _hoverResumeTimer;
+  Timer? _imagePrefetchTimer;
 
   @override
   void initState() {
@@ -80,6 +84,7 @@ class _MarkdownPreviewPaneState extends State<MarkdownPreviewPane> {
     _viewController = MarkdownViewController();
     widget.findController?.addListener(_onFindChanged);
     _syncFindDocument();
+    _scheduleImagePrefetch();
   }
 
   @override
@@ -90,6 +95,7 @@ class _MarkdownPreviewPaneState extends State<MarkdownPreviewPane> {
       _data = widget.controller.text;
       _document = compileMarkdown(_data);
       widget.controller.addListener(_onControllerChanged);
+      _scheduleImagePrefetch();
     }
     if (oldWidget.findController != widget.findController) {
       oldWidget.findController?.removeListener(_onFindChanged);
@@ -101,6 +107,7 @@ class _MarkdownPreviewPaneState extends State<MarkdownPreviewPane> {
   @override
   void dispose() {
     _hoverResumeTimer?.cancel();
+    _imagePrefetchTimer?.cancel();
     _hoverEffectsEnabled.dispose();
     _viewController?.dispose();
     widget.controller.removeListener(_onControllerChanged);
@@ -110,6 +117,16 @@ class _MarkdownPreviewPaneState extends State<MarkdownPreviewPane> {
 
   void _syncFindDocument() {
     widget.findController?.setDocument(_document);
+  }
+
+  void _scheduleImagePrefetch() {
+    _imagePrefetchTimer?.cancel();
+    _imagePrefetchTimer = Timer(_imagePrefetchIdle, () {
+      if (!mounted) return;
+      final urls = collectMarkdownHttpImageUrls(_document);
+      if (urls.isEmpty) return;
+      unawaited(MarkdownNetworkImageStore.instance.prefetch(urls));
+    });
   }
 
   void _onFindChanged() {
@@ -134,6 +151,7 @@ class _MarkdownPreviewPaneState extends State<MarkdownPreviewPane> {
       _document = compileMarkdown(next);
     });
     _syncFindDocument();
+    _scheduleImagePrefetch();
   }
 
   void _setHoverEnabled(bool enabled) {

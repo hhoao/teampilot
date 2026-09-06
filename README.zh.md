@@ -26,14 +26,14 @@
 </div>
 
 
-
 **TeamPilot** 是一个集成主流 Agent CLI （Claude code、Codex等）的全平台（兼移动端）用户易用的 Agent 工作台， 它可以作为一个对话助手，也可以作为一个功能齐全的 Agent 驱动的 IDE。它在目前流行的 Agent CLI 之上封装一个 UI 层，将它们的聊天记录可视化、配置文件多层隔离化，它能在一个地方管理全 Agent CLI 全局、不同的工作区之间特定的Skills、MCP、Hooks，以及可以给每个Agent CLI配置多种供应商，以让每个会话都能快速使用所有 CLI 的所有自定义模型，同时它还具有独特的专家助手和能让所有 Agent CLI 在多台机器协同工作的功能，它能给任何人提供非常方便的定制化对话能力。
 
+<p align="center">
+  <img src="./assets/readme-overview-1.png" style="width: 70%" alt="QQ 群二维码" />
+  <img src="./assets/chat.jpg" alt="QQ 群二维码" style="width: 19%" />
+</p>
 
 
-![readme-overview-1](./assets/readme-overview-1.png)
-
-![readme-overview-2](./assets/readme-overview-2.png)
 
 ## 核心功能
 
@@ -50,8 +50,10 @@ TeamPilot的多 CLI功能抽象隔离，将不同 Agent 的 Skills、MCP、Hooks
 TeamPilot提供常见Agent IDE 能力，包括但不限于，Agent用量查询监听、自动化、任务完成后提示、文件树代码编辑器，源代码管理，（Git 提交图、查看Commit信息、Commit、多分支文件改动对比)、工作区、会话内容搜索、代码文档阅读编辑器、终端工具、快速启动等等。
 
 <p align="center">
-  <img src="./assets/readme-banner.png" alt="弧迹" width="640"/>
+  <img src="./assets/readme-banner.png" alt="git" style="width: 70%"/>
+    <img src="./assets/git-graph.jpg" alt="git" style="width: 17%"/>
 </p>
+
 
 ### 易用的用户界面
 
@@ -61,13 +63,17 @@ TeamPilot提供常见Agent IDE 能力，包括但不限于，Agent用量查询�
 
 默认的 Agent 开发往往难以拥有和匹配现实生活中专家精通的能力和需求，而Skills、Prompt、MCP又难以快速配置和切换，Teampilot提供了专家配置功能，让用户可以高度自定义配置多个强力独特的专家，它们启用后都能应用到当前的聊天会话中，不会和其他的会话冲突，可以在对话时快速切换使用。
 
-### 和多 Agent CLI 专家团队协作
+### 多 Agent CLI 专家团队协作
 
 若全程只用一个模型，往往要么在简单改动上浪费高价 Token，要么在方案与跨模块核对上力不从心。TeamPilot 让**每个成员绑定自己的模型档位**，在同一团队里并行跑不同「智商 / 速度 / 成本」的 Agent：
 
 团队由多个专家组成，**各自独立**指定不同的CLI、模型、Provider、系统提示词、启动参数以及所处的机器，聊天时每个成员会有不同的上下文，不同的配置进行相互通信完成工作。
 
-![readme-team-collaboration](./assets/readme-team-collaboration.png)
+<p align="center">
+  <img src="./assets/readme-team-collaboration.png" alt="agent team" style="width: 70%"/>
+    <img src="./assets/agent-team.jpg" alt="agent team" style="width: 19%"/>
+</p>
+
 
 ### 高性能
 

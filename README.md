@@ -31,9 +31,10 @@
 
 
 
-![readme-overview-1](./assets/readme-overview-1.png)
-
-![readme-overview-2](./assets/readme-overview-2.png)
+<p align="center">
+  <img src="./assets/readme-overview-1.png" style="width: 70%" alt="QQ 群二维码" />
+  <img src="./assets/chat.jpg" alt="QQ 群二维码" style="width: 19%" />
+</p>
 
 ## Core Features
 
@@ -50,7 +51,8 @@ TeamPilot's multi-CLI abstraction turns the Skills, MCP, Hooks, and plugin manag
 TeamPilot provides the usual agent-IDE capabilities, including but not limited to: agent usage monitoring, automations, post-task notifications, a file tree and code editor, source control (Git commit graph, viewing commit info, committing, cross-branch file-diff comparison), workspaces, session content search, a code/doc reading editor, terminal tools, quick launch, and more.
 
 <p align="center">
-  <img src="./assets/readme-banner.png" alt="TeamPilot" width="640"/>
+  <img src="./assets/readme-banner.png" alt="git" style="width: 70%"/>
+    <img src="./assets/git-graph.jpg" alt="git" style="width: 17%"/>
 </p>
 
 ### An easy-to-use interface
@@ -67,7 +69,10 @@ Using a single model throughout either burns premium tokens on trivial edits or 
 
 A team is composed of multiple experts, each **independently** specifying its CLI, model, provider, system prompt, launch flags, and machine. While chatting, each member has its own context and configuration, and they communicate with each other to get the work done.
 
-![readme-team-collaboration](./assets/readme-team-collaboration.png)
+<p align="center">
+  <img src="./assets/readme-team-collaboration.png" alt="agent team" style="width: 70%"/>
+    <img src="./assets/agent-team.jpg" alt="agent team" style="width: 19%"/>
+</p>
 
 ### High performance
 

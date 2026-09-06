@@ -513,6 +513,14 @@ class _FileEditorBody extends StatelessWidget {
                 markdownFilePath: path,
                 workspaceRoots: roots,
               ),
+              buildImageWidget: (src, {required inline, required inlineHeight}) =>
+                  buildMarkdownPreviewImage(
+                src: src,
+                markdownFilePath: path,
+                workspaceRoots: roots,
+                inline: inline,
+                inlineHeight: inlineHeight,
+              ),
             ),
             codeBlockMode: context.select<LayoutCubit, ContentDisplayMode>(
               (c) => c.state.preferences.fileCodeBlockMode,

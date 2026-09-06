@@ -77,6 +77,7 @@ class _MarkdownViewState extends State<MarkdownView> {
     return MarkdownResolvers(
       onLinkTap: onLinkTap,
       resolveImage: widget.resolvers.resolveImage,
+      buildImageWidget: widget.resolvers.buildImageWidget,
       createLinkRecognizer: (href) {
         final recognizer = TapGestureRecognizer()..onTap = () => onLinkTap(href);
         _linkRecognizers.add(recognizer);
