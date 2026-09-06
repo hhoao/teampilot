@@ -20,6 +20,7 @@ import '../../services/ai/ai_feature_setting_resolver.dart';
 import '../../services/ai/team_config_draft.dart';
 import '../../services/ai/team_config_generator.dart';
 import '../../services/ai/team_draft_roster_mapper.dart';
+import '../../services/expert_hub/expert_hub_catalog.dart';
 import '../../services/cli/registry/capabilities/provider_capability.dart';
 import '../../services/cli/registry/cli_display_name.dart';
 import '../../services/cli/registry/cli_tool_registry_scope.dart';
@@ -195,7 +196,13 @@ class _HomeNewTeamDialogState extends State<HomeNewTeamDialog> {
     final mode = _mode;
     List<TeamRosterSlot>? roster;
     if (_draft != null) {
-      roster = await rosterSlotsFromTeamDraft(_draft!);
+      ExpertHubCatalog? catalog;
+      try {
+        catalog = context.read<ExpertHubCatalog>();
+      } catch (_) {
+        catalog = null;
+      }
+      roster = await rosterSlotsFromTeamDraft(_draft!, catalog: catalog);
     }
     if (!mounted) return;
     Navigator.of(context).pop(

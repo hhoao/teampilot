@@ -1,5 +1,6 @@
 import '../../models/discoverable_member.dart';
 import 'composite_expert_hub_source.dart';
+import 'expert_hub_catalog.dart';
 import 'expert_member_resolver.dart';
 import 'local_expert_store.dart';
 
@@ -25,11 +26,17 @@ class ExpertCloneService {
   ExpertCloneService({
     required CompositeExpertHubSource source,
     LocalExpertStore? store,
+    ExpertHubCatalog? catalog,
   }) : _source = source,
-       _store = store ?? LocalExpertStore();
+       _store = store ?? LocalExpertStore(),
+       _catalog = catalog;
 
   final CompositeExpertHubSource _source;
   final LocalExpertStore _store;
+
+  /// Shared catalog snapshot invalidated after a clone so the new local expert
+  /// shadows the catalog on the next resolve.
+  final ExpertHubCatalog? _catalog;
 
   Future<ExpertCloneOutcome?> clone({
     required String expertKey,
@@ -61,6 +68,7 @@ class ExpertCloneService {
         clonedAt: DateTime.now().millisecondsSinceEpoch,
       ),
     );
+    _catalog?.invalidate();
     return const ExpertCloneOutcome(cloned: true);
   }
 }

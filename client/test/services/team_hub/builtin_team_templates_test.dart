@@ -1,8 +1,17 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/models/team_config.dart';
+import 'package:teampilot/services/expert_hub/builtin_member_templates.dart';
+import 'package:teampilot/services/expert_hub/expert_hub_catalog.dart';
 import 'package:teampilot/services/expert_hub/expert_member_materializer.dart';
 import 'package:teampilot/services/team_hub/builtin_team_templates.dart';
 import 'package:teampilot/utils/team/team_member_naming.dart';
+
+MemberCatalogSnapshot _builtinSnapshot() => MemberCatalogSnapshot({
+  for (final m in builtinExpertMembers()) m.key: m,
+});
+
+List<TeamMemberConfig> _materialize(TeamProfile team) =>
+    ExpertMemberMaterializer.materializeTeam(team, _builtinSnapshot()).members;
 
 void main() {
   test('superpowers quartet roster references four builtin experts', () {
@@ -25,9 +34,7 @@ void main() {
         name: 'Superpowers',
         roster: kSuperpowersTrioTeamTemplate.roster,
       );
-      final configs = await ExpertMemberMaterializer.materializeRosterAsync(
-        team: team,
-      );
+      final configs = _materialize(team);
       expect(configs, hasLength(4));
       expect(configs[0].playbook, isNotEmpty);
       expect(configs[1].responsibilities, contains('Do NOT'));
@@ -46,9 +53,7 @@ void main() {
         name: 'Superpowers',
         roster: kSuperpowersTrioTeamTemplate.roster,
       );
-      final configs = await ExpertMemberMaterializer.materializeRosterAsync(
-        team: team,
-      );
+      final configs = _materialize(team);
       final lead = configs.firstWhere((m) => TeamMemberNaming.isTeamLead(m));
       final text = '${lead.responsibilities}\n${lead.playbook}';
       expect(text, isNot(contains('brainstorming')));
@@ -64,9 +69,7 @@ void main() {
         name: 'Superpowers',
         roster: kSuperpowersTrioTeamTemplate.roster,
       );
-      final configs = await ExpertMemberMaterializer.materializeRosterAsync(
-        team: team,
-      );
+      final configs = _materialize(team);
       final architect = configs.firstWhere((m) => m.id == 'architect');
       expect(architect.capabilities, contains('design'));
       final builder = configs.firstWhere((m) => m.id == 'builder');
@@ -80,9 +83,7 @@ void main() {
       name: 'Superpowers',
       roster: kSuperpowersTrioTeamTemplate.roster,
     );
-    final configs = await ExpertMemberMaterializer.materializeRosterAsync(
-      team: team,
-    );
+    final configs = _materialize(team);
     final lead = configs.firstWhere((m) => TeamMemberNaming.isTeamLead(m));
     final text = '${lead.responsibilities}\n${lead.playbook}';
     expect(text, contains('architect'));

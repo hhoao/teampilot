@@ -15,6 +15,7 @@ import 'package:teampilot/services/session/session_lifecycle_service.dart';
 import 'package:teampilot/services/storage/launch_profile_provisioner.dart';
 import 'package:teampilot/services/expert_hub/builtin_member_templates.dart';
 import 'package:teampilot/services/expert_hub/composite_expert_hub_source.dart';
+import 'package:teampilot/services/expert_hub/expert_hub_catalog.dart';
 import 'package:teampilot/services/expert_hub/expert_hub_source.dart';
 import 'package:teampilot/models/team_roster_slot.dart';
 import 'package:teampilot/utils/team/team_member_naming.dart';
@@ -52,6 +53,22 @@ class _ThrowingExpertHubSource implements ExpertHubSource {
   Future<List<String>> categories({bool forceRefresh = false}) async =>
       const [];
 }
+
+/// Offline source returning only the built-in experts so roster slots
+/// (`teampilot/builtin/*`) materialize without touching the network.
+class _BuiltinExpertSource implements ExpertHubSource {
+  @override
+  Future<List<DiscoverableMember>> fetchMembers({
+    bool forceRefresh = false,
+  }) async => builtinExpertMembers();
+
+  @override
+  Future<List<String>> categories({bool forceRefresh = false}) async =>
+      const [];
+}
+
+ExpertHubCatalog _builtinCatalog() =>
+    ExpertHubCatalog(source: _BuiltinExpertSource());
 
 class _RecordingLifecycleService extends SessionLifecycleService {
   _RecordingLifecycleService()
@@ -252,6 +269,7 @@ void main() {
       sessionRepository: SessionRepository(),
       executableResolver: () => 'flashskyai',
     );
+    cubit.attachCatalog(_builtinCatalog());
     await cubit.load();
 
     expect(await cubit.addTeam(''), isFalse);
@@ -282,6 +300,7 @@ void main() {
       sessionRepository: SessionRepository(),
       executableResolver: () => 'flashskyai',
     );
+    cubit.attachCatalog(_builtinCatalog());
     await cubit.load();
 
     expect(await cubit.addTeam('Alpha'), isTrue);
@@ -416,6 +435,7 @@ void main() {
         appDataBasePath: base.path,
         configProfileService: ConfigProfileService(basePath: base.path),
       );
+      cubit.attachCatalog(_builtinCatalog());
 
       expect(
         await cubit.addTeam(
@@ -567,6 +587,7 @@ void main() {
       members: [member],
     );
     await repo.saveTeamProfiles([team]);
+    cubit.attachCatalog(_builtinCatalog());
     await cubit.load();
 
     await cubit.updateMember(
@@ -634,6 +655,7 @@ void main() {
       ],
     );
     await repo.saveTeamProfiles([team]);
+    cubit.attachCatalog(_builtinCatalog());
     await cubit.load(awaitProfiles: true);
     await cubit.selectTeam('claude-team');
 
@@ -801,10 +823,12 @@ void main() {
       await repo.saveTeamProfiles([team]);
       await cubit.load();
       await cubit.selectTeam(LaunchProfileProvisioner.defaultNativeTeamId);
-      cubit.attachExpertHubSource(
-        CompositeExpertHubSource(
-          builtIns: builtinExpertMembers(),
-          registry: _ThrowingExpertHubSource(),
+      cubit.attachCatalog(
+        ExpertHubCatalog(
+          source: CompositeExpertHubSource(
+            builtIns: builtinExpertMembers(),
+            registry: _ThrowingExpertHubSource(),
+          ),
         ),
       );
       repo.saveCount = 0;

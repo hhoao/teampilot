@@ -6,6 +6,8 @@ import 'package:teampilot/cubits/chat_cubit.dart';
 import 'package:teampilot/models/team_config.dart';
 import 'package:teampilot/models/workspace_folder.dart';
 import 'package:teampilot/repositories/session_repository.dart';
+import 'package:teampilot/services/expert_hub/builtin_member_templates.dart';
+import 'package:teampilot/services/expert_hub/expert_hub_catalog.dart';
 import 'package:teampilot/services/expert_hub/expert_member_materializer.dart';
 import 'package:teampilot/services/storage/launch_profile_provisioner.dart';
 import 'package:teampilot/utils/team/team_member_naming.dart';
@@ -15,6 +17,15 @@ import '../../support/fixed_resume_lifecycle_service.dart';
 import '../../support/post_frame_test_harness.dart';
 import '../../support/test_runtime_context.dart';
 
+/// Materializes a roster from the built-in expert catalog (test-local snapshot).
+TeamProfile _withBuiltinMembers(TeamProfile team) =>
+    ExpertMemberMaterializer.materializeTeam(
+      team,
+      MemberCatalogSnapshot({
+        for (final m in builtinExpertMembers()) m.key: m,
+      }),
+    );
+
 void main() {
   setUp(setUpTestAppStorage);
   tearDown(tearDownTestAppStorage);
@@ -22,7 +33,7 @@ void main() {
   test(
     'disconnectMemberShell targets arbitrary session member, not only active',
     () async {
-      final team = await ExpertMemberMaterializer.attachMaterializedMembers(
+      final team = _withBuiltinMembers(
         TeamProfile(
           id: LaunchProfileProvisioner.defaultNativeTeamId,
           name: 'Team',

@@ -165,6 +165,7 @@ import '../services/team_hub/team_hub_favorites_store.dart';
 import '../services/expert_hub/composite_expert_hub_source.dart';
 import '../services/expert_hub/expert_capability_resolver.dart';
 import '../services/expert_hub/expert_clone_service.dart';
+import '../services/expert_hub/expert_hub_catalog.dart';
 import '../services/expert_hub/local_expert_store.dart';
 import '../services/expert_hub/expert_hub_favorites_store.dart';
 import '../services/expert_hub/git_registry_expert_hub_source.dart';
@@ -447,6 +448,7 @@ class AppShell {
     required this.hookImportService,
     required this.teamHubCubit,
     required this.expertHubCubit,
+    required this.expertHubCatalog,
     required this.expertCapabilityResolver,
     required this.extensionCubit,
     required this.appUpdateCubit,
@@ -546,6 +548,7 @@ class AppShell {
   final HookImportService hookImportService;
   final TeamHubCubit teamHubCubit;
   final ExpertHubCubit expertHubCubit;
+  final ExpertHubCatalog expertHubCatalog;
   final ExpertCapabilityResolver expertCapabilityResolver;
   final ExtensionCubit extensionCubit;
   final AppUpdateCubit appUpdateCubit;
@@ -1425,9 +1428,11 @@ Future<AppShell> buildAppShell({
       teamIndex: teamHubSource.fetchTeams,
       localStore: localExpertStore,
     );
+    final expertHubCatalog = ExpertHubCatalog(source: compositeExpertHubSource);
     final expertCloneService = ExpertCloneService(
       source: compositeExpertHubSource,
       store: localExpertStore,
+      catalog: expertHubCatalog,
     );
     final teamCloneService = TeamCloneService(
       installSkill: skillCubit.installTeamDependency,
@@ -1492,7 +1497,7 @@ Future<AppShell> buildAppShell({
     );
 
     final expertHubFavorites = ExpertHubFavoritesStore();
-    teamCubit.attachExpertHubSource(compositeExpertHubSource);
+    teamCubit.attachCatalog(expertHubCatalog);
     final expertCapabilityResolver = ExpertCapabilityResolver(
       installSkill: skillCubit.installTeamDependency,
       installPlugin: pluginCubit.installTeamDependency,
@@ -1942,6 +1947,7 @@ Future<AppShell> buildAppShell({
         targetRegistry: runtimeTargetRegistry,
         remoteCliReadiness: remoteCliReadiness,
         catalogRegistry: catalogRuntime.registry,
+        expertHubCatalog: expertHubCatalog,
       );
       TeamGenerationGraphBootstrap(
         graph: graph,
@@ -2206,6 +2212,7 @@ Future<AppShell> buildAppShell({
         managedProviderUsageCubit: resolvedManagedProviderUsageCubit,
         home: defaultTargetResolver(),
         reinstallSshHome: reinstallSshHome,
+        expertHubCatalog: expertHubCatalog,
       );
       await persistSshHomePathCacheIfLive();
     };
@@ -2264,6 +2271,7 @@ Future<AppShell> buildAppShell({
               sshProfileExists: (id) => sshProfileById(id) != null,
               reinstallStorageContext: reinstallStorageContext,
               home: defaultTargetResolver(),
+              expertHubCatalog: expertHubCatalog,
             );
           } on Object catch (error, stackTrace) {
             appLogger.w(
@@ -2283,6 +2291,7 @@ Future<AppShell> buildAppShell({
             sessionRepo: sessionRepo,
             layoutCubit: layoutCubit,
             home: defaultTargetResolver(),
+            expertHubCatalog: expertHubCatalog,
           );
         }
         bootstrapCubit?.markHomeIndexReady();
@@ -2617,6 +2626,7 @@ Future<AppShell> buildAppShell({
       hookImportService: hookImportService,
       teamHubCubit: teamHubCubit,
       expertHubCubit: expertHubCubit,
+      expertHubCatalog: expertHubCatalog,
       expertCapabilityResolver: expertCapabilityResolver,
       extensionCubit: extensionCubit,
       appUpdateCubit: appUpdateCubit,

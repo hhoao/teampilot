@@ -9,6 +9,7 @@ import '../../services/session/session_member_cli_locks.dart';
 import '../../services/storage/app_storage.dart';
 import '../../services/storage/work_target_canonicalizer.dart';
 import '../../utils/workspace/workspace_path_utils.dart';
+import '../expert_hub/expert_hub_catalog.dart';
 import '../expert_hub/expert_member_materializer.dart';
 
 /// First-launch bootstrap for the built-in workspace and starter sessions.
@@ -43,6 +44,7 @@ abstract final class DefaultWorkspaceService {
     required TeamProfile defaultTeam,
     List<Workspace>? knownWorkspaces,
     RuntimeTarget? home,
+    ExpertHubCatalog? catalog,
   }) async {
     final primaryPath = await resolvePrimaryPath(home: home);
     final resolvedHome = home ?? RuntimeTarget.local();
@@ -75,11 +77,17 @@ abstract final class DefaultWorkspaceService {
       (s) => s.sessionTeam.trim() == defaultTeam.id,
     );
     if (!hasTeam) {
-      final rosterMembers = defaultTeam.members.isNotEmpty
-          ? defaultTeam.members
-          : await ExpertMemberMaterializer.materializeRosterAsync(
-              team: defaultTeam,
-            );
+      final List<TeamMemberConfig> rosterMembers;
+      if (defaultTeam.members.isNotEmpty) {
+        rosterMembers = defaultTeam.members;
+      } else if (catalog != null) {
+        rosterMembers = ExpertMemberMaterializer.materializeTeam(
+          defaultTeam,
+          await catalog.snapshot(),
+        ).members;
+      } else {
+        rosterMembers = const [];
+      }
       await repository.createSession(
         workspace.workspaceId,
         sessionTeam: defaultTeam.id,

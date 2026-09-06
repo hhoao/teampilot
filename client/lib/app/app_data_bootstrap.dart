@@ -22,6 +22,7 @@ import '../repositories/app_settings_repository.dart';
 import '../repositories/session_repository.dart';
 import '../router/app_router.dart';
 import '../services/workspace/workspace_icon_warmup.dart';
+import '../services/expert_hub/expert_hub_catalog.dart';
 import '../services/home_workspace/home_workspace_ui_cache.dart';
 import '../services/storage/launch_profile_provisioner.dart';
 import '../utils/ui/yield_ui_frame.dart';
@@ -86,6 +87,7 @@ abstract final class AppDataBootstrap {
     required SessionRepository sessionRepo,
     required LayoutCubit layoutCubit,
     RuntimeTarget? home,
+    ExpertHubCatalog? expertHubCatalog,
   }) async {
     await Future.wait([
       _timed(boot, 'launchProfiles', () => teamCubit.load(bootSilent: true)),
@@ -114,6 +116,7 @@ abstract final class AppDataBootstrap {
       sessionRepo: sessionRepo,
       layoutCubit: layoutCubit,
       home: home,
+      expertHubCatalog: expertHubCatalog,
     );
   }
 
@@ -124,6 +127,7 @@ abstract final class AppDataBootstrap {
     required SessionRepository sessionRepo,
     required LayoutCubit layoutCubit,
     RuntimeTarget? home,
+    ExpertHubCatalog? expertHubCatalog,
   }) async {
     await _ensureDefaultWorkspace(
       boot,
@@ -131,6 +135,7 @@ abstract final class AppDataBootstrap {
       chatCubit: chatCubit,
       sessionRepo: sessionRepo,
       home: home,
+      expertHubCatalog: expertHubCatalog,
     );
     await _reapplyWorkspaceEntry(
       boot: boot,
@@ -188,6 +193,7 @@ abstract final class AppDataBootstrap {
     required Future<void> Function() reinstallStorageContext,
     RuntimeTarget? home,
     bool reinstallSshHome = true,
+    ExpertHubCatalog? expertHubCatalog,
   }) async {
     final phaseSw = Stopwatch()..start();
     boot('bootstrapHomeIndex start');
@@ -237,6 +243,7 @@ abstract final class AppDataBootstrap {
       sessionRepo: sessionRepo,
       layoutCubit: layoutCubit,
       home: home,
+      expertHubCatalog: expertHubCatalog,
     );
 
     boot(
@@ -371,6 +378,7 @@ abstract final class AppDataBootstrap {
     ManagedProviderUsageCubit? managedProviderUsageCubit,
     RuntimeTarget? home,
     bool reinstallSshHome = true,
+    ExpertHubCatalog? expertHubCatalog,
   }) async {
     await bootstrapHomeIndex(
       boot: boot,
@@ -385,6 +393,7 @@ abstract final class AppDataBootstrap {
       reinstallStorageContext: reinstallStorageContext,
       home: home,
       reinstallSshHome: reinstallSshHome,
+      expertHubCatalog: expertHubCatalog,
     );
     await warmAuxiliaryData(
       boot: boot,
@@ -433,6 +442,7 @@ abstract final class AppDataBootstrap {
     required ChatCubit chatCubit,
     required SessionRepository sessionRepo,
     RuntimeTarget? home,
+    ExpertHubCatalog? expertHubCatalog,
   }) async {
     final defaultTeam = teamCubit.state.teams
         .where((t) => t.id == LaunchProfileProvisioner.defaultNativeTeamId)
@@ -447,6 +457,7 @@ abstract final class AppDataBootstrap {
         defaultTeam: defaultTeam,
         knownWorkspaces: chatCubit.state.workspaces,
         home: home,
+        catalog: expertHubCatalog,
       ),
     );
     if (mutated) {

@@ -54,6 +54,7 @@ import 'services/commands/shortcut_dispatcher.dart';
 import 'services/commands/shortcut_dispatcher_handle.dart';
 import 'services/commands/shortcut_focus.dart';
 import 'services/expert_hub/expert_capability_resolver.dart';
+import 'services/expert_hub/expert_hub_catalog.dart';
 import 'services/home_workspace/home_workspace_ui_cache.dart';
 import 'pages/home_workspace/workspace_chrome_commands.dart';
 import 'services/storage/app_storage.dart';
@@ -685,6 +686,9 @@ void main() async {
                 ),
                 RepositoryProvider<ExpertCapabilityResolver>.value(
                   value: shell.expertCapabilityResolver,
+                ),
+                RepositoryProvider<ExpertHubCatalog>.value(
+                  value: shell.expertHubCatalog,
                 ),
                 RepositoryProvider<CommandBus>.value(value: shell.commandBus),
                 RepositoryProvider<WorkspaceChromeCommands>.value(

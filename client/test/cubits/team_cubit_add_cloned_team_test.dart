@@ -9,6 +9,7 @@ import 'package:teampilot/models/team_roster_slot.dart';
 import 'package:teampilot/repositories/session_repository.dart';
 import 'package:teampilot/repositories/launch_profile_repository.dart';
 import 'package:teampilot/services/expert_hub/composite_expert_hub_source.dart';
+import 'package:teampilot/services/expert_hub/expert_hub_catalog.dart';
 import 'package:teampilot/services/expert_hub/expert_hub_source.dart';
 
 import '../support/post_frame_test_harness.dart';
@@ -38,12 +39,12 @@ void main() {
 
   LaunchProfileCubit build(
     LaunchProfileRepository repo, {
-    CompositeExpertHubSource? expertHubSource,
+    ExpertHubCatalog? expertHubCatalog,
   }) => LaunchProfileCubit(
     repository: repo,
     sessionRepository: SessionRepository(),
     executableResolver: () => 'flashskyai',
-    expertHubSource: expertHubSource,
+    expertHubCatalog: expertHubCatalog,
   );
 
   test(
@@ -116,9 +117,11 @@ void main() {
       final repo = testLaunchProfileRepository(dir);
       final cubit = build(
         repo,
-        expertHubSource: CompositeExpertHubSource(
-          builtIns: const [],
-          registry: _StaticRegistry(const [_registryExpert]),
+        expertHubCatalog: ExpertHubCatalog(
+          source: CompositeExpertHubSource(
+            builtIns: const [],
+            registry: _StaticRegistry(const [_registryExpert]),
+          ),
         ),
       );
       await cubit.load();

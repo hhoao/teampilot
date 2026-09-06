@@ -1,5 +1,6 @@
 import '../../models/workspace.dart';
 import '../../repositories/session_repository.dart';
+import '../../services/expert_hub/expert_hub_catalog.dart';
 import '../../services/expert_hub/local_expert_store.dart';
 import '../../services/team_generation/generated_team_commit_service.dart';
 import '../../services/team_generation/generated_team_plan_validator.dart';
@@ -204,6 +205,7 @@ TeamGenerationGraph buildTeamGenerationGraph({
   required RuntimeTargetRegistry targetRegistry,
   required RemoteCliReadinessService remoteCliReadiness,
   CatalogKindRegistry? catalogRegistry,
+  ExpertHubCatalog? expertHubCatalog,
 }) {
   final jobStore = TeamGenerationJobStore();
   final workflowExecutor = TeamGenerationWorkflowExecutor();
@@ -238,6 +240,7 @@ TeamGenerationGraph buildTeamGenerationGraph({
     resourceProvisioner: NoopResourceProvisioner(),
     publisher: CubitGeneratedTeamStatePublisher(teamCubit),
     resourcePromoter: catalogStager,
+    catalog: expertHubCatalog,
   );
   final promptDeliveryStore = FilePromptDeliveryStore(
     root: AppStorage.fs.pathContext.join(

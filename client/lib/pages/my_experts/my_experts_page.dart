@@ -11,6 +11,7 @@ import '../../cubits/launch_profile_cubit.dart';
 import '../../l10n/l10n_extensions.dart';
 import '../../models/discoverable_member.dart';
 import '../../models/team_config.dart';
+import '../../services/expert_hub/expert_hub_catalog.dart';
 import '../../services/expert_hub/local_expert_writer.dart';
 import '../../services/expert_hub/member_roster_service.dart';
 import '../../services/hub_publish/hub_publish_record_store.dart';
@@ -48,7 +49,15 @@ class MyExpertsPage extends StatefulWidget {
 
 class _MyExpertsPageState extends State<MyExpertsPage> {
   late final LocalExpertWriter _writer =
-      widget.writer ?? LocalExpertWriter();
+      widget.writer ?? LocalExpertWriter(catalog: _readCatalog());
+
+  ExpertHubCatalog? _readCatalog() {
+    try {
+      return context.read<ExpertHubCatalog>();
+    } catch (_) {
+      return null;
+    }
+  }
   late final HubPublishRecordStore _records =
       widget.records ?? HubPublishRecordStore();
   List<DiscoverableMember> _members = const [];

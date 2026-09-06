@@ -7,7 +7,7 @@ import '../models/mcp_server.dart';
 import '../models/plugin.dart';
 import '../models/team_config.dart';
 import '../models/team_roster_slot.dart';
-import '../services/expert_hub/composite_expert_hub_source.dart';
+import '../services/expert_hub/expert_hub_catalog.dart';
 import '../services/expert_hub/expert_member_materializer.dart';
 import '../models/launch_profile.dart';
 import '../repositories/mcp_repository.dart';
@@ -57,7 +57,7 @@ class LaunchProfileCubit extends Cubit<LaunchProfileState>
     InstalledMcpLoader? installedMcpLoader,
     Future<List<McpServer>> Function(String teamId)? extensionMcpContributor,
     LaunchProfileProvisioner? identityProvisioner,
-    CompositeExpertHubSource? expertHubSource,
+    ExpertHubCatalog? expertHubCatalog,
   }) : _repository = repository,
        _sessionRepository = sessionRepository,
        _identityProvisioner =
@@ -84,7 +84,7 @@ class LaunchProfileCubit extends Cubit<LaunchProfileState>
        _installedMcpLoader = installedMcpLoader,
        _extensionMcpContributor = extensionMcpContributor ?? _noExtensionMcp,
        _launcher = launcher,
-       _expertHubSource = expertHubSource,
+       _catalog = expertHubCatalog,
        super(const LaunchProfileState());
 
   static Future<List<McpServer>> _noExtensionMcp(String teamId) async =>
@@ -107,14 +107,15 @@ class LaunchProfileCubit extends Cubit<LaunchProfileState>
   final Future<List<McpServer>> Function(String teamId)
   _extensionMcpContributor;
   final TeamLauncher? _launcher;
-  CompositeExpertHubSource? _expertHubSource;
+  ExpertHubCatalog? _catalog;
 
   final TeamRosterEditor _rosterEditor = const TeamRosterEditor();
 
-  /// Wire after bootstrap creates [CompositeExpertHubSource] so roster
-  /// `hhoao/teampilot-resources/member-hub/*` keys resolve on load/clone.
-  void attachExpertHubSource(CompositeExpertHubSource source) {
-    _expertHubSource = source;
+  /// Wire after bootstrap creates [ExpertHubCatalog] so roster
+  /// `hhoao/teampilot-resources/member-hub/*` keys resolve on load/clone from a
+  /// single shared single-flight snapshot.
+  void attachCatalog(ExpertHubCatalog catalog) {
+    _catalog = catalog;
   }
 
   late final TeamProfileProvisioner _provisioner = TeamProfileProvisioner(
@@ -157,18 +158,35 @@ class LaunchProfileCubit extends Cubit<LaunchProfileState>
     }
   }
 
-  Future<TeamProfile> _materializeTeam(TeamProfile team) =>
-      ExpertMemberMaterializer.attachMaterializedMembers(
-        team,
-        source: _expertHubSource,
-        localStore: _expertHubSource?.localStore,
+  Future<TeamProfile> _materializeTeam(TeamProfile team) async {
+    final catalog = _catalog;
+    if (catalog == null) {
+      appLogger.w(
+        '[LaunchProfileCubit] no expert catalog attached; '
+        'skipping roster materialization for ${team.id}',
       );
+      return team;
+    }
+    return ExpertMemberMaterializer.materializeTeam(
+      team,
+      await catalog.snapshot(),
+    );
+  }
 
-  Future<List<TeamProfile>> _materializeTeams(List<TeamProfile> teams) =>
-      ExpertMemberMaterializer.attachMaterializedMembersAll(
-        teams,
-        source: _expertHubSource,
+  Future<List<TeamProfile>> _materializeTeams(List<TeamProfile> teams) async {
+    final catalog = _catalog;
+    if (catalog == null) {
+      appLogger.w(
+        '[LaunchProfileCubit] no expert catalog attached; '
+        'skipping roster materialization for ${teams.length} teams',
       );
+      return teams;
+    }
+    return ExpertMemberMaterializer.materializeAll(
+      teams,
+      await catalog.snapshot(),
+    );
+  }
 
   List<TeamProfile> _sortTeams(List<TeamProfile> teams) {
     final hasCustomOrder = teams.any((team) => team.sortOrder > 0);
