@@ -5,6 +5,13 @@ import 'package:path/path.dart' as p;
 import '../../utils/logging/logger.dart';
 import 'filesystem.dart';
 
+/// One debounced change batch: the set of directory paths whose listing may
+/// have changed, and whether any contributing event was structural
+/// (created/deleted). Pure `modified` events cannot change a directory
+/// listing (entries only carry name + isDirectory), so consumers that only
+/// render listings — the file tree — can skip non-structural batches.
+typedef FsChangeBatch = ({Set<String> changedDirs, bool structural});
+
 /// Watches a workspace [root] for filesystem changes and exposes a single
 /// debounced change signal that multiple panels (file tree, source control)
 /// can subscribe to.
@@ -50,13 +57,19 @@ class WorkspaceFsWatcher {
   /// entries are never in the file tree's cache, so they cost it nothing.)
   static const _ignoredSegments = {'node_modules', '.dart_tool', '.gradle'};
 
-  final _controller = StreamController<Set<String>>.broadcast();
+  final _controller = StreamController<FsChangeBatch>.broadcast();
   FsTreeWatch? _treeWatch;
   StreamSubscription<FsChangeEvent>? _sub;
   Future<void> _watchChain = Future<void>.value();
   Timer? _debounceTimer;
   final Set<String> _pendingDirs = {};
   bool _pendingFull = false;
+
+  /// True when any pending event was a create/delete (vs pure content
+  /// modification). Directory listings only change on create/delete — a batch
+  /// of pure `modified` events (agent saving files) cannot change the file
+  /// tree, so the file-tree consumer skips those reloads entirely.
+  bool _pendingStructural = false;
   bool _disposed = false;
   bool _suspended = false;
 
@@ -64,8 +77,9 @@ class WorkspaceFsWatcher {
   bool get isSupported => _watcher != null;
 
   /// Fires (debounced) on disk changes. Payload is the set of changed directory
-  /// paths; an empty set means "full refresh" (see [poke]).
-  Stream<Set<String>> get onChanged => _controller.stream;
+  /// paths plus whether any event was structural (created/deleted); an empty
+  /// set means "full refresh" (see [poke]).
+  Stream<FsChangeBatch> get onChanged => _controller.stream;
 
   /// Requests a full refresh from an out-of-band activity signal (e.g. an agent
   /// finished a terminal turn). This is the change path for backends without a
@@ -139,6 +153,9 @@ class WorkspaceFsWatcher {
     // The parent directory's listing is what changed (entry added/removed/
     // modified); targeting it lets consumers reload just that folder.
     _pendingDirs.add(_pathContext.dirname(event.path));
+    if (event.type != FsChangeType.modified) {
+      _pendingStructural = true;
+    }
     _scheduleEmit();
   }
 
@@ -159,9 +176,12 @@ class WorkspaceFsWatcher {
     final batch = _pendingFull
         ? const <String>{}
         : Set<String>.of(_pendingDirs);
+    final structural = _pendingStructural || _pendingFull;
     _pendingDirs.clear();
     _pendingFull = false;
-    _controller.add(batch);
+    _pendingStructural = false;
+    if (batch.isEmpty && !structural) return;
+    _controller.add((changedDirs: batch, structural: structural));
   }
 
   void dispose() {
