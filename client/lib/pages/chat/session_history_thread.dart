@@ -35,8 +35,7 @@ const AiMessage kSessionHistoryRunningPlaceholder = AiMessage(
 /// History message list for session review.
 ///
 /// Owns scroll chrome (stick-to-end, load-older anchoring, hover-effects
-/// gate + cursor lock, [SelectionArea] as scroll ancestor for edge
-/// auto-scroll while selecting, new-messages chip). Mounts the full pagination data window (retain + chunked fill) so
+/// gate + cursor lock, [SelectionArea] nested inside the scroll content, new-messages chip). Mounts the full pagination data window (retain + chunked fill) so
 /// scrolling does not remount markdown — Claude-like residency within the
 /// loaded message set. Older pages still arrive via [onLoadOlder].
 class SessionHistoryThread extends StatefulWidget {
@@ -655,34 +654,39 @@ class _SessionHistoryThreadState extends State<SessionHistoryThread> {
               child: child!,
             );
           },
-          // SelectionArea must be an *ancestor* of the scrollable so the
-          // framework's edge auto-scroll while drag-selecting engages
-          // (Scrollable's _ScrollableSelectionContainerDelegate). The old
-          // "scroll crazy" bug that prompted sitting inside the scroll content
-          // (flutter/flutter#110917) is fixed since 2022 (PR #112816).
-          child: SelectionArea(
-            contextMenuBuilder: buildTpSelectionAreaContextMenu,
-            child: SingleChildScrollView(
-              controller: _scrollController,
-              padding: EdgeInsets.fromLTRB(
-                0,
-                aiTheme.threadTopPadding,
-                0,
-                aiTheme.threadBottomPadding,
-              ),
-              // Width chrome outside [VirtualThreadViewport]: turn bodies are
-              // cached and would keep a stale per-message ConstrainedBox.
-              child: Align(
-                alignment: Alignment.topCenter,
-                child: Padding(
-                  padding: EdgeInsets.symmetric(
-                    horizontal: aiTheme.threadHorizontalPadding,
-                  ),
-                  child: ConstrainedBox(
-                    constraints: BoxConstraints(
-                      maxWidth: aiTheme.threadMaxWidth,
-                    ),
-                    child: AiLineSpacedSelectionStyle(
+          // SelectionArea must sit *inside* the scroll content, never wrap the
+          // scrollable. As a scroll ancestor it enables the framework's
+          // selection edge auto-scroll (_ScrollableSelectionContainerDelegate),
+          // which is broken against this virtualized viewport: fill/retain
+          // mount churn makes the delegate re-dispatch synthesized edge events
+          // from stale fragment geometry every frame, re-arming the auto
+          // scroller — a plain trackpad click on text then crawls the thread
+          // upward uncontrollably, and geometry-inferred edge positions
+          // (−lineHeight/2, estimated turn heights) land the highlight above
+          // the pointer. Nesting inside removes that delegate entirely
+          // (flutter/flutter#110917 workaround; same arrangement as before
+          // commit 3df44f6dc re-exposed it).
+          child: SingleChildScrollView(
+            controller: _scrollController,
+            padding: EdgeInsets.fromLTRB(
+              0,
+              aiTheme.threadTopPadding,
+              0,
+              aiTheme.threadBottomPadding,
+            ),
+            // Width chrome outside [VirtualThreadViewport]: turn bodies are
+            // cached and would keep a stale per-message ConstrainedBox.
+            child: Align(
+              alignment: Alignment.topCenter,
+              child: Padding(
+                padding: EdgeInsets.symmetric(
+                  horizontal: aiTheme.threadHorizontalPadding,
+                ),
+                child: ConstrainedBox(
+                  constraints: BoxConstraints(maxWidth: aiTheme.threadMaxWidth),
+                  child: AiLineSpacedSelectionStyle(
+                    child: SelectionArea(
+                      contextMenuBuilder: buildTpSelectionAreaContextMenu,
                       child: VirtualThreadViewport(
                         messages: displayMessages,
                         scrollController: _scrollController,
