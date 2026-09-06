@@ -746,6 +746,7 @@ Future<AppShell> buildAppShell({
     ),
     enableRemoteCliDiscovery: () =>
         Platform.isAndroid && defaultTargetResolver().kind == RuntimeKind.ssh,
+    remoteCliPathCache: deviceLocalRemoteCliPathCache(nativeAppDataPath),
   );
 
   final githubCredentialsStore = GithubCredentialsStore(

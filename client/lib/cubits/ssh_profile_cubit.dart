@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:collection/collection.dart';
 import 'package:equatable/equatable.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -7,6 +9,8 @@ import '../models/ssh_profile.dart';
 import '../models/team_config.dart';
 import '../repositories/ssh_credential_store.dart';
 import '../repositories/ssh_profile_repository.dart';
+import '../services/cli/remote_cli_path_cache.dart';
+import '../services/storage/home_ssh_profile_impact.dart';
 
 class SshProfileState extends Equatable {
   const SshProfileState({
@@ -57,12 +61,14 @@ class SshProfileCubit extends Cubit<SshProfileState> {
     RemoteCliPathHandler? onRemoteCliLocated,
     void Function(String profileId)? invalidateProfileConnection,
     bool Function()? enableRemoteCliDiscovery,
+    RemoteCliPathCache? remoteCliPathCache,
   }) : _profileRepository = profileRepository,
        _credentialStore = credentialStore,
        _locateRemoteCliPaths = locateRemoteCliPaths,
        _onRemoteCliLocated = onRemoteCliLocated,
        _invalidateProfileConnection = invalidateProfileConnection,
        _enableRemoteCliDiscovery = enableRemoteCliDiscovery,
+       _remoteCliPathCache = remoteCliPathCache,
        super(const SshProfileState());
 
   final SshProfileRepository _profileRepository;
@@ -71,6 +77,7 @@ class SshProfileCubit extends Cubit<SshProfileState> {
   final RemoteCliPathHandler? _onRemoteCliLocated;
   final void Function(String profileId)? _invalidateProfileConnection;
   final bool Function()? _enableRemoteCliDiscovery;
+  final RemoteCliPathCache? _remoteCliPathCache;
 
   /// Single-flight: bootstrapHomeIndex, prepareInteractiveShell, and
   /// reconnectHomeSshIfNeeded all call [load] concurrently on boot; coalescing
@@ -106,7 +113,10 @@ class SshProfileCubit extends Cubit<SshProfileState> {
     );
     final selected = state.selectedProfile;
     if (selected != null) {
-      await _discoverRemoteCliPath(selected);
+      // Discovery probes several shells per CLI over SSH; it must not block
+      // the load (and thus boot). Cached paths apply immediately below, the
+      // refresh keeps running in the background.
+      unawaited(_discoverRemoteCliPath(selected));
     }
   }
 
@@ -122,10 +132,21 @@ class SshProfileCubit extends Cubit<SshProfileState> {
     final profile = state.profiles.firstWhere((p) => p.id == profileId);
     await _profileRepository.saveSelectedProfileId(profileId);
     emit(state.copyWith(selectedProfileId: profileId));
-    await _discoverRemoteCliPath(profile);
+    unawaited(_discoverRemoteCliPath(profile));
   }
 
   Future<void> saveProfile(SshProfile profile) async {
+    // A changed connection identity (host/port/user/auth) means cached CLI
+    // paths may belong to a different machine — drop them before the reload
+    // below re-discovers in the background.
+    final existing = state.profiles
+        .where((p) => p.id == profile.id)
+        .firstOrNull;
+    if (existing != null &&
+        sshHomeConnectionFingerprint(existing) !=
+            sshHomeConnectionFingerprint(profile)) {
+      await _remoteCliPathCache?.invalidate(profile.id);
+    }
     _invalidateProfileConnection?.call(profile.id);
     await _profileRepository.save(profile);
     await load();
@@ -179,8 +200,25 @@ class SshProfileCubit extends Cubit<SshProfileState> {
         apply == null) {
       return;
     }
+    final cache = _remoteCliPathCache;
+    if (cache != null) {
+      try {
+        final cached = await cache.load(profile.id);
+        if (cached.isNotEmpty) {
+          for (final entry in cached.entries) {
+            await apply(entry.key, entry.value);
+          }
+          return;
+        }
+      } on Object {
+        // Cache read failures fall through to a live probe below.
+      }
+    }
     try {
       final located = await locate(profile);
+      if (cache != null && located.isNotEmpty) {
+        await cache.save(profile.id, located);
+      }
       for (final entry in located.entries) {
         await apply(entry.key, entry.value);
       }

@@ -1,4 +1,5 @@
 import '../../repositories/ssh_profile_repository.dart';
+import '../cli/remote_cli_path_cache.dart';
 import '../io/local_filesystem.dart';
 import 'app_storage.dart';
 import 'targets_repository.dart';
@@ -58,4 +59,17 @@ String deviceLocalCatalogCacheRoot(String nativeAppDataPath) =>
 LocalFilesystem deviceLocalCatalogCacheFilesystem(String nativeAppDataPath) =>
     LocalFilesystem(
       pathContext: AppPaths.pathContextForDataRoot(nativeAppDataPath),
+    );
+
+/// Device-local remote CLI path cache (`remote-cli-paths.json` under native
+/// app data) — same control-plane pin as SSH profiles: discovery applies
+/// instantly on boot instead of blocking on SSH probe loops, and reads never
+/// hit the possibly-remote home filesystem.
+RemoteCliPathCache deviceLocalRemoteCliPathCache(String nativeAppDataPath) =>
+    RemoteCliPathCache(
+      fs: deviceLocalCatalogCacheFilesystem(nativeAppDataPath),
+      filePath: AppPaths.pathContextForDataRoot(nativeAppDataPath).join(
+        nativeAppDataPath,
+        'remote-cli-paths.json',
+      ),
     );

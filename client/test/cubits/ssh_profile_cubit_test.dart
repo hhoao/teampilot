@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
@@ -6,8 +7,17 @@ import 'package:teampilot/models/ssh_profile.dart';
 import 'package:teampilot/models/team_config.dart';
 import 'package:teampilot/repositories/ssh_credential_store.dart';
 import 'package:teampilot/repositories/ssh_profile_repository.dart';
+import 'package:teampilot/services/cli/remote_cli_path_cache.dart';
 import 'package:teampilot/services/storage/app_storage.dart';
+import '../support/in_memory_filesystem.dart';
 import '../support/test_runtime_context.dart';
+
+/// Lets fire-and-forget discovery (unawaited from `load`/`selectProfile`)
+/// finish its microtask chain before assertions.
+Future<void> flushDiscovery() async {
+  await Future<void>.delayed(Duration.zero);
+  await Future<void>.delayed(Duration.zero);
+}
 
 void main() {
   test('concurrent load() runs the repository load once', () async {
@@ -119,10 +129,196 @@ void main() {
 
     await cubit.load();
     await cubit.selectProfile('p1');
+    await flushDiscovery();
 
     expect(appliedCli, CliTool.flashskyai);
     expect(appliedPath, '/remote/bin/flashskyai');
   });
+
+  test('load() does not block on remote CLI discovery', () async {
+    final repo = _SlowFakeSshProfileRepository();
+    final cubit = SshProfileCubit(
+      profileRepository: repo,
+      credentialStore: InMemorySshCredentialStore(),
+      locateRemoteCliPaths: (_) => Completer<Map<CliTool, String>>().future,
+      onRemoteCliLocated: (_, _) async {},
+      enableRemoteCliDiscovery: () => true,
+    );
+    addTearDown(cubit.close);
+
+    await cubit.load().timeout(const Duration(seconds: 1));
+
+    expect(cubit.state.isLoading, false);
+    expect(cubit.state.profiles, hasLength(1));
+  });
+
+  test('cached remote CLI paths apply without calling the locator', () async {
+    final repo = _SlowFakeSshProfileRepository();
+    final fs = InMemoryFilesystem();
+    final cache = RemoteCliPathCache(
+      fs: fs,
+      filePath: '/app-data/remote-cli-paths.json',
+    );
+    await cache.save(
+      'p1',
+      const {CliTool.claude: '/remote/bin/claude'},
+    );
+
+    var locateCalls = 0;
+    final applied = <CliTool, String>{};
+    final cubit = SshProfileCubit(
+      profileRepository: repo,
+      credentialStore: InMemorySshCredentialStore(),
+      remoteCliPathCache: cache,
+      locateRemoteCliPaths: (_) async {
+        locateCalls++;
+        return const {CliTool.claude: '/fresh/claude'};
+      },
+      onRemoteCliLocated: (cli, path) async {
+        applied[cli] = path;
+      },
+      enableRemoteCliDiscovery: () => true,
+    );
+    addTearDown(cubit.close);
+
+    await cubit.load();
+    await flushDiscovery();
+
+    expect(locateCalls, 0);
+    expect(applied, const {CliTool.claude: '/remote/bin/claude'});
+  });
+
+  test('discovery miss locates, caches, then applies', () async {
+    final repo = _SlowFakeSshProfileRepository();
+    final fs = InMemoryFilesystem();
+    final cache = RemoteCliPathCache(
+      fs: fs,
+      filePath: '/app-data/remote-cli-paths.json',
+    );
+
+    final applied = <CliTool, String>{};
+    final cubit = SshProfileCubit(
+      profileRepository: repo,
+      credentialStore: InMemorySshCredentialStore(),
+      remoteCliPathCache: cache,
+      locateRemoteCliPaths: (_) async {
+        return const {CliTool.claude: '/remote/bin/claude'};
+      },
+      onRemoteCliLocated: (cli, path) async {
+        applied[cli] = path;
+      },
+      enableRemoteCliDiscovery: () => true,
+    );
+    addTearDown(cubit.close);
+
+    await cubit.load();
+    await flushDiscovery();
+
+    expect(applied, const {CliTool.claude: '/remote/bin/claude'});
+    expect(
+      await cache.load('p1'),
+      const {CliTool.claude: '/remote/bin/claude'},
+    );
+  });
+
+  test(
+    'saveProfile invalidates the cache when the connection fingerprint changes',
+    () async {
+      final temp = await Directory.systemTemp.createTemp(
+        'ssh_profile_cubit_invalidate_',
+      );
+      addTearDown(() => temp.delete(recursive: true));
+
+      const profile = SshProfile(
+        id: 'p1',
+        name: 'one',
+        host: 'one.example.com',
+        username: 'alice',
+      );
+      final repository = SshProfileRepository(rootDir: temp.path);
+      await repository.save(profile);
+
+      final cache = RemoteCliPathCache(
+        fs: InMemoryFilesystem(),
+        filePath: '/app-data/remote-cli-paths.json',
+      );
+      await cache.save(
+        'p1',
+        const {CliTool.claude: '/remote/bin/claude'},
+      );
+
+      final cubit = SshProfileCubit(
+        profileRepository: repository,
+        credentialStore: InMemorySshCredentialStore(),
+        remoteCliPathCache: cache,
+      );
+      addTearDown(cubit.close);
+
+      await cubit.load();
+
+      await cubit.saveProfile(
+        const SshProfile(
+          id: 'p1',
+          name: 'one',
+          host: 'two.example.com',
+          username: 'alice',
+        ),
+      );
+
+      expect(await cache.load('p1'), isEmpty);
+    },
+  );
+
+  test(
+    'saveProfile keeps the cache when only display fields change',
+    () async {
+      final temp = await Directory.systemTemp.createTemp(
+        'ssh_profile_cubit_keep_cache_',
+      );
+      addTearDown(() => temp.delete(recursive: true));
+
+      const profile = SshProfile(
+        id: 'p1',
+        name: 'one',
+        host: 'one.example.com',
+        username: 'alice',
+      );
+      final repository = SshProfileRepository(rootDir: temp.path);
+      await repository.save(profile);
+
+      final cache = RemoteCliPathCache(
+        fs: InMemoryFilesystem(),
+        filePath: '/app-data/remote-cli-paths.json',
+      );
+      await cache.save(
+        'p1',
+        const {CliTool.claude: '/remote/bin/claude'},
+      );
+
+      final cubit = SshProfileCubit(
+        profileRepository: repository,
+        credentialStore: InMemorySshCredentialStore(),
+        remoteCliPathCache: cache,
+      );
+      addTearDown(cubit.close);
+
+      await cubit.load();
+
+      await cubit.saveProfile(
+        const SshProfile(
+          id: 'p1',
+          name: 'renamed',
+          host: 'one.example.com',
+          username: 'alice',
+        ),
+      );
+
+      expect(
+        await cache.load('p1'),
+        const {CliTool.claude: '/remote/bin/claude'},
+      );
+    },
+  );
 
   test(
     'deleteProfile removes profile even when credential cleanup fails',
