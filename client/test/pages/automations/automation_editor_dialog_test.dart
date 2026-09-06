@@ -99,10 +99,11 @@ CliPresetsCubit _cliPresetsCubitWithPreset() {
 
 LaunchProfileCubit _emptyLaunchProfileCubit() {
   final cubit = LaunchProfileCubit(
+    storage: testHomeStorage,
     repository: testLaunchProfileRepository(
       Directory.systemTemp.createTempSync('automation_editor_empty_'),
     ),
-    sessionRepository: SessionRepository(),
+    sessionRepository: SessionRepository(storage: testHomeStorage),
     executableResolver: () => 'claude',
   );
   cubit.applyState(const LaunchProfileState(isLoading: false));
@@ -111,10 +112,11 @@ LaunchProfileCubit _emptyLaunchProfileCubit() {
 
 LaunchProfileCubit _teamLaunchProfileCubit() {
   final cubit = LaunchProfileCubit(
+    storage: testHomeStorage,
     repository: testLaunchProfileRepository(
       Directory.systemTemp.createTempSync('automation_editor_team_'),
     ),
-    sessionRepository: SessionRepository(),
+    sessionRepository: SessionRepository(storage: testHomeStorage),
     executableResolver: () => 'claude',
   );
   cubit.applyState(

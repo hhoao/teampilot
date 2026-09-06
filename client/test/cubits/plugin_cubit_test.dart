@@ -8,6 +8,7 @@ import 'package:teampilot/models/catalog/catalog_types.dart';
 import 'package:teampilot/repositories/app_settings_repository.dart';
 import 'package:teampilot/repositories/plugin_repository.dart';
 import 'package:teampilot/services/storage/app_storage.dart';
+import 'package:teampilot/services/storage/home_storage.dart';
 import 'package:teampilot/services/io/filesystem.dart';
 import 'package:teampilot/services/io/local_filesystem.dart';
 import 'package:teampilot/services/plugin/plugin_repo_disk_cache_service.dart';
@@ -36,6 +37,8 @@ void main() {
     AppStorage.resetForTesting();
     tmp.deleteSync(recursive: true);
   });
+
+  HomeStorage home() => HomeStorage(AppStorage.context);
 
   DiscoverablePlugin discoverable(String name, {int? adoption, int? updated}) =>
       DiscoverablePlugin(
@@ -153,7 +156,7 @@ void main() {
   );
 
   test('load() populates installed + marketplaces', () async {
-    final repo = PluginRepository();
+    final repo = PluginRepository(storage: home());
     final cubit = PluginCubit(
       repository: repo,
       installService: repo.install,
@@ -170,7 +173,7 @@ void main() {
   test(
     'ensureDiscoveryLoaded does not re-sync when list is populated',
     () async {
-      final repo = PluginRepository();
+      final repo = PluginRepository(storage: home());
       final cubit = PluginCubit(
         repository: repo,
         installService: repo.install,
@@ -199,7 +202,7 @@ void main() {
 
   test('uninstall calls team cleanup before removing plugin files', () async {
     final order = <String>[];
-    final repo = PluginRepository();
+    final repo = PluginRepository(storage: home());
     final svc = repo.install;
     final src = Directory(p.join(tmp.path, 'src'))..createSync();
     Directory(p.join(src.path, '.claude-plugin')).createSync();
@@ -235,7 +238,7 @@ void main() {
       '{"name":"orphan","version":"1.0.0","description":"x"}',
     );
 
-    final repo = PluginRepository();
+    final repo = PluginRepository(storage: home());
     final scanned = await repo.scanUnmanaged();
     expect(scanned, hasLength(1));
     expect(scanned.single.name, 'orphan');
@@ -244,8 +247,8 @@ void main() {
   test('manual mode syncs marketplaces without disk cache once', () async {
     final git = _FakePluginGit();
     final cubit = PluginCubit(
-      repository: PluginRepository(),
-      installService: PluginRepository().install,
+      repository: PluginRepository(storage: home()),
+      installService: PluginRepository(storage: home()).install,
       repoService: PluginRepoService(),
       diskCache: PluginRepoDiskCacheService(gitService: git),
     );
@@ -265,8 +268,8 @@ void main() {
     final git = _FakePluginGit();
     final diskCache = PluginRepoDiskCacheService(gitService: git);
     final cubit = PluginCubit(
-      repository: PluginRepository(),
-      installService: PluginRepository().install,
+      repository: PluginRepository(storage: home()),
+      installService: PluginRepository(storage: home()).install,
       repoService: PluginRepoService(),
       diskCache: diskCache,
     );
@@ -279,8 +282,8 @@ void main() {
     expect(git.syncCheckouts, enabledCount);
 
     final cubit2 = PluginCubit(
-      repository: PluginRepository(),
-      installService: PluginRepository().install,
+      repository: PluginRepository(storage: home()),
+      installService: PluginRepository(storage: home()).install,
       repoService: PluginRepoService(),
       diskCache: diskCache,
     );
@@ -301,8 +304,8 @@ void main() {
     );
     await settings.setAutoRefreshEnabled(true);
     final cubit = PluginCubit(
-      repository: PluginRepository(),
-      installService: PluginRepository().install,
+      repository: PluginRepository(storage: home()),
+      installService: PluginRepository(storage: home()).install,
       repoService: PluginRepoService(),
       diskCache: diskCache,
       discoverySettings: settings,
@@ -333,8 +336,8 @@ void main() {
     );
 
     final cubit2 = PluginCubit(
-      repository: PluginRepository(),
-      installService: PluginRepository().install,
+      repository: PluginRepository(storage: home()),
+      installService: PluginRepository(storage: home()).install,
       repoService: PluginRepoService(),
       diskCache: diskCache,
       discoverySettings: settings,

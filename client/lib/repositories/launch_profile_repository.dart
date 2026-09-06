@@ -6,6 +6,7 @@ import '../models/launch_profile.dart';
 import '../services/io/filesystem.dart';
 import '../services/session/session_lifecycle_service.dart';
 import '../services/storage/app_storage.dart';
+import '../services/storage/home_storage.dart';
 import '../utils/logging/logger.dart';
 import 'launch_profile_index_store.dart';
 
@@ -14,12 +15,22 @@ import 'launch_profile_index_store.dart';
 class LaunchProfileRepository {
   LaunchProfileRepository({
     String? rootDir,
+    HomeStorage? storage,
     SessionLifecycleService? lifecycleService,
   }) : _rootDirOverride = rootDir,
+       _storageOverride = storage,
        _lifecycleService = lifecycleService;
 
   final String? _rootDirOverride;
+  final HomeStorage? _storageOverride;
   final SessionLifecycleService? _lifecycleService;
+
+  /// Shim-era fallback: the pre-6-C test harness constructs this repository
+  /// without [storage]; defer to the bound home context exactly like the
+  /// AppStorage shim did. Production (app_shell) always injects [storage].
+  /// Removed in 6-C together with the harness migration.
+  HomeStorage get _storage =>
+      _storageOverride ?? HomeStorage(AppStorage.context);
   static final Map<String, List<LaunchProfile>> _loadAllByRoot = {};
   Future<void>? _revalidationFuture;
 
@@ -46,8 +57,7 @@ class LaunchProfileRepository {
 
   String _loadAllCacheKey() {
     if (_rootDirOverride != null) return _rootDirOverride;
-    if (AppStorage.isInstalled) return AppStorage.appDataRoot;
-    return AppPathsBootstrapper.current.basePath;
+    return _storage.appDataRoot;
   }
 
   void _invalidateLoadAllCache() {
@@ -63,16 +73,10 @@ class LaunchProfileRepository {
   Future<({String dir, Filesystem fs})> _paths() async {
     // Explicit rootDir override (tests) wins; otherwise the home control plane.
     if (_rootDirOverride != null) {
-      return (dir: _rootDirOverride, fs: AppStorage.fs);
+      return (dir: _rootDirOverride, fs: _storage.fs);
     }
-    if (AppStorage.isInstalled) {
-      final snap = AppStorage.context;
-      return (dir: snap.launchProfilesDir, fs: snap.fs);
-    }
-    return (
-      dir: AppPathsBootstrapper.current.launchProfilesDir,
-      fs: AppStorage.fs,
-    );
+    final snap = _storage.context;
+    return (dir: snap.launchProfilesDir, fs: snap.fs);
   }
 
   String _profileFile(Filesystem fs, String dir, String id) =>

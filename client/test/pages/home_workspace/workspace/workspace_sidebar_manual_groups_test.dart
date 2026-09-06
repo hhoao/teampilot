@@ -51,7 +51,7 @@ void main() {
     automationCubit = testAutomationCubit();
     worktreeCubit = WorktreeCubit();
     attentionCubit = AgentAttentionCubit(pruneInterval: null);
-    groupsCubit = SessionGroupsCubit();
+    groupsCubit = SessionGroupsCubit(storage: testHomeStorage);
   });
 
   tearDown(() async {
@@ -89,7 +89,9 @@ void main() {
                 BlocProvider<WorktreeCubit>.value(value: worktreeCubit),
                 BlocProvider<AgentAttentionCubit>.value(value: attentionCubit),
                 BlocProvider<SessionGroupsCubit>.value(value: groupsCubit),
-                BlocProvider(create: (_) => ShortcutCubit()),
+                BlocProvider(
+                  create: (_) => ShortcutCubit(storage: testHomeStorage),
+                ),
               ],
               child: SizedBox(
                 width: 320,

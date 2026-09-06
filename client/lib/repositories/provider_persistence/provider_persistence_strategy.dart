@@ -45,8 +45,8 @@ class ProviderPersistenceContext {
   final String basePath;
   final ToolConfigGenerator generator;
 
-  /// Resolves the user home dir (`AppStorage.home`) used for credential
-  /// import-from-global. Lazy: only invoked when a provider needs importing, so
+  /// Resolves the user home dir (from the injected home storage) used for
+  /// credential import-from-global. Lazy: only invoked when a provider needs importing, so
   /// save/load paths that never import don't touch global storage state.
   final String Function() resolveHome;
 

@@ -25,6 +25,7 @@ import 'package:teampilot/services/skill/registry/skill_registry_config_service.
 import 'package:teampilot/services/skill/registry/skill_registry_source.dart';
 import 'package:teampilot/services/skill/skill_acquisition_engine.dart';
 import 'package:teampilot/services/storage/app_storage.dart';
+import 'package:teampilot/services/storage/home_storage.dart';
 import 'package:teampilot/services/storage/workspace_layout.dart';
 
 Directory? _testAppDataDir;
@@ -41,6 +42,25 @@ class _TestProcessMetricsService extends ProcessMetricsService {
 }
 
 /// Initializes app paths and [RuntimeStorageContext] for cubit tests.
+///
+/// Also binds a [HomeStorage] over the test home context so migrated
+/// constructors can be handed `testHomeStorage` (shim era: the same context
+/// is also reachable through the AppStorage shim).
+HomeStorage? _testHomeStorage;
+
+/// The [HomeStorage] bound by [setUpTestAppStorage] — pass into
+/// constructor-injected repositories/cubits. Returns null when the storage
+/// was not set up in this test.
+HomeStorage get testHomeStorage =>
+    _testHomeStorage ??
+    (throw StateError(
+      'setUpTestAppStorage() not called in this test group',
+    ));
+
+/// Builds a [HomeStorage] over the test home context (same context the
+/// AppStorage shim forwards to). For tests needing their own instance.
+HomeStorage buildTestHomeStorage() => HomeStorage(AppStorage.context);
+
 void setUpTestAppStorage() {
   TestWidgetsFlutterBinding.ensureInitialized();
   _testAppDataDir = Directory.systemTemp.createTempSync('test_app_data_');
@@ -53,6 +73,7 @@ void setUpTestAppStorage() {
     home: _testAppDataDir!.path,
     cwd: _testAppDataDir!.path,
   );
+  _testHomeStorage = HomeStorage(AppStorage.context);
   // The source control panel self-builds a GitService that would otherwise
   // spawn a real `git` process on mount, leaking timers in widget tests. Use a
   // process-free runner so it reports "git unavailable" instead.
@@ -84,6 +105,7 @@ void tearDownTestAppStorage() {
   GitService.debugOverrideFactory = null;
   ProcessMetricsService.debugOverrideFactory = null;
   WorkspaceFsWatcher.debugDisable = false;
+  _testHomeStorage = null;
   AppStorage.resetForTesting();
   AppPathsBootstrapper.resetForTesting();
   DefaultWorkspaceDirectory.resetForTesting();

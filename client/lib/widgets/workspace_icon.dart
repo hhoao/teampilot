@@ -116,6 +116,7 @@ class _CustomWorkspaceIconImageState extends State<_CustomWorkspaceIconImage> {
     return workspaceIconService.loadCustomBytes(
       workspaceDir: WorkspaceLayout(
         teampilotRoot: AppStorage.paths.basePath,
+        fs: AppStorage.fs,
       ).workspaceDir(widget.workspace.workspaceId),
       relativePath: widget.relativePath,
     );

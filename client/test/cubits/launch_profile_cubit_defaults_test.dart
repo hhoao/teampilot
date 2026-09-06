@@ -36,7 +36,8 @@ void main() {
     final repository = testLaunchProfileRepository(tmp);
     final cubit = LaunchProfileCubit(
       repository: repository,
-      sessionRepository: SessionRepository(),
+      sessionRepository: SessionRepository(storage: testHomeStorage),
+      storage: testHomeStorage,
       executableResolver: _testExecutable,
       appDataBasePath: appData.path,
       configProfileService: ConfigProfileService(basePath: appData.path),

@@ -39,8 +39,9 @@ Future<void> _pumpDefaultPresetStep(
   addTearDown(() => launchRoot.deleteSync(recursive: true));
 
   final launchCubit = LaunchProfileCubit(
+    storage: testHomeStorage,
     repository: testLaunchProfileRepository(launchRoot),
-    sessionRepository: SessionRepository(),
+    sessionRepository: SessionRepository(storage: testHomeStorage),
     executableResolver: () => 'claude',
   );
   addTearDown(launchCubit.close);
@@ -211,8 +212,9 @@ void main() {
       addTearDown(() => launchRoot.deleteSync(recursive: true));
 
       final launchCubit = LaunchProfileCubit(
+        storage: testHomeStorage,
         repository: testLaunchProfileRepository(launchRoot),
-        sessionRepository: SessionRepository(),
+        sessionRepository: SessionRepository(storage: testHomeStorage),
         executableResolver: () => 'claude',
       );
       addTearDown(launchCubit.close);

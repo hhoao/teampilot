@@ -102,7 +102,9 @@ void main() {
 
         final workspaceId = harness.workspace?.workspaceId;
         expect(workspaceId, isNotNull);
-        final bound = await WorkspaceProjectConfigRepository().load(
+        final bound = await WorkspaceProjectConfigRepository(
+          storage: testHomeStorage,
+        ).load(
           workspaceId!,
         );
         expect(

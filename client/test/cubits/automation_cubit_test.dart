@@ -87,7 +87,10 @@ void main() {
   tearDown(tearDownTestAppStorage);
 
   test('save updates cubit list with computed nextRunAtMs', () async {
-    final layout = WorkspaceLayout(teampilotRoot: AppStorage.paths.basePath);
+    final layout = WorkspaceLayout(
+      teampilotRoot: AppStorage.paths.basePath,
+      fs: AppStorage.fs,
+    );
     final repo = AutomationRepository(fs: AppStorage.fs, layout: layout);
     final calculator = AutomationScheduleCalculator();
     final dispatcher = AutomationDispatcher(
@@ -124,7 +127,10 @@ void main() {
   });
 
   test('toggleEnabled flips enabled and nextRunAtMs', () async {
-    final layout = WorkspaceLayout(teampilotRoot: AppStorage.paths.basePath);
+    final layout = WorkspaceLayout(
+      teampilotRoot: AppStorage.paths.basePath,
+      fs: AppStorage.fs,
+    );
     final repo = AutomationRepository(fs: AppStorage.fs, layout: layout);
     final calculator = AutomationScheduleCalculator();
     final dispatcher = AutomationDispatcher(
@@ -169,7 +175,10 @@ void main() {
   });
 
   test('loadForWorkspace keeps automations from every launch context', () async {
-    final layout = WorkspaceLayout(teampilotRoot: AppStorage.paths.basePath);
+    final layout = WorkspaceLayout(
+      teampilotRoot: AppStorage.paths.basePath,
+      fs: AppStorage.fs,
+    );
     final repo = AutomationRepository(fs: AppStorage.fs, layout: layout);
     final calculator = AutomationScheduleCalculator();
     final dispatcher = AutomationDispatcher(
@@ -217,7 +226,10 @@ void main() {
   });
 
   test('save disables enabled once automation with past runAtMs', () async {
-    final layout = WorkspaceLayout(teampilotRoot: AppStorage.paths.basePath);
+    final layout = WorkspaceLayout(
+      teampilotRoot: AppStorage.paths.basePath,
+      fs: AppStorage.fs,
+    );
     final repo = AutomationRepository(fs: AppStorage.fs, layout: layout);
     final calculator = AutomationScheduleCalculator();
     final dispatcher = AutomationDispatcher(
@@ -259,7 +271,10 @@ void main() {
   });
 
   test('toggleEnabled keeps expired once automation disabled', () async {
-    final layout = WorkspaceLayout(teampilotRoot: AppStorage.paths.basePath);
+    final layout = WorkspaceLayout(
+      teampilotRoot: AppStorage.paths.basePath,
+      fs: AppStorage.fs,
+    );
     final repo = AutomationRepository(fs: AppStorage.fs, layout: layout);
     final calculator = AutomationScheduleCalculator();
     final dispatcher = AutomationDispatcher(

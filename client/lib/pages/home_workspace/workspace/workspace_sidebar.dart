@@ -326,7 +326,10 @@ class _WorkspaceSidebarState extends State<WorkspaceSidebar> {
         context.read<WorktreeCubit>().state.repoPath.trim().isNotEmpty
         ? context.read<WorktreeCubit>().state.repoPath
         : widget.workspace.firstFolderPath;
-    final layout = WorkspaceLayout(teampilotRoot: AppStorage.paths.basePath);
+    final layout = WorkspaceLayout(
+      teampilotRoot: AppStorage.paths.basePath,
+      fs: AppStorage.fs,
+    );
     await showWorktreeCreateDialog(
       context,
       repoName: _basename(repoPath),

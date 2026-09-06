@@ -63,6 +63,7 @@ import 'services/app/boot_splash.dart';
 import 'services/app/platform_utils.dart';
 import 'services/app/windows_keyboard_workaround.dart';
 import 'services/app/connection_mode_service.dart';
+import 'services/storage/home_storage.dart';
 import 'services/storage/home_storage_invalidator.dart';
 import 'services/storage/home_target_controller.dart';
 import 'services/storage/workspace_directory_picker.dart';
@@ -650,6 +651,9 @@ void main() async {
                 ),
                 RepositoryProvider<HomeStorageInvalidator>.value(
                   value: shell.homeStorageInvalidator,
+                ),
+                RepositoryProvider<HomeStorage>.value(
+                  value: shell.homeStorage,
                 ),
                 RepositoryProvider<WorkspaceDirectoryPicker>.value(
                   value: shell.directoryPicker,

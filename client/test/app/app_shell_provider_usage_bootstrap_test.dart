@@ -147,9 +147,12 @@ void main() {
 
     AppStorage.installForTesting(filesystem: firstFs, paths: firstPaths);
     final providerRepository = ManagedProviderRepository(
+      storage: fakeHomeStorage(filesystem: firstFs),
       onProvidersDeleted: (_) async {},
     );
-    final usageRepository = ManagedProviderUsageRepository();
+    final usageRepository = ManagedProviderUsageRepository(
+      storage: fakeHomeStorage(filesystem: firstFs),
+    );
     await providerRepository.save([provider]);
     await usageRepository.save(snapshot);
 
@@ -171,7 +174,9 @@ void main() {
       final usageCubit = ManagedProviderUsageCubit(coordinator: coordinator);
       final controlPlane = ManagedProviderControlPlane(
         providerRepository: repository,
-        usageRepository: ManagedProviderUsageRepository(),
+        usageRepository: ManagedProviderUsageRepository(
+          storage: fakeHomeStorage(),
+        ),
         secretStore: ManagedProviderSecretStore(_EmptySecureStore()),
         usageRegistry: ManagedProviderUsageRegistry(),
         usageCoordinator: coordinator,
@@ -208,7 +213,9 @@ void main() {
     var httpCloseCalls = 0;
     final controlPlane = ManagedProviderControlPlane(
       providerRepository: repository,
-      usageRepository: ManagedProviderUsageRepository(),
+      usageRepository: ManagedProviderUsageRepository(
+        storage: fakeHomeStorage(),
+      ),
       secretStore: ManagedProviderSecretStore(_EmptySecureStore()),
       usageRegistry: ManagedProviderUsageRegistry(),
       usageCoordinator: usageCoordinator,
@@ -241,7 +248,9 @@ void main() {
       var httpCloseCalls = 0;
       final controlPlane = ManagedProviderControlPlane(
         providerRepository: repository,
-        usageRepository: ManagedProviderUsageRepository(),
+        usageRepository: ManagedProviderUsageRepository(
+          storage: fakeHomeStorage(),
+        ),
         secretStore: ManagedProviderSecretStore(_EmptySecureStore()),
         usageRegistry: ManagedProviderUsageRegistry(),
         usageCoordinator: usageCoordinator,
@@ -269,7 +278,9 @@ void main() {
       );
       final transferredControlPlane = ManagedProviderControlPlane(
         providerRepository: repository,
-        usageRepository: ManagedProviderUsageRepository(),
+        usageRepository: ManagedProviderUsageRepository(
+          storage: fakeHomeStorage(),
+        ),
         secretStore: ManagedProviderSecretStore(_EmptySecureStore()),
         usageRegistry: ManagedProviderUsageRegistry(),
         usageCoordinator: transferredCoordinator,
@@ -292,7 +303,11 @@ void main() {
 }
 
 class _FakeManagedProviderRepository extends ManagedProviderRepository {
-  _FakeManagedProviderRepository() : super(onProvidersDeleted: (_) async {});
+  _FakeManagedProviderRepository()
+    : super(
+        storage: fakeHomeStorage(),
+        onProvidersDeleted: (_) async {},
+      );
 
   int loadCalls = 0;
   int closeCalls = 0;
@@ -316,7 +331,9 @@ class _FakeManagedProviderUsageCoordinator
   _FakeManagedProviderUsageCoordinator()
     : super(
         providerRepository: _FakeManagedProviderRepository(),
-        usageRepository: ManagedProviderUsageRepository(),
+        usageRepository: ManagedProviderUsageRepository(
+          storage: fakeHomeStorage(),
+        ),
         registry: ManagedProviderUsageRegistry(),
         credentials: _EmptyCredentials(),
         http: _UnusedHttpClient(),

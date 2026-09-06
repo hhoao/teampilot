@@ -6,7 +6,6 @@ import '../services/io/filesystem.dart';
 import '../services/io/local_filesystem.dart';
 import '../services/cli/cursor/provider/cursor_session_config_dir.dart';
 import '../services/cli/cursor/provider/cursor_windows_home_junction.dart';
-import '../services/storage/app_storage.dart';
 import '../services/storage/workspace_layout.dart';
 import 'session_snapshot_reader.dart';
 
@@ -17,11 +16,10 @@ import 'session_snapshot_reader.dart';
 class SessionRepositoryFs {
   SessionRepositoryFs({
     required this.teampilotRoot,
-    Filesystem? fs,
+    required Filesystem fs,
     WorkspaceLayout? layout,
-  }) : fs = fs ?? AppStorage.fs,
-       _layout =
-           layout ?? WorkspaceLayout(teampilotRoot: teampilotRoot, fs: fs);
+  }) : fs = fs,
+       _layout = layout ?? WorkspaceLayout(teampilotRoot: teampilotRoot, fs: fs);
 
   final String teampilotRoot;
   final Filesystem fs;

@@ -84,7 +84,8 @@ Future<SessionRuntimePlan> _simplePlan({
   final builder = SessionRuntimePlanBuilder(
     expertResolver: resolver,
     loadWorkspaceBundle: (wid) async {
-      return (await WorkspaceProjectConfigRepository().load(wid)).bundle;
+      return (await
+          WorkspaceProjectConfigRepository(storage: testHomeStorage).load(wid)).bundle;
     },
   );
   return builder.buildSimple(
@@ -115,7 +116,9 @@ void main() {
     const sessionId = 'sess-chain';
 
     await _installPlugin(root, 'acme/demo', 'demo', 'demo-bundle');
-    await WorkspaceProjectConfigRepository().save(
+    await WorkspaceProjectConfigRepository(
+      storage: testHomeStorage,
+    ).save(
       workspaceId,
       const WorkspaceProjectConfig(
         bundle: ConfigBundle(pluginIds: ['acme/demo']),
@@ -312,7 +315,9 @@ void main() {
     const sessionId = 'sess-cleared';
 
     await _installPlugin(root, 'acme/demo', 'demo', 'demo-bundle');
-    await WorkspaceProjectConfigRepository().save(
+    await WorkspaceProjectConfigRepository(
+      storage: testHomeStorage,
+    ).save(
       workspaceId,
       const WorkspaceProjectConfig(
         bundle: ConfigBundle(pluginIds: ['acme/demo']),

@@ -140,8 +140,9 @@ void main() {
       final presetId = presetsCubit.state.presets.single.id;
 
       final teamCubit = LaunchProfileCubit(
+        storage: testHomeStorage,
         repository: teamRepo,
-        sessionRepository: SessionRepository(),
+        sessionRepository: SessionRepository(storage: testHomeStorage),
         executableResolver: () => 'claude',
       );
       await teamCubit.load();

@@ -330,7 +330,7 @@ final class CliMessageMatrixHarness {
       cliExecutableResolver: (_) => cliPath,
       postFrameScheduler: postFrame.scheduler,
       autoLaunchAllMembersOnConnect: () => autoLaunchAllMembersOnConnect,
-      sessionRepository: SessionRepository(),
+      sessionRepository: SessionRepository(storage: testHomeStorage),
       lifecycleService: life,
     );
     cubit = created;

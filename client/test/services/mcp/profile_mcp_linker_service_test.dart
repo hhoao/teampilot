@@ -17,7 +17,7 @@ void main() {
 
   setUp(() async {
     root = await Directory.systemTemp.createTemp('team_mcp_linker_');
-    layout = RuntimeLayout(teampilotRoot: root.path);
+    layout = RuntimeLayout(teampilotRoot: root.path, fs: AppStorage.fs);
     linker = ProfileMcpLinkerService();
   });
 

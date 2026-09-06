@@ -62,6 +62,7 @@ abstract final class WorkspaceIconWarmup {
     final bytes = await workspaceIconService.loadCustomBytes(
       workspaceDir: WorkspaceLayout(
         teampilotRoot: AppStorage.paths.basePath,
+        fs: AppStorage.fs,
       ).workspaceDir(workspace.workspaceId),
       relativePath: relativePath,
     );

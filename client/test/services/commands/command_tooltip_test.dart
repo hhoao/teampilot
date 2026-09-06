@@ -47,7 +47,10 @@ void main() {
   }
 
   testWidgets('appends formatted default chord', (tester) async {
-    final shortcuts = ShortcutCubit(repository: KeybindingRepository());
+    final shortcuts = ShortcutCubit(
+      storage: testHomeStorage,
+      repository: KeybindingRepository(storage: testHomeStorage),
+    );
     addTearDown(shortcuts.close);
     await tester.runAsync(() => shortcuts.load());
 
@@ -65,7 +68,10 @@ void main() {
   });
 
   testWidgets('returns label only when unbound', (tester) async {
-    final shortcuts = ShortcutCubit(repository: KeybindingRepository());
+    final shortcuts = ShortcutCubit(
+      storage: testHomeStorage,
+      repository: KeybindingRepository(storage: testHomeStorage),
+    );
     addTearDown(shortcuts.close);
     await tester.runAsync(() => shortcuts.load());
     await tester.runAsync(() => shortcuts.unbind(CommandIds.toggleSidebar));
@@ -89,7 +95,10 @@ void main() {
   });
 
   testWidgets('formats double-tap Shift for workspace search', (tester) async {
-    final shortcuts = ShortcutCubit(repository: KeybindingRepository());
+    final shortcuts = ShortcutCubit(
+      storage: testHomeStorage,
+      repository: KeybindingRepository(storage: testHomeStorage),
+    );
     addTearDown(shortcuts.close);
     await tester.runAsync(() => shortcuts.load());
 

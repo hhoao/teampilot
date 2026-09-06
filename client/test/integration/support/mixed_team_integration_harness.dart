@@ -206,7 +206,9 @@ class MixedTeamIntegrationHarness {
             installPlugin: (_) async => null,
             installMcp: (_) async => null,
           ),
-          workspaceProjectConfig: WorkspaceProjectConfigRepository(),
+          workspaceProjectConfig: WorkspaceProjectConfigRepository(
+            storage: testHomeStorage,
+          ),
         ),
       ),
     );
@@ -772,6 +774,7 @@ class MixedTeamIntegrationHarness {
   }) async {
     final root = WorkspaceLayout(
       teampilotRoot: AppStorage.paths.basePath,
+      fs: AppStorage.fs,
     ).sessionRuntimeDir(workspaceId, sessionId);
     final dir = Directory(root);
     if (!await dir.exists()) {

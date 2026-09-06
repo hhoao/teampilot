@@ -13,6 +13,7 @@ import '../plugin/plugin_install_service.dart';
 import '../skill/skill_acquisition_engine.dart';
 import '../skill/skill_install_service.dart';
 import '../storage/app_storage.dart';
+import '../storage/home_storage.dart';
 import '../storage/runtime_context_registry.dart';
 import '../storage/work_target_canonicalizer.dart';
 import 'catalog_kind_registry.dart';
@@ -43,6 +44,7 @@ class CatalogRuntime {
   final Future<CatalogMcpSession?> Function(String sessionId) resolveSession;
 
   static CatalogRuntime assemble({
+    HomeStorage? storage,
     SessionRepository? sessions,
     RuntimeContextRegistry? runtimeContexts,
     SkillRepository? skillRepository,
@@ -63,12 +65,15 @@ class CatalogRuntime {
     Future<void> Function(String pluginId)? removePluginFromAllTeams,
     Future<void> Function(String mcpId)? removeMcpFromAllTeams,
   }) {
+    // Shim-era fallback: keep the AppStorage-deferring default for callers
+    // (tests, catalog domain) not yet threading [storage]; removed in 6-C.
+    final home = storage ?? HomeStorage(AppStorage.context);
     final mutationBus = bus ?? CatalogMutationBus();
-    final configRepo = workspaceConfig ?? WorkspaceProjectConfigRepository();
+    final configRepo = workspaceConfig ?? WorkspaceProjectConfigRepository(storage: home);
     final binder = CatalogWorkspaceBinder(repo: configRepo);
     final skills = skillRepository ?? SkillRepository();
-    final plugins = pluginRepository ?? PluginRepository();
-    final mcp = mcpRepository ?? McpRepository();
+    final plugins = pluginRepository ?? PluginRepository(storage: home);
+    final mcp = mcpRepository ?? McpRepository(storage: home);
 
     final registry = CatalogKindRegistry()
       ..register(

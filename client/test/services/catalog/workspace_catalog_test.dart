@@ -9,8 +9,29 @@ import 'package:teampilot/models/app_session.dart';
 import 'package:teampilot/models/workspace_folder.dart';
 import 'package:teampilot/repositories/session_repository.dart';
 import 'package:teampilot/repositories/workspace_index_store.dart';
+import 'package:teampilot/services/io/local_filesystem.dart';
+import 'package:teampilot/services/storage/app_storage.dart';
 
 void main() {
+  TestWidgetsFlutterBinding.ensureInitialized();
+  setUp(() {
+    final tmpRoot = Directory.systemTemp.createTempSync('catalog_home_');
+    addTearDown(() => tmpRoot.deleteSync(recursive: true));
+    final paths = AppPaths(tmpRoot.path);
+    AppStorage.installForTesting(
+      filesystem: LocalFilesystem(
+        pathContext: AppPaths.pathContextForDataRoot(paths.basePath),
+      ),
+      paths: paths,
+      home: tmpRoot.path,
+      cwd: tmpRoot.path,
+    );
+  });
+  tearDown(() {
+    AppStorage.resetForTesting();
+    AppPathsBootstrapper.resetForTesting();
+  });
+
   WorkspaceCatalog buildCatalog() {
     final catalog = WorkspaceCatalog(SessionRepository()); // 本组测试不触 repo
     catalog.ingest(

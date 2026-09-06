@@ -12,6 +12,8 @@ import '../services/cli/codex/provider_persistence.dart';
 import '../services/cli/cursor/provider_persistence.dart';
 import '../services/cli/flashskyai/provider_persistence.dart';
 import '../services/cli/opencode/provider_persistence.dart';
+import '../services/storage/app_storage.dart';
+import '../services/storage/home_storage.dart';
 import 'provider_persistence/provider_persistence_strategy.dart';
 
 export 'provider_persistence/provider_persistence_strategy.dart'
@@ -22,24 +24,34 @@ class AppProviderRepository {
     String? basePath,
     ToolConfigGenerator? generator,
     Filesystem? fs,
+    HomeStorage? storage,
     ClaudeProviderCredentialsService? claudeCredentialsService,
     CursorProviderCredentialsService? cursorCredentialsService,
     CodexProviderCredentialsService? codexCredentialsService,
   }) : _basePathOverride = basePath,
        _generator = generator ?? const ToolConfigGenerator(),
        _fsOverride = fs,
+       _storageOverride = storage,
        _claudeCredentialsServiceOverride = claudeCredentialsService,
        _cursorCredentialsServiceOverride = cursorCredentialsService,
        _codexCredentialsServiceOverride = codexCredentialsService;
 
   final String? _basePathOverride;
   final Filesystem? _fsOverride;
+  final HomeStorage? _storageOverride;
   final ToolConfigGenerator _generator;
   final ClaudeProviderCredentialsService? _claudeCredentialsServiceOverride;
   final CursorProviderCredentialsService? _cursorCredentialsServiceOverride;
   final CodexProviderCredentialsService? _codexCredentialsServiceOverride;
 
   final Map<String, List<AppProviderConfig>> _diskCache = {};
+
+  /// Shim-era fallback: CLI/provider-domain construction sites (batches 7–8)
+  /// and the pre-6-C test harness construct this repository without
+  /// [storage]; defer to the bound home context exactly like the AppStorage
+  /// shim did. Removed once those batches thread [storage].
+  HomeStorage get _storage =>
+      _storageOverride ?? HomeStorage(AppStorage.context);
 
   String _diskCacheKey(CliTool cli) => '$_basePath:${cli.value}';
 
@@ -51,9 +63,9 @@ class AppProviderRepository {
     }
   }
 
-  String get _basePath => _basePathOverride ?? AppStorage.paths.basePath;
+  String get _basePath => _basePathOverride ?? _storage.paths.basePath;
 
-  Filesystem get _fs => _fsOverride ?? AppStorage.fs;
+  Filesystem get _fs => _fsOverride ?? _storage.fs;
 
   ClaudeProviderCredentialsService get _claudeCredentials =>
       _claudeCredentialsServiceOverride ??
@@ -90,10 +102,9 @@ class AppProviderRepository {
         save: saveProviders,
       );
 
-  static String _resolveHomeForPersistence() {
-    if (!AppStorage.isInstalled) return '';
+  String _resolveHomeForPersistence() {
     try {
-      return AppStorage.home.trim();
+      return _storage.home.trim();
     } on Object {
       return '';
     }

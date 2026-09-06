@@ -156,7 +156,9 @@ class PerformanceScenarioApp {
     final workspaceRunRegistry = WorkspaceRunRegistry(
       platformFactory: WorkspaceRunPlatformFactory(
         extensionRepository: extensionRepo,
-        projectConfigRepository: WorkspaceProjectConfigRepository(),
+        projectConfigRepository: WorkspaceProjectConfigRepository(
+          storage: fakeHomeStorage(filesystem: extensionFs),
+        ),
         fs: extensionFs,
         detector: ExtensionDetector(
           processRunner: (e, a, {environment}) async =>
@@ -171,10 +173,12 @@ class PerformanceScenarioApp {
     );
     final managedProviderFs = InMemoryFilesystem();
     final managedUsageRepository = ManagedProviderUsageRepository(
+      storage: fakeHomeStorage(filesystem: managedProviderFs),
       fs: managedProviderFs,
       cachePath: '/test/managed-provider-usage.json',
     );
     final managedProviderRepository = ManagedProviderRepository(
+      storage: fakeHomeStorage(filesystem: managedProviderFs),
       fs: managedProviderFs,
       configPath: '/test/managed-providers.json',
       onProvidersDeleted: managedUsageRepository.deleteMany,
@@ -226,7 +230,9 @@ class PerformanceScenarioApp {
           ),
           RepositoryProvider<WorkspaceSessionGroupsRegistry>.value(
             value: WorkspaceSessionGroupsRegistry(
+              storage: fakeHomeStorage(),
               cubitFactory: () => SessionGroupsCubit(
+                storage: fakeHomeStorage(),
                 knownSessionIds: () => {
                   for (final s in chat.state.sessions) s.sessionId,
                 },
@@ -272,6 +278,7 @@ class PerformanceScenarioApp {
             BlocProvider(
               create: (_) => LlmConfigCubit(
                 appSettings: InMemoryAppSettingsRepository(),
+                storage: fakeHomeStorage(),
                 initialConfig: const LlmConfig(),
               ),
             ),
@@ -318,11 +325,13 @@ class PerformanceScenarioApp {
               ),
             ),
             BlocProvider(create: (_) => FloatingWorkspaceCubit()),
-            BlocProvider(create: (_) => ShortcutCubit()),
+            BlocProvider(
+              create: (_) => ShortcutCubit(storage: fakeHomeStorage()),
+            ),
             BlocProvider(create: (_) => testSkillCubit()),
             BlocProvider(
               create: (_) {
-                final repo = PluginRepository();
+                final repo = PluginRepository(storage: fakeHomeStorage());
                 return PluginCubit(
                   repository: repo,
                   installService: repo.install,
@@ -444,7 +453,8 @@ Future<LaunchProfileCubit> createPerformanceTeamCubit(
   final repository = testLaunchProfileRepository(tmp!);
   final cubit = LaunchProfileCubit(
     repository: repository,
-    sessionRepository: SessionRepository(),
+    sessionRepository: SessionRepository(storage: fakeHomeStorage()),
+    storage: fakeHomeStorage(),
     executableResolver: () => performanceTestExecutable,
     launcher: (_, __) async {},
     appDataBasePath: appData!.path,

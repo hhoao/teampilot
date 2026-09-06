@@ -78,9 +78,11 @@ void main() {
                 BlocProvider<WorktreeCubit>.value(value: worktreeCubit),
                 BlocProvider<AgentAttentionCubit>.value(value: attentionCubit),
                 BlocProvider<SessionGroupsCubit>(
-                  create: (_) => SessionGroupsCubit(),
+                  create: (_) => SessionGroupsCubit(storage: testHomeStorage),
                 ),
-                BlocProvider(create: (_) => ShortcutCubit()),
+                BlocProvider(
+                  create: (_) => ShortcutCubit(storage: testHomeStorage),
+                ),
               ],
               child: SizedBox(
                 width: 320,

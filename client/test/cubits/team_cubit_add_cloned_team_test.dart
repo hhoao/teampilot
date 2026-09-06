@@ -41,8 +41,9 @@ void main() {
     LaunchProfileRepository repo, {
     ExpertHubCatalog? expertHubCatalog,
   }) => LaunchProfileCubit(
+    storage: testHomeStorage,
     repository: repo,
-    sessionRepository: SessionRepository(),
+    sessionRepository: SessionRepository(storage: testHomeStorage),
     executableResolver: () => 'flashskyai',
     expertHubCatalog: expertHubCatalog,
   );

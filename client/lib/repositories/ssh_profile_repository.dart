@@ -2,22 +2,34 @@ import 'dart:convert';
 
 import '../models/ssh_profile.dart';
 import '../services/storage/app_storage.dart';
+import '../services/storage/home_storage.dart';
 import '../services/io/filesystem.dart';
 
 class SshProfileRepository {
-  /// Defaults follow [AppStorage] home (test convenience). Production must use
-  /// [deviceLocalSshProfileRepository] so the catalog stays on-device when home
-  /// is rebound to SSH.
-  SshProfileRepository({String? rootDir, Filesystem? fs})
-    : _rootDirOverride = rootDir,
-      _fsOverride = fs;
+  /// Defaults follow the home control plane ([storage], test convenience).
+  /// Production must use [deviceLocalSshProfileRepository] so the catalog
+  /// stays on-device when home is rebound to SSH.
+  SshProfileRepository({
+    String? rootDir,
+    Filesystem? fs,
+    HomeStorage? storage,
+  }) : _rootDirOverride = rootDir,
+      _fsOverride = fs,
+      _storageOverride = storage;
 
   final String? _rootDirOverride;
   final Filesystem? _fsOverride;
+  final HomeStorage? _storageOverride;
 
-  String get _root => _rootDirOverride ?? AppStorage.paths.sshProfilesDir;
+  /// Shim-era fallback: the pre-6-C test harness and the device-local control
+  /// plane construct this repository without [storage]; defer to the bound
+  /// home context exactly like the AppStorage shim did. Removed in 6-C.
+  HomeStorage get _storage =>
+      _storageOverride ?? HomeStorage(AppStorage.context);
 
-  Filesystem get _fs => _fsOverride ?? AppStorage.fs;
+  String get _root => _rootDirOverride ?? _storage.paths.sshProfilesDir;
+
+  Filesystem get _fs => _fsOverride ?? _storage.fs;
 
   String get _profilesFile => _fs.pathContext.join(_root, 'profiles.json');
 

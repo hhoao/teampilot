@@ -11,6 +11,7 @@ import 'package:teampilot/services/catalog/catalog_workspace_binder.dart';
 import 'package:teampilot/services/catalog/modules/mcp_catalog_module.dart';
 import 'package:teampilot/services/io/local_filesystem.dart';
 import 'package:teampilot/services/storage/app_storage.dart';
+import 'package:teampilot/services/storage/home_storage.dart';
 
 void main() {
   late Directory tmp;
@@ -38,7 +39,9 @@ void main() {
     );
     workFs = LocalFilesystem();
     repository = McpRepository();
-    configRepo = WorkspaceProjectConfigRepository();
+    configRepo = WorkspaceProjectConfigRepository(
+      storage: HomeStorage(AppStorage.context),
+    );
     binder = CatalogWorkspaceBinder(repo: configRepo);
     bus = CatalogMutationBus();
     module = McpCatalogModule(repository: repository, binder: binder, bus: bus);

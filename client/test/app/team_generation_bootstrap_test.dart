@@ -81,6 +81,7 @@ void main() {
       final teamCubit = LaunchProfileCubit(
         repository: profileRepository,
         sessionRepository: sessionRepository,
+        storage: testHomeStorage,
         executableResolver: () => 'true',
       );
       addTearDown(chat.close);

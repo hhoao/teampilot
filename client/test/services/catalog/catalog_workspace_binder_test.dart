@@ -7,6 +7,7 @@ import 'package:teampilot/services/catalog/catalog_kind.dart';
 import 'package:teampilot/services/catalog/catalog_workspace_binder.dart';
 import 'package:teampilot/services/io/local_filesystem.dart';
 import 'package:teampilot/services/storage/app_storage.dart';
+import 'package:teampilot/services/storage/home_storage.dart';
 
 void main() {
   late Directory tmp;
@@ -24,7 +25,9 @@ void main() {
       home: tmp.path,
       cwd: tmp.path,
     );
-    repo = WorkspaceProjectConfigRepository();
+    repo = WorkspaceProjectConfigRepository(
+      storage: HomeStorage(AppStorage.context),
+    );
     binder = CatalogWorkspaceBinder(repo: repo);
   });
 

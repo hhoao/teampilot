@@ -85,7 +85,10 @@ void main() {
   tearDown(tearDownTestAppStorage);
 
   test('scheduledMessage delivers message when session is connected', () async {
-    final layout = WorkspaceLayout(teampilotRoot: AppStorage.paths.basePath);
+    final layout = WorkspaceLayout(
+      teampilotRoot: AppStorage.paths.basePath,
+      fs: AppStorage.fs,
+    );
     final repo = AutomationRepository(fs: AppStorage.fs, layout: layout);
     final session = AppSession(
       sessionId: 'sess-1',
@@ -132,7 +135,10 @@ void main() {
   });
 
   test('scheduledMessage wraps ensure+deliver in runDeliveryInFlight', () async {
-    final layout = WorkspaceLayout(teampilotRoot: AppStorage.paths.basePath);
+    final layout = WorkspaceLayout(
+      teampilotRoot: AppStorage.paths.basePath,
+      fs: AppStorage.fs,
+    );
     final repo = AutomationRepository(fs: AppStorage.fs, layout: layout);
     final session = AppSession(
       sessionId: 'sess-1',
@@ -182,7 +188,10 @@ void main() {
   });
 
   test('scheduledMessage skips when session is missing', () async {
-    final layout = WorkspaceLayout(teampilotRoot: AppStorage.paths.basePath);
+    final layout = WorkspaceLayout(
+      teampilotRoot: AppStorage.paths.basePath,
+      fs: AppStorage.fs,
+    );
     final repo = AutomationRepository(fs: AppStorage.fs, layout: layout);
     final bus = _RecordingBusGateway();
 
@@ -208,7 +217,10 @@ void main() {
   });
 
   test('scheduledMessage fails when member connect times out', () async {
-    final layout = WorkspaceLayout(teampilotRoot: AppStorage.paths.basePath);
+    final layout = WorkspaceLayout(
+      teampilotRoot: AppStorage.paths.basePath,
+      fs: AppStorage.fs,
+    );
     final repo = AutomationRepository(fs: AppStorage.fs, layout: layout);
     final session = AppSession(
       sessionId: 'sess-2',
@@ -240,7 +252,10 @@ void main() {
   });
 
   test('dispatch increments runCount and disables at maxRunCount', () async {
-    final layout = WorkspaceLayout(teampilotRoot: AppStorage.paths.basePath);
+    final layout = WorkspaceLayout(
+      teampilotRoot: AppStorage.paths.basePath,
+      fs: AppStorage.fs,
+    );
     final repo = AutomationRepository(fs: AppStorage.fs, layout: layout);
     final session = AppSession(
       sessionId: 'sess-1',
@@ -279,7 +294,10 @@ void main() {
   });
 
   test('launchPrompt with reuse binds session after first dispatch', () async {
-    final layout = WorkspaceLayout(teampilotRoot: AppStorage.paths.basePath);
+    final layout = WorkspaceLayout(
+      teampilotRoot: AppStorage.paths.basePath,
+      fs: AppStorage.fs,
+    );
     final repo = AutomationRepository(fs: AppStorage.fs, layout: layout);
     final workspace = Workspace(workspaceId: 'ws1', createdAt: 1);
     final bus = _RecordingBusGateway();
@@ -345,7 +363,10 @@ void main() {
   });
 
   test('launchPrompt passes automation working directory to session create', () async {
-    final layout = WorkspaceLayout(teampilotRoot: AppStorage.paths.basePath);
+    final layout = WorkspaceLayout(
+      teampilotRoot: AppStorage.paths.basePath,
+      fs: AppStorage.fs,
+    );
     final repo = AutomationRepository(fs: AppStorage.fs, layout: layout);
     final workspace = Workspace(
       workspaceId: 'ws1',
@@ -400,7 +421,10 @@ void main() {
   });
 
   test('launchPrompt with reuse reopens bound session on later runs', () async {
-    final layout = WorkspaceLayout(teampilotRoot: AppStorage.paths.basePath);
+    final layout = WorkspaceLayout(
+      teampilotRoot: AppStorage.paths.basePath,
+      fs: AppStorage.fs,
+    );
     final repo = AutomationRepository(fs: AppStorage.fs, layout: layout);
     final session = AppSession(
       sessionId: 'bound-sess',

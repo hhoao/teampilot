@@ -22,6 +22,7 @@ const _roster = [
 
 class _SpyLaunchProfileCubit extends LaunchProfileCubit {
   _SpyLaunchProfileCubit({
+    required super.storage,
     required super.repository,
     required super.sessionRepository,
     required super.executableResolver,
@@ -57,10 +58,11 @@ TeamProfile _teamBeta() => TeamProfile(
 
 _SpyLaunchProfileCubit _loadedCubit() {
   final cubit = _SpyLaunchProfileCubit(
+    storage: testHomeStorage,
     repository: testLaunchProfileRepository(
       Directory.systemTemp.createTempSync('my_teams_page_'),
     ),
-    sessionRepository: SessionRepository(),
+    sessionRepository: SessionRepository(storage: testHomeStorage),
     executableResolver: () => 'flashskyai',
   );
   cubit.emit(

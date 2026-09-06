@@ -201,7 +201,7 @@ Future<SessionGroupsCubit> _groupsCubit(
   WidgetTester tester,
   List<SessionGroup> groups,
 ) async {
-  final cubit = SessionGroupsCubit();
+  final cubit = SessionGroupsCubit(storage: testHomeStorage);
   // Repository reads use real dart:io; under testWidgets they only complete
   // inside runAsync.
   await tester.runAsync(() => cubit.load(_session.workspaceId));
@@ -260,7 +260,7 @@ void main() {
         chatCubit: chatCubit,
         automationCubit: automationCubit,
         attentionCubit: attention,
-        sessionRepository: SessionRepository(),
+        sessionRepository: SessionRepository(storage: testHomeStorage),
         locale: const Locale('zh'),
       ),
     );
@@ -303,7 +303,7 @@ void main() {
         chatCubit: chatCubit,
         automationCubit: automationCubit,
         attentionCubit: attention,
-        sessionRepository: SessionRepository(),
+        sessionRepository: SessionRepository(storage: testHomeStorage),
         locale: const Locale('zh'),
       ),
     );
@@ -331,7 +331,7 @@ void main() {
         chatCubit: chatCubit,
         automationCubit: automationCubit,
         attentionCubit: attention,
-        sessionRepository: SessionRepository(),
+        sessionRepository: SessionRepository(storage: testHomeStorage),
       ),
     );
     await tester.pump();
@@ -367,7 +367,7 @@ void main() {
         chatCubit: chatCubit,
         automationCubit: automationCubit,
         attentionCubit: attention,
-        sessionRepository: SessionRepository(),
+        sessionRepository: SessionRepository(storage: testHomeStorage),
         child: SidebarSessionTile(
           session: archived,
           archiveMode: true,
@@ -438,7 +438,7 @@ void main() {
           chatCubit: chatCubit,
           automationCubit: automationCubit,
           attentionCubit: attention,
-          sessionRepository: SessionRepository(),
+          sessionRepository: SessionRepository(storage: testHomeStorage),
           child: SidebarSessionTile(session: stale, onTap: () {}),
         ),
       );
@@ -480,7 +480,7 @@ void main() {
         chatCubit: chatCubit,
         automationCubit: automationCubit,
         attentionCubit: attention,
-        sessionRepository: SessionRepository(),
+        sessionRepository: SessionRepository(storage: testHomeStorage),
         child: SidebarSessionTile(session: pinned, onTap: () {}),
       ),
     );
@@ -503,7 +503,7 @@ void main() {
         chatCubit: chatCubit,
         automationCubit: automationCubit,
         attentionCubit: attention,
-        sessionRepository: SessionRepository(),
+        sessionRepository: SessionRepository(storage: testHomeStorage),
       ),
     );
     await tester.pump();
@@ -523,7 +523,7 @@ void main() {
         chatCubit: chatCubit,
         automationCubit: automationCubit,
         attentionCubit: attention,
-        sessionRepository: SessionRepository(),
+        sessionRepository: SessionRepository(storage: testHomeStorage),
       ),
     );
     await tester.pump();
@@ -552,7 +552,7 @@ void main() {
         chatCubit: chatCubit,
         automationCubit: automationCubit,
         attentionCubit: attention,
-        sessionRepository: SessionRepository(),
+        sessionRepository: SessionRepository(storage: testHomeStorage),
       ),
     );
     await tester.pump();
@@ -582,7 +582,7 @@ void main() {
         chatCubit: chatCubit,
         automationCubit: automationCubit,
         attentionCubit: attention,
-        sessionRepository: SessionRepository(),
+        sessionRepository: SessionRepository(storage: testHomeStorage),
         locale: const Locale('zh'),
       ),
     );
@@ -639,7 +639,7 @@ void main() {
         chatCubit: chatCubit,
         automationCubit: automationCubit,
         attentionCubit: attention,
-        sessionRepository: SessionRepository(),
+        sessionRepository: SessionRepository(storage: testHomeStorage),
       ),
     );
     await tester.pump();
@@ -674,7 +674,7 @@ void main() {
         chatCubit: chatCubit,
         automationCubit: automationCubit,
         attentionCubit: attention,
-        sessionRepository: SessionRepository(),
+        sessionRepository: SessionRepository(storage: testHomeStorage),
         groupsCubit: groupsCubit,
       ),
     );
@@ -704,7 +704,7 @@ void main() {
         chatCubit: chatCubit,
         automationCubit: automationCubit,
         attentionCubit: attention,
-        sessionRepository: SessionRepository(),
+        sessionRepository: SessionRepository(storage: testHomeStorage),
         groupsCubit: groupsCubit,
       ),
     );
@@ -739,7 +739,7 @@ void main() {
         chatCubit: chatCubit,
         automationCubit: automationCubit,
         attentionCubit: attention,
-        sessionRepository: SessionRepository(),
+        sessionRepository: SessionRepository(storage: testHomeStorage),
       ),
     );
     await tester.pump();
@@ -769,7 +769,7 @@ void main() {
       _host(
         chatCubit: chatCubit,
         automationCubit: automationCubit,
-        sessionRepository: SessionRepository(),
+        sessionRepository: SessionRepository(storage: testHomeStorage),
         attentionCubit: attention,
       ),
     );
@@ -794,7 +794,7 @@ void main() {
       _host(
         chatCubit: chatCubit,
         automationCubit: automationCubit,
-        sessionRepository: SessionRepository(),
+        sessionRepository: SessionRepository(storage: testHomeStorage),
         attentionCubit: attention,
       ),
     );
@@ -823,7 +823,7 @@ void main() {
       _host(
         chatCubit: chatCubit,
         automationCubit: automationCubit,
-        sessionRepository: SessionRepository(),
+        sessionRepository: SessionRepository(storage: testHomeStorage),
         attentionCubit: attention,
       ),
     );
@@ -854,7 +854,7 @@ void main() {
       _host(
         chatCubit: chatCubit,
         automationCubit: automationCubit,
-        sessionRepository: SessionRepository(),
+        sessionRepository: SessionRepository(storage: testHomeStorage),
         attentionCubit: attention,
         onTap: () => activated = true,
       ),
@@ -922,7 +922,7 @@ void main() {
       _host(
         chatCubit: chatCubit,
         automationCubit: automationCubit,
-        sessionRepository: SessionRepository(),
+        sessionRepository: SessionRepository(storage: testHomeStorage),
         attentionCubit: attention,
         child: SidebarSessionTile(
           session: sessionB,

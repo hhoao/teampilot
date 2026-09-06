@@ -2,28 +2,31 @@ import 'dart:convert';
 
 import '../models/provider_usage_snapshot.dart';
 import '../services/io/filesystem.dart';
-import '../services/storage/app_storage.dart';
+import '../services/storage/home_storage.dart';
 import 'managed_provider_id_deletion_barrier.dart';
 import 'managed_provider_storage_lock.dart';
 
 /// Persists normalized usage snapshots independently from provider config.
 class ManagedProviderUsageRepository {
   ManagedProviderUsageRepository({
+    required HomeStorage storage,
     Filesystem? fs,
     String? cachePath,
     int Function()? now,
   }) : _fsOverride = fs,
        _cachePathOverride = cachePath,
+       _storage = storage,
        _now = now ?? _epochMilliseconds;
 
   final Filesystem? _fsOverride;
   final String? _cachePathOverride;
+  final HomeStorage _storage;
   final int Function() _now;
 
-  Filesystem get _fs => _fsOverride ?? AppStorage.fs;
+  Filesystem get _fs => _fsOverride ?? _storage.fs;
 
   String get _cachePath =>
-      _cachePathOverride ?? AppStorage.paths.managedProviderUsageCacheFile;
+      _cachePathOverride ?? _storage.paths.managedProviderUsageCacheFile;
 
   Future<List<ProviderUsageSnapshot>> load() async {
     final store = await _readStore();

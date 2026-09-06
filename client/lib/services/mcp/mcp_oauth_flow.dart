@@ -32,6 +32,7 @@ class McpOAuthFlow {
   static String claudeAppConfigDir() {
     return RuntimeLayout(
       teampilotRoot: AppStorage.appDataRoot,
+      fs: AppStorage.fs,
     ).appToolRoot('claude');
   }
 

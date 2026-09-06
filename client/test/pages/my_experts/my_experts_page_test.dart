@@ -49,10 +49,11 @@ class _EmptyRegistry implements ExpertHubSource {
 
 LaunchProfileCubit _launchCubit({List<TeamProfile> teams = const []}) {
   final cubit = LaunchProfileCubit(
+    storage: testHomeStorage,
     repository: testLaunchProfileRepository(
       Directory.systemTemp.createTempSync('my_experts_page_'),
     ),
-    sessionRepository: SessionRepository(),
+    sessionRepository: SessionRepository(storage: testHomeStorage),
     executableResolver: () => 'flashskyai',
   );
   cubit.emit(

@@ -1,6 +1,7 @@
 import 'package:teampilot/models/runtime_target.dart';
 import 'package:teampilot/services/io/local_filesystem.dart';
 import 'package:teampilot/services/storage/app_storage.dart';
+import 'package:teampilot/services/storage/home_storage.dart';
 import 'package:teampilot/services/storage/runtime_context.dart';
 
 /// A native (local) [RuntimeContext] rooted at [dir] — derives all control-plane
@@ -17,8 +18,9 @@ RuntimeContext testRuntimeContext(String dir) => RuntimeContext(
 );
 
 /// Binds a native home [RuntimeContext] rooted at [dir] for tests (replaces the
-/// removed `RuntimeStorageContext.install`).
-void bindTestNativeHome(String dir) {
+/// removed `RuntimeStorageContext.install`). Returns a [HomeStorage] over the
+/// freshly bound context for constructor injection.
+HomeStorage bindTestNativeHome(String dir) {
   AppStorage.installForTesting(
     filesystem: LocalFilesystem(
       pathContext: AppPaths.pathContextForDataRoot(dir),
@@ -27,4 +29,5 @@ void bindTestNativeHome(String dir) {
     home: dir,
     cwd: dir,
   );
+  return HomeStorage(AppStorage.context);
 }

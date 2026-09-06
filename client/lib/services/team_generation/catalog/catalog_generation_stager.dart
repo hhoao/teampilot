@@ -48,7 +48,10 @@ final class CatalogGenerationStager
   Filesystem get _fs => _fsOverride ?? AppStorage.fs;
   WorkspaceLayout get _layout =>
       _layoutOverride ??
-      WorkspaceLayout(teampilotRoot: AppStorage.paths.basePath);
+      WorkspaceLayout(
+        teampilotRoot: AppStorage.paths.basePath,
+        fs: AppStorage.fs,
+      );
 
   /// Entry point used by every mutating catalog handler when the request is
   /// generation-scoped. Runs inside the shared workflow executor.

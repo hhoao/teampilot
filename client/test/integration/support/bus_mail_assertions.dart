@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:path/path.dart' as p;
+import 'package:teampilot/services/storage/app_storage.dart';
 import 'package:teampilot/services/storage/workspace_layout.dart';
 import 'package:teampilot/services/cli/claude/team_roster_service.dart';
 
@@ -13,7 +14,10 @@ String busMailFilePath({
   required String sessionId,
   required String memberId,
 }) {
-  final layout = WorkspaceLayout(teampilotRoot: teampilotRoot);
+  final layout = WorkspaceLayout(
+    teampilotRoot: teampilotRoot,
+    fs: AppStorage.fs,
+  );
   final mailRoot = layout.busMailDir(workspaceId, sessionId);
   final slug = ClaudeTeamRosterService.safeClaudePathSegment(memberId);
   return p.join(mailRoot, '$slug.jsonl');

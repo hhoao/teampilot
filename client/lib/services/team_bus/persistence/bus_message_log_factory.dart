@@ -13,7 +13,10 @@ abstract final class BusMessageLogFactory {
     if (sessionId.startsWith('local-')) {
       return InMemoryBusMessageLog();
     }
-    final layout = WorkspaceLayout(teampilotRoot: AppStorage.paths.basePath);
+    final layout = WorkspaceLayout(
+      teampilotRoot: AppStorage.paths.basePath,
+      fs: AppStorage.fs,
+    );
     return FileBusMessageLog(
       mailRoot: layout.busMailDir(workspaceId, sessionId),
       fs: AppStorage.fs,

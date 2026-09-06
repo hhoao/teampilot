@@ -145,6 +145,7 @@ void main() {
             },
       );
       launchProfiles = LaunchProfileCubit(
+        storage: testHomeStorage,
         repository: testLaunchProfileRepository(tmp),
         sessionRepository: repo,
         executableResolver: () => 'true',

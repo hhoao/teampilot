@@ -41,7 +41,9 @@ Widget _wrapTitleBar({
         BlocProvider<LayoutCubit>.value(value: layoutCubit)
       else
         BlocProvider(create: (_) => LayoutCubit()),
-      BlocProvider(create: (_) => ShortcutCubit()),
+      BlocProvider(
+        create: (_) => ShortcutCubit(storage: testHomeStorage),
+      ),
     ],
     child: child,
   );

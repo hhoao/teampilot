@@ -17,6 +17,7 @@ import 'package:teampilot/services/catalog/catalog_runtime.dart';
 import 'package:teampilot/services/io/local_filesystem.dart';
 import 'package:teampilot/services/mcp/profile_mcp_linker_service.dart';
 import 'package:teampilot/services/storage/app_storage.dart';
+import 'package:teampilot/services/storage/home_storage.dart';
 import 'package:teampilot/services/team_bus/mcp/jsonrpc.dart';
 
 void main() {
@@ -240,7 +241,9 @@ void main() {
       host: host,
       provisioner: TeamProfileProvisioner(),
       mcpLinker: ProfileMcpLinkerService(),
-      pluginRepository: PluginRepository(),
+      pluginRepository: PluginRepository(
+        storage: HomeStorage(AppStorage.context),
+      ),
       mcpRepository: McpRepository(),
       extensionMcpContributor: (_) async => const [],
     );
@@ -283,7 +286,9 @@ void main() {
       host: host,
       provisioner: TeamProfileProvisioner(),
       mcpLinker: ProfileMcpLinkerService(),
-      pluginRepository: PluginRepository(),
+      pluginRepository: PluginRepository(
+        storage: HomeStorage(AppStorage.context),
+      ),
       mcpRepository: McpRepository(),
       extensionMcpContributor: (_) async => const [],
     );
@@ -324,7 +329,9 @@ void main() {
       host: host,
       provisioner: TeamProfileProvisioner(),
       mcpLinker: ProfileMcpLinkerService(),
-      pluginRepository: PluginRepository(),
+      pluginRepository: PluginRepository(
+        storage: HomeStorage(AppStorage.context),
+      ),
       mcpRepository: McpRepository(),
       extensionMcpContributor: (_) async => const [],
     );

@@ -8,8 +8,7 @@ import 'catalog_kind.dart';
 ///
 /// v1 accepts [CatalogBindTo.workspace] only.
 class CatalogWorkspaceBinder {
-  CatalogWorkspaceBinder({WorkspaceProjectConfigRepository? repo})
-    : repo = repo ?? WorkspaceProjectConfigRepository();
+  CatalogWorkspaceBinder({required this.repo});
 
   final WorkspaceProjectConfigRepository repo;
 

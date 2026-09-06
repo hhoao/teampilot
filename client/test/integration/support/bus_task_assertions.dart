@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:path/path.dart' as p;
+import 'package:teampilot/services/storage/app_storage.dart';
 import 'package:teampilot/services/storage/workspace_layout.dart';
 
 typedef BusTaskRowPredicate = bool Function(Map<String, Object?> row);
@@ -11,7 +12,10 @@ String busTasksFilePath({
   required String workspaceId,
   required String sessionId,
 }) {
-  final layout = WorkspaceLayout(teampilotRoot: teampilotRoot);
+  final layout = WorkspaceLayout(
+    teampilotRoot: teampilotRoot,
+    fs: AppStorage.fs,
+  );
   return p.join(layout.busTasksDir(workspaceId, sessionId), 'tasks.jsonl');
 }
 

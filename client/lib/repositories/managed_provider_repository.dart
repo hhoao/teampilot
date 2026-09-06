@@ -2,7 +2,7 @@ import 'dart:convert';
 
 import '../models/managed_provider.dart';
 import '../services/io/filesystem.dart';
-import '../services/storage/app_storage.dart';
+import '../services/storage/home_storage.dart';
 import 'managed_provider_id_deletion_barrier.dart';
 import 'managed_provider_storage_lock.dart';
 
@@ -16,21 +16,24 @@ import 'managed_provider_storage_lock.dart';
 /// reconciliation.
 class ManagedProviderRepository {
   ManagedProviderRepository({
+    required HomeStorage storage,
     Filesystem? fs,
     String? configPath,
     required Future<void> Function(List<String> providerIds) onProvidersDeleted,
   }) : _fsOverride = fs,
        _configPathOverride = configPath,
+       _storage = storage,
        _onProvidersDeleted = onProvidersDeleted;
 
   final Filesystem? _fsOverride;
   final String? _configPathOverride;
+  final HomeStorage _storage;
   final Future<void> Function(List<String> providerIds) _onProvidersDeleted;
 
-  Filesystem get _fs => _fsOverride ?? AppStorage.fs;
+  Filesystem get _fs => _fsOverride ?? _storage.fs;
 
   String get _configPath =>
-      _configPathOverride ?? AppStorage.paths.managedProviderConfigFile;
+      _configPathOverride ?? _storage.paths.managedProviderConfigFile;
 
   /// Monotonic process-local revision shared by repository instances that
   /// address the same catalog path. Coordinators use it to reject results

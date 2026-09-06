@@ -12,6 +12,8 @@ import 'package:teampilot/services/mcp/profile_mcp_linker_service.dart';
 import 'package:teampilot/services/provider/config_profile_service.dart';
 import 'package:teampilot/services/session/session_lifecycle_service.dart';
 
+import '../../support/in_memory_filesystem.dart';
+
 void main() {
   test(
     'launchMember forwards additional directories to the launch environment',
@@ -35,7 +37,7 @@ void main() {
         host: host,
         provisioner: TeamProfileProvisioner(),
         mcpLinker: ProfileMcpLinkerService(),
-        pluginRepository: PluginRepository(),
+        pluginRepository: PluginRepository(storage: fakeHomeStorage()),
         mcpRepository: McpRepository(),
         installedPluginsLoader: () async => const [],
         installedMcpLoader: () async => const [],

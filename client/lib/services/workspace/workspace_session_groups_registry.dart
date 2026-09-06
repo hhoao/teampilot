@@ -1,14 +1,17 @@
 import 'dart:async';
 
 import '../../cubits/session_groups_cubit.dart';
+import '../storage/home_storage.dart';
 
 /// Retains long-lived [SessionGroupsCubit]s per open workspace so multiple
 /// tabs on the same workspace share one owner/writer of session-groups.json.
 class WorkspaceSessionGroupsRegistry {
-  WorkspaceSessionGroupsRegistry({SessionGroupsCubit Function()? cubitFactory})
-    : _cubitFactory = cubitFactory;
+  WorkspaceSessionGroupsRegistry({
+    required HomeStorage storage,
+    SessionGroupsCubit Function()? cubitFactory,
+  }) : _cubitFactory = cubitFactory ?? (() => SessionGroupsCubit(storage: storage));
 
-  final SessionGroupsCubit Function()? _cubitFactory;
+  final SessionGroupsCubit Function() _cubitFactory;
   final Map<String, SessionGroupsCubit> _cubits = {};
 
   /// Returns the retained cubit for [workspaceId], creating and loading it on
@@ -20,7 +23,7 @@ class WorkspaceSessionGroupsRegistry {
     }
     final existing = _cubits[ws];
     if (existing != null && !existing.isClosed) return existing;
-    final cubit = _cubitFactory?.call() ?? SessionGroupsCubit();
+    final cubit = _cubitFactory();
     _cubits[ws] = cubit;
     unawaited(cubit.load(ws));
     return cubit;

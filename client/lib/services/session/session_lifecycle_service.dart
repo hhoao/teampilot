@@ -13,6 +13,7 @@ import '../../models/launch_profile.dart';
 import '../../repositories/cli_presets_repository.dart';
 import '../../repositories/launch_profile_repository.dart';
 import '../../repositories/workspace_project_config_repository.dart';
+import '../storage/home_storage.dart';
 import '../../models/config_bundle.dart';
 import '../../utils/team/team_member_naming.dart';
 import '../../utils/logging/logger.dart';
@@ -174,7 +175,14 @@ class SessionLifecycleService {
   }
 
   Future<ConfigBundle> _projectBundle(String workspaceId) async {
-    final repo = _projectConfigRepository ?? WorkspaceProjectConfigRepository();
+    // Shim-era fallback: bare constructions (ChatCubit default lifecycle,
+    // tests) reach the bound home context like the AppStorage shim did;
+    // removed in 6-C together with the harness migration.
+    final repo =
+        _projectConfigRepository ??
+        WorkspaceProjectConfigRepository(
+          storage: HomeStorage(AppStorage.context),
+        );
     return (await repo.load(workspaceId)).bundle;
   }
 

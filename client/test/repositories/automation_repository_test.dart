@@ -15,7 +15,10 @@ void main() {
   test(
     'listForWorkspace aggregates every launch context in workspace',
     () async {
-      final layout = WorkspaceLayout(teampilotRoot: AppStorage.paths.basePath);
+      final layout = WorkspaceLayout(
+      teampilotRoot: AppStorage.paths.basePath,
+      fs: AppStorage.fs,
+    );
       final repo = AutomationRepository(fs: AppStorage.fs, layout: layout);
       await repo.upsert(sampleAutomation(id: 'personal', workspaceId: 'ws1'));
       await repo.upsert(
@@ -35,7 +38,10 @@ void main() {
   );
 
   test('upsert and listForWorkspace round-trip', () async {
-    final layout = WorkspaceLayout(teampilotRoot: AppStorage.paths.basePath);
+    final layout = WorkspaceLayout(
+      teampilotRoot: AppStorage.paths.basePath,
+      fs: AppStorage.fs,
+    );
     final repo = AutomationRepository(fs: AppStorage.fs, layout: layout);
     final automation = sampleAutomation(id: 'a1', workspaceId: 'ws1');
     await repo.upsert(automation);
@@ -50,7 +56,10 @@ void main() {
   });
 
   test('listAll aggregates workspace stores', () async {
-    final layout = WorkspaceLayout(teampilotRoot: AppStorage.paths.basePath);
+    final layout = WorkspaceLayout(
+      teampilotRoot: AppStorage.paths.basePath,
+      fs: AppStorage.fs,
+    );
     final repo = AutomationRepository(fs: AppStorage.fs, layout: layout);
     await repo.upsert(sampleAutomation(id: 'a1', workspaceId: 'ws1'));
     await repo.upsert(
@@ -66,7 +75,10 @@ void main() {
   });
 
   test('upsertRun replaces run with same id', () async {
-    final layout = WorkspaceLayout(teampilotRoot: AppStorage.paths.basePath);
+    final layout = WorkspaceLayout(
+      teampilotRoot: AppStorage.paths.basePath,
+      fs: AppStorage.fs,
+    );
     final repo = AutomationRepository(fs: AppStorage.fs, layout: layout);
     await repo.upsert(sampleAutomation(id: 'a1', workspaceId: 'ws1'));
     const runId = 'run-1';
@@ -98,7 +110,10 @@ void main() {
   });
 
   test('appendRun truncates to maxRunsPerWorkspace', () async {
-    final layout = WorkspaceLayout(teampilotRoot: AppStorage.paths.basePath);
+    final layout = WorkspaceLayout(
+      teampilotRoot: AppStorage.paths.basePath,
+      fs: AppStorage.fs,
+    );
     final repo = AutomationRepository(
       fs: AppStorage.fs,
       layout: layout,
@@ -126,7 +141,10 @@ void main() {
   test(
     'disableForSession disables matching automations in workspace',
     () async {
-      final layout = WorkspaceLayout(teampilotRoot: AppStorage.paths.basePath);
+      final layout = WorkspaceLayout(
+      teampilotRoot: AppStorage.paths.basePath,
+      fs: AppStorage.fs,
+    );
       final repo = AutomationRepository(fs: AppStorage.fs, layout: layout);
       await repo.upsert(
         sampleAutomation(
@@ -143,7 +161,10 @@ void main() {
   );
 
   test('disableForSession unbinds reusable launch prompts', () async {
-    final layout = WorkspaceLayout(teampilotRoot: AppStorage.paths.basePath);
+    final layout = WorkspaceLayout(
+      teampilotRoot: AppStorage.paths.basePath,
+      fs: AppStorage.fs,
+    );
     final repo = AutomationRepository(fs: AppStorage.fs, layout: layout);
     await repo.upsert(
       sampleAutomation(id: 'a1', workspaceId: 'ws1').copyWith(
@@ -162,7 +183,10 @@ void main() {
   });
 
   test('removeWorkspace drops workspace automation store', () async {
-    final layout = WorkspaceLayout(teampilotRoot: AppStorage.paths.basePath);
+    final layout = WorkspaceLayout(
+      teampilotRoot: AppStorage.paths.basePath,
+      fs: AppStorage.fs,
+    );
     final repo = AutomationRepository(fs: AppStorage.fs, layout: layout);
     await repo.upsert(sampleAutomation(id: 'a1', workspaceId: 'ws1'));
     expect(await repo.listAll(), hasLength(1));

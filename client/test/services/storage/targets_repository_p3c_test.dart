@@ -1,6 +1,7 @@
 import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
+import 'package:teampilot/services/io/local_filesystem.dart';
 import 'package:teampilot/services/storage/targets_repository.dart';
 
 void main() {
@@ -9,7 +10,7 @@ void main() {
 
   setUp(() async {
     tmp = await Directory.systemTemp.createTemp('targets_p3c_');
-    repo = TargetsRepository(rootDir: tmp.path);
+    repo = TargetsRepository(rootDir: tmp.path, fs: LocalFilesystem());
   });
   tearDown(() => tmp.deleteSync(recursive: true));
 

@@ -73,8 +73,9 @@ MemberRosterService buildService({
 
 LaunchProfileCubit buildCubit(LaunchProfileRepository repo) =>
     LaunchProfileCubit(
+      storage: testHomeStorage,
       repository: repo,
-      sessionRepository: SessionRepository(),
+      sessionRepository: SessionRepository(storage: testHomeStorage),
       executableResolver: () => 'flashskyai',
     )..attachCatalog(ExpertHubCatalog(source: _BuiltinExpertSource()));
 

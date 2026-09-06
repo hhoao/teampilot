@@ -139,8 +139,9 @@ void main() {
     final dir = await Directory.systemTemp.createTemp('team-cubit-');
     final repo = _repo(dir);
     final cubit = LaunchProfileCubit(
+      storage: testHomeStorage,
       repository: repo,
-      sessionRepository: SessionRepository(),
+      sessionRepository: SessionRepository(storage: testHomeStorage),
       executableResolver: () => 'flashskyai',
     );
 
@@ -167,8 +168,9 @@ void main() {
     final dir = await Directory.systemTemp.createTemp('team-cubit-');
     final repo = _repo(dir);
     final cubit = LaunchProfileCubit(
+      storage: testHomeStorage,
       repository: repo,
-      sessionRepository: SessionRepository(),
+      sessionRepository: SessionRepository(storage: testHomeStorage),
       executableResolver: () => 'flashskyai',
       installedPluginsLoader: () async => [],
     );
@@ -203,8 +205,9 @@ void main() {
     final dir = await Directory.systemTemp.createTemp('team-cubit-');
     final repo = _repo(dir);
     final cubit = LaunchProfileCubit(
+      storage: testHomeStorage,
       repository: repo,
-      sessionRepository: SessionRepository(),
+      sessionRepository: SessionRepository(storage: testHomeStorage),
       executableResolver: () => 'flashskyai',
       installedPluginsLoader: () async => [],
     );
@@ -232,8 +235,9 @@ void main() {
     final dir = await Directory.systemTemp.createTemp('team-cubit-');
     final repo = _repo(dir);
     final cubit = LaunchProfileCubit(
+      storage: testHomeStorage,
       repository: repo,
-      sessionRepository: SessionRepository(),
+      sessionRepository: SessionRepository(storage: testHomeStorage),
       executableResolver: () => 'flashskyai',
       installedPluginsLoader: () async => [],
     );
@@ -265,8 +269,9 @@ void main() {
     final dir = await Directory.systemTemp.createTemp('team-cubit-');
     final repo = _repo(dir);
     final cubit = LaunchProfileCubit(
+      storage: testHomeStorage,
       repository: repo,
-      sessionRepository: SessionRepository(),
+      sessionRepository: SessionRepository(storage: testHomeStorage),
       executableResolver: () => 'flashskyai',
     );
     cubit.attachCatalog(_builtinCatalog());
@@ -296,8 +301,9 @@ void main() {
   test('deleteMember cannot remove team-lead', () async {
     final dir = await Directory.systemTemp.createTemp('team-cubit-');
     final cubit = LaunchProfileCubit(
+      storage: testHomeStorage,
       repository: _repo(dir),
-      sessionRepository: SessionRepository(),
+      sessionRepository: SessionRepository(storage: testHomeStorage),
       executableResolver: () => 'flashskyai',
     );
     cubit.attachCatalog(_builtinCatalog());
@@ -325,8 +331,9 @@ void main() {
         lifecycleService: lifecycle,
       );
       final cubit = LaunchProfileCubit(
-        repository: repo,
-        sessionRepository: SessionRepository(),
+        storage: testHomeStorage,
+      repository: repo,
+        sessionRepository: SessionRepository(storage: testHomeStorage),
         executableResolver: () => 'flashskyai',
       );
       const team = TeamProfile(
@@ -364,8 +371,9 @@ void main() {
   test('addTeam creates team runtime profile directories', () async {
     final base = await Directory.systemTemp.createTemp('team_profile_');
     final cubit = LaunchProfileCubit(
+      storage: testHomeStorage,
       repository: _repo(base),
-      sessionRepository: SessionRepository(),
+      sessionRepository: SessionRepository(storage: testHomeStorage),
       executableResolver: () => 'flashskyai',
       appDataBasePath: base.path,
       configProfileService: ConfigProfileService(basePath: base.path),
@@ -385,8 +393,9 @@ void main() {
   test('addTeam rejects codex in native team mode', () async {
     final base = await Directory.systemTemp.createTemp('team_profile_cli_');
     final cubit = LaunchProfileCubit(
+      storage: testHomeStorage,
       repository: _repo(base),
-      sessionRepository: SessionRepository(),
+      sessionRepository: SessionRepository(storage: testHomeStorage),
       executableResolver: () => 'flashskyai',
       appDataBasePath: base.path,
       configProfileService: ConfigProfileService(basePath: base.path),
@@ -406,8 +415,9 @@ void main() {
   test('addTeam accepts codex in mixed team mode', () async {
     final base = await Directory.systemTemp.createTemp('team_profile_cli_');
     final cubit = LaunchProfileCubit(
+      storage: testHomeStorage,
       repository: _repo(base),
-      sessionRepository: SessionRepository(),
+      sessionRepository: SessionRepository(storage: testHomeStorage),
       executableResolver: () => 'flashskyai',
       appDataBasePath: base.path,
       configProfileService: ConfigProfileService(basePath: base.path),
@@ -429,8 +439,9 @@ void main() {
     () async {
       final base = await Directory.systemTemp.createTemp('team_member_preset_');
       final cubit = LaunchProfileCubit(
-        repository: _repo(base),
-        sessionRepository: SessionRepository(),
+        storage: testHomeStorage,
+      repository: _repo(base),
+        sessionRepository: SessionRepository(storage: testHomeStorage),
         executableResolver: () => 'flashskyai',
         appDataBasePath: base.path,
         configProfileService: ConfigProfileService(basePath: base.path),
@@ -477,8 +488,9 @@ void main() {
     () async {
       final base = await Directory.systemTemp.createTemp('team_member_policy_');
       final cubit = LaunchProfileCubit(
-        repository: _repo(base),
-        sessionRepository: SessionRepository(),
+        storage: testHomeStorage,
+      repository: _repo(base),
+        sessionRepository: SessionRepository(storage: testHomeStorage),
         executableResolver: () => 'flashskyai',
         appDataBasePath: base.path,
         configProfileService: ConfigProfileService(basePath: base.path),
@@ -530,8 +542,9 @@ void main() {
   test('previewFor resolves executable from team cli when available', () async {
     final base = await Directory.systemTemp.createTemp('team_cli_preview_');
     final cubit = LaunchProfileCubit(
+      storage: testHomeStorage,
       repository: _repo(base),
-      sessionRepository: SessionRepository(),
+      sessionRepository: SessionRepository(storage: testHomeStorage),
       executableResolver: () => 'flashskyai',
       cliExecutableResolver: (cli) =>
           cli == CliTool.claude ? '/opt/bin/claude' : cli.value,
@@ -567,8 +580,9 @@ void main() {
     );
     final repo = _repo(base);
     final cubit = LaunchProfileCubit(
+      storage: testHomeStorage,
       repository: repo,
-      sessionRepository: SessionRepository(),
+      sessionRepository: SessionRepository(storage: testHomeStorage),
       executableResolver: () => 'claude',
       appDataBasePath: base.path,
       configProfileService: ConfigProfileService(basePath: base.path),
@@ -631,8 +645,9 @@ void main() {
     final repo = _repo(base);
     final launched = <String>[];
     final cubit = LaunchProfileCubit(
+      storage: testHomeStorage,
       repository: repo,
-      sessionRepository: SessionRepository(),
+      sessionRepository: SessionRepository(storage: testHomeStorage),
       executableResolver: () => 'claude',
       appDataBasePath: base.path,
       configProfileService: ConfigProfileService(basePath: base.path),
@@ -672,8 +687,9 @@ void main() {
   test('load creates runtime profile directories for built-in teams', () async {
     final base = await Directory.systemTemp.createTemp('team_profile_load_');
     final cubit = LaunchProfileCubit(
+      storage: testHomeStorage,
       repository: _repo(base),
-      sessionRepository: SessionRepository(),
+      sessionRepository: SessionRepository(storage: testHomeStorage),
       executableResolver: () => 'flashskyai',
       appDataBasePath: base.path,
       configProfileService: ConfigProfileService(basePath: base.path),
@@ -695,8 +711,9 @@ void main() {
     final dir = await Directory.systemTemp.createTemp('team-preset-clear-');
     final repo = _repo(dir);
     final cubit = LaunchProfileCubit(
+      storage: testHomeStorage,
       repository: repo,
-      sessionRepository: SessionRepository(),
+      sessionRepository: SessionRepository(storage: testHomeStorage),
       executableResolver: () => 'claude',
     );
 
@@ -740,8 +757,9 @@ void main() {
       final dir = await Directory.systemTemp.createTemp('team-preset-await-');
       final repo = _repo(dir);
       final cubit = LaunchProfileCubit(
-        repository: repo,
-        sessionRepository: SessionRepository(),
+        storage: testHomeStorage,
+      repository: repo,
+        sessionRepository: SessionRepository(storage: testHomeStorage),
         executableResolver: () => 'claude',
       );
 
@@ -788,8 +806,9 @@ void main() {
         rootDir: p.join(dir.path, 'launch-profiles'),
       );
       final cubit = LaunchProfileCubit(
-        repository: repo,
-        sessionRepository: SessionRepository(),
+        storage: testHomeStorage,
+      repository: repo,
+        sessionRepository: SessionRepository(storage: testHomeStorage),
         executableResolver: () => 'claude',
       );
 

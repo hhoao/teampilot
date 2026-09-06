@@ -19,6 +19,7 @@ void main() {
     fs = InMemoryFilesystem();
     usageRepo = _UsageRepoStub();
     repo = ManagedProviderRepository(
+      storage: fakeHomeStorage(filesystem: fs),
       fs: fs,
       configPath: '/tp/managed-providers.json',
       onProvidersDeleted: usageRepo.deleteMany,

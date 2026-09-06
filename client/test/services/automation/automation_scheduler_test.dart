@@ -97,7 +97,10 @@ void main() {
   tearDown(tearDownTestAppStorage);
 
   test('runNow dispatches due automation once', () async {
-    final layout = WorkspaceLayout(teampilotRoot: AppStorage.paths.basePath);
+    final layout = WorkspaceLayout(
+      teampilotRoot: AppStorage.paths.basePath,
+      fs: AppStorage.fs,
+    );
     final repo = AutomationRepository(fs: AppStorage.fs, layout: layout);
     final bus = _RecordingBusGateway();
     final session = AppSession(
@@ -121,7 +124,10 @@ void main() {
   });
 
   test('runNow is blocked when run limit is reached', () async {
-    final layout = WorkspaceLayout(teampilotRoot: AppStorage.paths.basePath);
+    final layout = WorkspaceLayout(
+      teampilotRoot: AppStorage.paths.basePath,
+      fs: AppStorage.fs,
+    );
     final repo = AutomationRepository(fs: AppStorage.fs, layout: layout);
     final bus = _RecordingBusGateway();
     await repo.upsert(
@@ -146,7 +152,10 @@ void main() {
   });
 
   test('marks missed run outside grace and advances schedule', () async {
-    final layout = WorkspaceLayout(teampilotRoot: AppStorage.paths.basePath);
+    final layout = WorkspaceLayout(
+      teampilotRoot: AppStorage.paths.basePath,
+      fs: AppStorage.fs,
+    );
     final repo = AutomationRepository(fs: AppStorage.fs, layout: layout);
     final bus = _RecordingBusGateway();
     await repo.upsert(
@@ -176,7 +185,10 @@ void main() {
   });
 
   test('disables expired once automation missed beyond grace', () async {
-    final layout = WorkspaceLayout(teampilotRoot: AppStorage.paths.basePath);
+    final layout = WorkspaceLayout(
+      teampilotRoot: AppStorage.paths.basePath,
+      fs: AppStorage.fs,
+    );
     final repo = AutomationRepository(fs: AppStorage.fs, layout: layout);
     final bus = _RecordingBusGateway();
     await repo.upsert(
@@ -210,7 +222,10 @@ void main() {
   });
 
   test('dispatches once automation missed within grace', () async {
-    final layout = WorkspaceLayout(teampilotRoot: AppStorage.paths.basePath);
+    final layout = WorkspaceLayout(
+      teampilotRoot: AppStorage.paths.basePath,
+      fs: AppStorage.fs,
+    );
     final repo = AutomationRepository(fs: AppStorage.fs, layout: layout);
     final bus = _RecordingBusGateway();
     final session = AppSession(

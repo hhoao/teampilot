@@ -35,7 +35,11 @@ final class TeamGenerationJobStore {
 
   Filesystem get _fs => _fsOverride ?? AppStorage.fs;
   WorkspaceLayout get _layout =>
-      _layoutOverride ?? WorkspaceLayout(teampilotRoot: AppStorage.paths.basePath);
+      _layoutOverride ??
+      WorkspaceLayout(
+        teampilotRoot: AppStorage.paths.basePath,
+        fs: AppStorage.fs,
+      );
 
   String _lockKey(String workspaceId, String workflowId) =>
       '$workspaceId/$workflowId';

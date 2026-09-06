@@ -95,10 +95,11 @@ void main() {
       );
 
       final launchCubit = LaunchProfileCubit(
+        storage: testHomeStorage,
         repository: testLaunchProfileRepository(
           Directory.systemTemp.createTempSync('home_team_add_member_'),
         ),
-        sessionRepository: SessionRepository(),
+        sessionRepository: SessionRepository(storage: testHomeStorage),
         executableResolver: () => 'claude',
       );
       addTearDown(launchCubit.close);

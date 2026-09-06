@@ -13,7 +13,10 @@ abstract final class TaskLogFactory {
     if (sessionId.startsWith('local-')) {
       return InMemoryTaskLog();
     }
-    final layout = WorkspaceLayout(teampilotRoot: AppStorage.paths.basePath);
+    final layout = WorkspaceLayout(
+      teampilotRoot: AppStorage.paths.basePath,
+      fs: AppStorage.fs,
+    );
     return FileTaskLog(
       queueRoot: layout.busTasksDir(workspaceId, sessionId),
       fs: AppStorage.fs,

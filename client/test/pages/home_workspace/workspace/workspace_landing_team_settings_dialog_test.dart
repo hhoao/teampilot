@@ -49,10 +49,11 @@ final _workspace = Workspace(
 
 LaunchProfileCubit _launchCubitFor(TeamProfile team) {
   final cubit = LaunchProfileCubit(
+    storage: testHomeStorage,
     repository: testLaunchProfileRepository(
       Directory.systemTemp.createTempSync('landing_team_settings_'),
     ),
-    sessionRepository: SessionRepository(),
+    sessionRepository: SessionRepository(storage: testHomeStorage),
     executableResolver: () => 'claude',
   );
   cubit.applyState(

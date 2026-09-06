@@ -42,6 +42,7 @@ import 'package:teampilot/services/cli/registry/cli_tool_registry_scope.dart';
 import 'package:teampilot/services/commands/command_bus.dart';
 import 'package:teampilot/services/compose/compose_draft_cache.dart';
 import 'package:teampilot/services/compose/compose_slash_catalog.dart';
+import 'package:teampilot/services/storage/app_storage.dart';
 import 'package:teampilot/services/follow_up/follow_up_queue.dart';
 import 'package:teampilot/services/session/failed_message_store.dart';
 import 'package:teampilot/services/session/history_awaiting_working_sync.dart';
@@ -329,8 +330,9 @@ void main() {
     InMemoryFilesystem fs,
   ) {
     return WorkspaceProjectConfigRepository(
+      storage: testHomeStorage,
       fs: fs,
-      layout: WorkspaceLayout(teampilotRoot: '/test-root'),
+      layout: WorkspaceLayout(teampilotRoot: '/test-root', fs: AppStorage.fs),
     );
   }
 

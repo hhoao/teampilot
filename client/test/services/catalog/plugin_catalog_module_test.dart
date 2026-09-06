@@ -12,6 +12,7 @@ import 'package:teampilot/services/io/local_filesystem.dart';
 import 'package:teampilot/services/plugin/plugin_install_service.dart';
 import 'package:teampilot/services/plugin/plugin_manifest_service.dart';
 import 'package:teampilot/services/storage/app_storage.dart';
+import 'package:teampilot/services/storage/home_storage.dart';
 
 void main() {
   late Directory tmp;
@@ -42,8 +43,14 @@ void main() {
     workFs = LocalFilesystem();
     manifest = PluginManifestService();
     install = PluginInstallService(manifestService: manifest);
-    repository = PluginRepository(manifest: manifest, install: install);
-    configRepo = WorkspaceProjectConfigRepository();
+    repository = PluginRepository(
+      storage: HomeStorage(AppStorage.context),
+      manifest: manifest,
+      install: install,
+    );
+    configRepo = WorkspaceProjectConfigRepository(
+      storage: HomeStorage(AppStorage.context),
+    );
     binder = CatalogWorkspaceBinder(repo: configRepo);
     bus = CatalogMutationBus();
     module = PluginCatalogModule(

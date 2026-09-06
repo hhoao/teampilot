@@ -66,8 +66,9 @@ void main() {
       } on FileSystemException catch (_) {}
     });
     return LaunchProfileCubit(
+      storage: testHomeStorage,
       repository: testLaunchProfileRepository(dir),
-      sessionRepository: SessionRepository(),
+      sessionRepository: SessionRepository(storage: testHomeStorage),
       executableResolver: () => 'claude',
     );
   }

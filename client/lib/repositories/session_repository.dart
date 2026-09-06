@@ -20,6 +20,7 @@ import '../services/session/team_session_member_plan.dart';
 import '../services/cli/registry/capabilities/ai_history_capability.dart';
 import '../services/cli/registry/cli_tool_registry.dart';
 import '../services/storage/app_storage.dart';
+import '../services/storage/home_storage.dart';
 import '../services/storage/work_target_canonicalizer.dart';
 import '../models/workspace_icon_ref.dart';
 import '../services/workspace/target_liveness.dart';
@@ -38,19 +39,29 @@ import 'workspace_index_store.dart';
 class SessionRepository {
   SessionRepository({
     String? rootDir,
+    HomeStorage? storage,
     SessionLifecycleService? lifecycleService,
   }) : _rootOverride = rootDir,
+       _storageOverride = storage,
        _lifecycleService = lifecycleService;
 
   final String? _rootOverride;
+  final HomeStorage? _storageOverride;
   final SessionLifecycleService? _lifecycleService;
+
+  /// Shim-era fallback: the pre-6-C test harness constructs this repository
+  /// without [storage]; defer to the bound home context exactly like the
+  /// AppStorage shim did. Production (app_shell) always injects [storage].
+  /// Removed in 6-C together with the harness migration.
+  HomeStorage get _storage =>
+      _storageOverride ?? HomeStorage(AppStorage.context);
+
   final _sessionFileLocks = LockPool();
   static final Map<String, List<Workspace>> _workspacesIndexByRoot = {};
 
   String _workspacesIndexCacheKey() {
     if (_rootOverride != null) return _rootOverride;
-    if (AppStorage.isInstalled) return AppStorage.appDataRoot;
-    return AppStorage.paths.basePath;
+    return _storage.appDataRoot;
   }
 
   List<Workspace> _rememberWorkspacesIndex(List<Workspace> workspaces) {
@@ -111,17 +122,14 @@ class SessionRepository {
   Future<SessionRepositoryFs> _fs() async {
     // Explicit rootDir override (tests) wins; otherwise the home control plane.
     if (_rootOverride != null) {
-      return SessionRepositoryFs(teampilotRoot: _rootOverride);
+      return SessionRepositoryFs(teampilotRoot: _rootOverride, fs: _storage.fs);
     }
-    if (AppStorage.isInstalled) {
-      final snap = AppStorage.context;
-      return SessionRepositoryFs(
-        teampilotRoot: snap.teampilotRoot,
-        fs: snap.fs,
-        layout: snap.workspace,
-      );
-    }
-    return SessionRepositoryFs(teampilotRoot: AppStorage.paths.basePath);
+    final snap = _storage.context;
+    return SessionRepositoryFs(
+      teampilotRoot: snap.teampilotRoot,
+      fs: snap.fs,
+      layout: snap.workspace,
+    );
   }
 
   /// Public accessor for the repository filesystem binding.
@@ -677,15 +685,14 @@ class SessionRepository {
   }
 
   Future<({Filesystem fs, RuntimeLayout layout})> _counterContext() async {
-    if (_rootOverride == null && AppStorage.isInstalled) {
-      final snap = AppStorage.context;
+    if (_rootOverride == null) {
+      final snap = _storage.context;
       return (fs: snap.fs, layout: snap.layout);
     }
-    final teampilotRoot = _rootOverride ?? AppStorage.paths.basePath;
-    final fs = AppStorage.fs;
+    final fs = _storage.fs;
     return (
       fs: fs,
-      layout: RuntimeLayout(teampilotRoot: teampilotRoot, fs: fs),
+      layout: RuntimeLayout(teampilotRoot: _rootOverride, fs: fs),
     );
   }
 

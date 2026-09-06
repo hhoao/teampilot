@@ -178,10 +178,12 @@ Widget buildTestApp({
   chat.bindPresenceCubit(presence);
   final managedProviderFs = InMemoryFilesystem();
   final managedUsageRepository = ManagedProviderUsageRepository(
+    storage: fakeHomeStorage(filesystem: managedProviderFs),
     fs: managedProviderFs,
     cachePath: '/tp/managed-provider-usage.json',
   );
   final managedProviderRepository = ManagedProviderRepository(
+    storage: fakeHomeStorage(filesystem: managedProviderFs),
     fs: managedProviderFs,
     configPath: '/tp/managed-providers.json',
     onProvidersDeleted: managedUsageRepository.deleteMany,
@@ -241,7 +243,9 @@ Widget buildTestApp({
   final workspaceRunRegistry = WorkspaceRunRegistry(
     platformFactory: WorkspaceRunPlatformFactory(
       extensionRepository: extensionRepo,
-      projectConfigRepository: WorkspaceProjectConfigRepository(),
+      projectConfigRepository: WorkspaceProjectConfigRepository(
+        storage: fakeHomeStorage(filesystem: InMemoryFilesystem()),
+      ),
       fs: InMemoryFilesystem(),
       detector: ExtensionDetector(
         processRunner: (e, a, {environment}) async =>
@@ -305,7 +309,8 @@ Widget buildTestApp({
         create: (_) => WorkspaceToolsScopeRegistry(),
       ),
       RepositoryProvider<WorkspaceSessionGroupsRegistry>(
-        create: (_) => WorkspaceSessionGroupsRegistry(),
+        create: (_) =>
+            WorkspaceSessionGroupsRegistry(storage: fakeHomeStorage()),
       ),
       RepositoryProvider<CommandBus>(create: (_) => CommandBus()),
       RepositoryProvider<WorkspaceChromeCommands>(
@@ -354,7 +359,9 @@ Widget buildTestApp({
         BlocProvider.value(value: sessionPreferencesCubit),
         BlocProvider.value(value: aiFeatures),
         BlocProvider.value(value: aiHistoryCubit),
-        BlocProvider(create: (_) => ShortcutCubit()),
+        BlocProvider(
+          create: (_) => ShortcutCubit(storage: fakeHomeStorage()),
+        ),
         BlocProvider(create: (_) => EditorCubit(fs: LocalFilesystem())),
         BlocProvider.value(value: workbenchCubit),
         BlocProvider.value(
@@ -382,7 +389,7 @@ Widget buildTestApp({
         BlocProvider(create: (_) => testSkillCubit()),
         BlocProvider(
           create: (_) {
-            final repo = PluginRepository();
+            final repo = PluginRepository(storage: fakeHomeStorage());
             return PluginCubit(
               repository: repo,
               installService: repo.install,
@@ -467,6 +474,7 @@ LlmConfigCubit testLlmConfigCubit({
 }) {
   return LlmConfigCubit(
     appSettings: InMemoryAppSettingsRepository(),
+    storage: fakeHomeStorage(),
     initialConfig: initialConfig,
   );
 }
@@ -485,7 +493,8 @@ Future<LaunchProfileCubit> createTeamCubit({TeamLauncher? launcher}) async {
   final repository = testLaunchProfileRepository(tmp);
   final cubit = LaunchProfileCubit(
     repository: repository,
-    sessionRepository: SessionRepository(),
+    sessionRepository: SessionRepository(storage: fakeHomeStorage()),
+    storage: fakeHomeStorage(),
     executableResolver: desktopHarnessExecutable,
     launcher: launcher ?? (_, __) async {},
     appDataBasePath: appData.path,

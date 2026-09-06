@@ -5,6 +5,7 @@ import 'package:uuid/uuid.dart';
 
 import '../models/session_group.dart';
 import '../repositories/session_group_repository.dart';
+import '../services/storage/home_storage.dart';
 
 enum SessionGroupsStatus { loading, ready }
 
@@ -49,8 +50,11 @@ class SessionGroupsState {
 /// whole-file persistence. One cubit per open workspace (see
 /// `WorkspaceSessionGroupsRegistry`) so concurrent tabs share a single writer.
 class SessionGroupsCubit extends Cubit<SessionGroupsState> {
-  SessionGroupsCubit({SessionGroupRepository? repository, this.knownSessionIds})
-    : _repository = repository ?? SessionGroupRepository(),
+  SessionGroupsCubit({
+    required HomeStorage storage,
+    SessionGroupRepository? repository,
+    this.knownSessionIds,
+  }) : _repository = repository ?? SessionGroupRepository(storage: storage),
       super(const SessionGroupsState());
 
   final SessionGroupRepository _repository;

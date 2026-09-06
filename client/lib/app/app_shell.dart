@@ -457,6 +457,7 @@ class AppShell {
     required this.sshProfileCubit,
     required this.termuxCubit,
     required this.homeStorageInvalidator,
+    required this.homeStorage,
     required this.sshConnectionCubit,
     required this.githubCredentialsStore,
     required this.githubAccountCubit,
@@ -557,6 +558,7 @@ class AppShell {
   final SshProfileCubit sshProfileCubit;
   final TermuxCubit termuxCubit;
   final HomeStorageInvalidator homeStorageInvalidator;
+  final HomeStorage homeStorage;
   final SshConnectionCubit sshConnectionCubit;
   final GithubCredentialsStore githubCredentialsStore;
   final GithubAccountCubit githubAccountCubit;
@@ -918,10 +920,12 @@ Future<AppShell> buildAppShell({
       managedProviderSecretStore ??
       ManagedProviderSecretStore(const FlutterSecureKeyValueStore());
   final resolvedManagedProviderUsageRepository =
-      managedProviderUsageRepository ?? ManagedProviderUsageRepository();
+      managedProviderUsageRepository ??
+      ManagedProviderUsageRepository(storage: homeStorage);
   final resolvedManagedProviderRepository =
       managedProviderRepository ??
       ManagedProviderRepository(
+        storage: homeStorage,
         onProvidersDeleted: resolvedManagedProviderUsageRepository.deleteMany,
       );
   final ownsManagedProviderHttpClient =
@@ -1199,6 +1203,7 @@ Future<AppShell> buildAppShell({
 
     llmConfigCubit = LlmConfigCubit(
       appSettings: appSettings,
+      storage: homeStorage,
       executableResolver: () => sessionPreferencesCubit.resolveExecutable(),
       isSshMode: () => connectionModeService.isSshMode,
       sshProfileResolver: () => sshProfileCubit.state.selectedProfile,
@@ -1221,10 +1226,11 @@ Future<AppShell> buildAppShell({
       manifests: builtInExtensionManifests(),
     );
     final workspaceProjectConfigRepository = WorkspaceProjectConfigRepository(
+      storage: homeStorage,
       fs: AppStorage.fs,
     );
 
-    identityRepository = LaunchProfileRepository();
+    identityRepository = LaunchProfileRepository(storage: homeStorage);
 
     final cliPresetsRepo = CliPresetsRepository(
       fs: AppStorage.fs,
@@ -1295,8 +1301,8 @@ Future<AppShell> buildAppShell({
       nativePathPrefetch: homeIndexPrefetchFuture,
       boundHomePrefetch: prefetchHomeIndex,
     );
-    final pluginRepository = PluginRepository();
-    final mcpRepository = McpRepository();
+    final pluginRepository = PluginRepository(storage: homeStorage);
+    final mcpRepository = McpRepository(storage: homeStorage);
     hookRepository = HookRepository(
       fs: AppStorage.fs,
       teampilotRoot: AppStorage.paths.basePath,
@@ -1314,6 +1320,7 @@ Future<AppShell> buildAppShell({
       repository: identityRepository,
       sessionRepository: sessionRepo,
       identityProvisioner: identityProvisioner,
+      storage: homeStorage,
       executableResolver: () => sessionPreferencesCubit.resolveExecutable(),
       cliExecutableResolver: sessionPreferencesCubit.resolveExecutable,
       llmConfigPathOverride: llmConfigPathOverrideForLaunch,
@@ -1568,7 +1575,9 @@ Future<AppShell> buildAppShell({
     final workspaceSearchIndexes = WorkspaceSearchIndexes();
     final workspaceWorktreeRegistry = WorkspaceWorktreeRegistry();
     final workspaceSessionGroupsRegistry = WorkspaceSessionGroupsRegistry(
+      storage: homeStorage,
       cubitFactory: () => SessionGroupsCubit(
+        storage: homeStorage,
         knownSessionIds: () => {
           for (final s in chatCubit.state.sessions) s.sessionId,
         },
@@ -1681,7 +1690,7 @@ Future<AppShell> buildAppShell({
       );
     }
     final commandBus = CommandBus();
-    final shortcutCubit = ShortcutCubit();
+    final shortcutCubit = ShortcutCubit(storage: homeStorage);
     final workspaceChromeCommands = WorkspaceChromeCommands();
     final runCommandHost = RunCommandHost();
     final workspaceSearchHost = WorkspaceSearchHost();
@@ -1731,7 +1740,10 @@ Future<AppShell> buildAppShell({
 
     final automationRepo = AutomationRepository(
       fs: AppStorage.fs,
-      layout: WorkspaceLayout(teampilotRoot: AppStorage.paths.basePath),
+      layout: WorkspaceLayout(
+        teampilotRoot: AppStorage.paths.basePath,
+        fs: homeStorage.fs,
+      ),
     );
     final teammateBusMcpGateway = TeammateBusMcpGateway();
     await teammateBusMcpGateway.ensureStarted();
@@ -2663,6 +2675,7 @@ Future<AppShell> buildAppShell({
       sshProfileCubit: sshProfileCubit,
       termuxCubit: termuxCubit,
       homeStorageInvalidator: homeStorageInvalidator,
+      homeStorage: homeStorage,
       sshConnectionCubit: sshConnectionCubit,
       githubCredentialsStore: githubCredentialsStore,
       githubAccountCubit: githubAccountCubit,

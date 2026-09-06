@@ -29,10 +29,11 @@ class _SeededAppProviderCubit extends AppProviderCubit {
 
 LaunchProfileCubit _launchCubit() {
   final cubit = LaunchProfileCubit(
+    storage: testHomeStorage,
     repository: testLaunchProfileRepository(
       Directory.systemTemp.createTempSync('new_team_dialog_'),
     ),
-    sessionRepository: SessionRepository(),
+    sessionRepository: SessionRepository(storage: testHomeStorage),
     executableResolver: () => 'claude',
   );
   cubit.applyState(const LaunchProfileState(isLoading: false));

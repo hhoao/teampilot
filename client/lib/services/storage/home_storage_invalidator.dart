@@ -4,8 +4,9 @@ import 'home_ssh_profile_impact.dart';
 
 /// Applies [HomeSshProfileImpact] to the home storage plane.
 ///
-/// Single place that may reinstall AppStorage / reload workspace index after
-/// SSH catalog changes. [SshProfileCubit] must not call this directly.
+/// Single place that may reinstall the home storage plane / reload workspace
+/// index after SSH catalog changes. [SshProfileCubit] must not call this
+/// directly.
 class HomeStorageInvalidator {
   HomeStorageInvalidator({
     required String Function() homeTargetId,

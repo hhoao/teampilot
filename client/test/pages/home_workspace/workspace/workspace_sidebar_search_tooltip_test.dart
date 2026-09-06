@@ -44,7 +44,10 @@ void main() {
     automationCubit = testAutomationCubit();
     worktreeCubit = WorktreeCubit();
     attentionCubit = AgentAttentionCubit(pruneInterval: null);
-    shortcutCubit = ShortcutCubit(repository: KeybindingRepository());
+    shortcutCubit = ShortcutCubit(
+      storage: testHomeStorage,
+      repository: KeybindingRepository(storage: testHomeStorage),
+    );
   });
 
   tearDown(() async {
@@ -83,7 +86,8 @@ void main() {
                 BlocProvider<WorktreeCubit>.value(value: worktreeCubit),
                 BlocProvider<AgentAttentionCubit>.value(value: attentionCubit),
                 BlocProvider<SessionGroupsCubit>(
-                  create: (_) => SessionGroupsCubit(),
+                  create: (_) =>
+                      SessionGroupsCubit(storage: testHomeStorage),
                 ),
                 BlocProvider<ShortcutCubit>.value(value: shortcutCubit),
               ],

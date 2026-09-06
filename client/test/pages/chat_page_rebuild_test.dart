@@ -153,6 +153,7 @@ void main() {
       final teamCubit = LaunchProfileCubit(
         repository: LaunchProfileRepository(rootDir: appData.path),
         sessionRepository: SessionRepository(rootDir: appData.path),
+        storage: testHomeStorage,
         executableResolver: _executable,
         appDataBasePath: appData.path,
         configProfileService: ConfigProfileService(basePath: appData.path),
@@ -185,7 +186,7 @@ void main() {
       final skillCubit = testSkillCubit();
       addTearDown(() => skillCubit.close());
 
-      final pluginRepo = PluginRepository();
+      final pluginRepo = PluginRepository(storage: testHomeStorage);
       final pluginCubit = PluginCubit(
         repository: pluginRepo,
         installService: pluginRepo.install,
@@ -266,7 +267,9 @@ void main() {
                 BlocProvider.value(value: WorkspaceToolsCubit()),
                 BlocProvider.value(value: cliPresetsCubit),
                 BlocProvider.value(value: sessionPreferencesCubit),
-                BlocProvider(create: (_) => ShortcutCubit()),
+                BlocProvider(
+                  create: (_) => ShortcutCubit(storage: testHomeStorage),
+                ),
                 BlocProvider(
                   create: (_) => WorkspaceLandingContextCubit(
                     workspaceId: 'personal-test',
@@ -315,6 +318,7 @@ void main() {
       final teamCubit = LaunchProfileCubit(
         repository: LaunchProfileRepository(rootDir: appData.path),
         sessionRepository: SessionRepository(rootDir: appData.path),
+        storage: testHomeStorage,
         executableResolver: _executable,
         appDataBasePath: appData.path,
         configProfileService: ConfigProfileService(basePath: appData.path),
@@ -347,7 +351,7 @@ void main() {
       final skillCubit = testSkillCubit();
       addTearDown(() => skillCubit.close());
 
-      final pluginRepo = PluginRepository();
+      final pluginRepo = PluginRepository(storage: testHomeStorage);
       final pluginCubit = PluginCubit(
         repository: pluginRepo,
         installService: pluginRepo.install,
@@ -445,7 +449,9 @@ void main() {
                 BlocProvider.value(value: WorkspaceToolsCubit()),
                 BlocProvider.value(value: cliPresetsCubit),
                 BlocProvider.value(value: sessionPreferencesCubit),
-                BlocProvider(create: (_) => ShortcutCubit()),
+                BlocProvider(
+                  create: (_) => ShortcutCubit(storage: testHomeStorage),
+                ),
                 BlocProvider(
                   create: (_) => WorkspaceLandingContextCubit(
                     workspaceId: 'personal-test',
@@ -502,6 +508,7 @@ void main() {
     final teamCubit = LaunchProfileCubit(
       repository: LaunchProfileRepository(rootDir: appData.path),
       sessionRepository: SessionRepository(rootDir: appData.path),
+      storage: testHomeStorage,
       executableResolver: _executable,
       appDataBasePath: appData.path,
       configProfileService: ConfigProfileService(basePath: appData.path),
@@ -534,7 +541,7 @@ void main() {
     final skillCubit = testSkillCubit();
     addTearDown(() => skillCubit.close());
 
-    final pluginRepo = PluginRepository();
+    final pluginRepo = PluginRepository(storage: testHomeStorage);
     final pluginCubit = PluginCubit(
       repository: pluginRepo,
       installService: pluginRepo.install,
@@ -628,7 +635,9 @@ void main() {
               BlocProvider.value(value: WorkspaceToolsCubit()),
               BlocProvider.value(value: cliPresetsCubit),
               BlocProvider.value(value: sessionPreferencesCubit),
-              BlocProvider(create: (_) => ShortcutCubit()),
+              BlocProvider(
+                create: (_) => ShortcutCubit(storage: testHomeStorage),
+              ),
               BlocProvider(
                 create: (_) => WorkspaceLandingContextCubit(
                   workspaceId: 'personal-test',
@@ -691,6 +700,7 @@ void main() {
       final teamCubit = LaunchProfileCubit(
         repository: LaunchProfileRepository(rootDir: appData.path),
         sessionRepository: SessionRepository(rootDir: appData.path),
+        storage: testHomeStorage,
         executableResolver: _executable,
         appDataBasePath: appData.path,
         configProfileService: ConfigProfileService(basePath: appData.path),
@@ -723,7 +733,7 @@ void main() {
       final skillCubit = testSkillCubit();
       addTearDown(() => skillCubit.close());
 
-      final pluginRepo = PluginRepository();
+      final pluginRepo = PluginRepository(storage: testHomeStorage);
       final pluginCubit = PluginCubit(
         repository: pluginRepo,
         installService: pluginRepo.install,
@@ -804,7 +814,9 @@ void main() {
                 BlocProvider.value(value: WorkspaceToolsCubit()),
                 BlocProvider.value(value: cliPresetsCubit),
                 BlocProvider.value(value: sessionPreferencesCubit),
-                BlocProvider(create: (_) => ShortcutCubit()),
+                BlocProvider(
+                  create: (_) => ShortcutCubit(storage: testHomeStorage),
+                ),
                 BlocProvider(
                   create: (_) => WorkspaceLandingContextCubit(
                     workspaceId: 'personal-test',

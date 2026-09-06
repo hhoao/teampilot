@@ -104,7 +104,8 @@ void main() {
         repository: testLaunchProfileRepository(
           Directory.systemTemp.createTempSync('member_form_'),
         ),
-        sessionRepository: SessionRepository(),
+        sessionRepository: SessionRepository(storage: testHomeStorage),
+        storage: testHomeStorage,
         executableResolver: () => 'claude',
       );
       addTearDown(launchCubit.close);
@@ -151,7 +152,8 @@ void main() {
         repository: testLaunchProfileRepository(
           Directory.systemTemp.createTempSync('member_form_lead_'),
         ),
-        sessionRepository: SessionRepository(),
+        sessionRepository: SessionRepository(storage: testHomeStorage),
+        storage: testHomeStorage,
         executableResolver: () => 'claude',
       );
       addTearDown(launchCubit.close);
@@ -200,7 +202,8 @@ void main() {
         repository: testLaunchProfileRepository(
           Directory.systemTemp.createTempSync('member_form_zh_'),
         ),
-        sessionRepository: SessionRepository(),
+        sessionRepository: SessionRepository(storage: testHomeStorage),
+        storage: testHomeStorage,
         executableResolver: () => 'claude',
       );
       addTearDown(launchCubit.close);
@@ -249,7 +252,8 @@ void main() {
       repository: testLaunchProfileRepository(
         Directory.systemTemp.createTempSync('member_form_no_save_tpl_'),
       ),
-      sessionRepository: SessionRepository(),
+      sessionRepository: SessionRepository(storage: testHomeStorage),
+      storage: testHomeStorage,
       executableResolver: () => 'claude',
     );
     addTearDown(launchCubit.close);
@@ -295,7 +299,8 @@ void main() {
         repository: testLaunchProfileRepository(
           Directory.systemTemp.createTempSync('member_form_policy_switch_'),
         ),
-        sessionRepository: SessionRepository(),
+        sessionRepository: SessionRepository(storage: testHomeStorage),
+        storage: testHomeStorage,
         executableResolver: () => 'claude',
       );
       addTearDown(launchCubit.close);

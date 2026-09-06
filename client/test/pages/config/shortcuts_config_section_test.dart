@@ -16,7 +16,10 @@ void main() {
   // tester.runAsync() — TestWidgetsFlutterBinding doesn't pump the real
   // event loop that dart:io Futures depend on.
   Future<ShortcutCubit> loadedCubit(WidgetTester tester) async {
-    final cubit = ShortcutCubit(repository: KeybindingRepository());
+    final cubit = ShortcutCubit(
+      storage: testHomeStorage,
+      repository: KeybindingRepository(storage: testHomeStorage),
+    );
     await tester.runAsync(() => cubit.load());
     return cubit;
   }

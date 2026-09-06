@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../../l10n/l10n_extensions.dart';
 import '../../models/runtime_target.dart';
 import '../../models/ssh_profile.dart';
+import '../../services/storage/home_storage.dart';
 import '../../services/storage/targets_repository.dart';
 import 'package:shared_ui/shared_ui.dart';
 import 'credential_push_opt_in_tile.dart';
@@ -11,6 +12,7 @@ import 'credential_push_opt_in_tile.dart';
 Future<void> showSshProfileTargetConfigDialog(
   BuildContext context, {
   required SshProfile profile,
+  required HomeStorage storage,
 }) {
   return showDialog<void>(
     context: context,
@@ -29,6 +31,7 @@ Future<void> showSshProfileTargetConfigDialog(
                 children: [
                   SshProfileCredentialOptInTile(
                     profile: profile,
+                    storage: storage,
                     showDividerBelow: false,
                   ),
                 ],
@@ -46,10 +49,12 @@ class SshProfileCredentialOptInTile extends StatefulWidget {
   const SshProfileCredentialOptInTile({
     super.key,
     required this.profile,
+    required this.storage,
     this.showDividerBelow = true,
   });
 
   final SshProfile profile;
+  final HomeStorage storage;
   final bool showDividerBelow;
 
   @override
@@ -59,7 +64,9 @@ class SshProfileCredentialOptInTile extends StatefulWidget {
 
 class _SshProfileCredentialOptInTileState
     extends State<SshProfileCredentialOptInTile> {
-  final _repo = TargetsRepository();
+  late final TargetsRepository _repo = TargetsRepository.home(
+    storage: widget.storage,
+  );
   bool _optedIn = false;
 
   String get _targetId => RuntimeTarget.ssh(widget.profile.id, label: '').id;

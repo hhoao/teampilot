@@ -18,6 +18,7 @@ import 'package:teampilot/services/session/session_lifecycle_service.dart';
 import 'package:teampilot/services/cli/claude/team_roster_service.dart';
 import 'package:teampilot/services/cli/cursor/provider/cursor_windows_home_junction.dart';
 import 'package:teampilot/services/io/local_filesystem.dart';
+import 'package:teampilot/services/storage/app_storage.dart';
 
 import '../../support/post_frame_test_harness.dart';
 
@@ -62,7 +63,7 @@ void main() {
   setUp(() async {
     setUpTestAppStorage();
     base = await Directory.systemTemp.createTemp('session_lifecycle_');
-    layout = RuntimeLayout(teampilotRoot: base.path);
+    layout = RuntimeLayout(teampilotRoot: base.path, fs: AppStorage.fs);
   });
 
   tearDown(() async {

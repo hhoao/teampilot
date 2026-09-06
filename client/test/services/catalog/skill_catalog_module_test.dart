@@ -14,6 +14,7 @@ import 'package:teampilot/services/io/local_filesystem.dart';
 import 'package:teampilot/services/skill/skill_install_service.dart';
 import 'package:teampilot/services/skill/skill_manifest_service.dart';
 import 'package:teampilot/services/storage/app_storage.dart';
+import 'package:teampilot/services/storage/home_storage.dart';
 
 void main() {
   late Directory tmp;
@@ -45,7 +46,9 @@ void main() {
     manifest = SkillManifestService(rootDir: tmp.path);
     install = SkillInstallService(manifest: manifest);
     repository = SkillRepository(manifest: manifest, install: install);
-    configRepo = WorkspaceProjectConfigRepository();
+    configRepo = WorkspaceProjectConfigRepository(
+      storage: HomeStorage(AppStorage.context),
+    );
     binder = CatalogWorkspaceBinder(repo: configRepo);
     bus = CatalogMutationBus();
     module = SkillCatalogModule(

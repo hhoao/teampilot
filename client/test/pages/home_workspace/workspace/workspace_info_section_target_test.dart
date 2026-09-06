@@ -126,6 +126,7 @@ Future<void> _pumpWorkspaceInfo(
   );
   addTearDown(chat.close);
   final launchProfiles = LaunchProfileCubit(
+    storage: testHomeStorage,
     repository: testLaunchProfileRepository(tmp),
     sessionRepository: SessionRepository(rootDir: tmp.path),
     executableResolver: () => 'claude',

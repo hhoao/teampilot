@@ -11,6 +11,7 @@ import 'package:teampilot/repositories/llm_config_store.dart';
 import 'package:teampilot/services/io/local_filesystem.dart';
 import 'package:teampilot/services/provider/llm_config_path_resolver.dart';
 import 'package:teampilot/services/storage/app_storage.dart';
+import 'package:teampilot/services/storage/home_storage.dart';
 
 void main() {
   late Directory tmp;
@@ -49,8 +50,10 @@ void main() {
     final prefs = await SharedPreferences.getInstance();
     final cubit = LlmConfigCubit(
       appSettings: SharedPrefsAppSettingsRepository(prefs),
+      storage: HomeStorage(AppStorage.context),
       executableResolver: () => '/opt/flashskyai/dist/flashskyai',
-      storeFactory: (path) => LocalLlmConfigStore(path),
+      storeFactory: (path) =>
+          LocalLlmConfigStore(path, fs: LocalFilesystem()),
     );
 
     await cubit.load();
@@ -65,6 +68,7 @@ void main() {
     final prefs = await SharedPreferences.getInstance();
     final cubit = LlmConfigCubit(
       appSettings: SharedPrefsAppSettingsRepository(prefs),
+      storage: HomeStorage(AppStorage.context),
     );
 
     await cubit.load();
@@ -86,6 +90,7 @@ void main() {
 
     final cubit = LlmConfigCubit(
       appSettings: SharedPrefsAppSettingsRepository(prefs),
+      storage: HomeStorage(AppStorage.context),
     );
     await cubit.load();
 
@@ -112,6 +117,7 @@ void main() {
     final prefs = await SharedPreferences.getInstance();
     final cubit = LlmConfigCubit(
       appSettings: SharedPrefsAppSettingsRepository(prefs),
+      storage: HomeStorage(AppStorage.context),
     );
 
     await cubit.setConfigPath(fileA.path);
@@ -138,6 +144,7 @@ void main() {
 
     final cubit = LlmConfigCubit(
       appSettings: SharedPrefsAppSettingsRepository(prefs),
+      storage: HomeStorage(AppStorage.context),
     );
     await cubit.setConfigPath(null);
 
@@ -153,6 +160,7 @@ void main() {
     final prefs = await SharedPreferences.getInstance();
     final cubit = LlmConfigCubit(
       appSettings: SharedPrefsAppSettingsRepository(prefs),
+      storage: HomeStorage(AppStorage.context),
       initialConfig: LlmConfig(
         providers: {
           'old-name': const LlmProviderConfig(
@@ -188,6 +196,7 @@ void main() {
     final prefs = await SharedPreferences.getInstance();
     final cubit = LlmConfigCubit(
       appSettings: SharedPrefsAppSettingsRepository(prefs),
+      storage: HomeStorage(AppStorage.context),
       initialConfig: const LlmConfig(
         providers: {
           'a': LlmProviderConfig(name: 'a', type: 'api'),
@@ -234,6 +243,7 @@ void main() {
 
     final cubit = LlmConfigCubit(
       appSettings: SharedPrefsAppSettingsRepository(prefs),
+      storage: HomeStorage(AppStorage.context),
     );
     addTearDown(cubit.close);
 
@@ -265,6 +275,7 @@ void main() {
     final prefs = await SharedPreferences.getInstance();
     final cubit = LlmConfigCubit(
       appSettings: SharedPrefsAppSettingsRepository(prefs),
+      storage: HomeStorage(AppStorage.context),
     );
     await cubit.setConfigPath('   ');
 
@@ -274,6 +285,7 @@ void main() {
   test('llm config cubit manages providers and models', () async {
     final cubit = LlmConfigCubit(
       appSettings: InMemoryAppSettingsRepository(),
+      storage: HomeStorage(AppStorage.context),
       initialConfig: const LlmConfig(
         providers: {
           'test': LlmProviderConfig(

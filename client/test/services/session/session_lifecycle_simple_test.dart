@@ -51,7 +51,7 @@ void main() {
   setUp(() async {
     setUpTestAppStorage();
     base = await Directory.systemTemp.createTemp('session_lifecycle_simple_');
-    layout = RuntimeLayout(teampilotRoot: base.path);
+    layout = RuntimeLayout(teampilotRoot: base.path, fs: AppStorage.fs);
   });
 
   tearDown(() async {

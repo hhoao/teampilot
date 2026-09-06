@@ -14,10 +14,12 @@ import '../repositories/mcp_repository.dart';
 import '../repositories/plugin_repository.dart';
 import '../repositories/launch_profile_repository.dart';
 import '../repositories/session_repository.dart';
+import '../repositories/workspace_project_config_repository.dart';
 import '../services/cli/registry/cli_tool_registry.dart';
 import '../services/provider/config_profile_service.dart';
 import '../services/session/session_lifecycle_service.dart';
 import '../services/mcp/profile_mcp_linker_service.dart';
+import '../services/storage/home_storage.dart';
 import '../services/storage/launch_profile_provisioner.dart';
 import '../utils/logging/logger.dart';
 import '../utils/team/team_member_naming.dart';
@@ -43,6 +45,7 @@ class LaunchProfileCubit extends Cubit<LaunchProfileState>
     required LaunchProfileRepository repository,
     required SessionRepository sessionRepository,
     required String Function() executableResolver,
+    required HomeStorage storage,
     CliExecutableResolver? cliExecutableResolver,
     TeamLauncher? launcher,
     String? Function()? llmConfigPathOverride,
@@ -55,6 +58,7 @@ class LaunchProfileCubit extends Cubit<LaunchProfileState>
     ProfileMcpLinkerService? mcpLinker,
     McpRepository? mcpRepository,
     InstalledMcpLoader? installedMcpLoader,
+    WorkspaceProjectConfigRepository? projectConfigRepository,
     Future<List<McpServer>> Function(String teamId)? extensionMcpContributor,
     LaunchProfileProvisioner? identityProvisioner,
     ExpertHubCatalog? expertHubCatalog,
@@ -76,11 +80,14 @@ class LaunchProfileCubit extends Cubit<LaunchProfileState>
                  : null,
              configProfileService: configProfileService,
              storageRootsResolver: storageRootsResolver,
+             projectConfigRepository:
+                 projectConfigRepository ??
+                 WorkspaceProjectConfigRepository(storage: storage),
            ),
-       _pluginRepository = pluginRepository ?? PluginRepository(),
+       _pluginRepository = pluginRepository ?? PluginRepository(storage: storage),
        _installedPluginsLoader = installedPluginsLoader,
        _mcpLinker = mcpLinker ?? ProfileMcpLinkerService(),
-       _mcpRepository = mcpRepository ?? McpRepository(),
+       _mcpRepository = mcpRepository ?? McpRepository(storage: storage),
        _installedMcpLoader = installedMcpLoader,
        _extensionMcpContributor = extensionMcpContributor ?? _noExtensionMcp,
        _launcher = launcher,

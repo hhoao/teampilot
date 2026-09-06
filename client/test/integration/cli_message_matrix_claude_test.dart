@@ -348,8 +348,10 @@ void main() {
         final cliTeam = harness.session!.cliTeamName.trim().isNotEmpty
             ? harness.session!.cliTeamName
             : harness.session!.sessionId;
-        final claudeDir = RuntimeLayout(teampilotRoot: AppStorage.appDataRoot)
-            .sessionRuntimeToolDir(
+        final claudeDir = RuntimeLayout(
+          teampilotRoot: AppStorage.appDataRoot,
+          fs: AppStorage.fs,
+        ).sessionRuntimeToolDir(
               harness.session!.workspaceId,
               harness.session!.sessionId,
               'claude',

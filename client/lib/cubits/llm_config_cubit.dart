@@ -8,6 +8,7 @@ import '../models/ssh_profile.dart';
 import '../repositories/app_settings_repository.dart';
 import '../repositories/llm_config_store.dart';
 import '../services/storage/app_storage.dart';
+import '../services/storage/home_storage.dart';
 import '../services/provider/llm_config_path_resolver.dart';
 import '../services/storage/remote_file_store.dart';
 import '../services/storage/remote_home_resolver.dart';
@@ -97,6 +98,7 @@ typedef LlmConfigStoreFactory = LlmConfigStore Function(String path);
 class LlmConfigCubit extends Cubit<LlmConfigState> {
   LlmConfigCubit({
     required AppSettingsRepository appSettings,
+    required HomeStorage storage,
     String Function()? executableResolver,
     LlmConfigStoreFactory? storeFactory,
     bool Function()? isSshMode,
@@ -108,7 +110,7 @@ class LlmConfigCubit extends Cubit<LlmConfigState> {
   }) : _appSettings = appSettings,
        _executableResolver = executableResolver ?? (() => ''),
        _localStoreFactory =
-           storeFactory ?? ((path) => FilesystemLlmConfigStore(path: path)),
+           storeFactory ?? ((path) => FilesystemLlmConfigStore(path: path, fs: storage.fs)),
        _isSshMode = isSshMode,
        _sshProfileResolver = sshProfileResolver,
        _sshClientFactory = sshClientFactory,
