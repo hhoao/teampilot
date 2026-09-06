@@ -44,7 +44,12 @@ class _WorkspaceToolsScopeSyncState extends State<WorkspaceToolsScopeSync> {
   String? _lastBarActiveSessionId;
   bool _wasRouteActive = false;
 
-  bool get _routeActive => WorkspaceRouteActiveScope.routeActiveOf(context);
+  /// Non-registering read: `_routeActive` is also consulted from `initState`
+  /// and listener callbacks where a dependency cannot be established. The
+  /// dependency is registered in [didChangeDependencies] via
+  /// `WorkspaceRouteActiveScope.maybeOf`, which is what re-triggers the
+  /// `_wasRouteActive` edge on tab (de)activation.
+  bool get _routeActive => WorkspaceRouteActiveScope.peekRouteActiveOf(context);
 
   AppSession? _activeSession(ChatCubit chat) {
     final sessionId = scopedActiveSessionId(
@@ -180,7 +185,8 @@ class _WorkspaceToolsScopeSyncState extends State<WorkspaceToolsScopeSync> {
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    final active = _routeActive;
+    // Registering read so tab (de)activation re-runs this method.
+    final active = WorkspaceRouteActiveScope.routeActiveOf(context);
     if (active && !_wasRouteActive) {
       _scheduleSync();
     }

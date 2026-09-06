@@ -13,8 +13,10 @@ class HomeRouteActiveScope extends InheritedWidget {
 
   final bool routeActive;
 
+  /// Registers a dependency so callers in `build` / `didChangeDependencies`
+  /// are re-notified when the home layer switches foreground/background.
   static HomeRouteActiveScope? maybeOf(BuildContext context) {
-    return context.getInheritedWidgetOfExactType<HomeRouteActiveScope>();
+    return context.dependOnInheritedWidgetOfExactType<HomeRouteActiveScope>();
   }
 
   static bool routeActiveOf(BuildContext context) {
