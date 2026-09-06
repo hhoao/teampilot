@@ -117,7 +117,7 @@ void main() {
       );
       addTearDown(watcher.dispose);
 
-      final batches = <Set<String>>[];
+      final batches = <FsChangeBatch>[];
       watcher.onChanged.listen(batches.add);
 
       fs.emit(FsChangeType.created, '/repo/a.txt');
@@ -125,9 +125,50 @@ void main() {
       fs.emit(FsChangeType.modified, '/repo/sub/c.txt');
 
       await Future<void>.delayed(const Duration(milliseconds: 60));
-      expect(batches, [
-        {'/repo', '/repo/sub'},
-      ]);
+      expect(batches, hasLength(1));
+      expect(batches.single.changedDirs, {'/repo', '/repo/sub'});
+      expect(batches.single.structural, isTrue);
+    });
+
+    test('pure modified batches are marked non-structural', () async {
+      // 文件内容写入不可能改变目录列表（FsDirEntry 只有 name+isDirectory），
+      // 文件树消费方据此跳过整个批次。
+      final fs = _WatchableFs();
+      final watcher = WorkspaceFsWatcher(
+        fs: fs,
+        root: '/repo',
+        debounce: const Duration(milliseconds: 20),
+        autoStart: true,
+      );
+      addTearDown(watcher.dispose);
+
+      final batches = <FsChangeBatch>[];
+      watcher.onChanged.listen(batches.add);
+
+      fs.emit(FsChangeType.modified, '/repo/a.txt');
+      fs.emit(FsChangeType.modified, '/repo/sub/b.dart');
+      await Future<void>.delayed(const Duration(milliseconds: 60));
+      expect(batches.single.structural, isFalse);
+      expect(batches.single.changedDirs, {'/repo', '/repo/sub'});
+    });
+
+    test('mixed batches are marked structural', () async {
+      final fs = _WatchableFs();
+      final watcher = WorkspaceFsWatcher(
+        fs: fs,
+        root: '/repo',
+        debounce: const Duration(milliseconds: 20),
+        autoStart: true,
+      );
+      addTearDown(watcher.dispose);
+
+      final batches = <FsChangeBatch>[];
+      watcher.onChanged.listen(batches.add);
+
+      fs.emit(FsChangeType.modified, '/repo/a.txt');
+      fs.emit(FsChangeType.created, '/repo/b.txt');
+      await Future<void>.delayed(const Duration(milliseconds: 60));
+      expect(batches.single.structural, isTrue);
     });
 
     test('poke() emits an empty set meaning full refresh', () async {
@@ -139,12 +180,15 @@ void main() {
       );
       addTearDown(watcher.dispose);
 
-      final batches = <Set<String>>[];
+      final batches = <FsChangeBatch>[];
       watcher.onChanged.listen(batches.add);
 
       watcher.poke();
       await Future<void>.delayed(const Duration(milliseconds: 60));
-      expect(batches, [<String>{}]);
+      expect(batches, hasLength(1));
+      expect(batches.single.changedDirs, isEmpty);
+      expect(batches.single.structural, isTrue,
+          reason: 'poke 语义未知 → 视为结构变更（消费方全量刷新）');
     });
 
     test('ignores churn inside noisy directories', () async {
@@ -157,7 +201,7 @@ void main() {
       );
       addTearDown(watcher.dispose);
 
-      final batches = <Set<String>>[];
+      final batches = <FsChangeBatch>[];
       watcher.onChanged.listen(batches.add);
 
       fs.emit(FsChangeType.created, '/repo/node_modules/x/index.js');
@@ -168,9 +212,9 @@ void main() {
       // A real source change still comes through.
       fs.emit(FsChangeType.created, '/repo/lib/main.dart');
       await Future<void>.delayed(const Duration(milliseconds: 60));
-      expect(batches, [
-        {'/repo/lib'},
-      ]);
+      expect(batches, hasLength(1));
+      expect(batches.single.changedDirs, {'/repo/lib'});
+      expect(batches.single.structural, isTrue);
     });
 
     test('stops emitting after dispose', () async {

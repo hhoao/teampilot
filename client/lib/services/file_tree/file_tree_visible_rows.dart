@@ -28,6 +28,22 @@ class FileTreeVisibleRow {
 
   /// True when this root row points at a directory that no longer exists.
   final bool rootMissing;
+
+  /// Value equality so identical rebuilds short-circuit (row identity is fully
+  /// derived from path + entry + flags).
+  @override
+  bool operator ==(Object other) =>
+      other is FileTreeVisibleRow &&
+      other.path == path &&
+      other.entry == entry &&
+      other.depth == depth &&
+      other.isEmptyPlaceholder == isEmptyPlaceholder &&
+      other.isRoot == isRoot &&
+      other.rootMissing == rootMissing;
+
+  @override
+  int get hashCode =>
+      Object.hash(path, entry, depth, isEmptyPlaceholder, isRoot, rootMissing);
 }
 
 /// Inner content height of a tree row (excluding outer vertical padding).

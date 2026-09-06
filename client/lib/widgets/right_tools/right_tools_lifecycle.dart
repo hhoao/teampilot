@@ -101,7 +101,7 @@ class _RightToolsLifecycleHostState extends State<RightToolsLifecycleHost> {
   FileTreeCubit? _fileTreeCubit;
   List<FileTreeRootMount> _lastMounts = const [];
 
-  StreamSubscription<Set<String>>? _diskWatchSub;
+  StreamSubscription<FsChangeBatch>? _diskWatchSub;
   Timer? _diskPollTimer;
 
   /// 源代码管理面板当前选中的 repo root；面板挂载/切换时写入。
@@ -447,9 +447,12 @@ class _RightToolsLifecycleHostState extends State<RightToolsLifecycleHost> {
     _diskListenersActive = true;
   }
 
-  void _onDiskChanged(Set<String> changedDirs) {
+  void _onDiskChanged(FsChangeBatch batch) {
     if (widget.preferences.fileTreeVisible) {
-      _refreshFileTree(changedDirs);
+      // 纯 modified（内容写入）不可能改变目录列表 —— 文件树跳过该批次。
+      if (batch.structural) {
+        _refreshFileTree(batch.changedDirs);
+      }
     }
     if (widget.preferences.gitVisible) {
       _warmGit();

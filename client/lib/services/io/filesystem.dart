@@ -20,6 +20,17 @@ class FsDirEntry {
 
   final String name;
   final bool isDirectory;
+
+  /// Value equality: a directory listing is "unchanged" only when every entry
+  /// compares equal (file-tree refresh change detection relies on this).
+  @override
+  bool operator ==(Object other) =>
+      other is FsDirEntry &&
+      other.name == name &&
+      other.isDirectory == isDirectory;
+
+  @override
+  int get hashCode => Object.hash(name, isDirectory);
 }
 
 enum FsChangeType { created, modified, deleted, unknown }

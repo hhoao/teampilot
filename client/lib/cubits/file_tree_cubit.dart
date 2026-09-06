@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:collection/collection.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:path/path.dart' as p;
@@ -124,6 +125,33 @@ class FileTreeState {
       clipboard: clearClipboard ? null : (clipboard ?? this.clipboard),
     );
   }
+
+  /// Value equality: dirCache / visibleRows compared by content so unchanged
+  /// re-reads short-circuit the emit (watcher-driven refresh storm control).
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is FileTreeState &&
+          listEquals(roots, other.roots) &&
+          setEquals(expandedPaths, other.expandedPaths) &&
+          filterText == other.filterText &&
+          showHiddenFiles == other.showHiddenFiles &&
+          const DeepCollectionEquality().equals(dirCache, other.dirCache) &&
+          listEquals(visibleRows, other.visibleRows) &&
+          revealPath == other.revealPath &&
+          clipboard == other.clipboard;
+
+  @override
+  int get hashCode => Object.hash(
+    Object.hashAll(roots),
+    Object.hashAllUnordered(expandedPaths),
+    filterText,
+    showHiddenFiles,
+    dirCache.length,
+    visibleRows.length,
+    revealPath,
+    clipboard,
+  );
 }
 
 class FileTreeCubit extends Cubit<FileTreeState> {
@@ -137,6 +165,12 @@ class FileTreeCubit extends Cubit<FileTreeState> {
   final Map<String, FileTreeRootMount> _mountsByRoot = {};
   Timer? _filterDebounceTimer;
   String _pendingFilter = '';
+
+  /// Reload 合并：一轮 [_reloadDirectories] 进行中时，后续变更目录并入
+  /// [_queuedReloadPaths]，当前轮完成后补一轮（与 GitCubit.refresh 的
+  /// in-flight + trailing 模式一致）——慢后端上 watcher 突发不会堆叠 IO。
+  bool _reloadInFlight = false;
+  Set<String>? _queuedReloadPaths;
 
   /// Primary filesystem (first mount, else constructor default).
   Filesystem get fs => _mountsByRoot.isNotEmpty
@@ -326,22 +360,56 @@ class FileTreeCubit extends Cubit<FileTreeState> {
   /// Reloads [paths] concurrently and applies all results in a single [emit] —
   /// no intermediate empty state (no flicker), one rebuild. A directory that no
   /// longer exists is dropped from the cache.
+  ///
+  /// Concurrent calls are coalesced into one trailing round, and a round whose
+  /// every listing is byte-identical to the cache emits nothing (agent file
+  /// edits don't change directory listings; see [FsDirEntry.==]).
   Future<void> _reloadDirectories(Set<String> paths) async {
     if (paths.isEmpty) return;
+    if (_reloadInFlight) {
+      // 合并进补跑轮：避免并发读各自拷贝 dirCache 造成覆盖丢更新。
+      _queuedReloadPaths ??= <String>{};
+      _queuedReloadPaths!.addAll(paths);
+      return;
+    }
+    _reloadInFlight = true;
+    try {
+      await _runReload(paths);
+      final queued = _queuedReloadPaths;
+      if (queued != null && queued.isNotEmpty && !isClosed) {
+        _queuedReloadPaths = null;
+        await _runReload(queued);
+      } else {
+        _queuedReloadPaths = null;
+      }
+    } finally {
+      _reloadInFlight = false;
+    }
+  }
+
+  Future<void> _runReload(Set<String> paths) async {
     final loaded = await Future.wait(
       paths.map(
         (path) async => MapEntry(path, await _fetchDirectoryEntries(path)),
       ),
     );
     if (isClosed) return;
+    var changed = false;
     final cache = Map<String, List<FsDirEntry>>.from(state.dirCache);
     for (final entry in loaded) {
+      final existing = cache[entry.key];
       if (entry.value != null) {
+        if (existing != null && listEquals(existing, entry.value!)) {
+          continue; // listing unchanged → keep the old (identical) reference
+        }
         cache[entry.key] = entry.value!;
-      } else {
+        changed = true;
+      } else if (existing != null) {
         cache.remove(entry.key);
+        changed = true;
       }
     }
+    if (!changed) return;
     _publish(state.copyWith(dirCache: cache));
   }
 
