@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:typed_data';
 
 import 'package:dartssh2/dartssh2.dart';
+import 'package:fake_async/fake_async.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/models/ssh_profile.dart';
 import 'package:teampilot/repositories/ssh_credential_store.dart';
@@ -353,6 +354,159 @@ void main() {
     expect(disconnected, [profile.id]);
     expect(factory.hasLiveStorageClient(profile.id), isFalse);
   });
+
+  test('disconnectProfile waits for in-flight storage op before closing',
+      () async {
+    final gate = Completer<void>();
+    final disconnectCalls = <int>[];
+    late final _BlockingRunClient client;
+    final factory = SshClientFactory(
+      credentialStore: InMemorySshCredentialStore(),
+      knownHostRepository: InMemorySshKnownHostRepository(),
+      connector: (profile, {timeout = const Duration(seconds: 10)}) async {
+        return client;
+      },
+    );
+
+    const profile = SshProfile(
+      id: 'p1',
+      name: 'dev',
+      host: 'example.com',
+      username: 'alice',
+    );
+
+    client = _BlockingRunClient(gate.future, disconnectCalls);
+    final op = factory.runOnStorage(profile, 'sleep 1');
+    // Let the op reach the pooled client's runWithResult.
+    await Future<void>.delayed(Duration.zero);
+
+    factory.disconnectProfile(profile.id);
+    await Future<void>.delayed(const Duration(milliseconds: 50));
+
+    // Evicted from the pool immediately — new callers dial fresh…
+    expect(factory.hasLiveStorageClient(profile.id), isFalse);
+    // …but the in-flight op must not be aborted.
+    expect(client.isClosed, isFalse);
+    expect(disconnectCalls, isEmpty);
+
+    gate.complete();
+    final result = await op;
+    expect(result.exitCode, 0);
+
+    // The client closes once the op has drained.
+    await Future<void>.delayed(const Duration(milliseconds: 100));
+    expect(disconnectCalls, [1]);
+    await client.done;
+    expect(client.isClosed, isTrue);
+  });
+
+  test('runTracked SFTP op survives disconnectProfile and closes after drain',
+      () async {
+    final gate = Completer<void>();
+    final disconnectCalls = <int>[];
+    late final _BlockingDisconnectClient client;
+    final factory = SshClientFactory(
+      credentialStore: InMemorySshCredentialStore(),
+      knownHostRepository: InMemorySshKnownHostRepository(),
+      connector: (profile, {timeout = const Duration(seconds: 10)}) async {
+        return client;
+      },
+    );
+
+    const profile = SshProfile(
+      id: 'p1',
+      name: 'dev',
+      host: 'example.com',
+      username: 'alice',
+    );
+
+    client = _BlockingDisconnectClient(disconnectCalls);
+    await factory.clientForStorage(profile);
+
+    final op = factory.runTracked(profile.id, () async {
+      await gate.future;
+      return 'payload';
+    });
+    await Future<void>.delayed(Duration.zero);
+
+    factory.disconnectProfile(profile.id);
+    await Future<void>.delayed(const Duration(milliseconds: 50));
+    expect(factory.hasLiveStorageClient(profile.id), isFalse);
+    expect(disconnectCalls, isEmpty);
+
+    gate.complete();
+    await expectLater(op, completion('payload'));
+    await Future<void>.delayed(const Duration(milliseconds: 100));
+    expect(disconnectCalls, [1]);
+    await client.done;
+  });
+
+  test('deferred close gives up after the drain timeout', () {
+    fakeAsync((async) {
+      final disconnectCalls = <int>[];
+      late final _BlockingDisconnectClient client;
+      final factory = SshClientFactory(
+        credentialStore: InMemorySshCredentialStore(),
+        knownHostRepository: InMemorySshKnownHostRepository(),
+        connector: (profile, {timeout = const Duration(seconds: 10)}) async {
+          return client;
+        },
+      );
+
+      const profile = SshProfile(
+        id: 'p1',
+        name: 'dev',
+        host: 'example.com',
+        username: 'alice',
+      );
+
+      client = _BlockingDisconnectClient(disconnectCalls);
+
+      unawaited(
+        factory.clientForStorage(profile).then((_) {
+          // A stuck tracked op holds the profile "in flight" forever.
+          unawaited(
+            factory.runTracked(profile.id, () => Completer<String>().future),
+          );
+          factory.disconnectProfile(profile.id);
+        }),
+      );
+
+      async.elapse(const Duration(milliseconds: 200));
+      expect(factory.hasLiveStorageClient(profile.id), isFalse);
+      expect(disconnectCalls, isEmpty);
+
+      // Past the 5s drain cap the client closes even though the op is stuck.
+      async.elapse(const Duration(seconds: 6));
+      expect(disconnectCalls, [1]);
+    });
+  });
+
+  test('close is not deferred when no ops are in flight', () async {
+    final disconnectCalls = <int>[];
+    late final _BlockingDisconnectClient client;
+    final factory = SshClientFactory(
+      credentialStore: InMemorySshCredentialStore(),
+      knownHostRepository: InMemorySshKnownHostRepository(),
+      connector: (profile, {timeout = const Duration(seconds: 10)}) async {
+        return client;
+      },
+    );
+
+    const profile = SshProfile(
+      id: 'p1',
+      name: 'dev',
+      host: 'example.com',
+      username: 'alice',
+    );
+
+    client = _BlockingDisconnectClient(disconnectCalls);
+    await factory.clientForStorage(profile);
+    factory.disconnectProfile(profile.id);
+    await Future<void>.delayed(Duration.zero);
+    expect(disconnectCalls, [1]);
+    await client.done;
+  });
 }
 
 class _ProbeFailClient extends SSHClient {
@@ -425,6 +579,63 @@ class _FailAuthClient extends SSHClient {
 
   @override
   Future<void> ping() async {}
+}
+
+class _BlockingRunClient extends SSHClient {
+  _BlockingRunClient(this._gate, this.disconnectCalls)
+    : super(_FakeSSHSocket(), username: 'test');
+
+  final Future<void> _gate;
+  final List<int> disconnectCalls;
+
+  @override
+  Future<void> get authenticated => Future.value();
+
+  @override
+  Future<void> ping() async {}
+
+  @override
+  Future<SSHRunResult> runWithResult(
+    String command, {
+    bool runInPty = false,
+    bool stdout = true,
+    bool stderr = true,
+    Map<String, String>? environment,
+  }) async {
+    await _gate;
+    return SSHRunResult(
+      output: Uint8List(0),
+      stdout: Uint8List(0),
+      stderr: Uint8List(0),
+      exitCode: 0,
+      exitSignal: null,
+    );
+  }
+
+  @override
+  Future<void> disconnect() async {
+    disconnectCalls.add(1);
+    await close();
+  }
+}
+
+class _BlockingDisconnectClient extends SSHClient {
+  _BlockingDisconnectClient(this.disconnectCalls)
+    : super(_FakeSSHSocket(), username: 'test');
+
+  final List<int> disconnectCalls;
+
+  @override
+  Future<void> get authenticated => Future.value();
+
+  @override
+  Future<void> ping() async {}
+
+  @override
+  Future<void> disconnect() async {
+    disconnectCalls.add(1);
+    await close();
+  }
 }
 
 class _FakeSSHSocket implements SSHSocket {

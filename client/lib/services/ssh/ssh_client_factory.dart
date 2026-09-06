@@ -7,6 +7,7 @@ import 'package:dartssh2/dartssh2.dart';
 import '../../models/ssh_profile.dart';
 import '../../repositories/ssh_credential_store.dart';
 import '../../repositories/ssh_known_host_repository.dart';
+import '../../utils/logging/logger.dart';
 import 'ssh_connection_events.dart';
 import 'ssh_storage_io.dart';
 import 'ssh_transport_close.dart';
@@ -72,6 +73,7 @@ class SshClientFactory {
     SshClientConnector? connector,
     SshDialTargetResolver? dialTargetResolver,
     int maxConcurrentHandshakes = 3,
+    this.drainGracePeriod = const Duration(seconds: 5),
   }) : _credentialStore = credentialStore,
        _knownHostRepository = knownHostRepository,
        _events = events ?? SshConnectionEvents(),
@@ -86,6 +88,10 @@ class SshClientFactory {
        _dialTargetResolver = dialTargetResolver,
        _handshakeGate = _HandshakeGate(maxConcurrentHandshakes);
 
+  /// How long an evicted pooled client stays open for in-flight storage ops
+  /// to drain before it is closed anyway.
+  final Duration drainGracePeriod;
+
   final SshCredentialStore _credentialStore;
   final SshKnownHostRepository _knownHostRepository;
   final SshConnectionEvents _events;
@@ -98,6 +104,7 @@ class SshClientFactory {
   final _HandshakeGate _handshakeGate;
   final Map<String, _PooledConnection> _pool = {};
   final Map<String, SftpClient> _sftpByProfile = {};
+  final Map<String, int> _inFlight = {};
   final Set<SSHClient> _watchedClients = {};
   final Map<SSHClient, _ClientLifecycle> _clientLifecycle = {};
   final _poolChanges = StreamController<String>.broadcast();
@@ -237,7 +244,7 @@ class SshClientFactory {
     String command, {
     Duration timeout = SshStorageIo.ioTimeout,
     bool stderr = true,
-  }) async {
+  }) => _tracked(profile.id, () async {
     final client = await clientForStorage(profile);
     try {
       return await SshStorageIo.awaitOrThrow(
@@ -252,6 +259,29 @@ class SshClientFactory {
         reason: SshTransportCloseReason.transportError,
       );
       rethrow;
+    }
+  });
+
+  /// Tracks an in-flight storage-plane op for [profileId] so eviction defers
+  /// the pooled client close until it completes (see [drainGracePeriod]).
+  ///
+  /// [RemoteFileStore] wraps every SFTP data op in this; ops run directly on
+  /// the shared [SftpClient] are otherwise invisible to the factory.
+  Future<T> runTracked<T>(String profileId, Future<T> Function() op) =>
+      _tracked(profileId, op);
+
+  Future<T> _tracked<T>(String profileId, Future<T> Function() op) async {
+    final n = (_inFlight[profileId] ?? 0) + 1;
+    _inFlight[profileId] = n;
+    try {
+      return await op();
+    } finally {
+      final left = (_inFlight[profileId] ?? 1) - 1;
+      if (left <= 0) {
+        _inFlight.remove(profileId);
+      } else {
+        _inFlight[profileId] = left;
+      }
     }
   }
 
@@ -282,11 +312,39 @@ class SshClientFactory {
       if (lifecycle != null && reason != null) {
         lifecycle.pendingLocalCloseReason = reason;
       }
-      unawaited(cached.client.disconnect());
+      final inflight = _inFlight[profileId] ?? 0;
+      if (inflight > 0) {
+        // Evicted from the pool already — new callers dial fresh — but the
+        // in-flight ops would abort with SSHStateError if we closed now.
+        appLogger.i(
+          '[ssh] deferring close of $profileId: $inflight in-flight op(s)',
+        );
+        unawaited(_closeWhenDrained(profileId, cached.client, drainGracePeriod));
+      } else {
+        unawaited(cached.client.disconnect());
+      }
     }
     if (wasLive) {
       _notifyPoolChange(profileId);
     }
+  }
+
+  /// Poll interval of [_closeWhenDrained] while waiting for ops to drain.
+  static const _drainPollInterval = Duration(milliseconds: 50);
+
+  Future<void> _closeWhenDrained(
+    String profileId,
+    SSHClient client,
+    Duration timeout,
+  ) async {
+    // Countdown instead of a wall-clock deadline: keeps the cap exact under
+    // faked timers in tests and immune to clock skew.
+    var pollsLeft = timeout.inMilliseconds ~/ _drainPollInterval.inMilliseconds;
+    while ((_inFlight[profileId] ?? 0) > 0 && pollsLeft > 0) {
+      await Future<void>.delayed(_drainPollInterval);
+      pollsLeft--;
+    }
+    if (!client.isClosed) await client.disconnect();
   }
 
   void _attachTransportLifecycle(
