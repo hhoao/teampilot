@@ -14,7 +14,7 @@ List<TabInfo> projectWorkbenchTabs({
   required Map<String, CliTool?> sessionCli,
   required WorkspaceEditorBucket editorBucket,
   required Set<WorkbenchTabId> previewTabIds,
-  Map<String, bool> sessionPinned = const {},
+  Set<WorkbenchTabId> pinnedTabIds = const {},
   Map<String, String> shellTitles = const {},
   Color? sessionAccent,
 }) {
@@ -32,7 +32,7 @@ List<TabInfo> projectWorkbenchTabs({
           icon: Icons.terminal_rounded,
           preview: previewTabIds.contains(tab),
           pinnable: true,
-          pinned: sessionPinned[tab.id] ?? false,
+          pinned: pinnedTabIds.contains(tab),
           kind: WorkbenchTabKind.session,
         ),
         WorkbenchTabKind.file => TabInfo(
@@ -40,6 +40,7 @@ List<TabInfo> projectWorkbenchTabs({
           title: p.basename(tab.id),
           icon: Icons.description_outlined,
           preview: previewTabIds.contains(tab),
+          pinned: pinnedTabIds.contains(tab),
           kind: WorkbenchTabKind.file,
           filePath: tab.id,
         ),
@@ -48,6 +49,7 @@ List<TabInfo> projectWorkbenchTabs({
           title: _diffTitle(tab, editorBucket),
           icon: Icons.difference_outlined,
           preview: previewTabIds.contains(tab),
+          pinned: pinnedTabIds.contains(tab),
           kind: WorkbenchTabKind.diff,
           filePath: tab.diffAbsolutePath,
         ),

@@ -68,6 +68,11 @@ class FloatingWorkspaceTabBar extends StatelessWidget {
     required this.onCloseRight,
     this.onCloseAll,
     this.onReorder,
+    this.previewTabIds = const {},
+    this.pinnedTabIds = const {},
+    this.onPin,
+    this.onUnpin,
+    this.onDoubleTap,
     super.key,
   });
 
@@ -83,6 +88,20 @@ class FloatingWorkspaceTabBar extends StatelessWidget {
 
   /// Reorders the floating strip (delegates to [WorkbenchCubit.reorderFloating]).
   final void Function(int oldIndex, int newIndex)? onReorder;
+
+  /// Tab ids ([FloatingTab.id]) still in the replaceable preview slot.
+  final Set<String> previewTabIds;
+
+  /// Tab ids ([FloatingTab.id]) pinned by the user.
+  final Set<String> pinnedTabIds;
+
+  /// Pin / promote / unpin for a tab id — the host maps the id to a
+  /// [WorkbenchTabId] and picks the right call (see panel wiring).
+  final ValueChanged<String>? onPin;
+  final ValueChanged<String>? onUnpin;
+
+  /// Double-tap: promote a preview tab, toggle pin otherwise.
+  final void Function(String tabId)? onDoubleTap;
 
   @override
   Widget build(BuildContext context) {
@@ -112,6 +131,8 @@ class FloatingWorkspaceTabBar extends StatelessWidget {
                 folderPaths,
                 pathContext: pathContext,
               );
+        final preview = previewTabIds.contains(tab.id);
+        final pinned = pinnedTabIds.contains(tab.id);
         return WorkbenchStripTabChip(
           kind: kind,
           tabId: tab.id,
@@ -123,11 +144,29 @@ class FloatingWorkspaceTabBar extends StatelessWidget {
           title: tab.title,
           active: tab.id == activeTabId,
           icon: _iconFor(tab.surfaceId),
+          preview: preview,
+          pinned: pinned,
+          pinnable: onPin != null || onUnpin != null,
           onTap: () => onSelect(tab.id),
           onClose: () => onClose(tab),
           onCloseOthers: () => onCloseOthers(tab),
           onCloseRight: () => onCloseRight(tab),
           onCloseAll: onCloseAll,
+          onPin: preview || pinned
+              ? (onPin != null || onUnpin != null)
+                    ? () {
+                        if (pinned) {
+                          onUnpin?.call(tab.id);
+                        } else if (preview) {
+                          onPin?.call(tab.id);
+                        }
+                      }
+                    : null
+              : null,
+          onUnpin: pinned ? () => onUnpin?.call(tab.id) : null,
+          onDoubleTap: onDoubleTap != null
+              ? () => onDoubleTap!(tab.id)
+              : null,
         );
       },
     );

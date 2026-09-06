@@ -141,20 +141,23 @@ class WorkbenchCubit extends Cubit<WorkbenchState> {
   }
 
   /// Adds [tab] to the floating strip (shell / run / floating file or diff
-  /// preview). Presence, order, and active are owned here.
-  void openFloating(
+  /// preview). Presence, order, active, and the preview slot are owned here.
+  /// Returns the replaced preview tab id, or null when nothing was replaced.
+  WorkbenchTabId? openFloating(
     String workspaceId,
     WorkbenchTabId tab, {
+    bool preview = false,
     bool activate = true,
   }) {
     final bar = state.bar(workspaceId);
-    final (next, _) = _r.add(
+    final (next, replaced) = _r.add(
       bar.floating,
       tab,
-      preview: false,
+      preview: preview,
       activate: activate,
     );
     emit(state.withBar(workspaceId, bar.copyWith(floating: next)));
+    return replaced;
   }
 
   void openShell(String workspaceId, String entryId, {bool activate = true}) {
@@ -203,9 +206,39 @@ class WorkbenchCubit extends Cubit<WorkbenchState> {
       state.bar(workspaceId).floating.activeId;
 
   void pin(String workspaceId, WorkbenchTabId id) {
+    _applyToOwningStrip(workspaceId, id, (strip) => _r.pin(strip, id));
+  }
+
+  /// Unpins [id] on whichever strip owns it (pinned → normal). No-op for
+  /// tabs that are not pinned.
+  void unpin(String workspaceId, WorkbenchTabId id) {
+    _applyToOwningStrip(workspaceId, id, (strip) => _r.unpin(strip, id));
+  }
+
+  /// Promotes [id] out of preview (preview → normal) on whichever strip
+  /// owns it. Dirty-edit promotion uses this — a preview slot must never
+  /// replace a tab with unsaved content.
+  void promote(String workspaceId, WorkbenchTabId id) {
+    _applyToOwningStrip(workspaceId, id, (strip) => _r.promote(strip, id));
+  }
+
+  /// Applies [mutate] to whichever strip owns [id] (presence wins over
+  /// kind-routing). No emit when the reducer returns the strip unchanged.
+  void _applyToOwningStrip(
+    String workspaceId,
+    WorkbenchTabId id,
+    TabStrip Function(TabStrip strip) mutate,
+  ) {
     final bar = state.bar(workspaceId);
-    final next = _r.pin(bar.center, id);
-    emit(state.withBar(workspaceId, bar.copyWith(center: next)));
+    final (strip, isCenter) = _owningStrip(bar, id);
+    final next = mutate(strip);
+    if (identical(next, strip)) return;
+    emit(
+      state.withBar(
+        workspaceId,
+        isCenter ? bar.copyWith(center: next) : bar.copyWith(floating: next),
+      ),
+    );
   }
 
   /// Shows the center landing (new-chat / start) without closing tabs.
@@ -302,7 +335,7 @@ class WorkbenchCubit extends Cubit<WorkbenchState> {
     final center = bar.center;
     if (!center.order.contains(keep)) return const [];
     final removed = center.order
-        .where((t) => t != keep)
+        .where((t) => t != keep && !center.pinnedIds.contains(t))
         .toList(growable: false);
     final next = _removeCenterTabs(center, removed).copyWith(activeId: keep);
     emit(state.withBar(workspaceId, bar.copyWith(center: next)));
@@ -317,7 +350,10 @@ class WorkbenchCubit extends Cubit<WorkbenchState> {
     final center = bar.center;
     final index = center.order.indexOf(anchor);
     if (index < 0 || index >= center.order.length - 1) return const [];
-    final removed = center.order.sublist(index + 1);
+    final removed = center.order
+        .sublist(index + 1)
+        .where((t) => !center.pinnedIds.contains(t))
+        .toList(growable: false);
     final active = center.activeId;
     final nextActive = active != null && removed.contains(active)
         ? anchor
@@ -336,7 +372,9 @@ class WorkbenchCubit extends Cubit<WorkbenchState> {
   List<WorkbenchTabId> closeAll(String workspaceId) {
     final bar = state.bar(workspaceId);
     final center = bar.center;
-    final removed = List<WorkbenchTabId>.from(center.order);
+    final removed = center.order
+        .where((t) => !center.pinnedIds.contains(t))
+        .toList();
     if (removed.isEmpty &&
         center.landingInitialText == null &&
         center.landingReferenceSessionId == null) {

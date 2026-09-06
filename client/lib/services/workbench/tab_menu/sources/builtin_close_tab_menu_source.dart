@@ -12,13 +12,13 @@ class BuiltinCloseTabMenuSource implements WorkbenchTabMenuSource {
     final l10n = ctx.l10n;
     final items = <WorkbenchTabMenuItem>[];
 
-    if (ctx.pinnable && ctx.onPin != null) {
+    if ((ctx.pinnable && ctx.onPin != null) || ctx.onUnpin != null) {
       items.add(
         WorkbenchTabMenuItem(
           id: 'builtin.pin',
           icon: ctx.pinned ? Icons.push_pin : Icons.push_pin_outlined,
           label: ctx.pinned ? l10n.unpinConversation : l10n.pinConversation,
-          onAction: ctx.onPin!,
+          onAction: ctx.pinned ? (ctx.onUnpin ?? ctx.onPin!) : ctx.onPin!,
         ),
       );
     }

@@ -7576,6 +7576,13 @@ class AppLocalizationsEn extends AppLocalizations {
   String get filePreviewHostCenter => 'Center';
 
   @override
+  String get floatingPreviewTabsTitle => 'Single preview tab';
+
+  @override
+  String get floatingPreviewTabsDescription =>
+      'File and diff previews share one replaceable tab in the floating panel until pinned.';
+
+  @override
   String get termuxSetupTitle => 'Termux setup';
 
   @override

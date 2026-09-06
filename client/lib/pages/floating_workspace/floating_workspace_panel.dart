@@ -103,6 +103,8 @@ class _FloatingWorkspacePanelState extends State<FloatingWorkspacePanel> {
     final workspaceId = state.activeWorkspaceId.trim();
     final tabs = <FloatingTab>[];
     final barIdByTabId = <String, WorkbenchTabId>{};
+    final previewTabIds = <String>{};
+    final pinnedTabIds = <String>{};
     String? activeTabId;
     for (final barId in strip.order) {
       final tab = resolveFloatingTabForId(
@@ -113,6 +115,8 @@ class _FloatingWorkspacePanelState extends State<FloatingWorkspacePanel> {
       if (tab == null) continue;
       tabs.add(tab);
       barIdByTabId[tab.id] = barId;
+      if (strip.previewIds.contains(barId)) previewTabIds.add(tab.id);
+      if (strip.pinnedIds.contains(barId)) pinnedTabIds.add(tab.id);
       if (barId == strip.activeId) activeTabId = tab.id;
     }
 
@@ -128,6 +132,8 @@ class _FloatingWorkspacePanelState extends State<FloatingWorkspacePanel> {
         tabs: tabs,
         activeTabId: activeTabId,
         barIdByTabId: barIdByTabId,
+        previewTabIds: previewTabIds,
+        pinnedTabIds: pinnedTabIds,
         registry: registry,
       ),
     );
@@ -167,6 +173,8 @@ class _FloatingWorkspacePanelBody extends StatefulWidget {
     required this.tabs,
     required this.activeTabId,
     required this.barIdByTabId,
+    required this.previewTabIds,
+    required this.pinnedTabIds,
     required this.registry,
     super.key,
   });
@@ -176,6 +184,8 @@ class _FloatingWorkspacePanelBody extends StatefulWidget {
   final List<FloatingTab> tabs;
   final String? activeTabId;
   final Map<String, WorkbenchTabId> barIdByTabId;
+  final Set<String> previewTabIds;
+  final Set<String> pinnedTabIds;
   final FloatingSurfaceRegistry registry;
 
   @override
@@ -349,6 +359,8 @@ class _FloatingWorkspacePanelBodyState
                       tabs: widget.tabs,
                       activeTabId: widget.activeTabId,
                       barIdByTabId: widget.barIdByTabId,
+                      previewTabIds: widget.previewTabIds,
+                      pinnedTabIds: widget.pinnedTabIds,
                       registry: widget.registry,
                       hostSize: hostSize,
                       panelBounds: positioned,
@@ -468,6 +480,8 @@ class _PanelChromeFrame extends StatefulWidget {
     required this.tabs,
     required this.activeTabId,
     required this.barIdByTabId,
+    required this.previewTabIds,
+    required this.pinnedTabIds,
     required this.registry,
     required this.hostSize,
     required this.panelBounds,
@@ -484,6 +498,8 @@ class _PanelChromeFrame extends StatefulWidget {
   final List<FloatingTab> tabs;
   final String? activeTabId;
   final Map<String, WorkbenchTabId> barIdByTabId;
+  final Set<String> previewTabIds;
+  final Set<String> pinnedTabIds;
   final FloatingSurfaceRegistry registry;
   final Size hostSize;
   final Rect panelBounds;
@@ -579,6 +595,49 @@ class _PanelChromeFrameState extends State<_PanelChromeFrame> {
                         tabBar: FloatingWorkspaceTabBar(
                           tabs: tabs,
                           activeTabId: activeId,
+                          previewTabIds: widget.previewTabIds,
+                          pinnedTabIds: widget.pinnedTabIds,
+                          onPin: (tabId) {
+                            final barId = widget.barIdByTabId[tabId];
+                            if (barId == null) return;
+                            final strip = context
+                                .read<WorkbenchCubit>()
+                                .state
+                                .bar(widget.workspaceId)
+                                .floating;
+                            if (strip.previewIds.contains(barId)) {
+                              context
+                                  .read<WorkbenchCubit>()
+                                  .promote(widget.workspaceId, barId);
+                            } else {
+                              context
+                                  .read<WorkbenchCubit>()
+                                  .pin(widget.workspaceId, barId);
+                            }
+                          },
+                          onUnpin: (tabId) {
+                            final barId = widget.barIdByTabId[tabId];
+                            if (barId == null) return;
+                            context
+                                .read<WorkbenchCubit>()
+                                .unpin(widget.workspaceId, barId);
+                          },
+                          onDoubleTap: (tabId) {
+                            final barId = widget.barIdByTabId[tabId];
+                            if (barId == null) return;
+                            final workbench = context.read<WorkbenchCubit>();
+                            final strip = workbench
+                                .state
+                                .bar(widget.workspaceId)
+                                .floating;
+                            if (strip.previewIds.contains(barId)) {
+                              workbench.promote(widget.workspaceId, barId);
+                            } else if (strip.pinnedIds.contains(barId)) {
+                              workbench.unpin(widget.workspaceId, barId);
+                            } else {
+                              workbench.pin(widget.workspaceId, barId);
+                            }
+                          },
                           onSelect: (id) {
                             final tab = tabs.firstWhereOrNull(
                               (t) => t.id == id,

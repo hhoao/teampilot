@@ -13478,6 +13478,18 @@ abstract class AppLocalizations {
   /// **'Center'**
   String get filePreviewHostCenter;
 
+  /// No description provided for @floatingPreviewTabsTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Single preview tab'**
+  String get floatingPreviewTabsTitle;
+
+  /// No description provided for @floatingPreviewTabsDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'File and diff previews share one replaceable tab in the floating panel until pinned.'**
+  String get floatingPreviewTabsDescription;
+
   /// No description provided for @termuxSetupTitle.
   ///
   /// In en, this message translates to:

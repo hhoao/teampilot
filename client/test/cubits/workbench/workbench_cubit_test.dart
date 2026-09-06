@@ -233,4 +233,73 @@ void main() {
       );
     });
   });
+
+  group('floating preview/pin', () {
+    test('openFloating(preview: true) replaces the previous preview slot', () {
+      final replaced1 = cubit.openFloating(
+        _ws,
+        WorkbenchTabId.file('/a.dart'),
+        preview: true,
+      );
+      expect(replaced1, isNull);
+      final replaced2 = cubit.openFloating(
+        _ws,
+        WorkbenchTabId.file('/b.dart'),
+        preview: true,
+      );
+      expect(replaced2, WorkbenchTabId.file('/a.dart'));
+      expect(cubit.floatingOrder(_ws), [WorkbenchTabId.file('/b.dart')]);
+      expect(
+        cubit.state.bar(_ws).floating.previewIds,
+        {WorkbenchTabId.file('/b.dart')},
+      );
+    });
+
+    test('openFloating(preview: false) keeps both tabs (normal)', () {
+      cubit.openFloating(_ws, WorkbenchTabId.file('/a.dart'));
+      cubit.openFloating(_ws, WorkbenchTabId.file('/b.dart'));
+      expect(cubit.floatingOrder(_ws).length, 2);
+      expect(cubit.state.bar(_ws).floating.previewIds, isEmpty);
+    });
+
+    test('pin/unpin route by strip presence (floating)', () {
+      final id = WorkbenchTabId.shell('e1');
+      cubit.openFloating(_ws, id);
+      cubit.pin(_ws, id);
+      expect(cubit.state.bar(_ws).floating.pinnedIds, {id});
+      cubit.unpin(_ws, id);
+      expect(cubit.state.bar(_ws).floating.pinnedIds, isEmpty);
+    });
+
+    test('promote routes by strip presence (floating)', () {
+      cubit.openFloating(_ws, _f, preview: true);
+      cubit.promote(_ws, _f);
+      expect(cubit.state.bar(_ws).floating.previewIds, isEmpty);
+    });
+
+    test('closeAll skips pinned center tabs', () {
+      cubit
+        ..openSession(_ws, 's1')
+        ..openSession(_ws, 's2');
+      cubit.pin(_ws, _s1);
+      final removed = cubit.closeAll(_ws);
+      expect(removed, [_s2]);
+      expect(cubit.centerOrder(_ws), [_s1]);
+    });
+
+    test('closeOthers and closeRight skip pinned center tabs', () {
+      cubit
+        ..openSession(_ws, 's1')
+        ..openSession(_ws, 's2')
+        ..openSession(_ws, 's3');
+      cubit.pin(_ws, _s3);
+      final removed = cubit.closeOthers(_ws, _s1);
+      expect(removed, [_s2]);
+      expect(cubit.centerOrder(_ws), [_s1, _s3]);
+
+      final removedRight = cubit.closeRight(_ws, _s1);
+      expect(removedRight, isEmpty);
+      expect(cubit.centerOrder(_ws), [_s1, _s3]);
+    });
+  });
 }

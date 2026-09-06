@@ -3230,6 +3230,8 @@
   "filePreviewHostDescription": "在浮动工作区或中间工作台打开文件。",
   "filePreviewHostFloating": "浮动",
   "filePreviewHostCenter": "中间",
+  "floatingPreviewTabsTitle": "单个预览标签页",
+  "floatingPreviewTabsDescription": "文件与 diff 预览在浮动面板中共享一个可替换的标签页，固定后保留。",
   "termuxSetupTitle": "Termux 设置",
   "termuxSetupIntro": "安装 Termux，粘贴一条配置脚本，然后连接 TeamPilot 的本地 SSH 服务。",
   "termuxSetupStepInstallTermux": "1. 安装 Termux",

@@ -163,8 +163,10 @@ class _FileEditorSurfaceState extends State<FileEditorSurface> {
         child: FileEditorImagePreview(workspaceId: workspaceId, path: path),
       );
     }
-    // Center preview tabs pin on first edit; floating tabs are not in the
-    // workbench preview set so [pin] is a no-op there.
+    // Dirty preview tabs promote (preview → normal) on first edit, on
+    // whichever strip hosts the tab — replacement would drop unsaved
+    // content. Routing is by strip presence, so this also covers the
+    // floating strip's file preview tabs.
     return BlocListener<EditorCubit, EditorState>(
       listenWhen: (prev, next) {
         final wasDirty = prev.bucket(workspaceId).isDirty(path);
@@ -172,7 +174,7 @@ class _FileEditorSurfaceState extends State<FileEditorSurface> {
         return !wasDirty && isDirty;
       },
       listener: (context, state) {
-        context.read<WorkbenchCubit>().pin(
+        context.read<WorkbenchCubit>().promote(
           workspaceId,
           WorkbenchTabId.file(path),
         );

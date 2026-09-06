@@ -197,10 +197,12 @@ void main() {
       expect(r.activate(s2, _f).activeId, _s2); // absent -> unchanged
     });
 
-    test('pin removes from preview set', () {
+    test('pin ignores a preview tab (promote is the preview exit)', () {
       final (s1, _) = r.add(empty, _s1, preview: true);
       final s2 = r.pin(s1, _s1);
-      expect(s2.previewIds, isEmpty);
+      expect(s2.previewIds, {_s1});
+      final s3 = r.promote(s1, _s1);
+      expect(s3.previewIds, isEmpty);
     });
 
     test('enterLanding clears active but keeps tabs', () {
@@ -262,6 +264,68 @@ void main() {
         ],
         [prefill, prefill, prefill, prefill, prefill],
       );
+    });
+  });
+
+  group('pinnedIds', () {
+    test('pin adds a normal tab to pinnedIds; unpin removes it', () {
+      final (s1, _) = r.add(empty, _s1, preview: false);
+      final s2 = r.pin(s1, _s1);
+      expect(s2.pinnedIds, {_s1});
+      expect(s2.previewIds, isEmpty);
+      final s3 = r.unpin(s2, _s1);
+      expect(s3.pinnedIds, isEmpty);
+    });
+
+    test('pin is a no-op on a preview tab', () {
+      final (s1, _) = r.add(empty, _f, preview: true);
+      final s2 = r.pin(s1, _f);
+      expect(s2.pinnedIds, isEmpty);
+      expect(s2.previewIds, {_f});
+    });
+
+    test('promote moves a preview tab to normal', () {
+      final (s1, _) = r.add(empty, _f, preview: true);
+      final s2 = r.promote(s1, _f);
+      expect(s2.previewIds, isEmpty);
+      expect(s2.pinnedIds, isEmpty);
+      expect(s2.order, [_f]);
+    });
+
+    test('promote is a no-op on absent or pinned ids', () {
+      final (s1, _) = r.add(empty, _s1, preview: false);
+      final s2 = r.pin(s1, _s1);
+      expect(r.promote(s2, _s1), same(s2));
+      expect(r.promote(s2, _d), same(s2));
+    });
+
+    test('remove cleans pinnedIds', () {
+      final (s1, _) = r.add(empty, _s1, preview: false);
+      final (s2, _) = r.add(s1, _s2, preview: false);
+      final s3 = r.pin(s2, _s1);
+      final s4 = r.remove(s3, _s1);
+      expect(s4!.pinnedIds, isEmpty);
+    });
+
+    test('add(preview) never replaces a pinned tab', () {
+      final (s1, _) = r.add(empty, _s1, preview: false);
+      final s2 = r.pin(s1, _s1);
+      final (s3, replaced) = r.add(s2, _s2, preview: true);
+      expect(replaced, isNull);
+      expect(s3.order, [_s1, _s2]);
+      expect(s3.previewIds, {_s2});
+    });
+
+    test('preview slot replacement skips pinned tabs when choosing a victim', () {
+      // normal preview + pinned tab: the preview is replaced, not the pinned.
+      final (s1, _) = r.add(empty, _f, preview: true);
+      final (s2, _) = r.add(s1, _s1, preview: false);
+      final s3 = r.pin(s2, _s1);
+      final (s4, replaced) =
+          r.add(s3, WorkbenchTabId.file('/b.dart'), preview: true);
+      expect(replaced, _f);
+      expect(s4.order, [WorkbenchTabId.file('/b.dart'), _s1]);
+      expect(s4.pinnedIds, {_s1});
     });
   });
 

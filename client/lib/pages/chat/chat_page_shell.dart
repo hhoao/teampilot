@@ -222,12 +222,20 @@ class _ChatWorkspaceShell extends StatelessWidget {
             ];
             const sessionTitles = <String, String>{};
             const sessionWorking = <String, bool>{};
-            final sessionPinned = chatPageStructuralSignal(
-              state: state,
-              tabStore: cubit.tabStore,
-              workbench: workbench,
-              tabScopeId: tabScopeId,
-            ).pinnedBySessionId;
+            // Pinned state lives on the strip (TabStrip.pinnedIds); the
+            // persisted session pin (repo) is unioned in for sessions whose
+            // strip pin has not been seeded yet (fresh launch).
+            final persistedPinned = <WorkbenchTabId>{
+              for (final t in order)
+                if (t.kind == WorkbenchTabKind.session &&
+                    state.sessions
+                        .where((s) => s.sessionId == t.id)
+                        .any((s) => s.pinned))
+                  t,
+            };
+            final pinnedTabIds = bar.center.pinnedIds.union(
+              persistedPinned,
+            );
             final sessionCli = <String, CliTool?>{
               for (final id in sessionIds)
                 id: () {
@@ -263,7 +271,7 @@ class _ChatWorkspaceShell extends StatelessWidget {
               sessionTitles: sessionTitles,
               sessionWorking: sessionWorking,
               sessionCli: sessionCli,
-              sessionPinned: sessionPinned,
+              pinnedTabIds: pinnedTabIds,
               editorBucket: editorBucket,
               previewTabIds: bar.center.previewIds,
               shellTitles: shellTitles,
@@ -377,7 +385,21 @@ class _ChatWorkspaceShell extends StatelessWidget {
                       if (index < 0 || index >= order.length) return;
                       final sessionId = order[index].sessionId;
                       if (sessionId == null) return;
+                      // Persist (repo) and runtime (strip) stores stay in
+                      // sync; the projection reads the strip union.
                       unawaited(cubit.toggleSessionPin(sessionId));
+                      final workbenchCubit = context.read<WorkbenchCubit>();
+                      final tabId = WorkbenchTabId.session(sessionId);
+                      if (workbenchCubit
+                          .state
+                          .bar(workspaceId)
+                          .center
+                          .pinnedIds
+                          .contains(tabId)) {
+                        workbenchCubit.unpin(workspaceId, tabId);
+                      } else {
+                        workbenchCubit.pin(workspaceId, tabId);
+                      }
                     }
                   : null,
               onTabsReorder: routeActive

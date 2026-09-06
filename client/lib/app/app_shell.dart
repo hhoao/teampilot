@@ -2393,6 +2393,8 @@ Future<AppShell> buildAppShell({
       readFilePreviewInFloating: () =>
           layoutCubit.state.preferences.filePreviewHost ==
           FilePreviewHost.floating,
+      readFloatingPreviewTabs: () =>
+          layoutCubit.state.preferences.floatingPreviewTabs,
     );
     workbenchEditorOpenerRef = workbenchEditorOpener;
     final resolvedShellLauncher = WorkbenchShellLauncher(

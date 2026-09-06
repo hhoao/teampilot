@@ -25,5 +25,19 @@ void main() {
 
       expect(tabs.map((t) => t.id), ['s1', file.id, diff.id]);
     });
+
+    test('session pinned reads pinnedTabIds', () {
+      final session = WorkbenchTabId.session('s1');
+      final tabs = projectWorkbenchTabs(
+        tabOrder: [session],
+        sessionTitles: const {'s1': 'Chat'},
+        sessionWorking: const {},
+        sessionCli: const {},
+        editorBucket: editorBucket,
+        previewTabIds: const {},
+        pinnedTabIds: {session},
+      );
+      expect(tabs.single.pinned, isTrue);
+    });
   });
 }
