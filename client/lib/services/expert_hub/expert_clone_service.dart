@@ -56,8 +56,9 @@ class ExpertCloneService {
 
     final expert = await ExpertMemberResolver.resolveMember(
       key: key,
-      source: _source,
+      source: _catalog == null ? _source : null,
       localStore: _store,
+      catalog: _catalog,
     );
     if (expert == null) return null;
 

@@ -23,21 +23,6 @@ abstract final class ExpertMemberMaterializer {
     return member;
   }
 
-  static List<TeamMemberConfig> materializeRoster({
-    required TeamProfile team,
-    required Map<String, DiscoverableMember> expertsByKey,
-  }) {
-    return [
-      for (final slot in team.roster)
-        if (expertsByKey.containsKey(slot.expertKey.trim()))
-          materializeRosterSlot(
-            slot: slot,
-            expert: expertsByKey[slot.expertKey.trim()]!,
-            team: team,
-          ),
-    ];
-  }
-
   /// Materializes every team's roster from a single pre-loaded catalog
   /// [snapshot] — no per-slot fetch. Sync: the snapshot already holds every
   /// resolvable expert.

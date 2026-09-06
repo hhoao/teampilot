@@ -58,7 +58,7 @@ void main() {
 
       final out = ExpertMemberMaterializer.materializeTeam(
         team,
-        const MemberCatalogSnapshot({}),
+        MemberCatalogSnapshot({}),
       );
       expect(out.members, isEmpty);
     });

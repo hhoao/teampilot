@@ -5,7 +5,8 @@ import 'expert_hub_source.dart';
 /// Precedence (local clone > registry > builtin) is whatever the backing
 /// source's `fetchMembers` merge produces.
 class MemberCatalogSnapshot {
-  const MemberCatalogSnapshot(this.byKey);
+  MemberCatalogSnapshot(Map<String, DiscoverableMember> byKey)
+    : byKey = Map<String, DiscoverableMember>.unmodifiable(byKey);
 
   final Map<String, DiscoverableMember> byKey;
 
