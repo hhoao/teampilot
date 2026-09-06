@@ -45,6 +45,34 @@
       "program": "lib/main.dart",
       "type": "dart",
       "flutterMode": "debug"
+    },
+    {
+      // 性能捕获用:开启 LivePerfDriver (HTTP 端口 17999)，
+      // 配合 `dart run tool/dump_live_perf.dart` 录帧级快照。
+      // 录制期间不要同时开 DevTools → Performance（抢 timeline buffer）。
+      "name": "client (perf capture)",
+      "cwd": "client",
+      "request": "launch",
+      "program": "lib/main.dart",
+      "type": "dart",
+      "flutterMode": "debug",
+      "args": [
+        "--dart-define=PERF_DRIVER=true"
+      ]
+    },
+    {
+      // 对照实验:在 perf capture 基础上静音终端渲染(PTY 照跑、引擎照解析，
+      // 仅 TerminalView 不挂载)。对比两份 dump 可量化终端合成链的开销。
+      "name": "client (perf capture, terminals muted)",
+      "cwd": "client",
+      "request": "launch",
+      "program": "lib/main.dart",
+      "type": "dart",
+      "flutterMode": "debug",
+      "args": [
+        "--dart-define=PERF_DRIVER=true",
+        "--dart-define=PERF_MUTE_TERMINALS=true"
+      ]
     }
   ]
 }
