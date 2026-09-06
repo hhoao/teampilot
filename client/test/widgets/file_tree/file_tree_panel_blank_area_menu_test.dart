@@ -141,6 +141,7 @@ Widget _panel({
                 fileTreeCubit: cubit,
                 pokeOnTurnEnd: () {},
                 ensureFileTreeReady: () {},
+                selectedGitRoot: ValueNotifier<String?>(null),
               ),
               child: SizedBox(
                 width: 320,

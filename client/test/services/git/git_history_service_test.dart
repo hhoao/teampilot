@@ -171,6 +171,30 @@ void main() {
     );
   });
 
+  test('refs fetches branches and tags in one for-each-ref call', () async {
+    final f = '\x1f';
+    final fake = _FakeRunner({
+      'for-each-ref refs/heads refs/remotes refs/tags': ok(
+        'refs/heads/main${f}main${f}h1$f*\n'
+        'refs/heads/dev${f}dev${f}h2$f \n'
+        'refs/remotes/origin/main${f}origin/main${f}h1$f \n'
+        'refs/tags/v1${f}v1${f}t1$f \n',
+      ),
+    });
+    final svc = GitHistoryService(runner: LocalGitCommandRunner(runner: fake.call));
+    final refs = await svc.refs('/repo');
+    expect(
+      fake.calls.where((c) => c.first == 'for-each-ref').single,
+      containsAllInOrder(['refs/heads', 'refs/remotes', 'refs/tags']),
+      reason: '三个命名空间合并为一次调用（SSH 下省 2 次网络往返）',
+    );
+    expect(refs.branches.length, 3);
+    expect(refs.branches.firstWhere((b) => b.isCurrent).name, 'main');
+    expect(refs.branches.firstWhere((b) => b.isRemote).name, 'origin/main');
+    expect(refs.tags.single.name, 'v1');
+    expect(refs.tags.single.hash, 't1');
+  });
+
   test('branches merges local+remote with current flag', () async {
     final f = '\x1f';
     final fake = _FakeRunner({

@@ -21,6 +21,7 @@ import '../../models/git_status.dart';
 import '../../services/git/git_repo_store.dart';
 import '../../services/storage/runtime_context.dart';
 import '../../services/workbench/workbench_editor_opener.dart';
+import '../../widgets/right_tools/right_tools_lifecycle.dart';
 import 'git_branch_menu.dart';
 import 'git_changes_tree_list.dart';
 
@@ -57,6 +58,9 @@ class GitSourceControlPanel extends StatefulWidget {
 class _GitSourceControlPanelState extends State<GitSourceControlPanel> {
   String? _selectedRoot;
 
+  /// Lifecycle host 的选择上报通道；宿主缺席（如单测直挂面板）时为 null。
+  RightToolsLifecycleData? _lifecycle;
+
   /// Non-empty workspace folders, primary first.
   List<String> get _roots =>
       widget.roots.where((p) => p.isNotEmpty).toList(growable: false);
@@ -69,6 +73,14 @@ class _GitSourceControlPanelState extends State<GitSourceControlPanel> {
     return roots.first;
   }
 
+  /// 把当前展示的 root 报给 lifecycle host：磁盘事件驱动的 git 刷新以它
+  /// 为全速 root（其余 root 降频保缓存，见 GitRepoStore.refreshAll）。
+  void _reportActiveRoot() {
+    final active = _activeRoot;
+    if (active.isEmpty) return;
+    _lifecycle?.selectedGitRoot.value = active;
+  }
+
   GitRepoStore get _store => context.read<GitRepoStore>();
 
   RuntimeContext get _workContext => widget.workContext;
@@ -77,11 +89,29 @@ class _GitSourceControlPanelState extends State<GitSourceControlPanel> {
       _store.cubitFor(root, workContext: _workContext);
 
   @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    _lifecycle = RightToolsLifecycle.maybeOf(context);
+  }
+
+  @override
+  void didUpdateWidget(covariant GitSourceControlPanel oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    // roots 变化（工作区文件夹增删）可能移动展示项（选中项被移除时回退
+    // 首个 root）——重新上报。
+    if (widget.roots != oldWidget.roots) {
+      _reportActiveRoot();
+    }
+  }
+
+  @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
       final active = _activeRoot;
       if (active.isNotEmpty) _cubitFor(active).refresh();
+      _reportActiveRoot();
     });
   }
 
@@ -112,6 +142,7 @@ class _GitSourceControlPanelState extends State<GitSourceControlPanel> {
           onSelect: (root) {
             setState(() => _selectedRoot = root);
             _cubitFor(root).refresh();
+            _reportActiveRoot();
           },
         ),
         Expanded(

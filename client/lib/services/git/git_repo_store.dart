@@ -27,9 +27,11 @@ class GitRepoStore {
     GitCubit Function(String root, RuntimeContext workContext)? cubitFactory,
     GitGraphCubit Function(String root, RuntimeContext workContext)?
     graphCubitFactory,
+    DateTime Function()? clock,
     int maxRetained = 8,
   }) : _cubitFactory = cubitFactory ?? _defaultFactory,
        _graphFactory = graphCubitFactory ?? _defaultGraphFactory,
+       _now = clock ?? DateTime.now,
        _maxRetained = maxRetained;
 
   static GitCubit _defaultFactory(String root, RuntimeContext workContext) {
@@ -60,6 +62,7 @@ class GitRepoStore {
   final GitGraphCubit Function(String root, RuntimeContext workContext)
   _graphFactory;
   final int _maxRetained;
+  final DateTime Function() _now;
   final p.Context _ctx = p.Context();
 
   /// Normalized `targetId:root` → cubit. Insertion order is the LRU order.
@@ -111,15 +114,43 @@ class GitRepoStore {
   }
 
   /// Triggers a coalesced refresh for every [roots] entry on [workContext].
+  ///
+  /// [activeRoot] is the repo the source-control panel is currently showing
+  /// (fallback: first root). It refreshes at full cadence; the other roots of
+  /// a multi-project workspace refresh at most once per
+  /// [backgroundRefreshInterval] — they only keep their status cache warm
+  /// (the panel's repo selector refreshes manually on switch-back), so an
+  /// agent editing project A doesn't run `git status` on projects B/C for
+  /// every watcher burst / poll tick.
   void refreshAll(
     Iterable<String> roots, {
     required RuntimeContext workContext,
+    String? activeRoot,
   }) {
-    for (final root in roots) {
-      if (root.isEmpty) continue;
-      cubitFor(root, workContext: workContext).refresh();
+    final nonEmpty = roots.where((r) => r.isNotEmpty).toList(growable: false);
+    if (nonEmpty.isEmpty) return;
+    final active = activeRoot != null && nonEmpty.contains(activeRoot)
+        ? activeRoot
+        : nonEmpty.first;
+    final key = workContext.target.id;
+    final now = _now();
+    final last = _lastBackgroundRefreshAt[key];
+    final backgroundDue =
+        last == null ||
+        now.difference(last) >= backgroundRefreshInterval;
+    for (final root in nonEmpty) {
+      if (root == active || backgroundDue) {
+        cubitFor(root, workContext: workContext).refresh();
+      }
     }
+    if (backgroundDue) _lastBackgroundRefreshAt[key] = now;
   }
+
+  /// 非选中 root 的降频刷新间隔。
+  static const Duration backgroundRefreshInterval = Duration(seconds: 30);
+
+  /// targetId → 上次降频批量刷新的时间。
+  final Map<String, DateTime> _lastBackgroundRefreshAt = {};
 
   /// Refreshes the graph cubits for every [roots] entry on [workContext], so
   /// open graph panes track poll-driven status updates.

@@ -35,6 +35,10 @@ class _FailingHistory implements GitHistoryService {
   Future<List<GitTagInfo>> tags(String dir) async => const [];
 
   @override
+  Future<GitRefsSnapshot> refs(String dir) async =>
+      (branches: const <GitBranchInfo>[], tags: const <GitTagInfo>[]);
+
+  @override
   Future<List<GitStashEntry>> stashList(String dir) async => const [];
 }
 
@@ -124,6 +128,82 @@ void main() {
     expect((cubit.state.rows.last as GitCommitRow).hash, 'h4');
     expect(cubit.state.hasMore, isTrue);
     await cubit.close();
+  });
+
+  test(
+    'refresh within TTL skips heavy fetch when HEAD unchanged',
+    () async {
+      // agent 写文件：dirtyCount 变化但 HEAD 不动 → 不得重跑 log/refs/stash。
+      final history = FakeHistoryForGraph(rows: [graphCommitRow('c1')]);
+      final git = FakeGitForGraph(repoStatus(headHash: 'h1'));
+      var now = DateTime(2026, 1, 1);
+      final cubit = GitGraphCubit(
+        history: history,
+        git: git,
+        clock: () => now,
+      );
+      addTearDown(cubit.close);
+      await cubit.setRepoRoot('/repo');
+      expect(history.graphCalls, 1);
+      final rowsBefore = cubit.state.rows;
+
+      git.statusResult = dirtyStatus(headHash: 'h1');
+      now = now.add(const Duration(seconds: 5));
+      await cubit.refresh();
+
+      expect(history.graphCalls, 1, reason: 'HEAD 未变 + TTL 内不得重跑 log');
+      expect(
+        identical(cubit.state.rows, rowsBefore),
+        isTrue,
+        reason: '跳过时沿用旧 rows 引用，emit 相等性走 identical 快路径',
+      );
+      expect(cubit.state.dirtyCount, 2, reason: 'status 衍生字段仍要更新');
+    },
+  );
+
+  test('refresh refetches when HEAD hash moves', () async {
+    final history = _ScriptedHistory(pages: [
+      [graphCommitRow('h1')],
+      [graphCommitRow('x9')], // 新提交到达
+    ]);
+    final git = FakeGitForGraph(repoStatus(headHash: 'aaa'));
+    final cubit = GitGraphCubit(
+      history: history,
+      git: git,
+      clock: () => DateTime(2026, 1, 1),
+    );
+    addTearDown(cubit.close);
+    await cubit.setRepoRoot('/repo');
+    expect((cubit.state.rows.first as GitCommitRow).hash, 'h1');
+
+    git.statusResult = repoStatus(headHash: 'bbb');
+    await cubit.refresh();
+
+    expect(history.calls, 2, reason: 'HEAD 移动必须重取 log/refs/stash');
+    expect((cubit.state.rows.first as GitCommitRow).hash, 'x9');
+  });
+
+  test('refresh refetches after TTL expiry even with HEAD unchanged', () async {
+    // TTL 兜底：fetch 更新非 HEAD 引用（远端分支/其它 worktree）不会移动
+    // HEAD hash，过期后仍需强制重取。
+    final history = _ScriptedHistory(pages: [
+      [graphCommitRow('h1')],
+      [graphCommitRow('h1')],
+    ]);
+    var now = DateTime(2026, 1, 1);
+    final cubit = GitGraphCubit(
+      history: history,
+      git: FakeGitForGraph(repoStatus(headHash: 'aaa')),
+      clock: () => now,
+    );
+    addTearDown(cubit.close);
+    await cubit.setRepoRoot('/repo');
+    expect(history.calls, 1);
+
+    now = now.add(const Duration(seconds: 31));
+    await cubit.refresh();
+
+    expect(history.calls, 2, reason: 'TTL 过期需重取以兜住非 HEAD 引用变化');
   });
 
   test('graph spacer rows do not break pagination flags or skip math',
@@ -354,6 +434,10 @@ class _ScriptedHistory implements GitHistoryService {
   Future<List<GitTagInfo>> tags(String dir) async => const [];
 
   @override
+  Future<GitRefsSnapshot> refs(String dir) async =>
+      (branches: const <GitBranchInfo>[], tags: const <GitTagInfo>[]);
+
+  @override
   Future<List<GitStashEntry>> stashList(String dir) async => const [];
 }
 
@@ -394,6 +478,10 @@ class _RacyHistory implements GitHistoryService {
 
   @override
   Future<List<GitTagInfo>> tags(String dir) async => const [];
+
+  @override
+  Future<GitRefsSnapshot> refs(String dir) async =>
+      (branches: const <GitBranchInfo>[], tags: const <GitTagInfo>[]);
 
   @override
   Future<List<GitStashEntry>> stashList(String dir) async => const [];

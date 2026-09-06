@@ -7,6 +7,10 @@ import 'git_command_runner.dart';
 import 'git_service.dart' show GitException;
 import 'parser/git_graph_parser.dart';
 
+/// [GitHistoryService.refs] 的返回：分支与标签列表（单次 for-each-ref）。
+typedef GitRefsSnapshot =
+    ({List<GitBranchInfo> branches, List<GitTagInfo> tags});
+
 /// 只读历史查询：graph / commit 详情 / 分支标签 / stash（`git log/show/
 /// diff-tree/for-each-ref/stash list`），不做任何写操作。
 class GitHistoryService {
@@ -225,6 +229,42 @@ class GitHistoryService {
               path,
             ])
           : _run(dir, ['diff', parent, hash, '--', path]);
+
+  /// 分支 + 标签快照：一次 `for-each-ref` 取回（此前 branches+tags 是 3 次
+  /// 子进程调用；SSH 后端每次调用都是一次网络往返）。
+  Future<GitRefsSnapshot> refs(String dir) async {
+    final out = await _run(dir, [
+      'for-each-ref',
+      'refs/heads',
+      'refs/remotes',
+      'refs/tags',
+      '--format=%(refname)\x1f%(refname:short)\x1f%(objectname)\x1f%(HEAD)',
+    ]);
+    final branches = <GitBranchInfo>[];
+    final tags = <GitTagInfo>[];
+    for (final line in out.split('\n')) {
+      if (line.trim().isEmpty) continue;
+      final f = line.split(_fieldSep);
+      final full = f[0].trim();
+      final short = f.length > 1 ? f[1].trim() : '';
+      final hash = f.length > 2 ? f[2].trim() : '';
+      if (full.startsWith('refs/tags/')) {
+        tags.add(GitTagInfo(short, hash));
+      } else if (full.startsWith('refs/remotes/')) {
+        branches.add(GitBranchInfo(short, hash, isRemote: true, isCurrent: false));
+      } else if (full.startsWith('refs/heads/')) {
+        branches.add(
+          GitBranchInfo(
+            short,
+            hash,
+            isRemote: false,
+            isCurrent: f.length > 3 && f[3].trim() == '*',
+          ),
+        );
+      }
+    }
+    return (branches: branches, tags: tags);
+  }
 
   Future<List<GitBranchInfo>> branches(String dir) async {
     final local = await _run(dir, [

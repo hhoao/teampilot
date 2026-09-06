@@ -85,6 +85,7 @@ class GitService {
 
   static GitRepoStatus _parseStatus(String out) {
     String? branch;
+    String? headHash;
     String? upstream;
     var ahead = 0;
     var behind = 0;
@@ -96,7 +97,14 @@ class GitService {
       if (line.isEmpty) continue;
       if (line.startsWith('# ')) {
         final header = line.substring(2);
-        if (header.startsWith('branch.head ')) {
+        if (header.startsWith('branch.oid ')) {
+          final value = header.substring('branch.oid '.length).trim();
+          if (value == '(initial)') {
+            hasCommits = false;
+          } else {
+            headHash = value;
+          }
+        } else if (header.startsWith('branch.head ')) {
           final value = header.substring('branch.head '.length).trim();
           if (value == '(initial)') {
             hasCommits = false;
@@ -146,6 +154,7 @@ class GitService {
     return GitRepoStatus(
       isRepository: true,
       branch: branch,
+      headHash: headHash,
       upstream: upstream,
       ahead: ahead,
       behind: behind,

@@ -82,14 +82,19 @@ class FakeHistoryForGraph implements GitHistoryService {
   Future<List<GitTagInfo>> tags(String dir) async => tagInfos;
 
   @override
+  Future<GitRefsSnapshot> refs(String dir) async =>
+      (branches: branchInfos, tags: tagInfos);
+
+  @override
   Future<List<GitStashEntry>> stashList(String dir) async => const [];
 }
 
-/// [GitService] 测试替身：固定 `git status` 结果。
+/// [GitService] 测试替身：固定 `git status` 结果（可变，便于测试中途改
+/// HEAD hash / dirtyCount 模拟 agent 写文件或新提交）。
 class FakeGitForGraph implements GitService {
   FakeGitForGraph(this.statusResult, {this.diffText = ''});
 
-  final GitRepoStatus statusResult;
+  GitRepoStatus statusResult;
 
   /// `diffAgainstHead` 返回的固定 diff 文本。
   final String diffText;
@@ -219,9 +224,10 @@ GitCommitRow graphCommitRow(
   refs: refs,
 );
 
-GitRepoStatus repoStatus() => GitRepoStatus(
+GitRepoStatus repoStatus({String? headHash}) => GitRepoStatus(
   isRepository: true,
   branch: 'main',
+  headHash: headHash,
   upstream: 'origin/main',
   ahead: 1,
   behind: 0,
@@ -229,17 +235,18 @@ GitRepoStatus repoStatus() => GitRepoStatus(
 );
 
 /// 有暂存与未暂存改动的状态（dirtyCount = 2）。
-GitRepoStatus dirtyStatus() => const GitRepoStatus(
+GitRepoStatus dirtyStatus({String? headHash}) => GitRepoStatus(
   isRepository: true,
   branch: 'main',
+  headHash: headHash,
   upstream: 'origin/main',
   ahead: 0,
   behind: 0,
   hasCommits: true,
-  staged: [
+  staged: const [
     GitFileChange(path: 'a.dart', kind: GitChangeKind.modified, staged: true),
   ],
-  unstaged: [
+  unstaged: const [
     GitFileChange(path: 'b.dart', kind: GitChangeKind.modified, staged: false),
   ],
 );
@@ -312,6 +319,10 @@ class FullPagesChainHistory implements GitHistoryService {
 
   @override
   Future<List<GitTagInfo>> tags(String dir) async => const [];
+
+  @override
+  Future<GitRefsSnapshot> refs(String dir) async =>
+      (branches: const <GitBranchInfo>[], tags: const <GitTagInfo>[]);
 
   @override
   Future<List<GitStashEntry>> stashList(String dir) async => const [];

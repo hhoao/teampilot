@@ -81,6 +81,7 @@ void main() {
 
         expect(status.isRepository, isTrue);
         expect(status.branch, 'main');
+        expect(status.headHash, 'abcdef');
         expect(status.upstream, 'origin/main');
         expect(status.ahead, 2);
         expect(status.behind, 1);
@@ -130,8 +131,9 @@ void main() {
     });
 
     test('reports hasCommits=false for an unborn branch', () async {
+      // unborn 分支的 porcelain v2 真实输出是 `branch.oid (initial)`。
       const statusOut =
-          '# branch.oid abcdef\n'
+          '# branch.oid (initial)\n'
           '# branch.head (initial)\n'
           '1 M. N... 100644 100644 100644 h h staged_mod.txt\n';
       final runner = _FakeRunner({
@@ -146,6 +148,7 @@ void main() {
 
       expect(status.isRepository, isTrue);
       expect(status.hasCommits, isFalse);
+      expect(status.headHash, isNull);
     });
   });
 

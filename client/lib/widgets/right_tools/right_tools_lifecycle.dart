@@ -24,6 +24,7 @@ class RightToolsLifecycleData {
     required this.fileTreeCubit,
     required this.pokeOnTurnEnd,
     required this.ensureFileTreeReady,
+    required this.selectedGitRoot,
   });
 
   final WorkspaceToolsScopeState scope;
@@ -33,6 +34,12 @@ class RightToolsLifecycleData {
   /// Idempotent hook for [FileTreePanel] first mount (lazy tab) — mounts roots
   /// if the deferred workspace sync was skipped or raced ahead of the panel.
   final VoidCallback ensureFileTreeReady;
+
+  /// Repo root currently shown by the source-control panel (multi-folder
+  /// workspaces). The panel writes its selection here so disk-driven refreshes
+  /// can fast-path that root (see [GitRepoStore.refreshAll]); null until the
+  /// panel mounts — callers fall back to the first root.
+  final ValueNotifier<String?> selectedGitRoot;
 }
 
 class RightToolsLifecycle extends InheritedWidget {
@@ -50,6 +57,13 @@ class RightToolsLifecycle extends InheritedWidget {
     assert(scope != null, 'RightToolsLifecycle not found in context');
     return scope!.data;
   }
+
+  /// Like [of] but returns null when the host is absent (e.g. panel mounted
+  /// standalone in tests).
+  static RightToolsLifecycleData? maybeOf(BuildContext context) =>
+      context
+          .dependOnInheritedWidgetOfExactType<RightToolsLifecycle>()
+          ?.data;
 
   @override
   bool updateShouldNotify(RightToolsLifecycle oldWidget) =>
@@ -89,6 +103,9 @@ class _RightToolsLifecycleHostState extends State<RightToolsLifecycleHost> {
 
   StreamSubscription<Set<String>>? _diskWatchSub;
   Timer? _diskPollTimer;
+
+  /// 源代码管理面板当前选中的 repo root；面板挂载/切换时写入。
+  final ValueNotifier<String?> _selectedGitRoot = ValueNotifier<String?>(null);
 
   /// Poll always runs, even alongside a live watcher: on Linux
   /// `Directory.watch(recursive: true)` does not deliver nested events (see
@@ -195,6 +212,10 @@ class _RightToolsLifecycleHostState extends State<RightToolsLifecycleHost> {
   @override
   void didUpdateWidget(covariant RightToolsLifecycleHost oldWidget) {
     super.didUpdateWidget(oldWidget);
+    if (widget.workspaceId != oldWidget.workspaceId) {
+      // 工作区切换：旧选择不再有效，回到默认（首个 root）。
+      _selectedGitRoot.value = null;
+    }
     if (!_lifecycleActive) {
       _suspendDiskSideEffects();
       return;
@@ -472,11 +493,16 @@ class _RightToolsLifecycleHostState extends State<RightToolsLifecycleHost> {
   }
 
   void _warmGit() {
-    final tools = _scope?.tools?.context;
-    if (tools == null) return;
+    final scope = _scope;
+    final tools = scope?.tools?.context;
+    if (scope == null || tools == null) return;
     final store = context.read<GitRepoStore>();
-    store.refreshAll(_scope!.roots, workContext: tools);
-    store.refreshGraphs(_scope!.roots, workContext: tools);
+    store.refreshAll(
+      scope.roots,
+      workContext: tools,
+      activeRoot: _selectedGitRoot.value,
+    );
+    store.refreshGraphs(scope.roots, workContext: tools);
   }
 
   void _pokeOnTurnEnd() => _fsWatcher?.poke();
@@ -485,6 +511,7 @@ class _RightToolsLifecycleHostState extends State<RightToolsLifecycleHost> {
   void dispose() {
     _diskWatchSub?.cancel();
     _diskPollTimer?.cancel();
+    _selectedGitRoot.dispose();
     final watcher = _fsWatcher;
     _fsWatcher = null;
     if (watcher != null) {
@@ -501,6 +528,7 @@ class _RightToolsLifecycleHostState extends State<RightToolsLifecycleHost> {
       fileTreeCubit: _fileTreeCubit,
       pokeOnTurnEnd: _pokeOnTurnEnd,
       ensureFileTreeReady: _ensureFileTreeReady,
+      selectedGitRoot: _selectedGitRoot,
     );
     return RightToolsLifecycle(data: data, child: widget.child);
   }

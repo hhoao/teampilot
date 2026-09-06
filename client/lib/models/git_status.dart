@@ -54,6 +54,7 @@ class GitRepoStatus extends Equatable {
   const GitRepoStatus({
     required this.isRepository,
     this.branch,
+    this.headHash,
     this.upstream,
     this.ahead = 0,
     this.behind = 0,
@@ -72,6 +73,11 @@ class GitRepoStatus extends Equatable {
 
   /// Current branch name, or null when detached HEAD or on an unborn branch.
   final String? branch;
+
+  /// HEAD commit hash (`# branch.oid`), or null on an unborn branch / unknown.
+  /// Cheap change signal for history-heavy refresh gating: committed history
+  /// can only change when this moves.
+  final String? headHash;
   final String? upstream;
   final int ahead;
   final int behind;
@@ -91,6 +97,7 @@ class GitRepoStatus extends Equatable {
   List<Object?> get props => [
     isRepository,
     branch,
+    headHash,
     upstream,
     ahead,
     behind,

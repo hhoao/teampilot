@@ -194,14 +194,19 @@ class GitGraphCubit extends Cubit<GitGraphState> {
     required GitHistoryService history,
     required GitService git,
     GitHistoryActions? actions,
+    DateTime Function()? clock,
   }) : _history = history,
        _git = git,
        _actions = actions ?? GitHistoryActions(),
+       _now = clock ?? DateTime.now,
        super(const GitGraphState());
 
   final GitHistoryService _history;
   final GitService _git;
   final GitHistoryActions _actions;
+
+  /// 时钟注入缝（TTL 判定用）；默认墙钟。
+  final DateTime Function() _now;
 
   /// [surfaceError] 置位：下一次成功刷新保留该错误一次，再下次才清除。
   bool _errorSurfaced = false;
@@ -243,6 +248,20 @@ class GitGraphCubit extends Cubit<GitGraphState> {
   /// 改变，刷新时整页替换而非保留累计分页。
   String _lastFetchSignature = '';
 
+  /// 上次重刷新（log+refs+stash）时观察到的 HEAD hash；null = 未知
+  /// （unborn 分支或 status 未提供），未知时不做跳过。
+  String? _lastHeadHash;
+
+  /// 上次重刷新时间；HEAD 未变但超过 TTL 仍强制重取，兜住
+  /// 「fetch 更新了非 HEAD 引用 / 其它 worktree 推进分支」造成的过期。
+  DateTime _lastHeavyFetchAt = DateTime.fromMillisecondsSinceEpoch(0);
+
+  /// 重刷新（log + refs + stash，约 4 个子进程；SSH 下每次调用都是一次
+  /// 网络往返）的 TTL。agent 编辑文件只动 dirtyCount 不动 HEAD，TTL 窗口
+  /// 内的轮询/watcher 刷新只重跑 `git status`，跳过其余全部子进程。
+  @visibleForTesting
+  static const Duration heavyFetchTtl = Duration(seconds: 30);
+
   /// 图查询的 revisionRange：显式分支过滤优先，其次“仅当前分支”（HEAD），
   /// 否则 null（`--all`）。
   String? get _effectiveRevisionRange =>
@@ -250,6 +269,7 @@ class GitGraphCubit extends Cubit<GitGraphState> {
 
   Future<void> setRepoRoot(String root) async {
     _lastFetchSignature = '';
+    _lastHeadHash = null;
     emit(GitGraphState(repoRoot: root));
     await refresh();
   }
@@ -277,38 +297,61 @@ class GitGraphCubit extends Cubit<GitGraphState> {
     try {
       final signature =
           '${state.searchQuery}|${state.searchMode.index}|$_effectiveRevisionRange';
-      final rows = await _history.graphRows(
-        dir,
-        query: state.searchQuery,
-        mode: state.searchMode,
-        revisionRange: _effectiveRevisionRange,
-      );
       final status = await _git.status(dir);
       if (isClosed || state.repoRoot != dir) return;
-      final branches = await _history.branches(dir);
-      final tags = await _history.tags(dir);
-      final stashes = await _history.stashList(dir);
-      if (isClosed || state.repoRoot != dir) return;
 
-      // 轮询/手动重刷只取第一页；若查询条件未变、本地已分页更深且头提交
-      // 未变，则保留累计行——否则（新提交到达 / 过滤变化 / 首次加载）
-      // 整页替换。
-      // 注意：累计行必须在 emit 前一刻读取（而非进入函数时）——refresh 与
-      // loadMore 并发时，loadMore 可能在本函数等待 git 期间完成追加。
-      var nextRows = rows;
-      var nextHasMore =
-          _commitCountOf(rows) == GitHistoryService.initialLoadCommits;
-      final accumulated = state.rows;
-      final headUnchanged = rows.isNotEmpty &&
-          accumulated.isNotEmpty &&
-          _headHashOf(rows) == _headHashOf(accumulated);
-      if (_lastFetchSignature == signature &&
-          headUnchanged &&
-          accumulated.length > rows.length) {
-        nextRows = accumulated;
-        nextHasMore = state.hasMore;
+      // 重刷新门控：HEAD 未动 + 查询签名未变 + TTL 未到期 → 跳过
+      // log/refs/stash（提交历史只能随 HEAD 移动而变化；工作区改动不影响）。
+      // 跳过时直接沿用 state 的 rows/branches/tags/stashList 引用，
+      // emit 的相等性比较走 identical 快路径，不做整表深比较。
+      final headUnchanged =
+          status.headHash != null &&
+          status.headHash == _lastHeadHash &&
+          signature == _lastFetchSignature;
+      final ttlFresh = _now().difference(_lastHeavyFetchAt) < heavyFetchTtl;
+      var nextRows = state.rows;
+      var nextHasMore = state.hasMore;
+      var nextBranches = state.branches;
+      var nextTags = state.tags;
+      var nextStashes = state.stashList;
+
+      if (!headUnchanged || !ttlFresh || state.rows.isEmpty) {
+        final rows = await _history.graphRows(
+          dir,
+          query: state.searchQuery,
+          mode: state.searchMode,
+          revisionRange: _effectiveRevisionRange,
+        );
+        if (isClosed || state.repoRoot != dir) return;
+        final refs = await _history.refs(dir);
+        final stashes = await _history.stashList(dir);
+        if (isClosed || state.repoRoot != dir) return;
+
+        // 重刷新只取第一页；若查询条件未变、本地已分页更深且头提交
+        // 未变，则保留累计行——否则（新提交到达 / 过滤变化 / 首次加载）
+        // 整页替换。
+        // 注意：累计行必须在 emit 前一刻读取（而非进入函数时）——refresh 与
+        // loadMore 并发时，loadMore 可能在本函数等待 git 期间完成追加。
+        nextRows = rows;
+        nextHasMore =
+            _commitCountOf(rows) == GitHistoryService.initialLoadCommits;
+        final accumulated = state.rows;
+        final headSame = rows.isNotEmpty &&
+            accumulated.isNotEmpty &&
+            _headHashOf(rows) == _headHashOf(accumulated);
+        if (signature == _lastFetchSignature &&
+            headSame &&
+            accumulated.length > rows.length) {
+          nextRows = accumulated;
+          nextHasMore = state.hasMore;
+        }
+        nextBranches = refs.branches;
+        nextTags = refs.tags;
+        nextStashes = stashes;
+        _lastFetchSignature = signature;
+        _lastHeadHash = status.headHash;
+        _lastHeavyFetchAt = _now();
       }
-      _lastFetchSignature = signature;
 
       final keepSurfacedError = _errorSurfaced;
       _errorSurfaced = false;
@@ -316,9 +359,9 @@ class GitGraphCubit extends Cubit<GitGraphState> {
         state.copyWith(
           rows: nextRows,
           hasMore: nextHasMore,
-          branches: branches,
-          tags: tags,
-          stashList: stashes,
+          branches: nextBranches,
+          tags: nextTags,
+          stashList: nextStashes,
           currentBranch: status.branch ?? '',
           ahead: status.ahead,
           behind: status.behind,
