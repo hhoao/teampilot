@@ -43,3 +43,19 @@ RemoteDownloadSettingsStore deviceLocalRemoteDownloadSettingsStore(
   );
   return RemoteDownloadSettingsStore(rootDir: nativeAppDataPath, fs: fs);
 }
+
+/// Device-local registry catalog cache root (`catalog-cache/` under native
+/// app data).
+///
+/// Catalog caches must be device-local: on Android the home root is remote
+/// (SFTP), so a cache under it costs a network round trip per read —
+/// defeating itself.
+String deviceLocalCatalogCacheRoot(String nativeAppDataPath) =>
+    AppPaths.pathContextForDataRoot(nativeAppDataPath)
+        .join(nativeAppDataPath, 'catalog-cache');
+
+/// Device-local `LocalFilesystem` pinned to the native app-data path context.
+LocalFilesystem deviceLocalCatalogCacheFilesystem(String nativeAppDataPath) =>
+    LocalFilesystem(
+      pathContext: AppPaths.pathContextForDataRoot(nativeAppDataPath),
+    );

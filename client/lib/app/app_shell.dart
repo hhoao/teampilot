@@ -1416,15 +1416,25 @@ Future<AppShell> buildAppShell({
     );
     hookCubit = HookCubit(repository: hookRepository)..load();
 
+    // Catalog caches are device-local: on Android the home root is remote
+    // (SFTP), so a cache under it costs a network round trip per read.
+    final catalogCacheRoot = deviceLocalCatalogCacheRoot(nativeAppDataPath);
+    final catalogCacheFs = deviceLocalCatalogCacheFilesystem(nativeAppDataPath);
     final teamHubSource = CompositeTeamHubSource.withDefaults(
-      GitRegistryTeamHubSource(),
+      GitRegistryTeamHubSource(
+        fs: catalogCacheFs,
+        cacheDirOverride: catalogCacheRoot + '/team-hub',
+      ),
     );
     final teamHubFavorites = TeamHubFavoritesStore();
     final localExpertStore = LocalExpertStore();
     await localExpertStore.migrateLegacyLayout();
     await localExpertStore.ensureIndexLoaded();
     final compositeExpertHubSource = CompositeExpertHubSource.withDefaults(
-      registry: GitRegistryExpertHubSource(),
+      registry: GitRegistryExpertHubSource(
+        fs: catalogCacheFs,
+        cacheDirOverride: catalogCacheRoot + '/member-hub',
+      ),
       teamIndex: teamHubSource.fetchTeams,
       localStore: localExpertStore,
     );
