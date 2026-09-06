@@ -10,6 +10,35 @@ import 'package:teampilot/services/storage/app_storage.dart';
 import '../support/test_runtime_context.dart';
 
 void main() {
+  test('concurrent load() runs the repository load once', () async {
+    final repo = _SlowFakeSshProfileRepository();
+    final cubit = SshProfileCubit(
+      profileRepository: repo,
+      credentialStore: InMemorySshCredentialStore(),
+    );
+    addTearDown(cubit.close);
+
+    await Future.wait([cubit.load(), cubit.load(), cubit.load()]);
+
+    expect(repo.loadAllCalls, 1);
+    expect(cubit.state.isLoading, false);
+    expect(cubit.state.profiles, hasLength(1));
+  });
+
+  test('load() after a completed load starts a fresh repository read', () async {
+    final repo = _SlowFakeSshProfileRepository();
+    final cubit = SshProfileCubit(
+      profileRepository: repo,
+      credentialStore: InMemorySshCredentialStore(),
+    );
+    addTearDown(cubit.close);
+
+    await cubit.load();
+    await cubit.load();
+
+    expect(repo.loadAllCalls, 2);
+  });
+
   test('selected SSH profile persists across cubit reloads', () async {
     final temp = await Directory.systemTemp.createTemp(
       'ssh_profile_cubit_test_',
@@ -243,6 +272,45 @@ void main() {
     expect(cubit.state.selectedProfileId, 'p2');
     expect(await repository.loadSelectedProfileId(), 'p2');
   });
+}
+
+class _SlowFakeSshProfileRepository implements SshProfileRepository {
+  int loadAllCalls = 0;
+
+  static const _profile = SshProfile(
+    id: 'p1',
+    name: 'one',
+    host: 'one.example.com',
+    username: 'alice',
+  );
+
+  @override
+  Future<List<SshProfile>> loadAll() async {
+    loadAllCalls++;
+    // Simulates the real IO read window during which concurrent callers pile
+    // up before the single-flight fix coalesces them.
+    await Future<void>.delayed(const Duration(milliseconds: 50));
+    return const [_profile];
+  }
+
+  @override
+  Future<String> loadSelectedProfileId() async => '';
+
+  @override
+  Future<void> save(SshProfile profile) async {}
+
+  @override
+  Future<void> saveAll(List<SshProfile> profiles) async {}
+
+  @override
+  Future<void> saveSelectedProfileId(String profileId) async {}
+
+  @override
+  Future<void> delete(String profileId) async {}
+
+  @override
+  Future<SshProfile?> findById(String profileId) async =>
+      profileId == 'p1' ? _profile : null;
 }
 
 class _ThrowingCredentialStore implements SshCredentialStore {

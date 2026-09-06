@@ -72,7 +72,16 @@ class SshProfileCubit extends Cubit<SshProfileState> {
   final void Function(String profileId)? _invalidateProfileConnection;
   final bool Function()? _enableRemoteCliDiscovery;
 
-  Future<void> load() async {
+  /// Single-flight: bootstrapHomeIndex, prepareInteractiveShell, and
+  /// reconnectHomeSshIfNeeded all call [load] concurrently on boot; coalescing
+  /// them collapses three repository reads into one.
+  Future<void>? _loadFuture;
+
+  Future<void> load() => _loadFuture ??= _doLoad().whenComplete(() {
+    _loadFuture = null;
+  });
+
+  Future<void> _doLoad() async {
     emit(state.copyWith(isLoading: true));
     final profiles = await _profileRepository.loadAll();
     final persistedSelectedId = await _profileRepository
