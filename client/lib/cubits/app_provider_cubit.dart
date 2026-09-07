@@ -306,17 +306,20 @@ class AppProviderCubit extends Cubit<AppProviderState> {
     if (trimmedId.isEmpty) return false;
     // Cycle guard: a provider's credentialLink must not target a managed
     // entry whose credential source links back at this provider (spec).
+    // Ids are per-CLI catalogs, so both the CLI and the provider id must
+    // match for a true cycle.
     final link = provider.credentialLink.trim();
     if (link.isNotEmpty) {
       final managedRepo = _managedProviderRepository;
       if (managedRepo != null) {
         final entries = await managedRepo.load();
         final entry = entries.where((e) => e.id == link).firstOrNull;
-        if (entry != null &&
-            managedProviderLinkSourceOf(
-                  entry.endpointConfig.credentialSource,
-                )?.providerId ==
-                trimmedId) {
+        final backLink = entry == null
+            ? null
+            : managedProviderLinkSourceOf(entry.endpointConfig.credentialSource);
+        if (backLink != null &&
+            backLink.cli == cli &&
+            backLink.providerId == trimmedId) {
           return false;
         }
       }
