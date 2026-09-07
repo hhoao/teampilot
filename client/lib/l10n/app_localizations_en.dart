@@ -8220,6 +8220,24 @@ class AppLocalizationsEn extends AppLocalizations {
       'secret reads the form; cli:… reads CLI login.';
 
   @override
+  String get managedProvidersCredentialLinkMode => 'Credential source mode';
+
+  @override
+  String get managedProvidersCredentialLinkManual => 'Enter secret manually';
+
+  @override
+  String get managedProvidersCredentialLinkPick => 'Reference provider config';
+
+  @override
+  String managedProvidersCredentialLinkedTo(Object provider) {
+    return 'Using credential of $provider';
+  }
+
+  @override
+  String get managedProvidersCredentialLinkEmpty =>
+      'No API-key providers configured yet';
+
+  @override
   String get managedProvidersCredentialTemplate => 'Credential template';
 
   @override

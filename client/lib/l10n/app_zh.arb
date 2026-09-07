@@ -3480,6 +3480,16 @@
   "managedProvidersCredentialSource": "凭据来源",
   "managedProvidersCredentialSourceHint": "secret 或 cli:cursor-mp-<entry>",
   "managedProvidersCredentialSourceHelper": "secret 读表单；cli:… 读 CLI 登录。",
+  "managedProvidersCredentialLinkMode": "凭据来源方式",
+  "managedProvidersCredentialLinkManual": "手动输入密钥",
+  "managedProvidersCredentialLinkPick": "引用供应商配置",
+  "managedProvidersCredentialLinkedTo": "使用 {provider} 的凭证",
+  "@managedProvidersCredentialLinkedTo": {
+    "placeholders": {
+      "provider": {}
+    }
+  },
+  "managedProvidersCredentialLinkEmpty": "还没有可引用的供应商配置",
   "managedProvidersCredentialTemplate": "凭据拼接模板",
   "managedProvidersCredentialTemplateHint": "例如 WorkosCursorSessionToken=user::token",
   "managedProvidersCredentialTemplateHelper": "拼成最终凭据值，常用于 Cookie；用花括号填变量。",

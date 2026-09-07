@@ -4,14 +4,17 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:shared_ui/shared_ui.dart';
 
+import '../../cubits/app_provider_cubit.dart';
 import '../../cubits/managed_provider_cubit.dart';
 import '../../cubits/managed_provider_usage_cubit.dart';
 import '../../l10n/l10n_extensions.dart';
+import '../../models/app_provider_config.dart';
 import '../../models/managed_provider.dart';
 import '../../models/managed_provider_editor_schema.dart';
 import '../../models/provider_usage_snapshot.dart';
 import '../../services/provider_usage/managed_provider_cli_binding.dart';
 import '../../services/provider_usage/managed_provider_credential_transaction.dart';
+import '../../services/provider_usage/managed_provider_link_binding.dart';
 import '../../services/provider_usage/managed_provider_presets.dart';
 import '../../services/provider_usage/managed_provider_secret_store.dart';
 import '../../widgets/app_toast/app_toast.dart';
@@ -196,6 +199,7 @@ class _ManagedProviderEditorPageState extends State<ManagedProviderEditorPage> {
                   credentialSecretFocusNode: _credentialSecretFocus,
                   credentialConfigured: _credentialRef.text.trim().isNotEmpty,
                   enabled: _enabled,
+                  hideSecret: _isLinkedProviderSource,
                   onQuickPresetChanged: _handleQuickPresetChanged,
                   onEnabledChanged: _setEnabled,
                 ),
@@ -241,6 +245,29 @@ class _ManagedProviderEditorPageState extends State<ManagedProviderEditorPage> {
                         managedProviderId: _entryId,
                         managedProviderName: _name.text.trim(),
                       )
+                    : _isLinkedProviderSource
+                    ? Builder(
+                        builder: (context) {
+                          final selector = _buildCredentialLinkModeSelector(
+                            context,
+                          );
+                          return Column(
+                            crossAxisAlignment: CrossAxisAlignment.stretch,
+                            children: [
+                              // Null only for legacy rows whose schema marks
+                              // the source field read-only; the chip below
+                              // still shows the reference.
+                              if (selector != null) ...[
+                                selector,
+                                const SizedBox(height: 12),
+                              ],
+                              ManagedProviderLinkedCredentials(
+                                providerName: _linkedProviderRowName(context),
+                              ),
+                            ],
+                          );
+                        },
+                      )
                     : ManagedProviderCredentialsSection(
                         schema: _schema,
                         credentialNameController: _credentialName,
@@ -252,6 +279,8 @@ class _ManagedProviderEditorPageState extends State<ManagedProviderEditorPage> {
                             .trim()
                             .isNotEmpty,
                         onCredentialFieldChanged: _handleCredentialFieldChanged,
+                        credentialLinkModeSelector:
+                            _buildCredentialLinkModeSelector(context),
                       ),
               ),
               const SizedBox(height: 12),
@@ -532,6 +561,91 @@ class _ManagedProviderEditorPageState extends State<ManagedProviderEditorPage> {
       ) !=
       null;
 
+  bool get _isLinkedProviderSource =>
+      managedProviderLinkSourceOf(_credentialSource.text.trim()) != null;
+
+  /// True when the credential-source mode picker can be offered (non-cli
+  /// source whose field is editable per the current schema).
+  bool get _canPickCredentialLinkMode =>
+      !_isCliCredentialSource &&
+      _schema.isFieldEditable('endpointConfig.credentialSource');
+
+  /// The currently selected mode value for the picker: the linked source, or
+  /// '' for the entry's own secret.
+  String get _credentialLinkModeValue {
+    final link = managedProviderLinkSourceOf(_credentialSource.text.trim());
+    return link?.value ?? '';
+  }
+
+  /// (mode value, label) options: manual secret first, then every apiKey-class
+  /// provider row grouped by CLI. Rows linking back to this entry (cycle) are
+  /// excluded.
+  List<(String, String)> _credentialLinkOptions(BuildContext context) {
+    final l10n = context.l10n;
+    final appCubit = context.read<AppProviderCubit>();
+    final options = <(String, String)>[
+      ('', l10n.managedProvidersCredentialLinkManual),
+    ];
+    for (final cli in CliTool.values) {
+      for (final row in appCubit.state.providersFor(cli)) {
+        if (!row.requiresApiKey) continue;
+        if (row.credentialLink.trim() == _entryId) continue;
+        options.add((
+          managedProviderLinkSourceValue(cli, row.id),
+          '${row.name} (${cli.value})',
+        ));
+      }
+    }
+    return options;
+  }
+
+  Widget? _buildCredentialLinkModeSelector(BuildContext context) {
+    if (!_canPickCredentialLinkMode) return null;
+    final options = _credentialLinkOptions(context);
+    return TpSelect<String>(
+      key: const Key('managed-provider-credential-link'),
+      items: [for (final option in options) option.$1],
+      initialItem: _credentialLinkModeValue,
+      itemLabel: (value) {
+        for (final option in options) {
+          if (option.$1 == value) return option.$2;
+        }
+        return value;
+      },
+      onChanged: (value) {
+        if (value != null) _handleCredentialLinkModeChanged(value);
+      },
+      decoration: TpSelectDecorations.themed(context),
+      overlayHeight: kTpSelectDefaultOverlayHeight,
+    );
+  }
+
+  void _handleCredentialLinkModeChanged(String value) {
+    setState(() {
+      _credentialSource.text = value.isEmpty ? 'secret' : value;
+      if (value.isNotEmpty) {
+        _credentialSecret.clear();
+        // Linked rows read the provider row's key under its credentialField.
+        if (_credentialField.text.trim().isEmpty) {
+          _credentialField.text = 'apiKey';
+        }
+      }
+    });
+  }
+
+  /// Display name of the referenced provider row ('' when it vanished).
+  String _linkedProviderRowName(BuildContext context) {
+    final link = managedProviderLinkSourceOf(_credentialSource.text.trim());
+    if (link == null) return '';
+    final row = context
+        .read<AppProviderCubit>()
+        .state
+        .providersFor(link.cli)
+        .where((p) => p.id == link.providerId)
+        .firstOrNull;
+    return row?.name ?? '';
+  }
+
   bool get _credentialsInitiallyExpanded {
     if (_isCliCredentialSource) return true;
     final provider = _provider;
@@ -601,7 +715,12 @@ class _ManagedProviderEditorPageState extends State<ManagedProviderEditorPage> {
     var credentialValues = const <String, String>{};
     final requiredSecretFields = _requiredSecretFields(_schema);
     var requiredSecretsToKeep = requiredSecretFields;
-    if (credentialSecret.isNotEmpty) {
+    if (_isLinkedProviderSource) {
+      // The credential comes from the referenced provider row — no stored
+      // secret, no ref, and no required-secret validation for this entry.
+      credentialRef = '';
+      requiredSecretsToKeep = const {};
+    } else if (credentialSecret.isNotEmpty) {
       if (credentialField.isEmpty) {
         setState(() {
           _saving = false;

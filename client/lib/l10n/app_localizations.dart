@@ -14630,6 +14630,36 @@ abstract class AppLocalizations {
   /// **'secret reads the form; cli:… reads CLI login.'**
   String get managedProvidersCredentialSourceHelper;
 
+  /// No description provided for @managedProvidersCredentialLinkMode.
+  ///
+  /// In en, this message translates to:
+  /// **'Credential source mode'**
+  String get managedProvidersCredentialLinkMode;
+
+  /// No description provided for @managedProvidersCredentialLinkManual.
+  ///
+  /// In en, this message translates to:
+  /// **'Enter secret manually'**
+  String get managedProvidersCredentialLinkManual;
+
+  /// No description provided for @managedProvidersCredentialLinkPick.
+  ///
+  /// In en, this message translates to:
+  /// **'Reference provider config'**
+  String get managedProvidersCredentialLinkPick;
+
+  /// No description provided for @managedProvidersCredentialLinkedTo.
+  ///
+  /// In en, this message translates to:
+  /// **'Using credential of {provider}'**
+  String managedProvidersCredentialLinkedTo(Object provider);
+
+  /// No description provided for @managedProvidersCredentialLinkEmpty.
+  ///
+  /// In en, this message translates to:
+  /// **'No API-key providers configured yet'**
+  String get managedProvidersCredentialLinkEmpty;
+
   /// No description provided for @managedProvidersCredentialTemplate.
   ///
   /// In en, this message translates to:

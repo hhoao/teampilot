@@ -4171,6 +4171,16 @@
   "managedProvidersCredentialSource": "Credential source",
   "managedProvidersCredentialSourceHint": "secret or cli:cursor-mp-<entry>",
   "managedProvidersCredentialSourceHelper": "secret reads the form; cli:… reads CLI login.",
+  "managedProvidersCredentialLinkMode": "Credential source mode",
+  "managedProvidersCredentialLinkManual": "Enter secret manually",
+  "managedProvidersCredentialLinkPick": "Reference provider config",
+  "managedProvidersCredentialLinkedTo": "Using credential of {provider}",
+  "@managedProvidersCredentialLinkedTo": {
+    "placeholders": {
+      "provider": {}
+    }
+  },
+  "managedProvidersCredentialLinkEmpty": "No API-key providers configured yet",
   "managedProvidersCredentialTemplate": "Credential template",
   "managedProvidersCredentialTemplateHint": "e.g. WorkosCursorSessionToken=user::token",
   "managedProvidersCredentialTemplateHelper": "Builds the final credential; often a Cookie with brace variables.",
