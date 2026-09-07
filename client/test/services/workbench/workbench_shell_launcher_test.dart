@@ -268,6 +268,32 @@ void main() {
       expect(entry!.cwd, isEmpty);
       expect(entry.followWorkspace, isFalse);
     });
+
+    test('folder-pinned local spec launches at that folder, not primary', () async {
+      final launcher = _launcher(
+        chat: chat,
+        workbench: workbench,
+        floating: floating,
+        registry: registry,
+      );
+
+      // Multi-root workspace: primary /work/alpha, extra /work/beta. A menu
+      // item pinned to /work/beta must land the entry cwd there.
+      final entry = await launcher.openAndSelect(
+        workspaceId: 'ws',
+        tabScopeId: 'ws',
+        cwd: '/work/beta',
+        spec: const WorkspaceTerminalLocalSpec('/bin/bash'),
+        folders: const [
+          WorkspaceFolder(path: '/work/alpha'),
+          WorkspaceFolder(path: '/work/beta'),
+        ],
+      );
+
+      expect(entry, isNotNull);
+      expect(entry!.cwd, '/work/beta');
+      expect(entry.followWorkspace, isTrue);
+    });
   });
 
   group('WorkbenchShellLauncher.focusOrCreateDefaultShell', () {

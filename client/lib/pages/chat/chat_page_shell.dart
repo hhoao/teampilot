@@ -58,12 +58,12 @@ Future<void> _showStripNewTerminalMenu({
     globalPosition: anchor,
     folders: folders,
     connector: connector,
-    onSessionSelected: (spec) {
+    onSessionSelected: (spec, launchCwd) {
       unawaited(
         launcher.openAndSelect(
           workspaceId: workspaceId,
           tabScopeId: tabScopeId,
-          cwd: trimmedCwd,
+          cwd: launchCwd ?? trimmedCwd,
           spec: spec,
           folders: folders,
           sshConnectFailedMessage: sshFailed,
