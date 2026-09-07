@@ -69,7 +69,7 @@ void main() {
     expect(actions.calls.single, ['branch', '-d', 'feature']);
   });
 
-  testWidgets('remote branch submenu offers no enabled action (v1)', (
+  testWidgets('remote branch submenu checkout creates tracking branch', (
     tester,
   ) async {
     final actions = RecordingGraphActions();
@@ -107,13 +107,159 @@ void main() {
     await tester.pumpAndSettle();
     await tester.tap(find.text('origin/main'));
     await tester.pumpAndSettle();
-    // v1：远程分支仅列出，checkout 禁用（禁用条目点击不弹子菜单）。
     final item = tester.widget<TpActionMenuItem>(
       find.widgetWithText(TpActionMenuItem, 'Checkout origin/main'),
     );
-    expect(item.enabled, isFalse);
-    expect(find.widgetWithText(TpActionMenuItem, 'Delete branch'), findsNothing);
+    expect(item.enabled, isTrue);
+
+    await tester.tap(find.text('Checkout origin/main'));
+    await tester.pumpAndSettle();
+    expect(actions.calls.single, ['checkout-remote-branch', 'origin', 'main']);
+  });
+
+  testWidgets('remote branch delete confirms then pushes --delete', (
+    tester,
+  ) async {
+    final actions = RecordingGraphActions();
+    final history = FakeHistoryForGraph(
+      branchInfos: [
+        GitBranchInfo('origin/feature', 'h1', isRemote: true, isCurrent: false),
+      ],
+    );
+    final cubit = GitGraphCubit(
+      history: history,
+      git: FakeGitForGraph(repoStatus()),
+      actions: actions,
+    );
+    addTearDown(cubit.close);
+    await cubit.setRepoRoot('/repo');
+
+    await tester.pumpWidget(
+      MaterialApp(
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
+        locale: const Locale('en'),
+        home: BlocProvider.value(
+          value: cubit,
+          child: Scaffold(
+            body: Center(
+              child: GitGraphRefsMenu(state: cubit.state, workspaceId: 'ws'),
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byIcon(Icons.account_tree_outlined));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('origin/feature'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.textContaining('Delete branch origin/feature'));
+    await tester.pumpAndSettle();
+    // 远程删除确认文案明确提示影响远程仓库。
+    expect(find.textContaining('shared repository'), findsOneWidget);
+    await tester.tap(find.byType(TpButton).last); // 接受确认
+    await tester.pumpAndSettle();
+    expect(
+      actions.calls.single,
+      ['delete-remote-branch', 'origin', 'feature'],
+    );
+  });
+
+  testWidgets('remote branch history sets branch filter to remote name', (
+    tester,
+  ) async {
+    final actions = RecordingGraphActions();
+    final history = FakeHistoryForGraph(
+      branchInfos: [
+        GitBranchInfo('origin/feature', 'h1', isRemote: true, isCurrent: false),
+      ],
+    );
+    final cubit = GitGraphCubit(
+      history: history,
+      git: FakeGitForGraph(repoStatus()),
+      actions: actions,
+    );
+    addTearDown(cubit.close);
+    await cubit.setRepoRoot('/repo');
+
+    await tester.pumpWidget(
+      MaterialApp(
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
+        locale: const Locale('en'),
+        home: BlocProvider.value(
+          value: cubit,
+          child: Scaffold(
+            body: Center(
+              child: GitGraphRefsMenu(state: cubit.state, workspaceId: 'ws'),
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byIcon(Icons.account_tree_outlined));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('origin/feature'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text("View this branch's history"));
+    await tester.pumpAndSettle();
+    expect(cubit.state.branchFilter, 'origin/feature');
     expect(actions.calls, isEmpty);
+  });
+
+  testWidgets('tag submenu offers checkout and history', (tester) async {
+    final actions = RecordingGraphActions();
+    final history = FakeHistoryForGraph(
+      branchInfos: [
+        GitBranchInfo('main', 'h0', isRemote: false, isCurrent: true),
+      ],
+      tagInfos: [GitTagInfo('v1.0', 'h1')],
+    );
+    final cubit = GitGraphCubit(
+      history: history,
+      git: FakeGitForGraph(repoStatus()),
+      actions: actions,
+    );
+    addTearDown(cubit.close);
+    await cubit.setRepoRoot('/repo');
+
+    await tester.pumpWidget(
+      MaterialApp(
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
+        locale: const Locale('en'),
+        home: BlocProvider.value(
+          value: cubit,
+          child: Scaffold(
+            body: Center(
+              child: GitGraphRefsMenu(state: cubit.state, workspaceId: 'ws'),
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byIcon(Icons.account_tree_outlined));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('v1.0'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Checkout v1.0'));
+    await tester.pumpAndSettle();
+    expect(actions.calls.single, ['checkout-tag', 'v1.0']);
+
+    // 标签历史：走 branchFilter。
+    await tester.tap(find.byIcon(Icons.account_tree_outlined));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('v1.0'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text("View this tag's history"));
+    await tester.pumpAndSettle();
+    expect(cubit.state.branchFilter, 'v1.0');
   });
 
   Future<GitGraphCubit> _pumpRefsMenuWithCompare(

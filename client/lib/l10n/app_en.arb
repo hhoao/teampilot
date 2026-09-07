@@ -4328,6 +4328,16 @@
       }
     }
   },
+  "gitGraphDeleteRemoteBranchTitle": "Delete remote branch",
+  "gitGraphDeleteRemoteBranchConfirmBody": "Delete remote branch \"{name}\" on the shared repository? This affects all collaborators and cannot be undone.",
+  "@gitGraphDeleteRemoteBranchConfirmBody": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "gitGraphViewTagHistory": "View this tag's history",
   "gitGraphMergeIntoCurrent": "Merge {branch} into current branch",
   "@gitGraphMergeIntoCurrent": {
     "placeholders": {

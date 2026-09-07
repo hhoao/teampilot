@@ -8198,6 +8198,17 @@ class AppLocalizationsZh extends AppLocalizations {
   }
 
   @override
+  String get gitGraphDeleteRemoteBranchTitle => '删除远程分支';
+
+  @override
+  String gitGraphDeleteRemoteBranchConfirmBody(String name) {
+    return '确定删除共享仓库上的远程分支“$name”吗？这将影响所有协作者，且无法撤销。';
+  }
+
+  @override
+  String get gitGraphViewTagHistory => '查看此标签历史';
+
+  @override
   String gitGraphMergeIntoCurrent(String branch) {
     return '合并 $branch 到当前分支';
   }

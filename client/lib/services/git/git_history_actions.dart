@@ -46,6 +46,18 @@ class GitHistoryActions {
   Future<void> checkoutBranch(String dir, String name) =>
       _run(dir, ['checkout', name]);
 
+  /// 检出远程分支：在本地创建同名跟踪分支（`checkout -b x --track origin/x`）。
+  Future<void> checkoutRemoteBranch(String dir, String remote, String branch) =>
+      _run(dir, ['checkout', '-b', branch, '--track', '$remote/$branch']);
+
+  /// 检出标签（git 原生行为：分离 HEAD）。
+  Future<void> checkoutTag(String dir, String name) =>
+      _run(dir, ['checkout', name]);
+
+  /// 删除远程服务器上的分支（`push --delete` 会顺带清掉本地跟踪引用）。
+  Future<void> deleteRemoteBranch(String dir, String remote, String branch) =>
+      _run(dir, ['push', remote, '--delete', branch]);
+
   Future<void> checkoutCommit(String dir, String hash) =>
       _run(dir, ['checkout', hash]);
 

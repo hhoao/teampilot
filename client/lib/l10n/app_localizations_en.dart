@@ -8562,6 +8562,17 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
+  String get gitGraphDeleteRemoteBranchTitle => 'Delete remote branch';
+
+  @override
+  String gitGraphDeleteRemoteBranchConfirmBody(String name) {
+    return 'Delete remote branch \"$name\" on the shared repository? This affects all collaborators and cannot be undone.';
+  }
+
+  @override
+  String get gitGraphViewTagHistory => 'View this tag\'s history';
+
+  @override
   String gitGraphMergeIntoCurrent(String branch) {
     return 'Merge $branch into current branch';
   }

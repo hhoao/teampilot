@@ -15236,6 +15236,24 @@ abstract class AppLocalizations {
   /// **'Delete branch \"{name}\"? Commits only reachable from it may become unreachable. This cannot be undone.'**
   String gitGraphDeleteBranchConfirmBody(String name);
 
+  /// No description provided for @gitGraphDeleteRemoteBranchTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete remote branch'**
+  String get gitGraphDeleteRemoteBranchTitle;
+
+  /// No description provided for @gitGraphDeleteRemoteBranchConfirmBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete remote branch \"{name}\" on the shared repository? This affects all collaborators and cannot be undone.'**
+  String gitGraphDeleteRemoteBranchConfirmBody(String name);
+
+  /// No description provided for @gitGraphViewTagHistory.
+  ///
+  /// In en, this message translates to:
+  /// **'View this tag\'s history'**
+  String get gitGraphViewTagHistory;
+
   /// No description provided for @gitGraphMergeIntoCurrent.
   ///
   /// In en, this message translates to:

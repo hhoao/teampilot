@@ -78,4 +78,20 @@ void main() {
     await actions.stashDrop('/r', ref: 'stash@{0}');
     expect(fake.calls.last, ['stash', 'drop', 'stash@{0}']);
   });
+
+  test('checkoutRemoteBranch creates local tracking branch', () async {
+    await actions.checkoutRemoteBranch('/r', 'origin', 'feature-x');
+    expect(fake.calls.single,
+        ['checkout', '-b', 'feature-x', '--track', 'origin/feature-x']);
+  });
+
+  test('checkoutTag checks out the tag ref', () async {
+    await actions.checkoutTag('/r', 'v1.0');
+    expect(fake.calls.single, ['checkout', 'v1.0']);
+  });
+
+  test('deleteRemoteBranch pushes delete to the remote', () async {
+    await actions.deleteRemoteBranch('/r', 'origin', 'feature-x');
+    expect(fake.calls.single, ['push', 'origin', '--delete', 'feature-x']);
+  });
 }

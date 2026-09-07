@@ -167,6 +167,32 @@ class RecordingGraphActions implements GitHistoryActions {
   }
 
   @override
+  Future<void> checkoutRemoteBranch(
+    String dir,
+    String remote,
+    String branch,
+  ) async {
+    calls.add(['checkout-remote-branch', remote, branch]);
+    _maybeThrow();
+  }
+
+  @override
+  Future<void> checkoutTag(String dir, String name) async {
+    calls.add(['checkout-tag', name]);
+    _maybeThrow();
+  }
+
+  @override
+  Future<void> deleteRemoteBranch(
+    String dir,
+    String remote,
+    String branch,
+  ) async {
+    calls.add(['delete-remote-branch', remote, branch]);
+    _maybeThrow();
+  }
+
+  @override
   Future<void> mergeIntoCurrent(String dir, String refName) async {
     calls.add(['merge', refName]);
     _maybeThrow();

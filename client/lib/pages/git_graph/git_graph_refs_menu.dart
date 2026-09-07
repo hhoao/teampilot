@@ -23,8 +23,9 @@ class _RefEntry {
 }
 
 /// 分支 / 标签管理弹层：平铺列出本地分支、远程分支、标签三个分区，
-/// 选中条目再弹动作子菜单（本地：checkout / 查看此分支历史 / 重命名 / 删除；
-/// 远程：仅展示，checkout 暂不可用（v1）；标签：推送 / 删除）。写操作经
+/// 选中条目再弹动作子菜单（本地：checkout / 查看此分支历史 / 比较 / 重命名 /
+/// 删除；远程：checkout（创建本地跟踪分支）/ 历史 / 比较 / 删除（push
+/// --delete）；标签：检出 / 历史 / 推送 / 删除）。写操作经
 /// [GitGraphActionsController]。
 class GitGraphRefsMenu extends StatefulWidget {
   const GitGraphRefsMenu({
@@ -76,20 +77,41 @@ class _GitGraphRefsMenuState extends State<GitGraphRefsMenu> {
           destructive: true,
         ),
       ],
-      // v1 仅列出远程分支，checkout 暂不可用。
+      // 远程：checkout 创建本地跟踪分支，删除走 push --delete。
       _RefSection.remote => [
         TpActionMenuSpec.item(
+          value: 'checkout',
           icon: Icons.check_circle_outline,
           label: l10n.gitGraphCheckoutBranch(entry.name),
-          enabled: false,
+        ),
+        TpActionMenuSpec.item(
+          value: 'history',
+          icon: Icons.history,
+          label: l10n.gitGraphViewBranchHistory,
         ),
         TpActionMenuSpec.item(
           value: 'compare',
           icon: Icons.difference_outlined,
           label: l10n.gitGraphCompareWith,
         ),
+        TpActionMenuSpec.item(
+          value: 'delete',
+          icon: Icons.delete_outline,
+          label: l10n.gitGraphDeleteBranch(entry.name),
+          destructive: true,
+        ),
       ],
       _RefSection.tag => [
+        TpActionMenuSpec.item(
+          value: 'checkout',
+          icon: Icons.check_circle_outline,
+          label: l10n.gitGraphCheckoutBranch(entry.name),
+        ),
+        TpActionMenuSpec.item(
+          value: 'history',
+          icon: Icons.history,
+          label: l10n.gitGraphViewTagHistory,
+        ),
         TpActionMenuSpec.item(
           value: 'push',
           icon: Icons.cloud_upload_outlined,
@@ -119,7 +141,14 @@ class _GitGraphRefsMenuState extends State<GitGraphRefsMenu> {
     );
     switch (action) {
       case 'checkout':
-        await controller.checkoutBranch(entry.name);
+        switch (entry.section) {
+          case _RefSection.local:
+            await controller.checkoutBranch(entry.name);
+          case _RefSection.remote:
+            await controller.checkoutRemoteBranch(entry.name);
+          case _RefSection.tag:
+            await controller.checkoutTag(entry.name);
+        }
       case 'history':
         await context.read<GitGraphCubit>().setBranchFilter(entry.name);
       case 'rename':
@@ -244,20 +273,26 @@ class _GitGraphRefsMenuState extends State<GitGraphRefsMenu> {
     _RefEntry entry,
   ) async {
     final l10n = context.l10n;
-    final confirmed = await confirmDangerAction(
-      context,
-      title: entry.section == _RefSection.tag
-          ? l10n.gitGraphDeleteTagTitle
-          : l10n.gitGraphDeleteBranchTitle,
-      body: entry.section == _RefSection.tag
-          ? l10n.gitGraphDeleteTagConfirmBody(entry.name)
-          : l10n.gitGraphDeleteBranchConfirmBody(entry.name),
-    );
+    final (title, body) = switch (entry.section) {
+      _RefSection.tag => (l10n.gitGraphDeleteTagTitle, l10n.gitGraphDeleteTagConfirmBody(entry.name)),
+      _RefSection.remote => (
+        l10n.gitGraphDeleteRemoteBranchTitle,
+        l10n.gitGraphDeleteRemoteBranchConfirmBody(entry.name),
+      ),
+      _RefSection.local => (
+        l10n.gitGraphDeleteBranchTitle,
+        l10n.gitGraphDeleteBranchConfirmBody(entry.name),
+      ),
+    };
+    final confirmed = await confirmDangerAction(context, title: title, body: body);
     if (!confirmed || !mounted) return;
-    if (entry.section == _RefSection.tag) {
-      await controller.deleteTag(entry.name);
-    } else {
-      await controller.deleteBranch(entry.name);
+    switch (entry.section) {
+      case _RefSection.tag:
+        await controller.deleteTag(entry.name);
+      case _RefSection.remote:
+        await controller.deleteRemoteBranch(entry.name);
+      case _RefSection.local:
+        await controller.deleteBranch(entry.name);
     }
   }
 

@@ -28,6 +28,34 @@ class GitGraphActionsController {
   Future<bool> checkoutBranch(String name) =>
       _run(() => _actions.checkoutBranch(_dir, name));
 
+  /// [remoteBranch] 为完整短名（如 `origin/feature-x`）：首段是 remote，
+  /// 其余（可含 `/`，如 `feature/nested`）是远程分支名。
+  Future<bool> checkoutRemoteBranch(String remoteBranch) => _run(
+    () => _actions.checkoutRemoteBranch(
+      _dir,
+      _remoteOf(remoteBranch),
+      _branchAfterRemote(remoteBranch),
+    ),
+  );
+
+  Future<bool> checkoutTag(String name) =>
+      _run(() => _actions.checkoutTag(_dir, name));
+
+  /// 删除远程服务器上的分支（见 [GitHistoryActions.deleteRemoteBranch]）。
+  Future<bool> deleteRemoteBranch(String remoteBranch) => _run(
+    () => _actions.deleteRemoteBranch(
+      _dir,
+      _remoteOf(remoteBranch),
+      _branchAfterRemote(remoteBranch),
+    ),
+  );
+
+  static String _remoteOf(String remoteBranch) =>
+      remoteBranch.substring(0, remoteBranch.indexOf('/'));
+
+  static String _branchAfterRemote(String remoteBranch) =>
+      remoteBranch.substring(remoteBranch.indexOf('/') + 1);
+
   Future<bool> checkoutCommit(String hash) =>
       _run(() => _actions.checkoutCommit(_dir, hash));
 
