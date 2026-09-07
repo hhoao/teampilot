@@ -2251,6 +2251,12 @@ class AppLocalizationsEn extends AppLocalizations {
   String get closeAllTabs => 'Close All';
 
   @override
+  String get tabMenuSplitRight => 'Split Right';
+
+  @override
+  String get tabMenuSplitDown => 'Split Down';
+
+  @override
   String get session => 'Session';
 
   @override

@@ -3,7 +3,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../cubits/chat/model/chat_tab.dart';
 import '../../cubits/chat_cubit.dart';
-import '../../cubits/workbench/workbench_cubit.dart';
+import '../../cubits/workbench/tab_strip.dart';
 import '../../cubits/workbench/workbench_tab.dart';
 import '../../models/team_config.dart';
 import '../../models/workspace.dart';
@@ -13,17 +13,22 @@ import '../chat_workbench.dart';
 import 'diff_editor_surface.dart';
 import 'file_editor_surface.dart';
 
-/// Center workbench body: session / file / diff. Shell and run live floating.
+/// Center workbench body of ONE editor group: session / file / diff. Shell and
+/// run live floating.
 ///
-/// The landing (workspace start page) is owned by the workspace split pane,
-/// which swaps this body out for the compose surface while the center strip
-/// is in landing — a null active here can only be the same-frame transient
-/// of that swap and paints nothing.
+/// The active tab comes from the group's own [strip] — each split group hosts
+/// its own keep-alive session stack scoped to the session tabs it owns. The
+/// landing (workspace start page) is owned by the workspace split pane or the
+/// group host, which swap this body out for the compose surface while the
+/// group's strip is in landing — a null active here can only be the same-frame
+/// transient of that swap and paints nothing.
 class WorkbenchBody extends StatelessWidget {
   const WorkbenchBody({
     required this.workspaceId,
     required this.tabScopeId,
     required this.workspace,
+    required this.groupId,
+    required this.strip,
     required this.workbenchSlice,
     this.profileId,
     this.routeActive = true,
@@ -36,6 +41,13 @@ class WorkbenchBody extends StatelessWidget {
   final String workspaceId;
   final String tabScopeId;
   final Workspace workspace;
+
+  /// Owning split-group id (identity / diagnostics; tab state comes from
+  /// [strip]).
+  final String groupId;
+
+  /// This group's strip — the single source of the group's active tab.
+  final TabStrip strip;
   final ChatWorkbenchSlice workbenchSlice;
   final String? profileId;
   final bool routeActive;
@@ -45,9 +57,7 @@ class WorkbenchBody extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final active = context.select<WorkbenchCubit, WorkbenchTabId?>(
-      (c) => c.centerActiveId(workspaceId),
-    );
+    final active = strip.activeId;
     if (active == null) {
       return const SizedBox.shrink();
     }
@@ -75,6 +85,10 @@ class WorkbenchBody extends StatelessWidget {
             isPersonalContext: isPersonalContext,
             team: team,
             workbenchSlice: workbenchSlice,
+            sessionIds: [
+              for (final t in strip.order)
+                if (t.kind == WorkbenchTabKind.session) t.id,
+            ],
           )
         else if (active.kind == WorkbenchTabKind.file)
           FileEditorSurface(
@@ -93,10 +107,14 @@ class WorkbenchBody extends StatelessWidget {
   }
 }
 
-/// One [ChatWorkbench] per open session, kept alive inside a
+/// One [ChatWorkbench] per open session of THIS group, kept alive inside a
 /// [KeepAliveSessionStack]. Each host is scoped to its own session id (per-host
 /// [ChatWorkbenchSlice]) so switching conversations changes only the active
 /// index — no remount, no history reload.
+///
+/// The stack is scoped to the group's own session tabs ([sessionIds]): a tab
+/// lives in exactly one split group, so a session's host mounts in exactly one
+/// group's stack even when several groups render side by side.
 ///
 /// Each host is built once inside a [_SessionHostSlot] and cached: parent
 /// rebuilds (session added/removed elsewhere, member switches, route changes)
@@ -112,6 +130,7 @@ class _SessionKeepAliveHosts extends StatelessWidget {
     required this.isPersonalContext,
     required this.team,
     required this.workbenchSlice,
+    required this.sessionIds,
   });
 
   final String workspaceId;
@@ -122,6 +141,9 @@ class _SessionKeepAliveHosts extends StatelessWidget {
   final bool isPersonalContext;
   final TeamProfile? team;
   final ChatWorkbenchSlice workbenchSlice;
+
+  /// Session tab ids owned by this group's strip (strip order).
+  final List<String> sessionIds;
 
   @override
   Widget build(BuildContext context) {
@@ -135,7 +157,11 @@ class _SessionKeepAliveHosts extends StatelessWidget {
           .map((t) => '${t.info.id}:${t.selectedMemberId}:${t.info.launchError}')
           .join(',');
     });
-    final tabs = chat.tabStore.tabsForWorkspace(tabScopeId);
+    final groupSessions = sessionIds.toSet();
+    final tabs = chat.tabStore
+        .tabsForWorkspace(tabScopeId)
+        .where((t) => groupSessions.contains(t.info.id))
+        .toList(growable: false);
     final activeId = workbenchSlice.activeSessionId;
     return KeepAliveSessionStack(
       sessionIds: [for (final t in tabs) t.info.id],

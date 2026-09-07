@@ -466,8 +466,10 @@ class SplitGroupFocusFrame extends StatelessWidget {
       fit: StackFit.passthrough,
       children: [
         child,
-        IgnorePointer(
-          child: Positioned.fill(
+        Positioned.fill(
+          // Positioned must stay a direct child of the Stack; the
+          // ignore-pointer wrapper goes inside it.
+          child: IgnorePointer(
             child: DecoratedBox(
               decoration: BoxDecoration(
                 border: Border.fromBorderSide(

@@ -4064,6 +4064,18 @@ abstract class AppLocalizations {
   /// **'Close All'**
   String get closeAllTabs;
 
+  /// No description provided for @tabMenuSplitRight.
+  ///
+  /// In en, this message translates to:
+  /// **'Split Right'**
+  String get tabMenuSplitRight;
+
+  /// No description provided for @tabMenuSplitDown.
+  ///
+  /// In en, this message translates to:
+  /// **'Split Down'**
+  String get tabMenuSplitDown;
+
   /// No description provided for @session.
   ///
   /// In en, this message translates to:

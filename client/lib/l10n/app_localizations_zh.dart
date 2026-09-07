@@ -2144,6 +2144,12 @@ class AppLocalizationsZh extends AppLocalizations {
   String get closeAllTabs => '关闭全部';
 
   @override
+  String get tabMenuSplitRight => '向右拆分';
+
+  @override
+  String get tabMenuSplitDown => '向下拆分';
+
+  @override
   String get session => '会话';
 
   @override

@@ -42,6 +42,14 @@ class WorkspaceActiveContext {
   /// No session and no landing context — hide team chrome.
   static const idle = WorkspaceActiveContext(isPersonal: true);
 
+  /// Context for one concrete session — the per-editor-group variant of
+  /// [resolve]: split-group hosts resolve their own active session instead of
+  /// the (focused) strip's.
+  static WorkspaceActiveContext forSession(
+    AppSession session,
+    LaunchProfileCubit launchProfiles,
+  ) => _fromSession(session, launchProfiles, session.sessionId);
+
   static WorkspaceActiveContext _fromSession(
     AppSession session,
     LaunchProfileCubit launchProfiles,

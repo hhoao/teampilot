@@ -1067,6 +1067,8 @@
   "closeOtherTabs": "Close Others",
   "closeRightTabs": "Close to the Right",
   "closeAllTabs": "Close All",
+  "tabMenuSplitRight": "Split Right",
+  "tabMenuSplitDown": "Split Down",
   "session": "Session",
   "sessionPageSubtitle": "Configure shell session launch, terminal behavior, and storage backend.",
   "cliConfig": "CLI",

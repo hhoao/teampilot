@@ -5,75 +5,27 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:shared_ui/shared_ui.dart';
 import '../../widgets/app_toast/app_toast.dart';
 
-import '../../cubits/chat_cubit.dart';
 import '../../cubits/chat/model/chat_tab.dart';
-import '../../cubits/cli_presets_cubit.dart';
+import '../../cubits/chat_cubit.dart';
 import '../../cubits/editor_cubit.dart';
 import '../../cubits/launch_profile_cubit.dart';
 import '../../cubits/layout_cubit.dart';
 import '../../cubits/workbench/workbench_cubit.dart';
-import '../../cubits/workbench/workbench_tab.dart';
 import '../../l10n/l10n_extensions.dart';
-import '../../utils/workspace/workspace_chrome_profile.dart';
 import '../../models/team_config.dart';
-import '../../services/terminal/workspace_shell_connector.dart';
 import '../../services/terminal/workspace_terminal_registry.dart';
 import '../../services/terminal/workspace_terminal_title_resolver.dart';
-import '../../services/commands/command_ids.dart';
-import '../../services/commands/command_tooltip.dart';
-import '../../services/workbench/workbench_shell_actions.dart';
-import '../../services/workbench/workbench_shell_launcher.dart';
-import '../../services/workbench/workbench_tab_projection.dart';
-import '../../services/workspace/workspace_tools_scope.dart';
-import '../../utils/ui/app_keys.dart';
+import '../../services/workspace/workspace_pane_policy.dart';
 import '../../utils/debounce/debounce.dart';
+import '../../utils/ui/app_keys.dart';
 import '../../utils/workspace/workspace_active_context.dart';
-import '../../cubits/workspace_landing_context_cubit.dart';
-import '../../widgets/workspace_terminal/workspace_terminal_new_session_menu.dart';
 import '../../widgets/workspace_terminal_panel.dart';
-import '../workbench/workbench_body.dart';
-import '../workspace_shell/workspace_shell.dart';
+import '../../widgets/workbench/workbench_split_layout_view.dart';
+import '../../widgets/workbench/workbench_tab_drag.dart';
+import '../workbench/workbench_group_host.dart';
+import '../workspace_shell/workspace_shell_tabs.dart';
 import 'chat_page_structural_signal.dart';
-import 'chat_page_shell_probe.dart';
-import 'chat_workbench_slice.dart';
-import 'session_tab_cli.dart';
 import 'team_config_incomplete_dialog.dart';
-
-Future<void> _showStripNewTerminalMenu({
-  required BuildContext context,
-  required String workspaceId,
-  required String tabScopeId,
-  required String cwd,
-  required Offset anchor,
-}) async {
-  final trimmedCwd = cwd.trim();
-  if (trimmedCwd.isEmpty || !context.mounted) return;
-  final folders =
-      WorkspaceToolsScope.maybeOf(context)?.effectiveFolders ?? const [];
-  final connector = context.read<WorkspaceShellConnector>();
-  final launcher = context.read<WorkbenchShellLauncher>();
-  final sshFailed = context.l10n.workspaceTerminalSshConnectFailed;
-  await showWorkspaceTerminalLaunchMenu(
-    context: context,
-    globalPosition: anchor,
-    folders: folders,
-    connector: connector,
-    onSessionSelected: (spec, launchCwd) {
-      unawaited(
-        launcher.openAndSelect(
-          workspaceId: workspaceId,
-          tabScopeId: tabScopeId,
-          cwd: launchCwd ?? trimmedCwd,
-          spec: spec,
-          folders: folders,
-          sshConnectFailedMessage: sshFailed,
-          onStateChanged: () {},
-          mounted: () => context.mounted,
-        ),
-      );
-    },
-  );
-}
 
 class ChatPageShell extends StatelessWidget {
   const ChatPageShell({
@@ -101,11 +53,14 @@ class ChatPageShell extends StatelessWidget {
   Widget build(BuildContext context) {
     // Center-only: geometry (sidebar / right tools / bottom terminal) is owned
     // by `WorkspaceIdeShell` above this widget. `ChatPageShell` now renders just
-    // the center workbench column.
+    // the center workbench column: a recursive split view hosting one
+    // [WorkbenchGroupHost] (its own WorkspaceShell tab bar + body) per
+    // editor-group leaf of the center layout.
     return _chatLaunchListener(
       context,
       _ChatWorkspaceShell(
         cwd: cwd,
+        additionalPaths: additionalPaths,
         sessionId: sessionId,
         workspaceId: workspaceId,
         tabScopeId: tabScopeId,
@@ -119,6 +74,7 @@ class ChatPageShell extends StatelessWidget {
 class _ChatWorkspaceShell extends StatelessWidget {
   const _ChatWorkspaceShell({
     required this.cwd,
+    required this.additionalPaths,
     required this.sessionId,
     required this.workspaceId,
     required this.tabScopeId,
@@ -127,35 +83,14 @@ class _ChatWorkspaceShell extends StatelessWidget {
   });
 
   final String cwd;
+
+  /// Extra workspace folders for the multi-root file tree / source control.
+  final List<String> additionalPaths;
   final String? sessionId;
   final String workspaceId;
   final String tabScopeId;
   final bool routeActive;
   final WorkspaceTerminalHoldHandle? holdHandle;
-
-  String? _profileId(
-    BuildContext context, {
-    required bool isPersonalContext,
-    required TeamProfile? team,
-  }) {
-    try {
-      final ctx = context.read<WorkspaceLandingContextCubit>().state.context;
-      if (ctx.isPersonal) return kSimpleLaunchProfileId;
-      return ctx.teamId;
-    } on Object {
-      if (!isPersonalContext && team != null) return team.id;
-      final workspace = context
-          .read<ChatCubit>()
-          .state
-          .workspaces
-          .where((w) => w.workspaceId == workspaceId)
-          .firstOrNull;
-      if (workspace == null) return null;
-      final defaultId = workspace.defaultProfileId.trim();
-      if (defaultId.isNotEmpty) return defaultId;
-      return kSimpleLaunchProfileId;
-    }
-  }
 
   bool _scopedTabBuildWhen(
     WorkbenchCubit workbench,
@@ -187,25 +122,25 @@ class _ChatWorkspaceShell extends StatelessWidget {
       buildWhen: (previous, next) =>
           _scopedTabBuildWhen(workbench, cubit, previous, next),
       builder: (context, state) {
-        final active = WorkspaceActiveContext.resolve(
-          workbench: workbench,
-          chat: cubit,
-          launchProfiles: context.read<LaunchProfileCubit>(),
-          tabScopeId: tabScopeId,
-        );
-        final isPersonalContext = active.isPersonal;
-        final teamConfig = active.team;
-        final runtimeTabs = _runtimeTabsForScope(cubit, tabScopeId);
-        final tabById = {for (final t in runtimeTabs) t.info.id: t};
-        final personalFallbackCli = isPersonalContext
-            ? _personalPresetCli(context)
-            : null;
         final workspace = state.workspaces
             .where((w) => w.workspaceId == workspaceId)
             .firstOrNull;
         if (workspace == null) {
           return const SizedBox.shrink();
         }
+        final runtimeTabs = _runtimeTabsForScope(cubit, tabScopeId);
+        final shellGroup = context
+            .read<WorkspaceTerminalRegistry>()
+            .groupFor(tabScopeId);
+        final shellEntries = shellGroup.entries;
+        final shellTitles = {
+          for (final entry in shellEntries)
+            entry.id: WorkspaceTerminalTitleResolver.tabTitle(
+              entry: entry,
+              siblings: shellEntries,
+              baseLabel: entry.titleLabel.isEmpty ? '…' : entry.titleLabel,
+            ),
+        };
 
         return BlocBuilder<WorkbenchCubit, WorkbenchState>(
           buildWhen: (prev, next) =>
@@ -215,232 +150,77 @@ class _ChatWorkspaceShell extends StatelessWidget {
                 .select<EditorCubit, WorkspaceEditorBucket>(
                   (c) => c.state.bucket(workspaceId),
                 );
-            final workbenchCubit = context.read<WorkbenchCubit>();
-            final centerStrip = workbenchCubit.centerFocusedStrip(workspaceId);
-            final order = workbenchCubit.centerOrder(workspaceId);
-            final activeId = workbenchCubit.centerActiveId(workspaceId);
-            final sessionIds = [
-              for (final t in order)
-                if (t.kind == WorkbenchTabKind.session) t.id,
-            ];
-            const sessionTitles = <String, String>{};
-            const sessionWorking = <String, bool>{};
-            // Pinned state lives on the strip (TabStrip.pinnedIds); the
-            // persisted session pin (repo) is unioned in for sessions whose
-            // strip pin has not been seeded yet (fresh launch).
-            final persistedPinned = <WorkbenchTabId>{
-              for (final t in order)
-                if (t.kind == WorkbenchTabKind.session &&
-                    state.sessions
-                        .where((s) => s.sessionId == t.id)
-                        .any((s) => s.pinned))
-                  t,
-            };
-            final pinnedTabIds = centerStrip.pinnedIds.union(
-              persistedPinned,
-            );
-            final sessionCli = <String, CliTool?>{
-              for (final id in sessionIds)
-                id: () {
-                  final runtimeTab = tabById[id];
-                  if (runtimeTab == null) return null;
-                  return resolveSessionTabCli(
-                    tab: runtimeTab,
-                    sessions: state.sessions,
-                    isPersonal: isPersonalContext,
-                    team: teamConfig,
-                    personalFallbackCli: personalFallbackCli,
-                    globalPresets: context
-                        .read<CliPresetsCubit>()
-                        .state
-                        .presets,
-                  );
-                }(),
-            };
-            final shellGroup = context
-                .read<WorkspaceTerminalRegistry>()
-                .groupFor(tabScopeId);
-            final shellEntries = shellGroup.entries;
-            final shellTitles = {
-              for (final entry in shellEntries)
-                entry.id: WorkspaceTerminalTitleResolver.tabTitle(
-                  entry: entry,
-                  siblings: shellEntries,
-                  baseLabel: entry.titleLabel.isEmpty ? '…' : entry.titleLabel,
-                ),
-            };
-            final tabs = projectWorkbenchTabs(
-              tabOrder: order,
-              sessionTitles: sessionTitles,
-              sessionWorking: sessionWorking,
-              sessionCli: sessionCli,
-              pinnedTabIds: pinnedTabIds,
-              editorBucket: editorBucket,
-              previewTabIds: centerStrip.previewIds,
-              shellTitles: shellTitles,
-              sessionAccent: Theme.of(context).colorScheme.primary,
-            );
-            final activeTabIndex = activeId == null
-                ? -1
-                : order
-                      .indexOf(activeId)
-                      .clamp(0, tabs.isEmpty ? 0 : tabs.length - 1);
-
             final showTabBar = context.select<LayoutCubit, bool>(
               (c) => c.state.preferences.sessionTabBarVisible,
             );
-            return WorkspaceShell(
-              showHeader: false,
-              showTabBar: showTabBar,
-              breadcrumb: isPersonalContext
-                  ? 'Personal / Chat / Shell chat workbench'
-                  : '${teamConfig?.name ?? 'Team'} / Chat / Shell chat workbench',
-              title: 'Shell chat workbench',
-              subtitle: isPersonalContext
-                  ? 'personal workspace / shell wrapper mode'
-                  : 'target: ${teamConfig != null ? cubit.selectedMemberName(teamConfig) : 'team'} / shell wrapper mode',
-              showNewChatButton: tabs.isNotEmpty,
-              newChatTooltip: commandTooltip(
-                context,
-                context.l10n.workbenchStripNewMenuTooltip,
-                CommandIds.sessionNewTab,
-              ),
-              newConversationLabel: context.l10n.homeWorkspaceNewConversation,
-              newTerminalLabel: context.l10n.workspaceTerminalNewSession,
-              onNewConversation: routeActive
-                  ? () =>
-                        context.read<WorkbenchCubit>().enterLanding(workspaceId)
+            final layout = workbench.centerLayout(workspaceId);
+            final splitEnabled =
+                MediaQuery.widthOf(context) >=
+                WorkspacePanePolicy.narrowBreakpointWidth;
+
+            // Team chrome actions resolve from the focused group's context.
+            // Single group → rendered once above the split view; multi-group →
+            // duplicated into each group host's action row (VSCode-style).
+            final active = WorkspaceActiveContext.resolve(
+              workbench: workbench,
+              chat: cubit,
+              launchProfiles: context.read<LaunchProfileCubit>(),
+              tabScopeId: tabScopeId,
+            );
+            final singleGroup = layout.groups.length == 1;
+            final chatActions =
+                active.isPersonal || active.team == null
+                ? const <Widget>[]
+                : _chatActions(context, active.team!);
+
+            final splitView = WorkbenchSplitLayoutView(
+              layout: layout,
+              holdHandle: holdHandle,
+              splitEnabled: splitEnabled,
+              onResizeCommit: (path, fraction) => workbench
+                  .commitSplitResize(workspaceId, path: path, fraction: fraction),
+              onGroupFocused: routeActive
+                  ? (id) => workbench.focusGroup(workspaceId, id)
                   : null,
-              onNewTerminal: routeActive
-                  ? (anchor) => unawaited(
-                      _showStripNewTerminalMenu(
-                        context: context,
-                        workspaceId: workspaceId,
-                        tabScopeId: tabScopeId,
-                        cwd: cwd,
-                        anchor: anchor,
-                      ),
+              // Read the focused group inside the callback — the build-time
+              // layout would be a stale closure after any focus change.
+              onDividerDoubleTap: () => workbench.toggleMaximizeGroup(
+                workspaceId,
+                workbench.centerFocusedGroupId(workspaceId),
+              ),
+              groupBuilder: (context, groupId, strip) => WorkbenchGroupHost(
+                workspace: workspace,
+                workspaceId: workspaceId,
+                tabScopeId: tabScopeId,
+                cwd: cwd,
+                additionalPaths: additionalPaths,
+                groupId: groupId,
+                strip: strip,
+                focused:
+                    layout.focusedGroupId == groupId ||
+                    layout.maximizedGroupId == groupId,
+                routeActive: routeActive,
+                chatState: state,
+                runtimeTabs: runtimeTabs,
+                editorBucket: editorBucket,
+                shellTitles: shellTitles,
+                showTabBar: showTabBar,
+                splitEnabled: splitEnabled,
+                holdHandle: holdHandle,
+                sessionId: sessionId,
+                actions: singleGroup ? const [] : chatActions,
+              ),
+            );
+
+            return WorkbenchTabDragHost(
+              child: singleGroup && chatActions.isNotEmpty
+                  ? Column(
+                      children: [
+                        WorkspaceShellActionsBar(actions: chatActions),
+                        Expanded(child: splitView),
+                      ],
                     )
-                  : null,
-              tabs: tabs,
-              activeTabIndex: activeTabIndex,
-              onTabSelected: routeActive
-                  ? (index) {
-                      if (index < 0 || index >= order.length) return;
-                      unawaited(
-                        WorkbenchShellActions.select(
-                          context: context,
-                          workspaceId: workspaceId,
-                          tabScopeId: tabScopeId,
-                          tab: order[index],
-                        ),
-                      );
-                    }
-                  : null,
-              onTabClosed: routeActive
-                  ? (index) {
-                      if (index < 0 || index >= order.length) return;
-                      unawaited(
-                        WorkbenchShellActions.closeAt(
-                          context: context,
-                          workspaceId: workspaceId,
-                          tabScopeId: tabScopeId,
-                          tab: order[index],
-                        ),
-                      );
-                    }
-                  : null,
-              onTabCloseOthers: routeActive
-                  ? (index) {
-                      if (index < 0 || index >= order.length) return;
-                      unawaited(
-                        WorkbenchShellActions.closeOthers(
-                          context: context,
-                          workspaceId: workspaceId,
-                          tabScopeId: tabScopeId,
-                          keep: order[index],
-                        ),
-                      );
-                    }
-                  : null,
-              onTabCloseRight: routeActive
-                  ? (index) {
-                      if (index < 0 || index >= order.length) return;
-                      unawaited(
-                        WorkbenchShellActions.closeRight(
-                          context: context,
-                          workspaceId: workspaceId,
-                          tabScopeId: tabScopeId,
-                          anchor: order[index],
-                        ),
-                      );
-                    }
-                  : null,
-              onTabCloseAll: routeActive
-                  ? (index) {
-                      unawaited(
-                        WorkbenchShellActions.closeAll(
-                          context: context,
-                          workspaceId: workspaceId,
-                          tabScopeId: tabScopeId,
-                        ),
-                      );
-                    }
-                  : null,
-              onTabPin: routeActive
-                  ? (index) {
-                      if (index < 0 || index >= order.length) return;
-                      final sessionId = order[index].sessionId;
-                      if (sessionId == null) return;
-                      // Persist (repo) and runtime (strip) stores stay in
-                      // sync; the projection reads the strip union.
-                      unawaited(cubit.toggleSessionPin(sessionId));
-                      final tabId = WorkbenchTabId.session(sessionId);
-                      if (workbenchCubit
-                          .centerFocusedStrip(workspaceId)
-                          .pinnedIds
-                          .contains(tabId)) {
-                        workbenchCubit.unpin(workspaceId, tabId);
-                      } else {
-                        workbenchCubit.pin(workspaceId, tabId);
-                      }
-                    }
-                  : null,
-              onTabsReorder: routeActive
-                  ? (oldIndex, newIndex) {
-                      context.read<WorkbenchCubit>().reorder(
-                        workspaceId,
-                        oldIndex,
-                        newIndex,
-                      );
-                    }
-                  : null,
-              actions: isPersonalContext || teamConfig == null
-                  ? const []
-                  : _chatActions(context, teamConfig),
-              child: ChatPageStructuralBodyProbe(
-                key: chatPageStructuralBodyProbeKey,
-                child: WorkbenchBody(
-                  workspaceId: workspaceId,
-                  tabScopeId: tabScopeId,
-                  workspace: workspace,
-                  profileId: _profileId(
-                    context,
-                    isPersonalContext: isPersonalContext,
-                    team: teamConfig,
-                  ),
-                  routeActive: routeActive,
-                  sessionId: sessionId,
-                  isPersonalContext: isPersonalContext,
-                  team: teamConfig,
-                  workbenchSlice: ChatWorkbenchSlice.fromScope(
-                    state: state,
-                    activeSessionId: activeId?.sessionId,
-                    selectedMemberId:
-                        tabById[activeId?.sessionId]?.selectedMemberId ?? '',
-                  ),
-                ),
-              ),
+                  : splitView,
             );
           },
         );
@@ -494,11 +274,6 @@ List<ChatTab> _runtimeTabsForScope(ChatCubit cubit, String tabScopeId) {
     return cubit.tabStore.activeTabs;
   }
   return bucket;
-}
-
-CliTool? _personalPresetCli(BuildContext context) {
-  // Simple mode presets are session/landing-scoped, not identity-scoped.
-  return null;
 }
 
 Widget _chatLaunchListener(BuildContext context, Widget child) {

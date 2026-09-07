@@ -231,8 +231,14 @@ class _WorkspaceSplitPaneState extends State<WorkspaceSplitPane> {
           final cwd = wt.currentWorktreePath.isNotEmpty
               ? wt.currentWorktreePath
               : widget.workspace.firstFolderPath;
+          // The unbound landing swap is the single-group fast path: it skips
+          // ChatPageShell projection entirely. With split groups the center
+          // keeps rendering the split view and the landing group hosts its own
+          // compose pane (WorkbenchGroupHost).
           final composeLanding = context.select<WorkbenchCubit, bool>(
-            (w) => workspaceNewChatActive(w, widget.tabScopeId),
+            (w) =>
+                w.centerLayout(widget.tabScopeId).groups.length == 1 &&
+                w.centerLandingActive(widget.tabScopeId),
           );
           final landingInitialText = context.select<WorkbenchCubit, String?>(
             (w) => w.centerLandingInitialText(widget.tabScopeId),
