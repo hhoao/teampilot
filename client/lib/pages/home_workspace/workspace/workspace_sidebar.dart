@@ -48,10 +48,18 @@ import 'workspace_session_actions.dart';
 
 /// Navigates to workspace manage view for [workspace].
 void openWorkspaceManagementRoute(BuildContext context, Workspace workspace) {
-  try {
-    context.read<LayoutCubit>().closeMobileWorkspaceDrawer();
-  } on ProviderNotFoundException {
-    // Isolated tests may not mount [LayoutCubit].
+  // Closing the drawer is a narrow-only concern: there the manage entry lives
+  // inside the mobile drawer, so it must slide shut before manage takes over.
+  // On desktop `sidebarVisible` / `rightToolsVisible` are the persistent
+  // docked-pane intent — clearing them here would leave the sidebar hidden
+  // after leaving manage (user has to re-toggle it), so skip it when wide.
+  final isMobile = TpSidebarScope.maybeOf(context)?.isMobile ?? false;
+  if (isMobile) {
+    try {
+      context.read<LayoutCubit>().closeMobileWorkspaceDrawer();
+    } on ProviderNotFoundException {
+      // Isolated tests may not mount [LayoutCubit].
+    }
   }
   final location = GoRouterState.of(context).uri.toString();
   final routeProfile = HomeWorkspaceRoute.profile(location);
