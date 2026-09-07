@@ -11,6 +11,35 @@ FlutterWindow::FlutterWindow(const flutter::DartProject& project)
 
 FlutterWindow::~FlutterWindow() {}
 
+WNDPROC FlutterWindow::original_child_proc_ = nullptr;
+
+LRESULT CALLBACK FlutterWindow::ChildContentProc(HWND window,
+                                                 UINT const message,
+                                                 WPARAM const wparam,
+                                                 LPARAM const lparam) noexcept {
+  // Windows translates Alt+<letter> into WM_SYSCHAR (keyboard focus lives on
+  // this child window, so the runner's own WndProc never sees it). The Flutter
+  // engine passes sys-chars it does not consider handled to DefWindowProc,
+  // which plays the "Default Beep" for characters without a matching menu
+  // mnemonic - even when a Dart shortcut already fired on the chord
+  // (flutter/flutter#111554, #119251). Swallow the sys-char instead: shortcuts
+  // and terminal input are driven by WM_SYSKEYDOWN, which still flows through.
+  //
+  // Exceptions kept on the default path:
+  // - Alt+Space (system menu).
+  // - AltGr input (right Alt without left Alt, optionally with Ctrl): European
+  //   layouts deliver those characters through the sys-char message.
+  if (message == WM_SYSCHAR && wparam != VK_SPACE) {
+    const bool left_alt = (GetKeyState(VK_LMENU) & 0x8000) != 0;
+    const bool right_alt = (GetKeyState(VK_RMENU) & 0x8000) != 0;
+    if (left_alt && !right_alt) {
+      return 0;
+    }
+  }
+  return CallWindowProc(original_child_proc_, window, message, wparam,
+                        lparam);
+}
+
 bool FlutterWindow::OnCreate() {
   if (!Win32Window::OnCreate()) {
     return false;
@@ -28,6 +57,13 @@ bool FlutterWindow::OnCreate() {
   }
   RegisterPlugins(flutter_controller_->engine());
   SetChildContent(flutter_controller_->view()->GetNativeWindow());
+
+  // Intercept Alt+<letter> sys-chars on the Flutter view (see
+  // ChildContentProc) so app shortcuts like the floating-workspace toggle do
+  // not ring the Windows "Default Beep" on every press.
+  original_child_proc_ = reinterpret_cast<WNDPROC>(SetWindowLongPtr(
+      flutter_controller_->view()->GetNativeWindow(), GWLP_WNDPROC,
+      reinterpret_cast<LONG_PTR>(ChildContentProc)));
 
   // Overlay-mode boot splash: stack the splash over the Flutter view in THIS
   // window (instead of a separate top-level splash window). Dart fades it out
