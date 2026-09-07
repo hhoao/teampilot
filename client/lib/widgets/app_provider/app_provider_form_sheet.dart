@@ -671,7 +671,12 @@ class _AppProviderFormPageState extends State<AppProviderFormPage> {
       final backLink = managedProviderLinkSourceOf(
         entry.endpointConfig.credentialSource,
       );
-      if (backLink != null && backLink.providerId == ownId) continue;
+      // Ids are per-CLI catalogs: both cli and id must match for a cycle.
+      if (backLink != null &&
+          backLink.cli == widget.cli &&
+          backLink.providerId == ownId) {
+        continue;
+      }
       options.add((entry.id, entry.name));
     }
     return options;
