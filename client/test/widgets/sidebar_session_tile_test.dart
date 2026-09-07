@@ -926,7 +926,7 @@ void main() {
     expect(find.byKey(AppKeys.sidebarSessionWaitingMarker), findsNothing);
   });
 
-  testWidgets('tap while waiting activates Terminal and first waiting seat', (
+  testWidgets('tap while waiting selects first waiting seat, stays on Chat', (
     tester,
   ) async {
     final chatCubit = _RecordingChatCubit();
@@ -959,12 +959,11 @@ void main() {
 
     expect(activated, isTrue);
     expect(chatCubit.selectedMembers, ['seat-waiting']);
-    expect(chatCubit.workbenchViews, [
-      (_session.sessionId, SessionWorkbenchView.terminal),
-    ]);
+    // No forced Terminal switch — user answers AskUserQuestion cards in Chat.
+    expect(chatCubit.workbenchViews, isEmpty);
   });
 
-  testWidgets('cross-session waiting jump awaits open before seat/Terminal', (
+  testWidgets('cross-session waiting jump awaits open before seat select', (
     tester,
   ) async {
     final sessionB = AppSession(
@@ -1036,7 +1035,7 @@ void main() {
     await tester.tap(find.byType(SidebarSessionTile));
     await tester.pump();
 
-    // Still opening B — must not selectMember / switch Terminal on A yet.
+    // Still opening B — must not selectMember on A yet.
     expect(chatCubit.selectedMembers, isEmpty);
     expect(chatCubit.workbenchViews, isEmpty);
     expect(chatCubit.activeTab?.info.id, 'sess-a');
@@ -1048,14 +1047,12 @@ void main() {
     expect(chatCubit.activeTab?.info.id, sessionB.sessionId);
     expect(chatCubit.activeSessionAtSelectMember, [sessionB.sessionId]);
     expect(chatCubit.selectedMembers, ['seat-b']);
-    expect(chatCubit.workbenchViews, [
-      (sessionB.sessionId, SessionWorkbenchView.terminal),
-    ]);
+    // Stays on Chat/History — no forced Terminal switch.
+    expect(chatCubit.workbenchViews, isEmpty);
     expect(chatCubit.eventOrder, [
       'activate-start',
       'activate-done',
       'selectMember:seat-b',
-      'workbench:sess-b',
     ]);
   });
 

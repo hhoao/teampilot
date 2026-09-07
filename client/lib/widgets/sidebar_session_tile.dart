@@ -482,8 +482,10 @@ class _SidebarSessionTileState extends State<SidebarSessionTile> {
   bool get _showSessionActions => _hovered || _menuOpen || Platform.isAndroid;
 
   /// Activates the session via [SidebarSessionTile.onTap]; when needs-you,
-  /// awaits open first so [ChatCubit.selectMember] targets the opened tab,
-  /// then switches that session to Terminal.
+  /// awaits open first so [ChatCubit.selectMember] targets the opened tab and
+  /// selects the waiting seat. Stays on the Chat/History view so the user can
+  /// answer AskUserQuestion cards inline; the in-chat attention banner offers a
+  /// CTA to jump to Terminal when a real PTY confirmation is needed.
   Future<void> _onSessionTap() async {
     final sessionId = widget.session.sessionId;
     final waitingIds = context
@@ -493,9 +495,7 @@ class _SidebarSessionTileState extends State<SidebarSessionTile> {
     final open = widget.onTap();
     if (open is Future) await open;
     if (!mounted || waitingIds.isEmpty) return;
-    final chat = context.read<ChatCubit>();
-    chat.selectMember(waitingIds.first);
-    chat.setSessionWorkbenchView(sessionId, SessionWorkbenchView.terminal);
+    context.read<ChatCubit>().selectMember(waitingIds.first);
   }
 
   @override
