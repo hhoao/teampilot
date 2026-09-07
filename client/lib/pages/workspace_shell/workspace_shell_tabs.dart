@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 import 'package:shared_ui/shared_ui.dart';
 import '../../models/team_config.dart';
 
@@ -81,7 +82,14 @@ class WorkspaceShellRightToolsVisibilityToggle extends StatelessWidget {
             : state.preferences.rightToolsVisible;
         return TpIconButton(
           key: AppKeys.rightToolsVisibilityButton,
-          icon: Icons.vertical_split_outlined,
+          iconWidget: SvgPicture.asset(
+            'assets/icons/panel_right.svg',
+            width: context.tpIconSizes.md,
+            height: context.tpIconSizes.md,
+            theme: SvgTheme(
+              currentColor: visible ? cs.primary : cs.onSurfaceVariant,
+            ),
+          ),
           tooltip: commandTooltip(
             context,
             visible ? l10n.rightToolsPanelHidden : l10n.rightToolsPanelVisible,
@@ -117,14 +125,12 @@ class WorkspaceShellSidebarVisibilityToggle extends StatelessWidget {
             state.preferences.sidebarVisible && !state.narrowLeftSuppressed;
         return TpIconButton(
           key: AppKeys.sidebarVisibilityButton,
-          // Mirror of vertical_split_outlined (panel on the left) so the
-          // sidebar toggle matches the right-tools toggle's stroke weight.
-          iconWidget: Transform.flip(
-            flipX: true,
-            child: Icon(
-              Icons.vertical_split_outlined,
-              size: context.tpIconSizes.md,
-              color: effectiveOpen ? cs.primary : cs.onSurfaceVariant,
+          iconWidget: SvgPicture.asset(
+            'assets/icons/panel_left.svg',
+            width: context.tpIconSizes.md,
+            height: context.tpIconSizes.md,
+            theme: SvgTheme(
+              currentColor: effectiveOpen ? cs.primary : cs.onSurfaceVariant,
             ),
           ),
           tooltip: commandTooltip(
