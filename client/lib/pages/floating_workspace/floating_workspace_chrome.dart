@@ -7,6 +7,7 @@ import '../../cubits/floating_workspace/floating_workspace_state.dart';
 import '../../l10n/l10n_extensions.dart';
 import '../../services/commands/command_bus.dart';
 import '../../services/commands/command_ids.dart';
+import '../../services/commands/command_tooltip.dart';
 
 /// Maximize / minimize window controls for the floating panel chrome.
 ///
@@ -69,15 +70,23 @@ class FloatingWorkspaceChrome extends StatelessWidget {
                   ? Icons.filter_none
                   : Icons.crop_square_outlined,
               compact: true,
-              tooltip: maximized
-                  ? l10n.windowControlRestore
-                  : l10n.floatingWorkspaceMaximize,
+              tooltip: commandTooltip(
+                context,
+                maximized
+                    ? l10n.windowControlRestore
+                    : l10n.floatingWorkspaceMaximize,
+                CommandIds.floatingMaximize,
+              ),
               onTap: maximize,
             ),
             TpIconButton(
               icon: Icons.horizontal_rule,
               compact: true,
-              tooltip: l10n.floatingWorkspaceMinimize,
+              tooltip: commandTooltip(
+                context,
+                l10n.floatingWorkspaceMinimize,
+                CommandIds.floatingMinimize,
+              ),
               onTap: minimize,
             ),
           ],

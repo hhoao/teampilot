@@ -6,6 +6,8 @@ import '../../cubits/floating_workspace/floating_workspace_cubit.dart';
 import '../../cubits/floating_workspace/floating_workspace_state.dart';
 import '../../l10n/l10n_extensions.dart';
 import '../../theme/workspace_surface_layers.dart';
+import '../../services/commands/command_ids.dart';
+import '../../services/commands/command_tooltip.dart';
 import '../../services/floating_workspace/floating_workspace_toggle_metrics.dart';
 
 /// Idle / hover fill for the parked launcher (Orca accent hover).
@@ -113,7 +115,11 @@ class _FloatingWorkspaceToggleState extends State<FloatingWorkspaceToggle> {
             onTapCancel: () => setState(() => _pressed = false),
             onTap: cubit.toggle,
             child: Tooltip(
-              message: l10n.floatingWorkspaceToggleTooltip,
+              message: commandTooltip(
+                context,
+                l10n.floatingWorkspaceToggleTooltip,
+                CommandIds.floatingToggle,
+              ),
               child: MouseRegion(
                 cursor: _dragging
                     ? SystemMouseCursors.grabbing

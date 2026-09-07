@@ -19,6 +19,8 @@ import '../../models/team_config.dart';
 import '../../services/terminal/workspace_shell_connector.dart';
 import '../../services/terminal/workspace_terminal_registry.dart';
 import '../../services/terminal/workspace_terminal_title_resolver.dart';
+import '../../services/commands/command_ids.dart';
+import '../../services/commands/command_tooltip.dart';
 import '../../services/workbench/workbench_shell_actions.dart';
 import '../../services/workbench/workbench_shell_launcher.dart';
 import '../../services/workbench/workbench_tab_projection.dart';
@@ -297,7 +299,11 @@ class _ChatWorkspaceShell extends StatelessWidget {
                   ? 'personal workspace / shell wrapper mode'
                   : 'target: ${teamConfig != null ? cubit.selectedMemberName(teamConfig) : 'team'} / shell wrapper mode',
               showNewChatButton: tabs.isNotEmpty,
-              newChatTooltip: context.l10n.workbenchStripNewMenuTooltip,
+              newChatTooltip: commandTooltip(
+                context,
+                context.l10n.workbenchStripNewMenuTooltip,
+                CommandIds.sessionNewTab,
+              ),
               newConversationLabel: context.l10n.homeWorkspaceNewConversation,
               newTerminalLabel: context.l10n.workspaceTerminalNewSession,
               onNewConversation: routeActive
