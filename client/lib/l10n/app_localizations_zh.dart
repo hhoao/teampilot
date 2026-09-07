@@ -7173,6 +7173,21 @@ class AppLocalizationsZh extends AppLocalizations {
   String get shortcutsRunRestart => '重新运行';
 
   @override
+  String get shortcutsWorkbenchSplitRight => '向右拆分编辑组';
+
+  @override
+  String get shortcutsWorkbenchSplitDown => '向下拆分编辑组';
+
+  @override
+  String get shortcutsWorkbenchSplitReset => '重置编辑组布局';
+
+  @override
+  String get shortcutsWorkbenchFocusNextGroup => '聚焦下一个编辑组';
+
+  @override
+  String get shortcutsWorkbenchMoveTabToNextGroup => '将标签页移到下一个编辑组';
+
+  @override
   String get shortcutsCategoryRun => '运行';
 
   @override

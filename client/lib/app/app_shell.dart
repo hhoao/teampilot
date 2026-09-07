@@ -175,6 +175,7 @@ import '../services/commands/command_bus.dart';
 import '../services/commands/layout_command_registrar.dart';
 import '../services/commands/run_command_registrar.dart';
 import '../services/commands/session_command_registrar.dart';
+import '../services/commands/split_command_registrar.dart';
 import '../services/commands/shortcuts_ui_commands.dart';
 import '../services/commands/workspace_search_command_registrar.dart';
 import '../services/commands/workspace_content_search_command_registrar.dart';
@@ -2468,6 +2469,7 @@ Future<AppShell> buildAppShell({
       workbenchCubit,
       WorkbenchStripNavigator(workbench: workbenchCubit, chat: chatCubit),
     );
+    registerSplitCommands(commandBus, chatCubit, workbenchCubit);
 
     // P1: switching the home target persists the id, rebinds the home context,
     // then reinstalls + reloads all remote-backed app data (same chain the old

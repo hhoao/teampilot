@@ -78,4 +78,17 @@ void main() {
     expect(formatKeyChord(chord, isMacOS: true), '⇧⇧');
     expect(formatKeyChord(chord, isMacOS: false), 'Shift×2');
   });
+
+  test('backslash chord key maps both directions and activates', () {
+    final chord = KeyChord(key: '\\', mods: [KeyChordMod.mod]);
+    expect(
+      chord.toActivator(isMacOS: false),
+      isA<SingleActivator>()
+          .having((a) => a.control, 'control', isTrue)
+          .having((a) => a.trigger, 'trigger', LogicalKeyboardKey.backslash),
+    );
+    expect(chordKeyForLogicalKey(LogicalKeyboardKey.backslash), '\\');
+    expect(formatKeyChord(chord, isMacOS: false), r'Ctrl+\');
+    expect(formatKeyChord(chord, isMacOS: true), r'⌘\');
+  });
 }

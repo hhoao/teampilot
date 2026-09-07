@@ -7475,6 +7475,22 @@ class AppLocalizationsEn extends AppLocalizations {
   String get shortcutsRunRestart => 'Restart Run';
 
   @override
+  String get shortcutsWorkbenchSplitRight => 'Split Editor Right';
+
+  @override
+  String get shortcutsWorkbenchSplitDown => 'Split Editor Down';
+
+  @override
+  String get shortcutsWorkbenchSplitReset => 'Reset Editor Layout';
+
+  @override
+  String get shortcutsWorkbenchFocusNextGroup => 'Focus Next Editor Group';
+
+  @override
+  String get shortcutsWorkbenchMoveTabToNextGroup =>
+      'Move Tab to Next Editor Group';
+
+  @override
   String get shortcutsCategoryRun => 'Run';
 
   @override

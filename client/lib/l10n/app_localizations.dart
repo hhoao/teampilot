@@ -13298,6 +13298,36 @@ abstract class AppLocalizations {
   /// **'Restart Run'**
   String get shortcutsRunRestart;
 
+  /// No description provided for @shortcutsWorkbenchSplitRight.
+  ///
+  /// In en, this message translates to:
+  /// **'Split Editor Right'**
+  String get shortcutsWorkbenchSplitRight;
+
+  /// No description provided for @shortcutsWorkbenchSplitDown.
+  ///
+  /// In en, this message translates to:
+  /// **'Split Editor Down'**
+  String get shortcutsWorkbenchSplitDown;
+
+  /// No description provided for @shortcutsWorkbenchSplitReset.
+  ///
+  /// In en, this message translates to:
+  /// **'Reset Editor Layout'**
+  String get shortcutsWorkbenchSplitReset;
+
+  /// No description provided for @shortcutsWorkbenchFocusNextGroup.
+  ///
+  /// In en, this message translates to:
+  /// **'Focus Next Editor Group'**
+  String get shortcutsWorkbenchFocusNextGroup;
+
+  /// No description provided for @shortcutsWorkbenchMoveTabToNextGroup.
+  ///
+  /// In en, this message translates to:
+  /// **'Move Tab to Next Editor Group'**
+  String get shortcutsWorkbenchMoveTabToNextGroup;
+
   /// No description provided for @shortcutsCategoryRun.
   ///
   /// In en, this message translates to:

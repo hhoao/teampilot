@@ -173,6 +173,9 @@ LogicalKeyboardKey logicalKeyForChordKey(String key) {
     'digit9' => LogicalKeyboardKey.digit9,
     'enter' => LogicalKeyboardKey.enter,
     'slash' => LogicalKeyboardKey.slash,
+    // Bare '\' — the key string used by the split-editor defaults
+    // (`workbench.split.splitRight` / `splitDown`).
+    '\\' => LogicalKeyboardKey.backslash,
     'arrowLeft' => LogicalKeyboardKey.arrowLeft,
     'arrowRight' => LogicalKeyboardKey.arrowRight,
     'numpadAdd' => LogicalKeyboardKey.numpadAdd,
@@ -207,6 +210,7 @@ String chordKeyForLogicalKey(LogicalKeyboardKey logicalKey) {
     LogicalKeyboardKey.digit9 => 'digit9',
     LogicalKeyboardKey.enter => 'enter',
     LogicalKeyboardKey.slash => 'slash',
+    LogicalKeyboardKey.backslash => '\\',
     LogicalKeyboardKey.arrowLeft => 'arrowLeft',
     LogicalKeyboardKey.arrowRight => 'arrowRight',
     LogicalKeyboardKey.numpadAdd => 'numpadAdd',
