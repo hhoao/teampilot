@@ -217,6 +217,19 @@ class ChatCubit extends Cubit<ChatState>
   /// Fired when a session tab is torn down so History can dispose its seats.
   void Function(String sessionId)? onHistorySeatsDispose;
 
+  /// Session transcript scroll anchors (sessionId → pixel offset), used to
+  /// restore a chat transcript's reading position when its host remounts
+  /// (e.g. a tab moving between workbench split groups remounts the
+  /// ChatWorkbench; domain state lives in cubits/registries, only the scroll
+  /// position is lost).
+  ///
+  /// Deliberately a plain mutable map on the cubit and not part of
+  /// [ChatState]: this is view-transient restore data owned by the transcript
+  /// widget (write-on-dispose / read-on-init). Routing it through bloc state
+  /// would emit a full chat-UI rebuild on every position save for no
+  /// observable benefit. Memory only — never persisted to disk.
+  final Map<String, double> sessionScrollAnchors = {};
+
   /// Domain → workbench-bar handshake: fired after a new session tab surfaces
   /// so the bar can be fed (wired to [WorkbenchChatBridge.onSessionTabOpened]
   /// by the app shell after construction).
