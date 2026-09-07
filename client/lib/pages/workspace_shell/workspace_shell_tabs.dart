@@ -104,6 +104,7 @@ class WorkspaceShellSidebarVisibilityToggle extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final l10n = context.l10n;
+    final cs = Theme.of(context).colorScheme;
     context.select<ShortcutCubit, Map<String, List<KeyChord>>>(
       (c) => c.state.overrides,
     );
@@ -124,7 +125,8 @@ class WorkspaceShellSidebarVisibilityToggle extends StatelessWidget {
                 : l10n.sidebarPanelVisible,
             CommandIds.toggleSidebar,
           ),
-          selected: effectiveOpen,
+          color: effectiveOpen ? cs.primary : cs.onSurfaceVariant,
+          backgroundColor: Colors.transparent,
           onTap: () {
             final layout = context.read<LayoutCubit>();
             if (effectiveOpen) {
