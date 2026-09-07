@@ -113,16 +113,17 @@ class AppProviderRepository {
     bool importCredentialsFromGlobal = false,
     bool reconcileCredentials = true,
   }) async {
-    var providers = await _loadProvidersFromDisk(cli);
+    final providers = await _loadProvidersFromDisk(cli);
     if (!reconcileCredentials) {
       return _resolveLinkedCredentials(providers);
     }
-    final reconciled = await reconcileProviders(
+    // reconcileProviders already resolves linked credentials at its return;
+    // resolving here too would run the lookup twice per load.
+    return reconcileProviders(
       cli,
       providers,
       importCredentialsFromGlobal: importCredentialsFromGlobal,
     );
-    return _resolveLinkedCredentials(reconciled);
   }
 
   /// Re-runs credential reconciliation for providers already loaded from disk.
