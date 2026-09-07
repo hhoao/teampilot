@@ -1708,6 +1708,15 @@
   "baseUrl": "Base URL",
   "apiKey": "API Key",
   "appProviderApiKeyEditHint": "Leave blank to keep the existing key",
+  "appProviderCredentialLinkMode": "API key source",
+  "appProviderCredentialLinkOwnKey": "Use own API key",
+  "appProviderCredentialLinkedTo": "Using secret of {entry}",
+  "@appProviderCredentialLinkedTo": {
+    "placeholders": {
+      "entry": {}
+    }
+  },
+  "appProviderCredentialLinkEmpty": "No secret-backed balance entries yet",
   "reveal": "Reveal",
   "hide": "Hide",
   "replaceKey": "Replace key",

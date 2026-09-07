@@ -1534,6 +1534,15 @@
   "baseUrl": "基础 URL",
   "apiKey": "API 密钥",
   "appProviderApiKeyEditHint": "留空则保留原密钥",
+  "appProviderCredentialLinkMode": "API Key 来源",
+  "appProviderCredentialLinkOwnKey": "使用自己的 API Key",
+  "appProviderCredentialLinkedTo": "使用 {entry} 的密钥",
+  "@appProviderCredentialLinkedTo": {
+    "placeholders": {
+      "entry": {}
+    }
+  },
+  "appProviderCredentialLinkEmpty": "还没有存有密钥的余额条目",
   "reveal": "显示",
   "hide": "隐藏",
   "replaceKey": "替换密钥",

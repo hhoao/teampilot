@@ -3347,6 +3347,20 @@ class AppLocalizationsZh extends AppLocalizations {
   String get appProviderApiKeyEditHint => '留空则保留原密钥';
 
   @override
+  String get appProviderCredentialLinkMode => 'API Key 来源';
+
+  @override
+  String get appProviderCredentialLinkOwnKey => '使用自己的 API Key';
+
+  @override
+  String appProviderCredentialLinkedTo(Object entry) {
+    return '使用 $entry 的密钥';
+  }
+
+  @override
+  String get appProviderCredentialLinkEmpty => '还没有存有密钥的余额条目';
+
+  @override
   String get reveal => '显示';
 
   @override

@@ -6254,6 +6254,30 @@ abstract class AppLocalizations {
   /// **'Leave blank to keep the existing key'**
   String get appProviderApiKeyEditHint;
 
+  /// No description provided for @appProviderCredentialLinkMode.
+  ///
+  /// In en, this message translates to:
+  /// **'API key source'**
+  String get appProviderCredentialLinkMode;
+
+  /// No description provided for @appProviderCredentialLinkOwnKey.
+  ///
+  /// In en, this message translates to:
+  /// **'Use own API key'**
+  String get appProviderCredentialLinkOwnKey;
+
+  /// No description provided for @appProviderCredentialLinkedTo.
+  ///
+  /// In en, this message translates to:
+  /// **'Using secret of {entry}'**
+  String appProviderCredentialLinkedTo(Object entry);
+
+  /// No description provided for @appProviderCredentialLinkEmpty.
+  ///
+  /// In en, this message translates to:
+  /// **'No secret-backed balance entries yet'**
+  String get appProviderCredentialLinkEmpty;
+
   /// No description provided for @reveal.
   ///
   /// In en, this message translates to:

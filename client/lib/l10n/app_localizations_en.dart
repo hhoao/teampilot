@@ -3504,6 +3504,21 @@ class AppLocalizationsEn extends AppLocalizations {
       'Leave blank to keep the existing key';
 
   @override
+  String get appProviderCredentialLinkMode => 'API key source';
+
+  @override
+  String get appProviderCredentialLinkOwnKey => 'Use own API key';
+
+  @override
+  String appProviderCredentialLinkedTo(Object entry) {
+    return 'Using secret of $entry';
+  }
+
+  @override
+  String get appProviderCredentialLinkEmpty =>
+      'No secret-backed balance entries yet';
+
+  @override
   String get reveal => 'Reveal';
 
   @override
