@@ -968,10 +968,32 @@ Future<AppShell> buildAppShell({
     await launchUrl(uri, mode: LaunchMode.externalApplication);
   }
 
+  // Resolves a provider config's `credentialLink` to the linked managed
+  // entry's stored secret (spec: reverse direction). Secret-free failure: a
+  // missing entry or secret resolves to null, never throws.
+  final appProviderLinkedCredentialLookup = LinkedCredentialLookup((
+    managedProviderId,
+  ) async {
+    final entries = await resolvedManagedProviderRepository.load();
+    final entry = entries
+        .where((e) => e.id == managedProviderId)
+        .firstOrNull;
+    if (entry == null) return null;
+    final ref = entry.credentialRef?.trim();
+    if (ref == null || ref.isEmpty) return null;
+    final scope = await resolvedManagedProviderSecretStore.read(ref);
+    final field = entry.endpointConfig.credentialField ?? 'apiKey';
+    final value = scope.valueFor(field);
+    return (value == null || value.isEmpty) ? null : value;
+  });
+
   // Constructed before the managed-provider control plane so
   // ManagedProviderCubit can ensure dedicated per-entry CLI provider rows;
   // only needs sessionPreferencesCubit and openCredentialLoginUrl.
   appProviderCubit = AppProviderCubit(
+    repository: AppProviderRepository(
+      linkedCredentialLookup: appProviderLinkedCredentialLookup,
+    ),
     flashskyaiExecutablePath: sessionPreferencesCubit.resolveExecutable,
     openCredentialLoginUrl: openCredentialLoginUrl,
   );
