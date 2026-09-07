@@ -43,6 +43,7 @@ import '../services/agent_status/ask_user_answer_pending_store.dart';
 import '../services/agent_status/general_permission_request_gate.dart';
 import '../services/prompt_delivery/prompt_delivery_coordinator.dart';
 import 'agent_attention_cubit.dart';
+import 'seat_lease_cubit.dart';
 import '../services/launch/launch_factory.dart';
 import '../services/launch/session_connect_orchestrator.dart';
 import '../services/launch/workspace_provision_coordinator.dart';
@@ -127,6 +128,7 @@ class ChatCubit extends Cubit<ChatState>
     TeammateBusMcpGateway? teammateBusMcpGateway,
     AgentStatusSeatLookup? agentStatusSeatLookup,
     AgentAttentionCubit? agentAttentionCubit,
+    SeatLeaseCubit? seatLeaseCubit,
     AskUserAnswerPendingStore? askUserAnswerPendingStore,
     AskUserQuestionAnswerService? askUserQuestionAnswerService,
     GeneralPermissionRequestGate? generalPermissionGate,
@@ -152,6 +154,7 @@ class ChatCubit extends Cubit<ChatState>
            teammateBusMcpGateway ?? TeammateBusMcpGateway(),
        _agentStatusSeatLookup = agentStatusSeatLookup,
        _agentAttentionCubit = agentAttentionCubit,
+       _seatLeaseCubit = seatLeaseCubit,
        _askUserAnswerPendingStore = askUserAnswerPendingStore,
        _automationRepository = automationRepository,
        _layoutCubit = layoutCubit,
@@ -251,6 +254,7 @@ class ChatCubit extends Cubit<ChatState>
   final TeammateBusMcpGateway _teammateBusMcpGateway;
   final AgentStatusSeatLookup? _agentStatusSeatLookup;
   final AgentAttentionCubit? _agentAttentionCubit;
+  final SeatLeaseCubit? _seatLeaseCubit;
   final AskUserAnswerPendingStore? _askUserAnswerPendingStore;
   StreamSubscription<AgentAttentionState>? _agentAttentionSub;
   final AutomationRepository _automationRepository;
@@ -355,6 +359,12 @@ class ChatCubit extends Cubit<ChatState>
         },
         sessionBusyFromDeliveryInFlight: (sessionId) =>
             _operatorDeliveryInFlight.isInFlight(sessionId),
+        seatHasActiveLeases: (sessionId, memberId) =>
+            _seatLeaseCubit?.state.seatHasLeases(
+              sessionId: sessionId,
+              memberId: memberId,
+            ) ??
+            false,
         onAfterIdleWatchTick: () => unawaited(_onIdleWatchTick()),
         onAfterTurnLatched: _onOperatorTurnLatched,
         onUserActivity: _launchService.touchOnUserActivity,
@@ -746,6 +756,9 @@ class ChatCubit extends Cubit<ChatState>
 
   @override
   AgentAttentionCubit? get agentAttentionCubit => _agentAttentionCubit;
+
+  @override
+  SeatLeaseCubit? get seatLeaseCubit => _seatLeaseCubit;
 
   @override
   AskUserAnswerPendingStore? get askUserAnswerPendingStore =>
