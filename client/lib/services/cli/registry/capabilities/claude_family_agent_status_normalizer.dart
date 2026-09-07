@@ -3,6 +3,7 @@ import '../../../agent_status/agent_permission_request.dart';
 import '../../../agent_status/agent_status_event.dart';
 import '../../../agent_status/agent_status_tool_input.dart';
 import '../../../agent_status/ask_user_question.dart';
+import '../../../agent_status/background_task_latch.dart';
 import '../../../agent_status/exit_plan_mode.dart';
 
 /// Claude-family hook payload grammar — claude, flashskyai, and codex share
@@ -61,6 +62,12 @@ final class ClaudeFamilyAgentStatusNormalizer {
               )
             : null;
 
+    // Background shell task lease signals (see background_task_latch.dart).
+    final backgroundTaskStarted = isBackgroundTaskStart(body);
+    final taskNotification = backgroundTaskStarted
+        ? null
+        : taskNotificationToolUseId(prompt);
+
     AgentStatusEvent build(AgentSeatAttention state, {bool explicit = false}) =>
         AgentStatusEvent(
           state: state,
@@ -77,6 +84,8 @@ final class ClaudeFamilyAgentStatusNormalizer {
           planText: planText,
           planFilePath: planFilePath,
           permissionRequest: permissionRequest,
+          backgroundTaskStarted: backgroundTaskStarted,
+          taskNotificationToolUseId: taskNotification,
         );
 
     return switch (eventName) {

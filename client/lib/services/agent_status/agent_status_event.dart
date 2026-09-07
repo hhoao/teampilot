@@ -22,6 +22,8 @@ class AgentStatusEvent {
     this.planText,
     this.planFilePath,
     this.permissionRequest,
+    this.backgroundTaskStarted = false,
+    this.taskNotificationToolUseId,
   });
 
   final AgentSeatAttention state;
@@ -76,6 +78,15 @@ class AgentStatusEvent {
   /// rendering / allow-deny answering.
   final AgentPermissionRequest? permissionRequest;
 
+  /// Claude-family `PreToolUse` (Bash) with `run_in_background: true` —
+  /// the seat's CLI now hosts a background shell task (lease start).
+  final bool backgroundTaskStarted;
+
+  /// Claude-family `UserPromptSubmit` carrying a `<task-notification>` —
+  /// the `<tool-use-id>` of the background task that just finished (lease
+  /// release). Null for real user prompts.
+  final String? taskNotificationToolUseId;
+
   AgentStatusEvent copyWith({
     AgentSeatAttention? state,
     String? toolName,
@@ -94,6 +105,8 @@ class AgentStatusEvent {
     String? planText,
     String? planFilePath,
     AgentPermissionRequest? permissionRequest,
+    bool? backgroundTaskStarted,
+    String? taskNotificationToolUseId,
   }) => AgentStatusEvent(
     state: state ?? this.state,
     toolName: toolName ?? this.toolName,
@@ -112,6 +125,10 @@ class AgentStatusEvent {
     planText: planText ?? this.planText,
     planFilePath: planFilePath ?? this.planFilePath,
     permissionRequest: permissionRequest ?? this.permissionRequest,
+    backgroundTaskStarted:
+        backgroundTaskStarted ?? this.backgroundTaskStarted,
+    taskNotificationToolUseId:
+        taskNotificationToolUseId ?? this.taskNotificationToolUseId,
   );
 
   @override
@@ -134,7 +151,9 @@ class AgentStatusEvent {
           restoreAskWaiting == other.restoreAskWaiting &&
           planText == other.planText &&
           planFilePath == other.planFilePath &&
-          permissionRequest == other.permissionRequest;
+          permissionRequest == other.permissionRequest &&
+          backgroundTaskStarted == other.backgroundTaskStarted &&
+          taskNotificationToolUseId == other.taskNotificationToolUseId;
 
   @override
   int get hashCode => Object.hash(
@@ -155,6 +174,8 @@ class AgentStatusEvent {
     planText,
     planFilePath,
     permissionRequest,
+    backgroundTaskStarted,
+    taskNotificationToolUseId,
   );
 }
 
