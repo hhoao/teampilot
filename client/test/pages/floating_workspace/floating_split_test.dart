@@ -171,6 +171,37 @@ void main() {
     expect(find.text('One'), findsNothing);
   });
 
+  testWidgets('narrow panel hides title-bar split entries for a multi-tab '
+      'group', (tester) async {
+    final cubit = FloatingWorkspaceCubit();
+    final workbench = WorkbenchCubit();
+    addTearDown(cubit.close);
+    addTearDown(workbench.close);
+    final registry = FloatingSurfaceRegistry([_FakeSurface()]);
+    final insets = FloatingMaximizeInsets();
+    addTearDown(insets.dispose);
+
+    await tester.pumpWidget(
+      wrap(cubit: cubit, workbench: workbench, registry: registry, insets: insets),
+    );
+    cubit.ensureOpen();
+    cubit.setPanelPlacement(narrowPlacement);
+    cubit.setActiveWorkspace('ws');
+    // Two tabs in the focused group: the split entries would be eligible on a
+    // wide panel (multi-tab rule passes) — only the size threshold gates them.
+    workbench.openFloating('ws', WorkbenchTabId.shell('One'));
+    workbench.openFloating('ws', WorkbenchTabId.shell('Two'));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('Two'), buttons: kSecondaryButton);
+    await tester.pumpAndSettle();
+
+    // Menu opened, but split entries follow the panel's own size threshold.
+    expect(find.text('Close Others'), findsOneWidget);
+    expect(find.text('Split Right'), findsNothing);
+    expect(find.text('Split Down'), findsNothing);
+  });
+
   testWidgets('title-bar split menu splits the focused group down', (
     tester,
   ) async {
