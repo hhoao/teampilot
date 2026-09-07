@@ -117,7 +117,16 @@ class WorkspaceShellSidebarVisibilityToggle extends StatelessWidget {
             state.preferences.sidebarVisible && !state.narrowLeftSuppressed;
         return TpIconButton(
           key: AppKeys.sidebarVisibilityButton,
-          icon: Icons.view_sidebar_outlined,
+          // Mirror of vertical_split_outlined (panel on the left) so the
+          // sidebar toggle matches the right-tools toggle's stroke weight.
+          iconWidget: Transform.flip(
+            flipX: true,
+            child: Icon(
+              Icons.vertical_split_outlined,
+              size: context.tpIconSizes.md,
+              color: effectiveOpen ? cs.primary : cs.onSurfaceVariant,
+            ),
+          ),
           tooltip: commandTooltip(
             context,
             effectiveOpen
