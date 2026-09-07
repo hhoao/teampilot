@@ -948,6 +948,11 @@ Future<AppShell> buildAppShell({
         registry: resolvedManagedProviderUsageRegistry,
         credentials: ManagedProviderCredentialResolver(
           resolvedManagedProviderSecretStore,
+          // Live `provider:<cli>:<id>` credential sources read the app
+          // provider catalog; a dedicated repository instance avoids the
+          // (later-constructed) cubit's load-order dependency. Same disk,
+          // same cache-free reads.
+          appProviders: AppProviderRepository(),
         ),
         http: resolvedManagedProviderHttpClient!,
       );
