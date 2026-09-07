@@ -996,6 +996,7 @@ Future<AppShell> buildAppShell({
     ),
     flashskyaiExecutablePath: sessionPreferencesCubit.resolveExecutable,
     openCredentialLoginUrl: openCredentialLoginUrl,
+    managedProviderRepository: resolvedManagedProviderRepository,
   );
 
   // Reclaims dedicated CLI provider rows and their isolated HOME

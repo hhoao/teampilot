@@ -7,6 +7,7 @@ import '../models/managed_provider.dart';
 import '../repositories/managed_provider_repository.dart';
 import '../services/provider_usage/managed_provider_cli_binding.dart';
 import '../services/provider_usage/managed_provider_cli_row_janitor.dart';
+import '../services/provider_usage/managed_provider_link_binding.dart';
 import 'app_provider_cubit.dart';
 
 enum ManagedProviderLoadStatus { initial, loading, ready, error }
@@ -147,6 +148,32 @@ class ManagedProviderCubit extends Cubit<ManagedProviderState> {
       return;
     }
     final trimmed = provider.copyWith(id: provider.id.trim());
+    // Cycle guard: a managed entry must not link a provider config whose
+    // credentialLink points back at this entry (spec: credential sharing).
+    final link = managedProviderLinkSourceOf(
+      trimmed.endpointConfig.credentialSource,
+    );
+    if (link != null) {
+      final appCubit = _appProviderCubit;
+      if (appCubit != null) {
+        final row = appCubit.state
+            .providersFor(link.cli)
+            .where((p) => p.id == link.providerId)
+            .firstOrNull;
+        if (row != null && row.credentialLink.trim() == trimmed.id) {
+          if (!isClosed) {
+            emit(
+              state.copyWith(
+                status: ManagedProviderLoadStatus.error,
+                errorCode: ManagedProviderErrorCode.saveFailed,
+                errorMessage: null,
+              ),
+            );
+          }
+          return;
+        }
+      }
+    }
     final normalized = await _bindIntentSource(trimmed);
     await _serializeMutation(() async {
       await _repository.upsert(normalized);

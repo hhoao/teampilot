@@ -5,6 +5,7 @@ import '../models/app_provider_config.dart';
 import '../models/credential_action_result.dart';
 import '../models/llm_config.dart';
 import '../repositories/app_provider_repository.dart';
+import '../repositories/managed_provider_repository.dart';
 import '../services/storage/app_storage.dart';
 import '../services/provider/credential_binding.dart';
 import '../services/cli/registry/capabilities/provider_capability.dart';
@@ -12,6 +13,7 @@ import '../services/cli/registry/cli_tool_registry.dart';
 import '../services/provider/credential_login_progress.dart';
 import '../services/provider/provider_import_service.dart';
 import '../services/provider/tool_config_generator.dart';
+import '../services/provider_usage/managed_provider_link_binding.dart';
 import '../utils/logging/logger.dart';
 
 class AppProviderState extends Equatable {
@@ -104,11 +106,13 @@ class AppProviderCubit extends Cubit<AppProviderState> {
     ToolConfigGenerator? generator,
     String? basePath,
     Future<void> Function(Uri uri)? openCredentialLoginUrl,
+    ManagedProviderRepository? managedProviderRepository,
   }) : _repository = repository ?? AppProviderRepository(basePath: basePath),
        _generator = generator ?? const ToolConfigGenerator(),
        _flashskyaiExecutablePath = flashskyaiExecutablePath,
        _importService = importService,
        _openCredentialLoginUrl = openCredentialLoginUrl,
+       _managedProviderRepository = managedProviderRepository,
        super(const AppProviderState());
 
   final AppProviderRepository _repository;
@@ -116,6 +120,7 @@ class AppProviderCubit extends Cubit<AppProviderState> {
   final ProviderImportService? _importService;
   final String? Function()? _flashskyaiExecutablePath;
   final Future<void> Function(Uri uri)? _openCredentialLoginUrl;
+  final ManagedProviderRepository? _managedProviderRepository;
   static String _resolveBasePath(String? basePath) {
     if (basePath != null && basePath.trim().isNotEmpty) {
       return basePath.trim();
@@ -299,6 +304,23 @@ class AppProviderCubit extends Cubit<AppProviderState> {
     final cli = provider.cli;
     final trimmedId = provider.id.trim();
     if (trimmedId.isEmpty) return false;
+    // Cycle guard: a provider's credentialLink must not target a managed
+    // entry whose credential source links back at this provider (spec).
+    final link = provider.credentialLink.trim();
+    if (link.isNotEmpty) {
+      final managedRepo = _managedProviderRepository;
+      if (managedRepo != null) {
+        final entries = await managedRepo.load();
+        final entry = entries.where((e) => e.id == link).firstOrNull;
+        if (entry != null &&
+            managedProviderLinkSourceOf(
+                  entry.endpointConfig.credentialSource,
+                )?.providerId ==
+                trimmedId) {
+          return false;
+        }
+      }
+    }
     final current =
         state.providersByCli[cli] ?? await _repository.loadProviders(cli);
     final now = DateTime.now().toUtc().millisecondsSinceEpoch;

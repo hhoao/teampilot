@@ -4,6 +4,9 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/cubits/app_provider_cubit.dart';
 import 'package:teampilot/models/app_provider_config.dart';
 import 'package:teampilot/repositories/app_provider_repository.dart';
+import 'package:teampilot/models/managed_provider.dart';
+import 'package:teampilot/repositories/managed_provider_repository.dart';
+import 'package:teampilot/services/provider_usage/managed_provider_link_binding.dart';
 import 'package:teampilot/services/provider/credential_login_progress.dart';
 import 'package:teampilot/services/provider/provider_import_service.dart';
 
@@ -50,6 +53,57 @@ void main() {
     if (await temp.exists()) {
       await temp.delete(recursive: true);
     }
+  });
+
+  test('rejects a credentialLink that a managed entry links back to',
+      () async {
+    final managedRepo = ManagedProviderRepository(
+      configPath: '${temp.path}${Platform.pathSeparator}managed-providers.json',
+      onProvidersDeleted: (_) async {},
+    );
+    await managedRepo.upsert(
+      ManagedProvider(
+        id: 'm1',
+        name: 'M1',
+        kind: ManagedProviderKind.apiBalance,
+        adapterId: 'http-json',
+        endpointConfig: ManagedProviderEndpointConfig(
+          credentialSource:
+              managedProviderLinkSourceValue(CliTool.claude, 'deepseek'),
+        ),
+      ),
+    );
+    final guardedCubit = AppProviderCubit(
+      repository: repository,
+      basePath: temp.path,
+      managedProviderRepository: managedRepo,
+    );
+    addTearDown(guardedCubit.close);
+
+    final saved = await guardedCubit.upsertProvider(
+      const AppProviderConfig(
+        id: 'deepseek',
+        cli: CliTool.claude,
+        name: 'DeepSeek',
+        category: AppProviderCategory.thirdParty,
+        credentialLink: 'm1',
+      ),
+    );
+    expect(saved, isFalse);
+    expect(guardedCubit.state.providersFor(CliTool.claude), isEmpty);
+
+    // The same row without a conflicting managed entry persists fine.
+    final ok = await guardedCubit.upsertProvider(
+      const AppProviderConfig(
+        id: 'deepseek',
+        cli: CliTool.claude,
+        name: 'DeepSeek',
+        category: AppProviderCategory.thirdParty,
+      ),
+    );
+    expect(ok, isTrue);
+    expect(guardedCubit.state.providersFor(CliTool.claude), isNotEmpty);
+    await managedRepo.delete('m1');
   });
 
   test('importAllFromExternal imports every catalog CLI', () async {
