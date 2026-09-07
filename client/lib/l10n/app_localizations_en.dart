@@ -8226,9 +8226,6 @@ class AppLocalizationsEn extends AppLocalizations {
   String get managedProvidersCredentialLinkManual => 'Enter secret manually';
 
   @override
-  String get managedProvidersCredentialLinkPick => 'Reference provider config';
-
-  @override
   String managedProvidersCredentialLinkedTo(Object provider) {
     return 'Using credential of $provider';
   }

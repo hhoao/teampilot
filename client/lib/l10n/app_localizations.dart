@@ -14642,12 +14642,6 @@ abstract class AppLocalizations {
   /// **'Enter secret manually'**
   String get managedProvidersCredentialLinkManual;
 
-  /// No description provided for @managedProvidersCredentialLinkPick.
-  ///
-  /// In en, this message translates to:
-  /// **'Reference provider config'**
-  String get managedProvidersCredentialLinkPick;
-
   /// No description provided for @managedProvidersCredentialLinkedTo.
   ///
   /// In en, this message translates to:

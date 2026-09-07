@@ -3482,7 +3482,6 @@
   "managedProvidersCredentialSourceHelper": "secret 读表单；cli:… 读 CLI 登录。",
   "managedProvidersCredentialLinkMode": "凭据来源方式",
   "managedProvidersCredentialLinkManual": "手动输入密钥",
-  "managedProvidersCredentialLinkPick": "引用供应商配置",
   "managedProvidersCredentialLinkedTo": "使用 {provider} 的凭证",
   "@managedProvidersCredentialLinkedTo": {
     "placeholders": {

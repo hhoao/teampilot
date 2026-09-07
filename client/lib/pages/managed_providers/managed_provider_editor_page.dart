@@ -602,21 +602,31 @@ class _ManagedProviderEditorPageState extends State<ManagedProviderEditorPage> {
   Widget? _buildCredentialLinkModeSelector(BuildContext context) {
     if (!_canPickCredentialLinkMode) return null;
     final options = _credentialLinkOptions(context);
-    return TpSelect<String>(
-      key: const Key('managed-provider-credential-link'),
-      items: [for (final option in options) option.$1],
-      initialItem: _credentialLinkModeValue,
-      itemLabel: (value) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Text(
+          context.l10n.managedProvidersCredentialLinkMode,
+          style: TpTextStyles.of(context).smSemibold,
+        ),
+        const SizedBox(height: 6),
+        TpSelect<String>(
+          key: const Key('managed-provider-credential-link'),
+          items: [for (final option in options) option.$1],
+          initialItem: _credentialLinkModeValue,
+          itemLabel: (value) {
         for (final option in options) {
           if (option.$1 == value) return option.$2;
         }
         return value;
       },
-      onChanged: (value) {
-        if (value != null) _handleCredentialLinkModeChanged(value);
-      },
-      decoration: TpSelectDecorations.themed(context),
-      overlayHeight: kTpSelectDefaultOverlayHeight,
+          onChanged: (value) {
+            if (value != null) _handleCredentialLinkModeChanged(value);
+          },
+          decoration: TpSelectDecorations.themed(context),
+          overlayHeight: kTpSelectDefaultOverlayHeight,
+        ),
+      ],
     );
   }
 

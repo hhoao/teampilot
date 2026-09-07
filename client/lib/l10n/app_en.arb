@@ -4173,7 +4173,6 @@
   "managedProvidersCredentialSourceHelper": "secret reads the form; cli:… reads CLI login.",
   "managedProvidersCredentialLinkMode": "Credential source mode",
   "managedProvidersCredentialLinkManual": "Enter secret manually",
-  "managedProvidersCredentialLinkPick": "Reference provider config",
   "managedProvidersCredentialLinkedTo": "Using credential of {provider}",
   "@managedProvidersCredentialLinkedTo": {
     "placeholders": {

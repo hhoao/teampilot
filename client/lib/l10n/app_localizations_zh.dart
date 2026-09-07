@@ -7883,9 +7883,6 @@ class AppLocalizationsZh extends AppLocalizations {
   String get managedProvidersCredentialLinkManual => '手动输入密钥';
 
   @override
-  String get managedProvidersCredentialLinkPick => '引用供应商配置';
-
-  @override
   String managedProvidersCredentialLinkedTo(Object provider) {
     return '使用 $provider 的凭证';
   }
