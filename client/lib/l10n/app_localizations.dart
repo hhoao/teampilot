@@ -3728,6 +3728,12 @@ abstract class AppLocalizations {
   /// **'Remove directory'**
   String get removeWorkspaceDirectory;
 
+  /// No description provided for @removeWorkspaceMachine.
+  ///
+  /// In en, this message translates to:
+  /// **'Remove machine'**
+  String get removeWorkspaceMachine;
+
   /// No description provided for @workspaceDisplayName.
   ///
   /// In en, this message translates to:

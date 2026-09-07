@@ -240,6 +240,30 @@ class _WorkspaceFoldersEditorState extends State<WorkspaceFoldersEditor> {
     _emit([..._folders, WorkspaceFolder(path: trimmed, targetId: targetId)]);
   }
 
+  /// Removes a single directory row. Refuses to drop the last remaining folder
+  /// so the workspace always keeps a primary directory.
+  void _removeFolderAt(int index) {
+    if (!widget.enabled) return;
+    if (_folders.length <= 1) return;
+    final next = [..._folders]..removeAt(index);
+    _emit(next);
+  }
+
+  /// Removes every directory pinned to [targetId]. Refuses if it would empty
+  /// the workspace (i.e. no folders remain on any other machine).
+  void _removeTarget(String targetId) {
+    if (!widget.enabled) return;
+    final next = _folders.where((f) => f.targetId != targetId).toList();
+    if (next.isEmpty) return;
+    _emit(next);
+  }
+
+  /// Whether removal controls should be offered given the current folder count.
+  bool get _canRemoveFolder => _folders.length > 1;
+
+  bool _canRemoveTarget(String targetId) =>
+      _folders.any((f) => f.targetId != targetId);
+
   List<RuntimeTarget> _unusedTargetCandidates(List<RuntimeTarget> targets) {
     final used = workspaceTargetIds(_folders).toSet();
     return targets.where((t) => !used.contains(t.id)).toList(growable: false);
@@ -338,6 +362,8 @@ class _WorkspaceFoldersEditorState extends State<WorkspaceFoldersEditor> {
                 onAddDirectory: () => _addFolderOnTarget(groups.first.targetId),
                 onPickPath: _pickPath,
                 onPickTargetForRow: _pickTargetForRow,
+                onRemoveRow: _canRemoveFolder ? _removeFolderAt : null,
+                onRemoveTarget: null,
                 emptyHint: l10n.homeWorkspaceNewWorkspaceDirectoryHint,
               )
             else
@@ -366,6 +392,10 @@ class _WorkspaceFoldersEditorState extends State<WorkspaceFoldersEditor> {
                     onAddDirectory: () => _addFolderOnTarget(group.targetId),
                     onPickPath: _pickPath,
                     onPickTargetForRow: _pickTargetForRow,
+                    onRemoveRow: _canRemoveFolder ? _removeFolderAt : null,
+                    onRemoveTarget: _canRemoveTarget(group.targetId)
+                        ? () => _removeTarget(group.targetId)
+                        : null,
                   ),
                 ),
           ],
@@ -391,6 +421,8 @@ class _MachineFolderCard extends StatelessWidget {
     required this.onPickTargetForRow,
     required this.targetEditable,
     required this.onPickTargetForGroup,
+    required this.onRemoveRow,
+    required this.onRemoveTarget,
     this.emptyHint,
   });
 
@@ -408,6 +440,14 @@ class _MachineFolderCard extends StatelessWidget {
   final ValueChanged<int> onPickTargetForRow;
   final bool targetEditable;
   final VoidCallback onPickTargetForGroup;
+
+  /// Removes a single directory row by folder index. Null hides the control
+  /// (e.g. when only one directory remains in the workspace).
+  final ValueChanged<int>? onRemoveRow;
+
+  /// Removes every directory on this machine. Null hides the control (e.g. when
+  /// this is the only machine left).
+  final VoidCallback? onRemoveTarget;
   final String? emptyHint;
 
   @override
@@ -482,6 +522,15 @@ class _MachineFolderCard extends StatelessWidget {
                     ),
                     label: Text(l10n.addWorkspaceDirectory),
                   ),
+                if (enabled && onRemoveTarget != null)
+                  TpIconButton(
+                    icon: Icons.delete_outline_rounded,
+                    onTap: onRemoveTarget,
+                    size: TpIconButton.kCompactSize,
+                    compact: true,
+                    tooltip: l10n.removeWorkspaceMachine,
+                    color: cs.onSurfaceVariant,
+                  ),
               ],
             ),
             if (showEmptyHint)
@@ -510,6 +559,9 @@ class _MachineFolderCard extends StatelessWidget {
                             : null,
                         onPickTarget: enabled && allowRowTargetChange
                             ? () => onPickTargetForRow(entry.index)
+                            : null,
+                        onRemove: enabled && onRemoveRow != null
+                            ? () => onRemoveRow!(entry.index)
                             : null,
                       ),
                   ],

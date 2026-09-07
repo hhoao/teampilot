@@ -1972,6 +1972,9 @@ class AppLocalizationsZh extends AppLocalizations {
   String get removeWorkspaceDirectory => '移除目录';
 
   @override
+  String get removeWorkspaceMachine => '移除机器';
+
+  @override
   String get workspaceDisplayName => '显示名称';
 
   @override

@@ -997,6 +997,7 @@
   "workspaceDetails": "Workspace details",
   "addWorkspaceDirectory": "Add directory",
   "removeWorkspaceDirectory": "Remove directory",
+  "removeWorkspaceMachine": "Remove machine",
   "workspaceDisplayName": "Display name",
   "workspaceIcon": "Icon",
   "workspaceIconPickerTitle": "Choose workspace icon",

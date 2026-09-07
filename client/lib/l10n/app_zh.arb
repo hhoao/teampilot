@@ -919,6 +919,7 @@
   "workspaceDetails": "工作区详情",
   "addWorkspaceDirectory": "添加目录",
   "removeWorkspaceDirectory": "移除目录",
+  "removeWorkspaceMachine": "移除机器",
   "workspaceDisplayName": "显示名称",
   "workspaceIcon": "图标",
   "workspaceIconPickerTitle": "选择工作区图标",

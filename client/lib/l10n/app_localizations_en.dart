@@ -2074,6 +2074,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get removeWorkspaceDirectory => 'Remove directory';
 
   @override
+  String get removeWorkspaceMachine => 'Remove machine';
+
+  @override
   String get workspaceDisplayName => 'Display name';
 
   @override
