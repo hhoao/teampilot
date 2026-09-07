@@ -399,10 +399,13 @@ class _RunningSessionsHost extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final openTabIds = context.select<WorkbenchCubit, OpenSessionTabIds>(
-      (c) => OpenSessionTabIds.fromCenterBarOrder(
-        c.state.bar(tabScopeId).center.order,
-        previewIds: c.state.bar(tabScopeId).center.previewIds,
-      ),
+      (c) {
+        final strip = c.centerFocusedStrip(tabScopeId);
+        return OpenSessionTabIds.fromCenterBarOrder(
+          strip.order,
+          previewIds: strip.previewIds,
+        );
+      },
     );
     final running = context.select<ChatCubit, RunningSessionIds>(
       (c) => RunningSessionIds.fromOpenSessionTabs(

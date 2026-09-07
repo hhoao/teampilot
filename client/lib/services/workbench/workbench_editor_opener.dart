@@ -71,7 +71,7 @@ class WorkbenchEditorOpener {
   /// Promotes the current floating preview tab when its file is dirty, so
   /// the reducer never replaces a tab with unsaved content.
   void _promoteDirtyFloatingPreview(String workspaceId) {
-    final strip = _workbench.state.bar(workspaceId).floating;
+    final strip = _workbench.mergedFloatingStrip(workspaceId);
     for (final id in strip.previewIds) {
       final path = id.filePath;
       if (path != null && _editor.state.bucket(workspaceId).isDirty(path)) {

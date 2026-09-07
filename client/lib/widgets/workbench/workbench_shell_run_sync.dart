@@ -182,7 +182,7 @@ class _WorkbenchShellRunSyncState extends State<WorkbenchShellRunSync> {
       unawaited(workbench.close(widget.workspaceId, tab));
     }
 
-    final floatingStrip = workbench.state.bar(widget.workspaceId).floating;
+    final floatingStrip = workbench.mergedFloatingStrip(widget.workspaceId);
     final existingFloatingRunIds = _existingFloatingRunSessionIds(
       floatingStrip.order,
     );

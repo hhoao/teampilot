@@ -58,10 +58,7 @@ void main() {
 
     // Must stay POSIX even on Windows hosts (SSH / in-memory roots).
     expect(
-      workbench.state
-          .bar('ws')
-          .floating
-          .order
+      workbench.mergedFloatingStrip('ws').order
           .any(
             (t) => t.kind == WorkbenchTabKind.file && t.id == '/repo/docs/b.md',
           ),
@@ -99,7 +96,7 @@ void main() {
       ),
     );
 
-    expect(workbench.state.bar('ws').floating.order, isEmpty);
+    expect(workbench.mergedFloatingStrip('ws').order, isEmpty);
     expect(editor.state.bucket('ws').openFilePaths, isEmpty);
   });
 

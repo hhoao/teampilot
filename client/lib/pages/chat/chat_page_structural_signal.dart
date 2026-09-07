@@ -58,9 +58,8 @@ ChatPageStructuralSignal chatPageStructuralSignal({
   required WorkbenchCubit workbench,
   required String tabScopeId,
 }) {
-  final bar = workbench.state.bar(tabScopeId);
-  final order = bar.center.order;
-  final activeId = bar.center.activeId;
+  final order = workbench.centerOrder(tabScopeId);
+  final activeId = workbench.centerActiveId(tabScopeId);
   final tabIds = [
     for (final t in order)
       if (t.kind == WorkbenchTabKind.session) t.id,
@@ -72,7 +71,7 @@ ChatPageStructuralSignal chatPageStructuralSignal({
   return ChatPageStructuralSignal(
     tabIds: tabIds,
     activeTabIndex: activeId == null ? -1 : order.indexOf(activeId),
-    newChatActive: bar.center.landingActive,
+    newChatActive: workbench.centerLandingActive(tabScopeId),
     selectedMemberId: activeTab?.selectedMemberId ?? '',
     memberSelectionVersion: state.memberSelectionVersion,
     sessionLaunchError: isForeground

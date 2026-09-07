@@ -354,11 +354,11 @@ void main() {
       );
     });
 
-    final bar = workbench.state.bar(workspace.workspaceId);
-    expect(bar.center.activeId, isNull);
-    expect(bar.center.order, [WorkbenchTabId.session('existing')]);
-    expect(bar.center.landingInitialText, '审查并继续完成该会话: $expectedSessionPath');
-    expect(bar.center.landingReferenceSessionId, session.sessionId);
+    final center = workbench.centerFocusedStrip(workspace.workspaceId);
+    expect(center.activeId, isNull);
+    expect(center.order, [WorkbenchTabId.session('existing')]);
+    expect(center.landingInitialText, '审查并继续完成该会话: $expectedSessionPath');
+    expect(center.landingReferenceSessionId, session.sessionId);
   });
 
   testWidgets('referenceWorkspaceSession reports storage failures', (
@@ -479,21 +479,18 @@ void main() {
         ),
       );
       expect(
-        workbench.state.bar(workspace.workspaceId).center.landingInitialText,
+        workbench.centerLandingInitialText(workspace.workspaceId),
         isNotNull,
       );
 
       await tester.runAsync(() => chat.deleteSession(repo, session.sessionId));
 
       expect(
-        workbench.state.bar(workspace.workspaceId).center.landingInitialText,
+        workbench.centerLandingInitialText(workspace.workspaceId),
         isNull,
       );
       expect(
-        workbench.state
-            .bar(workspace.workspaceId)
-            .center
-            .landingReferenceSessionId,
+        workbench.centerLandingReferenceSessionId(workspace.workspaceId),
         isNull,
       );
     },

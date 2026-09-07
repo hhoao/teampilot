@@ -235,21 +235,15 @@ class _WorkspaceSplitPaneState extends State<WorkspaceSplitPane> {
             (w) => workspaceNewChatActive(w, widget.tabScopeId),
           );
           final landingInitialText = context.select<WorkbenchCubit, String?>(
-            (w) => w.state.bar(widget.tabScopeId).center.landingInitialText,
+            (w) => w.centerLandingInitialText(widget.tabScopeId),
           );
           final landingInitialTextRevision = context
               .select<WorkbenchCubit, int>(
-                (w) => w.state
-                    .bar(widget.tabScopeId)
-                    .center
-                    .landingInitialTextRevision,
+                (w) => w.centerLandingInitialTextRevision(widget.tabScopeId),
               );
           final landingReferenceSessionId = context
               .select<WorkbenchCubit, String?>(
-                (w) => w.state
-                    .bar(widget.tabScopeId)
-                    .center
-                    .landingReferenceSessionId,
+                (w) => w.centerLandingReferenceSessionId(widget.tabScopeId),
               );
           return WorkspaceToolsScopeSync(
             workspace: widget.workspace,

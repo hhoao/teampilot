@@ -1,6 +1,8 @@
 // test/cubits/workbench/workbench_cubit_test.dart
+import 'package:flutter/widgets.dart' show Axis;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/cubits/workbench/workbench_cubit.dart';
+import 'package:teampilot/cubits/workbench/workbench_split_layout.dart';
 import 'package:teampilot/cubits/workbench/workbench_tab.dart';
 
 const _ws = 'ws';
@@ -17,18 +19,14 @@ void main() {
   group('openSession', () {
     test('adds and activates a new session tab', () {
       cubit.openSession(_ws, 's1');
-      final bar = cubit.state.bar(_ws);
-      expect(bar.center.order, [_s1]);
-      expect(bar.center.activeId, _s1);
+      expect(cubit.centerOrder(_ws), [_s1]);
+      expect(cubit.centerActiveId(_ws), _s1);
     });
 
     test('does not duplicate when opened twice', () {
       cubit.openSession(_ws, 's1');
       cubit.openSession(_ws, 's1');
-      expect(
-        cubit.state.bar(_ws).center.order.where((t) => t == _s1).length,
-        1,
-      );
+      expect(cubit.centerOrder(_ws).where((t) => t == _s1).length, 1);
     });
   });
 
@@ -38,7 +36,7 @@ void main() {
       cubit.openSession(_ws, 's2');
       final removed = await cubit.close(_ws, _s1);
       expect(removed, _s1);
-      final order = cubit.state.bar(_ws).center.order;
+      final order = cubit.centerOrder(_ws);
       expect(order, [_s2]);
       expect(order.contains(_s1), isFalse);
     });
@@ -50,7 +48,7 @@ void main() {
         cubit.openSession(_ws, 's2');
         await cubit.close(_ws, _s1);
         cubit.openSession(_ws, 's1'); // explicit re-open
-        expect(cubit.state.bar(_ws).center.order, [_s2, _s1]);
+        expect(cubit.centerOrder(_ws), [_s2, _s1]);
       },
     );
 
@@ -61,7 +59,7 @@ void main() {
 
       await cubit.close(_ws, _s1);
 
-      final center = cubit.state.bar(_ws).center;
+      final center = cubit.centerFocusedStrip(_ws);
       expect(center.order, isEmpty);
       expect(center.landingInitialText, isNull);
     });
@@ -71,8 +69,8 @@ void main() {
     test('buckets are independent per workspace', () {
       cubit.openSession(_ws, 's1');
       cubit.openSession('other', 's2');
-      expect(cubit.state.bar(_ws).center.order, [_s1]);
-      expect(cubit.state.bar('other').center.order, [_s2]);
+      expect(cubit.centerOrder(_ws), [_s1]);
+      expect(cubit.centerOrder('other'), [_s2]);
     });
   });
 
@@ -81,7 +79,7 @@ void main() {
       cubit.openSession(_ws, 's1');
       cubit.openSession(_ws, 's2');
       cubit.reorder(_ws, 0, 1);
-      expect(cubit.state.bar(_ws).center.order, [_s2, _s1]);
+      expect(cubit.centerOrder(_ws), [_s2, _s1]);
     });
 
     test('clamps newIndex == order.length (no crash, order kept)', () {
@@ -90,7 +88,7 @@ void main() {
       // ReorderableListView may pass newIndex == itemCount when dragging to
       // the end; the cubit must not crash or mutate the order.
       cubit.reorder(_ws, 0, 2);
-      expect(cubit.state.bar(_ws).center.order, [_s1, _s2]);
+      expect(cubit.centerOrder(_ws), [_s1, _s2]);
     });
   });
 
@@ -101,7 +99,7 @@ void main() {
       cubit.openSession(_ws, 's3');
       final removed = cubit.closeOthers(_ws, _s2);
       expect(removed, [_s1, _s3]);
-      expect(cubit.state.bar(_ws).center.order, [_s2]);
+      expect(cubit.centerOrder(_ws), [_s2]);
     });
 
     test('closeOthers clears Landing prefill when a file remains', () {
@@ -112,7 +110,7 @@ void main() {
 
       cubit.closeOthers(_ws, _f);
 
-      final center = cubit.state.bar(_ws).center;
+      final center = cubit.centerFocusedStrip(_ws);
       expect(center.order, [_f]);
       expect(center.landingInitialText, isNull);
     });
@@ -129,7 +127,7 @@ void main() {
 
       cubit.closeOthers(_ws, _f);
 
-      final center = cubit.state.bar(_ws).center;
+      final center = cubit.centerFocusedStrip(_ws);
       expect(center.order, [_f]);
       expect(center.landingInitialText, '审查并继续完成该会话: /data/referenced');
       expect(center.landingReferenceSessionId, 'unopened-reference');
@@ -143,7 +141,7 @@ void main() {
 
       cubit.closeRight(_ws, _d);
 
-      final center = cubit.state.bar(_ws).center;
+      final center = cubit.centerFocusedStrip(_ws);
       expect(center.order, [_d]);
       expect(center.landingInitialText, isNull);
     });
@@ -162,7 +160,7 @@ void main() {
 
         cubit.closeRight(_ws, _d);
 
-        final center = cubit.state.bar(_ws).center;
+        final center = cubit.centerFocusedStrip(_ws);
         expect(center.order, [_d]);
         expect(center.landingInitialText, '审查并继续完成该会话: /data/referenced');
         expect(center.landingReferenceSessionId, 'unopened-reference');
@@ -175,7 +173,7 @@ void main() {
         ..enterLanding(_ws, initialText: '审查并继续完成该会话: /data/session')
         ..closeAll(_ws);
 
-      final center = cubit.state.bar(_ws).center;
+      final center = cubit.centerFocusedStrip(_ws);
       expect(center.order, isEmpty);
       expect(center.landingInitialText, isNull);
     });
@@ -192,7 +190,7 @@ void main() {
 
       cubit.closeAll(_ws);
 
-      final center = cubit.state.bar(_ws).center;
+      final center = cubit.centerFocusedStrip(_ws);
       expect(center.order, isEmpty);
       expect(center.landingInitialText, '审查并继续完成该会话: /data/referenced');
       expect(center.landingReferenceSessionId, 'unopened-reference');
@@ -206,7 +204,7 @@ void main() {
         final removed = cubit.closeAll(_ws);
 
         expect(removed, isEmpty);
-        final center = cubit.state.bar(_ws).center;
+        final center = cubit.centerFocusedStrip(_ws);
         expect(center.order, isEmpty);
         expect(center.landingInitialText, isNull);
       },
@@ -220,11 +218,11 @@ void main() {
           initialText: '审查并继续完成该会话: /data/referenced',
           referencedSessionId: 'deleted',
         );
-      final before = cubit.state.bar(_ws).center;
+      final before = cubit.centerFocusedStrip(_ws);
 
       cubit.onSessionDeleted(_ws, 'deleted');
 
-      final center = cubit.state.bar(_ws).center;
+      final center = cubit.centerFocusedStrip(_ws);
       expect(center.landingInitialText, isNull);
       expect(center.landingReferenceSessionId, isNull);
       expect(
@@ -250,7 +248,7 @@ void main() {
       expect(replaced2, WorkbenchTabId.file('/a.dart'));
       expect(cubit.floatingOrder(_ws), [WorkbenchTabId.file('/b.dart')]);
       expect(
-        cubit.state.bar(_ws).floating.previewIds,
+        cubit.floatingFocusedStrip(_ws).previewIds,
         {WorkbenchTabId.file('/b.dart')},
       );
     });
@@ -259,22 +257,22 @@ void main() {
       cubit.openFloating(_ws, WorkbenchTabId.file('/a.dart'));
       cubit.openFloating(_ws, WorkbenchTabId.file('/b.dart'));
       expect(cubit.floatingOrder(_ws).length, 2);
-      expect(cubit.state.bar(_ws).floating.previewIds, isEmpty);
+      expect(cubit.floatingFocusedStrip(_ws).previewIds, isEmpty);
     });
 
     test('pin/unpin route by strip presence (floating)', () {
       final id = WorkbenchTabId.shell('e1');
       cubit.openFloating(_ws, id);
       cubit.pin(_ws, id);
-      expect(cubit.state.bar(_ws).floating.pinnedIds, {id});
+      expect(cubit.floatingFocusedStrip(_ws).pinnedIds, {id});
       cubit.unpin(_ws, id);
-      expect(cubit.state.bar(_ws).floating.pinnedIds, isEmpty);
+      expect(cubit.floatingFocusedStrip(_ws).pinnedIds, isEmpty);
     });
 
     test('promote routes by strip presence (floating)', () {
       cubit.openFloating(_ws, _f, preview: true);
       cubit.promote(_ws, _f);
-      expect(cubit.state.bar(_ws).floating.previewIds, isEmpty);
+      expect(cubit.floatingFocusedStrip(_ws).previewIds, isEmpty);
     });
 
     test('closeAll skips pinned center tabs', () {
@@ -300,6 +298,128 @@ void main() {
       final removedRight = cubit.closeRight(_ws, _s1);
       expect(removedRight, isEmpty);
       expect(cubit.centerOrder(_ws), [_s1, _s3]);
+    });
+  });
+
+  group('split groups', () {
+    test('splitTab moves tab into new group and focuses it', () {
+      cubit
+        ..openSession(_ws, 's1')
+        ..openSession(_ws, 's2')
+        ..splitTab(_ws, _s2, axis: Axis.horizontal, before: false);
+      expect(cubit.centerOrder(_ws), [_s2]); // focused = new group
+      expect(cubit.centerActiveId(_ws), _s2);
+      final layout = cubit.centerLayout(_ws);
+      expect(layout.root, isA<SplitBranch>());
+      expect(
+        cubit.state.bar(_ws).center.groups.values
+            .expand((s) => s.order)
+            .toSet(),
+        {_s1, _s2},
+      );
+    });
+
+    test('openSession lands in the focused group', () {
+      cubit
+        ..openSession(_ws, 's1')
+        ..openSession(_ws, 's2')
+        ..splitTab(_ws, _s2, axis: Axis.horizontal, before: false)
+        ..openSession(_ws, 's3');
+      expect(cubit.centerOrder(_ws), [_s2, _s3]);
+    });
+
+    test('activate focuses the owning group', () {
+      cubit
+        ..openSession(_ws, 's1')
+        ..openSession(_ws, 's2')
+        ..splitTab(_ws, _s2, axis: Axis.horizontal, before: false);
+      // focus back to g0 by activating its tab
+      cubit.activate(_ws, _s1);
+      expect(cubit.centerFocusedGroupId(_ws), 'g0');
+      expect(cubit.centerActiveId(_ws), _s1);
+    });
+
+    test('close prunes the emptied group', () async {
+      cubit
+        ..openSession(_ws, 's1')
+        ..openSession(_ws, 's2')
+        ..splitTab(_ws, _s2, axis: Axis.horizontal, before: false);
+      await cubit.close(_ws, _s2);
+      expect(cubit.centerLayout(_ws).root, isA<SplitLeaf>());
+      expect(cubit.centerOrder(_ws), [_s1]);
+    });
+
+    test('enterLanding is group-scoped', () {
+      cubit
+        ..openSession(_ws, 's1')
+        ..openSession(_ws, 's2')
+        ..splitTab(_ws, _s2, axis: Axis.horizontal, before: false)
+        ..enterLanding(_ws);
+      expect(cubit.centerLandingActive(_ws), isTrue);
+      // the other group still has its tab active
+      final other = cubit.centerLayout(_ws).groups['g0']!;
+      expect(other.activeId, _s1);
+    });
+
+    test(
+      'closeAll keeps pinned tabs of the focused group only (group-scoped)',
+      () {
+        cubit
+          ..openSession(_ws, 's1')
+          ..openSession(_ws, 's2')
+          ..splitTab(_ws, _s2, axis: Axis.horizontal, before: false)
+          // s3 lands in the focused split group; pin s2 inside it.
+          ..openSession(_ws, 's3')
+          ..pin(_ws, _s2);
+        final removed = cubit.closeAll(_ws);
+        // The focused group's unpinned tab closed; its pinned tab survived.
+        expect(removed, [_s3]);
+        expect(cubit.centerOrder(_ws), [_s2]);
+        expect(
+          cubit.centerLayout(_ws).groups['g1']!.pinnedIds,
+          contains(_s2),
+        );
+        // The non-focused group is untouched by the group-scoped closeAll.
+        expect(cubit.centerLayout(_ws).groups['g0']!.order, [_s1]);
+      },
+    );
+
+    test('moveTab moves a tab between groups and prunes an emptied source',
+        () {
+      cubit
+        ..openSession(_ws, 's1')
+        ..openSession(_ws, 's2')
+        ..splitTab(_ws, _s2, axis: Axis.horizontal, before: false)
+        ..openSession(_ws, 's3'); // g1 = [s2, s3]
+      cubit.moveTab(_ws, _s2, 'g0');
+      expect(cubit.centerLayout(_ws).root, isA<SplitBranch>());
+      expect(cubit.centerFocusedGroupId(_ws), 'g0');
+      expect(cubit.centerOrder(_ws), [_s1, _s2]);
+      expect(cubit.centerLayout(_ws).groups['g1']!.order, [_s3]);
+    });
+
+    test('focusGroup / toggleMaximizeGroup / collapseSplitLayout round-trip',
+        () {
+      cubit
+        ..openSession(_ws, 's1')
+        ..openSession(_ws, 's2')
+        ..splitTab(_ws, _s2, axis: Axis.horizontal, before: false);
+      cubit.focusGroup(_ws, 'g0');
+      expect(cubit.centerFocusedGroupId(_ws), 'g0');
+      cubit.toggleMaximizeGroup(_ws, 'g0');
+      expect(cubit.centerLayout(_ws).maximizedGroupId, 'g0');
+      cubit.toggleMaximizeGroup(_ws, 'g0');
+      expect(cubit.centerLayout(_ws).maximizedGroupId, isNull);
+      cubit.collapseSplitLayout(_ws);
+      expect(cubit.centerLayout(_ws).root, isA<SplitLeaf>());
+      expect(cubit.centerOrder(_ws), [_s1, _s2]);
+    });
+
+    test('splitTab on a sole tab is a silent no-op', () {
+      cubit.openSession(_ws, 's1');
+      final before = cubit.state.bar(_ws);
+      cubit.splitTab(_ws, _s1, axis: Axis.horizontal, before: false);
+      expect(cubit.state.bar(_ws), before);
     });
   });
 }

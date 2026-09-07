@@ -70,7 +70,7 @@ class WorkspaceShellRightToolsVisibilityToggle extends StatelessWidget {
       (c) => c.state.overrides,
     );
     final composeLanding = context.select<WorkbenchCubit, bool>(
-      (w) => w.state.bar(workspaceId).center.landingActive,
+      (w) => w.centerLandingActive(workspaceId),
     );
     return BlocBuilder<LayoutCubit, LayoutState>(
       buildWhen: (a, b) =>

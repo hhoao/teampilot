@@ -215,9 +215,10 @@ class _ChatWorkspaceShell extends StatelessWidget {
                 .select<EditorCubit, WorkspaceEditorBucket>(
                   (c) => c.state.bucket(workspaceId),
                 );
-            final bar = workbenchState.bar(workspaceId);
-            final order = bar.center.order;
-            final activeId = bar.center.activeId;
+            final workbenchCubit = context.read<WorkbenchCubit>();
+            final centerStrip = workbenchCubit.centerFocusedStrip(workspaceId);
+            final order = workbenchCubit.centerOrder(workspaceId);
+            final activeId = workbenchCubit.centerActiveId(workspaceId);
             final sessionIds = [
               for (final t in order)
                 if (t.kind == WorkbenchTabKind.session) t.id,
@@ -235,7 +236,7 @@ class _ChatWorkspaceShell extends StatelessWidget {
                         .any((s) => s.pinned))
                   t,
             };
-            final pinnedTabIds = bar.center.pinnedIds.union(
+            final pinnedTabIds = centerStrip.pinnedIds.union(
               persistedPinned,
             );
             final sessionCli = <String, CliTool?>{
@@ -275,7 +276,7 @@ class _ChatWorkspaceShell extends StatelessWidget {
               sessionCli: sessionCli,
               pinnedTabIds: pinnedTabIds,
               editorBucket: editorBucket,
-              previewTabIds: bar.center.previewIds,
+              previewTabIds: centerStrip.previewIds,
               shellTitles: shellTitles,
               sessionAccent: Theme.of(context).colorScheme.primary,
             );
@@ -394,12 +395,9 @@ class _ChatWorkspaceShell extends StatelessWidget {
                       // Persist (repo) and runtime (strip) stores stay in
                       // sync; the projection reads the strip union.
                       unawaited(cubit.toggleSessionPin(sessionId));
-                      final workbenchCubit = context.read<WorkbenchCubit>();
                       final tabId = WorkbenchTabId.session(sessionId);
                       if (workbenchCubit
-                          .state
-                          .bar(workspaceId)
-                          .center
+                          .centerFocusedStrip(workspaceId)
                           .pinnedIds
                           .contains(tabId)) {
                         workbenchCubit.unpin(workspaceId, tabId);

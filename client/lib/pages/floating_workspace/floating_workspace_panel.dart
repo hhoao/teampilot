@@ -57,18 +57,19 @@ class _FloatingWorkspacePanelState extends State<FloatingWorkspacePanel> {
     final floating = context.read<FloatingWorkspaceCubit>();
     final workbench = context.read<WorkbenchCubit>();
     // Combines the two change planes: chrome (FloatingWorkspaceCubit) and the
-    // floating strip (WorkbenchCubit bar.floating). Only the active workspace's
-    // strip is projected so unrelated bar mutations do not rebuild the panel.
+    // floating layout (WorkbenchCubit bar.floating). Only the active
+    // workspace's strip is projected so unrelated bar mutations do not
+    // rebuild the panel.
     _projection = FloatingWorkspaceProjection<_FloatingPanelView>(
       floating,
       workbench,
       (floating, workbench) => _FloatingPanelView(
         state: floating.state,
-        strip: workbench.state.bar(floating.state.activeWorkspaceId).floating,
+        strip: workbench.mergedFloatingStrip(floating.state.activeWorkspaceId),
       ),
       initial: _FloatingPanelView(
         state: floating.state,
-        strip: workbench.state.bar(floating.state.activeWorkspaceId).floating,
+        strip: workbench.mergedFloatingStrip(floating.state.activeWorkspaceId),
       ),
     );
   }
@@ -602,9 +603,7 @@ class _PanelChromeFrameState extends State<_PanelChromeFrame> {
                             if (barId == null) return;
                             final strip = context
                                 .read<WorkbenchCubit>()
-                                .state
-                                .bar(widget.workspaceId)
-                                .floating;
+                                .mergedFloatingStrip(widget.workspaceId);
                             if (strip.previewIds.contains(barId)) {
                               context
                                   .read<WorkbenchCubit>()
@@ -627,9 +626,7 @@ class _PanelChromeFrameState extends State<_PanelChromeFrame> {
                             if (barId == null) return;
                             final workbench = context.read<WorkbenchCubit>();
                             final strip = workbench
-                                .state
-                                .bar(widget.workspaceId)
-                                .floating;
+                                .mergedFloatingStrip(widget.workspaceId);
                             if (strip.previewIds.contains(barId)) {
                               workbench.promote(widget.workspaceId, barId);
                             } else if (strip.pinnedIds.contains(barId)) {

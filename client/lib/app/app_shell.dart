@@ -1985,10 +1985,8 @@ Future<AppShell> buildAppShell({
       commandBus,
       layoutCubit,
       uiZoomBaseline: () => uiZoomBaseline.value,
-      composeLanding: () => workbenchCubit.state
-          .bar(chatCubit.tabStore.activeWorkspaceId)
-          .center
-          .landingActive,
+      composeLanding: () =>
+          workbenchCubit.centerLandingActive(chatCubit.tabStore.activeWorkspaceId),
       onTogglePanel: openFloatingNewTerminal,
     );
 

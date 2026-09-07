@@ -59,7 +59,7 @@ void main() {
 
     expect(seenInitialDirectory, '/repo');
     expect(
-      workbench.state.bar('ws-1').floating.order,
+      workbench.mergedFloatingStrip('ws-1').order,
       [WorkbenchTabId.file('/repo/a.txt')],
     );
     expect(editor.state.bucket('ws-1').openFilePaths, ['/repo/a.txt']);
@@ -93,6 +93,6 @@ void main() {
       }) async => null,
     );
 
-    expect(workbench.state.bar('ws-1').floating.order, isEmpty);
+    expect(workbench.mergedFloatingStrip('ws-1').order, isEmpty);
   });
 }

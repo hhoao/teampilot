@@ -124,7 +124,7 @@ void main() {
     await tester.pump();
 
     expect(cubit.state.visibility, FloatingPanelVisibility.minimized);
-    expect(workbench.state.bar('ws-1').floating.order, isNotEmpty);
+    expect(workbench.mergedFloatingStrip('ws-1').order, isNotEmpty);
     expect(
       find.byKey(
         const Key('floating_workspace_panel_keep_alive'),

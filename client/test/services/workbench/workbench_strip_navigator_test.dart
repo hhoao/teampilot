@@ -136,7 +136,7 @@ void main() {
       strip.next();
       strip.previous();
       expect(workbench.centerActiveId(workspaceId), isNull);
-      expect(workbench.state.bar(workspaceId).center.landingActive, isTrue);
+      expect(workbench.centerLandingActive(workspaceId), isTrue);
     });
 
     test('next/prev wrap across mixed session and diff tabs', () async {
@@ -191,11 +191,11 @@ void main() {
       final s0 = WorkbenchTabId.session(sessionIds[0]);
       workbench.activate(workspaceId, s0);
       workbench.enterLanding(workspaceId);
-      expect(workbench.state.bar(workspaceId).center.landingActive, isTrue);
+      expect(workbench.centerLandingActive(workspaceId), isTrue);
 
       // Landing is not a tab: next() activates the first strip tab.
       strip.next();
-      expect(workbench.state.bar(workspaceId).center.landingActive, isFalse);
+      expect(workbench.centerLandingActive(workspaceId), isFalse);
       expect(workbench.centerActiveId(workspaceId), s0);
     });
 
@@ -218,9 +218,9 @@ void main() {
     test('enterLanding(activeWorkspaceId) is the session-new-tab command '
         'equivalent', () async {
       await openSession();
-      expect(workbench.state.bar(workspaceId).center.landingActive, isFalse);
+      expect(workbench.centerLandingActive(workspaceId), isFalse);
       workbench.enterLanding(chat.tabStore.activeWorkspaceId);
-      expect(workbench.state.bar(workspaceId).center.landingActive, isTrue);
+      expect(workbench.centerLandingActive(workspaceId), isTrue);
     });
 
     test('enterLanding updates prefill while Landing is already active', () {
@@ -231,7 +231,7 @@ void main() {
       );
 
       expect(
-        workbench.state.bar(workspaceId).center.landingInitialText,
+        workbench.centerLandingInitialText(workspaceId),
         '审查并继续完成该会话: /data/session-2',
       );
     });
@@ -247,7 +247,7 @@ void main() {
         workbench.enterLanding(workspaceId);
 
         expect(
-          workbench.state.bar(workspaceId).center.landingInitialText,
+          workbench.centerLandingInitialText(workspaceId),
           isNull,
         );
       },
@@ -263,7 +263,7 @@ void main() {
         ..closeOthers(workspaceId, first);
 
       expect(
-        workbench.state.bar(workspaceId).center.landingInitialText,
+        workbench.centerLandingInitialText(workspaceId),
         prefill,
       );
     });
@@ -278,7 +278,7 @@ void main() {
         ..closeRight(workspaceId, first);
 
       expect(
-        workbench.state.bar(workspaceId).center.landingInitialText,
+        workbench.centerLandingInitialText(workspaceId),
         prefill,
       );
     });
@@ -290,7 +290,7 @@ void main() {
         ..enterLanding(workspaceId, initialText: prefill)
         ..closeAll(workspaceId);
 
-      final center = workbench.state.bar(workspaceId).center;
+      final center = workbench.centerFocusedStrip(workspaceId);
       expect(center.order, isEmpty);
       expect(center.landingActive, isTrue);
       expect(center.landingInitialText, isNull);

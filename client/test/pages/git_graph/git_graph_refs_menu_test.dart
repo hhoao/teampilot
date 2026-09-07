@@ -311,10 +311,7 @@ void main() {
   }
 
   GitCompareSpec? _openedCompareSpec(WorkbenchCubit workbench) {
-    final tabId = workbench.state
-        .bar('ws')
-        .floating
-        .order
+    final tabId = workbench.mergedFloatingStrip('ws').order
         .firstWhere((t) => t.kind == WorkbenchTabKind.gitCompare)
         .id;
     return GitCompareSpec.tryParseTabId(tabId);
