@@ -66,6 +66,7 @@ TabMemberReclaimWatch _watch(
   required DateTime Function() now,
   bool Function(String sessionId)? isSessionPinned,
   bool Function(String sessionId)? sessionBusyFromDeliveryInFlight,
+  bool Function(String sessionId, String memberId)? seatHasActiveLeases,
   TeamProfile? Function()? team,
 }) => TabMemberReclaimWatch(
   tabStore: store,
@@ -75,6 +76,7 @@ TabMemberReclaimWatch _watch(
   onDiscardMember: onDiscard,
   isSessionPinned: isSessionPinned,
   sessionBusyFromDeliveryInFlight: sessionBusyFromDeliveryInFlight,
+  seatHasActiveLeases: seatHasActiveLeases,
   now: now,
 );
 
@@ -268,6 +270,38 @@ void main() {
     now = now.add(const Duration(seconds: 3));
     watch.tick();
 
+    expect(discarded, contains(('sess', 'sess')));
+  });
+
+  test('a member with a live seat lease is never discarded', () {
+    final store = ChatTabStore();
+    final tab = _simpleTab(view: SessionWorkbenchView.chat);
+    store.registerSession(tab);
+    tab.memberShells['sess'] = _runningShell();
+
+    final discarded = <(String, String)>[];
+    var now = DateTime(2026, 8, 9, 12, 0, 0);
+    var leased = true;
+    final watch = _watch(
+      store,
+      onDiscard: (s, m) => discarded.add((s, m)),
+      now: () => now,
+      seatHasActiveLeases: (sessionId, memberId) =>
+          sessionId == 'sess' && memberId == 'sess' && leased,
+      team: () => null,
+    );
+
+    watch.tick(); // seeds idleSince
+    now = now.add(const Duration(seconds: 3));
+    watch.tick();
+    expect(discarded, isEmpty, reason: 'seat lease holds the terminal');
+
+    // Flip the lease off (task notification arrived) — the same idle
+    // member becomes reclaimable, proving the lease arm held it back.
+    leased = false;
+    watch.tick(); // re-seeds idleSince for the now-unprotected member
+    now = now.add(const Duration(seconds: 3));
+    watch.tick();
     expect(discarded, contains(('sess', 'sess')));
   });
 }
