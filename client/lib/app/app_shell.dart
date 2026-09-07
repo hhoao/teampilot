@@ -17,6 +17,7 @@ import '../cubits/app_update_cubit.dart';
 import '../cubits/remote_download_catalog_cubit.dart';
 import '../cubits/automation_cubit.dart';
 import '../cubits/agent_attention_cubit.dart';
+import '../cubits/seat_lease_cubit.dart';
 import '../cubits/chat_cubit.dart';
 import '../cubits/session_groups_cubit.dart';
 import '../services/agent_runtime/agent_event_gateway.dart';
@@ -24,6 +25,7 @@ import '../services/agent_runtime/agent_runtime.dart';
 import '../services/agent_runtime/runtime_event_journal.dart';
 import '../services/agent_runtime/runtime_event_projection.dart';
 import '../services/agent_runtime/seat_event_stream.dart';
+import '../services/agent_runtime/seat_lease_projection.dart';
 import '../services/prompt_delivery/prompt_delivery_coordinator.dart';
 import '../services/prompt_delivery/prompt_delivery_store.dart';
 import '../services/agent_status/agent_status_seat_lookup.dart';
@@ -1722,6 +1724,7 @@ Future<AppShell> buildAppShell({
     );
 
     final agentAttentionCubit = AgentAttentionCubit();
+    final seatLeaseCubit = SeatLeaseCubit();
     final agentStatusSeatLookup = AgentStatusSeatLookup();
     final agentRuntimeStream = SeatEventStream();
     final askUserQuestionProjection = AskUserQuestionRuntimeEventProjection(
@@ -1739,6 +1742,7 @@ Future<AppShell> buildAppShell({
         attention: agentAttentionCubit,
         resolveSkipPermissions: agentStatusSeatLookup.resolveSkipPermissions,
       ),
+      seatLeaseProjection(leases: seatLeaseCubit),
       askUserQuestionProjection,
       exitPlanModeProjection,
       generalPermissionProjection,
@@ -1814,6 +1818,7 @@ Future<AppShell> buildAppShell({
       teammateBusMcpGateway: teammateBusMcpGateway,
       agentStatusSeatLookup: agentStatusSeatLookup,
       agentAttentionCubit: agentAttentionCubit,
+      seatLeaseCubit: seatLeaseCubit,
       askUserAnswerPendingStore: askUserAnswerPendingStore,
       askUserQuestionAnswerService: askUserQuestionAnswerService,
       generalPermissionGate: generalPermissionRequestGate,
