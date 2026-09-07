@@ -95,4 +95,71 @@ void main() {
       {'a', 'b', 'c'},
     );
   });
+
+  test('tryRead upgrades legacy primaryPath into a local folder', () async {
+    final store = WorkspaceIndexStore(
+      SessionRepositoryFs(
+        teampilotRoot: tmp.path,
+        fs: LocalFilesystem(),
+      ),
+    );
+    // Pre-June-2026 manifest shape: empty folders + bare primaryPath.
+    // Without the upgrade every session in this workspace resolves an empty
+    // cwd, which fails Windows PTY process creation.
+    final workspaceDir = Directory(
+      '${tmp.path}${Platform.pathSeparator}workspace',
+    )..createSync();
+    File(
+      '${workspaceDir.path}${Platform.pathSeparator}workspaces-index.json',
+    ).writeAsStringSync('''
+{
+  "version": 1,
+  "updatedAt": 1,
+  "workspaces": [
+    {
+      "workspaceId": "legacy",
+      "folders": [],
+      "primaryPath": "C:\\\\Users\\\\dev\\\\Documents\\\\TeamPilot",
+      "createdAt": 1
+    }
+  ]
+}
+''');
+
+    final loaded = await store.tryRead(preferIsolate: false);
+    expect(loaded, isNotNull);
+    final legacy = loaded!.single;
+    expect(legacy.workspaceId, 'legacy');
+    expect(legacy.folders, hasLength(1));
+    expect(
+      legacy.folders.first.path,
+      r'C:\Users\dev\Documents\TeamPilot',
+    );
+    expect(
+      legacy.folders.first.targetId,
+      WorkspaceFolder.localTargetId,
+    );
+    expect(
+      legacy.firstFolderPath,
+      r'C:\Users\dev\Documents\TeamPilot',
+    );
+  });
+
+  test('upgradeLegacyPrimaryPath keeps non-empty folders untouched', () {
+    final map = <String, Object?>{
+      'workspaceId': 'modern',
+      'folders': [
+        {'path': '/main', 'targetId': 'local'},
+      ],
+      'primaryPath': '/elsewhere',
+    };
+    final upgraded = WorkspaceIndexStore.upgradeLegacyPrimaryPath(map);
+    expect(upgraded, same(map));
+  });
+
+  test('upgradeLegacyPrimaryPath leaves empty workspaces alone', () {
+    final map = <String, Object?>{'workspaceId': 'empty', 'folders': []};
+    final upgraded = WorkspaceIndexStore.upgradeLegacyPrimaryPath(map);
+    expect(upgraded, same(map));
+  });
 }

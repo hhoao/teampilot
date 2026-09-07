@@ -139,7 +139,9 @@ class SessionRepository {
     try {
       final json = jsonDecode(raw);
       if (json is Map<String, Object?>) {
-        final workspace = Workspace.fromJson(json);
+        final workspace = Workspace.fromJson(
+          WorkspaceIndexStore.upgradeLegacyPrimaryPath(json),
+        );
         final listSw = Stopwatch()..start();
         final sessionIds = indexOnly
             ? await fs.listSessionDirectoryIds(workspaceId)
