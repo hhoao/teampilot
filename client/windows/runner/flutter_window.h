@@ -28,15 +28,6 @@ class FlutterWindow : public Win32Window {
 
   // The Flutter instance hosted by this window.
   std::unique_ptr<flutter::FlutterViewController> flutter_controller_;
-
-  // Subclass procedure installed on the Flutter view (child) window; see the
-  // installation site in OnCreate for why WM_SYSCHAR must be intercepted there.
-  static LRESULT CALLBACK ChildContentProc(HWND window, UINT const message,
-                                           WPARAM const wparam,
-                                           LPARAM const lparam) noexcept;
-
-  // View WndProc that was in place before ChildContentProc was installed.
-  static WNDPROC original_child_proc_;
 };
 
 #endif  // RUNNER_FLUTTER_WINDOW_H_
