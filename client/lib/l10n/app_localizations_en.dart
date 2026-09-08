@@ -3504,6 +3504,21 @@ class AppLocalizationsEn extends AppLocalizations {
       'Leave blank to keep the existing key';
 
   @override
+  String get appProviderCredentialLinkMode => 'API key source';
+
+  @override
+  String get appProviderCredentialLinkOwnKey => 'Use own API key';
+
+  @override
+  String appProviderCredentialLinkedTo(Object entry) {
+    return 'Using secret of $entry';
+  }
+
+  @override
+  String get appProviderCredentialLinkEmpty =>
+      'No secret-backed balance entries yet';
+
+  @override
   String get reveal => 'Reveal';
 
   @override
@@ -8218,6 +8233,21 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get managedProvidersCredentialSourceHelper =>
       'secret reads the form; cli:… reads CLI login.';
+
+  @override
+  String get managedProvidersCredentialLinkMode => 'Credential source mode';
+
+  @override
+  String get managedProvidersCredentialLinkManual => 'Enter secret manually';
+
+  @override
+  String managedProvidersCredentialLinkedTo(Object provider) {
+    return 'Using credential of $provider';
+  }
+
+  @override
+  String get managedProvidersCredentialLinkEmpty =>
+      'No API-key providers configured yet';
 
   @override
   String get managedProvidersCredentialTemplate => 'Credential template';

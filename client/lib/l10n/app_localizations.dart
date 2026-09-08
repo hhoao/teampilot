@@ -6254,6 +6254,30 @@ abstract class AppLocalizations {
   /// **'Leave blank to keep the existing key'**
   String get appProviderApiKeyEditHint;
 
+  /// No description provided for @appProviderCredentialLinkMode.
+  ///
+  /// In en, this message translates to:
+  /// **'API key source'**
+  String get appProviderCredentialLinkMode;
+
+  /// No description provided for @appProviderCredentialLinkOwnKey.
+  ///
+  /// In en, this message translates to:
+  /// **'Use own API key'**
+  String get appProviderCredentialLinkOwnKey;
+
+  /// No description provided for @appProviderCredentialLinkedTo.
+  ///
+  /// In en, this message translates to:
+  /// **'Using secret of {entry}'**
+  String appProviderCredentialLinkedTo(Object entry);
+
+  /// No description provided for @appProviderCredentialLinkEmpty.
+  ///
+  /// In en, this message translates to:
+  /// **'No secret-backed balance entries yet'**
+  String get appProviderCredentialLinkEmpty;
+
   /// No description provided for @reveal.
   ///
   /// In en, this message translates to:
@@ -14629,6 +14653,30 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'secret reads the form; cli:… reads CLI login.'**
   String get managedProvidersCredentialSourceHelper;
+
+  /// No description provided for @managedProvidersCredentialLinkMode.
+  ///
+  /// In en, this message translates to:
+  /// **'Credential source mode'**
+  String get managedProvidersCredentialLinkMode;
+
+  /// No description provided for @managedProvidersCredentialLinkManual.
+  ///
+  /// In en, this message translates to:
+  /// **'Enter secret manually'**
+  String get managedProvidersCredentialLinkManual;
+
+  /// No description provided for @managedProvidersCredentialLinkedTo.
+  ///
+  /// In en, this message translates to:
+  /// **'Using credential of {provider}'**
+  String managedProvidersCredentialLinkedTo(Object provider);
+
+  /// No description provided for @managedProvidersCredentialLinkEmpty.
+  ///
+  /// In en, this message translates to:
+  /// **'No API-key providers configured yet'**
+  String get managedProvidersCredentialLinkEmpty;
 
   /// No description provided for @managedProvidersCredentialTemplate.
   ///

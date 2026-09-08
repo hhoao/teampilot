@@ -17,6 +17,12 @@ import 'provider_persistence/provider_persistence_strategy.dart';
 export 'provider_persistence/provider_persistence_strategy.dart'
     show AppProviderRepositoryException;
 
+/// Returns the linked managed entry's secret value, or null when the entry
+/// or its secret is missing. Injected by the app shell.
+typedef LinkedCredentialLookup = Future<String?> Function(
+  String managedProviderId,
+);
+
 class AppProviderRepository {
   AppProviderRepository({
     String? basePath,
@@ -25,12 +31,14 @@ class AppProviderRepository {
     ClaudeProviderCredentialsService? claudeCredentialsService,
     CursorProviderCredentialsService? cursorCredentialsService,
     CodexProviderCredentialsService? codexCredentialsService,
+    LinkedCredentialLookup? linkedCredentialLookup,
   }) : _basePathOverride = basePath,
        _generator = generator ?? const ToolConfigGenerator(),
        _fsOverride = fs,
        _claudeCredentialsServiceOverride = claudeCredentialsService,
        _cursorCredentialsServiceOverride = cursorCredentialsService,
-       _codexCredentialsServiceOverride = codexCredentialsService;
+       _codexCredentialsServiceOverride = codexCredentialsService,
+       _linkedCredentialLookup = linkedCredentialLookup;
 
   final String? _basePathOverride;
   final Filesystem? _fsOverride;
@@ -38,6 +46,7 @@ class AppProviderRepository {
   final ClaudeProviderCredentialsService? _claudeCredentialsServiceOverride;
   final CursorProviderCredentialsService? _cursorCredentialsServiceOverride;
   final CodexProviderCredentialsService? _codexCredentialsServiceOverride;
+  final LinkedCredentialLookup? _linkedCredentialLookup;
 
   final Map<String, List<AppProviderConfig>> _diskCache = {};
 
@@ -104,8 +113,12 @@ class AppProviderRepository {
     bool importCredentialsFromGlobal = false,
     bool reconcileCredentials = true,
   }) async {
-    var providers = await _loadProvidersFromDisk(cli);
-    if (!reconcileCredentials) return providers;
+    final providers = await _loadProvidersFromDisk(cli);
+    if (!reconcileCredentials) {
+      return _resolveLinkedCredentials(providers);
+    }
+    // reconcileProviders already resolves linked credentials at its return;
+    // resolving here too would run the lookup twice per load.
     return reconcileProviders(
       cli,
       providers,
@@ -120,14 +133,16 @@ class AppProviderRepository {
     bool importCredentialsFromGlobal = false,
   }) async {
     final strategy = _strategies[cli];
-    if (strategy == null) return providers;
+    if (strategy == null) return _resolveLinkedCredentials(providers);
     if (importCredentialsFromGlobal && strategy is CredentialProbeSupport) {
       providers = await strategy.importOfficialCredentialsFromGlobal(
         _persistenceContext,
         providers,
       );
     }
-    return strategy.reconcileLoaded(_persistenceContext, providers);
+    return _resolveLinkedCredentials(
+      await strategy.reconcileLoaded(_persistenceContext, providers),
+    );
   }
 
   Future<List<AppProviderConfig>> _loadProvidersFromDisk(CliTool cli) async {
@@ -178,9 +193,14 @@ class AppProviderRepository {
           previousById[provider.id],
         ),
     ]..sort((a, b) => a.name.compareTo(b.name));
+    // Linked rows never persist a resolved key: the link is the credential,
+    // and the stored key stays blank until materialization time.
+    final persisted = [
+      for (final provider in merged) _stripLinkedApiKey(provider),
+    ];
 
     final encoded = <String, Object?>{
-      for (final provider in merged) provider.id: provider.toJson(),
+      for (final provider in persisted) provider.id: provider.toJson(),
     };
 
     final unknownTopLevel = await _loadUnknownTopLevel(path);
@@ -194,7 +214,8 @@ class AppProviderRepository {
     );
 
     _invalidateDiskCache(cli);
-    await _strategies[cli]?.reconcileSaved(_persistenceContext, merged);
+    final resolved = await _resolveLinkedCredentials(persisted);
+    await _strategies[cli]?.reconcileSaved(_persistenceContext, resolved);
   }
 
   Future<AppProviderConfig?> findById(CliTool cli, String id) async {
@@ -211,11 +232,54 @@ class AppProviderRepository {
     AppProviderConfig provider,
     AppProviderConfig? previous,
   ) {
+    if (provider.credentialLink.trim().isNotEmpty) {
+      // A link replaces the stored key — never preserve the old one.
+      return provider;
+    }
     if (previous == null) return provider;
     if (provider.apiKey.isNotEmpty || previous.apiKey.isEmpty) {
       return provider;
     }
     return provider.copyWith(apiKey: previous.apiKey);
+  }
+
+  /// In-memory apiKey + status resolution for credential-linked providers.
+  /// Linked rows never persist the resolved key (see [saveProviders]).
+  Future<List<AppProviderConfig>> _resolveLinkedCredentials(
+    List<AppProviderConfig> providers,
+  ) async {
+    final lookup = _linkedCredentialLookup;
+    if (lookup == null) return providers;
+    var changed = false;
+    final resolved = <AppProviderConfig>[];
+    for (final provider in providers) {
+      final link = provider.credentialLink.trim();
+      if (link.isEmpty) {
+        resolved.add(provider);
+        continue;
+      }
+      String? secret;
+      try {
+        secret = await lookup(link);
+      } on Object {
+        secret = null;
+      }
+      final value = (secret == null || secret.isEmpty) ? '' : secret;
+      resolved.add(
+        provider.copyWith(
+          apiKey: value,
+          credentialStatus: value.isEmpty ? 'missing' : 'ready',
+        ),
+      );
+      changed = true;
+    }
+    return changed ? resolved : providers;
+  }
+
+  static AppProviderConfig _stripLinkedApiKey(AppProviderConfig provider) {
+    if (provider.credentialLink.trim().isEmpty) return provider;
+    if (provider.apiKey.isEmpty) return provider;
+    return provider.copyWith(apiKey: '');
   }
 
   List<AppProviderConfig> _decodeCatalog(

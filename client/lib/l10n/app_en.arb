@@ -1708,6 +1708,15 @@
   "baseUrl": "Base URL",
   "apiKey": "API Key",
   "appProviderApiKeyEditHint": "Leave blank to keep the existing key",
+  "appProviderCredentialLinkMode": "API key source",
+  "appProviderCredentialLinkOwnKey": "Use own API key",
+  "appProviderCredentialLinkedTo": "Using secret of {entry}",
+  "@appProviderCredentialLinkedTo": {
+    "placeholders": {
+      "entry": {}
+    }
+  },
+  "appProviderCredentialLinkEmpty": "No secret-backed balance entries yet",
   "reveal": "Reveal",
   "hide": "Hide",
   "replaceKey": "Replace key",
@@ -4171,6 +4180,15 @@
   "managedProvidersCredentialSource": "Credential source",
   "managedProvidersCredentialSourceHint": "secret or cli:cursor-mp-<entry>",
   "managedProvidersCredentialSourceHelper": "secret reads the form; cli:… reads CLI login.",
+  "managedProvidersCredentialLinkMode": "Credential source mode",
+  "managedProvidersCredentialLinkManual": "Enter secret manually",
+  "managedProvidersCredentialLinkedTo": "Using credential of {provider}",
+  "@managedProvidersCredentialLinkedTo": {
+    "placeholders": {
+      "provider": {}
+    }
+  },
+  "managedProvidersCredentialLinkEmpty": "No API-key providers configured yet",
   "managedProvidersCredentialTemplate": "Credential template",
   "managedProvidersCredentialTemplateHint": "e.g. WorkosCursorSessionToken=user::token",
   "managedProvidersCredentialTemplateHelper": "Builds the final credential; often a Cookie with brace variables.",

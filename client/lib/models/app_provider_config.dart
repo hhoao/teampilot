@@ -52,6 +52,7 @@ class AppProviderConfig {
     this.updatedAt = 0,
     this.credentialStatus = 'missing',
     this.credentialUpdatedAt = 0,
+    this.credentialLink = '',
     this.unknownFields = const {},
   });
 
@@ -93,6 +94,7 @@ class AppProviderConfig {
       updatedAt: (json['updatedAt'] as num?)?.toInt() ?? 0,
       credentialStatus: json['credentialStatus'] as String? ?? 'missing',
       credentialUpdatedAt: (json['credentialUpdatedAt'] as num?)?.toInt() ?? 0,
+      credentialLink: json['credentialLink'] as String? ?? '',
       unknownFields: {
         for (final entry in json.entries)
           if (!_knownKeys.contains(entry.key)) entry.key: entry.value,
@@ -123,6 +125,7 @@ class AppProviderConfig {
     'updatedAt',
     'credentialStatus',
     'credentialUpdatedAt',
+    'credentialLink',
   };
 
   final String id;
@@ -147,6 +150,7 @@ class AppProviderConfig {
   final int updatedAt;
   final String credentialStatus;
   final int credentialUpdatedAt;
+  final String credentialLink;
   final Map<String, Object?> unknownFields;
 
   bool get hasCredentialsReady => credentialStatus == 'ready';
@@ -179,6 +183,7 @@ class AppProviderConfig {
     int? updatedAt,
     String? credentialStatus,
     int? credentialUpdatedAt,
+    String? credentialLink,
     Map<String, Object?>? unknownFields,
   }) {
     return AppProviderConfig(
@@ -204,6 +209,7 @@ class AppProviderConfig {
       updatedAt: updatedAt ?? this.updatedAt,
       credentialStatus: credentialStatus ?? this.credentialStatus,
       credentialUpdatedAt: credentialUpdatedAt ?? this.credentialUpdatedAt,
+      credentialLink: credentialLink ?? this.credentialLink,
       unknownFields: unknownFields ?? this.unknownFields,
     );
   }
@@ -239,6 +245,7 @@ class AppProviderConfig {
       'updatedAt': updatedAt,
       'credentialStatus': credentialStatus,
       if (credentialUpdatedAt > 0) 'credentialUpdatedAt': credentialUpdatedAt,
+      if (credentialLink.isNotEmpty) 'credentialLink': credentialLink,
     };
   }
 }

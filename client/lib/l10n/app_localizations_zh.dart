@@ -3347,6 +3347,20 @@ class AppLocalizationsZh extends AppLocalizations {
   String get appProviderApiKeyEditHint => '留空则保留原密钥';
 
   @override
+  String get appProviderCredentialLinkMode => 'API Key 来源';
+
+  @override
+  String get appProviderCredentialLinkOwnKey => '使用自己的 API Key';
+
+  @override
+  String appProviderCredentialLinkedTo(Object entry) {
+    return '使用 $entry 的密钥';
+  }
+
+  @override
+  String get appProviderCredentialLinkEmpty => '还没有存有密钥的余额条目';
+
+  @override
   String get reveal => '显示';
 
   @override
@@ -7875,6 +7889,20 @@ class AppLocalizationsZh extends AppLocalizations {
   @override
   String get managedProvidersCredentialSourceHelper =>
       'secret 读表单；cli:… 读 CLI 登录。';
+
+  @override
+  String get managedProvidersCredentialLinkMode => '凭据来源方式';
+
+  @override
+  String get managedProvidersCredentialLinkManual => '手动输入密钥';
+
+  @override
+  String managedProvidersCredentialLinkedTo(Object provider) {
+    return '使用 $provider 的凭证';
+  }
+
+  @override
+  String get managedProvidersCredentialLinkEmpty => '还没有可引用的供应商配置';
 
   @override
   String get managedProvidersCredentialTemplate => '凭据拼接模板';

@@ -102,6 +102,7 @@ import '../cubits/hook_cubit.dart';
 import '../cubits/mcp_cubit.dart';
 import '../cubits/plugin_cubit.dart';
 import '../cubits/workspace_project_config_cubit.dart';
+import '../repositories/app_provider_repository.dart';
 import '../repositories/launch_profile_repository.dart';
 import '../services/storage/launch_profile_provisioner.dart';
 import '../cubits/cli_presets_cubit.dart';
@@ -213,6 +214,7 @@ import '../cubits/chat/tab_member_pty_delivery.dart';
 import '../services/provider/provider_credential_host_runner.dart';
 import '../services/provider_usage/managed_provider_secret_store.dart';
 import '../services/provider_usage/managed_provider_cli_row_janitor.dart';
+import '../services/provider_usage/managed_provider_link_janitor.dart';
 import '../services/provider_usage/managed_provider_usage_adapter.dart';
 import '../services/provider_usage/managed_provider_usage_auto_refresh.dart';
 import '../services/provider_usage/managed_provider_usage_coordinator.dart';
@@ -950,6 +952,11 @@ Future<AppShell> buildAppShell({
         registry: resolvedManagedProviderUsageRegistry,
         credentials: ManagedProviderCredentialResolver(
           resolvedManagedProviderSecretStore,
+          // Live `provider:<cli>:<id>` credential sources read the app
+          // provider catalog; a dedicated repository instance avoids the
+          // (later-constructed) cubit's load-order dependency. Same disk,
+          // same cache-free reads.
+          appProviders: AppProviderRepository(),
         ),
         http: resolvedManagedProviderHttpClient!,
       );
@@ -965,12 +972,33 @@ Future<AppShell> buildAppShell({
     await launchUrl(uri, mode: LaunchMode.externalApplication);
   }
 
+  // Resolves a provider config's `credentialLink` to the linked managed
+  // entry's stored secret (spec: reverse direction). Secret-free failure: a
+  // missing entry or secret resolves to null, never throws.
+  Future<String?> appProviderLinkedCredentialLookup(
+    String managedProviderId,
+  ) async {
+    final entries = await resolvedManagedProviderRepository.load();
+    final entry = entries.where((e) => e.id == managedProviderId).firstOrNull;
+    if (entry == null) return null;
+    final ref = entry.credentialRef?.trim();
+    if (ref == null || ref.isEmpty) return null;
+    final scope = await resolvedManagedProviderSecretStore.read(ref);
+    final field = entry.endpointConfig.credentialField ?? 'apiKey';
+    final value = scope.valueFor(field);
+    return (value == null || value.isEmpty) ? null : value;
+  }
+
   // Constructed before the managed-provider control plane so
   // ManagedProviderCubit can ensure dedicated per-entry CLI provider rows;
   // only needs sessionPreferencesCubit and openCredentialLoginUrl.
   appProviderCubit = AppProviderCubit(
+    repository: AppProviderRepository(
+      linkedCredentialLookup: appProviderLinkedCredentialLookup,
+    ),
     flashskyaiExecutablePath: sessionPreferencesCubit.resolveExecutable,
     openCredentialLoginUrl: openCredentialLoginUrl,
+    managedProviderRepository: resolvedManagedProviderRepository,
   );
 
   // Reclaims dedicated CLI provider rows and their isolated HOME
@@ -995,6 +1023,10 @@ Future<AppShell> buildAppShell({
           if (ref != null && ref.isNotEmpty) {
             await resolvedManagedProviderSecretStore.delete(ref);
           }
+          // Clear provider-config rows that referenced this entry's secret.
+          await ManagedProviderLinkJanitor(
+            appProviderCubit: appProviderCubit,
+          ).clearLinksFor(provider.id);
         },
       );
   final managedProviderControlPlane = ManagedProviderControlPlane(

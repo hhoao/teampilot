@@ -6,13 +6,16 @@ import 'package:shared_ui/shared_ui.dart';
 import '../app_toast/app_toast.dart';
 
 import '../../cubits/app_provider_cubit.dart';
+import '../../cubits/managed_provider_cubit.dart';
 import '../../l10n/l10n_extensions.dart';
 import '../../models/app_provider_config.dart';
+import '../../models/managed_provider.dart';
 import '../../services/cli/registry/capabilities/provider_capability.dart';
 import '../../services/cli/registry/cli_tool_registry.dart';
 import '../../services/cli/registry/cli_tool_registry_scope.dart';
 import '../../services/cli/codex/capabilities/provider.dart';
 import '../../services/provider/credential_binding.dart';
+import '../../services/provider_usage/managed_provider_link_binding.dart';
 import '../../theme/workspace_surface_layers.dart';
 import '../../utils/debounce/debounce.dart';
 import 'brand_dropdown_rows.dart';
@@ -53,6 +56,7 @@ class _AppProviderFormPageState extends State<AppProviderFormPage> {
 
   late String _presetId;
   late AppProviderCategory _category;
+  late String _credentialLink;
   late String _apiKeyField;
   late String _apiKeyUrl;
   late String _icon;
@@ -95,6 +99,7 @@ class _AppProviderFormPageState extends State<AppProviderFormPage> {
     _defaultModelCtl = TextEditingController(text: e?.defaultModel ?? '');
     _presetId = _initialPresetId(formCap, e);
     _category = e?.category ?? AppProviderCategory.custom;
+    _credentialLink = e?.credentialLink ?? '';
     _apiKeyField = formCap.normalizeApiKeyField(e?.apiKeyField);
     _apiKeyUrl = e?.apiKeyUrl ?? '';
     _icon = e?.icon ?? '';
@@ -135,6 +140,7 @@ class _AppProviderFormPageState extends State<AppProviderFormPage> {
     _extra = const {};
     _prospectiveId = null;
     _prospectiveIdName = null;
+    _credentialLink = '';
   }
 
   @override
@@ -223,7 +229,10 @@ class _AppProviderFormPageState extends State<AppProviderFormPage> {
       websiteUrl: _websiteCtl.text.trim(),
       apiKeyUrl: _apiKeyUrl,
       category: _category,
-      apiKey: _apiKeyCtl.text.trim(),
+      credentialLink: _credentialLink,
+      // A linked row reads its key from the referenced managed entry; the
+      // draft never carries a resolved key so persistence stays clean.
+      apiKey: _credentialLink.isNotEmpty ? '' : _apiKeyCtl.text.trim(),
       apiKeyField: _apiKeyField,
       baseUrl: _baseUrlCtl.text.trim(),
       defaultModel: _defaultModelCtl.text.trim(),
@@ -460,16 +469,20 @@ class _AppProviderFormPageState extends State<AppProviderFormPage> {
                   ),
                   if (!_hidesApiKeyFields(context)) ...[
                     const SizedBox(height: 12),
-                    TextField(
-                      controller: _apiKeyCtl,
-                      obscureText: true,
-                      decoration: InputDecoration(
-                        labelText: l10n.apiKey,
-                        hintText: _isEditing
-                            ? l10n.appProviderApiKeyEditHint
-                            : null,
+                    if (_canPickCredentialLink) _buildCredentialLinkPicker(context),
+                    if (_credentialLink.isNotEmpty)
+                      _LinkedCredentialChip(entryName: _linkedEntryName(context))
+                    else
+                      TextField(
+                        controller: _apiKeyCtl,
+                        obscureText: true,
+                        decoration: InputDecoration(
+                          labelText: l10n.apiKey,
+                          hintText: _isEditing
+                              ? l10n.appProviderApiKeyEditHint
+                              : null,
+                        ),
                       ),
-                    ),
                   ],
                   if (!_hidesApiKeyFields(context)) ...[
                     const SizedBox(height: 12),
@@ -622,6 +635,135 @@ class _AppProviderFormPageState extends State<AppProviderFormPage> {
     if (capability.hidesApiKeyFields(draft)) return true;
     final existing = widget.existing;
     return existing != null && capability.hidesApiKeyFields(existing);
+  }
+
+  /// The credential-link picker is offered for apiKey-class drafts only
+  /// (third-party / aggregator / cn-official categories).
+  bool get _canPickCredentialLink =>
+      _category == AppProviderCategory.thirdParty ||
+      _category == AppProviderCategory.aggregator ||
+      _category == AppProviderCategory.cnOfficial;
+
+  /// Null when no ManagedProviderCubit is in scope (e.g. narrow test wraps).
+  ManagedProviderCubit? _managedCubitOf(BuildContext context) {
+    try {
+      return context.read<ManagedProviderCubit>();
+    } on ProviderNotFoundException {
+      return null;
+    }
+  }
+
+  /// (managed entry id, label) options: own key first, then every
+  /// secret-backed balance/usage entry. Entries that link back to THIS
+  /// provider row (cycle) are excluded.
+  List<(String, String)> _credentialLinkOptions(BuildContext context) {
+    final l10n = context.l10n;
+    final managed = _managedCubitOf(context)?.state.providers ?? const <ManagedProvider>[];
+    final ownId = widget.existing?.id ?? '';
+    final options = <(String, String)>[('', l10n.appProviderCredentialLinkOwnKey)];
+    for (final entry in managed) {
+      final ref = entry.credentialRef?.trim() ?? '';
+      if (ref.isEmpty) continue;
+      if (entry.kind != ManagedProviderKind.apiBalance &&
+          entry.kind != ManagedProviderKind.customHttp) {
+        continue;
+      }
+      final backLink = managedProviderLinkSourceOf(
+        entry.endpointConfig.credentialSource,
+      );
+      // Ids are per-CLI catalogs: both cli and id must match for a cycle.
+      if (backLink != null &&
+          backLink.cli == widget.cli &&
+          backLink.providerId == ownId) {
+        continue;
+      }
+      options.add((entry.id, entry.name));
+    }
+    return options;
+  }
+
+  Widget _buildCredentialLinkPicker(BuildContext context) {
+    final options = _credentialLinkOptions(context);
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Text(
+          context.l10n.appProviderCredentialLinkMode,
+          style: TpTextStyles.of(context).smSemibold,
+        ),
+        const SizedBox(height: 6),
+        TpSelect<String>(
+          key: const Key('app-provider-credential-link'),
+          items: [for (final option in options) option.$1],
+          initialItem: _credentialLink,
+          itemLabel: (value) {
+            for (final option in options) {
+              if (option.$1 == value) return option.$2;
+            }
+            return value;
+          },
+          onChanged: (value) {
+            setState(() {
+              _credentialLink = value ?? '';
+              if (_credentialLink.isNotEmpty) _apiKeyCtl.clear();
+            });
+          },
+          decoration: TpSelectDecorations.themed(context),
+          overlayHeight: kTpSelectDefaultOverlayHeight,
+        ),
+      ],
+    );
+  }
+
+  /// Display name of the linked managed entry ('' when it vanished).
+  String _linkedEntryName(BuildContext context) {
+    final link = _credentialLink.trim();
+    if (link.isEmpty) return '';
+    final entry = _managedCubitOf(context)
+        ?.state
+        .providers
+        .where((e) => e.id == link)
+        .firstOrNull;
+    return entry?.name ?? '';
+  }
+}
+
+/// Read-only summary of a managed-entry credential reference shown in place
+/// of the apiKey input.
+class _LinkedCredentialChip extends StatelessWidget {
+  const _LinkedCredentialChip({required this.entryName});
+
+  final String entryName;
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = context.l10n;
+    return Container(
+      key: const Key('app-provider-credential-link-chip'),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: Theme.of(context).colorScheme.outlineVariant),
+      ),
+      child: Row(
+        children: [
+          Icon(
+            Icons.link_outlined,
+            size: context.tpIconSizes.md,
+            color: Theme.of(context).colorScheme.onSurfaceVariant,
+          ),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              entryName.isEmpty
+                  ? l10n.appProviderCredentialLinkEmpty
+                  : l10n.appProviderCredentialLinkedTo(entryName),
+              style: TpTextStyles.of(context).sm,
+            ),
+          ),
+        ],
+      ),
+    );
   }
 }
 
