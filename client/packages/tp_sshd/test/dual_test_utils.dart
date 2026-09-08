@@ -27,6 +27,7 @@ Future<(SSHClient, SSHServer)> startDualPair({
   SSHProcessFactory? processFactory,
   SSHPtyFactory? ptyFactory,
   SSHHostInfo Function()? hostInfo,
+  SftpFileSystem? sftpFileSystem,
 }) async {
   final (clientSocket, serverSocket) = loopbackSSHSocketPair();
   final connections = StreamController<SSHSocket>();
@@ -39,6 +40,7 @@ Future<(SSHClient, SSHServer)> startDualPair({
       processFactory: processFactory,
       ptyFactory: ptyFactory,
       hostInfo: hostInfo,
+      sftpFileSystem: sftpFileSystem,
     ),
   );
   connections.add(serverSocket);

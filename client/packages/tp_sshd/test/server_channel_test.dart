@@ -287,8 +287,10 @@ void main() {
       final clientController = await openClientSessionChannel(client);
       // The connection wires every channel to handleSessionRequest, which
       // serves the structured exec grammar and the pty half (pty-req, env,
-      // shell, window-change, signal); a subsystem request is refused
-      // instead of left hanging.
+      // shell, window-change, signal) plus the sftp subsystem. This pair
+      // configures no sftpFileSystem, so the subsystem request is refused
+      // instead of left hanging; with one configured it is served (the
+      // server_sftp_test.dart dual tests cover that branch).
       final accepted = await clientController.sendSubsystem('sftp');
       expect(accepted, isFalse);
 

@@ -7,6 +7,7 @@ import 'package:dartssh2/protocol.dart'
 
 import 'server_channel.dart';
 import 'server_process.dart';
+import 'server_sftp.dart';
 import 'ssh_server.dart' show SSHServerConfig;
 
 /// Session state accumulated across the requests of one channel, keyed off
@@ -23,9 +24,12 @@ final Expando<_SessionState> _sessionStates = Expando();
 /// * the interactive half — `env` requests accumulate, `pty-req` stashes the
 ///   terminal dimensions, and `shell` spawns the pty through
 ///   [SSHServerConfig.ptyFactory], after which `window-change` resizes it
-///   and `signal` delivers signals to it.
+///   and `signal` delivers signals to it;
+/// * the `sftp` subsystem — served by the SFTPv3 server over
+///   [SSHServerConfig.sftpFileSystem] (see [serveSftpSubsystem]).
 ///
-/// A channel takes exactly one lifecycle request, `exec` or `shell`
+/// A channel takes exactly one lifecycle request, `exec`, `shell` or the
+/// `sftp` subsystem
 /// (RFC 4254 §6.5's session channels are single-use): a second one is
 /// refused and the channel closed. `shell` additionally requires a prior
 /// `pty-req` — this server only serves pty sessions. A plain shell-string
@@ -55,6 +59,8 @@ Future<bool> handleSessionRequest(
       return _serveExec(channel, request, config: config, state: state);
     case SSHChannelRequestType.shell:
       return _serveShell(channel, config: config, state: state);
+    case SSHChannelRequestType.subsystem:
+      return _serveSubsystem(channel, request, config: config, state: state);
     default:
       return false;
   }
@@ -228,7 +234,27 @@ Future<bool> _serveShell(
   return true;
 }
 
-/// Claims the channel's one lifecycle request (`exec` or `shell`). A session
+/// Serves the `subsystem` request (RFC 4254 §6.5): the only subsystem this
+/// server speaks is `sftp`, and only over a configured filesystem
+/// ([SSHServerConfig.sftpFileSystem]). Anything else is refused.
+Future<bool> _serveSubsystem(
+  SSHServerChannel channel,
+  SSH_Message_Channel_Request request, {
+  required SSHServerConfig config,
+  required _SessionState state,
+}) async {
+  if (!_claimLifecycle(channel, state)) return false;
+  final filesystem = config.sftpFileSystem;
+  if (request.subsystemName != 'sftp' || filesystem == null) return false;
+  _afterReply(
+    channel,
+    () => serveSftpSubsystem(channel, filesystem: filesystem),
+  );
+  return true;
+}
+
+/// Claims the channel's one lifecycle request (`exec`, `shell` or the `sftp`
+/// subsystem). A session
 /// channel serves a single program (RFC 4254 §6.5); a second lifecycle
 /// request is refused, and the channel is closed once that failure reply is
 /// on the wire.

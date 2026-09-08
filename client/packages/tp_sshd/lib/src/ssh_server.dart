@@ -6,6 +6,7 @@ import 'package:dartssh2/protocol.dart';
 
 import 'server_connection.dart';
 import 'server_process.dart';
+import 'sftp_filesystem.dart';
 
 /// The narrow negotiation surface advertised by tp_sshd servers (spec:
 /// x25519 KEX, ed25519 host keys, AEAD ciphers).
@@ -31,6 +32,7 @@ class SSHServerConfig {
     this.processFactory,
     this.ptyFactory,
     this.hostInfo,
+    this.sftpFileSystem,
     this.printDebug,
     this.printTrace,
   });
@@ -73,6 +75,11 @@ class SSHServerConfig {
   /// Supplies the host snapshot answered for the `tp1:` host-info query.
   /// `null` refuses the query; it is never answered by spawning a process.
   final SSHHostInfo Function()? hostInfo;
+
+  /// The filesystem the `sftp` subsystem serves. A `subsystem` request for
+  /// `sftp` is only served when this is configured; without it the request
+  /// is refused.
+  final SftpFileSystem? sftpFileSystem;
 
   /// Function invoked with debug logging, mirroring [SSHSocket] transports.
   final void Function(String? message)? printDebug;
