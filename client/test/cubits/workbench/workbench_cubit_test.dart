@@ -10,6 +10,7 @@ final _s1 = WorkbenchTabId.session('s1');
 final _s2 = WorkbenchTabId.session('s2');
 final _s3 = WorkbenchTabId.session('s3');
 final _f = WorkbenchTabId.file('/a.dart');
+final _f1 = WorkbenchTabId.file('/f1.dart');
 final _d = WorkbenchTabId.diffChanges('/a.dart');
 
 void main() {
@@ -524,6 +525,39 @@ void main() {
       expect(strip.previewIds, cubit.centerLayout(_ws).groups.values
           .expand((s) => s.previewIds)
           .toSet());
+    });
+  });
+
+  group('centerSessionGroups', () {
+    test('single-group layout returns empty (flat sidebar path)', () {
+      cubit.openSession(_ws, 's1');
+      expect(cubit.centerSessionGroups(_ws), isEmpty);
+    });
+
+    test('groups per split group in leaf order, previews excluded', () {
+      cubit
+        ..openSession(_ws, 's1')
+        ..openSession(_ws, 's2')
+        ..openSession(_ws, 's3')
+        ..openFile(_ws, '/a.dart')
+        ..splitTab(_ws, _s3, axis: Axis.horizontal, before: false); // g0 [s1,s2,f] | g1 [s3]
+      final groups = cubit.centerSessionGroups(_ws);
+      expect(groups, hasLength(2));
+      expect(groups[0].$1, 'g0');
+      expect(groups[0].$2, ['s1', 's2']);
+      expect(groups[1].$2, ['s3']);
+    });
+
+    test('group with only non-session tabs is omitted', () {
+      cubit
+        ..openSession(_ws, 's1')
+        ..openSession(_ws, 's2')
+        ..openFile(_ws, '/f1.dart')
+        ..openFile(_ws, '/f2.dart')
+        ..splitTab(_ws, _f1, axis: Axis.horizontal, before: false); // g0 [s1,s2,f2] | g1 [f1]
+      final groups = cubit.centerSessionGroups(_ws);
+      expect(groups, hasLength(1));
+      expect(groups[0].$2, ['s1', 's2']);
     });
   });
 }

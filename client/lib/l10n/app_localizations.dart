@@ -3908,6 +3908,12 @@ abstract class AppLocalizations {
   /// **'Open to the Side'**
   String get sessionOpenToSide;
 
+  /// No description provided for @sidebarSplitGroupLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Column {n}'**
+  String sidebarSplitGroupLabel(int n);
+
   /// No description provided for @deleteConversation.
   ///
   /// In en, this message translates to:

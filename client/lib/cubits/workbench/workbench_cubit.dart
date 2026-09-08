@@ -8,6 +8,7 @@ import 'tab_strip.dart';
 import 'workbench_domain_port.dart';
 import 'workbench_split_layout.dart';
 import 'workbench_tab.dart';
+import '../../utils/session/running_session_ids.dart';
 import 'workbench_tab_bar.dart';
 
 class _NoopPort implements WorkbenchDomainPort {
@@ -223,6 +224,27 @@ class WorkbenchCubit extends Cubit<WorkbenchState> {
   /// consumers use this so tabs in non-focused groups stay visible.
   TabStrip mergedCenterStrip(String workspaceId) =>
       _mergeGroupStrips(centerLayout(workspaceId));
+
+  /// Per-split-group session tile data in leaf order:
+  /// (groupId, that group's non-preview session tab ids). Empty for a
+  /// single-group layout — callers keep the flat path. Groups whose tabs
+  /// are all non-session (files / diffs) are omitted.
+  List<(String, List<String>)> centerSessionGroups(String workspaceId) {
+    final layout = centerLayout(workspaceId);
+    if (layout.groups.length == 1) return const [];
+    final result = <(String, List<String>)>[];
+    for (final groupId in layout.leafGroupIds) {
+      final strip = layout.groups[groupId];
+      if (strip == null) continue;
+      final sessionIds = OpenSessionTabIds.fromCenterBarOrder(
+        strip.order,
+        previewIds: strip.previewIds,
+      ).ids;
+      if (sessionIds.isEmpty) continue;
+      result.add((groupId, sessionIds));
+    }
+    return result;
+  }
 
   TabStrip mergedFloatingStrip(String workspaceId) =>
       _mergeGroupStrips(floatingLayout(workspaceId));

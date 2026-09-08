@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:flutter/foundation.dart' show listEquals;
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
@@ -41,6 +42,7 @@ import '../../../utils/session/session_reorder_merge.dart';
 import '../../../utils/session/workspace_sessions.dart';
 import '../../../utils/session/workspace_tab_session_scope.dart';
 import 'workspace_sidebar_probe.dart';
+import 'workspace_sidebar_row_metrics.dart';
 import '../../../widgets/sidebar_session_tile.dart';
 import 'workspace_automations_section.dart';
 import 'workspace_search_dialog.dart';
@@ -398,6 +400,32 @@ class _RunningSessionsHost extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // Per-split-group session ids (leaf order); empty for a single-group
+    // layout, in which case the flat merged path below applies.
+    final splitGroups = context.select<WorkbenchCubit, SplitSessionGroups>(
+      (c) => SplitSessionGroups.fromWorkbench(c, tabScopeId),
+    );
+    if (splitGroups.groups.isNotEmpty) {
+      final running = context.select<ChatCubit, RunningSessionIds>(
+        (c) => RunningSessionIds.fromOpenSessionTabs(
+          sessions: sessionsForWorkspace(workspace, c.state.sessions),
+          openTabSessionIdsInOrder: [
+            for (final g in splitGroups.groups) ...g.sessionIds,
+          ],
+        ),
+      );
+      return SidebarRebuildProbe(
+        key: const Key('workspace-sidebar-running-host-probe'),
+        child: running.isEmpty
+            ? const SizedBox.shrink()
+            : _RunningSplitGroupsSection(
+                groups: splitGroups.groups,
+                knownIds: running.ids.toSet(),
+                workspace: workspace,
+                tabScopeId: tabScopeId,
+              ),
+      );
+    }
     final openTabIds = context.select<WorkbenchCubit, OpenSessionTabIds>(
       (c) {
         // Merged across every center split group — the sidebar's open strip
@@ -425,6 +453,48 @@ class _RunningSessionsHost extends StatelessWidget {
               tabScopeId: tabScopeId,
             ),
     );
+  }
+}
+
+/// Equatable per-split-group view for [context.select] rebuild boundaries.
+@immutable
+class SplitSessionGroup {
+  const SplitSessionGroup(this.groupId, this.sessionIds, this.focused);
+
+  final String groupId;
+  final List<String> sessionIds;
+  final bool focused;
+
+  @override
+  bool operator ==(Object other) =>
+      other is SplitSessionGroup &&
+      other.groupId == groupId &&
+      listEquals(other.sessionIds, sessionIds) &&
+      other.focused == focused;
+
+  @override
+  int get hashCode => Object.hash(groupId, Object.hashAll(sessionIds), focused);
+}
+
+@immutable
+class SplitSessionGroups {
+  const SplitSessionGroups._(this.groups);
+
+  final List<SplitSessionGroup> groups;
+
+  static const empty = SplitSessionGroups._([]);
+
+  static SplitSessionGroups fromWorkbench(
+    WorkbenchCubit workbench,
+    String workspaceId,
+  ) {
+    final raw = workbench.centerSessionGroups(workspaceId);
+    if (raw.isEmpty) return empty;
+    final focusedId = workbench.centerFocusedGroupId(workspaceId);
+    return SplitSessionGroups._([
+      for (final (groupId, ids) in raw)
+        SplitSessionGroup(groupId, ids, groupId == focusedId),
+    ]);
   }
 }
 
@@ -759,6 +829,115 @@ class _RunningSessionsSection extends StatelessWidget {
               ),
             ),
       ],
+    );
+  }
+}
+
+/// The open-sessions section when the center workbench is split: one
+/// sub-section per split group, headed by a clickable "Column N" row that
+/// focuses that group (the focused column's header carries the primary
+/// color, mirroring the split focus frame).
+class _RunningSplitGroupsSection extends StatelessWidget {
+  const _RunningSplitGroupsSection({
+    required this.groups,
+    required this.knownIds,
+    required this.workspace,
+    required this.tabScopeId,
+  });
+
+  final List<SplitSessionGroup> groups;
+
+  /// Session ids whose sessions exist in the workspace (chat cubit filter) —
+  /// tiles outside this set are skipped.
+  final Set<String> knownIds;
+  final Workspace workspace;
+  final String tabScopeId;
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = context.l10n;
+    final chatState = context.read<ChatCubit>().state;
+    final workbench = context.read<WorkbenchCubit>();
+    final styles = TpTextStyles.of(context);
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Padding(
+          padding: const EdgeInsets.fromLTRB(4, 0, 0, 8),
+          child: Text(
+            l10n.workspaceRunningSessionsSection,
+            style: styles.mutedSm,
+          ),
+        ),
+        for (final (index, group) in groups.indexed)
+          Column(
+            key: ValueKey('workspace-running-split-${group.groupId}'),
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              _SplitGroupHeader(
+                label: l10n.sidebarSplitGroupLabel(index + 1),
+                focused: group.focused,
+                onTap: () =>
+                    workbench.focusGroup(tabScopeId, group.groupId),
+              ),
+              for (final sessionId in group.sessionIds)
+                if (knownIds.contains(sessionId))
+                  if (_sessionById(chatState, sessionId) case final session?)
+                  SidebarSessionTile(
+                    key: ValueKey('workspace-running-session-$sessionId'),
+                    session: session,
+                    highlightSessionId: scopedActiveSessionId(
+                      workbench,
+                      tabScopeId,
+                    ),
+                    tapThrottleKeyPrefix: 'workspace_running_session',
+                    onTap: () => openWorkspaceSessionTab(
+                      context,
+                      workspace,
+                      session,
+                      tabScopeId: tabScopeId,
+                    ),
+                  ),
+              const SizedBox(height: 4),
+            ],
+          ),
+      ],
+    );
+  }
+}
+
+class _SplitGroupHeader extends StatelessWidget {
+  const _SplitGroupHeader({
+    required this.label,
+    required this.focused,
+    required this.onTap,
+  });
+
+  final String label;
+  final bool focused;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    final styles = TpTextStyles.of(context);
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 2),
+      child: TpHoverRow(
+        padding: kWorkspaceSidebarRowPadding,
+        hoverColor: workspaceSidebarRowHoverFill(cs),
+        onTap: onTap,
+        child: Text(
+          label,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          style: focused
+              ? styles.mdColored(cs.primary).copyWith(
+                  fontWeight: FontWeight.w600,
+                )
+              : styles.mutedSm,
+        ),
+      ),
     );
   }
 }

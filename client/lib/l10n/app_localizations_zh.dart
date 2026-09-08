@@ -2064,6 +2064,11 @@ class AppLocalizationsZh extends AppLocalizations {
   String get sessionOpenToSide => '在右侧分栏打开';
 
   @override
+  String sidebarSplitGroupLabel(int n) {
+    return '分栏 $n';
+  }
+
+  @override
   String get deleteConversation => '删除对话';
 
   @override
