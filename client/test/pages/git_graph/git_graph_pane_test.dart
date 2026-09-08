@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -56,6 +58,35 @@ class _RecordingOpener implements WorkbenchEditorOpener {
 }
 
 void main() {
+  testWidgets('pending initial load shows spinner, not "No commits found"', (
+    tester,
+  ) async {
+    // 复现：面板打开时 git 子进程未返回，rows 为空 → 曾误显示
+    // 「No commits found」，让用户以为仓库无提交。加载中应显示 spinner。
+    final gate = Completer<void>();
+    final history = GatedHistory(gates: [gate], rows: [graphCommitRow('c1')]);
+    final cubit = GitGraphCubit(
+      history: history,
+      git: FakeGitForGraph(repoStatus()),
+    );
+    addTearDown(cubit.close);
+    unawaited(cubit.setRepoRoot('/repo'));
+    await tester.pumpWidget(host(cubit));
+    await tester.pump();
+
+    expect(find.text('No commits found'), findsNothing);
+    expect(
+      find.byType(CircularProgressIndicator),
+      findsWidgets,
+      reason: '加载中应显示进度指示',
+    );
+
+    gate.complete();
+    await tester.pumpAndSettle();
+    expect(find.byKey(const ValueKey('git-graph-row-c1')), findsOneWidget);
+    expect(find.byType(CircularProgressIndicator), findsNothing);
+  });
+
   testWidgets('scrolling to bottom twice triggers two loadMore fetches',
       (tester) async {
     final history = FullPagesChainHistory();

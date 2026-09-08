@@ -305,6 +305,17 @@ class _GraphListState extends State<_GraphList> {
     }
 
     if (itemCount == 0) {
+      // 刷新进行中（git 子进程尚未返回）显示加载态而非「未找到提交」，
+      // 避免用户误以为仓库为空。
+      if (state.isRefreshing) {
+        return const Center(
+          child: SizedBox(
+            width: 18,
+            height: 18,
+            child: CircularProgressIndicator(strokeWidth: 2),
+          ),
+        );
+      }
       return Center(
         child: Text(
           context.l10n.gitGraphNoCommits,

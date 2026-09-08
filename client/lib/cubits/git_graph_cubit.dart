@@ -294,6 +294,7 @@ class GitGraphCubit extends Cubit<GitGraphState> {
   Future<void> _runRefresh() async {
     final dir = state.repoRoot;
     if (dir.isEmpty || isClosed) return;
+    emit(state.copyWith(isRefreshing: true));
     try {
       final signature =
           '${state.searchQuery}|${state.searchMode.index}|$_effectiveRevisionRange';
@@ -316,15 +317,20 @@ class GitGraphCubit extends Cubit<GitGraphState> {
       var nextStashes = state.stashList;
 
       if (!headUnchanged || !ttlFresh || state.rows.isEmpty) {
-        final rows = await _history.graphRows(
+        // 三个子进程互不依赖，并行发起（SSH 下每次调用都是一次网络
+        // 往返，串行会把打开面板的等待拉长约 3 倍）。
+        final rowsFuture = _history.graphRows(
           dir,
           query: state.searchQuery,
           mode: state.searchMode,
           revisionRange: _effectiveRevisionRange,
         );
+        final refsFuture = _history.refs(dir);
+        final stashesFuture = _history.stashList(dir);
+        final rows = await rowsFuture;
         if (isClosed || state.repoRoot != dir) return;
-        final refs = await _history.refs(dir);
-        final stashes = await _history.stashList(dir);
+        final refs = await refsFuture;
+        final stashes = await stashesFuture;
         if (isClosed || state.repoRoot != dir) return;
 
         // 重刷新只取第一页；若查询条件未变、本地已分页更深且头提交
@@ -368,13 +374,14 @@ class GitGraphCubit extends Cubit<GitGraphState> {
           dirtyCount: status.staged.length + status.unstaged.length,
           gitAvailable: status.isRepository,
           clearError: !keepSurfacedError,
+          isRefreshing: false,
         ),
       );
     } on GitException catch (e) {
       _errorSurfaced = false;
       if (isClosed) return;
       appLogger.e('[GitGraph] refresh failed: ${e.message}');
-      emit(state.copyWith(errorMessage: e.message));
+      emit(state.copyWith(isRefreshing: false, errorMessage: e.message));
     }
   }
 

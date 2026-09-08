@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:teampilot/models/git_graph.dart';
 import 'package:teampilot/models/git_status.dart';
 import 'package:teampilot/services/git/git_history_actions.dart';
@@ -368,8 +370,7 @@ class FullPagesChainHistory implements GitHistoryService {
 
 /// 满页 fake 变体：每 6 行插入一个拓扑 spacer 行（模拟 `git log --graph`
 /// 的 merge 连线行），使「总行数 > 提交数」，专用于回归分页判据。
-class SpacedFullPagesHistory extends FullPagesChainHistory {
-  SpacedFullPagesHistory({super.initialLoadCommits, super.loadMoreCommits});
+class SpacedFullPagesHistory extends FullPagesChainHistory {  SpacedFullPagesHistory({super.initialLoadCommits, super.loadMoreCommits});
 
   List<GitGraphRow> _interleave(List<GitGraphRow> commits) {
     final out = <GitGraphRow>[];
@@ -402,4 +403,46 @@ class SpacedFullPagesHistory extends FullPagesChainHistory {
     );
     return _interleave(commits);
   }
+}
+
+/// 慢速 fake：`graphRows` 每次调用消耗 [gates] 中的一个门（无门或已耗尽
+/// 则立即返回），用于复现「面板打开后 git 子进程尚未返回」的加载窗口。
+/// status 由 [FakeGitForGraph] 立即返回。
+class GatedHistory implements GitHistoryService {
+  GatedHistory({this.gates = const [], this.rows = const []});
+
+  /// 按调用序消耗的刷新门；消耗完后不再阻塞。
+  final List<Completer<void>> gates;
+  final List<GitGraphRow> rows;
+  int _calls = 0;
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
+
+  @override
+  Future<List<GitGraphRow>> graphRows(
+    String dir, {
+    int limit = GitHistoryService.initialLoadCommits,
+    int skip = 0,
+    String query = '',
+    GitSearchMode mode = GitSearchMode.message,
+    String? revisionRange,
+  }) async {
+    if (_calls < gates.length) await gates[_calls].future;
+    _calls++;
+    return rows;
+  }
+
+  @override
+  Future<GitRefsSnapshot> refs(String dir) async =>
+      (branches: const <GitBranchInfo>[], tags: const <GitTagInfo>[]);
+
+  @override
+  Future<List<GitStashEntry>> stashList(String dir) async => const [];
+
+  @override
+  Future<List<GitBranchInfo>> branches(String dir) async => const [];
+
+  @override
+  Future<List<GitTagInfo>> tags(String dir) async => const [];
 }
