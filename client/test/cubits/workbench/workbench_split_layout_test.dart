@@ -9,14 +9,13 @@ final _s2 = WorkbenchTabId.session('s2');
 final _s3 = WorkbenchTabId.session('s3');
 final _f = WorkbenchTabId.file('/a.dart');
 
-WorkbenchGroupLayout _seed(WorkbenchTabId a, [WorkbenchTabId? b]) {
-  final layout = singleGroupLayout(a);
-  if (b == null) return layout;
-  const r = TabStripReducer();
-  final strip = layout.groups['g0']!;
-  return layout.copyWith(groups: {
-    'g0': r.add(strip, b, preview: false).$1,
-  });
+WorkbenchGroupLayout _seed(WorkbenchTabId a, [WorkbenchTabId? b, WorkbenchTabId? c]) {
+  var layout = singleGroupLayout(a);
+  for (final extra in [b, c]) {
+    if (extra == null) continue;
+    layout = _addToGroup(layout, 'g0', extra);
+  }
+  return layout;
 }
 
 WorkbenchGroupLayout _addToGroup(
@@ -51,6 +50,67 @@ void main() {
       expect(l.groups['g0']!.order, [_s1]);
       expect(l.groups['g0']!.activeId, _s1);
       expect(validateLayout(l), isTrue);
+    });
+  });
+
+  group('adjacentLeaf', () {
+    test('single leaf has no neighbor on either side', () {
+      final l = _seed(_s1);
+      expect(
+        adjacentLeaf(l, 'g0', axis: Axis.horizontal, before: false),
+        isNull,
+      );
+      expect(
+        adjacentLeaf(l, 'g0', axis: Axis.horizontal, before: true),
+        isNull,
+      );
+    });
+
+    test('returns the in-order neighbor in a horizontal split', () {
+      // g0 [s1, s2] → split s2 right → g0 [s1] | g1 [s2]
+      final l = const SplitLayoutReducer().split(
+        _seed(_s1, _s2),
+        tab: _s2,
+        axis: Axis.horizontal,
+        before: false,
+      )!;
+      expect(
+        adjacentLeaf(l, 'g0', axis: Axis.horizontal, before: false),
+        'g1',
+      );
+      expect(adjacentLeaf(l, 'g1', axis: Axis.horizontal, before: false), isNull);
+      expect(adjacentLeaf(l, 'g1', axis: Axis.horizontal, before: true), 'g0');
+      expect(adjacentLeaf(l, 'g0', axis: Axis.horizontal, before: true), isNull);
+    });
+
+    test('mixed-axis tree walks in-order leaves', () {
+      // g0 [s1] | (g1 [s2] over g2 [s3])
+      var l = const SplitLayoutReducer().split(
+        _seed(_s1, _s2, _s3),
+        tab: _s2,
+        axis: Axis.horizontal,
+        before: false,
+      )!; // g0 [s1, s3] | g1 [s2]
+      l = const SplitLayoutReducer().splitInto(
+        l,
+        tab: _s3,
+        targetGroupId: 'g1',
+        axis: Axis.vertical,
+        before: false,
+      )!; // g1 leaf → vertical [g1 [s2], g2 [s3]]
+      expect(l.leafGroupIds, ['g0', 'g1', 'g2']);
+      expect(adjacentLeaf(l, 'g0', axis: Axis.horizontal, before: false), 'g1');
+      expect(adjacentLeaf(l, 'g1', axis: Axis.horizontal, before: false), 'g2');
+      expect(adjacentLeaf(l, 'g2', axis: Axis.horizontal, before: false), isNull);
+      expect(adjacentLeaf(l, 'g2', axis: Axis.horizontal, before: true), 'g1');
+    });
+
+    test('absent groupId returns null', () {
+      final l = _seed(_s1);
+      expect(
+        adjacentLeaf(l, 'nope', axis: Axis.horizontal, before: false),
+        isNull,
+      );
     });
   });
 

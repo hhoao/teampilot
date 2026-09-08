@@ -440,6 +440,24 @@ bool validateLayout(WorkbenchGroupLayout layout) {
 
 bool _debugCheck(WorkbenchGroupLayout layout) => !kDebugMode || validateLayout(layout);
 
+/// In-order neighbor leaf of [groupId]: the previous leaf when [before],
+/// else the next one. Null when [groupId] is not a live leaf or has no
+/// neighbor on that side. [axis] is accepted for future horizontal /
+/// vertical differentiation; both axes currently use the in-order walk
+/// (same order `workbenchFocusNextGroup` cycles in).
+String? adjacentLeaf(
+  WorkbenchGroupLayout layout,
+  String groupId, {
+  required Axis axis,
+  required bool before,
+}) {
+  final leaves = layout.leafGroupIds;
+  final index = leaves.indexOf(groupId);
+  if (index < 0) return null;
+  final target = before ? index - 1 : index + 1;
+  return target >= 0 && target < leaves.length ? leaves[target] : null;
+}
+
 // ---------------------------------------------------------------------------
 // Snapshot (Task 9 persistence format)
 // ---------------------------------------------------------------------------
