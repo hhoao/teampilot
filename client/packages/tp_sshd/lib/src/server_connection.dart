@@ -174,6 +174,14 @@ class SSHServerConnection {
   /// Serves CHANNEL_OPEN (RFC 4254 §5.1): `session` channels are confirmed
   /// with a fresh [SSHServerChannel]; every other type is refused with
   /// "administratively prohibited" (forwarded channels arrive in Task 9).
+  ///
+  /// The refusal uses reason 1, `codeAdministrativelyProhibited`. The plan
+  /// text says "reason 3 (admin prohibited)", but reason 3 is
+  /// `codeUnknownChannelType` in both the fork's API and RFC 4254 §5.1,
+  /// and it would be the wrong semantic here (the server recognizes
+  /// `direct-tcpip`, it just does not serve it yet); the named constant for
+  /// the stated semantic wins per the controller ruling that real fork API
+  /// names take precedence.
   void _handleChannelOpen(Uint8List payload) {
     final message = _decodeMessage(
       'channel open',

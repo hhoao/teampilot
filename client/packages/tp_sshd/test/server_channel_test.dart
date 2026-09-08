@@ -37,14 +37,25 @@ void main() {
     );
     // forwardLocal() opens a 'direct-tcpip' channel, which this server does
     // not serve until Task 9.
+    //
+    // The plan text says "reason 3 (admin prohibited)", but reason 3 is
+    // codeUnknownChannelType in both the fork's API and RFC 4254 §5.1, and
+    // would be the wrong semantic for a recognized-but-unserved type; the
+    // named constant for the stated semantic (reason 1,
+    // codeAdministrativelyProhibited) wins per the controller ruling that
+    // real fork API names take precedence. Both the constant and the raw
+    // wire value are pinned so a future constant renumbering cannot slip
+    // through silently.
     await expectLater(
       client.forwardLocal('127.0.0.1', 80),
       throwsA(
-        isA<SSHChannelOpenError>().having(
-          (error) => error.code,
-          'code',
-          SSH_Message_Channel_Open_Failure.codeAdministrativelyProhibited,
-        ),
+        isA<SSHChannelOpenError>()
+            .having(
+              (error) => error.code,
+              'code',
+              SSH_Message_Channel_Open_Failure.codeAdministrativelyProhibited,
+            )
+            .having((error) => error.code, 'wire value', 1),
       ),
     );
     await server.close();
