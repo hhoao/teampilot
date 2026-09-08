@@ -735,6 +735,9 @@ void main() async {
                   BlocProvider.value(value: shell.floatingWorkspaceCubit),
                   RepositoryProvider.value(value: shell.workbenchEditorOpener),
                   RepositoryProvider.value(value: shell.workbenchShellLauncher),
+                  RepositoryProvider.value(
+                    value: shell.workbenchLayoutPersistence,
+                  ),
                   BlocProvider.value(value: shell.configCubit),
                   BlocProvider.value(value: shell.appProviderCubit),
                   BlocProvider.value(value: shell.llmConfigCubit),
