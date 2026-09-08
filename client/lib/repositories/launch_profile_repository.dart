@@ -29,12 +29,13 @@ class LaunchProfileRepository {
   }
 
   void _scheduleRevalidation(
+    String cacheKey,
     ({String dir, Filesystem fs}) paths,
     LaunchProfileIndexStore store,
     List<LaunchProfile> snapshot,
   ) {
     Future<void>? pending;
-    pending = _revalidateLaunchProfilesSnapshot(paths, store, snapshot)
+    pending = _revalidateLaunchProfilesSnapshot(cacheKey, paths, store, snapshot)
         .whenComplete(() {
           if (identical(_revalidationFuture, pending)) {
             _revalidationFuture = null;
@@ -54,9 +55,12 @@ class LaunchProfileRepository {
     _loadAllByRoot.remove(_loadAllCacheKey());
   }
 
-  List<LaunchProfile> _rememberLoadAll(List<LaunchProfile> profiles) {
+  List<LaunchProfile> _rememberLoadAll(
+    String cacheKey,
+    List<LaunchProfile> profiles,
+  ) {
     final remembered = List<LaunchProfile>.unmodifiable(profiles);
-    _loadAllByRoot[_loadAllCacheKey()] = remembered;
+    _loadAllByRoot[cacheKey] = remembered;
     return remembered;
   }
 
@@ -124,7 +128,11 @@ class LaunchProfileRepository {
   }
 
   Future<List<LaunchProfile>> loadAll() async {
-    final cached = _loadAllByRoot[_loadAllCacheKey()];
+    // Capture the cache key once: the deferred revalidation below runs after
+    // awaits and must not re-read AppPathsBootstrapper, which a test may have
+    // torn down by then (and which can change in production).
+    final cacheKey = _loadAllCacheKey();
+    final cached = _loadAllByRoot[cacheKey];
     if (cached != null) {
       appLogger.i(
         '[boot] loadLaunchProfiles from memory count=${cached.length}',
@@ -141,8 +149,8 @@ class LaunchProfileRepository {
         '[boot] loadLaunchProfiles from snapshot count=${snapshot.length} '
         'read=${readMs}ms (validate deferred)',
       );
-      _scheduleRevalidation(paths, store, snapshot);
-      return _rememberLoadAll(_sorted(snapshot));
+      _scheduleRevalidation(cacheKey, paths, store, snapshot);
+      return _rememberLoadAll(cacheKey, _sorted(snapshot));
     } else {
       appLogger.i(
         '[boot] loadLaunchProfiles rebuilding snapshot read=${readMs}ms',
@@ -150,10 +158,11 @@ class LaunchProfileRepository {
     }
     final profiles = await _scanAll(paths);
     await store.writeAll(profiles);
-    return _rememberLoadAll(profiles);
+    return _rememberLoadAll(cacheKey, profiles);
   }
 
   Future<void> _revalidateLaunchProfilesSnapshot(
+    String cacheKey,
     ({String dir, Filesystem fs}) paths,
     LaunchProfileIndexStore store,
     List<LaunchProfile> snapshot,
@@ -172,7 +181,7 @@ class LaunchProfileRepository {
     );
     final profiles = await _scanAll(paths);
     await store.writeAll(profiles);
-    _rememberLoadAll(profiles);
+    _rememberLoadAll(cacheKey, profiles);
   }
 
   Future<List<LaunchProfile>> _scanAll(
