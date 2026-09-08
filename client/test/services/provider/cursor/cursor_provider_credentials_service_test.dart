@@ -108,9 +108,17 @@ void main() {
   }
 
   setUp(() {
+    // Hermetic host environment: the Linux CI runner exports XDG_CONFIG_HOME,
+    // which globalAuthJsonCandidates' Platform.environment fallback would
+    // consult in importFromGlobal calls that don't pin platformEnv.
+    CursorHomeLayout.debugPlatformEnvironmentOverride = const {};
     fs = InMemoryFilesystem();
     layout = CursorHomeLayout(pathContext: fs.pathContext);
     service = CursorProviderCredentialsService(fs: fs, basePath: base);
+  });
+
+  tearDown(() {
+    CursorHomeLayout.debugPlatformEnvironmentOverride = null;
   });
 
   test('probe missing when no auth.json', () async {

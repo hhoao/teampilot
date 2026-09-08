@@ -246,8 +246,9 @@ void main() {
 
       await paths.ensureMemberAuthDir(memberHome: memberHome);
 
+      // The platform's auth anchor (macOS ~/.cursor, others ~/.config/cursor).
       expect(
-        (await fs.stat(homeLayout.configCursorDir(memberHome))).isDirectory,
+        (await fs.stat(homeLayout.authDir(memberHome))).isDirectory,
         isTrue,
       );
       expect((await fs.stat(paths.memberAuthFile(memberHome))).exists, isFalse);

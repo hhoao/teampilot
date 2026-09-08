@@ -96,12 +96,11 @@ void main() {
         'cursor',
         memberId: TeamMemberNaming.teamLeadName,
       );
-      final memberAuthDir = fs.pathContext.join(
-        memberHome,
-        'home',
-        '.config',
-        'cursor',
-      );
+      // Seed at the platform auth anchor (macOS ~/.cursor, others
+      // ~/.config/cursor) so the gate probe finds the token on every host.
+      final memberAuthDir = CursorHomeLayout(
+        pathContext: fs.pathContext,
+      ).authDir(fs.pathContext.join(memberHome, 'home'));
       await fs.ensureDir(memberAuthDir);
       await fs.writeString(
         fs.pathContext.join(memberAuthDir, CursorHomeLayout.authFileName),

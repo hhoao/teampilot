@@ -190,8 +190,11 @@ void main() {
         fs: work.fs,
         basePath: work.basePath,
       );
+      // The bridge pins the work plane to the linux anchor (SSH remotes are
+      // always POSIX) — match that when locating the copied auth.json.
       final dest = CursorHomeLayout(
         pathContext: work.fs.pathContext,
+        platform: CursorHomePlatform.linux,
       ).authJson(workSvc.providerHome('default'));
       expect(
         String.fromCharCodes((await work.fs.readBytes(dest))!),

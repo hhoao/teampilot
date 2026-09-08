@@ -23,6 +23,9 @@ void main() {
     appData = p.join(root.path, 'app-data');
     home = p.join(root.path, 'home');
     await Directory(home).create(recursive: true);
+    // Hermetic host environment: the Linux CI runner exports XDG_CONFIG_HOME,
+    // which the cursor import's Platform.environment fallback would consult.
+    CursorHomeLayout.debugPlatformEnvironmentOverride = const {};
     AppStorage.installForTesting(
       filesystem: LocalFilesystem(),
       paths: AppPaths(appData),
@@ -33,6 +36,7 @@ void main() {
   });
 
   tearDown(() async {
+    CursorHomeLayout.debugPlatformEnvironmentOverride = null;
     AppStorage.resetForTesting();
     if (await root.exists()) {
       await root.delete(recursive: true);
@@ -305,11 +309,15 @@ wire_api = "chat"
   test(
     'imports cursor account from global auth during provider import',
     () async {
-      await _writeJson(p.join(home, '.config', 'cursor', 'auth.json'), const {
+      // Seed at the platform anchor the import resolves for this host
+      // (macOS ~/.cursor, others ~/.config/cursor) — the home-derived anchor
+      // is always among the probed candidates.
+      final layout = CursorHomeLayout();
+      await _writeJson(layout.authJson(home), const {
         'accessToken': 'cursor-at',
         'refreshToken': 'cursor-rt',
       });
-      await _writeJson(p.join(home, '.cursor', 'cli-config.json'), const {
+      await _writeJson(layout.cliConfig(home), const {
         'authInfo': {'userId': 'u1', 'authId': 'a1'},
       });
 
@@ -334,7 +342,6 @@ wire_api = "chat"
         'cursor-account',
         'home',
       );
-      final layout = CursorHomeLayout();
       expect(
         await File(layout.authJson(providerHome)).exists(),
         isTrue,

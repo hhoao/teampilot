@@ -4,6 +4,17 @@ import 'package:path/path.dart' as p;
 import 'package:teampilot/services/cli/cursor/provider/cursor_home_layout.dart';
 
 void main() {
+  // Hermetic host environment: CI runners export XDG_CONFIG_HOME (and Windows
+  // APPDATA), which the Platform.environment fallback in
+  // globalAuthJsonCandidates would otherwise consult for calls that don't pin
+  // platformEnv explicitly.
+  setUp(() {
+    CursorHomeLayout.debugPlatformEnvironmentOverride = const {};
+  });
+  tearDown(() {
+    CursorHomeLayout.debugPlatformEnvironmentOverride = null;
+  });
+
   group('CursorHomeLayout', () {
     final posix = p.Context(style: p.Style.posix);
     final windows = p.Context(style: p.Style.windows);
