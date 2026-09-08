@@ -41,6 +41,7 @@ class _RecordingSessionPort implements TeamGenerationSessionPort {
   var _kickoffOutcomeIndex = 0;
   final events = <String>[];
   final sessions = <String, AppSession>{};
+  final _builderSessionIds = <String>{};
 
   @override
   Future<SessionPortOpenResult> createBuilder({
@@ -55,6 +56,7 @@ class _RecordingSessionPort implements TeamGenerationSessionPort {
     bool preserveWorkbenchView = true,
   }) async {
     events.add('builderCreated:preserveWorkbenchView=$preserveWorkbenchView');
+    _builderSessionIds.add(fixedSessionId);
     sessions[fixedSessionId] = AppSession(
       sessionId: fixedSessionId,
       workspaceId: workspace.workspaceId,
@@ -124,7 +126,7 @@ class _RecordingSessionPort implements TeamGenerationSessionPort {
     required bool directToPty,
     required String deliveryId,
   }) async {
-    if (sessionId.startsWith('teamgen-builder-')) {
+    if (_builderSessionIds.contains(sessionId)) {
       events.add('deliverTracked:$sessionId:$memberId:$deliveryId:$text');
       final outcomes = kickoffOutcomes;
       if (outcomes != null && outcomes.isNotEmpty) {
@@ -355,6 +357,20 @@ void main() {
       );
       expect(events[0], 'builderCreated:preserveWorkbenchView=false');
       expect(events[1], 'select:${started.builderSessionId}');
+      // Claude pins fixed session ids with --session-id and rejects anything
+      // that is not a UUID, so the builder session id must be a UUID.
+      expect(
+        RegExp(
+          r'^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$',
+        ).hasMatch(started.builderSessionId),
+        isTrue,
+        reason: 'builder session id must be a UUID for claude --session-id',
+      );
+      // Deterministic: recovery re-derives the same id from the workflow id.
+      expect(
+        teamGenerationSessionUuid(started.workflowId, 'builder'),
+        started.builderSessionId,
+      );
       final kickoffId = teamGenerationStableId(
         'teamgen-kickoff-',
         started.workflowId,
@@ -415,9 +431,9 @@ void main() {
 
       expect(events[4], startsWith('profilePersisted:'));
       expect(events[5], 'destinationCreated');
-      final destinationId = teamGenerationStableId(
-        'teamgen-',
+      final destinationId = teamGenerationSessionUuid(
         started.workflowId,
+        'destination',
       );
       final handoffDeliveryId = teamGenerationStableId(
         'teamgen-prompt-0-',

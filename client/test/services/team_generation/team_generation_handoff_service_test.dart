@@ -156,7 +156,7 @@ void main() {
       );
 
   Future<String> reserveDelivery(PromptDeliveryState state) async {
-    final destinationId = teamGenerationStableId('teamgen-', 'wf');
+    final destinationId = teamGenerationSessionUuid('wf', 'destination');
     port.knownSessions.add(destinationId);
     final deliveryId = teamGenerationStableId('teamgen-prompt-0-', 'wf');
     await promptStore.save(
@@ -264,6 +264,15 @@ void main() {
         workflowId: 'wf',
       );
 
+      // Claude pins fixed session ids with --session-id and rejects anything
+      // that is not a UUID, so the destination session id must be a UUID.
+      expect(
+        RegExp(
+          r'^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$',
+        ).hasMatch(first.destinationSessionId),
+        isTrue,
+        reason: 'destination session id must be a UUID for claude --session-id',
+      );
       expect(port.historySeedCalls, [
         '${first.destinationSessionId}/team-lead/${first.deliveryId}/'
             'exact\nrequest',

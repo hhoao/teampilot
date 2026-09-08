@@ -1,6 +1,7 @@
 import 'dart:convert';
 
 import 'package:crypto/crypto.dart';
+import 'package:uuid/uuid.dart';
 
 import '../../../models/team_config.dart';
 import '../../../models/team_generation_settings.dart';
@@ -180,6 +181,17 @@ String teamGenerationStableId(String prefix, String value) {
   final digest = sha256.convert(utf8.encode(value.trim())).toString();
   return '$prefix${digest.substring(0, 20)}';
 }
+
+/// Deterministic UUID for team-generation fixed session ids (builder,
+/// destination). Claude pins fixed ids with `--session-id` and rejects values
+/// that are not UUIDs, so session ids need UUID shape while staying
+/// re-derivable from the workflow id for recovery and reservation. Delivery
+/// ids keep using [teamGenerationStableId].
+String teamGenerationSessionUuid(String workflowId, String role) =>
+    const Uuid().v5(
+      Namespace.url.value,
+      'urn:teampilot:team-generation:$role:${workflowId.trim()}',
+    );
 
 /// Generator identity frozen at workflow start (no credentials).
 final class TeamGenerationJobGenerator {
