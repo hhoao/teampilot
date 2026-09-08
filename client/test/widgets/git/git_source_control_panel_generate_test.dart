@@ -170,22 +170,29 @@ void main() {
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 100));
 
-    // One selector chip per workspace folder.
-    expect(find.byType(ChoiceChip), findsNWidgets(2));
+    // One selector chip per workspace folder (1d153a530 replaced ChoiceChip
+    // with neutral TpHover chips; the chip Tooltip carries the repo root).
+    expect(find.byTooltip('/work/repoA'), findsOneWidget);
+    expect(find.byTooltip('/work/repoB'), findsOneWidget);
     expect(find.text('repoA'), findsOneWidget);
     expect(find.text('repoB'), findsOneWidget);
 
     // repoB's badge reflects its 3 staged changes.
     expect(find.text('3'), findsWidgets);
 
+    // The selected chip label reads onSurface, the idle one onSurfaceVariant.
+    final cs = Theme.of(tester.element(find.text('repoA'))).colorScheme;
+    Color labelColor(String label) =>
+        tester.widget<Text>(find.text(label)).style!.color!;
+    expect(labelColor('repoA'), cs.onSurface);
+    expect(labelColor('repoB'), cs.onSurfaceVariant);
+
     // Switching repos updates the selection.
     await tester.tap(find.text('repoB'));
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 100));
-    final selectedB = tester.widget<ChoiceChip>(
-      find.ancestor(of: find.text('repoB'), matching: find.byType(ChoiceChip)),
-    );
-    expect(selectedB.selected, isTrue);
+    expect(labelColor('repoB'), cs.onSurface);
+    expect(labelColor('repoA'), cs.onSurfaceVariant);
 
     await aiSettingsCubit.close();
   });

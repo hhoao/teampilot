@@ -175,7 +175,13 @@ void main() {
         fs.pathContext.join(configDir, 'skills'),
       )).map((entry) => entry.name).toList();
 
-      expect(first, ['catalog-dir']);
+      // The managed always-on teampilot-catalog skill is provisioned next to
+      // the catalog skill; plugin skills must NOT be flattened into skills/.
+      expect(
+        first,
+        containsAll(<String>['catalog-dir', 'teampilot-catalog']),
+      );
+      expect(first, hasLength(2));
       expect(second, first);
     },
   );

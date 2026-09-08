@@ -72,7 +72,9 @@ void main() {
       final button = tester.widget<TpIconButton>(
         find.byKey(AppKeys.sidebarVisibilityButton),
       );
-      expect(button.selected, isFalse);
+      // 1ca3ceefc dropped the selected border in favor of icon-color-only
+      // active state: closed renders onSurfaceVariant, open renders primary.
+      expect(button.color, theme.colorScheme.onSurfaceVariant);
 
       await tester.tap(find.byKey(AppKeys.sidebarVisibilityButton));
       await tester.pumpAndSettle();
@@ -83,7 +85,7 @@ void main() {
       final buttonAfterClear = tester.widget<TpIconButton>(
         find.byKey(AppKeys.sidebarVisibilityButton),
       );
-      expect(buttonAfterClear.selected, isTrue);
+      expect(buttonAfterClear.color, theme.colorScheme.primary);
 
       await tester.tap(find.byKey(AppKeys.sidebarVisibilityButton));
       await tester.pumpAndSettle();
@@ -91,8 +93,8 @@ void main() {
       expect(layout.state.preferences.sidebarVisible, isFalse);
       expect(layout.state.narrowLeftSuppressed, isFalse);
       expect(
-        tester.widget<TpIconButton>(find.byKey(AppKeys.sidebarVisibilityButton)).selected,
-        isFalse,
+        tester.widget<TpIconButton>(find.byKey(AppKeys.sidebarVisibilityButton)).color,
+        theme.colorScheme.onSurfaceVariant,
       );
     },
   );
