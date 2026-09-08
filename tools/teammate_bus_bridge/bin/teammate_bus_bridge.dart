@@ -42,7 +42,12 @@ Future<void> main(List<String> args) async {
   }
   final busUrl = Uri.parse(busUrlRaw);
 
-  final bridge = _Bridge(member: member, session: session, busUrl: busUrl);
+  final bridge = _Bridge(
+    member: member,
+    session: session,
+    busUrl: busUrl,
+    extraHeaders: parseExtraHeaders(args),
+  );
   await bridge.run();
 }
 
@@ -66,12 +71,50 @@ Map<String, String> parseBridgeArgs(List<String> args) {
   return out;
 }
 
+/// Parses repeatable `--extra-header Name:Value` flags (exported for unit
+/// tests). TeamPilot's session MCP configs use these to carry headers stdio
+/// cannot express — e.g. the Team Composer workflow token — which must be
+/// forwarded on every loopback HTTP hop.
+List<(String, String)> parseExtraHeaders(List<String> args) {
+  final out = <(String, String)>[];
+  for (var i = 0; i < args.length; i++) {
+    final a = args[i];
+    var value = '';
+    if (a.startsWith('--extra-header=')) {
+      value = a.substring('--extra-header='.length);
+    } else if (a == '--extra-header' &&
+        i + 1 < args.length &&
+        !args[i + 1].startsWith('--')) {
+      value = args[++i];
+    } else {
+      continue;
+    }
+    final colon = value.indexOf(':');
+    if (colon <= 0) {
+      stderr.writeln('[bus-bridge] skip malformed --extra-header: $value');
+      continue;
+    }
+    final name = value.substring(0, colon).trim();
+    final val = value.substring(colon + 1);
+    if (name.isNotEmpty) out.add((name, val));
+  }
+  return out;
+}
+
 class _Bridge {
-  _Bridge({required this.member, required this.session, required this.busUrl});
+  _Bridge({
+    required this.member,
+    required this.session,
+    required this.busUrl,
+    this.extraHeaders = const [],
+  });
 
   final String member;
   final String session;
   final Uri busUrl;
+
+  /// 追加到每条转发请求的自定义头（`--extra-header`，可重复）。
+  final List<(String, String)> extraHeaders;
 
   // 自己的 HttpClient：不设任何响应体超时，进行中的 SSE 流可永久挂住。
   // connectionTimeout 只影响"建立连接"，不掐已建立的流；故意不设。
@@ -139,6 +182,9 @@ class _Bridge {
       req.headers.set('accept', 'application/json, text/event-stream');
       if (member.isNotEmpty) req.headers.set(_memberHeader, member);
       if (session.isNotEmpty) req.headers.set(_sessionHeader, session);
+      for (final (name, value) in extraHeaders) {
+        req.headers.set(name, value);
+      }
       req.add(utf8.encode(body));
       final resp = await req.close();
 

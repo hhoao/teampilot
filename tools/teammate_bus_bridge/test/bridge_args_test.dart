@@ -29,4 +29,51 @@ void main() {
       );
     });
   });
+
+  group('parseExtraHeaders', () {
+    test('parses --extra-header Name:Value pairs', () {
+      expect(
+        parseExtraHeaders([
+          '--extra-header',
+          'X-Team-Generation-Token:tok-1',
+        ]),
+        [('X-Team-Generation-Token', 'tok-1')],
+      );
+    });
+
+    test('keeps repeated headers in order', () {
+      expect(
+        parseExtraHeaders([
+          '--extra-header',
+          'X-Team-Generation-Token:tok-1',
+          '--extra-header',
+          'X-Other:v',
+        ]),
+        [('X-Team-Generation-Token', 'tok-1'), ('X-Other', 'v')],
+      );
+    });
+
+    test('supports --extra-header=Name:Value form', () {
+      expect(
+        parseExtraHeaders(['--extra-header=X-A:1']),
+        [('X-A', '1')],
+      );
+    });
+
+    test('skips malformed entries without a colon', () {
+      expect(parseExtraHeaders(['--extra-header', 'no-colon']), isEmpty);
+    });
+
+    test('ignores other flags and their values', () {
+      expect(
+        parseExtraHeaders([
+          '--member',
+          'alice',
+          '--extra-header',
+          'X-Team-Generation-Token:tok-1',
+        ]),
+        [('X-Team-Generation-Token', 'tok-1')],
+      );
+    });
+  });
 }
