@@ -466,6 +466,22 @@ void main() {
       expect(layout.groups['g1']!.activeId, _s2);
     });
 
+    test('sole tab of another group moves into a new right sibling group', () {
+      cubit
+        ..openSession(_ws, 's1')
+        ..openSession(_ws, 's2')
+        ..openSession(_ws, 's3')
+        ..splitTab(_ws, _s3, axis: Axis.horizontal, before: false) // g0 [s1,s2] | g1 [s3]
+        ..moveTab(_ws, _s1, 'g1'); // g0 [s2] (sole) | g1 [s3,s1], focused g1
+      cubit.revealTabBeside(_ws, _s2, axis: Axis.horizontal, before: false);
+      final layout = cubit.centerLayout(_ws);
+      expect(layout.leafGroupIds, hasLength(2)); // g0 pruned by the move
+      expect(layout.groups[layout.leafGroupIds.first]!.order, [_s3, _s1]);
+      expect(layout.groups[layout.leafGroupIds.last]!.order, [_s2]);
+      expect(layout.focusedGroupId, layout.leafGroupIds.last);
+      expect(validateLayout(layout), isTrue);
+    });
+
     test('absent tab is a silent no-op', () {
       cubit.openSession(_ws, 's1');
       cubit.revealTabBeside(

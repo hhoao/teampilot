@@ -16,6 +16,7 @@ class SessionOpenRequest {
     this.connectImmediately = true,
     this.preserveWorkbenchView = false,
     this.persistParams,
+    this.preview,
   });
 
   final AppSession session;
@@ -29,6 +30,13 @@ class SessionOpenRequest {
   /// When true with [connectImmediately], keep the tab's current
   /// [SessionWorkbenchView] (e.g. Chat continue) instead of forcing Terminal.
   final bool preserveWorkbenchView;
+
+  /// Overrides the derived preview surfacing: null derives from
+  /// [connectImmediately] (and, for existing tabs, running state) as usual;
+  /// `false` forces a persistent tab that never occupies — and therefore
+  /// never replaces through — the focused group's replaceable preview slot
+  /// (used by "open to the side").
+  final bool? preview;
 
   /// When set, the session is staged in memory first; disk write runs in prepare.
   final SessionPersistParams? persistParams;
@@ -46,6 +54,7 @@ class SessionOpenRequest {
       connectImmediately: connectImmediately,
       preserveWorkbenchView: preserveWorkbenchView,
       persistParams: persistParams,
+      preview: preview,
     );
   }
 }

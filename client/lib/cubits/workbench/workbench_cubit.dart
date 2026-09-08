@@ -697,13 +697,15 @@ class WorkbenchCubit extends Cubit<WorkbenchState> {
         mutate: (layout) => _lr.focusGroup(layout, groupId),
       );
 
-  /// VSCode "Open to the Side": reveals [tab] in the group beside the focused
+  /// VSCode "Open to the Side": reveals [tab] in a group beside the focused
   /// one along [axis] ([before] = left/up side). Reuses the adjacent group
   /// when one exists (a source group emptied by the move is pruned);
-  /// otherwise splits a new sibling group off the focused group. When the
-  /// reducer declines both (absent tab, or the sole tab of its group with no
-  /// neighbor), falls back to activating and focusing the tab's own group.
-  /// Center layout only.
+  /// otherwise splits a new sibling group off the focused group. A tab that
+  /// is the sole tab of another group still lands in a new sibling via a
+  /// two-step move + split. Only when no side-by-side view is possible at
+  /// all (the tab is the sole content of the whole layout, or the focused
+  /// group is empty) does this degrade to activating and focusing the tab's
+  /// own group. Center layout only.
   void revealTabBeside(
     String workspaceId,
     WorkbenchTabId tab, {
@@ -711,33 +713,50 @@ class WorkbenchCubit extends Cubit<WorkbenchState> {
     required bool before,
   }) {
     final layout = centerLayout(workspaceId);
-    final adjacent = adjacentLeaf(
-      layout,
-      layout.focusedGroupId,
-      axis: axis,
-      before: before,
-    );
+    final focused = layout.focusedGroupId;
+    final adjacent = adjacentLeaf(layout, focused, axis: axis, before: before);
     if (adjacent != null) {
       moveTab(workspaceId, tab, adjacent);
       return;
     }
+    // No neighbor on that side: try to split the tab out of its own group
+    // into a new sibling beside the focused group.
+    final split = _lr.splitInto(
+      layout,
+      tab: tab,
+      targetGroupId: focused,
+      axis: axis,
+      before: before,
+    );
+    if (split != null) {
+      _mutateLayout(workspaceId, floating: false, mutate: (_) => split);
+      return;
+    }
+    // The tab cannot donate (sole tab of its group): move it into the
+    // focused group first, then split it right back out beside it — the net
+    // effect is a new sibling group holding the tab, with the emptied source
+    // group pruned. Requires the focused group to already host a tab (the
+    // split below needs a survivor).
+    final owner = _groupContainingTab(layout, tab);
+    final focusedStrip = layout.groups[focused];
+    if (owner != null &&
+        owner != focused &&
+        focusedStrip != null &&
+        focusedStrip.order.isNotEmpty) {
+      moveTab(workspaceId, tab, focused);
+      splitTab(workspaceId, tab, axis: axis, before: before);
+      return;
+    }
+    // Degenerate fallback: activate + focus the tab's own group.
     _mutateLayout(
       workspaceId,
       floating: false,
-      mutate: (current) =>
-          _lr.splitInto(
-            current,
-            tab: tab,
-            targetGroupId: current.focusedGroupId,
-            axis: axis,
-            before: before,
-          ) ??
-          _lr.moveTab(
-            current,
-            tab: tab,
-            targetGroupId:
-                _groupContainingTab(current, tab) ?? current.focusedGroupId,
-          ),
+      mutate: (current) => _lr.moveTab(
+        current,
+        tab: tab,
+        targetGroupId:
+            _groupContainingTab(current, tab) ?? current.focusedGroupId,
+      ),
     );
   }
 

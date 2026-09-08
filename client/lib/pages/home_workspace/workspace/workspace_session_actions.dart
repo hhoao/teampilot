@@ -60,6 +60,7 @@ SessionOpenRequest buildOpenExistingSessionRequest({
   SessionRepository? repo,
   required String emptyDisplayTitleFallback,
   bool connectImmediately = false,
+  bool? preview,
 }) {
   return SessionOpenRequest(
     session: session,
@@ -69,6 +70,7 @@ SessionOpenRequest buildOpenExistingSessionRequest({
     repo: repo,
     emptyDisplayTitleFallback: emptyDisplayTitleFallback,
     connectImmediately: connectImmediately,
+    preview: preview,
   );
 }
 
@@ -100,6 +102,7 @@ Future<void> openWorkspaceSessionTab(
   AppSession session, {
   String? tabScopeId,
   bool? connectImmediatelyOverride,
+  bool? preview,
 }) async {
   leaveWorkspaceManagementRoute(context);
   final isPersonal = session.sessionTeam.trim().isEmpty;
@@ -135,6 +138,7 @@ Future<void> openWorkspaceSessionTab(
       repo: repo,
       emptyDisplayTitleFallback: fallback,
       connectImmediately: connectImmediately,
+      preview: preview,
     ),
   );
   if (!context.mounted) return;
@@ -147,10 +151,13 @@ Future<void> openWorkspaceSessionTab(
 }
 
 /// [openWorkspaceSessionTab] + "Open to the Side": after the open (or
-/// reuse-focus) settles, reveals the session's tab in the group to the
-/// right of the focused one. Silently returns when the workspace is not
-/// found, no workbench scope is in reach, or the open was blocked (status
-/// toasts are already handled by [openWorkspaceSessionTab]).
+/// reuse-focus) settles, reveals the session's tab in a group beside the
+/// focused one. The tab opens persistent ([SessionOpenRequest.preview] is
+/// forced false) so it never replaces the focused group's current preview
+/// tab — the side split can always donate it into a new group. Silently
+/// returns when the workspace is not found, no workbench scope is in reach,
+/// or the open was blocked (status toasts are already handled by
+/// [openWorkspaceSessionTab]).
 Future<void> openWorkspaceSessionTabToSide(
   BuildContext context,
   AppSession session,
@@ -160,7 +167,7 @@ Future<void> openWorkspaceSessionTabToSide(
     (item) => item.workspaceId == session.workspaceId,
   );
   if (workspace == null) return;
-  await openWorkspaceSessionTab(context, workspace, session);
+  await openWorkspaceSessionTab(context, workspace, session, preview: false);
   if (!context.mounted) return;
   final WorkbenchCubit workbench;
   try {

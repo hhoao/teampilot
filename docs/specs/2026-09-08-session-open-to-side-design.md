@@ -24,13 +24,17 @@ VSCode "Open to the Side" 语义——该 session 的 tab 呈现在当前聚焦�
 记 F = center layout 的聚焦分组，S = 目标 session 的 tab
 （`WorkbenchTabId.session(id)`），G = S 当前所在分组（可能不存在）。
 
+目标语义（2026-09-08 修订，实测反馈）：**每次调用都应新开右侧分组承载
+S，且当前内容（含 preview 标签）原样保留在左侧**。
+
 | 场景 | 行为 |
 |---|---|
-| S 未打开 | 先走完整 `openWorkspaceSessionTab`（开进 F），再按「S 已打开」规则处理 |
+| S 未打开 | 先走 `openWorkspaceSessionTab`（`preview: false` 强制持久化——S 不占用、也不替换 F 的 preview 槽位），S 开进 F 后按「S 已打开」规则处理 |
 | F 右侧存在相邻叶子分组 T | `moveTab(S, T)`：S 移入 T 并激活、聚焦 T；G 被掏空则按 reducer 现有规则剪枝 |
-| S 已经就在 T 中 | `moveTab` 退化：仅激活 + 聚焦 |
+| S 已经就在 T 中 | `moveTab` 退化：仅激活 + 聚焦（它已在右侧窗口里） |
 | F 是中序最后一个叶子、G 有 ≥2 tab | `splitInto(S, F, horizontal, before: false)`：F 右侧新建分组承载 S |
-| F 是最后一个叶子、S 是 G 的唯一 tab | 降级：激活 + 聚焦 G（单分组 landing 打开第一个 session 也走此路径） |
+| F 是最后一个叶子、S 是 G 的唯一 tab、G ≠ F | 两步组合 `moveTab(S, F)` + `splitTab(S, right)`：净效果 = F 右侧新分组承载 S，G 被剪枝（要求 F 已有 tab 供 split 存活） |
+| F 是最后一个叶子、S 是 F 的唯一 tab（或 F 为空 landing） | 降级：激活 + 聚焦——不可能出现有意义的并排视图 |
 
 降级不打 toast、不记错误日志——该 tab 语义上已经是那个方向最靠边的内容。
 
