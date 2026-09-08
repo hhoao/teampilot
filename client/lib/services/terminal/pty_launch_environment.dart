@@ -1,9 +1,20 @@
 import 'dart:io';
 
+import 'package:meta/meta.dart';
+
 import '../host/host_shell_path_resolver.dart';
 
 /// Environment hints for embedded PTY sessions so child CLIs emit OSC 8 links.
 abstract final class PtyLaunchEnvironment {
+  /// When set, [buildPtyEnvironment] reads the host environment from here
+  /// instead of [Platform.environment]. Tests use this to stay hermetic: the
+  /// developer's own terminal (e.g. VTE 0.84) exports VTE_VERSION/TERM_PROGRAM,
+  /// which `putIfAbsent` would otherwise keep, changing the injected values.
+  @visibleForTesting
+  static Map<String, String>? debugHostEnvironmentOverride;
+
+  static Map<String, String> get _hostEnvironment =>
+      debugHostEnvironmentOverride ?? Platform.environment;
   /// VTE-based terminals (GNOME Terminal, etc.) set this; Claude Code also treats
   /// [vteVersion] ≥ 6800 as hyperlink-capable in some builds.
   static const String termProgram = 'gnome-terminal';
@@ -109,8 +120,9 @@ abstract final class PtyLaunchEnvironment {
     int? themeBackground,
     bool inheritHostEnvironment = true,
   }) {
+    final host = _hostEnvironment;
     final merged = <String, String>{
-      if (inheritHostEnvironment) ...Platform.environment,
+      if (inheritHostEnvironment) ...host,
       if (environment != null) ...environment,
     };
     applyHyperlinkIdentity(merged);
@@ -126,7 +138,7 @@ abstract final class PtyLaunchEnvironment {
     if (inheritHostEnvironment && (Platform.isMacOS || Platform.isLinux)) {
       applyLocalLoginShellPath(
         merged,
-        hostBasePath: Platform.environment['PATH'],
+        hostBasePath: host['PATH'],
         posixDesktop: true,
       );
     }

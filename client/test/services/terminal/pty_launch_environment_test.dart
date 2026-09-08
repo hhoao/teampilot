@@ -5,6 +5,16 @@ import 'package:teampilot/services/host/host_shell_path_resolver.dart';
 import 'package:teampilot/services/terminal/pty_launch_environment.dart';
 
 void main() {
+  // The suite must be hermetic against the terminal that runs it: a host
+  // VTE-based terminal exports VTE_VERSION/TERM_PROGRAM which putIfAbsent
+  // keeps, changing the injected values depending on the developer's setup.
+  setUp(() {
+    PtyLaunchEnvironment.debugHostEnvironmentOverride = const {'PATH': '/usr/bin'};
+  });
+  tearDown(() {
+    PtyLaunchEnvironment.debugHostEnvironmentOverride = null;
+  });
+
   test('buildPtyEnvironment injects TERM_PROGRAM and VTE_VERSION', () {
     final env = PtyLaunchEnvironment.buildPtyEnvironment(const {'FOO': 'bar'});
     expect(env['TERM_PROGRAM'], PtyLaunchEnvironment.termProgram);
@@ -24,8 +34,9 @@ void main() {
     'buildPtyEnvironment leaves COLORFGBG untouched when no theme is given',
     () {
       final env = PtyLaunchEnvironment.buildPtyEnvironment(const {});
-      // No theme → we neither add nor rewrite it; it stays whatever was inherited.
-      expect(env['COLORFGBG'], Platform.environment['COLORFGBG']);
+      // No theme → we neither add nor rewrite it; nothing is inherited from
+      // the pinned host environment.
+      expect(env.containsKey('COLORFGBG'), isFalse);
     },
   );
 
