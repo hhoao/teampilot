@@ -697,6 +697,50 @@ class WorkbenchCubit extends Cubit<WorkbenchState> {
         mutate: (layout) => _lr.focusGroup(layout, groupId),
       );
 
+  /// VSCode "Open to the Side": reveals [tab] in the group beside the focused
+  /// one along [axis] ([before] = left/up side). Reuses the adjacent group
+  /// when one exists (a source group emptied by the move is pruned);
+  /// otherwise splits a new sibling group off the focused group. When the
+  /// reducer declines both (absent tab, or the sole tab of its group with no
+  /// neighbor), falls back to activating and focusing the tab's own group.
+  /// Center layout only.
+  void revealTabBeside(
+    String workspaceId,
+    WorkbenchTabId tab, {
+    required Axis axis,
+    required bool before,
+  }) {
+    final layout = centerLayout(workspaceId);
+    final adjacent = adjacentLeaf(
+      layout,
+      layout.focusedGroupId,
+      axis: axis,
+      before: before,
+    );
+    if (adjacent != null) {
+      moveTab(workspaceId, tab, adjacent);
+      return;
+    }
+    _mutateLayout(
+      workspaceId,
+      floating: false,
+      mutate: (current) =>
+          _lr.splitInto(
+            current,
+            tab: tab,
+            targetGroupId: current.focusedGroupId,
+            axis: axis,
+            before: before,
+          ) ??
+          _lr.moveTab(
+            current,
+            tab: tab,
+            targetGroupId:
+                _groupContainingTab(current, tab) ?? current.focusedGroupId,
+          ),
+    );
+  }
+
   /// Commits a resize of the split branch at [path] (sequence of
   /// second/first choices from the root) to [fraction] (clamped). No-op when
   /// the path addresses a leaf or walks off the tree.

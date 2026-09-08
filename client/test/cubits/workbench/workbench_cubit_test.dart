@@ -422,4 +422,59 @@ void main() {
       expect(cubit.state.bar(_ws), before);
     });
   });
+
+  group('revealTabBeside', () {
+    test('moves the tab into the adjacent right group and focuses it', () {
+      cubit
+        ..openSession(_ws, 's1')
+        ..openSession(_ws, 's2')
+        ..openSession(_ws, 's3')
+        ..splitTab(_ws, _s3, axis: Axis.horizontal, before: false) // g1 [s3]
+        ..activate(_ws, _s1); // focused g0, active s1
+      cubit.revealTabBeside(_ws, _s2, axis: Axis.horizontal, before: false);
+      final layout = cubit.centerLayout(_ws);
+      expect(layout.groups['g0']!.order, [_s1]);
+      expect(layout.groups['g1']!.order, [_s3, _s2]);
+      expect(layout.groups['g1']!.activeId, _s2);
+      expect(layout.focusedGroupId, 'g1');
+      expect(validateLayout(layout), isTrue);
+    });
+
+    test('tab already in the adjacent group just activates and focuses', () {
+      cubit
+        ..openSession(_ws, 's1')
+        ..openSession(_ws, 's2')
+        ..splitTab(_ws, _s2, axis: Axis.horizontal, before: false) // g1 [s2]
+        ..activate(_ws, _s1) // focused g0, active s1
+        ..revealTabBeside(_ws, _s2, axis: Axis.horizontal, before: false);
+      final layout = cubit.centerLayout(_ws);
+      expect(layout.groups['g0']!.order, [_s1]);
+      expect(layout.groups['g1']!.order, [_s2]);
+      expect(layout.focusedGroupId, 'g1');
+      expect(layout.groups['g1']!.activeId, _s2);
+    });
+
+    test('sole tab of the rightmost group degrades to activate + focus', () {
+      cubit
+        ..openSession(_ws, 's1')
+        ..openSession(_ws, 's2')
+        ..splitTab(_ws, _s2, axis: Axis.horizontal, before: false); // g1 [s2], focused g1
+      cubit.revealTabBeside(_ws, _s2, axis: Axis.horizontal, before: false);
+      final layout = cubit.centerLayout(_ws);
+      expect(layout.leafGroupIds, ['g0', 'g1']); // tree unchanged
+      expect(layout.focusedGroupId, 'g1');
+      expect(layout.groups['g1']!.activeId, _s2);
+    });
+
+    test('absent tab is a silent no-op', () {
+      cubit.openSession(_ws, 's1');
+      cubit.revealTabBeside(
+        _ws,
+        WorkbenchTabId.session('s9'),
+        axis: Axis.horizontal,
+        before: false,
+      );
+      expect(cubit.centerLayout(_ws).groups['g0']!.order, [_s1]);
+    });
+  });
 }
