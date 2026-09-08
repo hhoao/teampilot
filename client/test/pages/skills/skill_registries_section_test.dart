@@ -61,7 +61,12 @@ Future<String?> _waitForRegistriesJson(
     await tester.runAsync(
       () => Future<void>.delayed(const Duration(milliseconds: 50)),
     );
-    await tester.pump();
+    // pumpAndSettle, not pump: the save path retries transient rename
+    // failures with Future.delayed, which in this FakeAsync zone is a fake
+    // timer — it only fires when the fake clock advances. A zero-advance
+    // pump lets a Windows rename-vs-poll-read sharing violation stall the
+    // save forever inside the deadline.
+    await tester.pumpAndSettle();
   }
   return raw;
 }
