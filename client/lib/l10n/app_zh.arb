@@ -948,6 +948,7 @@
   "noSessions": "暂无会话",
   "unknownFolder": "未知",
   "renameConversation": "重命名对话",
+  "sessionOpenToSide": "在右侧分栏打开",
   "deleteConversation": "删除对话",
   "archiveConversation": "归档",
   "closeConversation": "关闭会话",

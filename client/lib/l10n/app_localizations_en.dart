@@ -2167,6 +2167,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get renameConversation => 'Rename conversation';
 
   @override
+  String get sessionOpenToSide => 'Open to the Side';
+
+  @override
   String get deleteConversation => 'Delete conversation';
 
   @override

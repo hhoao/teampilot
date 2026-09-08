@@ -2061,6 +2061,9 @@ class AppLocalizationsZh extends AppLocalizations {
   String get renameConversation => '重命名对话';
 
   @override
+  String get sessionOpenToSide => '在右侧分栏打开';
+
+  @override
   String get deleteConversation => '删除对话';
 
   @override

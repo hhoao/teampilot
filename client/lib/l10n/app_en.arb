@@ -1033,6 +1033,7 @@
   "noSessions": "No sessions yet",
   "unknownFolder": "Unknown",
   "renameConversation": "Rename conversation",
+  "sessionOpenToSide": "Open to the Side",
   "deleteConversation": "Delete conversation",
   "archiveConversation": "Archive",
   "closeConversation": "Close conversation",

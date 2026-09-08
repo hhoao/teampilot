@@ -3902,6 +3902,12 @@ abstract class AppLocalizations {
   /// **'Rename conversation'**
   String get renameConversation;
 
+  /// No description provided for @sessionOpenToSide.
+  ///
+  /// In en, this message translates to:
+  /// **'Open to the Side'**
+  String get sessionOpenToSide;
+
   /// No description provided for @deleteConversation.
   ///
   /// In en, this message translates to:

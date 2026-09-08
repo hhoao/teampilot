@@ -80,12 +80,13 @@ reducer 拒绝（唯一 tab 捐出）时再 `moveTab(tab, G)`（源 == 目标，
 ```dart
 Future<void> openWorkspaceSessionTabToSide(
   BuildContext context,
-  Workspace workspace,
   AppSession session,
 )
 ```
 
-内部 `await openWorkspaceSessionTab(...)`（team 同步、worktree 同步、
+函数内部从 `ChatCubit.state.workspaces` 解析 session 所属 workspace
+（单一解析点，调用方只需传 session），未找到则静默返回。随后
+`await openWorkspaceSessionTab(...)`（team 同步、worktree 同同步、
 `requestOpenSession` 全部不变——复用，不复制），完成后查
 `workbench.centerLayout(ws)` 是否含 S：含则
 `revealTabBeside(axis: horizontal, before: false)`；不含（打开被阻断或
@@ -99,9 +100,8 @@ Future<void> openWorkspaceSessionTabToSide(
   语义最近的操作置顶）。
 - `⋯` 溢出菜单（`TpActionMenuItem` 列表）同步加一项，同样位置。
 - `_handleContextAction` 增加 `case 'open_to_side'`：
-  从 `ChatCubit.state.workspaces` 解析 session 所属 workspace，调
-  `openWorkspaceSessionTabToSide`；解析失败静默返回（与其他 case 的
-  防御风格一致）。
+  调 `openWorkspaceSessionTabToSide(context, session)`（workspace 解析
+  在函数内部）。
 
 副作用面：tile 被 4 处复用（主侧栏、`session_group_section`、
 `worktree_group_section`、`workspace_search_dialog`），菜单在 tile 内部，
