@@ -6,7 +6,6 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:teampilot/cubits/chat_cubit.dart';
-import 'package:teampilot/cubits/chat/model/session_open_request.dart';
 import 'package:teampilot/cubits/session_preferences_cubit.dart';
 import 'package:teampilot/cubits/workbench/workbench_cubit.dart';
 import 'package:teampilot/cubits/workbench/workbench_split_layout.dart';
