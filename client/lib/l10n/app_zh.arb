@@ -949,12 +949,6 @@
   "unknownFolder": "未知",
   "renameConversation": "重命名对话",
   "sessionOpenToSide": "在右侧分栏打开",
-  "sidebarSplitGroupLabel": "分栏 {n}",
-  "@sidebarSplitGroupLabel": {
-    "placeholders": {
-      "n": {"type": "int"}
-    }
-  },
   "deleteConversation": "删除对话",
   "archiveConversation": "归档",
   "closeConversation": "关闭会话",

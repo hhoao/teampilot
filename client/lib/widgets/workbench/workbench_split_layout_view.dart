@@ -199,6 +199,7 @@ class _WorkbenchSplitLayoutViewState extends State<WorkbenchSplitLayoutView> {
   }
 
   Widget _buildLeaf(String groupId) => _LeafView(
+    key: ValueKey('split-leaf-$groupId'),
     groupId: groupId,
     strip: widget.layout.groups[groupId] ?? const TabStrip(),
     groupBuilder: widget.groupBuilder,
@@ -422,9 +423,11 @@ class _Divider extends StatelessWidget {
   }
 }
 
-/// One group leaf: pointer-down-to-focus around the caller's pane.
+/// One group leaf: pointer-down-to-focus around the caller's pane. Keyed by
+/// group id so split edits reuse (rather than displace) the pane elements.
 class _LeafView extends StatelessWidget {
   const _LeafView({
+    super.key,
     required this.groupId,
     required this.strip,
     required this.groupBuilder,
@@ -445,10 +448,15 @@ class _LeafView extends StatelessWidget {
     // content keeps every gesture.
     return Listener(
       behavior: HitTestBehavior.translucent,
-      onPointerDown: onGroupFocused == null ? null : (_) {
-        onGroupFocused!(groupId);
-      },
-      child: ClipRect(child: groupBuilder(context, groupId, strip)),
+      onPointerDown: onGroupFocused == null
+          ? null
+          : (_) => onGroupFocused!(groupId),
+      child: ClipRect(
+        child: KeyedSubtree(
+          key: ValueKey('split-pane-$groupId'),
+          child: groupBuilder(context, groupId, strip),
+        ),
+      ),
     );
   }
 }

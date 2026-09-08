@@ -42,7 +42,6 @@ import '../../../utils/session/session_reorder_merge.dart';
 import '../../../utils/session/workspace_sessions.dart';
 import '../../../utils/session/workspace_tab_session_scope.dart';
 import 'workspace_sidebar_probe.dart';
-import 'workspace_sidebar_row_metrics.dart';
 import '../../../widgets/sidebar_session_tile.dart';
 import 'workspace_automations_section.dart';
 import 'workspace_search_dialog.dart';
@@ -834,9 +833,8 @@ class _RunningSessionsSection extends StatelessWidget {
 }
 
 /// The open-sessions section when the center workbench is split: one
-/// sub-section per split group, headed by a clickable "Column N" row that
-/// focuses that group (the focused column's header carries the primary
-/// color, mirroring the split focus frame).
+/// sub-section per split group, separated by a divider whose color marks the
+/// focused column (primary), clickable to focus that group — no text header.
 class _RunningSplitGroupsSection extends StatelessWidget {
   const _RunningSplitGroupsSection({
     required this.groups,
@@ -858,7 +856,6 @@ class _RunningSplitGroupsSection extends StatelessWidget {
     final l10n = context.l10n;
     final chatState = context.read<ChatCubit>().state;
     final workbench = context.read<WorkbenchCubit>();
-    final styles = TpTextStyles.of(context);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
@@ -866,7 +863,7 @@ class _RunningSplitGroupsSection extends StatelessWidget {
           padding: const EdgeInsets.fromLTRB(4, 0, 0, 8),
           child: Text(
             l10n.workspaceRunningSessionsSection,
-            style: styles.mutedSm,
+            style: TpTextStyles.of(context).mutedSm,
           ),
         ),
         for (final (index, group) in groups.indexed)
@@ -874,12 +871,8 @@ class _RunningSplitGroupsSection extends StatelessWidget {
             key: ValueKey('workspace-running-split-${group.groupId}'),
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              _SplitGroupHeader(
-                label: l10n.sidebarSplitGroupLabel(index + 1),
-                focused: group.focused,
-                onTap: () =>
-                    workbench.focusGroup(tabScopeId, group.groupId),
-              ),
+              _SplitGroupDivider(focused: group.focused, onTap: () => workbench.focusGroup(tabScopeId, group.groupId)),
+              if (index == 0) const SizedBox(height: 2),
               for (final sessionId in group.sessionIds)
                 if (knownIds.contains(sessionId))
                   if (_sessionById(chatState, sessionId) case final session?)
@@ -898,7 +891,6 @@ class _RunningSplitGroupsSection extends StatelessWidget {
                       tabScopeId: tabScopeId,
                     ),
                   ),
-              const SizedBox(height: 4),
             ],
           ),
       ],
@@ -906,36 +898,33 @@ class _RunningSplitGroupsSection extends StatelessWidget {
   }
 }
 
-class _SplitGroupHeader extends StatelessWidget {
-  const _SplitGroupHeader({
-    required this.label,
-    required this.focused,
-    required this.onTap,
-  });
+/// Thin divider between split-group sub-sections. The focused column's
+/// divider renders in the primary color (mirroring the split focus frame);
+/// tapping it focuses that group.
+class _SplitGroupDivider extends StatelessWidget {
+  const _SplitGroupDivider({required this.focused, required this.onTap});
 
-  final String label;
   final bool focused;
   final VoidCallback onTap;
+
+  static const tapTargetKey = Key('workspace-running-split-divider');
 
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
-    final styles = TpTextStyles.of(context);
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 2),
-      child: TpHoverRow(
-        padding: kWorkspaceSidebarRowPadding,
-        hoverColor: workspaceSidebarRowHoverFill(cs),
-        onTap: onTap,
-        child: Text(
-          label,
-          maxLines: 1,
-          overflow: TextOverflow.ellipsis,
-          style: focused
-              ? styles.mdColored(cs.primary).copyWith(
-                  fontWeight: FontWeight.w600,
-                )
-              : styles.mutedSm,
+    return GestureDetector(
+      key: tapTargetKey,
+      behavior: HitTestBehavior.opaque,
+      onTap: onTap,
+      child: Padding(
+        padding: const EdgeInsets.only(top: 2, bottom: 2),
+        child: SizedBox(
+          height: 2,
+          child: ColoredBox(
+            color: focused
+                ? cs.primary
+                : cs.outlineVariant.withValues(alpha: 0.5),
+          ),
         ),
       ),
     );

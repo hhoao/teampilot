@@ -118,9 +118,16 @@ void main() {
       ..splitTab('ws-1', WorkbenchTabId.session('b'), axis: Axis.horizontal, before: false);
     await pumpSidebar(tester);
 
-    expect(find.text('Column 1'), findsOneWidget);
-    expect(find.text('Column 2'), findsOneWidget);
-    // Open-strip tiles render under their column headers.
+    // Two split sub-sections, each with its divider and tiles.
+    expect(
+      find.byKey(const ValueKey('workspace-running-split-g0')),
+      findsOneWidget,
+    );
+    final second = workbenchCubit.centerLayout('ws-1').leafGroupIds.last;
+    expect(
+      find.byKey(ValueKey('workspace-running-split-$second')),
+      findsOneWidget,
+    );
     expect(
       find.byKey(const ValueKey('workspace-running-session-a')),
       findsOneWidget,
@@ -131,20 +138,23 @@ void main() {
     );
   });
 
-  testWidgets('single group stays flat without column headers', (
+  testWidgets('single group stays flat without column dividers', (
     tester,
   ) async {
     workbenchCubit.openSession('ws-1', 'a');
     await pumpSidebar(tester);
 
-    expect(find.text('Column 1'), findsNothing);
+    expect(
+      find.byKey(const ValueKey('workspace-running-split-g0')),
+      findsNothing,
+    );
     expect(
       find.byKey(const ValueKey('workspace-running-session-a')),
       findsOneWidget,
     );
   });
 
-  testWidgets('tapping a column header focuses that group', (tester) async {
+  testWidgets('tapping a column divider focuses that group', (tester) async {
     workbenchCubit
       ..openSession('ws-1', 'a')
       ..openSession('ws-1', 'b')
@@ -154,7 +164,13 @@ void main() {
     final layoutBefore = workbenchCubit.centerLayout('ws-1');
     final focusedBefore = layoutBefore.focusedGroupId;
 
-    await tester.tap(find.text('Column 1'));
+    // Tap the g0 sub-section's divider (first split-group divider).
+    final divider = find.descendant(
+      of: find.byKey(const ValueKey('workspace-running-split-g0')),
+      matching: find.byKey(const Key('workspace-running-split-divider')),
+    );
+    expect(divider, findsOneWidget);
+    await tester.tap(divider);
     await tester.pump();
 
     final layoutAfter = workbenchCubit.centerLayout('ws-1');

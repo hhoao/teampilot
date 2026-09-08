@@ -2170,11 +2170,6 @@ class AppLocalizationsEn extends AppLocalizations {
   String get sessionOpenToSide => 'Open to the Side';
 
   @override
-  String sidebarSplitGroupLabel(int n) {
-    return 'Column $n';
-  }
-
-  @override
   String get deleteConversation => 'Delete conversation';
 
   @override

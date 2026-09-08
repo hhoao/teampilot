@@ -17,6 +17,23 @@ Widget _host(Widget child) => MaterialApp(
   ),
 );
 
+/// Stateful probe: its State identity asserts an element was never
+/// unmounted across a rebuild.
+class _StatefulProbe extends StatefulWidget {
+  const _StatefulProbe({super.key, required this.label});
+
+  final String label;
+
+  @override
+  State<_StatefulProbe> createState() => _StatefulProbeState();
+}
+
+class _StatefulProbeState extends State<_StatefulProbe> {
+  @override
+  Widget build(BuildContext context) =>
+      SizedBox.expand(child: Text(widget.label));
+}
+
 void main() {
   late WorkbenchGroupLayout layout;
 
@@ -70,6 +87,54 @@ void main() {
     expect(find.text('group-g0'), findsNothing);
     // No dividers in single-group mode.
     expect(find.byKey(workbenchSplitDividerKey(const <bool>[])), findsNothing);
+  });
+
+  testWidgets('focus change keeps pane elements mounted (state survives)', (
+    tester,
+  ) async {
+    // A focus-only layout change must not unmount or displace any pane —
+    // terminals and chat views would lose their state otherwise. The panes
+    // rebuild (fresh data) but keep their elements.
+    final paneKeys = <String, GlobalKey<State<StatefulWidget>>>{};
+    late StateSetter setRootState;
+    var currentLayout = layout;
+    await tester.pumpWidget(
+      _host(
+        StatefulBuilder(
+          builder: (context, setState) {
+            setRootState = setState;
+            return WorkbenchSplitLayoutView(
+              layout: currentLayout,
+              groupBuilder: (context, id, strip) => _StatefulProbe(
+                key: paneKeys.putIfAbsent(
+                  id,
+                  () => GlobalKey<State<StatefulWidget>>(
+                    debugLabel: 'pane-$id',
+                  ),
+                ),
+                label: 'group-$id',
+              ),
+            );
+          },
+        ),
+      ),
+    );
+    final second = secondGroupId();
+    expect(paneKeys['g0']!.currentState, isNotNull);
+    expect(paneKeys[second]!.currentState, isNotNull);
+    final g0State = paneKeys['g0']!.currentState;
+    final secondState = paneKeys[second]!.currentState;
+
+    setRootState(
+      () => currentLayout = currentLayout.copyWith(focusedGroupId: second),
+    );
+    await tester.pump();
+
+    expect(find.text('group-g0'), findsOneWidget);
+    expect(find.text('group-$second'), findsOneWidget);
+    // Same state objects → the elements were never unmounted or displaced.
+    expect(identical(paneKeys['g0']!.currentState, g0State), isTrue);
+    expect(identical(paneKeys[second]!.currentState, secondState), isTrue);
   });
 
   testWidgets('splitEnabled false honors focusedGroupIdOverride', (
