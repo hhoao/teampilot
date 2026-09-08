@@ -34,8 +34,10 @@ class WorkspaceFsWatcher {
     required Filesystem fs,
     required this.root,
     this.debounce = const Duration(milliseconds: 400),
+    this.retryDelay = const Duration(seconds: 2),
     bool autoStart = false,
   }) : _watcher = debugDisable || fs is! FsWatcher ? null : fs as FsWatcher,
+       _fs = fs,
        _pathContext = fs.pathContext {
     if (autoStart && !debugDisable && root.isNotEmpty) {
       _attachNativeWatch();
@@ -47,7 +49,13 @@ class WorkspaceFsWatcher {
 
   final String root;
   final Duration debounce;
+
+  /// Delay before re-attaching a native watch that the OS/SDK killed
+  /// (see [_onNativeWatchClosed]) and between existence polls while the
+  /// watched root is missing (worktree recreated, directory renamed back…).
+  final Duration retryDelay;
   final FsWatcher? _watcher;
+  final Filesystem _fs;
   final p.Context _pathContext;
 
   /// Directory names whose churn is pure noise — filtered before they reach the
@@ -60,6 +68,8 @@ class WorkspaceFsWatcher {
   final _controller = StreamController<FsChangeBatch>.broadcast();
   FsTreeWatch? _treeWatch;
   StreamSubscription<FsChangeEvent>? _sub;
+  Timer? _reattachTimer;
+  bool _reattachScheduled = false;
   Future<void> _watchChain = Future<void>.value();
   Timer? _debounceTimer;
   final Set<String> _pendingDirs = {};
@@ -113,6 +123,9 @@ class WorkspaceFsWatcher {
   }
 
   Future<void> _stopNativeWatch() async {
+    _reattachTimer?.cancel();
+    _reattachTimer = null;
+    _reattachScheduled = false;
     final sub = _sub;
     _sub = null;
     await sub?.cancel();
@@ -128,16 +141,63 @@ class WorkspaceFsWatcher {
     try {
       final treeWatch = watcher.watchTree(root);
       _treeWatch = treeWatch;
+      _reattachScheduled = false;
       _sub = treeWatch.events.listen(
         _onEvent,
         onError: (Object error, StackTrace stack) {
+          // Windows kills the native watch via onError OR via a silent
+          // stream close (onDone) — both paths re-attach.
           appLogger.w('Workspace watch failed for $root', error: error);
+          _onNativeWatchClosed();
+        },
+        onDone: () {
+          // The Dart SDK emits no error for "Directory watcher closed
+          // unexpectedly" — it just closes the stream. Without re-attach
+          // the workspace would silently lose disk refresh forever.
+          appLogger.i('Workspace watch closed by OS for $root, re-attaching');
+          _onNativeWatchClosed();
         },
         cancelOnError: false,
       );
     } on Object catch (error) {
       appLogger.w('Workspace watch could not start for $root', error: error);
+      _scheduleReattach();
     }
+  }
+
+  /// The native event stream died (error or done). Clean up the dead
+  /// subscription so [_attachNativeWatch] can run again, then re-attach
+  /// with a small delay (burst of handle churn often settles immediately).
+  void _onNativeWatchClosed() {
+    if (_disposed || _suspended) return;
+    _sub = null;
+    _treeWatch = null;
+    _scheduleReattach();
+  }
+
+  void _scheduleReattach() {
+    if (_disposed || _suspended || _reattachScheduled) return;
+    _reattachScheduled = true;
+    _reattachTimer = Timer(retryDelay, _reattach);
+  }
+
+  Future<void> _reattach() async {
+    _reattachTimer = null;
+    _reattachScheduled = false;
+    if (_disposed || _suspended) return;
+    // The root may have been deleted/renamed (the usual cause of the watch
+    // dying). Poll until it exists again — up to the next call, forever.
+    try {
+      final stat = await _fs.stat(root);
+      if (!stat.isDirectory) {
+        _scheduleReattach();
+        return;
+      }
+    } on Object {
+      _scheduleReattach();
+      return;
+    }
+    _attachNativeWatch();
   }
 
   Future<void> _restartNativeWatch() async {
