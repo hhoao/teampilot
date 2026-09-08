@@ -175,18 +175,20 @@ class _RepoSelector extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       padding: const EdgeInsets.fromLTRB(10, 10, 10, 0),
-      child: Wrap(
-        spacing: 6,
-        runSpacing: 6,
-        children: [
-          for (final root in roots)
-            _RepoChip(
-              cubit: cubitFor(root),
-              root: root,
-              selected: root == selected,
-              onTap: () => onSelect(root),
-            ),
-        ],
+      child: SingleChildScrollView(
+        scrollDirection: Axis.horizontal,
+        child: Row(
+          spacing: 6,
+          children: [
+            for (final root in roots)
+              _RepoChip(
+                cubit: cubitFor(root),
+                root: root,
+                selected: root == selected,
+                onTap: () => onSelect(root),
+              ),
+          ],
+        ),
       ),
     );
   }
@@ -215,30 +217,42 @@ class _RepoChip extends StatelessWidget {
         selector: (state) => state.status.isRepository
             ? state.status.staged.length + state.status.unstaged.length
             : 0,
-        builder: (context, count) => ChoiceChip(
-          label: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Flexible(
-                child: Text(
-                  name,
-                  overflow: TextOverflow.ellipsis,
-                  style: TpTextStyles.of(context).sm,
+        builder: (context, count) => Tooltip(
+          message: root,
+          child: TpHover(
+            onTap: onTap,
+            borderRadius: BorderRadius.circular(8),
+            backgroundColor: selected
+                ? cs.surfaceContainerHigh
+                : Colors.transparent,
+            hoverColor: selected
+                ? cs.surfaceContainerHigh
+                : cs.onSurface.withValues(alpha: 0.05),
+            border: Border.all(
+              color: selected
+                  ? cs.outlineVariant.withValues(alpha: 0.7)
+                  : cs.outlineVariant.withValues(alpha: 0.5),
+            ),
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Flexible(
+                  child: Text(
+                    name,
+                    overflow: TextOverflow.ellipsis,
+                    style: TpTextStyles.of(context).smColored(
+                      selected ? cs.onSurface : cs.onSurfaceVariant,
+                    ),
+                  ),
                 ),
-              ),
-              if (count > 0) ...[
-                const SizedBox(width: 6),
-                _DirtyBadge(count: count, selected: selected),
+                if (count > 0) ...[
+                  const SizedBox(width: 6),
+                  _DirtyBadge(count: count, selected: selected),
+                ],
               ],
-            ],
+            ),
           ),
-          selected: selected,
-          visualDensity: VisualDensity.compact,
-          onSelected: (_) => onTap(),
-          tooltip: root,
-          labelStyle: TpTextStyles.of(
-            context,
-          ).smColored(selected ? cs.onSecondaryContainer : cs.onSurfaceVariant),
         ),
       ),
     );
@@ -258,14 +272,14 @@ class _DirtyBadge extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
       decoration: BoxDecoration(
         color: selected
-            ? cs.onSecondaryContainer.withValues(alpha: 0.18)
-            : cs.primaryContainer,
+            ? cs.onSurface.withValues(alpha: 0.12)
+            : cs.surfaceContainerHighest,
         borderRadius: BorderRadius.circular(9),
       ),
       child: Text(
         '$count',
         style: TpTextStyles.of(context).xsSemiboldColored(
-          selected ? cs.onSecondaryContainer : cs.onPrimaryContainer,
+          selected ? cs.onSurface : cs.onSurfaceVariant,
         ),
       ),
     );
