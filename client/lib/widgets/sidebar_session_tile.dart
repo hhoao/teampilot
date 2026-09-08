@@ -169,6 +169,12 @@ class _SidebarSessionTileState extends State<SidebarSessionTile> {
     required bool hasOpenTab,
   }) {
     final items = <TpActionMenuPopupItem<String>>[
+      if (!widget.archiveMode)
+        TpActionMenuPopupItem(
+          value: 'open_to_side',
+          icon: Icons.vertical_split_outlined,
+          label: l10n.sessionOpenToSide,
+        ),
       TpActionMenuPopupItem(
         value: 'rename',
         icon: Icons.drive_file_rename_outline,
@@ -289,6 +295,8 @@ class _SidebarSessionTileState extends State<SidebarSessionTile> {
   Future<void> _handleContextAction(String selected, AppSession session) async {
     final l10n = context.l10n;
     switch (selected) {
+      case 'open_to_side':
+        await openWorkspaceSessionTabToSide(context, session);
       case 'rename':
         await _showRenameDialog(context, session, l10n);
       case 'duplicate':
@@ -673,6 +681,15 @@ class _SidebarSessionTileState extends State<SidebarSessionTile> {
                   onOpen: () => setState(() => _menuOpen = true),
                   onClose: () => setState(() => _menuOpen = false),
                   buildMenuChildren: (context, controller) => [
+                    if (!widget.archiveMode)
+                      TpActionMenuItem(
+                        icon: Icons.vertical_split_outlined,
+                        label: l10n.sessionOpenToSide,
+                        menuController: controller,
+                        onTap: () => unawaited(
+                          openWorkspaceSessionTabToSide(context, session),
+                        ),
+                      ),
                     TpActionMenuItem(
                       icon: Icons.drive_file_rename_outline,
                       label: l10n.renameConversation,
