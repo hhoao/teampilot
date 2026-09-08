@@ -49,7 +49,13 @@ import 'package:teampilot/theme/app_theme.dart';
 import '../../support/in_memory_filesystem.dart';
 import '../../support/post_frame_test_harness.dart';
 
-class _MockChatCubit extends Mock implements ChatCubit {}
+/// `SessionChatMessageArea` reads the non-nullable `sessionScrollAnchors`
+/// field, so the mock must provide a real empty map instead of mocktail's
+/// implicit null.
+class _MockChatCubit extends Mock implements ChatCubit {
+  @override
+  final Map<String, double> sessionScrollAnchors = {};
+}
 
 class _MockAiHistoryCubit extends Mock implements AiHistoryCubit {}
 
