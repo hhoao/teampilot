@@ -9,12 +9,27 @@ import 'server_channel.dart';
 import 'server_process.dart';
 import 'ssh_server.dart' show SSHServerConfig;
 
+/// Session state accumulated across the requests of one channel, keyed off
+/// the channel itself so it lives and dies with it.
+final Expando<_SessionState> _sessionStates = Expando();
+
 /// Serves session channel requests (RFC 4254 §6) on one open channel.
 ///
-/// `exec` is the only request type served so far, and it speaks exactly one
-/// grammar: the structured `tp1:` payload ([TpExecCodec]). The host-info
-/// query inside that grammar is answered by the server itself. A plain
-/// shell-string command is not the grammar: it is refused and the channel is
+/// Two grammars are spoken, one per channel:
+///
+/// * the structured `tp1:` exec payload ([TpExecCodec]) — the host-info
+///   query inside it is answered by the server itself, and anything else in
+///   that grammar is handed to [SSHServerConfig.processFactory];
+/// * the interactive half — `env` requests accumulate, `pty-req` stashes the
+///   terminal dimensions, and `shell` spawns the pty through
+///   [SSHServerConfig.ptyFactory], after which `window-change` resizes it
+///   and `signal` delivers signals to it.
+///
+/// A channel takes exactly one lifecycle request, `exec` or `shell`
+/// (RFC 4254 §6.5's session channels are single-use): a second one is
+/// refused and the channel closed. `shell` additionally requires a prior
+/// `pty-req` — this server only serves pty sessions. A plain shell-string
+/// command is not the exec grammar: it is refused and the channel is
 /// closed — this server never hands a raw command line to a shell.
 ///
 /// The returned future is the request outcome [SSHServerChannel.onRequest]
@@ -26,7 +41,121 @@ Future<bool> handleSessionRequest(
   SSH_Message_Channel_Request request, {
   required SSHServerConfig config,
 }) async {
-  if (request.requestType != SSHChannelRequestType.exec) return false;
+  final state = _sessionStates[channel] ??= _SessionState();
+  switch (request.requestType) {
+    case SSHChannelRequestType.pty:
+      return _handlePtyRequest(state, request);
+    case SSHChannelRequestType.env:
+      return _handleEnvRequest(state, request);
+    case SSHChannelRequestType.windowChange:
+      return _handleWindowChange(state, request);
+    case SSHChannelRequestType.signal:
+      return _handleSignalRequest(state, request);
+    case SSHChannelRequestType.exec:
+      return _serveExec(channel, request, config: config, state: state);
+    case SSHChannelRequestType.shell:
+      return _serveShell(channel, config: config, state: state);
+    default:
+      return false;
+  }
+}
+
+/// State one session channel accumulates between its requests.
+class _SessionState {
+  /// Dimensions stashed by `pty-req`, kept current with any `window-change`
+  /// that arrives before the shell consumes them.
+  SSHPtyDimensions? ptyDimensions;
+
+  /// Variables accumulated from `env` requests, merged into the pty
+  /// environment when the shell starts.
+  final Map<String, String> environment = {};
+
+  /// The pty serving a started shell, if any — the target of the channel's
+  /// later `window-change` and `signal` requests.
+  SSHServerPty? pty;
+
+  /// Whether this channel already took its one lifecycle request.
+  var lifecycleClaimed = false;
+}
+
+/// Stashes the terminal dimensions of a `pty-req` (RFC 4254 §6.2) for the
+/// shell request that follows. The terminal type rides along as `TERM`; the
+/// encoded terminal modes are not parsed.
+bool _handlePtyRequest(
+    _SessionState state, SSH_Message_Channel_Request request) {
+  final termType = request.termType;
+  if (termType == null) return false;
+  state.ptyDimensions = SSHPtyDimensions(
+    columns: request.termWidth ?? 80,
+    rows: request.termHeight ?? 24,
+    pixelWidth: request.termPixelWidth ?? 0,
+    pixelHeight: request.termPixelHeight ?? 0,
+    environment: {'TERM': termType},
+  );
+  return true;
+}
+
+/// Accumulates one `env` request (RFC 4254 §6.4) into the environment the
+/// shell will start with.
+bool _handleEnvRequest(
+    _SessionState state, SSH_Message_Channel_Request request) {
+  final name = request.variableName;
+  final value = request.variableValue;
+  if (name == null || value == null) return false;
+  state.environment[name] = value;
+  return true;
+}
+
+/// Applies a `window-change` (RFC 4254 §6.7): resizes the running pty, or —
+/// before the shell — refreshes the stashed dimensions so it starts at the
+/// size the client last announced.
+bool _handleWindowChange(
+  _SessionState state,
+  SSH_Message_Channel_Request request,
+) {
+  final columns = request.termWidth;
+  final rows = request.termHeight;
+  if (columns == null || rows == null) return false;
+  final pty = state.pty;
+  if (pty != null) {
+    pty.resize(columns, rows);
+    return true;
+  }
+  final dimensions = state.ptyDimensions;
+  if (dimensions != null) {
+    state.ptyDimensions = SSHPtyDimensions(
+      columns: columns,
+      rows: rows,
+      pixelWidth: request.termPixelWidth ?? dimensions.pixelWidth,
+      pixelHeight: request.termPixelHeight ?? dimensions.pixelHeight,
+      environment: dimensions.environment,
+    );
+  }
+  return true;
+}
+
+/// Delivers a `signal` request (RFC 4254 §6.9) to the running pty by the
+/// name the client sent — the fork's client emits the RFC names directly
+/// from its `SSHSignal` enum, so they pass through unchanged.
+bool _handleSignalRequest(
+  _SessionState state,
+  SSH_Message_Channel_Request request,
+) {
+  final name = request.signalName;
+  if (name == null) return false;
+  state.pty?.signal(name);
+  return true;
+}
+
+/// Serves the structured `exec` request (see [TpExecCodec]).
+Future<bool> _serveExec(
+  SSHServerChannel channel,
+  SSH_Message_Channel_Request request, {
+  required SSHServerConfig config,
+  required _SessionState state,
+}) async {
+  if (!_claimLifecycle(channel, state)) return false;
+
   final command = request.command;
   if (command == null) return false;
 
@@ -56,6 +185,59 @@ Future<bool> handleSessionRequest(
   }
 
   _afterReply(channel, () => _pipeProcess(channel, process));
+  return true;
+}
+
+/// Serves the `shell` request (RFC 4254 §6.5): requires the `pty-req`
+/// stashed earlier on the channel, then spawns the pty with those
+/// dimensions and the accumulated `env` variables, and pipes it like an
+/// exec.
+Future<bool> _serveShell(
+  SSHServerChannel channel, {
+  required SSHServerConfig config,
+  required _SessionState state,
+}) async {
+  if (!_claimLifecycle(channel, state)) return false;
+
+  final dimensions = state.ptyDimensions;
+  // This server only serves pty sessions; a shell without a pty-req has
+  // nothing to spawn the pty with.
+  if (dimensions == null) return false;
+  final ptyFactory = config.ptyFactory;
+  if (ptyFactory == null) return false;
+
+  final initial = SSHPtyDimensions(
+    columns: dimensions.columns,
+    rows: dimensions.rows,
+    pixelWidth: dimensions.pixelWidth,
+    pixelHeight: dimensions.pixelHeight,
+    environment: {...dimensions.environment, ...state.environment},
+  );
+  final SSHServerPty pty;
+  try {
+    final spawned = await ptyFactory(initial);
+    if (spawned == null) return false;
+    pty = spawned;
+  } on Object {
+    // A misbehaving factory is a refused request, not a dead connection.
+    return false;
+  }
+
+  state.pty = pty;
+  _afterReply(channel, () => _pipeProcess(channel, pty));
+  return true;
+}
+
+/// Claims the channel's one lifecycle request (`exec` or `shell`). A session
+/// channel serves a single program (RFC 4254 §6.5); a second lifecycle
+/// request is refused, and the channel is closed once that failure reply is
+/// on the wire.
+bool _claimLifecycle(SSHServerChannel channel, _SessionState state) {
+  if (state.lifecycleClaimed) {
+    _afterReply(channel, channel.close);
+    return false;
+  }
+  state.lifecycleClaimed = true;
   return true;
 }
 

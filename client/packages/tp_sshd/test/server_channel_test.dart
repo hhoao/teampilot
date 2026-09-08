@@ -286,9 +286,10 @@ void main() {
       );
       final clientController = await openClientSessionChannel(client);
       // The connection wires every channel to handleSessionRequest, which
-      // serves only the structured exec grammar so far; an env request is
-      // refused instead of left hanging.
-      final accepted = await clientController.sendEnv('FOO', 'BAR');
+      // serves the structured exec grammar and the pty half (pty-req, env,
+      // shell, window-change, signal); a subsystem request is refused
+      // instead of left hanging.
+      final accepted = await clientController.sendSubsystem('sftp');
       expect(accepted, isFalse);
 
       await connection.close();

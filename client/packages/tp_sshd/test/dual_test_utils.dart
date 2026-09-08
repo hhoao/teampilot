@@ -25,6 +25,7 @@ Future<(SSHClient, SSHServer)> startDualPair({
   List<SSHIdentity> clientIdentities = const [],
   String username = 'user',
   SSHProcessFactory? processFactory,
+  SSHPtyFactory? ptyFactory,
   SSHHostInfo Function()? hostInfo,
 }) async {
   final (clientSocket, serverSocket) = loopbackSSHSocketPair();
@@ -36,6 +37,7 @@ Future<(SSHClient, SSHServer)> startDualPair({
       expectedUsername: username,
       authenticate: authenticate,
       processFactory: processFactory,
+      ptyFactory: ptyFactory,
       hostInfo: hostInfo,
     ),
   );

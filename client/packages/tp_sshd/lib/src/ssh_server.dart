@@ -29,6 +29,7 @@ class SSHServerConfig {
     this.authTimeout = const Duration(seconds: 30),
     this.maxAuthAttempts = 6,
     this.processFactory,
+    this.ptyFactory,
     this.hostInfo,
     this.printDebug,
     this.printTrace,
@@ -63,6 +64,11 @@ class SSHServerConfig {
   /// environment; a `null` return — or an unconfigured factory — refuses the
   /// request. The server itself never builds a command line.
   final SSHProcessFactory? processFactory;
+
+  /// Spawns the pseudo-terminal backing a `shell` request. The request is
+  /// only served on a channel that stashed a `pty-req` first; a `null`
+  /// return — or an unconfigured factory — refuses the request.
+  final SSHPtyFactory? ptyFactory;
 
   /// Supplies the host snapshot answered for the `tp1:` host-info query.
   /// `null` refuses the query; it is never answered by spawning a process.

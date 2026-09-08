@@ -11,7 +11,8 @@ import 'dual_test_utils.dart';
 import 'test_socket_pair.dart';
 
 void main() {
-  test('client handshake reaches auth and fails closed without userauth', () async {
+  test('client handshake reaches auth and fails closed without userauth',
+      () async {
     final (clientSocket, serverSocket) = loopbackSSHSocketPair();
     final connections = StreamController<SSHSocket>();
     final server = await SSHServer.bind(

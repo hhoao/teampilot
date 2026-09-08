@@ -26,6 +26,58 @@ abstract class SSHServerProcess {
   void kill();
 }
 
+/// Terminal geometry and environment a client asked for with `pty-req`
+/// (RFC 4254 §6.2), stashed until the shell request that consumes it.
+class SSHPtyDimensions {
+  const SSHPtyDimensions({
+    required this.columns,
+    required this.rows,
+    this.pixelWidth = 0,
+    this.pixelHeight = 0,
+    this.environment = const {},
+  });
+
+  /// Terminal width in character cells.
+  final int columns;
+
+  /// Terminal height in character rows.
+  final int rows;
+
+  /// Terminal width in pixels, `0` when the client does not know.
+  final int pixelWidth;
+
+  /// Terminal height in pixels, `0` when the client does not know.
+  final int pixelHeight;
+
+  /// Terminal environment: `TERM` from the `pty-req`, plus any variables
+  /// the client passed with `env` requests before the shell. Terminal modes
+  /// are not parsed — they stay the client's raw bytes.
+  final Map<String, String> environment;
+}
+
+/// A pseudo-terminal backing a `shell` channel: a [SSHServerProcess] the
+/// client can also resize and signal once it is running. Implemented by the
+/// app with flutter_pty; faked in tests.
+abstract class SSHServerPty extends SSHServerProcess {
+  /// Resizes the terminal to [columns] x [rows] cells (a `window-change`
+  /// request, RFC 4254 §6.7).
+  void resize(int columns, int rows);
+
+  /// Delivers a signal by its RFC 4254 §6.9 name (`'INT'`, `'TERM'`, …,
+  /// without the `SIG` prefix) — the exact name the client sent, which the
+  /// fork's own client emits from its `SSHSignal` enum.
+  void signal(String name);
+}
+
+/// Spawns the [SSHServerPty] backing one `shell` request.
+///
+/// Receives the dimensions stashed from the channel's `pty-req` (with `env`
+/// request variables merged in); returns the pty, or `null` to refuse the
+/// request. An unconfigured factory refuses every shell.
+typedef SSHPtyFactory = Future<SSHServerPty?> Function(
+  SSHPtyDimensions initial,
+);
+
 /// Spawns the [SSHServerProcess] backing one structured `exec` request.
 ///
 /// Receives the decoded argv, working directory and environment; returns the
