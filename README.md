@@ -153,7 +153,8 @@ Android does **not** run a local PTY — connect over **SSH** to a Linux/macOS/W
 | Doc | Audience | Topic |
 |-----|----------|-------|
 | [Development guide](docs/DEVELOPMENT.md) | Contributors / maintainers | Setup, run, test, packaging, CI |
-| [AGENTS.md](AGENTS.md) | Contributors / AI | Repo layout, architecture conventions |
+| [AGENTS.md](AGENTS.md) | Contributors / AI | AI assistant entry point: hard rules, doc index |
+| [Architecture](docs/ARCHITECTURE.md) | Contributors | Core concepts, routing, storage, where to change code |
 
 
 

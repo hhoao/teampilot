@@ -106,6 +106,38 @@ for every invocation, including single-file and coverage runs. Pass
 `--tags` or `--exclude-tags` explicitly when you need a different test
 selection; integration tests should be selected deliberately.
 
+### Never invoke `flutter test` directly
+
+**Not even for a subset of tests.** Concurrent `flutter test` runs in the same
+`client/` directory corrupt the shared incremental build cache
+(`build/test_cache/…​.cache.dill.track.dill`) and hang for hours with
+near-zero progress. Always go through the wrapper, which passes paths/options
+straight to `flutter test`, caps concurrency, excludes integration tags, and
+queues concurrent runs on a lock:
+
+```bash
+dart run tool/run_tests.dart test/pages/git_graph/ test/services/git/
+```
+
+Need real parallelism? Give each agent its own git worktree
+(`git submodule update --init` + `flutter pub get` inside first).
+
+### Test loop: fast inner, slow outer (do not invert it)
+
+During development the inner loop is `flutter analyze` (seconds). Verify
+behavior with **one test file**, narrowing with `--plain-name "…"` when useful:
+
+```bash
+dart run tool/run_tests.dart test/services/terminal/terminal_session_test.dart --plain-name "reclaim"
+```
+
+Run a module subset only at milestones. Run the full suite **only once, right
+before claiming done**, and launch it in the background so you keep working
+(docs, cleanup, commit prep) while it runs. Never kick off `test/services/`
+(861 files) or the whole suite mid-development, and never while another agent
+holds the lock — a queued full-suite run blocks every other agent's small
+verification behind it.
+
 `teampilot_search` package (Rust engine + Dart wrapper):
 
 ```bash
@@ -287,7 +319,8 @@ OS-specific tooling matches the CI workflows. See [`client/linux/packaging/READM
 
 | Doc | Topic |
 |-----|--------|
-| [AGENTS.md](../AGENTS.md) | AI guide: architecture, key paths, change conventions |
+| [AGENTS.md](../AGENTS.md) | AI guide: hard rules, doc index |
+| [ARCHITECTURE.md](ARCHITECTURE.md) | Core concepts, key paths, change conventions |
 | [CODE_QUALITY.md](CODE_QUALITY.md) | File size, tests, Extension, tech-debt norms |
 | [DEBUGGING.md](DEBUGGING.md) | Debugging process (search-first, root cause) |
 | [TEAM_BUS_MEMBER_STATE.md](TEAM_BUS_MEMBER_STATE.md) | Mixed-team bus presence & member state |

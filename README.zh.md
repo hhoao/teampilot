@@ -154,7 +154,8 @@ Android 版**不运行本机 PTY**，需通过 **SSH** 连接已安装目标 Age
 | 文档 | 读者 | 内容 |
 |------|------|------|
 | [开发指南](docs/DEVELOPMENT.md) | 贡献者 / 维护者 | 环境、本地运行、测试、打包与 CI |
-| [AGENTS.md](AGENTS.md) | 贡献者 / AI | 仓库结构、架构约定 |
+| [AGENTS.md](AGENTS.md) | 贡献者 / AI | AI 助手入口：硬性规则与文档索引 |
+| [架构](docs/ARCHITECTURE.md) | 贡献者 | 核心概念、路由、存储、改码位置速查 |
 
 
 
