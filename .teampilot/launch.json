@@ -33,11 +33,11 @@
     },
     {
       "id": "run",
-      "name": "run",
+      "name": "flutter run -d linux",
       "type": "shellScript",
       "cwd": "${workspaceFolder}/client",
       "execute": "scriptFile",
-      "scriptOptions": "run",
+      "scriptOptions": "run -d linux",
       "interpreterOptions": "",
       "executeInTerminal": true,
       "allowMultipleInstances": false,
