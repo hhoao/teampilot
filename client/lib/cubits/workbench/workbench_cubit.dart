@@ -217,8 +217,17 @@ class WorkbenchCubit extends Cubit<WorkbenchState> {
   /// order, with the focused group's active tab. Consumers that mirror the
   /// entire floating panel (tab projection, bulk closes, run reconciliation)
   /// read this; the focused-group reads mirror only the focused group.
-  TabStrip mergedFloatingStrip(String workspaceId) {
-    final layout = floatingLayout(workspaceId);
+  /// Whole-surface read of the **center** layout: one strip merging every
+  /// group's tabs in leaf order (active id from the focused group, preview /
+  /// pinned ids unioned). Sidebar "open sessions" and other whole-surface
+  /// consumers use this so tabs in non-focused groups stay visible.
+  TabStrip mergedCenterStrip(String workspaceId) =>
+      _mergeGroupStrips(centerLayout(workspaceId));
+
+  TabStrip mergedFloatingStrip(String workspaceId) =>
+      _mergeGroupStrips(floatingLayout(workspaceId));
+
+  TabStrip _mergeGroupStrips(WorkbenchGroupLayout layout) {
     if (layout.groups.length == 1) {
       // Degenerate single group: keep the strip as-is (landing fields too).
       return layout.groups.values.single;

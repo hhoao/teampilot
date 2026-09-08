@@ -493,4 +493,37 @@ void main() {
       expect(cubit.centerLayout(_ws).groups['g0']!.order, [_s1]);
     });
   });
+
+  group('mergedCenterStrip', () {
+    test('merges tabs across groups in leaf order', () {
+      cubit
+        ..openSession(_ws, 's1')
+        ..openSession(_ws, 's2')
+        ..openSession(_ws, 's3')
+        ..splitTab(_ws, _s2, axis: Axis.horizontal, before: false); // g0 [s1,s3] | g1 [s2]
+      final strip = cubit.mergedCenterStrip(_ws);
+      expect(strip.order, [_s1, _s3, _s2]);
+      expect(strip.activeId, _s2); // focused group's active tab
+    });
+
+    test('single group keeps the strip as-is', () {
+      cubit.openSession(_ws, 's1');
+      final strip = cubit.mergedCenterStrip(_ws);
+      expect(strip.order, [_s1]);
+      expect(strip.activeId, _s1);
+    });
+
+    test('union of preview ids across groups', () {
+      cubit
+        ..openSession(_ws, 's1')
+        ..openSession(_ws, 's2')
+        ..splitTab(_ws, _s2, axis: Axis.horizontal, before: false);
+      // Preview sets flow through the merge so sidebar filtering keeps
+      // working on every group's tabs.
+      final strip = cubit.mergedCenterStrip(_ws);
+      expect(strip.previewIds, cubit.centerLayout(_ws).groups.values
+          .expand((s) => s.previewIds)
+          .toSet());
+    });
+  });
 }

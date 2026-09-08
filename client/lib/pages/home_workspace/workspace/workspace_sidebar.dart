@@ -400,7 +400,9 @@ class _RunningSessionsHost extends StatelessWidget {
   Widget build(BuildContext context) {
     final openTabIds = context.select<WorkbenchCubit, OpenSessionTabIds>(
       (c) {
-        final strip = c.centerFocusedStrip(tabScopeId);
+        // Merged across every center split group — the sidebar's open strip
+        // is a whole-surface view, not a focused-group one.
+        final strip = c.mergedCenterStrip(tabScopeId);
         return OpenSessionTabIds.fromCenterBarOrder(
           strip.order,
           previewIds: strip.previewIds,
