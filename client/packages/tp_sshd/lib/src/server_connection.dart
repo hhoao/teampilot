@@ -4,6 +4,7 @@ import 'dart:typed_data';
 import 'package:dartssh2/dartssh2.dart' show SSHSocket, SSHTransport;
 import 'package:dartssh2/protocol.dart';
 
+import 'server_channel.dart';
 import 'server_userauth.dart';
 import 'ssh_server.dart' show SSHServerAuthRequest, SSHServerConfig, tpServerAlgorithms;
 
@@ -55,6 +56,14 @@ class SSHServerConnection {
   late final Timer _authTimer;
   var _phase = _Phase.auth;
 
+  /// Open channels on this connection, keyed by the server-assigned channel
+  /// number (the id the client addresses them by).
+  final _channels = <int, SSHServerChannel>{};
+
+  /// The next channel number to assign. A plain counter is enough: channel
+  /// numbers are only reused after 2^32 opens.
+  var _nextChannelNumber = 0;
+
   /// Failed authentication attempts so far, for the
   /// [SSHServerConfig.maxAuthAttempts] throttle.
   var _authAttempts = 0;
@@ -63,10 +72,15 @@ class SSHServerConnection {
   /// error.
   Future<void> get done => _transport.done;
 
+  /// The channels currently open on this connection, keyed by the
+  /// server-assigned channel number.
+  Map<int, SSHServerChannel> get channels => Map.unmodifiable(_channels);
+
   /// Closes the connection and its socket.
   Future<void> close() async {
     _authTimer.cancel();
     _phase = _Phase.closed;
+    _teardownChannels();
     await _transport.close();
   }
 
@@ -81,9 +95,7 @@ class SSHServerConnection {
       case _Phase.auth:
         return _handleAuthMessage(payload);
       case _Phase.running:
-        // No session traffic is served yet; Task 5 replaces this branch
-        // with channel handling.
-        return false;
+        return _handleRunningMessage(payload);
     }
   }
 
@@ -113,6 +125,188 @@ class SSHServerConnection {
         // SSH_MSG_UNIMPLEMENTED.
         return false;
     }
+  }
+
+  /// Running-phase message handling (RFC 4254): channel multiplexing and
+  /// global requests.
+  ///
+  /// Returns whether the message was recognized, so the transport answers
+  /// unrecognized ones with SSH_MSG_UNIMPLEMENTED (RFC 4253 §11).
+  bool _handleRunningMessage(Uint8List payload) {
+    switch (SSHMessage.readMessageId(payload)) {
+      case SSH_Message_Global_Request.messageId:
+        _handleGlobalRequest(payload);
+        return true;
+      case SSH_Message_Channel_Open.messageId:
+        _handleChannelOpen(payload);
+        return true;
+      case SSH_Message_Channel_Window_Adjust.messageId:
+      case SSH_Message_Channel_Data.messageId:
+      case SSH_Message_Channel_Extended_Data.messageId:
+      case SSH_Message_Channel_EOF.messageId:
+      case SSH_Message_Channel_Close.messageId:
+      case SSH_Message_Channel_Request.messageId:
+        _handleChannelMessage(payload);
+        return true;
+      default:
+        return false;
+    }
+  }
+
+  /// Answers global requests (RFC 4254 §4). Only keepalive is served;
+  /// `tcpip-forward`/`cancel-tcpip-forward` arrive with Task 9, so until
+  /// then everything else is refused.
+  void _handleGlobalRequest(Uint8List payload) {
+    final message = _decodeMessage(
+      'global request',
+      SSH_Message_Global_Request.decode,
+      payload,
+    );
+    if (message == null) return;
+    if (!message.wantReply) return;
+    if (message.requestName == 'keepalive@openssh.com') {
+      _transport.sendPacket(SSH_Message_Request_Success(Uint8List(0)).encode());
+    } else {
+      _transport.sendPacket(SSH_Message_Request_Failure().encode());
+    }
+  }
+
+  /// Serves CHANNEL_OPEN (RFC 4254 §5.1): `session` channels are confirmed
+  /// with a fresh [SSHServerChannel]; every other type is refused with
+  /// "administratively prohibited" (forwarded channels arrive in Task 9).
+  void _handleChannelOpen(Uint8List payload) {
+    final message = _decodeMessage(
+      'channel open',
+      SSH_Message_Channel_Open.decode,
+      payload,
+    );
+    if (message == null) return;
+
+    if (message.channelType != 'session') {
+      _transport.sendPacket(
+        SSH_Message_Channel_Open_Failure(
+          recipientChannel: message.senderChannel,
+          reasonCode:
+              SSH_Message_Channel_Open_Failure.codeAdministrativelyProhibited,
+          description: "Channel type '${message.channelType}' is not supported",
+        ).encode(),
+      );
+      return;
+    }
+
+    final ourChannel = _nextChannelNumber++;
+    final channel = SSHServerChannel(
+      recipientChannel: message.senderChannel,
+      ourChannel: ourChannel,
+      channelType: message.channelType,
+      peerInitialWindowSize: message.initialWindowSize,
+      peerMaximumPacketSize: message.maximumPacketSize,
+      sendPacket: _transport.sendPacket,
+      onClosed: (channel) => _channels.remove(channel.ourChannel),
+      printDebug: _config.printDebug,
+    );
+    _channels[ourChannel] = channel;
+    _transport.sendPacket(
+      SSH_Message_Channel_Confirmation(
+        recipientChannel: message.senderChannel,
+        senderChannel: ourChannel,
+        initialWindowSize: SSHServerChannel.initialReceiveWindow,
+        maximumPacketSize: SSHServerChannel.maximumPacketSize,
+        data: Uint8List(0),
+      ).encode(),
+    );
+  }
+
+  /// Routes a channel-scoped message to its channel by the recipient id the
+  /// client addressed it to (our channel number). An unknown id is ignored
+  /// silently: it is indistinguishable from a message racing the close that
+  /// removed the channel.
+  void _handleChannelMessage(Uint8List payload) {
+    switch (SSHMessage.readMessageId(payload)) {
+      case SSH_Message_Channel_Window_Adjust.messageId:
+        final message = _decodeMessage(
+          'window adjust',
+          SSH_Message_Channel_Window_Adjust.decode,
+          payload,
+        );
+        if (message == null) return;
+        _channelOrNull(message.recipientChannel)
+            ?.handleWindowAdjust(message.bytesToAdd);
+        return;
+      case SSH_Message_Channel_Data.messageId:
+        final message = _decodeMessage(
+          'channel data',
+          SSH_Message_Channel_Data.decode,
+          payload,
+        );
+        if (message == null) return;
+        _channelOrNull(message.recipientChannel)?.handleData(message.data);
+        return;
+      case SSH_Message_Channel_Extended_Data.messageId:
+        final message = _decodeMessage(
+          'extended channel data',
+          SSH_Message_Channel_Extended_Data.decode,
+          payload,
+        );
+        if (message == null) return;
+        _channelOrNull(message.recipientChannel)
+            ?.handleExtendedData(message.dataTypeCode, message.data);
+        return;
+      case SSH_Message_Channel_EOF.messageId:
+        final message = _decodeMessage(
+          'channel EOF',
+          SSH_Message_Channel_EOF.decode,
+          payload,
+        );
+        if (message == null) return;
+        _channelOrNull(message.recipientChannel)?.handleEof();
+        return;
+      case SSH_Message_Channel_Close.messageId:
+        final message = _decodeMessage(
+          'channel close',
+          SSH_Message_Channel_Close.decode,
+          payload,
+        );
+        if (message == null) return;
+        _channelOrNull(message.recipientChannel)?.handleClose();
+        return;
+      case SSH_Message_Channel_Request.messageId:
+        final message = _decodeMessage(
+          'channel request',
+          SSH_Message_Channel_Request.decode,
+          payload,
+        );
+        if (message == null) return;
+        _channelOrNull(message.recipientChannel)?.handleRequest(message);
+        return;
+    }
+  }
+
+  SSHServerChannel? _channelOrNull(int ourChannel) => _channels[ourChannel];
+
+  /// Decodes [payload] with [decode], disconnecting the peer with a
+  /// protocol error instead of answering when it is malformed. Returns
+  /// `null` in that case (and after the disconnect, nowhere else).
+  T? _decodeMessage<T>(
+    String what,
+    T Function(Uint8List payload) decode,
+    Uint8List payload,
+  ) {
+    try {
+      return decode(payload);
+    } on Object {
+      _disconnect(SSHDisconnectReason.protocolError, 'Malformed $what');
+      return null;
+    }
+  }
+
+  /// Detaches every open channel without sending anything: the transport is
+  /// going away.
+  void _teardownChannels() {
+    for (final channel in List.of(_channels.values)) {
+      channel.detach();
+    }
+    _channels.clear();
   }
 
   /// Handles one `SSH_Message_Userauth_Request` (RFC 4252).
@@ -240,6 +434,7 @@ class SSHServerConnection {
   void _onTransportClosed() {
     _authTimer.cancel();
     _phase = _Phase.closed;
+    _teardownChannels();
   }
 
   /// Sends a disconnect message and closes the connection.

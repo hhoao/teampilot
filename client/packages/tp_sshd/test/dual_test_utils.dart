@@ -1,6 +1,14 @@
+// VM-only: reaches the client's private session-channel opener through
+// dart:mirrors, like the fork's own channel-open tests do.
+library;
+
 import 'dart:async';
+import 'dart:mirrors';
+import 'dart:typed_data';
 
 import 'package:dartssh2/dartssh2.dart';
+import 'package:dartssh2/protocol.dart';
+import 'package:dartssh2/src/ssh_channel.dart';
 import 'package:tp_sshd/tp_sshd.dart';
 
 import 'test_socket_pair.dart';
@@ -28,14 +36,150 @@ Future<(SSHClient, SSHServer)> startDualPair({
     ),
   );
   connections.add(serverSocket);
-  final client = SSHClient(
+  final client = _connectClient(
     clientSocket,
     username: username,
-    onVerifyHostKey: (_, __) => true,
     identities: clientIdentities,
   );
   await client.authenticated; // throws on auth failure — callers rely on that
   return (client, server);
+}
+
+/// Starts a single [SSHServerConnection] over a fresh in-memory socket pair
+/// and returns it with a connected, authenticated client.
+///
+/// Like [startDualPair], but hands the test the connection object itself, so
+/// it can reach the server-side channel table through
+/// [SSHServerConnection.channels].
+Future<(SSHClient, SSHServerConnection)> startDualConnection({
+  required SSHKeyPair hostKeyPair,
+  required Future<bool> Function(SSHServerAuthRequest request) authenticate,
+  List<SSHIdentity> clientIdentities = const [],
+  String username = 'user',
+}) async {
+  final (clientSocket, serverSocket) = loopbackSSHSocketPair();
+  final connection = SSHServerConnection(
+    serverSocket,
+    config: SSHServerConfig(
+      hostKeyPair: hostKeyPair,
+      expectedUsername: username,
+      authenticate: authenticate,
+    ),
+  );
+  final client = _connectClient(
+    clientSocket,
+    username: username,
+    identities: clientIdentities,
+  );
+  await client.authenticated;
+  return (client, connection);
+}
+
+SSHClient _connectClient(
+  SSHSocket socket, {
+  required String username,
+  required List<SSHIdentity> identities,
+}) {
+  return SSHClient(
+    socket,
+    username: username,
+    onVerifyHostKey: (_, __) => true,
+    identities: identities,
+  );
+}
+
+/// Starts a single [SSHServerConnection] plus a raw client-side
+/// [SSHTransport] that authenticates with the test device key.
+///
+/// Like [startDualConnection], but the client is a bare transport driving
+/// the protocol by hand, so tests can inject channel traffic a real
+/// [SSHClient] would never produce (tiny windows, hand-crafted packets).
+/// [onServerMessage] sees every message the server sends back (consumed by
+/// default). The returned future completes once the server has accepted the
+/// authentication.
+Future<(SSHServerConnection, SSHTransport)> startRawAuthenticatedConnection({
+  void Function(Uint8List payload)? onServerMessage,
+}) async {
+  final (clientSocket, serverSocket) = loopbackSSHSocketPair();
+  final connection = SSHServerConnection(
+    serverSocket,
+    config: SSHServerConfig(
+      hostKeyPair: testHostKey,
+      expectedUsername: 'user',
+      authenticate: (_) async => true,
+    ),
+  );
+  final authenticated = Completer<void>();
+  final publicKey = testDeviceKey.toPublicKey().encode();
+  late final SSHTransport client;
+  client = SSHTransport(
+    clientSocket,
+    onVerifyHostKey: (_, __) => true,
+    onReady: () {
+      client.sendPacket(SSH_Message_Service_Request('ssh-userauth').encode());
+      // The RFC 4252 §7 signed request: the challenge is the session-id
+      // prefixed request-without-signature, exactly what the server
+      // re-composes to verify.
+      final challenge = client.composeChallenge(
+        username: 'user',
+        service: 'ssh-connection',
+        publicKeyAlgorithm: 'ssh-ed25519',
+        publicKey: publicKey,
+      );
+      final signature = testDeviceKey.sign(challenge);
+      client.sendPacket(
+        SSH_Message_Userauth_Request.publicKey(
+          username: 'user',
+          publicKeyAlgorithm: 'ssh-ed25519',
+          publicKey: publicKey,
+          signature: signature.encode(),
+        ).encode(),
+      );
+    },
+    onMessage: (payload) {
+      if (SSHMessage.readMessageId(payload) ==
+              SSH_Message_Userauth_Success.messageId &&
+          !authenticated.isCompleted) {
+        authenticated.complete();
+      }
+      onServerMessage?.call(payload);
+      return true;
+    },
+  );
+  await authenticated.future.timeout(const Duration(seconds: 10));
+  return (connection, client);
+}
+
+/// Polls [condition] every 5 ms until it holds, or fails after [timeout].
+///
+/// For awaiting delivery over the in-memory socket pair, where the only
+/// observable state is on one side of the pair.
+Future<void> waitUntil(
+  bool Function() condition, {
+  Duration timeout = const Duration(seconds: 10),
+}) async {
+  final deadline = DateTime.now().add(timeout);
+  while (!condition()) {
+    if (DateTime.now().isAfter(deadline)) {
+      throw TimeoutException('condition not met within $timeout', timeout);
+    }
+    await Future<void>.delayed(const Duration(milliseconds: 5));
+  }
+}
+
+/// Opens a session channel on [client] and completes with its controller.
+///
+/// dartssh2 exposes no public channel-open-by-type API: `execute`/`shell`
+/// open a session channel but then block on the request reply, which the
+/// tp_sshd server does not answer until Tasks 6-7. The fork's own tests
+/// reach the same private opener through mirrors
+/// (`test/src/ssh_client_channel_open_test.dart`), so this harness mirrors
+/// that (VM-only) pattern.
+Future<SSHChannelController> openClientSessionChannel(SSHClient client) {
+  final library = reflectClass(SSHClient).owner as LibraryMirror;
+  final symbol = MirrorSystem.getSymbol('_openSessionChannel', library);
+  return reflect(client).invoke(symbol, const []).reflectee
+      as Future<SSHChannelController>;
 }
 
 /// Throwaway ed25519 host key generated for these tests only
