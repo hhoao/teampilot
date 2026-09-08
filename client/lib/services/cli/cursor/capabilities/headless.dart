@@ -22,6 +22,9 @@ final class CursorHeadlessCapability implements HeadlessCapability {
   bool get supportsStreaming => false;
 
   @override
+  bool get supportsPromptStdin => true;
+
+  @override
   String get executable => 'cursor-agent';
 
   @override
@@ -46,11 +49,14 @@ final class CursorHeadlessCapability implements HeadlessCapability {
     yield* const CursorWorkspaceAccessLaunch().buildLaunchArgs(interactive);
     yield* const CursorModelLaunch().buildLaunchArgs(interactive);
     yield* const CursorPermissionLaunch().buildLaunchArgs(interactive);
-    yield CliLaunchArgContribution(
-      key: 'cursor-headless-prompt',
-      phase: LaunchArgPhase.prompt,
-      args: [ctx.prompt],
-    );
+    // In stdin mode the piped content is the prompt; no positional prompt.
+    if (!ctx.promptViaStdin) {
+      yield CliLaunchArgContribution(
+        key: 'cursor-headless-prompt',
+        phase: LaunchArgPhase.prompt,
+        args: [ctx.prompt],
+      );
+    }
     yield* const UserExtraArgsProvider().buildLaunchArgs(interactive);
   }
 

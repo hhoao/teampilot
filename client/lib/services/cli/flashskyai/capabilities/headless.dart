@@ -31,6 +31,9 @@ final class FlashskyaiHeadlessCapability
   bool get supportsStreaming => true;
 
   @override
+  bool get supportsPromptStdin => false;
+
+  @override
   String get executable => 'flashskyai';
 
   @override

@@ -32,6 +32,9 @@ final class CodexHeadlessCapability
   bool get supportsStreaming => false;
 
   @override
+  bool get supportsPromptStdin => true;
+
+  @override
   String get executable => 'codex';
 
   @override
@@ -82,10 +85,11 @@ final class CodexHeadlessCapability
     }
     yield* const CodexWorkspaceAccessLaunch().buildLaunchArgs(interactive);
     yield* const CodexPermissionLaunch().buildLaunchArgs(interactive);
+    // `-` makes `codex exec` read the instructions from stdin.
     yield CliLaunchArgContribution(
       key: 'codex-headless-prompt',
       phase: LaunchArgPhase.prompt,
-      args: [ctx.prompt],
+      args: [ctx.promptViaStdin ? '-' : ctx.prompt],
     );
     yield* const UserExtraArgsProvider().buildLaunchArgs(interactive);
   }

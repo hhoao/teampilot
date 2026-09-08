@@ -95,4 +95,19 @@ void main() {
       containsAllInOrder(['--output-format', 'stream-json', '--verbose']),
     );
   });
+
+  test('promptViaStdin omits the argv prompt (piped stdin is the prompt)', () {
+    final args = const CliLaunchArgAssembler().assembleHeadless(
+      ClaudeCliTool(),
+      const HeadlessLaunchContext(
+        prompt: 'a very long prompt delivered via stdin',
+        model: 'sonnet',
+        effort: '',
+        configDir: '/tmp/cfg',
+        promptViaStdin: true,
+      ),
+    );
+    expect(args.contains('a very long prompt delivered via stdin'), isFalse);
+    expect(cap.supportsPromptStdin, isTrue);
+  });
 }

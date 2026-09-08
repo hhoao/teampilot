@@ -33,6 +33,9 @@ final class OpencodeHeadlessCapability
   bool get supportsStreaming => false;
 
   @override
+  bool get supportsPromptStdin => false;
+
+  @override
   String get executable => 'opencode';
 
   @override

@@ -19,6 +19,7 @@ void main() {
               environment,
               workingDirectory,
               timeout,
+              stdinData,
               required onStdoutLine,
             }) async {
               onStdoutLine('{"type":"assistant","text":"thinking"}');
@@ -56,6 +57,7 @@ void main() {
             environment,
             workingDirectory,
             timeout,
+            stdinData,
             required onStdoutLine,
           }) async => 2,
     );
@@ -72,5 +74,45 @@ void main() {
       ),
       throwsA(isA<HeadlessAiException>()),
     );
+  });
+
+  test('runStreaming routes a long prompt via stdin', () async {
+    final longPrompt = 'x' * 2500;
+    String? ranStdin;
+    List<String>? ranArgs;
+    final svc = HeadlessAiService(
+      resolveProvider: (_, __) async => null,
+      resolveExecutable: (name) async => '/usr/bin/$name',
+      resolveProvisionCapability: (_) => null,
+      streamRun:
+          (
+            executable,
+            arguments, {
+            environment,
+            workingDirectory,
+            timeout,
+            stdinData,
+            required onStdoutLine,
+          }) async {
+            ranStdin = stdinData;
+            ranArgs = arguments;
+            onStdoutLine('{"type":"result","result":"ok"}');
+            return 0;
+          },
+    );
+
+    final result = await svc.runStreaming(
+      setting: const AiFeatureSetting(
+        cli: CliTool.claude,
+        providerId: 'p',
+        model: 'sonnet',
+      ),
+      prompt: longPrompt,
+      onEvent: (_) {},
+    );
+
+    expect(ranStdin, longPrompt);
+    expect(ranArgs!.contains(longPrompt), isFalse);
+    expect(result.text, 'ok');
   });
 }

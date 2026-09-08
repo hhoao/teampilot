@@ -62,7 +62,7 @@ HeadlessAiService _headless({
     resolveExecutable: (name) async => failResolve ? null : name,
     tempDirFactory: () async => Directory.systemTemp.createTempSync('gc_'),
     resolveProvisionCapability: (_) => null,
-    run: (exe, args, {environment, workingDirectory, timeout}) async {
+    run: (exe, args, {environment, workingDirectory, timeout, stdinData}) async {
       onRun();
       return ProcessResult(0, 0, '```\nfeat: generated\n```', '');
     },

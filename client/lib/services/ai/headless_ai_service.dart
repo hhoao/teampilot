@@ -42,12 +42,33 @@ typedef HeadlessProcessRunner =
       Map<String, String>? environment,
       String? workingDirectory,
       Duration? timeout,
+      String? stdinData,
     });
 
 typedef HeadlessProviderResolver =
     Future<AppProviderConfig?> Function(CliTool cli, String id);
 
 typedef HeadlessExecutableResolver = Future<String?> Function(String name);
+
+/// Feeds [stdinData] to the child's stdin and closes it (EOF). Always closes
+/// the pipe, even with no data, so CLIs never block on an open stdin. A failed
+/// write/flush is ignored: the child may exit before draining the pipe.
+Future<void> _writeStdinAndClose(Process process, String? stdinData) async {
+  try {
+    if (stdinData != null && stdinData.isNotEmpty) {
+      process.stdin.write(stdinData);
+      await process.stdin.flush();
+    }
+  } on Object {
+    // Broken pipe (child already exited) — nothing to deliver.
+  } finally {
+    try {
+      await process.stdin.close();
+    } on Object {
+      // Best-effort close.
+    }
+  }
+}
 
 /// Runs the CLI via [Process.start] so a [timeout] can actually **kill** the
 /// child process (a bare `Process.run().timeout()` only abandons the future and
@@ -59,6 +80,7 @@ Future<ProcessResult> headlessDefaultProcessRun(
   Map<String, String>? environment,
   String? workingDirectory,
   Duration? timeout,
+  String? stdinData,
 }) async {
   final process = await Process.start(
     executable,
@@ -67,6 +89,7 @@ Future<ProcessResult> headlessDefaultProcessRun(
     includeParentEnvironment: true,
     workingDirectory: workingDirectory,
   );
+  final stdinFuture = _writeStdinAndClose(process, stdinData);
   final stdoutFuture = process.stdout.transform(systemEncoding.decoder).join();
   final stderrFuture = process.stderr.transform(systemEncoding.decoder).join();
 
@@ -83,6 +106,7 @@ Future<ProcessResult> headlessDefaultProcessRun(
   killTimer?.cancel();
   final out = await stdoutFuture;
   final err = await stderrFuture;
+  await stdinFuture;
 
   if (timedOut) {
     throw TimeoutException('Headless CLI process timed out', timeout);
@@ -97,6 +121,7 @@ typedef HeadlessStreamRunner =
       Map<String, String>? environment,
       String? workingDirectory,
       Duration? timeout,
+      String? stdinData,
       required void Function(String line) onStdoutLine,
     });
 
@@ -108,6 +133,7 @@ Future<int> headlessDefaultStreamRun(
   Map<String, String>? environment,
   String? workingDirectory,
   Duration? timeout,
+  String? stdinData,
   required void Function(String line) onStdoutLine,
 }) async {
   final process = await Process.start(
@@ -117,6 +143,7 @@ Future<int> headlessDefaultStreamRun(
     includeParentEnvironment: true,
     workingDirectory: workingDirectory,
   );
+  final stdinFuture = _writeStdinAndClose(process, stdinData);
   var timedOut = false;
   Timer? killTimer;
   if (timeout != null) {
@@ -135,6 +162,7 @@ Future<int> headlessDefaultStreamRun(
   final exitCode = await process.exitCode;
   killTimer?.cancel();
   await stderrFuture;
+  await stdinFuture;
   if (timedOut) {
     throw TimeoutException('Headless CLI process timed out', timeout);
   }
@@ -144,6 +172,11 @@ Future<int> headlessDefaultStreamRun(
 /// Runs a single one-shot CLI call for AI features. Reuses the CLI registry's
 /// [HeadlessCapability] per tool; all IO is injectable for tests.
 class HeadlessAiService {
+  /// Prompts longer than this are delivered via stdin (when the CLI supports
+  /// it) instead of argv. Well below the ~8,100-char effective command-line
+  /// limit of npm `.cmd` shims on Windows.
+  static const int _stdinPromptThreshold = 2000;
+
   HeadlessAiService({
     CliToolRegistry? registry,
     HeadlessProcessRunner run = headlessDefaultProcessRun,
@@ -202,6 +235,11 @@ class HeadlessAiService {
         : (provider?.defaultModel.trim() ?? '');
     final effort = _resolveEffort(cli, model, provider, setting.effort);
 
+    // Long prompts go via stdin: as argv they can exceed the ~8k-char
+    // cmd.exe command-line limit of npm `.cmd` shims on Windows.
+    final promptViaStdin =
+        cap.supportsPromptStdin && prompt.length > _stdinPromptThreshold;
+
     final dir = await _tempDirFactory();
     try {
       final ctx = HeadlessLaunchContext(
@@ -219,6 +257,7 @@ class HeadlessAiService {
         memberExtraArgs: memberExtraArgs,
         useWslPaths: useWslPaths,
         expectJson: expectJson,
+        promptViaStdin: promptViaStdin,
       );
 
       final provisionCap = _resolveProvisionCapability != null
@@ -287,6 +326,7 @@ class HeadlessAiService {
           environment: environment.isEmpty ? null : environment,
           workingDirectory: ctx.workingDirectory,
           timeout: timeout,
+          stdinData: promptViaStdin ? prompt : null,
         );
       } on TimeoutException {
         throw HeadlessAiException(
@@ -351,6 +391,11 @@ class HeadlessAiService {
         : (provider?.defaultModel.trim() ?? '');
     final effort = _resolveEffort(cli, model, provider, setting.effort);
 
+    // Long prompts go via stdin: as argv they can exceed the ~8k-char
+    // cmd.exe command-line limit of npm `.cmd` shims on Windows.
+    final promptViaStdin =
+        cap.supportsPromptStdin && prompt.length > _stdinPromptThreshold;
+
     final dir = await _tempDirFactory();
     try {
       final ctx = HeadlessLaunchContext(
@@ -369,6 +414,7 @@ class HeadlessAiService {
         useWslPaths: useWslPaths,
         expectJson: true,
         stream: cap.supportsStreaming,
+        promptViaStdin: promptViaStdin,
       );
 
       final provisionCap = _resolveProvisionCapability != null
@@ -428,6 +474,7 @@ class HeadlessAiService {
           environment: environment.isEmpty ? null : environment,
           workingDirectory: ctx.workingDirectory,
           timeout: timeout,
+          stdinData: promptViaStdin ? prompt : null,
           onStdoutLine: (line) {
             final trimmed = line.trim();
             if (trimmed.isEmpty) return;

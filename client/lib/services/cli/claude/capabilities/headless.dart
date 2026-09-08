@@ -39,6 +39,9 @@ final class ClaudeHeadlessCapability
   bool get supportsStreaming => true;
 
   @override
+  bool get supportsPromptStdin => true;
+
+  @override
   String get executable => 'claude';
 
   @override
@@ -63,11 +66,14 @@ final class ClaudeHeadlessCapability
     yield* const ClaudeWorkspaceAccessLaunch().buildLaunchArgs(interactive);
     yield* const ClaudeModelLaunch().buildLaunchArgs(interactive);
     yield* const ClaudePermissionLaunch().buildLaunchArgs(interactive);
-    yield CliLaunchArgContribution(
-      key: 'claude-headless-prompt',
-      phase: LaunchArgPhase.prompt,
-      args: [ctx.prompt],
-    );
+    // In stdin mode the piped content is the prompt; no positional prompt.
+    if (!ctx.promptViaStdin) {
+      yield CliLaunchArgContribution(
+        key: 'claude-headless-prompt',
+        phase: LaunchArgPhase.prompt,
+        args: [ctx.prompt],
+      );
+    }
     if (ctx.stream) {
       yield CliLaunchArgContribution(
         key: 'claude-headless-stream-format',
