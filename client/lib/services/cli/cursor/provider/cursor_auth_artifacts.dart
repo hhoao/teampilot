@@ -2,9 +2,10 @@ import 'dart:convert';
 
 /// Catalog of Cursor CLI auth files under an isolated fake `$HOME`.
 ///
-/// Session tokens live in `$HOME/.cursor/auth.json` on macOS (file store) or
-/// `$HOME/.config/cursor/auth.json` on Linux/Windows (and on Windows also
-/// `%APPDATA%\Cursor\auth.json` from Cursor IDE). `cli-config.json`
+/// Session tokens live in the platform's credential anchor (see
+/// [CursorHomeLayout.authJson]): `<home>/.cursor/auth.json` on macOS,
+/// `<home>/.config/cursor/auth.json` on Linux, and
+/// `<home>\AppData\Roaming\Cursor\auth.json` on Windows. `cli-config.json`
 /// under `$HOME/.cursor/` carries profile metadata (`authInfo`) but is not
 /// sufficient for `cursor-agent` to authenticate on its own.
 abstract final class CursorAuthArtifacts {
@@ -24,13 +25,6 @@ abstract final class CursorAuthArtifacts {
   /// every TeamPilot session (each session uses a fresh fake HOME).
   static const agentCliStateVersion = 1;
   static const hasShownAgentCommandTipKey = 'hasShownAgentCommandTip';
-
-  /// Relative to `$HOME/.config/cursor/` (or `%APPDATA%\Cursor\` on Windows IDE).
-  static const configCursorRequired = <String>['auth.json'];
-
-  /// Back-compat aliases used by older call sites.
-  static const requiredForAuth = cursorDirRequired;
-  static const optionalForAuth = cursorDirOptional;
 
   /// Written on every mixed launch; never copied from provider store.
   static const busGenerated = <String>[
@@ -54,10 +48,6 @@ abstract final class CursorAuthArtifacts {
     return cursorDirRequired.contains(relativeToCursorDir) ||
         cursorDirOptional.contains(relativeToCursorDir);
   }
-
-  static bool isAuthArtifact(String relativePath) =>
-      isCursorDirAuthArtifact(relativePath) ||
-      configCursorRequired.contains(relativePath);
 
   /// True when [authJson] contains OAuth session tokens.
   static bool authJsonIndicatesLoggedIn(String authJson) {

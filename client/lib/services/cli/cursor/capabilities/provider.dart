@@ -340,6 +340,13 @@ final class CursorProviderCapability extends CatalogModelCapability
     final credentials = CursorProviderCredentialsService(
       fs: paths.fs,
       basePath: paths.basePath,
+      // Cross-machine work plane is always POSIX regardless of host OS.
+      layout: ctx.crossMachine
+          ? CursorHomeLayout(
+              pathContext: paths.fs.pathContext,
+              platform: CursorHomePlatform.linux,
+            )
+          : null,
     );
     final provider = await _resolveSimpleCursorProvider(ctx);
     final providerId = provider?.id.trim() ?? '';

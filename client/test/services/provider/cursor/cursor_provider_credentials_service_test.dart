@@ -44,10 +44,12 @@ class _AuthWritingStreamingStarter implements HostProcessStarter {
   @override
   Future<ProcessRunHandle> start(HostRunRequest request) async {
     onStart?.call(request);
-    final home = request.environment?['HOME'];
-    expect(home, isNotNull);
+    final env = request.environment ?? const <String, String>{};
+    // HOME is forward-slashed for the CLI; normalizing here asserts that it
+    // still resolves to the same locations TeamPilot probes.
+    final home = fs.pathContext.normalize(env['HOME']!);
     await fs.writeString(
-      layout.cliConfig(home!),
+      layout.cliConfig(home),
       jsonEncode({
         'authInfo': {'userId': 'u1', 'authId': 'a1'},
       }),
@@ -410,6 +412,52 @@ void main() {
 
       final loginResult = await loginService.runAuthLogin('work');
       expect(loginResult.ok, isTrue);
+      expect((await loginService.probe('work')).isReady, isTrue);
+    },
+  );
+
+  test(
+    'runAuthLogin on Windows pins APPDATA and verifies the AppData anchor',
+    () async {
+      const winBase = r'C:\data\tp';
+      final winContext = p.Context(style: p.Style.windows);
+      final winFs = InMemoryFilesystem(pathContext: winContext);
+      final winLayout = CursorHomeLayout(
+        pathContext: winContext,
+        platform: CursorHomePlatform.windows,
+      );
+      HostRunRequest? captured;
+      final loginService = CursorProviderCredentialsService(
+        fs: winFs,
+        basePath: winBase,
+        hostRunner: _loginHostRunner(
+          fs: winFs,
+          layout: winLayout,
+          onStart: (request) => captured = request,
+        ),
+      );
+
+      final loginResult = await loginService.runAuthLogin('work');
+
+      // The login env must pin APPDATA inside the isolated provider home so
+      // cursor-agent writes tokens where probe() looks for them.
+      final providerHome = winContext.joinAll([
+        winBase,
+        'providers',
+        'cursor',
+        'work',
+        'home',
+      ]);
+      expect(
+        captured?.environment?['APPDATA'],
+        winContext.join(providerHome, 'AppData', 'Roaming'),
+      );
+      expect(loginResult.ok, isTrue);
+      // The mock starter (playing cursor-agent) honored the pinned APPDATA.
+      expect(
+        (await winFs.stat(winLayout.authJson(providerHome))).isFile,
+        isTrue,
+      );
       expect((await loginService.probe('work')).isReady, isTrue);
     },
   );

@@ -311,9 +311,7 @@ final class CursorSessionLifecycleCapability implements CliSessionCapability {
         );
         return CliSessionInitResult(phase: manifest.phase, warnings: warnings);
       }
-      final homeLayout = CursorHomeLayout(
-        pathContext: ctx.paths.fs.pathContext,
-      );
+      final homeLayout = _homeLayoutFor(ctx);
       manifest = await _runOverlayPhase(
         ctx,
         paths,
@@ -335,7 +333,7 @@ final class CursorSessionLifecycleCapability implements CliSessionCapability {
 
     final paths = _pathsForInit(ctx);
     final memberHome = await paths.resolvedMemberHomeRoot(ctx.memberId);
-    final homeLayout = CursorHomeLayout(pathContext: ctx.paths.fs.pathContext);
+    final homeLayout = _homeLayoutFor(ctx);
 
     manifest = await _runAuthPhase(ctx, paths, manifest, memberHome);
     manifest = await _runConfigPhase(ctx, paths, homeLayout, manifest);
@@ -531,7 +529,7 @@ final class CursorSessionLifecycleCapability implements CliSessionCapability {
     required String memberHome,
     required String authFile,
   }) async {
-    final layout = CursorHomeLayout(pathContext: ctx.paths.fs.pathContext);
+    final layout = _homeLayoutFor(ctx);
     final home = ctx.paths.home.trim();
     if (home.isEmpty) return;
 
@@ -691,7 +689,7 @@ final class CursorSessionLifecycleCapability implements CliSessionCapability {
       fs: _credentialFs(ctx),
       basePath: _credentialBasePath(ctx),
     );
-    final layout = CursorHomeLayout(pathContext: ctx.paths.fs.pathContext);
+    final layout = _homeLayoutFor(ctx);
     final providerHome = credentials.providerHome(providerId);
     final srcAuth = layout.authJson(providerHome);
     final destAuth = ctx.paths.fs.pathContext.join(
@@ -703,6 +701,15 @@ final class CursorSessionLifecycleCapability implements CliSessionCapability {
       await ctx.paths.fs.copyFile(srcAuth, destAuth);
     }
   }
+
+  /// Home layout for the plane this session's [CliSessionInitContext.paths]
+  /// lives on. A cross-machine (SSH) work plane is always POSIX regardless of
+  /// the host TeamPilot runs on.
+  CursorHomeLayout _homeLayoutFor(CliSessionInitContext ctx) =>
+      CursorHomeLayout(
+        pathContext: ctx.paths.fs.pathContext,
+        platform: ctx.crossMachine ? CursorHomePlatform.linux : null,
+      );
 
   Future<String?> _providerIdFor(CliSessionInitContext ctx) async {
     final resolver = _resolveProviderId;
