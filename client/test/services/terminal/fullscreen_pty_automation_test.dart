@@ -305,6 +305,80 @@ void main() {
     expect(automation.isTextVisible(port, '和你的队员打个招呼吧'), isTrue);
   });
 
+  group('CR retry (swallowed during TUI startup)', () {
+    // Regression (2026-09-08, real codex 0.151.0): the composer readiness gate
+    // passes while codex is still starting MCP servers; the paste stages, the
+    // single submit CR is swallowed by the busy TUI, and the delivery ends
+    // crStuck / unconfirmed with the text stuck in the composer forever.
+    const codexCrAck = FullscreenCrAckConfig(
+      strategy: FullscreenCrAckStrategy.composerMovesDown,
+      composerPrefix: '›',
+    );
+
+    test('re-CRs when startup overlay swallowed the first CRs', () async {
+      // Two CRs swallowed (MCP boot), third submits — like a human pressing
+      // Enter again.
+      final port = FakeFullscreenPtyDeliveryPort(
+        crsToClear: 3,
+        crAckConfig: codexCrAck,
+      );
+
+      final outcome = await automation.deliverPasteAndSubmit(
+        port: port,
+        text: 'hello',
+        pasteSettle: Duration.zero,
+      );
+
+      expect(outcome, FullscreenPtyDeliveryOutcome.submitted);
+      expect(
+        port.crCount,
+        3,
+        reason: 'needle still staged in composer proves the earlier CRs '
+            'were swallowed — retry until the TUI accepts the submit',
+      );
+    });
+
+    test('bounded: never-submitting composer ends crStuck after 3 CRs', () async {
+      final port = FakeFullscreenPtyDeliveryPort(
+        crsToClear: 99,
+        crAckConfig: codexCrAck,
+      );
+
+      final outcome = await automation.deliverPasteAndSubmit(
+        port: port,
+        text: 'hello',
+        pasteSettle: Duration.zero,
+      );
+
+      expect(outcome, FullscreenPtyDeliveryOutcome.crStuck);
+      expect(port.crCount, 3, reason: 'instant timing: crMaxAttempts=2');
+    });
+
+    test(
+      'needle moved to transcript (not composer) blocks the re-CR guard',
+      () async {
+        // Cursor shape: CR committed the text into transcript history; the
+        // composer repaints empty and the ACK never fires. Re-CR would risk a
+        // duplicate user row — the guard must refuse.
+        final port = _ComposerMovesDownStuckButCommittedPort(text: 'hello');
+
+        final outcome = await automation.deliverPasteAndSubmit(
+          port: port,
+          text: 'hello',
+          pasteSettle: Duration.zero,
+        );
+
+        expect(outcome, FullscreenPtyDeliveryOutcome.crStuck);
+        expect(
+          port.crCount,
+          1,
+          reason: 'needle no longer the body of a composer row — resend '
+              'guard must treat it as possibly-submitted',
+        );
+      },
+    );
+  });
+
   test(
     'hook confirmation after first CR prevents all later automated CRs',
     () async {

@@ -257,28 +257,74 @@ class FullscreenPtyAutomation {
     bool Function() fence, {
     bool Function()? isAcked,
   }) async {
-    if (isAcked?.call() ?? false) return FullscreenPtyDeliveryOutcome.submitted;
-    if (port.isAborted) return FullscreenPtyDeliveryOutcome.aborted;
-    await port.submitCr(canExecute: fence);
-    // The submit fence may close while the CR write is in flight (hook
-    // confirmation); that is a success, not an abort.
-    if (isAcked?.call() ?? false) return FullscreenPtyDeliveryOutcome.submitted;
-    if (port.isAborted) return FullscreenPtyDeliveryOutcome.aborted;
-    await Future<void>.delayed(_timing.afterCr);
-    if (isAcked?.call() ?? false) return FullscreenPtyDeliveryOutcome.submitted;
-    final scanRows = _probeScanRows(port);
-    final acked = await _pollForCrAck(
-      port,
-      anchor,
-      scanRows: scanRows,
-      isAcked: isAcked,
-    );
-    if (!acked) {
-      _logCrStuck(port, anchor);
+    for (var attempt = 0; attempt <= _timing.crMaxAttempts; attempt++) {
+      if (isAcked?.call() ?? false) {
+        return FullscreenPtyDeliveryOutcome.submitted;
+      }
+      if (port.isAborted) return FullscreenPtyDeliveryOutcome.aborted;
+      if (attempt > 0) {
+        if (!_crRetrySafeToResend(port, anchor)) {
+          // The grid no longer proves the message is un-submitted — re-CR
+          // here risks a duplicate user row. Leave the verdict to the
+          // cr-ack poll.
+          break;
+        }
+        // TUI startup overlays (codex "Starting MCP servers", trust screens)
+        // swallow the CR while the text stays staged in the composer —
+        // nudge again like a human pressing Enter.
+        appLogger.d(
+          '[team-bus] pty-cr-retry attempt=$attempt '
+          'max=${_timing.crMaxAttempts} needle="${anchor.needle}"',
+        );
+      }
+      await port.submitCr(canExecute: fence);
+      // The submit fence may close while the CR write is in flight (hook
+      // confirmation); that is a success, not an abort.
+      if (isAcked?.call() ?? false) {
+        return FullscreenPtyDeliveryOutcome.submitted;
+      }
+      if (port.isAborted) return FullscreenPtyDeliveryOutcome.aborted;
+      await Future<void>.delayed(_timing.afterCr);
+      if (isAcked?.call() ?? false) {
+        return FullscreenPtyDeliveryOutcome.submitted;
+      }
+      final scanRows = _probeScanRows(port);
+      final acked = await _pollForCrAck(
+        port,
+        anchor,
+        scanRows: scanRows,
+        isAcked: isAcked,
+      );
+      if (acked) return FullscreenPtyDeliveryOutcome.submitted;
     }
-    return acked
-        ? FullscreenPtyDeliveryOutcome.submitted
-        : FullscreenPtyDeliveryOutcome.crStuck;
+    _logCrStuck(port, anchor);
+    return FullscreenPtyDeliveryOutcome.crStuck;
+  }
+
+  /// Resend-safety guard for a CR retry: true only when the grid proves the
+  /// staged text is still un-submitted input.
+  ///
+  /// [FullscreenCrAckStrategy.composerMovesDown] (codex / cursor): the needle
+  /// must still be the body of a composer-prefixed row — after a real submit
+  /// it moves into the transcript and the bottom composer row repaints empty.
+  /// [FullscreenCrAckStrategy.anchorCellClears] (claude): the needle must
+  /// still sit at the anchor cells — a cleared composer means submitted.
+  bool _crRetrySafeToResend(
+    FullscreenPtyDeliveryPort port,
+    FullscreenPromptAnchor anchor,
+  ) {
+    switch (port.crAckConfig.strategy) {
+      case FullscreenCrAckStrategy.composerMovesDown:
+        final prefix = port.crAckConfig.composerPrefix?.trim();
+        if (prefix == null || prefix.isEmpty) {
+          return port.isAtAnchor(anchor);
+        }
+        return port.isNeedleStagedInComposer(anchor.needle);
+      case FullscreenCrAckStrategy.anchorCellClears:
+        return port.isAtAnchor(anchor);
+      case FullscreenCrAckStrategy.timed:
+        return false;
+    }
   }
 
   /// CR-ack miss: the anchor never cleared and no hook confirmation arrived.

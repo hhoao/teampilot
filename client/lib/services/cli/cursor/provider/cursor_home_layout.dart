@@ -1,5 +1,6 @@
 import 'dart:io';
 
+import 'package:meta/meta.dart';
 import 'package:path/path.dart' as p;
 
 /// OS flavor that decides where cursor-agent anchors its credential files.
@@ -64,6 +65,17 @@ final class CursorHomeLayout {
   static const configCursorDirName = 'cursor';
   static const authFileName = 'auth.json';
 
+  /// When set, the `Platform.environment` fallbacks in
+  /// [globalAuthJsonCandidates] read from here instead of the real host
+  /// environment. Tests pin this to `const {}` so "XDG_CONFIG_HOME/APPDATA
+  /// unset" holds on every machine — CI runners export XDG_CONFIG_HOME, which
+  /// would otherwise change the candidates the suite observes.
+  @visibleForTesting
+  static Map<String, String>? debugPlatformEnvironmentOverride;
+
+  static String? _hostEnv(String key) =>
+      (debugPlatformEnvironmentOverride ?? Platform.environment)[key];
+
   /// Windows: `%APPDATA%` root segment inside an isolated home.
   static const windowsAppDataDirName = 'AppData';
   static const windowsRoamingDirName = 'Roaming';
@@ -126,9 +138,7 @@ final class CursorHomeLayout {
       case CursorHomePlatform.windows:
         final appData =
             platformEnv['APPDATA']?.trim() ??
-            (Platform.isWindows
-                ? Platform.environment['APPDATA']?.trim()
-                : null) ??
+            (Platform.isWindows ? _hostEnv('APPDATA')?.trim() : null) ??
             '';
         if (appData.isNotEmpty) {
           candidates.add(_pathContext.join(appData, windowsCursorDirName, authFileName));
@@ -147,9 +157,7 @@ final class CursorHomeLayout {
         if (home.isNotEmpty) {
           final xdg =
               platformEnv['XDG_CONFIG_HOME']?.trim() ??
-              (Platform.isLinux
-                  ? Platform.environment['XDG_CONFIG_HOME']?.trim()
-                  : null) ??
+              (Platform.isLinux ? _hostEnv('XDG_CONFIG_HOME')?.trim() : null) ??
               '';
           final configRoot = xdg.isNotEmpty
                   ? xdg
