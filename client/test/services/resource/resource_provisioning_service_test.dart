@@ -101,7 +101,7 @@ void main() {
   });
 
   test(
-    'one skill reconcile keeps catalog and plugin skills and is idempotent',
+    'claude does not flatten plugin skills into skills/ and is idempotent',
     () async {
       final fs = AppStorage.fs;
       final tmp = await fs.createTempDir(prefix: 'prov_plugin_skill_test_');
@@ -175,10 +175,7 @@ void main() {
         fs.pathContext.join(configDir, 'skills'),
       )).map((entry) => entry.name).toList();
 
-      expect(
-        first,
-        containsAll(<String>['catalog-dir', 'acme-plugin--plugin-skill']),
-      );
+      expect(first, ['catalog-dir']);
       expect(second, first);
     },
   );

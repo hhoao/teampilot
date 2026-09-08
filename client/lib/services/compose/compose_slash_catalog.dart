@@ -114,7 +114,9 @@ List<ComposeSlashCandidate> buildComposeSlashCandidates({
     // Plugin bundles carry skills too — surface them as slash candidates so
     // a skills-only plugin (e.g. superpowers) is usable from the `/` menu.
     // Plugin skills get the plugin name as the namespace when the target CLI
-    // expects one (Codex: `$superpowers:using-git-worktrees`).
+    // expects one (Claude: `/superpowers:using-git-worktrees`;
+    // Codex: `$superpowers:using-git-worktrees`). Cursor and OpenCode keep
+    // the bare skill name.
     for (final skill in plugin.capabilities.skills) {
       final name = skill.name.trim();
       if (name.isEmpty) continue;

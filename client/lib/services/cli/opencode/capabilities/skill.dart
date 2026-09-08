@@ -2,7 +2,8 @@ import '../../registry/capabilities/skill_capability.dart';
 
 /// opencode names its skills directory `skill` (singular), and its slash
 /// commands are only recognized when the `/` is preceded by whitespace, so a
-/// space is inserted before the reference.
+/// space is inserted before the reference. Plugin skills stay `/name` —
+/// opencode does not use Claude's `/plugin:name` namespace.
 final class OpencodeSkillCapability
     with SkillCapabilityMaterializationMixin
     implements SkillCapability {
@@ -24,5 +25,5 @@ final class OpencodeSkillCapability
 
   @override
   String skillInvocationText(String skillName, {String? namespace}) =>
-      _syntax.skillInvocationText(skillName, namespace: namespace);
+      _syntax.skillInvocationText(skillName);
 }

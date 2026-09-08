@@ -1,5 +1,6 @@
 import '../../../io/filesystem.dart';
 import '../cli_capability.dart';
+import '../../../resource/contribution/resource_origin.dart';
 import '../../../resource/providers/skill_contribution_provider.dart';
 import '../../../resource/resource_kind.dart';
 import '../../../resource/resource_materializer.dart';
@@ -44,6 +45,12 @@ abstract interface class SkillCapability implements CliCapability {
 mixin SkillCapabilityMaterializationMixin {
   String get skillsSubdir;
 
+  /// Plugin-bundled skills already load from the plugin tree as
+  /// `/plugin:skill` (Claude-family). Linking them again into [skillsSubdir]
+  /// under a filesystem-safe `--` name makes Claude Code treat them as unknown
+  /// user skills (`/plugin--skill`).
+  bool get linksPluginSkills => true;
+
   Future<MaterializeResult> materializeSkills({
     required Filesystem fs,
     required String configDir,
@@ -56,6 +63,10 @@ mixin SkillCapabilityMaterializationMixin {
     for (final contribution in ordered) {
       final artifact = contribution.artifact;
       if (artifact is! SkillDirectoryArtifact) continue;
+      if (!linksPluginSkills &&
+          contribution.origin.kind == ResourceOriginKind.plugin) {
+        continue;
+      }
 
       var linkName = targetSafeSkillLinkName(
         contribution.invocationName,
@@ -85,11 +96,14 @@ mixin SkillCapabilityMaterializationMixin {
   }
 }
 
-/// Default: Claude-style `/skill-name` invocation, no namespace.
+/// Claude-style `/skill-name` and namespaced `/plugin:skill`.
 ///
 /// [leadingSeparator] is prepended before the prefix when a CLI only
 /// recognizes a slash command after whitespace (opencode) — inserting
 /// ` /skill-name` keeps the `/` from gluing to the preceding text.
+///
+/// Namespace uses `:`, matching Claude Code plugin skills. `--` is only for
+/// filesystem link names via [targetSafeSkillLinkName], never invocation.
 class DefaultSkillInvocationSyntaxCapability {
   const DefaultSkillInvocationSyntaxCapability({this.leadingSeparator = ''});
 
@@ -97,6 +111,13 @@ class DefaultSkillInvocationSyntaxCapability {
 
   String get skillInvocationPrefix => '/';
 
-  String skillInvocationText(String skillName, {String? namespace}) =>
-      '$leadingSeparator/${targetSafeSkillLinkName(skillName, namespace: namespace)}';
+  String skillInvocationText(String skillName, {String? namespace}) {
+    final safeSkillName = targetSafeSkillLinkName(skillName);
+    final trimmedNamespace = namespace?.trim();
+    if (trimmedNamespace == null || trimmedNamespace.isEmpty) {
+      return '$leadingSeparator/$safeSkillName';
+    }
+    final safeNamespace = targetSafeSkillLinkName(trimmedNamespace);
+    return '$leadingSeparator/$safeNamespace:$safeSkillName';
+  }
 }

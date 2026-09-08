@@ -1,7 +1,8 @@
 import '../capabilities/skill_capability.dart';
 
 /// Default: skills land in a `skills/` directory and are invoked as
-/// `/skill-name`. Plugin/MCP support is added by their follow-on plans.
+/// `/skill-name` or `/plugin:skill`. Plugin skills are not duplicated into
+/// `skills/` — Claude-family CLIs load them from the plugin bundle.
 final class DefaultSkillCapability
     with SkillCapabilityMaterializationMixin
     implements SkillCapability {
@@ -11,6 +12,9 @@ final class DefaultSkillCapability
 
   @override
   String get skillsSubdir => 'skills';
+
+  @override
+  bool get linksPluginSkills => false;
 
   @override
   ResourceRepresentation get skillsRepresentation =>
