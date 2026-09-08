@@ -22,7 +22,6 @@ import '../../services/git/git_repo_store.dart';
 import '../../services/storage/runtime_context.dart';
 import '../../services/workbench/workbench_editor_opener.dart';
 import '../../widgets/right_tools/right_tools_lifecycle.dart';
-import 'git_branch_menu.dart';
 import 'git_changes_tree_list.dart';
 
 /// VSCode-style "Source Control" panel for the editor workbench left rail.
@@ -517,22 +516,6 @@ class _GitRepoBodyState extends State<_GitRepoBody> {
     return aPaths.containsAll(bPaths);
   }
 
-  Future<void> _openBranchSheet() async {
-    await _cubit.ensureBranches(force: true);
-    if (!mounted) return;
-    final action = await GitBranchSheet.show(
-      context,
-      branches: _cubit.state.branches,
-      current: _cubit.state.status.branch,
-    );
-    if (action == null) return;
-    if (action.checkout != null) {
-      await _cubit.checkoutBranch(action.checkout!);
-    } else if (action.createName != null) {
-      await _cubit.createBranch(action.createName!);
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
     return BlocProvider.value(
@@ -660,7 +643,6 @@ class _GitRepoBodyState extends State<_GitRepoBody> {
                 onRefresh: () => unawaited(_cubit.refresh()),
                 onPush: () => unawaited(_cubit.push()),
                 onPull: () => unawaited(_cubit.pull()),
-                onBranch: () => unawaited(_openBranchSheet()),
                 onToggleExpandAll: _cubit.toggleExpandAllFolders,
                 onOpenGraph: () => openGitGraphTab(
                   context,
@@ -817,7 +799,6 @@ class _Header extends StatefulWidget {
     required this.onRefresh,
     required this.onPush,
     required this.onPull,
-    required this.onBranch,
     required this.onToggleExpandAll,
     required this.onOpenGraph,
     this.onDiscardSelected,
@@ -838,7 +819,6 @@ class _Header extends StatefulWidget {
   final VoidCallback onRefresh;
   final VoidCallback onPush;
   final VoidCallback onPull;
-  final VoidCallback onBranch;
   final VoidCallback onToggleExpandAll;
   final VoidCallback onOpenGraph;
   final VoidCallback? onDiscardSelected;
@@ -868,48 +848,57 @@ class _HeaderState extends State<_Header> {
       children: [
         Flexible(
           flex: 1,
-          child: TpHover(
-            onTap: widget.onBranch,
-            borderRadius: BorderRadius.circular(6),
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
-              child: LayoutBuilder(
-                builder: (context, constraints) {
-                  final showAheadBehind =
-                      constraints.maxWidth >= _branchRowCounterMinWidth;
-                  return Row(
-                    children: [
-                      Icon(
-                        Icons.account_tree_outlined,
-                        size: 16,
-                        color: cs.primary,
-                      ),
-                      const SizedBox(width: 6),
-                      Flexible(
-                        child: Text(
-                          widget.branch,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: TpTextStyles.of(context).smSemibold,
+          child: Tooltip(
+            message: l10n.gitGraphTitle,
+            child: TpHover(
+              onTap: widget.onOpenGraph,
+              borderRadius: BorderRadius.circular(6),
+              child: Padding(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 4,
+                  vertical: 4,
+                ),
+                child: LayoutBuilder(
+                  builder: (context, constraints) {
+                    final showAheadBehind =
+                        constraints.maxWidth >= _branchRowCounterMinWidth;
+                    return Row(
+                      children: [
+                        Icon(
+                          Icons.account_tree_outlined,
+                          size: 16,
+                          color: cs.primary,
                         ),
-                      ),
-                      if (showAheadBehind &&
-                          (widget.ahead > 0 || widget.behind > 0)) ...[
                         const SizedBox(width: 6),
                         Flexible(
                           child: Text(
-                            l10n.gitAheadBehind(widget.ahead, widget.behind),
+                            widget.branch,
                             maxLines: 1,
-                            overflow: TextOverflow.clip,
-                            style: TpTextStyles.of(
-                              context,
-                            ).xsColored(cs.onSurfaceVariant),
+                            overflow: TextOverflow.ellipsis,
+                            style: TpTextStyles.of(context).smSemibold,
                           ),
                         ),
+                        if (showAheadBehind &&
+                            (widget.ahead > 0 || widget.behind > 0)) ...[
+                          const SizedBox(width: 6),
+                          Flexible(
+                            child: Text(
+                              l10n.gitAheadBehind(
+                                widget.ahead,
+                                widget.behind,
+                              ),
+                              maxLines: 1,
+                              overflow: TextOverflow.clip,
+                              style: TpTextStyles.of(
+                                context,
+                              ).xsColored(cs.onSurfaceVariant),
+                            ),
+                          ),
+                        ],
                       ],
-                    ],
-                  );
-                },
+                    );
+                  },
+                ),
               ),
             ),
           ),
