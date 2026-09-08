@@ -422,7 +422,7 @@ class _Divider extends StatelessWidget {
   }
 }
 
-/// One group leaf: translucent tap-to-focus around the caller's pane.
+/// One group leaf: pointer-down-to-focus around the caller's pane.
 class _LeafView extends StatelessWidget {
   const _LeafView({
     required this.groupId,
@@ -438,9 +438,16 @@ class _LeafView extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
+    // A Listener (not a GestureDetector): pane content — terminals, chat
+    // scroll views, editors — carries its own competing recognizers that
+    // win the gesture arena, so a translucent onTap would never fire over
+    // real content. Raw pointer-down focuses without entering the arena;
+    // content keeps every gesture.
+    return Listener(
       behavior: HitTestBehavior.translucent,
-      onTap: onGroupFocused == null ? null : () => onGroupFocused!(groupId),
+      onPointerDown: onGroupFocused == null ? null : (_) {
+        onGroupFocused!(groupId);
+      },
       child: ClipRect(child: groupBuilder(context, groupId, strip)),
     );
   }

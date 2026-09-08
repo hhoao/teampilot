@@ -238,6 +238,35 @@ void main() {
     expect(focusedId, 'g0');
   });
 
+  testWidgets('tap over content with competing gestures still reports focus', (
+    tester,
+  ) async {
+    // Terminal / chat pane content carries its own gesture recognizers
+    // (scroll, tap-to-focus editors). The leaf's translucent focus tap must
+    // still fire when the child loses or ties the arena — focus follows the
+    // pointer-down, not a won tap arena.
+    String? focusedId;
+    var contentTaps = 0;
+    await tester.pumpWidget(
+      _host(
+        WorkbenchSplitLayoutView(
+          layout: layout,
+          onGroupFocused: (id) => focusedId = id,
+          groupBuilder: (context, id, strip) => GestureDetector(
+            // A competing tap recognizer on the content, like real panes.
+            onTap: () => contentTaps++,
+            child: const SizedBox.expand(child: ColoredBox(color: Colors.amber)),
+          ),
+        ),
+      ),
+    );
+    // Tap a deterministic point inside the left (g0) pane.
+    final topLeft = tester.getTopLeft(find.byType(WorkbenchSplitLayoutView));
+    await tester.tapAt(topLeft + const Offset(50, 50));
+    expect(focusedId, 'g0');
+    expect(contentTaps, 1); // content interaction is preserved
+  });
+
   testWidgets('double-tap divider fires onDividerDoubleTap', (tester) async {
     var doubleTaps = 0;
     await tester.pumpWidget(
