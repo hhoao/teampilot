@@ -15410,6 +15410,24 @@ abstract class AppLocalizations {
   /// **'Commit'**
   String get gitGraphColumnCommit;
 
+  /// No description provided for @gitGraphColumns.
+  ///
+  /// In en, this message translates to:
+  /// **'Columns'**
+  String get gitGraphColumns;
+
+  /// No description provided for @gitGraphColumnHeaderLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Column header'**
+  String get gitGraphColumnHeaderLabel;
+
+  /// No description provided for @gitGraphHideColumn.
+  ///
+  /// In en, this message translates to:
+  /// **'Hide {column}'**
+  String gitGraphHideColumn(String column);
+
   /// No description provided for @gitGraphShowColumnHeader.
   ///
   /// In en, this message translates to:

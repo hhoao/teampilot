@@ -4409,6 +4409,16 @@
   "gitGraphColumnDate": "Date",
   "gitGraphColumnAuthor": "Author",
   "gitGraphColumnCommit": "Commit",
+  "gitGraphColumns": "Columns",
+  "gitGraphColumnHeaderLabel": "Column header",
+  "gitGraphHideColumn": "Hide {column}",
+  "@gitGraphHideColumn": {
+    "placeholders": {
+      "column": {
+        "type": "String"
+      }
+    }
+  },
   "gitGraphShowColumnHeader": "Show column header",
   "gitGraphHideColumnHeader": "Hide column header",
   "gitGraphShowDiffWithWorkingTree": "Show Diff with Working Tree",

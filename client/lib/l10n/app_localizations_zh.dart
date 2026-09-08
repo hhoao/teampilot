@@ -8302,6 +8302,17 @@ class AppLocalizationsZh extends AppLocalizations {
   String get gitGraphColumnCommit => '提交';
 
   @override
+  String get gitGraphColumns => '列';
+
+  @override
+  String get gitGraphColumnHeaderLabel => '列头';
+
+  @override
+  String gitGraphHideColumn(String column) {
+    return '隐藏$column';
+  }
+
+  @override
   String get gitGraphShowColumnHeader => '显示列头';
 
   @override

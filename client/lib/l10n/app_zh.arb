@@ -3718,6 +3718,16 @@
   "gitGraphColumnDate": "日期",
   "gitGraphColumnAuthor": "作者",
   "gitGraphColumnCommit": "提交",
+  "gitGraphColumns": "列",
+  "gitGraphColumnHeaderLabel": "列头",
+  "gitGraphHideColumn": "隐藏{column}",
+  "@gitGraphHideColumn": {
+    "placeholders": {
+      "column": {
+        "type": "String"
+      }
+    }
+  },
   "gitGraphShowColumnHeader": "显示列头",
   "gitGraphHideColumnHeader": "隐藏列头",
   "gitGraphShowDiffWithWorkingTree": "与工作区比较差异",

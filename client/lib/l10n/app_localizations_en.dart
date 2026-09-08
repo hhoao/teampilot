@@ -8669,6 +8669,17 @@ class AppLocalizationsEn extends AppLocalizations {
   String get gitGraphColumnCommit => 'Commit';
 
   @override
+  String get gitGraphColumns => 'Columns';
+
+  @override
+  String get gitGraphColumnHeaderLabel => 'Column header';
+
+  @override
+  String gitGraphHideColumn(String column) {
+    return 'Hide $column';
+  }
+
+  @override
   String get gitGraphShowColumnHeader => 'Show column header';
 
   @override

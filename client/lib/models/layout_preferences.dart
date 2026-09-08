@@ -1,4 +1,5 @@
 import 'package:ai_message_core/ai_message_core.dart';
+import 'package:equatable/equatable.dart';
 import 'package:tp_markdown/tp_markdown.dart' show ContentDisplayMode;
 
 import '../theme/app_theme.dart';
@@ -14,6 +15,103 @@ enum MarkdownOpenMode { preview, source, remember }
 
 /// Where file open/preview hosts: floating workspace overlay vs center strip.
 enum FilePreviewHost { floating, center }
+
+/// Git graph 列：可隐藏的元数据列（图 / 描述两列不提供隐藏）。
+enum GitGraphColumnId { date, author, commit }
+
+/// Git graph 面板列偏好：隐藏列集合 + 可拖拽列的像素宽度。
+class GitGraphColumnPrefs extends Equatable {
+  const GitGraphColumnPrefs({
+    this.hiddenColumns = const <GitGraphColumnId>{},
+    this.dateWidth = defaultDateWidth,
+    this.authorWidth = defaultAuthorWidth,
+    this.commitWidth = defaultCommitWidth,
+  });
+
+  static const defaultDateWidth = 100.0;
+  static const defaultAuthorWidth = 96.0;
+  static const defaultCommitWidth = 72.0;
+  static const minColumnWidth = 48.0;
+
+  final Set<GitGraphColumnId> hiddenColumns;
+  final double dateWidth;
+  final double authorWidth;
+  final double commitWidth;
+
+  @override
+  List<Object?> get props =>
+      [hiddenColumns, dateWidth, authorWidth, commitWidth];
+
+  double widthOf(GitGraphColumnId id) => switch (id) {
+    GitGraphColumnId.date => dateWidth,
+    GitGraphColumnId.author => authorWidth,
+    GitGraphColumnId.commit => commitWidth,
+  };
+
+  GitGraphColumnPrefs copyWith({
+    Set<GitGraphColumnId>? hiddenColumns,
+    double? dateWidth,
+    double? authorWidth,
+    double? commitWidth,
+  }) => GitGraphColumnPrefs(
+    hiddenColumns: hiddenColumns ?? this.hiddenColumns,
+    dateWidth: (dateWidth ?? this.dateWidth).clamp(
+      minColumnWidth,
+      double.infinity,
+    ),
+    authorWidth: (authorWidth ?? this.authorWidth).clamp(
+      minColumnWidth,
+      double.infinity,
+    ),
+    commitWidth: (commitWidth ?? this.commitWidth).clamp(
+      minColumnWidth,
+      double.infinity,
+    ),
+  );
+
+  /// 返回调整某列宽后的新偏好（供拖拽结束提交）。
+  GitGraphColumnPrefs withWidth(GitGraphColumnId id, double width) => copyWith(
+    dateWidth: id == GitGraphColumnId.date ? width : null,
+    authorWidth: id == GitGraphColumnId.author ? width : null,
+    commitWidth: id == GitGraphColumnId.commit ? width : null,
+  );
+
+  factory GitGraphColumnPrefs.fromJson(Object? raw) {
+    if (raw is! Map) return const GitGraphColumnPrefs();
+    final hidden = <GitGraphColumnId>{};
+    final hiddenRaw = raw['hiddenColumns'];
+    if (hiddenRaw is List) {
+      for (final value in hiddenRaw) {
+        for (final id in GitGraphColumnId.values) {
+          if (id.name == value) hidden.add(id);
+        }
+      }
+    }
+    return GitGraphColumnPrefs(
+      hiddenColumns: hidden,
+      dateWidth: _doubleValue(
+        raw['dateWidth'],
+        fallback: defaultDateWidth,
+      ).clamp(minColumnWidth, double.infinity),
+      authorWidth: _doubleValue(
+        raw['authorWidth'],
+        fallback: defaultAuthorWidth,
+      ).clamp(minColumnWidth, double.infinity),
+      commitWidth: _doubleValue(
+        raw['commitWidth'],
+        fallback: defaultCommitWidth,
+      ).clamp(minColumnWidth, double.infinity),
+    );
+  }
+
+  Map<String, Object?> toJson() => {
+    'hiddenColumns': hiddenColumns.map((c) => c.name).toList(),
+    'dateWidth': dateWidth,
+    'authorWidth': authorWidth,
+    'commitWidth': commitWidth,
+  };
+}
+
 
 /// Dropdown value for language preference: `system` | `en` | `zh`.
 String languagePreferenceUiValue(String locale) {
@@ -50,6 +148,7 @@ class LayoutPreferences {
     this.fileTreeVisible = true,
     this.gitVisible = true,
     this.gitGraphHeaderVisible = true,
+    this.gitGraphColumns = const GitGraphColumnPrefs(),
     this.searchVisible = true,
     this.boardVisible = true,
     this.rightToolsVisible = false,
@@ -107,6 +206,7 @@ class LayoutPreferences {
       gitVisible: json['gitVisible'] as bool? ?? true,
       gitGraphHeaderVisible:
           json['gitGraphHeaderVisible'] as bool? ?? true,
+      gitGraphColumns: GitGraphColumnPrefs.fromJson(json['gitGraphColumns']),
       searchVisible: json['searchVisible'] as bool? ?? true,
       boardVisible: json['boardVisible'] as bool? ?? true,
       rightToolsVisible: json['rightToolsVisible'] as bool? ?? false,
@@ -255,6 +355,7 @@ class LayoutPreferences {
   final bool fileTreeVisible;
   final bool gitVisible;
   final bool gitGraphHeaderVisible;
+  final GitGraphColumnPrefs gitGraphColumns;
   final bool searchVisible;
   final bool boardVisible;
   final bool rightToolsVisible;
@@ -315,6 +416,7 @@ class LayoutPreferences {
     bool? fileTreeVisible,
     bool? gitVisible,
     bool? gitGraphHeaderVisible,
+    GitGraphColumnPrefs? gitGraphColumns,
     bool? searchVisible,
     bool? boardVisible,
     bool? rightToolsVisible,
@@ -367,6 +469,7 @@ class LayoutPreferences {
       gitVisible: gitVisible ?? this.gitVisible,
       gitGraphHeaderVisible:
           gitGraphHeaderVisible ?? this.gitGraphHeaderVisible,
+      gitGraphColumns: gitGraphColumns ?? this.gitGraphColumns,
       searchVisible: searchVisible ?? this.searchVisible,
       boardVisible: boardVisible ?? this.boardVisible,
       rightToolsVisible: rightToolsVisible ?? this.rightToolsVisible,
@@ -457,6 +560,7 @@ class LayoutPreferences {
       fileTreeVisible: false,
       gitVisible: gitVisible,
       gitGraphHeaderVisible: gitGraphHeaderVisible,
+      gitGraphColumns: gitGraphColumns,
       searchVisible: searchVisible,
       boardVisible: boardVisible,
       rightToolsVisible: rightToolsVisible,
@@ -509,6 +613,7 @@ class LayoutPreferences {
       'fileTreeVisible': fileTreeVisible,
       'gitVisible': gitVisible,
       'gitGraphHeaderVisible': gitGraphHeaderVisible,
+      'gitGraphColumns': gitGraphColumns.toJson(),
       'searchVisible': searchVisible,
       'boardVisible': boardVisible,
       'rightToolsVisible': rightToolsVisible,

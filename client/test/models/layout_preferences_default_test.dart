@@ -23,6 +23,48 @@ void main() {
     expect(parsed.toJson()['sidebarVisible'], isFalse);
   });
 
+  test('gitGraphColumns defaults, round-trips and tolerates junk', () {
+    // 默认：无隐藏列 + 各列默认宽。
+    const defaults = LayoutPreferences();
+    expect(defaults.gitGraphColumns.hiddenColumns, isEmpty);
+    expect(
+      defaults.gitGraphColumns.dateWidth,
+      GitGraphColumnPrefs.defaultDateWidth,
+    );
+
+    // round-trip。
+    const custom = GitGraphColumnPrefs(
+      hiddenColumns: {GitGraphColumnId.date},
+      authorWidth: 160,
+    );
+    final restored = LayoutPreferences.fromJson(
+      const LayoutPreferences(gitGraphColumns: custom).toJson(),
+    );
+    expect(restored.gitGraphColumns, custom);
+
+    // 未知列名 / 缺字段 / 非 map 容错回默认。
+    final junk = LayoutPreferences.fromJson(const {
+      'gitGraphColumns': {'hiddenColumns': ['nonsense', 3], 'dateWidth': 'x'},
+    });
+    expect(junk.gitGraphColumns.hiddenColumns, isEmpty);
+    expect(
+      junk.gitGraphColumns.dateWidth,
+      GitGraphColumnPrefs.defaultDateWidth,
+    );
+    expect(
+      LayoutPreferences.fromJson(const {'gitGraphColumns': 42})
+          .gitGraphColumns
+          .hiddenColumns,
+      isEmpty,
+    );
+
+    // 过窄列宽被 clamp 到下限。
+    expect(
+      custom.withWidth(GitGraphColumnId.commit, 10).commitWidth,
+      GitGraphColumnPrefs.minColumnWidth,
+    );
+  });
+
   test('rightToolsVisible defaults false and round-trips', () {
     expect(const LayoutPreferences().rightToolsVisible, isFalse);
     expect(LayoutPreferences.fromJson(const {}).rightToolsVisible, isFalse);

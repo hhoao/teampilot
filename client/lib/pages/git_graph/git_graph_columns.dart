@@ -1,4 +1,25 @@
+import '../../models/git_graph.dart';
 import 'git_graph_lane_painter.dart';
+
+export '../../models/layout_preferences.dart' show GitGraphColumnId;
+
+/// 全部已加载行（含 spacer 连线行）的最大 slot，用于统一的图区宽度：
+/// 所有行 / 列头 / 未提交伪行共用，保证描述列起点对齐。
+int gitGraphMaxSlot(List<GitGraphRow> rows) {
+  var maxSlot = 0;
+  void consider(int slot) {
+    if (slot > maxSlot) maxSlot = slot;
+  }
+
+  for (final row in rows) {
+    if (row is GitCommitRow) consider(row.node.slot);
+    for (final edge in row.edges) {
+      consider(edge.fromSlot);
+      consider(edge.toSlot);
+    }
+  }
+  return maxSlot;
+}
 
 abstract final class GitGraphColumns {
   static const double headerHeight = 30;
