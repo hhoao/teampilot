@@ -23,6 +23,7 @@ const SSHAlgorithms tpServerAlgorithms = SSHAlgorithms(
 class SSHServerConfig {
   SSHServerConfig({
     required this.hostKeyPair,
+    required this.expectedUsername,
     required this.authenticate,
     this.authTimeout = const Duration(seconds: 30),
     this.maxAuthAttempts = 6,
@@ -35,9 +36,15 @@ class SSHServerConfig {
   /// advertises.
   final SSHKeyPair hostKeyPair;
 
+  /// The only username this server authenticates: the user the connection
+  /// was offered to. A request for any other user counts as a failed
+  /// authentication attempt.
+  final String expectedUsername;
+
   /// Decides whether an authentication attempt is accepted. Called once per
-  /// `publickey` userauth request once userauth lands (Task 4); until then
-  /// the server fails every attempt closed.
+  /// `publickey` userauth request — both for public-key probing requests
+  /// (the answer decides the `USERAUTH_PK_Ok` reply) and for signed ones
+  /// (where the signature has already been verified when this is called).
   final Future<bool> Function(SSHServerAuthRequest request) authenticate;
 
   /// How long a connection may live without completing authentication

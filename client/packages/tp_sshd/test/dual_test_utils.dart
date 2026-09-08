@@ -8,12 +8,13 @@ import 'test_socket_pair.dart';
 /// Starts an [SSHServer] over a fresh in-memory socket pair and returns a
 /// connected, host-key-accepting [SSHClient] plus the server.
 ///
-/// The client authenticates with [clientIdentities] as [username]; the server
-/// decides each attempt through [authenticate].
+/// The client authenticates as [username] with [clientIdentities]; the server
+/// decides each attempt through [authenticate], which must accept [username]
+/// as [SSHServerConfig.expectedUsername].
 Future<(SSHClient, SSHServer)> startDualPair({
   required SSHKeyPair hostKeyPair,
   required Future<bool> Function(SSHServerAuthRequest request) authenticate,
-  List<SSHKeyPair> clientIdentities = const [],
+  List<SSHIdentity> clientIdentities = const [],
   String username = 'user',
 }) async {
   final (clientSocket, serverSocket) = loopbackSSHSocketPair();
@@ -22,6 +23,7 @@ Future<(SSHClient, SSHServer)> startDualPair({
     StreamIterator(connections.stream),
     config: SSHServerConfig(
       hostKeyPair: hostKeyPair,
+      expectedUsername: username,
       authenticate: authenticate,
     ),
   );

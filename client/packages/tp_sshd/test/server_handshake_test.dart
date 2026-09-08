@@ -18,6 +18,7 @@ void main() {
       StreamIterator(connections.stream),
       config: SSHServerConfig(
         hostKeyPair: testHostKey,
+        expectedUsername: 'user',
         authenticate: (_) async => false,
       ),
     );
@@ -46,6 +47,7 @@ void main() {
       StreamIterator(connections.stream),
       config: SSHServerConfig(
         hostKeyPair: testHostKey,
+        expectedUsername: 'user',
         authenticate: (_) async => false,
         authTimeout: const Duration(milliseconds: 150),
       ),
