@@ -1,0 +1,48 @@
+diff --git a/packages/flutter/lib/src/widgets/reorderable_list.dart b/packages/flutter/lib/src/widgets/reorderable_list.dart
+index cb0c2f9d85a..b4244d3c300 100644
+--- a/packages/flutter/lib/src/widgets/reorderable_list.dart
++++ b/packages/flutter/lib/src/widgets/reorderable_list.dart
+@@ -1612,7 +1612,7 @@ class _DragInfo extends Drag {
+         size: itemSize,
+         constraints: itemLayoutConstraints,
+         animation: _proxyAnimation!,
+-        position: dragPosition - dragOffset - _overlayOrigin(context),
++        position: _overlayLocal(context, dragPosition) - dragOffset,
+         proxyDecorator: proxyDecorator,
+         child: child,
+       ),
+@@ -1620,10 +1620,15 @@ class _DragInfo extends Drag {
+   }
+ }
+ 
+-Offset _overlayOrigin(BuildContext context) {
++/// Overlay-local point for a global pointer.
++///
++/// Uses [RenderBox.globalToLocal] so an ancestor [Transform] (for example UI
++/// zoom) is inverted. Subtracting [RenderBox.localToGlobal] of the overlay
++/// origin is only valid when that transform is a translation.
++Offset _overlayLocal(BuildContext context, Offset globalPosition) {
+   final OverlayState overlay = Overlay.of(context, debugRequiredFor: context.widget);
+   final overlayBox = overlay.context.findRenderObject()! as RenderBox;
+-  return overlayBox.localToGlobal(Offset.zero);
++  return overlayBox.globalToLocal(globalPosition);
+ }
+ 
+ class _DragItemProxy extends StatelessWidget {
+@@ -1650,7 +1655,6 @@ class _DragItemProxy extends StatelessWidget {
+   @override
+   Widget build(BuildContext context) {
+     final Widget proxyChild = proxyDecorator?.call(child, index, animation.view) ?? child;
+-    final Offset overlayOrigin = _overlayOrigin(context);
+ 
+     return MediaQuery(
+       // Remove the top padding so that any nested list views in the item
+@@ -1663,7 +1667,7 @@ class _DragItemProxy extends StatelessWidget {
+           final Offset? dropPosition = listState._finalDropPosition;
+           if (dropPosition != null) {
+             effectivePosition = Offset.lerp(
+-              dropPosition - overlayOrigin,
++              _overlayLocal(context, dropPosition),
+               effectivePosition,
+               Curves.easeOut.transform(animation.value),
+             )!;
