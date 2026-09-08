@@ -35,14 +35,15 @@ class SSHServerChannel {
     required void Function(Uint8List payload) sendPacket,
     required void Function(SSHServerChannel channel) onClosed,
     this.printDebug,
-  }) : _sendWindow = peerInitialWindowSize,
-       // A peer advertising a zero maximum packet size could never be sent
-       // anything; fall back to the protocol minimum rather than stall
-       // forever.
-       _maximumOutgoingPacketSize =
-           peerMaximumPacketSize > 0 ? peerMaximumPacketSize : maximumPacketSize,
-       _sendPacket = sendPacket,
-       _onClosed = onClosed;
+  })  : _sendWindow = peerInitialWindowSize,
+        // A peer advertising a zero maximum packet size could never be sent
+        // anything; fall back to the protocol minimum rather than stall
+        // forever.
+        _maximumOutgoingPacketSize = peerMaximumPacketSize > 0
+            ? peerMaximumPacketSize
+            : maximumPacketSize,
+        _sendPacket = sendPacket,
+        _onClosed = onClosed;
 
   /// The channel number the client assigned to this channel. Every message
   /// the server sends on it addresses the client by this id.
@@ -102,20 +103,18 @@ class SSHServerChannel {
   bool get receivedEof => _receivedEof;
 
   /// Hook invoked when the client sends a channel request (e.g. `exec`,
-  /// `shell`) on this channel.
+  /// `shell`) on this channel, with the request that triggered it — so the
+  /// request cannot go stale between concurrent dispatches.
   ///
-  /// The hook runs detached from the message dispatch; while it runs, the
-  /// triggering request is readable from [currentRequest]. A hook that
-  /// completes normally acknowledges the request (CHANNEL_SUCCESS reply
-  /// when the client asked for one), a hook that throws refuses it
-  /// (CHANNEL_FAILURE). A channel with no hook refuses every request —
-  /// session requests are implemented in Tasks 6-7.
-  Future<void> Function(SSHServerChannel channel)? onRequest;
-
-  /// The channel request currently being dispatched to [onRequest], or the
-  /// last one dispatched if the hook has already returned. Meaningful only
-  /// from inside the hook.
-  SSH_Message_Channel_Request? currentRequest;
+  /// The hook reports the request's outcome through the returned future:
+  /// `true` acknowledges it (CHANNEL_SUCCESS reply when the client asked for
+  /// one), `false` — or a thrown error — refuses it (CHANNEL_FAILURE). The
+  /// reply is sent the moment the future settles; a hook that keeps serving
+  /// the channel afterwards (streaming output, exit-status, close) must let
+  /// the future settle first, or the reply is never sent. A channel with no
+  /// hook refuses every request.
+  Future<bool> Function(
+      SSHServerChannel channel, SSH_Message_Channel_Request request)? onRequest;
 
   /// Sends [data] to the client as channel data (stdout).
   ///
@@ -196,20 +195,36 @@ class SSHServerChannel {
   /// for the acknowledge/refuse semantics.
   void handleRequest(SSH_Message_Channel_Request request) {
     if (isClosed) return;
-    currentRequest = request;
     final handler = onRequest;
     if (handler == null) {
       _replyToRequest(request, accepted: false);
       return;
     }
     unawaited(() async {
+      var accepted = false;
       try {
-        await handler(this);
-        _replyToRequest(request, accepted: true);
+        accepted = await handler(this, request);
       } on Object {
-        _replyToRequest(request, accepted: false);
+        accepted = false;
       }
+      _replyToRequest(request, accepted: accepted);
     }());
+  }
+
+  /// Sends an `exit-status` channel request (RFC 4254 §6.10): the exit
+  /// status of the process this channel ran. The client never replies to it.
+  ///
+  /// Must be sent before [sendEof] and [close] — it is the channel's last
+  /// word on what its process did, and a client that sees EOF first may stop
+  /// waiting for it.
+  void sendExitStatus(int exitStatus) {
+    if (isClosed) return;
+    _sendPacket(
+      SSH_Message_Channel_Request.exitStatus(
+        recipientChannel: recipientChannel,
+        exitStatus: exitStatus,
+      ).encode(),
+    );
   }
 
   /// Tears the channel down without sending anything: the connection's
@@ -332,8 +347,8 @@ class SSHServerChannel {
     if (!request.wantReply || isClosed) return;
     _sendPacket(
       (accepted
-          ? SSH_Message_Channel_Success(recipientChannel: recipientChannel)
-          : SSH_Message_Channel_Failure(recipientChannel: recipientChannel))
+              ? SSH_Message_Channel_Success(recipientChannel: recipientChannel)
+              : SSH_Message_Channel_Failure(recipientChannel: recipientChannel))
           .encode(),
     );
   }

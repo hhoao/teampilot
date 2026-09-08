@@ -5,8 +5,10 @@ import 'package:dartssh2/dartssh2.dart' show SSHSocket, SSHTransport;
 import 'package:dartssh2/protocol.dart';
 
 import 'server_channel.dart';
+import 'server_session.dart';
 import 'server_userauth.dart';
-import 'ssh_server.dart' show SSHServerAuthRequest, SSHServerConfig, tpServerAlgorithms;
+import 'ssh_server.dart'
+    show SSHServerAuthRequest, SSHServerConfig, tpServerAlgorithms;
 
 /// Lifecycle phases of an [SSHServerConnection].
 enum _Phase {
@@ -213,6 +215,10 @@ class SSHServerConnection {
       onClosed: (channel) => _channels.remove(channel.ourChannel),
       printDebug: _config.printDebug,
     );
+    // Session requests (exec today; shell and pty in Task 7) are served by
+    // the session layer. The handler refuses everything it does not serve.
+    channel.onRequest = (channel, request) =>
+        handleSessionRequest(channel, request, config: _config);
     _channels[ourChannel] = channel;
     _transport.sendPacket(
       SSH_Message_Channel_Confirmation(

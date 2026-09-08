@@ -5,6 +5,7 @@ import 'package:dartssh2/dartssh2.dart' show SSHKeyPair, SSHSocket;
 import 'package:dartssh2/protocol.dart';
 
 import 'server_connection.dart';
+import 'server_process.dart';
 
 /// The narrow negotiation surface advertised by tp_sshd servers (spec:
 /// x25519 KEX, ed25519 host keys, AEAD ciphers).
@@ -27,6 +28,8 @@ class SSHServerConfig {
     required this.authenticate,
     this.authTimeout = const Duration(seconds: 30),
     this.maxAuthAttempts = 6,
+    this.processFactory,
+    this.hostInfo,
     this.printDebug,
     this.printTrace,
   });
@@ -54,6 +57,16 @@ class SSHServerConfig {
   /// How many authentication attempts a connection may make before the
   /// server disconnects it.
   final int maxAuthAttempts;
+
+  /// Spawns the process backing a structured `exec` request (see
+  /// [TpExecCodec]). Receives the decoded argv, working directory and
+  /// environment; a `null` return — or an unconfigured factory — refuses the
+  /// request. The server itself never builds a command line.
+  final SSHProcessFactory? processFactory;
+
+  /// Supplies the host snapshot answered for the `tp1:` host-info query.
+  /// `null` refuses the query; it is never answered by spawning a process.
+  final SSHHostInfo Function()? hostInfo;
 
   /// Function invoked with debug logging, mirroring [SSHSocket] transports.
   final void Function(String? message)? printDebug;

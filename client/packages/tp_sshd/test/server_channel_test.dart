@@ -265,8 +265,9 @@ void main() {
       final SSHServerChannel serverChannel = connection.channels.values.single;
 
       final requests = <String>[];
-      serverChannel.onRequest = (channel) async {
-        requests.add(channel.currentRequest!.requestType);
+      serverChannel.onRequest = (channel, request) async {
+        requests.add(request.requestType);
+        return true;
       };
       final accepted = await clientController.sendEnv('FOO', 'BAR');
       expect(accepted, isTrue);
@@ -276,15 +277,17 @@ void main() {
       await client.close();
     });
 
-    test('unhandled channel requests are refused', () async {
+    test('channel requests the session layer does not serve are refused',
+        () async {
       final (client, connection) = await startDualConnection(
         hostKeyPair: testHostKey,
         authenticate: (_) async => true,
         clientIdentities: [testDeviceKey],
       );
       final clientController = await openClientSessionChannel(client);
-      // No onRequest handler is installed: the request must be refused, not
-      // left hanging, until Tasks 6-7 implement the session requests.
+      // The connection wires every channel to handleSessionRequest, which
+      // serves only the structured exec grammar so far; an env request is
+      // refused instead of left hanging.
       final accepted = await clientController.sendEnv('FOO', 'BAR');
       expect(accepted, isFalse);
 

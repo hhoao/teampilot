@@ -24,6 +24,8 @@ Future<(SSHClient, SSHServer)> startDualPair({
   required Future<bool> Function(SSHServerAuthRequest request) authenticate,
   List<SSHIdentity> clientIdentities = const [],
   String username = 'user',
+  SSHProcessFactory? processFactory,
+  SSHHostInfo Function()? hostInfo,
 }) async {
   final (clientSocket, serverSocket) = loopbackSSHSocketPair();
   final connections = StreamController<SSHSocket>();
@@ -33,6 +35,8 @@ Future<(SSHClient, SSHServer)> startDualPair({
       hostKeyPair: hostKeyPair,
       expectedUsername: username,
       authenticate: authenticate,
+      processFactory: processFactory,
+      hostInfo: hostInfo,
     ),
   );
   connections.add(serverSocket);
