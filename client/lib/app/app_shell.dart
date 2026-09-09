@@ -225,6 +225,7 @@ import '../services/app/connection_mode_service.dart';
 import '../services/cli/remote_cli_locator.dart';
 import '../services/storage/runtime_context_resolver.dart';
 import '../services/storage/runtime_context_registry.dart';
+import '../services/storage/home_invalidation_service.dart';
 import '../services/storage/home_storage_invalidator.dart';
 import '../services/storage/home_target_controller.dart';
 import '../services/storage/home_storage.dart';
@@ -457,6 +458,7 @@ class AppShell {
     required this.sshProfileCubit,
     required this.termuxCubit,
     required this.homeStorageInvalidator,
+    required this.homeInvalidationService,
     required this.homeStorage,
     required this.sshConnectionCubit,
     required this.githubCredentialsStore,
@@ -558,6 +560,7 @@ class AppShell {
   final SshProfileCubit sshProfileCubit;
   final TermuxCubit termuxCubit;
   final HomeStorageInvalidator homeStorageInvalidator;
+  final HomeInvalidationService homeInvalidationService;
   final HomeStorage homeStorage;
   final SshConnectionCubit sshConnectionCubit;
   final GithubCredentialsStore githubCredentialsStore;
@@ -732,7 +735,10 @@ Future<AppShell> buildAppShell({
   late final ConnectionModeService connectionModeService;
   late final Future<void> Function() reinstallStorageContext;
 
-  late final Future<void> Function({bool reinstallSshHome}) reloadAllAppData;
+  late final Future<void> Function({
+    bool reinstallSshHome,
+    ReloadLevel level,
+  }) reloadAllAppData;
 
   late final SshProfileCubit sshProfileCubit;
   late final HomeTargetController homeTargetController;
@@ -2280,32 +2286,61 @@ Future<AppShell> buildAppShell({
       return future;
     }
 
-    reloadAllAppData = ({bool reinstallSshHome = true}) async {
+    reloadAllAppData = ({
+      bool reinstallSshHome = true,
+      ReloadLevel level = ReloadLevel.full,
+    }) async {
       await managedProviderControlPlane.invalidateForStorageContextChange();
-      await AppDataBootstrap.reloadAll(
-        boot: boot,
-        sshProfileCubit: sshProfileCubit,
-        llmConfigCubit: llmConfigCubit,
-        appProviderCubit: appProviderCubit,
-        teamCubit: teamCubit,
-        pluginCubit: pluginCubit,
-        skillCubit: skillCubit,
-        mcpCubit: mcpCubit,
-        extensionCubit: extensionCubit,
-        chatCubit: chatCubit,
-        sessionRepo: sessionRepo,
-        layoutCubit: layoutCubit,
-        isSshMode: connectionModeService.isRemoteWorkPlane,
-        homeSshProfileId: defaultTargetResolver().sshProfileId,
-        sshProfileExists: (id) => sshProfileById(id) != null,
-        reinstallStorageContext: reinstallStorageContext,
-        storage: homeStorage,
-        managedProviderCubit: resolvedManagedProviderCubit,
-        managedProviderUsageCubit: resolvedManagedProviderUsageCubit,
-        home: defaultTargetResolver(),
-        reinstallSshHome: reinstallSshHome,
-        expertHubCatalog: expertHubCatalog,
-      );
+      switch (level) {
+        // Minor invalidation: rerun the home index only. Cubit loads are
+        // single-flight/idempotent and already warm, so the auxiliary chain
+        // (providers, skills, plugins, MCP, extensions) and workspace data
+        // reload are skipped.
+        case ReloadLevel.indexOnly:
+          await AppDataBootstrap.bootstrapHomeIndex(
+            boot: boot,
+            sshProfileCubit: sshProfileCubit,
+            teamCubit: teamCubit,
+            chatCubit: chatCubit,
+            sessionRepo: sessionRepo,
+            layoutCubit: layoutCubit,
+            isSshMode: connectionModeService.isRemoteWorkPlane,
+            homeSshProfileId: defaultTargetResolver().sshProfileId,
+            sshProfileExists: (id) => sshProfileById(id) != null,
+            reinstallStorageContext: reinstallStorageContext,
+            storage: homeStorage,
+            home: defaultTargetResolver(),
+            reinstallSshHome: reinstallSshHome,
+            expertHubCatalog: expertHubCatalog,
+          );
+        case ReloadLevel.none:
+          break;
+        case ReloadLevel.full:
+          await AppDataBootstrap.reloadAll(
+            boot: boot,
+            sshProfileCubit: sshProfileCubit,
+            llmConfigCubit: llmConfigCubit,
+            appProviderCubit: appProviderCubit,
+            teamCubit: teamCubit,
+            pluginCubit: pluginCubit,
+            skillCubit: skillCubit,
+            mcpCubit: mcpCubit,
+            extensionCubit: extensionCubit,
+            chatCubit: chatCubit,
+            sessionRepo: sessionRepo,
+            layoutCubit: layoutCubit,
+            isSshMode: connectionModeService.isRemoteWorkPlane,
+            homeSshProfileId: defaultTargetResolver().sshProfileId,
+            sshProfileExists: (id) => sshProfileById(id) != null,
+            reinstallStorageContext: reinstallStorageContext,
+            storage: homeStorage,
+            managedProviderCubit: resolvedManagedProviderCubit,
+            managedProviderUsageCubit: resolvedManagedProviderUsageCubit,
+            home: defaultTargetResolver(),
+            reinstallSshHome: reinstallSshHome,
+            expertHubCatalog: expertHubCatalog,
+          );
+      }
       await persistSshHomePathCacheIfLive();
     };
 
@@ -2596,6 +2631,21 @@ Future<AppShell> buildAppShell({
       switchHome: switchHomeTarget,
     );
 
+    // Bootstrap-owned invalidation: replaces the HomeSshProfileBinder widget
+    // (a pending invalidation can no longer be dropped by `!mounted`). Starts
+    // before bootstrapAppData so the profile baseline is primed from the
+    // current catalog; profile diffs and home plane swaps map to reload
+    // levels, and a missing home profile falls back to the local home.
+    final homeInvalidationService = HomeInvalidationService(
+      profileStates: sshProfileCubit.stream,
+      storageChanges: homeStorage.changes,
+      homeTargetId: () => defaultTargetResolver().id,
+      reload: (level) => reloadAllAppData(level: level),
+      switchHome: switchHomeTarget,
+      initialProfiles: sshProfileCubit.state.profiles,
+    );
+    homeInvalidationService.start();
+
     homeTargetController = HomeTargetController(
       registry: runtimeTargetRegistry,
       current: defaultTargetResolver,
@@ -2729,6 +2779,7 @@ Future<AppShell> buildAppShell({
       sshProfileCubit: sshProfileCubit,
       termuxCubit: termuxCubit,
       homeStorageInvalidator: homeStorageInvalidator,
+      homeInvalidationService: homeInvalidationService,
       homeStorage: homeStorage,
       sshConnectionCubit: sshConnectionCubit,
       githubCredentialsStore: githubCredentialsStore,
@@ -2914,6 +2965,7 @@ class _TeamPilotBootstrapState extends State<TeamPilotBootstrap> {
     _usageAutoRefresh?.dispose();
     final shell = _shell;
     if (shell != null) {
+      shell.homeInvalidationService.stop();
       unawaited(shell.connectCubit?.close());
       unawaited(shell.managedProviderControlPlane.close());
     }
