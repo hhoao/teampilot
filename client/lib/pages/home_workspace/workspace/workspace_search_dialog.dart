@@ -10,7 +10,7 @@ import '../../../l10n/l10n_extensions.dart';
 import '../../../models/workspace.dart';
 import '../../../models/app_session.dart';
 import '../../../services/file_tree/workspace_file_search.dart';
-import '../../../services/io/filesystem.dart';
+import '../../../services/search/multi_root_content_search.dart';
 import '../../../services/search/workspace_search_indexes.dart';
 import '../../../services/session/workspace_session_content_index.dart';
 import '../../../services/workbench/workbench_editor_opener.dart';
@@ -42,15 +42,16 @@ const _maxFileResultsExpanded = 100000;
 /// [context] up front; selecting a result pops the dialog and performs the
 /// action against the still-mounted [context].
 ///
-/// [fs] backs the content filter and is resolved by the caller from the
-/// entry point's workspace tools scope — never derived here, so a shortcut
-/// host above the scope cannot silently fall back to a local filesystem.
+/// [slices] backs the content filter — one slice per searched root, resolved
+/// by the caller from the entry point's workspace tools scope — never derived
+/// here, so a shortcut host above the scope cannot silently fall back to a
+/// local filesystem.
 ///
 /// No-ops if a search dialog is already open (e.g. repeated shortcut presses).
 Future<void> showWorkspaceSearchDialog(
   BuildContext context, {
   required Workspace workspace,
-  required Filesystem fs,
+  required List<ContentSearchSlice> slices,
 }) async {
   if (_workspaceSearchDialogOpen) return;
   _workspaceSearchDialogOpen = true;
@@ -73,7 +74,7 @@ Future<void> showWorkspaceSearchDialog(
         workspace: workspace,
         sessions: sessions,
         indexes: indexes,
-        fs: fs,
+        slices: slices,
         emptyTitleFallback: fallback,
         onOpenSession: (session) async {
           Navigator.of(dialogContext).pop();
@@ -110,7 +111,7 @@ class WorkspaceSearchDialog extends StatefulWidget {
     required this.workspace,
     required this.sessions,
     required this.indexes,
-    required this.fs,
+    required this.slices,
     required this.emptyTitleFallback,
     required this.onOpenSession,
     required this.onOpenFile,
@@ -120,7 +121,11 @@ class WorkspaceSearchDialog extends StatefulWidget {
   final Workspace workspace;
   final List<AppSession> sessions;
   final WorkspaceSearchIndexes indexes;
-  final Filesystem fs;
+
+  /// Roots searched by the `content` filter, one slice per workspace folder
+  /// (per resolved target); built by the caller from the workspace tools
+  /// scope.
+  final List<ContentSearchSlice> slices;
   final String emptyTitleFallback;
   final FutureOr<void> Function(AppSession session) onOpenSession;
   final ValueChanged<String> onOpenFile;
@@ -540,12 +545,12 @@ class _WorkspaceSearchDialogState extends State<WorkspaceSearchDialog> {
   }
 
   /// 内容 section: the exclusive content-search mode with its own query input,
-  /// regex/case chips, and streaming file:line results. Searching roots the
-  /// first workspace folder on the dialog's injected [Filesystem].
+  /// regex/case chips, and streaming file:line results. It searches every
+  /// slice in [WorkspaceSearchDialog.slices] — one per workspace folder of the
+  /// dialog's injected roots, each on its own filesystem.
   Widget _buildContentSection() {
     return WorkspaceSearchContentSection(
-      root: widget.workspace.firstFolderPath,
-      fs: widget.fs,
+      slices: widget.slices,
       onOpenFile: widget.onOpenFile,
     );
   }

@@ -21,6 +21,7 @@ import '../../../services/workspace/workspace_run_registry.dart';
 import '../../../services/io/local_filesystem.dart';
 import '../../../services/workspace/workspace_tools_scope.dart';
 import '../../../services/workspace/workspace_tools_scope_registry.dart';
+import '../../../services/search/content_search_slices.dart';
 import '../../../services/workspace/workspace_worktree_registry.dart';
 import '../../../services/workspace/workspace_session_groups_registry.dart';
 import '../../../utils/session/workspace_tab_session_scope.dart';
@@ -101,17 +102,23 @@ class _WorkspaceSplitPaneState extends State<WorkspaceSplitPane> {
   void _openSearch() {
     if (!mounted) return;
     // This state sits above WorkspaceToolsScopeSync, so the scope has to be
-    // read from its cubit (the same one provided below); falls back to a
-    // local filesystem only when the plane has not resolved yet.
+    // read from its cubit (the same one provided below); the slice builder
+    // falls back to a single local slice only when the plane has not resolved
+    // yet. The pre-resolution stand-in root is the first workspace folder.
     final scopeCubit = context.read<WorkspaceToolsScopeRegistry>().cubitFor(
       tabScopeId: widget.tabScopeId,
       lifecycle: context.read<ChatCubit>().lifecycle,
     );
+    final scopeState = scopeCubit.state;
     unawaited(
       showWorkspaceSearchDialog(
         context,
         workspace: widget.workspace,
-        fs: scopeCubit.state.tools?.context.filesystem ?? LocalFilesystem(),
+        slices: contentSearchSlicesForScope(
+          scope: scopeState,
+          cwd: widget.workspace.firstFolderPath,
+          fallbackFs: scopeState.tools?.context.filesystem ?? LocalFilesystem(),
+        ),
       ),
     );
   }

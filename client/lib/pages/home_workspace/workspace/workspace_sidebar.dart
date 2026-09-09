@@ -22,6 +22,7 @@ import '../../../services/commands/command_tooltip.dart';
 import '../../../services/commands/key_chord.dart';
 import '../../../services/git/git_worktree_service.dart';
 import '../../../services/io/local_filesystem.dart';
+import '../../../services/search/content_search_slices.dart';
 import '../../../services/storage/app_storage.dart';
 import '../../../services/storage/workspace_layout.dart';
 import '../../../services/workspace/workspace_tools_scope.dart';
@@ -283,15 +284,19 @@ class _WorkspaceSidebarState extends State<WorkspaceSidebar> {
   }
 
   void _openWorkspaceSearch(BuildContext context) {
+    // Same source as the file-tree / git panels; a single local slice only
+    // before the tools plane has resolved.
+    final scopeState = WorkspaceToolsScope.maybeOf(context);
     unawaited(
       showWorkspaceSearchDialog(
         context,
         workspace: widget.workspace,
-        // Same source as the file-tree / git panels; local only before
-        // the tools plane has resolved.
-        fs:
-            WorkspaceToolsScope.maybeOf(context)?.tools?.context.filesystem ??
-            LocalFilesystem(),
+        slices: contentSearchSlicesForScope(
+          scope: scopeState ?? const WorkspaceToolsScopeState(),
+          cwd: widget.workspace.firstFolderPath,
+          fallbackFs:
+              scopeState?.tools?.context.filesystem ?? LocalFilesystem(),
+        ),
       ),
     );
   }
