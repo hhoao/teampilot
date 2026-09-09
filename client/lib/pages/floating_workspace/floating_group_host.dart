@@ -12,7 +12,6 @@ import '../../models/floating_workspace_tab.dart';
 import '../../services/floating_workspace/close_floating_tab.dart';
 import '../../services/floating_workspace/floating_surface_registry.dart';
 import '../../widgets/workbench/workbench_shell_run_sync.dart';
-import '../../widgets/workbench/workbench_split_layout_view.dart';
 import '../../widgets/workbench/workbench_tab_drag.dart';
 import 'floating_workspace_tab_bar.dart';
 
@@ -75,9 +74,9 @@ FloatingStripProjection projectFloatingStrip({
 
 /// One floating split group's pane: a slim header strip carrying this group's
 /// own tabs ([FloatingWorkspaceTabBar] re-instantiated per group) above the
-/// group's tab bodies, wrapped in a focus frame ([SplitGroupFocusFrame]) and a
-/// drag drop region ([WorkbenchTabDropRegions], body only — the header stays
-/// outside so plain chip clicks never dispatch drops).
+/// group's tab bodies, wrapped in a drag drop region ([WorkbenchTabDropRegions],
+/// body only — the header stays outside so plain chip clicks never dispatch
+/// drops).
 ///
 /// The header is shown only while the floating layout hosts more than one
 /// group (single group keeps today's panel chrome: title bar strip only).
@@ -88,7 +87,6 @@ class FloatingGroupHost extends StatelessWidget {
     required this.workspaceId,
     required this.groupId,
     required this.strip,
-    required this.focused,
     required this.showHeader,
     required this.splitEnabled,
     required this.registry,
@@ -98,7 +96,6 @@ class FloatingGroupHost extends StatelessWidget {
   final String workspaceId;
   final String groupId;
   final TabStrip strip;
-  final bool focused;
 
   /// Whether the slim per-group header strip renders (multi-group only).
   final bool showHeader;
@@ -114,32 +111,29 @@ class FloatingGroupHost extends StatelessWidget {
       workspaceId: workspaceId,
       strip: strip,
     );
-    return SplitGroupFocusFrame(
-      focused: focused,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          if (showHeader)
-            _FloatingGroupHeaderStrip(
-              workspaceId: workspaceId,
-              groupId: groupId,
-              strip: strip,
-              splitEnabled: splitEnabled,
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        if (showHeader)
+          _FloatingGroupHeaderStrip(
+            workspaceId: workspaceId,
+            groupId: groupId,
+            strip: strip,
+            splitEnabled: splitEnabled,
+            registry: registry,
+            projection: projection,
+          ),
+        Expanded(
+          child: WorkbenchTabDropRegions(
+            groupId: groupId,
+            child: _FloatingTabBodyStack(
+              tabs: projection.tabs,
+              activeTabId: projection.activeTabId,
               registry: registry,
-              projection: projection,
-            ),
-          Expanded(
-            child: WorkbenchTabDropRegions(
-              groupId: groupId,
-              child: _FloatingTabBodyStack(
-                tabs: projection.tabs,
-                activeTabId: projection.activeTabId,
-                registry: registry,
-              ),
             ),
           ),
-        ],
-      ),
+        ),
+      ],
     );
   }
 }

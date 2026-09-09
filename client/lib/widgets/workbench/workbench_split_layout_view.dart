@@ -4,8 +4,8 @@
 // [WorkbenchGroupLayout] binary tree: branch nodes become Row/Column splits
 // with draggable dividers, leaf nodes host one group pane built by
 // [SplitGroupBuilder]. Both the center workbench and the floating panel embed
-// this view with their own builders; group chrome (tab strip header, focus
-// highlight via [SplitGroupFocusFrame]) belongs to the callers.
+// this view with their own builders; group chrome (tab strip header)
+// belongs to the callers.
 //
 // Rendering contract:
 // - `maximizedGroupId != null && splitEnabled` → only that group renders,
@@ -86,7 +86,7 @@ class WorkbenchSplitLayoutView extends StatefulWidget {
   onResizeCommit;
 
   /// Fired when a group pane is tapped (translucent — inner content still
-  /// receives taps). Callers highlight via [SplitGroupFocusFrame].
+  /// receives taps).
   final void Function(String groupId)? onGroupFocused;
 
   /// Fired when a divider is double-tapped; the caller resolves the
@@ -610,46 +610,3 @@ class _LeafView extends StatelessWidget {
 /// Focus highlight overlay shared by group chrome hosts (Tasks 5/6): a 2px
 /// border in `colorScheme.primary` when [focused], nothing otherwise. The
 /// overlay ignores pointer events so pane content stays interactive.
-class SplitGroupFocusFrame extends StatelessWidget {
-  const SplitGroupFocusFrame({
-    required this.focused,
-    required this.child,
-    super.key,
-  });
-
-  final bool focused;
-  final Widget child;
-
-  @override
-  Widget build(BuildContext context) {
-    // The tree shape is CONSTANT across focus changes (Stack + overlay
-    // always present); only the border color animates between transparent
-    // and primary. A conditional shape (bare child vs Stack) would break
-    // element matching on every focus switch and remount the whole pane —
-    // terminals, chat history, scroll anchors included.
-    return Stack(
-      fit: StackFit.passthrough,
-      children: [
-        child,
-        Positioned.fill(
-          // Positioned must stay a direct child of the Stack; the
-          // ignore-pointer wrapper goes inside it.
-          child: IgnorePointer(
-            child: DecoratedBox(
-              decoration: BoxDecoration(
-                border: Border.fromBorderSide(
-                  BorderSide(
-                    color: focused
-                        ? Theme.of(context).colorScheme.primary
-                        : const Color(0x00000000),
-                    width: 2,
-                  ),
-                ),
-              ),
-            ),
-          ),
-        ),
-      ],
-    );
-  }
-}

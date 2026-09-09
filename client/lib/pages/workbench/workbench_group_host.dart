@@ -26,7 +26,6 @@ import '../../utils/workspace/workspace_active_context.dart';
 import '../../utils/workspace/workspace_chrome_profile.dart';
 import '../../widgets/workspace_terminal/workspace_terminal_new_session_menu.dart';
 import '../../widgets/workspace_terminal_panel.dart';
-import '../../widgets/workbench/workbench_split_layout_view.dart';
 import '../../widgets/workbench/workbench_tab_drag.dart';
 import '../chat/chat_page_shell_probe.dart';
 import '../chat/chat_workbench_slice.dart';
@@ -38,9 +37,8 @@ import 'workbench_body.dart';
 
 /// One editor group's pane inside the center workbench split view: a
 /// [WorkspaceShell] (tab bar + body) bound to the group's own [TabStrip],
-/// wrapped in a focus frame ([SplitGroupFocusFrame]) and a drag drop region
-/// ([WorkbenchTabDropRegions], body only — the tab strip header stays outside
-/// so plain clicks never dispatch drops).
+/// wrapped in a drag drop region ([WorkbenchTabDropRegions], body only — the
+/// tab strip header stays outside so plain clicks never dispatch drops).
 ///
 /// Tab interactions route through [WorkbenchShellActions] by tab id (the cubit
 /// resolves the owning group); group-scoped mutations (reorder, close-all,
@@ -56,7 +54,6 @@ class WorkbenchGroupHost extends StatelessWidget {
     this.additionalPaths = const [],
     required this.groupId,
     required this.strip,
-    required this.focused,
     required this.routeActive,
     required this.chatState,
     required this.runtimeTabs,
@@ -86,9 +83,6 @@ class WorkbenchGroupHost extends StatelessWidget {
 
   /// This group's strip — single source of the group's tabs and active tab.
   final TabStrip strip;
-
-  /// Whether this group currently holds the workbench focus (focus frame).
-  final bool focused;
   final bool routeActive;
 
   /// Snapshot of the scoped [ChatState] (sessions list, launch error) from the
@@ -206,183 +200,180 @@ class WorkbenchGroupHost extends StatelessWidget {
           )
         : null;
 
-    return SplitGroupFocusFrame(
-      focused: focused,
-      child: Column(
-        children: [
-          if (actions.isNotEmpty) WorkspaceShellActionsBar(actions: actions),
-          Expanded(
-            child: WorkspaceShell(
-              showHeader: false,
-              showTabBar: showTabBar,
-              breadcrumb: isPersonalContext
-                  ? 'Personal / Chat / Shell chat workbench'
-                  : '${teamConfig?.name ?? 'Team'} / Chat / Shell chat workbench',
-              title: 'Shell chat workbench',
-              subtitle: isPersonalContext
-                  ? 'personal workspace / shell wrapper mode'
-                  : 'target: ${teamConfig != null ? _memberName(teamConfig, activeTab) : 'team'} / shell wrapper mode',
-              showNewChatButton: tabs.isNotEmpty,
-              newChatTooltip: commandTooltip(
-                context,
-                context.l10n.workbenchStripNewMenuTooltip,
-                CommandIds.sessionNewTab,
-              ),
-              newConversationLabel: context.l10n.homeWorkspaceNewConversation,
-              newTerminalLabel: context.l10n.workspaceTerminalNewSession,
-              onNewConversation: routeActive
-                  ? () {
-                      // Enter THIS group's landing, not just the focused one's.
-                      workbench.focusGroup(workspaceId, groupId);
-                      workbench.enterLanding(workspaceId);
-                    }
-                  : null,
-              onNewTerminal: routeActive
-                  ? (anchor) => unawaited(
-                      _showStripNewTerminalMenu(
+    return Column(
+      children: [
+        if (actions.isNotEmpty) WorkspaceShellActionsBar(actions: actions),
+        Expanded(
+          child: WorkspaceShell(
+            showHeader: false,
+            showTabBar: showTabBar,
+            breadcrumb: isPersonalContext
+                ? 'Personal / Chat / Shell chat workbench'
+                : '${teamConfig?.name ?? 'Team'} / Chat / Shell chat workbench',
+            title: 'Shell chat workbench',
+            subtitle: isPersonalContext
+                ? 'personal workspace / shell wrapper mode'
+                : 'target: ${teamConfig != null ? _memberName(teamConfig, activeTab) : 'team'} / shell wrapper mode',
+            showNewChatButton: tabs.isNotEmpty,
+            newChatTooltip: commandTooltip(
+              context,
+              context.l10n.workbenchStripNewMenuTooltip,
+              CommandIds.sessionNewTab,
+            ),
+            newConversationLabel: context.l10n.homeWorkspaceNewConversation,
+            newTerminalLabel: context.l10n.workspaceTerminalNewSession,
+            onNewConversation: routeActive
+                ? () {
+                    // Enter THIS group's landing, not just the focused one's.
+                    workbench.focusGroup(workspaceId, groupId);
+                    workbench.enterLanding(workspaceId);
+                  }
+                : null,
+            onNewTerminal: routeActive
+                ? (anchor) => unawaited(
+                    _showStripNewTerminalMenu(
+                      context: context,
+                      workspaceId: workspaceId,
+                      tabScopeId: tabScopeId,
+                      cwd: cwd,
+                      anchor: anchor,
+                    ),
+                  )
+                : null,
+            tabs: tabs,
+            activeTabIndex: activeTabIndex,
+            onTabSelected: routeActive
+                ? (index) {
+                    if (index < 0 || index >= order.length) return;
+                    unawaited(
+                      WorkbenchShellActions.select(
                         context: context,
                         workspaceId: workspaceId,
                         tabScopeId: tabScopeId,
-                        cwd: cwd,
-                        anchor: anchor,
+                        tab: order[index],
                       ),
-                    )
-                  : null,
-              tabs: tabs,
-              activeTabIndex: activeTabIndex,
-              onTabSelected: routeActive
-                  ? (index) {
-                      if (index < 0 || index >= order.length) return;
-                      unawaited(
-                        WorkbenchShellActions.select(
-                          context: context,
-                          workspaceId: workspaceId,
-                          tabScopeId: tabScopeId,
-                          tab: order[index],
-                        ),
-                      );
+                    );
+                  }
+                : null,
+            onTabClosed: routeActive
+                ? (index) {
+                    if (index < 0 || index >= order.length) return;
+                    unawaited(
+                      WorkbenchShellActions.closeAt(
+                        context: context,
+                        workspaceId: workspaceId,
+                        tabScopeId: tabScopeId,
+                        tab: order[index],
+                      ),
+                    );
+                  }
+                : null,
+            onTabCloseOthers: routeActive
+                ? (index) {
+                    if (index < 0 || index >= order.length) return;
+                    unawaited(
+                      WorkbenchShellActions.closeOthers(
+                        context: context,
+                        workspaceId: workspaceId,
+                        tabScopeId: tabScopeId,
+                        keep: order[index],
+                      ),
+                    );
+                  }
+                : null,
+            onTabCloseRight: routeActive
+                ? (index) {
+                    if (index < 0 || index >= order.length) return;
+                    unawaited(
+                      WorkbenchShellActions.closeRight(
+                        context: context,
+                        workspaceId: workspaceId,
+                        tabScopeId: tabScopeId,
+                        anchor: order[index],
+                      ),
+                    );
+                  }
+                : null,
+            onTabCloseAll: routeActive
+                ? (index) {
+                    // closeAll closes the focused group — focus this one so
+                    // the menu acts on the group it was opened from.
+                    workbench.focusGroup(workspaceId, groupId);
+                    unawaited(
+                      WorkbenchShellActions.closeAll(
+                        context: context,
+                        workspaceId: workspaceId,
+                        tabScopeId: tabScopeId,
+                      ),
+                    );
+                  }
+                : null,
+            onTabPin: routeActive
+                ? (index) {
+                    if (index < 0 || index >= order.length) return;
+                    final sessionId = order[index].sessionId;
+                    if (sessionId == null) return;
+                    // Persist (repo) and runtime (strip) stores stay in
+                    // sync; the projection reads the strip union.
+                    unawaited(chat.toggleSessionPin(sessionId));
+                    final tabId = WorkbenchTabId.session(sessionId);
+                    final groupStrip =
+                        workbench.centerLayout(workspaceId).groups[groupId];
+                    if (groupStrip == null) return;
+                    if (groupStrip.pinnedIds.contains(tabId)) {
+                      workbench.unpin(workspaceId, tabId);
+                    } else {
+                      workbench.pin(workspaceId, tabId);
                     }
-                  : null,
-              onTabClosed: routeActive
-                  ? (index) {
-                      if (index < 0 || index >= order.length) return;
-                      unawaited(
-                        WorkbenchShellActions.closeAt(
-                          context: context,
-                          workspaceId: workspaceId,
-                          tabScopeId: tabScopeId,
-                          tab: order[index],
-                        ),
-                      );
-                    }
-                  : null,
-              onTabCloseOthers: routeActive
-                  ? (index) {
-                      if (index < 0 || index >= order.length) return;
-                      unawaited(
-                        WorkbenchShellActions.closeOthers(
-                          context: context,
-                          workspaceId: workspaceId,
-                          tabScopeId: tabScopeId,
-                          keep: order[index],
-                        ),
-                      );
-                    }
-                  : null,
-              onTabCloseRight: routeActive
-                  ? (index) {
-                      if (index < 0 || index >= order.length) return;
-                      unawaited(
-                        WorkbenchShellActions.closeRight(
-                          context: context,
-                          workspaceId: workspaceId,
-                          tabScopeId: tabScopeId,
-                          anchor: order[index],
-                        ),
-                      );
-                    }
-                  : null,
-              onTabCloseAll: routeActive
-                  ? (index) {
-                      // closeAll closes the focused group — focus this one so
-                      // the menu acts on the group it was opened from.
-                      workbench.focusGroup(workspaceId, groupId);
-                      unawaited(
-                        WorkbenchShellActions.closeAll(
-                          context: context,
-                          workspaceId: workspaceId,
-                          tabScopeId: tabScopeId,
-                        ),
-                      );
-                    }
-                  : null,
-              onTabPin: routeActive
-                  ? (index) {
-                      if (index < 0 || index >= order.length) return;
-                      final sessionId = order[index].sessionId;
-                      if (sessionId == null) return;
-                      // Persist (repo) and runtime (strip) stores stay in
-                      // sync; the projection reads the strip union.
-                      unawaited(chat.toggleSessionPin(sessionId));
-                      final tabId = WorkbenchTabId.session(sessionId);
-                      final groupStrip =
-                          workbench.centerLayout(workspaceId).groups[groupId];
-                      if (groupStrip == null) return;
-                      if (groupStrip.pinnedIds.contains(tabId)) {
-                        workbench.unpin(workspaceId, tabId);
-                      } else {
-                        workbench.pin(workspaceId, tabId);
-                      }
-                    }
-                  : null,
-              onTabSplitRight: canSplit
-                  ? (index) {
-                      if (index < 0 || index >= order.length) return;
-                      workbench.splitTab(
-                        workspaceId,
-                        order[index],
-                        axis: Axis.horizontal,
-                        before: false,
-                      );
-                    }
-                  : null,
-              onTabSplitDown: canSplit
-                  ? (index) {
-                      if (index < 0 || index >= order.length) return;
-                      workbench.splitTab(
-                        workspaceId,
-                        order[index],
-                        axis: Axis.vertical,
-                        before: false,
-                      );
-                    }
-                  : null,
-              tabDrag: tabDrag,
-              onTabsReorder: routeActive
-                  ? (oldIndex, newIndex) {
-                      // reorder mutates the focused group — focus this one so
-                      // the drag acts on the strip it started from.
-                      workbench.focusGroup(workspaceId, groupId);
-                      workbench.reorder(workspaceId, oldIndex, newIndex);
-                    }
-                  : null,
-              actions: const [],
-              child: WorkbenchTabDropRegions(
-                groupId: groupId,
-                child: ChatPageStructuralBodyProbe(
-                  key: chatPageStructuralBodyProbeKey,
-                  child: _buildBody(
-                    context,
-                    isPersonalContext: isPersonalContext,
-                    teamConfig: teamConfig,
-                    activeTab: activeTab,
-                  ),
+                  }
+                : null,
+            onTabSplitRight: canSplit
+                ? (index) {
+                    if (index < 0 || index >= order.length) return;
+                    workbench.splitTab(
+                      workspaceId,
+                      order[index],
+                      axis: Axis.horizontal,
+                      before: false,
+                    );
+                  }
+                : null,
+            onTabSplitDown: canSplit
+                ? (index) {
+                    if (index < 0 || index >= order.length) return;
+                    workbench.splitTab(
+                      workspaceId,
+                      order[index],
+                      axis: Axis.vertical,
+                      before: false,
+                    );
+                  }
+                : null,
+            tabDrag: tabDrag,
+            onTabsReorder: routeActive
+                ? (oldIndex, newIndex) {
+                    // reorder mutates the focused group — focus this one so
+                    // the drag acts on the strip it started from.
+                    workbench.focusGroup(workspaceId, groupId);
+                    workbench.reorder(workspaceId, oldIndex, newIndex);
+                  }
+                : null,
+            actions: const [],
+            child: WorkbenchTabDropRegions(
+              groupId: groupId,
+              child: ChatPageStructuralBodyProbe(
+                key: chatPageStructuralBodyProbeKey,
+                child: _buildBody(
+                  context,
+                  isPersonalContext: isPersonalContext,
+                  teamConfig: teamConfig,
+                  activeTab: activeTab,
                 ),
               ),
             ),
           ),
-        ],
-      ),
+        ),
+      ],
     );
   }
 

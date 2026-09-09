@@ -184,7 +184,6 @@ class _SplitHost extends StatelessWidget {
               cwd: _cwd,
               groupId: groupId,
               strip: strip,
-              focused: layout.focusedGroupId == groupId,
               routeActive: true,
               chatState: chatCubit.state,
               runtimeTabs: chatCubit.tabStore.tabsForWorkspace(_workspaceId),

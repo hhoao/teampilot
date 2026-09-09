@@ -198,9 +198,6 @@ class _ChatWorkspaceShell extends StatelessWidget {
                   additionalPaths: additionalPaths,
                   groupId: groupId,
                   strip: strip,
-                  focused:
-                      layout.focusedGroupId == groupId ||
-                      layout.maximizedGroupId == groupId,
                   routeActive: routeActive,
                   chatState: state,
                   runtimeTabs: runtimeTabs,

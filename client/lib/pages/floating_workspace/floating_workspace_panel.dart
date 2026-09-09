@@ -1275,9 +1275,6 @@ class _FloatingPanelBodySlot extends StatelessWidget {
         workspaceId: workspaceId,
         groupId: groupId,
         strip: strip,
-        focused:
-            layout.focusedGroupId == groupId ||
-            layout.maximizedGroupId == groupId,
         showHeader: multiGroup,
         splitEnabled: splitEnabled,
         registry: registry,
