@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -9,6 +11,7 @@ import 'package:teampilot/cubits/workbench/workbench_cubit.dart';
 import 'package:teampilot/l10n/app_localizations.dart';
 import 'package:teampilot/models/app_session.dart';
 import 'package:teampilot/models/workspace.dart';
+import 'package:teampilot/models/workspace_folder.dart';
 import 'package:teampilot/pages/home_workspace/workspace/workspace_search_dialog.dart';
 import 'package:teampilot/repositories/session_repository.dart';
 import 'package:teampilot/services/io/local_filesystem.dart';
@@ -272,5 +275,79 @@ void main() {
     expect(find.text('Show more results'), findsNothing);
     expect(find.text('Session 1'), findsOneWidget);
     expect(find.text('Session 0'), findsOneWidget);
+  });
+
+  testWidgets('file search lists matches from every workspace folder', (
+    tester,
+  ) async {
+    final dirA = Directory.systemTemp.createTempSync('tp_ws_a_');
+    final dirB = Directory.systemTemp.createTempSync('tp_ws_b_');
+    addTearDown(() {
+      dirA.deleteSync(recursive: true);
+      dirB.deleteSync(recursive: true);
+    });
+    File('${dirA.path}/alpha.dart').writeAsStringSync('');
+    File('${dirB.path}/beta.dart').writeAsStringSync('');
+    final workspace = Workspace(
+      workspaceId: 'ws-1',
+      folders: [
+        WorkspaceFolder(path: dirA.path),
+        WorkspaceFolder(path: dirB.path),
+      ],
+      createdAt: 1,
+    );
+    final sessionRepo = SessionRepository();
+    final attention = AgentAttentionCubit(pruneInterval: null);
+    final automation = testAutomationCubit(sessionRepository: sessionRepo);
+    final workbench = WorkbenchCubit();
+    final chatCubit = ChatCubit(
+      executableResolver: () => 'claude',
+      automationRepository: testAutomationRepository(),
+      sessionRepository: sessionRepo,
+      agentAttentionCubit: attention,
+    );
+    chatCubit.ingestWorkspaceSessionSnapshot(
+      workspaces: [workspace],
+      sessions: const [],
+    );
+    addTearDown(chatCubit.close);
+    addTearDown(attention.close);
+    addTearDown(automation.close);
+    addTearDown(workbench.close);
+
+    await _pumpDialog(
+      tester,
+      _host(
+        workspace: workspace,
+        sessions: const [],
+        chatCubit: chatCubit,
+        attentionCubit: attention,
+        automationCubit: automation,
+        sessionRepo: sessionRepo,
+        workbenchCubit: workbench,
+      ),
+    );
+
+    // Real-async like [_pumpDialog]: the debounced search awaits index
+    // freshness probes (real IO), which never complete under fake-async pumps.
+    await tester.runAsync(() async {
+      await tester.enterText(find.byType(TextField), 'dart');
+      await Future<void>.delayed(const Duration(milliseconds: 400));
+    });
+    await tester.pump();
+    await tester.pump();
+
+    // Both folders' files are listed (name + relative-path columns).
+    expect(find.text('alpha.dart'), findsWidgets);
+    expect(find.text('beta.dart'), findsWidgets);
+    // Multi-folder: each folder carries a group header with its basename.
+    expect(
+      find.text(dirA.path.split(Platform.pathSeparator).last),
+      findsOneWidget,
+    );
+    expect(
+      find.text(dirB.path.split(Platform.pathSeparator).last),
+      findsOneWidget,
+    );
   });
 }
