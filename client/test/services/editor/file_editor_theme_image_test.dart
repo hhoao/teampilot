@@ -25,4 +25,12 @@ void main() {
   test('kEditorMaxImageBytes is 25 MiB', () {
     expect(kEditorMaxImageBytes, 25 * 1024 * 1024);
   });
+
+  test('isSvgPreviewPath allowlist', () {
+    expect(isSvgPreviewPath('/a/icon.svg'), isTrue);
+    expect(isSvgPreviewPath('/a/icon.SVG'), isTrue);
+    expect(isSvgPreviewPath('/a/icon.png'), isFalse);
+    expect(isSvgPreviewPath('/a/svg'), isFalse); // extensionless basename
+    expect(isSvgPreviewPath('/a/x.txt'), isFalse);
+  });
 }
