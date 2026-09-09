@@ -4,7 +4,7 @@
 
 **Goal:** Detect CLI "incidents" (update notices, quota exhaustion, request failures/timeouts, auth errors) in PTY output and surface them to the user as waiting-attention plus an in-chat incident banner.
 
-**Architecture:** A shared `IncidentDetectionModule` binds to the existing `TerminalObservationBus` as a session module (running phase only). Each CLI declares declarative incident patterns via a new optional `TerminalIncidentCapability`; user-defined regex rules from `SessionPreferences` are merged in. Hits set `AgentSeatAttention.waiting` (via the existing `AgentAttentionCubit`) and push `TerminalIncident` records into a new app-scoped `TerminalIncidentCubit`, whose banner renders in the chat compose section above the existing permission banner.
+**Architecture:** A shared `IncidentDetectionModule` binds to the existing `TerminalObservationBus` as a session module (running phase only). Each CLI declares declarative incident patterns via a new optional `TerminalIncidentCapability`; patterns use a capture-group convention (first group = event identity) so dedup and folding key on `(patternId, identity)`, and may declare presentation (banner vs action card), a closed action set, and PTY keystroke-injection reply options. User-defined regex rules from `SessionPreferences` are merged in. Hits set `AgentSeatAttention.waiting` (via the existing `AgentAttentionCubit`) and push `TerminalIncident` records into a new app-scoped `TerminalIncidentCubit` (folds same-key repeats, caps per seat), whose banner renders in the chat compose section above the existing permission banner; reply options inject text into the member PTY via `MemberPtyInjectService` (same pipeline as in-chat AskUserQuestion answers).
 
 **Tech Stack:** Flutter / Dart, flutter_bloc (`Cubit`), `client/packages/shared_ui` (Tp design system), l10n via `.arb`.
 
@@ -57,9 +57,13 @@ Modify: models/session_preferences.dart, cubits/session_preferences_cubit.dart,
 - Produces (used by Tasks 2, 3, 5, 8):
   - `enum TerminalIncidentKind { updateAvailable, creditExhausted, authRequired, rateLimited, requestFailed, timeout, networkError, other }`
   - `enum TerminalIncidentSeverity { info, warning, error }`
-  - `final class TerminalIncidentPattern` with `const TerminalIncidentPattern({required this.id, required this.kind, required this.severity, required this.patterns})` — `id: String`, `kind: TerminalIncidentKind`, `severity: TerminalIncidentSeverity`, `patterns: List<RegExp>`
-  - `final class TerminalIncident` with `const TerminalIncident({required this.patternId, required this.kind, required this.severity, required this.cli, required this.sessionId, required this.memberId, required this.matchedLine, required this.timestamp})` — all `final` fields of the stated types; override `toString` as `TerminalIncident($cli $kind $patternId)`.
-  - `TerminalIncidentMatch? matchIncidentLine(String line, List<TerminalIncidentPattern> patterns)` — returns first hit or null. `TerminalIncidentMatch` is `({TerminalIncidentPattern pattern, String matchedLine})` (record type).
+  - `enum TerminalIncidentPresentation { bannerOnly, actionCard }`
+  - `enum TerminalIncidentAction { openTerminal, acknowledge, loginAgain, switchProvider, copyLine }` — closed set; no open-ended extension.
+  - `final class TerminalIncidentReplyOption` with `const TerminalIncidentReplyOption({required this.id, required this.labelKey, required this.inject})` — `id: String`, `labelKey: String` (l10n key), `inject: String` (text injected into the member PTY on tap).
+  - `final class TerminalIncidentPattern` with `const TerminalIncidentPattern({required this.id, required this.kind, required this.severity, required this.patterns, this.presentation = TerminalIncidentPresentation.actionCard, this.actions, this.replyOptions})` — `actions: List<TerminalIncidentAction>?` (null → kind-level defaults), `replyOptions: List<TerminalIncidentReplyOption>?` (null → none; ≤ 4 when declared).
+  - `List<TerminalIncidentAction> defaultActionsForKind(TerminalIncidentKind kind)` — kind-level defaults: `updateAvailable → [openTerminal, acknowledge]`; `creditExhausted / rateLimited → [switchProvider, openTerminal, acknowledge]`; `authRequired → [loginAgain, openTerminal, acknowledge]`; `requestFailed / timeout / networkError → [openTerminal, copyLine]`; `other → [openTerminal, acknowledge]`.
+  - `final class TerminalIncident` with `const TerminalIncident({required this.patternId, required this.identity, required this.kind, required this.severity, required this.presentation, required this.actions, required this.replyOptions, required this.cli, required this.sessionId, required this.memberId, required this.matchedLine, required this.timestamp})` — `identity: String?` (capture-group value or null), `presentation`, `actions: List<TerminalIncidentAction>`, `replyOptions: List<TerminalIncidentReplyOption>` (resolved, never null); plus `String get key => '$sessionId $memberId $patternId ${identity ?? ''} ${timestamp.microsecondsSinceEpoch}'`, `operator ==`/`hashCode` on key, `toString`.
+  - `TerminalIncidentMatch? matchIncidentLine(String line, List<TerminalIncidentPattern> patterns)` — returns first hit or null. `TerminalIncidentMatch` is `({TerminalIncidentPattern pattern, String? identity, String matchedLine})` (record type). Matching uses `firstMatch` on each regex; `identity = match.group(1)` when the regex has ≥ 1 capture group, else null. **Capture-group convention**: the first group encloses the event identity (stable event content); varying noise (retry counts, timestamps, attempt numbers) stays outside the group. No group → pattern-level dedup (identity null).
 
 - [ ] **Step 1: Write the failing test**
 
@@ -82,6 +86,13 @@ void main() {
       severity: TerminalIncidentSeverity.info,
       patterns: [RegExp(r'update available', caseSensitive: false)],
     ),
+    TerminalIncidentPattern(
+      id: 'claude.api_error',
+      kind: TerminalIncidentKind.requestFailed,
+      severity: TerminalIncidentSeverity.error,
+      // Capture group = status code: the event identity.
+      patterns: [RegExp(r'API Error: (\d+)')],
+    ),
   ];
 
   test('matches first pattern hit and returns matched line', () {
@@ -92,6 +103,17 @@ void main() {
     expect(m.matchedLine, 'API rate limit exceeded');
   });
 
+  test('capture group becomes identity', () {
+    final m = matchIncidentLine('API Error: 500 (attempt 3)', patterns);
+    expect(m!.pattern.id, 'claude.api_error');
+    expect(m.identity, '500'); // attempt counter is noise, outside the group
+  });
+
+  test('no capture group yields null identity', () {
+    final m = matchIncidentLine('rate limit exceeded', patterns);
+    expect(m!.identity, isNull);
+  });
+
   test('no match returns null', () {
     expect(matchIncidentLine('all good here', patterns), isNull);
   });
@@ -100,11 +122,26 @@ void main() {
     expect(matchIncidentLine('rate limit exceeded', const []), isNull);
   });
 
-  test('incident exposes cli/member/line', () {
+  test('kind-level default actions', () {
+    expect(
+      defaultActionsForKind(TerminalIncidentKind.authRequired),
+      contains(TerminalIncidentAction.loginAgain),
+    );
+    expect(
+      defaultActionsForKind(TerminalIncidentKind.updateAvailable),
+      containsAll([TerminalIncidentAction.openTerminal, TerminalIncidentAction.acknowledge]),
+    );
+  });
+
+  test('incident carries resolved presentation/actions/replyOptions', () {
     final incident = TerminalIncident(
       patternId: 'claude.update',
+      identity: null,
       kind: TerminalIncidentKind.updateAvailable,
       severity: TerminalIncidentSeverity.info,
+      presentation: TerminalIncidentPresentation.bannerOnly,
+      actions: defaultActionsForKind(TerminalIncidentKind.updateAvailable),
+      replyOptions: const [],
       cli: 'claude',
       sessionId: 's1',
       memberId: 'm1',
@@ -113,6 +150,33 @@ void main() {
     );
     expect(incident.patternId, 'claude.update');
     expect(incident.memberId, 'm1');
+    expect(incident.presentation, TerminalIncidentPresentation.bannerOnly);
+    expect(incident.actions, contains(TerminalIncidentAction.acknowledge));
+  });
+
+  test('equality keyed on seat/pattern/identity/timestamp', () {
+    TerminalIncident base() => TerminalIncident(
+      patternId: 'p', identity: '500',
+      kind: TerminalIncidentKind.requestFailed,
+      severity: TerminalIncidentSeverity.error,
+      presentation: TerminalIncidentPresentation.actionCard,
+      actions: defaultActionsForKind(TerminalIncidentKind.requestFailed),
+      replyOptions: const [],
+      cli: 'claude', sessionId: 's', memberId: 'm', matchedLine: 'l',
+      timestamp: DateTime.fromMillisecondsSinceEpoch(5),
+    );
+    expect(base(), base()); // matchedLine differs between calls — identity doesn't
+    final other = TerminalIncident(
+      patternId: 'p', identity: '502',
+      kind: TerminalIncidentKind.requestFailed,
+      severity: TerminalIncidentSeverity.error,
+      presentation: TerminalIncidentPresentation.actionCard,
+      actions: defaultActionsForKind(TerminalIncidentKind.requestFailed),
+      replyOptions: const [],
+      cli: 'claude', sessionId: 's', memberId: 'm', matchedLine: 'l',
+      timestamp: DateTime.fromMillisecondsSinceEpoch(5),
+    );
+    expect(base(), isNot(other)); // different identity → different event
   });
 }
 ```
@@ -140,28 +204,115 @@ enum TerminalIncidentKind {
 
 enum TerminalIncidentSeverity { info, warning, error }
 
+/// bannerOnly: single-line notice. actionCard: card with action buttons.
+enum TerminalIncidentPresentation { bannerOnly, actionCard }
+
+/// Closed action set for the incident card — no open-ended extension.
+enum TerminalIncidentAction {
+  openTerminal,
+  acknowledge,
+  loginAgain,
+  switchProvider,
+  copyLine,
+}
+
+/// One keystroke-injection option: renders as a card button; tapping injects
+/// [inject] into the member PTY (same paste+CR pipeline as in-chat
+/// AskUserQuestion answers). Only patterns that explicitly declare options
+/// get injection buttons; ≤ 4 options per pattern.
+final class TerminalIncidentReplyOption {
+  const TerminalIncidentReplyOption({
+    required this.id,
+    required this.labelKey,
+    required this.inject,
+  });
+
+  final String id;
+  final String labelKey;
+  final String inject;
+}
+
+/// Kind-level default actions (pattern `actions: null` falls back to these).
+List<TerminalIncidentAction> defaultActionsForKind(TerminalIncidentKind kind) =>
+    switch (kind) {
+      TerminalIncidentKind.updateAvailable => const [
+        TerminalIncidentAction.openTerminal,
+        TerminalIncidentAction.acknowledge,
+      ],
+      TerminalIncidentKind.creditExhausted => const [
+        TerminalIncidentAction.switchProvider,
+        TerminalIncidentAction.openTerminal,
+        TerminalIncidentAction.acknowledge,
+      ],
+      TerminalIncidentKind.authRequired => const [
+        TerminalIncidentAction.loginAgain,
+        TerminalIncidentAction.openTerminal,
+        TerminalIncidentAction.acknowledge,
+      ],
+      TerminalIncidentKind.rateLimited => const [
+        TerminalIncidentAction.switchProvider,
+        TerminalIncidentAction.openTerminal,
+        TerminalIncidentAction.acknowledge,
+      ],
+      TerminalIncidentKind.requestFailed => const [
+        TerminalIncidentAction.openTerminal,
+        TerminalIncidentAction.copyLine,
+      ],
+      TerminalIncidentKind.timeout => const [
+        TerminalIncidentAction.openTerminal,
+        TerminalIncidentAction.copyLine,
+      ],
+      TerminalIncidentKind.networkError => const [
+        TerminalIncidentAction.openTerminal,
+        TerminalIncidentAction.copyLine,
+      ],
+      TerminalIncidentKind.other => const [
+        TerminalIncidentAction.openTerminal,
+        TerminalIncidentAction.acknowledge,
+      ],
+    };
+
 /// One declarable detection rule: any of [patterns] matching a rendered
 /// terminal line raises a [TerminalIncident] of [kind].
+///
+/// **Capture-group convention**: the first regex capture group (if any)
+/// encloses the event identity used for dedup/folding — stable event content
+/// inside, varying noise (retry counters, timestamps) outside. No group →
+/// identity null → pattern-level dedup.
 final class TerminalIncidentPattern {
   const TerminalIncidentPattern({
     required this.id,
     required this.kind,
     required this.severity,
     required this.patterns,
+    this.presentation = TerminalIncidentPresentation.actionCard,
+    this.actions,
+    this.replyOptions,
   });
 
   final String id;
   final TerminalIncidentKind kind;
   final TerminalIncidentSeverity severity;
   final List<RegExp> patterns;
+  final TerminalIncidentPresentation presentation;
+
+  /// Null → [defaultActionsForKind].
+  final List<TerminalIncidentAction>? actions;
+
+  /// Null → none. Injection options only for explicitly declared patterns.
+  final List<TerminalIncidentReplyOption>? replyOptions;
 }
 
 /// Runtime record of one detected incident for the event stream.
 final class TerminalIncident {
   const TerminalIncident({
     required this.patternId,
+    required this.identity,
     required this.kind,
     required this.severity,
+    required this.presentation,
+    required this.actions,
+    required this.replyOptions,
     required this.cli,
     required this.sessionId,
     required this.memberId,
@@ -170,30 +321,51 @@ final class TerminalIncident {
   });
 
   final String patternId;
+
+  /// Capture-group value (event identity) or null for pattern-level dedup.
+  final String? identity;
   final TerminalIncidentKind kind;
   final TerminalIncidentSeverity severity;
+  final TerminalIncidentPresentation presentation;
+  final List<TerminalIncidentAction> actions;
+  final List<TerminalIncidentReplyOption> replyOptions;
   final String cli;
   final String sessionId;
   final String memberId;
   final String matchedLine;
   final DateTime timestamp;
 
+  /// Stable identity for acknowledge bookkeeping.
+  String get key =>
+      '$sessionId $memberId $patternId ${identity ?? ''} '
+      '${timestamp.microsecondsSinceEpoch}';
+
+  @override
+  bool operator ==(Object other) =>
+      other is TerminalIncident && other.key == key;
+
+  @override
+  int get hashCode => key.hashCode;
+
   @override
   String toString() => 'TerminalIncident($cli $kind $patternId)';
 }
 
 typedef TerminalIncidentMatch =
-    ({TerminalIncidentPattern pattern, String matchedLine});
+    ({TerminalIncidentPattern pattern, String? identity, String matchedLine});
 
-/// First pattern hit on [line], or null when nothing matches.
+/// First pattern hit on [line], or null when nothing matches. Uses
+/// [RegExp.firstMatch]; `identity` is capture group 1 when present.
 TerminalIncidentMatch? matchIncidentLine(
   String line,
   List<TerminalIncidentPattern> patterns,
 ) {
   for (final pattern in patterns) {
     for (final regex in pattern.patterns) {
-      if (regex.hasMatch(line)) {
-        return (pattern: pattern, matchedLine: line);
+      final match = regex.firstMatch(line);
+      if (match != null) {
+        final identity = regex.pattern.contains('(') ? match.group(1) : null;
+        return (pattern: pattern, identity: identity, matchedLine: line);
       }
     }
   }
@@ -204,7 +376,7 @@ TerminalIncidentMatch? matchIncidentLine(
 - [ ] **Step 4: Run test to verify it passes**
 
 Run: `cd client && dart run tool/run_tests.dart test/services/terminal/incident/terminal_incident_test.dart`
-Expected: PASS (4 tests).
+Expected: PASS (9 tests).
 
 - [ ] **Step 5: Commit**
 
@@ -238,8 +410,8 @@ git commit -m "feat: terminal incident model and line matcher"
 
 Behavior spec (all covered by tests):
 - utf8 decode with `allowMalformed: true`; strip ANSI escapes with `RegExp(r'\x1B\[[0-9;]*[A-Za-z]')` (same approach as `CredentialLoginUrlDetector.stripAnsi`); hold a pending partial line across chunks; emit complete lines on `\n` (also `\r\n`); discard empty/whitespace-only lines.
-- On a line match: build `TerminalIncident` (cli from `seat.cli?.value ?? ''`, sessionId/memberId from seat, timestamp from `clock`), call `onIncident`, and set attention waiting via `seat.attention.applyEvent(... AgentStatusEvent(state: AgentSeatAttention.waiting) ...)` when `seat.attention != null`, with `skipPermissions: false` (incidents are informational — the user must see them even when permissions are skipped; `isInteractiveWaiting` does not apply so pass `false` only because the signature requires it — verify no gate drops the event; if `applyEvent` with a plain waiting event is dropped when `skipPermissions` is true, call with `false` regardless since we control the caller here, and note it in a comment).
-- Dedupe: same `(patternId)` — one hit per turn is impossible to observe here, so use the cooldown only: skip a hit when the same `patternId` fired within `cooldown` (default 30s). The turn-level reset is unnecessary state; cooldown covers retry storms.
+- On a line match: build `TerminalIncident` (identity from match, actions resolved via `actions ?? defaultActionsForKind`, replyOptions `?? const []`, cli from `seat.cli?.value ?? ''`, sessionId/memberId from seat, timestamp from `clock`), call `onIncident`, and set attention waiting via `seat.attention.applyEvent(... AgentStatusEvent(state: AgentSeatAttention.waiting) ...)` when `seat.attention != null`, with `skipPermissions: false` (incidents are informational — the user must see them even when permissions are skipped; note it in a comment).
+- Dedupe (module level): cooldown keyed on `(patternId, identity)` — skip a hit when the same key fired within `cooldown` (default 30s). Long-term repeats across cooldown boundaries are handled by cubit folding (Task 5); reclaim-reconnect replays also fold there because the folding key is identical.
 - All decode/match/handler exceptions → `AppLogger.instance.e('IncidentDetectionModule failed', error:, stackTrace:, recordError: false)` and continue.
 
 - [ ] **Step 1: Write the failing test**
@@ -327,7 +499,7 @@ void main() {
   });
 
   group('cooldown dedupe', () {
-    test('same pattern twice in cooldown fires once', () {
+    test('same (pattern, identity) twice in cooldown fires once', () {
       final incidents = <TerminalIncident>[];
       var now = DateTime(2026);
       final bus = TerminalObservationBus(seat: seatWith());
@@ -342,6 +514,27 @@ void main() {
       now = now.add(const Duration(seconds: 31));
       bus.dispatchOutput(Uint8List.fromList('rate limit c\n'.codeUnits));
       expect(incidents.length, 2);
+      bus.dispose();
+    });
+
+    test('different identity bypasses cooldown', () {
+      final withGroup = [
+        const TerminalIncidentPattern(
+          id: 'test.api_error',
+          kind: TerminalIncidentKind.requestFailed,
+          severity: TerminalIncidentSeverity.error,
+          patterns: [RegExp(r'API Error: (\d+)')],
+        ),
+      ];
+      final incidents = <TerminalIncident>[];
+      final bus = TerminalObservationBus(seat: seatWith());
+      IncidentDetectionModule(
+        patterns: withGroup,
+        onIncident: incidents.add,
+      ).bind(bus, bus.seat);
+      bus.dispatchOutput(Uint8List.fromList('API Error: 500\n'.codeUnits));
+      bus.dispatchOutput(Uint8List.fromList('API Error: 502\n'.codeUnits));
+      expect(incidents.length, 2); // distinct identities are distinct events
       bus.dispose();
     });
   });
@@ -363,6 +556,7 @@ void main() {
       );
       expect(incidents.single.cli, 'claude');
       expect(incidents.single.memberId, 'm1');
+      expect(incidents.single.actions, isNotEmpty); // resolved defaults
       bus.dispose();
     });
 
@@ -447,7 +641,10 @@ final class IncidentDetectionModule implements TerminalObservationContributor {
   static final RegExp _ansi = RegExp(r'\x1B\[[0-9;]*[A-Za-z]');
 
   final _pendingLine = StringBuffer();
-  final Map<String, DateTime> _lastFiredAt = {};
+  final Map<String, DateTime> _lastFiredAt = {}; // key: patternId \0 identity
+
+  static String _dedupeKey(TerminalIncidentMatch match) =>
+      '${match.pattern.id}\u0000${match.identity ?? ''}';
 
   @override
   TerminalObservationBinding bind(
@@ -493,14 +690,20 @@ final class IncidentDetectionModule implements TerminalObservationContributor {
     if (match == null) return;
 
     final now = _clock();
-    final last = _lastFiredAt[match.pattern.id];
+    final dedupeKey = _dedupeKey(match);
+    final last = _lastFiredAt[dedupeKey];
     if (last != null && now.difference(last) < cooldown) return;
-    _lastFiredAt[match.pattern.id] = now;
+    _lastFiredAt[dedupeKey] = now;
 
     final incident = TerminalIncident(
       patternId: match.pattern.id,
+      identity: match.identity,
       kind: match.pattern.kind,
       severity: match.pattern.severity,
+      presentation: match.pattern.presentation,
+      actions: match.pattern.actions ??
+          defaultActionsForKind(match.pattern.kind),
+      replyOptions: match.pattern.replyOptions ?? const [],
       cli: seat.cli?.value ?? '',
       sessionId: seat.sessionId,
       memberId: seat.memberId,
@@ -551,7 +754,7 @@ Note: the observer captures the bind-time seat; `_onOutput` signature keeps the 
 - [ ] **Step 4: Run test to verify it passes**
 
 Run: `cd client && dart run tool/run_tests.dart test/services/terminal/incident/incident_detection_module_test.dart`
-Expected: PASS (7 tests).
+Expected: PASS (8 tests).
 
 - [ ] **Step 5: Commit**
 
@@ -793,7 +996,22 @@ git commit -m "feat: terminal incident capability and pattern registry"
 - Consumes: `TerminalIncidentCapability`, `TerminalIncidentPattern`, kinds/severities (Tasks 1/3).
 - Produces (used by tests and registry resolution): `ClaudeTerminalIncidents` (const class implementing `TerminalIncidentCapability`), and `terminalIncidents` field on each `*CliTool` class of type `TerminalIncidentCapability?` (constructor default `const ClaudeTerminalIncidents()` etc.), appended to `capabilities` lists.
 
-Pattern tables (starting point — each pattern carries a doc comment citing the CLI message it matches; extend during verification against real output):
+Pattern tables (starting point — each pattern carries a doc comment citing the CLI message it matches; extend during verification against real output). **Anchor convention**: where a line has stable prefix + variable event content, put the event identity in the first capture group and leave noise (attempt counters, timestamps) outside — see Task 1's capture-group convention. **Presentation defaults**: `updateAvailable` patterns use `presentation: bannerOnly` (notice, no card); error-kind patterns stay `actionCard`. `replyOptions` example — a CLI quota prompt that accepts `y`/`n` in-terminal:
+
+```dart
+TerminalIncidentPattern(
+  id: 'claude.credit_prompt',
+  kind: TerminalIncidentKind.creditExhausted,
+  severity: TerminalIncidentSeverity.error,
+  patterns: [RegExp(r'Approve continued usage at standard rates\? \((y|n)\)')],
+  replyOptions: [
+    TerminalIncidentReplyOption(id: 'yes', labelKey: 'terminalIncidentReplyApprove', inject: 'y'),
+    TerminalIncidentReplyOption(id: 'no', labelKey: 'terminalIncidentReplyDecline', inject: 'n'),
+  ],
+),
+```
+
+(Include it in the claude table only if the real CLI prints such a prompt — the shape is the reference for any future reply-capable pattern. Its capture group `(y|n)` doubles as identity so repeat prompts fold.)
 
 ```dart
 // client/lib/services/cli/claude/capabilities/terminal_incidents.dart
@@ -1013,49 +1231,23 @@ git commit -m "feat: built-in terminal incident tables for five CLIs"
     int openCountFor({required String sessionId, required String memberId});
   }
   class TerminalIncidentCubit extends Cubit<TerminalIncidentState> {
-    void report(TerminalIncident incident);        // append + emit
-    void acknowledge(TerminalIncident incident);   // mark status acknowledged
+    void report(TerminalIncident incident);        // fold or append, cap per seat
+    void acknowledge(TerminalIncident incident);   // mark acknowledged
+    void acknowledgeSeat({required String sessionId, required String memberId});
     void clearSession(String sessionId);           // drop session rows (seat dispose)
     void clearSeat({required String sessionId, required String memberId});
   }
   ```
-  Acknowledge is modeled by holding `openIncidentIds: Set<String>` in state — but `TerminalIncident` (Task 1) is immutable without status. To avoid touching Task 1's shape, the cubit wraps: state holds `incidents: List<TerminalIncident>` and `acknowledgedIds: Set<String>` (identity = object equality via `==` on all fields + `timestamp`; give `TerminalIncident` an `Equatable`-style `==`/`hashCode` via `Object.hash` of all fields in Task 1 — **amend Task 1 in this task**: add `operator ==`/`hashCode`/`props` to `TerminalIncident`, and a `String get key => '$sessionId $memberId $timestamp $patternId'` stable identity). State API:
+  Acknowledge is modeled via `acknowledgedIds: Set<String>` in state, identity = `TerminalIncident.key` (equality lives on the model since Task 1 — no amendment step here). State API:
   - `bool isAcknowledged(TerminalIncident incident) => acknowledgedIds.contains(incident.key)`
   - `openFor(...)` = incidents for the seat without acknowledged keys.
+  - **Folding**: `report` first looks for an existing open (not acknowledged) incident with the same fold key `(sessionId, memberId, patternId, identity)`. Found → replace it with the new incident (fresh timestamp + matchedLine). Not found → append. Folding covers cross-cooldown repeats, terminal reclaim-reconnect replays (module rebinds with empty cooldown state but the fold key is unchanged), and fullscreen TUI repaints re-emitting the same message.
+  - **Cap**: after fold/append, if the seat's total (open + acknowledged) exceeds `maxPerSeat` (default 50, constructor param) drop that seat's oldest entries until within cap.
+  - `acknowledgeSeat` acknowledges all currently-open incidents of a seat (banner "Got it" acts on all open rows at once).
 
-- [ ] **Step 1: Amend Task 1 model (equality + key)**
+- [ ] **Step 1: Write the failing cubit test**
 
-Add to `TerminalIncident` in `terminal_incident.dart`:
 
-```dart
-  /// Stable identity for acknowledge bookkeeping.
-  String get key => '$sessionId $memberId $patternId '
-      '${timestamp.microsecondsSinceEpoch}';
-
-  @override
-  bool operator ==(Object other) =>
-      other is TerminalIncident && other.key == key;
-
-  @override
-  int get hashCode => key.hashCode;
-```
-
-Update `terminal_incident_test.dart` with:
-```dart
-  test('equality keyed on seat/pattern/timestamp', () {
-    final a = TerminalIncident(patternId: 'p', kind: TerminalIncidentKind.other,
-        severity: TerminalIncidentSeverity.info, cli: 'claude',
-        sessionId: 's', memberId: 'm', matchedLine: 'l',
-        timestamp: DateTime.fromMillisecondsSinceEpoch(5));
-    final b = TerminalIncident(patternId: 'p', kind: TerminalIncidentKind.other,
-        severity: TerminalIncidentSeverity.info, cli: 'claude',
-        sessionId: 's', memberId: 'm', matchedLine: 'other line',
-        timestamp: DateTime.fromMillisecondsSinceEpoch(5));
-    expect(a, b); // matchedLine differs, identity doesn't
-  });
-```
-
-- [ ] **Step 2: Write the failing cubit test**
 
 ```dart
 // client/test/cubits/terminal_incident_cubit_test.dart
@@ -1066,11 +1258,16 @@ import 'package:teampilot/services/terminal/incident/terminal_incident.dart';
 TerminalIncident _incident(
   String memberId, {
   String patternId = 'p',
+  String? identity,
   int ms = 0,
 }) => TerminalIncident(
   patternId: patternId,
+  identity: identity,
   kind: TerminalIncidentKind.rateLimited,
   severity: TerminalIncidentSeverity.warning,
+  presentation: TerminalIncidentPresentation.actionCard,
+  actions: defaultActionsForKind(TerminalIncidentKind.rateLimited),
+  replyOptions: const [],
   cli: 'claude',
   sessionId: 's1',
   memberId: memberId,
@@ -1106,6 +1303,44 @@ void main() {
     cubit.clearSeat(sessionId: 's1', memberId: 'm1');
     expect(cubit.state.incidents.length, 1);
     expect(cubit.state.incidents.single.memberId, 'm2');
+  });
+
+  test('report folds same-key repeats instead of appending', () {
+    final cubit = TerminalIncidentCubit();
+    addTearDown(cubit.close);
+    cubit.report(_incident('m1', ms: 0));
+    cubit.report(_incident('m1', ms: 1000)); // same fold key, later timestamp
+    expect(cubit.state.incidents.length, 1);
+    expect(cubit.state.incidents.single.timestamp,
+        DateTime.fromMillisecondsSinceEpoch(1000)); // refreshed
+  });
+
+  test('different identity does not fold', () {
+    final cubit = TerminalIncidentCubit();
+    addTearDown(cubit.close);
+    cubit.report(_incident('m1', patternId: 'p', ms: 0));
+    cubit.report(_incident('m1', patternId: 'p', identity: '500', ms: 0));
+    expect(cubit.state.incidents.length, 2);
+  });
+
+  test('seat cap drops oldest beyond maxPerSeat', () {
+    final cubit = TerminalIncidentCubit(maxPerSeat: 3);
+    addTearDown(cubit.close);
+    for (var i = 0; i < 5; i++) {
+      cubit.report(_incident('m1', patternId: 'p$i', ms: i));
+    }
+    expect(cubit.state.incidents.length, 3);
+    expect(cubit.state.incidents.first.patternId, 'p2'); // p0/p1 dropped
+  });
+
+  test('acknowledgeSeat acknowledges all open rows', () {
+    final cubit = TerminalIncidentCubit();
+    addTearDown(cubit.close);
+    cubit.report(_incident('m1', patternId: 'a'));
+    cubit.report(_incident('m1', patternId: 'b'));
+    cubit.acknowledgeSeat(sessionId: 's1', memberId: 'm1');
+    expect(cubit.state.openFor(sessionId: 's1', memberId: 'm1'), isEmpty);
+    expect(cubit.state.incidents.length, 2); // records kept
   });
 
   test('clearSession drops the session', () {
@@ -1169,15 +1404,65 @@ class TerminalIncidentState extends Equatable {
 
 /// App-scoped; seats report incidents, the chat banner and member tiles read.
 class TerminalIncidentCubit extends Cubit<TerminalIncidentState> {
-  TerminalIncidentCubit() : super(const TerminalIncidentState());
+  TerminalIncidentCubit({this.maxPerSeat = 50})
+    : super(const TerminalIncidentState());
 
+  /// Per-seat cap (open + acknowledged) — bounded memory.
+  final int maxPerSeat;
+
+  /// Fold same-key repeats, then cap. Fold key: (sessionId, memberId,
+  /// patternId, identity). Only open (unacknowledged) rows fold; a repeat of
+  /// an acknowledged event appends as a fresh open row.
   void report(TerminalIncident incident) {
-    emit(state.copyWith(incidents: [...state.incidents, incident]));
+    final foldIndex = state.incidents.indexWhere(
+      (i) =>
+          i.sessionId == incident.sessionId &&
+          i.memberId == incident.memberId &&
+          i.patternId == incident.patternId &&
+          i.identity == incident.identity &&
+          !state.isAcknowledged(i),
+    );
+    var incidents = [...state.incidents];
+    if (foldIndex >= 0) {
+      incidents[foldIndex] = incident; // refresh timestamp + matchedLine
+    } else {
+      incidents.add(incident);
+    }
+    incidents = _capSeat(incidents, incident);
+    emit(state.copyWith(incidents: incidents));
+  }
+
+  List<TerminalIncident> _capSeat(
+    List<TerminalIncident> incidents,
+    TerminalIncident seat,
+  ) {
+    final seatRows = incidents
+        .where(
+          (i) => i.sessionId == seat.sessionId && i.memberId == seat.memberId,
+        )
+        .toList();
+    if (seatRows.length <= maxPerSeat) return incidents;
+    final drop = seatRows.take(seatRows.length - maxPerSeat).toSet();
+    return incidents.where((i) => !drop.contains(i)).toList();
   }
 
   void acknowledge(TerminalIncident incident) {
     if (state.isAcknowledged(incident)) return;
     emit(state.copyWith(acknowledgedIds: {...state.acknowledgedIds, incident.key}));
+  }
+
+  /// Banner "Got it": acknowledge every open row of the seat at once.
+  void acknowledgeSeat({required String sessionId, required String memberId}) {
+    final open = state.openFor(sessionId: sessionId, memberId: memberId);
+    if (open.isEmpty) return;
+    emit(
+      state.copyWith(
+        acknowledgedIds: {
+          ...state.acknowledgedIds,
+          for (final i in open) i.key,
+        },
+      ),
+    );
   }
 
   void clearSeat({required String sessionId, required String memberId}) {
@@ -1243,6 +1528,7 @@ git commit -m "feat: terminal incident cubit event stream"
     ```
     Note: `TerminalSession` currently resolves capabilities via `CliToolRegistry.builtIn()` in `_cliCapabilities` (line 544-547). Reuse that same call for the registry argument — do not add a new constructor dependency; if `TerminalSession` already has a registry field, use it.
   - Seat teardown: `clearAgentStatusSessionSeats` in `session_launch_host.dart` (line ~186) gains `TerminalIncidentCubit? incidents` param + `incidents?.clearSession(sessionId)`; the seat-level variant (line ~190 `clearAgentStatusSeat`) gains the same with `clearSeat`. Update its two call sites in `session_shell_connector.dart` (lines ~640, ~647) to pass `_host.terminalIncidentCubit`.
+  - **Reply injection handler**: `SessionLaunchHost` gains `Future<bool> Function(String sessionId, String memberId, String injectText)? get replyInjector;` (null in tests). Production implementation lives on `ChatCubit`: resolve the member's live `TerminalSession` via the tab store, then run one `MemberPtyInjectService.deliver` with that session's input controller + screen probe controller (mirror how `AskUserQuestionAnswerService` obtains them — read `ask_user_question_answer_service.dart` and follow the same resolution path). Returns true on `FullscreenPtyDeliveryOutcome` success, false when the PTY is disconnected/reclaimed. The banner (Task 7) receives this as its `onReplyInject` param at the compose-section insertion site via `context.read<ChatCubit>().replyInjector`-style closure; the success path acknowledges + clears waiting inside the banner's handler, not the service.
   - App wiring (do in this task so the feature is live end-to-end): `app/app_shell.dart` — create `final terminalIncidentCubit = TerminalIncidentCubit();` next to `agentAttentionCubit` (line 1758), pass to `ChatCubit(...)` (line ~1848, new named param `terminalIncidentCubit`), add field to `AppShell` constructor (line ~384 region, `required this.terminalIncidentCubit`) + field decl (next to `agentAttentionCubit` at 489), pass at the `AppShell(...)` construction (line ~2593), and add `BlocProvider.value(value: shell.terminalIncidentCubit)` in `main.dart` next to `agentAttentionCubit` (line 726).
 
 - [ ] **Step 1: Write the failing test**
@@ -1311,7 +1597,17 @@ git commit -m "feat: wire incident detection into session launch"
     final String selectedMemberId;
   }
   ```
-  Renders `const SizedBox.shrink()` when no open incidents for the resolved seat. Otherwise a colored `Material` bar (error → `cs.errorContainer`, warning → `cs.tertiaryContainer`, info → `cs.secondaryContainer`), icon (bolt/error/warning/info respectively), one-line kind label + count, expandable matched line (tap toggles a `Text` with `maxLines: 3`), and two `TpButton`s: 「查看终端」 and 「知道了」(acknowledge-all-open for the seat).
+  Renders `const SizedBox.shrink()` when no open incidents for the resolved seat. Otherwise a colored `Material` bar (error → `cs.errorContainer`, warning → `cs.tertiaryContainer`, info → `cs.secondaryContainer`), icon (bolt/error/warning/info respectively), kind label + open count, expandable matched line (tap toggles a `Text` with `maxLines: 3`; the card holds the full line even after it scrolled out of terminal scrollback).
+
+  Presentation comes from the incident:
+  - `bannerOnly` → single-line notice + 「知道了」 only (default for update notices).
+  - `actionCard` → action buttons from `incident.actions` (closed set):
+    - `openTerminal` → jump to the member terminal (same select-member + `setSessionWorkbenchView` semantics as `AgentPermissionAttentionBanner._openTerminal`).
+    - `acknowledge` → 「知道了」.
+    - `loginAgain` → navigate to the existing provider credential login UI for the seat's CLI (reuse `ProviderCredentialHost` entry points — no new login flow).
+    - `switchProvider` → open the model/provider picker for the seat.
+    - `copyLine` → `Clipboard.setData` with the matched line.
+  - **replyOptions 按键模拟**: buttons from `incident.replyOptions`; tap → inject `option.inject` text into the member PTY via the seat's `MemberPtyInjectService` (paste+CR, same pipeline as in-chat AskUserQuestion answers). Injection takes the `TerminalInputController` + probe for that member's session (resolve via the same tab/pod plumbing the AskUserQuestion answer service uses; if the member PTY is not currently connected — reclaimed — fall back to `openTerminal` only and disable the button). On success: acknowledge the incident and clear the seat's waiting attention (`AgentAttentionCubit` → working). Safety: only patterns that explicitly declare `replyOptions` produce inject buttons (≤ 4); injected text is data typed into the CLI's own prompt, never a shell command.
 
 l10n keys (en / zh pairs — add to both arb files):
 ```
@@ -1325,8 +1621,13 @@ terminalIncidentBannerNetworkError / "CLI network error — check the Terminal."
 terminalIncidentBannerOther / "CLI needs your attention in the Terminal."
 terminalIncidentOpenTerminal / "Open Terminal"
 terminalIncidentAcknowledge / "Got it"
+terminalIncidentLoginAgain / "Log in again"
+terminalIncidentSwitchProvider / "Switch provider"
+terminalIncidentCopyLine / "Copy line"
+terminalIncidentReplyApprove / "Approve"
+terminalIncidentReplyDecline / "Decline"
 ```
-(zh: 依次 "CLI 有可用更新，请查看终端。" / "CLI 额度可能已用尽，需要你确认。" / "CLI 登录已失效，需要你确认。" / "CLI 已被限流，请查看终端。" / "CLI 请求失败，请查看终端。" / "CLI 请求超时，请查看终端。" / "CLI 网络错误，请查看终端。" / "CLI 需要你在终端中确认。" / "查看终端" / "知道了")
+(zh: 依次 "CLI 有可用更新，请查看终端。" / "CLI 额度可能已用尽，需要你确认。" / "CLI 登录已失效，需要你确认。" / "CLI 已被限流，请查看终端。" / "CLI 请求失败，请查看终端。" / "CLI 请求超时，请查看终端。" / "CLI 网络错误，请查看终端。" / "CLI 需要你在终端中确认。" / "查看终端" / "知道了" / "重新登录" / "切换 Provider" / "复制该行" / "同意" / "拒绝")
 Kind label method: `String terminalIncidentLabel(AppLocalizations l10n, TerminalIncidentKind kind)` — exhaustive `switch` on kind inside the banner file.
 
 跳终端 reuses the exact `_openTerminal` semantics from `AgentPermissionAttentionBanner` (select member + `setSessionWorkbenchView(sessionId, SessionWorkbenchView.terminal)` via `context.read<ChatCubit>()`) — replicate as a private method, do not refactor the existing banner.
@@ -1371,8 +1672,11 @@ void main() {
 ```
 
 `TerminalIncidentBannerFixture` / `fixtureSession` are scaffolding (AppSession fake + optional ChatCubit provider) modeled on existing chat widget tests — locate the nearest existing test that constructs `AppSession` (e.g. in `client/test/pages/chat/`) and copy its fake. Additional cases to include in the same file once scaffolding exists:
-- error-severity incident → banner visible, error container color, 'Got it' button tap acknowledges (cubit openFor becomes empty).
+- error-severity incident → banner visible, error container color, 'Got it' button tap acknowledges (cubit openFor becomes empty; use `acknowledgeSeat`).
 - 'Open Terminal' tap → calls `ChatCubit.selectMember`/`setSessionWorkbenchView` (assert via a recording fake ChatCubit — mirror how existing permission banner tests assert the terminal jump).
+- `bannerOnly` incident → only the notice line + 'Got it' render; no other action buttons.
+- `actionCard` incident with `loginAgain`/`copyLine` actions → corresponding buttons render; `copyLine` tap puts the matched line on the clipboard (`Clipboard` via `TesterBinding.defaultBinaryMessenger` mock).
+- `replyOptions` incident → option buttons render; tap invokes the injected reply handler (constructor param `Future<bool> Function(TerminalIncident, TerminalIncidentReplyOption)? onReplyInject`, default null → buttons disabled) with the right option; when the handler returns true the incident is acknowledged and the waiting attention cleared (fake `AgentAttentionCubit` assert). The production `onReplyInject` is wired in Task 6's host plumbing to call `MemberPtyInjectService` with the seat's input controller + probe; the widget test injects a fake handler so the PTY machinery stays out of widget tests.
 
 - [ ] **Step 2: Run test to verify it fails**
 
@@ -1522,6 +1826,7 @@ git commit -m "docs: terminal incident pattern matrix"
 
 ## Self-Review Notes
 
-- Spec coverage: pattern tables (Task 4), engine with decode/strip/dedupe/cooldown (Task 2), capability interface + shared claude family table (Tasks 3-4), waiting + event stream dual channel (Task 2 attention + Task 5 cubit), banner with terminal jump/acknowledge (Task 7), user rules with validation + merge order (Tasks 3/8), members-panel badge (Task 8), SSH+local coverage via bus (Task 6 wiring), l10n (Tasks 7/8), doc backfill (Task 9). Runtime-phase-only gating matches spec (LaunchStartModule owns spawn/confirm).
-- Turn-level dedupe from the spec was simplified to cooldown-only during planning (Task 2 behavior spec) — cooldown is the user-visible requirement; turn tracking would add state without user benefit. Flagged here as a deliberate deviation; if wanted later it's additive.
-- Type consistency: `TerminalIncident`/`TerminalIncidentPattern`/`matchIncidentLine` used identically across tasks; cubit method names (`report`, `acknowledge`, `clearSeat`, `clearSession`, `openFor`, `openCountFor`) consistent between Tasks 5, 7, 8.
+- Spec coverage: pattern tables with anchor convention + presentation defaults (Task 4), engine with decode/strip/identity-keyed cooldown/exception bounds (Task 2), capability interface + shared claude family table (Tasks 3-4), waiting + event stream dual channel with folding and per-seat cap (Task 2 attention + Task 5 cubit), banner/card with closed action set, terminal jump, acknowledge, login/provider/copy actions, reply-option PTY injection (Task 7), user rules with validation + merge order (Tasks 3/8), members-panel badge (Task 8), SSH+local coverage via bus (Task 6 wiring), reply injection production handler (Task 6 host), l10n (Tasks 7/8), doc backfill (Task 9). Runtime-phase-only gating matches spec (LaunchStartModule owns spawn/confirm).
+- Turn-level dedupe from the original spec was replaced during review by the capture-group identity design: dedup/folding key is `(patternId, identity)` where identity is regex capture group 1 (stable event content, noise outside). Folding handles cross-cooldown repeats, reclaim-reconnect replays, and TUI repaints; per-seat cap (50) bounds memory. This supersedes both the turn-level idea and the plain patternId cooldown.
+- Terminal scrollback is irrelevant to detection (engine reads the byte stream, not the rendered screen); the card retains the full matched line so scrolled-away content stays visible in chat.
+- Type consistency: `TerminalIncident`/`TerminalIncidentPattern`/`TerminalIncidentMatch` (with `identity`)/`matchIncidentLine` used identically across tasks; cubit methods (`report` fold+cap, `acknowledge`, `acknowledgeSeat`, `clearSeat`, `clearSession`, `openFor`, `openCountFor`) consistent between Tasks 5, 7, 8; `replyInjector` host accessor defined in Task 6, consumed as the banner's `onReplyInject` in Task 7.
