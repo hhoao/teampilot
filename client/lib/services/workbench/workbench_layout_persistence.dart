@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import '../../cubits/chat_cubit.dart';
+import '../../cubits/chat/model/chat_tab.dart';
 import '../../cubits/workbench/workbench_cubit.dart';
 import '../../cubits/workbench/workbench_tab.dart';
 import '../../cubits/workbench/workbench_tab_bar.dart';
@@ -107,10 +108,9 @@ class WorkbenchLayoutPersistence {
     if (_restored.contains(id)) return;
     _restored.add(id);
     _restoreInFlight = true;
-    final restore = _repositoryFor(id).restore(
-      _workbench,
-      tabResolves: (tab) => _tabResolves(id, tab),
-    );
+    final restore = _repositoryFor(id)
+        .restore(_workbench, tabResolves: (tab) => _tabResolves(id, tab))
+        .then((_) => _registerRestoredSessionTabs(id));
     _restoreFutures[id] = restore;
     try {
       await restore;
@@ -122,6 +122,49 @@ class WorkbenchLayoutPersistence {
       if (!_disposed && _dirty.isNotEmpty) {
         _debounce?.cancel();
         _debounce = Timer(saveDebounce, () => unawaited(_flush()));
+      }
+    }
+  }
+
+  /// The snapshot restores the workbench layouts (tab ids on strips) but NOT
+  /// the ChatCubit tab runtimes — a session tab that no one re-opened has a
+  /// strip entry yet no [ChatTab], so the pane renders its chrome (tab chip,
+  /// highlight) over a blank body. Register a minimal, not-connected
+  /// [ChatTab] for every restored session tab that resolves to a session but
+  /// has no runtime: `WorkbenchBody` then finds its session (history loads
+  /// lazily, exactly like a normal unconnected open).
+  void _registerRestoredSessionTabs(String workspaceId) {
+    if (_disposed) return;
+    for (final layout in [
+      _workbench.centerLayout(workspaceId),
+      _workbench.floatingLayout(workspaceId),
+    ]) {
+      for (final strip in layout.groups.values) {
+        for (final tab in strip.order) {
+          if (tab.kind != WorkbenchTabKind.session) continue;
+          final sessionId = tab.id;
+          if (sessionId.isEmpty || sessionId.startsWith('local-')) continue;
+          if (_chat.tabStore.openTabBySessionId(sessionId) != null) continue;
+          final session = _chat.state.sessions
+              .where(
+                (s) =>
+                    s.sessionId == sessionId &&
+                    s.workspaceId == workspaceId,
+              )
+              .firstOrNull;
+          if (session == null) continue;
+          _chat.registerSessionRuntime(
+            ChatTab(
+              info: ChatTabInfo(
+                id: sessionId,
+                title: session.display.isEmpty ? sessionId : session.display,
+                subtitle: '',
+              ),
+              cliTeamName: session.cliTeamName,
+              workspaceId: workspaceId,
+            )..persistedSession = session,
+          );
+        }
       }
     }
   }

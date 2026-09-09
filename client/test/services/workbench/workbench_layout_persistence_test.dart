@@ -13,6 +13,8 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/cubits/chat_cubit.dart';
 import 'package:teampilot/cubits/workbench/workbench_cubit.dart';
 import 'package:teampilot/cubits/workbench/workbench_tab.dart';
+import 'package:teampilot/models/app_session.dart';
+import 'package:teampilot/models/workspace_folder.dart';
 import 'package:teampilot/repositories/automation_repository.dart';
 import 'package:teampilot/repositories/workbench_layout_snapshot_repository.dart';
 import 'package:teampilot/services/storage/workspace_layout.dart';
@@ -189,6 +191,60 @@ void main() {
       expect(workbench.floatingOrder(_ws), [_sh1]);
     });
   });
+
+  test(
+    'resolved session tabs get a ChatTab registered so panes render content',
+    () {
+      withPersistence((async, fs, workbench, chat, persistence) {
+        // Persist a two-group center layout over two session tabs.
+        final seeder = WorkbenchCubit()
+          ..openSession(_ws, 's1')
+          ..openSession(_ws, 's2')
+          ..splitTab(
+            _ws,
+            WorkbenchTabId.session('s2'),
+            axis: Axis.horizontal,
+            before: false,
+          );
+        seedSnapshot(async, fs, seeder);
+        seeder.close();
+
+        // App restart: sessions rehydrate into ChatState (the restore gate
+        // awaits this), but nothing re-opens the tabs.
+        chat.ingestWorkspaceSessionSnapshot(
+          workspaces: [],
+          sessions: [
+            AppSession(
+              sessionId: 's1',
+              workspaceId: _ws,
+              folders: const [WorkspaceFolder(path: '/tmp')],
+              display: 'S one',
+              createdAt: 1,
+              updatedAt: 1,
+            ),
+            AppSession(
+              sessionId: 's2',
+              workspaceId: _ws,
+              folders: const [WorkspaceFolder(path: '/tmp')],
+              display: 'S two',
+              createdAt: 2,
+              updatedAt: 2,
+            ),
+          ],
+        );
+
+        unawaited(persistence.restoreForWorkspace(_ws));
+        async.flushMicrotasks();
+
+        // The layout restores…
+        expect(workbench.centerLayout(_ws).groups.length, 2);
+        // …and each restored session tab resolves to a ChatTab runtime, so
+        // WorkbenchBody can find its session instead of painting blank.
+        expect(chat.tabStore.openTabBySessionId('s1'), isNotNull);
+        expect(chat.tabStore.openTabBySessionId('s2'), isNotNull);
+      });
+    },
+  );
 
   test('restore without a snapshot leaves the bar untouched', () {
     withPersistence((async, _, workbench, _, persistence) {
