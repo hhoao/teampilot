@@ -1,14 +1,18 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:re_editor/re_editor.dart';
 import 'package:teampilot/cubits/editor_cubit.dart';
 import 'package:teampilot/cubits/floating_workspace/floating_workspace_cubit.dart';
 import 'package:teampilot/cubits/workbench/workbench_cubit.dart';
 import 'package:teampilot/l10n/app_localizations.dart';
+import 'package:teampilot/l10n/l10n_extensions.dart';
 import 'package:teampilot/models/layout_preferences.dart';
 import 'package:teampilot/pages/workbench/file_editor_surface.dart';
 import 'package:teampilot/pages/workbench/svg_preview_pane.dart';
+import 'package:teampilot/services/editor/editor_messages.dart';
 import 'package:teampilot/services/editor/markdown_view_mode_store.dart';
+import 'package:teampilot/services/editor/svg_view_mode_store.dart';
 import 'package:teampilot/services/workbench/workbench_editor_opener.dart';
 
 import '../../support/in_memory_filesystem.dart';
@@ -50,10 +54,7 @@ Future<void> _pumpSurface(WidgetTester tester, _Harness harness) async {
           localizationsDelegates: AppLocalizations.localizationsDelegates,
           supportedLocales: AppLocalizations.supportedLocales,
           home: Scaffold(
-            body: FileEditorSurface(
-              workspaceId: 'ws',
-              path: '/repo/icon.svg',
-            ),
+            body: FileEditorSurface(workspaceId: 'ws', path: '/repo/icon.svg'),
           ),
         ),
       ),
@@ -64,8 +65,11 @@ Future<void> _pumpSurface(WidgetTester tester, _Harness harness) async {
   }
 }
 
-Future<_Harness> _createHarness(WidgetTester tester) async {
-  final fs = InMemoryFilesystem()..files['/repo/icon.svg'] = svgSource;
+Future<_Harness> _createHarness(
+  WidgetTester tester, {
+  String source = svgSource,
+}) async {
+  final fs = InMemoryFilesystem()..files['/repo/icon.svg'] = source;
   final editor = EditorCubit(fs: fs);
   final workbench = WorkbenchCubit();
   final floating = FloatingWorkspaceCubit();
@@ -99,10 +103,62 @@ void main() {
 
     final l10n = await AppLocalizations.delegate.load(const Locale('en'));
     await tester.tap(find.byTooltip(l10n.htmlViewToggleEdit));
+    expect(
+      harness.opener.svgViewModes.modeFor('/repo/icon.svg'),
+      SvgViewMode.edit,
+    );
     for (var i = 0; i < 10; i++) {
       await tester.pump(const Duration(milliseconds: 100));
     }
 
     expect(find.byType(SvgPreviewPane), findsNothing);
+  });
+
+  testWidgets('invalid svg can still switch from preview to source editor', (
+    tester,
+  ) async {
+    final harness = await _createHarness(tester, source: 'not an svg');
+    await _pumpSurface(tester, harness);
+    final l10n = await AppLocalizations.delegate.load(const Locale('en'));
+    final errorText = l10n.editorPanelErrorMessage(
+      EditorMessage.imageDecodeFailed,
+    );
+
+    expect(find.text(errorText), findsOneWidget);
+
+    await tester.tap(find.byTooltip(l10n.htmlViewToggleEdit));
+    expect(
+      harness.opener.svgViewModes.modeFor('/repo/icon.svg'),
+      SvgViewMode.edit,
+    );
+    for (var i = 0; i < 10; i++) {
+      await tester.pump(const Duration(milliseconds: 100));
+    }
+
+    expect(find.byType(SvgPreviewPane), findsNothing);
+    expect(find.byType(CodeEditor), findsOneWidget);
+    expect(find.text(errorText), findsNothing);
+
+    final controller = harness.editor.controllerFor('ws', '/repo/icon.svg');
+    expect(controller, isNotNull);
+    controller!.text = svgSource;
+    await tester.runAsync(
+      () => harness.editor.saveFile('ws', '/repo/icon.svg'),
+    );
+    for (var i = 0; i < 10; i++) {
+      await tester.pump(const Duration(milliseconds: 100));
+    }
+
+    expect(
+      harness.editor.state.bucket('ws').errorByPath['/repo/icon.svg'],
+      isNull,
+    );
+    harness.opener.svgViewModes.setMode('/repo/icon.svg', SvgViewMode.preview);
+    for (var i = 0; i < 10; i++) {
+      await tester.pump(const Duration(milliseconds: 100));
+    }
+
+    expect(find.byType(SvgPreviewPane), findsOneWidget);
+    expect(find.text(errorText), findsNothing);
   });
 }

@@ -12,6 +12,7 @@ import 'package:photo_view/photo_view.dart';
 /// `scalePercent` relative to the contained baseline.
 mixin PhotoZoomControllerMixin<T extends StatefulWidget> on State<T> {
   static const zoomStep = 1.25;
+
   /// Absolute PhotoView scale: 1.0 = one image pixel per logical pixel.
   static const nativeScale = 1.0;
   static const minScale = 0.25;
@@ -77,6 +78,8 @@ mixin PhotoZoomControllerMixin<T extends StatefulWidget> on State<T> {
   /// event re-derives them (e.g. the host pane retargeted to a new file and
   /// the old baseline no longer applies).
   void resetZoomBaseline() {
+    controller.reset();
+    scaleStateController.reset();
     _baselineScale = null;
     _scale = null;
     _cappedInitialUpscale = false;

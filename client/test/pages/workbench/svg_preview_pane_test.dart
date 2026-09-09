@@ -132,6 +132,7 @@ Future<void> pumpPane(
   WidgetTester tester, {
   required EditorCubit editor,
   required String path,
+  int pumps = 10,
 }) async {
   await tester.pumpWidget(
     MaterialApp(
@@ -147,7 +148,7 @@ Future<void> pumpPane(
   );
   // Bounded pumps instead of pumpAndSettle: PhotoView keeps scheduling
   // frames after the contained-scale-to-1:1 clamp, which never settles.
-  for (var i = 0; i < 10; i++) {
+  for (var i = 0; i < pumps; i++) {
     await tester.pump(const Duration(milliseconds: 100));
   }
 }
@@ -259,5 +260,47 @@ void main() {
 
     expect(find.byType(SvgPicture), findsOneWidget);
     expect(paneBytes(), utf8.encode(svgV2));
+  });
+
+  testWidgets('retargeting after zoom resets the file zoom baseline', (
+    tester,
+  ) async {
+    final inner = InMemoryFilesystem()
+      ..files['/repo/a.svg'] = svgV1
+      ..files['/repo/b.svg'] = svgV2;
+    final fs = _CountingFilesystem(inner);
+    final editor = EditorCubit(fs: fs);
+    addTearDown(editor.close);
+
+    await pumpPane(tester, editor: editor, path: '/repo/a.svg');
+    final l10n = await AppLocalizations.delegate.load(const Locale('en'));
+    await tester.tap(find.byTooltip(l10n.shortcutsZoomIn));
+    await tester.pump();
+    expect(find.text('125%'), findsOneWidget);
+
+    await pumpPane(tester, editor: editor, path: '/repo/b.svg');
+
+    final photoView = tester.widget<PhotoView>(find.byType(PhotoView));
+    expect(photoView.controller?.scale, isNot(1.25));
+  });
+
+  testWidgets('decode failure stays attached to the path that failed', (
+    tester,
+  ) async {
+    final fs = InMemoryFilesystem()
+      ..files['/repo/a.svg'] = 'not an svg'
+      ..files['/repo/b.svg'] = svgV2;
+    final editor = EditorCubit(fs: fs);
+    addTearDown(editor.close);
+    await tester.runAsync(() => editor.openFile('ws', '/repo/a.svg'));
+
+    await pumpPane(tester, editor: editor, path: '/repo/a.svg');
+    await pumpPane(tester, editor: editor, path: '/repo/b.svg');
+
+    expect(
+      editor.state.bucket('ws').errorByPath['/repo/a.svg'],
+      EditorMessage.imageDecodeFailed,
+    );
+    expect(editor.state.bucket('ws').errorByPath['/repo/b.svg'], isNull);
   });
 }

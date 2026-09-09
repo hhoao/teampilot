@@ -43,7 +43,7 @@ class _SvgPreviewPaneState extends State<SvgPreviewPane>
   Uint8List? _bytes;
   Size? _naturalSize;
   bool _readFailed = false;
-  bool _decodeFailureReported = false;
+  int? _decodeFailureReportedSeq;
   int _loadSeq = 0;
 
   @override
@@ -70,7 +70,7 @@ class _SvgPreviewPaneState extends State<SvgPreviewPane>
           widget.fs ??
           context.read<EditorCubit>().fsFor(widget.workspaceId, widget.path);
       _loadStarted = true;
-      _decodeFailureReported = false;
+      _decodeFailureReportedSeq = null;
       resetZoomBaseline();
       unawaited(_load());
     }
@@ -126,15 +126,17 @@ class _SvgPreviewPaneState extends State<SvgPreviewPane>
     });
   }
 
-  void _reportDecodeFailed() {
-    if (_decodeFailureReported) return;
-    _decodeFailureReported = true;
+  void _reportDecodeFailed({
+    required String workspaceId,
+    required String path,
+    required int seq,
+  }) {
+    if (_decodeFailureReportedSeq == seq) return;
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (!mounted) return;
-      context.read<EditorCubit>().reportImageDecodeFailed(
-        widget.workspaceId,
-        widget.path,
-      );
+      if (!mounted || seq != _loadSeq) return;
+      if (_decodeFailureReportedSeq == seq) return;
+      _decodeFailureReportedSeq = seq;
+      context.read<EditorCubit>().reportImageDecodeFailed(workspaceId, path);
     });
   }
 
@@ -151,7 +153,7 @@ class _SvgPreviewPaneState extends State<SvgPreviewPane>
           previous.bucket(widget.workspaceId).isDirty(widget.path) &&
           !next.bucket(widget.workspaceId).isDirty(widget.path),
       listener: (context, state) {
-        _decodeFailureReported = false;
+        _decodeFailureReportedSeq = null;
         unawaited(_load());
       },
       child: Column(
@@ -220,6 +222,9 @@ class _SvgPreviewPaneState extends State<SvgPreviewPane>
         ),
       );
     }
+    final workspaceId = widget.workspaceId;
+    final path = widget.path;
+    final seq = _loadSeq;
     return ClipRect(
       child: Listener(
         onPointerSignal: onZoomPointerSignal,
@@ -235,7 +240,11 @@ class _SvgPreviewPaneState extends State<SvgPreviewPane>
           child: SvgPicture.memory(
             _bytes!,
             errorBuilder: (context, error, stackTrace) {
-              _reportDecodeFailed();
+              _reportDecodeFailed(
+                workspaceId: workspaceId,
+                path: path,
+                seq: seq,
+              );
               return const SizedBox.shrink();
             },
           ),

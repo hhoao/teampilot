@@ -459,6 +459,42 @@ class _FileEditorBody extends StatelessWidget {
       );
     }
 
+    if (isSvgPreviewPath(path)) {
+      final opener = context.read<WorkbenchEditorOpener>();
+      return ListenableBuilder(
+        listenable: opener.svgViewModes,
+        builder: (context, _) {
+          final mode = opener.svgViewModes.modeFor(path);
+          if (model.loadError != null && mode == SvgViewMode.preview) {
+            return Center(
+              child: Padding(
+                padding: const EdgeInsets.all(16),
+                child: Text(
+                  l10n.editorPanelErrorMessage(model.loadError!),
+                  textAlign: TextAlign.center,
+                ),
+              ),
+            );
+          }
+
+          final editor = context.read<EditorCubit>();
+          final controller = editor.controllerFor(workspaceId, path);
+          if (controller == null) {
+            return Center(child: Text(l10n.editorNotReady));
+          }
+          if (mode == SvgViewMode.preview) {
+            return SvgPreviewPane(workspaceId: workspaceId, path: path);
+          }
+          return _CodeEditorPane(
+            workspaceId: workspaceId,
+            path: path,
+            controller: controller,
+            readOnly: model.readOnly,
+          );
+        },
+      );
+    }
+
     if (model.loadError != null) {
       return Center(
         child: Padding(
@@ -485,24 +521,6 @@ class _FileEditorBody extends StatelessWidget {
           final mode = opener.htmlViewModes.modeFor(path);
           if (mode == HtmlViewMode.preview) {
             return HtmlPreviewPane(workspaceId: workspaceId, path: path);
-          }
-          return _CodeEditorPane(
-            workspaceId: workspaceId,
-            path: path,
-            controller: controller,
-            readOnly: model.readOnly,
-          );
-        },
-      );
-    }
-
-    if (isSvgPreviewPath(path)) {
-      final opener = context.read<WorkbenchEditorOpener>();
-      return ListenableBuilder(
-        listenable: opener.svgViewModes,
-        builder: (context, _) {
-          if (opener.svgViewModes.modeFor(path) == SvgViewMode.preview) {
-            return SvgPreviewPane(workspaceId: workspaceId, path: path);
           }
           return _CodeEditorPane(
             workspaceId: workspaceId,
@@ -556,14 +574,15 @@ class _FileEditorBody extends StatelessWidget {
                 markdownFilePath: path,
                 workspaceRoots: roots,
               ),
-              buildImageWidget: (src, {required inline, required inlineHeight}) =>
-                  buildMarkdownPreviewImage(
-                src: src,
-                markdownFilePath: path,
-                workspaceRoots: roots,
-                inline: inline,
-                inlineHeight: inlineHeight,
-              ),
+              buildImageWidget:
+                  (src, {required inline, required inlineHeight}) =>
+                      buildMarkdownPreviewImage(
+                        src: src,
+                        markdownFilePath: path,
+                        workspaceRoots: roots,
+                        inline: inline,
+                        inlineHeight: inlineHeight,
+                      ),
             ),
             codeBlockMode: context.select<LayoutCubit, ContentDisplayMode>(
               (c) => c.state.preferences.fileCodeBlockMode,
