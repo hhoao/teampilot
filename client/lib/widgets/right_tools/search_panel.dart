@@ -62,6 +62,7 @@ class _WorkspaceSearchPanelState extends State<WorkspaceSearchPanel> {
   bool _useGitignore = true;
   bool _showReplace = false;
   bool _showDetails = false;
+  /// Collapsed result-group keys ([searchGroupCollapseKey] values).
   final Set<String> _collapsedPaths = {};
   late final Debouncer _searchDebouncer;
   late final Debouncer _globDebouncer;
@@ -381,8 +382,12 @@ class _WorkspaceSearchPanelState extends State<WorkspaceSearchPanel> {
                       e.key: (e.value, label),
                 },
                 collapsedPaths: _collapsedPaths,
-                onToggleGroup: (path) => setState(() {
-                  if (!_collapsedPaths.add(path)) _collapsedPaths.remove(path);
+                // Receives composite `rootKey:path` keys so two overlapping
+                // slices never conflate their groups' collapse state.
+                onToggleGroup: (collapseKey) => setState(() {
+                  if (!_collapsedPaths.add(collapseKey)) {
+                    _collapsedPaths.remove(collapseKey);
+                  }
                 }),
                 onOpenResult: (path, line) => _openResult(context, path, line),
                 onReplaceSingle: (path, replacement) =>

@@ -5,10 +5,19 @@ import '../../cubits/content_search/content_search_cubit.dart';
 import '../../l10n/l10n_extensions.dart';
 import '../find/find_bar_widgets.dart';
 
+/// Composite identity of a result group: `rootKey + ':' + path`. Overlapping
+/// roots (e.g. /ws and /ws/sub) can match the same absolute path in two
+/// slices, so [ContentSearchFileGroup.path] alone is not unique — widget keys
+/// and the collapse-toggle set must key on both.
+String searchGroupCollapseKey(String rootKey, String path) =>
+    '$rootKey:$path';
+
 /// Renders aggregated search results: per-root group headers (only when the
 /// results span multiple roots), collapsible file groups with matching lines,
 /// a hover replace action per file, per-slice error rows, and the truncation
-/// footer.
+/// footer. Per-slice error rows render even when [files] is empty (a failed
+/// root is surfaced next to a zero-match result set); the empty hint shows
+/// only when there are neither files nor slice errors.
 class SearchPanelResults extends StatelessWidget {
   const SearchPanelResults({
     required this.files,
@@ -31,8 +40,12 @@ class SearchPanelResults extends StatelessWidget {
   /// Per-slice failures: root path → (error, directory label). A root with an
   /// error but zero file groups still renders its label.
   final Map<String, (Object, String)> sliceErrors;
+  /// Collapsed group keys ([searchGroupCollapseKey] values).
   final Set<String> collapsedPaths;
-  final void Function(String path) onToggleGroup;
+
+  /// Toggles one group's collapsed state; receives the group's
+  /// [searchGroupCollapseKey] value.
+  final void Function(String collapseKey) onToggleGroup;
   final void Function(String path, int lineNumber) onOpenResult;
   final Future<void> Function(String path, String replacement) onReplaceSingle;
 
@@ -41,7 +54,7 @@ class SearchPanelResults extends StatelessWidget {
     final l10n = context.l10n;
     final cs = Theme.of(context).colorScheme;
     final styles = TpTextStyles.of(context);
-    if (files.isEmpty) {
+    if (files.isEmpty && sliceErrors.isEmpty) {
       return Center(
         child: Text(
           query.trim().isEmpty
@@ -98,11 +111,17 @@ class SearchPanelResults extends StatelessWidget {
             ),
           ),
           _ResultGroup(:final group) => _FileGroupTile(
-            key: ValueKey('search-group-${group.path}'),
+            key: ValueKey(
+              'search-group-${searchGroupCollapseKey(group.rootKey, group.path)}',
+            ),
             group: group,
-            collapsed: collapsedPaths.contains(group.path),
+            collapsed: collapsedPaths.contains(
+              searchGroupCollapseKey(group.rootKey, group.path),
+            ),
             replacement: replacement,
-            onToggleGroup: () => onToggleGroup(group.path),
+            onToggleGroup: () => onToggleGroup(
+              searchGroupCollapseKey(group.rootKey, group.path),
+            ),
             onOpenResult: onOpenResult,
             onReplaceSingle: onReplaceSingle,
           ),

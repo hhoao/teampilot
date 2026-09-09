@@ -12,6 +12,19 @@ import 'package:teampilot/services/search/content_replacer.dart';
 import 'package:teampilot/services/search/content_search_runner.dart';
 import 'package:teampilot/services/search/multi_root_content_search.dart';
 import 'package:teampilot/widgets/right_tools/search_panel.dart';
+import 'package:teampilot_search/teampilot_search.dart';
+
+/// Runner stub: streams either canned matches or a single error without
+/// touching the real search engines.
+class _StubRunner extends ContentSearchRunner {
+  _StubRunner({this.error}) : super(fs: LocalFilesystem(), root: '');
+
+  final Object? error;
+
+  @override
+  Stream<TpSearchMatch> run(TpSearchOptions options) =>
+      error != null ? Stream.error(error!) : const Stream.empty();
+}
 
 /// Emits canned states so tests can pin exact render windows (the real
 /// engine finishes inside one pump on small fixtures).
@@ -140,6 +153,107 @@ void main() {
     expect(find.text('tp_panel_'), findsNothing);
     expect(find.textContaining('a.dart'), findsWidgets);
   });
+
+  testWidgets(
+    'a failed slice with zero matches anywhere still shows its error row',
+    (tester) async {
+      // One slice fails; the other completes with zero matches. The panel
+      // must surface the failed directory instead of a bare "no results".
+      final failingRoot = '${fixture.path}/missing';
+      final slices = [
+        ContentSearchSlice(
+          fs: LocalFilesystem(),
+          root: failingRoot,
+          label: 'missing',
+        ),
+        ContentSearchSlice(
+          fs: LocalFilesystem(),
+          root: fixture.path,
+          label: 'tp_panel_',
+        ),
+      ];
+      final cubit = ContentSearchCubit(
+        slices: slices,
+        runnerFactory: (s) => s.root == failingRoot
+            ? _StubRunner(error: StateError('boom'))
+            : _StubRunner(),
+        replacerFactory: (_) => throw UnimplementedError(),
+      );
+      addTearDown(cubit.close);
+      await tester.pumpWidget(
+        wrap(
+          cubit,
+          panel: WorkspaceSearchPanel(
+            workspaceId: 'ws1',
+            slices: slices,
+            focusRequest: ValueNotifier<int>(0),
+          ),
+        ),
+      );
+      await runSearch(tester, 'hello');
+      final l10n = AppLocalizations.of(tester.element(find.byType(Scaffold)));
+      expect(
+        find.text(l10n.workspaceSearchSliceError('missing')),
+        findsOneWidget,
+      );
+      expect(find.text(l10n.workspaceSearchNoResults), findsNothing);
+    },
+  );
+
+  testWidgets(
+    'overlapping roots list the same file twice with independent collapse',
+    (tester) async {
+      // Nested slices (/ws and /ws/a) match the same absolute file in both —
+      // two groups with identical paths but different roots. They must render
+      // as distinct tiles (previously a duplicate-ValueKey crash) and collapse
+      // independently.
+      final dirA = Directory('${fixture.path}/a')..createSync();
+      File('${dirA.path}/one.dart').writeAsStringSync('needle alpha\n');
+
+      final slices = [
+        ContentSearchSlice(
+          fs: LocalFilesystem(),
+          root: fixture.path,
+          label: 'root',
+        ),
+        ContentSearchSlice(
+          fs: LocalFilesystem(),
+          root: dirA.path,
+          label: 'a',
+        ),
+      ];
+      final cubit = ContentSearchCubit(
+        slices: slices,
+        runnerFactory: (s) => ContentSearchRunner(fs: s.fs, root: s.root),
+        replacerFactory: (s) => ContentReplacer(fs: s.fs),
+      );
+      addTearDown(cubit.close);
+      await tester.pumpWidget(
+        wrap(
+          cubit,
+          panel: WorkspaceSearchPanel(
+            workspaceId: 'ws1',
+            slices: slices,
+            focusRequest: ValueNotifier<int>(0),
+          ),
+        ),
+      );
+      await runSearch(tester, 'needle');
+      expect(find.text('root'), findsOneWidget);
+      expect(find.text('a'), findsOneWidget);
+      expect(find.text('a/one.dart'), findsOneWidget);
+      expect(find.text('one.dart'), findsOneWidget);
+      expect(find.textContaining('needle alpha'), findsNWidgets(2));
+
+      // Collapsing the outer-root group leaves the nested one expanded.
+      await tester.tap(find.text('a/one.dart'));
+      await tester.pumpAndSettle();
+      expect(find.textContaining('needle alpha'), findsOneWidget);
+      await tester.tap(find.text('a/one.dart'));
+      await tester.pumpAndSettle();
+      expect(find.textContaining('needle alpha'), findsNWidgets(2));
+    },
+  );
 
   testWidgets('clicking a result row opens the editor with a line selection', (
     tester,
