@@ -38,6 +38,7 @@ class SidebarSessionTile extends StatefulWidget {
     required this.onTap,
     this.archiveMode = false,
     this.highlightSessionId,
+    this.secondaryHighlight = false,
     this.tapThrottleKeyPrefix = 'sidebar_session',
     this.contentLeftInset = 0,
     this.index = -1,
@@ -51,6 +52,12 @@ class SidebarSessionTile extends StatefulWidget {
   /// Renders the title in italic (replaceable preview tab in the open strip —
   /// still pinned by a real open, so a distinct but quiet treatment).
   final bool preview;
+
+  /// The session is the ACTIVE tab of a split group that does not hold the
+  /// workbench focus — i.e. its pane is currently showing this session, but
+  /// the strong (primary) highlight belongs to the focused group. Rendered
+  /// with a fainter fill so "what each column shows" stays readable.
+  final bool secondaryHighlight;
 
   /// Activates / opens the session. May be async — when the row needs-you,
   /// the tile awaits this before [ChatCubit.selectMember] / Terminal jump so
@@ -785,8 +792,12 @@ class _SidebarSessionTileState extends State<SidebarSessionTile> {
           )
         : null;
 
-    final idleFill = selected ? _selectedFillColor(cs) : Colors.transparent;
-    final hoverFill = selected
+    final idleFill = selected
+        ? _selectedFillColor(cs)
+        : widget.secondaryHighlight
+        ? _secondaryHighlightFillColor(cs)
+        : Colors.transparent;
+    final hoverFill = selected || widget.secondaryHighlight
         ? Color.alphaBlend(
             cs.onSurface.withValues(alpha: kWorkspaceSidebarRowHoverTintAlpha),
             idleFill,
@@ -934,10 +945,20 @@ class _SessionPinnedMark extends StatelessWidget {
 }
 
 const _selectedFillAlpha = 0.10;
+const _secondaryHighlightFillAlpha = 0.045;
 
 Color _selectedFillColor(ColorScheme cs) {
   return Color.alphaBlend(
     cs.primary.withValues(alpha: _selectedFillAlpha),
+    cs.surfaceContainer,
+  );
+}
+
+/// Split-group secondary highlight: the active session of an unfocused
+/// column — its pane IS showing this session, so it needs a (fainter) mark.
+Color _secondaryHighlightFillColor(ColorScheme cs) {
+  return Color.alphaBlend(
+    cs.primary.withValues(alpha: _secondaryHighlightFillAlpha),
     cs.surfaceContainer,
   );
 }

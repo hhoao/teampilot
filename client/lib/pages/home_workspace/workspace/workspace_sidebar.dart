@@ -473,6 +473,7 @@ class SplitSessionGroup {
     this.sessionIds,
     this.previewIds,
     this.focused,
+    this.activeSessionId,
   );
 
   final String groupId;
@@ -483,17 +484,26 @@ class SplitSessionGroup {
   final Set<String> previewIds;
   final bool focused;
 
+  /// The session this group's pane is currently showing (strip activeId);
+  /// highlighted faintly when the group is not the focused one.
+  final String? activeSessionId;
+
   @override
   bool operator ==(Object other) =>
       other is SplitSessionGroup &&
       other.groupId == groupId &&
       listEquals(other.sessionIds, sessionIds) &&
       setEquals(other.previewIds, previewIds) &&
-      other.focused == focused;
+      other.focused == focused &&
+      other.activeSessionId == activeSessionId;
 
   @override
-  int get hashCode =>
-      Object.hash(groupId, Object.hashAll(sessionIds), focused);
+  int get hashCode => Object.hash(
+    groupId,
+    Object.hashAll(sessionIds),
+    focused,
+    activeSessionId,
+  );
 }
 
 @immutable
@@ -522,6 +532,7 @@ class SplitSessionGroups {
               if (t.kind == WorkbenchTabKind.session) t.id,
           },
           groupId == focusedId,
+          layout.groups[groupId]?.activeId?.sessionId,
         ),
     ]);
   }
@@ -925,6 +936,9 @@ class _RunningSplitGroupsSection extends StatelessWidget {
                             key: ValueKey('workspace-running-session-$sessionId'),
                             session: session,
                             preview: group.previewIds.contains(sessionId),
+                            secondaryHighlight:
+                                !group.focused &&
+                                group.activeSessionId == sessionId,
                             highlightSessionId: scopedActiveSessionId(
                               workbench,
                               tabScopeId,

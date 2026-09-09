@@ -184,6 +184,28 @@ void main() {
     expect(pinned.preview, isFalse);
   });
 
+  testWidgets('each group marks the session it is currently showing', (
+    tester,
+  ) async {
+    workbenchCubit
+      ..openSession('ws-1', 'a')
+      ..openSession('ws-1', 'b')
+      ..splitTab('ws-1', WorkbenchTabId.session('b'), axis: Axis.horizontal, before: false);
+    // Focused = the new group showing 'b'. g0 shows 'a'.
+    await pumpSidebar(tester);
+
+    // 'b' (focused group's active) is the primary highlight.
+    final tileB = tester.widget<SidebarSessionTile>(
+      find.byKey(const ValueKey('workspace-running-session-b')),
+    );
+    expect(tileB.highlightSessionId, 'b');
+    // 'a' (unfocused group's active) carries the secondary highlight.
+    final tileA = tester.widget<SidebarSessionTile>(
+      find.byKey(const ValueKey('workspace-running-session-a')),
+    );
+    expect(tileA.secondaryHighlight, isTrue);
+  });
+
   testWidgets('tapping a group indicator focuses that group', (tester) async {
     workbenchCubit
       ..openSession('ws-1', 'a')
