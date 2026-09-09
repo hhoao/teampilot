@@ -16,6 +16,7 @@ class _FakeRunner {
   Future<ProcessResult> call(
     String executable,
     List<String> arguments, {
+    Map<String, String>? environment,
     Encoding? stdoutEncoding,
     Encoding? stderrEncoding,
   }) async {
@@ -37,7 +38,9 @@ void main() {
 
   setUp(() {
     fake = _FakeRunner({});
-    actions = GitHistoryActions(runner: LocalGitCommandRunner(runner: fake.call));
+    actions = GitHistoryActions(
+      runner: LocalGitCommandRunner(runner: fake.call),
+    );
   });
 
   test('resetTo maps mode to flag', () async {
@@ -47,11 +50,9 @@ void main() {
     expect(fake.calls.last[1], '--soft');
   });
 
-  test('createTag annotated includes -a -m and optional start point',
-      () async {
+  test('createTag annotated includes -a -m and optional start point', () async {
     await actions.createTag('/r', 'v2', at: 'h1', message: 'release');
-    expect(fake.calls.single,
-        ['tag', '-a', 'v2', '-m', 'release', 'h1']);
+    expect(fake.calls.single, ['tag', '-a', 'v2', '-m', 'release', 'h1']);
   });
 
   test('deleteBranch uses -d unless force', () async {
@@ -81,8 +82,13 @@ void main() {
 
   test('checkoutRemoteBranch creates local tracking branch', () async {
     await actions.checkoutRemoteBranch('/r', 'origin', 'feature-x');
-    expect(fake.calls.single,
-        ['checkout', '-b', 'feature-x', '--track', 'origin/feature-x']);
+    expect(fake.calls.single, [
+      'checkout',
+      '-b',
+      'feature-x',
+      '--track',
+      'origin/feature-x',
+    ]);
   });
 
   test('checkoutTag checks out the tag ref', () async {

@@ -61,16 +61,19 @@ void main() {
       expect(commands.single, contains('command -v git'));
     });
 
-    test('isAvailable true when remote host has git (real shell semantics)', () async {
-      // The probe must not swallow `command -v` output while still requiring
-      // non-empty stdout as the success signal (SSH exit status can be null).
-      final runner = RemoteGitCommandRunner(
-        hostKey: 'probe-git-present',
-        execShell: faithfulShellExec,
-      );
+    test(
+      'isAvailable true when remote host has git (real shell semantics)',
+      () async {
+        // The probe must not swallow `command -v` output while still requiring
+        // non-empty stdout as the success signal (SSH exit status can be null).
+        final runner = RemoteGitCommandRunner(
+          hostKey: 'probe-git-present',
+          execShell: faithfulShellExec,
+        );
 
-      expect(await runner.isAvailable, isTrue);
-    });
+        expect(await runner.isAvailable, isTrue);
+      },
+    );
 
     test('isAvailable false when remote host lacks git', () async {
       final runner = RemoteGitCommandRunner(
@@ -81,47 +84,59 @@ void main() {
       expect(await runner.isAvailable, isFalse);
     });
 
-    test('isAvailable true for configured absolute executable (real shell semantics)', () async {
-      final runner = RemoteGitCommandRunner(
-        hostKey: 'probe-exe-absolute',
-        gitExecutable: '/bin/sh',
-        execShell: faithfulShellExec,
-      );
+    test(
+      'isAvailable true for configured absolute executable (real shell semantics)',
+      () async {
+        final runner = RemoteGitCommandRunner(
+          hostKey: 'probe-exe-absolute',
+          gitExecutable: '/bin/sh',
+          execShell: faithfulShellExec,
+        );
 
-      expect(await runner.isAvailable, isTrue);
-    });
+        expect(await runner.isAvailable, isTrue);
+      },
+    );
 
-    test('isAvailable true for configured bare name on PATH (real shell semantics)', () async {
-      final runner = RemoteGitCommandRunner(
-        hostKey: 'probe-exe-bare',
-        gitExecutable: 'sh',
-        execShell: faithfulShellExec,
-      );
+    test(
+      'isAvailable true for configured bare name on PATH (real shell semantics)',
+      () async {
+        final runner = RemoteGitCommandRunner(
+          hostKey: 'probe-exe-bare',
+          gitExecutable: 'sh',
+          execShell: faithfulShellExec,
+        );
 
-      expect(await runner.isAvailable, isTrue);
-    });
+        expect(await runner.isAvailable, isTrue);
+      },
+    );
 
-    test('isAvailable false for configured missing path (real shell semantics)', () async {
-      final runner = RemoteGitCommandRunner(
-        hostKey: 'probe-exe-missing',
-        gitExecutable: '/nonexistent/git-x',
-        execShell: faithfulShellExec,
-      );
+    test(
+      'isAvailable false for configured missing path (real shell semantics)',
+      () async {
+        final runner = RemoteGitCommandRunner(
+          hostKey: 'probe-exe-missing',
+          gitExecutable: '/nonexistent/git-x',
+          execShell: faithfulShellExec,
+        );
 
-      expect(await runner.isAvailable, isFalse);
-    });
+        expect(await runner.isAvailable, isFalse);
+      },
+    );
 
-    test('isAvailable false for configured non-executable path (real shell semantics)', () async {
-      // `command -v` echoes non-executable paths, so the probe must gate
-      // slash-paths on `test -x` instead.
-      final runner = RemoteGitCommandRunner(
-        hostKey: 'probe-exe-not-executable',
-        gitExecutable: '/etc/hostname',
-        execShell: faithfulShellExec,
-      );
+    test(
+      'isAvailable false for configured non-executable path (real shell semantics)',
+      () async {
+        // `command -v` echoes non-executable paths, so the probe must gate
+        // slash-paths on `test -x` instead.
+        final runner = RemoteGitCommandRunner(
+          hostKey: 'probe-exe-not-executable',
+          gitExecutable: '/etc/hostname',
+          execShell: faithfulShellExec,
+        );
 
-      expect(await runner.isAvailable, isFalse);
-    });
+        expect(await runner.isAvailable, isFalse);
+      },
+    );
 
     test('runInDirectory shell-quotes repo path and args', () async {
       final commands = <String>[];
@@ -145,29 +160,34 @@ void main() {
   });
 
   group('WslGitCommandRunner', () {
-    test('isAvailable true when git exists in the distro (real shell semantics)', () async {
-      // The probe must not swallow `command -v` output while still requiring
-      // non-empty stdout as the success signal.
-      final runner = WslGitCommandRunner(
-        distro: 'Ubuntu',
-        wslRunner: (exe, args, {stdoutEncoding, stderrEncoding}) async {
-          final cmdIndex = args.indexOf('-lc');
-          final cmd = cmdIndex >= 0 ? args[cmdIndex + 1] : '';
-          return Process.run('sh', ['-c', cmd]);
-        },
-      );
+    test(
+      'isAvailable true when git exists in the distro (real shell semantics)',
+      () async {
+        // The probe must not swallow `command -v` output while still requiring
+        // non-empty stdout as the success signal.
+        final runner = WslGitCommandRunner(
+          distro: 'Ubuntu',
+          wslRunner:
+              (exe, args, {environment, stdoutEncoding, stderrEncoding}) async {
+                final cmdIndex = args.indexOf('-lc');
+                final cmd = cmdIndex >= 0 ? args[cmdIndex + 1] : '';
+                return Process.run('sh', ['-c', cmd]);
+              },
+        );
 
-      expect(await runner.isAvailable, isTrue);
-    });
+        expect(await runner.isAvailable, isTrue);
+      },
+    );
 
     test('runInDirectory invokes wsl.exe git -C', () async {
       final calls = <List<String>>[];
       final runner = WslGitCommandRunner(
         distro: 'Ubuntu',
-        wslRunner: (exe, args, {stdoutEncoding, stderrEncoding}) async {
-          calls.add(args);
-          return ProcessResult(0, 0, 'ok\n', '');
-        },
+        wslRunner:
+            (exe, args, {environment, stdoutEncoding, stderrEncoding}) async {
+              calls.add(args);
+              return ProcessResult(0, 0, 'ok\n', '');
+            },
       );
 
       final result = await runner.runInDirectory('/home/user/repo', [
@@ -187,7 +207,13 @@ void main() {
       final runner = LocalGitCommandRunner(
         gitExecutable: '/custom/git',
         runner:
-            (executable, arguments, {stdoutEncoding, stderrEncoding}) async {
+            (
+              executable,
+              arguments, {
+              environment,
+              stdoutEncoding,
+              stderrEncoding,
+            }) async {
               fail('locate must not run when gitExecutable is set');
             },
         hostRunner: capturing,
@@ -202,7 +228,13 @@ void main() {
       var hostInvoked = false;
       final runner = LocalGitCommandRunner(
         runner:
-            (executable, arguments, {stdoutEncoding, stderrEncoding}) async {
+            (
+              executable,
+              arguments, {
+              environment,
+              stdoutEncoding,
+              stderrEncoding,
+            }) async {
               return ProcessResult(0, 0, '/usr/bin/git\n', '');
             },
         hostRunner: _RecordingHostRunner(() => hostInvoked = true),
@@ -212,6 +244,63 @@ void main() {
 
       expect(hostInvoked, isTrue);
       expect(result.exitCode, 0);
+    });
+  });
+
+  group('runInDirectory environment passthrough', () {
+    test(
+      'LocalGitCommandRunner forwards environment via injected runner',
+      () async {
+        Map<String, String>? seenEnv;
+        final runner = LocalGitCommandRunner(
+          gitExecutable: '/usr/bin/git',
+          runner:
+              (
+                String executable,
+                List<String> arguments, {
+                Map<String, String>? environment,
+                Encoding? stdoutEncoding,
+                Encoding? stderrEncoding,
+              }) async {
+                seenEnv = environment;
+                return ProcessResult(0, 0, '', '');
+              },
+        );
+        await runner.runInDirectory(
+          '/repo',
+          ['status'],
+          environment: {'GIT_TERMINAL_PROMPT': '0'},
+        );
+        expect(seenEnv, {'GIT_TERMINAL_PROMPT': '0'});
+        await runner.runInDirectory('/repo', ['status']);
+        expect(seenEnv, isNull);
+      },
+    );
+
+    test('Wsl/Remote runners pass environment into HostRunRequest', () async {
+      final host = _EnvironmentRecordingHostRunner();
+      final wsl = WslGitCommandRunner(
+        gitExecutable: '/usr/bin/git',
+        hostRunner: host,
+      );
+      await wsl.runInDirectory(
+        '/repo',
+        ['status'],
+        environment: {'GIT_TERMINAL_PROMPT': '0'},
+      );
+      final remote = RemoteGitCommandRunner(
+        execShell: (cmd) async => _sshOk(''),
+        hostRunner: host,
+      );
+      await remote.runInDirectory(
+        '/repo',
+        ['status'],
+        environment: {'GIT_TERMINAL_PROMPT': '0'},
+      );
+      expect(
+        host.requests.map((r) => r.environment),
+        everyElement({'GIT_TERMINAL_PROMPT': '0'}),
+      );
     });
   });
 
@@ -260,6 +349,16 @@ class _RecordingHostRunner implements HostOneShotRunner {
   Future<HostRunResult> run(HostRunRequest request) async {
     _onRun();
     return const HostRunResult(exitCode: 0, stdout: 'ok\n', stderr: '');
+  }
+}
+
+class _EnvironmentRecordingHostRunner implements HostOneShotRunner {
+  final List<HostRunRequest> requests = [];
+
+  @override
+  Future<HostRunResult> run(HostRunRequest request) async {
+    requests.add(request);
+    return const HostRunResult(exitCode: 0, stdout: '', stderr: '');
   }
 }
 

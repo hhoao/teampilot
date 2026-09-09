@@ -8,9 +8,16 @@ import 'package:teampilot/services/cli/cli_tool_locator.dart';
 void main() {
   test('locate returns native path from PATH lookup', () async {
     final located = await const CliToolLocator('claude').locate(
-      runner: (executable, arguments, {stdoutEncoding, stderrEncoding}) async {
-        return ProcessResult(1, 0, '/opt/bin/claude\n', '');
-      },
+      runner:
+          (
+            executable,
+            arguments, {
+            environment,
+            stdoutEncoding,
+            stderrEncoding,
+          }) async {
+            return ProcessResult(1, 0, '/opt/bin/claude\n', '');
+          },
     );
 
     expect(located, '/opt/bin/claude');
@@ -23,7 +30,13 @@ void main() {
       final located = await const CliToolLocator('claude').locate(
         isWindowsOverride: false,
         runner:
-            (executable, arguments, {stdoutEncoding, stderrEncoding}) async {
+            (
+              executable,
+              arguments, {
+              environment,
+              stdoutEncoding,
+              stderrEncoding,
+            }) async {
               calls.add('$executable ${arguments.join(' ')}');
               if (executable == 'which') {
                 return ProcessResult(1, 1, '', '');
@@ -48,7 +61,13 @@ void main() {
       final calls = <String>[];
       final located = await const CliToolLocator('claude').locate(
         runner:
-            (executable, arguments, {stdoutEncoding, stderrEncoding}) async {
+            (
+              executable,
+              arguments, {
+              environment,
+              stdoutEncoding,
+              stderrEncoding,
+            }) async {
               calls.add('$executable ${arguments.join(' ')}');
               if (executable == 'which') {
                 return ProcessResult(1, 1, '', '');
@@ -93,7 +112,13 @@ void main() {
 
       final located = await CliToolLocator(executableName).locate(
         runner:
-            (executable, arguments, {stdoutEncoding, stderrEncoding}) async {
+            (
+              executable,
+              arguments, {
+              environment,
+              stdoutEncoding,
+              stderrEncoding,
+            }) async {
               if (executable == 'which') {
                 return ProcessResult(1, 1, '', '');
               }
@@ -127,17 +152,24 @@ void main() {
   test('locate prefers claude.cmd over npm shell shim on Windows', () async {
     final located = await const CliToolLocator('claude').locate(
       isWindowsOverride: true,
-      runner: (executable, arguments, {stdoutEncoding, stderrEncoding}) async {
-        expect(executable, 'where');
-        return ProcessResult(
-          1,
-          0,
-          r'C:\Users\alice\AppData\Roaming\npm\claude'
-              '\r\n'
-              r'C:\Users\alice\AppData\Roaming\npm\claude.cmd',
-          '',
-        );
-      },
+      runner:
+          (
+            executable,
+            arguments, {
+            environment,
+            stdoutEncoding,
+            stderrEncoding,
+          }) async {
+            expect(executable, 'where');
+            return ProcessResult(
+              1,
+              0,
+              r'C:\Users\alice\AppData\Roaming\npm\claude'
+                  '\r\n'
+                  r'C:\Users\alice\AppData\Roaming\npm\claude.cmd',
+              '',
+            );
+          },
     );
 
     expect(located, r'C:\Users\alice\AppData\Roaming\npm\claude.cmd');
@@ -166,7 +198,13 @@ void main() {
       if (!Platform.isWindows) return;
       final located = await const CliToolLocator('claude').locate(
         runner:
-            (executable, arguments, {stdoutEncoding, stderrEncoding}) async {
+            (
+              executable,
+              arguments, {
+              environment,
+              stdoutEncoding,
+              stderrEncoding,
+            }) async {
               if (executable == 'where') {
                 return ProcessResult(1, 1, '', '');
               }

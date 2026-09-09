@@ -8,7 +8,11 @@ class TestGitCommandRunner implements GitCommandRunner {
   Future<bool> get isAvailable async => true;
 
   @override
-  Future<GitCommandResult> runInDirectory(String dir, List<String> args) async {
+  Future<GitCommandResult> runInDirectory(
+    String dir,
+    List<String> args, {
+    Map<String, String>? environment,
+  }) async {
     if (args.contains('worktree') && args.contains('list')) {
       return const GitCommandResult(exitCode: 0, stdout: '', stderr: '');
     }

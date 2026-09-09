@@ -7,9 +7,16 @@ import 'package:teampilot/services/cli/flashskyai/capabilities/cli_locator.dart'
 void main() {
   test('locate returns native path from PATH lookup', () async {
     final located = await FlashskyaiCliLocator.locate(
-      runner: (executable, arguments, {stdoutEncoding, stderrEncoding}) async {
-        return ProcessResult(1, 0, '/opt/bin/flashskyai\n', '');
-      },
+      runner:
+          (
+            executable,
+            arguments, {
+            environment,
+            stdoutEncoding,
+            stderrEncoding,
+          }) async {
+            return ProcessResult(1, 0, '/opt/bin/flashskyai\n', '');
+          },
     );
 
     expect(located, '/opt/bin/flashskyai');
@@ -22,7 +29,13 @@ void main() {
       final calls = <String>[];
       final located = await FlashskyaiCliLocator.locate(
         runner:
-            (executable, arguments, {stdoutEncoding, stderrEncoding}) async {
+            (
+              executable,
+              arguments, {
+              environment,
+              stdoutEncoding,
+              stderrEncoding,
+            }) async {
               calls.add('$executable ${arguments.join(' ')}');
               if (executable == 'which') {
                 return ProcessResult(1, 1, '', '');
@@ -50,20 +63,27 @@ void main() {
     if (Platform.isWindows) return;
     final calls = <String>[];
     final located = await FlashskyaiCliLocator.locate(
-      runner: (executable, arguments, {stdoutEncoding, stderrEncoding}) async {
-        calls.add('$executable ${arguments.join(' ')}');
-        if (executable == 'which') {
-          return ProcessResult(1, 1, '', '');
-        }
-        if (executable == 'bash') {
-          return ProcessResult(2, 1, '', '');
-        }
-        if (executable == 'zsh') {
-          expect(arguments, ['-ilc', FlashskyaiCliLocator.lookupCommand]);
-          return ProcessResult(3, 0, '/opt/bin/flashskyai\n', '');
-        }
-        fail('unexpected runner call: $executable');
-      },
+      runner:
+          (
+            executable,
+            arguments, {
+            environment,
+            stdoutEncoding,
+            stderrEncoding,
+          }) async {
+            calls.add('$executable ${arguments.join(' ')}');
+            if (executable == 'which') {
+              return ProcessResult(1, 1, '', '');
+            }
+            if (executable == 'bash') {
+              return ProcessResult(2, 1, '', '');
+            }
+            if (executable == 'zsh') {
+              expect(arguments, ['-ilc', FlashskyaiCliLocator.lookupCommand]);
+              return ProcessResult(3, 0, '/opt/bin/flashskyai\n', '');
+            }
+            fail('unexpected runner call: $executable');
+          },
     );
 
     expect(calls, [
@@ -78,10 +98,17 @@ void main() {
     if (Platform.isWindows) return;
     final calls = <String>[];
     final located = await FlashskyaiCliLocator.locate(
-      runner: (executable, arguments, {stdoutEncoding, stderrEncoding}) async {
-        calls.add('$executable ${arguments.join(' ')}');
-        return ProcessResult(1, 0, '/usr/bin/flashskyai\n', '');
-      },
+      runner:
+          (
+            executable,
+            arguments, {
+            environment,
+            stdoutEncoding,
+            stderrEncoding,
+          }) async {
+            calls.add('$executable ${arguments.join(' ')}');
+            return ProcessResult(1, 0, '/usr/bin/flashskyai\n', '');
+          },
     );
 
     expect(calls, ['which flashskyai']);
@@ -92,15 +119,22 @@ void main() {
     if (!Platform.isWindows) return;
     final calls = <String>[];
     final located = await FlashskyaiCliLocator.locate(
-      runner: (executable, arguments, {stdoutEncoding, stderrEncoding}) async {
-        calls.add('$executable ${arguments.join(' ')}');
-        if (executable == 'where') {
-          return ProcessResult(1, 1, '', '');
-        }
-        expect(stdoutEncoding, latin1);
-        expect(stderrEncoding, latin1);
-        return ProcessResult(2, 0, '/usr/local/bin/flashskyai\n', '');
-      },
+      runner:
+          (
+            executable,
+            arguments, {
+            environment,
+            stdoutEncoding,
+            stderrEncoding,
+          }) async {
+            calls.add('$executable ${arguments.join(' ')}');
+            if (executable == 'where') {
+              return ProcessResult(1, 1, '', '');
+            }
+            expect(stdoutEncoding, latin1);
+            expect(stderrEncoding, latin1);
+            return ProcessResult(2, 0, '/usr/local/bin/flashskyai\n', '');
+          },
     );
 
     expect(calls, [
@@ -113,18 +147,25 @@ void main() {
   test('locate WSL path skips wsl stdout noise lines on Windows', () async {
     if (!Platform.isWindows) return;
     final located = await FlashskyaiCliLocator.locate(
-      runner: (executable, arguments, {stdoutEncoding, stderrEncoding}) async {
-        if (executable == 'where') {
-          return ProcessResult(1, 1, '', '');
-        }
-        return ProcessResult(
-          2,
-          0,
-          'wsl: 检测到 localhost 代理配置，但未镜像到 WSL。\n'
-              '/home/hhoa/dist/flashskyai\n',
-          '',
-        );
-      },
+      runner:
+          (
+            executable,
+            arguments, {
+            environment,
+            stdoutEncoding,
+            stderrEncoding,
+          }) async {
+            if (executable == 'where') {
+              return ProcessResult(1, 1, '', '');
+            }
+            return ProcessResult(
+              2,
+              0,
+              'wsl: 检测到 localhost 代理配置，但未镜像到 WSL。\n'
+                  '/home/hhoa/dist/flashskyai\n',
+              '',
+            );
+          },
     );
 
     expect(located, 'wsl.exe /home/hhoa/dist/flashskyai');

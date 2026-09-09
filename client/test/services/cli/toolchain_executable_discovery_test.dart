@@ -10,12 +10,19 @@ void main() {
   test('locateLocal records git and node when both are found', () async {
     final discovery = ToolchainExecutableDiscovery(
       detectGit: () async => const GitInstallResult.found('/usr/bin/git'),
-      processRunner: (executable, arguments, {stdoutEncoding, stderrEncoding}) async {
-        if (arguments.isNotEmpty && arguments.first == 'node') {
-          return ProcessResult(0, 0, '/usr/bin/node', '');
-        }
-        return ProcessResult(0, 1, '', '');
-      },
+      processRunner:
+          (
+            executable,
+            arguments, {
+            environment,
+            stdoutEncoding,
+            stderrEncoding,
+          }) async {
+            if (arguments.isNotEmpty && arguments.first == 'node') {
+              return ProcessResult(0, 0, '/usr/bin/node', '');
+            }
+            return ProcessResult(0, 1, '', '');
+          },
     );
 
     final located = await discovery.locateLocal();
@@ -27,9 +34,16 @@ void main() {
   test('locateLocal omits tools that are not found', () async {
     final discovery = ToolchainExecutableDiscovery(
       detectGit: () async => const GitInstallResult.notFound('missing'),
-      processRunner: (executable, arguments, {stdoutEncoding, stderrEncoding}) async {
-        throw ProcessException('where', const [], 'not found', -1);
-      },
+      processRunner:
+          (
+            executable,
+            arguments, {
+            environment,
+            stdoutEncoding,
+            stderrEncoding,
+          }) async {
+            throw ProcessException('where', const [], 'not found', -1);
+          },
     );
 
     final located = await discovery.locateLocal();
@@ -40,12 +54,19 @@ void main() {
   test('locateLocalTool finds node via which', () async {
     final discovery = ToolchainExecutableDiscovery(
       detectGit: () async => const GitInstallResult.notFound('skip'),
-      processRunner: (executable, arguments, {stdoutEncoding, stderrEncoding}) async {
-        if (arguments.isNotEmpty && arguments.first == 'node') {
-          return ProcessResult(0, 0, '/usr/bin/node', '');
-        }
-        return ProcessResult(0, 1, '', '');
-      },
+      processRunner:
+          (
+            executable,
+            arguments, {
+            environment,
+            stdoutEncoding,
+            stderrEncoding,
+          }) async {
+            if (arguments.isNotEmpty && arguments.first == 'node') {
+              return ProcessResult(0, 0, '/usr/bin/node', '');
+            }
+            return ProcessResult(0, 1, '', '');
+          },
     );
     final path = await discovery.locateLocalTool(
       SessionPreferences.toolchainNode,
@@ -70,42 +91,51 @@ void main() {
     expect(await discovery.locateLocalTool('unknown'), isNull);
   });
 
-  test('locateRemoteTool finds git via DefaultRemoteCliLocator probe', () async {
-    final discovery = ToolchainExecutableDiscovery(
-      detectGit: () async => const GitInstallResult.notFound('skip'),
-    );
-    final path = await discovery.locateRemoteTool(
-      toolId: SessionPreferences.toolchainGit,
-      run: (command) async {
-        expect(command, contains('git'));
-        return const SshCommandResult(exitCode: 0, stdout: '/usr/bin/git\n');
-      },
-    );
-    expect(path, '/usr/bin/git');
-  });
+  test(
+    'locateRemoteTool finds git via DefaultRemoteCliLocator probe',
+    () async {
+      final discovery = ToolchainExecutableDiscovery(
+        detectGit: () async => const GitInstallResult.notFound('skip'),
+      );
+      final path = await discovery.locateRemoteTool(
+        toolId: SessionPreferences.toolchainGit,
+        run: (command) async {
+          expect(command, contains('git'));
+          return const SshCommandResult(exitCode: 0, stdout: '/usr/bin/git\n');
+        },
+      );
+      expect(path, '/usr/bin/git');
+    },
+  );
 
-  test('locateRemoteTool finds node via DefaultRemoteCliLocator probe', () async {
-    final discovery = ToolchainExecutableDiscovery(
-      detectGit: () async => const GitInstallResult.notFound('skip'),
-    );
-    final path = await discovery.locateRemoteTool(
-      toolId: SessionPreferences.toolchainNode,
-      run: (command) async {
-        expect(command, contains('node'));
-        return const SshCommandResult(exitCode: 0, stdout: '/usr/bin/node\n');
-      },
-    );
-    expect(path, '/usr/bin/node');
-  });
+  test(
+    'locateRemoteTool finds node via DefaultRemoteCliLocator probe',
+    () async {
+      final discovery = ToolchainExecutableDiscovery(
+        detectGit: () async => const GitInstallResult.notFound('skip'),
+      );
+      final path = await discovery.locateRemoteTool(
+        toolId: SessionPreferences.toolchainNode,
+        run: (command) async {
+          expect(command, contains('node'));
+          return const SshCommandResult(exitCode: 0, stdout: '/usr/bin/node\n');
+        },
+      );
+      expect(path, '/usr/bin/node');
+    },
+  );
 
   test('locateRemoteTool returns null for unknown toolId', () async {
     final discovery = ToolchainExecutableDiscovery(
       detectGit: () async => const GitInstallResult.notFound('skip'),
     );
     expect(
-      await discovery.locateRemoteTool(toolId: 'unknown', run: (_) async {
-        fail('must not run');
-      }),
+      await discovery.locateRemoteTool(
+        toolId: 'unknown',
+        run: (_) async {
+          fail('must not run');
+        },
+      ),
       isNull,
     );
   });

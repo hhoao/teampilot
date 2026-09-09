@@ -34,7 +34,11 @@ GitCommandResult _gitResultFromHost(HostRunResult result) {
 abstract interface class GitCommandRunner {
   Future<bool> get isAvailable;
 
-  Future<GitCommandResult> runInDirectory(String dir, List<String> args);
+  Future<GitCommandResult> runInDirectory(
+    String dir,
+    List<String> args, {
+    Map<String, String>? environment,
+  });
 }
 
 /// Shared git flags prepended to every invocation (see [GitService]).
@@ -61,6 +65,7 @@ HostProcessRunner _hostProcessRunnerFrom(ProcessRunner runner) {
     return runner(
       executable,
       arguments,
+      environment: environment,
       stdoutEncoding: stdoutEncoding ?? const Utf8Codec(allowMalformed: true),
       stderrEncoding: stderrEncoding ?? const Utf8Codec(allowMalformed: true),
     );
@@ -130,7 +135,11 @@ class LocalGitCommandRunner implements GitCommandRunner {
   Future<bool> get isAvailable async => (await _git) != null;
 
   @override
-  Future<GitCommandResult> runInDirectory(String dir, List<String> args) async {
+  Future<GitCommandResult> runInDirectory(
+    String dir,
+    List<String> args, {
+    Map<String, String>? environment,
+  }) async {
     final git = await _git;
     if (git == null) {
       return const GitCommandResult(
@@ -140,7 +149,11 @@ class LocalGitCommandRunner implements GitCommandRunner {
       );
     }
     final result = await _host.run(
-      HostRunRequest(executable: git, arguments: _gitArgv(dir, args)),
+      HostRunRequest(
+        executable: git,
+        arguments: _gitArgv(dir, args),
+        environment: environment,
+      ),
     );
     return _gitResultFromHost(result);
   }
@@ -183,16 +196,27 @@ class WslGitCommandRunner implements GitCommandRunner {
     final result = await _host.run(
       const HostRunRequest(
         executable: 'sh',
-        arguments: ['-lc', 'command -v git 2>/dev/null || which git 2>/dev/null'],
+        arguments: [
+          '-lc',
+          'command -v git 2>/dev/null || which git 2>/dev/null',
+        ],
       ),
     );
     return result.succeeded && result.stdout.trim().isNotEmpty;
   }
 
   @override
-  Future<GitCommandResult> runInDirectory(String dir, List<String> args) async {
+  Future<GitCommandResult> runInDirectory(
+    String dir,
+    List<String> args, {
+    Map<String, String>? environment,
+  }) async {
     final result = await _host.run(
-      HostRunRequest(executable: _git, arguments: _gitArgv(dir, args)),
+      HostRunRequest(
+        executable: _git,
+        arguments: _gitArgv(dir, args),
+        environment: environment,
+      ),
     );
     return _gitResultFromHost(result);
   }
@@ -244,7 +268,7 @@ class RemoteGitCommandRunner implements GitCommandRunner {
     // because `command -v` echoes non-executable paths.
     final probe = _exe != null
         ? "test -x '$exe' && printf '%s\\n' x || "
-            "{ case '$exe' in */*) exit 1;; *) command -v '$exe' 2>/dev/null;; esac; }"
+              "{ case '$exe' in */*) exit 1;; *) command -v '$exe' 2>/dev/null;; esac; }"
         : 'command -v git 2>/dev/null || which git 2>/dev/null';
     final result = await _execShell(probe);
     if (sshRunFailed(result)) return false;
@@ -252,9 +276,17 @@ class RemoteGitCommandRunner implements GitCommandRunner {
   }
 
   @override
-  Future<GitCommandResult> runInDirectory(String dir, List<String> args) async {
+  Future<GitCommandResult> runInDirectory(
+    String dir,
+    List<String> args, {
+    Map<String, String>? environment,
+  }) async {
     final result = await _host.run(
-      HostRunRequest(executable: _git, arguments: _gitArgv(dir, args)),
+      HostRunRequest(
+        executable: _git,
+        arguments: _gitArgv(dir, args),
+        environment: environment,
+      ),
     );
     return _gitResultFromHost(result);
   }

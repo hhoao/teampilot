@@ -58,8 +58,14 @@ void setUpTestAppStorage() {
   // process-free runner so it reports "git unavailable" instead.
   GitService.debugOverrideFactory = () => GitService(
     runner: LocalGitCommandRunner(
-      runner: (executable, arguments, {stdoutEncoding, stderrEncoding}) async =>
-          ProcessResult(0, 1, '', ''),
+      runner:
+          (
+            executable,
+            arguments, {
+            environment,
+            stdoutEncoding,
+            stderrEncoding,
+          }) async => ProcessResult(0, 1, '', ''),
     ),
   );
   // Status-bar Resource Manager starts a host process sweep on mount; under

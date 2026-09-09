@@ -17,6 +17,7 @@ class _FakeRunner {
   Future<ProcessResult> call(
     String executable,
     List<String> arguments, {
+    Map<String, String>? environment,
     Encoding? stdoutEncoding,
     Encoding? stderrEncoding,
   }) async {

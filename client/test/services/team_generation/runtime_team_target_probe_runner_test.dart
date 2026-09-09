@@ -19,7 +19,13 @@ void main() {
         targetResolver: (id) async =>
             id == RuntimeTarget.localId ? RuntimeTarget.local() : null,
         localProcessRunner:
-            (executable, arguments, {stdoutEncoding, stderrEncoding}) async {
+            (
+              executable,
+              arguments, {
+              environment,
+              stdoutEncoding,
+              stderrEncoding,
+            }) async {
               commands.add([executable, ...arguments]);
               if (arguments.length == 1 && arguments.single == 'claude') {
                 return ProcessResult(1, 0, '/usr/local/bin/claude\n', '');

@@ -17,6 +17,7 @@ class _FakeRunner {
   Future<ProcessResult> call(
     String executable,
     List<String> arguments, {
+    Map<String, String>? environment,
     Encoding? stdoutEncoding,
     Encoding? stderrEncoding,
   }) async {
@@ -39,49 +40,50 @@ ProcessResult diffOut([String stdout = '']) => ProcessResult(0, 1, stdout, '');
 void main() {
   setUp(GitService.debugResetExecutableCache);
 
-  test('listDiffFiles ref vs working tree requests name-status and ls-files',
-      () async {
-    final fake = _FakeRunner({
-      'diff --name-status --find-renames api-dev': diffOut('M\ta.txt\n'),
-      'ls-files --others --exclude-standard': ok('new.txt\n'),
-    });
-    final history = GitHistoryService(
-      runner: LocalGitCommandRunner(runner: fake.call),
-    );
-    final files = await history.listDiffFiles(
-      '/repo',
-      const GitCompareRef('api-dev'),
-      const GitCompareWorkingTree(),
-    );
-    expect(files.map((f) => f.path), containsAll(['a.txt', 'new.txt']));
-    expect(
-      files.firstWhere((f) => f.path == 'new.txt').kind,
-      GitChangeKind.untracked,
-    );
-    expect(
-      files.firstWhere((f) => f.path == 'a.txt').kind,
-      GitChangeKind.modified,
-    );
-    expect(files.every((f) => !f.staged), isTrue);
-    expect(
-      fake.calls.any(
-        (c) =>
-            c.length >= 4 &&
-            c[0] == 'diff' &&
-            c.contains('--name-status') &&
-            c.contains('--find-renames') &&
-            c.contains('api-dev'),
-      ),
-      isTrue,
-    );
-    expect(
-      fake.calls.any(
-        (c) =>
-            c.join(' ').startsWith('ls-files --others --exclude-standard'),
-      ),
-      isTrue,
-    );
-  });
+  test(
+    'listDiffFiles ref vs working tree requests name-status and ls-files',
+    () async {
+      final fake = _FakeRunner({
+        'diff --name-status --find-renames api-dev': diffOut('M\ta.txt\n'),
+        'ls-files --others --exclude-standard': ok('new.txt\n'),
+      });
+      final history = GitHistoryService(
+        runner: LocalGitCommandRunner(runner: fake.call),
+      );
+      final files = await history.listDiffFiles(
+        '/repo',
+        const GitCompareRef('api-dev'),
+        const GitCompareWorkingTree(),
+      );
+      expect(files.map((f) => f.path), containsAll(['a.txt', 'new.txt']));
+      expect(
+        files.firstWhere((f) => f.path == 'new.txt').kind,
+        GitChangeKind.untracked,
+      );
+      expect(
+        files.firstWhere((f) => f.path == 'a.txt').kind,
+        GitChangeKind.modified,
+      );
+      expect(files.every((f) => !f.staged), isTrue);
+      expect(
+        fake.calls.any(
+          (c) =>
+              c.length >= 4 &&
+              c[0] == 'diff' &&
+              c.contains('--name-status') &&
+              c.contains('--find-renames') &&
+              c.contains('api-dev'),
+        ),
+        isTrue,
+      );
+      expect(
+        fake.calls.any(
+          (c) => c.join(' ').startsWith('ls-files --others --exclude-standard'),
+        ),
+        isTrue,
+      );
+    },
+  );
 
   test('listDiffFiles skips untracked path already in name-status', () async {
     final fake = _FakeRunner({
@@ -149,9 +151,7 @@ void main() {
   });
 
   test('fileDiff ref vs working tree tracked diffs against ref', () async {
-    final fake = _FakeRunner({
-      'diff': diffOut('diff --git a/a.txt\n'),
-    });
+    final fake = _FakeRunner({'diff': diffOut('diff --git a/a.txt\n')});
     final history = GitHistoryService(
       runner: LocalGitCommandRunner(runner: fake.call),
     );
@@ -174,9 +174,7 @@ void main() {
   });
 
   test('fileDiff ref vs ref diffs the two refs', () async {
-    final fake = _FakeRunner({
-      'diff': diffOut('diff --git a/a.txt\n'),
-    });
+    final fake = _FakeRunner({'diff': diffOut('diff --git a/a.txt\n')});
     final history = GitHistoryService(
       runner: LocalGitCommandRunner(runner: fake.call),
     );

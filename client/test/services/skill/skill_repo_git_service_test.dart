@@ -13,7 +13,13 @@ void main() {
     test('resolveRemoteSha parses ls-remote line', () async {
       final svc = SkillRepoGitService(
         runner:
-            (executable, arguments, {stdoutEncoding, stderrEncoding}) async {
+            (
+              executable,
+              arguments, {
+              environment,
+              stdoutEncoding,
+              stderrEncoding,
+            }) async {
               expect(executable, '/usr/bin/git');
               expect(arguments, [
                 'ls-remote',
@@ -40,7 +46,13 @@ void main() {
         var calls = 0;
         final svc = SkillRepoGitService(
           runner:
-              (executable, arguments, {stdoutEncoding, stderrEncoding}) async {
+              (
+                executable,
+                arguments, {
+                environment,
+                stdoutEncoding,
+                stderrEncoding,
+              }) async {
                 calls++;
                 final ref = arguments.last;
                 if (ref.endsWith('/develop')) {
@@ -68,7 +80,13 @@ void main() {
       final workDir = p.join(tmp.path, 'source');
       final svc = SkillRepoGitService(
         runner:
-            (executable, arguments, {stdoutEncoding, stderrEncoding}) async {
+            (
+              executable,
+              arguments, {
+              environment,
+              stdoutEncoding,
+              stderrEncoding,
+            }) async {
               if (arguments.contains('clone')) {
                 return ProcessResult(
                   1,

@@ -25,6 +25,7 @@ class _FakeRunner {
   Future<ProcessResult> call(
     String executable,
     List<String> arguments, {
+    Map<String, String>? environment,
     Encoding? stdoutEncoding,
     Encoding? stderrEncoding,
   }) async {
@@ -161,22 +162,27 @@ void main() {
 
       await service.commit('/repo', 'msg');
 
-      expect(runner.calls, [['commit', '-m', 'msg']]);
-    });
-
-    test('commitSelected stages the paths then commits only those paths', () async {
-      final runner = _FakeRunner({});
-      final service = GitService(
-        runner: LocalGitCommandRunner(runner: runner.call),
-      );
-
-      await service.commitSelected('/repo', 'feat: x', ['a.txt', 'b.dart']);
-
       expect(runner.calls, [
-        ['add', '--', 'a.txt', 'b.dart'],
-        ['commit', '-m', 'feat: x', '--', 'a.txt', 'b.dart'],
+        ['commit', '-m', 'msg'],
       ]);
     });
+
+    test(
+      'commitSelected stages the paths then commits only those paths',
+      () async {
+        final runner = _FakeRunner({});
+        final service = GitService(
+          runner: LocalGitCommandRunner(runner: runner.call),
+        );
+
+        await service.commitSelected('/repo', 'feat: x', ['a.txt', 'b.dart']);
+
+        expect(runner.calls, [
+          ['add', '--', 'a.txt', 'b.dart'],
+          ['commit', '-m', 'feat: x', '--', 'a.txt', 'b.dart'],
+        ]);
+      },
+    );
 
     test('commitAmend stages the paths then amends those paths', () async {
       final runner = _FakeRunner({});
@@ -278,33 +284,30 @@ void main() {
       expect(out, contains('more characters'));
     });
 
-    test(
-      'diffSelectedPaths skips a stale path whose diff throws',
-      () async {
-        final runner = _FakeRunner({
-          'diff HEAD --no-color -- a.txt': _ok('diff a\n'),
-          'diff --no-index --no-color /dev/null stale.txt': ProcessResult(
-            0,
-            128,
-            '',
-            'fatal: Pathspec stale.txt is in submodule',
-          ),
-        });
-        final service = GitService(
-          runner: LocalGitCommandRunner(runner: runner.call),
-        );
+    test('diffSelectedPaths skips a stale path whose diff throws', () async {
+      final runner = _FakeRunner({
+        'diff HEAD --no-color -- a.txt': _ok('diff a\n'),
+        'diff --no-index --no-color /dev/null stale.txt': ProcessResult(
+          0,
+          128,
+          '',
+          'fatal: Pathspec stale.txt is in submodule',
+        ),
+      });
+      final service = GitService(
+        runner: LocalGitCommandRunner(runner: runner.call),
+      );
 
-        final out = await service.diffSelectedPaths(
-          '/repo',
-          ['a.txt', 'stale.txt'],
-          untrackedPaths: {'stale.txt'},
-        );
+      final out = await service.diffSelectedPaths(
+        '/repo',
+        ['a.txt', 'stale.txt'],
+        untrackedPaths: {'stale.txt'},
+      );
 
-        // The stale (deleted) untracked path must not abort the whole prompt;
-        // it is skipped and the healthy path's diff is still returned.
-        expect(out, 'diff a\n');
-      },
-    );
+      // The stale (deleted) untracked path must not abort the whole prompt;
+      // it is skipped and the healthy path's diff is still returned.
+      expect(out, 'diff a\n');
+    });
 
     test(
       'diffSelectedPaths uses --no-index for paths in untrackedPaths',
@@ -371,50 +374,62 @@ void main() {
 
       await service.discardAll('/repo');
 
-      expect(runner.calls, [['restore', '.']]);
+      expect(runner.calls, [
+        ['restore', '.'],
+      ]);
     });
 
-    test('discardFolder issues `restore -- <folder>` for tracked changes', () async {
-      final runner = _FakeRunner({});
-      final service = GitService(
-        runner: LocalGitCommandRunner(runner: runner.call),
-      );
+    test(
+      'discardFolder issues `restore -- <folder>` for tracked changes',
+      () async {
+        final runner = _FakeRunner({});
+        final service = GitService(
+          runner: LocalGitCommandRunner(runner: runner.call),
+        );
 
-      await service.discardFolder(
-        '/repo',
-        'src/utils',
-        changes: const [
-          GitFileChange(
-            path: 'src/utils/a.txt',
-            kind: GitChangeKind.modified,
-            staged: false,
-          ),
-        ],
-      );
+        await service.discardFolder(
+          '/repo',
+          'src/utils',
+          changes: const [
+            GitFileChange(
+              path: 'src/utils/a.txt',
+              kind: GitChangeKind.modified,
+              staged: false,
+            ),
+          ],
+        );
 
-      expect(runner.calls, [['restore', '--', 'src/utils']]);
-    });
+        expect(runner.calls, [
+          ['restore', '--', 'src/utils'],
+        ]);
+      },
+    );
 
-    test('discardFolder issues `clean -ffd -- <folder>` for untracked', () async {
-      final runner = _FakeRunner({});
-      final service = GitService(
-        runner: LocalGitCommandRunner(runner: runner.call),
-      );
+    test(
+      'discardFolder issues `clean -ffd -- <folder>` for untracked',
+      () async {
+        final runner = _FakeRunner({});
+        final service = GitService(
+          runner: LocalGitCommandRunner(runner: runner.call),
+        );
 
-      await service.discardFolder(
-        '/repo',
-        'docs/new',
-        changes: const [
-          GitFileChange(
-            path: 'docs/new/file.txt',
-            kind: GitChangeKind.untracked,
-            staged: false,
-          ),
-        ],
-      );
+        await service.discardFolder(
+          '/repo',
+          'docs/new',
+          changes: const [
+            GitFileChange(
+              path: 'docs/new/file.txt',
+              kind: GitChangeKind.untracked,
+              staged: false,
+            ),
+          ],
+        );
 
-      expect(runner.calls, [['clean', '-ffd', '--', 'docs/new']]);
-    });
+        expect(runner.calls, [
+          ['clean', '-ffd', '--', 'docs/new'],
+        ]);
+      },
+    );
 
     test('discardFolder restores then cleans a mixed folder', () async {
       final runner = _FakeRunner({});

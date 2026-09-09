@@ -13,6 +13,7 @@ typedef ProcessRunner =
     Future<ProcessResult> Function(
       String executable,
       List<String> arguments, {
+      Map<String, String>? environment,
       Encoding? stdoutEncoding,
       Encoding? stderrEncoding,
     });
@@ -20,12 +21,14 @@ typedef ProcessRunner =
 Future<ProcessResult> cliToolDefaultProcessRun(
   String executable,
   List<String> arguments, {
+  Map<String, String>? environment,
   Encoding? stdoutEncoding,
   Encoding? stderrEncoding,
 }) {
   return Process.run(
     executable,
     arguments,
+    environment: environment,
     stdoutEncoding: stdoutEncoding ?? systemEncoding,
     stderrEncoding: stderrEncoding ?? systemEncoding,
   );
@@ -75,9 +78,7 @@ class CliToolLocator {
       final direct = await _locateMacOsGit(runner);
       if (direct != null) return direct;
     }
-    if (!isWindows &&
-        Platform.isMacOS &&
-        executableName == 'cursor-agent') {
+    if (!isWindows && Platform.isMacOS && executableName == 'cursor-agent') {
       final direct = await _locateMacOsCursorAgent(runner);
       if (direct != null) return direct;
     }
