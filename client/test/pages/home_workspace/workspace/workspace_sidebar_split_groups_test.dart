@@ -184,7 +184,7 @@ void main() {
     expect(pinned.preview, isFalse);
   });
 
-  testWidgets('tapping a column divider focuses that group', (tester) async {
+  testWidgets('tapping a group indicator focuses that group', (tester) async {
     workbenchCubit
       ..openSession('ws-1', 'a')
       ..openSession('ws-1', 'b')
@@ -194,13 +194,12 @@ void main() {
     final layoutBefore = workbenchCubit.centerLayout('ws-1');
     final focusedBefore = layoutBefore.focusedGroupId;
 
-    // Tap the g0 sub-section's divider (first split-group divider).
-    final divider = find.descendant(
-      of: find.byKey(const ValueKey('workspace-running-split-g0')),
-      matching: find.byKey(const Key('workspace-running-split-divider')),
+    // One indicator per tile, keyed by its split group.
+    final g0Indicator = find.byKey(
+      const ValueKey('workspace-running-group-indicator-g0'),
     );
-    expect(divider, findsOneWidget);
-    await tester.tap(divider);
+    expect(g0Indicator, findsOneWidget);
+    await tester.tap(g0Indicator);
     await tester.pump();
 
     final layoutAfter = workbenchCubit.centerLayout('ws-1');

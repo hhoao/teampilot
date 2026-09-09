@@ -906,25 +906,39 @@ class _RunningSplitGroupsSection extends StatelessWidget {
             key: ValueKey('workspace-running-split-${group.groupId}'),
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              _SplitGroupDivider(focused: group.focused, onTap: () => workbench.focusGroup(tabScopeId, group.groupId)),
-              if (index == 0) const SizedBox(height: 2),
+              if (index > 0) const SizedBox(height: 6),
               for (final sessionId in group.sessionIds)
                 if (knownIds.contains(sessionId))
                   if (_sessionById(chatState, sessionId) case final session?)
-                  SidebarSessionTile(
-                    key: ValueKey('workspace-running-session-$sessionId'),
-                    session: session,
-                    preview: group.previewIds.contains(sessionId),
-                    highlightSessionId: scopedActiveSessionId(
-                      workbench,
-                      tabScopeId,
-                    ),
-                    tapThrottleKeyPrefix: 'workspace_running_session',
-                    onTap: () => openWorkspaceSessionTab(
-                      context,
-                      workspace,
-                      session,
-                      tabScopeId: tabScopeId,
+                  IntrinsicHeight(
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        _SplitGroupIndicator(
+                          groupId: group.groupId,
+                          focused: group.focused,
+                          onTap: () =>
+                              workbench.focusGroup(tabScopeId, group.groupId),
+                        ),
+                        Expanded(
+                          child: SidebarSessionTile(
+                            key: ValueKey('workspace-running-session-$sessionId'),
+                            session: session,
+                            preview: group.previewIds.contains(sessionId),
+                            highlightSessionId: scopedActiveSessionId(
+                              workbench,
+                              tabScopeId,
+                            ),
+                            tapThrottleKeyPrefix: 'workspace_running_session',
+                            onTap: () => openWorkspaceSessionTab(
+                              context,
+                              workspace,
+                              session,
+                              tabScopeId: tabScopeId,
+                            ),
+                          ),
+                        ),
+                      ],
                     ),
                   ),
             ],
@@ -934,33 +948,35 @@ class _RunningSplitGroupsSection extends StatelessWidget {
   }
 }
 
-/// Thin divider between split-group sub-sections. The focused column's
-/// divider renders in the primary color (mirroring the split focus frame);
-/// tapping it focuses that group.
-class _SplitGroupDivider extends StatelessWidget {
-  const _SplitGroupDivider({required this.focused, required this.onTap});
+/// Leading vertical color bar marking a session tile's split-group
+/// membership (VSCode-style active indicator): focused column = primary and
+/// slightly wider; others = a faint outline strip. Tapping the bar focuses
+/// that group. Rendered once per tile so the whole sub-section reads as one
+/// visually coherent group.
+class _SplitGroupIndicator extends StatelessWidget {
+  const _SplitGroupIndicator({
+    required this.groupId,
+    required this.focused,
+    required this.onTap,
+  });
 
+  final String groupId;
   final bool focused;
   final VoidCallback onTap;
-
-  static const tapTargetKey = Key('workspace-running-split-divider');
 
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
     return GestureDetector(
-      key: tapTargetKey,
+      key: ValueKey('workspace-running-group-indicator-$groupId'),
       behavior: HitTestBehavior.opaque,
       onTap: onTap,
-      child: Padding(
-        padding: const EdgeInsets.only(top: 2, bottom: 2),
-        child: SizedBox(
-          height: 2,
-          child: ColoredBox(
-            color: focused
-                ? cs.primary
-                : cs.outlineVariant.withValues(alpha: 0.5),
-          ),
+      child: SizedBox(
+        width: focused ? 5 : 3,
+        child: ColoredBox(
+          color: focused
+              ? cs.primary
+              : cs.outlineVariant.withValues(alpha: 0.6),
         ),
       ),
     );
