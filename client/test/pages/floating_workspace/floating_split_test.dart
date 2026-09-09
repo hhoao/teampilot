@@ -87,8 +87,8 @@ void main() {
     });
   });
 
-  testWidgets('splitTab renders two group hosts; title bar shows the focused '
-      'group strip', (tester) async {
+  testWidgets('splitTab renders two group hosts; title bar hides its tab '
+      'strip (per-group headers own the tabs)', (tester) async {
     final cubit = FloatingWorkspaceCubit();
     final workbench = WorkbenchCubit();
     addTearDown(cubit.close);
@@ -126,9 +126,10 @@ void main() {
       find.byKey(workbenchSplitDividerKey(const <bool>[])),
       findsOneWidget,
     );
-    // Focused group (the new one) owns 'Two': its slim header + the title bar
-    // strip both show it; 'One' only lives in g0's slim header.
-    expect(find.text('Two'), findsNWidgets(2));
+    // Multi-group: the title bar drops its tab strip (drag handle + chrome
+    // only) — each group's slim header owns its tabs. 'Two' shows once (the
+    // focused group's header), 'One' once (g0's header).
+    expect(find.text('Two'), findsOneWidget);
     expect(find.text('One'), findsOneWidget);
     final layout = workbench.floatingLayout('ws');
     expect(layout.groups[layout.focusedGroupId]!.order, [

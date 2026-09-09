@@ -638,7 +638,17 @@ class _PanelChromeFrameState extends State<_PanelChromeFrame> {
                             CommandIds.floatingOpenFile,
                           );
                         },
-                        tabBar: _buildTitleTabBar(context, tabs, activeId),
+                        // Multi-group with an active split (wide): the title
+                        // bar drops its tab strip — each group's slim header
+                        // owns its tabs, the strip would duplicate the
+                        // focused group's chips. The drag surface, "+", and
+                        // window chrome remain. Narrow mode (single-group
+                        // degradation) keeps the strip: it is the only place
+                        // the focused group's tabs render.
+                        tabBar: widget.layout.groups.length > 1 &&
+                                widget.splitEnabled
+                            ? const SizedBox.shrink()
+                            : _buildTitleTabBar(context, tabs, activeId),
                       ),
                       Expanded(
                         child: FocusScope(
