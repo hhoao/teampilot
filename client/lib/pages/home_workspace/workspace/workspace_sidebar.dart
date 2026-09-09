@@ -1,6 +1,6 @@
 import 'dart:async';
 
-import 'package:flutter/foundation.dart' show listEquals, setEquals;
+import 'package:flutter/foundation.dart' show listEquals;
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
@@ -11,7 +11,6 @@ import '../../../cubits/layout_cubit.dart';
 import '../../../cubits/session_groups_cubit.dart';
 import '../../../cubits/shortcut_cubit.dart';
 import '../../../cubits/workbench/workbench_cubit.dart';
-import '../../../cubits/workbench/workbench_tab.dart';
 import '../../../cubits/worktree_cubit.dart';
 import '../../../l10n/l10n_extensions.dart';
 import '../../../models/app_session.dart';
@@ -440,12 +439,6 @@ class _RunningSessionsHost extends StatelessWidget {
         );
       },
     );
-    final previewIds = context.select<WorkbenchCubit, Set<String>>(
-      (c) => {
-        for (final t in c.mergedCenterStrip(tabScopeId).previewIds)
-          if (t.kind == WorkbenchTabKind.session) t.id,
-      },
-    );
     final running = context.select<ChatCubit, RunningSessionIds>(
       (c) => RunningSessionIds.fromOpenSessionTabs(
         sessions: sessionsForWorkspace(workspace, c.state.sessions),
@@ -458,7 +451,6 @@ class _RunningSessionsHost extends StatelessWidget {
           ? const SizedBox.shrink()
           : _RunningSessionsSection(
               sessionIds: running.ids,
-              previewIds: previewIds,
               workspace: workspace,
               tabScopeId: tabScopeId,
             ),
@@ -472,17 +464,12 @@ class SplitSessionGroup {
   const SplitSessionGroup(
     this.groupId,
     this.sessionIds,
-    this.previewIds,
     this.focused,
     this.activeSessionId,
   );
 
   final String groupId;
   final List<String> sessionIds;
-
-  /// Session ids of this group that are still replaceable preview tabs
-  /// (styled italic in the open strip).
-  final Set<String> previewIds;
   final bool focused;
 
   /// The session this group's pane is currently showing (strip activeId);
@@ -494,7 +481,6 @@ class SplitSessionGroup {
       other is SplitSessionGroup &&
       other.groupId == groupId &&
       listEquals(other.sessionIds, sessionIds) &&
-      setEquals(other.previewIds, previewIds) &&
       other.focused == focused &&
       other.activeSessionId == activeSessionId;
 
@@ -528,10 +514,6 @@ class SplitSessionGroups {
         SplitSessionGroup(
           groupId,
           ids,
-          {
-            for (final t in layout.groups[groupId]?.previewIds ?? const {})
-              if (t.kind == WorkbenchTabKind.session) t.id,
-          },
           groupId == focusedId,
           layout.groups[groupId]?.activeId?.sessionId,
         ),
@@ -830,15 +812,11 @@ class _ArchivedConversationList extends StatelessWidget {
 class _RunningSessionsSection extends StatelessWidget {
   const _RunningSessionsSection({
     required this.sessionIds,
-    required this.previewIds,
     required this.workspace,
     required this.tabScopeId,
   });
 
   final List<String> sessionIds;
-
-  /// Session ids rendering as replaceable preview tabs (italic title).
-  final Set<String> previewIds;
   final Workspace workspace;
   final String tabScopeId;
 
@@ -861,7 +839,6 @@ class _RunningSessionsSection extends StatelessWidget {
             SidebarSessionTile(
               key: ValueKey('workspace-running-session-$sessionId'),
               session: session,
-              preview: previewIds.contains(sessionId),
               highlightSessionId: scopedActiveSessionId(
                 context.read<WorkbenchCubit>(),
                 tabScopeId,
@@ -940,7 +917,6 @@ class _RunningSplitGroupsSection extends StatelessWidget {
                         child: SidebarSessionTile(
                           key: ValueKey('workspace-running-session-$sessionId'),
                           session: session,
-                          preview: group.previewIds.contains(sessionId),
                           highlightSessionId: scopedActiveSessionId(
                             workbench,
                             tabScopeId,

@@ -41,16 +41,11 @@ class SidebarSessionTile extends StatefulWidget {
     this.tapThrottleKeyPrefix = 'sidebar_session',
     this.contentLeftInset = 0,
     this.index = -1,
-    this.preview = false,
     super.key,
   });
 
   final AppSession session;
   final bool archiveMode;
-
-  /// Renders the title in italic (replaceable preview tab in the open strip —
-  /// still pinned by a real open, so a distinct but quiet treatment).
-  final bool preview;
 
   /// Activates / opens the session. May be async — when the row needs-you,
   /// the tile awaits this before [ChatCubit.selectMember] / Terminal jump so
@@ -832,12 +827,7 @@ class _SidebarSessionTileState extends State<SidebarSessionTile> {
                         paintedTitle,
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
-                        style: TpTextStyles.of(context).mdColored(cs.onSurface)
-                            .copyWith(
-                              fontStyle: widget.preview
-                                  ? FontStyle.italic
-                                  : null,
-                            ),
+                        style: TpTextStyles.of(context).mdColored(cs.onSurface),
                       ),
                     ),
                   ),

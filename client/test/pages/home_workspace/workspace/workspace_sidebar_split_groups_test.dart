@@ -173,15 +173,12 @@ void main() {
       find.byKey(const ValueKey('workspace-running-session-b')),
       findsOneWidget,
     );
-    // And its title is italic (distinct preview treatment).
-    final tile = tester.widget<SidebarSessionTile>(
+    // Preview and pinned tiles render identically (no italic distinction
+    // anymore — the state lives on the workbench tab strip).
+    expect(
       find.byKey(const ValueKey('workspace-running-session-b')),
+      findsOneWidget,
     );
-    expect(tile.preview, isTrue);
-    final pinned = tester.widget<SidebarSessionTile>(
-      find.byKey(const ValueKey('workspace-running-session-a')),
-    );
-    expect(pinned.preview, isFalse);
   });
 
   testWidgets('each group marks the session it is currently showing', (
