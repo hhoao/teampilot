@@ -149,6 +149,7 @@ class LayoutPreferences {
     this.gitVisible = true,
     this.gitGraphHeaderVisible = true,
     this.gitGraphColumns = const GitGraphColumnPrefs(),
+    this.gitGraphDetailWidth = defaultGitGraphDetailWidth,
     this.searchVisible = true,
     this.boardVisible = true,
     this.rightToolsVisible = false,
@@ -207,6 +208,10 @@ class LayoutPreferences {
       gitGraphHeaderVisible:
           json['gitGraphHeaderVisible'] as bool? ?? true,
       gitGraphColumns: GitGraphColumnPrefs.fromJson(json['gitGraphColumns']),
+      gitGraphDetailWidth: _doubleValue(
+        json['gitGraphDetailWidth'],
+        fallback: defaultGitGraphDetailWidth,
+      ).clamp(minGitGraphDetailWidth, double.infinity),
       searchVisible: json['searchVisible'] as bool? ?? true,
       boardVisible: json['boardVisible'] as bool? ?? true,
       rightToolsVisible: json['rightToolsVisible'] as bool? ?? false,
@@ -304,6 +309,8 @@ class LayoutPreferences {
   static const defaultWorkspaceNavWidth = 220.0;
   static const minWorkspaceNavWidth = 200.0;
   static const maxWorkspaceNavWidth = 360.0;
+  static const defaultGitGraphDetailWidth = 380.0;
+  static const minGitGraphDetailWidth = 280.0;
   static const defaultWorkspaceTerminalHeight = 220.0;
   static const minWorkspaceTerminalHeight = 120.0;
 
@@ -356,6 +363,9 @@ class LayoutPreferences {
   final bool gitVisible;
   final bool gitGraphHeaderVisible;
   final GitGraphColumnPrefs gitGraphColumns;
+
+  /// Git graph 详情栏宽度（选中提交后展开的右栏），拖拽结束时提交。
+  final double gitGraphDetailWidth;
   final bool searchVisible;
   final bool boardVisible;
   final bool rightToolsVisible;
@@ -417,6 +427,7 @@ class LayoutPreferences {
     bool? gitVisible,
     bool? gitGraphHeaderVisible,
     GitGraphColumnPrefs? gitGraphColumns,
+    double? gitGraphDetailWidth,
     bool? searchVisible,
     bool? boardVisible,
     bool? rightToolsVisible,
@@ -470,6 +481,8 @@ class LayoutPreferences {
       gitGraphHeaderVisible:
           gitGraphHeaderVisible ?? this.gitGraphHeaderVisible,
       gitGraphColumns: gitGraphColumns ?? this.gitGraphColumns,
+      gitGraphDetailWidth: (gitGraphDetailWidth ?? this.gitGraphDetailWidth)
+          .clamp(minGitGraphDetailWidth, double.infinity),
       searchVisible: searchVisible ?? this.searchVisible,
       boardVisible: boardVisible ?? this.boardVisible,
       rightToolsVisible: rightToolsVisible ?? this.rightToolsVisible,
@@ -561,6 +574,7 @@ class LayoutPreferences {
       gitVisible: gitVisible,
       gitGraphHeaderVisible: gitGraphHeaderVisible,
       gitGraphColumns: gitGraphColumns,
+      gitGraphDetailWidth: gitGraphDetailWidth,
       searchVisible: searchVisible,
       boardVisible: boardVisible,
       rightToolsVisible: rightToolsVisible,
@@ -614,6 +628,7 @@ class LayoutPreferences {
       'gitVisible': gitVisible,
       'gitGraphHeaderVisible': gitGraphHeaderVisible,
       'gitGraphColumns': gitGraphColumns.toJson(),
+      'gitGraphDetailWidth': gitGraphDetailWidth,
       'searchVisible': searchVisible,
       'boardVisible': boardVisible,
       'rightToolsVisible': rightToolsVisible,

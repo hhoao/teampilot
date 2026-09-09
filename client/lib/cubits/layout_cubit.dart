@@ -104,6 +104,10 @@ class LayoutCubit extends Cubit<LayoutState> {
   Future<void> setGitGraphColumns(GitGraphColumnPrefs columns) =>
       _save(state.preferences.copyWith(gitGraphColumns: columns));
 
+  /// Git graph 详情栏宽度；拖拽结束时一次提交。
+  Future<void> setGitGraphDetailWidth(double width) =>
+      _save(state.preferences.copyWith(gitGraphDetailWidth: width));
+
   Future<void> setRegionVisibility({
     required bool appRailVisible,
     required bool membersVisible,

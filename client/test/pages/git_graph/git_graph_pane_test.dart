@@ -7,6 +7,8 @@ import 'package:teampilot/cubits/git_graph_cubit.dart';
 import 'package:teampilot/cubits/layout_cubit.dart';
 import 'package:teampilot/l10n/app_localizations.dart';
 import 'package:teampilot/models/git_graph.dart';
+import 'package:teampilot/models/layout_preferences.dart';
+import 'package:teampilot/pages/git_graph/git_graph_detail_pane.dart';
 import 'package:teampilot/pages/git_graph/git_graph_pane.dart';
 import 'package:teampilot/services/workbench/workbench_editor_opener.dart';
 import 'package:provider/provider.dart';
@@ -19,13 +21,13 @@ import '../../support/git_graph_test_fakes.dart';
 import '../../support/fixed_resume_lifecycle_service.dart';
 import '../../support/test_runtime_context.dart';
 
-Widget host(GitGraphCubit cubit, {WorkbenchEditorOpener? opener}) =>
+Widget host(GitGraphCubit cubit, {WorkbenchEditorOpener? opener, LayoutCubit? layout}) =>
     MaterialApp(
       localizationsDelegates: AppLocalizations.localizationsDelegates,
       home: MultiProvider(
         providers: [
           BlocProvider.value(value: cubit),
-          BlocProvider(create: (_) => LayoutCubit()),
+          BlocProvider.value(value: layout ?? LayoutCubit()),
           if (opener != null) Provider<WorkbenchEditorOpener>.value(value: opener),
         ],
         child: const Scaffold(
@@ -33,6 +35,35 @@ Widget host(GitGraphCubit cubit, {WorkbenchEditorOpener? opener}) =>
         ),
       ),
     );
+
+/// 记录 [LayoutCubit.setGitGraphDetailWidth] 调用的替身，规避真实 cubit 在
+/// flutter_test 下的 teardown 卡死（复现见 git_graph_pane_test 挂起排查）。
+class _RecordingLayoutCubit extends LayoutCubit {
+  _RecordingLayoutCubit();
+
+  final List<double> detailWidthCalls = [];
+
+  @override
+  Future<void> setGitGraphDetailWidth(double width) async {
+    detailWidthCalls.add(width);
+    emit(
+      state.copyWith(
+        preferences: state.preferences.copyWith(gitGraphDetailWidth: width),
+      ),
+    );
+  }
+}
+
+GitCommitDetail commitDetail() => GitCommitDetail(
+  hash: 'c1',
+  parents: const ['p0'],
+  authorName: 'A',
+  authorEmail: 'a@x',
+  authorDate: DateTime.fromMillisecondsSinceEpoch(0, isUtc: true),
+  subject: 's-c1',
+  body: 'body',
+  files: const [GitCommitFileChange('a.dart', GitCommitFileStatus.modified)],
+);
 
 /// 记录 openChangesDiff 调用的 [WorkbenchEditorOpener] 替身。
 class _RecordingOpener implements WorkbenchEditorOpener {
@@ -218,6 +249,64 @@ void main() {
     expect(find.byType(TextField), findsNothing); // 工具条隐藏
     expect(find.text('Not a git repository'), findsOneWidget);
     await cubit.close();
+  });
+
+  testWidgets('detail pane uses persisted width and drag persists new width', (
+    tester,
+  ) async {
+    await tester.binding.setSurfaceSize(const Size(1600, 900));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+
+    final history = FakeHistoryForGraph(
+      rows: [graphCommitRow('c1')],
+      detail: commitDetail(),
+    );
+    final cubit = GitGraphCubit(
+      history: history,
+      git: FakeGitForGraph(repoStatus()),
+    );
+    addTearDown(cubit.close);
+    await cubit.setRepoRoot('/repo');
+    await cubit.selectCommit('c1');
+
+    // 预置非默认宽度：详情栏应按持久化宽度渲染。
+    // 用替身记录提交值：真实 LayoutCubit(_save/emit) 在本测试环境的 teardown
+    // 会卡死；持久化行为已由 layout_cubit_preferences_test 覆盖。
+    final layout = _RecordingLayoutCubit();
+    addTearDown(layout.close);
+    await layout.load();
+    await layout.setGitGraphDetailWidth(520);
+    layout.detailWidthCalls.clear(); // 种子调用不计入提交记录
+
+    await tester.pumpWidget(host(cubit, layout: layout));
+    await tester.pumpAndSettle();
+    expect(tester.getSize(find.byType(GitGraphDetailPane)).width, 520);
+
+    // 拖动分隔条向左 120：详情栏（尾侧主面板）变宽为 640 并提交。
+    await tester.drag(
+      find.byKey(const ValueKey('resizable-split-divider')),
+      const Offset(-120, 0),
+    );
+    await tester.pumpAndSettle();
+    expect(
+      layout.state.preferences.gitGraphDetailWidth,
+      640,
+      reason: '拖拽结束应把新宽度提交给 LayoutCubit',
+    );
+    expect(tester.getSize(find.byType(GitGraphDetailPane)).width, 640);
+    expect(layout.detailWidthCalls, [640]);
+
+    // 反向拖出下限：clamp 到 minGitGraphDetailWidth。
+    await tester.drag(
+      find.byKey(const ValueKey('resizable-split-divider')),
+      const Offset(2000, 0),
+    );
+    await tester.pumpAndSettle();
+    expect(
+      layout.state.preferences.gitGraphDetailWidth,
+      LayoutPreferences.minGitGraphDetailWidth,
+    );
+    expect(layout.detailWidthCalls, [640, LayoutPreferences.minGitGraphDetailWidth]);
   });
 
   testWidgets('remounting via store does not close or reuse a closed cubit', (

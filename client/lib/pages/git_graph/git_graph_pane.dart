@@ -10,13 +10,14 @@ import '../../cubits/git_graph_cubit.dart';
 import '../../cubits/layout_cubit.dart';
 import '../../l10n/l10n_extensions.dart';
 import '../../models/git_graph.dart';
-import '../../models/layout_preferences.dart' show GitGraphColumnPrefs;
+import '../../models/layout_preferences.dart';
 import '../../services/git/git_repo_store.dart';
 import '../../services/storage/runtime_context.dart';
 import '../../services/workbench/workbench_editor_opener.dart';
 import '../../services/workspace/workspace_tools_scope.dart';
 import '../../services/workspace/workspace_tools_scope_registry.dart';
 import '../../widgets/app_toast/app_toast.dart';
+import '../../widgets/resizable_split_view.dart';
 import 'git_graph_column_header.dart';
 import 'git_graph_column_layout.dart';
 import 'git_graph_columns.dart';
@@ -181,6 +182,10 @@ class _PaneBodyState extends State<_PaneBody> {
     final columnPrefs = context.select<LayoutCubit, GitGraphColumnPrefs>(
       (cubit) => cubit.state.preferences.gitGraphColumns,
     );
+    final detailWidth = context.select<LayoutCubit, double>(
+      (cubit) => cubit.state.preferences.gitGraphDetailWidth,
+    );
+    final layoutCubit = context.read<LayoutCubit>();
     return BlocBuilder<GitGraphCubit, GitGraphState>(
       builder: (context, state) {
         if (!state.gitAvailable && !state.isRefreshing) {
@@ -193,46 +198,58 @@ class _PaneBodyState extends State<_PaneBody> {
           columnPrefs,
           newMaxSlot: gitGraphMaxSlot(state.rows),
         );
-        return Row(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Expanded(
-              child: Column(
-                children: [
-                  GitGraphToolbar(state: state, workspaceId: widget.workspaceId),
-                  if (headerVisible)
-                    GitGraphColumnHeader(controller: _columnController),
-                  Expanded(
-                    child: _GraphList(
-                      state: state,
-                      workspaceId: widget.workspaceId,
-                      columnController: _columnController,
-                    ),
+        // 详情栏：选中提交后展开可拖拽宽度的右栏；未选中时收起，避免挤压图区。
+        // 宽度持久化在 LayoutPreferences.gitGraphDetailWidth，拖拽结束提交。
+        if (state.selectedHash != null) {
+          return ResizableSplitView(
+            primaryAtEnd: true,
+            initialPrimarySize: detailWidth,
+            minPrimarySize: LayoutPreferences.minGitGraphDetailWidth,
+            maxPrimarySize: double.infinity,
+            minSecondarySize: LayoutPreferences.minWorkbenchMainWidth,
+            onPrimarySizeChanged: layoutCubit.setGitGraphDetailWidth,
+            first: Column(
+              children: [
+                GitGraphToolbar(
+                  state: state,
+                  workspaceId: widget.workspaceId,
+                ),
+                if (headerVisible)
+                  GitGraphColumnHeader(controller: _columnController),
+                Expanded(
+                  child: _GraphList(
+                    state: state,
+                    workspaceId: widget.workspaceId,
+                    columnController: _columnController,
                   ),
-                  if (state.errorMessage != null ||
-                      state.currentBranch.isNotEmpty)
-                    _StatusBar(state: state),
-                ],
-              ),
+                ),
+                if (state.errorMessage != null ||
+                    state.currentBranch.isNotEmpty)
+                  _StatusBar(state: state),
+              ],
             ),
-            // 详情栏：选中提交后展开固定宽度右栏；未选中时收起，避免挤压图区。
-            if (state.selectedHash != null) ...[
-              VerticalDivider(
-                width: 1,
-                thickness: 1,
-                color: Theme.of(
-                  context,
-                ).colorScheme.outlineVariant.withValues(alpha: 0.5),
-              ),
-              SizedBox(
-                width: 380,
-                child: GitGraphDetailPane(
-                  onBack: () => cubit.selectCommit(null),
+            second: GitGraphDetailPane(
+              onBack: () => cubit.selectCommit(null),
+            ),
+          );
+        }
+        return Column(
+            children: [
+              GitGraphToolbar(state: state, workspaceId: widget.workspaceId),
+              if (headerVisible)
+                GitGraphColumnHeader(controller: _columnController),
+              Expanded(
+                child: _GraphList(
+                  state: state,
+                  workspaceId: widget.workspaceId,
+                  columnController: _columnController,
                 ),
               ),
+              if (state.errorMessage != null ||
+                  state.currentBranch.isNotEmpty)
+                _StatusBar(state: state),
             ],
-          ],
-        );
+          );
       },
     );
   }

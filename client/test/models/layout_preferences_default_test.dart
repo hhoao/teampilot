@@ -381,6 +381,42 @@ void main() {
     );
   });
 
+  test('gitGraphDetailWidth defaults, round-trips and clamps min', () {
+    expect(
+      const LayoutPreferences().gitGraphDetailWidth,
+      LayoutPreferences.defaultGitGraphDetailWidth,
+    );
+    expect(
+      LayoutPreferences.fromJson(const {}).gitGraphDetailWidth,
+      LayoutPreferences.defaultGitGraphDetailWidth,
+    );
+    // junk / 缺字段容错回默认。
+    expect(
+      LayoutPreferences.fromJson(const {'gitGraphDetailWidth': 'x'})
+          .gitGraphDetailWidth,
+      LayoutPreferences.defaultGitGraphDetailWidth,
+    );
+    // 过窄 clamp 到下限；超大值保留（父布局再 clamp显示）。
+    expect(
+      LayoutPreferences.fromJson(const {'gitGraphDetailWidth': 10})
+          .gitGraphDetailWidth,
+      LayoutPreferences.minGitGraphDetailWidth,
+    );
+    expect(
+      LayoutPreferences.fromJson(const {'gitGraphDetailWidth': 900})
+          .gitGraphDetailWidth,
+      900,
+    );
+    final roundTrip = LayoutPreferences.fromJson(
+      const LayoutPreferences(gitGraphDetailWidth: 500).toJson(),
+    );
+    expect(roundTrip.gitGraphDetailWidth, 500);
+    final clamped = const LayoutPreferences().copyWith(
+      gitGraphDetailWidth: 10,
+    );
+    expect(clamped.gitGraphDetailWidth, LayoutPreferences.minGitGraphDetailWidth);
+  });
+
   test('gitGraphHeaderVisible defaults true and round-trips', () {
     expect(LayoutPreferences.fromJson(const {}).gitGraphHeaderVisible, isTrue);
     final parsed = LayoutPreferences.fromJson(const {

@@ -45,6 +45,20 @@ void main() {
     );
   });
 
+  test('setGitGraphDetailWidth updates state and persists', () async {
+    final prefs = await SharedPreferences.getInstance();
+    final cubit = LayoutCubit(repository: LayoutRepository(prefs));
+    await cubit.load();
+
+    await cubit.setGitGraphDetailWidth(520);
+    expect(cubit.state.preferences.gitGraphDetailWidth, 520);
+
+    // Reload from the repository to prove persistence.
+    final reloaded = LayoutCubit(repository: LayoutRepository(prefs));
+    await reloaded.load();
+    expect(reloaded.state.preferences.gitGraphDetailWidth, 520);
+  });
+
   test('setSessionTabBarVisible toggles and persists', () async {
     final prefs = await SharedPreferences.getInstance();
     final cubit = LayoutCubit(repository: LayoutRepository(prefs));
