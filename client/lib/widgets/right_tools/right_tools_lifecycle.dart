@@ -482,6 +482,11 @@ class _RightToolsLifecycleHostState extends State<RightToolsLifecycleHost> {
     _diskPollTimer?.cancel();
     _diskPollTimer = null;
     _diskListenersActive = false;
+    // Stop the scheduler before the early return below: with git and the file
+    // tree both hidden (host kept alive by search/members/board), there is no
+    // later sync on this path — without this stop the scheduler would keep
+    // fetching every interval until the next suspend cycle or dispose.
+    _autoFetchScheduler?.stop();
 
     if (!widget.preferences.needsDiskSideEffects) return;
 
@@ -500,11 +505,19 @@ class _RightToolsLifecycleHostState extends State<RightToolsLifecycleHost> {
   }
 
   /// Auto-fetch runs only while the git tool is enabled, the lifecycle is
-  /// foreground-active (see [_setupDiskRefresh] / [_suspendDiskSideEffects]),
-  /// and the user setting is on. Target root mirrors the status panel's
-  /// selection (fallback: first root — same semantics as
-  /// [GitRepoStore.refreshAll]).
+  /// foreground-active and disk listeners are attached (see
+  /// [_setupDiskRefresh] / [_suspendDiskSideEffects]), and the user setting is
+  /// on. Target root mirrors the status panel's selection (fallback: first
+  /// root — same semantics as [GitRepoStore.refreshAll]).
   void _syncAutoFetchScheduler() {
+    if (!_lifecycleActive || !_diskListenersActive) {
+      // Backgrounded (or between attach/detach): a session-prefs emission
+      // (interval change / re-enable fired from the settings UI regardless of
+      // this host's visibility) must not start fetches while hidden. The
+      // next resume re-syncs with the current state.
+      _autoFetchScheduler?.stop();
+      return;
+    }
     final tools = _scope?.tools;
     final roots = _scope?.roots ?? const <String>[];
     final selected = _selectedGitRoot.value;

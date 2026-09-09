@@ -70,42 +70,50 @@ void main() {
     tearDownTestAppStorage();
   });
 
-  Future<void> pumpHost(WidgetTester tester) {
+  Future<void> pumpHost(
+    WidgetTester tester, {
+    bool fileTreeVisible = false,
+    bool gitVisible = true,
+    bool tickerEnabled = true,
+  }) {
     return tester.pumpWidget(
       MaterialApp(
-        home: WorkspaceToolsScope(
-          state: WorkspaceToolsScopeState(
-            tools: WorkspaceToolsContext(
-              targetId: 'test',
-              context: testRuntimeContext('/home'),
+        home: TickerMode(
+          enabled: tickerEnabled,
+          child: WorkspaceToolsScope(
+            state: WorkspaceToolsScopeState(
+              tools: WorkspaceToolsContext(
+                targetId: 'test',
+                context: testRuntimeContext('/home'),
+              ),
+              roots: const ['/home/repoA', '/home/repoB'],
+              resolving: false,
             ),
-            roots: const ['/home/repoA', '/home/repoB'],
-            resolving: false,
-          ),
-          child: BlocProvider<SessionPreferencesCubit>.value(
-            value: prefsCubit,
-            child: RepositoryProvider<GitRepoStore>.value(
-              value: store,
-              child: RepositoryProvider<WorkspaceFileTreeStore>.value(
-                value: fileTreeStore,
-                child: RightToolsLifecycleHost(
-                  cwd: '/home/repoA',
-                  additionalPaths: const ['/home/repoB'],
-                  workspaceId: 'ws-test',
-                  preferences: const RightToolsToolPreferences(
-                    fileTreeVisible: false,
-                    gitVisible: true,
-                    searchVisible: false,
-                    membersVisible: false,
-                    boardVisible: false,
-                  ),
-                  child: Builder(
-                    builder: (context) {
-                      selectedRoot = RightToolsLifecycle.of(
-                        context,
-                      ).selectedGitRoot;
-                      return const SizedBox.shrink();
-                    },
+            child: BlocProvider<SessionPreferencesCubit>.value(
+              value: prefsCubit,
+              child: RepositoryProvider<GitRepoStore>.value(
+                value: store,
+                child: RepositoryProvider<WorkspaceFileTreeStore>.value(
+                  value: fileTreeStore,
+                  child: RightToolsLifecycleHost(
+                    cwd: '/home/repoA',
+                    additionalPaths: const ['/home/repoB'],
+                    workspaceId: 'ws-test',
+                    preferences: RightToolsToolPreferences(
+                      fileTreeVisible: fileTreeVisible,
+                      gitVisible: gitVisible,
+                      searchVisible: false,
+                      membersVisible: false,
+                      boardVisible: false,
+                    ),
+                    child: Builder(
+                      builder: (context) {
+                        selectedRoot = RightToolsLifecycle.of(
+                          context,
+                        ).selectedGitRoot;
+                        return const SizedBox.shrink();
+                      },
+                    ),
                   ),
                 ),
               ),
@@ -158,43 +166,63 @@ void main() {
   });
 
   testWidgets('no fetch when git tool is hidden', (tester) async {
-    await tester.pumpWidget(
-      MaterialApp(
-        home: WorkspaceToolsScope(
-          state: WorkspaceToolsScopeState(
-            tools: WorkspaceToolsContext(
-              targetId: 'test',
-              context: testRuntimeContext('/home'),
-            ),
-            roots: const ['/home/repoA'],
-            resolving: false,
-          ),
-          child: BlocProvider<SessionPreferencesCubit>.value(
-            value: prefsCubit,
-            child: RepositoryProvider<GitRepoStore>.value(
-              value: store,
-              child: RepositoryProvider<WorkspaceFileTreeStore>.value(
-                value: fileTreeStore,
-                child: RightToolsLifecycleHost(
-                  cwd: '/home/repoA',
-                  additionalPaths: const [],
-                  workspaceId: 'ws-test',
-                  preferences: const RightToolsToolPreferences(
-                    fileTreeVisible: true,
-                    gitVisible: false,
-                    searchVisible: false,
-                    membersVisible: false,
-                    boardVisible: false,
-                  ),
-                  child: const SizedBox.shrink(),
-                ),
-              ),
-            ),
-          ),
-        ),
-      ),
-    );
+    await pumpHost(tester, fileTreeVisible: true, gitVisible: false);
     await pumpLifecycleFrames(tester);
     expect(fetchedRoots, isEmpty);
+  });
+
+  // Regression: _setupDiskRefresh early-returns when no tool needs disk side
+  // effects (git + file tree both hidden, host kept alive by another tool) —
+  // the running scheduler must be stopped on that path too, not only when
+  // needsDiskSideEffects stays true.
+  testWidgets('stops fetching when git tool is hidden while the file tree '
+      'is hidden too', (tester) async {
+    await pumpHost(tester, fileTreeVisible: false, gitVisible: true);
+    await pumpLifecycleFrames(tester);
+    expect(fetchedRoots, ['/home/repoA']);
+
+    // Hide the git tab via didUpdateWidget; fileTreeVisible stays false, so
+    // needsDiskSideEffects is false and the early return path is taken.
+    await pumpHost(tester, fileTreeVisible: false, gitVisible: false);
+    expect(fetchedRoots, [
+      '/home/repoA',
+    ], reason: 'hiding git must not trigger an extra immediate fetch');
+
+    // Advance past one default interval (5 min) — a leaked scheduler would
+    // have fired here.
+    await tester.pump(const Duration(minutes: 6));
+    expect(fetchedRoots, [
+      '/home/repoA',
+    ], reason: 'no interval fetch after the git tool is hidden');
+  });
+
+  // Regression: a session-prefs emission (interval change from the settings
+  // UI) arriving while the host is backgrounded must not (re)start the
+  // scheduler — auto-fetch stays gated on foreground activity.
+  testWidgets('interval change while backgrounded does not start fetching', (
+    tester,
+  ) async {
+    await pumpHost(tester);
+    await pumpLifecycleFrames(tester);
+    expect(fetchedRoots, ['/home/repoA']);
+
+    // Background the host (keep-alive tab switch): TickerMode off triggers
+    // didChangeDependencies → suspend path.
+    await pumpHost(tester, tickerEnabled: false);
+    await pumpLifecycleFrames(tester);
+    expect(fetchedRoots, [
+      '/home/repoA',
+    ], reason: 'backgrounding must not trigger a fetch');
+
+    await prefsCubit.setGitAutoFetchIntervalMinutes(1);
+    await tester.pump();
+    await tester.pump(const Duration(minutes: 2));
+    expect(
+      fetchedRoots,
+      ['/home/repoA'],
+      reason:
+          'no fetch from a prefs emission while backgrounded, neither '
+          'immediately nor on the new interval',
+    );
   });
 }
