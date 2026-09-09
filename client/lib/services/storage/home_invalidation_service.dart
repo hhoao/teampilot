@@ -7,6 +7,7 @@ import '../../models/runtime_target.dart';
 import '../../models/ssh_profile.dart';
 import 'home_storage.dart';
 import 'home_ssh_profile_impact.dart';
+import 'home_storage_invalidator.dart';
 import '../../utils/logging/logger.dart';
 
 /// How much of the app-data boot chain an invalidation must rerun.
@@ -43,17 +44,28 @@ class HomeInvalidationService {
     this.fallbackHomeId = RuntimeTarget.localId,
   }) : _profileStates = profileStates,
        _storageChanges = storageChanges,
-       _homeTargetId = homeTargetId,
        _reload = reload,
        _switchHome = switchHome,
+       // M2: the impact policy lives on the invalidator; the service routes
+       // profile diffs through it instead of resolving impacts inline.
+       _invalidator = HomeStorageInvalidator(
+         homeTargetId: homeTargetId,
+         switchHome: switchHome,
+         fallbackHomeId: fallbackHomeId,
+       ),
        _lastProfiles = List<SshProfile>.of(initialProfiles);
 
   final Stream<SshProfileState> _profileStates;
   final Stream<StoragePlaneChange> _storageChanges;
-  final String Function() _homeTargetId;
   final Future<void> Function(ReloadLevel level) _reload;
   final Future<void> Function(String id) _switchHome;
+  final HomeStorageInvalidator _invalidator;
   final String fallbackHomeId;
+
+  /// The impact-policy helper this service routes profile diffs through
+  /// (M2 single policy owner). Exposed so the shell can hand the same
+  /// instance to RepositoryProvider consumers.
+  HomeStorageInvalidator get invalidator => _invalidator;
 
   List<SshProfile> _lastProfiles;
   StreamSubscription<SshProfileState>? _profileSub;
@@ -65,6 +77,9 @@ class HomeInvalidationService {
   _PendingInvalidation? _pending;
   var _draining = false;
   var _drainScheduled = false;
+
+  /// True while a reload this service initiated is running (C1 echo guard).
+  var _reloading = false;
 
   /// Starts routing events. Must be called before app-data bootstrap runs so
   /// the baseline profile list is primed from [initialProfiles].
@@ -86,11 +101,11 @@ class HomeInvalidationService {
     if (listEquals(_lastProfiles, state.profiles)) return; // re-emit, no diff
     final previous = _lastProfiles;
     _lastProfiles = List<SshProfile>.of(state.profiles);
-    switch (resolveHomeSshProfileImpact(
-      homeTargetId: _homeTargetId(),
-      previous: previous,
-      next: state.profiles,
-    )) {
+    // M2: impact classification lives on [HomeStorageInvalidator] — the
+    // single policy helper for catalog diffs.
+    switch (
+      _invalidator.impactOf(previous: previous, next: state.profiles)
+    ) {
       case HomeSshProfileImpact.none:
         return;
       case HomeSshProfileImpact.homeConnectionChanged:
@@ -103,6 +118,13 @@ class HomeInvalidationService {
   void _onStoragePlaneChange(StoragePlaneChange change) {
     // A no-op re-emit of the identical context carries no invalidation.
     if (identical(change.oldContext, change.newContext)) return;
+    // C1: a reload the service itself initiated reinstalls the storage
+    // context (a fresh wrapper — never `identical`) and the swap's change
+    // echoes back through this subscription. Swaps while our own reload is
+    // in flight are that echo, not an external home switch — re-entering
+    // would loop reload → swap → reload forever. A legitimate external
+    // switch arriving while no reload is running still fires below.
+    if (_reloading) return;
     _request(_PendingInvalidation.reloadFull);
   }
 
@@ -132,9 +154,9 @@ class HomeInvalidationService {
         try {
           switch (pending) {
             case _PendingInvalidation.reloadIndexOnly:
-              await _reload(ReloadLevel.indexOnly);
+              await _runReload(ReloadLevel.indexOnly);
             case _PendingInvalidation.reloadFull:
-              await _reload(ReloadLevel.full);
+              await _runReload(ReloadLevel.full);
             case _PendingInvalidation.switchHome:
               await _switchHome(fallbackHomeId);
           }
@@ -154,6 +176,18 @@ class HomeInvalidationService {
           Future<void>.delayed(Duration.zero).then((_) => _drain()),
         );
       }
+    }
+  }
+
+  /// Runs one reload with the C1 echo guard held: the reload chain
+  /// reinstalls the storage context and the resulting swap change must not
+  /// re-request another reload.
+  Future<void> _runReload(ReloadLevel level) async {
+    _reloading = true;
+    try {
+      await _reload(level);
+    } finally {
+      _reloading = false;
     }
   }
 }

@@ -48,6 +48,28 @@ class _ReloadRecorder {
   }
 }
 
+/// Reload fake that mimics the SSH-home reload chain: the reload reinstalls
+/// the storage context, and the reinstall's swap emits a non-identical
+/// StoragePlaneChange back into the service's own subscription (the C1 echo).
+class _EchoingReloadRecorder {
+  final levels = <ReloadLevel>[];
+  final StreamController<StoragePlaneChange> storageChanges;
+
+  _EchoingReloadRecorder(this.storageChanges);
+
+  Future<void> call(ReloadLevel level) async {
+    levels.add(level);
+    // reinstallStorageContext() → homeStorage.swap(fresh wrapper)
+    storageChanges.add(
+      StoragePlaneChange(
+        oldContext: _context('/tp/stale'),
+        newContext: _context('/tp/fresh'),
+        generation: levels.length,
+      ),
+    );
+  }
+}
+
 void main() {
   late StreamController<SshProfileState> profileStates;
   late StreamController<StoragePlaneChange> storageChanges;
@@ -129,6 +151,43 @@ void main() {
     await _flush();
 
     expect(reload.levels, [ReloadLevel.full]);
+  });
+
+  test('swap echo from the reload itself does not re-trigger (C1)', () async {
+    // SSH home mode: the reload's own reinstallStorageContext swaps in a
+    // fresh (non-identical) context, whose change echoes back through
+    // storageChanges while the reload is still in flight — that echo must
+    // not queue another reload (unbounded reload → swap → reload cycle).
+    final echoReload = _EchoingReloadRecorder(storageChanges);
+    final service = HomeInvalidationService(
+      profileStates: profileStates.stream,
+      storageChanges: storageChanges.stream,
+      homeTargetId: () => 'ssh:p1',
+      reload: echoReload.call,
+      switchHome: (id) async => switchedHomeIds.add(id),
+      initialProfiles: const [home],
+    );
+    service.start();
+    profileStates.add(
+      SshProfileState(profiles: [home.copyWith(host: 'new.example.com')]),
+    );
+    await _flush();
+
+    expect(echoReload.levels, [ReloadLevel.full]);
+    expect(switchedHomeIds, isEmpty);
+
+    // A swap arriving after the reload settled is an external home switch
+    // — it still triggers a fresh reload.
+    storageChanges.add(
+      StoragePlaneChange(
+        oldContext: _context('/tp/b'),
+        newContext: _context('/tp/c'),
+        generation: 99,
+      ),
+    );
+    await _flush();
+
+    expect(echoReload.levels, [ReloadLevel.full, ReloadLevel.full]);
   });
 
   test('same-context profile re-emit does not reload', () async {

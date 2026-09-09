@@ -2611,25 +2611,14 @@ Future<AppShell> buildAppShell({
     );
 
     // P1: switching the home target persists the id, rebinds the home context,
-    // then reinstalls + reloads all remote-backed app data (same chain the old
-    // backend/profile switches used).
+    // and republishes it through HomeStorage. No explicit reload here (I1): the
+    // HomeInvalidationService subscribes to HomeStorage.changes and drives the
+    // single full reload — the swap itself is the trigger.
     Future<void> switchHomeTarget(String id) async {
       await setHomeTarget(
         id,
       ); // persists + rebinds home + republishes AppStorage
-      // Home already rebound — skip a second dispose/rebind that would tear down
-      // the Connect storage pool (runtimeContextEvicted WARN).
-      await reloadAllAppData(reinstallSshHome: false);
     }
-
-    final homeStorageInvalidator = HomeStorageInvalidator(
-      homeTargetId: () => defaultTargetResolver().id,
-      reinstallAndReload: () async {
-        await reinstallStorageContext();
-        await reloadAllAppData();
-      },
-      switchHome: switchHomeTarget,
-    );
 
     // Bootstrap-owned invalidation: replaces the HomeSshProfileBinder widget
     // (a pending invalidation can no longer be dropped by `!mounted`). Starts
@@ -2645,6 +2634,9 @@ Future<AppShell> buildAppShell({
       initialProfiles: sshProfileCubit.state.profiles,
     );
     homeInvalidationService.start();
+    // M2: the invalidator is the service's policy helper (impact
+    // classification); it stays exposed for RepositoryProvider consumers.
+    final homeStorageInvalidator = homeInvalidationService.invalidator;
 
     homeTargetController = HomeTargetController(
       registry: runtimeTargetRegistry,
