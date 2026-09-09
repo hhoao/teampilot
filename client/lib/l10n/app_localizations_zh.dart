@@ -2061,6 +2061,9 @@ class AppLocalizationsZh extends AppLocalizations {
   String get renameConversation => '重命名对话';
 
   @override
+  String get sessionOpenToSide => '在右侧分栏打开';
+
+  @override
   String get deleteConversation => '删除对话';
 
   @override
@@ -2142,6 +2145,12 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get closeAllTabs => '关闭全部';
+
+  @override
+  String get tabMenuSplitRight => '向右拆分';
+
+  @override
+  String get tabMenuSplitDown => '向下拆分';
 
   @override
   String get session => '会话';
@@ -7179,6 +7188,21 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get shortcutsRunRestart => '重新运行';
+
+  @override
+  String get shortcutsWorkbenchSplitRight => '向右拆分编辑组';
+
+  @override
+  String get shortcutsWorkbenchSplitDown => '向下拆分编辑组';
+
+  @override
+  String get shortcutsWorkbenchSplitReset => '重置编辑组布局';
+
+  @override
+  String get shortcutsWorkbenchFocusNextGroup => '聚焦下一个编辑组';
+
+  @override
+  String get shortcutsWorkbenchMoveTabToNextGroup => '将标签页移到下一个编辑组';
 
   @override
   String get shortcutsCategoryRun => '运行';

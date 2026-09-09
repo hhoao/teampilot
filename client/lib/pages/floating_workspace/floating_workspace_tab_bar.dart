@@ -10,6 +10,7 @@ import '../../models/floating_workspace_tab.dart';
 import '../../services/io/file_path_actions.dart';
 import '../../services/storage/runtime_context.dart';
 import '../../services/workspace/workspace_tools_scope.dart';
+import '../../widgets/workbench/workbench_tab_drag.dart';
 import '../workspace_shell/workspace_shell_tabs.dart';
 import 'floating_workspace_new_terminal_menu.dart';
 
@@ -53,6 +54,28 @@ bool _remoteFileManagerActionsFor(RuntimeContext? workContext) {
   return workContext.mode == StorageBackendMode.ssh;
 }
 
+/// Drag-source wiring for a [FloatingWorkspaceTabBar]: every tab chip becomes
+/// a [WorkbenchTabDraggable] owned by [sourceGroupId]. [resolveTabId] maps a
+/// chip's [FloatingTab.id] to its bar-level [WorkbenchTabId] (chips with no
+/// bar id stay plain); [onDrop] receives the dragged tab, the drop region's
+/// group id, and the computed zone — hosts wire it to [dispatchSplitDrop]
+/// with `floating: true`.
+class FloatingTabStripDrag {
+  const FloatingTabStripDrag({
+    required this.sourceGroupId,
+    required this.resolveTabId,
+    required this.onDrop,
+  });
+
+  final String sourceGroupId;
+  final WorkbenchTabId? Function(String tabId) resolveTabId;
+  final void Function(
+    WorkbenchTabId tab,
+    String targetGroupId,
+    SplitDropZone zone,
+  ) onDrop;
+}
+
 /// Tabs-only strip for the floating title bar.
 ///
 /// The "+" control is a sibling outside this scroll viewport (Orca-style): the
@@ -73,6 +96,9 @@ class FloatingWorkspaceTabBar extends StatelessWidget {
     this.onPin,
     this.onUnpin,
     this.onDoubleTap,
+    this.onSplitRight,
+    this.onSplitDown,
+    this.tabDrag,
     super.key,
   });
 
@@ -102,6 +128,18 @@ class FloatingWorkspaceTabBar extends StatelessWidget {
 
   /// Double-tap: promote a preview tab, toggle pin otherwise.
   final void Function(String tabId)? onDoubleTap;
+
+  /// Context-menu "Split Right" for a tab id (new floating sibling group to
+  /// the right). Entries are omitted when null (narrow panel / sole tab).
+  final ValueChanged<String>? onSplitRight;
+
+  /// Context-menu "Split Down" for a tab id (new floating sibling group
+  /// below). Entries are omitted when null.
+  final ValueChanged<String>? onSplitDown;
+
+  /// Drag-source wiring for the chips (split-group tab drags); null keeps the
+  /// chips plain.
+  final FloatingTabStripDrag? tabDrag;
 
   @override
   Widget build(BuildContext context) {
@@ -133,7 +171,7 @@ class FloatingWorkspaceTabBar extends StatelessWidget {
               );
         final preview = previewTabIds.contains(tab.id);
         final pinned = pinnedTabIds.contains(tab.id);
-        return WorkbenchStripTabChip(
+        Widget chip = WorkbenchStripTabChip(
           kind: kind,
           tabId: tab.id,
           filePath: filePath,
@@ -167,7 +205,25 @@ class FloatingWorkspaceTabBar extends StatelessWidget {
           onDoubleTap: onDoubleTap != null
               ? () => onDoubleTap!(tab.id)
               : null,
+          onSplitRight: onSplitRight != null
+              ? () => onSplitRight!(tab.id)
+              : null,
+          onSplitDown: onSplitDown != null ? () => onSplitDown!(tab.id) : null,
         );
+        final drag = tabDrag;
+        if (drag != null) {
+          final dragTab = drag.resolveTabId(tab.id);
+          if (dragTab != null) {
+            chip = WorkbenchTabDraggable(
+              tab: dragTab,
+              sourceGroupId: drag.sourceGroupId,
+              onDrop: (targetGroupId, zone) =>
+                  drag.onDrop(dragTab, targetGroupId, zone),
+              child: chip,
+            );
+          }
+        }
+        return chip;
       },
     );
   }

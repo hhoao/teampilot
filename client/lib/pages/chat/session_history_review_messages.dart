@@ -30,6 +30,8 @@ class SessionHistoryReviewMessages extends StatelessWidget {
     this.highlightMessageId,
     this.revealRequest,
     this.visibleOwnerId,
+    this.scrollAnchorKey,
+    this.scrollAnchors,
     super.key,
   });
 
@@ -51,6 +53,14 @@ class SessionHistoryReviewMessages extends StatelessWidget {
 
   /// Owning user-turn id of the first viewport-visible turn.
   final ValueNotifier<String?>? visibleOwnerId;
+
+  /// Key into [scrollAnchors] for transcript scroll-position restore across
+  /// host remounts (see [SessionHistoryThread.scrollAnchorKey]).
+  final String? scrollAnchorKey;
+
+  /// Host-owned anchor map (sessionId → offset), typically
+  /// `ChatCubit.sessionScrollAnchors`.
+  final Map<String, double>? scrollAnchors;
 
   bool get _showThread {
     if (state.status == AiHistoryViewStatus.ready) return true;
@@ -84,6 +94,8 @@ class SessionHistoryReviewMessages extends StatelessWidget {
               highlightMessageId: highlightMessageId,
               revealRequest: revealRequest,
               visibleOwnerId: visibleOwnerId,
+              scrollAnchorKey: scrollAnchorKey,
+              scrollAnchors: scrollAnchors,
             ),
           ),
         ],

@@ -135,7 +135,7 @@ void main() {
       expect(layout.state.preferences.workspaceTerminalVisible, terminalVisible);
       expect(floating.state.visibility, FloatingPanelVisibility.open);
       expect(
-        workbench.state.bar('ws').floating.order.any(
+        workbench.mergedFloatingStrip('ws').order.any(
           (t) => t.kind == WorkbenchTabKind.shell && t.id == 'e1',
         ),
         isTrue,

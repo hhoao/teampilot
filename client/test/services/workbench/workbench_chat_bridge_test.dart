@@ -33,7 +33,7 @@ void main() {
   group('WorkbenchChatBridge.onSessionTabOpened', () {
     test('feeds a session open into the bar and activates it', () {
       bridge.onSessionTabOpened(_ws, 's1', preview: false);
-      final center = cubit.state.bar(_ws).center;
+      final center = cubit.centerFocusedStrip(_ws);
       expect(center.order, [_s1]);
       expect(center.activeId, _s1);
       expect(center.previewIds, isEmpty);
@@ -41,7 +41,7 @@ void main() {
 
     test('preview: true surfaces the tab as a preview', () {
       bridge.onSessionTabOpened(_ws, 's1', preview: true);
-      final center = cubit.state.bar(_ws).center;
+      final center = cubit.centerFocusedStrip(_ws);
       expect(center.order, [_s1]);
       expect(center.activeId, _s1);
       expect(center.previewIds, {_s1});
@@ -49,7 +49,7 @@ void main() {
 
     test('activate: false appends without activating', () {
       bridge.onSessionTabOpened(_ws, 's1', preview: false, activate: false);
-      final center = cubit.state.bar(_ws).center;
+      final center = cubit.centerFocusedStrip(_ws);
       expect(center.order, [_s1]);
       expect(center.activeId, isNull);
     });
@@ -107,7 +107,7 @@ void main() {
       // A is running: it must survive the preview replace and re-pin into
       // the bar without stealing activation from B.
       expect(chat.tabStore.openTabBySessionId('A'), isNotNull);
-      final center = cubit.state.bar('ws-1').center;
+      final center = cubit.centerFocusedStrip('ws-1');
       final aTab = WorkbenchTabId.session('A');
       expect(center.contains(aTab), isTrue);
       expect(center.previewIds, isNot(contains(aTab)));

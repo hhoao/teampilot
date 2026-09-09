@@ -48,6 +48,8 @@ class WorkspaceChatPane extends StatefulWidget {
     this.initialText,
     this.initialTextRevision = 0,
     this.referencedSessionId,
+    this.canExitLanding,
+    this.onBack,
     this.submitter = submitWorkspaceLandingMessage,
     this.landingDraftPersister = persistLandingDraft,
     this.landingDraftCleaner = clearWorkspaceLandingDraft,
@@ -58,6 +60,16 @@ class WorkspaceChatPane extends StatefulWidget {
   final String? initialText;
   final int initialTextRevision;
   final String? referencedSessionId;
+
+  /// Whether the landing back control is shown. When null, resolved from the
+  /// workbench cubit's focused center group (the workspace-level landing).
+  /// Split-group hosts pass their own group's value instead.
+  final bool? canExitLanding;
+
+  /// Landing back control handler. When null, exits the workbench cubit's
+  /// focused center group's landing. Split-group hosts pass their own group's
+  /// exit instead.
+  final VoidCallback? onBack;
   final WorkspaceLandingMessageSubmitter submitter;
   final WorkspaceLandingDraftPersister landingDraftPersister;
   final WorkspaceLandingDraftCleaner landingDraftCleaner;
@@ -168,9 +180,16 @@ class _WorkspaceChatPaneState extends State<WorkspaceChatPane> {
     final launching = _launchInFlight(context);
     // The landing doubles as the workspace start page: the back control only
     // exists when the landing was entered over a restorable workbench tab.
-    final canExitLanding = context.select<WorkbenchCubit, bool>(
-      (w) => w.canExitLanding(workspace.workspaceId),
-    );
+    // Hosts that scope the landing to one split group pass their own
+    // canExitLanding / onBack; otherwise both resolve from the focused group.
+    final canExitLanding = widget.canExitLanding ??
+        context.select<WorkbenchCubit, bool>(
+          (w) => w.canExitLanding(workspace.workspaceId),
+        );
+    final onBack = widget.onBack ??
+        () => context.read<WorkbenchCubit>().exitLanding(
+          workspace.workspaceId,
+        );
     return SizedBox.expand(
       child: ColoredBox(
         color: cs.surface,
@@ -188,9 +207,7 @@ class _WorkspaceChatPaneState extends State<WorkspaceChatPane> {
             referencedSessionId: widget.referencedSessionId,
             isSubmitting: launching,
             showBackButton: canExitLanding,
-            onBack: () => context.read<WorkbenchCubit>().exitLanding(
-              workspace.workspaceId,
-            ),
+            onBack: onBack,
             onSubmit: (message, draft) => unawaited(_submit(message, draft)),
           ),
         ),

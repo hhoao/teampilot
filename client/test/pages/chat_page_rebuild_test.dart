@@ -21,6 +21,7 @@ import 'package:teampilot/cubits/worktree_cubit.dart';
 import 'package:teampilot/cubits/workspace_landing_context_cubit.dart';
 import 'package:teampilot/cubits/workspace_tools_cubit.dart';
 import 'package:teampilot/cubits/workbench/workbench_cubit.dart';
+import 'package:teampilot/cubits/workbench/workbench_tab.dart';
 import 'package:teampilot/l10n/app_localizations.dart';
 import 'package:teampilot/models/app_session.dart';
 import 'package:teampilot/models/landing_launch_context.dart';
@@ -832,6 +833,225 @@ void main() {
       await tester.pump();
 
       expect(_structuralProbe(tester).buildCount, countAfterSettle);
+    },
+  );
+
+  testWidgets(
+    'focus switch between split groups does not remount the session body',
+    (tester) async {
+      tester.view.physicalSize = const Size(1600, 900);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(() {
+        tester.view.resetPhysicalSize();
+        tester.view.resetDevicePixelRatio();
+      });
+
+      final appData = Directory.systemTemp.createTempSync('chat_rebuild_test_');
+      addTearDown(() {
+        if (appData.existsSync()) appData.deleteSync(recursive: true);
+      });
+
+      final teamCubit = LaunchProfileCubit(
+        repository: LaunchProfileRepository(rootDir: appData.path),
+        sessionRepository: SessionRepository(rootDir: appData.path),
+        executableResolver: _executable,
+        appDataBasePath: appData.path,
+        configProfileService: ConfigProfileService(basePath: appData.path),
+      );
+      addTearDown(() => teamCubit.close());
+
+      final sessionRepo = SessionRepository(rootDir: appData.path);
+      final chatCubit = ChatCubit(
+        executableResolver: _executable,
+        automationRepository: testAutomationRepository(),
+        sessionRepository: sessionRepo,
+      );
+      addTearDown(() => chatCubit.close());
+
+      final layoutCubit = LayoutCubit();
+      addTearDown(() => layoutCubit.close());
+
+      final editorCubit = EditorCubit(fs: LocalFilesystem());
+      addTearDown(() => editorCubit.close());
+
+      final workbenchCubit = WorkbenchCubit();
+      addTearDown(() => workbenchCubit.close());
+
+      final runCubit = RunCubit(
+        platform: IdleRunPlatform(),
+        folders: const [WorkspaceFolder(path: '/tmp/personal-workspace')],
+      );
+      addTearDown(() => runCubit.close());
+
+      final skillCubit = testSkillCubit();
+      addTearDown(() => skillCubit.close());
+
+      final pluginRepo = PluginRepository();
+      final pluginCubit = PluginCubit(
+        repository: pluginRepo,
+        installService: pluginRepo.install,
+        repoService: PluginRepoService(),
+      );
+      addTearDown(() => pluginCubit.close());
+
+      final worktreeCubit = WorktreeCubit();
+      addTearDown(() => worktreeCubit.close());
+
+      final presenceCubit = MemberPresenceCubit();
+      chatCubit.bindPresenceCubit(presenceCubit);
+      addTearDown(() => presenceCubit.close());
+
+      final aiHistoryCubit = _testAiHistoryCubit();
+      addTearDown(() => aiHistoryCubit.close());
+
+      final cliPresetsCubit = CliPresetsCubit(
+        repository: CliPresetsRepository(
+          fs: InMemoryFilesystem(),
+          presetsPath: '/cli-presets.json',
+        ),
+      );
+      cliPresetsCubit.emit(
+        const CliPresetsState(status: CliPresetsLoadStatus.ready),
+      );
+      addTearDown(() => cliPresetsCubit.close());
+
+      final sessionPreferencesCubit =
+          (await tester.runAsync(testSessionPreferencesCubit))!;
+      addTearDown(() => sessionPreferencesCubit.close());
+
+      chatCubit.ingestWorkspaceSessionSnapshot(
+        workspaces: [
+          Workspace(
+            workspaceId: 'personal-test',
+            folders: [WorkspaceFolder(path: '/tmp/personal-workspace')],
+            createdAt: 1,
+          ),
+        ],
+        sessions: const [],
+      );
+
+      _openSessionTab(
+        chatCubit,
+        workbenchCubit,
+        AppSession(
+          sessionId: 'sess-1',
+          workspaceId: 'personal-test',
+          folders: const [WorkspaceFolder(path: '/tmp/personal-workspace')],
+          display: 'Session one',
+          createdAt: 1,
+        ),
+        'Session one',
+      );
+      _openSessionTab(
+        chatCubit,
+        workbenchCubit,
+        AppSession(
+          sessionId: 'sess-2',
+          workspaceId: 'personal-test',
+          folders: const [WorkspaceFolder(path: '/tmp/personal-workspace')],
+          display: 'Session two',
+          createdAt: 2,
+        ),
+        'Session two',
+      );
+      // Split sess-2 into a right group, then focus back and forth.
+      workbenchCubit.splitTab(
+        'personal-test',
+        WorkbenchTabId.session('sess-2'),
+        axis: Axis.horizontal,
+        before: false,
+      );
+
+      await tester.pumpWidget(
+        MaterialApp(
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
+          home: MultiRepositoryProvider(
+            providers: [
+              RepositoryProvider<GitRepoStore>(create: (_) => GitRepoStore()),
+              RepositoryProvider<WorkspaceFileTreeStore>(
+                create: (_) => WorkspaceFileTreeStore(),
+              ),
+              RepositoryProvider<SessionRepository>.value(value: sessionRepo),
+              RepositoryProvider<WorkspaceTerminalRegistry>(
+                create: (_) => WorkspaceTerminalRegistry(),
+              ),
+            ],
+            child: MultiBlocProvider(
+              providers: [
+                BlocProvider.value(value: teamCubit),
+                BlocProvider.value(value: chatCubit),
+                BlocProvider<AppProviderCubit>(
+                  create: (_) => _SeededAppProviderCubit(),
+                ),
+                BlocProvider.value(value: layoutCubit),
+                BlocProvider.value(value: editorCubit),
+                BlocProvider.value(value: workbenchCubit),
+                BlocProvider.value(value: runCubit),
+                BlocProvider.value(value: skillCubit),
+                BlocProvider.value(value: pluginCubit),
+                BlocProvider.value(value: worktreeCubit),
+                BlocProvider.value(value: presenceCubit),
+                BlocProvider(
+                  create: (_) => AgentAttentionCubit(pruneInterval: null),
+                ),
+                BlocProvider.value(value: aiHistoryCubit),
+                BlocProvider.value(value: WorkspaceToolsCubit()),
+                BlocProvider.value(value: cliPresetsCubit),
+                BlocProvider.value(value: sessionPreferencesCubit),
+                BlocProvider(create: (_) => ShortcutCubit()),
+                BlocProvider(
+                  create: (_) => WorkspaceLandingContextCubit(
+                    workspaceId: 'personal-test',
+                    initial: const LandingLaunchContext(isPersonal: true),
+                  ),
+                ),
+              ],
+              child: WorkspaceToolsScope(
+                state: const WorkspaceToolsScopeState(resolving: false),
+                child: Scaffold(
+                  body: _chatPageShell(wrapCliRegistry: true),
+                ),
+              ),
+            ),
+          ),
+        ),
+      );
+      for (var i = 0; i < 12; i++) {
+        await tester.pump(const Duration(milliseconds: 50));
+      }
+
+      final layout = workbenchCubit.centerLayout('personal-test');
+      final leaves = layout.leafGroupIds;
+      expect(leaves, hasLength(2));
+      // One probe per split group's pane.
+      final probes =
+          tester
+              .stateList<ChatPageStructuralBodyProbeState>(
+                find.byKey(chatPageStructuralBodyProbeKey),
+              )
+              .toList();
+      expect(probes.length, 2);
+
+      // Pure focus switch: no strip, tab, or session data changes.
+      workbenchCubit.focusGroup('personal-test', leaves.first);
+      await tester.pump();
+      workbenchCubit.focusGroup('personal-test', leaves.last);
+      await tester.pump();
+
+      // Same State instances (never unmounted) — the keep-alive cache
+      // rebuilds nothing on a pure focus switch. (The structural probe's
+      // own build count MAY advance: chrome re-runs cheaply; the session
+      // hosts must not remount, which is what element identity asserts.)
+      final probesAfter =
+          tester
+              .stateList<ChatPageStructuralBodyProbeState>(
+                find.byKey(chatPageStructuralBodyProbeKey),
+              )
+              .toList();
+      expect(probesAfter.length, 2);
+      expect(identical(probesAfter.first, probes.first), isTrue);
+      expect(identical(probesAfter[1], probes[1]), isTrue);
     },
   );
 }

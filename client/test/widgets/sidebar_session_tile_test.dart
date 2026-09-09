@@ -711,6 +711,92 @@ void main() {
     debugDefaultTargetPlatformOverride = null;
   });
 
+  testWidgets('both session menus include the localized open-to-side action', (
+    tester,
+  ) async {
+    debugDefaultTargetPlatformOverride = TargetPlatform.linux;
+    final chatCubit = testChatCubit(executableResolver: () => 'claude');
+    final (attention, automationCubit) = _tileCubits();
+    addTearDown(chatCubit.close);
+    addTearDown(automationCubit.close);
+    addTearDown(attention.close);
+
+    await tester.pumpWidget(
+      _host(
+        chatCubit: chatCubit,
+        automationCubit: automationCubit,
+        attentionCubit: attention,
+        sessionRepository: SessionRepository(),
+        locale: const Locale('zh'),
+      ),
+    );
+    await tester.pump();
+
+    await _openContextMenu(tester);
+
+    final l10n = AppLocalizations.of(
+      tester.element(find.byType(SidebarSessionTile)),
+    );
+    expect(l10n.sessionOpenToSide, '在右侧分栏打开');
+    final contextItem = tester.widget<TpActionMenuPopupItem<String>>(
+      find.byWidgetPredicate(
+        (widget) =>
+            widget is TpActionMenuPopupItem<String> &&
+            widget.value == 'open_to_side',
+      ),
+    );
+    expect(contextItem.label, l10n.sessionOpenToSide);
+
+    await _dismissContextMenu(tester);
+
+    final mouse = await tester.createGesture(kind: PointerDeviceKind.mouse);
+    await mouse.addPointer(location: Offset.zero);
+    addTearDown(mouse.removePointer);
+    await tester.pump();
+    await mouse.moveTo(tester.getCenter(find.byType(TpHoverRow)));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byIcon(Icons.more_horiz));
+    await tester.pumpAndSettle();
+
+    expect(find.text(l10n.sessionOpenToSide), findsOneWidget);
+    debugDefaultTargetPlatformOverride = null;
+  });
+
+  testWidgets('archive mode omits the open-to-side action', (tester) async {
+    debugDefaultTargetPlatformOverride = TargetPlatform.linux;
+    final chatCubit = testChatCubit(executableResolver: () => 'claude');
+    final (attention, automationCubit) = _tileCubits();
+    addTearDown(chatCubit.close);
+    addTearDown(automationCubit.close);
+    addTearDown(attention.close);
+
+    await tester.pumpWidget(
+      _host(
+        chatCubit: chatCubit,
+        automationCubit: automationCubit,
+        attentionCubit: attention,
+        sessionRepository: SessionRepository(),
+        child: SidebarSessionTile(
+          session: _session,
+          archiveMode: true,
+          onTap: () {},
+        ),
+      ),
+    );
+    await tester.pump();
+
+    await _openContextMenu(tester);
+    expect(
+      find.byWidgetPredicate(
+        (widget) =>
+            widget is TpActionMenuPopupItem<String> &&
+            widget.value == 'open_to_side',
+      ),
+      findsNothing,
+    );
+    debugDefaultTargetPlatformOverride = null;
+  });
+
   testWidgets('context menu shows manage item when session has automations', (
     tester,
   ) async {

@@ -49,7 +49,13 @@ void main() {
       registry: _registry(),
     );
 
-    expect(workbench.floatingOrder('ws'), [WorkbenchTabId.shell('e2')]);
+    // Whole-surface read: the bulk closes act on the merged floating strip,
+    // so the assertion reads it too (a focused-group read would only pin the
+    // sole-group case by accident).
+    expect(
+      workbench.mergedFloatingStrip('ws').order,
+      [WorkbenchTabId.shell('e2')],
+    );
   });
 
   test('closeOtherFloatingTabs and closeFloatingTabsToTheRight keep pinned',
@@ -67,7 +73,7 @@ void main() {
       registry: _registry(),
       keepId: WorkbenchTabId.shell('e1'),
     );
-    expect(workbench.floatingOrder('ws'), [
+    expect(workbench.mergedFloatingStrip('ws').order, [
       WorkbenchTabId.shell('e1'),
       WorkbenchTabId.shell('e3'),
     ]);
@@ -78,7 +84,7 @@ void main() {
       registry: _registry(),
       fromId: WorkbenchTabId.shell('e1'),
     );
-    expect(workbench.floatingOrder('ws'), [
+    expect(workbench.mergedFloatingStrip('ws').order, [
       WorkbenchTabId.shell('e1'),
       WorkbenchTabId.shell('e3'),
     ]);

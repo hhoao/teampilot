@@ -14,6 +14,7 @@ import '../../cubits/floating_workspace/floating_workspace_state.dart';
 import '../../cubits/shortcut_cubit.dart';
 import '../../cubits/workbench/tab_strip.dart';
 import '../../cubits/workbench/workbench_cubit.dart';
+import '../../cubits/workbench/workbench_split_layout.dart';
 import '../../cubits/workbench/workbench_tab.dart';
 import '../../l10n/l10n_extensions.dart';
 import '../../services/commands/command_bus.dart';
@@ -27,8 +28,10 @@ import '../../services/floating_workspace/floating_maximize_insets.dart';
 import '../../services/floating_workspace/floating_surface_registry.dart';
 import '../../services/floating_workspace/floating_terminal_pty_hold_scope.dart';
 import '../../services/floating_workspace/floating_workspace_toggle_metrics.dart';
-import '../../widgets/workbench/workbench_shell_run_sync.dart';
+import '../../widgets/workbench/workbench_split_layout_view.dart';
+import '../../widgets/workbench/workbench_tab_drag.dart';
 import '../../widgets/workspace_terminal_panel.dart';
+import 'floating_group_host.dart';
 import 'floating_workspace_chrome.dart';
 import 'floating_workspace_close_shortcut.dart';
 import 'floating_workspace_empty.dart';
@@ -39,6 +42,21 @@ const double _kMinPanelWidth = 320;
 const double _kMinPanelHeight = 240;
 const double _kResizeHandle = 6;
 const double _kTitleBarHeight = 40;
+
+/// Minimum extent each floating split group keeps (divider drags clamp to
+/// this; below twice this the panel renders the focused group only).
+const double kFloatingMinGroupExtent = 180;
+
+/// Visual divider thickness between split groups (renderer's 1px line).
+const double _kSplitDividerExtent = 1;
+
+/// Whether a panel of [size] is wide/tall enough to host split groups:
+/// width AND height must fit two min-extent groups plus the divider.
+@visibleForTesting
+bool floatingPanelSplitEnabled(Size size) {
+  final threshold = kFloatingMinGroupExtent * 2 + _kSplitDividerExtent;
+  return size.width >= threshold && size.height >= threshold;
+}
 
 /// Floating workspace overlay panel: chrome, tabs, drag, and edge resize.
 class FloatingWorkspacePanel extends StatefulWidget {
@@ -57,18 +75,20 @@ class _FloatingWorkspacePanelState extends State<FloatingWorkspacePanel> {
     final floating = context.read<FloatingWorkspaceCubit>();
     final workbench = context.read<WorkbenchCubit>();
     // Combines the two change planes: chrome (FloatingWorkspaceCubit) and the
-    // floating strip (WorkbenchCubit bar.floating). Only the active workspace's
-    // strip is projected so unrelated bar mutations do not rebuild the panel.
+    // floating split layout (WorkbenchCubit bar.floating). Only the active
+    // workspace's layout is projected so unrelated bar mutations do not
+    // rebuild the panel. Whole-surface consumers derive the merged strip from
+    // the layout; the title bar reads the focused group's strip.
     _projection = FloatingWorkspaceProjection<_FloatingPanelView>(
       floating,
       workbench,
       (floating, workbench) => _FloatingPanelView(
         state: floating.state,
-        strip: workbench.state.bar(floating.state.activeWorkspaceId).floating,
+        layout: workbench.floatingLayout(floating.state.activeWorkspaceId),
       ),
       initial: _FloatingPanelView(
         state: floating.state,
-        strip: workbench.state.bar(floating.state.activeWorkspaceId).floating,
+        layout: workbench.floatingLayout(floating.state.activeWorkspaceId),
       ),
     );
   }
@@ -89,8 +109,8 @@ class _FloatingWorkspacePanelState extends State<FloatingWorkspacePanel> {
 
   Widget _buildForView(BuildContext context, _FloatingPanelView view) {
     final state = view.state;
-    final strip = view.strip;
-    final hasTabs = strip.order.isNotEmpty;
+    final layout = view.layout;
+    final hasTabs = layout.groups.values.any((g) => g.order.isNotEmpty);
     final keepAliveMinimized =
         state.visibility == FloatingPanelVisibility.minimized && hasTabs;
 
@@ -101,40 +121,31 @@ class _FloatingWorkspacePanelState extends State<FloatingWorkspacePanel> {
 
     final registry = context.read<FloatingSurfaceRegistry>();
     final workspaceId = state.activeWorkspaceId.trim();
-    final tabs = <FloatingTab>[];
-    final barIdByTabId = <String, WorkbenchTabId>{};
-    final previewTabIds = <String>{};
-    final pinnedTabIds = <String>{};
-    String? activeTabId;
-    for (final barId in strip.order) {
-      final tab = resolveFloatingTabForId(
-        registry: registry,
-        workspaceId: workspaceId,
-        id: barId,
-      );
-      if (tab == null) continue;
-      tabs.add(tab);
-      barIdByTabId[tab.id] = barId;
-      if (strip.previewIds.contains(barId)) previewTabIds.add(tab.id);
-      if (strip.pinnedIds.contains(barId)) pinnedTabIds.add(tab.id);
-      if (barId == strip.activeId) activeTabId = tab.id;
-    }
+    // Title bar strip = the focused group's strip (equals the whole surface
+    // while a single group exists — today's panel behavior).
+    final titleStrip = _focusedFloatingStrip(layout);
+    final title = projectFloatingStrip(
+      registry: registry,
+      workspaceId: workspaceId,
+      strip: titleStrip,
+    );
 
     Widget child = FloatingWorkspaceCloseShortcut(
       registry: registry,
       // Content FocusScope requests focus on open; chrome Focus only for empty.
       autofocus:
-          state.visibility == FloatingPanelVisibility.open && tabs.isEmpty,
+          state.visibility == FloatingPanelVisibility.open && !hasTabs,
       child: _FloatingWorkspacePanelBody(
         key: const Key('floating_workspace_panel'),
         state: state,
         workspaceId: workspaceId,
-        tabs: tabs,
-        activeTabId: activeTabId,
-        barIdByTabId: barIdByTabId,
-        previewTabIds: previewTabIds,
-        pinnedTabIds: pinnedTabIds,
         registry: registry,
+        layout: layout,
+        titleTabs: title.tabs,
+        titleActiveTabId: title.activeTabId,
+        titleBarIdByTabId: title.barIdByTabId,
+        titlePreviewTabIds: title.previewTabIds,
+        titlePinnedTabIds: title.pinnedTabIds,
       ),
     );
 
@@ -154,39 +165,52 @@ class _FloatingWorkspacePanelState extends State<FloatingWorkspacePanel> {
   }
 }
 
-/// Snapshot the panel needs each rebuild: chrome state + the floating strip of
-/// the active workspace.
+/// Snapshot the panel needs each rebuild: chrome state + the floating split
+/// layout of the active workspace.
 class _FloatingPanelView extends Equatable {
-  const _FloatingPanelView({required this.state, required this.strip});
+  const _FloatingPanelView({required this.state, required this.layout});
 
   final FloatingWorkspaceState state;
-  final TabStrip strip;
+  final WorkbenchGroupLayout layout;
 
   @override
-  List<Object?> get props => [state, strip];
+  List<Object?> get props => [state, layout];
+}
+
+/// The floating layout's focused group strip (validateLayout guarantees the
+/// focused group exists; the fallback is defensive only).
+TabStrip _focusedFloatingStrip(WorkbenchGroupLayout layout) {
+  return layout.groups[layout.focusedGroupId] ?? const TabStrip();
 }
 
 class _FloatingWorkspacePanelBody extends StatefulWidget {
   const _FloatingWorkspacePanelBody({
     required this.state,
     required this.workspaceId,
-    required this.tabs,
-    required this.activeTabId,
-    required this.barIdByTabId,
-    required this.previewTabIds,
-    required this.pinnedTabIds,
     required this.registry,
+    required this.layout,
+    required this.titleTabs,
+    required this.titleActiveTabId,
+    required this.titleBarIdByTabId,
+    required this.titlePreviewTabIds,
+    required this.titlePinnedTabIds,
     super.key,
   });
 
   final FloatingWorkspaceState state;
   final String workspaceId;
-  final List<FloatingTab> tabs;
-  final String? activeTabId;
-  final Map<String, WorkbenchTabId> barIdByTabId;
-  final Set<String> previewTabIds;
-  final Set<String> pinnedTabIds;
   final FloatingSurfaceRegistry registry;
+
+  /// The floating split layout of the active workspace.
+  final WorkbenchGroupLayout layout;
+
+  /// Focused-group strip projected into title-bar tabs (equals the whole
+  /// surface while a single group exists).
+  final List<FloatingTab> titleTabs;
+  final String? titleActiveTabId;
+  final Map<String, WorkbenchTabId> titleBarIdByTabId;
+  final Set<String> titlePreviewTabIds;
+  final Set<String> titlePinnedTabIds;
 
   @override
   State<_FloatingWorkspacePanelBody> createState() =>
@@ -216,8 +240,8 @@ class _FloatingWorkspacePanelBodyState
         oldWidget.state.visibility != FloatingPanelVisibility.open &&
         widget.state.visibility == FloatingPanelVisibility.open;
     final gainedTabs =
-        oldWidget.tabs.isEmpty &&
-        widget.tabs.isNotEmpty &&
+        oldWidget.titleTabs.isEmpty &&
+        widget.titleTabs.isNotEmpty &&
         widget.state.visibility == FloatingPanelVisibility.open;
     if (opened || gainedTabs) {
       _scheduleContentFocus();
@@ -353,26 +377,36 @@ class _FloatingWorkspacePanelBodyState
                   height: positioned.height,
                   child: FloatingTerminalPtyHoldScope(
                     holdHandle: _terminalHold,
-                    child: _PanelChromeFrame(
-                      state: state,
-                      workspaceId: widget.workspaceId,
-                      tabs: widget.tabs,
-                      activeTabId: widget.activeTabId,
-                      barIdByTabId: widget.barIdByTabId,
-                      previewTabIds: widget.previewTabIds,
-                      pinnedTabIds: widget.pinnedTabIds,
-                      registry: widget.registry,
-                      hostSize: hostSize,
-                      panelBounds: positioned,
-                      contentScope: _contentScope,
-                      allowTitleDrag:
-                          state.visibility == FloatingPanelVisibility.open,
-                      allowEdgeResize:
-                          !state.isMaximized &&
-                          state.visibility == FloatingPanelVisibility.open,
-                      onGestureBegin: _beginGesture,
-                      onGestureUpdate: _updateGesture,
-                      onGestureEnd: _endGesture,
+                    // Drag scope above the whole chrome frame so both the
+                    // title-bar strip and the per-group slim headers can host
+                    // drag sources while group bodies register drop regions.
+                    child: WorkbenchTabDragHost(
+                      child: _PanelChromeFrame(
+                        state: state,
+                        workspaceId: widget.workspaceId,
+                        registry: widget.registry,
+                        layout: widget.layout,
+                        splitEnabled: floatingPanelSplitEnabled(
+                          positioned.size,
+                        ),
+                        tabs: widget.titleTabs,
+                        activeTabId: widget.titleActiveTabId,
+                        barIdByTabId: widget.titleBarIdByTabId,
+                        previewTabIds: widget.titlePreviewTabIds,
+                        pinnedTabIds: widget.titlePinnedTabIds,
+                        hostSize: hostSize,
+                        panelBounds: positioned,
+                        contentScope: _contentScope,
+                        holdHandle: _terminalHold,
+                        allowTitleDrag:
+                            state.visibility == FloatingPanelVisibility.open,
+                        allowEdgeResize:
+                            !state.isMaximized &&
+                            state.visibility == FloatingPanelVisibility.open,
+                        onGestureBegin: _beginGesture,
+                        onGestureUpdate: _updateGesture,
+                        onGestureEnd: _endGesture,
+                      ),
                     ),
                   ),
                 ),
@@ -477,15 +511,18 @@ class _PanelChromeFrame extends StatefulWidget {
   const _PanelChromeFrame({
     required this.state,
     required this.workspaceId,
+    required this.registry,
+    required this.layout,
+    required this.splitEnabled,
     required this.tabs,
     required this.activeTabId,
     required this.barIdByTabId,
     required this.previewTabIds,
     required this.pinnedTabIds,
-    required this.registry,
     required this.hostSize,
     required this.panelBounds,
     required this.contentScope,
+    required this.holdHandle,
     required this.allowTitleDrag,
     required this.allowEdgeResize,
     required this.onGestureBegin,
@@ -495,15 +532,24 @@ class _PanelChromeFrame extends StatefulWidget {
 
   final FloatingWorkspaceState state;
   final String workspaceId;
+  final FloatingSurfaceRegistry registry;
+
+  /// The floating split layout rendered in the body slot.
+  final WorkbenchGroupLayout layout;
+
+  /// Whether the panel is wide/tall enough to host split groups.
+  final bool splitEnabled;
+
+  /// Title-bar tabs (focused-group strip projection).
   final List<FloatingTab> tabs;
   final String? activeTabId;
   final Map<String, WorkbenchTabId> barIdByTabId;
   final Set<String> previewTabIds;
   final Set<String> pinnedTabIds;
-  final FloatingSurfaceRegistry registry;
   final Size hostSize;
   final Rect panelBounds;
   final FocusScopeNode contentScope;
+  final WorkspaceTerminalHoldHandle? holdHandle;
   final bool allowTitleDrag;
   final bool allowEdgeResize;
   final ValueChanged<Rect> onGestureBegin;
@@ -592,139 +638,28 @@ class _PanelChromeFrameState extends State<_PanelChromeFrame> {
                             CommandIds.floatingOpenFile,
                           );
                         },
-                        tabBar: FloatingWorkspaceTabBar(
-                          tabs: tabs,
-                          activeTabId: activeId,
-                          previewTabIds: widget.previewTabIds,
-                          pinnedTabIds: widget.pinnedTabIds,
-                          onPin: (tabId) {
-                            final barId = widget.barIdByTabId[tabId];
-                            if (barId == null) return;
-                            final strip = context
-                                .read<WorkbenchCubit>()
-                                .state
-                                .bar(widget.workspaceId)
-                                .floating;
-                            if (strip.previewIds.contains(barId)) {
-                              context
-                                  .read<WorkbenchCubit>()
-                                  .promote(widget.workspaceId, barId);
-                            } else {
-                              context
-                                  .read<WorkbenchCubit>()
-                                  .pin(widget.workspaceId, barId);
-                            }
-                          },
-                          onUnpin: (tabId) {
-                            final barId = widget.barIdByTabId[tabId];
-                            if (barId == null) return;
-                            context
-                                .read<WorkbenchCubit>()
-                                .unpin(widget.workspaceId, barId);
-                          },
-                          onDoubleTap: (tabId) {
-                            final barId = widget.barIdByTabId[tabId];
-                            if (barId == null) return;
-                            final workbench = context.read<WorkbenchCubit>();
-                            final strip = workbench
-                                .state
-                                .bar(widget.workspaceId)
-                                .floating;
-                            if (strip.previewIds.contains(barId)) {
-                              workbench.promote(widget.workspaceId, barId);
-                            } else if (strip.pinnedIds.contains(barId)) {
-                              workbench.unpin(widget.workspaceId, barId);
-                            } else {
-                              workbench.pin(widget.workspaceId, barId);
-                            }
-                          },
-                          onSelect: (id) {
-                            final tab = tabs.firstWhereOrNull(
-                              (t) => t.id == id,
-                            );
-                            if (tab == null) return;
-                            final barId = widget.barIdByTabId[id];
-                            if (barId != null) {
-                              context
-                                  .read<WorkbenchCubit>()
-                                  .activate(widget.workspaceId, barId);
-                            }
-                            final s = widget.registry[tab.surfaceId];
-                            if (s != null) {
-                              unawaited(s.activate(tab));
-                            }
-                          },
-                          onClose: (tab) {
-                            final barId = widget.barIdByTabId[tab.id];
-                            if (barId == null) return;
-                            unawaited(
-                              closeFloatingTab(
-                                workbench:
-                                    context.read<WorkbenchCubit>(),
-                                workspaceId: widget.workspaceId,
-                                registry: widget.registry,
-                                id: barId,
-                                tab: tab,
-                                context: context,
-                              ),
-                            );
-                          },
-                          onCloseOthers: (tab) {
-                            final barId = widget.barIdByTabId[tab.id];
-                            if (barId == null) return;
-                            unawaited(
-                              closeOtherFloatingTabs(
-                                workbench:
-                                    context.read<WorkbenchCubit>(),
-                                workspaceId: widget.workspaceId,
-                                registry: widget.registry,
-                                keepId: barId,
-                                context: context,
-                              ),
-                            );
-                          },
-                          onCloseRight: (tab) {
-                            final barId = widget.barIdByTabId[tab.id];
-                            if (barId == null) return;
-                            unawaited(
-                              closeFloatingTabsToTheRight(
-                                workbench:
-                                    context.read<WorkbenchCubit>(),
-                                workspaceId: widget.workspaceId,
-                                registry: widget.registry,
-                                fromId: barId,
-                                context: context,
-                              ),
-                            );
-                          },
-                          onCloseAll: () {
-                            unawaited(
-                              closeAllFloatingTabs(
-                                workbench:
-                                    context.read<WorkbenchCubit>(),
-                                workspaceId: widget.workspaceId,
-                                registry: widget.registry,
-                                context: context,
-                              ),
-                            );
-                          },
-                          onReorder: (oldIndex, newIndex) {
-                            context.read<WorkbenchCubit>().reorderFloating(
-                              widget.workspaceId,
-                              oldIndex,
-                              newIndex,
-                            );
-                          },
-                        ),
+                        // Multi-group with an active split (wide): the title
+                        // bar drops its tab strip — each group's slim header
+                        // owns its tabs, the strip would duplicate the
+                        // focused group's chips. The drag surface, "+", and
+                        // window chrome remain. Narrow mode (single-group
+                        // degradation) keeps the strip: it is the only place
+                        // the focused group's tabs render.
+                        tabBar: widget.layout.groups.length > 1 &&
+                                widget.splitEnabled
+                            ? const SizedBox.shrink()
+                            : _buildTitleTabBar(context, tabs, activeId),
                       ),
                       Expanded(
                         child: FocusScope(
                           node: widget.contentScope,
                           child: RepaintBoundary(
                             child: _FloatingPanelBodySlot(
-                              tabs: tabs,
-                              activeTabId: activeId,
+                              workspaceId: widget.workspaceId,
                               registry: widget.registry,
+                              layout: widget.layout,
+                              splitEnabled: widget.splitEnabled,
+                              holdHandle: widget.holdHandle,
                               empty: FloatingWorkspaceEmpty(
                                 autofocus: tabs.isEmpty,
                                 rows: _emptyRows(context),
@@ -744,6 +679,157 @@ class _PanelChromeFrameState extends State<_PanelChromeFrame> {
           ),
         ),
       ],
+    );
+  }
+
+  /// Title-bar tab strip: the focused group's tabs. Pin/unpin and bulk closes
+  /// keep their whole-surface reads ([mergedFloatingStrip]); split entries and
+  /// chip drags target the focused group of the floating layout.
+  Widget _buildTitleTabBar(
+    BuildContext context,
+    List<FloatingTab> tabs,
+    String? activeId,
+  ) {
+    final workbench = context.read<WorkbenchCubit>();
+    final workspaceId = widget.workspaceId;
+    final focusedGroup = widget.layout.focusedGroupId;
+    // Split entries only while the panel can host a split and the focused
+    // group holds more than one tab (a sole tab cannot be split out).
+    final canSplit =
+        widget.splitEnabled &&
+        (widget.layout.groups[focusedGroup]?.order.length ?? 0) > 1;
+    return FloatingWorkspaceTabBar(
+      tabs: tabs,
+      activeTabId: activeId,
+      previewTabIds: widget.previewTabIds,
+      pinnedTabIds: widget.pinnedTabIds,
+      onPin: (tabId) {
+        final barId = widget.barIdByTabId[tabId];
+        if (barId == null) return;
+        final strip = workbench.mergedFloatingStrip(workspaceId);
+        if (strip.previewIds.contains(barId)) {
+          workbench.promote(workspaceId, barId);
+        } else {
+          workbench.pin(workspaceId, barId);
+        }
+      },
+      onUnpin: (tabId) {
+        final barId = widget.barIdByTabId[tabId];
+        if (barId == null) return;
+        workbench.unpin(workspaceId, barId);
+      },
+      onDoubleTap: (tabId) {
+        final barId = widget.barIdByTabId[tabId];
+        if (barId == null) return;
+        final strip = workbench.mergedFloatingStrip(workspaceId);
+        if (strip.previewIds.contains(barId)) {
+          workbench.promote(workspaceId, barId);
+        } else if (strip.pinnedIds.contains(barId)) {
+          workbench.unpin(workspaceId, barId);
+        } else {
+          workbench.pin(workspaceId, barId);
+        }
+      },
+      onSelect: (id) {
+        final tab = tabs.firstWhereOrNull((t) => t.id == id);
+        if (tab == null) return;
+        final barId = widget.barIdByTabId[id];
+        if (barId != null) {
+          workbench.activate(workspaceId, barId);
+        }
+        final s = widget.registry[tab.surfaceId];
+        if (s != null) {
+          unawaited(s.activate(tab));
+        }
+      },
+      onClose: (tab) {
+        final barId = widget.barIdByTabId[tab.id];
+        if (barId == null) return;
+        unawaited(
+          closeFloatingTab(
+            workbench: workbench,
+            workspaceId: workspaceId,
+            registry: widget.registry,
+            id: barId,
+            tab: tab,
+            context: context,
+          ),
+        );
+      },
+      onCloseOthers: (tab) {
+        final barId = widget.barIdByTabId[tab.id];
+        if (barId == null) return;
+        unawaited(
+          closeOtherFloatingTabs(
+            workbench: workbench,
+            workspaceId: workspaceId,
+            registry: widget.registry,
+            keepId: barId,
+            context: context,
+          ),
+        );
+      },
+      onCloseRight: (tab) {
+        final barId = widget.barIdByTabId[tab.id];
+        if (barId == null) return;
+        unawaited(
+          closeFloatingTabsToTheRight(
+            workbench: workbench,
+            workspaceId: workspaceId,
+            registry: widget.registry,
+            fromId: barId,
+            context: context,
+          ),
+        );
+      },
+      onCloseAll: () {
+        unawaited(
+          closeAllFloatingTabs(
+            workbench: workbench,
+            workspaceId: workspaceId,
+            registry: widget.registry,
+            context: context,
+          ),
+        );
+      },
+      onReorder: (oldIndex, newIndex) {
+        // reorderFloating mutates the focused group — the title bar strip is
+        // the focused group's, so indices already address it.
+        workbench.reorderFloating(workspaceId, oldIndex, newIndex);
+      },
+      onSplitRight: canSplit
+          ? (tabId) => _splitFocusedTab(context, tabId, Axis.horizontal)
+          : null,
+      onSplitDown: canSplit
+          ? (tabId) => _splitFocusedTab(context, tabId, Axis.vertical)
+          : null,
+      tabDrag: widget.splitEnabled
+          ? FloatingTabStripDrag(
+              sourceGroupId: focusedGroup,
+              resolveTabId: (tabId) => widget.barIdByTabId[tabId],
+              onDrop: (tab, targetGroupId, zone) => dispatchSplitDrop(
+                workbench,
+                workspaceId,
+                tab: tab,
+                sourceGroupId: focusedGroup,
+                targetGroupId: targetGroupId,
+                zone: zone,
+                floating: true,
+              ),
+            )
+          : null,
+    );
+  }
+
+  void _splitFocusedTab(BuildContext context, String tabId, Axis axis) {
+    final barId = widget.barIdByTabId[tabId];
+    if (barId == null) return;
+    context.read<WorkbenchCubit>().splitTab(
+      widget.workspaceId,
+      barId,
+      axis: axis,
+      before: false,
+      floating: true,
     );
   }
 
@@ -1138,81 +1224,61 @@ class _ResizeHandle extends StatelessWidget {
   }
 }
 
-/// Empty launcher or tab bodies (not both — avoid rebuild Empty on ensureTab).
+/// Empty launcher or the floating split layout (not both — avoid rebuilding
+/// Empty on ensureTab). The split view hosts one [FloatingGroupHost] per
+/// group leaf (slim header strip + keep-alive tab bodies + drop regions);
+/// while `!splitEnabled` the renderer shows the focused group only.
 class _FloatingPanelBodySlot extends StatelessWidget {
   const _FloatingPanelBodySlot({
-    required this.tabs,
-    required this.activeTabId,
+    required this.workspaceId,
     required this.registry,
+    required this.layout,
+    required this.splitEnabled,
+    required this.holdHandle,
     required this.empty,
   });
 
-  final List<FloatingTab> tabs;
-  final String? activeTabId;
+  final String workspaceId;
   final FloatingSurfaceRegistry registry;
+  final WorkbenchGroupLayout layout;
+  final bool splitEnabled;
+  final WorkspaceTerminalHoldHandle? holdHandle;
   final Widget empty;
 
   @override
   Widget build(BuildContext context) {
-    if (tabs.isEmpty) return empty;
-    return _FloatingTabBodyStack(
-      tabs: tabs,
-      activeTabId: activeTabId,
-      registry: registry,
+    final hasTabs = layout.groups.values.any((g) => g.order.isNotEmpty);
+    if (!hasTabs) return empty;
+    final workbench = context.read<WorkbenchCubit>();
+    final multiGroup = layout.groups.length > 1;
+    return WorkbenchSplitLayoutView(
+      layout: layout,
+      holdHandle: holdHandle,
+      splitEnabled: splitEnabled,
+      minGroupExtent: kFloatingMinGroupExtent,
+      onResizeCommit: (commits) => workbench.commitSplitResizeBatch(
+        workspaceId,
+        commits: commits,
+        floating: true,
+      ),
+      onGroupFocused: (groupId) =>
+          workbench.focusGroup(workspaceId, groupId, floating: true),
+      // Read the focused group inside the callback — the build-time layout
+      // would be a stale closure after any focus change.
+      onDividerDoubleTap: () => workbench.toggleMaximizeGroup(
+        workspaceId,
+        workbench.floatingLayout(workspaceId).focusedGroupId,
+        floating: true,
+      ),
+      groupBuilder: (context, groupId, strip) => FloatingGroupHost(
+        key: ValueKey('floating_group_host_$groupId'),
+        workspaceId: workspaceId,
+        groupId: groupId,
+        strip: strip,
+        showHeader: multiGroup,
+        splitEnabled: splitEnabled,
+        registry: registry,
+      ),
     );
-  }
-}
-
-/// Keeps every open floating tab mounted; inactive tabs skip layout/paint.
-///
-/// Avoids disposing the previous surface on tab change (e.g. file → terminal).
-/// Not sufficient alone: first terminal open still janks with no prior file.
-/// Mirror [HomeWorkspaceBodyStack] keep-alive.
-class _FloatingTabBodyStack extends StatelessWidget {
-  const _FloatingTabBodyStack({
-    required this.tabs,
-    required this.activeTabId,
-    required this.registry,
-  });
-
-  final List<FloatingTab> tabs;
-  final String? activeTabId;
-  final FloatingSurfaceRegistry registry;
-
-  @override
-  Widget build(BuildContext context) {
-    return Stack(
-      fit: StackFit.expand,
-      children: [
-        for (final tab in tabs)
-          TpKeepAliveLayer(
-            key: ValueKey(tab.id),
-            active: tab.id == activeTabId,
-            child: ExcludeSemantics(
-              excluding: tab.id != activeTabId,
-              child: TickerMode(
-                enabled: tab.id == activeTabId,
-                child: IgnorePointer(
-                  ignoring: tab.id != activeTabId,
-                  child: TpDeferredForegroundMount(
-                    active: tab.id == activeTabId,
-                    retainWhenInactive: true,
-                    placeholder: ColoredBox(
-                      color: Theme.of(context).colorScheme.surfaceContainerHighest,
-                    ),
-                    builder: (context) => _buildTabBody(context, tab),
-                  ),
-                ),
-              ),
-            ),
-          ),
-      ],
-    );
-  }
-
-  Widget _buildTabBody(BuildContext context, FloatingTab tab) {
-    final surface = registry[tab.surfaceId];
-    if (surface == null) return const SizedBox.shrink();
-    return surface.build(context, tab);
   }
 }

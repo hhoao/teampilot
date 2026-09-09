@@ -325,6 +325,11 @@ class SessionChatMessageArea extends StatelessWidget {
                                         highlightMessageId: highlightMessageId,
                                         revealRequest: revealController,
                                         visibleOwnerId: visibleOwnerId,
+                                        scrollAnchorKey: session.sessionId,
+                                        scrollAnchors:
+                                            context
+                                                .read<ChatCubit>()
+                                                .sessionScrollAnchors,
                                       ),
                                     );
                                   },

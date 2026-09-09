@@ -14,16 +14,16 @@ void main() {
 
     cubit.close('ws', WorkbenchTabId.session('s2'));
 
-    final order = cubit.state.bar('ws').center.order;
+    final order = cubit.centerOrder('ws');
     expect(order.map((t) => t.id), ['s1', 's3']);
 
     // Any number of bar mutations must not resurrect the closed id.
     cubit.activate('ws', WorkbenchTabId.session('s1'));
     cubit.reorder('ws', 0, 1);
     cubit.openSession('ws', 's4');
-    expect(cubit.state.bar('ws').center.order.map((t) => t.id),
+    expect(cubit.centerOrder('ws').map((t) => t.id),
         ['s3', 's1', 's4']);
-    expect(cubit.state.bar('ws').center.order.contains(WorkbenchTabId.session('s2')),
+    expect(cubit.centerOrder('ws').contains(WorkbenchTabId.session('s2')),
         isFalse);
   });
 }

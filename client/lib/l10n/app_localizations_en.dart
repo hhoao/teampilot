@@ -2167,6 +2167,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get renameConversation => 'Rename conversation';
 
   @override
+  String get sessionOpenToSide => 'Open to the Side';
+
+  @override
   String get deleteConversation => 'Delete conversation';
 
   @override
@@ -2249,6 +2252,12 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get closeAllTabs => 'Close All';
+
+  @override
+  String get tabMenuSplitRight => 'Split Right';
+
+  @override
+  String get tabMenuSplitDown => 'Split Down';
 
   @override
   String get session => 'Session';
@@ -7482,6 +7491,22 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get shortcutsRunRestart => 'Restart Run';
+
+  @override
+  String get shortcutsWorkbenchSplitRight => 'Split Editor Right';
+
+  @override
+  String get shortcutsWorkbenchSplitDown => 'Split Editor Down';
+
+  @override
+  String get shortcutsWorkbenchSplitReset => 'Reset Editor Layout';
+
+  @override
+  String get shortcutsWorkbenchFocusNextGroup => 'Focus Next Editor Group';
+
+  @override
+  String get shortcutsWorkbenchMoveTabToNextGroup =>
+      'Move Tab to Next Editor Group';
 
   @override
   String get shortcutsCategoryRun => 'Run';

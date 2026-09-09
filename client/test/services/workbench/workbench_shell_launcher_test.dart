@@ -210,14 +210,11 @@ void main() {
         expect(registry.groupFor('ws').entries.map((e) => e.id), [entry!.id]);
         expect(floating.state.visibility, FloatingPanelVisibility.open);
         expect(floating.state.activeWorkspaceId, 'ws');
-        expect(workbench.state.bar('ws').floating.order, [
+        expect(workbench.mergedFloatingStrip('ws').order, [
           WorkbenchTabId.shell(entry.id),
         ]);
         expect(
-          workbench.state
-              .bar('ws')
-              .center
-              .order
+          workbench.centerOrder('ws')
               .where((t) => t.kind == WorkbenchTabKind.shell),
           isEmpty,
         );
@@ -242,7 +239,7 @@ void main() {
       expect(ok, isTrue);
       final entry = registry.groupFor('ws').entries.single;
       expect(entry.cwd, '/tmp/proj/lib');
-      expect(workbench.state.bar('ws').floating.order, [
+      expect(workbench.mergedFloatingStrip('ws').order, [
         WorkbenchTabId.shell(entry.id),
       ]);
     });
@@ -334,14 +331,11 @@ void main() {
 
       expect(floating.state.visibility, FloatingPanelVisibility.open);
       expect(
-        workbench.state.bar('ws').floating.activeId,
+        workbench.floatingActiveId('ws'),
         WorkbenchTabId.shell('e1'),
       );
       expect(
-        workbench.state
-            .bar('ws')
-            .center
-            .order
+        workbench.centerOrder('ws')
             .where((t) => t.kind == WorkbenchTabKind.shell),
         isEmpty,
       );

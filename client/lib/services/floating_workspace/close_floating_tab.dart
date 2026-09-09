@@ -8,7 +8,7 @@ import 'floating_surface_registry.dart';
 
 /// Close pipeline: [FloatingSurface.canClose] → [onTabClosed] → bar close.
 ///
-/// The floating strip ([WorkbenchCubit.bar(workspaceId).floating]) owns
+/// The floating layout ([WorkbenchCubit.bar(workspaceId).floating]) owns
 /// presence/order/active; the bar removal also resolves through the domain
 /// port (a no-op for shell/run/file/diff — teardown happens in [onTabClosed]).
 Future<void> closeFloatingTab({
@@ -29,10 +29,10 @@ Future<void> closeFloatingTab({
   await workbench.close(workspaceId, id);
 }
 
-/// Whether [id] is pinned on the floating strip — pinned tabs survive user
+/// Whether [id] is pinned on the floating layout — pinned tabs survive user
 /// bulk close actions (closeOthers / closeRight / closeAll) until unpinned.
 bool _isPinned(WorkbenchCubit workbench, String workspaceId, WorkbenchTabId id) {
-  return workbench.state.bar(workspaceId).floating.pinnedIds.contains(id);
+  return workbench.mergedFloatingStrip(workspaceId).pinnedIds.contains(id);
 }
 
 /// Close every floating tab except [keepId], respecting each surface's
@@ -44,7 +44,9 @@ Future<void> closeOtherFloatingTabs({
   required WorkbenchTabId keepId,
   BuildContext? context,
 }) async {
-  final order = List<WorkbenchTabId>.of(workbench.floatingOrder(workspaceId));
+  final order = List.of(
+    workbench.mergedFloatingStrip(workspaceId).order,
+  );
   for (final id in order) {
     if (id == keepId || _isPinned(workbench, workspaceId, id)) continue;
     await closeFloatingTabByBarId(
@@ -65,7 +67,7 @@ Future<void> closeFloatingTabsToTheRight({
   required WorkbenchTabId fromId,
   BuildContext? context,
 }) async {
-  final order = workbench.floatingOrder(workspaceId);
+  final order = workbench.mergedFloatingStrip(workspaceId).order;
   final index = order.indexOf(fromId);
   if (index < 0 || index >= order.length - 1) return;
   final toClose = order.sublist(index + 1);
@@ -88,7 +90,9 @@ Future<void> closeAllFloatingTabs({
   required FloatingSurfaceRegistry registry,
   BuildContext? context,
 }) async {
-  final order = List<WorkbenchTabId>.of(workbench.floatingOrder(workspaceId));
+  final order = List.of(
+    workbench.mergedFloatingStrip(workspaceId).order,
+  );
   for (final id in order) {
     if (_isPinned(workbench, workspaceId, id)) continue;
     await closeFloatingTabByBarId(

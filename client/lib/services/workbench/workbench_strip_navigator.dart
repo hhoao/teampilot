@@ -27,8 +27,10 @@ class WorkbenchStripNavigator {
   void next() {
     final workspaceId = _activeWorkspaceId;
     if (workspaceId == null) return;
-    final center = _workbench.state.bar(workspaceId).center;
-    final target = workbenchNextTab(center.order, center.activeId);
+    final target = workbenchNextTab(
+      _workbench.centerOrder(workspaceId),
+      _workbench.centerActiveId(workspaceId),
+    );
     if (target == null) return;
     _select(workspaceId, target);
   }
@@ -36,8 +38,10 @@ class WorkbenchStripNavigator {
   void previous() {
     final workspaceId = _activeWorkspaceId;
     if (workspaceId == null) return;
-    final center = _workbench.state.bar(workspaceId).center;
-    final target = workbenchPrevTab(center.order, center.activeId);
+    final target = workbenchPrevTab(
+      _workbench.centerOrder(workspaceId),
+      _workbench.centerActiveId(workspaceId),
+    );
     if (target == null) return;
     _select(workspaceId, target);
   }

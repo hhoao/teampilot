@@ -23,6 +23,8 @@ class WorkbenchTabMenuContext {
     this.onCloseAll,
     this.onPin,
     this.onUnpin,
+    this.onSplitRight,
+    this.onSplitDown,
     this.workContext,
   });
 
@@ -55,6 +57,12 @@ class WorkbenchTabMenuContext {
 
   /// Unpins a pinned tab (context-menu unpin entry).
   final VoidCallback? onUnpin;
+
+  /// Splits the tab into a new sibling group to the right (context menu).
+  final VoidCallback? onSplitRight;
+
+  /// Splits the tab into a new sibling group below (context menu).
+  final VoidCallback? onSplitDown;
 
   final RuntimeContext? workContext;
 }

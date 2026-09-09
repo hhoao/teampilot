@@ -717,7 +717,7 @@ void main() {
 
       expect(cubit.tabStore.openTabs, hasLength(1));
       expect(
-        workbench.state.bar(workspace.workspaceId).center.landingActive,
+        workbench.centerLandingActive(workspace.workspaceId),
         isFalse,
       );
       expect(
@@ -731,7 +731,7 @@ void main() {
 
       expect(cubit.tabStore.openTabs, hasLength(1));
       expect(
-        workbench.state.bar(workspace.workspaceId).center.landingActive,
+        workbench.centerLandingActive(workspace.workspaceId),
         isTrue,
       );
       expect(workbench.centerActiveId(workspace.workspaceId), isNull);
@@ -745,7 +745,7 @@ void main() {
       await drainPendingAsyncWork();
 
       expect(
-        workbench.state.bar(workspace.workspaceId).center.landingActive,
+        workbench.centerLandingActive(workspace.workspaceId),
         isFalse,
       );
       expect(
@@ -856,7 +856,7 @@ void main() {
 
         expect(cubit.tabStore.openTabs, hasLength(1));
         expect(
-          workbench.state.bar(workspace.workspaceId).center.landingActive,
+          workbench.centerLandingActive(workspace.workspaceId),
           isFalse,
         );
         expect(
@@ -871,7 +871,7 @@ void main() {
         expect(cubit.tabStore.openTabs, isEmpty);
         // Closing the last center tab returns the workspace to landing.
         expect(
-          workbench.state.bar(workspace.workspaceId).center.landingActive,
+          workbench.centerLandingActive(workspace.workspaceId),
           isTrue,
         );
         expect(workbench.centerActiveId(workspace.workspaceId), isNull);

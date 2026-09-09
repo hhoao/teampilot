@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:flutter/foundation.dart' show listEquals;
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
@@ -41,6 +42,7 @@ import '../../../utils/session/session_reorder_merge.dart';
 import '../../../utils/session/workspace_sessions.dart';
 import '../../../utils/session/workspace_tab_session_scope.dart';
 import 'workspace_sidebar_probe.dart';
+import 'workspace_sidebar_row_metrics.dart';
 import '../../../widgets/sidebar_session_tile.dart';
 import 'workspace_automations_section.dart';
 import 'workspace_search_dialog.dart';
@@ -398,11 +400,44 @@ class _RunningSessionsHost extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // Per-split-group session ids (leaf order); empty for a single-group
+    // layout, in which case the flat merged path below applies.
+    final splitGroups = context.select<WorkbenchCubit, SplitSessionGroups>(
+      (c) => SplitSessionGroups.fromWorkbench(c, tabScopeId),
+    );
+    if (splitGroups.groups.isNotEmpty) {
+      final running = context.select<ChatCubit, RunningSessionIds>(
+        (c) => RunningSessionIds.fromOpenSessionTabs(
+          sessions: sessionsForWorkspace(workspace, c.state.sessions),
+          openTabSessionIdsInOrder: [
+            for (final g in splitGroups.groups) ...g.sessionIds,
+          ],
+        ),
+      );
+      return SidebarRebuildProbe(
+        key: const Key('workspace-sidebar-running-host-probe'),
+        child: running.isEmpty
+            ? const SizedBox.shrink()
+            : _RunningSplitGroupsSection(
+                groups: splitGroups.groups,
+                knownIds: running.ids.toSet(),
+                workspace: workspace,
+                tabScopeId: tabScopeId,
+              ),
+      );
+    }
     final openTabIds = context.select<WorkbenchCubit, OpenSessionTabIds>(
-      (c) => OpenSessionTabIds.fromCenterBarOrder(
-        c.state.bar(tabScopeId).center.order,
-        previewIds: c.state.bar(tabScopeId).center.previewIds,
-      ),
+      (c) {
+        // Merged across every center split group — the sidebar's open strip
+        // is a whole-surface view, not a focused-group one. Preview tabs
+        // surface too (the strip mirrors what is visually open).
+        final strip = c.mergedCenterStrip(tabScopeId);
+        return OpenSessionTabIds.fromCenterBarOrder(
+          strip.order,
+          previewIds: strip.previewIds,
+          includePreviews: true,
+        );
+      },
     );
     final running = context.select<ChatCubit, RunningSessionIds>(
       (c) => RunningSessionIds.fromOpenSessionTabs(
@@ -420,6 +455,69 @@ class _RunningSessionsHost extends StatelessWidget {
               tabScopeId: tabScopeId,
             ),
     );
+  }
+}
+
+/// Equatable per-split-group view for [context.select] rebuild boundaries.
+@immutable
+class SplitSessionGroup {
+  const SplitSessionGroup(
+    this.groupId,
+    this.sessionIds,
+    this.focused,
+    this.activeSessionId,
+  );
+
+  final String groupId;
+  final List<String> sessionIds;
+  final bool focused;
+
+  /// The session this group's pane is currently showing (strip activeId);
+  /// highlighted faintly when the group is not the focused one.
+  final String? activeSessionId;
+
+  @override
+  bool operator ==(Object other) =>
+      other is SplitSessionGroup &&
+      other.groupId == groupId &&
+      listEquals(other.sessionIds, sessionIds) &&
+      other.focused == focused &&
+      other.activeSessionId == activeSessionId;
+
+  @override
+  int get hashCode => Object.hash(
+    groupId,
+    Object.hashAll(sessionIds),
+    focused,
+    activeSessionId,
+  );
+}
+
+@immutable
+class SplitSessionGroups {
+  const SplitSessionGroups._(this.groups);
+
+  final List<SplitSessionGroup> groups;
+
+  static const empty = SplitSessionGroups._([]);
+
+  static SplitSessionGroups fromWorkbench(
+    WorkbenchCubit workbench,
+    String workspaceId,
+  ) {
+    final raw = workbench.centerSessionGroups(workspaceId);
+    if (raw.isEmpty) return empty;
+    final layout = workbench.centerLayout(workspaceId);
+    final focusedId = workbench.centerFocusedGroupId(workspaceId);
+    return SplitSessionGroups._([
+      for (final (groupId, ids) in raw)
+        SplitSessionGroup(
+          groupId,
+          ids,
+          groupId == focusedId,
+          layout.groups[groupId]?.activeId?.sessionId,
+        ),
+    ]);
   }
 }
 
@@ -754,6 +852,137 @@ class _RunningSessionsSection extends StatelessWidget {
               ),
             ),
       ],
+    );
+  }
+}
+
+/// The open-sessions section when the center workbench is split: one
+/// sub-section per split group, separated by a divider whose color marks the
+/// focused column (primary), clickable to focus that group — no text header.
+class _RunningSplitGroupsSection extends StatelessWidget {
+  const _RunningSplitGroupsSection({
+    required this.groups,
+    required this.knownIds,
+    required this.workspace,
+    required this.tabScopeId,
+  });
+
+  final List<SplitSessionGroup> groups;
+
+  /// Session ids whose sessions exist in the workspace (chat cubit filter) —
+  /// tiles outside this set are skipped.
+  final Set<String> knownIds;
+  final Workspace workspace;
+  final String tabScopeId;
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = context.l10n;
+    final chatState = context.read<ChatCubit>().state;
+    final workbench = context.read<WorkbenchCubit>();
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Padding(
+          padding: const EdgeInsets.fromLTRB(4, 0, 0, 8),
+          child: Text(
+            l10n.workspaceRunningSessionsSection,
+            style: TpTextStyles.of(context).mutedSm,
+          ),
+        ),
+        for (final (index, group) in groups.indexed)
+          Column(
+            key: ValueKey('workspace-running-split-${group.groupId}'),
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              if (index > 0) const SizedBox(height: 6),
+              for (final sessionId in group.sessionIds)
+                if (knownIds.contains(sessionId))
+                  if (_sessionById(chatState, sessionId) case final session?)
+                  // Plain Row (no IntrinsicHeight): the indicator pins its
+                  // own height to the row metrics instead of stretching —
+                  // intrinsic measurement on every tile would double layout
+                  // work for long session lists.
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      _SplitGroupIndicator(
+                        groupId: group.groupId,
+                        focused: group.focused,
+                        isGroupActive: group.activeSessionId == sessionId,
+                        onTap: () =>
+                            workbench.focusGroup(tabScopeId, group.groupId),
+                      ),
+                      Expanded(
+                        child: SidebarSessionTile(
+                          key: ValueKey('workspace-running-session-$sessionId'),
+                          session: session,
+                          highlightSessionId: scopedActiveSessionId(
+                            workbench,
+                            tabScopeId,
+                          ),
+                          tapThrottleKeyPrefix: 'workspace_running_session',
+                          onTap: () => openWorkspaceSessionTab(
+                            context,
+                            workspace,
+                            session,
+                            tabScopeId: tabScopeId,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+            ],
+          ),
+      ],
+    );
+  }
+}
+
+/// Leading vertical color bar marking a session tile's split-group
+/// membership (VSCode-style active indicator). Width + color encode the
+/// role, the ONLY cue for per-column state (tile fills stay reserved for
+/// the focused column's selection):
+///
+/// - focused group's active session: 5px, primary
+/// - unfocused group's active session: 4px, primary @ 55% alpha
+/// - any non-active session: 3px, faint outline
+///
+/// Tapping the bar focuses that group.
+class _SplitGroupIndicator extends StatelessWidget {
+  const _SplitGroupIndicator({
+    required this.groupId,
+    required this.focused,
+    required this.isGroupActive,
+    required this.onTap,
+  });
+
+  final String groupId;
+  final bool focused;
+
+  /// The tile's session is this group's active tab (the pane's content).
+  final bool isGroupActive;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    final (width, color) = focused && isGroupActive
+        ? (5.0, cs.primary)
+        : isGroupActive
+        ? (4.0, cs.primary.withValues(alpha: 0.55))
+        : (3.0, cs.outlineVariant.withValues(alpha: 0.6));
+    return GestureDetector(
+      key: ValueKey('workspace-running-group-indicator-$groupId'),
+      behavior: HitTestBehavior.opaque,
+      onTap: onTap,
+      // Fixed height (row metrics + the tile's 2px bottom gap): matches the
+      // tile without needing parent stretch/IntrinsicHeight.
+      child: SizedBox(
+        width: width,
+        height: kWorkspaceSidebarRowMinHeight + 2,
+        child: ColoredBox(color: color),
+      ),
     );
   }
 }

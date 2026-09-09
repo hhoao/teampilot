@@ -50,7 +50,8 @@ class FileEditorContextMenuController implements SelectionToolbarController {
     if (path == null || workspaceId == null) {
       final workbench = context.read<WorkbenchCubit>();
       for (final entry in workbench.state.byWorkspace.entries) {
-        final active = entry.value.center.activeId;
+        final center = entry.value.center;
+        final active = center.groups[center.focusedGroupId]?.activeId;
         if (active?.kind == WorkbenchTabKind.file) {
           path = active!.id;
           workspaceId = entry.key;

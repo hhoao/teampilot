@@ -1,3 +1,4 @@
+import 'package:flutter/widgets.dart' show SingleActivator;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/services/commands/command_catalog.dart';
 import 'package:teampilot/services/commands/command_definition.dart';
@@ -22,7 +23,62 @@ void main() {
       CommandIds.floatingMinimize,
       CommandIds.floatingNewTerminal,
       CommandIds.floatingOpenFile,
+      CommandIds.workbenchSplitRight,
+      CommandIds.workbenchSplitDown,
+      CommandIds.workbenchSplitReset,
+      CommandIds.workbenchFocusNextGroup,
+      CommandIds.workbenchMoveTabToNextGroup,
     ]));
+  });
+
+  test('workbench split commands default to backslash-based chords', () {
+    // KeyChord has no chord sequences, so splitDown deviates from the planned
+    // Ctrl/Cmd+K → Ctrl/Cmd+\ two-step to Mod+Alt+\ (pre-authorized).
+    final right = CommandCatalog.v1.singleWhere(
+      (c) => c.id == CommandIds.workbenchSplitRight,
+    );
+    expect(right.defaultChords, [
+      KeyChord(key: '\\', mods: [KeyChordMod.mod]),
+    ]);
+    final down = CommandCatalog.v1.singleWhere(
+      (c) => c.id == CommandIds.workbenchSplitDown,
+    );
+    expect(down.defaultChords, [
+      KeyChord(key: '\\', mods: [KeyChordMod.mod, KeyChordMod.alt]),
+    ]);
+    for (final def in [right, down]) {
+      expect(def.when, ShortcutWhen.hasWorkspace);
+      expect(def.terminalPassthrough, isTrue);
+      expect(def.category, CommandCategory.tabs);
+    }
+    // The backslash chord key maps to a real activator.
+    expect(
+      right.defaultChords.single.toActivator(isMacOS: false),
+      isA<SingleActivator>(),
+    );
+  });
+
+  test('workbench split reset / focusNextGroup / moveTab defaults', () {
+    final reset = CommandCatalog.v1.singleWhere(
+      (c) => c.id == CommandIds.workbenchSplitReset,
+    );
+    expect(reset.defaultChords, [
+      KeyChord(key: 't', mods: [KeyChordMod.mod, KeyChordMod.ctrl]),
+    ]);
+    final focusNext = CommandCatalog.v1.singleWhere(
+      (c) => c.id == CommandIds.workbenchFocusNextGroup,
+    );
+    expect(focusNext.defaultChords, [
+      KeyChord(key: 'f', mods: [KeyChordMod.mod, KeyChordMod.alt]),
+    ]);
+    final moveTab = CommandCatalog.v1.singleWhere(
+      (c) => c.id == CommandIds.workbenchMoveTabToNextGroup,
+    );
+    expect(moveTab.defaultChords, isEmpty);
+    for (final def in [reset, focusNext, moveTab]) {
+      expect(def.when, ShortcutWhen.hasWorkspace);
+      expect(def.terminalPassthrough, isTrue);
+    }
   });
 
   test('floating toggle defaults to Mod+Alt+A', () {

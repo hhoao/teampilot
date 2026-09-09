@@ -76,6 +76,7 @@ import '../cubits/workbench/workbench_cubit.dart';
 import '../cubits/workbench/workbench_tab.dart';
 import '../services/workbench/workbench_chat_bridge.dart';
 import '../services/workbench/workbench_editor_opener.dart';
+import '../services/workbench/workbench_layout_persistence.dart';
 import '../services/workbench/workbench_shell_launcher.dart';
 import '../services/workbench/workbench_strip_navigator.dart';
 import '../services/editor/markdown_view_mode_store.dart';
@@ -178,6 +179,7 @@ import '../services/commands/command_bus.dart';
 import '../services/commands/layout_command_registrar.dart';
 import '../services/commands/run_command_registrar.dart';
 import '../services/commands/session_command_registrar.dart';
+import '../services/commands/split_command_registrar.dart';
 import '../services/commands/shortcuts_ui_commands.dart';
 import '../services/commands/workspace_search_command_registrar.dart';
 import '../services/commands/workspace_content_search_command_registrar.dart';
@@ -399,6 +401,7 @@ class AppShell {
     required this.installJobRegistry,
     required this.editorCubit,
     required this.workbenchCubit,
+    required this.workbenchLayoutPersistence,
     required this.workbenchEditorOpener,
     required this.workbenchShellLauncher,
     required this.floatingWorkspaceCubit,
@@ -498,6 +501,7 @@ class AppShell {
   final InstallJobRegistry installJobRegistry;
   final EditorCubit editorCubit;
   final WorkbenchCubit workbenchCubit;
+  final WorkbenchLayoutPersistence workbenchLayoutPersistence;
   final WorkbenchEditorOpener workbenchEditorOpener;
   final WorkbenchShellLauncher workbenchShellLauncher;
   final FloatingWorkspaceCubit floatingWorkspaceCubit;
@@ -1965,6 +1969,14 @@ Future<AppShell> buildAppShell({
     );
     final workbenchCubit = WorkbenchCubit();
 
+    // Per-workbench split-layout persistence (Task 9): one debounced save
+    // subscription for every workspace; restore is triggered per workspace
+    // after its sessions rehydrate (WorkspacePage activation chain).
+    final workbenchLayoutPersistence = WorkbenchLayoutPersistence(
+      workbench: workbenchCubit,
+      chat: chatCubit,
+    )..start();
+
     // Team-generation workflow graph. Built after chatCubit and workbenchCubit
     // so the cubit session port can bind both; services receive interfaces only.
     TeamGenerationGraph? teamGenerationGraph;
@@ -2022,10 +2034,8 @@ Future<AppShell> buildAppShell({
       commandBus,
       layoutCubit,
       uiZoomBaseline: () => uiZoomBaseline.value,
-      composeLanding: () => workbenchCubit.state
-          .bar(chatCubit.tabStore.activeWorkspaceId)
-          .center
-          .landingActive,
+      composeLanding: () =>
+          workbenchCubit.centerLandingActive(chatCubit.tabStore.activeWorkspaceId),
       onTogglePanel: openFloatingNewTerminal,
     );
 
@@ -2507,6 +2517,7 @@ Future<AppShell> buildAppShell({
       workbenchCubit,
       WorkbenchStripNavigator(workbench: workbenchCubit, chat: chatCubit),
     );
+    registerSplitCommands(commandBus, chatCubit, workbenchCubit);
 
     // P1: switching the home target persists the id, rebinds the home context,
     // then reinstalls + reloads all remote-backed app data (same chain the old
@@ -2602,6 +2613,7 @@ Future<AppShell> buildAppShell({
       installJobRegistry: installJobRegistry,
       editorCubit: editorCubit,
       workbenchCubit: workbenchCubit,
+      workbenchLayoutPersistence: workbenchLayoutPersistence,
       workbenchEditorOpener: workbenchEditorOpener,
       workbenchShellLauncher: resolvedShellLauncher,
       floatingWorkspaceCubit: floatingWorkspaceCubit,

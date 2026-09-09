@@ -5,9 +5,9 @@ import 'package:teampilot/cubits/workbench/workbench_cubit.dart';
 import 'package:teampilot/cubits/workbench/workbench_tab.dart';
 
 /// Mirrors the file tree consumer: the active floating file-preview path of
-/// [ws] read from the bar's floating strip.
+/// [ws] read from the floating layout's focused group.
 String? filePreviewPath(WorkbenchCubit workbench, String ws) {
-  final activeId = workbench.state.bar(ws).floating.activeId;
+  final activeId = workbench.floatingActiveId(ws);
   if (activeId == null || activeId.kind != WorkbenchTabKind.file) return null;
   return activeId.id;
 }

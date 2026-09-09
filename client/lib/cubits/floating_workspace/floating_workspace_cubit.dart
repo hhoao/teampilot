@@ -8,7 +8,7 @@ import 'floating_workspace_state.dart';
 /// Panel chrome state only — visibility / placement / active workspace.
 ///
 /// Floating tab presence / order / active are owned by
-/// [WorkbenchCubit]'s per-workspace `bar.floating` strip; this cubit no longer
+/// [WorkbenchCubit]'s per-workspace floating layout; this cubit no longer
 /// holds tab buckets. The panel resolves `FloatingTab` view data from the bar
 /// by id (see `workbench_shell_run_sync.dart`).
 class FloatingWorkspaceCubit extends Cubit<FloatingWorkspaceState> {
