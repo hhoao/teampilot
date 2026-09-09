@@ -226,9 +226,10 @@ class WorkbenchCubit extends Cubit<WorkbenchState> {
       _mergeGroupStrips(centerLayout(workspaceId));
 
   /// Per-split-group session tile data in leaf order:
-  /// (groupId, that group's non-preview session tab ids). Empty for a
-  /// single-group layout — callers keep the flat path. Groups whose tabs
-  /// are all non-session (files / diffs) are omitted.
+  /// (groupId, that group's session tab ids — previews included, the
+  /// sidebar open-strip surfaces them). Empty for a single-group layout —
+  /// callers keep the flat path. Groups whose tabs are all non-session
+  /// (files / diffs) are omitted.
   List<(String, List<String>)> centerSessionGroups(String workspaceId) {
     final layout = centerLayout(workspaceId);
     if (layout.groups.length == 1) return const [];
@@ -239,6 +240,7 @@ class WorkbenchCubit extends Cubit<WorkbenchState> {
       final sessionIds = OpenSessionTabIds.fromCenterBarOrder(
         strip.order,
         previewIds: strip.previewIds,
+        includePreviews: true,
       ).ids;
       if (sessionIds.isEmpty) continue;
       result.add((groupId, sessionIds));

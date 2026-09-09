@@ -15,6 +15,7 @@ import 'package:teampilot/models/workspace.dart';
 import 'package:teampilot/models/workspace_folder.dart';
 import 'package:teampilot/pages/home_workspace/workspace/workspace_sidebar.dart';
 import 'package:teampilot/repositories/session_repository.dart';
+import 'package:teampilot/widgets/sidebar_session_tile.dart';
 
 import '../../../support/post_frame_test_harness.dart';
 
@@ -152,6 +153,35 @@ void main() {
       find.byKey(const ValueKey('workspace-running-session-a')),
       findsOneWidget,
     );
+  });
+
+  testWidgets('preview sessions render in the open strip with italic title', (
+    tester,
+  ) async {
+    workbenchCubit
+      ..openSession('ws-1', 'a')
+      ..openSession('ws-1', 'b', preview: true)
+      ..openSession('ws-1', 'c');
+    await pumpSidebar(tester);
+
+    // The preview tab 'b' surfaces in the flat open strip next to pinned tabs.
+    expect(
+      find.byKey(const ValueKey('workspace-running-session-a')),
+      findsOneWidget,
+    );
+    expect(
+      find.byKey(const ValueKey('workspace-running-session-b')),
+      findsOneWidget,
+    );
+    // And its title is italic (distinct preview treatment).
+    final tile = tester.widget<SidebarSessionTile>(
+      find.byKey(const ValueKey('workspace-running-session-b')),
+    );
+    expect(tile.preview, isTrue);
+    final pinned = tester.widget<SidebarSessionTile>(
+      find.byKey(const ValueKey('workspace-running-session-a')),
+    );
+    expect(pinned.preview, isFalse);
   });
 
   testWidgets('tapping a column divider focuses that group', (tester) async {

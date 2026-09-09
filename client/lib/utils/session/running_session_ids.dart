@@ -6,8 +6,10 @@ import 'workspace_running_sessions.dart';
 
 /// Order-sensitive open session tab ids from the center workbench strip.
 ///
-/// Preview (replaceable, not pinned) session tabs are excluded so the sidebar
-/// open strip mirrors only pinned/running sessions.
+/// Preview (replaceable, not pinned) session tabs are excluded by default so
+/// the sidebar open strip mirrors only pinned/running sessions; callers that
+/// surface the whole open-strip (the sidebar's own open-sessions section)
+/// pass [includePreviews].
 @immutable
 class OpenSessionTabIds {
   const OpenSessionTabIds(this.ids);
@@ -17,13 +19,14 @@ class OpenSessionTabIds {
   factory OpenSessionTabIds.fromCenterBarOrder(
     List<WorkbenchTabId> order, {
     Set<WorkbenchTabId> previewIds = const {},
+    bool includePreviews = false,
   }) {
     return OpenSessionTabIds([
       for (final tab in order)
         if (tab.kind == WorkbenchTabKind.session &&
             tab.id.isNotEmpty &&
             !tab.id.startsWith('local-') &&
-            !previewIds.contains(tab))
+            (includePreviews || !previewIds.contains(tab)))
           tab.id,
     ]);
   }

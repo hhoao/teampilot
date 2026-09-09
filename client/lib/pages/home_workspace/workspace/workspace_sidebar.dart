@@ -1,6 +1,6 @@
 import 'dart:async';
 
-import 'package:flutter/foundation.dart' show listEquals;
+import 'package:flutter/foundation.dart' show listEquals, setEquals;
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
@@ -11,6 +11,7 @@ import '../../../cubits/layout_cubit.dart';
 import '../../../cubits/session_groups_cubit.dart';
 import '../../../cubits/shortcut_cubit.dart';
 import '../../../cubits/workbench/workbench_cubit.dart';
+import '../../../cubits/workbench/workbench_tab.dart';
 import '../../../cubits/worktree_cubit.dart';
 import '../../../l10n/l10n_extensions.dart';
 import '../../../models/app_session.dart';
@@ -428,12 +429,20 @@ class _RunningSessionsHost extends StatelessWidget {
     final openTabIds = context.select<WorkbenchCubit, OpenSessionTabIds>(
       (c) {
         // Merged across every center split group — the sidebar's open strip
-        // is a whole-surface view, not a focused-group one.
+        // is a whole-surface view, not a focused-group one. Preview tabs
+        // surface too (the strip mirrors what is visually open).
         final strip = c.mergedCenterStrip(tabScopeId);
         return OpenSessionTabIds.fromCenterBarOrder(
           strip.order,
           previewIds: strip.previewIds,
+          includePreviews: true,
         );
+      },
+    );
+    final previewIds = context.select<WorkbenchCubit, Set<String>>(
+      (c) => {
+        for (final t in c.mergedCenterStrip(tabScopeId).previewIds)
+          if (t.kind == WorkbenchTabKind.session) t.id,
       },
     );
     final running = context.select<ChatCubit, RunningSessionIds>(
@@ -448,6 +457,7 @@ class _RunningSessionsHost extends StatelessWidget {
           ? const SizedBox.shrink()
           : _RunningSessionsSection(
               sessionIds: running.ids,
+              previewIds: previewIds,
               workspace: workspace,
               tabScopeId: tabScopeId,
             ),
@@ -458,10 +468,19 @@ class _RunningSessionsHost extends StatelessWidget {
 /// Equatable per-split-group view for [context.select] rebuild boundaries.
 @immutable
 class SplitSessionGroup {
-  const SplitSessionGroup(this.groupId, this.sessionIds, this.focused);
+  const SplitSessionGroup(
+    this.groupId,
+    this.sessionIds,
+    this.previewIds,
+    this.focused,
+  );
 
   final String groupId;
   final List<String> sessionIds;
+
+  /// Session ids of this group that are still replaceable preview tabs
+  /// (styled italic in the open strip).
+  final Set<String> previewIds;
   final bool focused;
 
   @override
@@ -469,10 +488,12 @@ class SplitSessionGroup {
       other is SplitSessionGroup &&
       other.groupId == groupId &&
       listEquals(other.sessionIds, sessionIds) &&
+      setEquals(other.previewIds, previewIds) &&
       other.focused == focused;
 
   @override
-  int get hashCode => Object.hash(groupId, Object.hashAll(sessionIds), focused);
+  int get hashCode =>
+      Object.hash(groupId, Object.hashAll(sessionIds), focused);
 }
 
 @immutable
@@ -489,10 +510,19 @@ class SplitSessionGroups {
   ) {
     final raw = workbench.centerSessionGroups(workspaceId);
     if (raw.isEmpty) return empty;
+    final layout = workbench.centerLayout(workspaceId);
     final focusedId = workbench.centerFocusedGroupId(workspaceId);
     return SplitSessionGroups._([
       for (final (groupId, ids) in raw)
-        SplitSessionGroup(groupId, ids, groupId == focusedId),
+        SplitSessionGroup(
+          groupId,
+          ids,
+          {
+            for (final t in layout.groups[groupId]?.previewIds ?? const {})
+              if (t.kind == WorkbenchTabKind.session) t.id,
+          },
+          groupId == focusedId,
+        ),
     ]);
   }
 }
@@ -788,11 +818,15 @@ class _ArchivedConversationList extends StatelessWidget {
 class _RunningSessionsSection extends StatelessWidget {
   const _RunningSessionsSection({
     required this.sessionIds,
+    required this.previewIds,
     required this.workspace,
     required this.tabScopeId,
   });
 
   final List<String> sessionIds;
+
+  /// Session ids rendering as replaceable preview tabs (italic title).
+  final Set<String> previewIds;
   final Workspace workspace;
   final String tabScopeId;
 
@@ -815,6 +849,7 @@ class _RunningSessionsSection extends StatelessWidget {
             SidebarSessionTile(
               key: ValueKey('workspace-running-session-$sessionId'),
               session: session,
+              preview: previewIds.contains(sessionId),
               highlightSessionId: scopedActiveSessionId(
                 context.read<WorkbenchCubit>(),
                 tabScopeId,
@@ -879,6 +914,7 @@ class _RunningSplitGroupsSection extends StatelessWidget {
                   SidebarSessionTile(
                     key: ValueKey('workspace-running-session-$sessionId'),
                     session: session,
+                    preview: group.previewIds.contains(sessionId),
                     highlightSessionId: scopedActiveSessionId(
                       workbench,
                       tabScopeId,

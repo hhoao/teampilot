@@ -534,16 +534,17 @@ void main() {
       expect(cubit.centerSessionGroups(_ws), isEmpty);
     });
 
-    test('groups per split group in leaf order, previews excluded', () {
+    test('groups per split group in leaf order, previews included', () {
       cubit
         ..openSession(_ws, 's1')
-        ..openSession(_ws, 's2')
+        ..openSession(_ws, 's2', preview: true) // preview tab
         ..openSession(_ws, 's3')
         ..openFile(_ws, '/a.dart')
         ..splitTab(_ws, _s3, axis: Axis.horizontal, before: false); // g0 [s1,s2,f] | g1 [s3]
       final groups = cubit.centerSessionGroups(_ws);
       expect(groups, hasLength(2));
       expect(groups[0].$1, 'g0');
+      // Preview s2 still surfaces (the sidebar open strip shows previews).
       expect(groups[0].$2, ['s1', 's2']);
       expect(groups[1].$2, ['s3']);
     });
