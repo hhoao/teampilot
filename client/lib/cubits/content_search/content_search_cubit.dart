@@ -220,15 +220,26 @@ class ContentSearchCubit extends Cubit<ContentSearchState> {
       return;
     }
     if (seq != _searchSeq || isClosed) return;
-    final files = <ContentSearchFileGroup>[
-      for (final slice in _slices)
-        if (groupsByRoot[slice.root] case final groups?)
-          for (final path in groups.keys) groups[path]!,
-    ];
-    // Every slice failed with zero matches anywhere → global error; partial
-    // failures stay in sliceErrors.
+    // Dedupe by root string (defense in depth: the slice builder already
+    // dedupes, but the cubit can be constructed with arbitrary slices). Two
+    // slices sharing a root would emit every file group twice with identical
+    // (rootKey, path) → duplicate ValueKeys downstream. First slice wins.
+    final seenRoots = <String>{};
+    final files = <ContentSearchFileGroup>[];
+    for (final slice in _slices) {
+      if (!seenRoots.add(slice.root)) continue;
+      final groups = groupsByRoot[slice.root];
+      if (groups == null) continue;
+      for (final path in groups.keys) {
+        files.add(groups[path]!);
+      }
+    }
+    // Every distinct root failed with zero matches anywhere → global error;
+    // partial failures stay in sliceErrors.
     final allFailed =
-        sliceErrors.length == _slices.length && _slices.isNotEmpty && !anyMatch;
+        sliceErrors.length == seenRoots.length &&
+        seenRoots.isNotEmpty &&
+        !anyMatch;
     final truncated = options.maxResults != null &&
         countsByRoot.values.any((c) => c >= options.maxResults!);
     emit(state.copyWith(
@@ -238,7 +249,6 @@ class ContentSearchCubit extends Cubit<ContentSearchState> {
       error: allFailed ? sliceErrors.values.first : null,
       clearError: !allFailed,
       sliceErrors: sliceErrors,
-      clearSliceErrors: sliceErrors.isEmpty,
     ));
   }
 

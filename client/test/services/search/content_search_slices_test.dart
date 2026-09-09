@@ -35,6 +35,26 @@ void main() {
     expect(slices.map((s) => s.label), ['a', 'b', 'c']);
   });
 
+  test('dedupes roots shared across targets; first slice in scope order wins',
+      () {
+    final scope = WorkspaceToolsScopeState(
+      targetSlices: [
+        _slice('local', ['/ws/a', '/ws/b']),
+        _slice('ssh:one', ['/ws/a', '/remote/c']),
+      ],
+      resolving: false,
+    );
+    final slices = contentSearchSlicesForScope(
+      scope: scope,
+      cwd: '/ws/a',
+      fallbackFs: LocalFilesystem(),
+    );
+    // /ws/a appears in both targets but yields one slice — a duplicate would
+    // search the path twice and emit every file group twice downstream.
+    expect(slices.map((s) => s.root), ['/ws/a', '/ws/b', '/remote/c']);
+    expect(slices, hasLength(3));
+  });
+
   test('falls back to a single cwd slice when no target resolved', () {
     final scope = const WorkspaceToolsScopeState(resolving: true);
     final slices = contentSearchSlicesForScope(

@@ -219,6 +219,58 @@ void main() {
     expect(multi.state.error, isNotNull);
     expect(multi.state.files, isEmpty);
   });
+
+  // === fix-wave tests: duplicate-root robustness and truncation ===
+
+  test('two slices sharing one root string emit each file group once',
+      () async {
+    // Both slices share the root string, so the factory cannot dispatch on
+    // root — hand out one runner per slice by call order instead.
+    final runners = [_FakeRunner('/dup'), _FakeRunner('/dup')];
+    var next = 0;
+    final multi = ContentSearchCubit(
+      slices: [_slice('/dup'), _slice('/dup')],
+      runnerFactory: (_) => runners[next++],
+      replacerFactory: (_) => throw UnimplementedError(),
+    );
+    runners[0].handler = (_) => _stream([_m('a.dart', 1, root: '/dup')]);
+    runners[1].handler = (_) => _stream([_m('b.txt', 1, root: '/dup')]);
+    await multi.search(const TpSearchOptions(pattern: 'hello'));
+    // Both runners feed the same root; without the emission-loop guard each
+    // group would be emitted twice with identical (rootKey, path).
+    expect(multi.state.files, hasLength(2));
+    expect(multi.state.files.map((f) => f.path), ['/dup/a.dart', '/dup/b.txt']);
+  });
+
+  test('allFailed compares against distinct roots, not raw slices', () async {
+    final a = _FakeRunner('/dup');
+    final multi = ContentSearchCubit(
+      slices: [_slice('/dup'), _slice('/dup')],
+      runnerFactory: (_) => a,
+      replacerFactory: (_) => throw UnimplementedError(),
+    );
+    a.handler = (_) => Stream.error(StateError('down'));
+    await multi.search(const TpSearchOptions(pattern: 'hello'));
+    // sliceErrors has one entry for one distinct root → every root failed.
+    expect(multi.state.error, isA<StateError>());
+    expect(multi.state.files, isEmpty);
+  });
+
+  test('truncated is set when a slice reaches maxResults, else false',
+      () async {
+    fake.handler = (_) => Stream.fromIterable([
+      for (var i = 0; i < 3; i++) _m('a.dart', i + 1),
+    ]);
+    await cubit.search(const TpSearchOptions(pattern: 'hello', maxResults: 3));
+    expect(cubit.state.files, hasLength(1));
+    expect(cubit.state.truncated, isTrue);
+
+    fake.handler = (_) =>
+        Stream.fromIterable([_m('a.dart', 1), _m('a.dart', 2)]);
+    await cubit.search(const TpSearchOptions(pattern: 'hello', maxResults: 3));
+    expect(cubit.state.files, hasLength(1));
+    expect(cubit.state.truncated, isFalse);
+  });
 }
 
 /// Replacer that blocks until [release] — unchanged from the previous version.
