@@ -1400,6 +1400,11 @@ class AppLocalizationsZh extends AppLocalizations {
   String get workspaceSearchError => '搜索失败——请检查正则';
 
   @override
+  String workspaceSearchSliceError(String directory) {
+    return '「$directory」目录搜索失败';
+  }
+
+  @override
   String get appDropdownSearchHint => '搜索…';
 
   @override

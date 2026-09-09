@@ -634,6 +634,14 @@
   "workspaceSearchUseGitignore": "使用 .gitignore 设置",
   "workspaceSearchToggleDetails": "展开搜索选项",
   "workspaceSearchError": "搜索失败——请检查正则",
+  "workspaceSearchSliceError": "「{directory}」目录搜索失败",
+  "@workspaceSearchSliceError": {
+    "placeholders": {
+      "directory": {
+        "type": "String"
+      }
+    }
+  },
   "appDropdownSearchHint": "搜索…",
   "appDropdownSearchNoResults": "未找到结果",
   "homeWorkspaceOpenWorkspaceInNewTab": "在新标签页中打开",

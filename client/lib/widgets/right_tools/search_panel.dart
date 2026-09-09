@@ -8,6 +8,7 @@ import '../../cubits/editor_cubit.dart';
 import '../../l10n/l10n_extensions.dart';
 import '../../services/io/filesystem.dart';
 import '../../services/search/content_search_runner.dart';
+import '../../services/search/multi_root_content_search.dart';
 import '../../utils/debounce/debounce.dart';
 import '../find/find_bar_widgets.dart';
 import 'search_panel_form.dart';
@@ -20,16 +21,17 @@ import 'search_panel_results.dart';
 class WorkspaceSearchPanel extends StatefulWidget {
   const WorkspaceSearchPanel({
     required this.workspaceId,
-    required this.root,
-    required this.fs,
+    required this.slices,
     required this.focusRequest,
     this.onOpenResult,
     super.key,
   });
 
   final String workspaceId;
-  final String root;
-  final Filesystem fs;
+
+  /// One slice per searched root; drives the panel's backend label, result
+  /// grouping, and result-open filesystem routing.
+  final List<ContentSearchSlice> slices;
 
   /// Bump to focus the query field (Ctrl+Shift+F).
   final ValueNotifier<int> focusRequest;
@@ -373,6 +375,11 @@ class _WorkspaceSearchPanelState extends State<WorkspaceSearchPanel> {
                 query: query,
                 truncated: state.truncated,
                 replacement: _replaceController.text,
+                sliceErrors: {
+                  for (final e in state.sliceErrors.entries)
+                    if (_labelForRoot(e.key) case final label?)
+                      e.key: (e.value, label),
+                },
                 collapsedPaths: _collapsedPaths,
                 onToggleGroup: (path) => setState(() {
                   if (!_collapsedPaths.add(path)) _collapsedPaths.remove(path);
@@ -388,8 +395,22 @@ class _WorkspaceSearchPanelState extends State<WorkspaceSearchPanel> {
     );
   }
 
-  String _backendLabel() =>
-      ContentSearchRunner(fs: widget.fs, root: widget.root).backendLabel;
+  String _backendLabel() {
+    final labels = <String>{
+      for (final s in widget.slices)
+        ContentSearchRunner(fs: s.fs, root: s.root).backendLabel,
+    };
+    return labels.join(' / ');
+  }
+
+  /// Display label of the slice whose root is [root]; null when unknown
+  /// (the results widget then skips that error row).
+  String? _labelForRoot(String root) {
+    for (final s in widget.slices) {
+      if (s.root == root) return s.label;
+    }
+    return null;
+  }
 
   void _openResult(BuildContext context, String path, int lineNumber) {
     final handler = widget.onOpenResult;
@@ -398,7 +419,20 @@ class _WorkspaceSearchPanelState extends State<WorkspaceSearchPanel> {
       return;
     }
     final editor = context.read<EditorCubit>();
-    editor.openFile(widget.workspaceId, path, fs: widget.fs);
+    editor.openFile(widget.workspaceId, path, fs: _fsForPath(path));
     editor.selectLines(widget.workspaceId, path, startLine: lineNumber);
+  }
+
+  /// Filesystem of the slice whose root prefixes [path]; the first slice as a
+  /// last resort so opening still works for unexpected paths.
+  Filesystem _fsForPath(String path) {
+    for (final s in widget.slices) {
+      if (path == s.root ||
+          path.startsWith('${s.root}/') ||
+          path.startsWith('${s.root}\\')) {
+        return s.fs;
+      }
+    }
+    return widget.slices.first.fs;
   }
 }

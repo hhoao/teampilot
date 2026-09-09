@@ -1467,6 +1467,11 @@ class AppLocalizationsEn extends AppLocalizations {
   String get workspaceSearchError => 'Search failed — check the pattern';
 
   @override
+  String workspaceSearchSliceError(String directory) {
+    return 'Search failed in \"$directory\"';
+  }
+
+  @override
   String get appDropdownSearchHint => 'Search…';
 
   @override
