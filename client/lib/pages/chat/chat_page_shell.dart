@@ -188,27 +188,30 @@ class _ChatWorkspaceShell extends StatelessWidget {
                 workspaceId,
                 workbench.centerFocusedGroupId(workspaceId),
               ),
-              groupBuilder: (context, groupId, strip) => WorkbenchGroupHost(
-                workspace: workspace,
-                workspaceId: workspaceId,
-                tabScopeId: tabScopeId,
-                cwd: cwd,
-                additionalPaths: additionalPaths,
-                groupId: groupId,
-                strip: strip,
-                focused:
-                    layout.focusedGroupId == groupId ||
-                    layout.maximizedGroupId == groupId,
-                routeActive: routeActive,
-                chatState: state,
-                runtimeTabs: runtimeTabs,
-                editorBucket: editorBucket,
-                shellTitles: shellTitles,
-                showTabBar: showTabBar,
-                splitEnabled: splitEnabled,
-                holdHandle: holdHandle,
-                sessionId: sessionId,
-                actions: singleGroup ? const [] : chatActions,
+              groupBuilder: (context, groupId, strip) => KeyedSubtree(
+                key: ValueKey('workbench-group-host-$groupId'),
+                child: WorkbenchGroupHost(
+                  workspace: workspace,
+                  workspaceId: workspaceId,
+                  tabScopeId: tabScopeId,
+                  cwd: cwd,
+                  additionalPaths: additionalPaths,
+                  groupId: groupId,
+                  strip: strip,
+                  focused:
+                      layout.focusedGroupId == groupId ||
+                      layout.maximizedGroupId == groupId,
+                  routeActive: routeActive,
+                  chatState: state,
+                  runtimeTabs: runtimeTabs,
+                  editorBucket: editorBucket,
+                  shellTitles: shellTitles,
+                  showTabBar: showTabBar,
+                  splitEnabled: splitEnabled,
+                  holdHandle: holdHandle,
+                  sessionId: sessionId,
+                  actions: singleGroup ? const [] : chatActions,
+                ),
               ),
             );
 
@@ -220,7 +223,10 @@ class _ChatWorkspaceShell extends StatelessWidget {
                         Expanded(child: splitView),
                       ],
                     )
-                  : splitView,
+                  : KeyedSubtree(
+                      key: const ValueKey('center-split-view-root'),
+                      child: splitView,
+                    ),
             );
           },
         );

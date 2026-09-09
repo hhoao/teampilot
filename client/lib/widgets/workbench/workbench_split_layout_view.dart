@@ -476,7 +476,11 @@ class SplitGroupFocusFrame extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    if (!focused) return child;
+    // The tree shape is CONSTANT across focus changes (Stack + overlay
+    // always present); only the border color animates between transparent
+    // and primary. A conditional shape (bare child vs Stack) would break
+    // element matching on every focus switch and remount the whole pane —
+    // terminals, chat history, scroll anchors included.
     return Stack(
       fit: StackFit.passthrough,
       children: [
@@ -489,7 +493,9 @@ class SplitGroupFocusFrame extends StatelessWidget {
               decoration: BoxDecoration(
                 border: Border.fromBorderSide(
                   BorderSide(
-                    color: Theme.of(context).colorScheme.primary,
+                    color: focused
+                        ? Theme.of(context).colorScheme.primary
+                        : const Color(0x00000000),
                     width: 2,
                   ),
                 ),
