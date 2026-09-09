@@ -32,7 +32,7 @@ import '../../widgets/app_toast/app_toast.dart';
 import '../../widgets/workbench/code_editor_find_panel.dart';
 import '../../widgets/workbench/file_diff_surface_toggle.dart';
 import '../../widgets/workbench/markdown_view_mode_toggle.dart';
-import '../../widgets/workbench/html_view_mode_toggle.dart';
+import '../../widgets/workbench/editor_view_mode_toggle.dart';
 import 'file_editor_image_preview.dart';
 import 'markdown_preview_pane.dart';
 import '../preview/html_preview_pane.dart';
@@ -372,10 +372,14 @@ class _FileEditorToolbar extends StatelessWidget {
             ListenableBuilder(
               listenable: opener.htmlViewModes,
               builder: (context, _) {
-                return HtmlViewModeToggle(
-                  mode: opener.htmlViewModes.modeFor(path),
-                  onModeChanged: (mode) =>
-                      opener.htmlViewModes.setMode(path, mode),
+                final mode = opener.htmlViewModes.modeFor(path);
+                return EditorViewModeToggle(
+                  editSelected: mode == HtmlViewMode.edit,
+                  previewSelected: mode == HtmlViewMode.preview,
+                  onEditTap: () =>
+                      opener.htmlViewModes.setMode(path, HtmlViewMode.edit),
+                  onPreviewTap: () =>
+                      opener.htmlViewModes.setMode(path, HtmlViewMode.preview),
                 );
               },
             ),
