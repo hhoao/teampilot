@@ -928,6 +928,7 @@ class _RunningSplitGroupsSection extends StatelessWidget {
                         _SplitGroupIndicator(
                           groupId: group.groupId,
                           focused: group.focused,
+                          isGroupActive: group.activeSessionId == sessionId,
                           onTap: () =>
                               workbench.focusGroup(tabScopeId, group.groupId),
                         ),
@@ -963,35 +964,45 @@ class _RunningSplitGroupsSection extends StatelessWidget {
 }
 
 /// Leading vertical color bar marking a session tile's split-group
-/// membership (VSCode-style active indicator): focused column = primary and
-/// slightly wider; others = a faint outline strip. Tapping the bar focuses
-/// that group. Rendered once per tile so the whole sub-section reads as one
-/// visually coherent group.
+/// membership (VSCode-style active indicator). Width + color encode the
+/// role, the ONLY cue for per-column state (tile fills stay reserved for
+/// the focused column's selection):
+///
+/// - focused group's active session: 5px, primary
+/// - unfocused group's active session: 4px, primary @ 55% alpha
+/// - any non-active session: 3px, faint outline
+///
+/// Tapping the bar focuses that group.
 class _SplitGroupIndicator extends StatelessWidget {
   const _SplitGroupIndicator({
     required this.groupId,
     required this.focused,
+    required this.isGroupActive,
     required this.onTap,
   });
 
   final String groupId;
   final bool focused;
+
+  /// The tile's session is this group's active tab (the pane's content).
+  final bool isGroupActive;
   final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
+    final (width, color) = focused && isGroupActive
+        ? (5.0, cs.primary)
+        : isGroupActive
+        ? (4.0, cs.primary.withValues(alpha: 0.55))
+        : (3.0, cs.outlineVariant.withValues(alpha: 0.6));
     return GestureDetector(
       key: ValueKey('workspace-running-group-indicator-$groupId'),
       behavior: HitTestBehavior.opaque,
       onTap: onTap,
       child: SizedBox(
-        width: focused ? 5 : 3,
-        child: ColoredBox(
-          color: focused
-              ? cs.primary
-              : cs.outlineVariant.withValues(alpha: 0.6),
-        ),
+        width: width,
+        child: ColoredBox(color: color),
       ),
     );
   }

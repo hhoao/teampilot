@@ -67,10 +67,10 @@ void main() {
     tearDownTestAppStorage();
   });
 
-  Future<void> pumpSidebar(WidgetTester tester) async {
+  Future<void> pumpSidebar(WidgetTester tester, {List<String> ids = const ['a', 'b']}) async {
     await tester.runAsync(() => groupsCubit.load(_workspace.workspaceId));
     chatCubit.emit(
-      chatCubit.state.copyWith(sessions: [_session('a'), _session('b')]),
+      chatCubit.state.copyWith(sessions: [for (final id in ids) _session(id)]),
     );
     await tester.pumpWidget(
       MaterialApp(
@@ -199,12 +199,62 @@ void main() {
       find.byKey(const ValueKey('workspace-running-session-b')),
     );
     expect(tileB.highlightSessionId, 'b');
-    // 'a' (unfocused group's active) carries the secondary highlight.
-    final tileA = tester.widget<SidebarSessionTile>(
-      find.byKey(const ValueKey('workspace-running-session-a')),
-    );
-    expect(tileA.secondaryHighlight, isTrue);
+    // 'a' (unfocused group's active) has NO secondary tile fill — the
+    // "what each column shows" cue lives on the indicator bar alone: g0's
+    // active tile carries a MEDIUM (4px) bar, not the faint 3px one.
+    final g0Indicator = find
+        .byKey(const ValueKey('workspace-running-group-indicator-g0'))
+        .evaluate()
+        .single;
+    expect((g0Indicator.renderObject as RenderBox).size.width, 4);
+    // And the focused group's active tile gets the widest bar (5px).
+    final second = workbenchCubit.centerLayout('ws-1').leafGroupIds.last;
+    final secondIndicator = find
+        .byKey(ValueKey('workspace-running-group-indicator-$second'))
+        .evaluate()
+        .single;
+    expect((secondIndicator.renderObject as RenderBox).size.width, 5);
   });
+
+  testWidgets(
+    'unfocused group active renders a medium indicator vs faint siblings',
+    (tester) async {
+      workbenchCubit
+          ..openSession('ws-1', 'a')
+          ..openSession('ws-1', 'b')
+          ..openSession('ws-1', 'c')
+          // g0 [a, b, c], active = a after explicit activation.
+          ..activate('ws-1', WorkbenchTabId.session('a'))
+          ..splitTab(
+            'ws-1',
+            WorkbenchTabId.session('b'),
+            axis: Axis.horizontal,
+            before: false,
+          ); // g0 [a, c] | g1 [b], focused g1
+      await pumpSidebar(tester, ids: const ['a', 'b', 'c']);
+
+      // Indicator width encodes the role: focused-group active (5) >
+      // unfocused-group active (4) > non-active sibling (3).
+      final g0Indicators = find
+          .byKey(const ValueKey('workspace-running-group-indicator-g0'))
+          .evaluate()
+          .toList();
+      // g0 has two tiles: 'a' (its active) and 'c' (sibling).
+      expect(g0Indicators.length, 2);
+      final widths = [
+        (g0Indicators.first.renderObject as RenderBox).size.width,
+        (g0Indicators.last.renderObject as RenderBox).size.width,
+      ]..sort();
+      expect(widths.first, 3);
+      expect(widths.last, 4);
+
+      // The focused group g1's active 'b' carries the widest bar.
+      final g1Indicator = find.byKey(
+        const ValueKey('workspace-running-group-indicator-g1'),
+      );
+      expect(tester.getSize(g1Indicator).width, 5);
+    },
+  );
 
   testWidgets('tapping a group indicator focuses that group', (tester) async {
     workbenchCubit

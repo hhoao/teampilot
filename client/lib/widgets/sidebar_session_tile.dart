@@ -54,9 +54,10 @@ class SidebarSessionTile extends StatefulWidget {
   final bool preview;
 
   /// The session is the ACTIVE tab of a split group that does not hold the
-  /// workbench focus — i.e. its pane is currently showing this session, but
-  /// the strong (primary) highlight belongs to the focused group. Rendered
-  /// with a fainter fill so "what each column shows" stays readable.
+  /// workbench focus — its pane is showing this session. The strong fill
+  /// belongs to the focused group only; this cue is carried by the sidebar's
+  /// per-group indicator bar (medium width), so the tile itself renders no
+  /// extra fill. Kept as a flag for tests and future styling.
   final bool secondaryHighlight;
 
   /// Activates / opens the session. May be async — when the row needs-you,
@@ -792,12 +793,8 @@ class _SidebarSessionTileState extends State<SidebarSessionTile> {
           )
         : null;
 
-    final idleFill = selected
-        ? _selectedFillColor(cs)
-        : widget.secondaryHighlight
-        ? _secondaryHighlightFillColor(cs)
-        : Colors.transparent;
-    final hoverFill = selected || widget.secondaryHighlight
+    final idleFill = selected ? _selectedFillColor(cs) : Colors.transparent;
+    final hoverFill = selected
         ? Color.alphaBlend(
             cs.onSurface.withValues(alpha: kWorkspaceSidebarRowHoverTintAlpha),
             idleFill,
@@ -945,20 +942,10 @@ class _SessionPinnedMark extends StatelessWidget {
 }
 
 const _selectedFillAlpha = 0.10;
-const _secondaryHighlightFillAlpha = 0.045;
 
 Color _selectedFillColor(ColorScheme cs) {
   return Color.alphaBlend(
     cs.primary.withValues(alpha: _selectedFillAlpha),
-    cs.surfaceContainer,
-  );
-}
-
-/// Split-group secondary highlight: the active session of an unfocused
-/// column — its pane IS showing this session, so it needs a (fainter) mark.
-Color _secondaryHighlightFillColor(ColorScheme cs) {
-  return Color.alphaBlend(
-    cs.primary.withValues(alpha: _secondaryHighlightFillAlpha),
     cs.surfaceContainer,
   );
 }
