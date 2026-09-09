@@ -72,7 +72,12 @@ FullscreenPromptAnchor? locateFullscreenPromptNeedle(
   );
   if (searchStart == null) return null;
   for (var r = rows - 1; r >= searchStart; r--) {
-    final startCol = _findNeedleStartCol(grid, r, needleRunes, composerPrefix: composerPrefix);
+    final startCol = _findNeedleStartCol(
+      grid,
+      r,
+      needleRunes,
+      composerPrefix: composerPrefix,
+    );
     if (startCol >= 0) {
       return FullscreenPromptAnchor(row: r, startCol: startCol, needle: needle);
     }
@@ -106,7 +111,12 @@ FullscreenPromptAnchor? locateCollapsedPasteNeedle(
     final rowText = _logicalRowText(grid, r);
     final marker = PtyAutomationNeedle.collapsedPasteNeedle(rowText);
     if (marker == null) continue;
-    final startCol = _findNeedleStartCol(grid, r, marker.runes.toList(), composerPrefix: composerPrefix);
+    final startCol = _findNeedleStartCol(
+      grid,
+      r,
+      marker.runes.toList(),
+      composerPrefix: composerPrefix,
+    );
     if (startCol >= 0) {
       return FullscreenPromptAnchor(row: r, startCol: startCol, needle: marker);
     }
@@ -160,11 +170,7 @@ int? _composerLocateStartRow(
 }) {
   final prefix = composerPrefix?.trim();
   if (prefix == null || prefix.isEmpty) return windowStart;
-  final composerRow = bottomComposerChromeRow(
-    grid,
-    prefix,
-    scanRows: scanRows,
-  );
+  final composerRow = bottomComposerChromeRow(grid, prefix, scanRows: scanRows);
   if (composerRow == null) return null;
   return (composerRow - composerAboveSlack).clamp(windowStart, grid.rows - 1);
 }
@@ -178,14 +184,28 @@ bool isFullscreenPromptAtAnchor(
   String? composerPrefix,
 }) {
   final needleRunes = anchor.needle.runes.toList();
-  return _matchesNeedleAt(grid, anchor.row, anchor.startCol, needleRunes, composerPrefix: composerPrefix);
+  return _matchesNeedleAt(
+    grid,
+    anchor.row,
+    anchor.startCol,
+    needleRunes,
+    composerPrefix: composerPrefix,
+  );
 }
 
-/// True when [needle] is still the body of a composer-prefixed row.
+/// True when [needle] is still the body of the live input box.
 ///
-/// Distinguishes a live input box (`› hello`) from transcript residual
-/// (`hello` without composer chrome). An extra empty `›` below staged text
-/// is a TUI relayout, not a submit.
+/// Distinguishes a live composer from transcript residual: codex renders
+/// submitted user messages with the same `›` glyph as the composer, so ANY
+/// prefixed row in the window (the old rule) false-matched the transcript
+/// echo and the CR-ACK never confirmed (2026-09-09, logs/app_2026-09-09.log:
+/// echo at r13, live placeholder composer at r21, "Working 17s").
+///
+/// Staged text can only be: the chrome (bottommost composer) row itself, or
+/// the row directly above it when they form one unbroken composer block —
+/// a prefixed relayout row over an empty chrome (bd2351a9a), or a soft-wrap
+/// continuation whose tail fills the chrome row. Anything farther from the
+/// live chrome (echo, banner, spinner rows) is not un-submitted input.
 bool isNeedleStagedInComposer(
   TerminalScreenGrid grid,
   String needle, {
@@ -196,23 +216,32 @@ bool isNeedleStagedInComposer(
   if (prefix.isEmpty || needle.isEmpty) return false;
   final rows = grid.rows;
   if (rows == 0 || grid.columns == 0) return false;
+  final chrome = bottomComposerChromeRow(grid, prefix, scanRows: scanRows);
+  if (chrome == null) return false;
   final needleRunes = needle.runes.toList();
-  final startRow = (rows - scanRows).clamp(0, rows - 1);
-  for (var r = rows - 1; r >= startRow; r--) {
-    if (!_rowStartsWith(grid, r, prefix)) continue;
-    final body = _logicalRowText(grid, r).trimLeft();
-    if (body.length <= prefix.length) continue;
-    if (_findNeedleStartCol(
-          grid,
-          r,
-          needleRunes,
-          composerPrefix: prefix,
-        ) >=
-        0) {
-      return true;
-    }
+  if (_findNeedleStartCol(grid, chrome, needleRunes, composerPrefix: prefix) >=
+      0) {
+    return true;
   }
-  return false;
+  final above = chrome - 1;
+  if (above < 0) return false;
+  if (_findNeedleStartCol(grid, above, needleRunes, composerPrefix: prefix) <
+      0) {
+    return false;
+  }
+  // Needle is on chrome-1: staged only as an unbroken composer block —
+  // either a prefixed input row (relayout keeps `› needle` + `› ` adjacent)
+  // or a wrapped continuation whose tail sits in the live chrome row.
+  final rowAboveIsComposer = _rowStartsWith(grid, above, prefix);
+  final chromeHasBody = !_isPrefixOnlyRow(grid, chrome, prefix);
+  return rowAboveIsComposer || chromeHasBody;
+}
+
+/// True when the row is a composer chrome row with no body after the prefix.
+bool _isPrefixOnlyRow(TerminalScreenGrid grid, int row, String prefix) {
+  final text = _logicalRowText(grid, row).trimLeft();
+  if (!text.startsWith(prefix)) return false;
+  return text.substring(prefix.length).trim().isEmpty;
 }
 
 bool isFullscreenPromptSubmitted(
@@ -226,7 +255,11 @@ bool isFullscreenPromptSubmitted(
     case FullscreenCrAckStrategy.timed:
       return true;
     case FullscreenCrAckStrategy.anchorCellClears:
-      return !isFullscreenPromptAtAnchor(grid, anchor, composerPrefix: composerPrefix);
+      return !isFullscreenPromptAtAnchor(
+        grid,
+        anchor,
+        composerPrefix: composerPrefix,
+      );
     case FullscreenCrAckStrategy.composerMovesDown:
       final prefix = composerPrefix?.trim();
       if (prefix != null &&
@@ -239,7 +272,11 @@ bool isFullscreenPromptSubmitted(
           )) {
         return false;
       }
-      if (!isFullscreenPromptAtAnchor(grid, anchor, composerPrefix: composerPrefix)) {
+      if (!isFullscreenPromptAtAnchor(
+        grid,
+        anchor,
+        composerPrefix: composerPrefix,
+      )) {
         return true;
       }
       if (prefix == null || prefix.isEmpty) return false;
@@ -293,7 +330,14 @@ int _findNeedleStartCol(
 }) {
   for (var start = 0; start < grid.columns; start++) {
     if (_isWideSpacer(grid, row, start)) continue;
-    if (_matchesNeedleAt(grid, row, start, needleRunes, composerPrefix: composerPrefix)) return start;
+    if (_matchesNeedleAt(
+      grid,
+      row,
+      start,
+      needleRunes,
+      composerPrefix: composerPrefix,
+    ))
+      return start;
   }
   return -1;
 }
@@ -417,7 +461,11 @@ int _skipWideSpacers(TerminalScreenGrid grid, int row, int col) {
 }
 
 /// Advances past leading empty / space cells on a soft-wrapped continuation row.
-int _skipLeadingPadding(TerminalScreenGrid grid, int row, {String? composerPrefix}) {
+int _skipLeadingPadding(
+  TerminalScreenGrid grid,
+  int row, {
+  String? composerPrefix,
+}) {
   var col = 0;
   // OpenCode (and potentially other TUIs) repeats its composer prefix char on
   // every wrapped continuation line — skip it just like space/null padding.
