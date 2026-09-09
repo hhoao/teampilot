@@ -20,8 +20,8 @@ class ExpertCapabilityResolver {
     required SkillDepInstaller installSkill,
     required PluginDepInstaller installPlugin,
     required McpDepInstaller installMcp,
+    required LocalExpertStore localStore,
     CompositeExpertHubSource? source,
-    LocalExpertStore? localStore,
     ExpertHubCubit? cubit,
   }) : _installSkill = installSkill,
        _installPlugin = installPlugin,
@@ -34,7 +34,7 @@ class ExpertCapabilityResolver {
   final PluginDepInstaller _installPlugin;
   final McpDepInstaller _installMcp;
   final CompositeExpertHubSource? _source;
-  final LocalExpertStore? _localStore;
+  final LocalExpertStore _localStore;
   ExpertHubCubit? _cubit;
 
   /// Late-bind hub cubit after bootstrap constructs [ExpertHubCubit].

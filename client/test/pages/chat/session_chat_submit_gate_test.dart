@@ -81,6 +81,7 @@ void main() {
               dropTarget: ComposeFileDropIngestor(
                 workspaceRoot: '/tmp',
                 onInsertReferences: (_) {},
+                                                   usesPosixPaths: false,
               ),
               attachTooltip: 'Attach',
               voiceTooltip: 'Voice',

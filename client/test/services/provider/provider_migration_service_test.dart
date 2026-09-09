@@ -12,6 +12,8 @@ import 'package:teampilot/services/cli/cursor/provider/cursor_home_layout.dart';
 import 'package:teampilot/services/cli/opencode/provider/opencode_data_layout.dart';
 import 'package:teampilot/services/provider/provider_import_service.dart';
 
+import '../../support/post_frame_test_harness.dart';
+
 void main() {
   late Directory root;
   late String appData;
@@ -29,7 +31,10 @@ void main() {
       home: home,
       cwd: root.path,
     );
-    repository = AppProviderRepository(basePath: appData);
+    repository = AppProviderRepository(
+      basePath: appData,
+      storage: buildTestHomeStorage(),
+    );
   });
 
   tearDown(() async {
@@ -68,6 +73,7 @@ void main() {
     );
 
     final service = ProviderImportService(
+      storage: buildTestHomeStorage(),
       repository: repository,
       flashskyaiExecutablePath: executable,
     );
@@ -95,7 +101,8 @@ void main() {
         'claudeAiOauth': {'accessToken': 'global-oauth'},
       });
 
-      final service = ProviderImportService(repository: repository);
+      final service = ProviderImportService(
+        storage: buildTestHomeStorage(), repository: repository);
       final result = await service.importForCli(
         CliTool.claude,
         onlyIfEmpty: false,
@@ -158,7 +165,8 @@ void main() {
         ],
       );
 
-      final service = ProviderImportService(repository: repository);
+      final service = ProviderImportService(
+        storage: buildTestHomeStorage(), repository: repository);
 
       final result = await service.importForCli(
         CliTool.claude,
@@ -217,7 +225,8 @@ base_url = "https://same.example.com/v1"
 wire_api = "chat"
 ''');
 
-    final service = ProviderImportService(repository: repository);
+    final service = ProviderImportService(
+        storage: buildTestHomeStorage(), repository: repository);
 
     final result = await service.importForCli(
       CliTool.codex,
@@ -271,7 +280,8 @@ base_url = "https://codex.example.com/v1"
 wire_api = "chat"
 ''');
 
-      final service = ProviderImportService(repository: repository);
+      final service = ProviderImportService(
+        storage: buildTestHomeStorage(), repository: repository);
 
       final result = await service.importForCli(
         CliTool.codex,
@@ -313,7 +323,8 @@ wire_api = "chat"
         'authInfo': {'userId': 'u1', 'authId': 'a1'},
       });
 
-      final service = ProviderImportService(repository: repository);
+      final service = ProviderImportService(
+        storage: buildTestHomeStorage(), repository: repository);
       final result = await service.importForCli(
         CliTool.cursor,
         onlyIfEmpty: false,
@@ -356,7 +367,8 @@ wire_api = "chat"
       const {'model': 'openai/gpt-4o'},
     );
 
-    final service = ProviderImportService(repository: repository);
+    final service = ProviderImportService(
+        storage: buildTestHomeStorage(), repository: repository);
     final result = await service.importForCli(
       CliTool.opencode,
       onlyIfEmpty: false,

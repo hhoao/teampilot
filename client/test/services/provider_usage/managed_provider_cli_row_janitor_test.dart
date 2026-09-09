@@ -15,8 +15,9 @@ void main() {
   setUp(() {
     fs = InMemoryFilesystem();
     appCubit = AppProviderCubit(
-      repository: AppProviderRepository(fs: fs, basePath: '/tp'),
+      repository: AppProviderRepository(fs: fs, basePath: '/tp', storage: fakeHomeStorage(filesystem: fs), ),
       basePath: '/tp',
+                                 storage: fakeHomeStorage(filesystem: fs),
     );
   });
 

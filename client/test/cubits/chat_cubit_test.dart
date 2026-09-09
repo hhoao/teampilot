@@ -1,5 +1,6 @@
 import 'dart:io';
 
+import 'package:flutter_alacritty/flutter_alacritty.dart';
 import 'package:teampilot/cubits/chat/model/session_connect_request.dart';
 import 'package:teampilot/cubits/chat/model/chat_tab.dart';
 import 'package:teampilot/cubits/chat_cubit.dart';
@@ -14,12 +15,15 @@ import 'package:teampilot/repositories/session_repository.dart';
 import 'package:teampilot/services/team_bus/bus_user_line_capture.dart';
 import 'package:teampilot/services/storage/app_storage.dart';
 import 'package:teampilot/services/session/shell_launch_spec.dart';
+import 'package:teampilot/services/team/terminal_activity_tracker.dart';
 import 'package:teampilot/services/terminal/terminal_session.dart';
+import 'package:teampilot/services/terminal/terminal_launch_controller.dart';
 import 'package:teampilot/services/compose/compose_draft_cache.dart';
 import 'package:teampilot/services/compose/compose_draft_store.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import '../support/post_frame_test_harness.dart';
+import '../support/in_memory_filesystem.dart';
 
 String _executable() => 'flashskyai';
 
@@ -45,7 +49,20 @@ void _registerTempCubitCleanup({
 }
 
 class _FakeTerminalSession extends TerminalSession {
-  _FakeTerminalSession({required super.executable});
+  _FakeTerminalSession({required super.executable})
+    : super(
+        validateLaunch: false,
+        parseExecutable: false,
+        launchController: TerminalLaunchController(
+          engine: TerminalEngine(config: TerminalConfig.defaults()),
+          activityTracker: TerminalActivityTracker(),
+          defaultExecutable: 'unused',
+          startupDeadline: const Duration(seconds: 5),
+          confirmFallback: const Duration(milliseconds: 50),
+          validateLaunch: false,
+        ),
+        fs: InMemoryFilesystem(),
+      );
 
   var _running = false;
   var _connecting = false;
@@ -110,6 +127,7 @@ void main() {
       cubit = ChatCubit(
         executableResolver: _executable,
         automationRepository: testAutomationRepository(),
+        storage: testHomeStorage,
       );
     });
 
@@ -304,11 +322,12 @@ void main() {
       TestWidgetsFlutterBinding.ensureInitialized();
       setUpTestAppStorage();
       tmp = Directory(AppStorage.paths.basePath);
-      repo = SessionRepository(rootDir: tmp.path);
+      repo = SessionRepository(rootDir: tmp.path, storage: testHomeStorage);
       postFrame = PostFrameTestHarness();
       cubit = ChatCubit(
         executableResolver: () => 'true',
         automationRepository: testAutomationRepository(),
+        storage: testHomeStorage,
         sessionRepository: repo,
         postFrameScheduler: postFrame.scheduler,
         terminalSessionFactory:
@@ -371,6 +390,7 @@ void main() {
       final cubit = ChatCubit(
         executableResolver: () => 'flashskyai',
         automationRepository: testAutomationRepository(),
+        storage: testHomeStorage,
         cliExecutableResolver: (cli) =>
             cli == CliTool.claude ? '/opt/bin/claude' : 'flashskyai',
         terminalSessionFactory:
@@ -398,7 +418,7 @@ void main() {
       'requestOpenSession stages tab and connecting before async prep completes',
       () async {
         final tmp = await Directory.systemTemp.createTemp('chat_cubit_stage_');
-        final repo = SessionRepository(rootDir: tmp.path);
+        final repo = SessionRepository(rootDir: tmp.path, storage: testHomeStorage);
         final workspace = await repo.createWorkspace([
           WorkspaceFolder(path: '/tmp'),
         ]);
@@ -408,6 +428,7 @@ void main() {
         final cubit = ChatCubit(
           executableResolver: () => 'true',
           automationRepository: testAutomationRepository(),
+          storage: testHomeStorage,
           sessionRepository: repo,
           terminalSessionFactory:
               ({required String executable, int scrollbackLines = 10000}) =>
@@ -435,7 +456,7 @@ void main() {
       'requestCreateAndOpenSession stages tab before disk persist completes',
       () async {
         final tmp = await Directory.systemTemp.createTemp('chat_cubit_create_');
-        final repo = SessionRepository(rootDir: tmp.path);
+        final repo = SessionRepository(rootDir: tmp.path, storage: testHomeStorage);
         final workspace = await repo.createWorkspace([
           const WorkspaceFolder(path: '/remote', targetId: 'ssh:host'),
         ]);
@@ -443,6 +464,7 @@ void main() {
         final cubit = ChatCubit(
           executableResolver: () => 'true',
           automationRepository: testAutomationRepository(),
+          storage: testHomeStorage,
           sessionRepository: repo,
           terminalSessionFactory:
               ({required String executable, int scrollbackLines = 10000}) =>
@@ -479,7 +501,7 @@ void main() {
         final tmp = await Directory.systemTemp.createTemp(
           'chat_cubit_team_stage_',
         );
-        final repo = SessionRepository(rootDir: tmp.path);
+        final repo = SessionRepository(rootDir: tmp.path, storage: testHomeStorage);
         final workspace = await repo.createWorkspace([
           const WorkspaceFolder(path: '/remote', targetId: 'ssh:host'),
         ]);
@@ -494,6 +516,7 @@ void main() {
         final cubit = ChatCubit(
           executableResolver: () => 'true',
           automationRepository: testAutomationRepository(),
+          storage: testHomeStorage,
           sessionRepository: repo,
           terminalSessionFactory:
               ({required String executable, int scrollbackLines = 10000}) =>
@@ -532,7 +555,7 @@ void main() {
           ],
         );
         final tmp = await Directory.systemTemp.createTemp('chat_cubit_');
-        final repo = SessionRepository(rootDir: tmp.path);
+        final repo = SessionRepository(rootDir: tmp.path, storage: testHomeStorage);
         final workspace = await repo.createWorkspace([
           WorkspaceFolder(path: '/tmp'),
         ]);
@@ -547,6 +570,7 @@ void main() {
         final cubit = ChatCubit(
           executableResolver: () => 'true',
           automationRepository: testAutomationRepository(),
+          storage: testHomeStorage,
           sessionRepository: repo,
           terminalSessionFactory:
               ({required String executable, int scrollbackLines = 10000}) {
@@ -598,7 +622,7 @@ void main() {
           members: [TeamMemberConfig(id: 'm-lead', name: 'team-lead')],
         );
         final tmp = await Directory.systemTemp.createTemp('chat_cubit_close_');
-        final repo = SessionRepository(rootDir: tmp.path);
+        final repo = SessionRepository(rootDir: tmp.path, storage: testHomeStorage);
         final workspaceA = await repo.createWorkspace([
           WorkspaceFolder(path: '/a'),
         ]);
@@ -623,6 +647,7 @@ void main() {
         final cubit = ChatCubit(
           executableResolver: () => 'true',
           automationRepository: testAutomationRepository(),
+          storage: testHomeStorage,
           sessionRepository: repo,
           terminalSessionFactory:
               ({required String executable, int scrollbackLines = 10000}) =>
@@ -674,7 +699,7 @@ void main() {
         members: [TeamMemberConfig(id: 'm-lead', name: 'team-lead')],
       );
       final tmp = await Directory.systemTemp.createTemp('chat_cubit_compose_');
-      final repo = SessionRepository(rootDir: tmp.path);
+      final repo = SessionRepository(rootDir: tmp.path, storage: testHomeStorage);
       final workspace = await repo.createWorkspace([
         WorkspaceFolder(path: '/a'),
       ]);
@@ -689,6 +714,7 @@ void main() {
       final cubit = ChatCubit(
         executableResolver: () => 'true',
         automationRepository: testAutomationRepository(),
+        storage: testHomeStorage,
         sessionRepository: repo,
         terminalSessionFactory:
             ({required String executable, int scrollbackLines = 10000}) =>
@@ -760,6 +786,7 @@ void main() {
         final cubit = ChatCubit(
           executableResolver: () => 'true',
           automationRepository: testAutomationRepository(),
+          storage: testHomeStorage,
         );
         addTearDown(cubit.close);
         final workbench = WorkbenchCubit();
@@ -812,7 +839,7 @@ void main() {
         final tmp = await Directory.systemTemp.createTemp(
           'chat_cubit_delete_active_',
         );
-        final repo = SessionRepository(rootDir: tmp.path);
+        final repo = SessionRepository(rootDir: tmp.path, storage: testHomeStorage);
         final workspace = await repo.createWorkspace([
           WorkspaceFolder(path: '/a'),
         ]);
@@ -827,6 +854,7 @@ void main() {
         final cubit = ChatCubit(
           executableResolver: () => 'true',
           automationRepository: testAutomationRepository(),
+          storage: testHomeStorage,
           sessionRepository: repo,
           terminalSessionFactory:
               ({required String executable, int scrollbackLines = 10000}) =>
@@ -886,7 +914,7 @@ void main() {
       final tmp = await Directory.systemTemp.createTemp(
         'chat_cubit_draft_clear_',
       );
-      final repo = SessionRepository(rootDir: tmp.path);
+      final repo = SessionRepository(rootDir: tmp.path, storage: testHomeStorage);
       final workspace = await repo.createWorkspace([
         WorkspaceFolder(path: '/a'),
       ]);
@@ -899,6 +927,7 @@ void main() {
       final cubit = ChatCubit(
         executableResolver: () => 'true',
         automationRepository: testAutomationRepository(),
+        storage: testHomeStorage,
         sessionRepository: repo,
         terminalSessionFactory:
             ({required String executable, int scrollbackLines = 10000}) =>
@@ -912,6 +941,7 @@ void main() {
         workspace.workspaceId,
         session.sessionId,
         'in progress',
+        storage: testHomeStorage,
       );
 
       await cubit.deleteSession(repo, session.sessionId);
@@ -932,7 +962,7 @@ void main() {
       final tmp = await Directory.systemTemp.createTemp(
         'chat_cubit_workspace_draft_clear_',
       );
-      final repo = SessionRepository(rootDir: tmp.path);
+      final repo = SessionRepository(rootDir: tmp.path, storage: testHomeStorage);
       final workspace = await repo.createWorkspace([
         WorkspaceFolder(path: '/a'),
       ]);
@@ -940,6 +970,7 @@ void main() {
       final cubit = ChatCubit(
         executableResolver: () => 'true',
         automationRepository: testAutomationRepository(),
+        storage: testHomeStorage,
         sessionRepository: repo,
         terminalSessionFactory:
             ({required String executable, int scrollbackLines = 10000}) =>
@@ -966,6 +997,7 @@ void main() {
         final cubit = ChatCubit(
           executableResolver: () => 'true',
           automationRepository: testAutomationRepository(),
+          storage: testHomeStorage,
           sessionRepository: repo,
           terminalSessionFactory:
               ({required String executable, int scrollbackLines = 10000}) {
@@ -1032,7 +1064,7 @@ void main() {
         final tmp = await Directory.systemTemp.createTemp(
           'chat_cubit_mixed_cli_',
         );
-        final repo = SessionRepository(rootDir: tmp.path);
+        final repo = SessionRepository(rootDir: tmp.path, storage: testHomeStorage);
         final workspace = await repo.createWorkspace([
           WorkspaceFolder(path: '/tmp'),
         ]);
@@ -1047,6 +1079,7 @@ void main() {
         final cubit = ChatCubit(
           executableResolver: () => 'flashskyai',
           automationRepository: testAutomationRepository(),
+          storage: testHomeStorage,
           cliExecutableResolver: (cli) =>
               cli == CliTool.claude ? 'claude' : 'flashskyai',
           sessionRepository: repo,
@@ -1091,7 +1124,7 @@ void main() {
       final tmp = await Directory.systemTemp.createTemp(
         'chat_cubit_mixed_lead_connect_',
       );
-      final repo = SessionRepository(rootDir: tmp.path);
+      final repo = SessionRepository(rootDir: tmp.path, storage: testHomeStorage);
       final workspace = await repo.createWorkspace([
         WorkspaceFolder(path: '/tmp'),
       ]);
@@ -1106,6 +1139,7 @@ void main() {
       final cubit = ChatCubit(
         executableResolver: () => 'true',
         automationRepository: testAutomationRepository(),
+        storage: testHomeStorage,
         sessionRepository: repo,
         terminalSessionFactory:
             ({required String executable, int scrollbackLines = 10000}) {
@@ -1168,7 +1202,7 @@ void main() {
           ],
         );
         final tmp = await Directory.systemTemp.createTemp('chat_cubit_mixed_');
-        final repo = SessionRepository(rootDir: tmp.path);
+        final repo = SessionRepository(rootDir: tmp.path, storage: testHomeStorage);
         final workspace = await repo.createWorkspace([
           WorkspaceFolder(path: '/tmp'),
         ]);
@@ -1183,6 +1217,7 @@ void main() {
         final cubit = ChatCubit(
           executableResolver: () => 'true',
           automationRepository: testAutomationRepository(),
+          storage: testHomeStorage,
           sessionRepository: repo,
           terminalSessionFactory:
               ({required String executable, int scrollbackLines = 10000}) {
@@ -1267,6 +1302,7 @@ void main() {
         final cubit = ChatCubit(
           executableResolver: () => 'true',
           automationRepository: testAutomationRepository(),
+          storage: testHomeStorage,
           sessionRepository: repo,
           terminalSessionFactory:
               ({required String executable, int scrollbackLines = 10000}) {
@@ -1324,7 +1360,7 @@ void main() {
         final tmp = await Directory.systemTemp.createTemp(
           'chat_cubit_materialize_',
         );
-        final repo = SessionRepository(rootDir: tmp.path);
+        final repo = SessionRepository(rootDir: tmp.path, storage: testHomeStorage);
         const workspacePath = '/tmp/default-team-workspace';
         final workspace = await repo.createWorkspace([
           const WorkspaceFolder(path: workspacePath),
@@ -1341,6 +1377,7 @@ void main() {
         final cubit = ChatCubit(
           executableResolver: () => 'true',
           automationRepository: testAutomationRepository(),
+          storage: testHomeStorage,
           sessionRepository: repo,
           postFrameScheduler: postFrame.scheduler,
         );
@@ -1368,11 +1405,12 @@ void main() {
   group('touchSession/toggleSessionPin incremental patch', () {
     test('touchSession patches the session in memory without rescan', () async {
       final tmp = await Directory.systemTemp.createTemp('chat_cubit_touch_');
-      final repo = SessionRepository(rootDir: tmp.path);
+      final repo = SessionRepository(rootDir: tmp.path, storage: testHomeStorage);
       final postFrame = PostFrameTestHarness();
       final cubit = ChatCubit(
         executableResolver: () => 'true',
         automationRepository: testAutomationRepository(),
+        storage: testHomeStorage,
         sessionRepository: repo,
         postFrameScheduler: postFrame.scheduler,
       );
@@ -1407,11 +1445,12 @@ void main() {
       final tmp = await Directory.systemTemp.createTemp(
         'chat_cubit_toggle_pin_',
       );
-      final repo = SessionRepository(rootDir: tmp.path);
+      final repo = SessionRepository(rootDir: tmp.path, storage: testHomeStorage);
       final postFrame = PostFrameTestHarness();
       final cubit = ChatCubit(
         executableResolver: () => 'true',
         automationRepository: testAutomationRepository(),
+        storage: testHomeStorage,
         sessionRepository: repo,
         postFrameScheduler: postFrame.scheduler,
       );
@@ -1437,11 +1476,12 @@ void main() {
         final tmp = await Directory.systemTemp.createTemp(
           'chat_cubit_inject_touch_',
         );
-        final repo = SessionRepository(rootDir: tmp.path);
+        final repo = SessionRepository(rootDir: tmp.path, storage: testHomeStorage);
         final postFrame = PostFrameTestHarness();
         final cubit = ChatCubit(
           executableResolver: () => 'true',
           automationRepository: testAutomationRepository(),
+          storage: testHomeStorage,
           sessionRepository: repo,
           postFrameScheduler: postFrame.scheduler,
         );
@@ -1471,11 +1511,12 @@ void main() {
   group('archiveSession / unarchiveSession', () {
     test('archiveSession sets archived without removing session', () async {
       final tmp = await Directory.systemTemp.createTemp('chat_cubit_archive_');
-      final repo = SessionRepository(rootDir: tmp.path);
+      final repo = SessionRepository(rootDir: tmp.path, storage: testHomeStorage);
       final postFrame = PostFrameTestHarness();
       final cubit = ChatCubit(
         executableResolver: () => 'true',
         automationRepository: testAutomationRepository(),
+        storage: testHomeStorage,
         sessionRepository: repo,
         postFrameScheduler: postFrame.scheduler,
       );
@@ -1497,11 +1538,12 @@ void main() {
 
     test('unarchiveSession clears archived', () async {
       final tmp = await Directory.systemTemp.createTemp('chat_cubit_unarchive_');
-      final repo = SessionRepository(rootDir: tmp.path);
+      final repo = SessionRepository(rootDir: tmp.path, storage: testHomeStorage);
       final postFrame = PostFrameTestHarness();
       final cubit = ChatCubit(
         executableResolver: () => 'true',
         automationRepository: testAutomationRepository(),
+        storage: testHomeStorage,
         sessionRepository: repo,
         postFrameScheduler: postFrame.scheduler,
       );

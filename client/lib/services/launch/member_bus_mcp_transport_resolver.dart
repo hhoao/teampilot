@@ -1,8 +1,6 @@
 import '../../models/team_config.dart';
 import '../cli/registry/capabilities/team_behavior_capability.dart';
 import '../cli/registry/cli_tool_registry.dart';
-import '../storage/app_storage.dart';
-import '../storage/runtime_context.dart';
 import '../team_bus/mcp/bus_bridge_locator.dart';
 import '../team_bus/remote/member_bus_mcp_config.dart';
 
@@ -15,12 +13,16 @@ import '../team_bus/remote/member_bus_mcp_config.dart';
 ///   （claude/flashskyai/codex/opencode）→ relay-over-tunnel（stdio↔127.0.0.1:<P>，
 ///   带 token 握手）；cursor（门铃式）→ HTTP-over-tunnel（127.0.0.1:<P> + token header）。
 ///   远程成员配置指向**隧道端口 <P>**而非远端够不到的裸 loopback——即 Android mixed 修点。
+///
+/// [isLocalNative] reports whether the home plane is a native local backend
+/// (the host loopback bridge exe is only reachable from a local native PTY).
 Map<String, Object?> resolveMemberBusMcpTransportConfig({
   required CliToolRegistry cliRegistry,
   required Uri endpoint,
   required String sessionId,
   required String memberId,
   required CliTool cli,
+  required bool isLocalNative,
   RemoteBusBinding? remoteBinding,
 }) {
   final longBlocking =
@@ -30,14 +32,11 @@ Map<String, Object?> resolveMemberBusMcpTransportConfig({
       true;
   String? localBridge;
   if (remoteBinding == null) {
-    final localNative =
-        !AppStorage.isInstalled ||
-        AppStorage.context.mode == StorageBackendMode.native;
     final supportsBridge = cliRegistry
             .capability<TeamBehaviorCapability>(cli)
             ?.supportsLocalStdioBridge ??
         false;
-    if (supportsBridge && localNative) {
+    if (supportsBridge && isLocalNative) {
       localBridge = BusBridgeLocator.resolve();
     }
   }

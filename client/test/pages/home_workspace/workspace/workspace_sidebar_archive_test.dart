@@ -44,13 +44,13 @@ void main() {
 
   setUp(() {
     setUpTestAppStorage();
-    sessionRepository = SessionRepository();
+    sessionRepository = SessionRepository(storage: testHomeStorage);
     chatCubit = testChatCubit(
       executableResolver: () => 'claude',
       sessionRepository: sessionRepository,
     );
     automationCubit = testAutomationCubit();
-    worktreeCubit = WorktreeCubit();
+    worktreeCubit = WorktreeCubit(storage: testHomeStorage);
     attentionCubit = AgentAttentionCubit(pruneInterval: null);
     groupsCubit = SessionGroupsCubit(storage: testHomeStorage);
   });

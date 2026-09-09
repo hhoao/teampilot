@@ -8,6 +8,9 @@ import 'package:teampilot/models/discoverable_team.dart';
 import 'package:teampilot/services/expert_hub/composite_expert_hub_source.dart';
 import 'package:teampilot/services/expert_hub/expert_hub_source.dart';
 import '../support/stub_member_roster_service.dart';
+import '../support/in_memory_filesystem.dart';
+import 'package:teampilot/services/expert_hub/local_expert_store.dart';
+import 'package:teampilot/services/storage/app_paths.dart';
 
 class _Registry implements ExpertHubSource {
   @override
@@ -20,7 +23,7 @@ class _Registry implements ExpertHubSource {
 }
 
 class _Source extends CompositeExpertHubSource {
-  _Source(this.results) : super(builtIns: const [], registry: _Registry());
+  _Source(this.results) : super(builtIns: const [], registry: _Registry(), localStore: LocalExpertStore(fs: InMemoryFilesystem(), dirOverride: AppPaths('/tp').memberHubLocalTemplatesDir), );
 
   List<CatalogSourceResult<DiscoverableMember>> results;
   Completer<List<CatalogSourceResult<DiscoverableMember>>>? pending;

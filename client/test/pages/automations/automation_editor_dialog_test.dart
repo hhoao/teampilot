@@ -32,12 +32,14 @@ import '../../support/desktop_app_harness.dart';
 import '../../support/in_memory_filesystem.dart';
 import '../../support/post_frame_test_harness.dart';
 import '../../support/stub_member_roster_service.dart';
+import 'package:teampilot/services/expert_hub/local_expert_store.dart';
+import 'package:teampilot/services/storage/app_paths.dart';
 
 const _testPresetId = 'preset-test';
 
 class _FakeExpertHubSource extends CompositeExpertHubSource {
   _FakeExpertHubSource()
-    : super(builtIns: const [], registry: _EmptyRegistry());
+    : super(builtIns: const [], registry: _EmptyRegistry(), localStore: LocalExpertStore(fs: InMemoryFilesystem(), dirOverride: AppPaths('/tp').memberHubLocalTemplatesDir), );
 
   @override
   Future<List<DiscoverableMember>> fetchMembers({

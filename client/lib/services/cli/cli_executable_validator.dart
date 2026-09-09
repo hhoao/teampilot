@@ -2,7 +2,6 @@ import 'dart:io';
 
 import '../host/host_executable_locator.dart';
 import '../host/host_execution_environment.dart';
-import '../storage/app_storage.dart';
 import 'cli_invocation.dart';
 
 /// Pre-flight checks before spawning a PTY for a configured CLI.
@@ -170,10 +169,7 @@ class CliExecutableValidator {
   }
 
   static HostExecutableLocator _pathLocator() {
-    final env = AppStorage.isInstalled
-        ? HostExecutionEnvironment.fromStorage(AppStorage.context)
-        : HostExecutionEnvironment.resolve();
-    return HostExecutableLocator(env);
+    return HostExecutableLocator(HostExecutionEnvironment.resolve());
   }
 
   static String cliDisplayName(String executable) {

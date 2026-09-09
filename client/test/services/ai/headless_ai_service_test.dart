@@ -7,6 +7,7 @@ import 'package:teampilot/services/ai/headless_ai_service.dart';
 import 'package:teampilot/services/cli/registry/capabilities/headless_capability.dart';
 import 'package:teampilot/services/cli/registry/launch/cli_headless_launch_context.dart';
 import 'package:teampilot/services/cli/registry/launch/cli_launch_arg_contribution.dart';
+import '../../support/in_memory_filesystem.dart';
 
 /// Provisioning that reports missing credentials, to exercise the service's
 /// not-ready branch without touching storage.
@@ -70,6 +71,7 @@ void main() {
         ranArgs = args;
         return ProcessResult(0, 0, '{"result":"feat: x"}', '');
       },
+                                       storage: fakeHomeStorage(),
     );
 
     final result = await service.run(
@@ -92,6 +94,7 @@ void main() {
       tempDirFactory: () async => tempRoot.createTempSync('run_'),
       run: (exe, args, {environment, workingDirectory, timeout}) async =>
           ProcessResult(0, 0, 'ok', ''),
+                                       storage: fakeHomeStorage(),
     );
 
     expect(
@@ -114,6 +117,7 @@ void main() {
       tempDirFactory: () async => tempRoot.createTempSync('run_'),
       run: (exe, args, {environment, workingDirectory, timeout}) async =>
           ProcessResult(0, 0, '', ''),
+                                       storage: fakeHomeStorage(),
     );
 
     expect(
@@ -130,6 +134,7 @@ void main() {
       tempDirFactory: () async => tempRoot.createTempSync('run_'),
       run: (exe, args, {environment, workingDirectory, timeout}) async =>
           ProcessResult(0, 2, '', 'boom'),
+                                       storage: fakeHomeStorage(),
     );
 
     expect(

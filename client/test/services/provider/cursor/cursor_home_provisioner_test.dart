@@ -48,7 +48,7 @@ void main() {
   setUp(() {
     fs = InMemoryFilesystem();
     layout = CursorHomeLayout(pathContext: fs.pathContext);
-    credentials = CursorProviderCredentialsService(fs: fs, basePath: base);
+    credentials = CursorProviderCredentialsService(fs: fs, basePath: base, storage: fakeHomeStorage(filesystem: fs), );
     provisioner = CursorHomeProvisioner(fs: fs, credentials: credentials);
   });
 

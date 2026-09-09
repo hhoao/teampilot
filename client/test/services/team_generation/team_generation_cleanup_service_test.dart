@@ -159,6 +159,7 @@ void main() {
     store = TeamGenerationJobStore(
       fs: fs,
       layout: WorkspaceLayout(teampilotRoot: '/tp', fs: fs),
+                                    storage: fakeHomeStorage(filesystem: fs),
     );
     port = _FakePort();
     revoked.clear();

@@ -13,7 +13,7 @@ void main() {
 
   test('round-trips per-workspace landing prefs', () async {
     final fs = InMemoryFilesystem();
-    final store = LandingPrefsStore(fs: fs, pathOverride: '/prefs.json');
+    final store = LandingPrefsStore(fs: fs, pathOverride: '/prefs.json', storage: fakeHomeStorage(filesystem: fs), );
 
     await store.save(
       'ws-a',
@@ -34,7 +34,7 @@ void main() {
 
   test('generate launch survives prefs round trip in team mode', () async {
     final fs = InMemoryFilesystem();
-    final store = LandingPrefsStore(fs: fs, pathOverride: '/prefs.json');
+    final store = LandingPrefsStore(fs: fs, pathOverride: '/prefs.json', storage: fakeHomeStorage(filesystem: fs), );
     await store.save(
       'workspace-1',
       const LandingPrefs(
@@ -54,7 +54,7 @@ void main() {
       '/prefs.json',
       '{"ws-old":{"isPersonal":false,"teamId":"team-1"}}',
     );
-    final store = LandingPrefsStore(fs: fs, pathOverride: '/prefs.json');
+    final store = LandingPrefsStore(fs: fs, pathOverride: '/prefs.json', storage: fakeHomeStorage(filesystem: fs), );
 
     final loaded = await store.prefsFor('ws-old');
     expect(loaded?.generateLaunch, isFalse);
@@ -62,7 +62,7 @@ void main() {
 
   test('persists the normalized launch security policy object', () async {
     final fs = InMemoryFilesystem();
-    final store = LandingPrefsStore(fs: fs, pathOverride: '/prefs.json');
+    final store = LandingPrefsStore(fs: fs, pathOverride: '/prefs.json', storage: fakeHomeStorage(filesystem: fs), );
 
     await store.save(
       'ws-a',
@@ -82,7 +82,7 @@ void main() {
     () async {
       final fs = InMemoryFilesystem();
       await fs.writeString('/prefs.json', '{"ws-a":{"isPersonal":true}}');
-      final store = LandingPrefsStore(fs: fs, pathOverride: '/prefs.json');
+      final store = LandingPrefsStore(fs: fs, pathOverride: '/prefs.json', storage: fakeHomeStorage(filesystem: fs), );
 
       final loaded = await store.prefsFor('ws-a');
       expect(loaded?.launchSecurityPolicy.requiresDangerousExecution, isTrue);

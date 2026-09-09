@@ -29,11 +29,13 @@ class LaunchSelectorOption {
 class WorkspaceLandingProjectResolver {
   const WorkspaceLandingProjectResolver({
     required this.workspace,
+    required this.usesPosixPaths,
     this.runtimeTargets = const [],
     this.storedProjectPath,
   });
 
   final Workspace workspace;
+  final bool usesPosixPaths;
   final List<RuntimeTarget> runtimeTargets;
   final String? storedProjectPath;
 
@@ -69,7 +71,13 @@ class WorkspaceLandingProjectResolver {
     final stored = storedProjectPath?.trim() ?? '';
     final opts = options;
     if (stored.isNotEmpty &&
-        opts.any((o) => workspacePathsEqual(o.path, stored))) {
+        opts.any(
+          (o) => workspacePathsEqual(
+            o.path,
+            stored,
+            usesPosixPaths: usesPosixPaths,
+          ),
+        )) {
       return stored;
     }
     if (opts.isNotEmpty) return opts.first.path;
@@ -78,7 +86,11 @@ class WorkspaceLandingProjectResolver {
 
   String labelFor(String projectPath) {
     for (final option in options) {
-      if (workspacePathsEqual(option.path, projectPath)) {
+      if (workspacePathsEqual(
+        option.path,
+        projectPath,
+        usesPosixPaths: usesPosixPaths,
+      )) {
         return option.label;
       }
     }
@@ -93,7 +105,11 @@ class WorkspaceLandingProjectResolver {
           icon: option.icon,
           label: option.label,
           subtitleSuffix: option.subtitle,
-          selected: workspacePathsEqual(option.path, selectedPath),
+          selected: workspacePathsEqual(
+            option.path,
+            selectedPath,
+            usesPosixPaths: usesPosixPaths,
+          ),
         ),
     ];
   }
@@ -103,18 +119,23 @@ class WorkspaceLandingProjectResolver {
 class WorkspaceLandingWorktreeResolver {
   const WorkspaceLandingWorktreeResolver({
     required this.projectPath,
+    required this.usesPosixPaths,
     this.worktreeState,
     this.storedWorktreePath,
     List<GitWorktree> cachedWorktrees = const [],
   }) : _cachedWorktrees = cachedWorktrees;
 
   final String projectPath;
+  final bool usesPosixPaths;
   final WorktreeState? worktreeState;
   final String? storedWorktreePath;
   final List<GitWorktree> _cachedWorktrees;
 
   List<LaunchSelectorOption> get options {
-    final project = normalizeWorkspacePath(projectPath.trim());
+    final project = normalizeWorkspacePath(
+      projectPath.trim(),
+      usesPosixPaths: usesPosixPaths,
+    );
     if (project.isEmpty) return const [];
 
     final worktrees = _worktreesForProject();
@@ -139,11 +160,18 @@ class WorkspaceLandingWorktreeResolver {
   }
 
   List<GitWorktree> _worktreesForProject() {
-    final project = normalizeWorkspacePath(projectPath.trim());
+    final project = normalizeWorkspacePath(
+      projectPath.trim(),
+      usesPosixPaths: usesPosixPaths,
+    );
     if (project.isEmpty) return const [];
     final state = worktreeState;
     if (state != null &&
-        workspacePathsEqual(state.repoPath, project) &&
+        workspacePathsEqual(
+          state.repoPath,
+          project,
+          usesPosixPaths: usesPosixPaths,
+        ) &&
         state.worktrees.isNotEmpty) {
       return state.worktrees;
     }
@@ -157,7 +185,11 @@ class WorkspaceLandingWorktreeResolver {
     if (worktrees.isNotEmpty) return true;
     final state = worktreeState;
     if (state != null &&
-        workspacePathsEqual(state.repoPath, projectPath) &&
+        workspacePathsEqual(
+          state.repoPath,
+          projectPath,
+          usesPosixPaths: usesPosixPaths,
+        ) &&
         state.loading) {
       return false;
     }
@@ -168,25 +200,46 @@ class WorkspaceLandingWorktreeResolver {
     final stored = storedWorktreePath?.trim() ?? '';
     final opts = options;
     if (stored.isNotEmpty &&
-        opts.any((o) => workspacePathsEqual(o.path, stored))) {
+        opts.any(
+          (o) => workspacePathsEqual(
+            o.path,
+            stored,
+            usesPosixPaths: usesPosixPaths,
+          ),
+        )) {
       return stored;
     }
     final state = worktreeState;
     if (state != null &&
-        workspacePathsEqual(state.repoPath, projectPath) &&
+        workspacePathsEqual(
+          state.repoPath,
+          projectPath,
+          usesPosixPaths: usesPosixPaths,
+        ) &&
         state.currentWorktreePath.isNotEmpty &&
         opts.any(
-          (o) => workspacePathsEqual(o.path, state.currentWorktreePath),
+          (o) => workspacePathsEqual(
+            o.path,
+            state.currentWorktreePath,
+            usesPosixPaths: usesPosixPaths,
+          ),
         )) {
       return state.currentWorktreePath;
     }
     if (opts.isNotEmpty) return opts.first.path;
-    return normalizeWorkspacePath(projectPath);
+    return normalizeWorkspacePath(
+      projectPath,
+      usesPosixPaths: usesPosixPaths,
+    );
   }
 
   String labelFor(String selectedPath) {
     for (final option in options) {
-      if (workspacePathsEqual(option.path, selectedPath)) {
+      if (workspacePathsEqual(
+        option.path,
+        selectedPath,
+        usesPosixPaths: usesPosixPaths,
+      )) {
         return option.label;
       }
     }
@@ -201,7 +254,11 @@ class WorkspaceLandingWorktreeResolver {
           icon: option.icon,
           label: option.label,
           subtitleSuffix: option.subtitle,
-          selected: workspacePathsEqual(option.path, selectedPath),
+          selected: workspacePathsEqual(
+            option.path,
+            selectedPath,
+            usesPosixPaths: usesPosixPaths,
+          ),
         ),
     ];
   }

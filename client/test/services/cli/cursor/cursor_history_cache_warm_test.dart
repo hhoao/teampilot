@@ -74,6 +74,7 @@ void main() {
           folders: session.folders,
           createdAt: 1,
         ),
+                              usesPosixPaths: false,
       );
 
   AiHistoryLoader buildLoader() {

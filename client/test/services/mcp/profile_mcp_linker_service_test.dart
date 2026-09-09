@@ -5,7 +5,9 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:path/path.dart' as p;
 import 'package:teampilot/models/mcp_server.dart';
 import 'package:teampilot/services/mcp/profile_mcp_linker_service.dart';
+import 'package:teampilot/services/io/local_filesystem.dart';
 import 'package:teampilot/services/storage/app_storage.dart';
+import 'package:teampilot/services/storage/home_storage.dart';
 import 'package:teampilot/services/storage/runtime_layout.dart';
 
 import '../../support/in_memory_filesystem.dart';
@@ -18,7 +20,14 @@ void main() {
   setUp(() async {
     root = await Directory.systemTemp.createTemp('team_mcp_linker_');
     layout = RuntimeLayout(teampilotRoot: root.path, fs: AppStorage.fs);
-    linker = ProfileMcpLinkerService();
+    linker = ProfileMcpLinkerService(
+      storage: HomeStorage.forTesting(
+        filesystem: LocalFilesystem(),
+        paths: AppPaths(root.path),
+        home: root.path,
+        cwd: root.path,
+      ),
+    );
   });
 
   tearDown(() async {
@@ -42,7 +51,9 @@ void main() {
         cwd: '/root',
       );
       final remoteLayout = RuntimeLayout(teampilotRoot: remoteRoot, fs: mem);
-      final remoteLinker = ProfileMcpLinkerService();
+      final remoteLinker = ProfileMcpLinkerService(
+        storage: HomeStorage(AppStorage.context),
+      );
 
       final result = await remoteLinker.syncForProfile(
         profileId: 'team-a',

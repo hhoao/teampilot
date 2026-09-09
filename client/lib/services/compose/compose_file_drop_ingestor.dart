@@ -6,10 +6,12 @@ import 'compose_file_attach.dart';
 class ComposeFileDropIngestor implements WorkspaceDropTarget {
   ComposeFileDropIngestor({
     required this.workspaceRoot,
+    required this.usesPosixPaths,
     required this.onInsertReferences,
   });
 
   final String workspaceRoot;
+  final bool usesPosixPaths;
   final void Function(List<String> references) onInsertReferences;
 
   @override
@@ -25,6 +27,7 @@ class ComposeFileDropIngestor implements WorkspaceDropTarget {
       final reference = await resolveComposeFileReference(
         absolutePath: ref.nativePath,
         workspaceRoot: workspaceRoot,
+        usesPosixPaths: usesPosixPaths,
       );
       if (reference == null) {
         skipped += 1;

@@ -15,6 +15,8 @@ import 'package:teampilot/services/automation/automation_bus_gateway.dart';
 import 'package:teampilot/services/automation/automation_dispatcher.dart';
 import 'package:teampilot/services/automation/automation_schedule_calculator.dart';
 import 'package:teampilot/services/automation/automation_scheduler.dart';
+import 'package:teampilot/services/cli/registry/cli_bootstrap.dart';
+import 'package:teampilot/services/cli/registry/cli_tool_registry.dart';
 import 'package:teampilot/services/git/git_command_runner.dart';
 import 'package:teampilot/services/git/git_service.dart';
 import 'package:teampilot/services/io/local_filesystem.dart';
@@ -74,6 +76,12 @@ void setUpTestAppStorage() {
     cwd: _testAppDataDir!.path,
   );
   _testHomeStorage = HomeStorage(AppStorage.context);
+  // Production parity: app bootstrap configures the CLI registry with the
+  // home storage right after binding it, so capabilities (trust provisioning,
+  // credential actions) get storage. Mirror that for every harness user.
+  CliToolRegistry.builtIn().configure(
+    CliBootstrap(const {}, storage: _testHomeStorage!),
+  );
   // The source control panel self-builds a GitService that would otherwise
   // spawn a real `git` process on mount, leaking timers in widget tests. Use a
   // process-free runner so it reports "git unavailable" instead.
@@ -98,7 +106,10 @@ LaunchProfileRepository testLaunchProfileRepository(Directory isolatedRoot) {
   if (!profilesDir.existsSync()) {
     profilesDir.createSync(recursive: true);
   }
-  return LaunchProfileRepository(rootDir: profilesDir.path);
+  return LaunchProfileRepository(
+    rootDir: profilesDir.path,
+    storage: testHomeStorage,
+  );
 }
 
 void tearDownTestAppStorage() {
@@ -120,8 +131,11 @@ void tearDownTestAppStorage() {
 /// exercise skill actions (empty registry config, no sources).
 SkillCubit testSkillCubit({SkillAcquisitionEngine? acquisitionEngine}) =>
     SkillCubit(
-      SkillRepository(),
-      registryConfigService: SkillRegistryConfigService(),
+      SkillRepository(storage: testHomeStorage),
+      storage: testHomeStorage,
+      registryConfigService: SkillRegistryConfigService(
+        storage: testHomeStorage,
+      ),
       initialSources: const <SkillRegistrySource>[],
       rebuildSources: (config) => const <SkillRegistrySource>[],
       acquisitionEngine: acquisitionEngine,
@@ -300,7 +314,8 @@ AutomationCubit testAutomationCubit({SessionRepository? sessionRepository}) {
 }) {
   final repo = testAutomationRepository();
   final calc = AutomationScheduleCalculator();
-  final sessions = sessionRepository ?? SessionRepository();
+  final sessions =
+      sessionRepository ?? SessionRepository(storage: testHomeStorage);
   final dispatcher = AutomationDispatcher(
     repository: repo,
     scheduleCalculator: calc,
@@ -331,6 +346,7 @@ ChatCubit testChatCubit({
   SessionRepository? sessionRepository,
 }) {
   return ChatCubit(
+    storage: testHomeStorage,
     executableResolver: executableResolver,
     automationRepository: automationRepository ?? testAutomationRepository(),
     sessionRepository: sessionRepository,

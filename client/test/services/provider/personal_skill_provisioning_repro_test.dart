@@ -59,6 +59,7 @@ void main() {
             updatedAt: 0,
           ),
         ],
+                                            storage: testHomeStorage,
       );
 
       // --- Act: run simple-mode launch prep with runtimeBundle ---
@@ -118,6 +119,7 @@ void main() {
             updatedAt: 0,
           ),
         ],
+                                            storage: testHomeStorage,
       );
 
       // --- Act ---

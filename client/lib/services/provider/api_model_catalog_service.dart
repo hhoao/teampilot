@@ -5,7 +5,7 @@ import 'package:http/http.dart' as http;
 
 import '../../models/app_provider_config.dart';
 import '../io/filesystem.dart';
-import '../storage/app_storage.dart';
+import '../storage/home_storage.dart';
 
 /// Supported provider API model-list response formats.
 enum ApiModelCatalogProtocol { openAi, anthropic }
@@ -45,16 +45,19 @@ class ApiModelCatalogCacheEntry {
 /// Fetches and caches model IDs from an API-compatible provider endpoint.
 class ApiModelCatalogService {
   ApiModelCatalogService({
+    required HomeStorage storage,
     required this.protocol,
     required this.cacheDirectory,
     @visibleForTesting Filesystem? fs,
     @visibleForTesting String? basePath,
     http.Client? httpClient,
     this.cacheTtl = const Duration(hours: 6),
-  }) : _fsOverride = fs,
+  }) : _storage = storage,
+       _fsOverride = fs,
        _basePathOverride = basePath?.trim(),
        _httpClient = httpClient ?? http.Client();
 
+  final HomeStorage _storage;
   final ApiModelCatalogProtocol protocol;
   final String cacheDirectory;
   final Duration cacheTtl;
@@ -195,16 +198,9 @@ class ApiModelCatalogService {
       _syncMemoryForBasePath(basePathOverride);
       return _ResolvedStorage(fs: fsOverride, basePath: basePathOverride);
     }
-    if (AppStorage.isInstalled) {
-      final snap = AppStorage.context;
-      _syncMemoryForBasePath(snap.teampilotRoot);
-      return _ResolvedStorage(fs: snap.fs, basePath: snap.teampilotRoot);
-    }
-    _syncMemoryForBasePath(AppStorage.appDataRoot);
-    return _ResolvedStorage(
-      fs: AppStorage.fs,
-      basePath: AppStorage.appDataRoot,
-    );
+    final snap = _storage.context;
+    _syncMemoryForBasePath(snap.teampilotRoot);
+    return _ResolvedStorage(fs: snap.fs, basePath: snap.teampilotRoot);
   }
 
   void _syncMemoryForBasePath(String basePath) {

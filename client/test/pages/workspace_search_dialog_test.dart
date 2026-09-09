@@ -74,7 +74,7 @@ Widget _host({
             body: WorkspaceSearchDialog(
               workspace: workspace,
               sessions: sessions,
-              indexes: WorkspaceSearchIndexes(),
+              indexes: WorkspaceSearchIndexes(storage: buildTestHomeStorage()),
               fs: LocalFilesystem(),
               emptyTitleFallback: 'New Chat',
               onOpenSession: (_) {},
@@ -112,12 +112,13 @@ void main() {
       _session('s1', 'Flutter test runner', updatedAt: 2000),
       _session('s2', 'Codex review', updatedAt: 1000),
     ];
-    final sessionRepo = SessionRepository();
+    final sessionRepo = SessionRepository(storage: buildTestHomeStorage());
     final attention = AgentAttentionCubit(pruneInterval: null);
     final automation = testAutomationCubit(sessionRepository: sessionRepo);
     final workbench = WorkbenchCubit();
     final chatCubit = ChatCubit(
       executableResolver: () => 'claude',
+      storage: buildTestHomeStorage(),
       automationRepository: testAutomationRepository(),
       sessionRepository: sessionRepo,
       agentAttentionCubit: attention,
@@ -161,12 +162,13 @@ void main() {
   ) async {
     final workspace = Workspace(workspaceId: 'ws-1', createdAt: 1);
     final sessions = [_session('s1', 'Flutter test runner', updatedAt: 2000)];
-    final sessionRepo = SessionRepository();
+    final sessionRepo = SessionRepository(storage: buildTestHomeStorage());
     final attention = AgentAttentionCubit(pruneInterval: null);
     final automation = testAutomationCubit(sessionRepository: sessionRepo);
     final workbench = WorkbenchCubit();
     final chatCubit = ChatCubit(
       executableResolver: () => 'claude',
+      storage: buildTestHomeStorage(),
       automationRepository: testAutomationRepository(),
       sessionRepository: sessionRepo,
       agentAttentionCubit: attention,
@@ -222,12 +224,13 @@ void main() {
       for (var i = 0; i < 10; i++)
         _session('s$i', 'Session $i', createdAt: 1000 + i),
     ];
-    final sessionRepo = SessionRepository();
+    final sessionRepo = SessionRepository(storage: buildTestHomeStorage());
     final attention = AgentAttentionCubit(pruneInterval: null);
     final automation = testAutomationCubit(sessionRepository: sessionRepo);
     final workbench = WorkbenchCubit();
     final chatCubit = ChatCubit(
       executableResolver: () => 'claude',
+      storage: buildTestHomeStorage(),
       automationRepository: testAutomationRepository(),
       sessionRepository: sessionRepo,
       agentAttentionCubit: attention,

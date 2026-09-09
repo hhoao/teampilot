@@ -26,6 +26,8 @@ const _team = TeamProfile(
 );
 
 class _PresenceCubit extends MemberPresenceCubit {
+  _PresenceCubit() : super(storage: buildTestHomeStorage());
+
   void replace(Map<String, MemberPresence> presence) {
     emit(MemberPresenceState(presence: presence));
   }
@@ -80,7 +82,7 @@ void main() {
   late CliPresetsCubit cliPresetsCubit;
 
   setUp(() {
-    providerCubit = AppProviderCubit();
+    providerCubit = AppProviderCubit(storage: testHomeStorage);
     presenceCubit = _PresenceCubit();
     cliPresetsCubit = CliPresetsCubit(
       repository: CliPresetsRepository(

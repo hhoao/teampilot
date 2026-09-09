@@ -10,14 +10,19 @@ import 'package:teampilot/services/automation/automation_bus_gateway.dart';
 import 'package:teampilot/services/automation/automation_dispatcher.dart';
 import 'package:teampilot/services/automation/automation_schedule_calculator.dart';
 import 'package:teampilot/services/storage/app_storage.dart';
+import 'package:teampilot/services/storage/home_storage.dart';
 import 'package:teampilot/services/storage/workspace_layout.dart';
 
+import '../../support/in_memory_filesystem.dart';
 import '../../support/post_frame_test_harness.dart';
 
 class _FakeSessionRepository implements SessionRepository {
   _FakeSessionRepository(this.sessions);
 
   final List<AppSession> sessions;
+
+  @override
+  HomeStorage get storage => fakeHomeStorage();
 
   @override
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);

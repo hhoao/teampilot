@@ -53,6 +53,7 @@ void main() {
             updatedAt: 0,
           ),
         ],
+                                            storage: testHomeStorage,
       );
 
       await service.prepareSimpleSessionLaunch(

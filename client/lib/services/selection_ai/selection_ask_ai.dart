@@ -11,6 +11,7 @@ import '../../models/landing_launch_context.dart';
 import '../../models/workspace.dart';
 import '../../pages/home_workspace/workspace/unbound_compose_body.dart';
 import '../../pages/home_workspace/workspace/workspace_session_actions.dart';
+import '../../services/storage/home_storage.dart';
 import '../../services/workspace/workspace_worktree_registry.dart';
 import '../../utils/logging/logger_utils.dart';
 import '../../utils/workspace/landing_draft_resolver.dart';
@@ -118,7 +119,11 @@ class _SelectionAskAiDialogState extends State<_SelectionAskAiDialog> {
         }
       }
 
-      await persistLandingDraft(workspace.workspaceId, draft);
+      await persistLandingDraft(
+        workspace.workspaceId,
+        draft,
+        storage: context.read<HomeStorage>(),
+      );
 
       if (!mounted) return;
       // Delivery (connect + inject) keeps running on captured cubits after the

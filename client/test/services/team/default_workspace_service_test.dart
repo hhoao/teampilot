@@ -29,18 +29,22 @@ void main() {
   test(
     'seed creates Default workspace with personal and team sessions',
     () async {
-      final repo = SessionRepository();
+      final repo = SessionRepository(storage: testHomeStorage);
       final team = const TeamRosterEditor().defaultNativeTeam();
 
       final workspace = await DefaultWorkspaceService.seed(
         repo,
         defaultTeam: team,
+        storage: testHomeStorage,
       );
 
       expect(workspace.display, DefaultWorkspaceService.defaultDisplay);
       expect(
         workspace.firstFolderPath,
-        normalizeWorkspacePath(p.join(base.path, 'Documents', 'TeamPilot')),
+        normalizeWorkspacePath(
+          p.join(base.path, 'Documents', 'TeamPilot'),
+          usesPosixPaths: false,
+        ),
       );
       expect(workspace.defaultProfileId, isEmpty);
 
@@ -63,11 +67,19 @@ void main() {
   );
 
   test('seed is idempotent', () async {
-    final repo = SessionRepository();
+    final repo = SessionRepository(storage: testHomeStorage);
     final team = const TeamRosterEditor().defaultNativeTeam();
 
-    await DefaultWorkspaceService.seed(repo, defaultTeam: team);
-    await DefaultWorkspaceService.seed(repo, defaultTeam: team);
+    await DefaultWorkspaceService.seed(
+      repo,
+      defaultTeam: team,
+      storage: testHomeStorage,
+    );
+    await DefaultWorkspaceService.seed(
+      repo,
+      defaultTeam: team,
+      storage: testHomeStorage,
+    );
 
     final workspaces = await repo.loadWorkspaces();
     expect(workspaces, hasLength(1));
@@ -79,7 +91,7 @@ void main() {
   });
 
   test('ensureDefault stamps ssh home as folder targetId', () async {
-    final repo = SessionRepository();
+    final repo = SessionRepository(storage: testHomeStorage);
     final team = const TeamRosterEditor().defaultNativeTeam();
     final home = RuntimeTarget.ssh('p1', label: 'box');
 
@@ -87,6 +99,7 @@ void main() {
       repo,
       defaultTeam: team,
       home: home,
+      storage: testHomeStorage,
     );
 
     final workspaces = await repo.loadWorkspaces();
@@ -108,7 +121,7 @@ void main() {
     );
     DefaultWorkspaceDirectory.setForTesting(p.join(base.path, 'Documents'));
 
-    final repo = SessionRepository();
+    final repo = SessionRepository(storage: testHomeStorage);
     final team = const TeamRosterEditor().defaultNativeTeam();
     final home = RuntimeTarget.ssh('p1', label: 'box');
 
@@ -116,13 +129,17 @@ void main() {
       repo,
       defaultTeam: team,
       home: home,
+      storage: testHomeStorage,
     );
 
     final workspaces = await repo.loadWorkspaces();
     expect(workspaces, isNotEmpty);
     expect(
       workspaces.first.folders.first.path,
-      normalizeWorkspacePath(p.join(remoteHome.path, 'TeamPilot')),
+      normalizeWorkspacePath(
+        p.join(remoteHome.path, 'TeamPilot'),
+        usesPosixPaths: true,
+      ),
     );
     expect(workspaces.first.folders.first.targetId, 'ssh:p1');
     expect(Directory(p.join(remoteHome.path, 'TeamPilot')).existsSync(), isTrue);
@@ -143,7 +160,7 @@ void main() {
     );
     DefaultWorkspaceDirectory.setForTesting(p.join(base.path, 'Documents'));
 
-    final repo = SessionRepository();
+    final repo = SessionRepository(storage: testHomeStorage);
     final team = const TeamRosterEditor().defaultNativeTeam();
     final home = RuntimeTarget.termux();
 
@@ -151,13 +168,17 @@ void main() {
       repo,
       defaultTeam: team,
       home: home,
+      storage: testHomeStorage,
     );
 
     final workspaces = await repo.loadWorkspaces();
     expect(workspaces, isNotEmpty);
     expect(
       workspaces.first.folders.first.path,
-      normalizeWorkspacePath(p.join(termuxHome.path, 'TeamPilot')),
+      normalizeWorkspacePath(
+        p.join(termuxHome.path, 'TeamPilot'),
+        usesPosixPaths: true,
+      ),
     );
     expect(workspaces.first.folders.first.targetId, 'termux:default');
     expect(
@@ -167,12 +188,13 @@ void main() {
   });
 
   test('ensureDefault is idempotent and reports no mutation', () async {
-    final repo = SessionRepository();
+    final repo = SessionRepository(storage: testHomeStorage);
     final team = const TeamRosterEditor().defaultNativeTeam();
 
     final first = await DefaultWorkspaceService.ensureDefault(
       repo,
       defaultTeam: team,
+      storage: testHomeStorage,
     );
     expect(first, isTrue);
 
@@ -181,6 +203,7 @@ void main() {
       repo,
       defaultTeam: team,
       knownWorkspaces: workspaces,
+      storage: testHomeStorage,
     );
     expect(again, isFalse);
   });

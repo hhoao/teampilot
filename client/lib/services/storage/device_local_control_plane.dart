@@ -1,22 +1,41 @@
+import '../../models/runtime_target.dart';
 import '../../repositories/ssh_profile_repository.dart';
 import '../cli/remote_cli_path_cache.dart';
 import '../io/local_filesystem.dart';
-import 'app_storage.dart';
+import 'app_paths.dart';
+import 'home_storage.dart';
+import 'runtime_context.dart';
 import 'targets_repository.dart';
 import '../remote_download/remote_download_settings_store.dart';
 import '../termux/termux_config_store.dart';
 
 /// Device-local SSH profile catalog.
 ///
-/// Must not ride [AppStorage] home: Android Connect rebinds home onto the
-/// remote host, and reading `ssh_profiles/` from that FS empties the catalog,
-/// disconnects live pools, then falls home back to local (StartupGate again).
+/// Must not ride the app-scoped home plane: Android Connect rebinds home onto
+/// the remote host, and reading `ssh_profiles/` from that FS empties the
+/// catalog, disconnects live pools, then falls home back to local (StartupGate
+/// again). The repository's [HomeStorage] is therefore a device-local context
+/// over [nativeAppDataPath] — its `rootDir`/`fs` overrides keep every read and
+/// write pinned here even when the app-scoped home swaps.
 SshProfileRepository deviceLocalSshProfileRepository(String nativeAppDataPath) {
   final paths = AppPaths(nativeAppDataPath);
   final fs = LocalFilesystem(
     pathContext: AppPaths.pathContextForDataRoot(nativeAppDataPath),
   );
-  return SshProfileRepository(rootDir: paths.sshProfilesDir, fs: fs);
+  return SshProfileRepository(
+    rootDir: paths.sshProfilesDir,
+    fs: fs,
+    storage: HomeStorage(
+      RuntimeContext(
+        target: RuntimeTarget.local(),
+        filesystem: fs,
+        home: nativeAppDataPath,
+        cwd: nativeAppDataPath,
+        appDataRoot: nativeAppDataPath,
+        paths: paths,
+      ),
+    ),
+  );
 }
 
 /// Device-local `targets.json` (same control-plane pin as SSH profiles).
@@ -33,6 +52,25 @@ TermuxConfigStore deviceLocalTermuxConfigStore(String nativeAppDataPath) {
     pathContext: AppPaths.pathContextForDataRoot(nativeAppDataPath),
   );
   return TermuxConfigStore(rootDir: nativeAppDataPath, fs: fs);
+}
+
+/// Native home storage over [nativeAppDataPath] for boot-time prefetches that
+/// must run before the app-scoped home plane is bound.
+HomeStorage deviceLocalHomeStorage(String nativeAppDataPath) {
+  final paths = AppPaths(nativeAppDataPath);
+  final fs = LocalFilesystem(
+    pathContext: AppPaths.pathContextForDataRoot(nativeAppDataPath),
+  );
+  return HomeStorage(
+    RuntimeContext(
+      target: RuntimeTarget.local(),
+      filesystem: fs,
+      home: nativeAppDataPath,
+      cwd: nativeAppDataPath,
+      appDataRoot: nativeAppDataPath,
+      paths: paths,
+    ),
+  );
 }
 
 /// Device-local remote download catalog overrides (`.remote-download/` under native app data).

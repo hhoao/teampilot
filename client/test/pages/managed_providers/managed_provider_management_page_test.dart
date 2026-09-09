@@ -198,8 +198,9 @@ void main() {
     providerCubit = ManagedProviderCubit(repository: providerRepository);
     usageCubit = ManagedProviderUsageCubit(coordinator: coordinator);
     appProviderCubit = AppProviderCubit(
-      repository: AppProviderRepository(fs: fs, basePath: '/tp'),
+      repository: AppProviderRepository(fs: fs, basePath: '/tp', storage: testHomeStorage, ),
       basePath: '/tp',
+                                         storage: testHomeStorage,
     );
   });
 

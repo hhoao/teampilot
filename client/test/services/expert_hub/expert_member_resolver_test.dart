@@ -64,6 +64,7 @@ void main() {
 
     final resolved = await ExpertMemberResolver.resolveMember(
       key: kBuiltinDefaultExpertKey,
+                                                               localStore: LocalExpertStore(fs: InMemoryFilesystem(), dirOverride: AppPaths('/tp').memberHubLocalTemplatesDir),
     );
 
     expect(resolved, isNotNull);
@@ -92,6 +93,7 @@ void main() {
     final resolved = await ExpertMemberResolver.resolveMember(
       key: member.key,
       hubState: const ExpertHubState(allMembers: [member]),
+                                                               localStore: LocalExpertStore(fs: InMemoryFilesystem(), dirOverride: AppPaths('/tp').memberHubLocalTemplatesDir),
     );
     expect(resolved?.key, member.key);
     expect(resolved?.name, 'Developer');

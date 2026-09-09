@@ -736,7 +736,7 @@ Future<AppShell> buildAppShell({
 
   late final SshProfileCubit sshProfileCubit;
   late final HomeTargetController homeTargetController;
-  final homeWorkspaceUiCache = HomeWorkspaceUiCache();
+  late final HomeWorkspaceUiCache homeWorkspaceUiCache;
   sshProfileCubit = SshProfileCubit(
     profileRepository: sshProfileRepo,
     credentialStore: sshCredentialStore,
@@ -907,6 +907,7 @@ Future<AppShell> buildAppShell({
     retire: (old) => runtimeContextRegistry.disposeContext(old),
   );
   AppStorage.bindHomeStorage(homeStorage);
+  homeWorkspaceUiCache = HomeWorkspaceUiCache(storage: homeStorage);
   boot(
     'home context installed '
     '(${AppStorage.context.mode}, home=${homeTarget.id}, '
@@ -985,6 +986,7 @@ Future<AppShell> buildAppShell({
   // ManagedProviderCubit can ensure dedicated per-entry CLI provider rows;
   // only needs sessionPreferencesCubit and openCredentialLoginUrl.
   appProviderCubit = AppProviderCubit(
+    storage: homeStorage,
     flashskyaiExecutablePath: sessionPreferencesCubit.resolveExecutable,
     openCredentialLoginUrl: openCredentialLoginUrl,
   );
@@ -1121,6 +1123,7 @@ Future<AppShell> buildAppShell({
     );
 
     final claudeCredentialsService = ClaudeProviderCredentialsService(
+      storage: homeStorage,
       fs: AppStorage.fs,
       basePath: AppStorage.paths.basePath,
       resolveClaudeExecutable: () =>
@@ -1128,6 +1131,7 @@ Future<AppShell> buildAppShell({
       hostRunner: credentialHostRunner,
     );
     final cursorCredentialsService = CursorProviderCredentialsService(
+      storage: homeStorage,
       fs: AppStorage.fs,
       basePath: AppStorage.paths.basePath,
       resolveCursorExecutable: () =>
@@ -1135,30 +1139,35 @@ Future<AppShell> buildAppShell({
       hostRunner: credentialHostRunner,
     );
     final codexCredentialsService = CodexProviderCredentialsService(
+      storage: homeStorage,
       fs: AppStorage.fs,
       basePath: AppStorage.paths.basePath,
       resolveCodexExecutable: () =>
           sessionPreferencesCubit.resolveExecutable(CliTool.codex),
       hostRunner: credentialHostRunner,
     );
-    final opencodeModelsService = OpencodeModelsService();
+    final opencodeModelsService = OpencodeModelsService(
+      storage: homeStorage,
+    );
 
     cliToolRegistry.configure(
       CliBootstrap({
         CliTool.claude: ClaudeBootstrapEntry(
           credentialsService: claudeCredentialsService,
           modelsService: ApiModelCatalogService(
+            storage: homeStorage,
             protocol: ApiModelCatalogProtocol.anthropic,
             cacheDirectory: 'claude_models',
           ),
         ),
         CliTool.cursor: CursorBootstrapEntry(
           credentialsService: cursorCredentialsService,
-          agentModelsService: CursorAgentModelsService(),
+          agentModelsService: CursorAgentModelsService(storage: homeStorage),
         ),
         CliTool.codex: CodexBootstrapEntry(
           credentialsService: codexCredentialsService,
           modelsService: ApiModelCatalogService(
+            storage: homeStorage,
             protocol: ApiModelCatalogProtocol.openAi,
             cacheDirectory: 'codex_models',
           ),
@@ -1169,22 +1178,28 @@ Future<AppShell> buildAppShell({
       }),
     );
 
-    final skillManifest = SkillManifestService();
+    final skillManifest = SkillManifestService(storage: homeStorage);
     final skillGit = SkillRepoGitService();
     final skillFetch = SkillFetchService(git: skillGit);
-    final skillRepoCache = SkillRepoDiskCacheService(fetch: skillFetch);
+    final skillRepoCache = SkillRepoDiskCacheService(
+      storage: homeStorage,
+      fetch: skillFetch,
+    );
     final skillInstallService = SkillInstallService(
+      storage: homeStorage,
       manifest: skillManifest,
       fetch: skillFetch,
       repoCache: skillRepoCache,
     );
     final skillRepo = SkillRepository(
+      storage: homeStorage,
       manifest: skillManifest,
       fetch: skillFetch,
       repoCache: skillRepoCache,
       install: skillInstallService,
     );
     final skillAcquisitionEngine = SkillAcquisitionEngine(
+      storage: homeStorage,
       installGitDir: (d, {bool overwrite = false, String? idOverride}) =>
           skillInstallService.installFromDiscovery(
             d,
@@ -1237,6 +1252,7 @@ Future<AppShell> buildAppShell({
       presetsPath: AppStorage.paths.cliPresetsJson,
     );
     sessionLifecycleService = SessionLifecycleService(
+      storage: homeStorage,
       storageRootsResolver: () async => AppStorage.context,
       catalogContextResolver: () async => runtimeContextRegistry.home(),
       homeTarget: defaultTargetResolver,
@@ -1274,7 +1290,10 @@ Future<AppShell> buildAppShell({
       loadPresets: () => cliPresetsCubit.state.presets,
       projectConfigRepository: workspaceProjectConfigRepository,
     );
-    sessionRepo = SessionRepository(lifecycleService: sessionLifecycleService);
+    sessionRepo = SessionRepository(
+      storage: homeStorage,
+      lifecycleService: sessionLifecycleService,
+    );
     boot('prefetching home index snapshots');
     bootstrapCubit?.beginHomeIndex();
     Future<void> prefetchHomeIndex() async {
@@ -1328,7 +1347,7 @@ Future<AppShell> buildAppShell({
       lifecycleService: sessionLifecycleService,
       pluginRepository: pluginRepository,
       installedPluginsLoader: () => pluginRepository.loadAll(),
-      mcpLinker: ProfileMcpLinkerService(),
+      mcpLinker: ProfileMcpLinkerService(storage: homeStorage),
       mcpRepository: mcpRepository,
       installedMcpLoader: () => mcpRepository.loadAll(),
       extensionMcpContributor: (teamId) async {
@@ -1341,7 +1360,7 @@ Future<AppShell> buildAppShell({
       },
     );
 
-    final notificationCubit = NotificationCubit();
+    final notificationCubit = NotificationCubit(storage: homeStorage);
     final notificationBootstrap = notificationCubit.load();
     NotificationRecorder.install(notificationCubit);
     final progressActivityCubit = ProgressActivityCubit(
@@ -1403,11 +1422,13 @@ Future<AppShell> buildAppShell({
     );
 
     final skillRegistryConfigService = SkillRegistryConfigService(
+      storage: homeStorage,
       legacySkillsMpKeyReader: () => appSettings.loadSkillsMpApiKey(),
     );
     final skillRegistryConfig = await skillRegistryConfigService.load();
     skillCubit = SkillCubit(
       skillRepo,
+      storage: homeStorage,
       registryConfigService: skillRegistryConfigService,
       initialSources: SkillRegistryFactory.build(
         skillRegistryConfig,
@@ -1422,9 +1443,13 @@ Future<AppShell> buildAppShell({
     );
     pluginCubit = PluginCubit(
       repository: pluginRepository,
+      storage: homeStorage,
       installService: pluginRepository.install,
       repoService: pluginRepository.repos,
-      diskCache: PluginRepoDiskCacheService(),
+      diskCache: PluginRepoDiskCacheService(
+        filesystem: homeStorage.fs,
+        teampilotRoot: homeStorage.paths.basePath,
+      ),
       onPluginUninstalled: teamCubit.removePluginFromAllTeams,
       onPluginUpdated: teamCubit.syncTeamsUsingPlugin,
       installJobRegistry: installJobRegistry,
@@ -1438,6 +1463,7 @@ Future<AppShell> buildAppShell({
     cliPresetsCubit = CliPresetsCubit(repository: cliPresetsRepo);
     mcpCubit = McpCubit(
       mcpRepository,
+      storage: homeStorage,
       onMcpDeleted: teamCubit.removeMcpFromAllTeams,
     );
     hookCubit = HookCubit(repository: hookRepository)..load();
@@ -1448,16 +1474,21 @@ Future<AppShell> buildAppShell({
     final catalogCacheFs = deviceLocalCatalogCacheFilesystem(nativeAppDataPath);
     final teamHubSource = CompositeTeamHubSource.withDefaults(
       GitRegistryTeamHubSource(
+        storage: homeStorage,
         fs: catalogCacheFs,
         cacheDirOverride: catalogCacheRoot + '/team-hub',
       ),
     );
-    final teamHubFavorites = TeamHubFavoritesStore();
-    final localExpertStore = LocalExpertStore();
+    final teamHubFavorites = TeamHubFavoritesStore(storage: homeStorage);
+    final localExpertStore = LocalExpertStore(
+      fs: homeStorage.fs,
+      dirOverride: homeStorage.paths.memberHubLocalTemplatesDir,
+    );
     await localExpertStore.migrateLegacyLayout();
     await localExpertStore.ensureIndexLoaded();
     final compositeExpertHubSource = CompositeExpertHubSource.withDefaults(
       registry: GitRegistryExpertHubSource(
+        storage: homeStorage,
         fs: catalogCacheFs,
         cacheDirOverride: catalogCacheRoot + '/member-hub',
       ),
@@ -1532,12 +1563,13 @@ Future<AppShell> buildAppShell({
       },
     );
 
-    final expertHubFavorites = ExpertHubFavoritesStore();
+    final expertHubFavorites = ExpertHubFavoritesStore(storage: homeStorage);
     teamCubit.attachCatalog(expertHubCatalog);
     final expertCapabilityResolver = ExpertCapabilityResolver(
       installSkill: skillCubit.installTeamDependency,
       installPlugin: pluginCubit.installTeamDependency,
       installMcp: mcpCubit.installTeamDependency,
+      localStore: localExpertStore,
       source: compositeExpertHubSource,
     );
     final memberRosterService = MemberRosterService(
@@ -1570,10 +1602,14 @@ Future<AppShell> buildAppShell({
     );
     final workspaceToolsCubit = WorkspaceToolsCubit();
     final workspaceTerminalRegistry = WorkspaceTerminalRegistry();
-    final gitRepoStore = GitRepoStore();
+    final gitRepoStore = GitRepoStore(storage: homeStorage);
     final workspaceFileTreeStore = WorkspaceFileTreeStore();
-    final workspaceSearchIndexes = WorkspaceSearchIndexes();
-    final workspaceWorktreeRegistry = WorkspaceWorktreeRegistry();
+    final workspaceSearchIndexes = WorkspaceSearchIndexes(
+      storage: homeStorage,
+    );
+    final workspaceWorktreeRegistry = WorkspaceWorktreeRegistry(
+      storage: homeStorage,
+    );
     final workspaceSessionGroupsRegistry = WorkspaceSessionGroupsRegistry(
       storage: homeStorage,
       cubitFactory: () => SessionGroupsCubit(
@@ -1585,7 +1621,9 @@ Future<AppShell> buildAppShell({
     );
     final workspaceToolsScopeRegistry = WorkspaceToolsScopeRegistry();
     final workspaceRunRegistry = WorkspaceRunRegistry(
+      storage: homeStorage,
       platformFactory: WorkspaceRunPlatformFactory(
+        storage: homeStorage,
         extensionRepository: extensionRepository,
         projectConfigRepository: workspaceProjectConfigRepository,
         resolveWorkContext:
@@ -1718,6 +1756,7 @@ Future<AppShell> buildAppShell({
           sessionPreferencesCubit.state.preferences.sshUseLoginShell,
       homeTarget: defaultTargetResolver,
       profileById: sshProfileById,
+      fs: homeStorage.fs,
     );
     // Terminal inject deps after connector: registry was created earlier.
     final workspaceTerminalSessionOps = WorkspaceTerminalSessionOps();
@@ -1809,6 +1848,7 @@ Future<AppShell> buildAppShell({
     teammateBusMcpGateway.attachAgentEventGateway(agentEventGateway);
 
     final catalogRuntime = CatalogRuntime.assemble(
+      storage: homeStorage,
       sessions: sessionRepo,
       runtimeContexts: runtimeContextRegistry,
       skillRepository: skillRepo,
@@ -1826,13 +1866,19 @@ Future<AppShell> buildAppShell({
       searchPlugins: (query) => CatalogProduction.searchPlugins(
         query,
         repos: pluginRepository.repos,
-        diskCache: PluginRepoDiskCacheService(),
+        diskCache: PluginRepoDiskCacheService(
+          filesystem: homeStorage.fs,
+          teampilotRoot: homeStorage.paths.basePath,
+        ),
       ),
-      searchMcp: CatalogProduction.searchMcp,
-      draftFromListing: CatalogProduction.draftFromListing,
+      searchMcp: (query) =>
+          CatalogProduction.searchMcp(query, storage: homeStorage),
+      draftFromListing: (listingId) =>
+          CatalogProduction.draftFromListing(listingId, storage: homeStorage),
       installPluginFromDiscovery: (args) =>
           CatalogProduction.installPluginFromDiscovery(
             args,
+            storage: homeStorage,
             repository: pluginRepository,
           ),
       removeSkillFromAllTeams: teamCubit.removeSkillFromAllTeams,
@@ -1856,6 +1902,7 @@ Future<AppShell> buildAppShell({
     // first touched, which only happens after bootstrap completes.
     PromptDeliveryCoordinator? appScopedPromptDeliveries;
     chatCubit = ChatCubit(
+      storage: homeStorage,
       promptDeliveries: () => appScopedPromptDeliveries,
       teammateBusMcpGateway: teammateBusMcpGateway,
       agentStatusSeatLookup: agentStatusSeatLookup,
@@ -1910,7 +1957,9 @@ Future<AppShell> buildAppShell({
         isCredentialOptIn: targetsRepo.isCredentialOptIn,
         cliPathOverride: targetsRepo.cliPathOverride,
         setCliPathOverride: targetsRepo.setCliPathOverride,
-        loadLocalCredentials: (cli) => LocalCredentialExporter().export(cli),
+        loadLocalCredentials: (cli) => LocalCredentialExporter(
+          storage: homeStorage,
+        ).export(cli),
         localCliPath: (cli) async =>
             sessionPreferencesCubit.resolveExecutable(cli),
         runtimePlanBuilder: sessionRuntimePlanBuilder,
@@ -1987,6 +2036,7 @@ Future<AppShell> buildAppShell({
         cliToolRegistry: cliToolRegistry,
         targetRegistry: runtimeTargetRegistry,
         remoteCliReadiness: remoteCliReadiness,
+        storage: homeStorage,
         catalogRegistry: catalogRuntime.registry,
         expertHubCatalog: expertHubCatalog,
       );
@@ -2039,7 +2089,7 @@ Future<AppShell> buildAppShell({
       onTogglePanel: openFloatingNewTerminal,
     );
 
-    memberPresenceCubit = MemberPresenceCubit();
+    memberPresenceCubit = MemberPresenceCubit(storage: homeStorage);
     chatCubit.bindPresenceCubit(memberPresenceCubit);
 
     final sshProfileConnectionCoordinator = SshProfileConnectionCoordinator(
@@ -2249,6 +2299,7 @@ Future<AppShell> buildAppShell({
         homeSshProfileId: defaultTargetResolver().sshProfileId,
         sshProfileExists: (id) => sshProfileById(id) != null,
         reinstallStorageContext: reinstallStorageContext,
+        storage: homeStorage,
         managedProviderCubit: resolvedManagedProviderCubit,
         managedProviderUsageCubit: resolvedManagedProviderUsageCubit,
         home: defaultTargetResolver(),
@@ -2311,6 +2362,7 @@ Future<AppShell> buildAppShell({
               homeSshProfileId: defaultTargetResolver().sshProfileId,
               sshProfileExists: (id) => sshProfileById(id) != null,
               reinstallStorageContext: reinstallStorageContext,
+              storage: homeStorage,
               home: defaultTargetResolver(),
               expertHubCatalog: expertHubCatalog,
             );
@@ -2331,6 +2383,7 @@ Future<AppShell> buildAppShell({
             chatCubit: chatCubit,
             sessionRepo: sessionRepo,
             layoutCubit: layoutCubit,
+            storage: homeStorage,
             home: defaultTargetResolver(),
             expertHubCatalog: expertHubCatalog,
           );
@@ -2373,6 +2426,7 @@ Future<AppShell> buildAppShell({
         aiFeatureSettingsCubit: aiFeatureSettingsCubit,
         discoverySettingsCubit: discoverySettingsCubit,
         homeWorkspaceUiCache: homeWorkspaceUiCache,
+        storage: homeStorage,
         workspaces: chatCubit.state.workspaces,
       );
       bootstrapCubit?.markAppReady(showOnboardingWizard: showOnboarding);
@@ -2381,7 +2435,7 @@ Future<AppShell> buildAppShell({
       automationScheduler.start();
     }
 
-    editorCubit = EditorCubit();
+    editorCubit = EditorCubit(storage: homeStorage);
     // Fire-and-forget: warm the common tree-sitter grammars so the first file
     // open paints colored instead of cold. Never blocks app start.
     unawaited(EditorPlatform.bootstrap());

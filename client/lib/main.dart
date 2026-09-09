@@ -16,6 +16,9 @@ import 'services/team_generation/team_generation_coordinator.dart';
 import 'services/install/install_job_registry.dart';
 import 'app/ui_zoom_baseline.dart';
 import 'app/home_index_prefetch.dart';
+import 'services/storage/app_paths.dart';
+import 'services/storage/device_local_control_plane.dart';
+import 'services/io/local_filesystem.dart';
 import 'cubits/app_bootstrap_cubit.dart';
 import 'cubits/app_update_cubit.dart';
 import 'cubits/board_cubit.dart';
@@ -506,7 +509,12 @@ void main() async {
   try {
     await pathsFuture;
     nativeAppDataPath = AppPathsBootstrapper.current.basePath;
-    await initAppLogging(nativeAppDataPath);
+    await initAppLogging(
+      nativeAppDataPath,
+      fs: LocalFilesystem(
+        pathContext: AppPaths.pathContextForDataRoot(nativeAppDataPath),
+      ),
+    );
   } on Object catch (error, stackTrace) {
     if (!Platform.isAndroid) {
       await completeBootSplashTransition();
@@ -518,7 +526,10 @@ void main() async {
   final defaultWorkspaceDirectoryFuture = DefaultWorkspaceDirectory.resolve(
     preferences: preferences,
   );
-  final homeIndexPrefetchFuture = prefetchHomeIndexSnapshots(nativeAppDataPath);
+  final homeIndexPrefetchFuture = prefetchHomeIndexSnapshots(
+    nativeAppDataPath,
+    deviceLocalHomeStorage(nativeAppDataPath),
+  );
   final bootstrapCubit = AppBootstrapCubit();
 
   if (!Platform.isAndroid) {

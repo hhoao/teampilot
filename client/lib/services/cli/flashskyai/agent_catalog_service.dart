@@ -1,6 +1,5 @@
 import 'package:flutter/foundation.dart';
-import '../../storage/app_storage.dart';
-import '../../storage/runtime_layout.dart';
+import '../../storage/home_storage.dart';
 import '../../io/filesystem.dart';
 
 /// Built-in `--agent` ids (subset of `flashskyai agents` / CLI presets).
@@ -82,7 +81,10 @@ abstract final class FlashskyaiAgentCatalog {
 
 /// Lists user-defined agent ids from `config-profiles/flashskyai/agents/*.md`.
 class FlashskyaiAgentCatalogService {
-  FlashskyaiAgentCatalogService();
+  FlashskyaiAgentCatalogService({required this.storage});
+
+  /// Home control-plane storage backing the agent catalog directory.
+  final HomeStorage storage;
 
   /// Agent id from `image-analyzer.md` → `image-analyzer`.
   static String? agentIdFromMdFilename(String filename) {
@@ -93,23 +95,12 @@ class FlashskyaiAgentCatalogService {
   }
 
   Future<List<String>> listUserAgentIds() async {
-    if (AppStorage.isInstalled) {
-      final snap = AppStorage.context;
-      final agentsDir = snap.fs.pathContext.join(
-        snap.layout.appToolRoot('flashskyai'),
-        'agents',
-      );
-      return _listWithFs(snap.fs, agentsDir);
-    }
-    final fs = AppStorage.fs;
-    final layout = RuntimeLayout(
-      teampilotRoot: AppStorage.paths.basePath,
-      fs: fs,
+    final snap = storage.context;
+    final agentsDir = snap.fs.pathContext.join(
+      snap.layout.appToolRoot('flashskyai'),
+      'agents',
     );
-    return _listWithFs(
-      fs,
-      fs.pathContext.join(layout.appToolRoot('flashskyai'), 'agents'),
-    );
+    return _listWithFs(snap.fs, agentsDir);
   }
 
   Future<List<String>> _listWithFs(Filesystem fs, String agentsDir) async {

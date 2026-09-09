@@ -1,6 +1,5 @@
 import '../../models/app_session.dart';
 import '../../models/git_worktree.dart';
-import '../../models/workspace.dart';
 import '../workspace/workspace_path_utils.dart';
 
 /// One sidebar group: a git worktree, a non-git project folder, or orphans.
@@ -35,6 +34,7 @@ class WorktreeGroup {
 List<WorktreeGroup> groupSessionsByWorktree({
   required List<GitWorktree> worktrees,
   required List<AppSession> sessions,
+  required bool usesPosixPaths,
 }) {
   final ordered = [...worktrees]
     ..sort((a, b) {
@@ -50,6 +50,7 @@ List<WorktreeGroup> groupSessionsByWorktree({
     final bestPath = worktreePathForSessionPath(
       session.firstFolderPath,
       ordered,
+      usesPosixPaths: usesPosixPaths,
     );
     if (bestPath == null) {
       orphans.add(session);
@@ -72,13 +73,20 @@ List<WorktreeGroup> groupSessionsByWorktree({
 /// [sessionPrimaryPath], or null when no worktree contains the path.
 String? worktreePathForSessionPath(
   String sessionPrimaryPath,
-  List<GitWorktree> worktrees,
-) {
-  final sessionPath = normalizeWorkspacePath(sessionPrimaryPath);
+  List<GitWorktree> worktrees, {
+  required bool usesPosixPaths,
+}) {
+  final sessionPath = normalizeWorkspacePath(
+    sessionPrimaryPath,
+    usesPosixPaths: usesPosixPaths,
+  );
   String? bestPath;
   var bestLen = -1;
   for (final w in worktrees) {
-    final wPath = normalizeWorkspacePath(w.path);
+    final wPath = normalizeWorkspacePath(
+      w.path,
+      usesPosixPaths: usesPosixPaths,
+    );
     if (_isUnderOrEqual(sessionPath, wPath) && wPath.length > bestLen) {
       bestPath = w.path;
       bestLen = wPath.length;

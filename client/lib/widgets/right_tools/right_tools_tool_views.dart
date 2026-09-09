@@ -811,6 +811,7 @@ class _ScopedMembersPanelState extends State<_ScopedMembersPanel> {
         folders: widget.scope.effectiveFolders,
         createdAt: 0,
       ),
+      usesPosixPaths: chatCubit.lifecycle.storage.usesPosixPaths,
     );
     final workContext = await chatCubit.lifecycle.launchWorkContext(
       launchCtx,
@@ -818,7 +819,9 @@ class _ScopedMembersPanelState extends State<_ScopedMembersPanel> {
     );
     final path = cached?.isNotEmpty == true
         ? cached!
-        : (await MemberConfigInspector().inspect(
+        : (await MemberConfigInspector(
+            storage: chatCubit.lifecycle.storage,
+          ).inspect(
             workspaceId: widget.workspaceId,
             sessionId: activeTab?.info.id ?? '',
             team: widget.team,

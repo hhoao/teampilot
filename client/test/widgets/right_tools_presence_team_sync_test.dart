@@ -5,9 +5,13 @@ import 'package:teampilot/cubits/member_presence_cubit.dart';
 import 'package:teampilot/models/team_config.dart';
 import 'package:teampilot/widgets/right_tools/right_tools_tool_views.dart';
 
+import '../support/in_memory_filesystem.dart';
+
 /// Records every [syncPresenceTeam] call so tests can assert that the panel
 /// re-syncs its team on workspace re-activation.
 class _RecordingPresenceCubit extends MemberPresenceCubit {
+  _RecordingPresenceCubit() : super(storage: fakeHomeStorage());
+
   final List<TeamProfile?> syncedTeams = [];
 
   @override

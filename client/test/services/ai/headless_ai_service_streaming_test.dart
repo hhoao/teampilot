@@ -2,6 +2,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/models/ai_feature_setting.dart';
 import 'package:teampilot/models/team_config.dart';
 import 'package:teampilot/services/ai/headless_ai_service.dart';
+import '../../support/in_memory_filesystem.dart';
 
 void main() {
   test(
@@ -26,6 +27,7 @@ void main() {
               onStdoutLine('{"type":"result","result":"{\\"members\\":[]}"}');
               return 0;
             },
+                                     storage: fakeHomeStorage(),
       );
 
       final result = await svc.runStreaming(
@@ -58,6 +60,7 @@ void main() {
             timeout,
             required onStdoutLine,
           }) async => 2,
+                                   storage: fakeHomeStorage(),
     );
 
     expect(

@@ -1,27 +1,20 @@
 import '../models/mcp_server.dart';
 import '../services/mcp/mcp_catalog_service.dart';
 import '../services/mcp/mcp_server_validator.dart';
-import '../services/storage/app_storage.dart';
 import '../services/storage/home_storage.dart';
 
 class McpRepository {
   McpRepository({
     McpCatalogService? catalog,
     McpServerValidator? validator,
-    HomeStorage? storage,
+    required HomeStorage storage,
   }) : _catalog = catalog,
       _validator = validator ?? McpServerValidator(),
-      _storageOverride = storage;
+      _storage = storage;
 
   final McpCatalogService? _catalog;
   final McpServerValidator _validator;
-  final HomeStorage? _storageOverride;
-
-  /// Shim-era fallback: catalog/resource-domain construction sites (batches
-  /// 6/10) construct this repository without [storage]; defer to the bound
-  /// home context exactly like the AppStorage shim did. Removed once those
-  /// batches thread [storage].
-  HomeStorage get _storage => _storageOverride ?? AppStorage.tolerantHome;
+  final HomeStorage _storage;
 
   List<McpServer>? _cache;
 

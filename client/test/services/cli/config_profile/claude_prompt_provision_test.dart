@@ -9,6 +9,7 @@ import 'package:teampilot/services/io/local_filesystem.dart';
 import 'package:teampilot/services/provider/config_profile_service.dart';
 import 'package:teampilot/services/session/member_role_provision.dart';
 import 'package:teampilot/services/storage/runtime_layout.dart';
+import '../../../support/in_memory_filesystem.dart';
 
 void main() {
   test(
@@ -51,6 +52,7 @@ void main() {
       basePath: base.path,
       fs: fs,
       layout: RuntimeLayout(teampilotRoot: base.path, fs: fs),
+                                          storage: fakeHomeStorage(),
     );
     const member = TeamMemberConfig(
       id: 'm1',
@@ -96,6 +98,7 @@ void main() {
         basePath: base.path,
         fs: fs,
         layout: RuntimeLayout(teampilotRoot: base.path, fs: fs),
+                                            storage: fakeHomeStorage(),
       );
       const member = TeamMemberConfig(
         id: 'team-lead',
@@ -154,6 +157,7 @@ void main() {
       basePath: base.path,
       fs: fs,
       layout: RuntimeLayout(teampilotRoot: base.path, fs: fs),
+                                          storage: fakeHomeStorage(),
     );
     const member = TeamMemberConfig(
       id: 'm1',

@@ -22,7 +22,12 @@ class WorkspaceToolsContext {
         if (raw.trim().isNotEmpty) raw.trim(),
     ];
     final targetId =
-        targetIdForFolderPaths(folders, probePaths, matchSubpaths: true) ??
+        targetIdForFolderPaths(
+          folders,
+          probePaths,
+          usesPosixPaths: lifecycle.storage.usesPosixPaths,
+          matchSubpaths: true,
+        ) ??
         (folders.isNotEmpty
             ? folders.first.targetId
             : WorkspaceFolder.localTargetId);
@@ -37,12 +42,14 @@ class WorkspaceToolsContext {
     required String primaryPath,
     required List<String> additionalPaths,
     required RuntimeContext context,
+    required bool usesPosixPaths,
   }) => rootsForTarget(
     folders: folders,
     targetId: targetId,
     primaryPath: primaryPath,
     additionalPaths: additionalPaths,
     context: context,
+    usesPosixPaths: usesPosixPaths,
     includeCatalogPaths: false,
   );
 
@@ -53,6 +60,7 @@ class WorkspaceToolsContext {
     required String primaryPath,
     required List<String> additionalPaths,
     required RuntimeContext context,
+    required bool usesPosixPaths,
     bool includeCatalogPaths = true,
   }) {
     final pathCtx = context.filesystem.pathContext;
@@ -66,9 +74,12 @@ class WorkspaceToolsContext {
     }
     for (final raw in [primaryPath, ...additionalPaths]) {
       if (raw.isEmpty) continue;
-      final onTarget = targetIdForFolderPaths(folders, [
-        raw,
-      ], matchSubpaths: true);
+      final onTarget = targetIdForFolderPaths(
+        folders,
+        [raw],
+        usesPosixPaths: usesPosixPaths,
+        matchSubpaths: true,
+      );
       if (onTarget != null && onTarget != targetId) continue;
       final normalized = pathCtx.normalize(raw);
       if (!roots.contains(normalized)) roots.add(normalized);

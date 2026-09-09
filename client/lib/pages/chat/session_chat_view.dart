@@ -48,6 +48,7 @@ import '../../services/session/history_hydration_scope.dart';
 import '../../services/session/history_awaiting_working_sync.dart';
 import 'pinned_session_history_column_width.dart';
 import '../../services/storage/app_storage.dart';
+import '../../services/storage/home_storage.dart';
 import '../../services/terminal/pending_user_message.dart';
 import '../../utils/debug/debug_bloc_rebuild.dart';
 import '../../utils/logging/logger.dart';
@@ -440,6 +441,7 @@ class _SessionChatViewState extends State<SessionChatView> {
         widget.session.workspaceId,
         widget.session.sessionId,
         _controller.text,
+        storage: AppStorage.tolerantHome,
       ),
     );
   }
@@ -449,6 +451,7 @@ class _SessionChatViewState extends State<SessionChatView> {
     final draft = await composeDraftCache.hydrateSession(
       widget.session.workspaceId,
       widget.session.sessionId,
+      storage: AppStorage.tolerantHome,
       shouldSeed: () =>
           mounted &&
           generation == _composeDraftSeedGeneration &&
@@ -484,6 +487,7 @@ class _SessionChatViewState extends State<SessionChatView> {
     await composeDraftCache.clearSessionPersistent(
       widget.session.workspaceId,
       widget.session.sessionId,
+      storage: AppStorage.tolerantHome,
     );
     if (!mounted) return;
     _controller.clear();
@@ -500,6 +504,7 @@ class _SessionChatViewState extends State<SessionChatView> {
     final work = widget.session.workDirsForMember(
       widget.selectedMemberId,
       folders: _launchContext.folderCatalog,
+      usesPosixPaths: AppStorage.tolerantHome.usesPosixPaths,
     );
     if (work.workingDirectory.isNotEmpty) return work.workingDirectory;
     return widget.session.firstFolderPath;
@@ -508,6 +513,7 @@ class _SessionChatViewState extends State<SessionChatView> {
   WorkspaceLaunchContext get _launchContext => WorkspaceLaunchContext(
     session: widget.session,
     workspace: widget.workspace,
+    usesPosixPaths: AppStorage.tolerantHome.usesPosixPaths,
   );
 
   Future<void> _loadHistory({bool force = false}) async {
@@ -840,6 +846,7 @@ class _SessionChatViewState extends State<SessionChatView> {
     await pickAndInsertComposeFileReferences(
       controller: _controller,
       workspaceRoot: _workspaceRoot,
+      usesPosixPaths: AppStorage.tolerantHome.usesPosixPaths,
       filesystem: AppStorage.fs,
     );
     if (!mounted) return;
@@ -851,6 +858,7 @@ class _SessionChatViewState extends State<SessionChatView> {
     final pasted = await pasteComposeImageAttachment(
       controller: _controller,
       workspaceRoot: _workspaceRoot,
+      usesPosixPaths: AppStorage.tolerantHome.usesPosixPaths,
     );
     return pasted;
   }

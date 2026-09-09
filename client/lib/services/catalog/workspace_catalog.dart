@@ -47,9 +47,11 @@ class ChatDataSnapshot extends Equatable {
 /// In-memory workspace/session store with team-scope filtering, snapshot
 /// derivation, and per-workspace session hydration on top of [SessionRepository].
 class WorkspaceCatalog {
-  WorkspaceCatalog(this.repo);
+  WorkspaceCatalog(this.repo, {required bool usesPosixPaths})
+    : _usesPosixPaths = usesPosixPaths;
 
   final SessionRepository repo;
+  final bool _usesPosixPaths;
 
   List<Workspace> _workspaces = [];
   List<AppSession> _sessions = [];
@@ -313,19 +315,36 @@ class WorkspaceCatalog {
     final normalized = [
       for (final f in folders)
         if (f.path.trim().isNotEmpty)
-          f.copyWith(path: normalizeWorkspacePath(f.path)),
+          f.copyWith(
+            path: normalizeWorkspacePath(
+              f.path,
+              usesPosixPaths: _usesPosixPaths,
+            ),
+          ),
     ];
     if (normalized.isEmpty) {
       throw ArgumentError('createWorkspace requires at least one folder path');
     }
     final primary = normalized.first.path;
     final existing = _workspaces
-        .where((w) => workspacePathsEqual(w.firstFolderPath, primary))
+        .where(
+          (w) => workspacePathsEqual(
+            w.firstFolderPath,
+            primary,
+            usesPosixPaths: _usesPosixPaths,
+          ),
+        )
         .firstOrNull;
     if (existing != null) {
       final merged = List<WorkspaceFolder>.from(existing.folders);
       for (final f in normalized.skip(1)) {
-        if (!merged.any((e) => workspacePathsEqual(e.path, f.path))) {
+        if (!merged.any(
+          (e) => workspacePathsEqual(
+            e.path,
+            f.path,
+            usesPosixPaths: _usesPosixPaths,
+          ),
+        )) {
           merged.add(f);
         }
       }
@@ -375,7 +394,12 @@ class WorkspaceCatalog {
     final normalized = [
       for (final f in folders)
         if (f.path.trim().isNotEmpty)
-          f.copyWith(path: normalizeWorkspacePath(f.path)),
+          f.copyWith(
+            path: normalizeWorkspacePath(
+              f.path,
+              usesPosixPaths: _usesPosixPaths,
+            ),
+          ),
     ];
     if (normalized.isEmpty) {
       throw ArgumentError('createWorkspace requires at least one folder path');
@@ -383,12 +407,24 @@ class WorkspaceCatalog {
     final primary = normalized.first.path;
     if (!allowDuplicate) {
       final existing = _workspaces
-          .where((w) => workspacePathsEqual(w.firstFolderPath, primary))
+          .where(
+            (w) => workspacePathsEqual(
+              w.firstFolderPath,
+              primary,
+              usesPosixPaths: _usesPosixPaths,
+            ),
+          )
           .firstOrNull;
       if (existing != null) {
         final merged = List<WorkspaceFolder>.from(existing.folders);
         for (final f in normalized.skip(1)) {
-          if (!merged.any((e) => workspacePathsEqual(e.path, f.path))) {
+          if (!merged.any(
+            (e) => workspacePathsEqual(
+              e.path,
+              f.path,
+              usesPosixPaths: _usesPosixPaths,
+            ),
+          )) {
             merged.add(f);
           }
         }
@@ -675,17 +711,30 @@ class WorkspaceCatalog {
     WorkspaceFolder folder,
   ) async {
     if (folder.path.trim().isEmpty) return deriveSnapshot();
-    if (workspacePathsEqual(folder.path, workspace.firstFolderPath)) {
+    if (workspacePathsEqual(
+      folder.path,
+      workspace.firstFolderPath,
+      usesPosixPaths: _usesPosixPaths,
+    )) {
       return deriveSnapshot();
     }
     if (workspace.folders.any(
-      (f) => workspacePathsEqual(f.path, folder.path),
+      (f) => workspacePathsEqual(
+        f.path,
+        folder.path,
+        usesPosixPaths: _usesPosixPaths,
+      ),
     )) {
       return deriveSnapshot();
     }
     final updated = await repo.updateWorkspaceFolders(workspace.workspaceId, [
       ...workspace.folders,
-      folder.copyWith(path: normalizeWorkspacePath(folder.path)),
+      folder.copyWith(
+        path: normalizeWorkspacePath(
+          folder.path,
+          usesPosixPaths: _usesPosixPaths,
+        ),
+      ),
     ]);
     if (updated != null) {
       patchWorkspace(updated);

@@ -16,6 +16,7 @@ import '../../support/fake_terminal_session.dart';
 import '../../support/fixed_resume_lifecycle_service.dart';
 import '../../support/post_frame_test_harness.dart';
 import '../../support/test_runtime_context.dart';
+import '../../support/in_memory_filesystem.dart';
 
 /// Materializes a roster from the built-in expert catalog (test-local snapshot).
 TeamProfile _withBuiltinMembers(TeamProfile team) =>
@@ -42,7 +43,7 @@ void main() {
       );
       final tmp = await Directory.systemTemp.createTemp('disconnect_member_');
       addTearDown(() => deleteTempDirBestEffort(tmp));
-      final repo = SessionRepository(rootDir: tmp.path);
+      final repo = SessionRepository(rootDir: tmp.path, storage: testHomeStorage, );
       final workspace = await repo.createWorkspace([
         const WorkspaceFolder(path: '/work'),
       ]);
@@ -69,9 +70,11 @@ void main() {
                 FakeTerminalSession(
                   executable: executable,
                   scrollbackLines: scrollbackLines,
+                                     fs: InMemoryFilesystem(),
                 ),
         postFrameScheduler: postFrame.scheduler,
         lifecycleService: FixedResumeLifecycleService(resume: false),
+                               storage: testHomeStorage,
       );
       addTearDown(() => tearDownChatCubitWithSessionPersist(cubit, postFrame));
       await cubit.loadWorkspaceData(repo);
@@ -103,8 +106,8 @@ void main() {
       final tabB = cubit.tabStore.openTabBySessionId(sessionB.sessionId)!;
       final memberId = team.members.first.id;
 
-      final shellA = FakeTerminalSession(executable: 'bin-a');
-      final shellB = FakeTerminalSession(executable: 'bin-b');
+      final shellA = FakeTerminalSession(executable: 'bin-a', fs: InMemoryFilesystem(), );
+      final shellB = FakeTerminalSession(executable: 'bin-b', fs: InMemoryFilesystem(), );
       shellA.connect(workingDirectory: '/work');
       shellB.connect(workingDirectory: '/work');
       tabA.memberShells[memberId] = shellA;

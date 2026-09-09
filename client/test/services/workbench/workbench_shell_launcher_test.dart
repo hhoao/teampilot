@@ -22,12 +22,12 @@ import 'package:teampilot/services/workbench/workbench_shell_launcher.dart';
 
 import '../../support/post_frame_test_harness.dart';
 import '../../support/rust_lib_test_init.dart';
+import '../../support/in_memory_filesystem.dart';
 
 TerminalSession _testSession() => TerminalSession(
   executable: '/bin/bash',
   validateLaunch: false,
-  parseExecutable: false,
-);
+  parseExecutable: false, fs: InMemoryFilesystem(), );
 
 class _FakeSessionOps extends WorkspaceTerminalSessionOps {
   @override
@@ -66,11 +66,11 @@ class _StubConnector extends WorkspaceShellConnector {
   _StubConnector()
     : super(
         transportFactory: TerminalTransportFactory(
-          sshProfileRepository: SshProfileRepository(),
+          sshProfileRepository: SshProfileRepository(storage: testHomeStorage),
           sshCredentialStore: InMemorySshCredentialStore(),
           sshKnownHostRepository: InMemorySshKnownHostRepository(),
         ),
-        sshProfileRepository: SshProfileRepository(),
+        sshProfileRepository: SshProfileRepository(storage: testHomeStorage),
       );
 }
 

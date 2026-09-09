@@ -5,7 +5,6 @@ import 'package:sqlite3/sqlite3.dart';
 
 import '../../../../models/app_provider_config.dart';
 import '../../../io/filesystem.dart';
-import '../../../storage/app_storage.dart';
 import '../../codex/provider/codex_cc_switch_import.dart';
 import 'claude_live_import.dart';
 import 'claude_settings_parser.dart';
@@ -63,12 +62,12 @@ class ClaudeCcSwitchImport {
   const ClaudeCcSwitchImport();
 
   Future<ClaudeRuntimeSnapshot> loadRuntime({
-    Filesystem? fs,
-    String? home,
+    required Filesystem fs,
+    required String home,
   }) async {
-    final store = fs ?? AppStorage.fs;
+    final store = fs;
     final ctx = store.pathContext;
-    final homeDir = (home ?? AppStorage.home).trim();
+    final homeDir = home.trim();
     if (homeDir.isEmpty) {
       return const ClaudeRuntimeSnapshot();
     }
@@ -91,12 +90,12 @@ class ClaudeCcSwitchImport {
   }
 
   Future<List<CcSwitchClaudeCatalogRow>> loadCatalog({
-    Filesystem? fs,
-    String? home,
+    required Filesystem fs,
+    required String home,
   }) async {
-    final store = fs ?? AppStorage.fs;
+    final store = fs;
     final ctx = store.pathContext;
-    final homeDir = (home ?? AppStorage.home).trim();
+    final homeDir = home.trim();
     if (homeDir.isEmpty) return const [];
 
     final dbPath = ctx.join(homeDir, '.cc-switch', 'cc-switch.db');

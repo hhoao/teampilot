@@ -1,16 +1,20 @@
 import '../../models/skill_pack.dart';
 import '../../models/skill_pack_instruction.dart';
+import '../storage/home_storage.dart';
 import 'git_registry_skill_pack_source.dart';
 import 'skill_pack_source.dart';
 
 /// Built-in / in-app skill pack catalog with a lazily loaded remote registry.
 class SkillPackRegistry {
-  SkillPackRegistry({List<SkillPack>? packs, SkillPackSource? remote})
-    : _byId = {
+  SkillPackRegistry({
+    required HomeStorage storage,
+    List<SkillPack>? packs,
+    SkillPackSource? remote,
+  }) : _byId = {
         for (final p in packs ?? builtinSkillPacks())
           if (p.id.isNotEmpty) p.id: p,
       },
-      _remote = remote ?? GitRegistrySkillPackSource();
+      _remote = remote ?? GitRegistrySkillPackSource(storage: storage);
 
   final Map<String, SkillPack> _byId;
   final SkillPackSource _remote;

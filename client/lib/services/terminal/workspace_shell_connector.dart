@@ -11,6 +11,8 @@ import '../session/launch_command_builder.dart';
 import '../cli/flashskyai/remote_flashskyai_command_builder.dart';
 import '../ssh/ssh_member_session.dart';
 import '../workspace_dnd/runtime_target.dart' as dnd;
+import '../io/filesystem.dart';
+import '../io/local_filesystem.dart';
 import 'ssh_pty_transport.dart';
 import 'terminal_session.dart';
 import 'terminal_transport_factory.dart';
@@ -25,17 +27,20 @@ class WorkspaceShellConnector {
     bool Function()? sshUseLoginShell,
     RuntimeTarget Function()? homeTarget,
     SshProfile? Function(String profileId)? profileById,
+    Filesystem? fs,
   }) : _transportFactory = transportFactory,
        _sshProfileRepository = sshProfileRepository,
        _sshUseLoginShell = sshUseLoginShell ?? (() => true),
        _homeTarget = homeTarget ?? RuntimeTarget.local,
-       _profileById = profileById;
+       _profileById = profileById,
+       _fs = fs ?? LocalFilesystem();
 
   final TerminalTransportFactory _transportFactory;
   final SshProfileRepository _sshProfileRepository;
   final bool Function() _sshUseLoginShell;
   final RuntimeTarget Function() _homeTarget;
   final SshProfile? Function(String profileId)? _profileById;
+  final Filesystem _fs;
 
   RuntimeTarget Function() get homeTarget => _homeTarget;
 
@@ -59,6 +64,7 @@ class WorkspaceShellConnector {
     }
     return TerminalSession(
       executable: _posixShellSpec(spec).executable,
+      fs: _fs,
       validateLaunch: false,
       parseExecutable: false,
       runtimeTarget: _dndTargetFor(target),
@@ -141,6 +147,7 @@ class WorkspaceShellConnector {
     late final TerminalSession shell;
     shell = TerminalSession(
       executable: _remoteShell,
+      fs: _fs,
       validateLaunch: false,
       usesRemoteTransport: true,
       parseExecutable: false,

@@ -19,6 +19,7 @@ import '../models/app_session.dart';
 import '../models/workspace.dart';
 import '../models/workspace_launch_context.dart';
 import '../models/team_config.dart';
+import '../services/storage/app_storage.dart';
 import '../repositories/session_repository.dart';
 import '../repositories/ssh_profile_repository.dart';
 import '../services/storage/home_target_controller.dart';
@@ -122,6 +123,7 @@ class _ChatWorkbenchState extends State<ChatWorkbench> {
         launchContext: WorkspaceLaunchContext(
           session: appSession,
           workspace: workspace,
+          usesPosixPaths: AppStorage.tolerantHome.usesPosixPaths,
         ),
         memberId: historyMemberId,
         toolsScope: WorkspaceToolsScope.maybeOf(context),

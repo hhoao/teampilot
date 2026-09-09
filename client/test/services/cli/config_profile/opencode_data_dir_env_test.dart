@@ -8,6 +8,7 @@ import 'package:teampilot/services/cli/registry/capabilities/provider_capability
 import 'package:teampilot/services/io/local_filesystem.dart';
 import 'package:teampilot/services/provider/config_profile_service.dart';
 import 'package:teampilot/services/storage/runtime_layout.dart';
+import '../../../support/in_memory_filesystem.dart';
 
 void main() {
   Future<SessionHomeContribution> contribute(
@@ -30,8 +31,11 @@ void main() {
         basePath: base.path,
         fs: fs,
         layout: RuntimeLayout(teampilotRoot: base.path, fs: fs),
+                                            storage: fakeHomeStorage(),
       );
-      const capability = OpencodeProviderCapability();
+      final capability = OpencodeProviderCapability(
+        storage: fakeHomeStorage(),
+      );
       const member = TeamMemberConfig(
         id: 'solo',
         name: 'Solo',

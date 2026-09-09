@@ -23,6 +23,7 @@ void main() {
       paths: home.paths,
     );
     final lifecycle = SessionLifecycleService(
+      storage: fakeHomeStorage(),
       storageRootsResolver: () async => home,
       workContextResolver: (target) async =>
           target.kind == RuntimeKind.ssh ? remote : home,
@@ -55,6 +56,7 @@ void main() {
       primaryPath: '/repo/wt',
       additionalPaths: const ['/local', '/repo/extra'],
       context: home,
+      usesPosixPaths: false,
     );
 
     expect(roots, ['/repo/wt', '/repo/extra']);
@@ -73,6 +75,7 @@ void main() {
       primaryPath: '/local',
       additionalPaths: const [],
       context: home,
+      usesPosixPaths: false,
     );
 
     expect(remoteRoots, ['/remote']);
@@ -89,6 +92,7 @@ void main() {
       paths: home.paths,
     );
     final lifecycle = SessionLifecycleService(
+      storage: fakeHomeStorage(),
       storageRootsResolver: () async => home,
       workContextResolver: (target) async =>
           target.kind == RuntimeKind.ssh ? remote : home,
@@ -118,6 +122,7 @@ void main() {
   test('re-sync keeps tools visible while resolving', () async {
     final home = testRuntimeContext('/home');
     final lifecycle = SessionLifecycleService(
+      storage: fakeHomeStorage(),
       storageRootsResolver: () async => home,
       workContextResolver: (_) async => home,
     );
@@ -153,6 +158,7 @@ void main() {
     () async {
       final home = testRuntimeContext('/home');
       final lifecycle = SessionLifecycleService(
+        storage: fakeHomeStorage(),
         storageRootsResolver: () async => home,
         workContextResolver: (target) async {
           if (target.kind == RuntimeKind.ssh) {
@@ -189,6 +195,7 @@ void main() {
       final home = testRuntimeContext('/home');
       final remoteReady = Completer<void>();
       final lifecycle = SessionLifecycleService(
+        storage: fakeHomeStorage(),
         storageRootsResolver: () async => home,
         workContextResolver: (target) async {
           if (target.kind == RuntimeKind.ssh) {
@@ -238,6 +245,7 @@ void main() {
     () async {
       final home = testRuntimeContext('/home');
       final lifecycle = SessionLifecycleService(
+        storage: fakeHomeStorage(),
         storageRootsResolver: () async => home,
         workContextResolver: (target) async {
           if (target.kind == RuntimeKind.ssh) {
@@ -269,6 +277,7 @@ void main() {
 
   test('sync ends resolving when every target fails', () async {
     final lifecycle = SessionLifecycleService(
+      storage: fakeHomeStorage(),
       storageRootsResolver: () async => testRuntimeContext('/home'),
       workContextResolver: (_) async {
         throw StateError('all unreachable');

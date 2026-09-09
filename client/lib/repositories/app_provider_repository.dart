@@ -1,7 +1,6 @@
 import 'dart:convert';
 
 import '../models/app_provider_config.dart';
-import '../services/storage/app_storage.dart';
 import '../services/cli/claude/provider/claude_provider_credentials_service.dart';
 import '../services/cli/codex/provider/codex_provider_credentials_service.dart';
 import '../services/cli/cursor/provider/cursor_provider_credentials_service.dart';
@@ -23,33 +22,27 @@ class AppProviderRepository {
     String? basePath,
     ToolConfigGenerator? generator,
     Filesystem? fs,
-    HomeStorage? storage,
+    required HomeStorage storage,
     ClaudeProviderCredentialsService? claudeCredentialsService,
     CursorProviderCredentialsService? cursorCredentialsService,
     CodexProviderCredentialsService? codexCredentialsService,
   }) : _basePathOverride = basePath,
        _generator = generator ?? const ToolConfigGenerator(),
        _fsOverride = fs,
-       _storageOverride = storage,
+       _storage = storage,
        _claudeCredentialsServiceOverride = claudeCredentialsService,
        _cursorCredentialsServiceOverride = cursorCredentialsService,
        _codexCredentialsServiceOverride = codexCredentialsService;
 
   final String? _basePathOverride;
   final Filesystem? _fsOverride;
-  final HomeStorage? _storageOverride;
+  final HomeStorage _storage;
   final ToolConfigGenerator _generator;
   final ClaudeProviderCredentialsService? _claudeCredentialsServiceOverride;
   final CursorProviderCredentialsService? _cursorCredentialsServiceOverride;
   final CodexProviderCredentialsService? _codexCredentialsServiceOverride;
 
   final Map<String, List<AppProviderConfig>> _diskCache = {};
-
-  /// Shim-era fallback: CLI/provider-domain construction sites (batches 7–8)
-  /// and the pre-6-C test harness construct this repository without
-  /// [storage]; defer to the bound home context exactly like the AppStorage
-  /// shim did. Removed once those batches thread [storage].
-  HomeStorage get _storage => _storageOverride ?? AppStorage.tolerantHome;
 
   String _diskCacheKey(CliTool cli) => '$_basePath:${cli.value}';
 
@@ -67,15 +60,27 @@ class AppProviderRepository {
 
   ClaudeProviderCredentialsService get _claudeCredentials =>
       _claudeCredentialsServiceOverride ??
-      ClaudeProviderCredentialsService(fs: _fs, basePath: _basePath);
+      ClaudeProviderCredentialsService(
+        storage: _storage,
+        fs: _fs,
+        basePath: _basePath,
+      );
 
   CursorProviderCredentialsService get _cursorCredentials =>
       _cursorCredentialsServiceOverride ??
-      CursorProviderCredentialsService(fs: _fs, basePath: _basePath);
+      CursorProviderCredentialsService(
+        storage: _storage,
+        fs: _fs,
+        basePath: _basePath,
+      );
 
   CodexProviderCredentialsService get _codexCredentials =>
       _codexCredentialsServiceOverride ??
-      CodexProviderCredentialsService(fs: _fs, basePath: _basePath);
+      CodexProviderCredentialsService(
+        storage: _storage,
+        fs: _fs,
+        basePath: _basePath,
+      );
 
   String providersPath(CliTool cli) =>
       _fs.pathContext.join(_basePath, 'providers', cli.value, 'providers.json');

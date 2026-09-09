@@ -38,6 +38,7 @@ void main() {
       ],
       workspaceShells: const [],
       worktrees: worktrees,
+      usesPosixPaths: false,
     );
 
     expect(bindings, hasLength(1));
@@ -61,6 +62,7 @@ void main() {
         ),
       ],
       worktrees: worktrees,
+      usesPosixPaths: false,
     );
 
     expect(bindings, hasLength(1));
@@ -104,6 +106,7 @@ void main() {
       ],
       workspaceShells: const [],
       worktrees: worktrees,
+      usesPosixPaths: false,
     );
 
     final bySession = {for (final b in bindings) b.sessionId!: b};
@@ -149,6 +152,7 @@ void main() {
         ),
       ],
       worktrees: worktrees,
+      usesPosixPaths: false,
     );
 
     expect(bindings.map((b) => b.groupKey).toSet(), {'main'});
@@ -183,6 +187,7 @@ void main() {
         ),
       ],
       worktrees: worktrees,
+      usesPosixPaths: false,
     );
 
     final byEntry = {for (final b in bindings) b.shellEntryId!: b};
@@ -228,6 +233,7 @@ void main() {
       ],
       workspaceShells: const [],
       worktrees: worktrees,
+      usesPosixPaths: false,
     );
 
     final bySession = {for (final b in bindings) b.sessionId!: b};
@@ -250,6 +256,7 @@ void main() {
         ),
       ],
       worktrees: worktrees,
+      usesPosixPaths: false,
     );
 
     expect(bindings.single.title, 'Bottom Shell');
@@ -295,6 +302,7 @@ void main() {
         ),
       ],
       worktrees: worktrees,
+      usesPosixPaths: false,
     );
 
     expect(bindings.map((b) => b.key).toSet(), {'chat:s2:m1', 'shell:ws1:e2'});
@@ -341,6 +349,7 @@ void main() {
         ),
       ],
       worktrees: worktrees,
+      usesPosixPaths: false,
     );
 
     expect(bindings, hasLength(2));
@@ -373,6 +382,7 @@ void main() {
         ),
       ],
       worktrees: worktrees,
+      usesPosixPaths: false,
     );
 
     final byKey = {for (final b in bindings) b.key: b};
@@ -397,6 +407,7 @@ void main() {
       ],
       workspaceShells: const [],
       worktrees: worktrees,
+      usesPosixPaths: false,
     );
 
     expect(bindings, hasLength(1));

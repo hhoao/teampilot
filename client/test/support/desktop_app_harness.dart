@@ -128,8 +128,11 @@ Future<void> setUpDesktopAppHarness() async {
   );
   desktopHarnessSessionRepo = SessionRepository(
     rootDir: desktopHarnessSessionRepoDir.path,
+    storage: fakeHomeStorage(),
   );
-  desktopHarnessHomeWorkspaceUiCache = HomeWorkspaceUiCache();
+  desktopHarnessHomeWorkspaceUiCache = HomeWorkspaceUiCache(
+    storage: fakeHomeStorage(),
+  );
 }
 
 void tearDownDesktopAppHarness() {
@@ -183,6 +186,7 @@ Widget buildTestApp({
       ChatCubit(
         executableResolver: desktopHarnessExecutable,
         automationRepository: testAutomationRepository(),
+        storage: fakeHomeStorage(),
       );
   final workbenchCubit = WorkbenchCubit();
   // Mirror the production bridge wiring (app_shell.dart) so session opens feed
@@ -194,7 +198,8 @@ Widget buildTestApp({
   workbenchCubit.port = chatBridge;
   chat.workbenchPort = chatBridge;
   chat.onSessionTabOpened = chatBridge.onSessionTabOpened;
-  final presence = memberPresenceCubit ?? MemberPresenceCubit();
+  final presence =
+      memberPresenceCubit ?? MemberPresenceCubit(storage: fakeHomeStorage());
   chat.bindPresenceCubit(presence);
   final managedProviderFs = InMemoryFilesystem();
   final managedUsageRepository = ManagedProviderUsageRepository(
@@ -261,7 +266,9 @@ Widget buildTestApp({
     manifests: builtInExtensionManifests(),
   );
   final workspaceRunRegistry = WorkspaceRunRegistry(
+    storage: fakeHomeStorage(),
     platformFactory: WorkspaceRunPlatformFactory(
+      storage: fakeHomeStorage(),
       extensionRepository: extensionRepo,
       projectConfigRepository: WorkspaceProjectConfigRepository(
         storage: fakeHomeStorage(filesystem: InMemoryFilesystem()),
@@ -273,7 +280,7 @@ Widget buildTestApp({
       ),
     ),
   );
-  final notificationCubit = NotificationCubit();
+  final notificationCubit = NotificationCubit(storage: fakeHomeStorage());
   final progressActivityCubit = ProgressActivityCubit(
     historyRecorder: notificationCubit,
   );
@@ -305,15 +312,19 @@ Widget buildTestApp({
       RepositoryProvider<WorkspaceShellConnector>(
         create: (_) => WorkspaceShellConnector(
           transportFactory: TerminalTransportFactory(
-            sshProfileRepository: SshProfileRepository(),
+            sshProfileRepository: SshProfileRepository(
+              storage: fakeHomeStorage(),
+            ),
             sshCredentialStore: sshCredentialStore,
             sshKnownHostRepository: sshKnownHosts,
           ),
-          sshProfileRepository: SshProfileRepository(),
+          sshProfileRepository: SshProfileRepository(
+            storage: fakeHomeStorage(),
+          ),
         ),
       ),
       RepositoryProvider<SshProfileRepository>(
-        create: (_) => SshProfileRepository(),
+        create: (_) => SshProfileRepository(storage: fakeHomeStorage()),
       ),
       RepositoryProvider<SshProfileConnectionCoordinator>.value(
         value: sshCoordinator,
@@ -323,7 +334,7 @@ Widget buildTestApp({
         create: (_) => WorkspaceFileTreeStore(),
       ),
       RepositoryProvider<WorkspaceWorktreeRegistry>(
-        create: (_) => WorkspaceWorktreeRegistry(),
+        create: (_) => WorkspaceWorktreeRegistry(storage: testHomeStorage),
       ),
       RepositoryProvider<WorkspaceToolsScopeRegistry>(
         create: (_) => WorkspaceToolsScopeRegistry(),
@@ -382,7 +393,9 @@ Widget buildTestApp({
         BlocProvider(
           create: (_) => ShortcutCubit(storage: fakeHomeStorage()),
         ),
-        BlocProvider(create: (_) => EditorCubit(fs: LocalFilesystem())),
+        BlocProvider(
+          create: (_) => EditorCubit(storage: fakeHomeStorage()),
+        ),
         BlocProvider.value(value: workbenchCubit),
         BlocProvider.value(
           value: extensionCubit ??
@@ -413,7 +426,8 @@ Widget buildTestApp({
             return PluginCubit(
               repository: repo,
               installService: repo.install,
-              repoService: PluginRepoService(),
+              repoService: PluginRepoService(storage: fakeHomeStorage()),
+              storage: fakeHomeStorage(),
             );
           },
         ),
@@ -470,7 +484,11 @@ Future<void> pumpDesktopApp(
       (await tester.runAsync(() async {
         final dir = await Directory.systemTemp.createTemp('providers_widget_');
         return AppProviderCubit(
-          repository: AppProviderRepository(basePath: dir.path),
+          storage: fakeHomeStorage(),
+          repository: AppProviderRepository(
+            basePath: dir.path,
+            storage: fakeHomeStorage(),
+          ),
         );
       }))!;
   await tester.pumpWidget(
@@ -518,7 +536,10 @@ Future<LaunchProfileCubit> createTeamCubit({TeamLauncher? launcher}) async {
     executableResolver: desktopHarnessExecutable,
     launcher: launcher ?? (_, __) async {},
     appDataBasePath: appData.path,
-    configProfileService: ConfigProfileService(basePath: appData.path),
+    configProfileService: ConfigProfileService(
+      basePath: appData.path,
+      storage: fakeHomeStorage(),
+    ),
   )..attachCatalog(ExpertHubCatalog(source: _BuiltinExpertSource()));
   await cubit.load();
   return cubit;

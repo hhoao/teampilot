@@ -40,6 +40,7 @@ void main() {
       folders: s.folders,
       createdAt: 0,
     ),
+                                                                            usesPosixPaths: false,
   );
 
   List<AiMessage> transcript(String marker, {bool withFinal = false}) => [

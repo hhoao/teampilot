@@ -9,6 +9,7 @@ import 'package:teampilot/services/cli/registry/cli_tool_registry.dart';
 import 'package:teampilot/services/cli/registry/cli_tool_registry_scope.dart';
 import 'package:teampilot/widgets/app_provider/app_provider_form_sheet.dart';
 import 'package:shared_ui/shared_ui.dart';
+import '../../support/in_memory_filesystem.dart';
 
 void main() {
   testWidgets('claude provider form shows advanced options', (tester) async {
@@ -56,7 +57,7 @@ void main() {
         home: CliToolRegistryScope(
           registry: CliToolRegistry.builtIn(),
           child: BlocProvider(
-            create: (_) => AppProviderCubit(),
+            create: (_) => AppProviderCubit(storage: fakeHomeStorage()),
             child: StatefulBuilder(
               builder: (context, setState) => Scaffold(
                 body: SizedBox(
@@ -153,7 +154,7 @@ Widget _wrapForm(Widget form) {
     home: CliToolRegistryScope(
       registry: CliToolRegistry.builtIn(),
       child: BlocProvider(
-        create: (_) => AppProviderCubit(),
+        create: (_) => AppProviderCubit(storage: fakeHomeStorage()),
         child: Scaffold(body: SizedBox(width: 1000, height: 1400, child: form)),
       ),
     ),

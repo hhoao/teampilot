@@ -89,7 +89,7 @@ void main() {
   });
 
   Widget wrap(AiFeatureSettingsCubit aiSettingsCubit, Widget child) {
-    final editor = EditorCubit();
+    final editor = EditorCubit(storage: testHomeStorage);
     final workbench = WorkbenchCubit();
     final floating = FloatingWorkspaceCubit()..setActiveWorkspace('ws-test');
     addTearDown(editor.close);

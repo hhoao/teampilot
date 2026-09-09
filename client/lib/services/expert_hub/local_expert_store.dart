@@ -4,7 +4,6 @@ import 'package:uuid/uuid.dart';
 
 import '../../models/discoverable_member.dart';
 import '../io/filesystem.dart';
-import '../storage/app_storage.dart';
 
 /// Persists local expert records under `member-hub/local-templates/{key}.json`.
 ///
@@ -19,22 +18,18 @@ import '../storage/app_storage.dart';
 /// or use a store that was populated via [loadAll] / [save] / [putClone].
 class LocalExpertStore {
   LocalExpertStore({
-    Filesystem? fs,
-    String? dirOverride,
+    required Filesystem fs,
+    required String dirOverride,
     String Function()? uuidFactory,
-  }) : _fsOverride = fs,
-       _dirOverride = dirOverride,
+  }) : _fs = fs,
+       _dir = dirOverride,
        _uuidFactory = uuidFactory ?? (() => const Uuid().v4());
 
   static const localKeyPrefix = 'local/';
 
-  final Filesystem? _fsOverride;
-  final String? _dirOverride;
+  final Filesystem _fs;
+  final String _dir;
   final String Function() _uuidFactory;
-
-  Filesystem get _fs => _fsOverride ?? AppStorage.fs;
-  String get _dir =>
-      _dirOverride ?? AppStorage.paths.memberHubLocalTemplatesDir;
 
   /// In-memory index of known record keys (clones + user-created), so the
   /// shadow lookup in [getByKey] avoids disk I/O for absent keys.

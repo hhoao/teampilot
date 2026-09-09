@@ -11,6 +11,7 @@ import '../../models/mcp_catalog_listing.dart';
 import '../../models/mcp_server.dart';
 import '../../services/app/platform_utils.dart';
 import '../../services/mcp/mcp_listing_install_service.dart';
+import '../../services/storage/app_storage.dart';
 import '../../utils/ui/app_keys.dart';
 import '../../widgets/settings/workspace_section_host.dart';
 import '../../widgets/settings/workspace_section_nav_item.dart';
@@ -86,9 +87,12 @@ class _McpManagementPageState extends State<McpManagementPage> {
   void initState() {
     super.initState();
     _discoveryCubit = McpDiscoveryCubit(
+      storage: AppStorage.tolerantHome,
       discoverySettings: context.read<DiscoverySettingsCubit>(),
     );
-    _listingInstall = McpListingInstallService();
+    _listingInstall = McpListingInstallService(
+      storage: AppStorage.tolerantHome,
+    );
     context.read<McpCubit>().loadAll();
   }
 

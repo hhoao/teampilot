@@ -19,7 +19,6 @@ import '../services/session/session_team_counter.dart';
 import '../services/session/team_session_member_plan.dart';
 import '../services/cli/registry/capabilities/ai_history_capability.dart';
 import '../services/cli/registry/cli_tool_registry.dart';
-import '../services/storage/app_storage.dart';
 import '../services/storage/home_storage.dart';
 import '../services/storage/work_target_canonicalizer.dart';
 import '../models/workspace_icon_ref.dart';
@@ -39,22 +38,18 @@ import 'workspace_index_store.dart';
 class SessionRepository {
   SessionRepository({
     String? rootDir,
-    HomeStorage? storage,
+    required HomeStorage storage,
     SessionLifecycleService? lifecycleService,
   }) : _rootOverride = rootDir,
-       _storageOverride = storage,
+       _storage = storage,
        _lifecycleService = lifecycleService;
 
   final String? _rootOverride;
-  final HomeStorage? _storageOverride;
+  final HomeStorage _storage;
   final SessionLifecycleService? _lifecycleService;
 
-  /// Shim-era fallback: the pre-6-C test harness constructs this repository
-  /// without [storage]; defer to the bound home context exactly like the
-  /// AppStorage shim did (tolerant when nothing is bound — `rootDir`-only
-  /// tests never read it). Production (app_shell) always injects [storage].
-  /// Removed in 6-C together with the harness migration.
-  HomeStorage get _storage => _storageOverride ?? AppStorage.tolerantHome;
+  /// Home storage plane this repository reads and writes through.
+  HomeStorage get storage => _storage;
 
   final _sessionFileLocks = LockPool();
   static final Map<String, List<Workspace>> _workspacesIndexByRoot = {};
@@ -367,7 +362,12 @@ class SessionRepository {
     final normalized = [
       for (final f in folders)
         if (f.path.trim().isNotEmpty)
-          f.copyWith(path: normalizeWorkspacePath(f.path)),
+          f.copyWith(
+            path: normalizeWorkspacePath(
+              f.path,
+              usesPosixPaths: _storage.usesPosixPaths,
+            ),
+          ),
     ];
     if (normalized.isEmpty) {
       throw ArgumentError('createWorkspace requires at least one folder path');
@@ -476,7 +476,12 @@ class SessionRepository {
     final nextFolders = [
       for (final f in folders)
         if (f.path.trim().isNotEmpty)
-          f.copyWith(path: normalizeWorkspacePath(f.path)),
+          f.copyWith(
+            path: normalizeWorkspacePath(
+              f.path,
+              usesPosixPaths: _storage.usesPosixPaths,
+            ),
+          ),
     ];
     final previousTopology = workspaceTopologyOf(existing.folders);
     final previousTargetIds = workspaceTargetIds(existing.folders);
@@ -678,6 +683,7 @@ class SessionRepository {
     await WorkspaceTrustProvisioner(
       layout: layout,
       fs: fs.fs,
+      storage: _storage,
     ).provisionWorkspace(
       workspaceId: workspace.workspaceId,
       directories: workspace.folderPaths,
@@ -833,6 +839,7 @@ class SessionRepository {
       folders: Workspace.foldersForPrimaryPath(
         workspace.folders,
         workingDirectory ?? '',
+        usesPosixPaths: _storage.usesPosixPaths,
         defaultTargetId: _lifecycleService == null
             ? null
             : WorkTargetCanonicalizer.defaultFolderTargetId(

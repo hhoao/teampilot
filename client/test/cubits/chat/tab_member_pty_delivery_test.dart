@@ -18,6 +18,7 @@ import 'package:teampilot/services/terminal/terminal_input_command_queue.dart';
 
 import '../../integration/support/connected_recording_shell.dart';
 import '../../support/rust_lib_test_init.dart';
+import '../../support/in_memory_filesystem.dart';
 
 void main() {
   setUpAll(initRustLibForTests);
@@ -384,7 +385,7 @@ final class _DeliveryHarness {
       store: store ?? MemoryPromptDeliveryStore(),
       commands: pty,
     );
-    final tabStore = ChatTabStore();
+    final tabStore = ChatTabStore(storage: fakeHomeStorage());
     final delivery = TabMemberPtyDelivery(
       tabStore: tabStore,
       shellFactory: ChatSessionShellFactory(executableResolver: () => 'unused'),
@@ -457,7 +458,7 @@ final class _DeliveryHarness {
   factory _DeliveryHarness.shellLess({
     required void Function(String sessionId, String memberId) onAfterTurnLatched,
   }) {
-    final tabStore = ChatTabStore();
+    final tabStore = ChatTabStore(storage: fakeHomeStorage());
     final delivery = TabMemberPtyDelivery(
       tabStore: tabStore,
       shellFactory: ChatSessionShellFactory(executableResolver: () => 'unused'),
@@ -475,7 +476,7 @@ final class _DeliveryHarness {
   }
 
   static ChatTabStore _connectedTabStore(ConnectedRecordingShell shell) {
-    final tabStore = ChatTabStore();
+    final tabStore = ChatTabStore(storage: fakeHomeStorage());
     final tab = ChatTab(
       info: const ChatTabInfo(id: 's', title: 'S', subtitle: ''),
       cliTeamName: '',

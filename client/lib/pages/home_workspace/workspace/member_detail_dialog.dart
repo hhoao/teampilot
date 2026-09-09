@@ -14,6 +14,7 @@ import '../../../models/workspace_launch_context.dart';
 import '../../../pages/home_workspace/workspace/member_config_directory_opener.dart';
 import '../../../services/cli/member_config/member_config_detail.dart';
 import '../../../services/session/session_lifecycle_service.dart';
+import '../../../services/storage/home_storage.dart';
 import '../../../services/storage/runtime_context.dart';
 import '../home_workspace_content_header.dart';
 import 'package:shared_ui/shared_ui.dart';
@@ -32,7 +33,8 @@ Future<void> showMemberDetailDialog(
     context: context,
     builder: (_) => BlocProvider(
       create: (_) {
-        final cubit = MemberConfigCubit();
+        final storage = context.read<HomeStorage>();
+        final cubit = MemberConfigCubit(storage: storage);
         unawaited(() async {
           RuntimeContext? workContext;
           if (lifecycle != null && session != null) {
@@ -44,6 +46,7 @@ Future<void> showMemberDetailDialog(
                   folders: session.folders,
                   createdAt: 0,
                 ),
+                usesPosixPaths: storage.usesPosixPaths,
               ),
               memberId: member.id,
             );

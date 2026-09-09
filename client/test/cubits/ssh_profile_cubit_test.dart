@@ -55,7 +55,10 @@ void main() {
     );
     addTearDown(() => temp.delete(recursive: true));
 
-    final repository = SshProfileRepository(rootDir: temp.path);
+    final repository = SshProfileRepository(
+      rootDir: temp.path,
+      storage: fakeHomeStorage(),
+    );
     await repository.save(
       const SshProfile(
         id: 'p1',
@@ -100,7 +103,10 @@ void main() {
     );
     addTearDown(() => temp.delete(recursive: true));
 
-    final repository = SshProfileRepository(rootDir: temp.path);
+    final repository = SshProfileRepository(
+      rootDir: temp.path,
+      storage: fakeHomeStorage(),
+    );
     await repository.save(
       const SshProfile(
         id: 'p1',
@@ -235,7 +241,10 @@ void main() {
         host: 'one.example.com',
         username: 'alice',
       );
-      final repository = SshProfileRepository(rootDir: temp.path);
+      final repository = SshProfileRepository(
+      rootDir: temp.path,
+      storage: fakeHomeStorage(),
+    );
       await repository.save(profile);
 
       final cache = RemoteCliPathCache(
@@ -283,7 +292,10 @@ void main() {
         host: 'one.example.com',
         username: 'alice',
       );
-      final repository = SshProfileRepository(rootDir: temp.path);
+      final repository = SshProfileRepository(
+      rootDir: temp.path,
+      storage: fakeHomeStorage(),
+    );
       await repository.save(profile);
 
       final cache = RemoteCliPathCache(
@@ -328,7 +340,10 @@ void main() {
       );
       addTearDown(() => temp.delete(recursive: true));
 
-      final repository = SshProfileRepository(rootDir: temp.path);
+      final repository = SshProfileRepository(
+      rootDir: temp.path,
+      storage: fakeHomeStorage(),
+    );
       await repository.save(
         const SshProfile(
           id: 'p1',
@@ -406,7 +421,10 @@ void main() {
       );
       addTearDown(() => temp.delete(recursive: true));
 
-      final repository = SshProfileRepository(rootDir: temp.path);
+      final repository = SshProfileRepository(
+      rootDir: temp.path,
+      storage: fakeHomeStorage(),
+    );
       await repository.save(
         const SshProfile(
           id: 'p1',
@@ -472,7 +490,10 @@ void main() {
       );
       addTearDown(() => temp.delete(recursive: true));
 
-      final repository = SshProfileRepository(rootDir: temp.path);
+      final repository = SshProfileRepository(
+      rootDir: temp.path,
+      storage: fakeHomeStorage(),
+    );
       await repository.save(
         const SshProfile(
           id: 'p1',
@@ -510,9 +531,9 @@ void main() {
         AppPathsBootstrapper.resetForTesting();
       });
 
-      bindTestNativeHome(rootA.path);
+      final storage = bindTestNativeHome(rootA.path);
 
-      final repository = SshProfileRepository();
+      final repository = SshProfileRepository(storage: storage);
       final cubit = SshProfileCubit(
         profileRepository: repository,
         credentialStore: InMemorySshCredentialStore(),
@@ -530,7 +551,7 @@ void main() {
       await cubit.load();
       expect(cubit.state.profiles, hasLength(1));
 
-      bindTestNativeHome(rootB.path);
+      await storage.swap(testRuntimeContext(rootB.path));
 
       await cubit.load();
       expect(cubit.state.profiles, isEmpty);
@@ -544,7 +565,10 @@ void main() {
     addTearDown(() => temp.delete(recursive: true));
 
     const profileId = 'p1';
-    final repository = SshProfileRepository(rootDir: temp.path);
+    final repository = SshProfileRepository(
+      rootDir: temp.path,
+      storage: fakeHomeStorage(),
+    );
     await repository.save(
       const SshProfile(
         id: profileId,
@@ -582,7 +606,10 @@ void main() {
     );
     addTearDown(() => temp.delete(recursive: true));
 
-    final repository = SshProfileRepository(rootDir: temp.path);
+    final repository = SshProfileRepository(
+      rootDir: temp.path,
+      storage: fakeHomeStorage(),
+    );
     await repository.save(
       const SshProfile(
         id: 'p1',

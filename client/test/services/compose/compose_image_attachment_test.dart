@@ -33,6 +33,7 @@ void main() {
         final ref = await resolveComposeImageReference(
           absolutePath: image,
           workspaceRoot: root,
+                                                        usesPosixPaths: false,
         );
 
         expect(ref, '@docs/screenshot.png');
@@ -50,6 +51,7 @@ void main() {
       final ref = await resolveComposeImageReference(
         absolutePath: external,
         workspaceRoot: root,
+                                                      usesPosixPaths: false,
       );
 
       expect(ref, '@${external.replaceAll(r'\', '/')}');
@@ -64,6 +66,7 @@ void main() {
       final ref = await resolveComposeImageReference(
         absolutePath: '/tmp/note.txt',
         workspaceRoot: '/repo',
+                                                      usesPosixPaths: false,
       );
 
       expect(ref, isNull);
@@ -83,6 +86,7 @@ void main() {
         workspaceRoot: workspaceRoot,
         filesystem: fs,
         idGenerator: () => 'clip-1',
+                                                 usesPosixPaths: false,
       );
 
       expect(ref, '@/docs/TeamPilot/Attachments/clip-1.png');

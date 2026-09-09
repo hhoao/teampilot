@@ -82,7 +82,7 @@ void main() {
           body: MultiRepositoryProvider(
             providers: [
               RepositoryProvider<SessionRepository>.value(
-                value: SessionRepository(),
+                value: SessionRepository(storage: testHomeStorage),
               ),
             ],
             child: MultiBlocProvider(

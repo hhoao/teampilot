@@ -4,8 +4,10 @@ import 'package:flutter/foundation.dart';
 
 import '../../models/runtime_target.dart';
 import '../io/filesystem.dart';
+import '../io/local_filesystem.dart';
 import 'app_storage.dart';
 import 'runtime_context.dart';
+import '../../utils/logging/logger.dart';
 
 /// A home-plane swap: the context published so far, the context published by
 /// the swap, and the generation it produced.
@@ -109,6 +111,34 @@ class HomeStorage {
         cwd: cwd,
         appDataRoot: paths.basePath,
         paths: paths,
+      ),
+    );
+  }
+
+  /// Native fallback for default-constructed CLI capabilities (registry built
+  /// without a `CliBootstrap`, i.e. tests): mirrors the pre-migration tolerant
+  /// `AppStorage`-unbound behavior instead of throwing on the launch path.
+  /// Production always threads a real storage via `CliBootstrap.storage`;
+  /// reaching this in production is a wiring bug — logged once per process.
+  static HomeStorage nativeDefault() => _nativeDefault ??= _buildDefault();
+
+  static HomeStorage? _nativeDefault;
+
+  static HomeStorage _buildDefault() {
+    appLogger.w(
+      '[storage] HomeStorage.nativeDefault() used — a CLI capability was '
+      'constructed without storage; production wiring should thread '
+      'CliBootstrap.storage.',
+    );
+    final root = AppStorage.unboundNativeRoot;
+    return HomeStorage(
+      RuntimeContext(
+        target: RuntimeTarget.local(),
+        filesystem: LocalFilesystem(),
+        home: root,
+        cwd: root,
+        appDataRoot: root,
+        paths: AppPaths(root),
       ),
     );
   }

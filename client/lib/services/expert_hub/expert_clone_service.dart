@@ -25,10 +25,10 @@ class ExpertCloneOutcome {
 class ExpertCloneService {
   ExpertCloneService({
     required CompositeExpertHubSource source,
-    LocalExpertStore? store,
+    required LocalExpertStore store,
     ExpertHubCatalog? catalog,
   }) : _source = source,
-       _store = store ?? LocalExpertStore(),
+       _store = store,
        _catalog = catalog;
 
   final CompositeExpertHubSource _source;

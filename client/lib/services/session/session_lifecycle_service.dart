@@ -21,7 +21,8 @@ import '../../models/workspace_launch_context.dart';
 import '../team_bus/member_bus_idle_endpoint.dart';
 import '../agent_status/member_agent_status_endpoint.dart';
 import '../resource/resource_provider_set.dart';
-import '../storage/app_storage.dart';
+import '../storage/app_paths.dart';
+import '../storage/home_storage.dart';
 import '../storage/runtime_layout.dart';
 import '../storage/work_target_canonicalizer.dart';
 import '../cli/registry/capabilities/ai_history_capability.dart';
@@ -62,6 +63,7 @@ class SessionLifecycleService {
   }();
 
   SessionLifecycleService({
+    required HomeStorage storage,
     String? appDataBasePath,
     ConfigProfileService? configProfileService,
     StorageRootsResolver? storageRootsResolver,
@@ -79,7 +81,8 @@ class SessionLifecycleService {
     RuntimeTarget Function()? homeTarget,
     String Function(CliTool cli)? cliExecutableResolver,
     SessionResourceProviderResolver? resourceProviderResolver,
-  }) : _appDataBasePath = appDataBasePath,
+  }) : _storage = storage,
+       _appDataBasePath = appDataBasePath,
        _configProfileService = configProfileService,
        _storageRootsResolver = storageRootsResolver,
        _workContextResolver = workContextResolver,
@@ -96,9 +99,13 @@ class SessionLifecycleService {
        _cliExecutableResolver = cliExecutableResolver,
        _resourceProviderResolver = resourceProviderResolver;
 
+  final HomeStorage _storage;
   final String? _appDataBasePath;
   final ConfigProfileService? _configProfileService;
   final StorageRootsResolver? _storageRootsResolver;
+
+  /// Home control-plane storage this service reads/authorizes against.
+  HomeStorage get storage => _storage;
 
   /// P2: resolves the work-plane context for a workspace's target (local/wsl/
   /// ssh). When set, launch resolves runtime trees on the workspace's machine;
@@ -174,14 +181,9 @@ class SessionLifecycleService {
   }
 
   Future<ConfigBundle> _projectBundle(String workspaceId) async {
-    // Shim-era fallback: bare constructions (ChatCubit default lifecycle,
-    // tests) reach the bound home context like the AppStorage shim did;
-    // removed in 6-C together with the harness migration.
     final repo =
         _projectConfigRepository ??
-        WorkspaceProjectConfigRepository(
-          storage: AppStorage.tolerantHome,
-        );
+        WorkspaceProjectConfigRepository(storage: _storage);
     return (await repo.load(workspaceId)).bundle;
   }
 
@@ -477,7 +479,7 @@ class SessionLifecycleService {
       member: launchMember.isValid ? launchMember : null,
       workingDirectory: workingDirectory.isNotEmpty
           ? workingDirectory
-          : AppStorage.cwd,
+          : _storage.cwd,
       additionalDirectories: additionalDirectories,
       team: team,
       runtimeBundle: runtimeBundle,
@@ -556,6 +558,7 @@ class SessionLifecycleService {
     final memberWork = session.workDirsForMember(
       isSimple ? null : (memberBinding?.rosterMemberId ?? launchMember.id),
       folders: workspace.folders,
+      usesPosixPaths: _storage.usesPosixPaths,
     );
     // Open/replay the durable runtime state before any input is enabled.
     await _restoreAgentRuntimeFor(sessionId);
@@ -632,7 +635,7 @@ class SessionLifecycleService {
           ? resourceProvidersForSession(session, ResourceProviderSet.empty)
           : ResourceProviderSet.empty,
     );
-    final packStore = SkillPackInstallStore();
+    final packStore = SkillPackInstallStore(storage: _storage);
     final packPaths = await packStore.pathExportsForSkills(
       plan.runtimeBundle.skillIds,
     );
@@ -734,6 +737,7 @@ class SessionLifecycleService {
     final memberWork = session.workDirsForMember(
       isSimple ? null : (memberBinding?.rosterMemberId ?? launchMember.id),
       folders: workspace.folders,
+      usesPosixPaths: _storage.usesPosixPaths,
     );
     // Open/replay the durable runtime state before any input is enabled.
     await _restoreAgentRuntimeFor(sessionId);
@@ -780,7 +784,7 @@ class SessionLifecycleService {
             profileId: teamId,
             tools: tools,
           );
-    final packStore = SkillPackInstallStore();
+    final packStore = SkillPackInstallStore(storage: _storage);
     final packPaths = await packStore.pathExportsForSkills(
       plan.runtimeBundle.skillIds,
     );
@@ -862,12 +866,14 @@ class SessionLifecycleService {
     final catalog = WorkspaceLaunchContext(
       session: session,
       workspace: workspace,
+      usesPosixPaths: _storage.usesPosixPaths,
     ).folderCatalog;
     final memberDirs = session.workDirsForMember(
       plan.mode == SessionRuntimeMode.simple
           ? null
           : (memberBinding?.rosterMemberId ?? member.id),
       folders: catalog,
+      usesPosixPaths: _storage.usesPosixPaths,
     );
     final cwd = workingDirectory.isNotEmpty
         ? workingDirectory
@@ -952,10 +958,15 @@ class SessionLifecycleService {
     final catalog = WorkspaceLaunchContext(
       session: session,
       workspace: workspace,
+      usesPosixPaths: _storage.usesPosixPaths,
     ).folderCatalog;
 
     if (runtimePlan.mode == SessionRuntimeMode.simple) {
-      final personalDirs = session.workDirsForMember(null, folders: catalog);
+      final personalDirs = session.workDirsForMember(
+        null,
+        folders: catalog,
+        usesPosixPaths: _storage.usesPosixPaths,
+      );
       final launchTeam = TeamProfile(
         id: workspace.workspaceId,
         name: plan.cliTeamName.trim().isNotEmpty
@@ -988,7 +999,11 @@ class SessionLifecycleService {
         'prepareShellLaunch requires team for team SessionRuntimePlan',
       );
     }
-    final memberDirs = session.workDirsForMember(member.id, folders: catalog);
+    final memberDirs = session.workDirsForMember(
+      member.id,
+      folders: catalog,
+      usesPosixPaths: _storage.usesPosixPaths,
+    );
     final launchTeam = team.copyWith(
       skillIds: runtimePlan.runtimeBundle.skillIds,
       pluginIds: runtimePlan.runtimeBundle.pluginIds,
@@ -1060,11 +1075,13 @@ class SessionLifecycleService {
         ? WorkspaceLaunchContext(
             session: session,
             workspace: workspace,
+            usesPosixPaths: _storage.usesPosixPaths,
           ).folderCatalog
         : session.folders;
     final memberDirs = session.workDirsForMember(
       memberBinding?.rosterMemberId ?? member.id,
       folders: catalog,
+      usesPosixPaths: _storage.usesPosixPaths,
     );
     final transcriptRoots = roots.layout.transcriptSearchRoots(
       workspaceId: session.workspaceId.trim(),
@@ -1179,6 +1196,7 @@ class SessionLifecycleService {
             WorkspaceLaunchContext(
               session: session,
               workspace: resolvedWorkspace,
+              usesPosixPaths: _storage.usesPosixPaths,
             ),
             rosterId,
           )) {
@@ -1399,6 +1417,7 @@ class SessionLifecycleService {
     return ConfigProfileService(
       basePath: roots.teampilotRoot,
       home: roots.home,
+      storage: _storage,
       fs: roots.fs,
       layout: roots.layout,
       catalog: catalog,
@@ -1421,7 +1440,7 @@ class SessionLifecycleService {
   Future<RuntimeContext> _resolveCatalogRoots() async {
     final resolver = _catalogContextResolver ?? _storageRootsResolver;
     if (resolver != null) return resolver();
-    return _localRoots(_appDataBasePath ?? AppStorage.paths.basePath);
+    return _localRoots(_appDataBasePath ?? _storage.paths.basePath);
   }
 
   /// Test seam: resolve the work-plane context for [session] (and optionally a
@@ -1452,6 +1471,7 @@ class SessionLifecycleService {
                       folders: session.folders,
                       createdAt: 0,
                     ),
+                usesPosixPaths: _storage.usesPosixPaths,
               ),
               memberId,
             )
@@ -1460,7 +1480,7 @@ class SessionLifecycleService {
     }
     final resolver = _storageRootsResolver;
     if (resolver != null) return resolver();
-    return _localRoots(_appDataBasePath ?? AppStorage.paths.basePath);
+    return _localRoots(_appDataBasePath ?? _storage.paths.basePath);
   }
 
   RuntimeTarget _runtimeTargetFromId(String id) =>
@@ -1508,7 +1528,7 @@ class SessionLifecycleService {
     final fallback = _storageRootsResolver;
     if (fallback != null) return fallback();
     return Future.value(
-      _localRoots(_appDataBasePath ?? AppStorage.paths.basePath),
+      _localRoots(_appDataBasePath ?? _storage.paths.basePath),
     );
   }
 
@@ -1540,7 +1560,11 @@ class SessionLifecycleService {
   ({String workingDirectory, List<String> addDirs}) memberWorkDirs(
     WorkspaceLaunchContext ctx,
     String memberId,
-  ) => ctx.session.workDirsForMember(memberId, folders: ctx.folderCatalog);
+  ) => ctx.session.workDirsForMember(
+    memberId,
+    folders: ctx.folderCatalog,
+    usesPosixPaths: _storage.usesPosixPaths,
+  );
 
   RuntimeContext _localRoots(String basePath) {
     return RuntimeContext(

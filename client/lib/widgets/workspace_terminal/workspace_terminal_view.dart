@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_alacritty/flutter_alacritty.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
+import '../../services/storage/home_storage.dart';
 import '../../services/terminal/terminal_uri_opener.dart';
 import '../../services/terminal/workspace_terminal_registry.dart';
 import '../../services/terminal/workspace_terminal_title_resolver.dart';
@@ -51,10 +52,12 @@ class WorkspaceTerminalView extends StatelessWidget {
           onPtyResize: entry.session.onTerminalPtyResize,
           onLinkActivate: (uri) {
             final opener = context.read<WorkbenchEditorOpener>();
+            final storage = context.read<HomeStorage>();
             unawaited(
               TerminalUriOpener.open(
                 uri,
                 workingDirectory: entry.cwd,
+                fs: storage.fs,
                 openInEditor: (path) => opener.openFile(workspaceId, path),
               ),
             );

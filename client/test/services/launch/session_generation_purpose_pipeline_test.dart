@@ -36,6 +36,8 @@ import 'package:teampilot/services/team_bus/remote/remote_bus_binding_resolver.d
 import 'package:teampilot/services/terminal/terminal_session.dart';
 import 'package:teampilot/services/team/team_config_launch_validator.dart';
 
+import '../../support/in_memory_filesystem.dart';
+
 class _CreateSessionCall {
   const _CreateSessionCall({
     required this.fixedSessionId,
@@ -107,14 +109,19 @@ class SessionGenerationHarness {
   SessionGenerationHarness(Workspace workspace)
     : workspace = workspace,
       repository = _CapturingSessionRepository(),
-      tabStore = ChatTabStore()..setActiveWorkspaceId(workspace.workspaceId) {
+      tabStore =
+          ChatTabStore(storage: fakeHomeStorage())
+            ..setActiveWorkspaceId(workspace.workspaceId) {
     host = _CapturingHost(
       ChatState(workspaces: [workspace]),
       tabStore: tabStore,
-      lifecycle: SessionLifecycleService(loadPresets: () => const []),
+      lifecycle: SessionLifecycleService(
+        storage: fakeHomeStorage(),
+        loadPresets: () => const [],
+      ),
       sessionRepository: repository,
     );
-    service = SessionLaunchService(host);
+    service = SessionLaunchService(host, storage: fakeHomeStorage());
   }
 
   final Workspace workspace;
@@ -145,13 +152,17 @@ class _CapturingHost implements SessionLaunchHost {
     SessionRepository? sessionRepository,
   }) : tabStore = tabStore,
        lifecycle =
-           lifecycle ?? SessionLifecycleService(loadPresets: () => const []),
+           lifecycle ??
+           SessionLifecycleService(
+             storage: fakeHomeStorage(),
+             loadPresets: () => const [],
+           ),
        sessionRepository = sessionRepository,
        shellFactory = ChatSessionShellFactory(
          executableResolver: () => 'true',
          terminalSessionFactory:
              ({required executable, scrollbackLines = 10000}) =>
-                 TerminalSession(executable: executable),
+                 TerminalSession(executable: executable, fs: InMemoryFilesystem()),
          defaultTargetResolver: RuntimeTarget.local,
        ),
        sessionRuntime = TabSessionRuntimeCoordinator(
@@ -235,7 +246,9 @@ class _CapturingHost implements SessionLaunchHost {
       );
 
   @override
-  final SessionDataStore dataStore = SessionDataStore();
+  final SessionDataStore dataStore = SessionDataStore(
+      storage: fakeHomeStorage(),
+    );
 
   @override
   void emitSnapshot(ChatDataSnapshot snapshot) {

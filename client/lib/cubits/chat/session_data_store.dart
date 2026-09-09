@@ -11,6 +11,7 @@ import '../../repositories/launch_profile_repository.dart';
 import '../../repositories/session_repository.dart';
 import '../../services/catalog/workspace_catalog.dart' show ChatDataSnapshot;
 import '../../services/session/session_member_cli_locks.dart';
+import '../../services/storage/home_storage.dart';
 import '../../utils/logging/logger.dart';
 import '../../utils/workspace/workspace_path_utils.dart';
 
@@ -19,6 +20,10 @@ export '../../services/catalog/workspace_catalog.dart' show ChatDataSnapshot;
 /// Owns team-scope flags and wraps SessionRepository. Returns snapshots;
 /// ChatCubit emits them (single emit owner).
 class SessionDataStore {
+  SessionDataStore({required HomeStorage storage}) : _storage = storage;
+
+  final HomeStorage _storage;
+
   bool _scopeSessionsToSelectedTeam = false;
   String? _selectedTeamId;
   final Set<String> _hydratedSessionWorkspaceIds = {};
@@ -382,17 +387,30 @@ class SessionDataStore {
     WorkspaceFolder folder,
   ) async {
     if (folder.path.trim().isEmpty) return null;
-    if (workspacePathsEqual(folder.path, workspace.firstFolderPath)) {
+    if (workspacePathsEqual(
+      folder.path,
+      workspace.firstFolderPath,
+      usesPosixPaths: _storage.usesPosixPaths,
+    )) {
       return null;
     }
     if (workspace.folders.any(
-      (f) => workspacePathsEqual(f.path, folder.path),
+      (f) => workspacePathsEqual(
+        f.path,
+        folder.path,
+        usesPosixPaths: _storage.usesPosixPaths,
+      ),
     )) {
       return null;
     }
     final updated = await repo.updateWorkspaceFolders(workspace.workspaceId, [
       ...workspace.folders,
-      folder.copyWith(path: normalizeWorkspacePath(folder.path)),
+      folder.copyWith(
+        path: normalizeWorkspacePath(
+          folder.path,
+          usesPosixPaths: _storage.usesPosixPaths,
+        ),
+      ),
     ]);
     if (updated == null) return null;
     return snapshotWithWorkspace(base, updated);

@@ -7,7 +7,7 @@ import '../../models/plugin_external_source.dart';
 import '../../utils/async_keyed_coalescer.dart';
 import '../../utils/logging/logger.dart';
 import '../../utils/repo_disk_sync_coalescer.dart';
-import '../storage/app_storage.dart';
+import '../storage/app_paths.dart';
 import '../io/filesystem.dart';
 import 'plugin_exceptions.dart';
 import 'plugin_repo_git_service.dart';
@@ -15,29 +15,27 @@ import '../skill/skill_fetch_service.dart';
 
 /// Disk-backed plugin marketplace cache.
 ///
-/// On-disk layout under [AppPaths.pluginMarketplaceCacheDir]:
+/// On-disk layout under the marketplace cache dir for [teampilotRoot]
+/// (`AppPaths.pluginMarketplaceCacheDirForTeampilotRoot`):
 ///   `{owner}/{name}@{branch}/` — extracted repo contents.
 ///   `.teampilot-plugin-cache-meta.json` — last synced branch + commit sha.
 class PluginRepoDiskCacheService {
   PluginRepoDiskCacheService({
+    required Filesystem filesystem,
+    required String teampilotRoot,
     PluginRepoGitService? gitService,
-    Filesystem? filesystem,
     AsyncKeyedCoalescer? coalescer,
-    String? teampilotRoot,
   }) : _git = gitService ?? PluginRepoGitService(),
-       _fsOverride = filesystem,
+       _fs = filesystem,
        _coalescer = coalescer ?? RepoDiskSyncCoalescer.instance,
        _teampilotRoot = teampilotRoot;
 
   final PluginRepoGitService _git;
-  final Filesystem? _fsOverride;
+  final Filesystem _fs;
   final AsyncKeyedCoalescer _coalescer;
 
-  /// Explicit cache root override (root dir passed into [AppPaths]); when null
-  /// the global [AppStorage] context is used.
-  final String? _teampilotRoot;
-
-  Filesystem get _fs => _fsOverride ?? AppStorage.fs;
+  /// Root dir passed into [AppPaths] for cache path resolution.
+  final String _teampilotRoot;
 
   static const _metaFileName = '.teampilot-plugin-cache-meta.json';
 
@@ -45,14 +43,9 @@ class PluginRepoDiskCacheService {
       '${m.owner}/${m.name}@${m.branch}';
 
   Future<String> _cacheRoot() async {
-    final root = _teampilotRoot?.trim();
-    if (root != null && root.isNotEmpty) {
-      return AppPaths.pluginMarketplaceCacheDirForTeampilotRoot(root);
-    }
-    if (AppStorage.isInstalled) {
-      return AppStorage.context.pluginMarketplaceCacheDir;
-    }
-    return AppStorage.paths.pluginMarketplaceCacheDir;
+    return AppPaths.pluginMarketplaceCacheDirForTeampilotRoot(
+      _teampilotRoot.trim(),
+    );
   }
 
   Future<String> _repoDirPath(PluginMarketplace m) async {

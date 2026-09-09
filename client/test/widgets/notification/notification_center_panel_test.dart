@@ -68,6 +68,7 @@ void main() {
         fs: fs,
         storePath: '/notifications.json',
       ),
+                                                 storage: fakeHomeStorage(filesystem: fs),
     );
     addTearDown(notificationCubit.close);
 
@@ -116,6 +117,7 @@ void main() {
         fs: InMemoryFilesystem(),
         storePath: '/notifications.json',
       ),
+                                                 storage: fakeHomeStorage(),
     );
     addTearDown(notificationCubit.close);
 

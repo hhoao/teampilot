@@ -27,6 +27,7 @@ import 'package:teampilot/services/cli/registry/cli_tool_registry_scope.dart';
 import 'package:teampilot/services/commands/command_bus.dart';
 import 'package:teampilot/services/compose/compose_draft_cache.dart';
 import 'package:teampilot/services/compose/compose_draft_store.dart';
+import 'package:teampilot/services/storage/home_storage.dart';
 import 'package:teampilot/theme/app_theme.dart';
 import 'package:teampilot/utils/ui/app_keys.dart';
 
@@ -75,7 +76,7 @@ class _LandingDrafts {
   }
 
   Future<void> clear(String workspaceId) async {
-    await cache.clearLandingPersistent(workspaceId);
+    await cache.clearLandingPersistent(workspaceId, storage: testHomeStorage, );
     cache.clearLandingDraft(workspaceId);
   }
 }
@@ -128,6 +129,7 @@ void main() {
         MultiRepositoryProvider(
           providers: [
             RepositoryProvider<CommandBus>(create: (_) => CommandBus()),
+            RepositoryProvider<HomeStorage>.value(value: testHomeStorage),
           ],
           child: MultiBlocProvider(
             providers: [
@@ -375,7 +377,8 @@ Widget _pane({
         ),
         BlocProvider<SkillCubit>.value(value: skillCubit),
         BlocProvider<WorktreeCubit>.value(value: worktreeCubit),
-        BlocProvider<WorkbenchCubit>.value(value: workbench),
+        RepositoryProvider<HomeStorage>.value(value: testHomeStorage),
+      BlocProvider<WorkbenchCubit>.value(value: workbench),
       ],
       child: CliToolRegistryScope(
         registry: CliToolRegistry.builtIn(),
@@ -389,8 +392,12 @@ Widget _pane({
               body: WorkspaceChatPane(
                 workspace: workspace,
                 submitter: submitter,
-                landingDraftPersister: (_, _) async {},
-                landingDraftCleaner: drafts.clear,
+                landingDraftPersister:
+                    (_, _, {required HomeStorage storage}) async {},
+                landingDraftCleaner:
+                    (String workspaceId, {required HomeStorage storage}) async {
+                      await drafts.clear(workspaceId);
+                    },
               ),
             ),
           ),

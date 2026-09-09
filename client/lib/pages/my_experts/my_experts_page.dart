@@ -12,7 +12,9 @@ import '../../l10n/l10n_extensions.dart';
 import '../../models/discoverable_member.dart';
 import '../../models/team_config.dart';
 import '../../services/expert_hub/expert_hub_catalog.dart';
+import '../../services/expert_hub/local_expert_store.dart';
 import '../../services/expert_hub/local_expert_writer.dart';
+import '../../services/storage/app_storage.dart';
 import '../../services/expert_hub/member_roster_service.dart';
 import '../../services/hub_publish/hub_publish_record_store.dart';
 import '../../widgets/settings/workspace_pane_header.dart';
@@ -49,7 +51,15 @@ class MyExpertsPage extends StatefulWidget {
 
 class _MyExpertsPageState extends State<MyExpertsPage> {
   late final LocalExpertWriter _writer =
-      widget.writer ?? LocalExpertWriter(catalog: _readCatalog());
+      widget.writer ??
+      LocalExpertWriter(
+        catalog: _readCatalog(),
+        store: LocalExpertStore(
+          fs: AppStorage.tolerantHome.fs,
+          dirOverride:
+              AppStorage.tolerantHome.paths.memberHubLocalTemplatesDir,
+        ),
+      );
 
   ExpertHubCatalog? _readCatalog() {
     try {
@@ -59,7 +69,8 @@ class _MyExpertsPageState extends State<MyExpertsPage> {
     }
   }
   late final HubPublishRecordStore _records =
-      widget.records ?? HubPublishRecordStore();
+      widget.records ??
+      HubPublishRecordStore(storage: AppStorage.tolerantHome);
   List<DiscoverableMember> _members = const [];
   var _loading = true;
   String? _highlightMemberKey;

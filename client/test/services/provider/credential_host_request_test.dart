@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/services/provider/credential_host_request.dart';
 import 'package:teampilot/services/storage/runtime_context.dart';
+import '../../support/in_memory_filesystem.dart';
 
 void main() {
   group('CredentialHostRequest', () {
@@ -10,14 +11,14 @@ void main() {
       const preferencePath = '/usr/bin/claude';
 
       expect(
-        CredentialHostRequest.hostExecutable(preferencePath),
+        CredentialHostRequest.hostExecutable(preferencePath, storage: fakeHomeStorage(), ),
         '/usr/bin/claude',
       );
       expect(
-        CredentialHostRequest.hostArguments(preferencePath, const ['auth', 'login']),
+        CredentialHostRequest.hostArguments(preferencePath, const ['auth', 'login'], storage: fakeHomeStorage(), ),
         ['auth', 'login'],
       );
-      expect(CredentialHostRequest.usePosixCliPaths(preferencePath), isFalse);
+      expect(CredentialHostRequest.usePosixCliPaths(preferencePath, storage: fakeHomeStorage(), ), isFalse);
     });
 
     test(
@@ -30,6 +31,7 @@ void main() {
           CredentialHostRequest.hostExecutable(
             preferencePath,
             modeOverride: StorageBackendMode.native,
+                                                storage: fakeHomeStorage(),
           ),
           'wsl.exe',
         );
@@ -38,6 +40,7 @@ void main() {
             preferencePath,
             subcommand,
             modeOverride: StorageBackendMode.native,
+                                               storage: fakeHomeStorage(),
           ),
           ['-d', 'Ubuntu', '/usr/bin/claude', ...subcommand],
         );
@@ -45,6 +48,7 @@ void main() {
           CredentialHostRequest.usePosixCliPaths(
             preferencePath,
             modeOverride: StorageBackendMode.native,
+                                                  storage: fakeHomeStorage(),
           ),
           isTrue,
         );
@@ -62,6 +66,7 @@ void main() {
           CredentialHostRequest.hostExecutable(
             preferencePath,
             modeOverride: StorageBackendMode.wsl,
+                                                storage: fakeHomeStorage(),
           ),
           '/usr/bin/claude',
         );
@@ -70,6 +75,7 @@ void main() {
             preferencePath,
             subcommand,
             modeOverride: StorageBackendMode.wsl,
+                                               storage: fakeHomeStorage(),
           ),
           subcommand,
         );
@@ -77,6 +83,7 @@ void main() {
           CredentialHostRequest.usePosixCliPaths(
             preferencePath,
             modeOverride: StorageBackendMode.wsl,
+                                                  storage: fakeHomeStorage(),
           ),
           isTrue,
         );

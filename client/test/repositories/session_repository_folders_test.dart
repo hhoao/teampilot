@@ -5,11 +5,13 @@ import 'package:teampilot/models/team_config.dart';
 import 'package:teampilot/models/workspace_folder.dart';
 import 'package:teampilot/repositories/session_repository.dart';
 
+import '../support/in_memory_filesystem.dart';
+
 void main() {
   test('createWorkspace persists local folders and always creates new', () async {
     final tmp = await Directory.systemTemp.createTemp('fs_repo_folders_');
     addTearDown(() => tmp.deleteSync(recursive: true));
-    final repo = SessionRepository(rootDir: tmp.path);
+    final repo = SessionRepository(rootDir: tmp.path, storage: fakeHomeStorage());
 
     final ws = await repo.createWorkspace([
       const WorkspaceFolder(path: '/main'),
@@ -35,7 +37,7 @@ void main() {
     () async {
       final tmp = await Directory.systemTemp.createTemp('fs_repo_folders_');
       addTearDown(() => tmp.deleteSync(recursive: true));
-      final repo = SessionRepository(rootDir: tmp.path);
+      final repo = SessionRepository(rootDir: tmp.path, storage: fakeHomeStorage());
 
       final ws = await repo.createWorkspace([
         const WorkspaceFolder(path: '/main'),
@@ -59,7 +61,7 @@ void main() {
   test('updateWorkspaceFolders rewrites folders', () async {
     final tmp = await Directory.systemTemp.createTemp('fs_repo_folders_');
     addTearDown(() => tmp.deleteSync(recursive: true));
-    final repo = SessionRepository(rootDir: tmp.path);
+    final repo = SessionRepository(rootDir: tmp.path, storage: fakeHomeStorage());
 
     final ws = await repo.createWorkspace([
       const WorkspaceFolder(path: '/main'),
@@ -79,7 +81,7 @@ void main() {
     () async {
       final tmp = await Directory.systemTemp.createTemp('fs_repo_folders_');
       addTearDown(() => tmp.deleteSync(recursive: true));
-      final repo = SessionRepository(rootDir: tmp.path);
+      final repo = SessionRepository(rootDir: tmp.path, storage: fakeHomeStorage());
 
       final ws = await repo.createWorkspace([
         const WorkspaceFolder(path: '/main'),
@@ -99,7 +101,7 @@ void main() {
   test('createSession allows personal launch on mixed workspace', () async {
     final tmp = await Directory.systemTemp.createTemp('fs_repo_folders_');
     addTearDown(() => tmp.deleteSync(recursive: true));
-    final repo = SessionRepository(rootDir: tmp.path);
+    final repo = SessionRepository(rootDir: tmp.path, storage: fakeHomeStorage());
 
     final ws = await repo.createWorkspace([
       const WorkspaceFolder(path: '/local'),
@@ -119,7 +121,7 @@ void main() {
     () async {
       final tmp = await Directory.systemTemp.createTemp('fs_repo_folders_');
       addTearDown(() => tmp.deleteSync(recursive: true));
-      final repo = SessionRepository(rootDir: tmp.path);
+      final repo = SessionRepository(rootDir: tmp.path, storage: fakeHomeStorage());
 
       final ws = await repo.createWorkspace([
         const WorkspaceFolder(path: '/local'),
@@ -152,7 +154,7 @@ void main() {
     () async {
       final tmp = await Directory.systemTemp.createTemp('fs_repo_folders_');
       addTearDown(() => tmp.deleteSync(recursive: true));
-      final repo = SessionRepository(rootDir: tmp.path);
+      final repo = SessionRepository(rootDir: tmp.path, storage: fakeHomeStorage());
 
       final ws = await repo.createWorkspace([
         const WorkspaceFolder(path: '/local'),
@@ -183,7 +185,7 @@ void main() {
   test('createSession snapshots workspace team targets immutably', () async {
     final tmp = await Directory.systemTemp.createTemp('fs_repo_folders_');
     addTearDown(() => tmp.deleteSync(recursive: true));
-    final repo = SessionRepository(rootDir: tmp.path);
+    final repo = SessionRepository(rootDir: tmp.path, storage: fakeHomeStorage());
 
     final ws = await repo.createWorkspace([
       const WorkspaceFolder(path: '/local'),
@@ -217,7 +219,7 @@ void main() {
   test('updateWorkspaceFolders replaces folders wholesale', () async {
     final tmp = await Directory.systemTemp.createTemp('fs_repo_folders_');
     addTearDown(() => tmp.deleteSync(recursive: true));
-    final repo = SessionRepository(rootDir: tmp.path);
+    final repo = SessionRepository(rootDir: tmp.path, storage: fakeHomeStorage());
 
     final ws = await repo.createWorkspace([
       const WorkspaceFolder(path: '/main'),
@@ -234,7 +236,7 @@ void main() {
   test('mixed topology via per-folder targets', () async {
     final tmp = await Directory.systemTemp.createTemp('fs_repo_folders_');
     addTearDown(() => tmp.deleteSync(recursive: true));
-    final repo = SessionRepository(rootDir: tmp.path);
+    final repo = SessionRepository(rootDir: tmp.path, storage: fakeHomeStorage());
 
     final ws = await repo.createWorkspace([
       const WorkspaceFolder(path: '/local'),
@@ -249,7 +251,7 @@ void main() {
     () async {
       final tmp = await Directory.systemTemp.createTemp('fs_repo_folders_');
       addTearDown(() => tmp.deleteSync(recursive: true));
-      final repo = SessionRepository(rootDir: tmp.path);
+      final repo = SessionRepository(rootDir: tmp.path, storage: fakeHomeStorage());
 
       final ws = await repo.createWorkspace([
         const WorkspaceFolder(path: '/local'),
@@ -281,7 +283,7 @@ void main() {
     () async {
       final tmp = await Directory.systemTemp.createTemp('fs_repo_folders_');
       addTearDown(() => tmp.deleteSync(recursive: true));
-      final repo = SessionRepository(rootDir: tmp.path);
+      final repo = SessionRepository(rootDir: tmp.path, storage: fakeHomeStorage());
 
       final ws = await repo.createWorkspace([
         const WorkspaceFolder(path: '/local'),
@@ -312,7 +314,7 @@ void main() {
     () async {
       final tmp = await Directory.systemTemp.createTemp('fs_repo_folders_');
       addTearDown(() => tmp.deleteSync(recursive: true));
-      final repo = SessionRepository(rootDir: tmp.path);
+      final repo = SessionRepository(rootDir: tmp.path, storage: fakeHomeStorage());
 
       final ws = await repo.createWorkspace([
         const WorkspaceFolder(path: '/local'),
@@ -337,7 +339,7 @@ void main() {
     () async {
       final tmp = await Directory.systemTemp.createTemp('fs_repo_folders_');
       addTearDown(() => tmp.deleteSync(recursive: true));
-      final repo = SessionRepository(rootDir: tmp.path);
+      final repo = SessionRepository(rootDir: tmp.path, storage: fakeHomeStorage());
 
       final ws = await repo.createWorkspace([
         const WorkspaceFolder(path: '/local'),

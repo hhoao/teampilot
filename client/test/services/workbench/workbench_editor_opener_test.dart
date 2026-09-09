@@ -18,7 +18,7 @@ void main() {
   test('openFile activates floating tab before disk read finishes', () async {
     final gate = Completer<void>();
     final fs = _GatedFilesystem(gate)..files['/repo/a.txt'] = 'hello';
-    final editor = EditorCubit(fs: fs);
+    final editor = EditorCubit(fs: fs, storage: fakeHomeStorage());
     final workbench = WorkbenchCubit();
     final floating = FloatingWorkspaceCubit();
     addTearDown(editor.close);
@@ -58,7 +58,7 @@ void main() {
   test('openFile opens editor and floating tab, not workbench file tab', () async {
     final gate = Completer<void>();
     final fs = _GatedFilesystem(gate)..files['/repo/a.txt'] = 'hello';
-    final editor = EditorCubit(fs: fs);
+    final editor = EditorCubit(fs: fs, storage: fakeHomeStorage());
     final workbench = WorkbenchCubit();
     final floating = FloatingWorkspaceCubit();
     addTearDown(editor.close);
@@ -97,7 +97,7 @@ void main() {
     final gate = Completer<void>();
     final fs = _GatedFilesystem(gate)
       ..byteFiles['/repo/a.png'] = const [1, 2, 3];
-    final editor = EditorCubit(fs: fs);
+    final editor = EditorCubit(fs: fs, storage: fakeHomeStorage());
     final workbench = WorkbenchCubit();
     final floating = FloatingWorkspaceCubit();
     addTearDown(editor.close);
@@ -133,7 +133,7 @@ void main() {
   });
 
   test('openDiff opens floating diff tab by default', () {
-    final editor = EditorCubit();
+    final editor = EditorCubit(storage: fakeHomeStorage());
     final workbench = WorkbenchCubit();
     final floating = FloatingWorkspaceCubit();
     addTearDown(editor.close);
@@ -167,7 +167,7 @@ void main() {
   });
 
   test('openDiff creates center workbench tab when filePreviewHost is center', () {
-    final editor = EditorCubit();
+    final editor = EditorCubit(storage: fakeHomeStorage());
     final workbench = WorkbenchCubit();
     final floating = FloatingWorkspaceCubit();
     addTearDown(editor.close);
@@ -199,7 +199,7 @@ void main() {
   test('openFile opens center workbench tab when filePreviewHost is center', () async {
     final gate = Completer<void>();
     final fs = _GatedFilesystem(gate)..files['/repo/a.txt'] = 'hello';
-    final editor = EditorCubit(fs: fs);
+    final editor = EditorCubit(fs: fs, storage: fakeHomeStorage());
     final workbench = WorkbenchCubit();
     final floating = FloatingWorkspaceCubit();
     addTearDown(editor.close);
@@ -228,7 +228,7 @@ void main() {
       final fs = InMemoryFilesystem()
         ..files['/repo/a.txt'] = 'hello'
         ..files['/repo/b.txt'] = 'world';
-      final editor = EditorCubit(fs: fs);
+      final editor = EditorCubit(fs: fs, storage: fakeHomeStorage());
       final workbench = WorkbenchCubit();
       final floating = FloatingWorkspaceCubit();
       addTearDown(editor.close);
@@ -261,7 +261,7 @@ void main() {
       final fs = InMemoryFilesystem()
         ..files['/repo/a.txt'] = 'hello'
         ..files['/repo/b.txt'] = 'world';
-      final editor = EditorCubit(fs: fs);
+      final editor = EditorCubit(fs: fs, storage: fakeHomeStorage());
       final workbench = WorkbenchCubit();
       final floating = FloatingWorkspaceCubit();
       addTearDown(editor.close);
@@ -291,7 +291,7 @@ void main() {
       final fs = InMemoryFilesystem()
         ..files['/repo/a.txt'] = 'hello'
         ..files['/repo/b.txt'] = 'world';
-      final editor = EditorCubit(fs: fs);
+      final editor = EditorCubit(fs: fs, storage: fakeHomeStorage());
       final workbench = WorkbenchCubit();
       final floating = FloatingWorkspaceCubit();
       addTearDown(editor.close);
@@ -340,7 +340,7 @@ void main() {
   group('landing exit on open', () {
     test('openFile floating path stays on the landing', () async {
       final fs = InMemoryFilesystem()..files['/repo/a.txt'] = 'hello';
-      final editor = EditorCubit(fs: fs);
+      final editor = EditorCubit(fs: fs, storage: fakeHomeStorage());
       final workbench = WorkbenchCubit();
       final floating = FloatingWorkspaceCubit();
       addTearDown(editor.close);
@@ -361,7 +361,7 @@ void main() {
     });
 
     test('openDiff floating path stays on the landing', () {
-      final editor = EditorCubit();
+      final editor = EditorCubit(storage: fakeHomeStorage());
       final workbench = WorkbenchCubit();
       final floating = FloatingWorkspaceCubit();
       addTearDown(editor.close);
@@ -388,7 +388,7 @@ void main() {
 
     test('openFile center path exits the landing', () async {
       final fs = InMemoryFilesystem()..files['/repo/a.txt'] = 'hello';
-      final editor = EditorCubit(fs: fs);
+      final editor = EditorCubit(fs: fs, storage: fakeHomeStorage());
       final workbench = WorkbenchCubit();
       final floating = FloatingWorkspaceCubit();
       addTearDown(editor.close);
@@ -411,7 +411,7 @@ void main() {
     });
 
     test('openDiff center path exits the landing', () {
-      final editor = EditorCubit();
+      final editor = EditorCubit(storage: fakeHomeStorage());
       final workbench = WorkbenchCubit();
       final floating = FloatingWorkspaceCubit();
       addTearDown(editor.close);

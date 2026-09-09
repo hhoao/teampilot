@@ -14,6 +14,7 @@ void main() {
     store = TeamLandingRecentStore(
       fs: fs,
       pathOverride: paths.teamHubRecentJson,
+      storage: fakeHomeStorage(),
     );
   });
 

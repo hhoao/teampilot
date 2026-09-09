@@ -13,6 +13,7 @@ import 'package:teampilot/services/resource/assemblers/prompt_assembler.dart';
 import 'package:teampilot/services/io/local_filesystem.dart';
 import 'package:teampilot/services/provider/config_profile_service.dart';
 import 'package:teampilot/services/storage/runtime_layout.dart';
+import '../../../support/in_memory_filesystem.dart';
 
 void main() {
   Future<SessionHomeContribution> contribute(
@@ -163,6 +164,7 @@ void main() {
       basePath: base.path,
       fs: fs,
       layout: RuntimeLayout(teampilotRoot: base.path, fs: fs),
+                                          storage: fakeHomeStorage(),
     );
     const member = TeamMemberConfig(
       id: 'm1',
@@ -227,6 +229,7 @@ void main() {
       basePath: base.path,
       fs: fs,
       layout: RuntimeLayout(teampilotRoot: base.path, fs: fs),
+                                          storage: fakeHomeStorage(),
     );
     const member = TeamMemberConfig(id: 'x', name: '');
     final scope = resolveLaunchProfileScope(
@@ -278,6 +281,7 @@ void main() {
       basePath: base.path,
       fs: fs,
       layout: RuntimeLayout(teampilotRoot: base.path, fs: fs),
+                                          storage: fakeHomeStorage(),
     );
 
     const member = TeamMemberConfig(
@@ -302,7 +306,7 @@ void main() {
     );
 
     await contribute(
-      const OpencodeProviderCapability(),
+      OpencodeProviderCapability(storage: fakeHomeStorage()),
       ConfigProfileLaunchContext(
         workspaceId: 'workspace-1',
         teamId: 'team-a',

@@ -46,7 +46,7 @@ void main() {
       storage: testHomeStorage,
       executableResolver: _testExecutable,
       appDataBasePath: appData.path,
-      configProfileService: ConfigProfileService(basePath: appData.path),
+      configProfileService: ConfigProfileService(basePath: appData.path, storage: testHomeStorage, ),
     );
     cubit.attachCatalog(ExpertHubCatalog(source: _BuiltinExpertSource()));
     await cubit.load();

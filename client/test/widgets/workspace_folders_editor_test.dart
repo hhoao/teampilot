@@ -17,7 +17,7 @@ Future<HomeTargetController> _controllerWithSshProfiles(
   List<SshProfile> profiles,
 ) async {
   const root = '/tp-test-editor';
-  final sshRepo = SshProfileRepository(rootDir: root, fs: InMemoryFilesystem());
+  final sshRepo = SshProfileRepository(rootDir: root, fs: InMemoryFilesystem(), storage: fakeHomeStorage(), );
   for (final p in profiles) {
     await sshRepo.save(p);
   }

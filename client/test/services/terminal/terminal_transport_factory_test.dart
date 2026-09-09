@@ -12,6 +12,7 @@ import 'package:teampilot/repositories/ssh_profile_repository.dart';
 import 'package:teampilot/services/ssh/ssh_member_session.dart';
 import 'package:teampilot/services/terminal/terminal_transport.dart';
 import 'package:teampilot/services/terminal/terminal_transport_factory.dart';
+import '../../support/in_memory_filesystem.dart';
 
 class _FakeTransport implements TerminalTransport {
   final doneCompleter = Completer<int>();
@@ -109,7 +110,7 @@ void main() {
         'terminal_transport_factory_test_',
       );
       addTearDown(() => temp.delete(recursive: true));
-      final profileRepository = SshProfileRepository(rootDir: temp.path);
+      final profileRepository = SshProfileRepository(rootDir: temp.path, storage: fakeHomeStorage(), );
       final profile = SshProfile(
         id: 'p1',
         name: 'dev',

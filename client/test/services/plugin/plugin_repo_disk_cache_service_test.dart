@@ -11,6 +11,7 @@ import 'package:teampilot/services/plugin/plugin_repo_git_service.dart';
 import 'package:teampilot/services/storage/app_storage.dart';
 import 'package:teampilot/utils/async_keyed_coalescer.dart';
 
+import '../../support/in_memory_filesystem.dart';
 import '../../support/post_frame_test_harness.dart';
 
 void main() {
@@ -45,7 +46,10 @@ void main() {
 }
 ''');
 
-    final svc = PluginRepoDiskCacheService();
+    final svc = PluginRepoDiskCacheService(
+      filesystem: InMemoryFilesystem(),
+      teampilotRoot: '/tp',
+    );
     final list = svc.parseMarketplaceManifest(
       directory: dir.path,
       marketplace: const PluginMarketplace(owner: 'acme', name: 'mkt'),
@@ -84,7 +88,10 @@ void main() {
 }
 ''');
 
-    final svc = PluginRepoDiskCacheService();
+    final svc = PluginRepoDiskCacheService(
+      filesystem: InMemoryFilesystem(),
+      teampilotRoot: '/tp',
+    );
     final list = svc.parseMarketplaceManifest(
       directory: dir.path,
       marketplace: const PluginMarketplace(
@@ -152,13 +159,18 @@ void main() {
       final git = _CountingPluginGit();
       final coalescer = AsyncKeyedCoalescer();
       const market = PluginMarketplace(owner: 'acme', name: 'mkt');
+      final home = buildTestHomeStorage();
       final a = PluginRepoDiskCacheService(
         gitService: git,
         coalescer: coalescer,
+        filesystem: home.fs,
+        teampilotRoot: home.appDataRoot,
       );
       final b = PluginRepoDiskCacheService(
         gitService: git,
         coalescer: coalescer,
+        filesystem: home.fs,
+        teampilotRoot: home.appDataRoot,
       );
 
       await Future.wait([
@@ -177,7 +189,12 @@ void main() {
     test('fresh cache skips remote SHA check', () async {
       final git = _CountingPluginGit();
       const market = PluginMarketplace(owner: 'acme', name: 'mkt');
-      final svc = PluginRepoDiskCacheService(gitService: git);
+      final home = buildTestHomeStorage();
+      final svc = PluginRepoDiskCacheService(
+        gitService: git,
+        filesystem: home.fs,
+        teampilotRoot: home.appDataRoot,
+      );
 
       await svc.syncMarketplace(market);
 
@@ -194,7 +211,12 @@ void main() {
     test('stale cache still checks remote SHA', () async {
       final git = _CountingPluginGit();
       const market = PluginMarketplace(owner: 'acme', name: 'mkt');
-      final svc = PluginRepoDiskCacheService(gitService: git);
+      final home = buildTestHomeStorage();
+      final svc = PluginRepoDiskCacheService(
+        gitService: git,
+        filesystem: home.fs,
+        teampilotRoot: home.appDataRoot,
+      );
       final dir = await svc.syncMarketplace(market);
       final metaPath = AppStorage.fs.pathContext.join(
         dir,

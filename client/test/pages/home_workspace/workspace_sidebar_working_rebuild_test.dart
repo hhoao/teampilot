@@ -68,7 +68,7 @@ void main() {
       repository: KeybindingRepository(storage: testHomeStorage),
     );
     automationCubit = testAutomationCubit();
-    worktreeCubit = WorktreeCubit();
+    worktreeCubit = WorktreeCubit(storage: testHomeStorage);
     attentionCubit = AgentAttentionCubit(pruneInterval: null);
   });
 

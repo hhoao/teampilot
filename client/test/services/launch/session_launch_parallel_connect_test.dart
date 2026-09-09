@@ -8,6 +8,8 @@ import 'package:teampilot/models/team_config.dart';
 import 'package:teampilot/models/workspace_folder.dart';
 import 'package:teampilot/services/launch/session_launch_pipeline.dart';
 
+import '../../support/in_memory_filesystem.dart';
+
 AppSession _session(String id) => AppSession(
   sessionId: id,
   workspaceId: 'w1',
@@ -25,7 +27,7 @@ ChatTab _tab(String sessionId, {Set<String> pendingMembers = const {}}) {
 void main() {
   group('shouldSerializeConnect — different sessions launch concurrently', () {
     test('another session connecting does NOT block ExistingSessionConnect', () {
-      final tabStore = ChatTabStore()..setActiveWorkspaceId('w1');
+      final tabStore = ChatTabStore(storage: fakeHomeStorage())..setActiveWorkspaceId('w1');
       tabStore.registerSession(_tab('s1'));
       tabStore.registerSession(_tab('s2'));
 
@@ -42,7 +44,7 @@ void main() {
 
     test('a materializing default session does NOT block a specific session',
         () {
-      final tabStore = ChatTabStore()..setActiveWorkspaceId('w1');
+      final tabStore = ChatTabStore(storage: fakeHomeStorage())..setActiveWorkspaceId('w1');
       tabStore.registerSession(_tab('s1'));
 
       final serialize = shouldSerializeConnect(
@@ -59,7 +61,7 @@ void main() {
 
   group('shouldSerializeConnect — same target still serializes', () {
     test('target session already connecting is skipped', () {
-      final tabStore = ChatTabStore()..setActiveWorkspaceId('w1');
+      final tabStore = ChatTabStore(storage: fakeHomeStorage())..setActiveWorkspaceId('w1');
       tabStore.registerSession(_tab('s1'));
 
       final serialize = shouldSerializeConnect(
@@ -73,7 +75,7 @@ void main() {
     });
 
     test('member already owned by the member scheduler is skipped', () {
-      final tabStore = ChatTabStore()..setActiveWorkspaceId('w1');
+      final tabStore = ChatTabStore(storage: fakeHomeStorage())..setActiveWorkspaceId('w1');
       tabStore.registerSession(_tab('s1', pendingMembers: {'team-lead'}));
 
       final serialize = shouldSerializeConnect(
@@ -96,7 +98,7 @@ void main() {
     });
 
     test('pre-session materialization serializes non-specific connects', () {
-      final tabStore = ChatTabStore()..setActiveWorkspaceId('w1');
+      final tabStore = ChatTabStore(storage: fakeHomeStorage())..setActiveWorkspaceId('w1');
 
       final serialize = shouldSerializeConnect(
         request: PersonalSessionConnect(workspaceId: 'w1'),
@@ -111,7 +113,7 @@ void main() {
   });
 
   test('no in-flight connect: nothing serialized', () {
-    final tabStore = ChatTabStore()..setActiveWorkspaceId('w1');
+    final tabStore = ChatTabStore(storage: fakeHomeStorage())..setActiveWorkspaceId('w1');
     tabStore.registerSession(_tab('s1'));
 
     final serialize = shouldSerializeConnect(

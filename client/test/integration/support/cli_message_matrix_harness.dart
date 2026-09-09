@@ -310,6 +310,7 @@ final class CliMessageMatrixHarness {
 
     await AppProviderRepository(
       basePath: AppStorage.paths.basePath,
+      storage: testHomeStorage,
     ).saveProviders(profile.tool, providers);
   }
 
@@ -321,11 +322,13 @@ final class CliMessageMatrixHarness {
   }) {
     this.postFrame = postFrame;
     final life = SessionLifecycleService(
+      storage: testHomeStorage,
       appDataBasePath: AppStorage.paths.basePath,
     );
     lifecycle = life;
     final created = ChatCubit(
       executableResolver: () => cliPath,
+      storage: testHomeStorage,
       automationRepository: testAutomationRepository(),
       cliExecutableResolver: (_) => cliPath,
       postFrameScheduler: postFrame.scheduler,
@@ -370,7 +373,8 @@ final class CliMessageMatrixHarness {
       throw StateError('createCubit before attachCatalogRuntime');
     }
     final runtime = CatalogRuntime.assemble(
-      sessions: chat.sessionRepository ?? SessionRepository(),
+      storage: testHomeStorage,
+      sessions: chat.sessionRepository ?? SessionRepository(storage: testHomeStorage),
     );
     catalogRuntime = runtime;
     chat.teammateBusMcpGateway.attachCatalogHandler(
@@ -425,7 +429,7 @@ final class CliMessageMatrixHarness {
       );
     }
 
-    final repo = SessionRepository();
+    final repo = SessionRepository(storage: testHomeStorage);
     final ws = await repo.createWorkspace([
       WorkspaceFolder(path: workingDirectory ?? AppStorage.cwd),
     ]);
@@ -803,7 +807,11 @@ final class CliMessageMatrixHarness {
     await hist.load(
       session: s,
       memberId: mode == CliMatrixMode.simple ? '' : mid,
-      launchContext: WorkspaceLaunchContext(session: s, workspace: ws),
+      launchContext: WorkspaceLaunchContext(
+        session: s,
+        workspace: ws,
+        usesPosixPaths: true,
+      ),
       team: team,
     );
   }

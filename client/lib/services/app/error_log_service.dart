@@ -7,18 +7,20 @@ import 'package:flutter/services.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../utils/logging/app_error_utils.dart';
-import '../storage/app_storage.dart';
 import '../io/filesystem.dart';
 
 /// Persists noteworthy errors locally under `{appDataRoot}/logs/errors.jsonl`.
 ///
 /// TeamPilot has no remote error-reporting API; this file is for support/debug.
 class ErrorLogService {
-  ErrorLogService({Filesystem? fs}) : _fs = fs ?? AppStorage.fs;
+  ErrorLogService({Filesystem? fs}) : _fsOverride = fs;
 
   static final ErrorLogService instance = ErrorLogService();
 
-  final Filesystem _fs;
+  /// Test/filesystem override; production IO uses the filesystem bound in
+  /// [initialize].
+  final Filesystem? _fsOverride;
+  Filesystem? _fs;
 
   static const _lastRecordedDateKey = 'error_log_last_recorded_date';
   static const _recordedErrorsKey = 'error_log_recorded_errors';
@@ -28,7 +30,11 @@ class ErrorLogService {
   PackageInfo? _packageInfo;
   bool _initialized = false;
 
-  Future<void> initialize({required String appDataRoot}) async {
+  Future<void> initialize({
+    required String appDataRoot,
+    required Filesystem fs,
+  }) async {
+    _fs = _fsOverride ?? fs;
     _appDataRoot = appDataRoot.trim();
     _platformLabel =
         '${Platform.operatingSystem} ${Platform.operatingSystemVersion}';
@@ -61,8 +67,13 @@ class ErrorLogService {
     if (root == null || root.isEmpty) {
       return;
     }
+    final fs = _fs;
+    if (fs == null) {
+      // Not initialized (no bound filesystem) — nowhere to persist.
+      return;
+    }
     if (!_initialized) {
-      await initialize(appDataRoot: root);
+      await initialize(appDataRoot: root, fs: fs);
     }
 
     final errorKey = _errorKey(error, module: module, action: action);
@@ -71,8 +82,8 @@ class ErrorLogService {
     }
 
     try {
-      final logDir = _fs.pathContext.join(root, 'logs');
-      await _fs.ensureDir(logDir);
+      final logDir = fs.pathContext.join(root, 'logs');
+      await fs.ensureDir(logDir);
 
       final record = <String, Object?>{
         'timestamp': DateTime.now().toUtc().toIso8601String(),
@@ -87,8 +98,8 @@ class ErrorLogService {
         'buildNumber': _packageInfo?.buildNumber,
       };
 
-      final filePath = _fs.pathContext.join(logDir, 'errors.jsonl');
-      await _fs.appendString(filePath, '${jsonEncode(record)}\n');
+      final filePath = fs.pathContext.join(logDir, 'errors.jsonl');
+      await fs.appendString(filePath, '${jsonEncode(record)}\n');
 
       await _markAsRecorded(errorKey);
     } on Object catch (e, st) {

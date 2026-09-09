@@ -6,6 +6,7 @@ import '../../../models/app_session.dart';
 import '../../../models/session_activity.dart';
 import '../../../models/ssh_profile.dart';
 import '../../../models/team_config.dart';
+import '../../../services/io/local_filesystem.dart';
 import '../../../services/team/team_config_launch_validator.dart';
 import '../../../services/terminal/terminal_session.dart';
 
@@ -18,6 +19,7 @@ TerminalSession defaultTerminalSessionFactory({
 }) {
   return TerminalSession(
     executable: executable,
+    fs: LocalFilesystem(),
     scrollbackLines: scrollbackLines,
   );
 }

@@ -31,7 +31,7 @@ Widget _wrapTitleBar({
         BlocProvider<WorkbenchCubit>.value(value: workbenchCubit)
       else
         BlocProvider(create: (_) => WorkbenchCubit()),
-      BlocProvider(create: (_) => NotificationCubit()),
+      BlocProvider(create: (_) => NotificationCubit(storage: testHomeStorage)),
       BlocProvider(
         create: (context) => ProgressActivityCubit(
           historyRecorder: context.read<NotificationCubit>(),

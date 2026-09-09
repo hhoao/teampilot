@@ -51,6 +51,7 @@ void main() {
       fs: fs,
       basePath: base,
       resolveHomeDirectory: () => home,
+                                                storage: fakeHomeStorage(filesystem: fs),
     );
   });
 
@@ -376,6 +377,7 @@ void main() {
           capturedRequest = request;
         }),
       ),
+                                                         storage: fakeHomeStorage(filesystem: fs),
     );
 
     final loginResult = await wslService.runAuthLogin(
@@ -389,7 +391,7 @@ void main() {
     // Native Windows keeps wsl.exe; WSL/SSH home unwraps to the Linux binary.
     expect(
       capturedRequest!.executable,
-      CredentialHostRequest.hostExecutable(preferencePath),
+      CredentialHostRequest.hostExecutable(preferencePath, storage: fakeHomeStorage(), ),
     );
     expect(
       capturedRequest!.arguments,
@@ -411,6 +413,7 @@ void main() {
           capturedRequest = request;
         }),
       ),
+                                                            storage: fakeHomeStorage(filesystem: fs),
     );
 
     await nativeService.runAuthLogin(

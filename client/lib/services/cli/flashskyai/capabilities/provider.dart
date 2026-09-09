@@ -16,6 +16,7 @@ import '../../../provider/passthrough_provider_form_capability.dart';
 import '../../../provider/workspace_trust_provisioner.dart';
 import '../../../remote/remote_credential_materializer.dart';
 import '../../../session/member_role_provision.dart';
+import '../../../storage/home_storage.dart';
 import '../../../team_bus/member_bus_idle_endpoint.dart';
 import '../../claude/provider/claude_effort_catalog.dart';
 import '../../registry/capabilities/claude_family_hook_registry.dart';
@@ -41,7 +42,12 @@ import '../provider_presets.dart';
 final class FlashskyaiProviderCapability extends CatalogModelCapability
     with PassthroughProviderFormDefaults
     implements ProviderCapability {
-  const FlashskyaiProviderCapability();
+  const FlashskyaiProviderCapability({this.storage});
+
+  /// Home control-plane storage injected at registry construction; required
+  /// for workspace-trust provisioning. Null only for `const`-constructed
+  /// capabilities outside the registry (tests).
+  final HomeStorage? storage;
 
   // ---- ProviderCatalogCapability ----
   @override
@@ -326,6 +332,7 @@ final class FlashskyaiProviderCapability extends CatalogModelCapability
     return WorkspaceTrustProvisioner(
       layout: delegate.layout,
       fs: delegate.fs,
+      storage: storage ?? _missingHomeStorage(),
     ).provisionWorkspace(
       workspaceId: workspaceId,
       directories: [
@@ -334,6 +341,14 @@ final class FlashskyaiProviderCapability extends CatalogModelCapability
           if (directory.trim().isNotEmpty) directory.trim(),
       ],
       tools: const [FlashskyaiProviderCapability.toolId],
+    );
+  }
+
+  HomeStorage _missingHomeStorage() {
+    throw StateError(
+      'FlashskyaiProviderCapability was constructed without HomeStorage; '
+      'workspace trust provisioning requires storage threaded via '
+      'CliBootstrap.',
     );
   }
 

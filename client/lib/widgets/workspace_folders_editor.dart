@@ -8,6 +8,7 @@ import '../models/runtime_target.dart';
 import '../models/workspace_folder.dart';
 import '../models/workspace_topology.dart';
 import '../services/storage/home_target_controller.dart';
+import '../services/storage/home_storage.dart';
 import '../services/storage/work_target_canonicalizer.dart';
 import '../utils/workspace/workspace_path_picker.dart';
 import '../utils/workspace/workspace_path_utils.dart';
@@ -68,6 +69,9 @@ class _TargetFolderGroup {
 }
 
 class _WorkspaceFoldersEditorState extends State<WorkspaceFoldersEditor> {
+  bool get _usesPosixPaths =>
+      context.read<HomeStorage>().usesPosixPaths;
+
   late List<WorkspaceFolder> _folders;
   Future<List<RuntimeTarget>>? _targets;
   var _defaultTargetIdInitialized = false;
@@ -140,12 +144,19 @@ class _WorkspaceFoldersEditorState extends State<WorkspaceFoldersEditor> {
       targetId: folder.targetId,
     );
     if (path == null || path.trim().isEmpty || !mounted) return;
-    final trimmed = normalizeWorkspacePath(path);
+    final trimmed = normalizeWorkspacePath(
+      path,
+      usesPosixPaths: _usesPosixPaths,
+    );
     final dup = _folders.asMap().entries.any(
       (e) =>
           e.key != index &&
           e.value.targetId == folder.targetId &&
-          workspacePathsEqual(e.value.path, trimmed),
+          workspacePathsEqual(
+            e.value.path,
+            trimmed,
+            usesPosixPaths: _usesPosixPaths,
+          ),
     );
     if (dup) {
       AppToast.show(
@@ -231,9 +242,18 @@ class _WorkspaceFoldersEditorState extends State<WorkspaceFoldersEditor> {
     if (!widget.enabled) return;
     final path = await pickWorkspaceDirectoryPath(context, targetId: targetId);
     if (path == null || path.trim().isEmpty || !mounted) return;
-    final trimmed = normalizeWorkspacePath(path);
+    final trimmed = normalizeWorkspacePath(
+      path,
+      usesPosixPaths: _usesPosixPaths,
+    );
     if (_folders.any(
-      (f) => f.targetId == targetId && workspacePathsEqual(f.path, trimmed),
+      (f) =>
+          f.targetId == targetId &&
+          workspacePathsEqual(
+            f.path,
+            trimmed,
+            usesPosixPaths: _usesPosixPaths,
+          ),
     )) {
       return;
     }

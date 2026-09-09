@@ -13,6 +13,9 @@ import 'package:teampilot/services/expert_hub/expert_hub_catalog.dart';
 import 'package:teampilot/services/expert_hub/expert_hub_source.dart';
 
 import '../support/post_frame_test_harness.dart';
+import '../support/in_memory_filesystem.dart';
+import 'package:teampilot/services/expert_hub/local_expert_store.dart';
+import 'package:teampilot/services/storage/app_paths.dart';
 
 const _leadSlot = TeamRosterSlot(
   id: 'team-lead',
@@ -122,6 +125,7 @@ void main() {
           source: CompositeExpertHubSource(
             builtIns: const [],
             registry: _StaticRegistry(const [_registryExpert]),
+                                            localStore: LocalExpertStore(fs: InMemoryFilesystem(), dirOverride: AppPaths('/tp').memberHubLocalTemplatesDir),
           ),
         ),
       );

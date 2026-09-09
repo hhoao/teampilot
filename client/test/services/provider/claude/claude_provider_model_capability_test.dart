@@ -21,6 +21,7 @@ void main() {
           200,
         ),
       ),
+                                            storage: fakeHomeStorage(),
     );
     const provider = AppProviderConfig(
       id: 'anthropic-api',

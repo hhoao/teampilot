@@ -29,6 +29,7 @@ void main() {
     final groups = groupSessionsByWorktree(
       worktrees: worktrees,
       sessions: [_session('a', '/repo'), _session('b', '/wt/feat')],
+      usesPosixPaths: false,
     );
     expect(groups.first.worktree!.isMainWorktree, true);
     expect(groups.first.sessions.single.sessionId, 'a');
@@ -41,6 +42,7 @@ void main() {
       final groups = groupSessionsByWorktree(
         worktrees: worktrees,
         sessions: [_session('c', '/wt/feat/sub/dir')],
+        usesPosixPaths: false,
       );
       // /wt/feat is a prefix of /wt/feat/sub/dir; /repo is not.
       final featGroup = groups.firstWhere(
@@ -55,6 +57,7 @@ void main() {
     final groups = groupSessionsByWorktree(
       worktrees: wts,
       sessions: [_session('s', '/wt/feature/lib')],
+      usesPosixPaths: false,
     );
     // /wt/feat must not swallow /wt/feature; the session is an orphan.
     expect(
@@ -69,6 +72,7 @@ void main() {
     final groups = groupSessionsByWorktree(
       worktrees: worktrees,
       sessions: [_session('a', '/repo')],
+      usesPosixPaths: false,
     );
     expect(groups[1].sessions, isEmpty);
     expect(groups[1].worktree!.shortBranch, 'feat');
@@ -78,6 +82,7 @@ void main() {
     final groups = groupSessionsByWorktree(
       worktrees: worktrees,
       sessions: [_session('z', '/gone/dir')],
+      usesPosixPaths: false,
     );
     final orphan = groups.last;
     expect(orphan.worktree, isNull);
@@ -89,6 +94,7 @@ void main() {
     final groups = groupSessionsByWorktree(
       worktrees: worktrees,
       sessions: [_session('a', '/repo')],
+      usesPosixPaths: false,
     );
     expect(groups.any((g) => g.isOrphan), false);
   });
@@ -97,6 +103,7 @@ void main() {
     final groups = groupSessionsByWorktree(
       worktrees: worktrees,
       sessions: [_session('z', '/gone'), _session('a', '/repo')],
+      usesPosixPaths: false,
     );
     expect(groups.first.worktree!.isMainWorktree, true);
     expect(groups.last.worktree, isNull);
@@ -104,11 +111,21 @@ void main() {
 
   test('worktreePathForSessionPath picks longest prefix', () {
     expect(
-      worktreePathForSessionPath('/wt/feat/lib/main.dart', worktrees),
+      worktreePathForSessionPath(
+        '/wt/feat/lib/main.dart',
+        worktrees,
+        usesPosixPaths: false,
+      ),
       '/wt/feat',
     );
-    expect(worktreePathForSessionPath('/repo', worktrees), '/repo');
-    expect(worktreePathForSessionPath('/gone', worktrees), isNull);
+    expect(
+      worktreePathForSessionPath('/repo', worktrees, usesPosixPaths: false),
+      '/repo',
+    );
+    expect(
+      worktreePathForSessionPath('/gone', worktrees, usesPosixPaths: false),
+      isNull,
+    );
   });
 
   test(
@@ -130,6 +147,7 @@ void main() {
       final groups = groupSessionsByWorktree(
         worktrees: worktrees,
         sessions: sorted,
+        usesPosixPaths: false,
       );
 
       final main = groups.firstWhere((g) => g.worktree?.path == '/repo');

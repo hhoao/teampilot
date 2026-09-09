@@ -26,6 +26,7 @@ void main() {
 
   test('localFallback throws for ssh-home local without custom resolver', () async {
     final io = TargetAwareLaunchConfigIo.localFallback(
+      homeFilesystem: InMemoryFilesystem(),
       homeTarget: () => sshHome,
     );
 

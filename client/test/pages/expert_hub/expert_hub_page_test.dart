@@ -11,10 +11,13 @@ import 'package:teampilot/pages/expert_hub/expert_hub_page.dart';
 import 'package:teampilot/services/expert_hub/composite_expert_hub_source.dart';
 import 'package:teampilot/services/expert_hub/expert_hub_source.dart';
 import '../../support/stub_member_roster_service.dart';
+import '../../support/in_memory_filesystem.dart';
+import 'package:teampilot/services/expert_hub/local_expert_store.dart';
+import 'package:teampilot/services/storage/app_paths.dart';
 
 class _FakeSource extends CompositeExpertHubSource {
   _FakeSource(this.members)
-    : super(builtIns: members, registry: _EmptyRegistry());
+    : super(builtIns: members, registry: _EmptyRegistry(), localStore: LocalExpertStore(fs: InMemoryFilesystem(), dirOverride: AppPaths('/tp').memberHubLocalTemplatesDir), );
 
   final List<DiscoverableMember> members;
 

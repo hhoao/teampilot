@@ -14,6 +14,7 @@ import 'package:teampilot/utils/team/team_member_naming.dart';
 
 import '../../support/fake_terminal_session.dart';
 import '../../support/fixed_resume_lifecycle_service.dart';
+import '../../support/in_memory_filesystem.dart';
 import '../../support/post_frame_test_harness.dart';
 
 /// Materializes a roster from the built-in expert catalog (test-local snapshot).
@@ -39,7 +40,7 @@ void main() {
     );
     final tmp = await Directory.systemTemp.createTemp('discard_member_');
     addTearDown(() => deleteTempDirBestEffort(tmp));
-    final repo = SessionRepository(rootDir: tmp.path);
+    final repo = SessionRepository(rootDir: tmp.path, storage: buildTestHomeStorage());
     final workspace = await repo.createWorkspace([
       const WorkspaceFolder(path: '/work'),
     ]);
@@ -53,11 +54,13 @@ void main() {
     final postFrame = PostFrameTestHarness();
     final cubit = ChatCubit(
       executableResolver: () => 'flashskyai',
+      storage: buildTestHomeStorage(),
       automationRepository: testAutomationRepository(),
       sessionRepository: repo,
       terminalSessionFactory:
           ({required String executable, int scrollbackLines = 10000}) =>
               FakeTerminalSession(
+                fs: InMemoryFilesystem(),
                 executable: executable,
                 scrollbackLines: scrollbackLines,
               ),
@@ -84,7 +87,7 @@ void main() {
     final tab = cubit.tabStore.openTabBySessionId(session.sessionId)!;
     final memberId = team.members.first.id;
 
-    final shell = FakeTerminalSession(executable: 'bin');
+    final shell = FakeTerminalSession(executable: 'bin', fs: InMemoryFilesystem());
     shell.connect(workingDirectory: '/work');
     tab.memberShells[memberId] = shell;
     tab.selectedMemberId = memberId;
@@ -117,7 +120,7 @@ void main() {
     );
     final tmp = await Directory.systemTemp.createTemp('discard_member_');
     addTearDown(() => deleteTempDirBestEffort(tmp));
-    final repo = SessionRepository(rootDir: tmp.path);
+    final repo = SessionRepository(rootDir: tmp.path, storage: buildTestHomeStorage());
     final workspace = await repo.createWorkspace([
       const WorkspaceFolder(path: '/work'),
     ]);
@@ -131,11 +134,13 @@ void main() {
     final postFrame = PostFrameTestHarness();
     final cubit = ChatCubit(
       executableResolver: () => 'flashskyai',
+      storage: buildTestHomeStorage(),
       automationRepository: testAutomationRepository(),
       sessionRepository: repo,
       terminalSessionFactory:
           ({required String executable, int scrollbackLines = 10000}) =>
               FakeTerminalSession(
+                fs: InMemoryFilesystem(),
                 executable: executable,
                 scrollbackLines: scrollbackLines,
               ),
@@ -163,7 +168,7 @@ void main() {
     final memberId = team.members.first.id;
 
     // A shell that is present but NOT running (disconnected) is not reclaimable.
-    final idleShell = FakeTerminalSession(executable: 'bin');
+    final idleShell = FakeTerminalSession(executable: 'bin', fs: InMemoryFilesystem());
     expect(idleShell.isRunning, isFalse);
     tab.memberShells[memberId] = idleShell;
     tab.selectedMemberId = memberId;

@@ -1,4 +1,5 @@
 import '../../models/workspace_tab_ref.dart';
+import '../storage/home_storage.dart';
 import 'home_open_workspaces_store.dart';
 import 'workspace_display_prefs_store.dart';
 import 'workspace_favorites_store.dart';
@@ -6,12 +7,16 @@ import 'workspace_favorites_store.dart';
 /// Small JSON prefs warmed during bootstrap so home chrome is stable on entry.
 class HomeWorkspaceUiCache {
   HomeWorkspaceUiCache({
+    required HomeStorage storage,
     WorkspaceFavoritesStore? favoritesStore,
     WorkspaceDisplayPrefsStore? displayPrefsStore,
     HomeOpenWorkspacesStore? openWorkspacesStore,
-  }) : _favoritesStore = favoritesStore ?? WorkspaceFavoritesStore(),
-       _displayPrefsStore = displayPrefsStore ?? WorkspaceDisplayPrefsStore(),
-       _openWorkspacesStore = openWorkspacesStore ?? HomeOpenWorkspacesStore();
+  }) : _favoritesStore =
+           favoritesStore ?? WorkspaceFavoritesStore(storage: storage),
+       _displayPrefsStore =
+           displayPrefsStore ?? WorkspaceDisplayPrefsStore(storage: storage),
+       _openWorkspacesStore =
+           openWorkspacesStore ?? HomeOpenWorkspacesStore(storage: storage);
 
   final WorkspaceFavoritesStore _favoritesStore;
   final WorkspaceDisplayPrefsStore _displayPrefsStore;

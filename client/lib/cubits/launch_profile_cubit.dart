@@ -72,9 +72,11 @@ class LaunchProfileCubit extends Cubit<LaunchProfileState>
        _appDataBasePath = appDataBasePath,
        _configProfileService = configProfileService,
        _storageRootsResolver = storageRootsResolver,
+       _storage = storage,
        _lifecycle =
            lifecycleService ??
            SessionLifecycleService(
+             storage: storage,
              appDataBasePath: appDataBasePath.isNotEmpty
                  ? appDataBasePath
                  : null,
@@ -86,7 +88,7 @@ class LaunchProfileCubit extends Cubit<LaunchProfileState>
            ),
        _pluginRepository = pluginRepository ?? PluginRepository(storage: storage),
        _installedPluginsLoader = installedPluginsLoader,
-       _mcpLinker = mcpLinker ?? ProfileMcpLinkerService(),
+       _mcpLinker = mcpLinker ?? ProfileMcpLinkerService(storage: storage),
        _mcpRepository = mcpRepository ?? McpRepository(storage: storage),
        _installedMcpLoader = installedMcpLoader,
        _extensionMcpContributor = extensionMcpContributor ?? _noExtensionMcp,
@@ -105,6 +107,7 @@ class LaunchProfileCubit extends Cubit<LaunchProfileState>
   final String _appDataBasePath;
   final ConfigProfileService? _configProfileService;
   final StorageRootsResolver? _storageRootsResolver;
+  final HomeStorage _storage;
   final SessionLifecycleService _lifecycle;
   final PluginRepository _pluginRepository;
   final InstalledPluginsLoader? _installedPluginsLoader;
@@ -126,6 +129,7 @@ class LaunchProfileCubit extends Cubit<LaunchProfileState>
   }
 
   late final TeamProfileProvisioner _provisioner = TeamProfileProvisioner(
+    storage: _storage,
     configProfileService: _configProfileService,
     storageRootsResolver: _storageRootsResolver,
     appDataBasePathOverride: _appDataBasePath,
@@ -143,6 +147,7 @@ class LaunchProfileCubit extends Cubit<LaunchProfileState>
   );
 
   late final TeamLaunchService _launchService = TeamLaunchService(
+    storage: _storage,
     host: this,
     lifecycle: _lifecycle,
     sync: _sync,

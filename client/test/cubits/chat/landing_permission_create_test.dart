@@ -8,6 +8,7 @@ import 'package:teampilot/models/session_continue_overrides.dart';
 import 'package:teampilot/models/team_config.dart';
 import 'package:teampilot/models/workspace_folder.dart';
 import 'package:teampilot/repositories/session_repository.dart';
+import '../../support/in_memory_filesystem.dart';
 
 void main() {
   test(
@@ -17,7 +18,7 @@ void main() {
         'landing_permission_create_',
       );
       addTearDown(() => tmp.deleteSync(recursive: true));
-      final repo = SessionRepository(rootDir: tmp.path);
+      final repo = SessionRepository(rootDir: tmp.path, storage: fakeHomeStorage(), );
       final workspace = await repo.createWorkspace([
         const WorkspaceFolder(path: '/w'),
       ]);

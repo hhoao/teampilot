@@ -47,9 +47,9 @@ class ExpertMemberResolver {
   /// clones), skipping the per-key fallback chain entirely.
   static Future<DiscoverableMember?> resolveMember({
     required String? key,
+    required LocalExpertStore localStore,
     ExpertHubState? hubState,
     CompositeExpertHubSource? source,
-    LocalExpertStore? localStore,
     ExpertHubCubit? cubit,
     ExpertHubCatalog? catalog,
   }) async {
@@ -62,7 +62,7 @@ class ExpertMemberResolver {
     }
 
     // Shadow: a local clone (or user-created expert) wins over the catalog.
-    final local = await (localStore ?? LocalExpertStore()).getByKey(trimmed);
+    final local = await localStore.getByKey(trimmed);
     if (local != null) return local;
 
     ExpertHubState? effectiveHub = hubState ?? cubit?.state;

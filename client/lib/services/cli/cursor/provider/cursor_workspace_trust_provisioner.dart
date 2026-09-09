@@ -10,20 +10,26 @@ import 'cursor_workspace_trust.dart';
 /// Path variants follow [workspaceMetadataKeys] so Windows / WSL slug lookups
 /// match `cursor-agent --workspace`. Markers live under `.cursor/projects/`.
 final class CursorWorkspaceTrustProvisioner {
-  CursorWorkspaceTrustProvisioner({required Filesystem fs}) : _fs = fs;
+  CursorWorkspaceTrustProvisioner({
+    required Filesystem fs,
+    required bool usesPosixPaths,
+  }) : _fs = fs,
+       _usesPosixPaths = usesPosixPaths;
 
   final Filesystem _fs;
+  final bool _usesPosixPaths;
 
   /// Every workspace path string cursor-agent may resolve for a launch.
   static Set<String> workspacePathKeys({
     String? workingDirectory,
     Iterable<String> additionalDirectories = const [],
+    required bool usesPosixPaths,
   }) {
     final keys = <String>{};
     void add(String raw) {
       final trimmed = raw.trim();
       if (trimmed.isEmpty) return;
-      keys.addAll(workspaceMetadataKeys(trimmed));
+      keys.addAll(workspaceMetadataKeys(trimmed, usesPosixPaths: usesPosixPaths));
     }
 
     add(workingDirectory ?? '');
@@ -40,6 +46,7 @@ final class CursorWorkspaceTrustProvisioner {
   }) async {
     final keys = await collectTrustedProjectKeys(
       fs: _fs,
+      usesPosixPaths: _usesPosixPaths,
       directories: [
         if (workingDirectory?.trim().isNotEmpty ?? false)
           workingDirectory!.trim(),

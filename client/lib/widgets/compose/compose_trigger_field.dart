@@ -360,6 +360,7 @@ class _ComposeTriggerFieldState extends State<ComposeTriggerField> {
         fs: AppStorage.fs,
         workspaceRoot: widget.workspaceRoot,
         query: query,
+        usesPosixPaths: AppStorage.tolerantHome.usesPosixPaths,
       );
     }
     final needle = segments.isEmpty ? '' : segments.first;

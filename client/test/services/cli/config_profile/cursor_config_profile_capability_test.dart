@@ -37,7 +37,7 @@ void main() {
     sessionHomeContextFromLaunch(ctx, CliTool.cursor),
   );
 
-  const capability = CursorProviderCapability();
+  late CursorProviderCapability capability;
   const base = '/data/tp';
   const member = TeamMemberConfig(
     id: 'planner',
@@ -51,12 +51,16 @@ void main() {
 
   setUp(() {
     fs = InMemoryFilesystem();
+    capability = CursorProviderCapability(
+      storage: fakeHomeStorage(filesystem: fs),
+    );
     layout = CursorHomeLayout(pathContext: fs.pathContext);
     paths = ConfigProfileService(
       basePath: base,
       home: '/fake/user/home',
       fs: fs,
       layout: RuntimeLayout(teampilotRoot: base, fs: fs),
+                                  storage: fakeHomeStorage(filesystem: fs),
     );
   });
 
@@ -220,7 +224,7 @@ void main() {
     test(
       'mixed warns cursor_credentials_missing when provider not ready',
       () async {
-        final repository = AppProviderRepository(basePath: base, fs: fs);
+        final repository = AppProviderRepository(basePath: base, fs: fs, storage: fakeHomeStorage(filesystem: fs), );
         await repository.saveProviders(CliTool.cursor, [
           const AppProviderConfig(
             id: 'work',

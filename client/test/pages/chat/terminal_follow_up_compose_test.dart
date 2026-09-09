@@ -12,8 +12,11 @@ import 'package:teampilot/widgets/follow_up/follow_up_queue_strip.dart';
 import 'package:teampilot/widgets/follow_up/terminal_follow_up_compose.dart';
 
 import '../../support/post_frame_test_harness.dart';
+import '../../support/in_memory_filesystem.dart';
 
 void main() {
+  setUpAll(setUpTestAppStorage);
+  tearDownAll(tearDownTestAppStorage);
   test('shouldShowTerminalFollowUpStrip only when queue has items', () {
     expect(shouldShowTerminalFollowUpStrip(const FollowUpQueue()), isFalse);
     expect(
@@ -34,6 +37,7 @@ void main() {
       executableResolver: () => 'claude',
       automationRepository: testAutomationRepository(),
       followUpQueueStore: store,
+                                 storage: fakeHomeStorage(),
     );
     addTearDown(chatCubit.close);
 

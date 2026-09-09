@@ -13,6 +13,7 @@ NotificationCubit _cubit() {
       storePath: '/root/notifications.json',
       clock: () => DateTime(2026, 6, 13, 12),
     ),
+                            storage: fakeHomeStorage(filesystem: fs),
   );
 }
 

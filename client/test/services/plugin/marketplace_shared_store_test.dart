@@ -29,8 +29,9 @@ class _FakeDiskCache extends PluginRepoDiskCacheService {
   _FakeDiskCache({
     required this.cacheDirToCreate,
     required Filesystem filesystem,
+    required String teampilotRoot,
   }) : _fs = filesystem,
-       super(filesystem: filesystem);
+       super(filesystem: filesystem, teampilotRoot: teampilotRoot);
 
   final Filesystem _fs;
   final String cacheDirToCreate;
@@ -288,7 +289,11 @@ void main() {
     });
 
     test('ensureCache clones once and returns null on failure', () async {
-      final fake = _FakeDiskCache(cacheDirToCreate: cacheDir(), filesystem: fs);
+      final fake = _FakeDiskCache(
+        cacheDirToCreate: cacheDir(),
+        filesystem: fs,
+        teampilotRoot: teampilotRoot,
+      );
       final first = await store.ensureCache(marketplace, diskCache: fake);
       expect(first, cacheDir());
       expect(fake.syncCalls, 1);
@@ -296,8 +301,11 @@ void main() {
       expect(second, cacheDir());
       expect(fake.syncCalls, 1, reason: 'cache now exists → no second sync');
 
-      final failing = _FakeDiskCache(cacheDirToCreate: cacheDir(), filesystem: fs)
-        ..throwOnSync = StateError('offline');
+      final failing = _FakeDiskCache(
+        cacheDirToCreate: cacheDir(),
+        filesystem: fs,
+        teampilotRoot: teampilotRoot,
+      )..throwOnSync = StateError('offline');
       // Remove cache so the failing fake is actually consulted.
       Directory(cacheDir()).deleteSync(recursive: true);
       expect(await store.ensureCache(marketplace, diskCache: failing), isNull);

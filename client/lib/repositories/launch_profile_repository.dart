@@ -5,7 +5,6 @@ import '../models/team_config.dart';
 import '../models/launch_profile.dart';
 import '../services/io/filesystem.dart';
 import '../services/session/session_lifecycle_service.dart';
-import '../services/storage/app_storage.dart';
 import '../services/storage/home_storage.dart';
 import '../utils/logging/logger.dart';
 import 'launch_profile_index_store.dart';
@@ -15,21 +14,16 @@ import 'launch_profile_index_store.dart';
 class LaunchProfileRepository {
   LaunchProfileRepository({
     String? rootDir,
-    HomeStorage? storage,
+    required HomeStorage storage,
     SessionLifecycleService? lifecycleService,
   }) : _rootDirOverride = rootDir,
-       _storageOverride = storage,
+       _storage = storage,
        _lifecycleService = lifecycleService;
 
   final String? _rootDirOverride;
-  final HomeStorage? _storageOverride;
+  final HomeStorage _storage;
   final SessionLifecycleService? _lifecycleService;
 
-  /// Shim-era fallback: the pre-6-C test harness constructs this repository
-  /// without [storage]; defer to the bound home context exactly like the
-  /// AppStorage shim did. Production (app_shell) always injects [storage].
-  /// Removed in 6-C together with the harness migration.
-  HomeStorage get _storage => _storageOverride ?? AppStorage.tolerantHome;
   static final Map<String, List<LaunchProfile>> _loadAllByRoot = {};
   Future<void>? _revalidationFuture;
 

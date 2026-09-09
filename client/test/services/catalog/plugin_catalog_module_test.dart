@@ -13,6 +13,7 @@ import 'package:teampilot/services/plugin/plugin_install_service.dart';
 import 'package:teampilot/services/plugin/plugin_manifest_service.dart';
 import 'package:teampilot/services/storage/app_storage.dart';
 import 'package:teampilot/services/storage/home_storage.dart';
+import '../../support/in_memory_filesystem.dart';
 
 void main() {
   late Directory tmp;
@@ -41,8 +42,9 @@ void main() {
       cwd: tmp.path,
     );
     workFs = LocalFilesystem();
+    final homeStorage = HomeStorage(AppStorage.context);
     manifest = PluginManifestService();
-    install = PluginInstallService(manifestService: manifest);
+    install = PluginInstallService(manifestService: manifest, storage: homeStorage, );
     repository = PluginRepository(
       storage: HomeStorage(AppStorage.context),
       manifest: manifest,
@@ -59,6 +61,7 @@ void main() {
       binder: binder,
       bus: bus,
       workspaceConfig: configRepo,
+      storage: HomeStorage(AppStorage.context),
     );
   });
 
@@ -164,6 +167,7 @@ void main() {
           expect(args['id'], 'market/demo');
           return install.installFromDirectory(src);
         },
+        storage: HomeStorage(AppStorage.context),
       );
 
       final result = await module.handle(

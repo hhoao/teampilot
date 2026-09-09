@@ -16,6 +16,7 @@ final class CodexConfigTomlComposer {
     String? busOverlayToml,
     Iterable<String> trustedProjectDirectories = const [],
     String? reasoningEffortOverride,
+    bool usesPosixPaths = false,
   }) {
     var base = _generator.buildCodexConfigToml(provider).trim();
     final effortOverride = reasoningEffortOverride?.trim() ?? '';
@@ -33,6 +34,7 @@ final class CodexConfigTomlComposer {
     return CodexProjectTrustToml.applyTrustedDirectories(
       withOverlay,
       trustedProjectDirectories,
+      usesPosixPaths: usesPosixPaths,
     );
   }
 }

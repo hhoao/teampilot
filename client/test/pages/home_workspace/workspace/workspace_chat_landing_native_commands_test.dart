@@ -83,7 +83,7 @@ void main() {
   }) async {
     final workspace = Workspace(workspaceId: 'workspace-1', createdAt: 1);
     await tester.runAsync(() async {
-      await persistLandingDraft(workspace.workspaceId, draft);
+      await persistLandingDraft(workspace.workspaceId, draft, storage: testHomeStorage, );
       await WorkspaceProjectConfigRepository(
         storage: testHomeStorage,
       ).save(

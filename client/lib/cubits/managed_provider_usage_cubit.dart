@@ -281,7 +281,7 @@ class ManagedProviderUsageCubit extends Cubit<ManagedProviderUsageState> {
     }
   }
 
-  /// Invalidates all in-flight work before the AppStorage home context is
+  /// Invalidates all in-flight work before the home storage context is
   /// rebound. This clears Cubit-level ensure flights as well as the
   /// coordinator's transport/commit generation.
   Future<void> invalidateForStorageContextChange() async {

@@ -11,6 +11,7 @@ AppSession buildProvisionalSession({
   required String sessionId,
   required Workspace workspace,
   required bool isPersonal,
+  required bool usesPosixPaths,
   CliTool? cli,
   SimpleLaunchIdentity? simpleIdentity,
   String? workingDirectory,
@@ -25,6 +26,7 @@ AppSession buildProvisionalSession({
   final folders = Workspace.foldersForPrimaryPath(
     workspace.folders,
     workingDirectory ?? '',
+    usesPosixPaths: usesPosixPaths,
     defaultTargetId: home == null
         ? null
         : WorkTargetCanonicalizer.defaultFolderTargetId(home),

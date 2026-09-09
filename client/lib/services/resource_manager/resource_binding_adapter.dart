@@ -71,6 +71,7 @@ List<ResourceBinding> collectLiveResourceBindings({
   required List<GitWorktree> worktrees,
   required String Function(ChatTab tab) sessionTitle,
   required String Function(ChatTab tab, String memberId) memberName,
+  required bool usesPosixPaths,
   String? workspaceGroupLabel,
 }) {
   return collectResourceBindings(
@@ -86,6 +87,7 @@ List<ResourceBinding> collectLiveResourceBindings({
       group: terminalGroup,
     ),
     worktrees: worktrees,
+    usesPosixPaths: usesPosixPaths,
     workspaceGroupLabel: workspaceGroupLabel,
   );
 }
@@ -99,6 +101,7 @@ List<ResourceBinding> collectLiveResourceBindingsAllWorkspaces({
   required WorkspaceTerminalRegistry terminalRegistry,
   required String Function(ChatTab tab) sessionTitle,
   required String Function(ChatTab tab, String memberId) memberName,
+  required bool usesPosixPaths,
 }) {
   final bindings = <ResourceBinding>[];
   for (final workspace in workspaces) {
@@ -111,6 +114,7 @@ List<ResourceBinding> collectLiveResourceBindingsAllWorkspaces({
         worktrees: const [],
         sessionTitle: sessionTitle,
         memberName: memberName,
+        usesPosixPaths: usesPosixPaths,
         workspaceGroupLabel: workspace.effectiveDisplay.isNotEmpty
             ? workspace.effectiveDisplay
             : id,

@@ -55,6 +55,7 @@ TeamGenerationJobStore buildJobStore({
     fs: filesystem,
     layout: WorkspaceLayout(teampilotRoot: '/tp', fs: filesystem),
     clock: clock ?? () => DateTime.utc(2026, 8, 31),
+                                 storage: fakeHomeStorage(filesystem: fs),
   );
 }
 

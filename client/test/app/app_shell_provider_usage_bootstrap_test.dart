@@ -18,6 +18,10 @@ import 'package:teampilot/repositories/ssh_credential_store.dart';
 import 'package:teampilot/services/storage/app_storage.dart';
 
 import '../support/in_memory_filesystem.dart';
+import 'package:teampilot/services/storage/runtime_context.dart';
+import 'package:teampilot/models/runtime_target.dart';
+import 'package:teampilot/services/io/filesystem.dart';
+import 'package:teampilot/services/storage/home_storage.dart';
 
 void main() {
   tearDown(AppStorage.resetForTesting);
@@ -145,19 +149,30 @@ void main() {
       staleAt: 2,
     );
 
-    AppStorage.installForTesting(filesystem: firstFs, paths: firstPaths);
+    RuntimeContext ctx(Filesystem fs, AppPaths paths) => RuntimeContext(
+          target: RuntimeTarget.local(),
+          filesystem: fs,
+          home: '/home/test',
+          cwd: '/home/test',
+          appDataRoot: paths.basePath,
+          paths: paths,
+        );
+
+    // Injected-storage semantics: repositories follow their HomeStorage
+    // facade, and a home swap publishes a new context to the SAME facade.
+    final storage = HomeStorage(ctx(firstFs, firstPaths));
     final providerRepository = ManagedProviderRepository(
-      onProvidersDeleted: (_) async {},
+      storage: storage, onProvidersDeleted: (_) async {},
     );
-    final usageRepository = ManagedProviderUsageRepository();
+    final usageRepository = ManagedProviderUsageRepository(storage: storage);
     await providerRepository.save([provider]);
     await usageRepository.save(snapshot);
 
-    AppStorage.installForTesting(filesystem: secondFs, paths: secondPaths);
+    await storage.swap(ctx(secondFs, secondPaths));
     expect(await providerRepository.load(), isEmpty);
     expect(await usageRepository.load(), isEmpty);
 
-    AppStorage.installForTesting(filesystem: firstFs, paths: firstPaths);
+    await storage.swap(ctx(firstFs, firstPaths));
     expect((await providerRepository.load()).single.id, 'p1');
     expect((await usageRepository.load()).single.providerId, 'p1');
   });
@@ -302,8 +317,7 @@ void main() {
 class _FakeManagedProviderRepository extends ManagedProviderRepository {
   _FakeManagedProviderRepository()
     : super(
-        storage: fakeHomeStorage(),
-        onProvidersDeleted: (_) async {},
+        storage: fakeHomeStorage(), onProvidersDeleted: (_) async {},
       );
 
   int loadCalls = 0;

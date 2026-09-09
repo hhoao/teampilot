@@ -8,7 +8,7 @@ import '../../../repositories/workspace_project_config_repository.dart';
 import '../../io/filesystem.dart';
 import '../../plugin/plugin_exceptions.dart';
 import '../../plugin/plugin_install_service.dart';
-import '../../storage/app_storage.dart';
+import '../../storage/home_storage.dart';
 import '../catalog_kind.dart';
 import '../catalog_mcp_constants.dart';
 import '../catalog_mutation_bus.dart';
@@ -18,6 +18,7 @@ import 'plugin_catalog_tools.dart';
 
 class PluginCatalogModule implements CatalogKindModule {
   PluginCatalogModule({
+    required this.storage,
     required this.repository,
     required this.install,
     required this.binder,
@@ -27,6 +28,10 @@ class PluginCatalogModule implements CatalogKindModule {
     this.onDeleted,
     WorkspaceProjectConfigRepository? workspaceConfig,
   }) : _workspaceConfig = workspaceConfig ?? binder.repo;
+
+  /// Home control-plane storage backing installed-plugin reads and the
+  /// plugins root path.
+  final HomeStorage storage;
 
   final PluginRepository repository;
   final PluginInstallService install;
@@ -111,7 +116,7 @@ class PluginCatalogModule implements CatalogKindModule {
 
   Future<CatalogResult> _read(CatalogRequest req) async {
     final plugin = await _requireInstalled(_requireId(req));
-    final fs = AppStorage.fs;
+    final fs = storage.fs;
     final ctx = fs.pathContext;
     final dir = ctx.join(_pluginsRoot(), plugin.directory);
     final files = <String>[];
@@ -441,10 +446,7 @@ class PluginCatalogModule implements CatalogKindModule {
     }
   }
 
-  String _pluginsRoot() {
-    if (AppStorage.isInstalled) return AppStorage.context.pluginsRoot;
-    return AppPaths.pluginsDirForTeampilotRoot(AppStorage.paths.basePath);
-  }
+  String _pluginsRoot() => storage.context.pluginsRoot;
 
   static Plugin? _find(List<Plugin> installed, String id) {
     for (final plugin in installed) {

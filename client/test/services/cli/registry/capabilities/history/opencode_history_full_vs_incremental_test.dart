@@ -96,6 +96,7 @@ void main() {
           folders: session.folders,
           createdAt: 1,
         ),
+                              usesPosixPaths: false,
       );
 
   RuntimeContext fixedRoots() => RuntimeContext(

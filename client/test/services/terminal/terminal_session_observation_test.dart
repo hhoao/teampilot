@@ -16,6 +16,7 @@ import 'package:teampilot/services/terminal/terminal_transport.dart';
 
 import '../../support/flush_terminal_engine.dart';
 import '../../support/rust_lib_test_init.dart';
+import '../../support/in_memory_filesystem.dart';
 
 class _FakeTransport implements TerminalTransport {
   final outputController = StreamController<Uint8List>();
@@ -86,6 +87,7 @@ void main() {
           }) {
             return Future.value(transport);
           },
+                               fs: InMemoryFilesystem(),
     );
   });
 

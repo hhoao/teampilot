@@ -1,5 +1,5 @@
+import '../storage/home_storage.dart';
 import '../storage/runtime_context.dart';
-import '../storage/app_storage.dart';
 
 /// The path *style* a namespace uses when rendering an absolute path.
 enum PathStyle {
@@ -56,12 +56,14 @@ class PathNamespace {
   bool sameHostAs(PathNamespace other) => hostId == other.hostId;
 
   /// The namespace the file tree / app filesystem currently lives in, derived
-  /// from the installed home backend.
-  static PathNamespace ofCurrentStorage() {
-    if (!AppStorage.isInstalled) {
+  /// from the home backend ([storage]; a null storage means nothing is bound,
+  /// which reads as local POSIX).
+  static PathNamespace ofCurrentStorage(HomeStorage? storage) {
+    final context = storage?.context;
+    if (context == null) {
       return const PathNamespace.localPosix();
     }
-    switch (AppStorage.context.mode) {
+    switch (context.mode) {
       case StorageBackendMode.ssh:
         return const PathNamespace.ssh();
       case StorageBackendMode.wsl:
@@ -69,7 +71,7 @@ class PathNamespace {
         // file tree surfaces them as POSIX; treat the source as local POSIX.
         return const PathNamespace.localPosix();
       case StorageBackendMode.native:
-        return AppStorage.usesPosixPaths
+        return context.usesPosixPaths
             ? const PathNamespace.localPosix()
             : const PathNamespace.localWindows();
     }

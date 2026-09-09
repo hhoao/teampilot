@@ -24,6 +24,7 @@ import '../router/app_router.dart';
 import '../services/workspace/workspace_icon_warmup.dart';
 import '../services/expert_hub/expert_hub_catalog.dart';
 import '../services/home_workspace/home_workspace_ui_cache.dart';
+import '../services/storage/home_storage.dart';
 import '../services/storage/launch_profile_provisioner.dart';
 import '../utils/ui/yield_ui_frame.dart';
 import '../services/team/default_workspace_service.dart';
@@ -86,6 +87,7 @@ abstract final class AppDataBootstrap {
     required ChatCubit chatCubit,
     required SessionRepository sessionRepo,
     required LayoutCubit layoutCubit,
+    required HomeStorage storage,
     RuntimeTarget? home,
     ExpertHubCatalog? expertHubCatalog,
   }) async {
@@ -115,6 +117,7 @@ abstract final class AppDataBootstrap {
       chatCubit: chatCubit,
       sessionRepo: sessionRepo,
       layoutCubit: layoutCubit,
+      storage: storage,
       home: home,
       expertHubCatalog: expertHubCatalog,
     );
@@ -126,6 +129,7 @@ abstract final class AppDataBootstrap {
     required ChatCubit chatCubit,
     required SessionRepository sessionRepo,
     required LayoutCubit layoutCubit,
+    required HomeStorage storage,
     RuntimeTarget? home,
     ExpertHubCatalog? expertHubCatalog,
   }) async {
@@ -134,6 +138,7 @@ abstract final class AppDataBootstrap {
       teamCubit: teamCubit,
       chatCubit: chatCubit,
       sessionRepo: sessionRepo,
+      storage: storage,
       home: home,
       expertHubCatalog: expertHubCatalog,
     );
@@ -191,6 +196,7 @@ abstract final class AppDataBootstrap {
     required String? homeSshProfileId,
     required bool Function(String id) sshProfileExists,
     required Future<void> Function() reinstallStorageContext,
+    required HomeStorage storage,
     RuntimeTarget? home,
     bool reinstallSshHome = true,
     ExpertHubCatalog? expertHubCatalog,
@@ -242,6 +248,7 @@ abstract final class AppDataBootstrap {
       chatCubit: chatCubit,
       sessionRepo: sessionRepo,
       layoutCubit: layoutCubit,
+      storage: storage,
       home: home,
       expertHubCatalog: expertHubCatalog,
     );
@@ -321,6 +328,7 @@ abstract final class AppDataBootstrap {
     required AiFeatureSettingsCubit aiFeatureSettingsCubit,
     required DiscoverySettingsCubit discoverySettingsCubit,
     required HomeWorkspaceUiCache homeWorkspaceUiCache,
+    required HomeStorage storage,
     required List<Workspace> workspaces,
   }) async {
     final phaseSw = Stopwatch()..start();
@@ -343,7 +351,7 @@ abstract final class AppDataBootstrap {
     await _timed(
       boot,
       'workspaceIcons',
-      () => WorkspaceIconWarmup.warm(workspaces),
+      () => WorkspaceIconWarmup.warm(workspaces, storage: storage),
     );
 
     await yieldUiFrame();
@@ -374,6 +382,7 @@ abstract final class AppDataBootstrap {
     required String? homeSshProfileId,
     required bool Function(String id) sshProfileExists,
     required Future<void> Function() reinstallStorageContext,
+    required HomeStorage storage,
     ManagedProviderCubit? managedProviderCubit,
     ManagedProviderUsageCubit? managedProviderUsageCubit,
     RuntimeTarget? home,
@@ -391,6 +400,7 @@ abstract final class AppDataBootstrap {
       homeSshProfileId: homeSshProfileId,
       sshProfileExists: sshProfileExists,
       reinstallStorageContext: reinstallStorageContext,
+      storage: storage,
       home: home,
       reinstallSshHome: reinstallSshHome,
       expertHubCatalog: expertHubCatalog,
@@ -441,6 +451,7 @@ abstract final class AppDataBootstrap {
     required LaunchProfileCubit teamCubit,
     required ChatCubit chatCubit,
     required SessionRepository sessionRepo,
+    required HomeStorage storage,
     RuntimeTarget? home,
     ExpertHubCatalog? expertHubCatalog,
   }) async {
@@ -455,6 +466,7 @@ abstract final class AppDataBootstrap {
       () => DefaultWorkspaceService.ensureDefault(
         sessionRepo,
         defaultTeam: defaultTeam,
+        storage: storage,
         knownWorkspaces: chatCubit.state.workspaces,
         home: home,
         catalog: expertHubCatalog,

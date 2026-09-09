@@ -10,6 +10,7 @@ import 'package:teampilot/services/team_bus/team_bus.dart';
 import 'package:teampilot/services/terminal/terminal_session.dart';
 
 import '../team_bus/support/fake_member_launcher.dart';
+import '../../support/in_memory_filesystem.dart';
 
 void main() {
   final resolver = SessionWorkingResolver();
@@ -259,7 +260,7 @@ void main() {
 }
 
 class _ConnectedShell extends TerminalSession {
-  _ConnectedShell() : super(executable: 'true');
+  _ConnectedShell() : super(executable: 'true', fs: InMemoryFilesystem());
 
   @override
   bool get isRunning => true;

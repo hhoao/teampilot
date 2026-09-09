@@ -1,6 +1,5 @@
 import '../../../models/app_provider_config.dart';
 import '../../../models/llm_config.dart';
-import '../../storage/app_storage.dart';
 import '../../storage/runtime_layout.dart';
 import '../../../repositories/provider_persistence/provider_persistence_strategy.dart';
 
@@ -36,7 +35,7 @@ final class FlashskyaiProviderPersistence extends ProviderPersistenceStrategy {
 
     final configFile = RuntimeLayout(
       teampilotRoot: ctx.basePath,
-      fs: AppStorage.fs,
+      fs: ctx.fs,
     ).appFlashskyaiLlmConfigFile;
     await ctx.generator.writeJsonAtomic(
       configFile,

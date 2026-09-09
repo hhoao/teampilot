@@ -21,6 +21,7 @@ void main() {
           200,
         ),
       ),
+                                            storage: fakeHomeStorage(),
     );
     const provider = AppProviderConfig(
       id: 'openai-api',
@@ -52,6 +53,7 @@ void main() {
         requests++;
         return http.Response('{}', 200);
       }),
+                                            storage: fakeHomeStorage(),
     );
     const provider = AppProviderConfig(
       id: 'openai-official',

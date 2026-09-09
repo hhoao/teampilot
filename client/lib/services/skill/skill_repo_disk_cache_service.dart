@@ -4,11 +4,12 @@ import '../../models/skill.dart';
 import '../../utils/async_keyed_coalescer.dart';
 import '../../utils/logging/logger.dart';
 import '../../utils/repo_disk_sync_coalescer.dart';
-import '../storage/app_storage.dart';
+import '../storage/home_storage.dart';
 import '../io/filesystem.dart';
 import 'skill_fetch_service.dart';
 
-/// On-disk layout under [AppStorage.skillRepoCacheDir]:
+/// On-disk layout under the home skill repo cache dir
+/// (`storage.paths.skillRepoCacheDir`):
 /// `{owner}__{name}/meta.json`, `skills.json`, `files/**`.
 class SkillRepoCacheMeta {
   const SkillRepoCacheMeta({
@@ -54,19 +55,22 @@ class SkillRepoSyncResult {
 /// Disk-backed skill repo cache (no in-memory tarball cache).
 class SkillRepoDiskCacheService {
   SkillRepoDiskCacheService({
+    required HomeStorage storage,
     SkillFetchService? fetch,
     AsyncKeyedCoalescer? coalescer,
-  }) : _fetch = fetch ?? SkillFetchService(),
+  }) : _storage = storage,
+       _fetch = fetch ?? SkillFetchService(),
        _coalescer = coalescer ?? RepoDiskSyncCoalescer.instance;
 
+  final HomeStorage _storage;
   final SkillFetchService _fetch;
   final AsyncKeyedCoalescer _coalescer;
 
-  Filesystem get _fs => AppStorage.fs;
+  Filesystem get _fs => _storage.fs;
 
   static String repoKey(SkillRepo repo) => '${repo.owner}__${repo.name}';
 
-  String get _cacheRoot => AppStorage.paths.skillRepoCacheDir;
+  String get _cacheRoot => _storage.paths.skillRepoCacheDir;
 
   String _repoDirPath(SkillRepo repo) =>
       _fs.pathContext.join(_cacheRoot, repoKey(repo));
@@ -282,7 +286,7 @@ class SkillRepoDiskCacheService {
       final downloaded = await _fetch.downloadRepoEntries(
         repo,
         fs: _fs,
-        persistentGitPath: AppStorage.usesPosixPaths ? null : sourceDirPath,
+        persistentGitPath: _storage.usesPosixPaths ? null : sourceDirPath,
       );
       final commitSha = downloaded.commitSha;
       if (commitSha.trim().isEmpty) {

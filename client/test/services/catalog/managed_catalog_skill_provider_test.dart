@@ -13,6 +13,7 @@ import 'package:teampilot/services/resource/contribution/resource_origin.dart';
 import 'package:teampilot/services/resource/providers/prompt_contribution_provider.dart';
 import 'package:teampilot/services/resource/providers/skill_contribution_provider.dart';
 import 'package:teampilot/services/resource/resource_scope.dart';
+import '../../support/in_memory_filesystem.dart';
 
 const _catalogPromptSentence =
     'To install or manage TeamPilot skills, plugins, or MCP servers, load the teampilot-catalog skill and use the teampilot MCP. Do not install into ~/.claude.';
@@ -34,7 +35,7 @@ void main() {
 
   test('providerId is teampilot-catalog', () {
     expect(
-      ManagedCatalogSkillProvider(sourceDirectory: sourceDir.path).providerId,
+      ManagedCatalogSkillProvider(sourceDirectory: sourceDir.path, storage: fakeHomeStorage(), ).providerId,
       'teampilot-catalog',
     );
   });
@@ -44,6 +45,7 @@ void main() {
     () async {
       final provider = ManagedCatalogSkillProvider(
         sourceDirectory: sourceDir.path,
+                                                    storage: fakeHomeStorage(),
       );
       final contributions = [
         ...await provider.provide(
@@ -82,7 +84,7 @@ void main() {
       await fs.ensureDir(targetConfigDir);
 
       final contributions = [
-        ...await ManagedCatalogSkillProvider().provide(
+        ...await ManagedCatalogSkillProvider(storage: fakeHomeStorage()).provide(
           SkillProviderContext(
             cli: CliTool.claude,
             scope: const SimpleResourceScope(bundle: ConfigBundle()),
@@ -111,6 +113,7 @@ void main() {
     () async {
       final provider = ManagedCatalogSkillProvider(
         sourceDirectory: sourceDir.path,
+                                                    storage: fakeHomeStorage(),
       );
       final contributions = [
         ...await provider.provide(

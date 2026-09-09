@@ -4,6 +4,7 @@ import 'package:path/path.dart' as p;
 
 import '../../cubits/git_cubit.dart';
 import '../../cubits/git_graph_cubit.dart';
+import '../storage/home_storage.dart';
 import '../storage/runtime_context.dart';
 import 'git_history_actions.dart';
 import 'git_history_service.dart';
@@ -29,16 +30,26 @@ class GitRepoStore {
     graphCubitFactory,
     DateTime Function()? clock,
     int maxRetained = 8,
-  }) : _cubitFactory = cubitFactory ?? _defaultFactory,
+    HomeStorage? storage,
+  }) : _injectedCubitFactory = cubitFactory,
        _graphFactory = graphCubitFactory ?? _defaultGraphFactory,
        _now = clock ?? DateTime.now,
-       _maxRetained = maxRetained;
+       _maxRetained = maxRetained,
+       _storage = storage;
 
-  static GitCubit _defaultFactory(String root, RuntimeContext workContext) {
+  final GitCubit Function(String root, RuntimeContext workContext)?
+  _injectedCubitFactory;
+
+  GitCubit _cubitFactory(String root, RuntimeContext workContext) {
+    final injected = _injectedCubitFactory;
+    if (injected != null) return injected(root, workContext);
     final service =
         GitService.debugOverrideFactory?.call() ??
         GitService.forContext(workContext);
-    return GitCubit(service: service)..setRepoRoot(root);
+    return GitCubit(
+      service: service,
+      storage: _storage ?? HomeStorage(workContext),
+    )..setRepoRoot(root);
   }
 
   static GitGraphCubit _defaultGraphFactory(
@@ -57,12 +68,11 @@ class GitRepoStore {
     return GitGraphCubit(history: history, git: git, actions: actions);
   }
 
-  final GitCubit Function(String root, RuntimeContext workContext)
-  _cubitFactory;
   final GitGraphCubit Function(String root, RuntimeContext workContext)
   _graphFactory;
   final int _maxRetained;
   final DateTime Function() _now;
+  final HomeStorage? _storage;
   final p.Context _ctx = p.Context();
 
   /// Normalized `targetId:root` → cubit. Insertion order is the LRU order.
@@ -94,8 +104,7 @@ class GitRepoStore {
 
   /// Returns the retained graph cubit for [root] on [workContext], creating it
   /// on first access and warming it asynchronously.
-  GitGraphCubit graphCubitFor(
-    String root, {
+  GitGraphCubit graphCubitFor(    String root, {
     required RuntimeContext workContext,
   }) {
     final key = _cacheKey(root, workContext);

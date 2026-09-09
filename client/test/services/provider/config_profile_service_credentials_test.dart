@@ -5,6 +5,8 @@ import 'package:teampilot/models/team_config.dart';
 import 'package:teampilot/repositories/app_provider_repository.dart';
 import 'package:teampilot/services/provider/config_profile_service.dart';
 import 'package:teampilot/services/provider/credential_binding.dart';
+import 'package:teampilot/services/cli/registry/cli_bootstrap.dart';
+import 'package:teampilot/services/cli/registry/cli_tool_registry.dart';
 
 import '../../support/in_memory_filesystem.dart';
 import '../../support/post_frame_test_harness.dart';
@@ -17,9 +19,12 @@ void main() {
 
   setUp(() {
     setUpTestAppStorage();
+    CliToolRegistry.builtIn().configure(
+      CliBootstrap(const {}, storage: testHomeStorage),
+    );
     fs = InMemoryFilesystem();
-    service = ConfigProfileService(basePath: base, fs: fs);
-    repository = AppProviderRepository(basePath: base, fs: fs);
+    service = ConfigProfileService(basePath: base, fs: fs, storage: testHomeStorage, );
+    repository = AppProviderRepository(basePath: base, fs: fs, storage: testHomeStorage, );
   });
 
   tearDown(() => tearDownTestAppStorage());
@@ -151,7 +156,7 @@ void main() {
     'mixed launch links global credentials for official member provider',
     () async {
       const home = '/home/user';
-      service = ConfigProfileService(basePath: base, fs: fs, home: home);
+      service = ConfigProfileService(basePath: base, fs: fs, home: home, storage: testHomeStorage, );
       await repository.saveProviders(CliTool.claude, [
         const AppProviderConfig(
           id: 'leaky',

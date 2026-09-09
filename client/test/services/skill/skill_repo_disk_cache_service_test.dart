@@ -102,7 +102,7 @@ void main() {
   test('empty commitSha is not trusted when remote SHA unavailable', () async {
     await _plantSnapshot(commitSha: '');
     final fetch = _CountingFetch()..remoteSha = null;
-    final cache = SkillRepoDiskCacheService(fetch: fetch);
+    final cache = SkillRepoDiskCacheService(storage: buildTestHomeStorage(), fetch: fetch);
 
     await cache.ensureSynced(_repo);
 
@@ -112,7 +112,7 @@ void main() {
   test('trusted snapshot reused when remote SHA unavailable', () async {
     await _plantSnapshot(commitSha: 'deadbeef');
     final fetch = _CountingFetch()..remoteSha = null;
-    final cache = SkillRepoDiskCacheService(fetch: fetch);
+    final cache = SkillRepoDiskCacheService(storage: buildTestHomeStorage(), fetch: fetch);
 
     final result = await cache.ensureSynced(_repo);
 
@@ -124,8 +124,8 @@ void main() {
   test('parallel ensureSynced on separate instances coalesces download', () async {
     final fetch = _CountingFetch();
     final coalescer = AsyncKeyedCoalescer();
-    final a = SkillRepoDiskCacheService(fetch: fetch, coalescer: coalescer);
-    final b = SkillRepoDiskCacheService(fetch: fetch, coalescer: coalescer);
+    final a = SkillRepoDiskCacheService(storage: buildTestHomeStorage(), fetch: fetch, coalescer: coalescer);
+    final b = SkillRepoDiskCacheService(storage: buildTestHomeStorage(), fetch: fetch, coalescer: coalescer);
 
     await Future.wait([a.ensureSynced(_repo), b.ensureSynced(_repo)]);
 
@@ -135,7 +135,7 @@ void main() {
   test('missing requiredRelativePaths forces download', () async {
     await _plantSnapshot(commitSha: 'deadbeef', includeBin: false);
     final fetch = _CountingFetch()..remoteSha = null;
-    final cache = SkillRepoDiskCacheService(fetch: fetch);
+    final cache = SkillRepoDiskCacheService(storage: buildTestHomeStorage(), fetch: fetch);
 
     await cache.ensureSynced(_repo, requiredRelativePaths: const ['bin']);
 
@@ -162,7 +162,7 @@ void main() {
     );
 
     final fetch = _CountingFetch()..remoteSha = 'deadbeef';
-    final cache = SkillRepoDiskCacheService(fetch: fetch);
+    final cache = SkillRepoDiskCacheService(storage: buildTestHomeStorage(), fetch: fetch);
 
     final result = await cache.ensureSynced(
       _repo,
@@ -178,7 +178,7 @@ void main() {
   test('maxStaleness still checks remote when cache is stale', () async {
     await _plantSnapshot(commitSha: 'deadbeef');
     final fetch = _CountingFetch()..remoteSha = 'deadbeef';
-    final cache = SkillRepoDiskCacheService(fetch: fetch);
+    final cache = SkillRepoDiskCacheService(storage: buildTestHomeStorage(), fetch: fetch);
 
     final result = await cache.ensureSynced(
       _repo,
@@ -210,7 +210,7 @@ void main() {
     );
 
     final fetch = _CountingFetch()..remoteSha = 'deadbeef';
-    final cache = SkillRepoDiskCacheService(fetch: fetch);
+    final cache = SkillRepoDiskCacheService(storage: buildTestHomeStorage(), fetch: fetch);
 
     await cache.ensureSynced(
       _repo,

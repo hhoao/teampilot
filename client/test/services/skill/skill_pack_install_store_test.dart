@@ -9,7 +9,7 @@ void main() {
 
   setUp(() {
     fs = InMemoryFilesystem();
-    store = SkillPackInstallStore(fs: fs, rootOverride: '/packs');
+    store = SkillPackInstallStore(fs: fs, rootOverride: '/packs', storage: fakeHomeStorage(filesystem: fs), );
   });
 
   test('record round-trip preserves syncRoot and envExports', () async {

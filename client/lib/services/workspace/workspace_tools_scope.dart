@@ -180,6 +180,7 @@ class WorkspaceToolsScopeCubit extends Cubit<WorkspaceToolsScopeState> {
       primaryPath: cwd,
       additionalPaths: additionalPaths,
       context: activeTools.context,
+      usesPosixPaths: _lifecycle.storage.usesPosixPaths,
     );
     final activeSlice = WorkspaceTargetSlice(
       targetId: activeTools.targetId,
@@ -242,7 +243,7 @@ class WorkspaceToolsScopeCubit extends Cubit<WorkspaceToolsScopeState> {
         targetIdForFolderPaths(folders, [
           cwd,
           ...additionalPaths,
-        ], matchSubpaths: true) ??
+        ], usesPosixPaths: _lifecycle.storage.usesPosixPaths, matchSubpaths: true) ??
         folders.first.targetId;
 
     final preferred = await _tryResolveTarget(preferredTargetId);
@@ -311,6 +312,7 @@ class WorkspaceToolsScopeCubit extends Cubit<WorkspaceToolsScopeState> {
         primaryPath: cwd,
         additionalPaths: additionalPaths,
         context: context,
+        usesPosixPaths: _lifecycle.storage.usesPosixPaths,
       );
       if (roots.isEmpty) continue;
       slices.add(

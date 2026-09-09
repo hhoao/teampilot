@@ -6,6 +6,7 @@ import '../../models/mcp_registry_source.dart';
 import '../../services/mcp/mcp_registry_browse_service.dart';
 import '../../services/mcp/mcp_registry_config_service.dart';
 import '../../services/mcp/smithery_mcp_service.dart';
+import '../../services/storage/app_storage.dart';
 import '../../theme/workspace_surface_layers.dart';
 import '../../widgets/app_toast/app_toast.dart';
 import '../../widgets/catalog/catalog_registry_row_actions.dart';
@@ -20,7 +21,9 @@ class McpRegistriesSection extends StatefulWidget {
 }
 
 class _McpRegistriesSectionState extends State<McpRegistriesSection> {
-  final _configService = McpRegistryConfigService();
+  final _configService = McpRegistryConfigService(
+    teampilotRoot: AppStorage.tolerantHome.appDataRoot,
+  );
   final _smithery = SmitheryMcpService();
   final _registry = McpRegistryBrowseService();
 

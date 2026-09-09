@@ -23,6 +23,7 @@ import 'package:teampilot/services/skill/skill_acquisition_engine.dart';
 import 'package:teampilot/services/skill/skill_fetch_service.dart';
 import 'package:teampilot/services/skill/skill_repo_disk_cache_service.dart';
 import 'package:teampilot/services/storage/app_storage.dart';
+import 'package:teampilot/services/storage/home_storage.dart';
 
 void main() {
   late Directory tmp;
@@ -46,13 +47,15 @@ void main() {
   });
 
   SkillCubit cubitWith(SkillAcquisitionEngine engine) => SkillCubit(
-    SkillRepository(),
+    SkillRepository(storage: HomeStorage(AppStorage.context)),
     registryConfigService: SkillRegistryConfigService(
       teampilotRoot: AppStorage.paths.basePath,
+      storage: HomeStorage(AppStorage.context),
     ),
     initialSources: const [],
     rebuildSources: (c) => const [],
     acquisitionEngine: engine,
+    storage: HomeStorage(AppStorage.context),
   );
 
   test(
@@ -61,6 +64,7 @@ void main() {
       const expectedId = 'script:custom/gstack';
       var engineCalls = 0;
       final engine = SkillAcquisitionEngine(
+        storage: HomeStorage(AppStorage.context),
         runner: (_) async {
           engineCalls++;
           return const CliInstallerCommandResult(exitCode: 0);
@@ -121,6 +125,7 @@ void main() {
       const expectedId = 'obra/superpowers:brainstorming';
       var engineCalls = 0;
       final engine = SkillAcquisitionEngine(
+        storage: HomeStorage(AppStorage.context),
         installGitDir: (d, {bool overwrite = false, String? idOverride}) async {
           engineCalls++;
           throw StateError('should not install');
@@ -166,7 +171,7 @@ void main() {
 
   test('manual mode syncs repos without disk cache once', () async {
     final fetch = _FakeSkillFetch();
-    final cubit = cubitWithRepos(SkillRepository(fetch: fetch));
+    final cubit = cubitWithRepos(SkillRepository(storage: HomeStorage(AppStorage.context), fetch: fetch));
 
     await cubit.ensureDiscoveryLoaded();
 
@@ -176,11 +181,18 @@ void main() {
 
   test('manual mode with disk cache does not hit network', () async {
     final fetch = _FakeSkillFetch();
-    final cache = SkillRepoDiskCacheService(fetch: fetch);
+    final cache = SkillRepoDiskCacheService(
+      storage: HomeStorage(AppStorage.context),
+      fetch: fetch,
+    );
     await cache.ensureSynced(_discoveryRepo);
     expect(fetch.downloads, 1);
     final cubit = cubitWithRepos(
-      SkillRepository(fetch: fetch, repoCache: cache),
+      SkillRepository(
+        storage: HomeStorage(AppStorage.context),
+        fetch: fetch,
+        repoCache: cache,
+      ),
     );
 
     await cubit.ensureDiscoveryLoaded();
@@ -192,10 +204,17 @@ void main() {
 
   test('manual mode with force always checks remote', () async {
     final fetch = _FakeSkillFetch();
-    final cache = SkillRepoDiskCacheService(fetch: fetch);
+    final cache = SkillRepoDiskCacheService(
+      storage: HomeStorage(AppStorage.context),
+      fetch: fetch,
+    );
     await cache.ensureSynced(_discoveryRepo);
     final cubit = cubitWithRepos(
-      SkillRepository(fetch: fetch, repoCache: cache),
+      SkillRepository(
+        storage: HomeStorage(AppStorage.context),
+        fetch: fetch,
+        repoCache: cache,
+      ),
     );
 
     await cubit.ensureDiscoveryLoaded(force: true);
@@ -207,7 +226,10 @@ void main() {
 
   test('auto mode with fresh cache skips network', () async {
     final fetch = _FakeSkillFetch();
-    final cache = SkillRepoDiskCacheService(fetch: fetch);
+    final cache = SkillRepoDiskCacheService(
+      storage: HomeStorage(AppStorage.context),
+      fetch: fetch,
+    );
     await cache.ensureSynced(_discoveryRepo);
     final settings = DiscoverySettingsCubit(
       repository: InMemoryAppSettingsRepository(),
@@ -215,7 +237,11 @@ void main() {
     await settings.load();
     await settings.setAutoRefreshEnabled(true);
     final cubit = cubitWithRepos(
-      SkillRepository(fetch: fetch, repoCache: cache),
+      SkillRepository(
+        storage: HomeStorage(AppStorage.context),
+        fetch: fetch,
+        repoCache: cache,
+      ),
       discoverySettings: settings,
     );
 
@@ -228,7 +254,10 @@ void main() {
 
   test('auto mode with stale cache checks remote', () async {
     final fetch = _FakeSkillFetch();
-    final cache = SkillRepoDiskCacheService(fetch: fetch);
+    final cache = SkillRepoDiskCacheService(
+      storage: HomeStorage(AppStorage.context),
+      fetch: fetch,
+    );
     await cache.ensureSynced(_discoveryRepo);
     final fs = AppStorage.fs;
     final metaPath = fs.pathContext.join(
@@ -251,7 +280,11 @@ void main() {
     );
     await settings.setAutoRefreshEnabled(true);
     final cubit = cubitWithRepos(
-      SkillRepository(fetch: fetch, repoCache: cache),
+      SkillRepository(
+        storage: HomeStorage(AppStorage.context),
+        fetch: fetch,
+        repoCache: cache,
+      ),
       discoverySettings: settings,
     );
 
@@ -397,12 +430,14 @@ Future<void> _waitForCondition(bool Function() condition) async {
 
 SkillCubit cubitWithDiscoverySources(List<SkillRegistrySource> sources) {
   return SkillCubit(
-    SkillRepository(),
+    SkillRepository(storage: HomeStorage(AppStorage.context)),
     registryConfigService: SkillRegistryConfigService(
       teampilotRoot: AppStorage.paths.basePath,
+      storage: HomeStorage(AppStorage.context),
     ),
     initialSources: sources,
     rebuildSources: (c) => sources,
+    storage: HomeStorage(AppStorage.context),
   );
 }
 
@@ -492,10 +527,12 @@ SkillCubit cubitWithRepos(
     repo,
     registryConfigService: SkillRegistryConfigService(
       teampilotRoot: AppStorage.paths.basePath,
+      storage: HomeStorage(AppStorage.context),
     ),
     initialSources: [gitSource],
     rebuildSources: (c) => [gitSource],
     discoverySettings: discoverySettings,
+    storage: HomeStorage(AppStorage.context),
   );
 }
 

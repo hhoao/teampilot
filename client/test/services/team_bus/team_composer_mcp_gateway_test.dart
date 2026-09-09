@@ -49,6 +49,7 @@ void main() {
       fs: fs,
       layout: WorkspaceLayout(teampilotRoot: '/tp', fs: fs),
       clock: () => DateTime.utc(2026, 8, 31),
+                                       storage: fakeHomeStorage(filesystem: fs),
     );
     final settings = resolveTeamGenerationSettingsSnapshot(
       settings: TeamGenerationSettings(teamMode: TeamMode.mixed),

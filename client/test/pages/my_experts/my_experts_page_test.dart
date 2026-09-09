@@ -22,9 +22,10 @@ import 'package:teampilot/services/hub_publish/hub_publish_record_store.dart';
 
 import '../../support/in_memory_filesystem.dart';
 import '../../support/post_frame_test_harness.dart';
+import 'package:teampilot/services/storage/app_paths.dart';
 
 class _FakeSource extends CompositeExpertHubSource {
-  _FakeSource() : super(builtIns: const [], registry: _EmptyRegistry());
+  _FakeSource() : super(builtIns: const [], registry: _EmptyRegistry(), localStore: LocalExpertStore(fs: InMemoryFilesystem(), dirOverride: AppPaths('/tp').memberHubLocalTemplatesDir), );
 
   @override
   Future<List<DiscoverableMember>> fetchMembers({
@@ -94,6 +95,7 @@ Widget _host({
       HubPublishRecordStore(
         fs: InMemoryFilesystem(),
         pathOverride: '/hub-publish/records.json',
+                             storage: testHomeStorage,
       );
   return MaterialApp(
     localizationsDelegates: AppLocalizations.localizationsDelegates,
@@ -291,7 +293,7 @@ void main() {
     await writer.save(_localExpert(id: 'e1', name: 'Published One'));
     await writer.save(_localExpert(id: 'e2', name: 'Unpublished'));
 
-    final records = HubPublishRecordStore(fs: fs, pathOverride: '/p.json');
+    final records = HubPublishRecordStore(fs: fs, pathOverride: '/p.json', storage: testHomeStorage, );
     await records.upsert(
       HubPublishRecord(
         kind: HubPublishKind.expert,

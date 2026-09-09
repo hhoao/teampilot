@@ -11,16 +11,19 @@ import '../../../provider/credential_binding.dart';
 import '../../../provider/credential_host_request.dart';
 import '../../../provider/credential_process_result.dart';
 import '../../../provider/provider_credential_host_runner.dart';
+import '../../../storage/home_storage.dart';
 
 class ClaudeProviderCredentialsService {
   ClaudeProviderCredentialsService({
+    required HomeStorage storage,
     required Filesystem fs,
     required String basePath,
     this.claudeExecutable = 'claude',
     String? Function()? resolveClaudeExecutable,
     String? Function()? resolveHomeDirectory,
     ProviderCredentialHostRunner? hostRunner,
-  }) : _fs = fs,
+  }) : _storage = storage,
+       _fs = fs,
        _basePath = basePath.trim(),
        _resolveClaudeExecutable = resolveClaudeExecutable,
        _resolveHomeDirectory = resolveHomeDirectory,
@@ -28,6 +31,7 @@ class ClaudeProviderCredentialsService {
 
   static const credentialsFileName = '.credentials.json';
 
+  final HomeStorage _storage;
   final Filesystem _fs;
   final String _basePath;
   final String claudeExecutable;
@@ -367,7 +371,8 @@ class ClaudeProviderCredentialsService {
   }
 
   ProviderCredentialHostRunner get _runner =>
-      _hostRunner ?? ProviderCredentialHostRunner.forAppStorage();
+      _hostRunner ??
+      ProviderCredentialHostRunner.forHomeStorage(storage: _storage);
 
   Future<HostRunResult> _runClaude(
     List<String> subcommand, {
@@ -381,11 +386,15 @@ class ClaudeProviderCredentialsService {
     final request = CredentialHostRequest.build(
       preferencePath: preferencePath,
       subcommand: subcommand,
+      storage: _storage,
       environment: {
         ...platformEnv,
         ...loginEnvironment(
           providerId,
-          useWslPaths: CredentialHostRequest.usePosixCliPaths(preferencePath),
+          useWslPaths: CredentialHostRequest.usePosixCliPaths(
+            preferencePath,
+            storage: _storage,
+          ),
           binding: binding,
           homeDirectory: homeDirectory,
         ),

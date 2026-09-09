@@ -10,6 +10,7 @@ import 'package:teampilot/repositories/app_provider_repository.dart';
 import 'package:teampilot/services/provider/credential_login_progress.dart';
 import 'package:teampilot/theme/app_typography_scale.dart';
 import 'package:teampilot/widgets/app_provider/provider_credential_device_code_dialog.dart';
+import '../../support/in_memory_filesystem.dart';
 
 void main() {
   late Directory temp;
@@ -18,8 +19,9 @@ void main() {
   setUp(() async {
     temp = await Directory.systemTemp.createTemp('device_code_dialog_');
     cubit = AppProviderCubit(
-      repository: AppProviderRepository(basePath: temp.path),
+      repository: AppProviderRepository(basePath: temp.path, storage: fakeHomeStorage(), ),
       basePath: temp.path,
+                              storage: fakeHomeStorage(),
     );
     cubit.beginCredentialLogin('openai-official');
     cubit.reportCredentialLoginProgress(

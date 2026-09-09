@@ -16,6 +16,7 @@ import 'package:teampilot/models/workspace_folder.dart';
 import 'package:teampilot/services/launch/session_tab_surface_coordinator.dart';
 
 import '../../support/fake_terminal_session.dart';
+import '../../support/in_memory_filesystem.dart';
 
 void main() {
   group('SessionTabSurfaceCoordinator.surfaceExistingTab', () {
@@ -30,7 +31,7 @@ void main() {
     openedCalls;
 
     setUp(() {
-      tabStore = ChatTabStore();
+      tabStore = ChatTabStore(storage: fakeHomeStorage());
       tabStore.setActiveWorkspaceId('ws-1');
       session = AppSession(
         sessionId: 'sess-1',
@@ -157,7 +158,7 @@ void main() {
     test(
       'reuse of a RUNNING tab pins preview: false even when not connecting',
       () {
-        final running = FakeTerminalSession();
+        final running = FakeTerminalSession(fs: InMemoryFilesystem());
         running.connect(workingDirectory: '/tmp');
         existing.resumeSession = running;
 
@@ -194,7 +195,7 @@ void main() {
     openedCalls;
 
     setUp(() {
-      tabStore = ChatTabStore();
+      tabStore = ChatTabStore(storage: fakeHomeStorage());
       tabStore.setActiveWorkspaceId('ws-1');
       workspace = Workspace(
         workspaceId: 'ws-1',

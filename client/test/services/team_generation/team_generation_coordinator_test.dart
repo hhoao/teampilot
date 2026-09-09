@@ -210,10 +210,11 @@ void main() {
     () async {
       final fs = InMemoryFilesystem();
       final layout = WorkspaceLayout(teampilotRoot: '/tp', fs: fs);
-      final jobStore = TeamGenerationJobStore(fs: fs, layout: layout);
+      final jobStore = TeamGenerationJobStore(fs: fs, layout: layout, storage: testHomeStorage, );
       final settingsStore = TeamGenerationSettingsStore(
         fs: fs,
         pathOverride: '/tp/settings.json',
+                                                         storage: testHomeStorage,
       );
       final port = _RecordingSessionPort();
       final events = port.events;
@@ -444,10 +445,11 @@ void main() {
     () async {
       final fs = InMemoryFilesystem();
       final layout = WorkspaceLayout(teampilotRoot: '/tp', fs: fs);
-      final jobStore = TeamGenerationJobStore(fs: fs, layout: layout);
+      final jobStore = TeamGenerationJobStore(fs: fs, layout: layout, storage: testHomeStorage, );
       final settingsStore = TeamGenerationSettingsStore(
         fs: fs,
         pathOverride: '/tp/settings.json',
+                                                         storage: testHomeStorage,
       );
       final port = _RecordingSessionPort(
         kickoffOutcomes: const [

@@ -10,6 +10,7 @@ import 'package:teampilot/services/terminal/terminal_session.dart';
 
 import '../../support/post_frame_test_harness.dart';
 import '../support/session_idle_busy_harness.dart';
+import '../../support/in_memory_filesystem.dart';
 
 typedef OpenSimpleTurnResult = ({
   String sessionId,
@@ -33,6 +34,7 @@ Future<OpenSimpleTurnResult> openSimpleTurnSession({
     terminalSessionFactory:
         ({required String executable, int scrollbackLines = 10000}) =>
             RunningConnectedFakeShell(executable: executable),
+                           storage: fakeHomeStorage(),
   );
   final workspace = await repo.createWorkspace([WorkspaceFolder(path: '/tmp')]);
   final session = (await repo.createSession(workspace.workspaceId, cli: cli)).session;

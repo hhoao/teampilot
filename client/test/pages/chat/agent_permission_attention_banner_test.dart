@@ -24,6 +24,7 @@ class _RecordingChatCubit extends ChatCubit {
     : super(
         executableResolver: () => 'true',
         automationRepository: testAutomationRepository(),
+             storage: testHomeStorage,
       );
 
   final workbenchViews = <(String, SessionWorkbenchView)>[];

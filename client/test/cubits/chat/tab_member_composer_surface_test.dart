@@ -324,7 +324,7 @@ final class _ComposerHarness {
     required CliTool cli,
     MemberPtyInjectService? ptyInject,
   }) async {
-    final store = ChatTabStore();
+    final store = ChatTabStore(storage: testHomeStorage);
     store.setActiveWorkspaceId('ws-1');
     final tab =
         ChatTab(

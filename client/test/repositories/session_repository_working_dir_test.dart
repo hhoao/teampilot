@@ -3,13 +3,14 @@ import 'dart:io';
 import 'package:teampilot/models/workspace_folder.dart';
 import 'package:teampilot/repositories/session_repository.dart';
 import 'package:flutter_test/flutter_test.dart';
+import '../support/in_memory_filesystem.dart';
 
 void main() {
   test('createSession with workingDirectory overrides primaryPath', () async {
     final tmp = await Directory.systemTemp.createTemp('fs_session_repo_wd_');
     addTearDown(() => tmp.deleteSync(recursive: true));
 
-    final repo = SessionRepository(rootDir: tmp.path);
+    final repo = SessionRepository(rootDir: tmp.path, storage: fakeHomeStorage(), );
     final ws = await repo.createWorkspace([
       WorkspaceFolder(path: '/repo/main'),
     ]);
@@ -27,7 +28,7 @@ void main() {
       final tmp = await Directory.systemTemp.createTemp('fs_session_repo_wd_');
       addTearDown(() => tmp.deleteSync(recursive: true));
 
-      final repo = SessionRepository(rootDir: tmp.path);
+      final repo = SessionRepository(rootDir: tmp.path, storage: fakeHomeStorage(), );
       final ws = await repo.createWorkspace([
         WorkspaceFolder(path: '/repo/main'),
       ]);

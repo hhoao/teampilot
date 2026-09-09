@@ -4,11 +4,16 @@ import 'package:teampilot/repositories/app_provider_repository.dart';
 import 'package:teampilot/services/cli/claude/provider/claude_provider_credentials_service.dart';
 import 'package:teampilot/services/remote/local_credential_exporter.dart';
 import 'package:teampilot/services/storage/app_storage.dart';
+import 'package:teampilot/services/cli/registry/cli_bootstrap.dart';
+import 'package:teampilot/services/cli/registry/cli_tool_registry.dart';
 import '../../support/post_frame_test_harness.dart';
 
 void main() {
   setUp(() {
     setUpTestAppStorage();
+    CliToolRegistry.builtIn().configure(
+      CliBootstrap(const {}, storage: testHomeStorage),
+    );
   });
 
   tearDown(() {
@@ -18,7 +23,7 @@ void main() {
   test(
     'exports providers.json and linked credential files from home catalog',
     () async {
-      final repo = AppProviderRepository();
+      final repo = AppProviderRepository(storage: testHomeStorage);
       await repo.saveProviders(CliTool.claude, [
         AppProviderConfig(
           id: 'deepseek',
@@ -34,6 +39,7 @@ void main() {
         fs: AppStorage.fs,
         basePath: AppStorage.appDataRoot,
         resolveHomeDirectory: () => AppStorage.home,
+                                                        storage: testHomeStorage,
       );
       final credPath = credSvc.credentialPath('deepseek');
       await AppStorage.fs.ensureDir(credSvc.providerDir('deepseek'));
@@ -42,6 +48,7 @@ void main() {
       final files = await LocalCredentialExporter(
         basePath: AppStorage.appDataRoot,
         home: AppStorage.home,
+                                                   storage: testHomeStorage,
       ).export(CliTool.claude);
 
       expect(files.any((f) => f.relativePath == 'providers.json'), isTrue);

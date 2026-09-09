@@ -32,6 +32,7 @@ import '../../services/cli/registry/capabilities/terminal_behavior_capability.da
 import '../../services/cli/registry/cli_tool_registry.dart';
 import '../../services/cli/registry/cli_tool_registry_scope.dart';
 import '../../services/compose/compose_at_file_refs.dart';
+import '../../services/storage/app_storage.dart';
 import '../../services/compose/compose_clip.dart';
 import '../../services/compose/compose_file_attach.dart';
 import '../../services/compose/compose_file_drop_ingestor.dart';
@@ -547,7 +548,10 @@ class SessionChatComposeSection extends StatelessWidget {
                                   session.workspaceId,
                                   path,
                                   preview: true,
-                                  fs: filesystemForComposeAtFileOpen(path),
+                                  fs: filesystemForComposeAtFileOpen(
+                                    path,
+                                    workspaceFilesystem: AppStorage.fs,
+                                  ),
                                 ),
                               );
                             },
@@ -606,6 +610,7 @@ class SessionChatComposeSection extends StatelessWidget {
   ) {
     return ComposeFileDropIngestor(
       workspaceRoot: root,
+      usesPosixPaths: AppStorage.tolerantHome.usesPosixPaths,
       onInsertReferences: (references) {
         insertComposeReferences(controller, references);
       },

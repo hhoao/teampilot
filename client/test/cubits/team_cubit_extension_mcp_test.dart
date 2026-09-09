@@ -30,7 +30,8 @@ const _extServer = McpServer(
 
 /// Records every `syncForProfile` call and returns queued results in order.
 class _RecordingMcpLinker extends ProfileMcpLinkerService {
-  _RecordingMcpLinker({this.resultsQueue = const []});
+  _RecordingMcpLinker({this.resultsQueue = const []})
+    : super(storage: buildTestHomeStorage());
 
   final List<ProfileMcpSyncResult> resultsQueue;
   final calls =
@@ -116,30 +117,12 @@ void main() {
     late Directory appDataRoot;
 
     setUp(() async {
-      TestWidgetsFlutterBinding.ensureInitialized();
-      appDataRoot = await Directory.systemTemp.createTemp('teampilot_ext_mcp_');
-      final paths = AppPaths(appDataRoot.path);
-      AppStorage.installForTesting(
-        filesystem: LocalFilesystem(
-          pathContext: AppPaths.pathContextForDataRoot(paths.basePath),
-        ),
-        paths: paths,
-        home: appDataRoot.path,
-        cwd: appDataRoot.path,
-      );
+      setUpTestAppStorage();
+      appDataRoot = Directory(AppStorage.paths.basePath);
     });
 
     tearDown(() async {
-      AppStorage.resetForTesting();
-      AppPathsBootstrapper.resetForTesting();
-      if (await appDataRoot.exists()) {
-        try {
-          await appDataRoot.delete(recursive: true);
-        } on FileSystemException catch (_) {
-          // Directory may still be in use on some platforms (macOS).
-          // The OS will clean up the temp dir eventually.
-        }
-      }
+      tearDownTestAppStorage();
     });
 
     test('extension contribution lands in the team MCP snapshot', () async {

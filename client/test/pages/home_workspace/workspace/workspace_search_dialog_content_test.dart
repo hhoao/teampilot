@@ -179,7 +179,7 @@ void main() {
             body: WorkspaceSearchDialog(
               workspace: workspace,
               sessions: const [],
-              indexes: WorkspaceSearchIndexes(),
+              indexes: WorkspaceSearchIndexes(storage: testHomeStorage),
               fs: LocalFilesystem(),
               emptyTitleFallback: 'New Chat',
               onOpenSession: (_) async {},

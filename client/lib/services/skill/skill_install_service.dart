@@ -8,7 +8,7 @@ import 'package:path/path.dart' as p;
 
 import '../../models/skill.dart';
 import '../../utils/logging/logger.dart';
-import '../storage/app_storage.dart';
+import '../storage/home_storage.dart';
 import 'skill_fetch_service.dart';
 import 'skill_manifest_service.dart';
 import 'skill_repo_disk_cache_service.dart';
@@ -23,12 +23,16 @@ class SkillInstallException implements Exception {
 
 class SkillInstallService {
   SkillInstallService({
+    required HomeStorage storage,
     required this.manifest,
     SkillFetchService? fetch,
     SkillRepoDiskCacheService? repoCache,
-  }) : fetch = fetch ?? SkillFetchService(),
-       repoCache = repoCache ?? SkillRepoDiskCacheService(fetch: fetch);
+  }) : _storage = storage,
+       fetch = fetch ?? SkillFetchService(),
+       repoCache =
+           repoCache ?? SkillRepoDiskCacheService(storage: storage, fetch: fetch);
 
+  final HomeStorage _storage;
   final SkillManifestService manifest;
   final SkillFetchService fetch;
   final SkillRepoDiskCacheService repoCache;
@@ -71,7 +75,7 @@ class SkillInstallService {
       return;
     }
 
-    final fs = AppStorage.fs;
+    final fs = _storage.fs;
     final ctx = fs.pathContext;
     final base = ctx.join(skillsDir, basename);
     if ((await fs.stat(base)).exists) {
@@ -230,7 +234,7 @@ class SkillInstallService {
       await remote.removeRecursive(targetPath);
       await remote.movePath(src, targetPath);
     } else {
-      final fs = AppStorage.fs;
+      final fs = _storage.fs;
       final ctx = fs.pathContext;
       targetPath = ctx.join(backupsDirPath, backupId);
       final src = ctx.join(skillsDir, skill.directory);
@@ -256,7 +260,7 @@ class SkillInstallService {
         if (remote != null) {
           await remote.removeRecursive(d.backupPath);
         } else {
-          await AppStorage.fs.removeRecursive(d.backupPath);
+          await _storage.fs.removeRecursive(d.backupPath);
         }
       } catch (e) {
         appLogger.w(
@@ -284,7 +288,7 @@ class SkillInstallService {
       }
       await remote.movePath(backup.backupPath, targetPath);
     } else {
-      final fs = AppStorage.fs;
+      final fs = _storage.fs;
       final ctx = fs.pathContext;
       final targetPath = ctx.join(skillsDir, backup.skill.directory);
       if (!(await fs.stat(ctx.join(backup.backupPath, 'SKILL.md'))).isFile) {
@@ -310,13 +314,13 @@ class SkillInstallService {
     if (remote != null) {
       await remote.removeRecursive(backup.backupPath);
     } else {
-      await AppStorage.fs.removeRecursive(backup.backupPath);
+      await _storage.fs.removeRecursive(backup.backupPath);
     }
     await manifest.removeBackup(backup.backupId);
   }
 
   Future<List<UnmanagedSkill>> scanUnmanaged() async {
-    final fs = AppStorage.fs;
+    final fs = _storage.fs;
     final ctx = fs.pathContext;
     final skillsDir = manifest.skillsDir;
     if (!(await fs.stat(skillsDir)).isDirectory) return const [];
@@ -353,7 +357,7 @@ class SkillInstallService {
   Future<List<Skill>> importUnmanaged(List<UnmanagedSkill> skills) async {
     final added = <Skill>[];
     final now = DateTime.now().millisecondsSinceEpoch;
-    final fs = AppStorage.fs;
+    final fs = _storage.fs;
     final ctx = fs.pathContext;
     for (final u in skills) {
       final skillMdPath = ctx.join(u.path, 'SKILL.md');
@@ -383,7 +387,7 @@ class SkillInstallService {
     required String id,
     required String directory,
   }) async {
-    final fs = AppStorage.fs;
+    final fs = _storage.fs;
     final ctx = fs.pathContext;
     final skillsDir = await manifest.resolveSkillsDir();
     final dirPath = ctx.join(skillsDir, directory);
@@ -510,7 +514,7 @@ class SkillInstallService {
   }
 
   Future<void> _movePath(String src, String dest) async {
-    final fs = AppStorage.fs;
+    final fs = _storage.fs;
     try {
       await fs.rename(src, dest);
     } on Object {

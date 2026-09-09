@@ -2,22 +2,34 @@ import '../../models/app_provider_config.dart';
 import '../../repositories/app_provider_repository.dart';
 import '../cli/registry/capabilities/provider_capability.dart';
 import '../cli/registry/cli_tool_registry.dart';
-import '../storage/app_storage.dart';
+import '../storage/home_storage.dart';
 import 'remote_credential_materializer.dart';
 
 /// Exports home (control-plane) provider catalog + credential files for
 /// opt-in push to a remote work machine.
 class LocalCredentialExporter {
-  LocalCredentialExporter({String? basePath, String? home})
-    : _basePath = basePath ?? AppStorage.appDataRoot,
-      _home = home ?? AppStorage.home;
+  LocalCredentialExporter({
+    required HomeStorage storage,
+    String? basePath,
+    String? home,
+  }) : _storage = storage,
+       _basePathOverride = basePath,
+       _homeOverride = home;
 
-  final String _basePath;
-  final String _home;
+  final HomeStorage _storage;
+  final String? _basePathOverride;
+  final String? _homeOverride;
+
+  String get _basePath => _basePathOverride ?? _storage.appDataRoot;
+  String get _home => _homeOverride ?? _storage.home;
 
   Future<List<CredentialFile>> export(CliTool cli) async {
-    final fs = AppStorage.fs;
-    final repo = AppProviderRepository(basePath: _basePath, fs: fs);
+    final fs = _storage.fs;
+    final repo = AppProviderRepository(
+      storage: _storage,
+      basePath: _basePath,
+      fs: fs,
+    );
     final files = <CredentialFile>[];
 
     final providersJson = await fs.readString(repo.providersPath(cli));
@@ -44,7 +56,7 @@ class LocalCredentialExporter {
         .capability<ProviderCapability>(cli);
     if (cap == null) return null;
     return cap.exportCredential(
-      fs: AppStorage.fs,
+      fs: _storage.fs,
       basePath: _basePath,
       home: _home,
       provider: provider,

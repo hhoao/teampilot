@@ -15,6 +15,7 @@ import 'package:teampilot/services/skill/marketplace/skill_marketplace_source.da
 import 'package:teampilot/services/skill/registry/skill_registry_config_service.dart';
 import 'package:teampilot/services/skill/registry/skill_registry_source.dart';
 import 'package:teampilot/services/storage/app_storage.dart';
+import '../../support/in_memory_filesystem.dart';
 
 class _FakeSource implements SkillRegistrySource {
   _FakeSource(this.id);
@@ -120,12 +121,14 @@ void main() {
   SkillCubit buildCubit(List<SkillRegistrySource> sources) {
     final cfg = SkillRegistryConfigService(
       teampilotRoot: AppStorage.paths.basePath,
+                                            storage: fakeHomeStorage(),
     );
     return SkillCubit(
-      SkillRepository(),
+      SkillRepository(storage: fakeHomeStorage()),
       registryConfigService: cfg,
       initialSources: sources,
       rebuildSources: (c) => sources,
+                       storage: fakeHomeStorage(),
     );
   }
 

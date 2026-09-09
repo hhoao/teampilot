@@ -11,6 +11,7 @@ void main() {
     final target = ComposeFileDropIngestor(
       workspaceRoot: '/repo',
       onInsertReferences: (_) {},
+                                            usesPosixPaths: false,
     );
     await tester.pumpWidget(
       MaterialApp(

@@ -10,6 +10,8 @@ import 'package:teampilot/models/team_config.dart';
 import 'package:teampilot/models/workspace_folder.dart';
 import 'package:teampilot/repositories/session_repository.dart';
 import 'package:teampilot/services/cli/claude/capabilities/provider.dart';
+import 'package:teampilot/services/cli/registry/cli_bootstrap.dart';
+import 'package:teampilot/services/cli/registry/cli_tool_registry.dart';
 import 'package:teampilot/services/expert_hub/builtin_member_templates.dart';
 import 'package:teampilot/services/expert_hub/expert_hub_catalog.dart';
 import 'package:teampilot/services/expert_hub/expert_member_materializer.dart';
@@ -19,6 +21,7 @@ import 'package:teampilot/utils/team/team_member_naming.dart';
 
 import '../support/fake_terminal_session.dart';
 import '../support/fixed_resume_lifecycle_service.dart';
+import '../support/in_memory_filesystem.dart';
 import '../support/post_frame_test_harness.dart';
 import '../support/test_runtime_context.dart';
 
@@ -44,6 +47,9 @@ Future<void> _tearDownChatCubitWithSessionPersist(
 void main() {
   setUp(() {
     setUpTestAppStorage();
+    CliToolRegistry.builtIn().configure(
+      CliBootstrap(const {}, storage: testHomeStorage),
+    );
   });
 
   tearDown(() {
@@ -61,6 +67,7 @@ void main() {
     final postFrame = PostFrameTestHarness();
     final repo = SessionRepository(
       rootDir: (await Directory.systemTemp.createTemp('sidebar_sess_')).path,
+      storage: testHomeStorage,
     );
     final workspace = await repo.createWorkspace([
       WorkspaceFolder(path: '/work/current'),
@@ -75,10 +82,12 @@ void main() {
     final chatCubit = ChatCubit(
       executableResolver: _testExecutable,
       automationRepository: testAutomationRepository(),
+      storage: testHomeStorage,
       sessionRepository: repo,
       terminalSessionFactory:
           ({required String executable, int scrollbackLines = 10000}) =>
               FakeTerminalSession(
+                fs: testHomeStorage.fs,
                 executable: executable,
                 scrollbackLines: scrollbackLines,
               ),
@@ -109,9 +118,11 @@ void main() {
     final cubit = ChatCubit(
       executableResolver: _testExecutable,
       automationRepository: testAutomationRepository(),
+      storage: testHomeStorage,
       terminalSessionFactory:
           ({required String executable, int scrollbackLines = 10000}) =>
               FakeTerminalSession(
+                fs: testHomeStorage.fs,
                 executable: executable,
                 scrollbackLines: scrollbackLines,
               ),
@@ -144,9 +155,11 @@ void main() {
     final cubit = ChatCubit(
       executableResolver: _testExecutable,
       automationRepository: testAutomationRepository(),
+      storage: testHomeStorage,
       terminalSessionFactory:
           ({required String executable, int scrollbackLines = 10000}) =>
               FakeTerminalSession(
+                fs: testHomeStorage.fs,
                 executable: executable,
                 scrollbackLines: scrollbackLines,
               ),
@@ -183,14 +196,16 @@ void main() {
       final cubit = ChatCubit(
         executableResolver: () => 'claude',
         automationRepository: testAutomationRepository(),
+        storage: testHomeStorage,
         terminalSessionFactory:
             ({required String executable, int scrollbackLines = 10000}) {
-              final session = FakeTerminalSession(executable: executable);
+              final session = FakeTerminalSession(fs: testHomeStorage.fs, executable: executable);
               sessions.add(session);
               return session;
             },
         postFrameScheduler: postFrame.scheduler,
         lifecycleService: SessionLifecycleService(
+          storage: testHomeStorage,
           storageRootsResolver: () async => testRuntimeContext(tmp.path),
         ),
       );
@@ -228,7 +243,7 @@ void main() {
     () async {
       final tmp = await Directory.systemTemp.createTemp('connect_all_');
       addTearDown(() => _deleteTempDirBestEffort(tmp));
-      final repo = SessionRepository(rootDir: tmp.path);
+      final repo = SessionRepository(rootDir: tmp.path, storage: testHomeStorage);
       final postFrame = PostFrameTestHarness();
       final team = TeamProfile(
         id: 'test-team',
@@ -251,10 +266,12 @@ void main() {
       final cubit = ChatCubit(
         executableResolver: _testExecutable,
         automationRepository: testAutomationRepository(),
+        storage: testHomeStorage,
         sessionRepository: repo,
         terminalSessionFactory:
             ({required String executable, int scrollbackLines = 10000}) =>
                 FakeTerminalSession(
+                  fs: testHomeStorage.fs,
                   executable: executable,
                   scrollbackLines: scrollbackLines,
                 ),
@@ -282,7 +299,7 @@ void main() {
     () async {
       final tmp = await Directory.systemTemp.createTemp('connect_one_');
       addTearDown(() => _deleteTempDirBestEffort(tmp));
-      final repo = SessionRepository(rootDir: tmp.path);
+      final repo = SessionRepository(rootDir: tmp.path, storage: testHomeStorage);
       final postFrame = PostFrameTestHarness();
       final team = TeamProfile(
         id: 'test-team',
@@ -305,10 +322,12 @@ void main() {
       final cubit = ChatCubit(
         executableResolver: _testExecutable,
         automationRepository: testAutomationRepository(),
+        storage: testHomeStorage,
         sessionRepository: repo,
         terminalSessionFactory:
             ({required String executable, int scrollbackLines = 10000}) =>
                 FakeTerminalSession(
+                  fs: testHomeStorage.fs,
                   executable: executable,
                   scrollbackLines: scrollbackLines,
                 ),
@@ -340,9 +359,11 @@ void main() {
       final cubit = ChatCubit(
         executableResolver: _testExecutable,
         automationRepository: testAutomationRepository(),
+        storage: testHomeStorage,
         terminalSessionFactory:
             ({required String executable, int scrollbackLines = 10000}) =>
                 FakeTerminalSession(
+                  fs: testHomeStorage.fs,
                   executable: executable,
                   scrollbackLines: scrollbackLines,
                 ),
@@ -399,7 +420,7 @@ void main() {
   test('openSessionTab first launch uses session-id not resume', () async {
     final tmp = await Directory.systemTemp.createTemp('open_sess_');
     addTearDown(() => _deleteTempDirBestEffort(tmp));
-    final repo = SessionRepository(rootDir: tmp.path);
+    final repo = SessionRepository(rootDir: tmp.path, storage: testHomeStorage);
     final team = TeamProfile(
       id: 'tid',
       name: 'TName',
@@ -420,9 +441,10 @@ void main() {
     final cubit = ChatCubit(
       executableResolver: _testExecutable,
       automationRepository: testAutomationRepository(),
+      storage: testHomeStorage,
       terminalSessionFactory:
           ({required String executable, int scrollbackLines = 10000}) {
-            captured = FakeTerminalSession(executable: executable);
+            captured = FakeTerminalSession(fs: testHomeStorage.fs, executable: executable);
             return captured!;
           },
       postFrameScheduler: postFrame.scheduler,
@@ -449,7 +471,7 @@ void main() {
   test('openSessionTab started session uses resume not session-id', () async {
     final tmp = await Directory.systemTemp.createTemp('open_sess_');
     addTearDown(() => _deleteTempDirBestEffort(tmp));
-    final repo = SessionRepository(rootDir: tmp.path);
+    final repo = SessionRepository(rootDir: tmp.path, storage: testHomeStorage);
     final team = TeamProfile(
       id: 'tid',
       name: 'TName',
@@ -472,9 +494,10 @@ void main() {
     final cubit = ChatCubit(
       executableResolver: _testExecutable,
       automationRepository: testAutomationRepository(),
+      storage: testHomeStorage,
       terminalSessionFactory:
           ({required String executable, int scrollbackLines = 10000}) {
-            captured = FakeTerminalSession(executable: executable);
+            captured = FakeTerminalSession(fs: testHomeStorage.fs, executable: executable);
             return captured!;
           },
       postFrameScheduler: postFrame.scheduler,
@@ -502,7 +525,7 @@ void main() {
     () async {
       final tmp = await Directory.systemTemp.createTemp('open_sess_');
       addTearDown(() => _deleteTempDirBestEffort(tmp));
-      final repo = SessionRepository(rootDir: tmp.path);
+      final repo = SessionRepository(rootDir: tmp.path, storage: testHomeStorage);
       final team = TeamProfile(
         id: 'tid',
         name: 'TName',
@@ -525,9 +548,10 @@ void main() {
       final cubit = ChatCubit(
         executableResolver: _testExecutable,
         automationRepository: testAutomationRepository(),
+        storage: testHomeStorage,
         terminalSessionFactory:
             ({required String executable, int scrollbackLines = 10000}) {
-              captured = FakeTerminalSession(executable: executable);
+              captured = FakeTerminalSession(fs: testHomeStorage.fs, executable: executable);
               return captured!;
             },
         postFrameScheduler: postFrame.scheduler,
@@ -556,7 +580,7 @@ void main() {
     () async {
       final tmp = await Directory.systemTemp.createTemp('open_sess_');
       addTearDown(() => _deleteTempDirBestEffort(tmp));
-      final repo = SessionRepository(rootDir: tmp.path);
+      final repo = SessionRepository(rootDir: tmp.path, storage: testHomeStorage);
       final team = TeamProfile(
         id: 'tid',
         name: 'TName',
@@ -578,9 +602,10 @@ void main() {
       final cubit = ChatCubit(
         executableResolver: _testExecutable,
         automationRepository: testAutomationRepository(),
+        storage: testHomeStorage,
         terminalSessionFactory:
             ({required String executable, int scrollbackLines = 10000}) {
-              captured = FakeTerminalSession(executable: executable);
+              captured = FakeTerminalSession(fs: testHomeStorage.fs, executable: executable);
               return captured!;
             },
         postFrameScheduler: postFrame.scheduler,
@@ -607,7 +632,7 @@ void main() {
     () async {
       final tmp = await Directory.systemTemp.createTemp('ensure_cli_lock_');
       addTearDown(() => _deleteTempDirBestEffort(tmp));
-      final repo = SessionRepository(rootDir: tmp.path);
+      final repo = SessionRepository(rootDir: tmp.path, storage: testHomeStorage);
       final liveTeam = TeamProfile(
         id: 't1',
         name: 'Team',
@@ -633,10 +658,12 @@ void main() {
         executableResolver: () => 'fallback',
         cliExecutableResolver: (cli) => 'bin-${cli.value}',
         automationRepository: testAutomationRepository(),
+        storage: testHomeStorage,
         sessionRepository: repo,
         terminalSessionFactory:
             ({required String executable, int scrollbackLines = 10000}) =>
                 FakeTerminalSession(
+                  fs: testHomeStorage.fs,
                   executable: executable,
                   scrollbackLines: scrollbackLines,
                 ),
@@ -661,7 +688,7 @@ void main() {
       expect(tab.selectedMemberId, 'team-lead');
       // Simulate a stale idle shell created under the live Cursor profile.
       tab.memberShells['team-lead']?.disconnect();
-      final stale = FakeTerminalSession(executable: 'bin-cursor');
+      final stale = FakeTerminalSession(fs: testHomeStorage.fs, executable: 'bin-cursor');
       tab.memberShells['team-lead'] = stale;
 
       final ensured = cubit.ensureSession(liveTeam);

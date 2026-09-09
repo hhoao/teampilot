@@ -110,10 +110,14 @@ class Workspace {
   static List<WorkspaceFolder> foldersForPrimaryPath(
     List<WorkspaceFolder> folders,
     String primaryPath, {
+    required bool usesPosixPaths,
     String? defaultTargetId,
   }) {
     if (folders.isEmpty) {
-      final primary = normalizeWorkspacePath(primaryPath);
+      final primary = normalizeWorkspacePath(
+        primaryPath,
+        usesPosixPaths: usesPosixPaths,
+      );
       if (primary.isEmpty) return folders;
       return [
         WorkspaceFolder(
@@ -122,11 +126,15 @@ class Workspace {
         ),
       ];
     }
-    final primary = normalizeWorkspacePath(primaryPath);
+    final primary = normalizeWorkspacePath(
+      primaryPath,
+      usesPosixPaths: usesPosixPaths,
+    );
     if (primary.isEmpty) return folders;
 
     final matchIndex = folders.indexWhere(
-      (f) => workspacePathsEqual(f.path, primary),
+      (f) =>
+          workspacePathsEqual(f.path, primary, usesPosixPaths: usesPosixPaths),
     );
     if (matchIndex > 0) {
       final selected = folders[matchIndex];
@@ -139,7 +147,12 @@ class Workspace {
     if (matchIndex == 0) return folders;
 
     final targetId =
-        targetIdForFolderPaths(folders, [primary], matchSubpaths: true) ??
+        targetIdForFolderPaths(
+          folders,
+          [primary],
+          usesPosixPaths: usesPosixPaths,
+          matchSubpaths: true,
+        ) ??
         folders.first.targetId;
     return [
       WorkspaceFolder(path: primary, targetId: targetId),

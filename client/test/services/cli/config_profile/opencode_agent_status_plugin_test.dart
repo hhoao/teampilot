@@ -16,8 +16,17 @@ import 'package:teampilot/services/provider/config_profile_service.dart';
 import 'package:teampilot/services/resource/providers/hook_contribution_provider.dart';
 import 'package:teampilot/services/resource/providers/runtime_event_hook_contribution_provider.dart';
 import 'package:teampilot/services/storage/runtime_layout.dart';
+import 'package:teampilot/services/cli/registry/cli_bootstrap.dart';
+import 'package:teampilot/services/cli/registry/cli_tool_registry.dart';
+import '../../../support/in_memory_filesystem.dart';
 
 void main() {
+  setUpAll(() {
+    CliToolRegistry.builtIn().configure(
+      CliBootstrap(const {}, storage: fakeHomeStorage()),
+    );
+  });
+
   Future<SessionHomeContribution> contribute(
     OpencodeProviderCapability capability,
     ConfigProfileLaunchContext ctx,
@@ -207,8 +216,11 @@ void main() {
         basePath: base.path,
         fs: fs,
         layout: RuntimeLayout(teampilotRoot: base.path, fs: fs),
+                                            storage: fakeHomeStorage(),
       );
-      const capability = OpencodeProviderCapability();
+      final capability = OpencodeProviderCapability(
+        storage: fakeHomeStorage(),
+      );
       const member = TeamMemberConfig(id: 'm1', name: 'Member', model: 'test');
       // Native (non-mixed) team — status must still install.
       const team = TeamProfile(
@@ -310,6 +322,7 @@ void main() {
       basePath: base.path,
       fs: fs,
       layout: RuntimeLayout(teampilotRoot: base.path, fs: fs),
+                                          storage: fakeHomeStorage(),
     );
     const workspaceId = 'workspace-1';
     const sessionId = 'session-1';

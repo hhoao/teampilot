@@ -28,6 +28,7 @@ import '../services/skill/registry/skill_registry_config_service.dart';
 import '../services/skill/registry/skill_registry_source.dart';
 import '../services/skill/skill_acquisition_engine.dart';
 import '../services/skill/skill_repo_disk_cache_service.dart';
+import '../services/storage/home_storage.dart';
 import '../utils/logging/logger.dart';
 import 'discovery_settings_cubit.dart';
 
@@ -176,6 +177,7 @@ class SkillCubit extends Cubit<SkillState> {
   SkillCubit(
     this._repo, {
     required this.registryConfigService,
+    required HomeStorage storage,
     required List<SkillRegistrySource> initialSources,
     required List<SkillRegistrySource> Function(SkillRegistriesConfig)
     rebuildSources,
@@ -187,6 +189,7 @@ class SkillCubit extends Cubit<SkillState> {
        _acquisitionEngine =
            acquisitionEngine ??
            SkillAcquisitionEngine(
+             storage: storage,
              installGitDir: (d, {bool overwrite = false, String? idOverride}) =>
                  _repo.installFromDiscovery(
                    d,

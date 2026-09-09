@@ -33,6 +33,7 @@ void main() {
 
     final providers = await AppProviderRepository(
       basePath: AppStorage.paths.basePath,
+                                                   storage: testHomeStorage,
     ).loadProviders(CliTool.claude);
     expect(providers, hasLength(1));
     expect(providers.single.id, kMatrixSimpleProviderId);
@@ -243,6 +244,7 @@ void main() {
           folders: session.folders,
           createdAt: 0,
         ),
+                                             usesPosixPaths: false,
       ),
     );
 

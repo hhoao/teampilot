@@ -17,7 +17,7 @@ void main() {
   setUp(() async {
     setUpTestAppStorage();
     root = await Directory.systemTemp.createTemp('app_providers_');
-    repo = AppProviderRepository(basePath: root.path);
+    repo = AppProviderRepository(basePath: root.path, storage: testHomeStorage, );
   });
 
   tearDown(() async {
@@ -167,9 +167,9 @@ void main() {
         AppPathsBootstrapper.resetForTesting();
       });
 
-      bindTestNativeHome(rootA.path);
+      final storage = bindTestNativeHome(rootA.path);
 
-      final dynamicRepo = AppProviderRepository();
+      final dynamicRepo = AppProviderRepository(storage: storage);
       const provider = AppProviderConfig(
         id: 'test',
         cli: CliTool.claude,
@@ -178,11 +178,11 @@ void main() {
       await dynamicRepo.saveProviders(CliTool.claude, [provider]);
       expect(await dynamicRepo.loadProviders(CliTool.claude), hasLength(1));
 
-      bindTestNativeHome(rootB.path);
+      await storage.swap(testRuntimeContext(rootB.path));
 
       expect(await dynamicRepo.loadProviders(CliTool.claude), isEmpty);
 
-      bindTestNativeHome(rootA.path);
+      await storage.swap(testRuntimeContext(rootA.path));
 
       expect(await dynamicRepo.loadProviders(CliTool.claude), hasLength(1));
     },

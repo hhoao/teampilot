@@ -7,13 +7,15 @@ import 'package:teampilot/services/team_bus/team_bus.dart';
 import 'package:teampilot/services/terminal/terminal_session.dart';
 
 import '../team_bus/support/fake_member_launcher.dart';
+import '../../support/in_memory_filesystem.dart';
 
 void main() {
   test('compute maps connection and flashskyai availability', () async {
-    final service = MemberPresenceService();
+    final service = MemberPresenceService(storage: fakeHomeStorage());
     final shell = TerminalSession(
       executable: 'flashskyai',
       validateLaunch: false,
+      fs: InMemoryFilesystem(),
     );
     shell.activityTracker.markActive();
 
@@ -32,7 +34,7 @@ void main() {
   test(
     'connected flashskyai shell uses activity tracker after boot frame',
     () async {
-      final service = MemberPresenceService();
+      final service = MemberPresenceService(storage: fakeHomeStorage());
       final shell = _ConnectedShell();
       shell.activityTracker.reset();
       expect(
@@ -68,7 +70,7 @@ void main() {
   );
 
   test('mixed session: booting only until PTY frame is stable', () async {
-    final service = MemberPresenceService();
+    final service = MemberPresenceService(storage: fakeHomeStorage());
     final shell = _ConnectedShell()
       ..activityTracker.latchBootFrameReadyForTest();
     final bus = TeamBus(launcher: FakeMemberLauncher());
@@ -140,7 +142,7 @@ void main() {
   });
 
   test('session context only consulted for connected members', () async {
-    final service = MemberPresenceService();
+    final service = MemberPresenceService(storage: fakeHomeStorage());
     final bus = TeamBus(launcher: FakeMemberLauncher());
 
     final presence = await service.compute(
@@ -166,7 +168,12 @@ PresenceSessionContext _session({CliTool cli = CliTool.claude}) =>
     );
 
 class _ConnectedShell extends TerminalSession {
-  _ConnectedShell() : super(executable: 'flashskyai', validateLaunch: false);
+  _ConnectedShell()
+    : super(
+        executable: 'flashskyai',
+        validateLaunch: false,
+        fs: InMemoryFilesystem(),
+      );
 
   @override
   bool get isConnecting => false;

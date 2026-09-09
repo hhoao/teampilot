@@ -23,7 +23,10 @@ class _FakeExpertHubSource implements ExpertHubSource {
 
 void main() {
   test('fetchMembers includes builtin templates', () async {
-    final source = CompositeExpertHubSource.withDefaults();
+    final source = CompositeExpertHubSource.withDefaults(
+      registry: _FakeExpertHubSource(const []),
+      localStore: LocalExpertStore(fs: InMemoryFilesystem(), dirOverride: AppPaths('/tp').memberHubLocalTemplatesDir),
+    );
     final members = await source.fetchMembers();
 
     expect(members.length, greaterThanOrEqualTo(8));
@@ -57,7 +60,11 @@ void main() {
       ],
     );
 
-    final source = CompositeExpertHubSource.withDefaults(teams: [team]);
+    final source = CompositeExpertHubSource.withDefaults(
+      registry: _FakeExpertHubSource(const []),
+      teams: [team],
+      localStore: LocalExpertStore(fs: InMemoryFilesystem(), dirOverride: AppPaths('/tp').memberHubLocalTemplatesDir),
+    );
     final members = await source.fetchMembers();
 
     expect(
@@ -88,7 +95,11 @@ void main() {
       ],
     );
 
-    final source = CompositeExpertHubSource.withDefaults(teams: [team]);
+    final source = CompositeExpertHubSource.withDefaults(
+      registry: _FakeExpertHubSource(const []),
+      teams: [team],
+      localStore: LocalExpertStore(fs: InMemoryFilesystem(), dirOverride: AppPaths('/tp').memberHubLocalTemplatesDir),
+    );
     final members = await source.fetchMembers();
 
     expect(members.any((m) => m.key == customKey), isTrue);

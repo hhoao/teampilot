@@ -56,7 +56,7 @@ import '../support/post_frame_test_harness.dart';
 String _executable() => 'flashskyai';
 
 class _SeededAppProviderCubit extends AppProviderCubit {
-  _SeededAppProviderCubit() {
+  _SeededAppProviderCubit() : super(storage: buildTestHomeStorage()) {
     emit(const AppProviderState());
   }
 }
@@ -151,27 +151,43 @@ void main() {
       });
 
       final teamCubit = LaunchProfileCubit(
-        repository: LaunchProfileRepository(rootDir: appData.path),
-        sessionRepository: SessionRepository(rootDir: appData.path),
+        repository: LaunchProfileRepository(
+          rootDir: appData.path,
+          storage: testHomeStorage,
+        ),
+        sessionRepository: SessionRepository(
+          rootDir: appData.path,
+          storage: testHomeStorage,
+        ),
         storage: testHomeStorage,
         executableResolver: _executable,
         appDataBasePath: appData.path,
-        configProfileService: ConfigProfileService(basePath: appData.path),
+        configProfileService: ConfigProfileService(
+          basePath: appData.path,
+          storage: testHomeStorage,
+        ),
       );
       addTearDown(() => teamCubit.close());
 
-      final sessionRepo = SessionRepository(rootDir: appData.path);
+      final sessionRepo = SessionRepository(
+        rootDir: appData.path,
+        storage: testHomeStorage,
+      );
       final chatCubit = ChatCubit(
         executableResolver: _executable,
         automationRepository: testAutomationRepository(),
         sessionRepository: sessionRepo,
+        storage: testHomeStorage,
       );
       addTearDown(() => chatCubit.close());
 
       final layoutCubit = LayoutCubit();
       addTearDown(() => layoutCubit.close());
 
-      final editorCubit = EditorCubit(fs: LocalFilesystem());
+      final editorCubit = EditorCubit(
+        fs: LocalFilesystem(),
+        storage: testHomeStorage,
+      );
       addTearDown(() => editorCubit.close());
 
       final workbenchCubit = WorkbenchCubit();
@@ -190,14 +206,15 @@ void main() {
       final pluginCubit = PluginCubit(
         repository: pluginRepo,
         installService: pluginRepo.install,
-        repoService: PluginRepoService(),
+        repoService: PluginRepoService(storage: testHomeStorage),
+        storage: testHomeStorage,
       );
       addTearDown(() => pluginCubit.close());
 
-      final worktreeCubit = WorktreeCubit();
+      final worktreeCubit = WorktreeCubit(storage: testHomeStorage);
       addTearDown(() => worktreeCubit.close());
 
-      final presenceCubit = MemberPresenceCubit();
+      final presenceCubit = MemberPresenceCubit(storage: testHomeStorage);
       chatCubit.bindPresenceCubit(presenceCubit);
       addTearDown(() => presenceCubit.close());
 
@@ -316,27 +333,43 @@ void main() {
       });
 
       final teamCubit = LaunchProfileCubit(
-        repository: LaunchProfileRepository(rootDir: appData.path),
-        sessionRepository: SessionRepository(rootDir: appData.path),
+        repository: LaunchProfileRepository(
+          rootDir: appData.path,
+          storage: testHomeStorage,
+        ),
+        sessionRepository: SessionRepository(
+          rootDir: appData.path,
+          storage: testHomeStorage,
+        ),
         storage: testHomeStorage,
         executableResolver: _executable,
         appDataBasePath: appData.path,
-        configProfileService: ConfigProfileService(basePath: appData.path),
+        configProfileService: ConfigProfileService(
+          basePath: appData.path,
+          storage: testHomeStorage,
+        ),
       );
       addTearDown(() => teamCubit.close());
 
-      final sessionRepo = SessionRepository(rootDir: appData.path);
+      final sessionRepo = SessionRepository(
+        rootDir: appData.path,
+        storage: testHomeStorage,
+      );
       final chatCubit = ChatCubit(
         executableResolver: _executable,
         automationRepository: testAutomationRepository(),
         sessionRepository: sessionRepo,
+        storage: testHomeStorage,
       );
       addTearDown(() => chatCubit.close());
 
       final layoutCubit = LayoutCubit();
       addTearDown(() => layoutCubit.close());
 
-      final editorCubit = EditorCubit(fs: LocalFilesystem());
+      final editorCubit = EditorCubit(
+        fs: LocalFilesystem(),
+        storage: testHomeStorage,
+      );
       addTearDown(() => editorCubit.close());
 
       final workbenchCubit = WorkbenchCubit();
@@ -355,14 +388,15 @@ void main() {
       final pluginCubit = PluginCubit(
         repository: pluginRepo,
         installService: pluginRepo.install,
-        repoService: PluginRepoService(),
+        repoService: PluginRepoService(storage: testHomeStorage),
+        storage: testHomeStorage,
       );
       addTearDown(() => pluginCubit.close());
 
-      final worktreeCubit = WorktreeCubit();
+      final worktreeCubit = WorktreeCubit(storage: testHomeStorage);
       addTearDown(() => worktreeCubit.close());
 
-      final presenceCubit = MemberPresenceCubit();
+      final presenceCubit = MemberPresenceCubit(storage: testHomeStorage);
       chatCubit.bindPresenceCubit(presenceCubit);
       addTearDown(() => presenceCubit.close());
 
@@ -506,27 +540,43 @@ void main() {
     });
 
     final teamCubit = LaunchProfileCubit(
-      repository: LaunchProfileRepository(rootDir: appData.path),
-      sessionRepository: SessionRepository(rootDir: appData.path),
+      repository: LaunchProfileRepository(
+        rootDir: appData.path,
+        storage: testHomeStorage,
+      ),
+      sessionRepository: SessionRepository(
+        rootDir: appData.path,
+        storage: testHomeStorage,
+      ),
       storage: testHomeStorage,
       executableResolver: _executable,
       appDataBasePath: appData.path,
-      configProfileService: ConfigProfileService(basePath: appData.path),
+      configProfileService: ConfigProfileService(
+        basePath: appData.path,
+        storage: testHomeStorage,
+      ),
     );
     addTearDown(() => teamCubit.close());
 
-    final sessionRepo = SessionRepository(rootDir: appData.path);
+    final sessionRepo = SessionRepository(
+      rootDir: appData.path,
+      storage: testHomeStorage,
+    );
     final chatCubit = ChatCubit(
       executableResolver: _executable,
       automationRepository: testAutomationRepository(),
       sessionRepository: sessionRepo,
+      storage: testHomeStorage,
     );
     addTearDown(() => chatCubit.close());
 
     final layoutCubit = LayoutCubit();
     addTearDown(() => layoutCubit.close());
 
-    final editorCubit = EditorCubit(fs: LocalFilesystem());
+    final editorCubit = EditorCubit(
+      fs: LocalFilesystem(),
+      storage: testHomeStorage,
+    );
     addTearDown(() => editorCubit.close());
 
     final workbenchCubit = WorkbenchCubit();
@@ -545,14 +595,15 @@ void main() {
     final pluginCubit = PluginCubit(
       repository: pluginRepo,
       installService: pluginRepo.install,
-      repoService: PluginRepoService(),
+      repoService: PluginRepoService(storage: testHomeStorage),
+      storage: testHomeStorage,
     );
     addTearDown(() => pluginCubit.close());
 
-    final worktreeCubit = WorktreeCubit();
+    final worktreeCubit = WorktreeCubit(storage: testHomeStorage);
     addTearDown(() => worktreeCubit.close());
 
-    final presenceCubit = MemberPresenceCubit();
+    final presenceCubit = MemberPresenceCubit(storage: testHomeStorage);
     chatCubit.bindPresenceCubit(presenceCubit);
     addTearDown(() => presenceCubit.close());
 
@@ -698,27 +749,43 @@ void main() {
       });
 
       final teamCubit = LaunchProfileCubit(
-        repository: LaunchProfileRepository(rootDir: appData.path),
-        sessionRepository: SessionRepository(rootDir: appData.path),
+        repository: LaunchProfileRepository(
+          rootDir: appData.path,
+          storage: testHomeStorage,
+        ),
+        sessionRepository: SessionRepository(
+          rootDir: appData.path,
+          storage: testHomeStorage,
+        ),
         storage: testHomeStorage,
         executableResolver: _executable,
         appDataBasePath: appData.path,
-        configProfileService: ConfigProfileService(basePath: appData.path),
+        configProfileService: ConfigProfileService(
+          basePath: appData.path,
+          storage: testHomeStorage,
+        ),
       );
       addTearDown(() => teamCubit.close());
 
-      final sessionRepo = SessionRepository(rootDir: appData.path);
+      final sessionRepo = SessionRepository(
+        rootDir: appData.path,
+        storage: testHomeStorage,
+      );
       final chatCubit = ChatCubit(
         executableResolver: _executable,
         automationRepository: testAutomationRepository(),
         sessionRepository: sessionRepo,
+        storage: testHomeStorage,
       );
       addTearDown(() => chatCubit.close());
 
       final layoutCubit = LayoutCubit();
       addTearDown(() => layoutCubit.close());
 
-      final editorCubit = EditorCubit(fs: LocalFilesystem());
+      final editorCubit = EditorCubit(
+        fs: LocalFilesystem(),
+        storage: testHomeStorage,
+      );
       addTearDown(() => editorCubit.close());
 
       final workbenchCubit = WorkbenchCubit();
@@ -737,14 +804,15 @@ void main() {
       final pluginCubit = PluginCubit(
         repository: pluginRepo,
         installService: pluginRepo.install,
-        repoService: PluginRepoService(),
+        repoService: PluginRepoService(storage: testHomeStorage),
+        storage: testHomeStorage,
       );
       addTearDown(() => pluginCubit.close());
 
-      final worktreeCubit = WorktreeCubit();
+      final worktreeCubit = WorktreeCubit(storage: testHomeStorage);
       addTearDown(() => worktreeCubit.close());
 
-      final presenceCubit = MemberPresenceCubit();
+      final presenceCubit = MemberPresenceCubit(storage: testHomeStorage);
       chatCubit.bindPresenceCubit(presenceCubit);
       addTearDown(() => presenceCubit.close());
 

@@ -122,6 +122,7 @@ void main() {
       final dir = await Directory.systemTemp.createTemp('onboarding-preset_');
       final teamRepo = LaunchProfileRepository(
         rootDir: p.join(dir.path, 'launch-profiles'),
+                                                storage: testHomeStorage,
       );
       const team = TeamProfile(
         id: LaunchProfileProvisioner.defaultNativeTeamId,
@@ -152,7 +153,7 @@ void main() {
       );
       await teamCubit.load();
 
-      final appProviderCubit = AppProviderCubit(basePath: dir.path);
+      final appProviderCubit = AppProviderCubit(basePath: dir.path, storage: testHomeStorage, );
       await appProviderCubit.load();
       await appProviderCubit.upsertProvider(
         const AppProviderConfig(
@@ -200,6 +201,7 @@ void main() {
       profileRepository = SshProfileRepository(
         rootDir: tempDir.path,
         fs: InMemoryFilesystem(),
+                                                storage: testHomeStorage,
       );
       profileCubit = SshProfileCubit(
         profileRepository: profileRepository,

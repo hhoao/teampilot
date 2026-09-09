@@ -12,6 +12,7 @@ import 'package:teampilot/services/catalog/modules/mcp_catalog_module.dart';
 import 'package:teampilot/services/io/local_filesystem.dart';
 import 'package:teampilot/services/storage/app_storage.dart';
 import 'package:teampilot/services/storage/home_storage.dart';
+import '../../support/in_memory_filesystem.dart';
 
 void main() {
   late Directory tmp;
@@ -38,7 +39,7 @@ void main() {
       cwd: tmp.path,
     );
     workFs = LocalFilesystem();
-    repository = McpRepository();
+    repository = McpRepository(storage: fakeHomeStorage());
     configRepo = WorkspaceProjectConfigRepository(
       storage: HomeStorage(AppStorage.context),
     );

@@ -15,6 +15,7 @@ import '../../support/post_frame_test_harness.dart';
 import '../support/connected_recording_shell.dart';
 import '../support/integration_test_setup.dart';
 import '../support/session_idle_busy_harness.dart';
+import '../../support/in_memory_filesystem.dart';
 
 const kCursorMixedTeam = TeamProfile(
   id: 'tc-cursor-mixed',
@@ -74,7 +75,7 @@ void main() {
 
   test('mixed cursor: /idle ends bus turn and clears working', () async {
     final tmp = await Directory.systemTemp.createTemp('tc_mixed_');
-    final repo = SessionRepository(rootDir: tmp.path);
+    final repo = SessionRepository(rootDir: tmp.path, storage: fakeHomeStorage(), );
     final postFrame = PostFrameTestHarness();
     final cubit = ChatCubit(
       executableResolver: () => 'true',
@@ -85,6 +86,7 @@ void main() {
       terminalSessionFactory:
           ({required String executable, int scrollbackLines = 10000}) =>
               RunningConnectedFakeShell(executable: executable),
+                             storage: fakeHomeStorage(),
     );
 
     final opened = await openCursorMixedSession(
@@ -120,7 +122,7 @@ void main() {
 
   test('mixed cursor: PTY quiet ends bus turn and clears busy', () async {
     final tmp = await Directory.systemTemp.createTemp('tc_mixed_');
-    final repo = SessionRepository(rootDir: tmp.path);
+    final repo = SessionRepository(rootDir: tmp.path, storage: fakeHomeStorage(), );
     final postFrame = PostFrameTestHarness();
     final cubit = ChatCubit(
       executableResolver: () => 'true',
@@ -131,6 +133,7 @@ void main() {
       terminalSessionFactory:
           ({required String executable, int scrollbackLines = 10000}) =>
               RunningConnectedFakeShell(executable: executable),
+                             storage: fakeHomeStorage(),
     );
 
     final opened = await openCursorMixedSession(
@@ -159,7 +162,7 @@ void main() {
 
   test('mixed claude: /idle is a no-op while parked (turn ends on park)', () async {
     final tmp = await Directory.systemTemp.createTemp('tc_mixed_');
-    final repo = SessionRepository(rootDir: tmp.path);
+    final repo = SessionRepository(rootDir: tmp.path, storage: fakeHomeStorage(), );
     final postFrame = PostFrameTestHarness();
     final cubit = ChatCubit(
       executableResolver: () => 'true',
@@ -170,6 +173,7 @@ void main() {
       terminalSessionFactory:
           ({required String executable, int scrollbackLines = 10000}) =>
               RunningConnectedFakeShell(executable: executable),
+                             storage: fakeHomeStorage(),
     );
 
     final opened = await openMixedSessionWithShells(

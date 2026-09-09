@@ -8,6 +8,7 @@ import 'package:teampilot/models/team_config.dart';
 import 'package:teampilot/models/workspace_folder.dart';
 import 'package:teampilot/repositories/session_repository.dart';
 import 'package:teampilot/services/session/session_preset_follow_sync.dart';
+import '../../support/in_memory_filesystem.dart';
 
 void main() {
   Future<({SessionRepository repo, AppSession session})> createSession({
@@ -16,7 +17,7 @@ void main() {
   }) async {
     final temp = await Directory.systemTemp.createTemp('follow_sync_');
     addTearDown(() => temp.delete(recursive: true));
-    final repo = SessionRepository(rootDir: temp.path);
+    final repo = SessionRepository(rootDir: temp.path, storage: fakeHomeStorage(), );
     final workspace = await repo.createWorkspace([WorkspaceFolder(path: '/w')]);
     final session = (await repo.createSession(
       workspace.workspaceId,

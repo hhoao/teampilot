@@ -2,7 +2,7 @@ import 'package:path/path.dart' as p;
 import 'package:uuid/uuid.dart';
 
 import '../io/filesystem.dart';
-import '../storage/app_storage.dart';
+import '../storage/app_paths.dart';
 import '../../utils/workspace/workspace_path_utils.dart';
 import 'compose_file_attach.dart';
 
@@ -38,12 +38,23 @@ bool isComposeImagePath(String path) {
 Future<String?> resolveComposeImageReference({
   required String absolutePath,
   required String workspaceRoot,
+  required bool usesPosixPaths,
 }) async {
   if (!isComposeImagePath(absolutePath)) return null;
 
-  final normalized = normalizeWorkspacePath(absolutePath);
-  final root = normalizeWorkspacePath(workspaceRoot);
-  return formatComposeFileReference(normalized, workspaceRoot: root);
+  final normalized = normalizeWorkspacePath(
+    absolutePath,
+    usesPosixPaths: usesPosixPaths,
+  );
+  final root = normalizeWorkspacePath(
+    workspaceRoot,
+    usesPosixPaths: usesPosixPaths,
+  );
+  return formatComposeFileReference(
+    normalized,
+    workspaceRoot: root,
+    usesPosixPaths: usesPosixPaths,
+  );
 }
 
 Future<String?> importComposeImageBytes({
@@ -51,6 +62,7 @@ Future<String?> importComposeImageBytes({
   required String extension,
   required String attachmentsDir,
   required String workspaceRoot,
+  required bool usesPosixPaths,
   required Filesystem filesystem,
   ComposeImageIdGenerator idGenerator = _defaultId,
 }) async {
@@ -70,5 +82,6 @@ Future<String?> importComposeImageBytes({
   return formatComposeFileReference(
     destPath,
     workspaceRoot: workspaceRoot,
+    usesPosixPaths: usesPosixPaths,
   );
 }

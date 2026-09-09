@@ -7,7 +7,7 @@ import 'package:uuid/uuid.dart';
 import '../models/app_notification.dart';
 import '../repositories/notification_repository.dart';
 import '../services/notification/notification_recorder.dart';
-import '../services/storage/app_storage.dart';
+import '../services/storage/home_storage.dart';
 import 'package:shared_ui/shared_ui.dart';
 
 class NotificationState extends Equatable {
@@ -22,12 +22,14 @@ class NotificationState extends Equatable {
 
 class NotificationCubit extends Cubit<NotificationState>
     implements NotificationRecorder {
-  NotificationCubit({NotificationRepository? repository})
-    : _repository =
+  NotificationCubit({
+    required HomeStorage storage,
+    NotificationRepository? repository,
+  }) : _repository =
           repository ??
           NotificationRepository(
-            fs: AppStorage.fs,
-            storePath: AppStorage.paths.notificationsJson,
+            fs: storage.fs,
+            storePath: storage.paths.notificationsJson,
           ),
       super(const NotificationState());
 

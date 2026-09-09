@@ -63,7 +63,7 @@ void main() {
       ),
     );
 
-    final repo = SessionRepository();
+    final repo = SessionRepository(storage: testHomeStorage);
     final workspace = await repo.createWorkspace(
       const [WorkspaceFolder(path: '/repo')],
       display: 'ws-1',
@@ -137,7 +137,7 @@ void main() {
       ),
     );
 
-    final repo = SessionRepository();
+    final repo = SessionRepository(storage: testHomeStorage);
     final workspace = await repo.createWorkspace(
       const [WorkspaceFolder(path: '/repo')],
       display: 'ws-1',

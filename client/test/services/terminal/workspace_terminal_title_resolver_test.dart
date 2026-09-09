@@ -3,12 +3,12 @@ import 'package:teampilot/models/workspace_terminal_session_spec.dart';
 import 'package:teampilot/services/terminal/terminal_session.dart';
 import 'package:teampilot/services/terminal/workspace_terminal_registry.dart';
 import 'package:teampilot/services/terminal/workspace_terminal_title_resolver.dart';
+import '../../support/in_memory_filesystem.dart';
 
 TerminalSession _testSession() => TerminalSession(
   executable: '/bin/bash',
   validateLaunch: false,
-  parseExecutable: false,
-);
+  parseExecutable: false, fs: InMemoryFilesystem(), );
 
 WorkspaceTerminalEntry _entry(String id, String title) {
   final entry = WorkspaceTerminalEntry(

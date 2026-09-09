@@ -1,13 +1,15 @@
 import '../../cubits/worktree_cubit.dart';
+import '../../services/storage/home_storage.dart';
 import 'workspace_worktree_store.dart';
 
 /// Retains long-lived [WorktreeCubit]s per open workspace, backed by
 /// [WorkspaceWorktreeStore] for instant hydration on first mount.
 class WorkspaceWorktreeRegistry {
-  WorkspaceWorktreeRegistry({WorkspaceWorktreeStore? store})
+  WorkspaceWorktreeRegistry({WorkspaceWorktreeStore? store, this.storage})
     : _store = store ?? WorkspaceWorktreeStore();
 
   final WorkspaceWorktreeStore _store;
+  final HomeStorage? storage;
   final Map<String, WorktreeCubit> _cubits = <String, WorktreeCubit>{};
 
   WorkspaceWorktreeStore get store => _store;
@@ -28,6 +30,11 @@ class WorkspaceWorktreeRegistry {
     if (existing != null && !existing.isClosed) return existing;
 
     final cubit = WorktreeCubit(
+      storage: storage ??
+          (throw StateError(
+            'WorkspaceWorktreeRegistry requires HomeStorage for WorktreeCubit '
+            'creation; pass storage at construction.',
+          )),
       workspaceId: ws,
       worktreeStore: _store,
       initialRepoPath: repoPath,

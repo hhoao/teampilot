@@ -61,6 +61,7 @@ class _RecordingChatCubit extends ChatCubit {
     : super(
         executableResolver: () => 'true',
         automationRepository: testAutomationRepository(),
+             storage: testHomeStorage,
       );
 
   final workbenchViews = <(String, SessionWorkbenchView)>[];
@@ -979,7 +980,7 @@ void main() {
       _host(
         chatCubit: chatCubit,
         automationCubit: automationCubit,
-        sessionRepository: SessionRepository(rootDir: '/nonexistent'),
+        sessionRepository: SessionRepository(rootDir: '/nonexistent', storage: testHomeStorage, ),
         attentionCubit: attention,
       ),
     );
@@ -1011,7 +1012,7 @@ void main() {
       _host(
         chatCubit: chatCubit,
         automationCubit: automationCubit,
-        sessionRepository: SessionRepository(rootDir: '/nonexistent'),
+        sessionRepository: SessionRepository(rootDir: '/nonexistent', storage: testHomeStorage, ),
         attentionCubit: attention,
         child: SidebarSessionTile(session: teamed, onTap: () {}),
       ),
@@ -1035,7 +1036,7 @@ void main() {
       _host(
         chatCubit: chatCubit,
         automationCubit: automationCubit,
-        sessionRepository: SessionRepository(rootDir: '/nonexistent'),
+        sessionRepository: SessionRepository(rootDir: '/nonexistent', storage: testHomeStorage, ),
         attentionCubit: attention,
       ),
     );
@@ -1065,7 +1066,7 @@ void main() {
       _host(
         chatCubit: chatCubit,
         automationCubit: automationCubit,
-        sessionRepository: SessionRepository(rootDir: '/nonexistent'),
+        sessionRepository: SessionRepository(rootDir: '/nonexistent', storage: testHomeStorage, ),
         attentionCubit: attention,
       ),
     );

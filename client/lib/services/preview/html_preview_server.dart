@@ -31,8 +31,8 @@ class _Mount {
 /// render html from any storage backend.
 ///
 /// One instance binds one loopback port shared by all its mounts. Callers
-/// typically create one instance per preview pane with the current
-/// [AppStorage.fs]; mounts are deduped and reference-counted inside one
+/// typically create one instance per preview pane with the current home
+/// [Filesystem]; mounts are deduped and reference-counted inside one
 /// instance.
 class HtmlPreviewServer {
   HtmlPreviewServer({required Filesystem fs}) : _fs = fs;

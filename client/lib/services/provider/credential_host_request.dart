@@ -1,6 +1,6 @@
 import '../cli/cli_invocation.dart';
 import '../host/host_one_shot_runner.dart';
-import '../storage/app_storage.dart';
+import '../storage/home_storage.dart';
 import '../storage/runtime_context.dart';
 
 /// Builds [HostRunRequest] for provider credential CLIs on the home host.
@@ -15,8 +15,9 @@ class CredentialHostRequest {
   static bool usePosixCliPaths(
     String preferencePath, {
     StorageBackendMode? modeOverride,
+    required HomeStorage storage,
   }) {
-    final mode = _resolvedMode(modeOverride);
+    final mode = _resolvedMode(modeOverride, storage);
     if (mode == StorageBackendMode.wsl || mode == StorageBackendMode.ssh) {
       return true;
     }
@@ -26,10 +27,13 @@ class CredentialHostRequest {
   static String hostExecutable(
     String preferencePath, {
     StorageBackendMode? modeOverride,
+    required HomeStorage storage,
   }) {
     final invocation = CliInvocation.fromExecutable(preferencePath);
     if (!invocation.usesWsl) return invocation.executable;
-    if (!_shouldUnwrapWsl(modeOverride)) return invocation.executable;
+    if (!_shouldUnwrapWsl(modeOverride, storage)) {
+      return invocation.executable;
+    }
     final linuxExecutable = _wslLinuxExecutable(invocation.prefixArgs);
     return linuxExecutable ?? preferencePath;
   }
@@ -38,12 +42,13 @@ class CredentialHostRequest {
     String preferencePath,
     List<String> subcommand, {
     StorageBackendMode? modeOverride,
+    required HomeStorage storage,
   }) {
     final invocation = CliInvocation.fromExecutable(preferencePath);
     if (!invocation.usesWsl) {
       return [...invocation.prefixArgs, ...subcommand];
     }
-    if (!_shouldUnwrapWsl(modeOverride)) {
+    if (!_shouldUnwrapWsl(modeOverride, storage)) {
       return [...invocation.prefixArgs, ...subcommand];
     }
     final linuxExecutable = _wslLinuxExecutable(invocation.prefixArgs);
@@ -58,30 +63,41 @@ class CredentialHostRequest {
     required String preferencePath,
     required List<String> subcommand,
     required Map<String, String> environment,
+    required HomeStorage storage,
     StorageBackendMode? modeOverride,
   }) {
     return HostRunRequest(
-      executable: hostExecutable(preferencePath, modeOverride: modeOverride),
+      executable: hostExecutable(
+        preferencePath,
+        modeOverride: modeOverride,
+        storage: storage,
+      ),
       arguments: hostArguments(
         preferencePath,
         subcommand,
         modeOverride: modeOverride,
+        storage: storage,
       ),
       environment: environment,
     );
   }
 
-  static StorageBackendMode? _resolvedMode(StorageBackendMode? modeOverride) {
+  static StorageBackendMode? _resolvedMode(
+    StorageBackendMode? modeOverride,
+    HomeStorage storage,
+  ) {
     if (modeOverride != null) return modeOverride;
-    if (!AppStorage.isInstalled) return null;
-    return AppStorage.context.mode;
+    return storage.context.mode;
   }
 
   /// Unwrap `wsl.exe … /linux/bin` only when the home starter is already WSL
   /// or SSH (POSIX host). On native Windows, keep `wsl.exe` so
   /// [LocalHostProcessStarter] launches WSL correctly.
-  static bool _shouldUnwrapWsl(StorageBackendMode? modeOverride) {
-    final mode = _resolvedMode(modeOverride);
+  static bool _shouldUnwrapWsl(
+    StorageBackendMode? modeOverride,
+    HomeStorage storage,
+  ) {
+    final mode = _resolvedMode(modeOverride, storage);
     return mode == StorageBackendMode.wsl || mode == StorageBackendMode.ssh;
   }
 

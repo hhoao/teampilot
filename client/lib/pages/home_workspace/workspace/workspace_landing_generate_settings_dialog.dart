@@ -14,6 +14,7 @@ import '../../../services/ai/ai_feature_setting_resolver.dart';
 import '../../../services/cli/registry/cli_display_name.dart';
 import '../../../services/cli/registry/cli_tool_registry.dart';
 import '../../../services/cli/registry/cli_tool_registry_scope.dart';
+import '../../../services/storage/home_storage.dart';
 import '../../../services/team_generation/team_generation_settings_store.dart';
 import '../../../widgets/cli_launch_config/launch_four_tuple_picker.dart';
 import '../../../widgets/compose/compose_model_preset_chip.dart';
@@ -60,7 +61,8 @@ class _GenerateSettingsDialogState extends State<_GenerateSettingsDialog> {
   TeamMode _teamMode = TeamMode.mixed;
   CliTool _nativeCli = CliTool.claude;
   final List<_PoolRow> _rows = [];
-  final _store = TeamGenerationSettingsStore();
+  late final TeamGenerationSettingsStore _store =
+      TeamGenerationSettingsStore(storage: context.read<HomeStorage>());
   SimpleLaunchFourTuple? _generator;
   var _loading = true;
   var _generatorInitialized = false;

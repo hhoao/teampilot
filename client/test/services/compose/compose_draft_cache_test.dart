@@ -74,8 +74,8 @@ void main() {
       cache.setLandingDraft('w1', 'typed while loading');
       cache.setSessionDraft('s1', 'typed session while loading');
 
-      await cache.hydrateLanding('w1', shouldSeed: () => false);
-      await cache.hydrateSession('w1', 's1', shouldSeed: () => false);
+      await cache.hydrateLanding('w1', shouldSeed: () => false, storage: fakeHomeStorage(), );
+      await cache.hydrateSession('w1', 's1', shouldSeed: () => false, storage: fakeHomeStorage(), );
 
       expect(cache.landingDraft('w1'), 'typed while loading');
       expect(cache.sessionDraft('s1'), 'typed session while loading');

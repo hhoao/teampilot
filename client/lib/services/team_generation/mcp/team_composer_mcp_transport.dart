@@ -3,8 +3,6 @@ import 'package:path/path.dart' as p;
 import '../../../models/team_config.dart';
 import '../../cli/registry/capabilities/team_behavior_capability.dart';
 import '../../cli/registry/cli_tool_registry.dart';
-import '../../storage/app_storage.dart';
-import '../../storage/runtime_context.dart';
 import '../../team_bus/mcp/bus_bridge_locator.dart';
 import '../../team_bus/mcp/teammate_bus_mcp_config.dart';
 import '../../team_bus/remote/member_bus_mcp_config.dart';
@@ -17,6 +15,9 @@ import 'team_composer_mcp_constants.dart';
 /// The workflow token travels only in the [TeamComposerMcpConstants.tokenHeader]
 /// HTTP header — never in argv or environment variables. For the stdio bridge,
 /// extra headers are appended after the standard bridge args.
+///
+/// [isLocalNative] reports whether the home plane is a native local backend
+/// (the host loopback bridge exe is only reachable from a local native PTY).
 Map<String, Object?> resolveTeamComposerMcpTransportConfig({
   required CliToolRegistry cliRegistry,
   required Uri composerEndpoint,
@@ -24,6 +25,7 @@ Map<String, Object?> resolveTeamComposerMcpTransportConfig({
   required String memberId,
   required CliTool cli,
   required String workflowToken,
+  required bool isLocalNative,
   RemoteBusBinding? remoteBinding,
   String? Function()? bridgeLocator,
 }) {
@@ -42,15 +44,12 @@ Map<String, Object?> resolveTeamComposerMcpTransportConfig({
   }
 
   String? localBridge;
-  final localNative =
-      !AppStorage.isInstalled ||
-      AppStorage.context.mode == StorageBackendMode.native;
   final supportsBridge =
       cliRegistry
           .capability<TeamBehaviorCapability>(cli)
           ?.supportsLocalStdioBridge ??
       false;
-  if (supportsBridge && localNative) {
+  if (supportsBridge && isLocalNative) {
     localBridge = (bridgeLocator ?? BusBridgeLocator.resolve)();
   }
   if (localBridge != null) {

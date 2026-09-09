@@ -8,8 +8,7 @@ import '../../support/post_frame_test_harness.dart';
 
 ChatCubit _cubit() => ChatCubit(
   executableResolver: () => '/bin/true',
-  automationRepository: testAutomationRepository(),
-);
+  automationRepository: testAutomationRepository(), storage: testHomeStorage, );
 
 ChatTab _tab(String id) => ChatTab(
   info: ChatTabInfo(id: id, title: id, subtitle: ''),
@@ -39,6 +38,9 @@ void _openSession(
 }
 
 void main() {
+  setUpAll(setUpTestAppStorage);
+  tearDownAll(tearDownTestAppStorage);
+
   group('scopedActiveSessionId', () {
     test('reads the bar center-active session for the workspace', () {
       final cubit = _cubit();
@@ -127,6 +129,7 @@ void main() {
       chat = ChatCubit(
         executableResolver: () => 'true',
         automationRepository: testAutomationRepository(),
+                        storage: testHomeStorage,
       );
     });
 

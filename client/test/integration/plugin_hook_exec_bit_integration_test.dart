@@ -94,6 +94,7 @@ void main() {
       basePath: root,
       fs: fs,
       layout: layout,
+                                          storage: testHomeStorage,
     );
     final staged = await service.stageSimpleSessionLaunch(
       readDelegate: fs,

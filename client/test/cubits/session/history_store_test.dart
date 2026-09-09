@@ -68,6 +68,7 @@ void main() {
       folders: s.folders,
       createdAt: 0,
     ),
+                                                                      usesPosixPaths: false,
   );
 
   List<AiMessage> messages(int count) => [

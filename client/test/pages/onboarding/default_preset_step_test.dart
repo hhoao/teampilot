@@ -23,7 +23,8 @@ import '../../support/post_frame_test_harness.dart';
 
 /// Test-only cubit that seeds provider state without disk I/O.
 class _SeededAppProviderCubit extends AppProviderCubit {
-  _SeededAppProviderCubit(AppProviderState initial) {
+  _SeededAppProviderCubit(AppProviderState initial)
+    : super(storage: buildTestHomeStorage()) {
     emit(initial);
   }
 }

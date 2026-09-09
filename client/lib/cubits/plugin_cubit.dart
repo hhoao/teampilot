@@ -19,7 +19,7 @@ import '../services/install/install_job_registry.dart';
 import '../services/install/runners/pack_acquire_install_job_runner.dart';
 import '../repositories/plugin_repository.dart';
 import '../services/io/local_filesystem.dart';
-import '../services/storage/app_storage.dart' show AppPaths;
+import '../services/storage/app_paths.dart';
 import '../services/storage/home_storage.dart';
 import '../services/storage/runtime_context.dart';
 import '../services/discovery/discovery_refresh_policy.dart';
@@ -174,14 +174,20 @@ class PluginCubit extends Cubit<PluginState> {
     required this.repository,
     required this.installService,
     required this.repoService,
+    required HomeStorage storage,
     PluginRepoDiskCacheService? diskCache,
     PluginExternalFetchService? externalFetch,
     PluginUninstalledHandler? onPluginUninstalled,
     PluginUpdatedHandler? onPluginUpdated,
     InstallJobRegistry? installJobRegistry,
     DiscoverySettingsCubit? discoverySettings,
-  }) : _diskCache = diskCache ?? PluginRepoDiskCacheService(),
-       _externalFetch = externalFetch ?? PluginExternalFetchService(),
+  }) : _diskCache =
+           diskCache ??
+           PluginRepoDiskCacheService(
+             filesystem: storage.fs,
+             teampilotRoot: storage.appDataRoot,
+           ),
+       _externalFetch = externalFetch ?? PluginExternalFetchService(storage: storage),
        _onPluginUninstalled = onPluginUninstalled,
        _onPluginUpdated = onPluginUpdated,
        _installJobRegistry = installJobRegistry,
@@ -199,8 +205,13 @@ class PluginCubit extends Cubit<PluginState> {
   }) : repository = _dummyRepo,
        installService = _dummyInstallService,
        repoService = _dummyRepoService,
-       _diskCache = diskCache ?? PluginRepoDiskCacheService(),
-       _externalFetch = PluginExternalFetchService(),
+       _diskCache =
+           diskCache ??
+           PluginRepoDiskCacheService(
+             filesystem: _dummyStorage.fs,
+             teampilotRoot: _dummyStorage.appDataRoot,
+           ),
+       _externalFetch = PluginExternalFetchService(storage: _dummyStorage),
        _onPluginUninstalled = onPluginUninstalled,
        _onPluginUpdated = onPluginUpdated,
        _installJobRegistry = null,
@@ -214,10 +225,10 @@ class PluginCubit extends Cubit<PluginState> {
          ),
        );
   static final _dummyRepo = PluginRepository(storage: _dummyStorage);
-  static final _dummyInstallService = PluginInstallService();
-  static final _dummyRepoService = PluginRepoService();
+  static final _dummyInstallService = PluginInstallService(storage: _dummyStorage);
+  static final _dummyRepoService = PluginRepoService(storage: _dummyStorage);
   // Test-only home: a bare native RuntimeContext wrapped in HomeStorage, so
-  // the dummy repository has a non-null context without AppStorage binding.
+  // the dummy repository has a non-null context without a real home binding.
   static final _dummyStorage = HomeStorage(
     RuntimeContext(
       target: RuntimeTarget.local(),

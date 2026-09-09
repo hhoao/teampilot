@@ -6,16 +6,19 @@ import 'package:teampilot/repositories/app_provider_repository.dart';
 import 'package:teampilot/services/storage/app_storage.dart';
 import 'package:teampilot/services/cli/claude/provider/claude_provider_credentials_service.dart';
 import 'package:teampilot/services/provider/credential_binding.dart';
+import 'package:teampilot/services/storage/home_storage.dart';
 
 import '../support/in_memory_filesystem.dart';
 
 void main() {
   late InMemoryFilesystem fs;
   late AppProviderRepository repository;
+  late HomeStorage repoStorage;
   const base = '/data/tp';
 
   setUp(() {
     fs = InMemoryFilesystem();
+    repoStorage = fakeHomeStorage(filesystem: fs, home: '/home/user');
     repository = AppProviderRepository(
       basePath: base,
       fs: fs,
@@ -23,7 +26,9 @@ void main() {
         fs: fs,
         basePath: base,
         resolveHomeDirectory: () => '/home/user',
+        storage: repoStorage,
       ),
+      storage: repoStorage,
     );
   });
 

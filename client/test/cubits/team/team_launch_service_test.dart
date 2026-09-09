@@ -35,10 +35,10 @@ void main() {
       final lifecycle = _RecordingLifecycleService();
       final sync = TeamResourceSyncService(
         host: host,
-        provisioner: TeamProfileProvisioner(),
-        mcpLinker: ProfileMcpLinkerService(),
+        provisioner: TeamProfileProvisioner(storage: fakeHomeStorage()),
+        mcpLinker: ProfileMcpLinkerService(storage: fakeHomeStorage()),
         pluginRepository: PluginRepository(storage: fakeHomeStorage()),
-        mcpRepository: McpRepository(),
+        mcpRepository: McpRepository(storage: fakeHomeStorage()),
         installedPluginsLoader: () async => const [],
         installedMcpLoader: () async => const [],
         extensionMcpContributor: (_) async => const [],
@@ -49,6 +49,7 @@ void main() {
         sync: sync,
         executableResolver: () => 'opencode',
         launcher: (_, _) async {},
+                                         storage: fakeHomeStorage(),
       );
 
       await service.launchMember(
@@ -85,6 +86,8 @@ final class _RecordingHost implements LaunchProfileCubitHost {
 }
 
 final class _RecordingLifecycleService extends SessionLifecycleService {
+  _RecordingLifecycleService() : super(storage: fakeHomeStorage());
+
   List<String>? additionalDirectories;
 
   @override

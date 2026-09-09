@@ -7,6 +7,8 @@ import 'package:teampilot/models/app_session.dart';
 import 'package:teampilot/models/workspace_folder.dart';
 import 'package:teampilot/repositories/session_repository.dart';
 
+import '../../support/in_memory_filesystem.dart';
+
 Workspace _ws(String id, {List<String> sessionIds = const []}) => Workspace(
       workspaceId: id,
       folders: [WorkspaceFolder(path: '/$id')],
@@ -23,7 +25,7 @@ AppSession _sess(String id, String wsId, {int createdAt = 0}) => AppSession(
 
 void main() {
   test('unscoped snapshot exposes all', () {
-    final store = SessionDataStore();
+    final store = SessionDataStore(storage: fakeHomeStorage());
     final workspaces = [
       Workspace(
         workspaceId: 'p',
@@ -51,7 +53,7 @@ void main() {
   test(
     'team scope filters sessions by sessionTeam; workspaces stay unscoped',
     () {
-      final store = SessionDataStore()
+      final store = SessionDataStore(storage: fakeHomeStorage())
         ..setScope(scopeSessionsToSelectedTeam: true, selectedTeamId: 't1');
       final workspaces = [
         Workspace(
@@ -91,7 +93,7 @@ void main() {
   );
 
   test('team scope with empty team id shows personal sessions only', () {
-    final store = SessionDataStore()
+    final store = SessionDataStore(storage: fakeHomeStorage())
       ..setScope(scopeSessionsToSelectedTeam: true, selectedTeamId: '');
     final workspaces = [
       Workspace(
@@ -141,7 +143,7 @@ void main() {
   });
 
   test('appendSession inserts sessionId into workspace sessionIds (createdAt order)', () {
-    final store = SessionDataStore();
+    final store = SessionDataStore(storage: fakeHomeStorage());
     final ws = _ws('p', sessionIds: ['old']);
     final base = store.deriveSnapshot(
       workspaces: [ws],
@@ -156,7 +158,7 @@ void main() {
   });
 
   test('appendSession is idempotent for an existing session id', () {
-    final store = SessionDataStore();
+    final store = SessionDataStore(storage: fakeHomeStorage());
     final ws = _ws('p', sessionIds: ['s1']);
     final base = store.deriveSnapshot(
       workspaces: [ws],
@@ -167,7 +169,7 @@ void main() {
   });
 
   test('appendSession twice keeps a single session entry', () {
-    final store = SessionDataStore();
+    final store = SessionDataStore(storage: fakeHomeStorage());
     final ws = _ws('p');
     final base = store.deriveSnapshot(workspaces: [ws], sessions: const []);
     final once = store.appendSession(base, _sess('s1', 'p'));
@@ -181,7 +183,7 @@ void main() {
   });
 
   test('appendSession for unknown workspace leaves sessionIds untouched', () {
-    final store = SessionDataStore();
+    final store = SessionDataStore(storage: fakeHomeStorage());
     final base = store.deriveSnapshot(
       workspaces: [_ws('p')],
       sessions: const [],
@@ -192,7 +194,7 @@ void main() {
   });
 
   test('removeSession removes id from sessions and workspace sessionIds', () {
-    final store = SessionDataStore();
+    final store = SessionDataStore(storage: fakeHomeStorage());
     final ws = _ws('p', sessionIds: ['a', 'b']);
     final base = store.deriveSnapshot(
       workspaces: [ws],
@@ -204,7 +206,7 @@ void main() {
   });
 
   test('snapshotWithWorkspace replaces workspace but preserves sessionIds', () {
-    final store = SessionDataStore();
+    final store = SessionDataStore(storage: fakeHomeStorage());
     final base = store.deriveSnapshot(
       workspaces: [_ws('p', sessionIds: ['a', 'b'])],
       sessions: [_sess('a', 'p'), _sess('b', 'p')],
@@ -216,14 +218,14 @@ void main() {
   });
 
   test('snapshotWithWorkspace adds a brand-new workspace', () {
-    final store = SessionDataStore();
+    final store = SessionDataStore(storage: fakeHomeStorage());
     final base = store.deriveSnapshot(workspaces: [_ws('p')], sessions: const []);
     final snap = store.snapshotWithWorkspace(base, _ws('q'));
     expect(snap.workspaces.map((w) => w.workspaceId), ['p', 'q']);
   });
 
   test('snapshotWithWorkspaceAndSessions replaces workspace sessions and rebuilds sessionIds', () {
-    final store = SessionDataStore();
+    final store = SessionDataStore(storage: fakeHomeStorage());
     final base = store.deriveSnapshot(
       workspaces: [_ws('p', sessionIds: ['old'])],
       sessions: [_sess('old', 'p')],
@@ -238,7 +240,7 @@ void main() {
   });
 
   test('mergeWorkspaceSessions rebuilds the hydrated workspace sessionIds', () {
-    final store = SessionDataStore();
+    final store = SessionDataStore(storage: fakeHomeStorage());
     final base = store.deriveSnapshot(
       workspaces: [
         _ws('p1', sessionIds: ['p2-session', 'stale']),
@@ -258,7 +260,7 @@ void main() {
   });
 
   test('snapshotWithoutWorkspace removes workspace and its sessions', () {
-    final store = SessionDataStore();
+    final store = SessionDataStore(storage: fakeHomeStorage());
     final base = store.deriveSnapshot(
       workspaces: [_ws('p'), _ws('q')],
       sessions: [_sess('a', 'p'), _sess('b', 'q')],
@@ -270,9 +272,12 @@ void main() {
 
   test('updateWorkspaceMetadata patches snapshot without disk rescan', () async {
     final tmp = await Directory.systemTemp.createTemp('sds_test_');
-    final repo = SessionRepository(rootDir: tmp.path);
+    final repo = SessionRepository(
+      rootDir: tmp.path,
+      storage: fakeHomeStorage(),
+    );
     final ws = await repo.createWorkspace([WorkspaceFolder(path: '/p')]);
-    final store = SessionDataStore();
+    final store = SessionDataStore(storage: fakeHomeStorage());
     var base = store.deriveSnapshot(workspaces: [ws], sessions: const []);
     base = store.appendSession(
       base,
@@ -298,8 +303,11 @@ void main() {
 
   test('updateWorkspaceMetadata returns null when workspace missing', () async {
     final tmp = await Directory.systemTemp.createTemp('sds_test_');
-    final repo = SessionRepository(rootDir: tmp.path);
-    final store = SessionDataStore();
+    final repo = SessionRepository(
+      rootDir: tmp.path,
+      storage: fakeHomeStorage(),
+    );
+    final store = SessionDataStore(storage: fakeHomeStorage());
     final base = store.deriveSnapshot(workspaces: const [], sessions: const []);
     final snap = await store.updateWorkspaceMetadata(
       base,
@@ -313,10 +321,13 @@ void main() {
 
   test('deleteSessionRecord removes session and sessionIds incrementally', () async {
     final tmp = await Directory.systemTemp.createTemp('sds_test_');
-    final repo = SessionRepository(rootDir: tmp.path);
+    final repo = SessionRepository(
+      rootDir: tmp.path,
+      storage: fakeHomeStorage(),
+    );
     final ws = await repo.createWorkspace([WorkspaceFolder(path: '/p')]);
     final created = await repo.createSession(ws.workspaceId);
-    final store = SessionDataStore();
+    final store = SessionDataStore(storage: fakeHomeStorage());
     var base = store.deriveSnapshot(
       workspaces: [ws.copyWith(sessionIds: [created.session.sessionId])],
       sessions: [created.session],
@@ -329,10 +340,13 @@ void main() {
 
   test('deleteWorkspaceRecord removes workspace and its sessions incrementally', () async {
     final tmp = await Directory.systemTemp.createTemp('sds_test_');
-    final repo = SessionRepository(rootDir: tmp.path);
+    final repo = SessionRepository(
+      rootDir: tmp.path,
+      storage: fakeHomeStorage(),
+    );
     final ws = await repo.createWorkspace([WorkspaceFolder(path: '/p')]);
     final created = await repo.createSession(ws.workspaceId);
-    final store = SessionDataStore();
+    final store = SessionDataStore(storage: fakeHomeStorage());
     final base = store.deriveSnapshot(
       workspaces: [ws.copyWith(sessionIds: [created.session.sessionId])],
       sessions: [created.session],
@@ -345,10 +359,13 @@ void main() {
 
   test('cloneWorkspace patches snapshot with cloned workspace and sessions', () async {
     final tmp = await Directory.systemTemp.createTemp('sds_test_');
-    final repo = SessionRepository(rootDir: tmp.path);
+    final repo = SessionRepository(
+      rootDir: tmp.path,
+      storage: fakeHomeStorage(),
+    );
     final ws = await repo.createWorkspace([WorkspaceFolder(path: '/p')]);
     final created = await repo.createSession(ws.workspaceId);
-    final store = SessionDataStore();
+    final store = SessionDataStore(storage: fakeHomeStorage());
     final base = store.deriveSnapshot(
       workspaces: [ws.copyWith(sessionIds: [created.session.sessionId])],
       sessions: [created.session],
@@ -363,8 +380,11 @@ void main() {
 
   test('createWorkspaceWithFirstSession returns snapshot with new workspace and session', () async {
     final tmp = await Directory.systemTemp.createTemp('sds_test_');
-    final repo = SessionRepository(rootDir: tmp.path);
-    final store = SessionDataStore();
+    final repo = SessionRepository(
+      rootDir: tmp.path,
+      storage: fakeHomeStorage(),
+    );
+    final store = SessionDataStore(storage: fakeHomeStorage());
     final base = store.deriveSnapshot(workspaces: const [], sessions: const []);
     final result = await store.createWorkspaceWithFirstSession(
       base,

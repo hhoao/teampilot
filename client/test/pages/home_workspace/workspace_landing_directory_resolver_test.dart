@@ -20,13 +20,14 @@ void main() {
     test('resolveSelectedProjectPath prefers stored path when valid', () {
       final resolver = WorkspaceLandingProjectResolver(
         workspace: workspace,
+        usesPosixPaths: false,
         storedProjectPath: '/extra',
       );
       expect(resolver.resolveSelectedProjectPath(), '/extra');
     });
 
     test('resolveSelectedProjectPath falls back to first folder option', () {
-      final resolver = WorkspaceLandingProjectResolver(workspace: workspace);
+      final resolver = WorkspaceLandingProjectResolver(workspace: workspace, usesPosixPaths: false);
       expect(resolver.resolveSelectedProjectPath(), '/main');
     });
 
@@ -36,7 +37,7 @@ void main() {
         folders: const [WorkspaceFolder(path: '/only')],
         createdAt: 1,
       );
-      final resolver = WorkspaceLandingProjectResolver(workspace: single);
+      final resolver = WorkspaceLandingProjectResolver(workspace: single, usesPosixPaths: false);
       expect(resolver.options, hasLength(1));
       expect(resolver.options.single.path, '/only');
     });
@@ -52,6 +53,7 @@ void main() {
       );
       final resolver = WorkspaceLandingProjectResolver(
         workspace: mixed,
+        usesPosixPaths: false,
         runtimeTargets: [
           RuntimeTarget.ssh('host-1', label: 'Build Server'),
         ],
@@ -67,6 +69,7 @@ void main() {
     test('resolveSelectedWorktreePath prefers stored path when valid', () {
       final resolver = WorkspaceLandingWorktreeResolver(
         projectPath: '/repo',
+        usesPosixPaths: false,
         storedWorktreePath: '/repo/.worktrees/feature',
         worktreeState: WorktreeState(
           repoPath: '/repo',
@@ -96,7 +99,7 @@ void main() {
     });
 
     test('falls back to project root when no worktrees are known', () {
-      final resolver = WorkspaceLandingWorktreeResolver(projectPath: '/solo');
+      final resolver = WorkspaceLandingWorktreeResolver(projectPath: '/solo', usesPosixPaths: false);
       expect(resolver.options.single.path, '/solo');
       expect(resolver.resolveSelectedWorktreePath(), '/solo');
     });
@@ -104,6 +107,7 @@ void main() {
     test('hides worktree selector for non-git folders', () {
       final resolver = WorkspaceLandingWorktreeResolver(
         projectPath: '/plain',
+        usesPosixPaths: false,
         worktreeState: const WorktreeState(
           repoPath: '/plain',
           worktrees: [],
@@ -116,6 +120,7 @@ void main() {
     test('shows worktree selector when git worktrees are known', () {
       final resolver = WorkspaceLandingWorktreeResolver(
         projectPath: '/repo',
+        usesPosixPaths: false,
         worktreeState: WorktreeState(
           repoPath: '/repo',
           worktrees: [
@@ -135,6 +140,7 @@ void main() {
     test('hides worktree selector while worktree list is loading', () {
       final resolver = WorkspaceLandingWorktreeResolver(
         projectPath: '/repo',
+        usesPosixPaths: false,
         worktreeState: const WorktreeState(
           repoPath: '/repo',
           worktrees: [],

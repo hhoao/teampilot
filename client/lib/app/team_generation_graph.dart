@@ -31,6 +31,7 @@ import 'package:uuid/uuid.dart';
 import '../cubits/workbench/workbench_cubit.dart';
 import '../../services/cli/registry/cli_tool_registry.dart';
 import '../../services/storage/app_storage.dart';
+import '../../services/storage/home_storage.dart';
 import '../../models/team_config.dart';
 
 import '../../services/team_generation/team_generation_context_payload.dart';
@@ -53,7 +54,8 @@ final class TeamGenerationGraph {
     required this.jobStore,
     required this.composerHandler,
     required this.catalogStager,
-  });
+    required HomeStorage storage,
+  }) : _storage = storage;
 
   final TeamGenerationCoordinator coordinator;
   final TeamGenerationSettingsStore settingsStore;
@@ -61,10 +63,11 @@ final class TeamGenerationGraph {
   final TeamGenerationJobStore jobStore;
   final TeamComposerMcpHandler composerHandler;
   final CatalogGenerationStager catalogStager;
+  final HomeStorage _storage;
 
   /// Builder-only resource injection owned by the generation composition
   /// graph. Normal Simple and Team sessions retain their ordinary resources.
-  static ResourceProviderSet resourceProvidersForSession(
+  ResourceProviderSet resourceProvidersForSession(
     AppSession session,
     ResourceProviderSet defaults,
   ) {
@@ -77,12 +80,14 @@ final class TeamGenerationGraph {
     }
     return ResourceProviderSet(
       prompts: defaults.prompts,
-      skills: [...defaults.skills, ManagedTeamBuilderSkillProvider()],
+      skills: [
+        ...defaults.skills,
+        ManagedTeamBuilderSkillProvider(storage: _storage),
+      ],
       mcp: defaults.mcp,
       hooks: defaults.hooks,
     );
   }
-
   /// Issues a fresh workflow token for a builder session connect.
   String? tokenForSession(AppSession session) {
     if (session.purpose != SessionPurpose.teamGeneration ||
@@ -146,9 +151,7 @@ final class TeamGenerationGraphBootstrap {
     if (_attached) return;
     _attached = true;
     port.setTokenIssuer(graph.tokenForSession);
-    port.attachResourceProviderResolver(
-      TeamGenerationGraph.resourceProvidersForSession,
-    );
+    port.attachResourceProviderResolver(graph.resourceProvidersForSession);
     port.attachComposerHandler(
       handler: graph.composerHandler,
       authorizer: graph.authorizer,
@@ -204,17 +207,19 @@ TeamGenerationGraph buildTeamGenerationGraph({
   required CliToolRegistry cliToolRegistry,
   required RuntimeTargetRegistry targetRegistry,
   required RemoteCliReadinessService remoteCliReadiness,
+  required HomeStorage storage,
   CatalogKindRegistry? catalogRegistry,
   ExpertHubCatalog? expertHubCatalog,
 }) {
-  final jobStore = TeamGenerationJobStore();
+  final jobStore = TeamGenerationJobStore(storage: storage);
   final workflowExecutor = TeamGenerationWorkflowExecutor();
   final catalogStager = CatalogGenerationStager(
     jobStore: jobStore,
     executor: workflowExecutor,
+    storage: storage,
     registry: catalogRegistry,
   );
-  final settingsStore = TeamGenerationSettingsStore();
+  final settingsStore = TeamGenerationSettingsStore(storage: storage);
   final authorizer = TeamGenerationAuthorizer(
     sessionLookup: SessionRepoLookup(sessionRepo),
     jobStore: jobStore,
@@ -234,7 +239,10 @@ TeamGenerationGraph buildTeamGenerationGraph({
   final validator = GeneratedTeamPlanValidator();
   final commitService = GeneratedTeamCommitService(
     jobStore: jobStore,
-    expertStore: LocalExpertStore(),
+    expertStore: LocalExpertStore(
+      fs: storage.fs,
+      dirOverride: storage.paths.memberHubLocalTemplatesDir,
+    ),
     profileRepository: identityRepository,
     sessionRepository: sessionRepo,
     resourceProvisioner: NoopResourceProvisioner(),
@@ -357,5 +365,6 @@ TeamGenerationGraph buildTeamGenerationGraph({
     jobStore: jobStore,
     composerHandler: handler,
     catalogStager: catalogStager,
+    storage: storage,
   );
 }

@@ -14,14 +14,16 @@ abstract final class CodexProjectTrustToml {
   /// Appends `[projects."…"]` blocks for [directories] not already trusted.
   static String applyTrustedDirectories(
     String toml,
-    Iterable<String> directories,
-  ) {
+    Iterable<String> directories, {
+    required bool usesPosixPaths,
+  }) {
     final trimmed = toml.trim();
     final blocks = <String>[];
     final seen = <String>{};
 
     for (final directory in directories) {
-      for (final path in workspaceMetadataKeys(directory)) {
+      for (final path
+          in workspaceMetadataKeys(directory, usesPosixPaths: usesPosixPaths)) {
         if (!seen.add(path)) continue;
         if (_isDirectoryTrusted(trimmed, path)) continue;
         blocks.add(_trustBlock(path));

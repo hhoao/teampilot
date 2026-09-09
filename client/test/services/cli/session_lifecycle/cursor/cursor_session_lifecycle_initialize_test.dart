@@ -71,6 +71,7 @@ void main() {
 
   Future<CursorSessionLifecycleCapability> capability() async {
     return CursorSessionLifecycleCapability(
+      storage: fakeHomeStorage(filesystem: fs),
       manifestStore: store,
       authSync: authSync.call,
       resolveProviderId: (_) async => providerId,
@@ -79,6 +80,7 @@ void main() {
 
   Future<void> seedPersisted() async {
     final cap = CursorSessionLifecycleCapability(
+      storage: fakeHomeStorage(filesystem: fs),
       manifestStore: store,
       authSync: authSync.call,
       resolveProviderId: (_) async => providerId,

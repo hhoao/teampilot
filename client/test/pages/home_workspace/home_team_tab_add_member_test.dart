@@ -145,7 +145,7 @@ void main() {
       );
       addTearDown(cliPresetsCubit.close);
 
-      final providerCubit = AppProviderCubit();
+      final providerCubit = AppProviderCubit(storage: testHomeStorage);
       addTearDown(providerCubit.close);
 
       await tester.pumpWidget(

@@ -9,6 +9,7 @@ import 'package:teampilot/repositories/ssh_credential_store.dart';
 import 'package:teampilot/repositories/ssh_profile_repository.dart';
 import 'package:teampilot/services/storage/home_storage_invalidator.dart';
 import 'package:teampilot/widgets/ssh/home_ssh_profile_binder.dart';
+import '../../support/in_memory_filesystem.dart';
 
 void main() {
   late Directory temp;
@@ -18,7 +19,7 @@ void main() {
 
   setUp(() async {
     temp = await Directory.systemTemp.createTemp('home_ssh_binder_');
-    repository = SshProfileRepository(rootDir: temp.path);
+    repository = SshProfileRepository(rootDir: temp.path, storage: fakeHomeStorage(), );
     cubit = SshProfileCubit(
       profileRepository: repository,
       credentialStore: InMemorySshCredentialStore(),

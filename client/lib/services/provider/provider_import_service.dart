@@ -3,7 +3,7 @@ import '../../repositories/app_provider_repository.dart';
 import '../cli/flashskyai/provider/flashskyai_provider_mirror.dart';
 import '../cli/registry/capabilities/provider_capability.dart';
 import '../cli/registry/cli_tool_registry.dart';
-import '../storage/app_storage.dart';
+import '../storage/home_storage.dart';
 
 class ProviderImportResult {
   const ProviderImportResult({
@@ -30,15 +30,18 @@ class ProviderImportResult {
 /// Merges [ProviderCatalogSnapshot] rows into TeamPilot provider catalogs.
 class ProviderImportService {
   ProviderImportService({
+    required HomeStorage storage,
     AppProviderRepository? repository,
     String? flashskyaiExecutablePath,
     CliToolRegistry? cliRegistry,
     ProviderCatalogLoadContext? catalogLoadContext,
-  }) : _repository = repository ?? AppProviderRepository(),
+  }) : _storage = storage,
+       _repository = repository ?? AppProviderRepository(storage: storage),
        _flashskyaiExecutablePath = flashskyaiExecutablePath,
        _cliRegistry = cliRegistry ?? CliToolRegistry.builtIn(),
        _catalogLoadContextOverride = catalogLoadContext;
 
+  final HomeStorage _storage;
   final AppProviderRepository _repository;
   final String? _flashskyaiExecutablePath;
   final CliToolRegistry _cliRegistry;
@@ -47,10 +50,10 @@ class ProviderImportService {
   ProviderCatalogLoadContext get catalogLoadContext =>
       _catalogLoadContextOverride ??
       ProviderCatalogLoadContext(
-        fs: AppStorage.fs,
-        homeDirectory: AppStorage.home,
-        cwd: AppStorage.cwd,
-        usePosixPaths: AppStorage.usesPosixPaths,
+        fs: _storage.fs,
+        homeDirectory: _storage.home,
+        cwd: _storage.cwd,
+        usePosixPaths: _storage.usesPosixPaths,
         flashskyaiExecutablePath: _flashskyaiExecutablePath,
       );
 
@@ -110,6 +113,7 @@ class ProviderImportService {
     var mirrorSkipped = 0;
     if (snapshot.mirrorToFlashskyai) {
       final mirrorResult = await FlashskyaiProviderMirror(
+        storage: _storage,
         repository: _repository,
       ).mirror(snapshot.providers);
       mirrored = mirrorResult.added;

@@ -42,7 +42,10 @@ void main() {
     );
     addTearDown(AppStorage.resetForTesting);
 
-    final normalized = normalizeWorkspacePath(r'C:\Users\dev\repo');
+    final normalized = normalizeWorkspacePath(
+      r'C:\Users\dev\repo',
+      usesPosixPaths: true,
+    );
     expect(normalized, '/mnt/c/Users/dev/repo');
     expect(normalized, isNot(contains(r'\')));
   });
@@ -56,26 +59,35 @@ void main() {
     addTearDown(AppStorage.resetForTesting);
 
     expect(
-      normalizeWorkspacePath(r'C:\Users\dev\repo'),
+      normalizeWorkspacePath(r'C:\Users\dev\repo', usesPosixPaths: false),
       p.normalize(r'C:\Users\dev\repo'),
     );
     expect(
-      normalizeWorkspacePath(r'C:\Users\dev\repo'),
+      normalizeWorkspacePath(r'C:\Users\dev\repo', usesPosixPaths: false),
       isNot(startsWith('/mnt/')),
     );
   });
 
   test('normalizeWorkspacePath keeps POSIX paths unchanged', () {
     AppStorage.resetForTesting();
-    expect(normalizeWorkspacePath('/tmp/work'), '/tmp/work');
-    expect(normalizeWorkspacePath(r'C:\temp'), p.normalize(r'C:\temp'));
+    expect(
+      normalizeWorkspacePath('/tmp/work', usesPosixPaths: false),
+      '/tmp/work',
+    );
+    expect(
+      normalizeWorkspacePath(r'C:\temp', usesPosixPaths: false),
+      p.normalize(r'C:\temp'),
+    );
   });
 
   test('workspaceMetadataKeys includes Windows path separator variants', () {
     if (!Platform.isWindows) return;
     AppStorage.resetForTesting();
 
-    final keys = workspaceMetadataKeys(r'C:\Users\haung\Documents');
+    final keys = workspaceMetadataKeys(
+      r'C:\Users\haung\Documents',
+      usesPosixPaths: false,
+    );
     expect(
       keys,
       containsAll([
@@ -92,7 +104,10 @@ void main() {
       if (!Platform.isWindows) return;
       AppStorage.resetForTesting();
 
-      final keys = workspaceMetadataKeys('/mnt/c/Users/haung/Documents');
+      final keys = workspaceMetadataKeys(
+        '/mnt/c/Users/haung/Documents',
+        usesPosixPaths: true,
+      );
       expect(keys, contains('/mnt/c/Users/haung/Documents'));
       expect(
         keys,
@@ -106,7 +121,9 @@ void main() {
 
   test('workspaceMetadataKeys keeps single key for POSIX paths', () {
     if (Platform.isWindows) return;
-    expect(workspaceMetadataKeys('/tmp/work'), ['/tmp/work']);
+    expect(workspaceMetadataKeys('/tmp/work', usesPosixPaths: false), [
+      '/tmp/work',
+    ]);
   });
 
   group('worktreeRepoPathForToolsTarget', () {
@@ -123,6 +140,7 @@ void main() {
           cwd: '/wsl/repo/.worktrees/feature',
           cubitRepoPath: '/wsl/repo',
           fallbackRepoPath: '/local/repo',
+          usesPosixPaths: false,
         ),
         '/wsl/repo',
       );
@@ -136,6 +154,7 @@ void main() {
           cwd: '/wsl/repo/.worktrees/feature',
           cubitRepoPath: '/local/repo',
           fallbackRepoPath: '/local/repo',
+          usesPosixPaths: false,
         ),
         '/wsl/repo',
       );
@@ -149,6 +168,7 @@ void main() {
           cwd: '/unknown',
           cubitRepoPath: '',
           fallbackRepoPath: '/local/repo',
+          usesPosixPaths: false,
         ),
         '/local/repo',
       );

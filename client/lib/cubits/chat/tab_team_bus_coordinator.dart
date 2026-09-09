@@ -18,6 +18,7 @@ import '../../services/team_bus/tasks/task_log_factory.dart';
 import '../../services/team_bus/tasks/task_queue.dart';
 import '../../services/team_bus/team_bus.dart';
 import '../../services/team_bus/teammate_roster_profile.dart';
+import '../../services/storage/home_storage.dart';
 import '../../utils/logging/logger.dart';
 import '../../utils/team/team_member_naming.dart';
 import 'chat_tab_store.dart';
@@ -26,6 +27,7 @@ import 'model/chat_tab.dart';
 /// Mixed-mode TeamBus + MCP gateway lifecycle for a session tab.
 class TabTeamBusCoordinator {
   TabTeamBusCoordinator({
+    required HomeStorage storage,
     required TeammateBusMcpGateway gateway,
     required ChatTabStore tabStore,
     required MemberMaterializer materializer,
@@ -42,7 +44,8 @@ class TabTeamBusCoordinator {
     void Function(String sessionId, String memberId)? onMemberWaitEntered,
     ArtifactTransferService Function(AppSession session)?
     artifactServiceFactory,
-  }) : _gateway = gateway,
+  }) : _storage = storage,
+       _gateway = gateway,
        _tabStore = tabStore,
        _materializer = materializer,
        _globalPresets = globalPresets,
@@ -53,6 +56,7 @@ class TabTeamBusCoordinator {
        _onMemberWaitEntered = onMemberWaitEntered,
        _artifactServiceFactory = artifactServiceFactory;
 
+  final HomeStorage _storage;
   final TeammateBusMcpGateway _gateway;
   final ChatTabStore _tabStore;
   final MemberMaterializer _materializer;
@@ -93,6 +97,8 @@ class TabTeamBusCoordinator {
             log: TaskLogFactory.forSession(
               session.workspaceId,
               session.sessionId,
+              fs: _storage.fs,
+              teampilotRoot: _storage.appDataRoot,
             ),
           )
         : null;
@@ -120,6 +126,8 @@ class TabTeamBusCoordinator {
       messageLog: BusMessageLogFactory.forSession(
         session.workspaceId,
         session.sessionId,
+        fs: _storage.fs,
+        teampilotRoot: _storage.appDataRoot,
       ),
       taskQueue: taskQueue,
       reportsIdleViaReceiveWork: (memberId) =>

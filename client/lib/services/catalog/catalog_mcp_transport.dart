@@ -1,8 +1,6 @@
 import '../../models/team_config.dart';
 import '../cli/registry/capabilities/team_behavior_capability.dart';
 import '../cli/registry/cli_tool_registry.dart';
-import '../storage/app_storage.dart';
-import '../storage/runtime_context.dart';
 import '../team_bus/mcp/bus_bridge_locator.dart';
 import '../team_bus/mcp/teammate_bus_mcp_config.dart';
 import '../team_bus/remote/member_bus_mcp_config.dart';
@@ -13,12 +11,16 @@ import 'catalog_mcp_constants.dart';
 /// Remote always uses the idle HTTP tunnel + [catalogMcpPath] (never relay argv).
 /// Local stdio reuses `teammate_bus_bridge` with `--bus-url` set to the full
 /// catalog URL — no extra flag.
+///
+/// [isLocalNative] reports whether the home plane is a native local backend
+/// (the host loopback bridge exe is only reachable from a local native PTY).
 Map<String, Object?> resolveCatalogMcpTransportConfig({
   required CliToolRegistry cliRegistry,
   required Uri catalogEndpoint,
   required String sessionId,
   required String memberId,
   required CliTool cli,
+  required bool isLocalNative,
   RemoteBusBinding? remoteBinding,
   String? Function()? bridgeLocator,
   String? teamGenerationToken,
@@ -39,15 +41,12 @@ Map<String, Object?> resolveCatalogMcpTransportConfig({
   }
 
   String? localBridge;
-  final localNative =
-      !AppStorage.isInstalled ||
-      AppStorage.context.mode == StorageBackendMode.native;
   final supportsBridge =
       cliRegistry
           .capability<TeamBehaviorCapability>(cli)
           ?.supportsLocalStdioBridge ??
       false;
-  if (supportsBridge && localNative) {
+  if (supportsBridge && isLocalNative) {
     localBridge = (bridgeLocator ?? BusBridgeLocator.resolve)();
   }
   if (localBridge != null) {

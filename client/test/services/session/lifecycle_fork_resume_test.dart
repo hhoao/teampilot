@@ -9,6 +9,9 @@ import 'package:teampilot/services/cli/registry/capabilities/ai_history_capabili
 import 'package:teampilot/services/io/local_filesystem.dart';
 import 'package:teampilot/services/session/session_lifecycle_service.dart';
 import 'package:teampilot/services/storage/runtime_layout.dart';
+import '../../support/in_memory_filesystem.dart';
+import 'package:teampilot/services/storage/app_paths.dart';
+import 'package:teampilot/services/storage/home_storage.dart';
 
 void main() {
   late Directory tmp;
@@ -21,7 +24,18 @@ void main() {
     addTearDown(() => tmp.deleteSync(recursive: true));
     fs = LocalFilesystem();
     layout = RuntimeLayout(teampilotRoot: tmp.path, fs: fs);
-    repo = SessionRepository(rootDir: tmp.path);
+    // rootDir override + real-disk layout assertions: storage must ALSO be a
+    // LocalFilesystem (mirrors the pre-migration unbound default), so repo
+    // writes land on the same disk the test reads.
+    repo = SessionRepository(
+      rootDir: tmp.path,
+      storage: HomeStorage.forTesting(
+        filesystem: fs,
+        paths: AppPaths(tmp.path),
+        home: tmp.path,
+        cwd: tmp.path,
+      ),
+    );
   });
 
   test('forked simple claude session pins --resume to the source transcript',
@@ -81,7 +95,7 @@ void main() {
       reason: 'launch must resolve --resume {sourceId} for the fork',
     );
 
-    final service = SessionLifecycleService(appDataBasePath: tmp.path);
+    final service = SessionLifecycleService(appDataBasePath: tmp.path, storage: fakeHomeStorage(), );
     final liveWorkspace = (await repo.loadWorkspaces()).firstWhere(
       (w) => w.workspaceId == workspace.workspaceId,
     );

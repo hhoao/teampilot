@@ -1,13 +1,17 @@
 import '../../models/app_session.dart';
 import '../../models/workspace.dart';
 import '../../models/team_config.dart';
-import '../../services/storage/app_storage.dart';
+import '../../services/storage/home_storage.dart';
 import 'model/chat_tab.dart';
 import 'model/chat_tab_info.dart';
 
 /// Session runtime registry. Owns the *runtime* behind each session tab, not
 /// bar presence/order (that is `WorkbenchCubit`). Keyed by session id.
 class ChatTabStore {
+  ChatTabStore({required HomeStorage storage}) : _storage = storage;
+
+  final HomeStorage _storage;
+
   final Map<String, ChatTab> _bySessionId = {};
   String _activeWorkspaceId = '';
 
@@ -85,7 +89,7 @@ class ChatTabStore {
   }) {
     final tabId = tab.info.id;
     if (tabId.startsWith('local-')) {
-      return (AppStorage.cwd, const <String>[]);
+      return (_storage.cwd, const <String>[]);
     }
     for (final s in sessions) {
       if (s.sessionId != tabId) continue;
@@ -97,6 +101,7 @@ class ChatTabStore {
       final work = s.workDirsForMember(
         memberId.isEmpty ? null : memberId,
         folders: folders,
+        usesPosixPaths: _storage.usesPosixPaths,
       );
       final wd = work.workingDirectory.trim();
       final addl = work.addDirs
@@ -106,9 +111,9 @@ class ChatTabStore {
       if (wd.isNotEmpty) {
         return (wd, addl);
       }
-      return (AppStorage.cwd, addl);
+      return (_storage.cwd, addl);
     }
-    return (AppStorage.cwd, const <String>[]);
+    return (_storage.cwd, const <String>[]);
   }
 
   AppSession? sessionForTab(ChatTab tab, List<AppSession> sessions) {

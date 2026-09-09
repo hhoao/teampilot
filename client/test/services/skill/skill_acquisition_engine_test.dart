@@ -53,6 +53,7 @@ SkillAcquisitionEngine _engine({
   SkillInstallRunner? runner,
 }) {
   return SkillAcquisitionEngine(
+    storage: buildTestHomeStorage(),
     packRegistry: packRegistry,
     runner: runner,
     ensureSynced: _fakeSync,
@@ -87,7 +88,7 @@ void main() {
     );
     final engine = _engine(
       installed: installed,
-      packRegistry: SkillPackRegistry(packs: [pack]),
+      packRegistry: SkillPackRegistry(storage: buildTestHomeStorage(), packs: [pack]),
     );
     _plantSkillMdUnder(
       _syncRootFor(const SkillRepo(owner: 'owner', name: 'repo')),
@@ -121,7 +122,7 @@ void main() {
     );
     final engine = _engine(
       installed: installed,
-      packRegistry: SkillPackRegistry(packs: [pack]),
+      packRegistry: SkillPackRegistry(storage: buildTestHomeStorage(), packs: [pack]),
     );
     final root = _syncRootFor(const SkillRepo(owner: 'owner', name: 'repo'));
     _plantSkillMdUnder(root, 'review');
@@ -155,7 +156,7 @@ void main() {
     );
     final engine = _engine(
       installed: installed,
-      packRegistry: SkillPackRegistry(packs: [pack]),
+      packRegistry: SkillPackRegistry(storage: buildTestHomeStorage(), packs: [pack]),
     );
     final root = _syncRootFor(const SkillRepo(owner: 'owner', name: 'repo'));
     _plantSkillMdUnder(root, 'review');
@@ -235,7 +236,7 @@ void main() {
     );
     final engine = _engine(
       installed: installed,
-      packRegistry: SkillPackRegistry(packs: [pack]),
+      packRegistry: SkillPackRegistry(storage: buildTestHomeStorage(), packs: [pack]),
     );
     final root = _syncRootFor(const SkillRepo(owner: 'owner', name: 'repo'));
     _plantSkillMdUnder(root, 'ship');
@@ -271,6 +272,7 @@ void main() {
     final engine = _engine(
       installed: installed,
       packRegistry: SkillPackRegistry(
+        storage: buildTestHomeStorage(),
         packs: [pack],
         remote: _FakeSkillPackSource(() async {
           remoteLoads++;
@@ -302,6 +304,7 @@ void main() {
   test('optional RUN failure still applies PATH', () async {
     CliInstallerCommand? seen;
     final engine = SkillAcquisitionEngine(
+      storage: buildTestHomeStorage(),
       runner: (cmd) async {
         seen = cmd;
         return const CliInstallerCommandResult(exitCode: 1, stderr: 'boom');
@@ -342,6 +345,7 @@ void main() {
   test('SHELL wraps string RUN', () async {
     CliInstallerCommand? seen;
     final engine = SkillAcquisitionEngine(
+      storage: buildTestHomeStorage(),
       runner: (cmd) async {
         seen = cmd;
         return const CliInstallerCommandResult(exitCode: 0);
@@ -373,6 +377,7 @@ void main() {
   test('exec RUN ignores SHELL', () async {
     CliInstallerCommand? seen;
     final engine = SkillAcquisitionEngine(
+      storage: buildTestHomeStorage(),
       runner: (cmd) async {
         seen = cmd;
         return const CliInstallerCommandResult(exitCode: 0);
@@ -403,6 +408,7 @@ void main() {
 
   test('PATH bin resolves under sync root', () async {
     final engine = SkillAcquisitionEngine(
+      storage: buildTestHomeStorage(),
       ensureSynced: (repo) async {
         final root = _syncRootFor(repo);
         await Directory(root).create(recursive: true);
@@ -436,6 +442,7 @@ void main() {
 
   test('COPY then file exists at workdir destination', () async {
     final engine = SkillAcquisitionEngine(
+      storage: buildTestHomeStorage(),
       ensureSynced: (repo) async {
         final root = _syncRootFor(repo);
         await Directory(root).create(recursive: true);
@@ -477,6 +484,7 @@ void main() {
 
   test('rejects workspace op before FROM', () async {
     final engine = SkillAcquisitionEngine(
+      storage: buildTestHomeStorage(),
       installGitDir: (_, {bool overwrite = false, String? idOverride}) async =>
           throw StateError('unused'),
     );

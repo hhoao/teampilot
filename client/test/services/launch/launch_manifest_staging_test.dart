@@ -9,11 +9,18 @@ import 'package:teampilot/repositories/app_provider_repository.dart';
 import 'package:teampilot/services/launch/manifest_executor.dart';
 import 'package:teampilot/services/session/session_lifecycle_service.dart';
 import 'package:teampilot/services/storage/app_storage.dart';
+import 'package:teampilot/services/cli/registry/cli_bootstrap.dart';
+import 'package:teampilot/services/cli/registry/cli_tool_registry.dart';
 
 import '../../support/post_frame_test_harness.dart';
 
 void main() {
-  setUp(setUpTestAppStorage);
+  setUp(() {
+    setUpTestAppStorage();
+    CliToolRegistry.builtIn().configure(
+      CliBootstrap(const {}, storage: testHomeStorage),
+    );
+  });
   tearDown(tearDownTestAppStorage);
 
   test(
@@ -21,6 +28,7 @@ void main() {
     () async {
       final lifecycle = SessionLifecycleService(
         appDataBasePath: AppStorage.paths.basePath,
+                                                 storage: testHomeStorage,
       );
       final roots = await lifecycle.resolveWorkContextForTargetId('local');
       final svc = await lifecycle.configProfileServiceFor(roots);
@@ -58,9 +66,10 @@ void main() {
           updatedAt: 1,
         ),
       ],
+                                               storage: testHomeStorage,
     );
     final roots = await lifecycle.resolveWorkContextForTargetId('local');
-    final repository = AppProviderRepository(basePath: roots.appDataRoot);
+    final repository = AppProviderRepository(basePath: roots.appDataRoot, storage: testHomeStorage, );
     await repository.saveProviders(CliTool.claude, [
       AppProviderConfig(
         id: providerId,

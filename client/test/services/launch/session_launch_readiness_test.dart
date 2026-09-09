@@ -5,6 +5,7 @@ import 'package:teampilot/models/team_config.dart';
 import 'package:teampilot/models/workspace_folder.dart';
 import 'package:teampilot/repositories/session_repository.dart';
 import 'package:teampilot/services/launch/session_launch_readiness.dart';
+import '../../support/in_memory_filesystem.dart';
 
 void main() {
   group('ensureSessionLaunchReady', () {
@@ -13,7 +14,7 @@ void main() {
       () async {
         final tmp = await Directory.systemTemp.createTemp('launch_ready_');
         addTearDown(() => tmp.deleteSync(recursive: true));
-        final repo = SessionRepository(rootDir: tmp.path);
+        final repo = SessionRepository(rootDir: tmp.path, storage: fakeHomeStorage(), );
         final workspace = await repo.createWorkspace([
           const WorkspaceFolder(path: '/remote/project', targetId: 'ssh:host'),
         ]);

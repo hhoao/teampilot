@@ -7,7 +7,6 @@ import '../models/llm_config.dart';
 import '../models/ssh_profile.dart';
 import '../repositories/app_settings_repository.dart';
 import '../repositories/llm_config_store.dart';
-import '../services/storage/app_storage.dart';
 import '../services/storage/home_storage.dart';
 import '../services/provider/llm_config_path_resolver.dart';
 import '../services/storage/remote_file_store.dart';
@@ -108,6 +107,7 @@ class LlmConfigCubit extends Cubit<LlmConfigState> {
     RemoteHomeResolver? remoteHomeResolver,
     LlmConfig initialConfig = const LlmConfig(),
   }) : _appSettings = appSettings,
+       _storage = storage,
        _executableResolver = executableResolver ?? (() => ''),
        _localStoreFactory =
            storeFactory ?? ((path) => FilesystemLlmConfigStore(path: path, fs: storage.fs)),
@@ -119,6 +119,7 @@ class LlmConfigCubit extends Cubit<LlmConfigState> {
        super(LlmConfigState(config: initialConfig, savedConfig: initialConfig));
 
   final AppSettingsRepository _appSettings;
+  final HomeStorage _storage;
   final String Function() _executableResolver;
   final LlmConfigStoreFactory _localStoreFactory;
   final bool Function()? _isSshMode;
@@ -142,8 +143,8 @@ class LlmConfigCubit extends Cubit<LlmConfigState> {
     final profile = sshActive ? _sshProfileResolver?.call() : null;
     final useRemote = sshActive && profile != null && _sshClientFactory != null;
 
-    var homeDirectory = AppStorage.home;
-    var currentDirectory = AppStorage.cwd;
+    var homeDirectory = _storage.home;
+    var currentDirectory = _storage.cwd;
     if (useRemote) {
       final factory = _sshClientFactory;
       final remoteHome =
@@ -162,7 +163,7 @@ class LlmConfigCubit extends Cubit<LlmConfigState> {
       currentDirectory: currentDirectory,
       homeDirectory: homeDirectory,
       cliExecutablePath: _executableResolver(),
-      usePosixPaths: useRemote || AppStorage.usesPosixPaths,
+      usePosixPaths: useRemote || _storage.usesPosixPaths,
     );
 
     final effectivePath = resolved.path;

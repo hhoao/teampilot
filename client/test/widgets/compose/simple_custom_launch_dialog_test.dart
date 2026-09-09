@@ -8,9 +8,12 @@ import 'package:teampilot/services/cli/registry/cli_tool_registry.dart';
 import 'package:teampilot/services/cli/registry/cli_tool_registry_scope.dart';
 import 'package:teampilot/widgets/compose/simple_custom_launch_dialog.dart';
 
+import '../../support/post_frame_test_harness.dart';
+
 /// Test-only cubit that seeds provider state without disk I/O.
 class _SeededAppProviderCubit extends AppProviderCubit {
-  _SeededAppProviderCubit(AppProviderState initial) {
+  _SeededAppProviderCubit(AppProviderState initial)
+    : super(storage: buildTestHomeStorage()) {
     emit(initial);
   }
 }
@@ -47,6 +50,9 @@ Widget _host({
 }
 
 void main() {
+  setUpAll(setUpTestAppStorage);
+  tearDownAll(tearDownTestAppStorage);
+
   test('SimpleCustomLaunchResult holds four-tuple', () {
     const result = SimpleCustomLaunchResult(
       cli: CliTool.cursor,

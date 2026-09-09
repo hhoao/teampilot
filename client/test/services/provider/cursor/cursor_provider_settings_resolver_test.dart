@@ -14,10 +14,11 @@ void main() {
 
   setUp(() {
     fs = InMemoryFilesystem();
-    repository = AppProviderRepository(basePath: base, fs: fs);
+    repository = AppProviderRepository(basePath: base, fs: fs, storage: fakeHomeStorage(filesystem: fs), );
     resolver = CursorProviderSettingsResolver(
       basePath: base,
       repository: repository,
+                                               storage: fakeHomeStorage(),
     );
   });
 

@@ -228,7 +228,7 @@ void main() {
     });
 
     final fs = InMemoryFilesystem();
-    final records = HubPublishRecordStore(fs: fs, pathOverride: '/p.json');
+    final records = HubPublishRecordStore(fs: fs, pathOverride: '/p.json', storage: testHomeStorage, );
     await records.upsert(
       HubPublishRecord(
         kind: HubPublishKind.team,

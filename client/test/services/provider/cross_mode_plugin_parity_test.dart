@@ -85,6 +85,7 @@ void main() {
         basePath: root,
         fs: fs,
         layout: layout,
+                                            storage: testHomeStorage,
       );
 
       await service.prepareSimpleSessionLaunch(

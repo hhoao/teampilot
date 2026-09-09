@@ -8,11 +8,14 @@ class SessionLaunchWorkspaceIndex {
   SessionLaunchWorkspaceIndex({
     required List<Workspace> workspaces,
     required List<AppSession> sessions,
+    required bool usesPosixPaths,
   }) : _workspaces = workspaces,
-       _sessions = sessions;
+       _sessions = sessions,
+       _usesPosixPaths = usesPosixPaths;
 
   final List<Workspace> _workspaces;
   final List<AppSession> _sessions;
+  final bool _usesPosixPaths;
 
   Workspace? byId(String workspaceId) {
     for (final workspace in _workspaces) {
@@ -23,7 +26,11 @@ class SessionLaunchWorkspaceIndex {
 
   Workspace? matchingPath(String primaryPath) {
     for (final workspace in _workspaces) {
-      if (workspacePathsEqual(workspace.firstFolderPath, primaryPath)) {
+      if (workspacePathsEqual(
+        workspace.firstFolderPath,
+        primaryPath,
+        usesPosixPaths: _usesPosixPaths,
+      )) {
         return workspace;
       }
     }

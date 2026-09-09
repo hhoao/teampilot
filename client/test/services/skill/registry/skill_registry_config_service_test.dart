@@ -6,6 +6,7 @@ import 'package:teampilot/models/skill_registry_source.dart';
 import 'package:teampilot/services/io/local_filesystem.dart';
 import 'package:teampilot/services/skill/registry/skill_registry_config_service.dart';
 import 'package:teampilot/services/storage/app_storage.dart';
+import '../../../support/in_memory_filesystem.dart';
 
 void main() {
   late Directory tmp; // from dart:io
@@ -26,6 +27,7 @@ void main() {
     service = SkillRegistryConfigService(
       teampilotRoot: paths.basePath,
       legacySkillsMpKeyReader: () async => 'legacy-token',
+                                          storage: fakeHomeStorage(),
     );
   });
 

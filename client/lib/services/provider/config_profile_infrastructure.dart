@@ -18,7 +18,7 @@ import '../host/host_script_dialect.dart';
 import '../host/script_file_hook_provisioner.dart';
 import '../host/team_pilot_hook_scripts.dart';
 import '../io/filesystem.dart';
-import '../storage/app_storage.dart';
+import '../storage/home_storage.dart';
 import '../team/team_lead_settings_merge.dart';
 
 /// Claude / flashskyai global metadata key for per-project trust flags.
@@ -29,6 +29,7 @@ final class ConfigProfileInfrastructure implements ConfigProfileDelegate {
   ConfigProfileInfrastructure({
     required this.basePath,
     required this.layout,
+    required HomeStorage storage,
     String? home,
     Filesystem? fs,
     Future<Set<String>> Function({String? teamId, String? workspaceId})?
@@ -42,7 +43,8 @@ final class ConfigProfileInfrastructure implements ConfigProfileDelegate {
     Future<String> Function(HostScriptDialect dialect)?
     loadTeamLeadDelegateHookScript,
     HostExecutionEnvironment? hostEnvironment,
-  }) : _fs = fs ?? AppStorage.fs,
+  }) : _storage = storage,
+       _fs = fs ?? storage.fs,
        _loadEnabledExtensionIds = loadEnabledExtensionIds,
        _extensionDetector = extensionDetector,
        _extensionManifests = extensionManifests,
@@ -57,6 +59,7 @@ final class ConfigProfileInfrastructure implements ConfigProfileDelegate {
   @override
   final String basePath;
   final String? _homeOverride;
+  final HomeStorage _storage;
   @override
   final RuntimeLayout layout;
   final Filesystem _fs;
@@ -76,14 +79,15 @@ final class ConfigProfileInfrastructure implements ConfigProfileDelegate {
   @override
   Filesystem get fs => _fs;
 
+  /// The home control plane this infrastructure defaults to (fs / home /
+  /// host execution environment) when not overridden.
+  HomeStorage get storage => _storage;
+
   @override
   String get home {
     final override = _homeOverride;
     if (override != null && override.isNotEmpty) return override;
-    if (AppStorage.isInstalled) {
-      return AppStorage.home;
-    }
-    return '';
+    return _storage.home;
   }
 
   @override
@@ -113,7 +117,6 @@ final class ConfigProfileInfrastructure implements ConfigProfileDelegate {
       _writeJsonIfChanged(path, value);
 
   @override
-  @override
   Future<Map<String, Object?>> metadataWithTrustedProjects({
     required String metadataPath,
     required Map<String, Object?> defaultMetadata,
@@ -123,6 +126,7 @@ final class ConfigProfileInfrastructure implements ConfigProfileDelegate {
     final metadata = await _readMetadataFile(metadataPath, defaultMetadata);
     final trustedKeys = await collectTrustedProjectKeys(
       fs: _fs,
+      usesPosixPaths: _storage.usesPosixPaths,
       directories: directories,
     );
     if (trustedKeys.isEmpty) {
@@ -176,6 +180,7 @@ final class ConfigProfileInfrastructure implements ConfigProfileDelegate {
   }) async {
     final trustedKeys = await collectTrustedProjectKeys(
       fs: _fs,
+      usesPosixPaths: _storage.usesPosixPaths,
       directories: directories,
     );
     if (trustedKeys.isEmpty) return false;
@@ -324,10 +329,7 @@ final class ConfigProfileInfrastructure implements ConfigProfileDelegate {
   @override
   HostExecutionEnvironment hostEnvironmentForProvision() {
     if (_hostEnvironment != null) return _hostEnvironment;
-    if (AppStorage.isInstalled) {
-      return HostExecutionEnvironment.fromStorage(AppStorage.context);
-    }
-    return HostExecutionEnvironment.resolve();
+    return HostExecutionEnvironment.fromStorage(_storage.context);
   }
 
   Future<void> collectExtensionWarnings(
@@ -527,6 +529,7 @@ final class ConfigProfileInfrastructure implements ConfigProfileDelegate {
     return ConfigProfileInfrastructure(
       basePath: layout.teampilotRoot,
       layout: layout,
+      storage: _storage,
       home: home,
       fs: fs,
       loadEnabledExtensionIds: _loadEnabledExtensionIds,

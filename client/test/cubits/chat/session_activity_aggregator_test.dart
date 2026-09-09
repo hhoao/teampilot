@@ -8,6 +8,8 @@ import 'package:teampilot/models/session_activity.dart';
 import 'package:teampilot/services/team/session_working_resolver.dart';
 import 'package:teampilot/services/terminal/terminal_session.dart';
 
+import '../../support/in_memory_filesystem.dart';
+
 void main() {
   SessionActivityAggregator aggregator({
     required ChatTabStore store,
@@ -27,7 +29,7 @@ void main() {
   }
 
   test('delivery in-flight alone yields delivering only, not inTurn', () {
-    final store = ChatTabStore();
+    final store = ChatTabStore(storage: fakeHomeStorage());
     store.registerSession(
       ChatTab(
         info: const ChatTabInfo(id: 'sess', title: 't', subtitle: 's'),
@@ -45,7 +47,7 @@ void main() {
   test(
     'clearing delivery in-flight with no other busy yields empty reasons',
     () {
-      final store = ChatTabStore();
+      final store = ChatTabStore(storage: fakeHomeStorage());
       store.registerSession(
         ChatTab(
           info: const ChatTabInfo(id: 'sess', title: 't', subtitle: 's'),
@@ -61,7 +63,7 @@ void main() {
   );
 
   test('attention busy alone yields attention only', () {
-    final store = ChatTabStore();
+    final store = ChatTabStore(storage: fakeHomeStorage());
     store.registerSession(
       ChatTab(
         info: const ChatTabInfo(id: 'sess', title: 't', subtitle: 's'),
@@ -76,7 +78,7 @@ void main() {
   });
 
   test('delivery and attention together yield both, not inTurn', () {
-    final store = ChatTabStore();
+    final store = ChatTabStore(storage: fakeHomeStorage());
     store.registerSession(
       ChatTab(
         info: const ChatTabInfo(id: 'sess', title: 't', subtitle: 's'),
@@ -116,7 +118,7 @@ void main() {
   }
 
   test('inTurn from member working yields inTurn only', () {
-    final store = ChatTabStore();
+    final store = ChatTabStore(storage: fakeHomeStorage());
     store.registerSession(personalInTurnTab());
     expect(
       aggregator(store: store).computeReasons()['personal-1'],
@@ -125,7 +127,7 @@ void main() {
   });
 
   test('all three reasons when inTurn plus attention and delivery', () {
-    final store = ChatTabStore();
+    final store = ChatTabStore(storage: fakeHomeStorage());
     store.registerSession(personalInTurnTab());
     final reasons = aggregator(
       store: store,
@@ -143,7 +145,7 @@ void main() {
   });
 
   test('two tabs: idle and delivering both appear in map', () {
-    final store = ChatTabStore();
+    final store = ChatTabStore(storage: fakeHomeStorage());
     store.registerSession(
       ChatTab(
         info: const ChatTabInfo(id: 'idle', title: 'i', subtitle: ''),
@@ -168,7 +170,7 @@ void main() {
 }
 
 class _ConnectedShell extends TerminalSession {
-  _ConnectedShell() : super(executable: 'true');
+  _ConnectedShell() : super(executable: 'true', fs: InMemoryFilesystem());
 
   @override
   bool get isRunning => true;

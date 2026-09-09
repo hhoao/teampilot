@@ -7,6 +7,7 @@ import 'package:teampilot/models/app_provider_config.dart';
 import 'package:teampilot/services/storage/app_storage.dart';
 import 'package:teampilot/services/io/local_filesystem.dart';
 import 'package:teampilot/services/provider/tool_config_generator.dart';
+import '../../support/in_memory_filesystem.dart';
 
 void main() {
   late ToolConfigGenerator generator;
@@ -193,7 +194,7 @@ requires_openai_auth = true
 
   test('writes files atomically without leaving temp artifacts', () async {
     final target = p.join(temp.path, 'nested', 'out.json');
-    await generator.writeJsonAtomic(target, {'ok': true});
+    await generator.writeJsonAtomic(target, {'ok': true}, fs: LocalFilesystem());
 
     final file = File(target);
     expect(await file.exists(), isTrue);

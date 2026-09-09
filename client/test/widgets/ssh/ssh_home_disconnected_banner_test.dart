@@ -68,7 +68,7 @@ Widget _host({
 HomeTargetController _homeTargetController(RuntimeTarget home) {
   const root = '/tp-test-ssh-banner';
   final fs = InMemoryFilesystem();
-  final sshProfileRepo = SshProfileRepository(rootDir: root, fs: fs);
+  final sshProfileRepo = SshProfileRepository(rootDir: root, fs: fs, storage: fakeHomeStorage(filesystem: fs), );
   final registry = RuntimeTargetRegistry(
     repo: TargetsRepository(rootDir: root, fs: fs),
     sshProfileRepo: sshProfileRepo,

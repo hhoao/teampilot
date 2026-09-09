@@ -37,6 +37,7 @@ void main() {
   test('OpenAI uses official v1 models endpoint and bearer auth', () async {
     late http.Request request;
     final service = ApiModelCatalogService(
+      storage: fakeHomeStorage(),
       protocol: ApiModelCatalogProtocol.openAi,
       fs: InMemoryFilesystem(),
       basePath: '/data/tp',
@@ -66,6 +67,7 @@ void main() {
   test('Anthropic appends v1 models to a custom API root', () async {
     late http.Request request;
     final service = ApiModelCatalogService(
+      storage: fakeHomeStorage(),
       protocol: ApiModelCatalogProtocol.anthropic,
       fs: InMemoryFilesystem(),
       basePath: '/data/tp',
@@ -99,6 +101,7 @@ void main() {
     final fs = InMemoryFilesystem();
     var notifications = 0;
     final service = ApiModelCatalogService(
+      storage: fakeHomeStorage(),
       protocol: ApiModelCatalogProtocol.openAi,
       fs: fs,
       basePath: '/data/tp',
@@ -129,6 +132,7 @@ void main() {
   test('fresh disk cache avoids a network request', () async {
     final fs = InMemoryFilesystem();
     final writer = ApiModelCatalogService(
+      storage: fakeHomeStorage(),
       protocol: ApiModelCatalogProtocol.openAi,
       fs: fs,
       basePath: '/data/tp',
@@ -145,6 +149,7 @@ void main() {
 
     var requests = 0;
     final reader = ApiModelCatalogService(
+      storage: fakeHomeStorage(),
       protocol: ApiModelCatalogProtocol.openAi,
       fs: fs,
       basePath: '/data/tp',
@@ -171,6 +176,7 @@ void main() {
   test('expired cache is replaced by a successful live response', () async {
     final fs = InMemoryFilesystem();
     final service = ApiModelCatalogService(
+      storage: fakeHomeStorage(),
       protocol: ApiModelCatalogProtocol.openAi,
       fs: fs,
       basePath: '/data/tp',
@@ -208,6 +214,7 @@ void main() {
     () async {
       final fs = InMemoryFilesystem();
       final service = ApiModelCatalogService(
+        storage: fakeHomeStorage(),
         protocol: ApiModelCatalogProtocol.openAi,
         fs: fs,
         basePath: '/data/tp',
@@ -244,6 +251,7 @@ void main() {
   test('missing API key skips network and leaves no live ids', () async {
     var requests = 0;
     final service = ApiModelCatalogService(
+      storage: fakeHomeStorage(),
       protocol: ApiModelCatalogProtocol.openAi,
       fs: InMemoryFilesystem(),
       basePath: '/data/tp',

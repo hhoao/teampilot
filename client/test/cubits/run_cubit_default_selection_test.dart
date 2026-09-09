@@ -43,7 +43,7 @@ OwnedLaunchCompound _compound(String id) => OwnedLaunchCompound(
 );
 
 RunUiPrefsStore _prefsStore(InMemoryFilesystem fs) =>
-    RunUiPrefsStore(fs: fs, pathOverride: _prefsPath);
+    RunUiPrefsStore(fs: fs, pathOverride: _prefsPath, storage: fakeHomeStorage(filesystem: fs), );
 
 RunCubit _cubit({
   required FakeRunPlatform platform,

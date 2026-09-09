@@ -53,7 +53,7 @@ void main() {
   testWidgets('right-click opens the member menu with view-detail', (
     tester,
   ) async {
-    final providerCubit = AppProviderCubit();
+    final providerCubit = AppProviderCubit(storage: testHomeStorage);
     addTearDown(providerCubit.close);
 
     await tester.pumpWidget(
@@ -94,7 +94,7 @@ void main() {
   testWidgets('tapping view-detail dispatches after the menu closes', (
     tester,
   ) async {
-    final providerCubit = AppProviderCubit();
+    final providerCubit = AppProviderCubit(storage: testHomeStorage);
     addTearDown(providerCubit.close);
 
     String? viewedId;
@@ -137,7 +137,7 @@ void main() {
   testWidgets('tapping switch-to-member dispatches select-only', (
     tester,
   ) async {
-    final providerCubit = AppProviderCubit();
+    final providerCubit = AppProviderCubit(storage: testHomeStorage);
     addTearDown(providerCubit.close);
 
     String? switchedId;
@@ -179,7 +179,7 @@ void main() {
   });
 
   testWidgets('row tap dispatches onSelected without onOpen', (tester) async {
-    final providerCubit = AppProviderCubit();
+    final providerCubit = AppProviderCubit(storage: testHomeStorage);
     addTearDown(providerCubit.close);
 
     String? selectedId;
@@ -213,7 +213,7 @@ void main() {
   });
 
   testWidgets('disabled view-detail does not dispatch', (tester) async {
-    final providerCubit = AppProviderCubit();
+    final providerCubit = AppProviderCubit(storage: testHomeStorage);
     addTearDown(providerCubit.close);
 
     var viewed = false;

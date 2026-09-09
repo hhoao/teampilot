@@ -38,6 +38,7 @@ void main() {
       final service = ResourceProvisioningService(
         fs: fs,
         registry: CliToolRegistry.builtIn(),
+                                                   storage: testHomeStorage,
       );
 
       await service.provisionForLaunch(
@@ -83,6 +84,7 @@ void main() {
     final service = ResourceProvisioningService(
       fs: fs,
       registry: CliToolRegistry.builtIn(),
+                                                 storage: testHomeStorage,
     );
 
     await service.provisionForLaunch(
@@ -150,6 +152,7 @@ void main() {
       final service = ResourceProvisioningService(
         fs: fs,
         registry: CliToolRegistry.builtIn(),
+                                                   storage: testHomeStorage,
       );
       const scope = SimpleResourceScope(
         bundle: ConfigBundle(skillIds: ['catalog'], pluginIds: ['acme/plugin']),
@@ -194,6 +197,7 @@ void main() {
       final service = ResourceProvisioningService(
         fs: fs,
         registry: _registryWithCapabilities(const []),
+                                                   storage: testHomeStorage,
       );
 
       await expectLater(
@@ -247,7 +251,7 @@ void main() {
       final registry = _registryWithCapabilities(const [
         _UnsupportedSkillCapability(),
       ]);
-      final service = ResourceProvisioningService(fs: fs, registry: registry);
+      final service = ResourceProvisioningService(fs: fs, registry: registry, storage: testHomeStorage, );
 
       await expectLater(
         service.provisionForLaunch(

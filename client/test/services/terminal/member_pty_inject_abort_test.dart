@@ -6,6 +6,7 @@ import 'package:teampilot/services/terminal/fullscreen_pty_automation.dart';
 import 'package:teampilot/services/terminal/fullscreen_pty_delivery_port.dart';
 import 'package:teampilot/services/terminal/member_pty_inject_service.dart';
 import 'package:teampilot/services/terminal/terminal_session.dart';
+import '../../support/in_memory_filesystem.dart';
 
 final class _PausedAutomation extends FullscreenPtyAutomation {
   final started = Completer<void>();
@@ -34,6 +35,7 @@ void main() {
       executable: 'unused',
       validateLaunch: false,
       parseExecutable: false,
+                                     fs: InMemoryFilesystem(),
     );
     addTearDown(session.dispose);
     service.requestAbort('s1', 'm1');
@@ -60,6 +62,7 @@ void main() {
       executable: 'unused',
       validateLaunch: false,
       parseExecutable: false,
+                                     fs: InMemoryFilesystem(),
     );
     addTearDown(session.dispose);
 

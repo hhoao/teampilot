@@ -84,6 +84,7 @@ void main() {
       basePath: root,
       fs: fs,
       layout: layout,
+                                storage: testHomeStorage,
     ).prepareSimpleSessionLaunch(
       workspaceId: workspaceId,
       sessionId: sessionId,

@@ -1,12 +1,13 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/services/team_hub/git_registry_team_hub_source.dart';
 import 'package:teampilot/services/team_hub/team_hub_source.dart';
+import '../../support/in_memory_filesystem.dart';
 
 void main() {
   test(
     'reports a safe source failure when the registry index is unavailable',
     () async {
-      final source = GitRegistryTeamHubSource(fetch: (_) async => null);
+      final source = GitRegistryTeamHubSource(fetch: (_) async => null, storage: fakeHomeStorage(), );
 
       final results = await (source as TeamHubSourceContributions)
           .fetchTeamSources();

@@ -64,6 +64,7 @@ void main() {
         folders: folders,
         worktreesByProjectPath: worktreesByProject,
         sessions: sessions,
+        usesPosixPaths: false,
       );
 
       expect(groups, hasLength(3));
@@ -105,6 +106,7 @@ void main() {
         folders: folders,
         worktreesByProjectPath: worktreesByProject,
         sessions: const [],
+        usesPosixPaths: false,
       );
 
       expect(groups, hasLength(2));
@@ -142,6 +144,7 @@ void main() {
         folders: folders,
         worktreesByProjectPath: worktreesByProject,
         sessions: const [],
+        usesPosixPaths: false,
       );
 
       expect(groups[0].sidebarLabel, isNull);
@@ -183,6 +186,7 @@ void main() {
         folders: folders,
         worktreesByProjectPath: worktreesByProject,
         sessions: sessions,
+        usesPosixPaths: false,
       );
 
       expect(groups, hasLength(2));
@@ -241,6 +245,7 @@ void main() {
           folders: folders,
           worktreesByProjectPath: worktreesByProject,
           sessions: sessions,
+          usesPosixPaths: false,
         );
 
         final expertGroup = groups.firstWhere(
@@ -290,6 +295,7 @@ void main() {
         folders: folders,
         worktreesByProjectPath: worktreesByProject,
         sessions: sessions,
+        usesPosixPaths: false,
       );
 
       final mainGroup = groups.firstWhere(
@@ -369,6 +375,7 @@ void main() {
         folders: folders,
         worktreesByProjectPath: worktreesByProject,
         sessions: sorted,
+        usesPosixPaths: false,
       );
 
       final aMain = groups.firstWhere((g) => g.worktree?.path == '/repo-a');
@@ -420,6 +427,7 @@ void main() {
         folders: folders,
         worktreesByProjectPath: worktreesByProject,
         sessions: [active],
+        usesPosixPaths: false,
       );
       final featureGroup = activeGroups.firstWhere(
         (group) => group.worktree?.path == '/worktrees/feature',
@@ -430,6 +438,7 @@ void main() {
         folders: folders,
         worktreesByProjectPath: worktreesByProject,
         sessions: [active, archived],
+        usesPosixPaths: false,
       );
 
       expect(resolved.map((session) => session.sessionId), [

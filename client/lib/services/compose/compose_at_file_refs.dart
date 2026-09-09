@@ -5,7 +5,6 @@ import 'package:path/path.dart' as p;
 import '../inline_token/inline_token_palette.dart';
 import '../io/filesystem.dart';
 import '../io/local_filesystem.dart';
-import '../storage/app_storage.dart';
 import '../../utils/workspace/workspace_path_utils.dart';
 
 class ComposeAtFileRef {
@@ -34,24 +33,37 @@ bool _isAbsoluteRefBody(String body) =>
 String resolveComposeAtFileAbsolutePath(
   String refBody, {
   required String workspaceRoot,
+  required bool usesPosixPaths,
 }) {
   final body = refBody.trim();
   if (body.isEmpty) return '';
   if (_isAbsoluteRefBody(body)) {
-    return normalizeWorkspacePath(body.replaceAll(r'\', '/'));
+    return normalizeWorkspacePath(
+      body.replaceAll(r'\', '/'),
+      usesPosixPaths: usesPosixPaths,
+    );
   }
-  final root = normalizeWorkspacePath(workspaceRoot);
-  if (root.isEmpty) return normalizeWorkspacePath(body.replaceAll(r'\', '/'));
+  final root = normalizeWorkspacePath(
+    workspaceRoot,
+    usesPosixPaths: usesPosixPaths,
+  );
+  if (root.isEmpty) {
+    return normalizeWorkspacePath(
+      body.replaceAll(r'\', '/'),
+      usesPosixPaths: usesPosixPaths,
+    );
+  }
   final joined = p.Context(style: p.Style.posix).join(
     root.replaceAll(r'\', '/'),
     body.replaceAll(r'\', '/'),
   );
-  return normalizeWorkspacePath(joined);
+  return normalizeWorkspacePath(joined, usesPosixPaths: usesPosixPaths);
 }
 
 List<ComposeAtFileRef> parseComposeAtFileRefs(
   String text, {
   required String workspaceRoot,
+  required bool usesPosixPaths,
 }) {
   final seen = <String>{};
   final out = <ComposeAtFileRef>[];
@@ -63,6 +75,7 @@ List<ComposeAtFileRef> parseComposeAtFileRefs(
     final absolute = resolveComposeAtFileAbsolutePath(
       body,
       workspaceRoot: workspaceRoot,
+      usesPosixPaths: usesPosixPaths,
     );
     if (absolute.isEmpty) continue;
     final key = _pathKey(absolute);
@@ -80,11 +93,15 @@ List<ComposeAtFileRef> parseComposeAtFileRefs(
 /// Filesystem for opening a compose `@` absolute path in the workbench.
 ///
 /// Paste-imported images live under local `…/TeamPilot/Attachments` via
-/// [LocalFilesystem]; other paths use [AppStorage.fs] (workspace backend).
-Filesystem filesystemForComposeAtFileOpen(String absolutePath) {
+/// [LocalFilesystem]; other paths use [workspaceFilesystem] (the caller's
+/// workspace backend filesystem, e.g. the home storage `fs`).
+Filesystem filesystemForComposeAtFileOpen(
+  String absolutePath, {
+  required Filesystem workspaceFilesystem,
+}) {
   final normalized = absolutePath.replaceAll(r'\', '/').toLowerCase();
   if (normalized.contains('/teampilot/attachments/')) {
     return LocalFilesystem();
   }
-  return AppStorage.fs;
+  return workspaceFilesystem;
 }

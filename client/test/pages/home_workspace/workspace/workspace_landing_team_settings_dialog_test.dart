@@ -27,7 +27,7 @@ import '../../../support/in_memory_filesystem.dart';
 import '../../../support/post_frame_test_harness.dart';
 
 class _SeededAppProviderCubit extends AppProviderCubit {
-  _SeededAppProviderCubit() {
+  _SeededAppProviderCubit() : super(storage: buildTestHomeStorage()) {
     emit(const AppProviderState());
   }
 }
@@ -99,7 +99,7 @@ Widget _wrap({
     child: CliToolRegistryScope(
       registry: CliToolRegistry.builtIn(),
       child: RepositoryProvider<SessionRepository>.value(
-        value: SessionRepository(),
+        value: SessionRepository(storage: testHomeStorage),
         child: MaterialApp(
           localizationsDelegates: AppLocalizations.localizationsDelegates,
           supportedLocales: AppLocalizations.supportedLocales,

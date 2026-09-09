@@ -5,7 +5,6 @@ import 'package:sqlite3/sqlite3.dart';
 
 import '../../../../models/app_provider_config.dart';
 import '../../../io/filesystem.dart';
-import '../../../storage/app_storage.dart';
 import 'codex_toml_parser.dart';
 
 /// Live `~/.codex` files plus resolved CC Switch current provider id.
@@ -59,12 +58,12 @@ class CodexCcSwitchImport {
   const CodexCcSwitchImport();
 
   Future<CodexRuntimeSnapshot> loadRuntime({
-    Filesystem? fs,
-    String? home,
+    required Filesystem fs,
+    required String home,
   }) async {
-    final store = fs ?? AppStorage.fs;
+    final store = fs;
     final ctx = store.pathContext;
-    final homeDir = (home ?? AppStorage.home).trim();
+    final homeDir = home.trim();
     if (homeDir.isEmpty) {
       return const CodexRuntimeSnapshot();
     }
@@ -101,12 +100,12 @@ class CodexCcSwitchImport {
   }
 
   Future<List<CcSwitchCodexCatalogRow>> loadCatalog({
-    Filesystem? fs,
-    String? home,
+    required Filesystem fs,
+    required String home,
   }) async {
-    final store = fs ?? AppStorage.fs;
+    final store = fs;
     final ctx = store.pathContext;
-    final homeDir = (home ?? AppStorage.home).trim();
+    final homeDir = home.trim();
     if (homeDir.isEmpty) return const [];
 
     final dbPath = ctx.join(homeDir, '.cc-switch', 'cc-switch.db');

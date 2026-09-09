@@ -11,6 +11,7 @@ SshProfileRepository testSshProfileRepository({String root = '/tp-test-home-targ
   return SshProfileRepository(
     rootDir: root,
     fs: InMemoryFilesystem(),
+                               storage: fakeHomeStorage(),
   );
 }
 
@@ -18,7 +19,7 @@ SshProfileRepository testSshProfileRepository({String root = '/tp-test-home-targ
 HomeTargetController testHomeTargetController() {
   const root = '/tp-test-home-target';
   final fs = InMemoryFilesystem();
-  final sshProfileRepo = SshProfileRepository(rootDir: root, fs: fs);
+  final sshProfileRepo = SshProfileRepository(rootDir: root, fs: fs, storage: fakeHomeStorage(filesystem: fs), );
   final registry = RuntimeTargetRegistry(
     repo: TargetsRepository(rootDir: root, fs: fs),
     sshProfileRepo: sshProfileRepo,

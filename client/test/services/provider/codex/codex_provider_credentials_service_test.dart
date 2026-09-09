@@ -5,6 +5,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:path/path.dart' as p;
 import 'package:teampilot/services/io/local_filesystem.dart';
 import 'package:teampilot/services/cli/codex/provider/codex_provider_credentials_service.dart';
+import '../../../support/in_memory_filesystem.dart';
 
 void main() {
   late Directory root;
@@ -15,6 +16,7 @@ void main() {
     service = CodexProviderCredentialsService(
       fs: LocalFilesystem(),
       basePath: root.path,
+                                               storage: fakeHomeStorage(),
     );
   });
 

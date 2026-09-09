@@ -5,25 +5,18 @@ import 'package:path/path.dart' as p;
 import '../../models/mcp_registry_source.dart';
 import '../io/filesystem.dart';
 import '../io/local_filesystem.dart';
-import '../storage/app_storage.dart';
+import '../storage/app_paths.dart';
 
 class McpRegistryConfigService {
-  McpRegistryConfigService({Filesystem? fs, String? teampilotRoot})
-    : _teampilotRoot = teampilotRoot?.trim(),
+  McpRegistryConfigService({required String teampilotRoot, Filesystem? fs})
+    : _teampilotRoot = teampilotRoot.trim(),
       _fs = fs ?? LocalFilesystem();
 
-  final String? _teampilotRoot;
+  final String _teampilotRoot;
   final Filesystem _fs;
 
   Future<String> _configPath() async {
-    final root = _teampilotRoot;
-    if (root != null && root.isNotEmpty) {
-      return AppPaths.mcpRegistrySourcesConfigPathForTeampilotRoot(root);
-    }
-    if (AppStorage.isInstalled) {
-      return AppStorage.context.mcpRegistrySourcesConfigPath;
-    }
-    return AppStorage.paths.mcpRegistrySourcesConfigPath;
+    return AppPaths.mcpRegistrySourcesConfigPathForTeampilotRoot(_teampilotRoot);
   }
 
   Future<McpRegistrySourcesConfig> load() async {

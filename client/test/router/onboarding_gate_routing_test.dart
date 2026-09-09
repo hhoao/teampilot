@@ -63,6 +63,7 @@ void main() {
       profileRepository: SshProfileRepository(
         rootDir: '/tmp/onboarding_gate_ssh_fake',
         fs: InMemoryFilesystem(),
+                                               storage: fakeHomeStorage(),
       ),
       credentialStore: InMemorySshCredentialStore(),
     );

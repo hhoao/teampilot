@@ -8,6 +8,7 @@ import '../../l10n/l10n_extensions.dart';
 import '../../models/mcp_server.dart';
 import '../../services/mcp/mcp_credentials_store.dart';
 import '../../services/mcp/mcp_oauth_flow.dart';
+import '../../services/storage/app_storage.dart';
 import 'mcp_oauth_connect_dialog.dart';
 import '../../widgets/workspace_library_card.dart';
 import 'mcp_shared_widgets.dart';
@@ -58,7 +59,9 @@ class _McpInstalledSectionState extends State<McpInstalledSection> {
   Future<void> _reloadOAuthStatus() async {
     final epoch = ++_oauthStatusEpoch;
     final servers = widget.state.servers;
-    final configDir = McpOAuthFlow.claudeAppConfigDir();
+    final configDir = McpOAuthFlow.claudeAppConfigDir(
+      AppStorage.tolerantHome,
+    );
     final data = await _credentials.read(configDir);
     final next = <String, bool>{};
     for (final server in servers) {
@@ -77,7 +80,7 @@ class _McpInstalledSectionState extends State<McpInstalledSection> {
     final ok = await showMcpOAuthConnectDialog(
       context: context,
       server: server,
-      configDir: McpOAuthFlow.claudeAppConfigDir(),
+      configDir: McpOAuthFlow.claudeAppConfigDir(AppStorage.tolerantHome),
     );
     if (!mounted || ok != true) return;
     await _reloadOAuthStatus();

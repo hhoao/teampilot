@@ -1,12 +1,18 @@
 import '../../../models/team_config.dart';
 import '../../../services/cli/claude/claude_bootstrap_entry.dart';
+import '../../../services/cli/claude/capabilities/headless.dart';
 import '../../../services/cli/codex/codex_bootstrap_entry.dart';
+import '../../../services/cli/codex/capabilities/headless.dart';
 import '../../../services/cli/cursor/cursor_bootstrap_entry.dart';
+import '../../../services/cli/flashskyai/capabilities/headless.dart';
+import '../../../services/cli/flashskyai/capabilities/provider.dart';
+import '../../../services/cli/opencode/capabilities/headless.dart';
 import '../../../services/cli/opencode/opencode_bootstrap_entry.dart';
 import 'capabilities/member_config_inspection_capability.dart';
 import '../../../services/cli/claude/capabilities/provider.dart';
 import '../../../services/cli/codex/capabilities/provider.dart';
 import '../../../services/cli/cursor/capabilities/provider.dart';
+import '../../../services/cli/cursor/capabilities/session_lifecycle.dart';
 import '../../../services/cli/opencode/capabilities/provider.dart';
 import 'capabilities/provider_capability.dart';
 import 'capabilities/cli_session_capability.dart';
@@ -35,13 +41,16 @@ void registerBuiltInCliTools(
     CliTool.opencode,
   );
   final cursorEntry = bootstrap.entry<CursorBootstrapEntry>(CliTool.cursor);
+  final storage = bootstrap.storage;
 
   registry.register(
     ClaudeCliTool(
       provider: ClaudeProviderCapability(
         modelsService: claudeEntry?.modelsService,
         credentials: claudeEntry?.credentialsService,
+        storage: storage,
       ),
+      headless: ClaudeHeadlessCapability(storage: storage),
     ),
   );
   registry.register(
@@ -49,14 +58,18 @@ void registerBuiltInCliTools(
       provider: CodexProviderCapability(
         modelsService: codexEntry?.modelsService,
         credentials: codexEntry?.credentialsService,
+        storage: storage,
       ),
+      headless: CodexHeadlessCapability(storage: storage),
     ),
   );
   registry.register(
     OpencodeCliTool(
       provider: OpencodeProviderCapability(
         modelsService: opencodeEntry?.modelsService,
+        storage: storage,
       ),
+      headless: OpencodeHeadlessCapability(storage: storage),
     ),
   );
   registry.register(
@@ -64,11 +77,18 @@ void registerBuiltInCliTools(
       provider: CursorProviderCapability(
         modelsService: cursorEntry?.agentModelsService,
         credentials: cursorEntry?.credentialsService,
+        storage: storage,
       ),
+      session: CursorSessionLifecycleCapability(storage: storage),
     ),
   );
 
-  registry.register(FlashskyaiCliTool());
+  registry.register(
+    FlashskyaiCliTool(
+      provider: FlashskyaiProviderCapability(storage: storage),
+      headless: FlashskyaiHeadlessCapability(storage: storage),
+    ),
+  );
 
   assert(
     CliTool.values.every((cli) => registry.tryGet(cli) != null),

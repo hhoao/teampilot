@@ -9,6 +9,7 @@ import '../../integration/support/session_idle_busy_harness.dart';
 import '../../support/fake_terminal_session.dart';
 import '../../support/post_frame_test_harness.dart';
 import '../../support/rust_lib_test_init.dart';
+import '../../support/in_memory_filesystem.dart';
 
 void main() {
   setUpAll(initRustLibForTests);
@@ -22,7 +23,7 @@ void main() {
 
   setUp(() async {
     tmp = await Directory.systemTemp.createTemp('it_lazy_spawn_');
-    repo = SessionRepository(rootDir: tmp.path);
+    repo = SessionRepository(rootDir: tmp.path, storage: testHomeStorage, );
     postFrame = PostFrameTestHarness();
     cubit = ChatCubit(
       executableResolver: () => 'true',
@@ -36,7 +37,9 @@ void main() {
               FakeTerminalSession(
                 executable: executable,
                 scrollbackLines: scrollbackLines,
+                                   fs: InMemoryFilesystem(),
               ),
+                       storage: testHomeStorage,
     );
   });
 

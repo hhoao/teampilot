@@ -12,13 +12,12 @@ void main() {
   test('persists draft members via writer and returns roster slots', () async {
     var uuidCounter = 0;
     final fs = InMemoryFilesystem();
-    final writer = LocalExpertWriter(
-      store: LocalExpertStore(
-        fs: fs,
-        dirOverride: '/t',
-        uuidFactory: () => 'uuid-${++uuidCounter}',
-      ),
+    final store = LocalExpertStore(
+      fs: fs,
+      dirOverride: '/t',
+      uuidFactory: () => 'uuid-${++uuidCounter}',
     );
+    final writer = LocalExpertWriter(store: store);
     final draft = TeamConfigDraft(
       members: [
         TeamMemberConfig(
@@ -40,7 +39,11 @@ void main() {
       ],
     );
 
-    final slots = await rosterSlotsFromTeamDraft(draft, writer: writer);
+    final slots = await rosterSlotsFromTeamDraft(
+      draft,
+      store: store,
+      writer: writer,
+    );
 
     expect(slots, hasLength(2));
     expect(slots[0].id, TeamMemberNaming.teamLeadName);

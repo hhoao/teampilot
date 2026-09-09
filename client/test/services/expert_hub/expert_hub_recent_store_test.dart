@@ -17,6 +17,7 @@ void main() {
     store = ExpertHubRecentStore(
       fs: fs,
       pathOverride: paths.memberHubRecentJson,
+                                  storage: fakeHomeStorage(filesystem: fs),
     );
   });
 

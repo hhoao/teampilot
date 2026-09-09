@@ -1,7 +1,7 @@
 import 'dart:convert';
 
 import '../io/filesystem.dart';
-import '../storage/app_storage.dart';
+import '../storage/home_storage.dart';
 import 'builtin_member_templates.dart';
 
 /// Persists recently touched member-hub keys at `member-hub/recent.json`.
@@ -9,17 +9,22 @@ import 'builtin_member_templates.dart';
 /// Builtin Default is excluded: empty Landing selection already launches that
 /// pack, so listing it under "recent" duplicates 「未选择专家」.
 class ExpertHubRecentStore {
-  ExpertHubRecentStore({Filesystem? fs, String? pathOverride})
-    : _fsOverride = fs,
-      _pathOverride = pathOverride;
+  ExpertHubRecentStore({
+    required HomeStorage storage,
+    Filesystem? fs,
+    String? pathOverride,
+  }) : _storage = storage,
+       _fsOverride = fs,
+       _pathOverride = pathOverride;
 
   static const maxEntries = 10;
 
+  final HomeStorage _storage;
   final Filesystem? _fsOverride;
   final String? _pathOverride;
 
-  Filesystem get _fs => _fsOverride ?? AppStorage.fs;
-  String get _path => _pathOverride ?? AppStorage.paths.memberHubRecentJson;
+  Filesystem get _fs => _fsOverride ?? _storage.fs;
+  String get _path => _pathOverride ?? _storage.paths.memberHubRecentJson;
 
   Future<List<String>> loadOrderedKeys() async {
     try {

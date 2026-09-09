@@ -22,6 +22,7 @@ import 'integration_prerequisites.dart';
 import 'mixed_team_idle_busy_assertions.dart';
 import 'mixed_team_integration_harness.dart';
 import 'package:teampilot/models/team_config.dart';
+import '../../support/in_memory_filesystem.dart';
 
 /// L2 mixed-team scenarios: real Claude PTY + mock gateway + bus persistence.
 abstract final class MixedTeamTaskScenario {
@@ -265,7 +266,7 @@ abstract final class MixedTeamTaskScenario {
       );
       await harness.verifyMockReachableFromDocker(remote);
 
-      final repo = SessionRepository();
+      final repo = SessionRepository(storage: fakeHomeStorage());
       cubit = harness.createDockerCubit(postFrame: postFrame, remote: remote);
 
       final workspace = await repo.createWorkspace([
@@ -371,7 +372,7 @@ abstract final class MixedTeamTaskScenario {
       );
       await harness.verifyMockReachableFromDocker(remote);
 
-      final repo = SessionRepository();
+      final repo = SessionRepository(storage: fakeHomeStorage());
       cubit = harness.createDockerCubit(postFrame: postFrame, remote: remote);
 
       final workspace = await repo.createWorkspace([
@@ -489,7 +490,7 @@ abstract final class MixedTeamTaskScenario {
     try {
       await harness.startMockServer(scenarios: scenarios);
       await harness.writeMockProviders();
-      final repo = SessionRepository();
+      final repo = SessionRepository(storage: fakeHomeStorage());
       cubit = harness.createCubit(
         postFrame: postFrame,
         reclaimIdleTerminalsEnabled: reclaimIdleTerminalsEnabled,
@@ -497,7 +498,7 @@ abstract final class MixedTeamTaskScenario {
         autoLaunchAllMembersOnConnect: autoLaunchAllMembersOnConnect,
       );
       if (withPresence) {
-        presenceCubit = MemberPresenceCubit();
+        presenceCubit = MemberPresenceCubit(storage: fakeHomeStorage());
         bindMixedTeamPresence(chatCubit: cubit, presenceCubit: presenceCubit);
       }
 

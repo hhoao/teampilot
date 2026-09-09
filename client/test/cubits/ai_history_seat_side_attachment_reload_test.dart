@@ -109,6 +109,7 @@ void main() {
       folders: const [WorkspaceFolder(path: '/work/project')],
       createdAt: 0,
     ),
+                                                          usesPosixPaths: false,
   );
 
   List<AiMessage> parentWithAgentCall() => [

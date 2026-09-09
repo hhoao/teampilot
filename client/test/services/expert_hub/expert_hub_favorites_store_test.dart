@@ -8,7 +8,7 @@ void main() {
   tearDown(tearDownTestAppStorage);
 
   test('add/remove/toggle persist across instances', () async {
-    final store = ExpertHubFavoritesStore();
+    final store = ExpertHubFavoritesStore(storage: testHomeStorage);
     expect(await store.load(), isEmpty);
 
     await store.add('a/b/x');
@@ -23,8 +23,8 @@ void main() {
     expect(await store.load(), isEmpty);
 
     // New instance reads the same persisted file.
-    final fresh = ExpertHubFavoritesStore();
+    final fresh = ExpertHubFavoritesStore(storage: testHomeStorage);
     await fresh.add('a/b/z');
-    expect(await ExpertHubFavoritesStore().load(), {'a/b/z'});
+    expect(await ExpertHubFavoritesStore(storage: testHomeStorage).load(), {'a/b/z'});
   });
 }

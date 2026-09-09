@@ -1,6 +1,7 @@
 import '../../../../models/app_provider_config.dart';
 import '../../../../repositories/app_provider_repository.dart';
 import '../../../../models/team_config.dart';
+import '../../../storage/home_storage.dart';
 
 class FlashskyaiProviderMirrorResult {
   const FlashskyaiProviderMirrorResult({
@@ -18,8 +19,10 @@ class FlashskyaiProviderMirrorResult {
 /// `provider_type`, `models` nesting) and the "skip flashskyai-origin rows"
 /// rule are flashskyai knowledge, not import-service knowledge.
 class FlashskyaiProviderMirror {
-  FlashskyaiProviderMirror({AppProviderRepository? repository})
-    : _repository = repository ?? AppProviderRepository();
+  FlashskyaiProviderMirror({
+    required HomeStorage storage,
+    AppProviderRepository? repository,
+  }) : _repository = repository ?? AppProviderRepository(storage: storage);
 
   final AppProviderRepository _repository;
 

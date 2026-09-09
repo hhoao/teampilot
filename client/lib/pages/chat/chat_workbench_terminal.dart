@@ -13,6 +13,7 @@ import '../../models/team_config.dart';
 import '../../models/workspace.dart';
 import '../../repositories/session_repository.dart';
 import '../../services/selection_ai/selection_ai_context.dart';
+import '../../services/storage/app_storage.dart';
 import '../../services/selection_ai/selection_ask_ai.dart';
 import '../../services/selection_ai/selection_ask_ai_fab_host.dart';
 import '../../services/io/filesystem.dart';
@@ -320,7 +321,7 @@ Future<void> openChatWorkbenchTerminalLink({
   await TerminalUriOpener.open(
     link,
     workingDirectory: chatCubit.activeTabWorkingDirectory,
-    fs: fs,
+    fs: fs ?? AppStorage.fs,
     openInEditor: (path) async {
       if (!isMounted()) return;
       await editorOpener.openFile(workspaceId, path, fs: fs);

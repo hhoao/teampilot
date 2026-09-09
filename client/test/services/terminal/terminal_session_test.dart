@@ -16,6 +16,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/utils/logging/logger.dart';
 
 import '../../support/flush_terminal_engine.dart';
+import '../../support/in_memory_filesystem.dart';
 import '../../support/rust_lib_test_init.dart';
 
 class _FakeTransport implements TerminalTransport {
@@ -74,6 +75,7 @@ void main() {
     var started = false;
     final session = TerminalSession(
       executable: _ptyTestExecutable,
+      fs: InMemoryFilesystem(),
       confirmFallback: const Duration(seconds: 5),
       transportStarter:
           (
@@ -111,6 +113,7 @@ void main() {
   test('transportReadyForIo is false before connect', () {
     final session = TerminalSession(
       executable: _ptyTestExecutable,
+      fs: InMemoryFilesystem(),
       validateLaunch: false,
       parseExecutable: false,
     );
@@ -123,6 +126,7 @@ void main() {
     var started = false;
     final session = TerminalSession(
       executable: _ptyTestExecutable,
+      fs: InMemoryFilesystem(),
       confirmFallback: const Duration(milliseconds: 50),
       transportStarter:
           (
@@ -158,6 +162,7 @@ void main() {
     var failed = false;
     final session = TerminalSession(
       executable: _ptyTestExecutable,
+      fs: InMemoryFilesystem(),
       confirmFallback: const Duration(seconds: 5),
       transportStarter:
           (
@@ -201,6 +206,7 @@ void main() {
     var failed = false;
     final session = TerminalSession(
       executable: _ptyTestExecutable,
+      fs: InMemoryFilesystem(),
       startupDeadline: const Duration(milliseconds: 80),
       transportStarter:
           (
@@ -236,6 +242,7 @@ void main() {
     var started = false;
     final session = TerminalSession(
       executable: '/tmp/teampilot-missing-flashskyai-executable',
+      fs: InMemoryFilesystem(),
       transportStarter:
           (
             executable, {
@@ -271,6 +278,7 @@ void main() {
 
     final session = TerminalSession(
       executable: _ptyTestExecutable,
+      fs: InMemoryFilesystem(),
       transportStarter:
           (
             executable, {
@@ -303,6 +311,7 @@ void main() {
 
     final session = TerminalSession(
       executable: _ptyTestExecutable,
+      fs: InMemoryFilesystem(),
       validateLaunch: false,
       transportStarter:
           (
@@ -349,6 +358,7 @@ void main() {
 
     final session = TerminalSession(
       executable: _ptyTestExecutable,
+      fs: InMemoryFilesystem(),
       validateLaunch: false,
       transportStarter:
           (
@@ -393,6 +403,7 @@ void main() {
 
     final session = TerminalSession(
       executable: _ptyTestExecutable,
+      fs: InMemoryFilesystem(),
       validateLaunch: false,
       transportStarter:
           (
@@ -440,6 +451,7 @@ void main() {
 
     final session = TerminalSession(
       executable: _ptyTestExecutable,
+      fs: InMemoryFilesystem(),
       validateLaunch: false,
       transportStarter:
           (
@@ -478,6 +490,7 @@ void main() {
     var failed = false;
     final session = TerminalSession(
       executable: _ptyTestExecutable,
+      fs: InMemoryFilesystem(),
       confirmFallback: const Duration(seconds: 5),
       transportStarter:
           (
@@ -518,6 +531,7 @@ void main() {
       var failed = false;
       final session = TerminalSession(
         executable: _ptyTestExecutable,
+      fs: InMemoryFilesystem(),
         confirmFallback: const Duration(seconds: 5),
         transportStarter:
             (
@@ -574,6 +588,7 @@ void main() {
     String? failedMessage;
     final session = TerminalSession(
       executable: '/root/.local/bin/cursor-agent',
+      fs: InMemoryFilesystem(),
       validateLaunch: false,
       confirmFallback: const Duration(seconds: 5),
       transportStarter:
@@ -630,6 +645,7 @@ void main() {
       TerminalSession sessionFor(TeamMemberConfig member) {
         return TerminalSession(
           executable: _ptyTestExecutable,
+      fs: InMemoryFilesystem(),
           transportStarter:
               (
                 executable, {
@@ -704,6 +720,7 @@ void main() {
       TerminalSession sessionFor(TeamMemberConfig member) {
         return TerminalSession(
           executable: _ptyTestExecutable,
+      fs: InMemoryFilesystem(),
           transportStarter:
               (
                 executable, {
@@ -767,6 +784,7 @@ void main() {
       final handle = _FakeTransport();
       final session = TerminalSession(
         executable: _ptyTestExecutable,
+      fs: InMemoryFilesystem(),
         transportStarter:
             (
               executable, {
@@ -799,6 +817,7 @@ void main() {
     final handle = _FakeTransport();
     final session = TerminalSession(
       executable: _ptyTestExecutable,
+      fs: InMemoryFilesystem(),
       transportStarter:
           (
             executable, {
@@ -833,6 +852,7 @@ void main() {
     final handle = _FakeTransport();
     final session = TerminalSession(
       executable: _ptyTestExecutable,
+      fs: InMemoryFilesystem(),
       transportStarter:
           (
             executable, {
@@ -870,6 +890,7 @@ void main() {
     final handle = _FakeTransport();
     final session = TerminalSession(
       executable: _ptyTestExecutable,
+      fs: InMemoryFilesystem(),
       transportStarter:
           (
             executable, {
@@ -903,6 +924,7 @@ void main() {
     final handle = _FakeTransport();
     final session = TerminalSession(
       executable: _ptyTestExecutable,
+      fs: InMemoryFilesystem(),
       transportStarter:
           (
             executable, {
@@ -937,6 +959,7 @@ void main() {
     final handle = _FakeTransport();
     final session = TerminalSession(
       executable: _ptyTestExecutable,
+      fs: InMemoryFilesystem(),
       transportStarter:
           (
             executable, {
@@ -968,6 +991,7 @@ void main() {
     final handle = _FakeTransport();
     final session = TerminalSession(
       executable: _ptyTestExecutable,
+      fs: InMemoryFilesystem(),
       transportStarter:
           (
             executable, {
@@ -1007,6 +1031,7 @@ void main() {
     final handle = _FakeTransport();
     final session = TerminalSession(
       executable: _ptyTestExecutable,
+      fs: InMemoryFilesystem(),
       transportStarter:
           (
             executable, {
@@ -1052,6 +1077,7 @@ void main() {
       final session = TerminalSession(
         executable:
             r'\\wsl.localhost\Ubuntu\home\hhoa\flashskyai\dist\flashskyai',
+        fs: InMemoryFilesystem(),
         transportStarter:
             (
               executable, {
@@ -1097,6 +1123,7 @@ void main() {
     final session = TerminalSession(
       executable:
           r'\wsl.localhost\Ubuntu\home\hhoa\flashskai-ubuntu-wsl\dist\flashskyai',
+      fs: InMemoryFilesystem(),
       transportStarter:
           (
             executable, {
@@ -1140,6 +1167,7 @@ void main() {
     final session = TerminalSession(
       executable:
           r'\wsl.localhost\Ubuntu\home\hhoa\flashskai-ubuntu-wsl\dist\flashskyai',
+      fs: InMemoryFilesystem(),
       transportStarter:
           (
             executable, {
@@ -1202,6 +1230,7 @@ void main() {
     final session = TerminalSession(
       executable:
           r'\wsl.localhost\Ubuntu\home\hhoa\flashskai-ubuntu-wsl\dist\flashskyai',
+      fs: InMemoryFilesystem(),
       transportStarter:
           (
             executable, {
@@ -1244,6 +1273,7 @@ void main() {
   group('linkProviders', () {
     TerminalSession makeSession() => TerminalSession(
       executable: _ptyTestExecutable,
+      fs: InMemoryFilesystem(),
       validateLaunch: false,
       transportStarter:
           (

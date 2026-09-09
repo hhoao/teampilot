@@ -23,17 +23,23 @@ class PluginRepository {
     final resolvedManifest = manifest ?? PluginManifestService();
     final resolvedGit = PluginRepoGitService();
     final resolvedCache =
-        diskCache ?? PluginRepoDiskCacheService(gitService: resolvedGit);
+        diskCache ??
+        PluginRepoDiskCacheService(
+          filesystem: storage.fs,
+          teampilotRoot: storage.appDataRoot,
+          gitService: resolvedGit,
+        );
     return PluginRepository._(
       storage: storage,
       install:
           install ??
           PluginInstallService(
+            storage: storage,
             manifestService: resolvedManifest,
             fetchService: resolvedFetch,
             diskCache: resolvedCache,
           ),
-      repos: repos ?? PluginRepoService(),
+      repos: repos ?? PluginRepoService(storage: storage),
     );
   }
 

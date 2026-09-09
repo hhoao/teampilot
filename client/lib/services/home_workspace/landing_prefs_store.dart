@@ -3,7 +3,7 @@ import 'dart:convert';
 import '../../models/team_config.dart';
 import '../../models/launch_security_policy.dart';
 import '../io/filesystem.dart';
-import '../storage/app_storage.dart';
+import '../storage/home_storage.dart';
 
 /// Per-workspace compose landing preferences.
 class LandingPrefs {
@@ -58,16 +58,21 @@ class LandingPrefs {
 
 /// Persists landing mode/selection at `ui/workspace-launch-prefs.json`.
 class LandingPrefsStore {
-  LandingPrefsStore({Filesystem? fs, String? pathOverride})
-    : _fsOverride = fs,
-      _pathOverride = pathOverride;
+  LandingPrefsStore({
+    required HomeStorage storage,
+    Filesystem? fs,
+    String? pathOverride,
+  }) : _storage = storage,
+       _fsOverride = fs,
+       _pathOverride = pathOverride;
 
+  final HomeStorage _storage;
   final Filesystem? _fsOverride;
   final String? _pathOverride;
 
-  Filesystem get _fs => _fsOverride ?? AppStorage.fs;
+  Filesystem get _fs => _fsOverride ?? _storage.fs;
   String get _path =>
-      _pathOverride ?? AppStorage.paths.homeWorkspaceWorkspaceLaunchPrefsJson;
+      _pathOverride ?? _storage.paths.homeWorkspaceWorkspaceLaunchPrefsJson;
 
   Future<Map<String, LandingPrefs>> _loadAll() async {
     try {

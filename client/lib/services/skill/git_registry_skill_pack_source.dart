@@ -7,7 +7,7 @@ import '../../models/skill_pack.dart';
 import '../../utils/logging/logger.dart';
 import '../catalog/catalog_error_sanitizer.dart';
 import '../io/filesystem.dart';
-import '../storage/app_storage.dart';
+import '../storage/home_storage.dart';
 import 'skill_pack_source.dart';
 
 /// Reads public Skill Packs from a git registry (`index.json` +
@@ -16,14 +16,17 @@ import 'skill_pack_source.dart';
 class GitRegistrySkillPackSource implements SkillPackSource {
   GitRegistrySkillPackSource({
     this.registry = kDefaultSkillPackRegistry,
+    required HomeStorage storage,
     SkillPackRawContentFetcher? fetch,
     Filesystem? fs,
     String? cacheDirOverride,
-  }) : _fetch = fetch ?? _httpFetch,
+  }) : _storage = storage,
+       _fetch = fetch ?? _httpFetch,
        _fsOverride = fs,
        _cacheDirOverride = cacheDirOverride;
 
   final SkillPackRegistryConfig registry;
+  final HomeStorage _storage;
   final SkillPackRawContentFetcher _fetch;
   final Filesystem? _fsOverride;
   final String? _cacheDirOverride;
@@ -33,10 +36,10 @@ class GitRegistrySkillPackSource implements SkillPackSource {
 
   CatalogSourceFailure? get lastFailure => _lastFailure;
 
-  Filesystem get _fs => _fsOverride ?? AppStorage.fs;
+  Filesystem get _fs => _fsOverride ?? _storage.fs;
 
   String get _cacheFile {
-    final dir = _cacheDirOverride ?? AppStorage.paths.skillPackCatalogCacheDir;
+    final dir = _cacheDirOverride ?? _storage.paths.skillPackCatalogCacheDir;
     return _fs.pathContext.join(
       dir,
       '${registry.owner}-${registry.name}',

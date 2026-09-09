@@ -139,6 +139,7 @@ void main() {
           folders: session.folders,
           createdAt: 1,
         ),
+                                          usesPosixPaths: false,
       );
 
       // 聊天界面 live refresh 循环:进程存活期间每 250ms 一次 load。
@@ -345,6 +346,7 @@ void main() {
           folders: session.folders,
           createdAt: 1,
         ),
+                                          usesPosixPaths: false,
       );
 
       // 轮询到首次真实 locate 成功(bundle 非空 = schema 已建、seed 完成)

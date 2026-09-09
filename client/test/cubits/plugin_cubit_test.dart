@@ -17,6 +17,8 @@ import 'package:teampilot/services/plugin/plugin_repo_service.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:path/path.dart' as p;
 
+import '../support/in_memory_filesystem.dart';
+
 void main() {
   late Directory tmp;
 
@@ -160,7 +162,8 @@ void main() {
     final cubit = PluginCubit(
       repository: repo,
       installService: repo.install,
-      repoService: PluginRepoService(),
+      repoService: PluginRepoService(storage: home()),
+      storage: home(),
     );
     await cubit.load();
     expect(cubit.state.status, PluginLoadStatus.ready);
@@ -177,7 +180,8 @@ void main() {
       final cubit = PluginCubit(
         repository: repo,
         installService: repo.install,
-        repoService: PluginRepoService(),
+        repoService: PluginRepoService(storage: home()),
+        storage: home(),
       );
       cubit.emit(
         cubit.state.copyWith(
@@ -214,7 +218,8 @@ void main() {
     final cubit = PluginCubit(
       repository: repo,
       installService: repo.install,
-      repoService: PluginRepoService(),
+      repoService: PluginRepoService(storage: home()),
+      storage: home(),
       onPluginUninstalled: (_) async {
         order.add('teams');
         final list = await repo.loadAll();
@@ -249,8 +254,13 @@ void main() {
     final cubit = PluginCubit(
       repository: PluginRepository(storage: home()),
       installService: PluginRepository(storage: home()).install,
-      repoService: PluginRepoService(),
-      diskCache: PluginRepoDiskCacheService(gitService: git),
+      repoService: PluginRepoService(storage: home()),
+      storage: home(),
+      diskCache: PluginRepoDiskCacheService(
+        gitService: git,
+        filesystem: home().fs,
+        teampilotRoot: home().appDataRoot,
+      ),
     );
     await cubit.load();
     final enabledCount = cubit.state.marketplaces
@@ -266,11 +276,16 @@ void main() {
 
   test('manual mode with disk cache does not hit network', () async {
     final git = _FakePluginGit();
-    final diskCache = PluginRepoDiskCacheService(gitService: git);
+    final diskCache = PluginRepoDiskCacheService(
+      gitService: git,
+      filesystem: home().fs,
+      teampilotRoot: home().appDataRoot,
+    );
     final cubit = PluginCubit(
       repository: PluginRepository(storage: home()),
       installService: PluginRepository(storage: home()).install,
-      repoService: PluginRepoService(),
+      repoService: PluginRepoService(storage: home()),
+      storage: home(),
       diskCache: diskCache,
     );
     await cubit.load();
@@ -284,7 +299,8 @@ void main() {
     final cubit2 = PluginCubit(
       repository: PluginRepository(storage: home()),
       installService: PluginRepository(storage: home()).install,
-      repoService: PluginRepoService(),
+      repoService: PluginRepoService(storage: home()),
+      storage: home(),
       diskCache: diskCache,
     );
     await cubit2.load();
@@ -298,7 +314,11 @@ void main() {
 
   test('auto mode with stale cache checks remote SHA', () async {
     final git = _FakePluginGit();
-    final diskCache = PluginRepoDiskCacheService(gitService: git);
+    final diskCache = PluginRepoDiskCacheService(
+      gitService: git,
+      filesystem: home().fs,
+      teampilotRoot: home().appDataRoot,
+    );
     final settings = DiscoverySettingsCubit(
       repository: InMemoryAppSettingsRepository(),
     );
@@ -306,7 +326,8 @@ void main() {
     final cubit = PluginCubit(
       repository: PluginRepository(storage: home()),
       installService: PluginRepository(storage: home()).install,
-      repoService: PluginRepoService(),
+      repoService: PluginRepoService(storage: home()),
+      storage: home(),
       diskCache: diskCache,
       discoverySettings: settings,
     );
@@ -338,7 +359,8 @@ void main() {
     final cubit2 = PluginCubit(
       repository: PluginRepository(storage: home()),
       installService: PluginRepository(storage: home()).install,
-      repoService: PluginRepoService(),
+      repoService: PluginRepoService(storage: home()),
+      storage: home(),
       diskCache: diskCache,
       discoverySettings: settings,
     );
@@ -392,7 +414,10 @@ class _PartialPluginCache extends PluginRepoDiskCacheService {
     required this.failed,
     required this.result,
     required this.cachedFromFailedSource,
-  });
+  }) : super(
+         filesystem: InMemoryFilesystem(),
+         teampilotRoot: '/plugin-cache',
+       );
 
   final PluginMarketplace successful;
   final PluginMarketplace failed;

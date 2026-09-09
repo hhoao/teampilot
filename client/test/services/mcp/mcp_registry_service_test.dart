@@ -18,7 +18,18 @@ import 'package:teampilot/services/cli/registry/cli_capability.dart';
 import 'package:teampilot/services/io/filesystem.dart';
 import 'package:teampilot/services/cli/claude/capabilities/provider.dart';
 import 'package:teampilot/services/team_bus/mcp/teammate_bus_mcp_config.dart';
+import 'package:teampilot/services/io/local_filesystem.dart';
+import 'package:teampilot/services/storage/home_storage.dart';
+import 'package:teampilot/services/cli/registry/cli_bootstrap.dart';
 import 'package:path/path.dart' as p;
+import '../../support/in_memory_filesystem.dart';
+
+HomeStorage _storageFor(Directory root) => HomeStorage.forTesting(
+  filesystem: LocalFilesystem(),
+  paths: AppPaths(root.path),
+  home: root.path,
+  cwd: root.path,
+);
 
 void main() {
   late Directory root;
@@ -27,6 +38,9 @@ void main() {
   setUp(() async {
     root = await Directory.systemTemp.createTemp('mcp_registry_');
     layout = RuntimeLayout(teampilotRoot: root.path, fs: AppStorage.fs);
+    CliToolRegistry.builtIn().configure(
+      CliBootstrap(const {}, storage: _storageFor(root)),
+    );
   });
 
   tearDown(() async {
@@ -58,7 +72,7 @@ void main() {
         }),
       );
 
-      await ProfileMcpLinkerService().syncForProfile(
+      await ProfileMcpLinkerService(storage: _storageFor(root)).syncForProfile(
         profileId: teamId,
         mcpServerIds: const ['fetch'],
         catalog: [
@@ -105,7 +119,7 @@ void main() {
         jsonEncode({'hasCompletedOnboarding': true}),
       );
 
-      await ProfileMcpLinkerService().syncForProfile(
+      await ProfileMcpLinkerService(storage: _storageFor(root)).syncForProfile(
         profileId: teamId,
         mcpServerIds: const ['fetch'],
         catalog: [
@@ -160,7 +174,7 @@ void main() {
       ),
     );
 
-    await ProfileMcpLinkerService().syncForProfile(
+    await ProfileMcpLinkerService(storage: _storageFor(root)).syncForProfile(
       profileId: teamId,
       mcpServerIds: const ['ctx', 'deploy'],
       catalog: [
@@ -348,7 +362,8 @@ void main() {
 }
 
 final class _FailingMcpRegistryConfigService extends McpRegistryConfigService {
-  _FailingMcpRegistryConfigService() : super();
+  _FailingMcpRegistryConfigService()
+    : super(teampilotRoot: '/tp', fs: InMemoryFilesystem());
 
   @override
   Future<McpRegistrySourcesConfig> load() async {
@@ -357,6 +372,9 @@ final class _FailingMcpRegistryConfigService extends McpRegistryConfigService {
 }
 
 final class _CountingMcpRegistryConfigService extends McpRegistryConfigService {
+  _CountingMcpRegistryConfigService()
+    : super(teampilotRoot: '/tp', fs: InMemoryFilesystem());
+
   int loadCalls = 0;
 
   @override

@@ -28,6 +28,7 @@ import '../../services/floating_workspace/floating_maximize_insets.dart';
 import '../../services/home_workspace/home_closed_workspaces_store.dart';
 import '../../services/home_workspace/home_open_workspaces_store.dart';
 import '../../services/home_workspace/home_recent_workspaces_store.dart';
+import '../../services/storage/app_storage.dart';
 import '../../services/home_workspace/home_workspace_ui_cache.dart';
 import '../../services/run/launch_adapter_protocol.dart';
 import '../../services/terminal/workspace_terminal_registry.dart';
@@ -138,9 +139,15 @@ class HomeShell extends StatefulWidget {
 }
 
 class _HomeShellState extends State<HomeShell> {
-  final _recentWorkspacesStore = HomeRecentWorkspacesStore();
-  final _closedWorkspacesStore = HomeClosedWorkspacesStore();
-  final _openWorkspacesStore = HomeOpenWorkspacesStore();
+  final _recentWorkspacesStore = HomeRecentWorkspacesStore(
+    storage: AppStorage.tolerantHome,
+  );
+  final _closedWorkspacesStore = HomeClosedWorkspacesStore(
+    storage: AppStorage.tolerantHome,
+  );
+  final _openWorkspacesStore = HomeOpenWorkspacesStore(
+    storage: AppStorage.tolerantHome,
+  );
 
   late List<WorkspaceTabRef> _openTabs;
   List<HomeClosedWorkspaceEntry> _recentlyClosed = const [];

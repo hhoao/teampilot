@@ -5,17 +5,21 @@ import 'package:path/path.dart' as p;
 import '../../../models/skill_registry_source.dart';
 import '../../io/filesystem.dart';
 import '../../io/local_filesystem.dart';
-import '../../storage/app_storage.dart';
+import '../../storage/app_paths.dart';
+import '../../storage/home_storage.dart';
 
 class SkillRegistryConfigService {
   SkillRegistryConfigService({
+    required HomeStorage storage,
     Filesystem? fs,
     String? teampilotRoot,
     Future<String?> Function()? legacySkillsMpKeyReader,
-  }) : _teampilotRoot = teampilotRoot?.trim(),
+  }) : _storage = storage,
+       _teampilotRoot = teampilotRoot?.trim(),
        _fs = fs ?? LocalFilesystem(),
        _legacySkillsMpKeyReader = legacySkillsMpKeyReader;
 
+  final HomeStorage _storage;
   final String? _teampilotRoot;
   final Filesystem _fs;
   final Future<String?> Function()? _legacySkillsMpKeyReader;
@@ -25,10 +29,7 @@ class SkillRegistryConfigService {
     if (root != null && root.isNotEmpty) {
       return AppPaths.skillRegistriesConfigPathForTeampilotRoot(root);
     }
-    if (AppStorage.isInstalled) {
-      return AppStorage.context.skillRegistriesConfigPath;
-    }
-    return AppStorage.paths.skillRegistriesConfigPath;
+    return _storage.paths.skillRegistriesConfigPath;
   }
 
   Future<String> _legacyReposPath() async {
@@ -36,10 +37,7 @@ class SkillRegistryConfigService {
     if (root != null && root.isNotEmpty) {
       return AppPaths.skillReposConfigPathForTeampilotRoot(root);
     }
-    if (AppStorage.isInstalled) {
-      return AppStorage.context.skillReposConfigPath;
-    }
-    return AppStorage.paths.skillReposConfigPath;
+    return _storage.paths.skillReposConfigPath;
   }
 
   Future<SkillRegistriesConfig> load() async {

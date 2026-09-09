@@ -11,6 +11,7 @@ import 'package:teampilot/services/team_bus/team_bus.dart';
 import 'package:teampilot/services/terminal/terminal_reclaim_policy.dart';
 
 import '../../support/fake_terminal_session.dart';
+import '../../support/in_memory_filesystem.dart';
 import '../../services/team_bus/support/fake_member_launcher.dart';
 
 const _lead = TeamMemberConfig(id: 'team-lead', name: 'lead');
@@ -80,7 +81,7 @@ TabMemberReclaimWatch _watch(
 
 void main() {
   test('reclaims an idle worker after threshold, never the lead', () {
-    final store = ChatTabStore();
+    final store = ChatTabStore(storage: fakeHomeStorage());
     final tab = _tabWithBus();
     store.registerSession(tab);
     final bus = _busWith('team-lead', MemberLifecycle.running, MemberActivity.turnDoneReady);
@@ -109,7 +110,7 @@ void main() {
   });
 
   test('in-turn and unread members are never reclaimed', () async {
-    final store = ChatTabStore();
+    final store = ChatTabStore(storage: fakeHomeStorage());
     final tab = _tabWithBus();
     store.registerSession(tab);
     final bus = _busWith('worker-1', MemberLifecycle.running, MemberActivity.active);
@@ -130,7 +131,7 @@ void main() {
   });
 
   test('pinned sessions are never reclaimed', () {
-    final store = ChatTabStore();
+    final store = ChatTabStore(storage: fakeHomeStorage());
     final tab = _tabWithBus();
     store.registerSession(tab);
     final bus = _busWith(
@@ -158,7 +159,7 @@ void main() {
   });
 
   test('persistedSession.pinned protects without callback', () {
-    final store = ChatTabStore();
+    final store = ChatTabStore(storage: fakeHomeStorage());
     final tab = _tabWithBus();
     tab.persistedSession = AppSession(
       sessionId: 'sess',
@@ -192,7 +193,7 @@ void main() {
   });
 
   test('delivery in-flight protects an idle worker from reclaim', () {
-    final store = ChatTabStore();
+    final store = ChatTabStore(storage: fakeHomeStorage());
     final tab = _tabWithBus();
     store.registerSession(tab);
     final bus = _busWith(
@@ -228,7 +229,7 @@ void main() {
   });
 
   test('simple session terminal shown in terminal view is never reclaimed', () {
-    final store = ChatTabStore();
+    final store = ChatTabStore(storage: fakeHomeStorage());
     final tab = _simpleTab(view: SessionWorkbenchView.terminal);
     store.registerSession(tab);
     tab.memberShells['sess'] = _runningShell();
@@ -250,7 +251,7 @@ void main() {
   });
 
   test('simple session terminal hidden behind chat view is reclaimed', () {
-    final store = ChatTabStore();
+    final store = ChatTabStore(storage: fakeHomeStorage());
     final tab = _simpleTab(view: SessionWorkbenchView.chat);
     store.registerSession(tab);
     tab.memberShells['sess'] = _runningShell();
@@ -273,7 +274,7 @@ void main() {
 }
 
 FakeTerminalSession _runningShell() {
-  final shell = FakeTerminalSession(executable: 'claude');
+  final shell = FakeTerminalSession(executable: 'claude', fs: InMemoryFilesystem());
   shell.connect(workingDirectory: '/work');
   return shell;
 }

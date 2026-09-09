@@ -8,9 +8,10 @@ import '../../models/workspace_folder.dart';
 import '../run/launch_adapter_protocol.dart';
 import '../run/launch_config_store.dart';
 import '../run/run_platform.dart';
-import '../run/run_ui_prefs_store.dart';
 import '../run/run_session_manager.dart';
+import '../run/run_ui_prefs_store.dart';
 import '../run/workspace_run_platform_factory.dart';
+import '../storage/home_storage.dart';
 import '../terminal/workspace_terminal_run_service.dart';
 
 /// Retains per-tab [RunCubit]s so returning to a workspace tab keeps Run state.
@@ -20,9 +21,10 @@ import '../terminal/workspace_terminal_run_service.dart';
 class WorkspaceRunRegistry {
   WorkspaceRunRegistry({
     required WorkspaceRunPlatformFactory platformFactory,
+    required HomeStorage storage,
     RunUiPrefsStore? prefsStore,
   }) : _platformFactory = platformFactory,
-       _prefsStore = prefsStore ?? RunUiPrefsStore();
+       _prefsStore = prefsStore ?? RunUiPrefsStore(storage: storage);
 
   final WorkspaceRunPlatformFactory _platformFactory;
   final RunUiPrefsStore _prefsStore;

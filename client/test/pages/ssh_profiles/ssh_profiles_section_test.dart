@@ -24,6 +24,7 @@ import 'package:teampilot/services/ssh/ssh_profile_reconnect_policy.dart';
 import 'package:teampilot/services/terminal/terminal_transport_factory.dart';
 import 'package:teampilot/theme/app_typography_scale.dart';
 import 'package:teampilot/utils/ui/app_keys.dart';
+import '../../support/in_memory_filesystem.dart';
 
 const _profile = SshProfile(
   id: 'p1',
@@ -237,7 +238,7 @@ void main() {
 
   setUp(() async {
     tempDir = await Directory.systemTemp.createTemp('ssh_profiles_section_');
-    profileRepository = SshProfileRepository(rootDir: tempDir.path);
+    profileRepository = SshProfileRepository(rootDir: tempDir.path, storage: fakeHomeStorage(), );
     await profileRepository.save(_profile);
 
     harness = _Harness();

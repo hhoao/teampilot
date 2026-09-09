@@ -540,6 +540,7 @@ class _ConversationListHost extends StatelessWidget {
         final groups = groupSessionsByWorktree(
           worktrees: wtView.worktrees,
           sessions: sortedSessions,
+          usesPosixPaths: AppStorage.usesPosixPaths,
         );
         return _buildWorktreeGroupList(
           context,
@@ -600,6 +601,7 @@ class _ConversationListHost extends StatelessWidget {
       folders: workspace.folders,
       worktreesByProjectPath: worktreesByProject,
       sessions: sortedSessions,
+      usesPosixPaths: AppStorage.usesPosixPaths,
     );
     final hasAnySession = groups.any((g) => g.sessions.isNotEmpty);
     if (!hasAnySession && sortedSessions.isEmpty) {

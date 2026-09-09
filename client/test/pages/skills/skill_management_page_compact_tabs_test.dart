@@ -19,10 +19,11 @@ void main() {
   setUp(() {
     setUpTestAppStorage();
     cubit = SkillCubit(
-      SkillRepository(),
-      registryConfigService: SkillRegistryConfigService(),
+      SkillRepository(storage: testHomeStorage),
+      registryConfigService: SkillRegistryConfigService(storage: testHomeStorage),
       initialSources: const [],
       rebuildSources: (c) => const [],
+                        storage: testHomeStorage,
     );
   });
 

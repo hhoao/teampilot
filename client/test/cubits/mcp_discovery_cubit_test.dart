@@ -77,7 +77,7 @@ class _FakeRegistry extends McpRegistryBrowseService {
 }
 
 class _FakeConfig extends McpRegistryConfigService {
-  _FakeConfig(this.config);
+  _FakeConfig(this.config) : super(teampilotRoot: '/tp');
 
   final McpRegistrySourcesConfig config;
 
@@ -113,7 +113,7 @@ McpCatalogListing _listingWithMetrics(
 );
 
 Future<void> _seedCache({required int syncedAtMs}) async {
-  final disk = McpDiscoveryDiskCacheService();
+  final disk = McpDiscoveryDiskCacheService(storage: testHomeStorage);
   await disk.write(
     sourceKey: mcpDiscoveryCacheSmithery,
     snapshot: McpDiscoveryDiskSnapshot(
@@ -141,6 +141,7 @@ void main() {
     final smithery = _FakeSmithery();
     final registry = _FakeRegistry();
     final cubit = McpDiscoveryCubit(
+      storage: testHomeStorage,
       smithery: smithery,
       registry: registry,
       discoverySettings: DiscoverySettingsCubit(
@@ -162,6 +163,7 @@ void main() {
       final smithery = _FakeSmithery();
       final registry = _FakeRegistry();
       final cubit = McpDiscoveryCubit(
+        storage: testHomeStorage,
         smithery: smithery,
         registry: registry,
         discoverySettings: DiscoverySettingsCubit(
@@ -185,6 +187,7 @@ void main() {
     );
     await settings.setAutoRefreshEnabled(true);
     final cubit = McpDiscoveryCubit(
+      storage: testHomeStorage,
       smithery: smithery,
       registry: registry,
       discoverySettings: settings,
@@ -205,6 +208,7 @@ void main() {
     );
     await settings.setAutoRefreshEnabled(true);
     final cubit = McpDiscoveryCubit(
+      storage: testHomeStorage,
       smithery: smithery,
       registry: registry,
       discoverySettings: settings,
@@ -251,6 +255,7 @@ void main() {
         ),
       );
       final cubit = McpDiscoveryCubit(
+        storage: testHomeStorage,
         registryConfig: _FakeConfig(_enabledSources()),
         smithery: smithery,
         registry: registry,
@@ -286,6 +291,7 @@ void main() {
         updatedAtMs: 1,
       );
       final cubit = McpDiscoveryCubit(
+        storage: testHomeStorage,
         registryConfig: _FakeConfig(_enabledSources()),
         smithery: _FakeSmithery(
           result: SmitherySearchResult(
@@ -310,7 +316,7 @@ void main() {
 
   test('refresh failure preserves cached source items', () async {
     final cached = _listingWithMetrics('cached', uses: 4, updatedAtMs: 1);
-    await McpDiscoveryDiskCacheService().write(
+    await McpDiscoveryDiskCacheService(storage: testHomeStorage).write(
       sourceKey: mcpDiscoveryCacheSmithery,
       snapshot: McpDiscoveryDiskSnapshot(
         items: [cached],
@@ -319,6 +325,7 @@ void main() {
       ),
     );
     final cubit = McpDiscoveryCubit(
+      storage: testHomeStorage,
       registryConfig: _FakeConfig(_enabledSources()),
       smithery: _FakeSmithery(error: Exception('temporary failure')),
       registry: _FakeRegistry(),

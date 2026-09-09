@@ -50,7 +50,7 @@ void main() {
 
   test('fetches teams from the registry and stamps keys', () async {
     final net = network();
-    final source = GitRegistryTeamHubSource(fetch: (uri) async => net[uri]);
+    final source = GitRegistryTeamHubSource(fetch: (uri) async => net[uri], storage: testHomeStorage, );
 
     final teams = await source.fetchTeams();
     expect(teams, hasLength(2));
@@ -73,6 +73,7 @@ void main() {
         calls++;
         return net[uri];
       },
+                                             storage: testHomeStorage,
     );
 
     await source.fetchTeams();
@@ -92,6 +93,7 @@ void main() {
         calls++;
         return net[uri];
       },
+                                             storage: testHomeStorage,
     );
     await source.fetchTeams();
     final before = calls;
@@ -107,6 +109,7 @@ void main() {
       fetch: (uri) async => net[uri],
       fs: fs,
       cacheDirOverride: cacheDir,
+                                             storage: testHomeStorage,
     );
 
     final teams = await source.fetchTeams();
@@ -134,6 +137,7 @@ void main() {
       },
       fs: fs,
       cacheDirOverride: cacheDir,
+                                             storage: testHomeStorage,
     );
     final cached = await replay.fetchTeams();
     expect(cached, hasLength(2));

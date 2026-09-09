@@ -43,8 +43,9 @@ void main() {
   );
 
   AppProviderCubit _appCubit() => AppProviderCubit(
-    repository: AppProviderRepository(fs: fs, basePath: '/tp'),
+    repository: AppProviderRepository(fs: fs, basePath: '/tp', storage: fakeHomeStorage(filesystem: fs), ),
     basePath: '/tp',
+                                                    storage: fakeHomeStorage(filesystem: fs),
   );
 
   test('upsert expands an intent source to the per-entry source', () async {

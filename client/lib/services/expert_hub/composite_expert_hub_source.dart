@@ -3,7 +3,6 @@ import '../../models/discoverable_team.dart';
 import '../../models/catalog/catalog_types.dart';
 import 'builtin_member_templates.dart';
 import 'expert_hub_source.dart';
-import 'git_registry_expert_hub_source.dart';
 import 'local_expert_store.dart';
 import 'team_member_index_source.dart';
 import '../catalog/catalog_error_sanitizer.dart';
@@ -24,21 +23,21 @@ class CompositeExpertHubSource
     implements ExpertHubSource, ExpertHubSourceContributions {
   CompositeExpertHubSource({
     List<DiscoverableMember> builtIns = const [],
-    ExpertHubSource? registry,
+    required ExpertHubSource registry,
     List<DiscoverableTeam> teams = const [],
     TeamIndexLoader? teamIndex,
-    LocalExpertStore? localStore,
+    required LocalExpertStore localStore,
   }) : _builtIns = builtIns,
-       _registry = registry ?? GitRegistryExpertHubSource(),
+       _registry = registry,
        _teams = teams,
        _teamIndex = teamIndex,
-       _localStore = localStore ?? LocalExpertStore();
+       _localStore = localStore;
 
   factory CompositeExpertHubSource.withDefaults({
-    ExpertHubSource? registry,
+    required ExpertHubSource registry,
     List<DiscoverableTeam> teams = const [],
     TeamIndexLoader? teamIndex,
-    LocalExpertStore? localStore,
+    required LocalExpertStore localStore,
   }) => CompositeExpertHubSource(
     builtIns: builtinExpertMembers(),
     registry: registry,

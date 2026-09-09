@@ -47,7 +47,7 @@ void main() {
         child: MultiBlocProvider(
           providers: [
             BlocProvider<LayoutCubit>.value(value: layout),
-            BlocProvider(create: (_) => NotificationCubit()),
+            BlocProvider(create: (_) => NotificationCubit(storage: testHomeStorage)),
             BlocProvider(
               create: (context) => ProgressActivityCubit(
                 historyRecorder: context.read<NotificationCubit>(),
@@ -133,7 +133,7 @@ void main() {
         child: MultiBlocProvider(
           providers: [
             BlocProvider<LayoutCubit>.value(value: layout),
-            BlocProvider(create: (_) => NotificationCubit()),
+            BlocProvider(create: (_) => NotificationCubit(storage: testHomeStorage)),
             BlocProvider(
               create: (context) => ProgressActivityCubit(
                 historyRecorder: context.read<NotificationCubit>(),

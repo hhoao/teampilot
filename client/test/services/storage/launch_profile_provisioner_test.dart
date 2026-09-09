@@ -11,7 +11,7 @@ void main() {
 
   setUp(() async {
     setUpTestAppStorage();
-    repo = LaunchProfileRepository();
+    repo = LaunchProfileRepository(storage: testHomeStorage);
     provisioner = LaunchProfileProvisioner(repository: repo);
   });
 

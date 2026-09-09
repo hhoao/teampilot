@@ -2,13 +2,12 @@ import 'dart:io';
 
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
-import 'package:path/path.dart' as p;
 
 import 'package:uuid/uuid.dart';
 
 import '../io/filesystem.dart';
 import '../io/local_filesystem.dart';
-import '../storage/app_storage.dart';
+import '../storage/app_paths.dart';
 import '../../utils/workspace/workspace_path_utils.dart';
 import 'compose_image_attachment.dart';
 import 'compose_image_clipboard.dart';
@@ -24,9 +23,16 @@ bool _isWindowsStylePath(String path) =>
 String formatComposeFileReference(
   String absolutePath, {
   required String workspaceRoot,
+  required bool usesPosixPaths,
 }) {
-  final normalized = normalizeWorkspacePath(absolutePath);
-  final root = normalizeWorkspacePath(workspaceRoot);
+  final normalized = normalizeWorkspacePath(
+    absolutePath,
+    usesPosixPaths: usesPosixPaths,
+  );
+  final root = normalizeWorkspacePath(
+    workspaceRoot,
+    usesPosixPaths: usesPosixPaths,
+  );
   if (root.isNotEmpty && _isUnderRoot(normalized, root)) {
     var rel = _stripRootPrefix(normalized, root);
     rel = rel.replaceAll(r'\', '/');
@@ -90,21 +96,28 @@ void insertComposeReferences(
 Future<String?> resolveComposeFileReference({
   required String absolutePath,
   required String workspaceRoot,
+  required bool usesPosixPaths,
   Filesystem? filesystem,
 }) async {
   if (isComposeImagePath(absolutePath)) {
     return resolveComposeImageReference(
       absolutePath: absolutePath,
       workspaceRoot: workspaceRoot,
+      usesPosixPaths: usesPosixPaths,
     );
   }
-  return formatComposeFileReference(absolutePath, workspaceRoot: workspaceRoot);
+  return formatComposeFileReference(
+    absolutePath,
+    workspaceRoot: workspaceRoot,
+    usesPosixPaths: usesPosixPaths,
+  );
 }
 
 /// Pastes a clipboard image (or copied image file) into compose as an `@` reference.
 Future<bool> pasteComposeImageAttachment({
   required TextEditingController controller,
   required String workspaceRoot,
+  required bool usesPosixPaths,
   ComposeImageClipboardReader? clipboardReader,
   ComposeImageIdGenerator? idGenerator,
   String? attachmentsDir,
@@ -125,6 +138,7 @@ Future<bool> pasteComposeImageAttachment({
       extension: payload.extension,
       attachmentsDir: importDir,
       workspaceRoot: workspaceRoot,
+      usesPosixPaths: usesPosixPaths,
       filesystem: writeFs,
       idGenerator: generateId,
     );
@@ -140,6 +154,7 @@ Future<bool> pasteComposeImageAttachment({
     final ref = await resolveComposeImageReference(
       absolutePath: path,
       workspaceRoot: workspaceRoot,
+      usesPosixPaths: usesPosixPaths,
     );
     if (ref != null) refs.add(ref);
   }
@@ -155,9 +170,9 @@ Future<bool> pasteComposeImageAttachment({
 Future<void> pickAndInsertComposeFileReferences({
   required TextEditingController controller,
   required String workspaceRoot,
-  Filesystem? filesystem,
+  required bool usesPosixPaths,
+  required Filesystem filesystem,
 }) async {
-  final fs = filesystem ?? AppStorage.fs;
   final result = await FilePicker.platform.pickFiles(
     allowMultiple: true,
     type: FileType.any,
@@ -171,7 +186,8 @@ Future<void> pickAndInsertComposeFileReferences({
     final ref = await resolveComposeFileReference(
       absolutePath: path,
       workspaceRoot: workspaceRoot,
-      filesystem: fs,
+      usesPosixPaths: usesPosixPaths,
+      filesystem: filesystem,
     );
     if (ref != null) refs.add(ref);
   }

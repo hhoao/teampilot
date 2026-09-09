@@ -8,6 +8,7 @@ import 'package:teampilot/services/workbench/workbench_chat_bridge.dart';
 
 import '../../support/fake_terminal_session.dart';
 import '../../support/post_frame_test_harness.dart';
+import '../../support/in_memory_filesystem.dart';
 
 const _ws = 'ws';
 final _s1 = WorkbenchTabId.session('s1');
@@ -22,6 +23,7 @@ void main() {
     chat = ChatCubit(
       executableResolver: () => '/bin/true',
       automationRepository: testAutomationRepository(),
+                      storage: testHomeStorage,
     );
     bridge = WorkbenchChatBridge(workbench: cubit, chat: chat);
   });
@@ -83,7 +85,7 @@ void main() {
     test('running session replaced in the preview slot is re-pinned, not torn '
         'down', () async {
       chat.tabStore.setActiveWorkspaceId('ws-1');
-      final running = FakeTerminalSession();
+      final running = FakeTerminalSession(fs: InMemoryFilesystem());
       running.connect(workingDirectory: '/tmp');
       chat.tabStore.registerSession(
         ChatTab(

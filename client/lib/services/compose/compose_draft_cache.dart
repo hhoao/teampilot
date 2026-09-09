@@ -1,9 +1,13 @@
 import 'package:flutter/foundation.dart';
 
-import '../storage/app_storage.dart';
+import '../storage/home_storage.dart';
 import 'compose_draft_store.dart';
 
 /// Memory front for persisted compose input drafts.
+///
+/// Persistence is home-plane: the persistent methods take the caller's
+/// [HomeStorage] (the app-scoped [composeDraftCache] instance has no storage
+/// of its own — UI/cubit call sites thread their injected storage in).
 class ComposeDraftCache {
   ComposeDraftCache({
     Map<String, String>? store,
@@ -17,9 +21,9 @@ class ComposeDraftCache {
   static const _landingPrefix = 'landing:';
   static const _sessionPrefix = 'session:';
 
-  ComposeDraftStore get _persistentStore =>
+  ComposeDraftStore _persistentStore(HomeStorage storage) =>
       _persistentStoreOverride ??
-      ComposeDraftStore(fs: AppStorage.fs, rootPath: AppStorage.appDataRoot);
+      ComposeDraftStore(fs: storage.fs, rootPath: storage.appDataRoot);
 
   // ── Landing compose (workspace "New Chat") ──────────────────────────────
 
@@ -34,22 +38,29 @@ class ComposeDraftCache {
 
   Future<String?> hydrateLanding(
     String workspaceId, {
+    required HomeStorage storage,
     bool Function()? shouldSeed,
   }) async {
-    final text = await _persistentStore.loadLanding(workspaceId);
+    final text = await _persistentStore(storage).loadLanding(workspaceId);
     if (text != null && text.isNotEmpty && (shouldSeed?.call() ?? true)) {
       setLandingDraft(workspaceId, text);
     }
     return text;
   }
 
-  Future<void> saveLanding(String workspaceId, String text) async {
+  Future<void> saveLanding(
+    String workspaceId,
+    String text, {
+    required HomeStorage storage,
+  }) async {
     setLandingDraft(workspaceId, text);
-    await _persistentStore.saveLanding(workspaceId, text);
+    await _persistentStore(storage).saveLanding(workspaceId, text);
   }
 
-  Future<void> clearLandingPersistent(String workspaceId) =>
-      _persistentStore.saveLanding(workspaceId, '');
+  Future<void> clearLandingPersistent(
+    String workspaceId, {
+    required HomeStorage storage,
+  }) => _persistentStore(storage).saveLanding(workspaceId, '');
 
   // ── Session compose (session workbench) ─────────────────────────────────
 
@@ -64,9 +75,13 @@ class ComposeDraftCache {
   Future<String?> hydrateSession(
     String workspaceId,
     String sessionId, {
+    required HomeStorage storage,
     bool Function()? shouldSeed,
   }) async {
-    final text = await _persistentStore.loadSession(workspaceId, sessionId);
+    final text = await _persistentStore(storage).loadSession(
+      workspaceId,
+      sessionId,
+    );
     if (text != null && text.isNotEmpty && (shouldSeed?.call() ?? true)) {
       setSessionDraft(sessionId, text);
     }
@@ -76,14 +91,18 @@ class ComposeDraftCache {
   Future<void> saveSession(
     String workspaceId,
     String sessionId,
-    String text,
-  ) async {
+    String text, {
+    required HomeStorage storage,
+  }) async {
     setSessionDraft(sessionId, text);
-    await _persistentStore.saveSession(workspaceId, sessionId, text);
+    await _persistentStore(storage).saveSession(workspaceId, sessionId, text);
   }
 
-  Future<void> clearSessionPersistent(String workspaceId, String sessionId) =>
-      _persistentStore.clearSession(workspaceId, sessionId);
+  Future<void> clearSessionPersistent(
+    String workspaceId,
+    String sessionId, {
+    required HomeStorage storage,
+  }) => _persistentStore(storage).clearSession(workspaceId, sessionId);
 
   /// Writing trimmed-empty text removes the entry — a cleared input must not
   /// resurrect stale text on remount.
@@ -100,6 +119,7 @@ class ComposeDraftCache {
   void clear() => _store.clear();
 }
 
-/// Shared app-scoped instance. Compose hosts restore from and sync to this
-/// instance directly; tests reset it via [ComposeDraftCache.clear].
+/// Shared app-scoped memory instance. Compose hosts restore from and sync to
+/// this instance directly (passing their injected [HomeStorage] to the
+/// persistent methods); tests reset it via [ComposeDraftCache.clear].
 final ComposeDraftCache composeDraftCache = ComposeDraftCache();

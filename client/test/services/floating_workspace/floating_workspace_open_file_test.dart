@@ -16,7 +16,7 @@ import '../../support/in_memory_filesystem.dart';
 void main() {
   test('pickAndOpenFloatingWorkspaceFile opens selected path via opener', () async {
     final fs = InMemoryFilesystem()..files['/repo/a.txt'] = 'hello';
-    final editor = EditorCubit(fs: fs);
+    final editor = EditorCubit(fs: fs, storage: fakeHomeStorage(filesystem: fs), );
     final workbench = WorkbenchCubit();
     final floating = FloatingWorkspaceCubit();
     addTearDown(editor.close);
@@ -66,7 +66,7 @@ void main() {
   });
 
   test('pickAndOpenFloatingWorkspaceFile no-ops when picker cancelled', () async {
-    final editor = EditorCubit();
+    final editor = EditorCubit(storage: fakeHomeStorage());
     final workbench = WorkbenchCubit();
     final floating = FloatingWorkspaceCubit();
     addTearDown(editor.close);

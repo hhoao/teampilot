@@ -17,8 +17,12 @@ import 'package:teampilot/services/launch/session_runtime_plan_builder.dart';
 import 'package:teampilot/services/provider/config_profile_service.dart';
 import 'package:teampilot/services/storage/app_storage.dart';
 import 'package:teampilot/services/storage/runtime_layout.dart';
+import 'package:teampilot/services/cli/registry/cli_bootstrap.dart';
+import 'package:teampilot/services/cli/registry/cli_tool_registry.dart';
 
 import '../../support/post_frame_test_harness.dart';
+import '../../support/in_memory_filesystem.dart';
+import 'package:teampilot/services/expert_hub/local_expert_store.dart';
 
 class _FakeExpertResolver extends ExpertCapabilityResolver {
   _FakeExpertResolver()
@@ -27,6 +31,7 @@ class _FakeExpertResolver extends ExpertCapabilityResolver {
         installSkill: (_) async => null,
         installPlugin: (_) async => null,
         installMcp: (_) async => null,
+             localStore: LocalExpertStore(fs: InMemoryFilesystem(), dirOverride: AppPaths('/tp').memberHubLocalTemplatesDir),
       );
 
   final Map<String, ExpertCapabilityPack> packs;
@@ -97,7 +102,12 @@ Future<SessionRuntimePlan> _simplePlan({
 }
 
 void main() {
-  setUp(setUpTestAppStorage);
+  setUp(() {
+    setUpTestAppStorage();
+    CliToolRegistry.builtIn().configure(
+      CliBootstrap(const {}, storage: testHomeStorage),
+    );
+  });
   tearDown(tearDownTestAppStorage);
 
   test('workspace-enabled plugin lands in the simple session CLI config',
@@ -136,6 +146,7 @@ void main() {
       basePath: root,
       fs: fs,
       layout: layout,
+                                storage: testHomeStorage,
     ).prepareSimpleSessionLaunch(
       workspaceId: workspaceId,
       sessionId: sessionId,
@@ -191,6 +202,7 @@ void main() {
       basePath: root,
       fs: fs,
       layout: layout,
+                                storage: testHomeStorage,
     ).prepareTeamLaunch(
       workspaceId: workspaceId,
       sessionId: sessionId,
@@ -240,6 +252,7 @@ void main() {
       basePath: root,
       fs: fs,
       layout: layout,
+                                storage: testHomeStorage,
     ).prepareSimpleSessionLaunch(
       workspaceId: workspaceId,
       sessionId: sessionId,
@@ -283,6 +296,7 @@ void main() {
       basePath: root,
       fs: fs,
       layout: layout,
+                                storage: testHomeStorage,
     ).prepareSimpleSessionLaunch(
       workspaceId: workspaceId,
       sessionId: sessionId,
@@ -331,6 +345,7 @@ void main() {
       basePath: root,
       fs: fs,
       layout: layout,
+                                          storage: testHomeStorage,
     );
 
     await service.prepareSimpleSessionLaunch(

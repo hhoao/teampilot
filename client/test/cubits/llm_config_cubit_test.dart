@@ -241,9 +241,10 @@ void main() {
       prefs,
     ).saveLlmConfigPathOverride('~/llm.json');
 
+    final llmStorage = HomeStorage(AppStorage.context);
     final cubit = LlmConfigCubit(
       appSettings: SharedPrefsAppSettingsRepository(prefs),
-      storage: HomeStorage(AppStorage.context),
+      storage: llmStorage,
     );
     addTearDown(cubit.close);
 
@@ -262,6 +263,7 @@ void main() {
       home: homeB.path,
       cwd: homeB.path,
     );
+    await llmStorage.swap(AppStorage.context);
 
     await cubit.load();
     expect(

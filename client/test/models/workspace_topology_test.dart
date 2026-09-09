@@ -151,11 +151,11 @@ void main() {
         WorkspaceFolder(path: '/local-extra', targetId: 'local'),
         WorkspaceFolder(path: '/remote', targetId: 'ssh:p1'),
       ];
-      final local = personalWorkDirsForPrimaryPath(folders, '/local');
+      final local = personalWorkDirsForPrimaryPath(folders, '/local', usesPosixPaths: false, );
       expect(local.workingDirectory, '/local');
       expect(local.addDirs, ['/local-extra']);
 
-      final remote = personalWorkDirsForPrimaryPath(folders, '/remote');
+      final remote = personalWorkDirsForPrimaryPath(folders, '/remote', usesPosixPaths: false, );
       expect(remote.workingDirectory, '/remote');
       expect(remote.addDirs, isEmpty);
     });

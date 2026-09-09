@@ -3,7 +3,7 @@ import 'dart:io';
 import '../../models/extension_manifest.dart';
 import '../host/host_executable_locator.dart';
 import '../host/host_execution_environment.dart';
-import '../storage/app_storage.dart';
+import '../storage/home_storage.dart';
 import 'extension_probe.dart';
 
 typedef ExtensionProcessRunner =
@@ -16,14 +16,19 @@ typedef ExtensionProcessRunner =
 /// Probes the host for an extension's tool + companion binaries, parameterized
 /// by an [ExtensionDetectSpec]. Generalizes the former `RtkDetector`.
 class ExtensionDetector {
-  ExtensionDetector({ExtensionProcessRunner? processRunner, bool? probeHost})
-    : _processRunner = processRunner ?? Process.run,
-      _probeHost =
+  ExtensionDetector({
+    ExtensionProcessRunner? processRunner,
+    bool? probeHost,
+    HomeStorage? storage,
+  }) : _processRunner = processRunner ?? Process.run,
+       _storage = storage,
+       _probeHost =
           probeHost ??
           (processRunner != null ||
               Platform.environment['FLUTTER_TEST'] != 'true');
 
   final ExtensionProcessRunner _processRunner;
+  final HomeStorage? _storage;
   final bool _probeHost;
 
   static final _versionPattern = RegExp(r'(\d+)\.(\d+)\.(\d+)');
@@ -108,8 +113,9 @@ class ExtensionDetector {
   }
 
   HostExecutableLocator _pathLocator() {
-    final env = AppStorage.isInstalled
-        ? HostExecutionEnvironment.fromStorage(AppStorage.context)
+    final storage = _storage;
+    final env = storage != null
+        ? HostExecutionEnvironment.fromStorage(storage.context)
         : HostExecutionEnvironment.resolve();
     return HostExecutableLocator(env);
   }

@@ -18,11 +18,13 @@ import 'package:teampilot/services/cli/registry/cli_tool_registry.dart';
 import 'package:teampilot/services/cli/registry/cli_tool_registry_scope.dart';
 import 'package:teampilot/services/storage/app_storage.dart';
 import 'package:teampilot/services/workspace/workspace_pane_policy.dart';
+import 'package:teampilot/services/expert_hub/local_expert_store.dart';
 
+import '../../support/in_memory_filesystem.dart';
 import '../../support/post_frame_test_harness.dart';
 
 class _SeededAppProviderCubit extends AppProviderCubit {
-  _SeededAppProviderCubit() {
+  _SeededAppProviderCubit() : super(storage: buildTestHomeStorage()) {
     emit(const AppProviderState());
   }
 }
@@ -96,7 +98,14 @@ void main() {
                 builder: (context) => Scaffold(
                   body: TextButton(
                     onPressed: () {
-                      showHomeNewTeamDialog(context, teamCubit);
+                      showHomeNewTeamDialog(
+                        context,
+                        teamCubit,
+                        expertStore: LocalExpertStore(
+                          fs: InMemoryFilesystem(),
+                          dirOverride: AppPaths('/tp').memberHubLocalTemplatesDir,
+                        ),
+                      );
                     },
                     child: const Text('open'),
                   ),

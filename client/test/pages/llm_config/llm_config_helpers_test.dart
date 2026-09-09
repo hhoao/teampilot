@@ -7,6 +7,7 @@ import 'package:teampilot/cubits/app_provider_cubit.dart';
 import 'package:teampilot/models/app_provider_config.dart';
 import 'package:teampilot/pages/llm_config/llm_config_helpers.dart';
 import 'package:teampilot/repositories/app_provider_repository.dart';
+import '../../support/in_memory_filesystem.dart';
 
 void main() {
   late Directory temp;
@@ -15,8 +16,8 @@ void main() {
 
   setUp(() async {
     temp = await Directory.systemTemp.createTemp('llm_config_helpers_');
-    repository = AppProviderRepository(basePath: temp.path);
-    cubit = AppProviderCubit(repository: repository, basePath: temp.path);
+    repository = AppProviderRepository(basePath: temp.path, storage: fakeHomeStorage(), );
+    cubit = AppProviderCubit(repository: repository, basePath: temp.path, storage: fakeHomeStorage(), );
   });
 
   tearDown(() async {

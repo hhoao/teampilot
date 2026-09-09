@@ -6,6 +6,7 @@ import 'package:teampilot/services/team/terminal_activity_tracker.dart';
 import 'package:teampilot/services/terminal/terminal_session.dart';
 
 import '../../support/recording_pty_transport.dart';
+import '../../support/in_memory_filesystem.dart';
 
 /// [TerminalSession] connected through [RecordingPtyTransport] so integration
 /// tests observe real [writeToPty] / [submitFullScreenInput] bytes and can
@@ -52,6 +53,7 @@ class ConnectedRecordingShell {
           }) {
             return Future.value(transport);
           },
+                                     fs: InMemoryFilesystem(),
     );
     session.connect(workingDirectory: Directory.systemTemp.path);
     session.onViewportResize(80, 24);

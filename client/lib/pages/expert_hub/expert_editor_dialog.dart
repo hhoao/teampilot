@@ -17,7 +17,9 @@ import '../../models/mcp_server.dart';
 import '../../models/plugin.dart';
 import '../../models/skill.dart';
 import '../../services/expert_hub/expert_hub_catalog.dart';
+import '../../services/expert_hub/local_expert_store.dart';
 import '../../services/expert_hub/local_expert_writer.dart';
+import '../../services/storage/app_storage.dart';
 import 'expert_editor_dep_picker_dialog.dart';
 import 'expert_editor_deps.dart';
 
@@ -48,7 +50,15 @@ Future<DiscoverableMember?> showExpertEditorDialog(
     mobileBreakpoint: WorkspacePanePolicy.narrowBreakpointWidth,
     builder: (ctx) {
       Widget dialog = ExpertEditorDialog(
-        writer: writer ?? LocalExpertWriter(catalog: catalog),
+        writer:
+            writer ??
+            LocalExpertWriter(
+              catalog: catalog,
+              store: LocalExpertStore(
+                fs: AppStorage.tolerantHome.fs,
+                dirOverride: AppStorage.tolerantHome.paths.memberHubLocalTemplatesDir,
+              ),
+            ),
         initial: initial,
         skills: skills,
         plugins: plugins,

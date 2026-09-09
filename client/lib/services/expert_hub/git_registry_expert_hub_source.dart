@@ -7,7 +7,7 @@ import '../../models/discoverable_member.dart';
 import '../../utils/logging/logger.dart';
 import '../catalog/catalog_error_sanitizer.dart';
 import '../io/filesystem.dart';
-import '../storage/app_storage.dart';
+import '../storage/home_storage.dart';
 import 'expert_hub_source.dart';
 
 /// Reads public members from a git registry (`index.json` +
@@ -17,14 +17,17 @@ class GitRegistryExpertHubSource
     implements ExpertHubSource, ExpertHubSourceContributions {
   GitRegistryExpertHubSource({
     this.registry = kDefaultExpertHubRegistry,
+    required HomeStorage storage,
     RawContentFetcher? fetch,
     Filesystem? fs,
     String? cacheDirOverride,
-  }) : _fetch = fetch ?? _httpFetch,
+  }) : _storage = storage,
+       _fetch = fetch ?? _httpFetch,
        _fsOverride = fs,
        _cacheDirOverride = cacheDirOverride;
 
   final ExpertHubRegistry registry;
+  final HomeStorage _storage;
   final RawContentFetcher _fetch;
   final Filesystem? _fsOverride;
   final String? _cacheDirOverride;
@@ -32,10 +35,10 @@ class GitRegistryExpertHubSource
   List<DiscoverableMember>? _memory;
   CatalogSourceFailure? _lastFailure;
 
-  Filesystem get _fs => _fsOverride ?? AppStorage.fs;
+  Filesystem get _fs => _fsOverride ?? _storage.fs;
 
   String get _cacheFile {
-    final dir = _cacheDirOverride ?? AppStorage.paths.memberHubCacheDir;
+    final dir = _cacheDirOverride ?? _storage.paths.memberHubCacheDir;
     final ctx = _fs.pathContext;
     return ctx.join(dir, '${registry.owner}-${registry.name}', 'members.json');
   }

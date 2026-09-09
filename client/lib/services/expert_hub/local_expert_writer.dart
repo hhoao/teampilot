@@ -4,9 +4,11 @@ import 'local_expert_store.dart';
 
 /// Sole persistence API for user-saved local experts (UI and AI New Team).
 class LocalExpertWriter {
-  LocalExpertWriter({LocalExpertStore? store, ExpertHubCatalog? catalog})
-    : _store = store ?? LocalExpertStore(),
-      _catalog = catalog;
+  LocalExpertWriter({
+    required LocalExpertStore store,
+    ExpertHubCatalog? catalog,
+  }) : _store = store,
+       _catalog = catalog;
 
   final LocalExpertStore _store;
 

@@ -11,6 +11,7 @@ void main() {
       final refs = parseComposeAtFileRefs(
         'see @src/main.dart and @/tmp/Attachments/a.png please',
         workspaceRoot: '/repo',
+                                           usesPosixPaths: false,
       );
       expect(refs.map((r) => r.absolutePath).toList(), [
         '/repo/src/main.dart',
@@ -26,6 +27,7 @@ void main() {
       final refs = parseComposeAtFileRefs(
         'user@host /commit @docs/readme.md',
         workspaceRoot: '/repo',
+                                           usesPosixPaths: false,
       );
       expect(refs.single.absolutePath, '/repo/docs/readme.md');
     });
@@ -34,13 +36,14 @@ void main() {
       final refs = parseComposeAtFileRefs(
         '@src/a.dart hello @src/a.dart @src/b.dart',
         workspaceRoot: '/repo',
+                                           usesPosixPaths: false,
       );
       expect(refs.map((r) => r.displayName).toList(), ['a.dart', 'b.dart']);
     });
 
     test('empty or skills-only yields empty', () {
       expect(
-        parseComposeAtFileRefs('/commit /review', workspaceRoot: '/repo'),
+        parseComposeAtFileRefs('/commit /review', workspaceRoot: '/repo', usesPosixPaths: false, ),
         isEmpty,
       );
     });
@@ -50,16 +53,20 @@ void main() {
     test('Attachments path uses LocalFilesystem', () {
       final fs = filesystemForComposeAtFileOpen(
         '/home/user/Documents/TeamPilot/Attachments/paste.png',
+        workspaceFilesystem: LocalFilesystem(),
       );
       expect(fs, isA<LocalFilesystem>());
     });
 
-    test('workspace path uses AppStorage.fs', () {
+    test('workspace path uses the provided workspace filesystem', () {
       setUpTestAppStorage();
       addTearDown(tearDownTestAppStorage);
 
-      final fs = filesystemForComposeAtFileOpen('/repo/src/a.dart');
-      expect(fs, same(AppStorage.fs));
+      final fs = filesystemForComposeAtFileOpen(
+        '/repo/src/a.dart',
+        workspaceFilesystem: testHomeStorage.fs,
+      );
+      expect(fs, same(testHomeStorage.fs));
     });
   });
 }
