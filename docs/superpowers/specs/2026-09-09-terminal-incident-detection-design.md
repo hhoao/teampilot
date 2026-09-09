@@ -45,9 +45,38 @@ AI CLI 工具在运行时会向终端打印"意外"信息——更新通知、�
   `authRequired`, `rateLimited`, `requestFailed`, `timeout`, `networkError`,
   `other`.
 - `TerminalIncidentPattern` — `{ id, kind, patterns: List<RegExp>, severity
-  (info/warning/error) }`；声明式、const、可独立测试。
-- `TerminalIncident`（运行时事件）— `{ patternId, kind, cli, sessionId,
-  memberId, matchedLine, timestamp, status: open/acknowledged }`。
+  (info/warning/error), presentation (bannerOnly/actionCard),
+  actions: List<TerminalIncidentAction>?, replyOptions:
+  List<TerminalIncidentReplyOption>? }`；声明式、可独立测试。
+  - `actions` / `replyOptions` 省略时回落到 kind 级默认动作集。
+- `TerminalIncidentAction`（封闭集合，禁止开放式扩展）— `openTerminal` /
+  `acknowledge` / `loginAgain`（跳现有 provider 凭证登录 UI）/
+  `switchProvider`（打开模型/provider 选择） / `copyLine`（复制触发行）。
+- `TerminalIncidentReplyOption` — `{ id, labelKey, inject: String }`：
+  卡片渲染为按钮，点击后把 `inject` 文本注入该成员 PTY（走
+  `MemberPtyInjectService` 的 paste+CR 管线，与 AskUserQuestion 聊天内回答
+  同一机制），注入成功即 acknowledge + 清 waiting。注入的是发给 CLI 自身
+  提示的按键数据而非 shell 命令；每个 pattern 声明的选项数 ≤ 4，只有
+  显式声明 replyOptions 的 pattern 才出现注入按钮。
+- `TerminalIncident`（运行时事件）— `{ patternId, identity, kind, severity,
+  presentation, actions, replyOptions, cli, sessionId, memberId,
+  matchedLine, timestamp }`。
+
+### 锚定身份（去重的精确化）
+
+pattern 的正则以**捕获组约定**表达"前后锚点 + 中间身份"：`RegExp` 的
+第一个捕获组（若有）即事件身份；无捕获组则身份为 null（等同 pattern 级
+折叠）。
+
+- 匹配用 `firstMatch` + `group(1)`；
+- 去重/折叠键 = `(patternId, identity)`；
+- 锚点选法约定：**让"事件身份"落在捕获组里，把变化的噪音（重试计数、
+  时间戳、attempt 序号）留在组外**。示例：`API Error: (\d+)` →
+  identity="500"（稳定，跨冷却折叠）；`(rate limit reached)` → 固定身份
+  （每次折叠）；`not logged in to (\S+)` → 账号名（可区分不同账号）。
+
+两层去重：模块冷却挡瞬时刷屏（同键 30s 只报一次）；cubit 折叠挡长期
+重复（见下）。
 
 ### 能力接口
 
@@ -90,8 +119,8 @@ session module 绑定（与 `ActivityObservationModule`/`LaunchStartModule` 同�
 2. utf8 解码（`allowMalformed: true`）→ 剥离 ANSI 转义序列 → 跨 chunk 行拼装
    （保留未结尾的半行，与 `UserLineScanner` 同类做法）。
 3. 逐行匹配合并后的模式表（内置在前、用户规则追加在后）。
-4. 去重：同 `(memberId, patternId)` 在一个用户 turn 内只报一次，另有冷却窗口
-   （默认 30s）防 CLI 反复重试刷屏。
+4. 去重：同 `(memberId, patternId, identity)` 在冷却窗口（默认 30s）内只报
+   一次，防止 CLI 反复重试刷屏。跨冷却的重复由 cubit 折叠兜底（见事件流）。
 5. 命中时：
    - `seat.attention.applyEvent(... waiting)`（attention 为 null 时跳过此步，
      仅进事件流）；
@@ -107,14 +136,29 @@ session module 绑定（与 `ActivityObservationModule`/`LaunchStartModule` 同�
 与 attention 一致（`agentSeatKey(sessionId, memberId)`）：
 
 - `Stream/状态`: 按 seat 分组的 `TerminalIncident` 列表（open + acknowledged）。
-- 操作：`acknowledge(incidentId)`（横幅消失，事件保留）；`clear()`。
+- **事件折叠**：新命中若同 `(sessionId, memberId, patternId, identity)` 已有
+  open 事件 → **刷新**该事件（更新 timestamp 与 matchedLine），不追加。这层
+  与模块冷却互补：冷却挡瞬时，折叠挡长期重复（CLI 每 40s 报一次、终端
+  reclaim 重连后模式重放、全屏 TUI 重绘重发同文案）。重连重放场景折叠键
+  不变，天然免疫。
+- **有界性**：每 seat 的 open + acknowledged 事件总数封顶（默认 50），超出
+  丢弃最旧。
+- 操作：`acknowledge(incident)`（横幅消失，事件保留）；`clear()`；`reply`
+  注入成功路径自动 acknowledge。
 
-聊天页顶部横幅（`pages/` 或 `widgets/` 下按 CODE_QUALITY 归层）：
+聊天页横幅（`widgets/chat/terminal_incident_banner.dart`）：
 
 - error 红 / warning 橙 / info 蓝色条。
+- `presentation: bannerOnly` → 只显示横幅（一行 kind 文案 + 触发行折叠）；
+  `actionCard` → 显示操作卡片。
+- 操作卡片按钮来自事件的 actions（kind 级默认、pattern 级可覆盖）：
+  「查看终端」「知道了」为兜底；`loginAgain` 跳 provider 凭证登录 UI；
+  `switchProvider` 打开模型/provider 选择；`copyLine` 复制触发行。
+- **replyOptions 按键模拟**：pattern 声明的注入选项渲染为按钮，点击后
+  经 `MemberPtyInjectService` 把 `inject` 文本注入该成员 PTY（paste+CR，
+  与 AskUserQuestion 聊天内回答同一管线），成功后自动 acknowledge。
 - l10n 文案（"Claude Code 额度可能已用尽，需要你确认"等，按 kind 映射）+
-  触发行原文（可折叠）。
-- 操作按钮：「查看终端」切换到该成员终端 tab；「知道了」→ acknowledge。
+  触发行原文（可折叠；即使终端滚出 scrollback，卡片仍持有完整触发行）。
 - sidebar 成员卡片叠加小角标显示该 seat 的未确认事件数。
 
 ### 用户自定义规则
@@ -135,10 +179,15 @@ session module 绑定（与 `ActivityObservationModule`/`LaunchStartModule` 同�
 
 ## Testing
 
-- 模式表单元测试：每条内置正则对样例文案（含肯定/否定样例）。
-- 引擎测试：跨 chunk 行拼装、ANSI 剥离、turn 内去重、冷却窗口、多模式命中。
-- cubit 测试：事件推入、acknowledge、按 seat 分组。
-- 横幅 widget 测试：severity 颜色、kind l10n 文案、操作回调。
+- 模式表单元测试：每条内置正则对样例文案（含肯定/否定样例）；锚定身份
+  提取（捕获组 → identity、无组 → null）；actions/replyOptions 声明。
+- 引擎测试：跨 chunk 行拼装、ANSI 剥离、`(patternId, identity)` 冷却去重、
+  多模式命中、注入回调异常兜底。
+- cubit 测试：事件推入、折叠刷新（同键不追加、timestamp 更新）、seat 封顶、
+  acknowledge、按 seat 分组。
+- 横幅 widget 测试：presentation 两态、severity 颜色、kind l10n 文案、
+  动作按钮回调、replyOptions 注入（fake PTY port 断言注入文本 + 成功后
+  acknowledge）。
 - 全部走 `cd client && dart run tool/run_tests.dart`。
 
 ## Open Items（实现阶段处理）
