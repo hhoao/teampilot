@@ -5,14 +5,26 @@ import '../../cubits/content_search/content_search_cubit.dart';
 import '../../l10n/l10n_extensions.dart';
 import '../find/find_bar_widgets.dart';
 
-/// Renders aggregated search results: collapsible file groups with matching
-/// lines, a hover replace action per file, and the truncation footer.
+/// Composite identity of a result group: `rootKey + ':' + path`. Overlapping
+/// roots (e.g. /ws and /ws/sub) can match the same absolute path in two
+/// slices, so [ContentSearchFileGroup.path] alone is not unique — widget keys
+/// and the collapse-toggle set must key on both.
+String searchGroupCollapseKey(String rootKey, String path) =>
+    '$rootKey:$path';
+
+/// Renders aggregated search results: per-root group headers (only when the
+/// results span multiple roots), collapsible file groups with matching lines,
+/// a hover replace action per file, per-slice error rows, and the truncation
+/// footer. Per-slice error rows render even when [files] is empty (a failed
+/// root is surfaced next to a zero-match result set); the empty hint shows
+/// only when there are neither files nor slice errors.
 class SearchPanelResults extends StatelessWidget {
   const SearchPanelResults({
     required this.files,
     required this.query,
     required this.truncated,
     required this.replacement,
+    required this.sliceErrors,
     required this.collapsedPaths,
     required this.onToggleGroup,
     required this.onOpenResult,
@@ -24,16 +36,25 @@ class SearchPanelResults extends StatelessWidget {
   final String query;
   final bool truncated;
   final String replacement;
+
+  /// Per-slice failures: root path → (error, directory label). A root with an
+  /// error but zero file groups still renders its label.
+  final Map<String, (Object, String)> sliceErrors;
+  /// Collapsed group keys ([searchGroupCollapseKey] values).
   final Set<String> collapsedPaths;
-  final void Function(String path) onToggleGroup;
+
+  /// Toggles one group's collapsed state; receives the group's
+  /// [searchGroupCollapseKey] value.
+  final void Function(String collapseKey) onToggleGroup;
   final void Function(String path, int lineNumber) onOpenResult;
   final Future<void> Function(String path, String replacement) onReplaceSingle;
 
   @override
   Widget build(BuildContext context) {
     final l10n = context.l10n;
+    final cs = Theme.of(context).colorScheme;
     final styles = TpTextStyles.of(context);
-    if (files.isEmpty) {
+    if (files.isEmpty && sliceErrors.isEmpty) {
       return Center(
         child: Text(
           query.trim().isEmpty
@@ -43,11 +64,28 @@ class SearchPanelResults extends StatelessWidget {
         ),
       );
     }
-    final itemCount = files.length + (truncated ? 1 : 0);
+    // Flat item list: a root header whenever the root changes (only when the
+    // results span more than one root — single-root stays header-less), each
+    // file group, a per-slice error row, then the truncation footer.
+    final roots = files.map((f) => f.rootKey).toSet();
+    final items = <_ResultItem>[];
+    String? lastRoot;
+    for (final group in files) {
+      if (group.rootKey != lastRoot) {
+        lastRoot = group.rootKey;
+        if (roots.length > 1) {
+          items.add(_ResultHeader(group.rootLabel));
+        }
+      }
+      items.add(_ResultGroup(group));
+    }
+    for (final entry in sliceErrors.entries) {
+      items.add(_ResultError(entry.value.$2));
+    }
     return ListView.builder(
-      itemCount: itemCount,
+      itemCount: items.length + (truncated ? 1 : 0),
       itemBuilder: (context, index) {
-        if (index == files.length) {
+        if (index == items.length) {
           return Padding(
             padding: const EdgeInsets.all(8),
             child: Text(
@@ -56,16 +94,38 @@ class SearchPanelResults extends StatelessWidget {
             ),
           );
         }
-        final group = files[index];
-        return _FileGroupTile(
-          key: ValueKey('search-group-${group.path}'),
-          group: group,
-          collapsed: collapsedPaths.contains(group.path),
-          replacement: replacement,
-          onToggleGroup: () => onToggleGroup(group.path),
-          onOpenResult: onOpenResult,
-          onReplaceSingle: onReplaceSingle,
-        );
+        final item = items[index];
+        return switch (item) {
+          _ResultHeader(:final label) => Padding(
+            padding: const EdgeInsets.fromLTRB(8, 8, 8, 2),
+            child: Text(
+              label,
+              style: styles.mutedSm.copyWith(fontWeight: FontWeight.w600),
+            ),
+          ),
+          _ResultError(:final label) => Padding(
+            padding: const EdgeInsets.all(8),
+            child: Text(
+              l10n.workspaceSearchSliceError(label),
+              style: styles.smColored(cs.error),
+            ),
+          ),
+          _ResultGroup(:final group) => _FileGroupTile(
+            key: ValueKey(
+              'search-group-${searchGroupCollapseKey(group.rootKey, group.path)}',
+            ),
+            group: group,
+            collapsed: collapsedPaths.contains(
+              searchGroupCollapseKey(group.rootKey, group.path),
+            ),
+            replacement: replacement,
+            onToggleGroup: () => onToggleGroup(
+              searchGroupCollapseKey(group.rootKey, group.path),
+            ),
+            onOpenResult: onOpenResult,
+            onReplaceSingle: onReplaceSingle,
+          ),
+        };
       },
     );
   }
@@ -294,4 +354,23 @@ class _LineTile extends StatelessWidget {
       ),
     );
   }
+}
+
+/// Flat list item model so the lazy list can mix headers, groups, and error
+/// rows in one indexed builder.
+sealed class _ResultItem {}
+
+class _ResultHeader extends _ResultItem {
+  _ResultHeader(this.label);
+  final String label;
+}
+
+class _ResultError extends _ResultItem {
+  _ResultError(this.label);
+  final String label;
+}
+
+class _ResultGroup extends _ResultItem {
+  _ResultGroup(this.group);
+  final ContentSearchFileGroup group;
 }

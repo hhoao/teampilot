@@ -681,6 +681,14 @@
   "workspaceSearchUseGitignore": "Use .gitignore settings",
   "workspaceSearchToggleDetails": "Toggle search details",
   "workspaceSearchError": "Search failed — check the pattern",
+  "workspaceSearchSliceError": "Search failed in \"{directory}\"",
+  "@workspaceSearchSliceError": {
+    "placeholders": {
+      "directory": {
+        "type": "String"
+      }
+    }
+  },
   "appDropdownSearchHint": "Search…",
   "appDropdownSearchNoResults": "No results found.",
   "homeWorkspaceOpenWorkspaceInNewTab": "Open in new tab",
