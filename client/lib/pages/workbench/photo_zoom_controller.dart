@@ -17,8 +17,8 @@ mixin PhotoZoomControllerMixin<T extends StatefulWidget> on State<T> {
   static const minScale = 0.25;
   static const maxScale = 8.0;
 
-  late final PhotoViewController controller = PhotoViewController();
-  late final PhotoViewScaleStateController scaleStateController =
+  final PhotoViewController controller = PhotoViewController();
+  final PhotoViewScaleStateController scaleStateController =
       PhotoViewScaleStateController();
 
   StreamSubscription<PhotoViewControllerValue>? _scaleSub;
