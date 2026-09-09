@@ -178,7 +178,10 @@ class _WorkspaceSearchContentSectionState
         ..clear()
         ..addAll(sliceErrors);
       _truncated = counts.values.any((c) => c >= _maxDialogContentResults);
-      _error = !anyMatch && sliceErrors.length == widget.slices.length;
+      _error =
+          !anyMatch &&
+          widget.slices.isNotEmpty &&
+          sliceErrors.length == widget.slices.length;
       _searching = false;
     });
   }

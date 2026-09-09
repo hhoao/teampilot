@@ -33,11 +33,12 @@ void main() {
 
   Widget wrapSection({
     required void Function(String path) onOpenFile,
-    required String root,
+    String? root,
     List<ContentSearchSlice> extraSlices = const [],
   }) {
     final slices = [
-      ContentSearchSlice(fs: LocalFilesystem(), root: root, label: 'fixture'),
+      if (root != null)
+        ContentSearchSlice(fs: LocalFilesystem(), root: root, label: 'fixture'),
       ...extraSlices,
     ];
     return MaterialApp(
@@ -158,9 +159,7 @@ void main() {
     tester,
   ) async {
     final opened = <String>[];
-    await tester.pumpWidget(
-      wrapSection(onOpenFile: opened.add, root: fixture.path),
-    );
+    await tester.pumpWidget(wrapSection(onOpenFile: opened.add, root: fixture.path));
     await runSearch(tester, 'hello');
     // Tap the row that renders the a.dart name — the row's own onOpenFile
     // callback carries that row's match path, so the hit test is unambiguous.
@@ -185,6 +184,18 @@ void main() {
     await runSearch(tester, '');
     expect(find.text(l10n.workspaceSearchEmptyHint), findsOneWidget);
     expect(find.textContaining('a.dart:1'), findsNothing);
+  });
+
+  testWidgets('empty slices list shows no results, not the error row', (
+    tester,
+  ) async {
+    // Zero slices is a vacuous "every slice failed" — it must render the
+    // no-results hint, matching the cubit's guarded predicate.
+    await tester.pumpWidget(wrapSection(onOpenFile: (_) {}, root: null));
+    final l10n = l10nOf(tester);
+    await runSearch(tester, 'hello');
+    expect(find.text(l10n.workspaceSearchNoResults), findsOneWidget);
+    expect(find.text(l10n.workspaceSearchError), findsNothing);
   });
 
   testWidgets('query with surrounding whitespace is trimmed before searching', (

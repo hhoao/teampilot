@@ -31,6 +31,7 @@ import '../../services/cli/member_config/member_config_inspector.dart';
 import '../../services/search/content_replacer.dart';
 import '../../services/search/content_search_runner.dart';
 import '../../services/search/content_search_slices.dart';
+import '../../services/search/multi_root_content_search.dart';
 import '../../services/storage/home_target_controller.dart';
 import '../../services/storage/runtime_context.dart';
 import '../../services/workspace/workspace_tools_scope.dart';
@@ -316,6 +317,7 @@ class _RightToolsViewsCacheKey {
     required this.mailboxGate,
     required this.scopeRoots,
     required this.scopeTargetId,
+    required this.searchSliceRoots,
     required this.cwd,
     required this.workspaceId,
     required this.toolsScopeId,
@@ -328,6 +330,13 @@ class _RightToolsViewsCacheKey {
   final RightToolsMailboxGate mailboxGate;
   final List<String> scopeRoots;
   final String? scopeTargetId;
+
+  /// Roots of the derived content-search slices. The active target's roots are
+  /// covered by [scopeRoots], but a non-active target's roots also feed the
+  /// slice builder — without this field those changes would not rebuild the
+  /// views and the search cubit would keep stale slices.
+  final List<String> searchSliceRoots;
+
   final String cwd;
   final String workspaceId;
   final String toolsScopeId;
@@ -343,6 +352,7 @@ class _RightToolsViewsCacheKey {
             mailboxGate == other.mailboxGate &&
             listEquals(scopeRoots, other.scopeRoots) &&
             scopeTargetId == other.scopeTargetId &&
+            listEquals(searchSliceRoots, other.searchSliceRoots) &&
             cwd == other.cwd &&
             workspaceId == other.workspaceId &&
             toolsScopeId == other.toolsScopeId;
@@ -357,6 +367,7 @@ class _RightToolsViewsCacheKey {
     mailboxGate,
     Object.hashAll(scopeRoots),
     scopeTargetId,
+    Object.hashAll(searchSliceRoots),
     cwd,
     workspaceId,
     toolsScopeId,
@@ -462,6 +473,17 @@ class _RightToolsToolViewsState extends State<RightToolsToolViews> {
       unreadCount: unreadCount,
     );
 
+    // Derived before the cache key so the key can cover the search slices'
+    // roots: a non-active target's roots change must rebuild the search view
+    // (and its cubit) together with the panel.
+    final searchSlices = widget.preferences.searchVisible
+        ? contentSearchSlicesForScope(
+            scope: widget.scope,
+            cwd: widget.cwd,
+            fallbackFs: widget.workContext.filesystem,
+          )
+        : const <ContentSearchSlice>[];
+
     final cacheKey = _RightToolsViewsCacheKey(
       preferences: widget.preferences,
       isPersonalContext: widget.isPersonalContext,
@@ -470,6 +492,7 @@ class _RightToolsToolViewsState extends State<RightToolsToolViews> {
       mailboxGate: mailboxGate,
       scopeRoots: widget.scope.roots,
       scopeTargetId: widget.scope.tools?.targetId,
+      searchSliceRoots: [for (final s in searchSlices) s.root],
       cwd: widget.cwd,
       workspaceId: widget.workspaceId,
       toolsScopeId: widget.toolsScopeId,
@@ -482,6 +505,7 @@ class _RightToolsToolViewsState extends State<RightToolsToolViews> {
         team: team,
         chatSlice: chatSlice,
         mailboxGate: mailboxGate,
+        searchSlices: searchSlices,
       );
     }
 
@@ -503,6 +527,7 @@ class _RightToolsToolViewsState extends State<RightToolsToolViews> {
     required TeamProfile? team,
     required RightToolsChatSlice chatSlice,
     required RightToolsMailboxGate mailboxGate,
+    required List<ContentSearchSlice> searchSlices,
   }) {
     final l10n = context.l10n;
     final views = <ToolView>[];
@@ -620,27 +645,27 @@ class _RightToolsToolViewsState extends State<RightToolsToolViews> {
 
     // Search stays LAST: Task 4 shortcuts resolve the tool index by position.
     if (widget.preferences.searchVisible) {
-      final slices = contentSearchSlicesForScope(
-        scope: widget.scope,
-        cwd: widget.cwd,
-        fallbackFs: widget.workContext.filesystem,
-      );
       views.add(
         ToolView(
           id: RightToolIds.search,
           icon: Icons.search_outlined,
           label: l10n.workspaceSearchPanel,
+          // Keyed by the slice roots: BlocProvider.create runs once per
+          // element, so without this key the cubit would keep its creation-
+          // time slices while WorkspaceSearchPanel below receives fresh ones
+          // after a scope change. Keying the provider rebuilds both together.
           child: BlocProvider(
+            key: ValueKey(searchSlices.map((s) => s.root).join('\u0000')),
             lazy: false,
             create: (context) => ContentSearchCubit(
-              slices: slices,
+              slices: searchSlices,
               runnerFactory: (slice) =>
                   ContentSearchRunner(fs: slice.fs, root: slice.root),
               replacerFactory: (slice) => ContentReplacer(fs: slice.fs),
             ),
             child: WorkspaceSearchPanel(
               workspaceId: widget.workspaceId,
-              slices: slices,
+              slices: searchSlices,
               focusRequest: widget.searchFocusRequest,
             ),
           ),
