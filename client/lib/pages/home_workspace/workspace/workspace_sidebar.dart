@@ -43,6 +43,7 @@ import '../../../utils/session/session_reorder_merge.dart';
 import '../../../utils/session/workspace_sessions.dart';
 import '../../../utils/session/workspace_tab_session_scope.dart';
 import 'workspace_sidebar_probe.dart';
+import 'workspace_sidebar_row_metrics.dart';
 import '../../../widgets/sidebar_session_tile.dart';
 import 'workspace_automations_section.dart';
 import 'workspace_search_dialog.dart';
@@ -921,40 +922,39 @@ class _RunningSplitGroupsSection extends StatelessWidget {
               for (final sessionId in group.sessionIds)
                 if (knownIds.contains(sessionId))
                   if (_sessionById(chatState, sessionId) case final session?)
-                  IntrinsicHeight(
-                    child: Row(
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      children: [
-                        _SplitGroupIndicator(
-                          groupId: group.groupId,
-                          focused: group.focused,
-                          isGroupActive: group.activeSessionId == sessionId,
-                          onTap: () =>
-                              workbench.focusGroup(tabScopeId, group.groupId),
-                        ),
-                        Expanded(
-                          child: SidebarSessionTile(
-                            key: ValueKey('workspace-running-session-$sessionId'),
-                            session: session,
-                            preview: group.previewIds.contains(sessionId),
-                            secondaryHighlight:
-                                !group.focused &&
-                                group.activeSessionId == sessionId,
-                            highlightSessionId: scopedActiveSessionId(
-                              workbench,
-                              tabScopeId,
-                            ),
-                            tapThrottleKeyPrefix: 'workspace_running_session',
-                            onTap: () => openWorkspaceSessionTab(
-                              context,
-                              workspace,
-                              session,
-                              tabScopeId: tabScopeId,
-                            ),
+                  // Plain Row (no IntrinsicHeight): the indicator pins its
+                  // own height to the row metrics instead of stretching —
+                  // intrinsic measurement on every tile would double layout
+                  // work for long session lists.
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      _SplitGroupIndicator(
+                        groupId: group.groupId,
+                        focused: group.focused,
+                        isGroupActive: group.activeSessionId == sessionId,
+                        onTap: () =>
+                            workbench.focusGroup(tabScopeId, group.groupId),
+                      ),
+                      Expanded(
+                        child: SidebarSessionTile(
+                          key: ValueKey('workspace-running-session-$sessionId'),
+                          session: session,
+                          preview: group.previewIds.contains(sessionId),
+                          highlightSessionId: scopedActiveSessionId(
+                            workbench,
+                            tabScopeId,
+                          ),
+                          tapThrottleKeyPrefix: 'workspace_running_session',
+                          onTap: () => openWorkspaceSessionTab(
+                            context,
+                            workspace,
+                            session,
+                            tabScopeId: tabScopeId,
                           ),
                         ),
-                      ],
-                    ),
+                      ),
+                    ],
                   ),
             ],
           ),
@@ -1000,8 +1000,11 @@ class _SplitGroupIndicator extends StatelessWidget {
       key: ValueKey('workspace-running-group-indicator-$groupId'),
       behavior: HitTestBehavior.opaque,
       onTap: onTap,
+      // Fixed height (row metrics + the tile's 2px bottom gap): matches the
+      // tile without needing parent stretch/IntrinsicHeight.
       child: SizedBox(
         width: width,
+        height: kWorkspaceSidebarRowMinHeight + 2,
         child: ColoredBox(color: color),
       ),
     );

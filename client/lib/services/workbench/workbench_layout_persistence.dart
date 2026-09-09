@@ -153,11 +153,16 @@ class WorkbenchLayoutPersistence {
               )
               .firstOrNull;
           if (session == null) continue;
+          // Title mirrors resolveSessionListTitle's non-localized core
+          // (trimmed display; sessionId fallback when empty): the UI
+          // projections re-derive titles from ChatState anyway — this feeds
+          // the runtime-tab metadata only.
+          final title = session.display.trim();
           _chat.registerSessionRuntime(
             ChatTab(
               info: ChatTabInfo(
                 id: sessionId,
-                title: session.display.isEmpty ? sessionId : session.display,
+                title: title.isEmpty ? sessionId : title,
                 subtitle: '',
               ),
               cliTeamName: session.cliTeamName,

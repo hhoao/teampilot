@@ -38,7 +38,6 @@ class SidebarSessionTile extends StatefulWidget {
     required this.onTap,
     this.archiveMode = false,
     this.highlightSessionId,
-    this.secondaryHighlight = false,
     this.tapThrottleKeyPrefix = 'sidebar_session',
     this.contentLeftInset = 0,
     this.index = -1,
@@ -52,13 +51,6 @@ class SidebarSessionTile extends StatefulWidget {
   /// Renders the title in italic (replaceable preview tab in the open strip —
   /// still pinned by a real open, so a distinct but quiet treatment).
   final bool preview;
-
-  /// The session is the ACTIVE tab of a split group that does not hold the
-  /// workbench focus — its pane is showing this session. The strong fill
-  /// belongs to the focused group only; this cue is carried by the sidebar's
-  /// per-group indicator bar (medium width), so the tile itself renders no
-  /// extra fill. Kept as a flag for tests and future styling.
-  final bool secondaryHighlight;
 
   /// Activates / opens the session. May be async — when the row needs-you,
   /// the tile awaits this before [ChatCubit.selectMember] / Terminal jump so

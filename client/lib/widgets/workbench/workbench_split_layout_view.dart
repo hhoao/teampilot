@@ -132,6 +132,14 @@ class _WorkbenchSplitLayoutViewState extends State<WorkbenchSplitLayoutView> {
   }
 
   void _beginDrag(List<bool> path, double startFraction) {
+    // A second divider's drag starting mid-drag cancels the first: its
+    // accumulated session (pins, delta) belongs to a geometry the new drag
+    // will invalidate, and leaving it set would let a stale _endDrag commit
+    // wrong fractions.
+    if (_drag.value != null) {
+      _drag.value = null;
+      (widget.onPtyHoldEnd ?? _holdEndDefault)();
+    }
     _drag.value = _SplitDragSession(
       path: path,
       startFraction: startFraction,
@@ -202,62 +210,64 @@ class _WorkbenchSplitLayoutViewState extends State<WorkbenchSplitLayoutView> {
 
   void _endDrag(String pathKey) {
     final session = _drag.value;
+    // Ownership guard: a second divider's drag may have replaced the session
+    // (concurrent/rapid drags); only the owner ends it.
     if (session == null || session.pathKey != pathKey) return;
     _drag.value = null;
     final commits = <(List<bool>, double)>[
       (List<bool>.of(session.path), session.fraction),
     ];
     // Convert each pin (absolute second-side pixels) into the fraction that
-    // reproduces it under the drag-end allocation: a pinned branch's parent
-    // chain has known post-drag extents derivable from the session fraction
-    // and the branch extents captured before the drag.
+    // reproduces it under the drag-end allocation: cascade the content
+    // pixels from the root down to the pinned branch using the post-drag
+    // fraction (override) and the layout's committed fractions.
     for (final entry in session.secondPixelsByPath.entries) {
       final pinnedPath = _pathOf(entry.key);
-      // The pinned branch's own content total after the drag:
-      // parent chain allocations scaled by the dragged branch's fraction.
-      final branchPath = [...session.path, true];
-      // Compute this branch's post-drag content extent by walking from the
-      // dragged branch's second side using current layout fractions.
-      var extent = _branchExtents[pathKey];
-      if (extent == null) continue;
-      var content = extent - _kDividerVisualThickness;
-      var secondTotal = content * (1 - session.fraction);
-      // Descend from the dragged branch's second child to the pinned branch.
-      var node = widget.layout.root;
-      for (final isSecond in session.path) {
-        if (node is! SplitBranch) break;
-        node = isSecond ? node.second : node.first;
-      }
-      if (node is! SplitBranch) continue;
-      var current = node.second;
-      var remaining = pinnedPath.sublist(branchPath.length);
-      var ok = true;
-      for (final isSecond in remaining) {
-        if (current is! SplitBranch) {
-          ok = false;
-          break;
-        }
-        final branchContent = secondTotal - _kDividerVisualThickness;
-        if (branchContent <= 0) {
-          ok = false;
-          break;
-        }
-        final nextShare = isSecond
-            ? 1 - current.firstFraction
-            : current.firstFraction;
-        secondTotal = (branchContent * nextShare).clamp(
-          0.0,
-          double.infinity,
-        );
-        current = isSecond ? current.second : current.first;
-      }
-      if (!ok || current is! SplitBranch) continue;
-      final pinnedContent = secondTotal - _kDividerVisualThickness;
-      if (pinnedContent <= 0) continue;
+      final pinnedContent = _contentPixelsForPath(
+        pinnedPath,
+        firstFractionOverride: (session.path, session.fraction),
+      );
+      if (pinnedContent == null || pinnedContent <= 0) continue;
       commits.add((pinnedPath, 1 - entry.value / pinnedContent));
     }
     widget.onResizeCommit?.call(commits);
     (widget.onPtyHoldEnd ?? _holdEndDefault)();
+  }
+
+  /// Content pixels (extent minus the divider) of the branch at [path],
+  /// cascading parent allocations. Each branch's content prefers its
+  /// measured [LayoutBuilder] extent when available (exact); otherwise it is
+  /// derived from the parent's content times the parent's fraction share.
+  /// The dragged branch's committed fraction is overridden with its
+  /// post-drag value so the cascade reflects the drag-end geometry.
+  /// Null when the path walks off the tree.
+  double? _contentPixelsForPath(
+    List<bool> path, {
+    (List<bool>, double)? firstFractionOverride,
+  }) {
+    final override = firstFractionOverride;
+    final overrideKey = override == null ? null : _pathKeyOf(override.$1);
+    var node = widget.layout.root;
+    // Content of the branch addressed by path[0..i) (starts as the root's).
+    var content = _branchExtents[''] ?? double.nan;
+    if (!(content > _kDividerVisualThickness)) return null;
+    for (var i = 0; i < path.length; i++) {
+      final isSecond = path[i];
+      if (node is! SplitBranch) return null;
+      // The branch at path[0..i] divides ITS content (parent-allocated).
+      final branchKey = _pathKeyOf(path.sublist(0, i + 1));
+      final fraction =
+          overrideKey == branchKey ? override!.$2 : node.firstFraction;
+      final share = isSecond ? 1 - fraction : fraction;
+      final measured = _branchExtents[branchKey];
+      final allocated = measured != null && measured > _kDividerVisualThickness
+          ? measured - _kDividerVisualThickness
+          : (content - _kDividerVisualThickness) * share;
+      if (!(allocated > 0)) return null;
+      content = allocated;
+      node = isSecond ? node.second : node.first;
+    }
+    return node is SplitBranch ? content - _kDividerVisualThickness : null;
   }
 
   /// Parses a path key ("010") back into its path.
