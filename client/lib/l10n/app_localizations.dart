@@ -5606,6 +5606,36 @@ abstract class AppLocalizations {
   /// **'When a session finishes a turn and becomes idle, show an OS notification in addition to the in-app notification center.'**
   String get notifyOnSessionIdleDescription;
 
+  /// No description provided for @gitAutoFetchTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Auto-fetch remote updates'**
+  String get gitAutoFetchTitle;
+
+  /// No description provided for @gitAutoFetchDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Periodically run a non-interactive git fetch --all --prune for the repository shown in the source-control panel, keeping ahead/behind counts fresh.'**
+  String get gitAutoFetchDescription;
+
+  /// No description provided for @gitAutoFetchIntervalTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Auto-fetch interval (minutes)'**
+  String get gitAutoFetchIntervalTitle;
+
+  /// No description provided for @gitAutoFetchIntervalDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'How often the selected repository is fetched while the panel is open.'**
+  String get gitAutoFetchIntervalDescription;
+
+  /// No description provided for @gitAutoFetchIntervalMinutesOption.
+  ///
+  /// In en, this message translates to:
+  /// **'Every {minutes} min'**
+  String gitAutoFetchIntervalMinutesOption(int minutes);
+
   /// No description provided for @memberTargetAssignmentTitle.
   ///
   /// In en, this message translates to:

@@ -3132,6 +3132,25 @@ class AppLocalizationsEn extends AppLocalizations {
       'When a session finishes a turn and becomes idle, show an OS notification in addition to the in-app notification center.';
 
   @override
+  String get gitAutoFetchTitle => 'Auto-fetch remote updates';
+
+  @override
+  String get gitAutoFetchDescription =>
+      'Periodically run a non-interactive git fetch --all --prune for the repository shown in the source-control panel, keeping ahead/behind counts fresh.';
+
+  @override
+  String get gitAutoFetchIntervalTitle => 'Auto-fetch interval (minutes)';
+
+  @override
+  String get gitAutoFetchIntervalDescription =>
+      'How often the selected repository is fetched while the panel is open.';
+
+  @override
+  String gitAutoFetchIntervalMinutesOption(int minutes) {
+    return 'Every $minutes min';
+  }
+
+  @override
   String get memberTargetAssignmentTitle => 'Member machine';
 
   @override

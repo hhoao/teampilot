@@ -332,7 +332,43 @@ class _SessionControlsState extends State<_SessionControls> {
                     value: snapshot.notifyOnSessionIdle,
                     onChanged: (value) => cubit.setNotifyOnSessionIdle(value),
                   ),
-                  showDividerBelow: false,
+                  showDividerBelow: true,
+                ),
+                TpPreferenceRow(
+                  title: l10n.gitAutoFetchTitle,
+                  subtitle: l10n.gitAutoFetchDescription,
+                  trailing: Switch(
+                    value: snapshot.gitAutoFetchEnabled,
+                    onChanged: (value) =>
+                        cubit.setGitAutoFetchEnabled(value),
+                  ),
+                  showDividerBelow: true,
+                ),
+                TpPreferenceRow(
+                  title: l10n.gitAutoFetchIntervalTitle,
+                  subtitle: l10n.gitAutoFetchIntervalDescription,
+                  trailing: DropdownButton<int>(
+                    value: snapshot.gitAutoFetchIntervalMinutes,
+                    items: [
+                      for (final minutes in {
+                        1,
+                        5,
+                        15,
+                        snapshot.gitAutoFetchIntervalMinutes,
+                      })
+                        DropdownMenuItem(
+                          value: minutes,
+                          child: Text(
+                            l10n.gitAutoFetchIntervalMinutesOption(minutes),
+                          ),
+                        ),
+                    ],
+                    onChanged: (value) {
+                      if (value != null) {
+                        unawaited(cubit.setGitAutoFetchIntervalMinutes(value));
+                      }
+                    },
+                  ),
                 ),
               ],
             ),
@@ -357,6 +393,8 @@ class _SessionControlsSnapshot {
     required this.simpleModeDefaultFullAccess,
     required this.scopeSessionsToSelectedTeam,
     required this.notifyOnSessionIdle,
+    required this.gitAutoFetchEnabled,
+    required this.gitAutoFetchIntervalMinutes,
   });
 
   final String defaultSshWorkingDirectory;
@@ -371,6 +409,8 @@ class _SessionControlsSnapshot {
   final bool simpleModeDefaultFullAccess;
   final bool scopeSessionsToSelectedTeam;
   final bool notifyOnSessionIdle;
+  final bool gitAutoFetchEnabled;
+  final int gitAutoFetchIntervalMinutes;
 
   static _SessionControlsSnapshot from(SessionPreferences preferences) {
     return _SessionControlsSnapshot(
@@ -388,6 +428,8 @@ class _SessionControlsSnapshot {
       simpleModeDefaultFullAccess: preferences.simpleModeDefaultFullAccess,
       scopeSessionsToSelectedTeam: preferences.scopeSessionsToSelectedTeam,
       notifyOnSessionIdle: preferences.notifyOnSessionIdle,
+      gitAutoFetchEnabled: preferences.gitAutoFetchEnabled,
+      gitAutoFetchIntervalMinutes: preferences.gitAutoFetchIntervalMinutes,
     );
   }
 
@@ -407,7 +449,9 @@ class _SessionControlsSnapshot {
         other.chatSubmitSwitchesToTerminal == chatSubmitSwitchesToTerminal &&
         other.simpleModeDefaultFullAccess == simpleModeDefaultFullAccess &&
         other.scopeSessionsToSelectedTeam == scopeSessionsToSelectedTeam &&
-        other.notifyOnSessionIdle == notifyOnSessionIdle;
+        other.notifyOnSessionIdle == notifyOnSessionIdle &&
+        other.gitAutoFetchEnabled == gitAutoFetchEnabled &&
+        other.gitAutoFetchIntervalMinutes == gitAutoFetchIntervalMinutes;
   }
 
   @override
@@ -424,5 +468,7 @@ class _SessionControlsSnapshot {
     simpleModeDefaultFullAccess,
     scopeSessionsToSelectedTeam,
     notifyOnSessionIdle,
+    gitAutoFetchEnabled,
+    gitAutoFetchIntervalMinutes,
   );
 }

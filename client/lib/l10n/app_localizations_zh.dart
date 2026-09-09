@@ -2985,6 +2985,24 @@ class AppLocalizationsZh extends AppLocalizations {
       '会话结束一轮工作并进入空闲时，除应用内通知中心外，同时发送操作系统通知。';
 
   @override
+  String get gitAutoFetchTitle => '自动拉取远程更新';
+
+  @override
+  String get gitAutoFetchDescription =>
+      '定时对源代码管理面板当前显示的仓库执行非交互的 git fetch --all --prune，保持提交/拉取计数最新。';
+
+  @override
+  String get gitAutoFetchIntervalTitle => '自动拉取间隔（分钟）';
+
+  @override
+  String get gitAutoFetchIntervalDescription => '面板打开时对选中仓库执行 fetch 的频率。';
+
+  @override
+  String gitAutoFetchIntervalMinutesOption(int minutes) {
+    return '每 $minutes 分钟';
+  }
+
+  @override
   String get memberTargetAssignmentTitle => '成员所在机器';
 
   @override
