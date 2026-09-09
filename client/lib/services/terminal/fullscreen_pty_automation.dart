@@ -266,7 +266,17 @@ class FullscreenPtyAutomation {
         if (!_crRetrySafeToResend(port, anchor)) {
           // The grid no longer proves the message is un-submitted — re-CR
           // here risks a duplicate user row. Leave the verdict to the
-          // cr-ack poll.
+          // cr-ack probe: run one final submitted check (the mirror grid
+          // may have repainted since the last poll missed it) and only
+          // fall through to crStuck when it stays ambiguous.
+          await port.syncDisplayGrid();
+          if (isAcked?.call() ?? false) {
+            return FullscreenPtyDeliveryOutcome.submitted;
+          }
+          final scanRows = _probeScanRows(port);
+          if (port.isSubmittedAfterCr(anchor, scanRows: scanRows)) {
+            return FullscreenPtyDeliveryOutcome.submitted;
+          }
           break;
         }
         // TUI startup overlays (codex "Starting MCP servers", trust screens)
@@ -330,7 +340,10 @@ class FullscreenPtyAutomation {
   /// CR-ack miss: the anchor never cleared and no hook confirmation arrived.
   /// Logs the probe window so a future miss (@-mention autocomplete popup
   /// swallowing the CR, trust dialog, splash screen) is diagnosable offline.
-  void _logCrStuck(FullscreenPtyDeliveryPort port, FullscreenPromptAnchor anchor) {
+  void _logCrStuck(
+    FullscreenPtyDeliveryPort port,
+    FullscreenPromptAnchor anchor,
+  ) {
     final scanRows = _probeScanRows(port);
     appLogger.w(
       '[team-bus] pty-cr-stuck anchor=$anchor scanRows=$scanRows '

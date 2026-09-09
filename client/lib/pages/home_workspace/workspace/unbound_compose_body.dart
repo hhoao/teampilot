@@ -697,7 +697,11 @@ class _UnboundComposeBodyState extends State<UnboundComposeBody> {
     if (_launchWarningBlock is RemoteCliMissingLaunchBlock) {
       return _launchWarningBlock;
     }
-    if (_conversationMode != _LandingConversationMode.team) return null;
+    // Generation mode has no concrete-team requirement (mirrors _canSubmit
+    // and the generation branch of _submitAfterLaunchGate) — no blocked tooltip.
+    if (_conversationMode != _LandingConversationMode.team || _generateLaunch) {
+      return null;
+    }
     final sync = _launchGate.syncBlock(
       workspace: _workspaceForLaunch(),
       draft: _currentDraft(),
@@ -897,6 +901,12 @@ class _UnboundComposeBodyState extends State<UnboundComposeBody> {
   bool get _canSubmit {
     if (widget.disabled || widget.isSubmitting) return false;
     if (_launchWarningBlock is RemoteCliMissingLaunchBlock) return false;
+    // Generation mode skips concrete-team gates (mirrors the submit branch):
+    // the builder session resolves the generator itself, so no team selection
+    // or team-config readiness is required to submit.
+    if (_conversationMode == _LandingConversationMode.team && _generateLaunch) {
+      return true;
+    }
     if (_conversationMode == _LandingConversationMode.team) {
       final teams = context.read<LaunchProfileCubit>().state.teams;
       final team = _selectedTeamProfile(teams);

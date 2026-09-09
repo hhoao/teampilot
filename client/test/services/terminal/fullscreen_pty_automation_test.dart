@@ -333,34 +333,19 @@ void main() {
       expect(
         port.crCount,
         3,
-        reason: 'needle still staged in composer proves the earlier CRs '
+        reason:
+            'needle still staged in composer proves the earlier CRs '
             'were swallowed — retry until the TUI accepts the submit',
       );
     });
 
-    test('bounded: never-submitting composer ends crStuck after 3 CRs', () async {
-      final port = FakeFullscreenPtyDeliveryPort(
-        crsToClear: 99,
-        crAckConfig: codexCrAck,
-      );
-
-      final outcome = await automation.deliverPasteAndSubmit(
-        port: port,
-        text: 'hello',
-        pasteSettle: Duration.zero,
-      );
-
-      expect(outcome, FullscreenPtyDeliveryOutcome.crStuck);
-      expect(port.crCount, 3, reason: 'instant timing: crMaxAttempts=2');
-    });
-
     test(
-      'needle moved to transcript (not composer) blocks the re-CR guard',
+      'bounded: never-submitting composer ends crStuck after 3 CRs',
       () async {
-        // Cursor shape: CR committed the text into transcript history; the
-        // composer repaints empty and the ACK never fires. Re-CR would risk a
-        // duplicate user row — the guard must refuse.
-        final port = _ComposerMovesDownStuckButCommittedPort(text: 'hello');
+        final port = FakeFullscreenPtyDeliveryPort(
+          crsToClear: 99,
+          crAckConfig: codexCrAck,
+        );
 
         final outcome = await automation.deliverPasteAndSubmit(
           port: port,
@@ -369,12 +354,54 @@ void main() {
         );
 
         expect(outcome, FullscreenPtyDeliveryOutcome.crStuck);
+        expect(port.crCount, 3, reason: 'instant timing: crMaxAttempts=2');
+      },
+    );
+
+    test(
+      'needle moved to transcript (not composer) blocks the re-CR guard',
+      () async {
+        // Cursor shape: CR committed the text into transcript history; the
+        // composer repaints empty and the ACK never fires. Re-CR would risk a
+        // duplicate user row — the guard must refuse. The post-guard verdict
+        // poll recognizes the submit (needle left the composer).
+        final port = _ComposerMovesDownStuckButCommittedPort(text: 'hello');
+
+        final outcome = await automation.deliverPasteAndSubmit(
+          port: port,
+          text: 'hello',
+          pasteSettle: Duration.zero,
+        );
+
+        expect(outcome, FullscreenPtyDeliveryOutcome.submitted);
         expect(
           port.crCount,
           1,
-          reason: 'needle no longer the body of a composer row — resend '
-              'guard must treat it as possibly-submitted',
+          reason:
+              'needle no longer the body of a composer row — resend '
+              'guard must treat it as possibly-submitted; the final verdict '
+              'poll (echo above, fresh composer below) reads it as submitted',
         );
+      },
+    );
+
+    test(
+      'guard-break with ambiguous grid still ends crStuck (unconfirmed)',
+      () async {
+        // The verdict poll cannot prove a submit (e.g. composer chrome still
+        // below an unchanged anchor) — the delivery must stay unconfirmed
+        // rather than guess submitted.
+        final port = _ComposerMovesDownStuckButCommittedPort(text: 'hello')
+          ..isSubmittedVerdictOnCall = 0;
+
+        final outcome = await automation.deliverPasteAndSubmit(
+          port: port,
+          text: 'hello',
+          pasteSettle: Duration.zero,
+        );
+
+        expect(outcome, FullscreenPtyDeliveryOutcome.crStuck);
+        expect(port.crCount, 1);
       },
     );
   });
@@ -422,45 +449,39 @@ void main() {
     },
   );
 
-  test(
-    'mention text dismisses the autocomplete popup before CR',
-    () async {
-      // Regression (2026-09-04, verified against real Claude Code 2.1.211 in
-      // a PTY): pasting text containing "@path" opens the file-mention
-      // autocomplete; the submit CR is consumed by the popup, the message is
-      // never committed, and the CR-ack poll reports crStuck. Dismissing the
-      // popup with ESC before CR lets the CR submit normally.
-      final port = _MentionPopupSwallowsCrPort();
+  test('mention text dismisses the autocomplete popup before CR', () async {
+    // Regression (2026-09-04, verified against real Claude Code 2.1.211 in
+    // a PTY): pasting text containing "@path" opens the file-mention
+    // autocomplete; the submit CR is consumed by the popup, the message is
+    // never committed, and the CR-ack poll reports crStuck. Dismissing the
+    // popup with ESC before CR lets the CR submit normally.
+    final port = _MentionPopupSwallowsCrPort();
 
-      final outcome = await automation.deliverPasteAndSubmit(
-        port: port,
-        text: '看下这个文件 @/etc/hostname',
-        pasteSettle: Duration.zero,
-        dismissMentionPopup: true,
-      );
+    final outcome = await automation.deliverPasteAndSubmit(
+      port: port,
+      text: '看下这个文件 @/etc/hostname',
+      pasteSettle: Duration.zero,
+      dismissMentionPopup: true,
+    );
 
-      expect(outcome, FullscreenPtyDeliveryOutcome.submitted);
-      expect(port.dismissCount, 1, reason: 'ESC sent before the CR');
-      expect(port.crCount, 1);
-    },
-  );
+    expect(outcome, FullscreenPtyDeliveryOutcome.submitted);
+    expect(port.dismissCount, 1, reason: 'ESC sent before the CR');
+    expect(port.crCount, 1);
+  });
 
-  test(
-    'plain text without @ does not send the popup dismiss ESC',
-    () async {
-      final port = _MentionPopupSwallowsCrPort();
+  test('plain text without @ does not send the popup dismiss ESC', () async {
+    final port = _MentionPopupSwallowsCrPort();
 
-      final outcome = await automation.deliverPasteAndSubmit(
-        port: port,
-        text: 'no mention here',
-        pasteSettle: Duration.zero,
-        dismissMentionPopup: true,
-      );
+    final outcome = await automation.deliverPasteAndSubmit(
+      port: port,
+      text: 'no mention here',
+      pasteSettle: Duration.zero,
+      dismissMentionPopup: true,
+    );
 
-      expect(outcome, FullscreenPtyDeliveryOutcome.submitted);
-      expect(port.dismissCount, 0);
-    },
-  );
+    expect(outcome, FullscreenPtyDeliveryOutcome.submitted);
+    expect(port.dismissCount, 0);
+  });
 
   test(
     'mention text without the dismiss flag keeps CR-only behavior',
@@ -478,51 +499,48 @@ void main() {
     },
   );
 
-  test(
-    'waits after popup-dismiss ESC before the submit CR',
-    () async {
-      // Regression (2026-09-05, verified against real Claude Code 2.1.211 in
-      // a PTY): the ESC written by dismissComposerPopup followed immediately
-      // by the CR is read by the TUI as one chunk and parsed as ESC+CR =
-      // Alt+Enter — insert-newline. The message stays staged in the composer
-      // with a blank line below it and the submit never commits (chat UI
-      // stuck "waiting"). ≥100ms between the ESC and the CR submits normally
-      // (50ms still fails), so the automation must settle after the ESC.
-      final port = _MentionPopupSwallowsCrPort();
-      final escAware = FullscreenPtyAutomation(
-        timing: const PtyAutomationTiming(
-          afterClear: Duration.zero,
-          afterPaste: Duration.zero,
-          afterCr: Duration.zero,
-          afterReinject: Duration.zero,
-          crMaxAttempts: 2,
-          reinjectMaxAttempts: 1,
-          nudgeMaxAttempts: 2,
-          scanRows: 24,
-          pollTimeout: Duration.zero,
-          afterDismissPopup: Duration(milliseconds: 80),
-        ),
-      );
+  test('waits after popup-dismiss ESC before the submit CR', () async {
+    // Regression (2026-09-05, verified against real Claude Code 2.1.211 in
+    // a PTY): the ESC written by dismissComposerPopup followed immediately
+    // by the CR is read by the TUI as one chunk and parsed as ESC+CR =
+    // Alt+Enter — insert-newline. The message stays staged in the composer
+    // with a blank line below it and the submit never commits (chat UI
+    // stuck "waiting"). ≥100ms between the ESC and the CR submits normally
+    // (50ms still fails), so the automation must settle after the ESC.
+    final port = _MentionPopupSwallowsCrPort();
+    final escAware = FullscreenPtyAutomation(
+      timing: const PtyAutomationTiming(
+        afterClear: Duration.zero,
+        afterPaste: Duration.zero,
+        afterCr: Duration.zero,
+        afterReinject: Duration.zero,
+        crMaxAttempts: 2,
+        reinjectMaxAttempts: 1,
+        nudgeMaxAttempts: 2,
+        scanRows: 24,
+        pollTimeout: Duration.zero,
+        afterDismissPopup: Duration(milliseconds: 80),
+      ),
+    );
 
-      final outcome = await escAware.deliverPasteAndSubmit(
-        port: port,
-        text: '看下这个文件 @/etc/hostname',
-        pasteSettle: Duration.zero,
-        dismissMentionPopup: true,
-      );
+    final outcome = await escAware.deliverPasteAndSubmit(
+      port: port,
+      text: '看下这个文件 @/etc/hostname',
+      pasteSettle: Duration.zero,
+      dismissMentionPopup: true,
+    );
 
-      expect(outcome, FullscreenPtyDeliveryOutcome.submitted);
-      expect(port.dismissAt, isNotNull);
-      expect(port.crAt, isNotNull);
-      expect(
-        port.crAt!.difference(port.dismissAt!).inMilliseconds,
-        greaterThanOrEqualTo(80),
-        reason:
-            'ESC immediately followed by CR coalesces into Alt+Enter in the '
-            'Ink composer — the CR becomes a newline instead of a submit',
-      );
-    },
-  );
+    expect(outcome, FullscreenPtyDeliveryOutcome.submitted);
+    expect(port.dismissAt, isNotNull);
+    expect(port.crAt, isNotNull);
+    expect(
+      port.crAt!.difference(port.dismissAt!).inMilliseconds,
+      greaterThanOrEqualTo(80),
+      reason:
+          'ESC immediately followed by CR coalesces into Alt+Enter in the '
+          'Ink composer — the CR becomes a newline instead of a submit',
+    );
+  });
 }
 
 final class _TimestampedPastePort implements FullscreenPtyDeliveryPort {
@@ -701,6 +719,15 @@ final class _ComposerMovesDownStuckButCommittedPort
   final String text;
   String? _transcript;
   String? _composerBody;
+
+  /// `isSubmittedAfterCr` returns true from the Nth call onward (1-based).
+  /// Models grid repaint lag: the initial post-CR poll (call 1) still sees
+  /// the old frame; the verdict the post-guard check reads (call 2) sees
+  /// the echo + fresh composer. 0 = never (ambiguous grid).
+  int isSubmittedVerdictOnCall = 2;
+
+  int _verdictCalls = 0;
+
   int pasteCount = 0;
   int crCount = 0;
 
@@ -742,8 +769,11 @@ final class _ComposerMovesDownStuckButCommittedPort
       locateNeedle(anchor.needle) != null;
 
   @override
-  bool isSubmittedAfterCr(FullscreenPromptAnchor anchor, {int scanRows = 24}) =>
-      false;
+  bool isSubmittedAfterCr(FullscreenPromptAnchor anchor, {int scanRows = 24}) {
+    _verdictCalls++;
+    return _verdictCalls >= isSubmittedVerdictOnCall &&
+        isSubmittedVerdictOnCall > 0;
+  }
 
   @override
   bool isComposerChromeEmpty({int scanRows = 24}) =>

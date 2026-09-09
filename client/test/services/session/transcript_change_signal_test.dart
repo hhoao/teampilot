@@ -66,34 +66,40 @@ void main() {
       });
     });
 
-    test('FsWatcher watches cacheTokenPath parent, not a too-high watchRoot', () {
-      fakeAsync((async) {
-        final fs = _WatchableFs();
-        var notifies = 0;
-        final signal = TranscriptChangeSignal(
-          fs: fs,
-          watchRoot: () => '/proj',
-          cacheTokenPaths: () => const [
+    test(
+      'FsWatcher watches cacheTokenPath parent, not a too-high watchRoot',
+      () {
+        fakeAsync((async) {
+          final fs = _WatchableFs();
+          var notifies = 0;
+          final signal = TranscriptChangeSignal(
+            fs: fs,
+            watchRoot: () => '/proj',
+            cacheTokenPaths: () => const [
+              '/proj/agent-transcripts/chat/chat.jsonl',
+            ],
+            onChanged: () => notifies++,
+            watchDebounce: const Duration(milliseconds: 150),
+          );
+
+          unawaited(signal.start());
+          async.flushMicrotasks();
+          expect(fs.watchTreeCallCount, 1);
+          expect(fs.lastWatchRoot, '/proj/agent-transcripts/chat');
+
+          fs.emit(
+            FsChangeType.modified,
             '/proj/agent-transcripts/chat/chat.jsonl',
-          ],
-          onChanged: () => notifies++,
-          watchDebounce: const Duration(milliseconds: 150),
-        );
+          );
+          async.elapse(const Duration(milliseconds: 150));
+          async.flushMicrotasks();
+          expect(notifies, 1);
 
-        unawaited(signal.start());
-        async.flushMicrotasks();
-        expect(fs.watchTreeCallCount, 1);
-        expect(fs.lastWatchRoot, '/proj/agent-transcripts/chat');
-
-        fs.emit(FsChangeType.modified, '/proj/agent-transcripts/chat/chat.jsonl');
-        async.elapse(const Duration(milliseconds: 150));
-        async.flushMicrotasks();
-        expect(notifies, 1);
-
-        unawaited(signal.stop());
-        async.flushMicrotasks();
-      });
-    });
+          unawaited(signal.stop());
+          async.flushMicrotasks();
+        });
+      },
+    );
 
     test('non-FsWatcher: polls cache tokens and notifies on change', () {
       fakeAsync((async) {
@@ -133,6 +139,49 @@ void main() {
         async.elapse(const Duration(milliseconds: 750));
         async.flushMicrotasks();
         expect(notifies, 2);
+
+        unawaited(signal.stop());
+        async.flushMicrotasks();
+      });
+    });
+
+    test('FsWatcher: deaf watch still notifies via poll fallback', () {
+      fakeAsync((async) {
+        final fs = _WatchableFs();
+        unawaited(fs.writeString('/proj/a.jsonl', 'v1'));
+        async.flushMicrotasks();
+
+        var notifies = 0;
+        final signal = TranscriptChangeSignal(
+          fs: fs,
+          watchRoot: () => '/proj',
+          cacheTokenPaths: () => const ['/proj/a.jsonl'],
+          onChanged: () => notifies++,
+          pollInterval: const Duration(milliseconds: 750),
+          watchDebounce: const Duration(milliseconds: 150),
+        );
+
+        unawaited(signal.start());
+        async.flushMicrotasks();
+        expect(fs.watchTreeCallCount, 1);
+        final baselineNotifies = notifies;
+
+        // The tree watch delivers NOTHING: macOS FSEvents withholds modify
+        // events for writes through long-lived open fds until the writer
+        // exits (verified 2026-09-10 — codex keeps its rollout handle open
+        // all session). The poll fallback must still catch the change.
+        unawaited(fs.writeString('/proj/a.jsonl', 'v2-appended'));
+        async.flushMicrotasks();
+
+        async.elapse(const Duration(milliseconds: 750));
+        async.flushMicrotasks();
+        expect(
+          notifies,
+          greaterThan(baselineNotifies),
+          reason:
+              'poll fallback must catch appends the tree watch never '
+              'delivered',
+        );
 
         unawaited(signal.stop());
         async.flushMicrotasks();
@@ -240,72 +289,78 @@ void main() {
       });
     });
 
-    test('FsWatcher watches cacheTokenPath parent even when watchRoot is null', () {
-      fakeAsync((async) {
-        final fs = _WatchableFs();
-        var notifies = 0;
-        final signal = TranscriptChangeSignal(
-          fs: fs,
-          watchRoot: () => null,
-          cacheTokenPaths: () => const ['/proj/a.jsonl'],
-          onChanged: () => notifies++,
-          watchDebounce: const Duration(milliseconds: 150),
-        );
+    test(
+      'FsWatcher watches cacheTokenPath parent even when watchRoot is null',
+      () {
+        fakeAsync((async) {
+          final fs = _WatchableFs();
+          var notifies = 0;
+          final signal = TranscriptChangeSignal(
+            fs: fs,
+            watchRoot: () => null,
+            cacheTokenPaths: () => const ['/proj/a.jsonl'],
+            onChanged: () => notifies++,
+            watchDebounce: const Duration(milliseconds: 150),
+          );
 
-        unawaited(signal.start());
-        async.flushMicrotasks();
-        expect(fs.watchTreeCallCount, 1);
-        expect(fs.lastWatchRoot, '/proj');
+          unawaited(signal.start());
+          async.flushMicrotasks();
+          expect(fs.watchTreeCallCount, 1);
+          expect(fs.lastWatchRoot, '/proj');
 
-        fs.emit(FsChangeType.modified, '/proj/a.jsonl');
-        async.elapse(const Duration(milliseconds: 150));
-        async.flushMicrotasks();
-        expect(notifies, 1);
+          fs.emit(FsChangeType.modified, '/proj/a.jsonl');
+          async.elapse(const Duration(milliseconds: 150));
+          async.flushMicrotasks();
+          expect(notifies, 1);
 
-        unawaited(signal.stop());
-        async.flushMicrotasks();
-      });
-    });
+          unawaited(signal.stop());
+          async.flushMicrotasks();
+        });
+      },
+    );
 
-    test('FsWatcher with null watchRoot and empty paths falls back to poll', () {
-      fakeAsync((async) {
-        final fs = _WatchableFs();
-        unawaited(fs.writeString('/proj/a.jsonl', 'a'));
-        async.flushMicrotasks();
+    test(
+      'FsWatcher with null watchRoot and empty paths falls back to poll',
+      () {
+        fakeAsync((async) {
+          final fs = _WatchableFs();
+          unawaited(fs.writeString('/proj/a.jsonl', 'a'));
+          async.flushMicrotasks();
 
-        var notifies = 0;
-        String? root;
-        final signal = TranscriptChangeSignal(
-          fs: fs,
-          watchRoot: () => root,
-          cacheTokenPaths: () => const [],
-          onChanged: () => notifies++,
-          pollInterval: const Duration(milliseconds: 750),
-          watchDebounce: const Duration(milliseconds: 150),
-        );
+          var notifies = 0;
+          String? root;
+          final signal = TranscriptChangeSignal(
+            fs: fs,
+            watchRoot: () => root,
+            cacheTokenPaths: () => const [],
+            onChanged: () => notifies++,
+            pollInterval: const Duration(milliseconds: 750),
+            watchDebounce: const Duration(milliseconds: 150),
+          );
 
-        unawaited(signal.start());
-        async.flushMicrotasks();
-        expect(fs.watchTreeCallCount, 0);
+          unawaited(signal.start());
+          async.flushMicrotasks();
+          expect(fs.watchTreeCallCount, 0);
 
-        async.elapse(const Duration(milliseconds: 750));
-        async.flushMicrotasks();
-        expect(notifies, 0);
+          async.elapse(const Duration(milliseconds: 750));
+          async.flushMicrotasks();
+          expect(notifies, 0);
 
-        root = '/proj';
-        async.elapse(const Duration(milliseconds: 750));
-        async.flushMicrotasks();
-        expect(fs.watchTreeCallCount, 1);
+          root = '/proj';
+          async.elapse(const Duration(milliseconds: 750));
+          async.flushMicrotasks();
+          expect(fs.watchTreeCallCount, 1);
 
-        fs.emit(FsChangeType.modified, '/proj/a.jsonl');
-        async.elapse(const Duration(milliseconds: 150));
-        async.flushMicrotasks();
-        expect(notifies, 1);
+          fs.emit(FsChangeType.modified, '/proj/a.jsonl');
+          async.elapse(const Duration(milliseconds: 150));
+          async.flushMicrotasks();
+          expect(notifies, 1);
 
-        unawaited(signal.stop());
-        async.flushMicrotasks();
-      });
-    });
+          unawaited(signal.stop());
+          async.flushMicrotasks();
+        });
+      },
+    );
 
     test('poll resumes after cacheTokenPaths throws once', () {
       fakeAsync((async) {
@@ -341,37 +396,39 @@ void main() {
       });
     });
 
-    test('nested jsonl append notifies via cacheTokenPath parent watch', () async {
-      final dir = await Directory.systemTemp.createTemp('tp-nested-jsonl-');
-      addTearDown(() => dir.delete(recursive: true));
-      final projectRoot = p.join(dir.path, 'projects', 'proj');
-      final jsonl = p.join(
-        projectRoot,
-        'agent-transcripts',
-        'chat-1',
-        'chat-1.jsonl',
-      );
-      await File(jsonl).create(recursive: true);
-      await File(jsonl).writeAsString('{"role":"user"}\n');
+    test(
+      'nested jsonl append notifies via cacheTokenPath parent watch',
+      () async {
+        final dir = await Directory.systemTemp.createTemp('tp-nested-jsonl-');
+        addTearDown(() => dir.delete(recursive: true));
+        final projectRoot = p.join(dir.path, 'projects', 'proj');
+        final jsonl = p.join(
+          projectRoot,
+          'agent-transcripts',
+          'chat-1',
+          'chat-1.jsonl',
+        );
+        await File(jsonl).create(recursive: true);
+        await File(jsonl).writeAsString('{"role":"user"}\n');
 
-      var notifies = 0;
-      final signal = TranscriptChangeSignal(
-        fs: LocalFilesystem(),
-        watchRoot: () => projectRoot,
-        cacheTokenPaths: () => [jsonl],
-        onChanged: () => notifies++,
-        watchDebounce: const Duration(milliseconds: 20),
-      );
-      await signal.start();
-      addTearDown(signal.stop);
+        var notifies = 0;
+        final signal = TranscriptChangeSignal(
+          fs: LocalFilesystem(),
+          watchRoot: () => projectRoot,
+          cacheTokenPaths: () => [jsonl],
+          onChanged: () => notifies++,
+          watchDebounce: const Duration(milliseconds: 20),
+        );
+        await signal.start();
+        addTearDown(signal.stop);
 
-      await Future<void>.delayed(const Duration(milliseconds: 50));
-      await File(jsonl).writeAsString(
-        '{"role":"assistant"}\n',
-        mode: FileMode.append,
-      );
-      await Future<void>.delayed(const Duration(milliseconds: 400));
-      expect(notifies, greaterThan(0));
-    });
+        await Future<void>.delayed(const Duration(milliseconds: 50));
+        await File(
+          jsonl,
+        ).writeAsString('{"role":"assistant"}\n', mode: FileMode.append);
+        await Future<void>.delayed(const Duration(milliseconds: 400));
+        expect(notifies, greaterThan(0));
+      },
+    );
   });
 }

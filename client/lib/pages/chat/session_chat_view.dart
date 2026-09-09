@@ -602,6 +602,11 @@ class _SessionChatViewState extends State<SessionChatView> {
       isMemberRunning: running,
     );
     if (!hot) {
+      appLogger.d(
+        '[live-refresh-diag] not-hot stop '
+        'session=${widget.session.sessionId} member=$_shellMemberId '
+        'routeActive=${widget.routeActive} running=$running',
+      );
       unawaited(_liveRefresh?.stop() ?? Future<void>.value());
       return;
     }
@@ -609,6 +614,11 @@ class _SessionChatViewState extends State<SessionChatView> {
     final skip = shouldSkipLiveRefreshInitialSoftReload(
       hasOptimisticPending: seat?.hasOptimisticPending ?? false,
       awaitingAssistant: seat?.state.awaitingAssistant ?? false,
+    );
+    appLogger.d(
+      '[live-refresh-diag] maybe-start '
+      'session=${widget.session.sessionId} member=$_shellMemberId '
+      'skip=$skip',
     );
     unawaited(_startLiveRefresh(skipInitialRefresh: skip));
   }
@@ -645,6 +655,11 @@ class _SessionChatViewState extends State<SessionChatView> {
       isMemberRunning: running,
     );
     if (!hot) {
+      appLogger.d(
+        '[live-refresh-diag] impl not-hot '
+        'session=${widget.session.sessionId} member=$_shellMemberId '
+        'routeActive=${widget.routeActive} running=$running',
+      );
       await _liveRefresh?.stop();
       return;
     }
@@ -667,11 +682,23 @@ class _SessionChatViewState extends State<SessionChatView> {
               ?.history
               ?.loader ??
           historyCubit.loader;
+      appLogger.d(
+        '[live-refresh-diag] impl resolve-roots '
+        'session=${widget.session.sessionId} member=${widget.selectedMemberId} '
+        'skip=$skipInitialRefresh',
+      );
       final roots = await loader.resolveSeatRuntime(
         launchContext: _launchContext,
         memberId: widget.selectedMemberId,
       );
-      if (!mounted || !identical(_seat, seat)) return;
+      if (!mounted || !identical(_seat, seat)) {
+        appLogger.d(
+          '[live-refresh-diag] impl bailed (unmounted=${!mounted} '
+          'seatChanged=${!identical(_seat, seat)}) '
+          'session=${widget.session.sessionId}',
+        );
+        return;
+      }
       final stillRunning = chat.isMemberRunning(
         sessionId: widget.session.sessionId,
         memberId: _shellMemberId,
@@ -680,6 +707,10 @@ class _SessionChatViewState extends State<SessionChatView> {
         routeActive: widget.routeActive,
         isMemberRunning: stillRunning,
       )) {
+        appLogger.d(
+          '[live-refresh-diag] impl not-hot-after-resolve '
+          'session=${widget.session.sessionId} running=$stillRunning',
+        );
         await _liveRefresh?.stop();
         return;
       }
@@ -695,7 +726,15 @@ class _SessionChatViewState extends State<SessionChatView> {
           workingDirectory: _workspaceRoot,
         ),
       );
+      appLogger.d(
+        '[live-refresh-diag] controller created, ensuring started '
+        'session=${widget.session.sessionId}',
+      );
       await _liveRefresh!.ensureStarted(skipInitialRefresh: skipInitialRefresh);
+      appLogger.d(
+        '[live-refresh-diag] start completed '
+        'session=${widget.session.sessionId}',
+      );
     } on Object catch (e, st) {
       // Live refresh is best-effort; seat load already surfaces History errors.
       // Avoid PlatformDispatcher noise when work-context resolve fails (e.g.
@@ -862,10 +901,7 @@ class _SessionChatViewState extends State<SessionChatView> {
           selectedMemberId: selectedMemberId,
         );
     final memberWorking =
-        chat.isMemberWorking(
-          widget.session.sessionId,
-          _shellMemberId,
-        ) &&
+        chat.isMemberWorking(widget.session.sessionId, _shellMemberId) &&
         !_userStoppedTurn.value;
     final registry =
         CliToolRegistryScope.maybeOf(context) ?? CliToolRegistry.builtIn();
@@ -892,9 +928,7 @@ class _SessionChatViewState extends State<SessionChatView> {
       text: trimmed,
       onEnqueue: (queued) {
         chat.followUpQueue.enqueue(_followUpSeatKey, queued);
-        unawaited(
-          _discardComposeDraftForSubmit(holdListenerSuppress: false),
-        );
+        unawaited(_discardComposeDraftForSubmit(holdListenerSuppress: false));
         _notifyFollowUpMemberWorking(chat);
       },
       onDeliver: (_) {
@@ -1492,9 +1526,10 @@ class _SessionChatViewState extends State<SessionChatView> {
                                                     _userStoppedTurn.value,
                                                 onUserStoppedTurn:
                                                     _onUserStoppedTurn,
-                                                turnStarting: _composeTurnStarting(
-                                                  context.read<ChatCubit>(),
-                                                ),
+                                                turnStarting:
+                                                    _composeTurnStarting(
+                                                      context.read<ChatCubit>(),
+                                                    ),
                                               );
                                             },
                                           ),
