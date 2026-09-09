@@ -218,6 +218,19 @@ class SessionPreferencesCubit extends Cubit<SessionPreferencesState> {
     );
   }
 
+  Future<void> setGitAutoFetchEnabled(bool value) {
+    return _save(
+      state.preferences.copyWith(gitAutoFetchEnabled: value),
+    );
+  }
+
+  Future<void> setGitAutoFetchIntervalMinutes(int minutes) {
+    final clamped = minutes.clamp(1, 60);
+    return _save(
+      state.preferences.copyWith(gitAutoFetchIntervalMinutes: clamped),
+    );
+  }
+
   Future<void> setScopeSessionsToSelectedTeam(bool value) {
     return _save(
       state.preferences.copyWith(scopeSessionsToSelectedTeam: value),

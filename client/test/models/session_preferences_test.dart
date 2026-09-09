@@ -111,6 +111,28 @@ void main() {
       );
     });
 
+    test('git auto-fetch defaults on with 5 minute interval', () {
+      final prefs = SessionPreferences();
+      expect(prefs.gitAutoFetchEnabled, isTrue);
+      expect(prefs.gitAutoFetchIntervalMinutes, 5);
+    });
+
+    test('git auto-fetch fields round-trip and fall back to defaults', () {
+      final prefs = SessionPreferences(
+        gitAutoFetchEnabled: false,
+        gitAutoFetchIntervalMinutes: 15,
+      );
+      final restored = SessionPreferences.fromJson(prefs.toJson());
+      expect(restored.gitAutoFetchEnabled, isFalse);
+      expect(restored.gitAutoFetchIntervalMinutes, 15);
+
+      final legacy = SessionPreferences.fromJson({
+        'gitAutoFetchEnabled': null,
+      });
+      expect(legacy.gitAutoFetchEnabled, isTrue);
+      expect(legacy.gitAutoFetchIntervalMinutes, 5);
+    });
+
     test('fromJson ignores non-string cli executable path entries', () {
       final restored = SessionPreferences.fromJson(const <String, Object?>{
         'cliExecutablePaths': {
