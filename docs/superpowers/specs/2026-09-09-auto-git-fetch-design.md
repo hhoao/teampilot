@@ -67,11 +67,11 @@ GitAutoFetchScheduler({
 })
 ```
 
-- API: `start(root)` / `stop()` / `replaceTarget(root)` / `tick()`
-  (`@visibleForTesting`).
-- `start` fetches immediately once, then settles into the interval.
+- API: `start(root)` / `stop()` / `tick()` (`@visibleForTesting`) / `dispose()`.
+  `start(root)` is a no-op when already running on the same root; otherwise
+  (first start, resume after `stop`, or target change) it resets the timer
+  and fetches immediately once.
 - A tick while a fetch is still in flight is skipped (no pile-up).
-- `replaceTarget` resets the timer and fetches the new root immediately.
 - Failures (`GitException`, `TimeoutException`) are swallowed and logged via
   `appLogger.w`; no user-facing error surface.
 
