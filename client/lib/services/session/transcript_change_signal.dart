@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import '../../utils/logging/logger.dart';
 import '../io/filesystem.dart';
 import 'ai_history_cache_token.dart';
 
@@ -9,6 +10,16 @@ import 'ai_history_cache_token.dart';
 /// [cacheTokenPaths] file (Linux [Directory.watch] is not recursive — a
 /// too-high [watchRoot] would miss nested JSONL appends). Fall back to
 /// [watchRoot], then to polling [cacheTokenPaths] via [Filesystem.stat].
+///
+/// The token poll ALWAYS runs alongside the watches: macOS FSEvents withholds
+/// modify events for writes made through a long-lived open file descriptor
+/// and only flushes them when the writer closes the fd / exits (verified
+/// 2026-09-10 with a kept-open-append node process: zero events while alive,
+/// one coalesced burst ~200ms after exit). CLIs that write per-event with
+/// open→append→close (Claude Code) deliver promptly; codex keeps its rollout
+/// handle open for the whole session, so watch-only mode never saw its
+/// appends. The cache-token guard dedupes the reloads, so the extra stat per
+/// interval is the only cost of the belt-and-suspenders pair.
 class TranscriptChangeSignal {
   TranscriptChangeSignal({
     required Filesystem fs,
@@ -62,10 +73,18 @@ class TranscriptChangeSignal {
     if (_fs is FsWatcher) {
       final dirs = _watchDirs();
       if (dirs.isNotEmpty) {
+        appLogger.d('[live-refresh-diag] signal arm watch dirs=$dirs');
         await _startWatches(dirs);
+        // Keep the token poll running as a fallback: macOS FSEvents withholds
+        // modify events for writes through long-lived open fds until the
+        // writer exits (codex keeps its rollout handle open all session).
+        // The token guard dedupes the reloads, so the extra stat every
+        // interval is the only cost.
+        _startPoll();
         return;
       }
     }
+    appLogger.d('[live-refresh-diag] signal arm poll (no watch dirs)');
     _startPoll();
   }
 
@@ -133,6 +152,7 @@ class TranscriptChangeSignal {
     _debounceTimer?.cancel();
     _debounceTimer = Timer(_watchDebounce, () {
       if (!_started) return;
+      appLogger.d('[live-refresh-diag] signal watch event → notify');
       _onChanged();
     });
   }
@@ -152,13 +172,12 @@ class TranscriptChangeSignal {
   Future<void> _pollTick() async {
     if (!_started) return;
 
-    if (_fs is FsWatcher) {
+    // Late locate: attach watches once cacheTokenPaths appear — the poll
+    // keeps running as the fallback either way (see [_arm]).
+    if (_fs is FsWatcher && _treeWatches.isEmpty) {
       final dirs = _watchDirs();
       if (dirs.isNotEmpty) {
-        _pollTimer?.cancel();
-        _pollTimer = null;
         await _startWatches(dirs);
-        return;
       }
     }
 
@@ -170,6 +189,10 @@ class TranscriptChangeSignal {
     _lastToken = token;
     // First observation: establish empty baseline without notifying.
     if (previous == null && token.isEmpty) return;
+    appLogger.d(
+      '[live-refresh-diag] signal token changed → notify '
+      '(prev=${previous == null ? 'null' : 'set'})',
+    );
     _onChanged();
   }
 

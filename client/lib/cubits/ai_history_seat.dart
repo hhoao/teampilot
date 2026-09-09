@@ -263,9 +263,7 @@ class AiHistorySeat extends Cubit<AiHistoryState> {
     _setSubagentAttachments(next);
     if (state.status == AiHistoryViewStatus.ready ||
         state.status == AiHistoryViewStatus.empty) {
-      emit(
-        state.copyWith(subagentAttachmentEpoch: _subagentAttachmentEpoch),
-      );
+      emit(state.copyWith(subagentAttachmentEpoch: _subagentAttachmentEpoch));
     }
     return attachment;
   }
@@ -555,6 +553,12 @@ class AiHistorySeat extends Cubit<AiHistoryState> {
         _lastMailboxRecords = mailboxRecords;
         return;
       }
+      appLogger.d(
+        '[live-refresh-diag] seat softReload applying '
+        'session=$sessionId member=$memberId '
+        'msgs=${messages.length} prevCliMsgs=${_cliMessages.length} '
+        'cliUnchanged=$cliUnchanged',
+      );
       if (!cliUnchanged) {
         _cliMessages = messages;
       }
@@ -1288,7 +1292,10 @@ class AiHistorySeat extends Cubit<AiHistoryState> {
       source: 'applySoftReloadMessages',
     );
     final previousMessages = _allMessages;
-    messages = reuseHistoryMessageIdentity(previous: previousMessages, next: messages);
+    messages = reuseHistoryMessageIdentity(
+      previous: previousMessages,
+      next: messages,
+    );
     final oldLength = previousMessages.length;
     final oldVisible = _visibleCount;
     final oldCommitted = _committedLength;
