@@ -73,6 +73,15 @@ mixin PhotoZoomControllerMixin<T extends StatefulWidget> on State<T> {
     });
   }
 
+  /// Discards the fit baseline and clamp bookkeeping so the next controller
+  /// event re-derives them (e.g. the host pane retargeted to a new file and
+  /// the old baseline no longer applies).
+  void resetZoomBaseline() {
+    _baselineScale = null;
+    _scale = null;
+    _cappedInitialUpscale = false;
+  }
+
   void onZoomPointerSignal(PointerSignalEvent event) {
     if (event is! PointerScrollEvent || event.scrollDelta.dy == 0) return;
     zoomBy(event.scrollDelta.dy < 0 ? zoomStep : 1 / zoomStep);

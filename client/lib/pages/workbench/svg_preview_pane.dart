@@ -44,6 +44,7 @@ class _SvgPreviewPaneState extends State<SvgPreviewPane>
   Size? _naturalSize;
   bool _readFailed = false;
   bool _decodeFailureReported = false;
+  int _loadSeq = 0;
 
   @override
   void didChangeDependencies() {
@@ -62,17 +63,21 @@ class _SvgPreviewPaneState extends State<SvgPreviewPane>
     super.didUpdateWidget(oldWidget);
     if (oldWidget.path != widget.path ||
         oldWidget.workspaceId != widget.workspaceId) {
-      // Retarget: re-resolve fs and reload.
+      // Retarget: re-resolve fs and reload. Stale in-flight loads are
+      // discarded via the sequence token, and the zoom baseline must not
+      // stay anchored to the previous file's fit.
       _fs =
           widget.fs ??
           context.read<EditorCubit>().fsFor(widget.workspaceId, widget.path);
       _loadStarted = true;
       _decodeFailureReported = false;
+      resetZoomBaseline();
       unawaited(_load());
     }
   }
 
   Future<void> _load() async {
+    final seq = ++_loadSeq;
     if (!mounted) return;
     setState(() {
       _loading = true;
@@ -86,7 +91,7 @@ class _SvgPreviewPaneState extends State<SvgPreviewPane>
     } on Object {
       raw = null;
     }
-    if (!mounted) return;
+    if (!mounted || seq != _loadSeq) return;
     if (raw == null) {
       setState(() {
         _loading = false;
@@ -110,7 +115,7 @@ class _SvgPreviewPaneState extends State<SvgPreviewPane>
     } on Object {
       natural = null;
     }
-    if (!mounted) return;
+    if (!mounted || seq != _loadSeq) return;
     setState(() {
       _loading = false;
       _bytes = bytes;

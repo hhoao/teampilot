@@ -1,3 +1,6 @@
+import 'dart:async';
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_svg/flutter_svg.dart';
@@ -109,6 +112,22 @@ class _CountingFilesystem implements Filesystem {
       _inner.createTempDir(prefix: prefix, parent: parent);
 }
 
+/// Holds [readBytes] for one path behind a [Completer] gate, so a slow read
+/// for the old path can resolve after the new path's read (style:
+/// test/services/workbench/workbench_editor_opener_test.dart _GatedFilesystem).
+class _GatedReadFilesystem extends InMemoryFilesystem {
+  _GatedReadFilesystem(this._gatedPath, this._gate);
+
+  final String _gatedPath;
+  final Completer<void> _gate;
+
+  @override
+  Future<List<int>?> readBytes(String path) async {
+    if (path == _gatedPath) await _gate.future;
+    return super.readBytes(path);
+  }
+}
+
 Future<void> pumpPane(
   WidgetTester tester, {
   required EditorCubit editor,
@@ -204,5 +223,41 @@ void main() {
       findsOneWidget,
     );
     expect(find.byType(PhotoView), findsNothing);
+  });
+
+  testWidgets('retarget to a new path ignores the stale pending load', (
+    tester,
+  ) async {
+    final gate = Completer<void>();
+    final fs = _GatedReadFilesystem('/repo/a.svg', gate)
+      ..files['/repo/a.svg'] = svgV1
+      ..files['/repo/b.svg'] = svgV2;
+    final editor = EditorCubit(fs: fs);
+    addTearDown(editor.close);
+    // No openFile: the pane reads directly from fs.
+
+    // Pump on path A; its read is parked on the gate.
+    await pumpPane(tester, editor: editor, path: '/repo/a.svg');
+    expect(find.byType(CircularProgressIndicator), findsOneWidget);
+
+    // Retarget the SAME pane state to path B; B's read resolves immediately.
+    await pumpPane(tester, editor: editor, path: '/repo/b.svg');
+
+    List<int> paneBytes() {
+      final picture = tester.widget<SvgPicture>(find.byType(SvgPicture));
+      return (picture.bytesLoader as SvgBytesLoader).bytes;
+    }
+
+    expect(find.byType(SvgPicture), findsOneWidget);
+    expect(paneBytes(), utf8.encode(svgV2));
+
+    // Now A's slow read resolves; the stale load must not overwrite B.
+    gate.complete();
+    for (var i = 0; i < 10; i++) {
+      await tester.pump(const Duration(milliseconds: 100));
+    }
+
+    expect(find.byType(SvgPicture), findsOneWidget);
+    expect(paneBytes(), utf8.encode(svgV2));
   });
 }
