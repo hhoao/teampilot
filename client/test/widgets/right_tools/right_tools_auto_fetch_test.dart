@@ -74,6 +74,7 @@ void main() {
     WidgetTester tester, {
     bool fileTreeVisible = false,
     bool gitVisible = true,
+    bool searchVisible = false,
     bool tickerEnabled = true,
   }) {
     return tester.pumpWidget(
@@ -102,7 +103,7 @@ void main() {
                     preferences: RightToolsToolPreferences(
                       fileTreeVisible: fileTreeVisible,
                       gitVisible: gitVisible,
-                      searchVisible: false,
+                      searchVisible: searchVisible,
                       membersVisible: false,
                       boardVisible: false,
                     ),
@@ -224,5 +225,38 @@ void main() {
           'no fetch from a prefs emission while backgrounded, neither '
           'immediately nor on the new interval',
     );
+  });
+
+  // Regression: an unrelated preference change that keeps gitVisible on
+  // (e.g. the search tool toggling) re-runs _setupDiskRefresh; the scheduler
+  // must not be stopped-then-restarted there — that caused a spurious
+  // immediate fetch plus a cadence reset on every re-run.
+  testWidgets('unrelated preference change keeps the fetch cadence intact', (
+    tester,
+  ) async {
+    await pumpHost(tester, fileTreeVisible: false, gitVisible: true);
+    await pumpLifecycleFrames(tester);
+    expect(fetchedRoots, ['/home/repoA']);
+
+    // Unrelated toggle: search becomes visible, git stays visible.
+    await pumpHost(
+      tester,
+      fileTreeVisible: false,
+      gitVisible: true,
+      searchVisible: true,
+    );
+    await pumpLifecycleFrames(tester);
+    expect(fetchedRoots, [
+      '/home/repoA',
+    ], reason: 'preference change must not trigger a spurious immediate fetch');
+
+    // Advance past one default interval (5 min): only the regular cadence
+    // fetch fires. A restarted scheduler would have reset the timer and
+    // fired an extra fetch.
+    await tester.pump(const Duration(minutes: 6));
+    expect(fetchedRoots, [
+      '/home/repoA',
+      '/home/repoA',
+    ], reason: 'exactly one cadence fetch, no extra from a restart');
   });
 }

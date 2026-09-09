@@ -385,6 +385,7 @@ class _RightToolsLifecycleHostState extends State<RightToolsLifecycleHost> {
     final storeTargetChanged = storeTargetId != _lastTargetId;
     final mounts = _fileTreeMounts(scope);
 
+    var mountsChangedWithoutTargetChange = false;
     if (storeTargetChanged) {
       if (_lastTargetId != null) {
         context.read<WorkspaceFileTreeStore>().removeWorkspaceTarget(
@@ -407,10 +408,22 @@ class _RightToolsLifecycleHostState extends State<RightToolsLifecycleHost> {
     } else if (_fileTreeCubit != null &&
         !_mountListsEqual(_lastMounts, mounts)) {
       _scheduleMountRoots(mounts);
+      mountsChangedWithoutTargetChange = true;
     }
 
     _lastMounts = mounts;
     _scope = scope;
+    if (mountsChangedWithoutTargetChange) {
+      // Roots changed with the same store target (workspace folder
+      // added/removed): re-evaluate the auto-fetch target so the scheduler
+      // does not keep fetching a stale/removed root until the next
+      // selection/pref/visibility trigger. Direct
+      // [_syncAutoFetchScheduler] (not [_scheduleDiskRefresh]) — the poll
+      // cadence and the file-tree/git warm-ups should not be reset for a
+      // roots-only change, and a same-root start is already a no-op.
+      // Runs after `_scope = scope` so the new roots are visible to it.
+      _syncAutoFetchScheduler();
+    }
     if (!mounted) return;
 
     final cubitChanged = !identical(prevCubit, _fileTreeCubit);
@@ -482,13 +495,19 @@ class _RightToolsLifecycleHostState extends State<RightToolsLifecycleHost> {
     _diskPollTimer?.cancel();
     _diskPollTimer = null;
     _diskListenersActive = false;
-    // Stop the scheduler before the early return below: with git and the file
-    // tree both hidden (host kept alive by search/members/board), there is no
-    // later sync on this path — without this stop the scheduler would keep
-    // fetching every interval until the next suspend cycle or dispose.
-    _autoFetchScheduler?.stop();
 
-    if (!widget.preferences.needsDiskSideEffects) return;
+    if (!widget.preferences.needsDiskSideEffects) {
+      // With git and the file tree both hidden (host kept alive by
+      // search/members/board), there is no later sync on this path — stop
+      // here or the scheduler would keep fetching every interval until the
+      // next suspend cycle or dispose. On the active path below, the
+      // trailing [_syncAutoFetchScheduler] keeps a same-root start a no-op,
+      // so stopping here would instead restart the cadence with a spurious
+      // immediate fetch on every re-run (unrelated tool toggle, roots
+      // change, …).
+      _autoFetchScheduler?.stop();
+      return;
+    }
 
     final needsFileTree = widget.preferences.fileTreeVisible;
     final needsGit = widget.preferences.gitVisible;
