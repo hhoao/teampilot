@@ -10,6 +10,7 @@ import '../../models/layout_preferences.dart';
 import '../editor/file_editor_theme.dart';
 import '../editor/html_view_mode_store.dart';
 import '../editor/markdown_view_mode_store.dart';
+import '../editor/svg_view_mode_store.dart';
 import '../io/filesystem.dart';
 
 /// Single entry for opening file/diff tabs (editor bucket + host strip).
@@ -23,6 +24,7 @@ class WorkbenchEditorOpener {
     required FloatingWorkspaceCubit floating,
     required this.markdownViewModes,
     HtmlViewModeStore? htmlViewModes,
+    SvgViewModeStore? svgViewModes,
     required MarkdownOpenMode Function() readMarkdownOpenMode,
     bool Function()? readFilePreviewInFloating,
     bool Function()? readFloatingPreviewTabs,
@@ -36,7 +38,8 @@ class WorkbenchEditorOpener {
        _readFloatingPreviewTabs =
            readFloatingPreviewTabs ?? (() => true),
        _chat = chat,
-       htmlViewModes = htmlViewModes ?? HtmlViewModeStore();
+       htmlViewModes = htmlViewModes ?? HtmlViewModeStore(),
+       svgViewModes = svgViewModes ?? SvgViewModeStore();
 
   final EditorCubit _editor;
   final WorkbenchCubit _workbench;
@@ -44,6 +47,7 @@ class WorkbenchEditorOpener {
   final ChatCubit? _chat;
   final MarkdownViewModeStore markdownViewModes;
   final HtmlViewModeStore htmlViewModes;
+  final SvgViewModeStore svgViewModes;
   final MarkdownOpenMode Function() _readMarkdownOpenMode;
   final bool Function() _readFilePreviewInFloating;
   final bool Function() _readFloatingPreviewTabs;
