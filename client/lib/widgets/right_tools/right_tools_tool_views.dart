@@ -30,6 +30,7 @@ import '../../pages/home_workspace/workspace/member_config_directory_opener.dart
 import '../../services/cli/member_config/member_config_inspector.dart';
 import '../../services/search/content_replacer.dart';
 import '../../services/search/content_search_runner.dart';
+import '../../services/search/content_search_slices.dart';
 import '../../services/storage/home_target_controller.dart';
 import '../../services/storage/runtime_context.dart';
 import '../../services/workspace/workspace_tools_scope.dart';
@@ -619,8 +620,11 @@ class _RightToolsToolViewsState extends State<RightToolsToolViews> {
 
     // Search stays LAST: Task 4 shortcuts resolve the tool index by position.
     if (widget.preferences.searchVisible) {
-      final root = widget.scope.roots.firstOrNull ?? widget.cwd;
-      final fs = widget.workContext.filesystem;
+      final slices = contentSearchSlicesForScope(
+        scope: widget.scope,
+        cwd: widget.cwd,
+        fallbackFs: widget.workContext.filesystem,
+      );
       views.add(
         ToolView(
           id: RightToolIds.search,
@@ -629,13 +633,14 @@ class _RightToolsToolViewsState extends State<RightToolsToolViews> {
           child: BlocProvider(
             lazy: false,
             create: (context) => ContentSearchCubit(
-              runnerFactory: (_) => ContentSearchRunner(fs: fs, root: root),
-              replacerFactory: () => ContentReplacer(fs: fs),
+              slices: slices,
+              runnerFactory: (slice) =>
+                  ContentSearchRunner(fs: slice.fs, root: slice.root),
+              replacerFactory: (slice) => ContentReplacer(fs: slice.fs),
             ),
             child: WorkspaceSearchPanel(
               workspaceId: widget.workspaceId,
-              root: root,
-              fs: fs,
+              slices: slices,
               focusRequest: widget.searchFocusRequest,
             ),
           ),

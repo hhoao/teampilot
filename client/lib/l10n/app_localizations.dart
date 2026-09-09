@@ -2720,6 +2720,12 @@ abstract class AppLocalizations {
   /// **'Search failed — check the pattern'**
   String get workspaceSearchError;
 
+  /// No description provided for @workspaceSearchSliceError.
+  ///
+  /// In en, this message translates to:
+  /// **'Search failed in \"{directory}\"'**
+  String workspaceSearchSliceError(String directory);
+
   /// No description provided for @appDropdownSearchHint.
   ///
   /// In en, this message translates to:

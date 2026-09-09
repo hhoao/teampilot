@@ -37,14 +37,16 @@ void main() {
 
   tearDown(() => fixture.deleteSync(recursive: true));
 
+  List<ContentSearchSlice> buildSlices() => [
+    ContentSearchSlice(
+      fs: LocalFilesystem(),
+      root: fixture.path,
+      label: 'tp_panel_',
+    ),
+  ];
+
   ContentSearchCubit buildCubit() => ContentSearchCubit(
-    slices: [
-      ContentSearchSlice(
-        fs: LocalFilesystem(),
-        root: fixture.path,
-        label: 'tp_panel_',
-      ),
-    ],
+    slices: buildSlices(),
     runnerFactory: (s) => ContentSearchRunner(fs: s.fs, root: s.root),
     replacerFactory: (s) => ContentReplacer(fs: s.fs),
   );
@@ -60,8 +62,7 @@ void main() {
               panel ??
               WorkspaceSearchPanel(
                 workspaceId: 'ws1',
-                root: fixture.path,
-                fs: LocalFilesystem(),
+                slices: buildSlices(),
                 focusRequest: ValueNotifier<int>(0),
               ),
         ),
@@ -89,6 +90,57 @@ void main() {
     },
   );
 
+  testWidgets('multi-root results render one header per directory', (
+    tester,
+  ) async {
+    final dirA = Directory('${fixture.path}/a')..createSync();
+    final dirB = Directory('${fixture.path}/b')..createSync();
+    File('${dirA.path}/one.dart').writeAsStringSync('needle alpha\n');
+    File('${dirB.path}/two.dart').writeAsStringSync('needle bravo\n');
+
+    final slices = [
+      ContentSearchSlice(fs: LocalFilesystem(), root: dirA.path, label: 'a'),
+      ContentSearchSlice(fs: LocalFilesystem(), root: dirB.path, label: 'b'),
+    ];
+    final cubit = ContentSearchCubit(
+      slices: slices,
+      runnerFactory: (s) => ContentSearchRunner(fs: s.fs, root: s.root),
+      replacerFactory: (s) => ContentReplacer(fs: s.fs),
+    );
+    addTearDown(cubit.close);
+    await tester.pumpWidget(
+      wrap(
+        cubit,
+        panel: WorkspaceSearchPanel(
+          workspaceId: 'ws1',
+          slices: slices,
+          focusRequest: ValueNotifier<int>(0),
+        ),
+      ),
+    );
+    await runSearch(tester, 'needle');
+    expect(cubit.state.searching, isFalse);
+    // Results span two roots: both directory headers render, in slice order.
+    expect(find.text('a'), findsOneWidget);
+    expect(find.text('b'), findsOneWidget);
+    // Rows from both directories are listed under their headers.
+    expect(find.textContaining('one.dart'), findsOneWidget);
+    expect(find.textContaining('needle alpha'), findsOneWidget);
+    expect(find.textContaining('two.dart'), findsOneWidget);
+    expect(find.textContaining('needle bravo'), findsOneWidget);
+  });
+
+  testWidgets('single-root results render without a directory header', (
+    tester,
+  ) async {
+    final cubit = buildCubit();
+    addTearDown(cubit.close);
+    await tester.pumpWidget(wrap(cubit));
+    await runSearch(tester, 'hello');
+    expect(find.text('tp_panel_'), findsNothing);
+    expect(find.textContaining('a.dart'), findsWidgets);
+  });
+
   testWidgets('clicking a result row opens the editor with a line selection', (
     tester,
   ) async {
@@ -101,8 +153,7 @@ void main() {
         cubit,
         panel: WorkspaceSearchPanel(
           workspaceId: 'ws1',
-          root: fixture.path,
-          fs: LocalFilesystem(),
+          slices: buildSlices(),
           focusRequest: ValueNotifier<int>(0),
           onOpenResult: (path, line) {
             openedPath = path;
@@ -212,8 +263,7 @@ void main() {
                   value: firstCubit,
                   child: WorkspaceSearchPanel(
                     workspaceId: 'ws1',
-                    root: fixture.path,
-                    fs: LocalFilesystem(),
+                    slices: buildSlices(),
                     focusRequest: ValueNotifier<int>(0),
                   ),
                 ),
@@ -223,8 +273,13 @@ void main() {
                   value: secondCubit,
                   child: WorkspaceSearchPanel(
                     workspaceId: 'ws2',
-                    root: secondFixture.path,
-                    fs: LocalFilesystem(),
+                    slices: [
+                      ContentSearchSlice(
+                        fs: LocalFilesystem(),
+                        root: secondFixture.path,
+                        label: 'tp_panel_',
+                      ),
+                    ],
                     focusRequest: ValueNotifier<int>(0),
                   ),
                 ),
