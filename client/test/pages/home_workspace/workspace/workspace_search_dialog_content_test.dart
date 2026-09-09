@@ -10,6 +10,7 @@ import 'package:teampilot/pages/home_workspace/workspace/workspace_search_conten
 import 'package:teampilot/pages/home_workspace/workspace/workspace_search_dialog.dart';
 import 'package:teampilot/pages/home_workspace/workspace/workspace_search_widgets.dart';
 import 'package:teampilot/services/io/local_filesystem.dart';
+import 'package:teampilot/services/search/multi_root_content_search.dart';
 import 'package:teampilot/services/search/workspace_search_indexes.dart';
 
 import '../../../support/post_frame_test_harness.dart';
@@ -33,7 +34,12 @@ void main() {
   Widget wrapSection({
     required void Function(String path) onOpenFile,
     required String root,
+    List<ContentSearchSlice> extraSlices = const [],
   }) {
+    final slices = [
+      ContentSearchSlice(fs: LocalFilesystem(), root: root, label: 'fixture'),
+      ...extraSlices,
+    ];
     return MaterialApp(
       localizationsDelegates: AppLocalizations.localizationsDelegates,
       supportedLocales: AppLocalizations.supportedLocales,
@@ -45,8 +51,7 @@ void main() {
           children: [
             Expanded(
               child: WorkspaceSearchContentSection(
-                root: root,
-                fs: LocalFilesystem(),
+                slices: slices,
                 onOpenFile: onOpenFile,
               ),
             ),
@@ -74,8 +79,80 @@ void main() {
       // The line preview is the row's relative-path subtitle.
       expect(find.text('hello world'), findsOneWidget);
       expect(find.text('hello text'), findsOneWidget);
+      // Single slice: no group header (headers only appear for >1 slice).
+      expect(find.text('fixture'), findsNothing);
     },
   );
+
+  testWidgets('two roots render both directories behind group headers', (
+    tester,
+  ) async {
+    final fixture2 = Directory.systemTemp.createTempSync('tp_dialog_content2_');
+    addTearDown(() {
+      if (fixture2.existsSync()) fixture2.deleteSync(recursive: true);
+    });
+    File('${fixture2.path}/c.md').writeAsStringSync('hello moon\n');
+    await tester.pumpWidget(
+      wrapSection(
+        onOpenFile: (_) {},
+        root: fixture.path,
+        extraSlices: [
+          ContentSearchSlice(
+            fs: LocalFilesystem(),
+            root: fixture2.path,
+            label: 'fixture2',
+          ),
+        ],
+      ),
+    );
+    await runSearch(tester, 'hello');
+    // Both directories' rows render.
+    expect(find.textContaining('a.dart:1'), findsOneWidget);
+    expect(find.textContaining('c.md:1'), findsOneWidget);
+    // A group header per slice appears once there is more than one slice.
+    expect(find.text('fixture'), findsOneWidget);
+    expect(find.text('fixture2'), findsOneWidget);
+  });
+
+  testWidgets('a failing slice is isolated from the healthy one', (
+    tester,
+  ) async {
+    // A root that does not exist on the local filesystem makes the Rust
+    // engine's runner fail while the fixture slice keeps streaming matches.
+    final goneRoot =
+        '${Directory.systemTemp.createTempSync('tp_dialog_gone_').path}/gone';
+    Directory(goneRoot).parent.deleteSync(recursive: true);
+    await tester.pumpWidget(
+      wrapSection(
+        onOpenFile: (_) {},
+        root: fixture.path,
+        extraSlices: [
+          ContentSearchSlice(fs: LocalFilesystem(), root: goneRoot, label: 'gone'),
+        ],
+      ),
+    );
+    await runSearch(tester, 'hello');
+    // The healthy slice's rows still render.
+    expect(find.textContaining('a.dart:1'), findsOneWidget);
+    expect(find.textContaining('b.txt:1'), findsOneWidget);
+    // The failing slice gets its own error row — even though the other slice
+    // matched — and the global error row stays hidden (not all slices failed).
+    expect(find.textContaining('Search failed'), findsOneWidget);
+    expect(find.text(l10nOf(tester).workspaceSearchError), findsNothing);
+  });
+
+  testWidgets('all slices failing shows the global error row', (tester) async {
+    final goneRoot =
+        '${Directory.systemTemp.createTempSync('tp_dialog_gone_').path}/gone';
+    Directory(goneRoot).parent.deleteSync(recursive: true);
+    await tester.pumpWidget(wrapSection(onOpenFile: (_) {}, root: goneRoot));
+    final l10n = l10nOf(tester);
+    await runSearch(tester, 'hello');
+    // Every slice failed: the global error row replaces the per-slice rows,
+    // matching the pre-multi-root single-root behavior.
+    expect(find.text(l10n.workspaceSearchError), findsOneWidget);
+    expect(find.text(l10n.workspaceSearchNoResults), findsNothing);
+  });
 
   testWidgets('tapping a content row invokes onOpenFile with the file path', (
     tester,
@@ -180,7 +257,13 @@ void main() {
               workspace: workspace,
               sessions: const [],
               indexes: WorkspaceSearchIndexes(),
-              fs: LocalFilesystem(),
+              slices: [
+                ContentSearchSlice(
+                  fs: LocalFilesystem(),
+                  root: fixture.path,
+                  label: 'fixture',
+                ),
+              ],
               emptyTitleFallback: 'New Chat',
               onOpenSession: (_) async {},
               onOpenFile: (_) {},
