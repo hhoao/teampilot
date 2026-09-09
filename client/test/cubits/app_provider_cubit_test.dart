@@ -147,6 +147,65 @@ void main() {
     expect(cubit.state.providers.map((p) => p.id), ['b']);
   });
 
+  test('saving a form draft does not clobber probed credential status',
+      () async {
+    // Row probed ready by a successful login inside the add form.
+    const ready = AppProviderConfig(
+      id: 'openai-official-2',
+      cli: CliTool.codex,
+      name: 'OpenAI Official',
+      category: AppProviderCategory.official,
+      isOfficial: true,
+      credentialStatus: 'ready',
+      credentialUpdatedAt: 123,
+    );
+    await cubit.upsertProvider(ready);
+
+    // The add-form draft carries no probe info (missing / 0), like
+    // AppProviderFormSheet._buildNormalDraft.
+    const draft = AppProviderConfig(
+      id: 'openai-official-2',
+      cli: CliTool.codex,
+      name: 'OpenAI Official',
+      category: AppProviderCategory.official,
+      isOfficial: true,
+    );
+    await cubit.upsertProvider(draft);
+
+    final saved = cubit.state.providersFor(CliTool.codex).single;
+    expect(saved.credentialStatus, 'ready');
+    expect(saved.credentialUpdatedAt, 123);
+  });
+
+  test('probe-driven downgrade still clears credential status', () async {
+    const ready = AppProviderConfig(
+      id: 'openai-official-2',
+      cli: CliTool.codex,
+      name: 'OpenAI Official',
+      category: AppProviderCategory.official,
+      isOfficial: true,
+      credentialStatus: 'ready',
+      credentialUpdatedAt: 123,
+    );
+    await cubit.upsertProvider(ready);
+
+    // Revoke path: withCredentialProbe on a missing probe keeps the old
+    // credentialUpdatedAt (> 0) but downgrades the status.
+    const revoked = AppProviderConfig(
+      id: 'openai-official-2',
+      cli: CliTool.codex,
+      name: 'OpenAI Official',
+      category: AppProviderCategory.official,
+      isOfficial: true,
+      credentialStatus: 'missing',
+      credentialUpdatedAt: 123,
+    );
+    await cubit.upsertProvider(revoked);
+
+    expect(cubit.state.providersFor(CliTool.codex).single.credentialStatus,
+        'missing');
+  });
+
   test('switching cli restores selected provider for that cli', () async {
     await cubit.upsertProvider(
       const AppProviderConfig(
