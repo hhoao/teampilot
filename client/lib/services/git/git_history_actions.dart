@@ -18,8 +18,16 @@ class GitHistoryActions {
 
   final GitCommandRunner _runner;
 
-  Future<void> _run(String dir, List<String> args) async {
-    final result = await _runner.runInDirectory(dir, args);
+  Future<void> _run(
+    String dir,
+    List<String> args, {
+    Map<String, String>? environment,
+  }) async {
+    final result = await _runner.runInDirectory(
+      dir,
+      args,
+      environment: environment,
+    );
     if (result.exitCode != 0) {
       final detail = result.stderr.trim().isEmpty
           ? result.stdout.trim()
@@ -114,4 +122,12 @@ class GitHistoryActions {
       _run(dir, ['stash', 'drop', if (ref != null && ref.isNotEmpty) ref]);
 
   Future<void> fetchAll(String dir) => _run(dir, ['fetch', '--all', '--prune']);
+
+  /// 非交互 fetch（自动刷新用）：`GIT_TERMINAL_PROMPT=0` 让缺凭证时直接失败
+  /// 而不是挂住等待输入。手动工具栏按钮仍走 [fetchAll]。
+  Future<void> fetchAllQuiet(String dir) => _run(
+    dir,
+    ['fetch', '--all', '--prune'],
+    environment: const {'GIT_TERMINAL_PROMPT': '0'},
+  );
 }

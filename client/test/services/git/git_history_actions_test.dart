@@ -12,6 +12,7 @@ class _FakeRunner {
   _FakeRunner(this.responses);
   final Map<String, ProcessResult> responses;
   final List<List<String>> calls = [];
+  final List<Map<String, String>?> environments = [];
 
   Future<ProcessResult> call(
     String executable,
@@ -24,6 +25,7 @@ class _FakeRunner {
     if (cIdx < 0) return ProcessResult(0, 0, '/usr/bin/git\n', '');
     final cmd = arguments.sublist(cIdx + 2);
     calls.add(cmd);
+    environments.add(environment);
     for (final e in responses.entries) {
       if (cmd.join(' ').startsWith(e.key)) return e.value;
     }
@@ -99,5 +101,17 @@ void main() {
   test('deleteRemoteBranch pushes delete to the remote', () async {
     await actions.deleteRemoteBranch('/r', 'origin', 'feature-x');
     expect(fake.calls.single, ['push', 'origin', '--delete', 'feature-x']);
+  });
+
+  test('fetchAll runs the documented argv without environment', () async {
+    await actions.fetchAll('/r');
+    expect(fake.calls.single, ['fetch', '--all', '--prune']);
+    expect(fake.environments.single, isNull);
+  });
+
+  test('fetchAllQuiet disables terminal prompting', () async {
+    await actions.fetchAllQuiet('/r');
+    expect(fake.calls.single, ['fetch', '--all', '--prune']);
+    expect(fake.environments.single, {'GIT_TERMINAL_PROMPT': '0'});
   });
 }
