@@ -1278,6 +1278,8 @@ Future<AppShell> buildAppShell({
       },
       cliToolRegistry: cliToolRegistry,
       cliExecutableResolver: sessionPreferencesCubit.resolveExecutable,
+      toolchainNodeResolver: () => sessionPreferencesCubit
+          .resolveToolchainExecutable(SessionPreferences.toolchainNode, ''),
       identityRepository: identityRepository,
       loadInstalledSkills: () => skillRepo.loadInstalled(),
       cliPresetsRepository: cliPresetsRepo,

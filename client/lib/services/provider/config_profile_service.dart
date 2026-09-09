@@ -102,6 +102,7 @@ class ConfigProfileService implements ConfigProfileDelegate {
     HostExecutionEnvironment? hostEnvironment,
     HostOneShotRunner? hostOneShotRunner,
     String? cliExecutable,
+    String? Function()? preferredNodePath,
     CliToolRegistry? cliRegistry,
     Future<List<Skill>> Function()? loadInstalledSkills,
     Future<List<CliPreset>> Function() loadGlobalPresets =
@@ -127,6 +128,7 @@ class ConfigProfileService implements ConfigProfileDelegate {
        _catalogOverride = catalog,
        _hostOneShotRunner = hostOneShotRunner,
        _cliExecutable = cliExecutable,
+       _preferredNodePath = preferredNodePath,
        _cliRegistry = cliRegistry ?? _defaultCliRegistry,
        _loadInstalledSkills = loadInstalledSkills,
        _loadGlobalPresets = loadGlobalPresets,
@@ -142,10 +144,12 @@ class ConfigProfileService implements ConfigProfileDelegate {
     WorkspaceProjectConfigRepository? projectConfigRepository,
     HostOneShotRunner? hostOneShotRunner,
     String? cliExecutable,
+    String? Function()? preferredNodePath,
   }) : _infra = infra,
        _catalogOverride = catalog,
        _hostOneShotRunner = hostOneShotRunner,
        _cliExecutable = cliExecutable,
+       _preferredNodePath = preferredNodePath,
        _cliRegistry = cliRegistry ?? _defaultCliRegistry,
        _loadInstalledSkills = loadInstalledSkills,
        _loadGlobalPresets = loadGlobalPresets,
@@ -155,6 +159,10 @@ class ConfigProfileService implements ConfigProfileDelegate {
   final ConfigProfilePaths? _catalogOverride;
   final HostOneShotRunner? _hostOneShotRunner;
   final String? _cliExecutable;
+
+  /// User-configured or startup-discovered node path, resolved lazily so late
+  /// toolchain discovery is picked up. Mirrors `CliInstallerService`.
+  final String? Function()? _preferredNodePath;
   final CliToolRegistry _cliRegistry;
   final Future<List<Skill>> Function()? _loadInstalledSkills;
   final Future<List<CliPreset>> Function() _loadGlobalPresets;
@@ -168,6 +176,17 @@ class ConfigProfileService implements ConfigProfileDelegate {
     final home = _infra.home.trim();
     if (home.isNotEmpty) {
       prefixes.add(path.join(home, '.local', 'bin'));
+    }
+    // Node-based CLIs (e.g. `codex`) spawn with `#!/usr/bin/env node`
+    // shebangs; a GUI launch has a sparse PATH, so make the resolved node
+    // visible to those child processes. Only absolute paths contribute — a
+    // bare `node` fallback has no directory to prepend.
+    final node = _preferredNodePath?.call()?.trim() ?? '';
+    if (node.isNotEmpty && (node.contains('/') || node.contains(r'\'))) {
+      final nodeDir = path.dirname(node);
+      if (nodeDir.isNotEmpty && nodeDir != '.') {
+        prefixes.add(nodeDir);
+      }
     }
     return prefixes;
   }
@@ -1033,7 +1052,10 @@ class ConfigProfileService implements ConfigProfileDelegate {
           layout: layout,
           configDir: configDir,
           resourceProviders: ResourceProviderSet(
-            prompts: [...providers.prompts, ...injectedResourceProviders.prompts],
+            prompts: [
+              ...providers.prompts,
+              ...injectedResourceProviders.prompts,
+            ],
             skills: [...providers.skills, ...injectedResourceProviders.skills],
             mcp: mcpProviders.providers.mcp,
             hooks: hookProviders.hooks,
