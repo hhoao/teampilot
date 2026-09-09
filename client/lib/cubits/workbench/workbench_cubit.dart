@@ -806,6 +806,29 @@ class WorkbenchCubit extends Cubit<WorkbenchState> {
         _lr.commitResizeByPath(layout, path: path, fraction: fraction),
   );
 
+  /// Applies a batch of resize commits from one divider drag-end: the
+  /// dragged branch plus any pinned nested branches (converted fractions),
+  /// applied in order so later commits see earlier fractions.
+  void commitSplitResizeBatch(
+    String workspaceId, {
+    required List<(List<bool>, double)> commits,
+    bool floating = false,
+  }) => _mutateLayout(
+    workspaceId,
+    floating: floating,
+    mutate: (layout) {
+      var next = layout;
+      for (final (path, fraction) in commits) {
+        next = _lr.commitResizeByPath(
+          next,
+          path: path,
+          fraction: fraction,
+        );
+      }
+      return next;
+    },
+  );
+
   /// Maximizes [groupId], or restores it when already maximized. No-op when
   /// it is not a live leaf.
   void toggleMaximizeGroup(

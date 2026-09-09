@@ -74,9 +74,16 @@ class WorkbenchSplitLayoutView extends StatefulWidget {
   /// When false, only the focused group renders (narrow mode).
   final bool splitEnabled;
 
-  /// Fired exactly once per divider drag, on drag end, with the resized
-  /// branch's path (root-down; `true` = second child) and final fraction.
-  final void Function(List<bool> path, double fraction)? onResizeCommit;
+  /// Fired exactly once per divider drag, on drag end. The list carries the
+  /// resized branch's path (root-down; `true` = second child) and final
+  /// fraction FIRST, then one entry per nested branch whose far pane was
+  /// pinned during the drag (see [_SplitDragSession.secondPixelsByPath]) —
+  /// converted to a fraction — so the committed layout reproduces the
+  /// drag-end pixel geometry.
+  final void Function(
+    List<(List<bool> path, double fraction)> commits,
+  )?
+  onResizeCommit;
 
   /// Fired when a group pane is tapped (translucent — inner content still
   /// receives taps). Callers highlight via [SplitGroupFocusFrame].
@@ -129,8 +136,42 @@ class _WorkbenchSplitLayoutViewState extends State<WorkbenchSplitLayoutView> {
       path: path,
       startFraction: startFraction,
       fraction: startFraction,
+      secondPixelsByPath: _snapshotSecondPixels(path),
     );
     (widget.onPtyHoldBegin ?? _holdBeginDefault)();
+  }
+
+  /// Absolute drag-start content pixels of the SECOND side of every branch
+  /// strictly below [dragPath] on the dragged divider's second subtree. Those
+  /// branches stay pinned to these pixels during the drag: the pane directly
+  /// adjacent to the divider absorbs the delta, farther panes don't move.
+  Map<String, double> _snapshotSecondPixels(List<bool> dragPath) {
+    final pins = <String, double>{};
+    var node = widget.layout.root;
+    var matched = true;
+    for (final isSecond in dragPath) {
+      if (node is! SplitBranch) {
+        matched = false;
+        break;
+      }
+      node = isSecond ? node.second : node.first;
+    }
+    if (!matched || node is! SplitBranch) return pins;
+    // Walk the dragged branch's SECOND subtree: the divider's far side.
+    void walk(SplitNode n, List<bool> subPath) {
+      if (n is! SplitBranch) return;
+      final key = _pathKeyOf([...dragPath, true, ...subPath]);
+      final extent = _branchExtents[key];
+      if (extent != null && extent > _kDividerVisualThickness) {
+        final content = extent - _kDividerVisualThickness;
+        pins[key] = n.firstFraction * content;
+      }
+      walk(n.first, [...subPath, false]);
+      walk(n.second, [...subPath, true]);
+    }
+
+    walk(node.second, const <bool>[]);
+    return pins;
   }
 
   void _holdBeginDefault() => widget.holdHandle?.beginPtyHold();
@@ -163,9 +204,67 @@ class _WorkbenchSplitLayoutViewState extends State<WorkbenchSplitLayoutView> {
     final session = _drag.value;
     if (session == null || session.pathKey != pathKey) return;
     _drag.value = null;
-    widget.onResizeCommit?.call(List<bool>.of(session.path), session.fraction);
+    final commits = <(List<bool>, double)>[
+      (List<bool>.of(session.path), session.fraction),
+    ];
+    // Convert each pin (absolute second-side pixels) into the fraction that
+    // reproduces it under the drag-end allocation: a pinned branch's parent
+    // chain has known post-drag extents derivable from the session fraction
+    // and the branch extents captured before the drag.
+    for (final entry in session.secondPixelsByPath.entries) {
+      final pinnedPath = _pathOf(entry.key);
+      // The pinned branch's own content total after the drag:
+      // parent chain allocations scaled by the dragged branch's fraction.
+      final branchPath = [...session.path, true];
+      // Compute this branch's post-drag content extent by walking from the
+      // dragged branch's second side using current layout fractions.
+      var extent = _branchExtents[pathKey];
+      if (extent == null) continue;
+      var content = extent - _kDividerVisualThickness;
+      var secondTotal = content * (1 - session.fraction);
+      // Descend from the dragged branch's second child to the pinned branch.
+      var node = widget.layout.root;
+      for (final isSecond in session.path) {
+        if (node is! SplitBranch) break;
+        node = isSecond ? node.second : node.first;
+      }
+      if (node is! SplitBranch) continue;
+      var current = node.second;
+      var remaining = pinnedPath.sublist(branchPath.length);
+      var ok = true;
+      for (final isSecond in remaining) {
+        if (current is! SplitBranch) {
+          ok = false;
+          break;
+        }
+        final branchContent = secondTotal - _kDividerVisualThickness;
+        if (branchContent <= 0) {
+          ok = false;
+          break;
+        }
+        final nextShare = isSecond
+            ? 1 - current.firstFraction
+            : current.firstFraction;
+        secondTotal = (branchContent * nextShare).clamp(
+          0.0,
+          double.infinity,
+        );
+        current = isSecond ? current.second : current.first;
+      }
+      if (!ok || current is! SplitBranch) continue;
+      final pinnedContent = secondTotal - _kDividerVisualThickness;
+      if (pinnedContent <= 0) continue;
+      commits.add((pinnedPath, 1 - entry.value / pinnedContent));
+    }
+    widget.onResizeCommit?.call(commits);
     (widget.onPtyHoldEnd ?? _holdEndDefault)();
   }
+
+  /// Parses a path key ("010") back into its path.
+  List<bool> _pathOf(String key) => [
+    for (final ch in key.split(''))
+      if (ch == '1') true else if (ch == '0') false,
+  ];
 
   void _cancelDrag(String pathKey) {
     final session = _drag.value;
@@ -213,6 +312,7 @@ class _WorkbenchSplitLayoutViewState extends State<WorkbenchSplitLayoutView> {
       path: path,
       dragListenable: _drag,
       buildChild: _buildNode,
+      minGroupExtent: widget.minGroupExtent,
       onExtentChanged: (extent) => _branchExtents[_pathKeyOf(path)] = extent,
       onDividerPanStart: () => _beginDrag(path, node.firstFraction),
       onDividerPanUpdate: (delta) => _updateDrag(_pathKeyOf(path), delta),
@@ -225,7 +325,11 @@ class _WorkbenchSplitLayoutViewState extends State<WorkbenchSplitLayoutView> {
 
 /// Immutable snapshot of an in-flight divider drag. [delta] accumulates
 /// pointer movement along the branch axis; [fraction] is the clamped live
-/// first-child share.
+/// first-child share. [secondPixelsByPath] pins ABSOLUTE content pixels for
+/// the second side of nested branches during the drag: the pane adjacent to
+/// the dragged divider absorbs the whole delta and the far side stays at its
+/// drag-start width (VSCode behavior) instead of every pane below resizing
+/// proportionally.
 @immutable
 class _SplitDragSession {
   const _SplitDragSession({
@@ -233,22 +337,28 @@ class _SplitDragSession {
     required this.startFraction,
     required this.fraction,
     this.delta = 0,
+    this.secondPixelsByPath = const {},
   });
 
   final List<bool> path;
   final double startFraction;
   final double fraction;
   final double delta;
+  final Map<String, double> secondPixelsByPath;
 
   String get pathKey => _pathKeyOf(path);
 
-  _SplitDragSession copyWith({double? fraction, double? delta}) =>
-      _SplitDragSession(
-        path: path,
-        startFraction: startFraction,
-        fraction: fraction ?? this.fraction,
-        delta: delta ?? this.delta,
-      );
+  _SplitDragSession copyWith({
+    double? fraction,
+    double? delta,
+    Map<String, double>? secondPixelsByPath,
+  }) => _SplitDragSession(
+    path: path,
+    startFraction: startFraction,
+    fraction: fraction ?? this.fraction,
+    delta: delta ?? this.delta,
+    secondPixelsByPath: secondPixelsByPath ?? this.secondPixelsByPath,
+  );
 }
 
 /// One interior split: recursive first/second panes with a divider between.
@@ -269,12 +379,14 @@ class _BranchView extends StatelessWidget {
     required this.onDividerPanEnd,
     required this.onDividerPanCancel,
     required this.onDividerDoubleTap,
+    required this.minGroupExtent,
   });
 
   final SplitBranch branch;
   final List<bool> path;
   final ValueListenable<_SplitDragSession?> dragListenable;
   final Widget Function(SplitNode node, List<bool> path) buildChild;
+  final double minGroupExtent;
   final ValueChanged<double> onExtentChanged;
   final VoidCallback onDividerPanStart;
   final ValueChanged<double> onDividerPanUpdate;
@@ -306,7 +418,20 @@ class _BranchView extends StatelessWidget {
           valueListenable: dragListenable,
           child: _panes(context, branch.firstFraction, extent),
           builder: (context, session, staticPanes) {
-            if (session == null || session.pathKey != _pathKeyOf(path)) {
+            if (session == null) return staticPanes!;
+            if (session.pathKey != _pathKeyOf(path)) {
+              // This branch is BELOW the dragged divider (its subtree may be
+              // receiving a shrunken/grown allocation): pin the second side
+              // to its drag-start pixels so the far pane absorbs nothing.
+              final pinned = session.secondPixelsByPath[_pathKeyOf(path)];
+              if (pinned != null) {
+                return _panes(
+                  context,
+                  branch.firstFraction,
+                  extent,
+                  pinnedSecondPixels: pinned,
+                );
+              }
               return staticPanes!;
             }
             return _panes(context, session.fraction, extent);
@@ -316,10 +441,31 @@ class _BranchView extends StatelessWidget {
     );
   }
 
-  Widget _panes(BuildContext context, double fraction, double extent) {
+  Widget _panes(
+    BuildContext context,
+    double fraction,
+    double extent, {
+    double? pinnedSecondPixels,
+  }) {
     final isHorizontal = branch.axis == Axis.horizontal;
     final content = extent - _kDividerVisualThickness;
-    final firstExtent = fraction.clamp(0.0, 1.0).toDouble() * content;
+    // Pinned drag layout: the second side keeps its drag-start pixels (the
+    // far pane stays fixed) and the first side takes the remainder — it
+    // absorbs the whole delta. minGroupExtent clamps the remainder from
+    // below (the pin yields when the first pane would go under it).
+    final pinned = pinnedSecondPixels;
+    final firstExtent = pinned == null
+        ? fraction.clamp(0.0, 1.0).toDouble() * content
+        : (extent - _kDividerVisualThickness - pinned)
+              .clamp(minGroupExtent, double.infinity)
+              .toDouble();
+    final second = pinned == null
+        ? Expanded(child: buildChild(branch.second, [...path, true]))
+        : SizedBox(
+            width: isHorizontal ? pinned : null,
+            height: isHorizontal ? null : pinned,
+            child: buildChild(branch.second, [...path, true]),
+          );
     final panes = [
       SizedBox(
         width: isHorizontal ? firstExtent : null,
@@ -327,7 +473,7 @@ class _BranchView extends StatelessWidget {
         child: buildChild(branch.first, [...path, false]),
       ),
       _visualDivider(context),
-      Expanded(child: buildChild(branch.second, [...path, true])),
+      second,
     ];
     final flex = isHorizontal
         ? Row(crossAxisAlignment: CrossAxisAlignment.stretch, children: panes)

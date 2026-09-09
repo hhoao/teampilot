@@ -168,11 +168,11 @@ class _SplitHost extends StatelessWidget {
             layout: layout,
             splitEnabled: true,
             onGroupFocused: (id) => workbenchCubit.focusGroup(_workspaceId, id),
-            onResizeCommit: (path, fraction) => workbenchCubit.commitSplitResize(
-              _workspaceId,
-              path: path,
-              fraction: fraction,
-            ),
+            onResizeCommit: (commits) =>
+                workbenchCubit.commitSplitResizeBatch(
+                  _workspaceId,
+                  commits: commits,
+                ),
             groupBuilder: (context, groupId, strip) => WorkbenchGroupHost(
               workspace: Workspace(
                 workspaceId: _workspaceId,

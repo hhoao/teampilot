@@ -185,9 +185,9 @@ void main() {
           minGroupExtent: 100,
           onPtyHoldBegin: () => holds.add('begin'),
           onPtyHoldEnd: () => holds.add('end'),
-          onResizeCommit: (path, fraction) {
-            paths.add(path);
-            committed = fraction;
+          onResizeCommit: (commits) {
+            paths.add(commits.first.$1);
+            committed = commits.first.$2;
           },
           groupBuilder: (context, id, strip) => Text('group-$id'),
         ),
@@ -217,7 +217,7 @@ void main() {
         WorkbenchSplitLayoutView(
           layout: layout,
           minGroupExtent: 100,
-          onResizeCommit: (path, fraction) => committed = fraction,
+          onResizeCommit: (commits) => committed = commits.first.$2,
           groupBuilder: (context, id, strip) => Text('group-$id'),
         ),
       ),
@@ -235,6 +235,101 @@ void main() {
     expect(committed, isNotNull);
     expect(committed!, closeTo(1 - 100 / 499, 0.002));
   });
+
+  testWidgets(
+    'dragging the OUTER divider keeps the far side pane width fixed',
+    (tester) async {
+      // Three columns: root branch g0 | nested branch (g1 | g2), all
+      // horizontal. Dragging the ROOT divider (between g0 and the nested
+      // pair) must absorb all change in g1 (the nested pair's first) and
+      // keep g2 (the far side) at its current pixel width.
+      const r = SplitLayoutReducer();
+      final second = secondGroupId();
+      final withThird = layout.copyWith(
+        groups: {
+          ...layout.groups,
+          second: const TabStripReducer()
+              .add(layout.groups[second]!, _s3, preview: false)
+              .$1,
+        },
+      );
+      final threeCols = r.splitInto(
+        withThird,
+        tab: _s3,
+        targetGroupId: second,
+        axis: Axis.horizontal,
+        before: false,
+      )!;
+      final thirdId =
+          (((threeCols.root as SplitBranch).second as SplitBranch).second
+                  as SplitLeaf)
+              .groupId;
+      final secondId = second;
+
+      final commitsOut = <(List<bool>, double)>[];
+      late StateSetter setRootState;
+      var currentLayout = threeCols;
+      await tester.pumpWidget(
+        _host(
+          StatefulBuilder(
+            builder: (context, setState) {
+              setRootState = setState;
+              return WorkbenchSplitLayoutView(
+                layout: currentLayout,
+                minGroupExtent: 40,
+                onResizeCommit: (commits) => commitsOut.addAll(commits),
+                groupBuilder: (context, id, strip) =>
+                    _StatefulProbe(label: 'group-$id'),
+              );
+            },
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      // Probe fills its pane (SizedBox.expand), so its size IS the pane size.
+      double widthOf(String id) => tester.getSize(find.text('group-$id')).width;
+      final g2Before = widthOf(thirdId);
+      final g0Before = widthOf('g0');
+
+      final center = tester.getCenter(
+        find.byKey(workbenchSplitDividerKey(const <bool>[])),
+      );
+      final gesture = await tester.startGesture(center);
+      await gesture.moveBy(const Offset(40, 0));
+      await tester.pump();
+      // Still mid-drag: g2 must not have moved; g0 grew by the drag.
+      expect(widthOf(thirdId), g2Before);
+      expect(widthOf('g0'), closeTo(g0Before + 40, 1));
+      await gesture.moveBy(const Offset(-80, 0));
+      await tester.pump();
+      expect(widthOf(thirdId), g2Before);
+      expect(widthOf('g0'), closeTo(g0Before - 40, 1));
+      await gesture.up();
+      await tester.pumpAndSettle();
+
+      // Apply the commits like the cubit does (dragged branch + pinned
+      // nested fractions) and verify the committed layout reproduces the
+      // drag-end geometry: far side fixed, middle pane absorbed the delta.
+      expect(commitsOut, isNotEmpty);
+      setRootState(() {
+        for (final (path, fraction) in commitsOut) {
+          currentLayout = const SplitLayoutReducer().commitResizeByPath(
+            currentLayout,
+            path: path,
+            fraction: fraction,
+          );
+        }
+      });
+      await tester.pumpAndSettle();
+      expect(widthOf(thirdId), closeTo(g2Before, 1));
+      expect(widthOf('g0'), closeTo(g0Before - 40, 1));
+      expect(
+        widthOf(secondId),
+        closeTo(500 - 1 - (g0Before - 40) - g2Before, 1),
+      );
+    },
+  );
 
   testWidgets('nested branch drag reports its own path', (tester) async {
     // g1 (second group) gains s3, then splits vertically: root branch keeps
@@ -261,9 +356,9 @@ void main() {
         WorkbenchSplitLayoutView(
           layout: layout,
           minGroupExtent: 100,
-          onResizeCommit: (path, fraction) {
-            committedPath = path;
-            committed = fraction;
+          onResizeCommit: (commits) {
+            committedPath = commits.first.$1;
+            committed = commits.first.$2;
           },
           groupBuilder: (context, id, strip) => Text('group-$id'),
         ),

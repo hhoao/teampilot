@@ -177,8 +177,8 @@ class _ChatWorkspaceShell extends StatelessWidget {
               layout: layout,
               holdHandle: holdHandle,
               splitEnabled: splitEnabled,
-              onResizeCommit: (path, fraction) => workbench
-                  .commitSplitResize(workspaceId, path: path, fraction: fraction),
+              onResizeCommit: (commits) => workbench
+                  .commitSplitResizeBatch(workspaceId, commits: commits),
               onGroupFocused: routeActive
                   ? (id) => workbench.focusGroup(workspaceId, id)
                   : null,

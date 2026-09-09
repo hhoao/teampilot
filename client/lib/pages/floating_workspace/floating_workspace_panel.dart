@@ -1246,10 +1246,9 @@ class _FloatingPanelBodySlot extends StatelessWidget {
       holdHandle: holdHandle,
       splitEnabled: splitEnabled,
       minGroupExtent: kFloatingMinGroupExtent,
-      onResizeCommit: (path, fraction) => workbench.commitSplitResize(
+      onResizeCommit: (commits) => workbench.commitSplitResizeBatch(
         workspaceId,
-        path: path,
-        fraction: fraction,
+        commits: commits,
         floating: true,
       ),
       onGroupFocused: (groupId) =>
