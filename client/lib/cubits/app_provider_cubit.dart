@@ -333,6 +333,15 @@ class AppProviderCubit extends Cubit<AppProviderState> {
       providerId: trimmedId,
       config: provider.config,
     );
+    // A form draft never probes credentials: saving it (e.g. Save after a
+    // successful login inside the add form) must not clobber the probed
+    // ready state of the existing row. Probe-driven updates always carry a
+    // status or timestamp (withCredentialProbe), so they pass through.
+    final keepProbedCredentials =
+        existing != null &&
+        existing.credentialStatus == 'ready' &&
+        provider.credentialStatus == 'missing' &&
+        provider.credentialUpdatedAt == 0;
     final next = provider.copyWith(
       id: trimmedId,
       cli: cli,
@@ -342,6 +351,10 @@ class AppProviderCubit extends Cubit<AppProviderState> {
           existing?.createdAt ??
           (provider.createdAt > 0 ? provider.createdAt : now),
       updatedAt: now,
+      credentialStatus:
+          keepProbedCredentials ? existing.credentialStatus : null,
+      credentialUpdatedAt:
+          keepProbedCredentials ? existing.credentialUpdatedAt : null,
     );
     final list = [
       for (final p in current)
