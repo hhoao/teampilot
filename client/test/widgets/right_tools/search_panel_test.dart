@@ -8,8 +8,9 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/cubits/content_search/content_search_cubit.dart';
 import 'package:teampilot/l10n/app_localizations.dart';
 import 'package:teampilot/services/io/local_filesystem.dart';
-import 'package:teampilot/services/search/content_search_runner.dart';
 import 'package:teampilot/services/search/content_replacer.dart';
+import 'package:teampilot/services/search/content_search_runner.dart';
+import 'package:teampilot/services/search/multi_root_content_search.dart';
 import 'package:teampilot/widgets/right_tools/search_panel.dart';
 
 /// Emits canned states so tests can pin exact render windows (the real
@@ -17,8 +18,9 @@ import 'package:teampilot/widgets/right_tools/search_panel.dart';
 class _StubbedSearchCubit extends ContentSearchCubit {
   _StubbedSearchCubit()
     : super(
+        slices: const [],
         runnerFactory: (_) => throw UnimplementedError(),
-        replacerFactory: () => throw UnimplementedError(),
+        replacerFactory: (_) => throw UnimplementedError(),
       );
 
   void debugEmitState(ContentSearchState state) => emit(state);
@@ -36,9 +38,15 @@ void main() {
   tearDown(() => fixture.deleteSync(recursive: true));
 
   ContentSearchCubit buildCubit() => ContentSearchCubit(
-    runnerFactory: (o) =>
-        ContentSearchRunner(fs: LocalFilesystem(), root: fixture.path),
-    replacerFactory: () => ContentReplacer(fs: LocalFilesystem()),
+    slices: [
+      ContentSearchSlice(
+        fs: LocalFilesystem(),
+        root: fixture.path,
+        label: 'tp_panel_',
+      ),
+    ],
+    runnerFactory: (s) => ContentSearchRunner(fs: s.fs, root: s.root),
+    replacerFactory: (s) => ContentReplacer(fs: s.fs),
   );
 
   Widget wrap(ContentSearchCubit cubit, {WorkspaceSearchPanel? panel}) {
@@ -179,9 +187,15 @@ void main() {
 
     final firstCubit = buildCubit();
     final secondCubit = ContentSearchCubit(
-      runnerFactory: (o) =>
-          ContentSearchRunner(fs: LocalFilesystem(), root: secondFixture.path),
-      replacerFactory: () => ContentReplacer(fs: LocalFilesystem()),
+      slices: [
+        ContentSearchSlice(
+          fs: LocalFilesystem(),
+          root: secondFixture.path,
+          label: 'tp_panel_',
+        ),
+      ],
+      runnerFactory: (s) => ContentSearchRunner(fs: s.fs, root: s.root),
+      replacerFactory: (s) => ContentReplacer(fs: s.fs),
     );
     addTearDown(firstCubit.close);
     addTearDown(secondCubit.close);
@@ -266,6 +280,8 @@ void main() {
         query: 'hello',
         files: [
           ContentSearchFileGroup(
+            rootKey: fixture.path,
+            rootLabel: 'tp_panel_',
             path: '${fixture.path}/a.dart',
             relativePath: 'a.dart',
             lines: [

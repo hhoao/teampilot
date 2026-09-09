@@ -3,6 +3,7 @@ import 'package:teampilot_search/teampilot_search.dart';
 
 import '../../services/search/content_replacer.dart';
 import '../../services/search/content_search_runner.dart';
+import '../../services/search/multi_root_content_search.dart';
 
 /// One matching line inside a file group.
 class ContentSearchLineMatch {
@@ -26,10 +27,18 @@ class ContentSearchLineMatch {
 /// One file with its matching lines, in match order.
 class ContentSearchFileGroup {
   ContentSearchFileGroup({
+    required this.rootKey,
+    required this.rootLabel,
     required this.path,
     required this.relativePath,
     required this.lines,
   });
+
+  /// Root path of the slice this file was found under.
+  final String rootKey;
+
+  /// Display label of that slice (group header).
+  final String rootLabel;
 
   final String path;
   final String relativePath;
@@ -52,6 +61,7 @@ class ContentSearchState {
     this.searching = false,
     this.error,
     this.replacedCount,
+    this.sliceErrors = const {},
   });
 
   final String query;
@@ -69,6 +79,10 @@ class ContentSearchState {
   /// Set after a replace action (per-file or all); null otherwise.
   final int? replacedCount;
 
+  /// Per-slice failures keyed by root path; a partial failure never becomes
+  /// the global [error].
+  final Map<String, Object> sliceErrors;
+
   ContentSearchState copyWith({
     String? query,
     bool? isRegex,
@@ -84,6 +98,8 @@ class ContentSearchState {
     bool clearError = false,
     int? replacedCount,
     bool clearReplacedCount = false,
+    Map<String, Object>? sliceErrors,
+    bool clearSliceErrors = false,
   }) {
     return ContentSearchState(
       query: query ?? this.query,
@@ -100,6 +116,9 @@ class ContentSearchState {
       replacedCount: clearReplacedCount
           ? null
           : (replacedCount ?? this.replacedCount),
+      sliceErrors: clearSliceErrors
+          ? const {}
+          : (sliceErrors ?? this.sliceErrors),
     );
   }
 }
@@ -109,53 +128,70 @@ class ContentSearchState {
 /// replacements through [ContentReplacer].
 class ContentSearchCubit extends Cubit<ContentSearchState> {
   ContentSearchCubit({
-    required ContentSearchRunner Function(TpSearchOptions options)
-    runnerFactory,
-    required ContentReplacer Function() replacerFactory,
-  }) : _runnerFactory = runnerFactory,
+    required List<ContentSearchSlice> slices,
+    required ContentSearchRunner Function(ContentSearchSlice slice)
+        runnerFactory,
+    required ContentReplacer Function(ContentSearchSlice slice)
+        replacerFactory,
+  }) : _slices = List.unmodifiable(slices),
+       _runnerFactory = runnerFactory,
        _replacerFactory = replacerFactory,
        super(const ContentSearchState());
 
-  final ContentSearchRunner Function(TpSearchOptions options) _runnerFactory;
-  final ContentReplacer Function() _replacerFactory;
+  final List<ContentSearchSlice> _slices;
+  final ContentSearchRunner Function(ContentSearchSlice slice) _runnerFactory;
+  final ContentReplacer Function(ContentSearchSlice slice) _replacerFactory;
 
-  ContentSearchRunner? _runner;
+  MultiRootContentSearch? _engine;
   int _searchSeq = 0;
 
   Future<void> search(TpSearchOptions options) async {
     final seq = ++_searchSeq;
-    // Stop the previous walk at the engine level (the runner owns the active
-    // Rust handle); the sequence guard below cancels its stream subscription
-    // when this run's `await for` picks up the bump.
-    _runner?.cancel();
-    final runner = _runnerFactory(options);
-    _runner = runner;
-    emit(
-      state.copyWith(
-        query: options.pattern,
-        isRegex: options.isRegex,
-        caseSensitive: options.caseSensitive,
-        useGitignore: options.useGitignore,
-        filesToInclude: options.filesToInclude,
-        filesToExclude: options.filesToExclude,
-        searching: true,
-        error: null,
-        clearError: true,
-        replacedCount: null,
-        clearReplacedCount: true,
-      ),
+    _engine?.cancel();
+    final engine = MultiRootContentSearch(
+      slices: _slices,
+      runnerFactory: _runnerFactory,
     );
-    final groups = <String, ContentSearchFileGroup>{};
-    final order = <String>[];
-    var totalMatches = 0;
+    _engine = engine;
+    emit(state.copyWith(
+      query: options.pattern,
+      isRegex: options.isRegex,
+      caseSensitive: options.caseSensitive,
+      useGitignore: options.useGitignore,
+      filesToInclude: options.filesToInclude,
+      filesToExclude: options.filesToExclude,
+      searching: true,
+      error: null,
+      clearError: true,
+      replacedCount: null,
+      clearReplacedCount: true,
+      sliceErrors: const {},
+      clearSliceErrors: true,
+    ));
+    // Per-root aggregation: root order follows slice order; within a root,
+    // files appear in first-match order.
+    final groupsByRoot = <String, Map<String, ContentSearchFileGroup>>{};
+    final countsByRoot = <String, int>{};
+    final sliceErrors = <String, Object>{};
+    var anyMatch = false;
 
     try {
-      await for (final m in runner.run(options)) {
+      await for (final event in engine.run(options)) {
         if (seq != _searchSeq || isClosed) return;
-        totalMatches++;
+        final root = event.slice.root;
+        if (event.isError) {
+          sliceErrors[root] = event.error!;
+          continue;
+        }
+        final m = event.match!;
+        anyMatch = true;
+        countsByRoot.update(root, (v) => v + 1, ifAbsent: () => 1);
+        final groups = groupsByRoot.putIfAbsent(root, () => {});
         final group = groups[m.path];
         if (group == null) {
           groups[m.path] = ContentSearchFileGroup(
+            rootKey: root,
+            rootLabel: event.slice.label,
             path: m.path,
             relativePath: m.relativePath,
             lines: [
@@ -167,7 +203,6 @@ class ContentSearchCubit extends Cubit<ContentSearchState> {
               ),
             ],
           );
-          order.add(m.path);
         } else {
           group.lines.add(
             ContentSearchLineMatch(
@@ -185,32 +220,40 @@ class ContentSearchCubit extends Cubit<ContentSearchState> {
       return;
     }
     if (seq != _searchSeq || isClosed) return;
-    emit(
-      state.copyWith(
-        files: [for (final p in order) groups[p]!],
-        searching: false,
-        // The package stream does not expose truncation; a run that reached
-        // the requested cap (or overshot it across walker threads) is
-        // truncated by definition.
-        truncated:
-            options.maxResults != null && totalMatches >= options.maxResults!,
-        clearError: true,
-      ),
-    );
+    final files = <ContentSearchFileGroup>[
+      for (final slice in _slices)
+        if (groupsByRoot[slice.root] case final groups?)
+          for (final path in groups.keys) groups[path]!,
+    ];
+    // Every slice failed with zero matches anywhere → global error; partial
+    // failures stay in sliceErrors.
+    final allFailed =
+        sliceErrors.length == _slices.length && _slices.isNotEmpty && !anyMatch;
+    final truncated = options.maxResults != null &&
+        countsByRoot.values.any((c) => c >= options.maxResults!);
+    emit(state.copyWith(
+      files: files,
+      searching: false,
+      truncated: truncated,
+      error: allFailed ? sliceErrors.values.first : null,
+      clearError: !allFailed,
+      sliceErrors: sliceErrors,
+      clearSliceErrors: sliceErrors.isEmpty,
+    ));
   }
 
   /// Stops the active search stream; partial results stay visible.
   void cancel() {
     _searchSeq++;
-    _runner?.cancel();
-    _runner = null;
+    _engine?.cancel();
+    _engine = null;
     emit(state.copyWith(searching: false));
   }
 
   void clear() {
     _searchSeq++;
-    _runner?.cancel();
-    _runner = null;
+    _engine?.cancel();
+    _engine = null;
     emit(
       state.copyWith(
         files: const [],
@@ -218,6 +261,7 @@ class ContentSearchCubit extends Cubit<ContentSearchState> {
         truncated: false,
         clearError: true,
         clearReplacedCount: true,
+        clearSliceErrors: true,
       ),
     );
   }
@@ -259,7 +303,11 @@ class ContentSearchCubit extends Cubit<ContentSearchState> {
     String replacement,
   ) async {
     try {
-      final replacer = _replacerFactory();
+      final slice = _slices.firstWhere(
+        (s) => s.root == group.rootKey,
+        orElse: () => throw StateError('no slice for ${group.rootKey}'),
+      );
+      final replacer = _replacerFactory(slice);
       final matches = <TpSearchMatch>[
         for (final line in group.lines)
           if (!line.replaced)
