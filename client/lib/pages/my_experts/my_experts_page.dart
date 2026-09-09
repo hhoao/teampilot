@@ -5,6 +5,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 import 'package:shared_ui/shared_ui.dart';
 import '../../widgets/app_toast/app_toast.dart';
+import '../../widgets/home_storage_scope.dart';
 
 import '../../cubits/expert_hub_cubit.dart';
 import '../../cubits/launch_profile_cubit.dart';
@@ -14,7 +15,6 @@ import '../../models/team_config.dart';
 import '../../services/expert_hub/expert_hub_catalog.dart';
 import '../../services/expert_hub/local_expert_store.dart';
 import '../../services/expert_hub/local_expert_writer.dart';
-import '../../services/storage/app_storage.dart';
 import '../../services/expert_hub/member_roster_service.dart';
 import '../../services/hub_publish/hub_publish_record_store.dart';
 import '../../widgets/settings/workspace_pane_header.dart';
@@ -55,9 +55,9 @@ class _MyExpertsPageState extends State<MyExpertsPage> {
       LocalExpertWriter(
         catalog: _readCatalog(),
         store: LocalExpertStore(
-          fs: AppStorage.tolerantHome.fs,
+          fs: homeStorageOf(context).fs,
           dirOverride:
-              AppStorage.tolerantHome.paths.memberHubLocalTemplatesDir,
+              homeStorageOf(context).paths.memberHubLocalTemplatesDir,
         ),
       );
 
@@ -70,7 +70,7 @@ class _MyExpertsPageState extends State<MyExpertsPage> {
   }
   late final HubPublishRecordStore _records =
       widget.records ??
-      HubPublishRecordStore(storage: AppStorage.tolerantHome);
+      HubPublishRecordStore(storage: homeStorageOf(context));
   List<DiscoverableMember> _members = const [];
   var _loading = true;
   String? _highlightMemberKey;

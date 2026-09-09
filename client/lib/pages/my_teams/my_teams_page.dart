@@ -7,8 +7,8 @@ import '../../l10n/l10n_extensions.dart';
 import '../../models/team_config.dart';
 import '../../services/expert_hub/local_expert_store.dart';
 import '../../services/hub_publish/hub_publish_record_store.dart';
-import '../../services/storage/app_storage.dart';
 import 'package:shared_ui/shared_ui.dart';
+import '../../widgets/home_storage_scope.dart';
 import '../../widgets/settings/workspace_pane_header.dart';
 import '../home_workspace/home_workspace_new_team_dialog.dart';
 import '../home_workspace/home_workspace_route.dart';
@@ -42,12 +42,11 @@ class MyTeamsPage extends StatefulWidget {
 
 class _MyTeamsPageState extends State<MyTeamsPage> {
   late final HubPublishRecordStore _records =
-      widget.records ??
-      HubPublishRecordStore(storage: AppStorage.tolerantHome);
+      widget.records ?? HubPublishRecordStore(storage: homeStorageOf(context));
 
   late final LocalExpertStore _expertStore = LocalExpertStore(
-    fs: AppStorage.tolerantHome.fs,
-    dirOverride: AppStorage.tolerantHome.paths.memberHubLocalTemplatesDir,
+    fs: homeStorageOf(context).fs,
+    dirOverride: homeStorageOf(context).paths.memberHubLocalTemplatesDir,
   );
   String? _highlightTeamId;
   var _didAutoOpen = false;

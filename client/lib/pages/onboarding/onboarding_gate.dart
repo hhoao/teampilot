@@ -12,7 +12,7 @@ import '../../cubits/launch_profile_cubit.dart';
 import '../../models/workspace.dart';
 import '../../repositories/app_settings_repository.dart';
 import '../../services/app/onboarding_service.dart';
-import '../../services/storage/app_storage.dart';
+import '../../widgets/home_storage_scope.dart';
 import '../../services/storage/home_target_controller.dart';
 import '../../services/team/default_workspace_service.dart';
 import '../../utils/workspace/workspace_path_utils.dart';
@@ -57,7 +57,7 @@ class OnboardingGateState extends State<OnboardingGate> {
     final home = context.read<HomeTargetController>().current;
     final primaryPath = await DefaultWorkspaceService.resolvePrimaryPath(
       home: home,
-      storage: AppStorage.tolerantHome,
+      storage: homeStorageOf(context),
     );
     if (mounted) {
       final chatCubit = context.read<ChatCubit>();
@@ -66,7 +66,7 @@ class OnboardingGateState extends State<OnboardingGate> {
         if (workspacePathsEqual(
           w.firstFolderPath,
           primaryPath,
-          usesPosixPaths: AppStorage.tolerantHome.usesPosixPaths,
+          usesPosixPaths: homeStorageOf(context).usesPosixPaths,
         )) {
           defaultWorkspace = w;
           break;

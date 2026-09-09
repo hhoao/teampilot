@@ -10,7 +10,6 @@ import 'package:teampilot/models/workspace_folder.dart';
 import 'package:teampilot/pages/chat/history_continue_delivery.dart';
 import 'package:teampilot/repositories/session_repository.dart';
 import 'package:teampilot/services/session/failed_message_store.dart';
-import 'package:teampilot/services/storage/app_storage.dart';
 
 import '../../support/post_frame_test_harness.dart';
 
@@ -142,8 +141,8 @@ void main() {
       );
 
       final store = FailedMessageStore(
-        fs: AppStorage.fs,
-        rootPath: AppStorage.appDataRoot,
+        fs: testHomeStorage.fs,
+        rootPath: testHomeStorage.appDataRoot,
       );
       await store.save(
         session.workspaceId,
@@ -203,8 +202,8 @@ void main() {
       );
 
       final store = FailedMessageStore(
-        fs: AppStorage.fs,
-        rootPath: AppStorage.appDataRoot,
+        fs: testHomeStorage.fs,
+        rootPath: testHomeStorage.appDataRoot,
       );
       await store.save(
         session.workspaceId,

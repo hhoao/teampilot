@@ -31,6 +31,7 @@ import 'package:teampilot/theme/app_theme.dart';
 import 'package:teampilot/utils/ui/app_keys.dart';
 
 import '../../support/post_frame_test_harness.dart';
+import 'package:teampilot/services/storage/home_storage.dart';
 import '../../support/in_memory_filesystem.dart';
 
 const _dismissKey = Key('selection-ask-ai-dismiss');
@@ -128,6 +129,7 @@ void main() {
       MultiRepositoryProvider(
         providers: [
           RepositoryProvider<CommandBus>(create: (_) => CommandBus()),
+          RepositoryProvider<HomeStorage>.value(value: testHomeStorage),
         ],
         child: MultiBlocProvider(
           providers: [
@@ -214,6 +216,7 @@ void main() {
         providers: [
           RepositoryProvider<CommandBus>(create: (_) => CommandBus()),
           RepositoryProvider<WorkspaceWorktreeRegistry>.value(value: registry),
+          RepositoryProvider<HomeStorage>.value(value: testHomeStorage),
         ],
         child: MultiBlocProvider(
           providers: [
@@ -297,6 +300,7 @@ void main() {
       MultiRepositoryProvider(
         providers: [
           RepositoryProvider<CommandBus>(create: (_) => CommandBus()),
+          RepositoryProvider<HomeStorage>.value(value: testHomeStorage),
         ],
         child: MultiBlocProvider(
           providers: [
@@ -415,6 +419,7 @@ void main() {
       MultiRepositoryProvider(
         providers: [
           RepositoryProvider<CommandBus>(create: (_) => CommandBus()),
+          RepositoryProvider<HomeStorage>.value(value: testHomeStorage),
         ],
         child: MultiBlocProvider(
           providers: [

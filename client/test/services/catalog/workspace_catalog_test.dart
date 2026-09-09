@@ -10,7 +10,8 @@ import 'package:teampilot/models/workspace_folder.dart';
 import 'package:teampilot/repositories/session_repository.dart';
 import 'package:teampilot/repositories/workspace_index_store.dart';
 import 'package:teampilot/services/io/local_filesystem.dart';
-import 'package:teampilot/services/storage/app_storage.dart';
+import 'package:teampilot/services/storage/app_paths.dart';
+import '../../support/test_runtime_context.dart';
 import 'package:teampilot/services/storage/home_storage.dart';
 
 void main() {
@@ -19,7 +20,7 @@ void main() {
     final tmpRoot = Directory.systemTemp.createTempSync('catalog_home_');
     addTearDown(() => tmpRoot.deleteSync(recursive: true));
     final paths = AppPaths(tmpRoot.path);
-    AppStorage.installForTesting(
+    installTestHomeStorage(
       filesystem: LocalFilesystem(
         pathContext: AppPaths.pathContextForDataRoot(paths.basePath),
       ),
@@ -29,14 +30,14 @@ void main() {
     );
   });
   tearDown(() {
-    AppStorage.resetForTesting();
+    resetTestHomeStorage();
     AppPathsBootstrapper.resetForTesting();
   });
 
   WorkspaceCatalog buildCatalog() {
     final catalog = WorkspaceCatalog(
       // 本组测试不触 repo
-      SessionRepository(storage: HomeStorage(AppStorage.context)),
+      SessionRepository(storage: HomeStorage(testHomeStorage.context)),
       usesPosixPaths: false,
     );
     catalog.ingest(
@@ -88,7 +89,7 @@ void main() {
     addTearDown(() => tmp.deleteSync(recursive: true));
     final repo = SessionRepository(
       rootDir: tmp.path,
-      storage: HomeStorage(AppStorage.context),
+      storage: HomeStorage(testHomeStorage.context),
     );
     final catalog = WorkspaceCatalog(repo, usesPosixPaths: false);
     await catalog.loadIndex();
@@ -112,7 +113,7 @@ void main() {
     addTearDown(() => tmp.deleteSync(recursive: true));
     final repo = SessionRepository(
       rootDir: tmp.path,
-      storage: HomeStorage(AppStorage.context),
+      storage: HomeStorage(testHomeStorage.context),
     );
     final catalog = WorkspaceCatalog(repo, usesPosixPaths: false);
     await catalog.loadIndex();
@@ -128,7 +129,7 @@ void main() {
     addTearDown(() => tmp.deleteSync(recursive: true));
     final repo = SessionRepository(
       rootDir: tmp.path,
-      storage: HomeStorage(AppStorage.context),
+      storage: HomeStorage(testHomeStorage.context),
     );
     final catalog = WorkspaceCatalog(repo, usesPosixPaths: false);
     await catalog.loadIndex();
@@ -148,7 +149,7 @@ void main() {
     addTearDown(() => tmp.deleteSync(recursive: true));
     final repo = SessionRepository(
       rootDir: tmp.path,
-      storage: HomeStorage(AppStorage.context),
+      storage: HomeStorage(testHomeStorage.context),
     );
     final catalog = WorkspaceCatalog(repo, usesPosixPaths: false);
     await catalog.loadIndex();
@@ -174,7 +175,7 @@ void main() {
     addTearDown(() => tmp.deleteSync(recursive: true));
     final repo = SessionRepository(
       rootDir: tmp.path,
-      storage: HomeStorage(AppStorage.context),
+      storage: HomeStorage(testHomeStorage.context),
     );
     final catalog = WorkspaceCatalog(repo, usesPosixPaths: false);
     await catalog.loadIndex();
@@ -212,7 +213,7 @@ void main() {
     addTearDown(() => tmp.deleteSync(recursive: true));
     final repo = SessionRepository(
       rootDir: tmp.path,
-      storage: HomeStorage(AppStorage.context),
+      storage: HomeStorage(testHomeStorage.context),
     );
     final catalog = WorkspaceCatalog(repo, usesPosixPaths: false);
     await catalog.loadIndex();

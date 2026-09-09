@@ -30,7 +30,6 @@ import '../../models/app_session.dart';
 import 'package:uuid/uuid.dart';
 import '../cubits/workbench/workbench_cubit.dart';
 import '../../services/cli/registry/cli_tool_registry.dart';
-import '../../services/storage/app_storage.dart';
 import '../../services/storage/home_storage.dart';
 import '../../models/team_config.dart';
 
@@ -251,11 +250,11 @@ TeamGenerationGraph buildTeamGenerationGraph({
     catalog: expertHubCatalog,
   );
   final promptDeliveryStore = FilePromptDeliveryStore(
-    root: AppStorage.fs.pathContext.join(
-      AppStorage.paths.basePath,
+    root: storage.fs.pathContext.join(
+      storage.paths.basePath,
       'prompt-deliveries',
     ),
-    fs: AppStorage.fs,
+    fs: storage.fs,
   );
   final promptCoordinator = PromptDeliveryCoordinator(
     store: promptDeliveryStore,

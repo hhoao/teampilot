@@ -16,7 +16,7 @@ import 'package:teampilot/repositories/cli_presets_repository.dart';
 import 'package:teampilot/repositories/session_repository.dart';
 import 'package:teampilot/services/cli/registry/cli_tool_registry.dart';
 import 'package:teampilot/services/cli/registry/cli_tool_registry_scope.dart';
-import 'package:teampilot/services/storage/app_storage.dart';
+import 'package:teampilot/services/storage/app_paths.dart';
 import 'package:teampilot/services/workspace/workspace_pane_policy.dart';
 import 'package:teampilot/services/expert_hub/local_expert_store.dart';
 
@@ -58,8 +58,8 @@ void main() {
     addTearDown(teamCubit.close);
     final presets = CliPresetsCubit(
       repository: CliPresetsRepository(
-        fs: AppStorage.fs,
-        presetsPath: '${AppStorage.paths.basePath}/cli-presets.json',
+        fs: testHomeStorage.fs,
+        presetsPath: '${testHomeStorage.paths.basePath}/cli-presets.json',
       ),
     );
     addTearDown(presets.close);

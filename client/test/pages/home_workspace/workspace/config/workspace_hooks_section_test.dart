@@ -8,7 +8,6 @@ import 'package:teampilot/models/hook_definition.dart';
 import 'package:teampilot/models/hook_entry.dart';
 import 'package:teampilot/models/hook_event.dart';
 import 'package:teampilot/pages/home_workspace/workspace/config/workspace_hooks_section.dart';
-import 'package:teampilot/services/storage/app_storage.dart';
 import '../../../../support/post_frame_test_harness.dart';
 import 'package:teampilot/repositories/workspace_project_config_repository.dart';
 import 'package:teampilot/services/hook/hook_repository.dart';

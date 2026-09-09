@@ -8,7 +8,6 @@ import 'package:teampilot/models/team_config.dart';
 import 'package:teampilot/repositories/app_provider_repository.dart';
 import 'package:teampilot/services/launch/manifest_executor.dart';
 import 'package:teampilot/services/session/session_lifecycle_service.dart';
-import 'package:teampilot/services/storage/app_storage.dart';
 import 'package:teampilot/services/cli/registry/cli_bootstrap.dart';
 import 'package:teampilot/services/cli/registry/cli_tool_registry.dart';
 
@@ -27,7 +26,7 @@ void main() {
     'stageSimpleSessionLaunch records manifest entries on local target',
     () async {
       final lifecycle = SessionLifecycleService(
-        appDataBasePath: AppStorage.paths.basePath,
+        appDataBasePath: testHomeStorage.paths.basePath,
                                                  storage: testHomeStorage,
       );
       final roots = await lifecycle.resolveWorkContextForTargetId('local');
@@ -54,7 +53,7 @@ void main() {
     const presetId = 'preset-deepseek';
     const providerId = 'deepseek-provider';
     final lifecycle = SessionLifecycleService(
-      appDataBasePath: AppStorage.paths.basePath,
+      appDataBasePath: testHomeStorage.paths.basePath,
       loadPresets: () => const [
         CliPreset(
           id: presetId,

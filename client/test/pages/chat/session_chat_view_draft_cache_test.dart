@@ -4,6 +4,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:teampilot/services/storage/home_storage.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:shared_ui/shared_ui.dart';
 import 'package:teampilot/cubits/agent_attention_cubit.dart';
@@ -43,7 +44,7 @@ import 'package:teampilot/services/follow_up/follow_up_queue.dart';
 import 'package:teampilot/services/session/history_awaiting_working_sync.dart';
 import 'package:teampilot/services/session/failed_message_store.dart';
 import 'package:teampilot/services/session/session_lifecycle_service.dart';
-import 'package:teampilot/services/storage/app_storage.dart';
+import 'package:teampilot/services/storage/app_paths.dart';
 import 'package:teampilot/theme/app_theme.dart';
 
 import '../../support/in_memory_filesystem.dart';
@@ -128,7 +129,7 @@ void main() {
 
   setUp(() {
     setUpTestAppStorage();
-    AppStorage.installForTesting(
+    installTestHomeStorage(
       filesystem: InMemoryFilesystem(),
       paths: const AppPaths('/compose-draft-test'),
       home: '/compose-draft-test',
@@ -288,6 +289,7 @@ void main() {
       MultiRepositoryProvider(
         providers: [
           RepositoryProvider<CommandBus>(create: (_) => CommandBus()),
+          RepositoryProvider<HomeStorage>.value(value: testHomeStorage),
         ],
         child: MultiBlocProvider(
           providers: [
@@ -362,8 +364,8 @@ void main() {
   ) async {
     await tester.runAsync(
       () => ComposeDraftStore(
-        fs: AppStorage.fs,
-        rootPath: AppStorage.appDataRoot,
+        fs: testHomeStorage.fs,
+        rootPath: testHomeStorage.appDataRoot,
       ).saveSession('ws-1', 's1', 'retry after restart'),
     );
     composeDraftCache.clear();
@@ -440,8 +442,8 @@ void main() {
     expect(_composeField(tester).controller!.text, isEmpty);
     expect(
       await ComposeDraftStore(
-        fs: AppStorage.fs,
-        rootPath: AppStorage.appDataRoot,
+        fs: testHomeStorage.fs,
+        rootPath: testHomeStorage.appDataRoot,
       ).loadSession('ws-1', 's4'),
       isNull,
     );
@@ -461,8 +463,8 @@ void main() {
           sawDraftDuringSubmit =
               composeDraftCache.sessionDraft(session.sessionId) != null ||
               (await ComposeDraftStore(
-                    fs: AppStorage.fs,
-                    rootPath: AppStorage.appDataRoot,
+                    fs: testHomeStorage.fs,
+                    rootPath: testHomeStorage.appDataRoot,
                   ).loadSession('ws-1', session.sessionId)) !=
                   null;
           return release.future;
@@ -520,8 +522,8 @@ void main() {
 
     expect(
       await ComposeDraftStore(
-        fs: AppStorage.fs,
-        rootPath: AppStorage.appDataRoot,
+        fs: testHomeStorage.fs,
+        rootPath: testHomeStorage.appDataRoot,
       ).loadSession('ws-1', 's5'),
       isNull,
     );
@@ -531,8 +533,8 @@ void main() {
     tester,
   ) async {
     final store = FailedMessageStore(
-      fs: AppStorage.fs,
-      rootPath: AppStorage.appDataRoot,
+      fs: testHomeStorage.fs,
+      rootPath: testHomeStorage.appDataRoot,
     );
     final record = FailedMessageRecord(
       id: 'pending:retry',
@@ -585,8 +587,8 @@ void main() {
     tester,
   ) async {
     final store = FailedMessageStore(
-      fs: AppStorage.fs,
-      rootPath: AppStorage.appDataRoot,
+      fs: testHomeStorage.fs,
+      rootPath: testHomeStorage.appDataRoot,
     );
     final record = FailedMessageRecord(
       id: 'pending:retry-failure',

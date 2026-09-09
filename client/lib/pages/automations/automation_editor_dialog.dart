@@ -18,7 +18,7 @@ import '../../pages/home_workspace/workspace/workspace_landing_selectors.dart';
 import '../../services/automation/automation_launch_session_binding.dart';
 import '../../services/automation/automation_schedule_calculator.dart';
 import '../../services/automation/automation_schedule_defaults.dart';
-import '../../services/storage/app_storage.dart';
+import '../../widgets/home_storage_scope.dart';
 import '../../utils/workspace/landing_draft_resolver.dart';
 import '../../utils/workspace/workspace_path_utils.dart';
 import 'package:shared_ui/shared_ui.dart';
@@ -198,7 +198,7 @@ class _AutomationEditorDialogState extends State<AutomationEditorDialog> {
 
     final draft = await resolveLandingDraft(
       workspaceId: workspaceId,
-      storage: AppStorage.tolerantHome,
+      storage: homeStorageOf(context),
       simpleModeDefaultFullAccess: context
           .read<SessionPreferencesCubit>()
           .state
@@ -233,7 +233,7 @@ class _AutomationEditorDialogState extends State<AutomationEditorDialog> {
     if (workspace == null) return;
     final resolver = WorkspaceLandingProjectResolver(
       workspace: workspace,
-      usesPosixPaths: AppStorage.tolerantHome.usesPosixPaths,
+      usesPosixPaths: homeStorageOf(context).usesPosixPaths,
       storedProjectPath: _projectFolderPath,
     );
     final project = resolver.resolveSelectedProjectPath().trim();
@@ -254,19 +254,19 @@ class _AutomationEditorDialogState extends State<AutomationEditorDialog> {
     if (stored.isNotEmpty) {
       return normalizeWorkspacePath(
         stored,
-        usesPosixPaths: AppStorage.tolerantHome.usesPosixPaths,
+        usesPosixPaths: homeStorageOf(context).usesPosixPaths,
       );
     }
     if (workspace == null) return null;
     final resolved = WorkspaceLandingProjectResolver(
       workspace: workspace,
-      usesPosixPaths: AppStorage.tolerantHome.usesPosixPaths,
+      usesPosixPaths: homeStorageOf(context).usesPosixPaths,
       storedProjectPath: _projectFolderPath,
     ).resolveSelectedProjectPath().trim();
     if (resolved.isEmpty) return null;
     return normalizeWorkspacePath(
       resolved,
-      usesPosixPaths: AppStorage.tolerantHome.usesPosixPaths,
+      usesPosixPaths: homeStorageOf(context).usesPosixPaths,
     );
   }
 
@@ -275,7 +275,7 @@ class _AutomationEditorDialogState extends State<AutomationEditorDialog> {
     if (stored.isNotEmpty) {
       return normalizeWorkspacePath(
         stored,
-        usesPosixPaths: AppStorage.tolerantHome.usesPosixPaths,
+        usesPosixPaths: homeStorageOf(context).usesPosixPaths,
       );
     }
     return _resolvedProjectFolderPath(workspace);

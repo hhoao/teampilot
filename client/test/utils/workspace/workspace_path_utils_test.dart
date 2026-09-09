@@ -3,7 +3,8 @@ import 'dart:io';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:path/path.dart' as p;
 import 'package:teampilot/models/workspace_folder.dart';
-import 'package:teampilot/services/storage/app_storage.dart';
+import 'package:teampilot/services/storage/app_paths.dart';
+import '../../support/test_runtime_context.dart';
 import 'package:teampilot/services/io/local_filesystem.dart';
 import 'package:teampilot/services/io/wsl_filesystem.dart';
 import 'package:teampilot/utils/workspace/workspace_path_utils.dart';
@@ -36,11 +37,11 @@ void main() {
 
   test('normalizeWorkspacePath converts Windows paths under WSL storage', () {
     if (!Platform.isWindows) return;
-    AppStorage.installForTesting(
+    installTestHomeStorage(
       filesystem: WslFilesystem(),
       paths: AppPaths('/home/hhoa/.local/share/com.hhoa.teampilot'),
     );
-    addTearDown(AppStorage.resetForTesting);
+    addTearDown(resetTestHomeStorage);
 
     final normalized = normalizeWorkspacePath(
       r'C:\Users\dev\repo',
@@ -52,11 +53,11 @@ void main() {
 
   test('normalizeWorkspacePath keeps Windows paths under native storage', () {
     if (!Platform.isWindows) return;
-    AppStorage.installForTesting(
+    installTestHomeStorage(
       filesystem: LocalFilesystem(),
       paths: AppPaths(r'C:\Users\dev\AppData\Roaming\com.hhoa.teampilot'),
     );
-    addTearDown(AppStorage.resetForTesting);
+    addTearDown(resetTestHomeStorage);
 
     expect(
       normalizeWorkspacePath(r'C:\Users\dev\repo', usesPosixPaths: false),
@@ -69,7 +70,7 @@ void main() {
   });
 
   test('normalizeWorkspacePath keeps POSIX paths unchanged', () {
-    AppStorage.resetForTesting();
+    resetTestHomeStorage();
     expect(
       normalizeWorkspacePath('/tmp/work', usesPosixPaths: false),
       '/tmp/work',
@@ -82,7 +83,7 @@ void main() {
 
   test('workspaceMetadataKeys includes Windows path separator variants', () {
     if (!Platform.isWindows) return;
-    AppStorage.resetForTesting();
+    resetTestHomeStorage();
 
     final keys = workspaceMetadataKeys(
       r'C:\Users\haung\Documents',
@@ -102,7 +103,7 @@ void main() {
     'workspaceMetadataKeys includes Windows variants for WSL workspace paths',
     () {
       if (!Platform.isWindows) return;
-      AppStorage.resetForTesting();
+      resetTestHomeStorage();
 
       final keys = workspaceMetadataKeys(
         '/mnt/c/Users/haung/Documents',

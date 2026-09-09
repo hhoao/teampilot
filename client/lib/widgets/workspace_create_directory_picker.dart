@@ -5,7 +5,7 @@ import 'package:shared_ui/shared_ui.dart';
 import '../l10n/l10n_extensions.dart';
 import '../models/runtime_target.dart';
 import '../models/workspace_folder.dart';
-import '../services/storage/app_storage.dart';
+import 'home_storage_scope.dart';
 import '../services/storage/home_target_controller.dart';
 import '../utils/workspace/workspace_path_picker.dart';
 import '../utils/workspace/workspace_path_utils.dart';
@@ -59,7 +59,7 @@ class _WorkspaceCreateDirectoryPickerState
           workspacePathsEqual(
             f.path,
             trimmed,
-            usesPosixPaths: AppStorage.tolerantHome.usesPosixPaths,
+            usesPosixPaths: homeStorageOf(context).usesPosixPaths,
           ),
     );
     if (duplicate) return;

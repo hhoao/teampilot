@@ -39,7 +39,7 @@ import 'package:teampilot/services/file_tree/workspace_file_tree_store.dart';
 import 'package:teampilot/services/git/git_repo_store.dart';
 import 'package:teampilot/services/io/local_filesystem.dart';
 import 'package:teampilot/services/session/ai_history_loader.dart';
-import 'package:teampilot/services/storage/app_storage.dart';
+import 'package:teampilot/services/storage/app_paths.dart';
 import 'package:teampilot/services/storage/runtime_context.dart';
 import 'package:teampilot/services/storage/runtime_context_registry.dart';
 import 'package:teampilot/services/terminal/terminal_transport_factory.dart';
@@ -88,7 +88,7 @@ AiHistoryCubit _testAiHistoryCubit() {
   return AiHistoryCubit(
     loader: AiHistoryLoader(
       resolveWorkContext: (launchCtx, {String? memberId}) async {
-        final basePath = AppStorage.paths.basePath;
+        final basePath = testHomeStorage.paths.basePath;
         return RuntimeContext(
           target: RuntimeTarget.local(),
           filesystem: LocalFilesystem(

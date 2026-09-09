@@ -5,7 +5,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/services/storage/runtime_layout.dart';
 import 'package:teampilot/services/mcp/mcp_registry_service.dart';
 import 'package:teampilot/services/mcp/mcp_registry_config_service.dart';
-import 'package:teampilot/services/storage/app_storage.dart';
+import 'package:teampilot/services/storage/app_paths.dart';
 import 'package:teampilot/models/mcp_registry_source.dart';
 import 'package:teampilot/models/mcp_server.dart';
 import 'package:teampilot/models/mcp_server_spec.dart';
@@ -37,7 +37,7 @@ void main() {
 
   setUp(() async {
     root = await Directory.systemTemp.createTemp('mcp_registry_');
-    layout = RuntimeLayout(teampilotRoot: root.path, fs: AppStorage.fs);
+    layout = RuntimeLayout(teampilotRoot: root.path, fs: LocalFilesystem());
     CliToolRegistry.builtIn().configure(
       CliBootstrap(const {}, storage: _storageFor(root)),
     );

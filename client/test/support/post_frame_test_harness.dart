@@ -26,9 +26,20 @@ import 'package:teampilot/services/resource_manager/resource_memory_models.dart'
 import 'package:teampilot/services/skill/registry/skill_registry_config_service.dart';
 import 'package:teampilot/services/skill/registry/skill_registry_source.dart';
 import 'package:teampilot/services/skill/skill_acquisition_engine.dart';
-import 'package:teampilot/services/storage/app_storage.dart';
+import 'package:teampilot/services/storage/app_paths.dart';
 import 'package:teampilot/services/storage/home_storage.dart';
 import 'package:teampilot/services/storage/workspace_layout.dart';
+
+// Shared test-home state + install/reset seams live in test_runtime_context;
+// re-exported so existing `post_frame_test_harness` imports keep resolving.
+import 'test_runtime_context.dart';
+export 'test_runtime_context.dart'
+    show
+        testHomeStorage,
+        buildTestHomeStorage,
+        bindTestNativeHome,
+        installTestHomeStorage,
+        resetTestHomeStorage;
 
 Directory? _testAppDataDir;
 
@@ -43,31 +54,15 @@ class _TestProcessMetricsService extends ProcessMetricsService {
   }
 }
 
-/// Initializes app paths and [RuntimeStorageContext] for cubit tests.
+/// Initializes app paths and the shared test [HomeStorage] for cubit tests.
 ///
-/// Also binds a [HomeStorage] over the test home context so migrated
-/// constructors can be handed `testHomeStorage` (shim era: the same context
-/// is also reachable through the AppStorage shim).
-HomeStorage? _testHomeStorage;
-
-/// The [HomeStorage] bound by [setUpTestAppStorage] — pass into
-/// constructor-injected repositories/cubits. Returns null when the storage
-/// was not set up in this test.
-HomeStorage get testHomeStorage =>
-    _testHomeStorage ??
-    (throw StateError(
-      'setUpTestAppStorage() not called in this test group',
-    ));
-
-/// Builds a [HomeStorage] over the test home context (same context the
-/// AppStorage shim forwards to). For tests needing their own instance.
-HomeStorage buildTestHomeStorage() => HomeStorage(AppStorage.context);
-
+/// The shared test home (read via [testHomeStorage]) is a plain [HomeStorage]
+/// over a temp-dir context — no global app storage is involved.
 void setUpTestAppStorage() {
   TestWidgetsFlutterBinding.ensureInitialized();
   _testAppDataDir = Directory.systemTemp.createTempSync('test_app_data_');
   final paths = AppPaths(_testAppDataDir!.path);
-  AppStorage.installForTesting(
+  installTestHomeStorage(
     filesystem: LocalFilesystem(
       pathContext: AppPaths.pathContextForDataRoot(paths.basePath),
     ),
@@ -75,12 +70,11 @@ void setUpTestAppStorage() {
     home: _testAppDataDir!.path,
     cwd: _testAppDataDir!.path,
   );
-  _testHomeStorage = HomeStorage(AppStorage.context);
   // Production parity: app bootstrap configures the CLI registry with the
   // home storage right after binding it, so capabilities (trust provisioning,
   // credential actions) get storage. Mirror that for every harness user.
   CliToolRegistry.builtIn().configure(
-    CliBootstrap(const {}, storage: _testHomeStorage!),
+    CliBootstrap(const {}, storage: testHomeStorage),
   );
   // The source control panel self-builds a GitService that would otherwise
   // spawn a real `git` process on mount, leaking timers in widget tests. Use a
@@ -116,8 +110,7 @@ void tearDownTestAppStorage() {
   GitService.debugOverrideFactory = null;
   ProcessMetricsService.debugOverrideFactory = null;
   WorkspaceFsWatcher.debugDisable = false;
-  _testHomeStorage = null;
-  AppStorage.resetForTesting();
+  resetTestHomeStorage();
   AppPathsBootstrapper.resetForTesting();
   DefaultWorkspaceDirectory.resetForTesting();
   final dir = _testAppDataDir;
@@ -283,8 +276,8 @@ Future<void> deleteTempDirBestEffort(Directory dir) async {
 AutomationRepository testAutomationRepository() {
   if (_testAppDataDir != null) {
     return AutomationRepository(
-      fs: AppStorage.fs,
-      layout: WorkspaceLayout(teampilotRoot: AppStorage.paths.basePath),
+      fs: testHomeStorage.fs,
+      layout: WorkspaceLayout(teampilotRoot: testHomeStorage.paths.basePath),
     );
   }
   return AutomationRepository(

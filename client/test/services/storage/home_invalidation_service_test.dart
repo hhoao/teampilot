@@ -7,7 +7,7 @@ import 'package:teampilot/models/ssh_profile.dart';
 import 'package:teampilot/services/storage/home_invalidation_service.dart';
 import 'package:teampilot/services/storage/home_storage.dart';
 import 'package:teampilot/services/storage/runtime_context.dart';
-import 'package:teampilot/services/storage/app_storage.dart';
+import 'package:teampilot/services/storage/app_paths.dart';
 
 import '../../support/in_memory_filesystem.dart';
 
@@ -189,6 +189,50 @@ void main() {
 
     expect(echoReload.levels, [ReloadLevel.full, ReloadLevel.full]);
   });
+
+  test(
+    'external switch during an in-flight reload queues exactly one follow-up (I-2)',
+    () async {
+      // Real HomeStorage so swap generations behave exactly like production:
+      // monotonic, +1 per swap, each reload's echo one past the barrier.
+      final storage = HomeStorage(_context('/tp/a'));
+      final levels = <ReloadLevel>[];
+      var emittedExternalSwitch = false;
+      Future<void> reload(ReloadLevel level) async {
+        levels.add(level);
+        // reinstallStorageContext(): fresh wrapper for the same plane — the
+        // swap's change echoes back while this reload is still in flight.
+        await storage.swap(_context('/tp/a-fresh'));
+        // On the first reload only, an external home switch races the
+        // in-flight reload (a newer generation than the reload's own echo).
+        if (!emittedExternalSwitch) {
+          emittedExternalSwitch = true;
+          await Future<void>.delayed(Duration.zero);
+          await storage.swap(_context('/tp/external'));
+        }
+      }
+
+      final service = HomeInvalidationService(
+        profileStates: profileStates.stream,
+        storageChanges: storage.changes,
+        homeTargetId: () => 'ssh:p1',
+        reload: reload,
+        switchHome: (id) async => switchedHomeIds.add(id),
+        initialProfiles: const [home],
+        initialGeneration: storage.generation,
+      );
+      service.start();
+      profileStates.add(
+        SshProfileState(profiles: [home.copyWith(host: 'new.example.com')]),
+      );
+      await _flush();
+
+      // Initial reload + exactly one follow-up for the racing external
+      // switch — the follow-up's own echo must not add a third.
+      expect(levels, [ReloadLevel.full, ReloadLevel.full]);
+      expect(switchedHomeIds, isEmpty);
+    },
+  );
 
   test('same-context profile re-emit does not reload', () async {
     startService(initialProfiles: const [home]);

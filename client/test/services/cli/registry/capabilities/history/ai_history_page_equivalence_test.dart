@@ -18,7 +18,8 @@ import 'package:teampilot/services/cli/registry/cli_tool_registry.dart';
 import 'package:teampilot/services/io/local_filesystem.dart';
 import 'package:teampilot/services/session/jsonl_transcript_page_reader.dart';
 import 'package:teampilot/services/session/session_history_context.dart';
-import 'package:teampilot/services/storage/app_storage.dart';
+import 'package:teampilot/services/storage/app_paths.dart';
+import '../../../../../support/test_runtime_context.dart';
 
 import '../../../../../support/in_memory_filesystem.dart';
 
@@ -59,14 +60,14 @@ void main() {
     },
   );
 
-  test('JSONL paging reads through ctx.fs, not AppStorage.fs', () async {
+  test('JSONL paging reads through ctx.fs, not testHomeStorage.fs', () async {
     final homeRoot = await Directory.systemTemp.createTemp('page_home_fs_');
     addTearDown(() async {
-      AppStorage.resetForTesting();
+      resetTestHomeStorage();
       AppPathsBootstrapper.resetForTesting();
       if (await homeRoot.exists()) await homeRoot.delete(recursive: true);
     });
-    AppStorage.installForTesting(
+    installTestHomeStorage(
       filesystem: InMemoryFilesystem(),
       paths: AppPaths(homeRoot.path),
       home: homeRoot.path,
@@ -103,7 +104,7 @@ void main() {
     expect(
       page,
       isNotNull,
-      reason: 'production paging must stat/read via ctx.fs, not AppStorage.fs',
+      reason: 'production paging must stat/read via ctx.fs, not testHomeStorage.fs',
     );
     expect(sameMessageListContent(page!.messages, full), isTrue);
     expect(page.messages.map((m) => m.id), full.map((m) => m.id));

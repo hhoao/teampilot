@@ -10,7 +10,7 @@ import '../../cubits/team_hub_cubit.dart';
 import '../../l10n/l10n_extensions.dart';
 import '../../models/discoverable_team.dart';
 import '../../models/team_config.dart';
-import '../../services/storage/app_storage.dart';
+import '../../widgets/home_storage_scope.dart';
 import '../../services/team/team_landing_recent_store.dart';
 import '../../services/team/team_landing_selection.dart';
 
@@ -68,7 +68,7 @@ class _TeamLandingPickerDialogState extends State<TeamLandingPickerDialog> {
     touchRecent:
         widget.touchRecent ??
         TeamLandingRecentStore(
-          storage: AppStorage.tolerantHome,
+          storage: homeStorageOf(context),
         ).touch,
   );
 

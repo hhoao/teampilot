@@ -42,6 +42,7 @@ class HomeInvalidationService {
     required Future<void> Function(String id) switchHome,
     List<SshProfile> initialProfiles = const [],
     this.fallbackHomeId = RuntimeTarget.localId,
+    int initialGeneration = 0,
   }) : _profileStates = profileStates,
        _storageChanges = storageChanges,
        _reload = reload,
@@ -53,7 +54,8 @@ class HomeInvalidationService {
          switchHome: switchHome,
          fallbackHomeId: fallbackHomeId,
        ),
-       _lastProfiles = List<SshProfile>.of(initialProfiles);
+       _lastProfiles = List<SshProfile>.of(initialProfiles),
+       _observedGeneration = initialGeneration;
 
   final Stream<SshProfileState> _profileStates;
   final Stream<StoragePlaneChange> _storageChanges;
@@ -78,8 +80,20 @@ class HomeInvalidationService {
   var _draining = false;
   var _drainScheduled = false;
 
-  /// True while a reload this service initiated is running (C1 echo guard).
-  var _reloading = false;
+  /// Newest storage generation observed from [StoragePlaneChange] events
+  /// (seeded with [HomeStorage.generation] at construction so pre-subscription
+  /// swaps are accounted for). I-2 generation token: replaces the old
+  /// boolean echo guard, which dropped external switches that arrived while a
+  /// service-initiated reload was in flight.
+  int _observedGeneration;
+
+  /// Generation barrier while a service-initiated reload runs: swaps at or
+  /// below it are re-emits of planes the reload already accounted for.
+  int? _reloadBarrier;
+
+  /// Whether this in-flight reload's own reinstall echo has been absorbed.
+  /// The reload chain performs at most one `reinstallStorageContext` swap.
+  var _echoAbsorbed = false;
 
   /// Starts routing events. Must be called before app-data bootstrap runs so
   /// the baseline profile list is primed from [initialProfiles].
@@ -118,13 +132,27 @@ class HomeInvalidationService {
   void _onStoragePlaneChange(StoragePlaneChange change) {
     // A no-op re-emit of the identical context carries no invalidation.
     if (identical(change.oldContext, change.newContext)) return;
-    // C1: a reload the service itself initiated reinstalls the storage
-    // context (a fresh wrapper — never `identical`) and the swap's change
-    // echoes back through this subscription. Swaps while our own reload is
-    // in flight are that echo, not an external home switch — re-entering
-    // would loop reload → swap → reload forever. A legitimate external
-    // switch arriving while no reload is running still fires below.
-    if (_reloading) return;
+    if (change.generation > _observedGeneration) {
+      _observedGeneration = change.generation;
+    }
+    final barrier = _reloadBarrier;
+    if (barrier != null) {
+      // C1 + I-2: while one of our reloads is in flight, the reload chain
+      // reinstalls the storage context (a fresh wrapper — never `identical`)
+      // and that swap's change echoes back through this subscription. The
+      // echo is the first swap one generation past the barrier; re-entering
+      // on it would loop reload → swap → reload forever. A swap NEWER than
+      // the echo is an external home switch racing the in-flight reload —
+      // queue a follow-up instead of dropping it (the follow-up reload then
+      // sees the already-published plane; its own echo is absorbed in turn).
+      if (change.generation <= barrier) return;
+      if (!_echoAbsorbed && change.generation == barrier + 1) {
+        _echoAbsorbed = true;
+        return;
+      }
+      _request(_PendingInvalidation.reloadFull);
+      return;
+    }
     _request(_PendingInvalidation.reloadFull);
   }
 
@@ -179,15 +207,18 @@ class HomeInvalidationService {
     }
   }
 
-  /// Runs one reload with the C1 echo guard held: the reload chain
+  /// Runs one reload with the generation barrier held: the reload chain
   /// reinstalls the storage context and the resulting swap change must not
-  /// re-request another reload.
+  /// re-request another reload, while a genuinely newer external swap queues
+  /// a follow-up instead of being dropped.
   Future<void> _runReload(ReloadLevel level) async {
-    _reloading = true;
+    _reloadBarrier = _observedGeneration;
+    _echoAbsorbed = false;
     try {
       await _reload(level);
     } finally {
-      _reloading = false;
+      _reloadBarrier = null;
+      _echoAbsorbed = false;
     }
   }
 }

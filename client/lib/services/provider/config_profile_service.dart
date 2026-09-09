@@ -713,7 +713,11 @@ class ConfigProfileService implements ConfigProfileDelegate {
     ).ensureSessionMarketplacesLinked(configDir: configDir, tool: cli);
     final pluginProvisioner = _cliRegistry.capability<PluginCapability>(cli);
     final warmTier = CursorWorkspaceWarmTier.applies(team: team, cli: cli);
-    final mcpRegistry = McpRegistryService(fs: fs, layout: layout);
+    final mcpRegistry = McpRegistryService(
+      fs: fs,
+      layout: layout,
+      storage: _infra.storage,
+    );
     McpRegistryAssembly? mcpAssembly;
     List<Plugin>? installedCatalog;
     if (pluginProvisioner != null) {
@@ -940,7 +944,11 @@ class ConfigProfileService implements ConfigProfileDelegate {
     );
 
     final pluginProvisioner = _cliRegistry.capability<PluginCapability>(cli);
-    final mcpRegistry = McpRegistryService(fs: fs, layout: layout);
+    final mcpRegistry = McpRegistryService(
+      fs: fs,
+      layout: layout,
+      storage: _infra.storage,
+    );
     List<Plugin>? installedCatalog;
     String? pluginPoolDir;
     PluginBundlePoolResult? poolResult;
@@ -1417,6 +1425,7 @@ class ConfigProfileService implements ConfigProfileDelegate {
     final mcpRegistry = McpRegistryService(
       fs: stagingFs,
       layout: staging.layout,
+      storage: staging._infra.storage,
     );
     final mcpProviders = await mcpRegistry.providersForTeam(
       cli: launchCli,

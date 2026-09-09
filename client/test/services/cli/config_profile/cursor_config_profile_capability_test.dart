@@ -8,7 +8,7 @@ import 'package:teampilot/repositories/app_provider_repository.dart';
 import 'package:teampilot/services/provider/control_plane_profile_paths.dart';
 import 'package:teampilot/services/cli/cursor/provider/cursor_home_layout.dart';
 import 'package:teampilot/services/cli/cursor/provider/cursor_workspace_trust.dart';
-import 'package:teampilot/services/storage/app_storage.dart';
+import 'package:teampilot/services/storage/app_paths.dart';
 import 'package:teampilot/services/storage/runtime_context.dart';
 import 'package:teampilot/services/storage/runtime_layout.dart';
 import 'package:teampilot/services/cli/cursor/capabilities/provider.dart';

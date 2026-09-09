@@ -13,7 +13,7 @@ import '../../models/app_provider_config.dart';
 import '../../models/credential_action_result.dart';
 import '../../services/cli/registry/capabilities/provider_capability.dart';
 import '../../services/cli/registry/cli_tool_registry_scope.dart';
-import '../../services/storage/app_storage.dart';
+import '../home_storage_scope.dart';
 import '../../utils/debounce/debounce.dart';
 import 'provider_credential_messages.dart';
 import 'provider_credential_device_code_dialog.dart';
@@ -210,7 +210,7 @@ class _ProviderCredentialActionBarState
         provider: provider,
         kind: kind,
         replace: _replaceExistingCredentials(kind),
-        homeDirectory: AppStorage.home,
+        homeDirectory: homeStorageOf(context).home,
       );
       if (!mounted) return;
       _showResult(actionResult);

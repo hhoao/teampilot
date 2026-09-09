@@ -120,6 +120,7 @@ abstract final class DefaultWorkspaceService {
     required TeamProfile defaultTeam,
     required HomeStorage storage,
     RuntimeTarget? home,
+    ExpertHubCatalog? catalog,
   }) async {
     final primaryPath = await resolvePrimaryPath(home: home, storage: storage);
     await ensureDefault(
@@ -127,6 +128,7 @@ abstract final class DefaultWorkspaceService {
       defaultTeam: defaultTeam,
       storage: storage,
       home: home,
+      catalog: catalog,
     );
     final workspaces = await repository.loadWorkspaces();
     return workspaces

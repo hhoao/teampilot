@@ -2,7 +2,6 @@ import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/services/io/local_filesystem.dart';
-import 'package:teampilot/services/storage/app_storage.dart';
 import 'package:teampilot/services/workspace/workspace_icon_storage.dart';
 import 'package:teampilot/services/storage/workspace_layout.dart';
 
@@ -11,7 +10,7 @@ void main() {
     final tmp = await Directory.systemTemp.createTemp('workspace_icon_');
     addTearDown(() => tmp.deleteSync(recursive: true));
 
-    final layout = WorkspaceLayout(teampilotRoot: tmp.path, fs: AppStorage.fs);
+    final layout = WorkspaceLayout(teampilotRoot: tmp.path, fs: LocalFilesystem());
     final workspaceDir = layout.workspaceDir('abc');
     final storage = WorkspaceIconStorage(filesystem: LocalFilesystem());
     final relative = await storage.saveBytes(
@@ -33,7 +32,7 @@ void main() {
     final tmp = await Directory.systemTemp.createTemp('workspace_icon_');
     addTearDown(() => tmp.deleteSync(recursive: true));
 
-    final layout = WorkspaceLayout(teampilotRoot: tmp.path, fs: AppStorage.fs);
+    final layout = WorkspaceLayout(teampilotRoot: tmp.path, fs: LocalFilesystem());
     final storage = WorkspaceIconStorage(filesystem: LocalFilesystem());
     final relative = await storage.saveBytes(
       workspaceDir: layout.workspaceDir('abc'),

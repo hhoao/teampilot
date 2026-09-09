@@ -45,7 +45,7 @@ main.dart
   → AppPathsBootstrapper.init()              # Application Support → AppPaths
   → TeamPilotBootstrap / buildAppShell()
       → CliToolRegistry.builtIn()             # capability-based CLI registry
-      → RuntimeContextRegistry / AppStorage.bindHome()
+      → RuntimeContextRegistry → HomeStorage (home plane)
       → CliBootstrap(...)                     # provision cli-defaults trees
       → LaunchProfileRepository, SessionRepository, SessionLifecycleService
       → TeammateBusMcpGateway.ensureStarted()
@@ -73,7 +73,7 @@ Embedded terminals render with **flutter_alacritty** (Alacritty-based Rust engin
 
 ### Storage and app data
 
-`AppStorage` (`app_storage.dart`) is the control-plane facade; it binds to the home `RuntimeContext` via `RuntimeContextRegistry`. Paths: `AppStorage.paths`, `AppStorage.cwd`, `AppStorage.fs`.
+`HomeStorage` (`home_storage.dart`) is the injected, versioned home control-plane facade: the current `RuntimeContext` is published on it (every swap bumps a generation and emits `changes`), consumers receive it via constructor injection or the `RepositoryProvider<HomeStorage>` in main.dart. Paths: `storage.paths`, `storage.cwd`, `storage.fs`.
 
 | Backend | Filesystem | `cwd` / data root |
 |---------|------------|-------------------|
@@ -81,7 +81,7 @@ Embedded terminals render with **flutter_alacritty** (Alacritty-based Rust engin
 | `wsl` | `WslFilesystem` | WSL `$HOME`; app data `~/.local/share/com.hhoa.teampilot` in distro |
 | `ssh` | `SftpFilesystem` | Remote home + remote TeamPilot app dir |
 
-**`<teampilotRoot>`** = `AppPaths.basePath` / `AppStorage.appDataRoot`. Full tree: [docs/workspace-storage-layout.md](docs/workspace-storage-layout.md); code: `WorkspaceLayout` + `RuntimeLayout`.
+**`<teampilotRoot>`** = `AppPaths.basePath` / home `RuntimeContext.appDataRoot`. Full tree: [docs/workspace-storage-layout.md](docs/workspace-storage-layout.md); code: `WorkspaceLayout` + `RuntimeLayout`.
 
 **CLI config inheritance** (see `RuntimeLayout.ensure*Inherits*`): **app** (`cli-defaults/{tool}/`) → **identity** (`identities-runtime/{profileId}/{tool}/` — **team** launch profiles only; Simple skips this layer) → **workspace** (`workspace/workspaces/{id}/config/{tool}/`) → **session** (`…/sessions/{sessionId}/runtime/…`). `SessionLifecycleService` materializes the final PTY `CONFIG_DIR` from a `SessionRuntimePlan`.
 
@@ -175,7 +175,7 @@ Session runtime dirs: `workspace/workspaces/{workspaceId}/sessions/{sessionId}/r
 | Launch plan | `client/lib/services/session/session_lifecycle_service.dart` |
 | PTY + terminal | `client/lib/services/terminal/terminal_session.dart` |
 | Launch args / WSL paths | `client/lib/services/session/launch_command_builder.dart` |
-| Paths / Documents default | `client/lib/services/storage/app_storage.dart` |
+| Paths / Documents default | `client/lib/services/storage/home_storage.dart`, `app_paths.dart` |
 | Storage backend / contexts | `client/lib/services/storage/runtime_context_registry.dart`, `runtime_context_resolver.dart` |
 | Storage layout | `workspace_layout.dart`, `runtime_layout.dart` |
 | Worktrees | `client/lib/services/workspace/workspace_worktree_registry.dart` |
@@ -210,9 +210,9 @@ Full guidelines: **[docs/CODE_QUALITY.md](docs/CODE_QUALITY.md)**. Summary:
 - **Shared UI:** New buttons, inputs, selects, dialogs, forms, deferred-mount helpers, etc. go in `client/packages/shared_ui` (`Tp*` + `TpTheme`). Do not add generic controls under `client/lib/widgets/`.
 - **File size (soft):** page shells ~400, cubits ~500, services ~600 lines — split oversized screens into `pages/<domain>/` section files; keep `build()` free of IO.
 - **Logging:** user errors → l10n; diagnostics → `AppLogger`; no `print`.
-- Paths: `AppStorage` / `RuntimeContextRegistry` — never `Directory.current` for default workspace directory.
+- Paths: injected `HomeStorage` / `RuntimeContextRegistry` — never `Directory.current` for default workspace directory.
 - **CLIs:** add/extend a `CliToolDefinition` + capabilities under `services/cli/registry/`; avoid scattering `if (cli == …)` checks across features.
-- **Tests:** mock subprocess/filesystem via constructor injection; cubit tests that touch `AppStorage` use `setUpTestAppStorage()` / `tearDownTestAppStorage()` in `client/test/support/post_frame_test_harness.dart`.
+- **Tests:** mock subprocess/filesystem via constructor injection; cubit tests that need a home plane use `setUpTestAppStorage()` / `tearDownTestAppStorage()` (shared `testHomeStorage`) in `client/test/support/post_frame_test_harness.dart` + `test_runtime_context.dart`.
 - l10n: edit `client/lib/l10n/app_en.arb` and `app_zh.arb` only.
 - Terminal input hooks: filter ANSI CSI sequences (`FirstUserLineCapture`, `BusUserLineCapture`).
 - Do not commit `client/google_fonts/` (gitignored); run `dart run tool/sync_bundled_google_fonts.dart` when touching zh UI fonts.

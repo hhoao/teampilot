@@ -14,7 +14,8 @@ import 'package:teampilot/services/io/local_filesystem.dart';
 import 'package:teampilot/services/skill/marketplace/skill_marketplace_source.dart';
 import 'package:teampilot/services/skill/registry/skill_registry_config_service.dart';
 import 'package:teampilot/services/skill/registry/skill_registry_source.dart';
-import 'package:teampilot/services/storage/app_storage.dart';
+import 'package:teampilot/services/storage/app_paths.dart';
+import '../../support/test_runtime_context.dart';
 import '../../support/in_memory_filesystem.dart';
 
 class _FakeSource implements SkillRegistrySource {
@@ -88,7 +89,7 @@ void main() {
   setUp(() {
     tmp = Directory.systemTemp.createTempSync('skill-disc-unified-');
     final paths = AppPaths(tmp.path);
-    AppStorage.installForTesting(
+    installTestHomeStorage(
       filesystem: LocalFilesystem(
         pathContext: AppPaths.pathContextForDataRoot(paths.basePath),
       ),
@@ -99,7 +100,7 @@ void main() {
   });
 
   tearDown(() {
-    AppStorage.resetForTesting();
+    resetTestHomeStorage();
     if (tmp.existsSync()) tmp.deleteSync(recursive: true);
   });
 
@@ -120,7 +121,7 @@ void main() {
 
   SkillCubit buildCubit(List<SkillRegistrySource> sources) {
     final cfg = SkillRegistryConfigService(
-      teampilotRoot: AppStorage.paths.basePath,
+      teampilotRoot: testHomeStorage.paths.basePath,
                                             storage: fakeHomeStorage(),
     );
     return SkillCubit(

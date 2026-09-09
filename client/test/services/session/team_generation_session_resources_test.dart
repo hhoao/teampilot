@@ -13,7 +13,6 @@ import 'package:teampilot/services/resource/contribution/resource_origin.dart';
 import 'package:teampilot/services/resource/resource_provider_set.dart';
 import 'package:teampilot/services/resource/providers/skill_contribution_provider.dart';
 import 'package:teampilot/services/session/session_lifecycle_service.dart';
-import 'package:teampilot/services/storage/app_storage.dart';
 import 'package:teampilot/services/team_generation/mcp/team_composer_mcp_constants.dart';
 import 'package:teampilot/services/team_generation/providers/managed_team_builder_skill_provider.dart';
 import 'package:teampilot/services/team_generation/providers/team_builder_skill_md.dart';
@@ -205,7 +204,7 @@ void main() {
       );
       final lifecycle = SessionLifecycleService(
         storage: buildTestHomeStorage(),
-        appDataBasePath: AppStorage.paths.basePath,
+        appDataBasePath: testHomeStorage.paths.basePath,
         resourceProviderResolver: _graphResourceProvidersForSession,
       );
       final roots = await lifecycle.resolveWorkContextForTargetId('local');

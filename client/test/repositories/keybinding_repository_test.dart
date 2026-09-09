@@ -6,7 +6,6 @@ import 'package:path/path.dart' as p;
 import 'package:teampilot/repositories/keybinding_repository.dart';
 import 'package:teampilot/services/commands/command_ids.dart';
 import 'package:teampilot/services/commands/key_chord.dart';
-import 'package:teampilot/services/storage/app_storage.dart';
 
 import '../support/post_frame_test_harness.dart';
 
@@ -15,7 +14,7 @@ void main() {
   tearDown(tearDownTestAppStorage);
 
   String keybindingsPath() =>
-      p.join(AppStorage.appDataRoot, 'keybindings.json');
+      p.join(testHomeStorage.appDataRoot, 'keybindings.json');
 
   test('load returns empty overrides when the file is missing', () async {
     final repo = KeybindingRepository(storage: testHomeStorage);

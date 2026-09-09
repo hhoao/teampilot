@@ -5,7 +5,6 @@ import 'package:teampilot/services/launch/launch_manifest.dart';
 import 'package:teampilot/services/launch/launch_manifest_paths.dart';
 import 'package:teampilot/services/cli/cursor/provider/cursor_launch_environment.dart';
 import 'package:teampilot/services/session/session_lifecycle_service.dart';
-import 'package:teampilot/services/storage/app_storage.dart';
 import 'package:teampilot/services/cli/registry/cli_bootstrap.dart';
 import 'package:teampilot/services/cli/registry/cli_tool_registry.dart';
 
@@ -57,7 +56,7 @@ void main() {
         pathContext: p.Context(style: p.Style.windows),
       );
       final lifecycle = SessionLifecycleService(
-        appDataBasePath: AppStorage.paths.basePath,
+        appDataBasePath: testHomeStorage.paths.basePath,
                                                  storage: testHomeStorage,
       );
       final homeRoots = await lifecycle.resolveWorkContextForTargetId('local');

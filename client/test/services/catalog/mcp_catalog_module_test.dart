@@ -10,7 +10,8 @@ import 'package:teampilot/services/catalog/catalog_mutation_bus.dart';
 import 'package:teampilot/services/catalog/catalog_workspace_binder.dart';
 import 'package:teampilot/services/catalog/modules/mcp_catalog_module.dart';
 import 'package:teampilot/services/io/local_filesystem.dart';
-import 'package:teampilot/services/storage/app_storage.dart';
+import 'package:teampilot/services/storage/app_paths.dart';
+import '../../support/test_runtime_context.dart';
 import 'package:teampilot/services/storage/home_storage.dart';
 import '../../support/in_memory_filesystem.dart';
 
@@ -30,7 +31,7 @@ void main() {
     tmp = Directory.systemTemp.createTempSync('mcp_catalog_');
     workRoot = Directory.systemTemp.createTempSync('mcp_catalog_work_');
     final paths = AppPaths(tmp.path);
-    AppStorage.installForTesting(
+    installTestHomeStorage(
       filesystem: LocalFilesystem(
         pathContext: AppPaths.pathContextForDataRoot(paths.basePath),
       ),
@@ -41,7 +42,7 @@ void main() {
     workFs = LocalFilesystem();
     repository = McpRepository(storage: fakeHomeStorage());
     configRepo = WorkspaceProjectConfigRepository(
-      storage: HomeStorage(AppStorage.context),
+      storage: HomeStorage(testHomeStorage.context),
     );
     binder = CatalogWorkspaceBinder(repo: configRepo);
     bus = CatalogMutationBus();
@@ -49,7 +50,7 @@ void main() {
   });
 
   tearDown(() {
-    AppStorage.resetForTesting();
+    resetTestHomeStorage();
     AppPathsBootstrapper.resetForTesting();
     if (tmp.existsSync()) tmp.deleteSync(recursive: true);
     if (workRoot.existsSync()) workRoot.deleteSync(recursive: true);

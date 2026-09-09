@@ -3,7 +3,7 @@ import 'package:dartssh2/dartssh2.dart';
 import 'package:path/path.dart' as p;
 
 import '../../models/ssh_profile.dart';
-import 'app_storage.dart';
+import 'app_paths.dart';
 import '../ssh/ssh_client_factory.dart';
 import '../ssh/ssh_run_result.dart';
 import '../ssh/ssh_storage_io.dart';

@@ -19,10 +19,10 @@ import 'package:teampilot/services/cli/registry/cli_tool_registry_scope.dart';
 import 'package:teampilot/services/commands/command_bus.dart';
 import 'package:teampilot/services/compose/compose_draft_cache.dart';
 import 'package:teampilot/services/compose/compose_draft_store.dart';
-import 'package:teampilot/services/storage/app_storage.dart';
 import 'package:teampilot/theme/app_theme.dart';
 
 import '../../../support/post_frame_test_harness.dart';
+import 'package:teampilot/services/storage/home_storage.dart';
 
 class _MockChatCubit extends Mock implements ChatCubit {}
 
@@ -68,15 +68,15 @@ void main() {
   ) async {
     await tester.runAsync(
       () => ComposeDraftStore(
-        fs: AppStorage.fs,
-        rootPath: AppStorage.appDataRoot,
+        fs: testHomeStorage.fs,
+        rootPath: testHomeStorage.appDataRoot,
       ).saveLanding('workspace-1', 'survive restart'),
     );
     expect(
       await tester.runAsync(
         () => ComposeDraftStore(
-          fs: AppStorage.fs,
-          rootPath: AppStorage.appDataRoot,
+          fs: testHomeStorage.fs,
+          rootPath: testHomeStorage.appDataRoot,
         ).loadLanding('workspace-1'),
       ),
       'survive restart',
@@ -178,7 +178,10 @@ Widget _landing({required String? initialText}) {
 
   final theme = buildDarkTheme();
   return MultiRepositoryProvider(
-    providers: [RepositoryProvider<CommandBus>(create: (_) => CommandBus())],
+    providers: [
+        RepositoryProvider<CommandBus>(create: (_) => CommandBus()),
+        RepositoryProvider<HomeStorage>.value(value: testHomeStorage),
+      ],
     child: MultiBlocProvider(
       providers: [
         BlocProvider<ChatCubit>.value(value: chatCubit),

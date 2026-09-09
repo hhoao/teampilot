@@ -13,7 +13,6 @@ import 'package:teampilot/services/resource/providers/skill_contribution_provide
 import 'package:teampilot/services/resource/resource_materializer.dart';
 import 'package:teampilot/services/resource/resource_provisioning_service.dart';
 import 'package:teampilot/services/resource/resource_scope.dart'; // ResourceScope + ResourceCatalog
-import 'package:teampilot/services/storage/app_storage.dart';
 
 import '../../support/post_frame_test_harness.dart';
 
@@ -28,7 +27,7 @@ void main() {
   test(
     'provisionForLaunch materializes skills into the leaf config dir',
     () async {
-      final fs = AppStorage.fs;
+      final fs = testHomeStorage.fs;
       final tmp = await fs.createTempDir(prefix: 'prov_test_');
       final skillsRoot = fs.pathContext.join(tmp, 'skills', 'installed');
       final src = fs.pathContext.join(skillsRoot, 'demo-skill');
@@ -71,7 +70,7 @@ void main() {
   );
 
   test('provisionForLaunch never reconciles the plugin dir', () async {
-    final fs = AppStorage.fs;
+    final fs = testHomeStorage.fs;
     final tmp = await fs.createTempDir(prefix: 'prov_plugin_test_');
     final configDir = fs.pathContext.join(tmp, 'cfg', 'flashskyai');
     final stalePlugin = fs.pathContext.join(
@@ -105,7 +104,7 @@ void main() {
   test(
     'one skill reconcile keeps catalog and plugin skills and is idempotent',
     () async {
-      final fs = AppStorage.fs;
+      final fs = testHomeStorage.fs;
       final tmp = await fs.createTempDir(prefix: 'prov_plugin_skill_test_');
       final skillsRoot = fs.pathContext.join(tmp, 'skills', 'installed');
       final catalogSource = fs.pathContext.join(skillsRoot, 'catalog-dir');
@@ -189,7 +188,7 @@ void main() {
   test(
     'non-empty assembled skills fail when the CLI skill capability is absent',
     () async {
-      final fs = AppStorage.fs;
+      final fs = testHomeStorage.fs;
       final tmp = await fs.createTempDir(prefix: 'prov_unsupported_test_');
       final source = fs.pathContext.join(tmp, 'skills', 'installed', 'demo');
       await fs.ensureDir(source);
@@ -246,7 +245,7 @@ void main() {
   test(
     'non-empty assembled skills fail for unsupported representation',
     () async {
-      final fs = AppStorage.fs;
+      final fs = testHomeStorage.fs;
       final tmp = await fs.createTempDir(prefix: 'prov_representation_test_');
       final registry = _registryWithCapabilities(const [
         _UnsupportedSkillCapability(),

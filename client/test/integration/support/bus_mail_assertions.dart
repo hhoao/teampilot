@@ -2,7 +2,7 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:path/path.dart' as p;
-import 'package:teampilot/services/storage/app_storage.dart';
+import 'package:teampilot/services/io/local_filesystem.dart';
 import 'package:teampilot/services/storage/workspace_layout.dart';
 import 'package:teampilot/services/cli/claude/team_roster_service.dart';
 
@@ -14,9 +14,11 @@ String busMailFilePath({
   required String sessionId,
   required String memberId,
 }) {
+  // Path math only: an explicit-root layout over a local path context (the
+  // deleted AppStorage-unbound fallback this replaced was a LocalFilesystem).
   final layout = WorkspaceLayout(
     teampilotRoot: teampilotRoot,
-    fs: AppStorage.fs,
+    fs: LocalFilesystem(),
   );
   final mailRoot = layout.busMailDir(workspaceId, sessionId);
   final slug = ClaudeTeamRosterService.safeClaudePathSegment(memberId);

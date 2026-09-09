@@ -15,7 +15,8 @@ import 'package:teampilot/services/provider_usage/managed_provider_usage_coordin
 import 'package:teampilot/services/provider_usage/managed_provider_usage_registry.dart';
 import 'package:teampilot/services/provider_usage/managed_provider_secret_store.dart';
 import 'package:teampilot/repositories/ssh_credential_store.dart';
-import 'package:teampilot/services/storage/app_storage.dart';
+import 'package:teampilot/services/storage/app_paths.dart';
+import '../support/test_runtime_context.dart';
 
 import '../support/in_memory_filesystem.dart';
 import 'package:teampilot/services/storage/runtime_context.dart';
@@ -24,7 +25,7 @@ import 'package:teampilot/services/io/filesystem.dart';
 import 'package:teampilot/services/storage/home_storage.dart';
 
 void main() {
-  tearDown(AppStorage.resetForTesting);
+  tearDown(resetTestHomeStorage);
 
   test('default registry exposes only the http-json adapter', () {
     final registry = buildDefaultManagedProviderUsageRegistry();

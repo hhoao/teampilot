@@ -10,8 +10,8 @@ import '../../models/workspace.dart';
 import '../../utils/session/home_sessions_paint_view.dart';
 import '../../services/home_workspace/workspace_display_prefs_store.dart';
 import '../../services/home_workspace/workspace_favorites_store.dart';
-import '../../services/storage/app_storage.dart';
 import '../../theme/workspace_surface_layers.dart';
+import '../../widgets/home_storage_scope.dart';
 import '../../widgets/settings/workspace_pane_header.dart';
 import 'workspace_sort.dart';
 import 'workspaces_tab.dart';
@@ -25,11 +25,11 @@ class HomeAllWorkspacesPane extends StatefulWidget {
 }
 
 class _HomeAllWorkspacesPaneState extends State<HomeAllWorkspacesPane> {
-  final _workspaceFavoritesStore = WorkspaceFavoritesStore(
-    storage: AppStorage.tolerantHome,
+  late final _workspaceFavoritesStore = WorkspaceFavoritesStore(
+    storage: homeStorageOf(context),
   );
-  final _displayPrefsStore = WorkspaceDisplayPrefsStore(
-    storage: AppStorage.tolerantHome,
+  late final _displayPrefsStore = WorkspaceDisplayPrefsStore(
+    storage: homeStorageOf(context),
   );
   Set<String> _favoriteWorkspaceIds = {};
   var _gridView = true;

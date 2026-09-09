@@ -2,7 +2,7 @@ import '../../models/runtime_target.dart';
 import '../io/filesystem.dart';
 import '../io/sftp_filesystem.dart';
 import '../io/wsl_filesystem.dart';
-import 'app_storage.dart';
+import 'app_paths.dart';
 import 'remote_file_store.dart';
 import 'runtime_layout.dart';
 import 'workspace_layout.dart';

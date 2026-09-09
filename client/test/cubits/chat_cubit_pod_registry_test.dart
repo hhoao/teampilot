@@ -10,7 +10,7 @@ import 'package:teampilot/services/io/local_filesystem.dart';
 import 'package:teampilot/services/session/ai_history_loader.dart';
 import 'package:teampilot/services/session/failed_message_store.dart';
 import 'package:teampilot/services/session/session_history_context_builder.dart';
-import 'package:teampilot/services/storage/app_storage.dart';
+import 'package:teampilot/services/storage/app_paths.dart';
 import 'package:teampilot/services/storage/runtime_context.dart';
 
 import '../support/fake_ai_history_registry.dart';
@@ -124,8 +124,8 @@ void main() {
       expect(record!.text, text);
 
       final store = FailedMessageStore(
-        fs: AppStorage.fs,
-        rootPath: AppStorage.appDataRoot,
+        fs: testHomeStorage.fs,
+        rootPath: testHomeStorage.appDataRoot,
       );
       expect(await store.load(workspaceId, sessionId), [record]);
 
@@ -180,8 +180,8 @@ void main() {
       expect(repeated.deliveryId, deliveryId);
       expect(
         await FailedMessageStore(
-          fs: AppStorage.fs,
-          rootPath: AppStorage.appDataRoot,
+          fs: testHomeStorage.fs,
+          rootPath: testHomeStorage.appDataRoot,
         ).load(workspaceId, sessionId),
         [first],
       );
@@ -224,8 +224,8 @@ void main() {
     expect(seat.runtime.messages, isEmpty);
     expect(
       await FailedMessageStore(
-        fs: AppStorage.fs,
-        rootPath: AppStorage.appDataRoot,
+        fs: testHomeStorage.fs,
+        rootPath: testHomeStorage.appDataRoot,
       ).load(workspaceId, sessionId),
       isEmpty,
     );

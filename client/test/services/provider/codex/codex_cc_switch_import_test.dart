@@ -10,7 +10,7 @@ import 'package:teampilot/services/io/local_filesystem.dart';
 import 'package:teampilot/services/cli/codex/provider/codex_cc_switch_import.dart';
 import 'package:teampilot/services/cli/codex/provider/codex_toml_parser.dart';
 import 'package:teampilot/services/provider/provider_import_service.dart';
-import 'package:teampilot/services/storage/app_storage.dart';
+import 'package:teampilot/services/storage/app_paths.dart';
 import '../../../support/in_memory_filesystem.dart';
 import '../../../support/post_frame_test_harness.dart';
 
@@ -49,7 +49,7 @@ base_url = "http://127.0.0.1:15721/v1"
       appData = p.join(root.path, 'app-data');
       home = p.join(root.path, 'home');
       await Directory(home).create(recursive: true);
-      AppStorage.installForTesting(
+      installTestHomeStorage(
         filesystem: LocalFilesystem(),
         paths: AppPaths(appData),
         home: home,
@@ -62,7 +62,7 @@ base_url = "http://127.0.0.1:15721/v1"
     });
 
     tearDown(() async {
-      AppStorage.resetForTesting();
+      resetTestHomeStorage();
       if (await root.exists()) {
         await root.delete(recursive: true);
       }

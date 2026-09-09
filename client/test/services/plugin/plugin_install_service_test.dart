@@ -2,7 +2,8 @@ import 'dart:convert';
 import 'dart:io';
 import 'package:archive/archive.dart';
 import 'package:teampilot/models/plugin.dart';
-import 'package:teampilot/services/storage/app_storage.dart';
+import 'package:teampilot/services/storage/app_paths.dart';
+import '../../support/test_runtime_context.dart';
 import 'package:teampilot/services/storage/home_storage.dart';
 import 'package:teampilot/services/io/local_filesystem.dart';
 import 'package:teampilot/services/plugin/plugin_install_service.dart';
@@ -17,7 +18,7 @@ void main() {
   setUp(() {
     tmp = Directory.systemTemp.createTempSync('plugin-install-');
     final paths = AppPaths(tmp.path);
-    AppStorage.installForTesting(
+    installTestHomeStorage(
       filesystem: LocalFilesystem(
         pathContext: AppPaths.pathContextForDataRoot(paths.basePath),
       ),
@@ -28,7 +29,7 @@ void main() {
   });
 
   tearDown(() {
-    AppStorage.resetForTesting();
+    resetTestHomeStorage();
     tmp.deleteSync(recursive: true);
   });
 
@@ -47,7 +48,7 @@ void main() {
     final zipFile = File(p.join(tmp.path, 'in.zip'))
       ..writeAsBytesSync(zipBytes);
 
-    final svc = PluginInstallService(manifestService: PluginManifestService(), storage: HomeStorage(AppStorage.context), );
+    final svc = PluginInstallService(manifestService: PluginManifestService(), storage: HomeStorage(testHomeStorage.context), );
     final installed = await svc.installFromZip(zipFile);
 
     expect(installed.name, 'my-plugin');
@@ -67,7 +68,7 @@ void main() {
   });
 
   test('uninstall removes directory and updates plugins.json', () async {
-    final svc = PluginInstallService(manifestService: PluginManifestService(), storage: HomeStorage(AppStorage.context), );
+    final svc = PluginInstallService(manifestService: PluginManifestService(), storage: HomeStorage(testHomeStorage.context), );
     final installed = await _installMinimal(svc, tmp);
     final dir = Directory(
       p.join(tmp.path, 'plugins', 'installed', installed.directory),

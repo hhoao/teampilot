@@ -10,7 +10,6 @@ import 'package:teampilot/services/automation/automation_bus_gateway.dart';
 import 'package:teampilot/services/automation/automation_dispatcher.dart';
 import 'package:teampilot/services/automation/automation_schedule_calculator.dart';
 import 'package:teampilot/services/automation/automation_scheduler.dart';
-import 'package:teampilot/services/storage/app_storage.dart';
 import 'package:teampilot/services/storage/workspace_layout.dart';
 
 import '../../support/post_frame_test_harness.dart';
@@ -98,10 +97,10 @@ void main() {
 
   test('runNow dispatches due automation once', () async {
     final layout = WorkspaceLayout(
-      teampilotRoot: AppStorage.paths.basePath,
-      fs: AppStorage.fs,
+      teampilotRoot: testHomeStorage.paths.basePath,
+      fs: testHomeStorage.fs,
     );
-    final repo = AutomationRepository(fs: AppStorage.fs, layout: layout);
+    final repo = AutomationRepository(fs: testHomeStorage.fs, layout: layout);
     final bus = _RecordingBusGateway();
     final session = AppSession(
       sessionId: 'sess-1',
@@ -125,10 +124,10 @@ void main() {
 
   test('runNow is blocked when run limit is reached', () async {
     final layout = WorkspaceLayout(
-      teampilotRoot: AppStorage.paths.basePath,
-      fs: AppStorage.fs,
+      teampilotRoot: testHomeStorage.paths.basePath,
+      fs: testHomeStorage.fs,
     );
-    final repo = AutomationRepository(fs: AppStorage.fs, layout: layout);
+    final repo = AutomationRepository(fs: testHomeStorage.fs, layout: layout);
     final bus = _RecordingBusGateway();
     await repo.upsert(
       _dueAutomation(nextRunAtMs: 1_000).copyWith(
@@ -153,10 +152,10 @@ void main() {
 
   test('marks missed run outside grace and advances schedule', () async {
     final layout = WorkspaceLayout(
-      teampilotRoot: AppStorage.paths.basePath,
-      fs: AppStorage.fs,
+      teampilotRoot: testHomeStorage.paths.basePath,
+      fs: testHomeStorage.fs,
     );
-    final repo = AutomationRepository(fs: AppStorage.fs, layout: layout);
+    final repo = AutomationRepository(fs: testHomeStorage.fs, layout: layout);
     final bus = _RecordingBusGateway();
     await repo.upsert(
       _dueAutomation(nextRunAtMs: 1_000).copyWith(missedRunGraceMinutes: 15),
@@ -186,10 +185,10 @@ void main() {
 
   test('disables expired once automation missed beyond grace', () async {
     final layout = WorkspaceLayout(
-      teampilotRoot: AppStorage.paths.basePath,
-      fs: AppStorage.fs,
+      teampilotRoot: testHomeStorage.paths.basePath,
+      fs: testHomeStorage.fs,
     );
-    final repo = AutomationRepository(fs: AppStorage.fs, layout: layout);
+    final repo = AutomationRepository(fs: testHomeStorage.fs, layout: layout);
     final bus = _RecordingBusGateway();
     await repo.upsert(
       _dueAutomation(nextRunAtMs: 1_000).copyWith(
@@ -223,10 +222,10 @@ void main() {
 
   test('dispatches once automation missed within grace', () async {
     final layout = WorkspaceLayout(
-      teampilotRoot: AppStorage.paths.basePath,
-      fs: AppStorage.fs,
+      teampilotRoot: testHomeStorage.paths.basePath,
+      fs: testHomeStorage.fs,
     );
-    final repo = AutomationRepository(fs: AppStorage.fs, layout: layout);
+    final repo = AutomationRepository(fs: testHomeStorage.fs, layout: layout);
     final bus = _RecordingBusGateway();
     final session = AppSession(
       sessionId: 'sess-1',

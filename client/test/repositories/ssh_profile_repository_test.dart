@@ -3,7 +3,7 @@ import 'dart:io';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/models/ssh_profile.dart';
 import 'package:teampilot/repositories/ssh_profile_repository.dart';
-import 'package:teampilot/services/storage/app_storage.dart';
+import 'package:teampilot/services/storage/app_paths.dart';
 import '../support/test_runtime_context.dart';
 import '../support/in_memory_filesystem.dart';
 
@@ -14,7 +14,7 @@ void main() {
     addTearDown(() async {
       if (await rootA.exists()) await rootA.delete(recursive: true);
       if (await rootB.exists()) await rootB.delete(recursive: true);
-      AppStorage.resetForTesting();
+      resetTestHomeStorage();
       AppPathsBootstrapper.resetForTesting();
     });
 
@@ -48,7 +48,7 @@ void main() {
     addTearDown(() async {
       if (await pinnedRoot.exists()) await pinnedRoot.delete(recursive: true);
       if (await otherRoot.exists()) await otherRoot.delete(recursive: true);
-      AppStorage.resetForTesting();
+      resetTestHomeStorage();
       AppPathsBootstrapper.resetForTesting();
     });
 

@@ -1,11 +1,13 @@
 import 'dart:async';
+import 'dart:io';
 
 import 'package:flutter/foundation.dart';
+import 'package:path/path.dart' as p;
 
 import '../../models/runtime_target.dart';
 import '../io/filesystem.dart';
 import '../io/local_filesystem.dart';
-import 'app_storage.dart';
+import 'app_paths.dart';
 import 'runtime_context.dart';
 import '../../utils/logging/logger.dart';
 
@@ -74,8 +76,8 @@ class HomeStorage {
   /// that stays alive until they finish. Swapping in the identical context is
   /// a full no-op (no emit, no generation bump, no retire).
   ///
-  /// [drainTimeout] bounds how long callers are willing to wait on the drain;
-  /// [retire] implementations are expected to drain on their own (Task 5).
+  /// [drainTimeout] is reserved for future drain bounding; drain safety is
+  /// the [retire] callback's contract (Task 5: it drains on its own).
   Future<void> swap(
     RuntimeContext next, {
     Duration drainTimeout = const Duration(seconds: 5),
@@ -94,8 +96,8 @@ class HomeStorage {
     await retire?.call(old);
   }
 
-  /// Test seam mirroring `AppStorage.installForTesting`: a native context
-  /// rooted at [paths] over an injected [filesystem].
+  /// Test seam mirroring `AppPathsBootstrapper`-based installs: a native
+  /// context rooted at [paths] over an injected [filesystem].
   @visibleForTesting
   factory HomeStorage.forTesting({
     required Filesystem filesystem,
@@ -130,7 +132,7 @@ class HomeStorage {
       'constructed without storage; production wiring should thread '
       'CliBootstrap.storage.',
     );
-    final root = AppStorage.unboundNativeRoot;
+    final root = _unboundNativeRoot;
     return HomeStorage(
       RuntimeContext(
         target: RuntimeTarget.local(),
@@ -142,4 +144,17 @@ class HomeStorage {
       ),
     );
   }
+
+  /// System-temp root for the native default: a stray unbound write stays out
+  /// of the real home. Only [nativeDefault] (tests / miswired construction)
+  /// reaches this.
+  static final String _unboundNativeRoot = () {
+    final root = p.join(Directory.systemTemp.path, 'teampilot-unbound-home');
+    try {
+      Directory(root).createSync(recursive: true);
+    } on Object {
+      // Read-only temp / sandboxed host: the path still works for joins.
+    }
+    return root;
+  }();
 }

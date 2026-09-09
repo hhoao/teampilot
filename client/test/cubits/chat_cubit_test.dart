@@ -13,7 +13,6 @@ import 'package:teampilot/models/workspace_folder.dart';
 import 'package:teampilot/models/team_config.dart';
 import 'package:teampilot/repositories/session_repository.dart';
 import 'package:teampilot/services/team_bus/bus_user_line_capture.dart';
-import 'package:teampilot/services/storage/app_storage.dart';
 import 'package:teampilot/services/session/shell_launch_spec.dart';
 import 'package:teampilot/services/team/terminal_activity_tracker.dart';
 import 'package:teampilot/services/terminal/terminal_session.dart';
@@ -321,7 +320,7 @@ void main() {
     setUp(() async {
       TestWidgetsFlutterBinding.ensureInitialized();
       setUpTestAppStorage();
-      tmp = Directory(AppStorage.paths.basePath);
+      tmp = Directory(testHomeStorage.paths.basePath);
       repo = SessionRepository(rootDir: tmp.path, storage: testHomeStorage);
       postFrame = PostFrameTestHarness();
       cubit = ChatCubit(
@@ -951,8 +950,8 @@ void main() {
       expect(composeDraftCache.sessionDraft(session.sessionId), isNull);
       expect(
         await ComposeDraftStore(
-          fs: AppStorage.fs,
-          rootPath: AppStorage.appDataRoot,
+          fs: testHomeStorage.fs,
+          rootPath: testHomeStorage.appDataRoot,
         ).loadSession(workspace.workspaceId, session.sessionId),
         isNull,
       );

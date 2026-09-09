@@ -28,7 +28,6 @@ import '../../services/floating_workspace/floating_maximize_insets.dart';
 import '../../services/home_workspace/home_closed_workspaces_store.dart';
 import '../../services/home_workspace/home_open_workspaces_store.dart';
 import '../../services/home_workspace/home_recent_workspaces_store.dart';
-import '../../services/storage/app_storage.dart';
 import '../../services/home_workspace/home_workspace_ui_cache.dart';
 import '../../services/run/launch_adapter_protocol.dart';
 import '../../services/terminal/workspace_terminal_registry.dart';
@@ -43,6 +42,7 @@ import 'package:shared_ui/shared_ui.dart';
 import '../../widgets/run/run_toolbar.dart';
 import '../../widgets/ssh/ssh_home_disconnected_banner.dart';
 import '../../widgets/termux/termux_disconnected_banner.dart';
+import '../../widgets/home_storage_scope.dart';
 import '../floating_workspace/floating_workspace_host.dart';
 import '../../repositories/session_repository.dart';
 import 'clone_completed_dialog.dart';
@@ -139,14 +139,14 @@ class HomeShell extends StatefulWidget {
 }
 
 class _HomeShellState extends State<HomeShell> {
-  final _recentWorkspacesStore = HomeRecentWorkspacesStore(
-    storage: AppStorage.tolerantHome,
+  late final _recentWorkspacesStore = HomeRecentWorkspacesStore(
+    storage: homeStorageOf(context),
   );
-  final _closedWorkspacesStore = HomeClosedWorkspacesStore(
-    storage: AppStorage.tolerantHome,
+  late final _closedWorkspacesStore = HomeClosedWorkspacesStore(
+    storage: homeStorageOf(context),
   );
-  final _openWorkspacesStore = HomeOpenWorkspacesStore(
-    storage: AppStorage.tolerantHome,
+  late final _openWorkspacesStore = HomeOpenWorkspacesStore(
+    storage: homeStorageOf(context),
   );
 
   late List<WorkspaceTabRef> _openTabs;

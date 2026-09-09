@@ -11,7 +11,6 @@ import 'package:teampilot/services/skill/skill_acquisition_engine.dart';
 import 'package:teampilot/services/skill/skill_pack_registry.dart';
 import 'package:teampilot/services/skill/skill_repo_disk_cache_service.dart';
 import 'package:teampilot/services/skill/skill_pack_source.dart';
-import 'package:teampilot/services/storage/app_storage.dart';
 
 import '../../support/post_frame_test_harness.dart';
 
@@ -33,7 +32,7 @@ void _plantSkillMdUnder(String syncRoot, String dirName) {
 }
 
 String _syncRootFor(SkillRepo repo) => p.join(
-  AppStorage.paths.skillRepoCacheDir,
+  testHomeStorage.paths.skillRepoCacheDir,
   SkillRepoDiskCacheService.repoKey(repo),
   'files',
 );

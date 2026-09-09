@@ -5,7 +5,7 @@ import 'package:teampilot/models/runtime_target.dart';
 import 'package:teampilot/services/io/runtime_folder_opener.dart';
 import 'package:teampilot/services/io/system_folder_opener.dart';
 import 'package:teampilot/services/io/wsl_filesystem.dart';
-import 'package:teampilot/services/storage/app_storage.dart';
+import 'package:teampilot/services/storage/app_paths.dart';
 import 'package:teampilot/services/storage/runtime_context.dart';
 
 import '../../support/test_runtime_context.dart';

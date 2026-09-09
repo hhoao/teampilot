@@ -2,7 +2,7 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:path/path.dart' as p;
-import 'package:teampilot/services/storage/app_storage.dart';
+import 'package:teampilot/services/io/local_filesystem.dart';
 import 'package:teampilot/services/storage/workspace_layout.dart';
 
 typedef BusTaskRowPredicate = bool Function(Map<String, Object?> row);
@@ -12,9 +12,11 @@ String busTasksFilePath({
   required String workspaceId,
   required String sessionId,
 }) {
+  // Path math only: an explicit-root layout over a local path context (the
+  // deleted AppStorage-unbound fallback this replaced was a LocalFilesystem).
   final layout = WorkspaceLayout(
     teampilotRoot: teampilotRoot,
-    fs: AppStorage.fs,
+    fs: LocalFilesystem(),
   );
   return p.join(layout.busTasksDir(workspaceId, sessionId), 'tasks.jsonl');
 }

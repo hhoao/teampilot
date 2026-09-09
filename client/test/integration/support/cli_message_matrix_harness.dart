@@ -30,7 +30,7 @@ import 'package:teampilot/services/cli/registry/cli_tool_registry.dart';
 import 'package:teampilot/services/session/ai_history_loader.dart';
 import 'package:teampilot/services/session/session_history_context_builder.dart';
 import 'package:teampilot/services/session/session_lifecycle_service.dart';
-import 'package:teampilot/services/storage/app_storage.dart';
+import '../../support/test_runtime_context.dart';
 import 'package:teampilot/services/team_bus/mcp/bus_bridge_locator.dart';
 import 'package:teampilot/services/team_bus/persistence/bus_message_log.dart';
 import 'package:teampilot/services/team_bus/team_bus.dart';
@@ -309,7 +309,7 @@ final class CliMessageMatrixHarness {
     }
 
     await AppProviderRepository(
-      basePath: AppStorage.paths.basePath,
+      basePath: testHomeStorage.paths.basePath,
       storage: testHomeStorage,
     ).saveProviders(profile.tool, providers);
   }
@@ -323,7 +323,7 @@ final class CliMessageMatrixHarness {
     this.postFrame = postFrame;
     final life = SessionLifecycleService(
       storage: testHomeStorage,
-      appDataBasePath: AppStorage.paths.basePath,
+      appDataBasePath: testHomeStorage.paths.basePath,
     );
     lifecycle = life;
     final created = ChatCubit(
@@ -431,7 +431,7 @@ final class CliMessageMatrixHarness {
 
     final repo = SessionRepository(storage: testHomeStorage);
     final ws = await repo.createWorkspace([
-      WorkspaceFolder(path: workingDirectory ?? AppStorage.cwd),
+      WorkspaceFolder(path: workingDirectory ?? testHomeStorage.cwd),
     ]);
     workspace = ws;
 
@@ -749,7 +749,7 @@ final class CliMessageMatrixHarness {
     if (s == null) {
       throw StateError('openSession before waitForBusPingPong');
     }
-    final root = AppStorage.paths.basePath;
+    final root = testHomeStorage.paths.basePath;
     final workerPing = await waitForBusMail(
       teampilotRoot: root,
       workspaceId: s.workspaceId,

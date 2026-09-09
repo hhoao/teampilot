@@ -11,7 +11,6 @@ import 'package:teampilot/services/automation/automation_bus_gateway.dart';
 import 'package:teampilot/services/automation/automation_dispatcher.dart';
 import 'package:teampilot/services/automation/automation_schedule_calculator.dart';
 import 'package:teampilot/services/automation/automation_scheduler.dart';
-import 'package:teampilot/services/storage/app_storage.dart';
 import 'package:teampilot/services/storage/workspace_layout.dart';
 
 import '../support/post_frame_test_harness.dart';
@@ -88,10 +87,10 @@ void main() {
 
   test('save updates cubit list with computed nextRunAtMs', () async {
     final layout = WorkspaceLayout(
-      teampilotRoot: AppStorage.paths.basePath,
-      fs: AppStorage.fs,
+      teampilotRoot: testHomeStorage.paths.basePath,
+      fs: testHomeStorage.fs,
     );
-    final repo = AutomationRepository(fs: AppStorage.fs, layout: layout);
+    final repo = AutomationRepository(fs: testHomeStorage.fs, layout: layout);
     final calculator = AutomationScheduleCalculator();
     final dispatcher = AutomationDispatcher(
       repository: repo,
@@ -128,10 +127,10 @@ void main() {
 
   test('toggleEnabled flips enabled and nextRunAtMs', () async {
     final layout = WorkspaceLayout(
-      teampilotRoot: AppStorage.paths.basePath,
-      fs: AppStorage.fs,
+      teampilotRoot: testHomeStorage.paths.basePath,
+      fs: testHomeStorage.fs,
     );
-    final repo = AutomationRepository(fs: AppStorage.fs, layout: layout);
+    final repo = AutomationRepository(fs: testHomeStorage.fs, layout: layout);
     final calculator = AutomationScheduleCalculator();
     final dispatcher = AutomationDispatcher(
       repository: repo,
@@ -176,10 +175,10 @@ void main() {
 
   test('loadForWorkspace keeps automations from every launch context', () async {
     final layout = WorkspaceLayout(
-      teampilotRoot: AppStorage.paths.basePath,
-      fs: AppStorage.fs,
+      teampilotRoot: testHomeStorage.paths.basePath,
+      fs: testHomeStorage.fs,
     );
-    final repo = AutomationRepository(fs: AppStorage.fs, layout: layout);
+    final repo = AutomationRepository(fs: testHomeStorage.fs, layout: layout);
     final calculator = AutomationScheduleCalculator();
     final dispatcher = AutomationDispatcher(
       repository: repo,
@@ -227,10 +226,10 @@ void main() {
 
   test('save disables enabled once automation with past runAtMs', () async {
     final layout = WorkspaceLayout(
-      teampilotRoot: AppStorage.paths.basePath,
-      fs: AppStorage.fs,
+      teampilotRoot: testHomeStorage.paths.basePath,
+      fs: testHomeStorage.fs,
     );
-    final repo = AutomationRepository(fs: AppStorage.fs, layout: layout);
+    final repo = AutomationRepository(fs: testHomeStorage.fs, layout: layout);
     final calculator = AutomationScheduleCalculator();
     final dispatcher = AutomationDispatcher(
       repository: repo,
@@ -272,10 +271,10 @@ void main() {
 
   test('toggleEnabled keeps expired once automation disabled', () async {
     final layout = WorkspaceLayout(
-      teampilotRoot: AppStorage.paths.basePath,
-      fs: AppStorage.fs,
+      teampilotRoot: testHomeStorage.paths.basePath,
+      fs: testHomeStorage.fs,
     );
-    final repo = AutomationRepository(fs: AppStorage.fs, layout: layout);
+    final repo = AutomationRepository(fs: testHomeStorage.fs, layout: layout);
     final calculator = AutomationScheduleCalculator();
     final dispatcher = AutomationDispatcher(
       repository: repo,

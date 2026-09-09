@@ -8,7 +8,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:path/path.dart' as p;
 import 'package:teampilot/models/team_config.dart';
 import 'package:teampilot/services/cli/codex/provider/codex_toml_parser.dart';
-import 'package:teampilot/services/storage/app_storage.dart';
+import '../support/test_runtime_context.dart';
 
 import '../support/post_frame_test_harness.dart';
 import 'support/cli_message_matrix_harness.dart';
@@ -82,7 +82,7 @@ void main() {
 /// All `config.toml` files the session pipeline materialized under the codex
 /// runtime dirs (session tool dir), in no particular order.
 List<String> _readCodexConfigTomls() {
-  final root = Directory(AppStorage.paths.basePath);
+  final root = Directory(testHomeStorage.paths.basePath);
   if (!root.existsSync()) return const [];
   final contents = <String>[];
   for (final entity in root.listSync(recursive: true)) {

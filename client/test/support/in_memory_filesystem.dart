@@ -1,7 +1,7 @@
 import 'package:path/path.dart' as p;
 import 'package:teampilot/models/runtime_target.dart';
 import 'package:teampilot/services/io/filesystem.dart';
-import 'package:teampilot/services/storage/app_storage.dart';
+import 'package:teampilot/services/storage/app_paths.dart';
 import 'package:teampilot/services/storage/home_storage.dart';
 import 'package:teampilot/services/storage/runtime_context.dart';
 

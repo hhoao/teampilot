@@ -2,7 +2,7 @@ import 'dart:convert';
 
 import '../../models/plugin.dart';
 import '../io/filesystem.dart';
-import '../storage/app_storage.dart';
+import '../storage/app_paths.dart';
 
 /// Loads the installed-plugin catalog (`plugins/plugins.json`) — the single
 /// source plugin provisioners use to map enabled plugin ids to bundles.

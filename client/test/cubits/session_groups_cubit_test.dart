@@ -4,7 +4,6 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/cubits/session_groups_cubit.dart';
 import 'package:teampilot/models/session_group.dart';
 import 'package:teampilot/repositories/session_group_repository.dart';
-import 'package:teampilot/services/storage/app_storage.dart';
 import 'package:teampilot/services/storage/workspace_layout.dart';
 
 import '../support/post_frame_test_harness.dart';
@@ -28,8 +27,8 @@ void main() {
   late String basePath;
 
   setUp(() {
-    basePath = AppStorage.paths.basePath;
-    layout = WorkspaceLayout(teampilotRoot: basePath, fs: AppStorage.fs);
+    basePath = testHomeStorage.paths.basePath;
+    layout = WorkspaceLayout(teampilotRoot: basePath, fs: testHomeStorage.fs);
   });
 
   /// Persists are unawaited whole-file writes whose real IO completions

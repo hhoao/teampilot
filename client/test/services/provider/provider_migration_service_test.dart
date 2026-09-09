@@ -6,7 +6,7 @@ import 'package:path/path.dart' as p;
 import 'package:sqlite3/sqlite3.dart';
 import 'package:teampilot/models/app_provider_config.dart';
 import 'package:teampilot/repositories/app_provider_repository.dart';
-import 'package:teampilot/services/storage/app_storage.dart';
+import 'package:teampilot/services/storage/app_paths.dart';
 import 'package:teampilot/services/io/local_filesystem.dart';
 import 'package:teampilot/services/cli/cursor/provider/cursor_home_layout.dart';
 import 'package:teampilot/services/cli/opencode/provider/opencode_data_layout.dart';
@@ -25,7 +25,7 @@ void main() {
     appData = p.join(root.path, 'app-data');
     home = p.join(root.path, 'home');
     await Directory(home).create(recursive: true);
-    AppStorage.installForTesting(
+    installTestHomeStorage(
       filesystem: LocalFilesystem(),
       paths: AppPaths(appData),
       home: home,
@@ -38,7 +38,7 @@ void main() {
   });
 
   tearDown(() async {
-    AppStorage.resetForTesting();
+    resetTestHomeStorage();
     if (await root.exists()) {
       await root.delete(recursive: true);
     }

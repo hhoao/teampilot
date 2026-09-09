@@ -12,7 +12,7 @@ import '../../services/app/external_link_opener.dart';
 import '../../services/io/filesystem.dart';
 import '../../services/preview/html_preview_server.dart';
 import '../../services/preview/html_preview_session.dart';
-import '../../services/storage/app_storage.dart';
+import '../../widgets/home_storage_scope.dart';
 
 /// Preview surface for one html file.
 ///
@@ -84,7 +84,7 @@ class _HtmlPreviewPaneState extends State<HtmlPreviewPane> {
         _session = null;
         unawaited(old.dispose());
       }
-      final fs = widget.fs ?? _defaultFs(context) ?? AppStorage.fs;
+      final fs = widget.fs ?? _defaultFs(context) ?? homeStorageOf(context).fs;
       final dir = fs.pathContext.dirname(widget.path);
       final entry = p.basename(widget.path);
       final factory =

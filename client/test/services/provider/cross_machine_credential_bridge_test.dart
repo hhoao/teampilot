@@ -14,7 +14,7 @@ import 'package:teampilot/services/provider/cross_machine_credential_bridge.dart
 import 'package:teampilot/services/cli/cursor/provider/cursor_home_layout.dart';
 import 'package:teampilot/services/cli/cursor/provider/cursor_provider_credentials_service.dart';
 import 'package:teampilot/services/cli/opencode/provider/opencode_data_layout.dart';
-import 'package:teampilot/services/storage/app_storage.dart';
+import 'package:teampilot/services/storage/app_paths.dart';
 import 'package:teampilot/services/storage/home_storage.dart';
 import 'package:teampilot/services/storage/runtime_context.dart';
 import 'package:teampilot/services/storage/runtime_layout.dart';

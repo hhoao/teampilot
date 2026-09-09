@@ -13,7 +13,8 @@ import 'package:teampilot/services/catalog/modules/skill_catalog_module.dart';
 import 'package:teampilot/services/io/local_filesystem.dart';
 import 'package:teampilot/services/skill/skill_install_service.dart';
 import 'package:teampilot/services/skill/skill_manifest_service.dart';
-import 'package:teampilot/services/storage/app_storage.dart';
+import 'package:teampilot/services/storage/app_paths.dart';
+import '../../support/test_runtime_context.dart';
 import 'package:teampilot/services/storage/home_storage.dart';
 import '../../support/in_memory_filesystem.dart';
 
@@ -35,7 +36,7 @@ void main() {
     tmp = Directory.systemTemp.createTempSync('skill_catalog_');
     workRoot = Directory.systemTemp.createTempSync('skill_catalog_work_');
     final paths = AppPaths(tmp.path);
-    AppStorage.installForTesting(
+    installTestHomeStorage(
       filesystem: LocalFilesystem(
         pathContext: AppPaths.pathContextForDataRoot(paths.basePath),
       ),
@@ -44,12 +45,12 @@ void main() {
       cwd: tmp.path,
     );
     workFs = LocalFilesystem();
-    final homeStorage = HomeStorage(AppStorage.context);
+    final homeStorage = HomeStorage(testHomeStorage.context);
     manifest = SkillManifestService(rootDir: tmp.path, storage: homeStorage, );
     install = SkillInstallService(manifest: manifest, storage: homeStorage, );
     repository = SkillRepository(manifest: manifest, install: install, storage: homeStorage, );
     configRepo = WorkspaceProjectConfigRepository(
-      storage: HomeStorage(AppStorage.context),
+      storage: HomeStorage(testHomeStorage.context),
     );
     binder = CatalogWorkspaceBinder(repo: configRepo);
     bus = CatalogMutationBus();
@@ -59,12 +60,12 @@ void main() {
       binder: binder,
       bus: bus,
       workspaceConfig: configRepo,
-      storage: HomeStorage(AppStorage.context),
+      storage: HomeStorage(testHomeStorage.context),
     );
   });
 
   tearDown(() {
-    AppStorage.resetForTesting();
+    resetTestHomeStorage();
     AppPathsBootstrapper.resetForTesting();
     if (tmp.existsSync()) tmp.deleteSync(recursive: true);
     if (workRoot.existsSync()) workRoot.deleteSync(recursive: true);

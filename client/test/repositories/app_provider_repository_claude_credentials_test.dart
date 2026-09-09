@@ -3,7 +3,8 @@ import 'dart:convert';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/models/app_provider_config.dart';
 import 'package:teampilot/repositories/app_provider_repository.dart';
-import 'package:teampilot/services/storage/app_storage.dart';
+import 'package:teampilot/services/storage/app_paths.dart';
+import '../support/test_runtime_context.dart';
 import 'package:teampilot/services/cli/claude/provider/claude_provider_credentials_service.dart';
 import 'package:teampilot/services/provider/credential_binding.dart';
 import 'package:teampilot/services/storage/home_storage.dart';
@@ -33,7 +34,7 @@ void main() {
   });
 
   tearDown(() {
-    AppStorage.resetForTesting();
+    resetTestHomeStorage();
   });
 
   test('removes stale claude provider credential dirs on save', () async {
@@ -85,7 +86,7 @@ void main() {
 
   test('load probes linked official credentials from global home', () async {
     const home = '/home/user';
-    AppStorage.installForTesting(
+    installTestHomeStorage(
       filesystem: fs,
       paths: AppPaths(base),
       home: home,
@@ -129,7 +130,7 @@ void main() {
     'load does not import global credentials unless explicitly requested',
     () async {
       const home = '/home/user';
-      AppStorage.installForTesting(
+      installTestHomeStorage(
         filesystem: fs,
         paths: AppPaths(base),
         home: home,
@@ -176,7 +177,7 @@ void main() {
     'load imports global credentials when importCredentialsFromGlobal is true',
     () async {
       const home = '/home/user';
-      AppStorage.installForTesting(
+      installTestHomeStorage(
         filesystem: fs,
         paths: AppPaths(base),
         home: home,
@@ -224,7 +225,7 @@ void main() {
     'load does not overwrite isolated provider credentials from global',
     () async {
       const home = '/home/user';
-      AppStorage.installForTesting(
+      installTestHomeStorage(
         filesystem: fs,
         paths: AppPaths(base),
         home: home,

@@ -83,7 +83,8 @@ import 'package:teampilot/services/ssh/ssh_client_factory.dart';
 import 'package:teampilot/services/ssh/ssh_connection_events.dart';
 import 'package:teampilot/services/ssh/ssh_profile_connection_coordinator.dart';
 import 'package:teampilot/services/session/ai_history_loader.dart';
-import 'package:teampilot/services/storage/app_storage.dart';
+import 'package:teampilot/services/storage/app_paths.dart';
+import 'test_runtime_context.dart';
 import 'package:teampilot/services/storage/home_target_controller.dart';
 import 'package:teampilot/services/storage/runtime_context.dart';
 import 'package:teampilot/services/workspace/repo_clone_service.dart';
@@ -233,7 +234,7 @@ Widget buildTestApp({
   final aiHistoryCubit = AiHistoryCubit(
     loader: AiHistoryLoader(
       resolveWorkContext: (launchCtx, {String? memberId}) async {
-        final basePath = AppStorage.paths.basePath;
+        final basePath = testHomeStorage.paths.basePath;
         return RuntimeContext(
           target: RuntimeTarget.local(),
           filesystem: LocalFilesystem(

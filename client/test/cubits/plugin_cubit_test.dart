@@ -7,7 +7,8 @@ import 'package:teampilot/models/plugin.dart';
 import 'package:teampilot/models/catalog/catalog_types.dart';
 import 'package:teampilot/repositories/app_settings_repository.dart';
 import 'package:teampilot/repositories/plugin_repository.dart';
-import 'package:teampilot/services/storage/app_storage.dart';
+import 'package:teampilot/services/storage/app_paths.dart';
+import '../support/test_runtime_context.dart';
 import 'package:teampilot/services/storage/home_storage.dart';
 import 'package:teampilot/services/io/filesystem.dart';
 import 'package:teampilot/services/io/local_filesystem.dart';
@@ -25,7 +26,7 @@ void main() {
   setUp(() {
     tmp = Directory.systemTemp.createTempSync('plugin-cubit-');
     final paths = AppPaths(tmp.path);
-    AppStorage.installForTesting(
+    installTestHomeStorage(
       filesystem: LocalFilesystem(
         pathContext: AppPaths.pathContextForDataRoot(paths.basePath),
       ),
@@ -36,11 +37,11 @@ void main() {
   });
 
   tearDown(() {
-    AppStorage.resetForTesting();
+    resetTestHomeStorage();
     tmp.deleteSync(recursive: true);
   });
 
-  HomeStorage home() => HomeStorage(AppStorage.context);
+  HomeStorage home() => HomeStorage(testHomeStorage.context);
 
   DiscoverablePlugin discoverable(String name, {int? adoption, int? updated}) =>
       DiscoverablePlugin(
@@ -341,12 +342,12 @@ void main() {
 
     // 把缓存 meta 改成过期，再走自动刷新 → 应检查远端 SHA（remote null → 保留缓存）
     final market = cubit.state.marketplaces.firstWhere((m) => m.enabled);
-    final metaPath = AppStorage.fs.pathContext.join(
-      AppStorage.paths.pluginMarketplaceCacheDir,
+    final metaPath = testHomeStorage.fs.pathContext.join(
+      testHomeStorage.paths.pluginMarketplaceCacheDir,
       PluginRepoDiskCacheService.repoKey(market),
       '.teampilot-plugin-cache-meta.json',
     );
-    await AppStorage.fs.writeString(
+    await testHomeStorage.fs.writeString(
       metaPath,
       const JsonEncoder.withIndent('  ').convert({
         'configuredBranch': 'main',

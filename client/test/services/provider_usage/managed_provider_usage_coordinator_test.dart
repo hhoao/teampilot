@@ -9,7 +9,8 @@ import 'package:teampilot/repositories/managed_provider_usage_repository.dart';
 import 'package:teampilot/services/provider_usage/managed_provider_usage_adapter.dart';
 import 'package:teampilot/services/provider_usage/managed_provider_usage_coordinator.dart';
 import 'package:teampilot/services/provider_usage/managed_provider_usage_registry.dart';
-import 'package:teampilot/services/storage/app_storage.dart';
+import 'package:teampilot/services/storage/app_paths.dart';
+import '../../support/test_runtime_context.dart';
 
 import '../../support/in_memory_filesystem.dart';
 
@@ -91,7 +92,7 @@ void main() {
   late ManagedProviderRepository providers;
   late ManagedProviderUsageRepository usage;
 
-  tearDown(AppStorage.resetForTesting);
+  tearDown(resetTestHomeStorage);
 
   setUp(() {
     fs = InMemoryFilesystem();
@@ -161,7 +162,7 @@ void main() {
       final gate = Completer<ProviderUsageSnapshot>();
       final adapter = _FakeAdapter(gate.future);
 
-      AppStorage.installForTesting(filesystem: firstFs, paths: firstPaths);
+      installTestHomeStorage(filesystem: firstFs, paths: firstPaths);
       final dynamicUsage = ManagedProviderUsageRepository(
         storage: fakeHomeStorage(filesystem: firstFs),
       );
@@ -171,10 +172,10 @@ void main() {
       );
       await dynamicProviders.upsert(_provider());
 
-      AppStorage.installForTesting(filesystem: secondFs, paths: secondPaths);
+      installTestHomeStorage(filesystem: secondFs, paths: secondPaths);
       await dynamicProviders.upsert(_provider());
 
-      AppStorage.installForTesting(filesystem: firstFs, paths: firstPaths);
+      installTestHomeStorage(filesystem: firstFs, paths: firstPaths);
       final coordinator = ManagedProviderUsageCoordinator(
         providerRepository: dynamicProviders,
         usageRepository: dynamicUsage,
@@ -189,7 +190,7 @@ void main() {
       expect(adapter.calls, 1);
 
       await coordinator.invalidateForStorageContextChange();
-      AppStorage.installForTesting(filesystem: secondFs, paths: secondPaths);
+      installTestHomeStorage(filesystem: secondFs, paths: secondPaths);
       gate.complete(_ready(remaining: '1.75'));
 
       await expectLater(

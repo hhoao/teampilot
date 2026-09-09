@@ -28,7 +28,7 @@ class GitService {
 
   /// Test seam: when set, the default [GitCubit] builds this instead of a
   /// real process-backed service, so widget tests never spawn `git` (mirrors
-  /// `AppStorage` test injection). See `setUpTestAppStorage`.
+  /// the home-storage test injection). See `setUpTestAppStorage`.
   static GitService Function()? debugOverrideFactory;
 
   final GitCommandRunner _runner;

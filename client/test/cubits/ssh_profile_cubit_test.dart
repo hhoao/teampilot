@@ -8,7 +8,8 @@ import 'package:teampilot/models/team_config.dart';
 import 'package:teampilot/repositories/ssh_credential_store.dart';
 import 'package:teampilot/repositories/ssh_profile_repository.dart';
 import 'package:teampilot/services/cli/remote_cli_path_cache.dart';
-import 'package:teampilot/services/storage/app_storage.dart';
+import 'package:teampilot/services/storage/app_paths.dart';
+import '../support/test_runtime_context.dart';
 import '../support/in_memory_filesystem.dart';
 import '../support/test_runtime_context.dart';
 
@@ -527,7 +528,7 @@ void main() {
       addTearDown(() async {
         if (await rootA.exists()) await rootA.delete(recursive: true);
         if (await rootB.exists()) await rootB.delete(recursive: true);
-        AppStorage.resetForTesting();
+        resetTestHomeStorage();
         AppPathsBootstrapper.resetForTesting();
       });
 

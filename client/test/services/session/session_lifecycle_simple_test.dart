@@ -12,7 +12,7 @@ import 'package:teampilot/models/workspace_folder.dart';
 import 'package:teampilot/repositories/cli_presets_repository.dart';
 import 'package:teampilot/services/launch/session_runtime_plan.dart';
 import 'package:teampilot/services/session/session_lifecycle_service.dart';
-import 'package:teampilot/services/storage/app_storage.dart';
+import 'package:teampilot/services/storage/app_paths.dart';
 import 'package:teampilot/services/storage/runtime_context.dart';
 import 'package:teampilot/services/storage/runtime_layout.dart';
 import 'package:teampilot/services/cli/registry/cli_bootstrap.dart';
@@ -56,7 +56,7 @@ void main() {
       CliBootstrap(const {}, storage: testHomeStorage),
     );
     base = await Directory.systemTemp.createTemp('session_lifecycle_simple_');
-    layout = RuntimeLayout(teampilotRoot: base.path, fs: AppStorage.fs);
+    layout = RuntimeLayout(teampilotRoot: base.path, fs: testHomeStorage.fs);
   });
 
   tearDown(() async {

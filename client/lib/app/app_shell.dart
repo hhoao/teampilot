@@ -143,7 +143,7 @@ import '../router/app_router.dart';
 import '../services/extension/builtin_manifests.dart';
 import '../services/extension/extension_acquisition_engine.dart';
 import '../services/extension/extension_provisioner.dart';
-import '../services/storage/app_storage.dart';
+import '../services/storage/app_paths.dart';
 import '../services/storage/device_local_control_plane.dart';
 import '../services/io/local_filesystem.dart';
 import '../services/connect/authorized_keys_file.dart';
@@ -690,7 +690,7 @@ Future<AppShell> buildAppShell({
   RuntimeTarget defaultTargetResolver() => homeTarget;
 
   // SSH catalog + targets.json are device-local control plane: they must not
-  // follow AppStorage home (Android Connect rebinds home onto SSH and would
+  // follow the home context (Android Connect rebinds home onto SSH and would
   // otherwise reload an empty remote catalog → disconnect → gate again).
   final sshProfileRepo = deviceLocalSshProfileRepository(nativeAppDataPath);
   Future<Map<CliTool, String>> locateRemoteClis(SshProfile profile) async {
@@ -851,7 +851,7 @@ Future<AppShell> buildAppShell({
   );
 
   // P2: de-singleton. One resolver + a per-target context registry. The home
-  // context (control plane) is materialized once and pushed onto AppStorage;
+  // context (control plane) is materialized once and published on HomeStorage;
   // work-plane contexts are resolved lazily per workspace target id.
   final runtimeContextResolver = RuntimeContextResolver(
     sshClientFactory: sshClientFactory,
@@ -903,25 +903,23 @@ Future<AppShell> buildAppShell({
     termuxConfigCache = updated;
     await termuxConfigStore.save(updated);
   }
-  AppStorage.bindHome(homeCtx);
   // Versioned, drain-safe home facade: home swaps publish through it and the
   // outgoing context is retired (registry evict → drain-safe SSH disconnect)
-  // only after the new context is live. AppStorage forwards to it, so the
-  // unmigrated call sites follow every swap automatically (shim era).
+  // only after the new context is live. Every control-plane consumer receives
+  // it via constructor injection (or the RepositoryProvider in main.dart).
   final homeStorage = HomeStorage(
     homeCtx,
     retire: (old) => runtimeContextRegistry.disposeContext(old),
   );
-  AppStorage.bindHomeStorage(homeStorage);
   homeWorkspaceUiCache = HomeWorkspaceUiCache(storage: homeStorage);
   boot(
     'home context installed '
-    '(${AppStorage.context.mode}, home=${homeTarget.id}, '
-    'root=${AppStorage.appDataRoot})',
+    '(${homeStorage.context.mode}, home=${homeTarget.id}, '
+    'root=${homeStorage.appDataRoot})',
   );
 
   // Managed Providers belong to the home/control plane. Construct this graph
-  // once after AppStorage is bound; workspace tabs only consume the Cubits
+  // once after the home context is installed; workspace tabs only consume the Cubits
   // exposed by AppShell and never create provider-specific state.
   final resolvedManagedProviderSecretStore =
       managedProviderSecretStore ??
@@ -951,16 +949,16 @@ Future<AppShell> buildAppShell({
             CliCredentialSourceResolver(
               readers: {
                 'claude': ClaudeOfficialSubscriptionAuthReader(
-                  fs: AppStorage.fs,
-                  basePath: AppStorage.paths.basePath,
+                  fs: homeStorage.fs,
+                  basePath: homeStorage.paths.basePath,
                 ),
                 'codex': CodexOfficialSubscriptionAuthReader(
-                  fs: AppStorage.fs,
-                  basePath: AppStorage.paths.basePath,
+                  fs: homeStorage.fs,
+                  basePath: homeStorage.paths.basePath,
                 ),
                 'cursor': CursorOfficialSubscriptionAuthReader(
-                  fs: AppStorage.fs,
-                  basePath: AppStorage.paths.basePath,
+                  fs: homeStorage.fs,
+                  basePath: homeStorage.paths.basePath,
                 ),
               },
             ),
@@ -1001,8 +999,8 @@ Future<AppShell> buildAppShell({
   // directories: from the managed-provider delete hook and the one-shot
   // startup sweep below.
   final managedProviderCliRowJanitor = ManagedProviderCliRowJanitor(
-    fs: AppStorage.fs,
-    basePath: AppStorage.paths.basePath,
+    fs: homeStorage.fs,
+    basePath: homeStorage.paths.basePath,
     appProviderCubit: appProviderCubit,
   );
 
@@ -1080,7 +1078,7 @@ Future<AppShell> buildAppShell({
     }
 
     // Persists the chosen home id, rebinds the registry home, and republishes it
-    // through homeStorage (AppStorage forwards to it).
+    // through homeStorage.
     Future<void> setHomeTarget(String id) async {
       await managedProviderControlPlane.invalidateForStorageContextChange();
       await homeTargetStore.save(id);
@@ -1122,32 +1120,32 @@ Future<AppShell> buildAppShell({
     }
 
     final credentialHostRunner = ProviderCredentialHostRunner(
-      oneShot: () => hostOneShotRunnerForContext(AppStorage.context),
-      streaming: () => hostProcessStarterForContext(AppStorage.context),
+      oneShot: () => hostOneShotRunnerForContext(homeStorage.context),
+      streaming: () => hostProcessStarterForContext(homeStorage.context),
       openUrl: openCredentialLoginUrl,
       onLoginHint: onCredentialLoginHint,
     );
 
     final claudeCredentialsService = ClaudeProviderCredentialsService(
       storage: homeStorage,
-      fs: AppStorage.fs,
-      basePath: AppStorage.paths.basePath,
+      fs: homeStorage.fs,
+      basePath: homeStorage.paths.basePath,
       resolveClaudeExecutable: () =>
           sessionPreferencesCubit.resolveExecutable(CliTool.claude),
       hostRunner: credentialHostRunner,
     );
     final cursorCredentialsService = CursorProviderCredentialsService(
       storage: homeStorage,
-      fs: AppStorage.fs,
-      basePath: AppStorage.paths.basePath,
+      fs: homeStorage.fs,
+      basePath: homeStorage.paths.basePath,
       resolveCursorExecutable: () =>
           sessionPreferencesCubit.resolveExecutable(CliTool.cursor),
       hostRunner: credentialHostRunner,
     );
     final codexCredentialsService = CodexProviderCredentialsService(
       storage: homeStorage,
-      fs: AppStorage.fs,
-      basePath: AppStorage.paths.basePath,
+      fs: homeStorage.fs,
+      basePath: homeStorage.paths.basePath,
       resolveCodexExecutable: () =>
           sessionPreferencesCubit.resolveExecutable(CliTool.codex),
       hostRunner: credentialHostRunner,
@@ -1218,7 +1216,7 @@ Future<AppShell> buildAppShell({
             directory: directory,
           ),
       isLocalAcquireSupported: () =>
-          AppStorage.context.mode == StorageBackendMode.native,
+          homeStorage.context.mode == StorageBackendMode.native,
       repoCache: skillRepoCache,
     );
 
@@ -1242,24 +1240,24 @@ Future<AppShell> buildAppShell({
     }
 
     final extensionRepository = ExtensionRepository(
-      fs: AppStorage.fs,
-      stateFilePath: AppStorage.paths.extensionsStateJson,
+      fs: homeStorage.fs,
+      stateFilePath: homeStorage.paths.extensionsStateJson,
       manifests: builtInExtensionManifests(),
     );
     final workspaceProjectConfigRepository = WorkspaceProjectConfigRepository(
       storage: homeStorage,
-      fs: AppStorage.fs,
+      fs: homeStorage.fs,
     );
 
     identityRepository = LaunchProfileRepository(storage: homeStorage);
 
     final cliPresetsRepo = CliPresetsRepository(
-      fs: AppStorage.fs,
-      presetsPath: AppStorage.paths.cliPresetsJson,
+      fs: homeStorage.fs,
+      presetsPath: homeStorage.paths.cliPresetsJson,
     );
     sessionLifecycleService = SessionLifecycleService(
       storage: homeStorage,
-      storageRootsResolver: () async => AppStorage.context,
+      storageRootsResolver: () async => homeStorage.context,
       catalogContextResolver: () async => runtimeContextRegistry.home(),
       homeTarget: defaultTargetResolver,
       // P2: launch resolves the work-plane on the workspace's target machine.
@@ -1329,12 +1327,12 @@ Future<AppShell> buildAppShell({
     final pluginRepository = PluginRepository(storage: homeStorage);
     final mcpRepository = McpRepository(storage: homeStorage);
     hookRepository = HookRepository(
-      fs: AppStorage.fs,
-      teampilotRoot: AppStorage.paths.basePath,
+      fs: homeStorage.fs,
+      teampilotRoot: homeStorage.paths.basePath,
     );
     hookImportParser = HookImportParser(
-      fs: AppStorage.fs,
-      teampilotRoot: AppStorage.paths.basePath,
+      fs: homeStorage.fs,
+      teampilotRoot: homeStorage.paths.basePath,
       homeDir: Platform.environment['HOME'],
     );
     hookImportService = HookImportService(repository: hookRepository);
@@ -1349,7 +1347,7 @@ Future<AppShell> buildAppShell({
       executableResolver: () => sessionPreferencesCubit.resolveExecutable(),
       cliExecutableResolver: sessionPreferencesCubit.resolveExecutable,
       llmConfigPathOverride: llmConfigPathOverrideForLaunch,
-      storageRootsResolver: () async => AppStorage.context,
+      storageRootsResolver: () async => homeStorage.context,
       lifecycleService: sessionLifecycleService,
       pluginRepository: pluginRepository,
       installedPluginsLoader: () => pluginRepository.loadAll(),
@@ -1784,9 +1782,9 @@ Future<AppShell> buildAppShell({
     );
 
     final automationRepo = AutomationRepository(
-      fs: AppStorage.fs,
+      fs: homeStorage.fs,
       layout: WorkspaceLayout(
-        teampilotRoot: AppStorage.paths.basePath,
+        teampilotRoot: homeStorage.paths.basePath,
         fs: homeStorage.fs,
       ),
     );
@@ -1836,11 +1834,11 @@ Future<AppShell> buildAppShell({
     ];
     final agentEventGateway = AgentEventGateway(
       journal: FileRuntimeEventJournal(
-        journalRoot: AppStorage.fs.pathContext.join(
-          AppStorage.paths.basePath,
+        journalRoot: homeStorage.fs.pathContext.join(
+          homeStorage.paths.basePath,
           'runtime-events',
         ),
-        fs: AppStorage.fs,
+        fs: homeStorage.fs,
       ),
       stream: agentRuntimeStream,
       resolveCli: agentStatusSeatLookup.resolveCli,
@@ -1978,11 +1976,11 @@ Future<AppShell> buildAppShell({
       termuxGateHomeResolver: defaultTargetResolver,
     );
     final promptDeliveryStore = FilePromptDeliveryStore(
-      root: AppStorage.fs.pathContext.join(
-        AppStorage.paths.basePath,
+      root: homeStorage.fs.pathContext.join(
+        homeStorage.paths.basePath,
         'prompt-deliveries',
       ),
-      fs: AppStorage.fs,
+      fs: homeStorage.fs,
     );
     appScopedPromptDeliveries = PromptDeliveryCoordinator(
       store: promptDeliveryStore,
@@ -2358,8 +2356,8 @@ Future<AppShell> buildAppShell({
     Future<void> _sweepStaleMarketplaceClones() async {
       try {
         await MarketplaceSharedStore(
-          fs: AppStorage.fs,
-          teampilotRoot: AppStorage.paths.basePath,
+          fs: homeStorage.fs,
+          teampilotRoot: homeStorage.paths.basePath,
         ).sweepAll(
           workspaceIds: [
             for (final workspace in chatCubit.state.workspaces)
@@ -2617,7 +2615,7 @@ Future<AppShell> buildAppShell({
     Future<void> switchHomeTarget(String id) async {
       await setHomeTarget(
         id,
-      ); // persists + rebinds home + republishes AppStorage
+      ); // persists + rebinds home + republishes HomeStorage
     }
 
     // Bootstrap-owned invalidation: replaces the HomeSshProfileBinder widget
@@ -2632,6 +2630,9 @@ Future<AppShell> buildAppShell({
       reload: (level) => reloadAllAppData(level: level),
       switchHome: switchHomeTarget,
       initialProfiles: sshProfileCubit.state.profiles,
+      // Seed the generation token with swaps published before this
+      // subscription existed so they are not mistaken for fresh planes.
+      initialGeneration: homeStorage.generation,
     );
     homeInvalidationService.start();
     // M2: the invalidator is the service's policy helper (impact

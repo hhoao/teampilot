@@ -2,7 +2,6 @@ import 'dart:math' as math;
 
 import '../../models/ai_feature_setting.dart';
 import '../../models/team_config.dart';
-import '../storage/app_storage.dart';
 import '../storage/home_storage.dart';
 import 'headless_ai_service.dart' show HeadlessAiService;
 import 'team_config_draft.dart';
@@ -37,7 +36,9 @@ class TeamConfigGenerator {
            (({required setting, required prompt, required expectJson}) async {
              final svc =
                  service ??
-                 HeadlessAiService(storage: storage ?? _fallbackStorage);
+                 HeadlessAiService(
+                   storage: storage ?? HomeStorage.nativeDefault(),
+                 );
              final r = await svc.run(
                setting: setting,
                prompt: prompt,
@@ -50,7 +51,9 @@ class TeamConfigGenerator {
            (({required setting, required prompt, required onEvent}) async {
              final svc =
                  service ??
-                 HeadlessAiService(storage: storage ?? _fallbackStorage);
+                 HeadlessAiService(
+                   storage: storage ?? HomeStorage.nativeDefault(),
+                 );
              final r = await svc.runStreaming(
                setting: setting,
                prompt: prompt,
@@ -58,8 +61,6 @@ class TeamConfigGenerator {
              );
              return r.text;
            });
-
-  static final HomeStorage _fallbackStorage = AppStorage.tolerantHome;
 
   final TeamHeadlessRunner _run;
   final TeamHeadlessStreamRunner _runStreaming;

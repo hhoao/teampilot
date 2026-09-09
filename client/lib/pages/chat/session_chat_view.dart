@@ -47,8 +47,7 @@ import 'ai_message_strings_from_l10n.dart';
 import '../../services/session/history_hydration_scope.dart';
 import '../../services/session/history_awaiting_working_sync.dart';
 import 'pinned_session_history_column_width.dart';
-import '../../services/storage/app_storage.dart';
-import '../../services/storage/home_storage.dart';
+import '../../widgets/home_storage_scope.dart';
 import '../../services/terminal/pending_user_message.dart';
 import '../../utils/debug/debug_bloc_rebuild.dart';
 import '../../utils/logging/logger.dart';
@@ -219,14 +218,18 @@ class _SessionChatViewState extends State<SessionChatView> {
     unawaited(_hydrateComposeDraft());
     _projectConfigRepository =
         widget.projectConfigRepository ??
-        // Shim-era fallback: keeps pre-6-C widget tests constructing this view
-        // without a repository working against the bound home context.
+        // Bare widget tests may construct this view without a repository;
+        // homeStorageOf falls back to the native default there.
         WorkspaceProjectConfigRepository(
-          storage: AppStorage.tolerantHome,
+          storage: homeStorageOf(context),
         );
+    final homeStorage = homeStorageOf(context);
     _failedMessageStore =
         widget.failedMessageStore ??
-        FailedMessageStore(fs: AppStorage.fs, rootPath: AppStorage.appDataRoot);
+        FailedMessageStore(
+          fs: homeStorage.fs,
+          rootPath: homeStorage.appDataRoot,
+        );
     _locator = ChatMessageLocator(
       loadedMessages: () => _seat?.loadedMessages ?? const [],
       runtime: () => _seat?.runtime ?? _emptyRuntime,
@@ -441,7 +444,7 @@ class _SessionChatViewState extends State<SessionChatView> {
         widget.session.workspaceId,
         widget.session.sessionId,
         _controller.text,
-        storage: AppStorage.tolerantHome,
+        storage: homeStorageOf(context),
       ),
     );
   }
@@ -451,7 +454,7 @@ class _SessionChatViewState extends State<SessionChatView> {
     final draft = await composeDraftCache.hydrateSession(
       widget.session.workspaceId,
       widget.session.sessionId,
-      storage: AppStorage.tolerantHome,
+      storage: homeStorageOf(context),
       shouldSeed: () =>
           mounted &&
           generation == _composeDraftSeedGeneration &&
@@ -487,7 +490,7 @@ class _SessionChatViewState extends State<SessionChatView> {
     await composeDraftCache.clearSessionPersistent(
       widget.session.workspaceId,
       widget.session.sessionId,
-      storage: AppStorage.tolerantHome,
+      storage: homeStorageOf(context),
     );
     if (!mounted) return;
     _controller.clear();
@@ -504,7 +507,7 @@ class _SessionChatViewState extends State<SessionChatView> {
     final work = widget.session.workDirsForMember(
       widget.selectedMemberId,
       folders: _launchContext.folderCatalog,
-      usesPosixPaths: AppStorage.tolerantHome.usesPosixPaths,
+      usesPosixPaths: homeStorageOf(context).usesPosixPaths,
     );
     if (work.workingDirectory.isNotEmpty) return work.workingDirectory;
     return widget.session.firstFolderPath;
@@ -513,7 +516,7 @@ class _SessionChatViewState extends State<SessionChatView> {
   WorkspaceLaunchContext get _launchContext => WorkspaceLaunchContext(
     session: widget.session,
     workspace: widget.workspace,
-    usesPosixPaths: AppStorage.tolerantHome.usesPosixPaths,
+    usesPosixPaths: homeStorageOf(context).usesPosixPaths,
   );
 
   Future<void> _loadHistory({bool force = false}) async {
@@ -846,8 +849,8 @@ class _SessionChatViewState extends State<SessionChatView> {
     await pickAndInsertComposeFileReferences(
       controller: _controller,
       workspaceRoot: _workspaceRoot,
-      usesPosixPaths: AppStorage.tolerantHome.usesPosixPaths,
-      filesystem: AppStorage.fs,
+      usesPosixPaths: homeStorageOf(context).usesPosixPaths,
+      filesystem: homeStorageOf(context).fs,
     );
     if (!mounted) return;
     _focusNode.requestFocus();
@@ -858,7 +861,7 @@ class _SessionChatViewState extends State<SessionChatView> {
     final pasted = await pasteComposeImageAttachment(
       controller: _controller,
       workspaceRoot: _workspaceRoot,
-      usesPosixPaths: AppStorage.tolerantHome.usesPosixPaths,
+      usesPosixPaths: homeStorageOf(context).usesPosixPaths,
     );
     return pasted;
   }

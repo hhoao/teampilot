@@ -22,7 +22,8 @@ import 'package:teampilot/services/skill/registry/skill_registry_config_service.
 import 'package:teampilot/services/skill/skill_acquisition_engine.dart';
 import 'package:teampilot/services/skill/skill_fetch_service.dart';
 import 'package:teampilot/services/skill/skill_repo_disk_cache_service.dart';
-import 'package:teampilot/services/storage/app_storage.dart';
+import 'package:teampilot/services/storage/app_paths.dart';
+import '../support/test_runtime_context.dart';
 import 'package:teampilot/services/storage/home_storage.dart';
 
 void main() {
@@ -31,7 +32,7 @@ void main() {
   setUp(() {
     tmp = Directory.systemTemp.createTempSync('skill-cubit-');
     final paths = AppPaths(tmp.path);
-    AppStorage.installForTesting(
+    installTestHomeStorage(
       filesystem: LocalFilesystem(
         pathContext: AppPaths.pathContextForDataRoot(paths.basePath),
       ),
@@ -42,20 +43,20 @@ void main() {
   });
 
   tearDown(() {
-    AppStorage.resetForTesting();
+    resetTestHomeStorage();
     if (tmp.existsSync()) tmp.deleteSync(recursive: true);
   });
 
   SkillCubit cubitWith(SkillAcquisitionEngine engine) => SkillCubit(
-    SkillRepository(storage: HomeStorage(AppStorage.context)),
+    SkillRepository(storage: HomeStorage(testHomeStorage.context)),
     registryConfigService: SkillRegistryConfigService(
-      teampilotRoot: AppStorage.paths.basePath,
-      storage: HomeStorage(AppStorage.context),
+      teampilotRoot: testHomeStorage.paths.basePath,
+      storage: HomeStorage(testHomeStorage.context),
     ),
     initialSources: const [],
     rebuildSources: (c) => const [],
     acquisitionEngine: engine,
-    storage: HomeStorage(AppStorage.context),
+    storage: HomeStorage(testHomeStorage.context),
   );
 
   test(
@@ -64,7 +65,7 @@ void main() {
       const expectedId = 'script:custom/gstack';
       var engineCalls = 0;
       final engine = SkillAcquisitionEngine(
-        storage: HomeStorage(AppStorage.context),
+        storage: HomeStorage(testHomeStorage.context),
         runner: (_) async {
           engineCalls++;
           return const CliInstallerCommandResult(exitCode: 0);
@@ -125,7 +126,7 @@ void main() {
       const expectedId = 'obra/superpowers:brainstorming';
       var engineCalls = 0;
       final engine = SkillAcquisitionEngine(
-        storage: HomeStorage(AppStorage.context),
+        storage: HomeStorage(testHomeStorage.context),
         installGitDir: (d, {bool overwrite = false, String? idOverride}) async {
           engineCalls++;
           throw StateError('should not install');
@@ -171,7 +172,7 @@ void main() {
 
   test('manual mode syncs repos without disk cache once', () async {
     final fetch = _FakeSkillFetch();
-    final cubit = cubitWithRepos(SkillRepository(storage: HomeStorage(AppStorage.context), fetch: fetch));
+    final cubit = cubitWithRepos(SkillRepository(storage: HomeStorage(testHomeStorage.context), fetch: fetch));
 
     await cubit.ensureDiscoveryLoaded();
 
@@ -182,14 +183,14 @@ void main() {
   test('manual mode with disk cache does not hit network', () async {
     final fetch = _FakeSkillFetch();
     final cache = SkillRepoDiskCacheService(
-      storage: HomeStorage(AppStorage.context),
+      storage: HomeStorage(testHomeStorage.context),
       fetch: fetch,
     );
     await cache.ensureSynced(_discoveryRepo);
     expect(fetch.downloads, 1);
     final cubit = cubitWithRepos(
       SkillRepository(
-        storage: HomeStorage(AppStorage.context),
+        storage: HomeStorage(testHomeStorage.context),
         fetch: fetch,
         repoCache: cache,
       ),
@@ -205,13 +206,13 @@ void main() {
   test('manual mode with force always checks remote', () async {
     final fetch = _FakeSkillFetch();
     final cache = SkillRepoDiskCacheService(
-      storage: HomeStorage(AppStorage.context),
+      storage: HomeStorage(testHomeStorage.context),
       fetch: fetch,
     );
     await cache.ensureSynced(_discoveryRepo);
     final cubit = cubitWithRepos(
       SkillRepository(
-        storage: HomeStorage(AppStorage.context),
+        storage: HomeStorage(testHomeStorage.context),
         fetch: fetch,
         repoCache: cache,
       ),
@@ -227,7 +228,7 @@ void main() {
   test('auto mode with fresh cache skips network', () async {
     final fetch = _FakeSkillFetch();
     final cache = SkillRepoDiskCacheService(
-      storage: HomeStorage(AppStorage.context),
+      storage: HomeStorage(testHomeStorage.context),
       fetch: fetch,
     );
     await cache.ensureSynced(_discoveryRepo);
@@ -238,7 +239,7 @@ void main() {
     await settings.setAutoRefreshEnabled(true);
     final cubit = cubitWithRepos(
       SkillRepository(
-        storage: HomeStorage(AppStorage.context),
+        storage: HomeStorage(testHomeStorage.context),
         fetch: fetch,
         repoCache: cache,
       ),
@@ -255,13 +256,13 @@ void main() {
   test('auto mode with stale cache checks remote', () async {
     final fetch = _FakeSkillFetch();
     final cache = SkillRepoDiskCacheService(
-      storage: HomeStorage(AppStorage.context),
+      storage: HomeStorage(testHomeStorage.context),
       fetch: fetch,
     );
     await cache.ensureSynced(_discoveryRepo);
-    final fs = AppStorage.fs;
+    final fs = testHomeStorage.fs;
     final metaPath = fs.pathContext.join(
-      AppStorage.paths.skillRepoCacheDir,
+      testHomeStorage.paths.skillRepoCacheDir,
       SkillRepoDiskCacheService.repoKey(_discoveryRepo),
       'meta.json',
     );
@@ -281,7 +282,7 @@ void main() {
     await settings.setAutoRefreshEnabled(true);
     final cubit = cubitWithRepos(
       SkillRepository(
-        storage: HomeStorage(AppStorage.context),
+        storage: HomeStorage(testHomeStorage.context),
         fetch: fetch,
         repoCache: cache,
       ),
@@ -430,14 +431,14 @@ Future<void> _waitForCondition(bool Function() condition) async {
 
 SkillCubit cubitWithDiscoverySources(List<SkillRegistrySource> sources) {
   return SkillCubit(
-    SkillRepository(storage: HomeStorage(AppStorage.context)),
+    SkillRepository(storage: HomeStorage(testHomeStorage.context)),
     registryConfigService: SkillRegistryConfigService(
-      teampilotRoot: AppStorage.paths.basePath,
-      storage: HomeStorage(AppStorage.context),
+      teampilotRoot: testHomeStorage.paths.basePath,
+      storage: HomeStorage(testHomeStorage.context),
     ),
     initialSources: sources,
     rebuildSources: (c) => sources,
-    storage: HomeStorage(AppStorage.context),
+    storage: HomeStorage(testHomeStorage.context),
   );
 }
 
@@ -526,13 +527,13 @@ SkillCubit cubitWithRepos(
   return SkillCubit(
     repo,
     registryConfigService: SkillRegistryConfigService(
-      teampilotRoot: AppStorage.paths.basePath,
-      storage: HomeStorage(AppStorage.context),
+      teampilotRoot: testHomeStorage.paths.basePath,
+      storage: HomeStorage(testHomeStorage.context),
     ),
     initialSources: [gitSource],
     rebuildSources: (c) => [gitSource],
     discoverySettings: discoverySettings,
-    storage: HomeStorage(AppStorage.context),
+    storage: HomeStorage(testHomeStorage.context),
   );
 }
 

@@ -6,7 +6,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/cubits/remote_download_catalog_cubit.dart';
 import 'package:teampilot/services/io/local_filesystem.dart';
 import 'package:teampilot/services/remote_download/remote_download_settings_store.dart';
-import 'package:teampilot/services/storage/app_storage.dart';
+import 'package:teampilot/services/storage/app_paths.dart';
 
 void main() {
   test('restoreDefaults clears mirror from persisted settings', () async {

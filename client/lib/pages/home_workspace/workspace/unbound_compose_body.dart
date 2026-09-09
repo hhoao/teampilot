@@ -1,3 +1,4 @@
+import '../../../widgets/home_storage_scope.dart';
 import 'dart:async';
 
 import 'package:flutter/foundation.dart';
@@ -35,7 +36,6 @@ import '../../../services/compose/compose_file_drop_ingestor.dart';
 import '../../../services/compose/compose_landing_bundle.dart';
 import '../../../services/compose/compose_text_edit.dart';
 import '../../../services/compose/compose_voice_input.dart';
-import '../../../services/storage/app_storage.dart';
 import '../../../services/storage/home_storage.dart';
 import '../../../services/expert_hub/expert_capability_resolver.dart';
 import '../../../services/expert_hub/expert_hub_recent_store.dart';
@@ -142,28 +142,26 @@ class _UnboundComposeBodyState extends State<UnboundComposeBody> {
   String? _selectedWorktreePath;
   List<RuntimeTarget> _runtimeTargets = const [];
   Future<void>? _runtimeTargetsLoad;
-  final _launchGate = WorkspaceLandingLaunchGate();
+  late final _launchGate = WorkspaceLandingLaunchGate(
+    storage: homeStorageOf(context),
+  );
   var _teamConfigLaunchReady = true;
   WorkspaceLandingLaunchBlock? _launchWarningBlock;
   int _teamLaunchReadinessGeneration = 0;
   ConfigBundle _workspaceProjectBundle = const ConfigBundle();
   int _workspaceBundleGeneration = 0;
   String? _lastRouteExpert;
-  // Shim-era fallback: bound home context until storage is threaded from the
-  // parent (removed in 6-C).
-  final _expertRecentStore = ExpertHubRecentStore(
-    storage: AppStorage.tolerantHome,
+  late final _expertRecentStore = ExpertHubRecentStore(
+    storage: homeStorageOf(context),
   );
   List<String> _recentExpertKeys = const [];
-  final _teamRecentStore = TeamLandingRecentStore(
-    storage: AppStorage.tolerantHome,
+  late final _teamRecentStore = TeamLandingRecentStore(
+    storage: homeStorageOf(context),
   );
   List<String> _recentTeamIds = const [];
   CascadeCatalogListenable? _cascadeCatalog;
 
-  // Shim-era fallback: the bound home context (tolerant when unbound; removed
-  // in 6-C).
-  HomeStorage get _homeStorage => AppStorage.tolerantHome;
+  HomeStorage get _homeStorage => homeStorageOf(context);
 
   @override
   void initState() {
@@ -422,7 +420,7 @@ class _UnboundComposeBodyState extends State<UnboundComposeBody> {
       controller: _controller,
       workspaceRoot: _activeLaunchDirectory(),
       usesPosixPaths: _homeStorage.usesPosixPaths,
-      filesystem: AppStorage.fs,
+      filesystem: _homeStorage.fs,
     );
     if (!mounted) return;
     setState(() {});

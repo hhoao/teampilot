@@ -9,7 +9,7 @@ import '../../../l10n/l10n_extensions.dart';
 import '../../../models/git_worktree.dart';
 import '../../../models/workspace.dart';
 import '../../../services/storage/home_storage.dart';
-import '../../../services/storage/app_storage.dart';
+import '../../../widgets/home_storage_scope.dart';
 import '../../../utils/workspace/workspace_path_utils.dart';
 import 'workspace_landing_selectors.dart';
 import 'package:shared_ui/shared_ui.dart';
@@ -63,7 +63,7 @@ class _WorkspaceLandingLocationFieldsState
   WorkspaceLandingProjectResolver get _projectResolver =>
       WorkspaceLandingProjectResolver(
         workspace: widget.workspace,
-        usesPosixPaths: AppStorage.tolerantHome.usesPosixPaths,
+        usesPosixPaths: homeStorageOf(context).usesPosixPaths,
         storedProjectPath: widget.projectFolderPath,
       );
 
@@ -77,7 +77,7 @@ class _WorkspaceLandingLocationFieldsState
     }
     return WorkspaceLandingWorktreeResolver(
       projectPath: projectPath,
-      usesPosixPaths: AppStorage.tolerantHome.usesPosixPaths,
+      usesPosixPaths: homeStorageOf(context).usesPosixPaths,
       worktreeState: state,
       storedWorktreePath: widget.workingDirectoryPath,
       cachedWorktrees: cached,

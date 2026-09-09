@@ -6,7 +6,7 @@ import 'package:teampilot/models/runtime_target.dart';
 import 'package:teampilot/models/ssh_profile.dart';
 import 'package:teampilot/repositories/ssh_credential_store.dart';
 import 'package:teampilot/services/io/local_filesystem.dart';
-import 'package:teampilot/services/storage/app_storage.dart';
+import 'package:teampilot/services/storage/app_paths.dart';
 import 'package:teampilot/services/termux/termux_config.dart';
 import 'package:teampilot/services/termux/termux_config_store.dart';
 import 'package:teampilot/services/termux/termux_key_material.dart';

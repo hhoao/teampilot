@@ -7,7 +7,7 @@ import '../io/local_filesystem.dart';
 import '../io/sftp_filesystem.dart';
 import '../io/wsl_filesystem.dart';
 import '../ssh/ssh_client_factory.dart';
-import 'app_storage.dart';
+import 'app_paths.dart';
 import 'remote_file_store.dart';
 import 'remote_ssh_storage_paths.dart';
 import 'runtime_context.dart';

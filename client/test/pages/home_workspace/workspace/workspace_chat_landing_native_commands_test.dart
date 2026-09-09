@@ -30,6 +30,7 @@ import 'package:teampilot/utils/workspace/landing_draft_resolver.dart';
 import 'package:teampilot/widgets/compose/compose_trigger_field.dart';
 
 import '../../../support/post_frame_test_harness.dart';
+import 'package:teampilot/services/storage/home_storage.dart';
 
 class _MockChatCubit extends Mock implements ChatCubit {}
 
@@ -126,6 +127,7 @@ void main() {
         ],
         child: MultiBlocProvider(
           providers: [
+        RepositoryProvider<HomeStorage>.value(value: testHomeStorage),
             BlocProvider<ChatCubit>.value(value: chatCubit),
             BlocProvider<AppProviderCubit>.value(value: appProviderCubit),
             BlocProvider<CliPresetsCubit>.value(value: cliPresetsCubit),

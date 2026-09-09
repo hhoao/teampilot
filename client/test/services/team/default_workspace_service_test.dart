@@ -3,14 +3,34 @@ import 'dart:io';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:path/path.dart' as p;
 import 'package:teampilot/cubits/team/team_roster_editor.dart';
+import 'package:teampilot/models/discoverable_member.dart';
 import 'package:teampilot/models/runtime_target.dart';
 import 'package:teampilot/repositories/session_repository.dart';
+import 'package:teampilot/services/expert_hub/builtin_member_templates.dart';
+import 'package:teampilot/services/expert_hub/expert_hub_catalog.dart';
+import 'package:teampilot/services/expert_hub/expert_hub_source.dart';
 import 'package:teampilot/services/io/local_filesystem.dart';
-import 'package:teampilot/services/storage/app_storage.dart';
+import 'package:teampilot/services/storage/app_paths.dart';
 import 'package:teampilot/services/team/default_workspace_service.dart';
 import 'package:teampilot/utils/workspace/workspace_path_utils.dart';
 
 import '../../support/post_frame_test_harness.dart';
+
+/// Offline source returning only the built-in experts so roster slots
+/// (`teampilot/builtin/*`) materialize without touching the network.
+class _BuiltinExpertSource implements ExpertHubSource {
+  @override
+  Future<List<DiscoverableMember>> fetchMembers({
+    bool forceRefresh = false,
+  }) async => builtinExpertMembers();
+
+  @override
+  Future<List<String>> categories({bool forceRefresh = false}) async =>
+      const [];
+}
+
+ExpertHubCatalog _builtinCatalog() =>
+    ExpertHubCatalog(source: _BuiltinExpertSource());
 
 void main() {
   late Directory base;
@@ -36,6 +56,7 @@ void main() {
         repo,
         defaultTeam: team,
         storage: testHomeStorage,
+        catalog: _builtinCatalog(),
       );
 
       expect(workspace.display, DefaultWorkspaceService.defaultDisplay);
@@ -74,11 +95,13 @@ void main() {
       repo,
       defaultTeam: team,
       storage: testHomeStorage,
+      catalog: _builtinCatalog(),
     );
     await DefaultWorkspaceService.seed(
       repo,
       defaultTeam: team,
       storage: testHomeStorage,
+      catalog: _builtinCatalog(),
     );
 
     final workspaces = await repo.loadWorkspaces();
@@ -100,6 +123,7 @@ void main() {
       defaultTeam: team,
       home: home,
       storage: testHomeStorage,
+      catalog: _builtinCatalog(),
     );
 
     final workspaces = await repo.loadWorkspaces();
@@ -111,7 +135,7 @@ void main() {
     final remoteHome = Directory(p.join(base.path, 'remote-home'))
       ..createSync();
     final appData = Directory(p.join(base.path, 'app-data'))..createSync();
-    AppStorage.installForTesting(
+    installTestHomeStorage(
       filesystem: LocalFilesystem(
         pathContext: AppPaths.pathContextForDataRoot(remoteHome.path),
       ),
@@ -130,6 +154,7 @@ void main() {
       defaultTeam: team,
       home: home,
       storage: testHomeStorage,
+      catalog: _builtinCatalog(),
     );
 
     final workspaces = await repo.loadWorkspaces();
@@ -150,7 +175,7 @@ void main() {
       ..createSync();
     final appData = Directory(p.join(base.path, 'termux-app-data'))
       ..createSync();
-    AppStorage.installForTesting(
+    installTestHomeStorage(
       filesystem: LocalFilesystem(
         pathContext: AppPaths.pathContextForDataRoot(termuxHome.path),
       ),
@@ -169,6 +194,7 @@ void main() {
       defaultTeam: team,
       home: home,
       storage: testHomeStorage,
+      catalog: _builtinCatalog(),
     );
 
     final workspaces = await repo.loadWorkspaces();
@@ -195,6 +221,7 @@ void main() {
       repo,
       defaultTeam: team,
       storage: testHomeStorage,
+      catalog: _builtinCatalog(),
     );
     expect(first, isTrue);
 
@@ -204,6 +231,7 @@ void main() {
       defaultTeam: team,
       knownWorkspaces: workspaces,
       storage: testHomeStorage,
+      catalog: _builtinCatalog(),
     );
     expect(again, isFalse);
   });

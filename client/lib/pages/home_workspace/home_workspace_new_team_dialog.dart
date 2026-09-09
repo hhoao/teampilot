@@ -22,6 +22,7 @@ import '../../services/ai/team_config_generator.dart';
 import '../../services/ai/team_draft_roster_mapper.dart';
 import '../../services/expert_hub/expert_hub_catalog.dart';
 import '../../services/expert_hub/local_expert_store.dart';
+import '../../services/storage/home_storage.dart';
 import '../../services/cli/registry/capabilities/provider_capability.dart';
 import '../../services/cli/registry/cli_display_name.dart';
 import '../../services/cli/registry/cli_tool_registry_scope.dart';
@@ -276,7 +277,9 @@ class _HomeNewTeamDialogState extends State<HomeNewTeamDialog> {
     });
 
     try {
-      final draft = await TeamConfigGenerator().generateStreaming(
+      final draft = await TeamConfigGenerator(
+        storage: context.read<HomeStorage>(),
+      ).generateStreaming(
         setting: setting,
         description: description,
         mode: mode,

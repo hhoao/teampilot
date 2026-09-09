@@ -19,7 +19,7 @@ import '../../models/skill.dart';
 import '../../services/expert_hub/expert_hub_catalog.dart';
 import '../../services/expert_hub/local_expert_store.dart';
 import '../../services/expert_hub/local_expert_writer.dart';
-import '../../services/storage/app_storage.dart';
+import '../../widgets/home_storage_scope.dart';
 import 'expert_editor_dep_picker_dialog.dart';
 import 'expert_editor_deps.dart';
 
@@ -55,8 +55,9 @@ Future<DiscoverableMember?> showExpertEditorDialog(
             LocalExpertWriter(
               catalog: catalog,
               store: LocalExpertStore(
-                fs: AppStorage.tolerantHome.fs,
-                dirOverride: AppStorage.tolerantHome.paths.memberHubLocalTemplatesDir,
+                fs: homeStorageOf(context).fs,
+                dirOverride:
+                    homeStorageOf(context).paths.memberHubLocalTemplatesDir,
               ),
             ),
         initial: initial,

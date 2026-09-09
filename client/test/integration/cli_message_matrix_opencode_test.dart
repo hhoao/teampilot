@@ -6,7 +6,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:mock_model_gateway/scenarios/mixed_collab_3plus.dart';
 import 'package:mock_model_gateway/scenarios/simple_3turn.dart';
 import 'package:teampilot/models/team_config.dart';
-import 'package:teampilot/services/storage/app_storage.dart';
+import '../support/test_runtime_context.dart';
 
 import '../support/post_frame_test_harness.dart';
 import 'support/bus_mail_assertions.dart';
@@ -177,7 +177,7 @@ void main() {
 
         // Extra bus-mail sanity (same predicates as waitForBusPingPong).
         final s = harness.session!;
-        final root = AppStorage.paths.basePath;
+        final root = testHomeStorage.paths.basePath;
         final workerMail = await readBusMailLines(
           teampilotRoot: root,
           workspaceId: s.workspaceId,

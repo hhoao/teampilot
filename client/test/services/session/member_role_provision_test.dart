@@ -9,7 +9,7 @@ import 'package:teampilot/services/catalog/catalog_mcp_policy.dart';
 import 'package:teampilot/services/catalog/modules/skill_catalog_tools.dart';
 import 'package:teampilot/services/io/local_filesystem.dart';
 import 'package:teampilot/services/session/member_role_provision.dart';
-import 'package:teampilot/services/storage/app_storage.dart';
+import 'package:teampilot/services/storage/app_paths.dart';
 
 void main() {
   test('syncRolePromptFile writes and removes role.md', () async {

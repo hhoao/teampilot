@@ -6,7 +6,7 @@ import 'package:teampilot/models/catalog/catalog_types.dart';
 import 'package:teampilot/models/plugin.dart';
 import 'package:teampilot/services/plugin/plugin_repo_service.dart';
 import 'package:teampilot/services/io/local_filesystem.dart';
-import 'package:teampilot/services/storage/app_storage.dart';
+import 'package:teampilot/services/storage/app_paths.dart';
 import 'package:teampilot/services/storage/home_storage.dart';
 import '../../support/in_memory_filesystem.dart';
 

@@ -8,7 +8,6 @@ import 'package:teampilot/models/plugin.dart';
 import 'package:teampilot/services/io/filesystem.dart';
 import 'package:teampilot/services/plugin/plugin_repo_disk_cache_service.dart';
 import 'package:teampilot/services/plugin/plugin_repo_git_service.dart';
-import 'package:teampilot/services/storage/app_storage.dart';
 import 'package:teampilot/utils/async_keyed_coalescer.dart';
 
 import '../../support/in_memory_filesystem.dart';
@@ -218,11 +217,11 @@ void main() {
         teampilotRoot: home.appDataRoot,
       );
       final dir = await svc.syncMarketplace(market);
-      final metaPath = AppStorage.fs.pathContext.join(
+      final metaPath = testHomeStorage.fs.pathContext.join(
         dir,
         '.teampilot-plugin-cache-meta.json',
       );
-      await AppStorage.fs.writeString(
+      await testHomeStorage.fs.writeString(
         metaPath,
         jsonEncode({
           'configuredBranch': 'main',

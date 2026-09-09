@@ -16,7 +16,8 @@ import 'package:teampilot/services/catalog/catalog_mcp_handler.dart';
 import 'package:teampilot/services/catalog/catalog_runtime.dart';
 import 'package:teampilot/services/io/local_filesystem.dart';
 import 'package:teampilot/services/mcp/profile_mcp_linker_service.dart';
-import 'package:teampilot/services/storage/app_storage.dart';
+import 'package:teampilot/services/storage/app_paths.dart';
+import '../../support/test_runtime_context.dart';
 import 'package:teampilot/services/storage/home_storage.dart';
 import 'package:teampilot/services/team_bus/mcp/jsonrpc.dart';
 
@@ -28,7 +29,7 @@ void main() {
     tmp = Directory.systemTemp.createTempSync('catalog_runtime_');
     workRoot = Directory.systemTemp.createTempSync('catalog_runtime_work_');
     final paths = AppPaths(tmp.path);
-    AppStorage.installForTesting(
+    installTestHomeStorage(
       filesystem: LocalFilesystem(
         pathContext: AppPaths.pathContextForDataRoot(paths.basePath),
       ),
@@ -39,7 +40,7 @@ void main() {
   });
 
   tearDown(() {
-    AppStorage.resetForTesting();
+    resetTestHomeStorage();
     AppPathsBootstrapper.resetForTesting();
     if (tmp.existsSync()) tmp.deleteSync(recursive: true);
     if (workRoot.existsSync()) workRoot.deleteSync(recursive: true);
@@ -76,7 +77,7 @@ void main() {
     'assemble round-trips create_skill then list_installed without widgets',
     () async {
       final runtime = CatalogRuntime.assemble(
-        storage: HomeStorage(AppStorage.context),
+        storage: HomeStorage(testHomeStorage.context),
       );
       final session = mcpSession();
 
@@ -113,7 +114,7 @@ void main() {
     'resolveSession uses findById and session folder paths as allowedRoots',
     () async {
       final sessions = SessionRepository(
-        storage: HomeStorage(AppStorage.context),
+        storage: HomeStorage(testHomeStorage.context),
       );
       final workspace = await sessions.createWorkspace([
         WorkspaceFolder(path: workRoot.path),
@@ -122,7 +123,7 @@ void main() {
         workspace.workspaceId,
       )).session;
       final runtime = CatalogRuntime.assemble(
-        storage: HomeStorage(AppStorage.context),
+        storage: HomeStorage(testHomeStorage.context),
         sessions: sessions,
       );
 
@@ -131,7 +132,7 @@ void main() {
       expect(resolved!.sessionId, created.sessionId);
       expect(resolved.workspaceId, workspace.workspaceId);
       expect(resolved.allowedRoots, created.folderPaths);
-      expect(identical(resolved.workFs, AppStorage.fs), isTrue);
+      expect(identical(resolved.workFs, testHomeStorage.fs), isTrue);
 
       expect(await runtime.resolveSession('missing-session'), isNull);
     },
@@ -141,7 +142,7 @@ void main() {
     'assemble with a search lambda returns those hits from search_skills',
     () async {
       final runtime = CatalogRuntime.assemble(
-        storage: HomeStorage(AppStorage.context),
+        storage: HomeStorage(testHomeStorage.context),
         searchSkills: (query) async => [
           {'id': 'acme/foo', 'name': 'Foo', 'query': query},
         ],
@@ -165,7 +166,7 @@ void main() {
     'create_skill with bind_to team does not write skills/installed',
     () async {
       final runtime = CatalogRuntime.assemble(
-        storage: HomeStorage(AppStorage.context),
+        storage: HomeStorage(testHomeStorage.context),
       );
       final res = await runtime.handler.handle(
         const JsonRpcRequest(
@@ -200,7 +201,7 @@ void main() {
     'create_skill conflict without overwrite is a toolError not a throw',
     () async {
       final runtime = CatalogRuntime.assemble(
-        storage: HomeStorage(AppStorage.context),
+        storage: HomeStorage(testHomeStorage.context),
       );
       final session = mcpSession();
       await callTool(
@@ -252,21 +253,21 @@ void main() {
     final sync = TeamResourceSyncService(
       host: host,
       provisioner: TeamProfileProvisioner(
-        storage: HomeStorage(AppStorage.context),
+        storage: HomeStorage(testHomeStorage.context),
       ),
       mcpLinker: ProfileMcpLinkerService(
-        storage: HomeStorage(AppStorage.context),
+        storage: HomeStorage(testHomeStorage.context),
       ),
       pluginRepository: PluginRepository(
-        storage: HomeStorage(AppStorage.context),
+        storage: HomeStorage(testHomeStorage.context),
       ),
       mcpRepository: McpRepository(
-        storage: HomeStorage(AppStorage.context),
+        storage: HomeStorage(testHomeStorage.context),
       ),
       extensionMcpContributor: (_) async => const [],
     );
     final runtime = CatalogRuntime.assemble(
-      storage: HomeStorage(AppStorage.context),
+      storage: HomeStorage(testHomeStorage.context),
       removeSkillFromAllTeams: sync.removeSkillFromAllTeams,
     );
     final session = mcpSession();
@@ -304,21 +305,21 @@ void main() {
     final sync = TeamResourceSyncService(
       host: host,
       provisioner: TeamProfileProvisioner(
-        storage: HomeStorage(AppStorage.context),
+        storage: HomeStorage(testHomeStorage.context),
       ),
       mcpLinker: ProfileMcpLinkerService(
-        storage: HomeStorage(AppStorage.context),
+        storage: HomeStorage(testHomeStorage.context),
       ),
       pluginRepository: PluginRepository(
-        storage: HomeStorage(AppStorage.context),
+        storage: HomeStorage(testHomeStorage.context),
       ),
       mcpRepository: McpRepository(
-        storage: HomeStorage(AppStorage.context),
+        storage: HomeStorage(testHomeStorage.context),
       ),
       extensionMcpContributor: (_) async => const [],
     );
     final runtime = CatalogRuntime.assemble(
-      storage: HomeStorage(AppStorage.context),
+      storage: HomeStorage(testHomeStorage.context),
       removePluginFromAllTeams: sync.removePluginFromAllTeams,
     );
     final pluginSrc = Directory(p.join(workRoot.path, 'demo'))..createSync();
@@ -354,21 +355,21 @@ void main() {
     final sync = TeamResourceSyncService(
       host: host,
       provisioner: TeamProfileProvisioner(
-        storage: HomeStorage(AppStorage.context),
+        storage: HomeStorage(testHomeStorage.context),
       ),
       mcpLinker: ProfileMcpLinkerService(
-        storage: HomeStorage(AppStorage.context),
+        storage: HomeStorage(testHomeStorage.context),
       ),
       pluginRepository: PluginRepository(
-        storage: HomeStorage(AppStorage.context),
+        storage: HomeStorage(testHomeStorage.context),
       ),
       mcpRepository: McpRepository(
-        storage: HomeStorage(AppStorage.context),
+        storage: HomeStorage(testHomeStorage.context),
       ),
       extensionMcpContributor: (_) async => const [],
     );
     final runtime = CatalogRuntime.assemble(
-      storage: HomeStorage(AppStorage.context),
+      storage: HomeStorage(testHomeStorage.context),
       removeMcpFromAllTeams: sync.removeMcpFromAllTeams,
     );
     await callTool(

@@ -7,7 +7,6 @@ import '../../../models/team_config.dart';
 import '../../io/filesystem.dart';
 import '../../io/local_filesystem.dart';
 import '../../../repositories/mcp_repository.dart';
-import '../../storage/app_storage.dart';
 import '../../storage/home_storage.dart';
 import '../contribution/resource_assembly_error.dart';
 import '../contribution/resource_origin.dart';
@@ -69,10 +68,8 @@ final class CatalogMcpContributionProvider
 
   bool get hasValidContributions => _hasValidContributions;
 
-  McpRepository _mcpRepository() => McpRepository(
-    storage: _storage ??
-        AppStorage.tolerantHome,
-  );
+  McpRepository _mcpRepository() =>
+      McpRepository(storage: _storage ?? HomeStorage.nativeDefault());
 
   @override
   Future<Iterable<McpContribution>> provide(McpProviderContext context) async {

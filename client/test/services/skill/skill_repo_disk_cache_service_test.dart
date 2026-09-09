@@ -6,7 +6,6 @@ import 'package:teampilot/models/skill.dart';
 import 'package:teampilot/services/io/filesystem.dart';
 import 'package:teampilot/services/skill/skill_fetch_service.dart';
 import 'package:teampilot/services/skill/skill_repo_disk_cache_service.dart';
-import 'package:teampilot/services/storage/app_storage.dart';
 import 'package:teampilot/utils/async_keyed_coalescer.dart';
 
 import '../../support/post_frame_test_harness.dart';
@@ -54,9 +53,9 @@ Future<void> _plantSnapshot({
   required String commitSha,
   bool includeBin = false,
 }) async {
-  final fs = AppStorage.fs;
+  final fs = testHomeStorage.fs;
   final dir = fs.pathContext.join(
-    AppStorage.paths.skillRepoCacheDir,
+    testHomeStorage.paths.skillRepoCacheDir,
     SkillRepoDiskCacheService.repoKey(_repo),
   );
   final filesDir = fs.pathContext.join(dir, 'files');
@@ -143,10 +142,10 @@ void main() {
   });
 
   test('maxStaleness skips network when cache is fresh', () async {
-    final fs = AppStorage.fs;
+    final fs = testHomeStorage.fs;
     await _plantSnapshot(commitSha: 'deadbeef');
     final metaPath = fs.pathContext.join(
-      AppStorage.paths.skillRepoCacheDir,
+      testHomeStorage.paths.skillRepoCacheDir,
       SkillRepoDiskCacheService.repoKey(_repo),
       'meta.json',
     );
@@ -191,10 +190,10 @@ void main() {
   });
 
   test('maxStaleness is ignored when force is set', () async {
-    final fs = AppStorage.fs;
+    final fs = testHomeStorage.fs;
     await _plantSnapshot(commitSha: 'deadbeef');
     final metaPath = fs.pathContext.join(
-      AppStorage.paths.skillRepoCacheDir,
+      testHomeStorage.paths.skillRepoCacheDir,
       SkillRepoDiskCacheService.repoKey(_repo),
       'meta.json',
     );

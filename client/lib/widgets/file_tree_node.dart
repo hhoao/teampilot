@@ -10,7 +10,7 @@ import '../cubits/file_tree_cubit.dart';
 import '../cubits/workbench/workbench_cubit.dart';
 import '../cubits/workbench/workbench_tab.dart';
 import '../services/editor/file_editor_theme.dart';
-import '../services/storage/app_storage.dart';
+import 'home_storage_scope.dart';
 import '../services/file_tree/file_tree_visible_rows.dart';
 import '../services/file_tree_import/file_tree_drop_hit_test.dart';
 import '../services/file_tree_import/file_tree_drop_ingestor.dart';
@@ -179,7 +179,7 @@ class _FileTreeNodeState extends State<FileTreeNode> {
       WorkspaceFileRef(
         nativePath: widget.path,
         namespace: PathNamespace.ofCurrentStorage(
-          AppStorage.tolerantHome,
+          homeStorageOf(context),
         ),
         isDirectory: isDir,
       ),
