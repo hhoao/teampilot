@@ -25,7 +25,7 @@ void main() {
       );
       await d.stop();
 
-      expect(received.single.kind, SessionLifecycleKind.sessionStarted);
+      expect(received.single.eventKind, SessionLifecycleKind.sessionStarted);
       expect(received.single.sessionId, 's-1');
     },
   );
@@ -58,7 +58,7 @@ void main() {
       timestamp: DateTime(2026),
     );
     expect(seat.memberId, 'm-1');
-    expect(seat.kind, SessionLifecycleKind.seatStarted);
+    expect(seat.eventKind, SessionLifecycleKind.seatStarted);
 
     final session = SessionLifecycleEvent.sessionSpawned(
       sessionId: 's-1',
@@ -66,7 +66,7 @@ void main() {
       timestamp: DateTime(2026),
     );
     expect(session.memberId, isNull);
-    expect(session.kind, SessionLifecycleKind.sessionSpawned);
+    expect(session.eventKind, SessionLifecycleKind.sessionSpawned);
   });
 }
 

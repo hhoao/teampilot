@@ -135,7 +135,7 @@ class AsyncDispatcher implements Dispatcher {
   }
 
   void _dispatchToListeners(DispatcherEvent<dynamic> event) {
-    final kindType = event.kind.runtimeType;
+    final kindType = event.eventKind.runtimeType;
     final family = _handlers[kindType];
     if (family == null || family.isEmpty) {
       _logger.d('$_tag no handler for $kindType');
@@ -159,7 +159,7 @@ class AsyncDispatcher implements Dispatcher {
     }
     // Cast to Enum so the core EnumName extension applies (extension members
     // are not reachable through a dynamic receiver).
-    final kindName = (event.kind as Enum).name;
+    final kindName = (event.eventKind as Enum).name;
     final key = '$kindType.$kindName';
     _handledCounts[key] = (_handledCounts[key] ?? 0) + 1;
   }

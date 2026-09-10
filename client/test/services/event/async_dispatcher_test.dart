@@ -10,20 +10,20 @@ enum _FamKind { ping, pong }
 enum _OtherKind { ping }
 
 class _FamEvent implements DispatcherEvent<_FamKind> {
-  const _FamEvent(this.kind, this.timestamp, [this.tag = '']);
+  const _FamEvent(this.eventKind, this.timestamp, [this.tag = '']);
 
   @override
-  final _FamKind kind;
+  final _FamKind eventKind;
   @override
   final DateTime timestamp;
   final String tag;
 }
 
 class _OtherEvent implements DispatcherEvent<_OtherKind> {
-  const _OtherEvent(this.kind, this.timestamp);
+  const _OtherEvent(this.eventKind, this.timestamp);
 
   @override
-  final _OtherKind kind;
+  final _OtherKind eventKind;
   @override
   final DateTime timestamp;
 }

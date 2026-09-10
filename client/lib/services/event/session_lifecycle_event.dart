@@ -26,7 +26,7 @@ enum SessionLifecycleKind {
 sealed class SessionLifecycleEvent
     implements DispatcherEvent<SessionLifecycleKind> {
   const SessionLifecycleEvent._({
-    required this.kind,
+    required this.eventKind,
     required this.sessionId,
     required this.workspaceId,
     required this.timestamp,
@@ -38,7 +38,7 @@ sealed class SessionLifecycleEvent
     required String workspaceId,
     required DateTime timestamp,
   }) => _SessionLifecycleEvent(
-    kind: SessionLifecycleKind.sessionSpawned,
+    eventKind: SessionLifecycleKind.sessionSpawned,
     sessionId: sessionId,
     workspaceId: workspaceId,
     timestamp: timestamp,
@@ -49,7 +49,7 @@ sealed class SessionLifecycleEvent
     required String workspaceId,
     required DateTime timestamp,
   }) => _SessionLifecycleEvent(
-    kind: SessionLifecycleKind.sessionStarted,
+    eventKind: SessionLifecycleKind.sessionStarted,
     sessionId: sessionId,
     workspaceId: workspaceId,
     timestamp: timestamp,
@@ -61,7 +61,7 @@ sealed class SessionLifecycleEvent
     required String memberId,
     required DateTime timestamp,
   }) => _SessionLifecycleEvent(
-    kind: SessionLifecycleKind.seatStarted,
+    eventKind: SessionLifecycleKind.seatStarted,
     sessionId: sessionId,
     workspaceId: workspaceId,
     memberId: memberId,
@@ -74,7 +74,7 @@ sealed class SessionLifecycleEvent
     required String memberId,
     required DateTime timestamp,
   }) => _SessionLifecycleEvent(
-    kind: SessionLifecycleKind.seatInterrupted,
+    eventKind: SessionLifecycleKind.seatInterrupted,
     sessionId: sessionId,
     workspaceId: workspaceId,
     memberId: memberId,
@@ -87,7 +87,7 @@ sealed class SessionLifecycleEvent
     required String memberId,
     required DateTime timestamp,
   }) => _SessionLifecycleEvent(
-    kind: SessionLifecycleKind.seatExited,
+    eventKind: SessionLifecycleKind.seatExited,
     sessionId: sessionId,
     workspaceId: workspaceId,
     memberId: memberId,
@@ -99,14 +99,14 @@ sealed class SessionLifecycleEvent
     required String workspaceId,
     required DateTime timestamp,
   }) => _SessionLifecycleEvent(
-    kind: SessionLifecycleKind.sessionClosed,
+    eventKind: SessionLifecycleKind.sessionClosed,
     sessionId: sessionId,
     workspaceId: workspaceId,
     timestamp: timestamp,
   );
 
   @override
-  final SessionLifecycleKind kind;
+  final SessionLifecycleKind eventKind;
   final String sessionId;
   final String workspaceId;
 
@@ -120,7 +120,7 @@ sealed class SessionLifecycleEvent
 /// The single concrete leaf (the family is sealed only to pin its vocabulary).
 final class _SessionLifecycleEvent extends SessionLifecycleEvent {
   const _SessionLifecycleEvent({
-    required super.kind,
+    required super.eventKind,
     required super.sessionId,
     required super.workspaceId,
     required super.timestamp,

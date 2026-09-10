@@ -4,10 +4,10 @@ import 'package:teampilot/services/event/dispatcher.dart';
 enum _TestKind { a, b }
 
 class _TestEvent implements DispatcherEvent<_TestKind> {
-  const _TestEvent(this.kind, this.timestamp);
+  const _TestEvent(this.eventKind, this.timestamp);
 
   @override
-  final _TestKind kind;
+  final _TestKind eventKind;
   @override
   final DateTime timestamp;
 }

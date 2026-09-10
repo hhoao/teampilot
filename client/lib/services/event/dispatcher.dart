@@ -8,7 +8,13 @@ library;
 
 /// An event flowing through a [Dispatcher]. `K` is the family's kind enum.
 abstract interface class DispatcherEvent<K extends Enum> {
-  K get kind;
+  /// The family kind of this event.
+  ///
+  /// Named [eventKind] (not `kind`, YARN's `getType()`) because event
+  /// payloads commonly carry their own domain-typed `kind` field, which
+  /// would collide with the interface getter (e.g.
+  /// `CatalogMutationEvent.kind` is the catalog domain kind, a String).
+  K get eventKind;
 
   /// When the event occurred at its source (YARN AbstractEvent timestamp).
   DateTime get timestamp;
