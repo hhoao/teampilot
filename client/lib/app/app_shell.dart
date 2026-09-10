@@ -1631,7 +1631,6 @@ Future<AppShell> buildAppShell({
         appDataRoot: nativeAppDataPath,
       );
       final connectAgent = ConnectAgent.production(
-        keys: authorizedKeys,
         fs: localFs,
         extraEndpoints: settings.extraEndpoints,
         probe: sshdPresence.probe,

@@ -8,7 +8,6 @@ import 'package:synchronized/synchronized.dart';
 
 import '../../models/ssh_reachability.dart';
 import '../io/filesystem.dart';
-import 'authorized_keys_file.dart';
 import 'connect_relay_client.dart';
 import 'connect_settings_store.dart';
 import 'paired_device_store.dart';
@@ -80,7 +79,7 @@ class ConnectRelayRegistration {
 class ConnectAgent {
   ConnectAgent({
     required SshdPresenceProbe probe,
-    required AuthorizedKeysFile keys,
+    required PairedDeviceStore deviceStore,
     required PairingTokenGate gate,
     required PairingBind bind,
     required PairingCertificateProvider certificateProvider,
@@ -88,11 +87,10 @@ class ConnectAgent {
     required StableConnectHostId stableHostId,
     List<SshReachabilityEndpoint> extraEndpoints = const [],
     ConnectRelayRegistration? relayRegistration,
-    PairedDeviceStore? deviceStore,
     GrantGenerator? generateGrant,
     RelaySocketSeam? relayConnectSocket,
   }) : _probe = probe,
-       _keys = keys,
+       _deviceStore = deviceStore,
        _gate = gate,
        _bind = bind,
        _certificateProvider = certificateProvider,
@@ -100,7 +98,6 @@ class ConnectAgent {
        _stableHostId = stableHostId,
        _extraEndpoints = List.unmodifiable(extraEndpoints),
        _relayRegistration = relayRegistration,
-       _deviceStore = deviceStore,
        _generateGrant =
            generateGrant ??
            (() =>
@@ -115,18 +112,17 @@ class ConnectAgent {
        _relayConnectSocket = relayConnectSocket;
 
   factory ConnectAgent.production({
-    required AuthorizedKeysFile keys,
+    required PairedDeviceStore deviceStore,
     required Filesystem fs,
     List<SshReachabilityEndpoint> extraEndpoints = const [],
     ConnectRelayRegistration? relayRegistration,
     SshdPresenceProbe? probe,
     PairingCertificateProvider? certificateProvider,
-    PairedDeviceStore? deviceStore,
     RelaySocketSeam? relayConnectSocket,
   }) {
     return ConnectAgent(
       probe: probe ?? SshdPresence().probe,
-      keys: keys,
+      deviceStore: deviceStore,
       gate: PairingTokenGate(),
       bind: bindPairingHttps,
       certificateProvider: certificateProvider ?? ConnectTls(),
@@ -137,7 +133,6 @@ class ConnectAgent {
       ).loadOrCreateHostId(),
       extraEndpoints: extraEndpoints,
       relayRegistration: relayRegistration,
-      deviceStore: deviceStore,
       relayConnectSocket: relayConnectSocket,
     );
   }
@@ -145,7 +140,6 @@ class ConnectAgent {
   static const _inviteTtl = Duration(minutes: 10);
 
   final SshdPresenceProbe _probe;
-  final AuthorizedKeysFile _keys;
   final PairingTokenGate _gate;
   final PairingBind _bind;
   final PairingCertificateProvider _certificateProvider;
@@ -153,7 +147,7 @@ class ConnectAgent {
   final StableConnectHostId _stableHostId;
   List<SshReachabilityEndpoint> _extraEndpoints;
   ConnectRelayRegistration? _relayRegistration;
-  final PairedDeviceStore? _deviceStore;
+  final PairedDeviceStore _deviceStore;
   final GrantGenerator _generateGrant;
   final RelaySocketSeam? _relayConnectSocket;
   final Lock _lifecycleLock = Lock();
@@ -320,19 +314,17 @@ class ConnectAgent {
         if (invite == null || invite.isEmpty) return false;
         return _gate.matchesInvite(invite, now: _now());
       case 'ssh':
-        final store = _deviceStore;
         final deviceId = request.deviceId;
         final grant = request.relayGrant;
         final hostId = _cachedHostId;
-        if (store == null ||
-            hostId == null ||
+        if (hostId == null ||
             deviceId == null ||
             deviceId.isEmpty ||
             grant == null ||
             grant.isEmpty) {
           return false;
         }
-        return store.validateGrant(
+        return _deviceStore.validateGrant(
           hostId: hostId,
           deviceId: deviceId,
           grant: grant,
@@ -452,7 +444,17 @@ class ConnectAgent {
       final result = await handlePairingPost(
         body: body,
         gate: _gate,
-        keys: _keys,
+        acceptDevice:
+            ({
+              required String deviceId,
+              required String deviceName,
+              required String publicKey,
+            }) =>
+                _deviceStore.issueDevice(
+                  deviceId: deviceId,
+                  publicKey: publicKey,
+                  deviceName: deviceName,
+                ),
         now: _now(),
         profileHint: session.displayName,
       );
@@ -489,10 +491,9 @@ class ConnectAgent {
     required String hostId,
     required String deviceId,
   }) async {
-    final store = _deviceStore;
-    if (store == null || _relayRegistration == null) return null;
+    if (_relayRegistration == null) return null;
     final grant = _generateGrant();
-    await store.issueGrant(
+    await _deviceStore.issueGrant(
       hostId: hostId,
       deviceId: deviceId,
       grant: grant,

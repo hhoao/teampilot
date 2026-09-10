@@ -4,7 +4,6 @@ import 'dart:io';
 import 'package:crypto/crypto.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/models/ssh_reachability.dart';
-import 'package:teampilot/services/connect/authorized_keys_file.dart';
 import 'package:teampilot/services/connect/connect_agent.dart';
 import 'package:teampilot/services/connect/connect_relay_client.dart';
 import 'package:teampilot/services/connect/connect_settings_store.dart';
@@ -23,13 +22,11 @@ void main() {
 
   late _FakePairingBind binding;
   late PairingTokenGate gate;
-  late String authorizedKeys;
 
-  AuthorizedKeysFile keys() => AuthorizedKeysFile(
-    path: '/home/alice/.ssh/authorized_keys',
-    read: (_) async => authorizedKeys,
-    write: (_, value) async => authorizedKeys = value,
-    chmod: (_, {required mode}) async {},
+  PairedDeviceStore store() => PairedDeviceStore(
+    fs: InMemoryFilesystem(),
+    appDataRoot: '/data',
+    generateGrant: () => 'grant-token-abc',
   );
 
   ConnectAgent agent({
@@ -41,14 +38,13 @@ void main() {
     GrantGenerator? generateGrant,
   }) => ConnectAgent(
     probe: probe ?? () async => presence,
-    keys: keys(),
     gate: gate,
     bind: binding.call,
     certificateProvider: _CannedCertificateProvider(const [1, 2, 3, 4]),
     now: () => now,
     stableHostId: (_) async => hostId,
     extraEndpoints: extraEndpoints,
-    deviceStore: deviceStore,
+    deviceStore: deviceStore ?? store(),
     relayRegistration: relayRegistration,
     generateGrant: generateGrant,
   );
@@ -56,7 +52,6 @@ void main() {
   setUp(() {
     binding = _FakePairingBind();
     gate = PairingTokenGate();
-    authorizedKeys = '';
   });
 
   test('does not mint or bind when sshd is not listening', () async {
@@ -224,8 +219,12 @@ void main() {
     expect(gate.consume(oldToken, now), isFalse);
   });
 
-  test('valid incoming POST writes the device authorized key', () async {
-    final connectAgent = agent(presence: _listeningPresence);
+  test('valid incoming POST registers the device key', () async {
+    final deviceStore = store();
+    final connectAgent = agent(
+      presence: _listeningPresence,
+      deviceStore: deviceStore,
+    );
     await _start(connectAgent);
     final response = Completer<({int statusCode, Map<String, Object?> body})>();
 
@@ -248,7 +247,8 @@ void main() {
     final result = await response.future;
     expect(result.statusCode, HttpStatus.ok);
     expect(result.body['ok'], isTrue);
-    expect(authorizedKeys, contains('device=pixel-1'));
+    expect(await deviceStore.isValidDeviceKey(publicKey), isTrue);
+    expect(await deviceStore.deviceIdForPublicKey(publicKey), 'pixel-1');
   });
 
   test('rejects an oversized content length before listening', () async {
@@ -350,19 +350,25 @@ void main() {
 
     test('LAN pairing succeeds without any relay and mints no grant',
         () async {
-      final store = PairedDeviceStore(
-        fs: InMemoryFilesystem(),
-        appDataRoot: '/data',
-        generateGrant: () => 'grant-token-abc',
-      );
-      final connectAgent = agent(deviceStore: store);
+      final deviceStore = store();
+      final connectAgent = agent(deviceStore: deviceStore);
       await _start(connectAgent);
 
       final result = await postPair(connectAgent);
 
       expect(result.statusCode, HttpStatus.ok);
       expect(result.body.containsKey('relayGrant'), isFalse);
-      expect(await store.hasDevice('pixel-1'), isFalse);
+      // The device key is registered, but no relay grant was minted.
+      expect(await deviceStore.isValidDeviceKey(publicKey), isTrue);
+      expect(await deviceStore.hasDevice('pixel-1'), isFalse);
+      expect(
+        await deviceStore.validateGrant(
+          hostId: hostId,
+          deviceId: 'pixel-1',
+          grant: 'grant-token-abc',
+        ),
+        isFalse,
+      );
     });
 
     test(
