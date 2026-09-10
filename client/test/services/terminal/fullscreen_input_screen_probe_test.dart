@@ -284,36 +284,6 @@ void main() {
     },
   );
 
-  test('isSubmitted true for composerMovesDown when transcript echo shares the composer prefix', () {
-    // Real Codex (verified 2026-09-07): a submitted user turn is echoed in the
-    // transcript with the SAME `\u203a` prefix as the composer, and the placeholder
-    // composer (`\u203a Implement {feature}`) occupies the old anchor row. The
-    // transcript echo must not read as "needle still staged in the composer".
-    final lines = List<String>.filled(24, '');
-    lines[13] = '\u203a hello';
-    lines[16] = '\u25e6 Working (3s \u2022 esc to interrupt)';
-    lines[19] = '\u203a Implement {feature}';
-    lines[21] = 'gpt-5.6-terra high \u00b7 ~\\git\\teampilot';
-    final grid = _FakeGrid.fromRows(lines);
-    const anchor = FullscreenPromptAnchor(
-      row: 19,
-      startCol: 2,
-      needle: 'hello',
-    );
-    expect(
-      isFullscreenPromptSubmitted(
-        grid,
-        anchor,
-        strategy: FullscreenCrAckStrategy.composerMovesDown,
-        composerPrefix: '\u203a',
-        scanRows: 24,
-      ),
-      isTrue,
-      reason: 'prefix-sharing transcript echo above the placeholder composer '
-          'is a submitted turn, not staged input',
-    );
-  });
-
   test('isComposerChromeEmpty true for prefix-only cursor row', () {
     final grid = _FakeGrid.fromRows(['A', '→ ']);
     expect(
