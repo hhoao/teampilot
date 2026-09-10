@@ -49,8 +49,17 @@ void main() {
         headers: const {'X-Member': 'worker-1'},
         event: 'PreToolUse',
       );
-      expect(powershell, contains('[Console]::In.ReadToEnd()'));
-      expect(powershell, contains('-d \$payload'));
+      // Windows PowerShell 5.1 strips double quotes when passing arguments to
+      // native commands — `-d $payload` delivered JSON with every `"` removed,
+      // and the gateway silently dropped the malformed body (verified against
+      // real codex 0.145.0: hooks executed, zero events journaled). curl must
+      // read the payload from its own inherited stdin instead.
+      expect(powershell, contains("--data-binary '@-'"));
+      expect(powershell, isNot(contains('-d \$payload')));
+      expect(powershell, isNot(contains('[Console]::In.ReadToEnd()')));
+      // Piping curl into Out-Null rewires its stdin — the inherited payload
+      // never reaches curl. Assignment silences output without a pipeline.
+      expect(powershell, isNot(contains('| Out-Null')));
     });
   });
 }
