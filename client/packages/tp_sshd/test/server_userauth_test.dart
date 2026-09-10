@@ -205,6 +205,21 @@ void main() {
     client.close();
   });
 
+  test('onAuthenticated reports the connection and auth request', () async {
+    final seen = <(SSHServerConnection, String)>[];
+    final (client, server) = await startDualPair(
+      hostKeyPair: testHostKey,
+      authenticate: (_) async => true,
+      clientIdentities: [testDeviceKey],
+      onAuthenticated: (connection, request) => seen.add((connection, request.username)),
+    );
+    await client.authenticated;
+    await waitUntil(() => seen.isNotEmpty);
+    expect(seen.single.$2, 'user');
+    client.close();
+    await server.close();
+  });
+
   test('too many failed attempts disconnects the connection', () async {
     var failures = 0;
     final (server, client) = await startRawPair(

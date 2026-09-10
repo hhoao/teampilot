@@ -568,6 +568,16 @@ class SSHServerConnection {
       _authTimer.cancel();
       _phase = _Phase.running;
       _transport.sendPacket(SSH_Message_Userauth_Success().encode());
+      // The success twin of [_failAuthAttempt]: the embedder now knows this
+      // connection belongs to whoever authenticated with this key.
+      _config.onAuthenticated?.call(
+        this,
+        SSHServerAuthRequest(
+          username: message.user,
+          algorithm: publicKeyAlgorithm,
+          publicKey: publicKey,
+        ),
+      );
       return;
     }
     _failAuthAttempt();
