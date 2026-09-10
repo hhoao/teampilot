@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'dart:typed_data';
 
 import 'package:flutter_test/flutter_test.dart';
+import 'package:teampilot/models/ssh_profile.dart';
 import 'package:teampilot/models/ssh_reachability.dart';
 import 'package:teampilot/services/connect/ssh_pairing_offer.dart';
 
@@ -210,5 +211,55 @@ void main() {
     final json = _offer().toJson();
     expect(json.containsKey('password'), isFalse);
     expect(json['pairing'], isNot(contains('privateKey')));
+  });
+
+  group('offerMatchesProfile', () {
+    test('matches when a pinned fingerprint intersects and the port matches',
+        () {
+      const profile = SshProfile(
+        id: 'p',
+        name: 'Alice desktop',
+        host: '192.168.1.20',
+        port: 22,
+        username: 'alice',
+        hostKeyFingerprints: ['SHA256:abcdefgh'],
+      );
+      expect(offerMatchesProfile(_offer(), profile), isTrue);
+    });
+
+    test('mismatches when the desktop rotated its host key', () {
+      const profile = SshProfile(
+        id: 'p',
+        name: 'Alice desktop',
+        host: '192.168.1.20',
+        port: 22,
+        username: 'alice',
+        hostKeyFingerprints: ['SHA256:old-key'],
+      );
+      expect(offerMatchesProfile(_offer(), profile), isFalse);
+    });
+
+    test('mismatches when the embedded port was re-picked', () {
+      const profile = SshProfile(
+        id: 'p',
+        name: 'Alice desktop',
+        host: '192.168.1.20',
+        port: 2768,
+        username: 'alice',
+        hostKeyFingerprints: ['SHA256:abcdefgh'],
+      );
+      expect(offerMatchesProfile(_offer(), profile), isFalse);
+    });
+
+    test('unpinned profiles match on the LAN port alone', () {
+      const profile = SshProfile(
+        id: 'p',
+        name: 'Alice desktop',
+        host: '192.168.1.20',
+        port: 22,
+        username: 'alice',
+      );
+      expect(offerMatchesProfile(_offer(), profile), isTrue);
+    });
   });
 }

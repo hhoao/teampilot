@@ -13,6 +13,7 @@ import 'package:teampilot/services/connect/endpoint_dial_planner.dart';
 import 'package:teampilot/services/remote/remote_connection_monitor.dart';
 import 'package:teampilot/services/ssh/ssh_client_factory.dart';
 import 'package:teampilot/services/ssh/ssh_connection_events.dart';
+import 'package:teampilot/services/ssh/ssh_connection_failure.dart';
 import 'package:teampilot/services/ssh/ssh_profile_connection_coordinator.dart';
 import 'package:teampilot/services/ssh/ssh_profile_reconnect_policy.dart';
 import 'package:teampilot/services/ssh/ssh_transport_close.dart';
@@ -436,6 +437,40 @@ void main() {
       expect(
         cubit.state.hostsById[_p1.id]!.status,
         SshHostUiStatus.authFailed,
+      );
+
+      await cubit.close();
+      harness.dispose();
+    });
+
+    test('pinned paired profile hostkey mismatch → re-pair hint', () async {
+      final harness = _Harness(
+        connector: (profile, {timeout = const Duration(seconds: 10)}) async {
+          throw SSHHostkeyError('Hostkey verification failed');
+        },
+      );
+      final cubit = harness.createCubit(
+        pairedConnectAttempt: PairedConnectAttempt(
+          saveLastGood: (_) async {},
+        ),
+      );
+      final paired = _paired.copyWith(
+        hostKeyFingerprints: const ['SHA256:pinned-host-key'],
+      );
+      cubit.syncProfiles([paired]);
+
+      await cubit.connect(paired.id);
+
+      // The desktop's live host key left the profile's pinned set — the
+      // desktop was upgraded or reset, so the UI must point at re-pairing
+      // instead of a raw handshake error.
+      expect(
+        cubit.state.hostsById[paired.id]!.errorDetail,
+        sshPairingStaleDetail,
+      );
+      expect(
+        cubit.state.hostsById[paired.id]!.status,
+        SshHostUiStatus.error,
       );
 
       await cubit.close();

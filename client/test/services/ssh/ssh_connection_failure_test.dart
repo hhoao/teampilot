@@ -58,4 +58,16 @@ void main() {
     );
     expect(sshErrorDetailUserMessage(null, l10n), '');
   });
+
+  test('maps the stale-pairing sentinel to the re-pair hint', () {
+    expect(
+      sshErrorDetailUserMessage(sshPairingStaleDetail, l10n),
+      l10n.connectRepairHint,
+    );
+    // The sentinel never leaks to the user as a raw string.
+    expect(
+      sshErrorDetailUserMessage(sshPairingStaleDetail, l10n),
+      isNot(sshPairingStaleDetail),
+    );
+  });
 }

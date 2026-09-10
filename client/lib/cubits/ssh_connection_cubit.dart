@@ -197,13 +197,21 @@ class SshConnectionCubit extends Cubit<SshConnectionState> {
         return;
       }
       final cause = sshConnectionFailureCause(error);
+      // A paired profile pins the desktop's host-key fingerprints; a
+      // rejection against those pins means the desktop re-keyed (upgrade,
+      // reset, re-pair) and the phone must scan a new pairing code.
+      final stalePairing =
+          (error is SshHostKeyMismatch || cause is SSHHostkeyError) &&
+          profile.pairedDesktopId != null &&
+          profile.hostKeyFingerprints.isNotEmpty;
       final authFailed =
           cause is SSHAuthFailError || cause is SSHHostkeyError;
       final status = authFailed
           ? SshHostUiStatus.authFailed
           : SshHostUiStatus.error;
       _lastFailureStatus[profileId] = status;
-      _lastErrorDetail[profileId] = error.toString();
+      _lastErrorDetail[profileId] =
+          stalePairing ? sshPairingStaleDetail : error.toString();
       emit(_buildState());
     }
   }

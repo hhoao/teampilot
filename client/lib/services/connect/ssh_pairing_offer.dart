@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'dart:io';
 import 'dart:typed_data';
 
+import '../../models/ssh_profile.dart';
 import '../../models/ssh_reachability.dart';
 
 class SshPairingOfferFormatException implements Exception {
@@ -493,6 +494,24 @@ String _hostId(String value) {
     throw const SshPairingOfferFormatException('invalid hostId');
   }
   return value;
+}
+
+/// Whether a live [offer] still matches what [profile] pinned at pairing
+/// time: a non-empty fingerprint-set intersection (profiles without pins
+/// match any key) and the same LAN port.
+///
+/// A mismatch means the desktop re-keyed or re-picked its embedded port
+/// since pairing — the profile cannot connect until the phone re-scans a
+/// pairing code, so connect-failure handling surfaces the repair hint.
+bool offerMatchesProfile(SshPairingOffer offer, SshProfile profile) {
+  final pinned = profile.hostKeyFingerprints;
+  final fingerprintsMatch =
+      pinned.isEmpty || offer.hostKeyFingerprints.any(pinned.contains);
+  final lanPort = offer.endpoints
+      .where((endpoint) => endpoint.kind == SshEndpointKind.lan)
+      .firstOrNull
+      ?.port;
+  return fingerprintsMatch && lanPort != null && lanPort == profile.port;
 }
 
 List<int> _hexDecode(String hex) => [

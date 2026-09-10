@@ -45,6 +45,12 @@ String sshConnectionFailureUserMessage(
 /// banner while a `PerSourcePenalties` refusal is active for our source.
 const _sshdPenaltyRefusalText = 'Not allowed at this time';
 
+/// Sentinel error-detail recorded when a paired profile's pinned host keys no
+/// longer match the desktop's live key — the desktop was upgraded or reset,
+/// and only re-scanning its pairing code can reconnect. UI maps this to the
+/// localized re-pair hint; the raw string never reaches the user.
+const sshPairingStaleDetail = 'teampilot:pairing-stale';
+
 /// True when [error] is an sshd `PerSourcePenalties` refusal: the version
 /// exchange read the refusal text instead of an `SSH-2.0-` banner. Retrying
 /// immediately only extends the penalty; callers should back off.
@@ -54,11 +60,15 @@ bool isSshdPenaltyRefusal(Object error) {
       cause.message.contains(_sshdPenaltyRefusalText);
 }
 
-/// Maps a stored SSH error-detail string for display. Penalty refusals get a
-/// localized explanation; anything else passes through.
+/// Maps a stored SSH error-detail string for display. Penalty refusals and
+/// stale-pairing markers get a localized explanation; anything else passes
+/// through.
 String sshErrorDetailUserMessage(String? detail, AppLocalizations l10n) {
   final trimmed = detail?.trim();
   if (trimmed == null || trimmed.isEmpty) return '';
+  if (trimmed == sshPairingStaleDetail) {
+    return l10n.connectRepairHint;
+  }
   if (trimmed.contains(_sshdPenaltyRefusalText)) {
     return l10n.sshPenaltyRefused;
   }
