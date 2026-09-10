@@ -24,17 +24,28 @@ class TerminalActivityTracker {
   TerminalActivityTracker({
     this.idleAfter = const Duration(milliseconds: 2500),
     this.bootQuietAfter = const Duration(milliseconds: 500),
+    this.bootMaxWait = defaultBootMaxWait,
     this.fingerprintTailLines = defaultFingerprintTailLines,
   }) : assert(fingerprintTailLines >= 1);
 
   /// Default tail window — covers prompt + status rows in full-screen TUIs.
   static const int defaultFingerprintTailLines = 8;
 
+  /// Hard ceiling on boot-gate waiting: animated TUIs (Codex startup flicker,
+  /// synchronized-update repaints) never reach a quiet byte stream, so quiet
+  /// alone can block the boot frame indefinitely. Visible content alive for
+  /// this long proves the CLI booted.
+  static const Duration defaultBootMaxWait = Duration(seconds: 8);
+
   /// Turn-level working/idle quiet window (post-boot).
   final Duration idleAfter;
 
   /// Boot frame stable quiet window (visible output + fingerprint unchanged).
   final Duration bootQuietAfter;
+
+  /// Max wait from first visible boot output until the boot frame latches,
+  /// even without byte-stream quiet. Null disables the ceiling.
+  final Duration? bootMaxWait;
 
   /// How many trailing visible lines feed the PTY fingerprint hash.
   final int fingerprintTailLines;
@@ -71,15 +82,28 @@ class TerminalActivityTracker {
   /// window (spinners, welcome banners, status rows).
   bool _bootFrameLatched = false;
 
+  /// When the first visible tail content was seen since [reset].
+  DateTime? _bootFirstVisibleAt;
+
   /// True once meaningful visible content has appeared in the tail window and
-  /// the fingerprint has been unchanged for [bootQuietAfter].
-  /// Latches true on first success and does not revert until [reset].
+  /// the fingerprint has been unchanged for [bootQuietAfter] — or, for TUIs
+  /// that repaint forever (animations), once visible content has been alive
+  /// for [bootMaxWait]. Latches true and does not revert until [reset].
   bool get isBootFrameReady {
     if (_bootFrameLatched) return true;
     if (!_bootPtyObserved || !_bootVisibleContentSeen) return false;
+    final now = DateTime.now();
     final since = _fingerprintStableSince;
-    if (since == null) return false;
-    if (DateTime.now().difference(since) >= bootQuietAfter) {
+    if (since != null && now.difference(since) >= bootQuietAfter) {
+      _bootFrameLatched = true;
+      return true;
+    }
+    final maxWait = bootMaxWait;
+    final firstVisible = _bootFirstVisibleAt;
+    if (maxWait != null &&
+        maxWait > Duration.zero &&
+        firstVisible != null &&
+        now.difference(firstVisible) >= maxWait) {
       _bootFrameLatched = true;
       return true;
     }
@@ -92,11 +116,18 @@ class TerminalActivityTracker {
     final stableMs = since == null
         ? null
         : DateTime.now().difference(since).inMilliseconds;
+    final firstVisible = _bootFirstVisibleAt;
+    final visibleMs = firstVisible == null
+        ? null
+        : DateTime.now().difference(firstVisible).inMilliseconds;
+    final maxWaitMs = bootMaxWait?.inMilliseconds;
     return 'latched=$_bootFrameLatched '
         'ptyObserved=$_bootPtyObserved '
         'visible=$_bootVisibleContentSeen '
         'stableMs=$stableMs '
-        'needMs=${bootQuietAfter.inMilliseconds}';
+        'needMs=${bootQuietAfter.inMilliseconds} '
+        'visibleMs=$visibleMs '
+        'maxWaitMs=$maxWaitMs';
   }
 
   void markActive([DateTime? at]) {
@@ -142,12 +173,17 @@ class TerminalActivityTracker {
 
     if (hash == _lastFingerprintHash) return;
 
-    _noteBootPtyObserved(scan.hasVisibleContent);
+    _noteBootPtyObserved(scan.hasVisibleContent, now);
     _lastFingerprintHash = hash;
     _lastRawChunk = raw.length <= _rawFastPathMaxBytes
         ? Uint8List.fromList(raw)
         : null;
-    _fingerprintStableSince = now;
+    // Invisible repaints (space-only erase halves of synchronized-update
+    // pairs — Codex idle/startup churn) change the hash without changing any
+    // visible tail content; they must not restart the boot-quiet window.
+    if (scan.hasVisibleContent || _fingerprintStableSince == null) {
+      _fingerprintStableSince = now;
+    }
     noteOutput(now);
   }
 
@@ -156,7 +192,7 @@ class TerminalActivityTracker {
     Uint8List raw,
     DateTime now,
   ) {
-    _noteBootPtyObserved(scan.hasVisibleContent);
+    _noteBootPtyObserved(scan.hasVisibleContent, now);
     _turnPtyObserved = true;
     _lastFingerprintHash = scan.hash;
     _lastRawChunk = raw.length <= _rawFastPathMaxBytes
@@ -166,9 +202,12 @@ class TerminalActivityTracker {
     noteOutput(now);
   }
 
-  void _noteBootPtyObserved(bool hasVisibleContent) {
+  void _noteBootPtyObserved(bool hasVisibleContent, DateTime at) {
     _bootPtyObserved = true;
-    if (hasVisibleContent) _bootVisibleContentSeen = true;
+    if (hasVisibleContent) {
+      _bootVisibleContentSeen = true;
+      _bootFirstVisibleAt ??= at;
+    }
   }
 
   /// Single-pass scan of the chunk's last [tailLines] visible lines: strips
@@ -318,6 +357,7 @@ class TerminalActivityTracker {
     _turnLatchedAt = null;
     _bootPtyObserved = false;
     _bootVisibleContentSeen = false;
+    _bootFirstVisibleAt = null;
     _bootFrameLatched = false;
   }
 
@@ -329,6 +369,7 @@ class TerminalActivityTracker {
     _bootFrameLatched = true;
     _turnPtyObserved = true;
     _fingerprintStableSince = now.subtract(bootQuietAfter);
+    _bootFirstVisibleAt = now.subtract(bootQuietAfter);
     _armed = true;
     _lastActivity = now;
     _bootOutputAt = null;
