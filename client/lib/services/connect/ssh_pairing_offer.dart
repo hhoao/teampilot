@@ -107,6 +107,7 @@ class SshPairingOffer {
     required this.hostKeyFingerprints,
     required this.pairing,
     this.relay,
+    this.emb,
   });
 
   final int v;
@@ -118,6 +119,10 @@ class SshPairingOffer {
   final List<String> hostKeyFingerprints;
   final SshPairingSession pairing;
   final SshRelayOffer? relay;
+
+  /// Offer v2 flag: the host runs the embedded SSH server. `null` on v1
+  /// offers, which predate embedded hosts.
+  final bool? emb;
 
   /// Uncompressed base64 JSON for copy/paste links.
   String get bareCode =>
@@ -161,6 +166,7 @@ class SshPairingOffer {
         'port': pairingUri.port,
       },
       if (relay != null) 'relay': {'url': relay!.url},
+      if (emb != null) 'emb': emb,
     };
   }
 
@@ -187,6 +193,7 @@ class SshPairingOffer {
         'p': Uri.parse(pairing.url).port,
       },
       if (relay != null) 'r': {'u': relay!.url},
+      if (emb != null) 'b': emb,
     };
   }
 
@@ -271,6 +278,7 @@ class SshPairingOffer {
               .toList(),
       'pairing': pairing,
       if (relayRaw is Map) 'relay': {'url': relayRaw['u']},
+      if (json['b'] is bool) 'emb': json['b'],
     };
   }
 
@@ -284,6 +292,7 @@ class SshPairingOffer {
     'hostKeyFingerprints': hostKeyFingerprints,
     'pairing': pairing.toJson(),
     if (relay != null) 'relay': relay!.toJson(),
+    if (emb != null) 'emb': emb,
   };
 
   static SshPairingOffer decode(String input) {
@@ -416,7 +425,8 @@ class SshPairingOffer {
   }
 
   factory SshPairingOffer.fromJson(Map<String, Object?> json) {
-    if ((json['v'] as num?)?.toInt() != 1) {
+    final v = (json['v'] as num?)?.toInt();
+    if (v == null || (v != 1 && v != 2)) {
       throw const SshPairingOfferFormatException('unsupported offer version');
     }
     final endpointJson = json['endpoints'];
@@ -446,7 +456,7 @@ class SshPairingOffer {
             .toList(growable: false) ??
         const <String>[];
     return SshPairingOffer(
-      v: 1,
+      v: v,
       hostId: _hostId(_requiredString(json, 'hostId')),
       username: _requiredString(json, 'username'),
       displayName: _requiredString(json, 'displayName'),
@@ -457,6 +467,7 @@ class SshPairingOffer {
       relay: relayRaw == null
           ? null
           : SshRelayOffer.fromJson((relayRaw as Map).cast<String, Object?>()),
+      emb: json['emb'] is bool ? json['emb'] as bool : null,
     );
   }
 }

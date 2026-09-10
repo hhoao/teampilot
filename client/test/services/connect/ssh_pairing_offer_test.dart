@@ -8,9 +8,10 @@ import 'package:teampilot/services/connect/ssh_pairing_offer.dart';
 String base64UrlEncodeNoPad(List<int> bytes) =>
     base64Url.encode(bytes).replaceAll('=', '');
 
-SshPairingOffer _offer({SshRelayOffer? relay}) {
+SshPairingOffer _offer({SshRelayOffer? relay, int v = 1, bool? emb}) {
   return SshPairingOffer(
-    v: 1,
+    v: v,
+    emb: emb,
     hostId: 'AbCdEf0123_-xyZ9',
     username: 'alice',
     displayName: 'alice-laptop',
@@ -157,8 +158,40 @@ void main() {
     ]);
   });
 
+  test('v2 offer round-trips emb and rejects v3', () {
+    final offer = _offer(v: 2, emb: true);
+    final parsed = SshPairingOffer.fromJson(offer.toJson());
+    expect(parsed.v, 2);
+    expect(parsed.emb, isTrue);
+    expect(offer.toJson()['emb'], isTrue);
+
+    final tooNew = _offer(v: 2, emb: true).toJson()..['v'] = 3;
+    expect(
+      () => SshPairingOffer.fromJson(tooNew),
+      throwsA(isA<SshPairingOfferFormatException>()),
+    );
+  });
+
+  test('v1 offer carries no emb through round trip', () {
+    final offer = _offer();
+    expect(offer.toJson().containsKey('emb'), isFalse);
+    final parsed = SshPairingOffer.fromJson(offer.toJson());
+    expect(parsed.v, 1);
+    expect(parsed.emb, isNull);
+  });
+
+  test('v2 QR payloads preserve emb for the phone', () {
+    final offer = _offer(v: 2, emb: true);
+    expect(SshPairingOffer.decode(offer.qrPayload).emb, isTrue);
+    expect(
+      SshPairingOffer.decodeBytes(Uint8List.fromList(offer.qrBytes)).emb,
+      isTrue,
+    );
+    expect(SshPairingOffer.decode(offer.bareCode).emb, isTrue);
+  });
+
   test('rejects unknown offer version', () {
-    final json = _offer().toJson()..['v'] = 2;
+    final json = _offer().toJson()..['v'] = 3;
     expect(
       () => SshPairingOffer.fromJson(json),
       throwsA(isA<SshPairingOfferFormatException>()),
