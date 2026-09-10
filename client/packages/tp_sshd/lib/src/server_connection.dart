@@ -244,6 +244,22 @@ class SSHServerConnection {
       return;
     }
 
+    // The per-connection channel cap (OpenSSH's default is 10): without it,
+    // one connection could pin unbounded channel state on the server. Excess
+    // opens are refused with reason 4, resource shortage (RFC 4254 §5.1's
+    // "channel resource shortage" case).
+    if (_channels.length >= _config.maxChannels) {
+      _transport.sendPacket(
+        SSH_Message_Channel_Open_Failure(
+          recipientChannel: message.senderChannel,
+          reasonCode: SSH_Message_Channel_Open_Failure.codeResourceShortage,
+          description: 'Too many open channels (${_channels.length}/'
+              '${_config.maxChannels})',
+        ).encode(),
+      );
+      return;
+    }
+
     final ourChannel = _nextChannelNumber++;
     final channel = SSHServerChannel(
       recipientChannel: message.senderChannel,
@@ -395,6 +411,12 @@ class SSHServerConnection {
     SSH_Message_Channel_Open Function(int senderChannel) buildOpen,
   ) {
     if (_phase == _Phase.closed) return Future.value(null);
+    // The same per-connection cap bounds the server-initiated direction (the
+    // forwarder's `forwarded-tcpip` opens): at the cap the open is not even
+    // attempted, so the channel table cannot be blown through the back door.
+    if (_channels.length + _pendingOpens.length >= _config.maxChannels) {
+      return Future.value(null);
+    }
     final ourChannel = _nextChannelNumber++;
     final open = buildOpen(ourChannel);
     final pending = _PendingOpen(open.channelType);

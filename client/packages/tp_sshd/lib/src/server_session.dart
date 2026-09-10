@@ -317,11 +317,25 @@ void _pipeProcess(SSHServerChannel channel, SSHServerProcess process) {
   final subscriptions = <StreamSubscription<dynamic>>[
     drain(process.stdout, channel.write, stdoutDone),
     drain(process.stderr, channel.writeExtended, stderrDone),
-    channel.input.listen(
-      process.stdin.add,
-      onDone: () => unawaited(process.stdin.close()),
-    ),
   ];
+  StreamSubscription<Uint8List>? inputSubscription;
+  inputSubscription = channel.input.listen(
+    (data) {
+      try {
+        process.stdin.add(data);
+      } on Object {
+        // The process's stdin contract broke mid-write (a pipe the process
+        // already tore down, a sink that fails closed): treat it as the
+        // input side ending — stop forwarding input to it and release the
+        // pipe — instead of letting the error escape into the stream
+        // listener's zone.
+        inputSubscription?.cancel();
+        unawaited(process.stdin.close().catchError((_) {}));
+      }
+    },
+    onDone: () => unawaited(process.stdin.close().catchError((_) {})),
+  );
+  subscriptions.add(inputSubscription);
 
   var tornDown = false;
   void teardown() {
@@ -335,7 +349,7 @@ void _pipeProcess(SSHServerChannel channel, SSHServerProcess process) {
     // pipes a cancelled subscription will never finish.
     if (!stdoutDone.isCompleted) stdoutDone.complete();
     if (!stderrDone.isCompleted) stderrDone.complete();
-    unawaited(process.stdin.close());
+    unawaited(process.stdin.close().catchError((_) {}));
   }
 
   channel.done.whenComplete(teardown);
@@ -347,6 +361,13 @@ void _pipeProcess(SSHServerChannel channel, SSHServerProcess process) {
       await stdoutDone.future;
       await stderrDone.future;
       channel.sendExitStatus(exitCode);
+      channel.close();
+    }).catchError((Object _) {
+      // A process contract that errors instead of exiting is process death
+      // all the same: tear the pipes down and finish the channel without an
+      // exit status, rather than orphaning it on a future that never
+      // settles.
+      teardown();
       channel.close();
     }),
   );

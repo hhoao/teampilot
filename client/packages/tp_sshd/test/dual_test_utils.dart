@@ -162,6 +162,50 @@ Future<(SSHServerConnection, SSHTransport)> startRawAuthenticatedConnection({
   return (connection, client);
 }
 
+/// A probing publickey userauth request (RFC 4252 §7, `boolean FALSE`) for
+/// the test device key: a well-formed attempt that never verifies as
+/// trusted, for driving the auth-failure path.
+SSH_Message_Userauth_Request testProbeRequest() {
+  return SSH_Message_Userauth_Request.publicKey(
+    username: 'user',
+    publicKeyAlgorithm: 'ssh-ed25519',
+    publicKey: testDeviceKey.toPublicKey().encode(),
+    signature: null,
+  );
+}
+
+/// Starts an [SSHServer] plus a raw client-side [SSHTransport], so tests can
+/// inject hand-crafted traffic a real [SSHClient] would never send.
+///
+/// [onReady] runs once the client-side key exchange completes;
+/// [onServerMessage] sees everything the server sends back (consumed by
+/// default).
+Future<(SSHServer, SSHTransport)> startRawPair({
+  required Future<bool> Function(SSHServerAuthRequest request) authenticate,
+  required void Function(SSHTransport client) onReady,
+  bool Function(Uint8List payload)? onServerMessage,
+}) async {
+  final (clientSocket, serverSocket) = loopbackSSHSocketPair();
+  final connections = StreamController<SSHSocket>();
+  final server = await SSHServer.bind(
+    StreamIterator(connections.stream),
+    config: SSHServerConfig(
+      hostKeyPair: testHostKey,
+      expectedUsername: 'user',
+      authenticate: authenticate,
+    ),
+  );
+  connections.add(serverSocket);
+  late final SSHTransport client;
+  client = SSHTransport(
+    clientSocket,
+    onVerifyHostKey: (_, __) => true,
+    onReady: () => onReady(client),
+    onMessage: onServerMessage ?? (_) => true,
+  );
+  return (server, client);
+}
+
 /// Polls [condition] every 5 ms until it holds, or fails after [timeout].
 ///
 /// For awaiting delivery over the in-memory socket pair, where the only

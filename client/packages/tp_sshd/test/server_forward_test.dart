@@ -99,6 +99,28 @@ void main() {
     await server.close();
   });
 
+  test('tcpip-forward without a bind seam is refused', () async {
+    // No bindServerSocket configured: the forwarding surface is off, and a
+    // tcpip-forward request — even for a perfectly loopback address — gets a
+    // Request_Failure reply rather than a hang or a bind attempt.
+    var failures = 0;
+    final (connection, client) = await startRawAuthenticatedConnection(
+      onServerMessage: (payload) {
+        if (SSHMessage.readMessageId(payload) ==
+            SSH_Message_Request_Failure.messageId) {
+          failures += 1;
+        }
+      },
+    );
+    client.sendPacket(
+      SSH_Message_Global_Request.tcpipForward('127.0.0.1', 0).encode(),
+    );
+    await waitUntil(() => failures == 1);
+
+    await connection.close();
+    client.close();
+  });
+
   test('cancel-tcpip-forward releases the bind', () async {
     final (client, server) = await startDualPair(
       hostKeyPair: testHostKey,

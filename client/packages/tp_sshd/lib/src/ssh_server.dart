@@ -30,6 +30,7 @@ class SSHServerConfig {
     required this.authenticate,
     this.authTimeout = const Duration(seconds: 30),
     this.maxAuthAttempts = 6,
+    this.maxChannels = 10,
     this.processFactory,
     this.ptyFactory,
     this.hostInfo,
@@ -62,6 +63,11 @@ class SSHServerConfig {
   /// How many authentication attempts a connection may make before the
   /// server disconnects it.
   final int maxAuthAttempts;
+
+  /// How many channels may be open on one connection at the same time
+  /// (OpenSSH's default is 10 per session). A CHANNEL_OPEN beyond the cap is
+  /// refused with reason 4, `resource shortage`, instead of confirmed.
+  final int maxChannels;
 
   /// Spawns the process backing a structured `exec` request (see
   /// [TpExecCodec]). Receives the decoded argv, working directory and
@@ -132,6 +138,8 @@ class SSHServer {
   /// Live connections, in acceptance order.
   final _connections = <SSHServerConnection>{};
 
+  final _done = Completer<void>();
+
   /// The iterator [bind] is draining; kept so [close] can stop the loop.
   StreamIterator<SSHSocket>? _connectionsIterator;
 
@@ -159,10 +167,35 @@ class SSHServer {
   /// Number of connections the server is currently serving.
   int get activeConnections => _connections.length;
 
+  /// Completes when the server stops accepting.
+  ///
+  /// Normally that is [close] or the connection stream ending; if the stream
+  /// itself errors, this completes with that error instead — after every live
+  /// connection has been torn down. (The error is marked handled when it is
+  /// raised, so a caller that never awaits [done] cannot turn a contained
+  /// stream failure into an unhandled zone error; awaiting still sees it.)
+  Future<void> get done => _done.future;
+
   Future<void> _acceptConnections(StreamIterator<SSHSocket> connections) async {
-    while (await connections.moveNext()) {
-      if (_isClosed) break;
-      _spawnConnection(connections.current);
+    try {
+      while (await connections.moveNext()) {
+        if (_isClosed) break;
+        _spawnConnection(connections.current);
+      }
+      _done.complete();
+    } on Object catch (error, stackTrace) {
+      // The connection stream itself died (the embedder's accept source
+      // broke). That must not surface as an unhandled error in whoever's zone
+      // happens to be around, and it must not leave live connections hanging
+      // off a dead listener: stop accepting and tear them all down.
+      _isClosed = true;
+      for (final connection in List.of(_connections)) {
+        unawaited(connection.close());
+      }
+      _done.completeError(error, stackTrace);
+      // Nobody has to await [done]; a dropped error would surface as an
+      // unhandled zone error, which is exactly what this containment is for.
+      _done.future.catchError((_) {});
     }
   }
 

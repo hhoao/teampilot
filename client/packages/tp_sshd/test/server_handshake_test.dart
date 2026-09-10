@@ -63,4 +63,35 @@ void main() {
     await server.close();
     transport.close();
   });
+
+  test('a connection-stream error is contained and tears down live connections',
+      () async {
+    final (clientSocket, serverSocket) = loopbackSSHSocketPair();
+    final connections = StreamController<SSHSocket>();
+    final server = await SSHServer.bind(
+      StreamIterator(connections.stream),
+      config: SSHServerConfig(
+        hostKeyPair: testHostKey,
+        expectedUsername: 'user',
+        authenticate: (_) async => true,
+      ),
+    );
+    // One good connection is live when the accept source dies mid-stream.
+    connections.add(serverSocket);
+    await waitUntil(() => server.activeConnections == 1);
+
+    connections.addError(StateError('accept source broke'));
+
+    // The stream's error surfaces on done — instead of escaping as an
+    // unhandled zone error that would take the embedding app down — and the
+    // live connection does not survive a dead listener.
+    await expectLater(server.done, throwsA(isA<StateError>()));
+    await waitUntil(() => server.activeConnections == 0);
+    // The torn-down connection closed its socket: the client end of the
+    // in-memory pair saw the shutdown.
+    await clientSocket.done;
+
+    await connections.close();
+    await server.close();
+  });
 }

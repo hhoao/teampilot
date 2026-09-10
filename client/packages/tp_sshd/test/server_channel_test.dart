@@ -62,6 +62,42 @@ void main() {
     await client.close();
   });
 
+  test('channel opens beyond the per-connection cap are refused', () async {
+    final (client, connection) = await startDualConnection(
+      hostKeyPair: testHostKey,
+      authenticate: (_) async => true,
+      clientIdentities: [testDeviceKey],
+    );
+    // The default cap is 10, OpenSSH's own: the first ten session channels
+    // confirm...
+    for (var i = 0; i < 10; i++) {
+      await openClientSessionChannel(client);
+    }
+    expect(connection.channels.length, 10);
+
+    // ...and the eleventh is refused with reason 4, resource shortage, so one
+    // connection cannot pin unbounded channel state on the server. The wire
+    // value is pinned alongside the constant, like the admin-prohibited test
+    // above.
+    await expectLater(
+      openClientSessionChannel(client),
+      throwsA(
+        isA<SSHChannelOpenError>()
+            .having(
+              (error) => error.code,
+              'code',
+              SSH_Message_Channel_Open_Failure.codeResourceShortage,
+            )
+            .having((error) => error.code, 'wire value', 4),
+      ),
+    );
+    // The refused open left the channel table untouched.
+    expect(connection.channels.length, 10);
+
+    await connection.close();
+    await client.close();
+  });
+
   test('keepalive global request is answered', () async {
     final (client, server) = await startDualPair(
       hostKeyPair: testHostKey,
@@ -364,6 +400,119 @@ void main() {
 
       await connection.close();
       client.close();
+    });
+
+    test('close flushes queued window-credit data before finishing', () async {
+      final dataLengths = <int>[];
+      var eofSeen = false;
+      var closeSeen = false;
+      final opened = Completer<void>();
+      final (connection, client) = await startRawAuthenticatedConnection(
+        onServerMessage: (payload) {
+          switch (SSHMessage.readMessageId(payload)) {
+            case SSH_Message_Channel_Confirmation.messageId:
+              if (!opened.isCompleted) opened.complete();
+            case SSH_Message_Channel_Data.messageId:
+              dataLengths
+                  .add(SSH_Message_Channel_Data.decode(payload).data.length);
+            case SSH_Message_Channel_EOF.messageId:
+              eofSeen = true;
+            case SSH_Message_Channel_Close.messageId:
+              closeSeen = true;
+          }
+        },
+      );
+
+      // A 10-byte window: a real client never offers this, which is exactly
+      // what makes the close-time tail observable.
+      client.sendPacket(
+        SSH_Message_Channel_Open.session(
+          senderChannel: 5,
+          initialWindowSize: 10,
+          maximumPacketSize: 32768,
+        ).encode(),
+      );
+      await opened.future;
+      final SSHServerChannel channel = connection.channels.values.single;
+
+      // 25 bytes against that window: 10 go out immediately, the 15-byte tail
+      // queues for credit.
+      channel.write(Uint8List.fromList(List.generate(25, (i) => i)));
+      await waitUntil(() => dataLengths.length == 1);
+      expect(dataLengths, [10]);
+
+      channel.close();
+      await Future<void>.delayed(const Duration(milliseconds: 100));
+      // The close is waiting on the tail instead of dropping it: no EOF, no
+      // CHANNEL_CLOSE, and the channel is still live server-side.
+      expect(eofSeen, isFalse);
+      expect(closeSeen, isFalse);
+      expect(channel.isClosed, isFalse);
+
+      // The client grants the window: the whole tail flushes, and only then
+      // do EOF and CHANNEL_CLOSE follow — the payload is delivered in full.
+      client.sendPacket(
+        SSH_Message_Channel_Window_Adjust(
+          recipientChannel: channel.ourChannel,
+          bytesToAdd: 15,
+        ).encode(),
+      );
+      await waitUntil(() => channel.isClosed);
+      expect(dataLengths, [10, 15]);
+      expect(eofSeen, isTrue);
+      expect(closeSeen, isTrue);
+      expect(connection.channels, isEmpty);
+
+      await connection.close();
+      client.close();
+    });
+
+    test('a window that never opens gives up after the close flush bound',
+        () async {
+      // Directly constructed, like the channel the connection would build
+      // for a 4-byte-window peer — but with a short flush bound, so the
+      // fallback is observable without waiting the product default.
+      final sentIds = <int>[];
+      var sentDataBytes = 0;
+      SSHServerChannel? closedChannel;
+      final channel = SSHServerChannel(
+        recipientChannel: 9,
+        ourChannel: 0,
+        channelType: 'session',
+        peerInitialWindowSize: 4,
+        peerMaximumPacketSize: 32768,
+        closeFlushTimeout: const Duration(milliseconds: 50),
+        sendPacket: (payload) {
+          sentIds.add(SSHMessage.readMessageId(payload));
+          if (SSHMessage.readMessageId(payload) ==
+              SSH_Message_Channel_Data.messageId) {
+            sentDataBytes +=
+                SSH_Message_Channel_Data.decode(payload).data.length;
+          }
+        },
+        onClosed: (channel) => closedChannel = channel,
+      );
+
+      // 10 bytes against the 4-byte window: 4 go out, 6 stall.
+      channel.write(Uint8List.fromList(List.generate(10, (i) => i)));
+      channel.close();
+      expect(sentIds, [SSH_Message_Channel_Data.messageId]);
+      expect(sentDataBytes, 4);
+
+      // No window adjustment ever arrives. After the bound the channel
+      // finishes anyway — EOF and CHANNEL_CLOSE are sent, and the stalled
+      // tail is dropped rather than blocking the channel forever.
+      await channel.done.timeout(const Duration(seconds: 2));
+      expect(
+        sentIds,
+        containsAll([
+          SSH_Message_Channel_Data.messageId,
+          SSH_Message_Channel_EOF.messageId,
+          SSH_Message_Channel_Close.messageId,
+        ]),
+      );
+      expect(sentDataBytes, 4);
+      expect(closedChannel, same(channel));
     });
 
     test('the receive window is granted back as the client sends', () async {

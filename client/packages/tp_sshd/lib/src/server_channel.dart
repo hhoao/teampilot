@@ -34,6 +34,7 @@ class SSHServerChannel {
     required int peerMaximumPacketSize,
     required void Function(Uint8List payload) sendPacket,
     required void Function(SSHServerChannel channel) onClosed,
+    this.closeFlushTimeout = const Duration(seconds: 2),
     this.printDebug,
   })  : _sendWindow = peerInitialWindowSize,
         // A peer advertising a zero maximum packet size could never be sent
@@ -55,6 +56,13 @@ class SSHServerChannel {
 
   /// The channel type as requested by the client (`'session'`).
   final String channelType;
+
+  /// How long [close] waits for the client to grant the window credit that
+  /// data still queued for it needs, before the tail is dropped and the
+  /// channel finished anyway. Two seconds: generous for a healthy peer
+  /// granting window, short enough not to hold channels open against a
+  /// stalled one.
+  final Duration closeFlushTimeout;
 
   final void Function(Uint8List payload) _sendPacket;
   final void Function(SSHServerChannel channel) _onClosed;
@@ -85,6 +93,14 @@ class SSHServerChannel {
 
   var _receivedEof = false;
   var _sentClose = false;
+
+  /// [close] was called while data was still queued for window credit: the
+  /// channel finishes itself once the queue drains, or when the bounded wait
+  /// in [closeFlushTimeout] gives up on the client's window.
+  var _closePending = false;
+
+  /// The give-up timer behind a pending close.
+  Timer? _closeFlushTimer;
 
   /// Data the client sends on this channel.
   Stream<Uint8List> get input => _input.stream;
@@ -147,14 +163,36 @@ class SSHServerChannel {
 
   /// Closes the channel: sends EOF (after flushing what the client's window
   /// allows) and then CHANNEL_CLOSE, finishing the channel from our side.
-  /// Data still waiting for window credit is dropped.
+  ///
+  /// Data still queued for window credit gets a bounded chance to go out:
+  /// [closeFlushTimeout] for the client to grant the credit the tail needs,
+  /// after which the channel finishes anyway and the rest is dropped. A
+  /// window that opens in time flushes the whole queue first, so an exec's
+  /// output tail is not truncated by a merely slow peer.
   void close() {
-    if (isClosed) return;
+    if (isClosed || _closePending) return;
     _flushOutgoing();
-    if (!_sentEof) {
-      _sendEof();
+    if (_outgoing.isEmpty) {
+      if (!_sentEof) {
+        _sendEof();
+      }
+      _finish();
+      return;
     }
-    _finish();
+    _closePending = true;
+    _closeFlushTimer = Timer(closeFlushTimeout, () {
+      _closeFlushTimer = null;
+      if (isClosed) return;
+      printDebug?.call(
+        'tp_sshd: dropping ${_outgoing.length} queued outgoing chunks on '
+        'channel $ourChannel after the close flush bound '
+        '($closeFlushTimeout) expired',
+      );
+      if (!_sentEof) {
+        _sendEof();
+      }
+      _finish();
+    });
   }
 
   /// Applies a window adjustment from the client: grows the send window and
@@ -231,13 +269,15 @@ class SSHServerChannel {
   /// transport is gone. Called by [SSHServerConnection], not by embedders.
   void detach() {
     if (isClosed) return;
+    _closeFlushTimer?.cancel();
+    _closeFlushTimer = null;
     _outgoing.clear();
     _closeInputStreams();
     _done.complete();
   }
 
   void _enqueueOutgoing(Uint8List data, int? dataTypeCode) {
-    if (isClosed || _sentEof || _eofPending) {
+    if (isClosed || _sentEof || _eofPending || _closePending) {
       printDebug?.call(
         'tp_sshd: dropping ${data.length} outgoing bytes on channel '
         '$ourChannel after EOF/close',
@@ -292,6 +332,16 @@ class SSHServerChannel {
     }
     if (_eofPending && !_sentEof) {
       _sendEof();
+    }
+    // A close waiting on this queue draining has just been satisfied: the
+    // whole tail went out, so the channel can finish cleanly.
+    if (_closePending && _outgoing.isEmpty && !isClosed) {
+      _closeFlushTimer?.cancel();
+      _closeFlushTimer = null;
+      if (!_sentEof) {
+        _sendEof();
+      }
+      _finish();
     }
   }
 
@@ -357,6 +407,8 @@ class SSHServerChannel {
   /// locally. Data still queued for the client's window is dropped.
   void _finish() {
     if (isClosed) return;
+    _closeFlushTimer?.cancel();
+    _closeFlushTimer = null;
     if (!_sentClose) {
       _sentClose = true;
       _sendPacket(
