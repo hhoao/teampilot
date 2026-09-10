@@ -542,7 +542,8 @@ class _GitRepoBodyState extends State<_GitRepoBody> {
         buildWhen: (prev, next) =>
             prev.gitAvailable != next.gitAvailable ||
             prev.isRepository != next.isRepository ||
-            prev.isLoading != next.isLoading,
+            prev.isLoading != next.isLoading ||
+            prev.busy != next.busy,
         builder: (context, state) => _buildShell(context, state),
       ),
     );
