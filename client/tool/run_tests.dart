@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:io';
 
 const defaultTestConcurrency = 4;
+const testConcurrencyEnv = 'RUN_TESTS_CONCURRENCY';
 const testSuiteLockPath = '.dart_tool/run_tests.lock';
 const defaultHostedUrl = 'https://pub.dev';
 const allowPubSourceMismatchEnv = 'RUN_TESTS_ALLOW_PUB_SOURCE_MISMATCH';
@@ -15,11 +16,14 @@ final _hostedUrlPattern = RegExp(r'url:\s*"([^"]+)"\s*\n\s*source:\s*hosted');
 /// By default this runs the non-integration suite and caps concurrency. When
 /// a path, name, or other Flutter test option is supplied, it is preserved.
 /// Explicit tag and concurrency options take precedence over the defaults.
-List<String> buildFlutterTestArgs(List<String> args) {
+/// `RUN_TESTS_CONCURRENCY` overrides the default cap for machine-idle runs
+/// (the cap exists to bound widget-settle flakiness, not memory).
+List<String> buildFlutterTestArgs(List<String> args, {String? concurrencyOverride}) {
+  final effectiveConcurrency = concurrencyOverride ?? '$defaultTestConcurrency';
   return [
     'test',
     if (!_hasExplicitTags(args)) ...['--exclude-tags', 'integration'],
-    if (!_hasExplicitConcurrency(args)) '--concurrency=$defaultTestConcurrency',
+    if (!_hasExplicitConcurrency(args)) '--concurrency=$effectiveConcurrency',
     ...args,
   ];
 }
@@ -161,7 +165,7 @@ Future<void> main(List<String> args) async {
     () async {
       final process = await Process.start(
         Platform.isWindows ? 'flutter.bat' : 'flutter',
-        buildFlutterTestArgs(args),
+        buildFlutterTestArgs(args, concurrencyOverride: env[testConcurrencyEnv]),
         mode: ProcessStartMode.inheritStdio,
       );
       return process.exitCode;
