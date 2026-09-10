@@ -2,55 +2,14 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/cubits/connect_cubit.dart';
 import 'package:teampilot/models/ssh_reachability.dart';
 import 'package:teampilot/services/connect/connect_settings_store.dart';
-import 'package:teampilot/services/connect/embedded_ssh_server.dart';
 import 'package:teampilot/services/connect/paired_device_store.dart';
 import 'package:teampilot/services/connect/ssh_pairing_offer.dart';
 
+import '../support/fake_embedded_server.dart';
 import '../support/in_memory_filesystem.dart';
-
-class _FakeEmbeddedServer implements EmbeddedSshServerHandle {
-  _FakeEmbeddedServer({
-    required this.isListening,
-    required this.port,
-    required this.hostKeyFingerprints,
-  });
-
-  @override
-  bool isListening;
-
-  @override
-  int port;
-
-  @override
-  final List<String> hostKeyFingerprints;
-}
 
 PairedDeviceStore _deviceStore() =>
     PairedDeviceStore(fs: InMemoryFilesystem(), appDataRoot: '/app-data');
-
-const _listeningServer = _ServerFixture(
-  isListening: true,
-  port: 54321,
-  fingerprints: ['SHA256:host-key'],
-);
-
-class _ServerFixture {
-  const _ServerFixture({
-    required this.isListening,
-    required this.port,
-    required this.fingerprints,
-  });
-
-  final bool isListening;
-  final int port;
-  final List<String> fingerprints;
-
-  _FakeEmbeddedServer toHandle() => _FakeEmbeddedServer(
-    isListening: isListening,
-    port: port,
-    hostKeyFingerprints: fingerprints,
-  );
-}
 
 void main() {
   test('opens on first usable IPv4 and closes the pairing agent', () async {
@@ -81,7 +40,7 @@ void main() {
     );
     final cubit = ConnectCubit(
       agent: agent,
-      embeddedServer: _listeningServer.toHandle(),
+      embeddedServer: FakeEmbeddedServer(),
       deviceStore: deviceStore,
       settingsStore: ConnectSettingsStore(
         fs: InMemoryFilesystem(),
@@ -149,7 +108,7 @@ void main() {
       regenerateQr: () async {},
       updateExtraEndpoints: (_) async {},
     );
-    final server = _FakeEmbeddedServer(
+    final server = FakeEmbeddedServer(
       isListening: false,
       port: 0,
       hostKeyFingerprints: const ['SHA256:host-key'],
@@ -201,6 +160,111 @@ void main() {
     expect(starts, 1);
   });
 
+  test('retry restarts the embedded server and refreshes the QR state', () async {
+    var starts = 0;
+    final offer = _offer();
+    final agent = ConnectAgentController(
+      currentOffer: () => offer,
+      startQrSession:
+          ({
+            required advertiseAddress,
+            required username,
+            required displayName,
+            required appDataRoot,
+          }) async {
+            starts += 1;
+          },
+      stopQrSession: () async {},
+      regenerateQr: () async {},
+      updateExtraEndpoints: (_) async {},
+    );
+    // A server whose first start failed: retry's restart makes it listen.
+    final server = FakeEmbeddedServer(isListening: false, port: 0);
+    server.onRestart = () async {
+      server.isListening = true;
+      server.port = 54321;
+    };
+    final cubit = ConnectCubit(
+      agent: agent,
+      embeddedServer: server,
+      deviceStore: _deviceStore(),
+      settingsStore: ConnectSettingsStore(
+        fs: InMemoryFilesystem(),
+        appDataRoot: '/app-data',
+        generateHostId: () => 'abcdefghijklmnop',
+      ),
+      listNetworkAddresses: () async => const [
+        ConnectNetworkAddress(
+          name: 'Wi-Fi',
+          address: '192.168.1.20',
+          isLoopback: false,
+          isIpv4: true,
+        ),
+      ],
+      username: 'alice',
+      displayName: 'Alice desktop',
+      appDataRoot: '/app-data',
+    );
+    addTearDown(cubit.close);
+
+    await cubit.openQrSession();
+    expect(cubit.state.canPair, isFalse);
+
+    await cubit.retryEmbeddedServer();
+
+    expect(server.restarts, 1);
+    expect(cubit.state.canPair, isTrue);
+    expect(cubit.state.offer, same(offer));
+    expect(starts, 1);
+  });
+
+  test('retry keeps the down state when the restart fails', () async {
+    final server = FakeEmbeddedServer(isListening: false, port: 0);
+    server.restartError = StateError('port in use');
+    final cubit = ConnectCubit(
+      agent: ConnectAgentController(
+        currentOffer: () => _offer(),
+        startQrSession:
+            ({
+              required advertiseAddress,
+              required username,
+              required displayName,
+              required appDataRoot,
+            }) async {},
+        stopQrSession: () async {},
+        regenerateQr: () async {},
+        updateExtraEndpoints: (_) async {},
+      ),
+      embeddedServer: server,
+      deviceStore: _deviceStore(),
+      settingsStore: ConnectSettingsStore(
+        fs: InMemoryFilesystem(),
+        appDataRoot: '/app-data',
+        generateHostId: () => 'abcdefghijklmnop',
+      ),
+      listNetworkAddresses: () async => const [
+        ConnectNetworkAddress(
+          name: 'Wi-Fi',
+          address: '192.168.1.20',
+          isLoopback: false,
+          isIpv4: true,
+        ),
+      ],
+      username: 'alice',
+      displayName: 'Alice desktop',
+      appDataRoot: '/app-data',
+    );
+    addTearDown(cubit.close);
+
+    await cubit.openQrSession();
+    await cubit.retryEmbeddedServer();
+
+    expect(server.restarts, 1);
+    expect(cubit.state.canPair, isFalse);
+    expect(cubit.state.loading, isFalse);
+    expect(cubit.state.hasError, isFalse);
+  });
+
   test('saving extra endpoints updates the active QR offer', () async {
     var offer = _offer();
     final agent = ConnectAgentController(
@@ -220,7 +284,7 @@ void main() {
     );
     final cubit = ConnectCubit(
       agent: agent,
-      embeddedServer: _listeningServer.toHandle(),
+      embeddedServer: FakeEmbeddedServer(),
       deviceStore: _deviceStore(),
       settingsStore: ConnectSettingsStore(
         fs: InMemoryFilesystem(),
@@ -278,7 +342,7 @@ void main() {
         regenerateQr: () async {},
         updateExtraEndpoints: (_) async {},
       ),
-      embeddedServer: _listeningServer.toHandle(),
+      embeddedServer: FakeEmbeddedServer(),
       deviceStore: deviceStore,
       settingsStore: ConnectSettingsStore(
         fs: InMemoryFilesystem(),

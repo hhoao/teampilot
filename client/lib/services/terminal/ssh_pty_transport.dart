@@ -86,28 +86,4 @@ class SshPtyTransport implements TerminalTransport {
     );
     return SshPtyTransport(session: session);
   }
-
-  static String buildSessionCommand(
-    String command, {
-    String? workingDirectory,
-    Map<String, String>? environment,
-  }) {
-    final parts = <String>[];
-    if (environment != null && environment.isNotEmpty) {
-      for (final entry in environment.entries) {
-        parts.add('export ${entry.key}=${_shellQuote(entry.value)}');
-      }
-    }
-    if (workingDirectory != null && workingDirectory.isNotEmpty) {
-      parts.add('cd ${_shellQuote(workingDirectory)}');
-    }
-    parts.add(command);
-    return parts.join(' && ');
-  }
-
-  static String _shellQuote(String arg) {
-    if (arg.isEmpty) return "''";
-    if (!arg.contains("'")) return "'$arg'";
-    return "'${arg.replaceAll("'", "'\"'\"'")}'";
-  }
 }

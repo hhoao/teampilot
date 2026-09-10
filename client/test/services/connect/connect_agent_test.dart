@@ -13,6 +13,7 @@ import 'package:teampilot/services/connect/pairing_certificate.dart';
 import 'package:teampilot/services/connect/pairing_http.dart';
 import 'package:teampilot/services/connect/pairing_token_gate.dart';
 
+import '../../support/fake_embedded_server.dart';
 import '../../support/in_memory_filesystem.dart';
 
 void main() {
@@ -38,7 +39,7 @@ void main() {
   }) => ConnectAgent(
     embeddedServer:
         embeddedServer ??
-        _FakeEmbeddedServer(
+        FakeEmbeddedServer(
           isListening: true,
           port: 2222,
           hostKeyFingerprints: const ['SHA256:host-key'],
@@ -62,7 +63,7 @@ void main() {
   test('offer is v2 with emb and the embedded port when the server is up',
       () async {
     final connectAgent = agent(
-      embeddedServer: _FakeEmbeddedServer(
+      embeddedServer: FakeEmbeddedServer(
         isListening: true,
         port: 54321,
         hostKeyFingerprints: const ['SHA256:abc'],
@@ -87,7 +88,7 @@ void main() {
   test('does not mint or bind when the embedded server is not listening',
       () async {
     final connectAgent = agent(
-      embeddedServer: _FakeEmbeddedServer(
+      embeddedServer: FakeEmbeddedServer(
         isListening: false,
         port: 0,
         hostKeyFingerprints: const ['SHA256:abc'],
@@ -109,7 +110,7 @@ void main() {
     'does not mint or bind when the host key has no SHA256 fingerprint',
     () async {
       final connectAgent = agent(
-        embeddedServer: _FakeEmbeddedServer(
+        embeddedServer: FakeEmbeddedServer(
           isListening: true,
           port: 54321,
           hostKeyFingerprints: const ['md5:unsupported'],
@@ -130,7 +131,7 @@ void main() {
 
   test('mints a LAN offer bound only to the advertised address', () async {
     final connectAgent = agent(
-      embeddedServer: _FakeEmbeddedServer(
+      embeddedServer: FakeEmbeddedServer(
         isListening: true,
         port: 2222,
         hostKeyFingerprints: const ['SHA256:host-key'],
@@ -490,7 +491,7 @@ void main() {
 
     test('ssh dial target is the embedded server while it is listening',
         () async {
-      final server = _FakeEmbeddedServer(
+      final server = FakeEmbeddedServer(
         isListening: true,
         port: 54321,
         hostKeyFingerprints: const ['SHA256:abc'],
@@ -604,23 +605,6 @@ void main() {
 
 /// Test double for [EmbeddedSshServerHandle]; [isListening] is mutable so a
 /// test can flip the server down mid-run.
-class _FakeEmbeddedServer implements EmbeddedSshServerHandle {
-  _FakeEmbeddedServer({
-    required this.isListening,
-    required this.port,
-    required this.hostKeyFingerprints,
-  });
-
-  @override
-  bool isListening;
-
-  @override
-  final int port;
-
-  @override
-  final List<String> hostKeyFingerprints;
-}
-
 Future<void> _start(ConnectAgent agent) => agent.startQrSession(
   advertiseAddress: '192.168.1.20',
   username: 'alice',

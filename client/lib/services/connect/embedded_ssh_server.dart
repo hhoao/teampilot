@@ -41,6 +41,10 @@ abstract class EmbeddedSshServerHandle {
   /// OpenSSH-style SHA256 fingerprints of the host key, for the pairing
   /// offer's verification UI.
   List<String> get hostKeyFingerprints;
+
+  /// Stops and starts the server — the retry affordance for a failed start
+  /// (e.g. the persisted port was occupied and the re-pick also failed).
+  Future<void> restart();
 }
 
 /// Thrown when the embedded server cannot bind a port — after the single

@@ -7,7 +7,6 @@ import '../services/connect/connect_settings_store.dart';
 import '../services/connect/embedded_ssh_server.dart';
 import '../services/connect/paired_device_store.dart';
 import '../services/connect/ssh_pairing_offer.dart';
-import '../services/connect/sshd_presence.dart';
 
 typedef ConnectAgentStartQrSession =
     Future<void> Function({
@@ -132,11 +131,27 @@ class ConnectPairedDevice extends Equatable {
   List<Object?> get props => [deviceId, name];
 }
 
+/// Snapshot of the embedded connection server's reachability state, mirrored
+/// from [EmbeddedSshServerHandle] for the Connect UI.
+///
+/// Formerly `SshdPresenceSnapshot` from the deleted system-sshd probe; only
+/// the value shape survived the embedded-server migration.
+class SshdPresenceSnapshot {
+  const SshdPresenceSnapshot({
+    required this.listening,
+    required this.port,
+    required this.fingerprints,
+  });
+
+  final bool listening;
+  final int port;
+  final List<String> fingerprints;
+}
+
 const _initialSshd = SshdPresenceSnapshot(
   listening: false,
   port: 22,
   fingerprints: [],
-  enableHint: '',
 );
 
 class ConnectState extends Equatable {
@@ -201,7 +216,6 @@ class ConnectState extends Equatable {
     sshd.listening,
     sshd.port,
     sshd.fingerprints,
-    sshd.enableHint,
     offer?.encode(),
     networkAddresses,
     selectedAddress,
@@ -304,6 +318,20 @@ class ConnectCubit extends Cubit<ConnectState> {
         emit(state.copyWith(loading: false, hasError: true, clearOffer: true));
       }
     }
+  }
+
+  /// The retry affordance for a failed embedded-server start: restart the
+  /// server, then re-mirror its state (and mint a new offer when it listens).
+  Future<void> retryEmbeddedServer() async {
+    if (!_qrSessionVisible) return;
+    emit(state.copyWith(loading: true, hasError: false, clearOffer: true));
+    try {
+      await _embeddedServer.restart();
+    } on Object {
+      // Keep going: refresh() below re-mirrors the handle, so a still-down
+      // server lands the UI back on the retry affordance.
+    }
+    await refresh();
   }
 
   Future<void> selectAddress(String address) async {
@@ -436,8 +464,7 @@ class ConnectCubit extends Cubit<ConnectState> {
     appDataRoot: _appDataRoot,
   );
 
-  /// The presence state mirrored from the embedded server handle. The
-  /// snapshot value type stays until the Connect UI migrates off it.
+  /// The presence state mirrored from the embedded server handle.
   SshdPresenceSnapshot _presenceSnapshot() {
     final listening = _embeddedServer.isListening;
     return SshdPresenceSnapshot(
@@ -448,7 +475,6 @@ class ConnectCubit extends Cubit<ConnectState> {
                 .where((value) => value.startsWith('SHA256:'))
                 .toList(growable: false)
           : const <String>[],
-      enableHint: '',
     );
   }
 

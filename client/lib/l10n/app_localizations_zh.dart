@@ -8345,7 +8345,13 @@ class AppLocalizationsZh extends AppLocalizations {
   String get connectRemoteReadyStatus => '局域网和远程';
 
   @override
-  String get connectSshdDown => '未检测到 OpenSSH，请先开启远程登录或 sshd。';
+  String get connectSshdDown => '内嵌连接服务启动失败。请重试或重启应用。';
+
+  @override
+  String get connectSshdRetry => '重试';
+
+  @override
+  String get connectRepairHint => '桌面端已升级——请重新扫码配对以恢复连接。';
 
   @override
   String get connectScanHint => '在手机上的 TeamPilot 中扫描此码。';
@@ -8403,9 +8409,6 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get connectQrEnlargeHint => '点击二维码可放大后再扫。';
-
-  @override
-  String get connectCheckAgain => '重新检查';
 
   @override
   String get connectCopyLink => '复制链接';
