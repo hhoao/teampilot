@@ -629,6 +629,7 @@ class _RightToolsLifecycleHostState extends State<RightToolsLifecycleHost> {
   }
 
   void _warmGit() {
+    if (!mounted) return;
     final scope = _scope;
     final tools = scope?.tools?.context;
     if (scope == null || tools == null) return;

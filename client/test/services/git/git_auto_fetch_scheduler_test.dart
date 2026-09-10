@@ -127,4 +127,30 @@ void main() {
       scheduler.dispose();
     });
   });
+
+  test('dispose during in-flight fetch suppresses onFetched', () {
+    fakeAsync((async) {
+      gate = Completer<void>();
+      var fetchCalls = 0;
+      var onFetchedCalls = 0;
+      final scheduler = GitAutoFetchScheduler(
+        fetch: (dir) async {
+          fetchCalls++;
+          await gate!.future;
+        },
+        onFetched: () => onFetchedCalls++,
+        interval: const Duration(minutes: 5),
+      )..start('/repo');
+      expect(fetchCalls, 1);
+
+      // Host unmounts while the fetch is still running.
+      scheduler.dispose();
+      gate!.complete();
+      async.flushMicrotasks();
+      gate = null;
+
+      expect(onFetchedCalls, 0,
+          reason: 'onFetched touches the disposed host widget context');
+    });
+  });
 }

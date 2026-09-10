@@ -25,6 +25,7 @@ class GitAutoFetchScheduler {
   Timer? _timer;
   String? _targetRoot;
   bool _fetchInFlight = false;
+  bool _disposed = false;
 
   bool get isRunning => _timer != null;
   String? get targetRoot => _targetRoot;
@@ -48,17 +49,22 @@ class GitAutoFetchScheduler {
   void dispose() {
     stop();
     _targetRoot = null;
+    _disposed = true;
   }
 
   @visibleForTesting
   void tick() => _fetchNow();
 
   Future<void> _fetchNow() async {
+    if (_disposed) return;
     final root = _targetRoot;
     if (root == null || _fetchInFlight) return;
     _fetchInFlight = true;
     try {
       await _fetch(root).timeout(timeout);
+      // 在途 fetch 无法取消；dispose（宿主卸载）后不再触发回调——
+      // onFetched 通常会触达宿主的 widget context，此时已失效。
+      if (_disposed) return;
       _onFetched();
     } on Exception catch (e) {
       appLogger.w('[GitAutoFetch] fetch failed for $root: $e');
