@@ -92,4 +92,36 @@ void main() {
     client.close();
     await server.close();
   });
+
+  // The in-memory listing is one-shot and returns the whole directory in a
+  // single batch, so a directory big enough to encode over the 256 KiB SFTP
+  // packet limit forces the server to page: every NAME packet must stay
+  // under the limit (the fork's client destroys the channel otherwise), and
+  // the client's listdir loop must still see every entry across the batches
+  // until the EOF status ends it.
+  test(
+      'large directory is served as multiple READDIR batches under the packet limit',
+      () async {
+    const entryCount = 6000;
+    fs.createDirectory('/big');
+    for (var i = 0; i < entryCount; i++) {
+      fs.createFile('/big/dir-entry-$i');
+    }
+    // The whole-directory NAME packet would be far over the limit; without
+    // paging the channel dies and listdir never completes.
+    final (client, server) = await connect();
+    final sftp = await client.sftp();
+    final names = await sftp.listdir('/big');
+    // A set both checks membership cheaply and, compared against the raw
+    // count, proves no entry was served twice across the batches.
+    final filenames = names.map((n) => n.filename).toSet();
+    expect(names.length, entryCount + 2);
+    expect(filenames.length, entryCount + 2);
+    expect(filenames, containsAll(const ['.', '..']));
+    for (var i = 0; i < entryCount; i++) {
+      expect(filenames, contains('dir-entry-$i'));
+    }
+    client.close();
+    await server.close();
+  });
 }

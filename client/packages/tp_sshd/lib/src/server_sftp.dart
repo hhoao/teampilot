@@ -1,4 +1,6 @@
 import 'dart:async';
+import 'dart:collection';
+import 'dart:convert';
 import 'dart:typed_data';
 
 import 'package:dartssh2/protocol.dart';
@@ -15,6 +17,22 @@ const _kSftpVersion = 3;
 /// is not counted.
 const _kMaxPacketLength = 256 * 1024;
 
+/// Byte budget for a READDIR NAME packet: the encoded payload of the reply
+/// (type + request id + count + the names) must stay at or under the
+/// [_kMaxPacketLength] limit, because the client destroys the channel on
+/// any larger incoming packet. The only way a single entry can exceed the
+/// budget on its own is a filename on the order of 128 KiB, which cannot
+/// have been created through this server (the client's own requests are
+/// under the limit); such an entry would end the listing early rather than
+/// kill the channel.
+const _kReadDirMaxPacketLength = _kMaxPacketLength;
+
+/// Encoded NAME-packet overhead per entry, used to amortize the per-entry
+/// size queries: a name costs its two strings (each a 4-byte length prefix
+/// plus the UTF-8 bytes) and its attributes (a flags word, plus whichever
+/// optional fields the attrs raise).
+const _kNameOverhead = 12;
+
 /// `SSH_FX_FILE_ALREADY_EXISTS`, the SFTPv3 code the fork's
 /// [SftpStatusCode] does not name (it stops at 8).
 const _sshFxFileAlreadyExists = 11;
@@ -30,6 +48,13 @@ const _sshFxFileAlreadyExists = 11;
 /// 0 (OK) and 1 (EOF) for every checked operation, and treats an empty DATA
 /// chunk as a protocol error, so short regions must be answered with the
 /// bytes that exist and a following request with EOF.
+///
+/// READDIR replies are the one place where the server, not the client,
+/// controls a packet's size: a filesystem may hand back a whole directory in
+/// one batch, but a NAME packet must stay under the 256 KiB limit or the
+/// client destroys the channel. Directory handles therefore buffer the
+/// leftover names and serve successive READDIR requests bounded batches;
+/// the client's read-until-EOF listdir loop is the protocol's own paging.
 ///
 /// Requests are dispatched as they finish parsing (not one-at-a-time), since
 /// the client pipelines reads and writes; every reply is written in a single
@@ -264,12 +289,19 @@ class _SftpServerSession {
   }
 
   Future<void> _handleReadDir(SftpReadDirPacket request) async {
-    final listing = _handles[_decodeHandle(request.handle)]?.listing;
+    final entry = _handles[_decodeHandle(request.handle)];
+    final listing = entry?.listing;
     if (listing == null) {
       _sendStatus(request.requestId, SftpStatusCode.failure, 'Invalid handle');
       return;
     }
-    final names = await listing.read();
+    // Refill from the listing only once its previous batch is drained: a
+    // one-shot listing reports end-of-directory on the refill after its
+    // first (possibly whole-directory) batch.
+    if (entry!.residualNames.isEmpty) {
+      entry.residualNames.addAll(await listing.read());
+    }
+    final names = entry.takeReadDirBatch();
     if (names.isEmpty) {
       // The fork's client ends its listdir loop on an EOF status.
       _sendStatus(request.requestId, SftpStatusCode.eof, 'End of directory');
@@ -388,6 +420,20 @@ class _SftpServerSession {
 
   void _sendPacket(SftpPacket packet) {
     final payload = packet.encode();
+    // The fork's client destroys the channel on any incoming packet over
+    // the limit, so shipping an over-limit reply would kill the session on
+    // the client's terms — fail it here instead. (READDIR replies are
+    // batched down by _handleReadDir; READ replies are bounded by the
+    // client's own request length, which is under the limit by
+    // construction.)
+    if (payload.length > _kMaxPacketLength) {
+      _channel.printDebug?.call(
+        'tp_sshd: closing sftp subsystem: outgoing packet of '
+        '${payload.length} bytes exceeds the $_kMaxPacketLength byte limit',
+      );
+      _channel.close();
+      return;
+    }
     final framed = BytesBuilder(copy: false)
       ..add(_lengthPrefix(payload.length))
       ..add(payload);
@@ -402,7 +448,9 @@ class _SftpServerSession {
 }
 
 /// One open handle: a file or a directory listing, both remembering the path
-/// they were opened at (FSTAT answers from it).
+/// they were opened at (FSTAT answers from it). Directory handles also carry
+/// the names a listing batch produced but a single READDIR reply could not
+/// fit under the packet limit; the next READDIR drains them first.
 class _SftpHandleEntry {
   _SftpHandleEntry.file(this.path, SftpHandle file)
       : file = file,
@@ -421,6 +469,52 @@ class _SftpHandleEntry {
   /// The open directory listing; `null` for file handles.
   final SftpDirListing? listing;
 
+  /// Directory names already read out of [listing] but not yet sent, in
+  /// order. Empty for file handles and for drained directories.
+  final residualNames = Queue<SftpName>();
+
+  /// Removes and returns the longest prefix of [residualNames] whose NAME
+  /// packet stays within the READDIR byte budget.
+  List<SftpName> takeReadDirBatch() {
+    // type byte + request id + name count.
+    const headerLength = 1 + 4 + 4;
+    var length = headerLength;
+    final batch = <SftpName>[];
+    while (residualNames.isNotEmpty) {
+      final name = residualNames.first;
+      final nameLength =
+          _utf8LengthOf(name.filename) + _utf8LengthOf(name.longname);
+      final nextLength =
+          length + nameLength + _kNameOverhead + _encodedAttrsLength(name.attr);
+      if (nextLength > _kReadDirMaxPacketLength) break;
+      length = nextLength;
+      batch.add(residualNames.removeFirst());
+    }
+    return batch;
+  }
+
   Future<void> close() =>
       file?.close() ?? listing?.close() ?? Future<void>.value();
+}
+
+/// The length of [string] in UTF-8, the encoding the wire uses.
+int _utf8LengthOf(String string) => utf8.encode(string).length;
+
+/// The encoded size of [attrs] on the wire: a 4-byte flags word plus
+/// whichever optional fields their flag bits raise (size 8, uid/gid 4 + 4,
+/// permissions 4, times 4 + 4, plus the extended-pairs block).
+int _encodedAttrsLength(SftpFileAttrs attrs) {
+  var length = 4;
+  if (attrs.size != null) length += 8;
+  if (attrs.userID != null && attrs.groupID != null) length += 8;
+  if (attrs.mode != null) length += 4;
+  if (attrs.accessTime != null && attrs.modifyTime != null) length += 8;
+  final extended = attrs.extended;
+  if (extended != null) {
+    length += 4;
+    for (final pair in extended.entries) {
+      length += 4 + _utf8LengthOf(pair.key) + 4 + _utf8LengthOf(pair.value);
+    }
+  }
+  return length;
 }

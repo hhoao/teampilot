@@ -13,6 +13,28 @@ import 'package:tp_sshd/tp_sshd.dart';
 class MemorySftpFileSystem implements SftpFileSystem {
   final _nodes = <String, _MemoryNode>{'/': _MemoryNode.directory()};
 
+  /// Creates an empty regular file at [path] (parents must already exist),
+  /// for tests that need a directory with many entries without opening a
+  /// connection per file.
+  void createFile(String path) {
+    final normalized = _normalize(path);
+    final parent = _nodes[_parentOf(normalized)]!;
+    if (!parent.isDirectory) {
+      throw StateError('not a directory: $path');
+    }
+    _nodes[normalized] = _MemoryNode.file();
+  }
+
+  /// Creates an empty directory at [path] (the parent must already exist).
+  void createDirectory(String path) {
+    final normalized = _normalize(path);
+    final parent = _nodes[_parentOf(normalized)]!;
+    if (!parent.isDirectory) {
+      throw StateError('not a directory: $path');
+    }
+    _nodes[normalized] = _MemoryNode.directory();
+  }
+
   @override
   Future<SftpFileAttrs> stat(String path) async {
     final node = _nodes[_normalize(path)];

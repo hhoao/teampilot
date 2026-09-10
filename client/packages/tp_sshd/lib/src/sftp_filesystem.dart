@@ -10,6 +10,16 @@ import 'package:dartssh2/protocol.dart'
 /// normalization. Implementations report failures by throwing the typed
 /// [SftpFileSystemException] subclasses (mapped onto wire status codes) —
 /// anything else surfaces to the client as a generic `SSH_FX_FAILURE`.
+///
+/// ## Concurrency
+///
+/// The SFTP session dispatches requests as it parses them, without waiting
+/// for earlier ones to finish: the fork's client pipelines reads and writes
+/// (dozens of requests in flight at once), so any of these methods may run
+/// concurrently with any other — including several operations on the same
+/// path or the same handle. Implementations must not assume sequential or
+/// ordered invocation; one that needs serialization (for example a
+/// transactional store) has to do its own locking.
 abstract class SftpFileSystem {
   /// Attributes of the file or directory at [path].
   Future<SftpFileAttrs> stat(String path);
@@ -61,6 +71,12 @@ abstract class SftpHandle {
 /// batch marks the end of the directory.
 abstract class SftpDirListing {
   /// The next batch of entries, or an empty list once exhausted.
+  ///
+  /// A batch may be of any size: the SFTP server re-batches whatever [read]
+  /// returns so every NAME packet it sends stays under the 256 KiB SFTP
+  /// packet limit (the client's READDIR-until-EOF loop is the protocol's own
+  /// paging). An implementation may therefore return a whole directory in
+  /// one batch and still be fully served.
   Future<List<SftpName>> read();
 
   /// Releases the listing. Called exactly once, like [SftpHandle.close].
