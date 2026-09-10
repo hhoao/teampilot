@@ -582,6 +582,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get gitNotARepository => 'This folder is not a Git repository';
 
   @override
+  String get gitInitializeRepository => 'Create Git repository';
+
+  @override
   String get gitNotInstalled =>
       'Git was not found. Install Git to use source control.';
 

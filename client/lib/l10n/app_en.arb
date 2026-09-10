@@ -225,6 +225,7 @@
   "gitChanges": "Changes",
   "gitNoChanges": "No changes",
   "gitNotARepository": "This folder is not a Git repository",
+  "gitInitializeRepository": "Create Git repository",
   "gitNotInstalled": "Git was not found. Install Git to use source control.",
   "gitCommit": "Commit",
   "gitCommitMessageHint": "Message (commit to \"{branch}\")",

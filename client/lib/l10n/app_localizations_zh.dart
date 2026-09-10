@@ -555,6 +555,9 @@ class AppLocalizationsZh extends AppLocalizations {
   String get gitNotARepository => '当前文件夹不是 Git 仓库';
 
   @override
+  String get gitInitializeRepository => '创建 Git 仓库';
+
+  @override
   String get gitNotInstalled => '未找到 Git。安装 Git 后即可使用源代码管理。';
 
   @override

@@ -1154,6 +1154,12 @@ abstract class AppLocalizations {
   /// **'This folder is not a Git repository'**
   String get gitNotARepository;
 
+  /// No description provided for @gitInitializeRepository.
+  ///
+  /// In en, this message translates to:
+  /// **'Create Git repository'**
+  String get gitInitializeRepository;
+
   /// No description provided for @gitNotInstalled.
   ///
   /// In en, this message translates to:

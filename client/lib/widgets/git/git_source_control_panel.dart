@@ -564,6 +564,13 @@ class _GitRepoBodyState extends State<_GitRepoBody> {
       return _GitCenteredHint(
         icon: Icons.source_outlined,
         text: l10n.gitNotARepository,
+        action: TextButton.icon(
+          onPressed: state.busy
+              ? null
+              : () => unawaited(_cubit.initializeRepository()),
+          icon: const Icon(Icons.create_new_folder_outlined),
+          label: Text(l10n.gitInitializeRepository),
+        ),
       );
     }
 
@@ -756,10 +763,11 @@ class _GitRepoBodyState extends State<_GitRepoBody> {
 }
 
 class _GitCenteredHint extends StatelessWidget {
-  const _GitCenteredHint({required this.icon, required this.text});
+  const _GitCenteredHint({required this.icon, required this.text, this.action});
 
   final IconData icon;
   final String text;
+  final Widget? action;
 
   @override
   Widget build(BuildContext context) {
@@ -777,6 +785,7 @@ class _GitCenteredHint extends StatelessWidget {
               textAlign: TextAlign.center,
               style: TpTextStyles.of(context).smColored(cs.onSurfaceVariant),
             ),
+            if (action != null) ...[const SizedBox(height: 12), action!],
           ],
         ),
       ),

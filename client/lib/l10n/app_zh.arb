@@ -204,6 +204,7 @@
   "gitChanges": "要提交的变更",
   "gitNoChanges": "没有更改",
   "gitNotARepository": "当前文件夹不是 Git 仓库",
+  "gitInitializeRepository": "创建 Git 仓库",
   "gitNotInstalled": "未找到 Git。安装 Git 后即可使用源代码管理。",
   "gitCommit": "提交",
   "gitCommitMessageHint": "消息（提交到 \"{branch}\"）",
