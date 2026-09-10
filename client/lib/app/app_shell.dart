@@ -1075,6 +1075,12 @@ Future<AppShell> buildAppShell({
     }(),
   );
 
+  // Retried-bootstrap teardown seam: when wiring below fails after the
+  // catalog runtime is assembled, its mutation bus must unregister its relay
+  // from the app-lifetime central dispatcher, so a retried bootstrap's
+  // events never reach this (dead) shell's listeners.
+  CatalogRuntime? catalogRuntime;
+
   try {
     Future<void> persistSshHomePathCacheIfLive() async {
       final home = defaultTargetResolver();
@@ -1806,7 +1812,7 @@ Future<AppShell> buildAppShell({
     );
     teammateBusMcpGateway.attachAgentEventGateway(agentEventGateway);
 
-    final catalogRuntime = CatalogRuntime.assemble(
+    catalogRuntime = CatalogRuntime.assemble(
       sessions: sessionRepo,
       runtimeContexts: runtimeContextRegistry,
       skillRepository: skillRepo,
@@ -2699,6 +2705,10 @@ Future<AppShell> buildAppShell({
     managedProviderControlPlaneLease.transferOwnership();
     return shell;
   } on Object {
+    // The failed shell is discarded: stop its catalog mutation bus before a
+    // bootstrap retry constructs a new one, so the app-lifetime dispatcher
+    // no longer relays mutations into the dead shell's cubits.
+    await catalogRuntime?.bus.close();
     await managedProviderControlPlaneLease.closeIfOwned();
     rethrow;
   }

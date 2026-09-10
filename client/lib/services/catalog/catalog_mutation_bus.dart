@@ -45,19 +45,23 @@ class CatalogMutationBus {
     // constructing the bus bare), emit() feeds the controller directly.
     final d = dispatcher;
     if (d != null) {
+      _relay = _RelayHandler(_controller);
       d.registerFamily<CatalogMutationKind>(
         CatalogMutationKind.mutated.runtimeType,
-        _RelayHandler(_controller),
+        _relay!,
       );
     }
   }
 
   final Dispatcher? _dispatcher;
   final StreamController<CatalogMutationEvent> _controller;
+  _RelayHandler? _relay;
+  bool _closed = false;
 
   Stream<CatalogMutationEvent> listen() => _controller.stream;
 
   void emit(CatalogMutationEvent event) {
+    if (_closed) return;
     final d = _dispatcher;
     if (d != null) {
       d.dispatch(event);
@@ -65,14 +69,43 @@ class CatalogMutationBus {
       _controller.add(event);
     }
   }
+
+  /// Unregisters this bus's relay handler from the dispatcher (if wired) and
+  /// closes the local controller.
+  ///
+  /// The app-lifetime central dispatcher outlives shells: a retried bootstrap
+  /// builds a new bus while the failed shell's relay handler would otherwise
+  /// stay registered forever, fanning mutations into the dead shell's
+  /// listeners (legacy bare buses never received events after their emitters
+  /// died). Idempotent.
+  Future<void> close() async {
+    if (_closed) return;
+    _closed = true;
+    final relay = _relay;
+    if (relay != null) {
+      // Detach first so a handler snapshot taken mid-delivery by the
+      // dispatcher's consume loop no-ops even after unregister raced it.
+      relay.detach();
+      _dispatcher?.unregister(relay);
+    }
+    await _controller.close();
+  }
 }
 
 /// Copies dispatcher-delivered events back into the bus's local controller.
 class _RelayHandler implements EventHandler<CatalogMutationEvent> {
-  const _RelayHandler(this._controller);
+  _RelayHandler(this._controller);
 
   final StreamController<CatalogMutationEvent> _controller;
+  bool _detached = false;
+
+  /// Stops relaying; used by [CatalogMutationBus.close] so in-flight
+  /// dispatcher deliveries cannot reach a disposed bus's listeners.
+  void detach() => _detached = true;
 
   @override
-  void handle(CatalogMutationEvent event) => _controller.add(event);
+  void handle(CatalogMutationEvent event) {
+    if (_detached) return;
+    _controller.add(event);
+  }
 }

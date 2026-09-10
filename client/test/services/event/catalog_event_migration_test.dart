@@ -32,6 +32,38 @@ void main() {
     expect(legacy.single, same(e));
     expect(viaDispatcher.single, same(e));
   });
+
+  test('closed bus no longer receives dispatcher events', () async {
+    // Bootstrap-retry regression: the app-lifetime dispatcher outlives a
+    // failed shell; its (disposed) bus must not relay events into the dead
+    // shell's listeners, while handlers registered directly on the
+    // dispatcher still receive them.
+    final d = AsyncDispatcher()..start();
+    final oldBus = CatalogMutationBus(dispatcher: d);
+
+    final stale = <CatalogMutationEvent>[];
+    oldBus.listen().listen(stale.add);
+    await oldBus.close();
+
+    final fresh = <CatalogMutationEvent>[];
+    d.registerFamily<CatalogMutationKind>(
+      CatalogMutationKind.mutated.runtimeType,
+      _Handler(fresh),
+    );
+
+    const e = CatalogMutationEvent(
+      kind: 'skill',
+      op: CatalogOp.create,
+      ids: ['local:x'],
+      workspaceId: 'w-1',
+    );
+    d.dispatch(e);
+    await d.stop();
+    await Future<void>.delayed(Duration.zero);
+
+    expect(stale, isEmpty);
+    expect(fresh.single, same(e));
+  });
 }
 
 class _Handler implements EventHandler<CatalogMutationEvent> {
