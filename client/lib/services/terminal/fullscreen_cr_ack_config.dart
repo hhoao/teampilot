@@ -5,7 +5,8 @@ enum FullscreenCrAckStrategy {
 
   /// Staged text stays on [FullscreenPromptAnchor.row] as history; a new
   /// [FullscreenCrAckConfig.composerPrefix] row appears below (codex).
-  /// Not submitted while [needle] is still the body of a composer row.
+  /// Not submitted while [needle] is still staged in the live composer —
+  /// at the anchor row or in the bottommost composer chrome row.
   composerMovesDown,
 
   /// Skip grid polling after CR; rely on paste settle timing only.

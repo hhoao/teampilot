@@ -244,6 +244,32 @@ bool _isPrefixOnlyRow(TerminalScreenGrid grid, int row, String prefix) {
   return text.substring(prefix.length).trim().isEmpty;
 }
 
+/// True when [needle] is still staged in the live composer: either at the
+/// paste [FullscreenPromptAnchor.row] on a composer-prefixed row, or in the
+/// bottommost composer chrome row (where a relayout shifts the input box).
+///
+/// Codex echoes submitted user turns in the transcript with the same `›`
+/// prefix as its composer — a needle on any other prefixed row is history,
+/// not staged input (verified against real Codex 2026-09-07).
+bool isNeedleStagedInLiveComposer(
+  TerminalScreenGrid grid,
+  FullscreenPromptAnchor anchor, {
+  required String composerPrefix,
+  int scanRows = 24,
+}) {
+  final prefix = composerPrefix.trim();
+  if (prefix.isEmpty || anchor.needle.isEmpty) return false;
+  final needleRunes = anchor.needle.runes.toList();
+  final liveRow = bottomComposerChromeRow(grid, prefix, scanRows: scanRows);
+  if (liveRow != null &&
+      _findNeedleStartCol(grid, liveRow, needleRunes, composerPrefix: prefix) >=
+          0) {
+    return true;
+  }
+  return isFullscreenPromptAtAnchor(grid, anchor, composerPrefix: prefix) &&
+      _rowStartsWith(grid, anchor.row, prefix);
+}
+
 bool isFullscreenPromptSubmitted(
   TerminalScreenGrid grid,
   FullscreenPromptAnchor anchor, {
@@ -264,9 +290,9 @@ bool isFullscreenPromptSubmitted(
       final prefix = composerPrefix?.trim();
       if (prefix != null &&
           prefix.isNotEmpty &&
-          isNeedleStagedInComposer(
+          isNeedleStagedInLiveComposer(
             grid,
-            anchor.needle,
+            anchor,
             composerPrefix: prefix,
             scanRows: scanRows,
           )) {
