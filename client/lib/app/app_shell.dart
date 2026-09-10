@@ -471,6 +471,7 @@ class AppShell {
     required this.discoverySettingsCubit,
     required this.reinstallStorageContext,
     required this.bootstrapAppData,
+    this.catalogRuntime,
     required this.cliToolRegistry,
     required this.homeWorkspaceUiCache,
     required this.automationCubit,
@@ -571,6 +572,13 @@ class AppShell {
   final DiscoverySettingsCubit discoverySettingsCubit;
   final Future<void> Function() reinstallStorageContext;
   final Future<void> Function() bootstrapAppData;
+
+  /// Retried-bootstrap teardown seam: the assembled catalog runtime, exposed so
+  /// a bootstrap failure after [buildAppShell] succeeded can close its
+  /// mutation bus (unregistering the relay from the app-lifetime central
+  /// dispatcher) before a retry constructs a new shell. Null only when
+  /// construction failed before [CatalogRuntime.assemble] ran.
+  final CatalogRuntime? catalogRuntime;
   final AutomationCubit automationCubit;
   final AutomationScheduler automationScheduler;
   final CommandBus commandBus;
@@ -2691,6 +2699,7 @@ Future<AppShell> buildAppShell({
       discoverySettingsCubit: discoverySettingsCubit,
       reinstallStorageContext: reinstallStorageContext,
       bootstrapAppData: bootstrapAppData,
+      catalogRuntime: catalogRuntime,
       homeWorkspaceUiCache: homeWorkspaceUiCache,
       automationCubit: automationCubit,
       automationScheduler: automationScheduler,
@@ -2836,6 +2845,11 @@ class _TeamPilotBootstrapState extends State<TeamPilotBootstrap> {
     } on Object catch (error, stackTrace) {
       await builtShell?.connectCubit?.close();
       await builtShell?.managedProviderControlPlane.close();
+      // The failed shell is discarded: stop its catalog mutation bus before a
+      // bootstrap retry constructs a new one, so the app-lifetime dispatcher
+      // no longer relays mutations into the dead shell's cubits (same seam as
+      // the buildAppShell failure path).
+      await builtShell?.catalogRuntime?.bus.close();
       appLogger.e(
         '[boot] buildAppShell failed',
         error: error,
