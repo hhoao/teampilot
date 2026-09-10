@@ -1,6 +1,8 @@
 import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
+import 'package:teampilot/models/ssh_profile.dart';
+import 'package:teampilot/services/cli/flashskyai/remote_flashskyai_command_builder.dart';
 import 'package:teampilot/services/host/host_interactive_shell.dart';
 import 'package:teampilot/models/workspace_terminal_session_spec.dart';
 import 'package:teampilot/repositories/ssh_credential_store.dart';
@@ -56,6 +58,58 @@ void main() {
       );
       expect(target.kind.name, 'wsl');
       expect(target.wslDistro, 'Ubuntu');
+    });
+  });
+
+  group('WorkspaceShellConnector.buildShellRemoteCommand', () {
+    test('embedded profile sends a bare shell request (no command)', () {
+      const profile = SshProfile(
+        id: 'e1',
+        name: 'desktop',
+        host: '127.0.0.1',
+        username: 'u',
+        embeddedTarget: true,
+      );
+
+      expect(
+        WorkspaceShellConnector.buildShellRemoteCommand(
+          profile: profile,
+          executable: HostInteractiveShell.remotePosixExecutable,
+          arguments: const ['-l'],
+          workingDirectory: '/remote',
+          useLoginShell: true,
+        ),
+        isNull,
+      );
+    });
+
+    test('legacy profile keeps the pre-codec POSIX login-shell command', () {
+      const profile = SshProfile(
+        id: 'p1',
+        name: 'box',
+        host: '127.0.0.1',
+        username: 'u',
+      );
+
+      final command = WorkspaceShellConnector.buildShellRemoteCommand(
+        profile: profile,
+        executable: HostInteractiveShell.remotePosixExecutable,
+        arguments: const ['-l'],
+        workingDirectory: '/remote',
+        useLoginShell: true,
+      );
+
+      expect(command, startsWith(r'TERM="${TERM:-xterm-256color}" bash -lc '));
+      // Byte-for-byte what the code built before the codec existed.
+      expect(
+        command,
+        RemoteFlashskyaiCommandBuilder().buildCommand(
+          remoteExecutablePath: HostInteractiveShell.remotePosixExecutable,
+          arguments: const ['-l'],
+          workingDirectory: '/remote',
+          useLoginShell: true,
+        ),
+      );
     });
   });
 }

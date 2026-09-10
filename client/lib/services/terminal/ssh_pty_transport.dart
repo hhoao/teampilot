@@ -69,9 +69,11 @@ class SshPtyTransport implements TerminalTransport {
     return controller.stream;
   }
 
+  /// Starts a remote PTY. [command] `null` opens a bare `shell` request —
+  /// the remote side picks the shell — instead of `exec`-ing a command.
   static Future<SshPtyTransport> start({
     required SshMemberSession memberSession,
-    required String command,
+    String? command,
     int columns = 80,
     int rows = 24,
     Map<String, String>? environment,
