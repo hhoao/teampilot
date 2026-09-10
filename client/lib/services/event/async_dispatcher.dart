@@ -27,14 +27,19 @@ import 'dispatcher.dart';
 /// - the idle consume loop parks on a completer instead of polling (YARN
 ///   threads block on the queue's `take()`).
 class AsyncDispatcher implements Dispatcher {
-  AsyncDispatcher({int warnDepth = 1000, void Function(int depth)? onWarn})
-    : _warnDepth = warnDepth,
-      _onWarn = onWarn;
+  AsyncDispatcher({
+    int warnDepth = 1000,
+    void Function(int depth)? onWarn,
+    AppLogger? logger,
+  }) : _warnDepth = warnDepth,
+       _onWarn = onWarn,
+       _logger = logger ?? appLogger;
 
   static const _tag = 'event-dispatcher';
 
   final int _warnDepth;
   final void Function(int depth)? _onWarn;
+  final AppLogger _logger;
   final Queue<DispatcherEvent<dynamic>> _queue = Queue();
   // Key: the family's kind enum Type (matches event.kind.runtimeType).
   final Map<Type, List<EventHandler<dynamic>>> _handlers = {};
@@ -42,6 +47,11 @@ class AsyncDispatcher implements Dispatcher {
   bool _running = false;
   bool _closed = false;
   bool _warned = false;
+  // Generation guard: each consume loop captures the current generation and
+  // exits as soon as a newer [start] bumped it. This keeps a single live
+  // consume loop even when start() races stop()'s drain window (only the
+  // current generation parks on the single idle slot, so nothing is orphaned).
+  int _generation = 0;
   Completer<void>? _idle;
   Future<void> _loopDone = Future<void>.value();
 
@@ -52,11 +62,15 @@ class AsyncDispatcher implements Dispatcher {
   Map<String, int> get handledCounts => Map.unmodifiable(_handledCounts);
 
   /// Starts the consume loop. No-op if already running.
+  ///
+  /// If a previous [stop] is still draining, its (older-generation) consume
+  /// loop exits immediately via the generation guard below, so only the
+  /// newest loop ever parks on the idle slot or consumes the queue.
   Future<void> start() async {
     if (_running) return;
     _running = true;
     _closed = false;
-    _loopDone = _consume();
+    _loopDone = _consume(generation: ++_generation);
   }
 
   @override
@@ -67,7 +81,7 @@ class AsyncDispatcher implements Dispatcher {
       if (!_warned) {
         _warned = true;
         final depth = _queue.length;
-        appLogger.w('$_tag queue depth $depth exceeds $_warnDepth');
+        _logger.w('$_tag queue depth $depth exceeds $_warnDepth');
         _onWarn?.call(depth);
       }
     } else {
@@ -105,9 +119,12 @@ class AsyncDispatcher implements Dispatcher {
     idle?.complete();
   }
 
-  Future<void> _consume() async {
+  Future<void> _consume({required int generation}) async {
     while (_running || _queue.isNotEmpty) {
       if (_queue.isEmpty) {
+        // A newer start() replaced this loop: exit instead of parking (an
+        // older-generation park would orphan the single idle slot).
+        if (generation != _generation) return;
         final idle = Completer<void>();
         _idle = idle;
         await idle.future;
@@ -121,7 +138,7 @@ class AsyncDispatcher implements Dispatcher {
     final kindType = event.kind.runtimeType;
     final family = _handlers[kindType];
     if (family == null || family.isEmpty) {
-      appLogger.d('$_tag no handler for $kindType');
+      _logger.d('$_tag no handler for $kindType');
       return;
     }
     // Snapshot: a handler may register/unregister during delivery.
@@ -130,10 +147,13 @@ class AsyncDispatcher implements Dispatcher {
         handler.handle(event);
       } catch (error, stackTrace) {
         // Error isolation: log and continue with the next handler/event.
-        appLogger.e(
+        // recordError: false — per-callback isolation must not surface global
+        // error toasts / reports (precedent: TerminalObservationBus).
+        _logger.e(
           '$_tag handler error for $kindType',
           error: error,
           stackTrace: stackTrace,
+          recordError: false,
         );
       }
     }

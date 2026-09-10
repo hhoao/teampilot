@@ -1,6 +1,9 @@
+import 'dart:io';
+
 import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/services/event/async_dispatcher.dart';
 import 'package:teampilot/services/event/dispatcher.dart';
+import 'package:teampilot/utils/logging/logger_utils.dart';
 
 enum _FamKind { ping, pong }
 
@@ -33,8 +36,32 @@ class _Recorder implements EventHandler<_FamEvent> {
 }
 
 class _ThrowingHandler implements EventHandler<_FamEvent> {
+  _ThrowingHandler([Object? error]) : error = error ?? StateError('boom');
+
+  final Object error;
+
   @override
-  void handle(_FamEvent event) => throw StateError('boom');
+  void handle(_FamEvent event) => throw error;
+}
+
+/// Captures `e(...)` calls so tests can assert the recordError flag without
+/// touching the singleton AppLogger (whose default path would surface global
+/// error toasts / reports for classified errors).
+class _SpyLogger implements AppLogger {
+  final errors = <({Object? error, bool recordError})>[];
+
+  @override
+  void e(
+    String message, {
+    Object? error,
+    StackTrace? stackTrace,
+    bool recordError = true,
+  }) {
+    errors.add((error: error, recordError: recordError));
+  }
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }
 
 void main() {
@@ -97,6 +124,43 @@ void main() {
     // A throwing handler neither blocks other handlers for the same event
     // nor subsequent events.
     expect(good.tags, ['1', '2']);
+  });
+
+  test('handler exception is logged without recording a global error', () async {
+    final spy = _SpyLogger();
+    final d = AsyncDispatcher(logger: spy)..start();
+    final good = _Recorder();
+    // A network-classified error would, via the default recordError: true,
+    // surface a global error toast (AppErrorUtils.showDecisionMessage).
+    d.registerFamily<_FamKind>(
+      _FamKind,
+      _ThrowingHandler(const SocketException('Connection refused')),
+    );
+    d.registerFamily<_FamKind>(_FamKind, good);
+    d.dispatch(_FamEvent(_FamKind.ping, DateTime(2026), '1'));
+    await d.stop();
+    expect(good.tags, ['1']); // isolation still holds
+    expect(spy.errors, hasLength(1));
+    // The side-effecting global-error path must NOT be triggered.
+    expect(spy.errors.single.recordError, isFalse);
+    expect(spy.errors.single.error, isA<SocketException>());
+  });
+
+  test('start during stop drain does not orphan the consume loop', () async {
+    final d = AsyncDispatcher()..start();
+    final r = _Recorder();
+    d.registerFamily<_FamKind>(_FamKind, r);
+    d.dispatch(_FamEvent(_FamKind.ping, DateTime(2026), '1'));
+    // stop() begins draining; before the old loop's wake microtask runs,
+    // start() spawns a newer-generation loop.
+    final draining = d.stop();
+    await d.start();
+    await draining;
+    // New generation is live: fresh events are delivered.
+    d.dispatch(_FamEvent(_FamKind.ping, DateTime(2026), '2'));
+    await d.stop();
+    expect(r.tags, ['1', '2']);
+    expect(d.queued, 0); // no orphaned loop holding/leaking queued events
   });
 
   test('stop drains queued events before closing', () async {
