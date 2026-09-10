@@ -48,7 +48,9 @@ class TranscriptChangeSignal {
   Timer? _debounceTimer;
   Timer? _pollTimer;
   String? _lastToken;
+  bool _watchStreamDied = false;
   Future<void> _chain = Future<void>.value();
+  Future<void> _watchTeardownChain = Future<void>.value();
 
   Future<void> start() async {
     if (_started) return;
@@ -65,7 +67,11 @@ class TranscriptChangeSignal {
     _pollTimer = null;
     await _stopWatch();
     _lastToken = null;
+    _watchStreamDied = false;
     _chain = Future<void>.value();
+    final teardown = _watchTeardownChain;
+    _watchTeardownChain = Future<void>.value();
+    await teardown;
   }
 
   Future<void> _arm() async {
@@ -121,6 +127,12 @@ class TranscriptChangeSignal {
         _watchSubs.add(
           treeWatch.events.listen(
             (_) => _scheduleDebouncedNotify(),
+            onDone: () {
+              // Dart's Directory.watch (Windows) closes silently after native
+              // buffer overflows instead of erroring. Without a fallback the
+              // signal goes permanently blind and live refresh never fires.
+              _onWatchStreamClosed();
+            },
             cancelOnError: false,
           ),
         );
@@ -130,6 +142,42 @@ class TranscriptChangeSignal {
       await _stopWatch();
       _startPoll();
     }
+  }
+
+  /// A watch event stream died (done or error). Fall back to polling for the
+  /// rest of this signal instance: re-arming the watch from the poll tick
+  /// cannot distinguish a dead backend from a healthy one, and would loop on
+  /// re-subscribing to the closed stream. Controller-level re-arm (meta
+  /// change) builds a fresh signal instead.
+  ///
+  /// Synchronous: waiting on watch teardown from inside the close callback
+  /// can park completion on a real-timer microtask that fake_async (and the
+  /// app frame loop under load) will not flush in time — the poll must arm
+  /// immediately. Dead watches are torn down on the serialized chain.
+  void _onWatchStreamClosed() {
+    if (!_started) return;
+    if (_pollTimer != null) return;
+    _watchStreamDied = true;
+    _startPoll();
+    final watches = List<FsTreeWatch>.of(_treeWatches);
+    _treeWatches.clear();
+    final subs = List<StreamSubscription<FsChangeEvent>>.of(_watchSubs);
+    _watchSubs.clear();
+    _enqueueWatchTeardown(watches, subs);
+  }
+
+  void _enqueueWatchTeardown(
+    List<FsTreeWatch> watches,
+    List<StreamSubscription<FsChangeEvent>> subs,
+  ) {
+    _watchTeardownChain = _watchTeardownChain.then((_) async {
+      for (final treeWatch in watches) {
+        await treeWatch.close();
+      }
+      for (final sub in subs) {
+        await sub.cancel();
+      }
+    }).catchError((_) {});
   }
 
   Future<void> _stopWatch() async {
@@ -173,8 +221,10 @@ class TranscriptChangeSignal {
     if (!_started) return;
 
     // Late locate: attach watches once cacheTokenPaths appear — the poll
-    // keeps running as the fallback either way (see [_arm]).
-    if (_fs is FsWatcher && _treeWatches.isEmpty) {
+    // keeps running as the fallback either way (see [_arm]). Skip when a
+    // watch stream already died: re-subscribing to the closed stream would
+    // loop, so polling stays the fallback for this instance.
+    if (!_watchStreamDied && _fs is FsWatcher && _treeWatches.isEmpty) {
       final dirs = _watchDirs();
       if (dirs.isNotEmpty) {
         await _startWatches(dirs);
