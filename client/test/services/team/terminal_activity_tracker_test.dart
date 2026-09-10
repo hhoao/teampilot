@@ -148,6 +148,75 @@ void main() {
     expect(tracker.isBootFrameReady, isFalse);
   });
 
+  test('space-erase repaint chunks do not reset boot quiet', () {
+    // Real Codex idle repaint (verified 2026-09-08, DECSET 2026 pair): the
+    // erase half clears regions with spaces + \x1b[K before the redraw half
+    // lands. Its tail window is whitespace/escape-only — an invisible chunk
+    // that must not restart the boot-quiet window.
+    final tracker = TerminalActivityTracker(bootQuietAfter: bootQuiet);
+    tracker.reset();
+    final now = DateTime.now();
+    final visible = Uint8List.fromList(
+      utf8.encode('› hello\ndefault · /path\n'),
+    );
+    final erase = Uint8List.fromList(
+      utf8.encode('\x1b[1;55H                          \x1b[2;2H\x1b[K\x1b[3;62H  '),
+    );
+    tracker.notePtyBytes(visible, now.subtract(bootQuiet * 2));
+    // Erase chunks arrive at +300ms — inside the 500ms quiet window, with a
+    // different hash than the visible frame.
+    tracker.notePtyBytes(erase, now.subtract(bootQuiet ~/ 2));
+    expect(
+      tracker.isBootFrameReady,
+      isTrue,
+      reason: 'invisible erase repaint must not reset the quiet window',
+    );
+  });
+
+  test('boot frame latches after bootMaxWait despite continuous visible churn', () {
+    // Animated TUIs (Codex startup flicker) repaint VISIBLE content forever;
+    // byte-level quiet never happens. Visible content alive for bootMaxWait
+    // proves the CLI booted — latch instead of blocking indefinitely.
+    final tracker = TerminalActivityTracker(
+      bootQuietAfter: const Duration(milliseconds: 500),
+      bootMaxWait: const Duration(milliseconds: 200),
+    );
+    tracker.reset();
+    final now = DateTime.now();
+    for (var i = 0; i < 6; i++) {
+      tracker.notePtyBytes(
+        Uint8List.fromList('flicker frame $i\n› prompt\n'.codeUnits),
+        now.subtract(Duration(milliseconds: 400 - i * 50)),
+      );
+    }
+    expect(
+      tracker.isBootFrameReady,
+      isTrue,
+      reason: 'visible content present beyond bootMaxWait must latch',
+    );
+  });
+
+  test('bootMaxWait still requires visible content', () {
+    final tracker = TerminalActivityTracker(
+      bootQuietAfter: bootQuiet,
+      bootMaxWait: const Duration(milliseconds: 100),
+    );
+    tracker.reset();
+    final now = DateTime.now();
+    for (var i = 0; i < 3; i++) {
+      // Erase-only repaint: clear screen, cursor home, erase-to-EOL, spaces.
+      tracker.notePtyBytes(
+        Uint8List.fromList([0x1b, ...'[2J\x1b[H\x1b[K'.codeUnits, 0x20, 0x20]),
+        now.subtract(Duration(milliseconds: 200 - i * 50)),
+      );
+    }
+    expect(
+      tracker.isBootFrameReady,
+      isFalse,
+      reason: 'bootMaxWait is not a pure time gate — visible content required',
+    );
+  });
+
   test('isWorking false after idleAfter elapses', () {
     final tracker = TerminalActivityTracker(idleAfter: idle);
     final now = DateTime.now();

@@ -53,6 +53,7 @@ Future<HistoryContinueSubmitResult> submitSessionHistoryReviewMessage({
     String sessionId,
     String memberId, {
     bool directToPty,
+    bool Function()? aborted,
   })
   ensureMemberInputReady,
   required Future<String?> Function(
@@ -68,6 +69,11 @@ Future<HistoryContinueSubmitResult> submitSessionHistoryReviewMessage({
 
   /// When set, called after connect so a newly installed TeamBus is visible.
   HistoryContinueChannel Function()? resolveChannel,
+
+  /// Flips true when the operator pressed compose Stop after this send began.
+  /// The message is then never delivered — a stopped launch must not feed the
+  /// CLI its queued prompt once the terminal finally becomes ready.
+  bool Function()? cancelled,
 }) async {
   final trimmed = message.trim();
   if (trimmed.isEmpty) {
@@ -85,10 +91,27 @@ Future<HistoryContinueSubmitResult> submitSessionHistoryReviewMessage({
     return HistoryContinueSubmitResult.failed(channel: channel);
   }
 
+  if (cancelled?.call() ?? false) {
+    appLogger.d(
+      'submitSessionHistoryReviewMessage: cancelled by operator stop '
+      'after connect session=$sessionId member=$memberId',
+    );
+    return HistoryContinueSubmitResult.failed(channel: channel);
+  }
+
   // Prefer post-connect resolution so a freshly installed TeamBus is visible.
   final effectiveChannel = resolveChannel?.call() ?? channel;
 
   if (effectiveChannel == HistoryContinueChannel.mailbox) {
+    if (cancelled?.call() ?? false) {
+      appLogger.d(
+        'submitSessionHistoryReviewMessage: cancelled by operator stop '
+        'before mailbox deliver session=$sessionId member=$memberId',
+      );
+      return const HistoryContinueSubmitResult.failed(
+        channel: HistoryContinueChannel.mailbox,
+      );
+    }
     try {
       final mailId = await deliverUserCommandToMember(
         sessionId,
@@ -124,7 +147,12 @@ Future<HistoryContinueSubmitResult> submitSessionHistoryReviewMessage({
   }
 
   try {
-    await ensureMemberInputReady(sessionId, memberId, directToPty: true);
+    await ensureMemberInputReady(
+      sessionId,
+      memberId,
+      directToPty: true,
+      aborted: () => cancelled?.call() ?? false,
+    );
   } on MemberInputReadyException catch (error) {
     appLogger.w(
       'submitSessionHistoryReviewMessage: '
@@ -137,6 +165,14 @@ Future<HistoryContinueSubmitResult> submitSessionHistoryReviewMessage({
       'submitSessionHistoryReviewMessage: ready wait failed',
       error: error,
       stackTrace: stackTrace,
+    );
+    return const HistoryContinueSubmitResult.failed();
+  }
+
+  if (cancelled?.call() ?? false) {
+    appLogger.d(
+      'submitSessionHistoryReviewMessage: cancelled by operator stop '
+      'before terminal deliver session=$sessionId member=$memberId',
     );
     return const HistoryContinueSubmitResult.failed();
   }

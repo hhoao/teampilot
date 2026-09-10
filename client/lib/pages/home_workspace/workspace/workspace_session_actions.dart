@@ -555,12 +555,33 @@ Future<bool> submitWorkspaceLandingMessage(
     );
   }
 
-  return chatCubit.withOperatorDeliveryInFlight(session.sessionId, () async {
+  return chatCubit.withCancellableOperatorDelivery(session.sessionId, (
+    cancelled,
+  ) async {
     final connected = await _ensureLandingSessionConnected(
       chatCubit: chatCubit,
       session: session,
       memberId: memberId,
+      aborted: cancelled,
     );
+    if (cancelled()) {
+      // Operator pressed Stop during launch: the message must never reach the
+      // CLI. Mark the pending bubble failed (retryable) and exit silently —
+      // this is a user action, not an error worth a toast.
+      appLogger.d(
+        'submitWorkspaceLandingMessage: cancelled by operator stop '
+        'session=${session.sessionId} member=$memberId connected=$connected',
+      );
+      if (pendingRecord != null) {
+        await chatCubit.markHistoryPendingFailed(
+          workspaceId: liveWorkspace.workspaceId,
+          sessionId: session.sessionId,
+          memberId: historyMemberId,
+          record: pendingRecord,
+        );
+      }
+      return false;
+    }
     if (!connected) {
       appLogger.w(
         'submitWorkspaceLandingMessage: member not ready '
@@ -673,6 +694,7 @@ Future<bool> _ensureLandingSessionConnected({
   required ChatCubit chatCubit,
   required AppSession session,
   required String memberId,
+  bool Function()? aborted,
 }) async {
   // requestCreateAndOpenSession already staged the tab and scheduled async
   // persist+connect. Re-opening here races that path and can connect with the
@@ -682,6 +704,7 @@ Future<bool> _ensureLandingSessionConnected({
       session.sessionId,
       memberId,
       directToPty: true,
+      aborted: aborted,
     );
     return true;
   } on MemberInputReadyException catch (error) {

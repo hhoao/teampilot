@@ -251,7 +251,16 @@ class _CleanupWindowListener extends WindowListener {
       workspaceToolsScopeRegistry.dispose();
       workspaceRunRegistry.dispose();
     } finally {
-      await windowManager.destroy();
+      // Exit the process directly instead of `windowManager.destroy()`.
+      // The official Flutter 3.47 Windows engine crashes in the
+      // `~FlutterWindow`/`~FlutterWindowsView` destructor chain (use-after-
+      // free at flutter_windows_view.cc:873), and Windows Error Reporting
+      // then freezes the window on screen for 5-15s while writing a ~26MB
+      // crash dump — the "closing takes a dozen seconds" experience. All
+      // meaningful cleanup has already run above; exit(0) skips the
+      // crashing C++ teardown path entirely. Same pattern as
+      // AppUpdateInstaller's post-install exit.
+      exit(0);
     }
   }
 }

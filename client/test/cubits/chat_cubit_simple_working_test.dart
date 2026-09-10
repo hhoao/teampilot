@@ -626,5 +626,52 @@ void main() {
         );
       },
     );
+
+    test(
+      'endOperatorDeliveryInFlight marks the in-flight cancellable run stopped',
+      () async {
+        final workspace = await repo.createWorkspace([
+          WorkspaceFolder(path: '/tmp'),
+        ]);
+        final session = (await repo.createSession(
+          workspace.workspaceId,
+        )).session;
+        await cubit.loadWorkspaceData(repo);
+        await cubit.requestOpenSession(
+          SessionOpenRequest(
+            session: session,
+            workspace: workspace,
+            repo: repo,
+            connectImmediately: false,
+          ),
+        );
+        await drainPendingAsyncWork();
+
+        final gate = Completer<void>();
+        bool? cancelledWhileInFlight;
+        final done = cubit.withCancellableOperatorDelivery(
+          session.sessionId,
+          (cancelled) => gate.future.then((_) => cancelledWhileInFlight = cancelled()),
+        );
+        await drainPendingAsyncWork();
+        cubit.endOperatorDeliveryInFlight(session.sessionId);
+        gate.complete();
+        await done;
+
+        expect(
+          cancelledWhileInFlight,
+          isTrue,
+          reason: 'compose Stop must cancel a send still waiting to inject',
+        );
+
+        // A send that starts after the stop is a fresh generation: it must
+        // deliver normally.
+        final after = cubit.withCancellableOperatorDelivery(
+          session.sessionId,
+          (cancelled) async => cancelled(),
+        );
+        expect(await after, isFalse);
+      },
+    );
   });
 }

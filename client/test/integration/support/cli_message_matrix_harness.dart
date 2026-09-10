@@ -882,12 +882,17 @@ final class CliMessageMatrixHarness {
       ),
       resolveChannel: resolveChannel,
       connectWorkspaceSession: chat.connectWorkspaceSession,
-      ensureMemberInputReady: (sessionId, member, {bool directToPty = false}) =>
-          chat.memberMaterializer.ensureMemberInputReady(
-            sessionId,
-            member,
-            directToPty: directToPty,
-          ),
+      ensureMemberInputReady: (
+        sessionId,
+        member, {
+        bool directToPty = false,
+        bool Function()? aborted,
+      }) => chat.memberMaterializer.ensureMemberInputReady(
+        sessionId,
+        member,
+        directToPty: directToPty,
+        aborted: aborted,
+      ),
       deliverUserCommandToMember:
           (sessionId, member, body, {bool directToPty = false}) =>
               chat.sessionRuntime.deliverUserCommandToMember(

@@ -19,6 +19,13 @@ class _WatchableFs extends InMemoryFilesystem implements FsWatcher {
   void emit(FsChangeType type, String path) =>
       _controller.add(FsChangeEvent(path: path, type: type));
 
+  /// Simulates the Windows silent-close failure: the native watch stream dies
+  /// (Dart's Directory.watch closes after a buffer overflow instead of
+  /// erroring) while the signal still expects events.
+  void silentlyCloseWatch() {
+    if (!_controller.isClosed) unawaited(_controller.close());
+  }
+
   @override
   FsTreeWatch watchTree(String path) {
     watchTreeCallCount++;
@@ -100,6 +107,50 @@ void main() {
         });
       },
     );
+
+    test('silent watch-stream close falls back to polling', () {
+      fakeAsync((async) {
+        final fs = _WatchableFs();
+        unawaited(fs.writeString('/proj/a.jsonl', 'v1'));
+        async.flushMicrotasks();
+
+        var notifies = 0;
+        final signal = TranscriptChangeSignal(
+          fs: fs,
+          watchRoot: () => '/proj',
+          cacheTokenPaths: () => const ['/proj/a.jsonl'],
+          onChanged: () => notifies++,
+          watchDebounce: const Duration(milliseconds: 150),
+          pollInterval: const Duration(milliseconds: 750),
+        );
+
+        unawaited(signal.start());
+        async.flushMicrotasks();
+        expect(fs.watchTreeCallCount, 1);
+
+        // Windows Directory.watch can close silently (buffer overflow) —
+        // the signal must not go permanently blind: events after the close
+        // must still surface through the poll fallback.
+        fs.silentlyCloseWatch();
+        async.flushMicrotasks();
+        async.elapse(const Duration(milliseconds: 10));
+        async.flushMicrotasks();
+
+        unawaited(fs.writeString('/proj/a.jsonl', 'v2'));
+        async.flushMicrotasks();
+        async.elapse(const Duration(seconds: 3));
+        async.flushMicrotasks();
+        expect(
+          notifies,
+          1,
+          reason: 'watch stream closed silently → poll fallback must notify '
+              'on transcript change',
+        );
+
+        unawaited(signal.stop());
+        async.flushMicrotasks();
+      });
+    });
 
     test('non-FsWatcher: polls cache tokens and notifies on change', () {
       fakeAsync((async) {
