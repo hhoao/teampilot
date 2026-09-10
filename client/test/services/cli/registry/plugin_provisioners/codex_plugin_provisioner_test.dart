@@ -122,6 +122,7 @@ void main() {
       );
       expect(runner.calls.map((call) => call.arguments), [
         ['plugin', 'marketplace', 'list', '--json'],
+        ['plugin', 'list', '--json'],
         [
           'plugin',
           'marketplace',
@@ -129,7 +130,6 @@ void main() {
           '/cfg/.teampilot/codex-marketplace',
           '--json',
         ],
-        ['plugin', 'list', '--json'],
         ['plugin', 'add', 'demo@teampilot', '--json'],
       ]);
       expect(
@@ -203,6 +203,7 @@ void main() {
 
       expect(runner.calls.map((call) => call.arguments), [
         ['plugin', 'marketplace', 'list', '--json'],
+        ['plugin', 'list', '--json'],
         [
           'plugin',
           'marketplace',
@@ -210,7 +211,6 @@ void main() {
           '/cfg/.teampilot/codex-marketplace',
           '--json',
         ],
-        ['plugin', 'list', '--json'],
       ]);
     },
   );
@@ -238,6 +238,7 @@ void main() {
 
       expect(runner.calls.map((call) => call.arguments), [
         ['plugin', 'marketplace', 'list', '--json'],
+        ['plugin', 'list', '--json'],
         [
           'plugin',
           'marketplace',
@@ -245,7 +246,6 @@ void main() {
           '/cfg/.teampilot/codex-marketplace',
           '--json',
         ],
-        ['plugin', 'list', '--json'],
         ['plugin', 'remove', 'demo@teampilot', '--json'],
         ['plugin', 'remove', 'old@teampilot', '--json'],
         ['plugin', 'add', 'demo@teampilot', '--json'],
