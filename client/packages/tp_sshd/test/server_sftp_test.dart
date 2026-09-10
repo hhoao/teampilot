@@ -107,6 +107,21 @@ void main() {
     await server.close();
   });
 
+  test('a client EOF without a close ends the subsystem and closes the channel',
+      () async {
+    final (client, server) = await connect();
+    final controller = await openClientSessionChannel(client);
+    expect(await controller.sendSubsystem('sftp'), isTrue);
+
+    // The exit path of a stock OpenSSH sftp client: EOF on the channel, then
+    // wait for the server to close it. A subsystem that only waits for the
+    // client's CHANNEL_CLOSE deadlocks here.
+    await controller.close().timeout(const Duration(seconds: 5));
+
+    client.close();
+    await server.close();
+  });
+
   test('mkdir / write / read / stat / list round trip', () async {
     final (client, server) = await connect();
     final sftp = await client.sftp();

@@ -98,12 +98,22 @@ class _SftpServerSession {
   Uint8List _pending = Uint8List(0);
 
   Future<void> run() async {
-    final subscription = _channel.input.listen(_onData);
-    // The channel finishing — client close, connection teardown — ends the
-    // session: stop reading and release every handle still open.
-    await _channel.done;
+    final inputEnded = Completer<void>();
+    final subscription = _channel.input.listen(
+      _onData,
+      // The input stream ends not only when the channel finishes (client
+      // close, connection teardown) but on the client's bare EOF too — the
+      // exit path of a stock OpenSSH sftp client, which sends EOF and then
+      // waits for this side to close the channel.
+      onDone: inputEnded.complete,
+    );
+    await inputEnded.future;
     await subscription.cancel();
     await _releaseAllHandles();
+    // A no-op when the channel already finished; after a bare client EOF it
+    // is what tells the client the subsystem is over.
+    _channel.close();
+    await _channel.done;
   }
 
   void _onData(Uint8List data) {
