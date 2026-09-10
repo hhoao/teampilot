@@ -10,6 +10,7 @@ import 'package:teampilot/repositories/ssh_known_host_repository.dart';
 import 'package:teampilot/repositories/ssh_profile_repository.dart';
 import 'package:teampilot/services/terminal/terminal_transport_factory.dart';
 import 'package:teampilot/services/terminal/workspace_shell_connector.dart';
+import 'package:tp_sshd/tp_sshd.dart' show SSHPtyDimensions;
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
@@ -109,6 +110,61 @@ void main() {
           workingDirectory: '/remote',
           useLoginShell: true,
         ),
+      );
+    });
+  });
+
+  group('WorkspaceShellConnector.buildShellEnvironment', () {
+    test('embedded profile rides the working directory in the pty env', () {
+      const profile = SshProfile(
+        id: 'e1',
+        name: 'desktop',
+        host: '127.0.0.1',
+        username: 'u',
+        embeddedTarget: true,
+      );
+
+      expect(
+        WorkspaceShellConnector.buildShellEnvironment(
+          profile: profile,
+          workingDirectory: '/remote/work',
+        ),
+        {SSHPtyDimensions.workingDirectoryEnv: '/remote/work'},
+      );
+    });
+
+    test('embedded profile without a working directory sends no env', () {
+      const profile = SshProfile(
+        id: 'e1',
+        name: 'desktop',
+        host: '127.0.0.1',
+        username: 'u',
+        embeddedTarget: true,
+      );
+
+      expect(
+        WorkspaceShellConnector.buildShellEnvironment(
+          profile: profile,
+          workingDirectory: '  ',
+        ),
+        isNull,
+      );
+    });
+
+    test('legacy profile sends no env (its cwd rides the command string)', () {
+      const profile = SshProfile(
+        id: 'p1',
+        name: 'box',
+        host: '127.0.0.1',
+        username: 'u',
+      );
+
+      expect(
+        WorkspaceShellConnector.buildShellEnvironment(
+          profile: profile,
+          workingDirectory: '/remote/work',
+        ),
+        isNull,
       );
     });
   });

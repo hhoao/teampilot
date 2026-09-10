@@ -1,5 +1,7 @@
 import 'dart:io';
 
+import 'package:tp_sshd/tp_sshd.dart' show SSHPtyDimensions;
+
 import '../../models/runtime_target.dart';
 import '../../models/workspace_shell_launch_plan.dart';
 import '../../models/ssh_profile.dart';
@@ -140,7 +142,8 @@ class WorkspaceShellConnector {
   /// Remote command for the SSH workspace shell. Embedded targets get `null`
   /// — a bare `shell` request, so the embedded server picks the OS-native
   /// shell — while legacy targets keep the POSIX login-shell string
-  /// (byte-for-byte the pre-codec output).
+  /// (byte-for-byte the pre-codec output). The embedded shell's working
+  /// directory rides [buildShellEnvironment] instead.
   static String? buildShellRemoteCommand({
     required SshProfile profile,
     required String executable,
@@ -158,6 +161,22 @@ class WorkspaceShellConnector {
       ),
       useLoginShell: useLoginShell,
     );
+  }
+
+  /// Environment sent with the embedded workspace shell's bare `shell`
+  /// request. The SSH `shell` request has no working-directory field, so the
+  /// embedded target's requested directory rides the pty environment under
+  /// [SSHPtyDimensions.workingDirectoryEnv] — the embedded server spawns the
+  /// shell there and consumes the variable. Legacy targets get `null`: their
+  /// working directory is part of the command string.
+  static Map<String, String>? buildShellEnvironment({
+    required SshProfile profile,
+    required String workingDirectory,
+  }) {
+    if (!profile.embeddedTarget) return null;
+    final cwd = workingDirectory.trim();
+    if (cwd.isEmpty) return null;
+    return {SSHPtyDimensions.workingDirectoryEnv: cwd};
   }
 
   TerminalSession _createSshSession() {
@@ -193,10 +212,15 @@ class WorkspaceShellConnector {
             );
             return SshPtyTransport.start(
               memberSession: memberSession,
-              // null → bare `shell` request; the server picks the shell.
+              // null → bare `shell` request; the server picks the shell. The
+              // requested working directory rides the pty environment.
               command: command,
               columns: columns,
               rows: rows,
+              environment: buildShellEnvironment(
+                profile: memberSession.profile,
+                workingDirectory: workingDirectory,
+              ),
             );
           },
     );

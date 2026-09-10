@@ -122,27 +122,33 @@ abstract class PtyLike {
 }
 
 /// Spawns a process in a pseudo-terminal.
-typedef PtySpawner = Future<PtyLike> Function({
-  required String executable,
-  required List<String> arguments,
-  required Map<String, String> environment,
-  required int columns,
-  required int rows,
-});
+typedef PtySpawner =
+    Future<PtyLike> Function({
+      required String executable,
+      required List<String> arguments,
+      required Map<String, String> environment,
+      required int columns,
+      required int rows,
+      String? workingDirectory,
+    });
 
 /// Builds the [SSHPtyFactory] for `shell` requests: spawns the OS-native
 /// shell in a pty with the toolchain `PATH` injected and the dimensions the
-/// client asked for. Spawn failures are logged and refused (`null`).
+/// client asked for. A working directory the client requested via
+/// [SSHPtyDimensions.workingDirectoryEnv] scopes the shell (the variable is
+/// consumed, not inherited). Spawn failures are logged and refused (`null`).
 SSHPtyFactory embeddedPtyFactory({PtySpawner? spawner, String? toolchainBin}) {
   final spawn = spawner ?? _defaultPtySpawner;
   return (initial) async {
     final env = EmbeddedSpawnEnvironment.mergeWithToolchainPath(
       {...Platform.environment, ...initial.environment},
       toolchainBin:
-          toolchainBin ??
-          EmbeddedSpawnEnvironment.defaultToolchainBin() ??
-          '',
+          toolchainBin ?? EmbeddedSpawnEnvironment.defaultToolchainBin() ?? '',
     );
+    final requestedCwd = env.remove(SSHPtyDimensions.workingDirectoryEnv);
+    final cwd = requestedCwd == null || requestedCwd.isEmpty
+        ? null
+        : requestedCwd;
     final platform = Platform.operatingSystem;
     try {
       return _PtyLikeServerPty(
@@ -155,6 +161,7 @@ SSHPtyFactory embeddedPtyFactory({PtySpawner? spawner, String? toolchainBin}) {
           environment: env,
           columns: initial.columns,
           rows: initial.rows,
+          workingDirectory: cwd,
         ),
       );
     } on Object catch (error, stackTrace) {
@@ -176,9 +183,7 @@ SSHProcessFactory embeddedProcessFactory({String? toolchainBin}) {
     final merged = EmbeddedSpawnEnvironment.mergeWithToolchainPath(
       {...Platform.environment, ...env},
       toolchainBin:
-          toolchainBin ??
-          EmbeddedSpawnEnvironment.defaultToolchainBin() ??
-          '',
+          toolchainBin ?? EmbeddedSpawnEnvironment.defaultToolchainBin() ?? '',
     );
     try {
       return _ProcessServerProcessAdapter(
@@ -209,6 +214,7 @@ Future<PtyLike> _defaultPtySpawner({
   required Map<String, String> environment,
   required int columns,
   required int rows,
+  String? workingDirectory,
 }) async {
   final process = pty.Pty.start(
     executable,
@@ -216,6 +222,7 @@ Future<PtyLike> _defaultPtySpawner({
     environment: environment,
     columns: columns,
     rows: rows,
+    workingDirectory: workingDirectory,
   );
   return _FlutterPtyLike(process);
 }
