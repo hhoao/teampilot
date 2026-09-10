@@ -902,22 +902,27 @@ class _ChatWorkbenchBody extends StatelessWidget {
           preserveWorkbenchView: !switchToTerminal,
         );
 
-        return chatCubit.withOperatorDeliveryInFlight(
+        return chatCubit.withCancellableOperatorDelivery(
           appSession.sessionId,
-          () => submitSessionHistoryReviewMessage(
+          (cancelled) => submitSessionHistoryReviewMessage(
             sessionId: appSession.sessionId,
             memberId: shellMemberId,
             message: message,
             connectRequest: connectRequest,
             resolveChannel: resolveChannel,
+            cancelled: cancelled,
             connectWorkspaceSession: chatCubit.connectWorkspaceSession,
-            ensureMemberInputReady:
-                (sessionId, mid, {bool directToPty = false}) =>
-                    chatCubit.memberMaterializer.ensureMemberInputReady(
-                      sessionId,
-                      mid,
-                      directToPty: directToPty,
-                    ),
+            ensureMemberInputReady: (
+              sessionId,
+              mid, {
+              bool directToPty = false,
+              bool Function()? aborted,
+            }) => chatCubit.memberMaterializer.ensureMemberInputReady(
+              sessionId,
+              mid,
+              directToPty: directToPty,
+              aborted: aborted,
+            ),
             deliverUserCommandToMember:
                 (sessionId, mid, text, {bool directToPty = false}) =>
                     chatCubit.sessionRuntime.deliverUserCommandToMember(

@@ -59,17 +59,29 @@ class TabMemberMaterializer implements MemberMaterializer {
   /// [directToPty]: compose-landing operator input — wait until the CLI's input
   /// surface is ready (boot frame, plus composer chrome when the CLI declares
   /// it), then inject at the TUI prompt (never wait for bus `wait_for_message`).
+  ///
+  /// [aborted]: operator Stop — exit the wait promptly without throwing; the
+  /// caller's cancelled check then drops the queued prompt instead of feeding
+  /// it to a CLI that booted after the user already pressed Stop.
   Future<void> ensureMemberInputReady(
     String sessionId,
     String memberId, {
     bool directToPty = false,
     Duration waitCap = defaultMemberInputReadyCap,
+    bool Function()? aborted,
   }) async {
     appLogger.d(
       '[member-materializer] input-ready wait start member=$memberId '
       'session=$sessionId directToPty=$directToPty '
       '${_inputReadyGateSummary(sessionId, memberId)}',
     );
+    if (aborted?.call() ?? false) {
+      appLogger.d(
+        '[member-materializer] input-ready cancelled operator-stop '
+        'member=$memberId session=$sessionId before materialize',
+      );
+      return;
+    }
     await materializeMember(sessionId, memberId, '');
     appLogger.d(
       '[member-materializer] materialize done member=$memberId '
@@ -87,6 +99,13 @@ class TabMemberMaterializer implements MemberMaterializer {
     var sawRunning = false;
     var waitTicks = 0;
     while (!_isClosed()) {
+      if (aborted?.call() ?? false) {
+        appLogger.d(
+          '[member-materializer] input-ready cancelled operator-stop '
+          'member=$memberId session=$sessionId ticks=$waitTicks',
+        );
+        return;
+      }
       if (_tabStore.openTabBySessionId(sessionId) == null) {
         appLogger.d(
           '[member-materializer] input-ready cancelled no-tab '

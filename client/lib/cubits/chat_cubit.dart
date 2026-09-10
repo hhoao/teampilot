@@ -893,6 +893,15 @@ class ChatCubit extends Cubit<ChatState>
     Future<T> Function() action,
   ) => _operatorDeliveryInFlight.run(sessionId, action);
 
+  /// [withOperatorDeliveryInFlight] plus a `cancelled` check that flips true
+  /// when a compose Stop lands while the action is still in flight. Operator
+  /// sends (landing first prompt, history continue, follow-up drain) must
+  /// observe it before writing to the PTY.
+  Future<T> withCancellableOperatorDelivery<T>(
+    String sessionId,
+    Future<T> Function(bool Function() cancelled) action,
+  ) => _operatorDeliveryInFlight.runCancellable(sessionId, action);
+
   void endOperatorDeliveryInFlight(String sessionId) {
     final id = sessionId.trim();
     if (id.isEmpty) return;
@@ -987,9 +996,9 @@ class ChatCubit extends Cubit<ChatState>
       return const HistoryContinueSubmitResult.failed();
     }
 
-    return withOperatorDeliveryInFlight(
+    return withCancellableOperatorDelivery(
       sessionId,
-      () => submitSessionHistoryReviewMessage(
+      (cancelled) => submitSessionHistoryReviewMessage(
         sessionId: sessionId,
         memberId: shellMemberId,
         message: message,
@@ -1002,12 +1011,15 @@ class ChatCubit extends Cubit<ChatState>
         resolveChannel: () =>
             resolveOperatorMessageChannel(sessionId, shellMemberId),
         connectWorkspaceSession: connectWorkspaceSession,
-        ensureMemberInputReady: (sid, mid, {bool directToPty = false}) =>
-            _memberMaterializer.ensureMemberInputReady(
-              sid,
-              mid,
-              directToPty: directToPty,
-            ),
+        cancelled: cancelled,
+        ensureMemberInputReady:
+            (sid, mid, {bool directToPty = false, bool Function()? aborted}) =>
+                _memberMaterializer.ensureMemberInputReady(
+                  sid,
+                  mid,
+                  directToPty: directToPty,
+                  aborted: aborted,
+                ),
         deliverUserCommandToMember:
             (sid, mid, text, {bool directToPty = false}) =>
                 _sessionRuntime.deliverUserCommandToMember(

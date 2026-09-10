@@ -12,12 +12,23 @@ final class OperatorDeliveryInFlight {
     return (_counts[id] ?? 0) > 0;
   }
 
-  Future<T> run<T>(String sessionId, Future<T> Function() action) async {
+  Future<T> run<T>(String sessionId, Future<T> Function() action) =>
+      runCancellable(sessionId, (_) => action());
+
+  /// Like [run], but hands the action a `cancelled` check that flips true the
+  /// moment a compose Stop ([clear]) lands after this run began. Long-running
+  /// operator sends (connect + input-ready wait + PTY inject) observe it before
+  /// writing to the PTY so a stopped launch never delivers its queued message.
+  Future<T> runCancellable<T>(
+    String sessionId,
+    Future<T> Function(bool Function() cancelled) action,
+  ) async {
     final id = sessionId.trim();
-    if (id.isEmpty) return action();
+    if (id.isEmpty) return action(() => false);
     final generation = _begin(id);
+    final cancelled = () => (_generations[id] ?? 0) != generation;
     try {
-      return await action();
+      return await action(cancelled);
     } finally {
       _end(id, generation);
     }

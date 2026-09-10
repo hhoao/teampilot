@@ -37,6 +37,7 @@ void main() {
       HistoryContinueChannel channel = HistoryContinueChannel.pty,
       String? mailboxMailId = 'mail-1',
       String? ptyDeliveryId = 'prompt-1',
+      bool Function()? cancelled,
     }) {
       return submitSessionHistoryReviewMessage(
         sessionId: 'sess-1',
@@ -44,11 +45,17 @@ void main() {
         message: message,
         channel: channel,
         connectRequest: connectRequest,
+        cancelled: cancelled,
         connectWorkspaceSession: (request) async {
           connectCalls.add(request);
         },
         ensureMemberInputReady:
-            (sessionId, memberId, {bool directToPty = false}) async {
+            (
+              sessionId,
+              memberId, {
+              bool directToPty = false,
+              bool Function()? aborted,
+            }) async {
               readyCalls.add((sessionId, memberId, directToPty));
             },
         deliverUserCommandToMember:
@@ -155,7 +162,12 @@ void main() {
             connected = true;
           },
           ensureMemberInputReady:
-              (sessionId, memberId, {bool directToPty = false}) async {
+              (
+                sessionId,
+                memberId, {
+                bool directToPty = false,
+                bool Function()? aborted,
+              }) async {
                 readyCalls.add((sessionId, memberId, directToPty));
               },
           deliverUserCommandToMember:
@@ -188,7 +200,12 @@ void main() {
           throw StateError('connect failed');
         },
         ensureMemberInputReady:
-            (sessionId, memberId, {bool directToPty = false}) async {
+            (
+              sessionId,
+              memberId, {
+              bool directToPty = false,
+              bool Function()? aborted,
+            }) async {
               readyCalls.add((sessionId, memberId, directToPty));
             },
         deliverUserCommandToMember:
@@ -217,7 +234,12 @@ void main() {
           connectCalls.add(request);
         },
         ensureMemberInputReady:
-            (sessionId, memberId, {bool directToPty = false}) async {
+            (
+              sessionId,
+              memberId, {
+              bool directToPty = false,
+              bool Function()? aborted,
+            }) async {
               readyCalls.add((sessionId, memberId, directToPty));
               throw const MemberInputReadyException(
                 MemberInputReadyFailure.timedOut,
@@ -249,7 +271,12 @@ void main() {
           connectCalls.add(request);
         },
         ensureMemberInputReady:
-            (sessionId, memberId, {bool directToPty = false}) async {
+            (
+              sessionId,
+              memberId, {
+              bool directToPty = false,
+              bool Function()? aborted,
+            }) async {
               readyCalls.add((sessionId, memberId, directToPty));
             },
         deliverUserCommandToMember:
@@ -265,6 +292,66 @@ void main() {
       expect(result.ok, isFalse);
       expect(deliverCalls, [('sess-1', 'member-1', 'hello', true)]);
       expect(titleCalls, isEmpty);
+    });
+
+    test('cancelled after connect skips ready-wait, deliver, and title', () async {
+      final result = await runSubmit('hello', cancelled: () => true);
+
+      expect(result.ok, isFalse);
+      expect(connectCalls, [connectRequest]);
+      expect(readyCalls, isEmpty);
+      expect(deliverCalls, isEmpty);
+      expect(titleCalls, isEmpty);
+    });
+
+    test('operator stop during ready-wait prevents the PTY deliver', () async {
+      var stopped = false;
+      final result = await submitSessionHistoryReviewMessage(
+        sessionId: 'sess-1',
+        memberId: 'member-1',
+        message: 'hello',
+        connectRequest: connectRequest,
+        cancelled: () => stopped,
+        connectWorkspaceSession: (request) async {
+          connectCalls.add(request);
+        },
+        ensureMemberInputReady:
+            (
+              sessionId,
+              memberId, {
+              bool directToPty = false,
+              bool Function()? aborted,
+            }) async {
+              readyCalls.add((sessionId, memberId, directToPty));
+              // The wait exits early; the stop lands while the send is alive.
+              stopped = true;
+            },
+        deliverUserCommandToMember:
+            (sessionId, memberId, text, {bool directToPty = false}) async {
+              deliverCalls.add((sessionId, memberId, text, directToPty));
+              return 'prompt-1';
+            },
+        applyFirstPromptTitle: (sessionId, firstPrompt) async {
+          titleCalls.add((sessionId, firstPrompt));
+        },
+      );
+
+      expect(result.ok, isFalse);
+      expect(readyCalls, [('sess-1', 'member-1', true)]);
+      expect(deliverCalls, isEmpty);
+      expect(titleCalls, isEmpty);
+    });
+
+    test('operator stop before mailbox deliver skips the bus enqueue', () async {
+      final result = await runSubmit(
+        'hello',
+        channel: HistoryContinueChannel.mailbox,
+        cancelled: () => true,
+      );
+
+      expect(result.ok, isFalse);
+      expect(result.channel, HistoryContinueChannel.mailbox);
+      expect(deliverCalls, isEmpty);
     });
   });
 }

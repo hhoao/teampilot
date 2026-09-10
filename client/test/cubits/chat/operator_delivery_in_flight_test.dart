@@ -87,4 +87,72 @@ void main() {
     await tracker.run('sess', () async {});
     expect(n, 2);
   });
+
+  group('runCancellable', () {
+    test('cancelled stays false without a stop', () async {
+      final tracker = OperatorDeliveryInFlight();
+      late bool seen;
+      await tracker.runCancellable('sess', (cancelled) async {
+        seen = cancelled();
+      });
+      expect(seen, isFalse);
+    });
+
+    test('clear mid-flight flips cancelled true for the live run', () async {
+      final tracker = OperatorDeliveryInFlight();
+      final gate = Completer<void>();
+      late bool observed;
+      final done = tracker.runCancellable('sess', (cancelled) async {
+        await gate.future;
+        observed = cancelled();
+      });
+      tracker.clear('sess');
+      gate.complete();
+      await done;
+      expect(observed, isTrue);
+    });
+
+    test('a send started after the stop is not cancelled', () async {
+      final tracker = OperatorDeliveryInFlight();
+      final gateA = Completer<void>();
+      final doneA = tracker.runCancellable('sess', (cancelled) => gateA.future);
+      tracker.clear('sess');
+      late bool observed;
+      final doneB = tracker.runCancellable('sess', (cancelled) async {
+        observed = cancelled();
+      });
+      gateA.complete();
+      await doneA;
+      await doneB;
+      expect(observed, isFalse);
+    });
+
+    test('a second stop cancels the newer run too', () async {
+      final tracker = OperatorDeliveryInFlight();
+      final gateA = Completer<void>();
+      final doneA = tracker.runCancellable('sess', (cancelled) => gateA.future);
+      tracker.clear('sess');
+      final gateB = Completer<void>();
+      late bool observedB;
+      final doneB = tracker.runCancellable('sess', (cancelled) async {
+        await gateB.future;
+        observedB = cancelled();
+      });
+      tracker.clear('sess');
+      gateA.complete();
+      gateB.complete();
+      await doneA;
+      await doneB;
+      expect(observedB, isTrue);
+    });
+
+    test('empty session id action still runs with a false cancelled', () async {
+      final tracker = OperatorDeliveryInFlight();
+      late bool observed;
+      await tracker.runCancellable('  ', (cancelled) async {
+        observed = cancelled();
+      });
+      expect(observed, isFalse);
+    });
+  });
 }
