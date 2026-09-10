@@ -662,6 +662,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get gitPull => 'Pull';
 
   @override
+  String get gitFetch => 'Fetch from remote';
+
+  @override
   String get gitRefresh => 'Refresh';
 
   @override

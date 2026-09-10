@@ -1298,6 +1298,12 @@ abstract class AppLocalizations {
   /// **'Pull'**
   String get gitPull;
 
+  /// No description provided for @gitFetch.
+  ///
+  /// In en, this message translates to:
+  /// **'Fetch from remote'**
+  String get gitFetch;
+
   /// No description provided for @gitRefresh.
   ///
   /// In en, this message translates to:

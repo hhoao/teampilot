@@ -77,6 +77,9 @@ class _FakeGitService extends GitService {
   }
 
   @override
+  Future<void> fetchAll(String dir) => _record('fetchAll');
+
+  @override
   Future<void> discardFolder(
     String dir,
     String folderPath, {
@@ -475,6 +478,34 @@ void main() {
     await cubit.discardAll();
 
     expect(cubit.state.errorMessage, 'boom');
+    expect(cubit.state.busy, isFalse);
+    await cubit.close();
+  });
+
+  test('fetchAll runs fetch and refreshes status', () async {
+    final service = _FakeGitService(statusToReturn: _repoWith());
+    final cubit = GitCubit(service: service);
+    await cubit.setRepoRoot('/repo');
+    service.calls.clear();
+
+    await cubit.fetchAll();
+
+    expect(service.calls.first, 'fetchAll');
+    expect(service.calls.last, 'status');
+    expect(cubit.state.busy, isFalse);
+    expect(cubit.state.errorMessage, isNull);
+    await cubit.close();
+  });
+
+  test('fetchAll failure surfaces an error message', () async {
+    final service = _FakeGitService(statusToReturn: _repoWith())
+      ..throwOnNext = GitException('network down');
+    final cubit = GitCubit(service: service);
+    await cubit.setRepoRoot('/repo');
+
+    await cubit.fetchAll();
+
+    expect(cubit.state.errorMessage, 'network down');
     expect(cubit.state.busy, isFalse);
     await cubit.close();
   });

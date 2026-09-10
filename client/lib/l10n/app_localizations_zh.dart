@@ -633,6 +633,9 @@ class AppLocalizationsZh extends AppLocalizations {
   String get gitPull => '拉取';
 
   @override
+  String get gitFetch => '从远端获取';
+
+  @override
   String get gitRefresh => '刷新';
 
   @override

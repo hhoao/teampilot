@@ -261,6 +261,7 @@
   },
   "gitPush": "推送",
   "gitPull": "拉取",
+  "gitFetch": "从远端获取",
   "gitRefresh": "刷新",
   "gitAmend": "修正",
   "gitAmendCommit": "修改提交",

@@ -641,6 +641,7 @@ class _GitRepoBodyState extends State<_GitRepoBody> {
                   await _cubit.generateCommitMessage(setting);
                 },
                 onRefresh: () => unawaited(_cubit.refresh()),
+                onFetch: () => unawaited(_cubit.fetchAll()),
                 onPush: () => unawaited(_cubit.push()),
                 onPull: () => unawaited(_cubit.pull()),
                 onToggleExpandAll: _cubit.toggleExpandAllFolders,
@@ -797,6 +798,7 @@ class _Header extends StatefulWidget {
     required this.canGenerate,
     required this.onGenerate,
     required this.onRefresh,
+    required this.onFetch,
     required this.onPush,
     required this.onPull,
     required this.onToggleExpandAll,
@@ -817,6 +819,7 @@ class _Header extends StatefulWidget {
   final bool canGenerate;
   final VoidCallback onGenerate;
   final VoidCallback onRefresh;
+  final VoidCallback onFetch;
   final VoidCallback onPush;
   final VoidCallback onPull;
   final VoidCallback onToggleExpandAll;
@@ -1001,6 +1004,13 @@ class _HeaderState extends State<_Header> {
                   tooltip: l10n.gitGenerateCommitMessage,
                   enabled: widget.canGenerate,
                   onTap: widget.onGenerate,
+                ),
+                TpIconButton(
+                  icon: Icons.cloud_download_outlined,
+                  compact: true,
+                  size: TpIconButton.kCompactSize,
+                  tooltip: l10n.gitFetch,
+                  onTap: widget.onFetch,
                 ),
                 TpIconButton(
                   icon: Icons.download_outlined,

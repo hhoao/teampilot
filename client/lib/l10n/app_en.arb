@@ -282,6 +282,7 @@
   },
   "gitPush": "Push",
   "gitPull": "Pull",
+  "gitFetch": "Fetch from remote",
   "gitRefresh": "Refresh",
   "gitAmend": "Amend",
   "gitAmendCommit": "Amend Commit",

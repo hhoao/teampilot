@@ -524,6 +524,8 @@ class GitCubit extends Cubit<GitState> {
 
   Future<void> pull() => _mutate(() => _service.pull(state.repoRoot));
 
+  Future<void> fetchAll() => _mutate(() => _service.fetchAll(state.repoRoot));
+
   Future<void> checkoutBranch(String name) async {
     if (await _mutate(() => _service.checkout(state.repoRoot, name))) {
       await ensureBranches(force: true);
