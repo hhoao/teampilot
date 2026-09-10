@@ -62,6 +62,55 @@ void main() {
   });
 
   test(
+    'createSymlink is idempotent and does not delete the target contents',
+    () async {
+      final target = p.join(root.path, 'pool', 'skill-a');
+      await fs.ensureDir(target);
+      await fs.writeString(p.join(target, 'SKILL.md'), '# skill');
+
+      final link = p.join(root.path, 'links', 'skill-a');
+      expect(await fs.createSymlink(target: target, linkPath: link), isTrue);
+      // Second create must take the already-points-to fast path: the link is
+      // NOT removed and recreated (a recreate costs a junction op and briefly
+      // makes the path vanish for concurrent readers).
+      expect(await fs.createSymlink(target: target, linkPath: link), isTrue);
+
+      final stat = await fs.stat(p.join(link, 'SKILL.md'));
+      expect(stat.isFile, isTrue, reason: 'link must resolve to the target');
+      expect((await fs.stat(p.join(target, 'SKILL.md'))).isFile, isTrue);
+      expect(
+        await fs.readSymlinkTarget(link),
+        isNotNull,
+        reason: 'junction/symlink target must be readable back',
+      );
+    },
+  );
+
+  test(
+    'createSymlink replaces a link that points at the wrong target',
+    () async {
+      final targetA = p.join(root.path, 'a');
+      final targetB = p.join(root.path, 'b');
+      await fs.ensureDir(targetA);
+      await fs.ensureDir(targetB);
+      final link = p.join(root.path, 'links', 'l');
+      await fs.createSymlink(target: targetA, linkPath: link);
+
+      await fs.createSymlink(target: targetB, linkPath: link);
+
+      final stat = await fs.stat(link);
+      expect(stat.exists, isTrue);
+      final resolved = await fs.resolveSymlink(p.join(link, '.'));
+      expect(resolved, isNotNull);
+      expect(
+        p.equals(p.normalize(resolved!), p.normalize(targetB)),
+        isTrue,
+        reason: 'link must now point at target B',
+      );
+    },
+  );
+
+  test(
     'listDir reports a symlink/junction to a directory as a directory',
     () async {
       final target = p.join(root.path, 'installed', 'brainstorming');

@@ -4,6 +4,7 @@ import 'package:path/path.dart' as p;
 
 import '../../utils/lock_pool.dart';
 import 'filesystem.dart';
+import 'windows_junction.dart';
 
 class LocalFilesystem implements Filesystem, FsWatcher {
   LocalFilesystem({p.Context? pathContext})
@@ -313,13 +314,13 @@ class LocalFilesystem implements Filesystem, FsWatcher {
     required String linkPath,
   }) async {
     await ensureDir(pathContext.dirname(linkPath));
-    await removeRecursive(linkPath);
     final normalizedTarget = pathContext.normalize(
       pathContext.absolute(target),
     );
     if (_linkAlreadyPointsTo(target: normalizedTarget, linkPath: linkPath)) {
       return true;
     }
+    await removeRecursive(linkPath);
 
     // Directory junctions avoid Windows "untrusted mount point" (errno 448) when
     // Dart symbolic links are traversed during Directory.create / list.
@@ -369,6 +370,11 @@ class LocalFilesystem implements Filesystem, FsWatcher {
     required String linkPath,
     required String target,
   }) async {
+    // In-process junction creation (~1ms) — `cmd /c mklink /J` costs a full
+    // cmd.exe cold start per link (100-200ms).
+    if (WindowsJunction.create(linkPath: linkPath, target: target)) {
+      return true;
+    }
     final result = await Process.run('cmd', [
       '/c',
       'mklink',
