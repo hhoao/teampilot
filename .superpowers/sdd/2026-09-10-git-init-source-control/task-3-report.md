@@ -172,7 +172,6 @@ it ended with `9024` passed, `2` skipped, and `4` unrelated failures.
 - The full suite is not green because of the four unrelated failures listed above.
 - `flutter analyze --no-fatal-infos --no-fatal-warnings` still reports `369` repository diagnostics; the command exits successfully because infos/warnings are non-fatal under the requested flags.
 - The full wrapper output was extremely verbose; the report preserves the exact command, exit result, final output, and complete failing-test list, while the live terminal capture truncated intermediate repetitive progress/log lines.
-+
 ## Task 3 review follow-up
 
 ### Scope verification for full-suite failures
@@ -246,3 +245,26 @@ reviewed busy-state correction:
 - `165323b9c` contains only the formatter output required by Task 3
   verification; it makes no behavioral change.
 
+### Final post-report-commit check
+
+Because the report itself was committed as `fc8ef19eb`, the same required
+post-commit checks were run once more after that report-only commit.
+
+Command:
+
+```text
+git status --short
+git diff --check
+git log -3 --oneline
+```
+
+Exact output:
+
+```text
+fc8ef19eb docs: record git initialization verification follow-up
+165323b9c chore: format git initialization verification files
+6c93e2519 fix: disable git init action while busy
+```
+
+`git status --short` and `git diff --check` again produced no output and exited
+`0`.
