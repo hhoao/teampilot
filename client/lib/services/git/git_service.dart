@@ -309,6 +309,11 @@ class GitService {
     return joined;
   }
 
+  /// Initializes [dir] as a Git repository.
+  Future<void> init(String dir) async {
+    await _run(dir, ['init']);
+  }
+
   Future<void> discard(String dir, GitFileChange change) {
     if (change.kind == GitChangeKind.untracked) {
       return _run(dir, ['clean', '-f', '--', change.path]);

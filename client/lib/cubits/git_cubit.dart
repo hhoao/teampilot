@@ -470,6 +470,13 @@ class GitCubit extends Cubit<GitState> {
           if (path == folderPath || path.startsWith('$folderPath/')) path,
       };
 
+  /// Initializes the current root as a repository, then reloads its status.
+  Future<bool> initializeRepository() {
+    final dir = state.repoRoot;
+    if (dir.isEmpty) return Future<bool>.value(false);
+    return _mutate(() => _service.init(dir));
+  }
+
   Future<void> discard(GitFileChange change) =>
       _mutate(() => _service.discard(state.repoRoot, change));
 

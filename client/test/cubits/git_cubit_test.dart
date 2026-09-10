@@ -8,6 +8,7 @@ class _FakeGitService extends GitService {
   _FakeGitService({required this.statusToReturn}) : super();
 
   GitRepoStatus statusToReturn;
+  GitRepoStatus? statusAfterInit;
   final List<String> calls = [];
   GitException? throwOnNext;
 
@@ -37,6 +38,13 @@ class _FakeGitService extends GitService {
 
   @override
   Future<void> commit(String dir, String message) => _record('commit:$message');
+
+  @override
+  Future<void> init(String dir) async {
+    await _record('init:$dir');
+    final next = statusAfterInit;
+    if (next != null) statusToReturn = next;
+  }
 
   final List<List<String>> commitSelectedCalls = [];
 
@@ -115,6 +123,45 @@ const _unstaged = GitFileChange(
 );
 
 void main() {
+  test('initializeRepository initializes the root and refreshes status', () async {
+    final service = _FakeGitService(
+      statusToReturn: const GitRepoStatus(
+        isRepository: false,
+        hasCommits: false,
+      ),
+    )..statusAfterInit = _repoWith();
+    final cubit = GitCubit(service: service);
+
+    await cubit.setRepoRoot('/repo');
+    final initialized = await cubit.initializeRepository();
+
+    expect(initialized, isTrue);
+    expect(service.calls, contains('init:/repo'));
+    expect(cubit.state.isRepository, isTrue);
+    expect(cubit.state.busy, isFalse);
+
+    await cubit.close();
+  });
+
+  test('initializeRepository exposes service failures and clears busy', () async {
+    final service = _FakeGitService(
+      statusToReturn: const GitRepoStatus(
+        isRepository: false,
+        hasCommits: false,
+      ),
+    )..throwOnNext = GitException('permission denied');
+    final cubit = GitCubit(service: service);
+
+    await cubit.setRepoRoot('/repo');
+    final initialized = await cubit.initializeRepository();
+
+    expect(initialized, isFalse);
+    expect(cubit.state.busy, isFalse);
+    expect(cubit.state.errorMessage, 'permission denied');
+
+    await cubit.close();
+  });
+
   test('setRepoRoot refreshes status only; branches load lazily', () async {
     final service = _FakeGitService(statusToReturn: _repoWith());
     final cubit = GitCubit(service: service);
