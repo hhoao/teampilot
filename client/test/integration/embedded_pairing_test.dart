@@ -18,9 +18,12 @@ library;
 ///       OS-native shell
 ///     → revokeDevice tears the live connection down
 ///
-/// The shell runs over plain pipes through the [PtySpawner] seam:
-/// flutter_pty needs the Flutter engine, so its real path is covered by the
-/// Windows manual test matrix instead (see the PR description).
+/// The shell stage runs over plain pipes through the [PtySpawner] seam so
+/// the full loop stays cross-platform (flutter_pty needs the Flutter engine);
+/// the real flutter_pty pseudo-terminal path — Task 9's deferred coverage —
+/// is exercised by `embedded_shell_pty_integration_test.dart`
+/// (tagged `integration, linux-pty`), and real-device QR pairing stays in the
+/// Windows manual test matrix (see the PR description).
 ///
 /// Run:
 ///   dart run tool/run_tests.dart --tags integration \
