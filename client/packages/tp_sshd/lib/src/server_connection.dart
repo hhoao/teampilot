@@ -5,6 +5,7 @@ import 'package:dartssh2/dartssh2.dart' show SSHSocket, SSHTransport;
 import 'package:dartssh2/protocol.dart';
 
 import 'server_channel.dart';
+import 'server_forward.dart';
 import 'server_session.dart';
 import 'server_userauth.dart';
 import 'ssh_server.dart'
@@ -44,6 +45,17 @@ class SSHServerConnection {
       onMessage: _handleMessage,
     );
     _authTimer = Timer(config.authTimeout, _onAuthTimeout);
+    final bindServerSocket = config.bindServerSocket;
+    if (bindServerSocket != null) {
+      _forwarder = SSHServerForwarder(
+        bindServerSocket: bindServerSocket,
+        openForwardedChannel: _openForwardedChannel,
+        sendPacket: _transport.sendPacket,
+        printDebug: config.printDebug,
+      );
+    } else {
+      _forwarder = null;
+    }
     // The transport's done future completes with an error when the transport
     // is terminated by one; the connection only cares about the timing.
     _transport.done.whenComplete(_onTransportClosed).ignore();
@@ -56,11 +68,16 @@ class SSHServerConnection {
 
   late final SSHTransport _transport;
   late final Timer _authTimer;
+  late final SSHServerForwarder? _forwarder;
   var _phase = _Phase.auth;
 
   /// Open channels on this connection, keyed by the server-assigned channel
   /// number (the id the client addresses them by).
   final _channels = <int, SSHServerChannel>{};
+
+  /// Server-initiated channel opens awaiting the client's verdict, keyed by
+  /// the channel number the open was sent with (see [_openServerChannel]).
+  final _pendingOpens = <int, _PendingOpen>{};
 
   /// The next channel number to assign. A plain counter is enough: channel
   /// numbers are only reused after 2^32 opens.
@@ -83,6 +100,7 @@ class SSHServerConnection {
     _authTimer.cancel();
     _phase = _Phase.closed;
     _teardownChannels();
+    await _forwarder?.close();
     await _transport.close();
   }
 
@@ -142,6 +160,10 @@ class SSHServerConnection {
       case SSH_Message_Channel_Open.messageId:
         _handleChannelOpen(payload);
         return true;
+      case SSH_Message_Channel_Confirmation.messageId:
+      case SSH_Message_Channel_Open_Failure.messageId:
+        _handleChannelOpenReply(payload);
+        return true;
       case SSH_Message_Channel_Window_Adjust.messageId:
       case SSH_Message_Channel_Data.messageId:
       case SSH_Message_Channel_Extended_Data.messageId:
@@ -155,9 +177,11 @@ class SSHServerConnection {
     }
   }
 
-  /// Answers global requests (RFC 4254 §4). Only keepalive is served;
-  /// `tcpip-forward`/`cancel-tcpip-forward` arrive with Task 9, so until
-  /// then everything else is refused.
+  /// Answers global requests (RFC 4254 §4). `keepalive` is acknowledged,
+  /// and `tcpip-forward` / `cancel-tcpip-forward` are handed to the
+  /// forwarder, which replies asynchronously once the injected bind settles.
+  /// Everything else — including forwarding when no bind seam is configured —
+  /// is refused.
   void _handleGlobalRequest(Uint8List payload) {
     final message = _decodeMessage(
       'global request',
@@ -165,23 +189,39 @@ class SSHServerConnection {
       payload,
     );
     if (message == null) return;
-    if (!message.wantReply) return;
-    if (message.requestName == 'keepalive@openssh.com') {
-      _transport.sendPacket(SSH_Message_Request_Success(Uint8List(0)).encode());
-    } else {
+    switch (message.requestName) {
+      case 'tcpip-forward':
+      case 'cancel-tcpip-forward':
+        final forwarder = _forwarder;
+        if (forwarder != null) {
+          unawaited(forwarder.handleGlobalRequest(message));
+          return;
+        }
+      // No seam configured: fall through to the refusal below.
+      case 'keepalive@openssh.com':
+        if (message.wantReply) {
+          _transport.sendPacket(
+            SSH_Message_Request_Success(Uint8List(0)).encode(),
+          );
+        }
+        return;
+    }
+    if (message.wantReply) {
       _transport.sendPacket(SSH_Message_Request_Failure().encode());
     }
   }
 
   /// Serves CHANNEL_OPEN (RFC 4254 §5.1): `session` channels are confirmed
   /// with a fresh [SSHServerChannel]; every other type is refused with
-  /// "administratively prohibited" (forwarded channels arrive in Task 9).
+  /// "administratively prohibited" (server-initiated opens — the outbound
+  /// direction, used for `forwarded-tcpip` — go through
+  /// [_openServerChannel] instead).
   ///
   /// The refusal uses reason 1, `codeAdministrativelyProhibited`. The plan
   /// text says "reason 3 (admin prohibited)", but reason 3 is
   /// `codeUnknownChannelType` in both the fork's API and RFC 4254 §5.1,
   /// and it would be the wrong semantic here (the server recognizes
-  /// `direct-tcpip`, it just does not serve it yet); the named constant for
+  /// `direct-tcpip`, it just does not serve it); the named constant for
   /// the stated semantic wins per the controller ruling that real fork API
   /// names take precedence.
   void _handleChannelOpen(Uint8List payload) {
@@ -298,6 +338,95 @@ class SSHServerConnection {
 
   SSHServerChannel? _channelOrNull(int ourChannel) => _channels[ourChannel];
 
+  /// Serves the client's verdict on a server-initiated channel open
+  /// (RFC 4254 §5.1): a CHANNEL_OPEN_CONFIRMATION promotes the pending open
+  /// to a live channel; a CHANNEL_OPEN_FAILURE resolves it to `null`.
+  void _handleChannelOpenReply(Uint8List payload) {
+    switch (SSHMessage.readMessageId(payload)) {
+      case SSH_Message_Channel_Confirmation.messageId:
+        final message = _decodeMessage(
+          'channel confirmation',
+          SSH_Message_Channel_Confirmation.decode,
+          payload,
+        );
+        if (message == null) return;
+        final pending = _pendingOpens.remove(message.recipientChannel);
+        if (pending == null) return;
+        // Register the channel synchronously before completing the open:
+        // CHANNEL_DATA may follow the confirmation in the same transport
+        // input, and the channel's single-subscription input buffers until
+        // its pump subscribes (mirroring the fork's own client-side accept
+        // path).
+        final channel = SSHServerChannel(
+          recipientChannel: message.senderChannel,
+          ourChannel: message.recipientChannel,
+          channelType: pending.channelType,
+          peerInitialWindowSize: message.initialWindowSize,
+          peerMaximumPacketSize: message.maximumPacketSize,
+          sendPacket: _transport.sendPacket,
+          onClosed: (channel) => _channels.remove(channel.ourChannel),
+          printDebug: _config.printDebug,
+        );
+        _channels[channel.ourChannel] = channel;
+        pending.completer.complete(channel);
+        return;
+      case SSH_Message_Channel_Open_Failure.messageId:
+        final message = _decodeMessage(
+          'channel open failure',
+          SSH_Message_Channel_Open_Failure.decode,
+          payload,
+        );
+        if (message == null) return;
+        _pendingOpens
+            .remove(message.recipientChannel)
+            ?.completer
+            .complete(null);
+        return;
+    }
+  }
+
+  /// Opens a server-initiated channel (RFC 4254 §5.1, the direction the
+  /// client-opened path does not cover): builds the open message through
+  /// [buildOpen] with the channel number this server allocates, sends it,
+  /// and completes with the live channel once the client confirms — or
+  /// `null` when the client refuses, or the connection ends before the
+  /// verdict arrives.
+  Future<SSHServerChannel?> _openServerChannel(
+    SSH_Message_Channel_Open Function(int senderChannel) buildOpen,
+  ) {
+    if (_phase == _Phase.closed) return Future.value(null);
+    final ourChannel = _nextChannelNumber++;
+    final open = buildOpen(ourChannel);
+    final pending = _PendingOpen(open.channelType);
+    _pendingOpens[ourChannel] = pending;
+    _transport.sendPacket(open.encode());
+    return pending.completer.future;
+  }
+
+  /// Opens the `forwarded-tcpip` channel for one accepted forwarded
+  /// connection (RFC 4254 §7.2). The connected address is the host string
+  /// the client asked to forward — clients match remote forwards by that
+  /// string — with the port actually bound; the originator is the
+  /// connecting peer.
+  Future<SSHServerChannel?> _openForwardedChannel({
+    required String connectedAddress,
+    required int connectedPort,
+    required String originatorAddress,
+    required int originatorPort,
+  }) {
+    return _openServerChannel(
+      (senderChannel) => SSH_Message_Channel_Open.forwardedTcpip(
+        senderChannel: senderChannel,
+        initialWindowSize: SSHServerChannel.initialReceiveWindow,
+        maximumPacketSize: SSHServerChannel.maximumPacketSize,
+        host: connectedAddress,
+        port: connectedPort,
+        originatorIP: originatorAddress,
+        originatorPort: originatorPort,
+      ),
+    );
+  }
+
   /// Decodes [payload] with [decode], disconnecting the peer with a
   /// protocol error instead of answering when it is malformed. Returns
   /// `null` in that case (and after the disconnect, nowhere else).
@@ -315,12 +444,18 @@ class SSHServerConnection {
   }
 
   /// Detaches every open channel without sending anything: the transport is
-  /// going away.
+  /// going away. Pending server-initiated opens can never be confirmed
+  /// after that either, so they resolve to `null` — their waiters (the
+  /// forwarder's accepted connections) let go instead of hanging.
   void _teardownChannels() {
     for (final channel in List.of(_channels.values)) {
       channel.detach();
     }
     _channels.clear();
+    for (final pending in _pendingOpens.values) {
+      pending.completer.complete(null);
+    }
+    _pendingOpens.clear();
   }
 
   /// Handles one `SSH_Message_Userauth_Request` (RFC 4252).
@@ -449,6 +584,9 @@ class SSHServerConnection {
     _authTimer.cancel();
     _phase = _Phase.closed;
     _teardownChannels();
+    // Release the binds too; the transport is already gone, so nothing can
+    // be replied to anymore and the release runs unwatched.
+    unawaited(_forwarder?.close());
   }
 
   /// Sends a disconnect message and closes the connection.
@@ -461,4 +599,17 @@ class SSHServerConnection {
     );
     unawaited(close());
   }
+}
+
+/// A server-initiated channel open awaiting the client's verdict.
+class _PendingOpen {
+  _PendingOpen(this.channelType);
+
+  /// The channel type that was opened; the confirmation does not carry it
+  /// back, so the pending open has to remember it.
+  final String channelType;
+
+  /// Completes with the live channel on confirmation, or `null` when the
+  /// open is refused or the connection ends first.
+  final completer = Completer<SSHServerChannel?>();
 }

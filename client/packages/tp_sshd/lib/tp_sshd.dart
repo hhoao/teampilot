@@ -8,6 +8,7 @@ export 'package:dartssh2/protocol.dart'
         SSH_Message_Channel_Request;
 export 'src/server_channel.dart';
 export 'src/server_connection.dart';
+export 'src/server_forward.dart';
 export 'src/server_process.dart';
 export 'src/server_session.dart';
 export 'src/server_sftp.dart';

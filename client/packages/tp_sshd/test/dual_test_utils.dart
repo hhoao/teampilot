@@ -28,6 +28,7 @@ Future<(SSHClient, SSHServer)> startDualPair({
   SSHPtyFactory? ptyFactory,
   SSHHostInfo Function()? hostInfo,
   SftpFileSystem? sftpFileSystem,
+  SSHBindServerSocket? bindServerSocket,
 }) async {
   final (clientSocket, serverSocket) = loopbackSSHSocketPair();
   final connections = StreamController<SSHSocket>();
@@ -41,6 +42,7 @@ Future<(SSHClient, SSHServer)> startDualPair({
       ptyFactory: ptyFactory,
       hostInfo: hostInfo,
       sftpFileSystem: sftpFileSystem,
+      bindServerSocket: bindServerSocket,
     ),
   );
   connections.add(serverSocket);
@@ -107,6 +109,7 @@ SSHClient _connectClient(
 /// authentication.
 Future<(SSHServerConnection, SSHTransport)> startRawAuthenticatedConnection({
   void Function(Uint8List payload)? onServerMessage,
+  SSHBindServerSocket? bindServerSocket,
 }) async {
   final (clientSocket, serverSocket) = loopbackSSHSocketPair();
   final connection = SSHServerConnection(
@@ -115,6 +118,7 @@ Future<(SSHServerConnection, SSHTransport)> startRawAuthenticatedConnection({
       hostKeyPair: testHostKey,
       expectedUsername: 'user',
       authenticate: (_) async => true,
+      bindServerSocket: bindServerSocket,
     ),
   );
   final authenticated = Completer<void>();

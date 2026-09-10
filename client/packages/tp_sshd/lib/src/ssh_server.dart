@@ -5,6 +5,7 @@ import 'package:dartssh2/dartssh2.dart' show SSHKeyPair, SSHSocket;
 import 'package:dartssh2/protocol.dart';
 
 import 'server_connection.dart';
+import 'server_forward.dart';
 import 'server_process.dart';
 import 'sftp_filesystem.dart';
 
@@ -33,6 +34,7 @@ class SSHServerConfig {
     this.ptyFactory,
     this.hostInfo,
     this.sftpFileSystem,
+    this.bindServerSocket,
     this.printDebug,
     this.printTrace,
   });
@@ -80,6 +82,13 @@ class SSHServerConfig {
   /// `sftp` is only served when this is configured; without it the request
   /// is refused.
   final SftpFileSystem? sftpFileSystem;
+
+  /// The bind seam for remote port forwarding (`tcpip-forward`, RFC 4254
+  /// §7). The app passes a `ServerSocket.bind` adapter; `null` disables
+  /// forwarding outright — every `tcpip-forward` request is refused. Only
+  /// loopback addresses are ever bound, and a non-loopback request is
+  /// refused before this seam is consulted.
+  final SSHBindServerSocket? bindServerSocket;
 
   /// Function invoked with debug logging, mirroring [SSHSocket] transports.
   final void Function(String? message)? printDebug;
