@@ -26,6 +26,8 @@ import '../services/agent_runtime/runtime_event_journal.dart';
 import '../services/agent_runtime/runtime_event_projection.dart';
 import '../services/agent_runtime/seat_event_stream.dart';
 import '../services/agent_runtime/seat_lease_projection.dart';
+import '../services/event/async_dispatcher.dart';
+import '../services/event/event_publisher.dart';
 import '../services/prompt_delivery/prompt_delivery_coordinator.dart';
 import '../services/prompt_delivery/prompt_delivery_store.dart';
 import '../services/agent_status/agent_status_seat_lookup.dart';
@@ -2759,9 +2761,16 @@ class _TeamPilotBootstrapState extends State<TeamPilotBootstrap> {
   var _retrying = false;
   ManagedProviderUsageAutoRefresh? _usageAutoRefresh;
 
+  // Central event dispatcher: created once for the whole app lifecycle (not
+  // per bootstrap retry), attached to the publisher so all publishes route
+  // through it; stopped (drained) when the shell goes away.
+  final AsyncDispatcher _eventDispatcher = AsyncDispatcher();
+
   @override
   void initState() {
     super.initState();
+    unawaited(_eventDispatcher.start());
+    EventPublisher.instance.attach(_eventDispatcher);
     WidgetsBinding.instance.addPostFrameCallback((_) {
       unawaited(_start());
     });
@@ -2862,6 +2871,9 @@ class _TeamPilotBootstrapState extends State<TeamPilotBootstrap> {
       unawaited(shell.connectCubit?.close());
       unawaited(shell.managedProviderControlPlane.close());
     }
+    // Drain queued events; dispose() is synchronous, so stop() is
+    // fire-and-forget like the cubit closes above.
+    unawaited(_eventDispatcher.stop());
     super.dispose();
   }
 
