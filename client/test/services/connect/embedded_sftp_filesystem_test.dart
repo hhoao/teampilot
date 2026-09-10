@@ -51,6 +51,56 @@ void main() {
     await reader.close();
   });
 
+  test('openFile WRITE without TRUNC preserves existing bytes', () async {
+    final path = p.join(root.path, 'p.bin');
+    File(path).writeAsBytesSync([1, 2, 3, 4, 5]);
+    final handle = await sftp.openFile(
+      path,
+      SftpFileOpenMode.write | SftpFileOpenMode.create,
+      null,
+    );
+    await handle.write(1, Uint8List.fromList([9, 9])); // in-place overwrite
+    await handle.write(5, Uint8List.fromList([6])); // extend past old end
+    await handle.close();
+    expect(File(path).readAsBytesSync(), [1, 9, 9, 4, 5, 6]);
+  });
+
+  test(
+    'openFile APPEND without TRUNC appends without destroying content',
+    () async {
+      final path = p.join(root.path, 'a.bin');
+      File(path).writeAsStringSync('hello');
+      final handle = await sftp.openFile(
+        path,
+        SftpFileOpenMode.write |
+            SftpFileOpenMode.create |
+            SftpFileOpenMode.append,
+        null,
+      );
+      await handle.write(
+        0,
+        Uint8List.fromList('!'.codeUnits),
+      ); // offset ignored
+      await handle.close();
+      expect(File(path).readAsStringSync(), 'hello!');
+    },
+  );
+
+  test('openFile WRITE with TRUNC truncates', () async {
+    final path = p.join(root.path, 't.bin');
+    File(path).writeAsBytesSync([1, 2, 3, 4, 5]);
+    final handle = await sftp.openFile(
+      path,
+      SftpFileOpenMode.write |
+          SftpFileOpenMode.create |
+          SftpFileOpenMode.truncate,
+      null,
+    );
+    await handle.write(0, Uint8List.fromList([7]));
+    await handle.close();
+    expect(File(path).readAsBytesSync(), [7]);
+  });
+
   test('openFile exclusive on existing path throws FileExists', () {
     File(p.join(root.path, 'e')).writeAsStringSync('');
     expect(
@@ -107,4 +157,16 @@ void main() {
       expect(win.resolveForTest(r'C:/temp/x'), r'C:\temp\x');
     },
   );
+
+  test('directory listing base name handles windows backslash paths', () {
+    // On Windows, Directory.list() entity paths use backslash separators;
+    // a '/'-only split would return the full native path as the filename.
+    expect(EmbeddedSftpFilesystem.baseNameForTest(r'C:\Users\u\docs\a'), 'a');
+    expect(
+      EmbeddedSftpFilesystem.baseNameForTest(r'C:\Users\u\docs\a.txt'),
+      'a.txt',
+    );
+    expect(EmbeddedSftpFilesystem.baseNameForTest('/home/u/a'), 'a');
+    expect(EmbeddedSftpFilesystem.baseNameForTest('a'), 'a');
+  });
 }

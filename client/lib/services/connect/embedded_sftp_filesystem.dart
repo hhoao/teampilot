@@ -11,10 +11,10 @@
 library;
 
 import 'dart:io';
-import 'dart:typed_data';
 
 import 'package:dartssh2/protocol.dart'
     show SftpFileAttrs, SftpFileMode, SftpFileOpenMode, SftpName;
+import 'package:flutter/foundation.dart';
 import 'package:path/path.dart' as p;
 import 'package:tp_sshd/tp_sshd.dart';
 
@@ -82,12 +82,19 @@ class EmbeddedSftpFilesystem implements SftpFileSystem {
       }
     }
     final wantWrite = mode.flag & SftpFileOpenMode.write.flag != 0;
-    final file = File(
-      fsPath,
-    ).openSync(mode: wantWrite ? FileMode.write : FileMode.read);
-    if (mode.flag & SftpFileOpenMode.truncate.flag != 0) {
-      file.truncateSync(0);
-    }
+    final wantTruncate = mode.flag & SftpFileOpenMode.truncate.flag != 0;
+    // dart:io has no O_RDWR-without-trunc FileMode, but [FileMode.append] is
+    // exactly that on every supported platform: `O_RDWR | O_CREAT` plus a
+    // one-time seek to end (the SDK's runtime/bin/file_linux.cc and
+    // file_win.cc both implement it this way — no O_APPEND / FILE_APPEND_DATA
+    // forced-to-end writes). Positioned writes therefore work, so it is the
+    // correct open for WRITE-without-TRUNC (random-access in-place writes,
+    // resume uploads) as well as for APPEND, and never destroys existing
+    // content. [FileMode.write] is only used when the client explicitly
+    // asked for TRUNC.
+    final file = File(fsPath).openSync(
+      mode: _openMode(wantWrite: wantWrite, wantTruncate: wantTruncate),
+    );
     return _IoSftpHandle(
       file,
       append: mode.flag & SftpFileOpenMode.append.flag != 0,
@@ -183,6 +190,20 @@ class EmbeddedSftpFilesystem implements SftpFileSystem {
   /// Exposes the SFTP-to-native path mapping for tests.
   String resolveForTest(String path) => _resolve(path);
 
+  /// Exposes the directory-listing base name for tests (the windows-context
+  /// mapping cannot be exercised end-to-end off-Windows).
+  @visibleForTesting
+  static String baseNameForTest(String path) => _baseName(path);
+
+  /// The final path segment after either separator — dart:io uses '/' on
+  /// POSIX and '\' on Windows, and SFTP clients expect a bare filename.
+  static String _baseName(String path) {
+    var index = path.lastIndexOf('/');
+    final backslash = path.lastIndexOf('\\');
+    if (backslash > index) index = backslash;
+    return index < 0 ? path : path.substring(index + 1);
+  }
+
   /// Lexical `/`-separator normalization: collapses `.` and `..` without
   /// touching the filesystem.
   static String _normalizeLexical(String path) {
@@ -196,6 +217,17 @@ class EmbeddedSftpFilesystem implements SftpFileSystem {
       segments.add(segment);
     }
     return '/${segments.join('/')}';
+  }
+
+  /// The dart:io open mode for an SFTP open: read when no WRITE flag,
+  /// truncating write only on explicit TRUNC, non-truncating read+write
+  /// (append-mode open) otherwise so existing content survives.
+  static FileMode _openMode({
+    required bool wantWrite,
+    required bool wantTruncate,
+  }) {
+    if (!wantWrite) return FileMode.read;
+    return wantTruncate ? FileMode.write : FileMode.append;
   }
 
   static SftpFileAttrs _attrsOf(FileStat stat) => SftpFileAttrs(
@@ -272,10 +304,11 @@ class _IoDirListing implements SftpDirListing {
     final names = <SftpName>[];
     await for (final entity in _directory.list()) {
       final stat = entity.statSync();
+      final baseName = EmbeddedSftpFilesystem._baseName(entity.path);
       names.add(
         SftpName(
-          filename: _baseName(entity.path),
-          longname: _longName(stat, _baseName(entity.path)),
+          filename: baseName,
+          longname: _longName(stat, baseName),
           attr: EmbeddedSftpFilesystem._attrsOf(stat),
         ),
       );
@@ -287,11 +320,6 @@ class _IoDirListing implements SftpDirListing {
   Future<void> close() async {
     _closed = true;
   }
-}
-
-String _baseName(String path) {
-  final index = path.lastIndexOf('/');
-  return index < 0 ? path : path.substring(index + 1);
 }
 
 /// A lazy `ls -l`-style long name; clients only display it.
