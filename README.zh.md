@@ -130,12 +130,12 @@ chmod +x teampilot-*-linux.AppImage
 
 ### Android
 
-Android 版**不运行本机 PTY**，需通过 **SSH** 连接已安装目标 Agent CLI 的 Linux/macOS/Windows（WSL）主机。
+Android 版**不运行本机 PTY**——可与桌面版 Teampilot **扫码配对**，也可通过 **SSH** 连接任意已安装目标 Agent CLI 的主机。
 
 1. 根据 CPU 架构下载 `teampilot-*-arm64-v8a.apk`（多数新机型）或 `teampilot-*-armeabi-v7a.apk`。
 2. 允许「未知来源」后安装 APK。
-3. 打开应用，在 **设置** 中配置 SSH 主机、用户与密钥（或密码）。
-4. 确保远端已安装 CLI 且可在 SSH 登录后的 shell 中执行。
+3. 最简单：在桌面版打开 **设置 → 手机** 显示配对二维码，用手机 App 扫码即可。桌面端内置 SSH 服务器会处理连接——任何平台都**无需**安装或开启系统级 OpenSSH 服务器、远程登录等配置（Windows 首次连接可能弹出一次防火墙提示）。
+4. 也可在 **设置** 中配置 SSH 主机、用户与密钥（或密码）直连远端主机；请确保远端已安装 CLI 且可在 SSH 登录后的 shell 中执行。
 
 ## 支持的 CLI
 

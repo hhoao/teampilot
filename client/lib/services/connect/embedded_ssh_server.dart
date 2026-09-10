@@ -72,11 +72,13 @@ class EmbeddedSshServer implements EmbeddedSshServerHandle {
     p.Context? pathContext,
     InternetAddress? bindAddress,
     int? portOverride,
+    PtySpawner? ptySpawner,
   }) : _fs = fs,
        _appDataRoot = appDataRoot,
        _deviceStore = deviceStore,
        _bindAddress = bindAddress ?? InternetAddress.anyIPv4,
        _portOverride = portOverride,
+       _ptySpawner = ptySpawner,
        _pathContext = pathContext ?? AppPaths.pathContextForDataRoot(
          appDataRoot,
        );
@@ -86,6 +88,12 @@ class EmbeddedSshServer implements EmbeddedSshServerHandle {
   final PairedDeviceStore _deviceStore;
   final InternetAddress _bindAddress;
   final int? _portOverride;
+
+  /// How `shell` requests spawn their pty. Production leaves this null
+  /// (flutter_pty's real pseudo-terminal); the integration test injects a
+  /// dart:io `Process`-backed spawner because flutter_pty needs the Flutter
+  /// engine a plain test runner cannot provide.
+  final PtySpawner? _ptySpawner;
   final p.Context _pathContext;
 
   /// The only username this server authenticates (the native user the app
@@ -152,7 +160,7 @@ class EmbeddedSshServer implements EmbeddedSshServerHandle {
           _opensshLineFor(request.algorithm, request.publicKey),
         ),
         processFactory: embeddedProcessFactory(),
-        ptyFactory: embeddedPtyFactory(),
+        ptyFactory: embeddedPtyFactory(spawner: _ptySpawner),
         hostInfo: _hostInfo,
         sftpFileSystem: EmbeddedSftpFilesystem(
           pathContext: _pathContext,

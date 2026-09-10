@@ -127,7 +127,7 @@ Declared in `client/dart_test.yaml`. Every integration test has the `integration
 
 | Secondary tag | Tests | Needs |
 |---------------|-------|--------|
-| `cross-platform` | L1 bus ping/pong | Nothing (HTTP loopback only) |
+| `cross-platform` | L1 bus ping/pong; embedded pairing loop | Loopback sockets only (the shell runs over pipes, no pty) |
 | `linux-pty` | L2 CLI matrix + Claude mixed PTY; L3 also carries this tag | `flutter build linux`, `libflutter_pty_new.so` on loader path, matching CLIs on PATH |
 | `docker` | L3 mixed SSH worker; remote CLI install | Docker daemon (+ outbound network for install test) |
 
@@ -138,6 +138,27 @@ cd client
 flutter test --tags "integration && cross-platform"   # L1 only
 flutter test --tags "integration && linux-pty"        # L2 + L3 (CI)
 flutter test --tags "integration && docker"           # L3 + remote CLI install
+```
+
+### Embedded connect server
+
+Desktop **Connect** runs an embedded pure-Dart SSH server (`tp_sshd`) — no OS
+OpenSSH server / Remote Login / `sshd` configuration is required on any
+platform. Windows shows a one-time firewall prompt the first time a phone
+pairs, because the server listens on a persisted high port; accepting it is
+the only system interaction.
+
+The full pairing loop (embedded server → QR offer → pairing POST over pinned
+TLS → dartssh2 login → tp1 exec / host-info → SFTP → bare-shell channel →
+revocation) is covered by `client/test/integration/embedded_pairing_test.dart`
+(tagged `integration, cross-platform`). The bare-shell stage runs the login
+shell over plain pipes through the `PtySpawner` seam, so it needs no Flutter
+engine; the real flutter_pty path is covered by the Windows manual test matrix
+(real-device QR pairing) noted in the PR description. Run it with:
+
+```bash
+cd client
+dart run tool/run_tests.dart --tags integration test/integration/embedded_pairing_test.dart
 ```
 
 ### Mock model gateway + CLI message matrix
