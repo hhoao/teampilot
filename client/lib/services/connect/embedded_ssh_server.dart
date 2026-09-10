@@ -226,17 +226,34 @@ class EmbeddedSshServer implements EmbeddedSshServerHandle {
     SSHServerAuthRequest request,
   ) async {
     final publicKeyLine = _opensshLineFor(request.algorithm, request.publicKey);
-    // Last-match-wins if two devices ever share one key blob — accepted per
-    // the Task 3 review; the store owns registry semantics either way.
-    final deviceId = await _deviceStore.deviceIdForPublicKey(publicKeyLine);
-    if (deviceId == null) return;
-    _connectionDevices[connection] = _DeviceConnection(
-      deviceId: deviceId,
-      publicKeyLine: publicKeyLine,
-    );
+    // Record synchronously — before any await — so a revoke landing while the
+    // registry lookup below is still in flight finds this connection in the
+    // map and evicts it. There is no window between the userauth success and
+    // the record.
+    final entry = _DeviceConnection(publicKeyLine: publicKeyLine);
+    _connectionDevices[connection] = entry;
     unawaited(
       connection.done.whenComplete(() => _connectionDevices.remove(connection)),
     );
+    // Last-match-wins if two devices ever share one key blob — accepted per
+    // the Task 3 review; the store owns registry semantics either way.
+    final deviceId = await _deviceStore.deviceIdForPublicKey(publicKeyLine);
+    if (deviceId == null) {
+      // The key that just authenticated no longer resolves to a registered
+      // device — a revoke (or re-pair) raced the lookup. Fail closed: the
+      // connection is torn down, exactly as if the registry change had found
+      // it recorded. (If eviction already closed it, the entry is gone and
+      // there is nothing to do.)
+      if (_connectionDevices.remove(connection) != null) {
+        AppLogger.instance.i(
+          'embedded ssh: closing connection whose device key was revoked '
+          'during authentication',
+        );
+        unawaited(connection.close());
+      }
+      return;
+    }
+    entry.deviceId = deviceId;
   }
 
   /// Closes every recorded connection whose key no longer resolves to a
@@ -250,7 +267,7 @@ class EmbeddedSshServer implements EmbeddedSshServerHandle {
       _connectionDevices.remove(entry.key);
       AppLogger.instance.i(
         'embedded ssh: closing connection of revoked device '
-        "'${entry.value.deviceId}'",
+        "'${entry.value.deviceId ?? 'unknown'}'",
       );
       unawaited(entry.key.close());
     }
@@ -269,11 +286,15 @@ class EmbeddedSshServer implements EmbeddedSshServerHandle {
 }
 
 /// A device's hold on one live connection.
+///
+/// [deviceId] is `null` until the record-time registry lookup resolves — and
+/// stays `null` forever if a revoke raced that lookup, in which case the
+/// connection is closed fail-closed anyway.
 class _DeviceConnection {
-  const _DeviceConnection({required this.deviceId, required this.publicKeyLine});
+  _DeviceConnection({required this.publicKeyLine});
 
-  final String deviceId;
   final String publicKeyLine;
+  String? deviceId;
 }
 
 /// Snapshot of host facts for the `tp1:` host-info query, answered by the

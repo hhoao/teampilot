@@ -1,6 +1,7 @@
 @TestOn('vm')
 library;
 
+import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
@@ -40,6 +41,31 @@ AAAECTWQG5LiG2G8cXzdnXs0M8RT6fR8VAymsLRhbbTKVsOdvaR00+YgMg28q1gkvWl7xV
 XD0H/C52YkaFTKJVDfQ/AAAAGHRwLXRhc2s3LXRocm93YXdheS1vdGhlcgECAwQF
 -----END OPENSSH PRIVATE KEY-----
 ''';
+
+/// Reproduces the revocation race: dartssh2 (no probe for a local key pair)
+/// sends one signed publickey request, so a login performs exactly two
+/// registry lookups for the device key — the signed-auth check and the
+/// record-time lookup `_recordDeviceConnection` makes after the userauth
+/// success was already sent. This store revokes the device in the middle of
+/// that second lookup, i.e. after the connection authenticated but before
+/// the server finished recording which device owns it.
+class _RevokeRacingStore extends PairedDeviceStore {
+  _RevokeRacingStore({required super.fs, required super.appDataRoot});
+
+  static const _recordLookup = 2;
+  int _lookups = 0;
+  final raced = Completer<void>();
+
+  @override
+  Future<String?> deviceIdForPublicKey(String publicKeyLine) async {
+    if (++_lookups == _recordLookup) {
+      await revokeDevice('phone-1');
+      if (!raced.isCompleted) raced.complete();
+      return null;
+    }
+    return super.deviceIdForPublicKey(publicKeyLine);
+  }
+}
 
 void main() {
   late InMemoryFilesystem fs;
@@ -117,6 +143,37 @@ void main() {
     final client = await connectTo(server);
     await client.authenticated;
     await server.revokeDevice('phone-1');
+    await expectLater(
+      client.done.timeout(const Duration(seconds: 5)),
+      completes,
+    );
+    await client.close();
+  });
+
+  test('revoke racing the auth-success record still tears down the connection', () async {
+    final racingStore = _RevokeRacingStore(fs: fs, appDataRoot: '/data');
+    await racingStore.issueDevice(
+      deviceId: 'phone-1',
+      publicKey: testDevicePubLine,
+    );
+    final server = EmbeddedSshServer(
+      fs: fs,
+      appDataRoot: '/data',
+      deviceStore: racingStore,
+      username: 'user',
+      homePath: '/home/user',
+      bindAddress: InternetAddress.loopbackIPv4,
+      portOverride: 0,
+    );
+    await server.start();
+    addTearDown(server.stop);
+
+    final client = await connectTo(server);
+    await client.authenticated;
+    // The store revoked the device while the server was still recording the
+    // just-authenticated connection — the race window the fail-closed
+    // guarantee must cover.
+    await racingStore.raced.future.timeout(const Duration(seconds: 5));
     await expectLater(
       client.done.timeout(const Duration(seconds: 5)),
       completes,
