@@ -112,9 +112,11 @@ bool _handleEnvRequest(
   return true;
 }
 
-/// Applies a `window-change` (RFC 4254 §6.7): resizes the running pty, or —
-/// before the shell — refreshes the stashed dimensions so it starts at the
-/// size the client last announced.
+/// Applies a `window-change` (RFC 4254 §6.7): resizes the running pty. With
+/// no live pty on the channel the request is refused — an honest failure
+/// rather than a success ack for a resize nothing received — though the
+/// dimensions stashed by `pty-req` are still refreshed, so a shell request
+/// that arrives afterwards starts at the size the client last announced.
 bool _handleWindowChange(
   _SessionState state,
   SSH_Message_Channel_Request request,
@@ -137,19 +139,23 @@ bool _handleWindowChange(
       environment: dimensions.environment,
     );
   }
-  return true;
+  return false;
 }
 
 /// Delivers a `signal` request (RFC 4254 §6.9) to the running pty by the
 /// name the client sent — the fork's client emits the RFC names directly
-/// from its `SSHSignal` enum, so they pass through unchanged.
+/// from its `SSHSignal` enum, so they pass through unchanged. With no live
+/// pty there is nothing to deliver the signal to, and the request is
+/// refused instead of acknowledged as a silent no-op.
 bool _handleSignalRequest(
   _SessionState state,
   SSH_Message_Channel_Request request,
 ) {
   final name = request.signalName;
   if (name == null) return false;
-  state.pty?.signal(name);
+  final pty = state.pty;
+  if (pty == null) return false;
+  pty.signal(name);
   return true;
 }
 

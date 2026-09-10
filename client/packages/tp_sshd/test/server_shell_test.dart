@@ -6,6 +6,13 @@ import 'dart:convert';
 import 'dart:typed_data';
 
 import 'package:dartssh2/dartssh2.dart';
+import 'package:dartssh2/protocol.dart'
+    show
+        SSHChannelRequestType,
+        SSHMessage,
+        SSH_Message_Channel_Failure,
+        SSH_Message_Channel_Request,
+        SSH_Message_Channel_Success;
 import 'package:test/test.dart';
 import 'package:tp_sshd/tp_sshd.dart';
 
@@ -161,4 +168,149 @@ void main() {
     client.close();
     await server.close();
   });
+
+  // Protocol honesty: `window-change` and `signal` are no-ops with no live
+  // pty on the channel, and a client that asks for a reply must not get a
+  // success ack for one.
+  //
+  // The verdict is not observable over the dual pair: the fork's
+  // `SSH_Message_Channel_Request.decode` hard-codes `wantReply: false` for
+  // both request types, so no wire reply is ever sent for them whatever the
+  // session layer answers. The session layer is therefore driven directly,
+  // on a hand-built channel wired exactly like SSHServerConnection wires it,
+  // with the outgoing packets captured.
+  test('signal and window-change without a live pty reply channel failure',
+      () async {
+    final sentIds = <int>[];
+    final channel = _buildSessionChannel(
+      config: SSHServerConfig(
+        hostKeyPair: testHostKey,
+        expectedUsername: 'user',
+        authenticate: (_) async => true,
+        ptyFactory: (initial) async => _FakePty(),
+      ),
+      onSendPacket: (payload) => sentIds.add(SSHMessage.readMessageId(payload)),
+    );
+
+    channel.handleRequest(
+      SSH_Message_Channel_Request(
+        recipientChannel: 0,
+        requestType: SSHChannelRequestType.signal,
+        wantReply: true,
+        signalName: 'INT',
+      ),
+    );
+    await pumpEventQueue();
+    expect(sentIds, [SSH_Message_Channel_Failure.messageId]);
+
+    channel.handleRequest(
+      SSH_Message_Channel_Request(
+        recipientChannel: 0,
+        requestType: SSHChannelRequestType.windowChange,
+        wantReply: true,
+        termWidth: 100,
+        termHeight: 50,
+        termPixelWidth: 0,
+        termPixelHeight: 0,
+      ),
+    );
+    await pumpEventQueue();
+    expect(sentIds, [
+      SSH_Message_Channel_Failure.messageId,
+      SSH_Message_Channel_Failure.messageId,
+    ]);
+
+    channel.detach();
+  });
+
+  test('signal and window-change with a live pty succeed', () async {
+    final pty = _FakePty();
+    final sentIds = <int>[];
+    final channel = _buildSessionChannel(
+      config: SSHServerConfig(
+        hostKeyPair: testHostKey,
+        expectedUsername: 'user',
+        authenticate: (_) async => true,
+        ptyFactory: (initial) async => pty,
+      ),
+      onSendPacket: (payload) => sentIds.add(SSHMessage.readMessageId(payload)),
+    );
+
+    // pty-req stashes the dimensions; shell spawns the pty they describe.
+    channel.handleRequest(
+      SSH_Message_Channel_Request(
+        recipientChannel: 0,
+        requestType: SSHChannelRequestType.pty,
+        wantReply: true,
+        termType: 'xterm-256color',
+        termWidth: 80,
+        termHeight: 24,
+        termPixelWidth: 0,
+        termPixelHeight: 0,
+        termModes: Uint8List(0),
+      ),
+    );
+    channel.handleRequest(
+      SSH_Message_Channel_Request(
+        recipientChannel: 0,
+        requestType: SSHChannelRequestType.shell,
+        wantReply: true,
+      ),
+    );
+    await pumpEventQueue();
+    expect(sentIds, [
+      SSH_Message_Channel_Success.messageId,
+      SSH_Message_Channel_Success.messageId,
+    ]);
+
+    // With the pty live, both requests are applied and acknowledged.
+    channel.handleRequest(
+      SSH_Message_Channel_Request(
+        recipientChannel: 0,
+        requestType: SSHChannelRequestType.windowChange,
+        wantReply: true,
+        termWidth: 200,
+        termHeight: 50,
+        termPixelWidth: 0,
+        termPixelHeight: 0,
+      ),
+    );
+    await pumpEventQueue();
+    expect(pty.resized, contains('200 x 50'));
+    channel.handleRequest(
+      SSH_Message_Channel_Request(
+        recipientChannel: 0,
+        requestType: SSHChannelRequestType.signal,
+        wantReply: true,
+        signalName: 'INT',
+      ),
+    );
+    await pumpEventQueue();
+    expect(pty.signaled, contains('INT'));
+    expect(sentIds, everyElement(SSH_Message_Channel_Success.messageId));
+    expect(sentIds, hasLength(4));
+
+    channel.detach();
+  });
+}
+
+/// A session channel built by hand, wired exactly like SSHServerConnection
+/// wires the channels it confirms, with every outgoing packet handed to
+/// [onSendPacket] instead of a transport.
+SSHServerChannel _buildSessionChannel({
+  required SSHServerConfig config,
+  required void Function(Uint8List payload) onSendPacket,
+}) {
+  final channel = SSHServerChannel(
+    recipientChannel: 0,
+    ourChannel: 0,
+    channelType: 'session',
+    peerInitialWindowSize: 1024,
+    peerMaximumPacketSize: 32768,
+    sendPacket: onSendPacket,
+    onClosed: (_) {},
+  );
+  channel.onRequest = (channel, request) =>
+      handleSessionRequest(channel, request, config: config);
+  return channel;
 }

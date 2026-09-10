@@ -197,7 +197,8 @@ class SSHServerConnection {
           unawaited(forwarder.handleGlobalRequest(message));
           return;
         }
-      // No seam configured: fall through to the refusal below.
+      // No seam configured: this case body ends here, and control continues
+      // after the switch to the shared wantReply refusal below.
       case 'keepalive@openssh.com':
         if (message.wantReply) {
           _transport.sendPacket(

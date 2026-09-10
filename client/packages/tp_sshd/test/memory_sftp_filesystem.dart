@@ -13,16 +13,21 @@ import 'package:tp_sshd/tp_sshd.dart';
 class MemorySftpFileSystem implements SftpFileSystem {
   final _nodes = <String, _MemoryNode>{'/': _MemoryNode.directory()};
 
-  /// Creates an empty regular file at [path] (parents must already exist),
-  /// for tests that need a directory with many entries without opening a
-  /// connection per file.
-  void createFile(String path) {
+  /// Lengths of every file read issued through [openFile] handles, in order,
+  /// so tests can assert what the server asked the filesystem for — not just
+  /// what made it back onto the wire.
+  final fileReadLengths = <int>[];
+
+  /// Creates a regular file at [path] (parents must already exist) holding
+  /// [bytes], for tests that need file content — or a directory with many
+  /// entries — without opening a connection per file.
+  void createFile(String path, {List<int> bytes = const []}) {
     final normalized = _normalize(path);
     final parent = _nodes[_parentOf(normalized)]!;
     if (!parent.isDirectory) {
       throw StateError('not a directory: $path');
     }
-    _nodes[normalized] = _MemoryNode.file();
+    _nodes[normalized] = _MemoryNode.file()..bytes = Uint8List.fromList(bytes);
   }
 
   /// Creates an empty directory at [path] (the parent must already exist).
@@ -83,6 +88,7 @@ class MemorySftpFileSystem implements SftpFileSystem {
     return _MemoryFileHandle(
       _nodes[normalized]!,
       append: _hasFlag(mode, SftpFileOpenMode.append),
+      onReadLength: fileReadLengths.add,
     );
   }
 
@@ -239,13 +245,20 @@ class _MemoryNode {
 /// Open file handle over a [_MemoryNode]: explicit-offset reads and writes
 /// against the node's byte buffer, with appends always landing at the end.
 class _MemoryFileHandle extends SftpHandle {
-  _MemoryFileHandle(this._node, {required bool append}) : _append = append;
+  _MemoryFileHandle(
+    this._node, {
+    required bool append,
+    void Function(int length)? onReadLength,
+  })  : _append = append,
+        _onReadLength = onReadLength;
 
   final _MemoryNode _node;
   final bool _append;
+  final void Function(int length)? _onReadLength;
 
   @override
   Future<Uint8List> read(int offset, int length) async {
+    _onReadLength?.call(length);
     final bytes = _node.bytes!;
     if (offset < 0 || length < 0) {
       throw StateError('negative read: offset=$offset length=$length');

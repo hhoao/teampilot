@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:collection';
 import 'dart:convert';
+import 'dart:math' as math;
 import 'dart:typed_data';
 
 import 'package:dartssh2/protocol.dart';
@@ -16,6 +17,17 @@ const _kSftpVersion = 3;
 /// limit (`SFTP_MAX_MSG_LENGTH` in OpenSSH terms). The 4-byte length prefix
 /// is not counted.
 const _kMaxPacketLength = 256 * 1024;
+
+/// Largest read a READ request may ask the filesystem for. A DATA reply
+/// carries a 9-byte header (type byte, request id, and the data's 4-byte
+/// length prefix) on top of the bytes, so anything past this could never fit
+/// one outgoing packet. The requested length is clamped to it in
+/// [_SftpServerSession._handleRead] before the filesystem is read: a client
+/// may ask for up to a uint32 of bytes, and without the clamp the injected
+/// filesystem would materialize that much data only for the outgoing-packet
+/// guard in [_SftpServerSession._sendPacket] to discard it — and close the
+/// channel.
+const _kMaxReadLength = _kMaxPacketLength - 9;
 
 /// Byte budget for a READDIR NAME packet: the encoded payload of the reply
 /// (type + request id + count + the names) must stay at or under the
@@ -235,7 +247,13 @@ class _SftpServerSession {
       _sendStatus(request.requestId, SftpStatusCode.failure, 'Invalid handle');
       return;
     }
-    final data = await file.read(request.offset, request.length);
+    // Clamp before reading: a hostile or careless client may ask for up to a
+    // uint32 of bytes, and the filesystem must not be made to materialize
+    // more than one reply packet can carry.
+    final data = await file.read(
+      request.offset,
+      math.min(request.length, _kMaxReadLength),
+    );
     if (data.isEmpty) {
       // EOF is a status, never an empty DATA packet — the fork's client
       // treats the latter as a protocol error.
@@ -423,9 +441,8 @@ class _SftpServerSession {
     // The fork's client destroys the channel on any incoming packet over
     // the limit, so shipping an over-limit reply would kill the session on
     // the client's terms — fail it here instead. (READDIR replies are
-    // batched down by _handleReadDir; READ replies are bounded by the
-    // client's own request length, which is under the limit by
-    // construction.)
+    // batched down by _handleReadDir; READ replies are clamped to the limit
+    // by _handleRead before the filesystem is read.)
     if (payload.length > _kMaxPacketLength) {
       _channel.printDebug?.call(
         'tp_sshd: closing sftp subsystem: outgoing packet of '

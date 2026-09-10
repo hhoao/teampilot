@@ -1,14 +1,80 @@
 @TestOn('vm')
 library;
 
+import 'dart:async';
+import 'dart:collection';
 import 'dart:typed_data';
 
 import 'package:dartssh2/dartssh2.dart';
+import 'package:dartssh2/protocol.dart';
+import 'package:dartssh2/src/ssh_channel.dart' show SSHChannel, SSHChannelData;
 import 'package:test/test.dart';
 import 'package:tp_sshd/tp_sshd.dart';
 
 import 'dual_test_utils.dart';
 import 'memory_sftp_filesystem.dart';
+
+/// Hand-driven SFTP wire on one session channel: frames outgoing packets and
+/// reassembles the length-prefixed replies out of the channel's data stream,
+/// for requests the fork's client never sends (a READ asking for a whole
+/// uint32 of bytes).
+class _RawSftpWire {
+  _RawSftpWire(this._channel) {
+    _channel.stream.listen(_onData);
+  }
+
+  final SSHChannel _channel;
+  final _pending = BytesBuilder(copy: false);
+  final _replies = Queue<Uint8List>();
+  Completer<Uint8List>? _replyWaiter;
+
+  /// Frames [packet] and sends it as channel data.
+  void send(SftpPacket packet) {
+    final payload = packet.encode();
+    final framed = BytesBuilder(copy: false)
+      ..add(_lengthPrefix(payload.length))
+      ..add(payload);
+    _channel.addData(framed.takeBytes());
+  }
+
+  /// Completes with the next reply payload (type byte first, no length
+  /// prefix).
+  Future<Uint8List> receive() {
+    if (_replies.isNotEmpty) return Future.value(_replies.removeFirst());
+    _replyWaiter = Completer<Uint8List>();
+    return _replyWaiter!.future;
+  }
+
+  void _onData(SSHChannelData data) {
+    var bytes = (BytesBuilder(copy: false)
+          ..add(_pending.takeBytes())
+          ..add(data.bytes))
+        .takeBytes();
+    while (bytes.length >= 4) {
+      final length = ByteData.sublistView(bytes, 0, 4).getUint32(0);
+      if (bytes.length < 4 + length) break;
+      _emitReply(Uint8List.sublistView(bytes, 4, 4 + length));
+      bytes = Uint8List.sublistView(bytes, 4 + length);
+    }
+    _pending.add(bytes);
+  }
+
+  void _emitReply(Uint8List packet) {
+    final waiter = _replyWaiter;
+    if (waiter != null) {
+      _replyWaiter = null;
+      waiter.complete(packet);
+    } else {
+      _replies.add(packet);
+    }
+  }
+
+  Uint8List _lengthPrefix(int length) {
+    final bytes = Uint8List(4);
+    ByteData.view(bytes.buffer).setUint32(0, length);
+    return bytes;
+  }
+}
 
 void main() {
   late MemorySftpFileSystem fs;
@@ -121,6 +187,64 @@ void main() {
     for (var i = 0; i < entryCount; i++) {
       expect(filenames, contains('dir-entry-$i'));
     }
+    client.close();
+    await server.close();
+  });
+
+  // A READ whose requested length is a whole uint32 must be clamped to what
+  // one outgoing packet can carry before the filesystem is asked for
+  // anything: without the clamp the filesystem would materialize up to 4 GiB
+  // of data that the outgoing-packet guard would then discard along with the
+  // channel. The reply is a clamped DATA packet — not an error status — and
+  // the channel stays alive for further requests.
+  test('a READ asking for more than one packet is clamped, not an error',
+      () async {
+    fs.createFile('/big.bin', bytes: Uint8List(512 * 1024));
+    final (client, server) = await connect();
+    final controller = await openClientSessionChannel(client);
+    expect(await controller.sendSubsystem('sftp'), isTrue);
+    final wire = _RawSftpWire(controller.channel);
+
+    wire.send(SftpInitPacket(3));
+    expect((await wire.receive())[0], SftpVersionPacket.packetType);
+
+    wire.send(SftpOpenPacket(
+      1,
+      '/big.bin',
+      SftpFileOpenMode.read.flag,
+      SftpFileAttrs(),
+    ));
+    final openReply = await wire.receive();
+    expect(openReply[0], SftpHandlePacket.packetType);
+    final handle = SftpHandlePacket.decode(openReply).handle;
+
+    wire.send(SftpReadPacket(
+      requestId: 2,
+      handle: handle,
+      offset: 0,
+      length: 0xffffffff,
+    ));
+    final readReply = await wire.receive();
+    expect(readReply[0], SftpDataPacket.packetType);
+    // The 256 KiB SFTP packet limit minus the DATA header (type byte,
+    // request id, and the data's 4-byte length prefix).
+    const clampedLength = 256 * 1024 - 9;
+    expect(SftpDataPacket.decode(readReply).data.length, clampedLength);
+    // The clamp happened before the filesystem: the server asked it for the
+    // clamped length, not the 4 GiB the wire requested.
+    expect(fs.fileReadLengths, [clampedLength]);
+
+    // The channel survived — a further read at the clamp boundary is served.
+    wire.send(SftpReadPacket(
+      requestId: 3,
+      handle: handle,
+      offset: clampedLength,
+      length: 16,
+    ));
+    final nextReply = await wire.receive();
+    expect(nextReply[0], SftpDataPacket.packetType);
+    expect(SftpDataPacket.decode(nextReply).data.length, 16);
+
     client.close();
     await server.close();
   });
