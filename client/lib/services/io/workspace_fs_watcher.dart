@@ -50,7 +50,7 @@ class WorkspaceFsWatcher {
     // a dispatcher (tests constructing the watcher bare), _emit() feeds the
     // controller directly — the legacy path exactly.
     if (dispatcher != null) {
-      _relay = _RelayHandler(_controller);
+      _relay = _RelayHandler(root, _controller);
       dispatcher.registerFamily<WorkspaceFsKind>(
         WorkspaceFsKind.changed.runtimeType,
         _relay!,
@@ -311,9 +311,15 @@ class WorkspaceFsWatcher {
 
 /// Copies dispatcher-delivered batches back into the watcher's local
 /// controller (see the construction-site comment in [WorkspaceFsWatcher]).
+///
+/// Invariant: kept-alive workspace tabs leave multiple watchers' relays live
+/// on the app-global dispatcher at once, so this relay copies back ONLY
+/// events whose [WorkspaceFsChangedEvent.root] equals this watcher's root —
+/// correctness never relies on "the other tabs have no listeners".
 class _RelayHandler implements EventHandler<WorkspaceFsChangedEvent> {
-  _RelayHandler(this._controller);
+  _RelayHandler(this._root, this._controller);
 
+  final String _root;
   final StreamController<FsChangeBatch> _controller;
   bool _detached = false;
 
@@ -323,7 +329,7 @@ class _RelayHandler implements EventHandler<WorkspaceFsChangedEvent> {
 
   @override
   void handle(WorkspaceFsChangedEvent event) {
-    if (_detached) return;
+    if (_detached || event.root != _root) return;
     _controller.add(event.batch);
   }
 }

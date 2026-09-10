@@ -77,6 +77,45 @@ void main() {
     await d.stop();
   });
 
+  test('relay only delivers batches for its own root', () async {
+    // Invariant fix: kept-alive workspace tabs leave multiple watchers' relays
+    // live on one app-global dispatcher at once. A batch emitted under root A
+    // must reach only watcher A's onChanged — never watcher B's — so the
+    // invariant holds structurally instead of relying on inactive tabs having
+    // no onChanged listeners.
+    final d = AsyncDispatcher()..start();
+    final watcherA = WorkspaceFsWatcher(
+      fs: InMemoryFilesystem(),
+      root: '/w/a',
+      dispatcher: d,
+    );
+    final watcherB = WorkspaceFsWatcher(
+      fs: InMemoryFilesystem(),
+      root: '/w/b',
+      dispatcher: d,
+    );
+    final batchesA = <FsChangeBatch>[];
+    final batchesB = <FsChangeBatch>[];
+    watcherA.onChanged.listen(batchesA.add);
+    watcherB.onChanged.listen(batchesB.add);
+
+    d.dispatch(
+      WorkspaceFsChangedEvent(
+        root: '/w/a',
+        batch: (changedDirs: const {'/w/a/lib'}, structural: true),
+        timestamp: DateTime(2026),
+      ),
+    );
+    await d.stop();
+    await Future<void>.delayed(Duration.zero);
+
+    expect(batchesA.single.changedDirs, {'/w/a/lib'});
+    expect(batchesB, isEmpty);
+
+    await watcherA.stopAndDispose();
+    await watcherB.stopAndDispose();
+  });
+
   test('disposed watcher no longer relays dispatcher events', () async {
     // Leak regression (Task 4 lesson): the right-tools lifecycle constructs a
     // fresh watcher per cwd change and disposes the old one, while the
