@@ -197,13 +197,18 @@ class SshConnectionCubit extends Cubit<SshConnectionState> {
         return;
       }
       final cause = sshConnectionFailureCause(error);
-      // A paired profile pins the desktop's host-key fingerprints; a
-      // rejection against those pins means the desktop re-keyed (upgrade,
-      // reset, re-pair) and the phone must scan a new pairing code.
+      // A paired profile pins the desktop's identity: its host-key
+      // fingerprints and, for embedded targets, the embedded port. A host-key
+      // rejection against the pins means the desktop re-keyed (upgrade,
+      // reset, re-pair); a TCP refusal means the desktop answered but
+      // nothing listens on the pinned port (the port was re-picked — an
+      // offline desktop would time out instead). Both are repaired only by
+      // scanning a new pairing code.
       final stalePairing =
-          (error is SshHostKeyMismatch || cause is SSHHostkeyError) &&
           profile.pairedDesktopId != null &&
-          profile.hostKeyFingerprints.isNotEmpty;
+          (((error is SshHostKeyMismatch || cause is SSHHostkeyError) &&
+                  profile.hostKeyFingerprints.isNotEmpty) ||
+              (profile.embeddedTarget && isTcpConnectionRefused(error)));
       final authFailed =
           cause is SSHAuthFailError || cause is SSHHostkeyError;
       final status = authFailed

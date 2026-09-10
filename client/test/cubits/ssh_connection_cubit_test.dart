@@ -477,6 +477,107 @@ void main() {
       harness.dispose();
     });
 
+    test('paired embedded profile TCP refusal → re-pair hint', () async {
+      final harness = _Harness(
+        connector: (profile, {timeout = const Duration(seconds: 10)}) async {
+          throw const SocketException(
+            'Connection refused',
+            osError: OSError('Connection refused', 111),
+          );
+        },
+      );
+      final cubit = harness.createCubit(
+        pairedConnectAttempt: PairedConnectAttempt(
+          saveLastGood: (_) async {},
+        ),
+      );
+      final paired = _paired.copyWith(
+        embeddedTarget: true,
+        hostKeyFingerprints: const ['SHA256:pinned-host-key'],
+      );
+      cubit.syncProfiles([paired]);
+
+      await cubit.connect(paired.id);
+
+      // The desktop answered the dial but nothing listens on the pinned
+      // port — the embedded port was re-picked since pairing (as opposed to
+      // an offline desktop, which times out). The UI must point at
+      // re-pairing instead of a raw socket error.
+      expect(
+        cubit.state.hostsById[paired.id]!.errorDetail,
+        sshPairingStaleDetail,
+      );
+      expect(
+        cubit.state.hostsById[paired.id]!.status,
+        SshHostUiStatus.error,
+      );
+
+      await cubit.close();
+      harness.dispose();
+    });
+
+    test('paired embedded profile network timeout keeps generic error', () async {
+      final harness = _Harness(
+        connector: (profile, {timeout = const Duration(seconds: 10)}) async {
+          throw const SocketException(
+            'Timeout',
+            osError: OSError('timed out', 60),
+          );
+        },
+      );
+      final cubit = harness.createCubit(
+        pairedConnectAttempt: PairedConnectAttempt(
+          saveLastGood: (_) async {},
+        ),
+      );
+      final paired = _paired.copyWith(
+        embeddedTarget: true,
+        hostKeyFingerprints: const ['SHA256:pinned-host-key'],
+      );
+      cubit.syncProfiles([paired]);
+
+      await cubit.connect(paired.id);
+
+      // A timeout means the desktop never answered — indistinguishable from
+      // it being off/away, so no re-pair hint.
+      expect(
+        cubit.state.hostsById[paired.id]!.errorDetail,
+        isNot(sshPairingStaleDetail),
+      );
+
+      await cubit.close();
+      harness.dispose();
+    });
+
+    test('paired non-embedded profile refusal keeps generic error', () async {
+      final harness = _Harness(
+        connector: (profile, {timeout = const Duration(seconds: 10)}) async {
+          throw const SocketException(
+            'Connection refused',
+            osError: OSError('Connection refused', 111),
+          );
+        },
+      );
+      final cubit = harness.createCubit(
+        pairedConnectAttempt: PairedConnectAttempt(
+          saveLastGood: (_) async {},
+        ),
+      );
+      // embeddedTarget defaults to false (v1 offer / system sshd pairing):
+      // a refused port there does not imply a re-picked embedded port.
+      cubit.syncProfiles([_paired]);
+
+      await cubit.connect(_paired.id);
+
+      expect(
+        cubit.state.hostsById[_paired.id]!.errorDetail,
+        isNot(sshPairingStaleDetail),
+      );
+
+      await cubit.close();
+      harness.dispose();
+    });
+
     test('paired profile plans endpoint dials and persists the winner', () async {
       final dialedHosts = <String>[];
       final harness = _Harness(

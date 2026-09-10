@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:dartssh2/dartssh2.dart';
 
 import '../../l10n/app_localizations.dart';
@@ -45,11 +47,32 @@ String sshConnectionFailureUserMessage(
 /// banner while a `PerSourcePenalties` refusal is active for our source.
 const _sshdPenaltyRefusalText = 'Not allowed at this time';
 
-/// Sentinel error-detail recorded when a paired profile's pinned host keys no
-/// longer match the desktop's live key — the desktop was upgraded or reset,
-/// and only re-scanning its pairing code can reconnect. UI maps this to the
-/// localized re-pair hint; the raw string never reaches the user.
+/// Sentinel error-detail recorded when a paired profile's pinned identity no
+/// longer matches the desktop: its pinned host keys no longer match the
+/// desktop's live key (re-keyed by an upgrade or reset), or the desktop
+/// answered a dial with a TCP refusal while the profile pins an embedded
+/// port that no longer listens (the port was re-picked). Only re-scanning
+/// the desktop's pairing code can reconnect. UI maps this to the localized
+/// re-pair hint; the raw string never reaches the user.
 const sshPairingStaleDetail = 'teampilot:pairing-stale';
+
+/// ECONNREFUSED per platform: Linux/Android 111, macOS 61, Windows
+/// WSAECONNREFUSED 10061.
+const _connectionRefusedErrnos = {111, 61, 10061};
+
+/// True when [error] is a TCP connection refusal: the dialed host answered,
+/// but nothing listens on the dialed port.
+///
+/// For a paired embedded profile this is the SSH-layer signature of a
+/// re-picked embedded port — the desktop is up, but its embedded server
+/// moved off the port pinned at pairing time. An offline desktop instead
+/// times out or is unreachable, which this returns false for.
+bool isTcpConnectionRefused(Object error) {
+  var cause = sshConnectionFailureCause(error);
+  if (cause is SSHSocketError) cause = cause.error;
+  return cause is SocketException &&
+      _connectionRefusedErrnos.contains(cause.osError?.errorCode);
+}
 
 /// True when [error] is an sshd `PerSourcePenalties` refusal: the version
 /// exchange read the refusal text instead of an `SSH-2.0-` banner. Retrying
