@@ -6,14 +6,36 @@ import 'package:teampilot/cubits/connect_cubit.dart';
 import 'package:teampilot/l10n/app_localizations.dart';
 import 'package:teampilot/models/ssh_reachability.dart';
 import 'package:teampilot/pages/connect/connect_section.dart';
-import 'package:teampilot/services/connect/authorized_keys_file.dart';
 import 'package:teampilot/services/connect/connect_settings_store.dart';
+import 'package:teampilot/services/connect/embedded_ssh_server.dart';
 import 'package:teampilot/services/connect/paired_device_store.dart';
 import 'package:teampilot/services/connect/ssh_pairing_offer.dart';
-import 'package:teampilot/services/connect/sshd_presence.dart';
 import 'package:teampilot/theme/app_typography_scale.dart';
 
 import '../../support/in_memory_filesystem.dart';
+
+class _FakeEmbeddedServer implements EmbeddedSshServerHandle {
+  const _FakeEmbeddedServer({
+    required this.isListening,
+    required this.port,
+    required this.hostKeyFingerprints,
+  });
+
+  @override
+  final bool isListening;
+
+  @override
+  final int port;
+
+  @override
+  final List<String> hostKeyFingerprints;
+}
+
+const _listeningServer = _FakeEmbeddedServer(
+  isListening: true,
+  port: 54321,
+  hostKeyFingerprints: ['SHA256:host-key'],
+);
 
 void main() {
   testWidgets(
@@ -93,13 +115,6 @@ class _Harness {
   _Harness() {
     final fs = InMemoryFilesystem();
     final offer = _offer();
-    var keysText = '';
-    final keys = AuthorizedKeysFile(
-      path: '/home/alice/.ssh/authorized_keys',
-      read: (_) async => keysText,
-      write: (_, value) async => keysText = value,
-      chmod: (_, {required mode}) async {},
-    );
     deviceStore = PairedDeviceStore(fs: fs, appDataRoot: '/app-data');
     cubit = ConnectCubit(
       agent: ConnectAgentController(
@@ -115,13 +130,7 @@ class _Harness {
         regenerateQr: () async {},
         updateExtraEndpoints: (_) async {},
       ),
-      probeSshd: () async => const SshdPresenceSnapshot(
-        listening: true,
-        port: 22,
-        fingerprints: ['SHA256:host-key'],
-        enableHint: '',
-      ),
-      authorizedKeys: keys,
+      embeddedServer: _listeningServer,
       deviceStore: deviceStore,
       settingsStore: ConnectSettingsStore(
         fs: fs,

@@ -2,9 +2,9 @@ import 'package:equatable/equatable.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../models/ssh_reachability.dart';
-import '../services/connect/authorized_keys_file.dart';
 import '../services/connect/connect_agent.dart';
 import '../services/connect/connect_settings_store.dart';
+import '../services/connect/embedded_ssh_server.dart';
 import '../services/connect/paired_device_store.dart';
 import '../services/connect/ssh_pairing_offer.dart';
 import '../services/connect/sshd_presence.dart';
@@ -217,34 +217,31 @@ class ConnectState extends Equatable {
 class ConnectCubit extends Cubit<ConnectState> {
   ConnectCubit({
     required ConnectAgentController agent,
-    required SshdPresenceProbe probeSshd,
-    required AuthorizedKeysFile authorizedKeys,
+    required EmbeddedSshServerHandle embeddedServer,
+    required PairedDeviceStore deviceStore,
     required ConnectSettingsStore settingsStore,
     required ConnectNetworkAddressLookup listNetworkAddresses,
     required String username,
     required String displayName,
     required String appDataRoot,
-    PairedDeviceStore? deviceStore,
   }) : _agent = agent,
-       _probeSshd = probeSshd,
-       _authorizedKeys = authorizedKeys,
+       _embeddedServer = embeddedServer,
+       _deviceStore = deviceStore,
        _settingsStore = settingsStore,
        _listNetworkAddresses = listNetworkAddresses,
        _username = username,
        _displayName = displayName,
        _appDataRoot = appDataRoot,
-       _deviceStore = deviceStore,
        super(const ConnectState());
 
   final ConnectAgentController _agent;
-  final SshdPresenceProbe _probeSshd;
-  final AuthorizedKeysFile _authorizedKeys;
+  final EmbeddedSshServerHandle _embeddedServer;
+  final PairedDeviceStore _deviceStore;
   final ConnectSettingsStore _settingsStore;
   final ConnectNetworkAddressLookup _listNetworkAddresses;
   final String _username;
   final String _displayName;
   final String _appDataRoot;
-  final PairedDeviceStore? _deviceStore;
 
   bool _qrSessionVisible = false;
   int _operationId = 0;
@@ -260,7 +257,7 @@ class ConnectCubit extends Cubit<ConnectState> {
     final operationId = ++_operationId;
     emit(state.copyWith(loading: true, hasError: false, clearOffer: true));
     try {
-      final sshd = await _probeSshd();
+      final sshd = _presenceSnapshot();
       final addresses = (await _listNetworkAddresses())
           .where((address) => address.isIpv4 && !address.isLoopback)
           .toList(growable: false);
@@ -409,12 +406,11 @@ class ConnectCubit extends Cubit<ConnectState> {
     );
   }
 
-  /// Revoking removes the tagged authorized_keys line and the relay grant
-  /// hash together, so the next SSH auth and any relay dial both fail.
+  /// Revoking removes the device's registered key and relay grant hash
+  /// together, so the next SSH auth and any relay dial both fail.
   Future<void> revokeDevice(String deviceId) async {
     try {
-      await _deviceStore?.revokeDevice(deviceId);
-      await _authorizedKeys.revokeDevice(deviceId);
+      await _deviceStore.revokeDevice(deviceId);
       if (!isClosed) {
         emit(state.copyWith(pairedDevices: await _loadPairedDevices()));
       }
@@ -440,12 +436,30 @@ class ConnectCubit extends Cubit<ConnectState> {
     appDataRoot: _appDataRoot,
   );
 
+  /// The presence state mirrored from the embedded server handle. The
+  /// snapshot value type stays until the Connect UI migrates off it.
+  SshdPresenceSnapshot _presenceSnapshot() {
+    final listening = _embeddedServer.isListening;
+    return SshdPresenceSnapshot(
+      listening: listening,
+      port: listening ? _embeddedServer.port : 0,
+      fingerprints: listening
+          ? _embeddedServer.hostKeyFingerprints
+                .where((value) => value.startsWith('SHA256:'))
+                .toList(growable: false)
+          : const <String>[],
+      enableHint: '',
+    );
+  }
+
   Future<List<ConnectPairedDevice>> _loadPairedDevices() async {
-    final devices = await _authorizedKeys.listDevices();
+    final devices = await _deviceStore.listDevices();
     return devices
         .map(
-          (device) =>
-              ConnectPairedDevice(deviceId: device.deviceId, name: device.name),
+          (device) => ConnectPairedDevice(
+            deviceId: device.deviceId,
+            name: device.deviceName ?? device.deviceId,
+          ),
         )
         .toList(growable: false);
   }

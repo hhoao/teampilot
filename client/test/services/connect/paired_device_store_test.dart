@@ -254,6 +254,28 @@ void main() {
     },
   );
 
+  test('listDevices returns registered ids with their optional names',
+      () async {
+    expect(await store.listDevices(), isEmpty);
+
+    await store.issueDevice(
+      deviceId: 'phone-1',
+      publicKey: testDevicePubLine,
+      deviceName: 'Pixel',
+    );
+    await store.issueDevice(deviceId: 'phone-2', publicKey: otherDevicePubLine);
+
+    expect(await store.listDevices(), const [
+      (deviceId: 'phone-1', deviceName: 'Pixel'),
+      (deviceId: 'phone-2', deviceName: null),
+    ]);
+
+    await store.revokeDevice('phone-1');
+    expect(await store.listDevices(), const [
+      (deviceId: 'phone-2', deviceName: null),
+    ]);
+  });
+
   test('dispose closes the device registry change stream', () async {
     store.dispose();
     var done = false;
