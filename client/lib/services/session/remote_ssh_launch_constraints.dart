@@ -1,4 +1,5 @@
 import 'package:dartssh2/dartssh2.dart';
+import 'package:tp_sshd/tp_sshd.dart' show SSHHostInfo, TpExecCodec;
 
 import '../../models/runtime_target.dart';
 import '../../models/launch_security_policy.dart';
@@ -16,9 +17,17 @@ const claudeCodeSandboxEnvValue = '1';
 
 /// Returns `true` for confirmed root, `false` for confirmed non-root, and
 /// `null` when the remote identity probe could not be completed.
+///
+/// Embedded targets ([embeddedTarget]) get their facts from the embedded
+/// server's `tp1:` host-info query — the `elevated` flag replaces the raw
+/// `id -u` exec probe, which never runs against the embedded server.
 Future<bool?> remoteSshRunsAsRoot({
   required SshMemberSession memberSession,
+  bool embeddedTarget = false,
 }) async {
+  if (embeddedTarget) {
+    return (await _queryEmbeddedHostInfo(memberSession))?.elevated;
+  }
   final result = await _runRemoteUidProbe(memberSession);
   if (result == null) return null;
   if (sshRunFailed(result)) return null;
@@ -37,6 +46,25 @@ Future<SSHRunResult?> _runRemoteUidProbe(SshMemberSession memberSession) async {
   }
 }
 
+/// Host facts for embedded targets: one `tp1:` host-info query answered by
+/// the embedded server itself (no process spawned). Returns `null` when the
+/// query failed, was rejected, or returned a malformed payload — callers
+/// fail closed on `null`.
+Future<SSHHostInfo?> _queryEmbeddedHostInfo(
+  SshMemberSession memberSession,
+) async {
+  try {
+    final result = await memberSession.runWithResult(
+      TpExecCodec.encodeHostInfoQuery(),
+      stderr: false,
+    );
+    if (sshRunFailed(result)) return null;
+    return SSHHostInfo.fromJson(String.fromCharCodes(result.stdout).trim());
+  } catch (_) {
+    return null;
+  }
+}
+
 enum RemoteSshDockerStatus {
   confirmedContainer,
   confirmedNonContainer,
@@ -45,7 +73,15 @@ enum RemoteSshDockerStatus {
 
 Future<RemoteSshDockerStatus> remoteSshInDockerContainer({
   required SshMemberSession memberSession,
+  bool embeddedTarget = false,
 }) async {
+  if (embeddedTarget) {
+    final info = await _queryEmbeddedHostInfo(memberSession);
+    if (info == null) return RemoteSshDockerStatus.unknown;
+    return info.inDocker
+        ? RemoteSshDockerStatus.confirmedContainer
+        : RemoteSshDockerStatus.confirmedNonContainer;
+  }
   try {
     final result = await memberSession.runWithResult(
       'test -f /.dockerenv',
@@ -114,31 +150,48 @@ Future<ShellLaunchSpec> applyRemoteSshLaunchConstraints({
     );
   }
 
-  final runsAsRoot = await remoteSshRunsAsRoot(memberSession: memberSession);
+  final embeddedTarget = profile.embeddedTarget;
+  final runsAsRoot = await remoteSshRunsAsRoot(
+    memberSession: memberSession,
+    embeddedTarget: embeddedTarget,
+  );
   if (runsAsRoot == null) {
     throw CliLaunchCapabilityException(
       cli: spec.launchContext.team.cli,
       contributionKey: 'remote-ssh-root-security',
-      reason:
-          'Unable to determine the remote SSH user identity: the id -u '
-          'probe failed or returned invalid output for a '
-          'dangerous full-access launch. Refusing to launch without a '
-          'confirmed non-root or sandboxed root environment.',
+      reason: embeddedTarget
+          ? 'Unable to determine the remote SSH user identity: the embedded '
+                'host-info query failed or returned an invalid payload for a '
+                'dangerous full-access launch. Refusing to launch without a '
+                'confirmed non-root or sandboxed root environment.'
+          : 'Unable to determine the remote SSH user identity: the id -u '
+                'probe failed or returned invalid output for a '
+                'dangerous full-access launch. Refusing to launch without a '
+                'confirmed non-root or sandboxed root environment.',
     );
   }
   final dockerStatus = runsAsRoot
-      ? await remoteSshInDockerContainer(memberSession: memberSession)
+      ? await remoteSshInDockerContainer(
+          memberSession: memberSession,
+          embeddedTarget: embeddedTarget,
+        )
       : RemoteSshDockerStatus.confirmedNonContainer;
   if (dockerStatus == RemoteSshDockerStatus.unknown) {
     throw CliLaunchCapabilityException(
       cli: spec.launchContext.team.cli,
       contributionKey: 'remote-ssh-container-security',
-      reason:
-          'Unable to determine whether the remote SSH host is a Docker '
-          'container: '
-          'the test -f /.dockerenv probe failed or returned an unknown result '
-          'for a dangerous root launch. Refusing to launch without confirmed '
-          'container or non-container security context.',
+      reason: embeddedTarget
+          ? 'Unable to determine whether the remote SSH host is a Docker '
+                'container: the embedded host-info query failed or returned '
+                'an unknown result for a dangerous root launch. Refusing to '
+                'launch without confirmed container or non-container '
+                'security context.'
+          : 'Unable to determine whether the remote SSH host is a Docker '
+                'container: '
+                'the test -f /.dockerenv probe failed or returned an unknown '
+                'result for a dangerous root launch. Refusing to launch '
+                'without confirmed container or non-container security '
+                'context.',
     );
   }
   final remoteInDocker =
