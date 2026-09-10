@@ -175,10 +175,7 @@ void main() {
         runner: LocalGitCommandRunner(runner: runner.call),
       );
 
-      expect(
-        () => service.init('/repo'),
-        throwsA(isA<GitException>()),
-      );
+      expect(() => service.init('/repo'), throwsA(isA<GitException>()));
     });
 
     test('commit issues the expected argv', () async {

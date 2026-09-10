@@ -10,7 +10,11 @@ import '../services/git/git_changes_visible_rows.dart';
 import '../services/git/git_service.dart';
 
 export '../services/git/git_changes_visible_rows.dart'
-    show GitChangesTreeViewData, GitChangesVisibleRow, GitChangesSection, GitChangesSections;
+    show
+        GitChangesTreeViewData,
+        GitChangesVisibleRow,
+        GitChangesSection,
+        GitChangesSections;
 
 class GitState extends Equatable {
   const GitState({
@@ -431,12 +435,20 @@ class GitCubit extends Cubit<GitState> {
     _publish(state.copyWith(selectedPaths: next));
   }
 
-  Future<void> selectFolder(String folderPath, GitChangesSection section) async {
+  Future<void> selectFolder(
+    String folderPath,
+    GitChangesSection section,
+  ) async {
     final changed = _changedPathsUnder(folderPath, section);
-    _publish(state.copyWith(selectedPaths: {...state.selectedPaths, ...changed}));
+    _publish(
+      state.copyWith(selectedPaths: {...state.selectedPaths, ...changed}),
+    );
   }
 
-  Future<void> deselectFolder(String folderPath, GitChangesSection section) async {
+  Future<void> deselectFolder(
+    String folderPath,
+    GitChangesSection section,
+  ) async {
     final changed = _changedPathsUnder(folderPath, section);
     final next = {...state.selectedPaths}..removeAll(changed);
     _publish(state.copyWith(selectedPaths: next));
@@ -444,7 +456,9 @@ class GitCubit extends Cubit<GitState> {
 
   Future<void> selectAll(GitChangesSection section) async {
     _publish(
-      state.copyWith(selectedPaths: {...state.selectedPaths, ..._sectionPaths(section)}),
+      state.copyWith(
+        selectedPaths: {...state.selectedPaths, ..._sectionPaths(section)},
+      ),
     );
   }
 
@@ -464,11 +478,13 @@ class GitCubit extends Cubit<GitState> {
         c.path,
   };
 
-  Set<String> _changedPathsUnder(String folderPath, GitChangesSection section) =>
-      <String>{
-        for (final path in _sectionPaths(section))
-          if (path == folderPath || path.startsWith('$folderPath/')) path,
-      };
+  Set<String> _changedPathsUnder(
+    String folderPath,
+    GitChangesSection section,
+  ) => <String>{
+    for (final path in _sectionPaths(section))
+      if (path == folderPath || path.startsWith('$folderPath/')) path,
+  };
 
   /// Initializes the current root as a repository, then reloads its status.
   Future<bool> initializeRepository() {
@@ -480,7 +496,8 @@ class GitCubit extends Cubit<GitState> {
   Future<void> discard(GitFileChange change) =>
       _mutate(() => _service.discard(state.repoRoot, change));
 
-  Future<void> discardAll() => _mutate(() => _service.discardAll(state.repoRoot));
+  Future<void> discardAll() =>
+      _mutate(() => _service.discardAll(state.repoRoot));
 
   Future<void> discardFolder(String folderPath) => _mutate(
     () => _service.discardFolder(
