@@ -19,10 +19,13 @@ class EventPublisher {
 
   Dispatcher? _dispatcher;
 
-  /// The attached dispatcher, or null before [attach] / after a stop.
+  /// The attached dispatcher, or null before [attach].
   ///
-  /// Consumers that need dispatch guarantees (e.g. awaiting drain) read this;
-  /// publishers themselves never should.
+  /// Attach is for the app lifetime: [attach] never clears the reference, so
+  /// this returns the attached dispatcher even after it has been stopped (a
+  /// stopped dispatcher drops publishes). Consumers that need dispatch
+  /// guarantees (e.g. awaiting drain) read this; publishers themselves never
+  /// should.
   Dispatcher? get attachedDispatcher => _dispatcher;
 
   void attach(Dispatcher d) => _dispatcher = d;

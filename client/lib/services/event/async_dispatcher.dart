@@ -144,6 +144,12 @@ class AsyncDispatcher implements Dispatcher {
     // Snapshot: a handler may register/unregister during delivery.
     for (final handler in List.of(family)) {
       try {
+        // Handler bodies must stay synchronous: an async handle() whose
+        // returned future is unawaited runs past this try/catch, so a throw
+        // from it escapes the per-handler/per-event isolation below and hits
+        // the zone's unhandled-error path. Interface-level limitation — keep
+        // handle() implementations synchronous (schedule follow-up work via
+        // the app's usual async facilities instead).
         handler.handle(event);
       } catch (error, stackTrace) {
         // Error isolation: log and continue with the next handler/event.
