@@ -150,7 +150,8 @@ import '../services/storage/device_local_control_plane.dart';
 import '../services/io/local_filesystem.dart';
 import '../services/connect/connect_agent.dart';
 import '../services/connect/connect_settings_store.dart';
-import '../services/connect/embedded_ssh_server.dart';
+import '../services/connect/embedded_ssh_server.dart'
+    show EmbeddedSshServer;
 import '../services/perf/live_perf_driver.dart';
 import '../services/storage/workspace_layout.dart';
 import '../services/automation/automation_bus_gateway.dart';
@@ -1634,9 +1635,11 @@ Future<AppShell> buildAppShell({
       );
       try {
         await server.start();
-      } on EmbeddedSshServerStartException catch (error, stackTrace) {
+      } on Object catch (error, stackTrace) {
         // Non-blocking: the app continues; the Connect UI shows the failed
-        // state with a retry affordance.
+        // state with a retry affordance. Broad on purpose — anything from a
+        // typed [EmbeddedSshServerStartException] (bind conflicts) to a
+        // host-key persistence failure must not crash app boot.
         appLogger.e(
           '[connect] embedded ssh server failed to start',
           error: error,

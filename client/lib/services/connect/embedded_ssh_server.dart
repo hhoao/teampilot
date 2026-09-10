@@ -73,6 +73,7 @@ class EmbeddedSshServer implements EmbeddedSshServerHandle {
     InternetAddress? bindAddress,
     int? portOverride,
     PtySpawner? ptySpawner,
+    this.elevationProbe,
   }) : _fs = fs,
        _appDataRoot = appDataRoot,
        _deviceStore = deviceStore,
@@ -102,6 +103,17 @@ class EmbeddedSshServer implements EmbeddedSshServerHandle {
 
   /// The native user home; the anchor for windows-context SFTP paths.
   final String homePath;
+
+  /// Whether the OS user the server runs as is root / holds an elevated
+  /// token. Runs once in [start]; `null` means the production probe
+  /// (see [_defaultElevationProbe]). Any probe failure fails closed —
+  /// elevated is reported as `true` so the phone-side dangerous-launch gate
+  /// stays strict.
+  final Future<bool> Function()? elevationProbe;
+
+  /// The cached elevation answer once [start] has run the probe. Defaults to
+  /// `true` (fail closed) until a successful probe says otherwise.
+  bool _elevated = true;
 
   ServerSocket? _listener;
   SSHServer? _server;
@@ -135,6 +147,7 @@ class EmbeddedSshServer implements EmbeddedSshServerHandle {
     if (isListening) {
       throw StateError('EmbeddedSshServer is already listening');
     }
+    _elevated = await _probeElevationFailClosed();
     final hostKey = await EmbeddedHostKeyStore(
       fs: _fs,
       appDataRoot: _appDataRoot,
@@ -147,35 +160,65 @@ class EmbeddedSshServer implements EmbeddedSshServerHandle {
     _listener = listener;
     _port = listener.port;
 
-    final connections = StreamController<SSHSocket>();
-    _connections = connections;
-    listener.listen((socket) => connections.add(_AcceptedSocket(socket)));
+    try {
+      final connections = StreamController<SSHSocket>();
+      _connections = connections;
+      listener.listen((socket) => connections.add(_AcceptedSocket(socket)));
 
-    _server = await SSHServer.bind(
-      StreamIterator(connections.stream),
-      config: SSHServerConfig(
-        hostKeyPair: hostKey.keyPair,
-        expectedUsername: username,
-        authenticate: (request) async => _deviceStore.isValidDeviceKey(
-          _opensshLineFor(request.algorithm, request.publicKey),
+      _server = await SSHServer.bind(
+        StreamIterator(connections.stream),
+        config: SSHServerConfig(
+          hostKeyPair: hostKey.keyPair,
+          expectedUsername: username,
+          authenticate: (request) async => _deviceStore.isValidDeviceKey(
+            _opensshLineFor(request.algorithm, request.publicKey),
+          ),
+          processFactory: embeddedProcessFactory(),
+          ptyFactory: embeddedPtyFactory(spawner: _ptySpawner),
+          hostInfo: _hostInfo,
+          sftpFileSystem: EmbeddedSftpFilesystem(
+            pathContext: _pathContext,
+            homePath: homePath,
+          ),
+          bindServerSocket: (address, port) async =>
+              _IoServerSocketHandle(await ServerSocket.bind(address, port)),
+          onAuthenticated: _recordDeviceConnection,
+          printDebug: _printDebug,
         ),
-        processFactory: embeddedProcessFactory(),
-        ptyFactory: embeddedPtyFactory(spawner: _ptySpawner),
-        hostInfo: _hostInfo,
-        sftpFileSystem: EmbeddedSftpFilesystem(
-          pathContext: _pathContext,
-          homePath: homePath,
-        ),
-        bindServerSocket: (address, port) async =>
-            _IoServerSocketHandle(await ServerSocket.bind(address, port)),
-        onAuthenticated: _recordDeviceConnection,
-        printDebug: _printDebug,
-      ),
-    );
+      );
 
-    _registrySubscription = _deviceStore.deviceRegistryChanged.listen(
-      (_) => _evictRevokedDevices(),
-    );
+      _registrySubscription = _deviceStore.deviceRegistryChanged.listen(
+        (_) => _evictRevokedDevices(),
+      );
+    } on Object {
+      // The start is atomic from the outside: any post-bind failure leaves
+      // no half-listening server behind. Rollback is best-effort so the
+      // original error still propagates.
+      try {
+        await stop();
+      } on Object {
+        // Ignored on purpose — the original throw is the one to surface.
+      }
+      rethrow;
+    }
+  }
+
+  /// Runs the elevation probe once per [start] and caches the answer for the
+  /// server's lifetime. Fails closed: a probe that cannot determine
+  /// elevation reports `elevated: true`.
+  Future<bool> _probeElevationFailClosed() async {
+    final probe = elevationProbe ?? _defaultElevationProbe;
+    try {
+      return await probe();
+    } on Object catch (error, stackTrace) {
+      AppLogger.instance.w(
+        'embedded ssh: elevation probe failed; reporting elevated '
+        '(fail closed)',
+        error: error,
+        stackTrace: stackTrace,
+      );
+      return true;
+    }
   }
 
   /// Binds [_bindAddress]:[port], re-picking once on a persisted-port
@@ -290,6 +333,42 @@ class EmbeddedSshServer implements EmbeddedSshServerHandle {
   static String _opensshLineFor(String algorithm, List<int> publicKey) =>
       '$algorithm ${base64.encode(publicKey)}';
 
+  /// Snapshot of host facts for the `tp1:` host-info query, answered by the
+  /// server itself — no process is spawned per query. [SSHHostInfo.elevated]
+  /// is the cached, fail-closed result of the start-time elevation probe.
+  SSHHostInfo _hostInfo() => SSHHostInfo(
+        platform: Platform.operatingSystem,
+        osUser: Platform.environment['USER'] ?? 'unknown',
+        elevated: _elevated,
+        inDocker: File('/.dockerenv').existsSync(),
+        shell: Platform.environment['SHELL'] ?? '/bin/sh',
+      );
+
+  /// The production elevation probe. POSIX: `id -u` reporting uid 0 means
+  /// root. Windows: the high-integrity label SID (`S-1-16-12288`) in
+  /// `whoami /groups` output means an elevated token. Throws whenever the
+  /// answer cannot be determined — the caller fails closed on that.
+  static Future<bool> _defaultElevationProbe() async {
+    if (Platform.isWindows) {
+      final result = await Process.run('whoami', ['/groups']);
+      final stdout = result.stdout;
+      if (result.exitCode != 0 || stdout is! String) {
+        throw StateError('whoami /groups failed (exit ${result.exitCode})');
+      }
+      return stdout.contains('S-1-16-12288');
+    }
+    final result = await Process.run('id', ['-u']);
+    final stdout = result.stdout;
+    if (result.exitCode != 0 || stdout is! String) {
+      throw StateError('id -u failed (exit ${result.exitCode})');
+    }
+    final uid = stdout.trim();
+    if (!RegExp(r'^[0-9]+$').hasMatch(uid)) {
+      throw StateError('id -u returned malformed output: "$uid"');
+    }
+    return uid == '0';
+  }
+
   static void _printDebug(String? message) {
     // Keep the log readable: the transport traces every packet loop.
     if (message == null || message.contains('_processPackets')) return;
@@ -308,16 +387,6 @@ class _DeviceConnection {
   final String publicKeyLine;
   String? deviceId;
 }
-
-/// Snapshot of host facts for the `tp1:` host-info query, answered by the
-/// server itself (never by spawning a process).
-SSHHostInfo _hostInfo() => SSHHostInfo(
-      platform: Platform.operatingSystem,
-      osUser: Platform.environment['USER'] ?? 'unknown',
-      elevated: false,
-      inDocker: File('/.dockerenv').existsSync(),
-      shell: Platform.environment['SHELL'] ?? '/bin/sh',
-    );
 
 // ---------------------------------------------------------------------------
 // Socket adapters: dart:io types onto the tp_sshd seams

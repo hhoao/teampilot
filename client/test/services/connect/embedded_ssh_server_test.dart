@@ -49,6 +49,15 @@ XD0H/C52YkaFTKJVDfQ/AAAAGHRwLXRhc2s3LXRocm93YXdheS1vdGhlcgECAwQF
 /// success was already sent. This store revokes the device in the middle of
 /// that second lookup, i.e. after the connection authenticated but before
 /// the server finished recording which device owns it.
+/// A store whose registry-changed stream getter throws: a failure in the
+/// post-bind half of `start()` (after the listener is already listening).
+class _BrokenRegistryStore extends PairedDeviceStore {
+  _BrokenRegistryStore({required super.fs, required super.appDataRoot});
+
+  @override
+  Stream<void> get deviceRegistryChanged => throw StateError('registry broken');
+}
+
 class _RevokeRacingStore extends PairedDeviceStore {
   _RevokeRacingStore({required super.fs, required super.appDataRoot});
 
@@ -196,6 +205,69 @@ void main() {
     final info = SSHHostInfo.fromJson(stdout);
     expect(info.platform, Platform.operatingSystem);
     expect(info.osUser, Platform.environment['USER'] ?? 'unknown');
+  });
+
+  test('host-info reports the probed elevation, failing closed on probe error',
+      () async {
+    await store.issueDevice(deviceId: 'phone-1', publicKey: testDevicePubLine);
+
+    /// Full login against a server built with [probe], returning the
+    /// `elevated` fact its host-info answer carries.
+    Future<bool> elevatedFor(Future<bool> Function() probe) async {
+      final server = EmbeddedSshServer(
+        fs: fs,
+        appDataRoot: '/data',
+        deviceStore: store,
+        username: 'user',
+        homePath: '/home/user',
+        bindAddress: InternetAddress.loopbackIPv4,
+        portOverride: 0,
+        elevationProbe: probe,
+      );
+      await server.start();
+      addTearDown(server.stop);
+
+      final client = await connectTo(server);
+      addTearDown(client.close);
+      await client.authenticated;
+
+      final session = await client.execute(TpExecCodec.encodeHostInfoQuery());
+      final stdout = await utf8.decoder.bind(session.stdout).join();
+      return SSHHostInfo.fromJson(stdout).elevated;
+    }
+
+    expect(await elevatedFor(() async => true), isTrue);
+    expect(await elevatedFor(() async => false), isFalse);
+    // Fail closed: an elevation that cannot be determined is reported as
+    // elevated so the dangerous-launch gate stays strict.
+    expect(
+      await elevatedFor(() async => throw StateError('probe unavailable')),
+      isTrue,
+    );
+  });
+
+  test('a failure after the bind rolls the listener back', () async {
+    const port = 49557;
+    final server = EmbeddedSshServer(
+      fs: fs,
+      appDataRoot: '/data',
+      deviceStore: _BrokenRegistryStore(fs: fs, appDataRoot: '/data'),
+      username: 'user',
+      homePath: '/home/user',
+      bindAddress: InternetAddress.loopbackIPv4,
+      portOverride: port,
+    );
+
+    await expectLater(server.start(), throwsStateError);
+    // Not half-listening: the state was reset alongside the listener.
+    expect(server.isListening, isFalse);
+    expect(server.port, 0);
+    // The listener socket was really closed — the port is bindable again.
+    final rebound = await ServerSocket.bind(
+      InternetAddress.loopbackIPv4,
+      port,
+    );
+    addTearDown(rebound.close);
   });
 
   test('restart stops and rebinds on a fresh listener', () async {
