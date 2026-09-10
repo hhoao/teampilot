@@ -154,6 +154,30 @@ void main() {
   });
 
   group('GitService mutations', () {
+    test('init issues the expected argv', () async {
+      final runner = _FakeRunner({});
+      final service = GitService(
+        runner: LocalGitCommandRunner(runner: runner.call),
+      );
+
+      await service.init('/repo');
+
+      expect(runner.calls, [
+        ['init'],
+      ]);
+    });
+
+    test('init throws GitException when git rejects the directory', () async {
+      final runner = _FakeRunner({
+        'init': ProcessResult(0, 128, '', 'permission denied'),
+      });
+      final service = GitService(
+        runner: LocalGitCommandRunner(runner: runner.call),
+      );
+
+      expect(() => service.init('/repo'), throwsA(isA<GitException>()));
+    });
+
     test('commit issues the expected argv', () async {
       final runner = _FakeRunner({});
       final service = GitService(

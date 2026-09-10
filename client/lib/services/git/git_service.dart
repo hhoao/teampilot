@@ -309,6 +309,11 @@ class GitService {
     return joined;
   }
 
+  /// Initializes [dir] as a Git repository.
+  Future<void> init(String dir) async {
+    await _run(dir, ['init']);
+  }
+
   Future<void> discard(String dir, GitFileChange change) {
     if (change.kind == GitChangeKind.untracked) {
       return _run(dir, ['clean', '-f', '--', change.path]);
@@ -390,8 +395,7 @@ class GitService {
 
   /// 手动 fetch（源代码管理面板按钮）。无 GIT_TERMINAL_PROMPT=0 —— 用户主动
   /// 操作可接受凭证提示；后台自动刷新走 GitHistoryActions.fetchAllQuiet。
-  Future<void> fetchAll(String dir) =>
-      _run(dir, ['fetch', '--all', '--prune']);
+  Future<void> fetchAll(String dir) => _run(dir, ['fetch', '--all', '--prune']);
 
   /// Local branch names (current branch first is not guaranteed).
   Future<List<String>> branches(String dir) async {

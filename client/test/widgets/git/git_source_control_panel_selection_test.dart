@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -24,12 +26,21 @@ import '../../support/test_runtime_context.dart';
 /// 多项目工作区：面板把当前展示的 repo root 报给 lifecycle host，
 /// 磁盘事件驱动的刷新以它为全速 root（GitRepoStore.refreshAll）。
 class _EmptyGitStub extends GitService {
+  static final initCalls = <String>[];
+  static Completer<void>? initCompleter;
+
   @override
   Future<bool> get isAvailable async => true;
 
   @override
   Future<GitRepoStatus> status(String dir) async =>
       const GitRepoStatus(isRepository: false, hasCommits: false);
+
+  @override
+  Future<void> init(String dir) async {
+    initCalls.add(dir);
+    await initCompleter?.future;
+  }
 }
 
 void main() {
@@ -39,6 +50,8 @@ void main() {
 
   setUp(() {
     setUpTestAppStorage();
+    _EmptyGitStub.initCalls.clear();
+    _EmptyGitStub.initCompleter = null;
     workContext = testRuntimeContext('/home');
     GitService.debugOverrideFactory = _EmptyGitStub.new;
     GitService.debugResetExecutableCache();
@@ -47,6 +60,12 @@ void main() {
   });
 
   tearDown(() {
+    final initCompleter = _EmptyGitStub.initCompleter;
+    if (initCompleter != null && !initCompleter.isCompleted) {
+      initCompleter.complete();
+    }
+    _EmptyGitStub.initCalls.clear();
+    _EmptyGitStub.initCompleter = null;
     GitService.debugOverrideFactory = null;
     GitService.debugResetExecutableCache();
     store.dispose();
@@ -152,5 +171,51 @@ void main() {
     );
     await tester.pumpAndSettle();
     expect(selectedRoot.value, '/repo-a');
+  });
+
+  testWidgets('offers git initialization for the selected root', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      wrap(
+        GitSourceControlPanel(
+          roots: const ['/repo-a', '/repo-b'],
+          workContext: workContext,
+          workspaceId: 'ws-test',
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('Create Git repository'), findsOneWidget);
+
+    await tester.tap(find.byTooltip('/repo-b'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Create Git repository'));
+    await tester.pumpAndSettle();
+
+    expect(_EmptyGitStub.initCalls, ['/repo-b']);
+  });
+
+  testWidgets('disables git initialization while it is in progress', (
+    tester,
+  ) async {
+    _EmptyGitStub.initCompleter = Completer<void>();
+    await tester.pumpWidget(
+      wrap(
+        GitSourceControlPanel(
+          roots: const ['/repo-a'],
+          workContext: workContext,
+          workspaceId: 'ws-test',
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    final button = find.widgetWithText(TextButton, 'Create Git repository');
+    await tester.tap(button);
+    await tester.pump();
+
+    expect(tester.widget<TextButton>(button).onPressed, isNull);
   });
 }
