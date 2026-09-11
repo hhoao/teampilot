@@ -69,7 +69,11 @@ void main() {
     tearDownTestAppStorage();
   });
 
-  Future<void> pumpSidebar(WidgetTester tester, {List<String> ids = const ['a', 'b']}) async {
+  Future<void> pumpSidebar(
+    WidgetTester tester, {
+    List<String> ids = const ['a', 'b'],
+    double height = 1000,
+  }) async {
     await tester.runAsync(() => groupsCubit.load(_workspace.workspaceId));
     chatCubit.emit(
       chatCubit.state.copyWith(sessions: [for (final id in ids) _session(id)]),
@@ -100,7 +104,7 @@ void main() {
               ],
               child: SizedBox(
                 width: 320,
-                height: 1000,
+                height: height,
                 child: WorkspaceSidebar(
                   workspace: _workspace,
                   tabScopeId: 'ws-1',
@@ -142,6 +146,19 @@ void main() {
       find.byKey(const ValueKey('workspace-running-session-b')),
       findsOneWidget,
     );
+  });
+
+  testWidgets('running session strip stays bounded in a short sidebar', (
+    tester,
+  ) async {
+    final ids = [for (var i = 0; i < 8; i++) 'session-$i'];
+    for (final id in ids) {
+      workbenchCubit.openSession('ws-1', id);
+    }
+
+    await pumpSidebar(tester, ids: ids, height: 400);
+
+    expect(tester.takeException(), isNull);
   });
 
   testWidgets('single group stays flat without column dividers', (

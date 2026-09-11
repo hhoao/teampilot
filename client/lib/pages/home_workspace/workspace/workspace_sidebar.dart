@@ -422,16 +422,25 @@ class _RunningSessionsHost extends StatelessWidget {
           ],
         ),
       );
-      return SidebarRebuildProbe(
-        key: const Key('workspace-sidebar-running-host-probe'),
-        child: running.isEmpty
-            ? const SizedBox.shrink()
-            : _RunningSplitGroupsSection(
-                groups: splitGroups.groups,
-                knownIds: running.ids.toSet(),
-                workspace: workspace,
-                tabScopeId: tabScopeId,
-              ),
+      if (running.isEmpty) {
+        return SidebarRebuildProbe(
+          key: const Key('workspace-sidebar-running-host-probe'),
+          child: const SizedBox.shrink(),
+        );
+      }
+      return Flexible(
+        fit: FlexFit.loose,
+        child: SingleChildScrollView(
+          child: SidebarRebuildProbe(
+            key: const Key('workspace-sidebar-running-host-probe'),
+            child: _RunningSplitGroupsSection(
+              groups: splitGroups.groups,
+              knownIds: running.ids.toSet(),
+              workspace: workspace,
+              tabScopeId: tabScopeId,
+            ),
+          ),
+        ),
       );
     }
     final openTabIds = context.select<WorkbenchCubit, OpenSessionTabIds>(
@@ -453,15 +462,24 @@ class _RunningSessionsHost extends StatelessWidget {
         openTabSessionIdsInOrder: openTabIds.ids,
       ),
     );
-    return SidebarRebuildProbe(
-      key: const Key('workspace-sidebar-running-host-probe'),
-      child: running.isEmpty
-          ? const SizedBox.shrink()
-          : _RunningSessionsSection(
-              sessionIds: running.ids,
-              workspace: workspace,
-              tabScopeId: tabScopeId,
-            ),
+    if (running.isEmpty) {
+      return SidebarRebuildProbe(
+        key: const Key('workspace-sidebar-running-host-probe'),
+        child: const SizedBox.shrink(),
+      );
+    }
+    return Flexible(
+      fit: FlexFit.loose,
+      child: SingleChildScrollView(
+        child: SidebarRebuildProbe(
+          key: const Key('workspace-sidebar-running-host-probe'),
+          child: _RunningSessionsSection(
+            sessionIds: running.ids,
+            workspace: workspace,
+            tabScopeId: tabScopeId,
+          ),
+        ),
+      ),
     );
   }
 }
