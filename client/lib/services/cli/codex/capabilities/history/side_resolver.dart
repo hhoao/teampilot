@@ -6,6 +6,7 @@ import '../../../../io/filesystem.dart';
 import '../../../../session/session_history_context.dart';
 import 'ai_transcript.dart';
 import '../../../registry/capabilities/history/subagent_side_resolver.dart';
+import '../../../../storage/storage_failure.dart';
 
 final class CodexSideResolver implements SubagentSideResolver {
   const CodexSideResolver();
@@ -102,7 +103,8 @@ Future<String?> _locateRolloutScoped({
   List<FsDirEntry> entries;
   try {
     entries = await ctx.fs.listDir(searchRoot);
-  } on Object {
+  } on Object catch (error) {
+    if (isStorageTransportFailure(error)) rethrow;
     return null;
   }
 

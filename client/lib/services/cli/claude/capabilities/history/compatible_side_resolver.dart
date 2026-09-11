@@ -9,6 +9,7 @@ import '../../../../session/session_history_context.dart';
 import '../../../../session/subagent_side_transcript_path.dart';
 import 'compatible_jsonl.dart';
 import '../../../registry/capabilities/history/subagent_side_resolver.dart';
+import '../../../../storage/storage_failure.dart';
 
 final class ClaudeCompatibleSideResolver implements SubagentSideResolver {
   const ClaudeCompatibleSideResolver();
@@ -157,7 +158,8 @@ final class ClaudeCompatibleSideResolver implements SubagentSideResolver {
     List<FsDirEntry> entries;
     try {
       entries = await ctx.fs.listDir(dir);
-    } on Object {
+    } on Object catch (error) {
+      if (isStorageTransportFailure(error)) rethrow;
       return null;
     }
     final path = ctx.fs.pathContext;

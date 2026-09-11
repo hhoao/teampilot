@@ -5,6 +5,7 @@ import '../../registry/capabilities/provider_capability.dart';
 import '../../../io/filesystem.dart';
 import 'codex_cc_switch_import.dart';
 import 'codex_toml_parser.dart';
+import '../../../storage/storage_failure.dart';
 
 /// Scans `~/.codex` live profiles and CC Switch rows.
 abstract final class CodexLiveImport {
@@ -146,7 +147,9 @@ Future<Map<String, Object?>?> _readJsonObject(
     final decoded = jsonDecode(content);
     if (decoded is! Map) return null;
     return Map<String, Object?>.from(decoded);
-  } on Object {
+  } on Object catch (error) {
+    // Transport failures are not "this session has no live config".
+    if (isStorageTransportFailure(error)) rethrow;
     return null;
   }
 }

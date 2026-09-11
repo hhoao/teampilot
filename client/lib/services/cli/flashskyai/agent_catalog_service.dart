@@ -1,6 +1,7 @@
 import 'package:flutter/foundation.dart';
 import '../../storage/home_storage.dart';
 import '../../io/filesystem.dart';
+import '../../storage/storage_failure.dart';
 
 /// Built-in `--agent` ids (subset of `flashskyai agents` / CLI presets).
 @immutable
@@ -114,7 +115,8 @@ class FlashskyaiAgentCatalogService {
       }
       ids.sort();
       return ids;
-    } on Object {
+    } on Object catch (error) {
+      if (isStorageTransportFailure(error)) rethrow;
       return const [];
     }
   }

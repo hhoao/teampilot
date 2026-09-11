@@ -7,6 +7,7 @@ import '../../codex/provider/codex_cc_switch_import.dart';
 import 'claude_cc_switch_import.dart';
 import 'claude_official_provider.dart';
 import '../../../provider/credential_binding.dart';
+import '../../../storage/storage_failure.dart';
 
 /// Scans `~/.claude` settings profiles and CC Switch rows.
 abstract final class ClaudeLiveImport {
@@ -158,7 +159,9 @@ Future<Map<String, Object?>?> _readJsonObject(
     final decoded = jsonDecode(content);
     if (decoded is! Map) return null;
     return Map<String, Object?>.from(decoded);
-  } on Object {
+  } on Object catch (error) {
+    // Transport failures are not "this session has no live config".
+    if (isStorageTransportFailure(error)) rethrow;
     return null;
   }
 }

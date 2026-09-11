@@ -9,6 +9,7 @@ import '../../../../session/session_history_context.dart';
 import '../../../../session/subagent_side_transcript_path.dart';
 import 'ai_transcript.dart';
 import '../../../registry/capabilities/history/subagent_side_resolver.dart';
+import '../../../../storage/storage_failure.dart';
 
 final class CursorSideResolver implements SubagentSideResolver {
   const CursorSideResolver();
@@ -82,7 +83,11 @@ final class CursorSideResolver implements SubagentSideResolver {
     List<FsDirEntry> entries;
     try {
       entries = await ctx.fs.listDir(transcriptsRoot);
-    } on Object {
+    } on Object catch (error) {
+      // A dropped transport must not read as "this side has no transcript":
+      // the resolver would pick the other side (or none) and the session
+      // would resume from the wrong history.
+      if (isStorageTransportFailure(error)) rethrow;
       return null;
     }
     entries.sort((a, b) => a.name.compareTo(b.name));
