@@ -2,13 +2,13 @@
 
 > 写给下一个 session 的交接文档。目标：让新 session 在**不读历史对话**的情况下，知道做过什么、现在在哪、下一步做什么。
 
-最后更新：2026-09-11
+最后更新：2026-09-12
 
 ---
 
 ## 一句话现状
 
-**期 1（中央事件发布层）与期 2（agent presence 事件化）均已完成并合入 `main`。** 下一步是**期 3：移动端同步**（原始需求的交付点）。
+**期 1（中央事件发布层）与期 2（agent presence 事件化）均已完成并合入 `main`。** 期 3 第一刀（Event Transport）spec 已写，待审：`docs/superpowers/specs/2026-09-12-event-transport-design.md`。
 
 ---
 
@@ -126,17 +126,23 @@
 
 **目标**：手机看到桌面端会话列表 + 聊天记录实时更新。
 
-**关键点**：
+**第一刀设计（已定稿，待你审 spec）**：`docs/superpowers/specs/2026-09-12-event-transport-design.md`
 
-- **不需要 daemon**。用现有 SSH / Connect 通道转发 envelope 即可（期 1/2 已经把进程内的事件基建做完了）。
-- 优先复用 `AgentPresenceProjection` + dispatcher 的订阅模型——期 2 结束时，presence 已经是一条完整的事件流，移动端只需订阅。
-- 原始需求的另一半是**聊天记录同步**：目前只有 presence 事件化，历史/回复还走轮询。设计时要先判断：是把 history 也事件化（在 main 上做，行为等价迁移），还是先用推送触发重取（复用本期"失效事件 + 查询"的思路）。**推荐后者起步**——`workspace_fs_watcher` 已经证明这套模式在本仓库可行。
+- 组件名是 **Event Transport**（不是 Hub / Relay）：dispatcher 的过线方式，不是新总线。
+- 桌面 local home 开 `EventTransportServer`（`127.0.0.1` + `<teampilotRoot>/event-transport.json`）；手机 ssh home 经现有 SSH `forwardLocal` 开 Client。
+- 本期 family：`agentPresence`（snapshot + `op:clear` 墓碑）与 `sessionLifecycle`（只直播；手机无新 UI 消费者）。聊天仍走 `TranscriptChangeSignal`；下一刀在同一通道加 `transcriptInvalidated`。
+- 期 2 墓碑遗留变为负载：`AgentPresenceKind.cleared` 进 dispatcher；投影 `removeSeat` 且广播。
 
-**已知待处理项（期 2 遗留，从 ledger 转来，均不阻塞）**：
+**仍有效的背景判断**：
 
-1. 投影的去重基线在断连时不清除 → 同值重连不会触发 `changes` 广播。当前 UI 不受影响（轮询兜底），但**期 3 的纯订阅消费者会漏一次刷新**——设计移动端订阅时先修这个（`removeSeat` on disconnect）。
-2. `TerminalActivityTracker.isWorking` 驱动的两条策略（nativeShellActivity / mixed）仍是轮询，未事件化——若移动端需要这些 CLI 的状态实时性，需要补。
-3. 若干代码整洁类 minor（cubit 的 `_knownSeats` 无界增长至 close、保留 shell 的 teardown 未关闭 cubit、个别测试断言源码文本）——见期 2 ledger，但 ledger 已随实施结束被清理，需要时从 git 历史或后续 review 重新评估。
+- **不需要 daemon**。用现有 SSH / Connect 通道即可。
+- 聊天记录同步推荐「失效事件 + 现有 softReload」，不在第一刀。
+
+**已知待处理项**：
+
+1. ~~投影断连基线~~ → 已纳入第一刀 spec（`cleared` + `clearAll`）。
+2. `TerminalActivityTracker.isWorking` 驱动的两条策略仍轮询——第一刀不事件化。
+3. 若干代码整洁类 minor（`_knownSeats` 无界增长等）——第一刀不顺手清理。
 
 ---
 
