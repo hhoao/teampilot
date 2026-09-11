@@ -150,6 +150,19 @@ void _stopDispatcher(FakeAsync async, AsyncDispatcher dispatcher) {
   async.flushMicrotasks();
 }
 
+Future<void> _waitFor(
+  bool Function() ok, {
+  required Duration timeout,
+}) async {
+  final end = DateTime.now().add(timeout);
+  while (!ok()) {
+    if (DateTime.now().isAfter(end)) {
+      fail('timed out');
+    }
+    await Future<void>.delayed(const Duration(milliseconds: 10));
+  }
+}
+
 void main() {
   setUp(setUpTestAppStorage);
   tearDown(tearDownTestAppStorage);
@@ -621,6 +634,33 @@ void main() {
           reason: 'close cancels the projection subscription',
         );
       });
+    });
+
+    test('projection working without a target emits occupiedSessionIds', () async {
+      final projection = AgentPresenceProjection();
+      final cubit = MemberPresenceCubit(
+        storage: fakeHomeStorage(),
+        presenceProjection: projection,
+      );
+      addTearDown(() async {
+        if (!cubit.isClosed) await cubit.close();
+      });
+
+      projection.handle(
+        AgentPresenceEvent(
+          seat: const PresenceSeatKey(sessionId: 's', memberId: 'm'),
+          eventKind: AgentPresenceKind.working,
+          timestamp: DateTime(2026, 9, 11),
+        ),
+      );
+      await _waitFor(
+        () => cubit.state.occupiedSessionIds.contains('s'),
+        timeout: const Duration(seconds: 2),
+      );
+      expect(cubit.state.occupiedSessionIds, {'s'});
+
+      await cubit.close();
+      expect(cubit.state.occupiedSessionIds, isEmpty);
     });
   });
 }

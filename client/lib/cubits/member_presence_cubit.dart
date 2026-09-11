@@ -41,15 +41,24 @@ class PresenceTarget {
 }
 
 class MemberPresenceState extends Equatable {
-  const MemberPresenceState({this.presence = const {}});
+  const MemberPresenceState({
+    this.presence = const {},
+    this.occupiedSessionIds = const {},
+  });
 
   final Map<String, MemberPresence> presence;
+  final Set<String> occupiedSessionIds;
 
-  MemberPresenceState copyWith({Map<String, MemberPresence>? presence}) =>
-      MemberPresenceState(presence: presence ?? this.presence);
+  MemberPresenceState copyWith({
+    Map<String, MemberPresence>? presence,
+    Set<String>? occupiedSessionIds,
+  }) => MemberPresenceState(
+    presence: presence ?? this.presence,
+    occupiedSessionIds: occupiedSessionIds ?? this.occupiedSessionIds,
+  );
 
   @override
-  List<Object?> get props => [presence];
+  List<Object?> get props => [presence, occupiedSessionIds];
 }
 
 class MemberPresenceCubit extends Cubit<MemberPresenceState> {
@@ -211,6 +220,10 @@ class MemberPresenceCubit extends Cubit<MemberPresenceState> {
 
   void _onProjectionSeatChanged(PresenceSeatKey seat) {
     _onProjectionChanged?.call();
+    final occupied = _presenceProjection?.occupiedSessionIds ?? const <String>{};
+    if (!setEquals(state.occupiedSessionIds, occupied)) {
+      emit(state.copyWith(occupiedSessionIds: occupied));
+    }
     _requestPresenceRecompute();
   }
 
@@ -395,6 +408,9 @@ class MemberPresenceCubit extends Cubit<MemberPresenceState> {
     _knownSeats.clear();
     _presenceBridge?.dispose();
     await changes?.cancel();
+    if (!setEquals(state.occupiedSessionIds, const {})) {
+      emit(state.copyWith(occupiedSessionIds: const {}));
+    }
     await super.close();
   }
 }

@@ -79,5 +79,19 @@ void main() {
             'the close strictly after the last delivery',
       );
     });
+
+    test('ssh home does not construct PresenceEventBridge', () {
+      expect(
+        src.contains('connectionModeService.isSshMode'),
+        isTrue,
+      );
+      expect(
+        RegExp(
+          r'presenceBridge:\s*presenceSink == null\s*\|\|\s*connectionModeService\.isSshMode',
+        ).hasMatch(src),
+        isTrue,
+        reason: 'consumer-only ssh home must not publish presence back',
+      );
+    });
   });
 }

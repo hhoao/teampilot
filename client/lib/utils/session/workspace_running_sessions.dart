@@ -9,8 +9,11 @@ List<AppSession> workspaceRunningSessions({
   required List<AppSession> sessions,
   required Set<String> busySessionIds,
   required Set<String> openTabSessionIds,
+  Set<String> occupiedSessionIds = const {},
 }) {
-  if (busySessionIds.isEmpty && openTabSessionIds.isEmpty) {
+  if (busySessionIds.isEmpty &&
+      openTabSessionIds.isEmpty &&
+      occupiedSessionIds.isEmpty) {
     return const [];
   }
   final byId = {for (final s in sessions) s.sessionId: s};
@@ -27,6 +30,7 @@ List<AppSession> workspaceRunningSessions({
 
   addIds(busySessionIds);
   addIds(openTabSessionIds);
+  addIds(occupiedSessionIds);
   return ordered;
 }
 
