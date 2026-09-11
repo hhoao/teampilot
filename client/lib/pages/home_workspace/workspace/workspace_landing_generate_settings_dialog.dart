@@ -62,6 +62,7 @@ class _GenerateSettingsDialogState extends State<_GenerateSettingsDialog> {
   CliTool _nativeCli = CliTool.claude;
   bool _retainBuilderSession = false;
   final List<_PoolRow> _rows = [];
+  final _minimumMemberCountController = TextEditingController();
   late final TeamGenerationSettingsStore _store = TeamGenerationSettingsStore(
     storage: context.read<HomeStorage>(),
   );
@@ -73,6 +74,12 @@ class _GenerateSettingsDialogState extends State<_GenerateSettingsDialog> {
   void initState() {
     super.initState();
     _loadInitial();
+  }
+
+  @override
+  void dispose() {
+    _minimumMemberCountController.dispose();
+    super.dispose();
   }
 
   @override
@@ -110,6 +117,7 @@ class _GenerateSettingsDialogState extends State<_GenerateSettingsDialog> {
           ? settings.nativeCli
           : (nativeClis.firstOrNull ?? CliTool.claude);
       _retainBuilderSession = settings.retainBuilderSession;
+      _minimumMemberCountController.text = '${settings.minimumMemberCount}';
       _rows
         ..clear()
         ..addAll([
@@ -178,6 +186,7 @@ class _GenerateSettingsDialogState extends State<_GenerateSettingsDialog> {
 
   bool get _canSave {
     if (_loading) return false;
+    if (_minimumMemberCount == null) return false;
     return _effectiveRows.isNotEmpty &&
         aiFeatureIsConfigured(
           stored: _draftGeneratorSetting,
@@ -185,6 +194,14 @@ class _GenerateSettingsDialogState extends State<_GenerateSettingsDialog> {
           appProviders: context.read<AppProviderCubit>().state,
           globalPresets: widget.presets,
         );
+  }
+
+  int? get _minimumMemberCount {
+    final parsed = int.tryParse(_minimumMemberCountController.text.trim());
+    if (parsed == null || parsed < kDefaultMinimumGeneratedTeamMembers) {
+      return null;
+    }
+    return parsed;
   }
 
   List<_PoolRow> get _effectiveRows =>
@@ -248,6 +265,22 @@ class _GenerateSettingsDialogState extends State<_GenerateSettingsDialog> {
                     style: styles.sm.copyWith(color: cs.onSurfaceVariant),
                   ),
                   SizedBox(height: spacing.lg),
+                  TextFormField(
+                    key: const ValueKey('team-generate-minimum-members'),
+                    controller: _minimumMemberCountController,
+                    keyboardType: TextInputType.number,
+                    decoration: InputDecoration(
+                      isDense: true,
+                      labelText: l10n.teamGenerateMinimumMemberCount,
+                      helperText: l10n.teamGenerateMinimumMemberCountHint,
+                      errorText: _minimumMemberCount == null
+                          ? l10n.teamGenerateMinimumMemberCountInvalid
+                          : null,
+                      border: const OutlineInputBorder(),
+                    ),
+                    onChanged: (_) => setState(() {}),
+                  ),
+                  SizedBox(height: spacing.xl),
                   _SectionLabel(l10n.teamGenerateGeneratorModel),
                   SizedBox(height: spacing.sm),
                   LaunchFourTuplePicker(
@@ -541,7 +574,8 @@ class _GenerateSettingsDialogState extends State<_GenerateSettingsDialog> {
 
   Future<void> _save(BuildContext context) async {
     final generator = _generator;
-    if (generator == null) return;
+    final minimumMemberCount = _minimumMemberCount;
+    if (generator == null || minimumMemberCount == null) return;
     if (!aiFeatureIsConfigured(
       stored: _draftGeneratorSetting,
       registry: _registry,
@@ -565,6 +599,7 @@ class _GenerateSettingsDialogState extends State<_GenerateSettingsDialog> {
         teamMode: _teamMode,
         nativeCli: _nativeCli,
         retainBuilderSession: _retainBuilderSession,
+        minimumMemberCount: minimumMemberCount,
         modelPool: _rows.map((row) => row.toEntry()).toList(),
       ),
     );
