@@ -8,6 +8,7 @@ import '../services/session/session_lifecycle_service.dart';
 import '../services/storage/home_storage.dart';
 import '../utils/logging/logger.dart';
 import 'launch_profile_index_store.dart';
+import '../services/storage/storage_failure.dart';
 
 /// Persists [LaunchProfile] records (team identities) at
 /// `launch-profiles/{id}/profile.json`.
@@ -110,7 +111,8 @@ class LaunchProfileRepository {
         for (final id in ids)
           if (id != null) id,
       ];
-    } on Object {
+    } on Object catch (error) {
+      if (isStorageTransportFailure(error)) rethrow;
       return const [];
     }
   }
@@ -205,7 +207,8 @@ class LaunchProfileRepository {
           if (profile != null) profile,
       ];
       return _sorted(out);
-    } on Object {
+    } on Object catch (error) {
+      if (isStorageTransportFailure(error)) rethrow;
       return const [];
     }
   }

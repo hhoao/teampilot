@@ -7,6 +7,7 @@ import '../services/io/local_filesystem.dart';
 import '../utils/logging/logger.dart';
 import 'index_snapshot_isolate.dart';
 import 'session_repository_fs.dart';
+import '../services/storage/storage_failure.dart';
 
 /// Derived snapshot of workspace manifests plus session directory ids.
 ///
@@ -68,7 +69,8 @@ class WorkspaceIndexStore {
         for (final item in list)
           if (item is Map) Map<String, Object?>.from(item),
       ]);
-    } on Object {
+    } on Object catch (error) {
+      if (isStorageTransportFailure(error)) rethrow;
       return null;
     }
   }

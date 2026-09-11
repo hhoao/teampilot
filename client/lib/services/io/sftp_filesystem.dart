@@ -3,6 +3,7 @@ import 'package:path/path.dart' as p;
 
 import '../storage/remote_file_store.dart';
 import 'filesystem.dart';
+import '../storage/storage_failure.dart';
 
 class SftpFilesystem implements Filesystem {
   SftpFilesystem(this.store);
@@ -17,7 +18,10 @@ class SftpFilesystem implements Filesystem {
     if (path.trim().isEmpty) return const FsStat(kind: FsEntityKind.notFound);
     try {
       return await store.stat(path);
-    } on Object {
+    } on Object catch (error) {
+      // A dropped transport must not read as "file absent": callers would
+      // treat an unreachable machine as "nothing stored" and rewrite state.
+      if (isStorageTransportFailure(error)) rethrow;
       return const FsStat(kind: FsEntityKind.notFound);
     }
   }
@@ -79,7 +83,8 @@ class SftpFilesystem implements Filesystem {
         for (final entry in entries)
           FsDirEntry(name: entry.name, isDirectory: entry.isDirectory),
       ];
-    } on Object {
+    } on Object catch (error) {
+      if (isStorageTransportFailure(error)) rethrow;
       return const [];
     }
   }
@@ -122,7 +127,8 @@ class SftpFilesystem implements Filesystem {
         for (final entry in entries)
           FsDirEntry(name: entry.name, isDirectory: entry.isDirectory),
       ];
-    } on Object {
+    } on Object catch (error) {
+      if (isStorageTransportFailure(error)) rethrow;
       return const [];
     }
   }

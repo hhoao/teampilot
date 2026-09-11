@@ -3,6 +3,7 @@ import 'dart:convert';
 import '../models/ssh_profile.dart';
 import '../services/storage/home_storage.dart';
 import '../services/io/filesystem.dart';
+import '../services/storage/storage_failure.dart';
 
 class SshProfileRepository {
   /// Defaults follow the home control plane ([storage], test convenience).
@@ -41,8 +42,10 @@ class SshProfileRepository {
             .map((e) => SshProfile.fromJson(e))
             .toList();
       }
-    } on Object {
-      // ignore
+    } on Object catch (error) {
+      // A dropped transport must not read as "no profiles stored": the user
+      // would lose every SSH profile on a flaky connection.
+      if (isStorageTransportFailure(error)) rethrow;
     }
     return [];
   }
@@ -57,7 +60,8 @@ class SshProfileRepository {
     if (!(await _fs.stat(_selectedProfileFile)).isFile) return '';
     try {
       return (await _fs.readString(_selectedProfileFile))?.trim() ?? '';
-    } on Object {
+    } on Object catch (error) {
+      if (isStorageTransportFailure(error)) rethrow;
       return '';
     }
   }

@@ -9,6 +9,7 @@ import '../services/io/filesystem.dart';
 import '../services/io/local_filesystem.dart';
 import '../utils/logging/logger.dart';
 import 'index_snapshot_isolate.dart';
+import '../services/storage/storage_failure.dart';
 
 /// Derived snapshot of launch profile records for fast startup load.
 ///
@@ -84,7 +85,8 @@ class LaunchProfileIndexStore {
         for (final item in list)
           if (item is Map) Map<String, Object?>.from(item),
       ]);
-    } on Object {
+    } on Object catch (error) {
+      if (isStorageTransportFailure(error)) rethrow;
       return null;
     }
   }

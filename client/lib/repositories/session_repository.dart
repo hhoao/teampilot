@@ -34,6 +34,7 @@ import '../utils/workspace/workspace_path_utils.dart';
 import '../utils/session/workspace_sessions.dart';
 import 'session_repository_fs.dart';
 import 'workspace_index_store.dart';
+import '../services/storage/storage_failure.dart';
 
 class SessionRepository {
   SessionRepository({
@@ -915,7 +916,8 @@ class SessionRepository {
       if (json is Map<String, Object?>) {
         return AppSession.fromJson(json);
       }
-    } on Object {
+    } on Object catch (error) {
+      if (isStorageTransportFailure(error)) rethrow;
       return null;
     }
     return null;

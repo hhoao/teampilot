@@ -6,6 +6,8 @@ import 'package:teampilot/repositories/ssh_profile_repository.dart';
 import 'package:teampilot/services/storage/app_paths.dart';
 import '../support/test_runtime_context.dart';
 import '../support/in_memory_filesystem.dart';
+import 'package:teampilot/services/io/filesystem.dart';
+import 'package:teampilot/services/storage/home_storage.dart';
 
 void main() {
   test('load follows AppStorage home when rootDir is not overridden', () async {
@@ -67,4 +69,43 @@ void main() {
     expect(await repo.loadAll(), hasLength(1));
     expect((await repo.loadAll()).single.name, 'Pinned');
   });
+  test('a dropped transport fails loud instead of reporting no profiles', () async {
+    final fs = _TransportFailingFilesystem();
+    final repo = SshProfileRepository(
+      rootDir: '/tp',
+      storage: HomeStorage.forTesting(
+        filesystem: fs,
+        paths: const AppPaths('/tp'),
+      ),
+    );
+
+    // The file exists; reading it hits a closed SFTP channel.
+    await expectLater(repo.loadAll(), throwsA(isA<StateError>()));
+  });
+
+  test('corrupt profile JSON still degrades to an empty list', () async {
+    final fs = InMemoryFilesystem();
+    await fs.writeString('/tp/ssh-profiles.json', '{not json');
+    final repo = SshProfileRepository(
+      rootDir: '/tp',
+      storage: HomeStorage.forTesting(
+        filesystem: fs,
+        paths: const AppPaths('/tp'),
+      ),
+    );
+
+    expect(await repo.loadAll(), isEmpty);
+  });
 }
+
+/// Filesystem whose reads fail the way a closed dartssh2 channel does.
+class _TransportFailingFilesystem extends InMemoryFilesystem {
+  @override
+  Future<FsStat> stat(String path) async =>
+      const FsStat(kind: FsEntityKind.file);
+
+  @override
+  Future<String?> readString(String path) async =>
+      throw StateError('SSH client closed');
+}
+
