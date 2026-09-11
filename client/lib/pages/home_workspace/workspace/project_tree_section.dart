@@ -56,7 +56,6 @@ class _ProjectTreeSectionState extends State<ProjectTreeSection> {
         final groupKey = _groupKey(group);
         final collapsed = _collapsedPaths.contains(groupKey);
         return _ProjectTreeGroup(
-          key: ValueKey(groupKey),
           group: group,
           workspace: widget.workspace,
           tabScopeId: widget.tabScopeId,
@@ -116,7 +115,9 @@ class _ProjectTreeGroupState extends State<_ProjectTreeGroup> {
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         TpHoverRow(
-          key: widget.key,
+          key: ValueKey(
+            'project-tree-node-${widget.group.projectPath ?? '<project-orphan>'}',
+          ),
           padding: kWorkspaceSidebarRowPadding,
           hoverColor: workspaceSidebarRowHoverFill(cs),
           onHoverChanged: (hovered) => setState(() => _hovered = hovered),

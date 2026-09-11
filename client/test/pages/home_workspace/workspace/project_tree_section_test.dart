@@ -13,6 +13,7 @@ import 'package:teampilot/pages/home_workspace/workspace/project_tree_section.da
 import 'package:teampilot/repositories/session_repository.dart';
 import 'package:teampilot/utils/session/session_project_grouping.dart';
 import 'package:teampilot/widgets/sidebar_session_tile.dart';
+import 'package:shared_ui/shared_ui.dart';
 
 import '../../../support/post_frame_test_harness.dart';
 
@@ -150,5 +151,28 @@ void main() {
 
     expect(find.text('Other'), findsOneWidget);
     expect(find.byType(SidebarSessionTile), findsNWidgets(2));
+  });
+
+  testWidgets('renders empty state when all groups have no sessions', (
+    tester,
+  ) async {
+    await pumpProjectTree(tester, [
+      const ProjectSessionGroup(
+        projectPath: '/tmp/huji',
+        label: 'huji',
+        sessions: [],
+      ),
+      const ProjectSessionGroup(
+        projectPath: null,
+        label: '',
+        sessions: [],
+        isOther: true,
+      ),
+    ]);
+
+    expect(find.byType(TpEmptyState), findsOneWidget);
+    expect(find.text('No conversations in this workspace yet'), findsOneWidget);
+    expect(find.text('Other'), findsNothing);
+    expect(find.byType(SidebarSessionTile), findsNothing);
   });
 }
