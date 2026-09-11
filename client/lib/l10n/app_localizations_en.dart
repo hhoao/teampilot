@@ -8939,6 +8939,17 @@ class AppLocalizationsEn extends AppLocalizations {
   String get teamGenerateGeneratorModel => 'Generator model';
 
   @override
+  String get teamGenerateMinimumMemberCount => 'Minimum team members';
+
+  @override
+  String get teamGenerateMinimumMemberCountHint =>
+      'The generated team will include at least this many distinct roles.';
+
+  @override
+  String get teamGenerateMinimumMemberCountInvalid =>
+      'Minimum must be at least 3.';
+
+  @override
   String get teamGenerateTeamMode => 'Team mode';
 
   @override
