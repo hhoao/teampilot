@@ -24,12 +24,20 @@ final class AgentPresenceProjection implements EventHandler<AgentPresenceEvent> 
   /// The latest availability for [seat], or null if the seat is unknown.
   AgentPresenceKind? availabilityFor(PresenceSeatKey seat) => _bySeat[seat];
 
+  Set<String> get occupiedSessionIds =>
+      {for (final seat in _bySeat.keys) seat.sessionId};
+
   @override
   void handle(AgentPresenceEvent event) {
+    if (event.eventKind == AgentPresenceKind.cleared) {
+      if (!_bySeat.containsKey(event.seat)) return;
+      _bySeat.remove(event.seat);
+      if (!_changes.isClosed) _changes.add(event.seat);
+      return;
+    }
     final previous = _bySeat[event.seat];
-    if (previous == event.eventKind) return; // idempotent, no re-broadcast
+    if (previous == event.eventKind) return;
     _bySeat[event.seat] = event.eventKind;
-    // A late event after [close] is dropped rather than throwing.
     if (!_changes.isClosed) _changes.add(event.seat);
   }
 
@@ -37,6 +45,18 @@ final class AgentPresenceProjection implements EventHandler<AgentPresenceEvent> 
   /// Idempotent: removing an unknown seat is a no-op.
   void removeSeat(PresenceSeatKey seat) {
     _bySeat.remove(seat);
+  }
+
+  /// Drops every seat and broadcasts each removed key. Used by transport
+  /// `snapshotBegin`. Idempotent on an empty projection.
+  void clearAll() {
+    if (_bySeat.isEmpty) return;
+    final seats = _bySeat.keys.toList();
+    _bySeat.clear();
+    if (_changes.isClosed) return;
+    for (final seat in seats) {
+      _changes.add(seat);
+    }
   }
 
   Future<void> close() => _changes.close();

@@ -341,6 +341,7 @@ class MemberPresenceCubit extends Cubit<MemberPresenceState> {
         AgentPresenceKind.booting => MemberAvailability.booting,
         AgentPresenceKind.working => MemberAvailability.working,
         AgentPresenceKind.idle => MemberAvailability.idle,
+        AgentPresenceKind.cleared => null,
         null => null,
       };
 

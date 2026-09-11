@@ -54,4 +54,57 @@ void main() {
     p.removeSeat(seat); // idempotent
     await p.close();
   });
+
+  test('cleared removes the seat and broadcasts', () async {
+    final p = AgentPresenceProjection();
+    final seen = <PresenceSeatKey>[];
+    final sub = p.changes.listen(seen.add);
+    const seat = PresenceSeatKey(sessionId: 's', memberId: 'm');
+    p.handle(_e('s', 'm', AgentPresenceKind.working));
+    p.handle(_e('s', 'm', AgentPresenceKind.cleared));
+    await Future<void>.delayed(Duration.zero);
+    expect(p.availabilityFor(seat), isNull);
+    expect(p.occupiedSessionIds, isEmpty);
+    expect(seen, [seat, seat]);
+    await sub.cancel();
+    await p.close();
+  });
+
+  test('cleared on an unknown seat is a no-op', () async {
+    final p = AgentPresenceProjection();
+    final seen = <PresenceSeatKey>[];
+    final sub = p.changes.listen(seen.add);
+    p.handle(_e('s', 'm', AgentPresenceKind.cleared));
+    await Future<void>.delayed(Duration.zero);
+    expect(seen, isEmpty);
+    await sub.cancel();
+    await p.close();
+  });
+
+  test('clearAll drops every seat and broadcasts each', () async {
+    final p = AgentPresenceProjection();
+    final seen = <PresenceSeatKey>[];
+    final sub = p.changes.listen(seen.add);
+    p.handle(_e('s1', 'a', AgentPresenceKind.working));
+    p.handle(_e('s2', 'b', AgentPresenceKind.idle));
+    p.clearAll();
+    await Future<void>.delayed(Duration.zero);
+    expect(p.snapshot, isEmpty);
+    expect(p.occupiedSessionIds, isEmpty);
+    expect(
+      seen.map((k) => '${k.sessionId}/${k.memberId}').toSet(),
+      {'s1/a', 's2/b'},
+    );
+    await sub.cancel();
+    await p.close();
+  });
+
+  test('occupiedSessionIds unions session ids still in the snapshot', () async {
+    final p = AgentPresenceProjection();
+    p.handle(_e('s1', 'a', AgentPresenceKind.booting));
+    p.handle(_e('s1', 'b', AgentPresenceKind.working));
+    p.handle(_e('s2', 'a', AgentPresenceKind.idle));
+    expect(p.occupiedSessionIds, {'s1', 's2'});
+    await p.close();
+  });
 }
