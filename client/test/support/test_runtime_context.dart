@@ -23,6 +23,10 @@ RuntimeContext testRuntimeContext(String dir) => RuntimeContext(
 /// [bindTestNativeHome], [installTestHomeStorage], or `setUpTestAppStorage`.
 HomeStorage? _testHome;
 
+/// Whether a shared test home is installed (lets helpers auto-install a
+/// fallback instead of throwing).
+bool get testHomeStorageInstalled => _testHome != null;
+
 /// The shared test home storage installed by [bindTestNativeHome] /
 /// [installTestHomeStorage] / `setUpTestAppStorage`. Pass into
 /// constructor-injected repositories/cubits. Throws when no test home was

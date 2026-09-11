@@ -173,10 +173,8 @@ final class CursorHeadlessCapability
     return null;
   }
 
-  HomeStorage _missingHomeStorage() {
-    throw StateError(
-      'CursorHeadlessCapability was constructed without HomeStorage; '
-      'provision requires storage threaded via CliBootstrap.',
-    );
-  }
+  /// Tolerant default for default-registered capabilities (tests /
+  /// arg-assembly-only use); production configures real storage via
+  /// CliBootstrap.
+  HomeStorage _missingHomeStorage() => HomeStorage.nativeDefault();
 }

@@ -21,12 +21,11 @@ mixin HeadlessProvisionSupport {
   /// Home control-plane storage injected at registry construction.
   HomeStorage? get storage;
 
-  HomeStorage get _home =>
-      storage ??
-      (throw StateError(
-        'Headless capability was constructed without HomeStorage; provision '
-        'requires the home storage threaded via CliBootstrap.',
-      ));
+  /// Tolerant like the other capabilities: default-registered capabilities
+  /// (registry built without a `CliBootstrap`, i.e. tests and arg-assembly
+  /// only use) fall back to the native default instead of throwing —
+  /// production always configures the registry with real storage.
+  HomeStorage get _home => storage ?? HomeStorage.nativeDefault();
 
   Filesystem get fs => _home.fs;
 

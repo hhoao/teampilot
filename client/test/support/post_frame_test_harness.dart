@@ -33,12 +33,15 @@ import 'package:teampilot/services/storage/workspace_layout.dart';
 // Shared test-home state + install/reset seams live in test_runtime_context;
 // re-exported so existing `post_frame_test_harness` imports keep resolving.
 import 'test_runtime_context.dart';
+import 'package:teampilot/services/storage/app_paths.dart';
+import 'in_memory_filesystem.dart';
 export 'test_runtime_context.dart'
     show
         testHomeStorage,
         buildTestHomeStorage,
         bindTestNativeHome,
         installTestHomeStorage,
+        testHomeStorageInstalled,
         resetTestHomeStorage;
 
 Directory? _testAppDataDir;
@@ -344,6 +347,17 @@ ChatCubit testChatCubit({
   AutomationRepository? automationRepository,
   SessionRepository? sessionRepository,
 }) {
+  // Tests that never touch disk still need SOME home plane for the cubit's
+  // constructor-injected stores — auto-install a fresh in-memory one when the
+  // group skipped setUpTestAppStorage.
+  if (!testHomeStorageInstalled) {
+    installTestHomeStorage(
+      filesystem: InMemoryFilesystem(
+        pathContext: p.Context(style: p.Style.posix),
+      ),
+      paths: const AppPaths('/tp-test-chat'),
+    );
+  }
   return ChatCubit(
     storage: testHomeStorage,
     executableResolver: executableResolver,

@@ -23,6 +23,7 @@ import 'package:teampilot/services/home_workspace/landing_prefs_store.dart';
 import 'package:teampilot/theme/app_theme.dart';
 
 import '../../../support/post_frame_test_harness.dart';
+import 'package:teampilot/services/storage/home_storage.dart';
 
 class _MockChatCubit extends Mock implements ChatCubit {}
 
@@ -98,6 +99,7 @@ void main() {
         MultiRepositoryProvider(
           providers: [
             RepositoryProvider<CommandBus>(create: (_) => CommandBus()),
+            RepositoryProvider<HomeStorage>.value(value: testHomeStorage),
           ],
           child: MultiBlocProvider(
             providers: [
