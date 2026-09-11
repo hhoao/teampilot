@@ -77,16 +77,15 @@ final class EventTransportServer {
   }
 
   Future<void> stop() async {
-    for (final handler in List<_ConnectionHandler>.of(_handlers)) {
-      _dispatcher.unregister(handler);
-      handler.socket.destroy();
-    }
-    _handlers.clear();
     final socket = _socket;
     _socket = null;
     await socket?.close();
     await _accept;
     _accept = null;
+    for (final handler in List<_ConnectionHandler>.of(_handlers)) {
+      _dispatcher.unregister(handler);
+      handler.socket.destroy();
+    }
     try {
       await _fs.removeRecursive(_advertisementPath);
     } on Object catch (error, stackTrace) {
@@ -212,6 +211,19 @@ void _writeOversize(Socket client) {
   });
 }
 
+Future<void> _flushThenClose(Socket socket) async {
+  try {
+    await socket.flush();
+    await socket.close();
+  } on Object {
+    try {
+      socket.destroy();
+    } on Object {
+      // already gone
+    }
+  }
+}
+
 /// Per-connection byte assembler: first line is subscribe; later oversize closes.
 final class _ClientSession {
   _ClientSession(this.socket);
@@ -285,7 +297,7 @@ final class _ClientSession {
     _writeOversize(socket);
     _completeHandshake(null);
     _closed = true;
-    socket.destroy();
+    unawaited(_flushThenClose(socket));
   }
 
   void _failHandshake() => _completeHandshake(null);

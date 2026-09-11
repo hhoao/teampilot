@@ -32,6 +32,7 @@ class _Harness {
     this.subscribeTimeout = const Duration(seconds: 5),
     DateTime Function()? clock,
     int Function()? pid,
+    this.bind,
   }) : dispatcher = AsyncDispatcher()..start(),
        presence = AgentPresenceProjection(),
        fs = InMemoryFilesystem(),
@@ -44,6 +45,7 @@ class _Harness {
   final Duration subscribeTimeout;
   final DateTime Function() clock;
   final int Function() pid;
+  final Future<ServerSocket> Function(InternetAddress host, int port)? bind;
   late final EventTransportServer server;
 
   Future<void> start() async {
@@ -56,6 +58,7 @@ class _Harness {
       subscribeTimeout: subscribeTimeout,
       clock: clock,
       pid: pid,
+      bind: bind,
     );
     await server.start();
   }
@@ -278,8 +281,13 @@ void main() {
     expect(closed, isTrue);
   });
 
-  test('oversize line after handshake closes the connection', () async {
-    final h = _Harness();
+  test('oversize line after handshake sends error then EOF', () async {
+    final h = _Harness(
+      bind: (host, port) async => _MappedServerSocket(
+        await ServerSocket.bind(host, port),
+        _AbortUnflushedSocket.new,
+      ),
+    );
     await h.start();
     addTearDown(h.dispose);
 
@@ -292,7 +300,263 @@ void main() {
 
     socket.add(Uint8List(eventTransportMaxLineBytes + 1));
     await socket.flush();
+    await _waitFor(
+      () => client.lines.any((l) => l['type'] == 'error') || client.closed,
+      timeout: const Duration(seconds: 2),
+    );
+    expect(
+      client.lines.any((l) => l['type'] == 'error' && l['code'] == 'oversize'),
+      isTrue,
+      reason: 'client must read {type: error, code: oversize} before EOF',
+    );
     await _waitFor(() => client.closed, timeout: const Duration(seconds: 2));
     expect(client.closed, isTrue);
   });
+
+  test('stop closes the listen socket before tearing down handlers', () async {
+    late _HoldUntilCloseServerSocket held;
+    final h = _Harness(
+      bind: (host, port) async {
+        held = _HoldUntilCloseServerSocket(await ServerSocket.bind(host, port));
+        return held;
+      },
+    );
+    await h.start();
+    addTearDown(h.dispose);
+
+    final socket = await Socket.connect('127.0.0.1', await h.port());
+    var closed = false;
+    socket.listen(
+      (_) {},
+      onDone: () => closed = true,
+      onError: (_) => closed = true,
+    );
+    addTearDown(socket.destroy);
+
+    await _waitFor(() => held.heldCount == 1);
+    expect(held.heldCount, 1);
+    await h.server.stop();
+    await _waitFor(() => closed, timeout: const Duration(seconds: 2));
+    expect(
+      closed,
+      isTrue,
+      reason: 'a connection accepted during stop must be destroyed',
+    );
+  });
+}
+
+/// Forwards an accepted socket, but [add] is delayed one microtask so
+/// [destroy] in the same turn drops the send buffer (as OS destroy can).
+final class _AbortUnflushedSocket extends Stream<Uint8List> implements Socket {
+  _AbortUnflushedSocket(this._inner);
+
+  final Socket _inner;
+  final _queued = <List<int>>[];
+  var _sendScheduled = false;
+  var _dead = false;
+
+  void _enqueue(List<int> data) {
+    if (_dead) return;
+    _queued.add(List<int>.from(data));
+    if (_sendScheduled) return;
+    _sendScheduled = true;
+    scheduleMicrotask(() {
+      _sendScheduled = false;
+      if (_dead) {
+        _queued.clear();
+        return;
+      }
+      for (final chunk in _queued) {
+        _inner.add(chunk);
+      }
+      _queued.clear();
+    });
+  }
+
+  @override
+  void add(List<int> data) => _enqueue(data);
+
+  @override
+  void write(Object? object) => _enqueue(utf8.encode('$object'));
+
+  @override
+  void writeAll(Iterable<dynamic> objects, [String separator = '']) =>
+      write(objects.join(separator));
+
+  @override
+  void writeln([Object? object = '']) => write('$object\n');
+
+  @override
+  void writeCharCode(int charCode) => write(String.fromCharCode(charCode));
+
+  @override
+  void addError(Object error, [StackTrace? stackTrace]) =>
+      _inner.addError(error, stackTrace);
+
+  @override
+  Future addStream(Stream<List<int>> stream) async {
+    await for (final chunk in stream) {
+      add(chunk);
+    }
+  }
+
+  @override
+  Future flush() async {
+    while (_queued.isNotEmpty && !_dead) {
+      await Future<void>.delayed(Duration.zero);
+    }
+    if (!_dead) await _inner.flush();
+  }
+
+  @override
+  Future close() async {
+    await flush();
+    if (!_dead) await _inner.close();
+  }
+
+  @override
+  void destroy() {
+    _dead = true;
+    _queued.clear();
+    _inner.destroy();
+  }
+
+  @override
+  Future get done => _inner.done;
+
+  @override
+  Encoding encoding = utf8;
+
+  @override
+  bool setOption(SocketOption option, bool enabled) =>
+      _inner.setOption(option, enabled);
+
+  @override
+  Uint8List getRawOption(RawSocketOption option) => _inner.getRawOption(option);
+
+  @override
+  void setRawOption(RawSocketOption option) => _inner.setRawOption(option);
+
+  @override
+  int get port => _inner.port;
+
+  @override
+  int get remotePort => _inner.remotePort;
+
+  @override
+  InternetAddress get address => _inner.address;
+
+  @override
+  InternetAddress get remoteAddress => _inner.remoteAddress;
+
+  @override
+  StreamSubscription<Uint8List> listen(
+    void Function(Uint8List event)? onData, {
+    Function? onError,
+    void Function()? onDone,
+    bool? cancelOnError,
+  }) {
+    return _inner.listen(
+      onData,
+      onError: onError,
+      onDone: onDone,
+      cancelOnError: cancelOnError,
+    );
+  }
+}
+
+final class _MappedServerSocket extends Stream<Socket> implements ServerSocket {
+  _MappedServerSocket(this._inner, this._map);
+
+  final ServerSocket _inner;
+  final Socket Function(Socket) _map;
+
+  @override
+  StreamSubscription<Socket> listen(
+    void Function(Socket event)? onData, {
+    Function? onError,
+    void Function()? onDone,
+    bool? cancelOnError,
+  }) {
+    return _inner
+        .map(_map)
+        .listen(
+          onData,
+          onError: onError,
+          onDone: onDone,
+          cancelOnError: cancelOnError,
+        );
+  }
+
+  @override
+  int get port => _inner.port;
+
+  @override
+  InternetAddress get address => _inner.address;
+
+  @override
+  Future<ServerSocket> close() async {
+    await _inner.close();
+    return this;
+  }
+}
+
+/// Holds accepted sockets until [close], modeling an accept that lands in stop().
+final class _HoldUntilCloseServerSocket extends Stream<Socket>
+    implements ServerSocket {
+  _HoldUntilCloseServerSocket(this._inner) {
+    _sub = _inner.listen(
+      _held.add,
+      onError: _controller.addError,
+      onDone: () {
+        if (!_controller.isClosed) {
+          unawaited(_controller.close());
+        }
+      },
+    );
+  }
+
+  final ServerSocket _inner;
+  final _held = <Socket>[];
+  final _controller = StreamController<Socket>(sync: true);
+  late final StreamSubscription<Socket> _sub;
+
+  int get heldCount => _held.length;
+
+  @override
+  StreamSubscription<Socket> listen(
+    void Function(Socket event)? onData, {
+    Function? onError,
+    void Function()? onDone,
+    bool? cancelOnError,
+  }) {
+    return _controller.stream.listen(
+      onData,
+      onError: onError,
+      onDone: onDone,
+      cancelOnError: cancelOnError,
+    );
+  }
+
+  @override
+  int get port => _inner.port;
+
+  @override
+  InternetAddress get address => _inner.address;
+
+  @override
+  Future<ServerSocket> close() async {
+    for (final client in List<Socket>.of(_held)) {
+      if (!_controller.isClosed) {
+        _controller.add(client);
+      }
+    }
+    _held.clear();
+    if (!_controller.isClosed) {
+      await _controller.close();
+    }
+    await _sub.cancel();
+    await _inner.close();
+    return this;
+  }
 }
