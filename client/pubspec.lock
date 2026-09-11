@@ -9,6 +9,20 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "107.0.0"
+  acpd:
+    dependency: "direct main"
+    description:
+      path: "packages/acpd/packages/acpd"
+      relative: true
+    source: path
+    version: "1.0.0"
+  acpd_test:
+    dependency: "direct main"
+    description:
+      path: "packages/acpd/packages/acpd_test"
+      relative: true
+    source: path
+    version: "1.0.0"
   adaptive_number:
     dependency: transitive
     description:

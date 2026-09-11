@@ -31,3 +31,6 @@
 	path = resources
 	url = https://github.com/hhoao/teampilot-resources.git
 	branch = main
+[submodule "client/packages/acpd"]
+	path = client/packages/acpd
+	url = https://github.com/fluttercandies/acpd
