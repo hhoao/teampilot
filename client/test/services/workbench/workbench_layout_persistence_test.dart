@@ -172,6 +172,41 @@ void main() {
     });
   });
 
+  test('restart hydration restores center and floating lock state', () {
+    withPersistence((async, fs, workbench, _, persistence) {
+      final seeder = WorkbenchCubit()
+        ..openFile(_ws, '/one.dart')
+        ..openFile(_ws, '/two.dart')
+        ..splitTab(
+          _ws,
+          WorkbenchTabId.file('/two.dart'),
+          axis: Axis.horizontal,
+          before: false,
+        )
+        ..openFloating(_ws, _sh1)
+        ..openFloating(_ws, _sh2)
+        ..splitTab(
+          _ws,
+          _sh2,
+          axis: Axis.vertical,
+          before: false,
+          floating: true,
+        );
+      final centerGroup = seeder.centerLayout(_ws).leafGroupIds.first;
+      final floatingGroup = seeder.floatingLayout(_ws).leafGroupIds.last;
+      seeder.toggleGroupLock(_ws, centerGroup);
+      seeder.toggleGroupLock(_ws, floatingGroup, floating: true);
+      seedSnapshot(async, fs, seeder);
+      seeder.close();
+
+      unawaited(persistence.restoreForWorkspace(_ws));
+      async.flushMicrotasks();
+
+      expect(workbench.centerLayout(_ws).lockedGroupIds, {centerGroup});
+      expect(workbench.floatingLayout(_ws).lockedGroupIds, {floatingGroup});
+    });
+  });
+
   test('session tabs are pruned when ChatCubit cannot resolve them', () {
     withPersistence((async, fs, workbench, _, persistence) {
       // Persist a bar holding one session tab and one floating shell tab.
