@@ -260,4 +260,40 @@ void main() {
     }
     expect(h.openCount, 1);
   });
+
+  test('stop during in-flight open closes the returned channel and does not reopen', () async {
+    final dispatcher = AsyncDispatcher()..start();
+    final presence = AgentPresenceProjection();
+    final pending = Completer<EventTransportByteChannel>();
+    var openCount = 0;
+    final client = EventTransportClient(
+      dispatcher: dispatcher,
+      presence: presence,
+      codecs: [
+        AgentPresenceTransportCodec(),
+        SessionLifecycleTransportCodec(),
+      ],
+      open: () {
+        openCount++;
+        return pending.future;
+      },
+      backoff: (_) => Duration.zero,
+    );
+    addTearDown(() async {
+      await client.stop();
+      await dispatcher.stop();
+      await presence.close();
+    });
+
+    await client.start();
+    await _waitFor(() => openCount == 1, timeout: _timeout);
+    await client.stop();
+    final channel = _FakeChannel();
+    pending.complete(channel);
+    await _waitFor(() => channel.closed, timeout: _timeout);
+    for (var i = 0; i < 20; i++) {
+      await Future<void>.delayed(Duration.zero);
+    }
+    expect(openCount, 1);
+  });
 }

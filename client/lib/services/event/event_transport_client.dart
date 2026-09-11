@@ -65,6 +65,10 @@ final class EventTransportClient {
       try {
         final channel = await _open();
         _channel = channel;
+        if (!_running) {
+          await channel.close();
+          break;
+        }
         attempt = 0;
         channel.add(
           utf8.encode(
