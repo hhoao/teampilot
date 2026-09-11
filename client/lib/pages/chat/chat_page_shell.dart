@@ -8,22 +8,16 @@ import '../../widgets/app_toast/app_toast.dart';
 import '../../cubits/chat/model/chat_tab.dart';
 import '../../cubits/chat_cubit.dart';
 import '../../cubits/editor_cubit.dart';
-import '../../cubits/launch_profile_cubit.dart';
 import '../../cubits/layout_cubit.dart';
 import '../../cubits/workbench/workbench_cubit.dart';
 import '../../l10n/l10n_extensions.dart';
-import '../../models/team_config.dart';
 import '../../services/terminal/workspace_terminal_registry.dart';
 import '../../services/terminal/workspace_terminal_title_resolver.dart';
 import '../../services/workspace/workspace_pane_policy.dart';
-import '../../utils/debounce/debounce.dart';
-import '../../utils/ui/app_keys.dart';
-import '../../utils/workspace/workspace_active_context.dart';
 import '../../widgets/workspace_terminal_panel.dart';
 import '../../widgets/workbench/workbench_split_layout_view.dart';
 import '../../widgets/workbench/workbench_tab_drag.dart';
 import '../workbench/workbench_group_host.dart';
-import '../workspace_shell/workspace_shell_tabs.dart';
 import 'chat_page_structural_signal.dart';
 import 'team_config_incomplete_dialog.dart';
 
@@ -158,20 +152,6 @@ class _ChatWorkspaceShell extends StatelessWidget {
                 MediaQuery.widthOf(context) >=
                 WorkspacePanePolicy.narrowBreakpointWidth;
 
-            // Team chrome actions resolve from the focused group's context.
-            // Single group → rendered once above the split view; multi-group →
-            // duplicated into each group host's action row (VSCode-style).
-            final active = WorkspaceActiveContext.resolve(
-              workbench: workbench,
-              chat: cubit,
-              launchProfiles: context.read<LaunchProfileCubit>(),
-              tabScopeId: tabScopeId,
-            );
-            final singleGroup = layout.groups.length == 1;
-            final chatActions = active.isPersonal || active.team == null
-                ? const <Widget>[]
-                : _chatActions(context, active.team!);
-
             final splitView = WorkbenchSplitLayoutView(
               layout: layout,
               holdHandle: holdHandle,
@@ -212,66 +192,20 @@ class _ChatWorkspaceShell extends StatelessWidget {
                       : null,
                   holdHandle: holdHandle,
                   sessionId: sessionId,
-                  actions: singleGroup ? const [] : chatActions,
                 ),
               ),
             );
 
             return WorkbenchTabDragHost(
-              child: singleGroup && chatActions.isNotEmpty
-                  ? Column(
-                      children: [
-                        WorkspaceShellActionsBar(actions: chatActions),
-                        Expanded(child: splitView),
-                      ],
-                    )
-                  : KeyedSubtree(
-                      key: const ValueKey('center-split-view-root'),
-                      child: splitView,
-                    ),
+              child: KeyedSubtree(
+                key: const ValueKey('center-split-view-root'),
+                child: splitView,
+              ),
             );
           },
         );
       },
     );
-  }
-
-  List<Widget> _chatActions(BuildContext context, TeamProfile team) {
-    return [
-      IconButton.filledTonal(
-        key: AppKeys.openTeamLeadButton,
-        tooltip: 'Open team-lead',
-        onPressed: throttledOnPressed('chat_open_team_lead', () {
-          final lead = team.members.where((m) => m.id == 'team-lead');
-          if (lead.isEmpty) {
-            context.read<ChatCubit>().addSystemMessage(
-              'FlashskyAI requires a member named team-lead.',
-            );
-            return;
-          }
-          unawaited(
-            context.read<ChatCubit>().openMemberTab(
-              team,
-              lead.first,
-              workspaceCwd: cwd,
-            ),
-          );
-        }),
-        icon: Icon(Icons.person_outline),
-      ),
-      IconButton.filled(
-        key: AppKeys.openTeamButton,
-        tooltip: 'Open Team',
-        onPressed: throttledAsync(
-          'chat_launch_all_members',
-          () => context.read<ChatCubit>().launchAllMembers(
-            team,
-            workspaceCwd: cwd,
-          ),
-        ),
-        icon: Icon(Icons.groups_outlined),
-      ),
-    ];
   }
 }
 

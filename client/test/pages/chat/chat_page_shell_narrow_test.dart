@@ -29,6 +29,8 @@ import 'package:teampilot/l10n/app_localizations.dart';
 import 'package:teampilot/models/app_session.dart';
 import 'package:teampilot/models/landing_launch_context.dart';
 import 'package:teampilot/models/runtime_target.dart';
+import 'package:teampilot/models/session_member_binding.dart';
+import 'package:teampilot/models/team_config.dart';
 import 'package:teampilot/models/workspace.dart';
 import 'package:teampilot/models/workspace_folder.dart';
 import 'package:teampilot/pages/chat/chat_page_shell.dart';
@@ -51,6 +53,7 @@ import 'package:teampilot/services/provider/config_profile_service.dart';
 import 'package:teampilot/services/terminal/workspace_terminal_registry.dart';
 import 'package:teampilot/services/workspace/workspace_pane_policy.dart';
 import 'package:teampilot/services/workspace/workspace_tools_scope.dart';
+import 'package:teampilot/utils/ui/app_keys.dart';
 import 'package:teampilot/widgets/workbench/workbench_split_layout_view.dart';
 
 import '../../support/desktop_app_harness.dart';
@@ -498,5 +501,36 @@ void main() {
 
     expect(find.text('Split Right'), findsOneWidget);
     expect(find.text('Split Down'), findsOneWidget);
+  });
+
+  testWidgets('team session omits the top member and team action row', (
+    tester,
+  ) async {
+    final harness = await _setUpHarness(tester);
+    final team = TeamProfile(
+      id: 'team-1',
+      name: 'Team 1',
+      members: const [TeamMemberConfig(id: 'team-lead', name: 'Team Lead')],
+    );
+    harness._teamCubit.emit(
+      LaunchProfileState(identities: [team], isLoading: false),
+    );
+    final session = _session('sess-team', 'Team session').copyWith(
+      sessionTeam: team.id,
+      members: const [
+        SessionMemberBinding(rosterMemberId: 'team-lead', taskId: 'task-1'),
+      ],
+    );
+    _registerSession(
+      harness.chatCubit,
+      harness.workbenchCubit,
+      session,
+      'Team session',
+    );
+
+    await harness.pump(tester, _wideSize);
+
+    expect(find.byKey(AppKeys.openTeamLeadButton), findsNothing);
+    expect(find.byKey(AppKeys.openTeamButton), findsNothing);
   });
 }
