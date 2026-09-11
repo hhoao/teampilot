@@ -5,6 +5,44 @@ import 'package:teampilot/models/team_generation_settings.dart';
 import 'package:teampilot/services/cli/registry/cli_tool_registry.dart';
 
 void main() {
+  test('defaults and normalizes the generated team minimum to three', () {
+    expect(TeamGenerationSettings().minimumMemberCount, 3);
+    expect(TeamGenerationSettings.fromJson({}).minimumMemberCount, 3);
+    expect(
+      TeamGenerationSettings.fromJson({
+        'minimumMemberCount': 1,
+      }).minimumMemberCount,
+      3,
+    );
+    expect(
+      TeamGenerationSettings.fromJson({
+        'minimumMemberCount': 'invalid',
+      }).minimumMemberCount,
+      3,
+    );
+    expect(TeamGenerationSettings(minimumMemberCount: 2).minimumMemberCount, 3);
+  });
+
+  test('snapshot round-trip preserves and versions the minimum', () {
+    final low = resolveTeamGenerationSettingsSnapshot(
+      settings: TeamGenerationSettings(minimumMemberCount: 3),
+      presets: const [],
+      registry: CliToolRegistry.builtIn(),
+      capturedAt: 42,
+    );
+    final high = resolveTeamGenerationSettingsSnapshot(
+      settings: TeamGenerationSettings(minimumMemberCount: 8),
+      presets: const [],
+      registry: CliToolRegistry.builtIn(),
+      capturedAt: 42,
+    );
+
+    expect(low.minimumMemberCount, 3);
+    expect(high.minimumMemberCount, 8);
+    expect(TeamGenerationSettingsSnapshot.fromJson(high.toJson()), high);
+    expect(high.revision, isNot(low.revision));
+  });
+
   test('retains Builder false by default and decodes legacy JSON safely', () {
     expect(TeamGenerationSettings().retainBuilderSession, isFalse);
     expect(
