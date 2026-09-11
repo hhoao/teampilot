@@ -33,6 +33,13 @@ final class TeamGenerationHandoffResult {
   final String deliveryId;
 }
 
+typedef TeamGenerationBuilderHandoffCallback =
+    Future<void> Function({
+      required String workspaceId,
+      required String builderSessionId,
+      required String destinationSessionId,
+    });
+
 /// Idempotent destination session selection/open and exact prompt delivery.
 ///
 /// Destination id and delivery ids are reserved from the job before any
@@ -44,15 +51,18 @@ final class TeamGenerationHandoffService {
     required TeamGenerationSessionPort sessionPort,
     required PromptDeliveryCoordinator promptCoordinator,
     required PromptDeliveryStore promptStore,
+    TeamGenerationBuilderHandoffCallback? onBuilderHandoff,
   }) : _jobStore = jobStore,
        _sessionPort = sessionPort,
        _promptCoordinator = promptCoordinator,
-       _promptStore = promptStore;
+       _promptStore = promptStore,
+       _onBuilderHandoff = onBuilderHandoff;
 
   final TeamGenerationJobStore _jobStore;
   final TeamGenerationSessionPort _sessionPort;
   final PromptDeliveryCoordinator _promptCoordinator;
   final PromptDeliveryStore _promptStore;
+  final TeamGenerationBuilderHandoffCallback? _onBuilderHandoff;
 
   Future<TeamGenerationHandoffResult> handoff({
     required Workspace workspace,
@@ -97,6 +107,16 @@ final class TeamGenerationHandoffService {
       );
     }
     await _sessionPort.select(destinationSessionId);
+    if (!job.settings.retainBuilderSession) {
+      // Swap the visible tab as soon as the destination is selected. The
+      // durable Builder record remains until the delivery/flush cleanup gates
+      // complete, so a failed handoff can still be recovered.
+      await _onBuilderHandoff?.call(
+        workspaceId: workspace.workspaceId,
+        builderSessionId: job.builderSessionId,
+        destinationSessionId: destinationSessionId,
+      );
+    }
     await _jobStore.mutate(workspace.workspaceId, workflowId, (current) {
       return current.copyWith(
         receipts: {

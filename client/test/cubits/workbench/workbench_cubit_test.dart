@@ -30,6 +30,21 @@ void main() {
       cubit.openSession(_ws, 's1');
       expect(cubit.centerOrder(_ws).where((t) => t == _s1).length, 1);
     });
+
+    test('replaces Builder with destination in one visible state', () async {
+      cubit.openSession(_ws, 's1');
+      final states = <WorkbenchState>[];
+      final subscription = cubit.stream.listen(states.add);
+      addTearDown(subscription.cancel);
+
+      cubit.replaceSessionTab(_ws, 's1', 's2');
+      await Future<void>.delayed(Duration.zero);
+
+      expect(cubit.centerOrder(_ws), [_s2]);
+      expect(cubit.centerActiveId(_ws), _s2);
+      expect(states, hasLength(1));
+      expect(states.single.bar(_ws).center.groups.values.single.order, [_s2]);
+    });
   });
 
   group('close', () {

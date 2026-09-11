@@ -18,7 +18,6 @@ import 'package:teampilot/services/prompt_delivery/prompt_delivery_store.dart';
 import 'package:teampilot/services/team_generation/generated_team_commit_service.dart';
 import 'package:teampilot/services/team_generation/generated_team_plan_validator.dart';
 import 'package:teampilot/services/team_generation/models/team_generation_job.dart';
-import 'package:teampilot/services/team_generation/team_generation_builder_idle_waiter.dart';
 import 'package:teampilot/services/team_generation/team_generation_cleanup_service.dart';
 import 'package:teampilot/services/team_generation/team_generation_compatibility.dart';
 import 'package:teampilot/services/team_generation/team_generation_coordinator.dart';
@@ -281,10 +280,7 @@ void main() {
       final cleanup = TeamGenerationCleanupService(
         jobStore: jobStore,
         sessionPort: port,
-        idleWaiter: TeamGenerationBuilderIdleWaiter(sessionPort: port),
         revokeToken: (_) {},
-        quietWindow: Duration.zero,
-        idleTimeout: const Duration(seconds: 1),
       );
       final profileRepository = testLaunchProfileRepository(
         await Directory.systemTemp.createTemp('team_generation_profiles_'),
@@ -551,10 +547,7 @@ void main() {
         cleanupService: TeamGenerationCleanupService(
           jobStore: jobStore,
           sessionPort: port,
-          idleWaiter: TeamGenerationBuilderIdleWaiter(sessionPort: port),
           revokeToken: (_) {},
-          quietWindow: Duration.zero,
-          idleTimeout: const Duration(seconds: 1),
         ),
         commitService: GeneratedTeamCommitService(
           jobStore: jobStore,

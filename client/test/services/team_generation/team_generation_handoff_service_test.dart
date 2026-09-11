@@ -149,6 +149,7 @@ void main() {
   late _FakePort port;
   late MemoryPromptDeliveryStore promptStore;
   late TeamGenerationHandoffService service;
+  final visibleReplacements = <String>[];
 
   TeamGenerationHandoffService serviceWith(PromptDeliveryCommands commands) =>
       TeamGenerationHandoffService(
@@ -209,6 +210,7 @@ void main() {
   );
 
   setUp(() async {
+    visibleReplacements.clear();
     fs = InMemoryFilesystem();
     store = TeamGenerationJobStore(
       fs: fs,
@@ -259,6 +261,16 @@ void main() {
         commands: _NoopCommands(),
       ),
       promptStore: promptStore,
+      onBuilderHandoff:
+          ({
+            required String workspaceId,
+            required String builderSessionId,
+            required String destinationSessionId,
+          }) async {
+            visibleReplacements.add(
+              '$workspaceId/$builderSessionId/$destinationSessionId/${port.selected.last}',
+            );
+          },
     );
   });
 
@@ -470,6 +482,9 @@ void main() {
         TeamGenerationReceiptState.succeeded,
       );
       expect(job.originalPrompt, 'exact\nrequest');
+      expect(visibleReplacements, [
+        'ws/builder/${result.destinationSessionId}/${result.destinationSessionId}',
+      ]);
     },
   );
 

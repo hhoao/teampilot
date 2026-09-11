@@ -5,7 +5,6 @@ import '../../services/expert_hub/local_expert_store.dart';
 import '../../services/team_generation/generated_team_commit_service.dart';
 import '../../services/team_generation/generated_team_plan_validator.dart';
 import '../../services/team_generation/team_generation_authorizer.dart';
-import '../../services/team_generation/team_generation_builder_idle_waiter.dart';
 import '../../services/team_generation/team_generation_cleanup_service.dart';
 import '../../services/team_generation/team_generation_coordinator.dart';
 import '../../services/team_generation/team_generation_compatibility.dart';
@@ -265,11 +264,23 @@ TeamGenerationGraph buildTeamGenerationGraph({
     sessionPort: sessionPort,
     promptCoordinator: promptCoordinator,
     promptStore: promptDeliveryStore,
+    onBuilderHandoff:
+        ({
+          required String workspaceId,
+          required String builderSessionId,
+          required String destinationSessionId,
+        }) async {
+          workbenchCubit.replaceSessionTab(
+            workspaceId,
+            builderSessionId,
+            destinationSessionId,
+          );
+          chatCubit.removeSessionSnapshot(builderSessionId);
+        },
   );
   final cleanupService = TeamGenerationCleanupService(
     jobStore: jobStore,
     sessionPort: sessionPort,
-    idleWaiter: TeamGenerationBuilderIdleWaiter(sessionPort: sessionPort),
     revokeToken: authorizer.revoke,
   );
   Future<Workspace?> workspaceResolver(String workspaceId) async {

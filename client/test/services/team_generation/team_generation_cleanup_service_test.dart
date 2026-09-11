@@ -11,7 +11,6 @@ import 'package:teampilot/services/cli/registry/cli_tool_registry.dart';
 import 'package:teampilot/services/storage/workspace_layout.dart';
 import 'package:teampilot/services/team_generation/models/team_generation_job.dart';
 import 'package:teampilot/services/team_generation/models/team_generation_launch.dart';
-import 'package:teampilot/services/team_generation/team_generation_builder_idle_waiter.dart';
 import 'package:teampilot/services/team_generation/team_generation_cleanup_service.dart';
 import 'package:teampilot/services/team_generation/team_generation_job_store.dart';
 import 'package:teampilot/services/team_generation/team_generation_session_port.dart';
@@ -121,10 +120,7 @@ void main() {
   TeamGenerationCleanupService service() => TeamGenerationCleanupService(
     jobStore: store,
     sessionPort: port,
-    idleWaiter: TeamGenerationBuilderIdleWaiter(sessionPort: port),
     revokeToken: revoked.add,
-    idleTimeout: const Duration(seconds: 5),
-    quietWindow: const Duration(milliseconds: 50),
   );
 
   Future<void> seedJob({
@@ -179,7 +175,7 @@ void main() {
     revoked.clear();
   });
 
-  test('does not delete before all three gates are durable', () async {
+  test('does not delete before both handoff gates are durable', () async {
     final allReceipts = {
       'promptDeliveryDelivered': const TeamGenerationReceipt(
         state: TeamGenerationReceiptState.succeeded,
@@ -218,12 +214,6 @@ void main() {
         ),
       },
     );
-
-    // Builder emits a ready activity so the idle waiter settles after the
-    // quiet window.
-    Future<void>.delayed(const Duration(milliseconds: 10), () {
-      port.emit('builder', true);
-    });
 
     final result = await service().cleanup(workspaceId: 'ws', workflowId: 'wf');
 
@@ -264,7 +254,7 @@ void main() {
     );
   });
 
-  test('idle timeout defers and retains recoverable builder', () async {
+  test('deletes immediately after durable handoff receipts', () async {
     await seedJob(
       receipts: {
         'promptDeliveryDelivered': const TeamGenerationReceipt(
@@ -278,11 +268,11 @@ void main() {
 
     final result = await service().cleanup(workspaceId: 'ws', workflowId: 'wf');
 
-    // The fake port emits nothing, so the waiter times out.
-    expect(result, TeamGenerationCleanupResult.deferred);
-    expect(port.deletedSessions, isEmpty);
+    expect(result, TeamGenerationCleanupResult.cleaned);
+    expect(port.deletedSessions, ['builder']);
+    expect(port.activityStreamOpened, isFalse);
+    expect(revoked, ['wf']);
     final job = await store.read('ws', 'wf');
-    expect(job!.phase, TeamGenerationPhase.delivered);
-    expect(job.error?.code, 'cleanup_waiting_for_builder_idle');
+    expect(job!.phase, TeamGenerationPhase.complete);
   });
 }

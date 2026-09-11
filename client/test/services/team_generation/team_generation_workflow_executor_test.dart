@@ -17,7 +17,6 @@ import 'package:teampilot/services/prompt_delivery/prompt_delivery_store.dart';
 import 'package:teampilot/services/storage/workspace_layout.dart';
 import 'package:teampilot/services/team_generation/generated_team_commit_service.dart';
 import 'package:teampilot/services/team_generation/generated_team_plan_validator.dart';
-import 'package:teampilot/services/team_generation/team_generation_builder_idle_waiter.dart';
 import 'package:teampilot/services/team_generation/team_generation_cleanup_service.dart';
 import 'package:teampilot/services/team_generation/team_generation_compatibility.dart';
 import 'package:teampilot/services/team_generation/team_generation_coordinator.dart';
@@ -284,7 +283,6 @@ void main() {
         cleanupService: TeamGenerationCleanupService(
           jobStore: store,
           sessionPort: port,
-          idleWaiter: TeamGenerationBuilderIdleWaiter(sessionPort: port),
           revokeToken: (_) {},
         ),
         commitService: GeneratedTeamCommitService(

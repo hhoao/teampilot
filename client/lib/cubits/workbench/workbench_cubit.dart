@@ -322,6 +322,57 @@ class WorkbenchCubit extends Cubit<WorkbenchState> {
     activate: activate,
   );
 
+  /// Replaces one visible session tab with another in a single bar state.
+  ///
+  /// The replacement keeps the Builder's position, activates the destination,
+  /// and removes any duplicate destination tab that was surfaced while its
+  /// session was being created. Runtime teardown for the old tab starts only
+  /// after the replacement state has been emitted.
+  void replaceSessionTab(
+    String workspaceId,
+    String oldSessionId,
+    String newSessionId,
+  ) {
+    final oldTab = WorkbenchTabId.session(oldSessionId);
+    final newTab = WorkbenchTabId.session(newSessionId);
+    if (oldTab == newTab) return;
+    final bar = state.bar(workspaceId);
+    final layout = bar.center;
+    final groupId = _centerGroupContaining(workspaceId, oldTab);
+    if (groupId == null) return;
+    final strip = layout.groups[groupId]!;
+    final oldIndex = strip.order.indexOf(oldTab);
+    if (oldIndex < 0) return;
+
+    final order = List<WorkbenchTabId>.of(strip.order)
+      ..remove(oldTab)
+      ..remove(newTab);
+    final previews = Set<WorkbenchTabId>.of(strip.previewIds)
+      ..remove(oldTab)
+      ..remove(newTab);
+    final pinned = Set<WorkbenchTabId>.of(strip.pinnedIds)
+      ..remove(oldTab)
+      ..remove(newTab);
+    final insertIndex = oldIndex.clamp(0, order.length);
+    order.insert(insertIndex, newTab);
+    final next = strip.copyWith(
+      order: order,
+      activeId: newTab,
+      previewIds: previews,
+      pinnedIds: pinned,
+      landingReturnTabId: strip.landingReturnTabId == oldTab
+          ? newTab
+          : strip.landingReturnTabId,
+    );
+    emit(
+      _withCenter(
+        workspaceId,
+        layout.copyWith(groups: {...layout.groups, groupId: next}),
+      ),
+    );
+    unawaited(_port.onTabRemoved(workspaceId, oldTab));
+  }
+
   WorkbenchTabId? openFile(
     String workspaceId,
     String path, {

@@ -1,6 +1,5 @@
 import '../../utils/logging/logger.dart';
 import 'models/team_generation_job.dart';
-import 'team_generation_builder_idle_waiter.dart';
 import 'team_generation_job_store.dart';
 import 'team_generation_session_port.dart';
 
@@ -9,31 +8,22 @@ enum TeamGenerationCleanupResult { cleaned, deferred }
 
 /// Ordered, idempotent cleanup gates for a delivered workflow.
 ///
-/// Deletion requires all three durable gates: the prompt-delivery receipt,
-/// the finalize response-flush receipt, and the builder going idle. Each
-/// completed step is skipped on recovery. The destination session and the
-/// committed profile are never compensation targets.
+/// Deletion requires both durable handoff gates: the prompt-delivery receipt
+/// and the finalize response-flush receipt. The visible Builder is replaced at
+/// handoff; durable deletion remains idempotent for recovery. The destination
+/// session and the committed profile are never compensation targets.
 final class TeamGenerationCleanupService {
   TeamGenerationCleanupService({
     required TeamGenerationJobStore jobStore,
     required TeamGenerationSessionPort sessionPort,
-    required TeamGenerationBuilderIdleWaiter idleWaiter,
     required void Function(String workflowId) revokeToken,
-    Duration idleTimeout = const Duration(minutes: 5),
-    Duration quietWindow = const Duration(seconds: 10),
   }) : _jobStore = jobStore,
        _sessionPort = sessionPort,
-       _idleWaiter = idleWaiter,
-       _revokeToken = revokeToken,
-       _idleTimeout = idleTimeout,
-       _quietWindow = quietWindow;
+       _revokeToken = revokeToken;
 
   final TeamGenerationJobStore _jobStore;
   final TeamGenerationSessionPort _sessionPort;
-  final TeamGenerationBuilderIdleWaiter _idleWaiter;
   final void Function(String workflowId) _revokeToken;
-  final Duration _idleTimeout;
-  final Duration _quietWindow;
 
   Future<TeamGenerationCleanupResult> cleanup({
     required String workspaceId,
@@ -72,37 +62,8 @@ final class TeamGenerationCleanupService {
       return TeamGenerationCleanupResult.cleaned;
     }
 
-    // Gate 3: builder idle.
-    final idleReceipt = job.receipts['builderIdle'];
-    if (idleReceipt?.state != TeamGenerationReceiptState.succeeded) {
-      final builderId = job.builderSessionId;
-      final builder = await _sessionPort.sessionById(builderId);
-      if (builder == null) {
-        // Prior cleanup already removed the builder — proceed.
-        await _recordReceipt(workspaceId, workflowId, 'builderIdle');
-      } else {
-        final result = await _idleWaiter.wait(
-          sessionId: builderId,
-          quietWindow: _quietWindow,
-          timeout: _idleTimeout,
-        );
-        switch (result) {
-          case TeamGenerationBuilderIdleResult.idle:
-            await _recordReceipt(workspaceId, workflowId, 'builderIdle');
-          case TeamGenerationBuilderIdleResult.timeout:
-            await _jobStore.mutate(workspaceId, workflowId, (current) {
-              return current.copyWith(
-                error: const TeamGenerationJobError(
-                  code: 'cleanup_waiting_for_builder_idle',
-                ),
-              );
-            });
-            return TeamGenerationCleanupResult.deferred;
-          case TeamGenerationBuilderIdleResult.missing:
-            await _recordReceipt(workspaceId, workflowId, 'builderIdle');
-        }
-      }
-    }
+    // The Builder was removed from the visible workbench at handoff. Durable
+    // deletion is still idempotent here so recovery can finish a partial run.
     // Begin the ordered deletion sequence.
     await _jobStore.mutate(workspaceId, workflowId, (current) {
       return current.copyWith(
