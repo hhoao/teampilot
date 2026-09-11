@@ -42,6 +42,7 @@ final class EventTransportClient {
 
   var _running = false;
   EventTransportByteChannel? _channel;
+  Future<void>? _runLoop;
 
   /// attempt 0→1s, 1→2s, 2→4s, 3→8s, 4+→16s, then clamp 30s.
   static Duration _defaultBackoff(int attempt) {
@@ -51,12 +52,13 @@ final class EventTransportClient {
 
   Future<void> start() async {
     _running = true;
-    unawaited(_run());
+    _runLoop = _run();
   }
 
   Future<void> stop() async {
     _running = false;
     await _channel?.close();
+    await _runLoop;
   }
 
   Future<void> _run() async {
@@ -93,6 +95,10 @@ final class EventTransportClient {
               if (buffer.length > eventTransportMaxLineBytes) {
                 oversize = true;
               }
+              break;
+            }
+            if (nl > eventTransportMaxLineBytes) {
+              oversize = true;
               break;
             }
             final line = utf8.decode(buffer.sublist(0, nl));

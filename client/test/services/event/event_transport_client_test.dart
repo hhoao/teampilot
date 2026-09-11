@@ -39,8 +39,15 @@ final class _FakeChannel implements EventTransportByteChannel {
 
   @override
   Future<void> close() async {
+    if (closed) return;
     closed = true;
-    if (!inbound.isClosed) await inbound.close();
+    if (inbound.isClosed) return;
+    // close() future hangs until a listener exists.
+    if (inbound.hasListener) {
+      await inbound.close();
+    } else {
+      inbound.close();
+    }
   }
 
   List<Map<String, Object?>> get outboundMessages {
@@ -57,7 +64,7 @@ final class _FakeChannel implements EventTransportByteChannel {
 }
 
 class _Harness {
-  _Harness()
+  _Harness({Duration Function(int attempt)? backoff})
     : dispatcher = AsyncDispatcher()..start(),
       presence = AgentPresenceProjection() {
     dispatcher.registerFamily<AgentPresenceKind>(
@@ -77,7 +84,7 @@ class _Harness {
         channels.add(channel);
         return channel;
       },
-      backoff: (_) => Duration.zero,
+      backoff: backoff ?? (_) => Duration.zero,
     );
   }
 
@@ -287,13 +294,54 @@ void main() {
 
     await client.start();
     await _waitFor(() => openCount == 1, timeout: _timeout);
-    await client.stop();
     final channel = _FakeChannel();
+    final stopping = client.stop();
     pending.complete(channel);
+    await stopping;
     await _waitFor(() => channel.closed, timeout: _timeout);
     for (var i = 0; i < 20; i++) {
       await Future<void>.delayed(Duration.zero);
     }
     expect(openCount, 1);
+  });
+
+  test('oversize complete line is not dispatched and reconnects via close', () async {
+    final h = _Harness();
+    addTearDown(h.dispose);
+
+    await h.startAndWaitSubscribe();
+    expect(h.openCount, 1);
+    expect(h.presence.snapshot, isEmpty);
+
+    final payload = h.presenceLine(_set());
+    payload['pad'] = 'x' * (70 * 1024);
+    h.channel.inbound.add(utf8.encode(encodeTransportLine(payload)));
+
+    await _waitFor(
+      () => h.channels.first.closed && h.openCount >= 2,
+      timeout: _timeout,
+    );
+    expect(h.presence.availabilityFor(_seat), isNull);
+    expect(h.presence.snapshot, isEmpty);
+  });
+
+  test('stop then start does not overlap run loops', () async {
+    final h = _Harness(backoff: (_) => const Duration(milliseconds: 80));
+    addTearDown(h.dispose);
+
+    await h.startAndWaitSubscribe();
+    expect(h.openCount, 1);
+
+    await h.channel.inbound.close();
+    await Future<void>.delayed(const Duration(milliseconds: 20));
+    expect(h.openCount, 1);
+
+    await h.client.stop();
+    final afterStop = h.openCount;
+    expect(afterStop, 1);
+
+    await h.startAndWaitSubscribe();
+    await Future<void>.delayed(const Duration(milliseconds: 150));
+    expect(h.openCount, afterStop + 1);
   });
 }
