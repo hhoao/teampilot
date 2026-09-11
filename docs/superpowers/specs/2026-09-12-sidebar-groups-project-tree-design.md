@@ -47,6 +47,7 @@ The groups view is the default whenever a workspace sidebar is opened.
 ## Non-goals
 
 - Do not show Git worktree or branch nodes in the project tree.
+- Do not show Git worktree or branch nodes in either sidebar browsing view.
 - Do not remove worktree support from compose, session launch, IDE, or runtime
   working-directory selection.
 - Do not change manual-group membership semantics. A conversation may remain in
@@ -77,7 +78,8 @@ archive filtering.
 In `# 分组`:
 
 - show the existing manual group blocks first;
-- show the existing conversation list below them;
+- show one flat conversation list below them; it must not switch to
+  worktree-grouped sections;
 - show the new-group action only in this view;
 - retain the current sort and drag-reorder behavior.
 
@@ -122,9 +124,9 @@ must preserve a distinguishable label by appending the minimum useful parent
 path segment; the matching key remains the normalized full folder path.
 
 The current `WorktreeCubit` remains wired because compose and launch flows use
-it to select a session working directory. Only the sidebar's worktree-grouped
-rendering path and its worktree-specific section actions are removed from this
-presentation.
+it to select a session working directory. The sidebar's worktree-grouped
+rendering path and worktree-specific section actions are removed from both
+browsing views.
 
 ## State and compatibility
 
