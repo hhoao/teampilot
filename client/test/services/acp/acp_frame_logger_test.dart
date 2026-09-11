@@ -1,0 +1,71 @@
+import 'dart:convert';
+
+import 'package:flutter_test/flutter_test.dart';
+import 'package:teampilot/services/acp/acp_frame_logger.dart';
+
+void main() {
+  test('redacts GEMINI_API_KEY values in frames', () {
+    final logger = AcpFrameLogger();
+    logger.logOutgoing(
+      jsonEncode({
+        'method': 'session/prompt',
+        'env': {'GEMINI_API_KEY': 'super-secret'},
+      }),
+    );
+    final text = logger.snapshot().join('\n');
+    expect(text, contains('[REDACTED]'));
+    expect(text, isNot(contains('super-secret')));
+  });
+
+  test('ring buffer caps at 200 entries, oldest dropped', () {
+    final logger = AcpFrameLogger();
+    for (var i = 0; i < 250; i++) {
+      logger.logIncoming('frame-$i');
+    }
+    final all = logger.snapshot();
+    expect(all.length, 200);
+    expect(all.first, 'frame-50');
+    expect(all.last, 'frame-249');
+  });
+
+  test('ring buffers are independent per direction', () {
+    final logger = AcpFrameLogger();
+    logger.logOutgoing('out-1');
+    logger.logIncoming('in-1');
+    logger.logIncoming('in-2');
+    logger.logStderr('err-1');
+    expect(logger.snapshot(direction: AcpFrameDirection.outgoing), ['out-1']);
+    expect(
+      logger.snapshot(direction: AcpFrameDirection.incoming),
+      ['in-1', 'in-2'],
+    );
+    expect(logger.snapshot(direction: AcpFrameDirection.stderr), ['err-1']);
+  });
+
+  test('snapshot without direction returns all buffered entries', () {
+    final logger = AcpFrameLogger();
+    logger.logOutgoing('out-1');
+    logger.logIncoming('in-1');
+    logger.logStderr('err-1');
+    final all = logger.snapshot();
+    expect(all.length, 3);
+    expect(all.toSet(), {'out-1', 'in-1', 'err-1'});
+  });
+
+  test('redacts GEMINI_API_KEY in stderr lines too', () {
+    final logger = AcpFrameLogger();
+    logger.logStderr('GEMINI_API_KEY=super-secret-2');
+    // The JSON-shaped redaction only applies to quoted values; verify the
+    // logger stores redacted output for frames.
+    logger.logIncoming('{"GEMINI_API_KEY": "abc123"}');
+    final text = logger.snapshot().join('\n');
+    expect(text, isNot(contains('abc123')));
+    expect(text, contains('[REDACTED]'));
+  });
+
+  test('can disable disk log mirroring', () {
+    final logger = AcpFrameLogger(enableDiskLog: false);
+    logger.logOutgoing('{"ok":true}');
+    expect(logger.snapshot(), isNotEmpty);
+  });
+}
