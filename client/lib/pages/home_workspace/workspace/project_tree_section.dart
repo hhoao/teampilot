@@ -82,7 +82,6 @@ class _ProjectTreeGroup extends StatefulWidget {
     required this.highlightSessionId,
     required this.collapsed,
     required this.onToggle,
-    super.key,
   });
 
   final ProjectSessionGroup group;
