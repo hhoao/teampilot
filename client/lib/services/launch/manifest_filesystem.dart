@@ -331,7 +331,10 @@ class ManifestFilesystem implements Filesystem {
       }
       return;
     }
-    manifest.copyTree(source: source, destination: destination);
+    manifest.copyTree(
+      source: _resolveViaOverlaySymlink(source) ?? source,
+      destination: destination,
+    );
     await ensureDir(pathContext.dirname(destination));
     // Populate the overlay too, so a later read in the same staging pass sees
     // the copied tree (e.g. the plugin writer scans the pool it just
@@ -369,7 +372,12 @@ class ManifestFilesystem implements Filesystem {
 
   @override
   Future<void> copyFile(String source, String destination) async {
-    manifest.copyFile(source: source, destination: destination);
+    source = _normalize(source);
+    destination = _normalize(destination);
+    manifest.copyFile(
+      source: _resolveViaOverlaySymlink(source) ?? source,
+      destination: destination,
+    );
     await ensureDir(pathContext.dirname(destination));
   }
 

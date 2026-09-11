@@ -160,6 +160,78 @@ void main() {
     );
 
     test(
+      'copyTree under a staged symlink records the resolved source path',
+      () async {
+        final disk = InMemoryFilesystem();
+        await disk.writeString(
+          '/installed/superpowers/.plugin/plugin.json',
+          '{"name":"superpowers"}',
+        );
+
+        final manifest = LaunchManifest();
+        final staging = ManifestFilesystem(
+          manifest: manifest,
+          readDelegate: disk,
+        );
+        await staging.createSymlink(
+          target: '/installed/superpowers',
+          linkPath: '/runtime/cursor/plugins/superpowers',
+        );
+
+        await staging.copyTree(
+          source: '/runtime/cursor/plugins/superpowers/.plugin',
+          destination: '/home/.cursor/plugins/local/superpowers/.cursor-plugin',
+        );
+
+        expect(
+          manifest.entries.whereType<ManifestCopyTree>().map(
+            (entry) => (entry.source, entry.destination),
+          ),
+          contains((
+            '/installed/superpowers/.plugin',
+            '/home/.cursor/plugins/local/superpowers/.cursor-plugin',
+          )),
+        );
+      },
+    );
+
+    test(
+      'copyFile under a staged symlink records the resolved source path',
+      () async {
+        final disk = InMemoryFilesystem();
+        await disk.writeString(
+          '/installed/superpowers/README.md',
+          '# superpowers',
+        );
+
+        final manifest = LaunchManifest();
+        final staging = ManifestFilesystem(
+          manifest: manifest,
+          readDelegate: disk,
+        );
+        await staging.createSymlink(
+          target: '/installed/superpowers',
+          linkPath: '/runtime/cursor/plugins/superpowers',
+        );
+
+        await staging.copyFile(
+          '/runtime/cursor/plugins/superpowers/README.md',
+          '/home/.cursor/plugins/local/superpowers/README.md',
+        );
+
+        expect(
+          manifest.entries.whereType<ManifestCopyFile>().map(
+            (entry) => (entry.source, entry.destination),
+          ),
+          contains((
+            '/installed/superpowers/README.md',
+            '/home/.cursor/plugins/local/superpowers/README.md',
+          )),
+        );
+      },
+    );
+
+    test(
       'reads and lists through overlay symlinks via the readDelegate target',
       () async {
         final disk = InMemoryFilesystem();
