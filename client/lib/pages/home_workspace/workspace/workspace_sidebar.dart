@@ -430,7 +430,7 @@ class _RunningSessionsHost extends StatelessWidget {
         );
       }
       return Flexible(
-        fit: FlexFit.loose,
+        fit: FlexFit.tight,
         child: SingleChildScrollView(
           child: SidebarRebuildProbe(
             key: const Key('workspace-sidebar-running-host-probe'),
@@ -471,7 +471,7 @@ class _RunningSessionsHost extends StatelessWidget {
       );
     }
     return Flexible(
-      fit: FlexFit.loose,
+      fit: FlexFit.tight,
       child: SingleChildScrollView(
         child: SidebarRebuildProbe(
           key: const Key('workspace-sidebar-running-host-probe'),

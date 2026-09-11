@@ -23,6 +23,7 @@ import 'package:teampilot/widgets/sidebar_session_tile.dart';
 
 import '../../../support/post_frame_test_harness.dart';
 import 'package:teampilot/services/storage/home_storage.dart';
+import 'package:teampilot/utils/ui/app_keys.dart';
 
 final _workspace = Workspace(
   workspaceId: 'ws-1',
@@ -154,6 +155,11 @@ void main() {
       find.byKey(const ValueKey('workspace-running-session-b')),
       findsOneWidget,
     );
+    final sidebar = tester.getRect(find.byType(WorkspaceSidebar));
+    final footer = tester.getRect(
+      find.byKey(AppKeys.homeWorkspaceWorkspaceManagementTile),
+    );
+    expect(footer.bottom, closeTo(sidebar.bottom - 18, 0.1));
   });
 
   testWidgets('running session strip stays bounded in a short sidebar', (
