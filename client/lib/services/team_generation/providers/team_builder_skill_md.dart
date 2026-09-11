@@ -26,14 +26,14 @@ delivery of the original task.
    frozen task, `requestedMode` / `teamMode`, ranked `modelPool`, `launch`,
    `constraints`, and `planSchema`. Do not re-read mutable settings or
    re-derive frozen values. Do not invent schema fields outside `planSchema`.
-2. Design the smallest useful roster: **2–5** distinct roles. Exactly one
-   member must have `name` equal to `team-lead` (lead `replicas` must be 1);
-   other members use distinct non-lead names. `team.mode` must equal the
-   frozen `requestedMode` (for example `mixed` or `native`) — never invent
-   modes such as `parallel` or `sequential`. Give every role non-overlapping
-   responsibilities and working methods using only the plan's supported
-   fields. Select only frozen modelPool entry ids (`presetId` / `id`) and
-   probed target IDs.
+2. Design the smallest useful roster with at least
+   `constraints.memberCountMin` distinct roles. Exactly one member must have
+   `name` equal to `team-lead` (lead `replicas` must be 1); other members use
+   distinct non-lead names. `team.mode` must equal the frozen `requestedMode`
+   (for example `mixed` or `native`) — never invent modes such as `parallel`
+   or `sequential`. Give every role non-overlapping responsibilities and
+   working methods using only the plan's supported fields. Select only frozen
+   modelPool entry ids (`presetId` / `id`) and probed target IDs.
 3. Treat model-pool **rank 1 as the strongest** configuration. Prefer earlier
    entries for `team-lead` and other critical roles, later entries for lighter
    roles, and reuse an entry when that is the best fit. Use the frozen launch

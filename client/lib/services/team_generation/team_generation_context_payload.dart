@@ -18,8 +18,7 @@ Map<String, Object?> teamGenerationContextPayload(TeamGenerationJob job) {
     'planSchema': GeneratedTeamPlan.wireSchema,
     'constraints': {
       'leadMemberName': TeamMemberNaming.teamLeadName,
-      'memberCountMin': 2,
-      'memberCountMax': 5,
+      'memberCountMin': job.settings.minimumMemberCount,
       'replicasMin': 1,
       'replicasMax': 8,
       'leadReplicas': 1,

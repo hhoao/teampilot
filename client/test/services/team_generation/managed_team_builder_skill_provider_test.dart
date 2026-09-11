@@ -31,7 +31,7 @@ void main() {
         'probe_workspace_targets',
         'validate_team_plan',
         'finalize_team_generation',
-        '2–5',
+        'memberCountMin',
         'team-lead',
         'planSchema',
         'requestedMode',
@@ -45,6 +45,12 @@ void main() {
         'implement the original task',
       ]) {
         expect(mirror, contains(marker));
+      }
+      for (final builderSource in [teamBuilderSkillMd, mirror]) {
+        expect(builderSource, contains('memberCountMin'));
+        expect(builderSource, isNot(contains('memberCountMax')));
+        expect(builderSource, isNot(contains('2–5')));
+        expect(builderSource, isNot(contains('2-5')));
       }
       expect(mirror, isNot(contains('TeamCreate')));
     },
