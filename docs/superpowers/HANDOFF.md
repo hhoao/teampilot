@@ -1,0 +1,162 @@
+# TeamPilot 事件架构 — 接续说明（新 Session 从这里开始）
+
+> 写给下一个 session 的交接文档。目标：让新 session 在**不读历史对话**的情况下，知道做过什么、现在在哪、下一步做什么。
+
+最后更新：2026-09-11
+
+---
+
+## 一句话现状
+
+**期 1（中央事件发布层）与期 2（agent presence 事件化）均已完成并合入 `main`。** 下一步是**期 3：移动端同步**（原始需求的交付点）。
+
+---
+
+## 背景：为什么要做这件事
+
+2026-08-28 你提了一个问题：「怎么才能让移动端看到桌面端正在运行的 session，并及时更新聊天记录」。
+
+当时（在另一个 session 里）它被做成了 `feat-host-session-runtime` 分支——一个「runtime 守护进程接管一切」的大重写：一天生成 28 个提交、~15,600 行，从未真机运行过，基线就有 ~120 个测试失败。之后 9 天里反复修复，问题始终存在，最后判定做崩。
+
+**复盘结论**（重要，决定了后续做法）：
+
+1. 崩溃的根因不是架构方向错，而是**一次性大爆炸重写 + 零运行验证 + 零测试地基**三者叠加；
+2. 真正被缺的是一层**事件发布/解耦**架构——服务之间通过事件联系，而不是互相直接调用；
+3. 因此重启为**分阶段、每步可验证、行为等价**的路线。
+
+**那个失败的 worktree 从未被合并**（`services/runtime/` 目录在 main 上不存在），继续冻结，不要在上面继续修。其中有 salvage 价值的部分（PTY 环境修复、framing 协议、虚拟 CLI 测试框架）留到期 4 再挑。
+
+---
+
+## 已完成：期 1 — 中央事件发布层
+
+**设计**：`docs/superpowers/specs/2026-09-10-central-event-dispatcher-design.md`
+**计划**：`docs/superpowers/plans/2026-09-10-central-event-dispatcher.md`
+
+仿 Hadoop YARN 的 `org.apache.hadoop.yarn.event` 包，落在 `client/lib/services/event/`：
+
+| YARN | 本项目 |
+|---|---|
+| `Event<TYPE>` | `DispatcherEvent<K>`（getter 名为 **`eventKind`**，非 `kind`） |
+| `EventHandler<T>` | `EventHandler<T>` |
+| `Dispatcher` | `Dispatcher`（`dispatch` / **`registerFamily<K>(Type kindType, EventHandler)`** / `unregister`） |
+| `AsyncDispatcher` | `AsyncDispatcher`：无界队列 + 单消费循环 + 按族路由 + 自动多播 |
+
+**有意偏离 YARN 的三处**（写在 `services/event/README.md`）：
+1. handler 抛异常 → log + 继续（YARN 是进程退出）；
+2. 无界队列 + 深度 >1000 告警（YARN 用有界阻塞队列）；
+3. 接口 getter 叫 `eventKind`（`kind` 会与业务字段撞名）；`registerFamily` 显式传 `Type`（Dart 泛型不 reify）。
+
+**首批接入的事件源**：`CatalogMutationBus`、`WorkspaceFsWatcher`（均为行为等价迁移——对外 API 不变，背靠 dispatcher，现有订阅方零改动）。另外新增了 Session 生命周期事件族。
+
+---
+
+## 已完成：期 2 — Agent presence 事件化
+
+**设计**：`docs/superpowers/specs/2026-09-11-agent-presence-events-design.md`（结尾有 *Implementation notes*，逐条记录实际交付与 spec 的偏离）
+**计划**：`docs/superpowers/plans/2026-09-11-agent-presence-events.md`
+
+把 agent 工作状态（booting / working / idle）从**轮询快照**改为**事件推送**，并让 `MemberPresenceCubit` 成为中央 dispatcher 的**第一个真实消费方**。
+
+### 实际数据流（务必按这个理解，不要按 spec 的初稿）
+
+```
+推送触发（只有两条锁存边）
+  ① TerminalSession.markUserTurnStarted / markUserTurnIdle   → onPresenceInputsChanged
+  ② TerminalActivityTracker boot latch 翻转（一次性定时器）  → onPresenceInputsChanged
+                    │
+                    ▼
+  MemberPresenceCubit._requestPresenceRecompute() → tickFromIdleWatch()
+                    │
+                    ▼
+  既有权威求值：MemberPresenceService.compute() → MemberCoordination.availability()
+                    │
+                    ▼
+  PresenceEventBridge.reportAvailability(seat, 计算值)   ← 注意：喂的是【计算值】
+                    │
+                    ▼
+  AsyncDispatcher → AgentPresenceProjection（Map<seat, kind>，变化才广播 changes）
+                    │
+                    ▼
+  cubit 读 projection.availabilityFor(seat) 并 emit  ← UI 看到的是【投影值】
+```
+
+### 三个必须知道的坑（都已在代码注释里记录）
+
+1. **发布边喂计算值，不是投影值。** 若把投影值喂回发布边，会形成自指环路——投影只在值变化时广播，于是循环冻结在第一个值。这是本期最微妙的设计决策，`README.md` 与 spec 均有记录。
+2. **一跳延迟是正常的。** 生产环境的 sink 只**入队**，投影在消费循环的下一轮才观察到；因此某次 tick 会读到上一轮的投影值并 emit，随后由 `changes` 监听触发重算收敛。这是有界延迟，不是卡死。
+3. **`TerminalActivityTracker.isWorking` 确实驱动 presence**——但只对 `usesShellActivity`（nativeShellActivity）与 `mixed` 两条策略；原生单 CLI 走回合锁存 `userTurnActive`，Claude roster 走 roster 标志。**这条最初被写错了**（spec 初稿与 README 都说它不驱动），已在 Task 9 的 review 后修正。改这块前先读 `client/lib/services/team/member_coordination.dart`。
+
+### 可用性维度的完整策略表
+
+`MemberCoordination.resolve` 每个 seat 选一种策略，全部经 `_bootingOr`（由 `isBootFrameReady` 决定是否降级为 booting）：
+
+| 策略 | working/idle 来源 | 本期是否推送 |
+|---|---|---|
+| personal / native 单 CLI | `shell.userTurnActive`（回合锁存） | ✅ 推送 |
+| nativeClaudeRoster | `claudeRosterWorking`（roster） | ❌ 仍轮询 |
+| nativeShellActivity | `activityTracker.isWorking`（PTY 启发式） | ❌ 仍轮询 |
+| mixed | bus 回合/等待状态，否则退回 `isWorking` | ❌ 仍轮询 |
+
+本期推送只覆盖两条锁存边；**roster 标志、`isWorking` 与 connection 仍是轮询输入**。
+
+### 关键文件
+
+| 文件 | 角色 |
+|---|---|
+| `client/lib/services/event/agent_presence_event.dart` | 事件族类型（`AgentPresenceKind` + `PresenceSeatKey` + `AgentPresenceEvent`） |
+| `client/lib/services/event/agent_presence_sink.dart` | 窄发布接口（含 no-op 实现，未接线时零行为） |
+| `client/lib/services/event/presence_event_bridge.dart` | 去重发布边 |
+| `client/lib/services/event/agent_presence_projection.dart` | 投影（`availabilityFor` / `snapshot` / `changes` / `removeSeat`） |
+| `client/lib/services/team/terminal_activity_tracker.dart` | boot 推送（`setBootFrameListener` 可复活 + 一次性定时器） |
+| `client/lib/services/terminal/terminal_session.dart` | 回合锁存触发 + `presenceSeat` + `onPresenceInputsChanged` |
+| `client/lib/cubits/member_presence_cubit.dart` | 消费迁移（读投影 + 触发重算 + 生命周期） |
+| `client/lib/app/app_shell.dart` | 接线（app 生命周期 dispatcher + projection；**每 bootstrap 一个** bridge） |
+
+### 期 2 的验收与质量记录
+
+- 全套测试：**+9146 通过 / 2 跳过 / 0 失败**（`70d78e643` 树；之后仅新增两个 markdown 文件）
+- `flutter analyze`：零新增问题
+- 既有测试**未被修改**地通过（行为等价的证据）
+- 9 个任务，每个都过独立 review；共 4 轮 fix loop，修掉的真问题包括：一次性 dispose 标志会导致重连后推送静默失效、构造函数在 seat 未绑定时挂载监听、测试绕过了 dispatcher 的异步跳数而断言了生产不会有的行为
+
+---
+
+## 下一步：期 3 — 移动端同步（原始需求的交付点）
+
+**目标**：手机看到桌面端会话列表 + 聊天记录实时更新。
+
+**关键点**：
+
+- **不需要 daemon**。用现有 SSH / Connect 通道转发 envelope 即可（期 1/2 已经把进程内的事件基建做完了）。
+- 优先复用 `AgentPresenceProjection` + dispatcher 的订阅模型——期 2 结束时，presence 已经是一条完整的事件流，移动端只需订阅。
+- 原始需求的另一半是**聊天记录同步**：目前只有 presence 事件化，历史/回复还走轮询。设计时要先判断：是把 history 也事件化（在 main 上做，行为等价迁移），还是先用推送触发重取（复用本期"失效事件 + 查询"的思路）。**推荐后者起步**——`workspace_fs_watcher` 已经证明这套模式在本仓库可行。
+
+**已知待处理项（期 2 遗留，从 ledger 转来，均不阻塞）**：
+
+1. 投影的去重基线在断连时不清除 → 同值重连不会触发 `changes` 广播。当前 UI 不受影响（轮询兜底），但**期 3 的纯订阅消费者会漏一次刷新**——设计移动端订阅时先修这个（`removeSeat` on disconnect）。
+2. `TerminalActivityTracker.isWorking` 驱动的两条策略（nativeShellActivity / mixed）仍是轮询，未事件化——若移动端需要这些 CLI 的状态实时性，需要补。
+3. 若干代码整洁类 minor（cubit 的 `_knownSeats` 无界增长至 close、保留 shell 的 teardown 未关闭 cubit、个别测试断言源码文本）——见期 2 ledger，但 ledger 已随实施结束被清理，需要时从 git 历史或后续 review 重新评估。
+
+---
+
+## 工作方式约定（沿用，已被验证有效）
+
+1. **流程**：brainstorm（含探索与澄清）→ 写 spec → 自审 → 你审 → writing-plans 出计划 → 新 worktree + subagent-driven-development 逐任务实施（每任务独立 review + fix loop）→ 整分支 final review → 合并。
+2. **每步可验证**：验收标准固定为「全套测试绿 + 行为等价（既有测试未被修改地通过）」。期 1 与期 2 各靠这条安全网抓到真实回归。
+3. **小步**：宁可多切一个任务，不要一次改多层。失败的 runtime 分支就是反例。
+4. **注意 agent 的越界修改**：本期多次出现「实施者做了 brief 未列的改动」——有时正确（如 bridge 每 bootstrap 重建），有时是缺陷（如测试绕过异步跳数）。派发时明确边界，review 时逐条裁决，不要照单全收。
+5. **agent 可能中途掉线**（API 配额/网络）。若工作已落盘但未提交，controller 核验后可代为提交，并在报告里注明「controller 未编写代码」。
+
+### 已知环境事项
+
+- 新 worktree 需要：`git submodule update --init --recursive` + `cd client && dart run tool/sync_bundled_google_fonts.dart`（否则字体测试红）。
+- **绝不直接 `flutter test`**：一律 `cd client && dart run tool/run_tests.dart <paths>`。
+- 测试 runner 有 bug：即使「Some tests failed」，退出码仍为 0 —— **读摘要行，不要信退出码**。
+- `docs/ARCHITECTURE.md` 是 AGENTS.md 的**悬空引用**（该文件从未被提交过），值得补或修链接。
+
+---
+
+## 失败分支的处置
+
+`feat-host-session-runtime`（worktree 路径 `.worktrees/feat-host-session-runtime`）**冻结、未合并**。期 4 接入 Runtime daemon 时，从中挑已验证的件：PTY 环境清理修复、`runtime_framing` 协议、虚拟 CLI 测试框架、peer-sync 集成测试。**判决：不要在上面继续开发。**
