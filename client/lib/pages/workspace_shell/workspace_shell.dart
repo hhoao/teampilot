@@ -143,7 +143,8 @@ class WorkspaceShell extends StatelessWidget {
               ],
             ),
           ),
-        if (showTabBar && (tabs.isNotEmpty || showNewChatButton))
+        if (showTabBar &&
+            (tabs.isNotEmpty || showNewChatButton || tabBarTrailing != null))
           WorkspaceShellTabRow(
             tabs: tabs,
             activeIndex: activeTabIndex,

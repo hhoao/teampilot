@@ -5,6 +5,7 @@ import 'package:teampilot/cubits/layout_cubit.dart';
 import 'package:teampilot/l10n/app_localizations.dart';
 import 'package:teampilot/pages/workspace_shell/workspace_shell.dart';
 import 'package:teampilot/pages/workspace_shell/workspace_shell_tabs.dart';
+import 'package:teampilot/widgets/workbench/workbench_group_lock_button.dart';
 
 Widget _wrapShell(Widget shell) {
   return MaterialApp(
@@ -214,5 +215,32 @@ void main() {
       find.byKey(const ValueKey('tab-bar-trailing')),
     );
     expect(trailing.dx, greaterThan(newChat.dx));
+  });
+
+  testWidgets('empty shell keeps a trailing group lock control available', (
+    tester,
+  ) async {
+    var toggles = 0;
+    await tester.pumpWidget(
+      _wrapShell(
+        WorkspaceShell(
+          showHeader: false,
+          breadcrumb: 'Team / Chat',
+          title: 'Chat',
+          subtitle: 'Terminal',
+          actions: const [],
+          tabBarTrailing: WorkbenchGroupLockButton(
+            locked: true,
+            onToggle: () => toggles++,
+          ),
+          child: const Text('Empty group body'),
+        ),
+      ),
+    );
+
+    expect(find.byType(WorkspaceShellTabRow), findsOneWidget);
+    expect(find.byIcon(Icons.lock_outlined), findsOneWidget);
+    await tester.tap(find.byType(WorkbenchGroupLockButton));
+    expect(toggles, 1);
   });
 }
