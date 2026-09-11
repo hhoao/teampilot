@@ -126,7 +126,8 @@
 
 **目标**：手机看到桌面端会话列表 + 聊天记录实时更新。
 
-**第一刀设计（已定稿，待你审 spec）**：`docs/superpowers/specs/2026-09-12-event-transport-design.md`
+**第一刀设计**：`docs/superpowers/specs/2026-09-12-event-transport-design.md`
+**第一刀计划**：`docs/superpowers/plans/2026-09-12-event-transport.md`
 
 - 组件名是 **Event Transport**（不是 Hub / Relay）：dispatcher 的过线方式，不是新总线。
 - 桌面 local home 开 `EventTransportServer`（`127.0.0.1` + `<teampilotRoot>/event-transport.json`）；手机 ssh home 经现有 SSH `forwardLocal` 开 Client。
