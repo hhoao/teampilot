@@ -164,9 +164,11 @@ Widget _host({
   Widget? child,
   FutureOr<void> Function()? onTap,
   Locale? locale,
+  ThemeData? theme,
 }) {
   return MaterialApp(
     locale: locale,
+    theme: theme,
     localizationsDelegates: AppLocalizations.localizationsDelegates,
     supportedLocales: AppLocalizations.supportedLocales,
     home: MultiRepositoryProvider(
@@ -285,6 +287,122 @@ void main() {
     await tester.pump();
     expect(chatCubit.closedSessionIds, ['sess-1', 'sess-1']);
     debugDefaultTargetPlatformOverride = null;
+  });
+
+  testWidgets('open session context menu toggles its workbench group lock', (
+    tester,
+  ) async {
+    final chatCubit = _ArchiveRecordingChatCubit();
+    chatCubit.tabStore.registerSession(
+      ChatTab(
+        info: ChatTabInfo(id: _session.sessionId, title: 't', subtitle: ''),
+        cliTeamName: _session.sessionId,
+      ),
+    );
+    final (attention, automationCubit) = _tileCubits();
+    var locked = false;
+    addTearDown(chatCubit.close);
+    addTearDown(automationCubit.close);
+    addTearDown(attention.close);
+
+    await tester.pumpWidget(
+      _host(
+        chatCubit: chatCubit,
+        automationCubit: automationCubit,
+        attentionCubit: attention,
+        sessionRepository: SessionRepository(),
+        child: SidebarSessionTile(
+          session: _session,
+          workbenchGroupLocked: locked,
+          onToggleWorkbenchGroupLock: () => locked = !locked,
+          onTap: () {},
+        ),
+      ),
+    );
+    await tester.pump();
+
+    await _openContextMenu(tester);
+    expect(find.text('Lock Group'), findsOneWidget);
+    await tester.tap(find.text('Lock Group'));
+    await tester.pump();
+    expect(locked, isTrue);
+  });
+
+  testWidgets('Android long press opens the workbench group lock action', (
+    tester,
+  ) async {
+    final chatCubit = _ArchiveRecordingChatCubit();
+    chatCubit.tabStore.registerSession(
+      ChatTab(
+        info: ChatTabInfo(id: _session.sessionId, title: 't', subtitle: ''),
+        cliTeamName: _session.sessionId,
+      ),
+    );
+    final (attention, automationCubit) = _tileCubits();
+    var toggles = 0;
+    addTearDown(chatCubit.close);
+    addTearDown(automationCubit.close);
+    addTearDown(attention.close);
+
+    await tester.pumpWidget(
+      _host(
+        chatCubit: chatCubit,
+        automationCubit: automationCubit,
+        attentionCubit: attention,
+        sessionRepository: SessionRepository(),
+        theme: ThemeData(platform: TargetPlatform.android),
+        child: SidebarSessionTile(
+          session: _session,
+          workbenchGroupLocked: false,
+          onToggleWorkbenchGroupLock: () => toggles++,
+          onTap: () {},
+        ),
+      ),
+    );
+    await tester.pump();
+
+    await tester.longPress(find.byType(SidebarSessionTile));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 200));
+    expect(find.text('Lock Group'), findsOneWidget);
+    await tester.tap(find.text('Lock Group'));
+    await tester.pump();
+    expect(toggles, 1);
+  });
+
+  testWidgets('archived session rows omit workbench group lock actions', (
+    tester,
+  ) async {
+    final chatCubit = _ArchiveRecordingChatCubit();
+    chatCubit.tabStore.registerSession(
+      ChatTab(
+        info: ChatTabInfo(id: _session.sessionId, title: 't', subtitle: ''),
+        cliTeamName: _session.sessionId,
+      ),
+    );
+    final (attention, automationCubit) = _tileCubits();
+    addTearDown(chatCubit.close);
+    addTearDown(automationCubit.close);
+    addTearDown(attention.close);
+
+    await tester.pumpWidget(
+      _host(
+        chatCubit: chatCubit,
+        automationCubit: automationCubit,
+        attentionCubit: attention,
+        sessionRepository: SessionRepository(),
+        child: SidebarSessionTile(
+          session: _session.copyWith(archived: true),
+          archiveMode: true,
+          onTap: () {},
+        ),
+      ),
+    );
+    await tester.pump();
+
+    await _openContextMenu(tester);
+    expect(find.text('Lock Group'), findsNothing);
+    expect(find.text('Unlock Group'), findsNothing);
   });
 
   testWidgets('open tab without running terminal still shows close actions', (

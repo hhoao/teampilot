@@ -1,9 +1,12 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/gestures.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/cubits/agent_attention_cubit.dart';
 import 'package:teampilot/cubits/automation_cubit.dart';
 import 'package:teampilot/cubits/chat_cubit.dart';
+import 'package:teampilot/cubits/chat/model/chat_tab.dart';
+import 'package:teampilot/cubits/chat/model/chat_tab_info.dart';
 import 'package:teampilot/cubits/session_groups_cubit.dart';
 import 'package:teampilot/cubits/shortcut_cubit.dart';
 import 'package:teampilot/cubits/workbench/workbench_cubit.dart';
@@ -67,7 +70,10 @@ void main() {
     tearDownTestAppStorage();
   });
 
-  Future<void> pumpSidebar(WidgetTester tester, {List<String> ids = const ['a', 'b']}) async {
+  Future<void> pumpSidebar(
+    WidgetTester tester, {
+    List<String> ids = const ['a', 'b'],
+  }) async {
     await tester.runAsync(() => groupsCubit.load(_workspace.workspaceId));
     chatCubit.emit(
       chatCubit.state.copyWith(sessions: [for (final id in ids) _session(id)]),
@@ -116,7 +122,12 @@ void main() {
     workbenchCubit
       ..openSession('ws-1', 'a')
       ..openSession('ws-1', 'b')
-      ..splitTab('ws-1', WorkbenchTabId.session('b'), axis: Axis.horizontal, before: false);
+      ..splitTab(
+        'ws-1',
+        WorkbenchTabId.session('b'),
+        axis: Axis.horizontal,
+        before: false,
+      );
     await pumpSidebar(tester);
 
     // Two split sub-sections, each with its divider and tiles.
@@ -187,7 +198,12 @@ void main() {
     workbenchCubit
       ..openSession('ws-1', 'a')
       ..openSession('ws-1', 'b')
-      ..splitTab('ws-1', WorkbenchTabId.session('b'), axis: Axis.horizontal, before: false);
+      ..splitTab(
+        'ws-1',
+        WorkbenchTabId.session('b'),
+        axis: Axis.horizontal,
+        before: false,
+      );
     // Focused = the new group showing 'b'. g0 shows 'a'.
     await pumpSidebar(tester);
 
@@ -217,17 +233,17 @@ void main() {
     'unfocused group active renders a medium indicator vs faint siblings',
     (tester) async {
       workbenchCubit
-          ..openSession('ws-1', 'a')
-          ..openSession('ws-1', 'b')
-          ..openSession('ws-1', 'c')
-          // g0 [a, b, c], active = a after explicit activation.
-          ..activate('ws-1', WorkbenchTabId.session('a'))
-          ..splitTab(
-            'ws-1',
-            WorkbenchTabId.session('b'),
-            axis: Axis.horizontal,
-            before: false,
-          ); // g0 [a, c] | g1 [b], focused g1
+        ..openSession('ws-1', 'a')
+        ..openSession('ws-1', 'b')
+        ..openSession('ws-1', 'c')
+        // g0 [a, b, c], active = a after explicit activation.
+        ..activate('ws-1', WorkbenchTabId.session('a'))
+        ..splitTab(
+          'ws-1',
+          WorkbenchTabId.session('b'),
+          axis: Axis.horizontal,
+          before: false,
+        ); // g0 [a, c] | g1 [b], focused g1
       await pumpSidebar(tester, ids: const ['a', 'b', 'c']);
 
       // Indicator width encodes the role: focused-group active (5) >
@@ -257,7 +273,12 @@ void main() {
     workbenchCubit
       ..openSession('ws-1', 'a')
       ..openSession('ws-1', 'b')
-      ..splitTab('ws-1', WorkbenchTabId.session('b'), axis: Axis.horizontal, before: false);
+      ..splitTab(
+        'ws-1',
+        WorkbenchTabId.session('b'),
+        axis: Axis.horizontal,
+        before: false,
+      );
     await pumpSidebar(tester);
 
     final layoutBefore = workbenchCubit.centerLayout('ws-1');
@@ -273,5 +294,118 @@ void main() {
 
     final layoutAfter = workbenchCubit.centerLayout('ws-1');
     expect(layoutAfter.focusedGroupId, isNot(focusedBefore));
+  });
+
+  testWidgets('session menus lock their owning split groups', (tester) async {
+    workbenchCubit
+      ..openSession('ws-1', 'a')
+      ..openSession('ws-1', 'b')
+      ..splitTab(
+        'ws-1',
+        WorkbenchTabId.session('b'),
+        axis: Axis.horizontal,
+        before: false,
+      );
+    for (final id in const ['a', 'b']) {
+      chatCubit.tabStore.registerSession(
+        ChatTab(
+          info: ChatTabInfo(id: id, title: id, subtitle: ''),
+          cliTeamName: id,
+        ),
+      );
+    }
+    await pumpSidebar(tester);
+
+    final first = workbenchCubit.centerLayout('ws-1').leafGroupIds.first;
+    workbenchCubit.toggleGroupLock('ws-1', first);
+    expect(workbenchCubit.centerLayout('ws-1').lockedGroupIds, {first});
+    await pumpSidebar(tester);
+    final l10n = AppLocalizations.of(
+      tester.element(find.byType(SidebarSessionTile).first),
+    );
+
+    await tester.tap(
+      find.byType(SidebarSessionTile).first,
+      buttons: kSecondaryMouseButton,
+    );
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 200));
+    expect(find.text(l10n.workbenchUnlockGroup), findsOneWidget);
+    await tester.tap(find.text(l10n.workbenchUnlockGroup));
+    await tester.pump();
+
+    expect(workbenchCubit.centerLayout('ws-1').lockedGroupIds, isEmpty);
+  });
+
+  testWidgets('second split session menu locks only its owning group', (
+    tester,
+  ) async {
+    workbenchCubit
+      ..openSession('ws-1', 'a')
+      ..openSession('ws-1', 'b')
+      ..splitTab(
+        'ws-1',
+        WorkbenchTabId.session('b'),
+        axis: Axis.horizontal,
+        before: false,
+      );
+    for (final id in const ['a', 'b']) {
+      chatCubit.tabStore.registerSession(
+        ChatTab(
+          info: ChatTabInfo(id: id, title: id, subtitle: ''),
+          cliTeamName: id,
+        ),
+      );
+    }
+    final layout = workbenchCubit.centerLayout('ws-1');
+    final first = layout.leafGroupIds.first;
+    final second = layout.leafGroupIds.last;
+    workbenchCubit.toggleGroupLock('ws-1', first);
+    await pumpSidebar(tester);
+
+    final l10n = AppLocalizations.of(
+      tester.element(
+        find.byKey(const ValueKey('workspace-running-session-b')),
+      ),
+    );
+    await tester.tap(
+      find.byKey(const ValueKey('workspace-running-session-b')),
+      buttons: kSecondaryMouseButton,
+    );
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 200));
+    expect(find.text(l10n.workbenchLockGroup), findsOneWidget);
+    await tester.tap(find.text(l10n.workbenchLockGroup));
+    await tester.pump();
+
+    expect(workbenchCubit.centerLayout('ws-1').lockedGroupIds, {first, second});
+  });
+
+  testWidgets('flat session menu uses the focused workbench group', (
+    tester,
+  ) async {
+    workbenchCubit.openSession('ws-1', 'a');
+    chatCubit.tabStore.registerSession(
+      ChatTab(
+        info: ChatTabInfo(id: 'a', title: 'a', subtitle: ''),
+        cliTeamName: 'a',
+      ),
+    );
+    await pumpSidebar(tester, ids: const ['a']);
+
+    final groupId = workbenchCubit.centerLayout('ws-1').focusedGroupId;
+    final l10n = AppLocalizations.of(
+      tester.element(find.byType(SidebarSessionTile).first),
+    );
+    await tester.tap(
+      find.byKey(const ValueKey('workspace-running-session-a')),
+      buttons: kSecondaryMouseButton,
+    );
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 200));
+    await tester.tap(find.text(l10n.workbenchLockGroup));
+    await tester.pump();
+
+    expect(workbenchCubit.centerLayout('ws-1').lockedGroupIds, {groupId});
   });
 }
