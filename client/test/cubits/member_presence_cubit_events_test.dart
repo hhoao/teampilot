@@ -304,11 +304,15 @@ void main() {
           [AgentPresenceKind.working],
         );
 
-        // Disconnect: reports null (no publish) but clears the bridge baseline.
+        // Disconnect: reports null, bridge publishes cleared and clears baseline.
         service.result = {'m-lead': _disconnected};
         cubit.tickFromIdleWatch();
         _settlePoll(async);
-        expect(sink.events.length, 1, reason: 'null report publishes nothing');
+        expect(
+          sink.events.map((e) => e.eventKind).toList(),
+          [AgentPresenceKind.working, AgentPresenceKind.cleared],
+          reason: 'disconnect publishes cleared so transport can fan it out',
+        );
 
         // Reconnect at the same value republishes, proving the baseline cleared.
         service.result = {'m-lead': _connectedWorking};
@@ -316,7 +320,11 @@ void main() {
         _settlePoll(async);
         expect(
           sink.events.map((e) => e.eventKind).toList(),
-          [AgentPresenceKind.working, AgentPresenceKind.working],
+          [
+            AgentPresenceKind.working,
+            AgentPresenceKind.cleared,
+            AgentPresenceKind.working,
+          ],
         );
       });
     });
