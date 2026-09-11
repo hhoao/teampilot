@@ -141,7 +141,11 @@ class TerminalSession {
   /// Fired when this session's agent-presence inputs change (turn latch, boot
   /// frame). The domain layer only signals "re-read me"; the binding layer
   /// reads [presenceSeat] and composes the actual availability.
-  final void Function()? onPresenceInputsChanged;
+  ///
+  /// Re-pointable: the presence consumer binds the active target's sessions and
+  /// clears them when the target changes, so read the current value (never
+  /// cache it) and expect it to be null when no consumer is attached.
+  void Function()? onPresenceInputsChanged;
 
   /// Identity of the bound observation seat, or null when no observation with
   /// a non-empty session + member id is currently bound.
