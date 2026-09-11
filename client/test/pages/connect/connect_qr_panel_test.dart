@@ -8,20 +8,19 @@ import 'package:teampilot/models/ssh_reachability.dart';
 import 'package:teampilot/pages/connect/connect_qr_panel.dart';
 import 'package:teampilot/pages/connect/connect_section.dart';
 import 'package:teampilot/pages/config/connect_config_section.dart';
-import 'package:teampilot/services/connect/authorized_keys_file.dart';
 import 'package:teampilot/services/connect/connect_settings_store.dart';
+import 'package:teampilot/services/connect/paired_device_store.dart';
 import 'package:teampilot/services/connect/ssh_pairing_offer.dart';
-import 'package:teampilot/services/connect/sshd_presence.dart';
 import 'package:teampilot/theme/app_typography_scale.dart';
 import 'package:teampilot/utils/ui/app_keys.dart';
 
+import '../../support/fake_embedded_server.dart';
 import '../../support/in_memory_filesystem.dart';
 
 SshdPresenceSnapshot _sshd({required bool listening}) => SshdPresenceSnapshot(
   listening: listening,
   port: 22,
   fingerprints: listening ? const ['SHA256:host-key'] : const [],
-  enableHint: 'Enable Remote Login in System Settings.',
 );
 
 SshPairingOffer _offer() => SshPairingOffer(
@@ -65,7 +64,7 @@ Widget _harness(ConnectState state) {
         body: SingleChildScrollView(
           child: ConnectQrPanel(
             state: state,
-            onCheckSshd: () {},
+            onRetry: () {},
             onCopyLink: () {},
             onRegenerate: () {},
           ),
@@ -76,18 +75,27 @@ Widget _harness(ConnectState state) {
 }
 
 void main() {
-  testWidgets('hides pairing QR and shows enable CTA while sshd is down', (
-    tester,
-  ) async {
-    await tester.pumpWidget(
-      _harness(ConnectState(sshd: _sshd(listening: false))),
-    );
+  testWidgets(
+    'hides pairing QR and shows the retry affordance while the server is down',
+    (tester) async {
+      await tester.pumpWidget(
+        _harness(ConnectState(sshd: _sshd(listening: false))),
+      );
 
-    expect(find.byKey(AppKeys.connectQrCode), findsNothing);
-    expect(find.byKey(AppKeys.connectSshdEnableCta), findsOneWidget);
-  });
+      expect(find.byKey(AppKeys.connectQrCode), findsNothing);
+      expect(
+        find.text(
+          'The embedded connection server failed to start. Retry or restart '
+          'the app.',
+        ),
+        findsOneWidget,
+      );
+      expect(find.byKey(AppKeys.connectSshdRetryCta), findsOneWidget);
+      expect(find.text('Retry'), findsOneWidget);
+    },
+  );
 
-  testWidgets('shows pairing QR and hides enable CTA when offer is ready', (
+  testWidgets('shows pairing QR and hides retry CTA when offer is ready', (
     tester,
   ) async {
     await tester.pumpWidget(
@@ -95,7 +103,7 @@ void main() {
     );
 
     expect(find.byKey(AppKeys.connectQrCode), findsOneWidget);
-    expect(find.byKey(AppKeys.connectSshdEnableCta), findsNothing);
+    expect(find.byKey(AppKeys.connectSshdRetryCta), findsNothing);
   });
 
   testWidgets('fullscreen QR dialog fits wide-but-short windows', (
@@ -189,12 +197,10 @@ void main() {
           regenerateQr: () async {},
           updateExtraEndpoints: (_) async {},
         ),
-        probeSshd: () async => _sshd(listening: true),
-        authorizedKeys: AuthorizedKeysFile(
-          path: '/home/alice/.ssh/authorized_keys',
-          read: (_) async => '',
-          write: (_, _) async {},
-          chmod: (_, {required mode}) async {},
+        embeddedServer: fakeListeningEmbeddedServer,
+        deviceStore: PairedDeviceStore(
+          fs: InMemoryFilesystem(),
+          appDataRoot: '/app-data',
         ),
         settingsStore: ConnectSettingsStore(
           fs: InMemoryFilesystem(),

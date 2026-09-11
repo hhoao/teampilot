@@ -5,7 +5,7 @@ import '../../models/ssh_profile.dart';
 import '../../models/cli_preset.dart';
 import '../../models/team_config.dart';
 import '../../services/cli/preset_resolver.dart';
-import '../../services/cli/flashskyai/remote_flashskyai_command_builder.dart';
+import '../../services/host/remote_command_codec.dart';
 import '../../services/cli/registry/capabilities/terminal_behavior_capability.dart';
 import '../../services/cli/registry/cli_tool_registry.dart';
 import '../../services/ssh/ssh_client_factory.dart';
@@ -145,21 +145,17 @@ class ChatSessionShellFactory {
               final remoteWorkingDirectory = workingDirectory.isNotEmpty
                   ? workingDirectory
                   : (_sshDefaultWorkingDirectoryResolver?.call() ?? '');
-              final command = const RemoteFlashskyaiCommandBuilder()
-                  .buildCommand(
-                    remoteExecutablePath: executable,
-                    arguments: arguments,
-                    workingDirectory: remoteWorkingDirectory.isEmpty
-                        ? null
-                        : remoteWorkingDirectory,
-                    environment: remoteEnvironment.isNotEmpty
-                        ? remoteEnvironment
-                        : null,
-                    useLoginShell: _sshUseLoginShellResolver?.call() ?? false,
-                  );
+              final command = buildMemberRemoteCommand(
+                profile: memberSession.profile,
+                executable: executable,
+                arguments: arguments,
+                remoteWorkingDirectory: remoteWorkingDirectory,
+                environment: remoteEnvironment,
+                useLoginShell: _sshUseLoginShellResolver?.call() ?? false,
+              );
               return SshPtyTransport.start(
                 memberSession: memberSession,
-                command: SshPtyTransport.buildSessionCommand(command),
+                command: command,
                 columns: columns,
                 rows: rows,
               );
@@ -172,6 +168,30 @@ class ChatSessionShellFactory {
       scrollback: scrollback,
       startupDeadline: startupDeadline,
     );
+  }
+
+  /// Remote command for a CLI member shell: the `tp1:` structured-exec
+  /// payload for embedded targets, the legacy POSIX login-shell string
+  /// otherwise (byte-for-byte the pre-codec output).
+  static String buildMemberRemoteCommand({
+    required SshProfile profile,
+    required String executable,
+    required List<String> arguments,
+    required String remoteWorkingDirectory,
+    required Map<String, String>? environment,
+    required bool useLoginShell,
+  }) {
+    final spec = RemoteCommandSpec(
+      argv: [executable, ...arguments],
+      cwd: remoteWorkingDirectory.isEmpty ? null : remoteWorkingDirectory,
+      env: (environment != null && environment.isNotEmpty)
+          ? environment
+          : null,
+    );
+    final codec = const RemoteCommandCodec();
+    return profile.embeddedTarget
+        ? codec.encodeEmbedded(spec)
+        : codec.encodeLegacy(spec, useLoginShell: useLoginShell);
   }
 
   Duration _startupDeadlineFor(CliTool cli) {

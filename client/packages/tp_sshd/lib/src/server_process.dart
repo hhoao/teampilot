@@ -37,6 +37,16 @@ class SSHPtyDimensions {
     this.environment = const {},
   });
 
+  /// The `env`-request variable that carries the working directory a client
+  /// wants its `shell` to start in: `TP_SHELL_CWD`. The SSH `shell` request
+  /// itself has no working-directory field, so a client that wants its shell
+  /// scoped to a directory sends this variable (with its `env` requests)
+  /// before the `shell`; a pty factory that honors it spawns the shell there
+  /// and removes the variable from the environment the shell sees — it is a
+  /// request, not a setting for the shell to inherit. Factories that do not
+  /// honor it simply leave the variable in the environment.
+  static const workingDirectoryEnv = 'TP_SHELL_CWD';
+
   /// Terminal width in character cells.
   final int columns;
 

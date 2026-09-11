@@ -36,6 +36,7 @@ class SSHServerConfig {
     this.hostInfo,
     this.sftpFileSystem,
     this.bindServerSocket,
+    this.onAuthenticated,
     this.printDebug,
     this.printTrace,
   });
@@ -95,6 +96,12 @@ class SSHServerConfig {
   /// loopback addresses are ever bound, and a non-loopback request is
   /// refused before this seam is consulted.
   final SSHBindServerSocket? bindServerSocket;
+
+  /// Invoked exactly once per connection, after the signed publickey request
+  /// verifies and `authenticate` accepts — the embedder's point to record
+  /// which connection belongs to which device (revocation teardown).
+  final void Function(SSHServerConnection connection, SSHServerAuthRequest request)?
+      onAuthenticated;
 
   /// Function invoked with debug logging, mirroring [SSHSocket] transports.
   final void Function(String? message)? printDebug;

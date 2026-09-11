@@ -69,9 +69,11 @@ class SshPtyTransport implements TerminalTransport {
     return controller.stream;
   }
 
+  /// Starts a remote PTY. [command] `null` opens a bare `shell` request —
+  /// the remote side picks the shell — instead of `exec`-ing a command.
   static Future<SshPtyTransport> start({
     required SshMemberSession memberSession,
-    required String command,
+    String? command,
     int columns = 80,
     int rows = 24,
     Map<String, String>? environment,
@@ -83,29 +85,5 @@ class SshPtyTransport implements TerminalTransport {
       environment: environment,
     );
     return SshPtyTransport(session: session);
-  }
-
-  static String buildSessionCommand(
-    String command, {
-    String? workingDirectory,
-    Map<String, String>? environment,
-  }) {
-    final parts = <String>[];
-    if (environment != null && environment.isNotEmpty) {
-      for (final entry in environment.entries) {
-        parts.add('export ${entry.key}=${_shellQuote(entry.value)}');
-      }
-    }
-    if (workingDirectory != null && workingDirectory.isNotEmpty) {
-      parts.add('cd ${_shellQuote(workingDirectory)}');
-    }
-    parts.add(command);
-    return parts.join(' && ');
-  }
-
-  static String _shellQuote(String arg) {
-    if (arg.isEmpty) return "''";
-    if (!arg.contains("'")) return "'$arg'";
-    return "'${arg.replaceAll("'", "'\"'\"'")}'";
   }
 }

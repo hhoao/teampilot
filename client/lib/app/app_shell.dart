@@ -6,7 +6,6 @@ import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:http/http.dart' as http;
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:posix/posix.dart' as posix;
 
 import '../cubits/app_bootstrap_cubit.dart';
 import 'app_data_bootstrap.dart';
@@ -149,10 +148,10 @@ import '../services/extension/extension_provisioner.dart';
 import '../services/storage/app_storage.dart';
 import '../services/storage/device_local_control_plane.dart';
 import '../services/io/local_filesystem.dart';
-import '../services/connect/authorized_keys_file.dart';
 import '../services/connect/connect_agent.dart';
 import '../services/connect/connect_settings_store.dart';
-import '../services/connect/sshd_presence.dart';
+import '../services/connect/embedded_ssh_server.dart'
+    show EmbeddedSshServer;
 import '../services/perf/live_perf_driver.dart';
 import '../services/storage/workspace_layout.dart';
 import '../services/automation/automation_bus_gateway.dart';
@@ -428,6 +427,8 @@ class AppShell {
     required this.teamCubit,
     required this.configCubit,
     required this.connectCubit,
+    required this.embeddedSshServer,
+    required this.connectDeviceStore,
     required this.appProviderCubit,
     required this.managedProviderControlPlane,
     required this.managedProviderRepository,
@@ -527,6 +528,14 @@ class AppShell {
   final LaunchProfileCubit teamCubit;
   final ConfigCubit configCubit;
   final ConnectCubit? connectCubit;
+
+  /// The desktop's embedded SSH server; `null` on Android (no Connect host).
+  final EmbeddedSshServer? embeddedSshServer;
+
+  /// The device registry shared by the embedded server, pairing agent, and
+  /// Connect UI; `null` on Android.
+  final PairedDeviceStore? connectDeviceStore;
+
   final AppProviderCubit appProviderCubit;
   final ManagedProviderControlPlane managedProviderControlPlane;
   final ManagedProviderRepository managedProviderRepository;
@@ -1588,6 +1597,8 @@ Future<AppShell> buildAppShell({
     );
     final configCubit = ConfigCubit();
     ConnectCubit? connectCubit;
+    EmbeddedSshServer? embeddedSshServer;
+    PairedDeviceStore? connectDeviceStore;
     if (!Platform.isAndroid) {
       final localFs = LocalFilesystem(
         pathContext: AppPaths.pathContextForDataRoot(nativeAppDataPath),
@@ -1605,36 +1616,41 @@ Future<AppShell> buildAppShell({
                   Platform.environment['USERNAME'] ??
                   localFs.pathContext.basename(nativeHome))
               .trim();
-      final authorizedKeysPath = localFs.pathContext.join(
-        nativeHome,
-        '.ssh',
-        'authorized_keys',
-      );
-      final authorizedKeys = AuthorizedKeysFile(
-        path: authorizedKeysPath,
-        read: localFs.readString,
-        write: localFs.atomicWrite,
-        chmod: (path, {required mode}) async {
-          if (!Platform.isWindows) {
-            posix.chmod(path, mode.toRadixString(8));
-          }
-        },
-      );
       final settingsStore = ConnectSettingsStore(
         fs: localFs,
         appDataRoot: nativeAppDataPath,
       );
       final settings = await settingsStore.load();
-      final sshdPresence = SshdPresence();
       final pairedDeviceStore = PairedDeviceStore(
         fs: localFs,
         appDataRoot: nativeAppDataPath,
       );
+      connectDeviceStore = pairedDeviceStore;
+      final server = EmbeddedSshServer(
+        fs: localFs,
+        appDataRoot: nativeAppDataPath,
+        deviceStore: pairedDeviceStore,
+        username: username,
+        homePath: nativeHome,
+      );
+      try {
+        await server.start();
+      } on Object catch (error, stackTrace) {
+        // Non-blocking: the app continues; the Connect UI shows the failed
+        // state with a retry affordance. Broad on purpose — anything from a
+        // typed [EmbeddedSshServerStartException] (bind conflicts) to a
+        // host-key persistence failure must not crash app boot.
+        appLogger.e(
+          '[connect] embedded ssh server failed to start',
+          error: error,
+          stackTrace: stackTrace,
+        );
+      }
+      embeddedSshServer = server;
       final connectAgent = ConnectAgent.production(
-        keys: authorizedKeys,
+        embeddedServer: server,
         fs: localFs,
         extraEndpoints: settings.extraEndpoints,
-        probe: sshdPresence.probe,
         deviceStore: pairedDeviceStore,
       );
       // App-lifetime relay registration: keeps off-LAN SSH reachable via
@@ -1659,8 +1675,8 @@ Future<AppShell> buildAppShell({
       }
       connectCubit = ConnectCubit(
         agent: ConnectAgentController.fromAgent(connectAgent),
-        probeSshd: sshdPresence.probe,
-        authorizedKeys: authorizedKeys,
+        embeddedServer: server,
+        deviceStore: pairedDeviceStore,
         settingsStore: settingsStore,
         listNetworkAddresses: () async {
           final interfaces = await NetworkInterface.list(includeLoopback: true);
@@ -2631,6 +2647,8 @@ Future<AppShell> buildAppShell({
       teamCubit: teamCubit,
       configCubit: configCubit,
       connectCubit: connectCubit,
+      embeddedSshServer: embeddedSshServer,
+      connectDeviceStore: connectDeviceStore,
       appProviderCubit: appProviderCubit,
       managedProviderControlPlane: managedProviderControlPlane,
       managedProviderRepository: resolvedManagedProviderRepository,
@@ -2767,14 +2785,14 @@ class _TeamPilotBootstrapState extends State<TeamPilotBootstrap> {
       );
       final shell = builtShell;
       if (!mounted) {
-        await shell.connectCubit?.close();
+        await _teardownConnect(shell);
         await shell.managedProviderControlPlane.close();
         return;
       }
       await yieldUiFrame();
       await shell.bootstrapAppData();
       if (!mounted) {
-        await shell.connectCubit?.close();
+        await _teardownConnect(shell);
         await shell.managedProviderControlPlane.close();
         return;
       }
@@ -2801,7 +2819,7 @@ class _TeamPilotBootstrapState extends State<TeamPilotBootstrap> {
       if (!mounted) return;
       await completeBootSplashTransition();
     } on Object catch (error, stackTrace) {
-      await builtShell?.connectCubit?.close();
+      await _teardownConnect(builtShell);
       await builtShell?.managedProviderControlPlane.close();
       appLogger.e(
         '[boot] buildAppShell failed',
@@ -2845,7 +2863,7 @@ class _TeamPilotBootstrapState extends State<TeamPilotBootstrap> {
     _usageAutoRefresh?.dispose();
     final shell = _shell;
     if (shell != null) {
-      unawaited(shell.connectCubit?.close());
+      unawaited(_teardownConnect(shell));
       unawaited(shell.managedProviderControlPlane.close());
     }
     super.dispose();
@@ -2901,4 +2919,13 @@ ConnectRelayRegistration _relayRegistrationFor(Uri uri) {
     endpointHost: uri.host,
     endpointPort: uri.port == 0 ? (uri.scheme == 'wss' ? 443 : 80) : uri.port,
   );
+}
+
+/// Tears down the Connect stack: the QR-session cubit, the embedded SSH
+/// server's listener, and the shared paired-device registry. Safe to call
+/// with a null shell (Android) and on partially-built shells.
+Future<void> _teardownConnect(AppShell? shell) async {
+  await shell?.connectCubit?.close();
+  await shell?.embeddedSshServer?.stop();
+  shell?.connectDeviceStore?.dispose();
 }

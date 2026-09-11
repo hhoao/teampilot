@@ -11,6 +11,7 @@ import 'package:teampilot/services/cli/registry/launch/cli_launch_capability_err
 import 'package:teampilot/services/session/remote_ssh_launch_constraints.dart';
 import 'package:teampilot/services/session/shell_launch_spec.dart';
 import 'package:teampilot/services/ssh/ssh_member_session.dart';
+import 'package:tp_sshd/tp_sshd.dart';
 
 void main() {
   group('remoteSshRunsAsRoot', () {
@@ -489,6 +490,160 @@ void main() {
       },
     );
   });
+
+  group('embedded targets', () {
+    const hostInfoQuery = 'tp1:{"query":"host-info"}';
+
+    SshMemberSession session({
+      required bool embeddedTarget,
+      String hostInfoJson =
+          '{"platform":"linux","osUser":"alice","elevated":false,'
+          '"inDocker":false,"shell":"/bin/bash"}',
+      bool throwOnHostInfoQuery = false,
+      List<String>? commands,
+    }) => SshMemberSession.testing(
+      profile: SshProfile(
+        id: 'ssh-emb',
+        name: 'Embedded',
+        host: 'desktop.local',
+        username: 'alice',
+        embeddedTarget: embeddedTarget,
+      ),
+      client: _RootBareMetalClient(
+        hostInfoJson: hostInfoJson,
+        throwOnHostInfoQuery: throwOnHostInfoQuery,
+        recordCommand: commands?.add,
+      ),
+    );
+
+    test('host facts come from the host-info query, never raw exec',
+        () async {
+      final commands = <String>[];
+      final embedded = session(
+        embeddedTarget: true,
+        hostInfoJson:
+            '{"platform":"linux","osUser":"root","elevated":true,'
+            '"inDocker":true,"shell":"/bin/bash"}',
+        commands: commands,
+      );
+      addTearDown(embedded.close);
+
+      expect(
+        await remoteSshRunsAsRoot(memberSession: embedded, embeddedTarget: true),
+        isTrue,
+      );
+      expect(
+        await remoteSshInDockerContainer(
+          memberSession: embedded,
+          embeddedTarget: true,
+        ),
+        RemoteSshDockerStatus.confirmedContainer,
+      );
+
+      expect(commands, [
+        TpExecCodec.encodeHostInfoQuery(),
+        TpExecCodec.encodeHostInfoQuery(),
+      ]);
+      expect(commands, isNot(contains('id -u')));
+      expect(commands, isNot(contains('test -f /.dockerenv')));
+      expect(commands.first, hostInfoQuery);
+    });
+
+    test('non-elevated host-info reports non-root and non-container',
+        () async {
+      final embedded = session(embeddedTarget: true);
+      addTearDown(embedded.close);
+
+      expect(
+        await remoteSshRunsAsRoot(memberSession: embedded, embeddedTarget: true),
+        isFalse,
+      );
+      expect(
+        await remoteSshInDockerContainer(
+          memberSession: embedded,
+          embeddedTarget: true,
+        ),
+        RemoteSshDockerStatus.confirmedNonContainer,
+      );
+    });
+
+    test('malformed host-info payload fails closed', () async {
+      final embedded = session(embeddedTarget: true, hostInfoJson: 'not-json');
+      addTearDown(embedded.close);
+
+      expect(
+        await remoteSshRunsAsRoot(memberSession: embedded, embeddedTarget: true),
+        isNull,
+      );
+      expect(
+        await remoteSshInDockerContainer(
+          memberSession: embedded,
+          embeddedTarget: true,
+        ),
+        RemoteSshDockerStatus.unknown,
+      );
+    });
+
+    test('host-info query failure fails closed', () async {
+      final embedded = session(
+        embeddedTarget: true,
+        throwOnHostInfoQuery: true,
+      );
+      addTearDown(embedded.close);
+
+      expect(
+        await remoteSshRunsAsRoot(memberSession: embedded, embeddedTarget: true),
+        isNull,
+      );
+    });
+
+    test('legacy targets keep the raw exec probes byte-identical', () async {
+      final commands = <String>[];
+      final legacy = session(embeddedTarget: false, commands: commands);
+      addTearDown(legacy.close);
+
+      await remoteSshRunsAsRoot(memberSession: legacy);
+      await remoteSshInDockerContainer(memberSession: legacy);
+
+      expect(commands, ['id -u', 'test -f /.dockerenv']);
+    });
+
+    test(
+      'dangerous launch on an embedded profile resolves via host-info',
+      () async {
+        const member = TeamMemberConfig(
+          id: 'member',
+          name: 'Member',
+          launchSecurityPolicy: LaunchSecurityPolicy.fullAccess,
+        );
+        final commands = <String>[];
+        final embedded = session(
+          embeddedTarget: true,
+          hostInfoJson:
+              '{"platform":"linux","osUser":"root","elevated":true,'
+              '"inDocker":true,"shell":"/bin/bash"}',
+          commands: commands,
+        );
+        addTearDown(embedded.close);
+
+        final spec = await applyRemoteSshLaunchConstraints(
+          spec: ShellLaunchSpec.teamMember(
+            team: const TeamProfile(id: 'team', name: 'Team'),
+            member: member,
+          ),
+          memberTarget: RuntimeTarget.ssh('ssh-emb', label: 'Embedded'),
+          memberSession: embedded,
+          profile: embedded.profile,
+        );
+
+        expect(
+          spec.plan.env[claudeCodeSandboxEnvKey],
+          claudeCodeSandboxEnvValue,
+        );
+        expect(commands, everyElement(TpExecCodec.encodeHostInfoQuery()));
+      },
+    );
+  });
 }
 
 class _RootBareMetalClient extends SSHClient {
@@ -498,6 +653,9 @@ class _RootBareMetalClient extends SSHClient {
     this.throwOnIdProbe = false,
     this.dockerExitCode = 1,
     this.throwOnDockerProbe = false,
+    this.hostInfoJson = '',
+    this.throwOnHostInfoQuery = false,
+    this.recordCommand,
   }) : super(_FakeSSHSocket(), username: 'root');
 
   final int idExitCode;
@@ -505,6 +663,9 @@ class _RootBareMetalClient extends SSHClient {
   final bool throwOnIdProbe;
   final int dockerExitCode;
   final bool throwOnDockerProbe;
+  final String hostInfoJson;
+  final bool throwOnHostInfoQuery;
+  final void Function(String command)? recordCommand;
 
   @override
   Future<void> get authenticated => Future.value();
@@ -517,6 +678,20 @@ class _RootBareMetalClient extends SSHClient {
     bool stderr = true,
     Map<String, String>? environment,
   }) async {
+    recordCommand?.call(command);
+    if (command == TpExecCodec.encodeHostInfoQuery()) {
+      if (throwOnHostInfoQuery) {
+        throw StateError('host-info query transport disconnected');
+      }
+      final payload = Uint8List.fromList(hostInfoJson.codeUnits);
+      return SSHRunResult(
+        output: payload,
+        stdout: payload,
+        stderr: Uint8List(0),
+        exitCode: 0,
+        exitSignal: null,
+      );
+    }
     if (command == 'id -u' && throwOnIdProbe) {
       throw StateError('transport disconnected');
     }

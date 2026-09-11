@@ -1,6 +1,8 @@
 import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
+import 'package:teampilot/models/ssh_profile.dart';
+import 'package:teampilot/services/cli/flashskyai/remote_flashskyai_command_builder.dart';
 import 'package:teampilot/services/host/host_interactive_shell.dart';
 import 'package:teampilot/models/workspace_terminal_session_spec.dart';
 import 'package:teampilot/repositories/ssh_credential_store.dart';
@@ -8,6 +10,7 @@ import 'package:teampilot/repositories/ssh_known_host_repository.dart';
 import 'package:teampilot/repositories/ssh_profile_repository.dart';
 import 'package:teampilot/services/terminal/terminal_transport_factory.dart';
 import 'package:teampilot/services/terminal/workspace_shell_connector.dart';
+import 'package:tp_sshd/tp_sshd.dart' show SSHPtyDimensions;
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
@@ -56,6 +59,113 @@ void main() {
       );
       expect(target.kind.name, 'wsl');
       expect(target.wslDistro, 'Ubuntu');
+    });
+  });
+
+  group('WorkspaceShellConnector.buildShellRemoteCommand', () {
+    test('embedded profile sends a bare shell request (no command)', () {
+      const profile = SshProfile(
+        id: 'e1',
+        name: 'desktop',
+        host: '127.0.0.1',
+        username: 'u',
+        embeddedTarget: true,
+      );
+
+      expect(
+        WorkspaceShellConnector.buildShellRemoteCommand(
+          profile: profile,
+          executable: HostInteractiveShell.remotePosixExecutable,
+          arguments: const ['-l'],
+          workingDirectory: '/remote',
+          useLoginShell: true,
+        ),
+        isNull,
+      );
+    });
+
+    test('legacy profile keeps the pre-codec POSIX login-shell command', () {
+      const profile = SshProfile(
+        id: 'p1',
+        name: 'box',
+        host: '127.0.0.1',
+        username: 'u',
+      );
+
+      final command = WorkspaceShellConnector.buildShellRemoteCommand(
+        profile: profile,
+        executable: HostInteractiveShell.remotePosixExecutable,
+        arguments: const ['-l'],
+        workingDirectory: '/remote',
+        useLoginShell: true,
+      );
+
+      expect(command, startsWith(r'TERM="${TERM:-xterm-256color}" bash -lc '));
+      // Byte-for-byte what the code built before the codec existed.
+      expect(
+        command,
+        RemoteFlashskyaiCommandBuilder().buildCommand(
+          remoteExecutablePath: HostInteractiveShell.remotePosixExecutable,
+          arguments: const ['-l'],
+          workingDirectory: '/remote',
+          useLoginShell: true,
+        ),
+      );
+    });
+  });
+
+  group('WorkspaceShellConnector.buildShellEnvironment', () {
+    test('embedded profile rides the working directory in the pty env', () {
+      const profile = SshProfile(
+        id: 'e1',
+        name: 'desktop',
+        host: '127.0.0.1',
+        username: 'u',
+        embeddedTarget: true,
+      );
+
+      expect(
+        WorkspaceShellConnector.buildShellEnvironment(
+          profile: profile,
+          workingDirectory: '/remote/work',
+        ),
+        {SSHPtyDimensions.workingDirectoryEnv: '/remote/work'},
+      );
+    });
+
+    test('embedded profile without a working directory sends no env', () {
+      const profile = SshProfile(
+        id: 'e1',
+        name: 'desktop',
+        host: '127.0.0.1',
+        username: 'u',
+        embeddedTarget: true,
+      );
+
+      expect(
+        WorkspaceShellConnector.buildShellEnvironment(
+          profile: profile,
+          workingDirectory: '  ',
+        ),
+        isNull,
+      );
+    });
+
+    test('legacy profile sends no env (its cwd rides the command string)', () {
+      const profile = SshProfile(
+        id: 'p1',
+        name: 'box',
+        host: '127.0.0.1',
+        username: 'u',
+      );
+
+      expect(
+        WorkspaceShellConnector.buildShellEnvironment(
+          profile: profile,
+          workingDirectory: '/remote/work',
+        ),
+        isNull,
+      );
     });
   });
 }

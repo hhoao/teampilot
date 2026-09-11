@@ -369,7 +369,7 @@ SshPairingOffer _offerWithRelay() => const SshPairingOffer(
 );
 
 String _unsupportedOfferCode() {
-  final json = _offer().toJson()..['v'] = 2;
+  final json = _offer().toJson()..['v'] = 3;
   final code = base64Url
       .encode(utf8.encode(jsonEncode(json)))
       .replaceAll('=', '');

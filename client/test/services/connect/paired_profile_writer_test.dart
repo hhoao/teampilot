@@ -13,9 +13,12 @@ import '../../support/in_memory_filesystem.dart';
 SshPairingOffer offer({
   List<SshReachabilityEndpoint>? endpoints,
   List<String> hostKeyFingerprints = const ['SHA256:host-key'],
+  int v = 1,
+  bool? emb,
 }) {
   return SshPairingOffer(
-    v: 1,
+    v: v,
+    emb: emb,
     hostId: 'AbCdEf0123_-xyZ9',
     username: 'alice',
     displayName: 'Alice desktop',
@@ -152,6 +155,27 @@ void main() {
         saved.singleWhere((profile) => profile.id == 'manual').host,
         'manual.example.test',
       );
+    },
+  );
+
+  test(
+    'sets embeddedTarget from the offer emb flag on create and update',
+    () async {
+      final embedded = await writer.upsert(
+        offer: offer(v: 2, emb: true),
+        result: const PairingPostResult(ok: true, profileHint: 'Alice desktop'),
+        devicePem: 'PRIVATE KEY',
+      );
+      expect(embedded.embeddedTarget, isTrue);
+
+      // A later v1 offer from the same desktop clears the flag on update.
+      final v1 = await writer.upsert(
+        offer: offer(),
+        result: const PairingPostResult(ok: true, profileHint: 'Alice desktop'),
+        devicePem: 'PRIVATE KEY',
+      );
+      expect(v1.id, embedded.id);
+      expect(v1.embeddedTarget, isFalse);
     },
   );
 

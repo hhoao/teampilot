@@ -2,7 +2,6 @@ import 'dart:convert';
 
 import 'package:crypto/crypto.dart';
 
-import 'authorized_keys_file.dart';
 import 'pairing_token_gate.dart';
 
 class PairingPostBody {
@@ -40,10 +39,20 @@ class PairingHttpException implements Exception {
   String toString() => 'PairingHttpException($code)';
 }
 
+/// Receives an accepted pairing device registration. Implemented by
+/// `PairedDeviceStore.issueDevice` in production; throwing [ArgumentError]
+/// maps to the `invalid` pairing error code.
+typedef PairingDeviceSink =
+    Future<void> Function({
+      required String deviceId,
+      required String deviceName,
+      required String publicKey,
+    });
+
 Future<PairingPostResult> handlePairingPost({
   required PairingPostBody body,
   required PairingTokenGate gate,
-  required AuthorizedKeysFile keys,
+  required PairingDeviceSink acceptDevice,
   required DateTime now,
   required String profileHint,
   String? relayGrant,
@@ -55,10 +64,10 @@ Future<PairingPostResult> handlePairingPost({
     throw PairingHttpException(gate.hasActiveToken ? 'used' : 'invalid');
   }
   try {
-    await keys.upsertDevice(
-      publicKey: body.publicKey,
+    await acceptDevice(
       deviceId: body.deviceId,
       deviceName: body.deviceName,
+      publicKey: body.publicKey,
     );
   } on ArgumentError {
     throw const PairingHttpException('invalid');
