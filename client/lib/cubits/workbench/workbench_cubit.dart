@@ -192,6 +192,18 @@ class WorkbenchCubit extends Cubit<WorkbenchState> {
     return null;
   }
 
+  static WorkbenchGroupLayout _applyAutomaticTarget(
+    WorkbenchGroupLayout previous,
+    WorkbenchGroupLayout next,
+    String targetGroupId,
+  ) {
+    if (previous.maximizedGroupId != null &&
+        previous.maximizedGroupId != targetGroupId) {
+      return next.copyWith(maximizedGroupId: null);
+    }
+    return next;
+  }
+
   static TabStrip _focusedStrip(WorkbenchGroupLayout layout) {
     final strip = layout.groups[layout.focusedGroupId];
     assert(
@@ -389,10 +401,15 @@ class WorkbenchCubit extends Cubit<WorkbenchState> {
         activate: activate,
       );
       if (nextLayout == null) return null;
+      final visibleLayout = _applyAutomaticTarget(
+        layout,
+        nextLayout,
+        nextLayout.focusedGroupId,
+      );
       emit(
         center
-            ? _withCenter(workspaceId, nextLayout)
-            : _withFloating(workspaceId, nextLayout),
+            ? _withCenter(workspaceId, visibleLayout)
+            : _withFloating(workspaceId, visibleLayout),
       );
       return null;
     }
@@ -407,10 +424,15 @@ class WorkbenchCubit extends Cubit<WorkbenchState> {
       groups: {...layout.groups, targetGroupId: next},
       focusedGroupId: targetGroupId,
     );
+    final visibleLayout = _applyAutomaticTarget(
+      layout,
+      nextLayout,
+      targetGroupId,
+    );
     emit(
       center
-          ? _withCenter(workspaceId, nextLayout)
-          : _withFloating(workspaceId, nextLayout),
+          ? _withCenter(workspaceId, visibleLayout)
+          : _withFloating(workspaceId, visibleLayout),
     );
     return replaced;
   }

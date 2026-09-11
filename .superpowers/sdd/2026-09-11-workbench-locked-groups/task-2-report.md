@@ -51,3 +51,16 @@ task.
   nearest-leaf, and adjacent-group automatic routing.
 - Focused verification after the fixes: `cd client && dart run tool/run_tests.dart
   test/cubits/workbench/workbench_cubit_test.dart` — 48 tests passed.
+
+## Maximized-group visibility fix
+
+- Added Cubit-side automatic-target handling that clears
+  `maximizedGroupId` when the destination group differs from the previous
+  maximized group, including the all-locked `openInNewGroup` path.
+- Automatic placement within the maximized group preserves maximization.
+- Added center fallback, center preservation, and floating all-locked sibling
+  regression tests.
+- Focused verification after the fix: `cd client && dart run tool/run_tests.dart
+  test/cubits/workbench/workbench_cubit_test.dart` — 52 tests passed.
+- Relevant reducer verification: `cd client && dart run tool/run_tests.dart
+  test/cubits/workbench/workbench_split_layout_test.dart` — 62 tests passed.

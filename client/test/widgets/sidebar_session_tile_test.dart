@@ -394,6 +394,8 @@ void main() {
         child: SidebarSessionTile(
           session: _session.copyWith(archived: true),
           archiveMode: true,
+          workbenchGroupLocked: false,
+          onToggleWorkbenchGroupLock: () {},
           onTap: () {},
         ),
       ),

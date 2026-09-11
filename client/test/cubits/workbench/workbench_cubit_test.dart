@@ -379,6 +379,37 @@ void main() {
       expect(layout.groups[layout.leafGroupIds[0]]!.order, [_s1]);
     });
 
+    test('maximized center group clears when fallback targets another group', () {
+      cubit
+        ..openSession(_ws, 's1')
+        ..openSession(_ws, 's2')
+        ..splitTab(_ws, _s2, axis: Axis.horizontal, before: false);
+      final maximized = cubit.centerLayout(_ws).focusedGroupId;
+      cubit
+        ..toggleMaximizeGroup(_ws, maximized)
+        ..toggleGroupLock(_ws, maximized)
+        ..openSession(_ws, 's3');
+      final layout = cubit.centerLayout(_ws);
+      expect(layout.maximizedGroupId, isNull);
+      expect(layout.focusedGroupId, 'g0');
+      expect(layout.groups['g0']!.order, [_s1, _s3]);
+    });
+
+    test('maximized center group is preserved when it accepts a new tab', () {
+      cubit
+        ..openSession(_ws, 's1')
+        ..openSession(_ws, 's2')
+        ..splitTab(_ws, _s2, axis: Axis.horizontal, before: false);
+      final maximized = cubit.centerLayout(_ws).focusedGroupId;
+      cubit
+        ..toggleMaximizeGroup(_ws, maximized)
+        ..openSession(_ws, 's3');
+      final layout = cubit.centerLayout(_ws);
+      expect(layout.maximizedGroupId, maximized);
+      expect(layout.focusedGroupId, maximized);
+      expect(layout.groups[maximized]!.order, [_s2, _s3]);
+    });
+
     test('reopening an existing tab activates its locked owning group', () {
       cubit.openSession(_ws, 's1');
       cubit.openSession(_ws, 's2');
@@ -413,6 +444,31 @@ void main() {
       expect(cubit.floatingLayout(_ws).groups.values.expand((s) => s.order),
           contains(WorkbenchTabId.file('/f3.dart')));
       expect(cubit.floatingLayout(_ws).groups, hasLength(3));
+    });
+
+    test('maximized floating group clears when all-locked placement creates one',
+        () {
+      cubit
+        ..openFloating(_ws, WorkbenchTabId.file('/f1.dart'))
+        ..openFloating(_ws, WorkbenchTabId.file('/f2.dart'))
+        ..splitTab(
+          _ws,
+          WorkbenchTabId.file('/f2.dart'),
+          axis: Axis.horizontal,
+          before: false,
+          floating: true,
+        );
+      final maximized = cubit.floatingLayout(_ws).focusedGroupId;
+      cubit.toggleMaximizeGroup(_ws, maximized, floating: true);
+      for (final groupId in cubit.floatingLayout(_ws).leafGroupIds) {
+        cubit.toggleGroupLock(_ws, groupId, floating: true);
+      }
+      cubit.openFloating(_ws, WorkbenchTabId.file('/f3.dart'));
+      final layout = cubit.floatingLayout(_ws);
+      expect(layout.maximizedGroupId, isNull);
+      expect(layout.groups[layout.focusedGroupId]!.order, [
+        WorkbenchTabId.file('/f3.dart'),
+      ]);
     });
 
     test('activate focuses the owning group', () {

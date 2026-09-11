@@ -182,7 +182,9 @@ class _SidebarSessionTileState extends State<SidebarSessionTile> {
           icon: Icons.vertical_split_outlined,
           label: l10n.sessionOpenToSide,
         ),
-      if (hasOpenTab && widget.onToggleWorkbenchGroupLock != null)
+      if (!widget.archiveMode &&
+          hasOpenTab &&
+          widget.onToggleWorkbenchGroupLock != null)
         TpActionMenuPopupItem(
           value: 'toggle_workbench_group_lock',
           icon: widget.workbenchGroupLocked == true
@@ -709,7 +711,9 @@ class _SidebarSessionTileState extends State<SidebarSessionTile> {
                           openWorkspaceSessionTabToSide(context, session),
                         ),
                       ),
-                    if (hasOpenTab && widget.onToggleWorkbenchGroupLock != null)
+                    if (!widget.archiveMode &&
+                        hasOpenTab &&
+                        widget.onToggleWorkbenchGroupLock != null)
                       TpActionMenuItem(
                         icon: widget.workbenchGroupLocked == true
                             ? Icons.lock_open_outlined

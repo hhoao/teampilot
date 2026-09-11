@@ -8,6 +8,7 @@ Implemented and committed as `feat(workbench): expose group lock in session side
 
 - Added optional workbench group lock state and toggle callback to `SidebarSessionTile`.
 - Added Lock Group / Unlock Group to the existing right-click popup and Android long-press menu path, while preserving existing actions and excluding archived/manual rows.
+- Guarded both lock-menu paths with `!archiveMode`, including when an archived tile is constructed with a non-null lock callback.
 - Wired split rows to each `SplitSessionGroup` group id and live `lockedGroupIds` state.
 - Wired flat open-session rows to the focused center group id and live lock state.
 - Added equality/hash coverage for split-group lock state.
