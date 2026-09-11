@@ -266,7 +266,12 @@ class SessionLaunchConnectPrepRunner {
           message: error.toString(),
         );
       } else {
-        _host.failSessionConnect(session.sessionId, error.toString());
+        _host.failSessionConnect(
+          session.sessionId,
+          error.toString(),
+          error: error,
+          stackTrace: stackTrace,
+        );
       }
     }
   }

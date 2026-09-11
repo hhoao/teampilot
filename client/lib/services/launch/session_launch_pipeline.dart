@@ -410,7 +410,7 @@ class SessionLaunchPipeline {
           'openMemberTab: default session failed: $e',
           stackTrace: st,
         );
-        _host.failSessionConnect('pending', 'Failed to create session: $e');
+        _host.failSessionConnect('pending', 'Failed to create session: $e', error: e, stackTrace: st);
       }
       return LaunchCompleted();
     }
@@ -495,7 +495,7 @@ class SessionLaunchPipeline {
           'connectPersonalSession: materialize failed: $e',
           stackTrace: st,
         );
-        _host.failSessionConnect('pending', 'Failed to create session: $e');
+        _host.failSessionConnect('pending', 'Failed to create session: $e', error: e, stackTrace: st);
       }
       return;
     }

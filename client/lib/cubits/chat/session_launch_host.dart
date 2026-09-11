@@ -30,7 +30,13 @@ import 'chat_tab_store.dart';
 /// Connect-state transitions owned by [ChatCubit] (via [ChatConnectStateMixin]).
 abstract interface class SessionConnectStatePort {
   void beginSessionConnect(String sessionId);
-  void failSessionConnect(String sessionId, String rawMessage);
+  /// [error]/[stackTrace] carry the original failure when one exists.
+  void failSessionConnect(
+    String sessionId,
+    String rawMessage, {
+    Object? error,
+    StackTrace? stackTrace,
+  });
   void finishSessionConnect(String sessionId);
   void clearLaunchError(String sessionId);
   void setLaunchError(String sessionId, String rawMessage);

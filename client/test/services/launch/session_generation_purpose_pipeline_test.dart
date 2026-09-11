@@ -309,7 +309,12 @@ class _CapturingHost implements SessionLaunchHost {
   void beginSessionConnect(String sessionId) {}
 
   @override
-  void failSessionConnect(String sessionId, String rawMessage) {}
+  void failSessionConnect(
+    String sessionId,
+    String message, {
+    Object? error,
+    StackTrace? stackTrace,
+  }) {}
 
   @override
   void finishSessionConnect(String sessionId) {}

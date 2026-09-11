@@ -68,9 +68,19 @@ mixin ChatConnectStateMixin on Cubit<ChatState> {
     );
   }
 
-  void failSessionConnect(String sessionId, String rawMessage) {
-    appLogger.w(
+  /// [error]/[stackTrace] carry the original failure when one exists — the
+  /// user-facing [rawMessage] is a summary, and losing the cause here made a
+  /// wiring bug look like a generic launch failure.
+  void failSessionConnect(
+    String sessionId,
+    String rawMessage, {
+    Object? error,
+    StackTrace? stackTrace,
+  }) {
+    appLogger.e(
       '[session-launch] connecting failed session=$sessionId: $rawMessage',
+      error: error,
+      stackTrace: stackTrace,
     );
     setLaunchError(sessionId, rawMessage);
     if (sessionId == 'pending') {
