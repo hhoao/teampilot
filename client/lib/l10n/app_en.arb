@@ -613,6 +613,8 @@
   "homeWorkspaceNewConversation": "New Conversation",
   "homeWorkspaceNewConversationChooseCli": "New conversation with CLI…",
   "workbenchStripNewMenuTooltip": "New",
+  "workbenchLockGroup": "Lock Group",
+  "workbenchUnlockGroup": "Unlock Group",
   "homeWorkspaceNoConversations": "No conversations in this workspace yet",
   "homeWorkspaceSearchHint": "Search",
   "homeWorkspaceNoSearchResults": "No conversations match your search",

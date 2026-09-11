@@ -2498,6 +2498,18 @@ abstract class AppLocalizations {
   /// **'New'**
   String get workbenchStripNewMenuTooltip;
 
+  /// No description provided for @workbenchLockGroup.
+  ///
+  /// In en, this message translates to:
+  /// **'Lock Group'**
+  String get workbenchLockGroup;
+
+  /// No description provided for @workbenchUnlockGroup.
+  ///
+  /// In en, this message translates to:
+  /// **'Unlock Group'**
+  String get workbenchUnlockGroup;
+
   /// No description provided for @homeWorkspaceNoConversations.
   ///
   /// In en, this message translates to:

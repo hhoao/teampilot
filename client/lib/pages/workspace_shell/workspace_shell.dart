@@ -36,6 +36,7 @@ class WorkspaceShell extends StatelessWidget {
     this.newTerminalLabel = '',
     this.onNewConversation,
     this.onNewTerminal,
+    this.tabBarTrailing,
     super.key,
   });
 
@@ -68,6 +69,7 @@ class WorkspaceShell extends StatelessWidget {
 
   /// "+" action at the end of the session tab row — New conversation / terminal.
   final bool showNewChatButton;
+
   /// Master switch for the center tab strip; false skips the row entirely.
   final bool showTabBar;
   final String newChatTooltip;
@@ -75,6 +77,9 @@ class WorkspaceShell extends StatelessWidget {
   final String newTerminalLabel;
   final VoidCallback? onNewConversation;
   final void Function(Offset anchor)? onNewTerminal;
+
+  /// Group-scoped control inserted after the new-chat button in the tab row.
+  final Widget? tabBarTrailing;
 
   @override
   Widget build(BuildContext context) {
@@ -107,23 +112,25 @@ class WorkspaceShell extends StatelessWidget {
                         breadcrumb,
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
-                        style: TpTextStyles.of(context).xsColored(textBase.withValues(alpha: 0.52),
-                        ),
+                        style: TpTextStyles.of(
+                          context,
+                        ).xsColored(textBase.withValues(alpha: 0.52)),
                       ),
                       const SizedBox(height: 3),
                       Text(
                         title,
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
-                        style: TpTextStyles.of(context).mdBoldColored(textBase,),
+                        style: TpTextStyles.of(context).mdBoldColored(textBase),
                       ),
                       const SizedBox(height: 2),
                       Text(
                         subtitle,
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
-                        style: TpTextStyles.of(context).xsColored(textBase.withValues(alpha: 0.58),
-                        ),
+                        style: TpTextStyles.of(
+                          context,
+                        ).xsColored(textBase.withValues(alpha: 0.58)),
                       ),
                     ],
                   ),
@@ -159,14 +166,25 @@ class WorkspaceShell extends StatelessWidget {
                     onNewTerminal: onNewTerminal,
                   )
                 : null,
-            trailing: actions.isNotEmpty && showHeader
-                ? Padding(
-                    padding: const EdgeInsets.only(left: 8),
-                    child: Wrap(spacing: 6, children: actions),
-                  )
-                : null,
+            trailing:
+                tabBarTrailing == null && !(actions.isNotEmpty && showHeader)
+                ? null
+                : Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      if (tabBarTrailing != null) tabBarTrailing!,
+                      if (actions.isNotEmpty && showHeader)
+                        Padding(
+                          padding: const EdgeInsets.only(left: 8),
+                          child: Wrap(spacing: 6, children: actions),
+                        ),
+                    ],
+                  ),
           ),
-        if (tabs.isEmpty && !showNewChatButton && actions.isNotEmpty && showHeader)
+        if (tabs.isEmpty &&
+            !showNewChatButton &&
+            actions.isNotEmpty &&
+            showHeader)
           WorkspaceShellActionsBar(actions: actions),
         Expanded(child: child),
       ],

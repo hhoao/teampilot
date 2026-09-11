@@ -183,4 +183,36 @@ void main() {
     final newChat = tester.getTopLeft(find.byType(WorkspaceShellNewChatButton));
     expect(newChat.dx, greaterThan(lastTab.dx));
   });
+
+  testWidgets('tab bar trailing control sits after new-chat control', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      _wrapShell(
+        const WorkspaceShell(
+          showHeader: false,
+          breadcrumb: 'Team / Chat',
+          title: 'Chat',
+          subtitle: 'Terminal',
+          actions: [],
+          showNewChatButton: true,
+          newChatTooltip: 'New',
+          newConversationLabel: 'New Conversation',
+          newTerminalLabel: 'New terminal',
+          tabs: [TabInfo(id: 's1', title: 'Session')],
+          tabBarTrailing: KeyedSubtree(
+            key: ValueKey('tab-bar-trailing'),
+            child: SizedBox(width: 24, height: 24),
+          ),
+          child: Text('Session body'),
+        ),
+      ),
+    );
+
+    final newChat = tester.getTopLeft(find.byType(WorkspaceShellNewChatButton));
+    final trailing = tester.getTopLeft(
+      find.byKey(const ValueKey('tab-bar-trailing')),
+    );
+    expect(trailing.dx, greaterThan(newChat.dx));
+  });
 }

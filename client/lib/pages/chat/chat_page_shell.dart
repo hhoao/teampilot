@@ -129,9 +129,9 @@ class _ChatWorkspaceShell extends StatelessWidget {
           return const SizedBox.shrink();
         }
         final runtimeTabs = _runtimeTabsForScope(cubit, tabScopeId);
-        final shellGroup = context
-            .read<WorkspaceTerminalRegistry>()
-            .groupFor(tabScopeId);
+        final shellGroup = context.read<WorkspaceTerminalRegistry>().groupFor(
+          tabScopeId,
+        );
         final shellEntries = shellGroup.entries;
         final shellTitles = {
           for (final entry in shellEntries)
@@ -168,8 +168,7 @@ class _ChatWorkspaceShell extends StatelessWidget {
               tabScopeId: tabScopeId,
             );
             final singleGroup = layout.groups.length == 1;
-            final chatActions =
-                active.isPersonal || active.team == null
+            final chatActions = active.isPersonal || active.team == null
                 ? const <Widget>[]
                 : _chatActions(context, active.team!);
 
@@ -177,8 +176,10 @@ class _ChatWorkspaceShell extends StatelessWidget {
               layout: layout,
               holdHandle: holdHandle,
               splitEnabled: splitEnabled,
-              onResizeCommit: (commits) => workbench
-                  .commitSplitResizeBatch(workspaceId, commits: commits),
+              onResizeCommit: (commits) => workbench.commitSplitResizeBatch(
+                workspaceId,
+                commits: commits,
+              ),
               onGroupFocused: routeActive
                   ? (id) => workbench.focusGroup(workspaceId, id)
                   : null,
@@ -205,6 +206,10 @@ class _ChatWorkspaceShell extends StatelessWidget {
                   shellTitles: shellTitles,
                   showTabBar: showTabBar,
                   splitEnabled: splitEnabled,
+                  isGroupLocked: layout.lockedGroupIds.contains(groupId),
+                  onToggleGroupLock: routeActive
+                      ? () => workbench.toggleGroupLock(workspaceId, groupId)
+                      : null,
                   holdHandle: holdHandle,
                   sessionId: sessionId,
                   actions: singleGroup ? const [] : chatActions,

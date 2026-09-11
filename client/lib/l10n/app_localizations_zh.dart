@@ -1281,6 +1281,12 @@ class AppLocalizationsZh extends AppLocalizations {
   String get workbenchStripNewMenuTooltip => '新建';
 
   @override
+  String get workbenchLockGroup => '锁定组';
+
+  @override
+  String get workbenchUnlockGroup => '解锁组';
+
+  @override
   String get homeWorkspaceNoConversations => '该工作区还没有对话';
 
   @override

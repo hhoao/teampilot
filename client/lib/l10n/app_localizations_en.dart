@@ -1344,6 +1344,12 @@ class AppLocalizationsEn extends AppLocalizations {
   String get workbenchStripNewMenuTooltip => 'New';
 
   @override
+  String get workbenchLockGroup => 'Lock Group';
+
+  @override
+  String get workbenchUnlockGroup => 'Unlock Group';
+
+  @override
   String get homeWorkspaceNoConversations =>
       'No conversations in this workspace yet';
 
