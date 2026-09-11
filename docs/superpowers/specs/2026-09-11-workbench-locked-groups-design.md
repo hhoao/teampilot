@@ -1,7 +1,7 @@
 # Workbench Locked Groups Design
 
 Date: 2026-09-11
-Status: Draft for user review
+Status: Approved
 
 ## Problem
 
@@ -77,6 +77,8 @@ WorkbenchGroupLayout? openInNewGroup(
   required WorkbenchTabId tab,
   required Axis axis,
   required bool before,
+  bool preview = false,
+  bool activate = true,
 });
 ```
 
@@ -87,10 +89,13 @@ lock state. Collapsing/resetting the layout clears all locks because the
 operation creates a new single-group layout state.
 
 `openInNewGroup` is needed because the tab does not yet belong to a source
-group. It inserts a new sibling leaf beside `targetGroupId`, creates an active
-single-tab strip for the new group, focuses that group, and leaves the target
-group's tabs unchanged. It returns null only when the target is not a live
-leaf or the tab already exists in the layout.
+group. For a non-empty target it inserts a new sibling leaf beside
+`targetGroupId`, creates a single-tab strip using the requested `preview` and
+`activate` values, focuses the new group when `activate` is true, and leaves
+the target group's tabs unchanged. If the target is the sole empty root group,
+it replaces that empty leaf in place with the new unlocked group; this avoids
+creating an illegal empty non-root pane. It returns null only when the target
+is not a live leaf or the tab already exists in the layout.
 
 ## Automatic new-tab placement
 
@@ -104,8 +109,11 @@ open methods use the same policy for their selected layout.
 3. Otherwise, inspect live leaves in depth-first order and choose the nearest
    unlocked group by leaf-order distance from the focused group. If both sides
    are equally near, prefer the group to the right/bottom (the later leaf).
-4. If no unlocked group exists, call `openInNewGroup` beside the focused group
-   using a horizontal right split. The new group is unlocked and focused.
+4. If no unlocked group exists and the focused group has tabs, call
+   `openInNewGroup` beside it using a horizontal right split. The new group is
+   unlocked and focused. If the focused group is the sole empty root, replace
+   that empty root in place with the new unlocked group; no empty pane is
+   retained.
 
 Opening into a fallback group focuses that group so the newly opened tab is
 immediately visible. Manual drag/move and explicit split commands continue to
@@ -179,10 +187,11 @@ or lifecycle is required.
 - Pruning the last non-root locked group repairs the lock set before emitting.
 - If the focused group is locked and exactly one other group is unlocked, the
   new tab opens in that other group; no new split is created.
-- If all groups are locked, the automatically created sibling is unlocked,
-  focused, and receives the new tab.
-- If the layout is a single locked group with no tabs, opening a new tab still
-  creates a sibling group rather than silently violating the lock.
+- If all non-empty groups are locked, the automatically created sibling is
+  unlocked, focused, and receives the new tab.
+- If the layout is a single locked group with no tabs, that empty root is
+  replaced in place by a new unlocked group receiving the tab; an empty
+  locked pane is never retained.
 - The lock does not affect `centerActiveId` / `floatingActiveId`; these remain
   focused-group reads.
 - Narrow-screen rendering continues to show only the focused group. Lock state
