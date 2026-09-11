@@ -117,15 +117,42 @@ branches are allowed.
 
 ## UI
 
-Each group header exposes a lock toggle:
+Each group header exposes a lock toggle. In the center Session bar, the
+button is placed in the existing Tab-row trailing area, immediately after the
+new-tab button and before any other trailing actions:
+
+```text
+[ session tabs ... ] [ + ] [ lock group ] [ other actions ]
+```
+
+This makes the control available beside the tabs while keeping it outside the
+scrollable tab list. Every split group gets its own copy of this control.
+
+The left sidebar's already-open Session rows also expose the same action in
+their existing right-click / long-press menu. A row rendered from the split
+group open-session section carries its owning `groupId`; the menu label is
+“Lock Group” or “Unlock Group” and acts on that owning group. This remains
+available even when the Session tab bar is hidden. The menu must not lock the
+manual Session category/group; it locks the workbench split group containing
+the opened Session tab.
+
+For the floating workspace:
+
+- in multi-group mode, put the button at the right end of each pane's slim
+  group header, after that group's tabs;
+- in single-group or narrow mode, the outer floating title bar is the only
+  group header, so put it after `+` and before the window-level minimize /
+  maximize / close controls.
+
+The button states are:
 
 - unlocked: open-lock affordance and tooltip “Lock Group”;
 - locked: closed-lock affordance and tooltip “Unlock Group”.
 
-The center group header and floating group header both dispatch the same
-group-aware cubit operation. The lock icon should be visible without relying
-on hover, so the state is discoverable on desktop and mobile. The focused
-group highlight remains independent from the lock indicator.
+The center header, sidebar menu, and floating group header all dispatch the
+same group-aware cubit operation. The lock icon should be visible without
+relying on hover, so the state is discoverable on desktop and mobile. The
+focused group highlight remains independent from the lock indicator.
 
 Add the corresponding English and Chinese strings only to
 `client/lib/l10n/app_en.arb` and `client/lib/l10n/app_zh.arb`.
@@ -186,8 +213,10 @@ Workbench cubit tests in
 - center and floating layouts apply the same policy independently.
 
 Widget tests for the center and floating group headers verify the lock icon,
-tooltip/callback, and that focus highlighting remains independent. Persistence
-tests verify the new field through the existing snapshot repository.
+tooltip/callback, and that focus highlighting remains independent. Sidebar
+tests verify that an opened Session row's context menu targets its owning split
+group and remains available when the tab bar is hidden. Persistence tests
+verify the new field through the existing snapshot repository.
 
 All tests use `cd client && dart run tool/run_tests.dart ...`; never invoke
 `flutter test` directly.
@@ -198,8 +227,9 @@ All tests use `cd client && dart run tool/run_tests.dart ...`; never invoke
 | --- | --- |
 | Lock metadata, reducer, validation, snapshot codec | `client/lib/cubits/workbench/workbench_split_layout.dart` |
 | Automatic target-group selection and lock API | `client/lib/cubits/workbench/workbench_cubit.dart` |
-| Center lock affordance | `client/lib/pages/workbench/workbench_group_host.dart` |
-| Floating lock affordance | `client/lib/pages/floating_workspace/floating_group_host.dart` |
+| Center lock affordance in Session Tab row | `client/lib/pages/workbench/workbench_group_host.dart`, `client/lib/pages/workspace_shell/workspace_shell.dart` |
+| Opened Session row context menu | `client/lib/pages/home_workspace/workspace/workspace_sidebar.dart`, `client/lib/widgets/sidebar_session_tile.dart` |
+| Floating lock affordance | `client/lib/pages/floating_workspace/floating_group_host.dart`, `client/lib/pages/floating_workspace/floating_workspace_panel.dart` |
 | Snapshot compatibility | `client/lib/repositories/workbench_layout_snapshot_repository.dart` and codec callers |
 | Localized labels/tooltips | `client/lib/l10n/app_en.arb`, `client/lib/l10n/app_zh.arb` |
 | Reducer, cubit, widget, and persistence tests | corresponding `client/test/...` files |
