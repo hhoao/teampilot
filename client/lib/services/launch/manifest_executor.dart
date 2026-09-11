@@ -1,6 +1,7 @@
 import 'dart:convert';
 
 import 'package:flutter/foundation.dart';
+import 'package:path/path.dart' as p;
 
 import '../../models/ssh_profile.dart';
 import '../../utils/logging/logger.dart';
@@ -21,6 +22,7 @@ class ManifestExecutor {
     required Filesystem targetFs,
     required Filesystem sourceFs,
     String? sshProfileId,
+    String? symlinkProjectionRoot,
   }) async {
     final runner = SshWorkPlaneScriptRunner.tryCreate(
       sshProfileId: sshProfileId,
@@ -32,7 +34,11 @@ class ManifestExecutor {
       // one script. Cross-machine off-home still expands local copies first.
       final toApply = identical(sourceFs, targetFs)
           ? manifest
-          : await _expandCopies(manifest, sourceFs);
+          : await _expandCopies(
+              manifest,
+              sourceFs,
+              symlinkProjectionRoot: symlinkProjectionRoot,
+            );
       await _flushViaSsh(runner: runner, manifest: toApply);
       return;
     }
@@ -40,6 +46,7 @@ class ManifestExecutor {
       manifest: manifest,
       targetFs: targetFs,
       sourceFs: sourceFs,
+      symlinkProjectionRoot: symlinkProjectionRoot,
     );
   }
 
@@ -47,11 +54,16 @@ class ManifestExecutor {
     required LaunchManifest manifest,
     required Filesystem targetFs,
     required Filesystem sourceFs,
+    String? symlinkProjectionRoot,
   }) async {
     final expandSw = Stopwatch()..start();
     final applied = identical(sourceFs, targetFs)
         ? manifest
-        : await _expandCopies(manifest, sourceFs);
+        : await _expandCopies(
+            manifest,
+            sourceFs,
+            symlinkProjectionRoot: symlinkProjectionRoot,
+          );
     if (!identical(sourceFs, targetFs)) {
       appLogger.d(
         '[session-launch] manifest expand-copies '
@@ -109,10 +121,7 @@ class ManifestExecutor {
       }
     }
     final summary = byKindCount.keys
-        .map(
-          (k) =>
-              '$k=${byKindCount[k]}x/${byKindMs[k]}ms',
-        )
+        .map((k) => '$k=${byKindCount[k]}x/${byKindMs[k]}ms')
         .join(' ');
     appLogger.d(
       '[session-launch] manifest flush-local '
@@ -128,17 +137,15 @@ class ManifestExecutor {
     appLogger.d(
       '[session-launch] manifest flush via ssh ops=${manifest.entries.length}',
     );
-    await runner.runScript(
-      script,
-      operation: 'Launch manifest apply',
-    );
+    await runner.runScript(script, operation: 'Launch manifest apply');
   }
 
   /// Expands copy ops into concrete file writes for SSH (sources read on control plane).
   Future<LaunchManifest> _expandCopies(
     LaunchManifest manifest,
-    Filesystem sourceFs,
-  ) async {
+    Filesystem sourceFs, {
+    String? symlinkProjectionRoot,
+  }) async {
     final out = LaunchManifest(pathContext: manifest.pathContext);
     for (final entry in manifest.entries) {
       switch (entry) {
@@ -147,7 +154,23 @@ class ManifestExecutor {
         case ManifestWriteFile(:final path, :final content):
           out.writeFile(path, content);
         case ManifestSymlink(:final linkPath, :final target):
-          out.symlink(linkPath: linkPath, target: target);
+          if (_isSymlinkTargetWithinRoot(
+            target: target,
+            linkPath: linkPath,
+            root: symlinkProjectionRoot,
+            pathContext: manifest.pathContext,
+          )) {
+            out.symlink(linkPath: linkPath, target: target);
+          } else if (symlinkProjectionRoot == null) {
+            out.symlink(linkPath: linkPath, target: target);
+          } else {
+            await _expandExternalSymlink(
+              sourceFs: sourceFs,
+              target: target,
+              linkPath: linkPath,
+              manifest: out,
+            );
+          }
         case ManifestRemoveRecursive(:final path):
           out.removeRecursive(path);
         case ManifestRename(:final from, :final to):
@@ -169,6 +192,92 @@ class ManifestExecutor {
       }
     }
     return out;
+  }
+
+  Future<void> _expandExternalSymlink({
+    required Filesystem sourceFs,
+    required String target,
+    required String linkPath,
+    required LaunchManifest manifest,
+    Set<String>? visited,
+  }) async {
+    final currentTarget = _resolveSymlinkTarget(
+      target: target,
+      linkPath: linkPath,
+      pathContext: manifest.pathContext,
+    );
+    final seen = visited ?? <String>{};
+    if (!seen.add(currentTarget)) {
+      throw StateError(
+        'Launch manifest external symlink cycle: $currentTarget',
+      );
+    }
+
+    final stat = await sourceFs.lstat(currentTarget);
+    if (stat.isFile) {
+      await _expandCopyFile(
+        sourceFs: sourceFs,
+        source: currentTarget,
+        destination: linkPath,
+        manifest: manifest,
+      );
+      return;
+    }
+    if (stat.isDirectory) {
+      await _expandCopyTree(
+        sourceFs: sourceFs,
+        source: currentTarget,
+        destination: linkPath,
+        manifest: manifest,
+      );
+      return;
+    }
+    if (stat.isSymlink) {
+      final nextTarget = await sourceFs.readSymlinkTarget(currentTarget);
+      if (nextTarget != null) {
+        await _expandExternalSymlink(
+          sourceFs: sourceFs,
+          target: nextTarget,
+          linkPath: currentTarget,
+          manifest: manifest,
+          visited: seen,
+        );
+        return;
+      }
+    }
+    throw StateError(
+      'Launch manifest external symlink target missing on control plane: '
+      '$currentTarget',
+    );
+  }
+
+  static bool _isSymlinkTargetWithinRoot({
+    required String target,
+    required String linkPath,
+    required String? root,
+    required p.Context pathContext,
+  }) {
+    if (root == null) return false;
+    final normalizedRoot = pathContext.normalize(pathContext.absolute(root));
+    final effectiveTarget = pathContext.isAbsolute(target)
+        ? target
+        : pathContext.join(pathContext.dirname(linkPath), target);
+    final normalizedTarget = pathContext.normalize(
+      pathContext.absolute(effectiveTarget),
+    );
+    return normalizedTarget == normalizedRoot ||
+        pathContext.isWithin(normalizedRoot, normalizedTarget);
+  }
+
+  static String _resolveSymlinkTarget({
+    required String target,
+    required String linkPath,
+    required p.Context pathContext,
+  }) {
+    final effectiveTarget = pathContext.isAbsolute(target)
+        ? target
+        : pathContext.join(pathContext.dirname(linkPath), target);
+    return pathContext.normalize(effectiveTarget);
   }
 
   Future<void> _expandCopyFile({

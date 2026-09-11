@@ -349,7 +349,7 @@ final class CodexProviderCapability extends CatalogModelCapability
 
     await paths.fs.ensureDir(codexHome);
     try {
-      await paths.layout.ensureSessionInheritsCodexTmpPlugins(
+      await paths.layout.ensureSessionOwnsCodexTmpPlugins(
         ctx.scope.workspaceId,
         ctx.scope.sessionId,
         memberId: ctx.scope.memberId,

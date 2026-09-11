@@ -103,6 +103,46 @@ void main() {
     expect(ranScript, isNot(contains('cat >')));
   });
 
+  test('cross-machine ssh flush copies external symlink targets', () async {
+    String? ranScript;
+    const profile = SshProfile(
+      id: 'p1',
+      name: 'dev',
+      host: 'example.com',
+      username: 'alice',
+    );
+    final factory = SshClientFactory(
+      credentialStore: InMemorySshCredentialStore(),
+      knownHostRepository: InMemorySshKnownHostRepository(),
+      connector: (profile, {timeout = const Duration(seconds: 10)}) async {
+        return _RunnableClient(onRun: (command) => ranScript = command);
+      },
+    );
+    final source = InMemoryFilesystem();
+    final target = InMemoryFilesystem();
+    await source.writeString('/home/alice/.claude.json', 'credentials');
+    final manifest = LaunchManifest()
+      ..symlink(
+        linkPath: '/home/alice/.config/claude.json',
+        target: '/home/alice/.claude.json',
+      );
+
+    await ManifestExecutor(
+      sshClientFactory: factory,
+      profileById: (_) => profile,
+    ).flush(
+      manifest: manifest,
+      targetFs: target,
+      sourceFs: source,
+      symlinkProjectionRoot: '/home/alice/.local/share/teampilot',
+      sshProfileId: profile.id,
+    );
+
+    expect(ranScript, contains("cat > '/home/alice/.config/claude.json'"));
+    expect(ranScript, contains('credentials'));
+    expect(ranScript, isNot(contains('ln -sfn')));
+  });
+
   test(
     'ssh symlink apply replaces leftover Codex plugins directory',
     () async {

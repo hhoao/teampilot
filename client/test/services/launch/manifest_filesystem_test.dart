@@ -127,6 +127,46 @@ void main() {
     );
 
     test(
+      'cross-plane flush expands a copy from a previously staged tree',
+      () async {
+        final source = InMemoryFilesystem();
+        await source.writeString(
+          '/installed/superpowers/.plugin/plugin.json',
+          '{"name":"superpowers"}',
+        );
+        final target = InMemoryFilesystem();
+        final manifest = LaunchManifest();
+        final staging = ManifestFilesystem(
+          manifest: manifest,
+          readDelegate: source,
+        );
+
+        await staging.copyTree(
+          source: '/installed/superpowers',
+          destination: '/runtime/cursor/plugins/superpowers',
+        );
+        await staging.copyTree(
+          source: '/runtime/cursor/plugins/superpowers/.plugin',
+          destination:
+              '/runtime/cursor/home/.cursor/plugins/local/superpowers/.cursor-plugin',
+        );
+
+        await const ManifestExecutor().flush(
+          manifest: manifest,
+          targetFs: target,
+          sourceFs: source,
+        );
+
+        expect(
+          await target.readString(
+            '/runtime/cursor/home/.cursor/plugins/local/superpowers/.cursor-plugin/plugin.json',
+          ),
+          '{"name":"superpowers"}',
+        );
+      },
+    );
+
+    test(
       'copyTree of a symlink records a symlink instead of duplicating the tree',
       () async {
         final disk = InMemoryFilesystem();
@@ -158,6 +198,64 @@ void main() {
         );
       },
     );
+
+    test('projects external symlinks as copy operations', () async {
+      final disk = InMemoryFilesystem();
+      await disk.writeString('/local/plugins/demo/plugin.json', '{}');
+      await disk.createSymlink(
+        target: '/local/plugins/demo',
+        linkPath: '/remote/pool/demo',
+      );
+
+      final manifest = LaunchManifest();
+      final staging = ManifestFilesystem(
+        manifest: manifest,
+        readDelegate: disk,
+        symlinkProjectionRoot: '/remote',
+      );
+
+      await staging.copyTree(
+        source: '/remote/pool/demo',
+        destination: '/remote/session/plugins/demo',
+      );
+
+      expect(manifest.entries.whereType<ManifestSymlink>(), isEmpty);
+      expect(
+        manifest.entries.whereType<ManifestCopyTree>().map(
+          (entry) => (entry.source, entry.destination),
+        ),
+        contains(('/local/plugins/demo', '/remote/session/plugins/demo')),
+      );
+    });
+
+    test('keeps symlinks whose target is inside the remote root', () async {
+      final disk = InMemoryFilesystem();
+      await disk.writeString('/remote/plugins/demo/plugin.json', '{}');
+      await disk.createSymlink(
+        target: '/remote/plugins/demo',
+        linkPath: '/remote/pool/demo',
+      );
+
+      final manifest = LaunchManifest();
+      final staging = ManifestFilesystem(
+        manifest: manifest,
+        readDelegate: disk,
+        symlinkProjectionRoot: '/remote',
+      );
+
+      await staging.copyTree(
+        source: '/remote/pool/demo',
+        destination: '/remote/session/plugins/demo',
+      );
+
+      expect(
+        manifest.entries.whereType<ManifestSymlink>().map(
+          (entry) => (entry.linkPath, entry.target),
+        ),
+        contains(('/remote/session/plugins/demo', '/remote/plugins/demo')),
+      );
+      expect(manifest.entries.whereType<ManifestCopyTree>(), isEmpty);
+    });
 
     test(
       'copyTree under a staged symlink records the resolved source path',

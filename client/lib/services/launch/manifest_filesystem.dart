@@ -14,10 +14,16 @@ class ManifestFilesystem implements Filesystem {
     required this.manifest,
     required this.readDelegate,
     p.Context? pathContext,
+    this.symlinkProjectionRoot,
   }) : pathContext = pathContext ?? readDelegate.pathContext;
 
   final LaunchManifest manifest;
   final Filesystem readDelegate;
+
+  /// When set, only symlink targets under this root may be represented as
+  /// remote symlinks. Links to the local control plane are projected as copy
+  /// operations by callers such as [copyTree].
+  final String? symlinkProjectionRoot;
 
   @override
   final p.Context pathContext;
@@ -25,8 +31,28 @@ class ManifestFilesystem implements Filesystem {
   final Map<String, String> _overlayFiles = {};
   final Map<String, String> _overlaySymlinks = {};
   final Set<String> _overlayDirs = {};
+  final List<({String source, String destination})> _overlayCopyOrigins = [];
 
   String _normalize(String path) => normalizeWorkPath(this, path);
+
+  bool _canProjectSymlinkTarget(String target, String linkPath) {
+    final root = symlinkProjectionRoot;
+    if (root == null) return true;
+    final normalizedRoot = pathContext.normalize(pathContext.absolute(root));
+    final effectiveTarget = pathContext.isAbsolute(target)
+        ? target
+        : pathContext.join(pathContext.dirname(linkPath), target);
+    final normalizedTarget = pathContext.normalize(
+      pathContext.absolute(effectiveTarget),
+    );
+    return normalizedTarget == normalizedRoot ||
+        pathContext.isWithin(normalizedRoot, normalizedTarget);
+  }
+
+  String _resolvedSymlinkTarget(String target, String linkPath) {
+    if (pathContext.isAbsolute(target)) return _normalize(target);
+    return _normalize(pathContext.join(pathContext.dirname(linkPath), target));
+  }
 
   /// When [path] is under an overlay symlink, return the resolved path on
   /// [readDelegate]. When [path] is the symlink itself, return `null` so
@@ -47,6 +73,22 @@ class ManifestFilesystem implements Filesystem {
     }
   }
 
+  String _resolveSourceForManifest(String path) {
+    path = _normalize(path);
+    for (final copy in _overlayCopyOrigins.reversed) {
+      if (path != copy.destination &&
+          !pathContext.isWithin(copy.destination, path)) {
+        continue;
+      }
+      final relative = pathContext.relative(path, from: copy.destination);
+      final source = relative == '.'
+          ? copy.source
+          : pathContext.join(copy.source, relative);
+      return _resolveViaOverlaySymlink(source) ?? source;
+    }
+    return _resolveViaOverlaySymlink(path) ?? path;
+  }
+
   void _clearOverlayUnder(String path) {
     path = _normalize(path);
     _overlayFiles.removeWhere(
@@ -57,6 +99,11 @@ class ManifestFilesystem implements Filesystem {
     );
     _overlayDirs.removeWhere(
       (key) => key == path || pathContext.isWithin(path, key),
+    );
+    _overlayCopyOrigins.removeWhere(
+      (copy) =>
+          copy.destination == path ||
+          pathContext.isWithin(path, copy.destination),
     );
   }
 
@@ -212,11 +259,7 @@ class ManifestFilesystem implements Filesystem {
   }
 
   @override
-  Future<List<int>?> readBytesRange(
-    String path,
-    int offset,
-    int length,
-  ) async {
+  Future<List<int>?> readBytesRange(String path, int offset, int length) async {
     final all = await readBytes(path);
     if (all == null) return null;
     if (offset >= all.length) return <int>[];
@@ -302,6 +345,7 @@ class ManifestFilesystem implements Filesystem {
   }) async {
     target = _normalize(target);
     linkPath = _normalize(linkPath);
+    if (!_canProjectSymlinkTarget(target, linkPath)) return false;
     await ensureDir(pathContext.dirname(linkPath));
     _overlaySymlinks[linkPath] = target;
     manifest.symlink(linkPath: linkPath, target: target);
@@ -327,13 +371,21 @@ class ManifestFilesystem implements Filesystem {
     if (sourceStat.isSymlink) {
       final target = await readSymlinkTarget(source);
       if (target != null) {
-        await createSymlink(target: target, linkPath: destination);
+        if (await createSymlink(target: target, linkPath: destination)) {
+          return;
+        }
+        source = _resolvedSymlinkTarget(target, source);
       }
-      return;
     }
-    manifest.copyTree(
-      source: _resolveViaOverlaySymlink(source) ?? source,
-      destination: destination,
+    final manifestSource = _resolveSourceForManifest(source);
+    manifest.copyTree(source: manifestSource, destination: destination);
+    _overlayCopyOrigins.removeWhere(
+      (copy) =>
+          copy.destination == destination ||
+          pathContext.isWithin(destination, copy.destination),
+    );
+    _overlayCopyOrigins.add(
+      (source: manifestSource, destination: destination),
     );
     await ensureDir(pathContext.dirname(destination));
     // Populate the overlay too, so a later read in the same staging pass sees
@@ -356,7 +408,13 @@ class ManifestFilesystem implements Filesystem {
     if (sourceStat.isSymlink) {
       final target = await readSymlinkTarget(source);
       if (target != null) {
-        await createSymlink(target: target, linkPath: destination);
+        if (await createSymlink(target: target, linkPath: destination)) {
+          return;
+        }
+        await _copyTreeIntoOverlay(
+          _resolvedSymlinkTarget(target, source),
+          destination,
+        );
       }
       return;
     }
@@ -375,7 +433,7 @@ class ManifestFilesystem implements Filesystem {
     source = _normalize(source);
     destination = _normalize(destination);
     manifest.copyFile(
-      source: _resolveViaOverlaySymlink(source) ?? source,
+      source: _resolveSourceForManifest(source),
       destination: destination,
     );
     await ensureDir(pathContext.dirname(destination));

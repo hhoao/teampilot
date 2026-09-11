@@ -79,7 +79,11 @@ At launch, `RuntimeLayout` links each layer into the session runtime tree (PTY `
 
 For `opencode`, `cli-defaults/opencode/{package.json,package-lock.json,node_modules}` holds a shared `@opencode-ai/plugin` install (seeded on the home/control plane). Session `runtime/…/opencode/` inherits those three names (symlink preferred). Remote work machines receive the tree via `WorkMachineMaterializer`’s `cli-defaults` copy, then inherit in-root.
 
-For `codex`, `cli-defaults/codex/.tmp/plugins/` is the shared plugin cache. Session `runtime/…/codex/.tmp/plugins` inherits it via `RuntimeLayout.ensureSessionInheritsCodexTmpPlugins` (symlink preferred; fat session dirs are replaced or promoted when shared is empty). See [2026-07-31 session runtime shared deps](superpowers/specs/2026-07-31-session-runtime-shared-deps-design.md).
+For `codex`, `cli-defaults/codex/.tmp/plugins/` is a control-plane cache and is
+never inherited by remote sessions. Each session creates an owned
+`runtime/…/codex/.tmp/plugins` directory; the native plugin capability fills it
+from the active launch closure. Remote materialization deliberately excludes
+the shared cache and repository metadata.
 
 Session skills/plugins/MCP ids merge as `team > expert > workspace` via `LayeredConfigBundle` / `SessionRuntimePlan` (see [2026-07-10 expert capability pack](superpowers/specs/2026-07-10-expert-capability-pack-design.md)).
 

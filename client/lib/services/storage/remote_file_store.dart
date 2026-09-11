@@ -49,10 +49,32 @@ class RemoteFileStore {
 
   Future<SftpClient> _ensureConnected() => _clientFactory.sftpFor(_profile);
 
-  /// Marks an SFTP data op as in-flight for this profile so evictions defer
-  /// the pooled client close until it completes.
-  Future<T> _tracked<T>(Future<T> Function() op) =>
-      _clientFactory.runTracked(_profile.id, op);
+  Future<T> _tracked<T>(
+    Future<T> Function() operation, {
+    bool retryOnTransportClosure = true,
+  }) => _clientFactory.runTracked(_profile.id, () async {
+    try {
+      return await operation();
+    } on Object catch (error) {
+      if (!retryOnTransportClosure || !_isRetryableTransportClosure(error)) {
+        rethrow;
+      }
+      // sftpFor() probes and discards a closed SFTP channel on the next
+      // acquisition. Retrying once is safe for the idempotent SFTP data
+      // operations in this class; arbitrary shell commands stay outside
+      // this boundary and are never replayed here.
+      return operation();
+    }
+  });
+
+  bool _isRetryableTransportClosure(Object error) {
+    final message = error.toString().toLowerCase();
+    return message.contains('sftp channel closed') ||
+        message.contains('sftp client closed') ||
+        message.contains('ssh client closed') ||
+        message.contains('ssh transport closed') ||
+        message.contains('transport is closed');
+  }
 
   Future<String> expandHome(String path) async {
     if (!path.startsWith('~')) return path;
@@ -239,7 +261,7 @@ class RemoteFileStore {
     } finally {
       await file.close();
     }
-  });
+  }, retryOnTransportClosure: false);
 
   Future<void> ensureDirectory(String path) async {
     final resolved = await expandHome(path);

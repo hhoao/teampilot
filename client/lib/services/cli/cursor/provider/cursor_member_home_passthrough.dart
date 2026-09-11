@@ -194,8 +194,7 @@ fi
     }
   }
 
-  Set<String> get _isolatedEntries =>
-      _layout.isolatedTopLevelEntries().toSet();
+  Set<String> get _isolatedEntries => _layout.isolatedTopLevelEntries().toSet();
 
   void _mirrorViaDartIo({
     required String realHome,
@@ -377,8 +376,7 @@ fi
 
     for (final entry in await _fs.listDir(memberHomeRoot)) {
       final name = entry.name.trim();
-      if (name.isEmpty ||
-          _layout.isolatedTopLevelEntries().contains(name)) {
+      if (name.isEmpty || _layout.isolatedTopLevelEntries().contains(name)) {
         continue;
       }
       if (name == CursorHomeLayout.configDirName) {
@@ -457,7 +455,10 @@ fi
     if (!linkStat.exists) return;
 
     if (linkStat.isSymlink) {
-      if (await _linkAlreadyPointsTo(source: realSource, linkPath: memberLink)) {
+      if (await _linkAlreadyPointsTo(
+        source: realSource,
+        linkPath: memberLink,
+      )) {
         return;
       }
       await _fs.removeRecursive(memberLink);
@@ -474,7 +475,13 @@ fi
       await _fs.removeRecursive(memberLink);
     }
 
-    await _fs.createSymlink(target: realSource, linkPath: memberLink);
+    final linked = await _fs.createSymlink(
+      target: realSource,
+      linkPath: memberLink,
+    );
+    if (!linked) {
+      await _fs.copyTree(source: realSource, destination: memberLink);
+    }
   }
 
   Future<bool> _tryPromoteEntityToRealHome({
@@ -508,7 +515,10 @@ fi
     if (linkStat.exists) {
       await _fs.removeRecursive(linkPath);
     }
-    await _fs.createSymlink(target: source, linkPath: linkPath);
+    final linked = await _fs.createSymlink(target: source, linkPath: linkPath);
+    if (!linked) {
+      await _fs.copyTree(source: source, destination: linkPath);
+    }
   }
 
   Future<bool> _pathExists(String path) async {

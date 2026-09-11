@@ -61,7 +61,16 @@ class SshMemberSession {
         client,
         reason: SshTransportCloseReason.memberSessionClosed,
       );
-      unawaited(client.disconnect());
+      unawaited(_disconnectQuietly());
+    }
+  }
+
+  Future<void> _disconnectQuietly() async {
+    try {
+      await client.disconnect();
+    } on Object {
+      // A member session is already being torn down; dartssh2 may report
+      // channel-close races after the owning session has ended.
     }
   }
 }

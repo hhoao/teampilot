@@ -347,6 +347,7 @@ class SessionConnectOrchestrator {
       manifest: staged.manifest,
       targetFs: workContext.fs,
       sourceFs: offHome ? homeContext().fs : workContext.fs,
+      symlinkProjectionRoot: workContext.appDataRoot,
       sshProfileId: (workSshProfileId != null && workSshProfileId.isNotEmpty)
           ? workSshProfileId
           : null,

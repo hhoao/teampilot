@@ -278,7 +278,8 @@ final class CursorHomeProvisioner {
     await _fs.atomicWrite(dest, raw);
   }
 
-  /// Symlinks [source] at [dest] when the source exists. Never copyTree.
+  /// Symlinks [source] at [dest] when possible, otherwise projects the
+  /// external control-plane directory into the launch manifest.
   Future<void> _linkDirectoryIfSourceExists({
     required String source,
     required String dest,
@@ -289,7 +290,10 @@ final class CursorHomeProvisioner {
       await _fs.removeRecursive(dest);
     }
     await _fs.ensureDir(_fs.pathContext.dirname(dest));
-    await _fs.createSymlink(target: source, linkPath: dest);
+    final linked = await _fs.createSymlink(target: source, linkPath: dest);
+    if (!linked) {
+      await _fs.copyTree(source: source, destination: dest);
+    }
   }
 
   Future<bool> _linkAlreadyPointsTo({

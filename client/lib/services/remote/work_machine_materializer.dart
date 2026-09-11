@@ -2,6 +2,7 @@ import '../io/filesystem.dart';
 import '../launch/launch_manifest_paths.dart';
 import '../storage/runtime_layout.dart';
 import 'materialization_manifest.dart';
+import 'runtime_materialization_policy.dart';
 
 /// Materializes a member's runtime *ancestry* onto a remote work machine so the
 /// existing inheritance (symlink `agents`, plugins, …) closes **within that
@@ -22,18 +23,23 @@ class WorkMachineMaterializer {
     required this.workFs,
     required this.machineRoot,
     required this.manifest,
-  }) : _homeLayout = RuntimeLayout(teampilotRoot: homeRoot, fs: homeFs),
+    this.maxConcurrentWrites = copyWriteConcurrency,
+    this.policy = const RuntimeMaterializationPolicy(),
+  }) : assert(maxConcurrentWrites > 0),
+       _homeLayout = RuntimeLayout(teampilotRoot: homeRoot, fs: homeFs),
        _workLayout = RuntimeLayout(teampilotRoot: machineRoot, fs: workFs);
 
   /// Bounded concurrency for ancestry file copies (per-file SFTP round trips
   /// dominate first materialization; see [_copySubtree]).
-  static const int copyWriteConcurrency = 8;
+  static const int copyWriteConcurrency = 3;
 
   final Filesystem homeFs;
   final String homeRoot;
   final Filesystem workFs;
   final String machineRoot;
   final MaterializationManifest manifest;
+  final int maxConcurrentWrites;
+  final RuntimeMaterializationPolicy policy;
 
   final RuntimeLayout _homeLayout;
   final RuntimeLayout _workLayout;
@@ -47,12 +53,22 @@ class WorkMachineMaterializer {
   }) async {
     final hashes = await manifest.load();
     for (final tool in tools) {
+      if (tool == 'codex') {
+        // The old layout linked sessions to this shared cache. Remove it at
+        // the new ownership boundary so no newly launched session can reuse
+        // stale control-plane state on the remote machine.
+        await workFs.removeRecursive(
+          workFs.pathContext.join(_workLayout.appToolRoot(tool), '.tmp'),
+        );
+      }
       await _copySubtree(
         homeFs.pathContext.relative(
           _homeLayout.appToolRoot(tool),
           from: homeRoot,
         ),
         hashes,
+        tool: tool,
+        appToolTree: true,
       );
       await _copySubtree(
         homeFs.pathContext.relative(
@@ -60,6 +76,8 @@ class WorkMachineMaterializer {
           from: homeRoot,
         ),
         hashes,
+        tool: tool,
+        appToolTree: false,
       );
     }
     await manifest.save(hashes);
@@ -91,13 +109,27 @@ class WorkMachineMaterializer {
   /// first materialization ships a large tree (e.g. `cli-defaults/opencode`
   /// with npm `node_modules`) and each per-file SFTP write costs several
   /// network round trips, so serial writes dominate the launch time.
-  Future<void> _copySubtree(String relDir, Map<String, String> hashes) async {
+  Future<void> _copySubtree(
+    String relDir,
+    Map<String, String> hashes, {
+    required String tool,
+    required bool appToolTree,
+  }) async {
     final homeDir = homeFs.pathContext.join(homeRoot, relDir);
     if (!(await homeFs.stat(homeDir)).exists) return;
     final entries = await homeFs.listDirRecursive(homeDir);
     final files = [
       for (final entry in entries)
-        if (!entry.isDirectory) entry.name,
+        if (!entry.isDirectory &&
+            policy.include(
+              tool: tool,
+              appToolTree: appToolTree,
+              relativePath: homeFs.pathContext.relative(
+                homeFs.pathContext.join(homeDir, entry.name),
+                from: homeRoot,
+              ),
+            ))
+          entry.name,
     ];
     var next = 0;
     Future<void> copyNext() async {
@@ -108,10 +140,9 @@ class WorkMachineMaterializer {
       }
     }
 
-    await Future.wait(
-      [for (var i = 0; i < copyWriteConcurrency; i++) copyNext()],
-      eagerError: true,
-    );
+    await Future.wait([
+      for (var i = 0; i < maxConcurrentWrites; i++) copyNext(),
+    ], eagerError: true);
   }
 
   Future<void> _copyOne(

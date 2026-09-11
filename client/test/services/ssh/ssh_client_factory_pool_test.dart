@@ -99,6 +99,38 @@ void main() {
     expect(createCount, 2);
   });
 
+  test('disconnectProfile drains tracked storage operations before closing', () async {
+    final disconnected = <String>[];
+    final factory = SshClientFactory(
+      credentialStore: InMemorySshCredentialStore(),
+      knownHostRepository: InMemorySshKnownHostRepository(),
+      drainGracePeriod: const Duration(seconds: 1),
+      connector: (profile, {timeout = const Duration(seconds: 10)}) async {
+        return _RecordingDisconnectClient(disconnected, profile.id);
+      },
+    );
+
+    const profile = SshProfile(
+      id: 'p1',
+      name: 'dev',
+      host: 'example.com',
+      username: 'alice',
+    );
+    final client = await factory.clientForStorage(profile);
+    final operation = Completer<void>();
+    final tracked = factory.runTracked(profile.id, () => operation.future);
+
+    factory.disconnectProfile(profile.id);
+    await Future<void>.delayed(const Duration(milliseconds: 50));
+    expect(client.isClosed, isFalse);
+    expect(disconnected, isEmpty);
+
+    operation.complete();
+    await tracked;
+    await Future<void>.delayed(const Duration(milliseconds: 100));
+    expect(disconnected, [profile.id]);
+  });
+
   test('clientForStorage reconnects when host identity changes', () async {
     var createCount = 0;
     final factory = SshClientFactory(

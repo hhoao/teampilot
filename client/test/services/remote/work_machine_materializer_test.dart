@@ -167,4 +167,65 @@ void main() {
       expect(workFs.writeBytesCount, 12);
     },
   );
+
+  test('projects Codex config without shared caches or repository metadata', () async {
+    final home = InMemoryFilesystem();
+    final work = InMemoryFilesystem();
+    const homeRoot = '/home/app/.local/share/com.hhoa.teampilot';
+    const workRoot = '/remote/app/.local/share/com.hhoa.teampilot';
+
+    await home.writeString(
+      '$homeRoot/cli-defaults/codex/config.toml',
+      'model = "gpt-5"',
+    );
+    await home.writeString(
+      '$homeRoot/cli-defaults/codex/.tmp/plugins/enabled/plugin.json',
+      '{}',
+    );
+    await home.writeString(
+      '$homeRoot/cli-defaults/codex/.tmp/plugins/.git/objects/pack/large',
+      'git object',
+    );
+    await home.writeString(
+      '$homeRoot/cli-defaults/codex/.git/config',
+      '[core]',
+    );
+    await home.writeString(
+      '$homeRoot/workspace/workspaces/ws/config/codex/config.toml',
+      'approval_policy = "never"',
+    );
+
+    await WorkMachineMaterializer(
+      homeFs: home,
+      homeRoot: homeRoot,
+      workFs: work,
+      machineRoot: workRoot,
+      manifest: MaterializationManifest(fs: work, machineRoot: workRoot),
+    ).reconcile(tools: {'codex'}, workspaceId: 'ws');
+
+    expect(
+      String.fromCharCodes(
+        (await work.readBytes('$workRoot/cli-defaults/codex/config.toml'))!,
+      ),
+      'model = "gpt-5"',
+    );
+    expect(
+      String.fromCharCodes(
+        (await work.readBytes(
+          '$workRoot/workspace/workspaces/ws/config/codex/config.toml',
+        ))!,
+      ),
+      'approval_policy = "never"',
+    );
+    expect(
+      await work.readString(
+        '$workRoot/cli-defaults/codex/.tmp/plugins/enabled/plugin.json',
+      ),
+      isNull,
+    );
+    expect(
+      await work.readString('$workRoot/cli-defaults/codex/.git/config'),
+      isNull,
+    );
+  });
 }

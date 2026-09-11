@@ -88,8 +88,8 @@ class SshClientFactory {
        _dialTargetResolver = dialTargetResolver,
        _handshakeGate = _HandshakeGate(maxConcurrentHandshakes);
 
-  /// How long an evicted pooled client stays open for in-flight storage ops
-  /// to drain before it is closed anyway.
+  /// Maximum time an evicted storage connection remains available to
+  /// operations that already borrowed it.
   final Duration drainGracePeriod;
 
   final SshCredentialStore _credentialStore;
@@ -262,25 +262,24 @@ class SshClientFactory {
     }
   });
 
-  /// Tracks an in-flight storage-plane op for [profileId] so eviction defers
-  /// the pooled client close until it completes (see [drainGracePeriod]).
-  ///
-  /// [RemoteFileStore] wraps every SFTP data op in this; ops run directly on
-  /// the shared [SftpClient] are otherwise invisible to the factory.
-  Future<T> runTracked<T>(String profileId, Future<T> Function() op) =>
-      _tracked(profileId, op);
+  /// Tracks a storage operation so an evicted client is not closed underneath
+  /// an SFTP channel or storage exec that is already using it.
+  Future<T> runTracked<T>(String profileId, Future<T> Function() operation) =>
+      _tracked(profileId, operation);
 
-  Future<T> _tracked<T>(String profileId, Future<T> Function() op) async {
-    final n = (_inFlight[profileId] ?? 0) + 1;
-    _inFlight[profileId] = n;
+  Future<T> _tracked<T>(
+    String profileId,
+    Future<T> Function() operation,
+  ) async {
+    _inFlight[profileId] = (_inFlight[profileId] ?? 0) + 1;
     try {
-      return await op();
+      return await operation();
     } finally {
-      final left = (_inFlight[profileId] ?? 1) - 1;
-      if (left <= 0) {
+      final remaining = (_inFlight[profileId] ?? 1) - 1;
+      if (remaining <= 0) {
         _inFlight.remove(profileId);
       } else {
-        _inFlight[profileId] = left;
+        _inFlight[profileId] = remaining;
       }
     }
   }
@@ -312,16 +311,16 @@ class SshClientFactory {
       if (lifecycle != null && reason != null) {
         lifecycle.pendingLocalCloseReason = reason;
       }
-      final inflight = _inFlight[profileId] ?? 0;
-      if (inflight > 0) {
-        // Evicted from the pool already — new callers dial fresh — but the
-        // in-flight ops would abort with SSHStateError if we closed now.
+      final inFlight = _inFlight[profileId] ?? 0;
+      if (inFlight > 0) {
         appLogger.i(
-          '[ssh] deferring close of $profileId: $inflight in-flight op(s)',
+          '[ssh] deferring close profile=$profileId inFlight=$inFlight',
         );
-        unawaited(_closeWhenDrained(profileId, cached.client, drainGracePeriod));
+        unawaited(
+          _closeWhenDrained(profileId, cached.client, drainGracePeriod),
+        );
       } else {
-        unawaited(cached.client.disconnect());
+        unawaited(_disconnectQuietly(cached.client));
       }
     }
     if (wasLive) {
@@ -329,7 +328,6 @@ class SshClientFactory {
     }
   }
 
-  /// Poll interval of [_closeWhenDrained] while waiting for ops to drain.
   static const _drainPollInterval = Duration(milliseconds: 50);
 
   Future<void> _closeWhenDrained(
@@ -337,14 +335,21 @@ class SshClientFactory {
     SSHClient client,
     Duration timeout,
   ) async {
-    // Countdown instead of a wall-clock deadline: keeps the cap exact under
-    // faked timers in tests and immune to clock skew.
     var pollsLeft = timeout.inMilliseconds ~/ _drainPollInterval.inMilliseconds;
     while ((_inFlight[profileId] ?? 0) > 0 && pollsLeft > 0) {
       await Future<void>.delayed(_drainPollInterval);
       pollsLeft--;
     }
-    if (!client.isClosed) await client.disconnect();
+    if (!client.isClosed) await _disconnectQuietly(client);
+  }
+
+  Future<void> _disconnectQuietly(SSHClient client) async {
+    try {
+      await client.disconnect();
+    } on Object {
+      // Channel teardown can race with dartssh2's close propagation. The
+      // owning operation already receives the transport error if applicable.
+    }
   }
 
   void _attachTransportLifecycle(
@@ -400,17 +405,10 @@ class SshClientFactory {
   void disconnectAll({
     SshTransportCloseReason reason = SshTransportCloseReason.disconnectAll,
   }) {
-    _sftpByProfile.clear();
-    for (final cached in _pool.values) {
-      if (!cached.client.isClosed) {
-        final lifecycle = _clientLifecycle[cached.client];
-        if (lifecycle != null) {
-          lifecycle.pendingLocalCloseReason = reason;
-        }
-        unawaited(cached.client.disconnect());
-      }
+    for (final profileId in _pool.keys.toList()) {
+      _evictProfile(profileId, closePooled: true, reason: reason);
     }
-    _pool.clear();
+    _sftpByProfile.clear();
   }
 
   /// One-off connectivity check using form credentials without persisting the
@@ -484,8 +482,7 @@ class SshClientFactory {
     final key = profile.hostIdentifier;
     await _handshakeGate.acquire(key);
     try {
-      final client =
-          _connector != null
+      final client = _connector != null
           ? await _connector!(profile, timeout: timeout)
           : await _openClient(profile, timeout: timeout);
       _releaseGateWhenSettled(key, client);
@@ -524,8 +521,7 @@ class SshClientFactory {
     await _handshakeGate.acquire(key);
     final SSHClient client;
     try {
-      client =
-          _connector != null
+      client = _connector != null
           ? await _connector!(profile, timeout: timeout)
           : await _openClient(profile, timeout: timeout);
     } on Object {
@@ -541,10 +537,9 @@ class SshClientFactory {
   /// closes — every unauthenticated connection counts against the server's
   /// `MaxStartups` budget, not just the ones still dialing.
   void _releaseGateWhenSettled(String key, SSHClient client) {
-    client.authenticated.then<void>(
-      (_) {},
-      onError: (_) {},
-    ).whenComplete(() => _handshakeGate.release(key));
+    client.authenticated
+        .then<void>((_) {}, onError: (_) {})
+        .whenComplete(() => _handshakeGate.release(key));
   }
 
   Future<SSHClient> _openClient(

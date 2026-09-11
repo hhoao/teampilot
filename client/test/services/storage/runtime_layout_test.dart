@@ -2,6 +2,7 @@ import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:path/path.dart' as p;
+import 'package:teampilot/services/io/filesystem.dart';
 import 'package:teampilot/services/io/local_filesystem.dart';
 import 'package:teampilot/services/storage/runtime_layout.dart';
 
@@ -203,6 +204,25 @@ void main() {
 
     setUp(() async {
       base = await Directory.systemTemp.createTemp('runtime_layout_');
+    });
+
+    test('Codex session owns a real plugin cache', () async {
+      final fs = InMemoryFilesystem();
+      final layout = RuntimeLayout(teampilotRoot: '/tp', fs: fs);
+      final shared = p.join(layout.appToolRoot('codex'), '.tmp', 'plugins');
+      await fs.ensureDir(shared);
+      await fs.writeString(p.join(shared, 'stale.json'), 'stale');
+
+      await layout.ensureSessionOwnsCodexTmpPlugins(workspaceId, 'sess-1');
+
+      final sessionPlugins = p.join(
+        layout.sessionRuntimeToolDir(workspaceId, 'sess-1', 'codex'),
+        '.tmp',
+        'plugins',
+      );
+      expect((await fs.lstat(sessionPlugins)).isDirectory, isTrue);
+      expect((await fs.lstat(sessionPlugins)).isSymlink, isFalse);
+      expect(await fs.readString(p.join(sessionPlugins, 'stale.json')), isNull);
     });
 
     tearDown(() async {
