@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:typed_data';
 
 typedef _VisibleTailScan = ({int hash, bool hasVisibleContent});
@@ -20,12 +21,20 @@ typedef _VisibleTailScan = ({int hash, bool hasVisibleContent});
 /// fingerprint has been unchanged for [idleAfter] since the last fingerprint
 /// change this turn ([notePtyBytes] at least once). No PTY bytes → not quiet.
 /// Also feeds the native single-CLI path and simple-mode `_tickIdleWatch`.
+///
+/// **Boot-ready push** (optional): with [onBootFrameChanged] wired, the boot
+/// latch is pushed instead of polled. Since [isBootFrameReady] is a lazy getter
+/// driven purely by elapsed time, nothing would observe the moment
+/// [bootQuietAfter] or [bootMaxWait] elapses when no further PTY bytes arrive —
+/// hence a one-shot timer re-armed on each [notePtyBytes]. The timer never
+/// imports the event layer; the binding layer owns the seat identity.
 class TerminalActivityTracker {
   TerminalActivityTracker({
     this.idleAfter = const Duration(milliseconds: 2500),
     this.bootQuietAfter = const Duration(milliseconds: 500),
     this.bootMaxWait = defaultBootMaxWait,
     this.fingerprintTailLines = defaultFingerprintTailLines,
+    this.onBootFrameChanged,
   }) : assert(fingerprintTailLines >= 1);
 
   /// Default tail window — covers prompt + status rows in full-screen TUIs.
@@ -49,6 +58,13 @@ class TerminalActivityTracker {
 
   /// How many trailing visible lines feed the PTY fingerprint hash.
   final int fingerprintTailLines;
+
+  /// Optional push for boot-frame transitions. Null (the default) keeps every
+  /// getter and [notePtyBytes] exactly as before: no timer, no extra work.
+  ///
+  /// Called only when the boot latch flips (the false→true edge); never called
+  /// with `false`, since [isBootFrameReady] is monotonic until [reset].
+  final void Function(bool bootReady)? onBootFrameChanged;
 
   static const int _fnvOffsetBasis = 0x811C9DC5;
   static const int _fnvPrime = 0x01000193;
@@ -84,6 +100,18 @@ class TerminalActivityTracker {
 
   /// When the first visible tail content was seen since [reset].
   DateTime? _bootFirstVisibleAt;
+
+  /// One-shot push timer for the boot-quiet / boot-max-wait deadline. Only
+  /// armed when [onBootFrameChanged] is wired; re-armed by [notePtyBytes] and
+  /// cancelled by [reset] / [disposePresencePush].
+  Timer? _bootTimer;
+
+  /// Last boot-ready value handed to [onBootFrameChanged]; null until reported.
+  bool? _lastReportedBootReady;
+
+  /// Set by [disposePresencePush]: the binding layer has unbound, so no
+  /// further callbacks or timers are allowed.
+  bool _presencePushDisposed = false;
 
   /// True once meaningful visible content has appeared in the tail window and
   /// the fingerprint has been unchanged for [bootQuietAfter] — or, for TUIs
@@ -161,6 +189,8 @@ class TerminalActivityTracker {
 
     if (!_turnPtyObserved) {
       _beginTurnFingerprint(scan, raw, now);
+      _publishBootIfChanged();
+      _scheduleBootTimer();
       return;
     }
 
@@ -185,6 +215,8 @@ class TerminalActivityTracker {
       _fingerprintStableSince = now;
     }
     noteOutput(now);
+    _publishBootIfChanged();
+    _scheduleBootTimer();
   }
 
   void _beginTurnFingerprint(
@@ -359,6 +391,68 @@ class TerminalActivityTracker {
     _bootVisibleContentSeen = false;
     _bootFirstVisibleAt = null;
     _bootFrameLatched = false;
+    _bootTimer?.cancel();
+    _bootTimer = null;
+    _lastReportedBootReady = null;
+  }
+
+  /// Unbinds the boot-ready push: cancels the pending one-shot timer and
+  /// suppresses any further callback. Called by the seat binding on teardown;
+  /// [reset] alone is not enough because a fresh session reuses the tracker.
+  void disposePresencePush() {
+    _presencePushDisposed = true;
+    _bootTimer?.cancel();
+    _bootTimer = null;
+  }
+
+  /// Reports the boot latch to [onBootFrameChanged] when it flips.
+  ///
+  /// [isBootFrameReady] is monotonic (false → true, then latched until reset),
+  /// so "never reported" is treated as not-ready and only the ready edge is
+  /// pushed — callers that care about `booting` start from that assumption.
+  void _publishBootIfChanged() {
+    final cb = onBootFrameChanged;
+    if (cb == null || _presencePushDisposed) return;
+    final ready = isBootFrameReady;
+    if (ready == (_lastReportedBootReady ?? false)) return;
+    _lastReportedBootReady = ready;
+    cb(ready);
+  }
+
+  /// Re-arms the one-shot timer for whichever comes first: [bootQuietAfter]
+  /// elapsed since the last fingerprint change, or [bootMaxWait] elapsed since
+  /// the first visible boot output. A one-shot timer is required because the
+  /// getters are lazy — with no incoming bytes nothing else would notice a
+  /// timeout-driven transition.
+  ///
+  /// Bounded: the delay is always measured from those two fixed instants, and
+  /// once [isBootFrameReady] latches, later calls stop re-arming, so the timer
+  /// cannot self-perpetuate past the [bootMaxWait] ceiling.
+  void _scheduleBootTimer() {
+    if (onBootFrameChanged == null || _presencePushDisposed) return;
+    if (isBootFrameReady) return;
+    final firstVisible = _bootFirstVisibleAt;
+    if (!_bootVisibleContentSeen || firstVisible == null) return;
+
+    final now = DateTime.now();
+    Duration? delay;
+    final quietSince = _fingerprintStableSince;
+    if (quietSince != null) {
+      delay = quietSince.add(bootQuietAfter).difference(now);
+    }
+    final maxWait = bootMaxWait;
+    if (maxWait != null && maxWait > Duration.zero) {
+      final maxDelay = firstVisible.add(maxWait).difference(now);
+      if (delay == null || maxDelay < delay) delay = maxDelay;
+    }
+    if (delay == null) return;
+
+    _bootTimer?.cancel();
+    _bootTimer = Timer(delay.isNegative ? Duration.zero : delay, () {
+      _bootTimer = null;
+      _publishBootIfChanged();
+      _scheduleBootTimer();
+    });
   }
 
   /// Tests: latch a stable boot frame without waiting real time.
