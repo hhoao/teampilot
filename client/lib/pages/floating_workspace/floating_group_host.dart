@@ -12,6 +12,7 @@ import '../../models/floating_workspace_tab.dart';
 import '../../services/floating_workspace/close_floating_tab.dart';
 import '../../services/floating_workspace/floating_surface_registry.dart';
 import '../../widgets/workbench/workbench_shell_run_sync.dart';
+import '../../widgets/workbench/workbench_group_lock_button.dart';
 import '../../widgets/workbench/workbench_tab_drag.dart';
 import 'floating_workspace_tab_bar.dart';
 
@@ -90,6 +91,8 @@ class FloatingGroupHost extends StatelessWidget {
     required this.showHeader,
     required this.splitEnabled,
     required this.registry,
+    this.isGroupLocked = false,
+    this.onToggleGroupLock,
     super.key,
   });
 
@@ -103,6 +106,8 @@ class FloatingGroupHost extends StatelessWidget {
   /// Whether split interactions (split menu, tab drags) are available.
   final bool splitEnabled;
   final FloatingSurfaceRegistry registry;
+  final bool isGroupLocked;
+  final VoidCallback? onToggleGroupLock;
 
   @override
   Widget build(BuildContext context) {
@@ -122,6 +127,8 @@ class FloatingGroupHost extends StatelessWidget {
             splitEnabled: splitEnabled,
             registry: registry,
             projection: projection,
+            isGroupLocked: isGroupLocked,
+            onToggleGroupLock: onToggleGroupLock,
           ),
         Expanded(
           child: WorkbenchTabDropRegions(
@@ -151,6 +158,8 @@ class _FloatingGroupHeaderStrip extends StatelessWidget {
     required this.splitEnabled,
     required this.registry,
     required this.projection,
+    required this.isGroupLocked,
+    required this.onToggleGroupLock,
   });
 
   final String workspaceId;
@@ -159,6 +168,8 @@ class _FloatingGroupHeaderStrip extends StatelessWidget {
   final bool splitEnabled;
   final FloatingSurfaceRegistry registry;
   final FloatingStripProjection projection;
+  final bool isGroupLocked;
+  final VoidCallback? onToggleGroupLock;
 
   @override
   Widget build(BuildContext context) {
@@ -180,126 +191,138 @@ class _FloatingGroupHeaderStrip extends StatelessWidget {
         height: 34,
         child: Padding(
           padding: const EdgeInsets.only(left: 4),
-          child: FloatingWorkspaceTabBar(
-            tabs: tabs,
-            activeTabId: projection.activeTabId,
-            previewTabIds: projection.previewTabIds,
-            pinnedTabIds: projection.pinnedTabIds,
-            onSelect: (tabId) {
-              final barId = projection.barIdByTabId[tabId];
-              if (barId != null) {
-                workbench.activate(workspaceId, barId);
-              }
-              final tab = tabs.firstWhereOrNull((t) => t.id == tabId);
-              if (tab != null) {
-                final surface = registry[tab.surfaceId];
-                if (surface != null) {
-                  unawaited(surface.activate(tab));
-                }
-              }
-            },
-            onClose: (tab) {
-              final barId = projection.barIdByTabId[tab.id];
-              if (barId == null) return;
-              unawaited(
-                closeFloatingTab(
-                  workbench: workbench,
-                  workspaceId: workspaceId,
-                  registry: registry,
-                  id: barId,
-                  tab: tab,
-                  context: context,
+          child: Row(
+            children: [
+              Expanded(
+                child: FloatingWorkspaceTabBar(
+                  tabs: tabs,
+                  activeTabId: projection.activeTabId,
+                  previewTabIds: projection.previewTabIds,
+                  pinnedTabIds: projection.pinnedTabIds,
+                  onSelect: (tabId) {
+                    final barId = projection.barIdByTabId[tabId];
+                    if (barId != null) {
+                      workbench.activate(workspaceId, barId);
+                    }
+                    final tab = tabs.firstWhereOrNull((t) => t.id == tabId);
+                    if (tab != null) {
+                      final surface = registry[tab.surfaceId];
+                      if (surface != null) {
+                        unawaited(surface.activate(tab));
+                      }
+                    }
+                  },
+                  onClose: (tab) {
+                    final barId = projection.barIdByTabId[tab.id];
+                    if (barId == null) return;
+                    unawaited(
+                      closeFloatingTab(
+                        workbench: workbench,
+                        workspaceId: workspaceId,
+                        registry: registry,
+                        id: barId,
+                        tab: tab,
+                        context: context,
+                      ),
+                    );
+                  },
+                  onCloseOthers: (tab) {
+                    final barId = projection.barIdByTabId[tab.id];
+                    if (barId == null) return;
+                    unawaited(
+                      closeOtherFloatingTabs(
+                        workbench: workbench,
+                        workspaceId: workspaceId,
+                        registry: registry,
+                        keepId: barId,
+                        context: context,
+                      ),
+                    );
+                  },
+                  onCloseRight: (tab) {
+                    final barId = projection.barIdByTabId[tab.id];
+                    if (barId == null) return;
+                    unawaited(
+                      closeFloatingTabsToTheRight(
+                        workbench: workbench,
+                        workspaceId: workspaceId,
+                        registry: registry,
+                        fromId: barId,
+                        context: context,
+                      ),
+                    );
+                  },
+                  onCloseAll: () {
+                    unawaited(
+                      closeAllFloatingTabs(
+                        workbench: workbench,
+                        workspaceId: workspaceId,
+                        registry: registry,
+                        context: context,
+                      ),
+                    );
+                  },
+                  onReorder: (oldIndex, newIndex) {
+                    // reorderFloating mutates the focused group — focus this one so
+                    // the drag acts on the strip it started from.
+                    workbench.focusGroup(workspaceId, groupId, floating: true);
+                    workbench.reorderFloating(workspaceId, oldIndex, newIndex);
+                  },
+                  onPin: (tabId) {
+                    final barId = projection.barIdByTabId[tabId];
+                    if (barId == null) return;
+                    if (strip.previewIds.contains(barId)) {
+                      workbench.promote(workspaceId, barId);
+                    } else {
+                      workbench.pin(workspaceId, barId);
+                    }
+                  },
+                  onUnpin: (tabId) {
+                    final barId = projection.barIdByTabId[tabId];
+                    if (barId == null) return;
+                    workbench.unpin(workspaceId, barId);
+                  },
+                  onDoubleTap: (tabId) {
+                    final barId = projection.barIdByTabId[tabId];
+                    if (barId == null) return;
+                    if (strip.previewIds.contains(barId)) {
+                      workbench.promote(workspaceId, barId);
+                    } else if (strip.pinnedIds.contains(barId)) {
+                      workbench.unpin(workspaceId, barId);
+                    } else {
+                      workbench.pin(workspaceId, barId);
+                    }
+                  },
+                  onSplitRight: canSplit
+                      ? (tabId) => _split(context, tabId, Axis.horizontal)
+                      : null,
+                  onSplitDown: canSplit
+                      ? (tabId) => _split(context, tabId, Axis.vertical)
+                      : null,
+                  tabDrag: splitEnabled
+                      ? FloatingTabStripDrag(
+                          sourceGroupId: groupId,
+                          resolveTabId: (tabId) =>
+                              projection.barIdByTabId[tabId],
+                          onDrop: (tab, targetGroupId, zone) =>
+                              dispatchSplitDrop(
+                                workbench,
+                                workspaceId,
+                                tab: tab,
+                                sourceGroupId: groupId,
+                                targetGroupId: targetGroupId,
+                                zone: zone,
+                                floating: true,
+                              ),
+                        )
+                      : null,
                 ),
-              );
-            },
-            onCloseOthers: (tab) {
-              final barId = projection.barIdByTabId[tab.id];
-              if (barId == null) return;
-              unawaited(
-                closeOtherFloatingTabs(
-                  workbench: workbench,
-                  workspaceId: workspaceId,
-                  registry: registry,
-                  keepId: barId,
-                  context: context,
-                ),
-              );
-            },
-            onCloseRight: (tab) {
-              final barId = projection.barIdByTabId[tab.id];
-              if (barId == null) return;
-              unawaited(
-                closeFloatingTabsToTheRight(
-                  workbench: workbench,
-                  workspaceId: workspaceId,
-                  registry: registry,
-                  fromId: barId,
-                  context: context,
-                ),
-              );
-            },
-            onCloseAll: () {
-              unawaited(
-                closeAllFloatingTabs(
-                  workbench: workbench,
-                  workspaceId: workspaceId,
-                  registry: registry,
-                  context: context,
-                ),
-              );
-            },
-            onReorder: (oldIndex, newIndex) {
-              // reorderFloating mutates the focused group — focus this one so
-              // the drag acts on the strip it started from.
-              workbench.focusGroup(workspaceId, groupId, floating: true);
-              workbench.reorderFloating(workspaceId, oldIndex, newIndex);
-            },
-            onPin: (tabId) {
-              final barId = projection.barIdByTabId[tabId];
-              if (barId == null) return;
-              if (strip.previewIds.contains(barId)) {
-                workbench.promote(workspaceId, barId);
-              } else {
-                workbench.pin(workspaceId, barId);
-              }
-            },
-            onUnpin: (tabId) {
-              final barId = projection.barIdByTabId[tabId];
-              if (barId == null) return;
-              workbench.unpin(workspaceId, barId);
-            },
-            onDoubleTap: (tabId) {
-              final barId = projection.barIdByTabId[tabId];
-              if (barId == null) return;
-              if (strip.previewIds.contains(barId)) {
-                workbench.promote(workspaceId, barId);
-              } else if (strip.pinnedIds.contains(barId)) {
-                workbench.unpin(workspaceId, barId);
-              } else {
-                workbench.pin(workspaceId, barId);
-              }
-            },
-            onSplitRight: canSplit
-                ? (tabId) => _split(context, tabId, Axis.horizontal)
-                : null,
-            onSplitDown: canSplit
-                ? (tabId) => _split(context, tabId, Axis.vertical)
-                : null,
-            tabDrag: splitEnabled
-                ? FloatingTabStripDrag(
-                    sourceGroupId: groupId,
-                    resolveTabId: (tabId) => projection.barIdByTabId[tabId],
-                    onDrop: (tab, targetGroupId, zone) => dispatchSplitDrop(
-                      workbench,
-                      workspaceId,
-                      tab: tab,
-                      sourceGroupId: groupId,
-                      targetGroupId: targetGroupId,
-                      zone: zone,
-                      floating: true,
-                    ),
-                  )
-                : null,
+              ),
+              WorkbenchGroupLockButton(
+                locked: isGroupLocked,
+                onToggle: onToggleGroupLock,
+              ),
+            ],
           ),
         ),
       ),
@@ -355,7 +378,9 @@ class _FloatingTabBodyStack extends StatelessWidget {
                     active: tab.id == activeTabId,
                     retainWhenInactive: true,
                     placeholder: ColoredBox(
-                      color: Theme.of(context).colorScheme.surfaceContainerHighest,
+                      color: Theme.of(
+                        context,
+                      ).colorScheme.surfaceContainerHighest,
                     ),
                     builder: (context) => _buildTabBody(context, tab),
                   ),
