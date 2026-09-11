@@ -4,7 +4,10 @@ import 'dart:io';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:path/path.dart' as p;
 import 'package:teampilot/models/team_config.dart';
-import 'package:teampilot/services/storage/app_storage.dart';
+import 'package:teampilot/services/storage/app_paths.dart';
+import 'package:teampilot/services/storage/home_storage.dart';
+import 'package:teampilot/services/cli/registry/cli_bootstrap.dart';
+import 'package:teampilot/services/cli/registry/cli_tool_registry.dart';
 import 'package:teampilot/services/storage/runtime_layout.dart';
 import 'package:teampilot/services/provider/config_profile_service.dart';
 import 'package:teampilot/services/io/local_filesystem.dart';
@@ -13,6 +16,7 @@ import 'package:teampilot/services/host/host_execution_environment.dart';
 import 'package:teampilot/services/host/script_file_hook_provisioner.dart';
 import 'package:teampilot/services/storage/runtime_context.dart';
 import 'package:teampilot/models/config_bundle.dart';
+import '../../support/in_memory_filesystem.dart';
 
 const _testWorkspaceId = 'workspace-1';
 
@@ -20,6 +24,7 @@ void main() {
   group('ConfigProfileService extension settings hooks', () {
     late Directory base;
     late ConfigProfileService service;
+    late HomeStorage homeStorage;
     late int rtkScriptLoads;
 
     setUp(() async {
@@ -27,6 +32,15 @@ void main() {
       rtkScriptLoads = 0;
       AppPathsBootstrapper.setCurrentForTesting(AppPaths(base.path));
       final fs = LocalFilesystem();
+      homeStorage = HomeStorage.forTesting(
+        filesystem: fs,
+        paths: AppPaths(base.path),
+        home: base.path,
+        cwd: base.path,
+      );
+      CliToolRegistry.builtIn().configure(
+        CliBootstrap(const {}, storage: homeStorage),
+      );
       service = ConfigProfileService(
         basePath: base.path,
         fs: fs,
@@ -65,6 +79,7 @@ void main() {
             },
           ),
         },
+                                      storage: fakeHomeStorage(),
       );
     });
 
@@ -150,6 +165,7 @@ void main() {
         layout: RuntimeLayout(teampilotRoot: base.path, fs: LocalFilesystem()),
         loadEnabledExtensionIds: ({teamId, workspaceId}) async => {'rtk'},
         extensionDetector: ExtensionDetector(processRunner: _alwaysMissing),
+                                      storage: homeStorage,
       );
 
       final outcome = await service.prepareTeamLaunch(

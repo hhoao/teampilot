@@ -23,6 +23,7 @@ import 'package:teampilot/widgets/compose/compose_model_preset_chip.dart';
 import 'package:teampilot/widgets/compose/compose_permission_chip.dart';
 import 'package:teampilot/widgets/compose/workspace_compose_card.dart';
 
+import '../../support/in_memory_filesystem.dart';
 import '../../support/post_frame_test_harness.dart';
 
 /// Acceptance coverage for session history continue chrome (design §Acceptance).
@@ -70,7 +71,10 @@ void main() {
           'continue_chrome_simple_',
         );
         addTearDown(() => tmp.deleteSync(recursive: true));
-        final repo = SessionRepository(rootDir: tmp.path);
+        final repo = SessionRepository(
+          rootDir: tmp.path,
+          storage: fakeHomeStorage(),
+        );
         final workspace = await repo.createWorkspace([
           const WorkspaceFolder(path: '/w'),
         ]);
@@ -209,7 +213,10 @@ void main() {
         'continue_chrome_xcli_',
       );
       addTearDown(() => tmp.deleteSync(recursive: true));
-      final repo = SessionRepository(rootDir: tmp.path);
+      final repo = SessionRepository(
+          rootDir: tmp.path,
+          storage: fakeHomeStorage(),
+        );
       final workspace = await repo.createWorkspace([
         const WorkspaceFolder(path: '/w'),
       ]);
@@ -395,9 +402,13 @@ void main() {
           'continue_chrome_cubit_',
         );
         addTearDown(() async => deleteTempDirBestEffort(tmp));
-        final repo = SessionRepository(rootDir: tmp.path);
+        final repo = SessionRepository(
+          rootDir: tmp.path,
+          storage: buildTestHomeStorage(),
+        );
         final cubit = ChatCubit(
           executableResolver: () => 'true',
+          storage: buildTestHomeStorage(),
           automationRepository: testAutomationRepository(),
           sessionRepository: repo,
         );
@@ -456,9 +467,13 @@ void main() {
           'continue_chrome_custom_',
         );
         addTearDown(() async => deleteTempDirBestEffort(tmp));
-        final repo = SessionRepository(rootDir: tmp.path);
+        final repo = SessionRepository(
+          rootDir: tmp.path,
+          storage: buildTestHomeStorage(),
+        );
         final cubit = ChatCubit(
           executableResolver: () => 'true',
+          storage: buildTestHomeStorage(),
           automationRepository: testAutomationRepository(),
           sessionRepository: repo,
         );
@@ -555,6 +570,7 @@ void main() {
                 ),
                 dropTarget: ComposeFileDropIngestor(
                   workspaceRoot: '/tmp',
+                  usesPosixPaths: false,
                   onInsertReferences: (_) {},
                 ),
                 attachTooltip: 'Attach',

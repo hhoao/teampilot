@@ -5,6 +5,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:path/path.dart' as p;
 import 'package:teampilot/services/io/local_filesystem.dart';
 import 'package:teampilot/services/mcp/mcp_import_service.dart';
+import '../../support/in_memory_filesystem.dart';
 
 void main() {
   late Directory home;
@@ -15,6 +16,7 @@ void main() {
     importService = McpImportService(
       fs: LocalFilesystem(),
       homeDirectory: home.path,
+                                      storage: fakeHomeStorage(),
     );
   });
 

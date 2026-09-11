@@ -5,7 +5,9 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/models/skill_registry_source.dart';
 import 'package:teampilot/services/io/local_filesystem.dart';
 import 'package:teampilot/services/skill/registry/skill_registry_config_service.dart';
-import 'package:teampilot/services/storage/app_storage.dart';
+import 'package:teampilot/services/storage/app_paths.dart';
+import '../../../support/test_runtime_context.dart';
+import '../../../support/in_memory_filesystem.dart';
 
 void main() {
   late Directory tmp; // from dart:io
@@ -15,7 +17,7 @@ void main() {
   setUp(() async {
     tmp = Directory.systemTemp.createTempSync('skill-registry-cfg-');
     paths = AppPaths(tmp.path);
-    AppStorage.installForTesting(
+    installTestHomeStorage(
       filesystem: LocalFilesystem(
         pathContext: AppPaths.pathContextForDataRoot(paths.basePath),
       ),
@@ -26,11 +28,12 @@ void main() {
     service = SkillRegistryConfigService(
       teampilotRoot: paths.basePath,
       legacySkillsMpKeyReader: () async => 'legacy-token',
+                                          storage: fakeHomeStorage(),
     );
   });
 
   tearDown(() {
-    AppStorage.resetForTesting();
+    resetTestHomeStorage();
     if (tmp.existsSync()) tmp.deleteSync(recursive: true);
   });
 
@@ -43,7 +46,7 @@ void main() {
 
   test('migrates legacy repos.json git repos + skillsMp key once', () async {
     final oldPath = AppPaths.skillReposConfigPathForTeampilotRoot(paths.basePath);
-    await AppStorage.fs.writeString(oldPath, const JsonEncoder.withIndent('  ').convert({
+    await testHomeStorage.fs.writeString(oldPath, const JsonEncoder.withIndent('  ').convert({
       'repos': [
         {'owner': 'vercel', 'name': 'ai', 'branch': 'main', 'enabled': true},
       ],
@@ -70,7 +73,7 @@ void main() {
 
   test('corrupt registries.json falls back to defaults', () async {
     final path = AppPaths.skillRegistriesConfigPathForTeampilotRoot(paths.basePath);
-    await AppStorage.fs.writeString(path, '{not json');
+    await testHomeStorage.fs.writeString(path, '{not json');
     final cfg = await service.load();
     expect(cfg.byId('skillsSh'), isNotNull);
   });

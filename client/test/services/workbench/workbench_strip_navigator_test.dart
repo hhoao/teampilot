@@ -14,9 +14,11 @@ import 'package:teampilot/services/workbench/workbench_chat_bridge.dart';
 import 'package:teampilot/services/workbench/workbench_strip_navigator.dart';
 
 import '../../support/post_frame_test_harness.dart';
+import '../../support/in_memory_filesystem.dart';
 
 class _FakeTerminalSession extends TerminalSession {
-  _FakeTerminalSession({required super.executable});
+  _FakeTerminalSession({required super.executable})
+    : super(fs: InMemoryFilesystem());
 
   var _running = false;
 
@@ -97,7 +99,7 @@ void main() {
 
     setUp(() async {
       tmp = await Directory.systemTemp.createTemp('workbench_strip_nav_');
-      repo = SessionRepository(rootDir: tmp.path);
+      repo = SessionRepository(rootDir: tmp.path, storage: testHomeStorage, );
       postFrame = PostFrameTestHarness();
       sessionIds.clear();
       chat = ChatCubit(
@@ -108,6 +110,7 @@ void main() {
         terminalSessionFactory:
             ({required String executable, int scrollbackLines = 10000}) =>
                 _FakeTerminalSession(executable: executable),
+                        storage: testHomeStorage,
       );
       workbench = WorkbenchCubit();
       final bridge = WorkbenchChatBridge(workbench: workbench, chat: chat);

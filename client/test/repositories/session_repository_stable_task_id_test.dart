@@ -5,6 +5,7 @@ import 'package:teampilot/models/session_member_binding.dart';
 import 'package:teampilot/models/team_config.dart';
 import 'package:teampilot/models/workspace_folder.dart';
 import 'package:teampilot/repositories/session_repository.dart';
+import '../support/in_memory_filesystem.dart';
 
 void main() {
   test('staged members taskIds are preserved on createSession', () async {
@@ -13,7 +14,7 @@ void main() {
     );
     addTearDown(() => tmp.deleteSync(recursive: true));
 
-    final repo = SessionRepository(rootDir: tmp.path);
+    final repo = SessionRepository(rootDir: tmp.path, storage: fakeHomeStorage(), );
     final workspace = await repo.createWorkspace([
       const WorkspaceFolder(path: '/proj'),
     ]);
@@ -69,7 +70,7 @@ void main() {
     );
     addTearDown(() => tmp.deleteSync(recursive: true));
 
-    final repo = SessionRepository(rootDir: tmp.path);
+    final repo = SessionRepository(rootDir: tmp.path, storage: fakeHomeStorage(), );
     final ws = await repo.createWorkspace([
       const WorkspaceFolder(path: '/local'),
       const WorkspaceFolder(path: '/remote', targetId: 'ssh:p1'),

@@ -3,7 +3,8 @@ import 'dart:io';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:path/path.dart' as p;
 import 'package:teampilot/models/workspace_folder.dart';
-import 'package:teampilot/services/storage/app_storage.dart';
+import 'package:teampilot/services/storage/app_paths.dart';
+import '../../support/test_runtime_context.dart';
 import 'package:teampilot/services/io/local_filesystem.dart';
 import 'package:teampilot/services/io/wsl_filesystem.dart';
 import 'package:teampilot/utils/workspace/workspace_path_utils.dart';
@@ -36,46 +37,58 @@ void main() {
 
   test('normalizeWorkspacePath converts Windows paths under WSL storage', () {
     if (!Platform.isWindows) return;
-    AppStorage.installForTesting(
+    installTestHomeStorage(
       filesystem: WslFilesystem(),
       paths: AppPaths('/home/hhoa/.local/share/com.hhoa.teampilot'),
     );
-    addTearDown(AppStorage.resetForTesting);
+    addTearDown(resetTestHomeStorage);
 
-    final normalized = normalizeWorkspacePath(r'C:\Users\dev\repo');
+    final normalized = normalizeWorkspacePath(
+      r'C:\Users\dev\repo',
+      usesPosixPaths: true,
+    );
     expect(normalized, '/mnt/c/Users/dev/repo');
     expect(normalized, isNot(contains(r'\')));
   });
 
   test('normalizeWorkspacePath keeps Windows paths under native storage', () {
     if (!Platform.isWindows) return;
-    AppStorage.installForTesting(
+    installTestHomeStorage(
       filesystem: LocalFilesystem(),
       paths: AppPaths(r'C:\Users\dev\AppData\Roaming\com.hhoa.teampilot'),
     );
-    addTearDown(AppStorage.resetForTesting);
+    addTearDown(resetTestHomeStorage);
 
     expect(
-      normalizeWorkspacePath(r'C:\Users\dev\repo'),
+      normalizeWorkspacePath(r'C:\Users\dev\repo', usesPosixPaths: false),
       p.normalize(r'C:\Users\dev\repo'),
     );
     expect(
-      normalizeWorkspacePath(r'C:\Users\dev\repo'),
+      normalizeWorkspacePath(r'C:\Users\dev\repo', usesPosixPaths: false),
       isNot(startsWith('/mnt/')),
     );
   });
 
   test('normalizeWorkspacePath keeps POSIX paths unchanged', () {
-    AppStorage.resetForTesting();
-    expect(normalizeWorkspacePath('/tmp/work'), '/tmp/work');
-    expect(normalizeWorkspacePath(r'C:\temp'), p.normalize(r'C:\temp'));
+    resetTestHomeStorage();
+    expect(
+      normalizeWorkspacePath('/tmp/work', usesPosixPaths: false),
+      '/tmp/work',
+    );
+    expect(
+      normalizeWorkspacePath(r'C:\temp', usesPosixPaths: false),
+      p.normalize(r'C:\temp'),
+    );
   });
 
   test('workspaceMetadataKeys includes Windows path separator variants', () {
     if (!Platform.isWindows) return;
-    AppStorage.resetForTesting();
+    resetTestHomeStorage();
 
-    final keys = workspaceMetadataKeys(r'C:\Users\haung\Documents');
+    final keys = workspaceMetadataKeys(
+      r'C:\Users\haung\Documents',
+      usesPosixPaths: false,
+    );
     expect(
       keys,
       containsAll([
@@ -90,9 +103,12 @@ void main() {
     'workspaceMetadataKeys includes Windows variants for WSL workspace paths',
     () {
       if (!Platform.isWindows) return;
-      AppStorage.resetForTesting();
+      resetTestHomeStorage();
 
-      final keys = workspaceMetadataKeys('/mnt/c/Users/haung/Documents');
+      final keys = workspaceMetadataKeys(
+        '/mnt/c/Users/haung/Documents',
+        usesPosixPaths: true,
+      );
       expect(keys, contains('/mnt/c/Users/haung/Documents'));
       expect(
         keys,
@@ -106,7 +122,9 @@ void main() {
 
   test('workspaceMetadataKeys keeps single key for POSIX paths', () {
     if (Platform.isWindows) return;
-    expect(workspaceMetadataKeys('/tmp/work'), ['/tmp/work']);
+    expect(workspaceMetadataKeys('/tmp/work', usesPosixPaths: false), [
+      '/tmp/work',
+    ]);
   });
 
   group('worktreeRepoPathForToolsTarget', () {
@@ -123,6 +141,7 @@ void main() {
           cwd: '/wsl/repo/.worktrees/feature',
           cubitRepoPath: '/wsl/repo',
           fallbackRepoPath: '/local/repo',
+          usesPosixPaths: false,
         ),
         '/wsl/repo',
       );
@@ -136,6 +155,7 @@ void main() {
           cwd: '/wsl/repo/.worktrees/feature',
           cubitRepoPath: '/local/repo',
           fallbackRepoPath: '/local/repo',
+          usesPosixPaths: false,
         ),
         '/wsl/repo',
       );
@@ -149,6 +169,7 @@ void main() {
           cwd: '/unknown',
           cubitRepoPath: '',
           fallbackRepoPath: '/local/repo',
+          usesPosixPaths: false,
         ),
         '/local/repo',
       );

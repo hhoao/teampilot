@@ -6,6 +6,8 @@ import 'package:teampilot/cubits/chat_cubit.dart';
 import 'package:teampilot/models/team_config.dart';
 import 'package:teampilot/models/workspace_folder.dart';
 import 'package:teampilot/repositories/session_repository.dart';
+import 'package:teampilot/services/expert_hub/builtin_member_templates.dart';
+import 'package:teampilot/services/expert_hub/expert_hub_catalog.dart';
 import 'package:teampilot/services/expert_hub/expert_member_materializer.dart';
 import 'package:teampilot/services/storage/launch_profile_provisioner.dart';
 import 'package:teampilot/utils/team/team_member_naming.dart';
@@ -14,6 +16,16 @@ import '../../support/fake_terminal_session.dart';
 import '../../support/fixed_resume_lifecycle_service.dart';
 import '../../support/post_frame_test_harness.dart';
 import '../../support/test_runtime_context.dart';
+import '../../support/in_memory_filesystem.dart';
+
+/// Materializes a roster from the built-in expert catalog (test-local snapshot).
+TeamProfile _withBuiltinMembers(TeamProfile team) =>
+    ExpertMemberMaterializer.materializeTeam(
+      team,
+      MemberCatalogSnapshot({
+        for (final m in builtinExpertMembers()) m.key: m,
+      }),
+    );
 
 void main() {
   setUp(setUpTestAppStorage);
@@ -22,7 +34,7 @@ void main() {
   test(
     'disconnectMemberShell targets arbitrary session member, not only active',
     () async {
-      final team = await ExpertMemberMaterializer.attachMaterializedMembers(
+      final team = _withBuiltinMembers(
         TeamProfile(
           id: LaunchProfileProvisioner.defaultNativeTeamId,
           name: 'Team',
@@ -31,7 +43,7 @@ void main() {
       );
       final tmp = await Directory.systemTemp.createTemp('disconnect_member_');
       addTearDown(() => deleteTempDirBestEffort(tmp));
-      final repo = SessionRepository(rootDir: tmp.path);
+      final repo = SessionRepository(rootDir: tmp.path, storage: testHomeStorage, );
       final workspace = await repo.createWorkspace([
         const WorkspaceFolder(path: '/work'),
       ]);
@@ -58,9 +70,11 @@ void main() {
                 FakeTerminalSession(
                   executable: executable,
                   scrollbackLines: scrollbackLines,
+                                     fs: InMemoryFilesystem(),
                 ),
         postFrameScheduler: postFrame.scheduler,
         lifecycleService: FixedResumeLifecycleService(resume: false),
+                               storage: testHomeStorage,
       );
       addTearDown(() => tearDownChatCubitWithSessionPersist(cubit, postFrame));
       await cubit.loadWorkspaceData(repo);
@@ -92,8 +106,8 @@ void main() {
       final tabB = cubit.tabStore.openTabBySessionId(sessionB.sessionId)!;
       final memberId = team.members.first.id;
 
-      final shellA = FakeTerminalSession(executable: 'bin-a');
-      final shellB = FakeTerminalSession(executable: 'bin-b');
+      final shellA = FakeTerminalSession(executable: 'bin-a', fs: InMemoryFilesystem(), );
+      final shellB = FakeTerminalSession(executable: 'bin-b', fs: InMemoryFilesystem(), );
       shellA.connect(workingDirectory: '/work');
       shellB.connect(workingDirectory: '/work');
       tabA.memberShells[memberId] = shellA;

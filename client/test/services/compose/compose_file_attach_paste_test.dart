@@ -40,6 +40,7 @@ void main() {
         ),
       ),
       idGenerator: () => 'paste-1',
+                                                      usesPosixPaths: false,
     );
 
     expect(pasted, isTrue);
@@ -58,6 +59,7 @@ void main() {
       controller: controller,
       workspaceRoot: root,
       clipboardReader: _FakeClipboardReader(filePaths: [external]),
+                                                      usesPosixPaths: false,
     );
 
     expect(pasted, isTrue);

@@ -10,6 +10,7 @@ import 'package:teampilot/services/terminal/terminal_transport.dart';
 
 import 'integration_prerequisites.dart';
 import 'cli_store_env.dart';
+import '../../support/in_memory_filesystem.dart';
 
 /// Boots a [TerminalSession] on a real local PTY for screen-probe integration tests.
 abstract final class LocalPtyProbeHarness {
@@ -171,6 +172,7 @@ abstract final class LocalPtyProbeHarness {
               ),
             );
           },
+                                     fs: InMemoryFilesystem(),
     );
     session.connect(
       workingDirectory: workingDirectory ?? Directory.systemTemp.path,

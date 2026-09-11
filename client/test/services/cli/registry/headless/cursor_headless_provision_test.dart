@@ -7,7 +7,7 @@ import 'package:teampilot/models/team_config.dart';
 import 'package:teampilot/services/cli/cursor/capabilities/headless.dart';
 import 'package:teampilot/services/cli/cursor/provider/cursor_home_layout.dart';
 import 'package:teampilot/services/cli/registry/capabilities/headless_capability.dart';
-import 'package:teampilot/services/storage/app_storage.dart';
+import 'package:teampilot/services/storage/home_storage.dart';
 
 import '../../../../support/post_frame_test_harness.dart';
 
@@ -15,15 +15,16 @@ void main() {
   setUp(setUpTestAppStorage);
   tearDown(tearDownTestAppStorage);
 
-  const cap = CursorHeadlessCapability();
+  late CursorHeadlessCapability cap;
   const loggedInAuthJson = '{"accessToken":"at1","refreshToken":"rt1"}';
 
   late CursorHomeLayout layout;
   late String configDir;
 
   setUp(() {
-    layout = CursorHomeLayout(pathContext: AppStorage.fs.pathContext);
-    configDir = p.join(AppStorage.home, 'headless-home');
+    cap = CursorHeadlessCapability(storage: testHomeStorage);
+    layout = CursorHomeLayout(pathContext: testHomeStorage.fs.pathContext);
+    configDir = p.join(testHomeStorage.home, 'headless-home');
   });
 
   HeadlessProvisionContext ctx({
@@ -37,11 +38,11 @@ void main() {
     configDir: configDir,
   );
 
-  /// Seeds a logged-in official provider store under AppStorage.
+  /// Seeds a logged-in official provider store under the test home storage.
   Future<void> seedProviderStore(String providerId) async {
-    final fs = AppStorage.fs;
+    final fs = testHomeStorage.fs;
     final serviceHome = p.join(
-      AppStorage.paths.basePath,
+      testHomeStorage.paths.basePath,
       'providers',
       'cursor',
       providerId,
@@ -73,11 +74,11 @@ void main() {
       // Auth landed at the platform anchor inside the temp home, and the
       // cli-config came along for the ride (cursor-agent needs both).
       expect(
-        await AppStorage.fs.readString(layout.authJson(configDir)),
+        await testHomeStorage.fs.readString(layout.authJson(configDir)),
         loggedInAuthJson,
       );
       expect(
-        (await AppStorage.fs.stat(layout.cliConfig(configDir))).isFile,
+        (await testHomeStorage.fs.stat(layout.cliConfig(configDir))).isFile,
         isTrue,
       );
     },
@@ -120,9 +121,12 @@ void main() {
   test(
     'provision falls back to the global login under the storage home',
     () async {
-      final fs = AppStorage.fs;
-      await fs.ensureDir(layout.authDir(AppStorage.home));
-      await fs.writeString(layout.authJson(AppStorage.home), loggedInAuthJson);
+      final fs = testHomeStorage.fs;
+      await fs.ensureDir(layout.authDir(testHomeStorage.home));
+      await fs.writeString(
+        layout.authJson(testHomeStorage.home),
+        loggedInAuthJson,
+      );
 
       final result = await cap.provision(ctx(providerId: ''));
 

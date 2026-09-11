@@ -42,6 +42,7 @@ import 'package:shared_ui/shared_ui.dart';
 import '../../widgets/run/run_toolbar.dart';
 import '../../widgets/ssh/ssh_home_disconnected_banner.dart';
 import '../../widgets/termux/termux_disconnected_banner.dart';
+import '../../widgets/home_storage_scope.dart';
 import '../floating_workspace/floating_workspace_host.dart';
 import '../../repositories/session_repository.dart';
 import 'clone_completed_dialog.dart';
@@ -138,9 +139,15 @@ class HomeShell extends StatefulWidget {
 }
 
 class _HomeShellState extends State<HomeShell> {
-  final _recentWorkspacesStore = HomeRecentWorkspacesStore();
-  final _closedWorkspacesStore = HomeClosedWorkspacesStore();
-  final _openWorkspacesStore = HomeOpenWorkspacesStore();
+  late final _recentWorkspacesStore = HomeRecentWorkspacesStore(
+    storage: homeStorageOf(context),
+  );
+  late final _closedWorkspacesStore = HomeClosedWorkspacesStore(
+    storage: homeStorageOf(context),
+  );
+  late final _openWorkspacesStore = HomeOpenWorkspacesStore(
+    storage: homeStorageOf(context),
+  );
 
   late List<WorkspaceTabRef> _openTabs;
   List<HomeClosedWorkspaceEntry> _recentlyClosed = const [];

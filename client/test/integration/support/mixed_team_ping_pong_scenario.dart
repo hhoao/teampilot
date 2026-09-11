@@ -3,13 +3,14 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/models/app_session.dart';
 import 'package:teampilot/models/workspace_folder.dart';
 import 'package:teampilot/repositories/session_repository.dart';
-import 'package:teampilot/services/storage/app_storage.dart';
+import '../../support/test_runtime_context.dart';
 
 import '../../support/post_frame_test_harness.dart';
 import 'docker_ssh_server.dart';
 import 'integration_prerequisites.dart';
 import 'mixed_team_integration_harness.dart';
 import 'package:teampilot/models/team_config.dart';
+import '../../support/in_memory_filesystem.dart';
 
 /// Shared L2/L3 mixed-team ping/pong scenarios (ChatCubit + mock model gateway).
 abstract final class MixedTeamPingPongScenario {
@@ -26,11 +27,11 @@ abstract final class MixedTeamPingPongScenario {
     try {
       await harness.startMockServer();
       await harness.writeMockProviders();
-      final repo = SessionRepository();
+      final repo = SessionRepository(storage: fakeHomeStorage());
       final cubit = harness.createCubit(postFrame: postFrame);
 
       final workspace = await repo.createWorkspace([
-        WorkspaceFolder(path: AppStorage.cwd),
+        WorkspaceFolder(path: testHomeStorage.cwd),
       ]);
       session = (await repo.createSession(
         workspace.workspaceId,
@@ -102,9 +103,9 @@ abstract final class MixedTeamPingPongScenario {
         remote: remote,
       );
 
-      final repo = SessionRepository();
+      final repo = SessionRepository(storage: fakeHomeStorage());
       final workspace = await repo.createWorkspace([
-        WorkspaceFolder(path: AppStorage.cwd),
+        WorkspaceFolder(path: testHomeStorage.cwd),
         WorkspaceFolder(
           path: MixedTeamDockerRemote.remoteWorkspacePath,
           targetId: remote.sshTargetId,

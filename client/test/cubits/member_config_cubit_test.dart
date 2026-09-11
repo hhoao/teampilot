@@ -8,6 +8,7 @@ import 'package:teampilot/services/cli/member_config/member_config_detail.dart';
 import 'package:teampilot/services/cli/member_config/member_config_inspector.dart';
 import 'package:teampilot/services/cli/registry/cli_tool_registry.dart';
 import 'package:teampilot/services/io/local_filesystem.dart';
+import '../support/in_memory_filesystem.dart';
 
 // Passes explicit non-null deps so the super constructor never reads
 // RuntimeStorageContext.current or AppStorage — the fake overrides inspect()
@@ -21,6 +22,7 @@ class _FakeInspector extends MemberConfigInspector {
           fs: LocalFilesystem(),
         ),
         registry: CliToolRegistry(),
+             storage: fakeHomeStorage(),
       );
 
   final MemberConfigDetail _result;
@@ -59,6 +61,7 @@ void main() {
           resolvedDir: '/x',
         ),
       ),
+                                     storage: fakeHomeStorage(),
     );
     final states = <MemberConfigStatus>[];
     cubit.stream.listen((s) => states.add(s.status));
@@ -81,6 +84,7 @@ void main() {
         const MemberConfigDetail(cli: CliTool.claude),
         throwIt: true,
       ),
+                                     storage: fakeHomeStorage(),
     );
     await cubit.load(
       workspaceId: 'p1',

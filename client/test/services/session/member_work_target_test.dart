@@ -22,6 +22,7 @@ WorkspaceLaunchContext _ctx(
     folders: workspaceFolders ?? session.folders,
     createdAt: 0,
   ),
+  usesPosixPaths: false,
 );
 
 void main() {
@@ -31,6 +32,7 @@ void main() {
       final resolved = <String>[];
       final home = testRuntimeContext('/home-root');
       final lifecycle = SessionLifecycleService(
+        storage: fakeHomeStorage(),
         storageRootsResolver: () async => home,
         workContextResolver: (target) async {
           resolved.add(target.id);
@@ -83,6 +85,7 @@ void main() {
       final resolved = <String>[];
       final home = testRuntimeContext('/home-root');
       final lifecycle = SessionLifecycleService(
+        storage: fakeHomeStorage(),
         storageRootsResolver: () async => home,
         workContextResolver: (target) async {
           resolved.add(target.id);
@@ -107,6 +110,7 @@ void main() {
   SessionLifecycleService capturingLifecycle(List<String> resolved) {
     final home = testRuntimeContext('/home-root');
     return SessionLifecycleService(
+      storage: fakeHomeStorage(),
       storageRootsResolver: () async => home,
       workContextResolver: (target) async {
         resolved.add(target.id);
@@ -193,7 +197,7 @@ void main() {
   test(
     'member assigned to ssh target resolves ssh even when local is first',
     () async {
-      final lifecycle = SessionLifecycleService();
+      final lifecycle = SessionLifecycleService(storage: fakeHomeStorage());
       final session = AppSession(
         sessionId: 's-mixed-order',
         workspaceId: 'w1',
@@ -213,7 +217,7 @@ void main() {
   );
 
   test('invalid target falls back to first folder target', () {
-    final lifecycle = SessionLifecycleService();
+    final lifecycle = SessionLifecycleService(storage: fakeHomeStorage());
     final session = AppSession(
       sessionId: 's-invalid',
       workspaceId: 'w1',
@@ -234,7 +238,7 @@ void main() {
   test(
     'prepareShellLaunch rejects invalid member target on mixed workspace',
     () async {
-      final lifecycle = SessionLifecycleService();
+      final lifecycle = SessionLifecycleService(storage: fakeHomeStorage());
       final session = AppSession(
         sessionId: 's-invalid',
         workspaceId: 'w1',
@@ -280,7 +284,7 @@ void main() {
   );
 
   test('memberWorkDirs derives cwd from target', () {
-    final lifecycle = SessionLifecycleService();
+    final lifecycle = SessionLifecycleService(storage: fakeHomeStorage());
     const folders = [
       WorkspaceFolder(path: '/main'),
       WorkspaceFolder(path: '/x'),
@@ -303,7 +307,7 @@ void main() {
   });
 
   test('personal session launchWorkTarget uses workspace session target', () {
-    final lifecycle = SessionLifecycleService();
+    final lifecycle = SessionLifecycleService(storage: fakeHomeStorage());
     final session = AppSession(
       sessionId: 's-personal',
       workspaceId: 'w1',
@@ -327,7 +331,11 @@ void main() {
       ],
       createdAt: 1,
     );
-    final dirs = session.workDirsForMember(null, folders: session.folders);
+    final dirs = session.workDirsForMember(
+      null,
+      folders: session.folders,
+      usesPosixPaths: false,
+    );
     expect(dirs.workingDirectory, '/local');
     expect(dirs.addDirs, ['/local-extra']);
   });

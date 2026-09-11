@@ -1,7 +1,7 @@
 import '../app/external_link_opener.dart';
 import '../editor/file_editor_theme.dart';
 import '../io/filesystem.dart';
-import '../storage/app_storage.dart';
+import '../storage/app_paths.dart';
 import 'workbench_editor_opener.dart';
 import 'workspace_file_locator.dart';
 import 'workspace_href_classifier.dart';

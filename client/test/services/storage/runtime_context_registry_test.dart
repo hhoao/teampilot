@@ -5,7 +5,7 @@ import 'package:teampilot/models/runtime_target.dart';
 import 'package:teampilot/models/ssh_profile.dart';
 import 'package:teampilot/services/io/sftp_filesystem.dart';
 import 'package:teampilot/services/ssh/ssh_client_factory.dart';
-import 'package:teampilot/services/storage/app_storage.dart';
+import 'package:teampilot/services/storage/app_paths.dart';
 import 'package:teampilot/services/storage/remote_ssh_storage_paths.dart';
 import 'package:teampilot/services/storage/runtime_context.dart';
 import 'package:teampilot/services/storage/runtime_context_registry.dart';

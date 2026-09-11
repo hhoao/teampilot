@@ -28,9 +28,11 @@ void main() {
     () async {
       final draft = await resolveLandingDraft(
         workspaceId: workspace.workspaceId,
+        storage: fakeHomeStorage(),
         store: LandingPrefsStore(
           fs: InMemoryFilesystem(),
           pathOverride: '/prefs.json',
+          storage: fakeHomeStorage(),
         ),
       );
       expect(draft.launchSecurityPolicy.requiresDangerousExecution, isTrue);
@@ -42,9 +44,11 @@ void main() {
     () async {
       final draft = await resolveLandingDraft(
         workspaceId: workspace.workspaceId,
+        storage: fakeHomeStorage(),
         store: LandingPrefsStore(
           fs: InMemoryFilesystem(),
           pathOverride: '/prefs.json',
+          storage: fakeHomeStorage(),
         ),
         simpleModeDefaultFullAccess: false,
       );
@@ -58,6 +62,7 @@ void main() {
       final store = LandingPrefsStore(
         fs: InMemoryFilesystem(),
         pathOverride: '/prefs.json',
+        storage: fakeHomeStorage(),
       );
       await persistLandingDraft(
         workspace.workspaceId,
@@ -65,11 +70,13 @@ void main() {
           isPersonal: true,
           launchSecurityPolicy: LaunchSecurityPolicy.fullAccess,
         ),
+        storage: fakeHomeStorage(),
         store: store,
       );
 
       final draft = await resolveLandingDraft(
         workspaceId: workspace.workspaceId,
+        storage: fakeHomeStorage(),
         store: store,
         simpleModeDefaultFullAccess: false,
       );
@@ -83,16 +90,18 @@ void main() {
       final store = LandingPrefsStore(
         fs: InMemoryFilesystem(),
         pathOverride: '/prefs.json',
+        storage: fakeHomeStorage(),
       );
       const draft = LandingLaunchContext(
         isPersonal: true,
         launchSecurityPolicy: LaunchSecurityPolicy.cliDefault,
       );
 
-      await persistLandingDraft(workspace.workspaceId, draft, store: store);
+      await persistLandingDraft(workspace.workspaceId, draft, storage: fakeHomeStorage(), store: store);
 
       final resolved = await resolveLandingDraft(
         workspaceId: workspace.workspaceId,
+        storage: fakeHomeStorage(),
         store: store,
       );
       expect(resolved.launchSecurityPolicy.requiresDangerousExecution, isFalse);
@@ -105,16 +114,18 @@ void main() {
       final store = LandingPrefsStore(
         fs: InMemoryFilesystem(),
         pathOverride: '/prefs.json',
+        storage: fakeHomeStorage(),
       );
       const draft = LandingLaunchContext(
         isPersonal: true,
         launchSecurityPolicy: LaunchSecurityPolicy.fullAccess,
       );
 
-      await persistLandingDraft(workspace.workspaceId, draft, store: store);
+      await persistLandingDraft(workspace.workspaceId, draft, storage: fakeHomeStorage(), store: store);
 
       final resolved = await resolveLandingDraft(
         workspaceId: workspace.workspaceId,
+        storage: fakeHomeStorage(),
         store: store,
       );
       expect(resolved.launchSecurityPolicy.requiresDangerousExecution, isTrue);
@@ -125,6 +136,7 @@ void main() {
     final store = LandingPrefsStore(
       fs: InMemoryFilesystem(),
       pathOverride: '/prefs.json',
+      storage: fakeHomeStorage(),
     );
     const draft = LandingLaunchContext(
       isPersonal: false,
@@ -132,10 +144,11 @@ void main() {
       teamId: 'last-team',
     );
 
-    await persistLandingDraft(workspace.workspaceId, draft, store: store);
+    await persistLandingDraft(workspace.workspaceId, draft, storage: fakeHomeStorage(), store: store);
 
     final resolved = await resolveLandingDraft(
       workspaceId: workspace.workspaceId,
+      storage: fakeHomeStorage(),
       store: store,
     );
     expect(resolved.generateLaunch, isTrue);
@@ -146,6 +159,7 @@ void main() {
     final store = LandingPrefsStore(
       fs: InMemoryFilesystem(),
       pathOverride: '/prefs.json',
+      storage: fakeHomeStorage(),
     );
     const draft = LandingLaunchContext(
       isPersonal: true,
@@ -155,10 +169,11 @@ void main() {
       effort: 'high',
     );
 
-    await persistLandingDraft(workspace.workspaceId, draft, store: store);
+    await persistLandingDraft(workspace.workspaceId, draft, storage: fakeHomeStorage(), store: store);
 
     final resolved = await resolveLandingDraft(
       workspaceId: workspace.workspaceId,
+      storage: fakeHomeStorage(),
       store: store,
     );
     expect(resolved.cli, CliTool.cursor);
@@ -170,10 +185,15 @@ void main() {
 
   test('persistLandingDraft omits empty custom fields from JSON', () async {
     final fs = InMemoryFilesystem();
-    final store = LandingPrefsStore(fs: fs, pathOverride: '/prefs.json');
+    final store = LandingPrefsStore(
+      fs: fs,
+      pathOverride: '/prefs.json',
+      storage: fakeHomeStorage(),
+    );
     await persistLandingDraft(
       workspace.workspaceId,
       const LandingLaunchContext(isPersonal: true),
+      storage: fakeHomeStorage(),
       store: store,
     );
 

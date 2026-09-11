@@ -20,6 +20,8 @@ import '../../../pages/home_workspace/home_workspace_route.dart';
 import '../../../repositories/session_repository.dart';
 import '../../../services/expert_hub/expert_capability_resolver.dart';
 import '../../../services/expert_hub/expert_landing_deep_link.dart';
+import '../../../services/expert_hub/local_expert_store.dart';
+import '../../../services/storage/home_storage.dart';
 import '../../../services/workbench/workbench_layout_persistence.dart';
 import '../../../theme/workspace_surface_layers.dart';
 import '../../../utils/logging/logger.dart';
@@ -149,11 +151,17 @@ class _WorkspacePageState extends State<WorkspacePage> {
       resolver = null;
     }
 
+    final homeStorage = context.read<HomeStorage>();
     final result = await applyExpertDeepLink(
       expertKey: expertKey,
       workspaceId: widget.workspaceId,
       workspace: workspace,
       routeProfileIsTeam: routeProfileIsTeam,
+      localStore: LocalExpertStore(
+        fs: homeStorage.fs,
+        dirOverride: homeStorage.paths.memberHubLocalTemplatesDir,
+      ),
+      storage: homeStorage,
       hubState: context.mounted ? context.read<ExpertHubCubit>().state : null,
       resolver: resolver,
       simpleModeDefaultFullAccess: context

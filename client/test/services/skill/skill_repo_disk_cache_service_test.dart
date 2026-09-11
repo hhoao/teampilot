@@ -6,7 +6,6 @@ import 'package:teampilot/models/skill.dart';
 import 'package:teampilot/services/io/filesystem.dart';
 import 'package:teampilot/services/skill/skill_fetch_service.dart';
 import 'package:teampilot/services/skill/skill_repo_disk_cache_service.dart';
-import 'package:teampilot/services/storage/app_storage.dart';
 import 'package:teampilot/utils/async_keyed_coalescer.dart';
 
 import '../../support/post_frame_test_harness.dart';
@@ -54,9 +53,9 @@ Future<void> _plantSnapshot({
   required String commitSha,
   bool includeBin = false,
 }) async {
-  final fs = AppStorage.fs;
+  final fs = testHomeStorage.fs;
   final dir = fs.pathContext.join(
-    AppStorage.paths.skillRepoCacheDir,
+    testHomeStorage.paths.skillRepoCacheDir,
     SkillRepoDiskCacheService.repoKey(_repo),
   );
   final filesDir = fs.pathContext.join(dir, 'files');
@@ -102,7 +101,7 @@ void main() {
   test('empty commitSha is not trusted when remote SHA unavailable', () async {
     await _plantSnapshot(commitSha: '');
     final fetch = _CountingFetch()..remoteSha = null;
-    final cache = SkillRepoDiskCacheService(fetch: fetch);
+    final cache = SkillRepoDiskCacheService(storage: buildTestHomeStorage(), fetch: fetch);
 
     await cache.ensureSynced(_repo);
 
@@ -112,7 +111,7 @@ void main() {
   test('trusted snapshot reused when remote SHA unavailable', () async {
     await _plantSnapshot(commitSha: 'deadbeef');
     final fetch = _CountingFetch()..remoteSha = null;
-    final cache = SkillRepoDiskCacheService(fetch: fetch);
+    final cache = SkillRepoDiskCacheService(storage: buildTestHomeStorage(), fetch: fetch);
 
     final result = await cache.ensureSynced(_repo);
 
@@ -124,8 +123,8 @@ void main() {
   test('parallel ensureSynced on separate instances coalesces download', () async {
     final fetch = _CountingFetch();
     final coalescer = AsyncKeyedCoalescer();
-    final a = SkillRepoDiskCacheService(fetch: fetch, coalescer: coalescer);
-    final b = SkillRepoDiskCacheService(fetch: fetch, coalescer: coalescer);
+    final a = SkillRepoDiskCacheService(storage: buildTestHomeStorage(), fetch: fetch, coalescer: coalescer);
+    final b = SkillRepoDiskCacheService(storage: buildTestHomeStorage(), fetch: fetch, coalescer: coalescer);
 
     await Future.wait([a.ensureSynced(_repo), b.ensureSynced(_repo)]);
 
@@ -135,7 +134,7 @@ void main() {
   test('missing requiredRelativePaths forces download', () async {
     await _plantSnapshot(commitSha: 'deadbeef', includeBin: false);
     final fetch = _CountingFetch()..remoteSha = null;
-    final cache = SkillRepoDiskCacheService(fetch: fetch);
+    final cache = SkillRepoDiskCacheService(storage: buildTestHomeStorage(), fetch: fetch);
 
     await cache.ensureSynced(_repo, requiredRelativePaths: const ['bin']);
 
@@ -143,10 +142,10 @@ void main() {
   });
 
   test('maxStaleness skips network when cache is fresh', () async {
-    final fs = AppStorage.fs;
+    final fs = testHomeStorage.fs;
     await _plantSnapshot(commitSha: 'deadbeef');
     final metaPath = fs.pathContext.join(
-      AppStorage.paths.skillRepoCacheDir,
+      testHomeStorage.paths.skillRepoCacheDir,
       SkillRepoDiskCacheService.repoKey(_repo),
       'meta.json',
     );
@@ -162,7 +161,7 @@ void main() {
     );
 
     final fetch = _CountingFetch()..remoteSha = 'deadbeef';
-    final cache = SkillRepoDiskCacheService(fetch: fetch);
+    final cache = SkillRepoDiskCacheService(storage: buildTestHomeStorage(), fetch: fetch);
 
     final result = await cache.ensureSynced(
       _repo,
@@ -178,7 +177,7 @@ void main() {
   test('maxStaleness still checks remote when cache is stale', () async {
     await _plantSnapshot(commitSha: 'deadbeef');
     final fetch = _CountingFetch()..remoteSha = 'deadbeef';
-    final cache = SkillRepoDiskCacheService(fetch: fetch);
+    final cache = SkillRepoDiskCacheService(storage: buildTestHomeStorage(), fetch: fetch);
 
     final result = await cache.ensureSynced(
       _repo,
@@ -191,10 +190,10 @@ void main() {
   });
 
   test('maxStaleness is ignored when force is set', () async {
-    final fs = AppStorage.fs;
+    final fs = testHomeStorage.fs;
     await _plantSnapshot(commitSha: 'deadbeef');
     final metaPath = fs.pathContext.join(
-      AppStorage.paths.skillRepoCacheDir,
+      testHomeStorage.paths.skillRepoCacheDir,
       SkillRepoDiskCacheService.repoKey(_repo),
       'meta.json',
     );
@@ -210,7 +209,7 @@ void main() {
     );
 
     final fetch = _CountingFetch()..remoteSha = 'deadbeef';
-    final cache = SkillRepoDiskCacheService(fetch: fetch);
+    final cache = SkillRepoDiskCacheService(storage: buildTestHomeStorage(), fetch: fetch);
 
     await cache.ensureSynced(
       _repo,

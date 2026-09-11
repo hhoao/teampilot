@@ -28,6 +28,8 @@ import '../../services/launch/session_launch_workspace_index.dart';
 import '../../services/cli/preset_resolver.dart';
 import '../../services/session/session_launch_config_snapshot.dart';
 import '../../services/session/session_member_cli_locks.dart';
+import '../../services/storage/home_storage.dart';
+import '../../services/storage/runtime_context.dart';
 import '../../services/storage/work_target_canonicalizer.dart';
 import '../../services/team/team_config_launch_validator.dart';
 import '../../services/terminal/session_member_cli_resolver.dart';
@@ -53,11 +55,14 @@ class SessionLaunchService
     implements MemberConnector, SessionShellConnectorDelegate {
   SessionLaunchService(
     this._h, {
+    required HomeStorage storage,
     TermuxWorkOpsBlockResolver? termuxWorkOpsBlockFor,
     this.onSessionTabOpened,
-  }) : _termuxWorkOpsBlockFor = termuxWorkOpsBlockFor;
+  }) : _storage = storage,
+       _termuxWorkOpsBlockFor = termuxWorkOpsBlockFor;
 
   final SessionLaunchHost _h;
+  final HomeStorage _storage;
   final TermuxWorkOpsBlockResolver? _termuxWorkOpsBlockFor;
 
   /// Domain → bar handshake for newly staged session tabs (wired by the app
@@ -71,6 +76,7 @@ class SessionLaunchService
   late final SessionShellConnector _shellConnector = SessionShellConnector(
     _h,
     this,
+    isLocalNative: () => _storage.context.mode == StorageBackendMode.native,
     termuxWorkOpsBlockFor: _termuxWorkOpsBlockFor,
   );
   late final SessionMemberConnectScheduler _memberConnectScheduler =
@@ -130,7 +136,9 @@ class SessionLaunchService
   late final SessionPromptMetadataSync _promptMetadata =
       SessionPromptMetadataSync(host: _h, state: () => _h.state);
   static const _uuid = Uuid();
-  final _teamConfigValidator = TeamConfigLaunchValidator();
+  late final _teamConfigValidator = TeamConfigLaunchValidator(
+    storage: _storage,
+  );
 
   SessionTabConnectPrepCallbacks get _tabConnectCallbacks => (
     persistSessionIfNeeded: _persistSessionIfNeeded,
@@ -151,6 +159,7 @@ class SessionLaunchService
       SessionLaunchWorkspaceIndex(
         workspaces: _state.workspaces,
         sessions: _state.sessions,
+        usesPosixPaths: _storage.usesPosixPaths,
       );
 
   Workspace? _workspaceById(String workspaceId) =>
@@ -516,6 +525,7 @@ class SessionLaunchService
               folders: session.folders,
               createdAt: 0,
             ),
+        usesPosixPaths: _storage.usesPosixPaths,
       );
 
   RuntimeTarget _launchWorkTarget(AppSession session, {String? memberId}) => _h

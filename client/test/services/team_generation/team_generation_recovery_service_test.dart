@@ -124,6 +124,7 @@ Future<TeamGenerationJobStore> _seedRecoveryJob({
   final store = TeamGenerationJobStore(
     fs: fs,
     layout: WorkspaceLayout(teampilotRoot: '/tp', fs: fs),
+                                        storage: fakeHomeStorage(filesystem: fs),
   );
   final settings = resolveTeamGenerationSettingsSnapshot(
     settings: TeamGenerationSettings(teamMode: TeamMode.mixed),
@@ -169,6 +170,7 @@ void main() {
       final store = TeamGenerationJobStore(
         fs: fs,
         layout: WorkspaceLayout(teampilotRoot: '/tp', fs: fs),
+                                            storage: fakeHomeStorage(filesystem: fs),
       );
       const workflowId = 'workflow-12345678';
       const builderSessionId = 'teamgen-builder-955fd54dbf2634e37179';

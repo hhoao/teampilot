@@ -2,7 +2,7 @@ import 'package:path/path.dart' as p;
 
 import '../../models/app_session.dart';
 import '../io/filesystem.dart';
-import 'app_storage.dart';
+import '../io/local_filesystem.dart';
 
 /// Canonical paths for TeamPilot workbench entities under `{teampilotRoot}/workspace/`.
 ///
@@ -38,8 +38,12 @@ import 'app_storage.dart';
 ///   sessions/{sessionId}/runtime/{memberId}/cursor/home/  # mixed cursor HOME
 /// ```
 class WorkspaceLayout {
+  /// [fs] must be passed by production callers (the home-plane filesystem the
+  /// root lives on). The implicit [LocalFilesystem] fallback exists only so the
+  /// pre-6-C test harness keeps compiling; it is removed once the harness
+  /// constructs layouts with an explicit filesystem.
   WorkspaceLayout({required this.teampilotRoot, Filesystem? fs})
-    : _fs = fs ?? AppStorage.fs;
+    : _fs = fs ?? LocalFilesystem();
 
   final String teampilotRoot;
   final Filesystem _fs;

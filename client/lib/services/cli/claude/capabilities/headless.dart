@@ -7,7 +7,7 @@ import '../../../../models/credential_link_result.dart';
 import '../../../../models/team_config.dart';
 import '../../../../models/launch_security_policy.dart';
 import '../../../provider/credential_binding.dart';
-import '../../../storage/app_storage.dart';
+import '../../../storage/home_storage.dart';
 import '../../registry/capabilities/headless_capability.dart';
 import '../../registry/headless/headless_provision_support.dart';
 import '../../registry/launch/headless_launch_context_adapter.dart';
@@ -30,7 +30,10 @@ import 'provider.dart';
 final class ClaudeHeadlessCapability
     with HeadlessProvisionSupport
     implements HeadlessCapability {
-  const ClaudeHeadlessCapability();
+  const ClaudeHeadlessCapability({this.storage});
+
+  @override
+  final HomeStorage? storage;
 
   @override
   bool get isSupported => true;
@@ -131,6 +134,7 @@ final class ClaudeHeadlessCapability
     final warnings = <String>[];
     final resolver = ClaudeProviderSettingsResolver(
       basePath: basePath,
+      storage: storage ?? _missingHomeStorage(),
       repository: repository,
       generator: generator,
     );
@@ -200,9 +204,10 @@ final class ClaudeHeadlessCapability
     var credentialsReady = true;
     if (isOfficialClaudeSettings(providerSettings)) {
       final credentials = ClaudeProviderCredentialsService(
+        storage: storage ?? _missingHomeStorage(),
         fs: fs,
         basePath: basePath,
-        resolveHomeDirectory: () => AppStorage.home,
+        resolveHomeDirectory: () => home,
       );
       final binding = ctx.provider == null
           ? CredentialBindingKind.linked
@@ -211,7 +216,7 @@ final class ClaudeHeadlessCapability
         ctx.configDir,
         ctx.providerId,
         binding: binding,
-        homeDirectory: AppStorage.home,
+        homeDirectory: home,
       );
       if (link == CredentialLinkResult.missing) {
         credentialsReady = false;
@@ -222,6 +227,13 @@ final class ClaudeHeadlessCapability
     return HeadlessProvisionResult(
       warnings: warnings,
       credentialsReady: credentialsReady,
+    );
+  }
+
+  HomeStorage _missingHomeStorage() {
+    throw StateError(
+      'ClaudeHeadlessCapability was constructed without HomeStorage; '
+      'credential provisioning requires storage threaded via CliBootstrap.',
     );
   }
 }

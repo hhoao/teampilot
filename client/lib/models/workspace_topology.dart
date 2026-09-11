@@ -232,6 +232,7 @@ List<String> folderPathsForTarget(
 String? targetIdForFolderPaths(
   List<WorkspaceFolder> folders,
   List<String> paths, {
+  required bool usesPosixPaths,
   bool matchSubpaths = false,
 }) {
   if (paths.isEmpty) return null;
@@ -239,17 +240,25 @@ String? targetIdForFolderPaths(
     final path = raw.trim();
     if (path.isEmpty) continue;
     for (final f in folders) {
-      if (workspacePathsEqual(f.path, path)) return f.targetId;
+      if (workspacePathsEqual(f.path, path, usesPosixPaths: usesPosixPaths)) {
+        return f.targetId;
+      }
     }
   }
   if (!matchSubpaths) return null;
   for (final raw in paths) {
-    final normalized = normalizeWorkspacePath(raw.trim());
+    final normalized = normalizeWorkspacePath(
+      raw.trim(),
+      usesPosixPaths: usesPosixPaths,
+    );
     if (normalized.isEmpty) continue;
     WorkspaceFolder? best;
     var bestRootLen = -1;
     for (final f in folders) {
-      final root = normalizeWorkspacePath(f.path);
+      final root = normalizeWorkspacePath(
+        f.path,
+        usesPosixPaths: usesPosixPaths,
+      );
       if (root.isEmpty) continue;
       if (normalized == root || normalized.startsWith('$root/')) {
         if (root.length > bestRootLen) {
@@ -267,11 +276,15 @@ String? targetIdForFolderPaths(
 List<WorkspaceFolder> mergeWorkspaceFolderCatalog({
   required List<WorkspaceFolder> sessionFolders,
   required List<WorkspaceFolder> workspaceFolders,
+  required bool usesPosixPaths,
 }) {
   if (workspaceFolders.isEmpty) return sessionFolders;
   final merged = <WorkspaceFolder>[...workspaceFolders];
   for (final sf in sessionFolders) {
-    if (workspaceFolders.any((wf) => workspacePathsEqual(wf.path, sf.path))) {
+    if (workspaceFolders.any(
+      (wf) =>
+          workspacePathsEqual(wf.path, sf.path, usesPosixPaths: usesPosixPaths),
+    )) {
       continue;
     }
     merged.add(sf);
@@ -294,9 +307,13 @@ String? memberTargetForInstanceId(
 /// the same target (cross-machine paths are not reachable from one PTY).
 ({String workingDirectory, List<String> addDirs}) personalWorkDirsForPrimaryPath(
   List<WorkspaceFolder> catalog,
-  String primaryPath,
-) {
-  final normalizedPrimary = normalizeWorkspacePath(primaryPath.trim());
+  String primaryPath, {
+  required bool usesPosixPaths,
+}) {
+  final normalizedPrimary = normalizeWorkspacePath(
+    primaryPath.trim(),
+    usesPosixPaths: usesPosixPaths,
+  );
   if (catalog.isEmpty) {
     return (
       workingDirectory: normalizedPrimary,
@@ -308,6 +325,7 @@ String? memberTargetForInstanceId(
       targetIdForFolderPaths(
         catalog,
         [normalizedPrimary],
+        usesPosixPaths: usesPosixPaths,
         matchSubpaths: true,
       ) ??
       catalog.first.targetId;
@@ -315,7 +333,11 @@ String? memberTargetForInstanceId(
   var cwd = normalizedPrimary;
   for (final folder in catalog) {
     if (folder.targetId == targetId &&
-        workspacePathsEqual(folder.path, normalizedPrimary)) {
+        workspacePathsEqual(
+          folder.path,
+          normalizedPrimary,
+          usesPosixPaths: usesPosixPaths,
+        )) {
       cwd = folder.path;
       break;
     }
@@ -327,7 +349,12 @@ String? memberTargetForInstanceId(
 
   final addDirs = <String>[
     for (final folder in catalog)
-      if (folder.targetId == targetId && !workspacePathsEqual(folder.path, cwd))
+      if (folder.targetId == targetId &&
+          !workspacePathsEqual(
+            folder.path,
+            cwd,
+            usesPosixPaths: usesPosixPaths,
+          ))
         folder.path,
   ];
 

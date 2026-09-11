@@ -243,6 +243,7 @@ class AutomationDispatcher {
 
     final workingDirectory = automationLaunchWorkingDirectory(
       automation,
+      usesPosixPaths: _sessionRepository.storage.usesPosixPaths,
       workspace: workspace,
     );
     final plannedSessionId = _uuid.v4();

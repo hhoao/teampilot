@@ -23,7 +23,7 @@ void main() {
 
   setUp(() {
     fs = InMemoryFilesystem();
-    editor = EditorCubit(fs: fs);
+    editor = EditorCubit(fs: fs, storage: fakeHomeStorage(filesystem: fs), );
     workbench = WorkbenchCubit();
     floating = FloatingWorkspaceCubit();
     opener = WorkbenchEditorOpener(

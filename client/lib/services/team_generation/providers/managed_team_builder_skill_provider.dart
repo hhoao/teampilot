@@ -1,10 +1,8 @@
-import 'dart:io';
-
 import 'package:path/path.dart' as p;
 
 import '../../resource/contribution/resource_origin.dart';
 import '../../resource/providers/skill_contribution_provider.dart';
-import '../../storage/app_storage.dart';
+import '../../storage/home_storage.dart';
 import 'team_builder_skill_md.dart';
 
 /// Materializes the app-owned Team Builder skill into builder sessions only.
@@ -13,9 +11,14 @@ import 'team_builder_skill_md.dart';
 /// `SessionPurpose.teamGeneration` sessions; normal sessions never see it.
 /// Tests may pass an explicit [sourceDirectory] to skip writing.
 final class ManagedTeamBuilderSkillProvider implements SkillContributionProvider {
-  ManagedTeamBuilderSkillProvider({this.sourceDirectory});
+  ManagedTeamBuilderSkillProvider({
+    required HomeStorage storage,
+    this.sourceDirectory,
+  }) : _storage = storage;
 
   static const skillId = 'team-builder';
+
+  final HomeStorage _storage;
 
   /// When set, [provide] returns this directory without writing.
   final String? sourceDirectory;
@@ -49,17 +52,14 @@ final class ManagedTeamBuilderSkillProvider implements SkillContributionProvider
   }
 
   Future<String> _writeManagedSkill(SkillProviderContext context) async {
-    final fs = context.filesystem ?? AppStorage.fs;
+    final fs = context.filesystem ?? _storage.fs;
     final path = fs.pathContext;
     final target = context.targetConfigDir?.trim();
     final String dest;
     if (target != null && target.isNotEmpty) {
       dest = path.join(target, '.teampilot-managed', skillId);
     } else {
-      final root = AppStorage.isInstalled
-          ? AppStorage.appDataRoot
-          : Directory.systemTemp.path;
-      dest = p.join(root, '.teampilot-managed', skillId);
+      dest = p.join(_storage.appDataRoot, '.teampilot-managed', skillId);
     }
     await fs.ensureDir(dest);
     await fs.writeString(path.join(dest, 'SKILL.md'), teamBuilderSkillMd);

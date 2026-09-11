@@ -1,19 +1,24 @@
 import 'dart:convert';
 
 import '../io/filesystem.dart';
-import '../storage/app_storage.dart';
+import '../storage/home_storage.dart';
 
 /// Persists the set of favorited public-team keys at `team-hub/favorites.json`.
 class TeamHubFavoritesStore {
-  TeamHubFavoritesStore({Filesystem? fs, String? pathOverride})
-    : _fsOverride = fs,
-      _pathOverride = pathOverride;
+  TeamHubFavoritesStore({
+    required HomeStorage storage,
+    Filesystem? fs,
+    String? pathOverride,
+  }) : _storage = storage,
+       _fsOverride = fs,
+       _pathOverride = pathOverride;
 
+  final HomeStorage _storage;
   final Filesystem? _fsOverride;
   final String? _pathOverride;
 
-  Filesystem get _fs => _fsOverride ?? AppStorage.fs;
-  String get _path => _pathOverride ?? AppStorage.paths.teamHubFavoritesJson;
+  Filesystem get _fs => _fsOverride ?? _storage.fs;
+  String get _path => _pathOverride ?? _storage.paths.teamHubFavoritesJson;
 
   Future<Set<String>> load() async {
     try {

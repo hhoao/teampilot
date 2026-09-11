@@ -8,7 +8,7 @@ import '../../models/workspace.dart';
 import '../../utils/workspace/workspace_geometry_catalog.dart';
 import '../../utils/workspace/workspace_icon_resolver.dart';
 import '../../utils/ui/yield_ui_frame.dart';
-import '../storage/app_storage.dart';
+import '../storage/home_storage.dart';
 import '../storage/workspace_layout.dart';
 import 'workspace_icon_service.dart';
 import 'workspace_icon_storage.dart';
@@ -20,7 +20,10 @@ abstract final class WorkspaceIconWarmup {
 
   static const _geometryBatchSize = 4;
 
-  static Future<void> warm(List<Workspace> workspaces) async {
+  static Future<void> warm(
+    List<Workspace> workspaces, {
+    required HomeStorage storage,
+  }) async {
     final assets = kWorkspaceGeometryIconAssets;
     for (var i = 0; i < assets.length; i += _geometryBatchSize) {
       final end = min(i + _geometryBatchSize, assets.length);
@@ -32,7 +35,7 @@ abstract final class WorkspaceIconWarmup {
 
     var customCount = 0;
     for (final workspace in workspaces) {
-      if (await _warmCustomIcon(workspace)) {
+      if (await _warmCustomIcon(workspace, storage)) {
         customCount++;
         if (customCount.isOdd) {
           await yieldUiFrame();
@@ -53,7 +56,10 @@ abstract final class WorkspaceIconWarmup {
     info.picture.dispose();
   }
 
-  static Future<bool> _warmCustomIcon(Workspace workspace) async {
+  static Future<bool> _warmCustomIcon(
+    Workspace workspace,
+    HomeStorage storage,
+  ) async {
     final resolved = resolveWorkspaceIcon(workspace);
     if (resolved is! ResolvedWorkspaceCustomIcon) return false;
     final relativePath = resolved.relativePath;
@@ -61,9 +67,11 @@ abstract final class WorkspaceIconWarmup {
 
     final bytes = await workspaceIconService.loadCustomBytes(
       workspaceDir: WorkspaceLayout(
-        teampilotRoot: AppStorage.paths.basePath,
+        teampilotRoot: storage.paths.basePath,
+        fs: storage.fs,
       ).workspaceDir(workspace.workspaceId),
       relativePath: relativePath,
+      filesystem: storage.fs,
     );
     if (bytes == null || bytes.isEmpty) return false;
 

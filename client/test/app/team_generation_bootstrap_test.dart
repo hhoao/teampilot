@@ -15,7 +15,6 @@ import 'package:teampilot/services/storage/runtime_target_registry.dart';
 import 'package:teampilot/services/team_generation/mcp/team_composer_mcp_handler.dart';
 import 'package:teampilot/services/team_generation/providers/managed_team_builder_skill_provider.dart';
 import 'package:teampilot/services/team_generation/team_generation_authorizer.dart';
-import 'package:teampilot/services/team_generation/team_generation_coordinator.dart';
 import 'package:teampilot/services/team_generation/catalog/catalog_generation_stager.dart';
 
 import '../support/post_frame_test_harness.dart';
@@ -72,15 +71,21 @@ void main() {
       final chat = ChatCubit(
         executableResolver: () => 'true',
         automationRepository: testAutomationRepository(),
+        storage: testHomeStorage,
       );
       final workbench = WorkbenchCubit();
-      final sessionRepository = SessionRepository(rootDir: '/team-generation');
+      final sessionRepository = SessionRepository(
+        rootDir: '/team-generation',
+        storage: testHomeStorage,
+      );
       final profileRepository = LaunchProfileRepository(
         rootDir: '/team-generation-profiles',
+        storage: testHomeStorage,
       );
       final teamCubit = LaunchProfileCubit(
         repository: profileRepository,
         sessionRepository: sessionRepository,
+        storage: testHomeStorage,
         executableResolver: () => 'true',
       );
       addTearDown(chat.close);
@@ -96,6 +101,7 @@ void main() {
         cliToolRegistry: CliToolRegistry.builtIn(),
         targetRegistry: _TargetRegistry(),
         remoteCliReadiness: _RemoteCliReadiness(),
+        storage: testHomeStorage,
       );
       final recording = _RecordingBootstrapPort();
       final bootstrap = TeamGenerationGraphBootstrap(

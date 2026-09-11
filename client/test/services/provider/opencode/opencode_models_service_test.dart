@@ -30,6 +30,7 @@ void main() {
         expect(request.url.toString(), 'https://models.dev/api.json');
         return http.Response(_apiJson, 200);
       }),
+                                           storage: fakeHomeStorage(filesystem: fs),
     );
 
     await service.ensureLoaded();
@@ -54,12 +55,14 @@ void main() {
       fs: fs,
       basePath: '/data/tp',
       httpClient: neverCalled,
+                                 storage: fakeHomeStorage(filesystem: fs),
     ).writeCacheForTest(_entry({'opencode': const ['gpt-5.2']}));
 
     final service = OpencodeModelsService(
       fs: fs,
       basePath: '/data/tp',
       httpClient: neverCalled,
+                                           storage: fakeHomeStorage(filesystem: fs),
     );
     await service.ensureLoaded();
     expect(service.modelIdsFor(providerId: 'opencode'), ['gpt-5.2']);
@@ -77,6 +80,7 @@ void main() {
       httpClient: MockClient(
         (request) async => http.Response('oops', 500),
       ),
+                                           storage: fakeHomeStorage(filesystem: fs),
     );
     await service.writeCacheForTest(stale);
 
@@ -92,6 +96,7 @@ void main() {
       httpClient: MockClient(
         (request) async => throw Exception('network down'),
       ),
+                                           storage: fakeHomeStorage(filesystem: fs),
     );
     await service.ensureLoaded();
     expect(service.modelIdsFor(providerId: 'opencode'), isEmpty);
@@ -107,6 +112,7 @@ void main() {
         calls++;
         return http.Response(_apiJson, 200);
       }),
+                                           storage: fakeHomeStorage(filesystem: fs),
     );
     final f1 = service.ensureLoaded();
     final f2 = service.ensureLoaded();

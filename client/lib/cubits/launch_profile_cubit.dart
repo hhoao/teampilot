@@ -7,17 +7,19 @@ import '../models/mcp_server.dart';
 import '../models/plugin.dart';
 import '../models/team_config.dart';
 import '../models/team_roster_slot.dart';
-import '../services/expert_hub/composite_expert_hub_source.dart';
+import '../services/expert_hub/expert_hub_catalog.dart';
 import '../services/expert_hub/expert_member_materializer.dart';
 import '../models/launch_profile.dart';
 import '../repositories/mcp_repository.dart';
 import '../repositories/plugin_repository.dart';
 import '../repositories/launch_profile_repository.dart';
 import '../repositories/session_repository.dart';
+import '../repositories/workspace_project_config_repository.dart';
 import '../services/cli/registry/cli_tool_registry.dart';
 import '../services/provider/config_profile_service.dart';
 import '../services/session/session_lifecycle_service.dart';
 import '../services/mcp/profile_mcp_linker_service.dart';
+import '../services/storage/home_storage.dart';
 import '../services/storage/launch_profile_provisioner.dart';
 import '../utils/logging/logger.dart';
 import '../utils/team/team_member_naming.dart';
@@ -43,6 +45,7 @@ class LaunchProfileCubit extends Cubit<LaunchProfileState>
     required LaunchProfileRepository repository,
     required SessionRepository sessionRepository,
     required String Function() executableResolver,
+    required HomeStorage storage,
     CliExecutableResolver? cliExecutableResolver,
     TeamLauncher? launcher,
     String? Function()? llmConfigPathOverride,
@@ -55,9 +58,10 @@ class LaunchProfileCubit extends Cubit<LaunchProfileState>
     ProfileMcpLinkerService? mcpLinker,
     McpRepository? mcpRepository,
     InstalledMcpLoader? installedMcpLoader,
+    WorkspaceProjectConfigRepository? projectConfigRepository,
     Future<List<McpServer>> Function(String teamId)? extensionMcpContributor,
     LaunchProfileProvisioner? identityProvisioner,
-    CompositeExpertHubSource? expertHubSource,
+    ExpertHubCatalog? expertHubCatalog,
   }) : _repository = repository,
        _sessionRepository = sessionRepository,
        _identityProvisioner =
@@ -68,23 +72,28 @@ class LaunchProfileCubit extends Cubit<LaunchProfileState>
        _appDataBasePath = appDataBasePath,
        _configProfileService = configProfileService,
        _storageRootsResolver = storageRootsResolver,
+       _storage = storage,
        _lifecycle =
            lifecycleService ??
            SessionLifecycleService(
+             storage: storage,
              appDataBasePath: appDataBasePath.isNotEmpty
                  ? appDataBasePath
                  : null,
              configProfileService: configProfileService,
              storageRootsResolver: storageRootsResolver,
+             projectConfigRepository:
+                 projectConfigRepository ??
+                 WorkspaceProjectConfigRepository(storage: storage),
            ),
-       _pluginRepository = pluginRepository ?? PluginRepository(),
+       _pluginRepository = pluginRepository ?? PluginRepository(storage: storage),
        _installedPluginsLoader = installedPluginsLoader,
-       _mcpLinker = mcpLinker ?? ProfileMcpLinkerService(),
-       _mcpRepository = mcpRepository ?? McpRepository(),
+       _mcpLinker = mcpLinker ?? ProfileMcpLinkerService(storage: storage),
+       _mcpRepository = mcpRepository ?? McpRepository(storage: storage),
        _installedMcpLoader = installedMcpLoader,
        _extensionMcpContributor = extensionMcpContributor ?? _noExtensionMcp,
        _launcher = launcher,
-       _expertHubSource = expertHubSource,
+       _catalog = expertHubCatalog,
        super(const LaunchProfileState());
 
   static Future<List<McpServer>> _noExtensionMcp(String teamId) async =>
@@ -98,6 +107,7 @@ class LaunchProfileCubit extends Cubit<LaunchProfileState>
   final String _appDataBasePath;
   final ConfigProfileService? _configProfileService;
   final StorageRootsResolver? _storageRootsResolver;
+  final HomeStorage _storage;
   final SessionLifecycleService _lifecycle;
   final PluginRepository _pluginRepository;
   final InstalledPluginsLoader? _installedPluginsLoader;
@@ -107,17 +117,19 @@ class LaunchProfileCubit extends Cubit<LaunchProfileState>
   final Future<List<McpServer>> Function(String teamId)
   _extensionMcpContributor;
   final TeamLauncher? _launcher;
-  CompositeExpertHubSource? _expertHubSource;
+  ExpertHubCatalog? _catalog;
 
   final TeamRosterEditor _rosterEditor = const TeamRosterEditor();
 
-  /// Wire after bootstrap creates [CompositeExpertHubSource] so roster
-  /// `hhoao/teampilot-resources/member-hub/*` keys resolve on load/clone.
-  void attachExpertHubSource(CompositeExpertHubSource source) {
-    _expertHubSource = source;
+  /// Wire after bootstrap creates [ExpertHubCatalog] so roster
+  /// `hhoao/teampilot-resources/member-hub/*` keys resolve on load/clone from a
+  /// single shared single-flight snapshot.
+  void attachCatalog(ExpertHubCatalog catalog) {
+    _catalog = catalog;
   }
 
   late final TeamProfileProvisioner _provisioner = TeamProfileProvisioner(
+    storage: _storage,
     configProfileService: _configProfileService,
     storageRootsResolver: _storageRootsResolver,
     appDataBasePathOverride: _appDataBasePath,
@@ -135,6 +147,7 @@ class LaunchProfileCubit extends Cubit<LaunchProfileState>
   );
 
   late final TeamLaunchService _launchService = TeamLaunchService(
+    storage: _storage,
     host: this,
     lifecycle: _lifecycle,
     sync: _sync,
@@ -157,18 +170,35 @@ class LaunchProfileCubit extends Cubit<LaunchProfileState>
     }
   }
 
-  Future<TeamProfile> _materializeTeam(TeamProfile team) =>
-      ExpertMemberMaterializer.attachMaterializedMembers(
-        team,
-        source: _expertHubSource,
-        localStore: _expertHubSource?.localStore,
+  Future<TeamProfile> _materializeTeam(TeamProfile team) async {
+    final catalog = _catalog;
+    if (catalog == null) {
+      appLogger.w(
+        '[LaunchProfileCubit] no expert catalog attached; '
+        'skipping roster materialization for ${team.id}',
       );
+      return team;
+    }
+    return ExpertMemberMaterializer.materializeTeam(
+      team,
+      await catalog.snapshot(),
+    );
+  }
 
-  Future<List<TeamProfile>> _materializeTeams(List<TeamProfile> teams) =>
-      ExpertMemberMaterializer.attachMaterializedMembersAll(
-        teams,
-        source: _expertHubSource,
+  Future<List<TeamProfile>> _materializeTeams(List<TeamProfile> teams) async {
+    final catalog = _catalog;
+    if (catalog == null) {
+      appLogger.w(
+        '[LaunchProfileCubit] no expert catalog attached; '
+        'skipping roster materialization for ${teams.length} teams',
       );
+      return teams;
+    }
+    return ExpertMemberMaterializer.materializeAll(
+      teams,
+      await catalog.snapshot(),
+    );
+  }
 
   List<TeamProfile> _sortTeams(List<TeamProfile> teams) {
     final hasCustomOrder = teams.any((team) => team.sortOrder > 0);

@@ -10,7 +10,9 @@ import 'package:teampilot/services/io/local_filesystem.dart';
 import 'package:teampilot/services/cli/codex/provider/codex_cc_switch_import.dart';
 import 'package:teampilot/services/cli/codex/provider/codex_toml_parser.dart';
 import 'package:teampilot/services/provider/provider_import_service.dart';
-import 'package:teampilot/services/storage/app_storage.dart';
+import 'package:teampilot/services/storage/app_paths.dart';
+import '../../../support/in_memory_filesystem.dart';
+import '../../../support/post_frame_test_harness.dart';
 
 void main() {
   group('CodexTomlParser', () {
@@ -47,17 +49,20 @@ base_url = "http://127.0.0.1:15721/v1"
       appData = p.join(root.path, 'app-data');
       home = p.join(root.path, 'home');
       await Directory(home).create(recursive: true);
-      AppStorage.installForTesting(
+      installTestHomeStorage(
         filesystem: LocalFilesystem(),
         paths: AppPaths(appData),
         home: home,
         cwd: root.path,
       );
-      repository = AppProviderRepository(basePath: appData);
+      repository = AppProviderRepository(
+        basePath: appData,
+        storage: buildTestHomeStorage(),
+      );
     });
 
     tearDown(() async {
-      AppStorage.resetForTesting();
+      resetTestHomeStorage();
       if (await root.exists()) {
         await root.delete(recursive: true);
       }
@@ -110,7 +115,10 @@ experimental_bearer_token = "PROXY_MANAGED"
 rmcp_client = true
 ''');
 
-        final service = ProviderImportService(repository: repository);
+        final service = ProviderImportService(
+          repository: repository,
+          storage: buildTestHomeStorage(),
+        );
         await service.importForCli(CliTool.codex, onlyIfEmpty: false);
 
         final codex = await repository.loadProviders(CliTool.codex);
@@ -172,7 +180,10 @@ rmcp_client = true
         'model = "a"\n[model_providers.custom]\nbase_url = "http://127.0.0.1:15721/v1"\n',
       );
 
-      final service = ProviderImportService(repository: repository);
+      final service = ProviderImportService(
+          repository: repository,
+          storage: buildTestHomeStorage(),
+        );
       await service.importForCli(CliTool.codex, onlyIfEmpty: false);
 
       final codex = await repository.loadProviders(CliTool.codex);

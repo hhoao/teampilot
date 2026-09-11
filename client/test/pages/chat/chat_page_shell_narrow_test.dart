@@ -43,7 +43,8 @@ import 'package:teampilot/services/file_tree/workspace_file_tree_store.dart';
 import 'package:teampilot/services/git/git_repo_store.dart';
 import 'package:teampilot/services/io/local_filesystem.dart';
 import 'package:teampilot/services/session/ai_history_loader.dart';
-import 'package:teampilot/services/storage/app_storage.dart';
+import 'package:teampilot/services/storage/app_paths.dart';
+import 'package:teampilot/services/storage/home_storage.dart';
 import 'package:teampilot/services/storage/runtime_context.dart';
 import 'package:teampilot/services/plugin/plugin_repo_service.dart';
 import 'package:teampilot/services/provider/config_profile_service.dart';
@@ -73,7 +74,7 @@ final Size _narrowSize = Size(
 final Size _wideSize = Size(WorkspacePanePolicy.narrowBreakpointWidth + 360, 900);
 
 class _SeededAppProviderCubit extends AppProviderCubit {
-  _SeededAppProviderCubit() {
+  _SeededAppProviderCubit() : super(storage: testHomeStorage) {
     emit(const AppProviderState());
   }
 }
@@ -82,7 +83,7 @@ AiHistoryCubit _testAiHistoryCubit() {
   return AiHistoryCubit(
     loader: AiHistoryLoader(
       resolveWorkContext: (launchCtx, {String? memberId}) async {
-        final basePath = AppStorage.paths.basePath;
+        final basePath = testHomeStorage.paths.basePath;
         return RuntimeContext(
           target: RuntimeTarget.local(),
           filesystem: LocalFilesystem(
@@ -212,7 +213,10 @@ class _NarrowHarness {
               create: (_) => WorkspaceFileTreeStore(),
             ),
             RepositoryProvider<SessionRepository>.value(
-              value: SessionRepository(rootDir: appData.path),
+              value: SessionRepository(
+                rootDir: appData.path,
+                storage: testHomeStorage,
+              ),
             ),
             RepositoryProvider<WorkspaceTerminalRegistry>(
               create: (_) => WorkspaceTerminalRegistry(),
@@ -240,7 +244,9 @@ class _NarrowHarness {
               BlocProvider.value(value: _workspaceToolsCubit),
               BlocProvider.value(value: _cliPresetsCubit),
               BlocProvider.value(value: _sessionPreferencesCubit),
-              BlocProvider(create: (_) => ShortcutCubit()),
+              BlocProvider(
+                create: (_) => ShortcutCubit(storage: testHomeStorage),
+              ),
               BlocProvider.value(value: _landingContextCubit),
             ],
             child: WorkspaceToolsScope(
@@ -267,18 +273,32 @@ Future<_NarrowHarness> _setUpHarness(WidgetTester tester) async {
   });
 
   final teamCubit = LaunchProfileCubit(
-    repository: LaunchProfileRepository(rootDir: appData.path),
-    sessionRepository: SessionRepository(rootDir: appData.path),
+    storage: testHomeStorage,
+    repository: LaunchProfileRepository(
+      rootDir: appData.path,
+      storage: testHomeStorage,
+    ),
+    sessionRepository: SessionRepository(
+      rootDir: appData.path,
+      storage: testHomeStorage,
+    ),
     executableResolver: _executable,
     appDataBasePath: appData.path,
-    configProfileService: ConfigProfileService(basePath: appData.path),
+    configProfileService: ConfigProfileService(
+      basePath: appData.path,
+      storage: testHomeStorage,
+    ),
   );
   addTearDown(() => teamCubit.close());
 
   final chatCubit = ChatCubit(
     executableResolver: _executable,
     automationRepository: testAutomationRepository(),
-    sessionRepository: SessionRepository(rootDir: appData.path),
+    sessionRepository: SessionRepository(
+      rootDir: appData.path,
+      storage: testHomeStorage,
+    ),
+    storage: testHomeStorage,
   );
   addTearDown(() => chatCubit.close());
   chatCubit.ingestWorkspaceSessionSnapshot(
@@ -298,10 +318,13 @@ Future<_NarrowHarness> _setUpHarness(WidgetTester tester) async {
   final layoutCubit = LayoutCubit();
   addTearDown(() => layoutCubit.close());
 
-  final editorCubit = EditorCubit(fs: LocalFilesystem());
+  final editorCubit = EditorCubit(
+    fs: LocalFilesystem(),
+    storage: testHomeStorage,
+  );
   addTearDown(() => editorCubit.close());
 
-  final presenceCubit = MemberPresenceCubit();
+  final presenceCubit = MemberPresenceCubit(storage: testHomeStorage);
   chatCubit.bindPresenceCubit(presenceCubit);
   addTearDown(() => presenceCubit.close());
 
@@ -329,18 +352,19 @@ Future<_NarrowHarness> _setUpHarness(WidgetTester tester) async {
   );
   addTearDown(() => runCubit.close());
 
-  final pluginRepo = PluginRepository();
+  final pluginRepo = PluginRepository(storage: testHomeStorage);
   final pluginCubit = PluginCubit(
     repository: pluginRepo,
     installService: pluginRepo.install,
-    repoService: PluginRepoService(),
+    repoService: PluginRepoService(storage: testHomeStorage),
+    storage: testHomeStorage,
   );
   addTearDown(() => pluginCubit.close());
 
   final skillCubit = testSkillCubit();
   addTearDown(() => skillCubit.close());
 
-  final worktreeCubit = WorktreeCubit();
+  final worktreeCubit = WorktreeCubit(storage: testHomeStorage);
   addTearDown(() => worktreeCubit.close());
 
   final workspaceToolsCubit = WorkspaceToolsCubit();

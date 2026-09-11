@@ -13,6 +13,7 @@ import '../../models/team_config.dart';
 import '../../models/launch_security_policy.dart';
 import '../../models/team_roster_slot.dart';
 import '../../services/cli/flashskyai/agent_catalog_service.dart';
+import '../../widgets/home_storage_scope.dart';
 import '../../services/cli/registry/cli_tool_registry_scope.dart';
 import '../../services/expert_hub/expert_member_resolver.dart';
 import '../../utils/debounce/debounce.dart';
@@ -178,7 +179,9 @@ class TeamMemberConfigFormState extends State<TeamMemberConfigForm> {
   }
 
   Future<void> _loadUserAgents() async {
-    final ids = await FlashskyaiAgentCatalogService().listUserAgentIds();
+    final ids = await FlashskyaiAgentCatalogService(
+      storage: homeStorageOf(context),
+    ).listUserAgentIds();
     if (!mounted) return;
     setState(() => _userAgentIds = ids);
   }

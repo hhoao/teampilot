@@ -6,8 +6,6 @@ import 'package:path/path.dart' as p;
 import '../host/host_executable_locator.dart';
 import '../host/host_execution_environment.dart';
 import '../host/host_login_shell_lookup.dart';
-import '../storage/runtime_context.dart';
-import '../storage/app_storage.dart';
 
 typedef ProcessRunner =
     Future<ProcessResult> Function(
@@ -188,14 +186,8 @@ class CliToolLocator {
       HostExecutableLocator.preferWindowsNativeExecutable(candidates);
 
   static HostExecutableLocator _hostLocator(bool isWindows) {
-    final storageMode = AppStorage.isInstalled
-        ? AppStorage.context.mode
-        : StorageBackendMode.native;
     return HostExecutableLocator(
-      HostExecutionEnvironment.resolve(
-        isWindowsHost: isWindows,
-        storageMode: storageMode,
-      ),
+      HostExecutionEnvironment.resolve(isWindowsHost: isWindows),
     );
   }
 

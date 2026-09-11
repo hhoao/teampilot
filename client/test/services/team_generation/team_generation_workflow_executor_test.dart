@@ -218,6 +218,7 @@ void main() {
       final store = TeamGenerationJobStore(
         fs: fs,
         layout: WorkspaceLayout(teampilotRoot: '/tp', fs: fs),
+                                            storage: fakeHomeStorage(filesystem: fs),
       );
       final preset = CliPreset(
         id: 'generator',
@@ -231,6 +232,7 @@ void main() {
       final settingsStore = TeamGenerationSettingsStore(
         fs: fs,
         pathOverride: '/tp/settings.json',
+                                                         storage: fakeHomeStorage(filesystem: fs),
       );
       await settingsStore.save(
         TeamGenerationSettings(
@@ -282,7 +284,7 @@ void main() {
         commitService: GeneratedTeamCommitService(
           jobStore: store,
           expertStore: LocalExpertStore(fs: fs, dirOverride: '/tp/experts'),
-          profileRepository: LaunchProfileRepository(rootDir: '/tp/profiles'),
+          profileRepository: LaunchProfileRepository(rootDir: '/tp/profiles', storage: fakeHomeStorage(), ),
           sessionRepository: _FakeSessionRepository(),
           resourceProvisioner: _NoopProvisioner(),
           publisher: _NoopPublisher(),

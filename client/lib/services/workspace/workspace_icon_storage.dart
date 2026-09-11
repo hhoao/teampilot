@@ -1,12 +1,12 @@
 import 'package:path/path.dart' as p;
 
 import '../io/filesystem.dart';
-import '../storage/app_storage.dart';
+import '../storage/app_paths.dart';
 
 /// Low-level IO for workspace icon files under `{workspaceDir}/assets/icon.*`.
 class WorkspaceIconStorage {
-  WorkspaceIconStorage({Filesystem? filesystem})
-    : _filesystem = filesystem ?? AppStorage.fs;
+  WorkspaceIconStorage({required Filesystem filesystem})
+    : _filesystem = filesystem;
 
   final Filesystem _filesystem;
 

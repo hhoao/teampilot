@@ -2,7 +2,7 @@ import 'dart:convert';
 
 import '../../models/runtime_target.dart';
 import '../io/filesystem.dart';
-import 'app_storage.dart';
+import 'home_storage.dart';
 
 /// On-disk shape of `targets.json` (control plane). A pure target catalog —
 /// the home target authority lives device-local in [HomeTargetStore], not here.
@@ -88,21 +88,32 @@ class TargetsRegistryFile {
 }
 
 /// Reads/writes `targets.json`. Mirrors [SshProfileRepository]'s injection
-/// pattern (constructor `rootDir`/`fs` overrides for tests). Production must
+/// pattern (constructor `rootDir`/`fs` for explicit scopes). Production must
 /// use [deviceLocalTargetsRepository] so the file stays on-device when home is
-/// rebound to SSH.
+/// rebound to SSH; callers that target the home control plane use
+/// [TargetsRepository.home].
 class TargetsRepository {
-  TargetsRepository({String? rootDir, Filesystem? fs})
-    : _rootOverride = rootDir,
-      _fsOverride = fs;
+  TargetsRepository({required String rootDir, required Filesystem fs})
+    : _rootDir = rootDir,
+      _fsOverride = fs,
+      _storage = null;
 
-  final String? _rootOverride;
+  /// Home-plane `targets.json` (`<teampilotRoot>/targets.json` from [storage]).
+  TargetsRepository.home({required HomeStorage storage})
+    : _rootDir = null,
+      _fsOverride = null,
+      _storage = storage;
+
+  final String? _rootDir;
   final Filesystem? _fsOverride;
+  final HomeStorage? _storage;
 
-  Filesystem get _fs => _fsOverride ?? AppStorage.fs;
-  String get _file => _rootOverride != null
-      ? _fs.pathContext.join(_rootOverride, 'targets.json')
-      : AppStorage.paths.targetsFile;
+  Filesystem get _fs => _fsOverride ?? _storage!.fs;
+  String get _file {
+    final root = _rootDir;
+    if (root != null) return _fs.pathContext.join(root, 'targets.json');
+    return _storage!.paths.targetsFile;
+  }
 
   Future<bool> exists() async => (await _fs.stat(_file)).isFile;
 

@@ -12,11 +12,14 @@ import 'package:teampilot/services/host/team_pilot_hook_scripts.dart';
 import 'package:teampilot/services/storage/runtime_context.dart';
 import 'package:teampilot/services/provider/control_plane_profile_paths.dart';
 import 'package:teampilot/models/runtime_target.dart';
-import 'package:teampilot/services/storage/app_storage.dart';
+import 'package:teampilot/services/storage/app_paths.dart';
 import 'package:teampilot/services/storage/runtime_layout.dart';
 import 'package:teampilot/services/cli/claude/capabilities/provider.dart';
 import 'package:teampilot/services/cli/flashskyai/capabilities/provider.dart';
 import 'package:teampilot/services/cli/registry/capabilities/provider_capability.dart';
+import 'package:teampilot/services/cli/registry/cli_bootstrap.dart';
+import 'package:teampilot/services/cli/registry/cli_tool_registry.dart';
+import 'package:teampilot/services/storage/home_storage.dart';
 import 'package:teampilot/services/team_bus/member_bus_idle_endpoint.dart';
 import 'package:teampilot/services/provider/config_profile_service.dart';
 import 'package:teampilot/models/app_provider_config.dart';
@@ -26,13 +29,24 @@ import 'package:teampilot/services/session/member_role_provision.dart';
 import 'package:teampilot/services/team/team_lead_delegate_settings_merge.dart';
 import 'package:teampilot/services/team/team_lead_settings_merge.dart';
 import 'package:teampilot/models/config_bundle.dart';
+import '../../support/in_memory_filesystem.dart';
 
 Future<void> _seedClaudeProvider(
   String basePath, {
   required String id,
   required Map<String, Object?> env,
 }) async {
-  final repository = AppProviderRepository(basePath: basePath);
+  final fs = LocalFilesystem();
+  final repository = AppProviderRepository(
+    basePath: basePath,
+    fs: fs,
+    storage: HomeStorage.forTesting(
+      filesystem: fs,
+      paths: AppPaths(basePath),
+      home: basePath,
+      cwd: basePath,
+    ),
+  );
   await repository.saveProviders(CliTool.claude, [
     AppProviderConfig(
       id: id,
@@ -51,7 +65,17 @@ Future<void> _seedCodexProvider(
   String apiKey = 'sk-codex',
   Map<String, Object?> meta = const {},
 }) async {
-  final repository = AppProviderRepository(basePath: basePath);
+  final fs = LocalFilesystem();
+  final repository = AppProviderRepository(
+    basePath: basePath,
+    fs: fs,
+    storage: HomeStorage.forTesting(
+      filesystem: fs,
+      paths: AppPaths(basePath),
+      home: basePath,
+      cwd: basePath,
+    ),
+  );
   await repository.saveProviders(CliTool.codex, [
     AppProviderConfig(
       id: id,
@@ -115,6 +139,15 @@ void main() {
   setUp(() async {
     base = await Directory.systemTemp.createTemp('cfg_profile_');
     final fs = LocalFilesystem();
+    final homeStorage = HomeStorage.forTesting(
+      filesystem: fs,
+      paths: AppPaths(base.path),
+      home: base.path,
+      cwd: base.path,
+    );
+    CliToolRegistry.builtIn().configure(
+      CliBootstrap(const {}, storage: homeStorage),
+    );
     service = ConfigProfileService(
       basePath: base.path,
       fs: fs,
@@ -143,6 +176,7 @@ void main() {
         loadScript: (_) async =>
             '#!/usr/bin/env bash\n# teampilot-team-lead-delegate-only\n',
       ),
+                                    storage: homeStorage,
     );
   });
 
@@ -959,6 +993,7 @@ base_url = "https://api.example.com/v1"
             updatedAt: 1,
           ),
         ],
+                                                  storage: fakeHomeStorage(),
       );
       const builder = TeamMemberConfig(
         id: 'builder',
@@ -1019,6 +1054,7 @@ base_url = "https://api.example.com/v1"
       await AppProviderRepository(
         basePath: homeBase.path,
         fs: homeFs,
+                                   storage: fakeHomeStorage(),
       ).saveProviders(CliTool.claude, [
         AppProviderConfig(
           id: 'deepseek',
@@ -1053,6 +1089,7 @@ base_url = "https://api.example.com/v1"
           isWindowsHost: false,
           storageMode: StorageBackendMode.native,
         ),
+                                                storage: fakeHomeStorage(),
       );
 
       await workService.prepareTeamLaunch(
@@ -1321,7 +1358,15 @@ base_url = "https://api.example.com/v1"
       );
 
       const member = TeamMemberConfig(id: 'm1', name: 'Member', model: 'test');
-      await const ClaudeProviderCapability().materializeSessionHome(
+      final capabilityFs = LocalFilesystem();
+      await ClaudeProviderCapability(
+        storage: HomeStorage.forTesting(
+          filesystem: capabilityFs,
+          paths: AppPaths(base.path),
+          home: base.path,
+          cwd: base.path,
+        ),
+      ).materializeSessionHome(
         sessionHomeContextFromLaunch(
           ConfigProfileLaunchContext(
             workspaceId: _testWorkspaceId,

@@ -4,7 +4,8 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/pages/home_workspace/workspace_sort.dart';
 import 'package:teampilot/services/home_workspace/workspace_display_prefs_store.dart';
 import 'package:teampilot/services/io/local_filesystem.dart';
-import 'package:teampilot/services/storage/app_storage.dart';
+import 'package:teampilot/services/storage/app_paths.dart';
+import '../../support/in_memory_filesystem.dart';
 
 void main() {
   late Directory root;
@@ -19,6 +20,7 @@ void main() {
     store = WorkspaceDisplayPrefsStore(
       fs: fs,
       pathOverride: paths.homeWorkspaceWorkspaceDisplayPrefsJson,
+                                        storage: fakeHomeStorage(),
     );
   });
 

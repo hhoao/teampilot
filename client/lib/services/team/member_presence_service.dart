@@ -5,7 +5,7 @@ import '../../models/team_config.dart';
 import '../cli/registry/capabilities/team_behavior_capability.dart';
 import '../cli/registry/cli_tool_registry.dart';
 import '../io/filesystem.dart';
-import '../storage/app_storage.dart';
+import '../storage/home_storage.dart';
 import '../team_bus/team_bus.dart';
 import '../terminal/terminal_session.dart';
 import '../cli/claude/roster_activity_source.dart';
@@ -32,12 +32,13 @@ class PresenceSessionContext {
 /// Aggregates terminal connection + agent availability into [MemberPresence].
 class MemberPresenceService {
   MemberPresenceService({
+    required HomeStorage storage,
     Filesystem? fs,
     ClaudeRosterActivitySource? claudeRoster,
     CliToolRegistry? cliToolRegistry,
-  }) : fs = fs ?? AppStorage.fs,
+  }) : fs = fs ?? storage.fs,
        _claudeRoster =
-           claudeRoster ?? ClaudeRosterActivitySource(fs: fs ?? AppStorage.fs),
+           claudeRoster ?? ClaudeRosterActivitySource(fs: fs ?? storage.fs),
        _cliToolRegistry = cliToolRegistry ?? _defaultCliRegistry;
 
   static final _defaultCliRegistry = () {

@@ -3,8 +3,9 @@ import 'dart:io';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/models/ssh_profile.dart';
 import 'package:teampilot/repositories/ssh_profile_repository.dart';
-import 'package:teampilot/services/storage/app_storage.dart';
+import 'package:teampilot/services/storage/app_paths.dart';
 import '../support/test_runtime_context.dart';
+import '../support/in_memory_filesystem.dart';
 
 void main() {
   test('load follows AppStorage home when rootDir is not overridden', () async {
@@ -13,11 +14,11 @@ void main() {
     addTearDown(() async {
       if (await rootA.exists()) await rootA.delete(recursive: true);
       if (await rootB.exists()) await rootB.delete(recursive: true);
-      AppStorage.resetForTesting();
+      resetTestHomeStorage();
       AppPathsBootstrapper.resetForTesting();
     });
 
-    bindTestNativeHome(rootA.path);
+    final storage = bindTestNativeHome(rootA.path);
 
     const profile = SshProfile(
       id: 'p1',
@@ -25,15 +26,15 @@ void main() {
       host: 'example.com',
       username: 'user',
     );
-    final repo = SshProfileRepository();
+    final repo = SshProfileRepository(storage: storage);
     await repo.save(profile);
     expect(await repo.loadAll(), hasLength(1));
 
-    bindTestNativeHome(rootB.path);
+    await storage.swap(testRuntimeContext(rootB.path));
 
     expect(await repo.loadAll(), isEmpty);
 
-    bindTestNativeHome(rootA.path);
+    await storage.swap(testRuntimeContext(rootA.path));
 
     expect(await repo.loadAll(), hasLength(1));
     expect((await repo.loadAll()).single.name, 'Server A');
@@ -47,11 +48,11 @@ void main() {
     addTearDown(() async {
       if (await pinnedRoot.exists()) await pinnedRoot.delete(recursive: true);
       if (await otherRoot.exists()) await otherRoot.delete(recursive: true);
-      AppStorage.resetForTesting();
+      resetTestHomeStorage();
       AppPathsBootstrapper.resetForTesting();
     });
 
-    final repo = SshProfileRepository(rootDir: pinnedRoot.path);
+    final repo = SshProfileRepository(rootDir: pinnedRoot.path, storage: fakeHomeStorage(), );
     await repo.save(
       const SshProfile(
         id: 'p1',

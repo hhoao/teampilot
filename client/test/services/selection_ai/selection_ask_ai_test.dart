@@ -31,6 +31,8 @@ import 'package:teampilot/theme/app_theme.dart';
 import 'package:teampilot/utils/ui/app_keys.dart';
 
 import '../../support/post_frame_test_harness.dart';
+import 'package:teampilot/services/storage/home_storage.dart';
+import '../../support/in_memory_filesystem.dart';
 
 const _dismissKey = Key('selection-ask-ai-dismiss');
 
@@ -107,13 +109,14 @@ void main() {
     final pluginCubit = _MockPluginCubit();
     final sessionPreferencesCubit = _MockSessionPreferencesCubit();
     final skillCubit = _MockSkillCubit();
-    final worktreeCubit = WorktreeCubit();
+    final worktreeCubit = WorktreeCubit(storage: buildTestHomeStorage());
     addTearDown(worktreeCubit.close);
 
     _stubCubit(chatCubit, ChatState(workspaces: [workspace]));
 
     _stubCubit(appProviderCubit, const AppProviderState());
-    final tabStore = ChatTabStore()..setActiveWorkspaceId(workspace.workspaceId);
+    final tabStore = ChatTabStore(storage: buildTestHomeStorage())
+        ..setActiveWorkspaceId(workspace.workspaceId);
     when(() => chatCubit.tabStore).thenReturn(tabStore);
     _stubCubit(cliPresetsCubit, const CliPresetsState());
     _stubCubit(launchProfileCubit, const LaunchProfileState());
@@ -126,6 +129,7 @@ void main() {
       MultiRepositoryProvider(
         providers: [
           RepositoryProvider<CommandBus>(create: (_) => CommandBus()),
+          RepositoryProvider<HomeStorage>.value(value: testHomeStorage),
         ],
         child: MultiBlocProvider(
           providers: [
@@ -190,14 +194,15 @@ void main() {
     final pluginCubit = _MockPluginCubit();
     final sessionPreferencesCubit = _MockSessionPreferencesCubit();
     final skillCubit = _MockSkillCubit();
-    final registry = WorkspaceWorktreeRegistry();
+    final registry = WorkspaceWorktreeRegistry(storage: fakeHomeStorage());
     addTearDown(registry.dispose);
     registry.cubitFor(workspaceId: workspace.workspaceId, repoPath: '/repo');
 
     _stubCubit(chatCubit, ChatState(workspaces: [workspace]));
 
     _stubCubit(appProviderCubit, const AppProviderState());
-    final tabStore = ChatTabStore()..setActiveWorkspaceId(workspace.workspaceId);
+    final tabStore = ChatTabStore(storage: buildTestHomeStorage())
+        ..setActiveWorkspaceId(workspace.workspaceId);
     when(() => chatCubit.tabStore).thenReturn(tabStore);
     _stubCubit(cliPresetsCubit, const CliPresetsState());
     _stubCubit(launchProfileCubit, const LaunchProfileState());
@@ -211,6 +216,7 @@ void main() {
         providers: [
           RepositoryProvider<CommandBus>(create: (_) => CommandBus()),
           RepositoryProvider<WorkspaceWorktreeRegistry>.value(value: registry),
+          RepositoryProvider<HomeStorage>.value(value: testHomeStorage),
         ],
         child: MultiBlocProvider(
           providers: [
@@ -274,13 +280,14 @@ void main() {
     final pluginCubit = _MockPluginCubit();
     final sessionPreferencesCubit = _MockSessionPreferencesCubit();
     final skillCubit = _MockSkillCubit();
-    final worktreeCubit = WorktreeCubit();
+    final worktreeCubit = WorktreeCubit(storage: buildTestHomeStorage());
     addTearDown(worktreeCubit.close);
 
     _stubCubit(chatCubit, ChatState(workspaces: [workspace]));
 
     _stubCubit(appProviderCubit, const AppProviderState());
-    final tabStore = ChatTabStore()..setActiveWorkspaceId(workspace.workspaceId);
+    final tabStore = ChatTabStore(storage: buildTestHomeStorage())
+        ..setActiveWorkspaceId(workspace.workspaceId);
     when(() => chatCubit.tabStore).thenReturn(tabStore);
     _stubCubit(cliPresetsCubit, const CliPresetsState());
     _stubCubit(launchProfileCubit, const LaunchProfileState());
@@ -293,6 +300,7 @@ void main() {
       MultiRepositoryProvider(
         providers: [
           RepositoryProvider<CommandBus>(create: (_) => CommandBus()),
+          RepositoryProvider<HomeStorage>.value(value: testHomeStorage),
         ],
         child: MultiBlocProvider(
           providers: [
@@ -362,13 +370,14 @@ void main() {
     final pluginCubit = _MockPluginCubit();
     final sessionPreferencesCubit = _MockSessionPreferencesCubit();
     final skillCubit = _MockSkillCubit();
-    final worktreeCubit = WorktreeCubit();
+    final worktreeCubit = WorktreeCubit(storage: buildTestHomeStorage());
     addTearDown(worktreeCubit.close);
 
     _stubCubit(chatCubit, ChatState(workspaces: [workspace]));
 
     _stubCubit(appProviderCubit, const AppProviderState());
-    final tabStore = ChatTabStore()..setActiveWorkspaceId(workspace.workspaceId);
+    final tabStore = ChatTabStore(storage: buildTestHomeStorage())
+        ..setActiveWorkspaceId(workspace.workspaceId);
     when(() => chatCubit.tabStore).thenReturn(tabStore);
     _stubCubit(cliPresetsCubit, const CliPresetsState());
     _stubCubit(launchProfileCubit, const LaunchProfileState());
@@ -410,6 +419,7 @@ void main() {
       MultiRepositoryProvider(
         providers: [
           RepositoryProvider<CommandBus>(create: (_) => CommandBus()),
+          RepositoryProvider<HomeStorage>.value(value: testHomeStorage),
         ],
         child: MultiBlocProvider(
           providers: [

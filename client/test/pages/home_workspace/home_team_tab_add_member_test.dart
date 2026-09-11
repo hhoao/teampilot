@@ -20,6 +20,7 @@ import 'package:teampilot/services/cli/registry/cli_tool_registry.dart';
 import 'package:teampilot/services/cli/registry/cli_tool_registry_scope.dart';
 import 'package:teampilot/services/expert_hub/builtin_member_templates.dart';
 import 'package:teampilot/services/expert_hub/composite_expert_hub_source.dart';
+import 'package:teampilot/services/expert_hub/expert_hub_catalog.dart';
 import 'package:teampilot/services/expert_hub/expert_hub_source.dart';
 import 'package:teampilot/services/expert_hub/local_expert_store.dart';
 import '../../support/stub_member_roster_service.dart';
@@ -55,6 +56,21 @@ class _EmptyRegistry implements ExpertHubSource {
   @override
   Future<List<String>> categories({bool forceRefresh = false}) =>
       Future.value(const []);
+}
+
+/// Offline source returning only the built-in experts so roster slots
+/// (`teampilot/builtin/*`) materialize without touching the network —
+/// mirrors production wiring (app_shell.attachCatalog); without a catalog
+/// materialization is skipped and add-member never lands in `members`.
+class _BuiltinExpertSource implements ExpertHubSource {
+  @override
+  Future<List<DiscoverableMember>> fetchMembers({
+    bool forceRefresh = false,
+  }) async => builtinExpertMembers();
+
+  @override
+  Future<List<String>> categories({bool forceRefresh = false}) async =>
+      const [];
 }
 
 void main() {
@@ -95,12 +111,13 @@ void main() {
       );
 
       final launchCubit = LaunchProfileCubit(
+        storage: testHomeStorage,
         repository: testLaunchProfileRepository(
           Directory.systemTemp.createTempSync('home_team_add_member_'),
         ),
-        sessionRepository: SessionRepository(),
+        sessionRepository: SessionRepository(storage: testHomeStorage),
         executableResolver: () => 'claude',
-      );
+      )..attachCatalog(ExpertHubCatalog(source: _BuiltinExpertSource()));
       addTearDown(launchCubit.close);
       launchCubit.applyState(
         LaunchProfileState(
@@ -128,7 +145,7 @@ void main() {
       );
       addTearDown(cliPresetsCubit.close);
 
-      final providerCubit = AppProviderCubit();
+      final providerCubit = AppProviderCubit(storage: testHomeStorage);
       addTearDown(providerCubit.close);
 
       await tester.pumpWidget(

@@ -25,6 +25,8 @@ import 'package:teampilot/services/session/session_lifecycle_service.dart';
 import 'package:teampilot/services/terminal/terminal_session.dart';
 import 'package:uuid/uuid.dart';
 
+import '../../support/in_memory_filesystem.dart';
+
 void main() {
   TeamProfile team(TeamMode mode) => TeamProfile(
     id: 'team-1',
@@ -77,7 +79,7 @@ void main() {
   group('native team connect schedules every valid member', () {
     test('TeamSessionConnect with pref off still launches all members',
         () async {
-      final tabStore = ChatTabStore()..setActiveWorkspaceId('ws-1');
+      final tabStore = ChatTabStore(storage: fakeHomeStorage())..setActiveWorkspaceId('ws-1');
       final workspace = Workspace(
         workspaceId: 'ws-1',
         folders: const [WorkspaceFolder(path: '/proj')],
@@ -126,7 +128,7 @@ void main() {
       final scheduled = <String>[];
 
       final pipeline = _pipelineForAllMembers(
-        tabStore: ChatTabStore()..setActiveWorkspaceId('ws-1'),
+        tabStore: ChatTabStore(storage: fakeHomeStorage())..setActiveWorkspaceId('ws-1'),
         workspace: Workspace(
           workspaceId: 'ws-1',
           folders: const [WorkspaceFolder(path: '/proj')],
@@ -170,6 +172,7 @@ SessionLaunchPipeline _pipelineForAllMembers({
     workspaceIndex: () => SessionLaunchWorkspaceIndex(
       workspaces: host.state.workspaces,
       sessions: host.state.sessions,
+      usesPosixPaths: false,
     ),
     isTabsEmpty: () => tabStore.activeTabsIsEmpty,
     activeBucketKey: () => tabStore.activeWorkspaceId,
@@ -215,6 +218,7 @@ SessionLaunchPipeline _pipelineForAllMembers({
     workspaceIndex: () => SessionLaunchWorkspaceIndex(
       workspaces: host.state.workspaces,
       sessions: host.state.sessions,
+      usesPosixPaths: false,
     ),
     tabSurface: tabSurface,
     materializer: materializer,
@@ -243,14 +247,18 @@ class _CapturingHost implements SessionLaunchHost {
     SessionRepository? sessionRepository,
   }) : tabStore = tabStore,
        lifecycle =
-           lifecycle ?? SessionLifecycleService(loadPresets: () => const []),
+           lifecycle ??
+           SessionLifecycleService(
+             storage: fakeHomeStorage(),
+             loadPresets: () => const [],
+           ),
        // ignore: prefer_initializing_formals
        sessionRepository = sessionRepository,
        shellFactory = ChatSessionShellFactory(
          executableResolver: () => 'true',
          terminalSessionFactory:
              ({required executable, scrollbackLines = 10000}) =>
-                 TerminalSession(executable: executable),
+                 TerminalSession(executable: executable, fs: InMemoryFilesystem()),
          defaultTargetResolver: RuntimeTarget.local,
        ),
        sessionRuntime = TabSessionRuntimeCoordinator(
@@ -376,7 +384,9 @@ class _CapturingHost implements SessionLaunchHost {
   void setMaterializingInFlight(bool value) {}
 
   @override
-  final SessionDataStore dataStore = SessionDataStore();
+  final SessionDataStore dataStore = SessionDataStore(
+      storage: fakeHomeStorage(),
+    );
 
   @override
   bool get isMaterializingInFlight => false;

@@ -11,6 +11,8 @@ import 'package:teampilot/models/team_config.dart';
 import 'package:teampilot/services/storage/runtime_layout.dart';
 import 'package:teampilot/services/cli/claude/capabilities/provider.dart';
 import 'package:teampilot/services/cli/flashskyai/capabilities/provider.dart';
+import 'package:teampilot/services/cli/registry/cli_bootstrap.dart';
+import 'package:teampilot/services/cli/registry/cli_tool_registry.dart';
 import 'package:teampilot/services/storage/runtime_context.dart';
 import '../../support/test_runtime_context.dart';
 import 'package:teampilot/services/team_bus/member_bus_idle_endpoint.dart';
@@ -61,8 +63,11 @@ void main() {
 
   setUp(() async {
     setUpTestAppStorage();
+    CliToolRegistry.builtIn().configure(
+      CliBootstrap(const {}, storage: testHomeStorage),
+    );
     base = await Directory.systemTemp.createTemp('session_lifecycle_');
-    layout = RuntimeLayout(teampilotRoot: base.path);
+    layout = RuntimeLayout(teampilotRoot: base.path, fs: testHomeStorage.fs);
   });
 
   tearDown(() async {
@@ -75,6 +80,7 @@ void main() {
   SessionLifecycleService service() => SessionLifecycleService(
     appDataBasePath: base.path,
     storageRootsResolver: () async => _roots(base.path),
+                                                                storage: testHomeStorage,
   );
 
   test(
@@ -366,6 +372,7 @@ void main() {
           SessionLifecycleService(
             appDataBasePath: base.path,
             storageRootsResolver: () async => _roots(base.path),
+                                   storage: testHomeStorage,
           ).prepareLaunch(
             session: _session(),
             team: const TeamProfile(id: '', name: ''),

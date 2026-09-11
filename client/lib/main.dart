@@ -16,6 +16,9 @@ import 'services/team_generation/team_generation_coordinator.dart';
 import 'services/install/install_job_registry.dart';
 import 'app/ui_zoom_baseline.dart';
 import 'app/home_index_prefetch.dart';
+import 'services/storage/app_paths.dart';
+import 'services/storage/device_local_control_plane.dart';
+import 'services/io/local_filesystem.dart';
 import 'cubits/app_bootstrap_cubit.dart';
 import 'cubits/app_update_cubit.dart';
 import 'cubits/board_cubit.dart';
@@ -54,14 +57,16 @@ import 'services/commands/shortcut_dispatcher.dart';
 import 'services/commands/shortcut_dispatcher_handle.dart';
 import 'services/commands/shortcut_focus.dart';
 import 'services/expert_hub/expert_capability_resolver.dart';
+import 'services/expert_hub/expert_hub_catalog.dart';
 import 'services/home_workspace/home_workspace_ui_cache.dart';
 import 'pages/home_workspace/workspace_chrome_commands.dart';
-import 'services/storage/app_storage.dart';
+import 'services/storage/app_paths.dart';
 import 'services/perf/live_perf_driver.dart';
 import 'services/app/boot_splash.dart';
 import 'services/app/platform_utils.dart';
 import 'services/app/windows_keyboard_workaround.dart';
 import 'services/app/connection_mode_service.dart';
+import 'services/storage/home_storage.dart';
 import 'services/storage/home_storage_invalidator.dart';
 import 'services/storage/home_target_controller.dart';
 import 'services/storage/workspace_directory_picker.dart';
@@ -86,7 +91,6 @@ import 'services/notification/desktop_system_notifier.dart';
 import 'services/notification/notification_recorder.dart';
 import 'services/notification/session_idle_notification_tap.dart';
 import 'widgets/notification/session_idle_notification_listener.dart';
-import 'widgets/ssh/home_ssh_profile_binder.dart';
 import 'widgets/ssh/ssh_connection_binder.dart';
 import 'widgets/termux/termux_work_ops_message_binder.dart';
 import 'repositories/layout_repository.dart';
@@ -513,7 +517,12 @@ void main() async {
   try {
     await pathsFuture;
     nativeAppDataPath = AppPathsBootstrapper.current.basePath;
-    await initAppLogging(nativeAppDataPath);
+    await initAppLogging(
+      nativeAppDataPath,
+      fs: LocalFilesystem(
+        pathContext: AppPaths.pathContextForDataRoot(nativeAppDataPath),
+      ),
+    );
   } on Object catch (error, stackTrace) {
     if (!Platform.isAndroid) {
       await completeBootSplashTransition();
@@ -525,7 +534,10 @@ void main() async {
   final defaultWorkspaceDirectoryFuture = DefaultWorkspaceDirectory.resolve(
     preferences: preferences,
   );
-  final homeIndexPrefetchFuture = prefetchHomeIndexSnapshots(nativeAppDataPath);
+  final homeIndexPrefetchFuture = prefetchHomeIndexSnapshots(
+    nativeAppDataPath,
+    deviceLocalHomeStorage(nativeAppDataPath),
+  );
   final bootstrapCubit = AppBootstrapCubit();
 
   if (!Platform.isAndroid) {
@@ -659,6 +671,9 @@ void main() async {
                 RepositoryProvider<HomeStorageInvalidator>.value(
                   value: shell.homeStorageInvalidator,
                 ),
+                RepositoryProvider<HomeStorage>.value(
+                  value: shell.homeStorage,
+                ),
                 RepositoryProvider<WorkspaceDirectoryPicker>.value(
                   value: shell.directoryPicker,
                 ),
@@ -694,6 +709,9 @@ void main() async {
                 ),
                 RepositoryProvider<ExpertCapabilityResolver>.value(
                   value: shell.expertCapabilityResolver,
+                ),
+                RepositoryProvider<ExpertHubCatalog>.value(
+                  value: shell.expertHubCatalog,
                 ),
                 RepositoryProvider<CommandBus>.value(value: shell.commandBus),
                 RepositoryProvider<WorkspaceChromeCommands>.value(
@@ -778,10 +796,8 @@ void main() async {
                 child: CliToolRegistryScope(
                   registry: shell.cliToolRegistry,
                   child: SshConnectionBinder(
-                    child: HomeSshProfileBinder(
-                      child: const SessionIdleNotificationListener(
-                        child: ShortcutDispatcherHost(child: TeamPilotApp()),
-                      ),
+                    child: const SessionIdleNotificationListener(
+                      child: ShortcutDispatcherHost(child: TeamPilotApp()),
                     ),
                   ),
                 ),

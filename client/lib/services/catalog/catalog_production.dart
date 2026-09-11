@@ -20,6 +20,7 @@ import '../skill/marketplace/skill_marketplace_source.dart';
 import '../skill/registry/skill_registry_config_service.dart';
 import '../skill/registry/skill_registry_factory.dart';
 import '../skill/registry/skill_registry_source.dart';
+import '../storage/home_storage.dart';
 import 'catalog_kind.dart';
 
 /// Production search / marketplace install adapters for [CatalogRuntime.assemble].
@@ -80,6 +81,7 @@ abstract final class CatalogProduction {
 
   static Future<List<Map<String, Object?>>> searchMcp(
     String query, {
+    required HomeStorage storage,
     McpRegistryConfigService? registryConfig,
     McpDiscoveryDiskCacheService? diskCache,
     McpRegistryBrowseService? browse,
@@ -111,7 +113,7 @@ abstract final class CatalogProduction {
       add(McpCatalogMapper.fromPreset(preset));
     }
 
-    final cache = diskCache ?? McpDiscoveryDiskCacheService();
+    final cache = diskCache ?? McpDiscoveryDiskCacheService(storage: storage);
     for (final key in [mcpDiscoveryCacheSmithery, mcpDiscoveryCacheOfficial]) {
       try {
         final snap = await cache.read(key);
@@ -123,7 +125,8 @@ abstract final class CatalogProduction {
     }
 
     try {
-      final config = await (registryConfig ?? McpRegistryConfigService())
+      final config = await (registryConfig ??
+              McpRegistryConfigService(teampilotRoot: storage.appDataRoot))
           .load();
       final official = config.byKind(McpRegistrySourceKind.officialRegistry);
       if (official != null && official.enabled) {
@@ -159,19 +162,23 @@ abstract final class CatalogProduction {
 
   static Future<McpServer> draftFromListing(
     String listingId, {
+    required HomeStorage storage,
     McpListingInstallService? listingInstall,
     McpRegistryConfigService? registryConfig,
     McpDiscoveryDiskCacheService? diskCache,
   }) async {
     final listing = await _resolveListing(
       listingId,
+      storage: storage,
       registryConfig: registryConfig,
       diskCache: diskCache,
     );
     if (listing == null) {
       throw CatalogException('not_found', 'MCP listing not found: $listingId');
     }
-    final installer = listingInstall ?? McpListingInstallService();
+    final installer = listingInstall ?? McpListingInstallService(
+      storage: storage,
+    );
     try {
       return await installer.draftFromListing(
         listing,
@@ -184,6 +191,7 @@ abstract final class CatalogProduction {
 
   static Future<Plugin> installPluginFromDiscovery(
     Map<String, Object?> arguments, {
+    required HomeStorage storage,
     required PluginRepository repository,
     PluginRepoDiskCacheService? diskCache,
     PluginExternalFetchService? externalFetch,
@@ -195,8 +203,14 @@ abstract final class CatalogProduction {
         'install_plugin requires id or key',
       );
     }
-    final cache = diskCache ?? PluginRepoDiskCacheService();
-    final fetch = externalFetch ?? PluginExternalFetchService();
+    final cache = diskCache ??
+        PluginRepoDiskCacheService(
+          filesystem: storage.fs,
+          teampilotRoot: storage.appDataRoot,
+        );
+    final fetch = externalFetch ?? PluginExternalFetchService(
+      storage: storage,
+    );
     DiscoverablePlugin? match;
     for (final marketplace in await repository.repos.loadMarketplaces()) {
       try {
@@ -252,6 +266,7 @@ abstract final class CatalogProduction {
 
   static Future<McpCatalogListing?> _resolveListing(
     String listingId, {
+    required HomeStorage storage,
     McpRegistryConfigService? registryConfig,
     McpDiscoveryDiskCacheService? diskCache,
   }) async {
@@ -261,7 +276,7 @@ abstract final class CatalogProduction {
       }
     }
 
-    final cache = diskCache ?? McpDiscoveryDiskCacheService();
+    final cache = diskCache ?? McpDiscoveryDiskCacheService(storage: storage);
     for (final key in [mcpDiscoveryCacheSmithery, mcpDiscoveryCacheOfficial]) {
       try {
         final snap = await cache.read(key);
@@ -275,7 +290,8 @@ abstract final class CatalogProduction {
     }
 
     try {
-      final config = await (registryConfig ?? McpRegistryConfigService())
+      final config = await (registryConfig ??
+              McpRegistryConfigService(teampilotRoot: storage.appDataRoot))
           .load();
       final official = config.byKind(McpRegistrySourceKind.officialRegistry);
       if (official != null && official.enabled) {

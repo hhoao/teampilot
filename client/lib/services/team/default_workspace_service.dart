@@ -6,9 +6,11 @@ import '../../models/workspace.dart';
 import '../../models/workspace_folder.dart';
 import '../../repositories/session_repository.dart';
 import '../../services/session/session_member_cli_locks.dart';
-import '../../services/storage/app_storage.dart';
+import '../../services/storage/app_paths.dart';
+import '../../services/storage/home_storage.dart';
 import '../../services/storage/work_target_canonicalizer.dart';
 import '../../utils/workspace/workspace_path_utils.dart';
+import '../expert_hub/expert_hub_catalog.dart';
 import '../expert_hub/expert_member_materializer.dart';
 
 /// First-launch bootstrap for the built-in workspace and starter sessions.
@@ -23,15 +25,18 @@ abstract final class DefaultWorkspaceService {
   /// Built-in personal workspace folder.
   ///
   /// Local home: `<Documents>/TeamPilot`. SSH/WSL home: `$HOME/TeamPilot` on
-  /// the bound home work plane ([AppStorage.home]).
-  static Future<String> resolvePrimaryPath({RuntimeTarget? home}) async {
+  /// the bound home work plane ([HomeStorage.home]).
+  static Future<String> resolvePrimaryPath({
+    RuntimeTarget? home,
+    required HomeStorage storage,
+  }) async {
     final resolved = home ?? RuntimeTarget.local();
     if (resolved.kind == RuntimeKind.local) {
       return DefaultWorkspaceDirectory.resolveDefaultWorkspacePath();
     }
-    final pathCtx = AppPaths.pathContextForDataRoot(AppStorage.home);
-    final path = pathCtx.join(AppStorage.home, 'TeamPilot');
-    await AppStorage.fs.ensureDir(path);
+    final pathCtx = AppPaths.pathContextForDataRoot(storage.home);
+    final path = pathCtx.join(storage.home, 'TeamPilot');
+    await storage.fs.ensureDir(path);
     return path;
   }
 
@@ -41,16 +46,24 @@ abstract final class DefaultWorkspaceService {
   static Future<bool> ensureDefault(
     SessionRepository repository, {
     required TeamProfile defaultTeam,
+    required HomeStorage storage,
     List<Workspace>? knownWorkspaces,
     RuntimeTarget? home,
+    ExpertHubCatalog? catalog,
   }) async {
-    final primaryPath = await resolvePrimaryPath(home: home);
+    final primaryPath = await resolvePrimaryPath(home: home, storage: storage);
     final resolvedHome = home ?? RuntimeTarget.local();
     final folderTargetId =
         WorkTargetCanonicalizer.defaultFolderTargetId(resolvedHome);
     final workspaces = knownWorkspaces ?? await repository.loadWorkspaces();
     var workspace = workspaces
-        .where((w) => workspacePathsEqual(w.firstFolderPath, primaryPath))
+        .where(
+          (w) => workspacePathsEqual(
+            w.firstFolderPath,
+            primaryPath,
+            usesPosixPaths: storage.usesPosixPaths,
+          ),
+        )
         .firstOrNull;
 
     var mutated = false;
@@ -75,11 +88,17 @@ abstract final class DefaultWorkspaceService {
       (s) => s.sessionTeam.trim() == defaultTeam.id,
     );
     if (!hasTeam) {
-      final rosterMembers = defaultTeam.members.isNotEmpty
-          ? defaultTeam.members
-          : await ExpertMemberMaterializer.materializeRosterAsync(
-              team: defaultTeam,
-            );
+      final List<TeamMemberConfig> rosterMembers;
+      if (defaultTeam.members.isNotEmpty) {
+        rosterMembers = defaultTeam.members;
+      } else if (catalog != null) {
+        rosterMembers = ExpertMemberMaterializer.materializeTeam(
+          defaultTeam,
+          await catalog.snapshot(),
+        ).members;
+      } else {
+        rosterMembers = const [];
+      }
       await repository.createSession(
         workspace.workspaceId,
         sessionTeam: defaultTeam.id,
@@ -99,13 +118,27 @@ abstract final class DefaultWorkspaceService {
   static Future<Workspace> seed(
     SessionRepository repository, {
     required TeamProfile defaultTeam,
+    required HomeStorage storage,
     RuntimeTarget? home,
+    ExpertHubCatalog? catalog,
   }) async {
-    final primaryPath = await resolvePrimaryPath(home: home);
-    await ensureDefault(repository, defaultTeam: defaultTeam, home: home);
+    final primaryPath = await resolvePrimaryPath(home: home, storage: storage);
+    await ensureDefault(
+      repository,
+      defaultTeam: defaultTeam,
+      storage: storage,
+      home: home,
+      catalog: catalog,
+    );
     final workspaces = await repository.loadWorkspaces();
     return workspaces
-        .where((w) => workspacePathsEqual(w.firstFolderPath, primaryPath))
+        .where(
+          (w) => workspacePathsEqual(
+            w.firstFolderPath,
+            primaryPath,
+            usesPosixPaths: storage.usesPosixPaths,
+          ),
+        )
         .first;
   }
 }

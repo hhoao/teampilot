@@ -10,6 +10,7 @@ import 'package:teampilot/services/cli/flashskyai/capabilities/provider.dart';
 import 'package:teampilot/services/cli/registry/capabilities/provider_capability.dart';
 import 'package:teampilot/services/io/local_filesystem.dart';
 import 'package:teampilot/services/provider/config_profile_service.dart';
+import '../../../support/in_memory_filesystem.dart';
 
 void main() {
   Future<SessionHomeContribution> contribute(
@@ -32,8 +33,11 @@ void main() {
         basePath: base.path,
         fs: fs,
         layout: RuntimeLayout(teampilotRoot: base.path, fs: fs),
+                                            storage: fakeHomeStorage(),
       );
-      const capability = FlashskyaiProviderCapability();
+      final capability = FlashskyaiProviderCapability(
+        storage: fakeHomeStorage(),
+      );
       const member = TeamMemberConfig(id: 'm1', name: 'Member', model: 'test');
 
       final scope = resolveLaunchProfileScope(
@@ -86,8 +90,11 @@ void main() {
       basePath: base.path,
       fs: fs,
       layout: RuntimeLayout(teampilotRoot: base.path, fs: fs),
+                                          storage: fakeHomeStorage(),
     );
-    const capability = FlashskyaiProviderCapability();
+    final capability = FlashskyaiProviderCapability(
+      storage: fakeHomeStorage(),
+    );
     const member = TeamMemberConfig(id: 'm1', name: 'Member');
     const team = TeamProfile(
       id: 'team-a',

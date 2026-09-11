@@ -6,6 +6,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_alacritty/flutter_alacritty.dart';
 import 'package:shared_ui/shared_ui.dart';
 import '../widgets/app_toast/app_toast.dart';
+import '../widgets/home_storage_scope.dart';
 
 import '../cubits/chat/model/session_connect_request.dart';
 import '../cubits/chat/model/chat_tab.dart';
@@ -122,6 +123,7 @@ class _ChatWorkbenchState extends State<ChatWorkbench> {
         launchContext: WorkspaceLaunchContext(
           session: appSession,
           workspace: workspace,
+          usesPosixPaths: homeStorageOf(context).usesPosixPaths,
         ),
         memberId: historyMemberId,
         toolsScope: WorkspaceToolsScope.maybeOf(context),
@@ -138,6 +140,7 @@ class _ChatWorkbenchState extends State<ChatWorkbench> {
       workspaceId: widget.workspaceId,
       isMounted: () => mounted,
       fs: fs,
+      homeFs: homeStorageOf(context).fs,
     );
   }
 

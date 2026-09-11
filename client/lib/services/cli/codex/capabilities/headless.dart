@@ -4,6 +4,7 @@ import 'package:path/path.dart' as p;
 
 import '../../../../models/app_provider_config.dart';
 import '../../../../models/team_config.dart';
+import '../../../storage/home_storage.dart';
 import '../../registry/capabilities/headless_capability.dart';
 import '../../registry/headless/headless_provision_support.dart';
 import '../../registry/launch/cli_launch_arg_contribution.dart';
@@ -23,7 +24,10 @@ import '../provider/codex_provider_settings_resolver.dart';
 final class CodexHeadlessCapability
     with HeadlessProvisionSupport
     implements HeadlessCapability {
-  const CodexHeadlessCapability();
+  const CodexHeadlessCapability({this.storage});
+
+  @override
+  final HomeStorage? storage;
 
   @override
   bool get isSupported => true;
@@ -113,6 +117,7 @@ final class CodexHeadlessCapability
         ctx.provider ??
         await CodexProviderSettingsResolver(
           basePath: basePath,
+          storage: storage ?? _missingHomeStorage(),
           repository: repository,
         ).findById(ctx.providerId);
     if (resolved == null) {
@@ -128,7 +133,10 @@ final class CodexHeadlessCapability
         ctx.workingDirectory!.trim(),
     ];
     try {
-      await CodexHomeProvisioner(fs: fs).provision(
+      await CodexHomeProvisioner(
+        fs: fs,
+        usesPosixPaths: storage?.usesPosixPaths ?? false,
+      ).provision(
         codexHome: ctx.configDir,
         provider: resolved,
         trustedProjectDirectories: trusted,
@@ -168,6 +176,13 @@ final class CodexHeadlessCapability
       'codex',
       provider.id,
       CodexAuthArtifacts.authFileName,
+    );
+  }
+
+  HomeStorage _missingHomeStorage() {
+    throw StateError(
+      'CodexHeadlessCapability was constructed without HomeStorage; provider '
+      'resolution requires storage threaded via CliBootstrap.',
     );
   }
 }

@@ -25,6 +25,7 @@ import 'package:teampilot/services/provider_usage/managed_provider_usage_registr
 import 'package:teampilot/repositories/ssh_credential_store.dart';
 
 import '../../support/in_memory_filesystem.dart';
+import '../../support/post_frame_test_harness.dart';
 
 ManagedProvider _provider({String id = 'p1', String name = 'Example'}) =>
     ManagedProvider(
@@ -150,6 +151,9 @@ class _MemorySecureKeyValueStore implements SecureKeyValueStore {
 }
 
 void main() {
+  setUp(setUpTestAppStorage);
+  tearDown(tearDownTestAppStorage);
+
   late InMemoryFilesystem fs;
   late ManagedProviderRepository providerRepository;
   late ManagedProviderUsageRepository usageRepository;
@@ -165,11 +169,13 @@ void main() {
   setUp(() async {
     fs = InMemoryFilesystem();
     usageRepository = ManagedProviderUsageRepository(
+      storage: testHomeStorage,
       fs: fs,
       cachePath: '/tp/usage-cache.json',
       now: () => 100,
     );
     providerRepository = ManagedProviderRepository(
+      storage: testHomeStorage,
       fs: fs,
       configPath: '/tp/providers.json',
       onProvidersDeleted: usageRepository.deleteMany,
@@ -192,8 +198,9 @@ void main() {
     providerCubit = ManagedProviderCubit(repository: providerRepository);
     usageCubit = ManagedProviderUsageCubit(coordinator: coordinator);
     appProviderCubit = AppProviderCubit(
-      repository: AppProviderRepository(fs: fs, basePath: '/tp'),
+      repository: AppProviderRepository(fs: fs, basePath: '/tp', storage: testHomeStorage, ),
       basePath: '/tp',
+                                         storage: testHomeStorage,
     );
   });
 

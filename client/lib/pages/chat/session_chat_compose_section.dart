@@ -32,6 +32,7 @@ import '../../services/cli/registry/capabilities/terminal_behavior_capability.da
 import '../../services/cli/registry/cli_tool_registry.dart';
 import '../../services/cli/registry/cli_tool_registry_scope.dart';
 import '../../services/compose/compose_at_file_refs.dart';
+import '../../widgets/home_storage_scope.dart';
 import '../../services/compose/compose_clip.dart';
 import '../../services/compose/compose_file_attach.dart';
 import '../../services/compose/compose_file_drop_ingestor.dart';
@@ -244,7 +245,7 @@ class SessionChatComposeSection extends StatelessWidget {
     final followUpSeatKey = _followUpSeatKey(session.sessionId, shellMemberId);
     final mailboxSeatKey = _mailboxSeatKey(session.sessionId, selectedMemberId);
 
-    final dropTarget = _buildDropTarget(workspaceRoot, composeController);
+    final dropTarget = _buildDropTarget(context, workspaceRoot, composeController);
 
     final slashBundle = _slashBundle(
       workspaceRoot: workspaceRoot,
@@ -547,7 +548,11 @@ class SessionChatComposeSection extends StatelessWidget {
                                   session.workspaceId,
                                   path,
                                   preview: true,
-                                  fs: filesystemForComposeAtFileOpen(path),
+                                  fs: filesystemForComposeAtFileOpen(
+                                    path,
+                                    workspaceFilesystem:
+                                        homeStorageOf(context).fs,
+                                  ),
                                 ),
                               );
                             },
@@ -601,11 +606,13 @@ class SessionChatComposeSection extends StatelessWidget {
       historySeatKey(sessionId: sessionId, selectedMemberId: selMemberId);
 
   ComposeFileDropIngestor _buildDropTarget(
+    BuildContext context,
     String root,
     TextEditingController controller,
   ) {
     return ComposeFileDropIngestor(
       workspaceRoot: root,
+      usesPosixPaths: homeStorageOf(context).usesPosixPaths,
       onInsertReferences: (references) {
         insertComposeReferences(controller, references);
       },

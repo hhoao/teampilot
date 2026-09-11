@@ -8,6 +8,7 @@ import 'package:teampilot/services/resource/contribution/resource_origin.dart';
 import 'package:teampilot/services/resource/resource_kind.dart';
 import 'package:teampilot/services/resource/resource_resolver.dart';
 import 'package:teampilot/services/resource/resource_scope.dart';
+import '../../support/in_memory_filesystem.dart';
 
 Skill _skill(String id, String dir, {bool enabled = true}) => Skill(
   id: id,
@@ -25,7 +26,7 @@ void main() {
     skillsRoot: '/root/skills/installed',
     pathContext: p.posix,
   );
-  const resolver = ResourceResolver();
+  final resolver = ResourceResolver(storage: fakeHomeStorage());
 
   test('simple scope resolves enabled skillIds to refs', () async {
     const scope = SimpleResourceScope(bundle: ConfigBundle(skillIds: ['a']));

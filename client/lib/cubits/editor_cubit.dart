@@ -19,7 +19,7 @@ import '../services/editor_platform/editor_platform.dart';
 import '../services/editor_platform/language_registry.dart';
 import '../services/editor_platform/worker_protocol.dart';
 import '../services/io/filesystem.dart';
-import '../services/storage/app_storage.dart';
+import '../services/storage/home_storage.dart';
 
 class DiffTabState extends Equatable {
   const DiffTabState({
@@ -251,13 +251,14 @@ class _WritableDiffHandle {
 
 class EditorCubit extends Cubit<EditorState> {
   EditorCubit({
+    required HomeStorage storage,
     Filesystem? fs,
     TsWorkerPool? workerPool,
     LanguageRegistry? languageRegistry,
-  }) : _fs = fs ?? AppStorage.fs,
-       _injectedPool = workerPool,
-       _injectedRegistry = languageRegistry,
-       super(const EditorState());
+  })  : _fs = fs ?? storage.fs,
+        _injectedPool = workerPool,
+        _injectedRegistry = languageRegistry,
+        super(const EditorState());
 
   final Filesystem _fs;
 

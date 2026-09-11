@@ -5,7 +5,6 @@ import '../../models/run/launch_configuration.dart';
 import '../../models/runtime_target.dart';
 import '../../models/workspace_folder.dart';
 import '../io/filesystem.dart';
-import '../storage/app_storage.dart';
 import '../storage/work_target_canonicalizer.dart';
 
 /// Read/write surface for per-folder `.teampilot/launch.json`.
@@ -86,8 +85,10 @@ class TargetAwareLaunchConfigIo implements LaunchConfigIo {
   final LaunchConfigFilesystemResolver _resolveFilesystem;
   final RuntimeTarget Function() _homeTarget;
 
-  /// Convenience: AppStorage home FS for local; inject resolver for WSL/SSH.
+  /// Convenience: [homeFilesystem] (the home storage `fs`) for local targets;
+  /// inject resolver for WSL/SSH.
   factory TargetAwareLaunchConfigIo.localFallback({
+    required Filesystem homeFilesystem,
     LaunchConfigFilesystemResolver? resolveFilesystem,
     RuntimeTarget Function()? homeTarget,
   }) {
@@ -98,7 +99,7 @@ class TargetAwareLaunchConfigIo implements LaunchConfigIo {
           (targetId) async {
             if (WorkTargetCanonicalizer.fromId(targetId).kind ==
                 RuntimeKind.local) {
-              return AppStorage.fs;
+              return homeFilesystem;
             }
             throw StateError(
               'No filesystem resolver for launch.json targetId=$targetId',

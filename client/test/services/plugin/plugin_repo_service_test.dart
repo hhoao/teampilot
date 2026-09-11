@@ -1,9 +1,19 @@
 import 'dart:io';
 import 'package:teampilot/models/plugin.dart';
-import 'package:teampilot/services/storage/app_storage.dart';
+import 'package:teampilot/services/storage/app_paths.dart';
 import 'package:teampilot/services/plugin/plugin_repo_service.dart';
+import 'package:teampilot/services/io/local_filesystem.dart';
+import 'package:teampilot/services/storage/home_storage.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:path/path.dart' as p;
+import '../../support/in_memory_filesystem.dart';
+
+HomeStorage _storageFor(Directory tmp) => HomeStorage.forTesting(
+  filesystem: LocalFilesystem(),
+  paths: AppPaths(tmp.path),
+  home: tmp.path,
+  cwd: tmp.path,
+);
 
 void main() {
   late Directory tmp;
@@ -14,7 +24,7 @@ void main() {
   tearDown(() => tmp.deleteSync(recursive: true));
 
   test('loads default marketplaces on first call', () async {
-    final svc = PluginRepoService();
+    final svc = PluginRepoService(storage: _storageFor(tmp));
     final list = await svc.loadMarketplaces();
     expect(list, isNotEmpty);
     expect(
@@ -24,7 +34,7 @@ void main() {
   });
 
   test('addMarketplace / removeMarketplace / setEnabled', () async {
-    final svc = PluginRepoService();
+    final svc = PluginRepoService(storage: _storageFor(tmp));
     await svc.loadMarketplaces();
     await svc.addMarketplace(const PluginMarketplace(owner: 'a', name: 'b'));
     var list = await svc.loadMarketplaces();
@@ -40,7 +50,7 @@ void main() {
   });
 
   test('addMarketplace is idempotent on owner/name', () async {
-    final svc = PluginRepoService();
+    final svc = PluginRepoService(storage: _storageFor(tmp));
     await svc.loadMarketplaces();
     await svc.addMarketplace(const PluginMarketplace(owner: 'x', name: 'y'));
     await svc.addMarketplace(

@@ -3,7 +3,6 @@ import 'dart:io';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/models/session_group.dart';
 import 'package:teampilot/repositories/session_group_repository.dart';
-import 'package:teampilot/services/storage/app_storage.dart';
 import 'package:teampilot/services/storage/workspace_layout.dart';
 
 import '../support/post_frame_test_harness.dart';
@@ -16,8 +15,11 @@ void main() {
   late WorkspaceLayout layout;
 
   setUp(() {
-    repository = SessionGroupRepository();
-    layout = WorkspaceLayout(teampilotRoot: AppStorage.paths.basePath);
+    repository = SessionGroupRepository(storage: testHomeStorage);
+    layout = WorkspaceLayout(
+      teampilotRoot: testHomeStorage.paths.basePath,
+      fs: testHomeStorage.fs,
+    );
   });
 
   test('missing file loads empty without creating it', () async {

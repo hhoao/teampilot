@@ -77,7 +77,10 @@ void main() {
     fs = InMemoryFilesystem();
     layout = RuntimeLayout(teampilotRoot: '/tp', fs: fs);
     store = CliSessionManifestStore(fs: fs, layout: layout);
-    capability = CursorSessionLifecycleCapability(manifestStore: store);
+    capability = CursorSessionLifecycleCapability(
+      storage: fakeHomeStorage(filesystem: fs),
+      manifestStore: store,
+    );
     pathsDelegate = CursorLifecycleTestPaths(fs: fs, layout: layout);
   });
 

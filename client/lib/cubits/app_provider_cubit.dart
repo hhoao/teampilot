@@ -5,8 +5,8 @@ import '../models/app_provider_config.dart';
 import '../models/credential_action_result.dart';
 import '../models/llm_config.dart';
 import '../repositories/app_provider_repository.dart';
+import '../services/storage/home_storage.dart';
 import '../repositories/managed_provider_repository.dart';
-import '../services/storage/app_storage.dart';
 import '../services/provider/credential_binding.dart';
 import '../services/cli/registry/capabilities/provider_capability.dart';
 import '../services/cli/registry/cli_tool_registry.dart';
@@ -100,6 +100,7 @@ class AppProviderState extends Equatable {
 
 class AppProviderCubit extends Cubit<AppProviderState> {
   AppProviderCubit({
+    required HomeStorage storage,
     AppProviderRepository? repository,
     ProviderImportService? importService,
     String? Function()? flashskyaiExecutablePath,
@@ -107,11 +108,13 @@ class AppProviderCubit extends Cubit<AppProviderState> {
     String? basePath,
     Future<void> Function(Uri uri)? openCredentialLoginUrl,
     ManagedProviderRepository? managedProviderRepository,
-  }) : _repository = repository ?? AppProviderRepository(basePath: basePath),
+  }) : _repository =
+           repository ?? AppProviderRepository(basePath: basePath, storage: storage),
        _generator = generator ?? const ToolConfigGenerator(),
        _flashskyaiExecutablePath = flashskyaiExecutablePath,
        _importService = importService,
        _openCredentialLoginUrl = openCredentialLoginUrl,
+       _storage = storage,
        _managedProviderRepository = managedProviderRepository,
        super(const AppProviderState());
 
@@ -120,27 +123,19 @@ class AppProviderCubit extends Cubit<AppProviderState> {
   final ProviderImportService? _importService;
   final String? Function()? _flashskyaiExecutablePath;
   final Future<void> Function(Uri uri)? _openCredentialLoginUrl;
+  final HomeStorage _storage;
   final ManagedProviderRepository? _managedProviderRepository;
-  static String _resolveBasePath(String? basePath) {
-    if (basePath != null && basePath.trim().isNotEmpty) {
-      return basePath.trim();
-    }
-    try {
-      return AppStorage.paths.basePath;
-    } on Object {
-      return '';
-    }
-  }
 
   ProviderImportService _importServiceForRequest() {
     return _importService ??
         ProviderImportService(
+          storage: _storage,
           repository: _repository,
           flashskyaiExecutablePath: _flashskyaiExecutablePath?.call(),
         );
   }
 
-  String get catalogPath => AppStorage.paths.providerConfigDir;
+  String get catalogPath => _storage.paths.providerConfigDir;
 
   void beginCredentialLogin(String providerId) {
     emit(
@@ -451,7 +446,7 @@ class AppProviderCubit extends Cubit<AppProviderState> {
           provider: provider,
           pickedPath: pickedPath,
           replace: replace,
-          homeDirectory: homeDirectory ?? AppStorage.home,
+          homeDirectory: homeDirectory ?? _storage.home,
         ),
       );
       if (!result.ok) {

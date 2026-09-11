@@ -6,7 +6,9 @@ import 'package:teampilot/repositories/launch_profile_repository.dart';
 import 'package:teampilot/models/workspace_folder.dart';
 import 'package:teampilot/repositories/session_repository.dart';
 import 'package:teampilot/services/io/local_filesystem.dart';
-import 'package:teampilot/services/storage/app_storage.dart';
+import 'package:teampilot/services/storage/app_paths.dart';
+import '../support/test_runtime_context.dart';
+import '../support/in_memory_filesystem.dart';
 
 void main() {
   late Directory tmp;
@@ -16,7 +18,7 @@ void main() {
   setUp(() async {
     tmp = await Directory.systemTemp.createTemp('session_data_personal_');
     final paths = AppPaths(tmp.path);
-    AppStorage.installForTesting(
+    installTestHomeStorage(
       filesystem: LocalFilesystem(
         pathContext: AppPaths.pathContextForDataRoot(paths.basePath),
       ),
@@ -24,12 +26,12 @@ void main() {
       home: tmp.path,
       cwd: tmp.path,
     );
-    sessionRepo = SessionRepository();
-    identityRepo = LaunchProfileRepository();
+    sessionRepo = SessionRepository(storage: fakeHomeStorage());
+    identityRepo = LaunchProfileRepository(storage: fakeHomeStorage());
   });
 
   tearDown(() {
-    AppStorage.resetForTesting();
+    resetTestHomeStorage();
     tmp.deleteSync(recursive: true);
   });
 
@@ -37,7 +39,7 @@ void main() {
     'createWorkspaceWithFirstSession creates personal session without profile.json',
     () async {
       const primaryPath = '/tmp/personal-workspace';
-      final store = SessionDataStore();
+      final store = SessionDataStore(storage: fakeHomeStorage());
       final base = store.deriveSnapshot(workspaces: const [], sessions: const []);
 
       final result = await store.createWorkspaceWithFirstSession(
@@ -73,7 +75,7 @@ void main() {
   test(
     'createWorkspaceWithFirstSession creates personal session on mixed workspace',
     () async {
-      final store = SessionDataStore();
+      final store = SessionDataStore(storage: fakeHomeStorage());
       final base = store.deriveSnapshot(workspaces: const [], sessions: const []);
 
       final result = await store.createWorkspaceWithFirstSession(

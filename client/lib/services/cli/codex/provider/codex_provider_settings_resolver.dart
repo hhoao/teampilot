@@ -1,13 +1,16 @@
 import '../../../../models/app_provider_config.dart';
 import '../../../../models/team_config.dart';
 import '../../../../repositories/app_provider_repository.dart';
+import '../../../storage/home_storage.dart';
 
 /// Resolves Codex providers from the app catalog for session launch.
 final class CodexProviderSettingsResolver {
   CodexProviderSettingsResolver({
     required String basePath,
+    required HomeStorage storage,
     AppProviderRepository? repository,
-  }) : _repository = repository ?? AppProviderRepository(basePath: basePath);
+  }) : _repository =
+           repository ?? AppProviderRepository(basePath: basePath, storage: storage);
 
   final AppProviderRepository _repository;
 

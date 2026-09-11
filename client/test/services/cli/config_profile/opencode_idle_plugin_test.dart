@@ -14,6 +14,7 @@ import 'package:teampilot/services/cli/opencode/capabilities/idle_plugin.dart';
 import 'package:teampilot/services/io/local_filesystem.dart';
 import 'package:teampilot/services/provider/config_profile_service.dart';
 import 'package:teampilot/services/team_bus/mcp/teammate_bus_mcp_config.dart';
+import '../../../support/in_memory_filesystem.dart';
 
 void main() {
   Future<SessionHomeContribution> contribute(
@@ -25,7 +26,7 @@ void main() {
 
   Future<SessionHomeContribution> materializeOpenCode(
     ConfigProfileLaunchContext ctx,
-  ) => contribute(const OpencodeProviderCapability(), ctx);
+  ) => contribute(OpencodeProviderCapability(storage: fakeHomeStorage()), ctx);
 
   test('idle plugin source re-prompts on decision:block', () {
     expect(opencodeIdlePluginSource, contains('session.idle'));
@@ -52,8 +53,11 @@ void main() {
         basePath: base.path,
         fs: fs,
         layout: RuntimeLayout(teampilotRoot: base.path, fs: fs),
+                                            storage: fakeHomeStorage(),
       );
-      const capability = OpencodeProviderCapability();
+      final capability = OpencodeProviderCapability(
+        storage: fakeHomeStorage(),
+      );
       const member = TeamMemberConfig(id: 'm1', name: 'Member', model: 'test');
       const team = TeamProfile(
         id: 'team-a',
@@ -211,11 +215,13 @@ void main() {
         basePath: base.path,
         fs: fs,
         layout: RuntimeLayout(teampilotRoot: base.path, fs: fs),
+                                            storage: fakeHomeStorage(),
       );
 
       await AppProviderRepository(
         basePath: base.path,
         fs: fs,
+                                   storage: fakeHomeStorage(),
       ).saveProviders(CliTool.opencode, const [
         AppProviderConfig(
           id: 'team-openai',

@@ -5,6 +5,7 @@ import '../models/discoverable_team.dart';
 import '../models/mcp_server.dart';
 import '../repositories/mcp_repository.dart';
 import '../services/mcp/mcp_import_service.dart';
+import '../services/storage/home_storage.dart';
 import '../utils/logging/logger.dart';
 
 enum McpLoadStatus { idle, loading, ready, error }
@@ -42,10 +43,11 @@ class McpState extends Equatable {
 class McpCubit extends Cubit<McpState> {
   McpCubit(
     this._repository, {
+    required HomeStorage storage,
     Future<void> Function(String mcpId)? onMcpDeleted,
     McpImportService? importService,
   }) : _onMcpDeleted = onMcpDeleted,
-       _importService = importService ?? McpImportService(),
+       _importService = importService ?? McpImportService(storage: storage),
        super(const McpState());
 
   final McpRepository _repository;

@@ -10,7 +10,7 @@ import 'package:teampilot/cubits/chat_cubit.dart';
 import 'package:teampilot/models/app_session.dart';
 import 'package:teampilot/models/workspace_folder.dart';
 import 'package:teampilot/repositories/session_repository.dart';
-import 'package:teampilot/services/storage/app_storage.dart';
+import '../../support/test_runtime_context.dart';
 import 'package:teampilot/services/team_bus/agent_node.dart';
 
 import '../../support/post_frame_test_harness.dart';
@@ -22,6 +22,7 @@ import 'integration_prerequisites.dart';
 import 'mixed_team_idle_busy_assertions.dart';
 import 'mixed_team_integration_harness.dart';
 import 'package:teampilot/models/team_config.dart';
+import '../../support/in_memory_filesystem.dart';
 
 /// L2 mixed-team scenarios: real Claude PTY + mock gateway + bus persistence.
 abstract final class MixedTeamTaskScenario {
@@ -65,7 +66,7 @@ abstract final class MixedTeamTaskScenario {
         content: mailContent,
       );
 
-      final root = AppStorage.paths.basePath;
+      final root = testHomeStorage.paths.basePath;
       final mailRows = await readBusMailLines(
         teampilotRoot: root,
         workspaceId: ctx.session.workspaceId,
@@ -224,7 +225,7 @@ abstract final class MixedTeamTaskScenario {
       );
 
       final events = await readBusTaskEvents(
-        teampilotRoot: AppStorage.paths.basePath,
+        teampilotRoot: testHomeStorage.paths.basePath,
         workspaceId: ctx.session.workspaceId,
         sessionId: ctx.session.sessionId,
       );
@@ -265,11 +266,11 @@ abstract final class MixedTeamTaskScenario {
       );
       await harness.verifyMockReachableFromDocker(remote);
 
-      final repo = SessionRepository();
+      final repo = SessionRepository(storage: fakeHomeStorage());
       cubit = harness.createDockerCubit(postFrame: postFrame, remote: remote);
 
       final workspace = await repo.createWorkspace([
-        WorkspaceFolder(path: AppStorage.cwd),
+        WorkspaceFolder(path: testHomeStorage.cwd),
         WorkspaceFolder(
           path: MixedTeamDockerRemote.remoteWorkspacePath,
           targetId: remote.sshTargetId,
@@ -371,11 +372,11 @@ abstract final class MixedTeamTaskScenario {
       );
       await harness.verifyMockReachableFromDocker(remote);
 
-      final repo = SessionRepository();
+      final repo = SessionRepository(storage: fakeHomeStorage());
       cubit = harness.createDockerCubit(postFrame: postFrame, remote: remote);
 
       final workspace = await repo.createWorkspace([
-        WorkspaceFolder(path: AppStorage.cwd),
+        WorkspaceFolder(path: testHomeStorage.cwd),
         WorkspaceFolder(
           path: MixedTeamDockerRemote.remoteWorkspacePath,
           targetId: remote.sshTargetId,
@@ -489,7 +490,7 @@ abstract final class MixedTeamTaskScenario {
     try {
       await harness.startMockServer(scenarios: scenarios);
       await harness.writeMockProviders();
-      final repo = SessionRepository();
+      final repo = SessionRepository(storage: fakeHomeStorage());
       cubit = harness.createCubit(
         postFrame: postFrame,
         reclaimIdleTerminalsEnabled: reclaimIdleTerminalsEnabled,
@@ -497,12 +498,12 @@ abstract final class MixedTeamTaskScenario {
         autoLaunchAllMembersOnConnect: autoLaunchAllMembersOnConnect,
       );
       if (withPresence) {
-        presenceCubit = MemberPresenceCubit();
+        presenceCubit = MemberPresenceCubit(storage: fakeHomeStorage());
         bindMixedTeamPresence(chatCubit: cubit, presenceCubit: presenceCubit);
       }
 
       final workspace = await repo.createWorkspace([
-        WorkspaceFolder(path: AppStorage.cwd),
+        WorkspaceFolder(path: testHomeStorage.cwd),
       ]);
       session = (await repo.createSession(
         workspace.workspaceId,

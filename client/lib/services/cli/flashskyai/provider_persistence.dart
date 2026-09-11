@@ -35,6 +35,7 @@ final class FlashskyaiProviderPersistence extends ProviderPersistenceStrategy {
 
     final configFile = RuntimeLayout(
       teampilotRoot: ctx.basePath,
+      fs: ctx.fs,
     ).appFlashskyaiLlmConfigFile;
     await ctx.generator.writeJsonAtomic(
       configFile,

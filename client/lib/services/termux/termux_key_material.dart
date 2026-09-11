@@ -1,7 +1,7 @@
 import 'dart:io';
 
 import '../../repositories/ssh_credential_store.dart';
-import '../storage/app_storage.dart';
+import '../storage/app_paths.dart';
 import 'termux_openssh_ed25519_encoder.dart';
 
 /// Device-local ed25519 key pair for Termux loopback SSH.

@@ -297,9 +297,14 @@ class AppSession {
   ({String workingDirectory, List<String> addDirs}) workDirsForMember(
     String? memberId, {
     required List<WorkspaceFolder> folders,
+    required bool usesPosixPaths,
   }) {
     if (memberId == null || memberId.trim().isEmpty) {
-      return personalWorkDirsForPrimaryPath(folders, firstFolderPath);
+      return personalWorkDirsForPrimaryPath(
+        folders,
+        firstFolderPath,
+        usesPosixPaths: usesPosixPaths,
+      );
     }
     final targetId = memberTargetForInstanceId(memberTargets, memberId);
     if (targetId == null) {

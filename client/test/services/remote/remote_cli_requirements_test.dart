@@ -89,6 +89,7 @@ void main() {
         projectFolderPath: '/local',
         selectableTargets: [home],
         home: home,
+                                                usesPosixPaths: false,
       );
       expect(target?.id, 'ssh:host-a');
     });
@@ -104,6 +105,7 @@ void main() {
         cli: CliTool.codex,
         selectableTargets: [localTarget, sshTarget],
         home: localHome,
+                                                                 usesPosixPaths: false,
       );
 
       expect(requirements, hasLength(1));
@@ -118,6 +120,7 @@ void main() {
         cli: CliTool.codex,
         selectableTargets: [localTarget, sshTarget],
         home: localHome,
+                                                                 usesPosixPaths: false,
       );
 
       expect(requirements, isEmpty);

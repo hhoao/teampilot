@@ -7,9 +7,11 @@ import 'package:teampilot/repositories/session_repository.dart';
 import 'package:teampilot/services/terminal/terminal_session.dart';
 
 import '../support/post_frame_test_harness.dart';
+import '../support/in_memory_filesystem.dart';
 
 class _RunningFakeSession extends TerminalSession {
-  _RunningFakeSession({required super.executable});
+  _RunningFakeSession({required super.executable})
+    : super(fs: InMemoryFilesystem());
 
   @override
   bool get isRunning => true;
@@ -34,7 +36,7 @@ void main() {
 
     setUp(() async {
       tmp = await Directory.systemTemp.createTemp('chat_ws_working_');
-      repo = SessionRepository(rootDir: tmp.path);
+      repo = SessionRepository(rootDir: tmp.path, storage: testHomeStorage, );
       postFrame = PostFrameTestHarness();
       created.clear();
       cubit = ChatCubit(
@@ -48,6 +50,7 @@ void main() {
               created.add(s);
               return s;
             },
+                         storage: testHomeStorage,
       );
     });
 

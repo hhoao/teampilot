@@ -158,7 +158,7 @@ void main() {
     tester,
   ) async {
     final fs = InMemoryFilesystem()..files['/repo/icon.svg'] = svgV1;
-    final editor = EditorCubit(fs: fs);
+    final editor = EditorCubit(fs: fs, storage: fakeHomeStorage());
     addTearDown(editor.close);
     await tester.runAsync(() => editor.openFile('ws', '/repo/icon.svg'));
 
@@ -171,7 +171,7 @@ void main() {
 
   testWidgets('invalid svg reports decode failure', (tester) async {
     final fs = InMemoryFilesystem()..files['/repo/bad.svg'] = 'not an svg';
-    final editor = EditorCubit(fs: fs);
+    final editor = EditorCubit(fs: fs, storage: fakeHomeStorage());
     addTearDown(editor.close);
     await tester.runAsync(() => editor.openFile('ws', '/repo/bad.svg'));
 
@@ -188,7 +188,7 @@ void main() {
   testWidgets('re-reads bytes after a save (dirty -> clean)', (tester) async {
     final inner = InMemoryFilesystem()..files['/repo/icon.svg'] = svgV1;
     final fs = _CountingFilesystem(inner);
-    final editor = EditorCubit(fs: fs);
+    final editor = EditorCubit(fs: fs, storage: fakeHomeStorage());
     addTearDown(editor.close);
     await tester.runAsync(() => editor.openFile('ws', '/repo/icon.svg'));
 
@@ -212,7 +212,7 @@ void main() {
 
   testWidgets('missing file shows read error', (tester) async {
     final fs = InMemoryFilesystem();
-    final editor = EditorCubit(fs: fs);
+    final editor = EditorCubit(fs: fs, storage: fakeHomeStorage());
     addTearDown(editor.close);
     // No openFile: the pane reads directly from fs.
 
@@ -233,7 +233,7 @@ void main() {
     final fs = _GatedReadFilesystem('/repo/a.svg', gate)
       ..files['/repo/a.svg'] = svgV1
       ..files['/repo/b.svg'] = svgV2;
-    final editor = EditorCubit(fs: fs);
+    final editor = EditorCubit(fs: fs, storage: fakeHomeStorage());
     addTearDown(editor.close);
     // No openFile: the pane reads directly from fs.
 
@@ -269,7 +269,7 @@ void main() {
       ..files['/repo/a.svg'] = svgV1
       ..files['/repo/b.svg'] = svgV2;
     final fs = _CountingFilesystem(inner);
-    final editor = EditorCubit(fs: fs);
+    final editor = EditorCubit(fs: fs, storage: fakeHomeStorage());
     addTearDown(editor.close);
 
     await pumpPane(tester, editor: editor, path: '/repo/a.svg');
@@ -290,7 +290,7 @@ void main() {
     final fs = InMemoryFilesystem()
       ..files['/repo/a.svg'] = 'not an svg'
       ..files['/repo/b.svg'] = svgV2;
-    final editor = EditorCubit(fs: fs);
+    final editor = EditorCubit(fs: fs, storage: fakeHomeStorage());
     addTearDown(editor.close);
     await tester.runAsync(() => editor.openFile('ws', '/repo/a.svg'));
 

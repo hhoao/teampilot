@@ -8,6 +8,7 @@ import 'package:teampilot/repositories/ssh_known_host_repository.dart';
 import 'package:teampilot/repositories/ssh_profile_repository.dart';
 import 'package:teampilot/services/terminal/terminal_session.dart';
 import 'package:teampilot/services/terminal/terminal_transport_factory.dart';
+import '../../support/in_memory_filesystem.dart';
 
 void main() {
   test('newSession uses local factory when target is local', () {
@@ -17,7 +18,7 @@ void main() {
       cliExecutableResolver: (cli) => 'exec-${cli.value}',
       terminalSessionFactory: ({required executable, scrollbackLines = 10000}) {
         seenExecutable = executable;
-        return TerminalSession(executable: executable);
+        return TerminalSession(executable: executable, fs: InMemoryFilesystem(), );
       },
       defaultTargetResolver: RuntimeTarget.local,
     );
@@ -35,7 +36,7 @@ void main() {
       cliExecutableResolver: (cli) => 'exec-${cli.value}',
       terminalSessionFactory: ({required executable, scrollbackLines = 10000}) {
         seenExecutable = executable;
-        return TerminalSession(executable: executable);
+        return TerminalSession(executable: executable, fs: InMemoryFilesystem(), );
       },
       // ssh kind but no transportFactory/profile → falls back to local PTY,
       // matching the legacy connectionMode==ssh-without-profile behavior.
@@ -59,7 +60,7 @@ void main() {
     final factory = ChatSessionShellFactory(
       executableResolver: () => 'claude',
       transportFactory: TerminalTransportFactory(
-        sshProfileRepository: SshProfileRepository(),
+        sshProfileRepository: SshProfileRepository(storage: fakeHomeStorage()),
         sshCredentialStore: InMemorySshCredentialStore(),
         sshKnownHostRepository: InMemorySshKnownHostRepository(),
       ),
@@ -82,7 +83,7 @@ void main() {
       executableResolver: () => 'flashskyai',
       terminalSessionFactory:
           ({required executable, scrollbackLines = 10000}) =>
-              TerminalSession(executable: executable),
+              TerminalSession(executable: executable, fs: InMemoryFilesystem(), ),
     );
     const team = TeamProfile(id: 't', name: 'T', members: []);
 
@@ -118,7 +119,8 @@ void main() {
 }
 
 class _RunningFakeShell extends TerminalSession {
-  _RunningFakeShell({required super.executable});
+  _RunningFakeShell({required super.executable})
+    : super(fs: InMemoryFilesystem());
 
   @override
   bool get isRunning => true;

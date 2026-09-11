@@ -9,7 +9,6 @@ import 'package:teampilot/models/config_bundle.dart';
 import 'package:teampilot/models/team_config.dart';
 import 'package:teampilot/services/cli/registry/config_profile/config_profile_scope.dart';
 import 'package:teampilot/services/provider/config_profile_service.dart';
-import 'package:teampilot/services/storage/app_storage.dart';
 import 'package:teampilot/services/storage/runtime_layout.dart';
 import 'package:teampilot/services/cli/claude/team_roster_service.dart';
 
@@ -20,8 +19,8 @@ void main() {
   tearDown(tearDownTestAppStorage);
 
   Future<void> installDemoPlugin() async {
-    final fs = AppStorage.fs;
-    final root = AppStorage.paths.basePath;
+    final fs = testHomeStorage.fs;
+    final root = testHomeStorage.paths.basePath;
     await fs.ensureDir(
       p.join(root, 'plugins', 'installed', 'demo-bundle', '.plugin'),
     );
@@ -57,7 +56,7 @@ void main() {
     String sessionId, {
     String? memberId,
   }) async {
-    final fs = AppStorage.fs;
+    final fs = testHomeStorage.fs;
     final dir = p.join(
       layout.sessionRuntimeToolDir(
         workspaceId,
@@ -76,8 +75,8 @@ void main() {
   test(
     'the same enabled plugin lands identically in personal, native, and mixed modes',
     () async {
-      final fs = AppStorage.fs;
-      final root = AppStorage.paths.basePath;
+      final fs = testHomeStorage.fs;
+      final root = testHomeStorage.paths.basePath;
       final layout = RuntimeLayout(teampilotRoot: root, fs: fs);
       await installDemoPlugin();
 
@@ -85,6 +84,7 @@ void main() {
         basePath: root,
         fs: fs,
         layout: layout,
+                                            storage: testHomeStorage,
       );
 
       await service.prepareSimpleSessionLaunch(

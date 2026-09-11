@@ -58,6 +58,7 @@ List<ResourceBinding> collectResourceBindings({
   required List<ChatMemberShellRef> chatShells,
   required List<WorkspaceShellRef> workspaceShells,
   required List<GitWorktree> worktrees,
+  required bool usesPosixPaths,
   String? workspaceGroupLabel,
 }) {
   final bindings = <ResourceBinding>[];
@@ -69,7 +70,11 @@ List<ResourceBinding> collectResourceBindings({
     final group = workspaceLabel != null
         ? (key: workspaceId, label: workspaceLabel)
         : _groupFor(
-            _matchWorktree(shell.sessionPrimaryPath, worktrees),
+            _matchWorktree(
+              shell.sessionPrimaryPath,
+              worktrees,
+              usesPosixPaths: usesPosixPaths,
+            ),
             worktrees,
           );
     final member = shell.memberName.trim();
@@ -98,7 +103,10 @@ List<ResourceBinding> collectResourceBindings({
     final workspaceLabel = workspaceGroupLabel;
     final group = workspaceLabel != null
         ? (key: workspaceId, label: workspaceLabel)
-        : _groupFor(_matchWorktree(shell.cwd, worktrees), worktrees);
+        : _groupFor(
+            _matchWorktree(shell.cwd, worktrees, usesPosixPaths: usesPosixPaths),
+            worktrees,
+          );
     bindings.add(
       ResourceBinding(
         key: 'shell:${shell.workspaceId}:${shell.entryId}',
@@ -137,8 +145,16 @@ List<ResourceBinding> collectResourceBindings({
   return (key: 'main', label: mainWt?.shortBranch ?? 'main');
 }
 
-GitWorktree? _matchWorktree(String path, List<GitWorktree> worktrees) {
-  final matchedPath = worktreePathForSessionPath(path, worktrees);
+GitWorktree? _matchWorktree(
+  String path,
+  List<GitWorktree> worktrees, {
+  required bool usesPosixPaths,
+}) {
+  final matchedPath = worktreePathForSessionPath(
+    path,
+    worktrees,
+    usesPosixPaths: usesPosixPaths,
+  );
   if (matchedPath == null) return null;
   for (final w in worktrees) {
     if (w.path == matchedPath) return w;

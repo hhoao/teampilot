@@ -4,7 +4,7 @@ import '../../models/team_config.dart';
 import '../../services/session/launch_command_builder.dart';
 import '../../services/session/session_lifecycle_service.dart';
 import '../../services/cli/preset_resolver.dart';
-import '../../services/storage/app_storage.dart';
+import '../../services/storage/home_storage.dart';
 import 'launch_profile_cubit_host.dart';
 import 'team_resource_sync_service.dart';
 
@@ -16,19 +16,22 @@ typedef CliExecutableResolver = String Function(CliTool cli);
 /// whole-team launches. Plugin state is re-synced before each launch.
 class TeamLaunchService {
   TeamLaunchService({
+    required HomeStorage storage,
     required LaunchProfileCubitHost host,
     required SessionLifecycleService lifecycle,
     required TeamResourceSyncService sync,
     required String Function() executableResolver,
     CliExecutableResolver? cliExecutableResolver,
     TeamLauncher? launcher,
-  }) : _h = host,
+  }) : _storage = storage,
+       _h = host,
        _lifecycle = lifecycle,
        _sync = sync,
        _executableResolver = executableResolver,
        _cliExecutableResolver = cliExecutableResolver,
        _launcher = launcher;
 
+  final HomeStorage _storage;
   final LaunchProfileCubitHost _h;
   final SessionLifecycleService _lifecycle;
   final TeamResourceSyncService _sync;
@@ -105,7 +108,7 @@ class TeamLaunchService {
                 globalPresets: _lifecycle.globalPresets,
               ),
             ),
-            workingDirectory: workingDirectory ?? AppStorage.cwd,
+            workingDirectory: workingDirectory ?? _storage.cwd,
             additionalDirectories: additionalDirectories,
           );
   }
@@ -123,7 +126,7 @@ class TeamLaunchService {
           globalPresets: _lifecycle.globalPresets,
         ),
       ),
-      workingDirectory: AppStorage.cwd,
+      workingDirectory: _storage.cwd,
     );
   }
 
@@ -155,7 +158,7 @@ class TeamLaunchService {
     );
     try {
       await _sync.syncPluginsForSelected();
-      final launchWorkingDirectory = workingDirectory ?? AppStorage.cwd;
+      final launchWorkingDirectory = workingDirectory ?? _storage.cwd;
       await _runLaunch(
         team,
         member,
@@ -211,7 +214,7 @@ class TeamLaunchService {
     );
     try {
       await _sync.syncPluginsForSelected();
-      final launchWorkingDirectory = workingDirectory ?? AppStorage.cwd;
+      final launchWorkingDirectory = workingDirectory ?? _storage.cwd;
       for (final member in validMembers) {
         await _runLaunch(
           team,

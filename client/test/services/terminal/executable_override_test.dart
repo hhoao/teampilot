@@ -7,6 +7,7 @@ import 'package:teampilot/services/terminal/terminal_session.dart';
 import 'package:teampilot/services/terminal/terminal_transport.dart';
 
 import '../../support/rust_lib_test_init.dart';
+import '../../support/in_memory_filesystem.dart';
 
 /// B2: an off-home member's launch uses the CLI path preflight located on the
 /// work machine — TerminalSession.connect(executableOverride:) is the seam the
@@ -60,6 +61,7 @@ void main() {
             spawned.add(executable);
             return Future.value(_FakeTransport());
           },
+                                     fs: InMemoryFilesystem(),
     );
     return (session: session, spawned: spawned);
   }

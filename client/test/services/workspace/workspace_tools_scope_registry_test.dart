@@ -5,6 +5,7 @@ import 'package:teampilot/services/session/session_lifecycle_service.dart';
 import 'package:teampilot/services/workspace/workspace_tools_scope_registry.dart';
 
 import '../../support/test_runtime_context.dart';
+import '../../support/in_memory_filesystem.dart';
 
 void main() {
   testWidgets(
@@ -14,6 +15,7 @@ void main() {
       final lifecycle = SessionLifecycleService(
         storageRootsResolver: () async => home,
         workContextResolver: (_) async => home,
+                                                 storage: fakeHomeStorage(),
       );
       final registry = WorkspaceToolsScopeRegistry();
       addTearDown(registry.dispose);

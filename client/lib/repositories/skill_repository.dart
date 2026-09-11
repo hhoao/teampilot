@@ -5,18 +5,21 @@ import '../services/skill/skill_fetch_service.dart';
 import '../services/skill/skill_install_service.dart';
 import '../services/skill/skill_manifest_service.dart';
 import '../services/skill/skill_repo_disk_cache_service.dart';
+import '../services/storage/home_storage.dart';
 
 class SkillRepository {
   factory SkillRepository({
+    required HomeStorage storage,
     SkillManifestService? manifest,
     SkillFetchService? fetch,
     SkillRepoDiskCacheService? repoCache,
     SkillInstallService? install,
   }) {
     final resolvedFetch = fetch ?? SkillFetchService();
-    final resolvedManifest = manifest ?? SkillManifestService();
+    final resolvedManifest =
+        manifest ?? SkillManifestService(storage: storage);
     final resolvedCache =
-        repoCache ?? SkillRepoDiskCacheService(fetch: resolvedFetch);
+        repoCache ?? SkillRepoDiskCacheService(storage: storage, fetch: resolvedFetch);
     return SkillRepository._(
       manifest: resolvedManifest,
       fetch: resolvedFetch,
@@ -24,6 +27,7 @@ class SkillRepository {
       install:
           install ??
           SkillInstallService(
+            storage: storage,
             manifest: resolvedManifest,
             fetch: resolvedFetch,
             repoCache: resolvedCache,

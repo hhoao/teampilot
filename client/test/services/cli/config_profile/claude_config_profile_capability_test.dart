@@ -11,11 +11,22 @@ import 'package:teampilot/repositories/app_provider_repository.dart';
 import 'package:teampilot/services/cli/preset_resolver.dart';
 import 'package:teampilot/services/cli/claude/capabilities/provider.dart';
 import 'package:teampilot/services/cli/registry/capabilities/provider_capability.dart';
+import 'package:teampilot/services/io/filesystem.dart';
 import 'package:teampilot/services/io/local_filesystem.dart';
 import 'package:teampilot/services/provider/credential_binding.dart';
 import 'package:teampilot/services/provider/config_profile_service.dart';
 import 'package:teampilot/services/session/member_role_provision.dart';
+import 'package:teampilot/services/storage/app_paths.dart';
+import 'package:teampilot/services/storage/home_storage.dart';
 import 'package:teampilot/services/storage/runtime_layout.dart';
+
+HomeStorage _homeStorageFor(String basePath, Filesystem fs, {String? home}) =>
+    HomeStorage.forTesting(
+      filesystem: fs,
+      paths: AppPaths(basePath),
+      home: home ?? basePath,
+      cwd: basePath,
+    );
 
 void main() {
   Future<SessionHomeContribution> contribute(
@@ -46,10 +57,13 @@ void main() {
     final fs = LocalFilesystem();
     final service = ConfigProfileService(
       basePath: base.path,
+      storage: _homeStorageFor(base.path, fs),
       fs: fs,
       layout: RuntimeLayout(teampilotRoot: base.path, fs: fs),
     );
-    const capability = ClaudeProviderCapability();
+    final capability = ClaudeProviderCapability(
+      storage: _homeStorageFor(base.path, fs),
+    );
     const member = TeamMemberConfig(id: 'm1', name: 'Member', model: 'test');
     const team = TeamProfile(id: 'team-a', name: 'agent', cli: CliTool.claude);
 
@@ -93,10 +107,13 @@ void main() {
       final fs = LocalFilesystem();
       final service = ConfigProfileService(
         basePath: base.path,
+        storage: _homeStorageFor(base.path, fs),
         fs: fs,
         layout: RuntimeLayout(teampilotRoot: base.path, fs: fs),
       );
-      const capability = ClaudeProviderCapability();
+      final capability = ClaudeProviderCapability(
+      storage: _homeStorageFor(base.path, fs),
+    );
       const launched = TeamMemberConfig(
         id: 'm1',
         name: 'Member',
@@ -172,12 +189,18 @@ void main() {
     final fs = LocalFilesystem();
     final service = ConfigProfileService(
       basePath: base.path,
+      storage: _homeStorageFor(base.path, fs),
       fs: fs,
       layout: RuntimeLayout(teampilotRoot: base.path, fs: fs),
     );
-    const capability = ClaudeProviderCapability();
+    final capability = ClaudeProviderCapability(
+      storage: _homeStorageFor(base.path, fs),
+    );
     const member = TeamMemberConfig(id: 'm1', name: 'Member', model: 'test');
-    final repository = AppProviderRepository(basePath: base.path);
+    final repository = AppProviderRepository(
+      basePath: base.path,
+      storage: _homeStorageFor(base.path, fs),
+    );
     await repository.saveProviders(CliTool.claude, [
       const AppProviderConfig(
         id: 'leaky',
@@ -287,11 +310,17 @@ void main() {
     final fs = LocalFilesystem();
     final service = ConfigProfileService(
       basePath: base.path,
+      storage: _homeStorageFor(base.path, fs),
       fs: fs,
       layout: RuntimeLayout(teampilotRoot: base.path, fs: fs),
     );
-    const capability = ClaudeProviderCapability();
-    final repository = AppProviderRepository(basePath: base.path);
+    final capability = ClaudeProviderCapability(
+      storage: _homeStorageFor(base.path, fs),
+    );
+    final repository = AppProviderRepository(
+      basePath: base.path,
+      storage: _homeStorageFor(base.path, fs),
+    );
     await repository.saveProviders(CliTool.claude, [
       const AppProviderConfig(
         id: 'tiered',
@@ -384,12 +413,19 @@ void main() {
       final home = p.join(base.path, 'home');
       final service = ConfigProfileService(
         basePath: base.path,
+        storage: _homeStorageFor(base.path, fs, home: home),
         fs: fs,
         home: home,
         layout: RuntimeLayout(teampilotRoot: base.path, fs: fs),
       );
-      const capability = ClaudeProviderCapability();
-      final repository = AppProviderRepository(basePath: base.path, fs: fs);
+      final capability = ClaudeProviderCapability(
+        storage: _homeStorageFor(base.path, fs, home: home),
+      );
+      final repository = AppProviderRepository(
+        basePath: base.path,
+        storage: _homeStorageFor(base.path, fs, home: home),
+        fs: fs,
+      );
       await repository.saveProviders(CliTool.claude, [
         const AppProviderConfig(
           id: 'leaky',
@@ -479,12 +515,19 @@ void main() {
       final home = p.join(base.path, 'home');
       final service = ConfigProfileService(
         basePath: base.path,
+        storage: _homeStorageFor(base.path, fs, home: home),
         fs: fs,
         home: home,
         layout: RuntimeLayout(teampilotRoot: base.path, fs: fs),
       );
-      const capability = ClaudeProviderCapability();
-      final repository = AppProviderRepository(basePath: base.path, fs: fs);
+      final capability = ClaudeProviderCapability(
+        storage: _homeStorageFor(base.path, fs, home: home),
+      );
+      final repository = AppProviderRepository(
+        basePath: base.path,
+        storage: _homeStorageFor(base.path, fs, home: home),
+        fs: fs,
+      );
       await repository.saveProviders(CliTool.claude, [
         const AppProviderConfig(
           id: 'third',
@@ -573,19 +616,26 @@ void main() {
 
     Future<({
       Directory base,
+      HomeStorage storage,
       ConfigProfileService service,
       TeamProfile team,
       List<TeamMemberConfig> launchMembers,
     })> setupFixture() async {
       final base = await Directory.systemTemp.createTemp('claude_cap_preset_');
       final fs = LocalFilesystem();
+      final storage = _homeStorageFor(base.path, fs);
       final service = ConfigProfileService(
         basePath: base.path,
+        storage: _homeStorageFor(base.path, fs),
         fs: fs,
         layout: RuntimeLayout(teampilotRoot: base.path, fs: fs),
         loadGlobalPresets: () async => [thirdPartyPreset],
       );
-      final repository = AppProviderRepository(basePath: base.path, fs: fs);
+      final repository = AppProviderRepository(
+        basePath: base.path,
+        storage: _homeStorageFor(base.path, fs),
+        fs: fs,
+      );
       await repository.saveProviders(CliTool.claude, [
         const AppProviderConfig(
           id: 'third-party',
@@ -625,7 +675,7 @@ void main() {
         globalPresets: [thirdPartyPreset],
       );
 
-      return (base: base, service: service, team: team, launchMembers: launchMembers);
+      return (base: base, storage: storage, service: service, team: team, launchMembers: launchMembers);
     }
 
     String memberSettingsPath(String base, String sessionId, String memberId) =>
@@ -682,11 +732,16 @@ void main() {
         final fs = LocalFilesystem();
         final service = ConfigProfileService(
           basePath: base.path,
+          storage: _homeStorageFor(base.path, fs),
           fs: fs,
           layout: RuntimeLayout(teampilotRoot: base.path, fs: fs),
           loadGlobalPresets: () async => [teamPreset, memberPreset],
         );
-        final repository = AppProviderRepository(basePath: base.path, fs: fs);
+        final repository = AppProviderRepository(
+          basePath: base.path,
+          storage: _homeStorageFor(base.path, fs),
+          fs: fs,
+        );
         await repository.saveProviders(CliTool.claude, [
           const AppProviderConfig(
             id: 'team-provider',
@@ -733,7 +788,9 @@ void main() {
         );
         final override = launchMembers.firstWhere((m) => m.id == 'override');
 
-        const capability = ClaudeProviderCapability();
+        final capability = ClaudeProviderCapability(
+      storage: _homeStorageFor(base.path, fs),
+    );
         const sessionId = 'session-member-preset';
         final scope = resolveLaunchProfileScope(
           workspaceId: 'workspace-1',
@@ -794,7 +851,9 @@ void main() {
           }
         });
 
-        const capability = ClaudeProviderCapability();
+        final capability = ClaudeProviderCapability(
+          storage: fixture.storage,
+        );
         const sessionId = 'session-preset-roster';
         final lead = fixture.launchMembers.firstWhere((m) => m.id == 'team-lead');
         final scope = resolveLaunchProfileScope(
@@ -839,7 +898,9 @@ void main() {
           }
         });
 
-        const capability = ClaudeProviderCapability();
+        final capability = ClaudeProviderCapability(
+          storage: fixture.storage,
+        );
         const sessionId = 'session-preset-seq';
         final dev0 = fixture.launchMembers.firstWhere((m) => m.id == 'developer-0');
         final dev1 = fixture.launchMembers.firstWhere((m) => m.id == 'developer-1');

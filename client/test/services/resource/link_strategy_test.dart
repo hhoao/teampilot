@@ -1,6 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/services/resource/link_strategy.dart';
-import 'package:teampilot/services/storage/app_storage.dart';
 
 import '../../support/post_frame_test_harness.dart';
 
@@ -9,7 +8,7 @@ void main() {
   tearDown(tearDownTestAppStorage);
 
   test('link creates an accessible entry (symlink or copy fallback)', () async {
-    final fs = AppStorage.fs;
+    final fs = testHomeStorage.fs;
     final tmp = await fs.createTempDir(prefix: 'link_test_');
     final src = fs.pathContext.join(tmp, 'src');
     final dst = fs.pathContext.join(tmp, 'dst');

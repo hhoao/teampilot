@@ -2,22 +2,27 @@ import 'dart:convert';
 
 import '../../models/home_closed_workspace_entry.dart';
 import '../io/filesystem.dart';
-import '../storage/app_storage.dart';
+import '../storage/home_storage.dart';
 
 /// Persists recently closed title-bar workspace tabs (most recent first).
 class HomeClosedWorkspacesStore {
-  HomeClosedWorkspacesStore({Filesystem? fs, String? pathOverride})
-    : _fsOverride = fs,
-      _pathOverride = pathOverride;
+  HomeClosedWorkspacesStore({
+    required HomeStorage storage,
+    Filesystem? fs,
+    String? pathOverride,
+  }) : _storage = storage,
+       _fsOverride = fs,
+       _pathOverride = pathOverride;
 
   static const maxEntries = 20;
 
+  final HomeStorage _storage;
   final Filesystem? _fsOverride;
   final String? _pathOverride;
 
-  Filesystem get _fs => _fsOverride ?? AppStorage.fs;
+  Filesystem get _fs => _fsOverride ?? _storage.fs;
   String get _path =>
-      _pathOverride ?? AppStorage.paths.homeWorkspaceClosedWorkspacesJson;
+      _pathOverride ?? _storage.paths.homeWorkspaceClosedWorkspacesJson;
 
   Future<List<HomeClosedWorkspaceEntry>> load() async {
     try {

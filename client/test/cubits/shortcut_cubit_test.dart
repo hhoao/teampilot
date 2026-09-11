@@ -11,7 +11,10 @@ void main() {
   setUp(setUpTestAppStorage);
   tearDown(tearDownTestAppStorage);
 
-  ShortcutCubit cubit() => ShortcutCubit(repository: KeybindingRepository());
+  ShortcutCubit cubit() => ShortcutCubit(
+    storage: testHomeStorage,
+    repository: KeybindingRepository(storage: testHomeStorage),
+  );
 
   test('starts with catalog defaults as effective after load', () async {
     final sut = cubit();

@@ -6,7 +6,7 @@ import 'package:teampilot/models/config_bundle.dart';
 import 'package:teampilot/models/skill.dart';
 import 'package:teampilot/models/team_config.dart';
 import 'package:teampilot/services/provider/config_profile_service.dart';
-import 'package:teampilot/services/storage/app_storage.dart';
+import 'package:teampilot/services/storage/app_paths.dart';
 import 'package:teampilot/services/storage/runtime_layout.dart';
 
 import '../../support/post_frame_test_harness.dart';
@@ -25,7 +25,7 @@ void main() {
   ConfigProfileService buildService(String root, RuntimeLayout layout) =>
       ConfigProfileService(
         basePath: root,
-        fs: AppStorage.fs,
+        fs: testHomeStorage.fs,
         layout: layout,
         loadInstalledSkills: () async => [
           const Skill(
@@ -37,13 +37,14 @@ void main() {
             updatedAt: 0,
           ),
         ],
+                            storage: testHomeStorage,
       );
 
   test(
     'personal leaf skills/ is a real directory, not a staging symlink',
     () async {
-      final fs = AppStorage.fs;
-      final root = AppStorage.paths.basePath;
+      final fs = testHomeStorage.fs;
+      final root = testHomeStorage.paths.basePath;
       final layout = RuntimeLayout(teampilotRoot: root, fs: fs);
       await fs.ensureDir(
         fs.pathContext.join(
@@ -80,8 +81,8 @@ void main() {
   test(
     'team member leaf skills/ is a real directory, not a staging symlink',
     () async {
-      final fs = AppStorage.fs;
-      final root = AppStorage.paths.basePath;
+      final fs = testHomeStorage.fs;
+      final root = testHomeStorage.paths.basePath;
       final layout = RuntimeLayout(teampilotRoot: root, fs: fs);
       await fs.ensureDir(
         fs.pathContext.join(

@@ -16,17 +16,20 @@ final class CodexHomeProvisioner {
     ToolConfigGenerator? generator,
     CodexConfigTomlComposer? composer,
     Filesystem? fs,
+    bool usesPosixPaths = false,
   }) : _generator = generator ?? const ToolConfigGenerator(),
        _composer =
            composer ??
            CodexConfigTomlComposer(
              generator: generator ?? const ToolConfigGenerator(),
            ),
-       _fs = fs;
+       _fs = fs,
+       _usesPosixPaths = usesPosixPaths;
 
   final ToolConfigGenerator _generator;
   final CodexConfigTomlComposer _composer;
   final Filesystem? _fs;
+  final bool _usesPosixPaths;
 
   static const authFileName = 'auth.json';
   static const configFileName = 'config.toml';
@@ -86,6 +89,7 @@ final class CodexHomeProvisioner {
       busOverlayToml: busOverlayToml,
       trustedProjectDirectories: trustedProjectDirectories,
       reasoningEffortOverride: reasoningEffortOverride,
+      usesPosixPaths: _usesPosixPaths,
     );
     toml = CodexTomlMerge.preserveManagedTables(
       existingToml: existingToml,

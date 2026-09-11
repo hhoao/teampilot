@@ -13,6 +13,7 @@ import 'package:teampilot/services/team_bus/team_message.dart';
 import '../support/post_frame_test_harness.dart';
 import 'support/integration_test_setup.dart';
 import 'support/session_idle_busy_harness.dart';
+import '../support/in_memory_filesystem.dart';
 
 /// Integration coverage for lazy spawn + idle reclaim. The reclaim threshold
 /// is configured to 2 seconds so the tests run fast (see SessionPreferences
@@ -29,7 +30,7 @@ void main() {
 
     setUp(() async {
       tmp = await Directory.systemTemp.createTemp('it_reclaim_mixed_');
-      repo = SessionRepository(rootDir: tmp.path);
+      repo = SessionRepository(rootDir: tmp.path, storage: fakeHomeStorage(), );
       postFrame = PostFrameTestHarness();
       cubit = ChatCubit(
         executableResolver: () => 'true',
@@ -41,6 +42,7 @@ void main() {
         terminalSessionFactory:
             ({required String executable, int scrollbackLines = 10000}) =>
                 RunningConnectedFakeShell(executable: executable),
+                         storage: fakeHomeStorage(),
       );
     });
 
@@ -130,7 +132,7 @@ void main() {
 
     setUp(() async {
       tmp = await Directory.systemTemp.createTemp('it_reclaim_simple_');
-      repo = SessionRepository(rootDir: tmp.path);
+      repo = SessionRepository(rootDir: tmp.path, storage: fakeHomeStorage(), );
       postFrame = PostFrameTestHarness();
       cubit = ChatCubit(
         executableResolver: () => 'true',
@@ -142,6 +144,7 @@ void main() {
         terminalSessionFactory:
             ({required String executable, int scrollbackLines = 10000}) =>
                 RunningConnectedFakeShell(executable: executable),
+                         storage: fakeHomeStorage(),
       );
     });
 

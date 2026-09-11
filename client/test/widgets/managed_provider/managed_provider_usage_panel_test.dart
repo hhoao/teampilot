@@ -86,11 +86,13 @@ void main() {
   ) async {
     final fs = InMemoryFilesystem();
     final usage = ManagedProviderUsageRepository(
+      storage: fakeHomeStorage(filesystem: fs),
       fs: fs,
       cachePath: '/tp/usage-cache.json',
       now: () => 100,
     );
     final providers = ManagedProviderRepository(
+      storage: fakeHomeStorage(filesystem: fs),
       fs: fs,
       configPath: '/tp/providers.json',
       onProvidersDeleted: usage.deleteMany,
@@ -147,11 +149,13 @@ void main() {
   ) async {
     final fs = InMemoryFilesystem();
     final usage = ManagedProviderUsageRepository(
+      storage: fakeHomeStorage(filesystem: fs),
       fs: fs,
       cachePath: '/tp/usage-cache.json',
       now: () => 100,
     );
     final providers = ManagedProviderRepository(
+      storage: fakeHomeStorage(filesystem: fs),
       fs: fs,
       configPath: '/tp/providers.json',
       onProvidersDeleted: usage.deleteMany,
@@ -228,11 +232,13 @@ void main() {
   ) async {
     final fs = InMemoryFilesystem();
     final usage = ManagedProviderUsageRepository(
+      storage: fakeHomeStorage(filesystem: fs),
       fs: fs,
       cachePath: '/tp/usage-cache.json',
       now: () => 100,
     );
     final providers = ManagedProviderRepository(
+      storage: fakeHomeStorage(filesystem: fs),
       fs: fs,
       configPath: '/tp/providers.json',
       onProvidersDeleted: usage.deleteMany,
@@ -320,11 +326,13 @@ void main() {
   ) async {
     final fs = InMemoryFilesystem();
     final usage = ManagedProviderUsageRepository(
+      storage: fakeHomeStorage(filesystem: fs),
       fs: fs,
       cachePath: '/tp/usage-cache.json',
       now: () => 100,
     );
     final providers = ManagedProviderRepository(
+      storage: fakeHomeStorage(filesystem: fs),
       fs: fs,
       configPath: '/tp/providers.json',
       onProvidersDeleted: usage.deleteMany,
@@ -391,11 +399,13 @@ void main() {
   ) async {
     final fs = InMemoryFilesystem();
     final usage = ManagedProviderUsageRepository(
+      storage: fakeHomeStorage(filesystem: fs),
       fs: fs,
       cachePath: '/tp/usage-cache.json',
       now: () => 100,
     );
     final providers = ManagedProviderRepository(
+      storage: fakeHomeStorage(filesystem: fs),
       fs: fs,
       configPath: '/tp/providers.json',
       onProvidersDeleted: usage.deleteMany,
@@ -456,11 +466,13 @@ void main() {
     (tester) async {
       final fs = InMemoryFilesystem();
       final usage = ManagedProviderUsageRepository(
+        storage: fakeHomeStorage(filesystem: fs),
         fs: fs,
         cachePath: '/tp/usage-cache.json',
         now: () => 100,
       );
       final providers = ManagedProviderRepository(
+        storage: fakeHomeStorage(filesystem: fs),
         fs: fs,
         configPath: '/tp/providers.json',
         onProvidersDeleted: usage.deleteMany,
@@ -540,11 +552,13 @@ void main() {
     (tester) async {
       final fs = InMemoryFilesystem();
       final usage = ManagedProviderUsageRepository(
+        storage: fakeHomeStorage(filesystem: fs),
         fs: fs,
         cachePath: '/tp/usage-cache.json',
         now: () => 100,
       );
       final providers = ManagedProviderRepository(
+        storage: fakeHomeStorage(filesystem: fs),
         fs: fs,
         configPath: '/tp/providers.json',
         onProvidersDeleted: usage.deleteMany,

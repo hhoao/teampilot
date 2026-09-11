@@ -4,18 +4,21 @@ import 'package:path/path.dart' as p;
 import '../../models/plugin.dart';
 import '../../utils/logging/logger.dart';
 import '../io/filesystem.dart';
-import '../storage/app_storage.dart';
+import '../storage/app_paths.dart';
+import '../storage/home_storage.dart';
 import '../storage/remote_file_store.dart';
 
 class PluginRepoService {
-  PluginRepoService();
+  PluginRepoService({required HomeStorage storage}) : _storage = storage;
+
+  final HomeStorage _storage;
 
   static const defaultMarketplaces = [
     PluginMarketplace(owner: 'anthropics', name: 'claude-plugins-official'),
   ];
 
   /// Local-only marketplace list read through an injected [Filesystem] (no
-  /// [AppStorage] singleton). Falls back to [defaultMarketplaces] when the
+  /// global storage singleton). Falls back to [defaultMarketplaces] when the
   /// manifest is missing or unreadable.
   static Future<List<PluginMarketplace>> loadMarketplacesFor(
     Filesystem fs,
@@ -46,10 +49,7 @@ class PluginRepoService {
   }
 
   Future<String> _configPath() async {
-    if (AppStorage.isInstalled) {
-      return AppStorage.context.pluginMarketplacesConfigPath;
-    }
-    return AppPathsBootstrapper.current.pluginMarketplacesConfigPath;
+    return _storage.context.pluginMarketplacesConfigPath;
   }
 
   Future<List<PluginMarketplace>> loadMarketplaces() async {
@@ -106,8 +106,7 @@ class PluginRepoService {
   }
 
   Future<RemoteFileStore?> _remote() async {
-    if (!AppStorage.isInstalled) return null;
-    final snap = AppStorage.context;
+    final snap = _storage.context;
     return snap.storageIsRemote ? snap.remoteFileStore : null;
   }
 
@@ -128,10 +127,10 @@ class PluginRepoService {
       }
     }
 
-    final stat = await AppStorage.fs.stat(path);
+    final stat = await _storage.fs.stat(path);
     if (!stat.isFile) return {};
     try {
-      final content = await AppStorage.fs.readString(path);
+      final content = await _storage.fs.readString(path);
       if (content == null) return {};
       return (json.decode(content) as Map<String, dynamic>)
           .cast<String, Object?>();
@@ -161,6 +160,6 @@ class PluginRepoService {
       await remote.writeFile(path, text);
       return;
     }
-    await AppStorage.fs.writeString(path, text);
+    await _storage.fs.writeString(path, text);
   }
 }

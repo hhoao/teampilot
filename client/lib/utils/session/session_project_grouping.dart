@@ -5,11 +5,23 @@ import '../../models/workspace_folder.dart';
 import 'session_worktree_grouping.dart';
 import '../workspace/workspace_path_utils.dart';
 
-bool sessionBelongsToProject(AppSession session, String projectPath) {
-  final primary = normalizeWorkspacePath(session.firstFolderPath);
-  final root = normalizeWorkspacePath(projectPath);
+bool sessionBelongsToProject(
+  AppSession session,
+  String projectPath, {
+  required bool usesPosixPaths,
+}) {
+  final primary = normalizeWorkspacePath(
+    session.firstFolderPath,
+    usesPosixPaths: usesPosixPaths,
+  );
+  final root = normalizeWorkspacePath(
+    projectPath,
+    usesPosixPaths: usesPosixPaths,
+  );
   if (primary.isEmpty || root.isEmpty) return false;
-  if (workspacePathsEqual(primary, root)) return true;
+  if (workspacePathsEqual(primary, root, usesPosixPaths: usesPosixPaths)) {
+    return true;
+  }
   return primary.startsWith(root.endsWith('/') ? root : '$root/');
 }
 
@@ -21,9 +33,13 @@ bool sessionBelongsToProject(AppSession session, String projectPath) {
 String? owningProjectFolderForSession(
   AppSession session,
   List<WorkspaceFolder> folders, {
+  required bool usesPosixPaths,
   Map<String, List<GitWorktree>>? worktreesByProjectPath,
 }) {
-  final primary = normalizeWorkspacePath(session.firstFolderPath);
+  final primary = normalizeWorkspacePath(
+    session.firstFolderPath,
+    usesPosixPaths: usesPosixPaths,
+  );
   if (primary.isEmpty) return null;
 
   if (worktreesByProjectPath != null) {
@@ -32,9 +48,16 @@ String? owningProjectFolderForSession(
     for (final folder in folders) {
       final worktrees = worktreesByProjectPath[folder.path] ?? const [];
       if (worktrees.isEmpty) continue;
-      final matched = worktreePathForSessionPath(primary, worktrees);
+      final matched = worktreePathForSessionPath(
+        primary,
+        worktrees,
+        usesPosixPaths: usesPosixPaths,
+      );
       if (matched == null) continue;
-      final matchedLen = normalizeWorkspacePath(matched).length;
+      final matchedLen = normalizeWorkspacePath(
+        matched,
+        usesPosixPaths: usesPosixPaths,
+      ).length;
       if (matchedLen > bestWorktreeLen) {
         bestWorktreeOwner = folder.path;
         bestWorktreeLen = matchedLen;
@@ -46,8 +69,16 @@ String? owningProjectFolderForSession(
   String? bestPath;
   var bestLen = -1;
   for (final folder in folders) {
-    final root = normalizeWorkspacePath(folder.path);
-    if (root.isEmpty || !sessionBelongsToProject(session, folder.path)) {
+    final root = normalizeWorkspacePath(
+      folder.path,
+      usesPosixPaths: usesPosixPaths,
+    );
+    if (root.isEmpty ||
+        !sessionBelongsToProject(
+          session,
+          folder.path,
+          usesPosixPaths: usesPosixPaths,
+        )) {
       continue;
     }
     if (root.length > bestLen) {
@@ -62,26 +93,39 @@ Map<String, List<AppSession>> _sessionsByOwningProjectFolder({
   required List<WorkspaceFolder> folders,
   required Map<String, List<GitWorktree>> worktreesByProjectPath,
   required List<AppSession> sessions,
+  required bool usesPosixPaths,
 }) {
   final buckets = <String, List<AppSession>>{};
   for (final session in sessions) {
     final owner = owningProjectFolderForSession(
       session,
       folders,
+      usesPosixPaths: usesPosixPaths,
       worktreesByProjectPath: worktreesByProjectPath,
     );
     if (owner == null) continue;
-    final key = _folderBucketKey(folders, owner);
+    final key = _folderBucketKey(folders, owner, usesPosixPaths: usesPosixPaths);
     if (key == null) continue;
     buckets.putIfAbsent(key, () => []).add(session);
   }
   return buckets;
 }
 
-String? _folderBucketKey(List<WorkspaceFolder> folders, String ownerPath) {
-  final normalizedOwner = normalizeWorkspacePath(ownerPath);
+String? _folderBucketKey(
+  List<WorkspaceFolder> folders,
+  String ownerPath, {
+  required bool usesPosixPaths,
+}) {
+  final normalizedOwner = normalizeWorkspacePath(
+    ownerPath,
+    usesPosixPaths: usesPosixPaths,
+  );
   for (final folder in folders) {
-    if (workspacePathsEqual(folder.path, normalizedOwner)) {
+    if (workspacePathsEqual(
+      folder.path,
+      normalizedOwner,
+      usesPosixPaths: usesPosixPaths,
+    )) {
       return folder.path;
     }
   }
@@ -96,6 +140,7 @@ List<WorktreeGroup> groupSessionsByWorktreeAcrossProjects({
   required List<WorkspaceFolder> folders,
   required Map<String, List<GitWorktree>> worktreesByProjectPath,
   required List<AppSession> sessions,
+  required bool usesPosixPaths,
 }) {
   final groups = <WorktreeGroup>[];
   final orphanSessions = <AppSession>[];
@@ -103,6 +148,7 @@ List<WorktreeGroup> groupSessionsByWorktreeAcrossProjects({
     folders: folders,
     worktreesByProjectPath: worktreesByProjectPath,
     sessions: sessions,
+    usesPosixPaths: usesPosixPaths,
   );
   final assigned = sessionsByFolder.values
       .expand((list) => list.map((s) => s.sessionId))
@@ -125,6 +171,7 @@ List<WorktreeGroup> groupSessionsByWorktreeAcrossProjects({
     for (final wtGroup in groupSessionsByWorktree(
       worktrees: worktrees,
       sessions: projectSessions,
+      usesPosixPaths: usesPosixPaths,
     )) {
       if (wtGroup.isOrphan) {
         orphanSessions.addAll(wtGroup.sessions);
@@ -161,6 +208,7 @@ List<AppSession> unfilteredSessionsForWorktreeGroup({
   required List<WorkspaceFolder> folders,
   required Map<String, List<GitWorktree>> worktreesByProjectPath,
   required List<AppSession> sessions,
+  required bool usesPosixPaths,
 }) {
   final targetWorktree = group.worktree;
   if (targetWorktree == null) return const [];
@@ -169,17 +217,23 @@ List<AppSession> unfilteredSessionsForWorktreeGroup({
     folders: folders,
     worktreesByProjectPath: worktreesByProjectPath,
     sessions: sessions,
+    usesPosixPaths: usesPosixPaths,
   );
   for (final candidate in rebuilt) {
     final candidateWorktree = candidate.worktree;
     if (candidateWorktree == null ||
-        !workspacePathsEqual(candidateWorktree.path, targetWorktree.path)) {
+        !workspacePathsEqual(
+          candidateWorktree.path,
+          targetWorktree.path,
+          usesPosixPaths: usesPosixPaths,
+        )) {
       continue;
     }
     if (targetProject.isNotEmpty &&
         !workspacePathsEqual(
           candidate.projectFolderPath ?? '',
           targetProject,
+          usesPosixPaths: usesPosixPaths,
         )) {
       continue;
     }

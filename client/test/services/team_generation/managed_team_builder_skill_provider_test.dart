@@ -13,7 +13,7 @@ void main() {
   test(
     'managed builder skill source and materialized mirror are identical',
     () async {
-      final provider = ManagedTeamBuilderSkillProvider();
+      final provider = ManagedTeamBuilderSkillProvider(storage: fakeHomeStorage());
       final resource = await provider.resolve(
         ManagedTeamBuilderSkillProvider.skillId,
       );
@@ -55,7 +55,7 @@ void main() {
     () async {
       final fs = InMemoryFilesystem();
       const targetConfigDir = '/session/config';
-      final provider = ManagedTeamBuilderSkillProvider();
+      final provider = ManagedTeamBuilderSkillProvider(storage: fakeHomeStorage());
       final contributions = await provider.provide(
         SkillProviderContext(
           cli: CliTool.claude,
@@ -78,7 +78,7 @@ void main() {
   );
 
   test('resolve returns null for unrelated skill ids', () async {
-    final provider = ManagedTeamBuilderSkillProvider();
+    final provider = ManagedTeamBuilderSkillProvider(storage: fakeHomeStorage());
     expect(await provider.resolve('some-other-skill'), isNull);
     expect(
       await provider.resolve(ManagedTeamBuilderSkillProvider.skillId),

@@ -17,6 +17,9 @@ import 'package:teampilot/models/workspace_folder.dart';
 import 'package:teampilot/pages/home_workspace/workspace/workspace_session_actions.dart';
 import 'package:teampilot/repositories/session_preferences_repository.dart';
 import 'package:teampilot/repositories/session_repository.dart';
+import 'package:teampilot/services/io/local_filesystem.dart';
+import 'package:teampilot/services/storage/app_paths.dart';
+import 'package:teampilot/services/storage/home_storage.dart';
 import 'package:teampilot/services/workbench/workbench_chat_bridge.dart';
 
 import '../../../support/post_frame_test_harness.dart';
@@ -30,7 +33,13 @@ Future<
 >
 setupWorkspace({bool aConnectImmediately = true}) async {
   final tmp = await Directory.systemTemp.createTemp('open_to_side_');
-  final repo = SessionRepository(rootDir: tmp.path);
+  final storage = HomeStorage.forTesting(
+    filesystem: LocalFilesystem(),
+    paths: AppPaths(tmp.path),
+    home: tmp.path,
+    cwd: tmp.path,
+  );
+  final repo = SessionRepository(rootDir: tmp.path, storage: storage);
   final workspace = await repo.createWorkspace([
     WorkspaceFolder(path: tmp.path),
   ]);
@@ -40,6 +49,7 @@ setupWorkspace({bool aConnectImmediately = true}) async {
     executableResolver: () => 'true',
     automationRepository: testAutomationRepository(),
     sessionRepository: repo,
+    storage: storage,
   );
   final workbench = WorkbenchCubit();
   final bridge = WorkbenchChatBridge(workbench: workbench, chat: cubit);

@@ -5,6 +5,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import '../models/git_worktree.dart';
 import '../services/git/git_worktree_service.dart';
 import '../services/home_workspace/worktree_ui_prefs_store.dart';
+import '../services/storage/home_storage.dart';
 import '../services/workspace/workspace_worktree_store.dart';
 import '../utils/session/session_worktree_grouping.dart';
 import '../utils/workspace/workspace_path_utils.dart';
@@ -141,13 +142,15 @@ class WorktreeSidebarView {
 
 class WorktreeCubit extends Cubit<WorktreeState> {
   WorktreeCubit({
+    required HomeStorage storage,
     WorktreeLister? lister,
     this.workspaceId = '',
     WorktreeUiPrefsStore? prefsStore,
     WorkspaceWorktreeStore? worktreeStore,
     String? initialRepoPath,
-  }) : _lister = lister,
-       _prefsStore = prefsStore ?? WorktreeUiPrefsStore(),
+  }) : _storage = storage,
+       _lister = lister,
+       _prefsStore = prefsStore ?? WorktreeUiPrefsStore(storage: storage),
        _worktreeStore = worktreeStore,
        super(
          _initialState(
@@ -158,6 +161,7 @@ class WorktreeCubit extends Cubit<WorktreeState> {
        );
 
   WorktreeLister? _lister;
+  final HomeStorage _storage;
   final WorktreeUiPrefsStore _prefsStore;
   final WorkspaceWorktreeStore? _worktreeStore;
 
@@ -243,7 +247,10 @@ class WorktreeCubit extends Cubit<WorktreeState> {
     }
 
     final generation = ++_loadGeneration;
-    final requestedRepo = normalizeWorkspacePath(repoPath.trim());
+    final requestedRepo = normalizeWorkspacePath(
+      repoPath.trim(),
+      usesPosixPaths: _storage.usesPosixPaths,
+    );
 
     emit(state.copyWith(repoPath: requestedRepo, loading: true));
 
@@ -272,7 +279,14 @@ class WorktreeCubit extends Cubit<WorktreeState> {
     }
 
     bool inList(String path) =>
-        path.isNotEmpty && list.any((w) => workspacePathsEqual(w.path, path));
+        path.isNotEmpty &&
+        list.any(
+          (w) => workspacePathsEqual(
+            w.path,
+            path,
+            usesPosixPaths: _storage.usesPosixPaths,
+          ),
+        );
 
     final String current;
     if (inList(state.currentWorktreePath)) {
@@ -312,13 +326,17 @@ class WorktreeCubit extends Cubit<WorktreeState> {
 
   /// Worktree whose path is the longest prefix of [preferPath]; else the main
   /// (first) worktree; else [repoPath] when the list is empty.
-  static String _initialCurrent(
+  String _initialCurrent(
     List<GitWorktree> list,
     String? preferPath,
     String repoPath,
   ) {
     if (preferPath != null && preferPath.isNotEmpty) {
-      final best = worktreePathForSessionPath(preferPath, list);
+      final best = worktreePathForSessionPath(
+        preferPath,
+        list,
+        usesPosixPaths: _storage.usesPosixPaths,
+      );
       if (best != null) return best;
     }
     return list.isNotEmpty ? list.first.path : repoPath;
@@ -331,12 +349,20 @@ class WorktreeCubit extends Cubit<WorktreeState> {
     final path = worktreePathForSessionPath(
       sessionPrimaryPath,
       state.worktrees,
+      usesPosixPaths: _storage.usesPosixPaths,
     );
     if (path != null) setCurrentWorktree(path);
   }
 
   void setCurrentWorktree(String path) {
-    emit(state.copyWith(currentWorktreePath: normalizeWorkspacePath(path)));
+    emit(
+      state.copyWith(
+        currentWorktreePath: normalizeWorkspacePath(
+          path,
+          usesPosixPaths: _storage.usesPosixPaths,
+        ),
+      ),
+    );
     _persist();
   }
 
@@ -356,7 +382,10 @@ class WorktreeCubit extends Cubit<WorktreeState> {
     String projectPath, {
     String? preferWorktreePath,
   }) async {
-    final path = normalizeWorkspacePath(projectPath.trim());
+    final path = normalizeWorkspacePath(
+      projectPath.trim(),
+      usesPosixPaths: _storage.usesPosixPaths,
+    );
     if (_canReuseLoadedProject(path)) {
       _applyPreferWorktreePath(path, preferWorktreePath);
       return;
@@ -367,7 +396,11 @@ class WorktreeCubit extends Cubit<WorktreeState> {
   bool _canReuseLoadedProject(String path) =>
       !state.loading &&
       path.isNotEmpty &&
-      workspacePathsEqual(state.repoPath, path) &&
+      workspacePathsEqual(
+        state.repoPath,
+        path,
+        usesPosixPaths: _storage.usesPosixPaths,
+      ) &&
       _listedRepos.contains(path);
 
   void _applyPreferWorktreePath(String repoPath, String? preferWorktreePath) {
@@ -377,7 +410,11 @@ class WorktreeCubit extends Cubit<WorktreeState> {
       preferWorktreePath,
       repoPath,
     );
-    if (!workspacePathsEqual(next, state.currentWorktreePath)) {
+    if (!workspacePathsEqual(
+      next,
+      state.currentWorktreePath,
+      usesPosixPaths: _storage.usesPosixPaths,
+    )) {
       setCurrentWorktree(next);
     }
   }
@@ -387,7 +424,10 @@ class WorktreeCubit extends Cubit<WorktreeState> {
     final lister = _lister;
     if (lister == null || workspaceId.isEmpty) return;
     for (final raw in projectPaths) {
-      final path = normalizeWorkspacePath(raw.trim());
+      final path = normalizeWorkspacePath(
+        raw.trim(),
+        usesPosixPaths: _storage.usesPosixPaths,
+      );
       if (path.isEmpty) continue;
       final cached = _worktreeStore?.peek(workspaceId, path);
       if (cached != null) continue;
@@ -403,9 +443,16 @@ class WorktreeCubit extends Cubit<WorktreeState> {
   }
 
   List<GitWorktree> worktreesForProject(String projectPath) {
-    final path = normalizeWorkspacePath(projectPath.trim());
+    final path = normalizeWorkspacePath(
+      projectPath.trim(),
+      usesPosixPaths: _storage.usesPosixPaths,
+    );
     if (path.isEmpty) return const [];
-    if (workspacePathsEqual(state.repoPath, path) &&
+    if (workspacePathsEqual(
+          state.repoPath,
+          path,
+          usesPosixPaths: _storage.usesPosixPaths,
+        ) &&
         (_listedRepos.contains(path) || state.worktrees.isNotEmpty)) {
       return state.worktrees;
     }

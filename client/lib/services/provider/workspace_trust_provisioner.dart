@@ -4,6 +4,7 @@ import '../cli/codex/capabilities/provider.dart';
 import '../cli/cursor/capabilities/provider.dart';
 import '../cli/flashskyai/capabilities/provider.dart';
 import '../io/filesystem.dart';
+import '../storage/home_storage.dart';
 import '../cli/codex/provider/codex_project_trust_toml.dart';
 import '../cli/cursor/provider/cursor_session_config_dir.dart';
 import '../cli/cursor/provider/cursor_workspace_trust_provisioner.dart';
@@ -16,19 +17,23 @@ final class WorkspaceTrustProvisioner {
   WorkspaceTrustProvisioner({
     required RuntimeLayout layout,
     required Filesystem fs,
+    required HomeStorage storage,
     ConfigProfileInfrastructure? profileInfra,
   }) : _layout = layout,
        _fs = fs,
+       _usesPosixPaths = storage.usesPosixPaths,
        _profileInfra =
            profileInfra ??
            ConfigProfileInfrastructure(
              basePath: layout.teampilotRoot,
              layout: layout,
+             storage: storage,
              fs: fs,
            );
 
   final RuntimeLayout _layout;
   final Filesystem _fs;
+  final bool _usesPosixPaths;
   final ConfigProfileInfrastructure _profileInfra;
 
   Future<void> provisionWorkspace({
@@ -123,11 +128,13 @@ final class WorkspaceTrustProvisioner {
     final existing = await _fs.readString(configPath) ?? '';
     final keys = await collectTrustedProjectKeys(
       fs: _fs,
+      usesPosixPaths: _usesPosixPaths,
       directories: directories,
     );
     final updated = CodexProjectTrustToml.applyTrustedDirectories(
       existing,
       keys,
+      usesPosixPaths: _usesPosixPaths,
     );
     if (updated == existing.trim()) return;
     await _fs.atomicWrite(configPath, updated);
@@ -145,11 +152,18 @@ final class WorkspaceTrustProvisioner {
       toolDir,
       CursorSessionConfigDir.homeSegment,
     );
-    await CursorWorkspaceTrustProvisioner(fs: _fs).provision(
+    await CursorWorkspaceTrustProvisioner(
+      fs: _fs,
+      usesPosixPaths: _usesPosixPaths,
+    ).provision(
       homeRoot: homeRoot,
       workspacePaths: {
         for (final directory in directories)
-          ...await collectTrustedProjectKeys(fs: _fs, directories: [directory]),
+          ...await collectTrustedProjectKeys(
+            fs: _fs,
+            usesPosixPaths: _usesPosixPaths,
+            directories: [directory],
+          ),
       },
     );
   }

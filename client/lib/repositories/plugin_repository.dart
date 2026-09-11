@@ -2,16 +2,17 @@ import 'dart:convert';
 import 'dart:io';
 
 import '../models/plugin.dart';
-import '../services/storage/app_storage.dart';
 import '../services/plugin/plugin_fetch_service.dart';
 import '../services/plugin/plugin_install_service.dart';
 import '../services/plugin/plugin_manifest_service.dart';
 import '../services/plugin/plugin_repo_disk_cache_service.dart';
 import '../services/plugin/plugin_repo_git_service.dart';
 import '../services/plugin/plugin_repo_service.dart';
+import '../services/storage/home_storage.dart';
 
 class PluginRepository {
   factory PluginRepository({
+    required HomeStorage storage,
     PluginManifestService? manifest,
     PluginFetchService? fetch,
     PluginRepoDiskCacheService? diskCache,
@@ -22,29 +23,40 @@ class PluginRepository {
     final resolvedManifest = manifest ?? PluginManifestService();
     final resolvedGit = PluginRepoGitService();
     final resolvedCache =
-        diskCache ?? PluginRepoDiskCacheService(gitService: resolvedGit);
+        diskCache ??
+        PluginRepoDiskCacheService(
+          filesystem: storage.fs,
+          teampilotRoot: storage.appDataRoot,
+          gitService: resolvedGit,
+        );
     return PluginRepository._(
+      storage: storage,
       install:
           install ??
           PluginInstallService(
+            storage: storage,
             manifestService: resolvedManifest,
             fetchService: resolvedFetch,
             diskCache: resolvedCache,
           ),
-      repos: repos ?? PluginRepoService(),
+      repos: repos ?? PluginRepoService(storage: storage),
     );
   }
 
-  PluginRepository._({required this.install, required this.repos});
+  PluginRepository._({
+    required this.storage,
+    required this.install,
+    required this.repos,
+  });
 
+  final HomeStorage storage;
   final PluginInstallService install;
   final PluginRepoService repos;
 
   Future<List<Plugin>> loadAll() async {
-    final path = AppStorage.isInstalled
-        ? AppStorage.context.pluginsJsonPath
-        : AppStorage.paths.pluginsJson;
-    final fs = AppStorage.isInstalled ? AppStorage.context.fs : AppStorage.fs;
+    final snap = storage.context;
+    final path = snap.pluginsJsonPath;
+    final fs = snap.fs;
     final stat = await fs.stat(path);
     if (!stat.isFile) return const [];
     final text = await fs.readString(path);

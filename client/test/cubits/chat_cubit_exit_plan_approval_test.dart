@@ -32,6 +32,7 @@ void main() {
         automationRepository: testAutomationRepository(),
         agentAttentionCubit: attention,
         exitPlanApprovalService: ExitPlanModeApprovalService(hookGate: gate),
+                        storage: testHomeStorage,
       );
     }
 

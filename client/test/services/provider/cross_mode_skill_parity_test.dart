@@ -6,7 +6,7 @@ import 'package:teampilot/models/config_bundle.dart';
 import 'package:teampilot/models/skill.dart';
 import 'package:teampilot/models/team_config.dart';
 import 'package:teampilot/services/provider/config_profile_service.dart';
-import 'package:teampilot/services/storage/app_storage.dart';
+import 'package:teampilot/services/storage/app_paths.dart';
 import 'package:teampilot/services/storage/runtime_layout.dart';
 import 'package:teampilot/services/cli/claude/team_roster_service.dart';
 
@@ -21,15 +21,15 @@ void main() {
   });
 
   Future<Set<String>> namesIn(String dir) async {
-    final entries = await AppStorage.fs.listDir(dir);
+    final entries = await testHomeStorage.fs.listDir(dir);
     return entries.map((e) => e.name).toSet();
   }
 
   test(
     'the same enabled skill lands identically in personal, native, and mixed modes',
     () async {
-      final fs = AppStorage.fs;
-      final root = AppStorage.paths.basePath;
+      final fs = testHomeStorage.fs;
+      final root = testHomeStorage.paths.basePath;
       final layout = RuntimeLayout(teampilotRoot: root, fs: fs);
 
       await fs.ensureDir(
@@ -53,6 +53,7 @@ void main() {
             updatedAt: 0,
           ),
         ],
+                                            storage: testHomeStorage,
       );
 
       await service.prepareSimpleSessionLaunch(

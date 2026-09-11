@@ -9,9 +9,10 @@ import 'package:teampilot/repositories/managed_provider_repository.dart';
 import 'package:teampilot/services/provider_usage/managed_provider_link_binding.dart';
 import 'package:teampilot/services/provider/credential_login_progress.dart';
 import 'package:teampilot/services/provider/provider_import_service.dart';
+import '../support/in_memory_filesystem.dart';
 
 class _SpyProviderImportService extends ProviderImportService {
-  _SpyProviderImportService() : super(repository: AppProviderRepository());
+  _SpyProviderImportService() : super(repository: AppProviderRepository(storage: fakeHomeStorage()), storage: fakeHomeStorage(), );
 
   var importAllCalls = 0;
   final importForCliCalls = <CliTool>[];
@@ -44,8 +45,8 @@ void main() {
 
   setUp(() async {
     temp = await Directory.systemTemp.createTemp('app_provider_cubit_');
-    repository = AppProviderRepository(basePath: temp.path);
-    cubit = AppProviderCubit(repository: repository, basePath: temp.path);
+    repository = AppProviderRepository(basePath: temp.path, storage: fakeHomeStorage(), );
+    cubit = AppProviderCubit(repository: repository, basePath: temp.path, storage: fakeHomeStorage(), );
   });
 
   tearDown(() async {
@@ -58,6 +59,7 @@ void main() {
   test('rejects a credentialLink that a managed entry links back to',
       () async {
     final managedRepo = ManagedProviderRepository(
+      storage: fakeHomeStorage(),
       configPath: '${temp.path}${Platform.pathSeparator}managed-providers.json',
       onProvidersDeleted: (_) async {},
     );
@@ -74,6 +76,7 @@ void main() {
       ),
     );
     final guardedCubit = AppProviderCubit(
+      storage: fakeHomeStorage(),
       repository: repository,
       basePath: temp.path,
       managedProviderRepository: managedRepo,
@@ -112,6 +115,7 @@ void main() {
       repository: repository,
       importService: spy,
       basePath: temp.path,
+                                          storage: fakeHomeStorage(),
     );
     addTearDown(allCliCubit.close);
 

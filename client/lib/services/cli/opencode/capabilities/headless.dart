@@ -4,6 +4,7 @@ import 'package:path/path.dart' as p;
 
 import '../../../../models/app_provider_config.dart';
 import '../../../../models/team_config.dart';
+import '../../../storage/home_storage.dart';
 import '../../registry/capabilities/headless_capability.dart';
 import '../../registry/headless/headless_provision_support.dart';
 import '../../registry/launch/cli_launch_arg_contribution.dart';
@@ -24,7 +25,10 @@ import 'provider.dart';
 final class OpencodeHeadlessCapability
     with HeadlessProvisionSupport
     implements HeadlessCapability {
-  const OpencodeHeadlessCapability();
+  const OpencodeHeadlessCapability({this.storage});
+
+  @override
+  final HomeStorage? storage;
 
   @override
   bool get isSupported => true;
@@ -84,6 +88,7 @@ final class OpencodeHeadlessCapability
     final warnings = <String>[];
     final resolver = OpencodeProviderSettingsResolver(
       basePath: basePath,
+      storage: storage ?? _missingHomeStorage(),
       repository: repository,
     );
     final resolved = ctx.provider ?? await resolver.findById(ctx.providerId);
@@ -164,4 +169,6 @@ final class OpencodeHeadlessCapability
     providers[id] = entry;
     return {...config, 'provider': providers};
   }
+
+  HomeStorage _missingHomeStorage() => HomeStorage.nativeDefault();
 }

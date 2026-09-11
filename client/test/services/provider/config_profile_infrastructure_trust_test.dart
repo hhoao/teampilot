@@ -6,6 +6,7 @@ import 'package:teampilot/services/cli/claude/capabilities/provider.dart';
 import 'package:teampilot/services/io/local_filesystem.dart';
 import 'package:teampilot/services/provider/config_profile_infrastructure.dart';
 import 'package:teampilot/services/storage/runtime_layout.dart';
+import '../../support/in_memory_filesystem.dart';
 
 void main() {
   test('metadataWithTrustedProjects writes projects trust flags', () async {
@@ -19,6 +20,7 @@ void main() {
       basePath: base.path,
       layout: RuntimeLayout(teampilotRoot: base.path, fs: fs),
       fs: fs,
+                                               storage: fakeHomeStorage(),
     );
     final metadataPath = p.join(base.path, '.claude.json');
 

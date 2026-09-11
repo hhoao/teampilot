@@ -30,6 +30,7 @@ import 'package:teampilot/cubits/session_preferences_cubit.dart';
 import 'package:teampilot/cubits/shortcut_cubit.dart';
 import 'package:teampilot/cubits/ssh_connection_cubit.dart';
 import 'package:teampilot/cubits/workbench/workbench_cubit.dart';
+import 'package:teampilot/models/discoverable_member.dart';
 import 'package:teampilot/services/workbench/workbench_chat_bridge.dart';
 import 'package:teampilot/cubits/workspace_tools_cubit.dart';
 import 'package:teampilot/main.dart';
@@ -66,6 +67,9 @@ import 'package:teampilot/services/workbench/workbench_editor_opener.dart';
 import 'package:teampilot/services/extension/builtin_manifests.dart';
 import 'package:teampilot/services/extension/extension_acquisition_engine.dart';
 import 'package:teampilot/services/extension/extension_detector.dart';
+import 'package:teampilot/services/expert_hub/builtin_member_templates.dart';
+import 'package:teampilot/services/expert_hub/expert_hub_catalog.dart';
+import 'package:teampilot/services/expert_hub/expert_hub_source.dart';
 import 'package:teampilot/services/file_tree/workspace_file_tree_store.dart';
 import 'package:teampilot/services/git/git_command_runner.dart';
 import 'package:teampilot/services/git/git_repo_store.dart';
@@ -83,7 +87,8 @@ import 'package:teampilot/services/ssh/ssh_client_factory.dart';
 import 'package:teampilot/services/ssh/ssh_connection_events.dart';
 import 'package:teampilot/services/ssh/ssh_profile_connection_coordinator.dart';
 import 'package:teampilot/services/session/ai_history_loader.dart';
-import 'package:teampilot/services/storage/app_storage.dart';
+import 'package:teampilot/services/storage/app_paths.dart';
+import 'test_runtime_context.dart';
 import 'package:teampilot/services/storage/home_target_controller.dart';
 import 'package:teampilot/services/storage/runtime_context.dart';
 import 'package:teampilot/services/workspace/repo_clone_service.dart';
@@ -102,6 +107,22 @@ import 'test_home_target_controller.dart';
 
 String desktopHarnessExecutable() => 'flashskyai';
 
+/// Offline source returning only the built-in experts so roster slots
+/// (`teampilot/builtin/*`) materialize without touching the network. Mirrors
+/// production wiring where the shell always attaches a catalog to the team
+/// cubit (app_shell.attachCatalog) — since b467c7e55 materialization is
+/// skipped entirely without one, leaving default teams member-less.
+class _BuiltinExpertSource implements ExpertHubSource {
+  @override
+  Future<List<DiscoverableMember>> fetchMembers({
+    bool forceRefresh = false,
+  }) async => builtinExpertMembers();
+
+  @override
+  Future<List<String>> categories({bool forceRefresh = false}) async =>
+      const [];
+}
+
 late Directory desktopHarnessSessionRepoDir;
 late SessionRepository desktopHarnessSessionRepo;
 late HomeWorkspaceUiCache desktopHarnessHomeWorkspaceUiCache;
@@ -112,8 +133,11 @@ Future<void> setUpDesktopAppHarness() async {
   );
   desktopHarnessSessionRepo = SessionRepository(
     rootDir: desktopHarnessSessionRepoDir.path,
+    storage: fakeHomeStorage(),
   );
-  desktopHarnessHomeWorkspaceUiCache = HomeWorkspaceUiCache();
+  desktopHarnessHomeWorkspaceUiCache = HomeWorkspaceUiCache(
+    storage: fakeHomeStorage(),
+  );
 }
 
 void tearDownDesktopAppHarness() {
@@ -167,10 +191,11 @@ Widget buildTestApp({
       ChatCubit(
         executableResolver: desktopHarnessExecutable,
         automationRepository: testAutomationRepository(),
+        storage: fakeHomeStorage(),
       );
   final workbenchCubit = WorkbenchCubit();
   // Hoisted so the workbench editor opener below can share the same instances.
-  final editorCubit = EditorCubit(fs: LocalFilesystem());
+  final editorCubit = EditorCubit(storage: fakeHomeStorage(), fs: LocalFilesystem());
   final floatingWorkspaceCubit = FloatingWorkspaceCubit();
   final workbenchEditorOpener = WorkbenchEditorOpener(
     editor: editorCubit,
@@ -188,14 +213,17 @@ Widget buildTestApp({
   workbenchCubit.port = chatBridge;
   chat.workbenchPort = chatBridge;
   chat.onSessionTabOpened = chatBridge.onSessionTabOpened;
-  final presence = memberPresenceCubit ?? MemberPresenceCubit();
+  final presence =
+      memberPresenceCubit ?? MemberPresenceCubit(storage: fakeHomeStorage());
   chat.bindPresenceCubit(presence);
   final managedProviderFs = InMemoryFilesystem();
   final managedUsageRepository = ManagedProviderUsageRepository(
+    storage: fakeHomeStorage(filesystem: managedProviderFs),
     fs: managedProviderFs,
     cachePath: '/tp/managed-provider-usage.json',
   );
   final managedProviderRepository = ManagedProviderRepository(
+    storage: fakeHomeStorage(filesystem: managedProviderFs),
     fs: managedProviderFs,
     configPath: '/tp/managed-providers.json',
     onProvidersDeleted: managedUsageRepository.deleteMany,
@@ -220,7 +248,7 @@ Widget buildTestApp({
   final aiHistoryCubit = AiHistoryCubit(
     loader: AiHistoryLoader(
       resolveWorkContext: (launchCtx, {String? memberId}) async {
-        final basePath = AppStorage.paths.basePath;
+        final basePath = testHomeStorage.paths.basePath;
         return RuntimeContext(
           target: RuntimeTarget.local(),
           filesystem: LocalFilesystem(
@@ -253,9 +281,13 @@ Widget buildTestApp({
     manifests: builtInExtensionManifests(),
   );
   final workspaceRunRegistry = WorkspaceRunRegistry(
+    storage: fakeHomeStorage(),
     platformFactory: WorkspaceRunPlatformFactory(
+      storage: fakeHomeStorage(),
       extensionRepository: extensionRepo,
-      projectConfigRepository: WorkspaceProjectConfigRepository(),
+      projectConfigRepository: WorkspaceProjectConfigRepository(
+        storage: fakeHomeStorage(filesystem: InMemoryFilesystem()),
+      ),
       fs: InMemoryFilesystem(),
       detector: ExtensionDetector(
         processRunner: (e, a, {environment}) async =>
@@ -263,7 +295,7 @@ Widget buildTestApp({
       ),
     ),
   );
-  final notificationCubit = NotificationCubit();
+  final notificationCubit = NotificationCubit(storage: fakeHomeStorage());
   final progressActivityCubit = ProgressActivityCubit(
     historyRecorder: notificationCubit,
   );
@@ -295,15 +327,19 @@ Widget buildTestApp({
       RepositoryProvider<WorkspaceShellConnector>(
         create: (_) => WorkspaceShellConnector(
           transportFactory: TerminalTransportFactory(
-            sshProfileRepository: SshProfileRepository(),
+            sshProfileRepository: SshProfileRepository(
+              storage: fakeHomeStorage(),
+            ),
             sshCredentialStore: sshCredentialStore,
             sshKnownHostRepository: sshKnownHosts,
           ),
-          sshProfileRepository: SshProfileRepository(),
+          sshProfileRepository: SshProfileRepository(
+            storage: fakeHomeStorage(),
+          ),
         ),
       ),
       RepositoryProvider<SshProfileRepository>(
-        create: (_) => SshProfileRepository(),
+        create: (_) => SshProfileRepository(storage: fakeHomeStorage()),
       ),
       RepositoryProvider<SshProfileConnectionCoordinator>.value(
         value: sshCoordinator,
@@ -313,13 +349,14 @@ Widget buildTestApp({
         create: (_) => WorkspaceFileTreeStore(),
       ),
       RepositoryProvider<WorkspaceWorktreeRegistry>(
-        create: (_) => WorkspaceWorktreeRegistry(),
+        create: (_) => WorkspaceWorktreeRegistry(storage: testHomeStorage),
       ),
       RepositoryProvider<WorkspaceToolsScopeRegistry>(
         create: (_) => WorkspaceToolsScopeRegistry(),
       ),
       RepositoryProvider<WorkspaceSessionGroupsRegistry>(
-        create: (_) => WorkspaceSessionGroupsRegistry(),
+        create: (_) =>
+            WorkspaceSessionGroupsRegistry(storage: fakeHomeStorage()),
       ),
       RepositoryProvider<CommandBus>(create: (_) => CommandBus()),
       RepositoryProvider<WorkspaceChromeCommands>(
@@ -341,7 +378,7 @@ Widget buildTestApp({
         create: (_) => WorkspaceContentSearchHost(),
       ),
       RepositoryProvider<WorkspaceSearchIndexes>(
-        create: (_) => WorkspaceSearchIndexes(),
+        create: (_) => WorkspaceSearchIndexes(storage: fakeHomeStorage()),
       ),
       RepositoryProvider<WorkbenchEditorOpener>.value(
         value: workbenchEditorOpener,
@@ -374,7 +411,7 @@ Widget buildTestApp({
         BlocProvider.value(value: sessionPreferencesCubit),
         BlocProvider.value(value: aiFeatures),
         BlocProvider.value(value: aiHistoryCubit),
-        BlocProvider(create: (_) => ShortcutCubit()),
+        BlocProvider(create: (_) => ShortcutCubit(storage: fakeHomeStorage())),
         BlocProvider.value(value: editorCubit),
         BlocProvider.value(value: workbenchCubit),
         BlocProvider.value(
@@ -402,11 +439,12 @@ Widget buildTestApp({
         BlocProvider(create: (_) => testSkillCubit()),
         BlocProvider(
           create: (_) {
-            final repo = PluginRepository();
+            final repo = PluginRepository(storage: fakeHomeStorage());
             return PluginCubit(
               repository: repo,
               installService: repo.install,
-              repoService: PluginRepoService(),
+              repoService: PluginRepoService(storage: fakeHomeStorage()),
+              storage: fakeHomeStorage(),
             );
           },
         ),
@@ -463,7 +501,11 @@ Future<void> pumpDesktopApp(
       (await tester.runAsync(() async {
         final dir = await Directory.systemTemp.createTemp('providers_widget_');
         return AppProviderCubit(
-          repository: AppProviderRepository(basePath: dir.path),
+          storage: fakeHomeStorage(),
+          repository: AppProviderRepository(
+            basePath: dir.path,
+            storage: fakeHomeStorage(),
+          ),
         );
       }))!;
   await tester.pumpWidget(
@@ -487,6 +529,7 @@ LlmConfigCubit testLlmConfigCubit({
 }) {
   return LlmConfigCubit(
     appSettings: InMemoryAppSettingsRepository(),
+    storage: fakeHomeStorage(),
     initialConfig: initialConfig,
   );
 }
@@ -505,12 +548,16 @@ Future<LaunchProfileCubit> createTeamCubit({TeamLauncher? launcher}) async {
   final repository = testLaunchProfileRepository(tmp);
   final cubit = LaunchProfileCubit(
     repository: repository,
-    sessionRepository: SessionRepository(),
+    sessionRepository: SessionRepository(storage: fakeHomeStorage()),
+    storage: fakeHomeStorage(),
     executableResolver: desktopHarnessExecutable,
     launcher: launcher ?? (_, __) async {},
     appDataBasePath: appData.path,
-    configProfileService: ConfigProfileService(basePath: appData.path),
-  );
+    configProfileService: ConfigProfileService(
+      basePath: appData.path,
+      storage: fakeHomeStorage(),
+    ),
+  )..attachCatalog(ExpertHubCatalog(source: _BuiltinExpertSource()));
   await cubit.load();
   return cubit;
 }

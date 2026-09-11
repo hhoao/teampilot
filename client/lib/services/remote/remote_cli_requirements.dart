@@ -74,11 +74,19 @@ RuntimeTarget? sshTargetForProjectFolder({
   required String projectFolderPath,
   required List<RuntimeTarget> selectableTargets,
   required RuntimeTarget home,
+  required bool usesPosixPaths,
 }) {
-  final normalized = normalizeWorkspacePath(projectFolderPath);
+  final normalized = normalizeWorkspacePath(
+    projectFolderPath,
+    usesPosixPaths: usesPosixPaths,
+  );
   WorkspaceFolder? folder;
   for (final candidate in workspace.folders) {
-    if (workspacePathsEqual(candidate.path, normalized)) {
+    if (workspacePathsEqual(
+      candidate.path,
+      normalized,
+      usesPosixPaths: usesPosixPaths,
+    )) {
       folder = candidate;
       break;
     }
@@ -105,12 +113,14 @@ List<RemoteCliRequirement> remoteCliRequirementsForSimpleLaunch({
   required CliTool cli,
   required List<RuntimeTarget> selectableTargets,
   required RuntimeTarget home,
+  required bool usesPosixPaths,
 }) {
   final target = sshTargetForProjectFolder(
     workspace: workspace,
     projectFolderPath: projectFolderPath,
     selectableTargets: selectableTargets,
     home: home,
+    usesPosixPaths: usesPosixPaths,
   );
   if (target == null) return const [];
 

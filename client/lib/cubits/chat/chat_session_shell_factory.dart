@@ -12,6 +12,8 @@ import '../../services/ssh/ssh_client_factory.dart';
 import '../../services/terminal/ssh_pty_transport.dart';
 import '../../services/terminal/terminal_session.dart';
 import '../../services/terminal/terminal_transport_factory.dart';
+import '../../services/io/local_filesystem.dart';
+import '../../services/storage/home_storage.dart';
 import '../../services/workspace_dnd/runtime_target.dart';
 import 'model/chat_state.dart';
 
@@ -30,6 +32,7 @@ class ChatSessionShellFactory {
     bool Function()? sshUseLoginShellResolver,
     rt.RuntimeTarget Function()? defaultTargetResolver,
     int Function()? terminalScrollbackLinesResolver,
+    HomeStorage? storage,
   }) : _executableResolver = executableResolver,
        _cliExecutableResolver = cliExecutableResolver,
        _terminalSessionFactory = terminalSessionFactory,
@@ -39,7 +42,8 @@ class ChatSessionShellFactory {
        _sshDefaultWorkingDirectoryResolver = sshDefaultWorkingDirectoryResolver,
        _sshUseLoginShellResolver = sshUseLoginShellResolver,
        _defaultTargetResolver = defaultTargetResolver,
-       _terminalScrollbackLinesResolver = terminalScrollbackLinesResolver;
+       _terminalScrollbackLinesResolver = terminalScrollbackLinesResolver,
+       _storage = storage;
 
   final String Function() _executableResolver;
   final CliExecutableResolver? _cliExecutableResolver;
@@ -51,6 +55,7 @@ class ChatSessionShellFactory {
   final bool Function()? _sshUseLoginShellResolver;
   final rt.RuntimeTarget Function()? _defaultTargetResolver;
   final int Function()? _terminalScrollbackLinesResolver;
+  final HomeStorage? _storage;
 
   SshProfile? profileFor(rt.RuntimeTarget target) => _profileFor(target);
 
@@ -118,6 +123,7 @@ class ChatSessionShellFactory {
       late final TerminalSession shell;
       shell = TerminalSession(
         executable: executable,
+        fs: _storage?.fs ?? LocalFilesystem(),
         scrollbackLines: scrollback,
         validateLaunch: false,
         usesRemoteTransport: true,
@@ -197,6 +203,7 @@ class ChatSessionShellFactory {
     if (session.runtimeType != TerminalSession) return session;
     return TerminalSession(
       executable: executable,
+      fs: _storage?.fs ?? LocalFilesystem(),
       scrollbackLines: scrollback,
       startupDeadline: startupDeadline,
       validateLaunch: session.validateLaunch,

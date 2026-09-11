@@ -12,6 +12,7 @@ void main() {
         folders: folders,
         fallbackLocalShell: '/bin/bash',
         home: RuntimeTarget.local(),
+        usesPosixPaths: false,
       );
       expect(spec, const WorkspaceTerminalLocalSpec('/bin/bash'));
     });
@@ -25,6 +26,7 @@ void main() {
         folders: folders,
         fallbackLocalShell: '/bin/bash',
         home: RuntimeTarget.local(),
+        usesPosixPaths: false,
       );
       expect(spec, const WorkspaceTerminalWorkspaceTargetSpec('ssh:profile-1'));
     });
@@ -38,6 +40,7 @@ void main() {
         folders: folders,
         fallbackLocalShell: '/bin/zsh',
         home: RuntimeTarget.local(),
+        usesPosixPaths: false,
       );
       expect(spec, const WorkspaceTerminalWorkspaceTargetSpec('ssh:profile-1'));
     });
@@ -49,6 +52,7 @@ void main() {
         folders: const [WorkspaceFolder(path: '/repo')],
         fallbackLocalShell: '/bin/bash',
         home: home,
+        usesPosixPaths: false,
       );
       expect(spec, isA<WorkspaceTerminalWorkspaceTargetSpec>());
       expect((spec as WorkspaceTerminalWorkspaceTargetSpec).targetId, 'ssh:p1');
@@ -60,6 +64,7 @@ void main() {
         folders: const [WorkspaceFolder(path: '/repo')],
         fallbackLocalShell: '/bin/bash',
         home: RuntimeTarget.local(),
+        usesPosixPaths: false,
       );
       expect(spec, isA<WorkspaceTerminalLocalSpec>());
     });
@@ -76,6 +81,7 @@ void main() {
           folders: localFolders,
           localCwd: localCwd,
           home: RuntimeTarget.local(),
+          usesPosixPaths: false,
         ),
         isEmpty,
       );
@@ -91,6 +97,7 @@ void main() {
           ],
           localCwd: localCwd,
           home: RuntimeTarget.local(),
+          usesPosixPaths: false,
         ),
         '/remote/proj',
       );
@@ -104,6 +111,7 @@ void main() {
           localCwd: localCwd,
           home: RuntimeTarget.local(),
           sshDefaultWorkingDirectory: '/home/remote',
+          usesPosixPaths: false,
         ),
         '/home/remote',
       );
@@ -116,6 +124,7 @@ void main() {
           folders: localFolders,
           localCwd: localCwd,
           home: RuntimeTarget.ssh('p1', label: 'box'),
+          usesPosixPaths: false,
         ),
         localCwd,
       );
@@ -128,6 +137,7 @@ void main() {
           folders: localFolders,
           localCwd: localCwd,
           home: RuntimeTarget.local(),
+          usesPosixPaths: false,
         ),
         localCwd,
       );
@@ -144,6 +154,7 @@ void main() {
             WorkspaceFolder(path: '/home/hhoa/git/quanzhi/audit-apiv2'),
           ],
           home: RuntimeTarget.local(),
+          usesPosixPaths: false,
         ),
         isFalse,
       );
@@ -158,6 +169,7 @@ void main() {
             WorkspaceFolder(path: '/home/hhoa/git/quanzhi/audit-apiv2'),
           ],
           home: RuntimeTarget.local(),
+          usesPosixPaths: false,
         ),
         isTrue,
       );

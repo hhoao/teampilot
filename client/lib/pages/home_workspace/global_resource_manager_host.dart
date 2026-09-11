@@ -9,6 +9,7 @@ import '../../cubits/chat_cubit.dart';
 import '../../cubits/floating_workspace/floating_workspace_cubit.dart';
 import '../../cubits/launch_profile_cubit.dart';
 import '../../cubits/resource_manager_cubit.dart';
+import '../../widgets/home_storage_scope.dart';
 import '../../cubits/workbench/workbench_cubit.dart';
 import '../../cubits/workbench/workbench_tab.dart';
 import '../../l10n/l10n_extensions.dart';
@@ -172,6 +173,7 @@ class _GlobalResourceManagerHostState extends State<GlobalResourceManagerHost> {
       allTabs: chat.tabStore.openTabs,
       terminalRegistry: registry,
       sessionTitle: (tab) => resourceManagerSessionTitle(tab, l10n: l10n),
+      usesPosixPaths: homeStorageOf(context).usesPosixPaths,
       memberName: (tab, memberId) {
         final teamId = tab.persistedSession?.sessionTeam.trim() ?? '';
         TeamProfile? team;

@@ -1,5 +1,6 @@
 import '../../models/team_config.dart';
 import '../catalog/providers/managed_catalog_skill_provider.dart';
+import '../storage/home_storage.dart';
 import 'assemblers/skill_assembler.dart';
 import 'providers/catalog_skill_contribution_provider.dart';
 import 'providers/plugin_skill_contribution_provider.dart';
@@ -15,7 +16,10 @@ import 'skill_link_name.dart';
 /// to that pipeline and projects the neutral result back to [ResourceRef] for
 /// callers that still consume the old result shape.
 class ResourceResolver {
-  const ResourceResolver();
+  ResourceResolver({required HomeStorage storage}) : _storage = storage;
+
+  /// Home control-plane storage backing the always-on managed catalog skill.
+  final HomeStorage _storage;
 
   /// Delegates one neutral skill assembly for a launch.
   Future<SkillAssemblyResult> assemble({
@@ -24,7 +28,7 @@ class ResourceResolver {
     required ResourceCatalog catalog,
   }) {
     final providers = <SkillContributionProvider>[
-      ManagedCatalogSkillProvider(),
+      ManagedCatalogSkillProvider(storage: _storage),
       CatalogSkillContributionProvider(catalog: catalog),
       if (scope.pluginIds.any((id) => id.trim().isNotEmpty))
         PluginSkillContributionProvider(catalog: catalog),

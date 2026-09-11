@@ -25,6 +25,7 @@ import '../services/terminal/terminal_theme_mapper.dart';
 import '../services/terminal/terminal_uri_opener.dart';
 import '../services/host/host_interactive_shell.dart';
 import '../services/storage/home_target_controller.dart';
+import '../services/storage/home_storage.dart';
 import '../services/terminal/workspace_shell_connector.dart';
 import '../services/terminal/workspace_terminal_connect_coordinator.dart';
 import '../services/terminal/workspace_terminal_registry.dart';
@@ -107,6 +108,8 @@ class WorkspaceTerminalPanel extends StatefulWidget {
 }
 
 class _WorkspaceTerminalPanelState extends State<WorkspaceTerminalPanel> {
+  bool get _usesPosixPaths => context.read<HomeStorage>().usesPosixPaths;
+
   WorkspaceTerminalRegistry get _registry =>
       context.read<WorkspaceTerminalRegistry>();
   WorkspaceShellConnector get _connector =>
@@ -211,6 +214,7 @@ class _WorkspaceTerminalPanelState extends State<WorkspaceTerminalPanel> {
         folders: _folders,
         fallbackLocalShell: HostInteractiveShell.defaultExecutable(),
         home: context.read<HomeTargetController>().current,
+        usesPosixPaths: _usesPosixPaths,
       );
 
   void _reattachExistingEngines() {
@@ -242,6 +246,7 @@ class _WorkspaceTerminalPanelState extends State<WorkspaceTerminalPanel> {
       syncedCwd: cwd,
       folders: _folders,
       home: home,
+      usesPosixPaths: _usesPosixPaths,
     )) {
       return;
     }
@@ -289,6 +294,7 @@ class _WorkspaceTerminalPanelState extends State<WorkspaceTerminalPanel> {
       folders: _folders,
       localCwd: cwd,
       home: home,
+      usesPosixPaths: _usesPosixPaths,
     );
     final remote = usesSshTransport(
       runtimeTargetForWorkspaceShellSpec(spec, home: home).kind,
@@ -492,7 +498,11 @@ class _WorkspaceTerminalPanelState extends State<WorkspaceTerminalPanel> {
     switch (selected) {
       case 'openLink':
         if (linkUri != null) {
-          await TerminalUriOpener.open(linkUri, workingDirectory: entry.cwd);
+          await TerminalUriOpener.open(
+            linkUri,
+            workingDirectory: entry.cwd,
+            fs: context.read<HomeStorage>().fs,
+          );
         }
       case 'paste':
         final data = await Clipboard.getData(Clipboard.kTextPlain);

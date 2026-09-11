@@ -18,13 +18,15 @@ void main() {
 
   setUp(() {
     fs = InMemoryFilesystem();
-    final appRepo = AppProviderRepository(fs: fs, basePath: '/tp');
+    final storage = fakeHomeStorage(filesystem: fs);
+    final appRepo = AppProviderRepository(storage: storage, fs: fs, basePath: '/tp');
     final managedRepo = ManagedProviderRepository(
+      storage: storage,
       fs: fs,
       configPath: '/tp/managed-providers.json',
       onProvidersDeleted: (_) async {},
     );
-    appCubit = AppProviderCubit(repository: appRepo, basePath: '/tp');
+    appCubit = AppProviderCubit(storage: storage, repository: appRepo, basePath: '/tp');
     managedCubit = ManagedProviderCubit(
       repository: managedRepo,
       appProviderCubit: appCubit,

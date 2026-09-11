@@ -39,7 +39,11 @@ void main() {
 
     setUp(() {
       fs = InMemoryFilesystem();
-      repo = ManagedProviderUsageRepository(fs: fs, cachePath: path);
+      repo = ManagedProviderUsageRepository(
+        storage: fakeHomeStorage(filesystem: fs),
+        fs: fs,
+        cachePath: path,
+      );
     });
 
     test('load returns an empty list when the cache file is missing', () async {
@@ -115,6 +119,7 @@ void main() {
 
     test('expired cache is returned with preserved data instead of discarded', () async {
       final repo = ManagedProviderUsageRepository(
+        storage: fakeHomeStorage(filesystem: fs),
         fs: fs,
         cachePath: path,
         now: () => 300,
@@ -358,8 +363,10 @@ void main() {
     test(
       'concurrent saves from separate instances do not lose updates',
       () async {
-        final first = ManagedProviderUsageRepository(fs: fs, cachePath: path);
-        final second = ManagedProviderUsageRepository(fs: fs, cachePath: path);
+        final first = ManagedProviderUsageRepository(
+          storage: fakeHomeStorage(filesystem: fs), fs: fs, cachePath: path);
+        final second = ManagedProviderUsageRepository(
+          storage: fakeHomeStorage(filesystem: fs), fs: fs, cachePath: path);
 
         await Future.wait([
           first.save(_snapshot('p1')),

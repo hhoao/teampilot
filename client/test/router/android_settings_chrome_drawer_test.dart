@@ -45,7 +45,8 @@ void main() {
         (await tester.runAsync(() async {
           final dir = await Directory.systemTemp.createTemp('providers_widget_');
           return AppProviderCubit(
-            repository: AppProviderRepository(basePath: dir.path),
+            repository: AppProviderRepository(basePath: dir.path, storage: testHomeStorage, ),
+                                   storage: testHomeStorage,
           );
         }))!;
 

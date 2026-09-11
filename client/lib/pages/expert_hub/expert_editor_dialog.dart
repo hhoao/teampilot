@@ -16,7 +16,10 @@ import '../../models/discoverable_team.dart';
 import '../../models/mcp_server.dart';
 import '../../models/plugin.dart';
 import '../../models/skill.dart';
+import '../../services/expert_hub/expert_hub_catalog.dart';
+import '../../services/expert_hub/local_expert_store.dart';
 import '../../services/expert_hub/local_expert_writer.dart';
+import '../../widgets/home_storage_scope.dart';
 import 'expert_editor_dep_picker_dialog.dart';
 import 'expert_editor_deps.dart';
 
@@ -35,13 +38,28 @@ Future<DiscoverableMember?> showExpertEditorDialog(
   } catch (_) {
     hub = null;
   }
+  ExpertHubCatalog? catalog;
+  try {
+    catalog = context.read<ExpertHubCatalog>();
+  } catch (_) {
+    catalog = null;
+  }
   return showTpDialog<DiscoverableMember>(
     context: context,
     presentation: TpDialogPresentation.page,
     mobileBreakpoint: WorkspacePanePolicy.narrowBreakpointWidth,
     builder: (ctx) {
       Widget dialog = ExpertEditorDialog(
-        writer: writer ?? LocalExpertWriter(),
+        writer:
+            writer ??
+            LocalExpertWriter(
+              catalog: catalog,
+              store: LocalExpertStore(
+                fs: homeStorageOf(context).fs,
+                dirOverride:
+                    homeStorageOf(context).paths.memberHubLocalTemplatesDir,
+              ),
+            ),
         initial: initial,
         skills: skills,
         plugins: plugins,

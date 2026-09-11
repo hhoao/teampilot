@@ -2,7 +2,7 @@ import 'dart:convert';
 
 import '../models/session_group.dart';
 import '../services/io/filesystem.dart';
-import '../services/storage/app_storage.dart';
+import '../services/storage/home_storage.dart';
 import '../services/storage/workspace_layout.dart';
 import '../utils/logging/logger_utils.dart';
 
@@ -11,10 +11,17 @@ import '../utils/logging/logger_utils.dart';
 /// empty document (corruption is logged as a warning); the next save rebuilds
 /// the file.
 class SessionGroupRepository {
-  SessionGroupRepository({Filesystem? fs, WorkspaceLayout? layout})
-    : _fs = fs ?? AppStorage.fs,
-      _layout =
-          layout ?? WorkspaceLayout(teampilotRoot: AppStorage.paths.basePath);
+  SessionGroupRepository({
+    required HomeStorage storage,
+    Filesystem? fs,
+    WorkspaceLayout? layout,
+  }) : _fs = fs ?? storage.fs,
+       _layout =
+           layout ??
+           WorkspaceLayout(
+             teampilotRoot: storage.paths.basePath,
+             fs: storage.fs,
+           );
 
   final Filesystem _fs;
   final WorkspaceLayout _layout;

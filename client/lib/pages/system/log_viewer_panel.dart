@@ -7,7 +7,7 @@ import 'package:path/path.dart' as p;
 import '../../widgets/app_toast/app_toast.dart';
 
 import '../../l10n/l10n_extensions.dart';
-import '../../services/storage/app_storage.dart';
+import '../../services/storage/app_paths.dart';
 import '../../utils/debounce/debounce.dart';
 import '../../utils/logging/logger_utils.dart';
 import 'log_viewer_content.dart';

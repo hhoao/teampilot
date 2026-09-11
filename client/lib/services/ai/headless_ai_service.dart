@@ -15,6 +15,7 @@ import '../cli/registry/capabilities/provider_capability.dart';
 import '../cli/registry/capabilities/headless_capability.dart';
 import '../cli/registry/cli_tool_registry.dart';
 import '../cli/registry/launch/cli_launch_arg_assembler.dart';
+import '../storage/home_storage.dart';
 
 /// Thrown when a headless AI call cannot run or fails.
 class HeadlessAiException implements Exception {
@@ -178,6 +179,7 @@ class HeadlessAiService {
   static const int _stdinPromptThreshold = 2000;
 
   HeadlessAiService({
+    required HomeStorage storage,
     CliToolRegistry? registry,
     HeadlessProcessRunner run = headlessDefaultProcessRun,
     HeadlessStreamRunner streamRun = headlessDefaultStreamRun,
@@ -188,7 +190,8 @@ class HeadlessAiService {
   }) : _registry = registry ?? CliToolRegistry.builtIn(),
        _run = run,
        _streamRun = streamRun,
-       _resolveProvider = resolveProvider ?? AppProviderRepository().findById,
+       _resolveProvider =
+           resolveProvider ?? AppProviderRepository(storage: storage).findById,
        _resolveExecutable =
            resolveExecutable ?? ((name) => CliToolLocator(name).locate()),
        _resolveProvisionCapability = resolveProvisionCapability,

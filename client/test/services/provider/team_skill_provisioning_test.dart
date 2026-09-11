@@ -6,7 +6,7 @@ import 'package:teampilot/models/skill.dart';
 import 'package:teampilot/models/team_config.dart';
 import 'package:teampilot/services/storage/runtime_layout.dart';
 import 'package:teampilot/services/provider/config_profile_service.dart';
-import 'package:teampilot/services/storage/app_storage.dart';
+import 'package:teampilot/services/storage/app_paths.dart';
 
 import '../../support/post_frame_test_harness.dart';
 
@@ -21,8 +21,8 @@ void main() {
   test(
     'team launch prep links enabled skill into member leaf CONFIG_DIR',
     () async {
-      final fs = AppStorage.fs;
-      final root = AppStorage.paths.basePath;
+      final fs = testHomeStorage.fs;
+      final root = testHomeStorage.paths.basePath;
       final layout = RuntimeLayout(teampilotRoot: root, fs: fs);
 
       final skillsRoot = AppPaths.skillsDirForTeampilotRoot(root);
@@ -42,6 +42,7 @@ void main() {
             updatedAt: 0,
           ),
         ],
+                                            storage: testHomeStorage,
       );
 
       const team = TeamProfile(

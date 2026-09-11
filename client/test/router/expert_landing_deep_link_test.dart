@@ -12,11 +12,17 @@ import 'package:teampilot/services/expert_hub/expert_capability_pack.dart';
 import 'package:teampilot/services/expert_hub/expert_capability_resolver.dart';
 import 'package:teampilot/services/expert_hub/expert_landing_deep_link.dart';
 import 'package:teampilot/services/expert_hub/expert_member_resolver.dart';
+import 'package:teampilot/services/expert_hub/local_expert_store.dart';
 import 'package:teampilot/services/home_workspace/landing_prefs_store.dart';
-import 'package:teampilot/services/storage/app_storage.dart';
+import 'package:teampilot/services/storage/app_paths.dart';
 import 'package:teampilot/services/team/team_clone_service.dart';
 
 import '../support/in_memory_filesystem.dart';
+
+LocalExpertStore _emptyLocalExpertStore() => LocalExpertStore(
+  fs: InMemoryFilesystem(),
+  dirOverride: AppPaths('/tp').memberHubLocalTemplatesDir,
+);
 
 void main() {
   group('HomeWorkspaceRoute.expert', () {
@@ -34,7 +40,10 @@ void main() {
   group('ExpertMemberResolver.resolveMember', () {
     test('resolves builtin member by key', () async {
       final builtin = builtinExpertMembers().first;
-      final member = await ExpertMemberResolver.resolveMember(key: builtin.key);
+      final member = await ExpertMemberResolver.resolveMember(
+        key: builtin.key,
+        localStore: _emptyLocalExpertStore(),
+      );
       expect(member, isNotNull);
       expect(member!.key, builtin.key);
       expect(member.name, builtin.name);
@@ -44,7 +53,10 @@ void main() {
 
     test('returns null for unknown key without source', () async {
       expect(
-        await ExpertMemberResolver.resolveMember(key: 'missing/expert'),
+        await ExpertMemberResolver.resolveMember(
+          key: 'missing/expert',
+          localStore: _emptyLocalExpertStore(),
+        ),
         isNull,
       );
     });
@@ -65,6 +77,7 @@ void main() {
 
       final member = await ExpertMemberResolver.resolveMember(
         key: custom.key,
+        localStore: _emptyLocalExpertStore(),
         hubState: const ExpertHubState(allMembers: [custom]),
       );
 
@@ -82,6 +95,7 @@ void main() {
       fs = InMemoryFilesystem();
       final paths = AppPaths('/tp');
       store = LandingPrefsStore(
+        storage: fakeHomeStorage(filesystem: fs),
         fs: fs,
         pathOverride: paths.homeWorkspaceWorkspaceLaunchPrefsJson,
       );
@@ -121,6 +135,8 @@ void main() {
           workspaceId: workspace.workspaceId,
           workspace: workspace,
           routeProfileIsTeam: false,
+          localStore: _emptyLocalExpertStore(),
+          storage: fakeHomeStorage(filesystem: fs),
           hubState: ExpertHubState(allMembers: [builtin]),
           store: store,
           resolver: resolver,
@@ -163,6 +179,8 @@ void main() {
         workspaceId: workspace.workspaceId,
         workspace: workspace,
         routeProfileIsTeam: false,
+        localStore: _emptyLocalExpertStore(),
+        storage: fakeHomeStorage(filesystem: fs),
         hubState: ExpertHubState(allMembers: [builtin]),
         store: store,
         resolver: resolver,
@@ -181,6 +199,8 @@ void main() {
         workspaceId: workspace.workspaceId,
         workspace: workspace,
         routeProfileIsTeam: true,
+        localStore: _emptyLocalExpertStore(),
+        storage: fakeHomeStorage(filesystem: fs),
         store: store,
       );
 
@@ -195,6 +215,8 @@ void main() {
         workspaceId: workspace.workspaceId,
         workspace: workspace,
         routeProfileIsTeam: false,
+        localStore: _emptyLocalExpertStore(),
+        storage: fakeHomeStorage(filesystem: fs),
         store: store,
       );
 
@@ -211,6 +233,7 @@ class _RecordingResolver extends ExpertCapabilityResolver {
         installSkill: (_) async => null,
         installPlugin: (_) async => null,
         installMcp: (_) async => null,
+        localStore: _emptyLocalExpertStore(),
       );
 
   final Future<ExpertCapabilityPack?> Function(String key) onPreflight;

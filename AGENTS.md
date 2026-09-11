@@ -25,12 +25,13 @@ All app code lives under `client/lib/` (cubits, pages, repositories, services, m
 - **Test loop: fast inner, slow outer.** Inner loop is `flutter analyze`; verify with one test file (`--plain-name` to narrow); full suite only once before claiming done, in the background (details: [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md#test-loop-fast-inner-slow-outer-do-not-invert-it)).
 - Before claiming done: `cd client && flutter analyze --no-fatal-infos --no-fatal-warnings && dart run tool/run_tests.dart`.
 - **Member placement:** always `sessionRosterMembers(session, team)` (native writers: `cliTeamRosterMembers` / `runtimeRosterMembers`) — never raw `team.members` or stale `replicas` (details: [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md#member-placement-machines)).
-- **Paths:** `AppStorage` / `RuntimeContextRegistry` — never `Directory.current` for workspace or app data roots.
+- **Paths:** injected `HomeStorage` / `RuntimeContextRegistry` — never `Directory.current` for workspace or app data roots.
 - **CLIs:** add/extend a `CliToolDefinition` + capabilities under `services/cli/registry/`; never scatter `if (cli == …)` checks across features.
 - **Logging:** user errors → l10n; diagnostics → `AppLogger`; no `print`.
 - **l10n:** edit `client/lib/l10n/app_en.arb` and `app_zh.arb` only.
 - Do not commit `client/google_fonts/` (gitignored); run `dart run tool/sync_bundled_google_fonts.dart` when touching zh UI fonts.
 - Terminal input hooks: filter ANSI CSI sequences (`FirstUserLineCapture`, `BusUserLineCapture`).
+- **Tests:** mock subprocess/filesystem via constructor injection; cubit tests that need a home plane use `setUpTestAppStorage()` / `tearDownTestAppStorage()` (shared `testHomeStorage`) in `client/test/support/post_frame_test_harness.dart` + `test_runtime_context.dart`.
 - New integration tests: `@Tags(['integration'])` from `package:test`.
 - **Extension:** install/uninstall is desktop-local until the design spec remote path is done; keep `ExtensionAcquisitionEngine` URL checks for `script` acquire kind.
 

@@ -25,6 +25,8 @@ import 'package:teampilot/utils/team/team_member_naming.dart';
 
 import '../../support/in_memory_filesystem.dart';
 import '../../support/post_frame_test_harness.dart';
+import 'package:teampilot/services/expert_hub/local_expert_store.dart';
+import 'package:teampilot/services/storage/app_paths.dart';
 
 class _EmptyRegistry implements ExpertHubSource {
   @override
@@ -45,6 +47,7 @@ Future<void> _pumpMemberForm(
     source: CompositeExpertHubSource(
       builtIns: builtinExpertMembers(),
       registry: _EmptyRegistry(),
+                                      localStore: LocalExpertStore(fs: InMemoryFilesystem(), dirOverride: AppPaths('/tp').memberHubLocalTemplatesDir),
     ),
     loadFavorites: () async => const {},
     saveFavoriteToggle: (_) async => true,
@@ -61,7 +64,7 @@ Future<void> _pumpMemberForm(
   );
   addTearDown(cliPresetsCubit.close);
 
-  final providerCubit = AppProviderCubit();
+  final providerCubit = AppProviderCubit(storage: testHomeStorage);
   addTearDown(providerCubit.close);
 
   await tester.pumpWidget(
@@ -104,7 +107,8 @@ void main() {
         repository: testLaunchProfileRepository(
           Directory.systemTemp.createTempSync('member_form_'),
         ),
-        sessionRepository: SessionRepository(),
+        sessionRepository: SessionRepository(storage: testHomeStorage),
+        storage: testHomeStorage,
         executableResolver: () => 'claude',
       );
       addTearDown(launchCubit.close);
@@ -151,7 +155,8 @@ void main() {
         repository: testLaunchProfileRepository(
           Directory.systemTemp.createTempSync('member_form_lead_'),
         ),
-        sessionRepository: SessionRepository(),
+        sessionRepository: SessionRepository(storage: testHomeStorage),
+        storage: testHomeStorage,
         executableResolver: () => 'claude',
       );
       addTearDown(launchCubit.close);
@@ -200,7 +205,8 @@ void main() {
         repository: testLaunchProfileRepository(
           Directory.systemTemp.createTempSync('member_form_zh_'),
         ),
-        sessionRepository: SessionRepository(),
+        sessionRepository: SessionRepository(storage: testHomeStorage),
+        storage: testHomeStorage,
         executableResolver: () => 'claude',
       );
       addTearDown(launchCubit.close);
@@ -249,7 +255,8 @@ void main() {
       repository: testLaunchProfileRepository(
         Directory.systemTemp.createTempSync('member_form_no_save_tpl_'),
       ),
-      sessionRepository: SessionRepository(),
+      sessionRepository: SessionRepository(storage: testHomeStorage),
+      storage: testHomeStorage,
       executableResolver: () => 'claude',
     );
     addTearDown(launchCubit.close);
@@ -295,7 +302,8 @@ void main() {
         repository: testLaunchProfileRepository(
           Directory.systemTemp.createTempSync('member_form_policy_switch_'),
         ),
-        sessionRepository: SessionRepository(),
+        sessionRepository: SessionRepository(storage: testHomeStorage),
+        storage: testHomeStorage,
         executableResolver: () => 'claude',
       );
       addTearDown(launchCubit.close);

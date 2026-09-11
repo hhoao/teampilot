@@ -16,6 +16,7 @@ void main() {
       final ingestor = ComposeFileDropIngestor(
         workspaceRoot: '/repo',
         onInsertReferences: sink.insertReferences,
+                                                usesPosixPaths: false,
       );
 
       final outcome = await ingestor.consume(
@@ -40,6 +41,7 @@ void main() {
       final ingestor = ComposeFileDropIngestor(
         workspaceRoot: '/repo',
         onInsertReferences: sink.insertReferences,
+                                                usesPosixPaths: false,
       );
 
       final outcome = await ingestor.consume(
@@ -69,6 +71,7 @@ void main() {
       final ingestor = ComposeFileDropIngestor(
         workspaceRoot: '/repo',
         onInsertReferences: sink.insertReferences,
+                                                usesPosixPaths: false,
       );
 
       final outcome = await ingestor.consume(

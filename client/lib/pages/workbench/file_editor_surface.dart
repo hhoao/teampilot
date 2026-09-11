@@ -17,6 +17,7 @@ import '../../l10n/l10n_extensions.dart';
 import '../../services/commands/key_chord.dart';
 import '../../services/commands/shortcut_focus.dart';
 import '../../services/editor/file_editor_ai_context.dart';
+import '../../widgets/home_storage_scope.dart';
 import '../../services/editor/file_editor_theme.dart';
 import '../../services/editor/file_editor_toolbar.dart';
 import '../../services/editor/html_view_mode_store.dart';
@@ -698,6 +699,7 @@ class _CodeEditorPaneState extends State<_CodeEditorPane> {
             readAiContext: () => formatEditorAiContext(
               filePath: widget.path,
               controller: widget.controller,
+              storage: homeStorageOf(context),
             ),
             onAskAi: (aiContext) async {
               final workspace = context

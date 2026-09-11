@@ -13,6 +13,7 @@ import 'package:teampilot/repositories/session_repository.dart';
 import 'package:teampilot/services/launch/session_default_materializer.dart';
 import 'package:teampilot/services/launch/session_launch_workspace_index.dart';
 import 'package:teampilot/services/session/session_lifecycle_service.dart';
+import '../../support/in_memory_filesystem.dart';
 
 void main() {
   group('SessionDefaultMaterializer', () {
@@ -34,6 +35,7 @@ void main() {
         workspaceIndex: () => SessionLaunchWorkspaceIndex(
           workspaces: host.state.workspaces,
           sessions: host.state.sessions,
+                                                           usesPosixPaths: false,
         ),
         isTabsEmpty: () => true,
         activeBucketKey: () => 'ws-1',
@@ -99,6 +101,7 @@ void main() {
         workspaceIndex: () => SessionLaunchWorkspaceIndex(
           workspaces: host.state.workspaces,
           sessions: host.state.sessions,
+                                                           usesPosixPaths: false,
         ),
         isTabsEmpty: () => true,
         activeBucketKey: () => 'ws-1',
@@ -145,7 +148,7 @@ void main() {
 
 class _MaterializeHost implements SessionLaunchHost {
   _MaterializeHost(this.state)
-    : lifecycle = SessionLifecycleService(loadPresets: () => const []);
+    : lifecycle = SessionLifecycleService(loadPresets: () => const [], storage: fakeHomeStorage(), );
 
   @override
   ChatState state;
@@ -158,7 +161,7 @@ class _MaterializeHost implements SessionLaunchHost {
 
   @override
   SessionDataStore get dataStore => _dataStore;
-  final SessionDataStore _dataStore = SessionDataStore();
+  final SessionDataStore _dataStore = SessionDataStore(storage: fakeHomeStorage());
 
   final emitted = <ChatDataSnapshot>[];
   int loadWorkspaceDataCalls = 0;

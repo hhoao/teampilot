@@ -267,7 +267,7 @@ void main() {
             body: WorkspaceSearchDialog(
               workspace: workspace,
               sessions: const [],
-              indexes: WorkspaceSearchIndexes(),
+              indexes: WorkspaceSearchIndexes(storage: testHomeStorage),
               slices: [
                 ContentSearchSlice(
                   fs: LocalFilesystem(),

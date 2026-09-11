@@ -5,7 +5,8 @@ import 'package:teampilot/models/home_closed_workspace_entry.dart';
 import 'package:teampilot/models/workspace_topology.dart';
 import 'package:teampilot/services/home_workspace/home_closed_workspaces_store.dart';
 import 'package:teampilot/services/io/local_filesystem.dart';
-import 'package:teampilot/services/storage/app_storage.dart';
+import 'package:teampilot/services/storage/app_paths.dart';
+import '../../support/in_memory_filesystem.dart';
 
 void main() {
   late Directory root;
@@ -20,6 +21,7 @@ void main() {
     store = HomeClosedWorkspacesStore(
       fs: fs,
       pathOverride: paths.homeWorkspaceClosedWorkspacesJson,
+                                       storage: fakeHomeStorage(),
     );
   });
 

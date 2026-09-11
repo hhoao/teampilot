@@ -8,7 +8,8 @@ import 'package:teampilot/services/host/host_process_starter_for_context.dart';
 import 'package:teampilot/services/host/host_tty_wrap.dart';
 import 'package:teampilot/services/host/process_run_handle.dart';
 import 'package:teampilot/services/io/local_filesystem.dart';
-import 'package:teampilot/services/storage/app_storage.dart';
+import 'package:teampilot/services/storage/app_paths.dart';
+import '../../support/test_runtime_context.dart';
 
 class _FakeProcessRunHandle implements ProcessRunHandle {
   @override
@@ -208,16 +209,16 @@ void main() {
 
   group('hostProcessStarterForContext', () {
     test('picks local starter for native storage', () {
-      AppStorage.installForTesting(
+      installTestHomeStorage(
         filesystem: LocalFilesystem(),
         paths: AppPaths('/tmp/teampilot-test'),
         home: '/tmp',
         cwd: '/tmp',
       );
-      addTearDown(AppStorage.resetForTesting);
+      addTearDown(resetTestHomeStorage);
 
       expect(
-        hostProcessStarterForContext(AppStorage.context),
+        hostProcessStarterForContext(testHomeStorage.context),
         isA<LocalHostProcessStarter>(),
       );
     });

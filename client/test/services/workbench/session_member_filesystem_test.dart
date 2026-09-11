@@ -32,6 +32,7 @@ void main() {
           folders: session.folders,
           createdAt: 0,
         ),
+        usesPosixPaths: false,
       );
 
   test(
@@ -51,6 +52,7 @@ void main() {
         paths: home.paths,
       );
       final lifecycle = SessionLifecycleService(
+        storage: fakeHomeStorage(),
         storageRootsResolver: () async => localCtx,
         workContextResolver: (target) async {
           if (target.kind == RuntimeKind.ssh) {
@@ -132,6 +134,7 @@ void main() {
         paths: home.paths,
       );
       final lifecycle = SessionLifecycleService(
+        storage: fakeHomeStorage(),
         storageRootsResolver: () async => localCtx,
         workContextResolver: (target) async {
           if (target.kind == RuntimeKind.ssh) {
@@ -173,7 +176,7 @@ void main() {
         toolsScope: toolsScope,
       );
 
-      final editor = EditorCubit(fs: localFs);
+      final editor = EditorCubit(storage: fakeHomeStorage(), fs: localFs);
       final workbench = WorkbenchCubit();
       final floating = FloatingWorkspaceCubit();
       addTearDown(() {
@@ -230,6 +233,7 @@ void main() {
       final home = testRuntimeContext('/home-root');
       var resolveCount = 0;
       final lifecycle = SessionLifecycleService(
+        storage: fakeHomeStorage(),
         storageRootsResolver: () async => home,
         workContextResolver: (target) async {
           resolveCount++;
@@ -297,6 +301,7 @@ void main() {
     final remoteFs = InMemoryFilesystem();
     final home = testRuntimeContext('/home-root');
     final lifecycle = SessionLifecycleService(
+      storage: fakeHomeStorage(),
       storageRootsResolver: () async => home,
       workContextResolver: (target) async {
         if (target.kind == RuntimeKind.ssh) {

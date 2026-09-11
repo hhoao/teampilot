@@ -7,6 +7,8 @@ import 'package:teampilot/models/team_config.dart';
 import 'package:teampilot/models/workspace.dart';
 import 'package:teampilot/models/workspace_folder.dart';
 
+import '../../support/in_memory_filesystem.dart';
+
 ChatTab _tab(String id) => ChatTab(
   info: ChatTabInfo(id: id, title: id, subtitle: ''),
   cliTeamName: id,
@@ -30,7 +32,7 @@ void main() {
   });
 
   test('registerSession keys by session id; workspace scope filters', () {
-    final store = ChatTabStore()..setActiveWorkspaceId('w1');
+    final store = ChatTabStore(storage: fakeHomeStorage())..setActiveWorkspaceId('w1');
     store.registerSession(_tab('a'));
     store.registerSession(_tab('b'));
 
@@ -47,7 +49,7 @@ void main() {
   });
 
   test('removeSession drops the runtime', () {
-    final store = ChatTabStore();
+    final store = ChatTabStore(storage: fakeHomeStorage());
     store.registerSession(_tab('a'));
     store.registerSession(_tab('b'));
     expect(store.removeSession('a')!.info.id, 'a');
@@ -57,7 +59,7 @@ void main() {
   });
 
   test('activeTab back-compat helper returns the first open runtime', () {
-    final store = ChatTabStore()
+    final store = ChatTabStore(storage: fakeHomeStorage())
       ..registerSession(_tab('a'))
       ..registerSession(_tab('b'));
     expect(store.activeTab(99)!.info.id, 'a');
@@ -67,7 +69,7 @@ void main() {
   test(
     'workingDirectoryAndAddDirsForTab resolves the selected member target',
     () {
-      final store = ChatTabStore();
+      final store = ChatTabStore(storage: fakeHomeStorage());
       const folders = [
         WorkspaceFolder(path: '/main'),
         WorkspaceFolder(path: '/x'),
@@ -107,7 +109,7 @@ void main() {
   );
 
   test('defaultMemberId prefers team-lead', () {
-    final store = ChatTabStore();
+    final store = ChatTabStore(storage: fakeHomeStorage());
     const team = TeamProfile(
       id: 't',
       name: 'T',
@@ -121,7 +123,7 @@ void main() {
   });
 
   test('sessionForTab prefers in-memory snapshot over stale tab cache', () {
-    final store = ChatTabStore();
+    final store = ChatTabStore(storage: fakeHomeStorage());
     final tab = _tab('s1')
       ..persistedSession = AppSession(
         sessionId: 's1',

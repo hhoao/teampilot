@@ -49,6 +49,11 @@ class RemoteFileStore {
 
   Future<SftpClient> _ensureConnected() => _clientFactory.sftpFor(_profile);
 
+  /// Marks an SFTP data op as in-flight for this profile so evictions defer
+  /// the pooled client close until it completes.
+  Future<T> _tracked<T>(Future<T> Function() op) =>
+      _clientFactory.runTracked(_profile.id, op);
+
   Future<String> expandHome(String path) async {
     if (!path.startsWith('~')) return path;
     final home = await _remoteHome();
@@ -63,7 +68,7 @@ class RemoteFileStore {
   }
 
   /// Full [FsStat] including size/mtime from SFTP attrs when available.
-  Future<FsStat> stat(String path) async {
+  Future<FsStat> stat(String path) => _tracked(() async {
     try {
       final sftp = await _ensureConnected();
       final resolved = await expandHome(path);
@@ -86,10 +91,10 @@ class RemoteFileStore {
       }
       rethrow;
     }
-  }
+  });
 
   /// Reads the immediate target of a symlink, or null if not a link / missing.
-  Future<String?> readlink(String path) async {
+  Future<String?> readlink(String path) => _tracked(() async {
     try {
       final sftp = await _ensureConnected();
       final resolved = await expandHome(path);
@@ -97,10 +102,10 @@ class RemoteFileStore {
     } on SftpStatusError {
       return null;
     }
-  }
+  });
 
   /// Fully resolves [path] to its canonical absolute path, or null on failure.
-  Future<String?> realpath(String path) async {
+  Future<String?> realpath(String path) => _tracked(() async {
     try {
       final sftp = await _ensureConnected();
       final resolved = await expandHome(path);
@@ -108,9 +113,9 @@ class RemoteFileStore {
     } on SftpStatusError {
       return null;
     }
-  }
+  });
 
-  Future<bool> fileExists(String path) async {
+  Future<bool> fileExists(String path) => _tracked(() async {
     try {
       final sftp = await _ensureConnected();
       final resolved = await expandHome(path);
@@ -120,9 +125,9 @@ class RemoteFileStore {
       if (e.code == SftpStatusCode.noSuchFile) return false;
       rethrow;
     }
-  }
+  });
 
-  Future<String?> readFile(String path) async {
+  Future<String?> readFile(String path) => _tracked(() async {
     try {
       final sftp = await _ensureConnected();
       final resolved = await expandHome(path);
@@ -134,9 +139,9 @@ class RemoteFileStore {
       if (e.code == SftpStatusCode.noSuchFile) return null;
       rethrow;
     }
-  }
+  });
 
-  Future<List<int>?> readFileBytes(String path) async {
+  Future<List<int>?> readFileBytes(String path) => _tracked(() async {
     try {
       final sftp = await _ensureConnected();
       final resolved = await expandHome(path);
@@ -148,13 +153,13 @@ class RemoteFileStore {
       if (e.code == SftpStatusCode.noSuchFile) return null;
       rethrow;
     }
-  }
+  });
 
   Future<List<int>?> readFileBytesRange(
     String path, {
     required int offset,
     required int length,
-  }) async {
+  }) => _tracked(() async {
     try {
       final sftp = await _ensureConnected();
       final resolved = await expandHome(path);
@@ -168,9 +173,9 @@ class RemoteFileStore {
       if (e.code == SftpStatusCode.noSuchFile) return null;
       rethrow;
     }
-  }
+  });
 
-  Future<void> writeFile(String path, String contents) async {
+  Future<void> writeFile(String path, String contents) => _tracked(() async {
     final sftp = await _ensureConnected();
     final resolved = await expandHome(path);
     await _ensureParentDirs(resolved);
@@ -184,25 +189,26 @@ class RemoteFileStore {
     );
     await file.writeBytes(bytes);
     await file.close();
-  }
+  });
 
   Future<List<String>> listDirectory(String path) async {
     final entries = await listDirectoryEntries(path);
     return entries.map((e) => e.name).toList();
   }
 
-  Future<List<RemoteDirEntry>> listDirectoryEntries(String path) async {
-    final sftp = await _ensureConnected();
-    final resolved = await expandHome(path);
-    final names = await sftp.listdir(resolved);
-    return [
-      for (final n in names)
-        if (n.filename != '.' && n.filename != '..')
-          RemoteDirEntry(name: n.filename, isDirectory: n.attr.isDirectory),
-    ];
-  }
+  Future<List<RemoteDirEntry>> listDirectoryEntries(String path) =>
+      _tracked(() async {
+        final sftp = await _ensureConnected();
+        final resolved = await expandHome(path);
+        final names = await sftp.listdir(resolved);
+        return [
+          for (final n in names)
+            if (n.filename != '.' && n.filename != '..')
+              RemoteDirEntry(name: n.filename, isDirectory: n.attr.isDirectory),
+        ];
+      });
 
-  Future<void> writeBytes(String path, Uint8List bytes) async {
+  Future<void> writeBytes(String path, Uint8List bytes) => _tracked(() async {
     final sftp = await _ensureConnected();
     final resolved = await expandHome(path);
     await _ensureParentDirs(resolved);
@@ -215,9 +221,9 @@ class RemoteFileStore {
     );
     await file.writeBytes(bytes);
     await file.close();
-  }
+  });
 
-  Future<void> appendBytes(String path, Uint8List bytes) async {
+  Future<void> appendBytes(String path, Uint8List bytes) => _tracked(() async {
     final sftp = await _ensureConnected();
     final resolved = await expandHome(path);
     await _ensureParentDirs(resolved);
@@ -233,7 +239,7 @@ class RemoteFileStore {
     } finally {
       await file.close();
     }
-  }
+  });
 
   Future<void> ensureDirectory(String path) async {
     final resolved = await expandHome(path);
@@ -256,25 +262,26 @@ class RemoteFileStore {
     );
   }
 
-  Future<void> _ensureDirectorySftp(String absolutePosixPath) async {
-    final sftp = await _ensureConnected();
-    final posix = p.posix;
-    final isAbsolute = posix.isAbsolute(absolutePosixPath);
-    final parts = absolutePosixPath
-        .split('/')
-        .where((segment) => segment.isNotEmpty);
-    var current = isAbsolute ? '/' : '';
-    for (final part in parts) {
-      current = current.isEmpty
-          ? part
-          : (current == '/' ? '/$part' : posix.join(current, part));
-      try {
-        await sftp.mkdir(current);
-      } on SftpStatusError {
-        // Directory may already exist.
-      }
-    }
-  }
+  Future<void> _ensureDirectorySftp(String absolutePosixPath) =>
+      _tracked(() async {
+        final sftp = await _ensureConnected();
+        final posix = p.posix;
+        final isAbsolute = posix.isAbsolute(absolutePosixPath);
+        final parts = absolutePosixPath
+            .split('/')
+            .where((segment) => segment.isNotEmpty);
+        var current = isAbsolute ? '/' : '';
+        for (final part in parts) {
+          current = current.isEmpty
+              ? part
+              : (current == '/' ? '/$part' : posix.join(current, part));
+          try {
+            await sftp.mkdir(current);
+          } on SftpStatusError {
+            // Directory may already exist.
+          }
+        }
+      });
 
   Future<void> removeRecursive(String absolutePosixPath) async {
     await _clientFactory.runOnStorage(
@@ -377,7 +384,7 @@ class RemoteFileStore {
     }
   }
 
-  Future<void> createDirectory(String path) async {
+  Future<void> createDirectory(String path) => _tracked(() async {
     final sftp = await _ensureConnected();
     final resolved = await expandHome(path);
     try {
@@ -385,9 +392,9 @@ class RemoteFileStore {
     } on SftpStatusError catch (_) {
       // Directory might already exist; ignore errors
     }
-  }
+  });
 
-  Future<void> deleteFile(String path) async {
+  Future<void> deleteFile(String path) => _tracked(() async {
     final sftp = await _ensureConnected();
     final resolved = await expandHome(path);
     try {
@@ -396,7 +403,7 @@ class RemoteFileStore {
       if (e.code == SftpStatusCode.noSuchFile) return;
       rethrow;
     }
-  }
+  });
 
   Future<void> disconnect() async {
     _clientFactory.disconnectProfile(

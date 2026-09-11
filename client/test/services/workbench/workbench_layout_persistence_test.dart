@@ -20,7 +20,8 @@ import 'package:teampilot/repositories/workbench_layout_snapshot_repository.dart
 import 'package:teampilot/services/storage/workspace_layout.dart';
 import 'package:teampilot/services/workbench/workbench_layout_persistence.dart';
 
-import '../../support/in_memory_filesystem.dart';
+import '../../support/in_memory_filesystem.dart'
+    show InMemoryFilesystem, fakeHomeStorage;
 import '../../support/post_frame_test_harness.dart';
 
 const _root = '/tp-root';
@@ -50,14 +51,17 @@ void main() {
     fakeAsync((async) {
       final fs = InMemoryFilesystem();
       final layout = WorkspaceLayout(teampilotRoot: _root, fs: fs);
+      final home = fakeHomeStorage(filesystem: fs, appDataRoot: _root);
       final workbench = WorkbenchCubit();
       final chat = ChatCubit(
         executableResolver: () => 'true',
+        storage: home,
         automationRepository: AutomationRepository(fs: fs, layout: layout),
       );
       final persistence = WorkbenchLayoutPersistence(
         workbench: workbench,
         chat: chat,
+        storage: home,
         fs: fs,
         layout: layout,
       )..start();
@@ -70,6 +74,7 @@ void main() {
     unawaited(
       WorkbenchLayoutSnapshotRepository(
         workspaceId: _ws,
+        storage: fakeHomeStorage(filesystem: fs, appDataRoot: _root),
         fs: fs,
         layout: WorkspaceLayout(teampilotRoot: _root, fs: fs),
       ).save(seeder.centerLayout(_ws), seeder.floatingLayout(_ws)),

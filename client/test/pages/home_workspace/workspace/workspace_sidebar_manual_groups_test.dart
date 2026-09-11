@@ -43,15 +43,15 @@ void main() {
 
   setUp(() {
     setUpTestAppStorage();
-    sessionRepository = SessionRepository();
+    sessionRepository = SessionRepository(storage: testHomeStorage);
     chatCubit = testChatCubit(
       executableResolver: () => 'claude',
       sessionRepository: sessionRepository,
     );
     automationCubit = testAutomationCubit();
-    worktreeCubit = WorktreeCubit();
+    worktreeCubit = WorktreeCubit(storage: testHomeStorage);
     attentionCubit = AgentAttentionCubit(pruneInterval: null);
-    groupsCubit = SessionGroupsCubit();
+    groupsCubit = SessionGroupsCubit(storage: testHomeStorage);
   });
 
   tearDown(() async {
@@ -89,7 +89,9 @@ void main() {
                 BlocProvider<WorktreeCubit>.value(value: worktreeCubit),
                 BlocProvider<AgentAttentionCubit>.value(value: attentionCubit),
                 BlocProvider<SessionGroupsCubit>.value(value: groupsCubit),
-                BlocProvider(create: (_) => ShortcutCubit()),
+                BlocProvider(
+                  create: (_) => ShortcutCubit(storage: testHomeStorage),
+                ),
               ],
               child: SizedBox(
                 width: 320,

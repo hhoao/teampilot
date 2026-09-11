@@ -14,7 +14,8 @@ import 'package:teampilot/services/provider/cross_machine_credential_bridge.dart
 import 'package:teampilot/services/cli/cursor/provider/cursor_home_layout.dart';
 import 'package:teampilot/services/cli/cursor/provider/cursor_provider_credentials_service.dart';
 import 'package:teampilot/services/cli/opencode/provider/opencode_data_layout.dart';
-import 'package:teampilot/services/storage/app_storage.dart';
+import 'package:teampilot/services/storage/app_paths.dart';
+import 'package:teampilot/services/storage/home_storage.dart';
 import 'package:teampilot/services/storage/runtime_context.dart';
 import 'package:teampilot/services/storage/runtime_layout.dart';
 
@@ -43,12 +44,14 @@ void main() {
         basePath: '/work',
         home: '/work-home',
         fs: workFs,
+        storage: HomeStorage(_memoryContext('/work', workFs)),
         layout: _memoryContext('/work', workFs).layout,
       );
 
       final svc = ClaudeProviderCredentialsService(
         fs: catalog.fs,
         basePath: catalog.basePath,
+        storage: HomeStorage(_memoryContext('/home-catalog', homeFs)),
         resolveHomeDirectory: () => catalog.home,
       );
       final src = svc.credentialPath('anthropic');
@@ -58,6 +61,7 @@ void main() {
 
       final copied =
           await CrossMachineCredentialBridge.materializeClaudeCredential(
+            storage: HomeStorage(_memoryContext('/home-catalog', homeFs)),
             catalog: catalog,
             work: work,
             providerId: 'anthropic',
@@ -66,6 +70,7 @@ void main() {
       expect(copied, isTrue);
 
       final workSvc = ClaudeProviderCredentialsService(
+        storage: HomeStorage(_memoryContext('/work', workFs)),
         fs: work.fs,
         basePath: work.basePath,
         resolveHomeDirectory: () => work.home,
@@ -88,11 +93,13 @@ void main() {
         basePath: '/work',
         home: '/work-home',
         fs: InMemoryFilesystem(),
+        storage: HomeStorage(_memoryContext('/work', InMemoryFilesystem())),
         layout: _memoryContext('/work', InMemoryFilesystem()).layout,
       );
 
       expect(
         await CrossMachineCredentialBridge.materializeClaudeCredential(
+          storage: HomeStorage(_memoryContext('/home-catalog', InMemoryFilesystem())),
           catalog: catalog,
           work: work,
           providerId: 'missing',
@@ -113,10 +120,12 @@ void main() {
       basePath: '/work',
       home: '/work-home',
       fs: workFs,
+      storage: HomeStorage(_memoryContext('/work', workFs)),
       layout: _memoryContext('/work', workFs).layout,
     );
 
     final catalogSvc = CodexProviderCredentialsService(
+      storage: HomeStorage(_memoryContext('/home-catalog', homeFs)),
       fs: catalog.fs,
       basePath: catalog.basePath,
     );
@@ -126,6 +135,7 @@ void main() {
 
     expect(
       await CrossMachineCredentialBridge.materializeCodexAuth(
+        storage: HomeStorage(_memoryContext('/home-catalog', homeFs)),
         catalog: catalog,
         work: work,
         providerId: 'openai',
@@ -158,10 +168,12 @@ void main() {
         basePath: '/work',
         home: '/work-home',
         fs: workFs,
+        storage: HomeStorage(_memoryContext('/work', workFs)),
         layout: _memoryContext('/work', workFs).layout,
       );
 
       final catalogSvc = CursorProviderCredentialsService(
+        storage: HomeStorage(_memoryContext('/home-catalog', homeFs)),
         fs: catalog.fs,
         basePath: catalog.basePath,
       );
@@ -179,6 +191,7 @@ void main() {
 
       expect(
         await CrossMachineCredentialBridge.materializeCursorCredential(
+          storage: HomeStorage(_memoryContext('/home-catalog', homeFs)),
           catalog: catalog,
           work: work,
           providerId: 'default',
@@ -187,6 +200,7 @@ void main() {
       );
 
       final workSvc = CursorProviderCredentialsService(
+        storage: HomeStorage(_memoryContext('/work', workFs)),
         fs: work.fs,
         basePath: work.basePath,
       );
@@ -222,6 +236,7 @@ void main() {
         basePath: '/work',
         home: '/work-home',
         fs: workFs,
+        storage: HomeStorage(_memoryContext('/work', workFs)),
         layout: _memoryContext('/work', workFs).layout,
       );
 
@@ -273,10 +288,12 @@ void main() {
         basePath: workRoot,
         home: '/work-home',
         fs: workFs,
+        storage: HomeStorage(_memoryContext(workRoot, workFs)),
         layout: _memoryContext(workRoot, workFs).layout,
       );
 
       final catalogSvc = CodexProviderCredentialsService(
+        storage: HomeStorage(_memoryContext('/home-catalog', homeFs)),
         fs: catalog.fs,
         basePath: catalog.basePath,
       );
@@ -286,6 +303,7 @@ void main() {
 
       expect(
         await CrossMachineCredentialBridge.materializeCodexAuth(
+          storage: HomeStorage(_memoryContext('/home-catalog', homeFs)),
           catalog: catalog,
           work: work,
           providerId: 'openai',
@@ -320,6 +338,7 @@ void main() {
         basePath: '/work',
         home: '/work-home',
         fs: workFs,
+        storage: HomeStorage(_memoryContext('/work', workFs)),
         layout: _memoryContext('/work', workFs).layout,
       );
       final catalogLayout = RuntimeLayout(

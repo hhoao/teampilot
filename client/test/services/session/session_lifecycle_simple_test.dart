@@ -12,9 +12,11 @@ import 'package:teampilot/models/workspace_folder.dart';
 import 'package:teampilot/repositories/cli_presets_repository.dart';
 import 'package:teampilot/services/launch/session_runtime_plan.dart';
 import 'package:teampilot/services/session/session_lifecycle_service.dart';
-import 'package:teampilot/services/storage/app_storage.dart';
+import 'package:teampilot/services/storage/app_paths.dart';
 import 'package:teampilot/services/storage/runtime_context.dart';
 import 'package:teampilot/services/storage/runtime_layout.dart';
+import 'package:teampilot/services/cli/registry/cli_bootstrap.dart';
+import 'package:teampilot/services/cli/registry/cli_tool_registry.dart';
 
 import '../../support/in_memory_filesystem.dart';
 import '../../support/post_frame_test_harness.dart';
@@ -50,8 +52,11 @@ void main() {
 
   setUp(() async {
     setUpTestAppStorage();
+    CliToolRegistry.builtIn().configure(
+      CliBootstrap(const {}, storage: testHomeStorage),
+    );
     base = await Directory.systemTemp.createTemp('session_lifecycle_simple_');
-    layout = RuntimeLayout(teampilotRoot: base.path);
+    layout = RuntimeLayout(teampilotRoot: base.path, fs: testHomeStorage.fs);
   });
 
   tearDown(() async {
@@ -67,6 +72,7 @@ void main() {
     appDataBasePath: base.path,
     storageRootsResolver: () async => _roots(base.path),
     cliPresetsRepository: cliPresetsRepository,
+                                 storage: testHomeStorage,
   );
 
   SessionRuntimePlan simplePlan({
@@ -373,6 +379,7 @@ void main() {
           updatedAt: 0,
         ),
       ],
+                                   storage: testHomeStorage,
     ).prepareLaunchFromRuntimePlan(
       session: session,
       workspace: workspace,

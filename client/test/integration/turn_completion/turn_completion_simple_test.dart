@@ -13,6 +13,7 @@ import '../../support/post_frame_test_harness.dart';
 import '../support/integration_test_setup.dart';
 import '../support/session_idle_busy_harness.dart';
 import 'turn_completion_harness.dart';
+import '../../support/in_memory_filesystem.dart';
 
 void main() {
   setUp(setUpIntegrationAppStorage);
@@ -37,7 +38,7 @@ void main() {
   for (final cli in allCli) {
     test('$cli: done event clears working', () async {
       final tmp = await Directory.systemTemp.createTemp('tc_simple_');
-      final repo = SessionRepository(rootDir: tmp.path);
+      final repo = SessionRepository(rootDir: tmp.path, storage: fakeHomeStorage(), );
       final postFrame = PostFrameTestHarness();
       final opened = await openSimpleTurnSession(
         cli: cli,
@@ -63,7 +64,7 @@ void main() {
 
     test('$cli: PTY-quiet fallback clears working only for fallback CLIs', () async {
       final tmp = await Directory.systemTemp.createTemp('tc_simple_');
-      final repo = SessionRepository(rootDir: tmp.path);
+      final repo = SessionRepository(rootDir: tmp.path, storage: fakeHomeStorage(), );
       final postFrame = PostFrameTestHarness();
       final opened = await openSimpleTurnSession(
         cli: cli,
@@ -100,7 +101,7 @@ void main() {
 
   test('PTY-quiet fallback never clears a waiting seat', () async {
     final tmp = await Directory.systemTemp.createTemp('tc_wait_');
-    final repo = SessionRepository(rootDir: tmp.path);
+    final repo = SessionRepository(rootDir: tmp.path, storage: fakeHomeStorage(), );
     final postFrame = PostFrameTestHarness();
     final opened = await openSimpleTurnSession(
       cli: CliTool.cursor,

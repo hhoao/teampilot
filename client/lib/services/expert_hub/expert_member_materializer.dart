@@ -1,9 +1,7 @@
 import '../../models/discoverable_member.dart';
 import '../../models/team_config.dart';
 import '../../models/team_roster_slot.dart';
-import 'composite_expert_hub_source.dart';
-import 'expert_member_resolver.dart';
-import 'local_expert_store.dart';
+import 'expert_hub_catalog.dart';
 
 /// Resolves catalog experts into runtime [TeamMemberConfig] for connect/launch.
 abstract final class ExpertMemberMaterializer {
@@ -25,42 +23,26 @@ abstract final class ExpertMemberMaterializer {
     return member;
   }
 
-  static List<TeamMemberConfig> materializeRoster({
-    required TeamProfile team,
-    required Map<String, DiscoverableMember> expertsByKey,
-  }) {
-    return [
-      for (final slot in team.roster)
-        if (expertsByKey.containsKey(slot.expertKey.trim()))
-          materializeRosterSlot(
-            slot: slot,
-            expert: expertsByKey[slot.expertKey.trim()]!,
-            team: team,
-          ),
-    ];
-  }
+  /// Materializes every team's roster from a single pre-loaded catalog
+  /// [snapshot] — no per-slot fetch. Sync: the snapshot already holds every
+  /// resolvable expert.
+  static List<TeamProfile> materializeAll(
+    List<TeamProfile> teams,
+    MemberCatalogSnapshot snapshot,
+  ) => [for (final team in teams) materializeTeam(team, snapshot)];
 
-  static Future<List<TeamMemberConfig>> materializeRosterAsync({
-    required TeamProfile team,
-    CompositeExpertHubSource? source,
-    LocalExpertStore? localStore,
-  }) async {
-    final out = <TeamMemberConfig>[];
-    for (final slot in team.roster) {
-      final key = slot.expertKey.trim();
-      if (key.isEmpty) continue;
-      final expert = await ExpertMemberResolver.resolveMember(
-        key: key,
-        source: source,
-        localStore: localStore,
-      );
-      if (expert == null) continue;
-      out.add(
-        materializeRosterSlot(slot: slot, expert: expert, team: team),
-      );
-    }
-    return out;
-  }
+  /// Attaches materialized members to a single [team] from [snapshot],
+  /// dropping roster slots whose expertKey is not in the catalog.
+  static TeamProfile materializeTeam(
+    TeamProfile team,
+    MemberCatalogSnapshot snapshot,
+  ) => team.copyWith(
+    members: [
+      for (final slot in team.roster)
+        if (snapshot.lookup(slot.expertKey) case final expert?)
+          materializeRosterSlot(slot: slot, expert: expert, team: team),
+    ],
+  );
 
   static TeamMemberConfig _applyTeamInheritance(
     TeamMemberConfig member,
@@ -116,34 +98,4 @@ abstract final class ExpertMemberMaterializer {
     );
   }
 
-  static Future<TeamProfile> attachMaterializedMembers(
-    TeamProfile team, {
-    CompositeExpertHubSource? source,
-    LocalExpertStore? localStore,
-  }) async {
-    final members = await materializeRosterAsync(
-      team: team,
-      source: source,
-      localStore: localStore,
-    );
-    return team.copyWith(members: members);
-  }
-
-  static Future<List<TeamProfile>> attachMaterializedMembersAll(
-    Iterable<TeamProfile> teams, {
-    CompositeExpertHubSource? source,
-    LocalExpertStore? localStore,
-  }) async {
-    final out = <TeamProfile>[];
-    for (final team in teams) {
-      out.add(
-        await attachMaterializedMembers(
-          team,
-          source: source,
-          localStore: localStore,
-        ),
-      );
-    }
-    return out;
-  }
 }

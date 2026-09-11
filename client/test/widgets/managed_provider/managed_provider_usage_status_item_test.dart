@@ -94,11 +94,13 @@ void main() {
   setUp(() async {
     fs = InMemoryFilesystem();
     final usage = ManagedProviderUsageRepository(
+      storage: fakeHomeStorage(filesystem: fs),
       fs: fs,
       cachePath: '/tp/usage-cache.json',
       now: () => 100,
     );
     providers = ManagedProviderRepository(
+      storage: fakeHomeStorage(filesystem: fs),
       fs: fs,
       configPath: '/tp/providers.json',
       onProvidersDeleted: usage.deleteMany,

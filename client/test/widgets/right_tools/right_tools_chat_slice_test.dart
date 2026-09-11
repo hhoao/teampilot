@@ -68,6 +68,7 @@ void main() {
       chat = ChatCubit(
         executableResolver: () => '/bin/true',
         automationRepository: testAutomationRepository(),
+                        storage: testHomeStorage,
       );
     });
     tearDown(() async {

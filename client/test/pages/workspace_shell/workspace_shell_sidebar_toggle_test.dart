@@ -25,7 +25,10 @@ void main() {
     'sidebar toggle uses effectiveOpen with narrowLeftSuppressed',
     (tester) async {
       final layout = LayoutCubit();
-      final shortcuts = ShortcutCubit(repository: KeybindingRepository());
+      final shortcuts = ShortcutCubit(
+        storage: testHomeStorage,
+        repository: KeybindingRepository(storage: testHomeStorage),
+      );
       addTearDown(layout.close);
       addTearDown(shortcuts.close);
       await layout.setSidebarVisible(true);

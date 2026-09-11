@@ -2,6 +2,7 @@ import '../../models/discoverable_member.dart';
 import '../../cubits/expert_hub_cubit.dart';
 import 'builtin_member_templates.dart';
 import 'composite_expert_hub_source.dart';
+import 'expert_hub_catalog.dart';
 import 'local_expert_store.dart';
 
 /// Resolves an Expert Hub member key to a [DiscoverableMember] for UI labels
@@ -40,18 +41,28 @@ class ExpertMemberResolver {
   }
 
   /// Full async resolution: local → hub cache → built-in → [source] fetch.
+  ///
+  /// When [catalog] is provided it is the single source of truth: the shared
+  /// single-flight snapshot is consulted (its merge already includes local
+  /// clones), skipping the per-key fallback chain entirely.
   static Future<DiscoverableMember?> resolveMember({
     required String? key,
+    required LocalExpertStore localStore,
     ExpertHubState? hubState,
     CompositeExpertHubSource? source,
-    LocalExpertStore? localStore,
     ExpertHubCubit? cubit,
+    ExpertHubCatalog? catalog,
   }) async {
     final trimmed = key?.trim() ?? '';
     if (trimmed.isEmpty) return null;
 
+    if (catalog != null) {
+      final snap = await catalog.snapshot();
+      return snap.lookup(trimmed);
+    }
+
     // Shadow: a local clone (or user-created expert) wins over the catalog.
-    final local = await (localStore ?? LocalExpertStore()).getByKey(trimmed);
+    final local = await localStore.getByKey(trimmed);
     if (local != null) return local;
 
     ExpertHubState? effectiveHub = hubState ?? cubit?.state;

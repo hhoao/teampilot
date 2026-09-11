@@ -8,7 +8,7 @@ import '../host/host_one_shot_runner_for_context.dart';
 import '../host/host_process_starter.dart';
 import '../host/host_process_starter_for_context.dart';
 import '../host/process_run_handle.dart';
-import '../storage/app_storage.dart';
+import '../storage/home_storage.dart';
 import 'credential_login_progress.dart';
 import 'credential_login_url_detector.dart';
 
@@ -115,14 +115,15 @@ class ProviderCredentialHostRunner {
     );
   }
 
-  /// Production/service default — lazy [AppStorage.context] binding.
-  static ProviderCredentialHostRunner forAppStorage({
+  /// Production/service default — lazy [HomeStorage.context] binding.
+  static ProviderCredentialHostRunner forHomeStorage({
+    required HomeStorage storage,
     CredentialOpenUrl? openUrl,
     CredentialLoginHint? onLoginHint,
   }) {
     return ProviderCredentialHostRunner(
-      oneShot: () => hostOneShotRunnerForContext(AppStorage.context),
-      streaming: () => hostProcessStarterForContext(AppStorage.context),
+      oneShot: () => hostOneShotRunnerForContext(storage.context),
+      streaming: () => hostProcessStarterForContext(storage.context),
       openUrl: openUrl,
       onLoginHint: onLoginHint,
     );

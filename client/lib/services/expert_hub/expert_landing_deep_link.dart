@@ -2,11 +2,13 @@ import '../../models/workspace.dart';
 import '../../cubits/expert_hub_cubit.dart';
 import '../../utils/workspace/landing_draft_resolver.dart';
 import '../home_workspace/landing_prefs_store.dart';
+import '../storage/home_storage.dart';
 import 'composite_expert_hub_source.dart';
 import 'expert_capability_pack.dart';
 import 'expert_capability_resolver.dart';
 import 'expert_landing_preflight.dart';
 import 'expert_member_resolver.dart';
+import 'local_expert_store.dart';
 
 enum ExpertDeepLinkOutcome { none, applied, ignoredTeamMode, notFound }
 
@@ -27,6 +29,8 @@ Future<ExpertDeepLinkResult> applyExpertDeepLink({
   required String workspaceId,
   required Workspace workspace,
   required bool routeProfileIsTeam,
+  required LocalExpertStore localStore,
+  required HomeStorage storage,
   ExpertHubState? hubState,
   CompositeExpertHubSource? source,
   LandingPrefsStore? store,
@@ -40,7 +44,7 @@ Future<ExpertDeepLinkResult> applyExpertDeepLink({
 
   final draft = await resolveLandingDraft(
     workspaceId: workspaceId,
-    store: store,
+    storage: storage,
     simpleModeDefaultFullAccess: simpleModeDefaultFullAccess,
   );
 
@@ -49,6 +53,7 @@ Future<ExpertDeepLinkResult> applyExpertDeepLink({
     await persistLandingDraft(
       workspaceId,
       draft.copyWith(expertKey: null),
+      storage: storage,
       store: store,
     );
     return const ExpertDeepLinkResult(ExpertDeepLinkOutcome.ignoredTeamMode);
@@ -56,6 +61,7 @@ Future<ExpertDeepLinkResult> applyExpertDeepLink({
 
   final member = await ExpertMemberResolver.resolveMember(
     key: trimmed,
+    localStore: localStore,
     hubState: hubState,
     source: source,
   );
@@ -63,6 +69,7 @@ Future<ExpertDeepLinkResult> applyExpertDeepLink({
     await persistLandingDraft(
       workspaceId,
       draft.copyWith(isPersonal: true, expertKey: null),
+      storage: storage,
       store: store,
     );
     return const ExpertDeepLinkResult(ExpertDeepLinkOutcome.notFound);
@@ -78,6 +85,7 @@ Future<ExpertDeepLinkResult> applyExpertDeepLink({
       await persistLandingDraft(
         workspaceId,
         draft.copyWith(isPersonal: true, expertKey: null),
+        storage: storage,
         store: store,
       );
       return const ExpertDeepLinkResult(ExpertDeepLinkOutcome.notFound);
@@ -88,6 +96,7 @@ Future<ExpertDeepLinkResult> applyExpertDeepLink({
   await persistLandingDraft(
     workspaceId,
     draft.copyWith(isPersonal: true, expertKey: trimmed),
+    storage: storage,
     store: store,
   );
   return ExpertDeepLinkResult(ExpertDeepLinkOutcome.applied, pack: pack);

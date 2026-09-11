@@ -14,6 +14,7 @@ import '../../services/cli/registry/capabilities/native_command_capability.dart'
 import '../../services/cli/registry/capabilities/skill_capability.dart';
 import '../../services/compose/compose_at_file_refs.dart';
 import '../../services/compose/compose_clip.dart';
+import '../home_storage_scope.dart';
 import '../../utils/debounce/debounce.dart';
 import 'compose_at_file_chip_row.dart';
 import 'compose_chrome.dart';
@@ -208,6 +209,7 @@ class WorkspaceComposeCard extends StatelessWidget {
                 final refs = parseComposeAtFileRefs(
                   clip?.composeMessage(controller.text) ?? controller.text,
                   workspaceRoot: workspaceRoot,
+                  usesPosixPaths: homeStorageOf(context).usesPosixPaths,
                 );
                 if (refs.isEmpty) return const SizedBox.shrink();
                 return Padding(

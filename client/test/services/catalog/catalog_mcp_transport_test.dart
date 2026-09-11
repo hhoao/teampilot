@@ -73,6 +73,7 @@ void main() {
     sessionId: 'sess-1',
     memberId: 'member-1',
     cli: cli,
+    isLocalNative: true,
     remoteBinding: remoteBinding,
     bridgeLocator: bridgeLocator,
   );

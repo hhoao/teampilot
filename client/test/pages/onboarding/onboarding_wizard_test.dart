@@ -113,10 +113,16 @@ void main() {
   });
 
   group('OnboardingService.applyDefaultPreset', () {
+    // This group hands the migrated constructors `testHomeStorage`, so the
+    // harness storage must be bound (matches the pre-6-C shim behavior).
+    setUp(setUpTestAppStorage);
+    tearDown(tearDownTestAppStorage);
+
     test('applies preset to personal identities and teams', () async {
       final dir = await Directory.systemTemp.createTemp('onboarding-preset_');
       final teamRepo = LaunchProfileRepository(
         rootDir: p.join(dir.path, 'launch-profiles'),
+                                                storage: testHomeStorage,
       );
       const team = TeamProfile(
         id: LaunchProfileProvisioner.defaultNativeTeamId,
@@ -140,13 +146,14 @@ void main() {
       final presetId = presetsCubit.state.presets.single.id;
 
       final teamCubit = LaunchProfileCubit(
+        storage: testHomeStorage,
         repository: teamRepo,
-        sessionRepository: SessionRepository(),
+        sessionRepository: SessionRepository(storage: testHomeStorage),
         executableResolver: () => 'claude',
       );
       await teamCubit.load();
 
-      final appProviderCubit = AppProviderCubit(basePath: dir.path);
+      final appProviderCubit = AppProviderCubit(basePath: dir.path, storage: testHomeStorage, );
       await appProviderCubit.load();
       await appProviderCubit.upsertProvider(
         const AppProviderConfig(
@@ -194,6 +201,7 @@ void main() {
       profileRepository = SshProfileRepository(
         rootDir: tempDir.path,
         fs: InMemoryFilesystem(),
+                                                storage: testHomeStorage,
       );
       profileCubit = SshProfileCubit(
         profileRepository: profileRepository,

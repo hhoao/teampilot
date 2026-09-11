@@ -32,12 +32,14 @@ import '../../support/desktop_app_harness.dart';
 import '../../support/in_memory_filesystem.dart';
 import '../../support/post_frame_test_harness.dart';
 import '../../support/stub_member_roster_service.dart';
+import 'package:teampilot/services/expert_hub/local_expert_store.dart';
+import 'package:teampilot/services/storage/app_paths.dart';
 
 const _testPresetId = 'preset-test';
 
 class _FakeExpertHubSource extends CompositeExpertHubSource {
   _FakeExpertHubSource()
-    : super(builtIns: const [], registry: _EmptyRegistry());
+    : super(builtIns: const [], registry: _EmptyRegistry(), localStore: LocalExpertStore(fs: InMemoryFilesystem(), dirOverride: AppPaths('/tp').memberHubLocalTemplatesDir), );
 
   @override
   Future<List<DiscoverableMember>> fetchMembers({
@@ -99,10 +101,11 @@ CliPresetsCubit _cliPresetsCubitWithPreset() {
 
 LaunchProfileCubit _emptyLaunchProfileCubit() {
   final cubit = LaunchProfileCubit(
+    storage: testHomeStorage,
     repository: testLaunchProfileRepository(
       Directory.systemTemp.createTempSync('automation_editor_empty_'),
     ),
-    sessionRepository: SessionRepository(),
+    sessionRepository: SessionRepository(storage: testHomeStorage),
     executableResolver: () => 'claude',
   );
   cubit.applyState(const LaunchProfileState(isLoading: false));
@@ -111,10 +114,11 @@ LaunchProfileCubit _emptyLaunchProfileCubit() {
 
 LaunchProfileCubit _teamLaunchProfileCubit() {
   final cubit = LaunchProfileCubit(
+    storage: testHomeStorage,
     repository: testLaunchProfileRepository(
       Directory.systemTemp.createTempSync('automation_editor_team_'),
     ),
-    sessionRepository: SessionRepository(),
+    sessionRepository: SessionRepository(storage: testHomeStorage),
     executableResolver: () => 'claude',
   );
   cubit.applyState(

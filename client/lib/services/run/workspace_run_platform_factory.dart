@@ -2,14 +2,13 @@ import '../../models/extension_manifest.dart';
 import '../../models/runtime_target.dart';
 import '../../models/run/run_ui_intent.dart';
 import '../../models/ssh_profile.dart';
-import '../../models/workspace_folder.dart';
 import '../../repositories/extension_repository.dart';
 import '../../repositories/ssh_profile_repository.dart';
 import '../../repositories/workspace_project_config_repository.dart';
 import '../extension/extension_detector.dart';
 import '../io/filesystem.dart';
 import '../ssh/ssh_client_factory.dart';
-import '../storage/app_storage.dart';
+import '../storage/home_storage.dart';
 import '../storage/runtime_context.dart';
 import '../storage/work_target_canonicalizer.dart';
 import '../terminal/workspace_terminal_run_service.dart';
@@ -44,6 +43,7 @@ class CreatedWorkspaceRunPlatform {
 /// [SessionLifecycleService.loadEnabledExtensionIds]).
 class WorkspaceRunPlatformFactory {
   WorkspaceRunPlatformFactory({
+    required HomeStorage storage,
     required ExtensionRepository extensionRepository,
     required WorkspaceProjectConfigRepository projectConfigRepository,
     Filesystem? fs,
@@ -54,10 +54,11 @@ class WorkspaceRunPlatformFactory {
     SshClientFactory? sshClientFactory,
     TerminalRunDepsResolver? terminalRunDeps,
     RuntimeTarget Function()? homeTarget,
-  }) : _extensionRepository = extensionRepository,
+  }) : _storage = storage,
+       _extensionRepository = extensionRepository,
        _projectConfigRepository = projectConfigRepository,
        _fs = fs,
-       _detector = detector ?? ExtensionDetector(),
+       _detector = detector ?? ExtensionDetector(storage: storage),
        _extensionPathFor = extensionPathFor,
        _resolveWorkContext = resolveWorkContext,
        _sshProfileRepository = sshProfileRepository,
@@ -65,6 +66,7 @@ class WorkspaceRunPlatformFactory {
        _homeTarget = homeTarget ?? (() => RuntimeTarget.local()),
        terminalRunDeps = terminalRunDeps ?? TerminalRunDepsResolver();
 
+  final HomeStorage _storage;
   final ExtensionRepository _extensionRepository;
   final WorkspaceProjectConfigRepository _projectConfigRepository;
   final Filesystem? _fs;
@@ -78,7 +80,7 @@ class WorkspaceRunPlatformFactory {
   /// Filled after [WorkspaceShellConnector] exists (see app_shell bootstrap).
   final TerminalRunDepsResolver terminalRunDeps;
 
-  Filesystem get _filesystem => _fs ?? AppStorage.fs;
+  Filesystem get _filesystem => _fs ?? _storage.fs;
 
   Future<CreatedWorkspaceRunPlatform> create({
     required String workspaceId,
@@ -174,7 +176,7 @@ class WorkspaceRunPlatformFactory {
 
   String _resolveExtensionPath(String extensionId) {
     final ctx = _filesystem.pathContext;
-    return ctx.join(AppStorage.paths.basePath, 'extensions', extensionId);
+    return ctx.join(_storage.paths.basePath, 'extensions', extensionId);
   }
 
   Future<List<ExtensionManifest>> _loadEnabledManifests(

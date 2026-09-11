@@ -14,6 +14,7 @@ import '../../cubits/workbench/workbench_tab.dart';
 import '../../l10n/l10n_extensions.dart';
 import '../selection_ai/selection_ai_menu_specs.dart';
 import '../selection_ai/selection_ask_ai.dart';
+import '../storage/home_storage.dart';
 import 'file_editor_ai_context.dart';
 
 /// Desktop/mobile context menu for [CodeEditor] (right-click / long-press).
@@ -45,6 +46,9 @@ class FileEditorContextMenuController implements SelectionToolbarController {
   }) {
     final l10n = context.l10n;
     final editorCubit = context.read<EditorCubit>();
+    // Home-plane storage for the AI-context relative path (app-scoped
+    // RepositoryProvider from the shell).
+    final storage = context.read<HomeStorage>();
     String? path = filePath;
     String? workspaceId = this.workspaceId;
     if (path == null || workspaceId == null) {
@@ -87,6 +91,7 @@ class FileEditorContextMenuController implements SelectionToolbarController {
                 text: formatEditorAiContext(
                   filePath: path,
                   controller: controller,
+                  storage: storage,
                 ),
               ),
             );
@@ -108,6 +113,7 @@ class FileEditorContextMenuController implements SelectionToolbarController {
               aiContext: formatEditorAiContext(
                 filePath: path,
                 controller: controller,
+                storage: storage,
               ),
               workspace: workspace,
               tabScopeId: workspaceId,

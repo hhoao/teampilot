@@ -8,6 +8,7 @@ import 'package:teampilot/models/hook_definition.dart';
 import 'package:teampilot/models/hook_entry.dart';
 import 'package:teampilot/models/hook_event.dart';
 import 'package:teampilot/pages/home_workspace/workspace/config/workspace_hooks_section.dart';
+import '../../../../support/post_frame_test_harness.dart';
 import 'package:teampilot/repositories/workspace_project_config_repository.dart';
 import 'package:teampilot/services/hook/hook_repository.dart';
 import 'package:teampilot/services/storage/workspace_layout.dart';
@@ -17,6 +18,8 @@ void main() {
   testWidgets('workspace hooks section lists library and toggles assignment', (
     tester,
   ) async {
+    setUpTestAppStorage();
+    addTearDown(tearDownTestAppStorage);
     final fs = InMemoryFilesystem();
     final hookRepository = HookRepository(fs: fs, teampilotRoot: '/root');
     await hookRepository.save(const HookDefinition(
@@ -29,6 +32,7 @@ void main() {
     addTearDown(hookCubit.close);
 
     final projectRepository = WorkspaceProjectConfigRepository(
+      storage: testHomeStorage,
       fs: fs,
       layout: WorkspaceLayout(teampilotRoot: '/root', fs: fs),
     );

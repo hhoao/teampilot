@@ -13,7 +13,7 @@ import '../io/filesystem.dart';
 import '../plugin/plugin_install_service.dart';
 import '../skill/skill_acquisition_engine.dart';
 import '../skill/skill_install_service.dart';
-import '../storage/app_storage.dart';
+import '../storage/home_storage.dart';
 import '../storage/runtime_context_registry.dart';
 import '../storage/work_target_canonicalizer.dart';
 import 'catalog_kind_registry.dart';
@@ -44,6 +44,7 @@ class CatalogRuntime {
   final Future<CatalogMcpSession?> Function(String sessionId) resolveSession;
 
   static CatalogRuntime assemble({
+    required HomeStorage storage,
     SessionRepository? sessions,
     RuntimeContextRegistry? runtimeContexts,
     SkillRepository? skillRepository,
@@ -64,20 +65,22 @@ class CatalogRuntime {
     Future<void> Function(String pluginId)? removePluginFromAllTeams,
     Future<void> Function(String mcpId)? removeMcpFromAllTeams,
   }) {
+    final home = storage;
     final mutationBus =
         bus ??
         CatalogMutationBus(
           dispatcher: EventPublisher.instance.attachedDispatcher,
         );
-    final configRepo = workspaceConfig ?? WorkspaceProjectConfigRepository();
+    final configRepo = workspaceConfig ?? WorkspaceProjectConfigRepository(storage: home);
     final binder = CatalogWorkspaceBinder(repo: configRepo);
-    final skills = skillRepository ?? SkillRepository();
-    final plugins = pluginRepository ?? PluginRepository();
-    final mcp = mcpRepository ?? McpRepository();
+    final skills = skillRepository ?? SkillRepository(storage: home);
+    final plugins = pluginRepository ?? PluginRepository(storage: home);
+    final mcp = mcpRepository ?? McpRepository(storage: home);
 
     final registry = CatalogKindRegistry()
       ..register(
         SkillCatalogModule(
+          storage: home,
           repository: skills,
           install: skillInstall ?? skills.install,
           binder: binder,
@@ -90,6 +93,7 @@ class CatalogRuntime {
       )
       ..register(
         PluginCatalogModule(
+          storage: home,
           repository: plugins,
           install: pluginInstall ?? plugins.install,
           binder: binder,
@@ -121,18 +125,20 @@ class CatalogRuntime {
         sessionId,
         sessions: sessions,
         runtimeContexts: runtimeContexts,
+        storage: home,
       ),
     );
   }
 
   /// `findById` → folder paths as [CatalogMcpSession.allowedRoots].
   ///
-  /// Work fs: cached/cheap launch target when available; otherwise
-  /// [AppStorage.fs] for local and [RuntimeContextRegistry] for ssh/wsl.
+  /// Work fs: cached/cheap launch target when available; otherwise the home
+  /// plane's filesystem for local and [RuntimeContextRegistry] for ssh/wsl.
   static Future<CatalogMcpSession?> resolveCatalogSession(
     String sessionId, {
     SessionRepository? sessions,
     RuntimeContextRegistry? runtimeContexts,
+    required HomeStorage storage,
   }) async {
     if (sessions == null) return null;
     final session = await sessions.findById(sessionId);
@@ -140,7 +146,11 @@ class CatalogRuntime {
     return CatalogMcpSession(
       sessionId: session.sessionId,
       workspaceId: session.workspaceId,
-      workFs: await workFsForSession(session, runtimeContexts: runtimeContexts),
+      workFs: await workFsForSession(
+        session,
+        runtimeContexts: runtimeContexts,
+        storage: storage,
+      ),
       allowedRoots: [
         for (final path in session.folderPaths)
           if (path.isNotEmpty) path,
@@ -153,8 +163,9 @@ class CatalogRuntime {
   static Future<Filesystem> workFsForSession(
     AppSession session, {
     RuntimeContextRegistry? runtimeContexts,
+    required HomeStorage storage,
   }) async {
-    if (runtimeContexts == null) return AppStorage.fs;
+    if (runtimeContexts == null) return storage.fs;
     final targetId = session.folders.isEmpty
         ? WorkspaceFolder.localTargetId
         : session.folders.first.targetId;
@@ -166,7 +177,7 @@ class CatalogRuntime {
     }
     final target = WorkTargetCanonicalizer.resolve(targetId, home: home);
     if (target.kind == RuntimeKind.local) {
-      return AppStorage.fs;
+      return storage.fs;
     }
     return (await runtimeContexts.forTarget(target)).fs;
   }

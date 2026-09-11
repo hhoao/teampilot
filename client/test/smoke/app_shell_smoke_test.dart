@@ -22,6 +22,7 @@ import '../support/fake_terminal_session.dart';
 import '../support/post_frame_test_harness.dart';
 import '../support/rust_lib_test_init.dart';
 import 'package:shared_ui/shared_ui.dart';
+import '../support/in_memory_filesystem.dart';
 
 void main() {
   setUpAll(initRustLibForTests);
@@ -53,9 +54,11 @@ void main() {
               FakeTerminalSession(
                 executable: executable,
                 scrollbackLines: scrollbackLines,
+                                   fs: InMemoryFilesystem(),
               ),
       postFrameScheduler: postFrame.scheduler,
       sessionRepository: desktopHarnessSessionRepo,
+                                 storage: testHomeStorage,
     );
     late final Workspace workspace;
     late final Directory workspaceDir;

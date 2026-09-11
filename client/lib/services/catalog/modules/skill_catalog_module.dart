@@ -9,7 +9,7 @@ import '../../io/filesystem.dart';
 import '../../skill/skill_acquisition_engine.dart';
 import '../../skill/skill_fetch_service.dart';
 import '../../skill/skill_install_service.dart';
-import '../../storage/app_storage.dart';
+import '../../storage/home_storage.dart';
 import '../catalog_kind.dart';
 import '../catalog_mcp_constants.dart';
 import '../catalog_mutation_bus.dart';
@@ -19,6 +19,7 @@ import 'skill_catalog_tools.dart';
 
 class SkillCatalogModule implements CatalogKindModule {
   SkillCatalogModule({
+    required this.storage,
     required this.repository,
     required this.install,
     required this.binder,
@@ -28,6 +29,9 @@ class SkillCatalogModule implements CatalogKindModule {
     this.onDeleted,
     WorkspaceProjectConfigRepository? workspaceConfig,
   }) : _workspaceConfig = workspaceConfig ?? binder.repo;
+
+  /// Home control-plane storage backing installed-skill reads/updates.
+  final HomeStorage storage;
 
   final SkillRepository repository;
   final SkillInstallService install;
@@ -103,7 +107,7 @@ class SkillCatalogModule implements CatalogKindModule {
 
   Future<CatalogResult> _read(CatalogRequest req) async {
     final skill = await _requireInstalled(_requireId(req));
-    final fs = AppStorage.fs;
+    final fs = storage.fs;
     final ctx = fs.pathContext;
     final dir = ctx.join(
       await repository.manifest.resolveSkillsDir(),
@@ -271,9 +275,10 @@ class SkillCatalogModule implements CatalogKindModule {
 
   Future<CatalogResult> _update(CatalogRequest req) async {
     final skill = await _requireInstalled(_requireId(req));
+    final fs = storage.fs;
     final files = await _collectFiles(
-      AppStorage.fs,
-      AppStorage.fs.pathContext.join(
+      fs,
+      fs.pathContext.join(
         await repository.manifest.resolveSkillsDir(),
         skill.directory,
       ),

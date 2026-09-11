@@ -1,75 +1,11 @@
 import 'dart:io';
+
 import 'package:flutter/foundation.dart';
 import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import '../../models/runtime_target.dart';
-import '../io/filesystem.dart';
-import '../io/local_filesystem.dart';
-import 'runtime_context.dart';
 
-/// Global business storage facade for the **control plane**: forwards to the
-/// bound home [RuntimeContext]. Bind once at bootstrap via [bindHome]
-/// (`RuntimeContextRegistry` pushes its `home()` here). Work-plane consumers
-/// resolve their own context via the registry instead of this facade.
-class AppStorage {
-  AppStorage._();
-
-  static RuntimeContext? _home;
-
-  /// Bind the home context (control plane). Synchronous so test setup stays
-  /// non-async; the registry calls this after ensureHome/rebindHome.
-  static void bindHome(RuntimeContext home) => _home = home;
-
-  static void unbindHome() => _home = null;
-
-  static bool get isInstalled => _home != null;
-
-  static RuntimeContext get context =>
-      _home ??
-      (throw StateError(
-        'AppStorage home not bound; call AppStorage.bindHome() at bootstrap.',
-      ));
-
-  static Filesystem get fs => _home?.filesystem ?? LocalFilesystem();
-
-  static AppPaths get paths => context.paths;
-
-  static String get home => context.home;
-
-  /// Default workspace for new workspaces and CLI sessions (native: app Documents).
-  static String get cwd => context.cwd;
-
-  static String get appDataRoot => context.appDataRoot;
-
-  static bool get usesPosixPaths => context.usesPosixPaths;
-
-  /// Test seam: bind a native home context rooted at [paths] (replaces the old
-  /// the removed global storage singleton install).
-  @visibleForTesting
-  static void installForTesting({
-    required Filesystem filesystem,
-    required AppPaths paths,
-    String home = '/home/test',
-    String cwd = '/home/test',
-  }) {
-    bindHome(
-      RuntimeContext(
-        target: RuntimeTarget.local(),
-        filesystem: filesystem,
-        home: home,
-        cwd: cwd,
-        appDataRoot: paths.basePath,
-        paths: paths,
-      ),
-    );
-    AppPathsBootstrapper.syncPaths(paths);
-  }
-
-  @visibleForTesting
-  static void resetForTesting() => unbindHome();
-}
-
+/// Pure path math over a TeamPilot app-data root — no runtime binding.
 @immutable
 class AppPaths {
   const AppPaths(this.basePath);

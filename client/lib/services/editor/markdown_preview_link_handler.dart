@@ -9,7 +9,7 @@ import 'package:path/path.dart' as p;
 import '../../cubits/chat_cubit.dart';
 import '../../services/editor/file_editor_theme.dart';
 import '../io/filesystem.dart';
-import '../storage/app_storage.dart';
+import '../storage/app_paths.dart';
 import '../workbench/workbench_editor_opener.dart';
 import '../workbench/workspace_href_handler.dart';
 import '../workspace/workspace_tools_scope.dart';

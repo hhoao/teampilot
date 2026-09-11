@@ -17,6 +17,7 @@ import 'package:teampilot/main.dart';
 
 import '../../../support/desktop_app_harness.dart';
 import '../../../support/fake_terminal_session.dart';
+import '../../../support/in_memory_filesystem.dart';
 import '../../../support/post_frame_test_harness.dart';
 import '../../../support/rust_lib_test_init.dart';
 
@@ -51,12 +52,14 @@ void main() {
       final teamCubit = await createTeamCubitInTest(tester);
       final chatCubit = ChatCubit(
         executableResolver: desktopHarnessExecutable,
+        storage: testHomeStorage,
         automationRepository: testAutomationRepository(),
         terminalSessionFactory:
             ({required String executable, int scrollbackLines = 10000}) =>
                 FakeTerminalSession(
                   executable: executable,
                   scrollbackLines: scrollbackLines,
+                  fs: InMemoryFilesystem(),
                 ),
         sessionRepository: desktopHarnessSessionRepo,
       );

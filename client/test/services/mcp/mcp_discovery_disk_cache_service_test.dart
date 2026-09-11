@@ -16,7 +16,7 @@ void main() {
       serverSpec: {'type': 'http', 'url': 'https://example.com/mcp'},
       tags: ['smithery'],
     );
-    final svc = McpDiscoveryDiskCacheService();
+    final svc = McpDiscoveryDiskCacheService(storage: testHomeStorage);
     await svc.write(
       sourceKey: mcpDiscoveryCacheSmithery,
       snapshot: McpDiscoveryDiskSnapshot(
@@ -37,7 +37,7 @@ void main() {
   });
 
   test('write skips non-empty query snapshots', () async {
-    final svc = McpDiscoveryDiskCacheService();
+    final svc = McpDiscoveryDiskCacheService(storage: testHomeStorage);
     await svc.write(
       sourceKey: mcpDiscoveryCacheOfficial,
       snapshot: McpDiscoveryDiskSnapshot(
@@ -59,7 +59,7 @@ void main() {
   });
 
   test('delete removes cached source directory', () async {
-    final svc = McpDiscoveryDiskCacheService();
+    final svc = McpDiscoveryDiskCacheService(storage: testHomeStorage);
     await svc.write(
       sourceKey: mcpDiscoveryCacheOfficial,
       snapshot: const McpDiscoveryDiskSnapshot(

@@ -29,5 +29,10 @@ class HomeTargetController {
       _registry.listTargets(wslDistro: wslDistro);
 
   /// Persist + rebind the home target, then reinstall + reload app data.
-  Future<void> select(String id) => _switchTo(id);
+  /// Same-target select is a no-op: Android Connect auto-selects the profile it
+  /// just connected as home; re-selecting it must not evict the live context.
+  Future<void> select(String id) {
+    if (currentId == id) return Future.value();
+    return _switchTo(id);
+  }
 }

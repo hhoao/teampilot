@@ -1,20 +1,25 @@
 import 'dart:convert';
 
 import '../io/filesystem.dart';
-import '../storage/app_storage.dart';
+import '../storage/home_storage.dart';
 import '../../models/team_generation_settings.dart';
 
 final class TeamGenerationSettingsStore {
-  TeamGenerationSettingsStore({Filesystem? fs, String? pathOverride})
-    : _fsOverride = fs,
-      _pathOverride = pathOverride;
+  TeamGenerationSettingsStore({
+    required HomeStorage storage,
+    Filesystem? fs,
+    String? pathOverride,
+  }) : _storage = storage,
+       _fsOverride = fs,
+       _pathOverride = pathOverride;
 
+  final HomeStorage _storage;
   final Filesystem? _fsOverride;
   final String? _pathOverride;
 
-  Filesystem get _fs => _fsOverride ?? AppStorage.fs;
+  Filesystem get _fs => _fsOverride ?? _storage.fs;
   String get _path =>
-      _pathOverride ?? AppStorage.paths.teamGenerationSettingsJson;
+      _pathOverride ?? _storage.paths.teamGenerationSettingsJson;
 
   Future<TeamGenerationSettings> load() async {
     try {

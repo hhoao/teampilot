@@ -13,6 +13,7 @@ import 'package:teampilot/services/storage/home_target_controller.dart';
 
 import '../../../support/test_home_target_controller.dart';
 import '../../../support/post_frame_test_harness.dart';
+import '../../../support/in_memory_filesystem.dart';
 
 void main() {
   testWidgets(
@@ -22,13 +23,14 @@ void main() {
         final tmp = await Directory.systemTemp.createTemp('ws_folders_');
         addTearDown(() => tmp.deleteSync(recursive: true));
 
-        final repo = SessionRepository(rootDir: tmp.path);
+        final repo = SessionRepository(rootDir: tmp.path, storage: fakeHomeStorage(), );
         final ws = await repo.createWorkspace([
           const WorkspaceFolder(path: '/proj'),
         ]);
         final chat = ChatCubit(
           executableResolver: () => 'flashskyai',
           automationRepository: testAutomationRepository(),
+                                storage: fakeHomeStorage(),
         );
         addTearDown(chat.close);
         chat.ingestWorkspaceSessionSnapshot(

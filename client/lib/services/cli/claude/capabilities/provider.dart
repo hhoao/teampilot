@@ -24,7 +24,7 @@ import '../../../catalog/catalog_mcp_policy.dart';
 import '../../../io/filesystem.dart';
 import '../../../remote/remote_credential_materializer.dart';
 import '../../../session/member_role_provision.dart';
-import '../../../storage/app_storage.dart';
+import '../../../storage/home_storage.dart';
 import '../../../team_bus/member_bus_idle_endpoint.dart';
 import '../../registry/capabilities/claude_family_hook_registry.dart';
 import '../../registry/capabilities/hook_capability.dart';
@@ -83,11 +83,17 @@ final class ClaudeProviderCapability extends CatalogModelCapability
   const ClaudeProviderCapability({
     ApiModelCatalogService? modelsService,
     ClaudeProviderCredentialsService? credentials,
+    this.storage,
   }) : _modelsService = modelsService,
        _credentials = credentials;
 
   final ApiModelCatalogService? _modelsService;
   final ClaudeProviderCredentialsService? _credentials;
+
+  /// Home control-plane storage injected at registry construction; used to
+  /// resolve the user home directory for credential actions. Null only for
+  /// `const`-constructed capabilities outside the registry (tests).
+  final HomeStorage? storage;
 
   ClaudeProviderCredentialsService? get _service => _credentials;
 
@@ -274,13 +280,9 @@ final class ClaudeProviderCapability extends CatalogModelCapability
     );
   }
 
-  static String _resolveHomeDirectory() {
-    if (!AppStorage.isInstalled) return '';
-    try {
-      return AppStorage.home;
-    } on Object {
-      return '';
-    }
+  String _resolveHomeDirectory() {
+    final home = storage?.home.trim() ?? '';
+    return home;
   }
 
   @override
@@ -350,6 +352,7 @@ final class ClaudeProviderCapability extends CatalogModelCapability
   }) async {
     final binding = resolveCredentialBinding(provider);
     final svc = ClaudeProviderCredentialsService(
+      storage: storage ?? _missingHomeStorage(),
       fs: fs,
       basePath: basePath,
       resolveHomeDirectory: () => home,
@@ -483,7 +486,10 @@ final class ClaudeProviderCapability extends CatalogModelCapability
 
     ClaudeLaunchExtras? claude;
     if (team != null) {
-      final resolver = _claudeResolver(catalog);
+      final resolver = _claudeResolver(
+        catalog,
+        storage: storage ?? _missingHomeStorage(),
+      );
       final globalPresets = await _loadGlobalPresets(catalog);
       claude = await resolveLaunchExtras(
         team: team,
@@ -509,7 +515,10 @@ final class ClaudeProviderCapability extends CatalogModelCapability
       final member =
           ctx.member ??
           (throw StateError('Simple launch requires plan.member'));
-      final resolver = _claudeResolver(catalog);
+      final resolver = _claudeResolver(
+        catalog,
+        storage: storage ?? _missingHomeStorage(),
+      );
       var providerId = member.provider.trim();
       // Expert packs / empty presets often omit provider. Without a fallback,
       // official OAuth credentials are never linked into CLAUDE_CONFIG_DIR and
@@ -759,6 +768,7 @@ final class ClaudeProviderCapability extends CatalogModelCapability
     return WorkspaceTrustProvisioner(
       layout: delegate.layout,
       fs: delegate.fs,
+      storage: storage ?? _missingHomeStorage(),
     ).provisionWorkspace(
       workspaceId: workspaceId,
       directories: [
@@ -769,6 +779,8 @@ final class ClaudeProviderCapability extends CatalogModelCapability
       tools: const [ClaudeProviderCapability.toolId],
     );
   }
+
+  HomeStorage _missingHomeStorage() => HomeStorage.nativeDefault();
 
   Future<ClaudeLaunchExtras> resolveLaunchExtras({
     required TeamProfile team,
@@ -810,6 +822,7 @@ final class ClaudeProviderCapability extends CatalogModelCapability
   ) async {
     final providers = await providerCatalogRepository(
       catalog,
+      storage: storage ?? _missingHomeStorage(),
     ).loadProviders(CliTool.claude);
     if (providers.isEmpty) return null;
     if (providers.length == 1) return providers.first.id;
@@ -867,6 +880,7 @@ final class ClaudeProviderCapability extends CatalogModelCapability
     if (crossMachine) {
       final copied =
           await CrossMachineCredentialBridge.materializeClaudeCredential(
+            storage: storage ?? _missingHomeStorage(),
             catalog: catalog,
             work: delegate,
             providerId: providerId,
@@ -879,6 +893,7 @@ final class ClaudeProviderCapability extends CatalogModelCapability
     }
 
     final credentials = ClaudeProviderCredentialsService(
+      storage: storage ?? _missingHomeStorage(),
       fs: delegate.fs,
       basePath: delegate.basePath,
       resolveHomeDirectory: () => delegate.home,
@@ -895,10 +910,12 @@ final class ClaudeProviderCapability extends CatalogModelCapability
   }
 
   static ClaudeProviderSettingsResolver _claudeResolver(
-    ConfigProfilePaths catalog,
-  ) => ClaudeProviderSettingsResolver(
+    ConfigProfilePaths catalog, {
+    required HomeStorage storage,
+  }) => ClaudeProviderSettingsResolver(
     basePath: catalog.basePath,
-    repository: providerCatalogRepository(catalog),
+    storage: storage,
+    repository: providerCatalogRepository(catalog, storage: storage),
   );
 
   /// Official credential linking follows the launched member's provider in
@@ -930,6 +947,7 @@ final class ClaudeProviderCapability extends CatalogModelCapability
   ) async {
     final providers = await providerCatalogRepository(
       catalog,
+      storage: storage ?? _missingHomeStorage(),
     ).loadProviders(CliTool.claude);
     final provider = providers.where((p) => p.id == providerId).firstOrNull;
     if (provider == null) return CredentialBindingKind.linked;

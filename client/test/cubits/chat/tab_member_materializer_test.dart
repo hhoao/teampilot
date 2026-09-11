@@ -37,7 +37,7 @@ void main() {
   test(
     'mixed materialize waits without duplicate connect while bus boots',
     () async {
-      final store = ChatTabStore();
+      final store = ChatTabStore(storage: testHomeStorage);
       store.setActiveWorkspaceId('ws-1');
       final tab =
           ChatTab(
@@ -93,7 +93,7 @@ void main() {
   test(
     'materialize exits when its tab is removed while awaiting connect',
     () async {
-      final store = ChatTabStore();
+      final store = ChatTabStore(storage: testHomeStorage);
       store.setActiveWorkspaceId('ws-1');
       final tab =
           ChatTab(
@@ -154,7 +154,7 @@ void main() {
   test(
     'materialize resolves numbered instance ids from session roster',
     () async {
-      final store = ChatTabStore();
+      final store = ChatTabStore(storage: testHomeStorage);
       store.setActiveWorkspaceId('ws-1');
       final tab =
           ChatTab(
@@ -224,7 +224,7 @@ void main() {
   test(
     'personal materialize hangs until markMemberReady when shell not running',
     () async {
-      final store = ChatTabStore();
+      final store = ChatTabStore(storage: testHomeStorage);
       store.setActiveWorkspaceId('ws-1');
       final tab =
           ChatTab(
@@ -272,7 +272,7 @@ void main() {
   );
 
   test('input readiness exits when the session tab no longer exists', () async {
-    final store = ChatTabStore();
+    final store = ChatTabStore(storage: testHomeStorage);
     store.setActiveWorkspaceId('ws-1');
     final materializer = TabMemberMaterializer(
       runtime: TabSessionRuntimeCoordinator(

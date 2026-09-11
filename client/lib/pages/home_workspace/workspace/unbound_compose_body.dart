@@ -1,3 +1,4 @@
+import '../../../widgets/home_storage_scope.dart';
 import 'dart:async';
 
 import 'package:flutter/foundation.dart';
@@ -35,9 +36,10 @@ import '../../../services/compose/compose_file_drop_ingestor.dart';
 import '../../../services/compose/compose_landing_bundle.dart';
 import '../../../services/compose/compose_text_edit.dart';
 import '../../../services/compose/compose_voice_input.dart';
-import '../../../services/storage/app_storage.dart';
+import '../../../services/storage/home_storage.dart';
 import '../../../services/expert_hub/expert_capability_resolver.dart';
 import '../../../services/expert_hub/expert_hub_recent_store.dart';
+import '../../../services/expert_hub/local_expert_store.dart';
 import '../../../services/expert_hub/expert_landing_preflight.dart';
 import '../../../services/expert_hub/expert_member_resolver.dart';
 import '../../../services/cli/registry/cli_tool_registry.dart';
@@ -140,18 +142,26 @@ class _UnboundComposeBodyState extends State<UnboundComposeBody> {
   String? _selectedWorktreePath;
   List<RuntimeTarget> _runtimeTargets = const [];
   Future<void>? _runtimeTargetsLoad;
-  final _launchGate = WorkspaceLandingLaunchGate();
+  late final _launchGate = WorkspaceLandingLaunchGate(
+    storage: homeStorageOf(context),
+  );
   var _teamConfigLaunchReady = true;
   WorkspaceLandingLaunchBlock? _launchWarningBlock;
   int _teamLaunchReadinessGeneration = 0;
   ConfigBundle _workspaceProjectBundle = const ConfigBundle();
   int _workspaceBundleGeneration = 0;
   String? _lastRouteExpert;
-  final _expertRecentStore = ExpertHubRecentStore();
+  late final _expertRecentStore = ExpertHubRecentStore(
+    storage: homeStorageOf(context),
+  );
   List<String> _recentExpertKeys = const [];
-  final _teamRecentStore = TeamLandingRecentStore();
+  late final _teamRecentStore = TeamLandingRecentStore(
+    storage: homeStorageOf(context),
+  );
   List<String> _recentTeamIds = const [];
   CascadeCatalogListenable? _cascadeCatalog;
+
+  HomeStorage get _homeStorage => homeStorageOf(context);
 
   @override
   void initState() {
@@ -228,6 +238,7 @@ class _UnboundComposeBodyState extends State<UnboundComposeBody> {
       composeDraftCache.saveLanding(
         widget.workspace.workspaceId,
         _controller.text,
+        storage: _homeStorage,
       ),
     );
   }
@@ -236,6 +247,7 @@ class _UnboundComposeBodyState extends State<UnboundComposeBody> {
     final draft = await composeDraftCache.hydrateLanding(
       widget.workspace.workspaceId,
       shouldSeed: () => mounted && _controller.text.isEmpty,
+      storage: _homeStorage,
     );
     if (!mounted ||
         _controller.text.isNotEmpty ||
@@ -407,7 +419,8 @@ class _UnboundComposeBodyState extends State<UnboundComposeBody> {
     await pickAndInsertComposeFileReferences(
       controller: _controller,
       workspaceRoot: _activeLaunchDirectory(),
-      filesystem: AppStorage.fs,
+      usesPosixPaths: _homeStorage.usesPosixPaths,
+      filesystem: _homeStorage.fs,
     );
     if (!mounted) return;
     setState(() {});
@@ -417,6 +430,7 @@ class _UnboundComposeBodyState extends State<UnboundComposeBody> {
   ComposeFileDropIngestor _composeDropIngestor() {
     return ComposeFileDropIngestor(
       workspaceRoot: _activeLaunchDirectory(),
+      usesPosixPaths: _homeStorage.usesPosixPaths,
       onInsertReferences: _insertComposeReferences,
     );
   }
@@ -433,6 +447,7 @@ class _UnboundComposeBodyState extends State<UnboundComposeBody> {
     final pasted = await pasteComposeImageAttachment(
       controller: _controller,
       workspaceRoot: _activeLaunchDirectory(),
+      usesPosixPaths: _homeStorage.usesPosixPaths,
     );
     if (pasted && mounted) setState(() {});
     return pasted;
@@ -477,9 +492,11 @@ class _UnboundComposeBodyState extends State<UnboundComposeBody> {
   Future<void> _loadWorkspaceProjectBundle() async {
     final generation = ++_workspaceBundleGeneration;
     try {
-      final config = await WorkspaceProjectConfigRepository().load(
-        widget.workspace.workspaceId,
-      );
+      // Shim-era fallback: constructs against the bound home context until
+      // the workspace bundle is threaded from the parent (removed in 6-C).
+      final config = await WorkspaceProjectConfigRepository(
+        storage: _homeStorage,
+      ).load(widget.workspace.workspaceId);
       if (!mounted || generation != _workspaceBundleGeneration) return;
       setState(() => _workspaceProjectBundle = config.bundle);
     } on Object {
@@ -538,6 +555,7 @@ class _UnboundComposeBodyState extends State<UnboundComposeBody> {
   Future<void> _loadDraft() async {
     final draft = await resolveLandingDraft(
       workspaceId: widget.workspace.workspaceId,
+      storage: _homeStorage,
       simpleModeDefaultFullAccess: context
           .read<SessionPreferencesCubit>()
           .state
@@ -559,6 +577,10 @@ class _UnboundComposeBodyState extends State<UnboundComposeBody> {
       }
       final resolved = await ExpertMemberResolver.resolveMember(
         key: rawExpert,
+        localStore: LocalExpertStore(
+          fs: _homeStorage.fs,
+          dirOverride: _homeStorage.paths.memberHubLocalTemplatesDir,
+        ),
         hubState: hubCubit?.state,
         cubit: hubCubit,
       );
@@ -773,6 +795,7 @@ class _UnboundComposeBodyState extends State<UnboundComposeBody> {
   WorkspaceLandingProjectResolver _projectResolver() {
     return WorkspaceLandingProjectResolver(
       workspace: widget.workspace,
+      usesPosixPaths: _homeStorage.usesPosixPaths,
       runtimeTargets: _runtimeTargets,
       storedProjectPath: _selectedProjectPath,
     );
@@ -790,6 +813,7 @@ class _UnboundComposeBodyState extends State<UnboundComposeBody> {
     }
     return WorkspaceLandingWorktreeResolver(
       projectPath: projectPath,
+      usesPosixPaths: _homeStorage.usesPosixPaths,
       worktreeState: worktreeState,
       storedWorktreePath: _selectedWorktreePath,
       cachedWorktrees: cubit?.worktreesForProject(projectPath) ?? const [],
@@ -798,7 +822,10 @@ class _UnboundComposeBodyState extends State<UnboundComposeBody> {
 
   Future<void> _selectProject(Object? value) async {
     if (value is! String || value.trim().isEmpty) return;
-    final path = normalizeWorkspacePath(value);
+    final path = normalizeWorkspacePath(
+      value,
+      usesPosixPaths: _homeStorage.usesPosixPaths,
+    );
     setState(() {
       _selectedProjectPath = path;
       _selectedWorktreePath = null;
@@ -824,7 +851,10 @@ class _UnboundComposeBodyState extends State<UnboundComposeBody> {
 
   void _selectWorktree(Object? value) {
     if (value is! String || value.trim().isEmpty) return;
-    final path = normalizeWorkspacePath(value);
+    final path = normalizeWorkspacePath(
+      value,
+      usesPosixPaths: _homeStorage.usesPosixPaths,
+    );
     setState(() => _selectedWorktreePath = path);
     _persistDraft();
     try {
@@ -836,15 +866,37 @@ class _UnboundComposeBodyState extends State<UnboundComposeBody> {
 
   void _syncLaunchFromWorktree(WorktreeState state) {
     final projectPath = _projectResolver().resolveSelectedProjectPath();
-    if (!workspacePathsEqual(state.repoPath, projectPath)) return;
-    final path = normalizeWorkspacePath(state.currentWorktreePath);
+    if (!workspacePathsEqual(
+      state.repoPath,
+      projectPath,
+      usesPosixPaths: _homeStorage.usesPosixPaths,
+    )) {
+      return;
+    }
+    final path = normalizeWorkspacePath(
+      state.currentWorktreePath,
+      usesPosixPaths: _homeStorage.usesPosixPaths,
+    );
     if (path.isEmpty) return;
     final resolver = _worktreeResolver(state);
-    if (!resolver.options.any((o) => workspacePathsEqual(o.path, path))) {
+    if (!resolver.options.any(
+      (o) => workspacePathsEqual(
+        o.path,
+        path,
+        usesPosixPaths: _homeStorage.usesPosixPaths,
+      ),
+    )) {
       return;
     }
     final stored = _selectedWorktreePath?.trim() ?? '';
-    if (stored.isNotEmpty && workspacePathsEqual(stored, path)) return;
+    if (stored.isNotEmpty &&
+        workspacePathsEqual(
+          stored,
+          path,
+          usesPosixPaths: _homeStorage.usesPosixPaths,
+        )) {
+      return;
+    }
     setState(() => _selectedWorktreePath = path);
     _persistDraft();
   }
@@ -894,7 +946,11 @@ class _UnboundComposeBodyState extends State<UnboundComposeBody> {
 
   void _persistDraft() {
     unawaited(
-      persistLandingDraft(widget.workspace.workspaceId, _currentDraft()),
+      persistLandingDraft(
+        widget.workspace.workspaceId,
+        _currentDraft(),
+        storage: _homeStorage,
+      ),
     );
   }
 
@@ -1628,7 +1684,10 @@ class _UnboundComposeBodyState extends State<UnboundComposeBody> {
             widget.workspace.workspaceId,
             path,
             preview: true,
-            fs: filesystemForComposeAtFileOpen(path),
+            fs: filesystemForComposeAtFileOpen(
+              path,
+              workspaceFilesystem: _homeStorage.fs,
+            ),
           ),
         );
       },

@@ -24,6 +24,7 @@ void main() {
   });
 
   AppProviderRepository repo() => AppProviderRepository(
+    storage: fakeHomeStorage(filesystem: fs),
     fs: fs,
     basePath: '/tp',
     linkedCredentialLookup: (id) async => id == 'm1' ? linkedSecret : null,
@@ -88,6 +89,7 @@ void main() {
     // The path is derived exactly as the strategy does (RuntimeLayout without
     // an injected fs), so the assertion holds under any platform path style.
     final r = AppProviderRepository(
+      storage: fakeHomeStorage(filesystem: fs),
       fs: fs,
       basePath: '/tp',
       linkedCredentialLookup: (id) async => id == 'm1' ? 'sk-live' : null,
@@ -98,6 +100,7 @@ void main() {
     );
     final configFile = RuntimeLayout(
       teampilotRoot: '/tp',
+      fs: fs,
     ).appFlashskyaiLlmConfigFile;
     final raw = await fs.readString(configFile);
     expect(raw, isNotNull);

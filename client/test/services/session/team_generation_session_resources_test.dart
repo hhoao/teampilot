@@ -1,5 +1,4 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:teampilot/app/team_generation_graph.dart';
 import 'package:teampilot/models/app_session.dart';
 import 'package:teampilot/models/config_bundle.dart';
 import 'package:teampilot/models/runtime_target.dart';
@@ -7,13 +6,13 @@ import 'package:teampilot/models/team_config.dart';
 import 'package:teampilot/models/team_generation_settings.dart';
 import 'package:teampilot/services/catalog/catalog_mcp_constants.dart';
 import 'package:teampilot/services/cli/registry/cli_tool_registry.dart';
+import 'package:teampilot/services/cli/registry/cli_bootstrap.dart';
 import 'package:teampilot/services/launch/manifest_executor.dart';
 import 'package:teampilot/services/launch/session_shell_connector.dart';
 import 'package:teampilot/services/resource/contribution/resource_origin.dart';
 import 'package:teampilot/services/resource/resource_provider_set.dart';
 import 'package:teampilot/services/resource/providers/skill_contribution_provider.dart';
 import 'package:teampilot/services/session/session_lifecycle_service.dart';
-import 'package:teampilot/services/storage/app_storage.dart';
 import 'package:teampilot/services/team_generation/mcp/team_composer_mcp_constants.dart';
 import 'package:teampilot/services/team_generation/providers/managed_team_builder_skill_provider.dart';
 import 'package:teampilot/services/team_generation/providers/team_builder_skill_md.dart';
@@ -21,8 +20,38 @@ import 'package:teampilot/services/team_generation/providers/team_builder_skill_
 import '../../support/in_memory_filesystem.dart';
 import '../../support/post_frame_test_harness.dart';
 
+
+/// Test-local stand-in for `TeamGenerationGraph.resourceProvidersForSession`
+/// (now an instance member on the graph): injects the managed team-builder
+/// skill for builder sessions only.
+ResourceProviderSet _graphResourceProvidersForSession(
+  AppSession session,
+  ResourceProviderSet defaults,
+) {
+  if (session.purpose != SessionPurpose.teamGeneration) return defaults;
+  if (defaults.skills.any(
+    (provider) => provider.providerId == ManagedTeamBuilderSkillProvider.skillId,
+  )) {
+    return defaults;
+  }
+  return ResourceProviderSet(
+    prompts: defaults.prompts,
+    skills: [
+      ...defaults.skills,
+      ManagedTeamBuilderSkillProvider(storage: buildTestHomeStorage()),
+    ],
+    mcp: defaults.mcp,
+    hooks: defaults.hooks,
+  );
+}
+
 void main() {
-  setUp(setUpTestAppStorage);
+  setUp(() {
+    setUpTestAppStorage();
+    CliToolRegistry.builtIn().configure(
+      CliBootstrap(const {}, storage: testHomeStorage),
+    );
+  });
   tearDown(tearDownTestAppStorage);
 
   test(
@@ -42,8 +71,8 @@ void main() {
       );
 
       final lifecycle = SessionLifecycleService(
-        resourceProviderResolver:
-            TeamGenerationGraph.resourceProvidersForSession,
+        storage: buildTestHomeStorage(),
+        resourceProviderResolver: _graphResourceProvidersForSession,
       );
       final builderDefaults = lifecycle.resourceProvidersForSession(
         builderSession,
@@ -87,8 +116,8 @@ void main() {
         createdAt: 1,
       );
       final lifecycle = SessionLifecycleService(
-        resourceProviderResolver:
-            TeamGenerationGraph.resourceProvidersForSession,
+        storage: buildTestHomeStorage(),
+        resourceProviderResolver: _graphResourceProvidersForSession,
       );
       final providers = lifecycle.resourceProvidersForSession(
         builder,
@@ -117,6 +146,7 @@ void main() {
             composerEndpoint: Uri.parse(
               'http://127.0.0.1:4312/team-composer/mcp',
             ),
+            isLocalNative: true,
             teamGenerationTokenIssuer: (_) => 'workflow-token',
           );
 
@@ -173,9 +203,9 @@ void main() {
         createdAt: 1,
       );
       final lifecycle = SessionLifecycleService(
-        appDataBasePath: AppStorage.paths.basePath,
-        resourceProviderResolver:
-            TeamGenerationGraph.resourceProvidersForSession,
+        storage: buildTestHomeStorage(),
+        appDataBasePath: testHomeStorage.paths.basePath,
+        resourceProviderResolver: _graphResourceProvidersForSession,
       );
       final roots = await lifecycle.resolveWorkContextForTargetId('local');
       final svc = await lifecycle.configProfileServiceFor(roots);

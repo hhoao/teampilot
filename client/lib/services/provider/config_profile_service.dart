@@ -52,7 +52,8 @@ import '../cli/claude/team_roster_service.dart';
 import '../cli/cursor/provider/cursor_workspace_warm_tier.dart';
 import '../cli/cursor/provider/cursor_home_layout.dart';
 import '../cli/registry/capabilities/cli_session_capability.dart';
-import '../storage/app_storage.dart';
+import '../storage/app_paths.dart';
+import '../storage/home_storage.dart';
 import '../cli/preset_resolver.dart';
 import '../hook/hook_library_resolver.dart';
 import '../resource/providers/hook_library_contribution_provider.dart';
@@ -85,6 +86,7 @@ class ConfigProfileService implements ConfigProfileDelegate {
 
   ConfigProfileService({
     required String basePath,
+    required HomeStorage storage,
     String? home,
     Filesystem? fs,
     RuntimeLayout? layout,
@@ -110,10 +112,11 @@ class ConfigProfileService implements ConfigProfileDelegate {
     WorkspaceProjectConfigRepository? projectConfigRepository,
   }) : _infra = ConfigProfileInfrastructure(
          basePath: basePath,
-         home: home,
          layout:
              layout ??
-             RuntimeLayout(teampilotRoot: basePath, fs: fs ?? AppStorage.fs),
+             RuntimeLayout(teampilotRoot: basePath, fs: fs ?? storage.fs),
+         storage: storage,
+         home: home,
          fs: fs,
          loadEnabledExtensionIds: loadEnabledExtensionIds,
          extensionDetector: extensionDetector,
@@ -345,7 +348,7 @@ class ConfigProfileService implements ConfigProfileDelegate {
       ResourceProviderSet(
         prompts: const [CatalogPromptProvider()],
         skills: [
-          ManagedCatalogSkillProvider(),
+          ManagedCatalogSkillProvider(storage: _infra.storage),
           CatalogSkillContributionProvider(catalog: catalog),
           PluginSkillContributionProvider(
             catalog: catalog,
@@ -729,7 +732,11 @@ class ConfigProfileService implements ConfigProfileDelegate {
     ).ensureSessionMarketplacesLinked(configDir: configDir, tool: cli);
     final pluginProvisioner = _cliRegistry.capability<PluginCapability>(cli);
     final warmTier = CursorWorkspaceWarmTier.applies(team: team, cli: cli);
-    final mcpRegistry = McpRegistryService(fs: fs, layout: layout);
+    final mcpRegistry = McpRegistryService(
+      fs: fs,
+      layout: layout,
+      storage: _infra.storage,
+    );
     McpRegistryAssembly? mcpAssembly;
     List<Plugin>? installedCatalog;
     if (pluginProvisioner != null) {
@@ -882,6 +889,7 @@ class ConfigProfileService implements ConfigProfileDelegate {
       await WorkspaceTrustProvisioner(
         layout: layout,
         fs: fs,
+        storage: _infra.storage,
       ).provisionWorkspace(
         workspaceId: trimmedWorkspaceId,
         directories: paths,
@@ -955,7 +963,11 @@ class ConfigProfileService implements ConfigProfileDelegate {
     );
 
     final pluginProvisioner = _cliRegistry.capability<PluginCapability>(cli);
-    final mcpRegistry = McpRegistryService(fs: fs, layout: layout);
+    final mcpRegistry = McpRegistryService(
+      fs: fs,
+      layout: layout,
+      storage: _infra.storage,
+    );
     List<Plugin>? installedCatalog;
     String? pluginPoolDir;
     PluginBundlePoolResult? poolResult;
@@ -1435,6 +1447,7 @@ class ConfigProfileService implements ConfigProfileDelegate {
     final mcpRegistry = McpRegistryService(
       fs: stagingFs,
       layout: staging.layout,
+      storage: staging._infra.storage,
     );
     final mcpProviders = await mcpRegistry.providersForTeam(
       cli: launchCli,

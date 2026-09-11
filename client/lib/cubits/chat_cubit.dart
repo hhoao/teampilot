@@ -24,7 +24,7 @@ import '../repositories/automation_repository.dart';
 import '../repositories/session_repository.dart';
 import '../services/workspace/workspace_icon_service.dart';
 import '../services/workspace/workspace_icon_storage.dart';
-import '../services/storage/app_storage.dart';
+import '../services/storage/home_storage.dart';
 import '../services/session/ai_history_loader.dart';
 import '../services/session/session_activity_reduce.dart';
 import '../services/session/failed_message_store.dart';
@@ -109,6 +109,7 @@ class ChatCubit extends Cubit<ChatState>
     implements SessionLaunchHost {
   ChatCubit({
     required String Function() executableResolver,
+    required HomeStorage storage,
     CliExecutableResolver? cliExecutableResolver,
     TerminalSessionFactory terminalSessionFactory =
         defaultTerminalSessionFactory,
@@ -176,7 +177,10 @@ class ChatCubit extends Cubit<ChatState>
        _autoLaunchAllMembersOnConnect = autoLaunchAllMembersOnConnect,
        _reclaimIdleTerminalsEnabled = reclaimIdleTerminalsEnabled,
        _reclaimIdleTerminalAfterSeconds = reclaimIdleTerminalAfterSeconds,
-       _lifecycle = lifecycleService ?? SessionLifecycleService(),
+       _lifecycle = lifecycleService ?? SessionLifecycleService(storage: storage),
+       _storage = storage,
+       _tabStore = ChatTabStore(storage: storage),
+       _dataStore = SessionDataStore(storage: storage),
        _sessionRepository = sessionRepository,
        _followUpQueue = followUpQueueStore ?? InMemoryFollowUpQueueStore(),
        _termuxConnectedResolver = termuxConnectedResolver,
@@ -300,8 +304,8 @@ class ChatCubit extends Cubit<ChatState>
     );
   }
 
-  final ChatTabStore _tabStore = ChatTabStore();
-  final SessionDataStore _dataStore = SessionDataStore();
+  final ChatTabStore _tabStore;
+  final SessionDataStore _dataStore;
 
   /// Per-session [SessionPod] values, keyed by session id. The launch/connect
   /// lifecycle (Task 6) drives `phase`; the workbench overlay derives from the
@@ -321,6 +325,7 @@ class ChatCubit extends Cubit<ChatState>
   final Map<String, Future<void>> _sessionHydrationByWorkspace = {};
   late final SessionLaunchService _launchService = SessionLaunchService(
     this,
+    storage: _storage,
     termuxWorkOpsBlockFor: _termuxWorkOpsBlockFor,
     onSessionTabOpened: _forwardSessionTabOpened,
   );
@@ -432,6 +437,7 @@ class ChatCubit extends Cubit<ChatState>
     isDirectPtyLifecycleReady: _launchService.isMemberDirectPtyLifecycleReady,
   );
   late final TabTeamBusCoordinator _teamBus = TabTeamBusCoordinator(
+    storage: _storage,
     gateway: _teammateBusMcpGateway,
     tabStore: _tabStore,
     materializer: _memberMaterializer,
@@ -475,6 +481,7 @@ class ChatCubit extends Cubit<ChatState>
                       folders: session.folders,
                       createdAt: 0,
                     ),
+                usesPosixPaths: _storage.usesPosixPaths,
               ),
               memberId: memberId,
             )
@@ -493,6 +500,7 @@ class ChatCubit extends Cubit<ChatState>
                 folders: session.folders,
                 createdAt: 0,
               ),
+          usesPosixPaths: _storage.usesPosixPaths,
         );
         final cwd = _lifecycle.memberWorkDirs(ctx, memberId).workingDirectory;
         return cwd.isEmpty ? '.teampilot-inbox' : '$cwd/.teampilot-inbox';
@@ -508,6 +516,7 @@ class ChatCubit extends Cubit<ChatState>
   final bool Function()? _reclaimIdleTerminalsEnabled;
   final int Function()? _reclaimIdleTerminalAfterSeconds;
   final SessionLifecycleService _lifecycle;
+  final HomeStorage _storage;
   final SessionRepository? _sessionRepository;
 
   @override
@@ -596,8 +605,10 @@ class ChatCubit extends Cubit<ChatState>
     onCancelSeedHistoryPending?.call(sessionId, text);
   }
 
-  FailedMessageStore get _failedMessageStore =>
-      FailedMessageStore(fs: AppStorage.fs, rootPath: AppStorage.appDataRoot);
+  FailedMessageStore get _failedMessageStore => FailedMessageStore(
+    fs: _storage.fs,
+    rootPath: _storage.appDataRoot,
+  );
 
   /// Persists the optimistic user bubble for landing create+send (same record
   /// model as History continue) so it survives tab close and app restart.
@@ -810,6 +821,7 @@ class ChatCubit extends Cubit<ChatState>
       _sessionConnect ??
       (_defaultSessionConnect ??= buildDefaultSessionConnectOrchestrator(
         lifecycle: _lifecycle,
+        storage: _storage,
         localCliPath: (cli) async => _shellFactory.executableFor(cli),
         sshClientFactory: _shellFactory.sshClientFactory,
         profileById: _shellFactory.profileById,
@@ -1727,7 +1739,7 @@ class ChatCubit extends Cubit<ChatState>
   /// Session workspace path for the active tab (used to resolve relative file links).
   String get activeTabWorkingDirectory {
     final tab = _activeTab;
-    if (tab == null) return AppStorage.cwd;
+    if (tab == null) return _storage.cwd;
     return _tabStore
         .workingDirectoryAndAddDirsForTab(
           tab,
@@ -2634,6 +2646,7 @@ class ChatCubit extends Cubit<ChatState>
       await composeDraftCache.clearSessionPersistent(
         session.workspaceId,
         sessionId,
+        storage: _storage,
       );
     }
     final sessions = state.sessions

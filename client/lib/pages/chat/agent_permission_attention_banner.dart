@@ -23,6 +23,7 @@ import '../../services/cli/registry/capabilities/chat_interaction_capability.dar
 import '../../services/cli/registry/cli_tool_registry.dart';
 import '../../services/cli/registry/cli_tool_registry_scope.dart';
 import '../../services/compose/compose_at_file_refs.dart';
+import '../../widgets/home_storage_scope.dart';
 import '../../services/terminal/ask_user_question_answer_service.dart';
 import '../../services/terminal/exit_plan_mode_approval_service.dart';
 import '../../services/terminal/session_member_cli_resolver.dart';
@@ -316,7 +317,10 @@ class AgentPermissionAttentionBanner extends StatelessWidget {
                 session.workspaceId,
                 path,
                 preview: true,
-                fs: filesystemForComposeAtFileOpen(path),
+                fs: filesystemForComposeAtFileOpen(
+                path,
+                workspaceFilesystem: homeStorageOf(context).fs,
+              ),
               ),
             );
           },

@@ -2,6 +2,7 @@ import 'dart:math' as math;
 
 import '../../models/ai_feature_setting.dart';
 import '../../models/team_config.dart';
+import '../storage/home_storage.dart';
 import 'headless_ai_service.dart' show HeadlessAiService;
 import 'team_config_draft.dart';
 import 'team_config_prompt.dart';
@@ -29,10 +30,15 @@ class TeamConfigGenerator {
     TeamHeadlessRunner? runHeadless,
     TeamHeadlessStreamRunner? runHeadlessStream,
     HeadlessAiService? service,
+    HomeStorage? storage,
   }) : _run =
            runHeadless ??
            (({required setting, required prompt, required expectJson}) async {
-             final svc = service ?? HeadlessAiService();
+             final svc =
+                 service ??
+                 HeadlessAiService(
+                   storage: storage ?? HomeStorage.nativeDefault(),
+                 );
              final r = await svc.run(
                setting: setting,
                prompt: prompt,
@@ -43,7 +49,11 @@ class TeamConfigGenerator {
        _runStreaming =
            runHeadlessStream ??
            (({required setting, required prompt, required onEvent}) async {
-             final svc = service ?? HeadlessAiService();
+             final svc =
+                 service ??
+                 HeadlessAiService(
+                   storage: storage ?? HomeStorage.nativeDefault(),
+                 );
              final r = await svc.runStreaming(
                setting: setting,
                prompt: prompt,

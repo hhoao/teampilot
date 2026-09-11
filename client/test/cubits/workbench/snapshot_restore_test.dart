@@ -10,7 +10,8 @@ import 'package:teampilot/cubits/workbench/workbench_tab.dart';
 import 'package:teampilot/repositories/workbench_layout_snapshot_repository.dart';
 import 'package:teampilot/services/storage/workspace_layout.dart';
 
-import '../../support/in_memory_filesystem.dart';
+import '../../support/in_memory_filesystem.dart'
+    show InMemoryFilesystem, fakeHomeStorage;
 
 const _root = '/tp-root';
 const _ws = 'ws';
@@ -28,6 +29,7 @@ void main() {
     fs = InMemoryFilesystem();
     repo = WorkbenchLayoutSnapshotRepository(
       workspaceId: _ws,
+      storage: fakeHomeStorage(filesystem: fs, appDataRoot: _root),
       fs: fs,
       layout: WorkspaceLayout(teampilotRoot: _root, fs: fs),
     );

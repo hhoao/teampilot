@@ -14,10 +14,12 @@ import 'package:teampilot/services/terminal/terminal_session.dart';
 import 'connected_recording_shell.dart';
 import 'integration_prerequisites.dart';
 import '../../support/post_frame_test_harness.dart';
+import '../../support/in_memory_filesystem.dart';
 
 /// Running + connected fake shell so idle-watch and presence treat it as live.
 class RunningConnectedFakeShell extends TerminalSession {
-  RunningConnectedFakeShell({required super.executable});
+  RunningConnectedFakeShell({required super.executable})
+    : super(fs: InMemoryFilesystem());
 
   @override
   bool get isRunning => true;

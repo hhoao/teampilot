@@ -9,7 +9,7 @@ import 'package:path/path.dart' as p;
 import 'package:teampilot/models/config_bundle.dart';
 import 'package:teampilot/models/team_config.dart';
 import 'package:teampilot/services/provider/config_profile_service.dart';
-import 'package:teampilot/services/storage/app_storage.dart';
+import '../support/test_runtime_context.dart';
 import 'package:teampilot/services/storage/runtime_layout.dart';
 
 import '../support/post_frame_test_harness.dart';
@@ -22,8 +22,8 @@ void main() {
 
   test('marketplace plugin reaches the session with native registration',
       () async {
-    final fs = AppStorage.fs;
-    final root = AppStorage.paths.basePath;
+    final fs = testHomeStorage.fs;
+    final root = testHomeStorage.paths.basePath;
     final layout = RuntimeLayout(teampilotRoot: root, fs: fs);
     const workspaceId = 'ws-int';
     const sessionId = 'sess-int';
@@ -84,6 +84,7 @@ void main() {
       basePath: root,
       fs: fs,
       layout: layout,
+                                storage: testHomeStorage,
     ).prepareSimpleSessionLaunch(
       workspaceId: workspaceId,
       sessionId: sessionId,

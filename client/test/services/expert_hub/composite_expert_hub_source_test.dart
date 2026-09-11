@@ -7,7 +7,7 @@ import 'package:teampilot/services/expert_hub/builtin_member_templates.dart';
 import 'package:teampilot/services/expert_hub/composite_expert_hub_source.dart';
 import 'package:teampilot/services/expert_hub/expert_hub_source.dart';
 import 'package:teampilot/services/expert_hub/local_expert_store.dart';
-import 'package:teampilot/services/storage/app_storage.dart';
+import 'package:teampilot/services/storage/app_paths.dart';
 
 import '../../support/in_memory_filesystem.dart';
 
@@ -23,7 +23,10 @@ class _FakeExpertHubSource implements ExpertHubSource {
 
 void main() {
   test('fetchMembers includes builtin templates', () async {
-    final source = CompositeExpertHubSource.withDefaults();
+    final source = CompositeExpertHubSource.withDefaults(
+      registry: _FakeExpertHubSource(const []),
+      localStore: LocalExpertStore(fs: InMemoryFilesystem(), dirOverride: AppPaths('/tp').memberHubLocalTemplatesDir),
+    );
     final members = await source.fetchMembers();
 
     expect(members.length, greaterThanOrEqualTo(8));
@@ -57,7 +60,11 @@ void main() {
       ],
     );
 
-    final source = CompositeExpertHubSource.withDefaults(teams: [team]);
+    final source = CompositeExpertHubSource.withDefaults(
+      registry: _FakeExpertHubSource(const []),
+      teams: [team],
+      localStore: LocalExpertStore(fs: InMemoryFilesystem(), dirOverride: AppPaths('/tp').memberHubLocalTemplatesDir),
+    );
     final members = await source.fetchMembers();
 
     expect(
@@ -88,7 +95,11 @@ void main() {
       ],
     );
 
-    final source = CompositeExpertHubSource.withDefaults(teams: [team]);
+    final source = CompositeExpertHubSource.withDefaults(
+      registry: _FakeExpertHubSource(const []),
+      teams: [team],
+      localStore: LocalExpertStore(fs: InMemoryFilesystem(), dirOverride: AppPaths('/tp').memberHubLocalTemplatesDir),
+    );
     final members = await source.fetchMembers();
 
     expect(members.any((m) => m.key == customKey), isTrue);

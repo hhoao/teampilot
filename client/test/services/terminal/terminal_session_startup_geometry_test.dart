@@ -8,6 +8,7 @@ import 'package:teampilot/services/terminal/terminal_transport.dart';
 
 import '../../support/flush_terminal_engine.dart';
 import '../../support/rust_lib_test_init.dart';
+import '../../support/in_memory_filesystem.dart';
 
 /// Passes [CliExecutableValidator] on the current platform (a real, launchable
 /// path) — [connect] runs pre-flight validation before the fake transport.
@@ -64,6 +65,7 @@ TerminalSession _sessionWithFakeTransport(_FakeTransport handle) {
         }) {
           return Future.value(handle);
         },
+                          fs: InMemoryFilesystem(),
   );
 }
 

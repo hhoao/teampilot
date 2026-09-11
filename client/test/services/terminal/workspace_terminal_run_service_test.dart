@@ -16,6 +16,7 @@ import 'package:teampilot/services/terminal/workspace_shell_connector.dart';
 import 'package:teampilot/services/terminal/workspace_terminal_connect_coordinator.dart';
 import 'package:teampilot/services/terminal/workspace_terminal_registry.dart';
 import 'package:teampilot/services/terminal/workspace_terminal_run_service.dart';
+import '../../support/in_memory_filesystem.dart';
 import '../../support/rust_lib_test_init.dart';
 import 'package:teampilot/services/terminal/workspace_terminal_session_ops.dart';
 
@@ -65,6 +66,7 @@ _readySession() async {
   final transport = _RecordingTransport();
   final session = TerminalSession(
     executable: 'sh',
+    fs: InMemoryFilesystem(),
     validateLaunch: false,
     parseExecutable: false,
     confirmFallback: const Duration(milliseconds: 20),
@@ -92,11 +94,13 @@ class _RecordingConnector extends WorkspaceShellConnector {
   _RecordingConnector()
     : super(
         transportFactory: TerminalTransportFactory(
-          sshProfileRepository: SshProfileRepository(),
+          sshProfileRepository: SshProfileRepository(
+            storage: fakeHomeStorage(),
+          ),
           sshCredentialStore: InMemorySshCredentialStore(),
           sshKnownHostRepository: InMemorySshKnownHostRepository(),
         ),
-        sshProfileRepository: SshProfileRepository(),
+        sshProfileRepository: SshProfileRepository(storage: fakeHomeStorage()),
       );
 
   final createdSpecs = <WorkspaceTerminalSessionSpec>[];
@@ -106,6 +110,7 @@ class _RecordingConnector extends WorkspaceShellConnector {
     createdSpecs.add(spec);
     return TerminalSession(
       executable: 'sh',
+      fs: InMemoryFilesystem(),
       validateLaunch: false,
       parseExecutable: false,
     );
@@ -401,6 +406,7 @@ void main() {
     addTearDown(transport.dispose);
     final session = TerminalSession(
       executable: 'sh',
+      fs: InMemoryFilesystem(),
       validateLaunch: false,
       parseExecutable: false,
       confirmFallback: const Duration(milliseconds: 20),
@@ -438,6 +444,7 @@ void main() {
   test('waitForReady times out when transport never ready', () async {
     final session = TerminalSession(
       executable: 'sh',
+      fs: InMemoryFilesystem(),
       validateLaunch: false,
       parseExecutable: false,
     );

@@ -27,7 +27,7 @@ import '../../../support/in_memory_filesystem.dart';
 import '../../../support/post_frame_test_harness.dart';
 
 class _SeededAppProviderCubit extends AppProviderCubit {
-  _SeededAppProviderCubit() {
+  _SeededAppProviderCubit() : super(storage: buildTestHomeStorage()) {
     emit(const AppProviderState());
   }
 }
@@ -49,10 +49,11 @@ final _workspace = Workspace(
 
 LaunchProfileCubit _launchCubitFor(TeamProfile team) {
   final cubit = LaunchProfileCubit(
+    storage: testHomeStorage,
     repository: testLaunchProfileRepository(
       Directory.systemTemp.createTempSync('landing_team_settings_'),
     ),
-    sessionRepository: SessionRepository(),
+    sessionRepository: SessionRepository(storage: testHomeStorage),
     executableResolver: () => 'claude',
   );
   cubit.applyState(
@@ -98,7 +99,7 @@ Widget _wrap({
     child: CliToolRegistryScope(
       registry: CliToolRegistry.builtIn(),
       child: RepositoryProvider<SessionRepository>.value(
-        value: SessionRepository(),
+        value: SessionRepository(storage: testHomeStorage),
         child: MaterialApp(
           localizationsDelegates: AppLocalizations.localizationsDelegates,
           supportedLocales: AppLocalizations.supportedLocales,

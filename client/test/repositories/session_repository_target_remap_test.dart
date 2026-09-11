@@ -5,6 +5,7 @@ import 'package:teampilot/models/team_config.dart';
 import 'package:teampilot/models/workspace_folder.dart';
 import 'package:teampilot/repositories/session_repository.dart';
 import 'package:teampilot/services/workspace/target_liveness.dart';
+import '../support/in_memory_filesystem.dart';
 
 class _FixedLiveness implements TargetLiveness {
   _FixedLiveness(this._alive);
@@ -19,7 +20,7 @@ void main() {
   test('remapWorkspaceTarget rewrites folders, pins, and sessions', () async {
     final tmp = await Directory.systemTemp.createTemp('fs_repo_remap_');
     addTearDown(() => tmp.deleteSync(recursive: true));
-    final repo = SessionRepository(rootDir: tmp.path);
+    final repo = SessionRepository(rootDir: tmp.path, storage: fakeHomeStorage(), );
 
     final ws = await repo.createWorkspace([
       const WorkspaceFolder(path: '/local'),
@@ -74,7 +75,7 @@ void main() {
   test('remapWorkspaceTarget throws when from target is unused', () async {
     final tmp = await Directory.systemTemp.createTemp('fs_repo_remap_unused_');
     addTearDown(() => tmp.deleteSync(recursive: true));
-    final repo = SessionRepository(rootDir: tmp.path);
+    final repo = SessionRepository(rootDir: tmp.path, storage: fakeHomeStorage(), );
 
     final ws = await repo.createWorkspace([
       const WorkspaceFolder(path: '/local'),
@@ -102,7 +103,7 @@ void main() {
     () async {
       final tmp = await Directory.systemTemp.createTemp('fs_repo_remap_dead_');
       addTearDown(() => tmp.deleteSync(recursive: true));
-      final repo = SessionRepository(rootDir: tmp.path);
+      final repo = SessionRepository(rootDir: tmp.path, storage: fakeHomeStorage(), );
 
       final ws = await repo.createWorkspace([
         const WorkspaceFolder(path: '/local'),
@@ -143,7 +144,7 @@ void main() {
         'fs_repo_remap_partial_',
       );
       addTearDown(() => tmp.deleteSync(recursive: true));
-      final repo = SessionRepository(rootDir: tmp.path);
+      final repo = SessionRepository(rootDir: tmp.path, storage: fakeHomeStorage(), );
 
       final ws = await repo.createWorkspace([
         const WorkspaceFolder(path: '/local'),

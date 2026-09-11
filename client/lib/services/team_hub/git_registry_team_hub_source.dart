@@ -7,7 +7,7 @@ import '../../models/discoverable_team.dart';
 import '../../utils/logging/logger.dart';
 import '../catalog/catalog_error_sanitizer.dart';
 import '../io/filesystem.dart';
-import '../storage/app_storage.dart';
+import '../storage/home_storage.dart';
 import 'team_hub_source.dart';
 
 /// Reads public teams from a git registry (`index.json` + `teams/<slug>/team.json`)
@@ -16,14 +16,17 @@ class GitRegistryTeamHubSource
     implements TeamHubSource, TeamHubSourceContributions {
   GitRegistryTeamHubSource({
     this.registry = kDefaultTeamHubRegistry,
+    required HomeStorage storage,
     RawContentFetcher? fetch,
     Filesystem? fs,
     String? cacheDirOverride,
-  }) : _fetch = fetch ?? _httpFetch,
+  }) : _storage = storage,
+       _fetch = fetch ?? _httpFetch,
        _fsOverride = fs,
        _cacheDirOverride = cacheDirOverride;
 
   final TeamHubRegistry registry;
+  final HomeStorage _storage;
   final RawContentFetcher _fetch;
   final Filesystem? _fsOverride;
   final String? _cacheDirOverride;
@@ -31,10 +34,10 @@ class GitRegistryTeamHubSource
   List<DiscoverableTeam>? _memory;
   CatalogSourceFailure? _lastFailure;
 
-  Filesystem get _fs => _fsOverride ?? AppStorage.fs;
+  Filesystem get _fs => _fsOverride ?? _storage.fs;
 
   String get _cacheFile {
-    final dir = _cacheDirOverride ?? AppStorage.paths.teamHubCacheDir;
+    final dir = _cacheDirOverride ?? _storage.paths.teamHubCacheDir;
     final ctx = _fs.pathContext;
     return ctx.join(dir, '${registry.owner}-${registry.name}', 'teams.json');
   }

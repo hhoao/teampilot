@@ -8,6 +8,7 @@ import '../../l10n/l10n_extensions.dart';
 import '../../models/app_session.dart';
 import '../../models/workspace.dart';
 import '../../models/workspace_launch_context.dart';
+import '../../widgets/home_storage_scope.dart';
 import '../../services/workbench/session_member_filesystem.dart';
 import '../../services/workbench/workbench_editor_opener.dart';
 import '../../services/workbench/workspace_href_handler.dart';
@@ -49,6 +50,7 @@ class _SessionChatMarkdownLinkScopeState
       final launchContext = WorkspaceLaunchContext(
         session: widget.session,
         workspace: widget.workspace,
+        usesPosixPaths: homeStorageOf(context).usesPosixPaths,
       );
       final fs = await resolveSessionMemberFilesystem(
         lifecycle: context.read<ChatCubit>().lifecycle,

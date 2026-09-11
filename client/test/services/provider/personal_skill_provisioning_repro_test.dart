@@ -10,7 +10,7 @@ import 'package:teampilot/models/team_config.dart';
 import 'package:teampilot/models/skill.dart';
 import 'package:teampilot/services/storage/runtime_layout.dart';
 import 'package:teampilot/services/provider/config_profile_service.dart';
-import 'package:teampilot/services/storage/app_storage.dart';
+import 'package:teampilot/services/storage/app_paths.dart';
 import 'package:teampilot/services/storage/runtime_context.dart';
 import 'package:teampilot/services/host/host_execution_environment.dart';
 
@@ -30,8 +30,8 @@ void main() {
   test(
     'enabled skill is materialized into simple-mode leaf CONFIG_DIR/skills/',
     () async {
-      final root = AppStorage.paths.basePath;
-      final fs = AppStorage.fs;
+      final root = testHomeStorage.paths.basePath;
+      final fs = testHomeStorage.fs;
       final layout = RuntimeLayout(teampilotRoot: root, fs: fs);
 
       // --- Arrange: install a skill into the global library ---
@@ -59,6 +59,7 @@ void main() {
             updatedAt: 0,
           ),
         ],
+                                            storage: testHomeStorage,
       );
 
       // --- Act: run simple-mode launch prep with runtimeBundle ---
@@ -95,8 +96,8 @@ void main() {
   test(
     'missing skill source dir produces a warning in TeamLaunchOutcome',
     () async {
-      final root = AppStorage.paths.basePath;
-      final fs = AppStorage.fs;
+      final root = testHomeStorage.paths.basePath;
+      final fs = testHomeStorage.fs;
       final layout = RuntimeLayout(teampilotRoot: root, fs: fs);
 
       // --- Construct the service: skill 'ghost' references a non-existent dir ---
@@ -118,6 +119,7 @@ void main() {
             updatedAt: 0,
           ),
         ],
+                                            storage: testHomeStorage,
       );
 
       // --- Act ---

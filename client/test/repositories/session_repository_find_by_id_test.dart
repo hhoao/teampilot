@@ -3,13 +3,14 @@ import 'dart:io';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/models/workspace_folder.dart';
 import 'package:teampilot/repositories/session_repository.dart';
+import '../support/in_memory_filesystem.dart';
 
 void main() {
   test('findById returns created session and null for unknown id', () async {
     final tmp = await Directory.systemTemp.createTemp('session_find_by_id_');
     addTearDown(() => tmp.deleteSync(recursive: true));
 
-    final repo = SessionRepository(rootDir: tmp.path);
+    final repo = SessionRepository(rootDir: tmp.path, storage: fakeHomeStorage(), );
     final workspace = await repo.createWorkspace([
       WorkspaceFolder(path: '/tmp/find-by-id'),
     ]);

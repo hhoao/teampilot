@@ -3,10 +3,13 @@ import 'package:teampilot/models/cli_preset.dart';
 import 'package:teampilot/models/team_config.dart';
 import 'package:teampilot/services/team/team_config_launch_validator.dart';
 
+import '../../support/in_memory_filesystem.dart';
+
 void main() {
   // Stub: provider ids starting with "official" are treated as official
   // providers (which ship their own model, so no model selection is required).
   final validator = TeamConfigLaunchValidator(
+    storage: fakeHomeStorage(),
     isOfficialProvider: (cli, providerId) async =>
         providerId.startsWith('official'),
   );

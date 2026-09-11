@@ -8,7 +8,7 @@ import '../cli/registry/capabilities/plugin_capability.dart';
 import '../cli/registry/capabilities/plugin_manifest_paths.dart';
 import '../cli/registry/cli_tool_registry.dart';
 import '../io/filesystem.dart';
-import '../storage/app_storage.dart';
+import '../storage/app_paths.dart';
 import '../storage/workspace_layout.dart';
 import 'cli_plugin_layout.dart';
 import 'cli_plugin_provision_cache.dart';

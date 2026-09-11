@@ -4,7 +4,7 @@ import 'dart:io' show Process;
 import 'package:flutter/foundation.dart';
 
 import '../../../io/filesystem.dart';
-import '../../../storage/app_storage.dart';
+import '../../../storage/home_storage.dart';
 import 'cursor_agent_models_parser.dart';
 import 'cursor_home_layout.dart';
 import 'cursor_launch_environment.dart';
@@ -69,6 +69,7 @@ class _ResolvedStorage {
 /// Fetches and caches `cursor-agent models` for provider model pickers.
 class CursorAgentModelsService {
   CursorAgentModelsService({
+    required this.storage,
     @visibleForTesting Filesystem? fs,
     @visibleForTesting String? basePath,
     this.cursorExecutable = 'cursor-agent',
@@ -79,6 +80,11 @@ class CursorAgentModelsService {
        _processRunner = processRunner ?? _defaultProcessRunner;
 
   static const _globalCacheKey = '_global';
+
+  /// Home control-plane storage; the disk cache lives under its app-data root
+  /// on the home filesystem. Reads go through the *current* context so home
+  /// swaps re-root the cache.
+  final HomeStorage storage;
 
   final Filesystem? _fsOverride;
   final String? _basePathOverride;
@@ -174,16 +180,9 @@ class CursorAgentModelsService {
       _syncMemoryForBasePath(basePathOverride);
       return _ResolvedStorage(fs: fsOverride, basePath: basePathOverride);
     }
-    if (AppStorage.isInstalled) {
-      final snap = AppStorage.context;
-      _syncMemoryForBasePath(snap.teampilotRoot);
-      return _ResolvedStorage(fs: snap.fs, basePath: snap.teampilotRoot);
-    }
-    _syncMemoryForBasePath(AppStorage.appDataRoot);
-    return _ResolvedStorage(
-      fs: AppStorage.fs,
-      basePath: AppStorage.appDataRoot,
-    );
+    final snap = storage.context;
+    _syncMemoryForBasePath(snap.teampilotRoot);
+    return _ResolvedStorage(fs: snap.fs, basePath: snap.teampilotRoot);
   }
 
   void _syncMemoryForBasePath(String basePath) {
@@ -274,6 +273,7 @@ class CursorAgentModelsService {
     if (id.isEmpty) return null;
 
     final credentials = CursorProviderCredentialsService(
+      storage: storage,
       fs: roots.fs,
       basePath: roots.basePath,
     );

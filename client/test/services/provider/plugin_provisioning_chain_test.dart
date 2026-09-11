@@ -15,10 +15,14 @@ import 'package:teampilot/services/expert_hub/expert_capability_resolver.dart';
 import 'package:teampilot/services/launch/session_runtime_plan.dart';
 import 'package:teampilot/services/launch/session_runtime_plan_builder.dart';
 import 'package:teampilot/services/provider/config_profile_service.dart';
-import 'package:teampilot/services/storage/app_storage.dart';
+import 'package:teampilot/services/storage/app_paths.dart';
 import 'package:teampilot/services/storage/runtime_layout.dart';
+import 'package:teampilot/services/cli/registry/cli_bootstrap.dart';
+import 'package:teampilot/services/cli/registry/cli_tool_registry.dart';
 
 import '../../support/post_frame_test_harness.dart';
+import '../../support/in_memory_filesystem.dart';
+import 'package:teampilot/services/expert_hub/local_expert_store.dart';
 
 class _FakeExpertResolver extends ExpertCapabilityResolver {
   _FakeExpertResolver()
@@ -27,6 +31,7 @@ class _FakeExpertResolver extends ExpertCapabilityResolver {
         installSkill: (_) async => null,
         installPlugin: (_) async => null,
         installMcp: (_) async => null,
+             localStore: LocalExpertStore(fs: InMemoryFilesystem(), dirOverride: AppPaths('/tp').memberHubLocalTemplatesDir),
       );
 
   final Map<String, ExpertCapabilityPack> packs;
@@ -50,7 +55,7 @@ Future<void> _installPlugin(
   String name,
   String directory,
 ) async {
-  final fs = AppStorage.fs;
+  final fs = testHomeStorage.fs;
   await fs.ensureDir(p.join(root, 'plugins', 'installed', directory, '.plugin'));
   await fs.writeString(
     p.join(root, 'plugins', 'installed', directory, '.plugin', 'plugin.json'),
@@ -84,7 +89,8 @@ Future<SessionRuntimePlan> _simplePlan({
   final builder = SessionRuntimePlanBuilder(
     expertResolver: resolver,
     loadWorkspaceBundle: (wid) async {
-      return (await WorkspaceProjectConfigRepository().load(wid)).bundle;
+      return (await
+          WorkspaceProjectConfigRepository(storage: testHomeStorage).load(wid)).bundle;
     },
   );
   return builder.buildSimple(
@@ -96,7 +102,12 @@ Future<SessionRuntimePlan> _simplePlan({
 }
 
 void main() {
-  setUp(setUpTestAppStorage);
+  setUp(() {
+    setUpTestAppStorage();
+    CliToolRegistry.builtIn().configure(
+      CliBootstrap(const {}, storage: testHomeStorage),
+    );
+  });
   tearDown(tearDownTestAppStorage);
 
   test('workspace-enabled plugin lands in the simple session CLI config',
@@ -108,14 +119,16 @@ void main() {
       markTestSkipped('Windows provisioning does not emit installed_plugins.json');
       return;
     }
-    final root = AppStorage.paths.basePath;
-    final fs = AppStorage.fs;
+    final root = testHomeStorage.paths.basePath;
+    final fs = testHomeStorage.fs;
     final layout = RuntimeLayout(teampilotRoot: root, fs: fs);
     const workspaceId = 'ws-chain';
     const sessionId = 'sess-chain';
 
     await _installPlugin(root, 'acme/demo', 'demo', 'demo-bundle');
-    await WorkspaceProjectConfigRepository().save(
+    await WorkspaceProjectConfigRepository(
+      storage: testHomeStorage,
+    ).save(
       workspaceId,
       const WorkspaceProjectConfig(
         bundle: ConfigBundle(pluginIds: ['acme/demo']),
@@ -133,6 +146,7 @@ void main() {
       basePath: root,
       fs: fs,
       layout: layout,
+                                storage: testHomeStorage,
     ).prepareSimpleSessionLaunch(
       workspaceId: workspaceId,
       sessionId: sessionId,
@@ -176,8 +190,8 @@ void main() {
       markTestSkipped('Windows provisioning does not emit enabledPlugins settings');
       return;
     }
-    final root = AppStorage.paths.basePath;
-    final fs = AppStorage.fs;
+    final root = testHomeStorage.paths.basePath;
+    final fs = testHomeStorage.fs;
     final layout = RuntimeLayout(teampilotRoot: root, fs: fs);
     const workspaceId = 'ws-team';
     const sessionId = 'sess-team';
@@ -188,6 +202,7 @@ void main() {
       basePath: root,
       fs: fs,
       layout: layout,
+                                storage: testHomeStorage,
     ).prepareTeamLaunch(
       workspaceId: workspaceId,
       sessionId: sessionId,
@@ -225,8 +240,8 @@ void main() {
       markTestSkipped('Windows provisioning does not emit installed_plugins.json');
       return;
     }
-    final root = AppStorage.paths.basePath;
-    final fs = AppStorage.fs;
+    final root = testHomeStorage.paths.basePath;
+    final fs = testHomeStorage.fs;
     final layout = RuntimeLayout(teampilotRoot: root, fs: fs);
     const workspaceId = 'ws-fs';
     const sessionId = 'sess-fs';
@@ -237,6 +252,7 @@ void main() {
       basePath: root,
       fs: fs,
       layout: layout,
+                                storage: testHomeStorage,
     ).prepareSimpleSessionLaunch(
       workspaceId: workspaceId,
       sessionId: sessionId,
@@ -268,8 +284,8 @@ void main() {
 
   test('workspace plugin lands in an opencode session pool (decompose CLI)',
       () async {
-    final root = AppStorage.paths.basePath;
-    final fs = AppStorage.fs;
+    final root = testHomeStorage.paths.basePath;
+    final fs = testHomeStorage.fs;
     final layout = RuntimeLayout(teampilotRoot: root, fs: fs);
     const workspaceId = 'ws-op';
     const sessionId = 'sess-op';
@@ -280,6 +296,7 @@ void main() {
       basePath: root,
       fs: fs,
       layout: layout,
+                                storage: testHomeStorage,
     ).prepareSimpleSessionLaunch(
       workspaceId: workspaceId,
       sessionId: sessionId,
@@ -305,14 +322,16 @@ void main() {
 
   test('re-launching without the plugin clears it from the session pool',
       () async {
-    final root = AppStorage.paths.basePath;
-    final fs = AppStorage.fs;
+    final root = testHomeStorage.paths.basePath;
+    final fs = testHomeStorage.fs;
     final layout = RuntimeLayout(teampilotRoot: root, fs: fs);
     const workspaceId = 'ws-cleared';
     const sessionId = 'sess-cleared';
 
     await _installPlugin(root, 'acme/demo', 'demo', 'demo-bundle');
-    await WorkspaceProjectConfigRepository().save(
+    await WorkspaceProjectConfigRepository(
+      storage: testHomeStorage,
+    ).save(
       workspaceId,
       const WorkspaceProjectConfig(
         bundle: ConfigBundle(pluginIds: ['acme/demo']),
@@ -326,6 +345,7 @@ void main() {
       basePath: root,
       fs: fs,
       layout: layout,
+                                          storage: testHomeStorage,
     );
 
     await service.prepareSimpleSessionLaunch(

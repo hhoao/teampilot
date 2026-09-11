@@ -10,7 +10,8 @@ import 'package:teampilot/services/cli/flashskyai/capabilities/provider.dart';
 import 'package:teampilot/services/provider/config_profile_service.dart';
 import 'package:teampilot/services/cli/cursor/provider/cursor_workspace_trust.dart';
 import 'package:teampilot/services/cli/cursor/provider/cursor_windows_home_junction.dart';
-import 'package:teampilot/services/storage/app_storage.dart';
+import 'package:teampilot/services/cli/registry/cli_bootstrap.dart';
+import 'package:teampilot/services/cli/registry/cli_tool_registry.dart';
 import 'package:teampilot/services/host/host_execution_environment.dart';
 import 'package:teampilot/services/storage/runtime_context.dart';
 
@@ -38,7 +39,10 @@ void main() {
 
   setUp(() async {
     setUpTestAppStorage();
-    base = Directory(AppStorage.paths.basePath);
+    CliToolRegistry.builtIn().configure(
+      CliBootstrap(const {}, storage: testHomeStorage),
+    );
+    base = Directory(testHomeStorage.paths.basePath);
     fs = LocalFilesystem();
     service = ConfigProfileService(
       basePath: base.path,
@@ -49,6 +53,7 @@ void main() {
         isWindowsHost: false,
         storageMode: StorageBackendMode.native,
       ),
+                                    storage: testHomeStorage,
     );
   });
 

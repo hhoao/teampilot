@@ -8,6 +8,9 @@ import 'package:teampilot/services/expert_hub/expert_capability_pack.dart';
 import 'package:teampilot/services/expert_hub/expert_capability_resolver.dart';
 import 'package:teampilot/services/launch/session_runtime_plan.dart';
 import 'package:teampilot/services/launch/session_runtime_plan_builder.dart';
+import '../../support/in_memory_filesystem.dart';
+import 'package:teampilot/services/expert_hub/local_expert_store.dart';
+import 'package:teampilot/services/storage/app_paths.dart';
 
 void main() {
   late _FakeExpertResolver resolver;
@@ -224,6 +227,7 @@ class _FakeExpertResolver extends ExpertCapabilityResolver {
         installSkill: (_) async => null,
         installPlugin: (_) async => null,
         installMcp: (_) async => null,
+             localStore: LocalExpertStore(fs: InMemoryFilesystem(), dirOverride: AppPaths('/tp').memberHubLocalTemplatesDir),
       );
 
   final Map<String, ExpertCapabilityPack> packs;

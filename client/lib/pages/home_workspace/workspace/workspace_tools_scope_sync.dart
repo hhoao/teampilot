@@ -12,6 +12,7 @@ import '../../../models/workspace_folder.dart';
 import '../../../services/git/git_command_runner.dart';
 import '../../../services/git/git_worktree_service.dart';
 import '../../../services/storage/runtime_context.dart';
+import '../../../widgets/home_storage_scope.dart';
 import '../../../services/workspace/workspace_tools_scope.dart';
 import '../../../utils/workspace/workspace_path_utils.dart';
 import '../../../utils/session/workspace_tab_session_scope.dart';
@@ -116,6 +117,7 @@ class _WorkspaceToolsScopeSyncState extends State<WorkspaceToolsScopeSync> {
         activeTargetId: tools.targetId,
         cwd: widget.cwd,
         cubitRepoPath: worktreeCubit.state.repoPath,
+        usesPosixPaths: homeStorageOf(context).usesPosixPaths,
         sessionPrimaryPath: session?.firstFolderPath,
         fallbackRepoPath: widget.workspace.firstFolderPath,
       );

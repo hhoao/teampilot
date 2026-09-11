@@ -91,6 +91,7 @@ final class _RecordingChatCubit extends ChatCubit {
     : super(
         executableResolver: () => 'true',
         automationRepository: testAutomationRepository(),
+             storage: testHomeStorage,
       );
 
   HistoryContinueChannel peekChannel = HistoryContinueChannel.pty;

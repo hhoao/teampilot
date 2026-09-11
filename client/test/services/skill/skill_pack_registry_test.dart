@@ -6,6 +6,7 @@ import 'package:teampilot/models/skill_pack.dart';
 import 'package:teampilot/models/skill_pack_instruction.dart';
 import 'package:teampilot/services/skill/skill_pack_registry.dart';
 import 'package:teampilot/services/skill/skill_pack_source.dart';
+import '../../support/in_memory_filesystem.dart';
 
 final remoteGstackPack = SkillPack(
   id: 'garrytan/gstack',
@@ -42,7 +43,7 @@ void main() {
   );
 
   test('SkillPackRegistry resolves garrytan/gstack install shape', () {
-    final pack = SkillPackRegistry().byId('garrytan/gstack');
+    final pack = SkillPackRegistry(storage: fakeHomeStorage()).byId('garrytan/gstack');
     expect(pack, isNotNull);
     expect(pack!.install, isNotEmpty);
     expect(pack.install.first, isA<FromInstruction>());
@@ -58,6 +59,7 @@ void main() {
         loads++;
         return [remoteGstackPack];
       }),
+                                        storage: fakeHomeStorage(),
     );
 
     expect(registry.byId('garrytan/gstack'), isNull);
@@ -70,6 +72,7 @@ void main() {
   test('built-in pack wins over remote same id', () async {
     final registry = SkillPackRegistry(
       remote: _FakeSkillPackSource(() async => [remoteGstackPack]),
+                                        storage: fakeHomeStorage(),
     );
     await registry.ensureLoaded();
     expect(registry.byId('garrytan/gstack'), kGstackSkillPack);

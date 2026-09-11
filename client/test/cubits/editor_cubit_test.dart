@@ -24,7 +24,7 @@ void main() {
     final file = File('${dir.path}/sample.txt');
     await file.writeAsString('hello');
 
-    final cubit = EditorCubit(fs: LocalFilesystem());
+    final cubit = EditorCubit(fs: LocalFilesystem(), storage: fakeHomeStorage());
     addTearDown(cubit.close);
 
     await cubit.openFile(ws, file.path);
@@ -58,7 +58,7 @@ void main() {
     final a = File('${dir.path}/a.txt')..writeAsStringSync('a');
     final b = File('${dir.path}/b.txt')..writeAsStringSync('b');
 
-    final cubit = EditorCubit(fs: LocalFilesystem());
+    final cubit = EditorCubit(fs: LocalFilesystem(), storage: fakeHomeStorage());
     addTearDown(cubit.close);
 
     await cubit.openFile(ws, a.path);
@@ -79,7 +79,7 @@ void main() {
   });
 
   test('openDiff keeps staged and unstaged separate; close leaves file', () async {
-    final cubit = EditorCubit(fs: LocalFilesystem());
+    final cubit = EditorCubit(fs: LocalFilesystem(), storage: fakeHomeStorage());
     addTearDown(cubit.close);
 
     cubit.openDiff(
@@ -125,7 +125,7 @@ void main() {
     addTearDown(() => dir.delete(recursive: true));
     final file = File('${dir.path}/a.txt')..writeAsStringSync('hi');
 
-    final cubit = EditorCubit(fs: LocalFilesystem());
+    final cubit = EditorCubit(fs: LocalFilesystem(), storage: fakeHomeStorage());
     addTearDown(cubit.close);
 
     await cubit.openFile('ws-a', file.path);
@@ -141,7 +141,11 @@ void main() {
       ..writeAsStringSync('{"hello": "world"}');
 
     final pool = FakeTsWorkerPool();
-    final cubit = EditorCubit(fs: LocalFilesystem(), workerPool: pool);
+    final cubit = EditorCubit(
+        fs: LocalFilesystem(),
+        storage: fakeHomeStorage(),
+        workerPool: pool,
+      );
     addTearDown(cubit.close);
 
     await cubit.openFile(ws, file.path);
@@ -162,7 +166,11 @@ void main() {
     final file = File('${dir.path}/notes.txt')..writeAsStringSync('hello');
 
     final pool = FakeTsWorkerPool();
-    final cubit = EditorCubit(fs: LocalFilesystem(), workerPool: pool);
+    final cubit = EditorCubit(
+        fs: LocalFilesystem(),
+        storage: fakeHomeStorage(),
+        workerPool: pool,
+      );
     addTearDown(cubit.close);
 
     await cubit.openFile(ws, file.path);
@@ -178,7 +186,11 @@ void main() {
     final file = File('${dir.path}/a.json')..writeAsStringSync('{"a": "b"}');
 
     final pool = FakeTsWorkerPool();
-    final cubit = EditorCubit(fs: LocalFilesystem(), workerPool: pool);
+    final cubit = EditorCubit(
+        fs: LocalFilesystem(),
+        storage: fakeHomeStorage(),
+        workerPool: pool,
+      );
     addTearDown(cubit.close);
 
     await cubit.openFile(ws, file.path);
@@ -199,7 +211,11 @@ void main() {
     final file = File('${dir.path}/a.json')..writeAsStringSync('{"a": "b"}');
 
     final pool = FakeTsWorkerPool();
-    final cubit = EditorCubit(fs: LocalFilesystem(), workerPool: pool);
+    final cubit = EditorCubit(
+        fs: LocalFilesystem(),
+        storage: fakeHomeStorage(),
+        workerPool: pool,
+      );
     addTearDown(cubit.close);
 
     await cubit.openFile(ws, file.path);
@@ -219,7 +235,7 @@ void main() {
     final fs = _GatedFilesystem(gate);
     fs.files['/repo/a.txt'] = 'hello';
 
-    final cubit = EditorCubit(fs: fs);
+    final cubit = EditorCubit(fs: fs, storage: fakeHomeStorage());
     addTearDown(cubit.close);
 
     final pending = cubit.openFile(ws, '/repo/a.txt');
@@ -243,7 +259,7 @@ void main() {
       0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A,
     ];
 
-    final cubit = EditorCubit(fs: fs);
+    final cubit = EditorCubit(fs: fs, storage: fakeHomeStorage());
     addTearDown(cubit.close);
 
     final pending = cubit.openFile(ws, '/repo/dot.png');
@@ -264,7 +280,7 @@ void main() {
     fs.byteFiles['/repo/dot.png'] = <int>[
       0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A,
     ];
-    final cubit = EditorCubit(fs: fs);
+    final cubit = EditorCubit(fs: fs, storage: fakeHomeStorage());
     addTearDown(cubit.close);
 
     await cubit.openFile(ws, '/repo/dot.png');
@@ -289,7 +305,7 @@ void main() {
       DiffReload? reloadDiff,
     }) async {
       fs.files[path] = right;
-      final cubit = EditorCubit(fs: fs);
+      final cubit = EditorCubit(fs: fs, storage: fakeHomeStorage());
       addTearDown(cubit.close);
       cubit.openDiff(
         workspaceId: ws,
@@ -331,7 +347,7 @@ void main() {
       const right = 'a\nx\nc';
       fs.files[path] = right;
       var refreshCount = 0;
-      final cubit = EditorCubit(fs: fs);
+      final cubit = EditorCubit(fs: fs, storage: fakeHomeStorage());
       addTearDown(cubit.close);
       cubit.openDiff(
         workspaceId: ws,
@@ -592,7 +608,7 @@ void main() {
       DiffReload? reloadDiff,
     }) async {
       fs.files[path] = fileText;
-      final cubit = EditorCubit(fs: fs);
+      final cubit = EditorCubit(fs: fs, storage: fakeHomeStorage());
       addTearDown(cubit.close);
       await cubit.openFile(ws, path);
       cubit.openDiff(
@@ -745,7 +761,7 @@ void main() {
   test('openFile rejects oversized images', () async {
     final fs = InMemoryFilesystem();
     fs.byteFiles['/repo/big.png'] = List<int>.filled(kEditorMaxImageBytes + 1, 0);
-    final cubit = EditorCubit(fs: fs);
+    final cubit = EditorCubit(fs: fs, storage: fakeHomeStorage());
     addTearDown(cubit.close);
 
     await cubit.openFile(ws, '/repo/big.png');

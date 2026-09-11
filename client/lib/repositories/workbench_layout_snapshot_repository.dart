@@ -5,7 +5,7 @@ import '../cubits/workbench/workbench_split_layout.dart';
 import '../cubits/workbench/tab_strip.dart';
 import '../cubits/workbench/workbench_tab.dart';
 import '../services/io/filesystem.dart';
-import '../services/storage/app_storage.dart';
+import '../services/storage/home_storage.dart';
 import '../services/storage/workspace_layout.dart';
 import '../utils/logging/logger.dart';
 
@@ -24,11 +24,13 @@ import '../utils/logging/logger.dart';
 class WorkbenchLayoutSnapshotRepository {
   WorkbenchLayoutSnapshotRepository({
     required this.workspaceId,
+    required HomeStorage storage,
     Filesystem? fs,
     WorkspaceLayout? layout,
-  }) : _fs = fs ?? AppStorage.fs,
+  }) : _fs = fs ?? storage.fs,
        _layout =
-           layout ?? WorkspaceLayout(teampilotRoot: AppStorage.paths.basePath);
+           layout ??
+           WorkspaceLayout(teampilotRoot: storage.paths.basePath);
 
   final String workspaceId;
   final Filesystem _fs;

@@ -5,6 +5,7 @@ import '../repositories/keybinding_repository.dart';
 import '../services/commands/command_catalog.dart';
 import '../services/commands/key_chord.dart';
 import '../services/commands/keybinding_resolver.dart';
+import '../services/storage/home_storage.dart';
 
 class ShortcutState extends Equatable {
   const ShortcutState({this.overrides = const {}, this.loaded = false});
@@ -47,8 +48,8 @@ class ImportResult {
 ///
 /// See docs/superpowers/specs/2026-07-11-keyboard-shortcuts-platform-design.md.
 class ShortcutCubit extends Cubit<ShortcutState> {
-  ShortcutCubit({KeybindingRepository? repository})
-    : _repository = repository ?? KeybindingRepository(),
+  ShortcutCubit({required HomeStorage storage, KeybindingRepository? repository})
+    : _repository = repository ?? KeybindingRepository(storage: storage),
       super(const ShortcutState());
 
   final KeybindingRepository _repository;

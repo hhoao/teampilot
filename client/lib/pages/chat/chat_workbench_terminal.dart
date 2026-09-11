@@ -315,12 +315,13 @@ Future<void> openChatWorkbenchTerminalLink({
   required WorkbenchEditorOpener editorOpener,
   required String workspaceId,
   required bool Function() isMounted,
+  required Filesystem homeFs,
   Filesystem? fs,
 }) async {
   await TerminalUriOpener.open(
     link,
     workingDirectory: chatCubit.activeTabWorkingDirectory,
-    fs: fs,
+    fs: fs ?? homeFs,
     openInEditor: (path) async {
       if (!isMounted()) return;
       await editorOpener.openFile(workspaceId, path, fs: fs);

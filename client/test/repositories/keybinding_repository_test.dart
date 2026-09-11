@@ -6,7 +6,6 @@ import 'package:path/path.dart' as p;
 import 'package:teampilot/repositories/keybinding_repository.dart';
 import 'package:teampilot/services/commands/command_ids.dart';
 import 'package:teampilot/services/commands/key_chord.dart';
-import 'package:teampilot/services/storage/app_storage.dart';
 
 import '../support/post_frame_test_harness.dart';
 
@@ -15,10 +14,10 @@ void main() {
   tearDown(tearDownTestAppStorage);
 
   String keybindingsPath() =>
-      p.join(AppStorage.appDataRoot, 'keybindings.json');
+      p.join(testHomeStorage.appDataRoot, 'keybindings.json');
 
   test('load returns empty overrides when the file is missing', () async {
-    final repo = KeybindingRepository();
+    final repo = KeybindingRepository(storage: testHomeStorage);
 
     final overrides = await repo.load();
 
@@ -26,7 +25,7 @@ void main() {
   });
 
   test('save then load round-trips overrides', () async {
-    final repo = KeybindingRepository();
+    final repo = KeybindingRepository(storage: testHomeStorage);
     final saved = {
       CommandIds.workspaceCloseTab: [
         KeyChord(key: 'w', mods: [KeyChordMod.mod, KeyChordMod.shift]),
@@ -41,7 +40,7 @@ void main() {
   });
 
   test('load drops unknown command ids', () async {
-    final repo = KeybindingRepository();
+    final repo = KeybindingRepository(storage: testHomeStorage);
     final path = keybindingsPath();
     await Directory(p.dirname(path)).create(recursive: true);
     await File(path).writeAsString(
@@ -64,7 +63,7 @@ void main() {
   });
 
   test('save writes to {appDataRoot}/keybindings.json', () async {
-    final repo = KeybindingRepository();
+    final repo = KeybindingRepository(storage: testHomeStorage);
 
     await repo.save({
       CommandIds.zoomReset: [
@@ -76,7 +75,7 @@ void main() {
   });
 
   test('on-disk JSON matches the documented shape', () async {
-    final repo = KeybindingRepository();
+    final repo = KeybindingRepository(storage: testHomeStorage);
 
     await repo.save({
       CommandIds.workspaceCloseTab: [
@@ -98,7 +97,7 @@ void main() {
   });
 
   test('save with an empty chord list persists intentional unbind', () async {
-    final repo = KeybindingRepository();
+    final repo = KeybindingRepository(storage: testHomeStorage);
 
     await repo.save({CommandIds.zoomIn: const []});
     final raw = await File(keybindingsPath()).readAsString();

@@ -7,6 +7,7 @@ import 'package:teampilot/repositories/ssh_profile_repository.dart';
 import 'package:teampilot/services/io/local_filesystem.dart';
 import 'package:teampilot/services/storage/runtime_target_registry.dart';
 import 'package:teampilot/services/storage/targets_repository.dart';
+import '../../support/in_memory_filesystem.dart';
 
 void main() {
   late Directory tmp;
@@ -17,7 +18,7 @@ void main() {
     tmp = await Directory.systemTemp.createTemp('rt_registry_');
     final fs = LocalFilesystem();
     targetsRepo = TargetsRepository(rootDir: tmp.path, fs: fs);
-    sshRepo = SshProfileRepository(rootDir: tmp.path, fs: fs);
+    sshRepo = SshProfileRepository(rootDir: tmp.path, fs: fs, storage: fakeHomeStorage(), );
   });
   tearDown(() => tmp.deleteSync(recursive: true));
 

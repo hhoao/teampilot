@@ -10,7 +10,8 @@ import '../cli/claude/capabilities/mcp_project_cleanup.dart';
 import '../storage/runtime_layout.dart';
 import '../io/filesystem.dart';
 import '../io/local_filesystem.dart';
-import '../storage/app_storage.dart';
+import '../storage/app_paths.dart';
+import '../storage/home_storage.dart';
 import '../plugin/installed_plugin_catalog.dart';
 import '../resource/assemblers/mcp_assembler.dart';
 import '../resource/contribution/resource_origin.dart';
@@ -30,7 +31,9 @@ class McpRegistryService {
     Filesystem? fs,
     McpRegistryConfigService? registryConfigService,
     CliToolRegistry? cliRegistry,
+    HomeStorage? storage,
   }) : _fs = fs ?? LocalFilesystem(),
+       _storage = storage,
        _registryConfigService =
            registryConfigService ??
            McpRegistryConfigService(
@@ -41,6 +44,7 @@ class McpRegistryService {
 
   final RuntimeLayout layout;
   final Filesystem _fs;
+  final HomeStorage? _storage;
   final McpRegistryConfigService _registryConfigService;
   final CliToolRegistry _cliRegistry;
   final McpAssembler _assembler = const McpAssembler();
@@ -351,6 +355,7 @@ class McpRegistryService {
       catalogProvider = CatalogMcpContributionProvider(
         fs: _fs,
         mcpServerIds: mcpServerIds,
+        storage: _storage,
       );
     }
 

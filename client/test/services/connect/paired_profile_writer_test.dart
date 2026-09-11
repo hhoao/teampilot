@@ -54,6 +54,7 @@ void main() {
     profiles = SshProfileRepository(
       rootDir: '/profiles',
       fs: InMemoryFilesystem(),
+                                     storage: fakeHomeStorage(),
     );
     credentials = InMemorySshCredentialStore();
     knownHosts = InMemorySshKnownHostRepository();

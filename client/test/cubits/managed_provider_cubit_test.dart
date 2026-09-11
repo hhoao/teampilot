@@ -45,10 +45,12 @@ void main() {
   setUp(() {
     fs = InMemoryFilesystem();
     usageRepository = ManagedProviderUsageRepository(
+      storage: fakeHomeStorage(filesystem: fs),
       fs: fs,
       cachePath: '/tp/usage-cache.json',
     );
     repository = ManagedProviderRepository(
+      storage: fakeHomeStorage(filesystem: fs),
       fs: fs,
       configPath: '/tp/providers.json',
       onProvidersDeleted: usageRepository.deleteMany,
@@ -92,6 +94,7 @@ void main() {
     () async {
       final events = <String>[];
       final repo = ManagedProviderRepository(
+        storage: fakeHomeStorage(filesystem: fs),
         fs: fs,
         configPath: '/tp/providers.json',
         onProvidersDeleted: (ids) async => events.add('cleanup:${ids.single}'),
@@ -116,6 +119,7 @@ void main() {
     () async {
       final events = <String>[];
       final repo = ManagedProviderRepository(
+        storage: fakeHomeStorage(filesystem: fs),
         fs: fs,
         configPath: '/tp/providers.json',
         onProvidersDeleted: (_) async {},
@@ -140,6 +144,7 @@ void main() {
   test('a load started before upsert cannot overwrite the mutation', () async {
     final blockingFs = _BlockingConfigReadFilesystem();
     final blockingRepository = ManagedProviderRepository(
+      storage: fakeHomeStorage(filesystem: blockingFs),
       fs: blockingFs,
       configPath: '/tp/providers.json',
       onProvidersDeleted: (_) async {},
@@ -162,6 +167,7 @@ void main() {
   test('a stale load failure cannot overwrite a successful mutation', () async {
     final blockingFs = _BlockingConfigReadFilesystem();
     final blockingRepository = ManagedProviderRepository(
+      storage: fakeHomeStorage(filesystem: blockingFs),
       fs: blockingFs,
       configPath: '/tp/providers.json',
       onProvidersDeleted: (_) async {},
@@ -189,6 +195,7 @@ void main() {
     await repository.upsert(_provider(enabled: true));
     final blockingFs = _BlockingConfigReadFilesystem();
     final blockingRepository = ManagedProviderRepository(
+      storage: fakeHomeStorage(filesystem: blockingFs),
       fs: blockingFs,
       configPath: '/tp/providers.json',
       onProvidersDeleted: (_) async {},
@@ -228,6 +235,7 @@ void main() {
 
   test('cleanup failures expose a secret-free stable error state', () async {
     final failingRepository = ManagedProviderRepository(
+      storage: fakeHomeStorage(filesystem: fs),
       fs: fs,
       configPath: '/tp/providers.json',
       onProvidersDeleted: (_) async => throw StateError('storage path secret'),
@@ -246,6 +254,7 @@ void main() {
   test('closing during a blocked load does not emit or throw', () async {
     final blockingFs = _BlockingConfigReadFilesystem();
     final blockingRepository = ManagedProviderRepository(
+      storage: fakeHomeStorage(filesystem: blockingFs),
       fs: blockingFs,
       configPath: '/tp/providers.json',
       onProvidersDeleted: (_) async {},

@@ -4,7 +4,6 @@ import 'package:flutter_alacritty/links/terminal_link_provider.dart';
 
 import 'package:flutter_alacritty/links/url_link_provider.dart';
 
-import '../storage/app_storage.dart';
 import '../io/filesystem.dart';
 import 'file_path_link_provider.dart';
 import 'terminal_uri_opener.dart';
@@ -13,8 +12,8 @@ import 'terminal_uri_opener.dart';
 final class TerminalSessionLinkProviders {
   TerminalSessionLinkProviders({
     required this.engine,
-    Filesystem? fs,
-  }) : _fs = fs ?? AppStorage.fs;
+    required Filesystem fs,
+  }) : _fs = fs;
 
   final TerminalEngine engine;
   final Filesystem _fs;

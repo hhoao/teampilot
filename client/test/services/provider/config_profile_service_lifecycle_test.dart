@@ -14,6 +14,7 @@ import 'package:teampilot/services/provider/config_profile_service.dart';
 import 'package:teampilot/services/storage/runtime_context.dart';
 import 'package:teampilot/services/storage/runtime_layout.dart';
 import 'package:teampilot/utils/team/team_member_naming.dart';
+import '../../support/in_memory_filesystem.dart';
 
 final class _RecordingLifecycle extends NoopCliSessionCapability {
   var ensurePersistedCalls = 0;
@@ -79,6 +80,7 @@ void main() {
         storageMode: StorageBackendMode.native,
       ),
       cliRegistry: _registryWithLifecycle(CliTool.cursor, recording),
+                                    storage: fakeHomeStorage(),
     );
   });
 

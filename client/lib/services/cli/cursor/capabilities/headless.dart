@@ -5,7 +5,7 @@ import 'package:path/path.dart' as p;
 import '../../../../models/app_provider_config.dart';
 import '../../../../models/credential_link_result.dart';
 import '../../../../models/team_config.dart';
-import '../../../storage/app_storage.dart';
+import '../../../storage/home_storage.dart';
 import '../../registry/capabilities/headless_capability.dart';
 import '../../registry/headless/headless_provision_support.dart';
 import '../../registry/launch/cli_launch_arg_contribution.dart';
@@ -34,7 +34,10 @@ import 'workspace_access_launch.dart';
 final class CursorHeadlessCapability
     with HeadlessProvisionSupport
     implements HeadlessCapability {
-  const CursorHeadlessCapability();
+  const CursorHeadlessCapability({this.storage});
+
+  @override
+  final HomeStorage? storage;
 
   @override
   bool get isSupported => true;
@@ -108,6 +111,7 @@ final class CursorHeadlessCapability
     if (provider != null) {
       if (!provider.isOfficial) return const HeadlessProvisionResult();
       final credentials = CursorProviderCredentialsService(
+        storage: storage ?? _missingHomeStorage(),
         fs: fs,
         basePath: basePath,
       );
@@ -142,6 +146,7 @@ final class CursorHeadlessCapability
 
     final resolver = CursorProviderSettingsResolver(
       basePath: basePath,
+      storage: storage ?? _missingHomeStorage(),
       repository: repository,
     );
     final byId = await resolver.findById(ctx.providerId);
@@ -153,7 +158,7 @@ final class CursorHeadlessCapability
   }
 
   Future<String?> _readGlobalAuth(CursorHomeLayout layout) async {
-    final home = AppStorage.home;
+    final home = this.home;
     // Scoped to the storage home so the fallback stays deterministic (an
     // env-APPDATA candidate outside the home is a different machine's login).
     final pathContext = fs.pathContext;
@@ -167,4 +172,9 @@ final class CursorHeadlessCapability
     }
     return null;
   }
+
+  /// Tolerant default for default-registered capabilities (tests /
+  /// arg-assembly-only use); production configures real storage via
+  /// CliBootstrap.
+  HomeStorage _missingHomeStorage() => HomeStorage.nativeDefault();
 }

@@ -8,7 +8,8 @@ import 'package:teampilot/services/git/git_command_runner.dart';
 import 'package:teampilot/services/git/git_service.dart';
 import 'package:teampilot/services/host/host_one_shot_runner.dart';
 import 'package:teampilot/services/io/local_filesystem.dart';
-import 'package:teampilot/services/storage/app_storage.dart';
+import 'package:teampilot/services/storage/app_paths.dart';
+import '../../support/test_runtime_context.dart';
 
 import '../../support/faithful_shell_exec.dart';
 
@@ -306,16 +307,16 @@ void main() {
 
   group('gitCommandRunnerForContext', () {
     test('picks local runner for native storage', () {
-      AppStorage.installForTesting(
+      installTestHomeStorage(
         filesystem: LocalFilesystem(),
         paths: AppPaths('/tmp/teampilot-test'),
         home: '/tmp',
         cwd: '/tmp',
       );
-      addTearDown(AppStorage.resetForTesting);
+      addTearDown(resetTestHomeStorage);
 
       expect(
-        gitCommandRunnerForContext(AppStorage.context),
+        gitCommandRunnerForContext(testHomeStorage.context),
         isA<LocalGitCommandRunner>(),
       );
     });
@@ -324,16 +325,16 @@ void main() {
       configuredGitExecutable = () => '/from/prefs/git';
       addTearDown(() => configuredGitExecutable = null);
 
-      AppStorage.installForTesting(
+      installTestHomeStorage(
         filesystem: LocalFilesystem(),
         paths: AppPaths('/tmp/teampilot-test'),
         home: '/tmp',
         cwd: '/tmp',
       );
-      addTearDown(AppStorage.resetForTesting);
+      addTearDown(resetTestHomeStorage);
 
       expect(
-        gitCommandRunnerForContext(AppStorage.context),
+        gitCommandRunnerForContext(testHomeStorage.context),
         isA<LocalGitCommandRunner>(),
       );
     });

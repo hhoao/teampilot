@@ -1,20 +1,25 @@
 import 'dart:convert';
 
 import '../io/filesystem.dart';
-import '../storage/app_storage.dart';
+import '../storage/home_storage.dart';
 
 /// Persists favorited workspace ids at `home-workspace/workspace-favorites.json`.
 class WorkspaceFavoritesStore {
-  WorkspaceFavoritesStore({Filesystem? fs, String? pathOverride})
-    : _fsOverride = fs,
-      _pathOverride = pathOverride;
+  WorkspaceFavoritesStore({
+    required HomeStorage storage,
+    Filesystem? fs,
+    String? pathOverride,
+  }) : _storage = storage,
+       _fsOverride = fs,
+       _pathOverride = pathOverride;
 
+  final HomeStorage _storage;
   final Filesystem? _fsOverride;
   final String? _pathOverride;
 
-  Filesystem get _fs => _fsOverride ?? AppStorage.fs;
+  Filesystem get _fs => _fsOverride ?? _storage.fs;
   String get _path =>
-      _pathOverride ?? AppStorage.paths.homeWorkspaceWorkspaceFavoritesJson;
+      _pathOverride ?? _storage.paths.homeWorkspaceWorkspaceFavoritesJson;
 
   Future<Set<String>> load() async {
     try {

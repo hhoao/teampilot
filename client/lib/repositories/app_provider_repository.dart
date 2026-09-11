@@ -1,7 +1,6 @@
 import 'dart:convert';
 
 import '../models/app_provider_config.dart';
-import '../services/storage/app_storage.dart';
 import '../services/cli/claude/provider/claude_provider_credentials_service.dart';
 import '../services/cli/codex/provider/codex_provider_credentials_service.dart';
 import '../services/cli/cursor/provider/cursor_provider_credentials_service.dart';
@@ -12,6 +11,7 @@ import '../services/cli/codex/provider_persistence.dart';
 import '../services/cli/cursor/provider_persistence.dart';
 import '../services/cli/flashskyai/provider_persistence.dart';
 import '../services/cli/opencode/provider_persistence.dart';
+import '../services/storage/home_storage.dart';
 import 'provider_persistence/provider_persistence_strategy.dart';
 
 export 'provider_persistence/provider_persistence_strategy.dart'
@@ -28,6 +28,7 @@ class AppProviderRepository {
     String? basePath,
     ToolConfigGenerator? generator,
     Filesystem? fs,
+    required HomeStorage storage,
     ClaudeProviderCredentialsService? claudeCredentialsService,
     CursorProviderCredentialsService? cursorCredentialsService,
     CodexProviderCredentialsService? codexCredentialsService,
@@ -35,6 +36,7 @@ class AppProviderRepository {
   }) : _basePathOverride = basePath,
        _generator = generator ?? const ToolConfigGenerator(),
        _fsOverride = fs,
+       _storage = storage,
        _claudeCredentialsServiceOverride = claudeCredentialsService,
        _cursorCredentialsServiceOverride = cursorCredentialsService,
        _codexCredentialsServiceOverride = codexCredentialsService,
@@ -42,6 +44,7 @@ class AppProviderRepository {
 
   final String? _basePathOverride;
   final Filesystem? _fsOverride;
+  final HomeStorage _storage;
   final ToolConfigGenerator _generator;
   final ClaudeProviderCredentialsService? _claudeCredentialsServiceOverride;
   final CursorProviderCredentialsService? _cursorCredentialsServiceOverride;
@@ -60,21 +63,33 @@ class AppProviderRepository {
     }
   }
 
-  String get _basePath => _basePathOverride ?? AppStorage.paths.basePath;
+  String get _basePath => _basePathOverride ?? _storage.paths.basePath;
 
-  Filesystem get _fs => _fsOverride ?? AppStorage.fs;
+  Filesystem get _fs => _fsOverride ?? _storage.fs;
 
   ClaudeProviderCredentialsService get _claudeCredentials =>
       _claudeCredentialsServiceOverride ??
-      ClaudeProviderCredentialsService(fs: _fs, basePath: _basePath);
+      ClaudeProviderCredentialsService(
+        storage: _storage,
+        fs: _fs,
+        basePath: _basePath,
+      );
 
   CursorProviderCredentialsService get _cursorCredentials =>
       _cursorCredentialsServiceOverride ??
-      CursorProviderCredentialsService(fs: _fs, basePath: _basePath);
+      CursorProviderCredentialsService(
+        storage: _storage,
+        fs: _fs,
+        basePath: _basePath,
+      );
 
   CodexProviderCredentialsService get _codexCredentials =>
       _codexCredentialsServiceOverride ??
-      CodexProviderCredentialsService(fs: _fs, basePath: _basePath);
+      CodexProviderCredentialsService(
+        storage: _storage,
+        fs: _fs,
+        basePath: _basePath,
+      );
 
   String providersPath(CliTool cli) =>
       _fs.pathContext.join(_basePath, 'providers', cli.value, 'providers.json');
@@ -99,10 +114,9 @@ class AppProviderRepository {
         save: saveProviders,
       );
 
-  static String _resolveHomeForPersistence() {
-    if (!AppStorage.isInstalled) return '';
+  String _resolveHomeForPersistence() {
     try {
-      return AppStorage.home.trim();
+      return _storage.home.trim();
     } on Object {
       return '';
     }

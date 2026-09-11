@@ -1,4 +1,4 @@
-import '../../storage/app_storage.dart';
+import '../../io/filesystem.dart';
 import '../../storage/workspace_layout.dart';
 import 'file_task_log.dart';
 import 'in_memory_task_log.dart';
@@ -9,14 +9,19 @@ import 'task_log.dart';
 abstract final class TaskLogFactory {
   TaskLogFactory._();
 
-  static TaskLog forSession(String workspaceId, String sessionId) {
+  static TaskLog forSession(
+    String workspaceId,
+    String sessionId, {
+    required Filesystem fs,
+    required String teampilotRoot,
+  }) {
     if (sessionId.startsWith('local-')) {
       return InMemoryTaskLog();
     }
-    final layout = WorkspaceLayout(teampilotRoot: AppStorage.paths.basePath);
+    final layout = WorkspaceLayout(teampilotRoot: teampilotRoot, fs: fs);
     return FileTaskLog(
       queueRoot: layout.busTasksDir(workspaceId, sessionId),
-      fs: AppStorage.fs,
+      fs: fs,
     );
   }
 }

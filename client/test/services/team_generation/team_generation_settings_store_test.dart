@@ -16,6 +16,7 @@ void main() {
       final store = TeamGenerationSettingsStore(
         fs: fs,
         pathOverride: '/tp/ui/team-generation-settings.json',
+                                                 storage: fakeHomeStorage(filesystem: fs),
       );
       await fs.ensureDir('/tp/ui');
       await fs.writeString(

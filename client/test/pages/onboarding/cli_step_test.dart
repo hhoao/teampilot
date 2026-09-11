@@ -85,6 +85,7 @@ void main() {
       profileRepository = SshProfileRepository(
         rootDir: tempDir.path,
         fs: InMemoryFilesystem(),
+                                                storage: testHomeStorage,
       );
       profileCubit = SshProfileCubit(
         profileRepository: profileRepository,

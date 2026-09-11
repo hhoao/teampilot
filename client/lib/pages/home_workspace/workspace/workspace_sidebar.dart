@@ -23,8 +23,8 @@ import '../../../services/commands/command_tooltip.dart';
 import '../../../services/commands/key_chord.dart';
 import '../../../services/git/git_worktree_service.dart';
 import '../../../services/io/local_filesystem.dart';
+import '../../../widgets/home_storage_scope.dart';
 import '../../../services/search/content_search_slices.dart';
-import '../../../services/storage/app_storage.dart';
 import '../../../services/storage/workspace_layout.dart';
 import '../../../services/workspace/workspace_tools_scope.dart';
 import '../../../utils/session/session_project_grouping.dart';
@@ -341,7 +341,10 @@ class _WorkspaceSidebarState extends State<WorkspaceSidebar> {
         context.read<WorktreeCubit>().state.repoPath.trim().isNotEmpty
         ? context.read<WorktreeCubit>().state.repoPath
         : widget.workspace.firstFolderPath;
-    final layout = WorkspaceLayout(teampilotRoot: AppStorage.paths.basePath);
+    final layout = WorkspaceLayout(
+      teampilotRoot: homeStorageOf(context).paths.basePath,
+      fs: homeStorageOf(context).fs,
+    );
     await showWorktreeCreateDialog(
       context,
       repoName: _basename(repoPath),
@@ -648,6 +651,7 @@ class _ConversationListHost extends StatelessWidget {
         final groups = groupSessionsByWorktree(
           worktrees: wtView.worktrees,
           sessions: sortedSessions,
+          usesPosixPaths: homeStorageOf(context).usesPosixPaths,
         );
         return _buildWorktreeGroupList(
           context,
@@ -675,8 +679,12 @@ class _ConversationListHost extends StatelessWidget {
       itemCount: groups.length,
       itemBuilder: (context, index) {
         final group = groups[index];
+        final groupKey = worktreeGroupCollapseKey(
+          group,
+          usesPosixPaths: homeStorageOf(context).usesPosixPaths,
+        );
         return WorktreeGroupSection(
-          key: ValueKey('wt-group-${worktreeGroupCollapseKey(group)}'),
+          key: ValueKey('wt-group-$groupKey'),
           group: group,
           workspace: workspace,
           tabScopeId: tabScopeId,
@@ -687,7 +695,7 @@ class _ConversationListHost extends StatelessWidget {
             context.read<WorkbenchCubit>(),
             tabScopeId,
           ),
-          collapsed: wtView.collapsed.contains(worktreeGroupCollapseKey(group)),
+          collapsed: wtView.collapsed.contains(groupKey),
         );
       },
     );
@@ -708,6 +716,7 @@ class _ConversationListHost extends StatelessWidget {
       folders: workspace.folders,
       worktreesByProjectPath: worktreesByProject,
       sessions: sortedSessions,
+      usesPosixPaths: homeStorageOf(context).usesPosixPaths,
     );
     final hasAnySession = groups.any((g) => g.sessions.isNotEmpty);
     if (!hasAnySession && sortedSessions.isEmpty) {

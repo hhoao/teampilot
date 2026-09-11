@@ -3,7 +3,7 @@ import 'dart:io' show Platform;
 import '../../../../models/ssh_profile.dart';
 import '../../../host/host_script_dialect.dart';
 import '../../../host/host_script_runner.dart';
-import '../../../storage/app_storage.dart';
+import '../../../storage/app_paths.dart';
 import '../../cli_tool_locator.dart';
 import '../../installer_types.dart';
 import 'installer_context.dart';

@@ -3,6 +3,7 @@ import '../../../../models/cli_preset.dart';
 import '../../../../models/team_config.dart';
 import '../../../../models/team_launch_config.dart';
 import '../../../../repositories/app_provider_repository.dart';
+import '../../../storage/home_storage.dart';
 import '../../preset_resolver.dart';
 import '../../../provider/tool_config_generator.dart';
 
@@ -10,9 +11,11 @@ import '../../../provider/tool_config_generator.dart';
 class ClaudeProviderSettingsResolver {
   ClaudeProviderSettingsResolver({
     required String basePath,
+    required HomeStorage storage,
     AppProviderRepository? repository,
     ToolConfigGenerator? generator,
-  }) : _repository = repository ?? AppProviderRepository(basePath: basePath),
+  }) : _repository =
+           repository ?? AppProviderRepository(basePath: basePath, storage: storage),
        _generator = generator ?? const ToolConfigGenerator();
 
   final AppProviderRepository _repository;

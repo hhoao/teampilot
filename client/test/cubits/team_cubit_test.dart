@@ -8,18 +8,21 @@ import 'package:teampilot/models/launch_profile.dart';
 import 'package:teampilot/models/team_config.dart';
 import 'package:teampilot/repositories/session_repository.dart';
 import 'package:teampilot/repositories/launch_profile_repository.dart';
-import 'package:teampilot/services/storage/app_storage.dart';
+import 'package:teampilot/services/storage/app_paths.dart';
 import 'package:teampilot/services/provider/config_profile_service.dart';
 import 'package:teampilot/services/io/local_filesystem.dart';
 import 'package:teampilot/services/session/session_lifecycle_service.dart';
 import 'package:teampilot/services/storage/launch_profile_provisioner.dart';
 import 'package:teampilot/services/expert_hub/builtin_member_templates.dart';
 import 'package:teampilot/services/expert_hub/composite_expert_hub_source.dart';
+import 'package:teampilot/services/expert_hub/expert_hub_catalog.dart';
 import 'package:teampilot/services/expert_hub/expert_hub_source.dart';
 import 'package:teampilot/models/team_roster_slot.dart';
 import 'package:teampilot/utils/team/team_member_naming.dart';
 
 import '../support/post_frame_test_harness.dart';
+import '../support/in_memory_filesystem.dart';
+import 'package:teampilot/services/expert_hub/local_expert_store.dart';
 
 const _soloRoster = [
   TeamRosterSlot(id: 'm', expertKey: 'teampilot/builtin/team-lead'),
@@ -29,7 +32,7 @@ TeamProfile _teamById(Iterable<TeamProfile> teams, String id) =>
     teams.firstWhere((t) => t.id == id);
 
 class _CountingLaunchProfileRepository extends LaunchProfileRepository {
-  _CountingLaunchProfileRepository({required super.rootDir});
+  _CountingLaunchProfileRepository({required super.rootDir, required super.storage});
 
   var saveCount = 0;
 
@@ -53,9 +56,25 @@ class _ThrowingExpertHubSource implements ExpertHubSource {
       const [];
 }
 
+/// Offline source returning only the built-in experts so roster slots
+/// (`teampilot/builtin/*`) materialize without touching the network.
+class _BuiltinExpertSource implements ExpertHubSource {
+  @override
+  Future<List<DiscoverableMember>> fetchMembers({
+    bool forceRefresh = false,
+  }) async => builtinExpertMembers();
+
+  @override
+  Future<List<String>> categories({bool forceRefresh = false}) async =>
+      const [];
+}
+
+ExpertHubCatalog _builtinCatalog() =>
+    ExpertHubCatalog(source: _BuiltinExpertSource());
+
 class _RecordingLifecycleService extends SessionLifecycleService {
   _RecordingLifecycleService()
-    : super(appDataBasePath: Directory.systemTemp.path);
+    : super(storage: buildTestHomeStorage(), appDataBasePath: Directory.systemTemp.path);
 
   final destroyedTeams = <String>[];
 
@@ -65,8 +84,10 @@ class _RecordingLifecycleService extends SessionLifecycleService {
   }
 }
 
-LaunchProfileRepository _repo(Directory dir) =>
-    LaunchProfileRepository(rootDir: p.join(dir.path, 'launch-profiles'));
+LaunchProfileRepository _repo(Directory dir) => LaunchProfileRepository(
+  rootDir: p.join(dir.path, 'launch-profiles'),
+  storage: buildTestHomeStorage(),
+);
 
 Future<void> _deleteTempDirBestEffort(Directory dir) async {
   for (var attempt = 0; attempt < 8; attempt++) {
@@ -101,7 +122,7 @@ void main() {
     TestWidgetsFlutterBinding.ensureInitialized();
     appDataRoot = await Directory.systemTemp.createTemp('teampilot_app_data_');
     final paths = AppPaths(appDataRoot.path);
-    AppStorage.installForTesting(
+    installTestHomeStorage(
       filesystem: LocalFilesystem(
         pathContext: AppPaths.pathContextForDataRoot(paths.basePath),
       ),
@@ -113,7 +134,7 @@ void main() {
 
   tearDown(() async {
     await drainPendingAsyncWork();
-    AppStorage.resetForTesting();
+    resetTestHomeStorage();
     AppPathsBootstrapper.resetForTesting();
     await _deleteTempDirBestEffort(appDataRoot);
   });
@@ -122,8 +143,9 @@ void main() {
     final dir = await Directory.systemTemp.createTemp('team-cubit-');
     final repo = _repo(dir);
     final cubit = LaunchProfileCubit(
+      storage: buildTestHomeStorage(),
       repository: repo,
-      sessionRepository: SessionRepository(),
+      sessionRepository: SessionRepository(storage: buildTestHomeStorage()),
       executableResolver: () => 'flashskyai',
     );
 
@@ -150,8 +172,9 @@ void main() {
     final dir = await Directory.systemTemp.createTemp('team-cubit-');
     final repo = _repo(dir);
     final cubit = LaunchProfileCubit(
+      storage: buildTestHomeStorage(),
       repository: repo,
-      sessionRepository: SessionRepository(),
+      sessionRepository: SessionRepository(storage: buildTestHomeStorage()),
       executableResolver: () => 'flashskyai',
       installedPluginsLoader: () async => [],
     );
@@ -186,8 +209,9 @@ void main() {
     final dir = await Directory.systemTemp.createTemp('team-cubit-');
     final repo = _repo(dir);
     final cubit = LaunchProfileCubit(
+      storage: buildTestHomeStorage(),
       repository: repo,
-      sessionRepository: SessionRepository(),
+      sessionRepository: SessionRepository(storage: buildTestHomeStorage()),
       executableResolver: () => 'flashskyai',
       installedPluginsLoader: () async => [],
     );
@@ -215,8 +239,9 @@ void main() {
     final dir = await Directory.systemTemp.createTemp('team-cubit-');
     final repo = _repo(dir);
     final cubit = LaunchProfileCubit(
+      storage: buildTestHomeStorage(),
       repository: repo,
-      sessionRepository: SessionRepository(),
+      sessionRepository: SessionRepository(storage: buildTestHomeStorage()),
       executableResolver: () => 'flashskyai',
       installedPluginsLoader: () async => [],
     );
@@ -248,10 +273,12 @@ void main() {
     final dir = await Directory.systemTemp.createTemp('team-cubit-');
     final repo = _repo(dir);
     final cubit = LaunchProfileCubit(
+      storage: buildTestHomeStorage(),
       repository: repo,
-      sessionRepository: SessionRepository(),
+      sessionRepository: SessionRepository(storage: buildTestHomeStorage()),
       executableResolver: () => 'flashskyai',
     );
+    cubit.attachCatalog(_builtinCatalog());
     await cubit.load();
 
     expect(await cubit.addTeam(''), isFalse);
@@ -278,10 +305,12 @@ void main() {
   test('deleteMember cannot remove team-lead', () async {
     final dir = await Directory.systemTemp.createTemp('team-cubit-');
     final cubit = LaunchProfileCubit(
+      storage: buildTestHomeStorage(),
       repository: _repo(dir),
-      sessionRepository: SessionRepository(),
+      sessionRepository: SessionRepository(storage: buildTestHomeStorage()),
       executableResolver: () => 'flashskyai',
     );
+    cubit.attachCatalog(_builtinCatalog());
     await cubit.load();
 
     expect(await cubit.addTeam('Alpha'), isTrue);
@@ -303,11 +332,13 @@ void main() {
       final lifecycle = _RecordingLifecycleService();
       final repo = LaunchProfileRepository(
         rootDir: p.join(dir.path, 'launch-profiles'),
+        storage: buildTestHomeStorage(),
         lifecycleService: lifecycle,
       );
       final cubit = LaunchProfileCubit(
-        repository: repo,
-        sessionRepository: SessionRepository(),
+        storage: buildTestHomeStorage(),
+      repository: repo,
+        sessionRepository: SessionRepository(storage: buildTestHomeStorage()),
         executableResolver: () => 'flashskyai',
       );
       const team = TeamProfile(
@@ -345,11 +376,12 @@ void main() {
   test('addTeam creates team runtime profile directories', () async {
     final base = await Directory.systemTemp.createTemp('team_profile_');
     final cubit = LaunchProfileCubit(
+      storage: buildTestHomeStorage(),
       repository: _repo(base),
-      sessionRepository: SessionRepository(),
+      sessionRepository: SessionRepository(storage: buildTestHomeStorage()),
       executableResolver: () => 'flashskyai',
       appDataBasePath: base.path,
-      configProfileService: ConfigProfileService(basePath: base.path),
+      configProfileService: ConfigProfileService(basePath: base.path, storage: buildTestHomeStorage()),
     );
 
     expect(await cubit.addTeam('alpha'), isTrue);
@@ -366,11 +398,12 @@ void main() {
   test('addTeam rejects codex in native team mode', () async {
     final base = await Directory.systemTemp.createTemp('team_profile_cli_');
     final cubit = LaunchProfileCubit(
+      storage: buildTestHomeStorage(),
       repository: _repo(base),
-      sessionRepository: SessionRepository(),
+      sessionRepository: SessionRepository(storage: buildTestHomeStorage()),
       executableResolver: () => 'flashskyai',
       appDataBasePath: base.path,
-      configProfileService: ConfigProfileService(basePath: base.path),
+      configProfileService: ConfigProfileService(basePath: base.path, storage: buildTestHomeStorage()),
     );
 
     expect(await cubit.addTeam('beta', cli: CliTool.codex), isFalse);
@@ -387,11 +420,12 @@ void main() {
   test('addTeam accepts codex in mixed team mode', () async {
     final base = await Directory.systemTemp.createTemp('team_profile_cli_');
     final cubit = LaunchProfileCubit(
+      storage: buildTestHomeStorage(),
       repository: _repo(base),
-      sessionRepository: SessionRepository(),
+      sessionRepository: SessionRepository(storage: buildTestHomeStorage()),
       executableResolver: () => 'flashskyai',
       appDataBasePath: base.path,
-      configProfileService: ConfigProfileService(basePath: base.path),
+      configProfileService: ConfigProfileService(basePath: base.path, storage: buildTestHomeStorage()),
     );
 
     expect(
@@ -410,12 +444,14 @@ void main() {
     () async {
       final base = await Directory.systemTemp.createTemp('team_member_preset_');
       final cubit = LaunchProfileCubit(
-        repository: _repo(base),
-        sessionRepository: SessionRepository(),
+        storage: buildTestHomeStorage(),
+      repository: _repo(base),
+        sessionRepository: SessionRepository(storage: buildTestHomeStorage()),
         executableResolver: () => 'flashskyai',
         appDataBasePath: base.path,
-        configProfileService: ConfigProfileService(basePath: base.path),
+        configProfileService: ConfigProfileService(basePath: base.path, storage: buildTestHomeStorage()),
       );
+      cubit.attachCatalog(_builtinCatalog());
 
       expect(
         await cubit.addTeam(
@@ -457,11 +493,12 @@ void main() {
     () async {
       final base = await Directory.systemTemp.createTemp('team_member_policy_');
       final cubit = LaunchProfileCubit(
-        repository: _repo(base),
-        sessionRepository: SessionRepository(),
+        storage: buildTestHomeStorage(),
+      repository: _repo(base),
+        sessionRepository: SessionRepository(storage: buildTestHomeStorage()),
         executableResolver: () => 'flashskyai',
         appDataBasePath: base.path,
-        configProfileService: ConfigProfileService(basePath: base.path),
+        configProfileService: ConfigProfileService(basePath: base.path, storage: buildTestHomeStorage()),
       );
       const policy = LaunchSecurityPolicy(
         approval: LaunchApprovalPolicy.ask,
@@ -510,13 +547,14 @@ void main() {
   test('previewFor resolves executable from team cli when available', () async {
     final base = await Directory.systemTemp.createTemp('team_cli_preview_');
     final cubit = LaunchProfileCubit(
+      storage: buildTestHomeStorage(),
       repository: _repo(base),
-      sessionRepository: SessionRepository(),
+      sessionRepository: SessionRepository(storage: buildTestHomeStorage()),
       executableResolver: () => 'flashskyai',
       cliExecutableResolver: (cli) =>
           cli == CliTool.claude ? '/opt/bin/claude' : cli.value,
       appDataBasePath: base.path,
-      configProfileService: ConfigProfileService(basePath: base.path),
+      configProfileService: ConfigProfileService(basePath: base.path, storage: buildTestHomeStorage()),
     );
     const member = TeamMemberConfig(id: 'team-lead', name: 'team-lead');
     const team = TeamProfile(
@@ -547,11 +585,12 @@ void main() {
     );
     final repo = _repo(base);
     final cubit = LaunchProfileCubit(
+      storage: buildTestHomeStorage(),
       repository: repo,
-      sessionRepository: SessionRepository(),
+      sessionRepository: SessionRepository(storage: buildTestHomeStorage()),
       executableResolver: () => 'claude',
       appDataBasePath: base.path,
-      configProfileService: ConfigProfileService(basePath: base.path),
+      configProfileService: ConfigProfileService(basePath: base.path, storage: buildTestHomeStorage()),
     );
 
     const member = TeamMemberConfig(
@@ -567,6 +606,7 @@ void main() {
       members: [member],
     );
     await repo.saveTeamProfiles([team]);
+    cubit.attachCatalog(_builtinCatalog());
     await cubit.load();
 
     await cubit.updateMember(
@@ -610,11 +650,12 @@ void main() {
     final repo = _repo(base);
     final launched = <String>[];
     final cubit = LaunchProfileCubit(
+      storage: buildTestHomeStorage(),
       repository: repo,
-      sessionRepository: SessionRepository(),
+      sessionRepository: SessionRepository(storage: buildTestHomeStorage()),
       executableResolver: () => 'claude',
       appDataBasePath: base.path,
-      configProfileService: ConfigProfileService(basePath: base.path),
+      configProfileService: ConfigProfileService(basePath: base.path, storage: buildTestHomeStorage()),
       launcher: (_, member) async => launched.add(member.name),
     );
 
@@ -634,6 +675,7 @@ void main() {
       ],
     );
     await repo.saveTeamProfiles([team]);
+    cubit.attachCatalog(_builtinCatalog());
     await cubit.load(awaitProfiles: true);
     await cubit.selectTeam('claude-team');
 
@@ -650,11 +692,12 @@ void main() {
   test('load creates runtime profile directories for built-in teams', () async {
     final base = await Directory.systemTemp.createTemp('team_profile_load_');
     final cubit = LaunchProfileCubit(
+      storage: buildTestHomeStorage(),
       repository: _repo(base),
-      sessionRepository: SessionRepository(),
+      sessionRepository: SessionRepository(storage: buildTestHomeStorage()),
       executableResolver: () => 'flashskyai',
       appDataBasePath: base.path,
-      configProfileService: ConfigProfileService(basePath: base.path),
+      configProfileService: ConfigProfileService(basePath: base.path, storage: buildTestHomeStorage()),
     );
 
     await cubit.load(awaitProfiles: true);
@@ -673,8 +716,9 @@ void main() {
     final dir = await Directory.systemTemp.createTemp('team-preset-clear-');
     final repo = _repo(dir);
     final cubit = LaunchProfileCubit(
+      storage: buildTestHomeStorage(),
       repository: repo,
-      sessionRepository: SessionRepository(),
+      sessionRepository: SessionRepository(storage: buildTestHomeStorage()),
       executableResolver: () => 'claude',
     );
 
@@ -718,8 +762,9 @@ void main() {
       final dir = await Directory.systemTemp.createTemp('team-preset-await-');
       final repo = _repo(dir);
       final cubit = LaunchProfileCubit(
-        repository: repo,
-        sessionRepository: SessionRepository(),
+        storage: buildTestHomeStorage(),
+      repository: repo,
+        sessionRepository: SessionRepository(storage: buildTestHomeStorage()),
         executableResolver: () => 'claude',
       );
 
@@ -764,10 +809,12 @@ void main() {
       final dir = await Directory.systemTemp.createTemp('team-preset-fast-');
       final repo = _CountingLaunchProfileRepository(
         rootDir: p.join(dir.path, 'launch-profiles'),
+                                                     storage: fakeHomeStorage(),
       );
       final cubit = LaunchProfileCubit(
-        repository: repo,
-        sessionRepository: SessionRepository(),
+        storage: buildTestHomeStorage(),
+      repository: repo,
+        sessionRepository: SessionRepository(storage: buildTestHomeStorage()),
         executableResolver: () => 'claude',
       );
 
@@ -801,10 +848,13 @@ void main() {
       await repo.saveTeamProfiles([team]);
       await cubit.load();
       await cubit.selectTeam(LaunchProfileProvisioner.defaultNativeTeamId);
-      cubit.attachExpertHubSource(
-        CompositeExpertHubSource(
-          builtIns: builtinExpertMembers(),
-          registry: _ThrowingExpertHubSource(),
+      cubit.attachCatalog(
+        ExpertHubCatalog(
+          source: CompositeExpertHubSource(
+            builtIns: builtinExpertMembers(),
+            registry: _ThrowingExpertHubSource(),
+                                            localStore: LocalExpertStore(fs: InMemoryFilesystem(), dirOverride: AppPaths('/tp').memberHubLocalTemplatesDir),
+          ),
         ),
       );
       repo.saveCount = 0;

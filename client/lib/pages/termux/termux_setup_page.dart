@@ -16,7 +16,7 @@ import '../../services/remote_download/remote_download_catalog.dart';
 import '../../services/remote_download/remote_download_http.dart';
 import '../../services/remote_download/remote_download_resolver.dart';
 import '../../services/remote_download/remote_downloader.dart';
-import '../../services/storage/app_storage.dart';
+import '../../services/storage/app_paths.dart';
 import '../../services/termux/termux_apk_acquisition.dart';
 import '../../services/termux/termux_config.dart';
 import '../../services/termux/termux_key_material.dart';

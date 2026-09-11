@@ -16,6 +16,7 @@ import '../../services/home_workspace/home_recent_workspaces_store.dart';
 import '../../services/home_workspace/workspace_display_prefs_store.dart';
 import '../../services/home_workspace/workspace_favorites_store.dart';
 import '../../theme/workspace_surface_layers.dart';
+import '../../widgets/home_storage_scope.dart';
 import '../../widgets/settings/workspace_pane_header.dart';
 import 'home_workspace_library_view.dart';
 import 'workspace_card.dart';
@@ -33,9 +34,15 @@ class HomeLibrarySection extends StatefulWidget {
 }
 
 class _HomeLibrarySectionState extends State<HomeLibrarySection> {
-  final _favoritesStore = WorkspaceFavoritesStore();
-  final _recentStore = HomeRecentWorkspacesStore();
-  final _displayPrefsStore = WorkspaceDisplayPrefsStore();
+  late final _favoritesStore = WorkspaceFavoritesStore(
+    storage: homeStorageOf(context),
+  );
+  late final _recentStore = HomeRecentWorkspacesStore(
+    storage: homeStorageOf(context),
+  );
+  late final _displayPrefsStore = WorkspaceDisplayPrefsStore(
+    storage: homeStorageOf(context),
+  );
   Set<String> _favoriteWorkspaceIds = {};
   List<WorkspaceTabRef> _recentTabs = const [];
   var _workspaceSort = WorkspaceSort.recentlyUpdated;

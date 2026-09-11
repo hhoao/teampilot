@@ -7,7 +7,7 @@ import '../../cubits/workbench/workbench_tab.dart';
 import '../../cubits/workbench/workbench_tab_bar.dart';
 import '../../repositories/workbench_layout_snapshot_repository.dart';
 import '../io/filesystem.dart';
-import '../storage/app_storage.dart';
+import '../storage/home_storage.dart';
 import '../storage/workspace_layout.dart';
 
 /// App-lifetime coordinator for workbench split-layout persistence.
@@ -44,18 +44,22 @@ class WorkbenchLayoutPersistence {
   WorkbenchLayoutPersistence({
     required WorkbenchCubit workbench,
     required ChatCubit chat,
+    required HomeStorage storage,
     Filesystem? fs,
     WorkspaceLayout? layout,
   }) : _workbench = workbench,
        _chat = chat,
-       _fs = fs ?? AppStorage.fs,
+       _storage = storage,
+       _fs = fs ?? storage.fs,
        _layout =
-           layout ?? WorkspaceLayout(teampilotRoot: AppStorage.paths.basePath);
+           layout ??
+           WorkspaceLayout(teampilotRoot: storage.paths.basePath);
 
   static const Duration saveDebounce = Duration(milliseconds: 500);
 
   final WorkbenchCubit _workbench;
   final ChatCubit _chat;
+  final HomeStorage _storage;
   final Filesystem _fs;
   final WorkspaceLayout _layout;
 
@@ -179,6 +183,7 @@ class WorkbenchLayoutPersistence {
         workspaceId,
         () => WorkbenchLayoutSnapshotRepository(
           workspaceId: workspaceId,
+          storage: _storage,
           fs: _fs,
           layout: _layout,
         ),

@@ -24,7 +24,7 @@ import 'package:teampilot/repositories/ssh_known_host_repository.dart';
 import 'package:teampilot/repositories/ssh_profile_repository.dart';
 import 'package:teampilot/services/app/connection_mode_service.dart';
 import 'package:teampilot/services/io/local_filesystem.dart';
-import 'package:teampilot/services/storage/app_storage.dart';
+import 'package:teampilot/services/storage/app_paths.dart';
 import 'package:teampilot/services/termux/termux_config.dart';
 import 'package:teampilot/services/termux/termux_config_store.dart';
 import 'package:teampilot/services/ssh/ssh_client_factory.dart';
@@ -314,6 +314,7 @@ void main() {
     profileRepository = SshProfileRepository(
       rootDir: tempDir.path,
       fs: InMemoryFilesystem(),
+                                              storage: testHomeStorage,
     );
     profileCubit = SshProfileCubit(
       profileRepository: profileRepository,

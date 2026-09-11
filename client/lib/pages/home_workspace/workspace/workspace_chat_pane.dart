@@ -11,6 +11,7 @@ import '../../../cubits/workbench/workbench_cubit.dart';
 import '../../../cubits/worktree_cubit.dart';
 import '../../../models/landing_launch_context.dart';
 import '../../../models/workspace.dart';
+import '../../../services/storage/home_storage.dart';
 import '../../../utils/ui/app_keys.dart';
 import '../../../utils/workspace/landing_draft_resolver.dart';
 import '../../../services/compose/compose_draft_cache.dart';
@@ -31,13 +32,23 @@ typedef WorkspaceLandingMessageSubmitter =
     });
 
 typedef WorkspaceLandingDraftPersister =
-    Future<void> Function(String workspaceId, LandingLaunchContext draft);
+    Future<void> Function(
+      String workspaceId,
+      LandingLaunchContext draft, {
+      required HomeStorage storage,
+    });
 
 typedef WorkspaceLandingDraftCleaner =
-    Future<void> Function(String workspaceId);
+    Future<void> Function(String workspaceId, {required HomeStorage storage});
 
-Future<void> clearWorkspaceLandingDraft(String workspaceId) async {
-  await composeDraftCache.clearLandingPersistent(workspaceId);
+Future<void> clearWorkspaceLandingDraft(
+  String workspaceId, {
+  required HomeStorage storage,
+}) async {
+  await composeDraftCache.clearLandingPersistent(
+    workspaceId,
+    storage: storage,
+  );
   composeDraftCache.clearLandingDraft(workspaceId);
 }
 
@@ -119,7 +130,12 @@ class _WorkspaceChatPaneState extends State<WorkspaceChatPane> {
         }
       }
 
-      await widget.landingDraftPersister(workspace.workspaceId, draft);
+      final storage = context.read<HomeStorage>();
+      await widget.landingDraftPersister(
+        workspace.workspaceId,
+        draft,
+        storage: storage,
+      );
       if (!mounted) return;
 
       // Generation mode: branch before concrete-team submit. The exact
@@ -133,7 +149,10 @@ class _WorkspaceChatPaneState extends State<WorkspaceChatPane> {
           workingDirectory: workingDirectory,
         );
         if (delivered) {
-          await widget.landingDraftCleaner(workspace.workspaceId);
+          await widget.landingDraftCleaner(
+            workspace.workspaceId,
+            storage: storage,
+          );
         }
         return;
       }
@@ -151,11 +170,13 @@ class _WorkspaceChatPaneState extends State<WorkspaceChatPane> {
         // sent text while the (possibly minutes-long) connect + deliver phase
         // is still in flight.
         onSessionOpened: (_) {
-          unawaited(widget.landingDraftCleaner(workspace.workspaceId));
+          unawaited(
+            widget.landingDraftCleaner(workspace.workspaceId, storage: storage),
+          );
         },
       );
       if (delivered) {
-        await widget.landingDraftCleaner(workspace.workspaceId);
+        await widget.landingDraftCleaner(workspace.workspaceId, storage: storage);
       }
     } finally {
       _submitInFlight = false;

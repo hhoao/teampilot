@@ -23,8 +23,7 @@ class _StaticSessionLookup implements TeamGenerationSessionLookup {
 TeamGenerationJobStore buildStore(InMemoryFilesystem fs) => TeamGenerationJobStore(
   fs: fs,
   layout: WorkspaceLayout(teampilotRoot: '/tp', fs: fs),
-  clock: () => DateTime.utc(2026, 8, 31),
-);
+  clock: () => DateTime.utc(2026, 8, 31), storage: fakeHomeStorage(filesystem: fs), );
 
 Future<TeamGenerationJob> seedBuilderJob(
   TeamGenerationJobStore store, {

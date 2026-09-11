@@ -18,6 +18,7 @@ import '../../../utils/session/app_session_sort.dart';
 import '../../../utils/session/session_reorder_merge.dart';
 import '../../../utils/session/session_project_grouping.dart';
 import '../../../utils/session/session_worktree_grouping.dart';
+import '../../../widgets/home_storage_scope.dart';
 import '../../../utils/session/workspace_sessions.dart';
 import '../../../utils/workspace/workspace_path_utils.dart';
 import '../../../widgets/app_toast/app_toast.dart';
@@ -29,12 +30,15 @@ import 'workspace_sidebar_probe.dart';
 import 'workspace_sidebar_row_metrics.dart';
 
 /// Collapse-set key for a group: worktree path, project folder path, or orphan.
-String worktreeGroupCollapseKey(WorktreeGroup group) {
+String worktreeGroupCollapseKey(
+  WorktreeGroup group, {
+  required bool usesPosixPaths,
+}) {
   if (group.isProjectGroup) {
     final path = group.projectFolderPath?.trim() ?? '';
     return path.isEmpty
         ? '<project-orphan>'
-        : 'project:${normalizeWorkspacePath(path)}';
+        : 'project:${normalizeWorkspacePath(path, usesPosixPaths: usesPosixPaths)}';
   }
   return group.worktree?.path ?? '<orphan>';
 }
@@ -122,16 +126,20 @@ class WorktreeGroupSection extends StatelessWidget {
         workContext != null &&
         worktreeManagementEnabled(workContext);
 
+    final collapseKey = () => worktreeGroupCollapseKey(
+          group,
+          usesPosixPaths: homeStorageOf(context).usesPosixPaths,
+        );
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         _WorktreeGroupHeader(
-          collapseKey: worktreeGroupCollapseKey(group),
+          collapseKey: collapseKey(),
           collapsed: collapsed,
           label: label,
           launchPath: launchPath,
           onToggleCollapse: () => context.read<WorktreeCubit>().toggleCollapsed(
-            worktreeGroupCollapseKey(group),
+            collapseKey(),
           ),
           onNewConversation: launchPath == null
               ? null
@@ -175,6 +183,7 @@ class WorktreeGroupSection extends StatelessWidget {
       folders: workspace.folders,
       worktreesByProjectPath: worktreesByProject,
       sessions: sessionsForWorkspace(workspace, chatCubit.state.sessions),
+      usesPosixPaths: homeStorageOf(context).usesPosixPaths,
     );
     // A running agent's cwd would vanish under it — make the user stop first.
     final working = chatCubit.state.busySessionIds;

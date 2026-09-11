@@ -7,7 +7,7 @@ import 'package:teampilot/models/provider_usage_snapshot.dart';
 import 'package:teampilot/repositories/managed_provider_repository.dart';
 import 'package:teampilot/repositories/managed_provider_usage_repository.dart';
 import 'package:teampilot/services/io/filesystem.dart';
-import 'package:teampilot/services/storage/app_storage.dart';
+import 'package:teampilot/services/storage/app_paths.dart';
 
 import '../support/in_memory_filesystem.dart';
 
@@ -35,6 +35,7 @@ void main() {
     setUp(() {
       fs = InMemoryFilesystem();
       repo = ManagedProviderRepository(
+        storage: fakeHomeStorage(),
         fs: fs,
         configPath: path,
         onProvidersDeleted: (_) async {},
@@ -283,6 +284,7 @@ void main() {
         );
         final deletedIds = <String>[];
         repo = ManagedProviderRepository(
+          storage: fakeHomeStorage(),
           fs: fs,
           configPath: path,
           onProvidersDeleted: (ids) async => deletedIds.addAll(ids),
@@ -436,11 +438,13 @@ void main() {
       'concurrent upserts from separate instances do not lose updates',
       () async {
         final first = ManagedProviderRepository(
+          storage: fakeHomeStorage(),
           fs: fs,
           configPath: path,
           onProvidersDeleted: (_) async {},
         );
         final second = ManagedProviderRepository(
+          storage: fakeHomeStorage(),
           fs: fs,
           configPath: path,
           onProvidersDeleted: (_) async {},
@@ -474,10 +478,12 @@ void main() {
 
     test('deleting a provider invokes the cache cleanup boundary', () async {
       final usageRepo = ManagedProviderUsageRepository(
+        storage: fakeHomeStorage(),
         fs: fs,
         cachePath: '/tp/providers/managed/usage-cache.json',
       );
       repo = ManagedProviderRepository(
+        storage: fakeHomeStorage(),
         fs: fs,
         configPath: path,
         onProvidersDeleted: usageRepo.deleteMany,
@@ -500,10 +506,12 @@ void main() {
       'save cleans up providers omitted from the replacement list',
       () async {
         final usageRepo = ManagedProviderUsageRepository(
+          storage: fakeHomeStorage(),
           fs: fs,
           cachePath: '/tp/providers/managed/usage-cache.json',
         );
         repo = ManagedProviderRepository(
+          storage: fakeHomeStorage(),
           fs: fs,
           configPath: path,
           onProvidersDeleted: usageRepo.deleteMany,
@@ -527,6 +535,7 @@ void main() {
       () async {
         final batches = <List<String>>[];
         repo = ManagedProviderRepository(
+          storage: fakeHomeStorage(),
           fs: fs,
           configPath: path,
           onProvidersDeleted: (ids) async =>
@@ -548,11 +557,13 @@ void main() {
         const cachePath = '/tp/providers/managed/usage-cache.json';
         final blockingFs = _BlockingCacheReadFilesystem(cachePath);
         final usageRepo = ManagedProviderUsageRepository(
+          storage: fakeHomeStorage(filesystem: blockingFs),
           fs: blockingFs,
           cachePath: cachePath,
         );
         late Future<void> saveDuringDeletion;
         final providerRepo = ManagedProviderRepository(
+          storage: fakeHomeStorage(filesystem: blockingFs),
           fs: blockingFs,
           configPath: path,
           onProvidersDeleted: (ids) async {
@@ -590,11 +601,13 @@ void main() {
       const cachePath = '/tp/providers/managed/usage-cache.json';
       final usageFs = InMemoryFilesystem();
       final usageRepo = ManagedProviderUsageRepository(
+        storage: fakeHomeStorage(filesystem: usageFs),
         fs: usageFs,
         cachePath: cachePath,
       );
       late Future<void> saveDuringDeletion;
       final providerRepo = ManagedProviderRepository(
+        storage: fakeHomeStorage(filesystem: usageFs),
         fs: usageFs,
         configPath: path,
         onProvidersDeleted: (_) async {
@@ -617,11 +630,13 @@ void main() {
       const cachePath = '/tp/providers/managed/usage-cache.json';
       final failingFs = _FailingConfigWriteFilesystem(path);
       final usageRepo = ManagedProviderUsageRepository(
+        storage: fakeHomeStorage(filesystem: failingFs),
         fs: failingFs,
         cachePath: cachePath,
       );
       late Future<void> saveDuringDeletion;
       final providerRepo = ManagedProviderRepository(
+        storage: fakeHomeStorage(filesystem: failingFs),
         fs: failingFs,
         configPath: path,
         onProvidersDeleted: (ids) async {
@@ -645,6 +660,7 @@ void main() {
       await repo.save([_provider('p1')]);
       var calls = 0;
       repo = ManagedProviderRepository(
+        storage: fakeHomeStorage(),
         fs: fs,
         configPath: path,
         onProvidersDeleted: (_) async {
@@ -664,6 +680,7 @@ void main() {
       () async {
         var calls = 0;
         repo = ManagedProviderRepository(
+          storage: fakeHomeStorage(),
           fs: fs,
           configPath: path,
           onProvidersDeleted: (_) async => calls++,
@@ -691,6 +708,7 @@ void main() {
       );
       final deletedIds = <String>[];
       repo = ManagedProviderRepository(
+        storage: fakeHomeStorage(),
         fs: fs,
         configPath: path,
         onProvidersDeleted: (ids) async => deletedIds.addAll(ids),

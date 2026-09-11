@@ -31,6 +31,8 @@ import '../../../repositories/session_repository.dart';
 import '../../../services/expert_hub/expert_hub_recent_store.dart';
 import '../../../services/expert_hub/expert_landing_preflight.dart';
 import '../../../services/expert_hub/expert_member_resolver.dart';
+import '../../../services/expert_hub/local_expert_store.dart';
+import '../../../services/storage/home_storage.dart';
 import '../../../utils/workspace/landing_draft_resolver.dart';
 import '../../../utils/team/team_member_naming.dart';
 import '../../../utils/logging/logger.dart';
@@ -363,8 +365,10 @@ Future<void> showWorkspaceComposeLandingWithWorktree(
   required String tabScopeId,
   required String worktreePath,
 }) async {
+  final storage = context.read<HomeStorage>();
   final draft = await resolveLandingDraft(
     workspaceId: workspace.workspaceId,
+    storage: storage,
     simpleModeDefaultFullAccess: context
         .read<SessionPreferencesCubit>()
         .state
@@ -373,10 +377,14 @@ Future<void> showWorkspaceComposeLandingWithWorktree(
   );
   if (!context.mounted) return;
 
-  final normalizedPath = normalizeWorkspacePath(worktreePath);
+  final normalizedPath = normalizeWorkspacePath(
+    worktreePath,
+    usesPosixPaths: storage.usesPosixPaths,
+  );
   await persistLandingDraft(
     workspace.workspaceId,
     draft.copyWith(workingDirectoryPath: normalizedPath),
+    storage: storage,
   );
   if (!context.mounted) return;
 
@@ -429,8 +437,13 @@ Future<bool> submitWorkspaceLandingMessage(
       ? resolveLandingSessionExpertKey(expertKey ?? launch.expertKey)
       : (expertKey?.trim() ?? launch.expertKey?.trim() ?? '');
   if (isPersonal) {
+    final homeStorage = context.read<HomeStorage>();
     final resolved = await ExpertMemberResolver.resolveMember(
       key: trimmedExpert,
+      localStore: LocalExpertStore(
+        fs: homeStorage.fs,
+        dirOverride: homeStorage.paths.memberHubLocalTemplatesDir,
+      ),
       hubState: context.mounted ? context.read<ExpertHubCubit>().state : null,
     );
     if (!context.mounted) return false;
@@ -504,7 +517,11 @@ Future<bool> submitWorkspaceLandingMessage(
   }
 
   if (trimmedExpert.isNotEmpty) {
-    unawaited(ExpertHubRecentStore().touch(trimmedExpert));
+    unawaited(
+      ExpertHubRecentStore(storage: context.read<HomeStorage>()).touch(
+        trimmedExpert,
+      ),
+    );
   }
 
   onSessionOpened?.call(plannedSessionId);
@@ -835,6 +852,7 @@ Future<SimpleLaunchIdentity> _resolvePersonalLaunchIdentity(
   final presets = context.read<CliPresetsCubit>().state.presets;
   final draft = await resolveLandingDraft(
     workspaceId: workspace.workspaceId,
+    storage: context.read<HomeStorage>(),
     simpleModeDefaultFullAccess: context
         .read<SessionPreferencesCubit>()
         .state

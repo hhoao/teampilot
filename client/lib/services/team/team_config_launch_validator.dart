@@ -5,6 +5,7 @@ import '../../models/cli_preset.dart';
 import '../../models/team_config.dart';
 import '../../repositories/app_provider_repository.dart';
 import '../cli/preset_resolver.dart';
+import '../storage/home_storage.dart';
 
 /// What aspect of team config is missing for launch.
 enum TeamConfigIssueKind {
@@ -72,10 +73,30 @@ typedef OfficialProviderResolver =
 /// Pre-launch check that a team has enough provider/model configuration to
 /// start a session. Uses [resolveMemberLaunch] per member launch mode.
 class TeamConfigLaunchValidator {
-  TeamConfigLaunchValidator({OfficialProviderResolver? isOfficialProvider})
-    : _isOfficialProvider = isOfficialProvider ?? _defaultIsOfficialProvider;
+  TeamConfigLaunchValidator({
+    required HomeStorage storage,
+    OfficialProviderResolver? isOfficialProvider,
+  }) : _storage = storage,
+       _isOfficialProvider =
+           isOfficialProvider ?? ((cli, providerId) => _defaultIsOfficialProvider(cli, providerId, storage));
 
+  final HomeStorage _storage;
   final OfficialProviderResolver _isOfficialProvider;
+
+  static Future<bool> _defaultIsOfficialProvider(
+    CliTool cli,
+    String providerId,
+    HomeStorage storage,
+  ) async {
+    final id = providerId.trim();
+    if (id.isEmpty) return false;
+    final provider = await AppProviderRepository(
+      storage: storage,
+    ).findById(cli, id);
+    if (provider == null) return false;
+    return provider.isOfficial ||
+        provider.category == AppProviderCategory.official;
+  }
 
   Future<TeamConfigValidation> validate(
     TeamProfile team, {
@@ -158,16 +179,4 @@ class TeamConfigLaunchValidator {
     TeamConfigIssueKind kind,
     TeamMemberConfig member,
   ) => TeamConfigIssue(kind, memberId: member.id, memberName: member.name);
-
-  static Future<bool> _defaultIsOfficialProvider(
-    CliTool cli,
-    String providerId,
-  ) async {
-    final id = providerId.trim();
-    if (id.isEmpty) return false;
-    final provider = await AppProviderRepository().findById(cli, id);
-    if (provider == null) return false;
-    return provider.isOfficial ||
-        provider.category == AppProviderCategory.official;
-  }
 }

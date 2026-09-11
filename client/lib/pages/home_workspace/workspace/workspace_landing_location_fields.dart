@@ -8,6 +8,8 @@ import '../../../cubits/worktree_cubit.dart';
 import '../../../l10n/l10n_extensions.dart';
 import '../../../models/git_worktree.dart';
 import '../../../models/workspace.dart';
+import '../../../services/storage/home_storage.dart';
+import '../../../widgets/home_storage_scope.dart';
 import '../../../utils/workspace/workspace_path_utils.dart';
 import 'workspace_landing_selectors.dart';
 import 'package:shared_ui/shared_ui.dart';
@@ -40,6 +42,8 @@ class _WorkspaceLandingLocationFieldsState
     extends State<WorkspaceLandingLocationFields> {
   var _syncGeneration = 0;
 
+  bool get _usesPosixPaths => context.read<HomeStorage>().usesPosixPaths;
+
   @override
   void initState() {
     super.initState();
@@ -59,6 +63,7 @@ class _WorkspaceLandingLocationFieldsState
   WorkspaceLandingProjectResolver get _projectResolver =>
       WorkspaceLandingProjectResolver(
         workspace: widget.workspace,
+        usesPosixPaths: homeStorageOf(context).usesPosixPaths,
         storedProjectPath: widget.projectFolderPath,
       );
 
@@ -72,6 +77,7 @@ class _WorkspaceLandingLocationFieldsState
     }
     return WorkspaceLandingWorktreeResolver(
       projectPath: projectPath,
+      usesPosixPaths: homeStorageOf(context).usesPosixPaths,
       worktreeState: state,
       storedWorktreePath: widget.workingDirectoryPath,
       cachedWorktrees: cached,
@@ -105,9 +111,13 @@ class _WorkspaceLandingLocationFieldsState
       final resolved = _worktreeResolver(
         cubit.state,
       ).resolveSelectedWorktreePath();
-      final normalized = normalizeWorkspacePath(resolved);
+      final normalized = normalizeWorkspacePath(
+        resolved,
+        usesPosixPaths: _usesPosixPaths,
+      );
       final stored = widget.workingDirectoryPath?.trim() ?? '';
-      if (stored.isEmpty || !workspacePathsEqual(stored, normalized)) {
+      if (stored.isEmpty ||
+          !workspacePathsEqual(stored, normalized, usesPosixPaths: _usesPosixPaths)) {
         widget.onWorktreeChanged(normalized);
       }
     } on ProviderNotFoundException {
@@ -117,7 +127,10 @@ class _WorkspaceLandingLocationFieldsState
 
   Future<void> _onProjectSelected(Object? value) async {
     if (value is! String || value.trim().isEmpty) return;
-    final projectPath = normalizeWorkspacePath(value);
+    final projectPath = normalizeWorkspacePath(
+      value,
+      usesPosixPaths: _usesPosixPaths,
+    );
     widget.onProjectChanged(projectPath);
 
     final cubit = _worktreeCubit;
@@ -137,7 +150,9 @@ class _WorkspaceLandingLocationFieldsState
       final resolved = _worktreeResolver(
         cubit.state,
       ).resolveSelectedWorktreePath();
-      widget.onWorktreeChanged(normalizeWorkspacePath(resolved));
+      widget.onWorktreeChanged(
+        normalizeWorkspacePath(resolved, usesPosixPaths: _usesPosixPaths),
+      );
     } on ProviderNotFoundException {
       widget.onWorktreeChanged(projectPath);
     }
@@ -145,7 +160,9 @@ class _WorkspaceLandingLocationFieldsState
 
   void _onWorktreeSelected(Object? value) {
     if (value is! String || value.trim().isEmpty) return;
-    widget.onWorktreeChanged(normalizeWorkspacePath(value));
+    widget.onWorktreeChanged(
+      normalizeWorkspacePath(value, usesPosixPaths: _usesPosixPaths),
+    );
   }
 
   @override

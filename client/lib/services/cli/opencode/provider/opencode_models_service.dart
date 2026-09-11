@@ -4,7 +4,7 @@ import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 
 import '../../../io/filesystem.dart';
-import '../../../storage/app_storage.dart';
+import '../../../storage/home_storage.dart';
 
 /// Cache entry for a fetched models.dev catalog slice.
 ///
@@ -60,6 +60,7 @@ class _ResolvedStorage {
 /// Falls back to the built-in static catalog (see `OpencodeCatalogSource`).
 class OpencodeModelsService {
   OpencodeModelsService({
+    required this.storage,
     @visibleForTesting Filesystem? fs,
     @visibleForTesting String? basePath,
     http.Client? httpClient,
@@ -70,6 +71,11 @@ class OpencodeModelsService {
 
   static const _modelsDevUrl = 'https://models.dev/api.json';
   static const _cacheKey = 'models';
+
+  /// Home control-plane storage; the disk cache lives under its app-data root
+  /// on the home filesystem. Reads go through the *current* context so home
+  /// swaps re-root the cache.
+  final HomeStorage storage;
 
   final Filesystem? _fsOverride;
   final String? _basePathOverride;
@@ -146,16 +152,9 @@ class OpencodeModelsService {
       _syncMemoryForBasePath(basePathOverride);
       return _ResolvedStorage(fs: fsOverride, basePath: basePathOverride);
     }
-    if (AppStorage.isInstalled) {
-      final snap = AppStorage.context;
-      _syncMemoryForBasePath(snap.teampilotRoot);
-      return _ResolvedStorage(fs: snap.fs, basePath: snap.teampilotRoot);
-    }
-    _syncMemoryForBasePath(AppStorage.appDataRoot);
-    return _ResolvedStorage(
-      fs: AppStorage.fs,
-      basePath: AppStorage.appDataRoot,
-    );
+    final snap = storage.context;
+    _syncMemoryForBasePath(snap.teampilotRoot);
+    return _ResolvedStorage(fs: snap.fs, basePath: snap.teampilotRoot);
   }
 
   void _syncMemoryForBasePath(String basePath) {

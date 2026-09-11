@@ -3,6 +3,7 @@ import 'package:teampilot/cubits/worktree_cubit.dart';
 import 'package:teampilot/models/git_worktree.dart';
 import 'package:teampilot/services/workspace/workspace_worktree_registry.dart';
 import 'package:teampilot/services/workspace/workspace_worktree_store.dart';
+import '../../support/in_memory_filesystem.dart';
 
 GitWorktree _wt(String path, {bool main = false}) => GitWorktree(
   path: path,
@@ -65,7 +66,7 @@ void main() {
 
   group('WorkspaceWorktreeRegistry', () {
     test('reuses cubit for the same workspace id', () {
-      final registry = WorkspaceWorktreeRegistry();
+      final registry = WorkspaceWorktreeRegistry(storage: fakeHomeStorage());
       final a = registry.cubitFor(workspaceId: 'ws-1', repoPath: '/repo');
       final b = registry.cubitFor(workspaceId: 'ws-1', repoPath: '/repo');
       expect(identical(a, b), isTrue);
@@ -73,7 +74,7 @@ void main() {
     });
 
     test('hydrates cubit from store snapshot on first create', () {
-      final registry = WorkspaceWorktreeRegistry();
+      final registry = WorkspaceWorktreeRegistry(storage: fakeHomeStorage());
       registry.store.remember('ws-1', '/repo', [
         _wt('/repo', main: true),
         _wt('/wt'),
@@ -88,7 +89,7 @@ void main() {
     });
 
     test('hydrates empty (non-git) snapshot on first create', () {
-      final registry = WorkspaceWorktreeRegistry();
+      final registry = WorkspaceWorktreeRegistry(storage: fakeHomeStorage());
       registry.store.remember('ws-1', '/Documents/TeamPilot', const []);
       final cubit = registry.cubitFor(
         workspaceId: 'ws-1',

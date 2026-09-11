@@ -11,6 +11,7 @@ import '../cli/cursor/provider/cursor_home_layout.dart';
 import '../cli/cursor/provider/cursor_provider_credentials_service.dart';
 import '../cli/opencode/provider/opencode_credential_materializer.dart';
 import '../cli/opencode/provider/opencode_data_layout.dart';
+import '../storage/home_storage.dart';
 import '../storage/runtime_layout.dart';
 import 'provider_catalog_access.dart';
 
@@ -20,17 +21,20 @@ abstract final class CrossMachineCredentialBridge {
   CrossMachineCredentialBridge._();
 
   static Future<bool> materializeClaudeCredential({
+    required HomeStorage storage,
     required ConfigProfilePaths catalog,
     required ConfigProfileDelegate work,
     required String providerId,
     required CredentialBindingKind binding,
   }) async {
     final catalogSvc = ClaudeProviderCredentialsService(
+      storage: storage,
       fs: catalog.fs,
       basePath: catalog.basePath,
       resolveHomeDirectory: () => catalog.home,
     );
     final workSvc = ClaudeProviderCredentialsService(
+      storage: storage,
       fs: work.fs,
       basePath: work.basePath,
       resolveHomeDirectory: () => work.home,
@@ -50,11 +54,13 @@ abstract final class CrossMachineCredentialBridge {
   }
 
   static Future<bool> materializeCodexAuth({
+    required HomeStorage storage,
     required ConfigProfilePaths catalog,
     required ConfigProfileDelegate work,
     required String providerId,
   }) async {
     final catalogSvc = CodexProviderCredentialsService(
+      storage: storage,
       fs: catalog.fs,
       basePath: catalog.basePath,
     );
@@ -75,11 +81,13 @@ abstract final class CrossMachineCredentialBridge {
   }
 
   static Future<bool> materializeCursorCredential({
+    required HomeStorage storage,
     required ConfigProfilePaths catalog,
     required ConfigProfileDelegate work,
     required String providerId,
   }) async {
     final catalogSvc = CursorProviderCredentialsService(
+      storage: storage,
       fs: catalog.fs,
       basePath: catalog.basePath,
     );
@@ -90,6 +98,7 @@ abstract final class CrossMachineCredentialBridge {
     if (bytes == null || bytes.isEmpty) return false;
 
     final workSvc = CursorProviderCredentialsService(
+      storage: storage,
       fs: work.fs,
       basePath: work.basePath,
       // The work plane is always POSIX (SSH remote).
@@ -176,10 +185,12 @@ abstract final class CrossMachineCredentialBridge {
 
   static Future<CredentialBindingKind> claudeBindingFor(
     ConfigProfilePaths catalog,
-    String providerId,
-  ) async {
+    String providerId, {
+    required HomeStorage storage,
+  }) async {
     final providers = await providerCatalogRepository(
       catalog,
+      storage: storage,
     ).loadProviders(CliTool.claude);
     final provider = providers.where((p) => p.id == providerId).firstOrNull;
     if (provider == null) return CredentialBindingKind.linked;

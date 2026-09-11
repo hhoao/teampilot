@@ -57,7 +57,11 @@ void main() {
 
   setUp(() {
     fs = InMemoryFilesystem();
-    repo = AppProviderRepository(fs: fs, basePath: '/tp');
+    repo = AppProviderRepository(
+      fs: fs,
+      basePath: '/tp',
+      storage: fakeHomeStorage(filesystem: fs),
+    );
   });
 
   Future<void> seedProvider(

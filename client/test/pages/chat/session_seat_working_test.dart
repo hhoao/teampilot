@@ -14,6 +14,8 @@ const _sessionId = 'mine';
 const _memberId = 'lead';
 
 class _PresenceCubit extends MemberPresenceCubit {
+  _PresenceCubit() : super(storage: buildTestHomeStorage());
+
   void replace(Map<String, MemberPresence> presence) {
     emit(MemberPresenceState(presence: presence));
   }

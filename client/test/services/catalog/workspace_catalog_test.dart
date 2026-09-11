@@ -9,10 +9,37 @@ import 'package:teampilot/models/app_session.dart';
 import 'package:teampilot/models/workspace_folder.dart';
 import 'package:teampilot/repositories/session_repository.dart';
 import 'package:teampilot/repositories/workspace_index_store.dart';
+import 'package:teampilot/services/io/local_filesystem.dart';
+import 'package:teampilot/services/storage/app_paths.dart';
+import '../../support/test_runtime_context.dart';
+import 'package:teampilot/services/storage/home_storage.dart';
 
 void main() {
+  TestWidgetsFlutterBinding.ensureInitialized();
+  setUp(() {
+    final tmpRoot = Directory.systemTemp.createTempSync('catalog_home_');
+    addTearDown(() => tmpRoot.deleteSync(recursive: true));
+    final paths = AppPaths(tmpRoot.path);
+    installTestHomeStorage(
+      filesystem: LocalFilesystem(
+        pathContext: AppPaths.pathContextForDataRoot(paths.basePath),
+      ),
+      paths: paths,
+      home: tmpRoot.path,
+      cwd: tmpRoot.path,
+    );
+  });
+  tearDown(() {
+    resetTestHomeStorage();
+    AppPathsBootstrapper.resetForTesting();
+  });
+
   WorkspaceCatalog buildCatalog() {
-    final catalog = WorkspaceCatalog(SessionRepository()); // 本组测试不触 repo
+    final catalog = WorkspaceCatalog(
+      // 本组测试不触 repo
+      SessionRepository(storage: HomeStorage(testHomeStorage.context)),
+      usesPosixPaths: false,
+    );
     catalog.ingest(
       workspaces: [Workspace(workspaceId: 'p', folders: [WorkspaceFolder(path: '/p')], createdAt: 0)],
       sessions: [AppSession(sessionId: 's', workspaceId: 'p', folders: [WorkspaceFolder(path: '/p')], sessionTeam: 't1', createdAt: 0)],
@@ -60,8 +87,11 @@ void main() {
   test('createWorkspaceWithFirstSession does not full-scan', () async {
     final tmp = await Directory.systemTemp.createTemp('catalog_create_');
     addTearDown(() => tmp.deleteSync(recursive: true));
-    final repo = SessionRepository(rootDir: tmp.path);
-    final catalog = WorkspaceCatalog(repo);
+    final repo = SessionRepository(
+      rootDir: tmp.path,
+      storage: HomeStorage(testHomeStorage.context),
+    );
+    final catalog = WorkspaceCatalog(repo, usesPosixPaths: false);
     await catalog.loadIndex();
     final result = await catalog.createWorkspaceWithFirstSession(
       [const WorkspaceFolder(path: '/proj')],
@@ -81,8 +111,11 @@ void main() {
   test('createWorkspaceWithFirstSession dedups in memory when allowDuplicate false', () async {
     final tmp = await Directory.systemTemp.createTemp('catalog_dedup_');
     addTearDown(() => tmp.deleteSync(recursive: true));
-    final repo = SessionRepository(rootDir: tmp.path);
-    final catalog = WorkspaceCatalog(repo);
+    final repo = SessionRepository(
+      rootDir: tmp.path,
+      storage: HomeStorage(testHomeStorage.context),
+    );
+    final catalog = WorkspaceCatalog(repo, usesPosixPaths: false);
     await catalog.loadIndex();
     final a = await catalog.createWorkspaceWithFirstSession([const WorkspaceFolder(path: '/dup')]);
     final b = await catalog.createWorkspaceWithFirstSession([const WorkspaceFolder(path: '/dup')]);
@@ -94,8 +127,11 @@ void main() {
   test('renameSession patches memory and disk', () async {
     final tmp = await Directory.systemTemp.createTemp('catalog_rename_');
     addTearDown(() => tmp.deleteSync(recursive: true));
-    final repo = SessionRepository(rootDir: tmp.path);
-    final catalog = WorkspaceCatalog(repo);
+    final repo = SessionRepository(
+      rootDir: tmp.path,
+      storage: HomeStorage(testHomeStorage.context),
+    );
+    final catalog = WorkspaceCatalog(repo, usesPosixPaths: false);
     await catalog.loadIndex();
     final ws = await catalog.createWorkspaceWithFirstSession([const WorkspaceFolder(path: '/p')]);
     final created = await catalog.createSession(ws.workspaceId);
@@ -111,8 +147,11 @@ void main() {
   test('createWorkspaceWithFirstSession persists team pins into catalog memory', () async {
     final tmp = await Directory.systemTemp.createTemp('catalog_team_pins_');
     addTearDown(() => tmp.deleteSync(recursive: true));
-    final repo = SessionRepository(rootDir: tmp.path);
-    final catalog = WorkspaceCatalog(repo);
+    final repo = SessionRepository(
+      rootDir: tmp.path,
+      storage: HomeStorage(testHomeStorage.context),
+    );
+    final catalog = WorkspaceCatalog(repo, usesPosixPaths: false);
     await catalog.loadIndex();
     final result = await catalog.createWorkspaceWithFirstSession(
       [const WorkspaceFolder(path: '/teamproj')],
@@ -134,8 +173,11 @@ void main() {
   test('createWorkspaceWithFirstSession dedup merge resets placement init in memory', () async {
     final tmp = await Directory.systemTemp.createTemp('catalog_mix_');
     addTearDown(() => tmp.deleteSync(recursive: true));
-    final repo = SessionRepository(rootDir: tmp.path);
-    final catalog = WorkspaceCatalog(repo);
+    final repo = SessionRepository(
+      rootDir: tmp.path,
+      storage: HomeStorage(testHomeStorage.context),
+    );
+    final catalog = WorkspaceCatalog(repo, usesPosixPaths: false);
     await catalog.loadIndex();
     final ws = await repo.createWorkspace([const WorkspaceFolder(path: '/mix')]);
     await repo.updateWorkspaceMemberTargets(
@@ -169,8 +211,11 @@ void main() {
   test('renameSession bumps updatedAt in memory', () async {
     final tmp = await Directory.systemTemp.createTemp('catalog_rename_ts_');
     addTearDown(() => tmp.deleteSync(recursive: true));
-    final repo = SessionRepository(rootDir: tmp.path);
-    final catalog = WorkspaceCatalog(repo);
+    final repo = SessionRepository(
+      rootDir: tmp.path,
+      storage: HomeStorage(testHomeStorage.context),
+    );
+    final catalog = WorkspaceCatalog(repo, usesPosixPaths: false);
     await catalog.loadIndex();
     final ws = await catalog.createWorkspaceWithFirstSession([const WorkspaceFolder(path: '/p')]);
     final created = await catalog.createSession(ws.workspaceId);

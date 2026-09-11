@@ -5,7 +5,10 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:path/path.dart' as p;
 import 'package:teampilot/models/mcp_server.dart';
 import 'package:teampilot/services/mcp/profile_mcp_linker_service.dart';
-import 'package:teampilot/services/storage/app_storage.dart';
+import 'package:teampilot/services/io/local_filesystem.dart';
+import 'package:teampilot/services/storage/app_paths.dart';
+import '../../support/test_runtime_context.dart';
+import 'package:teampilot/services/storage/home_storage.dart';
 import 'package:teampilot/services/storage/runtime_layout.dart';
 
 import '../../support/in_memory_filesystem.dart';
@@ -17,17 +20,23 @@ void main() {
 
   setUp(() async {
     root = await Directory.systemTemp.createTemp('team_mcp_linker_');
-    layout = RuntimeLayout(teampilotRoot: root.path);
-    linker = ProfileMcpLinkerService();
+    installTestHomeStorage(
+      filesystem: LocalFilesystem(),
+      paths: AppPaths(root.path),
+      home: root.path,
+      cwd: root.path,
+    );
+    layout = RuntimeLayout(teampilotRoot: root.path, fs: testHomeStorage.fs);
+    linker = ProfileMcpLinkerService(storage: testHomeStorage);
   });
 
   tearDown(() async {
-    AppStorage.resetForTesting();
+    resetTestHomeStorage();
     if (await root.exists()) await root.delete(recursive: true);
   });
 
   test(
-    'writes through AppStorage.fs when layout is a remote-style root',
+    'writes through testHomeStorage.fs when layout is a remote-style root',
     () async {
       // Android SSH binds AppStorage to a remote FS whose home is often /root.
       // The linker must not fall back to LocalFilesystem (read-only /root).
@@ -35,14 +44,16 @@ void main() {
         pathContext: p.Context(style: p.Style.posix),
       );
       const remoteRoot = '/root/.local/share/com.hhoa.teampilot';
-      AppStorage.installForTesting(
+      installTestHomeStorage(
         filesystem: mem,
         paths: const AppPaths(remoteRoot),
         home: '/root',
         cwd: '/root',
       );
       final remoteLayout = RuntimeLayout(teampilotRoot: remoteRoot, fs: mem);
-      final remoteLinker = ProfileMcpLinkerService();
+      final remoteLinker = ProfileMcpLinkerService(
+        storage: HomeStorage(testHomeStorage.context),
+      );
 
       final result = await remoteLinker.syncForProfile(
         profileId: 'team-a',

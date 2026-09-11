@@ -5,8 +5,10 @@ import 'package:go_router/go_router.dart';
 import '../../cubits/launch_profile_cubit.dart';
 import '../../l10n/l10n_extensions.dart';
 import '../../models/team_config.dart';
+import '../../services/expert_hub/local_expert_store.dart';
 import '../../services/hub_publish/hub_publish_record_store.dart';
 import 'package:shared_ui/shared_ui.dart';
+import '../../widgets/home_storage_scope.dart';
 import '../../widgets/settings/workspace_pane_header.dart';
 import '../home_workspace/home_workspace_new_team_dialog.dart';
 import '../home_workspace/home_workspace_route.dart';
@@ -40,7 +42,12 @@ class MyTeamsPage extends StatefulWidget {
 
 class _MyTeamsPageState extends State<MyTeamsPage> {
   late final HubPublishRecordStore _records =
-      widget.records ?? HubPublishRecordStore();
+      widget.records ?? HubPublishRecordStore(storage: homeStorageOf(context));
+
+  late final LocalExpertStore _expertStore = LocalExpertStore(
+    fs: homeStorageOf(context).fs,
+    dirOverride: homeStorageOf(context).paths.memberHubLocalTemplatesDir,
+  );
   String? _highlightTeamId;
   var _didAutoOpen = false;
   var _recordsEpoch = 0;
@@ -126,6 +133,7 @@ class _MyTeamsPageState extends State<MyTeamsPage> {
               onPressed: () => showHomeNewTeamDialog(
                 context,
                 context.read<LaunchProfileCubit>(),
+                expertStore: _expertStore,
               ),
               icon: const Icon(Icons.add),
               label: Text(l10n.homeWorkspaceNewTeam),
@@ -149,6 +157,7 @@ class _MyTeamsPageState extends State<MyTeamsPage> {
                     onAction: () => showHomeNewTeamDialog(
                       context,
                       context.read<LaunchProfileCubit>(),
+                      expertStore: _expertStore,
                     ),
                   );
                 }

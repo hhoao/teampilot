@@ -8,6 +8,7 @@ import 'package:teampilot/models/workspace_folder.dart';
 import 'package:teampilot/services/io/local_filesystem.dart';
 import 'package:teampilot/services/session/session_lifecycle_service.dart';
 import 'package:teampilot/services/storage/runtime_layout.dart';
+import '../../support/in_memory_filesystem.dart';
 
 void main() {
   late Directory tmp;
@@ -20,7 +21,7 @@ void main() {
     addTearDown(() => tmp.deleteSync(recursive: true));
     fs = LocalFilesystem();
     layout = RuntimeLayout(teampilotRoot: tmp.path, fs: fs);
-    service = SessionLifecycleService(appDataBasePath: tmp.path);
+    service = SessionLifecycleService(appDataBasePath: tmp.path, storage: fakeHomeStorage(), );
   });
 
   Future<void> seedClaudeTranscript(String sessionId, String transcriptId) async {

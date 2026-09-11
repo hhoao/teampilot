@@ -6,11 +6,27 @@ import 'package:teampilot/models/discoverable_member.dart';
 import 'package:teampilot/models/discoverable_team.dart';
 import 'package:teampilot/repositories/launch_profile_repository.dart';
 import 'package:teampilot/repositories/session_repository.dart';
+import 'package:teampilot/services/expert_hub/builtin_member_templates.dart';
+import 'package:teampilot/services/expert_hub/expert_hub_catalog.dart';
+import 'package:teampilot/services/expert_hub/expert_hub_source.dart';
 import 'package:teampilot/services/expert_hub/member_roster_service.dart';
 import 'package:teampilot/services/team/team_clone_service.dart';
 
 import '../../support/post_frame_test_harness.dart';
 import '../../support/stub_member_roster_service.dart';
+
+/// Offline source returning only the built-in experts so roster slots
+/// (`teampilot/builtin/*`) materialize without touching the network.
+class _BuiltinExpertSource implements ExpertHubSource {
+  @override
+  Future<List<DiscoverableMember>> fetchMembers({
+    bool forceRefresh = false,
+  }) async => builtinExpertMembers();
+
+  @override
+  Future<List<String>> categories({bool forceRefresh = false}) async =>
+      const [];
+}
 
 const _pluginDep = PluginDependencyRef(
   marketplaceOwner: 'o',
@@ -57,10 +73,11 @@ MemberRosterService buildService({
 
 LaunchProfileCubit buildCubit(LaunchProfileRepository repo) =>
     LaunchProfileCubit(
+      storage: testHomeStorage,
       repository: repo,
-      sessionRepository: SessionRepository(),
+      sessionRepository: SessionRepository(storage: testHomeStorage),
       executableResolver: () => 'flashskyai',
-    );
+    )..attachCatalog(ExpertHubCatalog(source: _BuiltinExpertSource()));
 
 void main() {
   setUp(setUpTestAppStorage);

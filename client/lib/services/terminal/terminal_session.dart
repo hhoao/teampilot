@@ -14,6 +14,7 @@ import '../cli/registry/capabilities/terminal_behavior_capability.dart';
 import '../cli/registry/capabilities/terminal_observation_contributor.dart';
 import '../cli/registry/cli_capability.dart';
 import '../cli/registry/cli_tool_registry.dart';
+import '../io/filesystem.dart';
 import '../session/launch_command_builder.dart';
 import '../session/shell_launch_spec.dart';
 import '../ssh/ssh_member_session.dart';
@@ -54,6 +55,7 @@ export 'terminal_transport_starter.dart' show TransportStarter;
 class TerminalSession {
   TerminalSession({
     required this.executable,
+    required Filesystem fs,
     this.validateLaunch = true,
     this.usesRemoteTransport = false,
     this.parseExecutable = true,
@@ -69,6 +71,7 @@ class TerminalSession {
     TerminalSessionLinkProviders? linkProviders,
   }) : _scrollbackLines = scrollbackLines,
        _runtimeTarget = runtimeTarget,
+       _linkFilesystem = fs,
        engine = TerminalEngine(
          config: terminalTheme == null
              ? TerminalConfig.defaults().copyWith(
@@ -131,6 +134,7 @@ class TerminalSession {
 
   late final TerminalLaunchController _launch;
   final TerminalSessionLinkProviders? _linkProvidersHolder;
+  final Filesystem _linkFilesystem;
   TerminalSessionLinkProviders? _linkProviders;
   final _parkedSubmissions = StreamController<PendingUserMessage>.broadcast();
   final _observationInstaller = TerminalObservationInstaller();
@@ -175,7 +179,7 @@ class TerminalSession {
   List<TerminalLinkProvider> get linkProviders =>
       (_linkProviders ??=
               _linkProvidersHolder ??
-              TerminalSessionLinkProviders(engine: engine))
+              TerminalSessionLinkProviders(engine: engine, fs: _linkFilesystem))
           .build(_launchCwd);
 
   Stream<PendingUserMessage> get parkedUserSubmissions =>

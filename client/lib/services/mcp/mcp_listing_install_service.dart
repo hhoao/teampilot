@@ -1,6 +1,7 @@
 import '../../models/mcp_catalog_listing.dart';
 import '../../models/mcp_registry_source.dart';
 import '../../models/mcp_server.dart';
+import '../storage/home_storage.dart';
 import 'mcp_catalog_mapper.dart';
 import 'mcp_registry_config_service.dart';
 import 'smithery_mcp_auth.dart';
@@ -9,9 +10,12 @@ import 'smithery_mcp_service.dart';
 /// Resolves catalog listings (Smithery detail) and builds install drafts.
 class McpListingInstallService {
   McpListingInstallService({
+    required HomeStorage storage,
     McpRegistryConfigService? registryConfig,
     SmitheryMcpService? smithery,
-  }) : _registryConfig = registryConfig ?? McpRegistryConfigService(),
+  }) : _registryConfig =
+           registryConfig ??
+           McpRegistryConfigService(teampilotRoot: storage.appDataRoot),
        _smithery = smithery ?? SmitheryMcpService();
 
   final McpRegistryConfigService _registryConfig;

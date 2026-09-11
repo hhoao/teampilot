@@ -7,7 +7,8 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/services/host/host_one_shot_runner.dart';
 import 'package:teampilot/services/host/host_one_shot_runner_for_context.dart';
 import 'package:teampilot/services/io/local_filesystem.dart';
-import 'package:teampilot/services/storage/app_storage.dart';
+import 'package:teampilot/services/storage/app_paths.dart';
+import '../../support/test_runtime_context.dart';
 
 SSHRunResult _sshOk(String stdout, {int exitCode = 0}) {
   final bytes = utf8.encode(stdout);
@@ -252,16 +253,16 @@ void main() {
 
   group('hostOneShotRunnerForContext', () {
     test('picks local runner for native storage', () {
-      AppStorage.installForTesting(
+      installTestHomeStorage(
         filesystem: LocalFilesystem(),
         paths: AppPaths('/tmp/teampilot-test'),
         home: '/tmp',
         cwd: '/tmp',
       );
-      addTearDown(AppStorage.resetForTesting);
+      addTearDown(resetTestHomeStorage);
 
       expect(
-        hostOneShotRunnerForContext(AppStorage.context),
+        hostOneShotRunnerForContext(testHomeStorage.context),
         isA<LocalHostOneShotRunner>(),
       );
     });

@@ -22,7 +22,6 @@ import '../../models/install_job/install_cancel_policy.dart';
 import '../../models/install_job/install_job_key.dart';
 import '../../models/install_job/install_job_scope.dart';
 import '../../models/install_job/install_job_spec.dart';
-import '../../services/install/install_job_registry.dart';
 import '../../services/cli/installer_types.dart';
 import '../../services/cli/preset_resolver.dart';
 import '../../services/launch/connect_shell_result.dart';
@@ -74,6 +73,10 @@ TeamGenerationMcpAccess? issueTeamGenerationMcpAccess({
 /// Catalog is available to every reachable seat. Team Composer is deliberately
 /// restricted to the purpose-tagged generation Builder and receives the same
 /// ephemeral workflow token that the launch host issued for that Builder.
+///
+/// [isLocalNative] reports whether the home plane is currently a native local
+/// backend (host loopback bridge exe reachability); evaluated per launch so a
+/// home-plane swap is honored.
 Map<String, Map<String, Object?>> composeRuntimeExtraMcpServers({
   required Map<String, Map<String, Object?>> extra,
   required AppSession session,
@@ -83,6 +86,7 @@ Map<String, Map<String, Object?>> composeRuntimeExtraMcpServers({
   required CliToolRegistry cliRegistry,
   required Uri catalogEndpoint,
   required Uri composerEndpoint,
+  required bool isLocalNative,
   required String? Function(AppSession session)? teamGenerationTokenIssuer,
   RemoteBusBinding? mixedRemoteBinding,
   MemberAgentStatusEndpoint? agentStatus,
@@ -105,6 +109,7 @@ Map<String, Map<String, Object?>> composeRuntimeExtraMcpServers({
       sessionId: session.sessionId,
       memberId: memberId,
       cli: cli,
+      isLocalNative: isLocalNative,
       remoteBinding: remoteBinding,
       teamGenerationToken: teamGenerationAccess?.catalogToken,
     ),
@@ -121,6 +126,7 @@ Map<String, Map<String, Object?>> composeRuntimeExtraMcpServers({
       memberId: memberId,
       cli: cli,
       workflowToken: token,
+      isLocalNative: isLocalNative,
       remoteBinding: remoteBinding,
     );
   }
@@ -163,13 +169,16 @@ class SessionShellConnector {
   SessionShellConnector(
     this._host,
     this._delegate, {
+    required bool Function() isLocalNative,
     Uuid? uuid,
     TermuxWorkOpsBlockResolver? termuxWorkOpsBlockFor,
-  }) : _uuid = uuid ?? const Uuid(),
+  }) : _isLocalNative = isLocalNative,
+       _uuid = uuid ?? const Uuid(),
        _termuxWorkOpsBlockFor = termuxWorkOpsBlockFor;
 
   final SessionLaunchHost _host;
   final SessionShellConnectorDelegate _delegate;
+  final bool Function() _isLocalNative;
   final Uuid _uuid;
   final TermuxWorkOpsBlockResolver? _termuxWorkOpsBlockFor;
 
@@ -433,6 +442,7 @@ class SessionShellConnector {
         final memberWork = activeSession.workDirsForMember(
           rosterMemberId ?? launchMember!.id,
           folders: _delegate.launchContextFor(activeSession).folderCatalog,
+          usesPosixPaths: _host.lifecycle.storage.usesPosixPaths,
         );
         final progressMemberId = launchMember!.id;
         final connectResult = await _prepareConnectWithProvisionUi(
@@ -463,6 +473,7 @@ class SessionShellConnector {
                               member: launchMember,
                               globalPresets: _host.lifecycle.globalPresets,
                             ),
+                            isLocalNative: _isLocalNative(),
                             remoteBinding: remoteBinding,
                           ),
                     }
@@ -593,6 +604,7 @@ class SessionShellConnector {
       final memberWork = activeSession.workDirsForMember(
         isPersonal ? null : binding?.rosterMemberId,
         folders: _delegate.launchContextFor(activeSession).folderCatalog,
+        usesPosixPaths: _host.lifecycle.storage.usesPosixPaths,
       );
       appLogger.d(
         '[session-launch] shell.connect '
@@ -1111,6 +1123,7 @@ class SessionShellConnector {
     cliRegistry: _host.cliRegistry,
     catalogEndpoint: _host.teammateBusMcpGateway.catalogMcpEndpoint,
     composerEndpoint: _host.teammateBusMcpGateway.teamComposerMcpEndpoint,
+    isLocalNative: _isLocalNative(),
     teamGenerationTokenIssuer: _host.teamGenerationTokenIssuer,
     mixedRemoteBinding: mixedRemoteBinding,
     agentStatus: agentStatus,

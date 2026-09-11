@@ -16,7 +16,7 @@ import '../../../provider/passthrough_provider_form_capability.dart';
 import '../../../provider/provider_catalog_access.dart';
 import '../../../io/filesystem.dart';
 import '../../../remote/remote_credential_materializer.dart';
-import '../../../storage/app_storage.dart';
+import '../../../storage/home_storage.dart';
 import '../../../storage/runtime_context.dart';
 import '../../../team_bus/mcp/bus_bridge_locator.dart';
 import '../../../team_bus/mcp/teammate_bus_mcp_config.dart';
@@ -73,10 +73,18 @@ final class OpencodeCatalogSource implements ModelCatalogSource {
 final class OpencodeProviderCapability extends CatalogModelCapability
     with PassthroughProviderFormDefaults
     implements ProviderCapability, RefreshableProviderModelCapability {
-  const OpencodeProviderCapability({OpencodeModelsService? modelsService})
-    : _modelsService = modelsService;
+  const OpencodeProviderCapability({
+    OpencodeModelsService? modelsService,
+    this.storage,
+  }) : _modelsService = modelsService;
 
   final OpencodeModelsService? _modelsService;
+
+  /// Home control-plane storage injected at registry construction; decides
+  /// whether the host loopback bridge exe is reachable (native backend).
+  /// Null only for `const`-constructed capabilities outside the registry
+  /// (tests), where the seat is treated as local-native.
+  final HomeStorage? storage;
 
   // ---- ProviderCatalogCapability ----
   @override
@@ -443,8 +451,8 @@ final class OpencodeProviderCapability extends CatalogModelCapability
         );
         if (!busIdle.isRemote) {
           final localNative =
-              !AppStorage.isInstalled ||
-              AppStorage.context.mode == StorageBackendMode.native;
+              storage == null ||
+              storage!.context.mode == StorageBackendMode.native;
           final bridgePath = localNative ? BusBridgeLocator.resolve() : null;
           config = mergeOpencodeTeammateBusMcp(
             config,
@@ -572,7 +580,11 @@ final class OpencodeProviderCapability extends CatalogModelCapability
   OpencodeProviderSettingsResolver _resolver(ConfigProfilePaths catalog) =>
       OpencodeProviderSettingsResolver(
         basePath: catalog.basePath,
-        repository: providerCatalogRepository(catalog),
+        storage: storage ?? _missingHomeStorage(),
+        repository: providerCatalogRepository(
+          catalog,
+          storage: storage ?? _missingHomeStorage(),
+        ),
       );
 
   Future<void> _writeIdlePlugin({
@@ -625,6 +637,8 @@ final class OpencodeProviderCapability extends CatalogModelCapability
       ),
     );
   }
+
+  HomeStorage _missingHomeStorage() => HomeStorage.nativeDefault();
 }
 
 /// Parses bus idle URL (e.g. `http://127.0.0.1:12345/idle`) to the listening port.

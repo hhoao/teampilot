@@ -15,6 +15,8 @@ import 'package:teampilot/services/automation/automation_bus_gateway.dart';
 import 'package:teampilot/services/automation/automation_dispatcher.dart';
 import 'package:teampilot/services/automation/automation_schedule_calculator.dart';
 import 'package:teampilot/services/automation/automation_scheduler.dart';
+import 'package:teampilot/services/cli/registry/cli_bootstrap.dart';
+import 'package:teampilot/services/cli/registry/cli_tool_registry.dart';
 import 'package:teampilot/services/git/git_command_runner.dart';
 import 'package:teampilot/services/git/git_service.dart';
 import 'package:teampilot/services/io/local_filesystem.dart';
@@ -24,8 +26,23 @@ import 'package:teampilot/services/resource_manager/resource_memory_models.dart'
 import 'package:teampilot/services/skill/registry/skill_registry_config_service.dart';
 import 'package:teampilot/services/skill/registry/skill_registry_source.dart';
 import 'package:teampilot/services/skill/skill_acquisition_engine.dart';
-import 'package:teampilot/services/storage/app_storage.dart';
+import 'package:teampilot/services/storage/app_paths.dart';
+import 'package:teampilot/services/storage/home_storage.dart';
 import 'package:teampilot/services/storage/workspace_layout.dart';
+
+// Shared test-home state + install/reset seams live in test_runtime_context;
+// re-exported so existing `post_frame_test_harness` imports keep resolving.
+import 'test_runtime_context.dart';
+import 'package:teampilot/services/storage/app_paths.dart';
+import 'in_memory_filesystem.dart';
+export 'test_runtime_context.dart'
+    show
+        testHomeStorage,
+        buildTestHomeStorage,
+        bindTestNativeHome,
+        installTestHomeStorage,
+        testHomeStorageInstalled,
+        resetTestHomeStorage;
 
 Directory? _testAppDataDir;
 
@@ -40,18 +57,27 @@ class _TestProcessMetricsService extends ProcessMetricsService {
   }
 }
 
-/// Initializes app paths and [RuntimeStorageContext] for cubit tests.
+/// Initializes app paths and the shared test [HomeStorage] for cubit tests.
+///
+/// The shared test home (read via [testHomeStorage]) is a plain [HomeStorage]
+/// over a temp-dir context — no global app storage is involved.
 void setUpTestAppStorage() {
   TestWidgetsFlutterBinding.ensureInitialized();
   _testAppDataDir = Directory.systemTemp.createTempSync('test_app_data_');
   final paths = AppPaths(_testAppDataDir!.path);
-  AppStorage.installForTesting(
+  installTestHomeStorage(
     filesystem: LocalFilesystem(
       pathContext: AppPaths.pathContextForDataRoot(paths.basePath),
     ),
     paths: paths,
     home: _testAppDataDir!.path,
     cwd: _testAppDataDir!.path,
+  );
+  // Production parity: app bootstrap configures the CLI registry with the
+  // home storage right after binding it, so capabilities (trust provisioning,
+  // credential actions) get storage. Mirror that for every harness user.
+  CliToolRegistry.builtIn().configure(
+    CliBootstrap(const {}, storage: testHomeStorage),
   );
   // The source control panel self-builds a GitService that would otherwise
   // spawn a real `git` process on mount, leaking timers in widget tests. Use a
@@ -83,14 +109,17 @@ LaunchProfileRepository testLaunchProfileRepository(Directory isolatedRoot) {
   if (!profilesDir.existsSync()) {
     profilesDir.createSync(recursive: true);
   }
-  return LaunchProfileRepository(rootDir: profilesDir.path);
+  return LaunchProfileRepository(
+    rootDir: profilesDir.path,
+    storage: testHomeStorage,
+  );
 }
 
 void tearDownTestAppStorage() {
   GitService.debugOverrideFactory = null;
   ProcessMetricsService.debugOverrideFactory = null;
   WorkspaceFsWatcher.debugDisable = false;
-  AppStorage.resetForTesting();
+  resetTestHomeStorage();
   AppPathsBootstrapper.resetForTesting();
   DefaultWorkspaceDirectory.resetForTesting();
   final dir = _testAppDataDir;
@@ -104,8 +133,11 @@ void tearDownTestAppStorage() {
 /// exercise skill actions (empty registry config, no sources).
 SkillCubit testSkillCubit({SkillAcquisitionEngine? acquisitionEngine}) =>
     SkillCubit(
-      SkillRepository(),
-      registryConfigService: SkillRegistryConfigService(),
+      SkillRepository(storage: testHomeStorage),
+      storage: testHomeStorage,
+      registryConfigService: SkillRegistryConfigService(
+        storage: testHomeStorage,
+      ),
       initialSources: const <SkillRegistrySource>[],
       rebuildSources: (config) => const <SkillRegistrySource>[],
       acquisitionEngine: acquisitionEngine,
@@ -253,8 +285,8 @@ Future<void> deleteTempDirBestEffort(Directory dir) async {
 AutomationRepository testAutomationRepository() {
   if (_testAppDataDir != null) {
     return AutomationRepository(
-      fs: AppStorage.fs,
-      layout: WorkspaceLayout(teampilotRoot: AppStorage.paths.basePath),
+      fs: testHomeStorage.fs,
+      layout: WorkspaceLayout(teampilotRoot: testHomeStorage.paths.basePath),
     );
   }
   return AutomationRepository(
@@ -284,7 +316,8 @@ AutomationCubit testAutomationCubit({SessionRepository? sessionRepository}) {
 }) {
   final repo = testAutomationRepository();
   final calc = AutomationScheduleCalculator();
-  final sessions = sessionRepository ?? SessionRepository();
+  final sessions =
+      sessionRepository ?? SessionRepository(storage: testHomeStorage);
   final dispatcher = AutomationDispatcher(
     repository: repo,
     scheduleCalculator: calc,
@@ -314,7 +347,19 @@ ChatCubit testChatCubit({
   AutomationRepository? automationRepository,
   SessionRepository? sessionRepository,
 }) {
+  // Tests that never touch disk still need SOME home plane for the cubit's
+  // constructor-injected stores — auto-install a fresh in-memory one when the
+  // group skipped setUpTestAppStorage.
+  if (!testHomeStorageInstalled) {
+    installTestHomeStorage(
+      filesystem: InMemoryFilesystem(
+        pathContext: p.Context(style: p.Style.posix),
+      ),
+      paths: const AppPaths('/tp-test-chat'),
+    );
+  }
   return ChatCubit(
+    storage: testHomeStorage,
     executableResolver: executableResolver,
     automationRepository: automationRepository ?? testAutomationRepository(),
     sessionRepository: sessionRepository,

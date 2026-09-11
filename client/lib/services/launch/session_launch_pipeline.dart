@@ -210,6 +210,7 @@ class SessionLaunchPipeline {
       sessionId: sessionId,
       workspace: request.workspace,
       isPersonal: request.isPersonal,
+      usesPosixPaths: _host.lifecycle.storage.usesPosixPaths,
       cli: request.cli,
       simpleIdentity: request.simpleIdentity,
       workingDirectory: request.workingDirectory,

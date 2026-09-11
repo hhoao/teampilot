@@ -18,6 +18,7 @@ import '../../pages/home_workspace/workspace/workspace_landing_selectors.dart';
 import '../../services/automation/automation_launch_session_binding.dart';
 import '../../services/automation/automation_schedule_calculator.dart';
 import '../../services/automation/automation_schedule_defaults.dart';
+import '../../widgets/home_storage_scope.dart';
 import '../../utils/workspace/landing_draft_resolver.dart';
 import '../../utils/workspace/workspace_path_utils.dart';
 import 'package:shared_ui/shared_ui.dart';
@@ -197,6 +198,7 @@ class _AutomationEditorDialogState extends State<AutomationEditorDialog> {
 
     final draft = await resolveLandingDraft(
       workspaceId: workspaceId,
+      storage: homeStorageOf(context),
       simpleModeDefaultFullAccess: context
           .read<SessionPreferencesCubit>()
           .state
@@ -231,6 +233,7 @@ class _AutomationEditorDialogState extends State<AutomationEditorDialog> {
     if (workspace == null) return;
     final resolver = WorkspaceLandingProjectResolver(
       workspace: workspace,
+      usesPosixPaths: homeStorageOf(context).usesPosixPaths,
       storedProjectPath: _projectFolderPath,
     );
     final project = resolver.resolveSelectedProjectPath().trim();
@@ -248,19 +251,33 @@ class _AutomationEditorDialogState extends State<AutomationEditorDialog> {
 
   String? _resolvedProjectFolderPath(Workspace? workspace) {
     final stored = _projectFolderPath?.trim() ?? '';
-    if (stored.isNotEmpty) return normalizeWorkspacePath(stored);
+    if (stored.isNotEmpty) {
+      return normalizeWorkspacePath(
+        stored,
+        usesPosixPaths: homeStorageOf(context).usesPosixPaths,
+      );
+    }
     if (workspace == null) return null;
     final resolved = WorkspaceLandingProjectResolver(
       workspace: workspace,
+      usesPosixPaths: homeStorageOf(context).usesPosixPaths,
       storedProjectPath: _projectFolderPath,
     ).resolveSelectedProjectPath().trim();
     if (resolved.isEmpty) return null;
-    return normalizeWorkspacePath(resolved);
+    return normalizeWorkspacePath(
+      resolved,
+      usesPosixPaths: homeStorageOf(context).usesPosixPaths,
+    );
   }
 
   String? _resolvedWorkingDirectoryPath(Workspace? workspace) {
     final stored = _workingDirectoryPath?.trim() ?? '';
-    if (stored.isNotEmpty) return normalizeWorkspacePath(stored);
+    if (stored.isNotEmpty) {
+      return normalizeWorkspacePath(
+        stored,
+        usesPosixPaths: homeStorageOf(context).usesPosixPaths,
+      );
+    }
     return _resolvedProjectFolderPath(workspace);
   }
 

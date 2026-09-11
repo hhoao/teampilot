@@ -1,23 +1,28 @@
 import 'dart:convert';
 
 import '../models/ssh_profile.dart';
-import '../services/storage/app_storage.dart';
+import '../services/storage/home_storage.dart';
 import '../services/io/filesystem.dart';
 
 class SshProfileRepository {
-  /// Defaults follow [AppStorage] home (test convenience). Production must use
-  /// [deviceLocalSshProfileRepository] so the catalog stays on-device when home
-  /// is rebound to SSH.
-  SshProfileRepository({String? rootDir, Filesystem? fs})
-    : _rootDirOverride = rootDir,
-      _fsOverride = fs;
+  /// Defaults follow the home control plane ([storage], test convenience).
+  /// Production must use [deviceLocalSshProfileRepository] so the catalog
+  /// stays on-device when home is rebound to SSH.
+  SshProfileRepository({
+    String? rootDir,
+    Filesystem? fs,
+    required HomeStorage storage,
+  }) : _rootDirOverride = rootDir,
+      _fsOverride = fs,
+      _storage = storage;
 
   final String? _rootDirOverride;
   final Filesystem? _fsOverride;
+  final HomeStorage _storage;
 
-  String get _root => _rootDirOverride ?? AppStorage.paths.sshProfilesDir;
+  String get _root => _rootDirOverride ?? _storage.paths.sshProfilesDir;
 
-  Filesystem get _fs => _fsOverride ?? AppStorage.fs;
+  Filesystem get _fs => _fsOverride ?? _storage.fs;
 
   String get _profilesFile => _fs.pathContext.join(_root, 'profiles.json');
 

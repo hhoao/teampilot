@@ -235,9 +235,9 @@ flutter test test/integration/remote_cli_install_docker_test.dart --tags "integr
 
 Skips automatically when Docker is unavailable. First run builds `teampilot-it-ssh:latest` from `test/integration/docker/Dockerfile` (Debian + OpenSSH + socat, no Node/npm preinstalled).
 
-### Test helpers (cubit / AppStorage)
+### Test helpers (cubit / home storage)
 
-When tests touch `AppStorage` or `RuntimeStorageContext`:
+When tests need the shared home plane (`testHomeStorage`) or a `RuntimeContext`:
 
 ```dart
 import '../support/post_frame_test_harness.dart';

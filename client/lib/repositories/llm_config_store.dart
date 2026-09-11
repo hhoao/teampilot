@@ -3,7 +3,6 @@ import 'dart:convert';
 import 'package:path/path.dart' as p;
 
 import '../models/llm_config.dart';
-import '../services/storage/app_storage.dart';
 import '../services/io/filesystem.dart';
 import '../services/storage/remote_file_store.dart';
 
@@ -14,9 +13,9 @@ abstract class LlmConfigStore {
 }
 
 class FilesystemLlmConfigStore implements LlmConfigStore {
-  FilesystemLlmConfigStore({required String path, Filesystem? fs})
+  FilesystemLlmConfigStore({required String path, required Filesystem fs})
     : _path = path,
-      _fs = fs ?? AppStorage.fs;
+      _fs = fs;
 
   final String _path;
   final Filesystem _fs;
@@ -57,7 +56,8 @@ class FilesystemLlmConfigStore implements LlmConfigStore {
 
 @Deprecated('Use FilesystemLlmConfigStore')
 class LocalLlmConfigStore extends FilesystemLlmConfigStore {
-  LocalLlmConfigStore(String path) : super(path: path);
+  LocalLlmConfigStore(String path, {required Filesystem fs})
+    : super(path: path, fs: fs);
 }
 
 class RemoteLlmConfigStore implements LlmConfigStore {

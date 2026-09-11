@@ -5,6 +5,7 @@ import 'package:shared_ui/shared_ui.dart';
 import '../l10n/l10n_extensions.dart';
 import '../models/runtime_target.dart';
 import '../models/workspace_folder.dart';
+import 'home_storage_scope.dart';
 import '../services/storage/home_target_controller.dart';
 import '../utils/workspace/workspace_path_picker.dart';
 import '../utils/workspace/workspace_path_utils.dart';
@@ -54,7 +55,12 @@ class _WorkspaceCreateDirectoryPickerState
     if (trimmed.isEmpty || !mounted) return;
     final duplicate = widget.folders.any(
       (f) =>
-          f.targetId == widget.targetId && workspacePathsEqual(f.path, trimmed),
+          f.targetId == widget.targetId &&
+          workspacePathsEqual(
+            f.path,
+            trimmed,
+            usesPosixPaths: homeStorageOf(context).usesPosixPaths,
+          ),
     );
     if (duplicate) return;
     widget.onFoldersChanged([

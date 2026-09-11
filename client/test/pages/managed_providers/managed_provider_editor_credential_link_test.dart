@@ -37,17 +37,25 @@ void main() {
 
   setUp(() {
     fs = InMemoryFilesystem();
+    final storage = fakeHomeStorage(filesystem: fs);
     final usageRepository = ManagedProviderUsageRepository(
+      storage: storage,
       fs: fs,
       cachePath: '/tp/usage-cache.json',
     );
     final managedRepository = ManagedProviderRepository(
+      storage: storage,
       fs: fs,
       configPath: '/tp/managed-providers.json',
       onProvidersDeleted: usageRepository.deleteMany,
     );
     appProviderCubit = AppProviderCubit(
-      repository: AppProviderRepository(fs: fs, basePath: '/tp'),
+      storage: storage,
+      repository: AppProviderRepository(
+        storage: storage,
+        fs: fs,
+        basePath: '/tp',
+      ),
       basePath: '/tp',
     );
     managedProviderCubit = ManagedProviderCubit(

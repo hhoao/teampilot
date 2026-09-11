@@ -114,7 +114,7 @@ void main() {
     CursorHomeLayout.debugPlatformEnvironmentOverride = const {};
     fs = InMemoryFilesystem();
     layout = CursorHomeLayout(pathContext: fs.pathContext);
-    service = CursorProviderCredentialsService(fs: fs, basePath: base);
+    service = CursorProviderCredentialsService(fs: fs, basePath: base, storage: fakeHomeStorage(filesystem: fs), );
   });
 
   tearDown(() {
@@ -233,6 +233,7 @@ void main() {
     final winService = CursorProviderCredentialsService(
       fs: winFs,
       basePath: base,
+                                                         storage: fakeHomeStorage(filesystem: fs),
     );
     const home = r'C:\Users\haung';
     const appData = r'C:\Users\haung\AppData\Roaming';
@@ -397,6 +398,7 @@ void main() {
         layout: layout,
         onStart: (request) => captured = request,
       ),
+                                                           storage: fakeHomeStorage(filesystem: fs),
     );
 
     await loginService.runAuthLogin('work');
@@ -416,6 +418,7 @@ void main() {
             expect(request.arguments, contains('login'));
           },
         ),
+                                                             storage: fakeHomeStorage(filesystem: fs),
       );
 
       final loginResult = await loginService.runAuthLogin('work');
@@ -438,6 +441,7 @@ void main() {
       final loginService = CursorProviderCredentialsService(
         fs: winFs,
         basePath: winBase,
+        storage: fakeHomeStorage(filesystem: winFs),
         hostRunner: _loginHostRunner(
           fs: winFs,
           layout: winLayout,
@@ -481,6 +485,7 @@ void main() {
           layout: layout,
           writeAuthJson: false,
         ),
+                                                             storage: fakeHomeStorage(filesystem: fs),
       );
 
       final loginResult = await loginService.runAuthLogin('work');
@@ -558,6 +563,7 @@ void main() {
         }),
         streaming: () => throw StateError('streaming should not be called'),
       ),
+                                                            storage: fakeHomeStorage(filesystem: fs),
     );
 
     final result = await revokeService.revokeCredentials('work');

@@ -27,6 +27,7 @@ void main() {
     final runner = _RecordingRunner();
     final service = ConfigProfileService(
       basePath: '/tp',
+      storage: fakeHomeStorage(filesystem: fs, appDataRoot: '/tp'),
       home: '/home/u',
       fs: fs,
       layout: RuntimeLayout(teampilotRoot: '/tp', fs: fs),

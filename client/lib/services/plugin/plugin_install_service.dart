@@ -5,7 +5,7 @@ import 'package:path/path.dart' as p;
 
 import '../../models/plugin.dart';
 import '../../utils/logging/logger.dart';
-import '../storage/app_storage.dart';
+import '../storage/home_storage.dart';
 import '../io/filesystem.dart';
 import 'plugin_exceptions.dart';
 import 'plugin_fetch_service.dart';
@@ -34,38 +34,35 @@ class _PluginStorage {
 
 class PluginInstallService {
   PluginInstallService({
+    required HomeStorage storage,
     PluginManifestService? manifestService,
     PluginFetchService? fetchService,
     PluginRepoDiskCacheService? diskCache,
-  }) : _manifest = manifestService ?? PluginManifestService(),
+  }) : _homeStorage = storage,
+       _manifest = manifestService ?? PluginManifestService(),
        _fetch = fetchService ?? PluginFetchService(),
-       _diskCache = diskCache ?? PluginRepoDiskCacheService();
+       _diskCache =
+           diskCache ??
+           PluginRepoDiskCacheService(
+             filesystem: storage.fs,
+             teampilotRoot: storage.appDataRoot,
+           );
 
+  final HomeStorage _homeStorage;
   final PluginManifestService _manifest;
   final PluginFetchService _fetch;
   final PluginRepoDiskCacheService _diskCache;
 
   Future<_PluginStorage> _storage() async {
-    if (AppStorage.isInstalled) {
-      final snap = AppStorage.context;
-      return _PluginStorage(
-        fs: snap.fs,
-        ctx: snap.fs.pathContext,
-        pluginsRoot: snap.pluginsRoot,
-        pluginBackupsDir: snap.pluginBackupsDir,
-        pluginsJsonPath: snap.pluginsJsonPath,
-        remote: snap.remoteFileStore,
-      );
-    }
-    final fs = AppStorage.fs;
-    final ctx = fs.pathContext;
-    final base = AppStorage.paths.basePath;
+    final snap = _homeStorage.context;
+    final fs = snap.fs;
     return _PluginStorage(
       fs: fs,
-      ctx: ctx,
-      pluginsRoot: AppPaths.pluginsDirForTeampilotRoot(base),
-      pluginBackupsDir: AppPaths.pluginBackupsDirForTeampilotRoot(base),
-      pluginsJsonPath: AppStorage.paths.pluginsJson,
+      ctx: fs.pathContext,
+      pluginsRoot: snap.pluginsRoot,
+      pluginBackupsDir: snap.pluginBackupsDir,
+      pluginsJsonPath: snap.pluginsJsonPath,
+      remote: snap.remoteFileStore,
     );
   }
 

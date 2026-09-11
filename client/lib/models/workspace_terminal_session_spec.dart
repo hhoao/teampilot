@@ -85,9 +85,15 @@ WorkspaceTerminalSessionSpec defaultSessionSpecFor({
   required List<WorkspaceFolder> folders,
   required String fallbackLocalShell,
   required RuntimeTarget home,
+  required bool usesPosixPaths,
 }) {
   final rawId =
-      targetIdForFolderPaths(folders, [cwd], matchSubpaths: true) ??
+      targetIdForFolderPaths(
+        folders,
+        [cwd],
+        usesPosixPaths: usesPosixPaths,
+        matchSubpaths: true,
+      ) ??
       (folders.isNotEmpty
           ? folders.first.targetId
           : WorkspaceFolder.localTargetId);
@@ -122,15 +128,19 @@ String workspaceShellLaunchWorkingDirectory({
   required List<WorkspaceFolder> folders,
   required String localCwd,
   required RuntimeTarget home,
+  required bool usesPosixPaths,
   String sshDefaultWorkingDirectory = '',
 }) {
   final requested = localCwd.trim();
   final target = runtimeTargetForWorkspaceShellSpec(spec, home: home);
   if (!usesSshTransport(target.kind)) return requested;
 
-  final ownerId = targetIdForFolderPaths(folders, [
-    requested,
-  ], matchSubpaths: true);
+  final ownerId = targetIdForFolderPaths(
+    folders,
+    [requested],
+    usesPosixPaths: usesPosixPaths,
+    matchSubpaths: true,
+  );
   if (ownerId != null) {
     final owner = WorkTargetCanonicalizer.resolve(ownerId, home: home);
     if (_sameSshTarget(owner, target)) return requested;
@@ -148,6 +158,7 @@ bool workspaceShellShouldApplySyncedCwd({
   required String syncedCwd,
   required List<WorkspaceFolder> folders,
   required RuntimeTarget home,
+  required bool usesPosixPaths,
 }) {
   final requested = syncedCwd.trim();
   if (requested.isEmpty) return false;
@@ -156,6 +167,7 @@ bool workspaceShellShouldApplySyncedCwd({
         folders: folders,
         localCwd: requested,
         home: home,
+        usesPosixPaths: usesPosixPaths,
       ) ==
       requested;
 }

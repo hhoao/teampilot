@@ -9,7 +9,8 @@ import '../../models/skill_pack_instruction.dart';
 import '../../utils/logging/logger.dart';
 import '../cli/installer_types.dart';
 import '../io/filesystem.dart';
-import '../storage/app_storage.dart';
+import '../storage/app_paths.dart';
+import '../storage/home_storage.dart';
 import 'acquire/skill_acquire_context.dart';
 import 'skill_install_service.dart';
 import 'skill_manifest_service.dart';
@@ -65,6 +66,7 @@ class _InstrResult {
 /// Runs Dockerfile-like [SkillPackInstruction] lists via type dispatch.
 class SkillAcquisitionEngine {
   SkillAcquisitionEngine({
+    required HomeStorage storage,
     SkillInstallRunner? runner,
     required SkillGitDirInstaller installGitDir,
     bool Function()? isLocalAcquireSupported,
@@ -75,7 +77,8 @@ class SkillAcquisitionEngine {
     SkillRepoEnsureSynced? ensureSynced,
     SkillPackInstallStore? packInstallStore,
     Filesystem? fs,
-  }) : _runner = runner ?? _defaultLocalRunner,
+  }) : _storage = storage,
+       _runner = runner ?? _defaultLocalRunner,
        _usesDefaultRunner = runner == null,
        _installGitDir = installGitDir,
        _isLocalAcquireSupported =
@@ -83,29 +86,33 @@ class SkillAcquisitionEngine {
        _registerDirectory =
            registerDirectory ??
            SkillInstallService(
-             manifest: SkillManifestService(),
+             storage: storage,
+             manifest: SkillManifestService(storage: storage),
            ).registerInstalledDirectory,
-       _listSkillDirsWithSkillMd =
-           listSkillDirsWithSkillMd ?? _defaultListSkillDirsWithSkillMd,
-       _packRegistry = packRegistry ?? SkillPackRegistry(),
-       _repoCache = repoCache ?? SkillRepoDiskCacheService(),
+       _packRegistry = packRegistry ?? SkillPackRegistry(storage: storage),
+       _repoCache = repoCache ?? SkillRepoDiskCacheService(storage: storage),
        _ensureSynced = ensureSynced,
-       _packInstallStore = packInstallStore ?? SkillPackInstallStore(),
-       _fs = fs;
+       _packInstallStore =
+           packInstallStore ?? SkillPackInstallStore(storage: storage),
+       _fs = fs {
+    _listSkillDirsWithSkillMd =
+        listSkillDirsWithSkillMd ?? _defaultListSkillDirsWithSkillMd;
+  }
 
+  final HomeStorage _storage;
   final SkillInstallRunner _runner;
   final bool _usesDefaultRunner;
   final SkillGitDirInstaller _installGitDir;
   final bool Function() _isLocalAcquireSupported;
   final SkillDirectoryRegistrar _registerDirectory;
-  final Future<Set<String>> Function() _listSkillDirsWithSkillMd;
+  late final Future<Set<String>> Function() _listSkillDirsWithSkillMd;
   final SkillPackRegistry _packRegistry;
   final SkillRepoDiskCacheService _repoCache;
   final SkillRepoEnsureSynced? _ensureSynced;
   final SkillPackInstallStore _packInstallStore;
   final Filesystem? _fs;
 
-  Filesystem get fs => _fs ?? AppStorage.fs;
+  Filesystem get fs => _fs ?? _storage.fs;
 
   static bool _defaultLocalAcquireSupported() => true;
 
@@ -124,11 +131,11 @@ class SkillAcquisitionEngine {
     }
   }
 
-  static Future<Set<String>> _defaultListSkillDirsWithSkillMd() async {
-    final fs = AppStorage.fs;
+  Future<Set<String>> _defaultListSkillDirsWithSkillMd() async {
+    final fs = _storage.fs;
     final ctx = fs.pathContext;
     final skillsDir = AppPaths.skillsDirForTeampilotRoot(
-      AppStorage.paths.basePath,
+      _storage.paths.basePath,
     );
     if (!(await fs.stat(skillsDir)).isDirectory) return {};
     final out = <String>{};
@@ -337,7 +344,7 @@ class SkillAcquisitionEngine {
       return _InstrResult(success: false, message: 'install[$index] FROM: $e');
     }
     final syncRoot = fs.pathContext.join(
-      AppStorage.paths.skillRepoCacheDir,
+      _storage.paths.skillRepoCacheDir,
       SkillRepoDiskCacheService.repoKey(repo),
       'files',
     );
@@ -427,7 +434,7 @@ class SkillAcquisitionEngine {
       // SCRIPT establishes a workspace root at the registered skill dir parent.
       if (!ctx.hasWorkspace) {
         final skillsDir = AppPaths.skillsDirForTeampilotRoot(
-          AppStorage.paths.basePath,
+          _storage.paths.basePath,
         );
         ctx.syncRoot = fs.pathContext.join(skillsDir, chosen);
         ctx.workdir = '';

@@ -1,13 +1,14 @@
 import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 
 import '../models/workspace.dart';
 import '../models/workspace_icon_ref.dart';
 import '../services/workspace/workspace_icon_service.dart';
 import '../services/workspace/workspace_icon_storage.dart';
-import '../services/storage/app_storage.dart';
+import '../services/storage/home_storage.dart';
 import '../services/storage/workspace_layout.dart';
 import '../utils/workspace/workspace_geometry_catalog.dart';
 import '../utils/workspace/workspace_icon_resolver.dart';
@@ -113,11 +114,14 @@ class _CustomWorkspaceIconImageState extends State<_CustomWorkspaceIconImage> {
   }
 
   Future<List<int>?> _loadBytes() {
+    final storage = context.read<HomeStorage>();
     return workspaceIconService.loadCustomBytes(
       workspaceDir: WorkspaceLayout(
-        teampilotRoot: AppStorage.paths.basePath,
+        teampilotRoot: storage.paths.basePath,
+        fs: storage.fs,
       ).workspaceDir(widget.workspace.workspaceId),
       relativePath: widget.relativePath,
+      filesystem: storage.fs,
     );
   }
 

@@ -8,7 +8,8 @@ import 'package:teampilot/cubits/plugin_cubit.dart';
 import 'package:teampilot/l10n/app_localizations.dart';
 import 'package:teampilot/models/plugin.dart';
 import 'package:teampilot/pages/plugins/plugin_management_page.dart';
-import 'package:teampilot/services/storage/app_storage.dart';
+import 'package:teampilot/services/storage/app_paths.dart';
+import '../support/test_runtime_context.dart';
 import 'package:teampilot/services/io/local_filesystem.dart';
 
 void main() {
@@ -17,7 +18,7 @@ void main() {
   setUp(() {
     tmp = Directory.systemTemp.createTempSync('plugin-page-');
     final paths = AppPaths(tmp.path);
-    AppStorage.installForTesting(
+    installTestHomeStorage(
       filesystem: LocalFilesystem(
         pathContext: AppPaths.pathContextForDataRoot(paths.basePath),
       ),
@@ -28,7 +29,7 @@ void main() {
   });
 
   tearDown(() {
-    AppStorage.resetForTesting();
+    resetTestHomeStorage();
     tmp.deleteSync(recursive: true);
   });
 

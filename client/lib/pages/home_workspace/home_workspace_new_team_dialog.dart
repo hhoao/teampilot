@@ -20,6 +20,9 @@ import '../../services/ai/ai_feature_setting_resolver.dart';
 import '../../services/ai/team_config_draft.dart';
 import '../../services/ai/team_config_generator.dart';
 import '../../services/ai/team_draft_roster_mapper.dart';
+import '../../services/expert_hub/expert_hub_catalog.dart';
+import '../../services/expert_hub/local_expert_store.dart';
+import '../../services/storage/home_storage.dart';
 import '../../services/cli/registry/capabilities/provider_capability.dart';
 import '../../services/cli/registry/cli_display_name.dart';
 import '../../services/cli/registry/cli_tool_registry_scope.dart';
@@ -45,14 +48,15 @@ typedef _NewTeamDialogResult = ({
 /// create action.
 Future<void> showHomeNewTeamDialog(
   BuildContext context,
-  LaunchProfileCubit teamCubit,
-) async {
+  LaunchProfileCubit teamCubit, {
+  required LocalExpertStore expertStore,
+}) async {
   final result = await showTpDialog<_NewTeamDialogResult>(
     context: context,
     presentation: TpDialogPresentation.page,
     mobileBreakpoint: WorkspacePanePolicy.narrowBreakpointWidth,
     maxWidth: 720,
-    builder: (_) => const HomeNewTeamDialog(),
+    builder: (_) => HomeNewTeamDialog(expertStore: expertStore),
   );
   if (result == null || !context.mounted) return;
   await teamCubit.addTeam(
@@ -70,7 +74,11 @@ Future<void> showHomeNewTeamDialog(
 }
 
 class HomeNewTeamDialog extends StatefulWidget {
-  const HomeNewTeamDialog({super.key});
+  const HomeNewTeamDialog({super.key, required this.expertStore});
+
+  /// Local expert store used to persist AI-generated member personas; the
+  /// caller threads the app-wide store (home plane).
+  final LocalExpertStore expertStore;
 
   @override
   State<HomeNewTeamDialog> createState() => _HomeNewTeamDialogState();
@@ -195,7 +203,17 @@ class _HomeNewTeamDialogState extends State<HomeNewTeamDialog> {
     final mode = _mode;
     List<TeamRosterSlot>? roster;
     if (_draft != null) {
-      roster = await rosterSlotsFromTeamDraft(_draft!);
+      ExpertHubCatalog? catalog;
+      try {
+        catalog = context.read<ExpertHubCatalog>();
+      } catch (_) {
+        catalog = null;
+      }
+      roster = await rosterSlotsFromTeamDraft(
+        _draft!,
+        store: widget.expertStore,
+        catalog: catalog,
+      );
     }
     if (!mounted) return;
     Navigator.of(context).pop(
@@ -259,7 +277,9 @@ class _HomeNewTeamDialogState extends State<HomeNewTeamDialog> {
     });
 
     try {
-      final draft = await TeamConfigGenerator().generateStreaming(
+      final draft = await TeamConfigGenerator(
+        storage: context.read<HomeStorage>(),
+      ).generateStreaming(
         setting: setting,
         description: description,
         mode: mode,

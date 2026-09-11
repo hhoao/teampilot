@@ -1,17 +1,19 @@
 import '../../models/team_config.dart';
+import '../../services/storage/home_storage.dart';
 import '../../services/storage/runtime_layout.dart';
 import '../../services/provider/config_profile_service.dart';
 import '../../services/session/session_lifecycle_service.dart';
-import '../../services/storage/app_storage.dart';
 
 /// Builds [ConfigProfileService] instances and ensures config-profile trees
 /// exist for teams. Shared between [LaunchProfileCubit] CRUD and resource sync.
 class TeamProfileProvisioner {
   TeamProfileProvisioner({
+    required HomeStorage storage,
     ConfigProfileService? configProfileService,
     StorageRootsResolver? storageRootsResolver,
     String? appDataBasePathOverride,
-  }) : _configProfileService = configProfileService,
+  }) : _storage = storage,
+       _configProfileService = configProfileService,
        _storageRootsResolver = storageRootsResolver,
        _appDataBasePathOverride =
            (appDataBasePathOverride != null &&
@@ -19,6 +21,7 @@ class TeamProfileProvisioner {
            ? appDataBasePathOverride
            : null;
 
+  final HomeStorage _storage;
   final ConfigProfileService? _configProfileService;
   final StorageRootsResolver? _storageRootsResolver;
   final String? _appDataBasePathOverride;
@@ -28,7 +31,7 @@ class TeamProfileProvisioner {
     if (override != null && override.isNotEmpty) {
       return override;
     }
-    return AppStorage.paths.basePath;
+    return _storage.paths.basePath;
   }
 
   Future<ConfigProfileService> service() async {
@@ -36,8 +39,9 @@ class TeamProfileProvisioner {
     if (injected != null) return injected;
     final resolver = _storageRootsResolver;
     if (resolver == null) {
-      final fs = AppStorage.fs;
+      final fs = _storage.fs;
       return ConfigProfileService(
+        storage: _storage,
         basePath: _resolvedAppDataBasePath,
         fs: fs,
         layout: RuntimeLayout(teampilotRoot: _resolvedAppDataBasePath, fs: fs),
@@ -45,6 +49,7 @@ class TeamProfileProvisioner {
     }
     final roots = await resolver();
     return ConfigProfileService(
+      storage: _storage,
       basePath: roots.teampilotRoot,
       fs: roots.fs,
       layout: roots.layout,

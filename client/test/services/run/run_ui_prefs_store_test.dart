@@ -5,13 +5,13 @@ import '../../support/in_memory_filesystem.dart';
 void main() {
   test('missing file returns null selectedKey', () async {
     final fs = InMemoryFilesystem();
-    final store = RunUiPrefsStore(fs: fs, pathOverride: '/ui/run-ui-prefs.json');
+    final store = RunUiPrefsStore(fs: fs, pathOverride: '/ui/run-ui-prefs.json', storage: fakeHomeStorage(filesystem: fs), );
     expect(await store.selectedKeyFor('ws-1'), isNull);
   });
 
   test('round-trips selectedKey per workspaceId', () async {
     final fs = InMemoryFilesystem();
-    final store = RunUiPrefsStore(fs: fs, pathOverride: '/ui/run-ui-prefs.json');
+    final store = RunUiPrefsStore(fs: fs, pathOverride: '/ui/run-ui-prefs.json', storage: fakeHomeStorage(filesystem: fs), );
     await store.saveSelectedKey('ws-1', 'key-a');
     await store.saveSelectedKey('ws-2', 'key-b');
     expect(await store.selectedKeyFor('ws-1'), 'key-a');
@@ -20,7 +20,7 @@ void main() {
 
   test('clearSelectedKey removes workspace entry', () async {
     final fs = InMemoryFilesystem();
-    final store = RunUiPrefsStore(fs: fs, pathOverride: '/ui/run-ui-prefs.json');
+    final store = RunUiPrefsStore(fs: fs, pathOverride: '/ui/run-ui-prefs.json', storage: fakeHomeStorage(filesystem: fs), );
     await store.saveSelectedKey('ws-1', 'key-a');
     await store.clearSelectedKey('ws-1');
     expect(await store.selectedKeyFor('ws-1'), isNull);
@@ -29,7 +29,7 @@ void main() {
   test('corrupt JSON is treated as empty', () async {
     final fs = InMemoryFilesystem();
     await fs.writeString('/ui/run-ui-prefs.json', '{not-json');
-    final store = RunUiPrefsStore(fs: fs, pathOverride: '/ui/run-ui-prefs.json');
+    final store = RunUiPrefsStore(fs: fs, pathOverride: '/ui/run-ui-prefs.json', storage: fakeHomeStorage(filesystem: fs), );
     expect(await store.selectedKeyFor('ws-1'), isNull);
   });
 }

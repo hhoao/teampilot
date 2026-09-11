@@ -6,6 +6,7 @@ import 'package:teampilot/services/terminal/terminal_session.dart';
 import 'package:teampilot/services/terminal/terminal_transport.dart';
 
 import '../../support/rust_lib_test_init.dart';
+import '../../support/in_memory_filesystem.dart';
 
 class _FakeTransport implements TerminalTransport {
   final outputController = StreamController<Uint8List>();
@@ -58,6 +59,7 @@ void main() {
               started = true;
               return Future.value(transport);
             },
+                                       fs: InMemoryFilesystem(),
       );
       addTearDown(session.dispose);
 
@@ -87,6 +89,7 @@ void main() {
           }) {
             return starter.future;
           },
+                                     fs: InMemoryFilesystem(),
     );
     addTearDown(session.dispose);
 
@@ -106,6 +109,7 @@ void main() {
     final session = TerminalSession(
       executable: '/bin/echo',
       validateLaunch: false,
+                                     fs: InMemoryFilesystem(),
     );
     session.dispose();
     session.connect(workingDirectory: '/tmp');
@@ -134,6 +138,7 @@ void main() {
             }) {
               return starter.future;
             },
+                                       fs: InMemoryFilesystem(),
       );
 
       session.connect(workingDirectory: '/tmp');

@@ -10,12 +10,13 @@ import 'package:teampilot/services/team/session_working_resolver.dart';
 
 import '../../integration/support/connected_recording_shell.dart';
 import '../../support/rust_lib_test_init.dart';
+import '../../support/in_memory_filesystem.dart';
 
 void main() {
   setUpAll(initRustLibForTests);
 
   test('onAfterTurnEnded fires on PTY-quiet turn end for Cursor', () async {
-    final store = ChatTabStore();
+    final store = ChatTabStore(storage: fakeHomeStorage());
     final tab = ChatTab(
       info: const ChatTabInfo(id: 's1', title: 'T', subtitle: ''),
       cliTeamName: 's1',
@@ -65,7 +66,7 @@ void main() {
   });
 
   test('PTY-quiet does not end turn for Claude (default CLI)', () async {
-    final store = ChatTabStore();
+    final store = ChatTabStore(storage: fakeHomeStorage());
     final tab = ChatTab(
       info: const ChatTabInfo(id: 's1', title: 'T', subtitle: ''),
       cliTeamName: 's1',

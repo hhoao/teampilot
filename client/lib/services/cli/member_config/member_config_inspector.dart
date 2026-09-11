@@ -2,7 +2,7 @@ import '../preset_resolver.dart';
 import '../../../models/cli_preset.dart';
 import '../../../models/team_config.dart';
 import '../../io/filesystem.dart';
-import '../../storage/app_storage.dart';
+import '../../storage/home_storage.dart';
 import '../../storage/runtime_layout.dart';
 import '../../storage/runtime_context.dart' show RuntimeContext;
 import '../../cli/claude/team_roster_service.dart';
@@ -15,15 +15,16 @@ import 'member_config_detail.dart';
 /// fallback) and reads it via the CLI's [MemberConfigInspectionCapability].
 class MemberConfigInspector {
   MemberConfigInspector({
+    required HomeStorage storage,
     RuntimeLayout? layout,
     Filesystem? fs,
     CliToolRegistry? registry,
-  }) : _fs = fs ?? AppStorage.fs,
+  }) : _fs = fs ?? storage.fs,
        _layout =
            layout ??
            RuntimeLayout(
-             teampilotRoot: AppStorage.appDataRoot,
-             fs: fs ?? AppStorage.fs,
+             teampilotRoot: storage.appDataRoot,
+             fs: fs ?? storage.fs,
            ),
        _registry = registry ?? CliToolRegistry.builtIn();
 

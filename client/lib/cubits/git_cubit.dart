@@ -1,13 +1,19 @@
 import 'package:equatable/equatable.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'dart:io';
 
 import '../models/ai_feature_setting.dart';
 import '../models/git_status.dart';
+import '../models/runtime_target.dart';
 import '../services/ai/commit_message_prompt.dart';
 import '../services/ai/headless_ai_service.dart';
 import '../services/git/git_changes_visible_rows.dart';
 import '../services/git/git_service.dart';
+import '../services/io/local_filesystem.dart';
+import '../services/storage/app_paths.dart';
+import '../services/storage/home_storage.dart';
+import '../services/storage/runtime_context.dart';
 
 export '../services/git/git_changes_visible_rows.dart'
     show
@@ -142,10 +148,27 @@ class GitState extends Equatable {
 /// [GitState.errorMessage]. Runs git on the active storage backend (local,
 /// WSL, or SSH).
 class GitCubit extends Cubit<GitState> {
-  GitCubit({required GitService service, HeadlessAiService? headless})
-    : _service = service,
-      _headless = headless ?? HeadlessAiService(),
-      super(const GitState());
+  GitCubit({
+    required GitService service,
+    HeadlessAiService? headless,
+    HomeStorage? storage,
+  }) : _service = service,
+       _headless =
+           headless ??
+           HeadlessAiService(
+             storage: storage ??
+                 HomeStorage(
+                   RuntimeContext(
+                     target: RuntimeTarget.local(),
+                     filesystem: LocalFilesystem(),
+                     home: Directory.systemTemp.path,
+                     cwd: Directory.systemTemp.path,
+                     appDataRoot: Directory.systemTemp.path,
+                     paths: AppPaths(Directory.systemTemp.path),
+                   ),
+                 ),
+           ),
+       super(const GitState());
 
   final GitService _service;
   final HeadlessAiService _headless;

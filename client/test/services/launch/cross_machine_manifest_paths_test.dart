@@ -5,14 +5,20 @@ import 'package:teampilot/services/launch/launch_manifest.dart';
 import 'package:teampilot/services/launch/launch_manifest_paths.dart';
 import 'package:teampilot/services/cli/cursor/provider/cursor_launch_environment.dart';
 import 'package:teampilot/services/session/session_lifecycle_service.dart';
-import 'package:teampilot/services/storage/app_storage.dart';
+import 'package:teampilot/services/cli/registry/cli_bootstrap.dart';
+import 'package:teampilot/services/cli/registry/cli_tool_registry.dart';
 
 import '../../support/in_memory_filesystem.dart';
 import '../../support/post_frame_test_harness.dart';
 import 'package:teampilot/models/config_bundle.dart';
 
 void main() {
-  setUp(setUpTestAppStorage);
+  setUp(() {
+    setUpTestAppStorage();
+    CliToolRegistry.builtIn().configure(
+      CliBootstrap(const {}, storage: testHomeStorage),
+    );
+  });
   tearDown(tearDownTestAppStorage);
 
   test('workPathContextFor uses POSIX when work root is remote', () {
@@ -50,7 +56,8 @@ void main() {
         pathContext: p.Context(style: p.Style.windows),
       );
       final lifecycle = SessionLifecycleService(
-        appDataBasePath: AppStorage.paths.basePath,
+        appDataBasePath: testHomeStorage.paths.basePath,
+                                                 storage: testHomeStorage,
       );
       final homeRoots = await lifecycle.resolveWorkContextForTargetId('local');
       final svc = await lifecycle.configProfileServiceFor(homeRoots);

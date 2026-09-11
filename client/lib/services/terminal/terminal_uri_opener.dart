@@ -5,7 +5,6 @@ import 'package:url_launcher/url_launcher.dart';
 
 import '../editor/file_editor_theme.dart';
 import '../io/filesystem.dart';
-import '../storage/app_storage.dart';
 
 /// Opens terminal hyperlinks like gnome-terminal ([gtk_show_uri] semantics).
 abstract final class TerminalUriOpener {
@@ -18,10 +17,12 @@ abstract final class TerminalUriOpener {
 
   /// When set, existing local files are opened in the in-app editor before
   /// falling back to the OS handler.
+  ///
+  /// [fs] is the caller's home filesystem, used to stat candidate files.
   static Future<bool> open(
     String raw, {
     String? workingDirectory,
-    Filesystem? fs,
+    required Filesystem fs,
     Future<void> Function(String absolutePath)? openInEditor,
   }) async {
     final uriString = fixup(raw);
@@ -154,7 +155,7 @@ abstract final class TerminalUriOpener {
   static Future<bool> _openLocalFile(
     String raw, {
     required String? workingDirectory,
-    Filesystem? fs,
+    required Filesystem fs,
     Future<void> Function(String absolutePath)? openInEditor,
     required String? fallbackPath,
   }) async {
@@ -163,8 +164,7 @@ abstract final class TerminalUriOpener {
     if (resolved == null || resolved.isEmpty) return false;
 
     if (openInEditor != null && _shouldOpenInEditor(resolved)) {
-      final filesystem = fs ?? AppStorage.fs;
-      final stat = await filesystem.stat(resolved);
+      final stat = await fs.stat(resolved);
       if (stat.exists && stat.isFile) {
         await openInEditor(resolved);
         return true;

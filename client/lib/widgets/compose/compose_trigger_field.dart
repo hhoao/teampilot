@@ -11,7 +11,7 @@ import '../../models/config_bundle.dart';
 import '../../services/cli/registry/capabilities/native_command_capability.dart';
 import '../../services/commands/command_bus.dart';
 import '../../services/commands/shortcut_focus.dart';
-import '../../services/storage/app_storage.dart';
+import '../home_storage_scope.dart';
 import '../../services/compose/compose_file_search.dart';
 import '../../services/file_tree/workspace_file_index.dart';
 import '../../services/search/workspace_search_indexes.dart';
@@ -357,9 +357,10 @@ class _ComposeTriggerFieldState extends State<ComposeTriggerField> {
         .toList();
     if (segments.length > 1) {
       return searchComposeFiles(
-        fs: AppStorage.fs,
+        fs: homeStorageOf(context).fs,
         workspaceRoot: widget.workspaceRoot,
         query: query,
+        usesPosixPaths: homeStorageOf(context).usesPosixPaths,
       );
     }
     final needle = segments.isEmpty ? '' : segments.first;

@@ -85,6 +85,7 @@ void main() {
     store = TeamGenerationJobStore(
       fs: fs,
       layout: WorkspaceLayout(teampilotRoot: '/tp', fs: fs),
+                                    storage: testHomeStorage,
     );
     final settings = resolveTeamGenerationSettingsSnapshot(
       settings: TeamGenerationSettings(teamMode: TeamMode.mixed),
@@ -156,7 +157,7 @@ void main() {
     provisioner = _RecordingProvisioner();
     publisher = _RecordingPublisher();
     sessionRepository = _FakeSessionRepository();
-    profileRepository = LaunchProfileRepository();
+    profileRepository = LaunchProfileRepository(storage: testHomeStorage);
   });
 
   GeneratedTeamCommitService service() => GeneratedTeamCommitService(

@@ -7,7 +7,7 @@ import 'package:teampilot/services/expert_hub/composite_expert_hub_source.dart';
 import 'package:teampilot/services/expert_hub/expert_hub_source.dart';
 import 'package:teampilot/services/expert_hub/expert_member_resolver.dart';
 import 'package:teampilot/services/expert_hub/local_expert_store.dart';
-import 'package:teampilot/services/storage/app_storage.dart';
+import 'package:teampilot/services/storage/app_paths.dart';
 
 import '../../support/in_memory_filesystem.dart';
 
@@ -64,6 +64,7 @@ void main() {
 
     final resolved = await ExpertMemberResolver.resolveMember(
       key: kBuiltinDefaultExpertKey,
+                                                               localStore: LocalExpertStore(fs: InMemoryFilesystem(), dirOverride: AppPaths('/tp').memberHubLocalTemplatesDir),
     );
 
     expect(resolved, isNotNull);
@@ -92,6 +93,7 @@ void main() {
     final resolved = await ExpertMemberResolver.resolveMember(
       key: member.key,
       hubState: const ExpertHubState(allMembers: [member]),
+                                                               localStore: LocalExpertStore(fs: InMemoryFilesystem(), dirOverride: AppPaths('/tp').memberHubLocalTemplatesDir),
     );
     expect(resolved?.key, member.key);
     expect(resolved?.name, 'Developer');

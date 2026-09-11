@@ -17,6 +17,7 @@ import '../../models/app_session.dart';
 import '../../models/team_config.dart';
 import '../../models/workspace.dart';
 import '../../models/workspace_launch_context.dart';
+import '../../widgets/home_storage_scope.dart';
 import '../../services/ai_history/special_tool_resolvers.dart';
 import '../../services/ai_history/workspace_edit_line_highlighter.dart';
 import '../../services/cli/registry/capabilities/ai_history_capability.dart';
@@ -126,11 +127,13 @@ class SessionChatMessageArea extends StatelessWidget {
     final launchContext = WorkspaceLaunchContext(
       session: session,
       workspace: workspace,
+      usesPosixPaths: homeStorageOf(context).usesPosixPaths,
     );
 
     final work = session.workDirsForMember(
       selectedMemberId,
       folders: launchContext.folderCatalog,
+      usesPosixPaths: homeStorageOf(context).usesPosixPaths,
     );
     final workspaceRoot = work.workingDirectory.isNotEmpty
         ? work.workingDirectory

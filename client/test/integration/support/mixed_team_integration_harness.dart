@@ -19,9 +19,11 @@ import 'package:teampilot/services/cli/registry/cli_tool_registry.dart';
 import 'package:teampilot/services/launch/launch_factory.dart';
 import 'package:teampilot/services/launch/session_runtime_plan_builder.dart';
 import 'package:teampilot/services/expert_hub/expert_capability_resolver.dart';
+import 'package:teampilot/services/expert_hub/local_expert_store.dart';
 import 'package:teampilot/repositories/workspace_project_config_repository.dart';
 import 'package:teampilot/services/session/session_lifecycle_service.dart';
-import 'package:teampilot/services/storage/app_storage.dart';
+import 'package:teampilot/services/storage/app_paths.dart';
+import '../../support/test_runtime_context.dart';
 import 'package:teampilot/services/storage/runtime_context_registry.dart';
 import 'package:teampilot/services/storage/runtime_context_resolver.dart';
 import 'package:teampilot/services/storage/workspace_layout.dart';
@@ -113,7 +115,8 @@ class MixedTeamIntegrationHarness {
         : mockBaseUrl;
     final remoteWorkerUrl = workerBaseUrl ?? leaderUrl;
     await AppProviderRepository(
-      basePath: AppStorage.paths.basePath,
+      basePath: testHomeStorage.paths.basePath,
+      storage: testHomeStorage,
     ).saveProviders(CliTool.claude, [
       AppProviderConfig(
         id: kMockLeaderProviderId,
@@ -142,15 +145,17 @@ class MixedTeamIntegrationHarness {
   }) {
     final created = ChatCubit(
       executableResolver: () => claudePath,
+      storage: testHomeStorage,
       automationRepository: testAutomationRepository(),
       cliExecutableResolver: (_) => claudePath,
       postFrameScheduler: postFrame.scheduler,
       autoLaunchAllMembersOnConnect: () => autoLaunchAllMembersOnConnect,
       reclaimIdleTerminalsEnabled: reclaimIdleTerminalsEnabled,
       reclaimIdleTerminalAfterSeconds: reclaimIdleTerminalAfterSeconds,
-      sessionRepository: SessionRepository(),
+      sessionRepository: SessionRepository(storage: testHomeStorage),
       lifecycleService: SessionLifecycleService(
-        appDataBasePath: AppStorage.paths.basePath,
+        storage: testHomeStorage,
+        appDataBasePath: testHomeStorage.paths.basePath,
       ),
     );
     cubit = created;
@@ -165,16 +170,18 @@ class MixedTeamIntegrationHarness {
     final registry = remote.contextRegistry;
     final profileById = remote.sshProfileById;
     final lifecycle = SessionLifecycleService(
-      appDataBasePath: AppStorage.paths.basePath,
+      storage: testHomeStorage,
+      appDataBasePath: testHomeStorage.paths.basePath,
       workContextResolver: registry.forTarget,
     );
     final created = ChatCubit(
       executableResolver: () => claudePath,
+      storage: testHomeStorage,
       automationRepository: testAutomationRepository(),
       cliExecutableResolver: (_) => claudePath,
       postFrameScheduler: postFrame.scheduler,
       autoLaunchAllMembersOnConnect: () => true,
-      sessionRepository: SessionRepository(),
+      sessionRepository: SessionRepository(storage: testHomeStorage),
       lifecycleService: lifecycle,
       transportFactory: TerminalTransportFactory(
         sshProfileRepository: remote.sshProfileRepository,
@@ -205,8 +212,15 @@ class MixedTeamIntegrationHarness {
             installSkill: (_) async => null,
             installPlugin: (_) async => null,
             installMcp: (_) async => null,
+            localStore: LocalExpertStore(
+              fs: testHomeStorage.fs,
+              dirOverride: AppPaths(testHomeStorage.paths.basePath)
+                  .memberHubLocalTemplatesDir,
+            ),
           ),
-          workspaceProjectConfig: WorkspaceProjectConfigRepository(),
+          workspaceProjectConfig: WorkspaceProjectConfigRepository(
+            storage: testHomeStorage,
+          ),
         ),
       ),
     );
@@ -593,7 +607,7 @@ class MixedTeamIntegrationHarness {
     required String sessionId,
     Duration timeout = const Duration(seconds: 90),
   }) async {
-    final root = AppStorage.paths.basePath;
+    final root = testHomeStorage.paths.basePath;
 
     final workerPing = await waitForBusMail(
       teampilotRoot: root,
@@ -633,7 +647,7 @@ class MixedTeamIntegrationHarness {
     Duration timeout = const Duration(seconds: 90),
   }) async {
     final claimed = await waitForTaskClaimedByTitle(
-      teampilotRoot: AppStorage.paths.basePath,
+      teampilotRoot: testHomeStorage.paths.basePath,
       workspaceId: workspaceId,
       sessionId: sessionId,
       title: title,
@@ -654,7 +668,7 @@ class MixedTeamIntegrationHarness {
     Duration timeout = const Duration(seconds: 90),
   }) async {
     final done = await waitForTaskDoneByTitle(
-      teampilotRoot: AppStorage.paths.basePath,
+      teampilotRoot: testHomeStorage.paths.basePath,
       workspaceId: workspaceId,
       sessionId: sessionId,
       title: title,
@@ -674,7 +688,7 @@ class MixedTeamIntegrationHarness {
     Future<void> Function()? pump,
   }) async {
     final ok = await waitForBusMail(
-      teampilotRoot: AppStorage.paths.basePath,
+      teampilotRoot: testHomeStorage.paths.basePath,
       workspaceId: workspaceId,
       sessionId: sessionId,
       memberId: kWorkerMember.id,
@@ -698,7 +712,7 @@ class MixedTeamIntegrationHarness {
     Future<void> Function()? pump,
   }) async {
     final ok = await waitForBusMail(
-      teampilotRoot: AppStorage.paths.basePath,
+      teampilotRoot: testHomeStorage.paths.basePath,
       workspaceId: workspaceId,
       sessionId: sessionId,
       memberId: kLeadMember.id,
@@ -753,13 +767,13 @@ class MixedTeamIntegrationHarness {
         sessionId: sessionId,
       );
       await dumpBusMailDiagnostics(
-        teampilotRoot: AppStorage.paths.basePath,
+        teampilotRoot: testHomeStorage.paths.basePath,
         workspaceId: workspaceId,
         sessionId: sessionId,
         memberIds: [kLeadMember.id, kWorkerMember.id],
       );
       await dumpBusTaskDiagnostics(
-        teampilotRoot: AppStorage.paths.basePath,
+        teampilotRoot: testHomeStorage.paths.basePath,
         workspaceId: workspaceId,
         sessionId: sessionId,
       );
@@ -771,7 +785,8 @@ class MixedTeamIntegrationHarness {
     required String sessionId,
   }) async {
     final root = WorkspaceLayout(
-      teampilotRoot: AppStorage.paths.basePath,
+      teampilotRoot: testHomeStorage.paths.basePath,
+      fs: testHomeStorage.fs,
     ).sessionRuntimeDir(workspaceId, sessionId);
     final dir = Directory(root);
     if (!await dir.exists()) {
@@ -880,7 +895,9 @@ class MixedTeamDockerRemote {
       username: DockerSshServer.defaultUsername,
     );
 
-    final sshProfileRepository = SshProfileRepository();
+    final sshProfileRepository = SshProfileRepository(
+      storage: testHomeStorage,
+    );
     await sshProfileRepository.save(profile);
 
     final sshClientFactory = SshClientFactory(
@@ -894,8 +911,8 @@ class MixedTeamDockerRemote {
 
     final resolver = RuntimeContextResolver(
       sshClientFactory: sshClientFactory,
-      nativeAppDataPath: AppStorage.paths.basePath,
-      nativeCwd: AppStorage.cwd,
+      nativeAppDataPath: testHomeStorage.paths.basePath,
+      nativeCwd: testHomeStorage.cwd,
     );
     final registry = RuntimeContextRegistry(
       resolver: resolver,

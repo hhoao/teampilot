@@ -119,7 +119,7 @@ void main() {
     );
     registerFallbackValue(fbSession);
     registerFallbackValue(
-      WorkspaceLaunchContext(session: fbSession, workspace: fbWorkspace),
+      WorkspaceLaunchContext(session: fbSession, workspace: fbWorkspace, usesPosixPaths: false, ),
     );
     registerFallbackValue(
       const TeamProfile(
@@ -252,7 +252,7 @@ void main() {
     when(() => chatCubit.followUpQueue).thenReturn(
       InMemoryFollowUpQueueStore(),
     );
-    when(() => chatCubit.tabStore).thenReturn(ChatTabStore());
+    when(() => chatCubit.tabStore).thenReturn(ChatTabStore(storage: testHomeStorage));
     when(
       () => chatCubit.operatorMailboxQueued,
     ).thenAnswer((_) => const Stream<OperatorMailboxQueuedEvent>.empty());
@@ -335,8 +335,9 @@ void main() {
     InMemoryFilesystem fs,
   ) {
     return WorkspaceProjectConfigRepository(
+      storage: testHomeStorage,
       fs: fs,
-      layout: WorkspaceLayout(teampilotRoot: '/test-root'),
+      layout: WorkspaceLayout(teampilotRoot: '/test-root', fs: testHomeStorage.fs),
     );
   }
 

@@ -78,7 +78,7 @@ void main() {
     Widget child,
     double width,
   ) {
-    final editor = EditorCubit();
+    final editor = EditorCubit(storage: testHomeStorage);
     final workbench = WorkbenchCubit();
     final floating = FloatingWorkspaceCubit()..setActiveWorkspace('ws-test');
     addTearDown(editor.close);

@@ -4,6 +4,7 @@ import '../models/cli_preset.dart';
 import '../models/team_config.dart';
 import '../services/cli/member_config/member_config_detail.dart';
 import '../services/cli/member_config/member_config_inspector.dart';
+import '../services/storage/home_storage.dart';
 import '../services/storage/runtime_context.dart';
 import '../utils/logging/logger.dart';
 
@@ -32,8 +33,8 @@ class MemberConfigState {
 }
 
 class MemberConfigCubit extends Cubit<MemberConfigState> {
-  MemberConfigCubit({MemberConfigInspector? inspector})
-    : _inspector = inspector ?? MemberConfigInspector(),
+  MemberConfigCubit({required HomeStorage storage, MemberConfigInspector? inspector})
+    : _inspector = inspector ?? MemberConfigInspector(storage: storage),
       super(const MemberConfigState());
 
   final MemberConfigInspector _inspector;

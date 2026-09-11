@@ -76,7 +76,7 @@ void main() {
     final aiSettings = AiFeatureSettingsCubit(
       repository: InMemoryAppSettingsRepository(),
     );
-    final editor = EditorCubit();
+    final editor = EditorCubit(storage: testHomeStorage);
     final workbench = WorkbenchCubit();
     final floating = FloatingWorkspaceCubit()..setActiveWorkspace('ws-test');
     addTearDown(aiSettings.close);

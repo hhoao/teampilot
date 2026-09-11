@@ -14,6 +14,7 @@ import 'package:teampilot/repositories/managed_provider_repository.dart';
 import 'package:teampilot/repositories/managed_provider_usage_repository.dart';
 import 'package:teampilot/services/cli/registry/cli_tool_registry.dart';
 import 'package:teampilot/services/cli/registry/cli_tool_registry_scope.dart';
+import 'package:teampilot/services/storage/home_storage.dart';
 import 'package:teampilot/widgets/app_provider/app_provider_form_sheet.dart';
 import 'package:shared_ui/shared_ui.dart';
 
@@ -22,14 +23,18 @@ import '../../support/in_memory_filesystem.dart';
 void main() {
   late InMemoryFilesystem fs;
   late ManagedProviderCubit managedCubit;
+  late HomeStorage storage;
 
   setUp(() {
     fs = InMemoryFilesystem();
+    storage = fakeHomeStorage(filesystem: fs);
     final usageRepository = ManagedProviderUsageRepository(
+      storage: storage,
       fs: fs,
       cachePath: '/tp/usage-cache.json',
     );
     final managedRepository = ManagedProviderRepository(
+      storage: storage,
       fs: fs,
       configPath: '/tp/managed-providers.json',
       onProvidersDeleted: usageRepository.deleteMany,
@@ -62,7 +67,7 @@ void main() {
         registry: CliToolRegistry.builtIn(),
         child: MultiBlocProvider(
           providers: [
-            BlocProvider(create: (_) => AppProviderCubit()),
+            BlocProvider(create: (_) => AppProviderCubit(storage: storage)),
             BlocProvider.value(value: managedCubit),
           ],
           child: Scaffold(body: SizedBox(width: 1000, height: 1400, child: form)),

@@ -31,8 +31,9 @@ void main() {
         catalogPath: '/root/mcp/mcp_servers.json',
         fs: fs,
       ),
+                                storage: testHomeStorage,
     );
-    cubit = McpCubit(repository);
+    cubit = McpCubit(repository, storage: testHomeStorage, );
     discoverySettingsCubit = DiscoverySettingsCubit(
       repository: InMemoryAppSettingsRepository(),
     );

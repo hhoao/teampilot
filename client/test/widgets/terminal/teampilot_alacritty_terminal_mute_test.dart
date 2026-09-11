@@ -12,6 +12,7 @@ import 'package:teampilot/cubits/shortcut_cubit.dart';
 import 'package:teampilot/repositories/session_preferences_repository.dart';
 import 'package:teampilot/services/perf/terminal_render_mute.dart';
 import 'package:teampilot/widgets/terminal/teampilot_alacritty_terminal.dart';
+import '../../support/in_memory_filesystem.dart';
 import '../../support/rust_lib_test_init.dart';
 
 void _applyBlankGrid(TerminalEngine engine, {int cursorCol = 0}) {
@@ -75,7 +76,7 @@ Future<TerminalEngine> _pumpTerminal(
       repository: SessionPreferencesRepository(prefs),
     );
     addTearDown(sessionPreferences.close);
-    final shortcuts = ShortcutCubit();
+    final shortcuts = ShortcutCubit(storage: fakeHomeStorage());
     addTearDown(shortcuts.close);
     final floatingWorkspace = FloatingWorkspaceCubit();
     addTearDown(floatingWorkspace.close);

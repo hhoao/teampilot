@@ -14,7 +14,9 @@ import 'package:teampilot/services/skill/registry/api_registry_source.dart';
 import 'package:teampilot/services/skill/registry/git_repo_registry_source.dart';
 import 'package:teampilot/services/skill/registry/skill_registry_config_service.dart';
 import 'package:teampilot/services/skill/registry/skill_registry_source.dart';
-import 'package:teampilot/services/storage/app_storage.dart';
+import 'package:teampilot/services/storage/app_paths.dart';
+import '../../support/test_runtime_context.dart';
+import '../../support/in_memory_filesystem.dart';
 
 List<SkillRegistrySource> _rebuild(SkillRegistriesConfig c) => [
   for (final cfg in c.sources)
@@ -42,7 +44,7 @@ Future<void> _flushRealIo(WidgetTester tester, {int rounds = 6}) async {
 
 Future<String?> _readRegistriesJson(WidgetTester tester, String basePath) {
   return tester.runAsync<String?>(
-    () => AppStorage.fs.readString(
+    () => testHomeStorage.fs.readString(
       AppPaths.skillRegistriesConfigPathForTeampilotRoot(basePath),
     ),
   );
@@ -79,7 +81,7 @@ void main() {
   setUp(() async {
     tmp = Directory.systemTemp.createTempSync('skill-reg-section-');
     paths = AppPaths(tmp.path);
-    AppStorage.installForTesting(
+    installTestHomeStorage(
       filesystem: LocalFilesystem(
         pathContext: AppPaths.pathContextForDataRoot(paths.basePath),
       ),
@@ -87,11 +89,11 @@ void main() {
       home: tmp.path,
       cwd: tmp.path,
     );
-    cfgService = SkillRegistryConfigService(teampilotRoot: paths.basePath);
+    cfgService = SkillRegistryConfigService(teampilotRoot: paths.basePath, storage: fakeHomeStorage(), );
   });
 
   tearDown(() {
-    AppStorage.resetForTesting();
+    resetTestHomeStorage();
     if (tmp.existsSync()) tmp.deleteSync(recursive: true);
   });
 
@@ -118,15 +120,16 @@ void main() {
       final path = AppPaths.skillRegistriesConfigPathForTeampilotRoot(
         paths.basePath,
       );
-      final stat = await AppStorage.fs.stat(path);
+      final stat = await testHomeStorage.fs.stat(path);
       if (!stat.isFile) {
         await cfgService.save(SkillRegistriesConfig.defaults());
       }
       final c = SkillCubit(
-        SkillRepository(),
+        SkillRepository(storage: fakeHomeStorage()),
         registryConfigService: cfgService,
         initialSources: const [],
         rebuildSources: _rebuild,
+                            storage: fakeHomeStorage(),
       );
       await c.loadAll();
       return c;

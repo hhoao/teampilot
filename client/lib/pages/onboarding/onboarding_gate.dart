@@ -12,6 +12,7 @@ import '../../cubits/launch_profile_cubit.dart';
 import '../../models/workspace.dart';
 import '../../repositories/app_settings_repository.dart';
 import '../../services/app/onboarding_service.dart';
+import '../../widgets/home_storage_scope.dart';
 import '../../services/storage/home_target_controller.dart';
 import '../../services/team/default_workspace_service.dart';
 import '../../utils/workspace/workspace_path_utils.dart';
@@ -54,13 +55,19 @@ class OnboardingGateState extends State<OnboardingGate> {
     // wizard so the first frame after onboarding is the compose landing, not
     // the library home page.
     final home = context.read<HomeTargetController>().current;
-    final primaryPath =
-        await DefaultWorkspaceService.resolvePrimaryPath(home: home);
+    final primaryPath = await DefaultWorkspaceService.resolvePrimaryPath(
+      home: home,
+      storage: homeStorageOf(context),
+    );
     if (mounted) {
       final chatCubit = context.read<ChatCubit>();
       Workspace? defaultWorkspace;
       for (final w in chatCubit.state.workspaces) {
-        if (workspacePathsEqual(w.firstFolderPath, primaryPath)) {
+        if (workspacePathsEqual(
+          w.firstFolderPath,
+          primaryPath,
+          usesPosixPaths: homeStorageOf(context).usesPosixPaths,
+        )) {
           defaultWorkspace = w;
           break;
         }

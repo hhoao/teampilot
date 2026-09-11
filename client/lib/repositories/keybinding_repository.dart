@@ -5,7 +5,7 @@ import 'package:path/path.dart' as p;
 import '../services/commands/command_catalog.dart';
 import '../services/commands/key_chord.dart';
 import '../services/io/filesystem.dart';
-import '../services/storage/app_storage.dart';
+import '../services/storage/home_storage.dart';
 import '../utils/logging/logger.dart';
 
 /// Persists user keybinding overrides at `{appDataRoot}/keybindings.json`.
@@ -14,18 +14,23 @@ import '../utils/logging/logger.dart';
 /// A missing command key means "use the catalog default"; an explicit empty
 /// chord list means the command is intentionally unbound.
 class KeybindingRepository {
-  KeybindingRepository({Filesystem? fs, String? pathOverride})
-    : _fsOverride = fs,
-      _pathOverride = pathOverride;
+  KeybindingRepository({
+    required HomeStorage storage,
+    Filesystem? fs,
+    String? pathOverride,
+  }) : _fsOverride = fs,
+       _pathOverride = pathOverride,
+       _storage = storage;
 
   static const _version = 1;
 
   final Filesystem? _fsOverride;
   final String? _pathOverride;
+  final HomeStorage _storage;
 
-  Filesystem get _fs => _fsOverride ?? AppStorage.fs;
+  Filesystem get _fs => _fsOverride ?? _storage.fs;
   String get _path =>
-      _pathOverride ?? p.join(AppStorage.appDataRoot, 'keybindings.json');
+      _pathOverride ?? p.join(_storage.appDataRoot, 'keybindings.json');
 
   Future<Map<String, List<KeyChord>>> load() async {
     try {

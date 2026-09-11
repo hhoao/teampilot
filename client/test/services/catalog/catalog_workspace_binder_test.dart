@@ -6,7 +6,9 @@ import 'package:teampilot/repositories/workspace_project_config_repository.dart'
 import 'package:teampilot/services/catalog/catalog_kind.dart';
 import 'package:teampilot/services/catalog/catalog_workspace_binder.dart';
 import 'package:teampilot/services/io/local_filesystem.dart';
-import 'package:teampilot/services/storage/app_storage.dart';
+import 'package:teampilot/services/storage/app_paths.dart';
+import '../../support/test_runtime_context.dart';
+import 'package:teampilot/services/storage/home_storage.dart';
 
 void main() {
   late Directory tmp;
@@ -16,7 +18,7 @@ void main() {
   setUp(() {
     tmp = Directory.systemTemp.createTempSync('catalog_binder_');
     final paths = AppPaths(tmp.path);
-    AppStorage.installForTesting(
+    installTestHomeStorage(
       filesystem: LocalFilesystem(
         pathContext: AppPaths.pathContextForDataRoot(paths.basePath),
       ),
@@ -24,12 +26,14 @@ void main() {
       home: tmp.path,
       cwd: tmp.path,
     );
-    repo = WorkspaceProjectConfigRepository();
+    repo = WorkspaceProjectConfigRepository(
+      storage: HomeStorage(testHomeStorage.context),
+    );
     binder = CatalogWorkspaceBinder(repo: repo);
   });
 
   tearDown(() {
-    AppStorage.resetForTesting();
+    resetTestHomeStorage();
     AppPathsBootstrapper.resetForTesting();
     if (tmp.existsSync()) tmp.deleteSync(recursive: true);
   });

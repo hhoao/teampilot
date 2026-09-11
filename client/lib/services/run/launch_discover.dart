@@ -1,7 +1,7 @@
 import '../../models/run/launch_configuration.dart';
 import '../../models/run/launch_type_contribution.dart';
 import '../../models/workspace_folder.dart';
-import '../storage/app_storage.dart';
+import '../storage/app_paths.dart';
 import 'launch_config_store.dart';
 import 'launch_type_registry.dart';
 

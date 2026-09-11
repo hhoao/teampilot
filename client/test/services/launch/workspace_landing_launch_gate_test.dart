@@ -8,12 +8,20 @@ import 'package:teampilot/services/cli/registry/cli_tool_registry.dart';
 import 'package:teampilot/services/launch/workspace_landing_launch_gate.dart';
 import 'package:teampilot/services/remote/remote_cli_readiness.dart';
 import 'package:teampilot/services/ssh/ssh_client_factory.dart';
+import 'package:teampilot/services/storage/app_paths.dart';
+import 'package:teampilot/services/storage/home_storage.dart';
 import 'package:teampilot/services/team/team_config_launch_validator.dart';
 import 'package:teampilot/utils/team/team_member_naming.dart';
 import 'package:flutter_test/flutter_test.dart';
 
+import '../../support/in_memory_filesystem.dart';
+
 void main() {
   final gate = WorkspaceLandingLaunchGate(
+    storage: HomeStorage.forTesting(
+      filesystem: InMemoryFilesystem(),
+      paths: AppPaths('/test-home'),
+    ),
     teamConfigValidator: _AlwaysValidTeamConfigValidator(),
   );
 
@@ -260,6 +268,8 @@ TeamProfile _singleMemberTeam() {
 }
 
 class _AlwaysValidTeamConfigValidator extends TeamConfigLaunchValidator {
+  _AlwaysValidTeamConfigValidator() : super(storage: fakeHomeStorage());
+
   @override
   Future<TeamConfigValidation> validate(
     TeamProfile team, {

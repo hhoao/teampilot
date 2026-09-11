@@ -30,7 +30,7 @@ import 'package:teampilot/services/cli/registry/cli_tool_registry.dart';
 import 'package:teampilot/services/session/ai_history_loader.dart';
 import 'package:teampilot/services/session/session_history_context_builder.dart';
 import 'package:teampilot/services/session/session_lifecycle_service.dart';
-import 'package:teampilot/services/storage/app_storage.dart';
+import '../../support/test_runtime_context.dart';
 import 'package:teampilot/services/team_bus/mcp/bus_bridge_locator.dart';
 import 'package:teampilot/services/team_bus/persistence/bus_message_log.dart';
 import 'package:teampilot/services/team_bus/team_bus.dart';
@@ -309,7 +309,8 @@ final class CliMessageMatrixHarness {
     }
 
     await AppProviderRepository(
-      basePath: AppStorage.paths.basePath,
+      basePath: testHomeStorage.paths.basePath,
+      storage: testHomeStorage,
     ).saveProviders(profile.tool, providers);
   }
 
@@ -321,16 +322,18 @@ final class CliMessageMatrixHarness {
   }) {
     this.postFrame = postFrame;
     final life = SessionLifecycleService(
-      appDataBasePath: AppStorage.paths.basePath,
+      storage: testHomeStorage,
+      appDataBasePath: testHomeStorage.paths.basePath,
     );
     lifecycle = life;
     final created = ChatCubit(
       executableResolver: () => cliPath,
+      storage: testHomeStorage,
       automationRepository: testAutomationRepository(),
       cliExecutableResolver: (_) => cliPath,
       postFrameScheduler: postFrame.scheduler,
       autoLaunchAllMembersOnConnect: () => autoLaunchAllMembersOnConnect,
-      sessionRepository: SessionRepository(),
+      sessionRepository: SessionRepository(storage: testHomeStorage),
       lifecycleService: life,
     );
     cubit = created;
@@ -370,7 +373,8 @@ final class CliMessageMatrixHarness {
       throw StateError('createCubit before attachCatalogRuntime');
     }
     final runtime = CatalogRuntime.assemble(
-      sessions: chat.sessionRepository ?? SessionRepository(),
+      storage: testHomeStorage,
+      sessions: chat.sessionRepository ?? SessionRepository(storage: testHomeStorage),
     );
     catalogRuntime = runtime;
     chat.teammateBusMcpGateway.attachCatalogHandler(
@@ -425,9 +429,9 @@ final class CliMessageMatrixHarness {
       );
     }
 
-    final repo = SessionRepository();
+    final repo = SessionRepository(storage: testHomeStorage);
     final ws = await repo.createWorkspace([
-      WorkspaceFolder(path: workingDirectory ?? AppStorage.cwd),
+      WorkspaceFolder(path: workingDirectory ?? testHomeStorage.cwd),
     ]);
     workspace = ws;
 
@@ -745,7 +749,7 @@ final class CliMessageMatrixHarness {
     if (s == null) {
       throw StateError('openSession before waitForBusPingPong');
     }
-    final root = AppStorage.paths.basePath;
+    final root = testHomeStorage.paths.basePath;
     final workerPing = await waitForBusMail(
       teampilotRoot: root,
       workspaceId: s.workspaceId,
@@ -803,7 +807,11 @@ final class CliMessageMatrixHarness {
     await hist.load(
       session: s,
       memberId: mode == CliMatrixMode.simple ? '' : mid,
-      launchContext: WorkspaceLaunchContext(session: s, workspace: ws),
+      launchContext: WorkspaceLaunchContext(
+        session: s,
+        workspace: ws,
+        usesPosixPaths: true,
+      ),
       team: team,
     );
   }

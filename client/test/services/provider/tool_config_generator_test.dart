@@ -4,9 +4,11 @@ import 'dart:io';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:path/path.dart' as p;
 import 'package:teampilot/models/app_provider_config.dart';
-import 'package:teampilot/services/storage/app_storage.dart';
+import 'package:teampilot/services/storage/app_paths.dart';
+import '../../support/test_runtime_context.dart';
 import 'package:teampilot/services/io/local_filesystem.dart';
 import 'package:teampilot/services/provider/tool_config_generator.dart';
+import '../../support/in_memory_filesystem.dart';
 
 void main() {
   late ToolConfigGenerator generator;
@@ -15,7 +17,7 @@ void main() {
   setUp(() async {
     generator = const ToolConfigGenerator();
     temp = await Directory.systemTemp.createTemp('tool_cfg_gen_');
-    AppStorage.installForTesting(
+    installTestHomeStorage(
       filesystem: LocalFilesystem(),
       paths: AppPaths(temp.path),
       home: temp.path,
@@ -24,7 +26,7 @@ void main() {
   });
 
   tearDown(() async {
-    AppStorage.resetForTesting();
+    resetTestHomeStorage();
     if (await temp.exists()) await temp.delete(recursive: true);
   });
 
@@ -193,7 +195,7 @@ requires_openai_auth = true
 
   test('writes files atomically without leaving temp artifacts', () async {
     final target = p.join(temp.path, 'nested', 'out.json');
-    await generator.writeJsonAtomic(target, {'ok': true});
+    await generator.writeJsonAtomic(target, {'ok': true}, fs: LocalFilesystem());
 
     final file = File(target);
     expect(await file.exists(), isTrue);

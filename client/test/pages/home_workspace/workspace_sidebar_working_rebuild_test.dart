@@ -57,15 +57,18 @@ void main() {
 
   setUp(() {
     setUpTestAppStorage();
-    sessionRepository = SessionRepository();
+    sessionRepository = SessionRepository(storage: testHomeStorage);
     chatCubit = testChatCubit(
       executableResolver: () => 'claude',
       sessionRepository: sessionRepository,
     );
     workbenchCubit = WorkbenchCubit();
-    shortcutCubit = ShortcutCubit(repository: KeybindingRepository());
+    shortcutCubit = ShortcutCubit(
+      storage: testHomeStorage,
+      repository: KeybindingRepository(storage: testHomeStorage),
+    );
     automationCubit = testAutomationCubit();
-    worktreeCubit = WorktreeCubit();
+    worktreeCubit = WorktreeCubit(storage: testHomeStorage);
     attentionCubit = AgentAttentionCubit(pruneInterval: null);
   });
 
@@ -108,7 +111,7 @@ void main() {
                 BlocProvider<WorktreeCubit>.value(value: worktreeCubit),
                 BlocProvider<AgentAttentionCubit>.value(value: attentionCubit),
                 BlocProvider<SessionGroupsCubit>(
-                  create: (_) => SessionGroupsCubit(),
+                  create: (_) => SessionGroupsCubit(storage: testHomeStorage),
                 ),
               ],
               child: SizedBox(

@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/foundation.dart';
 
 import '../../services/app/error_log_service.dart';
+import '../../services/io/filesystem.dart';
 import 'logger_utils.dart';
 
 export 'logger_utils.dart' show AppLogger;
@@ -11,9 +12,9 @@ export 'logger_utils.dart' show AppLogger;
 final appLogger = AppLogger.instance;
 
 /// Initializes rotating file logs and global Flutter error hooks.
-Future<void> initAppLogging(String appDataRoot) async {
+Future<void> initAppLogging(String appDataRoot, {required Filesystem fs}) async {
   await AppLogger.instance.initFileLogging(appDataRoot);
-  await ErrorLogService.instance.initialize(appDataRoot: appDataRoot);
+  await ErrorLogService.instance.initialize(appDataRoot: appDataRoot, fs: fs);
 
   FlutterError.onError = (details) {
     FlutterError.presentError(details);

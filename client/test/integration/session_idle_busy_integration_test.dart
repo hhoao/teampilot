@@ -21,9 +21,11 @@ import 'package:teampilot/services/terminal/terminal_session.dart';
 import '../support/post_frame_test_harness.dart';
 import 'support/integration_test_setup.dart';
 import 'support/session_idle_busy_harness.dart';
+import '../support/in_memory_filesystem.dart';
 
 class _SimpleRunningShell extends TerminalSession {
-  _SimpleRunningShell({required super.executable});
+  _SimpleRunningShell({required super.executable})
+    : super(fs: InMemoryFilesystem());
 
   @override
   bool get isRunning => true;
@@ -48,7 +50,7 @@ void main() {
 
     setUp(() async {
       tmp = await Directory.systemTemp.createTemp('it_idle_busy_mixed_');
-      repo = SessionRepository(rootDir: tmp.path);
+      repo = SessionRepository(rootDir: tmp.path, storage: fakeHomeStorage(), );
       postFrame = PostFrameTestHarness();
       attention = AgentAttentionCubit(pruneInterval: null);
       cubit = ChatCubit(
@@ -60,6 +62,7 @@ void main() {
         terminalSessionFactory:
             ({required String executable, int scrollbackLines = 10000}) =>
                 RunningConnectedFakeShell(executable: executable),
+                         storage: fakeHomeStorage(),
       );
     });
 
@@ -385,7 +388,7 @@ void main() {
 
     setUp(() async {
       tmp = await Directory.systemTemp.createTemp('it_idle_busy_attn_');
-      repo = SessionRepository(rootDir: tmp.path);
+      repo = SessionRepository(rootDir: tmp.path, storage: fakeHomeStorage(), );
       postFrame = PostFrameTestHarness();
       attention = AgentAttentionCubit(pruneInterval: null);
       cubit = ChatCubit(
@@ -397,6 +400,7 @@ void main() {
         terminalSessionFactory:
             ({required String executable, int scrollbackLines = 10000}) =>
                 RunningConnectedFakeShell(executable: executable),
+                         storage: fakeHomeStorage(),
       );
     });
 
@@ -482,9 +486,9 @@ void main() {
 
     setUp(() async {
       tmp = await Directory.systemTemp.createTemp('it_idle_busy_presence_');
-      repo = SessionRepository(rootDir: tmp.path);
+      repo = SessionRepository(rootDir: tmp.path, storage: fakeHomeStorage(), );
       postFrame = PostFrameTestHarness();
-      presenceCubit = MemberPresenceCubit();
+      presenceCubit = MemberPresenceCubit(storage: fakeHomeStorage());
       chatCubit = ChatCubit(
         executableResolver: () => 'true',
         automationRepository: testAutomationRepository(),
@@ -493,6 +497,7 @@ void main() {
         terminalSessionFactory:
             ({required String executable, int scrollbackLines = 10000}) =>
                 RunningConnectedFakeShell(executable: executable),
+                             storage: fakeHomeStorage(),
       );
       bindPresenceForPolling(
         chatCubit: chatCubit,
@@ -620,7 +625,7 @@ void main() {
 
     setUp(() async {
       tmp = await Directory.systemTemp.createTemp('it_idle_busy_simple_');
-      repo = SessionRepository(rootDir: tmp.path);
+      repo = SessionRepository(rootDir: tmp.path, storage: fakeHomeStorage(), );
       postFrame = PostFrameTestHarness();
       created.clear();
       attention = AgentAttentionCubit(pruneInterval: null);
@@ -636,6 +641,7 @@ void main() {
               created.add(shell);
               return shell;
             },
+                         storage: fakeHomeStorage(),
       );
     });
 

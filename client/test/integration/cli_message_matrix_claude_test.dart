@@ -8,7 +8,7 @@ import 'package:mock_model_gateway/scenarios/native_collab_replica_2plus.dart';
 import 'package:mock_model_gateway/scenarios/simple_3turn.dart';
 import 'package:teampilot/models/app_session.dart';
 import 'package:teampilot/models/team_config.dart';
-import 'package:teampilot/services/storage/app_storage.dart';
+import '../support/test_runtime_context.dart';
 import 'package:teampilot/services/storage/runtime_layout.dart';
 
 import '../support/post_frame_test_harness.dart';
@@ -182,7 +182,7 @@ void main() {
 
         // Extra bus-mail sanity (same predicates as waitForBusPingPong).
         final s = harness.session!;
-        final root = AppStorage.paths.basePath;
+        final root = testHomeStorage.paths.basePath;
         final workerMail = await readBusMailLines(
           teampilotRoot: root,
           workspaceId: s.workspaceId,
@@ -348,8 +348,10 @@ void main() {
         final cliTeam = harness.session!.cliTeamName.trim().isNotEmpty
             ? harness.session!.cliTeamName
             : harness.session!.sessionId;
-        final claudeDir = RuntimeLayout(teampilotRoot: AppStorage.appDataRoot)
-            .sessionRuntimeToolDir(
+        final claudeDir = RuntimeLayout(
+          teampilotRoot: testHomeStorage.appDataRoot,
+          fs: testHomeStorage.fs,
+        ).sessionRuntimeToolDir(
               harness.session!.workspaceId,
               harness.session!.sessionId,
               'claude',

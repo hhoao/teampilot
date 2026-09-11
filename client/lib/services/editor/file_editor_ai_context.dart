@@ -3,7 +3,7 @@ import 'package:re_editor/re_editor.dart';
 
 import '../editor_platform/language_registry.dart';
 import '../selection_ai/selection_ai_context.dart';
-import '../storage/app_storage.dart';
+import '../storage/home_storage.dart';
 
 /// Builds clipboard text: `relPath:start-end` + fenced code block.
 String buildEditorAiContextClipboardText({
@@ -22,10 +22,14 @@ String buildEditorAiContextClipboardText({
   );
 }
 
-/// Path relative to [AppStorage.cwd], forward slashes, or basename fallback.
-String editorRelativePath(String absolutePath) {
-  final ctx = AppStorage.fs.pathContext;
-  final cwd = AppStorage.cwd;
+/// Path relative to the home working directory ([HomeStorage.cwd]), forward
+/// slashes, or basename fallback.
+String editorRelativePath(
+  String absolutePath, {
+  required HomeStorage storage,
+}) {
+  final ctx = storage.fs.pathContext;
+  final cwd = storage.cwd;
   try {
     if (ctx.isWithin(cwd, absolutePath)) {
       return ctx.relative(absolutePath, from: cwd).replaceAll('\\', '/');
@@ -53,10 +57,11 @@ String codeTextForAiContext(CodeLineEditingController controller) {
 String formatEditorAiContext({
   required String filePath,
   required CodeLineEditingController controller,
+  required HomeStorage storage,
 }) {
   final (startLine, endLine) = aiContextLineRange(controller.selection);
   return buildEditorAiContextClipboardText(
-    relPath: editorRelativePath(filePath),
+    relPath: editorRelativePath(filePath, storage: storage),
     startLine: startLine,
     endLine: endLine,
     language: editorLanguageIdForPath(filePath),

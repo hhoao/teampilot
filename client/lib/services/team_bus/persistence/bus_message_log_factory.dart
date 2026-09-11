@@ -1,4 +1,4 @@
-import '../../storage/app_storage.dart';
+import '../../io/filesystem.dart';
 import '../../storage/workspace_layout.dart';
 import 'bus_message_log.dart';
 import 'file_bus_message_log.dart';
@@ -9,14 +9,19 @@ import 'in_memory_bus_message_log.dart';
 abstract final class BusMessageLogFactory {
   BusMessageLogFactory._();
 
-  static BusMessageLog forSession(String workspaceId, String sessionId) {
+  static BusMessageLog forSession(
+    String workspaceId,
+    String sessionId, {
+    required Filesystem fs,
+    required String teampilotRoot,
+  }) {
     if (sessionId.startsWith('local-')) {
       return InMemoryBusMessageLog();
     }
-    final layout = WorkspaceLayout(teampilotRoot: AppStorage.paths.basePath);
+    final layout = WorkspaceLayout(teampilotRoot: teampilotRoot, fs: fs);
     return FileBusMessageLog(
       mailRoot: layout.busMailDir(workspaceId, sessionId),
-      fs: AppStorage.fs,
+      fs: fs,
     );
   }
 }

@@ -3,6 +3,7 @@ import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/services/cli/claude/capabilities/mcp_project_cleanup.dart';
+import 'package:teampilot/services/io/local_filesystem.dart';
 import 'package:teampilot/services/storage/runtime_layout.dart';
 import 'package:teampilot/services/mcp/mcp_registry_service.dart';
 import 'package:teampilot/services/cli/claude/capabilities/provider.dart';
@@ -58,7 +59,7 @@ void main() {
 
     setUp(() async {
       root = await Directory.systemTemp.createTemp('mcp_registry_cleanup_');
-      layout = RuntimeLayout(teampilotRoot: root.path);
+      layout = RuntimeLayout(teampilotRoot: root.path, fs: LocalFilesystem());
     });
 
     tearDown(() async {

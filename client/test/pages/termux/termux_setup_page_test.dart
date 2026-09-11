@@ -18,7 +18,7 @@ import 'package:teampilot/services/remote_download/remote_download_catalog.dart'
 import 'package:teampilot/services/remote_download/remote_download_http.dart';
 import 'package:teampilot/services/remote_download/remote_download_resolver.dart';
 import 'package:teampilot/services/remote_download/remote_downloader.dart';
-import 'package:teampilot/services/storage/app_storage.dart';
+import 'package:teampilot/services/storage/app_paths.dart';
 import 'package:teampilot/services/termux/termux_apk_acquisition.dart';
 import 'package:teampilot/services/termux/termux_config.dart';
 import 'package:teampilot/services/termux/termux_config_store.dart';

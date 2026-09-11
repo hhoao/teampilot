@@ -3,7 +3,7 @@ import 'dart:convert';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/services/expert_hub/builtin_member_templates.dart';
 import 'package:teampilot/services/expert_hub/expert_hub_recent_store.dart';
-import 'package:teampilot/services/storage/app_storage.dart';
+import 'package:teampilot/services/storage/app_paths.dart';
 
 import '../../support/in_memory_filesystem.dart';
 
@@ -17,6 +17,7 @@ void main() {
     store = ExpertHubRecentStore(
       fs: fs,
       pathOverride: paths.memberHubRecentJson,
+                                  storage: fakeHomeStorage(filesystem: fs),
     );
   });
 

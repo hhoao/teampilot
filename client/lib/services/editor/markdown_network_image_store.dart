@@ -8,7 +8,7 @@ import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import 'package:path/path.dart' as p;
 
-import '../storage/app_storage.dart';
+import '../storage/home_storage.dart';
 import '../../utils/async_keyed_coalescer.dart';
 
 /// HTTP get that can attach conditional-request headers.
@@ -57,11 +57,17 @@ class MarkdownNetworkImageStore {
       _instance ??= MarkdownNetworkImageStore(cacheDir: _defaultCacheDir());
   static MarkdownNetworkImageStore? _instance;
 
+  /// Home control plane the default cache dir derives from. Set at bootstrap
+  /// (before any [instance] use) so the disk cache lands under the real
+  /// `<teampilotRoot>/cache`; unset falls back to [HomeStorage.nativeDefault]
+  /// (system-temp root) so a mis-wired construction cannot touch the home.
+  static HomeStorage? storageHome;
+
   static Directory? _defaultCacheDir() {
-    if (!AppStorage.isInstalled) return null;
+    final storage = storageHome ?? HomeStorage.nativeDefault();
     try {
       return Directory(
-        p.join(AppStorage.paths.basePath, 'cache', 'markdown-images'),
+        p.join(storage.paths.basePath, 'cache', 'markdown-images'),
       );
     } on Object catch (_) {
       return null;

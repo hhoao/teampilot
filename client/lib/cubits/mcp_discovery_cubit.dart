@@ -13,6 +13,7 @@ import '../services/mcp/mcp_discovery_disk_cache_service.dart';
 import '../services/mcp/mcp_registry_browse_service.dart';
 import '../services/mcp/mcp_registry_config_service.dart';
 import '../services/mcp/smithery_mcp_service.dart';
+import '../services/storage/home_storage.dart';
 import 'discovery_settings_cubit.dart';
 
 enum McpDiscoverySource { all, builtin, smithery, official }
@@ -144,15 +145,18 @@ class McpDiscoveryState extends Equatable {
 
 class McpDiscoveryCubit extends Cubit<McpDiscoveryState> {
   McpDiscoveryCubit({
+    required HomeStorage storage,
     McpRegistryConfigService? registryConfig,
     SmitheryMcpService? smithery,
     McpRegistryBrowseService? registry,
     McpDiscoveryDiskCacheService? diskCache,
     DiscoverySettingsCubit? discoverySettings,
-  }) : _registryConfig = registryConfig ?? McpRegistryConfigService(),
+  }) : _registryConfig =
+           registryConfig ??
+           McpRegistryConfigService(teampilotRoot: storage.appDataRoot),
        _smithery = smithery ?? SmitheryMcpService(),
        _registry = registry ?? McpRegistryBrowseService(),
-       _diskCache = diskCache ?? McpDiscoveryDiskCacheService(),
+       _diskCache = diskCache ?? McpDiscoveryDiskCacheService(storage: storage),
        _discoverySettings = discoverySettings,
        super(McpDiscoveryState());
 

@@ -1,7 +1,7 @@
 import 'dart:convert';
 
 import '../io/filesystem.dart';
-import '../storage/app_storage.dart';
+import '../storage/home_storage.dart';
 
 /// Persists pack install exports under `skills/packs/<safeId>/install.json`.
 class SkillPackInstallRecord {
@@ -57,17 +57,22 @@ class SkillPackInstallRecord {
 }
 
 class SkillPackInstallStore {
-  SkillPackInstallStore({Filesystem? fs, String? rootOverride})
-    : _fsOverride = fs,
-      _rootOverride = rootOverride;
+  SkillPackInstallStore({
+    required HomeStorage storage,
+    Filesystem? fs,
+    String? rootOverride,
+  }) : _storage = storage,
+       _fsOverride = fs,
+       _rootOverride = rootOverride;
 
+  final HomeStorage _storage;
   final Filesystem? _fsOverride;
   final String? _rootOverride;
 
-  Filesystem get _fs => _fsOverride ?? AppStorage.fs;
+  Filesystem get _fs => _fsOverride ?? _storage.fs;
 
   String get _root =>
-      _rootOverride ?? AppStorage.paths.skillPacksInstallDir;
+      _rootOverride ?? _storage.paths.skillPacksInstallDir;
 
   static String safePackId(String packId) =>
       packId.trim().replaceAll(RegExp(r'[^a-zA-Z0-9._-]+'), '__');

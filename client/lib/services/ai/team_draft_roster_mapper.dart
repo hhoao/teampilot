@@ -2,6 +2,8 @@ import '../../models/discoverable_member.dart';
 import '../../models/discoverable_team.dart';
 import '../../models/team_config.dart';
 import '../../models/team_roster_slot.dart';
+import '../expert_hub/expert_hub_catalog.dart';
+import '../expert_hub/local_expert_store.dart';
 import '../expert_hub/local_expert_writer.dart';
 import 'team_config_draft.dart';
 
@@ -9,9 +11,12 @@ import 'team_config_draft.dart';
 /// roster slots that reference them by key.
 Future<List<TeamRosterSlot>> rosterSlotsFromTeamDraft(
   TeamConfigDraft draft, {
+  required LocalExpertStore store,
   LocalExpertWriter? writer,
+  ExpertHubCatalog? catalog,
 }) async {
-  final expertWriter = writer ?? LocalExpertWriter();
+  final expertWriter =
+      writer ?? LocalExpertWriter(store: store, catalog: catalog);
   final slots = <TeamRosterSlot>[];
   for (final member in draft.members) {
     final saved = await expertWriter.save(_discoverableFromDraftMember(member));

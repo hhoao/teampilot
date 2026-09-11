@@ -14,6 +14,7 @@ import '../../../provider/provider_catalog_access.dart';
 import '../../../provider/workspace_trust_provisioner.dart';
 import '../../../io/filesystem.dart';
 import '../../../remote/remote_credential_materializer.dart';
+import '../../../storage/home_storage.dart';
 import '../../registry/capabilities/hook_capability.dart';
 import '../../registry/capabilities/prompt_capability.dart';
 import '../../registry/capabilities/provider_capability.dart';
@@ -72,11 +73,17 @@ final class CodexProviderCapability extends CatalogModelCapability
   const CodexProviderCapability({
     ApiModelCatalogService? modelsService,
     CodexProviderCredentialsService? credentials,
+    this.storage,
   }) : _modelsService = modelsService,
        _credentials = credentials;
 
   final ApiModelCatalogService? _modelsService;
   final CodexProviderCredentialsService? _credentials;
+
+  /// Home control-plane storage injected at registry construction; required
+  /// for workspace-trust provisioning. Null only for `const`-constructed
+  /// capabilities outside the registry (tests).
+  final HomeStorage? storage;
 
   CodexProviderCredentialsService? get _service => _credentials;
 
@@ -270,6 +277,7 @@ final class CodexProviderCapability extends CatalogModelCapability
     required AppProviderConfig provider,
   }) async {
     final path = CodexProviderCredentialsService(
+      storage: storage ?? _missingHomeStorage(),
       fs: fs,
       basePath: basePath,
     ).credentialPath(provider.id);
@@ -350,7 +358,10 @@ final class CodexProviderCapability extends CatalogModelCapability
       warnings.add('codex_tmp_plugins: $e');
     }
 
-    final resolver = _codexResolver(ctx.catalog);
+    final resolver = _codexResolver(
+      ctx.catalog,
+      storage: storage ?? _missingHomeStorage(),
+    );
     AppProviderConfig? provider;
     if (team != null) {
       provider = await resolver.resolveForLaunch(team: team, member: member);
@@ -446,12 +457,16 @@ final class CodexProviderCapability extends CatalogModelCapability
       try {
         if (ctx.crossMachine && isOfficialCodexOAuthProvider(provider)) {
           await CrossMachineCredentialBridge.materializeCodexAuth(
+            storage: storage ?? _missingHomeStorage(),
             catalog: ctx.catalog,
             work: paths,
             providerId: provider.id,
           );
         }
-        await CodexHomeProvisioner(fs: paths.fs).provision(
+        await CodexHomeProvisioner(
+          fs: paths.fs,
+          usesPosixPaths: storage?.usesPosixPaths ?? false,
+        ).provision(
           codexHome: codexHome,
           provider: provider,
           busOverlayToml: busOverlay,
@@ -508,6 +523,7 @@ final class CodexProviderCapability extends CatalogModelCapability
     return WorkspaceTrustProvisioner(
       layout: paths.layout,
       fs: paths.fs,
+      storage: storage ?? _missingHomeStorage(),
     ).provisionWorkspace(
       workspaceId: workspaceId,
       directories: [
@@ -519,11 +535,20 @@ final class CodexProviderCapability extends CatalogModelCapability
     );
   }
 
+  HomeStorage _missingHomeStorage() {
+    throw StateError(
+      'CodexProviderCapability was constructed without HomeStorage; workspace '
+      'trust provisioning and credential actions require storage threaded via '
+      'CliBootstrap.',
+    );
+  }
+
   Future<AppProviderConfig?> _resolveSoleCodexProvider(
     ConfigProfilePaths catalog,
   ) async {
     final providers = await providerCatalogRepository(
       catalog,
+      storage: storage ?? _missingHomeStorage(),
     ).loadProviders(CliTool.codex);
     if (providers.length == 1) return providers.first;
     return null;
@@ -574,6 +599,7 @@ final class CodexProviderCapability extends CatalogModelCapability
   }) async {
     final keys = await collectTrustedProjectKeys(
       fs: paths.fs,
+      usesPosixPaths: storage?.usesPosixPaths ?? false,
       directories: [
         if (workingDirectory.trim().isNotEmpty) workingDirectory.trim(),
         for (final directory in additionalDirectories)
@@ -584,10 +610,12 @@ final class CodexProviderCapability extends CatalogModelCapability
   }
 
   static CodexProviderSettingsResolver _codexResolver(
-    ConfigProfilePaths catalog,
-  ) => CodexProviderSettingsResolver(
+    ConfigProfilePaths catalog, {
+    required HomeStorage storage,
+  }) => CodexProviderSettingsResolver(
     basePath: catalog.basePath,
-    repository: providerCatalogRepository(catalog),
+    storage: storage,
+    repository: providerCatalogRepository(catalog, storage: storage),
   );
 }
 

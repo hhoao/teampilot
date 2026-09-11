@@ -154,6 +154,8 @@ class WorkbenchShellLauncher {
   final bool Function()? _termuxConnected;
   final String Function()? _termuxWorkOpsBlockedMessage;
 
+  bool get _usesPosixPaths => _chat.lifecycle.storage.usesPosixPaths;
+
   WorkbenchTabId? _resolveMostRecentShell(String workspaceId) {
     final strip = _workbench.mergedFloatingStrip(workspaceId);
     return resolveMostRecentFloatingShell(
@@ -190,6 +192,7 @@ class WorkbenchShellLauncher {
       folders: resolvedFolders,
       fallbackLocalShell: _fallbackLocalShell(),
       home: _homeTarget(),
+      usesPosixPaths: _usesPosixPaths,
     );
     final entry = await openAndSelect(
       workspaceId: trimmedWorkspaceId,
@@ -244,6 +247,7 @@ class WorkbenchShellLauncher {
       folders: folders,
       fallbackLocalShell: _fallbackLocalShell(),
       home: _homeTarget(),
+      usesPosixPaths: _usesPosixPaths,
     );
     await openAndSelect(
       workspaceId: plan.workspaceId,
@@ -284,6 +288,7 @@ class WorkbenchShellLauncher {
       folders: resolvedFolders,
       localCwd: trimmedCwd,
       home: home,
+      usesPosixPaths: _usesPosixPaths,
       sshDefaultWorkingDirectory: _sshDefaultWorkingDirectory(),
     );
     final remote = usesSshTransport(

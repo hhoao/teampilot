@@ -34,7 +34,7 @@ void main() {
     final fs = InMemoryFilesystem()
       ..files['/repo/docs/a.md'] = '# a\n[b](./b.md)\n'
       ..files['/repo/docs/b.md'] = '# b\n';
-    final editor = EditorCubit(fs: fs);
+    final editor = EditorCubit(fs: fs, storage: fakeHomeStorage(filesystem: fs), );
     final workbench = WorkbenchCubit();
     final floating = FloatingWorkspaceCubit();
     final modes = MarkdownViewModeStore();
@@ -74,7 +74,7 @@ void main() {
     final fs = InMemoryFilesystem()
       ..files['/repo/docs/a.md'] = '# a\n'
       ..files['/repo/docs/b.md'] = '# b\n';
-    final editor = EditorCubit(fs: fs);
+    final editor = EditorCubit(fs: fs, storage: fakeHomeStorage(filesystem: fs), );
     final workbench = WorkbenchCubit();
     final floating = FloatingWorkspaceCubit();
     final modes = MarkdownViewModeStore();

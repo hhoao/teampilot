@@ -14,9 +14,11 @@ import 'package:teampilot/repositories/session_repository.dart';
 import 'package:teampilot/services/terminal/terminal_session.dart';
 
 import '../../support/post_frame_test_harness.dart';
+import '../../support/in_memory_filesystem.dart';
 
 class _SpyTerminalSession extends TerminalSession {
-  _SpyTerminalSession({required super.executable});
+  _SpyTerminalSession({required super.executable})
+    : super(fs: InMemoryFilesystem());
 
   var connectCalls = 0;
   var _running = false;
@@ -62,6 +64,7 @@ class _RecordingChatCubit extends ChatCubit {
     required super.sessionRepository,
     required super.postFrameScheduler,
     required super.terminalSessionFactory,
+    required super.storage,
     this.forwardOpen = false,
   });
 
@@ -128,7 +131,7 @@ void main() {
 
     Future<void> boot({required bool forwardOpen}) async {
       tmp = await Directory.systemTemp.createTemp('open_existing_gate_');
-      repo = SessionRepository(rootDir: tmp.path);
+      repo = SessionRepository(rootDir: tmp.path, storage: testHomeStorage, );
       postFrame = PostFrameTestHarness();
       shells.clear();
       chatCubit = _RecordingChatCubit(
@@ -136,6 +139,7 @@ void main() {
         automationRepository: testAutomationRepository(),
         sessionRepository: repo,
         postFrameScheduler: postFrame.scheduler,
+        storage: testHomeStorage,
         forwardOpen: forwardOpen,
         terminalSessionFactory:
             ({required String executable, int scrollbackLines = 10000}) {
@@ -145,6 +149,7 @@ void main() {
             },
       );
       launchProfiles = LaunchProfileCubit(
+        storage: testHomeStorage,
         repository: testLaunchProfileRepository(tmp),
         sessionRepository: repo,
         executableResolver: () => 'true',

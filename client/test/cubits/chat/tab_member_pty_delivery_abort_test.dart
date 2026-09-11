@@ -4,13 +4,14 @@ import 'package:teampilot/cubits/chat/chat_tab_store.dart';
 import 'package:teampilot/cubits/chat/tab_member_coordination_factory.dart';
 import 'package:teampilot/cubits/chat/tab_member_pty_delivery.dart';
 import 'package:teampilot/services/terminal/member_pty_inject_service.dart';
+import '../../support/in_memory_filesystem.dart';
 
 ({TabMemberPtyDelivery delivery, MemberPtyInjectService ptyInject})
 _delivery({
   void Function(String sessionId)? onUserActivity,
   MemberPtyInjectService? ptyInject,
 }) {
-  final tabStore = ChatTabStore();
+  final tabStore = ChatTabStore(storage: fakeHomeStorage());
   final inject = ptyInject ?? MemberPtyInjectService();
   return (
     delivery: TabMemberPtyDelivery(

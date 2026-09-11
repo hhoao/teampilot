@@ -6,10 +6,11 @@ import '../../repositories/ssh_known_host_repository.dart';
 import '../../repositories/workspace_project_config_repository.dart';
 import '../cli/registry/cli_tool_registry.dart';
 import '../expert_hub/expert_capability_resolver.dart';
+import '../expert_hub/local_expert_store.dart';
 import '../remote/remote_app_data_materializer.dart';
 import '../session/session_lifecycle_service.dart';
 import '../ssh/ssh_client_factory.dart';
-import '../storage/app_storage.dart';
+import '../storage/home_storage.dart';
 import '../storage/runtime_context.dart';
 import 'session_connect_orchestrator.dart';
 import 'session_runtime_plan_builder.dart';
@@ -78,6 +79,7 @@ SessionConnectOrchestrator buildSessionConnectOrchestrator({
 /// wiring (tests, lightweight harnesses). Production uses [app_shell] DI.
 SessionConnectOrchestrator buildDefaultSessionConnectOrchestrator({
   required SessionLifecycleService lifecycle,
+  required HomeStorage storage,
   required Future<String> Function(CliTool cli) localCliPath,
   SessionRuntimePlanBuilder? runtimePlanBuilder,
   SshClientFactory? sshClientFactory,
@@ -85,12 +87,12 @@ SessionConnectOrchestrator buildDefaultSessionConnectOrchestrator({
   RuntimeTarget Function()? homeTarget,
 }) {
   RuntimeContext homeContext() {
-    final paths = AppStorage.paths;
+    final paths = storage.paths;
     return RuntimeContext(
       target: RuntimeTarget.local(),
-      filesystem: AppStorage.fs,
-      home: AppStorage.home,
-      cwd: AppStorage.cwd,
+      filesystem: storage.fs,
+      home: storage.home,
+      cwd: storage.cwd,
       appDataRoot: paths.basePath,
       paths: paths,
     );
@@ -103,8 +105,14 @@ SessionConnectOrchestrator buildDefaultSessionConnectOrchestrator({
           installSkill: (_) async => null,
           installPlugin: (_) async => null,
           installMcp: (_) async => null,
+          localStore: LocalExpertStore(
+            fs: storage.fs,
+            dirOverride: storage.paths.memberHubLocalTemplatesDir,
+          ),
         ),
-        workspaceProjectConfig: WorkspaceProjectConfigRepository(),
+        workspaceProjectConfig: WorkspaceProjectConfigRepository(
+          storage: storage,
+        ),
       );
 
   return buildSessionConnectOrchestrator(

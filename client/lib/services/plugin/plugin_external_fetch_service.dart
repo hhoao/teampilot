@@ -2,29 +2,29 @@ import 'dart:io';
 import 'package:path/path.dart' as p;
 
 import '../../models/plugin_external_source.dart';
-import '../storage/app_storage.dart';
 import '../io/filesystem.dart';
+import '../storage/home_storage.dart';
 import 'plugin_exceptions.dart';
 import 'plugin_repo_git_service.dart';
 
 /// Fetches plugin directories from external git URLs (`git-subdir`, `url`, `github`).
 class PluginExternalFetchService {
   PluginExternalFetchService({
+    required HomeStorage storage,
     PluginRepoGitService? gitService,
     Filesystem? filesystem,
-  }) : _git = gitService ?? PluginRepoGitService(),
+  }) : _storage = storage,
+       _git = gitService ?? PluginRepoGitService(),
        _fsOverride = filesystem;
 
+  final HomeStorage _storage;
   final PluginRepoGitService _git;
   final Filesystem? _fsOverride;
 
-  Filesystem get _fs => _fsOverride ?? AppStorage.fs;
+  Filesystem get _fs => _fsOverride ?? _storage.fs;
 
   Future<String> _cacheRoot() async {
-    if (AppStorage.isInstalled) {
-      return AppStorage.context.pluginExternalCacheDir;
-    }
-    return AppStorage.paths.pluginExternalCacheDir;
+    return _storage.paths.pluginExternalCacheDir;
   }
 
   /// Returns the plugin root directory (contains `.claude-plugin/plugin.json` or plugin files).

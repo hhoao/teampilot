@@ -23,7 +23,8 @@ import '../../support/post_frame_test_harness.dart';
 
 /// Test-only cubit that seeds provider state without disk I/O.
 class _SeededAppProviderCubit extends AppProviderCubit {
-  _SeededAppProviderCubit(AppProviderState initial) {
+  _SeededAppProviderCubit(AppProviderState initial)
+    : super(storage: buildTestHomeStorage()) {
     emit(initial);
   }
 }
@@ -39,8 +40,9 @@ Future<void> _pumpDefaultPresetStep(
   addTearDown(() => launchRoot.deleteSync(recursive: true));
 
   final launchCubit = LaunchProfileCubit(
+    storage: testHomeStorage,
     repository: testLaunchProfileRepository(launchRoot),
-    sessionRepository: SessionRepository(),
+    sessionRepository: SessionRepository(storage: testHomeStorage),
     executableResolver: () => 'claude',
   );
   addTearDown(launchCubit.close);
@@ -211,8 +213,9 @@ void main() {
       addTearDown(() => launchRoot.deleteSync(recursive: true));
 
       final launchCubit = LaunchProfileCubit(
+        storage: testHomeStorage,
         repository: testLaunchProfileRepository(launchRoot),
-        sessionRepository: SessionRepository(),
+        sessionRepository: SessionRepository(storage: testHomeStorage),
         executableResolver: () => 'claude',
       );
       addTearDown(launchCubit.close);

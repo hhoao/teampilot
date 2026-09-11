@@ -2,6 +2,7 @@ import '../cli/registry/capabilities/plugin_capability.dart';
 import '../cli/registry/capabilities/skill_capability.dart';
 import '../cli/registry/cli_tool_registry.dart';
 import '../io/filesystem.dart';
+import '../storage/home_storage.dart';
 import '../../models/team_config.dart';
 import 'contribution/resource_assembly_error.dart';
 import 'resource_materializer.dart';
@@ -18,13 +19,14 @@ class ResourceProvisionResult {
 /// its leaf CONFIG_DIR. Same code for personal, native, and mixed modes.
 class ResourceProvisioningService {
   ResourceProvisioningService({
+    required HomeStorage storage,
     required Filesystem fs,
     required CliToolRegistry registry,
-    ResourceResolver resolver = const ResourceResolver(),
+    ResourceResolver? resolver,
     ResourceMaterializer? materializer,
   }) : _fs = fs,
        _registry = registry,
-       _resolver = resolver,
+       _resolver = resolver ?? ResourceResolver(storage: storage),
        _materializer = materializer ?? ResourceMaterializer(fs: fs);
 
   final Filesystem _fs;

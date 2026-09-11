@@ -12,6 +12,7 @@ import '../../../provider/provider_catalog_access.dart';
 import '../../../provider/workspace_trust_provisioner.dart';
 import '../../../io/filesystem.dart';
 import '../../../remote/remote_credential_materializer.dart';
+import '../../../storage/home_storage.dart';
 import '../../registry/capabilities/provider_capability.dart';
 import '../../registry/cli_tool_registry.dart';
 import '../../registry/config_profile/config_profile_context.dart';
@@ -51,11 +52,17 @@ final class CursorProviderCapability extends CatalogModelCapability
   const CursorProviderCapability({
     CursorAgentModelsService? modelsService,
     CursorProviderCredentialsService? credentials,
+    this.storage,
   }) : _modelsService = modelsService,
        _credentials = credentials;
 
   final CursorAgentModelsService? _modelsService;
   final CursorProviderCredentialsService? _credentials;
+
+  /// Home control-plane storage injected at registry construction; required
+  /// for workspace-trust provisioning. Null only for `const`-constructed
+  /// capabilities outside the registry (tests).
+  final HomeStorage? storage;
 
   CursorProviderCredentialsService? get _service => _credentials;
 
@@ -284,6 +291,7 @@ final class CursorProviderCapability extends CatalogModelCapability
       provider.cli.value,
     );
     final probe = await CursorProviderCredentialsService(
+      storage: storage ?? _missingHomeStorage(),
       fs: fs,
       basePath: basePath,
     ).probe(provider.id);
@@ -338,6 +346,7 @@ final class CursorProviderCapability extends CatalogModelCapability
     await paths.fs.ensureDir(cursorDir);
 
     final credentials = CursorProviderCredentialsService(
+      storage: storage ?? _missingHomeStorage(),
       fs: paths.fs,
       basePath: paths.basePath,
       // Cross-machine work plane is always POSIX regardless of host OS.
@@ -357,6 +366,7 @@ final class CursorProviderCapability extends CatalogModelCapability
       if (ctx.crossMachine) {
         final copied =
             await CrossMachineCredentialBridge.materializeCursorCredential(
+              storage: storage ?? _missingHomeStorage(),
               catalog: ctx.catalog,
               work: paths,
               providerId: providerId,
@@ -433,7 +443,11 @@ final class CursorProviderCapability extends CatalogModelCapability
   ) async {
     final resolver = CursorProviderSettingsResolver(
       basePath: ctx.catalog.basePath,
-      repository: providerCatalogRepository(ctx.catalog),
+      storage: storage ?? _missingHomeStorage(),
+      repository: providerCatalogRepository(
+        ctx.catalog,
+        storage: storage ?? _missingHomeStorage(),
+      ),
     );
     var providerId = ctx.member?.provider.trim() ?? '';
     if (providerId.isEmpty) {
@@ -446,6 +460,7 @@ final class CursorProviderCapability extends CatalogModelCapability
 
     final providers = await providerCatalogRepository(
       ctx.catalog,
+      storage: storage ?? _missingHomeStorage(),
     ).loadProviders(CliTool.cursor);
     if (providers.length == 1) return providers.first;
     return null;
@@ -482,6 +497,7 @@ final class CursorProviderCapability extends CatalogModelCapability
       );
 
       final credentials = CursorProviderCredentialsService(
+        storage: storage ?? _missingHomeStorage(),
         fs: paths.fs,
         basePath: paths.basePath,
       );
@@ -489,7 +505,11 @@ final class CursorProviderCapability extends CatalogModelCapability
       if (team != null) {
         final resolver = CursorProviderSettingsResolver(
           basePath: ctx.catalog.basePath,
-          repository: providerCatalogRepository(ctx.catalog),
+          storage: storage ?? _missingHomeStorage(),
+          repository: providerCatalogRepository(
+            ctx.catalog,
+            storage: storage ?? _missingHomeStorage(),
+          ),
         );
         final provider = await resolver.resolveForLaunch(
           team: team,
@@ -502,6 +522,7 @@ final class CursorProviderCapability extends CatalogModelCapability
           if (ctx.crossMachine) {
             final copied =
                 await CrossMachineCredentialBridge.materializeCursorCredential(
+                  storage: storage ?? _missingHomeStorage(),
                   catalog: ctx.catalog,
                   work: paths,
                   providerId: providerId,
@@ -619,6 +640,7 @@ final class CursorProviderCapability extends CatalogModelCapability
       await WorkspaceTrustProvisioner(
         layout: ctx.paths.layout,
         fs: ctx.paths.fs,
+        storage: storage ?? _missingHomeStorage(),
       ).provisionWorkspace(
         workspaceId: ctx.scope.workspaceId,
         directories: directories,
@@ -627,10 +649,19 @@ final class CursorProviderCapability extends CatalogModelCapability
     }
     await CursorWorkspaceTrustProvisioner(
       fs: ctx.paths.fs,
+      usesPosixPaths: storage?.usesPosixPaths ?? false,
     ).provisionLaunchWorkspaces(
       homeRoot: homeRoot,
       workingDirectory: ctx.workingDirectory,
       additionalDirectories: ctx.additionalDirectories,
+    );
+  }
+
+  HomeStorage _missingHomeStorage() {
+    throw StateError(
+      'CursorProviderCapability was constructed without HomeStorage; workspace '
+      'trust provisioning and credential actions require storage threaded via '
+      'CliBootstrap.',
     );
   }
 }

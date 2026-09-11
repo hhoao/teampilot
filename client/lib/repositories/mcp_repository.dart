@@ -1,15 +1,20 @@
 import '../models/mcp_server.dart';
 import '../services/mcp/mcp_catalog_service.dart';
 import '../services/mcp/mcp_server_validator.dart';
-import '../services/storage/app_storage.dart';
+import '../services/storage/home_storage.dart';
 
 class McpRepository {
-  McpRepository({McpCatalogService? catalog, McpServerValidator? validator})
-    : _catalog = catalog,
-      _validator = validator ?? McpServerValidator();
+  McpRepository({
+    McpCatalogService? catalog,
+    McpServerValidator? validator,
+    required HomeStorage storage,
+  }) : _catalog = catalog,
+      _validator = validator ?? McpServerValidator(),
+      _storage = storage;
 
   final McpCatalogService? _catalog;
   final McpServerValidator _validator;
+  final HomeStorage _storage;
 
   List<McpServer>? _cache;
 
@@ -18,14 +23,11 @@ class McpRepository {
   Future<McpCatalogService> _resolveCatalog() async {
     final injected = _catalog;
     if (injected != null) return injected;
-    if (AppStorage.isInstalled) {
-      final roots = AppStorage.context;
-      return McpCatalogService(
-        catalogPath: roots.mcpServersJsonPath,
-        fs: roots.fs,
-      );
-    }
-    return McpCatalogService(catalogPath: AppStorage.paths.mcpServersJson);
+    final roots = _storage.context;
+    return McpCatalogService(
+      catalogPath: roots.mcpServersJsonPath,
+      fs: roots.fs,
+    );
   }
 
   Future<List<McpServer>> loadAll({bool forceReload = false}) async {

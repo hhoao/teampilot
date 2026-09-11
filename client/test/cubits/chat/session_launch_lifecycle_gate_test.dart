@@ -6,6 +6,7 @@ import 'package:teampilot/models/team_config.dart';
 import 'package:teampilot/models/workspace_folder.dart';
 import 'package:teampilot/repositories/session_repository.dart';
 import 'package:teampilot/services/cli/registry/built_in_cli_tools.dart';
+import 'package:teampilot/services/cli/registry/cli_bootstrap.dart';
 import 'package:teampilot/services/cli/registry/capabilities/cli_session_capability.dart';
 import 'package:teampilot/services/cli/registry/capabilities/noop_cli_session_capability.dart';
 import 'package:teampilot/services/cli/registry/cli_capability.dart';
@@ -15,6 +16,7 @@ import 'package:teampilot/services/session/session_lifecycle_service.dart';
 import 'package:teampilot/services/terminal/terminal_session.dart';
 
 import '../../support/post_frame_test_harness.dart';
+import '../../support/in_memory_filesystem.dart';
 
 final class _DenyGateLifecycle extends NoopCliSessionCapability {
   var initializeCalls = 0;
@@ -58,7 +60,10 @@ CliToolRegistry _registryWithLifecycle(
   CliSessionCapability lifecycle,
 ) {
   final registry = CliToolRegistry();
-  registerBuiltInCliTools(registry);
+  registerBuiltInCliTools(
+    registry,
+    bootstrap: CliBootstrap(const {}, storage: testHomeStorage),
+  );
   final inner = registry.tryGet(cli);
   expect(inner, isNotNull);
   registry.register(_ToolWithExtraCapability(inner!, lifecycle));
@@ -66,7 +71,8 @@ CliToolRegistry _registryWithLifecycle(
 }
 
 class _SpyTerminalSession extends TerminalSession {
-  _SpyTerminalSession({required super.executable});
+  _SpyTerminalSession({required super.executable})
+    : super(fs: InMemoryFilesystem());
 
   var connectCalls = 0;
 
@@ -119,7 +125,7 @@ void main() {
 
     setUp(() async {
       tmp = await Directory.systemTemp.createTemp('launch_lifecycle_gate_');
-      repo = SessionRepository(rootDir: tmp.path);
+      repo = SessionRepository(rootDir: tmp.path, storage: testHomeStorage, );
       denyLifecycle = _DenyGateLifecycle();
       postFrame = PostFrameTestHarness();
       shells.clear();
@@ -132,6 +138,7 @@ void main() {
             CliTool.claude,
             denyLifecycle,
           ),
+                                                   storage: testHomeStorage,
         ),
         postFrameScheduler: postFrame.scheduler,
         terminalSessionFactory:
@@ -140,6 +147,7 @@ void main() {
               shells.add(shell);
               return shell;
             },
+                         storage: testHomeStorage,
       );
     });
 

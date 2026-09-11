@@ -3,7 +3,7 @@ import 'dart:io';
 
 import 'package:http/http.dart' as http;
 
-import '../storage/app_storage.dart';
+import '../storage/home_storage.dart';
 import '../storage/runtime_layout.dart';
 import 'mcp_credentials_store.dart';
 import 'mcp_oauth_callback_server.dart';
@@ -29,9 +29,11 @@ class McpOAuthFlow {
   final McpCredentialsStore _credentials;
   final http.Client _http;
 
-  static String claudeAppConfigDir() {
+  /// Claude Code app config dir on the home control plane.
+  static String claudeAppConfigDir(HomeStorage storage) {
     return RuntimeLayout(
-      teampilotRoot: AppStorage.appDataRoot,
+      teampilotRoot: storage.appDataRoot,
+      fs: storage.fs,
     ).appToolRoot('claude');
   }
 

@@ -5,6 +5,7 @@ import '../../../../models/launch_security_policy.dart';
 import '../../../../models/team_config.dart';
 import 'package:path/path.dart' as p;
 
+import '../../../storage/home_storage.dart';
 import '../../registry/capabilities/headless_capability.dart';
 import '../../registry/headless/headless_provision_support.dart';
 import '../../registry/launch/cli_launch_arg_contribution.dart';
@@ -22,7 +23,10 @@ import 'provider.dart';
 final class FlashskyaiHeadlessCapability
     with HeadlessProvisionSupport
     implements HeadlessCapability {
-  const FlashskyaiHeadlessCapability();
+  const FlashskyaiHeadlessCapability({this.storage});
+
+  @override
+  final HomeStorage? storage;
 
   @override
   bool get isSupported => true;

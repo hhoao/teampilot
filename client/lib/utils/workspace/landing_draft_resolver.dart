@@ -6,6 +6,7 @@ import '../../models/team_config.dart';
 import '../../services/cli/preset_resolver.dart';
 import '../../services/cli/registry/cli_tool_registry.dart';
 import '../../services/home_workspace/landing_prefs_store.dart';
+import '../../services/storage/home_storage.dart';
 
 /// True when [draft] uses explicit Simple custom cli/provider/model/effort.
 bool landingDraftIsCustom(LandingLaunchContext draft) =>
@@ -122,10 +123,12 @@ LandingLaunchContext seedLandingDraftPresetDefault(
 /// permission chip (app Session setting; defaults to full access).
 Future<LandingLaunchContext> resolveLandingDraft({
   required String workspaceId,
+  required HomeStorage storage,
   LandingPrefsStore? store,
   bool simpleModeDefaultFullAccess = true,
 }) async {
-  final prefs = await (store ?? LandingPrefsStore()).prefsFor(workspaceId);
+  final prefs =
+      await (store ?? LandingPrefsStore(storage: storage)).prefsFor(workspaceId);
   if (prefs == null) {
     return LandingLaunchContext(
       isPersonal: true,
@@ -153,9 +156,10 @@ Future<LandingLaunchContext> resolveLandingDraft({
 Future<void> persistLandingDraft(
   String workspaceId,
   LandingLaunchContext draft, {
+  required HomeStorage storage,
   LandingPrefsStore? store,
 }) {
-  return (store ?? LandingPrefsStore()).save(
+  return (store ?? LandingPrefsStore(storage: storage)).save(
     workspaceId,
     LandingPrefs(
       isPersonal: draft.isPersonal,

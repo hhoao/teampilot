@@ -3,10 +3,13 @@ import 'dart:typed_data';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:path/path.dart' as p;
-import 'package:teampilot/services/storage/app_storage.dart';
+import 'package:teampilot/services/storage/app_paths.dart';
+import '../../support/test_runtime_context.dart';
 import 'package:teampilot/services/io/local_filesystem.dart';
 import 'package:teampilot/services/skill/skill_install_service.dart';
 import 'package:teampilot/services/skill/skill_manifest_service.dart';
+import 'package:teampilot/services/storage/home_storage.dart';
+import '../../support/in_memory_filesystem.dart';
 
 void main() {
   late Directory tmp;
@@ -16,7 +19,7 @@ void main() {
   setUp(() {
     tmp = Directory.systemTemp.createTempSync('skill_install_test_');
     final paths = AppPaths(tmp.path);
-    AppStorage.installForTesting(
+    installTestHomeStorage(
       filesystem: LocalFilesystem(
         pathContext: AppPaths.pathContextForDataRoot(paths.basePath),
       ),
@@ -24,12 +27,20 @@ void main() {
       home: tmp.path,
       cwd: tmp.path,
     );
-    manifest = SkillManifestService(rootDir: tmp.path);
-    svc = SkillInstallService(manifest: manifest);
+    final storage = HomeStorage.forTesting(
+      filesystem: LocalFilesystem(
+        pathContext: AppPaths.pathContextForDataRoot(paths.basePath),
+      ),
+      paths: paths,
+      home: tmp.path,
+      cwd: tmp.path,
+    );
+    manifest = SkillManifestService(rootDir: tmp.path, storage: storage, );
+    svc = SkillInstallService(manifest: manifest, storage: storage, );
   });
 
   tearDown(() {
-    AppStorage.resetForTesting();
+    resetTestHomeStorage();
     AppPathsBootstrapper.resetForTesting();
     if (tmp.existsSync()) tmp.deleteSync(recursive: true);
   });

@@ -5,7 +5,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:path/path.dart' as p;
 import 'package:teampilot/models/app_provider_config.dart';
 import 'package:teampilot/repositories/app_provider_repository.dart';
-import 'package:teampilot/services/storage/app_storage.dart';
+import 'package:teampilot/services/storage/app_paths.dart';
 import '../support/test_runtime_context.dart';
 
 import '../support/post_frame_test_harness.dart';
@@ -17,7 +17,7 @@ void main() {
   setUp(() async {
     setUpTestAppStorage();
     root = await Directory.systemTemp.createTemp('app_providers_');
-    repo = AppProviderRepository(basePath: root.path);
+    repo = AppProviderRepository(basePath: root.path, storage: testHomeStorage, );
   });
 
   tearDown(() async {
@@ -163,13 +163,13 @@ void main() {
         if (await rootB.exists()) {
           await rootB.delete(recursive: true);
         }
-        AppStorage.resetForTesting();
+        resetTestHomeStorage();
         AppPathsBootstrapper.resetForTesting();
       });
 
-      bindTestNativeHome(rootA.path);
+      final storage = bindTestNativeHome(rootA.path);
 
-      final dynamicRepo = AppProviderRepository();
+      final dynamicRepo = AppProviderRepository(storage: storage);
       const provider = AppProviderConfig(
         id: 'test',
         cli: CliTool.claude,
@@ -178,11 +178,11 @@ void main() {
       await dynamicRepo.saveProviders(CliTool.claude, [provider]);
       expect(await dynamicRepo.loadProviders(CliTool.claude), hasLength(1));
 
-      bindTestNativeHome(rootB.path);
+      await storage.swap(testRuntimeContext(rootB.path));
 
       expect(await dynamicRepo.loadProviders(CliTool.claude), isEmpty);
 
-      bindTestNativeHome(rootA.path);
+      await storage.swap(testRuntimeContext(rootA.path));
 
       expect(await dynamicRepo.loadProviders(CliTool.claude), hasLength(1));
     },

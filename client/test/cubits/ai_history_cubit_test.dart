@@ -7,7 +7,7 @@ import 'package:teampilot/models/app_session.dart';
 import 'package:teampilot/models/runtime_target.dart';
 import 'package:teampilot/models/workspace.dart';
 import 'package:teampilot/models/workspace_launch_context.dart';
-import 'package:teampilot/services/storage/app_storage.dart';
+import 'package:teampilot/services/storage/app_paths.dart';
 import 'package:teampilot/services/storage/runtime_context.dart';
 import 'package:teampilot/models/team_config.dart';
 import 'package:teampilot/models/workspace_folder.dart';
@@ -62,6 +62,7 @@ void main() {
       folders: s.folders,
       createdAt: 0,
     ),
+                                                                            usesPosixPaths: false,
   );
 
   List<AiMessage> messages(int count) => [

@@ -37,7 +37,11 @@ void main() {
     final controller = HomeTargetController(
       registry: RuntimeTargetRegistry(
         repo: TargetsRepository(rootDir: root, fs: fs),
-        sshProfileRepo: SshProfileRepository(rootDir: root, fs: fs),
+        sshProfileRepo: SshProfileRepository(
+          rootDir: root,
+          fs: fs,
+          storage: fakeHomeStorage(filesystem: fs, appDataRoot: root),
+        ),
         isWindows: false,
         isAndroid: false,
       ),

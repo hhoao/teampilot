@@ -11,7 +11,10 @@ import 'package:teampilot/services/catalog/modules/plugin_catalog_module.dart';
 import 'package:teampilot/services/io/local_filesystem.dart';
 import 'package:teampilot/services/plugin/plugin_install_service.dart';
 import 'package:teampilot/services/plugin/plugin_manifest_service.dart';
-import 'package:teampilot/services/storage/app_storage.dart';
+import 'package:teampilot/services/storage/app_paths.dart';
+import '../../support/test_runtime_context.dart';
+import 'package:teampilot/services/storage/home_storage.dart';
+import '../../support/in_memory_filesystem.dart';
 
 void main() {
   late Directory tmp;
@@ -31,7 +34,7 @@ void main() {
     tmp = Directory.systemTemp.createTempSync('plugin_catalog_');
     workRoot = Directory.systemTemp.createTempSync('plugin_catalog_work_');
     final paths = AppPaths(tmp.path);
-    AppStorage.installForTesting(
+    installTestHomeStorage(
       filesystem: LocalFilesystem(
         pathContext: AppPaths.pathContextForDataRoot(paths.basePath),
       ),
@@ -40,10 +43,17 @@ void main() {
       cwd: tmp.path,
     );
     workFs = LocalFilesystem();
+    final homeStorage = HomeStorage(testHomeStorage.context);
     manifest = PluginManifestService();
-    install = PluginInstallService(manifestService: manifest);
-    repository = PluginRepository(manifest: manifest, install: install);
-    configRepo = WorkspaceProjectConfigRepository();
+    install = PluginInstallService(manifestService: manifest, storage: homeStorage, );
+    repository = PluginRepository(
+      storage: HomeStorage(testHomeStorage.context),
+      manifest: manifest,
+      install: install,
+    );
+    configRepo = WorkspaceProjectConfigRepository(
+      storage: HomeStorage(testHomeStorage.context),
+    );
     binder = CatalogWorkspaceBinder(repo: configRepo);
     bus = CatalogMutationBus();
     module = PluginCatalogModule(
@@ -52,11 +62,12 @@ void main() {
       binder: binder,
       bus: bus,
       workspaceConfig: configRepo,
+      storage: HomeStorage(testHomeStorage.context),
     );
   });
 
   tearDown(() {
-    AppStorage.resetForTesting();
+    resetTestHomeStorage();
     AppPathsBootstrapper.resetForTesting();
     if (tmp.existsSync()) tmp.deleteSync(recursive: true);
     if (workRoot.existsSync()) workRoot.deleteSync(recursive: true);
@@ -157,6 +168,7 @@ void main() {
           expect(args['id'], 'market/demo');
           return install.installFromDirectory(src);
         },
+        storage: HomeStorage(testHomeStorage.context),
       );
 
       final result = await module.handle(

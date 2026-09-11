@@ -5,7 +5,7 @@ import 'package:teampilot/services/io/local_filesystem.dart';
 import 'package:teampilot/services/remote_download/remote_download_catalog.dart';
 import 'package:teampilot/services/remote_download/remote_download_settings_store.dart';
 import 'package:teampilot/services/remote_download/remote_download_source.dart';
-import 'package:teampilot/services/storage/app_storage.dart';
+import 'package:teampilot/services/storage/app_paths.dart';
 
 void main() {
   group('RemoteDownloadSettingsStore', () {

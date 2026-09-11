@@ -4,7 +4,7 @@ import 'dart:convert';
 import '../../models/app_session.dart';
 import '../../models/team_generation_settings.dart';
 import '../../services/io/filesystem.dart';
-import '../../services/storage/app_storage.dart';
+import '../../services/storage/home_storage.dart';
 import '../../services/storage/workspace_layout.dart';
 import '../../utils/lock_pool.dart';
 import '../../utils/logging/logger.dart';
@@ -19,23 +19,30 @@ const teamGenerationTombstoneMaxAge = Duration(days: 30);
 /// phase transitions, WAL receipts, tombstone compaction, and cancellation.
 final class TeamGenerationJobStore {
   TeamGenerationJobStore({
+    required HomeStorage storage,
     Filesystem? fs,
     WorkspaceLayout? layout,
     DateTime Function()? clock,
     LockPool? lockPool,
-  }) : _fsOverride = fs,
+  }) : _storage = storage,
+       _fsOverride = fs,
        _layoutOverride = layout,
        _clock = clock ?? DateTime.now,
        _locks = lockPool ?? LockPool();
 
+  final HomeStorage _storage;
   final Filesystem? _fsOverride;
   final WorkspaceLayout? _layoutOverride;
   final DateTime Function() _clock;
   final LockPool _locks;
 
-  Filesystem get _fs => _fsOverride ?? AppStorage.fs;
+  Filesystem get _fs => _fsOverride ?? _storage.fs;
   WorkspaceLayout get _layout =>
-      _layoutOverride ?? WorkspaceLayout(teampilotRoot: AppStorage.paths.basePath);
+      _layoutOverride ??
+      WorkspaceLayout(
+        teampilotRoot: _storage.paths.basePath,
+        fs: _storage.fs,
+      );
 
   String _lockKey(String workspaceId, String workflowId) =>
       '$workspaceId/$workflowId';

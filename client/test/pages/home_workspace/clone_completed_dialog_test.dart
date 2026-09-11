@@ -16,6 +16,7 @@ import 'package:teampilot/services/notification/notification_recorder.dart';
 import 'package:teampilot/widgets/app_toast/app_toast.dart';
 
 import '../../support/post_frame_test_harness.dart';
+import '../../support/in_memory_filesystem.dart';
 
 Widget _harness({GlobalKey<NavigatorState>? navigatorKey, Widget? home}) {
   final theme = ThemeData(useMaterial3: true);
@@ -183,8 +184,8 @@ void main() {
       addTearDown(repoCloneCubit.close);
       final chatCubit = _ThrowingChatCubit();
       addTearDown(chatCubit.close);
-      final sessionRepository = SessionRepository();
-      final identityRepository = LaunchProfileRepository();
+      final sessionRepository = SessionRepository(storage: fakeHomeStorage());
+      final identityRepository = LaunchProfileRepository(storage: fakeHomeStorage());
 
       late BuildContext dialogContext;
       final theme = ThemeData(useMaterial3: true);
@@ -275,6 +276,7 @@ class _ThrowingChatCubit extends ChatCubit {
     : super(
         executableResolver: () => 'true',
         automationRepository: testAutomationRepository(),
+             storage: fakeHomeStorage(),
       );
 
   @override

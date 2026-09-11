@@ -2,7 +2,7 @@ import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/services/io/local_filesystem.dart';
-import 'package:teampilot/services/storage/app_storage.dart';
+import 'package:teampilot/services/storage/app_paths.dart';
 import 'package:teampilot/services/termux/termux_config.dart';
 import 'package:teampilot/services/termux/termux_config_store.dart';
 import '../../support/test_runtime_context.dart';
@@ -72,7 +72,7 @@ void main() {
       addTearDown(() async {
         if (await native.exists()) await native.delete(recursive: true);
         if (await remote.exists()) await remote.delete(recursive: true);
-        AppStorage.resetForTesting();
+        resetTestHomeStorage();
         AppPathsBootstrapper.resetForTesting();
       });
 

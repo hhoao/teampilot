@@ -112,9 +112,9 @@ class PerformanceScenarioApp {
   static Future<PerformanceScenarioApp> create() async {
     GoogleFonts.config.allowRuntimeFetching = false;
     final repoDir = await Directory.systemTemp.createTemp('perf_sess_repo_');
-    final cache = HomeWorkspaceUiCache();
+    final cache = HomeWorkspaceUiCache(storage: fakeHomeStorage());
     return PerformanceScenarioApp(
-      sessionRepository: SessionRepository(rootDir: repoDir.path),
+      sessionRepository: SessionRepository(rootDir: repoDir.path, storage: fakeHomeStorage()),
       homeWorkspaceUiCache: cache,
     );
   }
@@ -135,9 +135,10 @@ class PerformanceScenarioApp {
         ChatCubit(
           executableResolver: () => performanceTestExecutable,
           automationRepository: testAutomationRepository(),
+          storage: fakeHomeStorage(),
         );
     final workbench = WorkbenchCubit();
-    final presence = MemberPresenceCubit();
+    final presence = MemberPresenceCubit(storage: fakeHomeStorage());
     chat.bindPresenceCubit(presence);
     final sshEvents = SshConnectionEvents();
     final sshCredentialStore = InMemorySshCredentialStore();
@@ -154,9 +155,13 @@ class PerformanceScenarioApp {
       manifests: builtInExtensionManifests(),
     );
     final workspaceRunRegistry = WorkspaceRunRegistry(
+      storage: fakeHomeStorage(),
       platformFactory: WorkspaceRunPlatformFactory(
+        storage: fakeHomeStorage(filesystem: extensionFs),
         extensionRepository: extensionRepo,
-        projectConfigRepository: WorkspaceProjectConfigRepository(),
+        projectConfigRepository: WorkspaceProjectConfigRepository(
+          storage: fakeHomeStorage(filesystem: extensionFs),
+        ),
         fs: extensionFs,
         detector: ExtensionDetector(
           processRunner: (e, a, {environment}) async =>
@@ -171,10 +176,12 @@ class PerformanceScenarioApp {
     );
     final managedProviderFs = InMemoryFilesystem();
     final managedUsageRepository = ManagedProviderUsageRepository(
+      storage: fakeHomeStorage(filesystem: managedProviderFs),
       fs: managedProviderFs,
       cachePath: '/test/managed-provider-usage.json',
     );
     final managedProviderRepository = ManagedProviderRepository(
+      storage: fakeHomeStorage(filesystem: managedProviderFs),
       fs: managedProviderFs,
       configPath: '/test/managed-providers.json',
       onProvidersDeleted: managedUsageRepository.deleteMany,
@@ -211,22 +218,28 @@ class PerformanceScenarioApp {
           RepositoryProvider<WorkspaceShellConnector>(
             create: (_) => WorkspaceShellConnector(
               transportFactory: TerminalTransportFactory(
-                sshProfileRepository: SshProfileRepository(),
+                sshProfileRepository: SshProfileRepository(
+                  storage: fakeHomeStorage(),
+                ),
                 sshCredentialStore: sshCredentialStore,
                 sshKnownHostRepository: sshKnownHosts,
               ),
-              sshProfileRepository: SshProfileRepository(),
+              sshProfileRepository: SshProfileRepository(
+                storage: fakeHomeStorage(),
+              ),
             ),
           ),
           RepositoryProvider<SshProfileRepository>(
-            create: (_) => SshProfileRepository(),
+            create: (_) => SshProfileRepository(storage: fakeHomeStorage()),
           ),
           RepositoryProvider<SshProfileConnectionCoordinator>.value(
             value: sshProfileConnectionCoordinator,
           ),
           RepositoryProvider<WorkspaceSessionGroupsRegistry>.value(
             value: WorkspaceSessionGroupsRegistry(
+              storage: fakeHomeStorage(),
               cubitFactory: () => SessionGroupsCubit(
+                storage: fakeHomeStorage(),
                 knownSessionIds: () => {
                   for (final s in chat.state.sessions) s.sessionId,
                 },
@@ -238,7 +251,7 @@ class PerformanceScenarioApp {
             create: (_) => WorkspaceFileTreeStore(),
           ),
           RepositoryProvider<WorkspaceWorktreeRegistry>(
-            create: (_) => WorkspaceWorktreeRegistry(),
+            create: (_) => WorkspaceWorktreeRegistry(storage: testHomeStorage),
           ),
           RepositoryProvider<WorkspaceToolsScopeRegistry>(
             create: (_) => WorkspaceToolsScopeRegistry(),
@@ -272,13 +285,16 @@ class PerformanceScenarioApp {
             BlocProvider(
               create: (_) => LlmConfigCubit(
                 appSettings: InMemoryAppSettingsRepository(),
+                storage: fakeHomeStorage(),
                 initialConfig: const LlmConfig(),
               ),
             ),
             BlocProvider(
               create: (_) => AppProviderCubit(
+                storage: fakeHomeStorage(),
                 repository: AppProviderRepository(
                   basePath: Directory.systemTemp.path,
+                  storage: fakeHomeStorage(),
                 ),
               ),
             ),
@@ -287,7 +303,12 @@ class PerformanceScenarioApp {
             BlocProvider(
               create: (_) => AiFeatureSettingsCubit(repository: settings),
             ),
-            BlocProvider(create: (_) => EditorCubit(fs: LocalFilesystem())),
+            BlocProvider(
+              create: (_) => EditorCubit(
+                storage: fakeHomeStorage(),
+                fs: LocalFilesystem(),
+              ),
+            ),
             BlocProvider.value(value: workbench),
             BlocProvider(
               create: (_) => ExtensionCubit(
@@ -303,7 +324,7 @@ class PerformanceScenarioApp {
               ),
             ),
             BlocProvider(create: (_) => WorkspaceToolsCubit()),
-            BlocProvider(create: (_) => NotificationCubit()),
+            BlocProvider(create: (_) => NotificationCubit(storage: fakeHomeStorage())),
             BlocProvider(
               create: (context) => ProgressActivityCubit(
                 historyRecorder: context.read<NotificationCubit>(),
@@ -318,15 +339,18 @@ class PerformanceScenarioApp {
               ),
             ),
             BlocProvider(create: (_) => FloatingWorkspaceCubit()),
-            BlocProvider(create: (_) => ShortcutCubit()),
+            BlocProvider(
+              create: (_) => ShortcutCubit(storage: fakeHomeStorage()),
+            ),
             BlocProvider(create: (_) => testSkillCubit()),
             BlocProvider(
               create: (_) {
-                final repo = PluginRepository();
+                final repo = PluginRepository(storage: fakeHomeStorage());
                 return PluginCubit(
                   repository: repo,
                   installService: repo.install,
-                  repoService: PluginRepoService(),
+                  repoService: PluginRepoService(storage: fakeHomeStorage()),
+                  storage: fakeHomeStorage(),
                 );
               },
             ),
@@ -353,11 +377,18 @@ class PerformanceScenarioApp {
                 busForScope: (scope) => scopedTeamBus(workbench, chat, scope),
               ),
             ),
-            BlocProvider(create: (_) => McpCubit(McpRepository())),
+            BlocProvider(
+              create: (_) => McpCubit(
+                McpRepository(storage: fakeHomeStorage()),
+                storage: fakeHomeStorage(),
+              ),
+            ),
             BlocProvider(create: (_) => AppUpdateCubit(settings: settings)),
             BlocProvider(
               create: (_) => SshProfileCubit(
-                profileRepository: SshProfileRepository(),
+                profileRepository: SshProfileRepository(
+                  storage: fakeHomeStorage(),
+                ),
                 credentialStore: InMemorySshCredentialStore(),
               ),
             ),
@@ -396,6 +427,7 @@ class PerformanceScenarioApp {
 
 class PerformanceFakeTerminalSession extends TerminalSession {
   PerformanceFakeTerminalSession({
+    required super.fs,
     super.executable = performanceTestExecutable,
     super.scrollbackLines = 10000,
   });
@@ -444,7 +476,8 @@ Future<LaunchProfileCubit> createPerformanceTeamCubit(
   final repository = testLaunchProfileRepository(tmp!);
   final cubit = LaunchProfileCubit(
     repository: repository,
-    sessionRepository: SessionRepository(),
+    sessionRepository: SessionRepository(storage: fakeHomeStorage()),
+    storage: fakeHomeStorage(),
     executableResolver: () => performanceTestExecutable,
     launcher: (_, __) async {},
     appDataBasePath: appData!.path,

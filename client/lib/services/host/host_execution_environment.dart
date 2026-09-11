@@ -1,7 +1,6 @@
 import 'dart:io' show Platform;
 
 import '../storage/runtime_context.dart';
-import '../storage/app_storage.dart';
 import 'host_script_dialect.dart';
 import 'host_script_runner.dart';
 
@@ -22,14 +21,17 @@ final class HostExecutionEnvironment {
   HostScriptRunner get scriptRunner => HostScriptRunner(this);
 
   /// Windows native app data → PowerShell; WSL / Linux / macOS / SSH → bash.
+  ///
+  /// [storageMode] selects the storage plane the environment targets; when
+  /// omitted it defaults to [StorageBackendMode.native] (no storage bound —
+  /// callers with a home plane should pass its mode explicitly).
   static HostExecutionEnvironment resolve({
     bool? isWindowsHost,
     StorageBackendMode? storageMode,
     bool forceRemoteUnix = false,
   }) {
     final windows = isWindowsHost ?? Platform.isWindows;
-    final mode =
-        storageMode ?? _currentStorageMode() ?? StorageBackendMode.native;
+    final mode = storageMode ?? StorageBackendMode.native;
 
     final dialect = _resolveDialect(
       isWindowsHost: windows,
@@ -62,13 +64,5 @@ final class HostExecutionEnvironment {
     if (storageMode == StorageBackendMode.wsl) return HostScriptDialect.bash;
     if (storageMode == StorageBackendMode.ssh) return HostScriptDialect.bash;
     return HostScriptDialect.powershell;
-  }
-
-  static StorageBackendMode? _currentStorageMode() {
-    try {
-      return AppStorage.context.mode;
-    } on Object {
-      return null;
-    }
   }
 }

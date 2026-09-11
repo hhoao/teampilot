@@ -3,7 +3,6 @@ import '../../models/discoverable_team.dart';
 import '../../models/catalog/catalog_types.dart';
 import 'builtin_member_templates.dart';
 import 'expert_hub_source.dart';
-import 'git_registry_expert_hub_source.dart';
 import 'local_expert_store.dart';
 import 'team_member_index_source.dart';
 import '../catalog/catalog_error_sanitizer.dart';
@@ -20,24 +19,25 @@ typedef TeamIndexLoader =
 /// Merges builtin, registry, team-extracted, and local member templates.
 /// Built-ins are listed first; team-extracted entries whose content hash
 /// matches a builtin or registry entry are omitted (prefer catalog entry).
-class CompositeExpertHubSource implements ExpertHubSourceContributions {
+class CompositeExpertHubSource
+    implements ExpertHubSource, ExpertHubSourceContributions {
   CompositeExpertHubSource({
     List<DiscoverableMember> builtIns = const [],
-    ExpertHubSource? registry,
+    required ExpertHubSource registry,
     List<DiscoverableTeam> teams = const [],
     TeamIndexLoader? teamIndex,
-    LocalExpertStore? localStore,
+    required LocalExpertStore localStore,
   }) : _builtIns = builtIns,
-       _registry = registry ?? GitRegistryExpertHubSource(),
+       _registry = registry,
        _teams = teams,
        _teamIndex = teamIndex,
-       _localStore = localStore ?? LocalExpertStore();
+       _localStore = localStore;
 
   factory CompositeExpertHubSource.withDefaults({
-    ExpertHubSource? registry,
+    required ExpertHubSource registry,
     List<DiscoverableTeam> teams = const [],
     TeamIndexLoader? teamIndex,
-    LocalExpertStore? localStore,
+    required LocalExpertStore localStore,
   }) => CompositeExpertHubSource(
     builtIns: builtinExpertMembers(),
     registry: registry,
@@ -56,11 +56,23 @@ class CompositeExpertHubSource implements ExpertHubSourceContributions {
   /// Threaded into resolution so the loaded singleton shadows the catalog.
   LocalExpertStore get localStore => _localStore;
 
+  @override
   Future<List<DiscoverableMember>> fetchMembers({
     bool forceRefresh = false,
   }) async => (await fetchMemberSources(
     forceRefresh: forceRefresh,
   )).expand((source) => source.items).toList(growable: false);
+
+  @override
+  Future<List<String>> categories({bool forceRefresh = false}) async {
+    final members = await fetchMembers(forceRefresh: forceRefresh);
+    final seen = <String>{};
+    return [
+      for (final m in members)
+        if ((m.category?.trim() ?? '').isNotEmpty && seen.add(m.category!))
+          m.category!,
+    ];
+  }
 
   @override
   Future<List<CatalogSourceResult<DiscoverableMember>>> fetchMemberSources({

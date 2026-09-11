@@ -7,6 +7,7 @@ import '../../../models/team_config.dart';
 import '../../io/filesystem.dart';
 import '../../io/local_filesystem.dart';
 import '../../../repositories/mcp_repository.dart';
+import '../../storage/home_storage.dart';
 import '../contribution/resource_assembly_error.dart';
 import '../contribution/resource_origin.dart';
 import 'mcp_contribution_provider.dart';
@@ -24,7 +25,9 @@ final class CatalogMcpContributionProvider
     Iterable<String>? mcpServerIds,
     Filesystem? fs,
     this.originKind = ResourceOriginKind.catalog,
+    HomeStorage? storage,
   }) : _fs = fs ?? LocalFilesystem(),
+       _storage = storage,
        _configuredMcpServerIds = mcpServerIds == null
            ? null
            : List.unmodifiable(mcpServerIds);
@@ -33,6 +36,7 @@ final class CatalogMcpContributionProvider
   final String? snapshotPath;
   final List<String>? _configuredMcpServerIds;
   final Filesystem _fs;
+  final HomeStorage? _storage;
   final ResourceOriginKind originKind;
   List<ResourceAssemblyDiagnostic> _diagnostics = const [];
   String? _activeSourceId;
@@ -63,6 +67,9 @@ final class CatalogMcpContributionProvider
   String? get activeSourceId => _activeSourceId;
 
   bool get hasValidContributions => _hasValidContributions;
+
+  McpRepository _mcpRepository() =>
+      McpRepository(storage: _storage ?? HomeStorage.nativeDefault());
 
   @override
   Future<Iterable<McpContribution>> provide(McpProviderContext context) async {
@@ -104,7 +111,8 @@ final class CatalogMcpContributionProvider
 
     late final Iterable<McpServer> catalog;
     try {
-      catalog = await (catalogLoader?.call() ?? McpRepository().loadAll());
+      catalog =
+          await (catalogLoader?.call() ?? _mcpRepository().loadAll());
     } on ResourceAssemblyException {
       rethrow;
     } on Object catch (error, stackTrace) {

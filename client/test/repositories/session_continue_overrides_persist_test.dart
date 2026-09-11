@@ -7,13 +7,14 @@ import 'package:teampilot/models/session_continue_overrides.dart';
 import 'package:teampilot/models/team_config.dart';
 import 'package:teampilot/models/workspace_folder.dart';
 import 'package:teampilot/repositories/session_repository.dart';
+import '../support/in_memory_filesystem.dart';
 
 void main() {
   Future<({SessionRepository repo, AppSession session})>
   _simpleSession() async {
     final tmp = await Directory.systemTemp.createTemp('fs_continue_overrides_');
     addTearDown(() => tmp.deleteSync(recursive: true));
-    final repo = SessionRepository(rootDir: tmp.path);
+    final repo = SessionRepository(rootDir: tmp.path, storage: fakeHomeStorage(), );
     final workspace = await repo.createWorkspace([WorkspaceFolder(path: '/w')]);
     final session = (await repo.createSession(
       workspace.workspaceId,
@@ -74,7 +75,7 @@ void main() {
   test('createSession persists optional continueOverrides', () async {
     final tmp = await Directory.systemTemp.createTemp('fs_continue_overrides_');
     addTearDown(() => tmp.deleteSync(recursive: true));
-    final repo = SessionRepository(rootDir: tmp.path);
+    final repo = SessionRepository(rootDir: tmp.path, storage: fakeHomeStorage(), );
     final workspace = await repo.createWorkspace([WorkspaceFolder(path: '/w')]);
     const overrides = SessionContinueOverrides(
       launchSecurityPolicy: LaunchSecurityPolicyOverride.fullAccess,
@@ -91,7 +92,7 @@ void main() {
   test('updateContinueOverrides no-ops for unknown sessionId', () async {
     final tmp = await Directory.systemTemp.createTemp('fs_continue_overrides_');
     addTearDown(() => tmp.deleteSync(recursive: true));
-    final repo = SessionRepository(rootDir: tmp.path);
+    final repo = SessionRepository(rootDir: tmp.path, storage: fakeHomeStorage(), );
 
     await repo.updateContinueOverrides(
       'unknown-session-id',
@@ -106,7 +107,7 @@ void main() {
   test('updateSimpleLaunchIdentity no-ops for unknown sessionId', () async {
     final tmp = await Directory.systemTemp.createTemp('fs_continue_overrides_');
     addTearDown(() => tmp.deleteSync(recursive: true));
-    final repo = SessionRepository(rootDir: tmp.path);
+    final repo = SessionRepository(rootDir: tmp.path, storage: fakeHomeStorage(), );
 
     await repo.updateSimpleLaunchIdentity(
       'unknown-session-id',

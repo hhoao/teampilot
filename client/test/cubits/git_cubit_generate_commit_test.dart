@@ -7,6 +7,7 @@ import 'package:teampilot/models/git_status.dart';
 import 'package:teampilot/models/team_config.dart';
 import 'package:teampilot/services/ai/headless_ai_service.dart';
 import 'package:teampilot/services/git/git_service.dart';
+import '../support/in_memory_filesystem.dart';
 
 class _StubGitService extends GitService {
   _StubGitService(this._diff);
@@ -66,6 +67,7 @@ HeadlessAiService _headless({
       onRun();
       return ProcessResult(0, 0, '```\nfeat: generated\n```', '');
     },
+                            storage: fakeHomeStorage(),
   );
 }
 

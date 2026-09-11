@@ -4,7 +4,6 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/cubits/session_groups_cubit.dart';
 import 'package:teampilot/models/session_group.dart';
 import 'package:teampilot/repositories/session_group_repository.dart';
-import 'package:teampilot/services/storage/app_storage.dart';
 import 'package:teampilot/services/storage/workspace_layout.dart';
 
 import '../support/post_frame_test_harness.dart';
@@ -12,6 +11,8 @@ import '../support/post_frame_test_harness.dart';
 /// Repository stub whose IO always fails, simulating SSH/WSL filesystem
 /// errors during load.
 class _ThrowingLoadRepository extends SessionGroupRepository {
+  _ThrowingLoadRepository({required super.storage});
+
   @override
   Future<SessionGroupsFile> load(String workspaceId) async {
     throw StateError('filesystem unavailable');
@@ -26,8 +27,8 @@ void main() {
   late String basePath;
 
   setUp(() {
-    basePath = AppStorage.paths.basePath;
-    layout = WorkspaceLayout(teampilotRoot: basePath);
+    basePath = testHomeStorage.paths.basePath;
+    layout = WorkspaceLayout(teampilotRoot: basePath, fs: testHomeStorage.fs);
   });
 
   /// Persists are unawaited whole-file writes whose real IO completions
@@ -54,7 +55,10 @@ void main() {
   }
 
   test('load degrades to an empty ready state when IO fails', () async {
-    final cubit = SessionGroupsCubit(repository: _ThrowingLoadRepository());
+    final cubit = SessionGroupsCubit(
+      storage: testHomeStorage,
+      repository: _ThrowingLoadRepository(storage: testHomeStorage),
+    );
     addTearDown(cubit.close);
 
     await cubit.load('ws-1');
@@ -65,7 +69,10 @@ void main() {
   });
 
   test('deleteGroup before ready is a no-op', () async {
-    final cubit = SessionGroupsCubit(repository: _ThrowingLoadRepository());
+    final cubit = SessionGroupsCubit(
+      storage: testHomeStorage,
+      repository: _ThrowingLoadRepository(storage: testHomeStorage),
+    );
     addTearDown(cubit.close);
 
     cubit.deleteGroup('g1');
@@ -80,7 +87,7 @@ void main() {
       '{"version":1,"groups":[{"id":"g1","name":"待办","sessionIds":["s1"]}]}',
     );
 
-    final cubit = SessionGroupsCubit();
+    final cubit = SessionGroupsCubit(storage: testHomeStorage);
     addTearDown(cubit.close);
     await cubit.load('ws-1');
 
@@ -92,7 +99,7 @@ void main() {
   });
 
   test('createGroup appends trimmed name and persists', () async {
-    final cubit = SessionGroupsCubit();
+    final cubit = SessionGroupsCubit(storage: testHomeStorage);
     addTearDown(cubit.close);
     await cubit.load('ws-1');
 
@@ -104,7 +111,7 @@ void main() {
   });
 
   test('rename / delete mutate only the target group', () async {
-    final cubit = SessionGroupsCubit();
+    final cubit = SessionGroupsCubit(storage: testHomeStorage);
     addTearDown(cubit.close);
     await cubit.load('ws-1');
     cubit.createGroup('A');
@@ -123,7 +130,7 @@ void main() {
   });
 
   test('setMembership adds and removes tags across groups', () async {
-    final cubit = SessionGroupsCubit();
+    final cubit = SessionGroupsCubit(storage: testHomeStorage);
     addTearDown(cubit.close);
     await cubit.load('ws-1');
     cubit.createGroup('G');
@@ -137,7 +144,7 @@ void main() {
   });
 
   test('toggleCollapsed persists collapse flag', () async {
-    final cubit = SessionGroupsCubit();
+    final cubit = SessionGroupsCubit(storage: testHomeStorage);
     addTearDown(cubit.close);
     await cubit.load('ws-1');
     cubit.createGroup('G');
@@ -147,7 +154,7 @@ void main() {
     expect(cubit.state.groupById(groupId)!.collapsed, isTrue);
     await waitForPersisted('ws-1', (groups) => groups.single.collapsed);
 
-    final reopened = SessionGroupsCubit();
+    final reopened = SessionGroupsCubit(storage: testHomeStorage);
     addTearDown(reopened.close);
     await reopened.load('ws-1');
     expect(reopened.state.groupById(groupId)!.collapsed, isTrue);
@@ -155,7 +162,10 @@ void main() {
 
   test('knownSessionIds prunes stale member ids on persist', () async {
     var known = {'s-live', 's-stale'};
-    final cubit = SessionGroupsCubit(knownSessionIds: () => known);
+    final cubit = SessionGroupsCubit(
+      storage: testHomeStorage,
+      knownSessionIds: () => known,
+    );
     addTearDown(cubit.close);
     await cubit.load('ws-1');
     cubit.createGroup('G');
@@ -184,6 +194,7 @@ void main() {
       () async {
     var failCallback = false;
     final cubit = SessionGroupsCubit(
+      storage: testHomeStorage,
       knownSessionIds: () {
         if (failCallback) throw StateError('callback boom');
         return const {'sess-1'};

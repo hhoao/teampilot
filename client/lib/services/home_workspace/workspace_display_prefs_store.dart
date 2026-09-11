@@ -2,7 +2,7 @@ import 'dart:convert';
 
 import '../../pages/home_workspace/workspace_sort.dart';
 import '../io/filesystem.dart';
-import '../storage/app_storage.dart';
+import '../storage/home_storage.dart';
 
 class WorkspaceDisplayPrefs {
   const WorkspaceDisplayPrefs({
@@ -24,16 +24,21 @@ class WorkspaceDisplayPrefs {
 /// Persists workspace grid/list layout and sort at
 /// `home-workspace/workspace-display-prefs.json`.
 class WorkspaceDisplayPrefsStore {
-  WorkspaceDisplayPrefsStore({Filesystem? fs, String? pathOverride})
-    : _fsOverride = fs,
-      _pathOverride = pathOverride;
+  WorkspaceDisplayPrefsStore({
+    required HomeStorage storage,
+    Filesystem? fs,
+    String? pathOverride,
+  }) : _storage = storage,
+       _fsOverride = fs,
+       _pathOverride = pathOverride;
 
+  final HomeStorage _storage;
   final Filesystem? _fsOverride;
   final String? _pathOverride;
 
-  Filesystem get _fs => _fsOverride ?? AppStorage.fs;
+  Filesystem get _fs => _fsOverride ?? _storage.fs;
   String get _path =>
-      _pathOverride ?? AppStorage.paths.homeWorkspaceWorkspaceDisplayPrefsJson;
+      _pathOverride ?? _storage.paths.homeWorkspaceWorkspaceDisplayPrefsJson;
 
   Future<WorkspaceDisplayPrefs> load() async {
     try {

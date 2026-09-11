@@ -9,20 +9,24 @@ import '../../../session/launch_command_builder.dart';
 import '../../../provider/credential_host_request.dart';
 import '../../../provider/credential_process_result.dart';
 import '../../../provider/provider_credential_host_runner.dart';
+import '../../../storage/home_storage.dart';
 import 'codex_auth_artifacts.dart';
 
 class CodexProviderCredentialsService {
   CodexProviderCredentialsService({
+    required HomeStorage storage,
     required Filesystem fs,
     required String basePath,
     this.codexExecutable = 'codex',
     String? Function()? resolveCodexExecutable,
     ProviderCredentialHostRunner? hostRunner,
-  }) : _fs = fs,
+  }) : _storage = storage,
+       _fs = fs,
        _basePath = basePath.trim(),
        _resolveCodexExecutable = resolveCodexExecutable,
        _hostRunner = hostRunner;
 
+  final HomeStorage _storage;
   final Filesystem _fs;
   final String _basePath;
   final String codexExecutable;
@@ -149,7 +153,8 @@ class CodexProviderCredentialsService {
   }
 
   ProviderCredentialHostRunner get _runner =>
-      _hostRunner ?? ProviderCredentialHostRunner.forAppStorage();
+      _hostRunner ??
+      ProviderCredentialHostRunner.forHomeStorage(storage: _storage);
 
   Future<HostRunResult> _runCodex(
     List<String> subcommand, {
@@ -161,11 +166,15 @@ class CodexProviderCredentialsService {
     final request = CredentialHostRequest.build(
       preferencePath: preferencePath,
       subcommand: subcommand,
+      storage: _storage,
       environment: {
         ...platformEnv,
         ...loginEnvironment(
           providerId,
-          useWslPaths: CredentialHostRequest.usePosixCliPaths(preferencePath),
+          useWslPaths: CredentialHostRequest.usePosixCliPaths(
+            preferencePath,
+            storage: _storage,
+          ),
         ),
       },
     );

@@ -16,23 +16,26 @@ import 'package:teampilot/repositories/cli_presets_repository.dart';
 import 'package:teampilot/repositories/session_repository.dart';
 import 'package:teampilot/services/cli/registry/cli_tool_registry.dart';
 import 'package:teampilot/services/cli/registry/cli_tool_registry_scope.dart';
-import 'package:teampilot/services/storage/app_storage.dart';
+import 'package:teampilot/services/storage/app_paths.dart';
 import 'package:teampilot/services/workspace/workspace_pane_policy.dart';
+import 'package:teampilot/services/expert_hub/local_expert_store.dart';
 
+import '../../support/in_memory_filesystem.dart';
 import '../../support/post_frame_test_harness.dart';
 
 class _SeededAppProviderCubit extends AppProviderCubit {
-  _SeededAppProviderCubit() {
+  _SeededAppProviderCubit() : super(storage: buildTestHomeStorage()) {
     emit(const AppProviderState());
   }
 }
 
 LaunchProfileCubit _launchCubit() {
   final cubit = LaunchProfileCubit(
+    storage: testHomeStorage,
     repository: testLaunchProfileRepository(
       Directory.systemTemp.createTempSync('new_team_dialog_'),
     ),
-    sessionRepository: SessionRepository(),
+    sessionRepository: SessionRepository(storage: testHomeStorage),
     executableResolver: () => 'claude',
   );
   cubit.applyState(const LaunchProfileState(isLoading: false));
@@ -55,8 +58,8 @@ void main() {
     addTearDown(teamCubit.close);
     final presets = CliPresetsCubit(
       repository: CliPresetsRepository(
-        fs: AppStorage.fs,
-        presetsPath: '${AppStorage.paths.basePath}/cli-presets.json',
+        fs: testHomeStorage.fs,
+        presetsPath: '${testHomeStorage.paths.basePath}/cli-presets.json',
       ),
     );
     addTearDown(presets.close);
@@ -95,7 +98,14 @@ void main() {
                 builder: (context) => Scaffold(
                   body: TextButton(
                     onPressed: () {
-                      showHomeNewTeamDialog(context, teamCubit);
+                      showHomeNewTeamDialog(
+                        context,
+                        teamCubit,
+                        expertStore: LocalExpertStore(
+                          fs: InMemoryFilesystem(),
+                          dirOverride: AppPaths('/tp').memberHubLocalTemplatesDir,
+                        ),
+                      );
                     },
                     child: const Text('open'),
                   ),

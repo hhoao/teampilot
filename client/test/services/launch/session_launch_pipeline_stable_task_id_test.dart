@@ -32,10 +32,12 @@ import 'package:teampilot/services/session/session_lifecycle_service.dart';
 import 'package:teampilot/services/terminal/terminal_session.dart';
 import 'package:uuid/uuid.dart';
 
+import '../../support/in_memory_filesystem.dart';
+
 void main() {
   group('stable member taskId staging', () {
     test('provisional team bindings use plan taskIds not sessionId', () async {
-      final tabStore = ChatTabStore()..setActiveWorkspaceId('ws-1');
+      final tabStore = ChatTabStore(storage: fakeHomeStorage())..setActiveWorkspaceId('ws-1');
       final workspace = Workspace(
         workspaceId: 'ws-1',
         folders: const [WorkspaceFolder(path: '/proj')],
@@ -103,7 +105,10 @@ void main() {
       );
       addTearDown(() => tmp.deleteSync(recursive: true));
 
-      final repo = SessionRepository(rootDir: tmp.path);
+      final repo = SessionRepository(
+        rootDir: tmp.path,
+        storage: fakeHomeStorage(),
+      );
       final workspace = await repo.createWorkspace([
         const WorkspaceFolder(path: '/proj'),
       ]);
@@ -117,14 +122,18 @@ void main() {
         cli: CliTool.claude,
       );
 
-      final tabStore = ChatTabStore()..setActiveWorkspaceId(workspace.workspaceId);
+      final tabStore = ChatTabStore(storage: fakeHomeStorage())
+          ..setActiveWorkspaceId(workspace.workspaceId);
       final host = _CapturingHost(
         ChatState(workspaces: [workspace]),
         tabStore: tabStore,
-        lifecycle: SessionLifecycleService(loadPresets: () => const []),
+        lifecycle: SessionLifecycleService(
+          storage: fakeHomeStorage(),
+          loadPresets: () => const [],
+        ),
         sessionRepository: repo,
       );
-      final service = SessionLaunchService(host);
+      final service = SessionLaunchService(host, storage: fakeHomeStorage());
 
       const fixedSessionId = 'sess-persist-bbbbbbbbbbbbbbbb';
       final status = await service.requestCreateAndOpenSession(
@@ -177,14 +186,17 @@ void main() {
           cli: CliTool.claude,
         );
         final capturer = _CapturingSessionRepository();
-        final tabStore = ChatTabStore()..setActiveWorkspaceId('ws-1');
+        final tabStore = ChatTabStore(storage: fakeHomeStorage())..setActiveWorkspaceId('ws-1');
         final host = _CapturingHost(
           ChatState(workspaces: [workspace]),
           tabStore: tabStore,
-          lifecycle: SessionLifecycleService(loadPresets: () => const []),
+          lifecycle: SessionLifecycleService(
+          storage: fakeHomeStorage(),
+          loadPresets: () => const [],
+        ),
           sessionRepository: capturer,
         );
-        final service = SessionLaunchService(host);
+        final service = SessionLaunchService(host, storage: fakeHomeStorage());
 
         const fixedSessionId = 'sess-forward-cccccccccccccccc';
         final status = await service.requestCreateAndOpenSession(
@@ -238,14 +250,17 @@ void main() {
       );
       final capturer = _CapturingSessionRepository()
         ..createGate = Completer<void>();
-      final tabStore = ChatTabStore()..setActiveWorkspaceId('ws-1');
+      final tabStore = ChatTabStore(storage: fakeHomeStorage())..setActiveWorkspaceId('ws-1');
       final host = _CapturingHost(
         ChatState(workspaces: [workspace]),
         tabStore: tabStore,
-        lifecycle: SessionLifecycleService(loadPresets: () => const []),
+        lifecycle: SessionLifecycleService(
+          storage: fakeHomeStorage(),
+          loadPresets: () => const [],
+        ),
         sessionRepository: capturer,
       );
-      final service = SessionLaunchService(host);
+      final service = SessionLaunchService(host, storage: fakeHomeStorage());
 
       const fixedSessionId = 'sess-title-cccccccccccccccc';
       final status = await service.requestCreateAndOpenSession(
@@ -312,6 +327,7 @@ SessionLaunchPipeline _pipelineForStaging({
     workspaceIndex: () => SessionLaunchWorkspaceIndex(
       workspaces: host.state.workspaces,
       sessions: host.state.sessions,
+      usesPosixPaths: false,
     ),
     isTabsEmpty: () => tabStore.activeTabsIsEmpty,
     activeBucketKey: () => tabStore.activeWorkspaceId,
@@ -357,6 +373,7 @@ SessionLaunchPipeline _pipelineForStaging({
     workspaceIndex: () => SessionLaunchWorkspaceIndex(
       workspaces: host.state.workspaces,
       sessions: host.state.sessions,
+      usesPosixPaths: false,
     ),
     tabSurface: tabSurface,
     materializer: materializer,
@@ -452,13 +469,20 @@ class _CapturingHost implements SessionLaunchHost {
     SessionRepository? sessionRepository,
   }) : tabStore = tabStore,
        lifecycle =
-           lifecycle ?? SessionLifecycleService(loadPresets: () => const []),
+           lifecycle ??
+           SessionLifecycleService(
+             storage: fakeHomeStorage(),
+             loadPresets: () => const [],
+           ),
        sessionRepository = sessionRepository,
        shellFactory = ChatSessionShellFactory(
          executableResolver: () => 'true',
          terminalSessionFactory:
              ({required executable, scrollbackLines = 10000}) =>
-                 TerminalSession(executable: executable),
+                 TerminalSession(
+                   executable: executable,
+                   fs: InMemoryFilesystem(),
+                 ),
          defaultTargetResolver: RuntimeTarget.local,
        ),
        sessionRuntime = TabSessionRuntimeCoordinator(
@@ -483,7 +507,9 @@ class _CapturingHost implements SessionLaunchHost {
       );
 
   @override
-  final SessionDataStore dataStore = SessionDataStore();
+  final SessionDataStore dataStore = SessionDataStore(
+    storage: fakeHomeStorage(),
+  );
 
   @override
   void emitSnapshot(ChatDataSnapshot snapshot) {

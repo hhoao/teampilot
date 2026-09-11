@@ -66,18 +66,32 @@ void main() {
     });
 
     final teamCubit = LaunchProfileCubit(
-      repository: LaunchProfileRepository(rootDir: appData.path),
-      sessionRepository: SessionRepository(rootDir: appData.path),
+      repository: LaunchProfileRepository(
+        rootDir: appData.path,
+        storage: testHomeStorage,
+      ),
+      sessionRepository: SessionRepository(
+        rootDir: appData.path,
+        storage: testHomeStorage,
+      ),
+      storage: testHomeStorage,
       executableResolver: _executable,
       appDataBasePath: appData.path,
-      configProfileService: ConfigProfileService(basePath: appData.path),
+      configProfileService: ConfigProfileService(
+        basePath: appData.path,
+        storage: testHomeStorage,
+      ),
     );
     addTearDown(() => teamCubit.close());
 
     await tester.runAsync(() => teamCubit.load());
 
-    final sessionRepo = SessionRepository(rootDir: appData.path);
+    final sessionRepo = SessionRepository(
+      rootDir: appData.path,
+      storage: testHomeStorage,
+    );
     final chatCubit = ChatCubit(
+      storage: testHomeStorage,
       executableResolver: _executable,
       automationRepository: testAutomationRepository(),
       sessionRepository: sessionRepo,
@@ -87,7 +101,7 @@ void main() {
     final layoutCubit = LayoutCubit();
     addTearDown(() => layoutCubit.close());
 
-    final editorCubit = EditorCubit(fs: LocalFilesystem());
+    final editorCubit = EditorCubit(fs: LocalFilesystem(), storage: testHomeStorage);
     addTearDown(() => editorCubit.close());
 
     final workbenchCubit = WorkbenchCubit();
@@ -102,18 +116,19 @@ void main() {
     final skillCubit = testSkillCubit();
     addTearDown(() => skillCubit.close());
 
-    final pluginRepo = PluginRepository();
+    final pluginRepo = PluginRepository(storage: testHomeStorage);
     final pluginCubit = PluginCubit(
+      storage: testHomeStorage,
       repository: pluginRepo,
       installService: pluginRepo.install,
-      repoService: PluginRepoService(),
+      repoService: PluginRepoService(storage: testHomeStorage),
     );
     addTearDown(() => pluginCubit.close());
 
-    final worktreeCubit = WorktreeCubit();
+    final worktreeCubit = WorktreeCubit(storage: testHomeStorage);
     addTearDown(() => worktreeCubit.close());
 
-    final presenceCubit = MemberPresenceCubit();
+    final presenceCubit = MemberPresenceCubit(storage: testHomeStorage);
     chatCubit.bindPresenceCubit(presenceCubit);
     addTearDown(() => presenceCubit.close());
 
@@ -173,7 +188,9 @@ void main() {
               BlocProvider.value(value: WorkspaceToolsCubit()),
               BlocProvider.value(value: cliPresetsCubit),
               BlocProvider.value(value: sessionPreferencesCubit),
-              BlocProvider(create: (_) => ShortcutCubit()),
+              BlocProvider(
+                create: (_) => ShortcutCubit(storage: testHomeStorage),
+              ),
               BlocProvider(
                 create: (_) => WorkspaceLandingContextCubit(
                   workspaceId: 'personal-test',

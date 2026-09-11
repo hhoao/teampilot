@@ -23,9 +23,11 @@ import 'package:teampilot/services/workbench/workbench_chat_bridge.dart';
 import 'package:teampilot/services/workbench/workbench_shell_actions.dart';
 
 import '../support/post_frame_test_harness.dart';
+import '../support/in_memory_filesystem.dart';
 
 class _FakeTerminalSession extends TerminalSession {
-  _FakeTerminalSession({required super.executable});
+  _FakeTerminalSession({required super.executable})
+    : super(fs: InMemoryFilesystem());
 
   var _running = false;
 
@@ -65,7 +67,7 @@ class _FakeTerminalSession extends TerminalSession {
 }
 
 class _DelayedPresenceService extends MemberPresenceService {
-  _DelayedPresenceService(this.result);
+  _DelayedPresenceService(this.result) : super(storage: fakeHomeStorage());
 
   static const _delay = Duration(milliseconds: 80);
 
@@ -88,6 +90,8 @@ class _DelayedPresenceService extends MemberPresenceService {
 }
 
 class _TrackingPresenceService extends MemberPresenceService {
+  _TrackingPresenceService() : super(storage: fakeHomeStorage());
+
   var computeCalls = 0;
   List<TeamMemberConfig>? lastMembers;
 
@@ -116,6 +120,8 @@ class _TrackingPresenceService extends MemberPresenceService {
 /// the target supplied a matching shell — so a stale target (another
 /// workspace's session) reads as offline instead of silently succeeding.
 class _ShellAwarePresenceService extends MemberPresenceService {
+  _ShellAwarePresenceService() : super(storage: fakeHomeStorage());
+
   var computeCalls = 0;
   List<TeamMemberConfig>? lastMembers;
   Map<String, TerminalSession>? lastShells;
@@ -151,7 +157,10 @@ void main() {
     test('does not poll until UI is attached', () async {
       final service = _DelayedPresenceService(const {});
       final harness = PostFrameTestHarness();
-      final cubit = MemberPresenceCubit(memberPresenceService: service);
+      final cubit = MemberPresenceCubit(
+          storage: fakeHomeStorage(),
+          memberPresenceService: service,
+        );
       addTearDown(cubit.close);
 
       const team = TeamProfile(
@@ -174,11 +183,13 @@ void main() {
         });
         final harness = PostFrameTestHarness();
         final presenceCubit = MemberPresenceCubit(
+          storage: fakeHomeStorage(),
           memberPresenceService: service,
         );
         final chatCubit = ChatCubit(
           executableResolver: () => 'true',
           automationRepository: testAutomationRepository(),
+          storage: fakeHomeStorage(),
           postFrameScheduler: harness.scheduler,
           terminalSessionFactory:
               ({required String executable, int scrollbackLines = 10000}) =>
@@ -228,7 +239,10 @@ void main() {
               availability: MemberAvailability.working,
             ),
           });
-          final cubit = MemberPresenceCubit(memberPresenceService: service);
+          final cubit = MemberPresenceCubit(
+          storage: fakeHomeStorage(),
+          memberPresenceService: service,
+        );
           addTearDown(() async {
             await cubit.close();
           });
@@ -313,11 +327,13 @@ void main() {
           final service = _ShellAwarePresenceService();
           final harness = PostFrameTestHarness();
           final presenceCubit = MemberPresenceCubit(
+            storage: fakeHomeStorage(),
             memberPresenceService: service,
           );
           final chatCubit = ChatCubit(
             executableResolver: () => 'true',
             automationRepository: testAutomationRepository(),
+            storage: fakeHomeStorage(),
             postFrameScheduler: harness.scheduler,
             terminalSessionFactory:
                 ({required String executable, int scrollbackLines = 10000}) =>
@@ -441,11 +457,13 @@ void main() {
           final service = _ShellAwarePresenceService();
           final harness = PostFrameTestHarness();
           final presenceCubit = MemberPresenceCubit(
+            storage: fakeHomeStorage(),
             memberPresenceService: service,
           );
           final chatCubit = ChatCubit(
             executableResolver: () => 'true',
             automationRepository: testAutomationRepository(),
+            storage: fakeHomeStorage(),
             postFrameScheduler: harness.scheduler,
             terminalSessionFactory:
                 ({required String executable, int scrollbackLines = 10000}) =>
@@ -587,7 +605,10 @@ void main() {
               availability: MemberAvailability.working,
             ),
           });
-          final cubit = MemberPresenceCubit(memberPresenceService: service);
+          final cubit = MemberPresenceCubit(
+          storage: fakeHomeStorage(),
+          memberPresenceService: service,
+        );
           addTearDown(() async {
             await cubit.close();
           });
@@ -672,7 +693,10 @@ void main() {
             availability: MemberAvailability.working,
           ),
         });
-        final cubit = MemberPresenceCubit(memberPresenceService: service);
+        final cubit = MemberPresenceCubit(
+          storage: fakeHomeStorage(),
+          memberPresenceService: service,
+        );
         addTearDown(() async {
           await cubit.close();
         });
@@ -709,7 +733,10 @@ void main() {
             availability: MemberAvailability.working,
           ),
         });
-        final cubit = MemberPresenceCubit(memberPresenceService: service);
+        final cubit = MemberPresenceCubit(
+          storage: fakeHomeStorage(),
+          memberPresenceService: service,
+        );
         addTearDown(() async {
           await cubit.close();
         });
@@ -740,16 +767,27 @@ void main() {
 
     test('selectTab to tab without shells stops polling', () async {
       fakeAsync((async) {
+        void pumpFrame() {
+          SchedulerBinding.instance.handleBeginFrame(Duration.zero);
+          SchedulerBinding.instance.handleDrawFrame();
+        }
+
         final service = _DelayedPresenceService(const {});
         final harness = PostFrameTestHarness();
         final tmp = Directory.systemTemp.createTempSync('presence_tabs_');
-        final repo = SessionRepository(rootDir: tmp.path);
+        // One shared storage: the repo's writes must be visible to the chat
+        // cubit's data store (separate fakeHomeStorage() calls would create
+        // separate in-memory filesystems).
+        final storage = fakeHomeStorage();
+        final repo = SessionRepository(rootDir: tmp.path, storage: storage);
         final presenceCubit = MemberPresenceCubit(
+          storage: storage,
           memberPresenceService: service,
         );
         final chatCubit = ChatCubit(
           executableResolver: () => 'true',
           automationRepository: testAutomationRepository(),
+          storage: storage,
           postFrameScheduler: harness.scheduler,
           sessionRepository: repo,
           terminalSessionFactory:
@@ -764,15 +802,26 @@ void main() {
           members: [TeamMemberConfig(id: 'm-lead', name: 'team-lead')],
         );
 
-        unawaited(chatCubit.connectWorkspaceSession(TeamSessionConnect(team)));
-        async.flushMicrotasks();
-        unawaited(harness.flush());
-        async.flushMicrotasks();
-
+        // Hydrate the chat state and pin the active workspace bucket BEFORE
+        // connecting: materializeTeamSession resolves the target workspace from
+        // them, and without a workspace the team connect fails with "Open a
+        // workspace before starting a team session" and no team tab (and so no
+        // presence target) exists. With the shared in-memory storage this
+        // flow really completes under fakeAsync.
         unawaited(
           repo.createWorkspace([WorkspaceFolder(path: '/tmp')]).then((
             workspace,
           ) async {
+            await chatCubit.loadWorkspaceData(repo);
+            chatCubit.setActiveWorkspace(workspace.workspaceId);
+
+            unawaited(
+              chatCubit.connectWorkspaceSession(TeamSessionConnect(team)),
+            );
+            async.flushMicrotasks();
+            unawaited(harness.flush());
+            async.flushMicrotasks();
+
             final localSession = (await repo.createSession(
               workspace.workspaceId,
             )).session;
@@ -788,9 +837,14 @@ void main() {
 
             presenceCubit.attachPresenceUi();
             presenceCubit.syncPresenceTeam(team);
-            async.flushMicrotasks();
-            unawaited(harness.flush());
-            async.flushMicrotasks();
+            // The target push is the bar's/UI's job in production (it fires
+            // on tab-running changes); mirror that here so polling starts
+            // against the active team tab.
+            chatCubit.pushPresenceTarget();
+            // Presence restarts ride SchedulerBinding post-frame callbacks;
+            // fakeAsync never fires frames on its own, so pump one to run the
+            // restart (compute starts synchronously inside the tick).
+            pumpFrame();
 
             expect(service.computeCalls, greaterThan(0));
             final callsWithTeamTab = service.computeCalls;
@@ -814,7 +868,6 @@ void main() {
             async.flushMicrotasks();
 
             presenceCubit.tickFromIdleWatch();
-            async.elapse(const Duration(milliseconds: 50));
             async.flushMicrotasks();
             expect(service.computeCalls, callsWithTeamTab);
 
@@ -832,7 +885,10 @@ void main() {
     test('reuses runtime roster and presence instances while idle', () {
       fakeAsync((async) {
         final service = _TrackingPresenceService();
-        final cubit = MemberPresenceCubit(memberPresenceService: service);
+        final cubit = MemberPresenceCubit(
+          storage: fakeHomeStorage(),
+          memberPresenceService: service,
+        );
         addTearDown(() async {
           await cubit.close();
         });

@@ -10,6 +10,8 @@ import 'package:teampilot/l10n/app_localizations.dart';
 import 'package:teampilot/pages/workbench/file_editor_image_preview.dart';
 import 'package:teampilot/services/io/local_filesystem.dart';
 
+import '../../support/in_memory_filesystem.dart';
+
 // 1x1 transparent PNG (same fixture as markdown_preview_svg_image_test.dart).
 final pngBytes = Uint8List.fromList([
   0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A, 0x00, 0x00, 0x00, 0x0D,
@@ -31,7 +33,7 @@ void main() {
     addTearDown(() => dir.deleteSync(recursive: true));
     final png = File('${dir.path}/a.png')..writeAsBytesSync(pngBytes);
 
-    final editor = EditorCubit(fs: LocalFilesystem());
+    final editor = EditorCubit(fs: LocalFilesystem(), storage: fakeHomeStorage());
     addTearDown(editor.close);
     await tester.runAsync(() => editor.openFile('ws', png.path));
 

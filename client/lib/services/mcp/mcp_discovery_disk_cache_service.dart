@@ -3,7 +3,7 @@ import 'dart:convert';
 import '../../models/mcp_catalog_listing.dart';
 import '../../utils/logging/logger.dart';
 import '../io/filesystem.dart';
-import '../storage/app_storage.dart';
+import '../storage/home_storage.dart';
 
 /// Remote MCP discovery sources persisted under [mcpDiscoveryCacheSmithery] /
 /// [mcpDiscoveryCacheOfficial].
@@ -33,19 +33,23 @@ class McpDiscoveryDiskSnapshot {
 
 /// Disk-backed MCP discovery cache (Smithery + official registry browse lists).
 ///
-/// Layout under [AppStorage.paths.mcpDiscoveryCacheDir]:
+/// Layout under the home plane's `mcpDiscoveryCacheDir`:
 /// `{smithery|official}/meta.json`, `listings.json`.
 ///
 /// Only empty-query browse results are persisted (search hits stay in memory).
 class McpDiscoveryDiskCacheService {
-  McpDiscoveryDiskCacheService({Filesystem? filesystem})
-    : _fsOverride = filesystem;
+  McpDiscoveryDiskCacheService({
+    required HomeStorage storage,
+    Filesystem? filesystem,
+  }) : _storage = storage,
+       _fsOverride = filesystem;
 
+  final HomeStorage _storage;
   final Filesystem? _fsOverride;
 
-  Filesystem get _fs => _fsOverride ?? AppStorage.fs;
+  Filesystem get _fs => _fsOverride ?? _storage.fs;
 
-  String get _cacheRoot => AppStorage.paths.mcpDiscoveryCacheDir;
+  String get _cacheRoot => _storage.paths.mcpDiscoveryCacheDir;
 
   String _sourceDir(String sourceKey) =>
       _fs.pathContext.join(_cacheRoot, sourceKey);

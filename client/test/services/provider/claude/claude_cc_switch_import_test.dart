@@ -10,7 +10,9 @@ import 'package:teampilot/services/cli/claude/provider/claude_settings_parser.da
 import 'package:teampilot/services/cli/codex/provider/codex_cc_switch_import.dart';
 import 'package:teampilot/services/io/local_filesystem.dart';
 import 'package:teampilot/services/provider/provider_import_service.dart';
-import 'package:teampilot/services/storage/app_storage.dart';
+import 'package:teampilot/services/storage/app_paths.dart';
+import '../../../support/in_memory_filesystem.dart';
+import '../../../support/post_frame_test_harness.dart';
 
 void main() {
   group('ClaudeSettingsParser', () {
@@ -45,17 +47,20 @@ void main() {
       appData = p.join(root.path, 'app-data');
       home = p.join(root.path, 'home');
       await Directory(home).create(recursive: true);
-      AppStorage.installForTesting(
+      installTestHomeStorage(
         filesystem: LocalFilesystem(),
         paths: AppPaths(appData),
         home: home,
         cwd: root.path,
       );
-      repository = AppProviderRepository(basePath: appData);
+      repository = AppProviderRepository(
+        basePath: appData,
+        storage: buildTestHomeStorage(),
+      );
     });
 
     tearDown(() async {
-      AppStorage.resetForTesting();
+      resetTestHomeStorage();
       if (await root.exists()) {
         await root.delete(recursive: true);
       }
@@ -98,7 +103,10 @@ void main() {
           },
         });
 
-        final service = ProviderImportService(repository: repository);
+        final service = ProviderImportService(
+          repository: repository,
+          storage: buildTestHomeStorage(),
+        );
         await service.importForCli(CliTool.claude, onlyIfEmpty: false);
 
         final claude = await repository.loadProviders(CliTool.claude);
@@ -161,7 +169,10 @@ void main() {
         },
       });
 
-      final service = ProviderImportService(repository: repository);
+      final service = ProviderImportService(
+          repository: repository,
+          storage: buildTestHomeStorage(),
+        );
       await service.importForCli(CliTool.claude, onlyIfEmpty: false);
 
       final claude = await repository.loadProviders(CliTool.claude);

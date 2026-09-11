@@ -11,6 +11,7 @@ import 'package:teampilot/services/terminal/workspace_terminal_connect_coordinat
 import 'package:teampilot/services/terminal/workspace_terminal_registry.dart';
 import 'package:teampilot/services/terminal/workspace_terminal_session_ops.dart';
 import '../../support/rust_lib_test_init.dart';
+import '../../support/in_memory_filesystem.dart';
 
 const _theme = TerminalTheme.defaults;
 
@@ -18,11 +19,11 @@ class _RecordingConnector extends WorkspaceShellConnector {
   _RecordingConnector()
     : super(
         transportFactory: TerminalTransportFactory(
-          sshProfileRepository: SshProfileRepository(),
+          sshProfileRepository: SshProfileRepository(storage: fakeHomeStorage()),
           sshCredentialStore: InMemorySshCredentialStore(),
           sshKnownHostRepository: InMemorySshKnownHostRepository(),
         ),
-        sshProfileRepository: SshProfileRepository(),
+        sshProfileRepository: SshProfileRepository(storage: fakeHomeStorage()),
       );
 
   final createdSpecs = <WorkspaceTerminalSessionSpec>[];
@@ -35,6 +36,7 @@ class _RecordingConnector extends WorkspaceShellConnector {
       executable: '/bin/bash',
       validateLaunch: false,
       parseExecutable: false,
+                            fs: InMemoryFilesystem(),
     );
   }
 

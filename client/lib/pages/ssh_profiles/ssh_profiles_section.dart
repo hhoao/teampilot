@@ -12,6 +12,7 @@ import '../../models/ssh_profile.dart';
 import '../../repositories/ssh_credential_store.dart';
 import '../../services/ssh/ssh_connection_failure.dart';
 import '../../services/ssh/ssh_profile_connection_tester.dart';
+import '../../services/storage/home_storage.dart';
 import '../../services/terminal/terminal_transport_factory.dart';
 import '../../utils/ui/app_keys.dart';
 import '../connect/android_pair_sheet.dart';
@@ -244,6 +245,7 @@ class _SshProfilesSectionState extends State<SshProfilesSection> {
                     onConfigure: () => showSshProfileTargetConfigDialog(
                       context,
                       profile: profile,
+                      storage: context.read<HomeStorage>(),
                     ),
                   ),
                 ),

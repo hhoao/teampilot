@@ -11,6 +11,7 @@ import '../models/app_session.dart';
 import '../models/member_presence.dart';
 import '../models/team_config.dart';
 import '../services/team/member_presence_service.dart';
+import '../services/storage/home_storage.dart';
 import '../services/terminal/terminal_session.dart';
 
 /// Snapshot of the active tab the presence poller needs. Pushed by ChatCubit
@@ -49,9 +50,12 @@ class MemberPresenceState extends Equatable {
 }
 
 class MemberPresenceCubit extends Cubit<MemberPresenceState> {
-  MemberPresenceCubit({MemberPresenceService? memberPresenceService})
-    : _memberPresenceService = memberPresenceService ?? MemberPresenceService(),
-      super(const MemberPresenceState());
+  MemberPresenceCubit({
+    required HomeStorage storage,
+    MemberPresenceService? memberPresenceService,
+  }) : _memberPresenceService =
+           memberPresenceService ?? MemberPresenceService(storage: storage),
+       super(const MemberPresenceState());
 
   final MemberPresenceService _memberPresenceService;
   final RuntimeRosterCache _runtimeRosterCache = RuntimeRosterCache();

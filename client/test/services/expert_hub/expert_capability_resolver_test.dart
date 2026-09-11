@@ -5,7 +5,11 @@ import 'package:teampilot/models/discoverable_team.dart';
 import 'package:teampilot/models/team_config.dart';
 import 'package:teampilot/services/expert_hub/expert_capability_pack.dart';
 import 'package:teampilot/services/expert_hub/expert_capability_resolver.dart';
+import 'package:teampilot/services/expert_hub/local_expert_store.dart';
+import 'package:teampilot/services/storage/app_paths.dart';
 import 'package:teampilot/services/team/team_clone_service.dart';
+
+import '../../support/in_memory_filesystem.dart';
 
 DiscoverableMember expert({
   String key = 'teampilot/builtin/pack-expert',
@@ -50,6 +54,11 @@ const mcpDep = McpDependencyRef(
   server: {'command': 'npx'},
 );
 
+final LocalExpertStore _localStore = LocalExpertStore(
+  fs: InMemoryFilesystem(),
+  dirOverride: AppPaths('/tp').memberHubLocalTemplatesDir,
+);
+
 void main() {
   test(
     'resolve with no deps → empty ConfigBundle, non-empty persona',
@@ -59,6 +68,7 @@ void main() {
         installPlugin: (_) async =>
             fail('plugin installer should not be called'),
         installMcp: (_) async => fail('mcp installer should not be called'),
+        localStore: _localStore,
       );
 
       final pack = await resolver.resolve(expert());
@@ -82,6 +92,7 @@ void main() {
         },
         installPlugin: (_) async => null,
         installMcp: (_) async => null,
+        localStore: _localStore,
       );
 
       final pack = await resolver.resolve(expert(skillDeps: const [skillDep]));
@@ -100,6 +111,7 @@ void main() {
         installSkill: (_) async => null,
         installPlugin: (_) async => null,
         installMcp: (_) async => null,
+        localStore: _localStore,
       );
 
       final pack = await resolver.resolve(expert(skillDeps: const [skillDep]));
@@ -117,6 +129,7 @@ void main() {
       installSkill: (_) async => 'should-not-run',
       installPlugin: (_) async => 'should-not-run',
       installMcp: (_) async => 'should-not-run',
+      localStore: _localStore,
     );
 
     expect(await resolver.preflight('unknown/missing/expert'), isNull);
@@ -136,6 +149,7 @@ void main() {
         seenMcps.add(dep);
         return 'context7';
       },
+      localStore: _localStore,
     );
 
     final pack = await resolver.resolve(
@@ -157,6 +171,7 @@ void main() {
         installSkill: (_) async => null,
         installPlugin: (_) async => null,
         installMcp: (_) async => null,
+        localStore: _localStore,
       );
       const team = TeamProfile(
         id: 'team-1',
@@ -184,6 +199,7 @@ void main() {
       installSkill: (_) async => null,
       installPlugin: (_) async => null,
       installMcp: (_) async => null,
+      localStore: _localStore,
     );
 
     final pack = await resolver.resolveKey('teampilot/builtin/default');
@@ -212,6 +228,7 @@ void main() {
           installProgressAtInstall[dep.name] = progressCount;
           return 'context7';
         },
+        localStore: _localStore,
       );
 
       await resolver.resolve(

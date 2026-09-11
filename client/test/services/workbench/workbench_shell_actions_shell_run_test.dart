@@ -5,12 +5,12 @@ import 'package:teampilot/services/terminal/terminal_session.dart';
 import 'package:teampilot/services/terminal/workspace_terminal_registry.dart';
 import 'package:teampilot/services/terminal/workspace_terminal_run_service.dart';
 import 'package:teampilot/services/workbench/workbench_shell_actions.dart';
+import '../../support/in_memory_filesystem.dart';
 
 TerminalSession _testSession() => TerminalSession(
   executable: '/bin/bash',
   validateLaunch: false,
-  parseExecutable: false,
-);
+  parseExecutable: false, fs: InMemoryFilesystem(), );
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();

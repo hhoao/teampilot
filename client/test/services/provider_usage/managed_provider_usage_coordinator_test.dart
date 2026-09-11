@@ -9,7 +9,8 @@ import 'package:teampilot/repositories/managed_provider_usage_repository.dart';
 import 'package:teampilot/services/provider_usage/managed_provider_usage_adapter.dart';
 import 'package:teampilot/services/provider_usage/managed_provider_usage_coordinator.dart';
 import 'package:teampilot/services/provider_usage/managed_provider_usage_registry.dart';
-import 'package:teampilot/services/storage/app_storage.dart';
+import 'package:teampilot/services/storage/app_paths.dart';
+import '../../support/test_runtime_context.dart';
 
 import '../../support/in_memory_filesystem.dart';
 
@@ -91,16 +92,18 @@ void main() {
   late ManagedProviderRepository providers;
   late ManagedProviderUsageRepository usage;
 
-  tearDown(AppStorage.resetForTesting);
+  tearDown(resetTestHomeStorage);
 
   setUp(() {
     fs = InMemoryFilesystem();
     usage = ManagedProviderUsageRepository(
+      storage: fakeHomeStorage(filesystem: fs),
       fs: fs,
       cachePath: '/tp/usage-cache.json',
       now: () => 1_700_000_000_000,
     );
     providers = ManagedProviderRepository(
+      storage: fakeHomeStorage(filesystem: fs),
       fs: fs,
       configPath: '/tp/providers.json',
       onProvidersDeleted: usage.deleteMany,
@@ -159,17 +162,20 @@ void main() {
       final gate = Completer<ProviderUsageSnapshot>();
       final adapter = _FakeAdapter(gate.future);
 
-      AppStorage.installForTesting(filesystem: firstFs, paths: firstPaths);
-      final dynamicUsage = ManagedProviderUsageRepository();
+      installTestHomeStorage(filesystem: firstFs, paths: firstPaths);
+      final dynamicUsage = ManagedProviderUsageRepository(
+        storage: fakeHomeStorage(filesystem: firstFs),
+      );
       final dynamicProviders = ManagedProviderRepository(
+        storage: fakeHomeStorage(filesystem: firstFs),
         onProvidersDeleted: dynamicUsage.deleteMany,
       );
       await dynamicProviders.upsert(_provider());
 
-      AppStorage.installForTesting(filesystem: secondFs, paths: secondPaths);
+      installTestHomeStorage(filesystem: secondFs, paths: secondPaths);
       await dynamicProviders.upsert(_provider());
 
-      AppStorage.installForTesting(filesystem: firstFs, paths: firstPaths);
+      installTestHomeStorage(filesystem: firstFs, paths: firstPaths);
       final coordinator = ManagedProviderUsageCoordinator(
         providerRepository: dynamicProviders,
         usageRepository: dynamicUsage,
@@ -184,7 +190,7 @@ void main() {
       expect(adapter.calls, 1);
 
       await coordinator.invalidateForStorageContextChange();
-      AppStorage.installForTesting(filesystem: secondFs, paths: secondPaths);
+      installTestHomeStorage(filesystem: secondFs, paths: secondPaths);
       gate.complete(_ready(remaining: '1.75'));
 
       await expectLater(
@@ -362,6 +368,7 @@ void main() {
       final oldRequest = coordinator.refreshOne('p1');
       await Future<void>.delayed(Duration.zero);
       final externalProviders = ManagedProviderRepository(
+        storage: fakeHomeStorage(filesystem: fs),
         fs: fs,
         configPath: '/tp/providers.json',
         onProvidersDeleted: usage.deleteMany,
@@ -581,6 +588,7 @@ void main() {
     () async {
       final blockingUsage = _BlockingUsageRepository(fs: fs);
       final disabledProviders = ManagedProviderRepository(
+        storage: fakeHomeStorage(filesystem: fs),
         fs: fs,
         configPath: '/tp/providers.json',
         onProvidersDeleted: blockingUsage.deleteMany,
@@ -616,7 +624,11 @@ void main() {
 
 class _BlockingUsageRepository extends ManagedProviderUsageRepository {
   _BlockingUsageRepository({required InMemoryFilesystem fs})
-    : super(fs: fs, cachePath: '/tp/usage-cache.json');
+    : super(
+        storage: fakeHomeStorage(filesystem: fs),
+        fs: fs,
+        cachePath: '/tp/usage-cache.json',
+      );
 
   final saveStarted = Completer<void>();
   final release = Completer<void>();
@@ -634,7 +646,11 @@ class _BlockingUsageRepository extends ManagedProviderUsageRepository {
 
 class _ThrowingUsageRepository extends ManagedProviderUsageRepository {
   _ThrowingUsageRepository({required InMemoryFilesystem fs})
-    : super(fs: fs, cachePath: '/tp/usage-cache.json');
+    : super(
+        storage: fakeHomeStorage(filesystem: fs),
+        fs: fs,
+        cachePath: '/tp/usage-cache.json',
+      );
 
   final saveStarted = Completer<void>();
   final release = Completer<void>();

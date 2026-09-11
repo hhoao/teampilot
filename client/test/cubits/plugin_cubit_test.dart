@@ -7,7 +7,9 @@ import 'package:teampilot/models/plugin.dart';
 import 'package:teampilot/models/catalog/catalog_types.dart';
 import 'package:teampilot/repositories/app_settings_repository.dart';
 import 'package:teampilot/repositories/plugin_repository.dart';
-import 'package:teampilot/services/storage/app_storage.dart';
+import 'package:teampilot/services/storage/app_paths.dart';
+import '../support/test_runtime_context.dart';
+import 'package:teampilot/services/storage/home_storage.dart';
 import 'package:teampilot/services/io/filesystem.dart';
 import 'package:teampilot/services/io/local_filesystem.dart';
 import 'package:teampilot/services/plugin/plugin_repo_disk_cache_service.dart';
@@ -16,13 +18,15 @@ import 'package:teampilot/services/plugin/plugin_repo_service.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:path/path.dart' as p;
 
+import '../support/in_memory_filesystem.dart';
+
 void main() {
   late Directory tmp;
 
   setUp(() {
     tmp = Directory.systemTemp.createTempSync('plugin-cubit-');
     final paths = AppPaths(tmp.path);
-    AppStorage.installForTesting(
+    installTestHomeStorage(
       filesystem: LocalFilesystem(
         pathContext: AppPaths.pathContextForDataRoot(paths.basePath),
       ),
@@ -33,9 +37,11 @@ void main() {
   });
 
   tearDown(() {
-    AppStorage.resetForTesting();
+    resetTestHomeStorage();
     tmp.deleteSync(recursive: true);
   });
+
+  HomeStorage home() => HomeStorage(testHomeStorage.context);
 
   DiscoverablePlugin discoverable(String name, {int? adoption, int? updated}) =>
       DiscoverablePlugin(
@@ -153,11 +159,12 @@ void main() {
   );
 
   test('load() populates installed + marketplaces', () async {
-    final repo = PluginRepository();
+    final repo = PluginRepository(storage: home());
     final cubit = PluginCubit(
       repository: repo,
       installService: repo.install,
-      repoService: PluginRepoService(),
+      repoService: PluginRepoService(storage: home()),
+      storage: home(),
     );
     await cubit.load();
     expect(cubit.state.status, PluginLoadStatus.ready);
@@ -170,11 +177,12 @@ void main() {
   test(
     'ensureDiscoveryLoaded does not re-sync when list is populated',
     () async {
-      final repo = PluginRepository();
+      final repo = PluginRepository(storage: home());
       final cubit = PluginCubit(
         repository: repo,
         installService: repo.install,
-        repoService: PluginRepoService(),
+        repoService: PluginRepoService(storage: home()),
+        storage: home(),
       );
       cubit.emit(
         cubit.state.copyWith(
@@ -199,7 +207,7 @@ void main() {
 
   test('uninstall calls team cleanup before removing plugin files', () async {
     final order = <String>[];
-    final repo = PluginRepository();
+    final repo = PluginRepository(storage: home());
     final svc = repo.install;
     final src = Directory(p.join(tmp.path, 'src'))..createSync();
     Directory(p.join(src.path, '.claude-plugin')).createSync();
@@ -211,7 +219,8 @@ void main() {
     final cubit = PluginCubit(
       repository: repo,
       installService: repo.install,
-      repoService: PluginRepoService(),
+      repoService: PluginRepoService(storage: home()),
+      storage: home(),
       onPluginUninstalled: (_) async {
         order.add('teams');
         final list = await repo.loadAll();
@@ -235,7 +244,7 @@ void main() {
       '{"name":"orphan","version":"1.0.0","description":"x"}',
     );
 
-    final repo = PluginRepository();
+    final repo = PluginRepository(storage: home());
     final scanned = await repo.scanUnmanaged();
     expect(scanned, hasLength(1));
     expect(scanned.single.name, 'orphan');
@@ -244,10 +253,15 @@ void main() {
   test('manual mode syncs marketplaces without disk cache once', () async {
     final git = _FakePluginGit();
     final cubit = PluginCubit(
-      repository: PluginRepository(),
-      installService: PluginRepository().install,
-      repoService: PluginRepoService(),
-      diskCache: PluginRepoDiskCacheService(gitService: git),
+      repository: PluginRepository(storage: home()),
+      installService: PluginRepository(storage: home()).install,
+      repoService: PluginRepoService(storage: home()),
+      storage: home(),
+      diskCache: PluginRepoDiskCacheService(
+        gitService: git,
+        filesystem: home().fs,
+        teampilotRoot: home().appDataRoot,
+      ),
     );
     await cubit.load();
     final enabledCount = cubit.state.marketplaces
@@ -263,11 +277,16 @@ void main() {
 
   test('manual mode with disk cache does not hit network', () async {
     final git = _FakePluginGit();
-    final diskCache = PluginRepoDiskCacheService(gitService: git);
+    final diskCache = PluginRepoDiskCacheService(
+      gitService: git,
+      filesystem: home().fs,
+      teampilotRoot: home().appDataRoot,
+    );
     final cubit = PluginCubit(
-      repository: PluginRepository(),
-      installService: PluginRepository().install,
-      repoService: PluginRepoService(),
+      repository: PluginRepository(storage: home()),
+      installService: PluginRepository(storage: home()).install,
+      repoService: PluginRepoService(storage: home()),
+      storage: home(),
       diskCache: diskCache,
     );
     await cubit.load();
@@ -279,9 +298,10 @@ void main() {
     expect(git.syncCheckouts, enabledCount);
 
     final cubit2 = PluginCubit(
-      repository: PluginRepository(),
-      installService: PluginRepository().install,
-      repoService: PluginRepoService(),
+      repository: PluginRepository(storage: home()),
+      installService: PluginRepository(storage: home()).install,
+      repoService: PluginRepoService(storage: home()),
+      storage: home(),
       diskCache: diskCache,
     );
     await cubit2.load();
@@ -295,15 +315,20 @@ void main() {
 
   test('auto mode with stale cache checks remote SHA', () async {
     final git = _FakePluginGit();
-    final diskCache = PluginRepoDiskCacheService(gitService: git);
+    final diskCache = PluginRepoDiskCacheService(
+      gitService: git,
+      filesystem: home().fs,
+      teampilotRoot: home().appDataRoot,
+    );
     final settings = DiscoverySettingsCubit(
       repository: InMemoryAppSettingsRepository(),
     );
     await settings.setAutoRefreshEnabled(true);
     final cubit = PluginCubit(
-      repository: PluginRepository(),
-      installService: PluginRepository().install,
-      repoService: PluginRepoService(),
+      repository: PluginRepository(storage: home()),
+      installService: PluginRepository(storage: home()).install,
+      repoService: PluginRepoService(storage: home()),
+      storage: home(),
       diskCache: diskCache,
       discoverySettings: settings,
     );
@@ -317,12 +342,12 @@ void main() {
 
     // 把缓存 meta 改成过期，再走自动刷新 → 应检查远端 SHA（remote null → 保留缓存）
     final market = cubit.state.marketplaces.firstWhere((m) => m.enabled);
-    final metaPath = AppStorage.fs.pathContext.join(
-      AppStorage.paths.pluginMarketplaceCacheDir,
+    final metaPath = testHomeStorage.fs.pathContext.join(
+      testHomeStorage.paths.pluginMarketplaceCacheDir,
       PluginRepoDiskCacheService.repoKey(market),
       '.teampilot-plugin-cache-meta.json',
     );
-    await AppStorage.fs.writeString(
+    await testHomeStorage.fs.writeString(
       metaPath,
       const JsonEncoder.withIndent('  ').convert({
         'configuredBranch': 'main',
@@ -333,9 +358,10 @@ void main() {
     );
 
     final cubit2 = PluginCubit(
-      repository: PluginRepository(),
-      installService: PluginRepository().install,
-      repoService: PluginRepoService(),
+      repository: PluginRepository(storage: home()),
+      installService: PluginRepository(storage: home()).install,
+      repoService: PluginRepoService(storage: home()),
+      storage: home(),
       diskCache: diskCache,
       discoverySettings: settings,
     );
@@ -389,7 +415,10 @@ class _PartialPluginCache extends PluginRepoDiskCacheService {
     required this.failed,
     required this.result,
     required this.cachedFromFailedSource,
-  });
+  }) : super(
+         filesystem: InMemoryFilesystem(),
+         teampilotRoot: '/plugin-cache',
+       );
 
   final PluginMarketplace successful;
   final PluginMarketplace failed;

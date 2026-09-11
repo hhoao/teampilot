@@ -1,7 +1,7 @@
 import 'package:path/path.dart' as p;
 
 import '../io/filesystem.dart';
-import '../storage/app_storage.dart';
+import '../storage/app_paths.dart';
 
 /// Path context for paths under a work-plane [workTeampilotRoot].
 ///

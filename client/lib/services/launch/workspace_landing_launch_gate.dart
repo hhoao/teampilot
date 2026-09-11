@@ -7,6 +7,7 @@ import '../../models/workspace_topology.dart';
 import '../../utils/workspace/landing_draft_resolver.dart';
 import '../remote/remote_cli_readiness.dart';
 import '../remote/remote_cli_requirements.dart';
+import '../storage/home_storage.dart';
 import '../team/team_config_launch_validator.dart';
 
 /// Why compose landing cannot start a team session yet.
@@ -72,10 +73,14 @@ MemberPlacementByTarget memberPlacementForLaunch({
 
 /// Pre-launch checks for compose landing (mirrors session create/open gates).
 class WorkspaceLandingLaunchGate {
-  WorkspaceLandingLaunchGate({TeamConfigLaunchValidator? teamConfigValidator})
-    : _teamConfigValidator =
-          teamConfigValidator ?? TeamConfigLaunchValidator();
+  WorkspaceLandingLaunchGate({
+    TeamConfigLaunchValidator? teamConfigValidator,
+    required HomeStorage storage,
+  }) : _storage = storage,
+       _teamConfigValidator =
+           teamConfigValidator ?? TeamConfigLaunchValidator(storage: storage);
 
+  final HomeStorage _storage;
   final TeamConfigLaunchValidator _teamConfigValidator;
 
   /// Fast checks that do not need provider catalog IO.
@@ -175,6 +180,7 @@ class WorkspaceLandingLaunchGate {
       cli: identity.cli,
       selectableTargets: selectableTargets,
       home: home,
+      usesPosixPaths: _storage.usesPosixPaths,
     );
     return _probeRemoteCliRequirements(requirements, readiness);
   }

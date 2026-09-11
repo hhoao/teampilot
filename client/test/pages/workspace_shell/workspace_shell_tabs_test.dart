@@ -25,7 +25,10 @@ void main() {
       final chat = testChatCubit(executableResolver: () => 'claude');
       final layout = LayoutCubit();
       final workbench = WorkbenchCubit()..enterLanding('landing-workspace');
-      final shortcuts = ShortcutCubit(repository: KeybindingRepository());
+      final shortcuts = ShortcutCubit(
+        storage: testHomeStorage,
+        repository: KeybindingRepository(storage: testHomeStorage),
+      );
       addTearDown(chat.close);
       addTearDown(layout.close);
       addTearDown(workbench.close);

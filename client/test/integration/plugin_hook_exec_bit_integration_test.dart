@@ -10,7 +10,7 @@ import 'package:teampilot/models/config_bundle.dart';
 import 'package:teampilot/models/team_config.dart';
 import 'package:teampilot/services/launch/manifest_executor.dart';
 import 'package:teampilot/services/provider/config_profile_service.dart';
-import 'package:teampilot/services/storage/app_storage.dart';
+import '../support/test_runtime_context.dart';
 import 'package:teampilot/services/storage/runtime_layout.dart';
 
 import '../support/post_frame_test_harness.dart';
@@ -24,8 +24,8 @@ void main() {
 
   test('executable hook scripts keep their +x bit after session materialization',
       () async {
-    final fs = AppStorage.fs;
-    final root = AppStorage.paths.basePath;
+    final fs = testHomeStorage.fs;
+    final root = testHomeStorage.paths.basePath;
     final layout = RuntimeLayout(teampilotRoot: root, fs: fs);
     const workspaceId = 'ws-int-exec';
     const sessionId = 'sess-int-exec';
@@ -94,6 +94,7 @@ void main() {
       basePath: root,
       fs: fs,
       layout: layout,
+                                          storage: testHomeStorage,
     );
     final staged = await service.stageSimpleSessionLaunch(
       readDelegate: fs,

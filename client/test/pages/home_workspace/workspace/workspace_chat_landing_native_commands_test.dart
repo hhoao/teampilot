@@ -30,6 +30,7 @@ import 'package:teampilot/utils/workspace/landing_draft_resolver.dart';
 import 'package:teampilot/widgets/compose/compose_trigger_field.dart';
 
 import '../../../support/post_frame_test_harness.dart';
+import 'package:teampilot/services/storage/home_storage.dart';
 
 class _MockChatCubit extends Mock implements ChatCubit {}
 
@@ -83,8 +84,10 @@ void main() {
   }) async {
     final workspace = Workspace(workspaceId: 'workspace-1', createdAt: 1);
     await tester.runAsync(() async {
-      await persistLandingDraft(workspace.workspaceId, draft);
-      await WorkspaceProjectConfigRepository().save(
+      await persistLandingDraft(workspace.workspaceId, draft, storage: testHomeStorage, );
+      await WorkspaceProjectConfigRepository(
+        storage: testHomeStorage,
+      ).save(
         workspace.workspaceId,
         const WorkspaceProjectConfig(
           bundle: ConfigBundle(
@@ -124,6 +127,7 @@ void main() {
         ],
         child: MultiBlocProvider(
           providers: [
+        RepositoryProvider<HomeStorage>.value(value: testHomeStorage),
             BlocProvider<ChatCubit>.value(value: chatCubit),
             BlocProvider<AppProviderCubit>.value(value: appProviderCubit),
             BlocProvider<CliPresetsCubit>.value(value: cliPresetsCubit),

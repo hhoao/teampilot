@@ -3,7 +3,6 @@ import 'package:toml/toml.dart';
 import '../../models/app_provider_config.dart';
 import '../../models/llm_config.dart';
 import '../cli/registry/capabilities/provider_capability.dart';
-import '../storage/app_storage.dart';
 import '../io/filesystem.dart';
 
 class ToolConfigGenerator {
@@ -203,7 +202,7 @@ requires_openai_auth = true
   Future<void> writeJsonAtomic(
     String path,
     Map<String, Object?> json, {
-    Filesystem? fs,
+    required Filesystem fs,
   }) async {
     final body = const JsonEncoder.withIndent('  ').convert(json);
     await writeTextAtomic(path, body, fs: fs);
@@ -212,10 +211,9 @@ requires_openai_auth = true
   Future<void> writeTextAtomic(
     String path,
     String body, {
-    Filesystem? fs,
+    required Filesystem fs,
   }) async {
-    final store = fs ?? AppStorage.fs;
-    await store.atomicWrite(path, body);
+    await fs.atomicWrite(path, body);
   }
 
   String _resolveCodexModelProvider(

@@ -16,6 +16,7 @@ import '../../services/hub_publish/bundle_provenance_lookup.dart';
 import '../../services/hub_publish/github_registry_publisher.dart';
 import '../../services/github/github_credentials_store.dart';
 import '../../services/hub_publish/hub_publish_record_store.dart';
+import '../../widgets/home_storage_scope.dart';
 import '../../services/hub_publish/hub_publish_service.dart';
 import 'hub_publish_wizard.dart';
 
@@ -50,7 +51,9 @@ Future<void> showHubPublishWizard(
   final resolvedLookup = lookup ?? _lookupFromContext(context);
   final resolvedRemap =
       remapCandidates ?? _remapCandidatesFromContext(context);
-  final resolvedRecords = records ?? HubPublishRecordStore();
+  final resolvedRecords =
+      records ??
+      HubPublishRecordStore(storage: homeStorageOf(context));
   final resolvedApi =
       publishApi ??
       HubPublishService(

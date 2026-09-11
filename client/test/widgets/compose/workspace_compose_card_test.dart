@@ -31,6 +31,7 @@ void main() {
     final dropTarget = ComposeFileDropIngestor(
       workspaceRoot: '/tmp',
       onInsertReferences: (_) {},
+                                                usesPosixPaths: false,
     );
 
     return MaterialApp(

@@ -31,6 +31,7 @@ void main() {
     final store = TeamGenerationJobStore(
       fs: fs,
       layout: WorkspaceLayout(teampilotRoot: '/tp', fs: fs),
+                                          storage: testHomeStorage,
     );
     final settings = resolveTeamGenerationSettingsSnapshot(
       settings: TeamGenerationSettings(teamMode: TeamMode.mixed),

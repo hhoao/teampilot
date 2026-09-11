@@ -24,6 +24,7 @@ import 'package:teampilot/services/terminal/workspace_terminal_registry.dart';
 import 'package:teampilot/services/terminal/workspace_terminal_run_service.dart';
 import 'package:teampilot/services/terminal/workspace_terminal_session_ops.dart';
 import '../../support/rust_lib_test_init.dart';
+import '../../support/in_memory_filesystem.dart';
 
 const _folder = WorkspaceFolder(path: '/proj');
 
@@ -120,11 +121,11 @@ class _RecordingConnector extends WorkspaceShellConnector {
   _RecordingConnector()
     : super(
         transportFactory: TerminalTransportFactory(
-          sshProfileRepository: SshProfileRepository(),
+          sshProfileRepository: SshProfileRepository(storage: fakeHomeStorage()),
           sshCredentialStore: InMemorySshCredentialStore(),
           sshKnownHostRepository: InMemorySshKnownHostRepository(),
         ),
-        sshProfileRepository: SshProfileRepository(),
+        sshProfileRepository: SshProfileRepository(storage: fakeHomeStorage()),
       );
 
   @override
@@ -133,6 +134,7 @@ class _RecordingConnector extends WorkspaceShellConnector {
       executable: 'sh',
       validateLaunch: false,
       parseExecutable: false,
+                            fs: InMemoryFilesystem(),
     );
   }
 
@@ -184,6 +186,7 @@ void main() {
         executable: 'sh',
         validateLaunch: false,
         parseExecutable: false,
+                                fs: InMemoryFilesystem(),
       ),
     );
     runService = _FakeTerminalRunService(entry);

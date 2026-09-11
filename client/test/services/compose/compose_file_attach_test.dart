@@ -12,6 +12,7 @@ void main() {
         formatComposeFileReference(
           r'C:\repo\src\main.dart',
           workspaceRoot: r'C:\repo',
+                                    usesPosixPaths: false,
         ),
         '@src/main.dart',
       );
@@ -22,6 +23,7 @@ void main() {
         formatComposeFileReference(
           '/repo/docs/readme.md',
           workspaceRoot: '/repo',
+                                    usesPosixPaths: false,
         ),
         '@docs/readme.md',
       );
@@ -32,6 +34,7 @@ void main() {
         formatComposeFileReference(
           r'C:\Repo\src\main.dart',
           workspaceRoot: r'c:\repo',
+                                    usesPosixPaths: false,
         ),
         '@src/main.dart',
       );
@@ -42,6 +45,7 @@ void main() {
         formatComposeFileReference(
           r'D:\other\file.txt',
           workspaceRoot: r'C:\repo',
+                                    usesPosixPaths: false,
         ),
         '@D:/other/file.txt',
       );

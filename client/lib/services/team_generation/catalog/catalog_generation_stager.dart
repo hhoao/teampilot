@@ -3,7 +3,7 @@ import 'dart:convert';
 import '../../catalog/catalog_kind.dart';
 import '../../catalog/catalog_kind_registry.dart';
 import '../../io/filesystem.dart';
-import '../../storage/app_storage.dart';
+import '../../storage/home_storage.dart';
 import '../../storage/workspace_layout.dart';
 import '../models/team_generation_job.dart';
 import '../generated_team_commit_service.dart';
@@ -27,17 +27,20 @@ final class CatalogGenerationStager
   CatalogGenerationStager({
     required TeamGenerationJobStore jobStore,
     required TeamGenerationWorkflowExecutor executor,
+    required HomeStorage storage,
     WorkspaceLayout? layout,
     Filesystem? fs,
     CatalogKindRegistry? registry,
   }) : _jobStore = jobStore,
        _executor = executor,
+       _storage = storage,
        _layoutOverride = layout,
        _fsOverride = fs,
        _registry = registry;
 
   final TeamGenerationJobStore _jobStore;
   final TeamGenerationWorkflowExecutor _executor;
+  final HomeStorage _storage;
   final WorkspaceLayout? _layoutOverride;
   final Filesystem? _fsOverride;
   final CatalogKindRegistry? _registry;
@@ -45,10 +48,13 @@ final class CatalogGenerationStager
   TeamGenerationJobStore get jobStore => _jobStore;
   TeamGenerationWorkflowExecutor get executor => _executor;
 
-  Filesystem get _fs => _fsOverride ?? AppStorage.fs;
+  Filesystem get _fs => _fsOverride ?? _storage.fs;
   WorkspaceLayout get _layout =>
       _layoutOverride ??
-      WorkspaceLayout(teampilotRoot: AppStorage.paths.basePath);
+      WorkspaceLayout(
+        teampilotRoot: _storage.paths.basePath,
+        fs: _storage.fs,
+      );
 
   /// Entry point used by every mutating catalog handler when the request is
   /// generation-scoped. Runs inside the shared workflow executor.

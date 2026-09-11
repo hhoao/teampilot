@@ -20,7 +20,7 @@ import '../pages/home_workspace/workspace/workspace_session_actions.dart';
 import '../pages/home_workspace/workspace/workspace_sidebar_row_metrics.dart';
 import '../repositories/session_repository.dart';
 import '../services/io/file_path_actions.dart';
-import '../services/storage/app_storage.dart';
+import 'home_storage_scope.dart';
 import '../services/storage/runtime_context.dart';
 import '../utils/logging/logger.dart';
 import '../utils/session/session_display_title.dart';
@@ -462,12 +462,12 @@ class _SidebarSessionTileState extends State<SidebarSessionTile> {
   bool get _canOpenSessionDirectory => !Platform.isAndroid;
 
   Future<void> _openSessionDirectory(AppSession session) async {
+    final home = homeStorageOf(context).context;
     final repo = _repo;
     if (repo == null) return;
     final sessionFs = await repo.fs();
     await sessionFs.ensureSessionDir(session.workspaceId, session.sessionId);
     final dir = sessionFs.sessionDir(session.workspaceId, session.sessionId);
-    final home = AppStorage.isInstalled ? AppStorage.context : null;
     await FilePathActions.revealInFileManager(
       targetPath: dir,
       isDirectory: true,

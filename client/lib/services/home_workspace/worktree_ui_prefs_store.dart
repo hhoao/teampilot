@@ -1,7 +1,7 @@
 import 'dart:convert';
 
 import '../io/filesystem.dart';
-import '../storage/app_storage.dart';
+import '../storage/home_storage.dart';
 
 /// Per-workspace worktree sidebar UI state: which groups are collapsed and the
 /// last current worktree path.
@@ -16,15 +16,20 @@ class WorktreeUiPref {
 /// `ui/worktree-ui-prefs.json` as `{ workspaceId: {...} }`. Mirrors
 /// Persists per-workspace worktree UI prefs at `ui/worktree-ui-prefs.json`.
 class WorktreeUiPrefsStore {
-  WorktreeUiPrefsStore({Filesystem? fs, String? pathOverride})
-    : _fsOverride = fs,
-      _pathOverride = pathOverride;
+  WorktreeUiPrefsStore({
+    required HomeStorage storage,
+    Filesystem? fs,
+    String? pathOverride,
+  }) : _storage = storage,
+       _fsOverride = fs,
+       _pathOverride = pathOverride;
 
+  final HomeStorage _storage;
   final Filesystem? _fsOverride;
   final String? _pathOverride;
 
-  Filesystem get _fs => _fsOverride ?? AppStorage.fs;
-  String get _path => _pathOverride ?? AppStorage.paths.worktreeUiPrefsJson;
+  Filesystem get _fs => _fsOverride ?? _storage.fs;
+  String get _path => _pathOverride ?? _storage.paths.worktreeUiPrefsJson;
 
   Future<Map<String, WorktreeUiPref>> _loadAll() async {
     try {

@@ -21,6 +21,7 @@ void main() {
         resolved.add(target.id);
         return home;
       },
+                                               storage: fakeHomeStorage(),
     );
     final session = AppSession(
       sessionId: 's1',
@@ -55,6 +56,7 @@ void main() {
           resolved.add(target.id);
           return target.kind == RuntimeKind.ssh ? remote : home;
         },
+                                                 storage: fakeHomeStorage(),
       );
       final session = AppSession(
         sessionId: 's2',
@@ -89,6 +91,7 @@ void main() {
                 )
               : home;
         },
+                                                 storage: fakeHomeStorage(filesystem: InMemoryFilesystem()),
       );
       final session = AppSession(
         sessionId: 's3',

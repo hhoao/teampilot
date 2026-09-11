@@ -7,6 +7,7 @@ import '../../models/workspace.dart';
 import '../../models/workspace_topology.dart';
 import '../../repositories/launch_profile_repository.dart';
 import '../../repositories/session_repository.dart';
+import '../../services/expert_hub/expert_hub_catalog.dart';
 import '../../services/expert_hub/local_expert_store.dart';
 import '../../services/launch/member_placement_save.dart';
 import '../../services/team_generation/models/team_generation_job.dart';
@@ -81,13 +82,15 @@ final class GeneratedTeamCommitService {
     required TeamProfileResourceProvisioner resourceProvisioner,
     required GeneratedTeamStatePublisher publisher,
     TeamGenerationResourcePromoter? resourcePromoter,
+    ExpertHubCatalog? catalog,
   }) : _jobStore = jobStore,
        _expertStore = expertStore,
        _profileRepository = profileRepository,
        _sessionRepository = sessionRepository,
        _resourceProvisioner = resourceProvisioner,
        _publisher = publisher,
-       _resourcePromoter = resourcePromoter;
+       _resourcePromoter = resourcePromoter,
+       _catalog = catalog;
 
   final TeamGenerationJobStore _jobStore;
   final LocalExpertStore _expertStore;
@@ -95,6 +98,10 @@ final class GeneratedTeamCommitService {
   final SessionRepository _sessionRepository;
   final TeamProfileResourceProvisioner _resourceProvisioner;
   final GeneratedTeamStatePublisher _publisher;
+
+  /// Shared catalog snapshot invalidated after generated experts are cloned
+  /// (or compensated) so the new keys resolve on the next roster materialize.
+  final ExpertHubCatalog? _catalog;
   final TeamGenerationResourcePromoter? _resourcePromoter;
 
   /// Commits the validated plan recorded on the job.
@@ -149,13 +156,16 @@ final class GeneratedTeamCommitService {
         run: () async {
           final existingKeys = await _expertStore.loadAll();
           final known = existingKeys.map((member) => member.key).toSet();
+          var cloned = 0;
           for (final member in _generatedMembers(job, reservation)) {
             final key = member.key;
             if (!known.add(key)) continue;
             if (!await _expertStore.containsKey(key)) {
               await _expertStore.putClone(member);
+              cloned++;
             }
           }
+          if (cloned > 0) _catalog?.invalidate();
           return '${_generatedMembers(job, reservation).length}';
         },
       );
@@ -596,11 +606,14 @@ final class GeneratedTeamCommitService {
         job,
         reservation,
       ).map((member) => member.key).toSet();
+      var deleted = false;
       for (final key in keys) {
         if (await _expertStore.containsKey(key)) {
           await _expertStore.delete(key);
+          deleted = true;
         }
       }
+      if (deleted) _catalog?.invalidate();
     } on Object catch (e) {
       appLogger.w('[team-generation] expert compensation failed: $e');
     }

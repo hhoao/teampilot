@@ -6,7 +6,6 @@ import '../../models/team_config.dart';
 import '../../utils/lock_pool.dart';
 import '../io/filesystem.dart';
 import '../session/launch_command_builder.dart';
-import '../storage/app_storage.dart';
 import 'workspace_layout.dart';
 
 /// Tools with a `cli-defaults/{tool}/` tree (see [RuntimeLayout]).
@@ -22,9 +21,9 @@ final List<String> runtimeLayoutDefaultTools = CliTool.values
 class RuntimeLayout {
   RuntimeLayout({
     required this.teampilotRoot,
-    Filesystem? fs,
+    required Filesystem fs,
     WorkspaceLayout? workspace,
-  }) : _fs = fs ?? AppStorage.fs,
+  }) : _fs = fs,
        workspace =
            workspace ?? WorkspaceLayout(teampilotRoot: teampilotRoot, fs: fs);
 

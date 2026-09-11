@@ -142,6 +142,7 @@ class _RecordingWriter extends PairedProfileWriter {
         profileRepository: SshProfileRepository(
           rootDir: '/unused',
           fs: InMemoryFilesystem(),
+                                                 storage: fakeHomeStorage(),
         ),
         credentialStore: InMemorySshCredentialStore(),
         knownHostRepository: InMemorySshKnownHostRepository(),
@@ -230,6 +231,7 @@ class _Harness {
     profileRepository = SshProfileRepository(
       rootDir: '/profiles',
       fs: InMemoryFilesystem(),
+                                              storage: fakeHomeStorage(),
     );
     credentials = InMemorySshCredentialStore();
     profileCubit = SshProfileCubit(

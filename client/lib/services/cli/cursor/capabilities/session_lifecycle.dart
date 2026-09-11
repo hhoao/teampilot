@@ -13,6 +13,7 @@ import '../provider/cursor_provider_settings_resolver.dart';
 import '../provider/cursor_session_config_dir.dart';
 import '../provider/cursor_workspace_warm_tier.dart';
 import '../provider/cursor_workspace_trust_provisioner.dart';
+import '../../../storage/home_storage.dart';
 import '../../../storage/runtime_layout.dart';
 import '../../../team_bus/member_bus_idle_endpoint.dart';
 import '../../registry/config_profile/config_profile_context.dart';
@@ -35,6 +36,7 @@ typedef CursorSessionProviderResolver =
 /// fake-HOME passthrough after manifest flush and CONFIG_DIR layout.
 final class CursorSessionLifecycleCapability implements CliSessionCapability {
   const CursorSessionLifecycleCapability({
+    this.storage,
     CliSessionManifestStore? manifestStore,
     CursorSessionAuthSync? authSync,
     CursorSessionProviderResolver? resolveProviderId,
@@ -43,6 +45,11 @@ final class CursorSessionLifecycleCapability implements CliSessionCapability {
        _authSync = authSync,
        _resolveProviderId = resolveProviderId,
        _clock = clock;
+
+  /// Home control-plane storage injected at registry construction; required
+  /// for credential actions (auth sync reads the provider store). Null only
+  /// for `const`-constructed capabilities outside the registry (tests).
+  final HomeStorage? storage;
 
   final CliSessionManifestStore? _manifestStoreOverride;
   static final Map<String, CliSessionManifestStore> _storesByRoot = {};
@@ -508,6 +515,7 @@ final class CursorSessionLifecycleCapability implements CliSessionCapability {
         );
       }
       final credentials = CursorProviderCredentialsService(
+        storage: storage ?? _missingHomeStorage(),
         fs: _credentialFs(ctx),
         basePath: _credentialBasePath(ctx),
       );
@@ -556,6 +564,13 @@ final class CursorSessionLifecycleCapability implements CliSessionCapability {
     // Provider store lives on the control plane; read through the same fs when
     // roots match (native). Callers pass credentialBasePath only when needed.
     return ctx.paths.fs;
+  }
+
+  HomeStorage _missingHomeStorage() {
+    throw StateError(
+      'CursorSessionLifecycleCapability was constructed without HomeStorage; '
+      'credential auth sync requires storage threaded via CliBootstrap.',
+    );
   }
 
   Future<CliSessionManifest> _runConfigPhase(
@@ -619,6 +634,7 @@ final class CursorSessionLifecycleCapability implements CliSessionCapability {
       final baseJson = await ctx.paths.fs.readString(basePath);
       final mcpBasePath = _absoluteWorkspacePath(ctx, manifest.shared.mcpBase);
       final credentials = CursorProviderCredentialsService(
+        storage: storage ?? _missingHomeStorage(),
         fs: ctx.paths.fs,
         basePath: ctx.paths.basePath,
       );
@@ -686,6 +702,7 @@ final class CursorSessionLifecycleCapability implements CliSessionCapability {
     }
 
     final credentials = CursorProviderCredentialsService(
+      storage: storage ?? _missingHomeStorage(),
       fs: _credentialFs(ctx),
       basePath: _credentialBasePath(ctx),
     );
@@ -716,7 +733,10 @@ final class CursorSessionLifecycleCapability implements CliSessionCapability {
     if (resolver != null) return resolver(ctx);
 
     final credentialBase = _credentialBasePath(ctx);
-    final settings = CursorProviderSettingsResolver(basePath: credentialBase);
+    final settings = CursorProviderSettingsResolver(
+      basePath: credentialBase,
+      storage: storage ?? _missingHomeStorage(),
+    );
 
     final fromLaunch = ctx.resolvedProviderId?.trim() ?? '';
     if (fromLaunch.isNotEmpty) {
@@ -885,7 +905,10 @@ final class CursorSessionLifecycleCapability implements CliSessionCapability {
     final home = memberHome.trim();
     final workDir = workingDirectory.trim();
     if (home.isEmpty || workDir.isEmpty) return;
-    await CursorWorkspaceTrustProvisioner(fs: fs).provisionLaunchWorkspaces(
+    await CursorWorkspaceTrustProvisioner(
+      fs: fs,
+      usesPosixPaths: storage?.usesPosixPaths ?? false,
+    ).provisionLaunchWorkspaces(
       homeRoot: home,
       workingDirectory: workDir,
       additionalDirectories: additionalDirectories,

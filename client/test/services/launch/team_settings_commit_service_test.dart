@@ -46,10 +46,11 @@ void main() {
   test('commit persists profile + placement and patches the chat snapshot',
       () async {
     final launch = LaunchProfileCubit(
+      storage: testHomeStorage,
       repository: testLaunchProfileRepository(
         Directory.systemTemp.createTempSync('commit_svc_'),
       ),
-      sessionRepository: SessionRepository(),
+      sessionRepository: SessionRepository(storage: testHomeStorage),
       executableResolver: () => 'claude',
     );
     addTearDown(launch.close);
@@ -62,7 +63,7 @@ void main() {
       ),
     );
 
-    final repo = SessionRepository();
+    final repo = SessionRepository(storage: testHomeStorage);
     final workspace = await repo.createWorkspace(
       const [WorkspaceFolder(path: '/repo')],
       display: 'ws-1',
@@ -119,10 +120,11 @@ void main() {
   test('commit returns false and persists nothing when lead placement invalid',
       () async {
     final launch = LaunchProfileCubit(
+      storage: testHomeStorage,
       repository: testLaunchProfileRepository(
         Directory.systemTemp.createTempSync('commit_svc_invalid_'),
       ),
-      sessionRepository: SessionRepository(),
+      sessionRepository: SessionRepository(storage: testHomeStorage),
       executableResolver: () => 'claude',
     );
     addTearDown(launch.close);
@@ -135,7 +137,7 @@ void main() {
       ),
     );
 
-    final repo = SessionRepository();
+    final repo = SessionRepository(storage: testHomeStorage);
     final workspace = await repo.createWorkspace(
       const [WorkspaceFolder(path: '/repo')],
       display: 'ws-1',

@@ -8,6 +8,7 @@ import 'package:teampilot/repositories/ssh_known_host_repository.dart';
 import 'package:teampilot/repositories/ssh_profile_repository.dart';
 import 'package:teampilot/services/terminal/terminal_transport_factory.dart';
 import 'package:teampilot/services/terminal/workspace_shell_connector.dart';
+import '../../support/in_memory_filesystem.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
@@ -17,11 +18,11 @@ void main() {
   setUp(() {
     connector = WorkspaceShellConnector(
       transportFactory: TerminalTransportFactory(
-        sshProfileRepository: SshProfileRepository(),
+        sshProfileRepository: SshProfileRepository(storage: fakeHomeStorage()),
         sshCredentialStore: InMemorySshCredentialStore(),
         sshKnownHostRepository: InMemorySshKnownHostRepository(),
       ),
-      sshProfileRepository: SshProfileRepository(),
+      sshProfileRepository: SshProfileRepository(storage: fakeHomeStorage()),
     );
   });
 

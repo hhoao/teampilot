@@ -1,9 +1,9 @@
 import 'dart:convert';
 
 import '../../models/mcp_server.dart';
-import '../storage/app_storage.dart';
-import '../storage/runtime_layout.dart';
 import '../io/filesystem.dart';
+import '../storage/home_storage.dart';
+import '../storage/runtime_layout.dart';
 
 class ProfileMcpSyncResult {
   const ProfileMcpSyncResult({
@@ -22,14 +22,18 @@ class ProfileMcpSyncResult {
 /// Writes identity MCP snapshot to
 /// `identities-runtime/{profileId}/mcp/servers.json`.
 ///
-/// Defaults to [AppStorage.fs] so Android/SSH control-plane roots under
-/// `$HOME` are written remotely, not via the device-local filesystem.
+/// Defaults to the injected [HomeStorage]'s filesystem so Android/SSH
+/// control-plane roots under `$HOME` are written remotely, not via the
+/// device-local filesystem.
 class ProfileMcpLinkerService {
-  ProfileMcpLinkerService({Filesystem? fs}) : _fsOverride = fs;
+  ProfileMcpLinkerService({required HomeStorage storage, Filesystem? fs})
+    : _storage = storage,
+      _fsOverride = fs;
 
+  final HomeStorage _storage;
   final Filesystem? _fsOverride;
 
-  Filesystem get _fs => _fsOverride ?? AppStorage.fs;
+  Filesystem get _fs => _fsOverride ?? _storage.fs;
 
   Future<ProfileMcpSyncResult> syncForProfile({
     required String profileId,

@@ -101,7 +101,7 @@ Future<void> _pumpWorkspaceInfo(
   final tmp = await Directory.systemTemp.createTemp('ws_info_target_');
   addTearDown(() => tmp.deleteSync(recursive: true));
   final fs = LocalFilesystem();
-  final sshRepo = SshProfileRepository(rootDir: tmp.path, fs: fs);
+  final sshRepo = SshProfileRepository(rootDir: tmp.path, fs: fs, storage: testHomeStorage, );
   await sshRepo.save(
     const SshProfile(
       id: 'p1',
@@ -123,11 +123,13 @@ Future<void> _pumpWorkspaceInfo(
   final chat = ChatCubit(
     executableResolver: () => 'flashskyai',
     automationRepository: testAutomationRepository(),
+                          storage: testHomeStorage,
   );
   addTearDown(chat.close);
   final launchProfiles = LaunchProfileCubit(
+    storage: testHomeStorage,
     repository: testLaunchProfileRepository(tmp),
-    sessionRepository: SessionRepository(rootDir: tmp.path),
+    sessionRepository: SessionRepository(rootDir: tmp.path, storage: testHomeStorage, ),
     executableResolver: () => 'claude',
   );
   addTearDown(launchProfiles.close);
@@ -155,7 +157,7 @@ Future<void> _pumpWorkspaceInfo(
           RepositoryProvider<HomeTargetController>.value(value: controller),
           RepositoryProvider<SshProfileRepository>.value(value: sshRepo),
           RepositoryProvider<SessionRepository>.value(
-            value: SessionRepository(rootDir: tmp.path),
+            value: SessionRepository(rootDir: tmp.path, storage: testHomeStorage, ),
           ),
         ],
         child: MultiBlocProvider(

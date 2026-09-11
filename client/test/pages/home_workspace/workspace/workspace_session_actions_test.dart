@@ -28,6 +28,7 @@ class _RecordingChatCubit extends ChatCubit {
     : super(
         executableResolver: () => 'true',
         automationRepository: testAutomationRepository(),
+             storage: testHomeStorage,
       );
 
   final bool failRename;
@@ -44,6 +45,8 @@ class _RecordingChatCubit extends ChatCubit {
 }
 
 class _FailingSessionRepository extends SessionRepository {
+  _FailingSessionRepository() : super(storage: buildTestHomeStorage());
+
   @override
   Future<SessionRepositoryFs> fs() async {
     throw StateError('storage unavailable');
@@ -301,7 +304,7 @@ void main() {
     final chat = _RecordingChatCubit();
     final workbench = WorkbenchCubit();
     final bridge = WorkbenchChatBridge(workbench: workbench, chat: chat);
-    final repo = SessionRepository(rootDir: '/teampilot');
+    final repo = SessionRepository(rootDir: '/teampilot', storage: testHomeStorage, );
     final workspace = Workspace(workspaceId: 'ws1', createdAt: 1);
     final session = AppSession(
       sessionId: 'sess-1',
@@ -427,7 +430,7 @@ void main() {
           'reference_session_delete_',
         );
         addTearDown(() => tmp.deleteSync(recursive: true));
-        repo = SessionRepository(rootDir: tmp.path);
+        repo = SessionRepository(rootDir: tmp.path, storage: testHomeStorage, );
         workspace = await repo.createWorkspace([WorkspaceFolder(path: '/a')]);
         session = (await repo.createSession(
           workspace.workspaceId,

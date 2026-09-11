@@ -37,7 +37,7 @@ Future<SessionGroupsCubit> _readyGroupsCubit(
   WidgetTester tester,
   List<SessionGroup> groups,
 ) async {
-  final cubit = SessionGroupsCubit();
+  final cubit = SessionGroupsCubit(storage: testHomeStorage);
   // Repository reads use real dart:io; under testWidgets they only complete
   // inside runAsync.
   await tester.runAsync(() => cubit.load(_workspace.workspaceId));
@@ -82,7 +82,7 @@ void main() {
           body: MultiRepositoryProvider(
             providers: [
               RepositoryProvider<SessionRepository>.value(
-                value: SessionRepository(),
+                value: SessionRepository(storage: testHomeStorage),
               ),
             ],
             child: MultiBlocProvider(

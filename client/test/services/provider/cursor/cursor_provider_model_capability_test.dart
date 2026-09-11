@@ -15,6 +15,7 @@ void main() {
       processRunner: (_, _, {environment, workingDirectory}) async {
         throw StateError('process should not run');
       },
+                                             storage: fakeHomeStorage(filesystem: fs),
     );
     final capability = CursorProviderCapability(modelsService: models);
 

@@ -70,7 +70,7 @@ Future<_Harness> _createHarness(
   String source = svgSource,
 }) async {
   final fs = InMemoryFilesystem()..files['/repo/icon.svg'] = source;
-  final editor = EditorCubit(fs: fs);
+  final editor = EditorCubit(fs: fs, storage: fakeHomeStorage(filesystem: fs));
   final workbench = WorkbenchCubit();
   final floating = FloatingWorkspaceCubit();
   final opener = WorkbenchEditorOpener(

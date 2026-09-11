@@ -5,6 +5,7 @@ import 'package:teampilot/models/discoverable_member.dart';
 import 'package:teampilot/services/expert_hub/expert_hub_source.dart';
 import 'package:teampilot/services/expert_hub/git_registry_expert_hub_source.dart';
 
+import '../../support/in_memory_filesystem.dart';
 import '../../support/post_frame_test_harness.dart';
 
 void main() {
@@ -42,7 +43,7 @@ void main() {
 
   test('fetches members from the registry and stamps keys', () async {
     final net = network();
-    final source = GitRegistryExpertHubSource(fetch: (uri) async => net[uri]);
+    final source = GitRegistryExpertHubSource(fetch: (uri) async => net[uri], storage: testHomeStorage, );
 
     final members = await source.fetchMembers();
     expect(members, hasLength(1));
@@ -66,6 +67,7 @@ void main() {
         calls++;
         return net[uri];
       },
+                                               storage: testHomeStorage,
     );
 
     await source.fetchMembers();
@@ -85,10 +87,54 @@ void main() {
         calls++;
         return net[uri];
       },
+                                               storage: testHomeStorage,
     );
     await source.fetchMembers();
     final before = calls;
     await source.fetchMembers(forceRefresh: true);
     expect(calls, greaterThan(before));
+  });
+
+  test('cacheDirOverride writes via injected fs at the override path', () async {
+    final net = network();
+    final fs = InMemoryFilesystem();
+    const cacheDir = '/device-local/catalog-cache/member-hub';
+    final source = GitRegistryExpertHubSource(
+      fetch: (uri) async => net[uri],
+      fs: fs,
+      cacheDirOverride: cacheDir,
+                                               storage: testHomeStorage,
+    );
+
+    final members = await source.fetchMembers();
+    expect(members, hasLength(1));
+
+    final cacheFile = fs.pathContext.join(
+      cacheDir,
+      '${kDefaultExpertHubRegistry.owner}-${kDefaultExpertHubRegistry.name}',
+      'members.json',
+    );
+    final written = fs.files[cacheFile];
+    expect(written, isNotNull, reason: 'cache must land at the override path');
+    final decoded = (jsonDecode(written!) as List)
+        .whereType<Map>()
+        .map((m) => DiscoverableMember.fromJson(m.cast<String, Object?>()))
+        .toList();
+    expect(decoded, hasLength(1));
+
+    // Cache hit on a fresh source sharing the injected fs — no re-fetch.
+    var calls = 0;
+    final replay = GitRegistryExpertHubSource(
+      fetch: (uri) async {
+        calls++;
+        return net[uri];
+      },
+      fs: fs,
+      cacheDirOverride: cacheDir,
+                                               storage: testHomeStorage,
+    );
+    final cached = await replay.fetchMembers();
+    expect(cached, hasLength(1));
+    expect(calls, 0, reason: 'cache read must go through the injected fs');
   });
 }

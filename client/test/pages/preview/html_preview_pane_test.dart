@@ -42,7 +42,7 @@ void main() {
     await fs.writeString('/repo/index.html', '<p>x</p>');
     final server = HtmlPreviewServer(fs: fs);
     final opened = <Uri>[];
-    final editor = EditorCubit(fs: fs);
+    final editor = EditorCubit(fs: fs, storage: fakeHomeStorage(filesystem: fs), );
 
     await tester.pumpWidget(
       _app(
@@ -79,7 +79,7 @@ void main() {
     final server = HtmlPreviewServer(fs: fs);
     final opened = <Uri>[];
     final openedPaths = <String>{};
-    final editor = EditorCubit(fs: fs);
+    final editor = EditorCubit(fs: fs, storage: fakeHomeStorage(filesystem: fs), );
     Widget build() => _app(
       editor: editor,
       pane: HtmlPreviewPane(
@@ -118,7 +118,7 @@ void main() {
     final fs = InMemoryFilesystem();
     await fs.writeString('/repo/index.html', '<p>x</p>');
     final server = HtmlPreviewServer(fs: fs);
-    final editor = EditorCubit(fs: fs);
+    final editor = EditorCubit(fs: fs, storage: fakeHomeStorage(filesystem: fs), );
 
     await tester.pumpWidget(
       _app(
@@ -149,7 +149,7 @@ void main() {
     await fs.writeString(r'C:\repo\index.html', '<p>cubit fs</p>');
     final server = HtmlPreviewServer(fs: fs);
     final opened = <Uri>[];
-    final editor = EditorCubit(fs: fs);
+    final editor = EditorCubit(fs: fs, storage: fakeHomeStorage(filesystem: fs), );
     String? factoryDir;
 
     await tester.pumpWidget(

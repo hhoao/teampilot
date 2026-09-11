@@ -9,7 +9,7 @@ void main() {
   tearDown(tearDownTestAppStorage);
 
   test('cubitFor returns the same instance and loads the workspace', () async {
-    final registry = WorkspaceSessionGroupsRegistry();
+    final registry = WorkspaceSessionGroupsRegistry(storage: testHomeStorage);
     addTearDown(registry.dispose);
 
     final cubit = registry.cubitFor('ws-1');
@@ -25,8 +25,9 @@ void main() {
   test('cubitFactory override is honored once per workspace', () async {
     final created = <SessionGroupsCubit>[];
     final registry = WorkspaceSessionGroupsRegistry(
+      storage: testHomeStorage,
       cubitFactory: () {
-        final cubit = SessionGroupsCubit();
+        final cubit = SessionGroupsCubit(storage: testHomeStorage);
         created.add(cubit);
         return cubit;
       },
@@ -39,7 +40,7 @@ void main() {
   });
 
   test('removeWorkspace closes the cubit; empty id throws', () {
-    final registry = WorkspaceSessionGroupsRegistry();
+    final registry = WorkspaceSessionGroupsRegistry(storage: testHomeStorage);
     addTearDown(registry.dispose);
 
     final cubit = registry.cubitFor('ws-1');

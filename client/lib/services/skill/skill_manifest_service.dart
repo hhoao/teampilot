@@ -3,7 +3,8 @@ import 'dart:convert';
 import 'package:path/path.dart' as p;
 
 import '../../models/skill.dart';
-import '../storage/app_storage.dart';
+import '../storage/app_paths.dart';
+import '../storage/home_storage.dart';
 import '../storage/remote_file_store.dart';
 
 class SkillManifestException implements Exception {
@@ -31,13 +32,16 @@ class _SkillPaths {
 }
 
 class SkillManifestService {
-  SkillManifestService({String? rootDir}) : _rootDir = rootDir;
+  SkillManifestService({required HomeStorage storage, String? rootDir})
+    : _storage = storage,
+      _rootDir = rootDir;
 
+  final HomeStorage _storage;
   final String? _rootDir;
 
   Future<_SkillPaths> _paths() async {
-    if (_rootDir == null && AppStorage.isInstalled) {
-      final snap = AppStorage.context;
+    if (_rootDir == null) {
+      final snap = _storage.context;
       if (snap.storageIsRemote && snap.remoteFileStore != null) {
         final posix = p.Context(style: p.Style.posix);
         return _SkillPaths(
@@ -48,22 +52,22 @@ class SkillManifestService {
         );
       }
     }
-    final root = _rootDir ?? AppStorage.paths.basePath;
+    final root = _rootDir ?? _storage.paths.basePath;
     final skillsDir = AppPaths.skillsDirForTeampilotRoot(root);
     return _SkillPaths(
       skillsDir: skillsDir,
       backupsDir: AppPaths.skillBackupsDirForTeampilotRoot(root),
-      manifestPath: AppStorage.fs.pathContext.join(skillsDir, 'manifest.json'),
+      manifestPath: _storage.fs.pathContext.join(skillsDir, 'manifest.json'),
     );
   }
 
   String get skillsDir {
-    final root = _rootDir ?? AppStorage.paths.basePath;
+    final root = _rootDir ?? _storage.paths.basePath;
     return AppPaths.skillsDirForTeampilotRoot(root);
   }
 
   String get backupsDir {
-    final root = _rootDir ?? AppStorage.paths.basePath;
+    final root = _rootDir ?? _storage.paths.basePath;
     return AppPaths.skillBackupsDirForTeampilotRoot(root);
   }
 
@@ -155,7 +159,7 @@ class SkillManifestService {
       }
     }
 
-    final raw = await AppStorage.fs.readString(paths.manifestPath);
+    final raw = await _storage.fs.readString(paths.manifestPath);
     if (raw == null || raw.isEmpty) {
       return <String, Object?>{'version': 1, 'skills': [], 'backups': []};
     }
@@ -180,8 +184,8 @@ class SkillManifestService {
       await store.writeFile(paths.manifestPath, text);
       return;
     }
-    await AppStorage.fs.ensureDir(paths.skillsDir);
-    await AppStorage.fs.atomicWrite(paths.manifestPath, text);
+    await _storage.fs.ensureDir(paths.skillsDir);
+    await _storage.fs.atomicWrite(paths.manifestPath, text);
   }
 
   Future<String> resolveSkillsDir() async => (await _paths()).skillsDir;

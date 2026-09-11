@@ -23,7 +23,7 @@ import 'package:teampilot/services/session/ai_history_page.dart';
 import 'package:teampilot/services/session/session_history_context.dart';
 import 'package:teampilot/services/session/session_history_context_builder.dart';
 import 'package:teampilot/services/session/session_history_pagination.dart';
-import 'package:teampilot/services/storage/app_storage.dart';
+import 'package:teampilot/services/storage/app_paths.dart';
 import 'package:teampilot/services/storage/runtime_context.dart';
 
 import '../support/fake_ai_history_registry.dart';
@@ -119,6 +119,7 @@ void main() {
         folders: session.folders,
         createdAt: 1,
       ),
+                                           usesPosixPaths: false,
     );
 
     final first = await loader.load(

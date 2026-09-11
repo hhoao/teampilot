@@ -44,9 +44,13 @@ Future<List<ComposeFileCandidate>> searchComposeFiles({
   required Filesystem fs,
   required String workspaceRoot,
   required String query,
+  required bool usesPosixPaths,
   int limit = 20,
 }) async {
-  final root = normalizeWorkspacePath(workspaceRoot).trim();
+  final root = normalizeWorkspacePath(
+    workspaceRoot,
+    usesPosixPaths: usesPosixPaths,
+  ).trim();
   if (root.isEmpty) return const [];
 
   final segments = query
@@ -99,10 +103,14 @@ Future<List<ComposeFileCandidate>> searchComposeFilesDeep({
   required Filesystem fs,
   required String workspaceRoot,
   required String query,
+  required bool usesPosixPaths,
   int limit = 20,
   int maxDepth = 4,
 }) async {
-  final root = normalizeWorkspacePath(workspaceRoot).trim();
+  final root = normalizeWorkspacePath(
+    workspaceRoot,
+    usesPosixPaths: usesPosixPaths,
+  ).trim();
   if (root.isEmpty) return const [];
 
   final needle = query.trim().toLowerCase();
@@ -111,6 +119,7 @@ Future<List<ComposeFileCandidate>> searchComposeFilesDeep({
       fs: fs,
       workspaceRoot: root,
       query: query,
+      usesPosixPaths: usesPosixPaths,
       limit: limit,
     );
   }

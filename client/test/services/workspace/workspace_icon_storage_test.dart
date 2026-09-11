@@ -10,7 +10,7 @@ void main() {
     final tmp = await Directory.systemTemp.createTemp('workspace_icon_');
     addTearDown(() => tmp.deleteSync(recursive: true));
 
-    final layout = WorkspaceLayout(teampilotRoot: tmp.path);
+    final layout = WorkspaceLayout(teampilotRoot: tmp.path, fs: LocalFilesystem());
     final workspaceDir = layout.workspaceDir('abc');
     final storage = WorkspaceIconStorage(filesystem: LocalFilesystem());
     final relative = await storage.saveBytes(
@@ -32,7 +32,7 @@ void main() {
     final tmp = await Directory.systemTemp.createTemp('workspace_icon_');
     addTearDown(() => tmp.deleteSync(recursive: true));
 
-    final layout = WorkspaceLayout(teampilotRoot: tmp.path);
+    final layout = WorkspaceLayout(teampilotRoot: tmp.path, fs: LocalFilesystem());
     final storage = WorkspaceIconStorage(filesystem: LocalFilesystem());
     final relative = await storage.saveBytes(
       workspaceDir: layout.workspaceDir('abc'),
