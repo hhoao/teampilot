@@ -74,6 +74,12 @@ class AcpProcessTransport implements AcpTransport {
     _process.stdin.write('$frame\n');
   }
 
+  /// Agent stderr, kept separate from [input] (never merged).
+  ///
+  /// Live-only broadcast stream: it does not replay chunks emitted before a
+  /// listener subscribes, and it closes once the process is closed. Subscribe
+  /// early or use the constructor's [onStderr] callback to guarantee delivery
+  /// of every chunk.
   @override
   Stream<List<int>> get stderr => _stderrController.stream;
 

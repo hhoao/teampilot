@@ -26,9 +26,10 @@ abstract class AcpTransport {
 
 /// Splits an NDJSON byte stream into individual frame strings.
 ///
-/// Buffers partial frames across chunk boundaries; multi-byte UTF-8
-/// sequences split mid-character are handled by decoding incrementally
-/// with [allowMalformed] so a partial tail never throws.
+/// Buffers partial frames across chunk boundaries. The byte stream is run
+/// through the stateful [Utf8Decoder] transformer first, so multi-byte UTF-8
+/// sequences split across chunk boundaries are carried over instead of being
+/// corrupted with U+FFFD replacement characters.
 class NdjsonDecoder {
   /// Decodes [bytes] into a stream of complete NDJSON frame strings.
   ///
@@ -36,8 +37,10 @@ class NdjsonDecoder {
   /// Empty lines are skipped.
   Stream<String> decode(Stream<Uint8List> bytes) async* {
     final buffer = StringBuffer();
-    await for (final chunk in bytes) {
-      buffer.write(utf8.decode(chunk, allowMalformed: true));
+    await for (final chunk in bytes
+        .cast<List<int>>()
+        .transform(const Utf8Decoder(allowMalformed: true))) {
+      buffer.write(chunk);
       var content = buffer.toString();
       var newline = content.indexOf('\n');
       while (newline >= 0) {

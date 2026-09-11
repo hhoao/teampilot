@@ -31,16 +31,24 @@ void main() {
       expect(await frames, ['{"a":1}', '{"b":2}']);
     });
 
-    test('decodes multi-byte UTF-8 split across chunks', () async {
+    test('decodes multi-byte UTF-8 split inside a character across chunks',
+        () async {
       final decoder = NdjsonDecoder();
       final controller = StreamController<Uint8List>();
       final frames = decoder.decode(controller.stream).toList();
       final bytes = utf8.encode('{"msg":"你好"}\n');
-      controller.add(Uint8List.fromList(bytes.sublist(0, 5)));
+      // '你' encodes to E4 BD A0 and '好' to E5 A5 BD. Split after the
+      // first byte of '你' (offset 9) and after the second byte of '好'
+      // (offset 13) so both chunk boundaries fall mid-character.
+      controller.add(Uint8List.fromList(bytes.sublist(0, 9)));
       await Future<void>.delayed(Duration.zero);
-      controller.add(Uint8List.fromList(bytes.sublist(5)));
+      controller.add(Uint8List.fromList(bytes.sublist(9, 13)));
+      await Future<void>.delayed(Duration.zero);
+      controller.add(Uint8List.fromList(bytes.sublist(13)));
       await controller.close();
-      expect(await frames, ['{"msg":"你好"}']);
+      final result = await frames;
+      expect(result, ['{"msg":"你好"}']);
+      expect(result.single.contains('\u{FFFD}'), isFalse);
     });
 
     test('skips empty lines between frames', () async {
@@ -117,8 +125,7 @@ void main() {
 
     test('start uses Process.start without a shell', () async {
       // `cat` echoes stdin, so a frame written comes back on stdout.
-      final transport = await AcpProcessTransport.start(
-        executable: 'cat',
+      final transport = await AcpProcessTransport.start(        executable: 'cat',
         args: const [],
         environment: Platform.environment,
         workingDirectory: Directory.systemTemp.path,
@@ -136,7 +143,9 @@ void main() {
       await transport.close();
       expect(echoed, '{"ping":1}');
       expect(received, ['{"ping":1}']);
-    }, timeout: const Timeout(Duration(seconds: 15)));
+    },
+        skip: Platform.isWindows ? 'spawns POSIX `cat`' : false,
+        timeout: const Timeout(Duration(seconds: 15)));
   });
 }
 
