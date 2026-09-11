@@ -244,8 +244,8 @@ void main() {
     expect(workbench.floatingLayout('ws').groups.length, 2);
     expect(find.byType(FloatingGroupHost), findsOneWidget);
     expect(find.byKey(workbenchSplitDividerKey(const <bool>[])), findsNothing);
-    // Focused group's strip is visible via the title bar and its slim header.
-    expect(find.text('Two'), findsNWidgets(2));
+    // Focused group's strip is visible via the title bar and body.
+    expect(find.text('Two'), findsOneWidget);
     expect(find.text('One'), findsNothing);
 
     final focusedGroupId = workbench.floatingLayout('ws').focusedGroupId;
@@ -267,7 +267,7 @@ void main() {
               throw StateError('No lock button found in the title-bar row'),
         );
     final titleBarLock = find.byWidget(titleBarLockElement.widget);
-    expect(find.byType(WorkbenchGroupLockButton), findsNWidgets(2));
+    expect(find.byType(WorkbenchGroupLockButton), findsOneWidget);
     expect(tester.getCenter(titleBarLock).dy, closeTo(addCenter.dy, 0.1));
     expect(tester.getCenter(titleBarLock).dy, closeTo(chromeCenter.dy, 0.1));
     expect(addCenter.dx, lessThan(tester.getCenter(titleBarLock).dx));

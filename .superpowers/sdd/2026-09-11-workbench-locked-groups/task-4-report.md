@@ -10,6 +10,8 @@ Implemented and committed as `feat(workbench): add floating group lock controls`
   group header, immediately after that group’s tab strip.
 - Added the focused group lock button to the outer floating title bar only for
   single-group or narrow rendering, after `+` and before window chrome.
+- Narrow multi-group rendering now hides the slim group header, leaving one
+  focused-group lock control in the outer title bar.
 - Wide multi-group title bars intentionally receive no global lock button.
 - Wired both locations to the live floating layout lock state and
   `WorkbenchCubit.toggleGroupLock(..., floating: true)`.
