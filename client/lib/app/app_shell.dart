@@ -1238,7 +1238,7 @@ Future<AppShell> buildAppShell({
         CliTool.opencode: OpencodeBootstrapEntry(
           modelsService: opencodeModelsService,
         ),
-      }),
+      }, storage: homeStorage),
     );
 
     final skillManifest = SkillManifestService(storage: homeStorage);
