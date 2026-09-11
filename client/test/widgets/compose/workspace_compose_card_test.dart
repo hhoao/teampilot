@@ -12,8 +12,14 @@ import 'package:teampilot/widgets/compose/compose_chrome.dart';
 import 'package:teampilot/widgets/compose/compose_file_drop_region.dart';
 import 'package:teampilot/widgets/compose/compose_trigger_field.dart';
 import 'package:teampilot/widgets/compose/workspace_compose_card.dart';
+import 'package:teampilot/services/storage/home_storage.dart';
+import '../../support/post_frame_test_harness.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 
 void main() {
+  setUp(setUpTestAppStorage);
+  tearDown(tearDownTestAppStorage);
+
   Widget pumpCard({
     required ComposeChrome chrome,
     bool deferFieldMount = false,
@@ -100,7 +106,10 @@ void main() {
   testWidgets('unbound chrome shows conversation mode label and drop region', (
     tester,
   ) async {
-    await tester.pumpWidget(pumpCard(chrome: unboundChrome));
+    await tester.pumpWidget(RepositoryProvider<HomeStorage>.value(
+        value: testHomeStorage,
+        child: pumpCard(chrome: unboundChrome),
+      ));
     await tester.pumpAndSettle();
 
     expect(find.text('Simple'), findsOneWidget);
@@ -110,7 +119,10 @@ void main() {
   testWidgets(
     'bound chrome shows identity label and model preset chip, no mode labels',
     (tester) async {
-      await tester.pumpWidget(pumpCard(chrome: boundChrome));
+      await tester.pumpWidget(RepositoryProvider<HomeStorage>.value(
+        value: testHomeStorage,
+        child: pumpCard(chrome: boundChrome),
+      ));
       await tester.pumpAndSettle();
 
       expect(find.text('Team'), findsOneWidget);
@@ -122,9 +134,10 @@ void main() {
   testWidgets('deferFieldMount true wraps field in TpDeferredMountShell', (
     tester,
   ) async {
-    await tester.pumpWidget(
-      pumpCard(chrome: unboundChrome, deferFieldMount: true),
-    );
+    await tester.pumpWidget(RepositoryProvider<HomeStorage>.value(
+        value: testHomeStorage,
+        child: pumpCard(chrome: unboundChrome, deferFieldMount: true),
+      ));
 
     expect(find.byType(TpDeferredMountShell), findsOneWidget);
     // Tests mount the child immediately (FLUTTER_TEST).
@@ -134,7 +147,10 @@ void main() {
   testWidgets('deferFieldMount false does not wrap field in deferred shell', (
     tester,
   ) async {
-    await tester.pumpWidget(pumpCard(chrome: unboundChrome));
+    await tester.pumpWidget(RepositoryProvider<HomeStorage>.value(
+        value: testHomeStorage,
+        child: pumpCard(chrome: unboundChrome),
+      ));
 
     expect(find.byType(TpDeferredMountShell), findsNothing);
     expect(find.byType(ComposeTriggerField), findsOneWidget);
@@ -147,13 +163,14 @@ void main() {
     addTearDown(controller.dispose);
     final opened = <String>[];
 
-    await tester.pumpWidget(
-      pumpCard(
+    await tester.pumpWidget(RepositoryProvider<HomeStorage>.value(
+        value: testHomeStorage,
+        child: pumpCard(
         chrome: unboundChrome,
         controller: controller,
         onOpenAtFile: opened.add,
       ),
-    );
+      ));
     await tester.pumpAndSettle();
 
     expect(find.byType(ComposeAtFileChipRow), findsOneWidget);
@@ -170,14 +187,15 @@ void main() {
   testWidgets('bound chrome does not embed launch error inside the card', (
     tester,
   ) async {
-    await tester.pumpWidget(
-      pumpCard(
+    await tester.pumpWidget(RepositoryProvider<HomeStorage>.value(
+        value: testHomeStorage,
+        child: pumpCard(
         chrome: const BoundComposeChrome(
           identityLabel: 'Team',
           launchError: 'Something went wrong',
         ),
       ),
-    );
+      ));
     await tester.pumpAndSettle();
 
     // Launch errors render above the card (compose section slot), not inside.
@@ -191,9 +209,10 @@ void main() {
     final controller = TextEditingController();
     addTearDown(controller.dispose);
 
-    await tester.pumpWidget(
-      pumpCard(chrome: unboundChrome, controller: controller),
-    );
+    await tester.pumpWidget(RepositoryProvider<HomeStorage>.value(
+        value: testHomeStorage,
+        child: pumpCard(chrome: unboundChrome, controller: controller),
+      ));
     await tester.pumpAndSettle();
 
     expect(find.byIcon(Icons.mic_none_outlined), findsOneWidget);
@@ -213,14 +232,15 @@ void main() {
       addTearDown(controller.dispose);
       var submitted = false;
 
-      await tester.pumpWidget(
-        pumpCard(
+      await tester.pumpWidget(RepositoryProvider<HomeStorage>.value(
+        value: testHomeStorage,
+        child: pumpCard(
           chrome: unboundChrome,
           controller: controller,
           canSubmit: true,
           onSubmit: () => submitted = true,
         ),
-      );
+      ));
       await tester.pumpAndSettle();
 
       controller.text = 'hello';
@@ -238,7 +258,10 @@ void main() {
     final clip = ComposeClip();
     addTearDown(clip.dispose);
 
-    await tester.pumpWidget(pumpCard(chrome: unboundChrome, clip: clip));
+    await tester.pumpWidget(RepositoryProvider<HomeStorage>.value(
+        value: testHomeStorage,
+        child: pumpCard(chrome: unboundChrome, clip: clip),
+      ));
     expect(find.byType(ComposePasteClipBar), findsNothing);
 
     clip.setPasted('a\nb\nc');
@@ -255,7 +278,10 @@ void main() {
     final clip = ComposeClip();
     addTearDown(clip.dispose);
 
-    await tester.pumpWidget(pumpCard(chrome: unboundChrome, clip: clip));
+    await tester.pumpWidget(RepositoryProvider<HomeStorage>.value(
+        value: testHomeStorage,
+        child: pumpCard(chrome: unboundChrome, clip: clip),
+      ));
     clip.setPasted('see @lib/main.dart inside the block');
     await tester.pump();
 
@@ -270,9 +296,10 @@ void main() {
       addTearDown(controller.dispose);
       addTearDown(clip.dispose);
 
-      await tester.pumpWidget(
-        pumpCard(chrome: unboundChrome, controller: controller, clip: clip),
-      );
+      await tester.pumpWidget(RepositoryProvider<HomeStorage>.value(
+        value: testHomeStorage,
+        child: pumpCard(chrome: unboundChrome, controller: controller, clip: clip),
+      ));
 
       final longText = List.generate(30, (i) => 'line $i').join('\n');
       controller.value = TextEditingValue(

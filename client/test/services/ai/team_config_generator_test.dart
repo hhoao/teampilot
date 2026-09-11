@@ -4,6 +4,7 @@ import 'package:teampilot/models/team_config.dart';
 import 'package:teampilot/services/ai/team_config_draft.dart';
 import 'package:teampilot/services/ai/team_config_generator.dart';
 import 'package:teampilot/utils/team/team_member_naming.dart';
+import '../../support/post_frame_test_harness.dart';
 
 const _setting = AiFeatureSetting(
   cli: CliTool.claude,
@@ -12,10 +13,14 @@ const _setting = AiFeatureSetting(
 );
 
 void main() {
+  setUp(setUpTestAppStorage);
+  tearDown(tearDownTestAppStorage);
+
   test('generateStreaming reports rising sub-1.0 progress and a draft', () async {
     String? seenPrompt;
     final progress = <double>[];
     final gen = TeamConfigGenerator(
+      storage: testHomeStorage,
       runHeadlessStream:
           ({required setting, required prompt, required onEvent}) async {
             seenPrompt = prompt;
@@ -46,6 +51,7 @@ void main() {
   test('returns a parsed draft on first success', () async {
     String? seenPrompt;
     final gen = TeamConfigGenerator(
+      storage: testHomeStorage,
       runHeadless:
           ({required setting, required prompt, required expectJson}) async {
             seenPrompt = prompt;
@@ -69,6 +75,7 @@ void main() {
   test('mixed mode builds the mixed prompt', () async {
     String? seenPrompt;
     final gen = TeamConfigGenerator(
+      storage: testHomeStorage,
       runHeadless:
           ({required setting, required prompt, required expectJson}) async {
             seenPrompt = prompt;
@@ -87,6 +94,7 @@ void main() {
   test('retries once on bad JSON then succeeds', () async {
     var calls = 0;
     final gen = TeamConfigGenerator(
+      storage: testHomeStorage,
       runHeadless:
           ({required setting, required prompt, required expectJson}) async {
             calls++;
@@ -109,6 +117,7 @@ void main() {
 
   test('throws after two bad JSON attempts', () async {
     final gen = TeamConfigGenerator(
+      storage: testHomeStorage,
       runHeadless:
           ({required setting, required prompt, required expectJson}) async =>
               'still garbage',

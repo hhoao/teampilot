@@ -64,7 +64,12 @@ class MarkdownNetworkImageStore {
   static HomeStorage? storageHome;
 
   static Directory? _defaultCacheDir() {
-    final storage = storageHome ?? HomeStorage.nativeDefault();
+    final storage =
+        storageHome ??
+        (throw StateError(
+          'MarkdownNetworkImageStore.storageHome not set; app bootstrap must '
+          'assign it before network images load.',
+        ));
     try {
       return Directory(
         p.join(storage.paths.basePath, 'cache', 'markdown-images'),

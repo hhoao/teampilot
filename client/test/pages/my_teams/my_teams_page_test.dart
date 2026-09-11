@@ -14,6 +14,7 @@ import 'package:teampilot/services/hub_publish/hub_publish_record_store.dart';
 
 import '../../support/in_memory_filesystem.dart';
 import '../../support/post_frame_test_harness.dart';
+import 'package:teampilot/services/storage/home_storage.dart';
 
 const _roster = [
   TeamRosterSlot(id: 'lead', expertKey: 'teampilot/builtin/team-lead'),
@@ -98,8 +99,9 @@ void main() {
       if (!cubit.isClosed) await cubit.close();
     });
 
-    await tester.pumpWidget(
-      MaterialApp(
+    await tester.pumpWidget(RepositoryProvider<HomeStorage>.value(
+        value: testHomeStorage,
+        child: MaterialApp(
         localizationsDelegates: AppLocalizations.localizationsDelegates,
         supportedLocales: AppLocalizations.supportedLocales,
         home: BlocProvider<LaunchProfileCubit>.value(
@@ -107,7 +109,7 @@ void main() {
           child: const Scaffold(body: MyTeamsPage()),
         ),
       ),
-    );
+      ));
     await tester.pumpAndSettle();
 
     expect(find.text('Alpha Squad'), findsOneWidget);
@@ -132,8 +134,9 @@ void main() {
     });
     final openedIds = <String>[];
 
-    await tester.pumpWidget(
-      MaterialApp(
+    await tester.pumpWidget(RepositoryProvider<HomeStorage>.value(
+        value: testHomeStorage,
+        child: MaterialApp(
         localizationsDelegates: AppLocalizations.localizationsDelegates,
         supportedLocales: AppLocalizations.supportedLocales,
         home: BlocProvider<LaunchProfileCubit>.value(
@@ -143,7 +146,7 @@ void main() {
           ),
         ),
       ),
-    );
+      ));
     await tester.pumpAndSettle();
 
     await tester.tap(find.text('Beta Crew'));
@@ -163,8 +166,9 @@ void main() {
     });
     final openedIds = <String>[];
 
-    await tester.pumpWidget(
-      MaterialApp(
+    await tester.pumpWidget(RepositoryProvider<HomeStorage>.value(
+        value: testHomeStorage,
+        child: MaterialApp(
         localizationsDelegates: AppLocalizations.localizationsDelegates,
         supportedLocales: AppLocalizations.supportedLocales,
         home: BlocProvider<LaunchProfileCubit>.value(
@@ -177,7 +181,7 @@ void main() {
           ),
         ),
       ),
-    );
+      ));
     await tester.pumpAndSettle();
 
     expect(openedIds, ['team-alpha']);
@@ -192,8 +196,9 @@ void main() {
     });
     final openedIds = <String>[];
 
-    await tester.pumpWidget(
-      MaterialApp.router(
+    await tester.pumpWidget(RepositoryProvider<HomeStorage>.value(
+        value: testHomeStorage,
+        child: MaterialApp.router(
         localizationsDelegates: AppLocalizations.localizationsDelegates,
         supportedLocales: AppLocalizations.supportedLocales,
         routerConfig: GoRouter(
@@ -211,7 +216,7 @@ void main() {
           ],
         ),
       ),
-    );
+      ));
     await tester.pumpAndSettle();
 
     expect(openedIds, ['team-beta']);
@@ -240,8 +245,9 @@ void main() {
       ),
     );
 
-    await tester.pumpWidget(
-      MaterialApp(
+    await tester.pumpWidget(RepositoryProvider<HomeStorage>.value(
+        value: testHomeStorage,
+        child: MaterialApp(
         localizationsDelegates: AppLocalizations.localizationsDelegates,
         supportedLocales: AppLocalizations.supportedLocales,
         home: BlocProvider<LaunchProfileCubit>.value(
@@ -251,7 +257,7 @@ void main() {
           ),
         ),
       ),
-    );
+      ));
     await tester.pumpAndSettle();
 
     expect(find.byKey(const Key('hub-publish-badge-team-team-alpha')), findsOneWidget);

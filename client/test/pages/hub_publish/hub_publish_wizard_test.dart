@@ -16,6 +16,9 @@ import 'package:teampilot/services/hub_publish/hub_publish_record_store.dart';
 import 'package:teampilot/services/hub_publish/hub_publish_service.dart';
 import 'package:teampilot/services/team_hub/team_hub_source.dart';
 import 'package:teampilot/theme/app_typography_scale.dart';
+import 'package:teampilot/services/storage/home_storage.dart';
+import '../../support/post_frame_test_harness.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 
 class _MemoryKv implements SecureKeyValueStore {
   final map = <String, String>{};
@@ -134,8 +137,9 @@ Future<void> _pumpWizard(
   List<DiscoverableMember> remapCandidates = const [],
 }) async {
   final theme = ThemeData(useMaterial3: true);
-  await tester.pumpWidget(
-    MaterialApp(
+  await tester.pumpWidget(RepositoryProvider<HomeStorage>.value(
+        value: testHomeStorage,
+        child: MaterialApp(
       localizationsDelegates: AppLocalizations.localizationsDelegates,
       supportedLocales: AppLocalizations.supportedLocales,
       locale: const Locale('en'),
@@ -175,7 +179,7 @@ Future<void> _pumpWizard(
         ),
       ),
     ),
-  );
+      ));
   await tester.tap(find.byKey(const Key('open-wizard')));
   await tester.pumpAndSettle();
 }
@@ -194,6 +198,9 @@ Future<void> _enterPatViaAdvancedPanel(WidgetTester tester, String token) async 
 }
 
 void main() {
+  setUp(setUpTestAppStorage);
+  tearDown(tearDownTestAppStorage);
+
   late GithubCredentialsStore credentials;
   late FakeHubPublishService fakeApi;
 

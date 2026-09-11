@@ -53,6 +53,7 @@ import '../support/desktop_app_harness.dart';
 import '../support/idle_run_platform.dart';
 import '../support/in_memory_filesystem.dart';
 import '../support/post_frame_test_harness.dart';
+import 'package:teampilot/services/storage/home_storage.dart';
 
 String _executable() => 'flashskyai';
 
@@ -74,10 +75,18 @@ Widget _chatPageShell({bool wrapCliRegistry = false}) {
     workspaceId: 'personal-test',
     tabScopeId: 'personal-test',
   );
-  if (!wrapCliRegistry) return shell;
+  if (!wrapCliRegistry) {
+    return RepositoryProvider<HomeStorage>.value(
+      value: testHomeStorage,
+      child: shell,
+    );
+  }
   return CliToolRegistryScope(
     registry: CliToolRegistry.builtIn(),
-    child: shell,
+    child: RepositoryProvider<HomeStorage>.value(
+      value: testHomeStorage,
+      child: shell,
+    ),
   );
 }
 
@@ -128,6 +137,9 @@ void _openSessionTab(
 }
 
 void main() {
+  setUp(setUpTestAppStorage);
+  tearDown(tearDownTestAppStorage);
+
   setUp(() {
     setUpTestAppStorage();
   });
@@ -254,6 +266,7 @@ void main() {
           supportedLocales: AppLocalizations.supportedLocales,
           home: MultiRepositoryProvider(
             providers: [
+            RepositoryProvider<HomeStorage>.value(value: testHomeStorage),
               RepositoryProvider<GitRepoStore>(create: (_) => GitRepoStore()),
               RepositoryProvider<WorkspaceFileTreeStore>(
                 create: (_) => WorkspaceFileTreeStore(),

@@ -34,15 +34,15 @@ import '../opencode/opencode_tool.dart';
 
 void registerBuiltInCliTools(
   CliToolRegistry registry, {
-  CliBootstrap bootstrap = const CliBootstrap({}),
+  CliBootstrap? bootstrap,
 }) {
-  final claudeEntry = bootstrap.entry<ClaudeBootstrapEntry>(CliTool.claude);
-  final codexEntry = bootstrap.entry<CodexBootstrapEntry>(CliTool.codex);
-  final opencodeEntry = bootstrap.entry<OpencodeBootstrapEntry>(
+  final claudeEntry = bootstrap?.entry<ClaudeBootstrapEntry>(CliTool.claude);
+  final codexEntry = bootstrap?.entry<CodexBootstrapEntry>(CliTool.codex);
+  final opencodeEntry = bootstrap?.entry<OpencodeBootstrapEntry>(
     CliTool.opencode,
   );
-  final cursorEntry = bootstrap.entry<CursorBootstrapEntry>(CliTool.cursor);
-  final storage = bootstrap.storage;
+  final cursorEntry = bootstrap?.entry<CursorBootstrapEntry>(CliTool.cursor);
+  final storage = bootstrap?.storage;
 
   registry.register(
     ClaudeCliTool(

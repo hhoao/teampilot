@@ -208,7 +208,8 @@ class _NarrowHarness {
         supportedLocales: AppLocalizations.supportedLocales,
         home: MultiRepositoryProvider(
           providers: [
-            RepositoryProvider<GitRepoStore>(create: (_) => GitRepoStore()),
+            
+            RepositoryProvider<HomeStorage>.value(value: testHomeStorage),RepositoryProvider<GitRepoStore>(create: (_) => GitRepoStore()),
             RepositoryProvider<WorkspaceFileTreeStore>(
               create: (_) => WorkspaceFileTreeStore(),
             ),

@@ -17,6 +17,8 @@ import 'package:teampilot/utils/ui/app_keys.dart';
 import 'package:teampilot/widgets/right_tools/file_tree_panel.dart';
 import 'package:teampilot/widgets/right_tools/right_tools_lifecycle.dart';
 import '../../support/test_runtime_context.dart';
+import 'package:teampilot/services/storage/home_storage.dart';
+import '../../support/post_frame_test_harness.dart';
 
 // Same enhanced fake as Task 1 (stat honors notFound; ensureDir/writeString
 // mutate state so create flows are observable).
@@ -200,6 +202,9 @@ Future<void> _runOnDesktop(
 }
 
 void main() {
+  setUp(setUpTestAppStorage);
+  tearDown(tearDownTestAppStorage);
+
   testWidgets('blank-area right-click shows blank menu (single root)', (
     tester,
   ) async {
@@ -212,7 +217,10 @@ void main() {
         }),
       );
       await cubit.setRoot(p.normalize('/proj'));
-      await tester.pumpWidget(_panel(cubit: cubit, workContext: testRuntimeContext('/home')));
+      await tester.pumpWidget(RepositoryProvider<HomeStorage>.value(
+        value: testHomeStorage,
+        child: _panel(cubit: cubit, workContext: testRuntimeContext('/home')),
+      ));
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 50));
 
@@ -237,9 +245,10 @@ void main() {
         }),
       );
       await cubit.setRoot(p.normalize('/proj'));
-      await tester.pumpWidget(
-        _panel(cubit: cubit, workContext: testRuntimeContext('/home')),
-      );
+      await tester.pumpWidget(RepositoryProvider<HomeStorage>.value(
+        value: testHomeStorage,
+        child: _panel(cubit: cubit, workContext: testRuntimeContext('/home')),
+      ));
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 50));
 
@@ -262,7 +271,10 @@ void main() {
         }),
       );
       await cubit.setRoot(p.normalize('/proj'));
-      await tester.pumpWidget(_panel(cubit: cubit, workContext: testRuntimeContext('/home')));
+      await tester.pumpWidget(RepositoryProvider<HomeStorage>.value(
+        value: testHomeStorage,
+        child: _panel(cubit: cubit, workContext: testRuntimeContext('/home')),
+      ));
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 50));
 
@@ -285,7 +297,10 @@ void main() {
         }),
       );
       await cubit.setRoot(p.normalize('/proj'));
-      await tester.pumpWidget(_panel(cubit: cubit, workContext: testRuntimeContext('/home')));
+      await tester.pumpWidget(RepositoryProvider<HomeStorage>.value(
+        value: testHomeStorage,
+        child: _panel(cubit: cubit, workContext: testRuntimeContext('/home')),
+      ));
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 50));
 
@@ -312,7 +327,10 @@ void main() {
         }),
       );
       await cubit.setRoot(p.normalize('/proj'));
-      await tester.pumpWidget(_panel(cubit: cubit, workContext: testRuntimeContext('/home')));
+      await tester.pumpWidget(RepositoryProvider<HomeStorage>.value(
+        value: testHomeStorage,
+        child: _panel(cubit: cubit, workContext: testRuntimeContext('/home')),
+      ));
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 50));
 
@@ -339,7 +357,10 @@ void main() {
         }),
       );
       await cubit.setRoots([a, b]);
-      await tester.pumpWidget(_panel(cubit: cubit, workContext: testRuntimeContext('/home')));
+      await tester.pumpWidget(RepositoryProvider<HomeStorage>.value(
+        value: testHomeStorage,
+        child: _panel(cubit: cubit, workContext: testRuntimeContext('/home')),
+      ));
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 50));
 

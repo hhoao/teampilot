@@ -10,8 +10,14 @@ import 'package:teampilot/services/compose/compose_file_drop_ingestor.dart';
 import 'package:teampilot/widgets/compose/compose_chrome.dart';
 import 'package:teampilot/widgets/compose/compose_file_drop_region.dart';
 import 'package:teampilot/widgets/compose/workspace_compose_card.dart';
+import 'package:teampilot/services/storage/home_storage.dart';
+import '../../support/post_frame_test_harness.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 
 void main() {
+  setUp(setUpTestAppStorage);
+  tearDown(tearDownTestAppStorage);
+
   group('shouldSwitchToTerminalAfterChatSubmit', () {
     test('false keeps Chat', () {
       expect(shouldSwitchToTerminalAfterChatSubmit(false), isFalse);
@@ -60,8 +66,9 @@ void main() {
       addTearDown(textController.dispose);
       addTearDown(focusNode.dispose);
 
-      await tester.pumpWidget(
-        MaterialApp(
+      await tester.pumpWidget(RepositoryProvider<HomeStorage>.value(
+        value: testHomeStorage,
+        child: MaterialApp(
           home: Scaffold(
             body: WorkspaceComposeCard(
               controller: textController,
@@ -102,7 +109,7 @@ void main() {
             ),
           ),
         ),
-      );
+      ));
 
       expect(find.byType(ComposeFileDropRegion), findsOneWidget);
 

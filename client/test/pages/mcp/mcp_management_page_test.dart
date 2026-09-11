@@ -14,6 +14,7 @@ import 'package:teampilot/services/mcp/mcp_catalog_service.dart';
 
 import '../../support/in_memory_filesystem.dart';
 import '../../support/post_frame_test_harness.dart';
+import 'package:teampilot/services/storage/home_storage.dart';
 
 void main() {
   late Filesystem fs;
@@ -46,8 +47,9 @@ void main() {
 
   Future<void> pumpListPage(WidgetTester tester) async {
     final scheme = ColorScheme.fromSeed(seedColor: Colors.indigo);
-    await tester.pumpWidget(
-      MaterialApp(
+    await tester.pumpWidget(RepositoryProvider<HomeStorage>.value(
+        value: testHomeStorage,
+        child: MaterialApp(
         localizationsDelegates: AppLocalizations.localizationsDelegates,
         supportedLocales: AppLocalizations.supportedLocales,
         home: TpTheme(
@@ -63,7 +65,7 @@ void main() {
           ),
         ),
       ),
-    );
+      ));
     await tester.pumpAndSettle();
   }
 

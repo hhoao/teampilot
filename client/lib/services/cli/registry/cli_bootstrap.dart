@@ -17,15 +17,14 @@ abstract interface class CliBootstrapEntry {}
 /// to the map in [AppShell]; no changes needed here.
 @immutable
 class CliBootstrap {
-  const CliBootstrap(this._entries, {this.storage});
+  const CliBootstrap(this._entries, {required this.storage});
 
   final Map<CliTool, CliBootstrapEntry> _entries;
 
   /// Home control-plane storage threaded into capabilities (headless
-  /// provisioning, provider credential actions, …) when the registry is
-  /// (re-)configured. Null for the pre-bootstrap default registration, whose
-  /// capabilities only serve launch-arg assembly.
-  final HomeStorage? storage;
+  /// provisioning, provider credential actions, …). Required by design so a
+  /// miswired registry cannot compile.
+  final HomeStorage storage;
 
   /// Returns the [CliBootstrapEntry] for [cli] cast to [T], or `null`.
   T? entry<T extends CliBootstrapEntry>(CliTool cli) {

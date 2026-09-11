@@ -8,8 +8,14 @@ import 'package:teampilot/services/compose/compose_file_drop_ingestor.dart';
 import 'package:teampilot/widgets/compose/compose_chrome.dart';
 import 'package:teampilot/widgets/compose/compose_trigger_field.dart';
 import 'package:teampilot/widgets/compose/workspace_compose_card.dart';
+import 'package:teampilot/services/storage/home_storage.dart';
+import '../../support/post_frame_test_harness.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 
 void main() {
+  setUp(setUpTestAppStorage);
+  tearDown(tearDownTestAppStorage);
+
   Widget pumpComposeCard({
     required String? expertChipLabel,
     ValueChanged<Object?>? onExpertChipSelected,
@@ -81,12 +87,13 @@ void main() {
   }
 
   testWidgets('expert chip visible in simple mode', (tester) async {
-    await tester.pumpWidget(
-      pumpComposeCard(
+    await tester.pumpWidget(RepositoryProvider<HomeStorage>.value(
+        value: testHomeStorage,
+        child: pumpComposeCard(
         expertChipLabel: 'No expert',
         onExpertChipSelected: (_) {},
       ),
-    );
+      ));
     await tester.pumpAndSettle();
 
     expect(find.text('No expert'), findsOneWidget);
@@ -96,7 +103,10 @@ void main() {
   testWidgets('defers compose field behind TpDeferredMountShell', (
     tester,
   ) async {
-    await tester.pumpWidget(pumpComposeCard(expertChipLabel: null));
+    await tester.pumpWidget(RepositoryProvider<HomeStorage>.value(
+        value: testHomeStorage,
+        child: pumpComposeCard(expertChipLabel: null),
+      ));
 
     expect(find.byType(TpDeferredMountShell), findsOneWidget);
     // Tests mount the child immediately (FLUTTER_TEST).
@@ -104,9 +114,10 @@ void main() {
   });
 
   testWidgets('expert chip hidden in team mode', (tester) async {
-    await tester.pumpWidget(
-      pumpComposeCard(expertChipLabel: null, onExpertChipSelected: null),
-    );
+    await tester.pumpWidget(RepositoryProvider<HomeStorage>.value(
+        value: testHomeStorage,
+        child: pumpComposeCard(expertChipLabel: null, onExpertChipSelected: null),
+      ));
     await tester.pumpAndSettle();
 
     expect(find.text('No expert'), findsNothing);

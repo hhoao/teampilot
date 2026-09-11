@@ -19,6 +19,7 @@ import 'package:teampilot/repositories/keybinding_repository.dart';
 import 'package:teampilot/widgets/session_working_spinner.dart';
 
 import '../../support/post_frame_test_harness.dart';
+import 'package:teampilot/services/storage/home_storage.dart';
 
 final _workspace = Workspace(
   workspaceId: 'ws-1',
@@ -95,7 +96,8 @@ void main() {
         home: Scaffold(
           body: MultiRepositoryProvider(
             providers: [
-              RepositoryProvider<SessionRepository>.value(
+              
+            RepositoryProvider<HomeStorage>.value(value: testHomeStorage),RepositoryProvider<SessionRepository>.value(
                 value: sessionRepository,
               ),
             ],

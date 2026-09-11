@@ -52,6 +52,7 @@ import 'package:teampilot/widgets/compose/compose_trigger_field.dart';
 
 import '../../support/in_memory_filesystem.dart';
 import '../../support/post_frame_test_harness.dart';
+import 'package:teampilot/services/storage/home_storage.dart';
 
 /// `SessionChatMessageArea` reads the non-nullable `sessionScrollAnchors`
 /// field, so the mock must provide a real empty map instead of mocktail's
@@ -266,7 +267,8 @@ void main() {
     await tester.pumpWidget(
       MultiRepositoryProvider(
         providers: [
-          RepositoryProvider<CommandBus>(create: (_) => CommandBus()),
+          
+            RepositoryProvider<HomeStorage>.value(value: testHomeStorage),RepositoryProvider<CommandBus>(create: (_) => CommandBus()),
         ],
         child: MultiBlocProvider(providers: [
           BlocProvider<ChatCubit>.value(value: chatCubit),

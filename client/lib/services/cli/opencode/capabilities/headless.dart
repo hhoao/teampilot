@@ -170,5 +170,10 @@ final class OpencodeHeadlessCapability
     return {...config, 'provider': providers};
   }
 
-  HomeStorage _missingHomeStorage() => HomeStorage.nativeDefault();
+  HomeStorage _missingHomeStorage() {
+    throw StateError(
+      'OpencodeHeadlessCapability was constructed without HomeStorage; storage use requires the '
+      'registry configured with CliBootstrap(storage: …).',
+    );
+  }
 }

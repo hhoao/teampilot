@@ -5,8 +5,14 @@ import 'package:teampilot/models/config_bundle.dart';
 import 'package:teampilot/services/compose/compose_file_drop_ingestor.dart';
 import 'package:teampilot/widgets/compose/compose_chrome.dart';
 import 'package:teampilot/widgets/compose/workspace_compose_card.dart';
+import 'package:teampilot/services/storage/home_storage.dart';
+import '../../support/post_frame_test_harness.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 
 void main() {
+  setUp(setUpTestAppStorage);
+  tearDown(tearDownTestAppStorage);
+
   Future<void> pumpCompose({
     required WidgetTester tester,
     required bool showStop,
@@ -17,8 +23,9 @@ void main() {
     addTearDown(textController.dispose);
     addTearDown(focusNode.dispose);
 
-    await tester.pumpWidget(
-      MaterialApp(
+    await tester.pumpWidget(RepositoryProvider<HomeStorage>.value(
+        value: testHomeStorage,
+        child: MaterialApp(
         localizationsDelegates: AppLocalizations.localizationsDelegates,
         supportedLocales: AppLocalizations.supportedLocales,
         home: Scaffold(
@@ -58,7 +65,7 @@ void main() {
           ),
         ),
       ),
-    );
+      ));
     await tester.pumpAndSettle();
   }
 
@@ -109,8 +116,9 @@ void main() {
     final focusNode = FocusNode();
     addTearDown(focusNode.dispose);
 
-    await tester.pumpWidget(
-      MaterialApp(
+    await tester.pumpWidget(RepositoryProvider<HomeStorage>.value(
+        value: testHomeStorage,
+        child: MaterialApp(
         localizationsDelegates: AppLocalizations.localizationsDelegates,
         supportedLocales: AppLocalizations.supportedLocales,
         home: Scaffold(
@@ -148,7 +156,7 @@ void main() {
           ),
         ),
       ),
-    );
+      ));
     await tester.pumpAndSettle();
 
     expect(find.byIcon(Icons.arrow_upward_rounded), findsOneWidget);

@@ -30,14 +30,14 @@ class TeamConfigGenerator {
     TeamHeadlessRunner? runHeadless,
     TeamHeadlessStreamRunner? runHeadlessStream,
     HeadlessAiService? service,
-    HomeStorage? storage,
+    required HomeStorage storage,
   }) : _run =
            runHeadless ??
            (({required setting, required prompt, required expectJson}) async {
              final svc =
                  service ??
                  HeadlessAiService(
-                   storage: storage ?? HomeStorage.nativeDefault(),
+                   storage: storage,
                  );
              final r = await svc.run(
                setting: setting,
@@ -52,7 +52,7 @@ class TeamConfigGenerator {
              final svc =
                  service ??
                  HeadlessAiService(
-                   storage: storage ?? HomeStorage.nativeDefault(),
+                   storage: storage,
                  );
              final r = await svc.runStreaming(
                setting: setting,

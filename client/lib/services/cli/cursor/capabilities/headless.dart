@@ -176,5 +176,10 @@ final class CursorHeadlessCapability
   /// Tolerant default for default-registered capabilities (tests /
   /// arg-assembly-only use); production configures real storage via
   /// CliBootstrap.
-  HomeStorage _missingHomeStorage() => HomeStorage.nativeDefault();
+  HomeStorage _missingHomeStorage() {
+    throw StateError(
+      'CursorHeadlessCapability was constructed without HomeStorage; storage use requires the '
+      'registry configured with CliBootstrap(storage: …).',
+    );
+  }
 }

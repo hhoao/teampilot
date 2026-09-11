@@ -28,6 +28,7 @@ import 'package:teampilot/utils/team/team_member_naming.dart';
 
 import '../../support/in_memory_filesystem.dart';
 import '../../support/post_frame_test_harness.dart';
+import 'package:teampilot/services/storage/home_storage.dart';
 
 class _FakeSource extends CompositeExpertHubSource {
   _FakeSource(this.members)
@@ -151,7 +152,8 @@ void main() {
       await tester.pumpWidget(
         MultiBlocProvider(
           providers: [
-            BlocProvider.value(value: launchCubit),
+            
+        RepositoryProvider<HomeStorage>.value(value: testHomeStorage),BlocProvider.value(value: launchCubit),
             BlocProvider.value(value: expertHubCubit),
             BlocProvider.value(value: cliPresetsCubit),
             BlocProvider.value(value: providerCubit),

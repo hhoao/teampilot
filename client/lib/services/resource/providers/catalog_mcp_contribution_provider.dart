@@ -68,8 +68,15 @@ final class CatalogMcpContributionProvider
 
   bool get hasValidContributions => _hasValidContributions;
 
-  McpRepository _mcpRepository() =>
-      McpRepository(storage: _storage ?? HomeStorage.nativeDefault());
+  McpRepository _mcpRepository() => McpRepository(
+    storage:
+        _storage ??
+        (throw StateError(
+          'CatalogMcpContributionProvider constructed without HomeStorage; '
+          'catalog MCP contributions require the home storage threaded from '
+          'McpRegistryService.',
+        )),
+  );
 
   @override
   Future<Iterable<McpContribution>> provide(McpProviderContext context) async {

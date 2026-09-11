@@ -117,44 +117,4 @@ class HomeStorage {
     );
   }
 
-  /// Native fallback for default-constructed CLI capabilities (registry built
-  /// without a `CliBootstrap`, i.e. tests): mirrors the pre-migration tolerant
-  /// `AppStorage`-unbound behavior instead of throwing on the launch path.
-  /// Production always threads a real storage via `CliBootstrap.storage`;
-  /// reaching this in production is a wiring bug — logged once per process.
-  static HomeStorage nativeDefault() => _nativeDefault ??= _buildDefault();
-
-  static HomeStorage? _nativeDefault;
-
-  static HomeStorage _buildDefault() {
-    appLogger.w(
-      '[storage] HomeStorage.nativeDefault() used — a CLI capability was '
-      'constructed without storage; production wiring should thread '
-      'CliBootstrap.storage.',
-    );
-    final root = _unboundNativeRoot;
-    return HomeStorage(
-      RuntimeContext(
-        target: RuntimeTarget.local(),
-        filesystem: LocalFilesystem(),
-        home: root,
-        cwd: root,
-        appDataRoot: root,
-        paths: AppPaths(root),
-      ),
-    );
-  }
-
-  /// System-temp root for the native default: a stray unbound write stays out
-  /// of the real home. Only [nativeDefault] (tests / miswired construction)
-  /// reaches this.
-  static final String _unboundNativeRoot = () {
-    final root = p.join(Directory.systemTemp.path, 'teampilot-unbound-home');
-    try {
-      Directory(root).createSync(recursive: true);
-    } on Object {
-      // Read-only temp / sandboxed host: the path still works for joins.
-    }
-    return root;
-  }();
 }

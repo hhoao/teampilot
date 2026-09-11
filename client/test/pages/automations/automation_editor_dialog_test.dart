@@ -34,6 +34,7 @@ import '../../support/post_frame_test_harness.dart';
 import '../../support/stub_member_roster_service.dart';
 import 'package:teampilot/services/expert_hub/local_expert_store.dart';
 import 'package:teampilot/services/storage/app_paths.dart';
+import 'package:teampilot/services/storage/home_storage.dart';
 
 const _testPresetId = 'preset-test';
 
@@ -204,8 +205,9 @@ void main() {
     final setup = testAutomationSetup();
     addTearDown(setup.cubit.close);
 
-    await tester.pumpWidget(
-      _host(
+    await tester.pumpWidget(RepositoryProvider<HomeStorage>.value(
+        value: testHomeStorage,
+        child: _host(
         cubit: setup.cubit,
         child: AutomationEditorDialog(
           kind: AutomationEditorKind.scheduledMessage,
@@ -214,7 +216,7 @@ void main() {
           defaultName: 'Daily ping',
         ),
       ),
-    );
+      ));
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 200));
 
@@ -245,15 +247,16 @@ void main() {
     addTearDown(cliPresetsCubit.close);
     addTearDown(sessionPreferencesCubit.close);
 
-    await tester.pumpWidget(
-      _host(
+    await tester.pumpWidget(RepositoryProvider<HomeStorage>.value(
+        value: testHomeStorage,
+        child: _host(
         cubit: setup.cubit,
         chatCubit: chatCubit,
         cliPresetsCubit: cliPresetsCubit,
         sessionPreferencesCubit: sessionPreferencesCubit,
         child: const AutomationEditorDialog(workspaceId: 'ws1'),
       ),
-    );
+      ));
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 200));
 
@@ -284,8 +287,9 @@ void main() {
     addTearDown(chatCubit.close);
     addTearDown(launchProfileCubit.close);
 
-    await tester.pumpWidget(
-      _host(
+    await tester.pumpWidget(RepositoryProvider<HomeStorage>.value(
+        value: testHomeStorage,
+        child: _host(
         cubit: setup.cubit,
         chatCubit: chatCubit,
         launchProfileCubit: launchProfileCubit,
@@ -299,7 +303,7 @@ void main() {
           ),
         ),
       ),
-    );
+      ));
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 200));
 
@@ -333,8 +337,9 @@ void main() {
       sandbox: LaunchSandboxPolicy.readOnly,
       hookTrust: LaunchHookTrustPolicy.trustedOnly,
     );
-    await tester.pumpWidget(
-      _host(
+    await tester.pumpWidget(RepositoryProvider<HomeStorage>.value(
+        value: testHomeStorage,
+        child: _host(
         cubit: setup.cubit,
         chatCubit: chatCubit,
         cliPresetsCubit: cliPresetsCubit,
@@ -347,7 +352,7 @@ void main() {
           ).copyWith(launchSecurityPolicy: policy),
         ),
       ),
-    );
+      ));
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 200));
 
@@ -363,8 +368,9 @@ void main() {
     final setup = testAutomationSetup();
     addTearDown(setup.cubit.close);
 
-    await tester.pumpWidget(
-      _host(
+    await tester.pumpWidget(RepositoryProvider<HomeStorage>.value(
+        value: testHomeStorage,
+        child: _host(
         cubit: setup.cubit,
         child: AutomationEditorDialog(
           kind: AutomationEditorKind.scheduledMessage,
@@ -373,7 +379,7 @@ void main() {
           defaultName: 'Daily ping',
         ),
       ),
-    );
+      ));
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 200));
 
@@ -387,8 +393,9 @@ void main() {
     final setup = testAutomationSetup();
     addTearDown(setup.cubit.close);
 
-    await tester.pumpWidget(
-      _host(
+    await tester.pumpWidget(RepositoryProvider<HomeStorage>.value(
+        value: testHomeStorage,
+        child: _host(
         cubit: setup.cubit,
         child: AutomationEditorDialog(
           kind: AutomationEditorKind.scheduledMessage,
@@ -397,7 +404,7 @@ void main() {
           defaultName: 'Daily ping',
         ),
       ),
-    );
+      ));
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 200));
 
@@ -421,8 +428,9 @@ void main() {
     final setup = testAutomationSetup();
     addTearDown(setup.cubit.close);
 
-    await tester.pumpWidget(
-      _host(
+    await tester.pumpWidget(RepositoryProvider<HomeStorage>.value(
+        value: testHomeStorage,
+        child: _host(
         cubit: setup.cubit,
         child: AutomationEditorDialog(
           kind: AutomationEditorKind.scheduledMessage,
@@ -431,7 +439,7 @@ void main() {
           defaultName: 'Daily ping',
         ),
       ),
-    );
+      ));
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 200));
 
@@ -454,8 +462,9 @@ void main() {
       final setup = testAutomationSetup();
       addTearDown(setup.cubit.close);
 
-      await tester.pumpWidget(
-        _host(
+      await tester.pumpWidget(RepositoryProvider<HomeStorage>.value(
+        value: testHomeStorage,
+        child: _host(
           cubit: setup.cubit,
           child: AutomationEditorDialog(
             kind: AutomationEditorKind.scheduledMessage,
@@ -464,7 +473,7 @@ void main() {
             defaultName: 'Daily ping',
           ),
         ),
-      );
+      ));
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 200));
 
@@ -496,8 +505,9 @@ void main() {
     final setup = testAutomationSetup();
     addTearDown(setup.cubit.close);
 
-    await tester.pumpWidget(
-      _host(
+    await tester.pumpWidget(RepositoryProvider<HomeStorage>.value(
+        value: testHomeStorage,
+        child: _host(
         cubit: setup.cubit,
         child: AutomationEditorDialog(
           kind: AutomationEditorKind.scheduledMessage,
@@ -506,7 +516,7 @@ void main() {
           defaultName: 'Daily ping',
         ),
       ),
-    );
+      ));
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 200));
 
@@ -551,8 +561,9 @@ void main() {
     final setup = testAutomationSetup();
     addTearDown(setup.cubit.close);
 
-    await tester.pumpWidget(
-      _host(
+    await tester.pumpWidget(RepositoryProvider<HomeStorage>.value(
+        value: testHomeStorage,
+        child: _host(
         cubit: setup.cubit,
         child: AutomationEditorDialog(
           kind: AutomationEditorKind.scheduledMessage,
@@ -561,7 +572,7 @@ void main() {
           defaultName: 'Daily ping',
         ),
       ),
-    );
+      ));
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 200));
 
@@ -600,8 +611,9 @@ void main() {
     });
     addTearDown(setup.cubit.close);
 
-    await tester.pumpWidget(
-      _host(
+    await tester.pumpWidget(RepositoryProvider<HomeStorage>.value(
+        value: testHomeStorage,
+        child: _host(
         cubit: setup.cubit,
         child: AutomationEditorDialog(
           kind: AutomationEditorKind.scheduledMessage,
@@ -612,7 +624,7 @@ void main() {
               .first,
         ),
       ),
-    );
+      ));
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 200));
 
@@ -661,8 +673,9 @@ void main() {
     });
     addTearDown(setup.cubit.close);
 
-    await tester.pumpWidget(
-      _host(
+    await tester.pumpWidget(RepositoryProvider<HomeStorage>.value(
+        value: testHomeStorage,
+        child: _host(
         cubit: setup.cubit,
         child: AutomationEditorDialog(
           kind: AutomationEditorKind.scheduledMessage,
@@ -673,7 +686,7 @@ void main() {
               .first,
         ),
       ),
-    );
+      ));
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 200));
 
@@ -734,8 +747,9 @@ void main() {
       });
       addTearDown(setup.cubit.close);
 
-      await tester.pumpWidget(
-        _host(
+      await tester.pumpWidget(RepositoryProvider<HomeStorage>.value(
+        value: testHomeStorage,
+        child: _host(
           cubit: setup.cubit,
           child: AutomationEditorDialog(
             kind: AutomationEditorKind.scheduledMessage,
@@ -746,7 +760,7 @@ void main() {
                 .first,
           ),
         ),
-      );
+      ));
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 200));
 
@@ -806,8 +820,9 @@ void main() {
       });
       addTearDown(setup.cubit.close);
 
-      await tester.pumpWidget(
-        _host(
+      await tester.pumpWidget(RepositoryProvider<HomeStorage>.value(
+        value: testHomeStorage,
+        child: _host(
           cubit: setup.cubit,
           child: AutomationEditorDialog(
             kind: AutomationEditorKind.scheduledMessage,
@@ -818,7 +833,7 @@ void main() {
                 .first,
           ),
         ),
-      );
+      ));
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 200));
 
@@ -882,8 +897,9 @@ void main() {
     });
     addTearDown(setup.cubit.close);
 
-    await tester.pumpWidget(
-      _host(
+    await tester.pumpWidget(RepositoryProvider<HomeStorage>.value(
+        value: testHomeStorage,
+        child: _host(
         cubit: setup.cubit,
         child: AutomationEditorDialog(
           kind: AutomationEditorKind.scheduledMessage,
@@ -894,7 +910,7 @@ void main() {
               .first,
         ),
       ),
-    );
+      ));
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 200));
 
@@ -952,8 +968,9 @@ void main() {
       });
       addTearDown(setup.cubit.close);
 
-      await tester.pumpWidget(
-        _host(
+      await tester.pumpWidget(RepositoryProvider<HomeStorage>.value(
+        value: testHomeStorage,
+        child: _host(
           cubit: setup.cubit,
           child: AutomationEditorDialog(
             kind: AutomationEditorKind.scheduledMessage,
@@ -964,7 +981,7 @@ void main() {
                 .first,
           ),
         ),
-      );
+      ));
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 200));
 
@@ -996,8 +1013,9 @@ void main() {
       });
       addTearDown(setup.cubit.close);
 
-      await tester.pumpWidget(
-        _host(
+      await tester.pumpWidget(RepositoryProvider<HomeStorage>.value(
+        value: testHomeStorage,
+        child: _host(
           cubit: setup.cubit,
           child: AutomationEditorDialog(
             kind: AutomationEditorKind.scheduledMessage,
@@ -1008,7 +1026,7 @@ void main() {
                 .first,
           ),
         ),
-      );
+      ));
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 200));
 

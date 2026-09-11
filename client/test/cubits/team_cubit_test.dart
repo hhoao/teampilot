@@ -23,6 +23,8 @@ import 'package:teampilot/utils/team/team_member_naming.dart';
 import '../support/post_frame_test_harness.dart';
 import '../support/in_memory_filesystem.dart';
 import 'package:teampilot/services/expert_hub/local_expert_store.dart';
+import 'package:teampilot/services/cli/registry/cli_bootstrap.dart';
+import 'package:teampilot/services/cli/registry/cli_tool_registry.dart';
 
 const _soloRoster = [
   TeamRosterSlot(id: 'm', expertKey: 'teampilot/builtin/team-lead'),
@@ -129,6 +131,11 @@ void main() {
       paths: paths,
       home: appDataRoot.path,
       cwd: appDataRoot.path,
+    );
+    // Production parity: bootstrap configures the CLI registry with the home
+    // storage right after binding it (capabilities throw without it).
+    CliToolRegistry.builtIn().configure(
+      CliBootstrap(const {}, storage: testHomeStorage),
     );
   });
 

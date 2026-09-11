@@ -25,7 +25,12 @@ mixin HeadlessProvisionSupport {
   /// (registry built without a `CliBootstrap`, i.e. tests and arg-assembly
   /// only use) fall back to the native default instead of throwing —
   /// production always configures the registry with real storage.
-  HomeStorage get _home => storage ?? HomeStorage.nativeDefault();
+  HomeStorage get _home =>
+      storage ??
+      (throw StateError(
+        'Headless capability was constructed without HomeStorage; storage use '
+        'requires the registry configured with CliBootstrap(storage: …).',
+      ));
 
   Filesystem get fs => _home.fs;
 

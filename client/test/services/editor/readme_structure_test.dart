@@ -6,6 +6,10 @@ import 'package:flutter/painting.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/services/editor/markdown_preview_link_handler.dart';
 import 'package:tp_markdown/tp_markdown.dart';
+import 'package:teampilot/services/storage/home_storage.dart';
+import '../../support/post_frame_test_harness.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:teampilot/services/editor/markdown_network_image_store.dart';
 
 Future<File> _writeRasterPng(String path, {int size = 200}) async {
   final recorder = ui.PictureRecorder();
@@ -20,6 +24,18 @@ Future<File> _writeRasterPng(String path, {int size = 200}) async {
 }
 
 void main() {
+  setUp(() {
+    setUpTestAppStorage();
+    MarkdownNetworkImageStore.storageHome = testHomeStorage;
+  });
+  tearDown(() {
+    MarkdownNetworkImageStore.storageHome = null;
+    tearDownTestAppStorage();
+  });
+
+  setUp(setUpTestAppStorage);
+  tearDown(tearDownTestAppStorage);
+
   // Mirrors teampilot README.md image structures.
   const source = '''
 <p align="center">
@@ -78,7 +94,9 @@ void main() {
       '<rect width="512" height="512" fill="#555"/></svg>',
     );
 
-    await tester.pumpWidget(MaterialApp(
+    await tester.pumpWidget(RepositoryProvider<HomeStorage>.value(
+        value: testHomeStorage,
+        child: MaterialApp(
       home: Scaffold(
         body: SizedBox(
           width: 800,
@@ -99,7 +117,8 @@ void main() {
           ),
         ),
       ),
-    ));
+    ),
+      ));
     await tester.pumpAndSettle();
 
     expect(tester.takeException(), isNull);

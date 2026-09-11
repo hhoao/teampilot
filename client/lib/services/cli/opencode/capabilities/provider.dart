@@ -638,7 +638,12 @@ final class OpencodeProviderCapability extends CatalogModelCapability
     );
   }
 
-  HomeStorage _missingHomeStorage() => HomeStorage.nativeDefault();
+  HomeStorage _missingHomeStorage() {
+    throw StateError(
+      'OpencodeProviderCapability was constructed without HomeStorage; storage use requires the '
+      'registry configured with CliBootstrap(storage: …).',
+    );
+  }
 }
 
 /// Parses bus idle URL (e.g. `http://127.0.0.1:12345/idle`) to the listening port.

@@ -27,6 +27,7 @@ import '../../support/in_memory_filesystem.dart';
 import '../../support/post_frame_test_harness.dart';
 import 'package:teampilot/services/expert_hub/local_expert_store.dart';
 import 'package:teampilot/services/storage/app_paths.dart';
+import 'package:teampilot/services/storage/home_storage.dart';
 
 class _EmptyRegistry implements ExpertHubSource {
   @override
@@ -74,7 +75,8 @@ Future<void> _pumpMemberForm(
       supportedLocales: AppLocalizations.supportedLocales,
       home: MultiBlocProvider(
         providers: [
-          BlocProvider.value(value: launchCubit),
+          
+        RepositoryProvider<HomeStorage>.value(value: testHomeStorage),BlocProvider.value(value: launchCubit),
           BlocProvider.value(value: expertHubCubit),
           BlocProvider.value(value: cliPresetsCubit),
           BlocProvider.value(value: providerCubit),

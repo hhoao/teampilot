@@ -25,9 +25,14 @@ import 'package:teampilot/widgets/compose/workspace_compose_card.dart';
 
 import '../../support/in_memory_filesystem.dart';
 import '../../support/post_frame_test_harness.dart';
+import 'package:teampilot/services/storage/home_storage.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 
 /// Acceptance coverage for session history continue chrome (design §Acceptance).
 void main() {
+  setUp(setUpTestAppStorage);
+  tearDown(tearDownTestAppStorage);
+
   const controller = SessionContinueOverridesController();
 
   CliPreset claudePreset({
@@ -535,8 +540,9 @@ void main() {
         addTearDown(textController.dispose);
         addTearDown(focusNode.dispose);
 
-        await tester.pumpWidget(
-          MaterialApp(
+        await tester.pumpWidget(RepositoryProvider<HomeStorage>.value(
+        value: testHomeStorage,
+        child: MaterialApp(
             home: Scaffold(
               body: WorkspaceComposeCard(
                 controller: textController,
@@ -592,7 +598,7 @@ void main() {
               ),
             ),
           ),
-        );
+      ));
 
         expect(find.byType(WorkspaceComposeCard), findsOneWidget);
         expect(find.byType(ComposeFileDropRegion), findsOneWidget);

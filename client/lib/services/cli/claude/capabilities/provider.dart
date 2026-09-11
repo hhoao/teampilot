@@ -780,7 +780,12 @@ final class ClaudeProviderCapability extends CatalogModelCapability
     );
   }
 
-  HomeStorage _missingHomeStorage() => HomeStorage.nativeDefault();
+  HomeStorage _missingHomeStorage() {
+    throw StateError(
+      'ClaudeProviderCapability was constructed without HomeStorage; storage use requires the '
+      'registry configured with CliBootstrap(storage: …).',
+    );
+  }
 
   Future<ClaudeLaunchExtras> resolveLaunchExtras({
     required TeamProfile team,

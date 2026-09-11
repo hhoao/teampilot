@@ -104,6 +104,7 @@ import 'in_memory_filesystem.dart';
 import 'post_frame_test_harness.dart';
 import 'test_git_command_runner.dart';
 import 'test_home_target_controller.dart';
+import 'package:teampilot/services/storage/home_storage.dart';
 
 String desktopHarnessExecutable() => 'flashskyai';
 
@@ -305,6 +306,7 @@ Widget buildTestApp({
 
   return MultiRepositoryProvider(
     providers: [
+      RepositoryProvider<HomeStorage>.value(value: testHomeStorage),
       RepositoryProvider<AppSettingsRepository>.value(value: settings),
       RepositoryProvider<SessionRepository>.value(
         value: desktopHarnessSessionRepo,

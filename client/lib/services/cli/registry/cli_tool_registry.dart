@@ -12,7 +12,9 @@ class CliToolRegistry {
   CliToolRegistry._();
 
   static CliToolRegistry? _builtIn;
-  CliBootstrap _bootstrap = const CliBootstrap({});
+  /// Null until [configure] runs — the pre-configure registration serves
+  /// launch-arg assembly only; its capabilities throw on storage use.
+  CliBootstrap? _bootstrap;
 
   /// Single built-in registry for all default (non-injected) call sites.
   factory CliToolRegistry.builtIn() {
@@ -29,7 +31,7 @@ class CliToolRegistry {
     registerBuiltInCliTools(this, bootstrap: _bootstrap);
   }
 
-  CliBootstrap get bootstrap => _bootstrap;
+  CliBootstrap? get bootstrap => _bootstrap;
 
   factory CliToolRegistry() => CliToolRegistry._();
 

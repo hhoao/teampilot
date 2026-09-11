@@ -2,8 +2,24 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/services/editor/markdown_preview_link_handler.dart';
 import 'package:tp_markdown/tp_markdown.dart';
+import 'package:teampilot/services/storage/home_storage.dart';
+import '../../support/post_frame_test_harness.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:teampilot/services/editor/markdown_network_image_store.dart';
 
 void main() {
+  setUp(() {
+    setUpTestAppStorage();
+    MarkdownNetworkImageStore.storageHome = testHomeStorage;
+  });
+  tearDown(() {
+    MarkdownNetworkImageStore.storageHome = null;
+    tearDownTestAppStorage();
+  });
+
+  setUp(setUpTestAppStorage);
+  tearDown(tearDownTestAppStorage);
+
   testWidgets('HTML badge div routes http imgs to the widget layer', (
     tester,
   ) async {
@@ -14,7 +30,9 @@ void main() {
 </div>
 ''';
     final doc = compileMarkdown(source);
-    await tester.pumpWidget(MaterialApp(
+    await tester.pumpWidget(RepositoryProvider<HomeStorage>.value(
+        value: testHomeStorage,
+        child: MaterialApp(
       home: Scaffold(
         body: SingleChildScrollView(
           child: VirtualMarkdownView(
@@ -39,7 +57,8 @@ void main() {
           ),
         ),
       ),
-    ));
+    ),
+      ));
     await tester.pump();
 
     // Both imgs are claimed by the widget hook (no NetworkImage → no
