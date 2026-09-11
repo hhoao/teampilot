@@ -5,6 +5,7 @@ import 'package:acpd/acpd.dart' as acpd;
 
 import 'acp_agent_translator.dart';
 import 'acp_frame_logger.dart';
+import 'acp_session.dart';
 import 'acp_transport.dart';
 
 /// Result of the ACP `initialize` handshake.
@@ -117,6 +118,29 @@ class AcpAgentConnection {
   /// Whether the connection is still usable.
   bool get isAlive =>
       !_disposed && !_transport.isClosed && !_client.connection.isClosed;
+
+  /// The acpd client connection; consumed by [AcpAgentSession] to subscribe
+  /// to session notifications and answer agent requests.
+  acpd.ClientConnection get acpdClient => _client;
+
+  /// Creates a new ACP session via `session/new` for [cwd].
+  ///
+  /// MCP servers are per-session in ACP and TeamPilot registers none, so the
+  /// request always passes an explicit empty list. [permissionTimeout] bounds
+  /// how long the session's permission hold waits before auto-rejecting.
+  Future<AcpAgentSession> openSession({
+    required String cwd,
+    Duration permissionTimeout = AcpAgentSession.defaultPermissionTimeout,
+  }) async {
+    final response = await _client.client.newSession(
+      acpd.NewSessionRequest(cwd: cwd, mcpServers: const []),
+    );
+    return AcpAgentSession(
+      connection: this,
+      sessionId: response.sessionId,
+      permissionTimeout: permissionTimeout,
+    );
+  }
 
   /// Runs the `initialize` handshake and caches the negotiated capabilities.
   ///
