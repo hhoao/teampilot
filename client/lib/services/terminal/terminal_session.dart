@@ -15,6 +15,7 @@ import '../cli/registry/capabilities/terminal_observation_contributor.dart';
 import '../cli/registry/cli_capability.dart';
 import '../cli/registry/cli_tool_registry.dart';
 import '../io/filesystem.dart';
+import '../event/agent_presence_event.dart';
 import '../session/launch_command_builder.dart';
 import '../session/shell_launch_spec.dart';
 import '../ssh/ssh_member_session.dart';
@@ -69,9 +70,11 @@ class TerminalSession {
     TerminalInputController? inputController,
     TerminalScreenProbeController? probeController,
     TerminalSessionLinkProviders? linkProviders,
+    this.onPresenceInputsChanged,
   }) : _scrollbackLines = scrollbackLines,
        _runtimeTarget = runtimeTarget,
        _linkFilesystem = fs,
+       _ownsActivityTracker = launchController?.activityTracker == null,
        engine = TerminalEngine(
          config: terminalTheme == null
              ? TerminalConfig.defaults().copyWith(
@@ -111,6 +114,12 @@ class TerminalSession {
         );
     _wireLaunchCallbacks();
     _wireEngineOutput();
+    // Push boot-frame transitions only for a tracker this session owns; an
+    // injected tracker (launchController.activityTracker) belongs to another
+    // owner and keeps its own listener.
+    if (_ownsActivityTracker) {
+      activityTracker.setBootFrameListener(_onBootFrameChanged);
+    }
   }
 
   final int _scrollbackLines;
@@ -125,6 +134,21 @@ class TerminalSession {
 
   final TerminalEngine engine;
   final TerminalActivityTracker activityTracker;
+
+  /// True when this session created [activityTracker]; false when it was
+  /// injected through `launchController`, in which case another owner controls
+  /// its presence-push listener.
+  final bool _ownsActivityTracker;
+
+  /// Fired when this session's agent-presence inputs change (turn latch, boot
+  /// frame). The domain layer only signals "re-read me"; the binding layer
+  /// reads [presenceSeat] and composes the actual availability.
+  final void Function()? onPresenceInputsChanged;
+
+  /// Identity of the bound observation seat, or null when no observation with
+  /// a non-empty session + member id is currently bound.
+  PresenceSeatKey? _presenceSeat;
+  PresenceSeatKey? get presenceSeat => _presenceSeat;
 
   /// PTY writes and full-screen input injection.
   late final TerminalInputController input;
@@ -147,9 +171,16 @@ class TerminalSession {
   void markUserTurnStarted() {
     _userTurnActive = true;
     activityTracker.latchTurnQuietBaseline();
+    onPresenceInputsChanged?.call();
   }
 
-  void markUserTurnIdle() => _userTurnActive = false;
+  void markUserTurnIdle() {
+    _userTurnActive = false;
+    onPresenceInputsChanged?.call();
+  }
+
+  void _onBootFrameChanged(bool bootReady) =>
+      onPresenceInputsChanged?.call();
 
   SshMemberSession? sshMemberSession;
 
@@ -471,6 +502,11 @@ class TerminalSession {
   void dispose() {
     if (isDisposed) return;
     _launch.dispose();
+    // Terminal path: this tracker is going away with the session. Never used on
+    // unbind, where the listener must stay revivable.
+    if (_ownsActivityTracker) {
+      activityTracker.disposePresencePush();
+    }
     _unbindObservation();
     _invalidateLinkProviders();
     _engineOutputSubscription?.cancel();
@@ -543,6 +579,17 @@ class TerminalSession {
       ),
     );
     _launch.attachObservation(bus);
+    _presenceSeat = (seat.sessionId.isEmpty || seat.memberId.isEmpty)
+        ? null
+        : PresenceSeatKey(
+            sessionId: seat.sessionId,
+            memberId: seat.memberId,
+          );
+    // A bound seat with an owned tracker re-arms the boot push. Detach happens
+    // in _unbindObservation (setBootFrameListener(null), the revive path).
+    if (_ownsActivityTracker && _presenceSeat != null) {
+      activityTracker.setBootFrameListener(_onBootFrameChanged);
+    }
   }
 
   Iterable<CliCapability> _cliCapabilities(CliTool? cli) {
@@ -552,6 +599,12 @@ class TerminalSession {
 
   void _unbindObservation() {
     _launch.attachObservation(null);
+    // Detach, do not dispose: _unbindObservation runs on every rebind, and the
+    // tracker must stay revivable by the next _bindObservation.
+    if (_ownsActivityTracker) {
+      activityTracker.setBootFrameListener(null);
+    }
+    _presenceSeat = null;
     _observationBinding?.unbind();
     _observationBinding = null;
     _observationBus?.dispose();
