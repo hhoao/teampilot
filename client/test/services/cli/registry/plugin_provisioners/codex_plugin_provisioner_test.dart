@@ -13,10 +13,12 @@ import '../../../../support/in_memory_filesystem.dart';
 final class _RecordingRunner implements HostOneShotRunner {
   _RecordingRunner({
     this.listJson = '{"installed":[]}',
+    this.localListJson = '{"installed":[]}',
     this.marketplaceListJson = '{"marketplaces":[]}',
   });
 
   final String listJson;
+  final String localListJson;
   final String marketplaceListJson;
   final calls = <HostRunRequest>[];
   var marketplaceWasAdded = false;
@@ -39,7 +41,15 @@ final class _RecordingRunner implements HostOneShotRunner {
       );
     }
     if (request.arguments.contains('list')) {
-      return HostRunResult(exitCode: 0, stdout: listJson, stderr: '');
+      final scopeIndex = request.arguments.indexOf('-m');
+      final scope = scopeIndex >= 0 && scopeIndex + 1 < request.arguments.length
+          ? request.arguments[scopeIndex + 1]
+          : null;
+      return HostRunResult(
+        exitCode: 0,
+        stdout: scope == 'local' ? localListJson : listJson,
+        stderr: '',
+      );
     }
     return const HostRunResult(exitCode: 0, stdout: '{}', stderr: '');
   }
@@ -122,7 +132,8 @@ void main() {
       );
       expect(runner.calls.map((call) => call.arguments), [
         ['plugin', 'marketplace', 'list', '--json'],
-        ['plugin', 'list', '--json'],
+        ['plugin', 'list', '-m', 'teampilot', '--json'],
+        ['plugin', 'list', '-m', 'local', '--json'],
         [
           'plugin',
           'marketplace',
@@ -203,7 +214,8 @@ void main() {
 
       expect(runner.calls.map((call) => call.arguments), [
         ['plugin', 'marketplace', 'list', '--json'],
-        ['plugin', 'list', '--json'],
+        ['plugin', 'list', '-m', 'teampilot', '--json'],
+        ['plugin', 'list', '-m', 'local', '--json'],
         [
           'plugin',
           'marketplace',
@@ -238,7 +250,8 @@ void main() {
 
       expect(runner.calls.map((call) => call.arguments), [
         ['plugin', 'marketplace', 'list', '--json'],
-        ['plugin', 'list', '--json'],
+        ['plugin', 'list', '-m', 'teampilot', '--json'],
+        ['plugin', 'list', '-m', 'local', '--json'],
         [
           'plugin',
           'marketplace',
@@ -252,6 +265,37 @@ void main() {
       ]);
     },
   );
+
+  test('removes legacy local installs scoped independently', () async {
+    final fs = await seededFs();
+    await fs.writeString('/cfg/plugins/demo/.codex-plugin/plugin.json', '{}');
+    final runner = _RecordingRunner(
+      localListJson: jsonEncode({
+        'installed': [
+          {'name': 'demo', 'marketplaceName': 'local', 'version': '1.0.0'},
+        ],
+      }),
+    );
+
+    await const CodexPluginCapability().provision(
+      context(fs: fs, runner: runner),
+    );
+
+    expect(runner.calls.map((call) => call.arguments), [
+      ['plugin', 'marketplace', 'list', '--json'],
+      ['plugin', 'list', '-m', 'teampilot', '--json'],
+      ['plugin', 'list', '-m', 'local', '--json'],
+      [
+        'plugin',
+        'marketplace',
+        'add',
+        '/cfg/.teampilot/codex-marketplace',
+        '--json',
+      ],
+      ['plugin', 'remove', 'demo@local', '--json'],
+      ['plugin', 'add', 'demo@teampilot', '--json'],
+    ]);
+  });
 
   test(
     'removes the native marketplace when no plugins remain enabled',
@@ -279,11 +323,36 @@ void main() {
       );
 
       expect(runner.calls.map((call) => call.arguments), [
-        ['plugin', 'list', '--json'],
+        ['plugin', 'list', '-m', 'teampilot', '--json'],
         ['plugin', 'remove', 'demo@teampilot', '--json'],
         ['plugin', 'marketplace', 'list', '--json'],
         ['plugin', 'marketplace', 'remove', 'teampilot', '--json'],
       ]);
+    },
+  );
+
+  test(
+    'never queries unscoped plugin lists that would hit remote marketplaces',
+    () async {
+      final fs = await seededFs();
+      final runner = _RecordingRunner();
+
+      await const CodexPluginCapability().provision(
+        context(fs: fs, runner: runner),
+      );
+
+      final listCalls = runner.calls.where(
+        (call) => call.arguments.contains('list'),
+      );
+      expect(listCalls, isNotEmpty);
+      for (final call in listCalls) {
+        if (call.arguments.contains('marketplace')) continue;
+        expect(
+          call.arguments,
+          contains('-m'),
+          reason: 'plugin list must be scoped to a local marketplace',
+        );
+      }
     },
   );
 }

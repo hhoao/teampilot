@@ -84,21 +84,43 @@ final class CodexPluginCapability implements PluginCapability {
       return result;
     }
 
-    // Both inventory calls are read-only and independent: run them
+    // The inventory calls are read-only and independent: run them
     // concurrently. Each `codex` invocation pays a full CLI cold start
     // (~1s on Windows); serializing them doubled the session-launch wait.
+    //
+    // `plugin list` is always scoped with `-m`: an unscoped call enumerates
+    // Codex's built-in remote marketplaces, which adds seconds of variable
+    // network latency (via the user's proxy) to every launch even when the
+    // TeamPilot marketplaces are entirely local.
     final hasSpecs = specs.isNotEmpty;
     final inventory = await Future.wait<HostRunResult>([
       if (hasSpecs) run(['plugin', 'marketplace', 'list', '--json']),
-      run(['plugin', 'list', '--json']),
+      run([
+        'plugin',
+        'list',
+        '-m',
+        CodexSessionConfigDir.teampilotMarketplaceName,
+        '--json',
+      ]),
+      if (hasSpecs)
+        run([
+          'plugin',
+          'list',
+          '-m',
+          CodexSessionConfigDir.localMarketplaceName,
+          '--json',
+        ]),
     ]);
-    final installed = _parseInstalled(
-      inventory[hasSpecs ? 1 : 0].stdout,
-    );
+    var inventoryIndex = 0;
+    final marketplaceInventory = hasSpecs ? inventory[inventoryIndex++] : null;
+    final installed = <CodexNativePluginSpec>[
+      ..._parseInstalled(inventory[inventoryIndex++].stdout),
+      if (hasSpecs) ..._parseInstalled(inventory[inventoryIndex++].stdout),
+    ];
     final desiredByName = {for (final spec in specs) spec.name: spec};
 
     if (hasSpecs) {
-      final marketplaces = _parseMarketplaceNames(inventory[0].stdout);
+      final marketplaces = _parseMarketplaceNames(marketplaceInventory!.stdout);
       if (!marketplaces.contains(
         CodexSessionConfigDir.teampilotMarketplaceName,
       )) {
