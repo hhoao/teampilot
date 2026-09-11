@@ -123,23 +123,47 @@ class AcpAgentConnection {
   /// to session notifications and answer agent requests.
   acpd.ClientConnection get acpdClient => _client;
 
+  /// The session opened via [openSession], if any.
+  ///
+  /// One connection hosts at most one live session: a second `session/new`
+  /// would steal the first session's `session/request_permission` handler
+  /// (acpd's `onRequest` replaces), so [openSession] refuses instead.
+  AcpAgentSession? _openSession;
+
   /// Creates a new ACP session via `session/new` for [cwd].
   ///
   /// MCP servers are per-session in ACP and TeamPilot registers none, so the
   /// request always passes an explicit empty list. [permissionTimeout] bounds
   /// how long the session's permission hold waits before auto-rejecting.
+  ///
+  /// Throws [StateError] when this connection already has an open session;
+  /// dispose it first (its [AcpAgentSession.dispose] releases the slot).
   Future<AcpAgentSession> openSession({
     required String cwd,
     Duration permissionTimeout = AcpAgentSession.defaultPermissionTimeout,
   }) async {
+    final existing = _openSession;
+    if (existing != null) {
+      throw StateError(
+        'Connection already has an open ACP session '
+        '(${existing.sessionId}); dispose it before opening another.',
+      );
+    }
     final response = await _client.client.newSession(
       acpd.NewSessionRequest(cwd: cwd, mcpServers: const []),
     );
-    return AcpAgentSession(
+    final session = AcpAgentSession(
       connection: this,
       sessionId: response.sessionId,
       permissionTimeout: permissionTimeout,
     );
+    _openSession = session;
+    return session;
+  }
+
+  /// Releases the open-session slot; called by [AcpAgentSession.dispose].
+  void sessionDisposed(AcpAgentSession session) {
+    if (identical(_openSession, session)) _openSession = null;
   }
 
   /// Runs the `initialize` handshake and caches the negotiated capabilities.

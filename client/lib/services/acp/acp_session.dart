@@ -227,6 +227,9 @@ class AcpAgentSession {
   /// translator into abort-suppressing mode.
   bool _suppressAbort = false;
 
+  /// Whether a prompt turn is currently in flight (sequential-turns guard).
+  bool _promptInFlight = false;
+
   bool _disposed = false;
 
   /// Turn events in arrival order; each turn ends with exactly one [AcpStop].
@@ -238,12 +241,19 @@ class AcpAgentSession {
 
   /// Sends `session/prompt` and resolves once the stop reason is emitted.
   ///
+  /// Turns are strictly sequential: throws [StateError] when a prompt is
+  /// already in flight for this session.
+  ///
   /// Prompt-phase errors are routed through the connection's translator; a
   /// translated [acpStopCancelled] becomes an [AcpStopKind.cancelled] stop
   /// with no error surfaced, everything else an [AcpStopKind.error] stop
   /// carrying the translated message. Abort suppression (set by [cancel])
   /// stays on for the whole turn and is cleared when the turn ends.
   Future<void> prompt(String text) async {
+    if (_promptInFlight) {
+      throw StateError('A prompt turn is already in flight for this session.');
+    }
+    _promptInFlight = true;
     try {
       final response = await _client.client.prompt(
         acpd.PromptRequest.text(sessionId, text),
@@ -260,6 +270,7 @@ class AcpAgentSession {
         _emit(AcpStop(kind: AcpStopKind.error, message: translated));
       }
     } finally {
+      _promptInFlight = false;
       _suppressAbort = false;
     }
   }
@@ -295,7 +306,8 @@ class AcpAgentSession {
   /// Releases the notification/request registrations and stream controllers.
   ///
   /// A still-held permission request is answered with the cancelled default
-  /// so the agent is never left waiting.
+  /// so the agent is never left waiting, and the connection's open-session
+  /// slot is released so a new session may be opened if needed.
   void dispose() {
     if (_disposed) return;
     _disposed = true;
@@ -304,6 +316,7 @@ class AcpAgentSession {
     _permissionRegistration?.dispose();
     _updates.close();
     _permissionRequests.close();
+    _connection.sessionDisposed(this);
   }
 
   void _onSessionUpdate(Object? params) {
@@ -327,6 +340,9 @@ class AcpAgentSession {
   }
 
   Future<Object?> _onRequestPermission(Object? params) async {
+    // dispose() closed the request stream; answer with the cancelled default
+    // so the agent is never left waiting (mirrors the stale/timeout paths).
+    if (_disposed) return const acpd.PermissionCancelled().toJson();
     if (params is! Map) {
       return const acpd.PermissionCancelled().toJson();
     }
@@ -495,6 +511,9 @@ class AcpAgentSession {
   }
 
   String _chunkText(acpd.ContentChunk chunk) {
+    // TODO(acp): non-text content blocks (image, audio, resource_link,
+    // resource) are discarded here — map them once the chat layer can render
+    // non-text message parts; for now an empty chunk keeps the boundary.
     final content = chunk.content;
     if (content is acpd.TextContentBlock) return content.text;
     return '';

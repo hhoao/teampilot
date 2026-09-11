@@ -67,6 +67,88 @@ void main() {
     chunk: acpd.ContentChunk(content: acpd.TextContentBlock(text: text)),
   );
 
+  test(
+    'a second openSession on the same connection throws StateError',
+    () async {
+      await openSession();
+
+      // A second session would steal the first's request_permission handler
+      // (acpd's onRequest replaces), so the connection refuses it.
+      await expectLater(conn.openSession(cwd: cwd), throwsStateError);
+    },
+  );
+
+  test(
+    'openSession works again after the previous session is disposed',
+    () async {
+      final first = await openSession();
+      first.dispose();
+
+      session = await conn.openSession(cwd: cwd);
+      expect(session.sessionId, sessionId);
+    },
+  );
+
+  test('a second prompt while one is in flight throws StateError', () async {
+    final resume = Completer<void>();
+    scriptPrompt(() async {
+      await resume.future;
+      return acpd.PromptResponse(stopReason: acpd.StopReason.endTurn).toJson();
+    });
+
+    await openSession();
+
+    final first = session.prompt('one');
+    await pumpEventQueue();
+    await expectLater(session.prompt('two'), throwsStateError);
+
+    resume.complete();
+    await first;
+  });
+
+  test(
+    'permission request racing dispose answers cancelled without throwing',
+    () async {
+      acpd.RequestPermissionOutcome? outcome;
+      scriptPrompt(() async {
+        outcome = await agentCtx.requestPermission(
+          acpd.RequestPermissionRequest(
+            sessionId: sessionId,
+            toolCall: const acpd.ToolCallUpdate(toolCallId: 'perm-d'),
+            options: const [
+              acpd.PermissionOption(
+                optionId: 'allow-d',
+                name: 'Yes',
+                kind: acpd.PermissionOptionKind.allowOnce,
+              ),
+            ],
+          ),
+        );
+        return acpd.PromptResponse(
+          stopReason: acpd.StopReason.endTurn,
+        ).toJson();
+      });
+
+      await openSession();
+
+      // Disposing mid-hold (card dismissed / teardown racing the request)
+      // must answer the agent with the cancelled default, not throw on the
+      // closed controller.
+      final permissionSub = session.permissionRequests.listen((request) {
+        session.dispose();
+      });
+      await session.prompt('go');
+      await pumpEventQueue();
+      permissionSub.cancel();
+
+      expect(outcome, isA<acpd.PermissionCancelled>());
+
+      // Disposing also released the connection's open-session slot.
+      session = await conn.openSession(cwd: cwd);
+      expect(session.sessionId, sessionId);
+    },
+  );
+
   test('prompt maps message chunks and the end_turn stop in order', () async {
     acpd.NewSessionRequest? seenNew;
     agent.connection.onRequest('session/new', (params) {
