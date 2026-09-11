@@ -110,7 +110,9 @@ final class EventTransportServer {
     try {
       final requested = await _readSubscribe(session);
       if (requested == null) {
-        client.destroy();
+        if (!session.oversizeClosing) {
+          client.destroy();
+        }
         return;
       }
       final families = requested
@@ -146,7 +148,9 @@ final class EventTransportServer {
     } finally {
       _handlers.remove(handler);
       _dispatcher.unregister(handler);
-      client.destroy();
+      if (!session.oversizeClosing) {
+        client.destroy();
+      }
     }
   }
 
@@ -232,6 +236,7 @@ final class _ClientSession {
   final List<int> buffer = <int>[];
   final Completer<List<String>?> handshake = Completer<List<String>?>();
   var handshakeComplete = false;
+  var oversizeClosing = false;
   var _closed = false;
 
   void start() {
@@ -295,8 +300,9 @@ final class _ClientSession {
 
   void _oversize() {
     _writeOversize(socket);
-    _completeHandshake(null);
+    oversizeClosing = true;
     _closed = true;
+    _completeHandshake(null);
     unawaited(_flushThenClose(socket));
   }
 

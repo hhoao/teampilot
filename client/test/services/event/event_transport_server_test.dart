@@ -281,6 +281,35 @@ void main() {
     expect(closed, isTrue);
   });
 
+  test('oversize first line before subscribe sends error then EOF', () async {
+    final h = _Harness(
+      bind: (host, port) async => _MappedServerSocket(
+        await ServerSocket.bind(host, port),
+        _AbortUnflushedSocket.new,
+      ),
+    );
+    await h.start();
+    addTearDown(h.dispose);
+
+    final socket = await Socket.connect('127.0.0.1', await h.port());
+    final client = _LineClient(socket);
+    addTearDown(client.destroy);
+
+    socket.add(Uint8List(eventTransportMaxLineBytes + 1));
+    await socket.flush();
+    await _waitFor(
+      () => client.lines.any((l) => l['type'] == 'error') || client.closed,
+      timeout: const Duration(seconds: 2),
+    );
+    expect(
+      client.lines.any((l) => l['type'] == 'error' && l['code'] == 'oversize'),
+      isTrue,
+      reason: 'client must read {type: error, code: oversize} before EOF',
+    );
+    await _waitFor(() => client.closed, timeout: const Duration(seconds: 2));
+    expect(client.closed, isTrue);
+  });
+
   test('oversize line after handshake sends error then EOF', () async {
     final h = _Harness(
       bind: (host, port) async => _MappedServerSocket(
@@ -360,7 +389,9 @@ final class _AbortUnflushedSocket extends Stream<Uint8List> implements Socket {
     _queued.add(List<int>.from(data));
     if (_sendScheduled) return;
     _sendScheduled = true;
-    scheduleMicrotask(() {
+    // Event-queue delay so a later microtask destroy() (handshake
+    // complete → _serve destroy) still drops the unflushed buffer.
+    Future<void>.delayed(Duration.zero, () {
       _sendScheduled = false;
       if (_dead) {
         _queued.clear();
