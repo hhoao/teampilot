@@ -823,7 +823,7 @@ class _SidebarSessionTileState extends State<SidebarSessionTile> {
         : workspaceSidebarRowHoverFill(cs);
 
     final Widget tile = Padding(
-      padding: const EdgeInsets.only(bottom: 2),
+      padding: const EdgeInsets.only(bottom: kWorkspaceSidebarRowGap),
       child: TpHoverRow(
         forceShowTrailing: _menuOpen,
         forceHover: _menuOpen,

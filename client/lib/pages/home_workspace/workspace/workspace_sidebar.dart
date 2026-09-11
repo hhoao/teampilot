@@ -157,12 +157,26 @@ class _WorkspaceSidebarState extends State<WorkspaceSidebar> {
             ),
             const SizedBox(height: 14),
           ],
-          _RunningSessionsHost(
-            workspace: widget.workspace,
-            tabScopeId: widget.tabScopeId,
-          ),
-          const SizedBox(height: 14),
-          Padding(
+          Expanded(
+            child: LayoutBuilder(
+              builder: (context, constraints) {
+                final maxRunningHeight = (constraints.maxHeight - 54.0)
+                    .clamp(0.0, double.infinity)
+                    .toDouble();
+                return Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    ConstrainedBox(
+                      constraints: BoxConstraints(
+                        maxHeight: maxRunningHeight,
+                      ),
+                      child: _RunningSessionsHost(
+                        workspace: widget.workspace,
+                        tabScopeId: widget.tabScopeId,
+                      ),
+                    ),
+                    const SizedBox(height: 14),
+                    Padding(
             padding: const EdgeInsets.fromLTRB(4, 0, 0, 8),
             child: Row(
               children: [
@@ -243,20 +257,25 @@ class _WorkspaceSidebarState extends State<WorkspaceSidebar> {
                 ],
               ],
             ),
-          ),
-          Expanded(
-            child: _showingArchive
-                ? _ArchivedConversationList(
-                    workspace: widget.workspace,
-                    tabScopeId: widget.tabScopeId,
-                    sessionSort: _sessionSort,
-                  )
-                : _ConversationListHost(
-                    workspace: widget.workspace,
-                    tabScopeId: widget.tabScopeId,
-                    sessionSort: _sessionSort,
-                    onSessionsReordered: _onSessionsReordered,
-                  ),
+                    ),
+                    Expanded(
+                      child: _showingArchive
+                          ? _ArchivedConversationList(
+                              workspace: widget.workspace,
+                              tabScopeId: widget.tabScopeId,
+                              sessionSort: _sessionSort,
+                            )
+                          : _ConversationListHost(
+                              workspace: widget.workspace,
+                              tabScopeId: widget.tabScopeId,
+                              sessionSort: _sessionSort,
+                              onSessionsReordered: _onSessionsReordered,
+                            ),
+                    ),
+                  ],
+                );
+              },
+            ),
           ),
           if (widget.embedFooter) ...[
             const SizedBox(height: 8),
@@ -429,10 +448,12 @@ class _RunningSessionsHost extends StatelessWidget {
           child: const SizedBox.shrink(),
         );
       }
-      return Flexible(
-        fit: FlexFit.tight,
-        child: SingleChildScrollView(
-          child: SidebarRebuildProbe(
+      return ListView(
+        primary: false,
+        shrinkWrap: true,
+        padding: EdgeInsets.zero,
+        children: [
+          SidebarRebuildProbe(
             key: const Key('workspace-sidebar-running-host-probe'),
             child: _RunningSplitGroupsSection(
               groups: splitGroups.groups,
@@ -441,7 +462,7 @@ class _RunningSessionsHost extends StatelessWidget {
               tabScopeId: tabScopeId,
             ),
           ),
-        ),
+        ],
       );
     }
     final openTabIds = context.select<WorkbenchCubit, OpenSessionTabIds>((c) {
@@ -470,10 +491,12 @@ class _RunningSessionsHost extends StatelessWidget {
         child: const SizedBox.shrink(),
       );
     }
-    return Flexible(
-      fit: FlexFit.tight,
-      child: SingleChildScrollView(
-        child: SidebarRebuildProbe(
+    return ListView(
+      primary: false,
+      shrinkWrap: true,
+      padding: EdgeInsets.zero,
+      children: [
+        SidebarRebuildProbe(
           key: const Key('workspace-sidebar-running-host-probe'),
           child: _RunningSessionsSection(
             sessionIds: running.ids,
@@ -485,7 +508,7 @@ class _RunningSessionsHost extends StatelessWidget {
             ),
           ),
         ),
-      ),
+      ],
     );
   }
 }
@@ -947,47 +970,15 @@ class _RunningSplitGroupsSection extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               if (index > 0) const SizedBox(height: 6),
-              for (final sessionId in group.sessionIds)
-                if (knownIds.contains(sessionId))
-                  if (_sessionById(chatState, sessionId) case final session?)
-                    // Plain Row (no IntrinsicHeight): the indicator pins its
-                    // own height to the row metrics instead of stretching —
-                    // intrinsic measurement on every tile would double layout
-                    // work for long session lists.
-                    Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        _SplitGroupIndicator(
-                          groupId: group.groupId,
-                          focused: group.focused,
-                          isGroupActive: group.activeSessionId == sessionId,
-                          onTap: () =>
-                              workbench.focusGroup(tabScopeId, group.groupId),
-                        ),
-                        Expanded(
-                          child: SidebarSessionTile(
-                            key: ValueKey(
-                              'workspace-running-session-$sessionId',
-                            ),
-                            session: session,
-                            highlightSessionId: scopedActiveSessionId(
-                              workbench,
-                              tabScopeId,
-                            ),
-                            tapThrottleKeyPrefix: 'workspace_running_session',
-                            onTap: () => openWorkspaceSessionTab(
-                              context,
-                              workspace,
-                              session,
-                              tabScopeId: tabScopeId,
-                            ),
-                            workbenchGroupLocked: group.locked,
-                            onToggleWorkbenchGroupLock: () => workbench
-                                .toggleGroupLock(tabScopeId, group.groupId),
-                          ),
-                        ),
-                      ],
-                    ),
+              ..._splitGroupSessionRows(
+                context: context,
+                group: group,
+                knownIds: knownIds,
+                chatState: chatState,
+                workspace: workspace,
+                tabScopeId: tabScopeId,
+                workbench: workbench,
+              ),
             ],
           ),
       ],
@@ -1010,6 +1001,7 @@ class _SplitGroupIndicator extends StatelessWidget {
     required this.groupId,
     required this.focused,
     required this.isGroupActive,
+    required this.extendsIntoRowGap,
     required this.onTap,
   });
 
@@ -1018,6 +1010,9 @@ class _SplitGroupIndicator extends StatelessWidget {
 
   /// The tile's session is this group's active tab (the pane's content).
   final bool isGroupActive;
+
+  /// When true, the bar covers this tile's inter-row gap so adjacent bars abut.
+  final bool extendsIntoRowGap;
   final VoidCallback onTap;
 
   @override
@@ -1032,15 +1027,69 @@ class _SplitGroupIndicator extends StatelessWidget {
       key: ValueKey('workspace-running-group-indicator-$groupId'),
       behavior: HitTestBehavior.opaque,
       onTap: onTap,
-      // Fixed height = tile paint surface (padding + min content), not the
-      // 2px inter-row gap — avoids IntrinsicHeight on long session lists.
+      // Fixed height = tile paint surface (+ gap when not last) — avoids
+      // IntrinsicHeight on long session lists while keeping a continuous rail.
       child: SizedBox(
         width: width,
-        height: kWorkspaceSidebarRowPaintHeight,
+        height:
+            kWorkspaceSidebarRowPaintHeight +
+            (extendsIntoRowGap ? kWorkspaceSidebarRowGap : 0),
         child: ColoredBox(color: color),
       ),
     );
   }
+}
+
+/// Visible session rows for one split group (filters unknown / missing ids).
+List<Widget> _splitGroupSessionRows({
+  required BuildContext context,
+  required SplitSessionGroup group,
+  required Set<String> knownIds,
+  required ChatState chatState,
+  required Workspace workspace,
+  required String tabScopeId,
+  required WorkbenchCubit workbench,
+}) {
+  final visible = <AppSession>[
+    for (final sessionId in group.sessionIds)
+      if (knownIds.contains(sessionId))
+        if (_sessionById(chatState, sessionId) case final session?) session,
+  ];
+  return [
+    for (final (i, session) in visible.indexed)
+      // Plain Row (no IntrinsicHeight): the indicator pins its own height to
+      // the row metrics instead of stretching. Non-last bars extend through
+      // the tile gap so the column rail reads continuous.
+      Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _SplitGroupIndicator(
+            groupId: group.groupId,
+            focused: group.focused,
+            isGroupActive: group.activeSessionId == session.sessionId,
+            extendsIntoRowGap: i < visible.length - 1,
+            onTap: () => workbench.focusGroup(tabScopeId, group.groupId),
+          ),
+          Expanded(
+            child: SidebarSessionTile(
+              key: ValueKey('workspace-running-session-${session.sessionId}'),
+              session: session,
+              highlightSessionId: scopedActiveSessionId(workbench, tabScopeId),
+              tapThrottleKeyPrefix: 'workspace_running_session',
+              onTap: () => openWorkspaceSessionTab(
+                context,
+                workspace,
+                session,
+                tabScopeId: tabScopeId,
+              ),
+              workbenchGroupLocked: group.locked,
+              onToggleWorkbenchGroupLock: () =>
+                  workbench.toggleGroupLock(tabScopeId, group.groupId),
+            ),
+          ),
+        ],
+      ),
+  ];
 }
 
 class _SidebarActionTile extends StatefulWidget {
