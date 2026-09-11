@@ -70,8 +70,8 @@ final class MemoryRuntimeEventJournal implements RuntimeEventJournal {
 /// by file path: a matching `stat.size` hits the in-memory last sequence and
 /// line-end offsets; a cold start reads only the last complete line.
 final class FileRuntimeEventJournal implements RuntimeEventJournal {
-  FileRuntimeEventJournal({required this.journalRoot, Filesystem? fs})
-    : _fs = fs ?? LocalFilesystem();
+  FileRuntimeEventJournal({required this.journalRoot, required Filesystem fs})
+    : _fs = fs;
 
   final String journalRoot;
   final Filesystem _fs;

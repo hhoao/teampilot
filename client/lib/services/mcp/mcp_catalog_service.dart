@@ -5,8 +5,8 @@ import '../io/filesystem.dart';
 import '../io/local_filesystem.dart';
 
 class McpCatalogService {
-  McpCatalogService({required this.catalogPath, Filesystem? fs})
-    : _fs = fs ?? LocalFilesystem();
+  McpCatalogService({required this.catalogPath, required Filesystem fs})
+    : _fs = fs;
 
   static const catalogVersion = 1;
 

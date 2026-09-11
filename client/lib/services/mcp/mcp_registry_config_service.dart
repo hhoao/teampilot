@@ -8,9 +8,9 @@ import '../io/local_filesystem.dart';
 import '../storage/app_paths.dart';
 
 class McpRegistryConfigService {
-  McpRegistryConfigService({required String teampilotRoot, Filesystem? fs})
+  McpRegistryConfigService({required String teampilotRoot, required Filesystem fs})
     : _teampilotRoot = teampilotRoot.trim(),
-      _fs = fs ?? LocalFilesystem();
+      _fs = fs;
 
   final String _teampilotRoot;
   final Filesystem _fs;

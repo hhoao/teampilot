@@ -6,7 +6,7 @@ import 'mcp_oauth_server_key.dart';
 
 /// Claude Code secure storage file (`CLAUDE_CONFIG_DIR/.credentials.json`).
 class McpCredentialsStore {
-  McpCredentialsStore({Filesystem? fs}) : _fs = fs ?? LocalFilesystem();
+  McpCredentialsStore({required Filesystem fs}) : _fs = fs;
 
   final Filesystem _fs;
 

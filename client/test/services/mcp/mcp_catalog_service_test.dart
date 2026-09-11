@@ -4,6 +4,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:path/path.dart' as p;
 import 'package:teampilot/models/mcp_server.dart';
 import 'package:teampilot/services/mcp/mcp_catalog_service.dart';
+import 'package:teampilot/services/io/local_filesystem.dart';
 
 void main() {
   late Directory tmp;
@@ -13,6 +14,7 @@ void main() {
     tmp = await Directory.systemTemp.createTemp('mcp_catalog_test_');
     catalog = McpCatalogService(
       catalogPath: p.join(tmp.path, 'mcp', 'mcp_servers.json'),
+      fs: LocalFilesystem(),
     );
   });
 

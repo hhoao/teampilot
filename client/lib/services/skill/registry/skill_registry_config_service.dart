@@ -11,12 +11,11 @@ import '../../storage/home_storage.dart';
 class SkillRegistryConfigService {
   SkillRegistryConfigService({
     required HomeStorage storage,
-    Filesystem? fs,
     String? teampilotRoot,
     Future<String?> Function()? legacySkillsMpKeyReader,
   }) : _storage = storage,
        _teampilotRoot = teampilotRoot?.trim(),
-       _fs = fs ?? LocalFilesystem(),
+       _fs = storage.fs,
        _legacySkillsMpKeyReader = legacySkillsMpKeyReader;
 
   final HomeStorage _storage;

@@ -15,8 +15,8 @@ import 'team_task.dart';
 ///
 /// 全部纯追加（O(1)），无整文件重写；[load] 回放重建任务表。
 class FileTaskLog implements TaskLog {
-  FileTaskLog({required this.queueRoot, Filesystem? fs})
-    : _fs = fs ?? LocalFilesystem();
+  FileTaskLog({required this.queueRoot, required Filesystem fs})
+    : _fs = fs;
 
   final String queueRoot;
   final Filesystem _fs;

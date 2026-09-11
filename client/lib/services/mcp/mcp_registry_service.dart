@@ -28,16 +28,15 @@ import 'mcp_registry_config_service.dart';
 class McpRegistryService {
   McpRegistryService({
     required this.layout,
-    Filesystem? fs,
+    required HomeStorage storage,
     McpRegistryConfigService? registryConfigService,
     CliToolRegistry? cliRegistry,
-    HomeStorage? storage,
-  }) : _fs = fs ?? LocalFilesystem(),
-       _storage = storage,
+  }) : _storage = storage,
+       _fs = storage.fs,
        _registryConfigService =
            registryConfigService ??
            McpRegistryConfigService(
-             fs: fs,
+             fs: storage.fs,
              teampilotRoot: layout.teampilotRoot,
            ),
        _cliRegistry = cliRegistry ?? CliToolRegistry.builtIn();

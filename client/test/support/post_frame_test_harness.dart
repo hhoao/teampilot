@@ -286,12 +286,18 @@ AutomationRepository testAutomationRepository() {
   if (_testAppDataDir != null) {
     return AutomationRepository(
       fs: testHomeStorage.fs,
-      layout: WorkspaceLayout(teampilotRoot: testHomeStorage.paths.basePath),
+      layout: WorkspaceLayout(
+        teampilotRoot: testHomeStorage.paths.basePath,
+        fs: testHomeStorage.fs,
+      ),
     );
   }
   return AutomationRepository(
     fs: LocalFilesystem(),
-    layout: WorkspaceLayout(teampilotRoot: '/tmp/teampilot-test-automation'),
+    layout: WorkspaceLayout(
+      teampilotRoot: '/tmp/teampilot-test-automation',
+      fs: LocalFilesystem(),
+    ),
   );
 }
 

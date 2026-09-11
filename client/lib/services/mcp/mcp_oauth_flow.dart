@@ -14,11 +14,12 @@ import 'mcp_oauth_server_key.dart';
 /// Claude Code MCP OAuth (PKCE + `.credentials.json`), without a local Node runtime.
 class McpOAuthFlow {
   McpOAuthFlow({
+    required HomeStorage storage,
     McpOAuthDiscovery? discovery,
     McpCredentialsStore? credentialsStore,
     http.Client? httpClient,
   }) : _discovery = discovery ?? McpOAuthDiscovery(),
-       _credentials = credentialsStore ?? McpCredentialsStore(),
+       _credentials = credentialsStore ?? McpCredentialsStore(fs: storage.fs),
        _http = httpClient ?? http.Client();
 
   /// CIMD client id (SEP-991), same as Claude Code.

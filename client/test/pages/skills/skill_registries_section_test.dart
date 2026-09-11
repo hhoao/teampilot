@@ -17,6 +17,7 @@ import 'package:teampilot/services/skill/registry/skill_registry_source.dart';
 import 'package:teampilot/services/storage/app_paths.dart';
 import '../../support/test_runtime_context.dart';
 import '../../support/in_memory_filesystem.dart';
+import 'package:teampilot/services/storage/home_storage.dart';
 
 List<SkillRegistrySource> _rebuild(SkillRegistriesConfig c) => [
   for (final cfg in c.sources)
@@ -89,7 +90,7 @@ void main() {
       home: tmp.path,
       cwd: tmp.path,
     );
-    cfgService = SkillRegistryConfigService(teampilotRoot: paths.basePath, storage: fakeHomeStorage(), );
+    cfgService = SkillRegistryConfigService(teampilotRoot: paths.basePath, storage: testHomeStorage, );
   });
 
   tearDown(() {
@@ -107,9 +108,15 @@ void main() {
         scale: 1.0,
       ),
       child: Scaffold(
-        body: BlocProvider<SkillCubit>.value(
-          value: cubit,
-          child: const SizedBox(height: 900, child: SkillRegistriesSection()),
+        body: RepositoryProvider<HomeStorage>.value(
+          value: testHomeStorage,
+          child: BlocProvider<SkillCubit>.value(
+            value: cubit,
+            child: const SizedBox(
+              height: 900,
+              child: SkillRegistriesSection(),
+            ),
+          ),
         ),
       ),
     ),
@@ -125,11 +132,11 @@ void main() {
         await cfgService.save(SkillRegistriesConfig.defaults());
       }
       final c = SkillCubit(
-        SkillRepository(storage: fakeHomeStorage()),
+        SkillRepository(storage: testHomeStorage),
         registryConfigService: cfgService,
         initialSources: const [],
         rebuildSources: _rebuild,
-                            storage: fakeHomeStorage(),
+                            storage: testHomeStorage,
       );
       await c.loadAll();
       return c;

@@ -28,7 +28,7 @@ void main() {
     service = SkillRegistryConfigService(
       teampilotRoot: paths.basePath,
       legacySkillsMpKeyReader: () async => 'legacy-token',
-                                          storage: fakeHomeStorage(),
+      storage: testHomeStorage,
     );
   });
 

@@ -38,12 +38,12 @@ import '../io/local_filesystem.dart';
 ///   sessions/{sessionId}/runtime/{memberId}/cursor/home/  # mixed cursor HOME
 /// ```
 class WorkspaceLayout {
-  /// [fs] must be passed by production callers (the home-plane filesystem the
-  /// root lives on). The implicit [LocalFilesystem] fallback exists only so the
-  /// pre-6-C test harness keeps compiling; it is removed once the harness
-  /// constructs layouts with an explicit filesystem.
-  WorkspaceLayout({required this.teampilotRoot, Filesystem? fs})
-    : _fs = fs ?? LocalFilesystem();
+  /// [fs] is the filesystem the root lives on (home plane, or a work plane
+  /// for remote trees). Required: a missing filesystem means the caller has
+  /// not resolved its storage plane, which must fail rather than silently
+  /// compute paths against the local disk.
+  WorkspaceLayout({required this.teampilotRoot, required Filesystem fs})
+    : _fs = fs;
 
   final String teampilotRoot;
   final Filesystem _fs;

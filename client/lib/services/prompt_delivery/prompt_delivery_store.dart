@@ -60,8 +60,8 @@ final class MemoryPromptDeliveryStore implements PromptDeliveryStore {
 /// directory instead of a flat root. Atomic replacement means an observed
 /// state transition always survives process restart as a complete record.
 final class FilePromptDeliveryStore implements PromptDeliveryStore {
-  FilePromptDeliveryStore({required this.root, Filesystem? fs})
-    : _fs = fs ?? LocalFilesystem();
+  FilePromptDeliveryStore({required this.root, required Filesystem fs})
+    : _fs = fs;
 
   final String root;
   final Filesystem _fs;

@@ -4,6 +4,7 @@ import 'dart:io';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/services/mcp/mcp_credentials_store.dart';
 import 'package:teampilot/services/mcp/mcp_oauth_server_key.dart';
+import 'package:teampilot/services/io/local_filesystem.dart';
 
 void main() {
   late Directory root;
@@ -17,7 +18,7 @@ void main() {
   });
 
   test('saves and reads oauth tokens in claude credentials shape', () async {
-    final store = McpCredentialsStore();
+    final store = McpCredentialsStore(fs: LocalFilesystem());
     final configDir = root.path;
     const serverName = 'Context7';
     final serverConfig = {
@@ -48,7 +49,7 @@ void main() {
   });
 
   test('mergeInto copies mcpOAuth to member config dir', () async {
-    final store = McpCredentialsStore();
+    final store = McpCredentialsStore(fs: LocalFilesystem());
     final appDir = Directory('${root.path}/app')..createSync();
     final memberDir = Directory('${root.path}/member')..createSync();
 
@@ -78,7 +79,7 @@ void main() {
   test(
     'mergeOAuthEnvInto writes bearer env vars for codex indirection',
     () async {
-      final store = McpCredentialsStore();
+      final store = McpCredentialsStore(fs: LocalFilesystem());
       final appDir = Directory('${root.path}/app')..createSync();
       final sessionDir = Directory('${root.path}/session')..createSync();
 

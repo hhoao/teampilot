@@ -733,7 +733,6 @@ class ConfigProfileService implements ConfigProfileDelegate {
     final pluginProvisioner = _cliRegistry.capability<PluginCapability>(cli);
     final warmTier = CursorWorkspaceWarmTier.applies(team: team, cli: cli);
     final mcpRegistry = McpRegistryService(
-      fs: fs,
       layout: layout,
       storage: _infra.storage,
     );
@@ -964,7 +963,6 @@ class ConfigProfileService implements ConfigProfileDelegate {
 
     final pluginProvisioner = _cliRegistry.capability<PluginCapability>(cli);
     final mcpRegistry = McpRegistryService(
-      fs: fs,
       layout: layout,
       storage: _infra.storage,
     );
@@ -1445,7 +1443,6 @@ class ConfigProfileService implements ConfigProfileDelegate {
     final resourceCatalog = await _skillCatalog();
     final providers = _catalogResourceProviders(resourceCatalog);
     final mcpRegistry = McpRegistryService(
-      fs: stagingFs,
       layout: staging.layout,
       storage: staging._infra.storage,
     );

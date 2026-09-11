@@ -6,6 +6,7 @@ import 'package:teampilot/models/mcp_server.dart';
 import 'package:teampilot/repositories/mcp_repository.dart';
 import 'package:teampilot/services/mcp/mcp_catalog_service.dart';
 import '../support/in_memory_filesystem.dart';
+import 'package:teampilot/services/io/local_filesystem.dart';
 
 void main() {
   late Directory tmp;
@@ -15,7 +16,7 @@ void main() {
   setUp(() async {
     tmp = await Directory.systemTemp.createTemp('mcp_repo_test_');
     final path = p.join(tmp.path, 'mcp', 'mcp_servers.json');
-    catalog = McpCatalogService(catalogPath: path);
+    catalog = McpCatalogService(catalogPath: path, fs: LocalFilesystem());
     repository = McpRepository(catalog: catalog, storage: fakeHomeStorage(), );
   });
 

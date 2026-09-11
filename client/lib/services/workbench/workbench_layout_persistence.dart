@@ -53,7 +53,10 @@ class WorkbenchLayoutPersistence {
        _fs = fs ?? storage.fs,
        _layout =
            layout ??
-           WorkspaceLayout(teampilotRoot: storage.paths.basePath);
+           WorkspaceLayout(
+             teampilotRoot: storage.paths.basePath,
+             fs: storage.fs,
+           );
 
   static const Duration saveDebounce = Duration(milliseconds: 500);
 

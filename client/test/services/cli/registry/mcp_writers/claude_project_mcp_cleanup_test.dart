@@ -11,6 +11,9 @@ import 'package:teampilot/services/team_bus/mcp/teammate_bus_mcp_config.dart';
 import 'package:path/path.dart' as p;
 
 import '../../../../support/in_memory_filesystem.dart';
+import '../../../../support/post_frame_test_harness.dart';
+import 'package:teampilot/services/storage/home_storage.dart';
+import 'package:teampilot/services/storage/app_paths.dart';
 
 void main() {
   group('removeClaudeProjectMcpServers', () {
@@ -57,9 +60,17 @@ void main() {
     late Directory root;
     late RuntimeLayout layout;
 
+    late HomeStorage storage;
+
     setUp(() async {
       root = await Directory.systemTemp.createTemp('mcp_registry_cleanup_');
       layout = RuntimeLayout(teampilotRoot: root.path, fs: LocalFilesystem());
+      storage = HomeStorage.forTesting(
+        filesystem: LocalFilesystem(),
+        paths: AppPaths(root.path),
+        home: root.path,
+        cwd: root.path,
+      );
     });
 
     tearDown(() async {
@@ -95,7 +106,10 @@ void main() {
           }),
         );
 
-        await McpRegistryService(layout: layout).writeForSession(
+        await McpRegistryService(
+        layout: layout,
+        storage: storage,
+      ).writeForSession(
           workspaceId: 'workspace-1',
           teamId: teamId,
           sessionId: sessionId,

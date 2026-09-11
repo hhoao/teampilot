@@ -13,6 +13,7 @@ import 'package:teampilot/services/mcp/mcp_registry_config_service.dart';
 import 'package:teampilot/services/mcp/smithery_mcp_service.dart';
 
 import '../support/post_frame_test_harness.dart';
+import 'package:teampilot/services/io/local_filesystem.dart';
 
 const _listing = McpCatalogListing(
   id: 'acme/foo',
@@ -77,7 +78,7 @@ class _FakeRegistry extends McpRegistryBrowseService {
 }
 
 class _FakeConfig extends McpRegistryConfigService {
-  _FakeConfig(this.config) : super(teampilotRoot: '/tp');
+  _FakeConfig(this.config) : super(teampilotRoot: '/tp', fs: LocalFilesystem());
 
   final McpRegistrySourcesConfig config;
 

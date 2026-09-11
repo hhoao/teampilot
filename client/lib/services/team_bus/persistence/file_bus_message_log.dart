@@ -14,8 +14,8 @@ import '../team_message.dart';
 ///
 /// 投递与已读都是纯追加(O(1)),无整文件重写。`load` 回放解析未读。
 class FileBusMessageLog implements BusMessageLog {
-  FileBusMessageLog({required this.mailRoot, Filesystem? fs})
-    : _fs = fs ?? LocalFilesystem();
+  FileBusMessageLog({required this.mailRoot, required Filesystem fs})
+    : _fs = fs;
 
   final String mailRoot;
   final Filesystem _fs;

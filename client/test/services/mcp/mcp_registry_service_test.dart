@@ -23,6 +23,7 @@ import 'package:teampilot/services/storage/home_storage.dart';
 import 'package:teampilot/services/cli/registry/cli_bootstrap.dart';
 import 'package:path/path.dart' as p;
 import '../../support/in_memory_filesystem.dart';
+import '../../support/post_frame_test_harness.dart';
 
 HomeStorage _storageFor(Directory root) => HomeStorage.forTesting(
   filesystem: LocalFilesystem(),
@@ -87,7 +88,10 @@ void main() {
         layout: layout,
       );
 
-      await McpRegistryService(layout: layout).writeForSession(
+      await McpRegistryService(
+        layout: layout,
+        storage: _storageFor(root),
+      ).writeForSession(
         workspaceId: 'workspace-1',
         teamId: teamId,
         sessionId: sessionId,
@@ -134,7 +138,10 @@ void main() {
         layout: layout,
       );
 
-      await McpRegistryService(layout: layout).writeForSession(
+      await McpRegistryService(
+        layout: layout,
+        storage: _storageFor(root),
+      ).writeForSession(
         workspaceId: 'workspace-1',
         teamId: teamId,
         sessionId: sessionId,
@@ -203,7 +210,10 @@ void main() {
       layout: layout,
     );
 
-    await McpRegistryService(layout: layout).writeForSession(
+    await McpRegistryService(
+        layout: layout,
+        storage: _storageFor(root),
+      ).writeForSession(
       workspaceId: 'workspace-1',
       teamId: teamId,
       sessionId: sessionId,
@@ -241,7 +251,10 @@ void main() {
       );
 
       const endpoint = 'http://127.0.0.1:4242/mcp';
-      await McpRegistryService(layout: layout).writeForSession(
+      await McpRegistryService(
+        layout: layout,
+        storage: _storageFor(root),
+      ).writeForSession(
         workspaceId: 'workspace-1',
         teamId: teamId,
         sessionId: sessionId,
@@ -271,6 +284,7 @@ void main() {
     () async {
       await McpRegistryService(
         layout: layout,
+        storage: _storageFor(root),
         registryConfigService: _FailingMcpRegistryConfigService(),
       ).writeForSimpleSession(
         workspaceId: 'workspace-empty',
@@ -283,6 +297,7 @@ void main() {
   test('plugin-only MCP input skips catalog and Smithery providers', () async {
     await McpRegistryService(
       layout: layout,
+      storage: _storageFor(root),
       registryConfigService: _FailingMcpRegistryConfigService(),
     ).writeForSimpleSession(
       workspaceId: 'workspace-plugin',
@@ -305,6 +320,7 @@ void main() {
       final config = _CountingMcpRegistryConfigService();
       final service = McpRegistryService(
         layout: layout,
+        storage: _storageFor(root),
         registryConfigService: config,
         cliRegistry: CliToolRegistry()..register(_CursorTestTool(writer)),
       );
@@ -346,7 +362,10 @@ void main() {
         }),
       );
 
-      await McpRegistryService(layout: layout).writeForSimpleSession(
+      await McpRegistryService(
+        layout: layout,
+        storage: _storageFor(root),
+      ).writeForSimpleSession(
         workspaceId: 'workspace-stale',
         sessionId: 'session-stale',
         mcpServerIds: const [],

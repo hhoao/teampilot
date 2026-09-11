@@ -38,7 +38,9 @@ class McpInstalledSection extends StatefulWidget {
 }
 
 class _McpInstalledSectionState extends State<McpInstalledSection> {
-  final _credentials = McpCredentialsStore();
+  late final _credentials = McpCredentialsStore(
+    fs: homeStorageOf(context).fs,
+  );
   Map<String, bool>? _oauthStatus;
   int _oauthStatusEpoch = 0;
 

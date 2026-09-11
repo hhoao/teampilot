@@ -126,7 +126,10 @@ abstract final class CatalogProduction {
 
     try {
       final config = await (registryConfig ??
-              McpRegistryConfigService(teampilotRoot: storage.appDataRoot))
+              McpRegistryConfigService(
+                  teampilotRoot: storage.appDataRoot,
+                  fs: storage.fs,
+                ))
           .load();
       final official = config.byKind(McpRegistrySourceKind.officialRegistry);
       if (official != null && official.enabled) {
@@ -291,7 +294,10 @@ abstract final class CatalogProduction {
 
     try {
       final config = await (registryConfig ??
-              McpRegistryConfigService(teampilotRoot: storage.appDataRoot))
+              McpRegistryConfigService(
+                  teampilotRoot: storage.appDataRoot,
+                  fs: storage.fs,
+                ))
           .load();
       final official = config.byKind(McpRegistrySourceKind.officialRegistry);
       if (official != null && official.enabled) {

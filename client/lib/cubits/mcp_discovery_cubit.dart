@@ -153,7 +153,10 @@ class McpDiscoveryCubit extends Cubit<McpDiscoveryState> {
     DiscoverySettingsCubit? discoverySettings,
   }) : _registryConfig =
            registryConfig ??
-           McpRegistryConfigService(teampilotRoot: storage.appDataRoot),
+           McpRegistryConfigService(
+             teampilotRoot: storage.appDataRoot,
+             fs: storage.fs,
+           ),
        _smithery = smithery ?? SmitheryMcpService(),
        _registry = registry ?? McpRegistryBrowseService(),
        _diskCache = diskCache ?? McpDiscoveryDiskCacheService(storage: storage),

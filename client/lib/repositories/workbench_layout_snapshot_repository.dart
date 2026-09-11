@@ -30,7 +30,10 @@ class WorkbenchLayoutSnapshotRepository {
   }) : _fs = fs ?? storage.fs,
        _layout =
            layout ??
-           WorkspaceLayout(teampilotRoot: storage.paths.basePath);
+           WorkspaceLayout(
+             teampilotRoot: storage.paths.basePath,
+             fs: storage.fs,
+           );
 
   final String workspaceId;
   final Filesystem _fs;

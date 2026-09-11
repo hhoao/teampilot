@@ -15,7 +15,10 @@ class McpListingInstallService {
     SmitheryMcpService? smithery,
   }) : _registryConfig =
            registryConfig ??
-           McpRegistryConfigService(teampilotRoot: storage.appDataRoot),
+           McpRegistryConfigService(
+             teampilotRoot: storage.appDataRoot,
+             fs: storage.fs,
+           ),
        _smithery = smithery ?? SmitheryMcpService();
 
   final McpRegistryConfigService _registryConfig;

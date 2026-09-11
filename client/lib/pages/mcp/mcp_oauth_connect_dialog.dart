@@ -13,6 +13,7 @@ import '../../services/mcp/mcp_oauth_discovery.dart';
 import '../../services/mcp/mcp_oauth_flow.dart';
 import '../../services/mcp/mcp_oauth_server_key.dart';
 import '../../services/mcp/smithery_mcp_auth.dart';
+import '../../widgets/home_storage_scope.dart';
 
 Future<bool> showMcpOAuthConnectDialog({
   required BuildContext context,
@@ -45,7 +46,7 @@ class _McpOAuthConnectDialog extends StatefulWidget {
 
 class _McpOAuthConnectDialogState extends State<_McpOAuthConnectDialog> {
   final _callbackController = TextEditingController();
-  final _flow = McpOAuthFlow();
+  late final _flow = McpOAuthFlow(storage: homeStorageOf(context));
 
   _McpOAuthDialogPhase _phase = _McpOAuthDialogPhase.discovering;
   String? _error;

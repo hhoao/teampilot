@@ -23,6 +23,7 @@ class McpRegistriesSection extends StatefulWidget {
 class _McpRegistriesSectionState extends State<McpRegistriesSection> {
   late final _configService = McpRegistryConfigService(
     teampilotRoot: homeStorageOf(context).appDataRoot,
+    fs: homeStorageOf(context).fs,
   );
   final _smithery = SmitheryMcpService();
   final _registry = McpRegistryBrowseService();
