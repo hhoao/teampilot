@@ -87,8 +87,24 @@ class MemberPresenceCubit extends Cubit<MemberPresenceState> {
   final AgentPresenceProjection? _presenceProjection;
 
   /// Pushed-events producer edge: dedupes the availability recomputed every
-  /// tick into events. Null means no publishing.
-  final PresenceEventBridge? _presenceBridge;
+  /// tick into events. Null means no publishing. Replaced on home-role swap
+  /// because [reloadAllAppData] does not recreate this cubit.
+  PresenceEventBridge? _presenceBridge;
+
+  /// Replaces the producer edge. Disposes the previous bridge. Idempotent on
+  /// producer-ness: a producer is not disposed/recreated when [bridge] is
+  /// non-null, and a consumer stays null when [bridge] is null.
+  void setPresenceBridge(PresenceEventBridge? bridge) {
+    if (identical(_presenceBridge, bridge)) return;
+    final currentlyProducer = _presenceBridge != null;
+    final wantProducer = bridge != null;
+    if (currentlyProducer == wantProducer) {
+      bridge?.dispose();
+      return;
+    }
+    _presenceBridge?.dispose();
+    _presenceBridge = bridge;
+  }
 
   /// Observable spy for tests; called before a projection change triggers a
   /// recompute.

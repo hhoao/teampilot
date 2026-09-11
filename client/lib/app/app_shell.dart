@@ -2714,6 +2714,16 @@ Future<AppShell> buildAppShell({
     // HomeInvalidationService subscribes to HomeStorage.changes and drives the
     // single full reload — the swap itself is the trigger.
     Future<void> applyHomeEventTransport({bool restart = false}) async {
+      final cubit = memberPresenceCubit;
+      if (cubit != null) {
+        if (connectionModeService.isSshMode) {
+          cubit.setPresenceBridge(null);
+        } else if (presenceSink != null) {
+          cubit.setPresenceBridge(PresenceEventBridge(sink: presenceSink));
+        } else {
+          cubit.setPresenceBridge(null);
+        }
+      }
       final controller = eventTransportController;
       if (controller == null) return;
       bindEventTransportHome?.call(homeStorage);

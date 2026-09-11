@@ -93,5 +93,15 @@ void main() {
         reason: 'consumer-only ssh home must not publish presence back',
       );
     });
+
+    test('home swap rebinds the presence producer via setPresenceBridge', () {
+      expect(
+        src.contains('setPresenceBridge'),
+        isTrue,
+        reason:
+            'reloadAllAppData does not recreate the cubit; applyHomeEventTransport '
+            'must replace the producer edge when the home role changes',
+      );
+    });
   });
 }

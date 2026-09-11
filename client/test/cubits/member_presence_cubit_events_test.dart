@@ -662,5 +662,48 @@ void main() {
       await cubit.close();
       expect(cubit.state.occupiedSessionIds, isEmpty);
     });
+
+    test('setPresenceBridge(null) stops publishing; a later bridge publishes again', () {
+      fakeAsync((async) {
+        final sink = _RecordingSink();
+        final bridge = PresenceEventBridge(sink: sink);
+        final service = _StubPresenceService({'m-lead': _connectedWorking});
+        final cubit = MemberPresenceCubit(
+          storage: fakeHomeStorage(),
+          memberPresenceService: service,
+          presenceBridge: bridge,
+        );
+        addTearDown(cubit.close);
+        final shell = _FakePresenceSession(executable: 't', seat: _seat);
+
+        cubit.attachPresenceUi();
+        cubit.syncPresenceTeam(_team);
+        cubit.updateTarget(_target(shell));
+        _settlePoll(async);
+        expect(
+          sink.events.map((e) => e.eventKind).toList(),
+          [AgentPresenceKind.working],
+        );
+
+        cubit.setPresenceBridge(null);
+        service.result = {'m-lead': _connectedIdle};
+        cubit.tickFromIdleWatch();
+        _settlePoll(async);
+        expect(
+          sink.events.map((e) => e.eventKind).toList(),
+          [AgentPresenceKind.working],
+          reason: 'cleared bridge must not publish further reports',
+        );
+
+        cubit.setPresenceBridge(PresenceEventBridge(sink: sink));
+        cubit.tickFromIdleWatch();
+        _settlePoll(async);
+        expect(
+          sink.events.map((e) => e.eventKind).toList(),
+          [AgentPresenceKind.working, AgentPresenceKind.idle],
+          reason: 'attaching a bridge later must publish again',
+        );
+      });
+    });
   });
 }
