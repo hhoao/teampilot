@@ -70,4 +70,57 @@ void main() {
     await Future<void>.delayed(const Duration(milliseconds: 150));
     expect(seen, isEmpty);
   });
+
+  test('listener attached after bytes arrived still gets the transition',
+      () async {
+    final t = TerminalActivityTracker(
+      bootQuietAfter: const Duration(milliseconds: 20),
+      bootMaxWait: const Duration(milliseconds: 80),
+    );
+    // Bytes arrive with no listener wired — no timer is armed.
+    t.notePtyBytes(_visible('late attach'));
+    final seen = <bool>[];
+    t.setBootFrameListener(seen.add);
+    await Future<void>.delayed(const Duration(milliseconds: 60));
+    expect(seen, [true], reason: 'attach must arm the pending transition');
+  });
+
+  test('detach then reattach (rebind) delivers the next transition', () async {
+    final first = <bool>[];
+    final t = TerminalActivityTracker(
+      bootQuietAfter: const Duration(milliseconds: 20),
+      bootMaxWait: const Duration(milliseconds: 80),
+      onBootFrameChanged: first.add,
+    );
+    t.notePtyBytes(_visible('boot one'));
+    await Future<void>.delayed(const Duration(milliseconds: 60));
+    expect(first, [true]);
+
+    // Unbind for the rebind cycle — TerminalSession keeps this same tracker.
+    t.disposePresencePush();
+
+    final revived = <bool>[];
+    t.setBootFrameListener(revived.add);
+    // A rebind re-runs the launch confirm path, which resets the tracker.
+    t.reset();
+
+    t.notePtyBytes(_visible('boot two'));
+    await Future<void>.delayed(const Duration(milliseconds: 60));
+    expect(revived, [true],
+        reason: 'rebind must revive the push on the reused tracker');
+    expect(first, [true], reason: 'the detached listener stays detached');
+  });
+
+  test('clearing the listener cancels a pending timer', () async {
+    final seen = <bool>[];
+    final t = TerminalActivityTracker(
+      bootQuietAfter: const Duration(milliseconds: 20),
+      bootMaxWait: const Duration(milliseconds: 60),
+      onBootFrameChanged: seen.add,
+    );
+    t.notePtyBytes(_visible('booting'));
+    t.setBootFrameListener(null);
+    await Future<void>.delayed(const Duration(milliseconds: 150));
+    expect(seen, isEmpty);
+  });
 }
