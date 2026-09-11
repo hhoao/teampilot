@@ -155,6 +155,17 @@
 - 测试 runner 有 bug：即使「Some tests failed」，退出码仍为 0 —— **读摘要行，不要信退出码**。
 - `docs/ARCHITECTURE.md` 是 AGENTS.md 的**悬空引用**（该文件从未被提交过），值得补或修链接。
 
+### 跑全套时会看到的失败（已知、与本路线无关）
+
+`client/test/pages/floating_workspace/floating_workspace_panel_gestures_test.dart`
+→ `overflow keeps + after strip and chrome flush-right`
+
+确定性失败，文件不在期 1/期 2 的改动范围内，来自另一条工作线（sidebar / floating panel）。跑全套时看到它不必慌，但也别顺手"修"到别的东西。
+
+### 如果新增的测试要等定时器
+
+`TerminalActivityTracker` 的推送测试驱动的是**真实一次性 `Timer` + 真实墙钟**。固定 `Future.delayed` 会被负载打穿（期 2 合并后就是这么抖起来的，见 `c74df8ec0` 的去抖动提交）。写这类测试请用「轮询到截止时间」的等待（`_waitFor(predicate, timeout)`），并把时长取到抖动占比可忽略；负向用例（取消/解绑后不该触发）则要固定等待**数倍于** `bootMaxWait`，让漏掉的定时器有机会暴露。
+
 ---
 
 ## 失败分支的处置
