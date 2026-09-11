@@ -35,6 +35,8 @@ import '../services/team_bus/artifacts/artifact_registry.dart';
 import '../services/team_bus/artifacts/artifact_transfer_service.dart';
 import '../services/team_bus/mcp/teammate_bus_mcp_gateway.dart';
 import '../services/team_bus/remote/remote_bus_binding_resolver.dart';
+import '../services/event/event_publisher.dart';
+import '../services/event/session_lifecycle_event.dart';
 import '../services/agent_status/agent_attention_state.dart';
 import '../services/agent_status/agent_permission_request.dart';
 import '../services/agent_status/agent_status_event.dart';
@@ -2617,6 +2619,16 @@ class ChatCubit extends Cubit<ChatState>
     final session = state.sessions
         .where((s) => s.sessionId == sessionId)
         .firstOrNull;
+    // Pure side-channel: notify lifecycle consumers before teardown starts.
+    if (session != null) {
+      EventPublisher.instance.dispatchSessionLifecycle(
+        SessionLifecycleEvent.sessionClosed(
+          sessionId: sessionId,
+          workspaceId: session.workspaceId,
+          timestamp: DateTime.now(),
+        ),
+      );
+    }
     composeDraftCache.clearSessionDraft(sessionId);
     if (session != null) {
       await composeDraftCache.clearSessionPersistent(

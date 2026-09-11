@@ -9,6 +9,7 @@ import '../../cubits/file_tree_cubit.dart';
 import '../../cubits/file_tree_root_mount.dart';
 import '../../cubits/session_preferences_cubit.dart';
 import '../../models/session_preferences.dart';
+import '../../services/event/event_publisher.dart';
 import '../../services/file_tree/workspace_file_tree_store.dart';
 import '../../services/git/git_auto_fetch_scheduler.dart';
 import '../../services/git/git_history_actions.dart';
@@ -478,7 +479,11 @@ class _RightToolsLifecycleHostState extends State<RightToolsLifecycleHost> {
       _fsWatcher = null;
       if (old != null) await old.stopAndDispose();
       if (!mounted) return;
-      _fsWatcher = WorkspaceFsWatcher(fs: fs, root: cwd);
+      _fsWatcher = WorkspaceFsWatcher(
+        fs: fs,
+        root: cwd,
+        dispatcher: EventPublisher.instance.attachedDispatcher,
+      );
       if (_diskListenersActive && widget.preferences.needsDiskSideEffects) {
         _fsWatcher?.resume();
       }

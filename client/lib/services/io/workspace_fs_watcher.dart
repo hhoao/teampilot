@@ -3,6 +3,8 @@ import 'dart:async';
 import 'package:path/path.dart' as p;
 
 import '../../utils/logging/logger.dart';
+import '../event/dispatcher.dart';
+import '../event/workspace_fs_event.dart';
 import 'filesystem.dart';
 
 /// One debounced change batch: the set of directory paths whose listing may
@@ -36,9 +38,24 @@ class WorkspaceFsWatcher {
     this.debounce = const Duration(milliseconds: 400),
     this.retryDelay = const Duration(seconds: 2),
     bool autoStart = false,
+    Dispatcher? dispatcher,
   }) : _watcher = debugDisable || fs is! FsWatcher ? null : fs as FsWatcher,
        _fs = fs,
-       _pathContext = fs.pathContext {
+       _pathContext = fs.pathContext,
+       _dispatcher = dispatcher {
+    // Single source of truth (see CatalogMutationBus): when a dispatcher is
+    // wired, _emit() publishes a WorkspaceFsChangedEvent onto it and this
+    // relay handler copies the batch back into the local controller, so
+    // onChanged subscribers see identical batches with zero changes. Without
+    // a dispatcher (tests constructing the watcher bare), _emit() feeds the
+    // controller directly — the legacy path exactly.
+    if (dispatcher != null) {
+      _relay = _RelayHandler(root, _controller);
+      dispatcher.registerFamily<WorkspaceFsKind>(
+        WorkspaceFsKind.changed.runtimeType,
+        _relay!,
+      );
+    }
     if (autoStart && !debugDisable && root.isNotEmpty) {
       _attachNativeWatch();
     }
@@ -57,6 +74,16 @@ class WorkspaceFsWatcher {
   final FsWatcher? _watcher;
   final Filesystem _fs;
   final p.Context _pathContext;
+
+  /// Central dispatcher the debounced batches are published to (optional:
+  /// the bare path keeps the legacy direct-controller emits).
+  final Dispatcher? _dispatcher;
+
+  /// Copies dispatcher-delivered batches back into [_controller]; registered
+  /// at construction when [_dispatcher] is wired, unregistered on dispose
+  /// (watchers have a real lifecycle: the right-tools host swaps them per cwd
+  /// change, while the app-lifetime dispatcher outlives them all).
+  _RelayHandler? _relay;
 
   /// Directory names whose churn is pure noise — filtered before they reach the
   /// debounce accumulator so dependency installs and build outputs don't drive
@@ -241,23 +268,68 @@ class WorkspaceFsWatcher {
     _pendingFull = false;
     _pendingStructural = false;
     if (batch.isEmpty && !structural) return;
-    _controller.add((changedDirs: batch, structural: structural));
+    final d = _dispatcher;
+    if (d != null) {
+      d.dispatch(
+        WorkspaceFsChangedEvent(
+          root: root,
+          batch: (changedDirs: batch, structural: structural),
+          timestamp: DateTime.now(),
+        ),
+      );
+    } else {
+      _controller.add((changedDirs: batch, structural: structural));
+    }
   }
 
   void dispose() {
     unawaited(stopAndDispose());
   }
 
-  /// Stops the native watch and closes [onChanged]. Await before starting a
-  /// replacement watcher so the prior OS subscription is fully cancelled.
+  /// Stops the native watch, detaches the dispatcher relay, and closes
+  /// [onChanged]. Await before starting a replacement watcher so the prior OS
+  /// subscription is fully cancelled.
   Future<void> stopAndDispose() async {
     if (_disposed) return;
     _disposed = true;
     _debounceTimer?.cancel();
     _debounceTimer = null;
+    final relay = _relay;
+    _relay = null;
+    if (relay != null) {
+      // Detach first so a handler snapshot taken mid-delivery by the
+      // dispatcher's consume loop no-ops even after unregister raced it.
+      relay.detach();
+      _dispatcher?.unregister(relay);
+    }
     await _stopNativeWatch();
     if (!_controller.isClosed) {
       await _controller.close();
     }
+  }
+}
+
+/// Copies dispatcher-delivered batches back into the watcher's local
+/// controller (see the construction-site comment in [WorkspaceFsWatcher]).
+///
+/// Invariant: kept-alive workspace tabs leave multiple watchers' relays live
+/// on the app-global dispatcher at once, so this relay copies back ONLY
+/// events whose [WorkspaceFsChangedEvent.root] equals this watcher's root —
+/// correctness never relies on "the other tabs have no listeners".
+class _RelayHandler implements EventHandler<WorkspaceFsChangedEvent> {
+  _RelayHandler(this._root, this._controller);
+
+  final String _root;
+  final StreamController<FsChangeBatch> _controller;
+  bool _detached = false;
+
+  /// Stops relaying; used by [WorkspaceFsWatcher.stopAndDispose] so in-flight
+  /// dispatcher deliveries cannot reach a disposed watcher's listeners.
+  void detach() => _detached = true;
+
+  @override
+  void handle(WorkspaceFsChangedEvent event) {
+    if (_detached || event.root != _root) return;
+    _controller.add(event.batch);
   }
 }

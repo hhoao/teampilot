@@ -26,6 +26,8 @@ import '../services/agent_runtime/runtime_event_journal.dart';
 import '../services/agent_runtime/runtime_event_projection.dart';
 import '../services/agent_runtime/seat_event_stream.dart';
 import '../services/agent_runtime/seat_lease_projection.dart';
+import '../services/event/async_dispatcher.dart';
+import '../services/event/event_publisher.dart';
 import '../services/prompt_delivery/prompt_delivery_coordinator.dart';
 import '../services/prompt_delivery/prompt_delivery_store.dart';
 import '../services/agent_status/agent_status_seat_lookup.dart';
@@ -469,6 +471,7 @@ class AppShell {
     required this.discoverySettingsCubit,
     required this.reinstallStorageContext,
     required this.bootstrapAppData,
+    this.catalogRuntime,
     required this.cliToolRegistry,
     required this.homeWorkspaceUiCache,
     required this.automationCubit,
@@ -569,6 +572,13 @@ class AppShell {
   final DiscoverySettingsCubit discoverySettingsCubit;
   final Future<void> Function() reinstallStorageContext;
   final Future<void> Function() bootstrapAppData;
+
+  /// Retried-bootstrap teardown seam: the assembled catalog runtime, exposed so
+  /// a bootstrap failure after [buildAppShell] succeeded can close its
+  /// mutation bus (unregistering the relay from the app-lifetime central
+  /// dispatcher) before a retry constructs a new shell. Null only when
+  /// construction failed before [CatalogRuntime.assemble] ran.
+  final CatalogRuntime? catalogRuntime;
   final AutomationCubit automationCubit;
   final AutomationScheduler automationScheduler;
   final CommandBus commandBus;
@@ -1072,6 +1082,12 @@ Future<AppShell> buildAppShell({
       }
     }(),
   );
+
+  // Retried-bootstrap teardown seam: when wiring below fails after the
+  // catalog runtime is assembled, its mutation bus must unregister its relay
+  // from the app-lifetime central dispatcher, so a retried bootstrap's
+  // events never reach this (dead) shell's listeners.
+  CatalogRuntime? catalogRuntime;
 
   try {
     Future<void> persistSshHomePathCacheIfLive() async {
@@ -1804,7 +1820,7 @@ Future<AppShell> buildAppShell({
     );
     teammateBusMcpGateway.attachAgentEventGateway(agentEventGateway);
 
-    final catalogRuntime = CatalogRuntime.assemble(
+    catalogRuntime = CatalogRuntime.assemble(
       sessions: sessionRepo,
       runtimeContexts: runtimeContextRegistry,
       skillRepository: skillRepo,
@@ -2683,6 +2699,7 @@ Future<AppShell> buildAppShell({
       discoverySettingsCubit: discoverySettingsCubit,
       reinstallStorageContext: reinstallStorageContext,
       bootstrapAppData: bootstrapAppData,
+      catalogRuntime: catalogRuntime,
       homeWorkspaceUiCache: homeWorkspaceUiCache,
       automationCubit: automationCubit,
       automationScheduler: automationScheduler,
@@ -2697,6 +2714,10 @@ Future<AppShell> buildAppShell({
     managedProviderControlPlaneLease.transferOwnership();
     return shell;
   } on Object {
+    // The failed shell is discarded: stop its catalog mutation bus before a
+    // bootstrap retry constructs a new one, so the app-lifetime dispatcher
+    // no longer relays mutations into the dead shell's cubits.
+    await catalogRuntime?.bus.close();
     await managedProviderControlPlaneLease.closeIfOwned();
     rethrow;
   }
@@ -2759,9 +2780,16 @@ class _TeamPilotBootstrapState extends State<TeamPilotBootstrap> {
   var _retrying = false;
   ManagedProviderUsageAutoRefresh? _usageAutoRefresh;
 
+  // Central event dispatcher: created once for the whole app lifecycle (not
+  // per bootstrap retry), attached to the publisher so all publishes route
+  // through it; stopped (drained) when the shell goes away.
+  final AsyncDispatcher _eventDispatcher = AsyncDispatcher();
+
   @override
   void initState() {
     super.initState();
+    unawaited(_eventDispatcher.start());
+    EventPublisher.instance.attach(_eventDispatcher);
     WidgetsBinding.instance.addPostFrameCallback((_) {
       unawaited(_start());
     });
@@ -2817,6 +2845,11 @@ class _TeamPilotBootstrapState extends State<TeamPilotBootstrap> {
     } on Object catch (error, stackTrace) {
       await builtShell?.connectCubit?.close();
       await builtShell?.managedProviderControlPlane.close();
+      // The failed shell is discarded: stop its catalog mutation bus before a
+      // bootstrap retry constructs a new one, so the app-lifetime dispatcher
+      // no longer relays mutations into the dead shell's cubits (same seam as
+      // the buildAppShell failure path).
+      await builtShell?.catalogRuntime?.bus.close();
       appLogger.e(
         '[boot] buildAppShell failed',
         error: error,
@@ -2862,6 +2895,9 @@ class _TeamPilotBootstrapState extends State<TeamPilotBootstrap> {
       unawaited(shell.connectCubit?.close());
       unawaited(shell.managedProviderControlPlane.close());
     }
+    // Drain queued events; dispose() is synchronous, so stop() is
+    // fire-and-forget like the cubit closes above.
+    unawaited(_eventDispatcher.stop());
     super.dispose();
   }
 
