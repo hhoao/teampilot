@@ -7,6 +7,12 @@ const double kWorkspaceSidebarGroupTextInset = 8 + 24 + 8;
 const double kWorkspaceSidebarRowMinHeight = 32;
 const EdgeInsets kWorkspaceSidebarRowPadding = EdgeInsets.fromLTRB(8, 6, 8, 6);
 
+/// Painted row height (padding + min content), excluding the 2px inter-row gap.
+const double kWorkspaceSidebarRowPaintHeight =
+    kWorkspaceSidebarRowMinHeight +
+    6 + // kWorkspaceSidebarRowPadding.top
+    6; // kWorkspaceSidebarRowPadding.bottom
+
 const double kWorkspaceSidebarRowHoverTintAlpha = 0.07;
 
 /// Translucent row hover tint — composites over the sidebar card (`surface`),

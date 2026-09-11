@@ -14,6 +14,7 @@ import 'package:teampilot/models/app_session.dart';
 import 'package:teampilot/models/workspace.dart';
 import 'package:teampilot/models/workspace_folder.dart';
 import 'package:teampilot/pages/home_workspace/workspace/workspace_sidebar.dart';
+import 'package:teampilot/pages/home_workspace/workspace/workspace_sidebar_row_metrics.dart';
 import 'package:teampilot/repositories/session_repository.dart';
 import 'package:teampilot/widgets/sidebar_session_tile.dart';
 
@@ -274,4 +275,30 @@ void main() {
     final layoutAfter = workbenchCubit.centerLayout('ws-1');
     expect(layoutAfter.focusedGroupId, isNot(focusedBefore));
   });
+
+  testWidgets(
+    'split group indicator height matches the session tile paint height',
+    (tester) async {
+      workbenchCubit
+        ..openSession('ws-1', 'a')
+        ..openSession('ws-1', 'b')
+        ..splitTab(
+          'ws-1',
+          WorkbenchTabId.session('b'),
+          axis: Axis.horizontal,
+          before: false,
+        );
+      await pumpSidebar(tester);
+
+      final indicator = find.byKey(
+        const ValueKey('workspace-running-group-indicator-g0'),
+      );
+      expect(indicator, findsOneWidget);
+      // Paint surface = row padding + min content (not the 2px inter-row gap).
+      expect(
+        tester.getSize(indicator).height,
+        kWorkspaceSidebarRowPaintHeight,
+      );
+    },
+  );
 }

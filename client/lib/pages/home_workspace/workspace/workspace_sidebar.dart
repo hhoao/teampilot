@@ -981,11 +981,11 @@ class _SplitGroupIndicator extends StatelessWidget {
       key: ValueKey('workspace-running-group-indicator-$groupId'),
       behavior: HitTestBehavior.opaque,
       onTap: onTap,
-      // Fixed height (row metrics + the tile's 2px bottom gap): matches the
-      // tile without needing parent stretch/IntrinsicHeight.
+      // Fixed height = tile paint surface (padding + min content), not the
+      // 2px inter-row gap — avoids IntrinsicHeight on long session lists.
       child: SizedBox(
         width: width,
-        height: kWorkspaceSidebarRowMinHeight + 2,
+        height: kWorkspaceSidebarRowPaintHeight,
         child: ColoredBox(color: color),
       ),
     );

@@ -3,6 +3,8 @@ import 'package:teampilot/models/team_config.dart';
 import 'package:teampilot/services/cli/registry/capabilities/headless_capability.dart';
 import 'package:teampilot/services/cli/registry/cli_tool_registry.dart';
 
+import '../../../support/post_frame_test_harness.dart';
+
 void main() {
   final registry = CliToolRegistry.builtIn();
 
@@ -21,8 +23,10 @@ void main() {
     }
   });
 
-  test('cursor provisioning returns the default result (no storage writes)',
+  test('cursor provisioning is not ready without provider or global login',
       () async {
+    setUpTestAppStorage();
+    addTearDown(tearDownTestAppStorage);
     final cap = registry.capability<HeadlessCapability>(CliTool.cursor);
     expect(cap, isNotNull);
     final result = await cap!.provision(
@@ -34,8 +38,8 @@ void main() {
         configDir: '/tmp/cfg',
       ),
     );
-    expect(result.credentialsReady, isTrue);
-    expect(result.warnings, isEmpty);
+    expect(result.credentialsReady, isFalse);
+    expect(result.warnings, ['cursor_credentials_missing']);
     expect(result.extraEnvironment, isEmpty);
   });
 }
