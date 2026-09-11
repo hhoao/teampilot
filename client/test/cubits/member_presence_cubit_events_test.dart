@@ -7,6 +7,7 @@ import 'package:teampilot/models/team_config.dart';
 import 'package:teampilot/services/event/agent_presence_event.dart';
 import 'package:teampilot/services/event/agent_presence_projection.dart';
 import 'package:teampilot/services/event/agent_presence_sink.dart';
+import 'package:teampilot/services/event/async_dispatcher.dart';
 import 'package:teampilot/services/event/presence_event_bridge.dart';
 import 'package:teampilot/services/team/member_presence_service.dart';
 import 'package:teampilot/services/terminal/terminal_session.dart';
@@ -56,8 +57,13 @@ class _StubPresenceService extends MemberPresenceService {
   }
 }
 
-/// Records published events and (optionally) feeds them back into a projection,
-/// standing in for the dispatcher hop in production wiring.
+/// Records publishes synchronously, with an optional synchronous feed into a
+/// projection.
+///
+/// This models only the *enqueue* half of the production path (bridge →
+/// `sink.publish` is synchronous) and deliberately skips the dispatcher's async
+/// delivery hop, so it is only used by tests that do NOT assert convergence
+/// through the dispatcher. Convergence tests use [_wiredEventsPath].
 class _RecordingSink implements AgentPresenceSink {
   _RecordingSink({this.projection});
 
@@ -69,6 +75,32 @@ class _RecordingSink implements AgentPresenceSink {
     events.add(event);
     projection?.handle(event);
   }
+}
+
+/// Production-shaped presence wiring: a real [AsyncDispatcher] delivers bridge
+/// publishes to the projection on a later event-loop turn (the single consume
+/// loop), and [AgentPresenceProjection.changes] then triggers the cubit's
+/// recompute. The hop is why availability convergence is settled in a loop
+/// rather than asserted on the same tick.
+///
+/// [AsyncDispatcher.handledCounts] counts every *delivered* event (including
+/// ones the projection absorbs) — the production observable for "published".
+({
+  AsyncDispatcher dispatcher,
+  AgentPresenceProjection projection,
+  PresenceEventBridge bridge,
+})
+_wiredEventsPath() {
+  final dispatcher = AsyncDispatcher()..start();
+  final projection = AgentPresenceProjection();
+  dispatcher.registerFamily<AgentPresenceKind>(
+    AgentPresenceKind.booting.runtimeType,
+    projection,
+  );
+  final bridge = PresenceEventBridge(
+    sink: DispatcherAgentPresenceSink(dispatcher),
+  );
+  return (dispatcher: dispatcher, projection: projection, bridge: bridge);
 }
 
 PresenceTarget _target(TerminalSession shell) => PresenceTarget(
@@ -101,6 +133,23 @@ void _settlePoll(FakeAsync async) {
   _pumpFrame();
 }
 
+/// Runs poll→emit cycles until [ok] holds, letting each bridge publish land on
+/// the dispatcher's consume loop and the resulting `changes` recompute settle
+/// before the next poll. Bounded, so a value stuck one hop behind fails the
+/// following assertion instead of hanging the test.
+void _settleUntil(FakeAsync async, bool Function() ok, {int maxPolls = 8}) {
+  for (var i = 0; i < maxPolls && !ok(); i++) {
+    _settlePoll(async);
+  }
+}
+
+/// Stops the dispatcher (draining anything queued) before the fake zone ends,
+/// so no fake-zone microtask is left pending after the test body.
+void _stopDispatcher(FakeAsync async, AsyncDispatcher dispatcher) {
+  dispatcher.stop();
+  async.flushMicrotasks();
+}
+
 void main() {
   setUp(setUpTestAppStorage);
   tearDown(tearDownTestAppStorage);
@@ -130,6 +179,9 @@ void main() {
     test('emitted availability reads the projection when wired', () {
       fakeAsync((async) {
         final projection = AgentPresenceProjection();
+        // Synchronous read-path case: the projection is seeded directly (as if
+        // a prior event had already been delivered) and the cubit's apply-step
+        // reads it on the next poll — no dispatcher hop is exercised here.
         // compute() still says idle — the projection value must win.
         final service = _StubPresenceService({'m-lead': _connectedIdle});
         final cubit = MemberPresenceCubit(
@@ -167,6 +219,8 @@ void main() {
     test('connection still comes from the poll when the projection has a value', () {
       fakeAsync((async) {
         final projection = AgentPresenceProjection();
+        // Synchronous read-path case (see the previous test): the projection is
+        // seeded directly; connection must stay poll-derived regardless.
         final service = _StubPresenceService({
           'm-lead': const MemberPresence(connection: MemberConnection.connecting),
         });
@@ -269,15 +323,13 @@ void main() {
 
     test('compute changes republish through the bridge into the projection', () {
       fakeAsync((async) {
-        final projection = AgentPresenceProjection();
-        final sink = _RecordingSink(projection: projection);
-        final bridge = PresenceEventBridge(sink: sink);
+        final wired = _wiredEventsPath();
         final service = _StubPresenceService({'m-lead': _connectedWorking});
         final cubit = MemberPresenceCubit(
           storage: fakeHomeStorage(),
           memberPresenceService: service,
-          presenceProjection: projection,
-          presenceBridge: bridge,
+          presenceProjection: wired.projection,
+          presenceBridge: wired.bridge,
         );
         addTearDown(cubit.close);
         final shell = _FakePresenceSession(executable: 't', seat: _seat);
@@ -285,15 +337,26 @@ void main() {
         cubit.attachPresenceUi();
         cubit.syncPresenceTeam(_team);
         cubit.updateTarget(_target(shell));
-        _settlePoll(async);
-        expect(projection.availabilityFor(_seat), AgentPresenceKind.working);
+        _settleUntil(
+          async,
+          () => wired.projection.availabilityFor(_seat) ==
+              AgentPresenceKind.working,
+        );
 
         service.result = {'m-lead': _connectedIdle};
         cubit.tickFromIdleWatch();
-        _settlePoll(async);
+        // Availability lands one dispatcher hop late: the detecting tick still
+        // reads the pre-change projected value, then `changes` recomputes.
+        _settleUntil(
+          async,
+          () => wired.projection.availabilityFor(_seat) ==
+                  AgentPresenceKind.idle &&
+              cubit.state.presence['m-lead']?.availability ==
+                  MemberAvailability.idle,
+        );
 
         expect(
-          projection.availabilityFor(_seat),
+          wired.projection.availabilityFor(_seat),
           AgentPresenceKind.idle,
           reason: 'the poll keeps the publish edge feeding the projection',
         );
@@ -301,20 +364,19 @@ void main() {
           cubit.state.presence['m-lead']?.availability,
           MemberAvailability.idle,
         );
+        _stopDispatcher(async, wired.dispatcher);
       });
     });
 
     test('reconnect at a different value converges to the fresh availability', () {
       fakeAsync((async) {
-        final projection = AgentPresenceProjection();
-        final sink = _RecordingSink(projection: projection);
-        final bridge = PresenceEventBridge(sink: sink);
+        final wired = _wiredEventsPath();
         final service = _StubPresenceService({'m-lead': _connectedWorking});
         final cubit = MemberPresenceCubit(
           storage: fakeHomeStorage(),
           memberPresenceService: service,
-          presenceProjection: projection,
-          presenceBridge: bridge,
+          presenceProjection: wired.projection,
+          presenceBridge: wired.bridge,
         );
         addTearDown(cubit.close);
         final shell = _FakePresenceSession(executable: 't', seat: _seat);
@@ -322,18 +384,31 @@ void main() {
         cubit.attachPresenceUi();
         cubit.syncPresenceTeam(_team);
         cubit.updateTarget(_target(shell));
-        _settlePoll(async);
-        expect(projection.availabilityFor(_seat), AgentPresenceKind.working);
+        _settleUntil(
+          async,
+          () => wired.projection.availabilityFor(_seat) ==
+              AgentPresenceKind.working,
+        );
 
         // Disconnect: reports null (clears the bridge baseline) but the
         // projection keeps the last kind.
         service.result = {'m-lead': _disconnected};
         cubit.tickFromIdleWatch();
-        _settlePoll(async);
-        expect(projection.availabilityFor(_seat), AgentPresenceKind.working);
+        _settleUntil(
+          async,
+          () => cubit.state.presence['m-lead']?.connection ==
+              MemberConnection.offline,
+        );
+        expect(
+          wired.projection.availabilityFor(_seat),
+          AgentPresenceKind.working,
+        );
 
         // Reconnect into a fresh boot: the poll keeps feeding the bridge, so
         // the projection converges rather than freezing on the stale value.
+        // (The reconnecting tick emits the stale projected kind for one
+        // dispatcher hop; the `changes` recompute then converges. Assert the
+        // convergence, not the transient.)
         service.result = {
           'm-lead': const MemberPresence(
             connection: MemberConnection.connected,
@@ -341,28 +416,36 @@ void main() {
           ),
         };
         cubit.tickFromIdleWatch();
-        _settlePoll(async);
+        _settleUntil(
+          async,
+          () => wired.projection.availabilityFor(_seat) ==
+                  AgentPresenceKind.booting &&
+              cubit.state.presence['m-lead']?.availability ==
+                  MemberAvailability.booting,
+        );
 
-        expect(projection.availabilityFor(_seat), AgentPresenceKind.booting);
+        expect(
+          wired.projection.availabilityFor(_seat),
+          AgentPresenceKind.booting,
+        );
         expect(
           cubit.state.presence['m-lead']?.availability,
           MemberAvailability.booting,
         );
+        _stopDispatcher(async, wired.dispatcher);
       });
     });
 
     test('reconnect at the same value: no re-broadcast, UI still correct', () {
       fakeAsync((async) {
-        final projection = AgentPresenceProjection();
-        final sink = _RecordingSink(projection: projection);
-        final bridge = PresenceEventBridge(sink: sink);
+        final wired = _wiredEventsPath();
         final service = _StubPresenceService({'m-lead': _connectedWorking});
         var refreshes = 0;
         final cubit = MemberPresenceCubit(
           storage: fakeHomeStorage(),
           memberPresenceService: service,
-          presenceProjection: projection,
-          presenceBridge: bridge,
+          presenceProjection: wired.projection,
+          presenceBridge: wired.bridge,
           onProjectionChanged: () => refreshes++,
         );
         addTearDown(cubit.close);
@@ -371,21 +454,43 @@ void main() {
         cubit.attachPresenceUi();
         cubit.syncPresenceTeam(_team);
         cubit.updateTarget(_target(shell));
-        _settlePoll(async);
-        expect(projection.availabilityFor(_seat), AgentPresenceKind.working);
+        _settleUntil(
+          async,
+          () => refreshes >= 1 &&
+              wired.projection.availabilityFor(_seat) ==
+                  AgentPresenceKind.working &&
+              cubit.state.presence['m-lead']?.availability ==
+                  MemberAvailability.working,
+        );
         final refreshesAfterInitial = refreshes;
+        expect(
+          refreshesAfterInitial,
+          greaterThan(0),
+          reason: 'the initial value must reach the projection to make the '
+              'no-re-broadcast assertion below meaningful',
+        );
 
         service.result = {'m-lead': _disconnected};
         cubit.tickFromIdleWatch();
-        _settlePoll(async);
+        _settleUntil(
+          async,
+          () => cubit.state.presence['m-lead']?.connection ==
+              MemberConnection.offline,
+        );
 
         service.result = {'m-lead': _connectedWorking};
         cubit.tickFromIdleWatch();
-        _settlePoll(async);
+        _settleUntil(
+          async,
+          () => cubit.state.presence['m-lead']?.connection ==
+              MemberConnection.connected,
+        );
 
-        // The bridge republishes (baseline was cleared) but the projection
-        // absorbs the equal value, so `changes` never fires (Task-4 note).
-        expect(sink.events.length, 2);
+        // The bridge republishes (baseline was cleared) and the dispatcher
+        // *delivers* both events, but the projection absorbs the equal value,
+        // so `changes` never fires (Task-4 note). Assert on the real delivered
+        // counts rather than a synchronous fake.
+        expect(wired.dispatcher.handledCounts['AgentPresenceKind.working'], 2);
         expect(
           refreshes,
           refreshesAfterInitial,
@@ -401,6 +506,7 @@ void main() {
           cubit.state.presence['m-lead']?.connection,
           MemberConnection.connected,
         );
+        _stopDispatcher(async, wired.dispatcher);
       });
     });
 
@@ -456,6 +562,9 @@ void main() {
 
     test('close cancels the subscription, disposes the bridge, drops seats', () {
       fakeAsync((async) {
+        // Synchronous-path case: the sink feeds the projection in-line so the
+        // teardown assertions (seat dropped, bridge disposed, sub cancelled)
+        // are independent of the dispatcher hop this test does not exercise.
         final projection = AgentPresenceProjection();
         final sink = _RecordingSink(projection: projection);
         final bridge = PresenceEventBridge(sink: sink);

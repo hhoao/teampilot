@@ -282,6 +282,16 @@ class MemberPresenceCubit extends Cubit<MemberPresenceState> {
   /// (only while connected — connection is always poll-derived); the freshly
   /// computed value is what feeds the bridge, keeping the publish edge on the
   /// authoritative rule so the projection cannot freeze on its first value.
+  ///
+  /// One-hop latency: the production sink (`DispatcherAgentPresenceSink`) only
+  /// *enqueues* on the dispatcher, so the projection observes a publish on a
+  /// later turn of the consume loop. A tick that detects an availability change
+  /// therefore still reads the *previous* projected value and emits it for that
+  /// one hop; the projection's `changes` listener then requests the recompute
+  /// that emits the fresh value. This is bounded latency, not a stuck
+  /// one-hop-behind state — a recompute is only dropped while another tick is
+  /// mid-flight (`_presenceTickInFlight`), and that in-flight tick re-reads the
+  /// already-updated projection after its `await`.
   Map<String, MemberPresence> _applyPresenceEvents(
     Map<String, MemberPresence> computed,
     PresenceTarget target,
