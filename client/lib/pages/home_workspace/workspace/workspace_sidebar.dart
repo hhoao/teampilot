@@ -12,28 +12,21 @@ import '../../../cubits/session_groups_cubit.dart';
 import '../../../cubits/shortcut_cubit.dart';
 import '../../../cubits/workbench/workbench_cubit.dart';
 import '../../../cubits/workbench/workbench_split_layout.dart';
-import '../../../cubits/worktree_cubit.dart';
 import '../../../l10n/l10n_extensions.dart';
 import '../../../models/app_session.dart';
-import '../../../models/git_worktree.dart';
 import '../../../models/session_group.dart';
 import '../../../models/workspace.dart';
 import '../../../pages/home_workspace/home_workspace_route.dart';
 import '../../../services/commands/command_ids.dart';
 import '../../../services/commands/command_tooltip.dart';
 import '../../../services/commands/key_chord.dart';
-import '../../../services/git/git_worktree_service.dart';
 import '../../../services/io/local_filesystem.dart';
 import '../../../widgets/home_storage_scope.dart';
 import '../../../services/search/content_search_slices.dart';
-import '../../../services/storage/workspace_layout.dart';
 import '../../../services/workspace/workspace_tools_scope.dart';
 import '../../../utils/session/session_project_grouping.dart';
-import '../../../utils/session/session_worktree_grouping.dart';
 import '../../../utils/workspace/workspace_chrome_profile.dart';
 import 'session_group_section.dart';
-import 'worktree_create_dialog.dart';
-import 'worktree_group_section.dart';
 import '../../../utils/ui/app_keys.dart';
 import '../../../utils/session/app_session_sort.dart';
 import '../../../utils/debounce/debounce.dart';
@@ -43,6 +36,7 @@ import '../../../utils/session/session_list_structure.dart';
 import '../../../utils/session/session_reorder_merge.dart';
 import '../../../utils/session/workspace_sessions.dart';
 import '../../../utils/session/workspace_tab_session_scope.dart';
+import 'project_tree_section.dart';
 import 'workspace_sidebar_probe.dart';
 import 'workspace_sidebar_row_metrics.dart';
 import '../../../widgets/sidebar_session_tile.dart';
@@ -88,6 +82,8 @@ class WorkspaceSidebarLayout {
   static const double maxWidth = 480;
 }
 
+enum _WorkspaceSidebarView { groups, projectTree }
+
 /// Workspace conversation sidebar.
 class WorkspaceSidebar extends StatefulWidget {
   const WorkspaceSidebar({
@@ -108,11 +104,11 @@ class WorkspaceSidebar extends StatefulWidget {
 class _WorkspaceSidebarState extends State<WorkspaceSidebar> {
   AppSessionSort _sessionSort = AppSessionSort.recentlyUpdated;
   bool _showingArchive = false;
+  _WorkspaceSidebarView _view = _WorkspaceSidebarView.groups;
 
   @override
   Widget build(BuildContext context) {
     final l10n = context.l10n;
-    final toolsContext = WorkspaceToolsScope.maybeOf(context)?.tools?.context;
 
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 18),
@@ -167,9 +163,7 @@ class _WorkspaceSidebarState extends State<WorkspaceSidebar> {
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
                     ConstrainedBox(
-                      constraints: BoxConstraints(
-                        maxHeight: maxRunningHeight,
-                      ),
+                      constraints: BoxConstraints(maxHeight: maxRunningHeight),
                       child: _RunningSessionsHost(
                         workspace: widget.workspace,
                         tabScopeId: widget.tabScopeId,
@@ -177,86 +171,110 @@ class _WorkspaceSidebarState extends State<WorkspaceSidebar> {
                     ),
                     const SizedBox(height: 14),
                     Padding(
-            padding: const EdgeInsets.fromLTRB(4, 0, 0, 8),
-            child: Row(
-              children: [
-                if (_showingArchive) ...[
-                  TpIconButton(
-                    icon: Icons.arrow_back_rounded,
-                    compact: true,
-                    size: TpIconButton.kCompactSize,
-                    tooltip: l10n.back,
-                    onTap: () => setState(() => _showingArchive = false),
-                  ),
-                  const SizedBox(width: 8),
-                ],
-                Expanded(
-                  child: Text(
-                    _showingArchive
-                        ? l10n.sessionArchiveTitle
-                        : l10n.homeWorkspaceConversationsSection,
-                    style: TpTextStyles.of(context).mutedSm,
-                  ),
-                ),
-                if (!_showingArchive) ...[
-                  _SessionSortButton(
-                    sort: _sessionSort,
-                    onChanged: (s) => setState(() => _sessionSort = s),
-                  ),
-                  const SizedBox(width: 2),
-                  TpIconButton(
-                    icon: Icons.new_label_outlined,
-                    compact: true,
-                    size: TpIconButton.kCompactSize,
-                    tooltip: l10n.sessionGroupCreateTooltip,
-                    onTap: throttledTap(
-                      'workspace_sidebar_new_group',
-                      () => unawaited(_createSessionGroup(context)),
-                    ),
-                  ),
-                  if (toolsContext != null &&
-                      worktreeManagementEnabled(toolsContext)) ...[
-                    const SizedBox(width: 2),
-                    TpIconButton(
-                      icon: Icons.refresh_rounded,
-                      compact: true,
-                      size: TpIconButton.kCompactSize,
-                      tooltip: l10n.worktreeRefreshTooltip,
-                      onTap: throttledTap(
-                        'workspace_sidebar_refresh_worktrees',
-                        () {
-                          final cubit = context.read<WorktreeCubit>();
-                          final repoPath =
-                              cubit.state.repoPath.trim().isNotEmpty
-                              ? cubit.state.repoPath
-                              : widget.workspace.firstFolderPath;
-                          unawaited(cubit.load(repoPath, force: true));
-                        },
-                      ),
-                    ),
-                    const SizedBox(width: 2),
-                    TpIconButton(
-                      icon: Icons.account_tree_outlined,
-                      compact: true,
-                      size: TpIconButton.kCompactSize,
-                      tooltip: l10n.worktreeNewWorktreeTooltip,
-                      onTap: throttledTap(
-                        'workspace_sidebar_new_worktree',
-                        () => unawaited(_createWorktree(context)),
-                      ),
-                    ),
-                  ],
-                  const SizedBox(width: 2),
-                  TpIconButton(
-                    icon: Icons.archive_outlined,
-                    compact: true,
-                    size: TpIconButton.kCompactSize,
-                    tooltip: l10n.sessionArchiveEntryTooltip,
-                    onTap: () => setState(() => _showingArchive = true),
-                  ),
-                ],
-              ],
-            ),
+                      padding: const EdgeInsets.fromLTRB(4, 0, 0, 8),
+                      child: _showingArchive
+                          ? Row(
+                              children: [
+                                TpIconButton(
+                                  icon: Icons.arrow_back_rounded,
+                                  compact: true,
+                                  size: TpIconButton.kCompactSize,
+                                  tooltip: l10n.back,
+                                  onTap: () =>
+                                      setState(() => _showingArchive = false),
+                                ),
+                                const SizedBox(width: 8),
+                                Expanded(
+                                  child: Text(
+                                    l10n.sessionArchiveTitle,
+                                    style: TpTextStyles.of(context).mutedSm,
+                                  ),
+                                ),
+                              ],
+                            )
+                          : Column(
+                              crossAxisAlignment: CrossAxisAlignment.stretch,
+                              children: [
+                                Row(
+                                  children: [
+                                    Expanded(
+                                      child: SingleChildScrollView(
+                                        scrollDirection: Axis.horizontal,
+                                        child: TpSegmentedControl(
+                                          key: const ValueKey(
+                                            'workspace-sidebar-view-switcher',
+                                          ),
+                                          totalSwitches: 2,
+                                          initialLabelIndex:
+                                              _view ==
+                                                  _WorkspaceSidebarView.groups
+                                              ? 0
+                                              : 1,
+                                          labels: const [
+                                            'Groups',
+                                            'Project tree',
+                                          ],
+                                          icons: const [
+                                            Icons.tag_outlined,
+                                            Icons.folder_outlined,
+                                          ],
+                                          tooltips: const [
+                                            'Groups',
+                                            'Project tree',
+                                          ],
+                                          onToggle: (index) {
+                                            if (index == null) return;
+                                            setState(() {
+                                              _view = index == 0
+                                                  ? _WorkspaceSidebarView.groups
+                                                  : _WorkspaceSidebarView
+                                                        .projectTree;
+                                            });
+                                          },
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                                const SizedBox(height: 6),
+                                Row(
+                                  mainAxisAlignment: MainAxisAlignment.end,
+                                  children: [
+                                    _SessionSortButton(
+                                      sort: _sessionSort,
+                                      onChanged: (s) =>
+                                          setState(() => _sessionSort = s),
+                                    ),
+                                    if (_view ==
+                                        _WorkspaceSidebarView.groups) ...[
+                                      const SizedBox(width: 2),
+                                      TpIconButton(
+                                        icon: Icons.new_label_outlined,
+                                        compact: true,
+                                        size: TpIconButton.kCompactSize,
+                                        tooltip: l10n.sessionGroupCreateTooltip,
+                                        onTap: throttledTap(
+                                          'workspace_sidebar_new_group',
+                                          () => unawaited(
+                                            _createSessionGroup(context),
+                                          ),
+                                        ),
+                                      ),
+                                    ],
+                                    const SizedBox(width: 2),
+                                    TpIconButton(
+                                      icon: Icons.archive_outlined,
+                                      compact: true,
+                                      size: TpIconButton.kCompactSize,
+                                      tooltip: l10n.sessionArchiveEntryTooltip,
+                                      onTap: () => setState(
+                                        () => _showingArchive = true,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ],
+                            ),
                     ),
                     Expanded(
                       child: _showingArchive
@@ -269,6 +287,7 @@ class _WorkspaceSidebarState extends State<WorkspaceSidebar> {
                               workspace: widget.workspace,
                               tabScopeId: widget.tabScopeId,
                               sessionSort: _sessionSort,
+                              view: _view,
                               onSessionsReordered: _onSessionsReordered,
                             ),
                     ),
@@ -351,45 +370,6 @@ class _WorkspaceSidebarState extends State<WorkspaceSidebar> {
       widget.workspace,
       tabScopeId: widget.tabScopeId,
     );
-  }
-
-  Future<void> _createWorktree(BuildContext context) async {
-    final cubit = context.read<WorktreeCubit>();
-    final tools = WorkspaceToolsScope.of(context).tools;
-    if (tools == null) return;
-    final repoPath =
-        context.read<WorktreeCubit>().state.repoPath.trim().isNotEmpty
-        ? context.read<WorktreeCubit>().state.repoPath
-        : widget.workspace.firstFolderPath;
-    final layout = WorkspaceLayout(
-      teampilotRoot: homeStorageOf(context).paths.basePath,
-      fs: homeStorageOf(context).fs,
-    );
-    await showWorktreeCreateDialog(
-      context,
-      repoName: _basename(repoPath),
-      repoPath: repoPath,
-      layout: layout.worktreePathFor,
-      branchLoader: branchListLoaderFor(tools.context),
-      existingWorktreePaths: [for (final wt in cubit.state.worktrees) wt.path],
-      onSubmit: (result) async {
-        await GitWorktreeService.forContext(tools.context).add(
-          repoPath,
-          result.worktreePath,
-          branch: result.branch,
-          baseRef: result.baseRef,
-          existingBranch: result.existingBranch,
-        );
-        await cubit.load(repoPath, force: true);
-        cubit.setCurrentWorktree(result.worktreePath);
-      },
-    );
-  }
-
-  static String _basename(String path) {
-    final parts = path.replaceAll(r'\', '/').split('/')
-      ..removeWhere((e) => e.isEmpty);
-    return parts.isEmpty ? path : parts.last;
   }
 }
 
@@ -586,12 +566,14 @@ class _ConversationListHost extends StatelessWidget {
     required this.workspace,
     required this.tabScopeId,
     required this.sessionSort,
+    required this.view,
     required this.onSessionsReordered,
   });
 
   final Workspace workspace;
   final String tabScopeId;
   final AppSessionSort sessionSort;
+  final _WorkspaceSidebarView view;
   final ValueChanged<List<String>> onSessionsReordered;
 
   @override
@@ -605,9 +587,6 @@ class _ConversationListHost extends StatelessWidget {
     final sessionsHydrated = context.select<ChatCubit, bool>(
       (c) => c.sessionsLoadedForWorkspace(workspace.workspaceId),
     );
-    final wtView = context.select<WorktreeCubit, WorktreeSidebarView>(
-      (c) => WorktreeSidebarView.from(c.state),
-    );
     final chatState = context.read<ChatCubit>().state;
     final sortedSessions = _sessionsForStructure(
       chatState,
@@ -617,26 +596,19 @@ class _ConversationListHost extends StatelessWidget {
 
     return SidebarRebuildProbe(
       key: const Key('workspace-sidebar-conversation-list-probe'),
-      child: _buildWithManualGroups(
-        context,
-        TpDeferredMountShell(
-          delayFrames: 1,
-          placeholder: const _SessionListSkeleton(),
-          child: _buildBody(
-            context,
-            sortedSessions,
-            structure,
-            wtView,
-            sessionsHydrated: sessionsHydrated,
-          ),
+      child: TpDeferredMountShell(
+        delayFrames: 1,
+        placeholder: const _SessionListSkeleton(),
+        child: _buildBody(
+          context,
+          sortedSessions,
+          structure,
+          sessionsHydrated: sessionsHydrated,
         ),
       ),
     );
   }
 
-  /// Manual group blocks ride ABOVE every automatic layout (flat, worktree-
-  /// grouped, multi-project): bounded stack with its own scroll so a
-  /// scrollable is never nested inside the list's scrollable.
   Widget _buildWithManualGroups(BuildContext context, Widget listArea) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -655,130 +627,36 @@ class _ConversationListHost extends StatelessWidget {
     );
   }
 
-  /// Flat session list when the repo has only its main worktree; otherwise a
-  /// collapsible worktree-grouped list. The "+ new worktree" header action is
-  /// always available regardless of this branch.
   Widget _buildBody(
     BuildContext context,
     List<AppSession> sortedSessions,
-    SessionListStructure structure,
-    WorktreeSidebarView wtView, {
+    SessionListStructure structure, {
     required bool sessionsHydrated,
   }) {
-    final l10n = context.l10n;
     if (!sessionsHydrated && structure.rows.isEmpty) {
       return const _SessionListSkeleton();
     }
-    if (workspace.folders.length > 1) {
-      return _buildMultiProjectWorktreeGroupedList(
-        context,
-        sortedSessions,
-        wtView,
+
+    if (view == _WorkspaceSidebarView.projectTree) {
+      final projectGroups = groupSessionsByProject(
+        folders: workspace.folders,
+        sessions: sortedSessions,
+        usesPosixPaths: homeStorageOf(context).usesPosixPaths,
+      );
+      return ProjectTreeSection(
+        groups: projectGroups,
+        workspace: workspace,
+        tabScopeId: tabScopeId,
+        highlightSessionId: scopedActiveSessionId(
+          context.read<WorkbenchCubit>(),
+          tabScopeId,
+        ),
       );
     }
-    switch (wtView.sessionListLayout) {
-      case WorktreeSessionListLayout.indeterminate:
-        return const _SessionListSkeleton();
-      case WorktreeSessionListLayout.flat:
-        if (!wtView.loading && wtView.worktrees.isEmpty) {
-          return _buildWorktreeGroupList(
-            context,
-            [
-              WorktreeGroup(
-                worktree: null,
-                sessions: sortedSessions,
-                projectFolderPath: workspace.firstFolderPath,
-                isProjectGroup: true,
-              ),
-            ],
-            wtView,
-            workspaceOrderedSessionIds: structure.sessionIds,
-            emptyWhenNoSessions: true,
-          );
-        }
-        return structure.rows.isEmpty
-            ? _EmptyConversations(label: l10n.homeWorkspaceNoConversations)
-            : _buildSessionList(context, structure.sessionIds);
-      case WorktreeSessionListLayout.grouped:
-        final groups = groupSessionsByWorktree(
-          worktrees: wtView.worktrees,
-          sessions: sortedSessions,
-          usesPosixPaths: homeStorageOf(context).usesPosixPaths,
-        );
-        return _buildWorktreeGroupList(
-          context,
-          groups,
-          wtView,
-          workspaceOrderedSessionIds: structure.sessionIds,
-        );
-    }
-  }
 
-  Widget _buildWorktreeGroupList(
-    BuildContext context,
-    List<WorktreeGroup> groups,
-    WorktreeSidebarView wtView, {
-    bool emptyWhenNoSessions = false,
-    required List<String> workspaceOrderedSessionIds,
-  }) {
-    final l10n = context.l10n;
-    final hasAnySession = groups.any((g) => g.sessions.isNotEmpty);
-    if (emptyWhenNoSessions && !hasAnySession) {
-      return _EmptyConversations(label: l10n.homeWorkspaceNoConversations);
-    }
-    return ListView.builder(
-      padding: EdgeInsets.zero,
-      itemCount: groups.length,
-      itemBuilder: (context, index) {
-        final group = groups[index];
-        final groupKey = worktreeGroupCollapseKey(
-          group,
-          usesPosixPaths: homeStorageOf(context).usesPosixPaths,
-        );
-        return WorktreeGroupSection(
-          key: ValueKey('wt-group-$groupKey'),
-          group: group,
-          workspace: workspace,
-          tabScopeId: tabScopeId,
-          sessionSort: sessionSort,
-          workspaceOrderedSessionIds: workspaceOrderedSessionIds,
-          onSessionsReordered: onSessionsReordered,
-          highlightSessionId: scopedActiveSessionId(
-            context.read<WorkbenchCubit>(),
-            tabScopeId,
-          ),
-          collapsed: wtView.collapsed.contains(groupKey),
-        );
-      },
-    );
-  }
-
-  Widget _buildMultiProjectWorktreeGroupedList(
-    BuildContext context,
-    List<AppSession> sortedSessions,
-    WorktreeSidebarView wtView,
-  ) {
-    final l10n = context.l10n;
-    final cubit = context.read<WorktreeCubit>();
-    final worktreesByProject = <String, List<GitWorktree>>{
-      for (final folder in workspace.folders)
-        folder.path: cubit.worktreesForProject(folder.path),
-    };
-    final groups = groupSessionsByWorktreeAcrossProjects(
-      folders: workspace.folders,
-      worktreesByProjectPath: worktreesByProject,
-      sessions: sortedSessions,
-      usesPosixPaths: homeStorageOf(context).usesPosixPaths,
-    );
-    final hasAnySession = groups.any((g) => g.sessions.isNotEmpty);
-    if (!hasAnySession && sortedSessions.isEmpty) {
-      return _EmptyConversations(label: l10n.homeWorkspaceNoConversations);
-    }
-    return _buildWorktreeGroupList(
+    return _buildWithManualGroups(
       context,
-      groups,
-      wtView,
-      workspaceOrderedSessionIds: sessionIdsInSortOrder(sortedSessions),
+      _buildSessionList(context, structure.sessionIds),
     );
   }
 

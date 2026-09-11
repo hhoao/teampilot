@@ -21,14 +21,14 @@ import 'package:teampilot/services/storage/home_storage.dart';
 
 final _workspace = Workspace(
   workspaceId: 'ws-1',
-  folders: const [WorkspaceFolder(path: '/tmp/ws-1')],
+  folders: const [WorkspaceFolder(path: '/tmp/huji')],
   createdAt: 1,
 );
 
 AppSession _session(String id) => AppSession(
   sessionId: id,
   workspaceId: 'ws-1',
-  folders: const [WorkspaceFolder(path: '/tmp/ws-1')],
+  folders: const [WorkspaceFolder(path: '/tmp/huji')],
   display: id,
   createdAt: 1,
   updatedAt: 1,
@@ -78,8 +78,8 @@ void main() {
         home: Scaffold(
           body: MultiRepositoryProvider(
             providers: [
-              
-            RepositoryProvider<HomeStorage>.value(value: testHomeStorage),RepositoryProvider<SessionRepository>.value(
+              RepositoryProvider<HomeStorage>.value(value: testHomeStorage),
+              RepositoryProvider<SessionRepository>.value(
                 value: sessionRepository,
               ),
             ],
@@ -127,6 +127,61 @@ void main() {
 
     // Member 'a' now appears twice: manual block + main list (tag-style).
     expect(find.byType(SidebarSessionTile), findsNWidgets(3));
+    expect(find.text('待办'), findsOneWidget);
+  });
+
+  testWidgets('opens in groups mode', (tester) async {
+    await pumpSidebar(tester);
+
+    expect(
+      find.byKey(const ValueKey('workspace-sidebar-view-switcher')),
+      findsOneWidget,
+    );
+    expect(find.text('Groups'), findsOneWidget);
+    expect(find.text('Project tree'), findsOneWidget);
+    expect(find.byTooltip('New group'), findsOneWidget);
+  });
+
+  testWidgets('switches to project tree without changing sessions', (
+    tester,
+  ) async {
+    await pumpSidebar(tester);
+
+    await tester.tap(
+      find.descendant(
+        of: find.byKey(const ValueKey('workspace-sidebar-view-switcher')),
+        matching: find.text('Project tree'),
+      ),
+    );
+    await tester.pump();
+
+    expect(find.text('huji'), findsOneWidget);
+    expect(find.text('待办'), findsNothing);
+    expect(find.byTooltip('New group'), findsNothing);
+    expect(chatCubit.state.sessions, hasLength(2));
+  });
+
+  testWidgets('switching back restores manual groups', (tester) async {
+    await pumpSidebar(tester);
+    groupsCubit.createGroup('待办');
+    await tester.pump();
+
+    await tester.tap(
+      find.descendant(
+        of: find.byKey(const ValueKey('workspace-sidebar-view-switcher')),
+        matching: find.text('Project tree'),
+      ),
+    );
+    await tester.pump();
+    expect(find.text('待办'), findsNothing);
+
+    await tester.tap(
+      find.descendant(
+        of: find.byKey(const ValueKey('workspace-sidebar-view-switcher')),
+        matching: find.text('Groups'),
+      ),
+    );
+    await tester.pump();
     expect(find.text('待办'), findsOneWidget);
   });
 
