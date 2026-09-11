@@ -27,8 +27,12 @@ import '../services/agent_runtime/runtime_event_projection.dart';
 import '../services/agent_runtime/seat_event_stream.dart';
 import '../services/agent_runtime/seat_lease_projection.dart';
 import '../services/editor/markdown_network_image_store.dart';
+import '../services/event/agent_presence_event.dart';
+import '../services/event/agent_presence_projection.dart';
+import '../services/event/agent_presence_sink.dart';
 import '../services/event/async_dispatcher.dart';
 import '../services/event/event_publisher.dart';
+import '../services/event/presence_event_bridge.dart';
 import '../services/prompt_delivery/prompt_delivery_coordinator.dart';
 import '../services/prompt_delivery/prompt_delivery_store.dart';
 import '../services/agent_status/agent_status_seat_lookup.dart';
@@ -615,6 +619,11 @@ Future<AppShell> buildAppShell({
   ManagedProviderUsageCubit? managedProviderUsageCubit,
   ProviderUsageHttpClient? managedProviderUsageHttpClient,
   CliCredentialSourceResolver? managedProviderCliCredentials,
+  // Pushed presence events: the app-lifetime projection (registered on the
+  // bootstrap state's dispatcher) and a narrow sink onto that same dispatcher.
+  // Null keeps the cubit on the legacy poll-derived path (tests, early boot).
+  AgentPresenceProjection? presenceProjection,
+  AgentPresenceSink? presenceSink,
 }) async {
   final bootSw = Stopwatch()..start();
   void boot(String phase) =>
@@ -746,7 +755,10 @@ Future<AppShell> buildAppShell({
   late final ExtensionCubit extensionCubit;
   late final SessionRepository sessionRepo;
   late final ChatCubit chatCubit;
-  late final MemberPresenceCubit memberPresenceCubit;
+  // Nullable so the construction-failure catch can close it: it subscribes to
+  // the app-lifetime presence projection, and a discarded shell must not leave
+  // that subscription (or its bridge) behind.
+  MemberPresenceCubit? memberPresenceCubit;
   late final AutomationCubit automationCubit;
   late final AutomationScheduler automationScheduler;
   late final EditorCubit editorCubit;
@@ -2164,7 +2176,16 @@ Future<AppShell> buildAppShell({
       onTogglePanel: openFloatingNewTerminal,
     );
 
-    memberPresenceCubit = MemberPresenceCubit(storage: homeStorage);
+    // Pushed presence events: the projection is app-lifetime (one per app, not
+    // per bootstrap retry); the bridge is owned by this shell's cubit, which
+    // disposes it on close — so a discarded shell can never kill a shared edge.
+    memberPresenceCubit = MemberPresenceCubit(
+      storage: homeStorage,
+      presenceProjection: presenceProjection,
+      presenceBridge: presenceSink == null
+          ? null
+          : PresenceEventBridge(sink: presenceSink),
+    );
     chatCubit.bindPresenceCubit(memberPresenceCubit);
 
     final sshProfileConnectionCoordinator = SshProfileConnectionCoordinator(
@@ -2872,7 +2893,12 @@ Future<AppShell> buildAppShell({
   } on Object {
     // The failed shell is discarded: stop its catalog mutation bus before a
     // bootstrap retry constructs a new one, so the app-lifetime dispatcher
-    // no longer relays mutations into the dead shell's cubits.
+    // no longer relays mutations into the dead shell's cubits. For the same
+    // reason close the presence cubit: it holds a subscription to the
+    // app-lifetime presence projection, which would otherwise keep waking a
+    // cubit from a discarded shell. `memberPresenceCubit` is nullable because
+    // construction may throw before it is assigned.
+    await memberPresenceCubit?.close();
     await catalogRuntime?.bus.close();
     await managedProviderControlPlaneLease.closeIfOwned();
     rethrow;
@@ -2941,9 +2967,29 @@ class _TeamPilotBootstrapState extends State<TeamPilotBootstrap> {
   // through it; stopped (drained) when the shell goes away.
   final AsyncDispatcher _eventDispatcher = AsyncDispatcher();
 
+  // Pushed presence events: ONE projection per app lifecycle, exactly like the
+  // dispatcher above — never per bootstrap retry (a retry must not leak a
+  // second projection, nor a second family registration). Registered on the
+  // dispatcher below and closed only after the dispatcher drains, in dispose.
+  final AgentPresenceProjection _presenceProjection = AgentPresenceProjection();
+
+  // Narrow per-shell publish edge onto the same dispatcher; buildAppShell
+  // wraps it in a fresh PresenceEventBridge owned by that shell's cubit.
+  late final AgentPresenceSink _presenceSink = DispatcherAgentPresenceSink(
+    _eventDispatcher,
+  );
+
   @override
   void initState() {
     super.initState();
+    // Register before start(): routing keys on `event.eventKind.runtimeType`,
+    // and every AgentPresenceKind value shares that runtimeType, so ONE
+    // registration covers booting / working / idle (pinned by
+    // test/services/event/agent_presence_family_registration_test.dart).
+    _eventDispatcher.registerFamily<AgentPresenceKind>(
+      AgentPresenceKind.working.runtimeType,
+      _presenceProjection,
+    );
     unawaited(_eventDispatcher.start());
     EventPublisher.instance.attach(_eventDispatcher);
     WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -2962,9 +3008,12 @@ class _TeamPilotBootstrapState extends State<TeamPilotBootstrap> {
         defaultWorkspaceDirectoryFuture: widget.defaultWorkspaceDirectoryFuture,
         homeIndexPrefetchFuture: widget.homeIndexPrefetchFuture,
         bootstrapCubit: widget.bootstrapCubit,
+        presenceProjection: _presenceProjection,
+        presenceSink: _presenceSink,
       );
       final shell = builtShell;
       if (!mounted) {
+        await shell.memberPresenceCubit.close();
         await shell.connectCubit?.close();
         await shell.managedProviderControlPlane.close();
         return;
@@ -2972,6 +3021,7 @@ class _TeamPilotBootstrapState extends State<TeamPilotBootstrap> {
       await yieldUiFrame();
       await shell.bootstrapAppData();
       if (!mounted) {
+        await shell.memberPresenceCubit.close();
         await shell.connectCubit?.close();
         await shell.managedProviderControlPlane.close();
         return;
@@ -3004,7 +3054,9 @@ class _TeamPilotBootstrapState extends State<TeamPilotBootstrap> {
       // The failed shell is discarded: stop its catalog mutation bus before a
       // bootstrap retry constructs a new one, so the app-lifetime dispatcher
       // no longer relays mutations into the dead shell's cubits (same seam as
-      // the buildAppShell failure path).
+      // the buildAppShell failure path). The presence cubit is closed for the
+      // same reason: it subscribes to the app-lifetime presence projection.
+      await builtShell?.memberPresenceCubit.close();
       await builtShell?.catalogRuntime?.bus.close();
       appLogger.e(
         '[boot] buildAppShell failed',
@@ -3054,7 +3106,17 @@ class _TeamPilotBootstrapState extends State<TeamPilotBootstrap> {
     }
     // Drain queued events; dispose() is synchronous, so stop() is
     // fire-and-forget like the cubit closes above.
-    unawaited(_eventDispatcher.stop());
+    //
+    // Ordering (LOAD-BEARING): the projection must close only AFTER the
+    // dispatcher has stopped delivering. We cannot `await` in a sync dispose,
+    // so we chain instead: stop()'s future completes once the consume loop has
+    // drained the queue and exited, so the continuation — and the projection
+    // close — runs strictly after the last delivery. The projection also
+    // guards its own broadcast add (`if (!_changes.isClosed)`), so even a late
+    // event would be dropped rather than throw; the chain is belt-and-braces.
+    unawaited(
+      _eventDispatcher.stop().then((_) => _presenceProjection.close()),
+    );
     super.dispose();
   }
 
