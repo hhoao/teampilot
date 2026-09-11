@@ -91,10 +91,25 @@ after its `await`.
 
 - The **connection** dimension — still poll-derived and unchanged.
 - The **`agent_runtime` hook events** (`statusReported` / `seatIdle`) — they
-  write this same dimension, so they converge in phase 2.5, not here.
-- `TerminalActivityTracker.isWorking` (the PTY byte heuristic) — it serves
-  `usesShellActivity`, mixed-mode quiet detection and idle-watch; a different
-  concern that does **not** drive presence.
+  carry a seat's per-seat working/idle **attention/status**, which
+  `RuntimeEventProjection.attention` projects into `AgentAttentionCubit`;
+  availability is not what they write today, but they are the other producer for
+  this same availability dimension, so they converge in phase 2.5, not here.
+- `TerminalActivityTracker.isWorking` (the PTY byte heuristic) — **not** one of
+  this family's push triggers, but it is *not* irrelevant to availability
+  either. `MemberCoordination.resolve` selects an availability strategy per
+  seat, and its `nativeShellActivity` (`usesShellActivity`) and `mixed` paths
+  choose `working` vs `idle` **directly from `isWorking`**, while the shell-latch
+  (personal / native single-CLI) and Claude-roster paths use `userTurnActive` or
+  the roster flag instead.
+
+The availability dimension therefore has several coordination strategies behind
+one `availability()` call, and only the two latches above *push* (the turn
+latch's `userTurnActive` edge and the boot latch's `isBootFrameReady` edge). The
+other inputs — `isWorking` in the shell-activity / mixed strategies, the
+Claude-roster flag, and the connection dimension — remain **poll-derived** inside
+the cubit's `MemberPresenceService.compute()` -> `MemberCoordination.resolve()`
+recompute; this family does not push events for them.
 
 ## Deliberate deviations from YARN
 
