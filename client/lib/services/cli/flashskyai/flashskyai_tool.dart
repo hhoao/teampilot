@@ -26,6 +26,7 @@ import '../registry/capabilities/native_command_capability.dart';
 import '../registry/capabilities/chat_interaction_capability.dart';
 import '../registry/capabilities/runtime_event_capability.dart';
 import '../registry/capabilities/cli_executable_capability.dart';
+import '../registry/capabilities/cli_launch_security_capability.dart';
 import '../claude/capabilities/mcp.dart';
 import 'capabilities/plugin.dart';
 import '../registry/capabilities/plugin_capability.dart';
@@ -41,6 +42,7 @@ final class FlashskyaiCliTool implements CliToolDefinition {
     this.sessionSelection = const FlashskyaiSessionSelectionLaunch(),
     this.workspaceAccess = const FlashskyaiWorkspaceAccessLaunch(),
     this.modelLaunch = const FlashskyaiModelLaunch(),
+    this.launchSecurity = const FullAccessOnlyCliLaunchSecurityCapability(),
     this.permissionLaunch = const FlashskyaiPermissionLaunch(),
     this.userExtraArgs = const UserExtraArgsProvider(),
     this.promptLaunch = const FlashskyaiPromptLaunch(),
@@ -75,6 +77,7 @@ final class FlashskyaiCliTool implements CliToolDefinition {
   final FlashskyaiSessionSelectionLaunch sessionSelection;
   final FlashskyaiWorkspaceAccessLaunch workspaceAccess;
   final FlashskyaiModelLaunch modelLaunch;
+  final CliLaunchSecurityCapability launchSecurity;
   final FlashskyaiPermissionLaunch permissionLaunch;
   final FlashskyaiPromptLaunch promptLaunch;
   final UserExtraArgsProvider userExtraArgs;
@@ -98,6 +101,7 @@ final class FlashskyaiCliTool implements CliToolDefinition {
     sessionSelection,
     workspaceAccess,
     modelLaunch,
+    launchSecurity,
     permissionLaunch,
     userExtraArgs,
     promptLaunch,

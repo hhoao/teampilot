@@ -29,6 +29,22 @@ void main() {
 
     expect(registry.capabilitiesOf<MarkerCapability>(CliTool.claude), isEmpty);
   });
+
+  test('launchSecurityFor throws when the capability is not registered', () {
+    final registry = CliToolRegistry()
+      ..register(FakeCliTool([OtherCapability()]));
+
+    expect(
+      () => registry.launchSecurityFor(CliTool.claude),
+      throwsA(
+        isA<StateError>().having(
+          (error) => error.message,
+          'message',
+          contains(CliTool.claude.value),
+        ),
+      ),
+    );
+  });
 }
 
 final class FakeCliTool implements CliToolDefinition {
