@@ -43,6 +43,7 @@ final class EventTransportClient {
   var _running = false;
   EventTransportByteChannel? _channel;
   Future<void>? _runLoop;
+  Completer<void>? _backoffGate;
 
   /// attempt 0→1s, 1→2s, 2→4s, 3→8s, 4+→16s, then clamp 30s.
   static Duration _defaultBackoff(int attempt) {
@@ -57,6 +58,7 @@ final class EventTransportClient {
 
   Future<void> stop() async {
     _running = false;
+    _wakeupBackoff();
     await _channel?.close();
     await _runLoop;
   }
@@ -119,7 +121,25 @@ final class EventTransportClient {
         _channel = null;
       }
       if (!_running) break;
-      await Future<void>.delayed(_backoff(attempt++));
+      await _delayBackoff(_backoff(attempt++));
+    }
+  }
+
+  void _wakeupBackoff() {
+    final gate = _backoffGate;
+    if (gate != null && !gate.isCompleted) gate.complete();
+  }
+
+  Future<void> _delayBackoff(Duration duration) async {
+    final gate = Completer<void>();
+    _backoffGate = gate;
+    final timer = Timer(duration, _wakeupBackoff);
+    if (!_running) _wakeupBackoff();
+    try {
+      await gate.future;
+    } finally {
+      timer.cancel();
+      if (identical(_backoffGate, gate)) _backoffGate = null;
     }
   }
 

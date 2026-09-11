@@ -344,4 +344,22 @@ void main() {
     await Future<void>.delayed(const Duration(milliseconds: 150));
     expect(h.openCount, afterStop + 1);
   });
+
+  test('stop during long backoff completes promptly and does not reopen', () async {
+    final h = _Harness(backoff: (_) => const Duration(seconds: 30));
+    addTearDown(h.dispose);
+
+    await h.startAndWaitSubscribe();
+    expect(h.openCount, 1);
+
+    await h.channel.inbound.close();
+    await _waitFor(() => h.channels.first.closed, timeout: _timeout);
+    await Future<void>.delayed(const Duration(milliseconds: 20));
+    expect(h.openCount, 1);
+
+    var stopped = false;
+    unawaited(h.client.stop().then((_) => stopped = true));
+    await _waitFor(() => stopped, timeout: const Duration(seconds: 1));
+    expect(h.openCount, 1);
+  });
 }
