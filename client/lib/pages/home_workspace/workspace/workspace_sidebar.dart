@@ -11,6 +11,7 @@ import '../../../cubits/layout_cubit.dart';
 import '../../../cubits/session_groups_cubit.dart';
 import '../../../cubits/shortcut_cubit.dart';
 import '../../../cubits/workbench/workbench_cubit.dart';
+import '../../../cubits/workbench/workbench_split_layout.dart';
 import '../../../cubits/worktree_cubit.dart';
 import '../../../l10n/l10n_extensions.dart';
 import '../../../models/app_session.dart';
@@ -443,18 +444,19 @@ class _RunningSessionsHost extends StatelessWidget {
         ),
       );
     }
-    final openTabIds = context.select<WorkbenchCubit, OpenSessionTabIds>(
-      (c) {
-        // Merged across every center split group — the sidebar's open strip
-        // is a whole-surface view, not a focused-group one. Preview tabs
-        // surface too (the strip mirrors what is visually open).
-        final strip = c.mergedCenterStrip(tabScopeId);
-        return OpenSessionTabIds.fromCenterBarOrder(
-          strip.order,
-          previewIds: strip.previewIds,
-          includePreviews: true,
-        );
-      },
+    final openTabIds = context.select<WorkbenchCubit, OpenSessionTabIds>((c) {
+      // Merged across every center split group — the sidebar's open strip
+      // is a whole-surface view, not a focused-group one. Preview tabs
+      // surface too (the strip mirrors what is visually open).
+      final strip = c.mergedCenterStrip(tabScopeId);
+      return OpenSessionTabIds.fromCenterBarOrder(
+        strip.order,
+        previewIds: strip.previewIds,
+        includePreviews: true,
+      );
+    });
+    final centerLayout = context.select<WorkbenchCubit, WorkbenchGroupLayout>(
+      (c) => c.centerLayout(tabScopeId),
     );
     final running = context.select<ChatCubit, RunningSessionIds>(
       (c) => RunningSessionIds.fromOpenSessionTabs(
@@ -477,6 +479,10 @@ class _RunningSessionsHost extends StatelessWidget {
             sessionIds: running.ids,
             workspace: workspace,
             tabScopeId: tabScopeId,
+            groupId: centerLayout.focusedGroupId,
+            groupLocked: centerLayout.lockedGroupIds.contains(
+              centerLayout.focusedGroupId,
+            ),
           ),
         ),
       ),
@@ -492,6 +498,7 @@ class SplitSessionGroup {
     this.sessionIds,
     this.focused,
     this.activeSessionId,
+    this.locked,
   );
 
   final String groupId;
@@ -501,6 +508,7 @@ class SplitSessionGroup {
   /// The session this group's pane is currently showing (strip activeId);
   /// highlighted faintly when the group is not the focused one.
   final String? activeSessionId;
+  final bool locked;
 
   @override
   bool operator ==(Object other) =>
@@ -508,7 +516,8 @@ class SplitSessionGroup {
       other.groupId == groupId &&
       listEquals(other.sessionIds, sessionIds) &&
       other.focused == focused &&
-      other.activeSessionId == activeSessionId;
+      other.activeSessionId == activeSessionId &&
+      other.locked == locked;
 
   @override
   int get hashCode => Object.hash(
@@ -516,6 +525,7 @@ class SplitSessionGroup {
     Object.hashAll(sessionIds),
     focused,
     activeSessionId,
+    locked,
   );
 }
 
@@ -542,6 +552,7 @@ class SplitSessionGroups {
           ids,
           groupId == focusedId,
           layout.groups[groupId]?.activeId?.sessionId,
+          layout.lockedGroupIds.contains(groupId),
         ),
     ]);
   }
@@ -846,11 +857,15 @@ class _RunningSessionsSection extends StatelessWidget {
     required this.sessionIds,
     required this.workspace,
     required this.tabScopeId,
+    required this.groupId,
+    required this.groupLocked,
   });
 
   final List<String> sessionIds;
   final Workspace workspace;
   final String tabScopeId;
+  final String groupId;
+  final bool groupLocked;
 
   @override
   Widget build(BuildContext context) {
@@ -882,6 +897,10 @@ class _RunningSessionsSection extends StatelessWidget {
                 session,
                 tabScopeId: tabScopeId,
               ),
+              workbenchGroupLocked: groupLocked,
+              onToggleWorkbenchGroupLock: () => context
+                  .read<WorkbenchCubit>()
+                  .toggleGroupLock(tabScopeId, groupId),
             ),
       ],
     );
@@ -931,39 +950,44 @@ class _RunningSplitGroupsSection extends StatelessWidget {
               for (final sessionId in group.sessionIds)
                 if (knownIds.contains(sessionId))
                   if (_sessionById(chatState, sessionId) case final session?)
-                  // Plain Row (no IntrinsicHeight): the indicator pins its
-                  // own height to the row metrics instead of stretching —
-                  // intrinsic measurement on every tile would double layout
-                  // work for long session lists.
-                  Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      _SplitGroupIndicator(
-                        groupId: group.groupId,
-                        focused: group.focused,
-                        isGroupActive: group.activeSessionId == sessionId,
-                        onTap: () =>
-                            workbench.focusGroup(tabScopeId, group.groupId),
-                      ),
-                      Expanded(
-                        child: SidebarSessionTile(
-                          key: ValueKey('workspace-running-session-$sessionId'),
-                          session: session,
-                          highlightSessionId: scopedActiveSessionId(
-                            workbench,
-                            tabScopeId,
-                          ),
-                          tapThrottleKeyPrefix: 'workspace_running_session',
-                          onTap: () => openWorkspaceSessionTab(
-                            context,
-                            workspace,
-                            session,
-                            tabScopeId: tabScopeId,
+                    // Plain Row (no IntrinsicHeight): the indicator pins its
+                    // own height to the row metrics instead of stretching —
+                    // intrinsic measurement on every tile would double layout
+                    // work for long session lists.
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        _SplitGroupIndicator(
+                          groupId: group.groupId,
+                          focused: group.focused,
+                          isGroupActive: group.activeSessionId == sessionId,
+                          onTap: () =>
+                              workbench.focusGroup(tabScopeId, group.groupId),
+                        ),
+                        Expanded(
+                          child: SidebarSessionTile(
+                            key: ValueKey(
+                              'workspace-running-session-$sessionId',
+                            ),
+                            session: session,
+                            highlightSessionId: scopedActiveSessionId(
+                              workbench,
+                              tabScopeId,
+                            ),
+                            tapThrottleKeyPrefix: 'workspace_running_session',
+                            onTap: () => openWorkspaceSessionTab(
+                              context,
+                              workspace,
+                              session,
+                              tabScopeId: tabScopeId,
+                            ),
+                            workbenchGroupLocked: group.locked,
+                            onToggleWorkbenchGroupLock: () => workbench
+                                .toggleGroupLock(tabScopeId, group.groupId),
                           ),
                         ),
-                      ),
-                    ],
-                  ),
+                      ],
+                    ),
             ],
           ),
       ],

@@ -5,6 +5,8 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/cubits/agent_attention_cubit.dart';
 import 'package:teampilot/cubits/automation_cubit.dart';
 import 'package:teampilot/cubits/chat_cubit.dart';
+import 'package:teampilot/cubits/chat/model/chat_tab.dart';
+import 'package:teampilot/cubits/chat/model/chat_tab_info.dart';
 import 'package:teampilot/cubits/session_groups_cubit.dart';
 import 'package:teampilot/l10n/app_localizations.dart';
 import 'package:teampilot/models/app_session.dart';
@@ -134,6 +136,33 @@ void main() {
         .map((t) => t.session.sessionId)
         .toList();
     expect(tiles, ['new', 'old']); // recentlyUpdated sort
+  });
+
+  testWidgets('manual session-group rows omit workbench lock actions', (
+    tester,
+  ) async {
+    chatCubit.tabStore.registerSession(
+      ChatTab(
+        info: ChatTabInfo(id: 'a', title: 'a', subtitle: ''),
+        cliTeamName: 'a',
+      ),
+    );
+    await pumpSection(
+      tester,
+      sessions: [_session('a')],
+      groups: const [
+        SessionGroup(id: 'g1', name: 'G', sessionIds: ['a']),
+      ],
+    );
+
+    await tester.tap(
+      find.byType(SidebarSessionTile),
+      buttons: kSecondaryMouseButton,
+    );
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 200));
+    expect(find.text('Lock Group'), findsNothing);
+    expect(find.text('Unlock Group'), findsNothing);
   });
 
   testWidgets('collapse header hides rows; expand restores them', (

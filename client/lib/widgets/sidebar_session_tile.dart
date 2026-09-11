@@ -41,6 +41,8 @@ class SidebarSessionTile extends StatefulWidget {
     this.tapThrottleKeyPrefix = 'sidebar_session',
     this.contentLeftInset = 0,
     this.index = -1,
+    this.workbenchGroupLocked,
+    this.onToggleWorkbenchGroupLock,
     super.key,
   });
 
@@ -63,6 +65,11 @@ class SidebarSessionTile extends StatefulWidget {
   /// Index in a parent [ReorderableListView]. When >= 0, a drag handle is shown
   /// on hover so the user can reorder sessions by dragging.
   final int index;
+
+  /// Lock state and action for the workbench group owning this open session.
+  /// Omitted for manual/archived session rows.
+  final bool? workbenchGroupLocked;
+  final VoidCallback? onToggleWorkbenchGroupLock;
 
   @override
   State<SidebarSessionTile> createState() => _SidebarSessionTileState();
@@ -174,6 +181,18 @@ class _SidebarSessionTileState extends State<SidebarSessionTile> {
           value: 'open_to_side',
           icon: Icons.vertical_split_outlined,
           label: l10n.sessionOpenToSide,
+        ),
+      if (!widget.archiveMode &&
+          hasOpenTab &&
+          widget.onToggleWorkbenchGroupLock != null)
+        TpActionMenuPopupItem(
+          value: 'toggle_workbench_group_lock',
+          icon: widget.workbenchGroupLocked == true
+              ? Icons.lock_open_outlined
+              : Icons.lock_outline,
+          label: widget.workbenchGroupLocked == true
+              ? l10n.workbenchUnlockGroup
+              : l10n.workbenchLockGroup,
         ),
       TpActionMenuPopupItem(
         value: 'rename',
@@ -297,6 +316,8 @@ class _SidebarSessionTileState extends State<SidebarSessionTile> {
     switch (selected) {
       case 'open_to_side':
         await openWorkspaceSessionTabToSide(context, session);
+      case 'toggle_workbench_group_lock':
+        widget.onToggleWorkbenchGroupLock?.call();
       case 'rename':
         await _showRenameDialog(context, session, l10n);
       case 'duplicate':
@@ -690,6 +711,19 @@ class _SidebarSessionTileState extends State<SidebarSessionTile> {
                           openWorkspaceSessionTabToSide(context, session),
                         ),
                       ),
+                    if (!widget.archiveMode &&
+                        hasOpenTab &&
+                        widget.onToggleWorkbenchGroupLock != null)
+                      TpActionMenuItem(
+                        icon: widget.workbenchGroupLocked == true
+                            ? Icons.lock_open_outlined
+                            : Icons.lock_outline,
+                        label: widget.workbenchGroupLocked == true
+                            ? l10n.workbenchUnlockGroup
+                            : l10n.workbenchLockGroup,
+                        menuController: controller,
+                        onTap: () => widget.onToggleWorkbenchGroupLock?.call(),
+                      ),
                     TpActionMenuItem(
                       icon: Icons.drive_file_rename_outline,
                       label: l10n.renameConversation,
@@ -803,7 +837,7 @@ class _SidebarSessionTileState extends State<SidebarSessionTile> {
           _onSessionTap,
         ),
         onSecondaryTapDown: _showSessionContextMenuFromTap,
-        onLongPress: Platform.isAndroid
+        onLongPress: Theme.of(context).platform == TargetPlatform.android
             ? _showSessionContextMenuAtCenter
             : null,
         trailing: actionTrailing,

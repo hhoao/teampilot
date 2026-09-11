@@ -5,6 +5,7 @@ import 'package:teampilot/cubits/layout_cubit.dart';
 import 'package:teampilot/l10n/app_localizations.dart';
 import 'package:teampilot/pages/workspace_shell/workspace_shell.dart';
 import 'package:teampilot/pages/workspace_shell/workspace_shell_tabs.dart';
+import 'package:teampilot/widgets/workbench/workbench_group_lock_button.dart';
 
 Widget _wrapShell(Widget shell) {
   return MaterialApp(
@@ -182,5 +183,64 @@ void main() {
     final lastTab = tester.getTopLeft(find.text('Last'));
     final newChat = tester.getTopLeft(find.byType(WorkspaceShellNewChatButton));
     expect(newChat.dx, greaterThan(lastTab.dx));
+  });
+
+  testWidgets('tab bar trailing control sits after new-chat control', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      _wrapShell(
+        const WorkspaceShell(
+          showHeader: false,
+          breadcrumb: 'Team / Chat',
+          title: 'Chat',
+          subtitle: 'Terminal',
+          actions: [],
+          showNewChatButton: true,
+          newChatTooltip: 'New',
+          newConversationLabel: 'New Conversation',
+          newTerminalLabel: 'New terminal',
+          tabs: [TabInfo(id: 's1', title: 'Session')],
+          tabBarTrailing: KeyedSubtree(
+            key: ValueKey('tab-bar-trailing'),
+            child: SizedBox(width: 24, height: 24),
+          ),
+          child: Text('Session body'),
+        ),
+      ),
+    );
+
+    final newChat = tester.getTopLeft(find.byType(WorkspaceShellNewChatButton));
+    final trailing = tester.getTopLeft(
+      find.byKey(const ValueKey('tab-bar-trailing')),
+    );
+    expect(trailing.dx, greaterThan(newChat.dx));
+  });
+
+  testWidgets('empty shell keeps a trailing group lock control available', (
+    tester,
+  ) async {
+    var toggles = 0;
+    await tester.pumpWidget(
+      _wrapShell(
+        WorkspaceShell(
+          showHeader: false,
+          breadcrumb: 'Team / Chat',
+          title: 'Chat',
+          subtitle: 'Terminal',
+          actions: const [],
+          tabBarTrailing: WorkbenchGroupLockButton(
+            locked: true,
+            onToggle: () => toggles++,
+          ),
+          child: const Text('Empty group body'),
+        ),
+      ),
+    );
+
+    expect(find.byType(WorkspaceShellTabRow), findsOneWidget);
+    expect(find.byIcon(Icons.lock_outlined), findsOneWidget);
+    await tester.tap(find.byType(WorkbenchGroupLockButton));
+    expect(toggles, 1);
   });
 }

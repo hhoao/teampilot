@@ -27,6 +27,7 @@ import '../../utils/workspace/workspace_chrome_profile.dart';
 import '../../widgets/workspace_terminal/workspace_terminal_new_session_menu.dart';
 import '../../widgets/workspace_terminal_panel.dart';
 import '../../widgets/workbench/workbench_tab_drag.dart';
+import '../../widgets/workbench/workbench_group_lock_button.dart';
 import '../chat/chat_page_shell_probe.dart';
 import '../chat/chat_workbench_slice.dart';
 import '../chat/session_tab_cli.dart';
@@ -65,6 +66,8 @@ class WorkbenchGroupHost extends StatelessWidget {
     this.sessionId,
     this.actions = const [],
     this.landingBuilder,
+    this.isGroupLocked = false,
+    this.onToggleGroupLock,
     super.key,
   });
 
@@ -117,6 +120,9 @@ class WorkbenchGroupHost extends StatelessWidget {
   /// Builds the per-group landing pane. Defaults to [WorkspaceChatPane] bound
   /// to this group's strip landing fields; injectable for tests.
   final Widget Function(BuildContext context, TabStrip strip)? landingBuilder;
+
+  final bool isGroupLocked;
+  final VoidCallback? onToggleGroupLock;
 
   @override
   Widget build(BuildContext context) {
@@ -179,9 +185,7 @@ class WorkbenchGroupHost extends StatelessWidget {
     );
     final activeTabIndex = activeId == null
         ? -1
-        : order
-              .indexOf(activeId)
-              .clamp(0, tabs.isEmpty ? 0 : tabs.length - 1);
+        : order.indexOf(activeId).clamp(0, tabs.isEmpty ? 0 : tabs.length - 1);
 
     // Split entries / tab drags only on wide layouts where the group holds
     // more than one tab (a sole tab cannot be split out — reducer no-op).
@@ -215,6 +219,10 @@ class WorkbenchGroupHost extends StatelessWidget {
                 ? 'personal workspace / shell wrapper mode'
                 : 'target: ${teamConfig != null ? _memberName(teamConfig, activeTab) : 'team'} / shell wrapper mode',
             showNewChatButton: tabs.isNotEmpty,
+            tabBarTrailing: WorkbenchGroupLockButton(
+              locked: isGroupLocked,
+              onToggle: onToggleGroupLock,
+            ),
             newChatTooltip: commandTooltip(
               context,
               context.l10n.workbenchStripNewMenuTooltip,
@@ -317,8 +325,9 @@ class WorkbenchGroupHost extends StatelessWidget {
                     // sync; the projection reads the strip union.
                     unawaited(chat.toggleSessionPin(sessionId));
                     final tabId = WorkbenchTabId.session(sessionId);
-                    final groupStrip =
-                        workbench.centerLayout(workspaceId).groups[groupId];
+                    final groupStrip = workbench
+                        .centerLayout(workspaceId)
+                        .groups[groupId];
                     if (groupStrip == null) return;
                     if (groupStrip.pinnedIds.contains(tabId)) {
                       workbench.unpin(workspaceId, tabId);
@@ -433,9 +442,7 @@ class WorkbenchGroupHost extends StatelessWidget {
 
   /// Resolves this group's team/personal context from its own active session
   /// (not the focused strip's).
-  WorkspaceActiveContext _resolveActiveContext(
-    BuildContext context,
-  ) {
+  WorkspaceActiveContext _resolveActiveContext(BuildContext context) {
     final sessionId = strip.activeId?.sessionId;
     if (sessionId != null) {
       for (final session in chatState.sessions) {

@@ -70,6 +70,99 @@ void main() {
   });
 
   group('restore round-trip', () {
+    test('preserves independent center and floating lock sets', () async {
+      final seeded = seedCubit();
+      final centerGroup = seeded.centerLayout(_ws).leafGroupIds.first;
+      final floatingGroup = seeded.floatingLayout(_ws).leafGroupIds.last;
+      seeded.toggleGroupLock(_ws, centerGroup);
+      seeded.toggleGroupLock(_ws, floatingGroup, floating: true);
+
+      await repo.save(
+        seeded.centerLayout(_ws),
+        seeded.floatingLayout(_ws),
+      );
+
+      final restored = WorkbenchCubit();
+      await repo.restore(restored);
+
+      expect(restored.centerLayout(_ws).lockedGroupIds, {centerGroup});
+      expect(restored.floatingLayout(_ws).lockedGroupIds, {floatingGroup});
+    });
+
+    test('discards unknown and pruned lock ids during restore', () async {
+      final seeded = seedCubit();
+      final center = seeded.centerLayout(_ws);
+      final prunedGroup = center.leafGroupIds.last;
+      final floating = seeded.floatingLayout(_ws);
+      final floatingPrunedGroup = floating.groups.entries
+          .singleWhere((entry) => entry.value.order.contains(_shell2))
+          .key;
+      final floatingSurvivingGroup = floating.groups.entries
+          .singleWhere((entry) => entry.value.order.contains(_shell1))
+          .key;
+      final unknownId = 'missing-group';
+      await repo.save(
+        center.copyWith(
+          lockedGroupIds: {
+            center.leafGroupIds.first,
+            prunedGroup,
+            unknownId,
+          },
+        ),
+        floating.copyWith(
+          lockedGroupIds: {
+            floatingSurvivingGroup,
+            floatingPrunedGroup,
+            unknownId,
+          },
+        ),
+      );
+
+      final restored = WorkbenchCubit();
+      await repo.restore(
+        restored,
+        tabResolves: (tab) => tab != _s2 && tab != _shell2,
+      );
+
+      expect(
+        restored.centerLayout(_ws).lockedGroupIds,
+        {center.leafGroupIds.first},
+      );
+      expect(
+        restored.centerLayout(_ws).lockedGroupIds,
+        isNot(contains(prunedGroup)),
+      );
+      expect(
+        restored.floatingLayout(_ws).lockedGroupIds,
+        {floatingSurvivingGroup},
+      );
+      expect(
+        restored.floatingLayout(_ws).lockedGroupIds,
+        isNot(contains(floatingPrunedGroup)),
+      );
+    });
+
+    test('restores old snapshots without lock fields as unlocked', () async {
+      final seeded = seedCubit();
+      final centerGroup = seeded.centerLayout(_ws).leafGroupIds.first;
+      final floatingGroup = seeded.floatingLayout(_ws).leafGroupIds.first;
+      seeded.toggleGroupLock(_ws, centerGroup);
+      seeded.toggleGroupLock(_ws, floatingGroup, floating: true);
+      await repo.save(seeded.centerLayout(_ws), seeded.floatingLayout(_ws));
+      final snapshot = jsonDecode(fs.files[_file]!) as Map<String, Object?>;
+      (snapshot['center'] as Map).remove('lockedGroupIds');
+      (snapshot['floating'] as Map).remove('lockedGroupIds');
+      await fs.writeString(_file, jsonEncode(snapshot));
+
+      final restored = seedCubit();
+      restored.toggleGroupLock(_ws, centerGroup);
+      restored.toggleGroupLock(_ws, floatingGroup, floating: true);
+      await repo.restore(restored);
+
+      expect(restored.centerLayout(_ws).lockedGroupIds, isEmpty);
+      expect(restored.floatingLayout(_ws).lockedGroupIds, isEmpty);
+    });
+
     test('restores both layouts into a fresh cubit', () async {
       final seeded = seedCubit();
       final savedCenter = toSnapshot(seeded.centerLayout(_ws));

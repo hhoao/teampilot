@@ -29,6 +29,7 @@ import '../../services/floating_workspace/floating_surface_registry.dart';
 import '../../services/floating_workspace/floating_terminal_pty_hold_scope.dart';
 import '../../services/floating_workspace/floating_workspace_toggle_metrics.dart';
 import '../../widgets/workbench/workbench_split_layout_view.dart';
+import '../../widgets/workbench/workbench_group_lock_button.dart';
 import '../../widgets/workbench/workbench_tab_drag.dart';
 import '../../widgets/workspace_terminal_panel.dart';
 import 'floating_group_host.dart';
@@ -133,8 +134,7 @@ class _FloatingWorkspacePanelState extends State<FloatingWorkspacePanel> {
     Widget child = FloatingWorkspaceCloseShortcut(
       registry: registry,
       // Content FocusScope requests focus on open; chrome Focus only for empty.
-      autofocus:
-          state.visibility == FloatingPanelVisibility.open && !hasTabs,
+      autofocus: state.visibility == FloatingPanelVisibility.open && !hasTabs,
       child: _FloatingWorkspacePanelBody(
         key: const Key('floating_workspace_panel'),
         state: state,
@@ -638,6 +638,22 @@ class _PanelChromeFrameState extends State<_PanelChromeFrame> {
                             CommandIds.floatingOpenFile,
                           );
                         },
+                        groupAction:
+                            widget.layout.groups.length == 1 ||
+                                !widget.splitEnabled
+                            ? WorkbenchGroupLockButton(
+                                locked: widget.layout.lockedGroupIds.contains(
+                                  widget.layout.focusedGroupId,
+                                ),
+                                onToggle: () => context
+                                    .read<WorkbenchCubit>()
+                                    .toggleGroupLock(
+                                      widget.workspaceId,
+                                      widget.layout.focusedGroupId,
+                                      floating: true,
+                                    ),
+                              )
+                            : null,
                         // Multi-group with an active split (wide): the title
                         // bar drops its tab strip — each group's slim header
                         // owns its tabs, the strip would duplicate the
@@ -645,7 +661,8 @@ class _PanelChromeFrameState extends State<_PanelChromeFrame> {
                         // window chrome remain. Narrow mode (single-group
                         // degradation) keeps the strip: it is the only place
                         // the focused group's tabs render.
-                        tabBar: widget.layout.groups.length > 1 &&
+                        tabBar:
+                            widget.layout.groups.length > 1 &&
                                 widget.splitEnabled
                             ? const SizedBox.shrink()
                             : _buildTitleTabBar(context, tabs, activeId),
@@ -1028,6 +1045,7 @@ class _TitleBar extends StatelessWidget {
   const _TitleBar({
     required this.tabBar,
     required this.onOpenFile,
+    this.groupAction,
     this.onPanStart,
     this.onPanUpdate,
     this.onPanEnd,
@@ -1036,6 +1054,7 @@ class _TitleBar extends StatelessWidget {
 
   final Widget tabBar;
   final VoidCallback onOpenFile;
+  final Widget? groupAction;
   final GestureDragStartCallback? onPanStart;
   final GestureDragUpdateCallback? onPanUpdate;
   final GestureDragEndCallback? onPanEnd;
@@ -1093,6 +1112,7 @@ class _TitleBar extends StatelessWidget {
                     ],
                   ),
                 ),
+                if (groupAction != null) groupAction!,
                 // Keep a drag affordance between "+" and window chrome.
                 const IgnorePointer(child: SizedBox(width: 28)),
                 const FloatingWorkspaceChrome(),
@@ -1275,9 +1295,12 @@ class _FloatingPanelBodySlot extends StatelessWidget {
         workspaceId: workspaceId,
         groupId: groupId,
         strip: strip,
-        showHeader: multiGroup,
+        showHeader: multiGroup && splitEnabled,
         splitEnabled: splitEnabled,
         registry: registry,
+        isGroupLocked: layout.lockedGroupIds.contains(groupId),
+        onToggleGroupLock: () =>
+            workbench.toggleGroupLock(workspaceId, groupId, floating: true),
       ),
     );
   }

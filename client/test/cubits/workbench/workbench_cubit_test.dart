@@ -9,6 +9,7 @@ const _ws = 'ws';
 final _s1 = WorkbenchTabId.session('s1');
 final _s2 = WorkbenchTabId.session('s2');
 final _s3 = WorkbenchTabId.session('s3');
+final _s4 = WorkbenchTabId.session('s4');
 final _f = WorkbenchTabId.file('/a.dart');
 final _f1 = WorkbenchTabId.file('/f1.dart');
 final _d = WorkbenchTabId.diffChanges('/a.dart');
@@ -327,6 +328,173 @@ void main() {
         ..splitTab(_ws, _s2, axis: Axis.horizontal, before: false)
         ..openSession(_ws, 's3');
       expect(cubit.centerOrder(_ws), [_s2, _s3]);
+    });
+
+    test('new tab in a locked focused group creates an unlocked sibling', () {
+      cubit.openSession(_ws, 's1');
+      cubit.openSession(_ws, 's2');
+      final focused = cubit.centerLayout(_ws).focusedGroupId;
+      cubit.toggleGroupLock(_ws, focused);
+      cubit.openSession(_ws, 's3');
+      final layout = cubit.centerLayout(_ws);
+      expect(layout.groups[layout.focusedGroupId]!.order, [_s3]);
+      expect(layout.lockedGroupIds, {focused});
+      expect(layout.lockedGroupIds.contains(layout.focusedGroupId), isFalse);
+    });
+
+    test('locked focus routes a new tab to the nearest unlocked leaf', () {
+      cubit
+        ..openSession(_ws, 's1')
+        ..openSession(_ws, 's2')
+        ..splitTab(_ws, _s2, axis: Axis.horizontal, before: false)
+        ..openSession(_ws, 's3')
+        ..splitTab(_ws, _s3, axis: Axis.horizontal, before: false);
+      final before = cubit.centerLayout(_ws);
+      final middle = before.leafGroupIds[1];
+      cubit
+        ..toggleGroupLock(_ws, middle)
+        ..focusGroup(_ws, middle)
+        ..openSession(_ws, 's4');
+      final after = cubit.centerLayout(_ws);
+      expect(
+        after.groups[after.leafGroupIds[2]]!.order,
+        contains(WorkbenchTabId.session('s4')),
+      );
+    });
+
+    test('equal-distance fallback prefers the later leaf', () {
+      cubit
+        ..openSession(_ws, 's1')
+        ..openSession(_ws, 's2')
+        ..splitTab(_ws, _s2, axis: Axis.horizontal, before: false)
+        ..openSession(_ws, 's3')
+        ..splitTab(_ws, _s3, axis: Axis.horizontal, before: false);
+      final middle = cubit.centerLayout(_ws).leafGroupIds[1];
+      cubit
+        ..toggleGroupLock(_ws, middle)
+        ..focusGroup(_ws, middle)
+        ..openSession(_ws, 's4');
+      final layout = cubit.centerLayout(_ws);
+      expect(layout.groups[layout.leafGroupIds[2]]!.order, contains(_s4));
+      expect(layout.groups[layout.leafGroupIds[0]]!.order, [_s1]);
+    });
+
+    test('maximized center group clears when fallback targets another group', () {
+      cubit
+        ..openSession(_ws, 's1')
+        ..openSession(_ws, 's2')
+        ..splitTab(_ws, _s2, axis: Axis.horizontal, before: false);
+      final maximized = cubit.centerLayout(_ws).focusedGroupId;
+      cubit
+        ..toggleMaximizeGroup(_ws, maximized)
+        ..toggleGroupLock(_ws, maximized)
+        ..openSession(_ws, 's3');
+      final layout = cubit.centerLayout(_ws);
+      expect(layout.maximizedGroupId, isNull);
+      expect(layout.focusedGroupId, 'g0');
+      expect(layout.groups['g0']!.order, [_s1, _s3]);
+    });
+
+    test(
+      'maximized center group clears for all-locked placement without activation',
+      () {
+        cubit
+          ..openSession(_ws, 's1')
+          ..openSession(_ws, 's2')
+          ..splitTab(_ws, _s2, axis: Axis.horizontal, before: false);
+        final maximized = cubit.centerLayout(_ws).focusedGroupId;
+        cubit.toggleMaximizeGroup(_ws, maximized);
+        for (final groupId in cubit.centerLayout(_ws).leafGroupIds) {
+          cubit.toggleGroupLock(_ws, groupId);
+        }
+
+        cubit.openSession(_ws, 's3', activate: false);
+
+        final layout = cubit.centerLayout(_ws);
+        final destination = layout.groups.entries
+            .singleWhere((entry) => entry.value.order.contains(_s3))
+            .key;
+        expect(destination, isNot(maximized));
+        expect(layout.groups[destination]!.order, [_s3]);
+        expect(layout.focusedGroupId, maximized);
+        expect(layout.maximizedGroupId, isNull);
+      },
+    );
+
+    test('maximized center group is preserved when it accepts a new tab', () {
+      cubit
+        ..openSession(_ws, 's1')
+        ..openSession(_ws, 's2')
+        ..splitTab(_ws, _s2, axis: Axis.horizontal, before: false);
+      final maximized = cubit.centerLayout(_ws).focusedGroupId;
+      cubit
+        ..toggleMaximizeGroup(_ws, maximized)
+        ..openSession(_ws, 's3');
+      final layout = cubit.centerLayout(_ws);
+      expect(layout.maximizedGroupId, maximized);
+      expect(layout.focusedGroupId, maximized);
+      expect(layout.groups[maximized]!.order, [_s2, _s3]);
+    });
+
+    test('reopening an existing tab activates its locked owning group', () {
+      cubit.openSession(_ws, 's1');
+      cubit.openSession(_ws, 's2');
+      final owner = cubit.centerLayout(_ws).focusedGroupId;
+      cubit.toggleGroupLock(_ws, owner);
+      cubit.splitTab(_ws, _s1, axis: Axis.horizontal, before: false);
+      cubit.openSession(_ws, 's2');
+      expect(cubit.centerActiveId(_ws), _s2);
+      expect(cubit.centerLayout(_ws).focusedGroupId, owner);
+      expect(cubit.centerLayout(_ws).groups[owner]!.order, [_s2]);
+      expect(cubit.centerLayout(_ws).lockedGroupIds, {owner});
+    });
+
+    test('all-locked floating placement creates a sibling only in floating', () {
+      cubit
+        ..openFloating(_ws, WorkbenchTabId.file('/f1.dart'))
+        ..openFloating(_ws, WorkbenchTabId.file('/f2.dart'))
+        ..splitTab(
+          _ws,
+          WorkbenchTabId.file('/f2.dart'),
+          axis: Axis.horizontal,
+          before: false,
+          floating: true,
+        );
+      final floating = cubit.floatingLayout(_ws);
+      for (final groupId in floating.leafGroupIds) {
+        cubit.toggleGroupLock(_ws, groupId, floating: true);
+      }
+      final centerBefore = cubit.centerLayout(_ws);
+      cubit.openFloating(_ws, WorkbenchTabId.file('/f3.dart'));
+      expect(cubit.centerLayout(_ws), same(centerBefore));
+      expect(cubit.floatingLayout(_ws).groups.values.expand((s) => s.order),
+          contains(WorkbenchTabId.file('/f3.dart')));
+      expect(cubit.floatingLayout(_ws).groups, hasLength(3));
+    });
+
+    test('maximized floating group clears when all-locked placement creates one',
+        () {
+      cubit
+        ..openFloating(_ws, WorkbenchTabId.file('/f1.dart'))
+        ..openFloating(_ws, WorkbenchTabId.file('/f2.dart'))
+        ..splitTab(
+          _ws,
+          WorkbenchTabId.file('/f2.dart'),
+          axis: Axis.horizontal,
+          before: false,
+          floating: true,
+        );
+      final maximized = cubit.floatingLayout(_ws).focusedGroupId;
+      cubit.toggleMaximizeGroup(_ws, maximized, floating: true);
+      for (final groupId in cubit.floatingLayout(_ws).leafGroupIds) {
+        cubit.toggleGroupLock(_ws, groupId, floating: true);
+      }
+      cubit.openFloating(_ws, WorkbenchTabId.file('/f3.dart'));
+      final layout = cubit.floatingLayout(_ws);
+      expect(layout.maximizedGroupId, isNull);
+      expect(layout.groups[layout.focusedGroupId]!.order, [
+        WorkbenchTabId.file('/f3.dart'),
+      ]);
     });
 
     test('activate focuses the owning group', () {

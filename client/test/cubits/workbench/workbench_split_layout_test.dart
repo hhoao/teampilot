@@ -9,7 +9,11 @@ final _s2 = WorkbenchTabId.session('s2');
 final _s3 = WorkbenchTabId.session('s3');
 final _f = WorkbenchTabId.file('/a.dart');
 
-WorkbenchGroupLayout _seed(WorkbenchTabId a, [WorkbenchTabId? b, WorkbenchTabId? c]) {
+WorkbenchGroupLayout _seed(
+  WorkbenchTabId a, [
+  WorkbenchTabId? b,
+  WorkbenchTabId? c,
+]) {
   var layout = singleGroupLayout(a);
   for (final extra in [b, c]) {
     if (extra == null) continue;
@@ -24,10 +28,12 @@ WorkbenchGroupLayout _addToGroup(
   WorkbenchTabId tab,
 ) {
   const r = TabStripReducer();
-  return layout.copyWith(groups: {
-    ...layout.groups,
-    groupId: r.add(layout.groups[groupId]!, tab, preview: false).$1,
-  });
+  return layout.copyWith(
+    groups: {
+      ...layout.groups,
+      groupId: r.add(layout.groups[groupId]!, tab, preview: false).$1,
+    },
+  );
 }
 
 /// Id of the sibling group created by a `before: false` horizontal split.
@@ -74,13 +80,16 @@ void main() {
         axis: Axis.horizontal,
         before: false,
       )!;
+      expect(adjacentLeaf(l, 'g0', axis: Axis.horizontal, before: false), 'g1');
       expect(
-        adjacentLeaf(l, 'g0', axis: Axis.horizontal, before: false),
-        'g1',
+        adjacentLeaf(l, 'g1', axis: Axis.horizontal, before: false),
+        isNull,
       );
-      expect(adjacentLeaf(l, 'g1', axis: Axis.horizontal, before: false), isNull);
       expect(adjacentLeaf(l, 'g1', axis: Axis.horizontal, before: true), 'g0');
-      expect(adjacentLeaf(l, 'g0', axis: Axis.horizontal, before: true), isNull);
+      expect(
+        adjacentLeaf(l, 'g0', axis: Axis.horizontal, before: true),
+        isNull,
+      );
     });
 
     test('mixed-axis tree walks in-order leaves', () {
@@ -101,7 +110,10 @@ void main() {
       expect(l.leafGroupIds, ['g0', 'g1', 'g2']);
       expect(adjacentLeaf(l, 'g0', axis: Axis.horizontal, before: false), 'g1');
       expect(adjacentLeaf(l, 'g1', axis: Axis.horizontal, before: false), 'g2');
-      expect(adjacentLeaf(l, 'g2', axis: Axis.horizontal, before: false), isNull);
+      expect(
+        adjacentLeaf(l, 'g2', axis: Axis.horizontal, before: false),
+        isNull,
+      );
       expect(adjacentLeaf(l, 'g2', axis: Axis.horizontal, before: true), 'g1');
     });
 
@@ -141,14 +153,24 @@ void main() {
     test('null when tab absent', () {
       const r = SplitLayoutReducer();
       expect(
-        r.split(singleGroupLayout(_s1), tab: _s3, axis: Axis.horizontal, before: false),
+        r.split(
+          singleGroupLayout(_s1),
+          tab: _s3,
+          axis: Axis.horizontal,
+          before: false,
+        ),
         isNull,
       );
     });
 
     test('before: true puts the new group as the first child', () {
       const r = SplitLayoutReducer();
-      final l1 = r.split(_seed(_s1, _s2), tab: _s2, axis: Axis.vertical, before: true)!;
+      final l1 = r.split(
+        _seed(_s1, _s2),
+        tab: _s2,
+        axis: Axis.vertical,
+        before: true,
+      )!;
       final b = l1.root as SplitBranch;
       expect(b.axis, Axis.vertical);
       final newId = (b.first as SplitLeaf).groupId;
@@ -168,16 +190,153 @@ void main() {
       expect(l.groups.keys, contains('g2'));
       l = _addToGroup(l, 'g0', _s3);
       l = r.split(l, tab: _s3, axis: Axis.horizontal, before: false)!;
-      final newEntry = l.groups.entries.singleWhere((e) => e.value.order.contains(_s3));
+      final newEntry = l.groups.entries.singleWhere(
+        (e) => e.value.order.contains(_s3),
+      );
       expect(newEntry.key, 'g3');
       expect(validateLayout(l), isTrue);
+    });
+  });
+
+  group('locked groups / openInNewGroup', () {
+    test('locked group sets are defensively copied at construction boundaries', () {
+      final supplied = <String>{'g0'};
+      final layout = _seed(_s1).copyWith(lockedGroupIds: supplied);
+      supplied.add('g1');
+      expect(layout.lockedGroupIds, {'g0'});
+
+      final replacement = <String>{'g1'};
+      final copied = layout.copyWith(lockedGroupIds: replacement);
+      replacement.add('g2');
+      expect(copied.lockedGroupIds, {'g1'});
+      expect(() => copied.lockedGroupIds.add('g2'), throwsUnsupportedError);
+    });
+
+    test('toggleLock sets and clears a live group lock', () {
+      const reducer = SplitLayoutReducer();
+      final base = _seed(_s1, _s2);
+      final locked = reducer.toggleLock(base, 'g0');
+      expect(locked.lockedGroupIds, {'g0'});
+      expect(reducer.toggleLock(locked, 'g0').lockedGroupIds, isEmpty);
+    });
+
+    test('toggleLock ignores a missing group', () {
+      const reducer = SplitLayoutReducer();
+      final base = _seed(_s1, _s2);
+      expect(reducer.toggleLock(base, 'missing'), same(base));
+    });
+
+    test(
+      'openInNewGroup creates an unlocked focused sibling for a new tab',
+      () {
+        const reducer = SplitLayoutReducer();
+        final base = _seed(_s1, _s2).copyWith(lockedGroupIds: {'g0'});
+        final next = reducer.openInNewGroup(
+          base,
+          targetGroupId: 'g0',
+          tab: _s3,
+          axis: Axis.horizontal,
+          before: false,
+        );
+        expect(next, isNotNull);
+        final layout = next!;
+        expect(layout.groups['g0']!.order, [_s1, _s2]);
+        expect(layout.lockedGroupIds, {'g0'});
+        expect(layout.focusedGroupId, isNot('g0'));
+        final newGroup = layout.focusedGroupId;
+        expect(layout.groups[newGroup]!.order, [_s3]);
+        expect(layout.lockedGroupIds.contains(newGroup), isFalse);
+        expect(validateLayout(layout), isTrue);
+      },
+    );
+
+    test(
+      'openInNewGroup replaces a sole empty root instead of retaining an empty pane',
+      () {
+        const reducer = SplitLayoutReducer();
+        final base = singleGroupLayout().copyWith(lockedGroupIds: {'g0'});
+        final next = reducer.openInNewGroup(
+          base,
+          targetGroupId: 'g0',
+          tab: _s3,
+          axis: Axis.horizontal,
+          before: false,
+        )!;
+        expect(next.root, isA<SplitLeaf>());
+        expect(next.groups[next.focusedGroupId]!.order, [_s3]);
+        expect(validateLayout(next), isTrue);
+      },
+    );
+
+    test('openInNewGroup rejects an existing tab or missing target', () {
+      const reducer = SplitLayoutReducer();
+      final base = _seed(_s1, _s2);
+      expect(
+        reducer.openInNewGroup(
+          base,
+          targetGroupId: 'g0',
+          tab: _s1,
+          axis: Axis.horizontal,
+          before: false,
+        ),
+        isNull,
+      );
+      expect(
+        reducer.openInNewGroup(
+          base,
+          targetGroupId: 'missing',
+          tab: _s3,
+          axis: Axis.horizontal,
+          before: false,
+        ),
+        isNull,
+      );
+    });
+
+    test('openInNewGroup preserves preview and inactive semantics', () {
+      const reducer = SplitLayoutReducer();
+      final base = _seed(_s1, _s2);
+      final next = reducer.openInNewGroup(
+        base,
+        targetGroupId: 'g0',
+        tab: _s3,
+        axis: Axis.vertical,
+        before: true,
+        preview: true,
+        activate: false,
+      )!;
+      final newGroup = next.leafGroupIds.first;
+      expect(next.focusedGroupId, 'g0');
+      expect(next.groups[newGroup]!.order, [_s3]);
+      expect(next.groups[newGroup]!.previewIds, {_s3});
+      expect(next.groups[newGroup]!.activeId, isNull);
+      expect(validateLayout(next), isTrue);
+    });
+
+    test('remove clears a pruned group lock and collapse clears all locks', () {
+      const reducer = SplitLayoutReducer();
+      final split = reducer.split(
+        _seed(_s1, _s2),
+        tab: _s2,
+        axis: Axis.horizontal,
+        before: false,
+      )!;
+      final locked = split.copyWith(lockedGroupIds: {split.focusedGroupId});
+      final pruned = reducer.remove(locked, _s2)!;
+      expect(pruned.lockedGroupIds, isEmpty);
+      expect(reducer.collapse(locked).lockedGroupIds, isEmpty);
     });
   });
 
   group('splitInto', () {
     test('places the new sibling adjacent to the target group', () {
       const r = SplitLayoutReducer();
-      final l1 = r.split(_seed(_s1, _s2), tab: _s2, axis: Axis.horizontal, before: false)!;
+      final l1 = r.split(
+        _seed(_s1, _s2),
+        tab: _s2,
+        axis: Axis.horizontal,
+        before: false,
+      )!;
       final targetId = _splitSiblingId(l1);
       final l2 = _addToGroup(l1, 'g0', _s3);
       final l3 = r.splitInto(
@@ -197,7 +356,12 @@ void main() {
 
     test('before: true places the new group before the target', () {
       const r = SplitLayoutReducer();
-      final l1 = r.split(_seed(_s1, _s2), tab: _s2, axis: Axis.horizontal, before: false)!;
+      final l1 = r.split(
+        _seed(_s1, _s2),
+        tab: _s2,
+        axis: Axis.horizontal,
+        before: false,
+      )!;
       final targetId = _splitSiblingId(l1);
       final l2 = _addToGroup(l1, 'g0', _s3);
       final l3 = r.splitInto(
@@ -231,10 +395,21 @@ void main() {
 
     test('null when the tab is the only tab of its source group', () {
       const r = SplitLayoutReducer();
-      final l1 = r.split(_seed(_s1, _s2), tab: _s2, axis: Axis.horizontal, before: false)!;
+      final l1 = r.split(
+        _seed(_s1, _s2),
+        tab: _s2,
+        axis: Axis.horizontal,
+        before: false,
+      )!;
       final l2 = _addToGroup(l1, 'g0', _s3);
       expect(
-        r.splitInto(l2, tab: _s2, targetGroupId: 'g0', axis: Axis.horizontal, before: false),
+        r.splitInto(
+          l2,
+          tab: _s2,
+          targetGroupId: 'g0',
+          axis: Axis.horizontal,
+          before: false,
+        ),
         isNull,
       );
     });
@@ -271,7 +446,12 @@ void main() {
 
     test('moving the sole tab prunes the source and rolls it up', () {
       const r = SplitLayoutReducer();
-      final l1 = r.split(_seed(_s1, _s2), tab: _s2, axis: Axis.horizontal, before: false)!;
+      final l1 = r.split(
+        _seed(_s1, _s2),
+        tab: _s2,
+        axis: Axis.horizontal,
+        before: false,
+      )!;
       final l2 = r.moveTab(l1, tab: _s2, targetGroupId: 'g0')!;
       expect(l2.root, isA<SplitLeaf>());
       expect((l2.root as SplitLeaf).groupId, 'g0');
@@ -293,19 +473,30 @@ void main() {
 
     test('null when tab absent', () {
       const r = SplitLayoutReducer();
-      expect(r.moveTab(singleGroupLayout(_s1), tab: _f, targetGroupId: 'g0'), isNull);
+      expect(
+        r.moveTab(singleGroupLayout(_s1), tab: _f, targetGroupId: 'g0'),
+        isNull,
+      );
     });
 
     test('null when target group invalid', () {
       const r = SplitLayoutReducer();
-      expect(r.moveTab(singleGroupLayout(_s1), tab: _s1, targetGroupId: 'gX'), isNull);
+      expect(
+        r.moveTab(singleGroupLayout(_s1), tab: _s1, targetGroupId: 'gX'),
+        isNull,
+      );
     });
   });
 
   group('activate / groupForTab', () {
     test('activate activates the tab in its owning group and focuses it', () {
       const r = SplitLayoutReducer();
-      final l1 = r.split(_seed(_s1, _s2), tab: _s2, axis: Axis.horizontal, before: false)!;
+      final l1 = r.split(
+        _seed(_s1, _s2),
+        tab: _s2,
+        axis: Axis.horizontal,
+        before: false,
+      )!;
       final siblingId = _splitSiblingId(l1);
       final l2 = r.activate(l1, _s1);
       expect(l2.groups['g0']!.activeId, _s1);
@@ -322,7 +513,12 @@ void main() {
 
     test('groupForTab returns the owning strip or null', () {
       const r = SplitLayoutReducer();
-      final l1 = r.split(_seed(_s1, _s2), tab: _s2, axis: Axis.horizontal, before: false)!;
+      final l1 = r.split(
+        _seed(_s1, _s2),
+        tab: _s2,
+        axis: Axis.horizontal,
+        before: false,
+      )!;
       expect(r.groupForTab(l1, _s2)!.order, [_s2]);
       expect(r.groupForTab(l1, _f), isNull);
     });
@@ -331,7 +527,12 @@ void main() {
   group('focusGroup', () {
     test('focuses the given group', () {
       const r = SplitLayoutReducer();
-      final l1 = r.split(_seed(_s1, _s2), tab: _s2, axis: Axis.horizontal, before: false)!;
+      final l1 = r.split(
+        _seed(_s1, _s2),
+        tab: _s2,
+        axis: Axis.horizontal,
+        before: false,
+      )!;
       final l2 = r.focusGroup(l1, 'g0');
       expect(l2.focusedGroupId, 'g0');
       expect(validateLayout(l2), isTrue);
@@ -356,7 +557,12 @@ void main() {
 
     test('switches to another group', () {
       const r = SplitLayoutReducer();
-      final l1 = r.split(_seed(_s1, _s2), tab: _s2, axis: Axis.horizontal, before: false)!;
+      final l1 = r.split(
+        _seed(_s1, _s2),
+        tab: _s2,
+        axis: Axis.horizontal,
+        before: false,
+      )!;
       final siblingId = _splitSiblingId(l1);
       final l2 = r.toggleMaximize(l1, 'g0');
       expect(l2.maximizedGroupId, 'g0');
@@ -375,7 +581,12 @@ void main() {
   group('commitResizeByPath', () {
     test('sets the fraction of the branch at the path', () {
       const r = SplitLayoutReducer();
-      final l1 = r.split(_seed(_s1, _s2), tab: _s2, axis: Axis.horizontal, before: false)!;
+      final l1 = r.split(
+        _seed(_s1, _s2),
+        tab: _s2,
+        axis: Axis.horizontal,
+        before: false,
+      )!;
       final l2 = r.commitResizeByPath(l1, path: const [], fraction: 0.7);
       expect((l2.root as SplitBranch).firstFraction, 0.7);
       expect(validateLayout(l2), isTrue);
@@ -383,7 +594,12 @@ void main() {
 
     test('resizes a nested branch via a non-empty path', () {
       const r = SplitLayoutReducer();
-      final l1 = r.split(_seed(_s1, _s2), tab: _s2, axis: Axis.horizontal, before: false)!;
+      final l1 = r.split(
+        _seed(_s1, _s2),
+        tab: _s2,
+        axis: Axis.horizontal,
+        before: false,
+      )!;
       final targetId = _splitSiblingId(l1);
       final l2 = _addToGroup(l1, 'g0', _s3);
       final l3 = r.splitInto(
@@ -402,7 +618,12 @@ void main() {
 
     test('clamps out-of-range fractions to 0.05 / 0.95', () {
       const r = SplitLayoutReducer();
-      final l1 = r.split(_seed(_s1, _s2), tab: _s2, axis: Axis.horizontal, before: false)!;
+      final l1 = r.split(
+        _seed(_s1, _s2),
+        tab: _s2,
+        axis: Axis.horizontal,
+        before: false,
+      )!;
       final tooBig = r.commitResizeByPath(l1, path: const [], fraction: 5);
       expect((tooBig.root as SplitBranch).firstFraction, 0.95);
       final tooSmall = r.commitResizeByPath(l1, path: const [], fraction: -3);
@@ -411,7 +632,12 @@ void main() {
 
     test('returns the layout unchanged when the path hits a leaf', () {
       const r = SplitLayoutReducer();
-      final l1 = r.split(_seed(_s1, _s2), tab: _s2, axis: Axis.horizontal, before: false)!;
+      final l1 = r.split(
+        _seed(_s1, _s2),
+        tab: _s2,
+        axis: Axis.horizontal,
+        before: false,
+      )!;
       final l2 = r.commitResizeByPath(l1, path: const [true], fraction: 0.8);
       expect(identical(l2, l1), isTrue);
     });
@@ -438,12 +664,19 @@ void main() {
     test('falls back to the last tab when the focused group has no active', () {
       const r = SplitLayoutReducer();
       const stripReducer = TabStripReducer();
-      final l1 = r.split(_seed(_s1, _s2), tab: _s2, axis: Axis.horizontal, before: false)!;
+      final l1 = r.split(
+        _seed(_s1, _s2),
+        tab: _s2,
+        axis: Axis.horizontal,
+        before: false,
+      )!;
       final siblingId = _splitSiblingId(l1);
-      final landed = l1.copyWith(groups: {
-        ...l1.groups,
-        siblingId: stripReducer.enterLanding(l1.groups[siblingId]!),
-      });
+      final landed = l1.copyWith(
+        groups: {
+          ...l1.groups,
+          siblingId: stripReducer.enterLanding(l1.groups[siblingId]!),
+        },
+      );
       final l2 = r.collapse(landed);
       expect(l2.groups['g0']!.order, [_s1, _s2]);
       expect(l2.groups['g0']!.activeId, _s2);
@@ -480,18 +713,26 @@ void main() {
       expect(validateLayout(l1), isTrue);
     });
 
-    test('repairs focus and clears maximize when the pruned group was focused', () {
-      const r = SplitLayoutReducer();
-      final l1 = r.split(_seed(_s1, _s2), tab: _s2, axis: Axis.horizontal, before: false)!;
-      final siblingId = _splitSiblingId(l1);
-      expect(l1.focusedGroupId, siblingId);
-      final l2 = r.toggleMaximize(l1, siblingId);
-      final l3 = r.remove(l2, _s2)!;
-      expect(l3.root, isA<SplitLeaf>());
-      expect(l3.focusedGroupId, 'g0');
-      expect(l3.maximizedGroupId, isNull);
-      expect(validateLayout(l3), isTrue);
-    });
+    test(
+      'repairs focus and clears maximize when the pruned group was focused',
+      () {
+        const r = SplitLayoutReducer();
+        final l1 = r.split(
+          _seed(_s1, _s2),
+          tab: _s2,
+          axis: Axis.horizontal,
+          before: false,
+        )!;
+        final siblingId = _splitSiblingId(l1);
+        expect(l1.focusedGroupId, siblingId);
+        final l2 = r.toggleMaximize(l1, siblingId);
+        final l3 = r.remove(l2, _s2)!;
+        expect(l3.root, isA<SplitLeaf>());
+        expect(l3.focusedGroupId, 'g0');
+        expect(l3.maximizedGroupId, isNull);
+        expect(validateLayout(l3), isTrue);
+      },
+    );
 
     test('null when tab absent', () {
       const r = SplitLayoutReducer();
@@ -500,35 +741,51 @@ void main() {
   });
 
   group('validateLayout invariants', () {
+    test('rejects an orphan lock id', () {
+      final invalid = _seed(_s1).copyWith(lockedGroupIds: {'missing'});
+      expect(validateLayout(invalid), isFalse);
+    });
+
     test('rejects duplicate tab across groups', () {
       // hand-build via public API: split then inject duplicate through copyWith
       const r = SplitLayoutReducer();
       final l0 = _seed(_s1, _s2);
       final l1 = r.split(l0, tab: _s2, axis: Axis.horizontal, before: false)!;
       final newId = ((l1.root as SplitBranch).second as SplitLeaf).groupId;
-      final dup = l1.copyWith(groups: {
-        ...l1.groups,
-        newId: l1.groups[newId]!.copyWith(order: [_s1, _s2]),
-      });
+      final dup = l1.copyWith(
+        groups: {
+          ...l1.groups,
+          newId: l1.groups[newId]!.copyWith(order: [_s1, _s2]),
+        },
+      );
       expect(validateLayout(dup), isFalse);
     });
 
     test('rejects an orphan group present only in the groups map', () {
       final l0 = singleGroupLayout(_s1);
-      final orphan = l0.copyWith(groups: {
-        ...l0.groups,
-        'g1': l0.groups['g0']!.copyWith(order: [_s2], activeId: _s2),
-      });
+      final orphan = l0.copyWith(
+        groups: {
+          ...l0.groups,
+          'g1': l0.groups['g0']!.copyWith(order: [_s2], activeId: _s2),
+        },
+      );
       expect(validateLayout(orphan), isFalse);
     });
 
     test('rejects an empty non-root group', () {
       const r = SplitLayoutReducer();
-      final l1 = r.split(_seed(_s1, _s2), tab: _s2, axis: Axis.horizontal, before: false)!;
-      final emptied = l1.copyWith(groups: {
-        ...l1.groups,
-        'g0': l1.groups['g0']!.copyWith(order: [], activeId: null),
-      });
+      final l1 = r.split(
+        _seed(_s1, _s2),
+        tab: _s2,
+        axis: Axis.horizontal,
+        before: false,
+      )!;
+      final emptied = l1.copyWith(
+        groups: {
+          ...l1.groups,
+          'g0': l1.groups['g0']!.copyWith(order: [], activeId: null),
+        },
+      );
       expect(validateLayout(emptied), isFalse);
     });
 
@@ -548,6 +805,21 @@ void main() {
   });
 
   group('snapshot', () {
+    test('snapshot round-trip preserves locked groups', () {
+      final layout = _seed(_s1, _s2).copyWith(lockedGroupIds: {'g0'});
+      final restored = layoutFromSnapshot(
+        toSnapshot(layout),
+        tabResolves: (_) => true,
+      )!;
+      expect(restored.lockedGroupIds, {'g0'});
+    });
+
+    test('old snapshots without lock field restore unlocked', () {
+      final snapshot = toSnapshot(_seed(_s1, _s2))..remove('lockedGroupIds');
+      final restored = layoutFromSnapshot(snapshot, tabResolves: (_) => true)!;
+      expect(restored.lockedGroupIds, isEmpty);
+    });
+
     test('round-trips a two-group layout', () {
       const r = SplitLayoutReducer();
       final l0 = _seed(_s1, _s2);
@@ -563,14 +835,24 @@ void main() {
     test('round-trips preview and pinned sets', () {
       const r = SplitLayoutReducer();
       const stripReducer = TabStripReducer();
-      final l1 = r.split(_seed(_s1, _s2), tab: _s2, axis: Axis.horizontal, before: false)!;
+      final l1 = r.split(
+        _seed(_s1, _s2),
+        tab: _s2,
+        axis: Axis.horizontal,
+        before: false,
+      )!;
       final newId = _splitSiblingId(l1);
-      final l2 = l1.copyWith(groups: {
-        ...l1.groups,
-        'g0': stripReducer.add(l1.groups['g0']!, _f, preview: true).$1,
-        newId: stripReducer.pin(l1.groups[newId]!, _s2),
-      });
-      final back = layoutFromSnapshot(toSnapshot(l2), tabResolves: (_) => true)!;
+      final l2 = l1.copyWith(
+        groups: {
+          ...l1.groups,
+          'g0': stripReducer.add(l1.groups['g0']!, _f, preview: true).$1,
+          newId: stripReducer.pin(l1.groups[newId]!, _s2),
+        },
+      );
+      final back = layoutFromSnapshot(
+        toSnapshot(l2),
+        tabResolves: (_) => true,
+      )!;
       expect(back.groups['g0']!.previewIds, {_f});
       expect(back.groups['g0']!.order, [_s1, _f]);
       expect(back.groups[newId]!.pinnedIds, {_s2});

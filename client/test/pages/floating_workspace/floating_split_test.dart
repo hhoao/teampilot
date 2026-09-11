@@ -13,11 +13,14 @@ import 'package:teampilot/pages/floating_workspace/floating_group_host.dart';
 import 'package:teampilot/pages/floating_workspace/floating_workspace_chrome.dart';
 import 'package:teampilot/pages/floating_workspace/floating_workspace_empty.dart';
 import 'package:teampilot/pages/floating_workspace/floating_workspace_panel.dart';
+import 'package:teampilot/pages/floating_workspace/floating_workspace_tab_bar.dart';
 import 'package:teampilot/services/commands/command_bus.dart';
 import 'package:teampilot/services/floating_workspace/floating_maximize_insets.dart';
 import 'package:teampilot/services/floating_workspace/floating_surface.dart';
 import 'package:teampilot/services/floating_workspace/floating_surface_registry.dart';
 import 'package:teampilot/widgets/workbench/workbench_split_layout_view.dart';
+import 'package:teampilot/widgets/workbench/workbench_group_lock_button.dart';
+import 'package:teampilot/pages/workspace_shell/workspace_shell_tabs.dart';
 
 void main() {
   // 600x400 fits two 180-min groups plus the divider on both axes.
@@ -74,8 +77,10 @@ void main() {
   group('floatingPanelSplitEnabled', () {
     test('requires two min-extent groups plus the divider on both axes', () {
       const min = kFloatingMinGroupExtent;
-      expect(floatingPanelSplitEnabled(const Size(min * 2 + 1, min * 2 + 1)),
-          isTrue);
+      expect(
+        floatingPanelSplitEnabled(const Size(min * 2 + 1, min * 2 + 1)),
+        isTrue,
+      );
       expect(
         floatingPanelSplitEnabled(const Size(min * 2, min * 2 + 1)),
         isFalse,
@@ -98,7 +103,12 @@ void main() {
     addTearDown(insets.dispose);
 
     await tester.pumpWidget(
-      wrap(cubit: cubit, workbench: workbench, registry: registry, insets: insets),
+      wrap(
+        cubit: cubit,
+        workbench: workbench,
+        registry: registry,
+        insets: insets,
+      ),
     );
     cubit.ensureOpen();
     cubit.setPanelPlacement(widePlacement);
@@ -131,11 +141,73 @@ void main() {
     // focused group's header), 'One' once (g0's header).
     expect(find.text('Two'), findsOneWidget);
     expect(find.text('One'), findsOneWidget);
+    expect(find.byType(WorkbenchGroupLockButton), findsNWidgets(2));
+    expect(
+      find.descendant(
+        of: find.byKey(const ValueKey('floating_group_host_g0')),
+        matching: find.byType(WorkbenchGroupLockButton),
+      ),
+      findsOneWidget,
+    );
+    expect(
+      find.descendant(
+        of: find.byKey(const ValueKey('floating_group_host_g1')),
+        matching: find.byType(WorkbenchGroupLockButton),
+      ),
+      findsOneWidget,
+    );
+    await tester.tap(
+      find.descendant(
+        of: find.byKey(const ValueKey('floating_group_host_g0')),
+        matching: find.byType(WorkbenchGroupLockButton),
+      ),
+    );
+    await tester.pumpAndSettle();
+    expect(workbench.floatingLayout('ws').lockedGroupIds, {'g0'});
     final layout = workbench.floatingLayout('ws');
-    expect(layout.groups[layout.focusedGroupId]!.order, [
-      WorkbenchTabId.shell('Two'),
-    ]);
+    expect(layout.groups['g0']!.order, [WorkbenchTabId.shell('One')]);
+    expect(layout.groups['g1']!.order, [WorkbenchTabId.shell('Two')]);
   });
+
+  testWidgets(
+    'single-group title bar places its lock after add and before chrome',
+    (tester) async {
+      final cubit = FloatingWorkspaceCubit();
+      final workbench = WorkbenchCubit();
+      addTearDown(cubit.close);
+      addTearDown(workbench.close);
+      final registry = FloatingSurfaceRegistry([_FakeSurface()]);
+      final insets = FloatingMaximizeInsets();
+      addTearDown(insets.dispose);
+
+      await tester.pumpWidget(
+        wrap(
+          cubit: cubit,
+          workbench: workbench,
+          registry: registry,
+          insets: insets,
+        ),
+      );
+      cubit.ensureOpen();
+      cubit.setPanelPlacement(widePlacement);
+      cubit.setActiveWorkspace('ws');
+      workbench.openFloating('ws', WorkbenchTabId.shell('One'));
+      await tester.pumpAndSettle();
+
+      expect(find.byType(WorkbenchGroupLockButton), findsOneWidget);
+      expect(
+        tester.getCenter(find.byType(FloatingWorkspaceAddButton)).dx,
+        lessThan(tester.getCenter(find.byType(WorkbenchGroupLockButton)).dx),
+      );
+      expect(
+        tester.getCenter(find.byType(WorkbenchGroupLockButton)).dx,
+        lessThan(tester.getCenter(find.byType(FloatingWorkspaceChrome)).dx),
+      );
+      await tester.tap(find.byType(WorkbenchGroupLockButton));
+      await tester.pumpAndSettle();
+      expect(workbench.floatingLayout('ws').lockedGroupIds, {'g0'});
+    },
+  );
 
   testWidgets('narrow panel renders the focused group only', (tester) async {
     final cubit = FloatingWorkspaceCubit();
@@ -147,7 +219,12 @@ void main() {
     addTearDown(insets.dispose);
 
     await tester.pumpWidget(
-      wrap(cubit: cubit, workbench: workbench, registry: registry, insets: insets),
+      wrap(
+        cubit: cubit,
+        workbench: workbench,
+        registry: registry,
+        insets: insets,
+      ),
     );
     cubit.ensureOpen();
     cubit.setPanelPlacement(narrowPlacement);
@@ -167,9 +244,37 @@ void main() {
     expect(workbench.floatingLayout('ws').groups.length, 2);
     expect(find.byType(FloatingGroupHost), findsOneWidget);
     expect(find.byKey(workbenchSplitDividerKey(const <bool>[])), findsNothing);
-    // Focused group's strip is visible via the title bar and its slim header.
-    expect(find.text('Two'), findsNWidgets(2));
+    // Focused group's strip is visible via the title bar and body.
+    expect(find.text('Two'), findsOneWidget);
     expect(find.text('One'), findsNothing);
+
+    final focusedGroupId = workbench.floatingLayout('ws').focusedGroupId;
+    final addCenter = tester.getCenter(find.byType(FloatingWorkspaceAddButton));
+    final chromeCenter = tester.getCenter(find.byType(FloatingWorkspaceChrome));
+    final titleBarLockElement = find
+        .byType(WorkbenchGroupLockButton)
+        .evaluate()
+        .firstWhere(
+          (element) {
+            final renderBox = element.renderObject! as RenderBox;
+            final lockCenter = renderBox.localToGlobal(
+              renderBox.size.center(Offset.zero),
+            );
+            return (lockCenter.dy - addCenter.dy).abs() < 0.1 &&
+                (lockCenter.dy - chromeCenter.dy).abs() < 0.1;
+          },
+          orElse: () =>
+              throw StateError('No lock button found in the title-bar row'),
+        );
+    final titleBarLock = find.byWidget(titleBarLockElement.widget);
+    expect(find.byType(WorkbenchGroupLockButton), findsOneWidget);
+    expect(tester.getCenter(titleBarLock).dy, closeTo(addCenter.dy, 0.1));
+    expect(tester.getCenter(titleBarLock).dy, closeTo(chromeCenter.dy, 0.1));
+    expect(addCenter.dx, lessThan(tester.getCenter(titleBarLock).dx));
+    expect(tester.getCenter(titleBarLock).dx, lessThan(chromeCenter.dx));
+    await tester.tap(titleBarLock);
+    await tester.pumpAndSettle();
+    expect(workbench.floatingLayout('ws').lockedGroupIds, {focusedGroupId});
   });
 
   testWidgets('narrow panel hides title-bar split entries for a multi-tab '
@@ -183,7 +288,12 @@ void main() {
     addTearDown(insets.dispose);
 
     await tester.pumpWidget(
-      wrap(cubit: cubit, workbench: workbench, registry: registry, insets: insets),
+      wrap(
+        cubit: cubit,
+        workbench: workbench,
+        registry: registry,
+        insets: insets,
+      ),
     );
     cubit.ensureOpen();
     cubit.setPanelPlacement(narrowPlacement);
@@ -194,7 +304,10 @@ void main() {
     workbench.openFloating('ws', WorkbenchTabId.shell('Two'));
     await tester.pumpAndSettle();
 
-    await tester.tap(find.text('Two'), buttons: kSecondaryButton);
+    await tester.tap(
+      find.byType(WorkbenchStripTabChip).first,
+      buttons: kSecondaryButton,
+    );
     await tester.pumpAndSettle();
 
     // Menu opened, but split entries follow the panel's own size threshold.
@@ -215,7 +328,12 @@ void main() {
     addTearDown(insets.dispose);
 
     await tester.pumpWidget(
-      wrap(cubit: cubit, workbench: workbench, registry: registry, insets: insets),
+      wrap(
+        cubit: cubit,
+        workbench: workbench,
+        registry: registry,
+        insets: insets,
+      ),
     );
     cubit.ensureOpen();
     cubit.setPanelPlacement(widePlacement);
@@ -248,7 +366,12 @@ void main() {
     addTearDown(insets.dispose);
 
     await tester.pumpWidget(
-      wrap(cubit: cubit, workbench: workbench, registry: registry, insets: insets),
+      wrap(
+        cubit: cubit,
+        workbench: workbench,
+        registry: registry,
+        insets: insets,
+      ),
     );
     cubit.ensureOpen();
     cubit.setPanelPlacement(widePlacement);
@@ -303,7 +426,12 @@ void main() {
     addTearDown(insets.dispose);
 
     await tester.pumpWidget(
-      wrap(cubit: cubit, workbench: workbench, registry: registry, insets: insets),
+      wrap(
+        cubit: cubit,
+        workbench: workbench,
+        registry: registry,
+        insets: insets,
+      ),
     );
     cubit.ensureOpen();
     cubit.setPanelPlacement(widePlacement);

@@ -77,11 +77,26 @@ class SplitBranch extends SplitNode {
 class WorkbenchGroupLayout extends Equatable {
   static const Object _unset = Object();
 
-  const WorkbenchGroupLayout({
+  factory WorkbenchGroupLayout({
+    required SplitNode root,
+    required Map<String, TabStrip> groups,
+    required String focusedGroupId,
+    String? maximizedGroupId,
+    Set<String> lockedGroupIds = const {},
+  }) => WorkbenchGroupLayout._(
+    root: root,
+    groups: groups,
+    focusedGroupId: focusedGroupId,
+    maximizedGroupId: maximizedGroupId,
+    lockedGroupIds: Set.unmodifiable(lockedGroupIds),
+  );
+
+  const WorkbenchGroupLayout._({
     required this.root,
     required this.groups,
     required this.focusedGroupId,
     this.maximizedGroupId,
+    required this.lockedGroupIds,
   });
 
   final SplitNode root;
@@ -95,19 +110,25 @@ class WorkbenchGroupLayout extends Equatable {
   /// Group shown full-pane while set; null when no group is maximized.
   final String? maximizedGroupId;
 
+  /// Live groups that are excluded from automatic new-tab placement.
+  final Set<String> lockedGroupIds;
+
   WorkbenchGroupLayout copyWith({
     SplitNode? root,
     Map<String, TabStrip>? groups,
     Object? focusedGroupId = _unset,
     Object? maximizedGroupId = _unset,
+    Set<String>? lockedGroupIds,
   }) => WorkbenchGroupLayout(
     root: root ?? this.root,
     groups: groups ?? this.groups,
-    focusedGroupId:
-        focusedGroupId == _unset ? this.focusedGroupId : focusedGroupId as String,
+    focusedGroupId: focusedGroupId == _unset
+        ? this.focusedGroupId
+        : focusedGroupId as String,
     maximizedGroupId: maximizedGroupId == _unset
         ? this.maximizedGroupId
         : maximizedGroupId as String?,
+    lockedGroupIds: lockedGroupIds ?? this.lockedGroupIds,
   );
 
   /// Depth-first leaf order, first-before-second (left/top before
@@ -120,7 +141,13 @@ class WorkbenchGroupLayout extends Equatable {
   };
 
   @override
-  List<Object?> get props => [root, groups, focusedGroupId, maximizedGroupId];
+  List<Object?> get props => [
+    root,
+    groups,
+    focusedGroupId,
+    maximizedGroupId,
+    lockedGroupIds,
+  ];
 }
 
 /// Factory: the degenerate single-group layout every workspace starts from.
@@ -128,7 +155,9 @@ class WorkbenchGroupLayout extends Equatable {
 WorkbenchGroupLayout singleGroupLayout([WorkbenchTabId? seedTabId]) {
   final strip = seedTabId == null
       ? const TabStrip()
-      : const TabStripReducer().add(const TabStrip(), seedTabId, preview: false).$1;
+      : const TabStripReducer()
+            .add(const TabStrip(), seedTabId, preview: false)
+            .$1;
   return WorkbenchGroupLayout(
     root: const SplitLeaf('g0'),
     groups: {'g0': strip},
@@ -146,6 +175,73 @@ class SplitLayoutReducer {
   /// [commitResizeByPath].
   static const double minResizeFraction = 0.05;
   static const double maxResizeFraction = 0.95;
+
+  /// Toggles the lock for a live group. Invalid group ids are a no-op.
+  WorkbenchGroupLayout toggleLock(WorkbenchGroupLayout layout, String groupId) {
+    if (!_treeContainsGroup(layout.root, groupId)) return layout;
+    final locked = Set<String>.of(layout.lockedGroupIds);
+    if (!locked.add(groupId)) locked.remove(groupId);
+    final next = layout.copyWith(lockedGroupIds: locked);
+    assert(_debugCheck(next));
+    return next;
+  }
+
+  /// Opens [tab] in a new sibling beside [targetGroupId].
+  ///
+  /// Unlike [split], this operation accepts a tab that is not currently in
+  /// the layout and preserves the requested preview and activation semantics.
+  WorkbenchGroupLayout? openInNewGroup(
+    WorkbenchGroupLayout layout, {
+    required String targetGroupId,
+    required WorkbenchTabId tab,
+    required Axis axis,
+    required bool before,
+    bool preview = false,
+    bool activate = true,
+  }) {
+    if (!_treeContainsGroup(layout.root, targetGroupId)) return null;
+    if (_groupContainingTab(layout, tab) != null) return null;
+
+    final newGroupId = _nextGroupId(layout.groups.keys);
+    final newLeaf = SplitLeaf(newGroupId);
+    final newStrip = const TabStripReducer()
+        .add(const TabStrip(), tab, preview: preview, activate: activate)
+        .$1;
+    final groups = Map<String, TabStrip>.of(layout.groups)
+      ..[newGroupId] = newStrip;
+    final soleEmptyRoot =
+        layout.root is SplitLeaf &&
+        (layout.root as SplitLeaf).groupId == targetGroupId &&
+        layout.groups[targetGroupId]!.order.isEmpty;
+    final SplitNode root;
+    if (soleEmptyRoot) {
+      groups.remove(targetGroupId);
+      root = newLeaf;
+    } else {
+      root = _replaceLeaf(
+        layout.root,
+        targetGroupId,
+        (leaf) => SplitBranch(
+          axis: axis,
+          first: before ? newLeaf : leaf,
+          second: before ? leaf : newLeaf,
+        ),
+      );
+    }
+    final focusedGroupId = soleEmptyRoot || activate
+        ? newGroupId
+        : layout.focusedGroupId;
+    final locked = Set<String>.of(layout.lockedGroupIds)
+      ..removeWhere((id) => !groups.containsKey(id));
+    final next = layout.copyWith(
+      root: root,
+      groups: groups,
+      focusedGroupId: focusedGroupId,
+      lockedGroupIds: locked,
+    );
+    assert(_debugCheck(next));
+    return next;
+  }
 
   /// Splits [tab] out of its group into a new sibling group placed at the
   /// tab's owning group's leaf: that leaf becomes a [SplitBranch] along
@@ -255,7 +351,9 @@ class SplitLayoutReducer {
       assert(_debugCheck(next));
       return next;
     }
-    final nextTarget = stripReducer.add(layout.groups[targetGroupId]!, tab, preview: false).$1;
+    final nextTarget = stripReducer
+        .add(layout.groups[targetGroupId]!, tab, preview: false)
+        .$1;
     final nextSource = stripReducer.remove(layout.groups[source]!, tab)!;
     final groups = Map<String, TabStrip>.of(layout.groups)
       ..[targetGroupId] = nextTarget
@@ -265,11 +363,16 @@ class SplitLayoutReducer {
       groups.remove(source);
       root = _pruneEmptyGroups(root, groups)!;
     }
+    final locked = Set<String>.of(layout.lockedGroupIds)
+      ..removeWhere((id) => !groups.containsKey(id));
     final next = layout.copyWith(
       root: root,
       groups: groups,
       focusedGroupId: targetGroupId,
-      maximizedGroupId: layout.maximizedGroupId == source ? null : layout.maximizedGroupId,
+      maximizedGroupId: layout.maximizedGroupId == source
+          ? null
+          : layout.maximizedGroupId,
+      lockedGroupIds: locked,
     );
     assert(_debugCheck(next));
     return next;
@@ -280,11 +383,18 @@ class SplitLayoutReducer {
   /// sole root group may go degenerate-empty instead. Focus follows the
   /// surviving sibling's leftmost leaf; maximize on a pruned group is
   /// cleared. Null when [tabId] is absent everywhere.
-  WorkbenchGroupLayout? remove(WorkbenchGroupLayout layout, WorkbenchTabId tabId) {
+  WorkbenchGroupLayout? remove(
+    WorkbenchGroupLayout layout,
+    WorkbenchTabId tabId,
+  ) {
     final groupId = _groupContainingTab(layout, tabId);
     if (groupId == null) return null;
-    final nextStrip = const TabStripReducer().remove(layout.groups[groupId]!, tabId)!;
-    final groups = Map<String, TabStrip>.of(layout.groups)..[groupId] = nextStrip;
+    final nextStrip = const TabStripReducer().remove(
+      layout.groups[groupId]!,
+      tabId,
+    )!;
+    final groups = Map<String, TabStrip>.of(layout.groups)
+      ..[groupId] = nextStrip;
     var root = layout.root;
     var focused = layout.focusedGroupId;
     var maximized = layout.maximizedGroupId;
@@ -294,11 +404,14 @@ class SplitLayoutReducer {
       if (focused == groupId) focused = _leftmostLeaf(root);
       if (maximized == groupId) maximized = null;
     }
+    final locked = Set<String>.of(layout.lockedGroupIds)
+      ..removeWhere((id) => !groups.containsKey(id));
     final next = layout.copyWith(
       root: root,
       groups: groups,
       focusedGroupId: focused,
       maximizedGroupId: maximized,
+      lockedGroupIds: locked,
     );
     assert(_debugCheck(next));
     return next;
@@ -314,7 +427,10 @@ class SplitLayoutReducer {
 
   /// Maximizes [groupId], or restores it when already maximized; a no-op
   /// (same instance) when it is not a live leaf.
-  WorkbenchGroupLayout toggleMaximize(WorkbenchGroupLayout layout, String groupId) {
+  WorkbenchGroupLayout toggleMaximize(
+    WorkbenchGroupLayout layout,
+    String groupId,
+  ) {
     if (!_treeContainsGroup(layout.root, groupId)) return layout;
     final next = layout.copyWith(
       maximizedGroupId: layout.maximizedGroupId == groupId ? null : groupId,
@@ -377,6 +493,7 @@ class SplitLayoutReducer {
         ),
       },
       focusedGroupId: 'g0',
+      lockedGroupIds: const {},
     );
     assert(_debugCheck(next));
     return next;
@@ -384,13 +501,19 @@ class SplitLayoutReducer {
 
   /// Activates [tabId] within its owning group and focuses that group; a
   /// no-op (same instance) when the tab is absent.
-  WorkbenchGroupLayout activate(WorkbenchGroupLayout layout, WorkbenchTabId tabId) {
+  WorkbenchGroupLayout activate(
+    WorkbenchGroupLayout layout,
+    WorkbenchTabId tabId,
+  ) {
     final groupId = _groupContainingTab(layout, tabId);
     if (groupId == null) return layout;
     final next = layout.copyWith(
       groups: {
         ...layout.groups,
-        groupId: const TabStripReducer().activate(layout.groups[groupId]!, tabId),
+        groupId: const TabStripReducer().activate(
+          layout.groups[groupId]!,
+          tabId,
+        ),
       },
       focusedGroupId: groupId,
     );
@@ -435,10 +558,16 @@ bool validateLayout(WorkbenchGroupLayout layout) {
   if (!layout.groups.containsKey(layout.focusedGroupId)) return false;
   final maximized = layout.maximizedGroupId;
   if (maximized != null && !layout.groups.containsKey(maximized)) return false;
+  if (layout.lockedGroupIds.any(
+    (groupId) => !layout.groups.containsKey(groupId),
+  )) {
+    return false;
+  }
   return true;
 }
 
-bool _debugCheck(WorkbenchGroupLayout layout) => !kDebugMode || validateLayout(layout);
+bool _debugCheck(WorkbenchGroupLayout layout) =>
+    !kDebugMode || validateLayout(layout);
 
 /// In-order neighbor leaf of [groupId]: the previous leaf when [before],
 /// else the next one. Null when [groupId] is not a live leaf or has no
@@ -468,10 +597,12 @@ String? adjacentLeaf(
 Map<String, Object?> toSnapshot(WorkbenchGroupLayout layout) => {
   'root': _nodeToSnapshot(layout.root),
   'groups': {
-    for (final entry in layout.groups.entries) entry.key: _stripToSnapshot(entry.value),
+    for (final entry in layout.groups.entries)
+      entry.key: _stripToSnapshot(entry.value),
   },
   'focusedGroupId': layout.focusedGroupId,
   'maximizedGroupId': layout.maximizedGroupId,
+  'lockedGroupIds': layout.lockedGroupIds.toList(),
 };
 
 /// Decodes a snapshot produced by [toSnapshot]. Tabs that [tabResolves]
@@ -508,11 +639,16 @@ WorkbenchGroupLayout? layoutFromSnapshot(
   final maximized = maximizedJson is String && groups.containsKey(maximizedJson)
       ? maximizedJson
       : null;
+  final lockedJson = json['lockedGroupIds'];
+  final locked = lockedJson is List
+      ? lockedJson.whereType<String>().where(groups.containsKey).toSet()
+      : <String>{};
   final layout = WorkbenchGroupLayout(
     root: pruned,
     groups: groups,
     focusedGroupId: focused,
     maximizedGroupId: maximized,
+    lockedGroupIds: locked,
   );
   return validateLayout(layout) ? layout : null;
 }
@@ -576,12 +712,14 @@ TabStrip _stripFromSnapshot(
   final order = _tabsFromParts(json['order'], tabResolves);
   var active = _tabsFromParts([json['activeId']], tabResolves).firstOrNull;
   if (active != null && !order.contains(active)) active = null;
-  final previews = _tabsFromParts(json['previewIds'], tabResolves)
-      .where(order.contains)
-      .toSet();
-  final pinneds = _tabsFromParts(json['pinnedIds'], tabResolves)
-      .where(order.contains)
-      .toSet();
+  final previews = _tabsFromParts(
+    json['previewIds'],
+    tabResolves,
+  ).where(order.contains).toSet();
+  final pinneds = _tabsFromParts(
+    json['pinnedIds'],
+    tabResolves,
+  ).where(order.contains).toSet();
   return TabStrip(
     order: order,
     activeId: active,
@@ -700,7 +838,11 @@ SplitNode? _pruneEmptyGroups(SplitNode node, Map<String, TabStrip> groups) {
 
 /// Rebuilds the tree with the branch at [path] given [fraction]; null when
 /// [path] addresses a leaf or walks off the tree.
-SplitNode? _replaceFractionAtPath(SplitNode node, List<bool> path, double fraction) {
+SplitNode? _replaceFractionAtPath(
+  SplitNode node,
+  List<bool> path,
+  double fraction,
+) {
   if (path.isEmpty) {
     return node is SplitBranch ? node.copyWith(firstFraction: fraction) : null;
   }
