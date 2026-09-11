@@ -13,23 +13,62 @@ final class CodexPermissionLaunch implements CliLaunchArgProvider {
     if (policy == LaunchSecurityPolicy.cliDefault) return const [];
     if (policy == LaunchSecurityPolicy.fullAccess) {
       return [
-        CliLaunchArgContribution(
-          key: 'codex-permission-bypass',
-          phase: LaunchArgPhase.security,
-          exclusiveGroup: 'codex-permission-mode',
-          args: [
-            '--dangerously-bypass-approvals-and-sandbox',
-            '--dangerously-bypass-hook-trust',
-          ],
-        ),
+        _contribution(const [
+          '--dangerously-bypass-approvals-and-sandbox',
+          '--dangerously-bypass-hook-trust',
+        ], key: 'codex-permission-bypass'),
       ];
     }
 
-    throw const CliLaunchCapabilityException(
-      cli: CliTool.codex,
-      contributionKey: 'codex-permission',
-      reason: 'Codex does not support this launch security policy tuple.',
-      exclusiveGroup: 'codex-permission-mode',
-    );
+    final args = <String>[];
+    switch (policy.approval) {
+      case LaunchApprovalPolicy.cliDefault:
+        break;
+      case LaunchApprovalPolicy.ask:
+        args.addAll(['--ask-for-approval', 'on-request']);
+      case LaunchApprovalPolicy.never:
+        args.addAll(['--ask-for-approval', 'never']);
+      case LaunchApprovalPolicy.autoApprove:
+        if (policy.sandbox != LaunchSandboxPolicy.workspaceWrite) {
+          throw _unsupportedPolicy();
+        }
+        args.add('--approve-for-me');
+    }
+
+    switch (policy.sandbox) {
+      case LaunchSandboxPolicy.cliDefault:
+        break;
+      case LaunchSandboxPolicy.readOnly:
+        args.addAll(['--sandbox', 'read-only']);
+      case LaunchSandboxPolicy.workspaceWrite:
+        if (policy.approval != LaunchApprovalPolicy.autoApprove) {
+          args.addAll(['--sandbox', 'workspace-write']);
+        }
+      case LaunchSandboxPolicy.fullAccess:
+        args.addAll(['--sandbox', 'danger-full-access']);
+    }
+
+    if (policy.hookTrust == LaunchHookTrustPolicy.bypass) {
+      args.add('--dangerously-bypass-hook-trust');
+    }
+    return [_contribution(args)];
   }
+
+  CliLaunchArgContribution _contribution(
+    List<String> args, {
+    String key = 'codex-permission',
+  }) => CliLaunchArgContribution(
+    key: key,
+    phase: LaunchArgPhase.security,
+    exclusiveGroup: 'codex-permission-mode',
+    args: args,
+  );
+
+  CliLaunchCapabilityException _unsupportedPolicy() =>
+      const CliLaunchCapabilityException(
+        cli: CliTool.codex,
+        contributionKey: 'codex-permission',
+        reason: 'Codex does not support this launch security policy tuple.',
+        exclusiveGroup: 'codex-permission-mode',
+      );
 }

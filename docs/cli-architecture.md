@@ -621,9 +621,13 @@ Assembler 按以下顺序工作：
 | 归一化策略 | Claude / FlashskyAI | Codex | Cursor | OpenCode |
 |------------|--------------------|-------|--------|----------|
 | 显式 CLI 默认（三项均 `cliDefault`） | 不追加权限 argv | 不追加权限 argv | 不追加权限 argv | `OpencodePermissionLaunch` 显式验证；保留 CLI 默认配置 |
-| `ask + readOnly + trustedOnly` | `--permission-mode plan` | 不支持，抛能力异常 | 不支持，抛能力异常 | 不由启动 argv 表达 |
-| `autoApprove + workspaceWrite + trustedOnly` | `--permission-mode acceptEdits` | 不支持，抛能力异常 | 不支持，抛能力异常 | 不由启动 argv 表达 |
+| `ask + readOnly + trustedOnly` | `--permission-mode plan` | `--ask-for-approval on-request --sandbox read-only` | 不支持，抛能力异常 | 不由启动 argv 表达 |
+| `autoApprove + workspaceWrite + trustedOnly` | `--permission-mode acceptEdits` | `--approve-for-me`（Codex 固定使用 workspace-write） | 不支持，抛能力异常 | 不由启动 argv 表达 |
 | `never + fullAccess + bypass`（`fullAccess`） | `--dangerously-skip-permissions` | `--dangerously-bypass-approvals-and-sandbox` 与 `--dangerously-bypass-hook-trust` | `--force` | 不由启动 argv 表达；由 `OpencodePermissionLaunch` 校验，并由 provider 物化 `edit` / `bash` / `external_directory` |
+
+Codex 还会独立表达 `ask` / `never` approval、`readOnly` / `workspaceWrite` /
+`fullAccess` sandbox，以及 `bypass` hook trust；`autoApprove` 只有与 `workspaceWrite`
+组合时可由 `--approve-for-me` 无损表达，其余无法表示的组合仍返回能力错误。
 
 如果 CLI 无法表示一个明确请求，Provider 或 Constraint 必须返回结构化能力错误；不能悄悄使用 CLI 默认
 权限。OpenCode 的权限请求/应答属于配置和运行时能力：full-access 由 provider 物化为

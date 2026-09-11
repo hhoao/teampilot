@@ -109,47 +109,117 @@ void main() {
     );
   });
 
+  test('permission provider emits both bypass flags for full access', () {
+    expect(
+      _assemble(
+        team: const TeamProfile(id: 'team', name: 'Team', cli: CliTool.codex),
+        member: const TeamMemberConfig(id: 'member', name: 'Member'),
+      ),
+      [
+        '--dangerously-bypass-approvals-and-sandbox',
+        '--dangerously-bypass-hook-trust',
+      ],
+    );
+    expect(
+      _assemble(
+        team: const TeamProfile(id: 'team', name: 'Team', cli: CliTool.codex),
+        member: const TeamMemberConfig(id: 'member', name: 'Member'),
+        launchSecurityPolicy: LaunchSecurityPolicy.cliDefault,
+      ),
+      isEmpty,
+    );
+    expect(
+      _assemble(
+        team: const TeamProfile(id: 'team', name: 'Team', cli: CliTool.codex),
+        member: const TeamMemberConfig(id: 'member', name: 'Member'),
+        launchSecurityPolicy: const LaunchSecurityPolicy(
+          approval: LaunchApprovalPolicy.never,
+          sandbox: LaunchSandboxPolicy.fullAccess,
+          hookTrust: LaunchHookTrustPolicy.trustedOnly,
+        ),
+      ),
+      ['--ask-for-approval', 'never', '--sandbox', 'danger-full-access'],
+    );
+  });
+
+  test('permission provider maps the cautious Codex policy', () {
+    expect(
+      _assemble(
+        team: const TeamProfile(id: 'team', name: 'Team', cli: CliTool.codex),
+        member: const TeamMemberConfig(id: 'member', name: 'Member'),
+        launchSecurityPolicy: LaunchSecurityPolicy.askReadOnlyTrusted,
+      ),
+      ['--ask-for-approval', 'on-request', '--sandbox', 'read-only'],
+    );
+  });
+
+  test('permission provider maps Codex automatic review policy', () {
+    expect(
+      _assemble(
+        team: const TeamProfile(id: 'team', name: 'Team', cli: CliTool.codex),
+        member: const TeamMemberConfig(id: 'member', name: 'Member'),
+        launchSecurityPolicy:
+            LaunchSecurityPolicy.autoApproveWorkspaceWriteTrusted,
+      ),
+      ['--approve-for-me'],
+    );
+  });
+
   test(
-    'permission provider emits both bypass flags only for exact full access',
+    'permission provider rejects automatic review without workspace write',
     () {
-      expect(
-        _assemble(
-          team: const TeamProfile(id: 'team', name: 'Team', cli: CliTool.codex),
-          member: const TeamMemberConfig(id: 'member', name: 'Member'),
-        ),
-        [
-          '--dangerously-bypass-approvals-and-sandbox',
-          '--dangerously-bypass-hook-trust',
-        ],
-      );
-      expect(
-        _assemble(
-          team: const TeamProfile(id: 'team', name: 'Team', cli: CliTool.codex),
-          member: const TeamMemberConfig(id: 'member', name: 'Member'),
-          launchSecurityPolicy: LaunchSecurityPolicy.cliDefault,
-        ),
-        isEmpty,
-      );
-      expect(
-        () => _assemble(
-          team: const TeamProfile(id: 'team', name: 'Team', cli: CliTool.codex),
-          member: const TeamMemberConfig(id: 'member', name: 'Member'),
-          launchSecurityPolicy: const LaunchSecurityPolicy(
-            approval: LaunchApprovalPolicy.never,
-            sandbox: LaunchSandboxPolicy.fullAccess,
-            hookTrust: LaunchHookTrustPolicy.trustedOnly,
+      for (final sandbox in <LaunchSandboxPolicy>[
+        LaunchSandboxPolicy.cliDefault,
+        LaunchSandboxPolicy.readOnly,
+        LaunchSandboxPolicy.fullAccess,
+      ]) {
+        expect(
+          () => _assemble(
+            team: const TeamProfile(
+              id: 'team',
+              name: 'Team',
+              cli: CliTool.codex,
+            ),
+            member: const TeamMemberConfig(id: 'member', name: 'Member'),
+            launchSecurityPolicy: LaunchSecurityPolicy(
+              approval: LaunchApprovalPolicy.autoApprove,
+              sandbox: sandbox,
+              hookTrust: LaunchHookTrustPolicy.trustedOnly,
+            ),
           ),
-        ),
-        throwsA(
-          isA<CliLaunchCapabilityException>().having(
-            (error) => error.cli,
-            'cli',
-            CliTool.codex,
+          throwsA(
+            isA<CliLaunchCapabilityException>().having(
+              (error) => error.contributionKey,
+              'contribution key',
+              'codex-permission',
+            ),
           ),
-        ),
-      );
+          reason: 'sandbox=$sandbox',
+        );
+      }
     },
   );
+
+  test('permission provider keeps hook trust bypass independent', () {
+    expect(
+      _assemble(
+        team: const TeamProfile(id: 'team', name: 'Team', cli: CliTool.codex),
+        member: const TeamMemberConfig(id: 'member', name: 'Member'),
+        launchSecurityPolicy: const LaunchSecurityPolicy(
+          approval: LaunchApprovalPolicy.never,
+          sandbox: LaunchSandboxPolicy.workspaceWrite,
+          hookTrust: LaunchHookTrustPolicy.bypass,
+        ),
+      ),
+      [
+        '--ask-for-approval',
+        'never',
+        '--sandbox',
+        'workspace-write',
+        '--dangerously-bypass-hook-trust',
+      ],
+    );
+  });
 
   test('team and member extra args are raw tokens and remain last', () {
     expect(
