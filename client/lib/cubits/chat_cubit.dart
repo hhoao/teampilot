@@ -2109,6 +2109,7 @@ class ChatCubit extends Cubit<ChatState>
     _sessionRuntime.maybeStopIdleWatch();
     await _tearDownTab(tab);
     _pushPresenceTarget();
+    _presenceCubit?.forgetSession(sessionId);
     _updateSessionActivities();
   }
 

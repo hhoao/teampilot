@@ -663,6 +663,40 @@ void main() {
       expect(cubit.state.occupiedSessionIds, isEmpty);
     });
 
+    test('forgetSession tombstones known seats for that session', () {
+      fakeAsync((async) {
+        const seat = PresenceSeatKey(sessionId: 's', memberId: 'm-lead');
+        final projection = AgentPresenceProjection();
+        final sink = _RecordingSink(projection: projection);
+        final bridge = PresenceEventBridge(sink: sink);
+        final service = _StubPresenceService({'m-lead': _connectedWorking});
+        final cubit = MemberPresenceCubit(
+          storage: fakeHomeStorage(),
+          memberPresenceService: service,
+          presenceProjection: projection,
+          presenceBridge: bridge,
+        );
+        addTearDown(cubit.close);
+        final shell = _FakePresenceSession(executable: 't', seat: seat);
+
+        cubit.attachPresenceUi();
+        cubit.syncPresenceTeam(_team);
+        cubit.updateTarget(_target(shell));
+        _settlePoll(async);
+
+        expect(projection.availabilityFor(seat), AgentPresenceKind.working);
+        expect(cubit.state.occupiedSessionIds, {'s'});
+
+        // Tab-switch hysteresis: a null target must not retract occupancy.
+        cubit.updateTarget(null);
+        cubit.forgetSession('s');
+        async.flushMicrotasks();
+
+        expect(cubit.state.occupiedSessionIds, isEmpty);
+        expect(projection.availabilityFor(seat), isNull);
+      });
+    });
+
     test('setPresenceBridge(null) stops publishing; a later bridge publishes again', () {
       fakeAsync((async) {
         final sink = _RecordingSink();

@@ -144,7 +144,15 @@ final class EventTransportServer {
       }
       session.handshakeComplete = true;
       session.drain();
-      await client.done;
+      try {
+        await client.done;
+      } on Object catch (error, stackTrace) {
+        appLogger.w(
+          '$_tag client done failed',
+          error: error,
+          stackTrace: stackTrace,
+        );
+      }
     } finally {
       _handlers.remove(handler);
       _dispatcher.unregister(handler);

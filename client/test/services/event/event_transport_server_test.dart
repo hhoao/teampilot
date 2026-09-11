@@ -342,6 +342,39 @@ void main() {
     expect(client.closed, isTrue);
   });
 
+  test('a reset peer completing done with an error does not take down accept', () async {
+    final wrappers = <_ErrorOnDoneSocket>[];
+    final h = _Harness(
+      bind: (host, port) async => _MappedServerSocket(
+        await ServerSocket.bind(host, port),
+        (socket) {
+          final wrapped = _ErrorOnDoneSocket(socket);
+          wrappers.add(wrapped);
+          return wrapped;
+        },
+      ),
+    );
+    await h.start();
+    addTearDown(h.dispose);
+
+    final first = _LineClient(await Socket.connect('127.0.0.1', await h.port()));
+    addTearDown(first.destroy);
+    await first.subscribe();
+    await first.waitUntilSnapshotEnd();
+    await _waitFor(() => wrappers.isNotEmpty);
+
+    wrappers.first.completeDoneWithError();
+    await Future<void>.delayed(const Duration(milliseconds: 50));
+
+    final second = _LineClient(
+      await Socket.connect('127.0.0.1', await h.port()),
+    );
+    addTearDown(second.destroy);
+    await second.subscribe();
+    await second.waitUntilSnapshotEnd();
+    expect(second.lines.any((l) => l['type'] == 'snapshotEnd'), isTrue);
+  });
+
   test('stop closes the listen socket before tearing down handlers', () async {
     late _HoldUntilCloseServerSocket held;
     final h = _Harness(
@@ -372,6 +405,95 @@ void main() {
       reason: 'a connection accepted during stop must be destroyed',
     );
   });
+}
+
+/// Delegates a real socket except [done], which can be failed to model a RST.
+final class _ErrorOnDoneSocket extends Stream<Uint8List> implements Socket {
+  _ErrorOnDoneSocket(this._inner);
+
+  final Socket _inner;
+  final Completer<void> _done = Completer<void>();
+
+  void completeDoneWithError([
+    Object error = const SocketException('Connection reset by peer'),
+  ]) {
+    if (!_done.isCompleted) _done.completeError(error);
+  }
+
+  @override
+  void add(List<int> data) => _inner.add(data);
+
+  @override
+  void write(Object? object) => _inner.write(object);
+
+  @override
+  void writeAll(Iterable<dynamic> objects, [String separator = '']) =>
+      _inner.writeAll(objects, separator);
+
+  @override
+  void writeln([Object? object = '']) => _inner.writeln(object);
+
+  @override
+  void writeCharCode(int charCode) => _inner.writeCharCode(charCode);
+
+  @override
+  void addError(Object error, [StackTrace? stackTrace]) =>
+      _inner.addError(error, stackTrace);
+
+  @override
+  Future addStream(Stream<List<int>> stream) => _inner.addStream(stream);
+
+  @override
+  Future flush() => _inner.flush();
+
+  @override
+  Future close() => _inner.close();
+
+  @override
+  void destroy() => _inner.destroy();
+
+  @override
+  Future get done => _done.future;
+
+  @override
+  Encoding encoding = utf8;
+
+  @override
+  bool setOption(SocketOption option, bool enabled) =>
+      _inner.setOption(option, enabled);
+
+  @override
+  Uint8List getRawOption(RawSocketOption option) => _inner.getRawOption(option);
+
+  @override
+  void setRawOption(RawSocketOption option) => _inner.setRawOption(option);
+
+  @override
+  int get port => _inner.port;
+
+  @override
+  int get remotePort => _inner.remotePort;
+
+  @override
+  InternetAddress get address => _inner.address;
+
+  @override
+  InternetAddress get remoteAddress => _inner.remoteAddress;
+
+  @override
+  StreamSubscription<Uint8List> listen(
+    void Function(Uint8List event)? onData, {
+    Function? onError,
+    void Function()? onDone,
+    bool? cancelOnError,
+  }) {
+    return _inner.listen(
+      onData,
+      onError: onError,
+      onDone: onDone,
+      cancelOnError: cancelOnError,
+    );
+  }
 }
 
 /// Forwards an accepted socket, but [add] is delayed one microtask so

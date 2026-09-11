@@ -61,6 +61,7 @@ final class EventTransportClient {
     _wakeupBackoff();
     await _channel?.close();
     await _runLoop;
+    _presence.clearAll();
   }
 
   Future<void> _run() async {

@@ -152,6 +152,20 @@ class MemberPresenceCubit extends Cubit<MemberPresenceState> {
     _schedulePresencePollingRestart();
   }
 
+  /// Retracts occupancy for a torn-down [sessionId] by publishing `cleared`
+  /// for every known seat in that session. Does not run when the active
+  /// target merely becomes null (tab switch / personal-tab hysteresis).
+  void forgetSession(String sessionId) {
+    final seats = [
+      for (final seat in _knownSeats)
+        if (seat.sessionId == sessionId) seat,
+    ];
+    for (final seat in seats) {
+      _presenceBridge?.reportAvailability(seat, null);
+      _knownSeats.remove(seat);
+    }
+  }
+
   /// [owner] identifies the attaching UI (pass the [State] of each
   /// [RightToolsPanel]). Omit it for single-owner callers/tests.
   void attachPresenceUi([Object? owner]) {

@@ -254,6 +254,33 @@ void main() {
     await _waitFor(() => h.openCount >= 2, timeout: _timeout);
   });
 
+  test('stop clears projection seats so a later local home is empty', () async {
+    final h = _Harness();
+    addTearDown(h.dispose);
+
+    await h.startAndWaitSubscribe();
+    h.push({
+      'v': eventTransportProtocolVersion,
+      'type': 'snapshotBegin',
+      'family': eventTransportFamilyAgentPresence,
+    });
+    h.push(h.presenceLine(_set()));
+    h.push({
+      'v': eventTransportProtocolVersion,
+      'type': 'snapshotEnd',
+      'family': eventTransportFamilyAgentPresence,
+    });
+
+    await _waitFor(
+      () => h.presence.availabilityFor(_seat) == AgentPresenceKind.working,
+      timeout: _timeout,
+    );
+
+    await h.client.stop();
+    expect(h.presence.snapshot, isEmpty);
+    expect(h.presence.availabilityFor(_seat), isNull);
+  });
+
   test('stop does not reconnect', () async {
     final h = _Harness();
     addTearDown(h.dispose);
