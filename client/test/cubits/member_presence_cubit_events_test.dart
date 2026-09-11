@@ -398,25 +398,20 @@ void main() {
               AgentPresenceKind.working,
         );
 
-        // Disconnect: reports null (clears the bridge baseline) but the
-        // projection keeps the last kind.
+        // Disconnect: reports null, bridge publishes cleared, projection
+        // tombstones the seat.
         service.result = {'m-lead': _disconnected};
         cubit.tickFromIdleWatch();
         _settleUntil(
           async,
           () => cubit.state.presence['m-lead']?.connection ==
-              MemberConnection.offline,
+                  MemberConnection.offline &&
+              wired.projection.availabilityFor(_seat) == null,
         );
-        expect(
-          wired.projection.availabilityFor(_seat),
-          AgentPresenceKind.working,
-        );
+        expect(wired.projection.availabilityFor(_seat), isNull);
 
         // Reconnect into a fresh boot: the poll keeps feeding the bridge, so
-        // the projection converges rather than freezing on the stale value.
-        // (The reconnecting tick emits the stale projected kind for one
-        // dispatcher hop; the `changes` recompute then converges. Assert the
-        // convergence, not the transient.)
+        // the projection converges to the new availability.
         service.result = {
           'm-lead': const MemberPresence(
             connection: MemberConnection.connected,
@@ -444,7 +439,7 @@ void main() {
       });
     });
 
-    test('reconnect at the same value: no re-broadcast, UI still correct', () {
+    test('reconnect at the same value republishes after cleared', () {
       fakeAsync((async) {
         final wired = _wiredEventsPath();
         final service = _StubPresenceService({'m-lead': _connectedWorking});
@@ -474,8 +469,8 @@ void main() {
         expect(
           refreshesAfterInitial,
           greaterThan(0),
-          reason: 'the initial value must reach the projection to make the '
-              'no-re-broadcast assertion below meaningful',
+          reason: 'the initial value must reach the projection before '
+              'disconnect/reconnect assertions',
         );
 
         service.result = {'m-lead': _disconnected};
@@ -483,7 +478,8 @@ void main() {
         _settleUntil(
           async,
           () => cubit.state.presence['m-lead']?.connection ==
-              MemberConnection.offline,
+                  MemberConnection.offline &&
+              wired.projection.availabilityFor(_seat) == null,
         );
 
         service.result = {'m-lead': _connectedWorking};
@@ -491,21 +487,21 @@ void main() {
         _settleUntil(
           async,
           () => cubit.state.presence['m-lead']?.connection ==
-              MemberConnection.connected,
+                  MemberConnection.connected &&
+              wired.projection.availabilityFor(_seat) ==
+                  AgentPresenceKind.working,
         );
 
-        // The bridge republishes (baseline was cleared) and the dispatcher
-        // *delivers* both events, but the projection absorbs the equal value,
-        // so `changes` never fires (Task-4 note). Assert on the real delivered
-        // counts rather than a synchronous fake.
+        // Disconnect tombstoned the seat; reconnect republishes working even
+        // though the kind matches the pre-disconnect value — both are
+        // projection changes, so `changes` fires twice more.
         expect(wired.dispatcher.handledCounts['AgentPresenceKind.working'], 2);
+        expect(wired.dispatcher.handledCounts['AgentPresenceKind.cleared'], 1);
         expect(
           refreshes,
-          refreshesAfterInitial,
-          reason: 'projection dedupes the equal reconnect value',
+          greaterThan(refreshesAfterInitial),
+          reason: 'cleared tombstone and working re-set both notify listeners',
         );
-        // The UI is nonetheless correct: the projected value equals the fresh
-        // one, and the 1s poll reads availabilityFor every tick.
         expect(
           cubit.state.presence['m-lead']?.availability,
           MemberAvailability.working,
