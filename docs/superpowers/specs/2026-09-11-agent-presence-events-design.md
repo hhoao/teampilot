@@ -7,19 +7,21 @@
 
 ## 背景（现状事实，已核对代码）
 
-availability 的当前推导链：
+availability 的当前推导链（`MemberCoordination.resolve` 每个 seat 选一种策略，全部经 `_bootingOr` 由 `isBootFrameReady` 决定是否降级为 booting）：
 
 ```
 availability = MemberCoordination._bootingOr(whenReady)
-  _bootingOr:            !activityTracker.isBootFrameReady → booting, 否则 whenReady
-  whenReady(原生/单CLI):  shell.userTurnActive ? working : idle
-  whenReady(Claude roster): claudeRosterWorking ? working : idle
+  _bootingOr:                     !activityTracker.isBootFrameReady → booting, 否则 whenReady
+  whenReady(原生/单CLI personal):   shell.userTurnActive ? working : idle
+  whenReady(Claude roster):        claudeRosterWorking ? working : idle
+  whenReady(nativeShellActivity):  activityTracker.isWorking ? working : idle
+  whenReady(mixed):                bus 回合/等待状态，否则退回 activityTracker.isWorking
 ```
 
 - `booting` 来自 `TerminalActivityTracker.isBootFrameReady`，**惰性 getter + 超时驱动**（`bootQuietAfter` 静默或 `bootMaxWait` 上限），tracker 自身无定时器。
-- `working/idle` 来自**回合锁存** `TerminalSession.userTurnActive`（`markUserTurnActive` 置位 / `markUserTurnIdle` 清除）或 roster 值——**不是** PTY 字节启发式。
-- `TerminalActivityTracker.isWorking`（PTY 启发式）**不驱动** presence；它服务于 `usesShellActivity`、mixed 模式的 quiet 判定与 idle-watch。**本期不动这些路径。**
-- 分发：`MemberPresenceCubit` 定时轮询 → `MemberPresenceService.compute()` → `MemberCoordination.resolve()`，把 `Map<memberId, MemberPresence>(connection + availability)` emit 给 UI。UI 读 cubit state。
+- `working/idle` 的来源**随策略而异**：原生单 CLI 用**回合锁存** `TerminalSession.userTurnActive`（`markUserTurnStarted` 置位 / `markUserTurnIdle` 清除）；Claude roster 用 roster 标志；`usesShellActivity`（nativeShellActivity）与 mixed 策略则**直接读 PTY 启发式 `TerminalActivityTracker.isWorking`**（mixed 另外先看 bus 回合）。因此"working/idle 只来自回合锁存、不是 PTY 字节启发式"只对前两条路径成立。
+- `TerminalActivityTracker.isWorking`（PTY 启发式）**不是本事件族的推送触发源**，但**确实驱动** `usesShellActivity` 与 mixed 两条策略下的 availability。本期不改这些路径，它继续作为计算路径内的轮询输入。
+- 分发：`MemberPresenceCubit` 定时轮询 → `MemberPresenceService.compute()` → `MemberCoordination.resolve()`，把 `Map<memberId, MemberPresence>(connection + availability)` emit 给 UI。UI 读 cubit state。本期推送只覆盖两条锁存边（回合 `userTurnActive`、boot `isBootFrameReady`）；roster 标志、`isWorking` 与 connection 仍是轮询输入。
 
 ## 目标与非目标
 
@@ -165,3 +167,67 @@ final class SeatPresenceComposer {
 ### 验收标准
 
 `cd client && flutter analyze --no-fatal-infos --no-fatal-warnings` 干净 + `dart run tool/run_tests.dart` 全套绿 + 既有 presence 相关测试未被修改地通过。
+
+## Implementation notes (phase 2) — where shipped code deviates from the spec/plan
+
+Recorded so the next reader knows these were deliberate, and why.
+
+- **Composition ownership moved off `SeatPresenceComposer.evaluate()`.** The
+  spec had a per-seat composer own the composition and publish on change. Shipped
+  instead: the existing `MemberPresenceService.compute()` -> `MemberCoordination`
+  path remains the single place that gathers inputs and computes availability,
+  and `PresenceEventBridge` is a thin dedupe/publish edge fed the already-computed
+  value (`MemberPresenceCubit._applyPresenceEvents`). Reason: a composer holding
+  its own boot/turn/roster inputs would have duplicated input gathering that the
+  poll path already does, with two copies of the rules to keep aligned.
+
+- **`TerminalSession` takes no `AgentPresenceSink`.** Spec §2 had
+  `TerminalSession` take an optional `AgentPresenceSink?` (default no-op);
+  that constructor parameter was **never shipped**. Shipped instead:
+  `TerminalSession` takes no sink at all and exposes the re-pointable
+  `onPresenceInputsChanged` callback; the sink is reached only through the
+  cubit's `PresenceEventBridge`. Reason: routing the sink through the session
+  would have leaked event-family knowledge into the terminal layer, while the
+  cubit already owns the poll and the seat identity.
+
+- **The tracker gained a re-pointable revive path, not just a ctor callback.**
+  Spec §3 specified only a constructor callback
+  `onBootFrameChanged`. Shipped: the tracker also gained `setBootFrameListener`
+  / `disposePresencePush` (`terminal_activity_tracker.dart:427-443`) — a null
+  attach that leaves **no one-way latch** behind, so a tracker reused across
+  reconnects can be detached and later revived, the revive re-arming the
+  one-shot boot timer exactly as a `notePtyBytes` call would. Reason: a session
+  re-binds seats on reconnect, so the boot push has to be attachable and
+  detachable per bind.
+
+- **`markUserTurnActive` -> `markUserTurnStarted`.** The spec named the setter
+  `markUserTurnActive`; the real method on `TerminalSession` is
+  `markUserTurnStarted`. No behaviour change, name only.
+
+- **The bridge is built per bootstrap, not app-lifetime.** The spec implied one
+  long-lived publish edge. Shipped instead: `app_shell` builds a fresh
+  `PresenceEventBridge` per `buildAppShell`, owned by that shell's
+  `MemberPresenceCubit`, which disposes it in `close()`. Reason: the cubit tears
+  its bridge down on close, so a shared app-lifetime bridge would be killed by the
+  first discarded shell. The `AgentPresenceProjection` and the sink stay
+  app-lifetime (registered once in `_TeamPilotBootstrapState`).
+
+- **`TerminalSession.onPresenceInputsChanged` is re-pointable.** It started as a
+  final constructor-only field; it had to become a mutable field (null = detached)
+  so the cubit could attach the push trigger when a target binds and clear only
+  its own callback when the target changes. Read the current value, never cache
+  it.
+
+- **The publish edge takes the computed value, not the projected value.** Feeding
+  the bridge the value the cubit is about to emit (the projection's) would make
+  the edge self-referential — the projection's first output would be its own
+  input and the loop would freeze. The fresh `MemberCoordination` result feeds the
+  bridge; the projection is only a downstream cache. (Same point in the
+  `services/event/README.md` family section.)
+
+- **Deferred minors carried out of this phase** (accepted, not fixed here):
+  tracker one-way-dispose interaction to revisit; projection dedupe baseline vs
+  disconnect semantics; `MemberPresenceCubit._knownSeats` unbounded growth; a
+  retained shell's teardown does not close its presence cubit; the wiring test
+  asserts on source text.
+
