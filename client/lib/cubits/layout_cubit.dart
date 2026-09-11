@@ -100,6 +100,14 @@ class LayoutCubit extends Cubit<LayoutState> {
   Future<void> setGitGraphHeaderVisible(bool visible) =>
       _save(state.preferences.copyWith(gitGraphHeaderVisible: visible));
 
+  /// Git graph 列偏好（隐藏列 / 列宽）整体替换；拖拽结束时一次提交。
+  Future<void> setGitGraphColumns(GitGraphColumnPrefs columns) =>
+      _save(state.preferences.copyWith(gitGraphColumns: columns));
+
+  /// Git graph 详情栏宽度；拖拽结束时一次提交。
+  Future<void> setGitGraphDetailWidth(double width) =>
+      _save(state.preferences.copyWith(gitGraphDetailWidth: width));
+
   Future<void> setRegionVisibility({
     required bool appRailVisible,
     required bool membersVisible,

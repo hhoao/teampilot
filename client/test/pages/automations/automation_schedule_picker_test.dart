@@ -24,9 +24,10 @@ AutomationScheduleDraft _onceDraft() => AutomationScheduleDraft(
 /// Stateful host echoing emitted drafts back into the picker, mirroring how
 /// [AutomationEditorDialog] owns the draft.
 class _Host extends StatefulWidget {
-  const _Host(this.initialDraft);
+  const _Host(this.initialDraft, {this.now});
 
   final AutomationScheduleDraft initialDraft;
+  final DateTime Function()? now;
 
   @override
   State<_Host> createState() => _HostState();
@@ -41,6 +42,7 @@ class _HostState extends State<_Host> {
     return AutomationSchedulePicker(
       draft: draft,
       labelWidth: 160,
+      now: widget.now,
       onChanged: (next) => setState(() {
         draft = next;
         emissions.add(next);
@@ -66,14 +68,15 @@ Widget _wrap(Widget child) {
 
 Future<_HostState> _pumpPicker(
   WidgetTester tester,
-  AutomationScheduleDraft draft,
-) async {
+  AutomationScheduleDraft draft, {
+  DateTime Function()? now,
+}) async {
   tester.view.physicalSize = const Size(900, 800);
   tester.view.devicePixelRatio = 1.0;
   addTearDown(tester.view.resetPhysicalSize);
   addTearDown(tester.view.resetDevicePixelRatio);
 
-  await tester.pumpWidget(_wrap(_Host(draft)));
+  await tester.pumpWidget(_wrap(_Host(draft, now: now)));
   await tester.pump();
   return tester.state<_HostState>(find.byType(_Host));
 }
@@ -90,36 +93,33 @@ Future<void> _selectScheduleMode(
 }
 
 void main() {
-  testWidgets('once mode shows schedule mode select, date picker, and time picker', (
-    tester,
-  ) async {
-    await _pumpPicker(tester, _onceDraft());
+  testWidgets(
+    'once mode shows schedule mode select, date picker, and time picker',
+    (tester) async {
+      await _pumpPicker(tester, _onceDraft());
 
-    final modeSelect = tester.widget<TpSelect<AutomationScheduleMode>>(
-      find.byType(TpSelect<AutomationScheduleMode>),
-    );
-    expect(modeSelect.items, AutomationScheduleMode.values);
-    expect(modeSelect.initialItem, AutomationScheduleMode.once);
-    expect(find.text(_l10n.automationsScheduleModeOnce), findsOneWidget);
+      final modeSelect = tester.widget<TpSelect<AutomationScheduleMode>>(
+        find.byType(TpSelect<AutomationScheduleMode>),
+      );
+      expect(modeSelect.items, AutomationScheduleMode.values);
+      expect(modeSelect.initialItem, AutomationScheduleMode.once);
+      expect(find.text(_l10n.automationsScheduleModeOnce), findsOneWidget);
 
-    expect(find.byType(TpDatePicker), findsOneWidget);
-    // Trigger renders the selected day as yyyy-MM-dd.
-    expect(find.text('2026-09-03'), findsOneWidget);
-    expect(find.byType(TpTimePicker), findsOneWidget);
-    expect(find.text('09'), findsOneWidget);
-    expect(find.text('15'), findsOneWidget);
-  });
+      expect(find.byType(TpDatePicker), findsOneWidget);
+      // Trigger renders the selected day as yyyy-MM-dd.
+      expect(find.text('2026-09-03'), findsOneWidget);
+      expect(find.byType(TpTimePicker), findsOneWidget);
+      expect(find.text('09'), findsOneWidget);
+      expect(find.text('15'), findsOneWidget);
+    },
+  );
 
   testWidgets('recurring mode drops the free-text time field and once preset', (
     tester,
   ) async {
     final host = await _pumpPicker(tester, _onceDraft());
 
-    await _selectScheduleMode(
-      tester,
-      _l10n,
-      AutomationScheduleMode.recurring,
-    );
+    await _selectScheduleMode(tester, _l10n, AutomationScheduleMode.recurring);
 
     final emitted = host.emissions.last;
     expect(emitted.mode, AutomationScheduleMode.recurring);
@@ -145,6 +145,7 @@ void main() {
     // A recurring-only draft has never had a once date/time; entering once
     // mode must seed them (instead of the rows falling back to a 09:00
     // placeholder) so the emitted draft always carries a complete slot.
+    final fixedNow = DateTime(2026, 9, 3, 20, 10);
     final host = await _pumpPicker(
       tester,
       AutomationScheduleDraft(
@@ -154,21 +155,18 @@ void main() {
         hourMinute: '09:00',
         timezone: 'UTC',
       ),
+      now: () => fixedNow,
     );
 
-    await _selectScheduleMode(
-      tester,
-      _l10n,
-      AutomationScheduleMode.once,
-    );
+    await _selectScheduleMode(tester, _l10n, AutomationScheduleMode.once);
 
     final emitted = host.emissions.last;
     expect(emitted.mode, AutomationScheduleMode.once);
     expect(emitted.onceDate, isNotNull);
     expect(emitted.onceTime, isNotNull);
 
-    // Seed contract: 15 minutes out from now, matching defaultOnceDateTime.
-    final seeded = DateTime.now().add(const Duration(minutes: 15));
+    // Seed contract: 15 minutes out from the injected clock.
+    final seeded = defaultOnceDateTime(fixedNow);
     expect(emitted.onceDate, DateTime(seeded.year, seeded.month, seeded.day));
     expect(
       emitted.onceTime,
@@ -181,11 +179,7 @@ void main() {
   ) async {
     final host = await _pumpPicker(tester, _onceDraft());
 
-    await _selectScheduleMode(
-      tester,
-      _l10n,
-      AutomationScheduleMode.recurring,
-    );
+    await _selectScheduleMode(tester, _l10n, AutomationScheduleMode.recurring);
     // Open the preset select and pick Custom so the cron TextField mounts.
     await tester.tap(find.byType(TpSelect<AutomationSchedulePreset>));
     await tester.pumpAndSettle();
@@ -215,11 +209,7 @@ void main() {
   ) async {
     final host = await _pumpPicker(tester, _onceDraft());
 
-    await _selectScheduleMode(
-      tester,
-      _l10n,
-      AutomationScheduleMode.countdown,
-    );
+    await _selectScheduleMode(tester, _l10n, AutomationScheduleMode.countdown);
     await tester.tap(find.byType(TpSelectWithCustomInput));
     await tester.pumpAndSettle();
     await tester.tap(find.text(_l10n.automationsCountdownMinutes(15)).last);
@@ -298,25 +288,28 @@ void main() {
     },
   );
 
-  test('parseCountdownMinutesSelectValue accepts presets and custom minutes', () {
-    expect(parseCountdownMinutesSelectValue(_l10n, '15'), 15);
-    expect(
-      parseCountdownMinutesSelectValue(
-        _l10n,
-        _l10n.automationsCountdownMinutes(30),
-      ),
-      30,
-    );
-    expect(
-      parseCountdownMinutesSelectValue(
-        _l10n,
-        _l10n.automationsCountdownHours(2),
-      ),
-      120,
-    );
-    expect(parseCountdownMinutesSelectValue(_l10n, ''), isNull);
-    expect(parseCountdownMinutesSelectValue(_l10n, 'abc'), isNull);
-  });
+  test(
+    'parseCountdownMinutesSelectValue accepts presets and custom minutes',
+    () {
+      expect(parseCountdownMinutesSelectValue(_l10n, '15'), 15);
+      expect(
+        parseCountdownMinutesSelectValue(
+          _l10n,
+          _l10n.automationsCountdownMinutes(30),
+        ),
+        30,
+      );
+      expect(
+        parseCountdownMinutesSelectValue(
+          _l10n,
+          _l10n.automationsCountdownHours(2),
+        ),
+        120,
+      );
+      expect(parseCountdownMinutesSelectValue(_l10n, ''), isNull);
+      expect(parseCountdownMinutesSelectValue(_l10n, 'abc'), isNull);
+    },
+  );
 
   test('forCreate seeds once defaults from the provided now', () {
     final draft = AutomationScheduleDraft.forCreate(

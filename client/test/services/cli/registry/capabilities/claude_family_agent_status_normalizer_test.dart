@@ -61,4 +61,60 @@ void main() {
       expect(status.askUserQuestions!.first.question, 'Continue?');
     });
   });
+
+  group('background task lease signals', () {
+    test('PreToolUse Bash run_in_background flags backgroundTaskStarted', () {
+      final status = const ClaudeFamilyAgentStatusNormalizer().normalize({
+        'hook_event_name': 'PreToolUse',
+        'tool_name': 'Bash',
+        'tool_input': {
+          'command': 'ping -n 12 127.0.0.1',
+          'run_in_background': true,
+        },
+        'tool_use_id': 'call_f766b261fd9f4358a902b8d1',
+      });
+      expect(status, isNotNull);
+      expect(status!.state, AgentSeatAttention.working);
+      expect(status.backgroundTaskStarted, isTrue);
+      expect(status.toolUseId, 'call_f766b261fd9f4358a902b8d1');
+      expect(status.taskNotificationToolUseId, isNull);
+    });
+
+    test('foreground Bash PreToolUse does not flag', () {
+      final status = const ClaudeFamilyAgentStatusNormalizer().normalize({
+        'hook_event_name': 'PreToolUse',
+        'tool_name': 'Bash',
+        'tool_input': {'command': 'echo hi'},
+        'tool_use_id': 'call_1',
+      });
+      expect(status!.backgroundTaskStarted, isFalse);
+    });
+
+    test('UserPromptSubmit task notification carries the release id', () {
+      final status = const ClaudeFamilyAgentStatusNormalizer().normalize({
+        'hook_event_name': 'UserPromptSubmit',
+        'prompt': '<task-notification>\n'
+            '<task-id>bi6wlgsf3</task-id>\n'
+            '<tool-use-id>call_f766b261fd9f4358a902b8d1</tool-use-id>\n'
+            '<status>completed</status>\n'
+            '</task-notification>',
+      });
+      expect(status, isNotNull);
+      expect(status!.state, AgentSeatAttention.working);
+      expect(status.hasExplicitPrompt, isTrue);
+      expect(
+        status.taskNotificationToolUseId,
+        'call_f766b261fd9f4358a902b8d1',
+      );
+      expect(status.backgroundTaskStarted, isFalse);
+    });
+
+    test('real user prompt carries no release id', () {
+      final status = const ClaudeFamilyAgentStatusNormalizer().normalize({
+        'hook_event_name': 'UserPromptSubmit',
+        'prompt': 'how is the test run going?',
+      });
+      expect(status!.taskNotificationToolUseId, isNull);
+    });
+  });
 }

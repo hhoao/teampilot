@@ -2,7 +2,11 @@ import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/models/git_graph.dart';
+import 'package:teampilot/pages/git_graph/git_graph_column_layout.dart';
 import 'package:teampilot/pages/git_graph/git_graph_row_tile.dart';
+
+/// 测试共用列布局控制器：行均为 slot 0，maxSlot 0 与之一致。
+final testColumnController = GitGraphColumnLayoutController(maxSlot: 0);
 
 GitCommitRow makeRow(String hash, {List<GitRefDecoration> refs = const []}) =>
     GitCommitRow(
@@ -29,6 +33,7 @@ void main() {
         height: 48,
         width: 600,
         child: GitGraphRowTile(
+          controller: testColumnController,
           row: makeRow('abc'),
           selected: false,
           onTap: () {},
@@ -47,6 +52,7 @@ void main() {
         height: 48,
         width: 600,
         child: GitGraphRowTile(
+          controller: testColumnController,
           row: makeRow(
             'abc',
             refs: [
@@ -72,6 +78,7 @@ void main() {
         height: 48,
         width: 220,
         child: GitGraphRowTile(
+          controller: testColumnController,
           row: GitCommitRow(
             edges: const [GitGraphEdge(0, 0, 0)],
             node: const GitGraphNode(0, 0),
@@ -109,6 +116,7 @@ void main() {
           height: 48,
           width: 600,
           child: GitGraphRowTile(
+            controller: testColumnController,
             row: GitCommitRow(
               edges: const [GitGraphEdge(0, 0, 0)],
               node: const GitGraphNode(0, 0),
@@ -133,8 +141,10 @@ void main() {
 
       final subjectWidth = tester.getSize(find.text(subject)).width;
       final authorWidth = tester.getSize(find.text('Ann')).width;
-      expect(subjectWidth, greaterThan(250));
-      expect(authorWidth, lessThan(60));
+      // 元数据列保持设定宽度（刚性，96 默认），描述列吃全部剩余空间
+      // 且多于任何元数据列（600px 宽下 subject ≈ 200px）。
+      expect(authorWidth, closeTo(96, 0.01));
+      expect(subjectWidth, greaterThan(authorWidth));
     },
   );
 
@@ -145,6 +155,7 @@ void main() {
         height: 48,
         width: 700,
         child: GitGraphRowTile(
+          controller: testColumnController,
           row: makeRow('abcdef12deadbeef'),
           selected: false,
           onTap: () {},
@@ -167,6 +178,7 @@ void main() {
         height: 48,
         width: 700,
         child: GitGraphRowTile(
+          controller: testColumnController,
           row: makeRow('abcdef12deadbeef'),
           selected: false,
           onTap: () {},
@@ -186,6 +198,7 @@ void main() {
         height: 48,
         width: 600,
         child: GitGraphRowTile(
+          controller: testColumnController,
           row: makeRow('abc'),
           selected: false,
           onTap: () => tapped = true,
@@ -207,8 +220,8 @@ void main() {
         width: 600,
         child: Column(
           children: [
-            GitGraphRowTile(row: makeRow('a'), selected: false, onTap: () {}),
-            GitGraphRowTile(row: makeRow('b'), selected: false, onTap: () {}),
+            GitGraphRowTile(controller: testColumnController, row: makeRow('a'), selected: false, onTap: () {}),
+            GitGraphRowTile(controller: testColumnController, row: makeRow('b'), selected: false, onTap: () {}),
           ],
         ),
       ),
@@ -236,7 +249,7 @@ void main() {
         width: 600,
         child: Column(
           children: [
-            GitGraphRowTile(row: makeRow('a'), selected: false, onTap: () {}),
+            GitGraphRowTile(controller: testColumnController, row: makeRow('a'), selected: false, onTap: () {}),
             GitGraphSpacerTile(
               row: const GitGraphSpacerRow(edges: [GitGraphEdge(0, 0, 0)]),
             ),
@@ -267,6 +280,7 @@ void main() {
         height: 48,
         width: 600,
         child: GitGraphRowTile(
+          controller: testColumnController,
           row: makeRow('abc'),
           selected: false,
           onTap: () {},

@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:io' show Platform;
 
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -10,7 +11,7 @@ import '../../../l10n/l10n_extensions.dart';
 import '../../../models/workspace.dart';
 import '../../../models/app_session.dart';
 import '../../../services/file_tree/workspace_file_search.dart';
-import '../../../services/io/filesystem.dart';
+import '../../../services/search/multi_root_content_search.dart';
 import '../../../services/search/workspace_search_indexes.dart';
 import '../../../services/session/workspace_session_content_index.dart';
 import '../../../services/workbench/workbench_editor_opener.dart';
@@ -42,15 +43,16 @@ const _maxFileResultsExpanded = 100000;
 /// [context] up front; selecting a result pops the dialog and performs the
 /// action against the still-mounted [context].
 ///
-/// [fs] backs the content filter and is resolved by the caller from the
-/// entry point's workspace tools scope — never derived here, so a shortcut
-/// host above the scope cannot silently fall back to a local filesystem.
+/// [slices] backs the content filter — one slice per searched root, resolved
+/// by the caller from the entry point's workspace tools scope — never derived
+/// here, so a shortcut host above the scope cannot silently fall back to a
+/// local filesystem.
 ///
 /// No-ops if a search dialog is already open (e.g. repeated shortcut presses).
 Future<void> showWorkspaceSearchDialog(
   BuildContext context, {
   required Workspace workspace,
-  required Filesystem fs,
+  required List<ContentSearchSlice> slices,
 }) async {
   if (_workspaceSearchDialogOpen) return;
   _workspaceSearchDialogOpen = true;
@@ -73,7 +75,7 @@ Future<void> showWorkspaceSearchDialog(
         workspace: workspace,
         sessions: sessions,
         indexes: indexes,
-        fs: fs,
+        slices: slices,
         emptyTitleFallback: fallback,
         onOpenSession: (session) async {
           Navigator.of(dialogContext).pop();
@@ -110,7 +112,7 @@ class WorkspaceSearchDialog extends StatefulWidget {
     required this.workspace,
     required this.sessions,
     required this.indexes,
-    required this.fs,
+    required this.slices,
     required this.emptyTitleFallback,
     required this.onOpenSession,
     required this.onOpenFile,
@@ -120,7 +122,11 @@ class WorkspaceSearchDialog extends StatefulWidget {
   final Workspace workspace;
   final List<AppSession> sessions;
   final WorkspaceSearchIndexes indexes;
-  final Filesystem fs;
+
+  /// Roots searched by the `content` filter, one slice per workspace folder
+  /// (per resolved target); built by the caller from the workspace tools
+  /// scope.
+  final List<ContentSearchSlice> slices;
   final String emptyTitleFallback;
   final FutureOr<void> Function(AppSession session) onOpenSession;
   final ValueChanged<String> onOpenFile;
@@ -147,6 +153,16 @@ class _ConversationHit {
       session.updatedAt != 0 ? session.updatedAt : session.createdAt;
 }
 
+/// One workspace folder's file-name matches, grouped under the folder's
+/// basename when more than one folder has results.
+class _FileFolderGroup {
+  const _FileFolderGroup({required this.label, required this.matches});
+
+  /// Folder basename shown as the group header.
+  final String label;
+  final List<WorkspaceFileMatch> matches;
+}
+
 class _WorkspaceSearchDialogState extends State<WorkspaceSearchDialog> {
   final _controller = TextEditingController();
   late final String _debounceTag =
@@ -158,10 +174,10 @@ class _WorkspaceSearchDialogState extends State<WorkspaceSearchDialog> {
   var _conversationsExpanded = false;
   var _filesExpanded = false;
 
-  /// All matching files (queried with an effectively-unbounded limit) and all
-  /// content matches; display slices them by the per-section caps unless the
-  /// user expanded the section.
-  List<WorkspaceFileMatch> _fileMatches = const [];
+  /// All matching files per folder (queried with an effectively-unbounded
+  /// limit) and all content matches; display slices them by the per-section
+  /// caps unless the user expanded the section.
+  List<_FileFolderGroup> _fileGroups = const [];
   List<WorkspaceSessionContentMatch> _contentMatches = const [];
 
   /// True while the transcript content index is warming (dialog open or first
@@ -186,20 +202,22 @@ class _WorkspaceSearchDialogState extends State<WorkspaceSearchDialog> {
   }
 
   /// Warm the shared file + transcript content indexes in the background so the
-  /// first query is served from memory.
+  /// first query is served from memory. Every workspace folder's file index is
+  /// warmed together; remote folders simply yield no local matches (the index
+  /// walks [AppStorage.fs]) — content search covers them via its slices.
   Future<void> _warmIndexes() async {
     final indexes = widget.indexes;
     final workspaceId = widget.workspace.workspaceId;
     final contentWarm = indexes
         .contentIndexFor(workspaceId)
         .warm(sessions: widget.sessions);
-    final root = widget.workspace.firstFolderPath;
-    final fileWarm = root.isEmpty
-        ? Future<void>.value()
-        : indexes.fileIndexFor(root).ensureFresh();
+    final fileWarms = <Future<void>>[
+      for (final folder in widget.workspace.folders)
+        if (folder.path.trim().isNotEmpty)
+          indexes.fileIndexFor(folder.path).ensureFresh(),
+    ];
     try {
-      await contentWarm;
-      await fileWarm;
+      await Future.wait([contentWarm, ...fileWarms]);
       // Re-run the active query so matches that only surfaced once the warm
       // completed appear without the user needing another keystroke.
       if (mounted && _query.trim().isNotEmpty) {
@@ -232,7 +250,7 @@ class _WorkspaceSearchDialogState extends State<WorkspaceSearchDialog> {
       if (!mounted) return;
       setState(() {
         _searchingFiles = false;
-        _fileMatches = const [];
+        _fileGroups = const [];
         _contentMatches = const [];
       });
       return;
@@ -245,24 +263,43 @@ class _WorkspaceSearchDialogState extends State<WorkspaceSearchDialog> {
         .search(query, sessions: widget.sessions);
     if (mounted) setState(() => _contentMatches = content);
 
-    // Files: cached index, synchronous after the first build.
-    final root = widget.workspace.firstFolderPath;
-    if (root.isEmpty) {
+    // Files: cached per-root indexes, synchronous after the first build.
+    // Remote folders yield no local matches (the index walks AppStorage.fs);
+    // content search covers remote folders via its per-slice filesystems.
+    final folders = [
+      for (final f in widget.workspace.folders)
+        if (f.path.trim().isNotEmpty) f,
+    ];
+    if (folders.isEmpty) {
       if (!mounted) return;
       setState(() {
         _searchingFiles = false;
-        _fileMatches = const [];
+        _fileGroups = const [];
       });
       return;
     }
-    final fileIndex = widget.indexes.fileIndexFor(root);
-    if (!fileIndex.isReady && mounted) setState(() => _searchingFiles = true);
-    await fileIndex.ensureFresh();
+    if (folders.any(
+          (f) => !widget.indexes.fileIndexFor(f.path).isReady,
+        ) &&
+        mounted) {
+      setState(() => _searchingFiles = true);
+    }
+    await Future.wait([
+      for (final f in folders) widget.indexes.fileIndexFor(f.path).ensureFresh(),
+    ]);
     if (!mounted || seq != _searchSeq) return;
-    final fileQuery = fileIndex.query(query, limit: _maxFileResultsExpanded);
+    final groups = <_FileFolderGroup>[
+      for (final f in folders)
+        _FileFolderGroup(
+          label: f.path.split(Platform.pathSeparator).last,
+          matches: widget.indexes
+              .fileIndexFor(f.path)
+              .query(query, limit: _maxFileResultsExpanded),
+        ),
+    ];
     setState(() {
       _searchingFiles = false;
-      _fileMatches = fileQuery;
+      _fileGroups = [for (final g in groups) if (g.matches.isNotEmpty) g];
     });
   }
 
@@ -501,7 +538,10 @@ class _WorkspaceSearchDialogState extends State<WorkspaceSearchDialog> {
     return out;
   }
 
-  /// 文件 section: file-name matches, expandable past [_maxFileResults].
+  /// 文件 section: file-name matches grouped per folder (headers only when
+  /// more than one folder has results), expandable past [_maxFileResults].
+  /// The cap applies to the total across groups and slices them in folder
+  /// order; expanding shows every match from every folder.
   List<Widget> _buildFilesSection(AppLocalizations l10n) {
     final out = <Widget>[];
     if (_searchingFiles) {
@@ -511,24 +551,32 @@ class _WorkspaceSearchDialogState extends State<WorkspaceSearchDialog> {
       out.add(WorkspaceSearchStatusRow(label: l10n.workspaceSearchSearching));
       return out;
     }
-    if (_fileMatches.isEmpty) return out;
+    final total = _fileGroups.fold<int>(0, (n, g) => n + g.matches.length);
+    if (total == 0) return out;
     out.add(
       WorkspaceSearchSectionHeader(label: l10n.workspaceSearchFilesSection),
     );
-    final shown = _filesExpanded
-        ? _fileMatches
-        : _fileMatches.take(_maxFileResults).toList();
-    for (final match in shown) {
-      out.add(
-        WorkspaceSearchFileRow(
-          name: match.name,
-          query: _query,
-          relativePath: match.relativePath,
-          onTap: () => widget.onOpenFile(match.path),
-        ),
-      );
+    final showHeaders = _fileGroups.length > 1;
+    var remaining = _filesExpanded ? total : _maxFileResults;
+    for (final group in _fileGroups) {
+      if (remaining <= 0) break;
+      if (showHeaders) {
+        out.add(WorkspaceSearchSectionHeader(label: group.label));
+      }
+      final shown = group.matches.take(remaining).toList();
+      for (final match in shown) {
+        out.add(
+          WorkspaceSearchFileRow(
+            name: match.name,
+            query: _query,
+            relativePath: match.relativePath,
+            onTap: () => widget.onOpenFile(match.path),
+          ),
+        );
+      }
+      remaining -= shown.length;
     }
-    if (!_filesExpanded && _fileMatches.length > _maxFileResults) {
+    if (!_filesExpanded && total > _maxFileResults) {
       out.add(
         WorkspaceSearchShowMore(
           label: l10n.workspaceSearchShowMore,
@@ -540,12 +588,12 @@ class _WorkspaceSearchDialogState extends State<WorkspaceSearchDialog> {
   }
 
   /// 内容 section: the exclusive content-search mode with its own query input,
-  /// regex/case chips, and streaming file:line results. Searching roots the
-  /// first workspace folder on the dialog's injected [Filesystem].
+  /// regex/case chips, and streaming file:line results. It searches every
+  /// slice in [WorkspaceSearchDialog.slices] — one per workspace folder of the
+  /// dialog's injected roots, each on its own filesystem.
   Widget _buildContentSection() {
     return WorkspaceSearchContentSection(
-      root: widget.workspace.firstFolderPath,
-      fs: widget.fs,
+      slices: widget.slices,
       onOpenFile: widget.onOpenFile,
     );
   }

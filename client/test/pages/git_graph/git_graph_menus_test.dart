@@ -205,10 +205,10 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(
-      workbench.state.bar('ws').floating.order.map((t) => t.kind),
+      workbench.mergedFloatingStrip('ws').order.map((t) => t.kind),
       contains(WorkbenchTabKind.gitCompare),
     );
-    final tabId = workbench.state.bar('ws').floating.order
+    final tabId = workbench.mergedFloatingStrip('ws').order
         .firstWhere((t) => t.kind == WorkbenchTabKind.gitCompare)
         .id;
     final spec = GitCompareSpec.tryParseTabId(tabId);
@@ -236,7 +236,7 @@ void main() {
     await tester.tap(find.text('Show Diff with Working Tree'));
     await tester.pumpAndSettle();
 
-    final tabId = workbench.state.bar('ws').floating.order
+    final tabId = workbench.mergedFloatingStrip('ws').order
         .firstWhere((t) => t.kind == WorkbenchTabKind.gitCompare)
         .id;
     final spec = GitCompareSpec.tryParseTabId(tabId);

@@ -19,6 +19,7 @@ final class CliHeadlessLaunchContext {
     this.useWslPaths = false,
     this.expectJson = false,
     this.stream = false,
+    this.promptViaStdin = false,
   });
 
   final String prompt;
@@ -37,4 +38,9 @@ final class CliHeadlessLaunchContext {
   final bool useWslPaths;
   final bool expectJson;
   final bool stream;
+
+  /// Deliver [prompt] via the process stdin instead of an argv entry. Used
+  /// for long prompts, which would otherwise exceed the ~8k-char cmd.exe
+  /// command-line limit for npm `.cmd` shims on Windows.
+  final bool promptViaStdin;
 }

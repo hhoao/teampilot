@@ -22,7 +22,6 @@ import '../../services/git/git_repo_store.dart';
 import '../../services/storage/runtime_context.dart';
 import '../../services/workbench/workbench_editor_opener.dart';
 import '../../widgets/right_tools/right_tools_lifecycle.dart';
-import 'git_branch_menu.dart';
 import 'git_changes_tree_list.dart';
 
 /// VSCode-style "Source Control" panel for the editor workbench left rail.
@@ -175,18 +174,20 @@ class _RepoSelector extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       padding: const EdgeInsets.fromLTRB(10, 10, 10, 0),
-      child: Wrap(
-        spacing: 6,
-        runSpacing: 6,
-        children: [
-          for (final root in roots)
-            _RepoChip(
-              cubit: cubitFor(root),
-              root: root,
-              selected: root == selected,
-              onTap: () => onSelect(root),
-            ),
-        ],
+      child: SingleChildScrollView(
+        scrollDirection: Axis.horizontal,
+        child: Row(
+          spacing: 6,
+          children: [
+            for (final root in roots)
+              _RepoChip(
+                cubit: cubitFor(root),
+                root: root,
+                selected: root == selected,
+                onTap: () => onSelect(root),
+              ),
+          ],
+        ),
       ),
     );
   }
@@ -215,29 +216,41 @@ class _RepoChip extends StatelessWidget {
         selector: (state) => state.status.isRepository
             ? state.status.staged.length + state.status.unstaged.length
             : 0,
-        builder: (context, count) => ChoiceChip(
-          label: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Flexible(
-                child: Text(
-                  name,
-                  overflow: TextOverflow.ellipsis,
-                  style: TpTextStyles.of(context).sm,
+        builder: (context, count) => Tooltip(
+          message: root,
+          child: TpHover(
+            onTap: onTap,
+            borderRadius: BorderRadius.circular(8),
+            backgroundColor: selected
+                ? cs.surfaceContainerHigh
+                : Colors.transparent,
+            hoverColor: selected
+                ? cs.surfaceContainerHigh
+                : cs.onSurface.withValues(alpha: 0.05),
+            border: Border.all(
+              color: selected
+                  ? cs.outlineVariant.withValues(alpha: 0.7)
+                  : cs.outlineVariant.withValues(alpha: 0.5),
+            ),
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Flexible(
+                  child: Text(
+                    name,
+                    overflow: TextOverflow.ellipsis,
+                    style: TpTextStyles.of(
+                      context,
+                    ).smColored(selected ? cs.onSurface : cs.onSurfaceVariant),
+                  ),
                 ),
-              ),
-              if (count > 0) ...[
-                const SizedBox(width: 6),
-                _DirtyBadge(count: count, selected: selected),
+                if (count > 0) ...[
+                  const SizedBox(width: 6),
+                  _DirtyBadge(count: count, selected: selected),
+                ],
               ],
-            ],
-          ),
-          selected: selected,
-          visualDensity: VisualDensity.compact,
-          onSelected: (_) => onTap(),
-          tooltip: root,
-          labelStyle: TpTextStyles.of(context).smColored(
-            selected ? cs.onSecondaryContainer : cs.onSurfaceVariant,
+            ),
           ),
         ),
       ),
@@ -258,13 +271,15 @@ class _DirtyBadge extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
       decoration: BoxDecoration(
         color: selected
-            ? cs.onSecondaryContainer.withValues(alpha: 0.18)
-            : cs.primaryContainer,
+            ? cs.onSurface.withValues(alpha: 0.12)
+            : cs.surfaceContainerHighest,
         borderRadius: BorderRadius.circular(9),
       ),
       child: Text(
         '$count',
-        style: TpTextStyles.of(context).xsSemiboldColored(selected ? cs.onSecondaryContainer : cs.onPrimaryContainer),
+        style: TpTextStyles.of(
+          context,
+        ).xsSemiboldColored(selected ? cs.onSurface : cs.onSurfaceVariant),
       ),
     );
   }
@@ -339,13 +354,11 @@ class _GitRepoBodyState extends State<_GitRepoBody> {
   void _openFile(GitFileChange change) {
     final absolutePath = p.join(_cubit.state.repoRoot, change.path);
     unawaited(
-      context
-          .read<WorkbenchEditorOpener>()
-          .openFile(
-            widget.workspaceId,
-            absolutePath,
-            fs: widget.workContext.filesystem,
-          ),
+      context.read<WorkbenchEditorOpener>().openFile(
+        widget.workspaceId,
+        absolutePath,
+        fs: widget.workContext.filesystem,
+      ),
     );
   }
 
@@ -481,7 +494,8 @@ class _GitRepoBodyState extends State<_GitRepoBody> {
   void _syncSelectedPath(GitState state) {
     final selected = _selectedPath;
     if (selected == null) return;
-    final stillPresent = state.status.staged.any((c) => c.path == selected) ||
+    final stillPresent =
+        state.status.staged.any((c) => c.path == selected) ||
         state.status.unstaged.any((c) => c.path == selected);
     if (!stillPresent) setState(() => _selectedPath = null);
   }
@@ -500,22 +514,6 @@ class _GitRepoBodyState extends State<_GitRepoBody> {
     };
     if (aPaths.length != bPaths.length) return false;
     return aPaths.containsAll(bPaths);
-  }
-
-  Future<void> _openBranchSheet() async {
-    await _cubit.ensureBranches(force: true);
-    if (!mounted) return;
-    final action = await GitBranchSheet.show(
-      context,
-      branches: _cubit.state.branches,
-      current: _cubit.state.status.branch,
-    );
-    if (action == null) return;
-    if (action.checkout != null) {
-      await _cubit.checkoutBranch(action.checkout!);
-    } else if (action.createName != null) {
-      await _cubit.createBranch(action.createName!);
-    }
   }
 
   @override
@@ -544,7 +542,8 @@ class _GitRepoBodyState extends State<_GitRepoBody> {
         buildWhen: (prev, next) =>
             prev.gitAvailable != next.gitAvailable ||
             prev.isRepository != next.isRepository ||
-            prev.isLoading != next.isLoading,
+            prev.isLoading != next.isLoading ||
+            prev.busy != next.busy,
         builder: (context, state) => _buildShell(context, state),
       ),
     );
@@ -566,6 +565,13 @@ class _GitRepoBodyState extends State<_GitRepoBody> {
       return _GitCenteredHint(
         icon: Icons.source_outlined,
         text: l10n.gitNotARepository,
+        action: TextButton.icon(
+          onPressed: state.busy
+              ? null
+              : () => unawaited(_cubit.initializeRepository()),
+          icon: const Icon(Icons.create_new_folder_outlined),
+          label: Text(l10n.gitInitializeRepository),
+        ),
       );
     }
 
@@ -591,8 +597,17 @@ class _GitRepoBodyState extends State<_GitRepoBody> {
               state.status.hasCommits,
             ),
             builder: (context, header) {
-              final (branch, ahead, behind, busy, allExpanded, generating,
-                  hasSelection, amend, hasCommits) = header;
+              final (
+                branch,
+                ahead,
+                behind,
+                busy,
+                allExpanded,
+                generating,
+                hasSelection,
+                amend,
+                hasCommits,
+              ) = header;
               return _Header(
                 branch: branch,
                 ahead: ahead,
@@ -634,9 +649,9 @@ class _GitRepoBodyState extends State<_GitRepoBody> {
                   await _cubit.generateCommitMessage(setting);
                 },
                 onRefresh: () => unawaited(_cubit.refresh()),
+                onFetch: () => unawaited(_cubit.fetchAll()),
                 onPush: () => unawaited(_cubit.push()),
                 onPull: () => unawaited(_cubit.pull()),
-                onBranch: () => unawaited(_openBranchSheet()),
                 onToggleExpandAll: _cubit.toggleExpandAllFolders,
                 onOpenGraph: () => openGitGraphTab(
                   context,
@@ -651,7 +666,11 @@ class _GitRepoBodyState extends State<_GitRepoBody> {
             },
           ),
           const SizedBox(height: 10),
-          BlocSelector<GitCubit, GitState, (bool, bool, bool, String, bool, bool)>(
+          BlocSelector<
+            GitCubit,
+            GitState,
+            (bool, bool, bool, String, bool, bool)
+          >(
             selector: (state) => (
               state.selectedPaths.isNotEmpty,
               state.busy,
@@ -661,12 +680,20 @@ class _GitRepoBodyState extends State<_GitRepoBody> {
               state.amend,
             ),
             builder: (context, commit) {
-              final (hasSelection, busy, generating, branch, hasCommits, amend) =
-                  commit;
+              final (
+                hasSelection,
+                busy,
+                generating,
+                branch,
+                hasCommits,
+                amend,
+              ) = commit;
               return _CommitBox(
                 controller: _commitController,
                 hint: l10n.gitCommitMessageHint(branch),
-                canCommit: amend ? (hasCommits && !busy) : (hasSelection && !busy),
+                canCommit: amend
+                    ? (hasCommits && !busy)
+                    : (hasSelection && !busy),
                 amend: amend,
                 generating: generating,
                 onChanged: _cubit.setCommitMessage,
@@ -682,51 +709,53 @@ class _GitRepoBodyState extends State<_GitRepoBody> {
           ),
           const SizedBox(height: 12),
           Expanded(
-            child: BlocSelector<
-              GitCubit,
-              GitState,
-              (bool, GitChangesTreeViewData, GitChangesTreeViewData)
-            >(
-              selector: (state) => (
-                state.status.hasChanges,
-                state.changesTreeView,
-                state.unversionedTreeView,
-              ),
-              builder: (context, data) {
-                final (hasChanges, changesTreeView, unversionedTreeView) = data;
-                if (!hasChanges) {
-                  final cs = Theme.of(context).colorScheme;
-                  return Center(
-                    child: Text(
-                      l10n.gitNoChanges,
-                      style: TpTextStyles.of(
-                        context,
-                      ).smColored(cs.onSurfaceVariant),
-                    ),
-                  );
-                }
-                if (!_changesListReady) {
-                  return const SizedBox.shrink();
-                }
-                return GitChangesTreeList(
-                  changesTreeView: changesTreeView,
-                  unversionedTreeView: unversionedTreeView,
-                  cubit: _cubit,
-                  listScrollController: _changesScrollController,
-                  horizontalScrollController: _horizontalScrollController,
-                  selectedPath: _selectedPath,
-                  onSelect: (path) {
-                    setState(() => _selectedPath = path);
-                    final change = _findChange(path);
-                    if (change != null) unawaited(_openDiff(change));
+            child:
+                BlocSelector<
+                  GitCubit,
+                  GitState,
+                  (bool, GitChangesTreeViewData, GitChangesTreeViewData)
+                >(
+                  selector: (state) => (
+                    state.status.hasChanges,
+                    state.changesTreeView,
+                    state.unversionedTreeView,
+                  ),
+                  builder: (context, data) {
+                    final (hasChanges, changesTreeView, unversionedTreeView) =
+                        data;
+                    if (!hasChanges) {
+                      final cs = Theme.of(context).colorScheme;
+                      return Center(
+                        child: Text(
+                          l10n.gitNoChanges,
+                          style: TpTextStyles.of(
+                            context,
+                          ).smColored(cs.onSurfaceVariant),
+                        ),
+                      );
+                    }
+                    if (!_changesListReady) {
+                      return const SizedBox.shrink();
+                    }
+                    return GitChangesTreeList(
+                      changesTreeView: changesTreeView,
+                      unversionedTreeView: unversionedTreeView,
+                      cubit: _cubit,
+                      listScrollController: _changesScrollController,
+                      horizontalScrollController: _horizontalScrollController,
+                      selectedPath: _selectedPath,
+                      onSelect: (path) {
+                        setState(() => _selectedPath = path);
+                        final change = _findChange(path);
+                        if (change != null) unawaited(_openDiff(change));
+                      },
+                      onOpenDiff: (change) => unawaited(_openDiff(change)),
+                      onConfirmDiscard: (change) =>
+                          unawaited(_confirmDiscard(change)),
+                      onOpenFile: _openFile,
+                    );
                   },
-                  onOpenDiff: (change) => unawaited(_openDiff(change)),
-                  onConfirmDiscard: (change) =>
-                      unawaited(_confirmDiscard(change)),
-                  onOpenFile: _openFile,
-                );
-              },
-            ),
+                ),
           ),
         ],
       ),
@@ -735,10 +764,11 @@ class _GitRepoBodyState extends State<_GitRepoBody> {
 }
 
 class _GitCenteredHint extends StatelessWidget {
-  const _GitCenteredHint({required this.icon, required this.text});
+  const _GitCenteredHint({required this.icon, required this.text, this.action});
 
   final IconData icon;
   final String text;
+  final Widget? action;
 
   @override
   Widget build(BuildContext context) {
@@ -754,10 +784,9 @@ class _GitCenteredHint extends StatelessWidget {
             Text(
               text,
               textAlign: TextAlign.center,
-              style: TpTextStyles.of(
-                context,
-              ).smColored(cs.onSurfaceVariant),
+              style: TpTextStyles.of(context).smColored(cs.onSurfaceVariant),
             ),
+            if (action != null) ...[const SizedBox(height: 12), action!],
           ],
         ),
       ),
@@ -779,9 +808,9 @@ class _Header extends StatefulWidget {
     required this.canGenerate,
     required this.onGenerate,
     required this.onRefresh,
+    required this.onFetch,
     required this.onPush,
     required this.onPull,
-    required this.onBranch,
     required this.onToggleExpandAll,
     required this.onOpenGraph,
     this.onDiscardSelected,
@@ -800,9 +829,9 @@ class _Header extends StatefulWidget {
   final bool canGenerate;
   final VoidCallback onGenerate;
   final VoidCallback onRefresh;
+  final VoidCallback onFetch;
   final VoidCallback onPush;
   final VoidCallback onPull;
-  final VoidCallback onBranch;
   final VoidCallback onToggleExpandAll;
   final VoidCallback onOpenGraph;
   final VoidCallback? onDiscardSelected;
@@ -832,186 +861,204 @@ class _HeaderState extends State<_Header> {
       children: [
         Flexible(
           flex: 1,
-          child: TpHover(
-            onTap: widget.onBranch,
-            borderRadius: BorderRadius.circular(6),
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
-              child: LayoutBuilder(
-                builder: (context, constraints) {
-                  final showAheadBehind =
-                      constraints.maxWidth >= _branchRowCounterMinWidth;
-                  return Row(
-                    children: [
-                      Icon(
-                        Icons.account_tree_outlined,
-                        size: 16,
-                        color: cs.primary,
-                      ),
-                      const SizedBox(width: 6),
-                      Flexible(
-                        child: Text(
-                          widget.branch,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: TpTextStyles.of(
-                            context,
-                          ).smSemibold,
+          child: Tooltip(
+            message: l10n.gitGraphTitle,
+            child: TpHover(
+              onTap: widget.onOpenGraph,
+              borderRadius: BorderRadius.circular(6),
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
+                child: LayoutBuilder(
+                  builder: (context, constraints) {
+                    final showAheadBehind =
+                        constraints.maxWidth >= _branchRowCounterMinWidth;
+                    return Row(
+                      children: [
+                        Icon(
+                          Icons.account_tree_outlined,
+                          size: 16,
+                          color: cs.primary,
                         ),
-                      ),
-                      if (showAheadBehind &&
-                          (widget.ahead > 0 || widget.behind > 0)) ...[
                         const SizedBox(width: 6),
                         Flexible(
                           child: Text(
-                            l10n.gitAheadBehind(widget.ahead, widget.behind),
+                            widget.branch,
                             maxLines: 1,
-                            overflow: TextOverflow.clip,
-                            style: TpTextStyles.of(context).xsColored(
-                              cs.onSurfaceVariant,
-                            ),
+                            overflow: TextOverflow.ellipsis,
+                            style: TpTextStyles.of(context).smSemibold,
                           ),
                         ),
+                        if (showAheadBehind &&
+                            (widget.ahead > 0 || widget.behind > 0)) ...[
+                          const SizedBox(width: 6),
+                          Flexible(
+                            child: Text(
+                              l10n.gitAheadBehind(widget.ahead, widget.behind),
+                              maxLines: 1,
+                              overflow: TextOverflow.clip,
+                              style: TpTextStyles.of(
+                                context,
+                              ).xsColored(cs.onSurfaceVariant),
+                            ),
+                          ),
+                        ],
                       ],
-                    ],
-                  );
-                },
+                    );
+                  },
+                ),
               ),
             ),
           ),
         ),
-        Flexible(
-          flex: 1,
-          child: Scrollbar(
-            controller: _toolbarScrollController,
-            thumbVisibility: true,
-            child: SingleChildScrollView(
-              controller: _toolbarScrollController,
-              scrollDirection: Axis.horizontal,
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Tooltip(
-                    message: l10n.gitGraphTitle,
-                    child: TpHover(
-                      onTap: widget.onOpenGraph,
-                      borderRadius: BorderRadius.circular(6),
-                      child: const Padding(
-                        padding: EdgeInsets.symmetric(
-                          horizontal: 4,
-                          vertical: 4,
+        Expanded(
+          child: LayoutBuilder(
+            builder: (context, constraints) {
+              return Align(
+                alignment: Alignment.centerRight,
+                child: ConstrainedBox(
+                  constraints: BoxConstraints(maxWidth: constraints.maxWidth),
+                  child: SingleChildScrollView(
+                    controller: _toolbarScrollController,
+                    scrollDirection: Axis.horizontal,
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Tooltip(
+                          message: l10n.gitGraphTitle,
+                          child: TpHover(
+                            onTap: widget.onOpenGraph,
+                            borderRadius: BorderRadius.circular(6),
+                            child: const Padding(
+                              padding: EdgeInsets.symmetric(
+                                horizontal: 4,
+                                vertical: 4,
+                              ),
+                              child: Icon(
+                                Icons.account_tree_outlined,
+                                size: 16,
+                              ),
+                            ),
+                          ),
                         ),
-                        child: Icon(
-                          Icons.account_tree_outlined,
-                          size: 16,
+                        if (widget.busy)
+                          const Padding(
+                            padding: EdgeInsets.symmetric(horizontal: 8),
+                            child: SizedBox(
+                              width: 14,
+                              height: 14,
+                              child: CircularProgressIndicator(strokeWidth: 2),
+                            ),
+                          ),
+                        Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            SizedBox(
+                              width: 24,
+                              height: 24,
+                              child: Checkbox(
+                                key: const ValueKey('git-amend-checkbox'),
+                                value: widget.amend,
+                                onChanged: widget.canAmend
+                                    ? (v) => widget.onAmend(v ?? false)
+                                    : null,
+                                visualDensity: VisualDensity.compact,
+                              ),
+                            ),
+                            const SizedBox(width: 2),
+                            Text(
+                              l10n.gitAmend,
+                              style: TpTextStyles.of(context).sm,
+                            ),
+                          ],
                         ),
-                      ),
-                    ),
-                  ),
-                  if (widget.busy)
-                    const Padding(
-                      padding: EdgeInsets.symmetric(horizontal: 8),
-                      child: SizedBox(
-                        width: 14,
-                        height: 14,
-                        child: CircularProgressIndicator(strokeWidth: 2),
-                      ),
-                    ),
-                  Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      SizedBox(
-                        width: 24,
-                        height: 24,
-                        child: Checkbox(
-                          key: const ValueKey('git-amend-checkbox'),
-                          value: widget.amend,
-                          onChanged: widget.canAmend
-                              ? (v) => widget.onAmend(v ?? false)
+                        TpIconButton(
+                          icon: widget.allFoldersExpanded
+                              ? Icons.unfold_less
+                              : Icons.unfold_more,
+                          compact: true,
+                          size: TpIconButton.kCompactSize,
+                          tooltip: widget.allFoldersExpanded
+                              ? l10n.treeCollapseAllFolders
+                              : l10n.treeExpandAllFolders,
+                          onTap: widget.onToggleExpandAll,
+                        ),
+                        TpActionMenuButton(
+                          tooltip: l10n.gitDiscard,
+                          icon: const Icon(Icons.undo, size: 18),
+                          size: TpIconButton.kCompactSize,
+                          specs: [
+                            TpActionMenuSpec.item(
+                              value: 'selected',
+                              label: l10n.gitDiscardSelected,
+                              icon: Icons.delete_outline,
+                              enabled: widget.onDiscardSelected != null,
+                            ),
+                            TpActionMenuSpec.item(
+                              value: 'all',
+                              label: l10n.gitDiscardAllUnstaged,
+                              icon: Icons.undo,
+                              destructive: true,
+                            ),
+                          ],
+                          onSelected: (value) {
+                            if (value == 'selected') {
+                              widget.onDiscardSelected?.call();
+                            }
+                            if (value == 'all') widget.onDiscardAll?.call();
+                          },
+                        ),
+                        TpIconButton(
+                          key: const ValueKey('git-generate-commit-button'),
+                          icon: Icons.auto_awesome_outlined,
+                          iconWidget: widget.generating
+                              ? const SizedBox(
+                                  width: 14,
+                                  height: 14,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                  ),
+                                )
                               : null,
-                          visualDensity: VisualDensity.compact,
+                          compact: true,
+                          size: TpIconButton.kCompactSize,
+                          tooltip: l10n.gitGenerateCommitMessage,
+                          enabled: widget.canGenerate,
+                          onTap: widget.onGenerate,
                         ),
-                      ),
-                      const SizedBox(width: 2),
-                      Text(l10n.gitAmend, style: TpTextStyles.of(context).sm),
-                    ],
+                        TpIconButton(
+                          icon: Icons.cloud_download_outlined,
+                          compact: true,
+                          size: TpIconButton.kCompactSize,
+                          tooltip: l10n.gitFetch,
+                          onTap: widget.onFetch,
+                        ),
+                        TpIconButton(
+                          icon: Icons.download_outlined,
+                          compact: true,
+                          size: TpIconButton.kCompactSize,
+                          tooltip: l10n.gitPull,
+                          onTap: widget.onPull,
+                        ),
+                        TpIconButton(
+                          icon: Icons.upload_outlined,
+                          compact: true,
+                          size: TpIconButton.kCompactSize,
+                          tooltip: l10n.gitPush,
+                          onTap: widget.onPush,
+                        ),
+                        TpIconButton(
+                          icon: Icons.refresh,
+                          compact: true,
+                          size: TpIconButton.kCompactSize,
+                          tooltip: l10n.gitRefresh,
+                          onTap: widget.onRefresh,
+                        ),
+                      ],
+                    ),
                   ),
-                  TpIconButton(
-                    icon: widget.allFoldersExpanded
-                        ? Icons.unfold_less
-                        : Icons.unfold_more,
-                    compact: true,
-                    size: TpIconButton.kCompactSize,
-                    tooltip: widget.allFoldersExpanded
-                        ? l10n.treeCollapseAllFolders
-                        : l10n.treeExpandAllFolders,
-                    onTap: widget.onToggleExpandAll,
-                  ),
-                  TpActionMenuButton(
-                    tooltip: l10n.gitDiscard,
-                    icon: const Icon(Icons.undo, size: 18),
-                    size: TpIconButton.kCompactSize,
-                    specs: [
-                      TpActionMenuSpec.item(
-                        value: 'selected',
-                        label: l10n.gitDiscardSelected,
-                        icon: Icons.delete_outline,
-                        enabled: widget.onDiscardSelected != null,
-                      ),
-                      TpActionMenuSpec.item(
-                        value: 'all',
-                        label: l10n.gitDiscardAllUnstaged,
-                        icon: Icons.undo,
-                        destructive: true,
-                      ),
-                    ],
-                    onSelected: (value) {
-                      if (value == 'selected') {
-                        widget.onDiscardSelected?.call();
-                      }
-                      if (value == 'all') widget.onDiscardAll?.call();
-                    },
-                  ),
-                  TpIconButton(
-                    key: const ValueKey('git-generate-commit-button'),
-                    icon: Icons.auto_awesome_outlined,
-                    iconWidget: widget.generating
-                        ? const SizedBox(
-                            width: 14,
-                            height: 14,
-                            child: CircularProgressIndicator(strokeWidth: 2),
-                          )
-                        : null,
-                    compact: true,
-                    size: TpIconButton.kCompactSize,
-                    tooltip: l10n.gitGenerateCommitMessage,
-                    enabled: widget.canGenerate,
-                    onTap: widget.onGenerate,
-                  ),
-                  TpIconButton(
-                    icon: Icons.download_outlined,
-                    compact: true,
-                    size: TpIconButton.kCompactSize,
-                    tooltip: l10n.gitPull,
-                    onTap: widget.onPull,
-                  ),
-                  TpIconButton(
-                    icon: Icons.upload_outlined,
-                    compact: true,
-                    size: TpIconButton.kCompactSize,
-                    tooltip: l10n.gitPush,
-                    onTap: widget.onPush,
-                  ),
-                  TpIconButton(
-                    icon: Icons.refresh,
-                    compact: true,
-                    size: TpIconButton.kCompactSize,
-                    tooltip: l10n.gitRefresh,
-                    onTap: widget.onRefresh,
-                  ),
-                ],
-              ),
-            ),
+                ),
+              );
+            },
           ),
         ),
       ],

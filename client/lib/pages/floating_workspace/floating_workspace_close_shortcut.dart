@@ -65,7 +65,7 @@ class FloatingWorkspaceCloseShortcut extends StatelessWidget {
     final workspaceId = cubit.state.activeWorkspaceId.trim();
     if (workspaceId.isEmpty) return;
 
-    final strip = workbench.state.bar(workspaceId).floating;
+    final strip = workbench.mergedFloatingStrip(workspaceId);
     if (strip.order.isEmpty) {
       cubit.minimize(closeIfEmpty: true);
       return;

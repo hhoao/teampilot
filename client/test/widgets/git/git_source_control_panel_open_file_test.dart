@@ -59,16 +59,6 @@ class _UnstagedGitStub extends GitService {
   }
 
   @override
-  Future<String> diff(
-    String dir,
-    GitFileChange change, {
-    bool ignoreWhitespace = false,
-    bool fullContext = false,
-  }) async {
-    return _fakeDiff(change.path);
-  }
-
-  @override
   Future<String> diffAgainstHead(
     String dir,
     String relativePath, {

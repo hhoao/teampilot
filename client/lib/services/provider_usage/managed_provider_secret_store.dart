@@ -1,8 +1,11 @@
 import 'dart:async';
 import 'dart:convert';
 
+import '../../models/app_provider_config.dart';
 import '../../models/managed_provider.dart';
+import '../../repositories/app_provider_repository.dart';
 import '../../repositories/ssh_credential_store.dart';
+import 'managed_provider_link_binding.dart';
 
 /// A request-scoped view of managed-provider credentials.
 ///
@@ -546,18 +549,49 @@ class _CredentialRefLock {
 }
 
 /// Resolves a managed provider's reference only for the current request.
+///
+/// A `provider:<cli>:<providerId>` credential source resolves the referenced
+/// app provider config's apiKey live at request time; all other sources read
+/// this entry's secret-store reference.
 class ManagedProviderCredentialResolver implements ProviderCredentialResolver {
-  const ManagedProviderCredentialResolver(this._store);
+  ManagedProviderCredentialResolver(
+    this._store, {
+    AppProviderRepository? appProviders,
+  }) : _appProviders = appProviders;
 
   final ManagedProviderSecretStore _store;
+  final AppProviderRepository? _appProviders;
 
   @override
   Future<ProviderCredentialScope?> resolve(ManagedProvider provider) async {
+    final link = managedProviderLinkSourceOf(
+      provider.endpointConfig.credentialSource,
+    );
+    if (link != null) return _resolveLinkedProvider(link, provider);
     final ref = provider.credentialRef?.trim();
     if (ref == null || ref.isEmpty) return null;
 
     final credentials = await _store.read(ref);
     if (credentials.isEmpty) return null;
     return credentials;
+  }
+
+  Future<ProviderCredentialScope?> _resolveLinkedProvider(
+    ManagedProviderLinkSource link,
+    ManagedProvider provider,
+  ) async {
+    final repo = _appProviders;
+    if (repo == null) return null;
+    final AppProviderConfig? row;
+    try {
+      row = await repo.findById(link.cli, link.providerId);
+    } on Object {
+      return null;
+    }
+    if (row == null) return null;
+    final apiKey = row.apiKey;
+    if (apiKey.isEmpty) return null;
+    final field = provider.endpointConfig.credentialField ?? 'apiKey';
+    return ManagedProviderCredentialScope({field: apiKey});
   }
 }

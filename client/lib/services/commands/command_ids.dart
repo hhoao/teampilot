@@ -42,6 +42,14 @@ abstract final class CommandIds {
     for (var n = 1; n <= 10; n++) stripFocusTab(n),
   ];
 
+  // Workbench split editor groups (center layout)
+  static const String workbenchSplitRight = 'workbench.split.splitRight';
+  static const String workbenchSplitDown = 'workbench.split.splitDown';
+  static const String workbenchSplitReset = 'workbench.split.reset';
+  static const String workbenchFocusNextGroup = 'workbench.split.focusNextGroup';
+  static const String workbenchMoveTabToNextGroup =
+      'workbench.split.moveTabToNextGroup';
+
   // View
   static const String toggleSidebar = 'workbench.view.toggleSidebar';
   static const String togglePanel = 'workbench.view.togglePanel';

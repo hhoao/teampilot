@@ -28,14 +28,15 @@ class CursorOfficialSubscriptionAuthReader
       provider.id.trim(),
       'home',
     );
-    for (final authPath in _layout.authJsonCandidates(isolatedHome)) {
-      final tokens = await _cursorTokens(authPath, isolatedHome);
-      if (tokens != null) {
-        return ManagedProviderAccessTokenScope(
-          accessToken: tokens.accessToken,
-          accountId: tokens.userId,
-        );
-      }
+    final tokens = await _cursorTokens(
+      _layout.authJson(isolatedHome),
+      isolatedHome,
+    );
+    if (tokens != null) {
+      return ManagedProviderAccessTokenScope(
+        accessToken: tokens.accessToken,
+        accountId: tokens.userId,
+      );
     }
     missingOfficialCredential();
   }

@@ -12,9 +12,10 @@ export 'floating_panel_placement.dart';
 
 /// Panel chrome snapshot — visibility / geometry / attention.
 ///
-/// Floating tab presence / order / active are owned by
-/// [WorkbenchCubit.bar(workspaceId).floating] — see `WorkbenchCubit`. The
-/// panel resolves `FloatingTab` view data from the bar by id.
+/// Floating tab presence / order / active are owned by the floating layout
+/// ([WorkbenchCubit.floatingLayout] / `bar(workspaceId).floating`) — see
+/// `WorkbenchCubit`. The panel resolves `FloatingTab` view data from the bar
+/// by id.
 class FloatingWorkspaceState extends Equatable {
   const FloatingWorkspaceState({
     this.visibility = FloatingPanelVisibility.hidden,

@@ -31,7 +31,7 @@ void main() {
     await tester.tap(find.text('open'));
     await tester.pump();
     expect(
-      workbench.state.bar('ws').floating.order.map((t) => t.kind),
+      workbench.mergedFloatingStrip('ws').order.map((t) => t.kind),
       contains(WorkbenchTabKind.gitGraph),
     );
   });

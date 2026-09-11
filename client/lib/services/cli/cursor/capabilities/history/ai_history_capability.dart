@@ -10,6 +10,7 @@ import '../../../../session/jsonl_transcript_page_reader.dart';
 import '../../../../session/session_history_context.dart';
 import '../../../registry/capabilities/history/subagent_side_resolver.dart';
 import '../../../registry/capabilities/history/tool_result_enricher.dart';
+import '../../provider/cursor_launch_environment.dart';
 import '../../provider/cursor_windows_home_junction.dart';
 import '../tool_call_resolvers.dart';
 import 'ai_transcript.dart';
@@ -85,6 +86,22 @@ final class CursorAiHistoryCapability implements AiHistoryCapability {
       final home = p.dirname(toolRoot);
       env['HOME'] = home;
       env['USERPROFILE'] = home;
+      // Keep every cursor-agent credential anchor (APPDATA on Windows,
+      // XDG_CONFIG_HOME on POSIX) inside the isolated home, matching the
+      // session launch environment.
+      env['AGENT_CLI_CREDENTIAL_STORE'] =
+          CursorLaunchEnvironment.credentialStoreFile;
+      if (CursorLaunchEnvironment.isWindowsHomePath(home)) {
+        env['APPDATA'] = p.windows.joinAll([
+          home,
+          ...CursorLaunchEnvironment.windowsAppDataPathSegments,
+        ]);
+      } else {
+        env['XDG_CONFIG_HOME'] = p.posix.joinAll([
+          home,
+          ...CursorLaunchEnvironment.xdgConfigPathSegments,
+        ]);
+      }
     }
     return env;
   }

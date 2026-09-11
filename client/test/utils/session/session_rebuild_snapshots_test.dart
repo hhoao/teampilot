@@ -120,6 +120,19 @@ void main() {
     expect(ids.ids, ['a']);
   });
 
+  test('OpenSessionTabIds includes previews when includePreviews', () {
+    final ids = OpenSessionTabIds.fromCenterBarOrder(
+      [
+        WorkbenchTabId.session('a'),
+        WorkbenchTabId.session('b'),
+        WorkbenchTabId.session('local-x'),
+      ],
+      previewIds: {WorkbenchTabId.session('a')},
+      includePreviews: true,
+    );
+    expect(ids.ids, ['a', 'b']);
+  });
+
   test('RunningSessionIds.fromOpenSessionTabs preserves bar order', () {
     final sessions = [_s(id: 'a'), _s(id: 'b'), _s(id: 'c')];
     final ids = RunningSessionIds.fromOpenSessionTabs(

@@ -294,8 +294,10 @@ class AutomationSchedulePicker extends StatefulWidget {
     required this.onChanged,
     required this.labelWidth,
     AutomationScheduleCalculator? calculator,
+    DateTime Function()? now,
     super.key,
-  }) : calculator = calculator ?? _defaultCalculator;
+  }) : calculator = calculator ?? _defaultCalculator,
+       now = now ?? DateTime.now;
 
   static final _defaultCalculator = AutomationScheduleCalculator();
 
@@ -303,6 +305,7 @@ class AutomationSchedulePicker extends StatefulWidget {
   final ValueChanged<AutomationScheduleDraft> onChanged;
   final double labelWidth;
   final AutomationScheduleCalculator calculator;
+  final DateTime Function() now;
 
   @override
   State<AutomationSchedulePicker> createState() =>
@@ -407,7 +410,7 @@ class _AutomationSchedulePickerState extends State<AutomationSchedulePicker> {
   }
 
   AutomationScheduleDraft _withOnceDefaults(AutomationScheduleDraft draft) {
-    final onceAt = defaultOnceDateTime(DateTime.now());
+    final onceAt = defaultOnceDateTime(widget.now());
     return draft.copyWith(
       onceDate: DateTime(onceAt.year, onceAt.month, onceAt.day),
       onceTime: TimeOfDay(hour: onceAt.hour, minute: onceAt.minute),
@@ -415,10 +418,7 @@ class _AutomationSchedulePickerState extends State<AutomationSchedulePicker> {
   }
 }
 
-String scheduleModeLabel(
-  AppLocalizations l10n,
-  AutomationScheduleMode mode,
-) {
+String scheduleModeLabel(AppLocalizations l10n, AutomationScheduleMode mode) {
   return switch (mode) {
     AutomationScheduleMode.once => l10n.automationsScheduleModeOnce,
     AutomationScheduleMode.countdown => l10n.automationsScheduleModeCountdown,

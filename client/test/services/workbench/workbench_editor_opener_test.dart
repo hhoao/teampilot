@@ -36,13 +36,13 @@ void main() {
     await Future<void>.delayed(Duration.zero);
 
     expect(
-      workbench.state.bar('ws').center.order.where(
+      workbench.centerOrder('ws').where(
         (t) => t.kind == WorkbenchTabKind.file,
       ),
       isEmpty,
     );
     expect(
-      workbench.state.bar('ws').floating.order.any(
+      workbench.mergedFloatingStrip('ws').order.any(
             (t) => t.kind == WorkbenchTabKind.file && t.id == '/repo/a.txt',
           ),
       isTrue,
@@ -78,13 +78,13 @@ void main() {
 
     expect(workbench.centerActiveId('ws')?.kind, isNot(WorkbenchTabKind.file));
     expect(
-      workbench.state.bar('ws').center.order.where(
+      workbench.centerOrder('ws').where(
         (t) => t.kind == WorkbenchTabKind.file,
       ),
       isEmpty,
     );
     expect(
-      workbench.state.bar('ws').floating.order.any(
+      workbench.mergedFloatingStrip('ws').order.any(
             (t) => t.kind == WorkbenchTabKind.file && t.id == '/repo/a.txt',
           ),
       isTrue,
@@ -115,13 +115,13 @@ void main() {
     await Future<void>.delayed(Duration.zero);
 
     expect(
-      workbench.state.bar('ws').center.order.where(
+      workbench.centerOrder('ws').where(
         (t) => t.kind == WorkbenchTabKind.file,
       ),
       isEmpty,
     );
     expect(
-      workbench.state.bar('ws').floating.order.any(
+      workbench.mergedFloatingStrip('ws').order.any(
             (t) => t.kind == WorkbenchTabKind.file && t.id == '/repo/a.png',
           ),
       isTrue,
@@ -155,9 +155,9 @@ void main() {
     );
 
     const diffKey = '/repo/a.txt::scm.changes';
-    expect(workbench.state.bar('ws').center.order, isEmpty);
+    expect(workbench.centerOrder('ws'), isEmpty);
     expect(
-      workbench.state.bar('ws').floating.order.any(
+      workbench.mergedFloatingStrip('ws').order.any(
             (t) => t.kind == WorkbenchTabKind.diff && t.id == diffKey,
           ),
       isTrue,
@@ -193,7 +193,7 @@ void main() {
       workbench.centerActiveId('ws'),
       WorkbenchTabId.diffChanges('/repo/a.txt'),
     );
-    expect(workbench.state.bar('ws').floating.order, isEmpty);
+    expect(workbench.mergedFloatingStrip('ws').order, isEmpty);
   });
 
   test('openFile opens center workbench tab when filePreviewHost is center', () async {
@@ -219,7 +219,7 @@ void main() {
 
     expect(workbench.centerActiveId('ws')?.kind, WorkbenchTabKind.file);
     expect(workbench.centerActiveId('ws')?.id, '/repo/a.txt');
-    expect(workbench.state.bar('ws').floating.order, isEmpty);
+    expect(workbench.mergedFloatingStrip('ws').order, isEmpty);
     expect(editor.state.bucket('ws').openFilePaths, contains('/repo/a.txt'));
   });
 
@@ -245,7 +245,7 @@ void main() {
       await opener.openFile('ws', '/repo/a.txt');
       await opener.openFile('ws', '/repo/b.txt');
 
-      final floatingFiles = workbench.state.bar('ws').floating.order
+      final floatingFiles = workbench.mergedFloatingStrip('ws').order
           .where((t) => t.kind == WorkbenchTabKind.file)
           .toList();
       expect(floatingFiles, [WorkbenchTabId.file('/repo/b.txt')]);
@@ -280,7 +280,7 @@ void main() {
       await opener.openFile('ws', '/repo/b.txt');
 
       expect(
-        workbench.state.bar('ws').floating.order
+        workbench.mergedFloatingStrip('ws').order
             .where((t) => t.kind == WorkbenchTabKind.file)
             .length,
         2,
@@ -320,10 +320,10 @@ void main() {
       // Dirty tab was promoted (not replaced, not closed); the new file
       // becomes the next preview (VSCode semantics: the slot persists).
       expect(
-        workbench.state.bar('ws').floating.previewIds,
+        workbench.mergedFloatingStrip('ws').previewIds,
         {WorkbenchTabId.file('/repo/b.txt')},
       );
-      final floatingFiles = workbench.state.bar('ws').floating.order
+      final floatingFiles = workbench.mergedFloatingStrip('ws').order
           .where((t) => t.kind == WorkbenchTabKind.file)
           .toList();
       expect(floatingFiles, [
@@ -357,7 +357,7 @@ void main() {
       );
       await opener.openFile('ws', '/repo/a.txt');
 
-      expect(workbench.state.bar('ws').center.landingActive, isTrue);
+      expect(workbench.centerLandingActive('ws'), isTrue);
     });
 
     test('openDiff floating path stays on the landing', () {
@@ -383,7 +383,7 @@ void main() {
         diffText: 'diff',
       );
 
-      expect(workbench.state.bar('ws').center.landingActive, isTrue);
+      expect(workbench.centerLandingActive('ws'), isTrue);
     });
 
     test('openFile center path exits the landing', () async {
@@ -406,7 +406,7 @@ void main() {
       );
       await opener.openFile('ws', '/repo/a.txt');
 
-      expect(workbench.state.bar('ws').center.landingActive, isFalse);
+      expect(workbench.centerLandingActive('ws'), isFalse);
       expect(workbench.centerActiveId('ws')?.kind, WorkbenchTabKind.file);
     });
 
@@ -434,7 +434,7 @@ void main() {
         diffText: 'diff',
       );
 
-      expect(workbench.state.bar('ws').center.landingActive, isFalse);
+      expect(workbench.centerLandingActive('ws'), isFalse);
       expect(workbench.centerActiveId('ws')?.kind, WorkbenchTabKind.diff);
     });
   });

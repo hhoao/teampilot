@@ -17,7 +17,9 @@ import '../../models/team_config.dart';
 import '../../models/workspace.dart';
 import '../../models/workspace_topology.dart';
 import '../../repositories/session_repository.dart';
-import '../../services/session/session_member_cli_locks.dart';
+import '../event/event_publisher.dart';
+import '../event/session_lifecycle_event.dart';
+import '../session/session_member_cli_locks.dart';
 import '../../services/session/team_session_member_plan.dart';
 import '../../services/terminal/terminal_session.dart';
 import '../../utils/logging/logger.dart';
@@ -259,6 +261,15 @@ class SessionLaunchPipeline {
       }
     }
     _host.appendSessionSnapshot(provisional);
+    // Pure side-channel: session object now exists with a stable sessionId.
+    // No dispatcher attached (tests/early startup) → no-op; never awaited.
+    EventPublisher.instance.dispatchSessionLifecycle(
+      SessionLifecycleEvent.sessionSpawned(
+        sessionId: sessionId,
+        workspaceId: request.workspace.workspaceId,
+        timestamp: DateTime.now(),
+      ),
+    );
 
     final persistParams = SessionPersistParams(
       sessionTeamId: sessionTeamId,
@@ -287,6 +298,16 @@ class SessionLaunchPipeline {
       ),
       session: provisional,
     );
+    if (status == SessionOpenStatus.opened) {
+      // Pure side-channel: publish before returning the successful open.
+      EventPublisher.instance.dispatchSessionLifecycle(
+        SessionLifecycleEvent.sessionStarted(
+          sessionId: sessionId,
+          workspaceId: request.workspace.workspaceId,
+          timestamp: DateTime.now(),
+        ),
+      );
+    }
     return LaunchOpened(status);
   }
 

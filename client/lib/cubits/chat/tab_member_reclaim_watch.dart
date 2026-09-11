@@ -24,6 +24,7 @@ class TabMemberReclaimWatch {
     bool Function(String sessionId)? sessionBusyFromAttention,
     bool Function(String sessionId)? sessionBusyFromDeliveryInFlight,
     bool Function(String sessionId)? isSessionPinned,
+    bool Function(String sessionId, String memberId)? seatHasActiveLeases,
     DateTime Function()? now,
   }) : _tabStore = tabStore,
        _reclaimEnabled = reclaimEnabled,
@@ -33,6 +34,7 @@ class TabMemberReclaimWatch {
        _sessionBusyFromAttention = sessionBusyFromAttention,
        _sessionBusyFromDeliveryInFlight = sessionBusyFromDeliveryInFlight,
        _isSessionPinned = isSessionPinned,
+       _seatHasActiveLeases = seatHasActiveLeases,
        _now = now ?? DateTime.now;
 
   final ChatTabStore _tabStore;
@@ -43,6 +45,7 @@ class TabMemberReclaimWatch {
   final bool Function(String sessionId)? _sessionBusyFromAttention;
   final bool Function(String sessionId)? _sessionBusyFromDeliveryInFlight;
   final bool Function(String sessionId)? _isSessionPinned;
+  final bool Function(String sessionId, String memberId)? _seatHasActiveLeases;
   final DateTime Function() _now;
 
   Timer? _timer;
@@ -133,6 +136,8 @@ class TabMemberReclaimWatch {
       hasUnread: (bus?.memberById(memberId)?.inbox.unreadCount ?? 0) > 0,
       isSessionPinned: _isSessionPinned?.call(tab.info.id) ??
           (tab.persistedSession?.pinned ?? false),
+      hasActiveLeases:
+          _seatHasActiveLeases?.call(tab.info.id, memberId) ?? false,
     );
   }
 

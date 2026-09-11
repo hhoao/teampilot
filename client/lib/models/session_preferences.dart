@@ -7,6 +7,8 @@ class SessionPreferences {
     this.autoLaunchAllMembersOnConnect = false,
     this.reclaimIdleTerminals = true,
     this.reclaimIdleTerminalAfterSeconds = 180,
+    this.gitAutoFetchEnabled = true,
+    this.gitAutoFetchIntervalMinutes = 5,
     this.scopeSessionsToSelectedTeam = true,
     this.terminalScrollbackLines = 10000,
     this.terminalLinkClickOpensInApp = true,
@@ -39,6 +41,9 @@ class SessionPreferences {
       reclaimIdleTerminals: json['reclaimIdleTerminals'] as bool? ?? true,
       reclaimIdleTerminalAfterSeconds:
           (json['reclaimIdleTerminalAfterSeconds'] as num?)?.toInt() ?? 180,
+      gitAutoFetchEnabled: json['gitAutoFetchEnabled'] as bool? ?? true,
+      gitAutoFetchIntervalMinutes:
+          (json['gitAutoFetchIntervalMinutes'] as num?)?.toInt() ?? 5,
       scopeSessionsToSelectedTeam:
           json['scopeSessionsToSelectedTeam'] as bool? ?? true,
       terminalScrollbackLines:
@@ -84,6 +89,13 @@ class SessionPreferences {
   /// Runtime-configurable so integration tests can run with a few seconds.
   final int reclaimIdleTerminalAfterSeconds;
 
+  /// When true (default), the source-control panel periodically runs a
+  /// non-interactive `git fetch --all --prune` for the repository it shows.
+  final bool gitAutoFetchEnabled;
+
+  /// Minutes between auto-fetch ticks. UI offers 1 / 5 / 15.
+  final int gitAutoFetchIntervalMinutes;
+
   /// When true, the sidebar lists only sessions whose [AppSession.sessionTeam]
   /// matches the selected team id.
   final bool scopeSessionsToSelectedTeam;
@@ -125,6 +137,8 @@ class SessionPreferences {
     bool? autoLaunchAllMembersOnConnect,
     bool? reclaimIdleTerminals,
     int? reclaimIdleTerminalAfterSeconds,
+    bool? gitAutoFetchEnabled,
+    int? gitAutoFetchIntervalMinutes,
     bool? scopeSessionsToSelectedTeam,
     int? terminalScrollbackLines,
     bool? terminalLinkClickOpensInApp,
@@ -144,6 +158,9 @@ class SessionPreferences {
       reclaimIdleTerminals: reclaimIdleTerminals ?? this.reclaimIdleTerminals,
       reclaimIdleTerminalAfterSeconds:
           reclaimIdleTerminalAfterSeconds ?? this.reclaimIdleTerminalAfterSeconds,
+      gitAutoFetchEnabled: gitAutoFetchEnabled ?? this.gitAutoFetchEnabled,
+      gitAutoFetchIntervalMinutes:
+          gitAutoFetchIntervalMinutes ?? this.gitAutoFetchIntervalMinutes,
       scopeSessionsToSelectedTeam:
           scopeSessionsToSelectedTeam ?? this.scopeSessionsToSelectedTeam,
       terminalScrollbackLines:
@@ -170,6 +187,8 @@ class SessionPreferences {
       'autoLaunchAllMembersOnConnect': autoLaunchAllMembersOnConnect,
       'reclaimIdleTerminals': reclaimIdleTerminals,
       'reclaimIdleTerminalAfterSeconds': reclaimIdleTerminalAfterSeconds,
+      'gitAutoFetchEnabled': gitAutoFetchEnabled,
+      'gitAutoFetchIntervalMinutes': gitAutoFetchIntervalMinutes,
       'scopeSessionsToSelectedTeam': scopeSessionsToSelectedTeam,
       'terminalScrollbackLines': terminalScrollbackLines,
       'terminalLinkClickOpensInApp': terminalLinkClickOpensInApp,

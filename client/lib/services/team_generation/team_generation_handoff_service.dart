@@ -71,7 +71,7 @@ final class TeamGenerationHandoffService {
     // Reserve/reuse the deterministic destination id (never regress phase).
     final destinationSessionId = job.destinationSessionId.isNotEmpty
         ? job.destinationSessionId
-        : teamGenerationStableId('teamgen-', workflowId);
+        : teamGenerationSessionUuid(workflowId, 'destination');
     final reservedJob = await _jobStore.mutate(
       workspace.workspaceId,
       workflowId,

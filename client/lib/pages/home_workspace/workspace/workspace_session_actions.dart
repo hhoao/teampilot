@@ -16,6 +16,7 @@ import '../../../cubits/expert_hub_cubit.dart';
 import '../../../cubits/launch_profile_cubit.dart';
 import '../../../cubits/session_preferences_cubit.dart';
 import '../../../cubits/workbench/workbench_cubit.dart';
+import '../../../cubits/workbench/workbench_tab.dart';
 import '../../../cubits/worktree_cubit.dart';
 import '../../../l10n/l10n_extensions.dart';
 import '../../../models/failed_message_record.dart';
@@ -61,6 +62,7 @@ SessionOpenRequest buildOpenExistingSessionRequest({
   SessionRepository? repo,
   required String emptyDisplayTitleFallback,
   bool connectImmediately = false,
+  bool? preview,
 }) {
   return SessionOpenRequest(
     session: session,
@@ -70,6 +72,7 @@ SessionOpenRequest buildOpenExistingSessionRequest({
     repo: repo,
     emptyDisplayTitleFallback: emptyDisplayTitleFallback,
     connectImmediately: connectImmediately,
+    preview: preview,
   );
 }
 
@@ -101,6 +104,7 @@ Future<void> openWorkspaceSessionTab(
   AppSession session, {
   String? tabScopeId,
   bool? connectImmediatelyOverride,
+  bool? preview,
 }) async {
   leaveWorkspaceManagementRoute(context);
   final isPersonal = session.sessionTeam.trim().isEmpty;
@@ -136,6 +140,7 @@ Future<void> openWorkspaceSessionTab(
       repo: repo,
       emptyDisplayTitleFallback: fallback,
       connectImmediately: connectImmediately,
+      preview: preview,
     ),
   );
   if (!context.mounted) return;
@@ -145,6 +150,45 @@ Future<void> openWorkspaceSessionTab(
     blockedMixedMessage: context.l10n.mixedWorkspaceSessionLaunchBlocked,
   );
   if (status != SessionOpenStatus.opened) return;
+}
+
+/// [openWorkspaceSessionTab] + "Open to the Side": after the open (or
+/// reuse-focus) settles, reveals the session's tab in a group beside the
+/// focused one. The tab opens persistent ([SessionOpenRequest.preview] is
+/// forced false) so it never replaces the focused group's current preview
+/// tab — the side split can always donate it into a new group. Silently
+/// returns when the workspace is not found, no workbench scope is in reach,
+/// or the open was blocked (status toasts are already handled by
+/// [openWorkspaceSessionTab]).
+Future<void> openWorkspaceSessionTabToSide(
+  BuildContext context,
+  AppSession session,
+) async {
+  final chat = context.read<ChatCubit>();
+  final workspace = chat.state.workspaces.firstWhereOrNull(
+    (item) => item.workspaceId == session.workspaceId,
+  );
+  if (workspace == null) return;
+  await openWorkspaceSessionTab(context, workspace, session, preview: false);
+  if (!context.mounted) return;
+  final WorkbenchCubit workbench;
+  try {
+    workbench = context.read<WorkbenchCubit>();
+  } on ProviderNotFoundException {
+    return;
+  }
+  final tab = WorkbenchTabId.session(session.sessionId);
+  final layout = workbench.centerLayout(workspace.workspaceId);
+  final hosted = layout.groups.values.any(
+    (strip) => strip.order.contains(tab),
+  );
+  if (!hosted) return;
+  workbench.revealTabBeside(
+    workspace.workspaceId,
+    tab,
+    axis: Axis.horizontal,
+    before: false,
+  );
 }
 
 void _handleSessionOpenStatus(
@@ -528,12 +572,33 @@ Future<bool> submitWorkspaceLandingMessage(
     );
   }
 
-  return chatCubit.withOperatorDeliveryInFlight(session.sessionId, () async {
+  return chatCubit.withCancellableOperatorDelivery(session.sessionId, (
+    cancelled,
+  ) async {
     final connected = await _ensureLandingSessionConnected(
       chatCubit: chatCubit,
       session: session,
       memberId: memberId,
+      aborted: cancelled,
     );
+    if (cancelled()) {
+      // Operator pressed Stop during launch: the message must never reach the
+      // CLI. Mark the pending bubble failed (retryable) and exit silently —
+      // this is a user action, not an error worth a toast.
+      appLogger.d(
+        'submitWorkspaceLandingMessage: cancelled by operator stop '
+        'session=${session.sessionId} member=$memberId connected=$connected',
+      );
+      if (pendingRecord != null) {
+        await chatCubit.markHistoryPendingFailed(
+          workspaceId: liveWorkspace.workspaceId,
+          sessionId: session.sessionId,
+          memberId: historyMemberId,
+          record: pendingRecord,
+        );
+      }
+      return false;
+    }
     if (!connected) {
       appLogger.w(
         'submitWorkspaceLandingMessage: member not ready '
@@ -646,6 +711,7 @@ Future<bool> _ensureLandingSessionConnected({
   required ChatCubit chatCubit,
   required AppSession session,
   required String memberId,
+  bool Function()? aborted,
 }) async {
   // requestCreateAndOpenSession already staged the tab and scheduled async
   // persist+connect. Re-opening here races that path and can connect with the
@@ -655,6 +721,7 @@ Future<bool> _ensureLandingSessionConnected({
       session.sessionId,
       memberId,
       directToPty: true,
+      aborted: aborted,
     );
     return true;
   } on MemberInputReadyException catch (error) {

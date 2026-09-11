@@ -555,6 +555,9 @@ class AppLocalizationsZh extends AppLocalizations {
   String get gitNotARepository => '当前文件夹不是 Git 仓库';
 
   @override
+  String get gitInitializeRepository => '创建 Git 仓库';
+
+  @override
   String get gitNotInstalled => '未找到 Git。安装 Git 后即可使用源代码管理。';
 
   @override
@@ -631,6 +634,9 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get gitPull => '拉取';
+
+  @override
+  String get gitFetch => '从远端获取';
 
   @override
   String get gitRefresh => '刷新';
@@ -1400,6 +1406,11 @@ class AppLocalizationsZh extends AppLocalizations {
   String get workspaceSearchError => '搜索失败——请检查正则';
 
   @override
+  String workspaceSearchSliceError(String directory) {
+    return '「$directory」目录搜索失败';
+  }
+
+  @override
   String get appDropdownSearchHint => '搜索…';
 
   @override
@@ -1972,6 +1983,9 @@ class AppLocalizationsZh extends AppLocalizations {
   String get removeWorkspaceDirectory => '移除目录';
 
   @override
+  String get removeWorkspaceMachine => '移除机器';
+
+  @override
   String get workspaceDisplayName => '显示名称';
 
   @override
@@ -2058,6 +2072,9 @@ class AppLocalizationsZh extends AppLocalizations {
   String get renameConversation => '重命名对话';
 
   @override
+  String get sessionOpenToSide => '在右侧分栏打开';
+
+  @override
   String get deleteConversation => '删除对话';
 
   @override
@@ -2139,6 +2156,12 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get closeAllTabs => '关闭全部';
+
+  @override
+  String get tabMenuSplitRight => '向右拆分';
+
+  @override
+  String get tabMenuSplitDown => '向下拆分';
 
   @override
   String get session => '会话';
@@ -2968,6 +2991,24 @@ class AppLocalizationsZh extends AppLocalizations {
       '会话结束一轮工作并进入空闲时，除应用内通知中心外，同时发送操作系统通知。';
 
   @override
+  String get gitAutoFetchTitle => '自动拉取远程更新';
+
+  @override
+  String get gitAutoFetchDescription =>
+      '定时对源代码管理面板当前显示的仓库执行非交互的 git fetch --all --prune，保持提交/拉取计数最新。';
+
+  @override
+  String get gitAutoFetchIntervalTitle => '自动拉取间隔（分钟）';
+
+  @override
+  String get gitAutoFetchIntervalDescription => '面板打开时对选中仓库执行 fetch 的频率。';
+
+  @override
+  String gitAutoFetchIntervalMinutesOption(int minutes) {
+    return '每 $minutes 分钟';
+  }
+
+  @override
   String get memberTargetAssignmentTitle => '成员所在机器';
 
   @override
@@ -3342,6 +3383,20 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get appProviderApiKeyEditHint => '留空则保留原密钥';
+
+  @override
+  String get appProviderCredentialLinkMode => 'API Key 来源';
+
+  @override
+  String get appProviderCredentialLinkOwnKey => '使用自己的 API Key';
+
+  @override
+  String appProviderCredentialLinkedTo(Object entry) {
+    return '使用 $entry 的密钥';
+  }
+
+  @override
+  String get appProviderCredentialLinkEmpty => '还没有存有密钥的余额条目';
 
   @override
   String get reveal => '显示';
@@ -7164,6 +7219,21 @@ class AppLocalizationsZh extends AppLocalizations {
   String get shortcutsRunRestart => '重新运行';
 
   @override
+  String get shortcutsWorkbenchSplitRight => '向右拆分编辑组';
+
+  @override
+  String get shortcutsWorkbenchSplitDown => '向下拆分编辑组';
+
+  @override
+  String get shortcutsWorkbenchSplitReset => '重置编辑组布局';
+
+  @override
+  String get shortcutsWorkbenchFocusNextGroup => '聚焦下一个编辑组';
+
+  @override
+  String get shortcutsWorkbenchMoveTabToNextGroup => '将标签页移到下一个编辑组';
+
+  @override
   String get shortcutsCategoryRun => '运行';
 
   @override
@@ -7874,6 +7944,20 @@ class AppLocalizationsZh extends AppLocalizations {
       'secret 读表单；cli:… 读 CLI 登录。';
 
   @override
+  String get managedProvidersCredentialLinkMode => '凭据来源方式';
+
+  @override
+  String get managedProvidersCredentialLinkManual => '手动输入密钥';
+
+  @override
+  String managedProvidersCredentialLinkedTo(Object provider) {
+    return '使用 $provider 的凭证';
+  }
+
+  @override
+  String get managedProvidersCredentialLinkEmpty => '还没有可引用的供应商配置';
+
+  @override
   String get managedProvidersCredentialTemplate => '凭据拼接模板';
 
   @override
@@ -8195,6 +8279,17 @@ class AppLocalizationsZh extends AppLocalizations {
   }
 
   @override
+  String get gitGraphDeleteRemoteBranchTitle => '删除远程分支';
+
+  @override
+  String gitGraphDeleteRemoteBranchConfirmBody(String name) {
+    return '确定删除共享仓库上的远程分支“$name”吗？这将影响所有协作者，且无法撤销。';
+  }
+
+  @override
+  String get gitGraphViewTagHistory => '查看此标签历史';
+
+  @override
   String gitGraphMergeIntoCurrent(String branch) {
     return '合并 $branch 到当前分支';
   }
@@ -8258,6 +8353,17 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get gitGraphColumnCommit => '提交';
+
+  @override
+  String get gitGraphColumns => '列';
+
+  @override
+  String get gitGraphColumnHeaderLabel => '列头';
+
+  @override
+  String gitGraphHideColumn(String column) {
+    return '隐藏$column';
+  }
 
   @override
   String get gitGraphShowColumnHeader => '显示列头';

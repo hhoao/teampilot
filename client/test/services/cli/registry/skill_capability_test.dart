@@ -57,7 +57,7 @@ void main() {
     const opencodeCap = OpencodeSkillCapability();
     const codexCap = CodexSkillCapability();
 
-    test('default renders Claude-style /name', () {
+    test('default renders Claude-style /name and /plugin:name', () {
       expect(
         defaultCap.skillInvocationText('using-git-worktrees'),
         '/using-git-worktrees',
@@ -67,13 +67,20 @@ void main() {
           'using-git-worktrees',
           namespace: 'superpowers',
         ),
-        '/superpowers--using-git-worktrees',
+        '/superpowers:using-git-worktrees',
       );
     });
 
-    test('opencode prepends a space so the / is not glued to text', () {
+    test('opencode prepends a space and does not namespace plugin skills', () {
       expect(
         opencodeCap.skillInvocationText('using-git-worktrees'),
+        ' /using-git-worktrees',
+      );
+      expect(
+        opencodeCap.skillInvocationText(
+          'using-git-worktrees',
+          namespace: 'superpowers',
+        ),
         ' /using-git-worktrees',
       );
     });

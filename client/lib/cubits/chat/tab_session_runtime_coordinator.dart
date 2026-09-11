@@ -49,6 +49,7 @@ class TabSessionRuntimeCoordinator {
     Map<String, MemberPresence> Function()? presence,
     bool Function(String sessionId)? sessionBusyFromAttention,
     bool Function(String sessionId)? sessionBusyFromDeliveryInFlight,
+    bool Function(String sessionId, String memberId)? seatHasActiveLeases,
     SessionWorkingResolver? sessionWorking,
     PromptDeliveryCoordinator? promptDeliveries,
   }) {
@@ -124,6 +125,7 @@ class TabSessionRuntimeCoordinator {
                 sessionBusyFromDeliveryInFlight:
                     sessionBusyFromDeliveryInFlight,
                 isSessionPinned: isSessionPinned,
+                seatHasActiveLeases: seatHasActiveLeases,
               ));
     final aggregator =
         activityAggregator ??

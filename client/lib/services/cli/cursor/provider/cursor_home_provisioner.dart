@@ -171,7 +171,9 @@ final class CursorHomeProvisioner {
     await _fs.ensureDir(
       _fs.pathContext.join(cursorDir, CursorHomeLayout.hooksDirName),
     );
-    await _fs.ensureDir(_layout.configCursorDir(memberHome));
+    // The credential anchor dir must exist as a real dir in the member home
+    // (`.config/cursor` on Linux, `AppData\Roaming\Cursor` on Windows).
+    await _fs.ensureDir(_layout.authDir(memberHome));
   }
 
   /// Suppresses cursor-agent's one-shot "`agent` alias" tip in isolated HOMEs.

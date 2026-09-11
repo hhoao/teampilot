@@ -15,7 +15,10 @@ void main() {
     final cubit = registry.cubitFor('ws-1');
     expect(identical(registry.cubitFor(' ws-1 '), cubit), isTrue);
     expect(cubit.state.workspaceId, 'ws-1');
-    await pumpEventQueue();
+    // The load is real file IO on a temp dir; pumpEventQueue's fixed 20
+    // event-loop turns can miss the IO completion on a loaded CI host
+    // (observed on the Windows runner), so poll with a deadline instead.
+    await waitUntil(() => cubit.state.ready, timeout: const Duration(seconds: 5));
     expect(cubit.state.ready, isTrue);
   });
 

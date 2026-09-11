@@ -1,6 +1,8 @@
 import '../../registry/capabilities/skill_capability.dart';
 
-/// Cursor-agent loads skills from `<cursorConfigDir>/skills-cursor/`.
+/// Cursor-agent loads skills from `<cursorConfigDir>/skills-cursor/` and
+/// invokes them as `/skill-name`. Plugin skills are not namespaced
+/// (`/superpowers:name` is Claude Code, not cursor-agent).
 final class CursorSkillCapability
     with SkillCapabilityMaterializationMixin
     implements SkillCapability {
@@ -14,6 +16,9 @@ final class CursorSkillCapability
   String get skillsSubdir => skillsSubdirName;
 
   @override
+  bool get linksPluginSkills => false;
+
+  @override
   ResourceRepresentation get skillsRepresentation =>
       ResourceRepresentation.linkedDirectory;
 
@@ -22,5 +27,5 @@ final class CursorSkillCapability
 
   @override
   String skillInvocationText(String skillName, {String? namespace}) =>
-      _syntax.skillInvocationText(skillName, namespace: namespace);
+      _syntax.skillInvocationText(skillName);
 }

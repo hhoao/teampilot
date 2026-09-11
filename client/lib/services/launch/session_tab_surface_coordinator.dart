@@ -102,7 +102,9 @@ class SessionTabSurfaceCoordinator {
     onSessionTabOpened?.call(
       existing.workspaceId,
       session.sessionId,
-      preview: !request.connectImmediately && !existing.isRunning,
+      preview:
+          request.preview ??
+          (!request.connectImmediately && !existing.isRunning),
       activate: true,
     );
     _host.refreshActiveWorkspaceTabs();
@@ -177,7 +179,7 @@ class SessionTabSurfaceCoordinator {
     onSessionTabOpened?.call(
       session.workspaceId,
       tab.info.id,
-      preview: !request.connectImmediately,
+      preview: request.preview ?? !request.connectImmediately,
       activate: true,
     );
     _host.refreshActiveWorkspaceTabs();

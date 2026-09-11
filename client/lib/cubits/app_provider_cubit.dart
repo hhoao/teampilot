@@ -6,12 +6,14 @@ import '../models/credential_action_result.dart';
 import '../models/llm_config.dart';
 import '../repositories/app_provider_repository.dart';
 import '../services/storage/home_storage.dart';
+import '../repositories/managed_provider_repository.dart';
 import '../services/provider/credential_binding.dart';
 import '../services/cli/registry/capabilities/provider_capability.dart';
 import '../services/cli/registry/cli_tool_registry.dart';
 import '../services/provider/credential_login_progress.dart';
 import '../services/provider/provider_import_service.dart';
 import '../services/provider/tool_config_generator.dart';
+import '../services/provider_usage/managed_provider_link_binding.dart';
 import '../utils/logging/logger.dart';
 
 class AppProviderState extends Equatable {
@@ -105,6 +107,7 @@ class AppProviderCubit extends Cubit<AppProviderState> {
     ToolConfigGenerator? generator,
     String? basePath,
     Future<void> Function(Uri uri)? openCredentialLoginUrl,
+    ManagedProviderRepository? managedProviderRepository,
   }) : _repository =
            repository ?? AppProviderRepository(basePath: basePath, storage: storage),
        _generator = generator ?? const ToolConfigGenerator(),
@@ -112,6 +115,7 @@ class AppProviderCubit extends Cubit<AppProviderState> {
        _importService = importService,
        _openCredentialLoginUrl = openCredentialLoginUrl,
        _storage = storage,
+       _managedProviderRepository = managedProviderRepository,
        super(const AppProviderState());
 
   final AppProviderRepository _repository;
@@ -120,6 +124,7 @@ class AppProviderCubit extends Cubit<AppProviderState> {
   final String? Function()? _flashskyaiExecutablePath;
   final Future<void> Function(Uri uri)? _openCredentialLoginUrl;
   final HomeStorage _storage;
+  final ManagedProviderRepository? _managedProviderRepository;
 
   ProviderImportService _importServiceForRequest() {
     return _importService ??
@@ -294,6 +299,26 @@ class AppProviderCubit extends Cubit<AppProviderState> {
     final cli = provider.cli;
     final trimmedId = provider.id.trim();
     if (trimmedId.isEmpty) return false;
+    // Cycle guard: a provider's credentialLink must not target a managed
+    // entry whose credential source links back at this provider (spec).
+    // Ids are per-CLI catalogs, so both the CLI and the provider id must
+    // match for a true cycle.
+    final link = provider.credentialLink.trim();
+    if (link.isNotEmpty) {
+      final managedRepo = _managedProviderRepository;
+      if (managedRepo != null) {
+        final entries = await managedRepo.load();
+        final entry = entries.where((e) => e.id == link).firstOrNull;
+        final backLink = entry == null
+            ? null
+            : managedProviderLinkSourceOf(entry.endpointConfig.credentialSource);
+        if (backLink != null &&
+            backLink.cli == cli &&
+            backLink.providerId == trimmedId) {
+          return false;
+        }
+      }
+    }
     final current =
         state.providersByCli[cli] ?? await _repository.loadProviders(cli);
     final now = DateTime.now().toUtc().millisecondsSinceEpoch;
@@ -303,6 +328,15 @@ class AppProviderCubit extends Cubit<AppProviderState> {
       providerId: trimmedId,
       config: provider.config,
     );
+    // A form draft never probes credentials: saving it (e.g. Save after a
+    // successful login inside the add form) must not clobber the probed
+    // ready state of the existing row. Probe-driven updates always carry a
+    // status or timestamp (withCredentialProbe), so they pass through.
+    final keepProbedCredentials =
+        existing != null &&
+        existing.credentialStatus == 'ready' &&
+        provider.credentialStatus == 'missing' &&
+        provider.credentialUpdatedAt == 0;
     final next = provider.copyWith(
       id: trimmedId,
       cli: cli,
@@ -312,6 +346,10 @@ class AppProviderCubit extends Cubit<AppProviderState> {
           existing?.createdAt ??
           (provider.createdAt > 0 ? provider.createdAt : now),
       updatedAt: now,
+      credentialStatus:
+          keepProbedCredentials ? existing.credentialStatus : null,
+      credentialUpdatedAt:
+          keepProbedCredentials ? existing.credentialUpdatedAt : null,
     );
     final list = [
       for (final p in current)

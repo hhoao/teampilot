@@ -2,18 +2,22 @@ import 'package:flutter/material.dart';
 import 'package:shared_ui/shared_ui.dart';
 
 import '../../l10n/l10n_extensions.dart';
-import '../../services/editor/html_view_mode_store.dart';
 
-/// Compact Edit | Preview pill for html files (mirrors File|Diff).
-class HtmlViewModeToggle extends StatelessWidget {
-  const HtmlViewModeToggle({
-    required this.mode,
-    required this.onModeChanged,
+/// Dual-segment Edit|Preview toggle shared by the HTML and SVG editor
+/// toolbars. Selection state is caller-owned.
+class EditorViewModeToggle extends StatelessWidget {
+  const EditorViewModeToggle({
+    required this.editSelected,
+    required this.previewSelected,
+    required this.onEditTap,
+    required this.onPreviewTap,
     super.key,
   });
 
-  final HtmlViewMode mode;
-  final ValueChanged<HtmlViewMode> onModeChanged;
+  final bool editSelected;
+  final bool previewSelected;
+  final VoidCallback onEditTap;
+  final VoidCallback onPreviewTap;
 
   static const double _size = TpIconButton.kCompactSize;
 
@@ -35,17 +39,17 @@ class HtmlViewModeToggle extends StatelessWidget {
           _Segment(
             icon: Icons.code,
             tooltip: l10n.htmlViewToggleEdit,
-            selected: mode == HtmlViewMode.edit,
+            selected: editSelected,
             color: color,
-            onTap: () => onModeChanged(HtmlViewMode.edit),
+            onTap: onEditTap,
           ),
           Container(width: 1, height: 14, color: cs.outlineVariant),
           _Segment(
             icon: Icons.visibility_outlined,
             tooltip: l10n.htmlViewTogglePreview,
-            selected: mode == HtmlViewMode.preview,
+            selected: previewSelected,
             color: color,
-            onTap: () => onModeChanged(HtmlViewMode.preview),
+            onTap: onPreviewTap,
           ),
         ],
       ),
@@ -79,7 +83,7 @@ class _Segment extends StatelessWidget {
             : Colors.transparent,
         borderRadius: BorderRadius.zero,
         width: 30,
-        height: HtmlViewModeToggle._size,
+        height: EditorViewModeToggle._size,
         hoverColor: color.withValues(alpha: 0.12),
         splashColor: color.withValues(alpha: 0.2),
         onTap: onTap,

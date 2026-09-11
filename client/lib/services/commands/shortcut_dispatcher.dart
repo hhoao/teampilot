@@ -7,6 +7,7 @@ import 'double_shift_detector.dart';
 import 'key_chord.dart';
 import 'keybinding_resolver.dart';
 import 'shortcut_context.dart';
+import '../keyboard/ime_composing.dart';
 
 /// Matches every [KeyDownEvent] against the effective keybindings and, on a
 /// match, invokes the corresponding command id on [CommandBus] — regardless
@@ -23,12 +24,14 @@ class ShortcutDispatcher {
     required bool Function() isMacOS,
     List<CommandDefinition>? catalog,
     DoubleShiftDetector? doubleShiftDetector,
+    bool Function()? isImeComposing,
   }) : _bus = bus,
        _effectiveChords = effectiveChords,
        _context = context,
        _isMacOS = isMacOS,
        _catalog = catalog ?? CommandCatalog.v1,
-       _doubleShiftDetector = doubleShiftDetector ?? DoubleShiftDetector();
+       _doubleShiftDetector = doubleShiftDetector ?? DoubleShiftDetector(),
+       _isImeComposing = isImeComposing ?? imeCompositionActive;
 
   final CommandBus _bus;
   final List<KeyChord> Function(String commandId) _effectiveChords;
@@ -36,6 +39,7 @@ class ShortcutDispatcher {
   final bool Function() _isMacOS;
   final List<CommandDefinition> _catalog;
   final DoubleShiftDetector _doubleShiftDetector;
+  final bool Function() _isImeComposing;
 
   /// Set to `false` to temporarily suspend all shortcut matching (e.g. while
   /// a modal keyboard grab, such as a rebind-capture dialog, is active).
@@ -46,6 +50,15 @@ class ShortcutDispatcher {
   bool handle(KeyEvent event) {
     if (!enabled) return false;
 
+    if (event is! KeyDownEvent) return false;
+
+    // While an IME composition is active (candidate window up), the input
+    // method owns the bare keys — Enter commits the raw composition, Escape
+    // cancels it, arrows move the candidate selection. Stand down so the key
+    // reaches the IME instead of e.g. submitting a half-typed chat draft.
+    // Modifier combos still fire: the IME passes them through to the app.
+    if (_imeOwnsEvent()) return false;
+
     if (_doubleShiftDetector.feed(event)) {
       final commandId = _matchDoubleTapShift();
       if (commandId != null) {
@@ -53,8 +66,6 @@ class ShortcutDispatcher {
         return true;
       }
     }
-
-    if (event is! KeyDownEvent) return false;
 
     final effectiveByCommand = <String, List<KeyChord>>{
       for (final def in _catalog) def.id: _effectiveChords(def.id),
@@ -74,6 +85,19 @@ class ShortcutDispatcher {
     // will eventually own this command is still mounting.
     _bus.invoke(commandId);
     return true;
+  }
+
+  /// Whether the active IME composition should consume this key event
+  /// instead of shortcut matching: bare keys belong to the IME (Enter
+  /// commits the raw composition, arrows move the candidate selection),
+  /// while command modifier combos (Ctrl / Cmd / Alt) stay app-owned,
+  /// matching native macOS behavior. Shift alone stays IME-owned.
+  bool _imeOwnsEvent() {
+    if (!_isImeComposing()) return false;
+    final keyboard = HardwareKeyboard.instance;
+    return !(keyboard.isControlPressed ||
+        keyboard.isMetaPressed ||
+        keyboard.isAltPressed);
   }
 
   String? _matchDoubleTapShift() {

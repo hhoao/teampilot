@@ -13,6 +13,7 @@ import '../../../services/cli/claude/capabilities/provider.dart';
 import '../../../services/cli/codex/capabilities/provider.dart';
 import '../../../services/cli/cursor/capabilities/provider.dart';
 import '../../../services/cli/cursor/capabilities/session_lifecycle.dart';
+import '../../../services/cli/cursor/capabilities/headless.dart';
 import '../../../services/cli/opencode/capabilities/provider.dart';
 import 'capabilities/provider_capability.dart';
 import 'capabilities/cli_session_capability.dart';
@@ -80,6 +81,7 @@ void registerBuiltInCliTools(
         storage: storage,
       ),
       session: CursorSessionLifecycleCapability(storage: storage),
+      headless: CursorHeadlessCapability(storage: storage),
     ),
   );
 

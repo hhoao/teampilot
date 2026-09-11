@@ -54,6 +54,55 @@ GitCommitDetail _detailFor(String hash) => GitCommitDetail(
 );
 
 void main() {
+  test('setRepoRoot marks initial load as refreshing until data lands', () async {
+    // 复现：打开面板时 git 子进程尚未返回，state 已是 rows=[] + 默认
+    // gitAvailable=true，UI 渲染「未找到提交」。refresh 期间必须置位
+    // isRefreshing，加载完成才落回 false。
+    final gate = Completer<void>();
+    final history = GatedHistory(gates: [gate], rows: [graphCommitRow('c1')]);
+    final cubit = GitGraphCubit(
+      history: history,
+      git: FakeGitForGraph(repoStatus()),
+    );
+    addTearDown(cubit.close);
+
+    final loading = cubit.setRepoRoot('/repo');
+    await Future<void>.delayed(Duration.zero); // 等 status 完成、进入门控等待
+    expect(cubit.state.isRefreshing, isTrue,
+        reason: '刷新进行中必须置位 isRefreshing');
+
+    gate.complete();
+    await loading;
+    expect(cubit.state.isRefreshing, isFalse);
+    expect((cubit.state.rows.single as GitCommitRow).hash, 'c1');
+  });
+
+  test('refresh marks refreshing while heavy fetch is in flight', () async {
+    final first = Completer<void>()..complete();
+    final gate = Completer<void>();
+    final history = GatedHistory(
+      gates: [first, gate],
+      rows: [graphCommitRow('c1')],
+    );
+    final cubit = GitGraphCubit(
+      history: history,
+      git: FakeGitForGraph(repoStatus(headHash: 'h1')),
+      clock: () => DateTime(2026, 1, 1),
+    );
+    addTearDown(cubit.close);
+    await cubit.setRepoRoot('/repo');
+
+    // TTL 内但 HEAD 变化 → 重刷新走第二个门。
+    final git = cubit.gitService as FakeGitForGraph;
+    git.statusResult = repoStatus(headHash: 'h2');
+    final refreshing = cubit.refresh();
+    await Future<void>.delayed(Duration.zero);
+    expect(cubit.state.isRefreshing, isTrue);
+    gate.complete();
+    await refreshing;
+    expect(cubit.state.isRefreshing, isFalse);
+  });
+
   test('setRepoRoot loads first page + metadata', () async {
     final history = FakeHistoryForGraph(
       rows: [graphCommitRow('c1')],

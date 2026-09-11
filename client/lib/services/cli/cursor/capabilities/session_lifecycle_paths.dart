@@ -104,13 +104,13 @@ final class CursorSessionLifecyclePaths {
     await _fs.ensureDir(sharedSkillsCursorDir());
   }
 
-  String memberAuthDir(String memberHome) =>
-      _homeLayout.configCursorDir(memberHome);
+  /// Directory holding the member's `auth.json` — the platform credential
+  /// anchor (`.config/cursor` on Linux, `AppData\Roaming\Cursor` on Windows,
+  /// `.cursor` on macOS).
+  String memberAuthDir(String memberHome) => _homeLayout.authDir(memberHome);
 
-  String memberAuthFile(String memberHome) => _ctx.join(
-    memberAuthDir(memberHome),
-    CursorHomeLayout.authFileName,
-  );
+  String memberAuthFile(String memberHome) =>
+      _homeLayout.authJson(memberHome);
 
   Future<void> ensureMemberHomeLayout({
     required String memberId,

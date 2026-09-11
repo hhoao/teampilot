@@ -143,7 +143,7 @@ void main() {
         .element(find.byKey(AppKeys.chatWorkspace))
         .read<WorkbenchCubit>();
     expect(
-      workbenchCubit.state.bar(workspace.workspaceId).center.landingActive,
+      workbenchCubit.centerLandingActive(workspace.workspaceId),
       isFalse,
     );
     expect(

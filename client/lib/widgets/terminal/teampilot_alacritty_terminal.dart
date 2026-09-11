@@ -11,6 +11,7 @@ import '../../services/commands/key_chord.dart';
 import '../../services/commands/shortcut_context.dart';
 import '../../services/commands/shortcut_focus.dart';
 import '../../services/commands/terminal_passthrough_shortcuts.dart';
+import '../../services/perf/terminal_render_mute.dart';
 import '../../services/terminal/terminal_fonts.dart';
 import 'teampilot_terminal_accessory_host.dart';
 import 'terminal_with_history_scrollbar.dart';
@@ -103,6 +104,9 @@ class _TeampilotAlacrittyTerminalState
 
   @override
   Widget build(BuildContext context) {
+    if (TerminalRenderMute.enabled) {
+      return _mutedPlaceholder();
+    }
     final touchShell = isTouchShell();
 
     final view = TerminalView(
@@ -144,6 +148,26 @@ class _TeampilotAlacrittyTerminalState
       viewKey: _viewKey,
       latch: _latch,
       child: content,
+    );
+  }
+
+  /// [TerminalRenderMute] placeholder: flat theme-colored box instead of the
+  /// [TerminalView] + scrollbar + shortcut stack. Not mounting [TerminalView]
+  /// leaves the engine grid with zero repaint listeners, so PTY output keeps
+  /// flowing through feed/probe/observation without scheduling any frame —
+  /// the capture window stays quiet for non-terminal UI analysis.
+  Widget _mutedPlaceholder() {
+    return ColoredBox(
+      color: Color(widget.theme.background).withValues(alpha: 1),
+      child: Center(
+        child: Text(
+          'terminal render muted (PERF_MUTE_TERMINALS)',
+          style: TextStyle(
+            color: Color(widget.theme.foreground).withValues(alpha: 1),
+            fontSize: 12,
+          ),
+        ),
+      ),
     );
   }
 }

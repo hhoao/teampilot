@@ -13,7 +13,10 @@ import 'package:flutter/widgets.dart';
 /// (via [OverflowBox]), then painted back down with a [Transform.scale]. The
 /// [MediaQuery] metrics are rewritten to that rescaled canvas so descendants
 /// lay out responsively against the real space, and pointer hit-testing stays
-/// correct (Transform hit-tests are transformed by default).
+/// correct (Transform hit-tests are transformed by default). Overlay drag
+/// proxies must use [RenderBox.globalToLocal] (see
+/// `reorderable_overlay_transform.patch`) — subtracting the overlay origin
+/// from a global pointer is wrong under this scale.
 ///
 /// `devicePixelRatio` is also scaled by [scale] so descendants that key their
 /// rasterization off `MediaQuery.devicePixelRatio` (the terminal's glyph atlas

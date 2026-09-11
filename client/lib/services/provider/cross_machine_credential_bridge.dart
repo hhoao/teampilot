@@ -101,9 +101,14 @@ abstract final class CrossMachineCredentialBridge {
       storage: storage,
       fs: work.fs,
       basePath: work.basePath,
+      // The work plane is always POSIX (SSH remote).
+      layout: CursorHomeLayout(
+        pathContext: work.workPathContext,
+        platform: CursorHomePlatform.linux,
+      ),
     );
-    final workLayout = CursorHomeLayout(pathContext: work.workPathContext);
     final workHome = workSvc.providerHome(providerId);
+    final workLayout = workSvc.layout;
     final dest = workLayout.authJson(workHome);
     await ensureWorkDir(work.fs, work.workPathContext.dirname(dest));
     await writeWorkBytes(work.fs, dest, bytes);

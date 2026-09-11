@@ -65,6 +65,12 @@ String? _titleForKey(AppLocalizations l10n, String titleL10nKey) {
     'shortcutsSessionNewTab' => l10n.shortcutsSessionNewTab,
     'shortcutsSessionNewChat' => l10n.shortcutsSessionNewChat,
     'shortcutsSessionCloseTab' => l10n.shortcutsSessionCloseTab,
+    'shortcutsWorkbenchSplitRight' => l10n.shortcutsWorkbenchSplitRight,
+    'shortcutsWorkbenchSplitDown' => l10n.shortcutsWorkbenchSplitDown,
+    'shortcutsWorkbenchSplitReset' => l10n.shortcutsWorkbenchSplitReset,
+    'shortcutsWorkbenchFocusNextGroup' => l10n.shortcutsWorkbenchFocusNextGroup,
+    'shortcutsWorkbenchMoveTabToNextGroup' =>
+        l10n.shortcutsWorkbenchMoveTabToNextGroup,
     'shortcutsToggleSidebar' => l10n.shortcutsToggleSidebar,
     'shortcutsTogglePanel' => l10n.shortcutsTogglePanel,
     'shortcutsToggleSecondarySidebar' => l10n.shortcutsToggleSecondarySidebar,

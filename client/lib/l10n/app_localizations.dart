@@ -1154,6 +1154,12 @@ abstract class AppLocalizations {
   /// **'This folder is not a Git repository'**
   String get gitNotARepository;
 
+  /// No description provided for @gitInitializeRepository.
+  ///
+  /// In en, this message translates to:
+  /// **'Create Git repository'**
+  String get gitInitializeRepository;
+
   /// No description provided for @gitNotInstalled.
   ///
   /// In en, this message translates to:
@@ -1297,6 +1303,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Pull'**
   String get gitPull;
+
+  /// No description provided for @gitFetch.
+  ///
+  /// In en, this message translates to:
+  /// **'Fetch from remote'**
+  String get gitFetch;
 
   /// No description provided for @gitRefresh.
   ///
@@ -2720,6 +2732,12 @@ abstract class AppLocalizations {
   /// **'Search failed — check the pattern'**
   String get workspaceSearchError;
 
+  /// No description provided for @workspaceSearchSliceError.
+  ///
+  /// In en, this message translates to:
+  /// **'Search failed in \"{directory}\"'**
+  String workspaceSearchSliceError(String directory);
+
   /// No description provided for @appDropdownSearchHint.
   ///
   /// In en, this message translates to:
@@ -3728,6 +3746,12 @@ abstract class AppLocalizations {
   /// **'Remove directory'**
   String get removeWorkspaceDirectory;
 
+  /// No description provided for @removeWorkspaceMachine.
+  ///
+  /// In en, this message translates to:
+  /// **'Remove machine'**
+  String get removeWorkspaceMachine;
+
   /// No description provided for @workspaceDisplayName.
   ///
   /// In en, this message translates to:
@@ -3896,6 +3920,12 @@ abstract class AppLocalizations {
   /// **'Rename conversation'**
   String get renameConversation;
 
+  /// No description provided for @sessionOpenToSide.
+  ///
+  /// In en, this message translates to:
+  /// **'Open to the Side'**
+  String get sessionOpenToSide;
+
   /// No description provided for @deleteConversation.
   ///
   /// In en, this message translates to:
@@ -4057,6 +4087,18 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Close All'**
   String get closeAllTabs;
+
+  /// No description provided for @tabMenuSplitRight.
+  ///
+  /// In en, this message translates to:
+  /// **'Split Right'**
+  String get tabMenuSplitRight;
+
+  /// No description provided for @tabMenuSplitDown.
+  ///
+  /// In en, this message translates to:
+  /// **'Split Down'**
+  String get tabMenuSplitDown;
 
   /// No description provided for @session.
   ///
@@ -5576,6 +5618,36 @@ abstract class AppLocalizations {
   /// **'When a session finishes a turn and becomes idle, show an OS notification in addition to the in-app notification center.'**
   String get notifyOnSessionIdleDescription;
 
+  /// No description provided for @gitAutoFetchTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Auto-fetch remote updates'**
+  String get gitAutoFetchTitle;
+
+  /// No description provided for @gitAutoFetchDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Periodically run a non-interactive git fetch --all --prune for the repository shown in the source-control panel, keeping ahead/behind counts fresh.'**
+  String get gitAutoFetchDescription;
+
+  /// No description provided for @gitAutoFetchIntervalTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Auto-fetch interval (minutes)'**
+  String get gitAutoFetchIntervalTitle;
+
+  /// No description provided for @gitAutoFetchIntervalDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'How often the selected repository is fetched while the panel is open.'**
+  String get gitAutoFetchIntervalDescription;
+
+  /// No description provided for @gitAutoFetchIntervalMinutesOption.
+  ///
+  /// In en, this message translates to:
+  /// **'Every {minutes} min'**
+  String gitAutoFetchIntervalMinutesOption(int minutes);
+
   /// No description provided for @memberTargetAssignmentTitle.
   ///
   /// In en, this message translates to:
@@ -6247,6 +6319,30 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Leave blank to keep the existing key'**
   String get appProviderApiKeyEditHint;
+
+  /// No description provided for @appProviderCredentialLinkMode.
+  ///
+  /// In en, this message translates to:
+  /// **'API key source'**
+  String get appProviderCredentialLinkMode;
+
+  /// No description provided for @appProviderCredentialLinkOwnKey.
+  ///
+  /// In en, this message translates to:
+  /// **'Use own API key'**
+  String get appProviderCredentialLinkOwnKey;
+
+  /// No description provided for @appProviderCredentialLinkedTo.
+  ///
+  /// In en, this message translates to:
+  /// **'Using secret of {entry}'**
+  String appProviderCredentialLinkedTo(Object entry);
+
+  /// No description provided for @appProviderCredentialLinkEmpty.
+  ///
+  /// In en, this message translates to:
+  /// **'No secret-backed balance entries yet'**
+  String get appProviderCredentialLinkEmpty;
 
   /// No description provided for @reveal.
   ///
@@ -13280,6 +13376,36 @@ abstract class AppLocalizations {
   /// **'Restart Run'**
   String get shortcutsRunRestart;
 
+  /// No description provided for @shortcutsWorkbenchSplitRight.
+  ///
+  /// In en, this message translates to:
+  /// **'Split Editor Right'**
+  String get shortcutsWorkbenchSplitRight;
+
+  /// No description provided for @shortcutsWorkbenchSplitDown.
+  ///
+  /// In en, this message translates to:
+  /// **'Split Editor Down'**
+  String get shortcutsWorkbenchSplitDown;
+
+  /// No description provided for @shortcutsWorkbenchSplitReset.
+  ///
+  /// In en, this message translates to:
+  /// **'Reset Editor Layout'**
+  String get shortcutsWorkbenchSplitReset;
+
+  /// No description provided for @shortcutsWorkbenchFocusNextGroup.
+  ///
+  /// In en, this message translates to:
+  /// **'Focus Next Editor Group'**
+  String get shortcutsWorkbenchFocusNextGroup;
+
+  /// No description provided for @shortcutsWorkbenchMoveTabToNextGroup.
+  ///
+  /// In en, this message translates to:
+  /// **'Move Tab to Next Editor Group'**
+  String get shortcutsWorkbenchMoveTabToNextGroup;
+
   /// No description provided for @shortcutsCategoryRun.
   ///
   /// In en, this message translates to:
@@ -14624,6 +14750,30 @@ abstract class AppLocalizations {
   /// **'secret reads the form; cli:… reads CLI login.'**
   String get managedProvidersCredentialSourceHelper;
 
+  /// No description provided for @managedProvidersCredentialLinkMode.
+  ///
+  /// In en, this message translates to:
+  /// **'Credential source mode'**
+  String get managedProvidersCredentialLinkMode;
+
+  /// No description provided for @managedProvidersCredentialLinkManual.
+  ///
+  /// In en, this message translates to:
+  /// **'Enter secret manually'**
+  String get managedProvidersCredentialLinkManual;
+
+  /// No description provided for @managedProvidersCredentialLinkedTo.
+  ///
+  /// In en, this message translates to:
+  /// **'Using credential of {provider}'**
+  String managedProvidersCredentialLinkedTo(Object provider);
+
+  /// No description provided for @managedProvidersCredentialLinkEmpty.
+  ///
+  /// In en, this message translates to:
+  /// **'No API-key providers configured yet'**
+  String get managedProvidersCredentialLinkEmpty;
+
   /// No description provided for @managedProvidersCredentialTemplate.
   ///
   /// In en, this message translates to:
@@ -15230,6 +15380,24 @@ abstract class AppLocalizations {
   /// **'Delete branch \"{name}\"? Commits only reachable from it may become unreachable. This cannot be undone.'**
   String gitGraphDeleteBranchConfirmBody(String name);
 
+  /// No description provided for @gitGraphDeleteRemoteBranchTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete remote branch'**
+  String get gitGraphDeleteRemoteBranchTitle;
+
+  /// No description provided for @gitGraphDeleteRemoteBranchConfirmBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete remote branch \"{name}\" on the shared repository? This affects all collaborators and cannot be undone.'**
+  String gitGraphDeleteRemoteBranchConfirmBody(String name);
+
+  /// No description provided for @gitGraphViewTagHistory.
+  ///
+  /// In en, this message translates to:
+  /// **'View this tag\'s history'**
+  String get gitGraphViewTagHistory;
+
   /// No description provided for @gitGraphMergeIntoCurrent.
   ///
   /// In en, this message translates to:
@@ -15337,6 +15505,24 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Commit'**
   String get gitGraphColumnCommit;
+
+  /// No description provided for @gitGraphColumns.
+  ///
+  /// In en, this message translates to:
+  /// **'Columns'**
+  String get gitGraphColumns;
+
+  /// No description provided for @gitGraphColumnHeaderLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Column header'**
+  String get gitGraphColumnHeaderLabel;
+
+  /// No description provided for @gitGraphHideColumn.
+  ///
+  /// In en, this message translates to:
+  /// **'Hide {column}'**
+  String gitGraphHideColumn(String column);
 
   /// No description provided for @gitGraphShowColumnHeader.
   ///

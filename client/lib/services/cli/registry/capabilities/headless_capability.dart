@@ -87,6 +87,11 @@ abstract interface class HeadlessCapability
   /// Whether this CLI can stream NDJSON events for a one-shot call.
   bool get supportsStreaming;
 
+  /// Whether this CLI can receive the prompt via stdin (omitting/replacing
+  /// the argv prompt). Required for long prompts on Windows, where npm
+  /// `.cmd` shims go through cmd.exe and its ~8k-char command-line limit.
+  bool get supportsPromptStdin;
+
   /// Config files to materialize into [HeadlessLaunchContext.configDir] first.
   List<HeadlessConfigFile> configFiles(HeadlessLaunchContext ctx);
 

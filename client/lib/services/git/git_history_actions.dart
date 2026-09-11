@@ -18,8 +18,16 @@ class GitHistoryActions {
 
   final GitCommandRunner _runner;
 
-  Future<void> _run(String dir, List<String> args) async {
-    final result = await _runner.runInDirectory(dir, args);
+  Future<void> _run(
+    String dir,
+    List<String> args, {
+    Map<String, String>? environment,
+  }) async {
+    final result = await _runner.runInDirectory(
+      dir,
+      args,
+      environment: environment,
+    );
     if (result.exitCode != 0) {
       final detail = result.stderr.trim().isEmpty
           ? result.stdout.trim()
@@ -45,6 +53,18 @@ class GitHistoryActions {
 
   Future<void> checkoutBranch(String dir, String name) =>
       _run(dir, ['checkout', name]);
+
+  /// 检出远程分支：在本地创建同名跟踪分支（`checkout -b x --track origin/x`）。
+  Future<void> checkoutRemoteBranch(String dir, String remote, String branch) =>
+      _run(dir, ['checkout', '-b', branch, '--track', '$remote/$branch']);
+
+  /// 检出标签（git 原生行为：分离 HEAD）。
+  Future<void> checkoutTag(String dir, String name) =>
+      _run(dir, ['checkout', name]);
+
+  /// 删除远程服务器上的分支（`push --delete` 会顺带清掉本地跟踪引用）。
+  Future<void> deleteRemoteBranch(String dir, String remote, String branch) =>
+      _run(dir, ['push', remote, '--delete', branch]);
 
   Future<void> checkoutCommit(String dir, String hash) =>
       _run(dir, ['checkout', hash]);
@@ -102,4 +122,12 @@ class GitHistoryActions {
       _run(dir, ['stash', 'drop', if (ref != null && ref.isNotEmpty) ref]);
 
   Future<void> fetchAll(String dir) => _run(dir, ['fetch', '--all', '--prune']);
+
+  /// 非交互 fetch（自动刷新用）：`GIT_TERMINAL_PROMPT=0` 让缺凭证时直接失败
+  /// 而不是挂住等待输入。手动工具栏按钮仍走 [fetchAll]。
+  Future<void> fetchAllQuiet(String dir) => _run(
+    dir,
+    ['fetch', '--all', '--prune'],
+    environment: const {'GIT_TERMINAL_PROMPT': '0'},
+  );
 }

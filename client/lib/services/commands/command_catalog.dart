@@ -169,6 +169,59 @@ abstract final class CommandCatalog {
         titleL10nKey: 'shortcutsStripFocusTab',
       ),
 
+    // Workbench split editor groups (center layout). KeyChord has no chord
+    // sequences, so splitDown uses Mod+Alt+\ instead of the planned
+    // Ctrl/Cmd+K → Ctrl/Cmd+\ two-step (pre-authorized deviation).
+    CommandDefinition(
+      id: CommandIds.workbenchSplitRight,
+      category: CommandCategory.tabs,
+      defaultChords: [
+        KeyChord(key: '\\', mods: [KeyChordMod.mod]),
+      ],
+      when: ShortcutWhen.hasWorkspace,
+      terminalPassthrough: true,
+      titleL10nKey: 'shortcutsWorkbenchSplitRight',
+    ),
+    CommandDefinition(
+      id: CommandIds.workbenchSplitDown,
+      category: CommandCategory.tabs,
+      defaultChords: [
+        KeyChord(key: '\\', mods: [KeyChordMod.mod, KeyChordMod.alt]),
+      ],
+      when: ShortcutWhen.hasWorkspace,
+      terminalPassthrough: true,
+      titleL10nKey: 'shortcutsWorkbenchSplitDown',
+    ),
+    CommandDefinition(
+      id: CommandIds.workbenchSplitReset,
+      category: CommandCategory.tabs,
+      defaultChords: [
+        KeyChord(key: 't', mods: [KeyChordMod.mod, KeyChordMod.ctrl]),
+      ],
+      when: ShortcutWhen.hasWorkspace,
+      terminalPassthrough: true,
+      titleL10nKey: 'shortcutsWorkbenchSplitReset',
+    ),
+    CommandDefinition(
+      id: CommandIds.workbenchFocusNextGroup,
+      category: CommandCategory.tabs,
+      defaultChords: [
+        KeyChord(key: 'f', mods: [KeyChordMod.mod, KeyChordMod.alt]),
+      ],
+      when: ShortcutWhen.hasWorkspace,
+      terminalPassthrough: true,
+      titleL10nKey: 'shortcutsWorkbenchFocusNextGroup',
+    ),
+    // No default chord: surfaced via the cheatsheet / rebind UI only.
+    CommandDefinition(
+      id: CommandIds.workbenchMoveTabToNextGroup,
+      category: CommandCategory.tabs,
+      defaultChords: const [],
+      when: ShortcutWhen.hasWorkspace,
+      terminalPassthrough: true,
+      titleL10nKey: 'shortcutsWorkbenchMoveTabToNextGroup',
+    ),
+
     // View
     CommandDefinition(
       id: CommandIds.toggleSidebar,

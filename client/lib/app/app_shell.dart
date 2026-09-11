@@ -17,6 +17,7 @@ import '../cubits/app_update_cubit.dart';
 import '../cubits/remote_download_catalog_cubit.dart';
 import '../cubits/automation_cubit.dart';
 import '../cubits/agent_attention_cubit.dart';
+import '../cubits/seat_lease_cubit.dart';
 import '../cubits/chat_cubit.dart';
 import '../cubits/session_groups_cubit.dart';
 import '../services/agent_runtime/agent_event_gateway.dart';
@@ -24,6 +25,10 @@ import '../services/agent_runtime/agent_runtime.dart';
 import '../services/agent_runtime/runtime_event_journal.dart';
 import '../services/agent_runtime/runtime_event_projection.dart';
 import '../services/agent_runtime/seat_event_stream.dart';
+import '../services/agent_runtime/seat_lease_projection.dart';
+import '../services/editor/markdown_network_image_store.dart';
+import '../services/event/async_dispatcher.dart';
+import '../services/event/event_publisher.dart';
 import '../services/prompt_delivery/prompt_delivery_coordinator.dart';
 import '../services/prompt_delivery/prompt_delivery_store.dart';
 import '../services/agent_status/agent_status_seat_lookup.dart';
@@ -74,6 +79,7 @@ import '../cubits/workbench/workbench_cubit.dart';
 import '../cubits/workbench/workbench_tab.dart';
 import '../services/workbench/workbench_chat_bridge.dart';
 import '../services/workbench/workbench_editor_opener.dart';
+import '../services/workbench/workbench_layout_persistence.dart';
 import '../services/workbench/workbench_shell_launcher.dart';
 import '../services/workbench/workbench_strip_navigator.dart';
 import '../services/editor/markdown_view_mode_store.dart';
@@ -100,6 +106,7 @@ import '../cubits/hook_cubit.dart';
 import '../cubits/mcp_cubit.dart';
 import '../cubits/plugin_cubit.dart';
 import '../cubits/workspace_project_config_cubit.dart';
+import '../repositories/app_provider_repository.dart';
 import '../repositories/launch_profile_repository.dart';
 import '../services/storage/launch_profile_provisioner.dart';
 import '../cubits/cli_presets_cubit.dart';
@@ -176,6 +183,7 @@ import '../services/commands/command_bus.dart';
 import '../services/commands/layout_command_registrar.dart';
 import '../services/commands/run_command_registrar.dart';
 import '../services/commands/session_command_registrar.dart';
+import '../services/commands/split_command_registrar.dart';
 import '../services/commands/shortcuts_ui_commands.dart';
 import '../services/commands/workspace_search_command_registrar.dart';
 import '../services/commands/workspace_content_search_command_registrar.dart';
@@ -212,6 +220,7 @@ import '../cubits/chat/tab_member_pty_delivery.dart';
 import '../services/provider/provider_credential_host_runner.dart';
 import '../services/provider_usage/managed_provider_secret_store.dart';
 import '../services/provider_usage/managed_provider_cli_row_janitor.dart';
+import '../services/provider_usage/managed_provider_link_janitor.dart';
 import '../services/provider_usage/managed_provider_usage_adapter.dart';
 import '../services/provider_usage/managed_provider_usage_auto_refresh.dart';
 import '../services/provider_usage/managed_provider_usage_coordinator.dart';
@@ -398,6 +407,7 @@ class AppShell {
     required this.installJobRegistry,
     required this.editorCubit,
     required this.workbenchCubit,
+    required this.workbenchLayoutPersistence,
     required this.workbenchEditorOpener,
     required this.workbenchShellLauncher,
     required this.floatingWorkspaceCubit,
@@ -468,6 +478,7 @@ class AppShell {
     required this.discoverySettingsCubit,
     required this.reinstallStorageContext,
     required this.bootstrapAppData,
+    this.catalogRuntime,
     required this.cliToolRegistry,
     required this.homeWorkspaceUiCache,
     required this.automationCubit,
@@ -500,6 +511,7 @@ class AppShell {
   final InstallJobRegistry installJobRegistry;
   final EditorCubit editorCubit;
   final WorkbenchCubit workbenchCubit;
+  final WorkbenchLayoutPersistence workbenchLayoutPersistence;
   final WorkbenchEditorOpener workbenchEditorOpener;
   final WorkbenchShellLauncher workbenchShellLauncher;
   final FloatingWorkspaceCubit floatingWorkspaceCubit;
@@ -570,6 +582,13 @@ class AppShell {
   final DiscoverySettingsCubit discoverySettingsCubit;
   final Future<void> Function() reinstallStorageContext;
   final Future<void> Function() bootstrapAppData;
+
+  /// Retried-bootstrap teardown seam: the assembled catalog runtime, exposed so
+  /// a bootstrap failure after [buildAppShell] succeeded can close its
+  /// mutation bus (unregistering the relay from the app-lifetime central
+  /// dispatcher) before a retry constructs a new shell. Null only when
+  /// construction failed before [CatalogRuntime.assemble] ran.
+  final CatalogRuntime? catalogRuntime;
   final AutomationCubit automationCubit;
   final AutomationScheduler automationScheduler;
   final CommandBus commandBus;
@@ -912,6 +931,9 @@ Future<AppShell> buildAppShell({
     retire: (old) => runtimeContextRegistry.disposeContext(old),
   );
   homeWorkspaceUiCache = HomeWorkspaceUiCache(storage: homeStorage);
+  // Disk cache for markdown network images lives under the home
+  // <teampilotRoot>/cache; bind it before any editor surface loads a badge.
+  MarkdownNetworkImageStore.storageHome = homeStorage;
   boot(
     'home context installed '
     '(${homeStorage.context.mode}, home=${homeTarget.id}, '
@@ -971,6 +993,11 @@ Future<AppShell> buildAppShell({
         registry: resolvedManagedProviderUsageRegistry,
         credentials: ManagedProviderCredentialResolver(
           resolvedManagedProviderSecretStore,
+          // Live `provider:<cli>:<id>` credential sources read the app
+          // provider catalog; a dedicated repository instance avoids the
+          // (later-constructed) cubit's load-order dependency. Same disk,
+          // same cache-free reads.
+          appProviders: AppProviderRepository(storage: homeStorage),
         ),
         http: resolvedManagedProviderHttpClient!,
       );
@@ -986,13 +1013,35 @@ Future<AppShell> buildAppShell({
     await launchUrl(uri, mode: LaunchMode.externalApplication);
   }
 
+  // Resolves a provider config's `credentialLink` to the linked managed
+  // entry's stored secret (spec: reverse direction). Secret-free failure: a
+  // missing entry or secret resolves to null, never throws.
+  Future<String?> appProviderLinkedCredentialLookup(
+    String managedProviderId,
+  ) async {
+    final entries = await resolvedManagedProviderRepository.load();
+    final entry = entries.where((e) => e.id == managedProviderId).firstOrNull;
+    if (entry == null) return null;
+    final ref = entry.credentialRef?.trim();
+    if (ref == null || ref.isEmpty) return null;
+    final scope = await resolvedManagedProviderSecretStore.read(ref);
+    final field = entry.endpointConfig.credentialField ?? 'apiKey';
+    final value = scope.valueFor(field);
+    return (value == null || value.isEmpty) ? null : value;
+  }
+
   // Constructed before the managed-provider control plane so
   // ManagedProviderCubit can ensure dedicated per-entry CLI provider rows;
   // only needs sessionPreferencesCubit and openCredentialLoginUrl.
   appProviderCubit = AppProviderCubit(
     storage: homeStorage,
+    repository: AppProviderRepository(
+      storage: homeStorage,
+      linkedCredentialLookup: appProviderLinkedCredentialLookup,
+    ),
     flashskyaiExecutablePath: sessionPreferencesCubit.resolveExecutable,
     openCredentialLoginUrl: openCredentialLoginUrl,
+    managedProviderRepository: resolvedManagedProviderRepository,
   );
 
   // Reclaims dedicated CLI provider rows and their isolated HOME
@@ -1017,6 +1066,10 @@ Future<AppShell> buildAppShell({
           if (ref != null && ref.isNotEmpty) {
             await resolvedManagedProviderSecretStore.delete(ref);
           }
+          // Clear provider-config rows that referenced this entry's secret.
+          await ManagedProviderLinkJanitor(
+            appProviderCubit: appProviderCubit,
+          ).clearLinksFor(provider.id);
         },
       );
   final managedProviderControlPlane = ManagedProviderControlPlane(
@@ -1058,6 +1111,12 @@ Future<AppShell> buildAppShell({
       }
     }(),
   );
+
+  // Retried-bootstrap teardown seam: when wiring below fails after the
+  // catalog runtime is assembled, its mutation bus must unregister its relay
+  // from the app-lifetime central dispatcher, so a retried bootstrap's
+  // events never reach this (dead) shell's listeners.
+  CatalogRuntime? catalogRuntime;
 
   try {
     Future<void> persistSshHomePathCacheIfLive() async {
@@ -1288,6 +1347,8 @@ Future<AppShell> buildAppShell({
       },
       cliToolRegistry: cliToolRegistry,
       cliExecutableResolver: sessionPreferencesCubit.resolveExecutable,
+      toolchainNodeResolver: () => sessionPreferencesCubit
+          .resolveToolchainExecutable(SessionPreferences.toolchainNode, ''),
       identityRepository: identityRepository,
       loadInstalledSkills: () => skillRepo.loadInstalled(),
       cliPresetsRepository: cliPresetsRepo,
@@ -1811,6 +1872,7 @@ Future<AppShell> buildAppShell({
     );
 
     final agentAttentionCubit = AgentAttentionCubit();
+    final seatLeaseCubit = SeatLeaseCubit();
     final agentStatusSeatLookup = AgentStatusSeatLookup();
     final agentRuntimeStream = SeatEventStream();
     final askUserQuestionProjection = AskUserQuestionRuntimeEventProjection(
@@ -1828,6 +1890,7 @@ Future<AppShell> buildAppShell({
         attention: agentAttentionCubit,
         resolveSkipPermissions: agentStatusSeatLookup.resolveSkipPermissions,
       ),
+      seatLeaseProjection(leases: seatLeaseCubit),
       askUserQuestionProjection,
       exitPlanModeProjection,
       generalPermissionProjection,
@@ -1851,7 +1914,7 @@ Future<AppShell> buildAppShell({
     );
     teammateBusMcpGateway.attachAgentEventGateway(agentEventGateway);
 
-    final catalogRuntime = CatalogRuntime.assemble(
+    catalogRuntime = CatalogRuntime.assemble(
       storage: homeStorage,
       sessions: sessionRepo,
       runtimeContexts: runtimeContextRegistry,
@@ -1911,6 +1974,7 @@ Future<AppShell> buildAppShell({
       teammateBusMcpGateway: teammateBusMcpGateway,
       agentStatusSeatLookup: agentStatusSeatLookup,
       agentAttentionCubit: agentAttentionCubit,
+      seatLeaseCubit: seatLeaseCubit,
       askUserAnswerPendingStore: askUserAnswerPendingStore,
       askUserQuestionAnswerService: askUserQuestionAnswerService,
       generalPermissionGate: generalPermissionRequestGate,
@@ -2027,6 +2091,15 @@ Future<AppShell> buildAppShell({
     );
     final workbenchCubit = WorkbenchCubit();
 
+    // Per-workbench split-layout persistence (Task 9): one debounced save
+    // subscription for every workspace; restore is triggered per workspace
+    // after its sessions rehydrate (WorkspacePage activation chain).
+    final workbenchLayoutPersistence = WorkbenchLayoutPersistence(
+      workbench: workbenchCubit,
+      chat: chatCubit,
+      storage: homeStorage,
+    )..start();
+
     // Team-generation workflow graph. Built after chatCubit and workbenchCubit
     // so the cubit session port can bind both; services receive interfaces only.
     TeamGenerationGraph? teamGenerationGraph;
@@ -2086,10 +2159,8 @@ Future<AppShell> buildAppShell({
       commandBus,
       layoutCubit,
       uiZoomBaseline: () => uiZoomBaseline.value,
-      composeLanding: () => workbenchCubit.state
-          .bar(chatCubit.tabStore.activeWorkspaceId)
-          .center
-          .landingActive,
+      composeLanding: () =>
+          workbenchCubit.centerLandingActive(chatCubit.tabStore.activeWorkspaceId),
       onTogglePanel: openFloatingNewTerminal,
     );
 
@@ -2607,6 +2678,7 @@ Future<AppShell> buildAppShell({
       workbenchCubit,
       WorkbenchStripNavigator(workbench: workbenchCubit, chat: chatCubit),
     );
+    registerSplitCommands(commandBus, chatCubit, workbenchCubit);
 
     // P1: switching the home target persists the id, rebinds the home context,
     // and republishes it through HomeStorage. No explicit reload here (I1): the
@@ -2712,6 +2784,7 @@ Future<AppShell> buildAppShell({
       installJobRegistry: installJobRegistry,
       editorCubit: editorCubit,
       workbenchCubit: workbenchCubit,
+      workbenchLayoutPersistence: workbenchLayoutPersistence,
       workbenchEditorOpener: workbenchEditorOpener,
       workbenchShellLauncher: resolvedShellLauncher,
       floatingWorkspaceCubit: floatingWorkspaceCubit,
@@ -2782,6 +2855,7 @@ Future<AppShell> buildAppShell({
       discoverySettingsCubit: discoverySettingsCubit,
       reinstallStorageContext: reinstallStorageContext,
       bootstrapAppData: bootstrapAppData,
+      catalogRuntime: catalogRuntime,
       homeWorkspaceUiCache: homeWorkspaceUiCache,
       automationCubit: automationCubit,
       automationScheduler: automationScheduler,
@@ -2796,6 +2870,10 @@ Future<AppShell> buildAppShell({
     managedProviderControlPlaneLease.transferOwnership();
     return shell;
   } on Object {
+    // The failed shell is discarded: stop its catalog mutation bus before a
+    // bootstrap retry constructs a new one, so the app-lifetime dispatcher
+    // no longer relays mutations into the dead shell's cubits.
+    await catalogRuntime?.bus.close();
     await managedProviderControlPlaneLease.closeIfOwned();
     rethrow;
   }
@@ -2858,9 +2936,16 @@ class _TeamPilotBootstrapState extends State<TeamPilotBootstrap> {
   var _retrying = false;
   ManagedProviderUsageAutoRefresh? _usageAutoRefresh;
 
+  // Central event dispatcher: created once for the whole app lifecycle (not
+  // per bootstrap retry), attached to the publisher so all publishes route
+  // through it; stopped (drained) when the shell goes away.
+  final AsyncDispatcher _eventDispatcher = AsyncDispatcher();
+
   @override
   void initState() {
     super.initState();
+    unawaited(_eventDispatcher.start());
+    EventPublisher.instance.attach(_eventDispatcher);
     WidgetsBinding.instance.addPostFrameCallback((_) {
       unawaited(_start());
     });
@@ -2916,6 +3001,11 @@ class _TeamPilotBootstrapState extends State<TeamPilotBootstrap> {
     } on Object catch (error, stackTrace) {
       await builtShell?.connectCubit?.close();
       await builtShell?.managedProviderControlPlane.close();
+      // The failed shell is discarded: stop its catalog mutation bus before a
+      // bootstrap retry constructs a new one, so the app-lifetime dispatcher
+      // no longer relays mutations into the dead shell's cubits (same seam as
+      // the buildAppShell failure path).
+      await builtShell?.catalogRuntime?.bus.close();
       appLogger.e(
         '[boot] buildAppShell failed',
         error: error,
@@ -2962,6 +3052,9 @@ class _TeamPilotBootstrapState extends State<TeamPilotBootstrap> {
       unawaited(shell.connectCubit?.close());
       unawaited(shell.managedProviderControlPlane.close());
     }
+    // Drain queued events; dispose() is synchronous, so stop() is
+    // fire-and-forget like the cubit closes above.
+    unawaited(_eventDispatcher.stop());
     super.dispose();
   }
 

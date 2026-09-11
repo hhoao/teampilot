@@ -1,13 +1,15 @@
 import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
+import 'package:path/path.dart' as p;
 import 'package:teampilot/models/team_config.dart';
 import 'package:teampilot/services/cli/registry/capabilities/headless_capability.dart';
 import 'package:teampilot/services/cli/registry/cli_tool_registry.dart';
 import 'package:teampilot/services/cli/registry/launch/cli_launch_arg_assembler.dart';
-import 'package:teampilot/services/cli/registry/launch/cli_headless_launch_context.dart';
 import 'package:teampilot/services/cli/codex/capabilities/headless.dart';
 import 'package:teampilot/services/cli/cursor/capabilities/headless.dart';
+import 'package:teampilot/services/cli/cursor/provider/cursor_home_layout.dart';
+import 'package:teampilot/services/cli/cursor/provider/cursor_launch_environment.dart';
 import 'package:teampilot/services/cli/opencode/capabilities/headless.dart';
 import 'package:teampilot/services/cli/flashskyai/capabilities/headless.dart';
 
@@ -36,7 +38,24 @@ void main() {
     expect(cap.extractText(ProcessResult(0, 0, ' out ', '')), 'out');
   });
 
-  test('cursor: -p prompt without --model + CURSOR_CONFIG_DIR', () {
+  test('codex: promptViaStdin passes - as the prompt positional', () {
+    const cap = CodexHeadlessCapability();
+    final args = const CliLaunchArgAssembler().assembleHeadless(
+      CliToolRegistry.builtIn().tryGet(CliTool.codex)!,
+      HeadlessRunContext(
+        prompt: 'P',
+        model: 'm',
+        effort: '',
+        configDir: '/tmp/c',
+        promptViaStdin: true,
+      ),
+    );
+    expect(cap.supportsPromptStdin, isTrue);
+    expect(args.last, '-');
+    expect(args.contains('P'), isFalse);
+  });
+
+  test('cursor: -p prompt without --model + isolated home env', () {
     const cap = CursorHeadlessCapability();
     final run = ctx();
     final args = const CliLaunchArgAssembler().assembleHeadless(
@@ -45,7 +64,36 @@ void main() {
     );
     expect(args, containsAllInOrder(['-p', 'P']));
     expect(args, isNot(contains('--model')));
-    expect(cap.buildEnvironment(run)['CURSOR_CONFIG_DIR'], '/tmp/c');
+    final env = cap.buildEnvironment(run);
+    expect(
+      env['CURSOR_CONFIG_DIR'],
+      p.join('/tmp/c', CursorHomeLayout.cursorDirName),
+    );
+    expect(env['HOME'], '/tmp/c');
+    expect(env['USERPROFILE'], '/tmp/c');
+    // POSIX-style temp dir → XDG anchor pinned (deterministic on any host).
+    expect(env['XDG_CONFIG_HOME'], '/tmp/c/.config');
+    expect(env.containsKey('APPDATA'), isFalse);
+    expect(
+      env[CursorLaunchEnvironment.credentialStoreEnvKey],
+      CursorLaunchEnvironment.credentialStoreFile,
+    );
+  });
+
+  test('cursor: promptViaStdin omits the argv prompt', () {
+    const cap = CursorHeadlessCapability();
+    final args = const CliLaunchArgAssembler().assembleHeadless(
+      CliToolRegistry.builtIn().tryGet(CliTool.cursor)!,
+      HeadlessRunContext(
+        prompt: 'P',
+        model: 'm',
+        effort: '',
+        configDir: '/tmp/c',
+        promptViaStdin: true,
+      ),
+    );
+    expect(cap.supportsPromptStdin, isTrue);
+    expect(args.contains('P'), isFalse);
   });
 
   test('opencode: run prompt + model + OPENCODE_CONFIG_DIR', () {
@@ -62,10 +110,9 @@ void main() {
 
   test('flashskyai: -p print mode', () {
     const cap = FlashskyaiHeadlessCapability();
-    final run = ctx();
     final args = const CliLaunchArgAssembler().assembleHeadless(
       CliToolRegistry.builtIn().tryGet(CliTool.flashskyai)!,
-      run,
+      ctx(),
     );
     expect(args, containsAllInOrder(['-p', 'P']));
   });

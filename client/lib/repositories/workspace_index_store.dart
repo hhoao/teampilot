@@ -77,11 +77,33 @@ class WorkspaceIndexStore {
     if (maps == null) return null;
     final workspaces = <Workspace>[];
     for (final item in maps) {
-      final workspace = Workspace.fromJson(item);
+      final workspace = Workspace.fromJson(upgradeLegacyPrimaryPath(item));
       if (workspace.workspaceId.isEmpty) return null;
       workspaces.add(workspace);
     }
     return workspaces;
+  }
+
+  /// Pre-June-2026 manifests (and index snapshots derived from them) could
+  /// write a bare `primaryPath` alongside an empty `folders` array. The strict
+  /// `foldersFromJson` reader drops the path, so every session in such a
+  /// workspace resolves an empty cwd — on Windows that fails PTY process
+  /// creation outright (`CreateProcessW` rejects an empty lpCurrentDirectory).
+  /// Upgrade the raw map before [Workspace.fromJson]; the next index/manifest
+  /// write persists the canonical `folders` shape.
+  static Map<String, Object?> upgradeLegacyPrimaryPath(
+    Map<String, Object?> map,
+  ) {
+    final folders = map['folders'];
+    if (folders is List && folders.isNotEmpty) return map;
+    final primary = (map['primaryPath'] as String?)?.trim() ?? '';
+    if (primary.isEmpty) return map;
+    return {
+      ...map,
+      'folders': [
+        {'path': primary, 'targetId': 'local'},
+      ],
+    };
   }
 
   Future<void> writeAll(List<Workspace> workspaces) {

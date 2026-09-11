@@ -545,11 +545,7 @@ class _FloatingPreviewHighlightState extends State<_FloatingPreviewHighlight> {
     WorkbenchCubit workbench,
   ) {
     if (floating.state.activeWorkspaceId != widget.workspaceId) return null;
-    final activeId = workbench
-        .state
-        .bar(widget.workspaceId)
-        .floating
-        .activeId;
+    final activeId = workbench.floatingActiveId(widget.workspaceId);
     if (activeId == null ||
         activeId.kind != _kFloatingFilePreviewWorkbenchKind) {
       return null;

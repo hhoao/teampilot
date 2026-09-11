@@ -35,6 +35,8 @@ import '../services/team_bus/artifacts/artifact_registry.dart';
 import '../services/team_bus/artifacts/artifact_transfer_service.dart';
 import '../services/team_bus/mcp/teammate_bus_mcp_gateway.dart';
 import '../services/team_bus/remote/remote_bus_binding_resolver.dart';
+import '../services/event/event_publisher.dart';
+import '../services/event/session_lifecycle_event.dart';
 import '../services/agent_status/agent_attention_state.dart';
 import '../services/agent_status/agent_permission_request.dart';
 import '../services/agent_status/agent_status_event.dart';
@@ -43,6 +45,7 @@ import '../services/agent_status/ask_user_answer_pending_store.dart';
 import '../services/agent_status/general_permission_request_gate.dart';
 import '../services/prompt_delivery/prompt_delivery_coordinator.dart';
 import 'agent_attention_cubit.dart';
+import 'seat_lease_cubit.dart';
 import '../services/launch/launch_factory.dart';
 import '../services/launch/session_connect_orchestrator.dart';
 import '../services/launch/workspace_provision_coordinator.dart';
@@ -128,6 +131,7 @@ class ChatCubit extends Cubit<ChatState>
     TeammateBusMcpGateway? teammateBusMcpGateway,
     AgentStatusSeatLookup? agentStatusSeatLookup,
     AgentAttentionCubit? agentAttentionCubit,
+    SeatLeaseCubit? seatLeaseCubit,
     AskUserAnswerPendingStore? askUserAnswerPendingStore,
     AskUserQuestionAnswerService? askUserQuestionAnswerService,
     GeneralPermissionRequestGate? generalPermissionGate,
@@ -153,6 +157,7 @@ class ChatCubit extends Cubit<ChatState>
            teammateBusMcpGateway ?? TeammateBusMcpGateway(),
        _agentStatusSeatLookup = agentStatusSeatLookup,
        _agentAttentionCubit = agentAttentionCubit,
+       _seatLeaseCubit = seatLeaseCubit,
        _askUserAnswerPendingStore = askUserAnswerPendingStore,
        _automationRepository = automationRepository,
        _layoutCubit = layoutCubit,
@@ -221,6 +226,19 @@ class ChatCubit extends Cubit<ChatState>
   /// Fired when a session tab is torn down so History can dispose its seats.
   void Function(String sessionId)? onHistorySeatsDispose;
 
+  /// Session transcript scroll anchors (sessionId → pixel offset), used to
+  /// restore a chat transcript's reading position when its host remounts
+  /// (e.g. a tab moving between workbench split groups remounts the
+  /// ChatWorkbench; domain state lives in cubits/registries, only the scroll
+  /// position is lost).
+  ///
+  /// Deliberately a plain mutable map on the cubit and not part of
+  /// [ChatState]: this is view-transient restore data owned by the transcript
+  /// widget (write-on-dispose / read-on-init). Routing it through bloc state
+  /// would emit a full chat-UI rebuild on every position save for no
+  /// observable benefit. Memory only — never persisted to disk.
+  final Map<String, double> sessionScrollAnchors = {};
+
   /// Domain → workbench-bar handshake: fired after a new session tab surfaces
   /// so the bar can be fed (wired to [WorkbenchChatBridge.onSessionTabOpened]
   /// by the app shell after construction).
@@ -255,6 +273,7 @@ class ChatCubit extends Cubit<ChatState>
   final TeammateBusMcpGateway _teammateBusMcpGateway;
   final AgentStatusSeatLookup? _agentStatusSeatLookup;
   final AgentAttentionCubit? _agentAttentionCubit;
+  final SeatLeaseCubit? _seatLeaseCubit;
   final AskUserAnswerPendingStore? _askUserAnswerPendingStore;
   StreamSubscription<AgentAttentionState>? _agentAttentionSub;
   final AutomationRepository _automationRepository;
@@ -360,6 +379,12 @@ class ChatCubit extends Cubit<ChatState>
         },
         sessionBusyFromDeliveryInFlight: (sessionId) =>
             _operatorDeliveryInFlight.isInFlight(sessionId),
+        seatHasActiveLeases: (sessionId, memberId) =>
+            _seatLeaseCubit?.state.seatHasLeases(
+              sessionId: sessionId,
+              memberId: memberId,
+            ) ??
+            false,
         onAfterIdleWatchTick: () => unawaited(_onIdleWatchTick()),
         onAfterTurnLatched: _onOperatorTurnLatched,
         onUserActivity: _launchService.touchOnUserActivity,
@@ -759,6 +784,9 @@ class ChatCubit extends Cubit<ChatState>
   AgentAttentionCubit? get agentAttentionCubit => _agentAttentionCubit;
 
   @override
+  SeatLeaseCubit? get seatLeaseCubit => _seatLeaseCubit;
+
+  @override
   AskUserAnswerPendingStore? get askUserAnswerPendingStore =>
       _askUserAnswerPendingStore;
 
@@ -879,6 +907,15 @@ class ChatCubit extends Cubit<ChatState>
     Future<T> Function() action,
   ) => _operatorDeliveryInFlight.run(sessionId, action);
 
+  /// [withOperatorDeliveryInFlight] plus a `cancelled` check that flips true
+  /// when a compose Stop lands while the action is still in flight. Operator
+  /// sends (landing first prompt, history continue, follow-up drain) must
+  /// observe it before writing to the PTY.
+  Future<T> withCancellableOperatorDelivery<T>(
+    String sessionId,
+    Future<T> Function(bool Function() cancelled) action,
+  ) => _operatorDeliveryInFlight.runCancellable(sessionId, action);
+
   void endOperatorDeliveryInFlight(String sessionId) {
     final id = sessionId.trim();
     if (id.isEmpty) return;
@@ -973,9 +1010,9 @@ class ChatCubit extends Cubit<ChatState>
       return const HistoryContinueSubmitResult.failed();
     }
 
-    return withOperatorDeliveryInFlight(
+    return withCancellableOperatorDelivery(
       sessionId,
-      () => submitSessionHistoryReviewMessage(
+      (cancelled) => submitSessionHistoryReviewMessage(
         sessionId: sessionId,
         memberId: shellMemberId,
         message: message,
@@ -988,12 +1025,15 @@ class ChatCubit extends Cubit<ChatState>
         resolveChannel: () =>
             resolveOperatorMessageChannel(sessionId, shellMemberId),
         connectWorkspaceSession: connectWorkspaceSession,
-        ensureMemberInputReady: (sid, mid, {bool directToPty = false}) =>
-            _memberMaterializer.ensureMemberInputReady(
-              sid,
-              mid,
-              directToPty: directToPty,
-            ),
+        cancelled: cancelled,
+        ensureMemberInputReady:
+            (sid, mid, {bool directToPty = false, bool Function()? aborted}) =>
+                _memberMaterializer.ensureMemberInputReady(
+                  sid,
+                  mid,
+                  directToPty: directToPty,
+                  aborted: aborted,
+                ),
         deliverUserCommandToMember:
             (sid, mid, text, {bool directToPty = false}) =>
                 _sessionRuntime.deliverUserCommandToMember(
@@ -2591,6 +2631,16 @@ class ChatCubit extends Cubit<ChatState>
     final session = state.sessions
         .where((s) => s.sessionId == sessionId)
         .firstOrNull;
+    // Pure side-channel: notify lifecycle consumers before teardown starts.
+    if (session != null) {
+      EventPublisher.instance.dispatchSessionLifecycle(
+        SessionLifecycleEvent.sessionClosed(
+          sessionId: sessionId,
+          workspaceId: session.workspaceId,
+          timestamp: DateTime.now(),
+        ),
+      );
+    }
     composeDraftCache.clearSessionDraft(sessionId);
     if (session != null) {
       await composeDraftCache.clearSessionPersistent(

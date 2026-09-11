@@ -4,13 +4,20 @@ import 'package:tp_markdown/tp_markdown.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
+/// Stand-in widget for widget-level image resolvers (e.g. flutter_svg).
+class _MarkerImage extends StatelessWidget {
+  const _MarkerImage();
+
+  @override
+  Widget build(BuildContext context) => const SizedBox(width: 20, height: 20);
+}
+
 void main() {
   final testImage = MemoryImage(
     base64Decode(
       'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==',
     ),
   );
-
   testWidgets('ImageBlock with resolveImage shows Image widget', (tester) async {
     await tester.pumpWidget(
       MaterialApp(
@@ -102,6 +109,92 @@ void main() {
 
     expect(find.text(raw), findsOneWidget);
     expect(find.byType(SelectableText), findsOneWidget);
+  });
+
+  testWidgets('buildImageWidget renders widget for block image', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: MarkdownView(
+            document: const MarkdownDocument(
+              blocks: [ImageBlock(src: 'badge.svg', alt: 'Badge')],
+            ),
+            tokens: MarkdownTokens.test(),
+            resolvers: MarkdownResolvers(
+              buildImageWidget: (src, {required inline, required inlineHeight}) =>
+                  src == 'badge.svg' ? const _MarkerImage() : null,
+            ),
+          ),
+        ),
+      ),
+    );
+
+    expect(find.byType(_MarkerImage), findsOneWidget);
+    expect(find.byType(Image), findsNothing);
+    // Block widget images cap to available width like provider images.
+    final box = tester.widget<ConstrainedBox>(
+      find.descendant(
+        of: find.byType(MarkdownView),
+        matching: find.byType(ConstrainedBox),
+      ),
+    );
+    expect(box.constraints.maxWidth, 800);
+  });
+
+  testWidgets('inline buildImageWidget receives inline metrics', (
+    tester,
+  ) async {
+    bool? seenInline;
+    double? seenHeight;
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: MarkdownView(
+            document: const MarkdownDocument(
+              blocks: [
+                ParagraphBlock(runs: [ImageRun(src: 'badge.svg')]),
+              ],
+            ),
+            tokens: MarkdownTokens.test(),
+            resolvers: MarkdownResolvers(
+              buildImageWidget: (src, {required inline, required inlineHeight}) {
+                seenInline = inline;
+                seenHeight = inlineHeight;
+                return const _MarkerImage();
+              },
+            ),
+          ),
+        ),
+      ),
+    );
+
+    expect(seenInline, isTrue);
+    expect(seenHeight, closeTo(14 * 1.4, 0.01));
+    expect(find.byType(_MarkerImage), findsOneWidget);
+    expect(find.byType(Image), findsNothing);
+  });
+
+  testWidgets('buildImageWidget null falls back to placeholder', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: MarkdownView(
+            document: const MarkdownDocument(
+              blocks: [ImageBlock(src: 'badge.svg', alt: 'Badge')],
+            ),
+            tokens: MarkdownTokens.test(),
+            resolvers: MarkdownResolvers(buildImageWidget: (_, {required inline, required inlineHeight}) => null),
+          ),
+        ),
+      ),
+    );
+
+    expect(find.byIcon(Icons.image_outlined), findsOneWidget);
+    expect(find.text('Badge'), findsOneWidget);
   });
 
   testWidgets('GFM fixture document renders via MarkdownView only', (

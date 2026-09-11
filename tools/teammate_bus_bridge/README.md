@@ -18,6 +18,7 @@ loopback bus using `dart:io` HttpClient, which has no response-body timeout.
 | `--member` / `TEAMPILOT_MEMBER` | `X-Member` | Roster member id |
 | `--session` / `TEAMPILOT_SESSION` | `X-Session` | App session id (gateway routes by this) |
 | `--bus-url` / `TEAMPILOT_BUS_URL` | *(target URL)* | Gateway MCP endpoint |
+| `--extra-header Name:Value` | *(as given)* | Extra header stdio cannot carry — repeatable. TeamPilot's Team Composer MCP config uses it to forward `X-Team-Generation-Token` on the loopback hop. |
 
 ## Smoke test
     dart compile exe bin/teammate_bus_bridge.dart -o /tmp/teammate_bus_bridge

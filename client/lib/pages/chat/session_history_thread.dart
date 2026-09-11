@@ -35,8 +35,7 @@ const AiMessage kSessionHistoryRunningPlaceholder = AiMessage(
 /// History message list for session review.
 ///
 /// Owns scroll chrome (stick-to-end, load-older anchoring, hover-effects
-/// gate + cursor lock, [SelectionArea] as scroll ancestor for edge
-/// auto-scroll while selecting, new-messages chip). Mounts the full pagination data window (retain + chunked fill) so
+/// gate + cursor lock, [SelectionArea] nested inside the scroll content, new-messages chip). Mounts the full pagination data window (retain + chunked fill) so
 /// scrolling does not remount markdown — Claude-like residency within the
 /// loaded message set. Older pages still arrive via [onLoadOlder].
 class SessionHistoryThread extends StatefulWidget {
@@ -51,6 +50,8 @@ class SessionHistoryThread extends StatefulWidget {
     this.highlightMessageId,
     this.revealRequest,
     this.visibleOwnerId,
+    this.scrollAnchorKey,
+    this.scrollAnchors,
     super.key,
   });
 
@@ -74,6 +75,18 @@ class SessionHistoryThread extends StatefulWidget {
   /// updated from [VirtualThreadViewport.onVisibleRange] without [setState].
   final ValueNotifier<String?>? visibleOwnerId;
 
+  /// Key into [scrollAnchors] (the session id) for scroll-position restore.
+  /// When set together with [scrollAnchors], this thread writes its offset to
+  /// the map on dispose and jumps back to the stored offset on mount, so a
+  /// host remount (e.g. a tab moving between workbench split groups) restores
+  /// the reading position.
+  final String? scrollAnchorKey;
+
+  /// Host-owned anchor map (sessionId → offset). In the app this is
+  /// `ChatCubit.sessionScrollAnchors`; passed as a plain map reference so the
+  /// thread stays decoupled from the cubit (and testable without one).
+  final Map<String, double>? scrollAnchors;
+
   @override
   State<SessionHistoryThread> createState() => _SessionHistoryThreadState();
 }
@@ -83,8 +96,26 @@ class _SessionHistoryThreadState extends State<SessionHistoryThread> {
   static const _bottomEpsilon = 1.0;
   static const _loadOlderPixelThreshold = 120.0;
 
+  /// Frames the anchor restore waits for the virtualized viewport to grow
+  /// its extent toward the anchor (turns mount lazily / in chunks).
+  static const _anchorRestoreFrames = 24;
+
   late final ScrollController _scrollController;
   StreamSubscription<void>? _runtimeSub;
+
+  /// Scroll offset to restore on mount (read from [SessionHistoryThread
+  /// .scrollAnchors] in initState); consumed by the restore frames.
+  double? _pendingRestoreAnchor;
+
+  /// True while the anchor-restore tick chain owns the scroll offset (from
+  /// mount until the restored jump lands, plus a holdoff window). While
+  /// active, measure corrections from [VirtualThreadViewport] are dropped:
+  /// the restored offset targets the estimate-space layout of a cold mount,
+  /// and corrections for turns above the viewport would drag it away from
+  /// the anchor (stick-to-end suppresses them for the same reason). Cleared
+  /// when the chain finishes, when a stick/load-older regime takes over, or
+  /// on user scroll.
+  var _anchorRestoreActive = false;
 
   /// While false, ignore ActionBar hover-enter and force basic cursor
   /// (scroll-under-pointer).
@@ -147,6 +178,13 @@ class _SessionHistoryThreadState extends State<SessionHistoryThread> {
     _runtimeSub = widget.runtime.changes.listen((_) => _onRuntimeChanged());
     _boundReveal = widget.revealRequest;
     _boundReveal?.addListener(_onRevealRequestChanged);
+    _pendingRestoreAnchor = _readScrollAnchor();
+    if (_pendingRestoreAnchor != null) {
+      // Restoring a mid-thread reading position: the thread must not stick
+      // to the tip while the restore lands.
+      _stickToEnd = false;
+      _anchorRestoreActive = true;
+    }
     _scheduleOpenAtEnd();
   }
 
@@ -154,6 +192,9 @@ class _SessionHistoryThreadState extends State<SessionHistoryThread> {
   void didUpdateWidget(covariant SessionHistoryThread oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (oldWidget.runtime != widget.runtime) {
+      // Member/seat switch keeps the default open-at-end behavior — anchor
+      // restore only applies to a fresh mount of the same thread.
+      _cancelAnchorRestore();
       _runtimeSub?.cancel();
       _setStickToEnd(true);
       _showNewMessagesChip = false;
@@ -197,6 +238,7 @@ class _SessionHistoryThreadState extends State<SessionHistoryThread> {
 
   @override
   void dispose() {
+    _writeScrollAnchor();
     _stickGeneration++;
     _hoverResumeTimer?.cancel();
     _hoverEffectsEnabled.dispose();
@@ -206,6 +248,53 @@ class _SessionHistoryThreadState extends State<SessionHistoryThread> {
       ..removeListener(_onScrollTick)
       ..dispose();
     super.dispose();
+  }
+
+  double? _readScrollAnchor() {
+    final key = widget.scrollAnchorKey;
+    if (key == null) return null;
+    return widget.scrollAnchors?[key];
+  }
+
+  /// Persists the current reading position into the host-owned anchor map so
+  /// a remount (e.g. a tab moving between workbench split groups) can
+  /// restore it. Child scrollables unmount before this State disposes, so
+  /// the controller is usually already detached — fall back to the last
+  /// observed offset tracked by the scroll listener.
+  void _writeScrollAnchor() {
+    final key = widget.scrollAnchorKey;
+    final anchors = widget.scrollAnchors;
+    if (key == null || anchors == null) return;
+    final offset = _scrollController.hasClients
+        ? _scrollController.position.pixels
+        : _lastPixels;
+    anchors[key] = offset;
+  }
+
+  /// Ends the anchor-restore regime: re-enables measure corrections so later
+  /// layout changes (load-older prepend, expand) keep the content under the
+  /// viewport stable.
+  void _endAnchorRestore() {
+    if (!mounted) return;
+    _pendingRestoreAnchor = null;
+    if (!_anchorRestoreActive) return;
+    // Scroll notifications (incl. jumpTo) can arrive during layout/paint.
+    final phase = SchedulerBinding.instance.schedulerPhase;
+    if (phase != SchedulerPhase.idle &&
+        phase != SchedulerPhase.postFrameCallbacks) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) _endAnchorRestore();
+      });
+      return;
+    }
+    setState(() => _anchorRestoreActive = false);
+  }
+
+  /// A new scroll regime (user drag, stick frames) took over before the
+  /// restore landed — kill the restore tick chain and end the regime.
+  void _cancelAnchorRestore() {
+    _stickGeneration++;
+    _endAnchorRestore();
   }
 
   void _onRuntimeChanged() {
@@ -372,6 +461,11 @@ class _SessionHistoryThreadState extends State<SessionHistoryThread> {
   void _scheduleOpenAtEnd() {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
+      final anchor = _pendingRestoreAnchor;
+      if (anchor != null) {
+        _scheduleAnchorRestore(anchor);
+        return;
+      }
       if (_scrollController.hasClients) {
         final max = _scrollController.position.maxScrollExtent;
         if (max > 0) {
@@ -385,7 +479,65 @@ class _SessionHistoryThreadState extends State<SessionHistoryThread> {
     });
   }
 
+  /// Restores a previously stored reading position: waits (bounded frames)
+  /// until the viewport extent covers the anchor, then jumps to it clamped to
+  /// [ScrollPosition.maxScrollExtent]. Skips silently while the position is
+  /// not yet attached or the extent is still zero. After the jump the regime
+  /// stays active for the remaining frames so late above-viewport
+  /// measurements cannot correct the restored offset away (their corrections
+  /// are dropped while [_anchorRestoreActive]).
+  void _scheduleAnchorRestore(double anchor) {
+    final generation = ++_stickGeneration;
+    // A bare post-frame chain does not schedule frames; without this the
+    // restore stalls once fill/measure settles (nothing else requests a
+    // frame, so the queued tick never runs).
+    void tick(int framesLeft) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted || generation != _stickGeneration) return;
+        if (!_scrollController.hasClients) {
+          if (framesLeft > 1) {
+            SchedulerBinding.instance.ensureVisualUpdate();
+            tick(framesLeft - 1);
+          } else {
+            _endAnchorRestore();
+          }
+          return;
+        }
+        if (!_mountTurns) {
+          setState(() => _mountTurns = true);
+        }
+        final max = _scrollController.position.maxScrollExtent;
+        if (max <= 0 || (max < anchor && framesLeft > 1)) {
+          SchedulerBinding.instance.ensureVisualUpdate();
+          tick(framesLeft - 1);
+          return;
+        }
+        _pendingRestoreAnchor = null;
+        _jumpTo(anchor.clamp(0.0, max));
+        if (_scrollController.hasClients &&
+            _scrollController.position.maxScrollExtent -
+                    _scrollController.position.pixels <=
+                _bottomEpsilon) {
+          // Landed on the tip — resume stick so live growth keeps following.
+          _resumeStickToTip();
+          return;
+        }
+        if (framesLeft > 1) {
+          SchedulerBinding.instance.ensureVisualUpdate();
+          tick(framesLeft - 1);
+          return;
+        }
+        _endAnchorRestore();
+      });
+    }
+
+    tick(_anchorRestoreFrames);
+  }
+
   void _scheduleStickFrames({int framesLeft = 12}) {
+    // Stick frames own the offset now — a still-pending anchor restore must
+    // not fight them.
+    _endAnchorRestore();
     final generation = ++_stickGeneration;
     void tick(int left) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -459,6 +611,7 @@ class _SessionHistoryThreadState extends State<SessionHistoryThread> {
     if (notification is UserScrollNotification &&
         notification.direction != ScrollDirection.idle) {
       _setStickToEnd(false);
+      _cancelAnchorRestore();
     }
 
     if (notification is ScrollEndNotification) {
@@ -655,34 +808,39 @@ class _SessionHistoryThreadState extends State<SessionHistoryThread> {
               child: child!,
             );
           },
-          // SelectionArea must be an *ancestor* of the scrollable so the
-          // framework's edge auto-scroll while drag-selecting engages
-          // (Scrollable's _ScrollableSelectionContainerDelegate). The old
-          // "scroll crazy" bug that prompted sitting inside the scroll content
-          // (flutter/flutter#110917) is fixed since 2022 (PR #112816).
-          child: SelectionArea(
-            contextMenuBuilder: buildTpSelectionAreaContextMenu,
-            child: SingleChildScrollView(
-              controller: _scrollController,
-              padding: EdgeInsets.fromLTRB(
-                0,
-                aiTheme.threadTopPadding,
-                0,
-                aiTheme.threadBottomPadding,
-              ),
-              // Width chrome outside [VirtualThreadViewport]: turn bodies are
-              // cached and would keep a stale per-message ConstrainedBox.
-              child: Align(
-                alignment: Alignment.topCenter,
-                child: Padding(
-                  padding: EdgeInsets.symmetric(
-                    horizontal: aiTheme.threadHorizontalPadding,
-                  ),
-                  child: ConstrainedBox(
-                    constraints: BoxConstraints(
-                      maxWidth: aiTheme.threadMaxWidth,
-                    ),
-                    child: AiLineSpacedSelectionStyle(
+          // SelectionArea must sit *inside* the scroll content, never wrap the
+          // scrollable. As a scroll ancestor it enables the framework's
+          // selection edge auto-scroll (_ScrollableSelectionContainerDelegate),
+          // which is broken against this virtualized viewport: fill/retain
+          // mount churn makes the delegate re-dispatch synthesized edge events
+          // from stale fragment geometry every frame, re-arming the auto
+          // scroller — a plain trackpad click on text then crawls the thread
+          // upward uncontrollably, and geometry-inferred edge positions
+          // (−lineHeight/2, estimated turn heights) land the highlight above
+          // the pointer. Nesting inside removes that delegate entirely
+          // (flutter/flutter#110917 workaround; same arrangement as before
+          // commit 3df44f6dc re-exposed it).
+          child: SingleChildScrollView(
+            controller: _scrollController,
+            padding: EdgeInsets.fromLTRB(
+              0,
+              aiTheme.threadTopPadding,
+              0,
+              aiTheme.threadBottomPadding,
+            ),
+            // Width chrome outside [VirtualThreadViewport]: turn bodies are
+            // cached and would keep a stale per-message ConstrainedBox.
+            child: Align(
+              alignment: Alignment.topCenter,
+              child: Padding(
+                padding: EdgeInsets.symmetric(
+                  horizontal: aiTheme.threadHorizontalPadding,
+                ),
+                child: ConstrainedBox(
+                  constraints: BoxConstraints(maxWidth: aiTheme.threadMaxWidth),
+                  child: AiLineSpacedSelectionStyle(
+                    child: SelectionArea(
+                      contextMenuBuilder: buildTpSelectionAreaContextMenu,
                       child: VirtualThreadViewport(
                         messages: displayMessages,
                         scrollController: _scrollController,
@@ -713,6 +871,9 @@ class _SessionHistoryThreadState extends State<SessionHistoryThread> {
                             _stickToEnd || _anchoringOlder,
                         onMeasureScrollCorrection: (delta) {
                           if (_revealAnimating) return;
+                          // The anchor-restore regime owns the offset; see
+                          // [_anchorRestoreActive].
+                          if (_anchorRestoreActive) return;
                           if (!_scrollController.hasClients ||
                               delta.abs() < 0.5) {
                             return;

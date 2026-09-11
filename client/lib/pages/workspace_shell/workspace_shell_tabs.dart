@@ -3,7 +3,9 @@ import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 import 'package:shared_ui/shared_ui.dart';
+import '../../models/git_compare.dart';
 import '../../models/team_config.dart';
 
 import '../../cubits/agent_attention_cubit.dart';
@@ -29,7 +31,47 @@ import '../../utils/session/session_row_content.dart';
 import '../../utils/ui/app_keys.dart';
 import '../../widgets/cli/cli_brand_icon.dart';
 import '../../widgets/session_working_spinner.dart';
+import '../../widgets/workbench/workbench_tab_drag.dart';
 import 'workspace_shell_models.dart';
+
+/// Reconstructs the [WorkbenchTabId] a projected [TabInfo] stands for, or null
+/// for kinds without a direct id mapping (floating surfaces). Used by tab-strip
+/// drag wiring, which needs the strip-level tab identity from the projection.
+WorkbenchTabId? workbenchTabIdFromTabInfo(TabInfo tab) {
+  final kind = tab.kind;
+  if (kind == null) return null;
+  return switch (kind) {
+    WorkbenchTabKind.session => WorkbenchTabId.session(tab.id),
+    WorkbenchTabKind.file => WorkbenchTabId.file(tab.id),
+    WorkbenchTabKind.diff => () {
+      final identity = WorkbenchTabId.parseDiffStorageKey(tab.id);
+      return identity == null ? null : WorkbenchTabId.diff(identity);
+    }(),
+    WorkbenchTabKind.shell => WorkbenchTabId.shell(tab.id),
+    WorkbenchTabKind.run => WorkbenchTabId.run(tab.id),
+    WorkbenchTabKind.htmlPreview => WorkbenchTabId.htmlPreview(tab.id),
+    WorkbenchTabKind.gitGraph => WorkbenchTabId.gitGraph(tab.id),
+    WorkbenchTabKind.gitCompare => () {
+      final spec = GitCompareSpec.tryParseTabId(tab.id);
+      return spec == null ? null : WorkbenchTabId.gitCompare(spec);
+    }(),
+  };
+}
+
+/// Per-strip drag wiring for [WorkspaceShellTabRow]: when set, every tab chip
+/// becomes a [WorkbenchTabDraggable] drag source owned by [sourceGroupId].
+/// [onDrop] receives the dragged tab, the drop region's group id, and the
+/// computed zone — hosts wire it to [dispatchSplitDrop].
+class WorkspaceShellTabDrag {
+  const WorkspaceShellTabDrag({required this.sourceGroupId, required this.onDrop});
+
+  final String sourceGroupId;
+  final void Function(
+    WorkbenchTabId tab,
+    String targetGroupId,
+    SplitDropZone zone,
+  ) onDrop;
+}
 
 /// Sidebar + right-tools visibility toggles for the workspace IDE shell.
 class WorkspaceShellPaneVisibilityToggles extends StatelessWidget {
@@ -69,7 +111,7 @@ class WorkspaceShellRightToolsVisibilityToggle extends StatelessWidget {
       (c) => c.state.overrides,
     );
     final composeLanding = context.select<WorkbenchCubit, bool>(
-      (w) => w.state.bar(workspaceId).center.landingActive,
+      (w) => w.centerLandingActive(workspaceId),
     );
     return BlocBuilder<LayoutCubit, LayoutState>(
       buildWhen: (a, b) =>
@@ -81,7 +123,14 @@ class WorkspaceShellRightToolsVisibilityToggle extends StatelessWidget {
             : state.preferences.rightToolsVisible;
         return TpIconButton(
           key: AppKeys.rightToolsVisibilityButton,
-          icon: Icons.vertical_split_outlined,
+          iconWidget: SvgPicture.asset(
+            'assets/icons/panel_right.svg',
+            width: context.tpIconSizes.md,
+            height: context.tpIconSizes.md,
+            theme: SvgTheme(
+              currentColor: visible ? cs.primary : cs.onSurfaceVariant,
+            ),
+          ),
           tooltip: commandTooltip(
             context,
             visible ? l10n.rightToolsPanelHidden : l10n.rightToolsPanelVisible,
@@ -104,6 +153,7 @@ class WorkspaceShellSidebarVisibilityToggle extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final l10n = context.l10n;
+    final cs = Theme.of(context).colorScheme;
     context.select<ShortcutCubit, Map<String, List<KeyChord>>>(
       (c) => c.state.overrides,
     );
@@ -116,7 +166,14 @@ class WorkspaceShellSidebarVisibilityToggle extends StatelessWidget {
             state.preferences.sidebarVisible && !state.narrowLeftSuppressed;
         return TpIconButton(
           key: AppKeys.sidebarVisibilityButton,
-          icon: Icons.view_sidebar_outlined,
+          iconWidget: SvgPicture.asset(
+            'assets/icons/panel_left.svg',
+            width: context.tpIconSizes.md,
+            height: context.tpIconSizes.md,
+            theme: SvgTheme(
+              currentColor: effectiveOpen ? cs.primary : cs.onSurfaceVariant,
+            ),
+          ),
           tooltip: commandTooltip(
             context,
             effectiveOpen
@@ -124,7 +181,8 @@ class WorkspaceShellSidebarVisibilityToggle extends StatelessWidget {
                 : l10n.sidebarPanelVisible,
             CommandIds.toggleSidebar,
           ),
-          selected: effectiveOpen,
+          color: effectiveOpen ? cs.primary : cs.onSurfaceVariant,
+          backgroundColor: Colors.transparent,
           onTap: () {
             final layout = context.read<LayoutCubit>();
             if (effectiveOpen) {
@@ -163,6 +221,9 @@ class WorkspaceShellTabRow extends StatelessWidget {
     this.onTabCloseRight,
     this.onTabCloseAll,
     this.onTabPin,
+    this.onTabSplitRight,
+    this.onTabSplitDown,
+    this.tabDrag,
     this.onReorder,
     this.newChatButton,
     this.leading,
@@ -177,6 +238,14 @@ class WorkspaceShellTabRow extends StatelessWidget {
   final ValueChanged<int>? onTabCloseRight;
   final ValueChanged<int>? onTabCloseAll;
   final ValueChanged<int>? onTabPin;
+
+  /// Context-menu split entries (index-based like the close/pin callbacks).
+  final ValueChanged<int>? onTabSplitRight;
+  final ValueChanged<int>? onTabSplitDown;
+
+  /// Drag-source wiring for the chips (split-group tab drags); null keeps the
+  /// chips plain.
+  final WorkspaceShellTabDrag? tabDrag;
   final ReorderCallback? onReorder;
   final Widget? newChatButton;
   final Widget? leading;
@@ -212,7 +281,7 @@ class WorkspaceShellTabRow extends StatelessWidget {
                 folderPaths,
                 pathContext: pathContext,
               );
-        return WorkbenchStripTabChip(
+        Widget chip = WorkbenchStripTabChip(
           kind: tab.kind ?? WorkbenchTabKind.session,
           tabId: tab.id,
           filePath: tab.filePath,
@@ -235,10 +304,30 @@ class WorkspaceShellTabRow extends StatelessWidget {
           onPin: tab.pinnable && onTabPin != null
               ? () => onTabPin!(i)
               : null,
+          onSplitRight: onTabSplitRight != null
+              ? () => onTabSplitRight!(i)
+              : null,
+          onSplitDown: onTabSplitDown != null
+              ? () => onTabSplitDown!(i)
+              : null,
           icon: tab.icon,
           cli: tab.cli,
           accentColor: tab.accentColor,
         );
+        final drag = tabDrag;
+        if (drag != null) {
+          final dragTab = workbenchTabIdFromTabInfo(tab);
+          if (dragTab != null) {
+            chip = WorkbenchTabDraggable(
+              tab: dragTab,
+              sourceGroupId: drag.sourceGroupId,
+              onDrop: (targetGroupId, zone) =>
+                  drag.onDrop(dragTab, targetGroupId, zone),
+              child: chip,
+            );
+          }
+        }
+        return chip;
       },
     );
   }
@@ -339,6 +428,8 @@ class WorkbenchStripTabChip extends StatefulWidget {
     this.onCloseAll,
     this.onPin,
     this.onUnpin,
+    this.onSplitRight,
+    this.onSplitDown,
     this.onDoubleTap,
     this.working = false,
     this.preview = false,
@@ -376,6 +467,12 @@ class WorkbenchStripTabChip extends StatefulWidget {
   /// Unpins a pinned tab (pin icon / context menu).
   final VoidCallback? onUnpin;
 
+  /// Context-menu "Split Right" (new sibling group to the right).
+  final VoidCallback? onSplitRight;
+
+  /// Context-menu "Split Down" (new sibling group below).
+  final VoidCallback? onSplitDown;
+
   /// Double-tap: promote when preview, toggle pin otherwise.
   final VoidCallback? onDoubleTap;
   final IconData icon;
@@ -406,6 +503,8 @@ class WorkbenchStripTabChipState extends State<WorkbenchStripTabChip> {
       onCloseAll: widget.onCloseAll,
       onPin: widget.onPin,
       onUnpin: widget.onUnpin,
+      onSplitRight: widget.onSplitRight,
+      onSplitDown: widget.onSplitDown,
     );
     return WorkbenchTabMenuComposer.compose(
       widget.menuSources ?? defaultWorkbenchTabMenuSources(),

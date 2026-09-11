@@ -4,6 +4,9 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/cubits/app_provider_cubit.dart';
 import 'package:teampilot/models/app_provider_config.dart';
 import 'package:teampilot/repositories/app_provider_repository.dart';
+import 'package:teampilot/models/managed_provider.dart';
+import 'package:teampilot/repositories/managed_provider_repository.dart';
+import 'package:teampilot/services/provider_usage/managed_provider_link_binding.dart';
 import 'package:teampilot/services/provider/credential_login_progress.dart';
 import 'package:teampilot/services/provider/provider_import_service.dart';
 import '../support/in_memory_filesystem.dart';
@@ -53,6 +56,59 @@ void main() {
     }
   });
 
+  test('rejects a credentialLink that a managed entry links back to',
+      () async {
+    final managedRepo = ManagedProviderRepository(
+      storage: fakeHomeStorage(),
+      configPath: '${temp.path}${Platform.pathSeparator}managed-providers.json',
+      onProvidersDeleted: (_) async {},
+    );
+    await managedRepo.upsert(
+      ManagedProvider(
+        id: 'm1',
+        name: 'M1',
+        kind: ManagedProviderKind.apiBalance,
+        adapterId: 'http-json',
+        endpointConfig: ManagedProviderEndpointConfig(
+          credentialSource:
+              managedProviderLinkSourceValue(CliTool.claude, 'deepseek'),
+        ),
+      ),
+    );
+    final guardedCubit = AppProviderCubit(
+      storage: fakeHomeStorage(),
+      repository: repository,
+      basePath: temp.path,
+      managedProviderRepository: managedRepo,
+    );
+    addTearDown(guardedCubit.close);
+
+    final saved = await guardedCubit.upsertProvider(
+      const AppProviderConfig(
+        id: 'deepseek',
+        cli: CliTool.claude,
+        name: 'DeepSeek',
+        category: AppProviderCategory.thirdParty,
+        credentialLink: 'm1',
+      ),
+    );
+    expect(saved, isFalse);
+    expect(guardedCubit.state.providersFor(CliTool.claude), isEmpty);
+
+    // The same row without a conflicting managed entry persists fine.
+    final ok = await guardedCubit.upsertProvider(
+      const AppProviderConfig(
+        id: 'deepseek',
+        cli: CliTool.claude,
+        name: 'DeepSeek',
+        category: AppProviderCategory.thirdParty,
+      ),
+    );
+    expect(ok, isTrue);
+    expect(guardedCubit.state.providersFor(CliTool.claude), isNotEmpty);
+    await managedRepo.delete('m1');
+  });
+
   test('importAllFromExternal imports every catalog CLI', () async {
     final spy = _SpyProviderImportService();
     final allCliCubit = AppProviderCubit(
@@ -93,6 +149,65 @@ void main() {
 
     expect(cubit.state.selectedId, 'b');
     expect(cubit.state.providers.map((p) => p.id), ['b']);
+  });
+
+  test('saving a form draft does not clobber probed credential status',
+      () async {
+    // Row probed ready by a successful login inside the add form.
+    const ready = AppProviderConfig(
+      id: 'openai-official-2',
+      cli: CliTool.codex,
+      name: 'OpenAI Official',
+      category: AppProviderCategory.official,
+      isOfficial: true,
+      credentialStatus: 'ready',
+      credentialUpdatedAt: 123,
+    );
+    await cubit.upsertProvider(ready);
+
+    // The add-form draft carries no probe info (missing / 0), like
+    // AppProviderFormSheet._buildNormalDraft.
+    const draft = AppProviderConfig(
+      id: 'openai-official-2',
+      cli: CliTool.codex,
+      name: 'OpenAI Official',
+      category: AppProviderCategory.official,
+      isOfficial: true,
+    );
+    await cubit.upsertProvider(draft);
+
+    final saved = cubit.state.providersFor(CliTool.codex).single;
+    expect(saved.credentialStatus, 'ready');
+    expect(saved.credentialUpdatedAt, 123);
+  });
+
+  test('probe-driven downgrade still clears credential status', () async {
+    const ready = AppProviderConfig(
+      id: 'openai-official-2',
+      cli: CliTool.codex,
+      name: 'OpenAI Official',
+      category: AppProviderCategory.official,
+      isOfficial: true,
+      credentialStatus: 'ready',
+      credentialUpdatedAt: 123,
+    );
+    await cubit.upsertProvider(ready);
+
+    // Revoke path: withCredentialProbe on a missing probe keeps the old
+    // credentialUpdatedAt (> 0) but downgrades the status.
+    const revoked = AppProviderConfig(
+      id: 'openai-official-2',
+      cli: CliTool.codex,
+      name: 'OpenAI Official',
+      category: AppProviderCategory.official,
+      isOfficial: true,
+      credentialStatus: 'missing',
+      credentialUpdatedAt: 123,
+    );
+    await cubit.upsertProvider(revoked);
+
+    expect(cubit.state.providersFor(CliTool.codex).single.credentialStatus,
+        'missing');
   });
 
   test('switching cli restores selected provider for that cli', () async {

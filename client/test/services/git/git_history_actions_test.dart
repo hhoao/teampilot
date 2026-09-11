@@ -12,10 +12,12 @@ class _FakeRunner {
   _FakeRunner(this.responses);
   final Map<String, ProcessResult> responses;
   final List<List<String>> calls = [];
+  final List<Map<String, String>?> environments = [];
 
   Future<ProcessResult> call(
     String executable,
     List<String> arguments, {
+    Map<String, String>? environment,
     Encoding? stdoutEncoding,
     Encoding? stderrEncoding,
   }) async {
@@ -23,6 +25,7 @@ class _FakeRunner {
     if (cIdx < 0) return ProcessResult(0, 0, '/usr/bin/git\n', '');
     final cmd = arguments.sublist(cIdx + 2);
     calls.add(cmd);
+    environments.add(environment);
     for (final e in responses.entries) {
       if (cmd.join(' ').startsWith(e.key)) return e.value;
     }
@@ -37,7 +40,9 @@ void main() {
 
   setUp(() {
     fake = _FakeRunner({});
-    actions = GitHistoryActions(runner: LocalGitCommandRunner(runner: fake.call));
+    actions = GitHistoryActions(
+      runner: LocalGitCommandRunner(runner: fake.call),
+    );
   });
 
   test('resetTo maps mode to flag', () async {
@@ -47,11 +52,9 @@ void main() {
     expect(fake.calls.last[1], '--soft');
   });
 
-  test('createTag annotated includes -a -m and optional start point',
-      () async {
+  test('createTag annotated includes -a -m and optional start point', () async {
     await actions.createTag('/r', 'v2', at: 'h1', message: 'release');
-    expect(fake.calls.single,
-        ['tag', '-a', 'v2', '-m', 'release', 'h1']);
+    expect(fake.calls.single, ['tag', '-a', 'v2', '-m', 'release', 'h1']);
   });
 
   test('deleteBranch uses -d unless force', () async {
@@ -77,5 +80,38 @@ void main() {
     expect(fake.calls.last, ['stash', 'apply', 'stash@{1}']);
     await actions.stashDrop('/r', ref: 'stash@{0}');
     expect(fake.calls.last, ['stash', 'drop', 'stash@{0}']);
+  });
+
+  test('checkoutRemoteBranch creates local tracking branch', () async {
+    await actions.checkoutRemoteBranch('/r', 'origin', 'feature-x');
+    expect(fake.calls.single, [
+      'checkout',
+      '-b',
+      'feature-x',
+      '--track',
+      'origin/feature-x',
+    ]);
+  });
+
+  test('checkoutTag checks out the tag ref', () async {
+    await actions.checkoutTag('/r', 'v1.0');
+    expect(fake.calls.single, ['checkout', 'v1.0']);
+  });
+
+  test('deleteRemoteBranch pushes delete to the remote', () async {
+    await actions.deleteRemoteBranch('/r', 'origin', 'feature-x');
+    expect(fake.calls.single, ['push', 'origin', '--delete', 'feature-x']);
+  });
+
+  test('fetchAll runs the documented argv without environment', () async {
+    await actions.fetchAll('/r');
+    expect(fake.calls.single, ['fetch', '--all', '--prune']);
+    expect(fake.environments.single, isNull);
+  });
+
+  test('fetchAllQuiet disables terminal prompting', () async {
+    await actions.fetchAllQuiet('/r');
+    expect(fake.calls.single, ['fetch', '--all', '--prune']);
+    expect(fake.environments.single, {'GIT_TERMINAL_PROMPT': '0'});
   });
 }

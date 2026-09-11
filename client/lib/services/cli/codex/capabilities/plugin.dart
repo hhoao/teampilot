@@ -84,24 +84,27 @@ final class CodexPluginCapability implements PluginCapability {
       return result;
     }
 
-    if (specs.isNotEmpty) {
-      final marketplaces = await run([
-        'plugin',
-        'marketplace',
-        'list',
-        '--json',
-      ]);
-      final marketplaceRegistered = _parseMarketplaceNames(
-        marketplaces.stdout,
-      ).contains(CodexSessionConfigDir.teampilotMarketplaceName);
-      if (!marketplaceRegistered) {
+    // Both inventory calls are read-only and independent: run them
+    // concurrently. Each `codex` invocation pays a full CLI cold start
+    // (~1s on Windows); serializing them doubled the session-launch wait.
+    final hasSpecs = specs.isNotEmpty;
+    final inventory = await Future.wait<HostRunResult>([
+      if (hasSpecs) run(['plugin', 'marketplace', 'list', '--json']),
+      run(['plugin', 'list', '--json']),
+    ]);
+    final installed = _parseInstalled(
+      inventory[hasSpecs ? 1 : 0].stdout,
+    );
+    final desiredByName = {for (final spec in specs) spec.name: spec};
+
+    if (hasSpecs) {
+      final marketplaces = _parseMarketplaceNames(inventory[0].stdout);
+      if (!marketplaces.contains(
+        CodexSessionConfigDir.teampilotMarketplaceName,
+      )) {
         await run(['plugin', 'marketplace', 'add', marketplaceRoot, '--json']);
       }
     }
-
-    final list = await run(['plugin', 'list', '--json']);
-    final installed = _parseInstalled(list.stdout);
-    final desiredByName = {for (final spec in specs) spec.name: spec};
 
     // The native Codex store outlives the staged session manifest. Remove
     // TeamPilot-owned entries that are no longer enabled or whose source

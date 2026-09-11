@@ -111,10 +111,7 @@ class WorkspaceEditorBucket extends Equatable {
 }
 
 class EditorState extends Equatable {
-  const EditorState({
-    this.byWorkspace = const {},
-    this.snackbarMessage,
-  });
+  const EditorState({this.byWorkspace = const {}, this.snackbarMessage});
 
   final Map<String, WorkspaceEditorBucket> byWorkspace;
   final String? snackbarMessage;
@@ -122,8 +119,7 @@ class EditorState extends Equatable {
   WorkspaceEditorBucket bucket(String workspaceId) =>
       byWorkspace[workspaceId] ?? const WorkspaceEditorBucket();
 
-  bool get hasAnyOpenFiles =>
-      byWorkspace.values.any((b) => b.hasOpenFiles);
+  bool get hasAnyOpenFiles => byWorkspace.values.any((b) => b.hasOpenFiles);
 
   String fileNameFor(String path) => p.basename(path);
 
@@ -280,7 +276,8 @@ class EditorCubit extends Cubit<EditorState> {
   final Map<String, Future<void> Function()?> _onWorkingTreeWritten = {};
 
   TsWorkerPool get _pool => _injectedPool ?? EditorPlatform.workerPool;
-  LanguageRegistry get _registry => _injectedRegistry ?? EditorPlatform.registry;
+  LanguageRegistry get _registry =>
+      _injectedRegistry ?? EditorPlatform.registry;
 
   String _handleKey(String workspaceId, String path) => '$workspaceId\x00$path';
 
@@ -354,7 +351,8 @@ class EditorCubit extends Cubit<EditorState> {
 
   bool isDiffDirty(String diffKey) => _writableDiffs[diffKey]?.isDirty ?? false;
 
-  String? diffCanonicalFor(String diffKey) => _writableDiffs[diffKey]?.canonical;
+  String? diffCanonicalFor(String diffKey) =>
+      _writableDiffs[diffKey]?.canonical;
 
   Future<void> bindWritableDiff({
     required String workspaceId,
@@ -507,7 +505,13 @@ class EditorCubit extends Cubit<EditorState> {
       final stat = await filesystem.stat(normalized);
       if (!_stillLoading(workspaceId, normalized)) return;
       if (!stat.exists || !stat.isFile) {
-        emit(_clearLoading(workspaceId, normalized, error: EditorMessage.fileNotFound));
+        emit(
+          _clearLoading(
+            workspaceId,
+            normalized,
+            error: EditorMessage.fileNotFound,
+          ),
+        );
         return;
       }
       final size = stat.size ?? 0;
@@ -549,8 +553,9 @@ class EditorCubit extends Cubit<EditorState> {
         }
 
         final key = _handleKey(workspaceId, normalized);
-        _imageBytes[key] =
-            bytes is Uint8List ? bytes : Uint8List.fromList(bytes);
+        _imageBytes[key] = bytes is Uint8List
+            ? bytes
+            : Uint8List.fromList(bytes);
 
         final current = state.bucket(workspaceId);
         if (!current.loadingPaths.contains(normalized)) {
@@ -579,25 +584,38 @@ class EditorCubit extends Cubit<EditorState> {
       }
 
       if (size > kEditorMaxFileBytes) {
-        emit(_clearLoading(workspaceId, normalized, error: EditorMessage.fileTooLarge));
+        emit(
+          _clearLoading(
+            workspaceId,
+            normalized,
+            error: EditorMessage.fileTooLarge,
+          ),
+        );
         return;
       }
 
       final content = await filesystem.readString(normalized);
       if (!_stillLoading(workspaceId, normalized)) return;
       if (content == null) {
-        emit(_clearLoading(workspaceId, normalized, error: EditorMessage.couldNotRead));
+        emit(
+          _clearLoading(
+            workspaceId,
+            normalized,
+            error: EditorMessage.couldNotRead,
+          ),
+        );
         return;
       }
 
       final key = _handleKey(workspaceId, normalized);
       final controller = CodeLineEditingController.fromText(content);
-      final handle = _OpenFileHandle(
-        controller: controller,
-        onDirty: () => _markDirty(workspaceId, normalized),
-      )
-        ..savedText = content
-        .._previousText = content;
+      final handle =
+          _OpenFileHandle(
+              controller: controller,
+              onDirty: () => _markDirty(workspaceId, normalized),
+            )
+            ..savedText = content
+            .._previousText = content;
       _handles[key] = handle;
       _fsByHandle[key] = filesystem;
 
@@ -606,15 +624,13 @@ class EditorCubit extends Cubit<EditorState> {
       handle.tokenProvider = DocumentSessionTokenProvider(session);
 
       await session.open(path: normalized, text: content);
-      if (!_stillLoading(workspaceId, normalized) ||
-          _handles[key] != handle) {
+      if (!_stillLoading(workspaceId, normalized) || _handles[key] != handle) {
         return;
       }
       await session.colorizeAfterOpen(
         viewportEndLine: math.min(80, session.lineCount - 1),
       );
-      if (!_stillLoading(workspaceId, normalized) ||
-          _handles[key] != handle) {
+      if (!_stillLoading(workspaceId, normalized) || _handles[key] != handle) {
         return;
       }
 
@@ -709,9 +725,7 @@ class EditorCubit extends Cubit<EditorState> {
     try {
       await _fs.atomicWrite(handle.absolutePath, nextCanonical);
     } on Object catch (e) {
-      emit(state.copyWith(
-        snackbarMessage: '$writeFailureMessagePrefix: $e',
-      ));
+      emit(state.copyWith(snackbarMessage: '$writeFailureMessagePrefix: $e'));
       return false;
     }
 
@@ -772,15 +786,13 @@ class EditorCubit extends Cubit<EditorState> {
     }
     if (dirty.length != bucket.dirtyDiffKeys.length ||
         !dirty.containsAll(bucket.dirtyDiffKeys)) {
-      emit(state.withBucket(workspaceId, bucket.copyWith(dirtyDiffKeys: dirty)));
+      emit(
+        state.withBucket(workspaceId, bucket.copyWith(dirtyDiffKeys: dirty)),
+      );
     }
   }
 
-  EditorState _clearLoading(
-    String workspaceId,
-    String path, {
-    String? error,
-  }) {
+  EditorState _clearLoading(String workspaceId, String path, {String? error}) {
     final bucket = state.bucket(workspaceId);
     final loadingDone = Set<String>.from(bucket.loadingPaths)..remove(path);
     if (error == null) {
@@ -806,11 +818,7 @@ class EditorCubit extends Cubit<EditorState> {
   }
 
   /// Returns `false` when the tab is dirty and [force] is false.
-  bool closeFile(
-    String workspaceId,
-    String path, {
-    bool force = false,
-  }) {
+  bool closeFile(String workspaceId, String path, {bool force = false}) {
     final bucket = state.bucket(workspaceId);
     final wasOpen = bucket.openFilePaths.contains(path);
     final wasLoading = bucket.loadingPaths.contains(path);
@@ -873,9 +881,13 @@ class EditorCubit extends Cubit<EditorState> {
       handle.savedText = savedText;
       final bucket = state.bucket(workspaceId);
       final dirty = Set<String>.from(bucket.dirtyPaths)..remove(path);
+      final errors = Map<String, String>.from(bucket.errorByPath)..remove(path);
       emit(
         state
-            .withBucket(workspaceId, bucket.copyWith(dirtyPaths: dirty))
+            .withBucket(
+              workspaceId,
+              bucket.copyWith(dirtyPaths: dirty, errorByPath: errors),
+            )
             .copyWith(clearSnackbar: true),
       );
       await _reloadDiffsForPath(workspaceId, path, savedText);

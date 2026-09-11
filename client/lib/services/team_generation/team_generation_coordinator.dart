@@ -158,10 +158,7 @@ final class TeamGenerationCoordinator {
     String workspaceRevision = '',
   }) async {
     final workflowId = _uuidFactory();
-    final builderSessionId = teamGenerationStableId(
-      'teamgen-builder-',
-      workflowId,
-    );
+    final builderSessionId = teamGenerationSessionUuid(workflowId, 'builder');
     final settings = await _settingsStore.load();
     final snapshot = resolveTeamGenerationSettingsSnapshot(
       settings: settings,

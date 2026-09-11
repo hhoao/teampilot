@@ -2,8 +2,11 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/services/cli/cursor/provider/cursor_auth_artifacts.dart';
 
 void main() {
-  test('requiredForAuth includes cli-config.json', () {
-    expect(CursorAuthArtifacts.requiredForAuth, contains('cli-config.json'));
+  test('cursorDirRequired includes cli-config.json', () {
+    expect(
+      CursorAuthArtifacts.cursorDirRequired,
+      contains('cli-config.json'),
+    );
   });
 
   test('optional cursor-dir artifacts include statsig-cache.json', () {
@@ -13,13 +16,9 @@ void main() {
     );
   });
 
-  test('configCursorRequired includes auth.json', () {
-    expect(CursorAuthArtifacts.configCursorRequired, contains('auth.json'));
-  });
-
-  test('busGenerated paths are not auth artifacts', () {
+  test('busGenerated paths are not cursor-dir auth artifacts', () {
     for (final path in CursorAuthArtifacts.busGenerated) {
-      expect(CursorAuthArtifacts.isAuthArtifact(path), isFalse);
+      expect(CursorAuthArtifacts.isCursorDirAuthArtifact(path), isFalse);
     }
   });
 

@@ -165,7 +165,7 @@ fi
     }
 
     await _fs.ensureDir(memberHome);
-    await _fs.ensureDir(_layout.configCursorDir(memberHome));
+    await _fs.ensureDir(_layout.authDir(memberHome));
 
     await _reconcileMemberHome(
       realHomeRoot: realHome,
@@ -177,7 +177,9 @@ fi
 
     for (final entry in await _fs.listDir(realHome)) {
       final name = entry.name.trim();
-      if (name.isEmpty || name == CursorHomeLayout.cursorDirName) continue;
+      if (name.isEmpty || _layout.isolatedTopLevelEntries().contains(name)) {
+        continue;
+      }
       if (name == CursorHomeLayout.configDirName) {
         await _mirrorConfigChildren(
           realHomeRoot: realHome,
@@ -192,23 +194,26 @@ fi
     }
   }
 
+  Set<String> get _isolatedEntries =>
+      _layout.isolatedTopLevelEntries().toSet();
+
   void _mirrorViaDartIo({
     required String realHome,
     required String memberHome,
   }) {
     Directory(memberHome).createSync(recursive: true);
-    Directory(_layout.configCursorDir(memberHome)).createSync(recursive: true);
+    Directory(_layout.authDir(memberHome)).createSync(recursive: true);
 
     _reconcileChildrenIo(
       realDir: realHome,
       memberDir: memberHome,
-      skip: {CursorHomeLayout.cursorDirName},
+      skip: _isolatedEntries,
       nestedConfig: true,
     );
     _linkChildrenIo(
       realDir: realHome,
       memberDir: memberHome,
-      skip: {CursorHomeLayout.cursorDirName},
+      skip: _isolatedEntries,
       nestedConfig: true,
     );
   }
@@ -372,7 +377,10 @@ fi
 
     for (final entry in await _fs.listDir(memberHomeRoot)) {
       final name = entry.name.trim();
-      if (name.isEmpty || name == CursorHomeLayout.cursorDirName) continue;
+      if (name.isEmpty ||
+          _layout.isolatedTopLevelEntries().contains(name)) {
+        continue;
+      }
       if (name == CursorHomeLayout.configDirName) {
         await _reconcileConfigChildren(
           realHomeRoot: realHomeRoot,
@@ -423,7 +431,7 @@ fi
       CursorHomeLayout.configDirName,
     );
 
-    await _fs.ensureDir(_layout.configCursorDir(memberHomeRoot));
+    await _fs.ensureDir(_layout.authDir(memberHomeRoot));
 
     final realStat = await _fs.stat(realConfig);
     if (!realStat.exists) return;

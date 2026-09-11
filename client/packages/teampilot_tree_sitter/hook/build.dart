@@ -1,7 +1,21 @@
+import 'dart:convert';
+import 'dart:io';
+
 import 'package:code_assets/code_assets.dart';
 import 'package:hooks/hooks.dart';
 import 'package:logging/logging.dart';
 import 'package:native_toolchain_c/native_toolchain_c.dart';
+// Patch visualStudio.defaultResolver (see _Utf8VisualStudioResolver below).
+// ignore: implementation_imports
+import 'package:native_toolchain_c/src/native_toolchain/msvc.dart'
+    show visualStudio;
+// ignore: implementation_imports
+import 'package:native_toolchain_c/src/tool/tool_instance.dart';
+// ignore: implementation_imports
+import 'package:native_toolchain_c/src/tool/tool_resolver.dart';
+// ignore: implementation_imports
+import 'package:native_toolchain_c/src/utils/sem_version.dart'
+    show versionFromString;
 
 void main(List<String> args) async {
   await build(args, (input, output) async {
@@ -9,6 +23,17 @@ void main(List<String> args) async {
 
     final packageName = input.packageName;
     final windows = input.config.code.targetOS == OS.windows;
+
+    // Workaround for native_toolchain_c <= 0.19.4 on non-UTF-8 Windows locales
+    // (e.g. zh-CN GBK): upstream runs vswhere with `-utf8` but decodes its
+    // stdout with `systemEncoding`, so the JSON closing quote is swallowed by
+    // mojibake and `json.decode` throws "Control character in string". Must
+    // run before CBuilder touches any MSVC tool — `msvc` / `cl` / `vcvars64`
+    // lazily capture `visualStudio.defaultResolver` when their top-level
+    // definitions first initialize.
+    if (windows) {
+      visualStudio.defaultResolver = _Utf8VisualStudioResolver();
+    }
 
     // Everything links into a single dynamic library asset whose id matches
     // the generated bindings file, so the `@Native` externals resolve without
@@ -95,4 +120,65 @@ void main(List<String> args) async {
         ..onRecord.listen((record) => print(record.message)),
     );
   });
+}
+
+/// Drop-in replacement for upstream `VisualStudioResolver` that decodes
+/// vswhere's `-utf8` output as UTF-8 instead of `systemEncoding`.
+///
+/// Mirrors the upstream query (`-format json -utf8 -latest -products *`) and
+/// the upstream vswhere search paths, so behavior is identical on machines
+/// where the upstream decoder happens to work (ASCII/English locales).
+class _Utf8VisualStudioResolver implements ToolResolver {
+  static const List<String> _vswherePaths = [
+    r'C:\Program Files (x86)\Microsoft Visual Studio\Installer\vswhere.exe',
+    r'C:\Program Files\Microsoft Visual Studio\Installer\vswhere.exe',
+  ];
+
+  @override
+  Future<List<ToolInstance>> resolve(ToolResolvingContext context) async {
+    String? vswherePath;
+    for (final path in _vswherePaths) {
+      if (File(path).existsSync()) {
+        vswherePath = path;
+        break;
+      }
+    }
+    if (vswherePath == null) return const [];
+
+    // Explicit utf8: Process.run defaults to systemEncoding (GBK on zh-CN
+    // Windows), which mojibakes vswhere's `-utf8` output.
+    final result = await Process.run(
+      vswherePath,
+      [
+        '-format',
+        'json',
+        '-utf8',
+        '-latest',
+        '-products',
+        '*',
+      ],
+      stdoutEncoding: utf8,
+      stderrEncoding: utf8,
+    );
+    if (result.exitCode != 0) return const [];
+
+    final logger = context.logger;
+    final instances = <ToolInstance>[];
+    for (final toolInfo in json.decode(result.stdout as String) as List) {
+      final info = toolInfo as Map<String, dynamic>;
+      final installationPath = info['installationPath'] as String?;
+      final installationVersion = info['installationVersion'] as String?;
+      if (installationPath == null || installationVersion == null) continue;
+      final dir = Directory(installationPath);
+      if (!dir.existsSync()) continue;
+      final instance = ToolInstance(
+        tool: visualStudio,
+        uri: dir.uri,
+        version: versionFromString(installationVersion),
+      );
+      logger?.fine('Found $instance.');
+      instances.add(instance);
+    }
+    return instances;
+  }
 }

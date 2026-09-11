@@ -236,8 +236,8 @@ void main() {
     debugDefaultTargetPlatformOverride = TargetPlatform.linux;
     addTearDown(() => debugDefaultTargetPlatformOverride = null);
     final chatCubit = _ArchiveRecordingChatCubit();
-    // Close actions only apply to sessions with an open workbench tab
-    // (see _sessionIsRunning): register one with a pending member connect.
+    // Close actions apply to sessions with an open workbench tab
+    // (see _sessionHasOpenTab): register one with a pending member connect.
     chatCubit.tabStore.registerSession(
       ChatTab(
         info: ChatTabInfo(id: _session.sessionId, title: 't', subtitle: ''),
@@ -246,9 +246,7 @@ void main() {
     );
     chatCubit.applyState(
       chatCubit.state.copyWith(
-        sessionActivities: {
-          _session.sessionId: const SessionActivity(),
-        },
+        sessionActivities: {_session.sessionId: const SessionActivity()},
       ),
     );
     final (attention, automationCubit) = _tileCubits();
@@ -287,6 +285,101 @@ void main() {
     await tester.tap(find.byIcon(Icons.close));
     await tester.pump();
     expect(chatCubit.closedSessionIds, ['sess-1', 'sess-1']);
+    debugDefaultTargetPlatformOverride = null;
+  });
+
+  testWidgets('open tab without running terminal still shows close actions', (
+    tester,
+  ) async {
+    debugDefaultTargetPlatformOverride = TargetPlatform.linux;
+    addTearDown(() => debugDefaultTargetPlatformOverride = null);
+    final chatCubit = _ArchiveRecordingChatCubit();
+    // Tab is open but idle: no live terminal, no pending connect, not busy.
+    chatCubit.tabStore.registerSession(
+      ChatTab(
+        info: ChatTabInfo(id: _session.sessionId, title: 't', subtitle: ''),
+        cliTeamName: _session.sessionId,
+      ),
+    );
+    final (attention, automationCubit) = _tileCubits();
+    addTearDown(chatCubit.close);
+    addTearDown(automationCubit.close);
+    addTearDown(attention.close);
+
+    await tester.pumpWidget(
+      _host(
+        chatCubit: chatCubit,
+        automationCubit: automationCubit,
+        attentionCubit: attention,
+        sessionRepository: SessionRepository(storage: testHomeStorage),
+        locale: const Locale('zh'),
+      ),
+    );
+    await tester.pump();
+
+    final mouse = await tester.createGesture(kind: PointerDeviceKind.mouse);
+    await mouse.addPointer(location: Offset.zero);
+    addTearDown(mouse.removePointer);
+    await tester.pump();
+    await mouse.moveTo(tester.getCenter(find.byType(TpHoverRow)));
+    await tester.pumpAndSettle();
+
+    expect(find.byIcon(Icons.close), findsOneWidget);
+    await tester.tap(find.byIcon(Icons.close));
+    await tester.pump();
+    expect(chatCubit.closedSessionIds, ['sess-1']);
+
+    await _openContextMenu(tester);
+    final l10n = AppLocalizations.of(
+      tester.element(find.byType(SidebarSessionTile)),
+    );
+    expect(find.text(l10n.closeConversation), findsOneWidget);
+    await _dismissContextMenu(tester);
+    debugDefaultTargetPlatformOverride = null;
+  });
+
+  testWidgets('archive mode with open tab shows close action', (tester) async {
+    debugDefaultTargetPlatformOverride = TargetPlatform.linux;
+    addTearDown(() => debugDefaultTargetPlatformOverride = null);
+    final chatCubit = _ArchiveRecordingChatCubit();
+    chatCubit.tabStore.registerSession(
+      ChatTab(
+        info: ChatTabInfo(id: _session.sessionId, title: 't', subtitle: ''),
+        cliTeamName: _session.sessionId,
+      ),
+    );
+    final (attention, automationCubit) = _tileCubits();
+    addTearDown(chatCubit.close);
+    addTearDown(automationCubit.close);
+    addTearDown(attention.close);
+    final archived = _session.copyWith(archived: true, display: 'Old chat');
+
+    await tester.pumpWidget(
+      _host(
+        chatCubit: chatCubit,
+        automationCubit: automationCubit,
+        attentionCubit: attention,
+        sessionRepository: SessionRepository(storage: testHomeStorage),
+        child: SidebarSessionTile(
+          session: archived,
+          archiveMode: true,
+          onTap: () {},
+        ),
+      ),
+    );
+    await tester.pump();
+
+    final mouse = await tester.createGesture(kind: PointerDeviceKind.mouse);
+    await mouse.addPointer(location: Offset.zero);
+    addTearDown(mouse.removePointer);
+    await tester.pump();
+    await mouse.moveTo(tester.getCenter(find.byType(TpHoverRow)));
+    await tester.pumpAndSettle();
+
+    expect(find.byIcon(Icons.close), findsOneWidget);
+    await tester.tap(find.byIcon(Icons.close));
+    await tester.pump();
+    expect(chatCubit.closedSessionIds, ['sess-1']);
     debugDefaultTargetPlatformOverride = null;
   });
 
@@ -619,6 +712,92 @@ void main() {
     debugDefaultTargetPlatformOverride = null;
   });
 
+  testWidgets('both session menus include the localized open-to-side action', (
+    tester,
+  ) async {
+    debugDefaultTargetPlatformOverride = TargetPlatform.linux;
+    final chatCubit = testChatCubit(executableResolver: () => 'claude');
+    final (attention, automationCubit) = _tileCubits();
+    addTearDown(chatCubit.close);
+    addTearDown(automationCubit.close);
+    addTearDown(attention.close);
+
+    await tester.pumpWidget(
+      _host(
+        chatCubit: chatCubit,
+        automationCubit: automationCubit,
+        attentionCubit: attention,
+        sessionRepository: SessionRepository(storage: testHomeStorage),
+        locale: const Locale('zh'),
+      ),
+    );
+    await tester.pump();
+
+    await _openContextMenu(tester);
+
+    final l10n = AppLocalizations.of(
+      tester.element(find.byType(SidebarSessionTile)),
+    );
+    expect(l10n.sessionOpenToSide, '在右侧分栏打开');
+    final contextItem = tester.widget<TpActionMenuPopupItem<String>>(
+      find.byWidgetPredicate(
+        (widget) =>
+            widget is TpActionMenuPopupItem<String> &&
+            widget.value == 'open_to_side',
+      ),
+    );
+    expect(contextItem.label, l10n.sessionOpenToSide);
+
+    await _dismissContextMenu(tester);
+
+    final mouse = await tester.createGesture(kind: PointerDeviceKind.mouse);
+    await mouse.addPointer(location: Offset.zero);
+    addTearDown(mouse.removePointer);
+    await tester.pump();
+    await mouse.moveTo(tester.getCenter(find.byType(TpHoverRow)));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byIcon(Icons.more_horiz));
+    await tester.pumpAndSettle();
+
+    expect(find.text(l10n.sessionOpenToSide), findsOneWidget);
+    debugDefaultTargetPlatformOverride = null;
+  });
+
+  testWidgets('archive mode omits the open-to-side action', (tester) async {
+    debugDefaultTargetPlatformOverride = TargetPlatform.linux;
+    final chatCubit = testChatCubit(executableResolver: () => 'claude');
+    final (attention, automationCubit) = _tileCubits();
+    addTearDown(chatCubit.close);
+    addTearDown(automationCubit.close);
+    addTearDown(attention.close);
+
+    await tester.pumpWidget(
+      _host(
+        chatCubit: chatCubit,
+        automationCubit: automationCubit,
+        attentionCubit: attention,
+        sessionRepository: SessionRepository(storage: testHomeStorage),
+        child: SidebarSessionTile(
+          session: _session,
+          archiveMode: true,
+          onTap: () {},
+        ),
+      ),
+    );
+    await tester.pump();
+
+    await _openContextMenu(tester);
+    expect(
+      find.byWidgetPredicate(
+        (widget) =>
+            widget is TpActionMenuPopupItem<String> &&
+            widget.value == 'open_to_side',
+      ),
+      findsNothing,
+    );
+    debugDefaultTargetPlatformOverride = null;
+  });
+
   testWidgets('context menu shows manage item when session has automations', (
     tester,
   ) async {
@@ -834,7 +1013,7 @@ void main() {
     expect(find.byKey(AppKeys.sidebarSessionWaitingMarker), findsNothing);
   });
 
-  testWidgets('tap while waiting activates Terminal and first waiting seat', (
+  testWidgets('tap while waiting selects first waiting seat, stays on Chat', (
     tester,
   ) async {
     final chatCubit = _RecordingChatCubit();
@@ -867,12 +1046,11 @@ void main() {
 
     expect(activated, isTrue);
     expect(chatCubit.selectedMembers, ['seat-waiting']);
-    expect(chatCubit.workbenchViews, [
-      (_session.sessionId, SessionWorkbenchView.terminal),
-    ]);
+    // No forced Terminal switch — user answers AskUserQuestion cards in Chat.
+    expect(chatCubit.workbenchViews, isEmpty);
   });
 
-  testWidgets('cross-session waiting jump awaits open before seat/Terminal', (
+  testWidgets('cross-session waiting jump awaits open before seat select', (
     tester,
   ) async {
     final sessionB = AppSession(
@@ -944,7 +1122,7 @@ void main() {
     await tester.tap(find.byType(SidebarSessionTile));
     await tester.pump();
 
-    // Still opening B — must not selectMember / switch Terminal on A yet.
+    // Still opening B — must not selectMember on A yet.
     expect(chatCubit.selectedMembers, isEmpty);
     expect(chatCubit.workbenchViews, isEmpty);
     expect(chatCubit.activeTab?.info.id, 'sess-a');
@@ -956,14 +1134,12 @@ void main() {
     expect(chatCubit.activeTab?.info.id, sessionB.sessionId);
     expect(chatCubit.activeSessionAtSelectMember, [sessionB.sessionId]);
     expect(chatCubit.selectedMembers, ['seat-b']);
-    expect(chatCubit.workbenchViews, [
-      (sessionB.sessionId, SessionWorkbenchView.terminal),
-    ]);
+    // Stays on Chat/History — no forced Terminal switch.
+    expect(chatCubit.workbenchViews, isEmpty);
     expect(chatCubit.eventOrder, [
       'activate-start',
       'activate-done',
       'selectMember:seat-b',
-      'workbench:sess-b',
     ]);
   });
 

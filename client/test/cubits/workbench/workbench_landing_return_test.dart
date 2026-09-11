@@ -27,7 +27,7 @@ void main() {
 
       expect(workbench.centerActiveId(ws), isNull);
       expect(workbench.canExitLanding(ws), isTrue);
-      expect(workbench.state.bar(ws).center.landingReturnTabId, sessionB);
+      expect(workbench.centerFocusedStrip(ws).landingReturnTabId, sessionB);
     });
 
     test('re-entering while landing keeps the target and the tab order', () {
@@ -39,13 +39,13 @@ void main() {
 
       expect(workbench.centerActiveId(ws), isNull);
       expect(workbench.centerOrder(ws), order);
-      expect(workbench.state.bar(ws).center.landingReturnTabId, sessionA);
+      expect(workbench.centerFocusedStrip(ws).landingReturnTabId, sessionA);
     });
 
     test('fresh workspace without tabs has no return target', () {
       workbench.enterLanding(ws);
 
-      expect(workbench.state.bar(ws).center.landingActive, isTrue);
+      expect(workbench.centerLandingActive(ws), isTrue);
       expect(workbench.canExitLanding(ws), isFalse);
     });
   });
@@ -60,8 +60,8 @@ void main() {
       workbench.exitLanding(ws);
 
       expect(workbench.centerActiveId(ws), sessionB);
-      expect(workbench.state.bar(ws).center.landingActive, isFalse);
-      expect(workbench.state.bar(ws).center.landingReturnTabId, isNull);
+      expect(workbench.centerLandingActive(ws), isFalse);
+      expect(workbench.centerFocusedStrip(ws).landingReturnTabId, isNull);
     });
 
     test('stays on the landing without a return target', () {
@@ -69,7 +69,7 @@ void main() {
 
       workbench.exitLanding(ws);
 
-      expect(workbench.state.bar(ws).center.landingActive, isTrue);
+      expect(workbench.centerLandingActive(ws), isTrue);
     });
 
     test('stays on the landing when the remembered tab was removed', () async {
@@ -79,7 +79,7 @@ void main() {
       await workbench.close(ws, sessionA);
       workbench.exitLanding(ws);
 
-      expect(workbench.state.bar(ws).center.landingActive, isTrue);
+      expect(workbench.centerLandingActive(ws), isTrue);
       expect(workbench.canExitLanding(ws), isFalse);
     });
 
@@ -93,7 +93,7 @@ void main() {
       workbench.activate(ws, sessionB);
       workbench.enterLanding(ws);
 
-      expect(workbench.state.bar(ws).center.landingReturnTabId, sessionB);
+      expect(workbench.centerFocusedStrip(ws).landingReturnTabId, sessionB);
     });
 
     test('opening a tab while landing exits and clears the target', () {
@@ -103,10 +103,10 @@ void main() {
       workbench.openFile(ws, fileTab.id);
 
       expect(workbench.centerActiveId(ws), fileTab);
-      expect(workbench.state.bar(ws).center.landingReturnTabId, isNull);
+      expect(workbench.centerFocusedStrip(ws).landingReturnTabId, isNull);
 
       workbench.enterLanding(ws);
-      expect(workbench.state.bar(ws).center.landingReturnTabId, fileTab);
+      expect(workbench.centerFocusedStrip(ws).landingReturnTabId, fileTab);
     });
   });
 }

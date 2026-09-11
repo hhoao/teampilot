@@ -124,7 +124,13 @@ class CliInstallerService {
     return const CliToolLocator('npm')
         .locate(
           runner:
-              (executable, arguments, {stdoutEncoding, stderrEncoding}) async {
+              (
+                executable,
+                arguments, {
+                environment,
+                stdoutEncoding,
+                stderrEncoding,
+              }) async {
                 final result = await _localRunner(
                   CliInstallerCommand(executable, arguments),
                 );
@@ -158,13 +164,25 @@ class CliInstallerService {
 
     final fromLogin = await HostLoginShellLookup.locateViaLoginShells(
       innerCommand: npmLookup,
-      runner: (executable, arguments, {stdoutEncoding, stderrEncoding}) async {
-        final result = await _sshRunner(
-          profile,
-          CliInstallerCommand(executable, arguments),
-        );
-        return ProcessResult(-1, result.exitCode, result.stdout, result.stderr);
-      },
+      runner:
+          (
+            executable,
+            arguments, {
+            environment,
+            stdoutEncoding,
+            stderrEncoding,
+          }) async {
+            final result = await _sshRunner(
+              profile,
+              CliInstallerCommand(executable, arguments),
+            );
+            return ProcessResult(
+              -1,
+              result.exitCode,
+              result.stdout,
+              result.stderr,
+            );
+          },
     );
     if (fromLogin != null) return fromLogin;
 
@@ -188,12 +206,24 @@ class CliInstallerService {
       }
     }
     return CliToolLocator(name).locate(
-      runner: (executable, arguments, {stdoutEncoding, stderrEncoding}) async {
-        final result = await _localRunner(
-          CliInstallerCommand(executable, arguments),
-        );
-        return ProcessResult(-1, result.exitCode, result.stdout, result.stderr);
-      },
+      runner:
+          (
+            executable,
+            arguments, {
+            environment,
+            stdoutEncoding,
+            stderrEncoding,
+          }) async {
+            final result = await _localRunner(
+              CliInstallerCommand(executable, arguments),
+            );
+            return ProcessResult(
+              -1,
+              result.exitCode,
+              result.stdout,
+              result.stderr,
+            );
+          },
       isWindowsOverride: _hostEnvironment.isWindowsHost,
     );
   }

@@ -60,6 +60,10 @@ import 'package:teampilot/services/commands/command_bus.dart';
 import 'package:teampilot/services/commands/run_command_registrar.dart';
 import 'package:teampilot/services/commands/workspace_search_command_registrar.dart';
 import 'package:teampilot/services/commands/workspace_content_search_command_registrar.dart';
+import 'package:teampilot/services/editor/markdown_view_mode_store.dart';
+import 'package:teampilot/models/layout_preferences.dart';
+import 'package:teampilot/services/search/workspace_search_indexes.dart';
+import 'package:teampilot/services/workbench/workbench_editor_opener.dart';
 import 'package:teampilot/services/extension/builtin_manifests.dart';
 import 'package:teampilot/services/extension/extension_acquisition_engine.dart';
 import 'package:teampilot/services/extension/extension_detector.dart';
@@ -190,6 +194,16 @@ Widget buildTestApp({
         storage: fakeHomeStorage(),
       );
   final workbenchCubit = WorkbenchCubit();
+  // Hoisted so the workbench editor opener below can share the same instances.
+  final editorCubit = EditorCubit(storage: fakeHomeStorage(), fs: LocalFilesystem());
+  final floatingWorkspaceCubit = FloatingWorkspaceCubit();
+  final workbenchEditorOpener = WorkbenchEditorOpener(
+    editor: editorCubit,
+    workbench: workbenchCubit,
+    floating: floatingWorkspaceCubit,
+    markdownViewModes: MarkdownViewModeStore(),
+    readMarkdownOpenMode: () => MarkdownOpenMode.preview,
+  );
   // Mirror the production bridge wiring (app_shell.dart) so session opens feed
   // the bar and bar-close tears down the domain in harness-driven tests too.
   final chatBridge = WorkbenchChatBridge(
@@ -363,6 +377,12 @@ Widget buildTestApp({
       RepositoryProvider<WorkspaceContentSearchHost>(
         create: (_) => WorkspaceContentSearchHost(),
       ),
+      RepositoryProvider<WorkspaceSearchIndexes>(
+        create: (_) => WorkspaceSearchIndexes(storage: fakeHomeStorage()),
+      ),
+      RepositoryProvider<WorkbenchEditorOpener>.value(
+        value: workbenchEditorOpener,
+      ),
       RepositoryProvider<InstallJobRegistry>.value(
         value: installJobRegistry,
       ),
@@ -391,12 +411,8 @@ Widget buildTestApp({
         BlocProvider.value(value: sessionPreferencesCubit),
         BlocProvider.value(value: aiFeatures),
         BlocProvider.value(value: aiHistoryCubit),
-        BlocProvider(
-          create: (_) => ShortcutCubit(storage: fakeHomeStorage()),
-        ),
-        BlocProvider(
-          create: (_) => EditorCubit(storage: fakeHomeStorage()),
-        ),
+        BlocProvider(create: (_) => ShortcutCubit(storage: fakeHomeStorage())),
+        BlocProvider.value(value: editorCubit),
         BlocProvider.value(value: workbenchCubit),
         BlocProvider.value(
           value: extensionCubit ??
@@ -443,7 +459,7 @@ Widget buildTestApp({
             service: _HarnessRepoCloneGateway(),
           ),
         ),
-        BlocProvider(create: (_) => FloatingWorkspaceCubit()),
+        BlocProvider.value(value: floatingWorkspaceCubit),
         BlocProvider(
           create: (_) => SshConnectionCubit(
             factory: sshClientFactory,

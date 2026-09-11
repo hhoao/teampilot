@@ -10,6 +10,7 @@ class TerminalReclaimSnapshot {
     required this.inTurn,
     required this.hasUnread,
     this.isSessionPinned = false,
+    this.hasActiveLeases = false,
   });
 
   final String sessionId;
@@ -23,11 +24,15 @@ class TerminalReclaimSnapshot {
 
   /// Sidebar pin ([AppSession.pinned]) — keep all member shells for the session.
   final bool isSessionPinned;
+
+  /// Live seat lease (e.g. a background shell task hosted by the member's
+  /// CLI) — the process must survive; never reclaim.
+  final bool hasActiveLeases;
 }
 
 /// Pure reclaim decision. Single source of truth for the protection set:
 /// lead, displayed terminal, working/in-turn, unread, connecting/pending,
-/// or a sidebar-pinned session.
+/// a sidebar-pinned session, or a live seat lease.
 class TerminalReclaimPolicy {
   const TerminalReclaimPolicy({required this.idleAfter});
 
@@ -40,7 +45,8 @@ class TerminalReclaimPolicy {
       s.isDisplayed ||
       s.inTurn ||
       s.hasUnread ||
-      s.isSessionPinned;
+      s.isSessionPinned ||
+      s.hasActiveLeases;
 
   /// true when the member has been idle since [idleSince] for at least
   /// [idleAfter] and no protection guard applies.

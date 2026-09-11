@@ -21,6 +21,7 @@ import '../../../services/workspace/workspace_run_registry.dart';
 import '../../../services/io/local_filesystem.dart';
 import '../../../services/workspace/workspace_tools_scope.dart';
 import '../../../services/workspace/workspace_tools_scope_registry.dart';
+import '../../../services/search/content_search_slices.dart';
 import '../../../services/workspace/workspace_worktree_registry.dart';
 import '../../../services/workspace/workspace_session_groups_registry.dart';
 import '../../../utils/session/workspace_tab_session_scope.dart';
@@ -101,17 +102,23 @@ class _WorkspaceSplitPaneState extends State<WorkspaceSplitPane> {
   void _openSearch() {
     if (!mounted) return;
     // This state sits above WorkspaceToolsScopeSync, so the scope has to be
-    // read from its cubit (the same one provided below); falls back to a
-    // local filesystem only when the plane has not resolved yet.
+    // read from its cubit (the same one provided below); the slice builder
+    // falls back to a single local slice only when the plane has not resolved
+    // yet. The pre-resolution stand-in root is the first workspace folder.
     final scopeCubit = context.read<WorkspaceToolsScopeRegistry>().cubitFor(
       tabScopeId: widget.tabScopeId,
       lifecycle: context.read<ChatCubit>().lifecycle,
     );
+    final scopeState = scopeCubit.state;
     unawaited(
       showWorkspaceSearchDialog(
         context,
         workspace: widget.workspace,
-        fs: scopeCubit.state.tools?.context.filesystem ?? LocalFilesystem(),
+        slices: contentSearchSlicesForScope(
+          scope: scopeState,
+          cwd: widget.workspace.firstFolderPath,
+          fallbackFs: scopeState.tools?.context.filesystem ?? LocalFilesystem(),
+        ),
       ),
     );
   }
@@ -231,25 +238,25 @@ class _WorkspaceSplitPaneState extends State<WorkspaceSplitPane> {
           final cwd = wt.currentWorktreePath.isNotEmpty
               ? wt.currentWorktreePath
               : widget.workspace.firstFolderPath;
+          // The unbound landing swap is the single-group fast path: it skips
+          // ChatPageShell projection entirely. With split groups the center
+          // keeps rendering the split view and the landing group hosts its own
+          // compose pane (WorkbenchGroupHost).
           final composeLanding = context.select<WorkbenchCubit, bool>(
-            (w) => workspaceNewChatActive(w, widget.tabScopeId),
+            (w) =>
+                w.centerLayout(widget.tabScopeId).groups.length == 1 &&
+                w.centerLandingActive(widget.tabScopeId),
           );
           final landingInitialText = context.select<WorkbenchCubit, String?>(
-            (w) => w.state.bar(widget.tabScopeId).center.landingInitialText,
+            (w) => w.centerLandingInitialText(widget.tabScopeId),
           );
           final landingInitialTextRevision = context
               .select<WorkbenchCubit, int>(
-                (w) => w.state
-                    .bar(widget.tabScopeId)
-                    .center
-                    .landingInitialTextRevision,
+                (w) => w.centerLandingInitialTextRevision(widget.tabScopeId),
               );
           final landingReferenceSessionId = context
               .select<WorkbenchCubit, String?>(
-                (w) => w.state
-                    .bar(widget.tabScopeId)
-                    .center
-                    .landingReferenceSessionId,
+                (w) => w.centerLandingReferenceSessionId(widget.tabScopeId),
               );
           return WorkspaceToolsScopeSync(
             workspace: widget.workspace,

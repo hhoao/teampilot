@@ -3,12 +3,16 @@ import 'package:teampilot/models/config_bundle.dart';
 import 'package:teampilot/models/plugin.dart';
 import 'package:teampilot/models/skill.dart';
 import 'package:teampilot/services/cli/codex/capabilities/skill.dart';
+import 'package:teampilot/services/cli/cursor/capabilities/skill.dart';
 import 'package:teampilot/services/cli/opencode/capabilities/skill.dart';
 import 'package:teampilot/services/cli/registry/capabilities/skill_capability.dart';
+import 'package:teampilot/services/cli/registry/resources/default_resource_capability.dart';
 import 'package:teampilot/services/cli/registry/capabilities/native_command_capability.dart';
 import 'package:teampilot/services/compose/compose_slash_catalog.dart';
 
 void main() {
+  const claudeSyntax = DefaultSkillCapability();
+  const cursorSyntax = CursorSkillCapability();
   const codexSyntax = CodexSkillCapability();
   const opencodeSyntax = OpencodeSkillCapability();
 
@@ -74,6 +78,38 @@ void main() {
     expect(skillCandidates, contains(r'$using-git-worktrees'));
   });
 
+  test('claude syntax inserts namespaced /plugin:name for plugin skills', () {
+    final candidates = build(
+      skills: const [],
+      plugins: [superpowers],
+      syntax: claudeSyntax,
+    );
+    final skillCandidates = candidates
+        .where((c) => c.kind == ComposeSlashCandidateKind.skill)
+        .map((c) => c.insertText);
+    expect(skillCandidates, contains('/superpowers:using-git-worktrees'));
+    expect(
+      skillCandidates,
+      isNot(contains('/superpowers--using-git-worktrees')),
+    );
+  });
+
+  test('cursor syntax inserts bare /name for plugin skills', () {
+    final candidates = build(
+      skills: const [],
+      plugins: [superpowers],
+      syntax: cursorSyntax,
+    );
+    final skillCandidates = candidates
+        .where((c) => c.kind == ComposeSlashCandidateKind.skill)
+        .map((c) => c.insertText);
+    expect(skillCandidates, contains('/using-git-worktrees'));
+    expect(
+      skillCandidates,
+      isNot(contains('/superpowers:using-git-worktrees')),
+    );
+  });
+
   test(r'codex syntax inserts namespaced $plugin:name for plugin skills', () {
     final candidates = build(
       skills: const [],
@@ -97,6 +133,22 @@ void main() {
           .where((c) => c.kind == ComposeSlashCandidateKind.skill)
           .map((c) => c.insertText),
       contains(' /using-git-worktrees'),
+    );
+  });
+
+  test('opencode syntax inserts bare /name for plugin skills', () {
+    final candidates = build(
+      skills: const [],
+      plugins: [superpowers],
+      syntax: opencodeSyntax,
+    );
+    final skillCandidates = candidates
+        .where((c) => c.kind == ComposeSlashCandidateKind.skill)
+        .map((c) => c.insertText);
+    expect(skillCandidates, contains(' /using-git-worktrees'));
+    expect(
+      skillCandidates,
+      isNot(contains(' /superpowers:using-git-worktrees')),
     );
   });
 

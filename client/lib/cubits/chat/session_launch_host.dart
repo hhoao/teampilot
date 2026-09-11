@@ -13,6 +13,7 @@ import '../../services/session/session_lifecycle_service.dart';
 import '../../services/agent_status/agent_status_seat_lookup.dart';
 import '../../services/agent_status/ask_user_answer_pending_store.dart';
 import '../../cubits/agent_attention_cubit.dart';
+import '../../cubits/seat_lease_cubit.dart';
 import '../../cubits/workbench/workbench_tab.dart';
 import '../../services/team_bus/mcp/teammate_bus_mcp_gateway.dart';
 import '../../services/team_bus/remote/remote_bus_binding_resolver.dart';
@@ -137,6 +138,10 @@ abstract interface class SessionLaunchHost
   /// Permission-attention state; cleared on seat/tab dispose (null in tests).
   AgentAttentionCubit? get agentAttentionCubit;
 
+  /// Seat keep-alive leases (background shell tasks); cleared with
+  /// attention on seat/tab dispose (null in tests).
+  SeatLeaseCubit? get seatLeaseCubit;
+
   /// Shared OpenCode ask-answer pending map; cleared with attention on dispose.
   AskUserAnswerPendingStore? get askUserAnswerPendingStore;
 
@@ -168,11 +173,13 @@ void clearAgentStatusSessionSeats({
   AgentAttentionCubit? attention,
   AgentStatusSeatLookup? seatLookup,
   AskUserAnswerPendingStore? askUserAnswerPendingStore,
+  SeatLeaseCubit? seatLeaseCubit,
   required String sessionId,
 }) {
   attention?.clearSession(sessionId);
   seatLookup?.clearSession(sessionId);
   askUserAnswerPendingStore?.clearSession(sessionId);
+  seatLeaseCubit?.clearSession(sessionId);
 }
 
 /// Drop attention + seat lookup for one seat (PTY exit, disconnect, reconnect).
@@ -190,6 +197,7 @@ extension SessionLaunchHostAgentStatus on SessionLaunchHost {
       sessionId: sessionId,
       memberId: memberId,
     );
+    seatLeaseCubit?.clearSeat(sessionId: sessionId, memberId: memberId);
   }
 
   void clearAgentStatusSession(String sessionId) {
@@ -197,6 +205,7 @@ extension SessionLaunchHostAgentStatus on SessionLaunchHost {
       attention: agentAttentionCubit,
       seatLookup: agentStatusSeatLookup,
       askUserAnswerPendingStore: askUserAnswerPendingStore,
+      seatLeaseCubit: seatLeaseCubit,
       sessionId: sessionId,
     );
   }

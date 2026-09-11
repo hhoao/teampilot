@@ -1,7 +1,5 @@
-import 'dart:async';
 import 'package:shared_ui/shared_ui.dart';
 
-import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:path/path.dart' as p;
@@ -9,6 +7,7 @@ import 'package:photo_view/photo_view.dart';
 
 import '../../cubits/editor_cubit.dart';
 import '../../l10n/l10n_extensions.dart';
+import 'photo_zoom_controller.dart';
 
 /// Workbench file-tab surface for bitmap image preview (zoom via photo_view).
 class FileEditorImagePreview extends StatefulWidget {
@@ -25,82 +24,9 @@ class FileEditorImagePreview extends StatefulWidget {
   State<FileEditorImagePreview> createState() => _FileEditorImagePreviewState();
 }
 
-class _FileEditorImagePreviewState extends State<FileEditorImagePreview> {
-  static const _zoomStep = 1.25;
-  /// Absolute PhotoView scale: 1.0 = one image pixel per logical pixel.
-  static const _nativeScale = 1.0;
-  static const _minScale = 0.25;
-  static const _maxScale = 8.0;
-
-  late final PhotoViewController _controller;
-  late final PhotoViewScaleStateController _scaleStateController;
-  StreamSubscription<PhotoViewControllerValue>? _scaleSub;
-  double? _scale;
-  double? _baselineScale;
-  bool _cappedInitialUpscale = false;
+class _FileEditorImagePreviewState extends State<FileEditorImagePreview>
+    with PhotoZoomControllerMixin<FileEditorImagePreview> {
   bool _decodeFailureReported = false;
-
-  @override
-  void initState() {
-    super.initState();
-    _controller = PhotoViewController();
-    _scaleStateController = PhotoViewScaleStateController();
-    _scaleSub = _controller.outputStateStream.listen(_onControllerValue);
-  }
-
-  void _onControllerValue(PhotoViewControllerValue value) {
-    final next = value.scale;
-    if (next == null) return;
-    // Match Orca: fit to the pane but never upscale past 1:1 on open.
-    if (!_cappedInitialUpscale && next > _nativeScale) {
-      _cappedInitialUpscale = true;
-      _controller.scale = _nativeScale;
-      return;
-    }
-    _cappedInitialUpscale = true;
-    if (next == _scale) return;
-    _baselineScale ??= next <= _nativeScale ? next : _nativeScale;
-    if (!mounted) return;
-    setState(() => _scale = next);
-  }
-
-  @override
-  void dispose() {
-    _scaleSub?.cancel();
-    _controller.dispose();
-    _scaleStateController.dispose();
-    super.dispose();
-  }
-
-  int get _scalePercent {
-    final current = _scale;
-    final base = _baselineScale;
-    if (current == null || base == null || base == 0) return 100;
-    return ((current / base) * 100).round();
-  }
-
-  void _zoomBy(double factor) {
-    final current = _controller.scale;
-    if (current == null) return;
-    _controller.scale = (current * factor).clamp(_minScale, _maxScale);
-  }
-
-  /// Fit in the pane, but never larger than native 1:1 (same as Orca).
-  void _resetZoom() {
-    _scaleStateController.scaleState = PhotoViewScaleState.initial;
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (!mounted) return;
-      final scale = _controller.scale;
-      if (scale != null && scale > _nativeScale) {
-        _controller.scale = _nativeScale;
-      }
-    });
-  }
-
-  void _onPointerSignal(PointerSignalEvent event) {
-    if (event is! PointerScrollEvent || event.scrollDelta.dy == 0) return;
-    _zoomBy(event.scrollDelta.dy < 0 ? _zoomStep : 1 / _zoomStep);
-  }
 
   void _reportDecodeFailed() {
     if (_decodeFailureReported) return;
@@ -150,18 +76,22 @@ class _FileEditorImagePreviewState extends State<FileEditorImagePreview> {
                 IconButton(
                   tooltip: context.l10n.shortcutsZoomOut,
                   icon: const Icon(Icons.remove, size: 18),
-                  onPressed: canZoom ? () => _zoomBy(1 / _zoomStep) : null,
+                  onPressed: canZoom
+                      ? () => zoomBy(1 / PhotoZoomControllerMixin.zoomStep)
+                      : null,
                 ),
-                Text('$_scalePercent%', style: TpTextStyles.of(context).sm),
+                Text('$scalePercent%', style: TpTextStyles.of(context).sm),
                 IconButton(
                   tooltip: context.l10n.shortcutsZoomIn,
                   icon: const Icon(Icons.add, size: 18),
-                  onPressed: canZoom ? () => _zoomBy(_zoomStep) : null,
+                  onPressed: canZoom
+                      ? () => zoomBy(PhotoZoomControllerMixin.zoomStep)
+                      : null,
                 ),
                 IconButton(
                   tooltip: context.l10n.shortcutsZoomReset,
                   icon: const Icon(Icons.fit_screen_outlined, size: 18),
-                  onPressed: canZoom ? _resetZoom : null,
+                  onPressed: canZoom ? resetZoom : null,
                 ),
               ],
             ),
@@ -211,29 +141,20 @@ class _FileEditorImagePreviewState extends State<FileEditorImagePreview> {
     }
     return ClipRect(
       child: Listener(
-        onPointerSignal: _onPointerSignal,
+        onPointerSignal: onZoomPointerSignal,
         child: PhotoView(
           imageProvider: MemoryImage(bytes),
-          controller: _controller,
-          scaleStateController: _scaleStateController,
+          controller: controller,
+          scaleStateController: scaleStateController,
           // medium: Image resamples (not Transform) — avoids soft HiDPI blur.
           filterQuality: FilterQuality.medium,
-          minScale: _minScale,
-          maxScale: _maxScale,
+          minScale: PhotoZoomControllerMixin.minScale,
+          maxScale: PhotoZoomControllerMixin.maxScale,
           // Contained for large images; open/reset clamp upscale to 1:1.
           initialScale: PhotoViewComputedScale.contained,
           // Match [FileEditorSurface] shell / floating window chrome.
           backgroundDecoration: BoxDecoration(color: cs.surface),
-          scaleStateCycle: (_) {
-            WidgetsBinding.instance.addPostFrameCallback((_) {
-              if (!mounted) return;
-              final scale = _controller.scale;
-              if (scale != null && scale > _nativeScale) {
-                _controller.scale = _nativeScale;
-              }
-            });
-            return PhotoViewScaleState.initial;
-          },
+          scaleStateCycle: clampCycle,
           errorBuilder: (context, error, stackTrace) {
             _reportDecodeFailed();
             return const SizedBox.shrink();

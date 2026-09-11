@@ -9,6 +9,7 @@ TerminalReclaimSnapshot _snap({
   bool inTurn = false,
   bool hasUnread = false,
   bool isSessionPinned = false,
+  bool hasActiveLeases = false,
 }) => TerminalReclaimSnapshot(
   sessionId: 's',
   memberId: 'm',
@@ -19,6 +20,7 @@ TerminalReclaimSnapshot _snap({
   inTurn: inTurn,
   hasUnread: hasUnread,
   isSessionPinned: isSessionPinned,
+  hasActiveLeases: hasActiveLeases,
 );
 
 void main() {
@@ -48,6 +50,7 @@ void main() {
       _snap(inTurn: true),
       _snap(hasUnread: true),
       _snap(isSessionPinned: true),
+      _snap(hasActiveLeases: true),
     ]) {
       expect(
         policy.shouldReclaim(s, idleSince, now),
@@ -59,5 +62,18 @@ void main() {
 
   test('shell not running is not reclaimable (nothing live to reclaim)', () {
     expect(policy.shouldReclaim(_snap(shellRunning: false), now, now), isFalse);
+  });
+
+  test('a snapshot with an active seat lease is protected past idleAfter',
+      () {
+    final idleSince = now.subtract(const Duration(hours: 2));
+    final snapshot = _snap(hasActiveLeases: true);
+    expect(policy.isProtected(snapshot), isTrue);
+    expect(policy.shouldReclaim(snapshot, idleSince, now), isFalse);
+  });
+
+  test('hasActiveLeases defaults to false (unrelated call sites unaffected)',
+      () {
+    expect(_snap().hasActiveLeases, isFalse);
   });
 }

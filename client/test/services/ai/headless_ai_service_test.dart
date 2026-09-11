@@ -18,6 +18,8 @@ class _NotReadyProvision implements HeadlessCapability {
   @override
   bool get supportsStreaming => false;
   @override
+  bool get supportsPromptStdin => false;
+  @override
   String get executable => 'claude';
   @override
   Map<String, String> buildEnvironment(HeadlessLaunchContext context) =>
@@ -66,7 +68,7 @@ void main() {
       resolveProvider: (_, __) async => null,
       resolveExecutable: (name) async => '/usr/bin/$name',
       tempDirFactory: () async => tempRoot.createTempSync('run_'),
-      run: (exe, args, {environment, workingDirectory, timeout}) async {
+      run: (exe, args, {environment, workingDirectory, timeout, stdinData}) async {
         ranExecutable = exe;
         ranArgs = args;
         return ProcessResult(0, 0, '{"result":"feat: x"}', '');
@@ -92,7 +94,7 @@ void main() {
       resolveProvider: (_, __) async => null,
       resolveExecutable: (name) async => name,
       tempDirFactory: () async => tempRoot.createTempSync('run_'),
-      run: (exe, args, {environment, workingDirectory, timeout}) async =>
+      run: (exe, args, {environment, workingDirectory, timeout, stdinData}) async =>
           ProcessResult(0, 0, 'ok', ''),
                                        storage: fakeHomeStorage(),
     );
@@ -115,7 +117,7 @@ void main() {
       resolveProvider: (_, __) async => null,
       resolveExecutable: (_) async => null,
       tempDirFactory: () async => tempRoot.createTempSync('run_'),
-      run: (exe, args, {environment, workingDirectory, timeout}) async =>
+      run: (exe, args, {environment, workingDirectory, timeout, stdinData}) async =>
           ProcessResult(0, 0, '', ''),
                                        storage: fakeHomeStorage(),
     );
@@ -132,7 +134,7 @@ void main() {
       resolveProvider: (_, __) async => null,
       resolveExecutable: (name) async => name,
       tempDirFactory: () async => tempRoot.createTempSync('run_'),
-      run: (exe, args, {environment, workingDirectory, timeout}) async =>
+      run: (exe, args, {environment, workingDirectory, timeout, stdinData}) async =>
           ProcessResult(0, 2, '', 'boom'),
                                        storage: fakeHomeStorage(),
     );
@@ -147,5 +149,76 @@ void main() {
         ),
       ),
     );
+  });
+
+  test('long prompt on a stdin-capable CLI goes via stdin, not argv', () async {
+    final longPrompt = 'x' * 2500;
+    late List<String> ranArgs;
+    late String? ranStdin;
+    final service = HeadlessAiService(
+      resolveProvisionCapability: (_) => null,
+      resolveProvider: (_, __) async => null,
+      resolveExecutable: (name) async => name,
+      tempDirFactory: () async => tempRoot.createTempSync('run_'),
+      run: (exe, args, {environment, workingDirectory, timeout, stdinData}) async {
+        ranArgs = args;
+        ranStdin = stdinData;
+        return ProcessResult(0, 0, 'feat: x', '');
+      },
+      storage: fakeHomeStorage(),
+    );
+
+    await service.run(setting: setting(), prompt: longPrompt);
+
+    expect(ranStdin, longPrompt);
+    expect(ranArgs.contains(longPrompt), isFalse);
+  });
+
+  test('long prompt on a CLI without stdin support stays on argv', () async {
+    final longPrompt = 'x' * 2500;
+    late List<String> ranArgs;
+    late String? ranStdin;
+    final service = HeadlessAiService(
+      resolveProvisionCapability: (_) => null,
+      resolveProvider: (_, __) async => null,
+      resolveExecutable: (name) async => name,
+      tempDirFactory: () async => tempRoot.createTempSync('run_'),
+      run: (exe, args, {environment, workingDirectory, timeout, stdinData}) async {
+        ranArgs = args;
+        ranStdin = stdinData;
+        return ProcessResult(0, 0, 'ok', '');
+      },
+      storage: fakeHomeStorage(),
+    );
+
+    await service.run(
+      setting: AiFeatureSetting(cli: CliTool.opencode, providerId: 'p', model: 'm'),
+      prompt: longPrompt,
+    );
+
+    expect(ranStdin, isNull);
+    expect(ranArgs.contains(longPrompt), isTrue);
+  });
+
+  test('short prompt stays on argv for a stdin-capable CLI', () async {
+    late List<String> ranArgs;
+    late String? ranStdin;
+    final service = HeadlessAiService(
+      resolveProvisionCapability: (_) => null,
+      resolveProvider: (_, __) async => null,
+      resolveExecutable: (name) async => name,
+      tempDirFactory: () async => tempRoot.createTempSync('run_'),
+      run: (exe, args, {environment, workingDirectory, timeout, stdinData}) async {
+        ranArgs = args;
+        ranStdin = stdinData;
+        return ProcessResult(0, 0, 'feat: x', '');
+      },
+      storage: fakeHomeStorage(),
+    );
+
+    await service.run(setting: setting(), prompt: 'short prompt');
+
+    expect(ranStdin, isNull);
+    expect(ranArgs.contains('short prompt'), isTrue);
   });
 }

@@ -13,7 +13,7 @@ import '../../repositories/ssh_profile_repository.dart';
 import '../../services/terminal/workspace_shell_connector.dart';
 import '../../services/terminal/workspace_terminal_launch_catalog.dart';
 typedef WorkspaceTerminalSessionSelected =
-    void Function(WorkspaceTerminalSessionSpec spec);
+    void Function(WorkspaceTerminalSessionSpec spec, String? launchCwd);
 
 /// Shows the workspace shell launch catalog at [globalPosition] (Orca-style +).
 ///
@@ -96,7 +96,7 @@ Future<void> _handleLaunchMenuSelection({
   switch (selected.action) {
     case WorkspaceTerminalLaunchAction.openSession:
       final spec = selected.spec;
-      if (spec != null) onSessionSelected(spec);
+      if (spec != null) onSessionSelected(spec, selected.launchCwd);
     case WorkspaceTerminalLaunchAction.newSshProfile:
       await showSshProfileFormDialog(context);
     case WorkspaceTerminalLaunchAction.settings:

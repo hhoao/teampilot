@@ -157,7 +157,7 @@ class WorkbenchShellLauncher {
   bool get _usesPosixPaths => _chat.lifecycle.storage.usesPosixPaths;
 
   WorkbenchTabId? _resolveMostRecentShell(String workspaceId) {
-    final strip = _workbench.state.bar(workspaceId).floating;
+    final strip = _workbench.mergedFloatingStrip(workspaceId);
     return resolveMostRecentFloatingShell(
       order: strip.order,
       activeId: strip.activeId,
@@ -307,10 +307,9 @@ class WorkbenchShellLauncher {
 
     // Empty→first-tab UI is deferred one frame in FloatingWorkspacePanel so
     // connect must wait an extra frame on that path. Check the *target*
-    // workspace's floating strip (the current active workspace may differ).
-    final deferFirstTabUi = _workbench.state
-        .bar(workspaceId)
-        .floating
+    // workspace's floating layout (the current active workspace may differ).
+    final deferFirstTabUi = _workbench
+        .mergedFloatingStrip(workspaceId)
         .order
         .isEmpty;
     _floating.ensureOpen();

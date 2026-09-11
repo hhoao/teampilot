@@ -69,15 +69,25 @@ class AiHistoryLiveRefreshController {
   Future<void> start({bool skipInitialRefresh = false}) async {
     if (_started) return;
     _started = true;
+    appLogger.d(
+      '[live-refresh-diag] controller start skip=$skipInitialRefresh',
+    );
     if (!skipInitialRefresh) {
       await refreshNow();
       // Mount refresh is not a throttle baseline — throttling only coalesces
       // change/poll-driven reloads after the first live change.
       _lastReloadAt = null;
     }
-    if (!_started) return;
+    if (!_started) {
+      appLogger.d(
+        '[live-refresh-diag] start aborted during refreshNow '
+        '(stopped mid-flight)',
+      );
+      return;
+    }
     await _attachSignal();
     _syncMetaRetry();
+    appLogger.d('[live-refresh-diag] start done (signal attached)');
   }
 
   /// Idempotent alias for [start] (History continue / remount callers).
@@ -87,6 +97,7 @@ class AiHistoryLiveRefreshController {
   Future<void> stop() async {
     if (!_started) return;
     _started = false;
+    appLogger.d('[live-refresh-diag] controller stop');
     _reloadQueued = false;
     _throttleTimer?.cancel();
     _throttleTimer = null;
@@ -223,6 +234,12 @@ class AiHistoryLiveRefreshController {
           // 未预解析时照常自行解析(previous 保持 null → 触发 rearm)。
           final next = preResolvedMeta ?? await _resolveWatchMeta();
           if (!_started) break;
+          appLogger.d(
+            '[live-refresh-diag] meta '
+            '${next == null ? 'null' : 'root=${next.changeWatchRoot} '
+                      'tokens=${next.cacheTokenPaths.length}'} '
+            'prevNull=${previous == null}',
+          );
           if (next != null) {
             // Rearm only when a live signal already exists and watch targets
             // change (null→meta or root/paths). Start attaches after refreshNow.

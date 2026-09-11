@@ -102,7 +102,7 @@ void main() {
   });
 
   test(
-    'one skill reconcile keeps catalog and plugin skills and is idempotent',
+    'claude does not flatten plugin skills into skills/ and is idempotent',
     () async {
       final fs = testHomeStorage.fs;
       final tmp = await fs.createTempDir(prefix: 'prov_plugin_skill_test_');
@@ -177,10 +177,13 @@ void main() {
         fs.pathContext.join(configDir, 'skills'),
       )).map((entry) => entry.name).toList();
 
+      // The managed always-on teampilot-catalog skill is provisioned next to
+      // the catalog skill; plugin skills must NOT be flattened into skills/.
       expect(
         first,
-        containsAll(<String>['catalog-dir', 'acme-plugin--plugin-skill']),
+        containsAll(<String>['catalog-dir', 'teampilot-catalog']),
       );
+      expect(first, hasLength(2));
       expect(second, first);
     },
   );

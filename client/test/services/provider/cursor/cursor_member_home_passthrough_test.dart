@@ -1,4 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
+import 'package:path/path.dart' as p;
 import 'package:teampilot/services/cli/cursor/provider/cursor_home_layout.dart';
 import 'package:teampilot/services/cli/cursor/provider/cursor_member_home_passthrough.dart';
 
@@ -127,6 +128,51 @@ void main() {
         '{"accessToken":"member"}',
       );
       expect((await fs.stat(layout.configCursorDir(memberHome))).isSymlink, isFalse);
+    });
+
+    test('windows mirror keeps AppData isolated instead of linking it', () async {
+      final winContext = p.Context(style: p.Style.windows);
+      final winFs = InMemoryFilesystem(pathContext: winContext);
+      final winLayout = CursorHomeLayout(
+        pathContext: winContext,
+        platform: CursorHomePlatform.windows,
+      );
+      final winPassthrough = CursorMemberHomePassthrough(
+        fs: winFs,
+        layout: winLayout,
+      );
+      const realHomeWin = r'C:\Users\user';
+      const memberHomeWin = r'C:\tp\workspace\ws\runtime\planner\cursor\home';
+
+      await winFs.ensureDir(
+        winContext.join(realHomeWin, 'AppData', 'Roaming', 'Cursor'),
+      );
+      await winFs.writeString(
+        winContext.join(realHomeWin, 'AppData', 'Roaming', 'Cursor', 'auth.json'),
+        '{"accessToken":"real"}',
+      );
+      await winFs.ensureDir(winContext.join(realHomeWin, '.cargo'));
+
+      await winPassthrough.mirror(
+        realHomeRoot: realHomeWin,
+        memberHomeRoot: memberHomeWin,
+      );
+
+      // A linked AppData would route the pinned APPDATA env (and thus
+      // cursor credentials) back to the real Roaming profile.
+      expect(
+        (await winFs.stat(winContext.join(memberHomeWin, 'AppData'))).isSymlink,
+        isFalse,
+      );
+      expect(
+        await winFs.readString(winLayout.authJson(memberHomeWin)),
+        isNull,
+      );
+      // Other real-home entries still passthrough.
+      expect(
+        await winFs.readSymlinkTarget(winContext.join(memberHomeWin, '.cargo')),
+        winContext.join(realHomeWin, '.cargo'),
+      );
     });
 
     test('replaces orphan member-home dirs with symlinks', () async {

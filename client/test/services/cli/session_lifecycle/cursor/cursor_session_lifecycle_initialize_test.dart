@@ -202,7 +202,7 @@ void main() {
         isNotNull,
       );
       expect(
-        (await fs.stat(homeLayout.configCursorDir(memberHome))).isDirectory,
+        (await fs.stat(homeLayout.authDir(memberHome))).isDirectory,
         isTrue,
       );
     });

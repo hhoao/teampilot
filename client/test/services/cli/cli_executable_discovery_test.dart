@@ -9,17 +9,24 @@ void main() {
   test('locateLocal discovers each launchable CLI independently', () async {
     final discovery = CliExecutableDiscovery();
     final located = await discovery.locateLocal(
-      runner: (executable, arguments, {stdoutEncoding, stderrEncoding}) async {
-        if (executable == 'which' || executable == 'where') {
-          return ProcessResult(
-            0,
-            0,
-            '/usr/local/bin/${arguments.single}\n',
-            '',
-          );
-        }
-        return ProcessResult(1, 1, '', '');
-      },
+      runner:
+          (
+            executable,
+            arguments, {
+            environment,
+            stdoutEncoding,
+            stderrEncoding,
+          }) async {
+            if (executable == 'which' || executable == 'where') {
+              return ProcessResult(
+                0,
+                0,
+                '/usr/local/bin/${arguments.single}\n',
+                '',
+              );
+            }
+            return ProcessResult(1, 1, '', '');
+          },
     );
 
     expect(located[CliTool.claude], '/usr/local/bin/claude');
@@ -34,10 +41,17 @@ void main() {
     final commands = <(String, List<String>)>[];
     final located = await discovery.locateLocal(
       includeShellFallback: false,
-      runner: (executable, arguments, {stdoutEncoding, stderrEncoding}) async {
-        commands.add((executable, List<String>.from(arguments)));
-        return ProcessResult(1, 1, '', '');
-      },
+      runner:
+          (
+            executable,
+            arguments, {
+            environment,
+            stdoutEncoding,
+            stderrEncoding,
+          }) async {
+            commands.add((executable, List<String>.from(arguments)));
+            return ProcessResult(1, 1, '', '');
+          },
     );
 
     expect(located, isEmpty);
@@ -79,12 +93,19 @@ void main() {
     final discovery = CliExecutableDiscovery();
     final path = await discovery.locateLocalCli(
       CliTool.claude,
-      runner: (executable, arguments, {stdoutEncoding, stderrEncoding}) async {
-        if (executable == 'which' || executable == 'where') {
-          return ProcessResult(0, 0, '/opt/bin/${arguments.single}\n', '');
-        }
-        return ProcessResult(1, 1, '', '');
-      },
+      runner:
+          (
+            executable,
+            arguments, {
+            environment,
+            stdoutEncoding,
+            stderrEncoding,
+          }) async {
+            if (executable == 'which' || executable == 'where') {
+              return ProcessResult(0, 0, '/opt/bin/${arguments.single}\n', '');
+            }
+            return ProcessResult(1, 1, '', '');
+          },
     );
     expect(path, '/opt/bin/claude');
   });
@@ -94,9 +115,16 @@ void main() {
     final path = await discovery.locateLocalCli(
       CliTool.codex,
       includeShellFallback: false,
-      runner: (executable, arguments, {stdoutEncoding, stderrEncoding}) async {
-        return ProcessResult(1, 1, '', '');
-      },
+      runner:
+          (
+            executable,
+            arguments, {
+            environment,
+            stdoutEncoding,
+            stderrEncoding,
+          }) async {
+            return ProcessResult(1, 1, '', '');
+          },
     );
     expect(path, isNull);
   });

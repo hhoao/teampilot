@@ -36,7 +36,7 @@ void main() {
     );
 
     expect(closed, isTrue);
-    expect(workbench.state.bar('ws-1').floating.order, isEmpty);
+    expect(workbench.mergedFloatingStrip('ws-1').order, isEmpty);
   });
 
   test('closeFloatingTab aborts when canClose returns false', () async {
@@ -69,7 +69,7 @@ void main() {
 
     expect(closed, isFalse);
     expect(
-      workbench.state.bar('ws-1').floating.order,
+      workbench.mergedFloatingStrip('ws-1').order,
       [WorkbenchTabId.file('/a.txt')],
     );
   });
@@ -94,7 +94,7 @@ void main() {
       tab: tab,
     );
 
-    expect(workbench.state.bar('ws-1').floating.order, isEmpty);
+    expect(workbench.mergedFloatingStrip('ws-1').order, isEmpty);
   });
 
   test('closeOtherFloatingTabs keeps only the requested tab', () async {
@@ -115,7 +115,7 @@ void main() {
     );
 
     expect(
-      workbench.state.bar('ws-1').floating.order,
+      workbench.mergedFloatingStrip('ws-1').order,
       [WorkbenchTabId.shell('keep')],
     );
   });
@@ -139,7 +139,7 @@ void main() {
     );
 
     expect(
-      workbench.state.bar('ws-1').floating.order,
+      workbench.mergedFloatingStrip('ws-1').order,
       [WorkbenchTabId.shell('a')],
     );
   });

@@ -80,6 +80,7 @@ class SessionLifecycleService {
     SessionRuntimePlanBuilder? runtimePlanBuilder,
     RuntimeTarget Function()? homeTarget,
     String Function(CliTool cli)? cliExecutableResolver,
+    String Function()? toolchainNodeResolver,
     SessionResourceProviderResolver? resourceProviderResolver,
   }) : _storage = storage,
        _appDataBasePath = appDataBasePath,
@@ -97,6 +98,7 @@ class SessionLifecycleService {
        _runtimePlanBuilder = runtimePlanBuilder,
        _homeTarget = homeTarget ?? RuntimeTarget.local,
        _cliExecutableResolver = cliExecutableResolver,
+       _toolchainNodeResolver = toolchainNodeResolver,
        _resourceProviderResolver = resourceProviderResolver;
 
   final HomeStorage _storage;
@@ -126,6 +128,11 @@ class SessionLifecycleService {
   final WorkspaceProjectConfigRepository? _projectConfigRepository;
   final RuntimeTarget Function() _homeTarget;
   final String Function(CliTool cli)? _cliExecutableResolver;
+
+  /// Resolves the effective node executable (user-configured, then startup
+  /// discovery). Used to prepend node's bin dir so `#!/usr/bin/env node`
+  /// shebangs work in the sparse GUI-launch environment.
+  final String Function()? _toolchainNodeResolver;
   SessionRuntimePlanBuilder? _runtimePlanBuilder;
   SessionResourceProviderResolver? _resourceProviderResolver;
 
@@ -1294,9 +1301,9 @@ class SessionLifecycleService {
     final persistedId = resolvedCli == null
         ? ''
         : (memberBinding?.nativeSessionIds[resolvedCli.value] ??
-                session.nativeSessionIds[resolvedCli.value] ??
-                '')
-            .trim();
+                  session.nativeSessionIds[resolvedCli.value] ??
+                  '')
+              .trim();
     final probe = await _findCliState(
       roots: roots,
       session: session,
@@ -1434,6 +1441,7 @@ class SessionLifecycleService {
       loadGlobalPresets: () async => _loadPresets?.call() ?? const [],
       hostOneShotRunner: hostOneShotRunnerForContext(roots),
       cliExecutable: _cliExecutableResolver?.call(CliTool.codex),
+      preferredNodePath: _toolchainNodeResolver,
     );
   }
 

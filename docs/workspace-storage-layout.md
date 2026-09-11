@@ -51,6 +51,7 @@ workspace/workspaces/{workspaceId}/
   manifest.json                  # Workspace (folders, defaultProfileId, session ids, …)
   project-config.json            # workspace-scoped skill/plugin/mcp/extension bindings
   session-groups.json            # manual sidebar session groups
+  workbench-layout.json          # workbench split-layout snapshot (center + floating groups)
   assets/icon.*                  # custom workspace icon
   config/                        # workspace-level CLI overrides (inherits app → identity)
     mcp/servers.json
@@ -197,5 +198,5 @@ No persisted overlay blob — persona + pack deps are live-resolved from catalog
 
 - [Expert capability pack design](superpowers/specs/2026-07-10-expert-capability-pack-design.md) — Simple = unteamed + expert pack; merge `team > expert > workspace`
 - [Expert Hub design spec](superpowers/specs/2026-07-05-expert-hub-design.md) — teams as expert collections
-- [AGENTS.md](../AGENTS.md) — architecture overview for AI assistants
+- [ARCHITECTURE.md](ARCHITECTURE.md) — architecture overview (core concepts, key paths)
 - [README.md](../README.md) — user-facing feature descriptions

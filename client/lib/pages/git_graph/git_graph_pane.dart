@@ -10,14 +10,18 @@ import '../../cubits/git_graph_cubit.dart';
 import '../../cubits/layout_cubit.dart';
 import '../../l10n/l10n_extensions.dart';
 import '../../models/git_graph.dart';
+import '../../models/layout_preferences.dart';
 import '../../services/git/git_repo_store.dart';
 import '../../services/storage/runtime_context.dart';
 import '../../services/workbench/workbench_editor_opener.dart';
 import '../../services/workspace/workspace_tools_scope.dart';
 import '../../services/workspace/workspace_tools_scope_registry.dart';
 import '../../widgets/app_toast/app_toast.dart';
+import '../../widgets/resizable_split_view.dart';
 import 'git_graph_column_header.dart';
+import 'git_graph_column_layout.dart';
 import 'git_graph_columns.dart';
+import 'git_graph_columns_row.dart';
 import 'git_graph_detail_pane.dart';
 import 'git_graph_menus.dart';
 import 'git_graph_row_tile.dart';
@@ -151,63 +155,101 @@ class _GitGraphPaneState extends State<GitGraphPane> {
   }
 }
 
-class _PaneBody extends StatelessWidget {
+class _PaneBody extends StatefulWidget {
   const _PaneBody({required this.workspaceId});
 
   final String workspaceId;
+
+  @override
+  State<_PaneBody> createState() => _PaneBodyState();
+}
+
+class _PaneBodyState extends State<_PaneBody> {
+  /// 列布局控制器：列头拖拽 + 偏好同步的唯一持有点。
+  final _columnController = GitGraphColumnLayoutController(maxSlot: 0);
+
+  @override
+  void dispose() {
+    _columnController.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
     final headerVisible = context.select<LayoutCubit, bool>(
       (cubit) => cubit.state.preferences.gitGraphHeaderVisible,
     );
+    final columnPrefs = context.select<LayoutCubit, GitGraphColumnPrefs>(
+      (cubit) => cubit.state.preferences.gitGraphColumns,
+    );
+    final detailWidth = context.select<LayoutCubit, double>(
+      (cubit) => cubit.state.preferences.gitGraphDetailWidth,
+    );
+    final layoutCubit = context.read<LayoutCubit>();
     return BlocBuilder<GitGraphCubit, GitGraphState>(
       builder: (context, state) {
         if (!state.gitAvailable && !state.isRefreshing) {
           return _NotARepositoryHint(state: state);
         }
         final cubit = context.read<GitGraphCubit>();
-        return Row(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Expanded(
-              child: Column(
-                children: [
-                  GitGraphToolbar(state: state, workspaceId: workspaceId),
-                  if (headerVisible)
-                    GitGraphColumnHeader(
-                      graphWidth: GitGraphColumns.graphWidthFor(maxSlot: 0),
-                      onHide: () => context
-                          .read<LayoutCubit>()
-                          .setGitGraphHeaderVisible(false),
-                    ),
-                  Expanded(
-                    child: _GraphList(state: state, workspaceId: workspaceId),
+        // 静默同步（不 notify）：本 build 已重建整棵子树，行/列头随 Build
+        // 拿到新布局；notifyListeners 只在列头拖拽时由 controller 发出。
+        _columnController.sync(
+          columnPrefs,
+          newMaxSlot: gitGraphMaxSlot(state.rows),
+        );
+        // 详情栏：选中提交后展开可拖拽宽度的右栏；未选中时收起，避免挤压图区。
+        // 宽度持久化在 LayoutPreferences.gitGraphDetailWidth，拖拽结束提交。
+        if (state.selectedHash != null) {
+          return ResizableSplitView(
+            primaryAtEnd: true,
+            initialPrimarySize: detailWidth,
+            minPrimarySize: LayoutPreferences.minGitGraphDetailWidth,
+            maxPrimarySize: double.infinity,
+            minSecondarySize: LayoutPreferences.minWorkbenchMainWidth,
+            onPrimarySizeChanged: layoutCubit.setGitGraphDetailWidth,
+            first: Column(
+              children: [
+                GitGraphToolbar(
+                  state: state,
+                  workspaceId: widget.workspaceId,
+                ),
+                if (headerVisible)
+                  GitGraphColumnHeader(controller: _columnController),
+                Expanded(
+                  child: _GraphList(
+                    state: state,
+                    workspaceId: widget.workspaceId,
+                    columnController: _columnController,
                   ),
-                  if (state.errorMessage != null ||
-                      state.currentBranch.isNotEmpty)
-                    _StatusBar(state: state),
-                ],
-              ),
+                ),
+                if (state.errorMessage != null ||
+                    state.currentBranch.isNotEmpty)
+                  _StatusBar(state: state),
+              ],
             ),
-            // 详情栏：选中提交后展开固定宽度右栏；未选中时收起，避免挤压图区。
-            if (state.selectedHash != null) ...[
-              VerticalDivider(
-                width: 1,
-                thickness: 1,
-                color: Theme.of(
-                  context,
-                ).colorScheme.outlineVariant.withValues(alpha: 0.5),
-              ),
-              SizedBox(
-                width: 380,
-                child: GitGraphDetailPane(
-                  onBack: () => cubit.selectCommit(null),
+            second: GitGraphDetailPane(
+              onBack: () => cubit.selectCommit(null),
+            ),
+          );
+        }
+        return Column(
+            children: [
+              GitGraphToolbar(state: state, workspaceId: widget.workspaceId),
+              if (headerVisible)
+                GitGraphColumnHeader(controller: _columnController),
+              Expanded(
+                child: _GraphList(
+                  state: state,
+                  workspaceId: widget.workspaceId,
+                  columnController: _columnController,
                 ),
               ),
+              if (state.errorMessage != null ||
+                  state.currentBranch.isNotEmpty)
+                _StatusBar(state: state),
             ],
-          ],
-        );
+          );
       },
     );
   }
@@ -238,10 +280,15 @@ class _NotARepositoryHint extends StatelessWidget {
 }
 
 class _GraphList extends StatefulWidget {
-  const _GraphList({required this.state, required this.workspaceId});
+  const _GraphList({
+    required this.state,
+    required this.workspaceId,
+    required this.columnController,
+  });
 
   final GitGraphState state;
   final String workspaceId;
+  final GitGraphColumnLayoutController columnController;
 
   @override
   State<_GraphList> createState() => _GraphListState();
@@ -305,6 +352,17 @@ class _GraphListState extends State<_GraphList> {
     }
 
     if (itemCount == 0) {
+      // 刷新进行中（git 子进程尚未返回）显示加载态而非「未找到提交」，
+      // 避免用户误以为仓库为空。
+      if (state.isRefreshing) {
+        return const Center(
+          child: SizedBox(
+            width: 18,
+            height: 18,
+            child: CircularProgressIndicator(strokeWidth: 2),
+          ),
+        );
+      }
       return Center(
         child: Text(
           context.l10n.gitGraphNoCommits,
@@ -323,6 +381,7 @@ class _GraphListState extends State<_GraphList> {
           return _UncommittedTile(
             dirtyCount: state.dirtyCount,
             workspaceId: widget.workspaceId,
+            columnController: widget.columnController,
           );
         }
         final rowIndex = index - (hasDirtyRow ? 1 : 0);
@@ -352,6 +411,7 @@ class _GraphListState extends State<_GraphList> {
         child: GitGraphRowTile(
           key: ValueKey('git-graph-row-${row.hash}'),
           row: row,
+          controller: widget.columnController,
           selected: state.selectedHash == row.hash,
           onTap: () => cubit.selectCommit(row.hash),
           onCommitHashTap: () => unawaited(_copyHash(tileContext, row.hash)),
@@ -396,10 +456,15 @@ class _GraphListState extends State<_GraphList> {
 }
 
 class _UncommittedTile extends StatefulWidget {
-  const _UncommittedTile({required this.dirtyCount, required this.workspaceId});
+  const _UncommittedTile({
+    required this.dirtyCount,
+    required this.workspaceId,
+    required this.columnController,
+  });
 
   final int dirtyCount;
   final String workspaceId;
+  final GitGraphColumnLayoutController columnController;
 
   @override
   State<_UncommittedTile> createState() => _UncommittedTileState();
@@ -444,61 +509,49 @@ class _UncommittedTileState extends State<_UncommittedTile> {
           ),
           child: SizedBox(
             height: GitGraphColumns.rowHeight,
-            child: Row(
-            children: [
-              SizedBox(
-                width: GitGraphColumns.graphWidthFor(maxSlot: 0),
-                child: Icon(
-                  Icons.edit_note_rounded,
-                  size: 18,
-                  color: cs.primary,
-                ),
-              ),
-              const SizedBox(width: GitGraphColumns.afterGraphGap),
-              Expanded(
-                flex: GitGraphColumns.descriptionFlex,
-                child: Row(
-                  children: [
-                    Text(
-                      context.l10n.gitGraphUncommittedChanges,
-                      style: TpTextStyles.of(
-                        context,
-                      ).mdColored(cs.onSurfaceVariant),
-                    ),
-                    const SizedBox(width: 6),
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 5,
-                        vertical: 1,
+            child: ListenableBuilder(
+              listenable: widget.columnController,
+              builder: (context, _) {
+                final controller = widget.columnController;
+                return GitGraphColumnsRow(
+                  layout: controller.layout,
+                  graph: Icon(
+                    Icons.edit_note_rounded,
+                    size: 18,
+                    color: cs.primary,
+                  ),
+                  description: Row(
+                    children: [
+                      Text(
+                        context.l10n.gitGraphUncommittedChanges,
+                        style: TpTextStyles.of(
+                          context,
+                        ).mdColored(cs.onSurfaceVariant),
                       ),
-                      decoration: BoxDecoration(
-                        color: badgeColor,
-                        borderRadius: BorderRadius.circular(8),
+                      const SizedBox(width: 6),
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 5,
+                          vertical: 1,
+                        ),
+                        decoration: BoxDecoration(
+                          color: badgeColor,
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Text(
+                          '${widget.dirtyCount}',
+                          style: TpTextStyles.of(context).md,
+                        ),
                       ),
-                      child: Text(
-                        '${widget.dirtyCount}',
-                        style: TpTextStyles.of(context).md,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(width: GitGraphColumns.metaGap),
-              const Flexible(
-                flex: GitGraphColumns.dateFlex,
-                fit: FlexFit.loose,
-                child: SizedBox(width: double.infinity),
-              ),
-              const SizedBox(width: GitGraphColumns.metaGap),
-              const Flexible(
-                flex: GitGraphColumns.authorFlex,
-                fit: FlexFit.loose,
-                child: SizedBox(width: double.infinity),
-              ),
-              const SizedBox(width: GitGraphColumns.metaGap),
-              const SizedBox(width: GitGraphColumns.commitWidth),
-            ],
-          ),
+                    ],
+                  ),
+                  // 元数据列占位（与提交行同骨架），保证列边界对齐。
+                  date: const SizedBox.expand(),
+                  author: const SizedBox.expand(),
+                  commit: const SizedBox.expand(),
+                );
+              },
+            ),
           ),
         ),
       ),

@@ -61,12 +61,11 @@ void main() {
       'cursor',
       memberId: memberId,
     );
-    final authDir = fs.pathContext.join(
-      memberHome,
-      'home',
-      '.config',
-      'cursor',
-    );
+    // Seed at the platform auth anchor (macOS ~/.cursor, others
+    // ~/.config/cursor) so the lifecycle probes find the token on any host.
+    final authDir = CursorHomeLayout(
+      pathContext: fs.pathContext,
+    ).authDir(fs.pathContext.join(memberHome, 'home'));
     await fs.ensureDir(authDir);
     await fs.writeString(
       fs.pathContext.join(authDir, CursorHomeLayout.authFileName),

@@ -72,11 +72,14 @@ void main() {
     },
   );
 
-  // SelectionArea must be an *ancestor* of the scrollable so the framework's
-  // edge auto-scroll engages while drag-selecting (Scrollable's
-  // _ScrollableSelectionContainerDelegate). Sitting inside the scroll content
-  // (old flutter/flutter#110917 workaround) disables edge auto-scroll.
-  testWidgets('SelectionArea wraps SingleChildScrollView as scroll ancestor', (
+  // SelectionArea must sit *inside* the scroll content. As a scroll
+  // ancestor, Scrollable's _ScrollableSelectionContainerDelegate re-dispatches
+  // synthesized edge events from stale fragment geometry whenever the
+  // virtualized viewport mounts/unmounts turns, re-arming the edge auto
+  // scroller: a plain trackpad click on text then scrolls the thread upward
+  // uncontrollably, and selection highlights land above the pointer
+  // (flutter/flutter#110917 workaround).
+  testWidgets('SelectionArea nests inside SingleChildScrollView content', (
     tester,
   ) async {
     final store = ExternalStoreAiThreadRuntime()
@@ -88,22 +91,37 @@ void main() {
     final scrollView = find.byType(SingleChildScrollView);
     expect(scrollView, findsOneWidget);
     expect(
-      find.ancestor(of: scrollView, matching: find.byType(SelectionArea)),
+      find.descendant(of: scrollView, matching: find.byType(SelectionArea)),
       findsOneWidget,
     );
     expect(
-      find.descendant(of: scrollView, matching: find.byType(SelectionArea)),
+      find.ancestor(of: scrollView, matching: find.byType(SelectionArea)),
       findsNothing,
     );
   });
 
-  testWidgets('drag-selecting beyond the top edge auto-scrolls the thread', (
+  testWidgets('drag-selecting beyond the top edge does not scroll the thread', (
     tester,
   ) async {
+    // SelectionArea is nested inside the scroll content, so there is no
+    // selection edge auto-scroll at all: dragging beyond the viewport top
+    // while selecting must leave the scroll position (and pagination) alone.
+    // With SelectionArea as a scroll ancestor, the framework's auto scroller
+    // plus the virtualized viewport's mount churn re-armed each other and a
+    // plain click could crawl the thread upward forever.
     final store = ExternalStoreAiThreadRuntime()
       ..setMessages(_soloUserMessages(120));
+    var loadCalls = 0;
 
-    await tester.pumpWidget(_harness(runtime: store));
+    await tester.pumpWidget(
+      _harness(
+        runtime: store,
+        hasOlder: true,
+        onLoadOlder: () async {
+          loadCalls++;
+        },
+      ),
+    );
     await pumpUntilSettled(tester, timeout: const Duration(seconds: 30));
 
     final position = tester
@@ -127,103 +145,99 @@ void main() {
     await gesture.up();
     await pumpUntilSettled(tester);
 
-    expect(position.pixels, lessThan(before));
+    expect(position.pixels, closeTo(before, 2.0));
+    expect(loadCalls, 0, reason: 'selection drag must not trigger load-older');
   });
 
-  testWidgets(
-    'keeps scroll position when loading older history',
-    (tester) async {
-      final recent = _soloUserMessages(40);
-      final older = List.generate(
-        20,
-        (i) => AiMessage(
-          id: 'old$i',
-          role: AiRole.user,
-          parts: [AiTextPart(text: 'old msg $i')],
-        ),
-      );
-      final store = ExternalStoreAiThreadRuntime()..setMessages(recent);
-      final loadGate = Completer<void>();
-      var loadStarted = false;
+  testWidgets('keeps scroll position when loading older history', (
+    tester,
+  ) async {
+    final recent = _soloUserMessages(40);
+    final older = List.generate(
+      20,
+      (i) => AiMessage(
+        id: 'old$i',
+        role: AiRole.user,
+        parts: [AiTextPart(text: 'old msg $i')],
+      ),
+    );
+    final store = ExternalStoreAiThreadRuntime()..setMessages(recent);
+    final loadGate = Completer<void>();
+    var loadStarted = false;
 
-      Future<void> onLoadOlder() async {
-        loadStarted = true;
-        await loadGate.future;
-        store.setMessages([...older, ...recent]);
-      }
+    Future<void> onLoadOlder() async {
+      loadStarted = true;
+      await loadGate.future;
+      store.setMessages([...older, ...recent]);
+    }
 
-      await tester.pumpWidget(
-        _harness(runtime: store, hasOlder: true, onLoadOlder: onLoadOlder),
-      );
-      await pumpUntilSettled(tester);
+    await tester.pumpWidget(
+      _harness(runtime: store, hasOlder: true, onLoadOlder: onLoadOlder),
+    );
+    await pumpUntilSettled(tester);
 
-      final scrollable = find.byType(Scrollable).first;
-      for (var i = 0; i < 50; i++) {
-        await tester.drag(scrollable, const Offset(0, 400));
-        await tester.pump();
-      }
-      await pumpUntilSettled(tester);
+    final scrollable = find.byType(Scrollable).first;
+    for (var i = 0; i < 50; i++) {
+      await tester.drag(scrollable, const Offset(0, 400));
+      await tester.pump();
+    }
+    await pumpUntilSettled(tester);
 
-      for (var i = 0; i < 40 && !loadStarted; i++) {
-        await tester.pump(const Duration(milliseconds: 16));
-      }
-      expect(loadStarted, isTrue, reason: 'scroll near top must trigger load');
+    for (var i = 0; i < 40 && !loadStarted; i++) {
+      await tester.pump(const Duration(milliseconds: 16));
+    }
+    expect(loadStarted, isTrue, reason: 'scroll near top must trigger load');
 
-      final anchorFinder = find.text('msg 0');
-      expect(anchorFinder, findsOneWidget);
-      final anchorYBefore = tester.getTopLeft(anchorFinder).dy;
+    final anchorFinder = find.text('msg 0');
+    expect(anchorFinder, findsOneWidget);
+    final anchorYBefore = tester.getTopLeft(anchorFinder).dy;
 
-      loadGate.complete();
-      await pumpUntilSettled(
-        tester,
-        timeout: const Duration(seconds: 30),
-      );
+    loadGate.complete();
+    await pumpUntilSettled(tester, timeout: const Duration(seconds: 30));
 
-      expect(find.text('old msg 0'), findsOneWidget);
-      final anchorYAfter = tester.getTopLeft(anchorFinder).dy;
-      expect(
-        anchorYAfter,
-        closeTo(anchorYBefore, 2.0),
-        reason: 'prepend must not jump the anchor message on screen',
-      );
-    },
-  );
+    expect(find.text('old msg 0'), findsOneWidget);
+    final anchorYAfter = tester.getTopLeft(anchorFinder).dy;
+    expect(
+      anchorYAfter,
+      closeTo(anchorYBefore, 2.0),
+      reason: 'prepend must not jump the anchor message on screen',
+    );
+  });
 
-  testWidgets(
-    'load older page failure leaves current messages mounted',
-    (tester) async {
-      final store = ExternalStoreAiThreadRuntime()
-        ..setMessages(_soloUserMessages(40));
-      var loadStarted = false;
+  testWidgets('load older page failure leaves current messages mounted', (
+    tester,
+  ) async {
+    final store = ExternalStoreAiThreadRuntime()
+      ..setMessages(_soloUserMessages(40));
+    var loadStarted = false;
 
-      Future<void> onLoadOlder() async {
-        loadStarted = true;
-        // Seat records a soft error and does not prepend.
-      }
+    Future<void> onLoadOlder() async {
+      loadStarted = true;
+      // Seat records a soft error and does not prepend.
+    }
 
-      await tester.pumpWidget(
-        _harness(runtime: store, hasOlder: true, onLoadOlder: onLoadOlder),
-      );
-      await pumpUntilSettled(tester);
+    await tester.pumpWidget(
+      _harness(runtime: store, hasOlder: true, onLoadOlder: onLoadOlder),
+    );
+    await pumpUntilSettled(tester);
 
-      final scrollable = find.byType(Scrollable).first;
-      for (var i = 0; i < 50; i++) {
-        await tester.drag(scrollable, const Offset(0, 400));
-        await tester.pump();
-      }
-      await pumpUntilSettled(tester);
+    final scrollable = find.byType(Scrollable).first;
+    for (var i = 0; i < 50; i++) {
+      await tester.drag(scrollable, const Offset(0, 400));
+      await tester.pump();
+    }
+    await pumpUntilSettled(tester);
 
-      for (var i = 0; i < 40 && !loadStarted; i++) {
-        await tester.pump(const Duration(milliseconds: 16));
-      }
-      expect(loadStarted, isTrue);
-      await pumpUntilSettled(tester);
+    for (var i = 0; i < 40 && !loadStarted; i++) {
+      await tester.pump(const Duration(milliseconds: 16));
+    }
+    expect(loadStarted, isTrue);
+    await pumpUntilSettled(tester);
 
-      expect(find.text('msg 0'), findsOneWidget);
-      expect(find.text('msg 39'), findsOneWidget);
-      expect(store.messages.length, 40);
-    },
-  );
+    expect(find.text('msg 0'), findsOneWidget);
+    expect(find.text('msg 39'), findsOneWidget);
+    expect(store.messages.length, 40);
+  });
 
   testWidgets(
     'SessionHistoryThread with hasOlder exposes viewport header and load-older',
@@ -479,47 +493,46 @@ void main() {
     expect(find.text('Running…'), findsOneWidget);
   });
 
-  testWidgets(
-    'running footer spinner ticks paint without rebuilding widgets',
-    (tester) async {
-      final store = ExternalStoreAiThreadRuntime()
-        ..setMessages(_soloUserMessages(5));
+  testWidgets('running footer spinner ticks paint without rebuilding widgets', (
+    tester,
+  ) async {
+    final store = ExternalStoreAiThreadRuntime()
+      ..setMessages(_soloUserMessages(5));
 
-      await tester.pumpWidget(
-        _harness(runtime: store, liveChrome: SessionHistoryLiveChrome.running),
-      );
-      await tester.pump();
+    await tester.pumpWidget(
+      _harness(runtime: store, liveChrome: SessionHistoryLiveChrome.running),
+    );
+    await tester.pump();
 
-      final paintFinder = find.descendant(
+    final paintFinder = find.descendant(
+      of: find.byKey(kSessionHistoryRunningFooterKey),
+      matching: find.byType(CustomPaint),
+    );
+    expect(paintFinder, findsOneWidget);
+    final paintBefore = tester.widget<CustomPaint>(paintFinder);
+    final painterBefore = paintBefore.painter;
+
+    await tester.pump(const Duration(milliseconds: 50));
+    await tester.pump(const Duration(milliseconds: 50));
+
+    expect(paintFinder, findsOneWidget);
+    final paintAfter = tester.widget<CustomPaint>(paintFinder);
+    expect(
+      identical(paintBefore, paintAfter),
+      isTrue,
+      reason:
+          'vsync ticks must repaint the running/starting spinner, not '
+          'rebuild CustomPaint / AnimatedBuilder',
+    );
+    expect(identical(painterBefore, paintAfter.painter), isTrue);
+    expect(
+      find.descendant(
         of: find.byKey(kSessionHistoryRunningFooterKey),
-        matching: find.byType(CustomPaint),
-      );
-      expect(paintFinder, findsOneWidget);
-      final paintBefore = tester.widget<CustomPaint>(paintFinder);
-      final painterBefore = paintBefore.painter;
-
-      await tester.pump(const Duration(milliseconds: 50));
-      await tester.pump(const Duration(milliseconds: 50));
-
-      expect(paintFinder, findsOneWidget);
-      final paintAfter = tester.widget<CustomPaint>(paintFinder);
-      expect(
-        identical(paintBefore, paintAfter),
-        isTrue,
-        reason:
-            'vsync ticks must repaint the running/starting spinner, not '
-            'rebuild CustomPaint / AnimatedBuilder',
-      );
-      expect(identical(painterBefore, paintAfter.painter), isTrue);
-      expect(
-        find.descendant(
-          of: find.byKey(kSessionHistoryRunningFooterKey),
-          matching: find.byType(CircularProgressIndicator),
-        ),
-        findsNothing,
-      );
-    },
-  );
+        matching: find.byType(CircularProgressIndicator),
+      ),
+      findsNothing,
+    );
+  });
 
   testWidgets('starting footer visible when liveChrome is starting', (
     tester,

@@ -318,6 +318,7 @@ class _VirtualMarkdownViewState extends State<VirtualMarkdownView> {
     return MarkdownResolvers(
       onLinkTap: onLinkTap,
       resolveImage: widget.resolvers.resolveImage,
+      buildImageWidget: widget.resolvers.buildImageWidget,
       createLinkRecognizer: (href) {
         final recognizer = TapGestureRecognizer()..onTap = () => onLinkTap(href);
         _linkRecognizers.add(recognizer);

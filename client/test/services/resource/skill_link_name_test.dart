@@ -28,14 +28,19 @@ void main() {
     );
   });
 
-  test('slash invocation uses exactly the target-safe link name', () {
-    const syntax = DefaultSkillInvocationSyntaxCapability();
-    const name = 'acme/plugin';
-    final invocation = syntax.skillInvocationText('review', namespace: name);
+  test(
+    'slash invocation uses colon namespace, not the filesystem link name',
+    () {
+      const syntax = DefaultSkillInvocationSyntaxCapability();
+      const name = 'acme/plugin';
+      final invocation = syntax.skillInvocationText('review', namespace: name);
 
-    expect(
-      invocation,
-      '/${targetSafeSkillLinkName('review', namespace: name)}',
-    );
-  });
+      expect(
+        targetSafeSkillLinkName('review', namespace: name),
+        'acme-plugin--review',
+      );
+      expect(invocation, '/acme-plugin:review');
+      expect(invocation, isNot(contains('--')));
+    },
+  );
 }

@@ -529,7 +529,7 @@ class _HomeTitleBarMobileDrawerTrigger extends StatelessWidget {
     }
 
     final composeLanding = context.select<WorkbenchCubit, bool>(
-      (w) => w.state.bar(activeTabKey!).center.landingActive,
+      (w) => w.centerLandingActive(activeTabKey!),
     );
     return BlocBuilder<LayoutCubit, LayoutState>(
       buildWhen: (a, b) =>

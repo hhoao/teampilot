@@ -7,7 +7,12 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../cubits/file_tree_cubit.dart';
 import '../../cubits/file_tree_root_mount.dart';
+import '../../cubits/session_preferences_cubit.dart';
+import '../../models/session_preferences.dart';
+import '../../services/event/event_publisher.dart';
 import '../../services/file_tree/workspace_file_tree_store.dart';
+import '../../services/git/git_auto_fetch_scheduler.dart';
+import '../../services/git/git_history_actions.dart';
 import '../../services/git/git_repo_store.dart';
 import '../../services/io/workspace_fs_watcher.dart';
 import '../../services/workspace/workspace_tools_context.dart';
@@ -61,9 +66,7 @@ class RightToolsLifecycle extends InheritedWidget {
   /// Like [of] but returns null when the host is absent (e.g. panel mounted
   /// standalone in tests).
   static RightToolsLifecycleData? maybeOf(BuildContext context) =>
-      context
-          .dependOnInheritedWidgetOfExactType<RightToolsLifecycle>()
-          ?.data;
+      context.dependOnInheritedWidgetOfExactType<RightToolsLifecycle>()?.data;
 
   @override
   bool updateShouldNotify(RightToolsLifecycle oldWidget) =>
@@ -103,6 +106,14 @@ class _RightToolsLifecycleHostState extends State<RightToolsLifecycleHost> {
 
   StreamSubscription<FsChangeBatch>? _diskWatchSub;
   Timer? _diskPollTimer;
+  GitAutoFetchScheduler? _autoFetchScheduler;
+  GitHistoryActions? _autoFetchActions;
+  String? _autoFetchTargetId;
+  Duration? _autoFetchIntervalUsed;
+  StreamSubscription<SessionPreferencesState>? _sessionPrefsSub;
+  bool _sessionPrefsResolved = false;
+  bool _autoFetchEnabled = true;
+  int _autoFetchIntervalMinutes = 5;
 
   /// 源代码管理面板当前选中的 repo root；面板挂载/切换时写入。
   final ValueNotifier<String?> _selectedGitRoot = ValueNotifier<String?>(null);
@@ -173,6 +184,7 @@ class _RightToolsLifecycleHostState extends State<RightToolsLifecycleHost> {
     _diskWatchSub = null;
     _diskPollTimer?.cancel();
     _diskPollTimer = null;
+    _autoFetchScheduler?.stop();
     _fsWatcher?.suspend();
     _diskListenersActive = false;
   }
@@ -184,6 +196,7 @@ class _RightToolsLifecycleHostState extends State<RightToolsLifecycleHost> {
     }
     _attachDiskListeners();
     _diskListenersActive = true;
+    _syncAutoFetchScheduler();
   }
 
   void _attachDiskListeners() {
@@ -204,9 +217,48 @@ class _RightToolsLifecycleHostState extends State<RightToolsLifecycleHost> {
   }
 
   @override
+  void initState() {
+    super.initState();
+    _selectedGitRoot.addListener(_onSelectedGitRootChanged);
+  }
+
+  @override
   void didChangeDependencies() {
     super.didChangeDependencies();
+    _resolveSessionPreferences();
     _onForegroundChanged();
+  }
+
+  /// Resolves the app-level session preferences once; standalone test mounts
+  /// without the provider are fine (auto-fetch simply stays default-config).
+  void _resolveSessionPreferences() {
+    if (_sessionPrefsResolved) return;
+    _sessionPrefsResolved = true;
+    final SessionPreferencesCubit cubit;
+    try {
+      cubit = context.read<SessionPreferencesCubit>();
+    } on ProviderNotFoundException {
+      return;
+    }
+    _applySessionPreferences(cubit.state.preferences);
+    _sessionPrefsSub = cubit.stream.listen(
+      (state) => _applySessionPreferences(state.preferences),
+    );
+  }
+
+  void _applySessionPreferences(SessionPreferences prefs) {
+    final enabled = prefs.gitAutoFetchEnabled;
+    final minutes = prefs.gitAutoFetchIntervalMinutes;
+    if (enabled == _autoFetchEnabled && minutes == _autoFetchIntervalMinutes) {
+      return;
+    }
+    _autoFetchEnabled = enabled;
+    _autoFetchIntervalMinutes = minutes;
+    if (mounted) _syncAutoFetchScheduler();
+  }
+
+  void _onSelectedGitRootChanged() {
+    if (mounted) _syncAutoFetchScheduler();
   }
 
   @override
@@ -334,6 +386,7 @@ class _RightToolsLifecycleHostState extends State<RightToolsLifecycleHost> {
     final storeTargetChanged = storeTargetId != _lastTargetId;
     final mounts = _fileTreeMounts(scope);
 
+    var mountsChangedWithoutTargetChange = false;
     if (storeTargetChanged) {
       if (_lastTargetId != null) {
         context.read<WorkspaceFileTreeStore>().removeWorkspaceTarget(
@@ -356,10 +409,22 @@ class _RightToolsLifecycleHostState extends State<RightToolsLifecycleHost> {
     } else if (_fileTreeCubit != null &&
         !_mountListsEqual(_lastMounts, mounts)) {
       _scheduleMountRoots(mounts);
+      mountsChangedWithoutTargetChange = true;
     }
 
     _lastMounts = mounts;
     _scope = scope;
+    if (mountsChangedWithoutTargetChange) {
+      // Roots changed with the same store target (workspace folder
+      // added/removed): re-evaluate the auto-fetch target so the scheduler
+      // does not keep fetching a stale/removed root until the next
+      // selection/pref/visibility trigger. Direct
+      // [_syncAutoFetchScheduler] (not [_scheduleDiskRefresh]) — the poll
+      // cadence and the file-tree/git warm-ups should not be reset for a
+      // roots-only change, and a same-root start is already a no-op.
+      // Runs after `_scope = scope` so the new roots are visible to it.
+      _syncAutoFetchScheduler();
+    }
     if (!mounted) return;
 
     final cubitChanged = !identical(prevCubit, _fileTreeCubit);
@@ -414,7 +479,11 @@ class _RightToolsLifecycleHostState extends State<RightToolsLifecycleHost> {
       _fsWatcher = null;
       if (old != null) await old.stopAndDispose();
       if (!mounted) return;
-      _fsWatcher = WorkspaceFsWatcher(fs: fs, root: cwd);
+      _fsWatcher = WorkspaceFsWatcher(
+        fs: fs,
+        root: cwd,
+        dispatcher: EventPublisher.instance.attachedDispatcher,
+      );
       if (_diskListenersActive && widget.preferences.needsDiskSideEffects) {
         _fsWatcher?.resume();
       }
@@ -432,7 +501,18 @@ class _RightToolsLifecycleHostState extends State<RightToolsLifecycleHost> {
     _diskPollTimer = null;
     _diskListenersActive = false;
 
-    if (!widget.preferences.needsDiskSideEffects) return;
+    if (!widget.preferences.needsDiskSideEffects) {
+      // With git and the file tree both hidden (host kept alive by
+      // search/members/board), there is no later sync on this path — stop
+      // here or the scheduler would keep fetching every interval until the
+      // next suspend cycle or dispose. On the active path below, the
+      // trailing [_syncAutoFetchScheduler] keeps a same-root start a no-op,
+      // so stopping here would instead restart the cadence with a spurious
+      // immediate fetch on every re-run (unrelated tool toggle, roots
+      // change, …).
+      _autoFetchScheduler?.stop();
+      return;
+    }
 
     final needsFileTree = widget.preferences.fileTreeVisible;
     final needsGit = widget.preferences.gitVisible;
@@ -445,6 +525,64 @@ class _RightToolsLifecycleHostState extends State<RightToolsLifecycleHost> {
     }
     _attachDiskListeners();
     _diskListenersActive = true;
+    _syncAutoFetchScheduler();
+  }
+
+  /// Auto-fetch runs only while the git tool is enabled, the lifecycle is
+  /// foreground-active and disk listeners are attached (see
+  /// [_setupDiskRefresh] / [_suspendDiskSideEffects]), and the user setting is
+  /// on. Target root mirrors the status panel's selection (fallback: first
+  /// root — same semantics as [GitRepoStore.refreshAll]).
+  void _syncAutoFetchScheduler() {
+    if (!_lifecycleActive || !_diskListenersActive) {
+      // Backgrounded (or between attach/detach): a session-prefs emission
+      // (interval change / re-enable fired from the settings UI regardless of
+      // this host's visibility) must not start fetches while hidden. The
+      // next resume re-syncs with the current state.
+      _autoFetchScheduler?.stop();
+      return;
+    }
+    final tools = _scope?.tools;
+    final roots = _scope?.roots ?? const <String>[];
+    final selected = _selectedGitRoot.value;
+    final target = selected != null && roots.contains(selected)
+        ? selected
+        : (roots.isNotEmpty ? roots.first : null);
+
+    if (tools == null ||
+        target == null ||
+        !_autoFetchEnabled ||
+        !widget.preferences.gitVisible) {
+      _autoFetchScheduler?.stop();
+      return;
+    }
+
+    var actionsChanged =
+        _autoFetchActions == null || _autoFetchTargetId != tools.targetId;
+    if (actionsChanged) {
+      _autoFetchActions =
+          GitHistoryActions.debugOverrideFactory?.call() ??
+          GitHistoryActions.forContext(tools.context);
+      _autoFetchTargetId = tools.targetId;
+    }
+
+    final interval = Duration(minutes: _autoFetchIntervalMinutes);
+    if (actionsChanged ||
+        _autoFetchScheduler == null ||
+        _autoFetchIntervalUsed != interval) {
+      // Actions or interval changed: the old scheduler's fetch closure is
+      // stale — replace the whole scheduler (its in-flight fetch, if any,
+      // completes harmlessly).
+      _autoFetchScheduler?.dispose();
+      _autoFetchIntervalUsed = interval;
+      final actions = _autoFetchActions!;
+      _autoFetchScheduler = GitAutoFetchScheduler(
+        fetch: actions.fetchAllQuiet,
+        onFetched: _warmGit,
+        interval: interval,
+      );
+    }
+    _autoFetchScheduler!.start(target);
   }
 
   void _onDiskChanged(FsChangeBatch batch) {
@@ -496,6 +634,7 @@ class _RightToolsLifecycleHostState extends State<RightToolsLifecycleHost> {
   }
 
   void _warmGit() {
+    if (!mounted) return;
     final scope = _scope;
     final tools = scope?.tools?.context;
     if (scope == null || tools == null) return;
@@ -514,11 +653,16 @@ class _RightToolsLifecycleHostState extends State<RightToolsLifecycleHost> {
   void dispose() {
     _diskWatchSub?.cancel();
     _diskPollTimer?.cancel();
+    _sessionPrefsSub?.cancel();
+    _autoFetchScheduler?.dispose();
+    _selectedGitRoot.removeListener(_onSelectedGitRootChanged);
     _selectedGitRoot.dispose();
     final watcher = _fsWatcher;
     _fsWatcher = null;
     if (watcher != null) {
-      _watcherLifecycle = _watcherLifecycle.then((_) => watcher.stopAndDispose());
+      _watcherLifecycle = _watcherLifecycle.then(
+        (_) => watcher.stopAndDispose(),
+      );
     }
     super.dispose();
   }

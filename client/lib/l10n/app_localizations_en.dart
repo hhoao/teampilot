@@ -582,6 +582,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get gitNotARepository => 'This folder is not a Git repository';
 
   @override
+  String get gitInitializeRepository => 'Create Git repository';
+
+  @override
   String get gitNotInstalled =>
       'Git was not found. Install Git to use source control.';
 
@@ -660,6 +663,9 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get gitPull => 'Pull';
+
+  @override
+  String get gitFetch => 'Fetch from remote';
 
   @override
   String get gitRefresh => 'Refresh';
@@ -1467,6 +1473,11 @@ class AppLocalizationsEn extends AppLocalizations {
   String get workspaceSearchError => 'Search failed — check the pattern';
 
   @override
+  String workspaceSearchSliceError(String directory) {
+    return 'Search failed in \"$directory\"';
+  }
+
+  @override
   String get appDropdownSearchHint => 'Search…';
 
   @override
@@ -2074,6 +2085,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get removeWorkspaceDirectory => 'Remove directory';
 
   @override
+  String get removeWorkspaceMachine => 'Remove machine';
+
+  @override
   String get workspaceDisplayName => 'Display name';
 
   @override
@@ -2164,6 +2178,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get renameConversation => 'Rename conversation';
 
   @override
+  String get sessionOpenToSide => 'Open to the Side';
+
+  @override
   String get deleteConversation => 'Delete conversation';
 
   @override
@@ -2246,6 +2263,12 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get closeAllTabs => 'Close All';
+
+  @override
+  String get tabMenuSplitRight => 'Split Right';
+
+  @override
+  String get tabMenuSplitDown => 'Split Down';
 
   @override
   String get session => 'Session';
@@ -3115,6 +3138,25 @@ class AppLocalizationsEn extends AppLocalizations {
       'When a session finishes a turn and becomes idle, show an OS notification in addition to the in-app notification center.';
 
   @override
+  String get gitAutoFetchTitle => 'Auto-fetch remote updates';
+
+  @override
+  String get gitAutoFetchDescription =>
+      'Periodically run a non-interactive git fetch --all --prune for the repository shown in the source-control panel, keeping ahead/behind counts fresh.';
+
+  @override
+  String get gitAutoFetchIntervalTitle => 'Auto-fetch interval (minutes)';
+
+  @override
+  String get gitAutoFetchIntervalDescription =>
+      'How often the selected repository is fetched while the panel is open.';
+
+  @override
+  String gitAutoFetchIntervalMinutesOption(int minutes) {
+    return 'Every $minutes min';
+  }
+
+  @override
   String get memberTargetAssignmentTitle => 'Member machine';
 
   @override
@@ -3499,6 +3541,21 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get appProviderApiKeyEditHint =>
       'Leave blank to keep the existing key';
+
+  @override
+  String get appProviderCredentialLinkMode => 'API key source';
+
+  @override
+  String get appProviderCredentialLinkOwnKey => 'Use own API key';
+
+  @override
+  String appProviderCredentialLinkedTo(Object entry) {
+    return 'Using secret of $entry';
+  }
+
+  @override
+  String get appProviderCredentialLinkEmpty =>
+      'No secret-backed balance entries yet';
 
   @override
   String get reveal => 'Reveal';
@@ -7466,6 +7523,22 @@ class AppLocalizationsEn extends AppLocalizations {
   String get shortcutsRunRestart => 'Restart Run';
 
   @override
+  String get shortcutsWorkbenchSplitRight => 'Split Editor Right';
+
+  @override
+  String get shortcutsWorkbenchSplitDown => 'Split Editor Down';
+
+  @override
+  String get shortcutsWorkbenchSplitReset => 'Reset Editor Layout';
+
+  @override
+  String get shortcutsWorkbenchFocusNextGroup => 'Focus Next Editor Group';
+
+  @override
+  String get shortcutsWorkbenchMoveTabToNextGroup =>
+      'Move Tab to Next Editor Group';
+
+  @override
   String get shortcutsCategoryRun => 'Run';
 
   @override
@@ -8217,6 +8290,21 @@ class AppLocalizationsEn extends AppLocalizations {
       'secret reads the form; cli:… reads CLI login.';
 
   @override
+  String get managedProvidersCredentialLinkMode => 'Credential source mode';
+
+  @override
+  String get managedProvidersCredentialLinkManual => 'Enter secret manually';
+
+  @override
+  String managedProvidersCredentialLinkedTo(Object provider) {
+    return 'Using credential of $provider';
+  }
+
+  @override
+  String get managedProvidersCredentialLinkEmpty =>
+      'No API-key providers configured yet';
+
+  @override
   String get managedProvidersCredentialTemplate => 'Credential template';
 
   @override
@@ -8559,6 +8647,17 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
+  String get gitGraphDeleteRemoteBranchTitle => 'Delete remote branch';
+
+  @override
+  String gitGraphDeleteRemoteBranchConfirmBody(String name) {
+    return 'Delete remote branch \"$name\" on the shared repository? This affects all collaborators and cannot be undone.';
+  }
+
+  @override
+  String get gitGraphViewTagHistory => 'View this tag\'s history';
+
+  @override
   String gitGraphMergeIntoCurrent(String branch) {
     return 'Merge $branch into current branch';
   }
@@ -8623,6 +8722,17 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get gitGraphColumnCommit => 'Commit';
+
+  @override
+  String get gitGraphColumns => 'Columns';
+
+  @override
+  String get gitGraphColumnHeaderLabel => 'Column header';
+
+  @override
+  String gitGraphHideColumn(String column) {
+    return 'Hide $column';
+  }
 
   @override
   String get gitGraphShowColumnHeader => 'Show column header';

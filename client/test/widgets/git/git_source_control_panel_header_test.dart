@@ -175,4 +175,17 @@ void main() {
       expect(find.text('↑171 ↓0'), findsOneWidget);
     },
   );
+
+  testWidgets(
+    'header action buttons stay right-aligned when the panel has extra space',
+    (tester) async {
+      await pumpPanel(tester, branch: 'main', ahead: 0, behind: 0, width: 720);
+
+      final panel = tester.getRect(find.byType(GitSourceControlPanel));
+      final refresh = tester.getRect(find.byIcon(Icons.refresh));
+      // 10px panel padding; refresh sits in a 28px compact button around a
+      // 16px icon, so the glyph's right edge is inset ~16px from the panel.
+      expect(refresh.right, closeTo(panel.right - 16, 2));
+    },
+  );
 }

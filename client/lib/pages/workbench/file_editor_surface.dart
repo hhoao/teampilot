@@ -22,8 +22,10 @@ import '../../services/editor/file_editor_theme.dart';
 import '../../services/editor/file_editor_toolbar.dart';
 import '../../services/editor/html_view_mode_store.dart';
 import '../../services/editor/markdown_preview_find_controller.dart';
-import '../../services/editor/markdown_preview_link_handler.dart';
+import '../../services/editor/markdown_preview_link_handler.dart'
+    hide isSvgPreviewPath;
 import '../../services/editor/markdown_view_mode_store.dart';
+import '../../services/editor/svg_view_mode_store.dart';
 import '../../services/editor_platform/document_session.dart';
 import '../../services/editor_platform/editor_viewport_token_binder.dart';
 import '../../services/selection_ai/selection_ask_ai.dart';
@@ -33,9 +35,10 @@ import '../../widgets/app_toast/app_toast.dart';
 import '../../widgets/workbench/code_editor_find_panel.dart';
 import '../../widgets/workbench/file_diff_surface_toggle.dart';
 import '../../widgets/workbench/markdown_view_mode_toggle.dart';
-import '../../widgets/workbench/html_view_mode_toggle.dart';
+import '../../widgets/workbench/editor_view_mode_toggle.dart';
 import 'file_editor_image_preview.dart';
 import 'markdown_preview_pane.dart';
+import 'svg_preview_pane.dart';
 import '../preview/html_preview_pane.dart';
 
 /// Shell fill for file preview — matches floating panel / window chrome
@@ -297,6 +300,7 @@ class _FileEditorToolbar extends StatelessWidget {
     final canToggleDiff = gitCubitForAbsolutePath(context, path) != null;
     final isMarkdown = isMarkdownEditorPath(path);
     final isHtml = isHtmlPreviewPath(path);
+    final isSvg = isSvgPreviewPath(path);
     final opener = context.read<WorkbenchEditorOpener>();
     final insets = TpWidthValueScope.of<_FileEditorInsets>(context);
     final iconColor = Theme.of(context).colorScheme.tpIconMuted;
@@ -373,10 +377,31 @@ class _FileEditorToolbar extends StatelessWidget {
             ListenableBuilder(
               listenable: opener.htmlViewModes,
               builder: (context, _) {
-                return HtmlViewModeToggle(
-                  mode: opener.htmlViewModes.modeFor(path),
-                  onModeChanged: (mode) =>
-                      opener.htmlViewModes.setMode(path, mode),
+                final mode = opener.htmlViewModes.modeFor(path);
+                return EditorViewModeToggle(
+                  editSelected: mode == HtmlViewMode.edit,
+                  previewSelected: mode == HtmlViewMode.preview,
+                  onEditTap: () =>
+                      opener.htmlViewModes.setMode(path, HtmlViewMode.edit),
+                  onPreviewTap: () =>
+                      opener.htmlViewModes.setMode(path, HtmlViewMode.preview),
+                );
+              },
+            ),
+          ],
+          if (isSvg) ...[
+            const SizedBox(width: 4),
+            ListenableBuilder(
+              listenable: opener.svgViewModes,
+              builder: (context, _) {
+                final mode = opener.svgViewModes.modeFor(path);
+                return EditorViewModeToggle(
+                  editSelected: mode == SvgViewMode.edit,
+                  previewSelected: mode == SvgViewMode.preview,
+                  onEditTap: () =>
+                      opener.svgViewModes.setMode(path, SvgViewMode.edit),
+                  onPreviewTap: () =>
+                      opener.svgViewModes.setMode(path, SvgViewMode.preview),
                 );
               },
             ),
@@ -432,6 +457,42 @@ class _FileEditorBody extends StatelessWidget {
           height: 24,
           child: CircularProgressIndicator(strokeWidth: 2),
         ),
+      );
+    }
+
+    if (isSvgPreviewPath(path)) {
+      final opener = context.read<WorkbenchEditorOpener>();
+      return ListenableBuilder(
+        listenable: opener.svgViewModes,
+        builder: (context, _) {
+          final mode = opener.svgViewModes.modeFor(path);
+          if (model.loadError != null && mode == SvgViewMode.preview) {
+            return Center(
+              child: Padding(
+                padding: const EdgeInsets.all(16),
+                child: Text(
+                  l10n.editorPanelErrorMessage(model.loadError!),
+                  textAlign: TextAlign.center,
+                ),
+              ),
+            );
+          }
+
+          final editor = context.read<EditorCubit>();
+          final controller = editor.controllerFor(workspaceId, path);
+          if (controller == null) {
+            return Center(child: Text(l10n.editorNotReady));
+          }
+          if (mode == SvgViewMode.preview) {
+            return SvgPreviewPane(workspaceId: workspaceId, path: path);
+          }
+          return _CodeEditorPane(
+            workspaceId: workspaceId,
+            path: path,
+            controller: controller,
+            readOnly: model.readOnly,
+          );
+        },
       );
     }
 
@@ -514,6 +575,15 @@ class _FileEditorBody extends StatelessWidget {
                 markdownFilePath: path,
                 workspaceRoots: roots,
               ),
+              buildImageWidget:
+                  (src, {required inline, required inlineHeight}) =>
+                      buildMarkdownPreviewImage(
+                        src: src,
+                        markdownFilePath: path,
+                        workspaceRoots: roots,
+                        inline: inline,
+                        inlineHeight: inlineHeight,
+                      ),
             ),
             codeBlockMode: context.select<LayoutCubit, ContentDisplayMode>(
               (c) => c.state.preferences.fileCodeBlockMode,

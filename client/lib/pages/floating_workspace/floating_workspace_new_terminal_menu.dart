@@ -40,12 +40,12 @@ Future<void> showFloatingNewTerminalMenu({
     globalPosition: globalPosition,
     folders: folders,
     connector: connector,
-    onSessionSelected: (spec) {
+    onSessionSelected: (spec, launchCwd) {
       unawaited(
         launcher.openAndSelect(
           workspaceId: workspaceId,
           tabScopeId: workspaceId,
-          cwd: cwd,
+          cwd: launchCwd ?? cwd,
           spec: spec,
           sshConnectFailedMessage: sshFailed,
           folders: folders,

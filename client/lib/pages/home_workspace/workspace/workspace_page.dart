@@ -22,6 +22,7 @@ import '../../../services/expert_hub/expert_capability_resolver.dart';
 import '../../../services/expert_hub/expert_landing_deep_link.dart';
 import '../../../services/expert_hub/local_expert_store.dart';
 import '../../../services/storage/home_storage.dart';
+import '../../../services/workbench/workbench_layout_persistence.dart';
 import '../../../theme/workspace_surface_layers.dart';
 import '../../../utils/logging/logger.dart';
 import '../../../widgets/app_toast/app_toast.dart';
@@ -251,6 +252,11 @@ class _WorkspacePageState extends State<WorkspacePage> {
       widget.workspaceId,
     );
     if (!mounted) return;
+    // Land the persisted split-layout snapshot before opening the deep-linked
+    // tab, so the restore cannot reset the tab away (no-op when already
+    // restored; concurrent callers share the in-flight restore).
+    await _restoreWorkbenchLayoutSnapshot();
+    if (!mounted) return;
 
     final session = await _resolveSessionForDeepLink(sessionId);
     if (!mounted) return;
@@ -323,8 +329,31 @@ class _WorkspacePageState extends State<WorkspacePage> {
       scopeSessionsToSelectedTeam: false,
     );
     unawaited(
-      context.read<ChatCubit>().ensureSessionsForWorkspace(widget.workspaceId),
+      context
+          .read<ChatCubit>()
+          .ensureSessionsForWorkspace(widget.workspaceId)
+          .then((_) => _restoreWorkbenchLayoutSnapshot()),
     );
+  }
+
+  /// Applies the workspace's persisted workbench split-layout snapshot once
+  /// its sessions have rehydrated, so session-id resolution (tab pruning) is
+  /// accurate. Chained after [ChatCubit.ensureSessionsForWorkspace] (the
+  /// activation chain) and awaited by the session deep-link path before its
+  /// tab opens — [WorkbenchLayoutPersistence.restoreForWorkspace] is at-most-
+  /// once per workspace and shares the in-flight future across callers, so a
+  /// deep-linked session tab always opens after the snapshot lands instead of
+  /// being reset away. No-op when this widget tree has no coordinator (pure
+  /// widget tests).
+  Future<void> _restoreWorkbenchLayoutSnapshot() async {
+    if (!mounted) return;
+    final WorkbenchLayoutPersistence persistence;
+    try {
+      persistence = context.read<WorkbenchLayoutPersistence>();
+    } on ProviderNotFoundException {
+      return; // Isolated widget tests may not provide the coordinator.
+    }
+    await persistence.restoreForWorkspace(widget.workspaceId);
   }
 
   @override

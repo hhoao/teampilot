@@ -25,6 +25,9 @@ class WorkspaceShell extends StatelessWidget {
     this.onTabCloseRight,
     this.onTabCloseAll,
     this.onTabPin,
+    this.onTabSplitRight,
+    this.onTabSplitDown,
+    this.tabDrag,
     this.onTabsReorder,
     this.showNewChatButton = false,
     this.showTabBar = true,
@@ -52,6 +55,13 @@ class WorkspaceShell extends StatelessWidget {
   /// Closes every tab in the active workspace's strip.
   final ValueChanged<int>? onTabCloseAll;
   final ValueChanged<int>? onTabPin;
+
+  /// Context-menu split entries (index-based, see [WorkspaceShellTabRow]).
+  final ValueChanged<int>? onTabSplitRight;
+  final ValueChanged<int>? onTabSplitDown;
+
+  /// Drag-source wiring for the tab chips (split-group tab drags).
+  final WorkspaceShellTabDrag? tabDrag;
 
   /// Material [ReorderableListView.onReorderItem] for the center strip.
   final ReorderCallback? onTabsReorder;
@@ -136,6 +146,9 @@ class WorkspaceShell extends StatelessWidget {
             onTabCloseRight: onTabCloseRight,
             onTabCloseAll: onTabCloseAll,
             onTabPin: onTabPin,
+            onTabSplitRight: onTabSplitRight,
+            onTabSplitDown: onTabSplitDown,
+            tabDrag: tabDrag,
             onReorder: onTabsReorder,
             newChatButton: showNewChatButton
                 ? WorkspaceShellNewChatButton(

@@ -211,7 +211,8 @@ For post-frame work (`ChatCubit`), use `PostFrameTestHarness` / `runScheduledCal
 
 | Doc | Topic |
 |-----|--------|
-| [AGENTS.md](../AGENTS.md) | Architecture |
+| [AGENTS.md](../AGENTS.md) | AI guide: hard rules, doc index |
+| [ARCHITECTURE.md](ARCHITECTURE.md) | Architecture, key paths |
 | [DEVELOPMENT.md](DEVELOPMENT.md) | Commands, integration tests |
 | [DEBUGGING.md](DEBUGGING.md) | Debugging process |
 | [PERFORMANCE_ANALYSIS.md](PERFORMANCE_ANALYSIS.md) | DevTools snapshot CLI |

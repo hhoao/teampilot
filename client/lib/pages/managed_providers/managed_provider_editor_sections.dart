@@ -20,6 +20,7 @@ class ManagedProviderBasicsSection extends StatelessWidget {
     required this.onQuickPresetChanged,
     required this.onEnabledChanged,
     this.credentialSecretFocusNode,
+    this.hideSecret = false,
     super.key,
   });
 
@@ -33,6 +34,10 @@ class ManagedProviderBasicsSection extends StatelessWidget {
   final bool enabled;
   final ValueChanged<String> onQuickPresetChanged;
   final ValueChanged<bool> onEnabledChanged;
+
+  /// Suppresses the secret input when the entry's credential comes from a
+  /// provider-config reference (see ManagedProviderLinkSource).
+  final bool hideSecret;
 
   @override
   Widget build(BuildContext context) {
@@ -100,7 +105,7 @@ class ManagedProviderBasicsSection extends StatelessWidget {
             value: enabled,
             onChanged: onEnabledChanged,
           ),
-        if (_hasRequiredSecret(schema)) ...[
+        if (_hasRequiredSecret(schema) && !hideSecret) ...[
           const SizedBox(height: 12),
           _ManagedProviderTextField(
             fieldKey: const Key('managed-provider-credential-secret'),
@@ -309,6 +314,7 @@ class ManagedProviderCredentialsSection extends StatelessWidget {
     required this.credentialTemplateController,
     required this.credentialConfigured,
     this.onCredentialFieldChanged,
+    this.credentialLinkModeSelector,
     super.key,
   });
 
@@ -320,6 +326,10 @@ class ManagedProviderCredentialsSection extends StatelessWidget {
   final TextEditingController credentialTemplateController;
   final bool credentialConfigured;
   final ValueChanged<String>? onCredentialFieldChanged;
+
+  /// Rendered above the credential metadata: picks between the entry's own
+  /// secret and a provider-config reference (`provider:<cli>:<id>` source).
+  final Widget? credentialLinkModeSelector;
 
   @override
   Widget build(BuildContext context) {
@@ -333,6 +343,10 @@ class ManagedProviderCredentialsSection extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
+        if (credentialLinkModeSelector != null) ...[
+          credentialLinkModeSelector!,
+          const SizedBox(height: 12),
+        ],
         Text(
           credentialConfigured
               ? l10n.managedProvidersCredentialConfigured
@@ -414,6 +428,49 @@ class ManagedProviderCredentialsSection extends StatelessWidget {
           ),
         ],
       ],
+    );
+  }
+}
+
+/// Read-only summary of a provider-config credential reference
+/// (`provider:<cli>:<providerId>` source) shown in place of the secret input.
+class ManagedProviderLinkedCredentials extends StatelessWidget {
+  const ManagedProviderLinkedCredentials({
+    required this.providerName,
+    super.key,
+  });
+
+  /// Referenced provider row display name; empty when the row vanished.
+  final String providerName;
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = context.l10n;
+    return Container(
+      key: const Key('managed-provider-credential-link-chip'),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: Theme.of(context).colorScheme.outlineVariant),
+      ),
+      child: Row(
+        children: [
+          Icon(
+            Icons.link_outlined,
+            size: context.tpIconSizes.md,
+            color: Theme.of(context).colorScheme.onSurfaceVariant,
+          ),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              providerName.isEmpty
+                  ? l10n.managedProvidersCredentialLinkEmpty
+                  : l10n.managedProvidersCredentialLinkedTo(providerName),
+              style: TpTextStyles.of(context).sm,
+            ),
+          ),
+        ],
+      ),
     );
   }
 }

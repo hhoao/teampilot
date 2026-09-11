@@ -161,6 +161,16 @@ bool isHtmlPreviewPath(String filePath) {
   return ext.isNotEmpty && kHtmlPreviewExtensions.contains(ext);
 }
 
+const kSvgPreviewExtensions = {'svg'};
+
+/// Whether [filePath] renders through the in-app SVG preview pane
+/// (Edit|Preview, preview is the default). SVG also stays in
+/// [kEditorTextExtensions] for source editing.
+bool isSvgPreviewPath(String filePath) {
+  final ext = p.extension(filePath).replaceFirst('.', '').toLowerCase();
+  return ext.isNotEmpty && kSvgPreviewExtensions.contains(ext);
+}
+
 bool isWorkbenchOpenableFilePath(String filePath) =>
     isEditorOpenableFilePath(filePath) || isImagePreviewPath(filePath);
 

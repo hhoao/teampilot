@@ -52,6 +52,7 @@ When `apply` fails with “does not apply cleanly”:
 | Patch | Purpose | Upstream |
 |-------|---------|----------|
 | `selection_height_style.patch` | `DefaultSelectionStyle.selectionHeightStyle`; Theme/MaterialApp forward it; paint uses ambient style (tight→Middle); join wrap seams without widening short lines | [flutter#161010](https://github.com/flutter/flutter/issues/161010) |
+| `reorderable_overlay_transform.patch` | `SliverReorderableList` drag proxy uses overlay `globalToLocal` so an ancestor `Transform` (TeamPilot `UiZoom` on Windows/high-DPI) does not jump the tab to the pointer's top-left | framework overlay-origin math assumes translation-only |
 
 When an upstream fix ships on **stable**, delete that `.patch` and drop any
 app-only wrappers that existed solely for the workaround (if no longer needed).

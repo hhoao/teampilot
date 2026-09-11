@@ -44,4 +44,44 @@ void main() {
     expect(actions.calls.single, ['reset', '--hard', 'main']);
     await cubit.close();
   });
+
+  test('checkoutRemoteBranch splits remote prefix from full name', () async {
+    final (cubit, controller) = await build();
+    expect(await controller.checkoutRemoteBranch('origin/feature-x'), isTrue);
+    expect(
+      actions.calls.single,
+      ['checkout-remote-branch', 'origin', 'feature-x'],
+    );
+    await cubit.close();
+  });
+
+  test('checkoutRemoteBranch keeps slashes after the remote segment', () async {
+    final (cubit, controller) = await build();
+    expect(
+      await controller.checkoutRemoteBranch('origin/feature/nested'),
+      isTrue,
+    );
+    expect(
+      actions.calls.single,
+      ['checkout-remote-branch', 'origin', 'feature/nested'],
+    );
+    await cubit.close();
+  });
+
+  test('checkoutTag delegates to actions', () async {
+    final (cubit, controller) = await build();
+    expect(await controller.checkoutTag('v1.0'), isTrue);
+    expect(actions.calls.single, ['checkout-tag', 'v1.0']);
+    await cubit.close();
+  });
+
+  test('deleteRemoteBranch splits remote prefix from full name', () async {
+    final (cubit, controller) = await build();
+    expect(await controller.deleteRemoteBranch('origin/feature-x'), isTrue);
+    expect(
+      actions.calls.single,
+      ['delete-remote-branch', 'origin', 'feature-x'],
+    );
+    await cubit.close();
+  });
 }

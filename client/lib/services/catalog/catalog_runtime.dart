@@ -8,6 +8,7 @@ import '../../repositories/plugin_repository.dart';
 import '../../repositories/session_repository.dart';
 import '../../repositories/skill_repository.dart';
 import '../../repositories/workspace_project_config_repository.dart';
+import '../event/event_publisher.dart';
 import '../io/filesystem.dart';
 import '../plugin/plugin_install_service.dart';
 import '../skill/skill_acquisition_engine.dart';
@@ -65,7 +66,11 @@ class CatalogRuntime {
     Future<void> Function(String mcpId)? removeMcpFromAllTeams,
   }) {
     final home = storage;
-    final mutationBus = bus ?? CatalogMutationBus();
+    final mutationBus =
+        bus ??
+        CatalogMutationBus(
+          dispatcher: EventPublisher.instance.attachedDispatcher,
+        );
     final configRepo = workspaceConfig ?? WorkspaceProjectConfigRepository(storage: home);
     final binder = CatalogWorkspaceBinder(repo: configRepo);
     final skills = skillRepository ?? SkillRepository(storage: home);

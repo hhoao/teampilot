@@ -204,6 +204,7 @@
   "gitChanges": "要提交的变更",
   "gitNoChanges": "没有更改",
   "gitNotARepository": "当前文件夹不是 Git 仓库",
+  "gitInitializeRepository": "创建 Git 仓库",
   "gitNotInstalled": "未找到 Git。安装 Git 后即可使用源代码管理。",
   "gitCommit": "提交",
   "gitCommitMessageHint": "消息（提交到 \"{branch}\"）",
@@ -261,6 +262,7 @@
   },
   "gitPush": "推送",
   "gitPull": "拉取",
+  "gitFetch": "从远端获取",
   "gitRefresh": "刷新",
   "gitAmend": "修正",
   "gitAmendCommit": "修改提交",
@@ -634,6 +636,14 @@
   "workspaceSearchUseGitignore": "使用 .gitignore 设置",
   "workspaceSearchToggleDetails": "展开搜索选项",
   "workspaceSearchError": "搜索失败——请检查正则",
+  "workspaceSearchSliceError": "「{directory}」目录搜索失败",
+  "@workspaceSearchSliceError": {
+    "placeholders": {
+      "directory": {
+        "type": "String"
+      }
+    }
+  },
   "appDropdownSearchHint": "搜索…",
   "appDropdownSearchNoResults": "未找到结果",
   "homeWorkspaceOpenWorkspaceInNewTab": "在新标签页中打开",
@@ -919,6 +929,7 @@
   "workspaceDetails": "工作区详情",
   "addWorkspaceDirectory": "添加目录",
   "removeWorkspaceDirectory": "移除目录",
+  "removeWorkspaceMachine": "移除机器",
   "workspaceDisplayName": "显示名称",
   "workspaceIcon": "图标",
   "workspaceIconPickerTitle": "选择工作区图标",
@@ -947,6 +958,7 @@
   "noSessions": "暂无会话",
   "unknownFolder": "未知",
   "renameConversation": "重命名对话",
+  "sessionOpenToSide": "在右侧分栏打开",
   "deleteConversation": "删除对话",
   "archiveConversation": "归档",
   "closeConversation": "关闭会话",
@@ -974,6 +986,8 @@
   "closeOtherTabs": "关闭其他标签",
   "closeRightTabs": "关闭右侧标签",
   "closeAllTabs": "关闭全部",
+  "tabMenuSplitRight": "向右拆分",
+  "tabMenuSplitDown": "向下拆分",
   "session": "会话",
   "sessionPageSubtitle": "配置 Shell 会话启动方式、终端行为与存储后端。",
   "cliConfig": "CLI",
@@ -1382,6 +1396,18 @@
   "scopeSessionsToSelectedTeamDescription": "开启后，侧边栏仅显示归属当前团队的会话。新建会话仍会写入当前所选团队，之后开启本选项即可看到它们。",
   "notifyOnSessionIdleTitle": "Agent 空闲系统通知",
   "notifyOnSessionIdleDescription": "会话结束一轮工作并进入空闲时，除应用内通知中心外，同时发送操作系统通知。",
+  "gitAutoFetchTitle": "自动拉取远程更新",
+  "gitAutoFetchDescription": "定时对源代码管理面板当前显示的仓库执行非交互的 git fetch --all --prune，保持提交/拉取计数最新。",
+  "gitAutoFetchIntervalTitle": "自动拉取间隔（分钟）",
+  "gitAutoFetchIntervalDescription": "面板打开时对选中仓库执行 fetch 的频率。",
+  "gitAutoFetchIntervalMinutesOption": "每 {minutes} 分钟",
+  "@gitAutoFetchIntervalMinutesOption": {
+    "placeholders": {
+      "minutes": {
+        "type": "int"
+      }
+    }
+  },
   "memberTargetAssignmentTitle": "成员所在机器",
   "memberTargetAssignmentSubtitle": "{member} 运行所在的机器（其分配的工作区目录）。",
   "@memberTargetAssignmentSubtitle": {
@@ -1533,6 +1559,15 @@
   "baseUrl": "基础 URL",
   "apiKey": "API 密钥",
   "appProviderApiKeyEditHint": "留空则保留原密钥",
+  "appProviderCredentialLinkMode": "API Key 来源",
+  "appProviderCredentialLinkOwnKey": "使用自己的 API Key",
+  "appProviderCredentialLinkedTo": "使用 {entry} 的密钥",
+  "@appProviderCredentialLinkedTo": {
+    "placeholders": {
+      "entry": {}
+    }
+  },
+  "appProviderCredentialLinkEmpty": "还没有存有密钥的余额条目",
   "reveal": "显示",
   "hide": "隐藏",
   "replaceKey": "替换密钥",
@@ -3176,6 +3211,11 @@
   "shortcutsRunSelected": "运行所选配置",
   "shortcutsRunStop": "停止运行",
   "shortcutsRunRestart": "重新运行",
+  "shortcutsWorkbenchSplitRight": "向右拆分编辑组",
+  "shortcutsWorkbenchSplitDown": "向下拆分编辑组",
+  "shortcutsWorkbenchSplitReset": "重置编辑组布局",
+  "shortcutsWorkbenchFocusNextGroup": "聚焦下一个编辑组",
+  "shortcutsWorkbenchMoveTabToNextGroup": "将标签页移到下一个编辑组",
   "shortcutsCategoryRun": "运行",
   "resourceManagerTitle": "资源管理器",
   "resourceManagerPanelTitle": "资源管理器 - 会话",
@@ -3479,6 +3519,15 @@
   "managedProvidersCredentialSource": "凭据来源",
   "managedProvidersCredentialSourceHint": "secret 或 cli:cursor-mp-<entry>",
   "managedProvidersCredentialSourceHelper": "secret 读表单；cli:… 读 CLI 登录。",
+  "managedProvidersCredentialLinkMode": "凭据来源方式",
+  "managedProvidersCredentialLinkManual": "手动输入密钥",
+  "managedProvidersCredentialLinkedTo": "使用 {provider} 的凭证",
+  "@managedProvidersCredentialLinkedTo": {
+    "placeholders": {
+      "provider": {}
+    }
+  },
+  "managedProvidersCredentialLinkEmpty": "还没有可引用的供应商配置",
   "managedProvidersCredentialTemplate": "凭据拼接模板",
   "managedProvidersCredentialTemplateHint": "例如 WorkosCursorSessionToken=user::token",
   "managedProvidersCredentialTemplateHelper": "拼成最终凭据值，常用于 Cookie；用花括号填变量。",
@@ -3636,6 +3685,16 @@
       }
     }
   },
+  "gitGraphDeleteRemoteBranchTitle": "删除远程分支",
+  "gitGraphDeleteRemoteBranchConfirmBody": "确定删除共享仓库上的远程分支“{name}”吗？这将影响所有协作者，且无法撤销。",
+  "@gitGraphDeleteRemoteBranchConfirmBody": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "gitGraphViewTagHistory": "查看此标签历史",
   "gitGraphMergeIntoCurrent": "合并 {branch} 到当前分支",
   "@gitGraphMergeIntoCurrent": {
     "placeholders": {
@@ -3689,6 +3748,16 @@
   "gitGraphColumnDate": "日期",
   "gitGraphColumnAuthor": "作者",
   "gitGraphColumnCommit": "提交",
+  "gitGraphColumns": "列",
+  "gitGraphColumnHeaderLabel": "列头",
+  "gitGraphHideColumn": "隐藏{column}",
+  "@gitGraphHideColumn": {
+    "placeholders": {
+      "column": {
+        "type": "String"
+      }
+    }
+  },
   "gitGraphShowColumnHeader": "显示列头",
   "gitGraphHideColumnHeader": "隐藏列头",
   "gitGraphShowDiffWithWorkingTree": "与工作区比较差异",

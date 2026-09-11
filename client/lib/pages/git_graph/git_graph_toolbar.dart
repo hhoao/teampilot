@@ -9,6 +9,8 @@ import '../../cubits/git_graph_cubit.dart';
 import '../../cubits/layout_cubit.dart';
 import '../../l10n/l10n_extensions.dart';
 import '../../models/git_graph.dart';
+import '../../models/layout_preferences.dart'
+    show GitGraphColumnId, GitGraphColumnPrefs;
 import 'git_graph_menus.dart';
 import 'git_graph_refs_menu.dart';
 
@@ -89,15 +91,10 @@ class GitGraphToolbar extends StatelessWidget {
           const SizedBox(width: 8),
           Expanded(flex: 2, child: _searchField(context)),
           const SizedBox(width: 4),
-          TpIconButton(
-            icon: Icons.view_column_outlined,
-            tooltip: headerVisible
-                ? l10n.gitGraphHideColumnHeader
-                : l10n.gitGraphShowColumnHeader,
-            compact: true,
-            selected: headerVisible,
-            onTap: () => context.read<LayoutCubit>().setGitGraphHeaderVisible(
-              !headerVisible,
+          _ColumnsMenu(
+            headerVisible: headerVisible,
+            columnPrefs: context.select<LayoutCubit, GitGraphColumnPrefs>(
+              (cubit) => cubit.state.preferences.gitGraphColumns,
             ),
           ),
           const SizedBox(width: 4),
@@ -395,4 +392,73 @@ class _StashMenuState extends State<_StashMenu> {
       ),
     );
   }
+}
+
+/// 工具栏「列」菜单：列头显隐 + 各元数据列显隐（隐藏列的恢复入口）。
+class _ColumnsMenu extends StatelessWidget {
+  const _ColumnsMenu({required this.headerVisible, required this.columnPrefs});
+
+  final bool headerVisible;
+  final GitGraphColumnPrefs columnPrefs;
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = context.l10n;
+    final layout = context.read<LayoutCubit>();
+    return TpActionMenuButton(
+      icon: Icon(
+        Icons.view_column_outlined,
+        size: context.tpIconSizes.md,
+      ),
+      tooltip: l10n.gitGraphColumns,
+      size: 28,
+      specs: [
+        TpActionMenuSpec.item(
+          value: 'header',
+          icon: Icons.view_column_outlined,
+          label: l10n.gitGraphColumnHeaderLabel,
+          selected: headerVisible,
+        ),
+        const TpActionMenuSpec.divider(),
+        for (final id in GitGraphColumnId.values)
+          TpActionMenuSpec.item(
+            value: id.name,
+            icon: _columnIcon(id),
+            label: _columnLabel(l10n, id),
+            selected: !columnPrefs.hiddenColumns.contains(id),
+          ),
+      ],
+      onSelected: (value) {
+        if (value == 'header') {
+          layout.setGitGraphHeaderVisible(!headerVisible);
+          return;
+        }
+        final id = GitGraphColumnId.values
+            .where((c) => c.name == value)
+            .firstOrNull;
+        if (id == null) return;
+        final hidden = columnPrefs.hiddenColumns;
+        layout.setGitGraphColumns(
+          columnPrefs.copyWith(
+            hiddenColumns: hidden.contains(id)
+                ? ({...hidden}..remove(id))
+                : {...hidden, id},
+          ),
+        );
+      },
+    );
+  }
+
+  static IconData _columnIcon(GitGraphColumnId id) => switch (id) {
+    GitGraphColumnId.date => Icons.schedule_outlined,
+    GitGraphColumnId.author => Icons.person_outline,
+    GitGraphColumnId.commit => Icons.tag_outlined,
+  };
+
+  static String _columnLabel(AppLocalizations l10n, GitGraphColumnId id) =>
+      switch (id) {
+        GitGraphColumnId.date => l10n.gitGraphColumnDate,
+        GitGraphColumnId.author => l10n.gitGraphColumnAuthor,
+        GitGraphColumnId.commit => l10n.gitGraphColumnCommit,
+      };
 }
