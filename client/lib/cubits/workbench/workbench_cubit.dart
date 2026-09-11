@@ -44,8 +44,8 @@ class WorkbenchState extends Equatable {
 ///
 /// Reads are focused-group scoped ([centerActiveId] etc. read the focused
 /// group of the target layout); whole-surface reads go through
-/// [mergedFloatingStrip]. New tabs open into the focused group of the target
-/// layout (spec).
+/// [mergedFloatingStrip]. New tabs prefer the focused unlocked group, then the
+/// nearest unlocked leaf, and create an adjacent unlocked group when needed.
 class WorkbenchCubit extends Cubit<WorkbenchState> {
   WorkbenchCubit({WorkbenchDomainPort? port})
     : _port = port ?? const _NoopPort(),
@@ -166,6 +166,28 @@ class WorkbenchCubit extends Cubit<WorkbenchState> {
   ) {
     for (final entry in layout.groups.entries) {
       if (entry.value.contains(tab)) return entry.key;
+    }
+    return null;
+  }
+
+  /// Selects the focused group for a new tab when it is unlocked, otherwise
+  /// the nearest unlocked leaf. Later leaves win equal-distance ties.
+  static String? _automaticTargetGroup(WorkbenchGroupLayout layout) {
+    final focused = layout.focusedGroupId;
+    if (!layout.lockedGroupIds.contains(focused)) return focused;
+    final leaves = layout.leafGroupIds;
+    final origin = leaves.indexOf(focused);
+    for (var distance = 1; distance < leaves.length; distance++) {
+      final later = origin + distance;
+      if (later < leaves.length &&
+          !layout.lockedGroupIds.contains(leaves[later])) {
+        return leaves[later];
+      }
+      final earlier = origin - distance;
+      if (earlier >= 0 &&
+          !layout.lockedGroupIds.contains(leaves[earlier])) {
+        return leaves[earlier];
+      }
     }
     return null;
   }
@@ -323,9 +345,8 @@ class WorkbenchCubit extends Cubit<WorkbenchState> {
     );
   }
 
-  /// Adds [tab] into the focused group of the target layout — or, when the
-  /// tab is already hosted by another group of that layout, into that group
-  /// (and focuses it), so no tab ever appears in two groups. Returns the
+  /// Adds [tab] to an automatic unlocked target, or reopens it in its owning
+  /// group when it is already hosted by the target layout. Returns the
   /// replaced preview tab id, or null when nothing was replaced.
   WorkbenchTabId? _openIntoLayout(
     String workspaceId,
@@ -336,13 +357,46 @@ class WorkbenchCubit extends Cubit<WorkbenchState> {
   }) {
     final bar = state.bar(workspaceId);
     final layout = center ? bar.center : bar.floating;
-    var targetGroupId = layout.focusedGroupId;
-    for (final e in layout.groups.entries) {
-      if (e.value.contains(tab)) {
-        targetGroupId = e.key;
-        break;
-      }
+    final owningGroupId = _groupContainingTab(layout, tab);
+    if (owningGroupId != null) {
+      final (next, replaced) = _r.add(
+        layout.groups[owningGroupId]!,
+        tab,
+        preview: preview,
+        activate: activate,
+      );
+      final nextLayout = layout.copyWith(
+        groups: {...layout.groups, owningGroupId: next},
+        focusedGroupId: owningGroupId,
+      );
+      emit(
+        center
+            ? _withCenter(workspaceId, nextLayout)
+            : _withFloating(workspaceId, nextLayout),
+      );
+      return replaced;
     }
+
+    final targetGroupId = _automaticTargetGroup(layout);
+    if (targetGroupId == null) {
+      final nextLayout = _lr.openInNewGroup(
+        layout,
+        targetGroupId: layout.focusedGroupId,
+        tab: tab,
+        axis: Axis.horizontal,
+        before: false,
+        preview: preview,
+        activate: activate,
+      );
+      if (nextLayout == null) return null;
+      emit(
+        center
+            ? _withCenter(workspaceId, nextLayout)
+            : _withFloating(workspaceId, nextLayout),
+      );
+      return null;
+    }
+
     final (next, replaced) = _r.add(
       layout.groups[targetGroupId]!,
       tab,
@@ -671,6 +725,17 @@ class WorkbenchCubit extends Cubit<WorkbenchState> {
   }
 
   // ---- split-group mutations ----
+
+  /// Toggles the lock state of a live group in the selected layout.
+  void toggleGroupLock(
+    String workspaceId,
+    String groupId, {
+    bool floating = false,
+  }) => _mutateLayout(
+    workspaceId,
+    floating: floating,
+    mutate: (layout) => _lr.toggleLock(layout, groupId),
+  );
 
   /// Splits [tab] out of its group into a new sibling group (reducer
   /// `split`). Silent no-op when the reducer declines (absent tab, or the
