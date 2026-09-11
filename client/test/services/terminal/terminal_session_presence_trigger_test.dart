@@ -100,21 +100,31 @@ void main() {
     expect(s.presenceSeat, isNull);
   });
 
-  test('self-created tracker pushes a refresh on the boot latch', () {
-    var calls = 0;
-    final s = TerminalSession(
-      executable: 'unused',
-      validateLaunch: false,
-      parseExecutable: false,
-      fs: InMemoryFilesystem(),
-      onPresenceInputsChanged: () => calls++,
+  test('boot push stays off until a seat binds, then pushes', () async {
+    // No observation bound: presenceSeat is null, so the boot listener must not
+    // be attached and a boot latch on the owned tracker pushes nothing.
+    var unboundCalls = 0;
+    final unbound = connectable(onPresenceInputsChanged: () => unboundCalls++);
+    addTearDown(unbound.dispose);
+    unbound.activityTracker.latchBootFrameReadyForTest();
+    unbound.activityTracker.notePtyBytes(Uint8List.fromList([0x41, 0x0a]));
+    expect(unboundCalls, 0, reason: 'no seat bound => no boot push');
+
+    // Once a seat with identity is bound, the same tracker's boot latch pushes.
+    var boundCalls = 0;
+    final bound = connectable(onPresenceInputsChanged: () => boundCalls++);
+    addTearDown(bound.dispose);
+    bound.connect(
+      workingDirectory: Directory.systemTemp.path,
+      observation: const TerminalObservationAttach(
+        sessionId: 's1',
+        memberId: 'm1',
+      ),
     );
-    addTearDown(s.dispose);
-
-    s.activityTracker.latchBootFrameReadyForTest();
-    s.activityTracker.notePtyBytes(Uint8List.fromList([0x41, 0x0a]));
-
-    expect(calls, 1);
+    await waitFor(() => bound.isConnected);
+    bound.activityTracker.latchBootFrameReadyForTest();
+    bound.activityTracker.notePtyBytes(Uint8List.fromList([0x42, 0x0a]));
+    expect(boundCalls, 1, reason: 'seat bound => boot push fires');
   });
 
   test('injected tracker keeps its own listener; session does not hijack', () {

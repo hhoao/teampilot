@@ -114,12 +114,10 @@ class TerminalSession {
         );
     _wireLaunchCallbacks();
     _wireEngineOutput();
-    // Push boot-frame transitions only for a tracker this session owns; an
-    // injected tracker (launchController.activityTracker) belongs to another
-    // owner and keeps its own listener.
-    if (_ownsActivityTracker) {
-      activityTracker.setBootFrameListener(_onBootFrameChanged);
-    }
+    // The boot-frame listener is NOT attached here: no observation has bound
+    // yet, so `presenceSeat` is still null and the seat-gating rule forbids a
+    // push in that window. The bind path is the only place the seat key is
+    // known, so it is the only attach site (`_bindObservation`).
   }
 
   final int _scrollbackLines;
