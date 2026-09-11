@@ -2,9 +2,9 @@
 
 > For agentic workers: REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox syntax for tracking.
 
-Goal: Make generated Builder Sessions use normal first-prompt naming and add a persisted, default-off troubleshooting option that retains the Builder Session after handoff without changing the active Session.
+Goal: Make generated Builder Sessions use normal first-prompt naming, present generation immediately as the single visible conversation, atomically replace it with the final team Session after handoff, and add a persisted, default-off troubleshooting option that retains the Builder Session.
 
-Architecture: Extend TeamGenerationSettings and TeamGenerationSettingsSnapshot with retainBuilderSession, so each workflow stores an immutable cleanup policy in its existing Job settings snapshot. The coordinator applies originalPrompt as Builder metadata, while cleanup either follows the existing delete path or retains the Builder, revokes authorization, and archives the Job. Handoff selection remains unchanged.
+Architecture: Extend TeamGenerationSettings and TeamGenerationSettingsSnapshot with retainBuilderSession, so each workflow stores an immutable cleanup policy in its existing Job settings snapshot. The coordinator applies originalPrompt as Builder metadata, while the handoff boundary replaces the visible Builder tab/session with the destination in one domain update. Cleanup either follows the immediate default delete path or retains the Builder for troubleshooting, revokes authorization, and archives the Job.
 
 Tech Stack: Dart, Flutter, flutter_bloc, filesystem-backed JSON settings, package:test through dart run tool/run_tests.dart.
 
@@ -304,3 +304,56 @@ Expected: exit code 0. Capture any unrelated failure exactly before changing sco
 - [ ] Step 4: Request code review using the requesting-code-review skill after verification. Review default false behavior, old JSON compatibility, originalPrompt title source, destination selection, token revocation, and protection against deleting the destination Session.
 
 - [ ] Step 5: Final report must include the debug switch behavior, title behavior, active Session result, and exact passing commands.
+
+### Task 7: Make the handoff a single visible Session replacement
+
+Files:
+- Modify: client/lib/services/team_generation/team_generation_session_port.dart
+- Modify: client/lib/cubits/team/cubit_team_generation_session_port.dart
+- Modify: client/lib/cubits/workbench/workbench_cubit.dart
+- Modify: client/lib/cubits/chat_cubit.dart
+- Modify: client/lib/cubits/chat/session_data_store.dart
+- Modify: client/lib/services/team_generation/team_generation_handoff_service.dart
+- Modify: client/lib/services/team_generation/team_generation_coordinator.dart
+- Modify: client/lib/services/team_generation/team_generation_cleanup_service.dart
+- Test: client/test/services/team_generation/team_generation_handoff_service_test.dart
+- Test: client/test/services/team_generation/team_generation_coordinator_test.dart
+- Test: client/test/cubits/workbench/workbench_cubit_test.dart
+
+Interfaces:
+- Add an explicit handoff operation that selects the opened destination and removes the Builder from the visible workbench before normal cleanup deletes its persisted record.
+- The operation is a no-op for retained Builder mode except for selecting the destination, so troubleshooting users keep both sessions.
+- The default path must not wait for Builder idle after the destination is selected and its prompt delivery is durably acknowledged.
+
+- [ ] Step 1: Write failing tests.
+
+In the handoff/coordinator tests, record the visible transition and assert the destination selection is followed by a Builder removal before cleanup completes. Assert the default workflow has no `builderIdle` wait and records `builderDeleted`, while `retainBuilderSession: true` keeps the Builder and records `builderRetained`.
+
+In the WorkbenchCubit test, seed one center tab for the Builder and assert replacing it with the destination produces one center tab, keeps the destination active, and emits no intermediate state containing both tabs.
+
+- [ ] Step 2: Run the red tests.
+
+Run:
+    cd client && dart run tool/run_tests.dart test/services/team_generation/team_generation_handoff_service_test.dart test/services/team_generation/team_generation_coordinator_test.dart test/cubits/workbench/workbench_cubit_test.dart
+
+Expected: FAIL because handoff currently selects the destination without a visible replacement operation and cleanup still waits for Builder idle.
+
+- [ ] Step 3: Implement the atomic visible replacement.
+
+Add a WorkbenchCubit method that replaces a center `WorkbenchTabId.session(builderId)` with `WorkbenchTabId.session(destinationId)` in its owning group, preserving the group position and setting the destination active in the same `emit`. Invoke the domain tab-removal callback for the Builder only after the replacement state is emitted, so runtime teardown cannot remove the new active tab.
+
+Add a ChatCubit/session-data operation that removes the Builder from the in-memory session snapshot without deleting its durable record. The operation must update workspace session IDs and the visible session list in the same snapshot emission; it must not clear the destination or landing reference when the Builder is being replaced by that destination.
+
+Call this operation immediately after `createDestination`/`open` succeeds and `select(destinationSessionId)` completes. Keep the durable Builder deletion in the existing cleanup service after the prompt-delivery and finalize-flush receipts, but remove the default idle wait. If either destination opening or prompt delivery fails before those receipts, leave the Builder visible and undeleted for recovery. Retained mode skips both the visible removal and durable deletion, while still selecting the destination and revoking the workflow token during completion.
+
+- [ ] Step 4: Run focused handoff tests.
+
+Run:
+    cd client && dart run tool/run_tests.dart test/services/team_generation/team_generation_handoff_service_test.dart test/services/team_generation/team_generation_coordinator_test.dart test/services/team_generation/team_generation_cleanup_service_test.dart test/cubits/workbench/workbench_cubit_test.dart
+
+Expected: PASS with one visible Session throughout the replacement and no idle wait on the default cleanup path.
+
+- [ ] Step 5: Commit.
+
+    git add client/lib/services/team_generation/team_generation_session_port.dart client/lib/cubits/team/cubit_team_generation_session_port.dart client/lib/cubits/workbench/workbench_cubit.dart client/lib/cubits/chat_cubit.dart client/lib/cubits/chat/session_data_store.dart client/lib/services/team_generation/team_generation_handoff_service.dart client/lib/services/team_generation/team_generation_coordinator.dart client/lib/services/team_generation/team_generation_cleanup_service.dart client/test/services/team_generation/team_generation_handoff_service_test.dart client/test/services/team_generation/team_generation_coordinator_test.dart client/test/cubits/workbench/workbench_cubit_test.dart
+    git commit -m "feat(team-generation): replace builder with destination session"
