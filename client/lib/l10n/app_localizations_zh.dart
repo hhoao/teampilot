@@ -5597,6 +5597,9 @@ class AppLocalizationsZh extends AppLocalizations {
   String get appProviderToolCursor => 'Cursor';
 
   @override
+  String get appProviderToolGemini => 'Gemini CLI';
+
+  @override
   String get appProviderTeamToolSection => '团队默认服务商';
 
   @override

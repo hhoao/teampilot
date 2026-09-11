@@ -156,6 +156,7 @@ abstract final class CliTestProfiles {
       CliTool.codex => _codex,
       CliTool.opencode => _opencode,
       CliTool.cursor => _cursor,
+      CliTool.gemini => _gemini,
     };
   }
 
@@ -268,6 +269,22 @@ abstract final class CliTestProfiles {
     fullscreenDeliverNotes:
         'Fullscreen paste + grid ACK; doorbell via stdin inject + read_messages.',
     gatewayRedirectNotes: _cursorGatewayRedirectSpikeNotes,
+  );
+
+  /// Gemini runs through ACP (not a mock-gateway wire), so no L2 matrix cell
+  /// exists yet; profile keeps the CLI exhaustive and the L2 skip explicit.
+  static final CliTestProfile _gemini = CliTestProfile(
+    tool: CliTool.gemini,
+    wire: CliTestWire.openaiChat,
+    binaryName: 'gemini',
+    resolveBinary: () => whichOnPath('gemini'),
+    toolName: mapShortMcpToolRef,
+    assistantVisibleMarkers: const [markA1, markA2, markA3],
+    bootToPrompt: bootToPromptStub,
+    dismissBootGates: dismissBootGatesStub,
+    gatewayRedirectNotes:
+        'N/A: gemini targets ACP (tasks 4-9), not the mock-gateway matrix. '
+        'L2 cells skip until an ACP harness lands.',
   );
 }
 

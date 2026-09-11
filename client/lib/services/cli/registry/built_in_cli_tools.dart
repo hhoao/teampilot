@@ -30,6 +30,7 @@ import '../claude/claude_tool.dart';
 import '../codex/codex_tool.dart';
 import '../cursor/cursor_tool.dart';
 import '../flashskyai/flashskyai_tool.dart';
+import '../gemini/gemini_tool.dart';
 import '../opencode/opencode_tool.dart';
 
 void registerBuiltInCliTools(
@@ -91,6 +92,8 @@ void registerBuiltInCliTools(
       headless: FlashskyaiHeadlessCapability(storage: storage),
     ),
   );
+
+  registry.register(const GeminiCliTool());
 
   assert(
     CliTool.values.every((cli) => registry.tryGet(cli) != null),

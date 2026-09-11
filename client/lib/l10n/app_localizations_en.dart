@@ -5842,6 +5842,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get appProviderToolCursor => 'Cursor';
 
   @override
+  String get appProviderToolGemini => 'Gemini CLI';
+
+  @override
   String get appProviderTeamToolSection => 'Tool providers for this team';
 
   @override

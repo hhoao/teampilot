@@ -417,6 +417,7 @@ String _sectionTitle(AppLocalizations l10n, CliTool cli) {
     CliTool.codex => l10n.appProviderToolCodex,
     CliTool.opencode => l10n.appProviderToolOpencode,
     CliTool.flashskyai => l10n.appProviderToolFlashskyai,
+    CliTool.gemini => l10n.appProviderToolGemini,
   };
 }
 
@@ -432,6 +433,7 @@ String _actionLabel(
       CliTool.codex => l10n.codexCredentialsLogin,
       CliTool.opencode => l10n.opencodeCredentialsLogin,
       CliTool.flashskyai => l10n.appProviderToolFlashskyai,
+      CliTool.gemini => l10n.appProviderToolGemini,
     },
     ProviderCredentialActionKind.importGlobal => switch (cli) {
       CliTool.claude => l10n.claudeOfficialCredentialsImportGlobal,
@@ -439,6 +441,7 @@ String _actionLabel(
       CliTool.codex => l10n.codexCredentialsImportGlobal,
       CliTool.opencode => l10n.opencodeCredentialsImportGlobal,
       CliTool.flashskyai => l10n.appProviderToolFlashskyai,
+      CliTool.gemini => l10n.appProviderToolGemini,
     },
     ProviderCredentialActionKind.importFile => switch (cli) {
       CliTool.claude => l10n.claudeOfficialCredentialsImportFile,
@@ -446,6 +449,7 @@ String _actionLabel(
       CliTool.codex => l10n.codexCredentialsImportFile,
       CliTool.opencode => l10n.opencodeCredentialsImportFile,
       CliTool.flashskyai => l10n.appProviderToolFlashskyai,
+      CliTool.gemini => l10n.appProviderToolGemini,
     },
     ProviderCredentialActionKind.importDirectory =>
       l10n.cursorCredentialsImportFile,
@@ -455,6 +459,7 @@ String _actionLabel(
       CliTool.codex => l10n.codexCredentialsRevoke,
       CliTool.opencode => l10n.opencodeCredentialsRevoke,
       CliTool.flashskyai => l10n.appProviderToolFlashskyai,
+      CliTool.gemini => l10n.appProviderToolGemini,
     },
   };
 }
@@ -479,6 +484,7 @@ String _revokeConfirmMessage(
     CliTool.codex => l10n.codexCredentialsRevokeConfirm(provider.name),
     CliTool.opencode => l10n.opencodeCredentialsRevokeConfirm(provider.name),
     CliTool.flashskyai => l10n.appProviderToolFlashskyai,
+    CliTool.gemini => l10n.appProviderToolGemini,
   };
 }
 

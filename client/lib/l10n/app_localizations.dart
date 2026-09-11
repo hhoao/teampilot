@@ -10400,6 +10400,12 @@ abstract class AppLocalizations {
   /// **'Cursor'**
   String get appProviderToolCursor;
 
+  /// No description provided for @appProviderToolGemini.
+  ///
+  /// In en, this message translates to:
+  /// **'Gemini CLI'**
+  String get appProviderToolGemini;
+
   /// No description provided for @appProviderTeamToolSection.
   ///
   /// In en, this message translates to:

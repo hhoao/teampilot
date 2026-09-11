@@ -59,6 +59,7 @@ void main() {
       CliTool.codex => 'openai-official',
       CliTool.opencode => 'opencode',
       CliTool.flashskyai => null,
+      CliTool.gemini => 'google',
     };
     expect(
       SimpleLaunchIdentity.resolve(

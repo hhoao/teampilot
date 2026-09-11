@@ -2921,6 +2921,7 @@
   "appProviderToolClaude": "Claude Code",
   "appProviderToolOpencode": "OpenCode",
   "appProviderToolCursor": "Cursor",
+  "appProviderToolGemini": "Gemini CLI",
   "appProviderTeamToolSection": "Tool providers for this team",
   "appProviderTeamToolSubtitle": "Select which unified provider each tool uses when this team starts.",
   "appProviderTeamNone": "None",
