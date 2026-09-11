@@ -4519,6 +4519,8 @@
   "teamGenerateNativeCli": "Native CLI",
   "teamGenerateModelPool": "Model configuration pool",
   "teamGenerateAddModel": "Add model configuration",
+  "teamGenerateRetainBuilderSession": "Keep Builder Session for troubleshooting",
+  "teamGenerateRetainBuilderSessionHint": "When enabled, the generated team opens normally but the Builder Session is kept for inspecting the generation process.",
   "teamGenerateHiddenPresets": "{count} configurations are hidden because they use another CLI.",
   "@teamGenerateHiddenPresets": {
     "placeholders": {

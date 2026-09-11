@@ -9,6 +9,19 @@ import 'package:teampilot/services/team_generation/team_generation_settings_stor
 import '../../support/in_memory_filesystem.dart';
 
 void main() {
+  test('save and load preserve Builder retention setting', () async {
+    final fs = InMemoryFilesystem();
+    final store = TeamGenerationSettingsStore(
+      fs: fs,
+      pathOverride: '/tp/ui/team-generation-settings.json',
+      storage: fakeHomeStorage(filesystem: fs),
+    );
+
+    await store.save(TeamGenerationSettings(retainBuilderSession: true));
+
+    expect((await store.load()).retainBuilderSession, isTrue);
+  });
+
   test(
     'load preserves order and broken refs while first duplicate wins',
     () async {
@@ -16,7 +29,7 @@ void main() {
       final store = TeamGenerationSettingsStore(
         fs: fs,
         pathOverride: '/tp/ui/team-generation-settings.json',
-                                                 storage: fakeHomeStorage(filesystem: fs),
+        storage: fakeHomeStorage(filesystem: fs),
       );
       await fs.ensureDir('/tp/ui');
       await fs.writeString(

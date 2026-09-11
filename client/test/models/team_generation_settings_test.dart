@@ -5,6 +5,17 @@ import 'package:teampilot/models/team_generation_settings.dart';
 import 'package:teampilot/services/cli/registry/cli_tool_registry.dart';
 
 void main() {
+  test('retains Builder false by default and decodes legacy JSON safely', () {
+    expect(TeamGenerationSettings().retainBuilderSession, isFalse);
+    expect(
+      TeamGenerationSettings.fromJson({
+        'retainBuilderSession': true,
+      }).retainBuilderSession,
+      isTrue,
+    );
+    expect(TeamGenerationSettings.fromJson({}).retainBuilderSession, isFalse);
+  });
+
   test('fromJson migrates legacy presetId into unresolved row', () {
     final entry = GenerateModelPoolEntry.fromJson({
       'presetId': 'claude-strong',
@@ -174,6 +185,34 @@ void main() {
     expect(reloaded.modelPool.single.preset.id, 'claude-strong');
     expect(reloaded.modelPool.single.source.id, 'claude-strong');
     expect(reloaded.teamMode, TeamMode.mixed);
+  });
+
+  test('snapshot round-trip preserves Builder retention policy', () {
+    final snapshot = resolveTeamGenerationSettingsSnapshot(
+      settings: TeamGenerationSettings(retainBuilderSession: true),
+      presets: const [],
+      registry: CliToolRegistry.builtIn(),
+      capturedAt: 42,
+    );
+
+    final reloaded = TeamGenerationSettingsSnapshot.fromJson(snapshot.toJson());
+
+    expect(snapshot.retainBuilderSession, isTrue);
+    expect(reloaded.retainBuilderSession, isTrue);
+    expect(reloaded, snapshot);
+  });
+
+  test('retention policy participates in the snapshot revision', () {
+    TeamGenerationSettingsSnapshot snapshot(bool retain) {
+      return resolveTeamGenerationSettingsSnapshot(
+        settings: TeamGenerationSettings(retainBuilderSession: retain),
+        presets: const [],
+        registry: CliToolRegistry.builtIn(),
+        capturedAt: 42,
+      );
+    }
+
+    expect(snapshot(true).revision, isNot(snapshot(false).revision));
   });
 
   test(

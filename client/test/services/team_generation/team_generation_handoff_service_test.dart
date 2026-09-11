@@ -70,6 +70,12 @@ class _FakePort implements TeamGenerationSessionPort {
   }
 
   @override
+  Future<void> applyFirstPromptTitle(
+    String sessionId,
+    String firstPrompt,
+  ) async {}
+
+  @override
   Future<AppSession?> sessionById(String sessionId) async =>
       knownSessions.contains(sessionId)
       ? AppSession(sessionId: sessionId, workspaceId: 'ws', createdAt: 1)
@@ -207,7 +213,7 @@ void main() {
     store = TeamGenerationJobStore(
       fs: fs,
       layout: WorkspaceLayout(teampilotRoot: '/tp', fs: fs),
-                                    storage: fakeHomeStorage(filesystem: fs),
+      storage: fakeHomeStorage(filesystem: fs),
     );
     final settings = resolveTeamGenerationSettingsSnapshot(
       settings: TeamGenerationSettings(teamMode: TeamMode.mixed),

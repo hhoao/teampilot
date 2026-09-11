@@ -8957,6 +8957,14 @@ class AppLocalizationsEn extends AppLocalizations {
   String get teamGenerateAddModel => 'Add model configuration';
 
   @override
+  String get teamGenerateRetainBuilderSession =>
+      'Keep Builder Session for troubleshooting';
+
+  @override
+  String get teamGenerateRetainBuilderSessionHint =>
+      'When enabled, the generated team opens normally but the Builder Session is kept for inspecting the generation process.';
+
+  @override
   String teamGenerateHiddenPresets(int count) {
     return '$count configurations are hidden because they use another CLI.';
   }

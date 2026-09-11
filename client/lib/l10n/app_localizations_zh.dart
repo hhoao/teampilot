@@ -8574,6 +8574,13 @@ class AppLocalizationsZh extends AppLocalizations {
   String get teamGenerateAddModel => '添加模型配置';
 
   @override
+  String get teamGenerateRetainBuilderSession => '保留团队构建 Session 以便排错';
+
+  @override
+  String get teamGenerateRetainBuilderSessionHint =>
+      '开启后仍会正常打开生成的团队，但会保留构建 Session，方便查看团队生成过程。';
+
+  @override
   String teamGenerateHiddenPresets(int count) {
     return '$count 个配置因使用其他 CLI 而隐藏。';
   }

@@ -47,6 +47,12 @@ class _FakePort implements TeamGenerationSessionPort {
   Future<void> select(String sessionId) async {}
 
   @override
+  Future<void> applyFirstPromptTitle(
+    String sessionId,
+    String firstPrompt,
+  ) async {}
+
+  @override
   Future<AppSession?> sessionById(String sessionId) async => null;
 
   @override

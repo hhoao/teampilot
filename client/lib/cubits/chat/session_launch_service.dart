@@ -72,7 +72,8 @@ class SessionLaunchService
     String sessionId, {
     bool preview,
     bool activate,
-  })? onSessionTabOpened;
+  })?
+  onSessionTabOpened;
   late final SessionShellConnector _shellConnector = SessionShellConnector(
     _h,
     this,
@@ -262,8 +263,7 @@ class SessionLaunchService
       'session=${persisted.sessionId} ms=${sw.elapsedMilliseconds}',
     );
     var persistedWithTitle = persisted;
-    final stagedTitle = _state
-        .sessions
+    final stagedTitle = _state.sessions
         .where((s) => s.sessionId == session.sessionId)
         .firstOrNull
         ?.display
@@ -845,9 +845,10 @@ class SessionLaunchService
     if (teamId.isEmpty) return; // Simple mode — not this path.
     final team = await _h.teamProfileById(teamId);
     if (team == null) return;
-    final member = sessionRosterMembers(session, team)
-        .where((m) => m.id == mid)
-        .firstOrNull;
+    final member = sessionRosterMembers(
+      session,
+      team,
+    ).where((m) => m.id == mid).firstOrNull;
     if (member == null || !member.isValid) return;
     _memberConnectScheduler.schedule(team, member, tab);
   }
@@ -865,8 +866,15 @@ class SessionLaunchService
   void Function(String line)? autoTouchOnEveryPrompt(String sessionId) =>
       _promptMetadata.autoTouchOnEveryPrompt(sessionId);
 
-  Future<void> applyFirstPromptTitle(String sessionId, String firstPrompt) =>
-      _promptMetadata.applyFirstPromptTitle(sessionId, firstPrompt);
+  Future<void> applyFirstPromptTitle(
+    String sessionId,
+    String firstPrompt, {
+    bool allowTeamGeneration = false,
+  }) => _promptMetadata.applyFirstPromptTitle(
+    sessionId,
+    firstPrompt,
+    allowTeamGeneration: allowTeamGeneration,
+  );
 
   void touchOnUserActivity(String sessionId) =>
       _promptMetadata.touchOnUserActivity(sessionId);

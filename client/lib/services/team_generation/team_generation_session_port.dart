@@ -41,6 +41,9 @@ abstract interface class TeamGenerationSessionPort {
 
   Future<void> select(String sessionId);
 
+  /// Applies the original operator prompt as the Builder Session title.
+  Future<void> applyFirstPromptTitle(String sessionId, String firstPrompt);
+
   Future<AppSession?> sessionById(String sessionId);
 
   /// Resolves when the lead's PTY surface can accept input.

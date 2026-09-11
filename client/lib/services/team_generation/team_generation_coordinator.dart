@@ -16,6 +16,7 @@ import 'models/team_generation_launch.dart';
 import 'team_generation_session_port.dart';
 import 'team_generation_settings_store.dart';
 import 'team_target_probe_service.dart';
+import '../../utils/logging/logger.dart';
 
 /// Issues returned by [TeamGenerationCoordinator.preflight].
 final class TeamGenerationPreflightIssue {
@@ -107,6 +108,7 @@ final class TeamGenerationCoordinator {
   Future<TeamGenerationPreflightResult> preflight({
     required Workspace workspace,
     required String originalPrompt,
+
     /// Resolved generator CLI; null means the AI feature is not configured.
     CliTool? generatorCli,
   }) async {
@@ -199,6 +201,18 @@ final class TeamGenerationCoordinator {
         // pending user bubble is persisted (same order as normal landing send).
         preserveWorkbenchView: false,
       );
+      try {
+        await _sessionPort.applyFirstPromptTitle(
+          builderSessionId,
+          originalPrompt,
+        );
+      } on Object catch (error, stackTrace) {
+        appLogger.e(
+          '[team-generation] builder title update failed',
+          error: error,
+          stackTrace: stackTrace,
+        );
+      }
       await _sessionPort.select(builderSessionId);
       await _sessionPort.waitForInputReady(
         builderSessionId,

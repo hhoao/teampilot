@@ -3828,6 +3828,8 @@
   "teamGenerateNativeCli": "原生 CLI",
   "teamGenerateModelPool": "模型配置池",
   "teamGenerateAddModel": "添加模型配置",
+  "teamGenerateRetainBuilderSession": "保留团队构建 Session 以便排错",
+  "teamGenerateRetainBuilderSessionHint": "开启后仍会正常打开生成的团队，但会保留构建 Session，方便查看团队生成过程。",
   "teamGenerateHiddenPresets": "{count} 个配置因使用其他 CLI 而隐藏。",
   "@teamGenerateHiddenPresets": {
     "placeholders": {

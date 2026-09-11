@@ -200,12 +200,14 @@ final class TeamGenerationSettings {
     TeamMode teamMode = TeamMode.mixed,
     CliTool nativeCli = CliTool.claude,
     List<GenerateModelPoolEntry> modelPool = const [],
+    bool retainBuilderSession = false,
   }) {
     return TeamGenerationSettings._internal(
       schemaVersion: schemaVersion,
       teamMode: teamMode,
       nativeCli: nativeCli,
       modelPool: _freezeModelPool(modelPool),
+      retainBuilderSession: retainBuilderSession,
     );
   }
 
@@ -214,6 +216,7 @@ final class TeamGenerationSettings {
     this.teamMode = TeamMode.mixed,
     this.nativeCli = CliTool.claude,
     this.modelPool = const [],
+    this.retainBuilderSession = false,
   });
 
   factory TeamGenerationSettings.fromJson(Map<String, Object?> json) {
@@ -222,6 +225,7 @@ final class TeamGenerationSettings {
       schemaVersion: _schemaVersionFromJson(json['schemaVersion']),
       teamMode: TeamMode.decode(json['teamMode']),
       nativeCli: CliTool.parse(json['nativeCli']),
+      retainBuilderSession: json['retainBuilderSession'] == true,
       modelPool:
           rawPool
               ?.map(
@@ -241,6 +245,7 @@ final class TeamGenerationSettings {
   final TeamMode teamMode;
   final CliTool nativeCli;
   final List<GenerateModelPoolEntry> modelPool;
+  final bool retainBuilderSession;
 
   TeamGenerationSettings normalized() {
     final normalizedPool = <GenerateModelPoolEntry>[];
@@ -259,6 +264,7 @@ final class TeamGenerationSettings {
     if (schemaVersion == 1 &&
         teamMode == this.teamMode &&
         nativeCli == this.nativeCli &&
+        retainBuilderSession == this.retainBuilderSession &&
         _sameList(modelPool, immutablePool)) {
       return this;
     }
@@ -267,6 +273,7 @@ final class TeamGenerationSettings {
       teamMode: teamMode,
       nativeCli: nativeCli,
       modelPool: immutablePool,
+      retainBuilderSession: retainBuilderSession,
     );
   }
 
@@ -276,6 +283,7 @@ final class TeamGenerationSettings {
       'schemaVersion': normalizedSettings.schemaVersion,
       'teamMode': normalizedSettings.teamMode.value,
       'nativeCli': normalizedSettings.nativeCli.value,
+      if (normalizedSettings.retainBuilderSession) 'retainBuilderSession': true,
       'modelPool': [
         for (final entry in normalizedSettings.modelPool) entry.toJson(),
       ],
@@ -289,6 +297,7 @@ final class TeamGenerationSettings {
             schemaVersion == other.schemaVersion &&
             teamMode == other.teamMode &&
             nativeCli == other.nativeCli &&
+            retainBuilderSession == other.retainBuilderSession &&
             listEquals(modelPool, other.modelPool);
   }
 
@@ -297,6 +306,7 @@ final class TeamGenerationSettings {
     schemaVersion,
     teamMode,
     nativeCli,
+    retainBuilderSession,
     Object.hashAll(modelPool),
   );
 }
@@ -309,6 +319,7 @@ final class TeamGenerationSettingsSnapshot {
     required TeamMode teamMode,
     required CliTool nativeCli,
     required List<EffectiveGenerateModelPoolEntry> modelPool,
+    bool retainBuilderSession = false,
   }) {
     return TeamGenerationSettingsSnapshot._internal(
       revision: revision,
@@ -316,6 +327,7 @@ final class TeamGenerationSettingsSnapshot {
       teamMode: teamMode,
       nativeCli: nativeCli,
       modelPool: _freezeEffectiveModelPool(modelPool),
+      retainBuilderSession: retainBuilderSession,
     );
   }
 
@@ -325,6 +337,7 @@ final class TeamGenerationSettingsSnapshot {
     required this.teamMode,
     required this.nativeCli,
     required this.modelPool,
+    this.retainBuilderSession = false,
   });
 
   final String revision;
@@ -332,6 +345,7 @@ final class TeamGenerationSettingsSnapshot {
   final TeamMode teamMode;
   final CliTool nativeCli;
   final List<EffectiveGenerateModelPoolEntry> modelPool;
+  final bool retainBuilderSession;
 
   factory TeamGenerationSettingsSnapshot.fromJson(Map<String, Object?> json) {
     TeamMode decodeMode() {
@@ -349,6 +363,7 @@ final class TeamGenerationSettingsSnapshot {
       capturedAt: (json['capturedAt'] as num?)?.toInt() ?? 0,
       teamMode: decodeMode(),
       nativeCli: decodeCli(),
+      retainBuilderSession: json['retainBuilderSession'] == true,
       modelPool: [
         for (final value in rawPool is List ? rawPool : const [])
           if (value is Map)
@@ -388,6 +403,7 @@ final class TeamGenerationSettingsSnapshot {
     'capturedAt': capturedAt,
     'teamMode': teamMode.value,
     'nativeCli': nativeCli.value,
+    if (retainBuilderSession) 'retainBuilderSession': true,
     'modelPool': [
       for (final entry in modelPool)
         {
@@ -413,6 +429,7 @@ final class TeamGenerationSettingsSnapshot {
             capturedAt == other.capturedAt &&
             teamMode == other.teamMode &&
             nativeCli == other.nativeCli &&
+            retainBuilderSession == other.retainBuilderSession &&
             listEquals(modelPool, other.modelPool);
   }
 
@@ -422,6 +439,7 @@ final class TeamGenerationSettingsSnapshot {
     capturedAt,
     teamMode,
     nativeCli,
+    retainBuilderSession,
     Object.hashAll(modelPool),
   );
 }
@@ -484,6 +502,7 @@ TeamGenerationSettings hydrateTeamGenerationSettings({
     schemaVersion: normalizedSettings.schemaVersion,
     teamMode: normalizedSettings.teamMode,
     nativeCli: normalizedSettings.nativeCli,
+    retainBuilderSession: normalizedSettings.retainBuilderSession,
     modelPool: [
       for (final entry in normalizedSettings.modelPool)
         if (entry.legacyPresetId case final legacyPresetId?)
@@ -555,6 +574,7 @@ TeamGenerationSettingsSnapshot resolveTeamGenerationSettingsSnapshot({
     );
   }
   final canonical = jsonEncode({
+    'retainBuilderSession': normalizedSettings.retainBuilderSession,
     'teamMode': normalizedSettings.teamMode.value,
     'nativeCli': normalizedSettings.nativeCli.value,
     'modelPool': [
@@ -578,6 +598,7 @@ TeamGenerationSettingsSnapshot resolveTeamGenerationSettingsSnapshot({
     capturedAt: capturedAt,
     teamMode: normalizedSettings.teamMode,
     nativeCli: normalizedSettings.nativeCli,
+    retainBuilderSession: normalizedSettings.retainBuilderSession,
     modelPool: List<EffectiveGenerateModelPoolEntry>.unmodifiable(effective),
   );
 }

@@ -38,11 +38,14 @@ void main() {
     );
   });
 
-  test('applyFirstPromptTitle renames empty display from landing prompt', () async {
-    await sync.applyFirstPromptTitle('sess-1', '  fix the landing title  ');
+  test(
+    'applyFirstPromptTitle renames empty display from landing prompt',
+    () async {
+      await sync.applyFirstPromptTitle('sess-1', '  fix the landing title  ');
 
-    expect(host.renames, [('sess-1', 'fix the landing title')]);
-  });
+      expect(host.renames, [('sess-1', 'fix the landing title')]);
+    },
+  );
 
   test('applyFirstPromptTitle skips when display already set', () async {
     host.state = ChatState(sessions: [session(display: 'Manual title')]);
@@ -54,6 +57,49 @@ void main() {
 
   test('applyFirstPromptTitle skips blank prompts', () async {
     await sync.applyFirstPromptTitle('sess-1', '   \n  ');
+
+    expect(host.renames, isEmpty);
+  });
+
+  test(
+    'explicit Builder title application allows team-generation sessions',
+    () async {
+      host.state = ChatState(
+        sessions: [
+          AppSession(
+            sessionId: 'builder-1',
+            workspaceId: 'ws-1',
+            createdAt: 1,
+            purpose: SessionPurpose.teamGeneration,
+            workflowId: 'workflow-1',
+          ),
+        ],
+      );
+
+      await sync.applyFirstPromptTitle(
+        'builder-1',
+        '  plan the release\nwith multiple workers  ',
+        allowTeamGeneration: true,
+      );
+
+      expect(host.renames, [('builder-1', 'plan the release')]);
+    },
+  );
+
+  test('automatic Builder title application remains guarded', () async {
+    host.state = ChatState(
+      sessions: [
+        AppSession(
+          sessionId: 'builder-1',
+          workspaceId: 'ws-1',
+          createdAt: 1,
+          purpose: SessionPurpose.teamGeneration,
+          workflowId: 'workflow-1',
+        ),
+      ],
+    );
+
+    await sync.applyFirstPromptTitle('builder-1', 'do not use kickoff title');
 
     expect(host.renames, isEmpty);
   });
@@ -127,11 +173,11 @@ class _FakeHost implements SessionLaunchHost {
 
   @override
   ChatDataSnapshot stateSnapshot() => ChatDataSnapshot(
-        workspaces: state.workspaces,
-        sessions: state.sessions,
-        visibleWorkspaces: state.visibleWorkspaces,
-        visibleSessions: state.visibleSessions,
-      );
+    workspaces: state.workspaces,
+    sessions: state.sessions,
+    visibleWorkspaces: state.visibleWorkspaces,
+    visibleSessions: state.visibleSessions,
+  );
 
   final renames = <(String, String)>[];
   final _FakeRepo _repo;

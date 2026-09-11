@@ -60,9 +60,11 @@ class _GenerateSettingsDialog extends StatefulWidget {
 class _GenerateSettingsDialogState extends State<_GenerateSettingsDialog> {
   TeamMode _teamMode = TeamMode.mixed;
   CliTool _nativeCli = CliTool.claude;
+  bool _retainBuilderSession = false;
   final List<_PoolRow> _rows = [];
-  late final TeamGenerationSettingsStore _store =
-      TeamGenerationSettingsStore(storage: context.read<HomeStorage>());
+  late final TeamGenerationSettingsStore _store = TeamGenerationSettingsStore(
+    storage: context.read<HomeStorage>(),
+  );
   SimpleLaunchFourTuple? _generator;
   var _loading = true;
   var _generatorInitialized = false;
@@ -107,6 +109,7 @@ class _GenerateSettingsDialogState extends State<_GenerateSettingsDialog> {
       _nativeCli = nativeClis.contains(settings.nativeCli)
           ? settings.nativeCli
           : (nativeClis.firstOrNull ?? CliTool.claude);
+      _retainBuilderSession = settings.retainBuilderSession;
       _rows
         ..clear()
         ..addAll([
@@ -323,9 +326,11 @@ class _GenerateSettingsDialogState extends State<_GenerateSettingsDialog> {
                   if (_visibleIndices.isEmpty)
                     _EmptyPoolHint(text: l10n.teamGenerateEmptyPool)
                   else
-                    for (var visiblePos = 0;
-                        visiblePos < _visibleIndices.length;
-                        visiblePos++)
+                    for (
+                      var visiblePos = 0;
+                      visiblePos < _visibleIndices.length;
+                      visiblePos++
+                    )
                       Padding(
                         padding: EdgeInsets.only(bottom: spacing.sm),
                         child: _poolRowTile(
@@ -344,6 +349,17 @@ class _GenerateSettingsDialogState extends State<_GenerateSettingsDialog> {
                   Text(
                     l10n.teamGenerateCapabilityNote,
                     style: styles.sm.copyWith(color: cs.onSurfaceVariant),
+                  ),
+                  SizedBox(height: spacing.lg),
+                  SwitchListTile.adaptive(
+                    contentPadding: EdgeInsets.zero,
+                    title: Text(l10n.teamGenerateRetainBuilderSession),
+                    subtitle: Text(l10n.teamGenerateRetainBuilderSessionHint),
+                    value: _retainBuilderSession,
+                    onChanged: _loading
+                        ? null
+                        : (value) =>
+                              setState(() => _retainBuilderSession = value),
                   ),
                 ],
               ),
@@ -548,6 +564,7 @@ class _GenerateSettingsDialogState extends State<_GenerateSettingsDialog> {
       TeamGenerationSettings(
         teamMode: _teamMode,
         nativeCli: _nativeCli,
+        retainBuilderSession: _retainBuilderSession,
         modelPool: _rows.map((row) => row.toEntry()).toList(),
       ),
     );
@@ -646,10 +663,7 @@ class _ModeOption extends StatelessWidget {
             description,
             maxLines: 3,
             overflow: TextOverflow.ellipsis,
-            style: styles.sm.copyWith(
-              color: cs.onSurfaceVariant,
-              height: 1.35,
-            ),
+            style: styles.sm.copyWith(color: cs.onSurfaceVariant, height: 1.35),
           ),
         ],
       ),
@@ -674,9 +688,7 @@ class _EmptyPoolHint extends StatelessWidget {
       ),
       child: Text(
         text,
-        style: TpTextStyles.of(
-          context,
-        ).sm.copyWith(color: cs.onSurfaceVariant),
+        style: TpTextStyles.of(context).sm.copyWith(color: cs.onSurfaceVariant),
       ),
     );
   }

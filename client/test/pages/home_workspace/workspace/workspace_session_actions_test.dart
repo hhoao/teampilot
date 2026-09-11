@@ -37,8 +37,9 @@ class _RecordingChatCubit extends ChatCubit {
   @override
   Future<void> applyFirstPromptTitle(
     String sessionId,
-    String firstPrompt,
-  ) async {
+    String firstPrompt, {
+    bool allowTeamGeneration = false,
+  }) async {
     prompts.add((sessionId, firstPrompt));
     if (failRename) throw StateError('rename failed');
   }

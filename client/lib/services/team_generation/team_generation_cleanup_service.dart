@@ -55,6 +55,23 @@ final class TeamGenerationCleanupService {
       return TeamGenerationCleanupResult.deferred;
     }
 
+    if (job.settings.retainBuilderSession) {
+      await _jobStore.mutate(workspaceId, workflowId, (current) {
+        return current.copyWith(
+          phase: _safeAdvance(current.phase),
+          receipts: {
+            ...current.receipts,
+            'builderRetained': const TeamGenerationReceipt(
+              state: TeamGenerationReceiptState.succeeded,
+            ),
+          },
+        );
+      });
+      _revokeToken(workflowId);
+      await _jobStore.compactComplete(workspaceId, workflowId);
+      return TeamGenerationCleanupResult.cleaned;
+    }
+
     // Gate 3: builder idle.
     final idleReceipt = job.receipts['builderIdle'];
     if (idleReceipt?.state != TeamGenerationReceiptState.succeeded) {
@@ -113,8 +130,12 @@ final class TeamGenerationCleanupService {
           return TeamGenerationCleanupResult.deferred;
         }
       }
-      await _recordReceipt(workspaceId, workflowId, 'builderDeleted',
-          value: job.builderSessionId);
+      await _recordReceipt(
+        workspaceId,
+        workflowId,
+        'builderDeleted',
+        value: job.builderSessionId,
+      );
     }
 
     // 2. Delete workflow staging.

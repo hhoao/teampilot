@@ -15932,6 +15932,18 @@ abstract class AppLocalizations {
   /// **'Add model configuration'**
   String get teamGenerateAddModel;
 
+  /// No description provided for @teamGenerateRetainBuilderSession.
+  ///
+  /// In en, this message translates to:
+  /// **'Keep Builder Session for troubleshooting'**
+  String get teamGenerateRetainBuilderSession;
+
+  /// No description provided for @teamGenerateRetainBuilderSessionHint.
+  ///
+  /// In en, this message translates to:
+  /// **'When enabled, the generated team opens normally but the Builder Session is kept for inspecting the generation process.'**
+  String get teamGenerateRetainBuilderSessionHint;
+
   /// No description provided for @teamGenerateHiddenPresets.
   ///
   /// In en, this message translates to:

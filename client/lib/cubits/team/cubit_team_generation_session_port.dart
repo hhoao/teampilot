@@ -156,6 +156,15 @@ final class CubitTeamGenerationSessionPort
     _workbenchCubit.openSession(_workspaceIdFor(sessionId), sessionId);
   }
 
+  @override
+  Future<void> applyFirstPromptTitle(String sessionId, String firstPrompt) {
+    return _chatCubit.applyFirstPromptTitle(
+      sessionId,
+      firstPrompt,
+      allowTeamGeneration: true,
+    );
+  }
+
   String _workspaceIdFor(String sessionId) {
     for (final workspace in _chatCubit.state.workspaces) {
       for (final id in workspace.sessionIds) {

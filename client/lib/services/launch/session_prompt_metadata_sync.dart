@@ -36,11 +36,20 @@ class SessionPromptMetadataSync {
   ///
   /// Used by keyboard capture and compose-landing PTY inject (which bypasses
   /// [FirstUserLineCapture]).
-  Future<void> applyFirstPromptTitle(String sessionId, String firstPrompt) async {
+  Future<void> applyFirstPromptTitle(
+    String sessionId,
+    String firstPrompt, {
+    bool allowTeamGeneration = false,
+  }) async {
     if (sessionId.startsWith('local-')) return;
     final repo = _host.sessionRepository;
     if (repo == null) return;
-    await _maybeAutoRenameFromFirstPrompt(repo, sessionId, firstPrompt);
+    await _maybeAutoRenameFromFirstPrompt(
+      repo,
+      sessionId,
+      firstPrompt,
+      allowTeamGeneration: allowTeamGeneration,
+    );
   }
 
   /// Bumps [AppSession.updatedAt] for user activity (compose inject, mailbox,
@@ -76,8 +85,9 @@ class SessionPromptMetadataSync {
   Future<void> _maybeAutoRenameFromFirstPrompt(
     SessionRepository repo,
     String sessionId,
-    String firstPrompt,
-  ) async {
+    String firstPrompt, {
+    bool allowTeamGeneration = false,
+  }) async {
     if (_host.isClosed) return;
     AppSession? session;
     for (final s in _state().sessions) {
@@ -88,7 +98,10 @@ class SessionPromptMetadataSync {
     }
     if (session == null || session.display.trim().isNotEmpty) return;
     // Builder kickoff is an app-owned envelope, not an operator title source.
-    if (session.purpose == SessionPurpose.teamGeneration) return;
+    if (session.purpose == SessionPurpose.teamGeneration &&
+        !allowTeamGeneration) {
+      return;
+    }
     final title = deriveSessionTitleFromFirstPrompt(firstPrompt);
     if (title.isEmpty) return;
     await _host.renameSession(repo, sessionId, title);

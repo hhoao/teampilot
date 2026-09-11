@@ -34,10 +34,11 @@ import '../../support/in_memory_filesystem.dart';
 import '../../support/post_frame_test_harness.dart';
 
 class _RecordingSessionPort implements TeamGenerationSessionPort {
-  _RecordingSessionPort({this.kickoffOutcomes});
+  _RecordingSessionPort({this.kickoffOutcomes, this.failBuilderTitle = false});
 
   /// When set, each builder deliverTracked consumes the next outcome.
   final List<PortDeliveryOutcome>? kickoffOutcomes;
+  final bool failBuilderTitle;
   var _kickoffOutcomeIndex = 0;
   final events = <String>[];
   final sessions = <String, AppSession>{};
@@ -95,6 +96,15 @@ class _RecordingSessionPort implements TeamGenerationSessionPort {
   @override
   Future<void> select(String sessionId) async {
     events.add('select:$sessionId');
+  }
+
+  @override
+  Future<void> applyFirstPromptTitle(
+    String sessionId,
+    String firstPrompt,
+  ) async {
+    if (failBuilderTitle) throw StateError('title failed');
+    events.add('title:$sessionId:$firstPrompt');
   }
 
   @override
@@ -212,11 +222,15 @@ void main() {
     () async {
       final fs = InMemoryFilesystem();
       final layout = WorkspaceLayout(teampilotRoot: '/tp', fs: fs);
-      final jobStore = TeamGenerationJobStore(fs: fs, layout: layout, storage: testHomeStorage, );
+      final jobStore = TeamGenerationJobStore(
+        fs: fs,
+        layout: layout,
+        storage: testHomeStorage,
+      );
       final settingsStore = TeamGenerationSettingsStore(
         fs: fs,
         pathOverride: '/tp/settings.json',
-                                                         storage: testHomeStorage,
+        storage: testHomeStorage,
       );
       final port = _RecordingSessionPort();
       final events = port.events;
@@ -357,7 +371,8 @@ void main() {
         targetIds: const ['local'],
       );
       expect(events[0], 'builderCreated:preserveWorkbenchView=false');
-      expect(events[1], 'select:${started.builderSessionId}');
+      expect(events[1], 'title:${started.builderSessionId}:$originalRequest');
+      expect(events[2], 'select:${started.builderSessionId}');
       // Claude pins fixed session ids with --session-id and rejects anything
       // that is not a UUID, so the builder session id must be a UUID.
       expect(
@@ -377,12 +392,12 @@ void main() {
         started.workflowId,
       );
       expect(
-        events[2],
+        events[3],
         'history:${started.builderSessionId}:${started.builderSessionId}:'
         '$kickoffId:$expectedKickoff',
       );
       expect(
-        events[3],
+        events[4],
         'deliverTracked:${started.builderSessionId}:${started.builderSessionId}:'
         '$kickoffId:$expectedKickoff',
       );
@@ -430,8 +445,8 @@ void main() {
       final accepted = await jobStore.read('ws', started.workflowId);
       await coordinator.completeAccepted(accepted!, 'finalize-key');
 
-      expect(events[4], startsWith('profilePersisted:'));
-      expect(events[5], 'destinationCreated');
+      expect(events[5], startsWith('profilePersisted:'));
+      expect(events[6], 'destinationCreated');
       final destinationId = teamGenerationSessionUuid(
         started.workflowId,
         'destination',
@@ -440,14 +455,14 @@ void main() {
         'teamgen-prompt-0-',
         started.workflowId,
       );
-      expect(events[6], 'select:$destinationId');
+      expect(events[7], 'select:$destinationId');
       expect(
-        events[7],
+        events[8],
         'history:$destinationId:team-lead:$handoffDeliveryId:$originalRequest',
       );
-      expect(events[8], 'prompt:team-lead:$originalRequest');
-      expect(events[9], 'builderDeleted');
-      expect(events, hasLength(10));
+      expect(events[9], 'prompt:team-lead:$originalRequest');
+      expect(events[10], 'builderDeleted');
+      expect(events, hasLength(11));
       expect((await profileRepository.loadTeamProfiles()), hasLength(1));
       expect(
         (await jobStore.read('ws', started.workflowId))!.phase,
@@ -461,11 +476,15 @@ void main() {
     () async {
       final fs = InMemoryFilesystem();
       final layout = WorkspaceLayout(teampilotRoot: '/tp', fs: fs);
-      final jobStore = TeamGenerationJobStore(fs: fs, layout: layout, storage: testHomeStorage, );
+      final jobStore = TeamGenerationJobStore(
+        fs: fs,
+        layout: layout,
+        storage: testHomeStorage,
+      );
       final settingsStore = TeamGenerationSettingsStore(
         fs: fs,
         pathOverride: '/tp/settings.json',
-                                                         storage: testHomeStorage,
+        storage: testHomeStorage,
       );
       final port = _RecordingSessionPort(
         kickoffOutcomes: const [
@@ -571,10 +590,7 @@ void main() {
         TeamGenerationReceiptState.unknown,
       );
       // Retry once after the first unknown/failed kickoff report.
-      expect(
-        events.where((e) => e.startsWith('deliverTracked:')).length,
-        2,
-      );
+      expect(events.where((e) => e.startsWith('deliverTracked:')).length, 2);
     },
   );
 }

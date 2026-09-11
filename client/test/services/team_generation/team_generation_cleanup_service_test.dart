@@ -21,6 +21,7 @@ import '../../support/in_memory_filesystem.dart';
 class _FakePort implements TeamGenerationSessionPort {
   final deletedSessions = <String>[];
   final knownSessions = <String>{'builder'};
+  var activityStreamOpened = false;
 
   @override
   Future<SessionPortOpenResult> createBuilder({
@@ -50,6 +51,12 @@ class _FakePort implements TeamGenerationSessionPort {
 
   @override
   Future<void> select(String sessionId) async {}
+
+  @override
+  Future<void> applyFirstPromptTitle(
+    String sessionId,
+    String firstPrompt,
+  ) async {}
 
   @override
   Future<AppSession?> sessionById(String sessionId) async =>
@@ -97,9 +104,12 @@ class _FakePort implements TeamGenerationSessionPort {
   }
 
   @override
-  Stream<PortActivity> activityStream(String sessionId) => _controllers
-      .putIfAbsent(sessionId, StreamController<PortActivity>.broadcast)
-      .stream;
+  Stream<PortActivity> activityStream(String sessionId) {
+    activityStreamOpened = true;
+    return _controllers
+        .putIfAbsent(sessionId, StreamController<PortActivity>.broadcast)
+        .stream;
+  }
 }
 
 void main() {
@@ -121,9 +131,13 @@ void main() {
     required Map<String, TeamGenerationReceipt> receipts,
     TeamGenerationPhase phase = TeamGenerationPhase.delivered,
     String workflowId = 'wf',
+    bool retainBuilderSession = false,
   }) async {
     final settings = resolveTeamGenerationSettingsSnapshot(
-      settings: TeamGenerationSettings(teamMode: TeamMode.mixed),
+      settings: TeamGenerationSettings(
+        teamMode: TeamMode.mixed,
+        retainBuilderSession: retainBuilderSession,
+      ),
       presets: const [],
       registry: CliToolRegistry.builtIn(),
       capturedAt: 42,
@@ -159,7 +173,7 @@ void main() {
     store = TeamGenerationJobStore(
       fs: fs,
       layout: WorkspaceLayout(teampilotRoot: '/tp', fs: fs),
-                                    storage: fakeHomeStorage(filesystem: fs),
+      storage: fakeHomeStorage(filesystem: fs),
     );
     port = _FakePort();
     revoked.clear();
@@ -221,6 +235,33 @@ void main() {
     expect(job.originalPrompt, isEmpty);
     expect(job.stagedResources, isEmpty);
     expect(job.probeSnapshotJson, isNull);
+  });
+
+  test('retention mode keeps Builder without waiting for idle', () async {
+    await seedJob(
+      receipts: {
+        'promptDeliveryDelivered': const TeamGenerationReceipt(
+          state: TeamGenerationReceiptState.succeeded,
+        ),
+        'finalizeResponseFlushed': const TeamGenerationReceipt(
+          state: TeamGenerationReceiptState.succeeded,
+        ),
+      },
+      retainBuilderSession: true,
+    );
+
+    final result = await service().cleanup(workspaceId: 'ws', workflowId: 'wf');
+
+    expect(result, TeamGenerationCleanupResult.cleaned);
+    expect(port.deletedSessions, isEmpty);
+    expect(port.activityStreamOpened, isFalse);
+    expect(revoked, ['wf']);
+    final job = await store.read('ws', 'wf');
+    expect(job!.phase, TeamGenerationPhase.complete);
+    expect(
+      job.receipts['builderRetained']!.state,
+      TeamGenerationReceiptState.succeeded,
+    );
   });
 
   test('idle timeout defers and retains recoverable builder', () async {

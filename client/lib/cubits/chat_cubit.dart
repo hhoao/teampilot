@@ -177,7 +177,8 @@ class ChatCubit extends Cubit<ChatState>
        _autoLaunchAllMembersOnConnect = autoLaunchAllMembersOnConnect,
        _reclaimIdleTerminalsEnabled = reclaimIdleTerminalsEnabled,
        _reclaimIdleTerminalAfterSeconds = reclaimIdleTerminalAfterSeconds,
-       _lifecycle = lifecycleService ?? SessionLifecycleService(storage: storage),
+       _lifecycle =
+           lifecycleService ?? SessionLifecycleService(storage: storage),
        _storage = storage,
        _tabStore = ChatTabStore(storage: storage),
        _dataStore = SessionDataStore(storage: storage),
@@ -605,10 +606,8 @@ class ChatCubit extends Cubit<ChatState>
     onCancelSeedHistoryPending?.call(sessionId, text);
   }
 
-  FailedMessageStore get _failedMessageStore => FailedMessageStore(
-    fs: _storage.fs,
-    rootPath: _storage.appDataRoot,
-  );
+  FailedMessageStore get _failedMessageStore =>
+      FailedMessageStore(fs: _storage.fs, rootPath: _storage.appDataRoot);
 
   /// Persists the optimistic user bubble for landing create+send (same record
   /// model as History continue) so it survives tab close and app restart.
@@ -2456,8 +2455,15 @@ class ChatCubit extends Cubit<ChatState>
   }
 
   /// Compose-landing / inject path: rename untitled session from first prompt.
-  Future<void> applyFirstPromptTitle(String sessionId, String firstPrompt) =>
-      _launchService.applyFirstPromptTitle(sessionId, firstPrompt);
+  Future<void> applyFirstPromptTitle(
+    String sessionId,
+    String firstPrompt, {
+    bool allowTeamGeneration = false,
+  }) => _launchService.applyFirstPromptTitle(
+    sessionId,
+    firstPrompt,
+    allowTeamGeneration: allowTeamGeneration,
+  );
 
   Future<void> touchSession(String sessionId) async {
     final repo = _sessionRepository;
