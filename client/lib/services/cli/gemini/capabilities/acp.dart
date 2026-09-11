@@ -1,6 +1,7 @@
 import 'package:acpd/acpd.dart';
 
 import '../../../acp/acp_agent_translator.dart';
+import '../../registry/capabilities/acp_capability.dart';
 
 /// Gemini absorption of ACP protocol quirks (part 1: translator + probe).
 ///
@@ -40,4 +41,42 @@ final class GeminiAcpTranslator implements AcpAgentTranslator {
 
   static const _abortPhraseA = 'This operation was aborted';
   static const _abortPhraseB = 'The user aborted a request';
+}
+
+/// Gemini's ACP launch/env declaration (part 2: capability).
+///
+/// Launch probes `--acp` first, falling back to `--experimental-acp`
+/// (gemini-cli renamed the flag); the agent process gets an isolated
+/// `GEMINI_CONFIG_DIR` under the session tool dir, an injected
+/// `GEMINI_API_KEY` when [credentialSource] yields one, and
+/// `SURFACE=teampilot` for upstream telemetry attribution.
+final class GeminiAcpCapability implements AcpCapability {
+  const GeminiAcpCapability({AcpCredentialSource? credentialSource})
+    : _credentialSource = credentialSource;
+
+  final AcpCredentialSource? _credentialSource;
+
+  @override
+  List<List<String>> launchArgCandidates(String executable) => [
+    for (final flag in translator.flagCandidates) [executable, flag],
+  ];
+
+  @override
+  AcpAgentTranslator get translator => const GeminiAcpTranslator();
+
+  @override
+  Map<String, String> buildEnvironment({
+    required String sessionToolDir,
+    required String workingDirectory,
+    Map<String, String> baseEnv = const {},
+  }) {
+    final env = Map<String, String>.of(baseEnv);
+    env['GEMINI_CONFIG_DIR'] = '$sessionToolDir/gemini';
+    final key = _credentialSource?.call();
+    if (key != null) {
+      env['GEMINI_API_KEY'] = key;
+    }
+    env['SURFACE'] = 'teampilot';
+    return env;
+  }
 }

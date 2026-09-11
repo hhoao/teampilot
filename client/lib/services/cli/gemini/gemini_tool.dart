@@ -1,6 +1,7 @@
 import '../../../models/team_config.dart';
 import '../registry/cli_capability.dart';
 import '../registry/cli_tool_definition.dart';
+import '../registry/capabilities/acp_capability.dart';
 import '../registry/capabilities/ai_history_capability.dart';
 import '../registry/capabilities/cli_executable_capability.dart';
 import '../registry/capabilities/cli_session_capability.dart';
@@ -18,6 +19,7 @@ import '../registry/capabilities/team_behavior_capability.dart';
 import '../registry/capabilities/terminal_behavior_capability.dart';
 import '../registry/launch/user_extra_args_provider.dart';
 import '../registry/resources/default_resource_capability.dart';
+import 'capabilities/acp.dart';
 import 'capabilities/defaults.dart';
 import 'capabilities/executable.dart';
 import 'capabilities/history/ai_history_capability.dart';
@@ -52,6 +54,7 @@ final class GeminiCliTool implements CliToolDefinition {
     this.prompt = const GeminiPromptCapability(),
     this.mcp = const GeminiMcpCapability(),
     this.hookWriter = const GeminiHookWriter(),
+    this.acp = const GeminiAcpCapability(),
   });
 
   final TeamBehaviorCapability teamBehavior;
@@ -70,6 +73,7 @@ final class GeminiCliTool implements CliToolDefinition {
   final PromptCapability prompt;
   final McpCapability mcp;
   final HookCapability hookWriter;
+  final AcpCapability acp;
 
   @override
   CliTool get id => CliTool.gemini;
@@ -95,5 +99,6 @@ final class GeminiCliTool implements CliToolDefinition {
     prompt,
     mcp,
     hookWriter,
+    acp,
   ];
 }

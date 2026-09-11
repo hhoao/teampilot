@@ -34,12 +34,14 @@ final class _GeminiCatalogSource implements ModelCatalogSource {
   List<String> modelsFor({
     required AppProviderConfig? provider,
     required String providerId,
-  }) => GeminiModelCatalog.modelsFor(provider: provider, providerId: providerId);
+  }) =>
+      GeminiModelCatalog.modelsFor(provider: provider, providerId: providerId);
 }
 
 /// Gemini provider minimal stack: static model catalog, passthrough form, no
-/// credential concepts (no CLI login flow in this phase). API-key rows are
-/// written into the session home by [materializeSessionHome] as env vars.
+/// credential concepts (no CLI login flow in this phase). [materializeSessionHome]
+/// only writes the isolated GEMINI_CONFIG_DIR; the API key reaches the CLI
+/// process through the ACP environment (GeminiAcpCapability).
 final class GeminiProviderCapability extends CatalogModelCapability
     with PassthroughProviderFormDefaults
     implements ProviderCapability {
@@ -209,9 +211,7 @@ final class GeminiProviderCapability extends CatalogModelCapability
     // Minimal home: point Gemini at the session CONFIG_DIR. Credential
     // materialization (API key / OAuth) is deferred to the ACP session
     // runtime (tasks 8-9); nothing is written here yet.
-    return SessionHomeContribution(
-      environment: {configDirEnvKey: configDir},
-    );
+    return SessionHomeContribution(environment: {configDirEnvKey: configDir});
   }
 }
 
