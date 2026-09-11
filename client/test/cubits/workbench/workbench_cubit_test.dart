@@ -395,6 +395,32 @@ void main() {
       expect(layout.groups['g0']!.order, [_s1, _s3]);
     });
 
+    test(
+      'maximized center group clears for all-locked placement without activation',
+      () {
+        cubit
+          ..openSession(_ws, 's1')
+          ..openSession(_ws, 's2')
+          ..splitTab(_ws, _s2, axis: Axis.horizontal, before: false);
+        final maximized = cubit.centerLayout(_ws).focusedGroupId;
+        cubit.toggleMaximizeGroup(_ws, maximized);
+        for (final groupId in cubit.centerLayout(_ws).leafGroupIds) {
+          cubit.toggleGroupLock(_ws, groupId);
+        }
+
+        cubit.openSession(_ws, 's3', activate: false);
+
+        final layout = cubit.centerLayout(_ws);
+        final destination = layout.groups.entries
+            .singleWhere((entry) => entry.value.order.contains(_s3))
+            .key;
+        expect(destination, isNot(maximized));
+        expect(layout.groups[destination]!.order, [_s3]);
+        expect(layout.focusedGroupId, maximized);
+        expect(layout.maximizedGroupId, isNull);
+      },
+    );
+
     test('maximized center group is preserved when it accepts a new tab', () {
       cubit
         ..openSession(_ws, 's1')

@@ -64,3 +64,17 @@ task.
   test/cubits/workbench/workbench_cubit_test.dart` — 52 tests passed.
 - Relevant reducer verification: `cd client && dart run tool/run_tests.dart
   test/cubits/workbench/workbench_split_layout_test.dart` — 62 tests passed.
+
+## Re-review fix: inactive all-locked placement visibility
+
+- Corrected the all-locked automatic-routing path to locate the newly opened
+  tab in `nextLayout` and use that sibling group as the visibility destination.
+  This clears stale maximization while preserving the reducer's
+  `activate: false` focused-group behavior.
+- Added a center Cubit regression covering maximization, all groups locked,
+  and `openSession(..., activate: false)`. It asserts the new tab is in the
+  sibling, the old group remains focused, and `maximizedGroupId` is cleared.
+- Focused verification: `cd client && dart run tool/run_tests.dart
+  test/cubits/workbench/workbench_cubit_test.dart` — 52 tests passed.
+- Relevant reducer verification: `cd client && dart run tool/run_tests.dart
+  test/cubits/workbench/workbench_split_layout_test.dart` — 62 tests passed.

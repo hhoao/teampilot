@@ -401,10 +401,12 @@ class WorkbenchCubit extends Cubit<WorkbenchState> {
         activate: activate,
       );
       if (nextLayout == null) return null;
+      final destinationGroupId = _groupContainingTab(nextLayout, tab);
+      if (destinationGroupId == null) return null;
       final visibleLayout = _applyAutomaticTarget(
         layout,
         nextLayout,
-        nextLayout.focusedGroupId,
+        destinationGroupId,
       );
       emit(
         center
