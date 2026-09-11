@@ -1,9 +1,125 @@
+import 'package:flutter/foundation.dart';
+
 import '../../models/app_session.dart';
 import '../../models/git_worktree.dart';
 import '../../models/workspace.dart';
 import '../../models/workspace_folder.dart';
 import 'session_worktree_grouping.dart';
 import '../workspace/workspace_path_utils.dart';
+
+@immutable
+class ProjectSessionGroup {
+  const ProjectSessionGroup({
+    required this.projectPath,
+    required this.label,
+    required this.sessions,
+    this.isOther = false,
+  });
+
+  final String? projectPath;
+  final String label;
+  final List<AppSession> sessions;
+  final bool isOther;
+}
+
+List<ProjectSessionGroup> groupSessionsByProject({
+  required List<WorkspaceFolder> folders,
+  required List<AppSession> sessions,
+  required bool usesPosixPaths,
+}) {
+  final buckets = [for (final _ in folders) <AppSession>[]];
+  final otherSessions = <AppSession>[];
+
+  for (final session in sessions) {
+    final owner = owningProjectFolderForSession(
+      session,
+      folders,
+      usesPosixPaths: usesPosixPaths,
+      worktreesByProjectPath: null,
+    );
+    final ownerIndex = owner == null
+        ? null
+        : folders.indexWhere(
+            (folder) => workspacePathsEqual(
+              folder.path,
+              owner,
+              usesPosixPaths: usesPosixPaths,
+            ),
+          );
+    if (ownerIndex == null || ownerIndex == -1) {
+      otherSessions.add(session);
+    } else {
+      buckets[ownerIndex].add(session);
+    }
+  }
+
+  final labels = _projectFolderLabels(folders, usesPosixPaths: usesPosixPaths);
+  final groups = [
+    for (var index = 0; index < folders.length; index++)
+      ProjectSessionGroup(
+        projectPath: folders[index].path,
+        label: labels[index],
+        sessions: List.unmodifiable(buckets[index]),
+      ),
+  ];
+  if (otherSessions.isNotEmpty) {
+    groups.add(
+      ProjectSessionGroup(
+        projectPath: null,
+        label: 'Other',
+        sessions: List.unmodifiable(otherSessions),
+        isOther: true,
+      ),
+    );
+  }
+  return groups;
+}
+
+List<String> _projectFolderLabels(
+  List<WorkspaceFolder> folders, {
+  required bool usesPosixPaths,
+}) {
+  final segments = [
+    for (final folder in folders)
+      _normalizedFolderSegments(folder.path, usesPosixPaths: usesPosixPaths),
+  ];
+  return [
+    for (var index = 0; index < segments.length; index++)
+      _shortestUniqueSuffix(segments, index),
+  ];
+}
+
+String _shortestUniqueSuffix(List<List<String>> paths, int index) {
+  final path = paths[index];
+  if (path.isEmpty) return '';
+  for (var depth = 1; depth <= path.length; depth++) {
+    final candidate = path.sublist(path.length - depth).join('/');
+    final isUnique = [
+      for (var otherIndex = 0; otherIndex < paths.length; otherIndex++)
+        if (otherIndex != index && paths[otherIndex].length >= depth)
+          paths[otherIndex]
+                  .sublist(paths[otherIndex].length - depth)
+                  .join('/') ==
+              candidate,
+    ].isEmpty;
+    if (isUnique) return candidate;
+  }
+  return path.join('/');
+}
+
+List<String> _normalizedFolderSegments(
+  String path, {
+  required bool usesPosixPaths,
+}) {
+  final normalized = normalizeWorkspacePath(
+    path,
+    usesPosixPaths: usesPosixPaths,
+  ).replaceAll(r'\', '/');
+  return [
+    for (final segment in normalized.split('/'))
+      if (segment.isNotEmpty) segment,
+  ];
+}
 
 bool sessionBelongsToProject(
   AppSession session,
@@ -22,7 +138,13 @@ bool sessionBelongsToProject(
   if (workspacePathsEqual(primary, root, usesPosixPaths: usesPosixPaths)) {
     return true;
   }
-  return primary.startsWith(root.endsWith('/') ? root : '$root/');
+  final comparablePrimary = usesPosixPaths
+      ? primary
+      : primary.replaceAll(r'\', '/');
+  final comparableRoot = usesPosixPaths ? root : root.replaceAll(r'\', '/');
+  return comparablePrimary.startsWith(
+    comparableRoot.endsWith('/') ? comparableRoot : '$comparableRoot/',
+  );
 }
 
 /// The workspace folder that owns [session].
@@ -104,7 +226,11 @@ Map<String, List<AppSession>> _sessionsByOwningProjectFolder({
       worktreesByProjectPath: worktreesByProjectPath,
     );
     if (owner == null) continue;
-    final key = _folderBucketKey(folders, owner, usesPosixPaths: usesPosixPaths);
+    final key = _folderBucketKey(
+      folders,
+      owner,
+      usesPosixPaths: usesPosixPaths,
+    );
     if (key == null) continue;
     buckets.putIfAbsent(key, () => []).add(session);
   }
@@ -242,7 +368,9 @@ List<AppSession> unfilteredSessionsForWorktreeGroup({
   return const [];
 }
 
-List<WorktreeGroup> _withDisambiguatedSidebarLabels(List<WorktreeGroup> groups) {
+List<WorktreeGroup> _withDisambiguatedSidebarLabels(
+  List<WorktreeGroup> groups,
+) {
   final branchCounts = <String, int>{};
   for (final group in groups) {
     final wt = group.worktree;
