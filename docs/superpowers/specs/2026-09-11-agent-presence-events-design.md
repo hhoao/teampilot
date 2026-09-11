@@ -165,3 +165,48 @@ final class SeatPresenceComposer {
 ### 验收标准
 
 `cd client && flutter analyze --no-fatal-infos --no-fatal-warnings` 干净 + `dart run tool/run_tests.dart` 全套绿 + 既有 presence 相关测试未被修改地通过。
+
+## Implementation notes (phase 2) — where shipped code deviates from the spec/plan
+
+Recorded so the next reader knows these were deliberate, and why.
+
+- **Composition ownership moved off `SeatPresenceComposer.evaluate()`.** The
+  spec had a per-seat composer own the composition and publish on change. Shipped
+  instead: the existing `MemberPresenceService.compute()` -> `MemberCoordination`
+  path remains the single place that gathers inputs and computes availability,
+  and `PresenceEventBridge` is a thin dedupe/publish edge fed the already-computed
+  value (`MemberPresenceCubit._applyPresenceEvents`). Reason: a composer holding
+  its own boot/turn/roster inputs would have duplicated input gathering that the
+  poll path already does, with two copies of the rules to keep aligned.
+
+- **`markUserTurnActive` -> `markUserTurnStarted`.** The spec named the setter
+  `markUserTurnActive`; the real method on `TerminalSession` is
+  `markUserTurnStarted`. No behaviour change, name only.
+
+- **The bridge is built per bootstrap, not app-lifetime.** The spec implied one
+  long-lived publish edge. Shipped instead: `app_shell` builds a fresh
+  `PresenceEventBridge` per `buildAppShell`, owned by that shell's
+  `MemberPresenceCubit`, which disposes it in `close()`. Reason: the cubit tears
+  its bridge down on close, so a shared app-lifetime bridge would be killed by the
+  first discarded shell. The `AgentPresenceProjection` and the sink stay
+  app-lifetime (registered once in `_TeamPilotBootstrapState`).
+
+- **`TerminalSession.onPresenceInputsChanged` is re-pointable.** It started as a
+  final constructor-only field; it had to become a mutable field (null = detached)
+  so the cubit could attach the push trigger when a target binds and clear only
+  its own callback when the target changes. Read the current value, never cache
+  it.
+
+- **The publish edge takes the computed value, not the projected value.** Feeding
+  the bridge the value the cubit is about to emit (the projection's) would make
+  the edge self-referential — the projection's first output would be its own
+  input and the loop would freeze. The fresh `MemberCoordination` result feeds the
+  bridge; the projection is only a downstream cache. (Same point in the
+  `services/event/README.md` family section.)
+
+- **Deferred minors carried out of this phase** (accepted, not fixed here):
+  tracker one-way-dispose interaction to revisit; projection dedupe baseline vs
+  disconnect semantics; `MemberPresenceCubit._knownSeats` unbounded growth; a
+  retained shell's teardown does not close its presence cubit; the wiring test
+  asserts on source text.
+
