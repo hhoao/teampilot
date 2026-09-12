@@ -5,6 +5,7 @@ import 'package:dartssh2/dartssh2.dart' show SSHSocket, SSHTransport;
 import 'package:dartssh2/protocol.dart';
 
 import 'server_channel.dart';
+import 'server_dial.dart';
 import 'server_forward.dart';
 import 'server_session.dart';
 import 'server_userauth.dart';
@@ -218,19 +219,22 @@ class SSHServerConnection {
     }
   }
 
-  /// Serves CHANNEL_OPEN (RFC 4254 §5.1): `session` channels are confirmed
-  /// with a fresh [SSHServerChannel]; every other type is refused with
-  /// "administratively prohibited" (server-initiated opens — the outbound
-  /// direction, used for `forwarded-tcpip` — go through
-  /// [_openServerChannel] instead).
+  /// Serves CHANNEL_OPEN (RFC 4254 §5.1): distinguishes by channel type, and
+  /// applies the per-connection channel cap before the type dispatch so every
+  /// kind of open — `session` and `direct-tcpip` alike — counts against the
+  /// same quota.
   ///
-  /// The refusal uses reason 1, `codeAdministrativelyProhibited`. The plan
-  /// text says "reason 3 (admin prohibited)", but reason 3 is
-  /// `codeUnknownChannelType` in both the fork's API and RFC 4254 §5.1,
-  /// and it would be the wrong semantic here (the server recognizes
-  /// `direct-tcpip`, it just does not serve it); the named constant for
-  /// the stated semantic wins per the controller ruling that real fork API
-  /// names take precedence.
+  /// - `session` channels are confirmed with a fresh [SSHServerChannel].
+  /// - `direct-tcpip` opens (RFC 4254 §7.1) are served by the direct dialer:
+  ///   gated by the forwarding config, then dialed through the injected seam;
+  ///   the outcome is replied asynchronously (see [_serveDirectTcpip]).
+  /// - Every other type — `x11`, `direct-streamlocal@openssh.com`, …
+  ///   (server-initiated opens — the outbound direction, used for
+  ///   `forwarded-tcpip` — go through [_openServerChannel] instead) — is
+  ///   refused with reason 1, `codeAdministrativelyProhibited`. The named
+  ///   constant for that semantic wins per the controller ruling that real
+  ///   fork API names take precedence; reason 3 (`codeUnknownChannelType`)
+  ///   would be the wrong semantic for a recognized-but-unserved type.
   void _handleChannelOpen(Uint8List payload) {
     final message = _decodeMessage(
       'channel open',
@@ -239,22 +243,11 @@ class SSHServerConnection {
     );
     if (message == null) return;
 
-    if (message.channelType != 'session') {
-      _transport.sendPacket(
-        SSH_Message_Channel_Open_Failure(
-          recipientChannel: message.senderChannel,
-          reasonCode:
-              SSH_Message_Channel_Open_Failure.codeAdministrativelyProhibited,
-          description: "Channel type '${message.channelType}' is not supported",
-        ).encode(),
-      );
-      return;
-    }
-
     // The per-connection channel cap (OpenSSH's default is 10): without it,
     // one connection could pin unbounded channel state on the server. Excess
     // opens are refused with reason 4, resource shortage (RFC 4254 §5.1's
-    // "channel resource shortage" case).
+    // "channel resource shortage" case), before the type dispatch so a
+    // direct-tcpip open cannot evade its half of the quota.
     if (_channels.length >= _config.maxChannels) {
       _transport.sendPacket(
         SSH_Message_Channel_Open_Failure(
@@ -262,6 +255,23 @@ class SSHServerConnection {
           reasonCode: SSH_Message_Channel_Open_Failure.codeResourceShortage,
           description: 'Too many open channels (${_channels.length}/'
               '${_config.maxChannels})',
+        ).encode(),
+      );
+      return;
+    }
+
+    if (message.channelType == 'direct-tcpip') {
+      unawaited(_serveDirectTcpip(message));
+      return;
+    }
+
+    if (message.channelType != 'session') {
+      _transport.sendPacket(
+        SSH_Message_Channel_Open_Failure(
+          recipientChannel: message.senderChannel,
+          reasonCode:
+              SSH_Message_Channel_Open_Failure.codeAdministrativelyProhibited,
+          description: "Channel type '${message.channelType}' is not supported",
         ).encode(),
       );
       return;
@@ -292,6 +302,93 @@ class SSHServerConnection {
         data: Uint8List(0),
       ).encode(),
     );
+  }
+
+  /// Serves one `direct-tcpip` channel open (RFC 4254 §7.1): gates it against
+  /// the forwarding config through [SSHServerDirectDialer], then either
+  /// refuses it with the dialer's reason or confirms the channel and rides
+  /// the dialed connection on the shared forward pump.
+  ///
+  /// The dial is asynchronous — the embedded dial seam may resolve a host and
+  /// connect — so the reply is sent from this detached future, never from the
+  /// transport's synchronous dispatch. A connection that closes while the
+  /// dial is in flight is torn down without a reply: the dialed socket is
+  /// destroyed and nothing is sent.
+  Future<void> _serveDirectTcpip(SSH_Message_Channel_Open message) async {
+    final forwarding = _config.forwarding;
+    if (forwarding == null || message.host == null || message.port == null) {
+      _refuseChannelOpen(
+        message.senderChannel,
+        SSH_Message_Channel_Open_Failure.codeAdministrativelyProhibited,
+        'TCP forwarding is disabled',
+      );
+      return;
+    }
+    final dialer = SSHServerDirectDialer(
+      forwarding: forwarding,
+      allowTarget: _directTargetAllowed,
+    );
+    final result = await dialer.dial(message.host!, message.port!);
+    switch (result) {
+      case DirectDialRefused():
+        _refuseChannelOpen(
+            message.senderChannel, result.reasonCode, result.description);
+      case DirectDialConnected():
+        // 拨号期间连接关闭：销毁拨入 socket，不发任何包。
+        if (_phase != _Phase.running) {
+          result.connection.destroy();
+          return;
+        }
+        final ourChannel = _nextChannelNumber++;
+        final channel = SSHServerChannel(
+          recipientChannel: message.senderChannel,
+          ourChannel: ourChannel,
+          channelType: 'direct-tcpip',
+          peerInitialWindowSize: message.initialWindowSize,
+          peerMaximumPacketSize: message.maximumPacketSize,
+          sendPacket: _transport.sendPacket,
+          onClosed: (channel) => _channels.remove(channel.ourChannel),
+          printDebug: _config.printDebug,
+        );
+        _channels[ourChannel] = channel;
+        _transport.sendPacket(
+          SSH_Message_Channel_Confirmation(
+            recipientChannel: message.senderChannel,
+            senderChannel: ourChannel,
+            initialWindowSize: SSHServerChannel.initialReceiveWindow,
+            maximumPacketSize: SSHServerChannel.maximumPacketSize,
+            data: Uint8List(0),
+          ).encode(),
+        );
+        unawaited(pumpForwardConnection(channel, result.connection));
+    }
+  }
+
+  /// The `direct-tcpip` target predicate: the same per-connection
+  /// [SSHForwardingConfig.permitOpen] verdict the forwarder uses, defaulting
+  /// to allow when no predicate is configured (OpenSSH's `PermitOpen any`).
+  Future<bool> _directTargetAllowed(String host, int port) async =>
+      await _config.forwarding!.permitOpen?.call(this, host, port) ?? true;
+
+  /// Refuses a channel open with a failure message. Replies are best-effort:
+  /// when the transport is already gone (the connection is closing), the
+  /// teardown owns the aftermath and the send is dropped silently.
+  void _refuseChannelOpen(
+    int recipientChannel,
+    int reasonCode,
+    String description,
+  ) {
+    try {
+      _transport.sendPacket(
+        SSH_Message_Channel_Open_Failure(
+          recipientChannel: recipientChannel,
+          reasonCode: reasonCode,
+          description: description,
+        ).encode(),
+      );
+    } on Object {
+      // transport 已走；连接拆除负责收尾
+    }
   }
 
   /// Routes a channel-scoped message to its channel by the recipient id the

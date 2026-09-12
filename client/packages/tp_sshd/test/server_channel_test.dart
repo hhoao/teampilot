@@ -35,19 +35,16 @@ void main() {
       authenticate: (_) async => true,
       clientIdentities: [testDeviceKey],
     );
-    // forwardLocal() opens a 'direct-tcpip' channel, which this server does
-    // not serve until Task 9.
-    //
-    // The plan text says "reason 3 (admin prohibited)", but reason 3 is
-    // codeUnknownChannelType in both the fork's API and RFC 4254 §5.1, and
-    // would be the wrong semantic for a recognized-but-unserved type; the
+    // forwardLocalUnix() opens a 'direct-streamlocal@openssh.com' channel,
+    // which this server deliberately does not serve (x11 and streamlocal are
+    // out of the direct-tcpip forwarding scope, per the design spec). The
     // named constant for the stated semantic (reason 1,
     // codeAdministrativelyProhibited) wins per the controller ruling that
     // real fork API names take precedence. Both the constant and the raw
     // wire value are pinned so a future constant renumbering cannot slip
     // through silently.
     await expectLater(
-      client.forwardLocal('127.0.0.1', 80),
+      client.forwardLocalUnix('/tmp/nonexistent.sock'),
       throwsA(
         isA<SSHChannelOpenError>()
             .having(

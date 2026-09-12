@@ -71,6 +71,7 @@ Future<(SSHClient, SSHServerConnection)> startDualConnection({
   required Future<bool> Function(SSHServerAuthRequest request) authenticate,
   List<SSHIdentity> clientIdentities = const [],
   String username = 'user',
+  SSHForwardingConfig? forwarding,
 }) async {
   final (clientSocket, serverSocket) = loopbackSSHSocketPair();
   final connection = SSHServerConnection(
@@ -79,6 +80,7 @@ Future<(SSHClient, SSHServerConnection)> startDualConnection({
       hostKeyPair: hostKeyPair,
       expectedUsername: username,
       authenticate: authenticate,
+      forwarding: forwarding,
     ),
   );
   final client = _connectClient(

@@ -224,6 +224,19 @@ class SSHServerForwarder {
       return;
     }
 
+    // A port wider than a signed int speaks of a port the wire never meant
+    // (RFC 4254 §4 carries a uint32, but OpenSSH refuses beyond INT_MAX,
+    // serverloop.c). Refused before the bind seam is ever consulted, like
+    // every other gate in this function.
+    if (requestedPort > 0x7fffffff) {
+      printDebug?.call(
+        'tp_sshd: refusing tcpip-forward for port > INT_MAX '
+        '($requestedPort)',
+      );
+      _reply(request, success: false);
+      return;
+    }
+
     if (!_allowTcpForwarding.allowsRemote) {
       printDebug?.call(
         'tp_sshd: tcpip-forward disabled (mode $_allowTcpForwarding)',
