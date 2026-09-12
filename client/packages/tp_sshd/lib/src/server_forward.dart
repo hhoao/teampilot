@@ -10,12 +10,21 @@ import 'package:dartssh2/protocol.dart'
         SSH_Message_Request_Success;
 
 import 'server_channel.dart';
+import 'ssh_server.dart' show SshTcpForwardingMode;
 
 /// Injection seam for loopback binds: the app passes a `ServerSocket.bind`
 /// adapter, tests pass fakes (or a recording wrapper) to observe or refuse
 /// binds without sockets.
 typedef SSHBindServerSocket = Future<ServerSocketHandle> Function(
     InternetAddress address, int port);
+
+/// The dial seam for `direct-tcpip`: receives the host string and port the
+/// client asked for and returns a connected [ForwardConnection], or throws to
+/// refuse just that channel. The seam resolves the host and connects (the
+/// library never touches DNS itself); bind and dial return the same
+/// connection abstraction, so both directions share one pump.
+typedef SSHDialSocket = Future<ForwardConnection> Function(
+    String host, int port);
 
 /// A bound loopback listener behind one accepted `tcpip-forward` request.
 /// Implemented by the app over a real `ServerSocket`; faked in tests.
@@ -154,14 +163,20 @@ Future<void> pumpForwardConnection(
 /// and the connection's teardown releases every bind it holds.
 class SSHServerForwarder {
   SSHServerForwarder({
+    required SshTcpForwardingMode allowTcpForwarding,
+    required Future<bool> Function(String host, int port) allowTarget,
     required SSHBindServerSocket bindServerSocket,
     required SSHForwardedChannelOpener openForwardedChannel,
     required void Function(Uint8List payload) sendPacket,
     this.printDebug,
-  })  : _bindServerSocket = bindServerSocket,
+  })  : _allowTcpForwarding = allowTcpForwarding,
+        _allowTarget = allowTarget,
+        _bindServerSocket = bindServerSocket,
         _openForwardedChannel = openForwardedChannel,
         _sendPacket = sendPacket;
 
+  final SshTcpForwardingMode _allowTcpForwarding;
+  final Future<bool> Function(String host, int port) _allowTarget;
   final SSHBindServerSocket _bindServerSocket;
   final SSHForwardedChannelOpener _openForwardedChannel;
   final void Function(Uint8List payload) _sendPacket;
@@ -205,6 +220,21 @@ class SSHServerForwarder {
     final requestedHost = request.bindAddress;
     final requestedPort = request.bindPort;
     if (requestedHost == null || requestedPort == null) {
+      _reply(request, success: false);
+      return;
+    }
+
+    if (!_allowTcpForwarding.allowsRemote) {
+      printDebug?.call(
+        'tp_sshd: tcpip-forward disabled (mode $_allowTcpForwarding)',
+      );
+      _reply(request, success: false);
+      return;
+    }
+    if (!await _allowTarget(requestedHost, requestedPort)) {
+      printDebug?.call(
+        'tp_sshd: refusing tcpip-forward for $requestedHost:$requestedPort',
+      );
       _reply(request, success: false);
       return;
     }

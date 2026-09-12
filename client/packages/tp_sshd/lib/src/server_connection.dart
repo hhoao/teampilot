@@ -45,10 +45,16 @@ class SSHServerConnection {
       onMessage: _handleMessage,
     );
     _authTimer = Timer(config.authTimeout, _onAuthTimeout);
-    final bindServerSocket = config.bindServerSocket;
-    if (bindServerSocket != null) {
+    final forwarding = config.forwarding;
+    if (forwarding != null) {
+      final targetAllowed = forwarding.permitOpen == null
+          ? (String host, int port) async => true
+          : (String host, int port) async =>
+              forwarding.permitOpen!(this, host, port);
       _forwarder = SSHServerForwarder(
-        bindServerSocket: bindServerSocket,
+        allowTcpForwarding: forwarding.allowTcpForwarding,
+        allowTarget: targetAllowed,
+        bindServerSocket: forwarding.bindServerSocket,
         openForwardedChannel: _openForwardedChannel,
         sendPacket: _transport.sendPacket,
         printDebug: config.printDebug,
@@ -180,8 +186,8 @@ class SSHServerConnection {
   /// Answers global requests (RFC 4254 §4). `keepalive` is acknowledged,
   /// and `tcpip-forward` / `cancel-tcpip-forward` are handed to the
   /// forwarder, which replies asynchronously once the injected bind settles.
-  /// Everything else — including forwarding when no bind seam is configured —
-  /// is refused.
+  /// Everything else — including forwarding when no forwarding config is
+  /// configured — is refused.
   void _handleGlobalRequest(Uint8List payload) {
     final message = _decodeMessage(
       'global request',

@@ -116,9 +116,10 @@ void main() {
       hostKeyPair: testHostKey,
       authenticate: (_) async => true,
       clientIdentities: [testDeviceKey],
+      forwarding: null,
     );
-    // tcpip-forward is Task 9; until then the Request_Failure reply makes
-    // forwardRemote return null instead of throwing.
+    // No forwarding config = forwarding hard-disabled: the Request_Failure
+    // reply makes forwardRemote return null instead of throwing.
     expect(await client.forwardRemote(host: '127.0.0.1', port: 0), isNull);
     await server.close();
     await client.close();

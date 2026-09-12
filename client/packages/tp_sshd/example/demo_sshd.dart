@@ -49,10 +49,17 @@ Future<void> main(List<String> args) async {
       ptyFactory: _spawnPty,
       hostInfo: _hostInfo,
       sftpFileSystem: LocalSftpFileSystem(options.root),
-      bindServerSocket: (address, port) async {
-        final socket = await ServerSocket.bind(address, port);
-        return _IoServerSocketHandle(socket);
-      },
+      forwarding: SSHForwardingConfig(
+        allowTcpForwarding: SshTcpForwardingMode.both,
+        dialSocket: (host, port) async {
+          final socket = await Socket.connect(host, port);
+          return _IoForwardConnection(socket);
+        },
+        bindServerSocket: (address, port) async {
+          final socket = await ServerSocket.bind(address, port);
+          return _IoServerSocketHandle(socket);
+        },
+      ),
       // Keep the log readable: the transport traces every packet loop.
       printDebug: (message) {
         if (message == null || message.contains('_processPackets')) return;

@@ -26,7 +26,7 @@ void main() {
       hostKeyPair: testHostKey,
       authenticate: (_) async => true,
       clientIdentities: [testDeviceKey],
-      bindServerSocket: _bindRealLoopback,
+      forwarding: _testForwardingConfig(bindServerSocket: _bindRealLoopback),
     );
     final forward = await client.forwardRemote(host: '127.0.0.1', port: 0);
     // The client learned the actually bound port from the Request_Success
@@ -79,10 +79,16 @@ void main() {
       hostKeyPair: testHostKey,
       authenticate: (_) async => true,
       clientIdentities: [testDeviceKey],
-      bindServerSocket: (address, port) async {
-        seamAddresses.add(address.address);
-        return _RealServerSocketHandle(await ServerSocket.bind(address, port));
-      },
+      forwarding: SSHForwardingConfig(
+        allowTcpForwarding: SshTcpForwardingMode.remote,
+        dialSocket: (host, port) => throw StateError('no dial'),
+        bindServerSocket: (address, port) async {
+          seamAddresses.add(address.address);
+          return _RealServerSocketHandle(
+            await ServerSocket.bind(address, port),
+          );
+        },
+      ),
     );
     // '' (the client's "all interfaces" default), the wildcard addresses,
     // another interface and any other host are all refused.
@@ -99,12 +105,13 @@ void main() {
     await server.close();
   });
 
-  test('tcpip-forward without a bind seam is refused', () async {
-    // No bindServerSocket configured: the forwarding surface is off, and a
+  test('tcpip-forward without a forwarding config is refused', () async {
+    // No forwarding config: the forwarding surface is hard-disabled, and a
     // tcpip-forward request — even for a perfectly loopback address — gets a
     // Request_Failure reply rather than a hang or a bind attempt.
     var failures = 0;
     final (connection, client) = await startRawAuthenticatedConnection(
+      forwarding: null,
       onServerMessage: (payload) {
         if (SSHMessage.readMessageId(payload) ==
             SSH_Message_Request_Failure.messageId) {
@@ -126,7 +133,7 @@ void main() {
       hostKeyPair: testHostKey,
       authenticate: (_) async => true,
       clientIdentities: [testDeviceKey],
-      bindServerSocket: _bindRealLoopback,
+      forwarding: _testForwardingConfig(bindServerSocket: _bindRealLoopback),
     );
     final forward = await client.forwardRemote(host: '127.0.0.1', port: 0);
     final port = forward!.port;
@@ -149,7 +156,7 @@ void main() {
       hostKeyPair: testHostKey,
       authenticate: (_) async => true,
       clientIdentities: [testDeviceKey],
-      bindServerSocket: _bindRealLoopback,
+      forwarding: _testForwardingConfig(bindServerSocket: _bindRealLoopback),
     );
     // 'localhost' is a loopback spelling too: bound on IPv4 loopback.
     final forward = await client.forwardRemote(host: 'localhost', port: 0);
@@ -172,7 +179,7 @@ void main() {
     var failures = 0;
     int? boundPort;
     final (connection, client) = await startRawAuthenticatedConnection(
-      bindServerSocket: _bindRealLoopback,
+      forwarding: _testForwardingConfig(bindServerSocket: _bindRealLoopback),
       onServerMessage: (payload) {
         switch (SSHMessage.readMessageId(payload)) {
           case SSH_Message_Request_Success.messageId:
@@ -219,7 +226,79 @@ void main() {
     await connection.close();
     client.close();
   });
+
+  test('permitOpen gates the bind target before the seam is consulted',
+      () async {
+    final seamCalls = <(String, int)>[];
+    var allow = false;
+    final (client, server) = await startDualPair(
+      hostKeyPair: testHostKey,
+      authenticate: (_) async => true,
+      clientIdentities: [testDeviceKey],
+      forwarding: SSHForwardingConfig(
+        allowTcpForwarding: SshTcpForwardingMode.remote,
+        permitOpen: (connection, host, port) async {
+          return allow;
+        },
+        dialSocket: (host, port) => throw StateError('no dail'),
+        bindServerSocket: (address, port) async {
+          seamCalls.add((address.address, port));
+          return _RealServerSocketHandle(
+              await ServerSocket.bind(address, port));
+        },
+        dialTimeout: const Duration(seconds: 5),
+      ),
+    );
+    expect(await client.forwardRemote(host: '127.0.0.1', port: 0), isNull);
+    expect(seamCalls, isEmpty);
+    allow = true;
+    final forward = await client.forwardRemote(host: '127.0.0.1', port: 0);
+    expect(forward, isNotNull);
+    // cancelForwardRemote, not forward.close(): the fork's close() waits on
+    // its connections controller's done event, which is only delivered once
+    // something listens to the stream.
+    await client.cancelForwardRemote(forward!);
+    await client.close();
+    await server.close();
+  });
+
+  test('remote forwarding is refused when the mode lacks the remote bit',
+      () async {
+    var failures = 0;
+    final (connection, client) = await startRawAuthenticatedConnection(
+      forwarding: SSHForwardingConfig(
+        allowTcpForwarding: SshTcpForwardingMode.local,
+        permitOpen: null,
+        dialSocket: (host, port) => throw StateError('no dial'),
+        bindServerSocket: _bindRealLoopback,
+        dialTimeout: const Duration(seconds: 5),
+      ),
+      onServerMessage: (payload) {
+        if (SSHMessage.readMessageId(payload) ==
+            SSH_Message_Request_Failure.messageId) {
+          failures += 1;
+        }
+      },
+    );
+    client.sendPacket(
+      SSH_Message_Global_Request.tcpipForward('127.0.0.1', 0).encode(),
+    );
+    await waitUntil(() => failures == 1);
+    await connection.close();
+    client.close();
+  });
 }
+
+/// The forwarding config the forward tests configure the bind seam with:
+/// remote forwarding on, a dial seam that must never be reached.
+SSHForwardingConfig _testForwardingConfig({
+  required SSHBindServerSocket bindServerSocket,
+}) =>
+    SSHForwardingConfig(
+      allowTcpForwarding: SshTcpForwardingMode.remote,
+      dialSocket: (host, port) => throw StateError('no dial'),
+      bindServerSocket: bindServerSocket,
+    );
 
 /// Binds a real loopback [ServerSocket] through the seam.
 Future<ServerSocketHandle> _bindRealLoopback(

@@ -36,7 +36,7 @@ class SSHServerConfig {
     this.ptyFactory,
     this.hostInfo,
     this.sftpFileSystem,
-    this.bindServerSocket,
+    this.forwarding,
     this.onAuthenticated,
     this.printDebug,
     this.printTrace,
@@ -99,12 +99,11 @@ class SSHServerConfig {
   /// is refused.
   final SftpFileSystem? sftpFileSystem;
 
-  /// The bind seam for remote port forwarding (`tcpip-forward`, RFC 4254
-  /// §7). The app passes a `ServerSocket.bind` adapter; `null` disables
-  /// forwarding outright — every `tcpip-forward` request is refused. Only
-  /// loopback addresses are ever bound, and a non-loopback request is
-  /// refused before this seam is consulted.
-  final SSHBindServerSocket? bindServerSocket;
+  /// The forwarding surface: remote (`tcpip-forward`) and direct
+  /// (`direct-tcpip`) TCP forwarding, governed by one [SSHForwardingConfig].
+  /// `null` disables forwarding outright — every `tcpip-forward` and
+  /// `direct-tcpip` request is refused.
+  final SSHForwardingConfig? forwarding;
 
   /// Invoked exactly once per connection, after the signed publickey request
   /// verifies and `authenticate` accepts — the embedder's point to record
@@ -117,6 +116,84 @@ class SSHServerConfig {
 
   /// Function invoked with trace logging, mirroring [SSHSocket] transports.
   final void Function(String? message)? printTrace;
+}
+
+/// The forwarding direction mask, mirroring `sshd_config`'s
+/// AllowTcpForwarding (`servconf.c`: `yes|all|no|local|remote`). It is a
+/// direction bitmask, not a boolean: `direct-tcpip` needs the local bit,
+/// `tcpip-forward` the remote bit.
+enum SshTcpForwardingMode {
+  /// AllowTcpForwarding `no`: neither direction.
+  deny,
+
+  /// `direct-tcpip` allowed, `tcpip-forward` refused.
+  local,
+
+  /// `tcpip-forward` allowed, `direct-tcpip` refused.
+  remote,
+
+  /// AllowTcpForwarding `yes`/`all`: both directions.
+  both;
+
+  /// Whether `direct-tcpip` (the local, outbound-dial direction) is on.
+  bool get allowsLocal =>
+      this == SshTcpForwardingMode.local ||
+      this == SshTcpForwardingMode.both;
+
+  /// Whether `tcpip-forward` (the remote, inbound-bind direction) is on.
+  bool get allowsRemote =>
+      this == SshTcpForwardingMode.remote ||
+      this == SshTcpForwardingMode.both;
+}
+
+/// AllowTcpForwarding + PermitOpen + the bind/dial seams in one surface
+/// (the direct-tcpip forwarding design §1). A `null`
+/// [SSHServerConfig.forwarding] is the hard disable — the equivalent of
+/// `sshd -d`: both forwarding directions are refused outright.
+final class SSHForwardingConfig {
+  SSHForwardingConfig({
+    required this.allowTcpForwarding,
+    required this.dialSocket,
+    required this.bindServerSocket,
+    this.permitOpen,
+    this.dialTimeout = const Duration(seconds: 30),
+  });
+
+  /// The direction mask governing both forwarding kinds: `direct-tcpip`
+  /// reads [SshTcpForwardingMode.allowsLocal], `tcpip-forward` reads
+  /// [SshTcpForwardingMode.allowsRemote].
+  final SshTcpForwardingMode allowTcpForwarding;
+
+  /// The per-connection target predicate, the PermitOpen equivalent: a
+  /// `direct-tcpip` open is checked against the dialed target `(host, port)`
+  /// and a `tcpip-forward` request against the bind address `(host, port)`,
+  /// each before any seam is consulted. Receives the connection, so the
+  /// embedder can decide per device (it recorded which connection belongs to
+  /// which device in [SSHServerConfig.onAuthenticated]). `null` allows every
+  /// target, like OpenSSH's default `PermitOpen any`.
+  final Future<bool> Function(
+          SSHServerConnection connection, String host, int port)?
+      permitOpen;
+
+  /// The dial seam for `direct-tcpip`: receives the host string and port the
+  /// client asked for and returns a connected [ForwardConnection] — the seam
+  /// resolves the host and connects, like OpenSSH's server-side getaddrinfo
+  /// + connect. A throw — or a [dialTimeout] expiry — refuses just that
+  /// channel with reason 2, `connect failed`; the SSH connection survives.
+  final SSHDialSocket dialSocket;
+
+  /// The bind seam for remote port forwarding (`tcpip-forward`, RFC 4254
+  /// §7). The app passes a `ServerSocket.bind` adapter; tests pass fakes (or
+  /// a recording wrapper) to observe or refuse binds without sockets. Only
+  /// loopback addresses are ever bound, and a non-loopback request is
+  /// refused before this seam is consulted.
+  final SSHBindServerSocket bindServerSocket;
+
+  /// The guard width covering a dial plus the confirmation round-trip, so a
+  /// stuck dial can never leave a channel-open pending forever.
+  /// `future.timeout(dialTimeout)` bounds the dial; on expiry the channel is
+  /// refused like any dial failure.
+  final Duration dialTimeout;
 }
 
 /// A client's authentication request, as handed to
