@@ -198,7 +198,13 @@ class EmbeddedSshServer implements EmbeddedSshServerHandle {
             allowTcpForwarding: SshTcpForwardingMode.both,
             permitOpen: _loopbackOnlyPermit,
             dialSocket: (host, port) async =>
-                _IoForwardConnection(await Socket.connect(host, port)),
+                _IoForwardConnection(
+                  await Socket.connect(
+                    host,
+                    port,
+                    timeout: const Duration(seconds: 10),
+                  ),
+                ),
             bindServerSocket: (address, port) async =>
                 _IoServerSocketHandle(await ServerSocket.bind(address, port)),
           ),
@@ -308,7 +314,11 @@ class EmbeddedSshServer implements EmbeddedSshServerHandle {
     final entry = _DeviceConnection(publicKeyLine: publicKeyLine);
     _connectionDevices[connection] = entry;
     unawaited(
-      connection.done.whenComplete(() => _connectionDevices.remove(connection)),
+      connection.done
+          .then<void>(
+            (_) => _connectionDevices.remove(connection),
+            onError: (Object _) => _connectionDevices.remove(connection),
+          ),
     );
     // Last-match-wins if two devices ever share one key blob — accepted per
     // the Task 3 review; the store owns registry semantics either way.

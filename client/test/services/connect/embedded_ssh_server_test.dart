@@ -140,6 +140,23 @@ void main() {
     await client.authenticated;
   });
 
+  test('protocol-level disconnect does not surface an unhandled error',
+      () async {
+    await store.issueDevice(deviceId: 'phone-1', publicKey: testDevicePubLine);
+    final server = newServer();
+    await server.start();
+    addTearDown(server.stop);
+
+    final client = await connectTo(server);
+    await client.authenticated;
+    // The server-side transport completes `connection.done` with an
+    // SSHDisconnectError when this lands; the record-teardown listener must
+    // swallow it, or the transport has no way back to the connection the
+    // app is driving.
+    await client.disconnect();
+    await client.done.timeout(const Duration(seconds: 5));
+  });
+
   test('unregistered key is rejected', () async {
     final server = newServer();
     await server.start();
