@@ -212,6 +212,81 @@ void main() {
     await client.close();
   });
 
+  test('out-of-range originator port refuses with reason 1', () async {
+    // raw 驱动（真实 client 不会发送 >0xFFFF 的 originator 端口）
+    final refused = Completer<void>();
+    final (connection, client) = await startRawAuthenticatedConnection(
+      forwarding: forwardingConfig(),
+      onServerMessage: (payload) {
+        final m = SSHMessage.readMessageId(payload);
+        if (m == SSH_Message_Channel_Open_Failure.messageId &&
+            SSH_Message_Channel_Open_Failure.decode(payload).reasonCode ==
+                SSH_Message_Channel_Open_Failure
+                    .codeAdministrativelyProhibited &&
+            !refused.isCompleted) {
+          refused.complete();
+        }
+      },
+    );
+    client.sendPacket(
+      SSH_Message_Channel_Open.directTcpip(
+        senderChannel: 3,
+        initialWindowSize: 2 * 1024 * 1024,
+        maximumPacketSize: 32768,
+        host: '127.0.0.1',
+        port: 80,
+        originatorIP: '127.0.0.1',
+        originatorPort: 0x10000,
+      ).encode(),
+    );
+    await refused.future.timeout(const Duration(seconds: 5));
+    await connection.close();
+    client.close();
+  });
+
+  test('post-dial cap re-check refuses a channel that crossed the cap while dialing',
+      () async {
+    // 时序：先发 direct-tcpip open（拨号卡在 gate 上），再开一个 session 通道
+    // 把 cap=1 占满，最后放开 gate → post-dial 复检以 reason 4 拒绝、拨入的
+    // socket 被销毁、通道表不变。
+    final gate = Completer<void>();
+    final dialed = Completer<void>();
+    final listener = await _echoListener();
+    addTearDown(listener.close);
+    final (client, connection) = await startDualConnection(
+      hostKeyPair: testHostKey,
+      authenticate: (_) async => true,
+      clientIdentities: [testDeviceKey],
+      maxChannels: 1,
+      forwarding: forwardingConfig(dial: (host, port) async {
+        if (!dialed.isCompleted) dialed.complete();
+        await gate.future; // 卡住，等 session 通道先占满 cap
+        return _RealForwardConnection(await Socket.connect(host, port));
+      }),
+    );
+
+    final open = client.forwardLocal('127.0.0.1', listener.port);
+    // 拨号已在进行（卡在 gate），此刻通道表是全空的。
+    await dialed.future.timeout(const Duration(seconds: 5));
+    expect(connection.channels, isEmpty);
+    // 用 session 通道占满 cap=1（接收时点复检放行，因为它先于拨号注册）。
+    final session = await openClientSessionChannel(client);
+    await waitUntil(() => connection.channels.length == 1);
+    // 放开 gate：post-dial 复检拒绝，而不是确认。
+    gate.complete();
+    await expectLater(
+      open,
+      throwsA(isA<SSHChannelOpenError>()
+          .having((e) => e.code, 'code',
+              SSH_Message_Channel_Open_Failure.codeResourceShortage)
+          .having((e) => e.code, 'wire', 4)),
+    );
+    expect(connection.channels.length, 1); // session 通道仍占着，没被膨胀
+    session.close();
+    await connection.close();
+    await client.close();
+  });
+
   test('connection close destroys the dialed socket', () async {
     final listener = await _echoListener();
     addTearDown(listener.close);

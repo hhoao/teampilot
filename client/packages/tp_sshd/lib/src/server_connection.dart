@@ -324,6 +324,18 @@ class SSHServerConnection {
       );
       return;
     }
+    // The originator endpoint is informational only (RFC 4254 §7.1), but
+    // OpenSSH refuses a wire port above 0xFFFF with reason 1 before dialing
+    // (serverloop.c); keep the same bound so the refusal precedes any dial.
+    final originatorPort = message.originatorPort;
+    if (originatorPort != null && originatorPort > 0xFFFF) {
+      _refuseChannelOpen(
+        message.senderChannel,
+        SSH_Message_Channel_Open_Failure.codeAdministrativelyProhibited,
+        'invalid originator port',
+      );
+      return;
+    }
     final dialer = SSHServerDirectDialer(
       forwarding: forwarding,
       allowTarget: _directTargetAllowed,
@@ -337,6 +349,17 @@ class SSHServerConnection {
         // 拨号期间连接关闭：销毁拨入 socket，不发任何包。
         if (_phase != _Phase.running) {
           result.connection.destroy();
+          return;
+        }
+        // 拨号期间可能跨过上线：接收时点的复检已放行并发在途拨号，这里在注册
+        // 通道之前复检一次（OpenSSH channel_new 后的同款复检），堵住冲线。
+        if (_channels.length >= _config.maxChannels) {
+          result.connection.destroy();
+          _refuseChannelOpen(
+            message.senderChannel,
+            SSH_Message_Channel_Open_Failure.codeResourceShortage,
+            'Too many open channels',
+          );
           return;
         }
         final ourChannel = _nextChannelNumber++;
