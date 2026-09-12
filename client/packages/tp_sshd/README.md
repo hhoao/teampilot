@@ -41,7 +41,13 @@ Everything the server executes is injected:
 | `ptyFactory` | interactive `shell` requests (a prior `pty-req` is required) |
 | `hostInfo` | the `tp1:` host-info query (answered by the server, never by spawning) |
 | `sftpFileSystem` | the `sftp` subsystem (SFTPv3 over an injected filesystem) |
-| `bindServerSocket` | `tcpip-forward` binds (loopback addresses only; unset refuses forwarding outright) |
+| `SSHForwardingConfig` | both forwarding directions: `allowTcpForwarding` (yes/all/no/local/remote mask) + `permitOpen` (per-target predicate) gate first, then `dialSocket` for `direct-tcpip` dials and `bindServerSocket` for `tcpip-forward` binds (loopback only), bounded by `dialTimeout`; `null` refuses both directions outright |
+
+`direct-tcpip` open semantics follow OpenSSH: reason 1 (`administratively
+prohibited`) for a disabled/refused/port-out-of-range target, reason 2
+(`connect failed`) when the dial or its timeout fails; in both cases only the
+channel is refused — the SSH connection stays alive. A successful dial
+registers and confirms the channel before its pump starts.
 
 An unset seam refuses its surface — nothing falls back to running real
 commands or binding real sockets. The one bounded wait in the package:
