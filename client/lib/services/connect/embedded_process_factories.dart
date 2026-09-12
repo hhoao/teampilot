@@ -21,7 +21,7 @@ import 'package:tp_sshd/tp_sshd.dart';
 
 import '../../utils/logging/logger_utils.dart';
 import '../cli/registry/installer/teampilot_node_install.dart';
-import '../storage/app_storage.dart' show AppPaths;
+import '../storage/app_paths.dart' show AppPaths;
 
 /// The user's login shell, or `/bin/bash` when unknown. PowerShell on
 /// Windows.

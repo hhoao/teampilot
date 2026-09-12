@@ -21,7 +21,7 @@ import 'package:tp_sshd/tp_sshd.dart';
 
 import '../../utils/logging/logger_utils.dart';
 import '../io/filesystem.dart';
-import '../storage/app_storage.dart' show AppPaths;
+import '../storage/app_paths.dart' show AppPaths;
 import 'connect_settings_store.dart';
 import 'embedded_host_key_store.dart';
 import 'embedded_process_factories.dart';

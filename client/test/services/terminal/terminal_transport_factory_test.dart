@@ -177,7 +177,10 @@ void main() {
         'terminal_transport_factory_test_',
       );
       addTearDown(() => temp.delete(recursive: true));
-      final profileRepository = SshProfileRepository(rootDir: temp.path);
+      final profileRepository = SshProfileRepository(
+        rootDir: temp.path,
+        storage: fakeHomeStorage(),
+      );
       final profile = SshProfile(
         id: 'p1',
         name: 'desktop',
