@@ -76,10 +76,15 @@ AcpConnectionSpawner productionAcpSpawner({
       workingDirectory: workingDirectory,
       onStderr: (_) {},
     );
+    // Observed by the runtime's agent-exit watcher after a successful start
+    // (mid-session crash → inline system message). Futures are multicast, so
+    // sharing this with the handshake race below is safe.
+    final processExitCode = transport.processExitCode;
     final connection = AcpAgentConnection(
       transport: transport,
       logger: logger,
       translator: translator,
+      processExitCode: processExitCode,
     );
     try {
       final handshake = connection.initialize(
@@ -89,7 +94,7 @@ AcpConnectionSpawner productionAcpSpawner({
       );
       final winner = await Future.any([
         handshake.then((_) => const _HandshakeDone()),
-        transport.processExitCode.then(_ProcessExited.new),
+        processExitCode.then(_ProcessExited.new),
       ]);
       if (winner is _ProcessExited) {
         if (winner.exitCode != 0) {

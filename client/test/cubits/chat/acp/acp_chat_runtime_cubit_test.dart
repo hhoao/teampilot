@@ -28,6 +28,9 @@ class _FakeAcpRuntime implements AcpSessionRuntimeApi {
   ({AgentPermissionReplyKind kind, AgentPermissionAlwaysOption? always})?
   lastAnswer;
 
+  /// Exit-code future the cubit's exit watcher observes (null = never).
+  Completer<int>? agentExit;
+
   void emit(AcpSessionUpdate update) => updatesController.add(update);
 
   @override
@@ -59,6 +62,9 @@ class _FakeAcpRuntime implements AcpSessionRuntimeApi {
   @override
   Stream<AgentPermissionRequest> get permissionRequests =>
       permissionsController.stream;
+
+  @override
+  Future<int>? get agentProcessExitCode => agentExit?.future;
 
   @override
   Future<AgentPermissionReplyKind?> answerPermission(
@@ -354,6 +360,51 @@ void main() {
     expect(cubit.sendPrompt('late'), isFalse);
     await cubit.close();
   });
+
+  test(
+    'agent exit watcher: transport exit after start → crash message + ended',
+    () async {
+      runtime.agentExit = Completer<int>();
+      final cubit = bootCubit();
+      await cubit.start(
+        executable: 'gemini',
+        sessionToolDir: '/tmp/tool',
+        workingDirectory: '/w',
+      );
+      expect(cubit.state.phase, AcpChatPhase.ready);
+
+      // Mid-turn crash: the watcher must fire without any other signal.
+      cubit.sendPrompt('do something');
+      runtime.agentExit!.complete(1);
+      await pumpEventQueue();
+
+      expect(cubit.state.phase, AcpChatPhase.ended);
+      expect(cubit.state.error?.kind, AcpChatErrorKind.processExited);
+      final message = cubit.state.messages.last;
+      expect(message.role, AiRole.system);
+      expect((message.parts.single as AiTextPart).text, contains('1'));
+      expect(cubit.state.inTurn, isFalse);
+      expect(cubit.state.pendingPermission, isNull);
+      // Ended runtime must not accept further prompts.
+      expect(cubit.sendPrompt('next'), isFalse);
+      await cubit.close();
+    },
+  );
+
+  test(
+    'agent exit watcher: no exit future → watcher inert (start unaffected)',
+    () async {
+      final cubit = bootCubit();
+      await cubit.start(
+        executable: 'gemini',
+        sessionToolDir: '/tmp/tool',
+        workingDirectory: '/w',
+      );
+      // No agentExit completer — the watcher must not have ended anything.
+      expect(cubit.state.phase, AcpChatPhase.ready);
+      await cubit.close();
+    },
+  );
 
   test('messages are recorded into the app-side transcript store', () async {
     final fs = InMemoryFilesystem();

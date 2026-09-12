@@ -111,6 +111,12 @@ abstract interface class AcpSessionRuntimeApi {
   /// Permission cards surfaced by the agent during the open session.
   Stream<AgentPermissionRequest> get permissionRequests;
 
+  /// The live session's agent-process exit code, if observable.
+  ///
+  /// Never completes for non-process-backed spawn connections (tests /
+  /// in-memory transports); callers must not await it unguarded.
+  Future<int>? get agentProcessExitCode;
+
   /// Answers the currently held permission request (if any).
   Future<AgentPermissionReplyKind?> answerPermission(
     AgentPermissionReplyKind reply, {
@@ -237,6 +243,11 @@ class AcpSessionRuntime implements AcpSessionRuntimeApi {
     }
     return session.permissionRequests;
   }
+
+  /// The live session's agent-process exit code, if observable.
+  @override
+  Future<int>? get agentProcessExitCode =>
+      _session?.connection.agentProcessExitCode;
 
   /// Answers the currently held permission request (if any).
   @override

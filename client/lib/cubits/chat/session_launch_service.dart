@@ -185,21 +185,13 @@ class SessionLaunchService
       logger: logger,
       launchPlanFor: acpLaunchPlanResolver(_h.cliRegistry),
     );
-    final cubit =
-        AcpChatRuntimeCubit(
-          runtime: runtime,
-          sessionId: session.sessionId,
-          tool: session.cli ?? CliTool.gemini,
-          attention: _h.agentAttentionCubit,
-          transcript: _acpTranscriptFor(session),
-        )..ensureStrings(
-          _h.acpChatStrings?.call() ??
-              const AcpChatStrings(
-                launchFailedVersion: acpLaunchFailedVersion,
-                turnFailed: 'Turn failed',
-                processExited: 'Agent process exited',
-              ),
-        );
+    final cubit = AcpChatRuntimeCubit(
+      runtime: runtime,
+      sessionId: session.sessionId,
+      tool: session.cli ?? CliTool.gemini,
+      attention: _h.agentAttentionCubit,
+      transcript: _acpTranscriptFor(session),
+    )..ensureStrings(_h.acpChatStrings?.call() ?? defaultAcpChatStrings);
     tab.acpRuntime = cubit;
     await cubit.start(
       executable: _h.shellFactory.executableFor(session.cli ?? CliTool.gemini),

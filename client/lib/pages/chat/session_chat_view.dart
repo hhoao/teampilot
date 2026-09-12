@@ -1585,6 +1585,7 @@ class _SessionChatViewState extends State<SessionChatView> {
                                                     _composeTurnStarting(
                                                       context.read<ChatCubit>(),
                                                     ),
+                                                acpRuntime: widget.acpRuntime,
                                               );
                                             },
                                           ),

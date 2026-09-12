@@ -133,8 +133,5 @@ class ChatTab {
     yield* memberShells.values;
   }
 
-  /// True while the ACP runtime is live (never in [sessions] — no PTY).
-  bool get isAcpRunning => acpRuntime != null;
-
   bool get isRunning => sessions.any((session) => session.isRunning);
 }

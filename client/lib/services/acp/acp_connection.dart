@@ -85,7 +85,9 @@ class AcpAgentConnection {
     required AcpTransport transport,
     required AcpFrameLogger logger,
     required this.translator,
-  }) : _transport = transport {
+    Future<int>? processExitCode,
+  }) : _transport = transport,
+       _processExitCode = processExitCode {
     _client = acpd.ClientRole().connect(
       _AcpdTransportAdapter(transport, logger),
     );
@@ -122,6 +124,20 @@ class AcpAgentConnection {
   /// The acpd client connection; consumed by [AcpAgentSession] to subscribe
   /// to session notifications and answer agent requests.
   acpd.ClientConnection get acpdClient => _client;
+
+  /// The agent process's exit code, completing when the process dies.
+  ///
+  /// Only process-backed transports can observe it; the production spawner
+  /// passes the transport's exit-code future in, and it still completes after
+  /// the connection is disposed (the chat-side exit watcher relies on that).
+  /// Non-process transports (tests) pass nothing — this getter then returns a
+  /// future that never completes.
+  Future<int> get agentProcessExitCode => _processExitCode ?? _neverExit;
+
+  final Future<int>? _processExitCode;
+
+  /// Future that never completes, for non-process-backed transports.
+  static final Future<int> _neverExit = Completer<int>().future;
 
   /// The session opened via [openSession], if any.
   ///

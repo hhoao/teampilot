@@ -131,6 +131,7 @@ class AcpChatRuntimeCubit extends Cubit<AcpChatRuntimeState> {
   AcpChatStrings? _strings;
   StreamSubscription<AcpSessionUpdate>? _updatesSub;
   StreamSubscription<AgentPermissionRequest>? _permissionSub;
+  Future<void>? _agentExitSub;
 
   /// Injects localized copy; must run before [start].
   void ensureStrings(AcpChatStrings strings) => _strings ??= strings;
@@ -182,6 +183,17 @@ class AcpChatRuntimeCubit extends Cubit<AcpChatRuntimeState> {
       },
     );
     _permissionSub = _runtime.permissionRequests.listen(_onPermissionRequest);
+    // Agent process exit (mid-session crash or out-of-turn death): inline
+    // system message + ended phase. Attached in the same step as the other
+    // subscriptions, after a successful start — a launch failure path has
+    // already returned above and does not reach this watcher. The exit-code
+    // future never completes for non-process-backed spawn connections.
+    final agentExitCode = _runtime.agentProcessExitCode;
+    if (agentExitCode != null) {
+      _agentExitSub = agentExitCode.then((code) {
+        handleProcessExited(code);
+      });
+    }
     _applyAttention(const AgentStatusEvent(state: AgentSeatAttention.working));
     emit(state.copyWith(phase: AcpChatPhase.ready));
   }
@@ -262,6 +274,9 @@ class AcpChatRuntimeCubit extends Cubit<AcpChatRuntimeState> {
     await _permissionSub?.cancel();
     _updatesSub = null;
     _permissionSub = null;
+    // Detach the exit watcher FIRST: a never-completing exit future (the
+    // common no-crash case) must not keep close's completion pending.
+    _agentExitSub = null;
     if (state.phase != AcpChatPhase.ended) {
       _applyAttention(const AgentStatusEvent(state: AgentSeatAttention.done));
     }

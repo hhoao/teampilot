@@ -206,6 +206,9 @@ class AcpAgentSession {
   final AcpAgentConnection _connection;
   final acpd.ClientConnection _client;
 
+  /// The connection this session runs on (exit watcher on the runtime side).
+  AcpAgentConnection get connection => _connection;
+
   /// The ACP session identifier from `session/new`.
   final String sessionId;
 

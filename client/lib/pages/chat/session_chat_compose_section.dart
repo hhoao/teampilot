@@ -6,6 +6,7 @@ import 'package:shared_ui/shared_ui.dart';
 
 import '../../cubits/agent_attention_cubit.dart';
 import '../../cubits/app_provider_cubit.dart';
+import '../../cubits/chat/acp/acp_chat_runtime_cubit.dart';
 import '../../cubits/chat_cubit.dart';
 import '../../cubits/chat/model/session_connect_request.dart';
 import '../../cubits/cli_presets_cubit.dart';
@@ -25,6 +26,7 @@ import '../../models/skill.dart';
 import '../../models/team_config.dart';
 import '../../models/workspace.dart';
 import '../../repositories/session_repository.dart';
+import '../../services/agent_status/agent_permission_request.dart';
 import '../../services/cli/preset_resolver.dart';
 import '../../services/cli/registry/capabilities/native_command_capability.dart';
 import '../../services/cli/registry/capabilities/skill_capability.dart';
@@ -57,6 +59,7 @@ import '../../widgets/follow_up/follow_up_queue_strip.dart';
 import '../home_workspace/workspace/config/cli_preset_edit_dialog.dart';
 import '../home_workspace/workspace/config/cli_presets_manage_dialog.dart';
 import '../home_workspace/workspace/workspace_landing_team_settings_dialog.dart';
+import 'acp_permission_card.dart';
 import 'agent_permission_attention_banner.dart';
 import 'compose_stop_visibility.dart';
 import 'session_seat_working.dart';
@@ -99,6 +102,7 @@ class SessionChatComposeSection extends StatelessWidget {
     this.userStoppedTurn = false,
     this.onUserStoppedTurn,
     this.turnStarting = false,
+    this.acpRuntime,
     super.key,
   });
 
@@ -140,6 +144,11 @@ class SessionChatComposeSection extends StatelessWidget {
   /// even though the seat is not [memberWorking] yet.
   final bool turnStarting;
 
+  /// The session's terminal-less ACP runtime, when this is an ACP chat
+  /// session. Drives the ACP permission card + the compose lock while the
+  /// agent holds a permission request.
+  final AcpChatRuntimeCubit? acpRuntime;
+
   @override
   Widget build(BuildContext context) {
     final l10n = context.l10n;
@@ -169,6 +178,18 @@ class SessionChatComposeSection extends StatelessWidget {
         selectedMemberId: selectedMemberId,
       ),
     );
+
+    // Terminal-less ACP session: the pending permission card + compose lock
+    // live on the ACP runtime's own state (the attention seat is keyed
+    // 'acp', which the banner's seat lookup cannot resolve for a simple
+    // session).
+    final acpPending = acpRuntime == null
+        ? null
+        : seatSelect<AcpChatRuntimeCubit, AgentPermissionRequest?>(
+            context,
+            (c) => c.state.pendingPermission,
+          );
+    final acpPermissionWaiting = acpPending != null;
 
     final registry =
         CliToolRegistryScope.maybeOf(context) ?? CliToolRegistry.builtIn();
@@ -245,7 +266,11 @@ class SessionChatComposeSection extends StatelessWidget {
     final followUpSeatKey = _followUpSeatKey(session.sessionId, shellMemberId);
     final mailboxSeatKey = _mailboxSeatKey(session.sessionId, selectedMemberId);
 
-    final dropTarget = _buildDropTarget(context, workspaceRoot, composeController);
+    final dropTarget = _buildDropTarget(
+      context,
+      workspaceRoot,
+      composeController,
+    );
 
     final slashBundle = _slashBundle(
       workspaceRoot: workspaceRoot,
@@ -275,10 +300,16 @@ class SessionChatComposeSection extends StatelessWidget {
                 mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  AgentPermissionAttentionBanner(
-                    session: session,
-                    selectedMemberId: selectedMemberId,
-                  ),
+                  if (acpPending != null)
+                    AcpPermissionCard(
+                      runtime: acpRuntime!,
+                      pendingPermission: acpPending,
+                    )
+                  else
+                    AgentPermissionAttentionBanner(
+                      session: session,
+                      selectedMemberId: selectedMemberId,
+                    ),
                   StreamBuilder<FollowUpQueue>(
                     stream: chat.followUpQueue.watch(followUpSeatKey),
                     initialData: chat.followUpQueue.queueFor(followUpSeatKey),
@@ -320,10 +351,7 @@ class SessionChatComposeSection extends StatelessWidget {
                     ),
                   // Same slot as the old delivery-recovery strip: above the
                   // compose card, not inside it.
-                  ..._composeLaunchErrorStrip(
-                    context,
-                    spacing: spacing,
-                  ),
+                  ..._composeLaunchErrorStrip(context, spacing: spacing),
                   _CascadeCatalogLive(
                     registry: registry,
                     cli: lockedCli,
@@ -391,10 +419,10 @@ class SessionChatComposeSection extends StatelessWidget {
                             userStoppedTurn: userStoppedTurn,
                             turnStarting: turnStarting,
                           );
+                          final seatLocked =
+                              permissionWaiting || acpPermissionWaiting;
                           final canSubmit =
-                              !permissionWaiting &&
-                              !composeTextEmpty &&
-                              !isSubmitting;
+                              !seatLocked && !composeTextEmpty && !isSubmitting;
                           return WorkspaceComposeCard(
                             controller: composeController,
                             focusNode: composeFocusNode,
@@ -414,7 +442,7 @@ class SessionChatComposeSection extends StatelessWidget {
                             ),
                             onChanged: (_) {},
                             chrome: BoundComposeChrome(
-                              composeEnabled: !permissionWaiting,
+                              composeEnabled: !seatLocked,
                               onRemapDeadTarget: onRemapDeadTarget,
                               onRetry: onRetry,
                               sessionConnectInProgress:
@@ -550,8 +578,9 @@ class SessionChatComposeSection extends StatelessWidget {
                                   preview: true,
                                   fs: filesystemForComposeAtFileOpen(
                                     path,
-                                    workspaceFilesystem:
-                                        homeStorageOf(context).fs,
+                                    workspaceFilesystem: homeStorageOf(
+                                      context,
+                                    ).fs,
                                   ),
                                 ),
                               );
