@@ -7,6 +7,7 @@ import 'package:teampilot/services/cli/cursor/capabilities/session_selection_lau
 import 'package:teampilot/services/cli/cursor/capabilities/team_behavior.dart';
 import 'package:teampilot/services/cli/cursor/capabilities/workspace_access_launch.dart';
 import 'package:teampilot/services/cli/cursor/cursor_tool.dart';
+import 'package:teampilot/services/cli/registry/capabilities/cli_launch_security_capability.dart';
 import 'package:teampilot/services/cli/registry/cli_capability.dart';
 import 'package:teampilot/services/cli/registry/cli_tool_definition.dart';
 import 'package:teampilot/services/cli/registry/cli_tool_registry.dart';
@@ -66,7 +67,6 @@ void main() {
         workingDirectory: r'C:\work\root',
         additionalDirectories: const [' ', r'D:\repo\one', '', r'E:\repo\two'],
         useWslPaths: true,
-        launchSecurityPolicy: LaunchSecurityPolicy.cliDefault,
       ),
       [
         '--workspace',
@@ -75,6 +75,7 @@ void main() {
         '/mnt/d/repo/one',
         '--add-dir',
         '/mnt/e/repo/two',
+        '--force',
       ],
     );
   });
@@ -87,7 +88,6 @@ void main() {
           id: 'member',
           name: 'Member',
           model: 'composer-2.5',
-          launchSecurityPolicy: LaunchSecurityPolicy.cliDefault,
         ),
       ),
       isNot(contains('--model')),
@@ -99,7 +99,6 @@ void main() {
           id: 'member',
           name: 'Member',
           model: 'cursor-grok-4.6-high',
-          launchSecurityPolicy: LaunchSecurityPolicy.cliDefault,
         ),
       ),
       isNot(contains('--model')),
@@ -129,31 +128,52 @@ void main() {
       ),
       ['--force'],
     );
-    expect(
-      _assemble(
-        team: const TeamProfile(id: 'team', name: 'Team', cli: CliTool.cursor),
-        member: const TeamMemberConfig(
-          id: 'member',
-          name: 'Member',
-          launchSecurityPolicy: LaunchSecurityPolicy.cliDefault,
+  });
+
+  test('Cursor assembler rejects every non-full-access policy', () {
+    for (final policy in const [
+      LaunchSecurityPolicy.cliDefault,
+      LaunchSecurityPolicy.askReadOnlyTrusted,
+      LaunchSecurityPolicy.autoApproveWorkspaceWriteTrusted,
+    ]) {
+      expect(
+        () => _assemble(
+          team: const TeamProfile(
+            id: 'team',
+            name: 'Team',
+            cli: CliTool.cursor,
+          ),
+          member: const TeamMemberConfig(id: 'member', name: 'Member'),
+          launchSecurityPolicy: policy,
         ),
-      ),
-      isEmpty,
+        throwsA(
+          isA<CliLaunchCapabilityException>()
+              .having((error) => error.cli, 'cli', CliTool.cursor)
+              .having(
+                (error) => error.contributionKey,
+                'contributionKey',
+                'launch-security-policy',
+              ),
+        ),
+        reason: describeLaunchSecurityPolicy(policy),
+      );
+    }
+  });
+
+  test('Cursor permission provider rejects non-full access directly', () {
+    final context = CliLaunchContext(
+      team: const TeamProfile(id: 'team', name: 'Team', cli: CliTool.cursor),
+      member: const TeamMemberConfig(id: 'member', name: 'Member'),
+      launchSecurityPolicy: LaunchSecurityPolicy.cliDefault,
     );
+
     expect(
-      () => _assemble(
-        team: const TeamProfile(id: 'team', name: 'Team', cli: CliTool.cursor),
-        member: const TeamMemberConfig(
-          id: 'member',
-          name: 'Member',
-          launchSecurityPolicy: LaunchSecurityPolicy.askReadOnlyTrusted,
-        ),
-      ),
+      () => const CursorPermissionLaunch().buildLaunchArgs(context),
       throwsA(
         isA<CliLaunchCapabilityException>().having(
-          (error) => error.cli,
-          'cli',
-          CliTool.cursor,
+          (error) => error.contributionKey,
+          'contributionKey',
+          'cursor-permission',
         ),
       ),
     );
@@ -265,5 +285,7 @@ final class _EmptyCursorTool implements CliToolDefinition {
   bool get isLaunchSupported => true;
 
   @override
-  Iterable<CliCapability> get capabilities => const [];
+  Iterable<CliCapability> get capabilities => const [
+    FullAccessOnlyCliLaunchSecurityCapability(),
+  ];
 }

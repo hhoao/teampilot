@@ -1,4 +1,6 @@
+import '../../../../models/launch_security_policy.dart';
 import '../../../../models/team_config.dart';
+import '../capabilities/cli_launch_security_capability.dart';
 import '../cli_capability.dart';
 import 'cli_launch_context.dart';
 import 'cli_headless_launch_arg_provider.dart';
@@ -15,6 +17,7 @@ final class CliLaunchArgAssembler {
   const CliLaunchArgAssembler();
 
   List<String> assemble(CliToolDefinition tool, CliLaunchContext context) {
+    _validateLaunchSecurityPolicy(tool, context.launchSecurityPolicy);
     return _assemble(
       cli: tool.id,
       capabilities: tool.capabilities,
@@ -33,6 +36,7 @@ final class CliLaunchArgAssembler {
     CliToolDefinition tool,
     CliHeadlessLaunchContext context,
   ) {
+    _validateLaunchSecurityPolicy(tool, context.securityPolicy);
     return _assemble(
       cli: tool.id,
       capabilities: tool.capabilities,
@@ -44,6 +48,33 @@ final class CliLaunchArgAssembler {
       contributions: (capability) => capability is CliHeadlessLaunchArgProvider
           ? capability.buildHeadlessLaunchArgs(context)
           : const [],
+    );
+  }
+
+  void _validateLaunchSecurityPolicy(
+    CliToolDefinition tool,
+    LaunchSecurityPolicy policy,
+  ) {
+    final capabilities = tool.capabilities
+        .whereType<CliLaunchSecurityCapability>()
+        .toList();
+    if (capabilities.length != 1) {
+      throw StateError(
+        'CLI ${tool.id.value} must register exactly one '
+        'CliLaunchSecurityCapability',
+      );
+    }
+
+    final capability = capabilities.single;
+    if (capability.supportedPolicies.contains(policy)) return;
+
+    throw CliLaunchCapabilityException(
+      cli: tool.id,
+      contributionKey: 'launch-security-policy',
+      reason:
+          'CLI ${tool.id.value} supports launch security policies '
+          '${capability.supportedPolicies.map(describeLaunchSecurityPolicy).join(', ')}, '
+          'but received ${describeLaunchSecurityPolicy(policy)}.',
     );
   }
 

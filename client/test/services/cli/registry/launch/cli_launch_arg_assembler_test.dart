@@ -1,12 +1,15 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/models/team_config.dart';
+import 'package:teampilot/services/cli/registry/capabilities/cli_launch_security_capability.dart';
 import 'package:teampilot/services/cli/registry/cli_capability.dart';
 import 'package:teampilot/services/cli/registry/cli_tool_definition.dart';
+import 'package:teampilot/services/cli/registry/cli_tool_registry.dart';
 import 'package:teampilot/services/cli/registry/launch/cli_launch_arg_assembler.dart';
 import 'package:teampilot/services/cli/registry/launch/cli_launch_arg_contribution.dart';
 import 'package:teampilot/services/cli/registry/launch/cli_launch_arg_provider.dart';
 import 'package:teampilot/services/cli/registry/launch/cli_launch_capability_error.dart';
 import 'package:teampilot/services/cli/registry/launch/cli_launch_context.dart';
+import 'package:teampilot/services/cli/registry/launch/cli_headless_launch_context.dart';
 
 void main() {
   const assembler = CliLaunchArgAssembler();
@@ -14,6 +17,78 @@ void main() {
     team: TeamProfile(id: 'team', name: 'Team'),
     member: TeamMemberConfig(id: 'member', name: 'Member'),
   );
+
+  test('rejects policies not declared by built-in security capabilities', () {
+    final registry = CliToolRegistry.builtIn();
+    final unsupportedContext = CliLaunchContext(
+      team: TeamProfile(id: 'team', name: 'Team'),
+      member: TeamMemberConfig(id: 'member', name: 'Member'),
+      launchSecurityPolicy: LaunchSecurityPolicy.askReadOnlyTrusted,
+    );
+
+    for (final cli in CliTool.values) {
+      final tool = registry.tryGet(cli)!;
+
+      expect(
+        () => assembler.assemble(tool, unsupportedContext),
+        throwsA(
+          isA<CliLaunchCapabilityException>()
+              .having((error) => error.cli, 'cli', cli)
+              .having(
+                (error) => error.contributionKey,
+                'contributionKey',
+                'launch-security-policy',
+              )
+              .having(
+                (error) => error.reason,
+                'reason',
+                contains('fullAccess'),
+              ),
+        ),
+        reason: cli.value,
+      );
+    }
+  });
+
+  test('rejects undeclared headless launch security policies', () {
+    final tool = CliToolRegistry.builtIn().tryGet(CliTool.codex)!;
+    const headlessContext = CliHeadlessLaunchContext(
+      prompt: 'hello',
+      model: '',
+      effort: '',
+      configDir: '/tmp/config',
+      securityPolicy: LaunchSecurityPolicy.cliDefault,
+    );
+
+    expect(
+      () => assembler.assembleHeadless(tool, headlessContext),
+      throwsA(
+        isA<CliLaunchCapabilityException>()
+            .having((error) => error.cli, 'cli', CliTool.codex)
+            .having(
+              (error) => error.contributionKey,
+              'contributionKey',
+              'launch-security-policy',
+            )
+            .having((error) => error.reason, 'reason', contains('fullAccess')),
+      ),
+    );
+  });
+
+  test('fails closed when the security capability is not registered', () {
+    final tool = FakeCliTool(const [], includeLaunchSecurity: false);
+
+    expect(
+      () => assembler.assemble(tool, context),
+      throwsA(
+        isA<StateError>().having(
+          (error) => error.message,
+          'message',
+          contains('CliLaunchSecurityCapability'),
+        ),
+      ),
+    );
+  });
 
   test('assembles contributions by phase and stable provider order', () {
     final tool = FakeCliTool([
@@ -225,10 +300,17 @@ void main() {
 }
 
 final class FakeCliTool implements CliToolDefinition {
-  FakeCliTool(this.capabilities);
+  FakeCliTool(this._capabilities, {this.includeLaunchSecurity = true});
 
   @override
-  final List<CliCapability> capabilities;
+  Iterable<CliCapability> get capabilities => [
+    if (includeLaunchSecurity)
+      const FullAccessOnlyCliLaunchSecurityCapability(),
+    ..._capabilities,
+  ];
+
+  final List<CliCapability> _capabilities;
+  final bool includeLaunchSecurity;
 
   @override
   CliTool get id => CliTool.claude;

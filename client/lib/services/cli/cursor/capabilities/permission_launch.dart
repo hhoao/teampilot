@@ -10,7 +10,6 @@ final class CursorPermissionLaunch implements CliLaunchArgProvider {
   @override
   Iterable<CliLaunchArgContribution> buildLaunchArgs(CliLaunchContext context) {
     final policy = context.launchSecurityPolicy;
-    if (policy == LaunchSecurityPolicy.cliDefault) return const [];
     if (policy == LaunchSecurityPolicy.fullAccess) {
       return [
         CliLaunchArgContribution(
