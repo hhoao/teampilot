@@ -226,17 +226,17 @@ class _WorkspaceSidebarState extends State<WorkspaceSidebar> {
                                                   _WorkspaceSidebarView.groups
                                               ? 0
                                               : 1,
-                                          labels: const [
-                                            'Groups',
-                                            'Project tree',
+                                          labels: [
+                                            l10n.workspaceSidebarGroupsView,
+                                            l10n.workspaceSidebarProjectTreeView,
                                           ],
                                           icons: const [
                                             Icons.tag_outlined,
                                             Icons.folder_outlined,
                                           ],
-                                          tooltips: const [
-                                            'Groups',
-                                            'Project tree',
+                                          tooltips: [
+                                            l10n.workspaceSidebarGroupsView,
+                                            l10n.workspaceSidebarProjectTreeView,
                                           ],
                                           onToggle: (index) {
                                             if (index == null) return;

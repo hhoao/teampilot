@@ -344,6 +344,24 @@ abstract class AppLocalizations {
   /// **'Show the source control panel for the current repository.'**
   String get visibilityGitHint;
 
+  /// No description provided for @workspaceSidebarGroupsView.
+  ///
+  /// In en, this message translates to:
+  /// **'Groups'**
+  String get workspaceSidebarGroupsView;
+
+  /// No description provided for @workspaceSidebarProjectTreeView.
+  ///
+  /// In en, this message translates to:
+  /// **'Project tree'**
+  String get workspaceSidebarProjectTreeView;
+
+  /// No description provided for @projectTreeOther.
+  ///
+  /// In en, this message translates to:
+  /// **'Other'**
+  String get projectTreeOther;
+
   /// No description provided for @extensionsSettingsTitle.
   ///
   /// In en, this message translates to:

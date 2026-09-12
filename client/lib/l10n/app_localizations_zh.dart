@@ -132,6 +132,15 @@ class AppLocalizationsZh extends AppLocalizations {
   String get visibilityGitHint => '显示当前仓库的源代码管理面板。';
 
   @override
+  String get workspaceSidebarGroupsView => '分组';
+
+  @override
+  String get workspaceSidebarProjectTreeView => '项目树';
+
+  @override
+  String get projectTreeOther => '其他';
+
+  @override
   String get extensionsSettingsTitle => '扩展';
 
   @override
