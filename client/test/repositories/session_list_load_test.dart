@@ -10,15 +10,29 @@ import 'package:teampilot/services/io/local_filesystem.dart';
 import 'package:teampilot/services/storage/app_paths.dart';
 import 'package:teampilot/services/storage/home_storage.dart';
 import 'package:teampilot/services/storage/workspace_layout.dart';
+import 'package:teampilot/utils/logging/logger.dart';
 
 class _CountingFs implements Filesystem {
   _CountingFs(this._inner);
   final Filesystem _inner;
   int sessionJsonReads = 0;
+  Object? failIndexWritesWith;
 
   bool _isSessionJson(String path) {
     final n = path.replaceAll('\\', '/');
     return n.endsWith('/session.json');
+  }
+
+  bool _isSessionsIndex(String path) {
+    final n = path.replaceAll('\\', '/');
+    return n.endsWith('/sessions-index.json');
+  }
+
+  void _throwIfIndexWrite(String path) {
+    final error = failIndexWritesWith;
+    if (error != null && _isSessionsIndex(path)) {
+      Error.throwWithStackTrace(error, StackTrace.current);
+    }
   }
 
   @override
@@ -46,8 +60,10 @@ class _CountingFs implements Filesystem {
   Future<List<int>?> readBytes(String path) => _inner.readBytes(path);
 
   @override
-  Future<void> writeString(String path, String content) =>
-      _inner.writeString(path, content);
+  Future<void> writeString(String path, String content) {
+    _throwIfIndexWrite(path);
+    return _inner.writeString(path, content);
+  }
 
   @override
   Future<void> writeBytes(String path, List<int> bytes) =>
@@ -62,8 +78,10 @@ class _CountingFs implements Filesystem {
       _inner.appendBytes(path, bytes);
 
   @override
-  Future<void> atomicWrite(String path, String content) =>
-      _inner.atomicWrite(path, content);
+  Future<void> atomicWrite(String path, String content) {
+    _throwIfIndexWrite(path);
+    return _inner.atomicWrite(path, content);
+  }
 
   @override
   Future<List<FsDirEntry>> listDir(String path) => _inner.listDir(path);
@@ -205,5 +223,61 @@ void main() {
     counting.sessionJsonReads = 0;
     expect(await repo.loadSessionListForWorkspace(ws.workspaceId), isEmpty);
     expect(counting.sessionJsonReads, 0);
+  });
+
+  test(
+    'createSession and deleteSession succeed when derived index write fails',
+    () async {
+      final tmp = await Directory.systemTemp.createTemp('list_index_fail_');
+      addTearDown(() => tmp.deleteSync(recursive: true));
+      final inner = LocalFilesystem();
+      final counting = _CountingFs(inner);
+      final repo = SessionRepository(
+        rootDir: tmp.path,
+        storage: _storage(tmp, counting),
+      );
+      final ws = await repo.createWorkspace([WorkspaceFolder(path: '/tmp/ws')]);
+      counting.failIndexWritesWith = StateError('SFTP channel closed');
+
+      final created = (await repo.createSession(ws.workspaceId)).session;
+      expect(created.sessionId, isNotEmpty);
+      final onDisk = await repo.loadSession(ws.workspaceId, created.sessionId);
+      expect(onDisk, isNotNull);
+
+      await repo.deleteSession(created.sessionId);
+      expect(await repo.loadSession(ws.workspaceId, created.sessionId), isNull);
+    },
+  );
+
+  test('rebuild logs once when written ids do not match directory ids', () async {
+    final tmp = await Directory.systemTemp.createTemp('list_index_parity_');
+    addTearDown(() => tmp.deleteSync(recursive: true));
+    final inner = LocalFilesystem();
+    final counting = _CountingFs(inner);
+    final repo = SessionRepository(
+      rootDir: tmp.path,
+      storage: _storage(tmp, counting),
+    );
+    final ws = await repo.createWorkspace([WorkspaceFolder(path: '/tmp/ws')]);
+    await _plantSessions(tmp, ws.workspaceId, 1);
+    final corrupt = Directory(
+      '${tmp.path}/workspace/workspaces/${ws.workspaceId}/sessions/corrupt-id',
+    )..createSync(recursive: true);
+    File('${corrupt.path}/session.json').writeAsStringSync('not-json');
+    File(
+      WorkspaceLayout(
+        teampilotRoot: tmp.path,
+        fs: inner,
+      ).sessionsIndexFile(ws.workspaceId),
+    ).writeAsStringSync('{"version":1,"sessions":[]}');
+
+    final before = await appLogger.getPendingLogLines();
+    final listed = await repo.loadSessionListForWorkspace(ws.workspaceId);
+    expect(listed.map((s) => s.sessionId), ['seed-0']);
+    final lines = await appLogger.getPendingLogLines();
+    expect(
+      lines.skip(before.length).where((l) => l.contains('rebuild parity')),
+      hasLength(1),
+    );
   });
 }

@@ -385,6 +385,14 @@ class SessionRepository {
     await store.writeAll([
       for (final s in sessions) SessionListEntry.fromSession(s),
     ]);
+    final writtenIds = {for (final s in sessions) s.sessionId};
+    if (!setEquals(writtenIds, dirIds)) {
+      appLogger.w(
+        '[session-list-index] rebuild parity mismatch '
+        'workspace=$workspaceId written=${writtenIds.length} '
+        'dirs=${dirIds.length}',
+      );
+    }
     return [
       for (final s in sessions)
         SessionListEntry.fromSession(s).toListSession(workspaceId),
@@ -988,10 +996,27 @@ class SessionRepository {
       fs.sessionFile(workspaceId, session.sessionId),
       jsonEncode(session.toJson()),
     );
-    await SessionListIndexStore(
-      fs,
-      workspaceId,
-    ).upsert(SessionListEntry.fromSession(session));
+    await _trySyncSessionListIndex(fs, workspaceId, (store) {
+      return store.upsert(SessionListEntry.fromSession(session));
+    });
+  }
+
+  /// Derived `sessions-index.json` must not fail source-of-truth mutations.
+  /// The next list load rebuilds when ids mismatch.
+  Future<void> _trySyncSessionListIndex(
+    SessionRepositoryFs fs,
+    String workspaceId,
+    Future<void> Function(SessionListIndexStore store) mutate,
+  ) async {
+    try {
+      await mutate(SessionListIndexStore(fs, workspaceId));
+    } on Object catch (error, stackTrace) {
+      appLogger.w(
+        '[session-list-index] derived write failed workspace=$workspaceId',
+        error: error,
+        stackTrace: stackTrace,
+      );
+    }
   }
 
   Future<void> markSessionLaunched(String sessionId) {
@@ -1269,7 +1294,9 @@ class SessionRepository {
         );
       }
       await fs.deleteSessionDir(workspaceId, sessionId);
-      await SessionListIndexStore(fs, workspaceId).remove(sessionId);
+      await _trySyncSessionListIndex(fs, workspaceId, (store) {
+        return store.remove(sessionId);
+      });
       final workspace = await _readManifest(fs, workspaceId);
       if (workspace != null) {
         await _writeManifest(
