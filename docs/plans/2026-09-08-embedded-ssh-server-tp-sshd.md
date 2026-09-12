@@ -18,7 +18,7 @@
 - **Fork changes are additive or role-guarded.** Anything new in `SSHTransport` runs only under `isServer == true`; client behavior must not change (existing fork tests must stay green untouched).
 - **Algorithm surface (spec):** KEX `curve25519-sha256` + `curve25519-sha256@libssh.org`; host key `ssh-ed25519` only; ciphers `chacha20-poly1305@openssh.com`, `aes256-gcm@openssh.com`; MAC `hmac-sha256` (for non-AEAD negotiation paths). Device keys accepted: `ssh-ed25519` only.
 - **Auth is fail-closed:** publickey only, max 6 attempts per connection, then disconnect. No password/keyboard-interactive ever advertised.
-- **Exec accepts only structured payloads:** command strings must start with `tp1:`; anything else is a channel failure.
+- **Exec accepts structured payloads, and serves plain shell strings through a configurable native-shell factory:** command strings must start with `tp1:` for the structured path; anything else (a plain shell string) is served through `SSHServerConfig.shellExecFactory` when configured, and is a channel failure otherwise.
 - **Fork style:** follow the existing dartssh2 code style (2-space indent, `printDebug?.call` traces on every handler, `SSHStateError` for role violations).
 
 ## File Structure
@@ -967,7 +967,7 @@ class SSHExecRequest {
   final Map<String, String> env;
 }
 
-/// `tp1:` payload codec — the only exec grammar this server speaks.
+/// `tp1:` payload codec — the structured exec grammar this server prefers.
 class TpExecCodec {
   static const prefix = 'tp1:';
   static String encode(SSHExecRequest request);
@@ -977,7 +977,7 @@ class TpExecCodec {
 }
 ```
 
-Config additions (with defaults so earlier tests keep compiling): `SSHProcessFactory? processFactory`, `SSHHostInfo Function()? hostInfo`, both null → exec requests fail (channel failure).
+Config additions (with defaults so earlier tests keep compiling): `SSHProcessFactory? processFactory`, `SSHHostInfo Function()? hostInfo`, `SSHShellExecFactory? shellExecFactory` — all null → exec requests fail (channel failure), and plain shell strings only run when `shellExecFactory` is wired in.
 
 - [ ] **Step 1: Write the failing tests**
 

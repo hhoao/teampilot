@@ -211,7 +211,7 @@ Try it with a real OpenSSH client:
   ssh $common $user@127.0.0.1 'tp1:{"argv":["echo","hello","structured","exec"]}'
   ssh $common $user@127.0.0.1 'tp1:{"query":"host-info"}'
 
-  # plain shell strings are refused by design
+  # plain shell strings are refused when no shell exec factory is wired in
   ssh $common $user@127.0.0.1 'echo nope'
 
   # interactive shell through a pty (util-linux `script` backs it)

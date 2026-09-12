@@ -100,6 +100,20 @@ typedef SSHProcessFactory = Future<SSHServerProcess?> Function(
   Map<String, String> env,
 );
 
+/// Spawns the [SSHServerProcess] backing one plain command-string `exec`
+/// request (no `tp1:` prefix): a raw shell line, run by the host's native
+/// shell the way OpenSSH serves `ssh host "command"`.
+///
+/// Receives the command string and the environment accumulated from the
+/// channel's `env` requests; returns the process, or `null` to refuse the
+/// request (an unconfigured factory refuses every plain-string exec). The
+/// factory decides which shell to run it in — it is never handed back to a
+/// server-side parser, only to the shell it spawns.
+typedef SSHShellExecFactory = Future<SSHServerProcess?> Function(
+  String command,
+  Map<String, String> env,
+);
+
 /// Snapshot of host facts the server reports for the `tp1:` host-info query.
 ///
 /// Answered by the app from `Platform` and self-inspection; faked in tests.
@@ -189,7 +203,7 @@ class SSHExecRequest {
   final Map<String, String> env;
 }
 
-/// `tp1:` payload codec — the only exec grammar this server speaks.
+/// `tp1:` payload codec — the structured exec grammar this server prefers.
 ///
 /// A structured exec command is the [prefix] followed by one JSON object:
 ///
@@ -198,8 +212,10 @@ class SSHExecRequest {
 /// ```
 ///
 /// Anything else — a plain shell string, a missing prefix, malformed JSON,
-/// wrong-typed fields — is not this grammar, and the server refuses it rather
-/// than handing it to a shell.
+/// wrong-typed fields — is not this grammar. Whether the server serves it is
+/// the [SSHServerConfig.shellExecFactory]'s decision: a plain string reaches
+/// the host's native shell when that factory is configured, and is refused
+/// (a channel failure) otherwise.
 class TpExecCodec {
   TpExecCodec._();
 

@@ -205,6 +205,53 @@ SSHProcessFactory embeddedProcessFactory({String? toolchainBin}) {
   };
 }
 
+/// Builds the [SSHShellExecFactory] for plain command-string `exec` requests
+/// (no `tp1:` prefix): runs the command in the OS-native shell the way
+/// OpenSSH serves `ssh host "command"` — PowerShell on Windows, `$SHELL` (or
+/// `/bin/bash`) elsewhere — with the toolchain `PATH` injected.
+///
+/// This restores compatibility for legacy exec callers that send bare shell
+/// strings (CLI discovery probes, storage exec, `runWithResult`): the
+/// structured `tp1:` path ([embeddedProcessFactory]) stays the preferred
+/// grammar, and this factory is what makes a plain string reach the shell.
+/// A shell string is the client's contract — embedded targets run whatever
+/// native shell this host has, and platform-specific command flavor (e.g.
+/// `where` vs `command -v`) is the caller's responsibility.
+SSHShellExecFactory embeddedShellExecFactory({String? toolchainBin}) {
+  return (command, env) async {
+    final platform = Platform.operatingSystem;
+    final windows = platform == 'windows';
+    final merged = EmbeddedSpawnEnvironment.mergeWithToolchainPath(
+      {...Platform.environment, ...env},
+      toolchainBin:
+          toolchainBin ?? EmbeddedSpawnEnvironment.defaultToolchainBin() ?? '',
+    );
+    final executable = EmbeddedShellSelection.executable(
+      platform: platform,
+      shellEnv: Platform.environment['SHELL'],
+    );
+    final arguments = windows
+        ? const ['-NoLogo', '-Command']
+        : const ['-c'];
+    try {
+      return _ProcessServerProcessAdapter(
+        await Process.start(
+          executable,
+          [...arguments, command],
+          environment: merged,
+        ),
+      );
+    } on Object catch (error, stackTrace) {
+      AppLogger.instance.w(
+        'embedded exec: refused native-shell spawn of "$command"',
+        error: error,
+        stackTrace: stackTrace,
+      );
+      return null;
+    }
+  };
+}
+
 /// Wraps a flutter_pty [pty.Pty] as a [PtyLike] — pure glue. Note the
 /// resize argument order: [PtyLike.resize] is (columns, rows),
 /// [pty.Pty.resize] is (rows, cols).

@@ -33,8 +33,9 @@ final Expando<_SessionState> _sessionStates = Expando();
 /// (RFC 4254 §6.5's session channels are single-use): a second one is
 /// refused and the channel closed. `shell` additionally requires a prior
 /// `pty-req` — this server only serves pty sessions. A plain shell-string
-/// command is not the exec grammar: it is refused and the channel is
-/// closed — this server never hands a raw command line to a shell.
+/// command is not the `tp1:` grammar: it is handed to
+/// [SSHServerConfig.shellExecFactory] when configured (running it in the
+/// host's native shell), and refused otherwise.
 ///
 /// The returned future is the request outcome [SSHServerChannel.onRequest]
 /// replies with: `true` acknowledges the request, `false` refuses it. The
@@ -177,11 +178,11 @@ Future<bool> _serveExec(
 
   final exec = TpExecCodec.tryDecode(command);
   if (exec == null) {
-    // Not this server's grammar (a plain shell string, or a malformed
-    // payload): refuse the request, then close the channel once the failure
-    // reply is on the wire.
-    _afterReply(channel, channel.close);
-    return false;
+    // A plain shell-string command (or a malformed payload): when a shell
+    // exec factory is configured, run it in the host's native shell the way
+    // OpenSSH serves `ssh host "command"`; otherwise refuse the request,
+    // then close the channel once the failure reply is on the wire.
+    return _servePlainExec(channel, command, config: config, state: state);
   }
 
   final processFactory = config.processFactory;
@@ -196,6 +197,36 @@ Future<bool> _serveExec(
     return false;
   }
 
+  _afterReply(channel, () => _pipeProcess(channel, process));
+  return true;
+}
+
+/// Serves a plain shell-string `exec` request (no `tp1:` prefix) by running
+/// it in the host's native shell through [SSHServerConfig.shellExecFactory].
+Future<bool> _servePlainExec(
+  SSHServerChannel channel,
+  String command, {
+  required SSHServerConfig config,
+  required _SessionState state,
+}) async {
+  final shellFactory = config.shellExecFactory;
+  if (shellFactory == null) {
+    _afterReply(channel, channel.close);
+    return false;
+  }
+  final SSHServerProcess process;
+  try {
+    final spawned = await shellFactory(command, state.environment);
+    if (spawned == null) {
+      _afterReply(channel, channel.close);
+      return false;
+    }
+    process = spawned;
+  } on Object {
+    // A misbehaving factory is a refused request, not a dead connection.
+    _afterReply(channel, channel.close);
+    return false;
+  }
   _afterReply(channel, () => _pipeProcess(channel, process));
   return true;
 }

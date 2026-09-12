@@ -162,7 +162,29 @@ void main() {
     await server.close();
   });
 
-  test('plain shell-string exec is rejected', () async {
+  test('plain shell-string exec runs through the configured shell factory',
+      () async {
+    final commands = <String>[];
+    final (client, server) = await startDualPair(
+      hostKeyPair: testHostKey,
+      authenticate: (_) async => true,
+      clientIdentities: [testDeviceKey],
+      processFactory: (argv, cwd, env) async => _EchoProcess(argv)..start(),
+      shellExecFactory: (command, env) async {
+        commands.add(command);
+        return _EchoProcess(['echo', command])..start();
+      },
+    );
+    final session = await client.execute('command -v claude');
+    final output = await utf8.decoder.bind(session.stdout).join();
+    expect(commands, ['command -v claude']);
+    expect(output, 'echo command -v claude');
+    expect(await session.waitForExit(), 17);
+    client.close();
+    await server.close();
+  });
+
+  test('plain shell-string exec without a shell factory is refused', () async {
     final (client, server) = await startDualPair(
       hostKeyPair: testHostKey,
       authenticate: (_) async => true,
@@ -170,7 +192,7 @@ void main() {
       processFactory: (argv, cwd, env) async => _EchoProcess(argv)..start(),
     );
     await expectLater(
-      client.execute('rm -rf /'), // no tp1: prefix
+      client.execute('rm -rf /'), // no tp1: prefix, no shell factory
       throwsA(anything),
     );
     client.close();

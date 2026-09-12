@@ -32,6 +32,7 @@ class SSHServerConfig {
     this.maxAuthAttempts = 6,
     this.maxChannels = 10,
     this.processFactory,
+    this.shellExecFactory,
     this.ptyFactory,
     this.hostInfo,
     this.sftpFileSystem,
@@ -75,6 +76,14 @@ class SSHServerConfig {
   /// environment; a `null` return — or an unconfigured factory — refuses the
   /// request. The server itself never builds a command line.
   final SSHProcessFactory? processFactory;
+
+  /// Spawns the process backing a plain command-string `exec` request (no
+  /// `tp1:` prefix): a raw shell line, run by the host's native shell (see
+  /// [SSHShellExecFactory]). A `null` return — or an unconfigured factory —
+  /// refuses the request. When configured, this is how a client that sends
+  /// bare `"command -v claude"`-style strings (legacy exec callers) is served;
+  /// structured `tp1:` requests still take [processFactory].
+  final SSHShellExecFactory? shellExecFactory;
 
   /// Spawns the pseudo-terminal backing a `shell` request. The request is
   /// only served on a channel that stashed a `pty-req` first; a `null`

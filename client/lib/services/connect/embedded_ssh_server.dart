@@ -187,6 +187,7 @@ class EmbeddedSshServer implements EmbeddedSshServerHandle {
             _opensshLineFor(request.algorithm, request.publicKey),
           ),
           processFactory: embeddedProcessFactory(),
+          shellExecFactory: embeddedShellExecFactory(),
           ptyFactory: embeddedPtyFactory(spawner: _ptySpawner),
           hostInfo: _hostInfo,
           sftpFileSystem: EmbeddedSftpFilesystem(

@@ -55,8 +55,11 @@ ships inside the desktop app:
 - No sandboxing of paired phones — a paired device has the same user-level
   file/process access as the system sshd grants today (it is your desktop).
 - No support for third-party SSH clients connecting to the embedded server
-  (standard `exec` shell strings are rejected; only `tp1:` structured
-  payloads and standard `shell`/`sftp`/forwarding are served).
+  besides the phone: standard `exec` shell strings are served through the
+  embedded host's native shell (PowerShell on Windows, `$SHELL`/bash
+  elsewhere) only when the app's `shellExecFactory` is wired in — plain
+  strings are a channel failure when it is not; `tp1:` structured payloads,
+  `shell`/`sftp`/forwarding are always served.
 - No migration path for pre-upgrade paired profiles beyond a guided re-pair
   hint.
 
@@ -235,7 +238,10 @@ re-pair hint covers this path.
   model as today).
 - Loopback-only forwarding binds; relay grants keep the existing SHA-256
   digest + constant-time comparison.
-- Structured exec has no shell → no injection by construction.
+- Structured exec has no shell → no injection by construction. Plain
+  command-string `exec` is served only through the injected native-shell
+  factory (the app's billing decision at wiring time), and never by a
+  server-side parser.
 - No key material in logs; auth failures go to `AppLogger`.
 
 ## Error handling
