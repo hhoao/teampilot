@@ -69,6 +69,77 @@ typedef SSHForwardedChannelOpener = Future<SSHServerChannel?> Function({
   required int originatorPort,
 });
 
+/// Pumps one accepted connection against its channel until either side
+/// ends: TCP bytes become channel data and back, the TCP side ending
+/// closes the channel, and the channel ending destroys the TCP side.
+Future<void> pumpForwardConnection(
+  SSHServerChannel channel,
+  ForwardConnection connection,
+) {
+  final subscriptions = <StreamSubscription<dynamic>>[];
+  final finished = Completer<void>();
+  var stopped = false;
+  void stop() {
+    if (stopped) return;
+    stopped = true;
+    for (final subscription in subscriptions) {
+      unawaited(subscription.cancel());
+    }
+    if (!finished.isCompleted) finished.complete();
+  }
+
+  // TCP peer → client.
+  subscriptions.add(
+    connection.input.listen(
+      channel.write,
+      onError: (Object _) {},
+      onDone: () {
+        // The TCP side is over: no more bytes can arrive to forward, so
+        // the channel finishes too.
+        channel.close();
+        stop();
+      },
+    ),
+  );
+
+  // Client → TCP peer.
+  subscriptions.add(
+    channel.input.listen(
+      (data) {
+        try {
+          connection.output.add(data);
+        } on Object {
+          // The TCP side died mid-write; its own completion closes the
+          // channel.
+        }
+      },
+      onError: (Object _) {},
+      onDone: () {
+        // The client half-closed its channel: stop writing to the peer.
+        connection.output.close().then((_) {}, onError: (Object _) {});
+      },
+    ),
+  );
+
+  // The channel ended — the client closed it, the channel protocol
+  // failed, or the connection was torn down: the TCP connection has
+  // nowhere left to go.
+  channel.done.whenComplete(() {
+    connection.destroy();
+    stop();
+  });
+
+  // The TCP connection ended outright — failed, or destroyed from the
+  // channel side above: finish the channel if it is not already finishing
+  // itself.
+  connection.done.whenComplete(() {
+    channel.close();
+    stop();
+  });
+
+  return finished.future;
+}
+
 /// Remote port forwarding for one SSH connection (RFC 4254 §7): serves
 /// `tcpip-forward` / `cancel-tcpip-forward` global requests by binding
 /// loopback ports through the injected [SSHBindServerSocket] seam, and pumps
@@ -227,78 +298,7 @@ class SSHServerForwarder {
       connection.destroy();
       return;
     }
-    await _pump(channel, connection);
-  }
-
-  /// Pumps one accepted connection against its channel until either side
-  /// ends: TCP bytes become channel data and back, the TCP side ending
-  /// closes the channel, and the channel ending destroys the TCP side.
-  Future<void> _pump(
-    SSHServerChannel channel,
-    ForwardConnection connection,
-  ) {
-    final subscriptions = <StreamSubscription<dynamic>>[];
-    final finished = Completer<void>();
-    var stopped = false;
-    void stop() {
-      if (stopped) return;
-      stopped = true;
-      for (final subscription in subscriptions) {
-        unawaited(subscription.cancel());
-      }
-      if (!finished.isCompleted) finished.complete();
-    }
-
-    // TCP peer → client.
-    subscriptions.add(
-      connection.input.listen(
-        channel.write,
-        onError: (Object _) {},
-        onDone: () {
-          // The TCP side is over: no more bytes can arrive to forward, so
-          // the channel finishes too.
-          channel.close();
-          stop();
-        },
-      ),
-    );
-
-    // Client → TCP peer.
-    subscriptions.add(
-      channel.input.listen(
-        (data) {
-          try {
-            connection.output.add(data);
-          } on Object {
-            // The TCP side died mid-write; its own completion closes the
-            // channel.
-          }
-        },
-        onError: (Object _) {},
-        onDone: () {
-          // The client half-closed its channel: stop writing to the peer.
-          connection.output.close().then((_) {}, onError: (Object _) {});
-        },
-      ),
-    );
-
-    // The channel ended — the client closed it, the channel protocol
-    // failed, or the connection was torn down: the TCP connection has
-    // nowhere left to go.
-    channel.done.whenComplete(() {
-      connection.destroy();
-      stop();
-    });
-
-    // The TCP connection ended outright — failed, or destroyed from the
-    // channel side above: finish the channel if it is not already finishing
-    // itself.
-    connection.done.whenComplete(() {
-      channel.close();
-      stop();
-    });
-
-    return finished.future;
+    await pumpForwardConnection(channel, connection);
   }
 
   /// Answers [request] with the global-request reply it asked for, carrying
