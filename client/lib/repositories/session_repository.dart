@@ -1,13 +1,15 @@
 import 'dart:async';
 import 'dart:convert';
 
-import 'package:flutter/foundation.dart' show listEquals, setEquals;
+import 'package:flutter/foundation.dart'
+    show listEquals, setEquals, visibleForTesting;
 import 'package:uuid/uuid.dart';
 
 import '../models/workspace.dart';
 import '../models/workspace_topology.dart';
 import '../models/workspace_folder.dart';
 import '../models/app_session.dart';
+import '../models/session_list_entry.dart';
 import '../models/session_continue_overrides.dart';
 import '../models/member_instance.dart';
 import '../models/session_member_binding.dart';
@@ -32,6 +34,7 @@ import '../utils/lock_pool.dart';
 import '../utils/logging/logger.dart';
 import '../utils/workspace/workspace_path_utils.dart';
 import '../utils/session/workspace_sessions.dart';
+import 'session_list_index_store.dart';
 import 'session_repository_fs.dart';
 import 'workspace_index_store.dart';
 import '../services/storage/storage_failure.dart';
@@ -54,6 +57,10 @@ class SessionRepository {
 
   final _sessionFileLocks = LockPool();
   static final Map<String, List<Workspace>> _workspacesIndexByRoot = {};
+
+  @visibleForTesting
+  static void debugResetWorkspacesIndexCache() =>
+      _workspacesIndexByRoot.clear();
 
   String _workspacesIndexCacheKey() {
     if (_rootOverride != null) return _rootOverride;
@@ -270,7 +277,7 @@ class SessionRepository {
         '[boot] loadWorkspacesIndex rebuilding snapshot read=${readMs}ms',
       );
     }
-    final workspaces = await _loadWorkspaces(indexOnly: false);
+    final workspaces = await _loadWorkspaces(indexOnly: true);
     await store.writeAll(workspaces);
     return _rememberWorkspacesIndex(workspaces);
   }
@@ -292,7 +299,7 @@ class SessionRepository {
       'disk=${diskIds.length} index=${snapshot.length} '
       'validate=${validateMs}ms',
     );
-    final workspaces = await _loadWorkspaces(indexOnly: false);
+    final workspaces = await _loadWorkspaces(indexOnly: true);
     await store.writeAll(workspaces);
     _rememberWorkspacesIndex(workspaces);
   }
@@ -351,6 +358,42 @@ class SessionRepository {
       return bu.compareTo(au);
     });
     return sessions;
+  }
+
+  /// Sidebar rows from [sessions-index.json] when it matches on-disk
+  /// session directories; otherwise rebuilds from session documents.
+  Future<List<AppSession>> loadSessionListForWorkspace(
+    String workspaceId,
+  ) async {
+    final fs = await _fs();
+    final store = SessionListIndexStore(fs, workspaceId);
+    final dirIds = (await fs.listSessionDirectoryIds(workspaceId)).toSet();
+    final snapshot = await store.tryRead();
+    final snapshotIds = {for (final e in snapshot ?? const []) e.sessionId};
+    if (snapshot != null && setEquals(snapshotIds, dirIds)) {
+      return [for (final e in snapshot) e.toListSession(workspaceId)];
+    }
+    final maps = await fs.listSessionJsonMapsForWorkspace(workspaceId);
+    final sessions = <AppSession>[];
+    for (final json in maps) {
+      try {
+        sessions.add(AppSession.fromJson(json));
+      } on Object {
+        continue;
+      }
+    }
+    await store.writeAll([
+      for (final s in sessions) SessionListEntry.fromSession(s),
+    ]);
+    return [
+      for (final s in sessions)
+        SessionListEntry.fromSession(s).toListSession(workspaceId),
+    ];
+  }
+
+  Future<AppSession?> loadSession(String workspaceId, String sessionId) async {
+    final fs = await _fs();
+    return _readSession(fs, workspaceId, sessionId);
   }
 
   /// Creates a new, independent workspace for [folders].
@@ -948,6 +991,10 @@ class SessionRepository {
       fs.sessionFile(workspaceId, session.sessionId),
       jsonEncode(session.toJson()),
     );
+    await SessionListIndexStore(
+      fs,
+      workspaceId,
+    ).upsert(SessionListEntry.fromSession(session));
   }
 
   Future<void> markSessionLaunched(String sessionId) {
@@ -1225,6 +1272,7 @@ class SessionRepository {
         );
       }
       await fs.deleteSessionDir(workspaceId, sessionId);
+      await SessionListIndexStore(fs, workspaceId).remove(sessionId);
       final workspace = await _readManifest(fs, workspaceId);
       if (workspace != null) {
         await _writeManifest(
