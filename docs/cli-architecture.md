@@ -617,8 +617,9 @@ FlashskyAI、Codex、Cursor、OpenCode）都注册不可配置的
 
 因此，当前产品策略是固定的 full access，而不是用户可选择或持久化的策略。启动安全策略
 不写入团队配置、成员配置、session preferences、automation 或其他用户配置存储；调用方和
-headless/runtime 边界只使用内存中的 `LaunchSecurityPolicy.fullAccess`（以及兼容协议所需的
-`cliDefault` 类型）。不要为当前产品恢复权限选择器、覆盖字段或策略持久化。
+headless/runtime 边界只使用内存中的 `LaunchSecurityPolicy.fullAccess`。`LaunchSecurityPolicy`
+的其他语义变体（包括 `cliDefault`）仅为未来 CLI capability expansion 保留；当前产品不支持
+这些变体，也不持久化它们。不要为当前产品恢复权限选择器、覆盖字段或策略持久化。
 
 `CliLaunchArgAssembler` 在收集 Provider 贡献前，要求 definition 恰好注册一个
 `CliLaunchSecurityCapability`，并拒绝不在 `supportedPolicies` 中的策略，抛出结构化的
