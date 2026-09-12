@@ -688,9 +688,10 @@ Future<AppSession?> _sessionById({
   final fromState = chatCubit.state.sessions
       .where((s) => s.sessionId == sessionId && s.workspaceId == workspaceId)
       .firstOrNull;
-  if (fromState != null) return fromState;
-  final loaded = await repo.loadSessionsForWorkspace(workspaceId);
-  return loaded.where((s) => s.sessionId == sessionId).firstOrNull;
+  if (fromState != null && chatCubit.sessionHasDocument(sessionId)) {
+    return fromState;
+  }
+  return repo.loadSession(workspaceId, sessionId);
 }
 
 Future<String> _resolveLandingMemberId({

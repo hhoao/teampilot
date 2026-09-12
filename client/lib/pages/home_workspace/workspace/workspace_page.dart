@@ -248,17 +248,21 @@ class _WorkspacePageState extends State<WorkspacePage> {
       return;
     }
 
-    await context.read<ChatCubit>().ensureSessionsForWorkspace(
-      widget.workspaceId,
+    unawaited(
+      context.read<ChatCubit>().ensureSessionsForWorkspace(widget.workspaceId),
     );
-    if (!mounted) return;
     // Land the persisted split-layout snapshot before opening the deep-linked
     // tab, so the restore cannot reset the tab away (no-op when already
     // restored; concurrent callers share the in-flight restore).
     await _restoreWorkbenchLayoutSnapshot();
     if (!mounted) return;
 
-    final session = await _resolveSessionForDeepLink(sessionId);
+    final session =
+        await context.read<ChatCubit>().hydrateSessionDocument(
+          widget.workspaceId,
+          sessionId,
+        ) ??
+        await _resolveSessionForDeepLink(sessionId);
     if (!mounted) return;
     if (session == null) {
       appLogger.w(
@@ -286,10 +290,10 @@ class _WorkspacePageState extends State<WorkspacePage> {
         .firstOrNull;
     if (fromState != null) return fromState;
 
-    final loaded = await context
-        .read<SessionRepository>()
-        .loadSessionsForWorkspace(widget.workspaceId);
-    return loaded.where((s) => s.sessionId == sessionId).firstOrNull;
+    return context.read<SessionRepository>().loadSession(
+      widget.workspaceId,
+      sessionId,
+    );
   }
 
   void _clearSessionQuery() {

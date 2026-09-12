@@ -1705,6 +1705,49 @@ void main() {
       expect(created.folders, isNotEmpty);
     });
 
+    test('requestOpenSession hydrates list row before launch', () async {
+      final tmp = await Directory.systemTemp.createTemp('chat_open_hydrate_');
+      final repo = SessionRepository(
+        rootDir: tmp.path,
+        storage: testHomeStorage,
+      );
+      final postFrame = PostFrameTestHarness();
+      final cubit = ChatCubit(
+        executableResolver: () => 'true',
+        automationRepository: testAutomationRepository(),
+        storage: testHomeStorage,
+        sessionRepository: repo,
+        postFrameScheduler: postFrame.scheduler,
+      );
+      _registerTempCubitCleanup(tmp: tmp, cubit: cubit, postFrame: postFrame);
+
+      final ws = await repo.createWorkspace([WorkspaceFolder(path: '/p')]);
+      final created = (await repo.createSession(ws.workspaceId)).session;
+      await cubit.loadWorkspaceIndex(repo);
+      await cubit.ensureSessionsForWorkspace(ws.workspaceId);
+      final row = cubit.state.sessions.singleWhere(
+        (s) => s.sessionId == created.sessionId,
+      );
+      expect(row.folders, isEmpty);
+
+      final status = await cubit.requestOpenSession(
+        SessionOpenRequest(
+          session: row,
+          workspace: cubit.state.workspaces.single,
+          connectImmediately: false,
+          repo: repo,
+        ),
+      );
+      expect(status, isNot(SessionOpenStatus.blockedMixedMemberTargets));
+      expect(cubit.sessionHasDocument(created.sessionId), isTrue);
+      expect(
+        cubit.state.sessions
+            .singleWhere((s) => s.sessionId == created.sessionId)
+            .folders,
+        isNotEmpty,
+      );
+    });
+
     test('loadWorkspaceData marks every loaded session as a document', () async {
       final tmp = await Directory.systemTemp.createTemp('chat_load_docs_');
       final repo = SessionRepository(

@@ -2088,8 +2088,15 @@ class ChatCubit extends Cubit<ChatState>
     return null;
   }
 
-  Future<SessionOpenStatus> requestOpenSession(SessionOpenRequest request) =>
-      _launchService.requestOpenSession(request);
+  Future<SessionOpenStatus> requestOpenSession(
+    SessionOpenRequest request,
+  ) async {
+    final session = request.session;
+    final hydrated =
+        await hydrateSessionDocument(session.workspaceId, session.sessionId) ??
+        session;
+    return _launchService.requestOpenSession(request.withSession(hydrated));
+  }
 
   Future<void> scheduleTeamConfigValidation(TeamProfile team) =>
       _launchService.scheduleTeamConfigValidation(team);
