@@ -16,6 +16,7 @@ import '../io/local_filesystem.dart';
 ///   project-config.json # Project-scoped skills/plugins/mcp/extensions
 ///   compose-drafts.json # Landing and session compose text
 ///   session-groups.json # manual sidebar session groups
+///   sessions-index.json # derived sidebar snapshot (source remains session.json)
 ///   workbench-layout.json # workbench split-layout snapshot (center+floating)
 ///   profile.json        # legacy; unused after identity-model removal
 ///   assets/icon.*       # custom workspace icon
@@ -77,6 +78,10 @@ class WorkspaceLayout {
   /// Manual sidebar session groups ("todo" etc.), tag-style membership.
   String sessionGroupsFile(String workspaceId) =>
       _ctx.join(workspaceDir(workspaceId), 'session-groups.json');
+
+  /// Derived sidebar session rows; source of truth remains each session.json.
+  String sessionsIndexFile(String workspaceId) =>
+      _ctx.join(workspaceDir(workspaceId), 'sessions-index.json');
 
   /// Persisted workbench split-layout snapshot (center + floating groups).
   String workbenchLayoutFile(String workspaceId) =>
