@@ -12,6 +12,7 @@ import '../services/remote/remote_connection_monitor.dart';
 import '../services/ssh/ssh_client_factory.dart';
 import '../services/ssh/ssh_connection_failure.dart';
 import '../services/ssh/ssh_profile_connection_coordinator.dart';
+import '../utils/logging/logger.dart';
 
 enum SshHostUiStatus {
   disconnected,
@@ -191,7 +192,7 @@ class SshConnectionCubit extends Cubit<SshConnectionState> {
         return;
       }
       emit(_buildState());
-    } catch (error) {
+    } catch (error, stackTrace) {
       _connectingIds.remove(profileId);
       if (!_profilesById.containsKey(profileId)) {
         return;
@@ -217,6 +218,12 @@ class SshConnectionCubit extends Cubit<SshConnectionState> {
       _lastFailureStatus[profileId] = status;
       _lastErrorDetail[profileId] =
           stalePairing ? sshPairingStaleDetail : error.toString();
+      appLogger.w(
+        '[ssh] profile $profileId connect failed (${status.name}): '
+        '${sshConnectionFailureLogMessage(error)}',
+        error: cause,
+        stackTrace: stackTrace,
+      );
       emit(_buildState());
     }
   }

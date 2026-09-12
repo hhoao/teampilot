@@ -2,9 +2,9 @@ import 'dart:async';
 import 'dart:convert';
 
 import 'package:dartssh2/dartssh2.dart';
-import 'package:logger/logger.dart';
 
 import '../../models/team_config.dart';
+import '../../utils/logging/logger.dart';
 import 'cli_tool_locator.dart';
 import 'registry/capabilities/cli_executable_capability.dart';
 import 'registry/cli_tool_registry.dart';
@@ -67,21 +67,37 @@ final class DefaultRemoteCliLocator {
   final String executableName;
 
   Future<String?> locate(SshCommandRunner run) async {
+    final failures = _ProbeFailures();
     final probe = 'command -v $executableName';
-    final direct = await _tryCommand(run, probe);
+    final direct = await _tryCommand(run, probe, failures);
     if (direct != null) return direct;
     for (final shell in const ['bash', 'zsh']) {
       for (final flags in const ['-ilc', '-lc']) {
-        final located = await _tryCommand(run, '$shell $flags \'$probe\'');
+        final located = await _tryCommand(
+          run,
+          '$shell $flags \'$probe\'',
+          failures,
+        );
         if (located != null) return located;
       }
     }
     final localBin = await _tryCommand(
       run,
       _wellKnownLocalBinProbe(executableName),
+      failures,
     );
     if (localBin != null) return localBin;
-    return _tryCommand(run, _termuxPrefixBinProbe(executableName));
+    final termux = await _tryCommand(
+      run,
+      _termuxPrefixBinProbe(executableName),
+      failures,
+    );
+    if (termux != null) return termux;
+    // Individual probe exceptions are expected when the CLI is missing or the
+    // remote refuses exec; collapse them into one line so a discovery pass over
+    // many CLIs does not flood the log with identical stack traces.
+    failures.logSummary(executableName);
+    return null;
   }
 
   /// TeamPilot remote npm installs default to prefix `~/.local` → `~/.local/bin`.
@@ -101,17 +117,39 @@ final class DefaultRemoteCliLocator {
   static Future<String?> _tryCommand(
     SshCommandRunner run,
     String command,
+    _ProbeFailures failures,
   ) async {
     try {
       final result = await run(command);
       if (result.exitCode != 0) return null;
       return CliToolLocator.parseFirstStdoutLine(result.stdout);
     } on Object catch (error, stackTrace) {
-      Logger().w(
-        'Remote CLI lookup failed for "$command": $error',
-        stackTrace: stackTrace,
-      );
+      failures.record(error, stackTrace);
       return null;
     }
+  }
+}
+
+/// Aggregates probe exceptions for one [DefaultRemoteCliLocator.locate] pass so
+/// the whole lookup emits a single warning instead of one per failed command.
+class _ProbeFailures {
+  int _count = 0;
+  Object? _firstError;
+  StackTrace? _firstStackTrace;
+
+  void record(Object error, StackTrace stackTrace) {
+    _count++;
+    _firstError ??= error;
+    _firstStackTrace ??= stackTrace;
+  }
+
+  void logSummary(String executableName) {
+    if (_count == 0) return;
+    appLogger.w(
+      'Remote CLI lookup failed for "$executableName" after '
+      '$_count probe(s), first: $_firstError',
+      error: _firstError,
+      stackTrace: _firstStackTrace,
+    );
   }
 }
