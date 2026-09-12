@@ -1267,26 +1267,46 @@ class _SessionChatViewState extends State<SessionChatView> {
   @override
   Widget build(BuildContext context) {
     final viewToggle = widget.viewToggle;
-    if (viewToggle == null) return _buildContent(context);
-    final spacing = context.tpSpacing;
-    final controller = _taskBoardController;
-    Widget capsule() => AiMessageStringsScope(
-      strings: aiMessageStringsFromL10n(context.l10n),
-      child: controller == null
-          ? AiTaskBoardPanel(items: const [], collapsedLeading: viewToggle)
-          : ListenableBuilder(
-              listenable: controller,
-              builder: (context, _) => AiTaskBoardPanel(
-                items: controller.board.aiItems,
-                collapsedLeading: viewToggle,
+    Widget content;
+    if (viewToggle == null) {
+      content = _buildContent(context);
+    } else {
+      final spacing = context.tpSpacing;
+      final controller = _taskBoardController;
+      Widget capsule() => AiMessageStringsScope(
+        strings: aiMessageStringsFromL10n(context.l10n),
+        child: controller == null
+            ? AiTaskBoardPanel(items: const [], collapsedLeading: viewToggle)
+            : ListenableBuilder(
+                listenable: controller,
+                builder: (context, _) => AiTaskBoardPanel(
+                  items: controller.board.aiItems,
+                  collapsedLeading: viewToggle,
+                ),
               ),
-            ),
-    );
-    return Stack(
-      children: [
-        Positioned.fill(child: _buildContent(context)),
-        Positioned(top: spacing.sm, right: spacing.sm, child: capsule()),
-      ],
+      );
+      content = Stack(
+        children: [
+          Positioned.fill(child: _buildContent(context)),
+          Positioned(top: spacing.sm, right: spacing.sm, child: capsule()),
+        ],
+      );
+    }
+    return _provideAcpRuntime(content);
+  }
+
+  /// The compose section reads the ACP runtime's pending-permission state via
+  /// [seatSelect] (context.select), which requires a
+  /// [BlocProvider<AcpChatRuntimeCubit>] in the ancestor chain. The runtime is
+  /// tab-scoped (owned by the ChatTabStore), not app-scoped, so — like other
+  /// session-scoped cubits — it is provided as a `BlocProvider.value` from the
+  /// view that receives it as a constructor arg. Nothing here owns/disposes it.
+  Widget _provideAcpRuntime(Widget child) {
+    final acpRuntime = widget.acpRuntime;
+    if (acpRuntime == null) return child;
+    return BlocProvider<AcpChatRuntimeCubit>.value(
+      value: acpRuntime,
+      child: child,
     );
   }
 
