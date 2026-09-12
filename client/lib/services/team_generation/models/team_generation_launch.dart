@@ -1,14 +1,11 @@
 /// Frozen Landing/workspace launch input captured at job creation.
 ///
 /// Typed enough to rebuild the destination launch, loose enough to survive
-/// schema evolution of the surrounding documents. The security policy is
-/// stored as its serialized value so the job does not re-derive policy
-/// defaults at read time.
+/// schema evolution of the surrounding documents.
 final class TeamGenerationLaunchSnapshot {
   const TeamGenerationLaunchSnapshot({
     required this.projectFolderPath,
     required this.workingDirectoryPath,
-    required this.launchSecurityPolicyValue,
     required this.folderIds,
     required this.targetIds,
     required this.workspaceRevision,
@@ -18,10 +15,8 @@ final class TeamGenerationLaunchSnapshot {
   factory TeamGenerationLaunchSnapshot.fromJson(Map<String, Object?> json) {
     return TeamGenerationLaunchSnapshot(
       projectFolderPath: (json['projectFolderPath'] as String? ?? '').trim(),
-      workingDirectoryPath:
-          (json['workingDirectoryPath'] as String? ?? '').trim(),
-      launchSecurityPolicyValue:
-          (json['launchSecurityPolicy'] as String? ?? '').trim(),
+      workingDirectoryPath: (json['workingDirectoryPath'] as String? ?? '')
+          .trim(),
       folderIds: List<String>.unmodifiable([
         for (final value in (json['folderIds'] as List? ?? const []))
           if (value is String && value.trim().isNotEmpty) value.trim(),
@@ -37,7 +32,6 @@ final class TeamGenerationLaunchSnapshot {
 
   final String projectFolderPath;
   final String workingDirectoryPath;
-  final String launchSecurityPolicyValue;
   final List<String> folderIds;
   final List<String> targetIds;
 
@@ -49,8 +43,6 @@ final class TeamGenerationLaunchSnapshot {
     if (projectFolderPath.isNotEmpty) 'projectFolderPath': projectFolderPath,
     if (workingDirectoryPath.isNotEmpty)
       'workingDirectoryPath': workingDirectoryPath,
-    if (launchSecurityPolicyValue.isNotEmpty)
-      'launchSecurityPolicy': launchSecurityPolicyValue,
     if (folderIds.isNotEmpty) 'folderIds': folderIds,
     if (targetIds.isNotEmpty) 'targetIds': targetIds,
     if (workspaceRevision.isNotEmpty) 'workspaceRevision': workspaceRevision,
@@ -71,8 +63,8 @@ final class GeneratedDestinationLaunch {
     return GeneratedDestinationLaunch(
       folderId: (json['folderId'] as String? ?? '').trim(),
       projectFolderPath: (json['projectFolderPath'] as String? ?? '').trim(),
-      workingDirectoryPath:
-          (json['workingDirectoryPath'] as String? ?? '').trim(),
+      workingDirectoryPath: (json['workingDirectoryPath'] as String? ?? '')
+          .trim(),
       leadTargetId: (json['leadTargetId'] as String? ?? '').trim(),
     );
   }

@@ -9,8 +9,6 @@ import '../../cubits/chat/model/session_open_status.dart';
 import '../../models/app_session.dart';
 import '../../models/automation.dart';
 import '../../models/cli_preset.dart';
-import '../../models/launch_security_policy.dart';
-import '../../models/session_continue_overrides.dart';
 import '../../models/simple_launch_identity.dart';
 import '../../models/team_config.dart';
 import '../../models/workspace.dart';
@@ -268,11 +266,6 @@ class AutomationDispatcher {
           cli: simpleIdentity.cli,
           simpleIdentity: simpleIdentity,
           expertKey: expertKey,
-          continueOverrides: SessionContinueOverrides(
-            launchSecurityPolicy: LaunchSecurityPolicyOverride.fromPolicy(
-              automation.launchSecurityPolicy,
-            ),
-          ),
           workingDirectory: workingDirectory,
           fixedSessionId: plannedSessionId,
         ),
@@ -290,11 +283,6 @@ class AutomationDispatcher {
           team: team,
           member: member,
           repo: _sessionRepository,
-          continueOverrides: SessionContinueOverrides(
-            launchSecurityPolicy: LaunchSecurityPolicyOverride.fromPolicy(
-              automation.launchSecurityPolicy,
-            ),
-          ),
           workingDirectory: workingDirectory,
           fixedSessionId: plannedSessionId,
         ),

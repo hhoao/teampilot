@@ -36,19 +36,20 @@ enum TeamGenerationPhase {
 }
 
 /// Ranks only the forward-active phases; terminal/failed phases return null.
-int? teamGenerationActivePhaseRank(TeamGenerationPhase phase) => switch (phase) {
-  TeamGenerationPhase.created => 0,
-  TeamGenerationPhase.probing => 1,
-  TeamGenerationPhase.planning => 2,
-  TeamGenerationPhase.validating => 3,
-  TeamGenerationPhase.committing => 4,
-  TeamGenerationPhase.launching => 5,
-  TeamGenerationPhase.delivering => 6,
-  TeamGenerationPhase.delivered => 7,
-  TeamGenerationPhase.cleaning => 8,
-  TeamGenerationPhase.complete => 9,
-  _ => null,
-};
+int? teamGenerationActivePhaseRank(TeamGenerationPhase phase) =>
+    switch (phase) {
+      TeamGenerationPhase.created => 0,
+      TeamGenerationPhase.probing => 1,
+      TeamGenerationPhase.planning => 2,
+      TeamGenerationPhase.validating => 3,
+      TeamGenerationPhase.committing => 4,
+      TeamGenerationPhase.launching => 5,
+      TeamGenerationPhase.delivering => 6,
+      TeamGenerationPhase.delivered => 7,
+      TeamGenerationPhase.cleaning => 8,
+      TeamGenerationPhase.complete => 9,
+      _ => null,
+    };
 
 enum TeamGenerationReceiptState { reserved, succeeded, failed, unknown }
 
@@ -90,10 +91,7 @@ final class TeamGenerationReceipt {
 
 /// Structured, bounded error record; [code] drives UI remediation.
 final class TeamGenerationJobError {
-  const TeamGenerationJobError({
-    required this.code,
-    this.message = '',
-  });
+  const TeamGenerationJobError({required this.code, this.message = ''});
 
   factory TeamGenerationJobError.fromJson(Map<String, Object?> json) {
     return TeamGenerationJobError(
@@ -397,7 +395,6 @@ final class TeamGenerationJob {
       TeamGenerationLaunchSnapshot(
         projectFolderPath: '',
         workingDirectoryPath: '',
-        launchSecurityPolicyValue: '',
         folderIds: const [],
         targetIds: const [],
         workspaceRevision: '',
@@ -534,8 +531,6 @@ final class TeamGenerationJob {
 
   /// Clears validated plan state when a later probe/workspace change
   /// invalidates a previously validated revision.
-  TeamGenerationJob clearValidation() => copyWith(
-    validatedRevision: '',
-    validatedDestinationJson: null,
-  );
+  TeamGenerationJob clearValidation() =>
+      copyWith(validatedRevision: '', validatedDestinationJson: null);
 }

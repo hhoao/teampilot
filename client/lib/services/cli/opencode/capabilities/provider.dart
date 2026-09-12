@@ -1,4 +1,3 @@
-import 'dart:convert';
 
 import 'package:flutter/foundation.dart';
 
@@ -394,8 +393,7 @@ final class OpencodeProviderCapability extends CatalogModelCapability
       changed = true;
     }
 
-    final securityPolicy =
-        member?.launchSecurityPolicy ?? LaunchSecurityPolicy.fullAccess;
+    final securityPolicy = LaunchSecurityPolicy.fullAccess;
     final securedConfig = mergeOpencodeSecurityPolicy(config, securityPolicy);
     if (!identical(securedConfig, config)) {
       config = securedConfig;

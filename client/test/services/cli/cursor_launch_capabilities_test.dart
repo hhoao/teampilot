@@ -34,7 +34,6 @@ void main() {
           name: 'Member',
           model: '  gpt-5.2  ',
           extraArgs: "--member-flag 'member value'",
-          launchSecurityPolicy: LaunchSecurityPolicy.fullAccess,
         ),
         workingDirectory: '/work',
         additionalDirectories: const ['/repo/a', '/repo/b'],
@@ -120,11 +119,7 @@ void main() {
     expect(
       _assemble(
         team: const TeamProfile(id: 'team', name: 'Team', cli: CliTool.cursor),
-        member: const TeamMemberConfig(
-          id: 'member',
-          name: 'Member',
-          launchSecurityPolicy: LaunchSecurityPolicy.fullAccess,
-        ),
+        member: const TeamMemberConfig(id: 'member', name: 'Member'),
       ),
       ['--force'],
     );
@@ -266,7 +261,8 @@ List<String> _assemble({
       fixedSessionId: fixedSessionId,
       resumeSessionId: resumeSessionId,
       useWslPaths: useWslPaths,
-      launchSecurityPolicy: launchSecurityPolicy,
+      launchSecurityPolicy:
+          launchSecurityPolicy ?? LaunchSecurityPolicy.fullAccess,
     ),
   );
 }

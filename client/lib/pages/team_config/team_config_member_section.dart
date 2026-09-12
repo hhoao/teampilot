@@ -10,7 +10,6 @@ import '../../cubits/team/launch_profile_selectors.dart';
 import '../../l10n/l10n_extensions.dart';
 import '../../models/discoverable_member.dart';
 import '../../models/team_config.dart';
-import '../../models/launch_security_policy.dart';
 import '../../models/team_roster_slot.dart';
 import '../../services/cli/flashskyai/agent_catalog_service.dart';
 import '../../widgets/home_storage_scope.dart';
@@ -511,40 +510,21 @@ class _MemberSkipPermissionsSwitch extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final l10n = context.l10n;
-    final policy = context.select<LaunchProfileCubit, LaunchSecurityPolicy?>(
-      (c) => LaunchProfileSelectors.memberDiscreteFields(
-        c.state,
-        teamId,
-        memberId,
-      )?.launchSecurityPolicy,
+    final memberExists = context.select<LaunchProfileCubit, bool>(
+      (c) =>
+          LaunchProfileSelectors.memberDiscreteFields(
+            c.state,
+            teamId,
+            memberId,
+          ) !=
+          null,
     );
-    if (policy == null) return const SizedBox.shrink();
+    if (!memberExists) return const SizedBox.shrink();
 
     return TpPreferenceRow(
       title: l10n.memberDangerouslySkipPermissions,
       subtitle: l10n.memberDangerouslySkipPermissionsHint,
-      trailing: Switch(
-        value: policy.requiresDangerousExecution,
-        onChanged: (v) {
-          final member = LaunchProfileSelectors.memberById(
-            LaunchProfileSelectors.teamById(
-              context.read<LaunchProfileCubit>().state,
-              teamId,
-            ),
-            memberId,
-          );
-          if (member == null) return;
-          onPersist(
-            member.copyWith(
-              launchSecurityPolicy: v
-                  ? LaunchSecurityPolicy.fullAccess
-                  : policy == LaunchSecurityPolicy.fullAccess
-                  ? LaunchSecurityPolicy.cliDefault
-                  : policy,
-            ),
-          );
-        },
-      ),
+      trailing: Switch(value: true, onChanged: null),
       showDividerBelow: true,
     );
   }

@@ -1,7 +1,6 @@
 import 'package:equatable/equatable.dart';
 
 import '../../models/team_config.dart';
-import '../../models/launch_security_policy.dart';
 import '../../utils/team/team_member_naming.dart';
 import 'model/launch_profile_state.dart';
 
@@ -117,25 +116,22 @@ class MemberLaunchContext extends Equatable {
 /// Discrete member toggles — excludes text fields edited locally in the form.
 class MemberDiscreteFields extends Equatable {
   const MemberDiscreteFields({
-    required this.launchSecurityPolicy,
     required this.replicas,
     required this.isTeamLead,
   });
 
-  final LaunchSecurityPolicy launchSecurityPolicy;
   final int replicas;
   final bool isTeamLead;
 
   factory MemberDiscreteFields.from(TeamMemberConfig member) {
     return MemberDiscreteFields(
-      launchSecurityPolicy: member.launchSecurityPolicy,
       replicas: member.replicas,
       isTeamLead: TeamMemberNaming.isTeamLead(member),
     );
   }
 
   @override
-  List<Object?> get props => [launchSecurityPolicy, replicas, isTeamLead];
+  List<Object?> get props => [replicas, isTeamLead];
 }
 
 abstract final class LaunchProfileSelectors {

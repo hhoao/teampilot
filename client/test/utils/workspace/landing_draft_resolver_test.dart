@@ -1,10 +1,8 @@
-import 'package:teampilot/models/launch_security_policy.dart';
 import 'dart:convert';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/models/cli_preset.dart';
 import 'package:teampilot/models/landing_launch_context.dart';
-import 'package:teampilot/models/session_continue_overrides.dart';
 import 'package:teampilot/models/simple_launch_identity.dart';
 import 'package:teampilot/models/team_config.dart';
 import 'package:teampilot/models/workspace.dart';
@@ -24,7 +22,7 @@ void main() {
   );
 
   test(
-    'resolveLandingDraft defaults to full access for landing compatibility',
+    'resolveLandingDraft creates a personal draft with no persisted policy',
     () async {
       final draft = await resolveLandingDraft(
         workspaceId: workspace.workspaceId,
@@ -35,12 +33,12 @@ void main() {
           storage: fakeHomeStorage(),
         ),
       );
-      expect(draft.launchSecurityPolicy.requiresDangerousExecution, isTrue);
+      expect(draft.isPersonal, isTrue);
     },
   );
 
   test(
-    'resolveLandingDraft uses simpleModeDefaultFullAccess when no prefs',
+    'resolveLandingDraft leaves custom launch unset when no prefs',
     () async {
       final draft = await resolveLandingDraft(
         workspaceId: workspace.workspaceId,
@@ -50,110 +48,108 @@ void main() {
           pathOverride: '/prefs.json',
           storage: fakeHomeStorage(),
         ),
-        simpleModeDefaultFullAccess: false,
       );
-      expect(draft.launchSecurityPolicy.requiresDangerousExecution, isFalse);
+      expect(draft.cli, isNull);
     },
   );
 
-  test(
-    'resolveLandingDraft prefers persisted prefs over simpleModeDefaultFullAccess',
-    () async {
-      final store = LandingPrefsStore(
-        fs: InMemoryFilesystem(),
-        pathOverride: '/prefs.json',
-        storage: fakeHomeStorage(),
-      );
-      await persistLandingDraft(
-        workspace.workspaceId,
-        const LandingLaunchContext(
-          isPersonal: true,
-          launchSecurityPolicy: LaunchSecurityPolicy.fullAccess,
-        ),
-        storage: fakeHomeStorage(),
-        store: store,
-      );
-
-      final draft = await resolveLandingDraft(
-        workspaceId: workspace.workspaceId,
-        storage: fakeHomeStorage(),
-        store: store,
-        simpleModeDefaultFullAccess: false,
-      );
-      expect(draft.launchSecurityPolicy.requiresDangerousExecution, isTrue);
-    },
-  );
-
-  test(
-    'persistLandingDraft round-trips a safe launch security policy',
-    () async {
-      final store = LandingPrefsStore(
-        fs: InMemoryFilesystem(),
-        pathOverride: '/prefs.json',
-        storage: fakeHomeStorage(),
-      );
-      const draft = LandingLaunchContext(
-        isPersonal: true,
-        launchSecurityPolicy: LaunchSecurityPolicy.cliDefault,
-      );
-
-      await persistLandingDraft(workspace.workspaceId, draft, storage: fakeHomeStorage(), store: store);
-
-      final resolved = await resolveLandingDraft(
-        workspaceId: workspace.workspaceId,
-        storage: fakeHomeStorage(),
-        store: store,
-      );
-      expect(resolved.launchSecurityPolicy.requiresDangerousExecution, isFalse);
-    },
-  );
-
-  test(
-    'persistLandingDraft round-trips a full-access launch security policy',
-    () async {
-      final store = LandingPrefsStore(
-        fs: InMemoryFilesystem(),
-        pathOverride: '/prefs.json',
-        storage: fakeHomeStorage(),
-      );
-      const draft = LandingLaunchContext(
-        isPersonal: true,
-        launchSecurityPolicy: LaunchSecurityPolicy.fullAccess,
-      );
-
-      await persistLandingDraft(workspace.workspaceId, draft, storage: fakeHomeStorage(), store: store);
-
-      final resolved = await resolveLandingDraft(
-        workspaceId: workspace.workspaceId,
-        storage: fakeHomeStorage(),
-        store: store,
-      );
-      expect(resolved.launchSecurityPolicy.requiresDangerousExecution, isTrue);
-    },
-  );
-
-  test('persistLandingDraft round-trips generate launch in team mode', () async {
+  test('resolveLandingDraft prefers persisted preferences', () async {
     final store = LandingPrefsStore(
       fs: InMemoryFilesystem(),
       pathOverride: '/prefs.json',
       storage: fakeHomeStorage(),
     );
-    const draft = LandingLaunchContext(
-      isPersonal: false,
-      generateLaunch: true,
-      teamId: 'last-team',
+    await persistLandingDraft(
+      workspace.workspaceId,
+      const LandingLaunchContext(isPersonal: true, teamId: 'team-1'),
+      storage: fakeHomeStorage(),
+      store: store,
     );
 
-    await persistLandingDraft(workspace.workspaceId, draft, storage: fakeHomeStorage(), store: store);
+    final draft = await resolveLandingDraft(
+      workspaceId: workspace.workspaceId,
+      storage: fakeHomeStorage(),
+      store: store,
+    );
+    expect(draft.teamId, 'team-1');
+  });
+
+  test('persistLandingDraft omits launch security policy', () async {
+    final store = LandingPrefsStore(
+      fs: InMemoryFilesystem(),
+      pathOverride: '/prefs.json',
+      storage: fakeHomeStorage(),
+    );
+    const draft = LandingLaunchContext(isPersonal: true);
+
+    await persistLandingDraft(
+      workspace.workspaceId,
+      draft,
+      storage: fakeHomeStorage(),
+      store: store,
+    );
 
     final resolved = await resolveLandingDraft(
       workspaceId: workspace.workspaceId,
       storage: fakeHomeStorage(),
       store: store,
     );
-    expect(resolved.generateLaunch, isTrue);
-    expect(resolved.teamId, 'last-team');
+    expect(resolved.isPersonal, isTrue);
   });
+
+  test('persistLandingDraft round-trips the team selection', () async {
+    final store = LandingPrefsStore(
+      fs: InMemoryFilesystem(),
+      pathOverride: '/prefs.json',
+      storage: fakeHomeStorage(),
+    );
+    const draft = LandingLaunchContext(isPersonal: false, teamId: 'team-1');
+
+    await persistLandingDraft(
+      workspace.workspaceId,
+      draft,
+      storage: fakeHomeStorage(),
+      store: store,
+    );
+
+    final resolved = await resolveLandingDraft(
+      workspaceId: workspace.workspaceId,
+      storage: fakeHomeStorage(),
+      store: store,
+    );
+    expect(resolved.teamId, 'team-1');
+  });
+
+  test(
+    'persistLandingDraft round-trips generate launch in team mode',
+    () async {
+      final store = LandingPrefsStore(
+        fs: InMemoryFilesystem(),
+        pathOverride: '/prefs.json',
+        storage: fakeHomeStorage(),
+      );
+      const draft = LandingLaunchContext(
+        isPersonal: false,
+        generateLaunch: true,
+        teamId: 'last-team',
+      );
+
+      await persistLandingDraft(
+        workspace.workspaceId,
+        draft,
+        storage: fakeHomeStorage(),
+        store: store,
+      );
+
+      final resolved = await resolveLandingDraft(
+        workspaceId: workspace.workspaceId,
+        storage: fakeHomeStorage(),
+        store: store,
+      );
+      expect(resolved.generateLaunch, isTrue);
+      expect(resolved.teamId, 'last-team');
+    },
+  );
 
   test('persistLandingDraft round-trips custom four-tuple', () async {
     final store = LandingPrefsStore(
@@ -169,7 +165,12 @@ void main() {
       effort: 'high',
     );
 
-    await persistLandingDraft(workspace.workspaceId, draft, storage: fakeHomeStorage(), store: store);
+    await persistLandingDraft(
+      workspace.workspaceId,
+      draft,
+      storage: fakeHomeStorage(),
+      store: store,
+    );
 
     final resolved = await resolveLandingDraft(
       workspaceId: workspace.workspaceId,
@@ -205,19 +206,6 @@ void main() {
     expect(wsPrefs.containsKey('provider'), isFalse);
     expect(wsPrefs.containsKey('model'), isFalse);
     expect(wsPrefs.containsKey('effort'), isFalse);
-  });
-
-  test('landing draft maps to session continue overrides for create', () {
-    const draft = LandingLaunchContext(
-      isPersonal: true,
-      launchSecurityPolicy: LaunchSecurityPolicy.fullAccess,
-    );
-    final overrides = SessionContinueOverrides(
-      launchSecurityPolicy: LaunchSecurityPolicyOverride.fromPolicy(
-        draft.launchSecurityPolicy,
-      ),
-    );
-    expect(overrides.launchSecurityPolicy?.requiresDangerousExecution, isTrue);
   });
 
   group('resolveLandingSimpleLaunchIdentity', () {

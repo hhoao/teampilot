@@ -12,7 +12,6 @@ import 'package:teampilot/cubits/launch_profile_cubit.dart';
 import 'package:teampilot/cubits/team/model/launch_profile_state.dart';
 import 'package:teampilot/l10n/app_localizations.dart';
 import 'package:teampilot/models/team_config.dart';
-import 'package:teampilot/models/launch_security_policy.dart';
 import 'package:teampilot/models/team_roster_slot.dart';
 import 'package:teampilot/models/workspace.dart';
 import 'package:teampilot/models/workspace_folder.dart';
@@ -304,22 +303,13 @@ void main() {
   });
 
   testWidgets(
-    'turning off the landing member permission switch preserves an intermediate policy',
+    'landing member permission switch cannot write deleted model state',
     (tester) async {
-      const intermediate = LaunchSecurityPolicy(
-        approval: LaunchApprovalPolicy.ask,
-        sandbox: LaunchSandboxPolicy.readOnly,
-        hookTrust: LaunchHookTrustPolicy.trustedOnly,
-      );
       const team = TeamProfile(
         id: 'team-1',
         name: 'Alpha',
         members: [
-          TeamMemberConfig(
-            id: 'team-lead',
-            name: 'Lead',
-            launchSecurityPolicy: intermediate,
-          ),
+          TeamMemberConfig(id: 'team-lead', name: 'Lead'),
           TeamMemberConfig(id: 'worker', name: 'Worker'),
         ],
         roster: [
@@ -353,15 +343,16 @@ void main() {
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 300));
       final permissionSwitch = tester.widget<Switch>(find.byType(Switch).first);
-      permissionSwitch.onChanged!(false);
+      expect(permissionSwitch.value, isTrue);
+      expect(permissionSwitch.onChanged, isNull);
       await tester.pump();
       await tester.tap(find.text(l10n.save));
       await tester.pump();
       await tester.pump(const Duration(seconds: 1));
 
       expect(
-        launchCubit.state.selectedTeam?.members.first.launchSecurityPolicy,
-        intermediate,
+        launchCubit.state.selectedTeam?.members.first.toJson(),
+        isNot(contains('launchSecurityPolicy')),
       );
     },
   );

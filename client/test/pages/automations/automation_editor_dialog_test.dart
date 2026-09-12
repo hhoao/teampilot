@@ -40,7 +40,14 @@ const _testPresetId = 'preset-test';
 
 class _FakeExpertHubSource extends CompositeExpertHubSource {
   _FakeExpertHubSource()
-    : super(builtIns: const [], registry: _EmptyRegistry(), localStore: LocalExpertStore(fs: InMemoryFilesystem(), dirOverride: AppPaths('/tp').memberHubLocalTemplatesDir), );
+    : super(
+        builtIns: const [],
+        registry: _EmptyRegistry(),
+        localStore: LocalExpertStore(
+          fs: InMemoryFilesystem(),
+          dirOverride: AppPaths('/tp').memberHubLocalTemplatesDir,
+        ),
+      );
 
   @override
   Future<List<DiscoverableMember>> fetchMembers({
@@ -205,18 +212,20 @@ void main() {
     final setup = testAutomationSetup();
     addTearDown(setup.cubit.close);
 
-    await tester.pumpWidget(RepositoryProvider<HomeStorage>.value(
+    await tester.pumpWidget(
+      RepositoryProvider<HomeStorage>.value(
         value: testHomeStorage,
         child: _host(
-        cubit: setup.cubit,
-        child: AutomationEditorDialog(
-          kind: AutomationEditorKind.scheduledMessage,
-          workspaceId: 'ws1',
-          sessionId: 'sess-1',
-          defaultName: 'Daily ping',
+          cubit: setup.cubit,
+          child: AutomationEditorDialog(
+            kind: AutomationEditorKind.scheduledMessage,
+            workspaceId: 'ws1',
+            sessionId: 'sess-1',
+            defaultName: 'Daily ping',
+          ),
         ),
       ),
-      ));
+    );
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 200));
 
@@ -247,16 +256,18 @@ void main() {
     addTearDown(cliPresetsCubit.close);
     addTearDown(sessionPreferencesCubit.close);
 
-    await tester.pumpWidget(RepositoryProvider<HomeStorage>.value(
+    await tester.pumpWidget(
+      RepositoryProvider<HomeStorage>.value(
         value: testHomeStorage,
         child: _host(
-        cubit: setup.cubit,
-        chatCubit: chatCubit,
-        cliPresetsCubit: cliPresetsCubit,
-        sessionPreferencesCubit: sessionPreferencesCubit,
-        child: const AutomationEditorDialog(workspaceId: 'ws1'),
+          cubit: setup.cubit,
+          chatCubit: chatCubit,
+          cliPresetsCubit: cliPresetsCubit,
+          sessionPreferencesCubit: sessionPreferencesCubit,
+          child: const AutomationEditorDialog(workspaceId: 'ws1'),
+        ),
       ),
-      ));
+    );
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 200));
 
@@ -287,23 +298,25 @@ void main() {
     addTearDown(chatCubit.close);
     addTearDown(launchProfileCubit.close);
 
-    await tester.pumpWidget(RepositoryProvider<HomeStorage>.value(
+    await tester.pumpWidget(
+      RepositoryProvider<HomeStorage>.value(
         value: testHomeStorage,
         child: _host(
-        cubit: setup.cubit,
-        chatCubit: chatCubit,
-        launchProfileCubit: launchProfileCubit,
-        child: AutomationEditorDialog(
-          workspaceId: 'ws1',
-          initial: sampleAutomation(
-            id: 'edit-team',
+          cubit: setup.cubit,
+          chatCubit: chatCubit,
+          launchProfileCubit: launchProfileCubit,
+          child: AutomationEditorDialog(
             workspaceId: 'ws1',
-            isPersonal: false,
-            teamId: 'team-1',
+            initial: sampleAutomation(
+              id: 'edit-team',
+              workspaceId: 'ws1',
+              isPersonal: false,
+              teamId: 'team-1',
+            ),
           ),
         ),
       ),
-      ));
+    );
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 200));
 
@@ -318,7 +331,7 @@ void main() {
     expect(find.text(l10n.hubPublishKindExpert), findsNothing);
   });
 
-  testWidgets('automation policy field key preserves intermediate dimensions', (
+  testWidgets('automation editor remains compilable with fixed launch policy', (
     tester,
   ) async {
     final setup = testAutomationSetup();
@@ -332,32 +345,29 @@ void main() {
     addTearDown(cliPresetsCubit.close);
     addTearDown(sessionPreferencesCubit.close);
 
-    const policy = LaunchSecurityPolicy(
-      approval: LaunchApprovalPolicy.ask,
-      sandbox: LaunchSandboxPolicy.readOnly,
-      hookTrust: LaunchHookTrustPolicy.trustedOnly,
-    );
-    await tester.pumpWidget(RepositoryProvider<HomeStorage>.value(
+    await tester.pumpWidget(
+      RepositoryProvider<HomeStorage>.value(
         value: testHomeStorage,
         child: _host(
-        cubit: setup.cubit,
-        chatCubit: chatCubit,
-        cliPresetsCubit: cliPresetsCubit,
-        sessionPreferencesCubit: sessionPreferencesCubit,
-        child: AutomationEditorDialog(
-          workspaceId: 'ws1',
-          initial: sampleAutomation(
-            id: 'intermediate-policy',
+          cubit: setup.cubit,
+          chatCubit: chatCubit,
+          cliPresetsCubit: cliPresetsCubit,
+          sessionPreferencesCubit: sessionPreferencesCubit,
+          child: AutomationEditorDialog(
             workspaceId: 'ws1',
-          ).copyWith(launchSecurityPolicy: policy),
+            initial: sampleAutomation(
+              id: 'intermediate-policy',
+              workspaceId: 'ws1',
+            ),
+          ),
         ),
       ),
-      ));
+    );
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 200));
 
     expect(
-      find.byKey(const ValueKey('permissions-ask-readOnly-trustedOnly')),
+      find.byKey(const ValueKey('permissions-never-fullAccess-bypass')),
       findsOneWidget,
     );
   });
@@ -368,18 +378,20 @@ void main() {
     final setup = testAutomationSetup();
     addTearDown(setup.cubit.close);
 
-    await tester.pumpWidget(RepositoryProvider<HomeStorage>.value(
+    await tester.pumpWidget(
+      RepositoryProvider<HomeStorage>.value(
         value: testHomeStorage,
         child: _host(
-        cubit: setup.cubit,
-        child: AutomationEditorDialog(
-          kind: AutomationEditorKind.scheduledMessage,
-          workspaceId: 'ws1',
-          sessionId: 'sess-1',
-          defaultName: 'Daily ping',
+          cubit: setup.cubit,
+          child: AutomationEditorDialog(
+            kind: AutomationEditorKind.scheduledMessage,
+            workspaceId: 'ws1',
+            sessionId: 'sess-1',
+            defaultName: 'Daily ping',
+          ),
         ),
       ),
-      ));
+    );
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 200));
 
@@ -393,18 +405,20 @@ void main() {
     final setup = testAutomationSetup();
     addTearDown(setup.cubit.close);
 
-    await tester.pumpWidget(RepositoryProvider<HomeStorage>.value(
+    await tester.pumpWidget(
+      RepositoryProvider<HomeStorage>.value(
         value: testHomeStorage,
         child: _host(
-        cubit: setup.cubit,
-        child: AutomationEditorDialog(
-          kind: AutomationEditorKind.scheduledMessage,
-          workspaceId: 'ws1',
-          sessionId: 'sess-1',
-          defaultName: 'Daily ping',
+          cubit: setup.cubit,
+          child: AutomationEditorDialog(
+            kind: AutomationEditorKind.scheduledMessage,
+            workspaceId: 'ws1',
+            sessionId: 'sess-1',
+            defaultName: 'Daily ping',
+          ),
         ),
       ),
-      ));
+    );
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 200));
 
@@ -428,18 +442,20 @@ void main() {
     final setup = testAutomationSetup();
     addTearDown(setup.cubit.close);
 
-    await tester.pumpWidget(RepositoryProvider<HomeStorage>.value(
+    await tester.pumpWidget(
+      RepositoryProvider<HomeStorage>.value(
         value: testHomeStorage,
         child: _host(
-        cubit: setup.cubit,
-        child: AutomationEditorDialog(
-          kind: AutomationEditorKind.scheduledMessage,
-          workspaceId: 'ws1',
-          sessionId: 'sess-1',
-          defaultName: 'Daily ping',
+          cubit: setup.cubit,
+          child: AutomationEditorDialog(
+            kind: AutomationEditorKind.scheduledMessage,
+            workspaceId: 'ws1',
+            sessionId: 'sess-1',
+            defaultName: 'Daily ping',
+          ),
         ),
       ),
-      ));
+    );
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 200));
 
@@ -462,18 +478,20 @@ void main() {
       final setup = testAutomationSetup();
       addTearDown(setup.cubit.close);
 
-      await tester.pumpWidget(RepositoryProvider<HomeStorage>.value(
-        value: testHomeStorage,
-        child: _host(
-          cubit: setup.cubit,
-          child: AutomationEditorDialog(
-            kind: AutomationEditorKind.scheduledMessage,
-            workspaceId: 'ws1',
-            sessionId: 'sess-1',
-            defaultName: 'Daily ping',
+      await tester.pumpWidget(
+        RepositoryProvider<HomeStorage>.value(
+          value: testHomeStorage,
+          child: _host(
+            cubit: setup.cubit,
+            child: AutomationEditorDialog(
+              kind: AutomationEditorKind.scheduledMessage,
+              workspaceId: 'ws1',
+              sessionId: 'sess-1',
+              defaultName: 'Daily ping',
+            ),
           ),
         ),
-      ));
+      );
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 200));
 
@@ -505,18 +523,20 @@ void main() {
     final setup = testAutomationSetup();
     addTearDown(setup.cubit.close);
 
-    await tester.pumpWidget(RepositoryProvider<HomeStorage>.value(
+    await tester.pumpWidget(
+      RepositoryProvider<HomeStorage>.value(
         value: testHomeStorage,
         child: _host(
-        cubit: setup.cubit,
-        child: AutomationEditorDialog(
-          kind: AutomationEditorKind.scheduledMessage,
-          workspaceId: 'ws1',
-          sessionId: 'sess-1',
-          defaultName: 'Daily ping',
+          cubit: setup.cubit,
+          child: AutomationEditorDialog(
+            kind: AutomationEditorKind.scheduledMessage,
+            workspaceId: 'ws1',
+            sessionId: 'sess-1',
+            defaultName: 'Daily ping',
+          ),
         ),
       ),
-      ));
+    );
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 200));
 
@@ -561,18 +581,20 @@ void main() {
     final setup = testAutomationSetup();
     addTearDown(setup.cubit.close);
 
-    await tester.pumpWidget(RepositoryProvider<HomeStorage>.value(
+    await tester.pumpWidget(
+      RepositoryProvider<HomeStorage>.value(
         value: testHomeStorage,
         child: _host(
-        cubit: setup.cubit,
-        child: AutomationEditorDialog(
-          kind: AutomationEditorKind.scheduledMessage,
-          workspaceId: 'ws1',
-          sessionId: 'sess-1',
-          defaultName: 'Daily ping',
+          cubit: setup.cubit,
+          child: AutomationEditorDialog(
+            kind: AutomationEditorKind.scheduledMessage,
+            workspaceId: 'ws1',
+            sessionId: 'sess-1',
+            defaultName: 'Daily ping',
+          ),
         ),
       ),
-      ));
+    );
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 200));
 
@@ -611,20 +633,22 @@ void main() {
     });
     addTearDown(setup.cubit.close);
 
-    await tester.pumpWidget(RepositoryProvider<HomeStorage>.value(
+    await tester.pumpWidget(
+      RepositoryProvider<HomeStorage>.value(
         value: testHomeStorage,
         child: _host(
-        cubit: setup.cubit,
-        child: AutomationEditorDialog(
-          kind: AutomationEditorKind.scheduledMessage,
-          workspaceId: 'ws1',
-          sessionId: 'sess-1',
-          initial: setup.cubit.state.automations
-              .where((a) => a.id == 'expired')
-              .first,
+          cubit: setup.cubit,
+          child: AutomationEditorDialog(
+            kind: AutomationEditorKind.scheduledMessage,
+            workspaceId: 'ws1',
+            sessionId: 'sess-1',
+            initial: setup.cubit.state.automations
+                .where((a) => a.id == 'expired')
+                .first,
+          ),
         ),
       ),
-      ));
+    );
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 200));
 
@@ -673,20 +697,22 @@ void main() {
     });
     addTearDown(setup.cubit.close);
 
-    await tester.pumpWidget(RepositoryProvider<HomeStorage>.value(
+    await tester.pumpWidget(
+      RepositoryProvider<HomeStorage>.value(
         value: testHomeStorage,
         child: _host(
-        cubit: setup.cubit,
-        child: AutomationEditorDialog(
-          kind: AutomationEditorKind.scheduledMessage,
-          workspaceId: 'ws1',
-          sessionId: 'sess-1',
-          initial: setup.cubit.state.automations
-              .where((a) => a.id == 'expired-rerun')
-              .first,
+          cubit: setup.cubit,
+          child: AutomationEditorDialog(
+            kind: AutomationEditorKind.scheduledMessage,
+            workspaceId: 'ws1',
+            sessionId: 'sess-1',
+            initial: setup.cubit.state.automations
+                .where((a) => a.id == 'expired-rerun')
+                .first,
+          ),
         ),
       ),
-      ));
+    );
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 200));
 
@@ -747,20 +773,22 @@ void main() {
       });
       addTearDown(setup.cubit.close);
 
-      await tester.pumpWidget(RepositoryProvider<HomeStorage>.value(
-        value: testHomeStorage,
-        child: _host(
-          cubit: setup.cubit,
-          child: AutomationEditorDialog(
-            kind: AutomationEditorKind.scheduledMessage,
-            workspaceId: 'ws1',
-            sessionId: 'sess-1',
-            initial: setup.cubit.state.automations
-                .where((a) => a.id == 'fired-limit')
-                .first,
+      await tester.pumpWidget(
+        RepositoryProvider<HomeStorage>.value(
+          value: testHomeStorage,
+          child: _host(
+            cubit: setup.cubit,
+            child: AutomationEditorDialog(
+              kind: AutomationEditorKind.scheduledMessage,
+              workspaceId: 'ws1',
+              sessionId: 'sess-1',
+              initial: setup.cubit.state.automations
+                  .where((a) => a.id == 'fired-limit')
+                  .first,
+            ),
           ),
         ),
-      ));
+      );
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 200));
 
@@ -820,20 +848,22 @@ void main() {
       });
       addTearDown(setup.cubit.close);
 
-      await tester.pumpWidget(RepositoryProvider<HomeStorage>.value(
-        value: testHomeStorage,
-        child: _host(
-          cubit: setup.cubit,
-          child: AutomationEditorDialog(
-            kind: AutomationEditorKind.scheduledMessage,
-            workspaceId: 'ws1',
-            sessionId: 'sess-1',
-            initial: setup.cubit.state.automations
-                .where((a) => a.id == 'recurring-to-once')
-                .first,
+      await tester.pumpWidget(
+        RepositoryProvider<HomeStorage>.value(
+          value: testHomeStorage,
+          child: _host(
+            cubit: setup.cubit,
+            child: AutomationEditorDialog(
+              kind: AutomationEditorKind.scheduledMessage,
+              workspaceId: 'ws1',
+              sessionId: 'sess-1',
+              initial: setup.cubit.state.automations
+                  .where((a) => a.id == 'recurring-to-once')
+                  .first,
+            ),
           ),
         ),
-      ));
+      );
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 200));
 
@@ -897,20 +927,22 @@ void main() {
     });
     addTearDown(setup.cubit.close);
 
-    await tester.pumpWidget(RepositoryProvider<HomeStorage>.value(
+    await tester.pumpWidget(
+      RepositoryProvider<HomeStorage>.value(
         value: testHomeStorage,
         child: _host(
-        cubit: setup.cubit,
-        child: AutomationEditorDialog(
-          kind: AutomationEditorKind.scheduledMessage,
-          workspaceId: 'ws1',
-          sessionId: 'sess-1',
-          initial: setup.cubit.state.automations
-              .where((a) => a.id == 'once-to-recurring')
-              .first,
+          cubit: setup.cubit,
+          child: AutomationEditorDialog(
+            kind: AutomationEditorKind.scheduledMessage,
+            workspaceId: 'ws1',
+            sessionId: 'sess-1',
+            initial: setup.cubit.state.automations
+                .where((a) => a.id == 'once-to-recurring')
+                .first,
+          ),
         ),
       ),
-      ));
+    );
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 200));
 
@@ -968,20 +1000,22 @@ void main() {
       });
       addTearDown(setup.cubit.close);
 
-      await tester.pumpWidget(RepositoryProvider<HomeStorage>.value(
-        value: testHomeStorage,
-        child: _host(
-          cubit: setup.cubit,
-          child: AutomationEditorDialog(
-            kind: AutomationEditorKind.scheduledMessage,
-            workspaceId: 'ws1',
-            sessionId: 'sess-1',
-            initial: setup.cubit.state.automations
-                .where((a) => a.id == 'fired-stale')
-                .first,
+      await tester.pumpWidget(
+        RepositoryProvider<HomeStorage>.value(
+          value: testHomeStorage,
+          child: _host(
+            cubit: setup.cubit,
+            child: AutomationEditorDialog(
+              kind: AutomationEditorKind.scheduledMessage,
+              workspaceId: 'ws1',
+              sessionId: 'sess-1',
+              initial: setup.cubit.state.automations
+                  .where((a) => a.id == 'fired-stale')
+                  .first,
+            ),
           ),
         ),
-      ));
+      );
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 200));
 
@@ -1013,20 +1047,22 @@ void main() {
       });
       addTearDown(setup.cubit.close);
 
-      await tester.pumpWidget(RepositoryProvider<HomeStorage>.value(
-        value: testHomeStorage,
-        child: _host(
-          cubit: setup.cubit,
-          child: AutomationEditorDialog(
-            kind: AutomationEditorKind.scheduledMessage,
-            workspaceId: 'ws1',
-            sessionId: 'sess-1',
-            initial: setup.cubit.state.automations
-                .where((a) => a.id == 'stale-error')
-                .first,
+      await tester.pumpWidget(
+        RepositoryProvider<HomeStorage>.value(
+          value: testHomeStorage,
+          child: _host(
+            cubit: setup.cubit,
+            child: AutomationEditorDialog(
+              kind: AutomationEditorKind.scheduledMessage,
+              workspaceId: 'ws1',
+              sessionId: 'sess-1',
+              initial: setup.cubit.state.automations
+                  .where((a) => a.id == 'stale-error')
+                  .first,
+            ),
           ),
         ),
-      ));
+      );
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 200));
 

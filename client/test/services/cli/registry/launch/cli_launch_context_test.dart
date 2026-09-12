@@ -52,23 +52,18 @@ void main() {
 
   test('defaults and copies the resolved launch security policy', () {
     const context = CliLaunchContext(team: nativeTeam, member: member);
-    expect(context.launchSecurityPolicy, member.launchSecurityPolicy);
+    expect(context.launchSecurityPolicy, LaunchSecurityPolicy.fullAccess);
 
     const intermediateMember = TeamMemberConfig(
       id: 'member-id',
       name: 'Member',
-      launchSecurityPolicy: LaunchSecurityPolicy(
-        approval: LaunchApprovalPolicy.ask,
-        sandbox: LaunchSandboxPolicy.readOnly,
-        hookTrust: LaunchHookTrustPolicy.trustedOnly,
-      ),
     );
     expect(
       const CliLaunchContext(
         team: nativeTeam,
         member: intermediateMember,
       ).launchSecurityPolicy,
-      intermediateMember.launchSecurityPolicy,
+      LaunchSecurityPolicy.fullAccess,
     );
 
     const fullAccess = LaunchSecurityPolicy.fullAccess;

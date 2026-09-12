@@ -148,11 +148,7 @@ void main() {
 
   group('resolveRemoteRootSecurityPolicy', () {
     test('dangerous SSH launch rejects a missing member session', () async {
-      const member = TeamMemberConfig(
-        id: 'member',
-        name: 'Member',
-        launchSecurityPolicy: LaunchSecurityPolicy.fullAccess,
-      );
+      const member = TeamMemberConfig(id: 'member', name: 'Member');
 
       await expectLater(
         applyRemoteSshLaunchConstraints(
@@ -180,11 +176,7 @@ void main() {
     });
 
     test('dangerous SSH launch rejects a missing SSH profile', () async {
-      const member = TeamMemberConfig(
-        id: 'member',
-        name: 'Member',
-        launchSecurityPolicy: LaunchSecurityPolicy.fullAccess,
-      );
+      const member = TeamMemberConfig(id: 'member', name: 'Member');
       final session = SshMemberSession.testing(
         profile: const SshProfile(
           id: 'ssh-1',
@@ -269,11 +261,7 @@ void main() {
     test(
       'bare-metal root rejects dangerous launch before returning a spec',
       () async {
-        const member = TeamMemberConfig(
-          id: 'member',
-          name: 'Member',
-          launchSecurityPolicy: LaunchSecurityPolicy.fullAccess,
-        );
+        const member = TeamMemberConfig(id: 'member', name: 'Member');
         final session = SshMemberSession.testing(
           profile: const SshProfile(
             id: 'ssh-1',
@@ -307,11 +295,7 @@ void main() {
     );
 
     test('unknown root status rejects dangerous launch closed', () async {
-      const member = TeamMemberConfig(
-        id: 'member',
-        name: 'Member',
-        launchSecurityPolicy: LaunchSecurityPolicy.fullAccess,
-      );
+      const member = TeamMemberConfig(id: 'member', name: 'Member');
       final session = SshMemberSession.testing(
         profile: const SshProfile(
           id: 'ssh-1',
@@ -344,11 +328,7 @@ void main() {
     });
 
     test('empty root probe output rejects dangerous launch closed', () async {
-      const member = TeamMemberConfig(
-        id: 'member',
-        name: 'Member',
-        launchSecurityPolicy: LaunchSecurityPolicy.fullAccess,
-      );
+      const member = TeamMemberConfig(id: 'member', name: 'Member');
       final session = SshMemberSession.testing(
         profile: const SshProfile(
           id: 'ssh-1',
@@ -377,11 +357,7 @@ void main() {
     test(
       'malformed root probe output rejects dangerous launch closed',
       () async {
-        const member = TeamMemberConfig(
-          id: 'member',
-          name: 'Member',
-          launchSecurityPolicy: LaunchSecurityPolicy.fullAccess,
-        );
+        const member = TeamMemberConfig(id: 'member', name: 'Member');
         final session = SshMemberSession.testing(
           profile: const SshProfile(
             id: 'ssh-1',
@@ -411,11 +387,7 @@ void main() {
     test(
       'probe exception rejects dangerous launch with typed reason',
       () async {
-        const member = TeamMemberConfig(
-          id: 'member',
-          name: 'Member',
-          launchSecurityPolicy: LaunchSecurityPolicy.fullAccess,
-        );
+        const member = TeamMemberConfig(id: 'member', name: 'Member');
         final session = SshMemberSession.testing(
           profile: const SshProfile(
             id: 'ssh-1',
@@ -450,11 +422,7 @@ void main() {
     test(
       'Docker probe exception rejects dangerous root launch with typed error',
       () async {
-        const member = TeamMemberConfig(
-          id: 'member',
-          name: 'Member',
-          launchSecurityPolicy: LaunchSecurityPolicy.fullAccess,
-        );
+        const member = TeamMemberConfig(id: 'member', name: 'Member');
         final session = SshMemberSession.testing(
           profile: const SshProfile(
             id: 'ssh-1',

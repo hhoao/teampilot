@@ -2,7 +2,6 @@ import 'package:flutter/foundation.dart';
 
 import 'team_config.dart';
 import '../utils/team/team_member_naming.dart';
-import 'launch_security_policy.dart';
 
 /// Per-team/per-slot launch overrides. Persona text lives on the catalog expert.
 @immutable
@@ -16,7 +15,6 @@ class TeamRosterSlotOverrides {
     this.replicas = 1,
     this.capabilities = const {},
     this.activePresetId,
-    this.launchSecurityPolicy,
   });
 
   final String provider;
@@ -27,7 +25,6 @@ class TeamRosterSlotOverrides {
   final int replicas;
   final Set<String> capabilities;
   final String? activePresetId;
-  final LaunchSecurityPolicy? launchSecurityPolicy;
 
   factory TeamRosterSlotOverrides.fromJson(Map<String, Object?> json) {
     final rawCli = json['cli'];
@@ -43,9 +40,6 @@ class TeamRosterSlotOverrides {
           if (c is String && c.trim().isNotEmpty) c.trim(),
       },
       activePresetId: json['activePresetId'] as String?,
-      launchSecurityPolicy: json.containsKey('launchSecurityPolicy')
-          ? LaunchSecurityPolicy.fromJson(json['launchSecurityPolicy'])
-          : null,
     );
   }
 
@@ -59,8 +53,6 @@ class TeamRosterSlotOverrides {
     if (capabilities.isNotEmpty) 'capabilities': capabilities.toList(),
     if (activePresetId != null && activePresetId!.isNotEmpty)
       'activePresetId': activePresetId,
-    if (launchSecurityPolicy != null)
-      'launchSecurityPolicy': launchSecurityPolicy!.toJson(),
   };
 
   TeamRosterSlotOverrides copyWith({
@@ -74,8 +66,6 @@ class TeamRosterSlotOverrides {
     Set<String>? capabilities,
     String? activePresetId,
     bool updateActivePresetId = false,
-    LaunchSecurityPolicy? launchSecurityPolicy,
-    bool updateLaunchSecurityPolicy = false,
   }) {
     return TeamRosterSlotOverrides(
       provider: provider ?? this.provider,
@@ -88,9 +78,6 @@ class TeamRosterSlotOverrides {
       activePresetId: updateActivePresetId
           ? activePresetId
           : (activePresetId ?? this.activePresetId),
-      launchSecurityPolicy: updateLaunchSecurityPolicy
-          ? launchSecurityPolicy
-          : (launchSecurityPolicy ?? this.launchSecurityPolicy),
     );
   }
 
@@ -105,9 +92,6 @@ class TeamRosterSlotOverrides {
       activePresetId: activePresetId ?? base.activePresetId,
       updateActivePresetId: activePresetId != null,
     );
-    if (launchSecurityPolicy != null) {
-      next = next.copyWith(launchSecurityPolicy: launchSecurityPolicy);
-    }
     if (cli != null) {
       return next.copyWith(cli: cli, updateCli: true);
     }
@@ -127,8 +111,7 @@ class TeamRosterSlotOverrides {
       cli == other.cli &&
       replicas == other.replicas &&
       setEquals(capabilities, other.capabilities) &&
-      activePresetId == other.activePresetId &&
-      launchSecurityPolicy == other.launchSecurityPolicy;
+      activePresetId == other.activePresetId;
 
   @override
   int get hashCode => Object.hash(
@@ -140,7 +123,6 @@ class TeamRosterSlotOverrides {
     replicas,
     Object.hashAllUnordered(capabilities),
     activePresetId,
-    launchSecurityPolicy,
   );
 }
 

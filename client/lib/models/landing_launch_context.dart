@@ -1,7 +1,6 @@
 import 'package:flutter/foundation.dart';
 
 import 'team_config.dart';
-import 'launch_security_policy.dart';
 
 /// Snapshot of compose-landing choices used to create a new session.
 @immutable
@@ -16,7 +15,6 @@ class LandingLaunchContext {
     this.projectFolderPath,
     this.expertKey,
     this.workingDirectoryPath,
-    this.launchSecurityPolicy = LaunchSecurityPolicy.fullAccess,
     this.cli,
     this.provider,
     this.model,
@@ -44,9 +42,6 @@ class LandingLaunchContext {
   /// Launch cwd: the selected worktree path under [projectFolderPath].
   final String? workingDirectoryPath;
 
-  /// Security policy for the new session.
-  final LaunchSecurityPolicy launchSecurityPolicy;
-
   /// Custom Simple launch CLI when [isPersonal] is true and no [presetId].
   final CliTool? cli;
 
@@ -67,7 +62,6 @@ class LandingLaunchContext {
     Object? projectFolderPath = _unset,
     Object? expertKey = _unset,
     Object? workingDirectoryPath = _unset,
-    LaunchSecurityPolicy? launchSecurityPolicy,
     Object? cli = _unset,
     Object? provider = _unset,
     Object? model = _unset,
@@ -86,7 +80,6 @@ class LandingLaunchContext {
       workingDirectoryPath: workingDirectoryPath == _unset
           ? this.workingDirectoryPath
           : workingDirectoryPath as String?,
-      launchSecurityPolicy: launchSecurityPolicy ?? this.launchSecurityPolicy,
       cli: cli == _unset ? this.cli : cli as CliTool?,
       provider: provider == _unset ? this.provider : provider as String?,
       model: model == _unset ? this.model : model as String?,
@@ -105,7 +98,6 @@ class LandingLaunchContext {
           projectFolderPath == other.projectFolderPath &&
           expertKey == other.expertKey &&
           workingDirectoryPath == other.workingDirectoryPath &&
-          launchSecurityPolicy == other.launchSecurityPolicy &&
           cli == other.cli &&
           provider == other.provider &&
           model == other.model &&
@@ -120,7 +112,6 @@ class LandingLaunchContext {
     projectFolderPath,
     expertKey,
     workingDirectoryPath,
-    launchSecurityPolicy,
     cli,
     provider,
     model,

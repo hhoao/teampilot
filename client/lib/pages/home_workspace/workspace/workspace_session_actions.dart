@@ -21,7 +21,6 @@ import '../../../cubits/worktree_cubit.dart';
 import '../../../l10n/l10n_extensions.dart';
 import '../../../models/failed_message_record.dart';
 import '../../../models/landing_launch_context.dart';
-import '../../../models/launch_security_policy.dart';
 import '../../../models/simple_launch_identity.dart';
 import '../../../models/workspace.dart';
 import '../../../models/app_session.dart';
@@ -179,9 +178,7 @@ Future<void> openWorkspaceSessionTabToSide(
   }
   final tab = WorkbenchTabId.session(session.sessionId);
   final layout = workbench.centerLayout(workspace.workspaceId);
-  final hosted = layout.groups.values.any(
-    (strip) => strip.order.contains(tab),
-  );
+  final hosted = layout.groups.values.any((strip) => strip.order.contains(tab));
   if (!hosted) return;
   workbench.revealTabBeside(
     workspace.workspaceId,
@@ -369,11 +366,6 @@ Future<void> showWorkspaceComposeLandingWithWorktree(
   final draft = await resolveLandingDraft(
     workspaceId: workspace.workspaceId,
     storage: storage,
-    simpleModeDefaultFullAccess: context
-        .read<SessionPreferencesCubit>()
-        .state
-        .preferences
-        .simpleModeDefaultFullAccess,
   );
   if (!context.mounted) return;
 
@@ -485,11 +477,6 @@ Future<bool> submitWorkspaceLandingMessage(
     workingDirectory: workingDirectory,
     fixedSessionId: plannedSessionId,
     expertKey: trimmedExpert.isNotEmpty ? trimmedExpert : null,
-    continueOverrides: SessionContinueOverrides(
-      launchSecurityPolicy: LaunchSecurityPolicyOverride.fromPolicy(
-        launch.launchSecurityPolicy,
-      ),
-    ),
     // Default preference keeps Chat; coordinator forces Terminal when false.
     preserveWorkbenchView: !switchToTerminal,
     purpose: purpose,
@@ -518,9 +505,9 @@ Future<bool> submitWorkspaceLandingMessage(
 
   if (trimmedExpert.isNotEmpty) {
     unawaited(
-      ExpertHubRecentStore(storage: context.read<HomeStorage>()).touch(
-        trimmedExpert,
-      ),
+      ExpertHubRecentStore(
+        storage: context.read<HomeStorage>(),
+      ).touch(trimmedExpert),
     );
   }
 
@@ -623,12 +610,13 @@ Future<bool> submitWorkspaceLandingMessage(
     }
 
     try {
-      final deliveryId = await chatCubit.sessionRuntime.deliverUserCommandToMember(
-        session.sessionId,
-        memberId,
-        trimmed,
-        directToPty: true,
-      );
+      final deliveryId = await chatCubit.sessionRuntime
+          .deliverUserCommandToMember(
+            session.sessionId,
+            memberId,
+            trimmed,
+            directToPty: true,
+          );
       if (deliveryId == null || deliveryId.trim().isEmpty) {
         if (pendingRecord != null) {
           await chatCubit.markHistoryPendingFailed(
@@ -853,11 +841,6 @@ Future<SimpleLaunchIdentity> _resolvePersonalLaunchIdentity(
   final draft = await resolveLandingDraft(
     workspaceId: workspace.workspaceId,
     storage: context.read<HomeStorage>(),
-    simpleModeDefaultFullAccess: context
-        .read<SessionPreferencesCubit>()
-        .state
-        .preferences
-        .simpleModeDefaultFullAccess,
   );
   final seeded = seedLandingDraftPresetDefault(draft, presets);
   return resolveLandingSimpleLaunchIdentity(

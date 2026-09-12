@@ -38,7 +38,6 @@ TeamGenerationLaunchSnapshot launchSnapshot() {
   return TeamGenerationLaunchSnapshot(
     projectFolderPath: '/proj',
     workingDirectoryPath: '/proj',
-    launchSecurityPolicyValue: 'fullAccess',
     folderIds: const ['f1'],
     targetIds: const ['local'],
     workspaceRevision: 'ws-rev-1',
@@ -55,7 +54,7 @@ TeamGenerationJobStore buildJobStore({
     fs: filesystem,
     layout: WorkspaceLayout(teampilotRoot: '/tp', fs: filesystem),
     clock: clock ?? () => DateTime.utc(2026, 8, 31),
-                                 storage: fakeHomeStorage(filesystem: fs),
+    storage: fakeHomeStorage(filesystem: fs),
   );
 }
 
@@ -86,6 +85,13 @@ class _FakeSessionLookup implements TeamGenerationSessionLookup {
 }
 
 void main() {
+  test('generation launch snapshot omits security policy from JSON', () {
+    expect(
+      launchSnapshot().toJson().containsKey('launchSecurityPolicy'),
+      isFalse,
+    );
+  });
+
   group('job store', () {
     test('job round-trips prompt, snapshot, phase, and receipts', () async {
       final store = buildJobStore(clock: () => DateTime.utc(2026, 8, 31));
@@ -111,7 +117,10 @@ void main() {
       expect(loaded!.settings.revision, created.settings.revision);
       expect(loaded.phase, TeamGenerationPhase.committing);
       expect(loaded.receipts['profile']!.value, 'team-1');
-      expect(loaded.generator.settingsRevision, created.generator.settingsRevision);
+      expect(
+        loaded.generator.settingsRevision,
+        created.generator.settingsRevision,
+      );
       expect(loaded.generator.isEmpty, isFalse);
     });
 
@@ -180,93 +189,95 @@ void main() {
       expect(resumed.error, isNull);
     });
 
-    test('pre-commit cancel blocks new effects and removes directory last',
-        () async {
-      final store = buildJobStore();
-      await seedCreatedJob(store);
+    test(
+      'pre-commit cancel blocks new effects and removes directory last',
+      () async {
+        final store = buildJobStore();
+        await seedCreatedJob(store);
 
-      await store.beginCancel('ws', 'wf');
+        await store.beginCancel('ws', 'wf');
 
-      final cancelled = await store.read('ws', 'wf');
-      expect(cancelled!.phase, TeamGenerationPhase.cancelled);
-      await expectLater(
-        store.resumeFailed('ws', 'wf'),
-        throwsA(isA<StateError>()),
-      );
-      await expectLater(
-        store.reserveEffect('ws', 'wf', 'late-effect'),
-        throwsA(isA<StateError>()),
-      );
+        final cancelled = await store.read('ws', 'wf');
+        expect(cancelled!.phase, TeamGenerationPhase.cancelled);
+        await expectLater(
+          store.resumeFailed('ws', 'wf'),
+          throwsA(isA<StateError>()),
+        );
+        await expectLater(
+          store.reserveEffect('ws', 'wf', 'late-effect'),
+          throwsA(isA<StateError>()),
+        );
 
-      await store.recordReceipt(
-        'ws',
-        'wf',
-        'builderDeleted',
-        const TeamGenerationReceipt(
-          state: TeamGenerationReceiptState.succeeded,
-          value: 'builder-1',
-        ),
-      );
-      await store.recordReceipt(
-        'ws',
-        'wf',
-        'stagingDeleted',
-        const TeamGenerationReceipt(
-          state: TeamGenerationReceiptState.succeeded,
-          value: 'ok',
-        ),
-      );
+        await store.recordReceipt(
+          'ws',
+          'wf',
+          'builderDeleted',
+          const TeamGenerationReceipt(
+            state: TeamGenerationReceiptState.succeeded,
+            value: 'builder-1',
+          ),
+        );
+        await store.recordReceipt(
+          'ws',
+          'wf',
+          'stagingDeleted',
+          const TeamGenerationReceipt(
+            state: TeamGenerationReceiptState.succeeded,
+            value: 'ok',
+          ),
+        );
 
-      await store.deleteCancelled('ws', 'wf');
-      expect(await store.read('ws', 'wf'), isNull);
-    });
+        await store.deleteCancelled('ws', 'wf');
+        expect(await store.read('ws', 'wf'), isNull);
+      },
+    );
 
-    test('complete scrubs sensitive data and prunes by age and count',
-        () async {
-      var now = DateTime.utc(2026, 8, 31);
-      final store = buildJobStore(clock: () => now);
+    test(
+      'complete scrubs sensitive data and prunes by age and count',
+      () async {
+        var now = DateTime.utc(2026, 8, 31);
+        final store = buildJobStore(clock: () => now);
 
-      for (var i = 0; i < 102; i++) {
-        final id = 'wf-$i';
-        await seedCreatedJob(store, workflowId: id);
-        // Advance to delivered first, then finish through cleanup so the
-        // monotonic transition rule stays honored.
-        await store.mutate('ws', id, (job) {
-          return job.copyWith(phase: TeamGenerationPhase.delivering);
-        });
-        await store.mutate('ws', id, (job) {
-          return job.copyWith(phase: TeamGenerationPhase.delivered);
-        });
-        await store.mutate('ws', id, (job) {
-          return job.copyWith(phase: TeamGenerationPhase.cleaning);
-        });
-        await store.mutate('ws', id, (job) {
-          return job.copyWith(
-            phase: TeamGenerationPhase.complete,
-            teamId: 'team-$i',
-            destinationSessionId: 'dest-$i',
-          );
-        });
-        now = now.subtract(const Duration(days: 1));
-      }
+        for (var i = 0; i < 102; i++) {
+          final id = 'wf-$i';
+          await seedCreatedJob(store, workflowId: id);
+          // Advance to delivered first, then finish through cleanup so the
+          // monotonic transition rule stays honored.
+          await store.mutate('ws', id, (job) {
+            return job.copyWith(phase: TeamGenerationPhase.delivering);
+          });
+          await store.mutate('ws', id, (job) {
+            return job.copyWith(phase: TeamGenerationPhase.delivered);
+          });
+          await store.mutate('ws', id, (job) {
+            return job.copyWith(phase: TeamGenerationPhase.cleaning);
+          });
+          await store.mutate('ws', id, (job) {
+            return job.copyWith(
+              phase: TeamGenerationPhase.complete,
+              teamId: 'team-$i',
+              destinationSessionId: 'dest-$i',
+            );
+          });
+          now = now.subtract(const Duration(days: 1));
+        }
 
-      await store.compactComplete('ws', 'wf-101');
+        await store.compactComplete('ws', 'wf-101');
 
-      final jobs = await store.listAll('ws');
-      expect(jobs.length, 100);
-      expect(
-        jobs.every((job) => job.originalPrompt.isEmpty),
-        isTrue,
-      );
-      expect(
-        jobs.every(
-          (job) => job.normalizedPlanJson == null && job.probeSnapshotJson == null,
-        ),
-        isTrue,
-      );
-      expect(jobs.every((job) => job.stagedResources.isEmpty), isTrue);
-      expect(jobs.every((job) => job.generator.isEmpty), isTrue);
-    });
+        final jobs = await store.listAll('ws');
+        expect(jobs.length, 100);
+        expect(jobs.every((job) => job.originalPrompt.isEmpty), isTrue);
+        expect(
+          jobs.every(
+            (job) =>
+                job.normalizedPlanJson == null && job.probeSnapshotJson == null,
+          ),
+          isTrue,
+        );
+        expect(jobs.every((job) => job.stagedResources.isEmpty), isTrue);
+        expect(jobs.every((job) => job.generator.isEmpty), isTrue);
+      },
+    );
   });
 
   group('workflow executor', () {
@@ -291,115 +302,119 @@ void main() {
       expect(events, ['a-start', 'a-end', 'b-start', 'c-start']);
     });
 
-    test('cancel waits for an admitted effect and later effects see cancelled',
-        () async {
-      final executor = TeamGenerationWorkflowExecutor();
-      final store = buildJobStore();
-      await seedCreatedJob(store);
-      final events = <String>[];
-      final release = Completer<void>();
+    test(
+      'cancel waits for an admitted effect and later effects see cancelled',
+      () async {
+        final executor = TeamGenerationWorkflowExecutor();
+        final store = buildJobStore();
+        await seedCreatedJob(store);
+        final events = <String>[];
+        final release = Completer<void>();
 
-      final first = executor.run('ws', 'wf', () async {
-        events.add('effect-start');
-        await release.future;
-        events.add('effect-end');
-      });
-      final cancel = executor.run('ws', 'wf', () async {
-        await store.beginCancel('ws', 'wf');
-        events.add('cancelled');
-      });
-      final lateEffect = executor.run('ws', 'wf', () async {
-        await store.reserveEffect('ws', 'wf', 'late');
-        events.add('late-ran');
-      });
-      release.complete();
-      await first;
-      await cancel;
-      await expectLater(lateEffect, throwsA(isA<StateError>()));
-      expect(events, ['effect-start', 'effect-end', 'cancelled']);
-    });
+        final first = executor.run('ws', 'wf', () async {
+          events.add('effect-start');
+          await release.future;
+          events.add('effect-end');
+        });
+        final cancel = executor.run('ws', 'wf', () async {
+          await store.beginCancel('ws', 'wf');
+          events.add('cancelled');
+        });
+        final lateEffect = executor.run('ws', 'wf', () async {
+          await store.reserveEffect('ws', 'wf', 'late');
+          events.add('late-ran');
+        });
+        release.complete();
+        await first;
+        await cancel;
+        await expectLater(lateEffect, throwsA(isA<StateError>()));
+        expect(events, ['effect-start', 'effect-end', 'cancelled']);
+      },
+    );
   });
 
   group('authorizer', () {
-    test('authorizes only the persisted builder session and one live token',
-        () async {
-      final fs = InMemoryFilesystem();
-      final store = buildJobStore(fs: fs);
-      await seedCreatedJob(store, builderSessionId: 'builder');
-      final sessions = <String, AppSession>{
-        'builder': AppSession(
-          sessionId: 'builder',
-          workspaceId: 'ws',
-          purpose: SessionPurpose.teamGeneration,
-          workflowId: 'wf',
-          createdAt: 1,
-        ),
-        'normal': AppSession(
-          sessionId: 'normal',
-          workspaceId: 'ws',
-          createdAt: 1,
-        ),
-      };
-      final auth = TeamGenerationAuthorizer(
-        sessionLookup: _FakeSessionLookup(sessions),
-        jobStore: store,
-        tokenFactory: () => 'token-1',
-      );
-      const principal = TeamGenerationPrincipal(
-        sessionId: 'builder',
-        workspaceId: 'ws',
-        workflowId: 'wf',
-      );
-
-      final token = await auth.issue(principal);
-      expect(token, 'token-1');
-
-      expect(
-        await auth.authorize(principal: principal, token: token),
-        isTrue,
-      );
-      expect(
-        await auth.authorize(
-          principal: const TeamGenerationPrincipal(
+    test(
+      'authorizes only the persisted builder session and one live token',
+      () async {
+        final fs = InMemoryFilesystem();
+        final store = buildJobStore(fs: fs);
+        await seedCreatedJob(store, builderSessionId: 'builder');
+        final sessions = <String, AppSession>{
+          'builder': AppSession(
+            sessionId: 'builder',
+            workspaceId: 'ws',
+            purpose: SessionPurpose.teamGeneration,
+            workflowId: 'wf',
+            createdAt: 1,
+          ),
+          'normal': AppSession(
             sessionId: 'normal',
             workspaceId: 'ws',
-            workflowId: 'wf',
+            createdAt: 1,
           ),
-          token: token,
-        ),
-        isFalse,
-      );
-      expect(
-        await auth.authorize(principal: principal, token: 'wrong'),
-        isFalse,
-      );
+        };
+        final auth = TeamGenerationAuthorizer(
+          sessionLookup: _FakeSessionLookup(sessions),
+          jobStore: store,
+          tokenFactory: () => 'token-1',
+        );
+        const principal = TeamGenerationPrincipal(
+          sessionId: 'builder',
+          workspaceId: 'ws',
+          workflowId: 'wf',
+        );
 
-      // Re-issue with a new token factory value rotates the live token.
-      final rotating = TeamGenerationAuthorizer(
-        sessionLookup: _FakeSessionLookup(sessions),
-        jobStore: store,
-        tokenFactory: (() {
-          var n = 0;
-          return () => 'token-${++n}';
-        })(),
-      );
-      const wfPrincipal = TeamGenerationPrincipal(
-        sessionId: 'builder',
-        workspaceId: 'ws',
-        workflowId: 'wf',
-      );
-      final first = await rotating.issue(wfPrincipal);
-      final second = await rotating.issue(wfPrincipal);
-      expect(first, isNot(second));
-      expect(
-        await rotating.authorize(principal: wfPrincipal, token: first),
-        isFalse,
-      );
-      expect(
-        await rotating.authorize(principal: wfPrincipal, token: second),
-        isTrue,
-      );
-    });
+        final token = await auth.issue(principal);
+        expect(token, 'token-1');
+
+        expect(
+          await auth.authorize(principal: principal, token: token),
+          isTrue,
+        );
+        expect(
+          await auth.authorize(
+            principal: const TeamGenerationPrincipal(
+              sessionId: 'normal',
+              workspaceId: 'ws',
+              workflowId: 'wf',
+            ),
+            token: token,
+          ),
+          isFalse,
+        );
+        expect(
+          await auth.authorize(principal: principal, token: 'wrong'),
+          isFalse,
+        );
+
+        // Re-issue with a new token factory value rotates the live token.
+        final rotating = TeamGenerationAuthorizer(
+          sessionLookup: _FakeSessionLookup(sessions),
+          jobStore: store,
+          tokenFactory: (() {
+            var n = 0;
+            return () => 'token-${++n}';
+          })(),
+        );
+        const wfPrincipal = TeamGenerationPrincipal(
+          sessionId: 'builder',
+          workspaceId: 'ws',
+          workflowId: 'wf',
+        );
+        final first = await rotating.issue(wfPrincipal);
+        final second = await rotating.issue(wfPrincipal);
+        expect(first, isNot(second));
+        expect(
+          await rotating.authorize(principal: wfPrincipal, token: first),
+          isFalse,
+        );
+        expect(
+          await rotating.authorize(principal: wfPrincipal, token: second),
+          isTrue,
+        );
+      },
+    );
   });
 }
 

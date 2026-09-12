@@ -86,7 +86,8 @@ class LaunchProfileCubit extends Cubit<LaunchProfileState>
                  projectConfigRepository ??
                  WorkspaceProjectConfigRepository(storage: storage),
            ),
-       _pluginRepository = pluginRepository ?? PluginRepository(storage: storage),
+       _pluginRepository =
+           pluginRepository ?? PluginRepository(storage: storage),
        _installedPluginsLoader = installedPluginsLoader,
        _mcpLinker = mcpLinker ?? ProfileMcpLinkerService(storage: storage),
        _mcpRepository = mcpRepository ?? McpRepository(storage: storage),
@@ -781,7 +782,6 @@ class LaunchProfileCubit extends Cubit<LaunchProfileState>
         replicas: overrides.replicas,
         capabilities: overrides.capabilities,
         activePresetId: TeamProfile.inheritPresetId,
-        launchSecurityPolicy: overrides.launchSecurityPolicy,
       );
     } else if (effectiveId == null) {
       nextOverrides = TeamRosterSlotOverrides(
@@ -793,7 +793,6 @@ class LaunchProfileCubit extends Cubit<LaunchProfileState>
         replicas: overrides.replicas,
         capabilities: overrides.capabilities,
         activePresetId: null,
-        launchSecurityPolicy: overrides.launchSecurityPolicy,
       );
     } else {
       final syncCliFromPreset =
@@ -807,7 +806,6 @@ class LaunchProfileCubit extends Cubit<LaunchProfileState>
         replicas: overrides.replicas,
         capabilities: overrides.capabilities,
         activePresetId: effectiveId,
-        launchSecurityPolicy: overrides.launchSecurityPolicy,
       );
     }
     final mutation = _rosterEditor.updateSlot(

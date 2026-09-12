@@ -9,7 +9,6 @@ import 'package:go_router/go_router.dart';
 import '../../../cubits/chat_cubit.dart';
 import '../../../cubits/expert_hub_cubit.dart';
 import '../../../cubits/launch_profile_cubit.dart';
-import '../../../cubits/session_preferences_cubit.dart';
 import '../../../cubits/workspace_landing_context_cubit.dart';
 import '../../../l10n/l10n_extensions.dart';
 import '../../../models/app_session.dart';
@@ -164,11 +163,6 @@ class _WorkspacePageState extends State<WorkspacePage> {
       storage: homeStorage,
       hubState: context.mounted ? context.read<ExpertHubCubit>().state : null,
       resolver: resolver,
-      simpleModeDefaultFullAccess: context
-          .read<SessionPreferencesCubit>()
-          .state
-          .preferences
-          .simpleModeDefaultFullAccess,
     );
     if (!mounted) return;
 
@@ -383,7 +377,11 @@ class _WorkspacePageState extends State<WorkspacePage> {
   /// rebuilding the whole (heavy) workspace tree on tab switches — the tree
   /// stays mounted and live while inactive, so cubit-driven updates keep
   /// flowing into it between builds.
-  ({WorkspaceSection section, WorkspaceConfigSection configSection, bool visitedManage})?
+  ({
+    WorkspaceSection section,
+    WorkspaceConfigSection configSection,
+    bool visitedManage,
+  })?
   _livePageInputs;
 
   Widget _buildAndCacheLivePage(BuildContext context) {

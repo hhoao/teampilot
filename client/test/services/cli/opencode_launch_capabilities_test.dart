@@ -129,11 +129,8 @@ void main() {
           name: 'Team',
           cli: CliTool.opencode,
         ),
-        member: const TeamMemberConfig(
-          id: 'member',
-          name: 'Member',
-          launchSecurityPolicy: LaunchSecurityPolicy.askReadOnlyTrusted,
-        ),
+        member: const TeamMemberConfig(id: 'member', name: 'Member'),
+        launchSecurityPolicy: LaunchSecurityPolicy.askReadOnlyTrusted,
       ),
       throwsA(
         isA<CliLaunchCapabilityException>()
@@ -195,11 +192,7 @@ void main() {
           name: 'Team',
           cli: CliTool.opencode,
         ),
-        member: const TeamMemberConfig(
-          id: 'member',
-          name: 'Member',
-          launchSecurityPolicy: LaunchSecurityPolicy.fullAccess,
-        ),
+        member: const TeamMemberConfig(id: 'member', name: 'Member'),
       ),
       isEmpty,
     );
@@ -259,6 +252,7 @@ void main() {
 List<String> _assemble({
   required TeamProfile team,
   required TeamMemberConfig member,
+  LaunchSecurityPolicy launchSecurityPolicy = LaunchSecurityPolicy.fullAccess,
   String? workingDirectory,
   List<String> additionalDirectories = const [],
   String? fixedSessionId,
@@ -269,6 +263,7 @@ List<String> _assemble({
     CliLaunchContext(
       team: team,
       member: member,
+      launchSecurityPolicy: launchSecurityPolicy,
       workingDirectory: workingDirectory,
       additionalDirectories: additionalDirectories,
       fixedSessionId: fixedSessionId,

@@ -45,15 +45,15 @@ void main() {
     expect(member['machine_id'], 'ssh:p1');
     expect(member['cwd'], '/work');
     expect(member['self'], isTrue);
+    expect(member.containsKey('launch_security_policy'), isFalse);
   });
 
   test('encodeTasks empty → {tasks:[]}', () {
     final bus = TeamBus(launcher: FakeMemberLauncher(), taskQueue: TaskQueue());
     bus.declareMember(AgentNode.test(memberId: 'w'));
-    expect(
-      jsonDecode(TeammateBusToolFormat.encodeTasks(bus, const [], 'w')),
-      {'tasks': <Object>[]},
-    );
+    expect(jsonDecode(TeammateBusToolFormat.encodeTasks(bus, const [], 'w')), {
+      'tasks': <Object>[],
+    });
   });
 
   test('encodeTaskAssignment is bare task object without ASSIGNED prose', () {
@@ -76,18 +76,13 @@ void main() {
   });
 
   test('encodeBatch empty → {messages:[]}', () {
-    expect(
-      jsonDecode(TeammateBusToolFormat.encodeBatch(const [])),
-      {'messages': <Object>[]},
-    );
+    expect(jsonDecode(TeammateBusToolFormat.encodeBatch(const [])), {
+      'messages': <Object>[],
+    });
   });
 
   test('encodeMessagePage empty keeps unread fields', () {
-    const page = BusMessagePage(
-      messages: [],
-      hasMore: false,
-      totalUnread: 2,
-    );
+    const page = BusMessagePage(messages: [], hasMore: false, totalUnread: 2);
     final json =
         jsonDecode(TeammateBusToolFormat.encodeMessagePage(page))
             as Map<String, Object?>;
@@ -129,9 +124,7 @@ void main() {
     bus
         .memberById('dev')!
         .inbox
-        .deliver(
-          TeamMessage(id: '1', from: 'lead', to: 'dev', content: 'hi'),
-        );
+        .deliver(TeamMessage(id: '1', from: 'lead', to: 'dev', content: 'hi'));
 
     final json =
         jsonDecode(TeammateBusToolFormat.encodeRoster(bus, 'lead'))

@@ -1,73 +1,41 @@
-import 'package:teampilot/models/launch_security_policy.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/models/session_continue_overrides.dart';
 
 void main() {
-  test('SessionContinueOverrides round-trips JSON', () {
+  test('continue override JSON omits launch security policy', () {
     const o = SessionContinueOverrides(
-      launchSecurityPolicy: LaunchSecurityPolicyOverride.fullAccess,
       memberOverrides: {
         'builder-0': SessionMemberContinueOverride(
           presetId: 'p1',
           provider: 'anthropic',
           model: 'claude',
           effort: 'high',
-          launchSecurityPolicy: LaunchSecurityPolicyOverride.cliDefault,
         ),
       },
     );
-    final back = SessionContinueOverrides.fromJson(o.toJson());
-    expect(back.launchSecurityPolicy?.requiresDangerousExecution, isTrue);
-    expect(back.memberOverrides['builder-0']?.presetId, 'p1');
+    final json = o.toJson();
+    expect(json.containsKey('launchSecurityPolicy'), isFalse);
     expect(
-      back
-          .memberOverrides['builder-0']
-          ?.launchSecurityPolicy
-          ?.requiresDangerousExecution,
-      isFalse,
+      (json['memberOverrides'] as Map)['builder-0'],
+      isNot(contains('launchSecurityPolicy')),
     );
   });
 
-  test('empty / missing JSON is unset', () {
-    expect(
-      SessionContinueOverrides.fromJson(
-        null,
-      ).launchSecurityPolicy?.requiresDangerousExecution,
-      isNull,
-    );
+  test('empty / missing JSON has no member overrides', () {
+    expect(SessionContinueOverrides.fromJson(null).memberOverrides, isEmpty);
     expect(
       SessionContinueOverrides.fromJson(const {}).memberOverrides,
       isEmpty,
     );
   });
 
-  test(
-    'copyWith preserves or clears nullable policy containers explicitly',
-    () {
-      const policy = LaunchSecurityPolicyOverride(
-        approval: LaunchApprovalPolicy.ask,
-        sandbox: LaunchSandboxPolicy.readOnly,
-        hookTrust: LaunchHookTrustPolicy.trustedOnly,
-      );
-      const member = SessionMemberContinueOverride(
-        provider: 'provider',
-        launchSecurityPolicy: policy,
-      );
-      const overrides = SessionContinueOverrides(
-        launchSecurityPolicy: policy,
-        memberOverrides: {'member': member},
-      );
+  test('copyWith preserves non-security continue overrides', () {
+    const member = SessionMemberContinueOverride(provider: 'provider');
+    const overrides = SessionContinueOverrides(
+      memberOverrides: {'member': member},
+    );
 
-      expect(member.copyWith().launchSecurityPolicy, policy);
-      expect(
-        member.copyWith(launchSecurityPolicy: null).launchSecurityPolicy,
-        isNull,
-      );
-      expect(overrides.copyWith().launchSecurityPolicy, policy);
-      expect(
-        overrides.copyWith(launchSecurityPolicy: null).launchSecurityPolicy,
-        isNull,
-      );
-    },
-  );
+    expect(member.copyWith().provider, 'provider');
+    expect(overrides.copyWith().memberOverrides, {'member': member});
+  });
 }

@@ -233,7 +233,6 @@ void main() {
       launch: const TeamGenerationLaunchSnapshot(
         projectFolderPath: '/proj',
         workingDirectoryPath: '/proj',
-        launchSecurityPolicyValue: 'fullAccess',
         folderIds: [],
         targetIds: ['local'],
         workspaceRevision: 'rev-1',

@@ -15,7 +15,6 @@ import '../../../cubits/cli_presets_cubit.dart';
 import '../../../cubits/expert_hub_cubit.dart';
 import '../../../cubits/launch_profile_cubit.dart';
 import '../../../cubits/plugin_cubit.dart';
-import '../../../cubits/session_preferences_cubit.dart';
 import '../../../cubits/skill_cubit.dart';
 import '../../../cubits/worktree_cubit.dart';
 import '../../../models/config_bundle.dart';
@@ -556,11 +555,6 @@ class _UnboundComposeBodyState extends State<UnboundComposeBody> {
     final draft = await resolveLandingDraft(
       workspaceId: widget.workspace.workspaceId,
       storage: _homeStorage,
-      simpleModeDefaultFullAccess: context
-          .read<SessionPreferencesCubit>()
-          .state
-          .preferences
-          .simpleModeDefaultFullAccess,
     );
     if (!mounted) return;
 
@@ -757,7 +751,6 @@ class _UnboundComposeBodyState extends State<UnboundComposeBody> {
         draft.workingDirectoryPath?.trim().isNotEmpty == true
         ? draft.workingDirectoryPath!.trim()
         : null;
-    _launchSecurityPolicy = draft.launchSecurityPolicy;
 
     if ((_selectedTeamId == null || _selectedTeamId!.isEmpty) &&
         _conversationMode == _LandingConversationMode.team) {
@@ -935,7 +928,6 @@ class _UnboundComposeBodyState extends State<UnboundComposeBody> {
       workingDirectoryPath: selectedWorktreePath.trim().isEmpty
           ? null
           : selectedWorktreePath,
-      launchSecurityPolicy: _launchSecurityPolicy,
       // Keep custom four-tuple across Simple↔Team switches (ignored on Team submit).
       cli: _selectedCli,
       provider: _selectedProvider,
@@ -1251,10 +1243,10 @@ class _UnboundComposeBodyState extends State<UnboundComposeBody> {
   }
 
   Future<void> _openGenerateSettings() async {
-    final generatorSetting =
-        context.read<AiFeatureSettingsCubit>().state.settingFor(
-              AiFeatureId.teamGenerate,
-            );
+    final generatorSetting = context
+        .read<AiFeatureSettingsCubit>()
+        .state
+        .settingFor(AiFeatureId.teamGenerate);
     final presets = context.read<CliPresetsCubit>().state.presets;
     await showWorkspaceLandingGenerateSettingsDialog(
       context,

@@ -164,7 +164,7 @@ void main() {
       basePath: base.path,
       fs: fs,
       layout: RuntimeLayout(teampilotRoot: base.path, fs: fs),
-                                          storage: fakeHomeStorage(),
+      storage: fakeHomeStorage(),
     );
     const member = TeamMemberConfig(
       id: 'm1',
@@ -229,7 +229,7 @@ void main() {
       basePath: base.path,
       fs: fs,
       layout: RuntimeLayout(teampilotRoot: base.path, fs: fs),
-                                          storage: fakeHomeStorage(),
+      storage: fakeHomeStorage(),
     );
     const member = TeamMemberConfig(id: 'x', name: '');
     final scope = resolveLaunchProfileScope(
@@ -281,15 +281,10 @@ void main() {
       basePath: base.path,
       fs: fs,
       layout: RuntimeLayout(teampilotRoot: base.path, fs: fs),
-                                          storage: fakeHomeStorage(),
+      storage: fakeHomeStorage(),
     );
 
-    const member = TeamMemberConfig(
-      id: 'm1',
-      name: 'Member',
-      model: 'test',
-      launchSecurityPolicy: LaunchSecurityPolicy.fullAccess,
-    );
+    const member = TeamMemberConfig(id: 'm1', name: 'Member', model: 'test');
     const team = TeamProfile(
       id: 'team-a',
       name: 'agent',

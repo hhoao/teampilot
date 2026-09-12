@@ -144,7 +144,6 @@ class TeamRosterEditor {
       replicas: member.replicas,
       capabilities: member.capabilities,
       activePresetId: member.activePresetId,
-      launchSecurityPolicy: member.launchSecurityPolicy,
     );
     return MemberMutation.update(
       team.copyWith(

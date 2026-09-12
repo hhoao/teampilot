@@ -41,7 +41,6 @@ import '../../services/compose/compose_voice_input.dart';
 import '../../services/expert_hub/expert_member_resolver.dart';
 import '../../services/follow_up/follow_up_queue.dart';
 import '../../services/session/history_seat_key.dart';
-import '../../services/session/session_continue_overrides_apply.dart';
 import '../../services/session/session_history_pagination.dart';
 import '../../services/terminal/pending_user_message.dart';
 import '../../services/terminal/session_member_cli_resolver.dart';
@@ -245,7 +244,11 @@ class SessionChatComposeSection extends StatelessWidget {
     final followUpSeatKey = _followUpSeatKey(session.sessionId, shellMemberId);
     final mailboxSeatKey = _mailboxSeatKey(session.sessionId, selectedMemberId);
 
-    final dropTarget = _buildDropTarget(context, workspaceRoot, composeController);
+    final dropTarget = _buildDropTarget(
+      context,
+      workspaceRoot,
+      composeController,
+    );
 
     final slashBundle = _slashBundle(
       workspaceRoot: workspaceRoot,
@@ -320,10 +323,7 @@ class SessionChatComposeSection extends StatelessWidget {
                     ),
                   // Same slot as the old delivery-recovery strip: above the
                   // compose card, not inside it.
-                  ..._composeLaunchErrorStrip(
-                    context,
-                    spacing: spacing,
-                  ),
+                  ..._composeLaunchErrorStrip(context, spacing: spacing),
                   _CascadeCatalogLive(
                     registry: registry,
                     cli: lockedCli,
@@ -550,8 +550,9 @@ class SessionChatComposeSection extends StatelessWidget {
                                   preview: true,
                                   fs: filesystemForComposeAtFileOpen(
                                     path,
-                                    workspaceFilesystem:
-                                        homeStorageOf(context).fs,
+                                    workspaceFilesystem: homeStorageOf(
+                                      context,
+                                    ).fs,
                                   ),
                                 ),
                               );
@@ -706,25 +707,7 @@ class SessionChatComposeSection extends StatelessWidget {
     required AppSession session,
     required TeamProfile? team,
     required String selectedMemberId,
-  }) {
-    final overrides = session.continueOverrides;
-    if (session.isSimple) {
-      return resolveContinueSecurityPolicy(
-        launchDefault: LaunchSecurityPolicy.fullAccess,
-        sessionLevel: overrides.launchSecurityPolicy,
-        memberLevel: null,
-      );
-    }
-    final memberId = _effectiveMemberId(session, selectedMemberId, team);
-    final member = _selectedMember(team, memberId);
-    final memberOverride = overrides.memberOverrides[memberId];
-    return resolveContinueSecurityPolicy(
-      sessionLevel: overrides.launchSecurityPolicy,
-      memberLevel: memberOverride?.launchSecurityPolicy,
-      launchDefault:
-          member?.launchSecurityPolicy ?? LaunchSecurityPolicy.fullAccess,
-    );
-  }
+  }) => LaunchSecurityPolicy.fullAccess;
 
   // -- Selected preset id --------------------------------------------------
 
@@ -869,22 +852,7 @@ class SessionChatComposeSection extends StatelessWidget {
     required TeamProfile? team,
     required String selectedMemberId,
   }) async {
-    final chatCubit = context.read<ChatCubit>();
-    final live = _cubitSession(chatCubit, session.sessionId) ?? session;
-    final memberId = live.isSimple
-        ? null
-        : _effectiveMemberId(live, selectedMemberId, team);
-    if (!live.isSimple && (memberId == null || memberId.isEmpty)) return;
-    try {
-      final ok = await chatCubit.setSessionContinueSecurityPolicy(
-        sessionId: live.sessionId,
-        launchSecurityPolicy: value,
-        memberId: memberId,
-      );
-      if (!ok && context.mounted) _toastContinueSaveFailed(context);
-    } on Object {
-      if (context.mounted) _toastContinueSaveFailed(context);
-    }
+    // The compose control remains until Task 4; policy is not session state.
   }
 
   static Future<void> _onCascadeSelected({

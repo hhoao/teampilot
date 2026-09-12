@@ -74,18 +74,18 @@ void main() {
   late LaunchProfileRepository profileRepository;
 
   Workspace workspace() => Workspace(
-        workspaceId: 'ws',
-        folders: const [WorkspaceFolder(path: '/proj', targetId: 'local')],
-        createdAt: 1,
-        updatedAt: 1,
-      );
+    workspaceId: 'ws',
+    folders: const [WorkspaceFolder(path: '/proj', targetId: 'local')],
+    createdAt: 1,
+    updatedAt: 1,
+  );
 
   setUp(() async {
     fs = InMemoryFilesystem();
     store = TeamGenerationJobStore(
       fs: fs,
       layout: WorkspaceLayout(teampilotRoot: '/tp', fs: fs),
-                                    storage: testHomeStorage,
+      storage: testHomeStorage,
     );
     final settings = resolveTeamGenerationSettingsSnapshot(
       settings: TeamGenerationSettings(teamMode: TeamMode.mixed),
@@ -103,7 +103,6 @@ void main() {
       launch: const TeamGenerationLaunchSnapshot(
         projectFolderPath: '/proj',
         workingDirectoryPath: '/proj',
-        launchSecurityPolicyValue: 'fullAccess',
         folderIds: [],
         targetIds: ['local'],
         workspaceRevision: 'rev-1',
@@ -161,69 +160,84 @@ void main() {
   });
 
   GeneratedTeamCommitService service() => GeneratedTeamCommitService(
-        jobStore: store,
-        expertStore: expertStore,
-        profileRepository: profileRepository,
-        sessionRepository: sessionRepository,
-        resourceProvisioner: provisioner,
-        publisher: publisher,
+    jobStore: store,
+    expertStore: expertStore,
+    profileRepository: profileRepository,
+    sessionRepository: sessionRepository,
+    resourceProvisioner: provisioner,
+    publisher: publisher,
+  );
+
+  test(
+    'commit persists profile, placement, provision, and publish in order',
+    () async {
+      final result = await service().commit(
+        workspace: workspace(),
+        workflowId: 'wf-12345678',
+        validatedRevision: 'valid-rev',
       );
 
-  test('commit persists profile, placement, provision, and publish in order',
-      () async {
-    final result = await service().commit(
-      workspace: workspace(),
-      workflowId: 'wf-12345678',
-      validatedRevision: 'valid-rev',
-    );
+      expect(result.team.id, isNotEmpty);
+      expect(sessionRepository.placements.single, contains('ws/'));
+      expect(provisioner.events.single, startsWith('provision:'));
+      expect(publisher.events.single, startsWith('publish:'));
 
-    expect(result.team.id, isNotEmpty);
-    expect(sessionRepository.placements.single, contains('ws/'));
-    expect(provisioner.events.single, startsWith('provision:'));
-    expect(publisher.events.single, startsWith('publish:'));
+      final job = await store.read('ws', 'wf-12345678');
+      expect(
+        job!.receipts['profile']!.state,
+        TeamGenerationReceiptState.succeeded,
+      );
+      expect(
+        job.receipts['expert']!.state,
+        TeamGenerationReceiptState.succeeded,
+      );
+      expect(job.teamId, result.team.id);
+    },
+  );
 
-    final job = await store.read('ws', 'wf-12345678');
-    expect(job!.receipts['profile']!.state, TeamGenerationReceiptState.succeeded);
-    expect(job.receipts['expert']!.state, TeamGenerationReceiptState.succeeded);
-    expect(job.teamId, result.team.id);
-  });
+  test(
+    'second commit reuses receipts without duplicate placement writes',
+    () async {
+      final svc = service();
+      final first = await svc.commit(
+        workspace: workspace(),
+        workflowId: 'wf-12345678',
+        validatedRevision: 'valid-rev',
+      );
+      final placementsAfterFirst = sessionRepository.placements.length;
 
-  test('second commit reuses receipts without duplicate placement writes',
-      () async {
-    final svc = service();
-    final first = await svc.commit(
-      workspace: workspace(),
-      workflowId: 'wf-12345678',
-      validatedRevision: 'valid-rev',
-    );
-    final placementsAfterFirst = sessionRepository.placements.length;
+      final second = await svc.commit(
+        workspace: workspace(),
+        workflowId: 'wf-12345678',
+        validatedRevision: 'valid-rev',
+      );
 
-    final second = await svc.commit(
-      workspace: workspace(),
-      workflowId: 'wf-12345678',
-      validatedRevision: 'valid-rev',
-    );
+      expect(second.team.id, first.team.id);
+      expect(sessionRepository.placements.length, placementsAfterFirst + 1);
+    },
+  );
 
-    expect(second.team.id, first.team.id);
-    expect(sessionRepository.placements.length, placementsAfterFirst + 1);
-  });
+  test(
+    'persists one stable unique expert per normalized roster role',
+    () async {
+      final result = await service().commit(
+        workspace: workspace(),
+        workflowId: 'wf-12345678',
+        validatedRevision: 'valid-rev',
+      );
 
-  test('persists one stable unique expert per normalized roster role', () async {
-    final result = await service().commit(
-      workspace: workspace(),
-      workflowId: 'wf-12345678',
-      validatedRevision: 'valid-rev',
-    );
-
-    final experts = await expertStore.loadAll();
-    final expertKeys = experts.map((expert) => expert.key).toSet();
-    final rosterKeys = result.team.roster.map((slot) => slot.expertKey).toSet();
-    expect(experts, hasLength(2));
-    expect(rosterKeys, hasLength(2));
-    expect(rosterKeys, expertKeys);
-    expect(rosterKeys.any((key) => key.endsWith('/team-lead')), isTrue);
-    expect(rosterKeys.any((key) => key.endsWith('/worker')), isTrue);
-  });
+      final experts = await expertStore.loadAll();
+      final expertKeys = experts.map((expert) => expert.key).toSet();
+      final rosterKeys = result.team.roster
+          .map((slot) => slot.expertKey)
+          .toSet();
+      expect(experts, hasLength(2));
+      expect(rosterKeys, hasLength(2));
+      expect(rosterKeys, expertKeys);
+      expect(rosterKeys.any((key) => key.endsWith('/team-lead')), isTrue);
+      expect(rosterKeys.any((key) => key.endsWith('/worker')), isTrue);
+    },
+  );
 
   test('persists validated per-role replicas and placement targets', () async {
     final original = (await store.read('ws', 'wf-12345678'))!;
@@ -269,7 +283,9 @@ void main() {
       validatedRevision: 'valid-rev',
     );
 
-    final worker = result.team.roster.singleWhere((slot) => slot.id == 'worker');
+    final worker = result.team.roster.singleWhere(
+      (slot) => slot.id == 'worker',
+    );
     expect(worker.overrides.replicas, 2);
     expect(sessionRepository.placementTargets.single, {
       'team-lead': 'local',
@@ -280,7 +296,10 @@ void main() {
       (profile) => profile.id == result.team.id,
     );
     expect(
-      persisted.roster.singleWhere((slot) => slot.id == 'worker').overrides.replicas,
+      persisted.roster
+          .singleWhere((slot) => slot.id == 'worker')
+          .overrides
+          .replicas,
       2,
     );
   });
@@ -323,7 +342,6 @@ void main() {
         launch: const TeamGenerationLaunchSnapshot(
           projectFolderPath: '/proj',
           workingDirectoryPath: '/proj',
-          launchSecurityPolicyValue: 'fullAccess',
           folderIds: [],
           targetIds: ['local'],
           workspaceRevision: 'rev-1',
@@ -391,44 +409,47 @@ void main() {
       return result.team;
     }
 
-    test('team default stamps the pool four-tuple as custom launch config',
-        () async {
-      final team = await commitPooled();
+    test(
+      'team default stamps the pool four-tuple as custom launch config',
+      () async {
+        final team = await commitPooled();
 
-      expect(team.activePresetId, isNull);
-      expect(team.cli, CliTool.claude);
-      expect(team.providerForCli(CliTool.claude), 'anthropic');
-      expect(team.modelForCli(CliTool.claude), 'claude-sonnet');
-      expect(team.effortForCli(CliTool.claude), 'high');
+        expect(team.activePresetId, isNull);
+        expect(team.cli, CliTool.claude);
+        expect(team.providerForCli(CliTool.claude), 'anthropic');
+        expect(team.modelForCli(CliTool.claude), 'claude-sonnet');
+        expect(team.effortForCli(CliTool.claude), 'high');
 
-      final persisted = (await profileRepository.loadTeamProfiles()).singleWhere(
-        (profile) => profile.id == team.id,
-      );
-      expect(persisted.activePresetId, isNull);
-      expect(persisted.providerForCli(CliTool.claude), 'anthropic');
-      expect(persisted.modelForCli(CliTool.claude), 'claude-sonnet');
-    });
+        final persisted = (await profileRepository.loadTeamProfiles())
+            .singleWhere((profile) => profile.id == team.id);
+        expect(persisted.activePresetId, isNull);
+        expect(persisted.providerForCli(CliTool.claude), 'anthropic');
+        expect(persisted.modelForCli(CliTool.claude), 'claude-sonnet');
+      },
+    );
 
-    test('members with a pool entry id get custom fields, not a pool UUID',
-        () async {
-      final team = await commitPooled();
+    test(
+      'members with a pool entry id get custom fields, not a pool UUID',
+      () async {
+        final team = await commitPooled();
 
-      final reviewer = team.members.singleWhere((m) => m.id == 'reviewer');
-      expect(reviewer.activePresetId, isNull);
-      expect(reviewer.provider, 'anthropic');
-      expect(reviewer.model, 'claude-sonnet');
-      expect(reviewer.effort, 'high');
-      expect(reviewer.cli, CliTool.claude);
+        final reviewer = team.members.singleWhere((m) => m.id == 'reviewer');
+        expect(reviewer.activePresetId, isNull);
+        expect(reviewer.provider, 'anthropic');
+        expect(reviewer.model, 'claude-sonnet');
+        expect(reviewer.effort, 'high');
+        expect(reviewer.cli, CliTool.claude);
 
-      final worker = team.members.singleWhere((m) => m.id == 'worker');
-      expect(worker.activePresetId, isNull);
-      expect(worker.provider, 'openai');
-      expect(worker.model, 'gpt-5');
-      expect(worker.cli, CliTool.codex);
+        final worker = team.members.singleWhere((m) => m.id == 'worker');
+        expect(worker.activePresetId, isNull);
+        expect(worker.provider, 'openai');
+        expect(worker.model, 'gpt-5');
+        expect(worker.cli, CliTool.codex);
 
-      final lead = team.members.singleWhere((m) => m.id == 'team-lead');
-      expect(lead.activePresetId, TeamProfile.inheritPresetId);
-    });
+        final lead = team.members.singleWhere((m) => m.id == 'team-lead');
+        expect(lead.activePresetId, TeamProfile.inheritPresetId);
+      },
+    );
 
     test('roster overrides never carry pool entry ids', () async {
       final team = await commitPooled();
@@ -442,9 +463,8 @@ void main() {
       expect(worker.overrides.model, 'gpt-5');
       expect(worker.overrides.cli, CliTool.codex);
 
-      final persisted = (await profileRepository.loadTeamProfiles()).singleWhere(
-        (profile) => profile.id == team.id,
-      );
+      final persisted = (await profileRepository.loadTeamProfiles())
+          .singleWhere((profile) => profile.id == team.id);
       for (final slot in persisted.roster) {
         expect(slot.overrides.activePresetId, isNot('pool-1'));
         expect(slot.overrides.activePresetId, isNot('pool-2'));
@@ -454,7 +474,10 @@ void main() {
     test('launch resolves without any global presets registered', () async {
       final team = await commitPooled();
 
-      final bundle = resolveTeamLaunchBundle(team: team, globalPresets: const []);
+      final bundle = resolveTeamLaunchBundle(
+        team: team,
+        globalPresets: const [],
+      );
       expect(bundle.isConfigured, isTrue);
       expect(bundle.cli, CliTool.claude);
       expect(bundle.provider, 'anthropic');

@@ -26,7 +26,6 @@ void main() {
           id: 'member',
           name: 'Member',
           model: 'gpt-5.2',
-          launchSecurityPolicy: LaunchSecurityPolicy.fullAccess,
         ),
         workingDirectory: '/work',
       ),
@@ -43,11 +42,7 @@ void main() {
 
   test('resume and fixed Codex launches use the resume subcommand', () {
     const team = TeamProfile(id: 'team', name: 'Team', cli: CliTool.codex);
-    const member = TeamMemberConfig(
-      id: 'member',
-      name: 'Member',
-      launchSecurityPolicy: LaunchSecurityPolicy.fullAccess,
-    );
+    const member = TeamMemberConfig(id: 'member', name: 'Member');
 
     expect(
       _assemble(team: team, member: member, resumeSessionId: 'resume-id'),
@@ -262,7 +257,8 @@ List<String> _assemble({
       fixedSessionId: fixedSessionId,
       resumeSessionId: resumeSessionId,
       useWslPaths: useWslPaths,
-      launchSecurityPolicy: launchSecurityPolicy,
+      launchSecurityPolicy:
+          launchSecurityPolicy ?? LaunchSecurityPolicy.fullAccess,
     ),
   );
 }

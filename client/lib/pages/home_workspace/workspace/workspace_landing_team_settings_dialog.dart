@@ -13,7 +13,6 @@ import '../../../l10n/l10n_extensions.dart';
 import '../../../models/app_provider_config.dart';
 import '../../../models/cli_preset.dart';
 import '../../../models/team_config.dart';
-import '../../../models/launch_security_policy.dart';
 import '../../../models/workspace.dart';
 import '../../../models/workspace_topology.dart';
 import '../../../repositories/session_repository.dart';
@@ -199,23 +198,9 @@ class _LandingTeamSettingsDialogState
       _teamDraft = updated.copyWith(
         forceTeamLeadDelegateMode: _teamDraft.forceTeamLeadDelegateMode,
         updateForceTeamLeadDelegateMode: true,
-        members: [
-          for (final member in updated.members)
-            _overlayMemberDraftFields(member),
-        ],
+        members: updated.members,
       );
     });
-  }
-
-  TeamMemberConfig _overlayMemberDraftFields(TeamMemberConfig cubitMember) {
-    final draftMember = _teamDraft.members.cast<TeamMemberConfig?>().firstWhere(
-      (m) => m!.id == cubitMember.id,
-      orElse: () => null,
-    );
-    if (draftMember == null) return cubitMember;
-    return cubitMember.copyWith(
-      launchSecurityPolicy: draftMember.launchSecurityPolicy,
-    );
   }
 
   Future<void> _openTeamPresetConfigure() async {
@@ -244,18 +229,6 @@ class _LandingTeamSettingsDialogState
   void _updateMember(TeamMemberConfig updated) {
     setState(() {
       _teamDraft = _teamDraft.copyWith(
-        roster: [
-          for (final slot in _teamDraft.roster)
-            if (slot.id == updated.id)
-              slot.copyWith(
-                overrides: slot.overrides.copyWith(
-                  launchSecurityPolicy: updated.launchSecurityPolicy,
-                  updateLaunchSecurityPolicy: true,
-                ),
-              )
-            else
-              slot,
-        ],
         members: [
           for (final member in _teamDraft.members)
             if (member.id == updated.id) updated else member,
@@ -891,19 +864,7 @@ class _MemberRow extends StatelessWidget {
               TpPreferenceRow(
                 title: l10n.memberDangerouslySkipPermissions,
                 subtitle: l10n.memberDangerouslySkipPermissionsHint,
-                trailing: Switch(
-                  value: member.launchSecurityPolicy.requiresDangerousExecution,
-                  onChanged: (value) => onMemberUpdated(
-                    member.copyWith(
-                      launchSecurityPolicy: value
-                          ? LaunchSecurityPolicy.fullAccess
-                          : member.launchSecurityPolicy ==
-                                LaunchSecurityPolicy.fullAccess
-                          ? LaunchSecurityPolicy.cliDefault
-                          : member.launchSecurityPolicy,
-                    ),
-                  ),
-                ),
+                trailing: Switch(value: true, onChanged: null),
                 showDividerBelow: false,
               ),
             ],

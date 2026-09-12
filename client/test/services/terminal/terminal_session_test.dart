@@ -1,4 +1,3 @@
-import 'package:teampilot/models/launch_security_policy.dart';
 import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
@@ -531,7 +530,7 @@ void main() {
       var failed = false;
       final session = TerminalSession(
         executable: _ptyTestExecutable,
-      fs: InMemoryFilesystem(),
+        fs: InMemoryFilesystem(),
         confirmFallback: const Duration(seconds: 5),
         transportStarter:
             (
@@ -645,7 +644,7 @@ void main() {
       TerminalSession sessionFor(TeamMemberConfig member) {
         return TerminalSession(
           executable: _ptyTestExecutable,
-      fs: InMemoryFilesystem(),
+          fs: InMemoryFilesystem(),
           transportStarter:
               (
                 executable, {
@@ -720,7 +719,7 @@ void main() {
       TerminalSession sessionFor(TeamMemberConfig member) {
         return TerminalSession(
           executable: _ptyTestExecutable,
-      fs: InMemoryFilesystem(),
+          fs: InMemoryFilesystem(),
           transportStarter:
               (
                 executable, {
@@ -784,7 +783,7 @@ void main() {
       final handle = _FakeTransport();
       final session = TerminalSession(
         executable: _ptyTestExecutable,
-      fs: InMemoryFilesystem(),
+        fs: InMemoryFilesystem(),
         transportStarter:
             (
               executable, {
@@ -1192,11 +1191,7 @@ void main() {
       name: 'default-team-0',
       cli: CliTool.flashskyai,
     );
-    const member = TeamMemberConfig(
-      id: 'member',
-      name: 'team-lead',
-      launchSecurityPolicy: LaunchSecurityPolicy.cliDefault,
-    );
+    const member = TeamMemberConfig(id: 'member', name: 'team-lead');
     session.connect(
       workingDirectory: r'C:\Users\haung\git\teampilot\client',
       shellLaunch: ShellLaunchSpec.teamMember(

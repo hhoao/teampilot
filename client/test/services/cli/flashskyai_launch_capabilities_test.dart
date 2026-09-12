@@ -213,7 +213,8 @@ List<String> _assemble({
       appendSystemPromptFile: appendSystemPromptFile,
       useWslPaths: useWslPaths,
       nativeAgentTeam: nativeAgentTeam,
-      launchSecurityPolicy: launchSecurityPolicy,
+      launchSecurityPolicy:
+          launchSecurityPolicy ?? LaunchSecurityPolicy.fullAccess,
     ),
   );
 }

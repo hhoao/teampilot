@@ -54,14 +54,13 @@ void main() {
   );
 
   test('shell launch member: continue overrides win over template preset '
-      '(provider + permission)', () {
+      '(provider/model)', () {
     const base = TeamMemberConfig(
       id: 'builder-0',
       name: 'Builder',
       cli: CliTool.claude,
       provider: 'base-provider',
       model: 'base-model',
-      launchSecurityPolicy: LaunchSecurityPolicy.cliDefault,
       activePresetId: 'p-template',
     );
     final session = AppSession(
@@ -70,12 +69,10 @@ void main() {
       sessionTeam: 'team',
       createdAt: 1,
       continueOverrides: const SessionContinueOverrides(
-        launchSecurityPolicy: LaunchSecurityPolicyOverride.fullAccess,
         memberOverrides: {
           'builder-0': SessionMemberContinueOverride(
             provider: 'override-provider',
             model: 'override-model',
-            launchSecurityPolicy: LaunchSecurityPolicyOverride.fullAccess,
           ),
         },
       ),
@@ -98,11 +95,9 @@ void main() {
       preset: preset,
     );
 
-    // Fail if only an unused field were updated: shell member must carry
-    // override provider + permission (what CliLaunchContext.member uses).
+    // The shell member must carry the effective provider/model.
     expect(shellMember.provider, 'override-provider');
     expect(shellMember.model, 'override-model');
-    expect(shellMember.launchSecurityPolicy.requiresDangerousExecution, isTrue);
     expect(shellMember.cli, CliTool.claude);
 
     // Preset alone would have won without finalize-last:
@@ -111,82 +106,14 @@ void main() {
     expect(presetOnly.provider, isNot(shellMember.provider));
   });
 
-  test(
-    'finalize then memberForLaunch follows live preset (team staging)',
-    () {
-      const base = TeamMemberConfig(
-        id: 'builder-0',
-        name: 'Builder',
-        cli: CliTool.claude,
-        provider: 'base-provider',
-        model: 'base-model',
-        launchSecurityPolicy: LaunchSecurityPolicy.cliDefault,
-        activePresetId: 'p-template',
-      );
-      final session = AppSession(
-        sessionId: 's1',
-        workspaceId: 'w1',
-        sessionTeam: 'team',
-        createdAt: 1,
-        continueOverrides: const SessionContinueOverrides(
-          memberOverrides: {
-            'builder-0': SessionMemberContinueOverride(
-              presetId: 'p-template',
-              provider: 'override-provider',
-              model: 'override-model',
-              launchSecurityPolicy: LaunchSecurityPolicyOverride.fullAccess,
-            ),
-          },
-        ),
-      );
-
-      final finalized = finalizeSessionLaunchMember(
-        session: session,
-        baseMember: base,
-        memberId: 'builder-0',
-        isSimple: false,
-        preset: preset,
-        withPreset: _memberWithPreset,
-      );
-      expect(finalized.provider, 'preset-provider');
-      expect(finalized.model, 'preset-model');
-      expect(finalized.activePresetId, 'p-template');
-
-      final team = TeamProfile(
-        id: 'team',
-        name: 'Team',
-        cli: CliTool.claude,
-        members: [base],
-      );
-      // Same path as stageTeamLaunch after orchestrator finalize.
-      final staged = memberForLaunch(
-        team: team,
-        member: finalized,
-        globalPresets: const [preset],
-      );
-
-      expect(staged.provider, 'preset-provider');
-      expect(staged.model, 'preset-model');
-      expect(staged.launchSecurityPolicy.requiresDangerousExecution, isTrue);
-    },
-  );
-
-  test('finalize CLI-mismatched preset stamps snapshot without changing CLI', () {
-    const cursorPreset = CliPreset(
-      id: 'p-template',
-      name: 'Cursor template',
-      cli: CliTool.cursor,
-      provider: 'cursor-provider',
-      model: 'composer-2.5',
-      createdAt: 1,
-      updatedAt: 2,
-    );
+  test('finalize then memberForLaunch follows live preset (team staging)', () {
     const base = TeamMemberConfig(
       id: 'builder-0',
       name: 'Builder',
       cli: CliTool.claude,
       provider: 'base-provider',
       model: 'base-model',
+      activePresetId: 'p-template',
     );
     final session = AppSession(
       sessionId: 's1',
@@ -197,8 +124,8 @@ void main() {
         memberOverrides: {
           'builder-0': SessionMemberContinueOverride(
             presetId: 'p-template',
-            provider: 'snapshot-provider',
-            model: 'snapshot-model',
+            provider: 'override-provider',
+            model: 'override-model',
           ),
         },
       ),
@@ -209,15 +136,80 @@ void main() {
       baseMember: base,
       memberId: 'builder-0',
       isSimple: false,
-      preset: cursorPreset,
+      preset: preset,
       withPreset: _memberWithPreset,
     );
+    expect(finalized.provider, 'preset-provider');
+    expect(finalized.model, 'preset-model');
+    expect(finalized.activePresetId, 'p-template');
 
-    expect(finalized.cli, CliTool.claude);
-    expect(finalized.provider, 'snapshot-provider');
-    expect(finalized.model, 'snapshot-model');
-    expect(finalized.activePresetId, isNull);
+    final team = TeamProfile(
+      id: 'team',
+      name: 'Team',
+      cli: CliTool.claude,
+      members: [base],
+    );
+    // Same path as stageTeamLaunch after orchestrator finalize.
+    final staged = memberForLaunch(
+      team: team,
+      member: finalized,
+      globalPresets: const [preset],
+    );
+
+    expect(staged.provider, 'preset-provider');
+    expect(staged.model, 'preset-model');
   });
+
+  test(
+    'finalize CLI-mismatched preset stamps snapshot without changing CLI',
+    () {
+      const cursorPreset = CliPreset(
+        id: 'p-template',
+        name: 'Cursor template',
+        cli: CliTool.cursor,
+        provider: 'cursor-provider',
+        model: 'composer-2.5',
+        createdAt: 1,
+        updatedAt: 2,
+      );
+      const base = TeamMemberConfig(
+        id: 'builder-0',
+        name: 'Builder',
+        cli: CliTool.claude,
+        provider: 'base-provider',
+        model: 'base-model',
+      );
+      final session = AppSession(
+        sessionId: 's1',
+        workspaceId: 'w1',
+        sessionTeam: 'team',
+        createdAt: 1,
+        continueOverrides: const SessionContinueOverrides(
+          memberOverrides: {
+            'builder-0': SessionMemberContinueOverride(
+              presetId: 'p-template',
+              provider: 'snapshot-provider',
+              model: 'snapshot-model',
+            ),
+          },
+        ),
+      );
+
+      final finalized = finalizeSessionLaunchMember(
+        session: session,
+        baseMember: base,
+        memberId: 'builder-0',
+        isSimple: false,
+        preset: cursorPreset,
+        withPreset: _memberWithPreset,
+      );
+
+      expect(finalized.cli, CliTool.claude);
+      expect(finalized.provider, 'snapshot-provider');
+      expect(finalized.model, 'snapshot-model');
+      expect(finalized.activePresetId, isNull);
+    },
+  );
 
   test('finalize follow writes an empty live preset effort', () {
     const noEffortPreset = CliPreset(
@@ -279,7 +271,6 @@ void main() {
         cli: CliTool.claude,
         provider: 'base',
         model: 'base-m',
-        launchSecurityPolicy: LaunchSecurityPolicy.cliDefault,
       );
       final session = AppSession(
         sessionId: 's1',
@@ -290,7 +281,6 @@ void main() {
           memberOverrides: {
             'builder-0': SessionMemberContinueOverride(
               provider: 'from-continue',
-              launchSecurityPolicy: LaunchSecurityPolicyOverride.fullAccess,
             ),
           },
         ),
@@ -306,7 +296,6 @@ void main() {
         withPreset: _memberWithPreset,
       );
       expect(staged.provider, 'from-continue');
-      expect(staged.launchSecurityPolicy.requiresDangerousExecution, isTrue);
 
       // Shell path re-applies preset on already-finalized plan.member, then
       // overrides again — must not let preset wipe continue provider.
@@ -324,21 +313,16 @@ void main() {
         preset: preset,
       );
       expect(shellMember.provider, 'from-continue');
-      expect(
-        shellMember.launchSecurityPolicy.requiresDangerousExecution,
-        isTrue,
-      );
     },
   );
 
-  test('simple finalize applies session-level permission false', () {
+  test('simple finalize keeps provider/model/CLI', () {
     const base = TeamMemberConfig(
       id: 's1',
       name: 'Simple',
       cli: CliTool.codex,
       provider: 'openai',
       model: 'gpt',
-      launchSecurityPolicy: LaunchSecurityPolicy.fullAccess,
     );
     final session = AppSession(
       sessionId: 's1',
@@ -347,9 +331,7 @@ void main() {
       provider: 'openai',
       model: 'gpt',
       createdAt: 1,
-      continueOverrides: const SessionContinueOverrides(
-        launchSecurityPolicy: LaunchSecurityPolicyOverride.cliDefault,
-      ),
+      continueOverrides: const SessionContinueOverrides(),
     );
 
     final shellMember = resolveShellLaunchMember(
@@ -365,10 +347,6 @@ void main() {
       ),
     );
 
-    expect(
-      shellMember.launchSecurityPolicy.requiresDangerousExecution,
-      isFalse,
-    );
     expect(shellMember.provider, 'openai');
     expect(shellMember.model, 'gpt');
     expect(shellMember.cli, CliTool.codex);

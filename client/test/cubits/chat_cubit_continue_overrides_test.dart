@@ -1,4 +1,3 @@
-import 'package:teampilot/models/launch_security_policy.dart';
 import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
@@ -24,12 +23,12 @@ void main() {
 
     setUp(() async {
       tmp = await Directory.systemTemp.createTemp('chat_continue_overrides_');
-      repo = SessionRepository(rootDir: tmp.path, storage: testHomeStorage, );
+      repo = SessionRepository(rootDir: tmp.path, storage: testHomeStorage);
       cubit = ChatCubit(
         executableResolver: () => 'true',
         automationRepository: testAutomationRepository(),
         sessionRepository: repo,
-                         storage: testHomeStorage,
+        storage: testHomeStorage,
       );
     });
 
@@ -152,56 +151,6 @@ void main() {
       expect(disk.memberOverrides['builder-0']?.presetId, 'preset-b');
       expect(disk.memberOverrides['reviewer-0']?.presetId, 'keep-me');
     });
-
-    test(
-      'setSessionContinueSecurityPolicy persists session-level bool',
-      () async {
-        final workspace = await repo.createWorkspace([
-          WorkspaceFolder(path: '/w'),
-        ]);
-        final session = (await repo.createSession(
-          workspace.workspaceId,
-        )).session;
-        await cubit.loadWorkspaceData(repo);
-
-        final ok = await cubit.setSessionContinueSecurityPolicy(
-          sessionId: session.sessionId,
-          launchSecurityPolicy: LaunchSecurityPolicy.fullAccess,
-        );
-
-        expect(ok, isTrue);
-        expect(
-          cubit
-              .state
-              .sessions
-              .single
-              .continueOverrides
-              .launchSecurityPolicy
-              ?.requiresDangerousExecution,
-          isTrue,
-        );
-        expect(
-          (await repo.loadSessions())
-              .single
-              .continueOverrides
-              .launchSecurityPolicy
-              ?.requiresDangerousExecution,
-          isTrue,
-        );
-      },
-    );
-
-    test(
-      'setSessionContinueSecurityPolicy returns false when session missing',
-      () async {
-        final ok = await cubit.setSessionContinueSecurityPolicy(
-          sessionId: 'missing',
-          launchSecurityPolicy: LaunchSecurityPolicy.fullAccess,
-        );
-
-        expect(ok, isFalse);
-      },
-    );
 
     test('mergeOntoTabCache applies switch while keeping launch fields', () {
       final cached = AppSession(

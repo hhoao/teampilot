@@ -21,12 +21,12 @@ import '../../support/in_memory_filesystem.dart';
 class _StaticSessionLookup implements TeamGenerationSessionLookup {
   @override
   Future<AppSession?> findById(String sessionId) async => AppSession(
-        sessionId: sessionId,
-        workspaceId: 'ws',
-        purpose: SessionPurpose.teamGeneration,
-        workflowId: 'wf',
-        createdAt: 1,
-      );
+    sessionId: sessionId,
+    workspaceId: 'ws',
+    purpose: SessionPurpose.teamGeneration,
+    workflowId: 'wf',
+    createdAt: 1,
+  );
 }
 
 void main() {
@@ -49,7 +49,7 @@ void main() {
       fs: fs,
       layout: WorkspaceLayout(teampilotRoot: '/tp', fs: fs),
       clock: () => DateTime.utc(2026, 8, 31),
-                                       storage: fakeHomeStorage(filesystem: fs),
+      storage: fakeHomeStorage(filesystem: fs),
     );
     final settings = resolveTeamGenerationSettingsSnapshot(
       settings: TeamGenerationSettings(teamMode: TeamMode.mixed),
@@ -67,7 +67,6 @@ void main() {
       launch: const TeamGenerationLaunchSnapshot(
         projectFolderPath: '/proj',
         workingDirectoryPath: '/proj',
-        launchSecurityPolicyValue: 'fullAccess',
         folderIds: [],
         targetIds: ['local'],
         workspaceRevision: 'rev-1',
@@ -170,13 +169,12 @@ void main() {
     String? withToken,
     required String tool,
     Map<String, Object?> arguments = const {},
-  }) =>
-      postJsonRpc(
-        session: session,
-        withToken: withToken,
-        method: 'tools/call',
-        params: {'name': tool, 'arguments': arguments},
-      );
+  }) => postJsonRpc(
+    session: session,
+    withToken: withToken,
+    method: 'tools/call',
+    params: {'name': tool, 'arguments': arguments},
+  );
 
   test('initialize succeeds without workflow token', () async {
     final response = await postJsonRpc(

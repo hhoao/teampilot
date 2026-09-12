@@ -2,17 +2,6 @@ import '../../models/app_session.dart';
 import '../../models/cli_preset.dart';
 import '../../models/team_config.dart';
 
-LaunchSecurityPolicy resolveContinueSecurityPolicy({
-  required LaunchSecurityPolicy launchDefault,
-  LaunchSecurityPolicyOverride? sessionLevel,
-  LaunchSecurityPolicyOverride? memberLevel,
-}) {
-  var resolved = launchDefault;
-  if (sessionLevel != null) resolved = sessionLevel.applyTo(resolved);
-  if (memberLevel != null) resolved = memberLevel.applyTo(resolved);
-  return resolved;
-}
-
 /// Launch-member merge order: base → optional team preset → continue overrides last.
 ///
 /// [withPreset] is team-only; Simple skips preset. A matching live preset
@@ -27,10 +16,10 @@ TeamMemberConfig finalizeSessionLaunchMember({
   TeamMemberConfig Function(TeamMemberConfig, CliPreset?)? withPreset,
 }) {
   final afterPreset =
-          (!isSimple &&
-              preset != null &&
-              preset.cli == baseMember.cli &&
-              withPreset != null)
+      (!isSimple &&
+          preset != null &&
+          preset.cli == baseMember.cli &&
+          withPreset != null)
       ? withPreset(baseMember, preset)
       : baseMember;
   var merged = applySessionContinueOverrides(
@@ -49,9 +38,8 @@ TeamMemberConfig finalizeSessionLaunchMember({
   return merged;
 }
 
-/// Simple: do NOT re-apply provider/model from memberOverrides; only security
-/// policy from continueOverrides.
-/// Team: apply memberOverrides[memberId] provider/model/effort/presetId + policy.
+/// Simple: do NOT re-apply provider/model from memberOverrides.
+/// Team: apply memberOverrides[memberId] provider/model/effort/presetId.
 /// Never change [baseMember.cli].
 ///
 /// When a member follows a matching live preset, do not reapply its stored
@@ -71,26 +59,15 @@ TeamMemberConfig applySessionContinueOverrides({
     return baseMember.copyWith(
       // Seat key / X-Member for simple = session.sessionId (passed as memberId).
       id: memberId,
-      launchSecurityPolicy: resolveContinueSecurityPolicy(
-        launchDefault: baseMember.launchSecurityPolicy,
-        sessionLevel: overrides.launchSecurityPolicy,
-        memberLevel: null,
-      ),
     );
   }
 
   final memberOverride = overrides.memberOverrides[memberId];
-  final policy = resolveContinueSecurityPolicy(
-    sessionLevel: overrides.launchSecurityPolicy,
-    memberLevel: memberOverride?.launchSecurityPolicy,
-    launchDefault: baseMember.launchSecurityPolicy,
-  );
-
   if (memberOverride == null) {
-    return baseMember.copyWith(launchSecurityPolicy: policy);
+    return baseMember;
   }
 
-  var merged = baseMember.copyWith(launchSecurityPolicy: policy);
+  var merged = baseMember;
   final followId = memberOverride.presetId?.trim() ?? '';
   final liveId = livePreset?.id.trim() ?? '';
   final following =

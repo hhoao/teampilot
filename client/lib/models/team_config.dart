@@ -1,4 +1,3 @@
-import 'package:collection/collection.dart';
 import 'package:flutter/foundation.dart';
 
 export 'team_launch_config.dart';
@@ -8,7 +7,6 @@ import 'team_roster_slot.dart';
 
 import '../utils/team/team_member_naming.dart';
 import 'config_bundle.dart';
-import 'launch_security_policy.dart';
 import 'launch_profile_kind.dart';
 import 'workspace_icon_ref.dart';
 import 'launch_profile.dart';
@@ -84,7 +82,6 @@ class TeamMemberConfig {
     this.responsibilities = '',
     this.playbook = '',
     this.joinedAt = 0,
-    this.launchSecurityPolicy = LaunchSecurityPolicy.fullAccess,
     this.cli,
     this.effort = '',
     this.replicas = 1,
@@ -116,9 +113,6 @@ class TeamMemberConfig {
       responsibilities: json['responsibilities'] as String? ?? '',
       playbook: json['playbook'] as String? ?? '',
       joinedAt: (json['joinedAt'] as num?)?.toInt() ?? 0,
-      launchSecurityPolicy: LaunchSecurityPolicy.fromJson(
-        json['launchSecurityPolicy'],
-      ),
       cli: CliTool.tryParse(json['cli'] as String?),
       effort: json['effort'] as String? ?? '',
       replicas: (json['replicas'] as num?)?.toInt() ?? 1,
@@ -152,9 +146,6 @@ class TeamMemberConfig {
   final String playbook;
 
   final int joinedAt;
-
-  /// Normalized security intent for this member's launch.
-  final LaunchSecurityPolicy launchSecurityPolicy;
 
   /// 成员 CLI 覆盖（仅 mixed 模式生效）；null 回退 [TeamProfile.cli]。
   final CliTool? cli;
@@ -213,7 +204,6 @@ class TeamMemberConfig {
     String? responsibilities,
     String? playbook,
     int? joinedAt,
-    LaunchSecurityPolicy? launchSecurityPolicy,
     CliTool? cli,
     bool updateCli = false,
     String? effort,
@@ -236,7 +226,6 @@ class TeamMemberConfig {
       responsibilities: responsibilities ?? this.responsibilities,
       playbook: playbook ?? this.playbook,
       joinedAt: joinedAt ?? this.joinedAt,
-      launchSecurityPolicy: launchSecurityPolicy ?? this.launchSecurityPolicy,
       cli: updateCli ? cli : this.cli,
       effort: updateEffort ? (effort ?? '') : this.effort,
       replicas: replicas ?? this.replicas,
@@ -262,7 +251,6 @@ class TeamMemberConfig {
       'responsibilities': responsibilities,
       if (playbook.isNotEmpty) 'playbook': playbook,
       'joinedAt': joinedAt,
-      'launchSecurityPolicy': launchSecurityPolicy.toJson(),
       if (cli != null) 'cli': cli!.value,
       if (effort.isNotEmpty) 'effort': effort,
       if (replicas != 1) 'replicas': replicas,
@@ -289,7 +277,6 @@ class TeamMemberConfig {
             responsibilities == other.responsibilities &&
             playbook == other.playbook &&
             joinedAt == other.joinedAt &&
-            launchSecurityPolicy == other.launchSecurityPolicy &&
             cli == other.cli &&
             effort == other.effort &&
             replicas == other.replicas &&
@@ -310,7 +297,6 @@ class TeamMemberConfig {
     responsibilities,
     playbook,
     joinedAt,
-    launchSecurityPolicy,
     cli,
     effort,
     replicas,
