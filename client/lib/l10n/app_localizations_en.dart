@@ -8785,7 +8785,14 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get connectSshdDown =>
-      'OpenSSH is not listening. Enable Remote Login or start sshd before pairing.';
+      'The embedded connection server failed to start. Retry or restart the app.';
+
+  @override
+  String get connectSshdRetry => 'Retry';
+
+  @override
+  String get connectRepairHint =>
+      'The desktop has been upgraded — re-scan its pairing code to reconnect.';
 
   @override
   String get connectScanHint => 'Scan this code in TeamPilot on your phone.';
@@ -8850,9 +8857,6 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get connectQrEnlargeHint =>
       'Tap the QR code to enlarge it for easier scanning.';
-
-  @override
-  String get connectCheckAgain => 'Check again';
 
   @override
   String get connectCopyLink => 'Copy link';

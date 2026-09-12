@@ -12,14 +12,14 @@ import '../../utils/ui/app_keys.dart';
 class ConnectQrPanel extends StatelessWidget {
   const ConnectQrPanel({
     required this.state,
-    required this.onCheckSshd,
+    required this.onRetry,
     required this.onCopyLink,
     required this.onRegenerate,
     super.key,
   });
 
   final ConnectState state;
-  final VoidCallback onCheckSshd;
+  final VoidCallback onRetry;
   final VoidCallback onCopyLink;
   final VoidCallback onRegenerate;
 
@@ -27,7 +27,7 @@ class ConnectQrPanel extends StatelessWidget {
   Widget build(BuildContext context) {
     final l10n = context.l10n;
     final offer = state.offer;
-    if (state.loading && state.sshd.enableHint.isEmpty) {
+    if (state.loading) {
       return const Center(child: CircularProgressIndicator());
     }
     if (!state.canPair) {
@@ -35,19 +35,12 @@ class ConnectQrPanel extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(l10n.connectSshdDown),
-          if (state.sshd.enableHint.isNotEmpty) ...[
-            const SizedBox(height: 8),
-            Text(
-              state.sshd.enableHint,
-              style: Theme.of(context).textTheme.bodySmall,
-            ),
-          ],
           const SizedBox(height: 16),
           TpButton(
-            key: AppKeys.connectSshdEnableCta,
+            key: AppKeys.connectSshdRetryCta,
             variant: TpButtonVariant.outline,
-            onPressed: onCheckSshd,
-            child: Text(l10n.connectCheckAgain),
+            onPressed: onRetry,
+            child: Text(l10n.connectSshdRetry),
           ),
         ],
       );

@@ -8,15 +8,14 @@ import 'package:synchronized/synchronized.dart';
 
 import '../../models/ssh_reachability.dart';
 import '../io/filesystem.dart';
-import 'authorized_keys_file.dart';
 import 'connect_relay_client.dart';
 import 'connect_settings_store.dart';
+import 'embedded_ssh_server.dart';
 import 'paired_device_store.dart';
 import 'pairing_certificate.dart';
 import 'pairing_http.dart';
 import 'pairing_token_gate.dart';
 import 'ssh_pairing_offer.dart';
-import 'sshd_presence.dart';
 
 typedef PairingHttpRespond =
     Future<void> Function({
@@ -79,8 +78,8 @@ class ConnectRelayRegistration {
 
 class ConnectAgent {
   ConnectAgent({
-    required SshdPresenceProbe probe,
-    required AuthorizedKeysFile keys,
+    required EmbeddedSshServerHandle embeddedServer,
+    required PairedDeviceStore deviceStore,
     required PairingTokenGate gate,
     required PairingBind bind,
     required PairingCertificateProvider certificateProvider,
@@ -88,11 +87,10 @@ class ConnectAgent {
     required StableConnectHostId stableHostId,
     List<SshReachabilityEndpoint> extraEndpoints = const [],
     ConnectRelayRegistration? relayRegistration,
-    PairedDeviceStore? deviceStore,
     GrantGenerator? generateGrant,
     RelaySocketSeam? relayConnectSocket,
-  }) : _probe = probe,
-       _keys = keys,
+  }) : _embeddedServer = embeddedServer,
+       _deviceStore = deviceStore,
        _gate = gate,
        _bind = bind,
        _certificateProvider = certificateProvider,
@@ -100,7 +98,6 @@ class ConnectAgent {
        _stableHostId = stableHostId,
        _extraEndpoints = List.unmodifiable(extraEndpoints),
        _relayRegistration = relayRegistration,
-       _deviceStore = deviceStore,
        _generateGrant =
            generateGrant ??
            (() =>
@@ -115,18 +112,17 @@ class ConnectAgent {
        _relayConnectSocket = relayConnectSocket;
 
   factory ConnectAgent.production({
-    required AuthorizedKeysFile keys,
+    required EmbeddedSshServerHandle embeddedServer,
+    required PairedDeviceStore deviceStore,
     required Filesystem fs,
     List<SshReachabilityEndpoint> extraEndpoints = const [],
     ConnectRelayRegistration? relayRegistration,
-    SshdPresenceProbe? probe,
     PairingCertificateProvider? certificateProvider,
-    PairedDeviceStore? deviceStore,
     RelaySocketSeam? relayConnectSocket,
   }) {
     return ConnectAgent(
-      probe: probe ?? SshdPresence().probe,
-      keys: keys,
+      embeddedServer: embeddedServer,
+      deviceStore: deviceStore,
       gate: PairingTokenGate(),
       bind: bindPairingHttps,
       certificateProvider: certificateProvider ?? ConnectTls(),
@@ -137,15 +133,13 @@ class ConnectAgent {
       ).loadOrCreateHostId(),
       extraEndpoints: extraEndpoints,
       relayRegistration: relayRegistration,
-      deviceStore: deviceStore,
       relayConnectSocket: relayConnectSocket,
     );
   }
 
   static const _inviteTtl = Duration(minutes: 10);
 
-  final SshdPresenceProbe _probe;
-  final AuthorizedKeysFile _keys;
+  final EmbeddedSshServerHandle _embeddedServer;
   final PairingTokenGate _gate;
   final PairingBind _bind;
   final PairingCertificateProvider _certificateProvider;
@@ -153,7 +147,7 @@ class ConnectAgent {
   final StableConnectHostId _stableHostId;
   List<SshReachabilityEndpoint> _extraEndpoints;
   ConnectRelayRegistration? _relayRegistration;
-  final PairedDeviceStore? _deviceStore;
+  final PairedDeviceStore _deviceStore;
   final GrantGenerator _generateGrant;
   final RelaySocketSeam? _relayConnectSocket;
   final Lock _lifecycleLock = Lock();
@@ -164,12 +158,10 @@ class ConnectAgent {
   SshPairingOffer? _currentOffer;
   ConnectRelayClient? _relayClient;
 
-  /// Cached install id + sshd port for relay dial validation. These survive
-  /// QR-session stops: an SSH grant stays usable while the app runs even when
-  /// no QR is on screen.
+  /// Cached install id for relay dial validation. This survives QR-session
+  /// stops: an SSH grant stays usable while the app runs even when no QR is
+  /// on screen.
   String? _cachedHostId;
-  bool _relaySshdReachable = false;
-  int? _relaySshdPort;
 
   SshPairingOffer? get currentOffer => _currentOffer;
 
@@ -203,15 +195,14 @@ class ConnectAgent {
       );
     }
 
-    final sshd = await _probe();
-    final fingerprints = sshd.fingerprints
+    // The embedded server failed to start: no offer is minted; the Connect
+    // UI surfaces the failed state through the handle.
+    if (!_embeddedServer.isListening) return;
+    final fingerprints = _embeddedServer.hostKeyFingerprints
         .where((value) => value.startsWith('SHA256:'))
         .toSet()
         .toList(growable: false);
-    // Keep relay SSH targets fresh with every QR-session probe.
-    _relaySshdReachable = sshd.listening;
-    _relaySshdPort = sshd.listening ? sshd.port : null;
-    if (!sshd.listening || fingerprints.isEmpty) return;
+    if (fingerprints.isEmpty) return;
 
     final certificate = await _certificateProvider.generate(
       appDataRoot: appDataRoot,
@@ -225,7 +216,7 @@ class ConnectAgent {
         displayName: displayName,
         appDataRoot: appDataRoot,
         hostId: await _stableHostId(appDataRoot),
-        sshdPort: sshd.port,
+        embeddedPort: _embeddedServer.port,
         fingerprints: fingerprints,
         certificateSha256: certificate.sha256Hex,
         pairingPort: binding.port,
@@ -278,11 +269,6 @@ class ConnectAgent {
     final hostId = await _stableHostId(appDataRoot);
     _cachedHostId = hostId;
 
-    // One probe now: relay sshd targets refresh whenever a QR session runs.
-    final sshd = await _probe();
-    _relaySshdReachable = sshd.listening;
-    _relaySshdPort = sshd.listening ? sshd.port : null;
-
     final client =
         _relayClient ??= ConnectRelayClient(
           validateDial: validateRelayDial,
@@ -320,19 +306,17 @@ class ConnectAgent {
         if (invite == null || invite.isEmpty) return false;
         return _gate.matchesInvite(invite, now: _now());
       case 'ssh':
-        final store = _deviceStore;
         final deviceId = request.deviceId;
         final grant = request.relayGrant;
         final hostId = _cachedHostId;
-        if (store == null ||
-            hostId == null ||
+        if (hostId == null ||
             deviceId == null ||
             deviceId.isEmpty ||
             grant == null ||
             grant.isEmpty) {
           return false;
         }
-        return store.validateGrant(
+        return _deviceStore.validateGrant(
           hostId: hostId,
           deviceId: deviceId,
           grant: grant,
@@ -354,9 +338,8 @@ class ConnectAgent {
         if (binding == null) return null;
         return (host: InternetAddress.loopbackIPv4, port: binding.port);
       case 'ssh':
-        final port = _relaySshdPort;
-        if (!_relaySshdReachable || port == null) return null;
-        return (host: InternetAddress.loopbackIPv4, port: port);
+        if (!_embeddedServer.isListening) return null;
+        return (host: InternetAddress.loopbackIPv4, port: _embeddedServer.port);
       default:
         return null;
     }
@@ -386,7 +369,8 @@ class ConnectAgent {
     final expiresAt = issuedAt.add(_inviteTtl).millisecondsSinceEpoch;
     final relay = _relayRegistration;
     return SshPairingOffer(
-      v: 1,
+      v: 2,
+      emb: true,
       hostId: session.hostId,
       username: session.username,
       displayName: session.displayName,
@@ -395,7 +379,7 @@ class ConnectAgent {
         SshReachabilityEndpoint(
           kind: SshEndpointKind.lan,
           host: session.advertiseAddress,
-          port: session.sshdPort,
+          port: session.embeddedPort,
         ),
         ..._extraEndpoints.where(
           (endpoint) => endpoint.kind == SshEndpointKind.extra,
@@ -452,7 +436,17 @@ class ConnectAgent {
       final result = await handlePairingPost(
         body: body,
         gate: _gate,
-        keys: _keys,
+        acceptDevice:
+            ({
+              required String deviceId,
+              required String deviceName,
+              required String publicKey,
+            }) =>
+                _deviceStore.issueDevice(
+                  deviceId: deviceId,
+                  publicKey: publicKey,
+                  deviceName: deviceName,
+                ),
         now: _now(),
         profileHint: session.displayName,
       );
@@ -489,10 +483,9 @@ class ConnectAgent {
     required String hostId,
     required String deviceId,
   }) async {
-    final store = _deviceStore;
-    if (store == null || _relayRegistration == null) return null;
+    if (_relayRegistration == null) return null;
     final grant = _generateGrant();
-    await store.issueGrant(
+    await _deviceStore.issueGrant(
       hostId: hostId,
       deviceId: deviceId,
       grant: grant,
@@ -508,7 +501,7 @@ class _QrSession {
     required this.displayName,
     required this.appDataRoot,
     required this.hostId,
-    required this.sshdPort,
+    required this.embeddedPort,
     required this.fingerprints,
     required this.certificateSha256,
     required this.pairingPort,
@@ -519,7 +512,9 @@ class _QrSession {
   final String displayName;
   final String appDataRoot;
   final String hostId;
-  final int sshdPort;
+
+  /// The embedded SSH server's actually bound port.
+  final int embeddedPort;
   final List<String> fingerprints;
   final String certificateSha256;
   final int pairingPort;

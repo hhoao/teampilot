@@ -44,16 +44,24 @@ class SshMemberSession {
   SshReverseTunnel newReverseTunnel({String bindHost = '127.0.0.1'}) =>
       SshReverseTunnel(client, bindHost: bindHost);
 
+  /// Opens a PTY channel. A non-null [command] sends an `exec` request for
+  /// it; `null` sends a bare `shell` request so the remote side picks the
+  /// shell (the embedded server spawns the OS-native shell).
   Future<SSHSession> openPty({
-    required String command,
+    String? command,
     required int columns,
     required int rows,
     Map<String, String>? environment,
-  }) => client.execute(
-    command,
-    pty: SSHPtyConfig(type: 'xterm-256color', width: columns, height: rows),
-    environment: environment,
-  );
+  }) {
+    final pty = SSHPtyConfig(
+      type: 'xterm-256color',
+      width: columns,
+      height: rows,
+    );
+    return command == null
+        ? client.shell(pty: pty, environment: environment)
+        : client.execute(command, pty: pty, environment: environment);
+  }
 
   void close() {
     if (!client.isClosed) {

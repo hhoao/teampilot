@@ -1,6 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/services/cli/flashskyai/remote_flashskyai_command_builder.dart';
-import 'package:teampilot/services/terminal/ssh_pty_transport.dart';
 
 void main() {
   test('remote command can opt into bash login environment', () {
@@ -31,20 +30,5 @@ void main() {
         r'export PATH="$HOME/.local/share/com.hhoa.teampilot/toolchain/node/current/bin:$HOME/.local/bin:$PATH"',
       ),
     );
-  });
-
-  test('SSH pty uses prebuilt command without adding a second exec', () {
-    final remoteCommand = const RemoteFlashskyaiCommandBuilder().buildCommand(
-      remoteExecutablePath: '/opt/flash sky/flashskyai',
-      arguments: ['--session-id', "abc'123"],
-      workingDirectory: '/home/me/workspace dir',
-      environment: {'FLASHSKYAI_TEAM': 'core team'},
-    );
-
-    final sessionCommand = SshPtyTransport.buildSessionCommand(remoteCommand);
-
-    expect(sessionCommand, remoteCommand);
-    expect(sessionCommand, isNot(contains('exec exec')));
-    expect(sessionCommand, isNot(startsWith('exec cd ')));
   });
 }

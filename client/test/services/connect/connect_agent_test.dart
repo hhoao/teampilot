@@ -4,16 +4,16 @@ import 'dart:io';
 import 'package:crypto/crypto.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/models/ssh_reachability.dart';
-import 'package:teampilot/services/connect/authorized_keys_file.dart';
 import 'package:teampilot/services/connect/connect_agent.dart';
 import 'package:teampilot/services/connect/connect_relay_client.dart';
 import 'package:teampilot/services/connect/connect_settings_store.dart';
+import 'package:teampilot/services/connect/embedded_ssh_server.dart';
 import 'package:teampilot/services/connect/paired_device_store.dart';
 import 'package:teampilot/services/connect/pairing_certificate.dart';
 import 'package:teampilot/services/connect/pairing_http.dart';
 import 'package:teampilot/services/connect/pairing_token_gate.dart';
-import 'package:teampilot/services/connect/sshd_presence.dart';
 
+import '../../support/fake_embedded_server.dart';
 import '../../support/in_memory_filesystem.dart';
 
 void main() {
@@ -23,32 +23,34 @@ void main() {
 
   late _FakePairingBind binding;
   late PairingTokenGate gate;
-  late String authorizedKeys;
 
-  AuthorizedKeysFile keys() => AuthorizedKeysFile(
-    path: '/home/alice/.ssh/authorized_keys',
-    read: (_) async => authorizedKeys,
-    write: (_, value) async => authorizedKeys = value,
-    chmod: (_, {required mode}) async {},
+  PairedDeviceStore store() => PairedDeviceStore(
+    fs: InMemoryFilesystem(),
+    appDataRoot: '/data',
+    generateGrant: () => 'grant-token-abc',
   );
 
   ConnectAgent agent({
-    SshdPresenceSnapshot presence = _listeningPresence,
-    SshdPresenceProbe? probe,
+    EmbeddedSshServerHandle? embeddedServer,
     List<SshReachabilityEndpoint> extraEndpoints = const [],
     PairedDeviceStore? deviceStore,
     ConnectRelayRegistration? relayRegistration,
     GrantGenerator? generateGrant,
   }) => ConnectAgent(
-    probe: probe ?? () async => presence,
-    keys: keys(),
+    embeddedServer:
+        embeddedServer ??
+        FakeEmbeddedServer(
+          isListening: true,
+          port: 2222,
+          hostKeyFingerprints: const ['SHA256:host-key'],
+        ),
     gate: gate,
     bind: binding.call,
     certificateProvider: _CannedCertificateProvider(const [1, 2, 3, 4]),
     now: () => now,
     stableHostId: (_) async => hostId,
     extraEndpoints: extraEndpoints,
-    deviceStore: deviceStore,
+    deviceStore: deviceStore ?? store(),
     relayRegistration: relayRegistration,
     generateGrant: generateGrant,
   );
@@ -56,16 +58,40 @@ void main() {
   setUp(() {
     binding = _FakePairingBind();
     gate = PairingTokenGate();
-    authorizedKeys = '';
   });
 
-  test('does not mint or bind when sshd is not listening', () async {
+  test('offer is v2 with emb and the embedded port when the server is up',
+      () async {
     final connectAgent = agent(
-      presence: const SshdPresenceSnapshot(
-        listening: false,
-        port: 22,
-        fingerprints: [],
-        enableHint: 'enable sshd',
+      embeddedServer: FakeEmbeddedServer(
+        isListening: true,
+        port: 54321,
+        hostKeyFingerprints: const ['SHA256:abc'],
+      ),
+    );
+
+    await connectAgent.startQrSession(
+      advertiseAddress: '192.168.1.5',
+      username: 'u',
+      displayName: 'desk',
+      appDataRoot: '/app-data',
+    );
+
+    final offer = connectAgent.currentOffer!;
+    expect(offer.v, 2);
+    expect(offer.emb, isTrue);
+    expect(offer.endpoints.first.kind, SshEndpointKind.lan);
+    expect(offer.endpoints.first.port, 54321);
+    expect(offer.hostKeyFingerprints, ['SHA256:abc']);
+  });
+
+  test('does not mint or bind when the embedded server is not listening',
+      () async {
+    final connectAgent = agent(
+      embeddedServer: FakeEmbeddedServer(
+        isListening: false,
+        port: 0,
+        hostKeyFingerprints: const ['SHA256:abc'],
       ),
     );
 
@@ -81,14 +107,13 @@ void main() {
   });
 
   test(
-    'does not mint or bind when the SSH handshake finds no host key',
+    'does not mint or bind when the host key has no SHA256 fingerprint',
     () async {
       final connectAgent = agent(
-        presence: const SshdPresenceSnapshot(
-          listening: true,
-          port: 22,
-          fingerprints: [],
-          enableHint: '',
+        embeddedServer: FakeEmbeddedServer(
+          isListening: true,
+          port: 54321,
+          hostKeyFingerprints: const ['md5:unsupported'],
         ),
       );
 
@@ -106,11 +131,10 @@ void main() {
 
   test('mints a LAN offer bound only to the advertised address', () async {
     final connectAgent = agent(
-      presence: const SshdPresenceSnapshot(
-        listening: true,
+      embeddedServer: FakeEmbeddedServer(
+        isListening: true,
         port: 2222,
-        fingerprints: ['SHA256:host-key'],
-        enableHint: '',
+        hostKeyFingerprints: const ['SHA256:host-key'],
       ),
       extraEndpoints: const [
         SshReachabilityEndpoint(
@@ -159,7 +183,7 @@ void main() {
   test(
     'stop closes the listener, clears the offer, and invalidates token',
     () async {
-      final connectAgent = agent(presence: _listeningPresence);
+      final connectAgent = agent();
       await _start(connectAgent);
       final oldToken = connectAgent.currentOffer!.pairing.token;
 
@@ -172,20 +196,16 @@ void main() {
   );
 
   test('stop waits for and closes an in-flight start binding', () async {
-    final probeStarted = Completer<void>();
-    final releaseProbe = Completer<void>();
-    final connectAgent = agent(
-      probe: () async {
-        probeStarted.complete();
-        await releaseProbe.future;
-        return _listeningPresence;
-      },
-    );
+    final bindStarted = Completer<void>();
+    final releaseBind = Completer<void>();
+    binding.gate = (started: bindStarted, release: releaseBind);
+
+    final connectAgent = agent();
 
     final starting = _start(connectAgent);
-    await probeStarted.future;
+    await bindStarted.future;
     final stopping = connectAgent.stopQrSession();
-    releaseProbe.complete();
+    releaseBind.complete();
     await Future.wait([starting, stopping]);
 
     expect(binding.closed, isTrue);
@@ -194,7 +214,7 @@ void main() {
   });
 
   test('regenerate replaces and invalidates the previous token', () async {
-    final connectAgent = agent(presence: _listeningPresence);
+    final connectAgent = agent();
     await _start(connectAgent);
     final oldToken = connectAgent.currentOffer!.pairing.token;
 
@@ -207,7 +227,7 @@ void main() {
   });
 
   test('updating extra endpoints remints the active offer', () async {
-    final connectAgent = agent(presence: _listeningPresence);
+    final connectAgent = agent();
     await _start(connectAgent);
     final oldToken = connectAgent.currentOffer!.pairing.token;
     const endpoint = SshReachabilityEndpoint(
@@ -224,8 +244,9 @@ void main() {
     expect(gate.consume(oldToken, now), isFalse);
   });
 
-  test('valid incoming POST writes the device authorized key', () async {
-    final connectAgent = agent(presence: _listeningPresence);
+  test('valid incoming POST registers the device key', () async {
+    final deviceStore = store();
+    final connectAgent = agent(deviceStore: deviceStore);
     await _start(connectAgent);
     final response = Completer<({int statusCode, Map<String, Object?> body})>();
 
@@ -248,7 +269,8 @@ void main() {
     final result = await response.future;
     expect(result.statusCode, HttpStatus.ok);
     expect(result.body['ok'], isTrue);
-    expect(authorizedKeys, contains('device=pixel-1'));
+    expect(await deviceStore.isValidDeviceKey(publicKey), isTrue);
+    expect(await deviceStore.deviceIdForPublicKey(publicKey), 'pixel-1');
   });
 
   test('rejects an oversized content length before listening', () async {
@@ -350,19 +372,25 @@ void main() {
 
     test('LAN pairing succeeds without any relay and mints no grant',
         () async {
-      final store = PairedDeviceStore(
-        fs: InMemoryFilesystem(),
-        appDataRoot: '/data',
-        generateGrant: () => 'grant-token-abc',
-      );
-      final connectAgent = agent(deviceStore: store);
+      final deviceStore = store();
+      final connectAgent = agent(deviceStore: deviceStore);
       await _start(connectAgent);
 
       final result = await postPair(connectAgent);
 
       expect(result.statusCode, HttpStatus.ok);
       expect(result.body.containsKey('relayGrant'), isFalse);
-      expect(await store.hasDevice('pixel-1'), isFalse);
+      // The device key is registered, but no relay grant was minted.
+      expect(await deviceStore.isValidDeviceKey(publicKey), isTrue);
+      expect(await deviceStore.hasDevice('pixel-1'), isFalse);
+      expect(
+        await deviceStore.validateGrant(
+          hostId: hostId,
+          deviceId: 'pixel-1',
+          grant: 'grant-token-abc',
+        ),
+        isFalse,
+      );
     });
 
     test(
@@ -460,6 +488,26 @@ void main() {
       await store.revokeDevice('pixel-1');
       expect(await dial(), isFalse);
     });
+
+    test('ssh dial target is the embedded server while it is listening',
+        () async {
+      final server = FakeEmbeddedServer(
+        isListening: true,
+        port: 54321,
+        hostKeyFingerprints: const ['SHA256:abc'],
+      );
+      final connectAgent = agent(embeddedServer: server);
+      await _start(connectAgent);
+
+      expect(await connectAgent.resolveRelayTarget('ssh'), (
+        host: InternetAddress.loopbackIPv4,
+        port: 54321,
+      ));
+
+      // No listener: no target, without touching local services.
+      server.isListening = false;
+      expect(await connectAgent.resolveRelayTarget('ssh'), isNull);
+    });
   });
 
   test('ConnectSettingsStore persists one stable host ID', () async {
@@ -555,13 +603,8 @@ void main() {
   );
 }
 
-const _listeningPresence = SshdPresenceSnapshot(
-  listening: true,
-  port: 22,
-  fingerprints: ['SHA256:host-key'],
-  enableHint: '',
-);
-
+/// Test double for [EmbeddedSshServerHandle]; [isListening] is mutable so a
+/// test can flip the server down mid-run.
 Future<void> _start(ConnectAgent agent) => agent.startQrSession(
   advertiseAddress: '192.168.1.20',
   username: 'alice',
@@ -590,11 +633,21 @@ class _FakePairingBind {
   final calls = <({InternetAddress address, Object tlsContext})>[];
   var closed = false;
 
+  /// When set, the next bind parks between recording the call and returning,
+  /// so a test can race a stop against an in-flight start.
+  ({Completer<void> started, Completer<void> release})? gate;
+
   Future<PairingBinding> call(
     InternetAddress address,
     Object tlsContext,
   ) async {
     calls.add((address: address, tlsContext: tlsContext));
+    final gate = this.gate;
+    if (gate != null) {
+      this.gate = null;
+      gate.started.complete();
+      await gate.release.future;
+    }
     return PairingBinding(
       address: address,
       port: 2768,

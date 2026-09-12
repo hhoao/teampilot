@@ -132,7 +132,7 @@ class _PairingCard extends StatelessWidget {
                 ],
                 ConnectQrPanel(
                   state: state,
-                  onCheckSshd: () => unawaited(cubit.refresh()),
+                  onRetry: () => unawaited(cubit.retryEmbeddedServer()),
                   onCopyLink: () {
                     final offer = state.offer;
                     if (offer != null) {

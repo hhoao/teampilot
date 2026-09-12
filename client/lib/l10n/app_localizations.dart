@@ -15617,8 +15617,20 @@ abstract class AppLocalizations {
   /// No description provided for @connectSshdDown.
   ///
   /// In en, this message translates to:
-  /// **'OpenSSH is not listening. Enable Remote Login or start sshd before pairing.'**
+  /// **'The embedded connection server failed to start. Retry or restart the app.'**
   String get connectSshdDown;
+
+  /// No description provided for @connectSshdRetry.
+  ///
+  /// In en, this message translates to:
+  /// **'Retry'**
+  String get connectSshdRetry;
+
+  /// No description provided for @connectRepairHint.
+  ///
+  /// In en, this message translates to:
+  /// **'The desktop has been upgraded — re-scan its pairing code to reconnect.'**
+  String get connectRepairHint;
 
   /// No description provided for @connectScanHint.
   ///
@@ -15733,12 +15745,6 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Tap the QR code to enlarge it for easier scanning.'**
   String get connectQrEnlargeHint;
-
-  /// No description provided for @connectCheckAgain.
-  ///
-  /// In en, this message translates to:
-  /// **'Check again'**
-  String get connectCheckAgain;
 
   /// No description provided for @connectCopyLink.
   ///

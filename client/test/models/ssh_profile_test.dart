@@ -91,4 +91,29 @@ void main() {
       expect(manual.toJson().containsKey('pairedDesktopId'), isFalse);
     },
   );
+
+  test('json round-trips embeddedTarget; absent key defaults to false', () {
+    const embedded = SshProfile(
+      id: 'a',
+      name: 'Box',
+      host: 'h',
+      username: 'u',
+      embeddedTarget: true,
+    );
+
+    final round = SshProfile.fromJson(embedded.toJson());
+
+    expect(round.embeddedTarget, isTrue);
+    expect(embedded.toJson()['embeddedTarget'], isTrue);
+
+    const manual = SshProfile(id: 'b', name: 'm', host: 'h', username: 'u');
+    expect(manual.embeddedTarget, isFalse);
+    expect(manual.toJson().containsKey('embeddedTarget'), isFalse);
+    expect(SshProfile.fromJson(manual.toJson()).embeddedTarget, isFalse);
+    expect(
+      SshProfile.fromJson({...manual.toJson(), 'embeddedTarget': true})
+          .embeddedTarget,
+      isTrue,
+    );
+  });
 }

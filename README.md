@@ -129,12 +129,12 @@ If your CLI lives in **WSL**, point app data or the CLI path at WSL in settings;
 
 ### Android
 
-Android does **not** run a local PTY — connect over **SSH** to a Linux/macOS/Windows (WSL) host that already has your target agent CLI installed.
+Android does **not** run a local PTY — **pair it with desktop TeamPilot**, or connect over **SSH** to any host that already has your target agent CLI installed.
 
 1. Download `teampilot-*-arm64-v8a.apk` (most newer phones) or `teampilot-*-armeabi-v7a.apk` per your CPU architecture.
 2. Allow installs from unknown sources, then install the APK.
-3. Open the app and configure SSH host, user, and key (or password) under **Settings**.
-4. Make sure the CLI is installed on the remote and works in the shell you get after SSH login.
+3. Easiest: on the desktop, open **Settings → Phone** to show the pairing QR, then scan it in the phone app. The desktop's built-in SSH server handles the connection — no OS-level OpenSSH server, Remote Login, or other system configuration is required on any platform (Windows may show a one-time firewall prompt).
+4. Or configure an SSH host, user, and key (or password) under **Settings** to reach a remote host directly; make sure the CLI is installed there and works in the shell you get after SSH login.
 
 ## Supported CLIs
 

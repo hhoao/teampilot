@@ -20,8 +20,8 @@ class SshDeviceKey {
   }
 
   /// Stable install id sent with pairing POSTs and relay dials: a digest of
-  /// the device public key, so the desktop can tag authorized_keys lines and
-  /// scope relay grants without ever seeing another identifier.
+  /// the device public key, so the desktop can key its paired-device registry
+  /// and scope relay grants without ever seeing another identifier.
   static String deviceIdFor(String openSshPublic) {
     final digest = sha256.convert(utf8.encode(openSshPublic));
     return base64Url

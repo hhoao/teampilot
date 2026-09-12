@@ -4,7 +4,7 @@ import '../../models/launch_target.dart';
 import '../../repositories/ssh_credential_store.dart';
 import '../../repositories/ssh_known_host_repository.dart';
 import '../../repositories/ssh_profile_repository.dart';
-import '../cli/flashskyai/remote_flashskyai_command_builder.dart';
+import '../host/remote_command_codec.dart';
 import '../ssh/ssh_member_session.dart';
 import 'local_pty_transport.dart';
 import '../ssh/ssh_client_factory.dart';
@@ -121,18 +121,22 @@ class TerminalTransportFactory {
           );
         }
         final remoteEnvironment = target.remoteEnvironment;
-        final command = const RemoteFlashskyaiCommandBuilder().buildCommand(
-          remoteExecutablePath: target.remoteExecutable,
-          arguments: arguments,
-          workingDirectory: target.remoteWorkingDirectory.isEmpty
+        final spec = RemoteCommandSpec(
+          argv: [target.remoteExecutable, ...arguments],
+          cwd: target.remoteWorkingDirectory.isEmpty
               ? null
               : target.remoteWorkingDirectory,
-          environment: remoteEnvironment.isNotEmpty ? remoteEnvironment : null,
-          useLoginShell: target.useLoginShell,
+          env: remoteEnvironment.isNotEmpty ? remoteEnvironment : null,
         );
+        final command = profile.embeddedTarget
+            ? const RemoteCommandCodec().encodeEmbedded(spec)
+            : const RemoteCommandCodec().encodeLegacy(
+                spec,
+                useLoginShell: target.useLoginShell,
+              );
         return _sshStarter(
           memberSession: memberSession,
-          command: SshPtyTransport.buildSessionCommand(command),
+          command: command,
           columns: columns,
           rows: rows,
         );

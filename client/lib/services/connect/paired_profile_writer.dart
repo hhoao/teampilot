@@ -65,6 +65,7 @@ class PairedProfileWriter {
       pairedDesktopId: offer.hostId,
       relayUrl: offer.relay?.url,
       lastGoodKind: SshEndpointKind.lan,
+      embeddedTarget: offer.emb ?? false,
     );
 
     await _profileRepository.save(profile);
