@@ -23,6 +23,48 @@ void main() {
     expect(TeamGenerationSettings(minimumMemberCount: 2).minimumMemberCount, 3);
   });
 
+  test('settings JSON rejects a fractional minimum without truncating it', () {
+    expect(
+      TeamGenerationSettings.fromJson({
+        'minimumMemberCount': 8.9,
+      }).minimumMemberCount,
+      3,
+    );
+    expect(
+      TeamGenerationSettings.fromJson({
+        'minimumMemberCount': 8.0,
+      }).minimumMemberCount,
+      8,
+    );
+    expect(
+      TeamGenerationSettings.fromJson({
+        'minimumMemberCount': 8,
+      }).minimumMemberCount,
+      8,
+    );
+  });
+
+  test('snapshot JSON rejects a fractional minimum without truncating it', () {
+    expect(
+      TeamGenerationSettingsSnapshot.fromJson({
+        'minimumMemberCount': 8.9,
+      }).minimumMemberCount,
+      3,
+    );
+    expect(
+      TeamGenerationSettingsSnapshot.fromJson({
+        'minimumMemberCount': 8.0,
+      }).minimumMemberCount,
+      8,
+    );
+    expect(
+      TeamGenerationSettingsSnapshot.fromJson({
+        'minimumMemberCount': 8,
+      }).minimumMemberCount,
+      8,
+    );
+  });
+
   test('snapshot round-trip preserves and versions the minimum', () {
     final low = resolveTeamGenerationSettingsSnapshot(
       settings: TeamGenerationSettings(minimumMemberCount: 3),

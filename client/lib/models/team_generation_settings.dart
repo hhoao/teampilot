@@ -669,8 +669,11 @@ bool _sameList<T>(List<T> a, List<T> b) {
 }
 
 int _minimumMemberCountFromJson(Object? raw) {
-  final value = raw is num ? raw.toInt() : kDefaultMinimumGeneratedTeamMembers;
-  return normalizeMinimumGeneratedTeamMembers(value);
+  if (raw is int) return normalizeMinimumGeneratedTeamMembers(raw);
+  if (raw is double && raw.isFinite && raw == raw.truncateToDouble()) {
+    return normalizeMinimumGeneratedTeamMembers(raw.toInt());
+  }
+  return kDefaultMinimumGeneratedTeamMembers;
 }
 
 int _schemaVersionFromJson(Object? raw) {

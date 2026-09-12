@@ -90,6 +90,17 @@ void main() {
     expect(dependency.directory, isEmpty);
   });
 
+  test('Team Builder persona follows the frozen unbounded roster minimum', () {
+    final builder = builtinExpertMembers().firstWhere(
+      (member) => member.key == kBuiltinTeamBuilderExpertKey,
+    );
+    final prompt = builder.member.responsibilities;
+
+    expect(prompt, contains('constraints.memberCountMin'));
+    expect(prompt, contains('no maximum'));
+    expect(prompt, isNot(contains('2-5')));
+  });
+
   test('default expert retains the Superpowers catalog identity', () {
     final defaultExpert = builtinExpertMembers().firstWhere(
       (member) => member.key == kBuiltinDefaultExpertKey,
