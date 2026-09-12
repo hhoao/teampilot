@@ -194,8 +194,14 @@ class EmbeddedSshServer implements EmbeddedSshServerHandle {
             pathContext: _pathContext,
             homePath: homePath,
           ),
-          bindServerSocket: (address, port) async =>
-              _IoServerSocketHandle(await ServerSocket.bind(address, port)),
+          forwarding: SSHForwardingConfig(
+            allowTcpForwarding: SshTcpForwardingMode.both,
+            permitOpen: _loopbackOnlyPermit,
+            dialSocket: (host, port) async =>
+                _IoForwardConnection(await Socket.connect(host, port)),
+            bindServerSocket: (address, port) async =>
+                _IoServerSocketHandle(await ServerSocket.bind(address, port)),
+          ),
           onAuthenticated: _recordDeviceConnection,
           printDebug: _forwardTransportTrace ? _printDebug : null,
         ),
@@ -346,6 +352,16 @@ class EmbeddedSshServer implements EmbeddedSshServerHandle {
   /// [PairedDeviceStore.isValidDeviceKey] parses.
   static String _opensshLineFor(String algorithm, List<int> publicKey) =>
       '$algorithm ${base64.encode(publicKey)}';
+
+  /// The app's PermitOpen predicate: only loopback dial targets are allowed
+  /// (the host string is matched verbatim — never resolved, so no DNS).
+  /// A future per-device allowlist replaces only this predicate.
+  static Future<bool> _loopbackOnlyPermit(
+    SSHServerConnection connection,
+    String host,
+    int port,
+  ) async =>
+      host == '127.0.0.1' || host == '::1' || host == 'localhost';
 
   /// Snapshot of host facts for the `tp1:` host-info query, answered by the
   /// server itself — no process is spawned per query. [SSHHostInfo.elevated]

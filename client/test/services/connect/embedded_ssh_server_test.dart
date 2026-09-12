@@ -6,10 +6,17 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:dartssh2/dartssh2.dart'
-    show SSHAuthError, SSHClient, SSHKeyPair, SSHSocket;
+    show
+        SSHAuthError,
+        SSHChannelOpenError,
+        SSHClient,
+        SSHKeyPair,
+        SSHSocket;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/services/connect/embedded_ssh_server.dart';
 import 'package:teampilot/services/connect/paired_device_store.dart';
+import 'package:teampilot/services/connect/ssh_device_key.dart';
+import 'package:teampilot/services/io/local_filesystem.dart';
 import 'package:tp_sshd/tp_sshd.dart' show SSHHostInfo, TpExecCodec;
 
 import '../../support/in_memory_filesystem.dart';
@@ -354,6 +361,115 @@ void main() {
       expect(EmbeddedSshServer.transportTraceEnabledByEnv('true'), isTrue);
       expect(EmbeddedSshServer.transportTraceEnabledByEnv(' ON '), isTrue);
       expect(EmbeddedSshServer.transportTraceEnabledByEnv('True'), isTrue);
+    });
+  });
+
+  group('forwarding injection (real loopback sockets, real temp root)', () {
+    late Directory appDataRoot;
+    late PairedDeviceStore deviceStore;
+    late EmbeddedSshServer server;
+
+    setUp(() async {
+      appDataRoot = await Directory.systemTemp.createTemp(
+        'teampilot-embedded-forward-',
+      );
+      final lfs = LocalFilesystem();
+      deviceStore = PairedDeviceStore(
+        fs: lfs,
+        appDataRoot: appDataRoot.path,
+      );
+      server = EmbeddedSshServer(
+        fs: lfs,
+        appDataRoot: appDataRoot.path,
+        deviceStore: deviceStore,
+        username: 'user',
+        homePath: '${appDataRoot.path}/home',
+        bindAddress: InternetAddress.loopbackIPv4,
+        portOverride: 0,
+      );
+    });
+
+    tearDown(() async {
+      await server.stop();
+      try {
+        await appDataRoot.delete(recursive: true);
+      } on Object {
+        // Best-effort cleanup of the temp root.
+      }
+    });
+
+    /// Issues a fresh device key, starts the server, and logs a real
+    /// dartssh2 client in with it.
+    Future<SSHClient> logIn() async {
+      final deviceKey = SshDeviceKey.generate();
+      await deviceStore.issueDevice(
+        deviceId: SshDeviceKey.deviceIdFor(deviceKey.openSshPublic),
+        publicKey: deviceKey.openSshPublic,
+      );
+      await server.start();
+      addTearDown(server.stop);
+
+      final client = SSHClient(
+        await SSHSocket.connect('127.0.0.1', server.port),
+        username: 'user',
+        identities: [SSHKeyPair.fromPem(deviceKey.pem).single],
+        onVerifyHostKey: (type, fingerprint) =>
+            utf8.decode(fingerprint) == server.hostKeyFingerprints.single,
+      );
+      addTearDown(client.close);
+      await client.authenticated;
+      return client;
+    }
+
+    test('forwardRemote binds loopback (remote forwarding not regressed)',
+        () async {
+      final client = await logIn();
+
+      final forward = await client.forwardRemote(host: '127.0.0.1', port: 0);
+      expect(forward, isNotNull);
+      expect(forward!.host, '127.0.0.1');
+      expect(forward.port, greaterThan(0));
+      // cancel, not close(): the fork's SSHRemoteForward.close() waits for
+      // the connections controller's done event, which is only delivered
+      // once something listens to the stream.
+      expect(await client.cancelForwardRemote(forward), isTrue);
+    });
+
+    test('forwardLocal to a loopback target round-trips bytes', () async {
+      // A real echo service on the desktop under test: bytes dialed by the
+      // server must come back over the direct-tcpip channel.
+      final listener = await ServerSocket.bind(InternetAddress.loopbackIPv4, 0);
+      addTearDown(listener.close);
+      listener.listen((socket) {
+        socket.listen((data) => socket.add(data), onDone: socket.close);
+      });
+
+      final client = await logIn();
+      final channel = await client.forwardLocal('127.0.0.1', listener.port);
+
+      final echoed = Completer<void>();
+      final received = StringBuffer();
+      channel.stream.listen((data) {
+        received.write(utf8.decode(data));
+        if (!echoed.isCompleted &&
+            received.toString().contains('forward-ping')) {
+          echoed.complete();
+        }
+      });
+      channel.sink.add(utf8.encode('forward-ping'));
+      await echoed.future.timeout(const Duration(seconds: 15));
+      expect(received.toString(), 'forward-ping');
+      await channel.close();
+    });
+
+    test('forwardLocal to a non-loopback target is refused with reason 1',
+        () async {
+      final client = await logIn();
+
+      await expectLater(
+        client.forwardLocal('store.example', 80),
+        throwsA(isA<SSHChannelOpenError>().having((e) => e.code, 'code', 1)),
+      );
     });
   });
 }
