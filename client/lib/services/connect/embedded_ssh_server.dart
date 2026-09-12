@@ -15,6 +15,8 @@ import 'dart:convert';
 import 'dart:io';
 import 'dart:typed_data';
 
+import 'package:meta/meta.dart';
+
 import 'package:dartssh2/dartssh2.dart' show SSHSocket;
 import 'package:path/path.dart' as p;
 import 'package:tp_sshd/tp_sshd.dart';
@@ -74,6 +76,7 @@ class EmbeddedSshServer implements EmbeddedSshServerHandle {
     int? portOverride,
     PtySpawner? ptySpawner,
     this.elevationProbe,
+    bool? forwardTransportTrace,
   }) : _fs = fs,
        _appDataRoot = appDataRoot,
        _deviceStore = deviceStore,
@@ -82,7 +85,11 @@ class EmbeddedSshServer implements EmbeddedSshServerHandle {
        _ptySpawner = ptySpawner,
        _pathContext = pathContext ?? AppPaths.pathContextForDataRoot(
          appDataRoot,
-       );
+       ),
+       _forwardTransportTrace = forwardTransportTrace ??
+           transportTraceEnabledByEnv(
+             Platform.environment['TP_SSH_TRACE'],
+           );
 
   final Filesystem _fs;
   final String _appDataRoot;
@@ -110,6 +117,12 @@ class EmbeddedSshServer implements EmbeddedSshServerHandle {
   /// elevated is reported as `true` so the phone-side dangerous-launch gate
   /// stays strict.
   final Future<bool> Function()? elevationProbe;
+
+  /// Whether the tp_sshd/dartssh2 transport trace is forwarded to
+  /// [AppLogger]. Off by default — the trace logs every packet-consume step,
+  /// so leaving it on floods the log during any active session. On only when
+  /// the caller opts in (see [transportTraceEnabledByEnv] / `TP_SSH_TRACE`).
+  final bool _forwardTransportTrace;
 
   /// The cached elevation answer once [start] has run the probe. Defaults to
   /// `true` (fail closed) until a successful probe says otherwise.
@@ -183,7 +196,7 @@ class EmbeddedSshServer implements EmbeddedSshServerHandle {
           bindServerSocket: (address, port) async =>
               _IoServerSocketHandle(await ServerSocket.bind(address, port)),
           onAuthenticated: _recordDeviceConnection,
-          printDebug: _printDebug,
+          printDebug: _forwardTransportTrace ? _printDebug : null,
         ),
       );
 
@@ -369,9 +382,19 @@ class EmbeddedSshServer implements EmbeddedSshServerHandle {
     return uid == '0';
   }
 
+  /// Whether the `TP_SSH_TRACE` env var opts the tp_sshd/dartssh2 transport
+  /// trace in. `null`/empty/unrecognized values leave it off.
+  @visibleForTesting
+  static bool transportTraceEnabledByEnv(String? value) {
+    final v = value?.trim().toLowerCase();
+    return v == '1' || v == 'true' || v == 'on';
+  }
+
+  /// Forwards one tp_sshd/dartssh2 trace line to [AppLogger]. Only wired when
+  /// tracing is explicitly enabled, so the per-packet trace never floods the
+  /// daily log by default.
   static void _printDebug(String? message) {
-    // Keep the log readable: the transport traces every packet loop.
-    if (message == null || message.contains('_processPackets')) return;
+    if (message == null) return;
     AppLogger.instance.d('tp_sshd: $message');
   }
 }

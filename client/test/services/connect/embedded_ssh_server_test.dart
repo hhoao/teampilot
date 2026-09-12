@@ -339,4 +339,21 @@ void main() {
     );
     expect(server.isListening, isFalse);
   });
+
+  group('transport trace gating', () {
+    test('off by default and for unrecognized env values', () {
+      expect(EmbeddedSshServer.transportTraceEnabledByEnv(null), isFalse);
+      expect(EmbeddedSshServer.transportTraceEnabledByEnv(''), isFalse);
+      expect(EmbeddedSshServer.transportTraceEnabledByEnv('0'), isFalse);
+      expect(EmbeddedSshServer.transportTraceEnabledByEnv('false'), isFalse);
+      expect(EmbeddedSshServer.transportTraceEnabledByEnv(' OFF '), isFalse);
+    });
+
+    test('on for TP_SSH_TRACE truthy values', () {
+      expect(EmbeddedSshServer.transportTraceEnabledByEnv('1'), isTrue);
+      expect(EmbeddedSshServer.transportTraceEnabledByEnv('true'), isTrue);
+      expect(EmbeddedSshServer.transportTraceEnabledByEnv(' ON '), isTrue);
+      expect(EmbeddedSshServer.transportTraceEnabledByEnv('True'), isTrue);
+    });
+  });
 }
