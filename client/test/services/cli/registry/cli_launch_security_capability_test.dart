@@ -13,6 +13,10 @@ void main() {
       expect(capability, isA<CliLaunchSecurityCapability>());
       expect(capability.supportsUserConfiguration, isFalse);
       expect(capability.supportedPolicies, {LaunchSecurityPolicy.fullAccess});
+      expect(
+        () => capability.supportedPolicies.add(LaunchSecurityPolicy.cliDefault),
+        throwsUnsupportedError,
+      );
     }
   });
 }

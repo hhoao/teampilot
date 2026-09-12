@@ -10,11 +10,13 @@ final class FullAccessOnlyCliLaunchSecurityCapability
     implements CliLaunchSecurityCapability {
   const FullAccessOnlyCliLaunchSecurityCapability();
 
+  static final Set<LaunchSecurityPolicy> _supportedPolicies = Set.unmodifiable({
+    LaunchSecurityPolicy.fullAccess,
+  });
+
   @override
   bool get supportsUserConfiguration => false;
 
   @override
-  Set<LaunchSecurityPolicy> get supportedPolicies => {
-    LaunchSecurityPolicy.fullAccess,
-  };
+  Set<LaunchSecurityPolicy> get supportedPolicies => _supportedPolicies;
 }
