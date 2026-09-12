@@ -11,6 +11,8 @@ import 'package:teampilot/cubits/workbench/workbench_tab.dart';
 import 'package:teampilot/l10n/app_localizations.dart';
 import 'package:teampilot/models/app_session.dart';
 import 'package:teampilot/models/landing_launch_context.dart';
+import 'package:teampilot/models/session_member_binding.dart';
+import 'package:teampilot/models/team_config.dart';
 import 'package:teampilot/models/workspace.dart';
 import 'package:teampilot/models/workspace_folder.dart';
 import 'package:teampilot/repositories/session_repository.dart';
@@ -74,6 +76,31 @@ void main() {
     NotificationRecorder.install(null);
     TpToast.dismiss();
     tearDownTestAppStorage();
+  });
+
+  test('existing-session request resolves the bound lead member', () {
+    final team = TeamProfile(
+      id: 'team-1',
+      name: 'Team',
+      members: const [TeamMemberConfig(id: 'team-lead', name: 'Lead')],
+    );
+    final session = AppSession(
+      sessionId: 'sess-1',
+      workspaceId: 'ws1',
+      sessionTeam: team.id,
+      createdAt: 1,
+      members: const [
+        SessionMemberBinding(rosterMemberId: 'team-lead', taskId: 'lead-task'),
+      ],
+    );
+    final request = buildOpenExistingSessionRequest(
+      session: session,
+      team: team,
+      emptyDisplayTitleFallback: 'New Chat',
+    );
+
+    expect(request.member?.id, 'team-lead');
+    expect(request.member?.agentType, 'team-lead');
   });
 
   test(

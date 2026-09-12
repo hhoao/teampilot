@@ -67,7 +67,11 @@ SessionOpenRequest buildOpenExistingSessionRequest({
     session: session,
     workspace: workspace,
     team: team,
-    member: member,
+    member:
+        member ??
+        (session.sessionTeam.trim().isEmpty
+            ? null
+            : _teamLead(team, session: session)),
     repo: repo,
     emptyDisplayTitleFallback: emptyDisplayTitleFallback,
     connectImmediately: connectImmediately,
@@ -135,7 +139,6 @@ Future<void> openWorkspaceSessionTab(
       session: session,
       workspace: workspace,
       team: team,
-      member: isPersonal ? null : _teamLead(team),
       repo: repo,
       emptyDisplayTitleFallback: fallback,
       connectImmediately: connectImmediately,
@@ -241,9 +244,12 @@ Future<TeamProfile?> _syncSessionTeam(
   return resolved is TeamProfile ? resolved : null;
 }
 
-TeamMemberConfig? _teamLead(TeamProfile? team) {
+TeamMemberConfig? _teamLead(TeamProfile? team, {AppSession? session}) {
   if (team == null) return null;
-  for (final member in team.members) {
+  final members = session == null
+      ? team.members
+      : sessionRosterMembers(session, team);
+  for (final member in members) {
     if (TeamMemberNaming.isTeamLead(member)) return member;
   }
   return null;
@@ -548,7 +554,7 @@ Future<bool> submitWorkspaceLandingMessage(
 
   final historyMemberId = isPersonal
       ? ''
-      : (_teamLead(team)?.id ?? 'team-lead');
+      : (_teamLead(team, session: session)?.id ?? 'team-lead');
   FailedMessageRecord? pendingRecord;
   if (!switchToTerminal) {
     pendingRecord = await chatCubit.persistHistoryPending(
@@ -691,7 +697,7 @@ Future<String> _resolveLandingMemberId({
   if (isPersonal) {
     return session.sessionId;
   }
-  final lead = _teamLead(team);
+  final lead = _teamLead(team, session: session);
   return lead?.id ?? 'team-lead';
 }
 

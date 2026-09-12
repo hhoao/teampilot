@@ -315,7 +315,7 @@ class AutomationDispatcher {
     if (!isPersonal) {
       team = _teamById(session.sessionTeam);
       if (team == null) return false;
-      member = _resolveTeamMember(team, memberId);
+      member = _resolveTeamMember(team, memberId, session: session);
     }
 
     final status = await _requestOpenSession(
@@ -358,15 +358,22 @@ class AutomationDispatcher {
     return target.isEmpty ? _leadMemberId : target;
   }
 
-  TeamMemberConfig? _resolveTeamMember(TeamProfile team, String memberId) {
+  TeamMemberConfig? _resolveTeamMember(
+    TeamProfile team,
+    String memberId, {
+    AppSession? session,
+  }) {
+    final members = session == null
+        ? team.members
+        : sessionRosterMembers(session, team);
     final trimmed = memberId.trim();
     if (trimmed.isNotEmpty) {
-      final match = team.members.where((m) => m.id == trimmed).firstOrNull;
+      final match = members.where((m) => m.id == trimmed).firstOrNull;
       if (match != null && match.isValid) return match;
     }
-    final lead = team.members.where((m) => m.id == _leadMemberId).firstOrNull;
+    final lead = members.where((m) => m.id == _leadMemberId).firstOrNull;
     if (lead != null && lead.isValid) return lead;
-    return team.members.where((m) => m.isValid).firstOrNull;
+    return members.where((m) => m.isValid).firstOrNull;
   }
 
   AutomationRun _pendingRun(
