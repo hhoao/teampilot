@@ -279,16 +279,18 @@ class _WorkspacePageState extends State<WorkspacePage> {
   }
 
   Future<AppSession?> _resolveSessionForDeepLink(String sessionId) async {
-    final fromState = context
-        .read<ChatCubit>()
-        .state
-        .sessions
+    final chatCubit = context.read<ChatCubit>();
+    final fromState = chatCubit.state.sessions
         .where(
           (s) =>
               s.sessionId == sessionId && s.workspaceId == widget.workspaceId,
         )
         .firstOrNull;
-    if (fromState != null) return fromState;
+    // A list-row stub is not a session.json. Match `_sessionById`: use
+    // in-memory state only when the document is hydrated.
+    if (fromState != null && chatCubit.sessionHasDocument(sessionId)) {
+      return fromState;
+    }
 
     return context.read<SessionRepository>().loadSession(
       widget.workspaceId,
