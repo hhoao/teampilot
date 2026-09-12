@@ -1561,4 +1561,176 @@ void main() {
       expect(patched.archived, isFalse);
     });
   });
+
+  group('ChatCubit list hydrate vs document hydrate', () {
+    test('ensureSessionsForWorkspace loads list rows without folders', () async {
+      final tmp = await Directory.systemTemp.createTemp('chat_list_hydrate_');
+      final repo = SessionRepository(rootDir: tmp.path, storage: testHomeStorage);
+      final postFrame = PostFrameTestHarness();
+      final cubit = ChatCubit(
+        executableResolver: () => 'true',
+        automationRepository: testAutomationRepository(),
+        storage: testHomeStorage,
+        sessionRepository: repo,
+        postFrameScheduler: postFrame.scheduler,
+      );
+      _registerTempCubitCleanup(tmp: tmp, cubit: cubit, postFrame: postFrame);
+
+      final ws = await repo.createWorkspace([WorkspaceFolder(path: '/p')]);
+      final created = (await repo.createSession(ws.workspaceId)).session;
+      await cubit.loadWorkspaceIndex(repo);
+      await cubit.ensureSessionsForWorkspace(ws.workspaceId);
+      final row = cubit.state.sessions.singleWhere((s) => s.sessionId == created.sessionId);
+      expect(row.display, created.display);
+      expect(cubit.sessionHasDocument(created.sessionId), isFalse);
+
+      final full = await cubit.hydrateSessionDocument(ws.workspaceId, created.sessionId);
+      expect(full!.folders, isNotEmpty);
+      expect(cubit.sessionHasDocument(created.sessionId), isTrue);
+      expect(
+        cubit.state.sessions.singleWhere((s) => s.sessionId == created.sessionId).folders,
+        isNotEmpty,
+      );
+
+      await cubit.ensureSessionsForWorkspace(ws.workspaceId); // 第二次应 no-op
+      expect(
+        cubit.state.sessions.singleWhere((s) => s.sessionId == created.sessionId).folders,
+        isNotEmpty,
+      );
+    });
+
+    test(
+      'mergeWorkspaceSessions overlays list fields without replacing documents',
+      () async {
+        final tmp = await Directory.systemTemp.createTemp('chat_list_merge_');
+        final repo = SessionRepository(
+          rootDir: tmp.path,
+          storage: testHomeStorage,
+        );
+        final postFrame = PostFrameTestHarness();
+        final cubit = ChatCubit(
+          executableResolver: () => 'true',
+          automationRepository: testAutomationRepository(),
+          storage: testHomeStorage,
+          sessionRepository: repo,
+          postFrameScheduler: postFrame.scheduler,
+        );
+        _registerTempCubitCleanup(tmp: tmp, cubit: cubit, postFrame: postFrame);
+
+        final ws = await repo.createWorkspace([WorkspaceFolder(path: '/p')]);
+        final created = (await repo.createSession(ws.workspaceId)).session;
+        await cubit.loadWorkspaceIndex(repo);
+        await cubit.ensureSessionsForWorkspace(ws.workspaceId);
+        await cubit.hydrateSessionDocument(ws.workspaceId, created.sessionId);
+
+        final document = cubit.state.sessions.singleWhere(
+          (s) => s.sessionId == created.sessionId,
+        );
+        final row = AppSession(
+          sessionId: document.sessionId,
+          workspaceId: document.workspaceId,
+          display: 'renamed-from-index',
+          sessionTeam: document.sessionTeam,
+          createdAt: document.createdAt,
+          updatedAt: document.updatedAt + 1,
+          archived: document.archived,
+          pinned: true,
+          sortOrder: document.sortOrder,
+          purpose: document.purpose,
+          workflowId: document.workflowId,
+        );
+        final snap = cubit.dataStore.mergeWorkspaceSessions(
+          current: cubit.stateSnapshot(),
+          workspaceId: ws.workspaceId,
+          workspaceSessions: [row],
+        );
+        final merged = snap.sessions.singleWhere(
+          (s) => s.sessionId == created.sessionId,
+        );
+        expect(merged.folders, isNotEmpty);
+        expect(merged.members, document.members);
+        expect(merged.display, 'renamed-from-index');
+        expect(merged.pinned, isTrue);
+        expect(merged.updatedAt, document.updatedAt + 1);
+        expect(cubit.sessionHasDocument(created.sessionId), isTrue);
+      },
+    );
+
+    test('loadWorkspaceIndex clears document tracking', () async {
+      final tmp = await Directory.systemTemp.createTemp('chat_index_clear_');
+      final repo = SessionRepository(
+        rootDir: tmp.path,
+        storage: testHomeStorage,
+      );
+      final postFrame = PostFrameTestHarness();
+      final cubit = ChatCubit(
+        executableResolver: () => 'true',
+        automationRepository: testAutomationRepository(),
+        storage: testHomeStorage,
+        sessionRepository: repo,
+        postFrameScheduler: postFrame.scheduler,
+      );
+      _registerTempCubitCleanup(tmp: tmp, cubit: cubit, postFrame: postFrame);
+
+      final ws = await repo.createWorkspace([WorkspaceFolder(path: '/p')]);
+      await cubit.loadWorkspaceIndex(repo);
+      final created = await cubit.createSession(ws.workspaceId, repo);
+      expect(cubit.sessionHasDocument(created.sessionId), isTrue);
+
+      await cubit.loadWorkspaceIndex(repo);
+      expect(cubit.state.sessions, isEmpty);
+      expect(cubit.sessionHasDocument(created.sessionId), isFalse);
+    });
+
+    test('createSession marks the new id as a document', () async {
+      final tmp = await Directory.systemTemp.createTemp('chat_create_doc_');
+      final repo = SessionRepository(
+        rootDir: tmp.path,
+        storage: testHomeStorage,
+      );
+      final postFrame = PostFrameTestHarness();
+      final cubit = ChatCubit(
+        executableResolver: () => 'true',
+        automationRepository: testAutomationRepository(),
+        storage: testHomeStorage,
+        sessionRepository: repo,
+        postFrameScheduler: postFrame.scheduler,
+      );
+      _registerTempCubitCleanup(tmp: tmp, cubit: cubit, postFrame: postFrame);
+
+      final ws = await repo.createWorkspace([WorkspaceFolder(path: '/p')]);
+      await cubit.loadWorkspaceIndex(repo);
+      final created = await cubit.createSession(ws.workspaceId, repo);
+      expect(cubit.sessionHasDocument(created.sessionId), isTrue);
+      expect(created.folders, isNotEmpty);
+    });
+
+    test('loadWorkspaceData marks every loaded session as a document', () async {
+      final tmp = await Directory.systemTemp.createTemp('chat_load_docs_');
+      final repo = SessionRepository(
+        rootDir: tmp.path,
+        storage: testHomeStorage,
+      );
+      final postFrame = PostFrameTestHarness();
+      final cubit = ChatCubit(
+        executableResolver: () => 'true',
+        automationRepository: testAutomationRepository(),
+        storage: testHomeStorage,
+        sessionRepository: repo,
+        postFrameScheduler: postFrame.scheduler,
+      );
+      _registerTempCubitCleanup(tmp: tmp, cubit: cubit, postFrame: postFrame);
+
+      final ws = await repo.createWorkspace([WorkspaceFolder(path: '/p')]);
+      final created = (await repo.createSession(ws.workspaceId)).session;
+      await cubit.loadWorkspaceData(repo);
+      expect(cubit.sessionHasDocument(created.sessionId), isTrue);
+      expect(
+        cubit.state.sessions
+            .singleWhere((s) => s.sessionId == created.sessionId)
+            .folders,
+        isNotEmpty,
+      );
+    });
+  });
 }

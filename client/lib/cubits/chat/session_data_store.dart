@@ -27,8 +27,38 @@ class SessionDataStore {
   bool _scopeSessionsToSelectedTeam = false;
   String? _selectedTeamId;
   final Set<String> _hydratedSessionWorkspaceIds = {};
+  final Set<String> _documentSessionIds = {};
 
   void _resetSessionHydration() => _hydratedSessionWorkspaceIds.clear();
+
+  bool sessionHasDocument(String sessionId) =>
+      _documentSessionIds.contains(sessionId.trim());
+
+  void markSessionDocument(String sessionId) {
+    final id = sessionId.trim();
+    if (id.isNotEmpty) _documentSessionIds.add(id);
+  }
+
+  void _clearDocumentSessionIds() => _documentSessionIds.clear();
+
+  void _markSessionsAsDocuments(Iterable<AppSession> sessions) {
+    for (final session in sessions) {
+      markSessionDocument(session.sessionId);
+    }
+  }
+
+  AppSession _overlayListFields(AppSession document, AppSession row) =>
+      document.copyWith(
+        display: row.display,
+        sessionTeam: row.sessionTeam,
+        createdAt: row.createdAt,
+        updatedAt: row.updatedAt,
+        archived: row.archived,
+        pinned: row.pinned,
+        sortOrder: row.sortOrder,
+        purpose: row.purpose,
+        workflowId: row.workflowId,
+      );
 
   void _markAllWorkspacesHydrated(Iterable<String> workspaceIds) {
     _hydratedSessionWorkspaceIds
@@ -106,6 +136,7 @@ class SessionDataStore {
   Future<ChatDataSnapshot> loadWorkspaceIndex(SessionRepository repo) async {
     final sw = Stopwatch()..start();
     _resetSessionHydration();
+    _clearDocumentSessionIds();
     final workspaces = await repo.loadWorkspacesIndex();
     appLogger.i(
       '[boot] SessionDataStore.loadWorkspaceIndex '
@@ -127,6 +158,19 @@ class SessionDataStore {
     return sessions;
   }
 
+  Future<List<AppSession>> loadSessionListForWorkspace(
+    SessionRepository repo,
+    String workspaceId,
+  ) async {
+    final sw = Stopwatch()..start();
+    final sessions = await repo.loadSessionListForWorkspace(workspaceId);
+    appLogger.i(
+      '[boot] SessionDataStore.loadSessionListForWorkspace $workspaceId '
+      '${sessions.length} sessions +${sw.elapsedMilliseconds}ms',
+    );
+    return sessions;
+  }
+
   ChatDataSnapshot mergeWorkspaceSessions({
     required ChatDataSnapshot current,
     required String workspaceId,
@@ -137,6 +181,19 @@ class SessionDataStore {
         .where((session) => session.workspaceId == normalizedWorkspaceId)
         .toList();
     _hydratedSessionWorkspaceIds.add(normalizedWorkspaceId);
+    final existingById = {
+      for (final session in current.sessions)
+        if (session.workspaceId == normalizedWorkspaceId)
+          session.sessionId: session,
+    };
+    final mergedOwned = [
+      for (final row in ownedSessions)
+        if (sessionHasDocument(row.sessionId) &&
+            existingById.containsKey(row.sessionId))
+          _overlayListFields(existingById[row.sessionId]!, row)
+        else
+          row,
+    ];
     final others = [
       for (final session in current.sessions)
         if (session.workspaceId != normalizedWorkspaceId) session,
@@ -145,15 +202,23 @@ class SessionDataStore {
       for (final workspace in current.workspaces)
         if (workspace.workspaceId == normalizedWorkspaceId)
           workspace.copyWith(
-            sessionIds: sortedSessionIdsByCreatedAt(ownedSessions),
+            sessionIds: sortedSessionIdsByCreatedAt(mergedOwned),
           )
         else
           workspace,
     ];
     return deriveSnapshot(
       workspaces: workspaces,
-      sessions: [...others, ...ownedSessions],
+      sessions: [...others, ...mergedOwned],
     );
+  }
+
+  ChatDataSnapshot mergeLoadedSession({
+    required ChatDataSnapshot current,
+    required AppSession session,
+  }) {
+    markSessionDocument(session.sessionId);
+    return replaceSession(current, session);
   }
 
   Future<List<AppSession>> loadSessions(SessionRepository repo) async {
@@ -172,6 +237,8 @@ class SessionDataStore {
     final workspacesMs = sw.elapsedMilliseconds;
     final sessions = await repo.loadSessions();
     _markAllWorkspacesHydrated(workspaces.map((w) => w.workspaceId));
+    _clearDocumentSessionIds();
+    _markSessionsAsDocuments(sessions);
     appLogger.i(
       '[boot] SessionDataStore.loadWorkspaceData '
       '${workspaces.length} workspaces (+${workspacesMs}ms) '
@@ -208,6 +275,7 @@ class SessionDataStore {
   }
 
   ChatDataSnapshot appendSession(ChatDataSnapshot base, AppSession session) {
+    markSessionDocument(session.sessionId);
     final alreadyPresent =
         base.sessions.any((s) => s.sessionId == session.sessionId);
     return deriveSnapshot(
@@ -250,6 +318,7 @@ class SessionDataStore {
   }
 
   ChatDataSnapshot removeSession(ChatDataSnapshot base, String sessionId) {
+    _documentSessionIds.remove(sessionId.trim());
     return deriveSnapshot(
       workspaces: [
         for (final workspace in base.workspaces)
@@ -324,6 +393,11 @@ class SessionDataStore {
     ChatDataSnapshot base,
     String workspaceId,
   ) {
+    for (final session in base.sessions) {
+      if (session.workspaceId == workspaceId) {
+        _documentSessionIds.remove(session.sessionId.trim());
+      }
+    }
     return deriveSnapshot(
       workspaces: [
         for (final w in base.workspaces)

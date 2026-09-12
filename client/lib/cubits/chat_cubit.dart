@@ -802,6 +802,10 @@ class ChatCubit extends Cubit<ChatState>
   bool sessionsLoadedForWorkspace(String workspaceId) =>
       _dataStore.sessionsLoadedForWorkspace(workspaceId);
 
+  /// True once this session's full `session.json` is in memory (not a list row).
+  bool sessionHasDocument(String sessionId) =>
+      _dataStore.sessionHasDocument(sessionId);
+
   @override
   SessionRepository? get sessionRepository => _sessionRepository;
 
@@ -1772,6 +1776,9 @@ class ChatCubit extends Cubit<ChatState>
     _dataStore.markWorkspacesSessionsHydrated(
       state.workspaces.map((workspace) => workspace.workspaceId),
     );
+    for (final session in sessions) {
+      _dataStore.markSessionDocument(session.sessionId);
+    }
     _emitSnapshot(
       _dataStore.deriveSnapshot(
         workspaces: state.workspaces,
@@ -1811,11 +1818,31 @@ class ChatCubit extends Cubit<ChatState>
     );
   }
 
+  Future<AppSession?> hydrateSessionDocument(
+    String workspaceId,
+    String sessionId,
+  ) async {
+    final repo = _sessionRepository;
+    final id = sessionId.trim();
+    final ws = workspaceId.trim();
+    if (repo == null || id.isEmpty || ws.isEmpty) return null;
+    if (_dataStore.sessionHasDocument(id)) {
+      return state.sessions.where((s) => s.sessionId == id).firstOrNull;
+    }
+    final full = await repo.loadSession(ws, id);
+    if (full == null || isClosed) return null;
+    _dataStore.markSessionDocument(id);
+    _emitSnapshot(
+      _dataStore.mergeLoadedSession(current: stateSnapshot(), session: full),
+    );
+    return full;
+  }
+
   Future<void> _hydrateWorkspaceSessions(
     SessionRepository repo,
     String workspaceId,
   ) async {
-    final sessions = await _dataStore.loadSessionsForWorkspace(
+    final sessions = await _dataStore.loadSessionListForWorkspace(
       repo,
       workspaceId,
     );
@@ -1904,6 +1931,7 @@ class ChatCubit extends Cubit<ChatState>
       workingDirectory: workingDirectory,
       fixedSessionId: fixedSessionId,
     );
+    _dataStore.markSessionDocument(session.sessionId);
     _emitSnapshot(_dataStore.appendSession(stateSnapshot(), session));
     return session;
   }
