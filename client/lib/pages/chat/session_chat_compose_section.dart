@@ -94,7 +94,6 @@ class SessionChatComposeSection extends StatelessWidget {
     required this.onPasteImage,
     required this.routeActive,
     required this.onSubmit,
-    this.permissionControl,
     this.userStoppedTurn = false,
     this.onUserStoppedTurn,
     this.turnStarting = false,
@@ -116,7 +115,6 @@ class SessionChatComposeSection extends StatelessWidget {
   final bool isSubmitting;
   final String workspaceRoot;
   final ConfigBundle workspaceBundle;
-  final ComposePermissionControl? permissionControl;
   final String? launchError;
   final VoidCallback? onRemapDeadTarget;
   final VoidCallback? onRetry;
@@ -415,11 +413,6 @@ class SessionChatComposeSection extends StatelessWidget {
                             ),
                             onChanged: (_) {},
                             chrome: BoundComposeChrome(
-                              permissionControl: permissionControlForCli(
-                                registry,
-                                lockedCli,
-                                permissionControl,
-                              ),
                               composeEnabled: !permissionWaiting,
                               onRemapDeadTarget: onRemapDeadTarget,
                               onRetry: onRetry,

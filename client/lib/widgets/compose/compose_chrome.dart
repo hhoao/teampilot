@@ -2,8 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:shared_ui/shared_ui.dart';
 
 import '../../models/launch_security_policy.dart';
-import '../../models/team_config.dart';
-import '../../services/cli/registry/cli_tool_registry.dart';
 
 sealed class ComposeChrome {
   const ComposeChrome();
@@ -28,14 +26,6 @@ final class ComposePermissionControl {
   final String? customLabel;
   final ValueChanged<LaunchSecurityPolicy> onSelected;
 }
-
-/// Only pass a proposed control to compose when the CLI exposes choices.
-ComposePermissionControl? permissionControlForCli(
-  CliToolRegistry registry,
-  CliTool cli,
-  ComposePermissionControl? proposed,
-) =>
-    registry.launchSecurityFor(cli).supportsUserConfiguration ? proposed : null;
 
 /// Toolbar chrome for landing / unbound compose (conversation mode, auto, expert chips).
 final class UnboundComposeChrome extends ComposeChrome {

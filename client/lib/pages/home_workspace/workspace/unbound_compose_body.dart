@@ -93,7 +93,6 @@ class UnboundComposeBody extends StatefulWidget {
     this.referencedSessionId,
     this.deferFieldMount = false,
     this.showLocationHeader = false,
-    this.permissionControl,
     super.key,
   });
 
@@ -109,7 +108,6 @@ class UnboundComposeBody extends StatefulWidget {
   /// When true, renders [WorkspaceLandingHeaderRow] above the compose card
   /// (Landing page). Ask AI keeps this false.
   final bool showLocationHeader;
-  final ComposePermissionControl? permissionControl;
 
   @override
   State<UnboundComposeBody> createState() => _UnboundComposeBodyState();
@@ -1576,9 +1574,6 @@ class _UnboundComposeBodyState extends State<UnboundComposeBody> {
       onSubmit: _submit,
       onChanged: (_) {},
       chrome: UnboundComposeChrome(
-        permissionControl: cli == null
-            ? null
-            : permissionControlForCli(registry, cli, widget.permissionControl),
         conversationModeLabel: _conversationModeLabel(l10n),
         autoChipLabel: _autoChipLabel(
           context,
