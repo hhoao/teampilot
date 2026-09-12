@@ -96,17 +96,14 @@ void main() {
         home: Scaffold(
           body: MultiRepositoryProvider(
             providers: [
-              
-            RepositoryProvider<HomeStorage>.value(value: testHomeStorage),RepositoryProvider<SessionRepository>.value(
+              RepositoryProvider<HomeStorage>.value(value: testHomeStorage),
+              RepositoryProvider<SessionRepository>.value(
                 value: sessionRepository,
               ),
             ],
             child: MultiBlocProvider(
               providers: [
-                BlocProvider<ChatCubit>(
-                  lazy: false,
-                  create: (_) => chatCubit,
-                ),
+                BlocProvider<ChatCubit>(lazy: false, create: (_) => chatCubit),
                 BlocProvider<WorkbenchCubit>.value(value: workbenchCubit),
                 BlocProvider<ShortcutCubit>.value(value: shortcutCubit),
                 BlocProvider<AutomationCubit>.value(value: automationCubit),
@@ -138,9 +135,7 @@ void main() {
     (tester) async {
       chatCubit.emit(
         chatCubit.state.copyWith(
-          sessions: [
-            _session(id: 'a', display: 'Alpha'),
-          ],
+          sessions: [_session(id: 'a', display: 'Alpha')],
         ),
       );
       workbenchCubit.openSession(_workspace.workspaceId, 'a');
@@ -153,122 +148,104 @@ void main() {
     },
   );
 
-  testWidgets(
-    'working-only emit does not rebuild open-tab host',
-    (tester) async {
-      chatCubit.emit(
-        chatCubit.state.copyWith(
-          sessions: [
-            _session(id: 'a', display: 'Alpha'),
-            _session(id: 'b', display: 'Beta'),
-          ],
-        ),
-      );
-      workbenchCubit.openSession(_workspace.workspaceId, 'a');
+  testWidgets('working-only emit does not rebuild open-tab host', (
+    tester,
+  ) async {
+    chatCubit.emit(
+      chatCubit.state.copyWith(
+        sessions: [
+          _session(id: 'a', display: 'Alpha'),
+          _session(id: 'b', display: 'Beta'),
+        ],
+      ),
+    );
+    workbenchCubit.openSession(_workspace.workspaceId, 'a');
 
-      await pumpSidebar(tester);
+    await pumpSidebar(tester);
 
-      expect(
-        find.byKey(const Key('workspace-sidebar-running-host-probe')),
-        findsOneWidget,
-      );
+    expect(
+      find.byKey(const Key('workspace-sidebar-running-host-probe')),
+      findsOneWidget,
+    );
 
-      final conversationProbe = _probeState(
-        tester,
-        WorkspaceSidebarKeys.conversationListProbe,
-      );
-      final runningProbe = _probeState(
-        tester,
-        WorkspaceSidebarKeys.runningHostProbe,
-      );
-      final groupHeaderProbe = _probeState(
-        tester,
-        const ValueKey('worktree-group-header-probe-project:/tmp/ws-1'),
-      );
-      final conversationBuilds = conversationProbe.buildCount;
-      final runningBuilds = runningProbe.buildCount;
-      final groupHeaderBuilds = groupHeaderProbe.buildCount;
+    final conversationProbe = _probeState(
+      tester,
+      WorkspaceSidebarKeys.conversationListProbe,
+    );
+    final runningProbe = _probeState(
+      tester,
+      WorkspaceSidebarKeys.runningHostProbe,
+    );
+    final conversationBuilds = conversationProbe.buildCount;
+    final runningBuilds = runningProbe.buildCount;
 
-      chatCubit.updateWorkingSessionsForTest({'a'});
-      await tester.pump();
-      await tester.pump(const Duration(milliseconds: 100));
+    chatCubit.updateWorkingSessionsForTest({'a'});
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 100));
 
-      expect(find.text('Open'), findsOneWidget);
-      expect(
-        conversationProbe.buildCount,
-        conversationBuilds,
-        reason: 'conversation list host must not rebuild on working-only',
-      );
-      expect(
-        groupHeaderProbe.buildCount,
-        groupHeaderBuilds,
-        reason: 'worktree group header must not rebuild on working-only',
-      );
-      expect(
-        runningProbe.buildCount,
-        runningBuilds,
-        reason: 'open-tab host must not rebuild when membership is unchanged',
-      );
+    expect(find.text('Open'), findsOneWidget);
+    expect(
+      conversationProbe.buildCount,
+      conversationBuilds,
+      reason: 'conversation list host must not rebuild on working-only',
+    );
+    expect(
+      runningProbe.buildCount,
+      runningBuilds,
+      reason: 'open-tab host must not rebuild when membership is unchanged',
+    );
 
-      final alphaTile = find.byKey(
-        const ValueKey('worktree-session-a'),
-      );
-      expect(alphaTile, findsOneWidget);
-      expect(
-        find.descendant(
-          of: alphaTile,
-          matching: find.byType(SessionWorkingSpinner),
-        ),
-        findsOneWidget,
-      );
+    final alphaTile = find.byKey(const ValueKey('workspace-sidebar-session-a'));
+    expect(alphaTile, findsOneWidget);
+    expect(
+      find.descendant(
+        of: alphaTile,
+        matching: find.byType(SessionWorkingSpinner),
+      ),
+      findsOneWidget,
+    );
 
-      final betaTile = find.byKey(
-        const ValueKey('worktree-session-b'),
-      );
-      expect(
-        find.descendant(
-          of: betaTile,
-          matching: find.byType(SessionWorkingSpinner),
-        ),
-        findsNothing,
-      );
-    },
-  );
+    final betaTile = find.byKey(const ValueKey('workspace-sidebar-session-b'));
+    expect(
+      find.descendant(
+        of: betaTile,
+        matching: find.byType(SessionWorkingSpinner),
+      ),
+      findsNothing,
+    );
+  });
 
-  testWidgets(
-    'activating another center tab does not rebuild open-tab host',
-    (tester) async {
-      chatCubit.emit(
-        chatCubit.state.copyWith(
-          sessions: [
-            _session(id: 'a', display: 'Alpha'),
-          ],
-        ),
-      );
-      workbenchCubit.openSession(_workspace.workspaceId, 'a');
-      workbenchCubit.openFile(_workspace.workspaceId, '/tmp/readme.md');
+  testWidgets('activating another center tab does not rebuild open-tab host', (
+    tester,
+  ) async {
+    chatCubit.emit(
+      chatCubit.state.copyWith(
+        sessions: [_session(id: 'a', display: 'Alpha')],
+      ),
+    );
+    workbenchCubit.openSession(_workspace.workspaceId, 'a');
+    workbenchCubit.openFile(_workspace.workspaceId, '/tmp/readme.md');
 
-      await pumpSidebar(tester);
+    await pumpSidebar(tester);
 
-      final runningProbe = _probeState(
-        tester,
-        WorkspaceSidebarKeys.runningHostProbe,
-      );
-      final runningBuilds = runningProbe.buildCount;
+    final runningProbe = _probeState(
+      tester,
+      WorkspaceSidebarKeys.runningHostProbe,
+    );
+    final runningBuilds = runningProbe.buildCount;
 
-      workbenchCubit.openFile(
-        _workspace.workspaceId,
-        '/tmp/readme.md',
-        activate: true,
-      );
-      await tester.pump();
+    workbenchCubit.openFile(
+      _workspace.workspaceId,
+      '/tmp/readme.md',
+      activate: true,
+    );
+    await tester.pump();
 
-      expect(
-        runningProbe.buildCount,
-        runningBuilds,
-        reason: 'open-tab host must ignore non-session bar changes',
-      );
-      expect(find.text('Open'), findsOneWidget);
-    },
-  );
+    expect(
+      runningProbe.buildCount,
+      runningBuilds,
+      reason: 'open-tab host must ignore non-session bar changes',
+    );
+    expect(find.text('Open'), findsOneWidget);
+  });
 }

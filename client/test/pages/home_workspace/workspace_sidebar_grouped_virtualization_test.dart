@@ -145,6 +145,21 @@ void main() {
     );
   });
 
+  testWidgets('groups mode keeps a large flat list virtualized', (
+    tester,
+  ) async {
+    const n = 300;
+    await emitSessions([
+      for (var i = 0; i < n; i++)
+        _session(id: 's$i', display: 'Session $i', createdAt: n - i),
+    ]);
+    await pumpSidebar(tester);
+
+    expect(find.byType(ReorderableListView), findsOneWidget);
+    expect(mountedTiles(tester), lessThan(n));
+    expect(find.text('Session 299'), findsNothing);
+  });
+
   testWidgets('project tree mode has project nodes with session children', (
     tester,
   ) async {
@@ -154,7 +169,12 @@ void main() {
     ]);
     await pumpSidebar(tester);
 
-    await tester.tap(find.text('Project tree'));
+    await tester.tap(
+      find.descendant(
+        of: find.byKey(const ValueKey('workspace-sidebar-view-switcher')),
+        matching: find.text('Project tree'),
+      ),
+    );
     await tester.pump();
     expect(find.byType(ReorderableListView), findsNothing);
     expect(

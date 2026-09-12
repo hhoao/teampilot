@@ -84,6 +84,16 @@ class WorkspaceSidebarLayout {
 
 enum _WorkspaceSidebarView { groups, projectTree }
 
+const _conversationSectionGap = 14.0;
+const _conversationHeaderBottomPadding = 8.0;
+const _normalConversationHeaderHeight =
+    tpSegmentedControlMinHeight +
+    6.0 +
+    TpIconButton.kCompactSize +
+    _conversationHeaderBottomPadding;
+const _archiveConversationHeaderHeight =
+    TpIconButton.kCompactSize + _conversationHeaderBottomPadding;
+
 /// Workspace conversation sidebar.
 class WorkspaceSidebar extends StatefulWidget {
   const WorkspaceSidebar({
@@ -156,9 +166,15 @@ class _WorkspaceSidebarState extends State<WorkspaceSidebar> {
           Expanded(
             child: LayoutBuilder(
               builder: (context, constraints) {
-                final maxRunningHeight = (constraints.maxHeight - 54.0)
-                    .clamp(0.0, double.infinity)
-                    .toDouble();
+                final headerHeight = _showingArchive
+                    ? _archiveConversationHeaderHeight
+                    : _normalConversationHeaderHeight;
+                final maxRunningHeight =
+                    (constraints.maxHeight -
+                            _conversationSectionGap -
+                            headerHeight)
+                        .clamp(0.0, double.infinity)
+                        .toDouble();
                 return Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
@@ -169,7 +185,7 @@ class _WorkspaceSidebarState extends State<WorkspaceSidebar> {
                         tabScopeId: widget.tabScopeId,
                       ),
                     ),
-                    const SizedBox(height: 14),
+                    const SizedBox(height: _conversationSectionGap),
                     Padding(
                       padding: const EdgeInsets.fromLTRB(4, 0, 0, 8),
                       child: _showingArchive
