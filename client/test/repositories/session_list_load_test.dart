@@ -188,15 +188,22 @@ void main() {
   test('createSession and deleteSession keep sessions-index in lockstep', () async {
     final tmp = await Directory.systemTemp.createTemp('list_index_mutate_');
     addTearDown(() => tmp.deleteSync(recursive: true));
+    final inner = LocalFilesystem();
+    final counting = _CountingFs(inner);
     final repo = SessionRepository(
       rootDir: tmp.path,
-      storage: _storage(tmp, LocalFilesystem()),
+      storage: _storage(tmp, counting),
     );
     final ws = await repo.createWorkspace([WorkspaceFolder(path: '/tmp/ws')]);
     final created = (await repo.createSession(ws.workspaceId)).session;
+    counting.sessionJsonReads = 0;
     final listed = await repo.loadSessionListForWorkspace(ws.workspaceId);
     expect(listed.single.sessionId, created.sessionId);
+    expect(counting.sessionJsonReads, 0);
     await repo.deleteSession(created.sessionId);
     expect(await repo.loadSessionListForWorkspace(ws.workspaceId), isEmpty);
+    counting.sessionJsonReads = 0;
+    expect(await repo.loadSessionListForWorkspace(ws.workspaceId), isEmpty);
+    expect(counting.sessionJsonReads, 0);
   });
 }

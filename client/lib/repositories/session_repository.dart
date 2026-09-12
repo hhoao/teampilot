@@ -913,10 +913,7 @@ class SessionRepository {
     );
     await fs.ensureSessionDir(workspaceId, sessionId);
     mark('ensure-dir');
-    await fs.writeText(
-      fs.sessionFile(workspaceId, sessionId),
-      jsonEncode(session.toJson()),
-    );
+    await _writeSession(fs, session);
     mark('write-session');
     appLogger.d(
       '[session-launch] createSession done '
