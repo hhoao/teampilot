@@ -248,12 +248,13 @@ class _WorkspacePageState extends State<WorkspacePage> {
       return;
     }
 
-    unawaited(
-      context.read<ChatCubit>().ensureSessionsForWorkspace(widget.workspaceId),
+    // WorkbenchLayoutPersistence.restoreForWorkspace must run AFTER sessions
+    // rehydrate: restore resolves session tabs against ChatCubit.state.sessions
+    // and prunes unknown ids, then persists the reduced bar. List hydrate is
+    // one sessions-index.json + listDir (not N session.json files).
+    await context.read<ChatCubit>().ensureSessionsForWorkspace(
+      widget.workspaceId,
     );
-    // Land the persisted split-layout snapshot before opening the deep-linked
-    // tab, so the restore cannot reset the tab away (no-op when already
-    // restored; concurrent callers share the in-flight restore).
     await _restoreWorkbenchLayoutSnapshot();
     if (!mounted) return;
 

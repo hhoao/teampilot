@@ -1827,7 +1827,8 @@ class ChatCubit extends Cubit<ChatState>
     final ws = workspaceId.trim();
     if (repo == null || id.isEmpty || ws.isEmpty) return null;
     if (_dataStore.sessionHasDocument(id)) {
-      return state.sessions.where((s) => s.sessionId == id).firstOrNull;
+      final cached = state.sessions.where((s) => s.sessionId == id).firstOrNull;
+      if (cached != null) return cached;
     }
     final full = await repo.loadSession(ws, id);
     if (full == null || isClosed) return null;
@@ -1835,6 +1836,8 @@ class ChatCubit extends Cubit<ChatState>
     _emitSnapshot(
       _dataStore.mergeLoadedSession(current: stateSnapshot(), session: full),
     );
+    final tab = _tabStore.openTabBySessionId(id);
+    if (tab != null) tab.persistedSession = full;
     return full;
   }
 

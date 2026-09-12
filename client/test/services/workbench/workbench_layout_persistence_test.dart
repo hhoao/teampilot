@@ -16,6 +16,7 @@ import 'package:teampilot/cubits/workbench/workbench_tab.dart';
 import 'package:teampilot/models/app_session.dart';
 import 'package:teampilot/models/workspace_folder.dart';
 import 'package:teampilot/repositories/automation_repository.dart';
+import 'package:teampilot/repositories/session_repository.dart';
 import 'package:teampilot/repositories/workbench_layout_snapshot_repository.dart';
 import 'package:teampilot/services/storage/workspace_layout.dart';
 import 'package:teampilot/services/workbench/workbench_layout_persistence.dart';
@@ -232,6 +233,39 @@ void main() {
     });
   });
 
+  test('restore after list-row hydrate keeps session tabs', () {
+    withPersistence((async, fs, workbench, chat, persistence) {
+      final seeder = WorkbenchCubit()
+        ..openSession(_ws, 's1')
+        ..openFloating(_ws, _sh1);
+      seedSnapshot(async, fs, seeder);
+      seeder.close();
+
+      // List-row stubs (empty folders) still resolve session ids. Restore
+      // before this ingest is the prune case above — WorkbenchLayoutPersistence
+      // requires sessions rehydrated first so this reduced bar is not saved.
+      chat.ingestWorkspaceSessionSnapshot(
+        workspaces: [],
+        sessions: [
+          AppSession(
+            sessionId: 's1',
+            workspaceId: _ws,
+            display: 'S one',
+            createdAt: 1,
+            updatedAt: 1,
+          ),
+        ],
+      );
+
+      workbench.openFloating(_ws, _sh2);
+      unawaited(persistence.restoreForWorkspace(_ws));
+      async.flushMicrotasks();
+
+      expect(workbench.centerOrder(_ws), [WorkbenchTabId.session('s1')]);
+      expect(workbench.floatingOrder(_ws), [_sh1]);
+    });
+  });
+
   test(
     'resolved session tabs get a ChatTab registered so panes render content',
     () {
@@ -294,4 +328,65 @@ void main() {
       expect(workbench.floatingOrder(_ws), [_sh3]);
     });
   });
+
+  test(
+    'restore hydrates list-row persistedSession from session.json',
+    () async {
+      final fs = InMemoryFilesystem();
+      final layout = WorkspaceLayout(teampilotRoot: _root, fs: fs);
+      final home = fakeHomeStorage(filesystem: fs, appDataRoot: _root);
+      final workbench = WorkbenchCubit();
+      addTearDown(workbench.close);
+      final repo = SessionRepository(rootDir: _root, storage: home);
+      final chat = ChatCubit(
+        executableResolver: () => 'true',
+        storage: home,
+        automationRepository: AutomationRepository(fs: fs, layout: layout),
+        sessionRepository: repo,
+      );
+      addTearDown(chat.close);
+      final persistence = WorkbenchLayoutPersistence(
+        workbench: workbench,
+        chat: chat,
+        storage: home,
+        fs: fs,
+        layout: layout,
+      )..start();
+      addTearDown(persistence.dispose);
+
+      final ws = await repo.createWorkspace([
+        const WorkspaceFolder(path: '/tmp'),
+      ]);
+      final created = (await repo.createSession(ws.workspaceId)).session;
+      expect(created.folders, isNotEmpty);
+      await chat.ensureSessionsForWorkspace(ws.workspaceId);
+      expect(chat.sessionHasDocument(created.sessionId), isFalse);
+      expect(
+        chat.state.sessions
+            .singleWhere((s) => s.sessionId == created.sessionId)
+            .folders,
+        isEmpty,
+      );
+
+      final seeder = WorkbenchCubit()
+        ..openSession(ws.workspaceId, created.sessionId);
+      await WorkbenchLayoutSnapshotRepository(
+        workspaceId: ws.workspaceId,
+        storage: home,
+        fs: fs,
+        layout: layout,
+      ).save(
+        seeder.centerLayout(ws.workspaceId),
+        seeder.floatingLayout(ws.workspaceId),
+      );
+      seeder.close();
+
+      await persistence.restoreForWorkspace(ws.workspaceId);
+
+      expect(chat.sessionHasDocument(created.sessionId), isTrue);
+      final tab = chat.tabStore.openTabBySessionId(created.sessionId);
+      expect(tab, isNotNull);
+      expect(tab!.persistedSession?.folders, isNotEmpty);
+    },
+  );
 }
