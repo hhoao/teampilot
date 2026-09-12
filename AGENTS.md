@@ -11,6 +11,7 @@ All app code lives under `client/lib/` (cubits, pages, repositories, services, m
 |-----|-----------|
 | [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) | Core concepts (Workspace / Launch profile / Expert / Session), bootstrap, routing, storage & CLI config inheritance, TeamBus, "where to change code" map, routes |
 | [docs/cli-architecture.md](docs/cli-architecture.md) | Adding or changing a CLI: tool definitions + capability pattern, anti-patterns |
+| [docs/pty-fullscreen-delivery.md](docs/pty-fullscreen-delivery.md) | Full-screen TUI prompt delivery: state machine (staging/pasted/awaitingAck), paste-ack vs submit-ack, time budgets |
 | [docs/workspace-storage-layout.md](docs/workspace-storage-layout.md) | On-disk layout under `<teampilotRoot>` |
 | [docs/CODE_QUALITY.md](docs/CODE_QUALITY.md) | Layering, file size limits, UI/state conventions, testing conventions |
 | [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md) | Clone, commands, tests (incl. test-loop rules), packaging, CI |

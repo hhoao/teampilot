@@ -24,5 +24,17 @@ void main() {
       expect(behavior, isNotNull);
       expect(behavior!.usesFullScreenInput, isTrue);
     });
+
+    test('input readiness waits past MCP boot repaints', () {
+      const behavior = OpencodeTerminalBehavior();
+
+      expect(behavior.inputReadiness.waitsForSurface, isTrue);
+      // Composer prefix only — no boot-gate trust screens to nudge.
+      expect(behavior.inputReadiness.bootGateNeedles, isEmpty);
+      expect(behavior.inputReadiness.readyDwell, const Duration(seconds: 1));
+      // Ready only when the live composer chrome is visible.
+      expect(behavior.inputReadiness.isReady('\u2503'), isTrue);
+      expect(behavior.inputReadiness.isReady(''), isFalse);
+    });
   });
 }

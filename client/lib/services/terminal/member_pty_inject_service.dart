@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'fullscreen_cr_ack_config.dart';
 import 'fullscreen_pty_automation.dart';
+import 'fullscreen_pty_submission_machine.dart';
 import 'terminal_fullscreen_pty_port.dart';
 import 'terminal_input_controller.dart';
 import 'terminal_screen_probe_controller.dart';
@@ -19,6 +20,11 @@ final class MemberPtyInjectService {
   final Set<String> _abortRequested = <String>{};
   final Map<String, int> _activeCounts = <String, int>{};
 
+  /// One state machine per seat for the *current* doorbell payload. Reused by
+  /// [retry] so a re-ring never re-pastes an already-staged message and never
+  /// leaves `staging` once the needle is confirmed ([FullscreenPtySubmission]).
+  final Map<String, FullscreenPtySubmission> _machines = {};
+
   void requestAbort(String sessionId, String memberId) {
     _abortRequested.add(_key(sessionId, memberId));
   }
@@ -33,7 +39,7 @@ final class MemberPtyInjectService {
     _abortRequested.remove(_key(sessionId, memberId));
   }
 
-  /// First mailbox delivery: clear, paste, then issue one CR.
+  /// First mailbox delivery: begin a new submission machine, then drive it.
   Future<FullscreenPtyDeliveryOutcome> deliver({
     required TerminalInputController input,
     required TerminalScreenProbeController probe,
@@ -44,26 +50,37 @@ final class MemberPtyInjectService {
     required bool Function() aborted,
     required FullscreenCrAckConfig crAckConfig,
     Stream<void>? painted,
-  }) => _run(
-    sessionId,
-    memberId,
-    () => _automation.deliverPasteAndSubmit(
-      port: _port(
-        input: input,
-        probe: probe,
-        sessionId: sessionId,
-        memberId: memberId,
-        aborted: aborted,
-        crAckConfig: crAckConfig,
-        painted: painted,
+  }) {
+    final key = _key(sessionId, memberId);
+    final machine = FullscreenPtySubmission(
+      budget: _submissionBudget(),
+      now: DateTime.now,
+    );
+    machine.begin();
+    _machines[key] = machine;
+    return _run(
+      sessionId,
+      memberId,
+      () => _automation.continueSubmission(
+        machine,
+        port: _port(
+          input: input,
+          probe: probe,
+          sessionId: sessionId,
+          memberId: memberId,
+          aborted: aborted,
+          crAckConfig: crAckConfig,
+          painted: painted,
+        ),
+        text: text,
+        pasteSettle: pasteSettle,
       ),
-      text: text,
-      pasteSettle: pasteSettle,
-    ),
-  );
+    );
+  }
 
-  /// TeamBus-owned retry: CR-only when paste is already staged; otherwise
-  /// re-pastes (see [FullscreenPtyAutomation.retry]).
+  /// TeamBus-owned retry: continues the same submission machine — re-staging
+  /// while the needle is absent, send-only once the needle is confirmed
+  /// (see [FullscreenPtyAutomation.continueSubmission]).
   Future<FullscreenPtyDeliveryOutcome> retry({
     required TerminalInputController input,
     required TerminalScreenProbeController probe,
@@ -74,23 +91,34 @@ final class MemberPtyInjectService {
     required bool Function() aborted,
     required FullscreenCrAckConfig crAckConfig,
     Stream<void>? painted,
-  }) => _run(
-    sessionId,
-    memberId,
-    () => _automation.retry(
-      port: _port(
-        input: input,
-        probe: probe,
-        sessionId: sessionId,
-        memberId: memberId,
-        aborted: aborted,
-        crAckConfig: crAckConfig,
-        painted: painted,
+  }) {
+    final key = _key(sessionId, memberId);
+    final machine = _machines[key] ??
+        (FullscreenPtySubmission(budget: _submissionBudget(), now: DateTime.now)
+          ..begin());
+    _machines[key] = machine;
+    return _run(
+      sessionId,
+      memberId,
+      () => _automation.continueSubmission(
+        machine,
+        port: _port(
+          input: input,
+          probe: probe,
+          sessionId: sessionId,
+          memberId: memberId,
+          aborted: aborted,
+          crAckConfig: crAckConfig,
+          painted: painted,
+        ),
+        text: text,
+        pasteSettle: pasteSettle,
       ),
-      text: text,
-      pasteSettle: pasteSettle,
-    ),
-  );
+    );
+  }
+
+  FullscreenPtySubmissionBudget _submissionBudget() =>
+      _automation.submissionBudget();
 
   Future<FullscreenPtyDeliveryOutcome> _run(
     String sessionId,
@@ -100,7 +128,12 @@ final class MemberPtyInjectService {
     final key = _key(sessionId, memberId);
     _activeCounts[key] = (_activeCounts[key] ?? 0) + 1;
     try {
-      return await action();
+      final outcome = await action();
+      if (outcome != FullscreenPtyDeliveryOutcome.crStuck &&
+          outcome != FullscreenPtyDeliveryOutcome.pasteNotFound) {
+        _machines.remove(key);
+      }
+      return outcome;
     } finally {
       final remaining = (_activeCounts[key] ?? 1) - 1;
       if (remaining > 0) {

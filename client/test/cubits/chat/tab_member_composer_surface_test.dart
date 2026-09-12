@@ -135,6 +135,42 @@ void main() {
     );
   });
 
+  test('Opencode composer chrome is not ready until dwell elapses', () async {
+    final harness = await _ComposerHarness.connect(cli: CliTool.opencode);
+    addTearDown(harness.dispose);
+
+    await harness.paintOpencodeComposer();
+    expect(
+      harness.delivery.isMemberComposerSurfaceReady(_sessionId, _memberId),
+      isFalse,
+    );
+    await Future<void>.delayed(const Duration(seconds: 1));
+    expect(
+      harness.delivery.isMemberComposerSurfaceReady(_sessionId, _memberId),
+      isTrue,
+    );
+  });
+
+  test('Opencode MCP connect repaint keeps composer unready', () async {
+    final harness = await _ComposerHarness.connect(cli: CliTool.opencode);
+    addTearDown(harness.dispose);
+
+    await harness.paintOpencodeComposer();
+    await Future<void>.delayed(const Duration(milliseconds: 400));
+    // MCP server finishes connecting -> status bar repaints (⊙ 2 MCP).
+    await harness.paintFlickerFrame('~/git/hhoa/huji:main  \u2299 2 MCP');
+    expect(
+      harness.delivery.isMemberComposerSurfaceReady(_sessionId, _memberId),
+      isFalse,
+      reason: 'MCP connect repaint must restart Opencode composer dwell',
+    );
+    await Future<void>.delayed(const Duration(seconds: 1));
+    expect(
+      harness.delivery.isMemberComposerSurfaceReady(_sessionId, _memberId),
+      isTrue,
+    );
+  });
+
   test('Claude boot frame is enough without composer chrome', () async {
     final harness = await _ComposerHarness.connect(cli: CliTool.claude);
     addTearDown(harness.dispose);
@@ -456,6 +492,19 @@ final class _ComposerHarness {
       window.contains('→'),
       isTrue,
       reason: 'Cursor composer chrome should land on the probe grid\n$window',
+    );
+  }
+
+  Future<void> paintOpencodeComposer() async {
+    await shell.emitPtyOutput('\u2503  Ask anything...\r\n\u2503\r\n');
+    final window = await _waitForWindow(
+      shell.session,
+      (text) => text.contains('\u2503'),
+    );
+    expect(
+      window.contains('\u2503'),
+      isTrue,
+      reason: 'Opencode composer chrome should land on the probe grid\n$window',
     );
   }
 

@@ -3,6 +3,7 @@ import 'package:teampilot/services/cli/cursor/capabilities/terminal_behavior.dar
 import 'package:teampilot/services/terminal/fullscreen_cr_ack_config.dart';
 import 'package:teampilot/services/terminal/fullscreen_input_screen_probe.dart';
 import 'package:teampilot/services/terminal/fullscreen_pty_automation.dart';
+import 'package:teampilot/services/terminal/fullscreen_pty_submission_machine.dart';
 import 'package:teampilot/services/terminal/fullscreen_pty_delivery_port.dart';
 import 'package:teampilot/services/team_bus/team_bus.dart';
 
@@ -29,8 +30,8 @@ void main() {
       expect(port.staged, isNull);
     });
 
-    test('returns pasteNotFound without internally re-pasting', () async {
-      final port = FakeFullscreenPtyDeliveryPort(pastesBeforeVisible: 2);
+    test('retries staging within budget then returns pasteNotFound', () async {
+      final port = FakeFullscreenPtyDeliveryPort(pastesBeforeVisible: 5);
       const text = '和你的队员打个招呼吧';
 
       final outcome = await automation.deliverPasteAndSubmit(
@@ -40,7 +41,39 @@ void main() {
       );
 
       expect(outcome, FullscreenPtyDeliveryOutcome.pasteNotFound);
-      expect(port.pasteCount, 1);
+      // instant staging budget = 2: first paste + one retry, then give up.
+      expect(port.pasteCount, 2);
+    });
+
+    test('single-attempt staging budget returns pasteNotFound after one paste',
+        () {
+      final single = FullscreenPtyAutomation(
+        timing: const PtyAutomationTiming(
+          afterClear: Duration.zero,
+          afterPaste: Duration.zero,
+          afterCr: Duration.zero,
+          afterReinject: Duration.zero,
+          crMaxAttempts: 2,
+          reinjectMaxAttempts: 1,
+          nudgeMaxAttempts: 2,
+          scanRows: 24,
+          pollTimeout: Duration.zero,
+          pollInterval: Duration.zero,
+          stagingMaxAttempts: 1,
+          stagingRetryInterval: Duration.zero,
+          sendAckTimeout: Duration.zero,
+        ),
+      );
+      return () async {
+        final port = FakeFullscreenPtyDeliveryPort(pastesBeforeVisible: 2);
+        final outcome = await single.deliverPasteAndSubmit(
+          port: port,
+          text: 'never lands',
+          pasteSettle: Duration.zero,
+        );
+        expect(outcome, FullscreenPtyDeliveryOutcome.pasteNotFound);
+        expect(port.pasteCount, 1);
+      }();
     });
 
     test('returns pasteNotFound when needle never appears', () async {
@@ -211,40 +244,23 @@ void main() {
     );
   });
 
-  group('nudgeCrUntilClear', () {
-    test('submits CR when text already visible', () async {
-      final port = FakeFullscreenPtyDeliveryPort()
-        ..staged = TeamBus.doorbellNotice;
+  group('continueSubmission (state-machine driven)', () {
+    FullscreenPtySubmission newMachine({FullscreenPtySubmissionBudget? budget}) =>
+        FullscreenPtySubmission(
+          budget: budget ??
+              const FullscreenPtySubmissionBudget(stagingMaxAttempts: 2),
+          now: DateTime.now,
+        );
 
-      final outcome = await automation.nudgeCrUntilClear(
-        port: port,
-        text: TeamBus.doorbellNotice,
-      );
-
-      expect(outcome, FullscreenPtyDeliveryOutcome.submitted);
-      expect(port.pasteCount, 0);
-      expect(port.crCount, 1);
-    });
-
-    test('returns pasteNotFound when text absent', () async {
+    test('re-pastes from staging when text is not visible on the grid', () async {
+      final machine = newMachine()..begin();
       final port = FakeFullscreenPtyDeliveryPort();
+      final text = TeamBus.doorbellNotice;
 
-      final outcome = await automation.nudgeCrUntilClear(
+      final outcome = await automation.continueSubmission(
+        machine,
         port: port,
-        text: TeamBus.doorbellNotice,
-      );
-
-      expect(outcome, FullscreenPtyDeliveryOutcome.pasteNotFound);
-    });
-  });
-
-  group('retry', () {
-    test('re-pastes when text is not visible on the grid', () async {
-      final port = FakeFullscreenPtyDeliveryPort();
-
-      final outcome = await automation.retry(
-        port: port,
-        text: TeamBus.doorbellNotice,
+        text: text,
         pasteSettle: Duration.zero,
       );
 
@@ -259,11 +275,15 @@ void main() {
       expect(port.crCount, 1);
     });
 
-    test('only nudges CR when text is already visible', () async {
+    test('locked pasted only nudges CR and never re-pastes', () async {
+      final machine = newMachine()..begin();
+      // Simulate the previous attempt already having staged the message.
+      machine.noteNeedleFound();
       final port = FakeFullscreenPtyDeliveryPort()
         ..staged = TeamBus.doorbellNotice;
 
-      final outcome = await automation.retry(
+      final outcome = await automation.continueSubmission(
+        machine,
         port: port,
         text: TeamBus.doorbellNotice,
         pasteSettle: Duration.zero,
@@ -275,29 +295,28 @@ void main() {
       expect(port.crCount, 1);
     });
 
-    test(
-      'skips re-paste entirely when hook already acked the submit',
-      () async {
-        final port = FakeFullscreenPtyDeliveryPort();
+    test('skips everything when hook already acked the submit', () async {
+      final machine = newMachine()..begin();
+      final port = FakeFullscreenPtyDeliveryPort();
 
-        final outcome = await automation.retry(
-          port: port,
-          text: TeamBus.doorbellNotice,
-          pasteSettle: Duration.zero,
-          isAcked: () => true,
-        );
+      final outcome = await automation.continueSubmission(
+        machine,
+        port: port,
+        text: TeamBus.doorbellNotice,
+        pasteSettle: Duration.zero,
+        isAcked: () => true,
+      );
 
-        expect(
-          outcome,
-          FullscreenPtyDeliveryOutcome.submitted,
-          reason:
-              'hook confirmed the prompt already committed; retry re-paste '
-              'would duplicate the user row',
-        );
-        expect(port.pasteCount, 0);
-        expect(port.crCount, 0);
-      },
-    );
+      expect(
+        outcome,
+        FullscreenPtyDeliveryOutcome.submitted,
+        reason:
+            'hook confirmed the prompt already committed; retry re-paste '
+            'would duplicate the user row',
+      );
+      expect(port.pasteCount, 0);
+      expect(port.crCount, 0);
+    });
   });
 
   test('isTextVisible uses PtyAutomationNeedle', () {

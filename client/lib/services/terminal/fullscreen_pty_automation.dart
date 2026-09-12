@@ -1,6 +1,7 @@
 import 'fullscreen_cr_ack_config.dart';
 import 'fullscreen_input_screen_probe.dart';
 import 'fullscreen_pty_delivery_port.dart';
+import 'fullscreen_pty_submission_machine.dart';
 import 'pty_automation_needle.dart';
 import 'pty_inject_ack_retry.dart' show PtyInjectAckTiming;
 import '../../utils/logging/logger.dart';
@@ -35,6 +36,9 @@ class PtyAutomationTiming {
     this.pollInterval = const Duration(milliseconds: 100),
     this.afterPasteAck = Duration.zero,
     this.afterDismissPopup = Duration.zero,
+    this.stagingMaxAttempts = 1,
+    this.stagingRetryInterval = Duration.zero,
+    this.sendAckTimeout = const Duration(seconds: 12),
   });
 
   factory PtyAutomationTiming.production() => const PtyAutomationTiming(
@@ -46,10 +50,16 @@ class PtyAutomationTiming {
     reinjectMaxAttempts: PtyInjectAckTiming.reinjectMaxAttempts,
     nudgeMaxAttempts: PtyInjectAckTiming.nudgeMaxAttempts,
     scanRows: 24,
-    pollTimeout: Duration(seconds: 3),
+    pollTimeout: Duration(seconds: 8),
     pollInterval: Duration(milliseconds: 100),
     afterPasteAck: Duration(milliseconds: 800),
     afterDismissPopup: Duration(milliseconds: 150),
+    // Staging is retried until a booting TUI (MCP / plugin connect repaints)
+    // settles and the needle appears; a miss is NOT a terminal failure.
+    // 90 attempts × 2s settle ≈ 3 minutes before pasteNotFound.
+    stagingMaxAttempts: 90,
+    stagingRetryInterval: Duration(seconds: 2),
+    sendAckTimeout: Duration(seconds: 12),
   );
 
   factory PtyAutomationTiming.instant() => const PtyAutomationTiming(
@@ -64,6 +74,9 @@ class PtyAutomationTiming {
     pollTimeout: Duration.zero,
     pollInterval: Duration.zero,
     afterDismissPopup: Duration.zero,
+    stagingMaxAttempts: 2,
+    stagingRetryInterval: Duration.zero,
+    sendAckTimeout: Duration.zero,
   );
 
   final Duration afterClear;
@@ -76,6 +89,16 @@ class PtyAutomationTiming {
   final int scanRows;
   final Duration pollTimeout;
   final Duration pollInterval;
+
+  /// First paste + retries before [FullscreenPtySubmissionPhase.pasted] locks.
+  /// `1` reproduces the single-attempt pre-state-machine behavior.
+  final int stagingMaxAttempts;
+
+  /// Quiet gap between staging retries; lets MCP/plugin repaints settle.
+  final Duration stagingRetryInterval;
+
+  /// Ceiling for send-phase ack (grid poll + hook) before giving up.
+  final Duration sendAckTimeout;
 
   /// Extra pause after the paste needle is visible, before CR. Needed when
   /// the TUI paints staged text while still inside bracketed-paste (Codex /
@@ -126,7 +149,48 @@ class FullscreenPtyAutomation {
   /// contains "@". Claude Code's file-mention autocomplete opens on "@path"
   /// pastes and consumes the submit CR (message never committed; verified
   /// against real Claude Code 2.1.211 in a PTY — 2026-09-04).
+  ///
+  /// The submission runs through [FullscreenPtySubmission]:
+  ///  - `staging` retries clear+paste until the needle appears (a booting TUI
+  ///    can eat the first paste while MCP/plugin connect repaints overwrite the
+  ///    half-painted composer), bounded by [PtyAutomationTiming.stagingMaxAttempts]
+  ///    — a miss is NOT a terminal failure yet, but a message is lost if we
+  ///    give up here, so the operator never hears success.
+  ///  - `pasted` locks the submission: once the needle is on the grid the
+  ///    machine never returns to `staging`, so send-phase retries only re-CR
+  ///    and can never duplicate a user row.
   Future<FullscreenPtyDeliveryOutcome> deliverPasteAndSubmit({
+    required FullscreenPtyDeliveryPort port,
+    required String text,
+    required Duration pasteSettle,
+    bool Function()? isAcked,
+    bool dismissMentionPopup = false,
+  }) {
+    final machine = FullscreenPtySubmission(
+      budget: submissionBudget(),
+      now: DateTime.now,
+    );
+    machine.begin();
+    return continueSubmission(
+      machine,
+      port: port,
+      text: text,
+      pasteSettle: pasteSettle,
+      isAcked: isAcked,
+      dismissMentionPopup: dismissMentionPopup,
+    );
+  }
+
+  /// Drives an existing [FullscreenPtySubmission] to a terminal phase.
+  ///
+  /// One submission = one [FullscreenPtySubmission] instance. Gate retries
+  /// (doorbell re-ring) reuse the same instance so the state machine keeps its
+  /// invariant across attempts:
+  ///  - `staging`  → re-staging (retriable) until the needle appears;
+  ///  - `pasted`   → send only (CR), never returns to staging;
+  ///  - `awaitingAck` → re-CR / wait for hook, never re-pastes.
+  Future<FullscreenPtyDeliveryOutcome> continueSubmission(
+    FullscreenPtySubmission machine, {
     required FullscreenPtyDeliveryPort port,
     required String text,
     required Duration pasteSettle,
@@ -134,93 +198,177 @@ class FullscreenPtyAutomation {
     bool dismissMentionPopup = false,
   }) async {
     if (isAcked?.call() ?? false) {
-      return FullscreenPtyDeliveryOutcome.submitted;
+      machine.noteAckedWhileStaging();
+      return _machineOutcome(machine, stagingExhausted: true);
     }
-    if (port.isAborted) return FullscreenPtyDeliveryOutcome.aborted;
+    if (port.isAborted) {
+      machine.abort();
+      return _machineOutcome(machine, stagingExhausted: true);
+    }
+    return _driveToTerminal(
+      machine,
+      port: port,
+      text: text,
+      pasteSettle: pasteSettle,
+      isAcked: isAcked,
+      dismissMentionPopup: dismissMentionPopup,
+    );
+  }
+
+  Future<FullscreenPtyDeliveryOutcome> _driveToTerminal(
+    FullscreenPtySubmission machine, {
+    required FullscreenPtyDeliveryPort port,
+    required String text,
+    required Duration pasteSettle,
+    bool Function()? isAcked,
+    bool dismissMentionPopup = false,
+  }) async {
+    var anchor = _stagedAnchor(port, text);
+    while (!machine.isTerminal) {
+      switch (machine.phase) {
+        case FullscreenPtySubmissionPhase.staging:
+          anchor = await _stagingOnce(
+            machine,
+            port: port,
+            text: text,
+            pasteSettle: pasteSettle,
+            isAcked: isAcked,
+          );
+          if (machine.phase == FullscreenPtySubmissionPhase.staging) {
+            if (isAcked?.call() ?? false) {
+              machine.noteAckedWhileStaging();
+              return _machineOutcome(machine, stagingExhausted: true);
+            }
+            if (port.isAborted) {
+              machine.abort();
+              return _machineOutcome(machine, stagingExhausted: true);
+            }
+            if (machine.canRetryStaging) {
+              if (_timing.stagingRetryInterval > Duration.zero) {
+                await Future<void>.delayed(_timing.stagingRetryInterval);
+              }
+              continue;
+            }
+            machine.noteStagingMiss();
+            _logProbeMiss(port, PtyAutomationNeedle.forText(text), text, outcome: 'pasteNotFound');
+            return _machineOutcome(machine, stagingExhausted: true);
+          }
+          continue;
+        case FullscreenPtySubmissionPhase.pasted:
+        case FullscreenPtySubmissionPhase.awaitingAck:
+          await _sendOnce(
+            machine,
+            port: port,
+            anchor: anchor!,
+            text: text,
+            pasteSettle: pasteSettle,
+            isAcked: isAcked,
+            dismissMentionPopup: dismissMentionPopup,
+          );
+          continue;
+        case FullscreenPtySubmissionPhase.idle ||
+        FullscreenPtySubmissionPhase.done ||
+        FullscreenPtySubmissionPhase.failed ||
+        FullscreenPtySubmissionPhase.aborted:
+          return _machineOutcome(machine, stagingExhausted: true);
+      }
+    }
+    return _machineOutcome(machine, stagingExhausted: true);
+  }
+
+  /// One clear+paste+probe attempt. Returns the located anchor (or null).
+  Future<FullscreenPromptAnchor?> _stagingOnce(
+    FullscreenPtySubmission machine, {
+    required FullscreenPtyDeliveryPort port,
+    required String text,
+    required Duration pasteSettle,
+    bool Function()? isAcked,
+  }) async {
+    machine.noteStagingAttempt();
     bool canExecute() => !(isAcked?.call() ?? false);
-    final needle = PtyAutomationNeedle.forText(text);
     await port.syncDisplayGrid();
     await port.clearStagedInput(canExecute: canExecute);
     await Future<void>.delayed(_timing.afterClear);
     await port.pasteText(text, canExecute: canExecute);
+    final needle = PtyAutomationNeedle.forText(text);
     final anchor = await _pollForNeedle(
       port,
       needle,
       minSettle: pasteSettle + _timing.afterPaste + _extraSettleForLength(text),
       pollTimeout: _pastePollBudget(text),
     );
-    if (anchor == null) {
-      _logProbeMiss(port, needle, text, outcome: 'pasteNotFound');
-      return FullscreenPtyDeliveryOutcome.pasteNotFound;
+    if (anchor != null) {
+      machine.noteNeedleFound(); // lock — never return to staging
     }
-    await _settleAfterPasteAck(port, pasteSettle);
-    if (dismissMentionPopup && text.contains('@')) {
-      // Mention autocomplete swallows the submit CR; close it first.
-      // Harmless when no popup opened (bare ESC in the composer).
-      await port.dismissComposerPopup();
-      // Let the TUI parse the ESC as its own keystroke before the CR lands;
-      // back-to-back ESC+CR reads as Alt+Enter = newline, not submit.
-      await Future<void>.delayed(
-        _timing.afterDismissPopup > Duration.zero
-            ? _timing.afterDismissPopup
-            : const Duration(milliseconds: 150),
-      );
-    }
-    return _pollCrUntilAnchorClears(
-      port,
-      anchor,
-      isAcked: isAcked,
-      canExecute: canExecute,
-    );
+    return anchor;
   }
 
-  /// CR-only pass when [text] is already visible on the grid.
-  Future<FullscreenPtyDeliveryOutcome> nudgeCrUntilClear({
-    required FullscreenPtyDeliveryPort port,
-    required String text,
-    bool Function()? isAcked,
-  }) async {
-    final needle = PtyAutomationNeedle.forText(text);
-    if (isAcked?.call() ?? false) {
-      return FullscreenPtyDeliveryOutcome.submitted;
-    }
-    if (port.isAborted) return FullscreenPtyDeliveryOutcome.aborted;
-    await port.syncDisplayGrid();
-    final scanRows = _probeScanRows(port);
-    final anchor = port.locateNeedle(needle, scanRows: scanRows);
-    if (anchor == null) {
-      _logProbeMiss(port, needle, text, outcome: 'nudge-pasteNotFound');
-      return FullscreenPtyDeliveryOutcome.pasteNotFound;
-    }
-    return _pollCrUntilAnchorClears(port, anchor, isAcked: isAcked);
-  }
-
-  /// Complete a prior delivery attempt.
+  /// Send phase of a locked submission: settle, optional popup dismiss, CR.
   ///
-  /// If the paste is already staged on the grid, only CR (swallowed-submit case).
-  /// If the needle is absent — deferred surface, pasteNotFound, or cleared
-  /// composer — re-run [deliverPasteAndSubmit]. CR-only forever after a miss
-  /// leaves mixed-team mail mute.
-  Future<FullscreenPtyDeliveryOutcome> retry({
+  /// Never re-pastes: staging is closed, so retries here only re-CR.
+  ///
+  /// `_pollCrUntilAnchorClears` owns the full CR retry loop (grid proof
+  /// guards against duplicate user rows); the machine just records the
+  /// terminal result. A later gate retry (doorbell re-ring) continues a
+  /// fresh submission machine — never a stale `failed` one.
+  Future<void> _sendOnce(
+    FullscreenPtySubmission machine, {
     required FullscreenPtyDeliveryPort port,
+    required FullscreenPromptAnchor anchor,
     required String text,
     required Duration pasteSettle,
     bool Function()? isAcked,
+    bool dismissMentionPopup = false,
   }) async {
+    if (machine.phase == FullscreenPtySubmissionPhase.pasted) {
+      await _settleAfterPasteAck(port, pasteSettle);
+      if (dismissMentionPopup && text.contains('@')) {
+        // Mention autocomplete swallows the submit CR; close it first.
+        // Harmless when no popup opened (bare ESC in the composer).
+        await port.dismissComposerPopup();
+        // Let the TUI parse the ESC as its own keystroke before the CR lands;
+        // back-to-back ESC+CR reads as Alt+Enter = newline, not submit.
+        await Future<void>.delayed(
+          _timing.afterDismissPopup > Duration.zero
+              ? _timing.afterDismissPopup
+              : const Duration(milliseconds: 150),
+        );
+      }
+      machine.noteCrIssued();
+    }
+    if (machine.phase != FullscreenPtySubmissionPhase.awaitingAck) return;
     if (isAcked?.call() ?? false) {
-      return FullscreenPtyDeliveryOutcome.submitted;
+      machine.noteSubmitted();
+      return;
     }
-    await port.syncDisplayGrid();
-    final needle = PtyAutomationNeedle.forText(text);
-    if (_locatePasteAck(port, needle) != null) {
-      return nudgeCrUntilClear(port: port, text: text, isAcked: isAcked);
+    if (port.isAborted) {
+      machine.abort();
+      return;
     }
-    return deliverPasteAndSubmit(
-      port: port,
-      text: text,
-      pasteSettle: pasteSettle,
+    final outcome = await _pollCrUntilAnchorClears(
+      port,
+      anchor,
       isAcked: isAcked,
+      canExecute: () => !(isAcked?.call() ?? false),
     );
+    switch (outcome) {
+      case FullscreenPtyDeliveryOutcome.submitted:
+        machine.noteSubmitted();
+      case FullscreenPtyDeliveryOutcome.crStuck:
+        machine.noteSendExhausted();
+      case FullscreenPtyDeliveryOutcome.aborted:
+        machine.abort();
+      case FullscreenPtyDeliveryOutcome.pasteNotFound:
+        machine.abort();
+    }
+  }
+
+  FullscreenPromptAnchor? _stagedAnchor(
+    FullscreenPtyDeliveryPort port,
+    String text,
+  ) {
+    final needle = PtyAutomationNeedle.forText(text);
+    return port.locateNeedle(needle, scanRows: _probeScanRows(port));
   }
 
   Future<FullscreenPtyDeliveryOutcome> _pollCrUntilAnchorClears(
@@ -483,4 +631,29 @@ class FullscreenPtyAutomation {
       '${port.describeProbeWindow(scanRows: scanRows)}',
     );
   }
+
+  FullscreenPtySubmissionBudget submissionBudget() =>
+      FullscreenPtySubmissionBudget(
+        stagingMaxAttempts: _timing.stagingMaxAttempts,
+        stagingRetryInterval: _timing.stagingRetryInterval,
+        sendMaxCrAttempts: _timing.crMaxAttempts,
+        sendAckTimeout: _timing.sendAckTimeout,
+      );
+
+  FullscreenPtyDeliveryOutcome _machineOutcome(
+    FullscreenPtySubmission machine, {
+    bool? stagingExhausted,
+  }) => switch (machine.phase) {
+    FullscreenPtySubmissionPhase.done =>
+      FullscreenPtyDeliveryOutcome.submitted,
+    FullscreenPtySubmissionPhase.failed =>
+      switch (machine.failedReason) {
+        FullscreenPtySubmissionOutcome.crStuck =>
+          FullscreenPtyDeliveryOutcome.crStuck,
+        _ => FullscreenPtyDeliveryOutcome.pasteNotFound,
+      },
+    FullscreenPtySubmissionPhase.aborted =>
+      FullscreenPtyDeliveryOutcome.aborted,
+    _ => throw StateError('submission machine ended non-terminal: ${machine.phase}'),
+  };
 }

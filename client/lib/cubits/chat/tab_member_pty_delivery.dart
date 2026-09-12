@@ -13,7 +13,6 @@ import '../../services/prompt_delivery/prompt_delivery.dart';
 import '../../services/prompt_delivery/prompt_delivery_coordinator.dart';
 import '../../services/prompt_delivery/prompt_delivery_store.dart';
 import '../../services/terminal/session_member_cli_resolver.dart';
-import '../../services/terminal/terminal_input_command_queue.dart';
 import '../../services/terminal/terminal_fullscreen_pty_port.dart';
 import '../../services/terminal/terminal_session.dart';
 import '../../utils/logging/logger.dart';
@@ -185,7 +184,6 @@ final class TabMemberPtyDelivery {
         memberId: memberId,
         shell: shell,
         text: trimmed,
-        automation: automation,
         isMailDoorbell: isMailDoorbell,
         isOperatorTurn: isOperatorTurn,
       );
@@ -227,25 +225,6 @@ final class TabMemberPtyDelivery {
       '[session-runtime] retry-delivery member=$memberId session=$sessionId '
       'preview=${_doorbellLogPreview(trimmed)}',
     );
-    if (!_memberUsesGridPasteAck(sessionId, memberId)) {
-      final settle = _pasteSettleForMember(
-        sessionId,
-        memberId,
-        automation: false,
-      );
-      await shell.input.submitFullScreenInput(
-        trimmed,
-        pasteSettleDelay: settle,
-      );
-      if (isMailDoorbell) {
-        _reportMailDeliveryOutcome(
-          sessionId,
-          memberId,
-          FullscreenPtyDeliveryOutcome.submitted,
-        );
-      }
-      return;
-    }
     final settle = _pasteSettleForMember(sessionId, memberId, automation: true);
     final outcome = await _ptyInject.retry(
       input: shell.input,
@@ -392,7 +371,6 @@ final class TabMemberPtyDelivery {
     required String memberId,
     required TerminalSession shell,
     required String text,
-    required bool automation,
     required bool isMailDoorbell,
     required bool isOperatorTurn,
   }) async {
@@ -400,37 +378,24 @@ final class TabMemberPtyDelivery {
     final settle = _pasteSettleForMember(
       sessionId,
       memberId,
-      automation: automation && gridAck,
+      automation: gridAck,
     );
-    if (automation && gridAck) {
-      final outcome = await _ptyInject.deliver(
-        input: shell.input,
-        probe: shell.probe,
-        sessionId: sessionId,
-        memberId: memberId,
-        text: text,
-        pasteSettle: settle,
-        aborted: () =>
-            _ptyAckAborted(shell, sessionId: sessionId, memberId: memberId),
-        crAckConfig: _crAckForMember(sessionId, memberId),
-        painted: shell.observationPainted,
-      );
-      if (isMailDoorbell) {
-        _reportMailDeliveryOutcome(sessionId, memberId, outcome);
-      } else if (isOperatorTurn &&
-          outcome == FullscreenPtyDeliveryOutcome.submitted) {
-        _markMemberTurnStartedOnSubmitSuccess(sessionId, memberId);
-      }
-      return;
-    }
-    await shell.input.submitFullScreenInput(text, pasteSettleDelay: settle);
+    final outcome = await _ptyInject.deliver(
+      input: shell.input,
+      probe: shell.probe,
+      sessionId: sessionId,
+      memberId: memberId,
+      text: text,
+      pasteSettle: settle,
+      aborted: () =>
+          _ptyAckAborted(shell, sessionId: sessionId, memberId: memberId),
+      crAckConfig: _crAckForMember(sessionId, memberId),
+      painted: shell.observationPainted,
+    );
     if (isMailDoorbell) {
-      _reportMailDeliveryOutcome(
-        sessionId,
-        memberId,
-        FullscreenPtyDeliveryOutcome.submitted,
-      );
-    } else if (isOperatorTurn) {
+      _reportMailDeliveryOutcome(sessionId, memberId, outcome);
+    } else if (isOperatorTurn &&
+        outcome == FullscreenPtyDeliveryOutcome.submitted) {
       _markMemberTurnStartedOnSubmitSuccess(sessionId, memberId);
     }
   }
@@ -614,58 +579,45 @@ final class TabPromptDeliveryCommands implements PromptDeliveryCommands {
     if (shell == null) return PromptSubmissionResult.failed;
     final behavior = CliToolRegistry.builtIn()
         .capability<TerminalBehaviorCapability>(delivery.cli);
-    if (behavior?.usesFullScreenInput == true &&
-        behavior?.usesGridPasteAck == true) {
-      final outcome = await _automation.deliverPasteAndSubmit(
-        port: TerminalFullscreenPtyPort(
-          input: shell.input,
-          probe: shell.probe,
-          // NOT !canExecute(): the delivery fence closes when the hook
-          // confirms the submit (state leaves submitIssued); that is a
-          // success, not an abort. Real aborts are shell death, and the
-          // queue's own canExecute fence still drops obsolete writes.
-          aborted: () => !shell.isConnected,
-          crAckConfig: FullscreenCrAckConfig(
-            strategy:
-                behavior?.fullscreenCrAckStrategy ??
-                FullscreenCrAckStrategy.anchorCellClears,
-            composerPrefix: behavior?.fullscreenComposerPrefix,
-          ),
-          painted: shell.observationPainted,
+    final outcome = await _automation.deliverPasteAndSubmit(
+      port: TerminalFullscreenPtyPort(
+        input: shell.input,
+        probe: shell.probe,
+        // NOT !canExecute(): the delivery fence closes when the hook
+        // confirms the submit (state leaves submitIssued); that is a
+        // success, not an abort. Real aborts are shell death, and the
+        // queue's own canExecute fence still drops obsolete writes.
+        aborted: () => !shell.isConnected,
+        crAckConfig: FullscreenCrAckConfig(
+          strategy:
+              behavior?.fullscreenCrAckStrategy ??
+              FullscreenCrAckStrategy.anchorCellClears,
+          composerPrefix: behavior?.fullscreenComposerPrefix,
         ),
-        text: delivery.text,
-        pasteSettle:
-            behavior?.fullScreenPasteSettleDelay ??
-            TerminalInputController.fullScreenSubmitDelay,
-        isAcked: isAcked,
-        dismissMentionPopup: behavior?.mentionAutocompletePopup ?? false,
-      );
-      switch (outcome) {
-        case FullscreenPtyDeliveryOutcome.submitted:
-          return PromptSubmissionResult.submitted;
-        case FullscreenPtyDeliveryOutcome.aborted:
-          return isAcked?.call() ?? false
-              ? PromptSubmissionResult.submitted
-              : (canExecute()
-                    ? PromptSubmissionResult.unconfirmed
-                    : PromptSubmissionResult.dropped);
-        case FullscreenPtyDeliveryOutcome.pasteNotFound:
-        case FullscreenPtyDeliveryOutcome.crStuck:
-          if (isAcked?.call() ?? false) {
-            return PromptSubmissionResult.submitted;
-          }
-          return PromptSubmissionResult.unconfirmed;
-      }
-    }
-    final result = await shell.input.submitFullScreenInput(
-      delivery.text,
-      canExecute: canExecute,
+        painted: shell.observationPainted,
+      ),
+      text: delivery.text,
+      pasteSettle:
+          behavior?.fullScreenPasteSettleDelay ??
+          TerminalInputController.fullScreenSubmitDelay,
+      isAcked: isAcked,
+      dismissMentionPopup: behavior?.mentionAutocompletePopup ?? false,
     );
-    switch (result) {
-      case TerminalInputCommandResult.written:
+    switch (outcome) {
+      case FullscreenPtyDeliveryOutcome.submitted:
         return PromptSubmissionResult.submitted;
-      case TerminalInputCommandResult.dropped:
-        return PromptSubmissionResult.dropped;
+      case FullscreenPtyDeliveryOutcome.aborted:
+        return isAcked?.call() ?? false
+            ? PromptSubmissionResult.submitted
+            : (canExecute()
+                  ? PromptSubmissionResult.unconfirmed
+                  : PromptSubmissionResult.dropped);
+      case FullscreenPtyDeliveryOutcome.pasteNotFound:
+      case FullscreenPtyDeliveryOutcome.crStuck:
+        if (isAcked?.call() ?? false) {
+          return PromptSubmissionResult.submitted;
+        }
+        return PromptSubmissionResult.unconfirmed;
     }
   }
 }

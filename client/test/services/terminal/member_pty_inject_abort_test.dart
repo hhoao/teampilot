@@ -4,6 +4,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/services/terminal/fullscreen_cr_ack_config.dart';
 import 'package:teampilot/services/terminal/fullscreen_pty_automation.dart';
 import 'package:teampilot/services/terminal/fullscreen_pty_delivery_port.dart';
+import 'package:teampilot/services/terminal/fullscreen_pty_submission_machine.dart';
 import 'package:teampilot/services/terminal/member_pty_inject_service.dart';
 import 'package:teampilot/services/terminal/terminal_session.dart';
 import '../../support/in_memory_filesystem.dart';
@@ -13,7 +14,8 @@ final class _PausedAutomation extends FullscreenPtyAutomation {
   final release = Completer<void>();
 
   @override
-  Future<FullscreenPtyDeliveryOutcome> deliverPasteAndSubmit({
+  Future<FullscreenPtyDeliveryOutcome> continueSubmission(
+    FullscreenPtySubmission machine, {
     required FullscreenPtyDeliveryPort port,
     required String text,
     required Duration pasteSettle,
