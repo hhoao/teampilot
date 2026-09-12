@@ -6,6 +6,7 @@ import '../../../services/cli/codex/capabilities/headless.dart';
 import '../../../services/cli/cursor/cursor_bootstrap_entry.dart';
 import '../../../services/cli/flashskyai/capabilities/headless.dart';
 import '../../../services/cli/flashskyai/capabilities/provider.dart';
+import '../../../services/cli/gemini/gemini_bootstrap_entry.dart';
 import '../../../services/cli/opencode/capabilities/headless.dart';
 import '../../../services/cli/opencode/opencode_bootstrap_entry.dart';
 import 'capabilities/member_config_inspection_capability.dart';
@@ -30,6 +31,7 @@ import '../claude/claude_tool.dart';
 import '../codex/codex_tool.dart';
 import '../cursor/cursor_tool.dart';
 import '../flashskyai/flashskyai_tool.dart';
+import '../gemini/capabilities/acp.dart';
 import '../gemini/gemini_tool.dart';
 import '../opencode/opencode_tool.dart';
 
@@ -43,6 +45,7 @@ void registerBuiltInCliTools(
     CliTool.opencode,
   );
   final cursorEntry = bootstrap?.entry<CursorBootstrapEntry>(CliTool.cursor);
+  final geminiEntry = bootstrap?.entry<GeminiBootstrapEntry>(CliTool.gemini);
   final storage = bootstrap?.storage;
 
   registry.register(
@@ -93,7 +96,13 @@ void registerBuiltInCliTools(
     ),
   );
 
-  registry.register(const GeminiCliTool());
+  registry.register(
+    GeminiCliTool(
+      // Non-const when a bootstrap entry supplies the credential source;
+      // the pre-configure default omits GEMINI_API_KEY from the agent env.
+      acp: GeminiAcpCapability(credentialSource: geminiEntry?.credentialSource),
+    ),
+  );
 
   assert(
     CliTool.values.every((cli) => registry.tryGet(cli) != null),

@@ -2,13 +2,21 @@ import 'dart:async';
 
 import '../../../models/app_session.dart';
 import '../../../models/member_remote_provision_progress.dart';
+import '../../../models/team_config.dart' show CliTool;
 import '../../../services/ssh/ssh_member_session.dart';
 import '../../../services/team_bus/mcp/teammate_bus_session_registry.dart';
 import '../../../services/team_bus/remote/remote_bus_mount.dart';
 import '../../../services/team_bus/team_bus.dart';
 import '../../../services/terminal/terminal_session.dart';
+import '../acp/acp_chat_runtime_cubit.dart';
 import 'chat_tab_info.dart';
 import 'session_workbench_view.dart';
+
+/// True when [session] is a terminal-less ACP chat session (phase 1: a
+/// personal gemini session). Such sessions skip shell-connect and attach an
+/// [AcpChatRuntimeCubit] instead; the chat center view is their only view.
+bool isAcpChatSession(AppSession session) =>
+    session.sessionTeam.trim().isEmpty && session.cli == CliTool.gemini;
 
 /// Per-tab runtime aggregate shared by ChatCubit and its collaborators.
 /// (Formerly the private `_InternalTab`.)
@@ -57,6 +65,11 @@ class ChatTab {
 
   final Map<String, TerminalSession> memberShells = {};
 
+  /// Terminal-less ACP chat runtime for this tab (gemini phase 1). Parallel
+  /// to [memberShells]: set at tab connect for an ACP session and closed with
+  /// the tab. Chat center view only — no terminal toggle for this kind.
+  AcpChatRuntimeCubit? acpRuntime;
+
   /// mixed 模式：本 team 会话的进程内总线与其 gateway 注册（随 tab 建/销）。
   TeamBus? teamBus;
   TeammateBusSessionRegistration? busSessionRegistration;
@@ -95,6 +108,8 @@ class ChatTab {
     teamBus?.dispose();
     teamBus = null;
     busSessionRegistration = null;
+    await acpRuntime?.close();
+    acpRuntime = null;
   }
 
   /// Member ids with a scheduled or in-flight member connect.
@@ -117,6 +132,9 @@ class ChatTab {
     if (resumeSession != null) yield resumeSession!;
     yield* memberShells.values;
   }
+
+  /// True while the ACP runtime is live (never in [sessions] — no PTY).
+  bool get isAcpRunning => acpRuntime != null;
 
   bool get isRunning => sessions.any((session) => session.isRunning);
 }

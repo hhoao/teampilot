@@ -10,6 +10,7 @@ import '../../services/launch/session_connect_orchestrator.dart';
 import '../../services/launch/workspace_provision_coordinator.dart';
 import '../../services/install/install_job_registry.dart';
 import '../../services/session/session_lifecycle_service.dart';
+import '../../services/acp/acp_chat_strings.dart';
 import '../../services/agent_status/agent_status_seat_lookup.dart';
 import '../../services/agent_status/ask_user_answer_pending_store.dart';
 import '../../cubits/agent_attention_cubit.dart';
@@ -30,6 +31,7 @@ import 'chat_tab_store.dart';
 /// Connect-state transitions owned by [ChatCubit] (via [ChatConnectStateMixin]).
 abstract interface class SessionConnectStatePort {
   void beginSessionConnect(String sessionId);
+
   /// [error]/[stackTrace] carry the original failure when one exists.
   void failSessionConnect(
     String sessionId,
@@ -168,6 +170,11 @@ abstract interface class SessionLaunchHost
   /// Terminal theme for member PTY spawn (COLORFGBG / Claude `theme: auto`).
   /// Null skips apply — tests and early bootstrap may omit it.
   TerminalTheme? resolveTerminalThemeForLaunch();
+
+  /// Localized copy for terminal-less ACP chat sessions (gemini phase 1).
+  /// Null in tests / before the app shell wires l10n — the launch service
+  /// falls back to bare diagnostic strings.
+  AcpChatStrings? Function()? get acpChatStrings => null;
 }
 
 /// Drop attention + seat lookup (+ pending ask answers) for every seat in

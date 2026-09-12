@@ -64,7 +64,8 @@ class SessionTabSurfaceCoordinator {
     String sessionId, {
     bool preview,
     bool activate,
-  })? onSessionTabOpened;
+  })?
+  onSessionTabOpened;
 
   final SessionLaunchHost _host;
   final ChatTabStore _tabStore;
@@ -89,8 +90,9 @@ class SessionTabSurfaceCoordinator {
     if (memberId.isNotEmpty) {
       _host.assignSelectedMember(existing, memberId);
     }
-    final connectAlreadyScheduled =
-        _host.isSessionConnecting(session.sessionId);
+    final connectAlreadyScheduled = _host.isSessionConnecting(
+      session.sessionId,
+    );
     if (!connectAlreadyScheduled) {
       existing.bumpLaunchGeneration();
     }
@@ -121,7 +123,8 @@ class SessionTabSurfaceCoordinator {
     }
     // Chat continue connects the PTY while staying on Chat; do not
     // force-switch the workbench (would unmount SessionChatView).
-    if (!request.preserveWorkbenchView) {
+    // ACP sessions have no terminal view at all — never switch.
+    if (!request.preserveWorkbenchView && !isAcpChatSession(session)) {
       _host.setPodView(existing.info.id, SessionWorkbenchView.terminal);
     }
     if (_shouldAutoConnect(request) && !connectAlreadyScheduled) {
@@ -198,7 +201,7 @@ class SessionTabSurfaceCoordinator {
       return SessionOpenStatus.opened;
     }
 
-    if (!request.preserveWorkbenchView) {
+    if (!request.preserveWorkbenchView && !isAcpChatSession(session)) {
       _host.setPodView(tab.info.id, SessionWorkbenchView.terminal);
     }
     if (_shouldAutoConnect(request)) {

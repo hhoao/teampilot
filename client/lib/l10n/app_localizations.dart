@@ -16285,6 +16285,24 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Added {repo} to workspace {workspace}'**
   String cloneRepositoryAddToExistingSucceeded(Object repo, Object workspace);
+
+  /// No description provided for @acpLaunchFailedVersion.
+  ///
+  /// In en, this message translates to:
+  /// **'This Gemini CLI version does not support the ACP chat mode. Update Gemini CLI and try again.'**
+  String get acpLaunchFailedVersion;
+
+  /// No description provided for @acpChatTurnFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'This turn failed'**
+  String get acpChatTurnFailed;
+
+  /// No description provided for @acpChatProcessExited.
+  ///
+  /// In en, this message translates to:
+  /// **'Gemini exited unexpectedly'**
+  String get acpChatProcessExited;
 }
 
 class _AppLocalizationsDelegate

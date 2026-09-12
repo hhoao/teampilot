@@ -59,10 +59,7 @@ class AcpProcessTransport implements AcpTransport {
       workingDirectory: workingDirectory,
       runInShell: false,
     );
-    return AcpProcessTransport(
-      process: process,
-      onStderr: onStderr ?? (_) {},
-    );
+    return AcpProcessTransport(process: process, onStderr: onStderr ?? (_) {});
   }
 
   @override
@@ -82,6 +79,12 @@ class AcpProcessTransport implements AcpTransport {
   /// of every chunk.
   @override
   Stream<List<int>> get stderr => _stderrController.stream;
+
+  /// The wrapped process's exit code (completes when the process dies).
+  ///
+  /// Consumed by the production spawner to classify an immediate non-zero
+  /// exit during the ACP handshake as a rejected flag candidate.
+  Future<int> get processExitCode => _process.exitCode;
 
   @override
   bool get isClosed => _closed;

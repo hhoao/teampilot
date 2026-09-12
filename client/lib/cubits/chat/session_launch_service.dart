@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:io';
 
 import 'package:flutter/foundation.dart';
 import 'package:uuid/uuid.dart';
@@ -25,6 +26,10 @@ import '../../services/launch/session_prompt_metadata_sync.dart';
 import '../../services/launch/session_shell_connector.dart';
 import '../../services/launch/session_tab_connect_prep.dart';
 import '../../services/launch/session_launch_workspace_index.dart';
+import '../../services/acp/acp_chat_strings.dart';
+import '../../services/acp/acp_chat_transcript.dart';
+import '../../services/acp/acp_frame_logger.dart';
+import '../../services/acp/acp_session_runtime.dart';
 import '../../services/cli/preset_resolver.dart';
 import '../../services/session/session_launch_config_snapshot.dart';
 import '../../services/session/session_member_cli_locks.dart';
@@ -39,6 +44,8 @@ export 'session_launch_host.dart';
 import '../../services/terminal/terminal_session.dart';
 import '../../utils/logging/logger.dart';
 import '../../utils/team/team_member_naming.dart';
+import 'acp/acp_chat_runtime_cubit.dart';
+import 'acp/acp_launch_wiring.dart';
 import 'chat_tab_store.dart';
 import 'model/chat_state.dart';
 import 'model/chat_tab.dart';
@@ -150,7 +157,98 @@ class SessionLaunchService
     assignSelectedMember: _assignSelectedMemberOnTab,
     shellForLaunch: _shellForLaunch,
     launchStillValid: _launchStillValid,
+    connectAcpRuntime: _connectAcpRuntime,
   );
+
+  /// Terminal-less ACP branch (gemini phase 1): attach an
+  /// [AcpChatRuntimeCubit] to [tab] and spawn the agent process. No roster,
+  /// no TeamBus, no shell connect — chat center view is the only view.
+  Future<bool> _connectAcpRuntime({
+    required ChatTab tab,
+    required AppSession session,
+    required Workspace? workspace,
+  }) async {
+    final existing = tab.acpRuntime;
+    if (existing != null) {
+      // Already connected (or launch failed): nothing to do.
+      _h.updateTabRunning(tab.info.id);
+      return existing.state.phase != AcpChatPhase.ended;
+    }
+    final logger = AcpFrameLogger();
+    final runtime = AcpSessionRuntime(
+      spawner: productionAcpSpawner(
+        registry: _h.cliRegistry,
+        tool: session.cli ?? CliTool.gemini,
+        workingDirectory: _acpWorkingDirectory(session, workspace),
+        logger: logger,
+      ),
+      logger: logger,
+      launchPlanFor: acpLaunchPlanResolver(_h.cliRegistry),
+    );
+    final cubit =
+        AcpChatRuntimeCubit(
+          runtime: runtime,
+          sessionId: session.sessionId,
+          tool: session.cli ?? CliTool.gemini,
+          attention: _h.agentAttentionCubit,
+          transcript: _acpTranscriptFor(session),
+        )..ensureStrings(
+          _h.acpChatStrings?.call() ??
+              const AcpChatStrings(
+                launchFailedVersion: acpLaunchFailedVersion,
+                turnFailed: 'Turn failed',
+                processExited: 'Agent process exited',
+              ),
+        );
+    tab.acpRuntime = cubit;
+    await cubit.start(
+      executable: _h.shellFactory.executableFor(session.cli ?? CliTool.gemini),
+      sessionToolDir: _acpSessionToolDir(session),
+      workingDirectory: _acpWorkingDirectory(session, workspace),
+      baseEnv: _acpBaseEnv(),
+    );
+    if (_h.isClosed) return true;
+    _h.finishSessionConnect(session.sessionId);
+    _h.updateTabRunning(tab.info.id);
+    return cubit.state.phase != AcpChatPhase.ended;
+  }
+
+  String _acpWorkingDirectory(AppSession session, Workspace? workspace) {
+    final firstFolder = session.folders.isNotEmpty
+        ? session.folders.first.path
+        : '';
+    if (firstFolder.trim().isNotEmpty) return firstFolder;
+    return workspace?.firstFolderPath ?? '';
+  }
+
+  /// Isolated config dir for the agent process: the session's runtime tool
+  /// dir (DefaultCliConfigLayout slot) on the home plane.
+  String _acpSessionToolDir(AppSession session) {
+    final storage = _storage;
+    return storage.context.layout.sessionRuntimeToolDir(
+      session.workspaceId,
+      session.sessionId,
+      'gemini',
+    );
+  }
+
+  Map<String, String> _acpBaseEnv() {
+    // Inherit the login-shell PATH so a locally installed gemini resolves.
+    return {'PATH': Platform.environment['PATH'] ?? ''};
+  }
+
+  AcpChatTranscriptWriter? _acpTranscriptFor(AppSession session) {
+    return AcpChatTranscriptWriter(
+      fs: _storage.fs,
+      path: _storage.context.layout.pathContext.join(
+        _storage.context.layout.workspace.sessionRuntimeDir(
+          session.workspaceId,
+          session.sessionId,
+        ),
+        'acp-transcript.jsonl',
+      ),
+    );
+  }
 
   ChatState get _state => _h.state;
   ChatTabStore get _tabStore => _h.tabStore;

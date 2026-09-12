@@ -39,6 +39,7 @@ import '../services/event/event_publisher.dart';
 import '../services/event/session_lifecycle_event.dart';
 import '../services/agent_status/agent_attention_state.dart';
 import '../services/agent_status/agent_permission_request.dart';
+import '../services/acp/acp_chat_strings.dart';
 import '../services/agent_status/agent_status_event.dart';
 import '../services/agent_status/agent_status_seat_lookup.dart';
 import '../services/agent_status/ask_user_answer_pending_store.dart';
@@ -864,6 +865,15 @@ class ChatCubit extends Cubit<ChatState>
           SchedulerBinding.instance.platformDispatcher.platformBrightness,
     );
   }
+
+  /// Localized copy for terminal-less ACP chat sessions. Wired by the app
+  /// shell (which owns the locale); null until then — the launch service
+  /// falls back to diagnostic strings.
+  @override
+  AcpChatStrings? Function()? get acpChatStrings => _acpChatStringsResolver;
+  AcpChatStrings? Function()? _acpChatStringsResolver;
+  set acpChatStringsResolver(AcpChatStrings? Function()? value) =>
+      _acpChatStringsResolver = value;
 
   /// Drops cached Phase A provision for [workspace] (e.g. after folder/target edits).
   void invalidateWorkspaceProvision(Workspace workspace) {

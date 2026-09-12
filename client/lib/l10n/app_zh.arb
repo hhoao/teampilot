@@ -3907,5 +3907,8 @@
   "cloneRepositoryAddToWorkspace": "加入现有工作区…",
   "cloneRepositoryChooseWorkspace": "选择工作区",
   "cloneRepositoryAddToExistingSucceeded": "已将 {repo} 加入工作区 {workspace}",
-  "@cloneRepositoryAddToExistingSucceeded": { "placeholders": { "repo": {}, "workspace": {} } }
+  "@cloneRepositoryAddToExistingSucceeded": { "placeholders": { "repo": {}, "workspace": {} } },
+  "acpLaunchFailedVersion": "当前 Gemini CLI 版本不支持 ACP 聊天模式，请更新 Gemini CLI 后重试。",
+  "acpChatTurnFailed": "本轮对话失败",
+  "acpChatProcessExited": "Gemini 意外退出"
 }

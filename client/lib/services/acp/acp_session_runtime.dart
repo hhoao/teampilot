@@ -81,6 +81,49 @@ class AcpLaunchException implements Exception {
   String toString() => 'AcpLaunchException: $reason';
 }
 
+/// The runtime surface the chat layer consumes.
+///
+/// Extracted from [AcpSessionRuntime] so the chat cubit and its tests can
+/// depend on the seam (all-stub fakes) instead of the concrete process-backed
+/// runtime.
+abstract interface class AcpSessionRuntimeApi {
+  /// Whether [start] has produced a live session.
+  bool get isStarted;
+
+  /// The id of the open ACP session.
+  String get sessionId;
+
+  /// Spawns the agent process and opens the ACP session.
+  Future<void> start({
+    required CliTool tool,
+    required String executable,
+    required String sessionToolDir,
+    required String workingDirectory,
+    Map<String, String> baseEnv = const {},
+  });
+
+  /// Sends one prompt turn; resolves once the turn's stop event is emitted.
+  Future<void> prompt(String text);
+
+  /// Turn events for the open session.
+  Stream<AcpSessionUpdate> get updates;
+
+  /// Permission cards surfaced by the agent during the open session.
+  Stream<AgentPermissionRequest> get permissionRequests;
+
+  /// Answers the currently held permission request (if any).
+  Future<AgentPermissionReplyKind?> answerPermission(
+    AgentPermissionReplyKind reply, {
+    AgentPermissionAlwaysOption? always,
+  });
+
+  /// Cancels the current prompt turn.
+  void cancel();
+
+  /// Disposes the open session (if any) and the agent connection (if any).
+  Future<void> close();
+}
+
 /// Owns one ACP agent session for the chat layer: spawn + flag probe +
 /// session lifecycle.
 ///
@@ -91,7 +134,7 @@ class AcpLaunchException implements Exception {
 /// single open session and delegates [prompt]/[updates]/
 /// [permissionRequests]/[answerPermission]/[cancel] to it; [close] disposes
 /// both the session and the connection.
-class AcpSessionRuntime {
+class AcpSessionRuntime implements AcpSessionRuntimeApi {
   AcpSessionRuntime({
     required AcpConnectionSpawner spawner,
     required this.logger,
@@ -111,6 +154,7 @@ class AcpSessionRuntime {
   static AcpLaunchPlan? _unsupportedLaunchPlan(CliTool tool) => null;
 
   /// Whether [start] has produced a live session.
+  @override
   bool get isStarted => _session != null;
 
   /// Spawns the agent process and opens the ACP session.
@@ -120,6 +164,7 @@ class AcpSessionRuntime {
   /// flag candidates in order, and opens the session with
   /// `cwd = workingDirectory`. Throws [StateError] when a session is already
   /// open — this runtime is one-shot; [close] first.
+  @override
   Future<void> start({
     required CliTool tool,
     required String executable,
@@ -166,12 +211,15 @@ class AcpSessionRuntime {
   }
 
   /// The id of the open ACP session (throws [StateError] before [start]).
+  @override
   String get sessionId => _session!.sessionId;
 
   /// Sends one prompt turn; resolves once the turn's stop event is emitted.
+  @override
   Future<void> prompt(String text) => _session!.prompt(text);
 
   /// Turn events for the open session.
+  @override
   Stream<AcpSessionUpdate> get updates {
     final session = _session;
     if (session == null) {
@@ -181,6 +229,7 @@ class AcpSessionRuntime {
   }
 
   /// Permission cards surfaced by the agent during the open session.
+  @override
   Stream<AgentPermissionRequest> get permissionRequests {
     final session = _session;
     if (session == null) {
@@ -190,17 +239,20 @@ class AcpSessionRuntime {
   }
 
   /// Answers the currently held permission request (if any).
+  @override
   Future<AgentPermissionReplyKind?> answerPermission(
     AgentPermissionReplyKind reply, {
     AgentPermissionAlwaysOption? always,
   }) => _session!.answerPermission(reply, always: always);
 
   /// Cancels the current prompt turn.
+  @override
   void cancel() => _session!.cancel();
 
   /// Disposes the open session (if any) and the agent connection (if any).
   ///
   /// Safe to call before [start] and idempotent afterwards.
+  @override
   Future<void> close() async {
     _session?.dispose();
     _session = null;

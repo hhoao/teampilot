@@ -11,6 +11,7 @@ import 'package:tp_markdown/tp_markdown.dart';
 import '../../cubits/ai_history_cubit.dart';
 import '../../cubits/agent_attention_cubit.dart';
 import '../../cubits/chat_cubit.dart';
+import '../../cubits/chat/acp/acp_chat_runtime_cubit.dart';
 import '../../cubits/cli_presets_cubit.dart';
 import '../../cubits/layout_cubit.dart';
 import '../../cubits/launch_profile_cubit.dart';
@@ -92,6 +93,7 @@ class SessionChatView extends StatefulWidget {
     this.routeActive = true,
     this.projectConfigRepository,
     this.failedMessageStore,
+    this.acpRuntime,
     this.viewToggle,
     super.key,
   });
@@ -126,6 +128,10 @@ class SessionChatView extends StatefulWidget {
   /// Injectable persisted delivery state for restart-safe optimistic bubbles.
   final FailedMessageStore? failedMessageStore;
 
+  /// Terminal-less ACP runtime (gemini phase 1) driving this view's history
+  /// seat; null for regular PTY-backed sessions.
+  final AcpChatRuntimeCubit? acpRuntime;
+
   /// Icon-only Chat/Terminal control docked into the top-right task-board
   /// capsule. The host passes the bare [SessionWorkbenchViewIcons]; standalone
   /// chrome lives in [SessionWorkbenchViewToggle] for non-chat surfaces.
@@ -155,6 +161,9 @@ class _SessionChatViewState extends State<SessionChatView> {
   final _submitLock = HistoryContinueSubmitLock();
   final _mailboxQueued = StreamController<PendingUserMessage>.broadcast();
   late final StreamSubscription<OperatorMailboxQueuedEvent> _operatorMailboxSub;
+
+  /// Streams [AcpChatRuntimeCubit] state into the history seat (ACP sessions).
+  StreamSubscription<AcpChatRuntimeState>? _acpRuntimeSub;
 
   /// True from optimistic enqueue through connect/boot/inject settle so idle
   /// grace cannot blank tip chrome while History continue is still in flight.
@@ -220,9 +229,7 @@ class _SessionChatViewState extends State<SessionChatView> {
         widget.projectConfigRepository ??
         // Bare widget tests may construct this view without a repository;
         // homeStorageOf falls back to the native default there.
-        WorkspaceProjectConfigRepository(
-          storage: homeStorageOf(context),
-        );
+        WorkspaceProjectConfigRepository(storage: homeStorageOf(context));
     final homeStorage = homeStorageOf(context);
     _failedMessageStore =
         widget.failedMessageStore ??
@@ -264,7 +271,31 @@ class _SessionChatViewState extends State<SessionChatView> {
           );
         });
     unawaited(_loadHistoryThenHydratePersistedPendingUsers());
+    _bindAcpRuntime();
     unawaited(_loadWorkspaceProjectBundle());
+  }
+
+  /// Terminal-less ACP session (gemini phase 1): the pod history seat's
+  /// external-store runtime is driven by the attached [AcpChatRuntimeCubit]
+  /// instead of the CLI transcript loader (which has nothing to read for
+  /// ACP — the app-side message table is the single source).
+  void _bindAcpRuntime() {
+    final runtime = widget.acpRuntime;
+    if (runtime == null) return;
+    _syncAcpMessages(runtime);
+    _acpRuntimeSub = runtime.stream.listen((_) {
+      if (!mounted) return;
+      _syncAcpMessages(runtime);
+    });
+  }
+
+  void _syncAcpMessages(AcpChatRuntimeCubit runtime) {
+    final seat = _seat;
+    if (seat == null || seat.isClosed) return;
+    seat.runtime.setMessages(runtime.state.messages);
+    if (seat.state.awaitingAssistant != runtime.state.inTurn) {
+      seat.setAwaitingAssistant(runtime.state.inTurn);
+    }
   }
 
   Future<void> _loadWorkspaceProjectBundle() async {
@@ -314,6 +345,12 @@ class _SessionChatViewState extends State<SessionChatView> {
         oldWidget.session.sessionId != widget.session.sessionId ||
         oldWidget.selectedMemberId != widget.selectedMemberId ||
         oldWidget.team?.id != widget.team?.id;
+    if (oldWidget.acpRuntime != widget.acpRuntime) {
+      // Tab-level ACP runtime instance was replaced — rebind the sync sub.
+      unawaited(_acpRuntimeSub?.cancel());
+      _acpRuntimeSub = null;
+      _bindAcpRuntime();
+    }
     if (seatChanged) {
       _userStoppedTurn.value = false;
       _locator.cancel();
@@ -412,6 +449,8 @@ class _SessionChatViewState extends State<SessionChatView> {
     _awaitingIdleGraceTimer?.cancel();
     _awaitingIdleGraceTimer = null;
     unawaited(_operatorMailboxSub.cancel());
+    unawaited(_acpRuntimeSub?.cancel());
+    _acpRuntimeSub = null;
     _controller.removeListener(_onComposeChanged);
     _voice.dispose();
     final live = _liveRefresh;

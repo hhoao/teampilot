@@ -68,6 +68,12 @@ typedef SessionTabConnectPrepCallbacks = ({
   })
   shellForLaunch,
   bool Function(ChatTab tab, int generation) launchStillValid,
+  Future<bool> Function({
+    required ChatTab tab,
+    required AppSession session,
+    required Workspace? workspace,
+  })?
+  connectAcpRuntime,
 });
 
 /// Shared persist → readiness → resolve → shell prep for new and existing tabs.
@@ -121,6 +127,17 @@ Future<TabConnectPrepResult?> runSessionTabConnectPrep({
   }
   launchSession = ready;
   tab.persistedSession = ready;
+
+  // Terminal-less ACP branch (gemini phase 1): attach the ACP chat runtime
+  // instead of resolving members/shells. Returns true when the tab now owns
+  // a live ACP runtime — the caller must skip every shell-connect stage.
+  final connectAcp = callbacks.connectAcpRuntime;
+  if (connectAcp != null && isAcpChatSession(launchSession)) {
+    await step('connect-acp-runtime', () async {
+      await connectAcp(tab: tab, session: launchSession, workspace: workspace);
+    });
+    return null;
+  }
 
   final resolved = await step(
     'resolve-members',

@@ -843,9 +843,17 @@ class _ChatWorkbenchBody extends StatelessWidget {
       );
     }
 
+    // Terminal-less ACP session (gemini phase 1): same resolution as the
+    // onSubmit branch below — the tab's attached ACP runtime, if any.
+    final acpRuntime = chatCubit.tabStore
+        .openTabBySessionId(appSession.sessionId)
+        ?.acpRuntime;
+
     return SessionChatView(
       session: appSession,
-      viewToggle: viewToggle,
+      acpRuntime: acpRuntime,
+      // ACP sessions are chat-only — there is no terminal view to toggle to.
+      viewToggle: isAcpChatSession(appSession) ? null : viewToggle,
       workspace:
           chatCubit.state.workspaces
               .where((w) => w.workspaceId == workspaceId)
@@ -879,6 +887,18 @@ class _ChatWorkbenchBody extends StatelessWidget {
             )
           : null,
       onSubmit: (message) async {
+        // Terminal-less ACP session (gemini phase 1): the prompt goes to the
+        // attached ACP runtime — no PTY connect/inject chain.
+        final acpRuntime = chatCubit.tabStore
+            .openTabBySessionId(appSession.sessionId)
+            ?.acpRuntime;
+        if (acpRuntime != null) {
+          final sent = acpRuntime.sendPrompt(message);
+          return HistoryContinueSubmitResult(
+            ok: sent,
+            channel: HistoryContinueChannel.pty,
+          );
+        }
         final switchToTerminal = shouldSwitchToTerminalAfterChatSubmit(
           context
               .read<SessionPreferencesCubit>()
@@ -915,17 +935,18 @@ class _ChatWorkbenchBody extends StatelessWidget {
             resolveChannel: resolveChannel,
             cancelled: cancelled,
             connectWorkspaceSession: chatCubit.connectWorkspaceSession,
-            ensureMemberInputReady: (
-              sessionId,
-              mid, {
-              bool directToPty = false,
-              bool Function()? aborted,
-            }) => chatCubit.memberMaterializer.ensureMemberInputReady(
-              sessionId,
-              mid,
-              directToPty: directToPty,
-              aborted: aborted,
-            ),
+            ensureMemberInputReady:
+                (
+                  sessionId,
+                  mid, {
+                  bool directToPty = false,
+                  bool Function()? aborted,
+                }) => chatCubit.memberMaterializer.ensureMemberInputReady(
+                  sessionId,
+                  mid,
+                  directToPty: directToPty,
+                  aborted: aborted,
+                ),
             deliverUserCommandToMember:
                 (sessionId, mid, text, {bool directToPty = false}) =>
                     chatCubit.sessionRuntime.deliverUserCommandToMember(

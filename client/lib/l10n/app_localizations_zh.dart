@@ -8771,4 +8771,14 @@ class AppLocalizationsZh extends AppLocalizations {
   String cloneRepositoryAddToExistingSucceeded(Object repo, Object workspace) {
     return '已将 $repo 加入工作区 $workspace';
   }
+
+  @override
+  String get acpLaunchFailedVersion =>
+      '当前 Gemini CLI 版本不支持 ACP 聊天模式，请更新 Gemini CLI 后重试。';
+
+  @override
+  String get acpChatTurnFailed => '本轮对话失败';
+
+  @override
+  String get acpChatProcessExited => 'Gemini 意外退出';
 }

@@ -9170,4 +9170,14 @@ class AppLocalizationsEn extends AppLocalizations {
   String cloneRepositoryAddToExistingSucceeded(Object repo, Object workspace) {
     return 'Added $repo to workspace $workspace';
   }
+
+  @override
+  String get acpLaunchFailedVersion =>
+      'This Gemini CLI version does not support the ACP chat mode. Update Gemini CLI and try again.';
+
+  @override
+  String get acpChatTurnFailed => 'This turn failed';
+
+  @override
+  String get acpChatProcessExited => 'Gemini exited unexpectedly';
 }

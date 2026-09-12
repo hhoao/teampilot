@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:io';
 
 import 'package:collection/collection.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:http/http.dart' as http;
@@ -13,6 +14,7 @@ import 'app_data_bootstrap.dart';
 import 'home_index_prefetch.dart';
 import 'team_generation_graph.dart';
 import '../cubits/app_provider_cubit.dart';
+import '../services/cli/gemini/gemini_bootstrap_entry.dart';
 import '../cubits/app_update_cubit.dart';
 import '../cubits/remote_download_catalog_cubit.dart';
 import '../cubits/automation_cubit.dart';
@@ -134,6 +136,7 @@ import '../models/team_config.dart';
 import '../services/app/boot_splash.dart';
 import '../utils/ui/yield_ui_frame.dart';
 import '../l10n/app_localizations.dart';
+import '../services/acp/acp_chat_strings.dart';
 import '../pages/system/app_bootstrap_loading_page.dart';
 import '../pages/system/bootstrap_startup_error_page.dart';
 import '../repositories/app_settings_repository.dart';
@@ -766,10 +769,8 @@ Future<AppShell> buildAppShell({
   late final ConnectionModeService connectionModeService;
   late final Future<void> Function() reinstallStorageContext;
 
-  late final Future<void> Function({
-    bool reinstallSshHome,
-    ReloadLevel level,
-  }) reloadAllAppData;
+  late final Future<void> Function({bool reinstallSshHome, ReloadLevel level})
+  reloadAllAppData;
 
   late final SshProfileCubit sshProfileCubit;
   late final HomeTargetController homeTargetController;
@@ -1109,20 +1110,18 @@ Future<AppShell> buildAppShell({
   // One-shot startup sweep: reclaim orphaned `-mp-` rows and the legacy
   // shared rows. Fire-and-forget and failure-tolerant — the control plane
   // is fully usable without it.
-  unawaited(
-    () async {
-      try {
-        final entries = await resolvedManagedProviderRepository.load();
-        await managedProviderCliRowJanitor.sweep(entries: entries);
-      } on Object catch (error, stackTrace) {
-        appLogger.w(
-          '[managed-provider] cli row sweep failed: $error',
-          error: error,
-          stackTrace: stackTrace,
-        );
-      }
-    }(),
-  );
+  unawaited(() async {
+    try {
+      final entries = await resolvedManagedProviderRepository.load();
+      await managedProviderCliRowJanitor.sweep(entries: entries);
+    } on Object catch (error, stackTrace) {
+      appLogger.w(
+        '[managed-provider] cli row sweep failed: $error',
+        error: error,
+        stackTrace: stackTrace,
+      );
+    }
+  }());
 
   // Retried-bootstrap teardown seam: when wiring below fails after the
   // catalog runtime is assembled, its mutation bus must unregister its relay
@@ -1221,9 +1220,11 @@ Future<AppShell> buildAppShell({
           sessionPreferencesCubit.resolveExecutable(CliTool.codex),
       hostRunner: credentialHostRunner,
     );
-    final opencodeModelsService = OpencodeModelsService(
-      storage: homeStorage,
-    );
+    final opencodeModelsService = OpencodeModelsService(storage: homeStorage);
+
+    // Cached Gemini API key for the ACP agent env (refreshed from provider
+    // rows; the ACP credential source is a sync closure).
+    String? cachedGeminiApiKey;
 
     cliToolRegistry.configure(
       CliBootstrap({
@@ -1250,8 +1251,37 @@ Future<AppShell> buildAppShell({
         CliTool.opencode: OpencodeBootstrapEntry(
           modelsService: opencodeModelsService,
         ),
+        CliTool.gemini: GeminiBootstrapEntry(
+          credentialSource: () => cachedGeminiApiKey,
+        ),
       }, storage: homeStorage),
     );
+    // Keep the cached Gemini API key current: the credential source must be
+    // sync (AcpCredentialSource), but provider rows load asynchronously.
+    var geminiCredentialRefreshInFlight = false;
+    void refreshGeminiCredential() {
+      if (geminiCredentialRefreshInFlight) return;
+      geminiCredentialRefreshInFlight = true;
+      appProviderCubit
+          .loadProvidersFor(CliTool.gemini)
+          .then((providers) {
+            final key = providers
+                .where((p) => p.id == 'google')
+                .map((p) => p.apiKey.trim())
+                .firstWhere((k) => k.isNotEmpty, orElse: () => '')
+                .trim();
+            cachedGeminiApiKey = key.isEmpty ? null : key;
+          })
+          .catchError((Object _) {})
+          .whenComplete(() => geminiCredentialRefreshInFlight = false);
+    }
+
+    refreshGeminiCredential();
+    // Self-managing: when appProviderCubit closes (shell teardown), the
+    // broadcast stream's onDone fires and nothing further is refreshed.
+    appProviderCubit.stream.listen((_) {
+      refreshGeminiCredential();
+    }, onDone: () {});
 
     final skillManifest = SkillManifestService(storage: homeStorage);
     final skillGit = SkillRepoGitService();
@@ -1681,9 +1711,7 @@ Future<AppShell> buildAppShell({
     final workspaceTerminalRegistry = WorkspaceTerminalRegistry();
     final gitRepoStore = GitRepoStore(storage: homeStorage);
     final workspaceFileTreeStore = WorkspaceFileTreeStore();
-    final workspaceSearchIndexes = WorkspaceSearchIndexes(
-      storage: homeStorage,
-    );
+    final workspaceSearchIndexes = WorkspaceSearchIndexes(storage: homeStorage);
     final workspaceWorktreeRegistry = WorkspaceWorktreeRegistry(
       storage: homeStorage,
     );
@@ -2037,9 +2065,8 @@ Future<AppShell> buildAppShell({
         isCredentialOptIn: targetsRepo.isCredentialOptIn,
         cliPathOverride: targetsRepo.cliPathOverride,
         setCliPathOverride: targetsRepo.setCliPathOverride,
-        loadLocalCredentials: (cli) => LocalCredentialExporter(
-          storage: homeStorage,
-        ).export(cli),
+        loadLocalCredentials: (cli) =>
+            LocalCredentialExporter(storage: homeStorage).export(cli),
         localCliPath: (cli) async =>
             sessionPreferencesCubit.resolveExecutable(cli),
         runtimePlanBuilder: sessionRuntimePlanBuilder,
@@ -2051,6 +2078,19 @@ Future<AppShell> buildAppShell({
           TermuxWorkOpsMessage.disconnectedBlocked,
       termuxGateHomeResolver: defaultTargetResolver,
     );
+    // Terminal-less ACP chat copy: l10n is resolved per-call from the
+    // platform locale (the launch service reads it at session connect).
+    chatCubit.acpChatStringsResolver = () {
+      final locale = PlatformDispatcher.instance.locale;
+      final l10n = lookupAppLocalizations(
+        basicLocaleListResolution([locale], AppLocalizations.supportedLocales),
+      );
+      return AcpChatStrings(
+        launchFailedVersion: l10n.acpLaunchFailedVersion,
+        turnFailed: l10n.acpChatTurnFailed,
+        processExited: l10n.acpChatProcessExited,
+      );
+    };
     final promptDeliveryStore = FilePromptDeliveryStore(
       root: homeStorage.fs.pathContext.join(
         homeStorage.paths.basePath,
@@ -2171,8 +2211,9 @@ Future<AppShell> buildAppShell({
       commandBus,
       layoutCubit,
       uiZoomBaseline: () => uiZoomBaseline.value,
-      composeLanding: () =>
-          workbenchCubit.centerLandingActive(chatCubit.tabStore.activeWorkspaceId),
+      composeLanding: () => workbenchCubit.centerLandingActive(
+        chatCubit.tabStore.activeWorkspaceId,
+      ),
       onTogglePanel: openFloatingNewTerminal,
     );
 
@@ -2376,63 +2417,64 @@ Future<AppShell> buildAppShell({
       return future;
     }
 
-    reloadAllAppData = ({
-      bool reinstallSshHome = true,
-      ReloadLevel level = ReloadLevel.full,
-    }) async {
-      await managedProviderControlPlane.invalidateForStorageContextChange();
-      switch (level) {
-        // Minor invalidation: rerun the home index only. Cubit loads are
-        // single-flight/idempotent and already warm, so the auxiliary chain
-        // (providers, skills, plugins, MCP, extensions) and workspace data
-        // reload are skipped.
-        case ReloadLevel.indexOnly:
-          await AppDataBootstrap.bootstrapHomeIndex(
-            boot: boot,
-            sshProfileCubit: sshProfileCubit,
-            teamCubit: teamCubit,
-            chatCubit: chatCubit,
-            sessionRepo: sessionRepo,
-            layoutCubit: layoutCubit,
-            isSshMode: connectionModeService.isRemoteWorkPlane,
-            homeSshProfileId: defaultTargetResolver().sshProfileId,
-            sshProfileExists: (id) => sshProfileById(id) != null,
-            reinstallStorageContext: reinstallStorageContext,
-            storage: homeStorage,
-            home: defaultTargetResolver(),
-            reinstallSshHome: reinstallSshHome,
-            expertHubCatalog: expertHubCatalog,
-          );
-        case ReloadLevel.none:
-          break;
-        case ReloadLevel.full:
-          await AppDataBootstrap.reloadAll(
-            boot: boot,
-            sshProfileCubit: sshProfileCubit,
-            llmConfigCubit: llmConfigCubit,
-            appProviderCubit: appProviderCubit,
-            teamCubit: teamCubit,
-            pluginCubit: pluginCubit,
-            skillCubit: skillCubit,
-            mcpCubit: mcpCubit,
-            extensionCubit: extensionCubit,
-            chatCubit: chatCubit,
-            sessionRepo: sessionRepo,
-            layoutCubit: layoutCubit,
-            isSshMode: connectionModeService.isRemoteWorkPlane,
-            homeSshProfileId: defaultTargetResolver().sshProfileId,
-            sshProfileExists: (id) => sshProfileById(id) != null,
-            reinstallStorageContext: reinstallStorageContext,
-            storage: homeStorage,
-            managedProviderCubit: resolvedManagedProviderCubit,
-            managedProviderUsageCubit: resolvedManagedProviderUsageCubit,
-            home: defaultTargetResolver(),
-            reinstallSshHome: reinstallSshHome,
-            expertHubCatalog: expertHubCatalog,
-          );
-      }
-      await persistSshHomePathCacheIfLive();
-    };
+    reloadAllAppData =
+        ({
+          bool reinstallSshHome = true,
+          ReloadLevel level = ReloadLevel.full,
+        }) async {
+          await managedProviderControlPlane.invalidateForStorageContextChange();
+          switch (level) {
+            // Minor invalidation: rerun the home index only. Cubit loads are
+            // single-flight/idempotent and already warm, so the auxiliary chain
+            // (providers, skills, plugins, MCP, extensions) and workspace data
+            // reload are skipped.
+            case ReloadLevel.indexOnly:
+              await AppDataBootstrap.bootstrapHomeIndex(
+                boot: boot,
+                sshProfileCubit: sshProfileCubit,
+                teamCubit: teamCubit,
+                chatCubit: chatCubit,
+                sessionRepo: sessionRepo,
+                layoutCubit: layoutCubit,
+                isSshMode: connectionModeService.isRemoteWorkPlane,
+                homeSshProfileId: defaultTargetResolver().sshProfileId,
+                sshProfileExists: (id) => sshProfileById(id) != null,
+                reinstallStorageContext: reinstallStorageContext,
+                storage: homeStorage,
+                home: defaultTargetResolver(),
+                reinstallSshHome: reinstallSshHome,
+                expertHubCatalog: expertHubCatalog,
+              );
+            case ReloadLevel.none:
+              break;
+            case ReloadLevel.full:
+              await AppDataBootstrap.reloadAll(
+                boot: boot,
+                sshProfileCubit: sshProfileCubit,
+                llmConfigCubit: llmConfigCubit,
+                appProviderCubit: appProviderCubit,
+                teamCubit: teamCubit,
+                pluginCubit: pluginCubit,
+                skillCubit: skillCubit,
+                mcpCubit: mcpCubit,
+                extensionCubit: extensionCubit,
+                chatCubit: chatCubit,
+                sessionRepo: sessionRepo,
+                layoutCubit: layoutCubit,
+                isSshMode: connectionModeService.isRemoteWorkPlane,
+                homeSshProfileId: defaultTargetResolver().sshProfileId,
+                sshProfileExists: (id) => sshProfileById(id) != null,
+                reinstallStorageContext: reinstallStorageContext,
+                storage: homeStorage,
+                managedProviderCubit: resolvedManagedProviderCubit,
+                managedProviderUsageCubit: resolvedManagedProviderUsageCubit,
+                home: defaultTargetResolver(),
+                reinstallSshHome: reinstallSshHome,
+                expertHubCatalog: expertHubCatalog,
+              );
+          }
+          await persistSshHomePathCacheIfLive();
+        };
 
     Future<void> reconnectHomeSshIfNeeded() async {
       final home = defaultTargetResolver();
@@ -3114,9 +3156,7 @@ class _TeamPilotBootstrapState extends State<TeamPilotBootstrap> {
     // close — runs strictly after the last delivery. The projection also
     // guards its own broadcast add (`if (!_changes.isClosed)`), so even a late
     // event would be dropped rather than throw; the chain is belt-and-braces.
-    unawaited(
-      _eventDispatcher.stop().then((_) => _presenceProjection.close()),
-    );
+    unawaited(_eventDispatcher.stop().then((_) => _presenceProjection.close()));
     super.dispose();
   }
 
