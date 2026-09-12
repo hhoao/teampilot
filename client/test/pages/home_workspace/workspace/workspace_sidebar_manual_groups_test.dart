@@ -13,6 +13,7 @@ import 'package:teampilot/models/app_session.dart';
 import 'package:teampilot/models/workspace.dart';
 import 'package:teampilot/models/workspace_folder.dart';
 import 'package:teampilot/pages/home_workspace/workspace/workspace_sidebar.dart';
+import 'package:teampilot/pages/home_workspace/workspace/worktree_group_section.dart';
 import 'package:teampilot/repositories/session_repository.dart';
 import 'package:teampilot/widgets/sidebar_session_tile.dart';
 
@@ -64,13 +65,31 @@ void main() {
     tearDownTestAppStorage();
   });
 
-  Future<void> pumpSidebar(WidgetTester tester) async {
+  Future<void> pumpSidebar(
+    WidgetTester tester, {
+    List<AppSession>? sessions,
+    bool markSessionsHydrated = false,
+    bool seedManualGroup = false,
+    bool settle = true,
+  }) async {
     // Repository reads use real dart:io; under testWidgets they only complete
     // inside runAsync.
     await tester.runAsync(() => groupsCubit.load(_workspace.workspaceId));
+    if (seedManualGroup) groupsCubit.createGroup('Hydrating');
+    final sidebarSessions = sessions ?? [_session('a'), _session('b')];
     chatCubit.emit(
-      chatCubit.state.copyWith(sessions: [_session('a'), _session('b')]),
+      chatCubit.state.copyWith(
+        workspaces: markSessionsHydrated
+            ? [_workspace]
+            : chatCubit.state.workspaces,
+        sessions: sidebarSessions,
+      ),
     );
+    if (markSessionsHydrated) {
+      chatCubit.dataStore.markWorkspacesSessionsHydrated([
+        _workspace.workspaceId,
+      ]);
+    }
     await tester.pumpWidget(
       MaterialApp(
         localizationsDelegates: AppLocalizations.localizationsDelegates,
@@ -109,7 +128,7 @@ void main() {
       ),
     );
     await tester.pump();
-    await tester.pump(const Duration(milliseconds: 120));
+    if (settle) await tester.pump(const Duration(milliseconds: 120));
   }
 
   testWidgets('created group renders above the list with its members', (
@@ -142,6 +161,29 @@ void main() {
     expect(find.byTooltip('New group'), findsOneWidget);
   });
 
+  testWidgets('groups mode shows the empty conversations state', (
+    tester,
+  ) async {
+    await pumpSidebar(tester, sessions: const [], markSessionsHydrated: true);
+
+    expect(find.text('No conversations in this workspace yet'), findsOneWidget);
+    expect(find.byType(ReorderableListView), findsNothing);
+  });
+
+  testWidgets('manual groups remain visible while sessions hydrate', (
+    tester,
+  ) async {
+    await pumpSidebar(
+      tester,
+      sessions: const [],
+      seedManualGroup: true,
+      settle: false,
+    );
+
+    expect(find.text('Hydrating'), findsOneWidget);
+    expect(find.byType(ListView), findsOneWidget);
+  });
+
   testWidgets('switches to project tree without changing sessions', (
     tester,
   ) async {
@@ -158,6 +200,9 @@ void main() {
     expect(find.text('huji'), findsOneWidget);
     expect(find.text('待办'), findsNothing);
     expect(find.byTooltip('New group'), findsNothing);
+    expect(find.byType(WorktreeGroupSection), findsNothing);
+    expect(find.byTooltip('Refresh worktrees'), findsNothing);
+    expect(find.byTooltip('New worktree'), findsNothing);
     expect(chatCubit.state.sessions, hasLength(2));
   });
 

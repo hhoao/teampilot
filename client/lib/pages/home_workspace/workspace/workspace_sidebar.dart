@@ -610,18 +610,21 @@ class _ConversationListHost extends StatelessWidget {
       workspace,
     );
 
+    final listArea = TpDeferredMountShell(
+      delayFrames: 1,
+      placeholder: const _SessionListSkeleton(),
+      child: _buildBody(
+        context,
+        sortedSessions,
+        structure,
+        sessionsHydrated: sessionsHydrated,
+      ),
+    );
     return SidebarRebuildProbe(
       key: const Key('workspace-sidebar-conversation-list-probe'),
-      child: TpDeferredMountShell(
-        delayFrames: 1,
-        placeholder: const _SessionListSkeleton(),
-        child: _buildBody(
-          context,
-          sortedSessions,
-          structure,
-          sessionsHydrated: sessionsHydrated,
-        ),
-      ),
+      child: view == _WorkspaceSidebarView.groups
+          ? _buildWithManualGroups(context, listArea)
+          : listArea,
     );
   }
 
@@ -670,10 +673,12 @@ class _ConversationListHost extends StatelessWidget {
       );
     }
 
-    return _buildWithManualGroups(
-      context,
-      _buildSessionList(context, structure.sessionIds),
-    );
+    if (structure.rows.isEmpty) {
+      return _EmptyConversations(
+        label: context.l10n.homeWorkspaceNoConversations,
+      );
+    }
+    return _buildSessionList(context, structure.sessionIds);
   }
 
   Widget _buildSessionList(BuildContext context, List<String> sessionIds) {
