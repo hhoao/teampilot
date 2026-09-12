@@ -364,19 +364,21 @@ class WorkspaceComposeCard extends StatelessWidget {
           onSelected: chrome.onExpertChipSelected!,
         ),
       ],
-      SizedBox(width: spacing.sm),
-      ComposePermissionChip(
-        palette: palette,
-        launchSecurityPolicy: chrome.launchSecurityPolicy,
-        defaultLabel: chrome.defaultPermissionsLabel,
-        fullAccessLabel: chrome.fullAccessPermissionsLabel,
-        askReadOnlyLabel: chrome.askReadOnlyPermissionsLabel,
-        autoApproveWorkspaceWriteLabel:
-            chrome.autoApproveWorkspaceWritePermissionsLabel,
-        customLabel: chrome.customPermissionsLabel,
-        onSelected: chrome.onPermissionSelected,
-      ),
-      SizedBox(width: spacing.sm),
+      if (chrome.permissionControl case final control?) ...[
+        SizedBox(width: spacing.sm),
+        ComposePermissionChip(
+          palette: palette,
+          launchSecurityPolicy: control.launchSecurityPolicy,
+          defaultLabel: control.defaultLabel,
+          fullAccessLabel: control.fullAccessLabel,
+          askReadOnlyLabel: control.askReadOnlyLabel,
+          autoApproveWorkspaceWriteLabel:
+              control.autoApproveWorkspaceWriteLabel,
+          customLabel: control.customLabel,
+          onSelected: control.onSelected,
+        ),
+        SizedBox(width: spacing.sm),
+      ],
     ];
   }
 
@@ -408,19 +410,17 @@ class WorkspaceComposeCard extends StatelessWidget {
         ),
         SizedBox(width: spacing.sm),
       ],
-      if (chrome.onPermissionSelected != null &&
-          chrome.defaultPermissionsLabel != null &&
-          chrome.fullAccessPermissionsLabel != null) ...[
+      if (chrome.permissionControl case final control?) ...[
         ComposePermissionChip(
           palette: palette,
-          launchSecurityPolicy: chrome.launchSecurityPolicy,
-          defaultLabel: chrome.defaultPermissionsLabel!,
-          fullAccessLabel: chrome.fullAccessPermissionsLabel!,
-          askReadOnlyLabel: chrome.askReadOnlyPermissionsLabel,
+          launchSecurityPolicy: control.launchSecurityPolicy,
+          defaultLabel: control.defaultLabel,
+          fullAccessLabel: control.fullAccessLabel,
+          askReadOnlyLabel: control.askReadOnlyLabel,
           autoApproveWorkspaceWriteLabel:
-              chrome.autoApproveWorkspaceWritePermissionsLabel,
-          customLabel: chrome.customPermissionsLabel,
-          onSelected: chrome.onPermissionSelected!,
+              control.autoApproveWorkspaceWriteLabel,
+          customLabel: control.customLabel,
+          onSelected: control.onSelected,
         ),
         SizedBox(width: spacing.sm),
       ],
@@ -485,7 +485,7 @@ class WorkspaceComposeCard extends StatelessWidget {
   bool _hasBoundToolbar(BoundComposeChrome chrome) =>
       chrome.identityLabel != null ||
       chrome.onModelCascadeSelected != null ||
-      chrome.onPermissionSelected != null ||
+      chrome.permissionControl != null ||
       chrome.onTeamSettings != null;
 
   List<Widget> _voiceRecordingActions({
@@ -672,10 +672,7 @@ class _TeamSettingsButton extends StatelessWidget {
 }
 
 class _StopButton extends StatefulWidget {
-  const _StopButton({
-    required this.tooltip,
-    required this.onStop,
-  });
+  const _StopButton({required this.tooltip, required this.onStop});
 
   final String tooltip;
   final VoidCallback onStop;
@@ -720,11 +717,7 @@ class _StopButtonState extends State<_StopButton> {
               ? null
               : throttledOnPressed('session_review_compose_stop', _handleStop),
           child: Center(
-            child: Icon(
-              Icons.stop_rounded,
-              color: _icon,
-              size: icons.md,
-            ),
+            child: Icon(Icons.stop_rounded, color: _icon, size: icons.md),
           ),
         ),
       ),

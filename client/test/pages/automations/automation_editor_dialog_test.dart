@@ -279,14 +279,8 @@ void main() {
     expect(find.text(l10n.automationsLaunchMode), findsOneWidget);
     expect(find.text(l10n.presetPickerTitle), findsOneWidget);
     expect(find.text(l10n.hubPublishKindExpert), findsOneWidget);
-    expect(find.text(l10n.automationsPermissions), findsOneWidget);
-    expect(find.text('Default'), findsOneWidget);
-    await tester.tap(find.byType(TpSelect<LaunchSecurityPolicy>));
-    await tester.pumpAndSettle();
-    expect(find.text(l10n.automationsPermissionsAskReadOnly), findsOneWidget);
-    await tester.tap(find.text(l10n.automationsPermissionsAskReadOnly));
-    await tester.pumpAndSettle();
-    expect(find.text(l10n.automationsPermissionsAskReadOnly), findsOneWidget);
+    expect(find.byType(TpSelect<LaunchSecurityPolicy>), findsNothing);
+    expect(find.byKey(const ValueKey('launchSecurityPolicy')), findsNothing);
     expect(find.text(l10n.automationsTargetMember), findsNothing);
   });
 
@@ -331,46 +325,47 @@ void main() {
     expect(find.text(l10n.hubPublishKindExpert), findsNothing);
   });
 
-  testWidgets('automation editor remains compilable with fixed launch policy', (
-    tester,
-  ) async {
-    final setup = testAutomationSetup();
-    final chatCubit = _chatCubitWithWorkspace();
-    final cliPresetsCubit = _cliPresetsCubitWithPreset();
-    final sessionPreferencesCubit = (await tester.runAsync(
-      testSessionPreferencesCubit,
-    ))!;
-    addTearDown(setup.cubit.close);
-    addTearDown(chatCubit.close);
-    addTearDown(cliPresetsCubit.close);
-    addTearDown(sessionPreferencesCubit.close);
+  testWidgets(
+    'automation editor omits launch security for existing automation',
+    (tester) async {
+      final setup = testAutomationSetup();
+      final chatCubit = _chatCubitWithWorkspace();
+      final cliPresetsCubit = _cliPresetsCubitWithPreset();
+      final sessionPreferencesCubit = (await tester.runAsync(
+        testSessionPreferencesCubit,
+      ))!;
+      addTearDown(setup.cubit.close);
+      addTearDown(chatCubit.close);
+      addTearDown(cliPresetsCubit.close);
+      addTearDown(sessionPreferencesCubit.close);
 
-    await tester.pumpWidget(
-      RepositoryProvider<HomeStorage>.value(
-        value: testHomeStorage,
-        child: _host(
-          cubit: setup.cubit,
-          chatCubit: chatCubit,
-          cliPresetsCubit: cliPresetsCubit,
-          sessionPreferencesCubit: sessionPreferencesCubit,
-          child: AutomationEditorDialog(
-            workspaceId: 'ws1',
-            initial: sampleAutomation(
-              id: 'intermediate-policy',
+      await tester.pumpWidget(
+        RepositoryProvider<HomeStorage>.value(
+          value: testHomeStorage,
+          child: _host(
+            cubit: setup.cubit,
+            chatCubit: chatCubit,
+            cliPresetsCubit: cliPresetsCubit,
+            sessionPreferencesCubit: sessionPreferencesCubit,
+            child: AutomationEditorDialog(
               workspaceId: 'ws1',
+              initial: sampleAutomation(
+                id: 'intermediate-policy',
+                workspaceId: 'ws1',
+              ),
             ),
           ),
         ),
-      ),
-    );
-    await tester.pump();
-    await tester.pump(const Duration(milliseconds: 200));
+      );
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 200));
 
-    expect(
-      find.byKey(const ValueKey('permissions-never-fullAccess-bypass')),
-      findsOneWidget,
-    );
-  });
+      expect(
+        find.byKey(const ValueKey('permissions-never-fullAccess-bypass')),
+        findsNothing,
+      );
+    },
+  );
 
   testWidgets('scheduled message editor pre-fills session defaults', (
     tester,

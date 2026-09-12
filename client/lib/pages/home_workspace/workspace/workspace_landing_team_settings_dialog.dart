@@ -860,13 +860,6 @@ class _MemberRow extends StatelessWidget {
                   ),
                 ],
               ),
-              const SizedBox(height: 12),
-              TpPreferenceRow(
-                title: l10n.memberDangerouslySkipPermissions,
-                subtitle: l10n.memberDangerouslySkipPermissionsHint,
-                trailing: Switch(value: true, onChanged: null),
-                showDividerBelow: false,
-              ),
             ],
           ),
         ),

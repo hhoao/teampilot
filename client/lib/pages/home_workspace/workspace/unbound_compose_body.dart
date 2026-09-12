@@ -19,7 +19,6 @@ import '../../../cubits/skill_cubit.dart';
 import '../../../cubits/worktree_cubit.dart';
 import '../../../models/config_bundle.dart';
 import '../../../models/landing_launch_context.dart';
-import '../../../models/launch_security_policy.dart';
 import '../../../l10n/l10n_extensions.dart';
 import '../../../models/ai_feature_setting.dart';
 import '../../../models/cli_preset.dart';
@@ -94,6 +93,7 @@ class UnboundComposeBody extends StatefulWidget {
     this.referencedSessionId,
     this.deferFieldMount = false,
     this.showLocationHeader = false,
+    this.permissionControl,
     super.key,
   });
 
@@ -109,6 +109,7 @@ class UnboundComposeBody extends StatefulWidget {
   /// When true, renders [WorkspaceLandingHeaderRow] above the compose card
   /// (Landing page). Ask AI keeps this false.
   final bool showLocationHeader;
+  final ComposePermissionControl? permissionControl;
 
   @override
   State<UnboundComposeBody> createState() => _UnboundComposeBodyState();
@@ -123,7 +124,6 @@ class _UnboundComposeBodyState extends State<UnboundComposeBody> {
 
   var _conversationMode = _LandingConversationMode.simple;
   var _generateLaunch = false;
-  var _launchSecurityPolicy = LaunchSecurityPolicy.fullAccess;
   String? _selectedPresetId;
   CliTool? _selectedCli;
   String? _selectedProvider;
@@ -1120,12 +1120,6 @@ class _UnboundComposeBodyState extends State<UnboundComposeBody> {
     return true;
   }
 
-  void _setLaunchSecurityPolicy(LaunchSecurityPolicy value) {
-    if (_launchSecurityPolicy == value) return;
-    setState(() => _launchSecurityPolicy = value);
-    _persistDraft();
-  }
-
   void _selectPreset(String presetId) {
     setState(
       () => _applyDraft(landingDraftSelectingPreset(_currentDraft(), presetId)),
@@ -1582,6 +1576,9 @@ class _UnboundComposeBodyState extends State<UnboundComposeBody> {
       onSubmit: _submit,
       onChanged: (_) {},
       chrome: UnboundComposeChrome(
+        permissionControl: cli == null
+            ? null
+            : permissionControlForCli(registry, cli, widget.permissionControl),
         conversationModeLabel: _conversationModeLabel(l10n),
         autoChipLabel: _autoChipLabel(
           context,
@@ -1590,15 +1587,6 @@ class _UnboundComposeBodyState extends State<UnboundComposeBody> {
           teams: teams,
         ),
         autoChipLeading: _autoChipLeading(context, presets: presets),
-        launchSecurityPolicy: _launchSecurityPolicy,
-        defaultPermissionsLabel: l10n.workspaceChatLandingDefaultPermissions,
-        fullAccessPermissionsLabel:
-            l10n.workspaceChatLandingFullAccessPermissions,
-        askReadOnlyPermissionsLabel:
-            l10n.workspaceChatLandingAskReadOnlyPermissions,
-        autoApproveWorkspaceWritePermissionsLabel:
-            l10n.workspaceChatLandingAutoApproveWorkspaceWritePermissions,
-        customPermissionsLabel: l10n.workspaceChatLandingCustomPermissions,
         conversationModeSpecs: _conversationModeSpecs(l10n),
         autoChipSpecs: _autoChipSpecs(l10n, presets: presets, teams: teams),
         onConversationModeSelected: (value) {
@@ -1631,7 +1619,6 @@ class _UnboundComposeBodyState extends State<UnboundComposeBody> {
           if (value is! String || value.isEmpty) return;
           _selectPreset(value);
         },
-        onPermissionSelected: _setLaunchSecurityPolicy,
         expertChipLabel: isSimple ? _expertChipLabel(l10n, hubState) : null,
         expertChipSpecs: isSimple ? _expertChipSpecs(l10n, hubState) : const [],
         onExpertChipSelected: isSimple ? _onExpertChipSelected : null,

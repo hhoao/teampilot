@@ -294,7 +294,7 @@ void main() {
     expect(find.text('Save as template'), findsNothing);
   });
 
-  testWidgets('member permission switch cannot write deleted model state', (
+  testWidgets('member settings omit unsupported permission switch', (
     tester,
   ) async {
     final launchCubit = LaunchProfileCubit(
@@ -328,9 +328,7 @@ void main() {
 
     await _pumpMemberForm(tester, launchCubit: launchCubit);
 
-    final permissionSwitch = tester.widget<Switch>(find.byType(Switch));
-    expect(permissionSwitch.value, isTrue);
-    expect(permissionSwitch.onChanged, isNull);
+    expect(find.text('Skip all permission checks'), findsNothing);
     expect(
       launchCubit.state.selectedTeam?.roster.single.overrides.toJson(),
       isNot(contains('launchSecurityPolicy')),

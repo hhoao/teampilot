@@ -83,7 +83,6 @@ class _AutomationEditorDialogState extends State<AutomationEditorDialog> {
   String? _expertKey;
   String? _projectFolderPath;
   String? _workingDirectoryPath;
-  late LaunchSecurityPolicy _launchSecurityPolicy;
   late String _targetMemberId;
   var _didSeedLaunchFields = false;
 
@@ -155,7 +154,6 @@ class _AutomationEditorDialogState extends State<AutomationEditorDialog> {
     _expertKey = initial?.expertKey;
     _projectFolderPath = initial?.projectFolderPath;
     _workingDirectoryPath = initial?.workingDirectoryPath;
-    _launchSecurityPolicy = LaunchSecurityPolicy.fullAccess;
     _targetMemberId = initial?.targetMemberId ?? 'team-lead';
     _reuseSession = initial?.reuseSession ?? false;
     _enabled = initial?.enabled ?? true;
@@ -544,7 +542,6 @@ class _AutomationEditorDialogState extends State<AutomationEditorDialog> {
             presetId: _presetId,
             teamId: _teamId,
             expertKey: _expertKey,
-            launchSecurityPolicy: _launchSecurityPolicy,
             targetMemberId: _targetMemberId,
             onIsPersonalChanged: _onIsPersonalChanged,
             onProjectChanged: (v) => setState(() => _projectFolderPath = v),
@@ -552,8 +549,6 @@ class _AutomationEditorDialogState extends State<AutomationEditorDialog> {
             onPresetChanged: (v) => setState(() => _presetId = v),
             onTeamChanged: _onTeamChanged,
             onExpertChanged: (v) => setState(() => _expertKey = v),
-            onPermissionsChanged: (v) =>
-                setState(() => _launchSecurityPolicy = v),
             onTargetMemberChanged: (v) => setState(() => _targetMemberId = v),
           ),
         ),

@@ -19,7 +19,6 @@ import '../../models/app_session.dart';
 import '../../models/cli_preset.dart';
 import '../../models/config_bundle.dart';
 import '../../models/landing_launch_context.dart';
-import '../../models/launch_security_policy.dart';
 import '../../models/plugin.dart';
 import '../../models/skill.dart';
 import '../../models/team_config.dart';
@@ -95,6 +94,7 @@ class SessionChatComposeSection extends StatelessWidget {
     required this.onPasteImage,
     required this.routeActive,
     required this.onSubmit,
+    this.permissionControl,
     this.userStoppedTurn = false,
     this.onUserStoppedTurn,
     this.turnStarting = false,
@@ -116,6 +116,7 @@ class SessionChatComposeSection extends StatelessWidget {
   final bool isSubmitting;
   final String workspaceRoot;
   final ConfigBundle workspaceBundle;
+  final ComposePermissionControl? permissionControl;
   final String? launchError;
   final VoidCallback? onRemapDeadTarget;
   final VoidCallback? onRetry;
@@ -414,6 +415,11 @@ class SessionChatComposeSection extends StatelessWidget {
                             ),
                             onChanged: (_) {},
                             chrome: BoundComposeChrome(
+                              permissionControl: permissionControlForCli(
+                                registry,
+                                lockedCli,
+                                permissionControl,
+                              ),
                               composeEnabled: !permissionWaiting,
                               onRemapDeadTarget: onRemapDeadTarget,
                               onRetry: onRetry,
@@ -441,30 +447,6 @@ class SessionChatComposeSection extends StatelessWidget {
                                   lockedCli: lockedCli,
                                   selectedMemberId: selectedMemberId,
                                   value: v,
-                                ),
-                              ),
-                              launchSecurityPolicy: _effectiveSecurityPolicy(
-                                session: session,
-                                team: team,
-                                selectedMemberId: selectedMemberId,
-                              ),
-                              defaultPermissionsLabel:
-                                  l10n.workspaceChatLandingDefaultPermissions,
-                              fullAccessPermissionsLabel: l10n
-                                  .workspaceChatLandingFullAccessPermissions,
-                              askReadOnlyPermissionsLabel: l10n
-                                  .workspaceChatLandingAskReadOnlyPermissions,
-                              autoApproveWorkspaceWritePermissionsLabel: l10n
-                                  .workspaceChatLandingAutoApproveWorkspaceWritePermissions,
-                              customPermissionsLabel:
-                                  l10n.workspaceChatLandingCustomPermissions,
-                              onPermissionSelected: (value) => unawaited(
-                                _onPermissionSelected(
-                                  context: context,
-                                  value: value,
-                                  session: session,
-                                  team: team,
-                                  selectedMemberId: selectedMemberId,
                                 ),
                               ),
                               teamSettingsTooltip: showTeamSettings
@@ -701,14 +683,6 @@ class SessionChatComposeSection extends StatelessWidget {
     return team.members.where((m) => m.id == mid).firstOrNull;
   }
 
-  // -- Effective security policy -------------------------------------------
-
-  static LaunchSecurityPolicy _effectiveSecurityPolicy({
-    required AppSession session,
-    required TeamProfile? team,
-    required String selectedMemberId,
-  }) => LaunchSecurityPolicy.fullAccess;
-
   // -- Selected preset id --------------------------------------------------
 
   static List<TpActionMenuSpec> teamPresetMenuSpecs({
@@ -843,16 +817,6 @@ class SessionChatComposeSection extends StatelessWidget {
     } on Object {
       if (context.mounted) _toastContinueSaveFailed(context);
     }
-  }
-
-  static Future<void> _onPermissionSelected({
-    required BuildContext context,
-    required LaunchSecurityPolicy value,
-    required AppSession session,
-    required TeamProfile? team,
-    required String selectedMemberId,
-  }) async {
-    // The compose control remains until Task 4; policy is not session state.
   }
 
   static Future<void> _onCascadeSelected({

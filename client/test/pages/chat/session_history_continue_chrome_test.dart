@@ -473,9 +473,6 @@ void main() {
                       groupByCli: false,
                     ),
                     onModelCascadeSelected: (_) {},
-                    defaultPermissionsLabel: 'Default',
-                    fullAccessPermissionsLabel: 'Full access',
-                    onPermissionSelected: (_) {},
                   ),
                   dropTarget: ComposeFileDropIngestor(
                     workspaceRoot: '/tmp',
@@ -507,10 +504,10 @@ void main() {
         expect(find.byType(WorkspaceComposeCard), findsOneWidget);
         expect(find.byType(ComposeFileDropRegion), findsOneWidget);
         expect(find.widgetWithText(ComposeMenuChip, 'Beta'), findsOneWidget);
-        expect(find.byType(ComposePermissionChip), findsOneWidget);
+        expect(find.byType(ComposePermissionChip), findsNothing);
         expect(find.text('My Team'), findsOneWidget);
         expect(find.text('Beta'), findsOneWidget);
-        expect(find.text('Full access'), findsOneWidget);
+        expect(find.text('Full access'), findsNothing);
 
         // Landing session-fixed chrome must stay absent on review compose.
         expect(find.text('Project'), findsNothing);

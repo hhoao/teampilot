@@ -404,11 +404,6 @@ class TeamMemberConfigFormState extends State<TeamMemberConfigForm> {
             memberId: widget.memberId,
             showDividerBelow: true,
           ),
-          _MemberSkipPermissionsSwitch(
-            teamId: widget.teamId,
-            memberId: widget.memberId,
-            onPersist: _persistImmediate,
-          ),
           TpPreferenceStack(
             title: l10n.memberResponsibilities,
             subtitle: l10n.memberPromptSubtitle,
@@ -493,39 +488,5 @@ class _ReadOnlyMultilineText extends StatelessWidget {
       return Text(emptyHint, style: mutedStyle);
     }
     return SelectableText(trimmed, style: style);
-  }
-}
-
-class _MemberSkipPermissionsSwitch extends StatelessWidget {
-  const _MemberSkipPermissionsSwitch({
-    required this.teamId,
-    required this.memberId,
-    required this.onPersist,
-  });
-
-  final String teamId;
-  final String memberId;
-  final void Function(TeamMemberConfig next) onPersist;
-
-  @override
-  Widget build(BuildContext context) {
-    final l10n = context.l10n;
-    final memberExists = context.select<LaunchProfileCubit, bool>(
-      (c) =>
-          LaunchProfileSelectors.memberDiscreteFields(
-            c.state,
-            teamId,
-            memberId,
-          ) !=
-          null,
-    );
-    if (!memberExists) return const SizedBox.shrink();
-
-    return TpPreferenceRow(
-      title: l10n.memberDangerouslySkipPermissions,
-      subtitle: l10n.memberDangerouslySkipPermissionsHint,
-      trailing: Switch(value: true, onChanged: null),
-      showDividerBelow: true,
-    );
   }
 }

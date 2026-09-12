@@ -302,58 +302,55 @@ void main() {
     expect(find.byIcon(Icons.chevron_left_rounded), findsWidgets);
   });
 
-  testWidgets(
-    'landing member permission switch cannot write deleted model state',
-    (tester) async {
-      const team = TeamProfile(
-        id: 'team-1',
-        name: 'Alpha',
-        members: [
-          TeamMemberConfig(id: 'team-lead', name: 'Lead'),
-          TeamMemberConfig(id: 'worker', name: 'Worker'),
-        ],
-        roster: [
-          TeamRosterSlot(
-            id: 'team-lead',
-            expertKey: 'teampilot/builtin/team-lead',
-          ),
-        ],
-      );
-      final launchCubit = _launchCubitFor(team);
-      addTearDown(launchCubit.close);
-      final presetsCubit = _presetsCubit();
-      addTearDown(presetsCubit.close);
-      final providerCubit = _SeededAppProviderCubit();
-      addTearDown(providerCubit.close);
-      final chatCubit = testChatCubit(executableResolver: () => 'claude');
-      addTearDown(chatCubit.close);
+  testWidgets('landing member settings omit unsupported permission switch', (
+    tester,
+  ) async {
+    const team = TeamProfile(
+      id: 'team-1',
+      name: 'Alpha',
+      members: [
+        TeamMemberConfig(id: 'team-lead', name: 'Lead'),
+        TeamMemberConfig(id: 'worker', name: 'Worker'),
+      ],
+      roster: [
+        TeamRosterSlot(
+          id: 'team-lead',
+          expertKey: 'teampilot/builtin/team-lead',
+        ),
+      ],
+    );
+    final launchCubit = _launchCubitFor(team);
+    addTearDown(launchCubit.close);
+    final presetsCubit = _presetsCubit();
+    addTearDown(presetsCubit.close);
+    final providerCubit = _SeededAppProviderCubit();
+    addTearDown(providerCubit.close);
+    final chatCubit = testChatCubit(executableResolver: () => 'claude');
+    addTearDown(chatCubit.close);
 
-      await _openLandingSettings(
-        tester,
-        viewport: const Size(400, 800),
-        launchCubit: launchCubit,
-        presetsCubit: presetsCubit,
-        providerCubit: providerCubit,
-        chatCubit: chatCubit,
-        team: team,
-      );
+    await _openLandingSettings(
+      tester,
+      viewport: const Size(400, 800),
+      launchCubit: launchCubit,
+      presetsCubit: presetsCubit,
+      providerCubit: providerCubit,
+      chatCubit: chatCubit,
+      team: team,
+    );
 
-      final l10n = lookupAppLocalizations(const Locale('en'));
-      await tester.tap(find.text(l10n.members));
-      await tester.pump();
-      await tester.pump(const Duration(milliseconds: 300));
-      final permissionSwitch = tester.widget<Switch>(find.byType(Switch).first);
-      expect(permissionSwitch.value, isTrue);
-      expect(permissionSwitch.onChanged, isNull);
-      await tester.pump();
-      await tester.tap(find.text(l10n.save));
-      await tester.pump();
-      await tester.pump(const Duration(seconds: 1));
+    final l10n = lookupAppLocalizations(const Locale('en'));
+    await tester.tap(find.text(l10n.members));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 300));
+    expect(find.text('Skip all permission checks'), findsNothing);
+    await tester.pump();
+    await tester.tap(find.text(l10n.save));
+    await tester.pump();
+    await tester.pump(const Duration(seconds: 1));
 
-      expect(
-        launchCubit.state.selectedTeam?.members.first.toJson(),
-        isNot(contains('launchSecurityPolicy')),
-      );
-    },
-  );
+    expect(
+      launchCubit.state.selectedTeam?.members.first.toJson(),
+      isNot(contains('launchSecurityPolicy')),
+    );
+  });
 }
