@@ -16292,6 +16292,12 @@ abstract class AppLocalizations {
   /// **'This Gemini CLI version does not support the ACP chat mode. Update Gemini CLI and try again.'**
   String get acpLaunchFailedVersion;
 
+  /// No description provided for @acpChatLaunchFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t start Gemini. Make sure Gemini CLI is installed and try again.'**
+  String get acpChatLaunchFailed;
+
   /// No description provided for @acpChatTurnFailed.
   ///
   /// In en, this message translates to:

@@ -52,15 +52,12 @@ void main() {
     expect(all.toSet(), {'out-1', 'in-1', 'err-1'});
   });
 
-  test('redacts GEMINI_API_KEY in stderr lines too', () {
+  test('redacts GEMINI_API_KEY in stderr env form too', () {
     final logger = AcpFrameLogger();
     logger.logStderr('GEMINI_API_KEY=super-secret-2');
-    // The JSON-shaped redaction only applies to quoted values; verify the
-    // logger stores redacted output for frames.
-    logger.logIncoming('{"GEMINI_API_KEY": "abc123"}');
     final text = logger.snapshot().join('\n');
-    expect(text, isNot(contains('abc123')));
-    expect(text, contains('[REDACTED]'));
+    expect(text, isNot(contains('super-secret-2')));
+    expect(text, contains('GEMINI_API_KEY=[REDACTED]'));
   });
 
   test('can disable disk log mirroring', () {

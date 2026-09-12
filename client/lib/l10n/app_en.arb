@@ -4600,6 +4600,7 @@
   "cloneRepositoryAddToExistingSucceeded": "Added {repo} to workspace {workspace}",
   "@cloneRepositoryAddToExistingSucceeded": { "placeholders": { "repo": {}, "workspace": {} } },
   "acpLaunchFailedVersion": "This Gemini CLI version does not support the ACP chat mode. Update Gemini CLI and try again.",
+  "acpChatLaunchFailed": "Couldn't start Gemini. Make sure Gemini CLI is installed and try again.",
   "acpChatTurnFailed": "This turn failed",
   "acpChatProcessExited": "Gemini exited unexpectedly"
 }

@@ -8777,6 +8777,9 @@ class AppLocalizationsZh extends AppLocalizations {
       '当前 Gemini CLI 版本不支持 ACP 聊天模式，请更新 Gemini CLI 后重试。';
 
   @override
+  String get acpChatLaunchFailed => '无法启动 Gemini，请确认已安装 Gemini CLI 后重试。';
+
+  @override
   String get acpChatTurnFailed => '本轮对话失败';
 
   @override

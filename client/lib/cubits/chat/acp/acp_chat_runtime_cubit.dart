@@ -36,6 +36,11 @@ enum AcpChatErrorKind {
   /// [AcpLaunchException] with [acpLaunchFailedVersion].
   launchFailedVersion,
 
+  /// The agent process could not be spawned or never completed the handshake
+  /// (binary missing, spawn/install failure, handshake error). Distinct from
+  /// [processExited], which is a mid-session crash of an already-open session.
+  launchFailed,
+
   /// The agent process exited before the session was closed.
   processExited,
 }
@@ -172,7 +177,12 @@ class AcpChatRuntimeCubit extends Cubit<AcpChatRuntimeState> {
         error: error,
         stackTrace: stackTrace,
       );
-      _endWith(AcpChatErrorKind.processExited, '$error');
+      // Spawn/install/handshake failures have no per-error copy — surface the
+      // shared localized launch-failure message, not the raw exception text.
+      _endWith(
+        AcpChatErrorKind.launchFailed,
+        _strings?.launchFailed ?? defaultAcpChatStrings.launchFailed,
+      );
       return;
     }
     if (isClosed) return;

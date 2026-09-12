@@ -137,11 +137,13 @@ explicitly not shipped even when negotiated (later phase).
 ## Logging
 
 `AcpFrameLogger` records every in/out frame plus stderr into a 200-entry
-ring buffer and AppLogger disk output, with credential redaction. A
-developer entry point to view the buffer ships in this phase (Zed's
-`dev: open acp logs` pattern). This is mandatory, not optional: with no
-terminal fallback view, the frame log is the only diagnostic surface when
-an agent stalls.
+ring buffer and AppLogger disk output, with credential redaction (both the
+JSON `"GEMINI_API_KEY": "…"` form and the stderr `GEMINI_API_KEY=…` env
+form). The ring buffer is reachable programmatically via `snapshot()` and
+disk output via `enableDiskLog` — with no terminal fallback view for ACP
+sessions, the frame log is the primary diagnostic surface when an agent
+stalls. A developer-facing UI entry point to view the buffer is tracked as
+a follow-up (Zed's `dev: open acp logs` pattern), not shipped in this phase.
 
 ## Testing
 
@@ -173,3 +175,11 @@ fork.
 - OAuth login flow; fs/* and terminal/* client capabilities
 - session/load resume UI; session mode switching
 - ACP registry-driven agent discovery/installation
+- Developer UI entry point to view the ACP frame-log ring buffer (the buffer
+  itself ships via `AcpFrameLogger.snapshot()` + `enableDiskLog`)
+- ACP auto-install follow-through: launch currently relies on the existing
+  npm installer channel; full hands-off install on first launch is not wired
+- Reopen/re-hydration of an in-memory ACP session: the app-side transcript
+  (`AcpChatTranscriptWriter`) persists the stream, but a reopened session
+  rebuilds from the live cubit only — full resume-from-disk hydration is a
+  later phase

@@ -392,6 +392,15 @@ class _SessionChatViewState extends State<SessionChatView> {
   Future<void> _loadHistoryThenHydratePersistedPendingUsers() async {
     final seat = _seat;
     if (seat == null) return;
+    // Terminal-less ACP session: the cubit owns the transcript (app-side
+    // message table), and the failed-message store is a PTY delivery concern —
+    // hydrating persisted pending records here would resurrect stale bubbles
+    // that the cubit never reconciles.
+    final acpRuntime = widget.acpRuntime;
+    if (acpRuntime != null) {
+      _syncAcpMessages(acpRuntime);
+      return;
+    }
     final scope = HistoryHydrationScope(
       seat: seat,
       sessionId: widget.session.sessionId,
@@ -561,6 +570,15 @@ class _SessionChatViewState extends State<SessionChatView> {
   Future<void> _loadHistory({bool force = false}) async {
     final seat = _seat;
     if (seat == null) return;
+    // Terminal-less ACP session: the app-side message table held by
+    // [AcpChatRuntimeCubit] is the single source. The CLI transcript loader
+    // has nothing to read for ACP and a `seat.load()`/`softReloadOrLoad()`
+    // would blank the thread on rebuild. Re-publish and return.
+    final acpRuntime = widget.acpRuntime;
+    if (acpRuntime != null) {
+      _syncAcpMessages(acpRuntime);
+      return;
+    }
     if (force) {
       await seat.load(
         session: widget.session,
@@ -1005,6 +1023,22 @@ class _SessionChatViewState extends State<SessionChatView> {
     bool clearCompose = true,
   }) async {
     if (text.isEmpty) return const HistoryContinueSubmitResult.failed();
+    // Terminal-less ACP session: the ACP runtime owns the turn and the
+    // app-side transcript. The failed-message store is a PTY delivery concern —
+    // a persisted pending record here would never be reconciled (the cubit's
+    // messages are the single source) and would leak a stale bubble. Deliver
+    // straight to the runtime and skip the pending-record machinery entirely.
+    final acpRuntime = widget.acpRuntime;
+    if (acpRuntime != null) {
+      if (clearCompose) {
+        await _discardComposeDraftForSubmit();
+      }
+      final sent = acpRuntime.sendPrompt(text);
+      return HistoryContinueSubmitResult(
+        ok: sent,
+        channel: HistoryContinueChannel.pty,
+      );
+    }
     final selectedMemberId = widget.selectedMemberId;
     if (AgentPermissionAttentionBanner.isSelectedSeatWaiting(
       attention: context.read<AgentAttentionCubit>(),

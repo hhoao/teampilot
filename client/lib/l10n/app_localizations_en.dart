@@ -9176,6 +9176,10 @@ class AppLocalizationsEn extends AppLocalizations {
       'This Gemini CLI version does not support the ACP chat mode. Update Gemini CLI and try again.';
 
   @override
+  String get acpChatLaunchFailed =>
+      'Couldn\'t start Gemini. Make sure Gemini CLI is installed and try again.';
+
+  @override
   String get acpChatTurnFailed => 'This turn failed';
 
   @override

@@ -84,6 +84,7 @@ class _FakeAcpRuntime implements AcpSessionRuntimeApi {
 
 const _testStrings = AcpChatStrings(
   launchFailedVersion: 'Gemini ACP unsupported',
+  launchFailed: 'Failed to start the agent',
   turnFailed: 'Turn failed',
   processExited: 'Process exited',
 );
@@ -314,6 +315,34 @@ void main() {
     );
     await cubit.close();
   });
+
+  test(
+    'generic launch failure → launchFailed kind + localized copy (not raw)',
+    () async {
+      runtime.startError = StateError('ProcessException: gemini not found');
+      final cubit = bootCubit();
+      await cubit.start(
+        executable: 'gemini',
+        sessionToolDir: '/tmp/tool',
+        workingDirectory: '/w',
+      );
+
+      expect(cubit.state.phase, AcpChatPhase.ended);
+      expect(cubit.state.error?.kind, AcpChatErrorKind.launchFailed);
+      final message = cubit.state.messages.single;
+      expect(message.role, AiRole.system);
+      expect(
+        (message.parts.single as AiTextPart).text,
+        'Failed to start the agent',
+      );
+      // The raw exception text must not leak into the user-facing message.
+      expect(
+        (message.parts.single as AiTextPart).text,
+        isNot(contains('ProcessException')),
+      );
+      await cubit.close();
+    },
+  );
 
   test('sendPrompt guards concurrent turns (sequential only)', () async {
     final cubit = bootCubit();

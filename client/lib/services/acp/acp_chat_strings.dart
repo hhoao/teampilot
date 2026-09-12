@@ -14,6 +14,7 @@ import 'acp_session_runtime.dart';
 // defaults are not localized by design.
 const AcpChatStrings defaultAcpChatStrings = AcpChatStrings(
   launchFailedVersion: acpLaunchFailedVersion,
+  launchFailed: 'Failed to start the agent',
   turnFailed: 'Turn failed',
   processExited: 'Agent process exited',
 );
@@ -21,6 +22,7 @@ const AcpChatStrings defaultAcpChatStrings = AcpChatStrings(
 class AcpChatStrings {
   const AcpChatStrings({
     required this.launchFailedVersion,
+    required this.launchFailed,
     required this.turnFailed,
     required this.processExited,
   });
@@ -28,6 +30,10 @@ class AcpChatStrings {
   /// [acpLaunchFailedVersion] copy: no ACP flag candidate produced a usable
   /// agent (old CLI version).
   final String launchFailedVersion;
+
+  /// Copy for a launch failure that is not a version/flag rejection: the agent
+  /// could not be spawned or never completed the handshake.
+  final String launchFailed;
 
   /// Prefix for a turn that ended with a surfaced error.
   final String turnFailed;

@@ -18,8 +18,14 @@ class AcpFrameLogger {
 
   static const int _maxEntries = 200;
 
-  static final RegExp _geminiApiKeyPattern =
-      RegExp(r'"GEMINI_API_KEY"\s*:\s*"([^"]*)"');
+  /// JSON-RPC frames carry the key quoted (`"GEMINI_API_KEY": "…"`); agent
+  /// stderr lines carry the env form (`GEMINI_API_KEY=…`). Both must be
+  /// redacted before anything is buffered or mirrored to disk.
+  static final RegExp _geminiApiKeyQuotedPattern =
+      RegExp(r'"GEMINI_API_KEY"\s*:\s*"[^"]*"');
+  static final RegExp _geminiApiKeyEnvPattern = RegExp(
+    r'GEMINI_API_KEY\s*=\s*\S+',
+  );
 
   final ListQueue<String> _outgoing = ListQueue<String>();
   final ListQueue<String> _incoming = ListQueue<String>();
@@ -67,6 +73,12 @@ class AcpFrameLogger {
     }
   }
 
-  static String _redact(String text) => text.replaceAllMapped(
-      _geminiApiKeyPattern, (_) => '"GEMINI_API_KEY": "[REDACTED]"');
+  static String _redact(String text) {
+    var redacted = text.replaceAll(
+      _geminiApiKeyQuotedPattern,
+      '"GEMINI_API_KEY": "[REDACTED]"',
+    );
+    redacted = redacted.replaceAll(_geminiApiKeyEnvPattern, 'GEMINI_API_KEY=[REDACTED]');
+    return redacted;
+  }
 }

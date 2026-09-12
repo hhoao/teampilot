@@ -190,6 +190,13 @@ class SessionChatComposeSection extends StatelessWidget {
             (c) => c.state.pendingPermission,
           );
     final acpPermissionWaiting = acpPending != null;
+    final acpTurnInFlight =
+        acpRuntime == null
+            ? false
+            : seatSelect<AcpChatRuntimeCubit, bool>(
+                context,
+                (c) => c.state.inTurn,
+              );
 
     final registry =
         CliToolRegistryScope.maybeOf(context) ?? CliToolRegistry.builtIn();
@@ -412,17 +419,26 @@ class SessionChatComposeSection extends StatelessWidget {
                           final effectiveWorking =
                               (memberWorking || turnStarting) &&
                               !userStoppedTurn;
-                          final showComposeStop = shouldShowComposeStop(
-                            memberWorking: memberWorking,
-                            supportsTurnInterrupt: supportsTurnInterrupt,
-                            composeTextEmpty: composeTextEmpty,
-                            userStoppedTurn: userStoppedTurn,
-                            turnStarting: turnStarting,
-                          );
                           final seatLocked =
                               permissionWaiting || acpPermissionWaiting;
                           final canSubmit =
                               !seatLocked && !composeTextEmpty && !isSubmitting;
+                          // Terminal-less ACP: the compose Stop is the only
+                          // in-flight turn control — it must drive the runtime's
+                          // cancel, not the PTY interrupt path. Show it whenever
+                          // a turn is in flight (empty compose), even when the
+                          // seat is not memberWorking.
+                          final showAcpStop =
+                              acpRuntime != null && acpTurnInFlight;
+                          final showComposeStop =
+                              showAcpStop ||
+                              shouldShowComposeStop(
+                                memberWorking: memberWorking,
+                                supportsTurnInterrupt: supportsTurnInterrupt,
+                                composeTextEmpty: composeTextEmpty,
+                                userStoppedTurn: userStoppedTurn,
+                                turnStarting: turnStarting,
+                              );
                           return WorkspaceComposeCard(
                             controller: composeController,
                             focusNode: composeFocusNode,
@@ -512,6 +528,10 @@ class SessionChatComposeSection extends StatelessWidget {
                               showStop: showComposeStop,
                               onStop: showComposeStop
                                   ? () {
+                                      if (showAcpStop) {
+                                        acpRuntime?.cancelTurn();
+                                        return;
+                                      }
                                       onUserStoppedTurn?.call();
                                       unawaited(
                                         _handleComposeStop(
