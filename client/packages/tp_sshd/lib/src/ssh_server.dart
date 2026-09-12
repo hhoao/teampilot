@@ -189,10 +189,11 @@ final class SSHForwardingConfig {
   /// refused before this seam is consulted.
   final SSHBindServerSocket bindServerSocket;
 
-  /// The guard width covering a dial plus the confirmation round-trip, so a
-  /// stuck dial can never leave a channel-open pending forever.
-  /// `future.timeout(dialTimeout)` bounds the dial; on expiry the channel is
-  /// refused like any dial failure.
+  /// The guard width that bounds only the dial itself, so a stuck dial can
+  /// never leave a channel-open pending forever (prevents a hung pending
+  /// open). `future.timeout(dialTimeout)` bounds the dial; on expiry the
+  /// channel is refused like any dial failure. The confirmation round-trip is
+  /// synchronous and not covered by this budget.
   final Duration dialTimeout;
 }
 

@@ -59,7 +59,20 @@ class SSHServerDirectDialer {
         'invalid target port $port',
       );
     }
-    if (!await _allowTarget(host, port)) {
+    // Like the `authenticate` callback, a throwing permit predicate means a
+    // failed attempt, not an unhandled connection error: contain it so the
+    // refusal reaches the client and no exception escapes the detached
+    // `_serveDirectTcpip` future.
+    final bool allowed;
+    try {
+      allowed = await _allowTarget(host, port);
+    } on Object {
+      return DirectDialRefused(
+        SSH_Message_Channel_Open_Failure.codeAdministrativelyProhibited,
+        'forwarding decision failed',
+      );
+    }
+    if (!allowed) {
       return DirectDialRefused(
         SSH_Message_Channel_Open_Failure.codeAdministrativelyProhibited,
         'forwarding disabled for $host:$port',

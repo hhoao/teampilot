@@ -346,13 +346,16 @@ class SSHServerConnection {
         _refuseChannelOpen(
             message.senderChannel, result.reasonCode, result.description);
       case DirectDialConnected():
-        // 拨号期间连接关闭：销毁拨入 socket，不发任何包。
+        // Connection closed while dialing: destroy the dialed socket and send
+        // nothing.
         if (_phase != _Phase.running) {
           result.connection.destroy();
           return;
         }
-        // 拨号期间可能跨过上线：接收时点的复检已放行并发在途拨号，这里在注册
-        // 通道之前复检一次（OpenSSH channel_new 后的同款复检），堵住冲线。
+        // The channel cap may have been crossed while dialing: the receive-time
+        // re-check already admitted concurrent in-flight dials, and this
+        // re-check before registration blocks the race (the same re-check
+        // OpenSSH does after channel_new).
         if (_channels.length >= _config.maxChannels) {
           result.connection.destroy();
           _refuseChannelOpen(
@@ -410,7 +413,7 @@ class SSHServerConnection {
         ).encode(),
       );
     } on Object {
-      // transport 已走；连接拆除负责收尾
+      // transport is gone; the connection teardown owns the aftermath
     }
   }
 

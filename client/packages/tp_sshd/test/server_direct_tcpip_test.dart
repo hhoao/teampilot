@@ -21,13 +21,13 @@ import 'dual_test_utils.dart';
 
 void main() {
   final forwardingConfig =
-      ({SSHDialSocket? dial, Future<bool> Function(SSHServerConnection, String, int)? permit}) =>
+      ({SSHDialSocket? dial, Future<bool> Function(SSHServerConnection, String, int)? permit, Duration? dialTimeout}) =>
           SSHForwardingConfig(
             allowTcpForwarding: SshTcpForwardingMode.both,
             permitOpen: permit,
             dialSocket: dial ?? (host, port) => throw StateError('no dial'),
             bindServerSocket: _bindRealLoopback,
-            dialTimeout: const Duration(seconds: 5),
+            dialTimeout: dialTimeout ?? const Duration(seconds: 5),
           );
 
   Future<ServerSocket> _echoListener() async {
@@ -126,6 +126,60 @@ void main() {
               SSH_Message_Channel_Open_Failure.codeAdministrativelyProhibited)),
     );
     expect(dialed, 0);
+    await client.close();
+    await server.close();
+  });
+
+  test('throwing permitOpen yields reason 1 and never an unhandled error',
+      () async {
+    // permitOpen throws for any target
+    var dialed = 0;
+    final (client, server) = await startDualPair(
+      hostKeyPair: testHostKey,
+      authenticate: (_) async => true,
+      clientIdentities: [testDeviceKey],
+      forwarding: forwardingConfig(
+        permit: (conn, host, port) async => throw StateError('boom'),
+        dial: (host, port) async {
+          dialed += 1;
+          throw StateError('should not dial');
+        },
+      ),
+    );
+    // expect forwardLocal throws SSHChannelOpenError code 1 (wire value 1)
+    await expectLater(
+      client.forwardLocal('10.0.0.1', 80),
+      throwsA(isA<SSHChannelOpenError>()
+          .having((e) => e.code, 'code',
+              SSH_Message_Channel_Open_Failure.codeAdministrativelyProhibited)
+          .having((e) => e.code, 'wire', 1)),
+    );
+    expect(dialed, 0);
+    // then client.ping() completes (connection alive, no zone error).
+    await expectLater(client.ping(), completes);
+    await client.close();
+    await server.close();
+  });
+
+  test('never-completing dial is refused at the dial timeout, connection alive',
+      () async {
+    final (client, server) = await startDualPair(
+      hostKeyPair: testHostKey,
+      authenticate: (_) async => true,
+      clientIdentities: [testDeviceKey],
+      forwarding: forwardingConfig(
+        dialTimeout: const Duration(milliseconds: 100),
+        dial: (host, port) => Completer<ForwardConnection>().future,
+      ),
+    );
+    await expectLater(
+      client.forwardLocal('127.0.0.1', 80),
+      throwsA(isA<SSHChannelOpenError>()
+          .having((e) => e.code, 'code',
+              SSH_Message_Channel_Open_Failure.codeConnectFailed)
+          .having((e) => e.code, 'wire', 2)),
+    );
+    await expectLater(client.ping(), completes);
     await client.close();
     await server.close();
   });
