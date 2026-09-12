@@ -40,6 +40,7 @@ Typical `<teampilotRoot>` paths:
   worktrees/{repoName}/{branch}/ # app-managed git worktrees
   ui/                            # home workspace UI prefs (tabs, favorites, …)
   notifications.json
+  event-transport.json           # loopback Event Transport advertisement (desktop server)
 ```
 
 ## Workspace directory

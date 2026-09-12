@@ -33,5 +33,16 @@ void main() {
         isEmpty,
       );
     });
+
+    test('occupied sessions appear even without local busy or open tabs', () {
+      final sessions = [session('a'), session('b')];
+      final result = workspaceRunningSessions(
+        sessions: sessions,
+        busySessionIds: const {},
+        openTabSessionIds: const {},
+        occupiedSessionIds: {'b'},
+      );
+      expect(result.map((s) => s.sessionId), ['b']);
+    });
   });
 }

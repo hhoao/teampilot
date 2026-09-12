@@ -21,6 +21,8 @@ class AppPaths {
 
   String get notificationsJson => notificationsJsonForTeampilotRoot(basePath);
 
+  String get eventTransportJson => eventTransportJsonForTeampilotRoot(basePath);
+
   String get cliPresetsJson => _ctx.join(basePath, 'cli-presets.json');
 
   /// Linux desktop / `path_provider` app-data id (e.g. `~/.local/share/com.hhoa.teampilot`).
@@ -125,6 +127,9 @@ class AppPaths {
 
   static String notificationsJsonForTeampilotRoot(String teampilotRoot) =>
       _pathUnderTeampilotRoot(teampilotRoot, 'notifications.json');
+
+  static String eventTransportJsonForTeampilotRoot(String teampilotRoot) =>
+      _pathUnderTeampilotRoot(teampilotRoot, 'event-transport.json');
 
   static String managedProviderDirForTeampilotRoot(String teampilotRoot) =>
       _pathUnderTeampilotRoot(teampilotRoot, 'providers/managed');

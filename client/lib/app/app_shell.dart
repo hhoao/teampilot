@@ -30,9 +30,15 @@ import '../services/editor/markdown_network_image_store.dart';
 import '../services/event/agent_presence_event.dart';
 import '../services/event/agent_presence_projection.dart';
 import '../services/event/agent_presence_sink.dart';
+import '../services/event/agent_presence_transport_codec.dart';
 import '../services/event/async_dispatcher.dart';
 import '../services/event/event_publisher.dart';
+import '../services/event/event_transport_client.dart';
+import '../services/event/event_transport_controller.dart';
+import '../services/event/event_transport_server.dart';
 import '../services/event/presence_event_bridge.dart';
+import '../services/event/session_lifecycle_transport_codec.dart';
+import 'event_transport_home.dart';
 import '../services/prompt_delivery/prompt_delivery_coordinator.dart';
 import '../services/prompt_delivery/prompt_delivery_store.dart';
 import '../services/agent_status/agent_status_seat_lookup.dart';
@@ -624,6 +630,8 @@ Future<AppShell> buildAppShell({
   // Null keeps the cubit on the legacy poll-derived path (tests, early boot).
   AgentPresenceProjection? presenceProjection,
   AgentPresenceSink? presenceSink,
+  EventTransportController? eventTransportController,
+  void Function(HomeStorage home)? bindEventTransportHome,
 }) async {
   final bootSw = Stopwatch()..start();
   void boot(String phase) =>
@@ -2182,7 +2190,7 @@ Future<AppShell> buildAppShell({
     memberPresenceCubit = MemberPresenceCubit(
       storage: homeStorage,
       presenceProjection: presenceProjection,
-      presenceBridge: presenceSink == null
+      presenceBridge: presenceSink == null || connectionModeService.isSshMode
           ? null
           : PresenceEventBridge(sink: presenceSink),
     );
@@ -2705,10 +2713,39 @@ Future<AppShell> buildAppShell({
     // and republishes it through HomeStorage. No explicit reload here (I1): the
     // HomeInvalidationService subscribes to HomeStorage.changes and drives the
     // single full reload — the swap itself is the trigger.
+    Future<void> applyHomeEventTransport({bool restart = false}) async {
+      final cubit = memberPresenceCubit;
+      if (cubit != null) {
+        if (connectionModeService.isSshMode) {
+          cubit.setPresenceBridge(null);
+        } else if (presenceSink != null) {
+          cubit.setPresenceBridge(PresenceEventBridge(sink: presenceSink));
+        } else {
+          cubit.setPresenceBridge(null);
+        }
+      }
+      final controller = eventTransportController;
+      if (controller == null) return;
+      bindEventTransportHome?.call(homeStorage);
+      await applyEventTransportForHome(
+        controller: controller,
+        connectionMode: connectionModeService,
+        homeStorage: homeStorage,
+        sshClientFactory: sshClientFactory,
+        homeProfile: () {
+          final id = defaultTargetResolver().sshProfileId;
+          if (id == null || id.isEmpty) return null;
+          return sshProfileById(id);
+        },
+        restart: restart,
+      );
+    }
+
     Future<void> switchHomeTarget(String id) async {
       await setHomeTarget(
         id,
       ); // persists + rebinds home + republishes HomeStorage
+      await applyHomeEventTransport(restart: true);
     }
 
     // Bootstrap-owned invalidation: replaces the HomeSshProfileBinder widget
@@ -2889,6 +2926,7 @@ Future<AppShell> buildAppShell({
       uiZoomBaseline: uiZoomBaseline,
     );
     managedProviderControlPlaneLease.transferOwnership();
+    await applyHomeEventTransport();
     return shell;
   } on Object {
     // The failed shell is discarded: stop its catalog mutation bus before a
@@ -2898,6 +2936,7 @@ Future<AppShell> buildAppShell({
     // app-lifetime presence projection, which would otherwise keep waking a
     // cubit from a discarded shell. `memberPresenceCubit` is nullable because
     // construction may throw before it is assigned.
+    await eventTransportController?.apply(EventTransportRole.none);
     await memberPresenceCubit?.close();
     await catalogRuntime?.bus.close();
     await managedProviderControlPlaneLease.closeIfOwned();
@@ -2979,6 +3018,55 @@ class _TeamPilotBootstrapState extends State<TeamPilotBootstrap> {
     _eventDispatcher,
   );
 
+  HomeStorage? _eventTransportHome;
+
+  late final EventTransportController _eventTransportController =
+      EventTransportController(
+        createServer: () {
+          final home = _eventTransportHome;
+          if (home == null) {
+            throw StateError('event-transport home storage not bound');
+          }
+          final server = EventTransportServer(
+            dispatcher: _eventDispatcher,
+            presence: _presenceProjection,
+            fs: home.fs,
+            advertisementPath: home.paths.eventTransportJson,
+            codecs: [
+              AgentPresenceTransportCodec(),
+              SessionLifecycleTransportCodec(),
+            ],
+          );
+          return CallbackEventTransportEndpoint(
+            start: server.start,
+            stop: server.stop,
+          );
+        },
+        createClient:
+            ({required Future<EventTransportByteChannel> Function() open}) {
+              final client = EventTransportClient(
+                dispatcher: _eventDispatcher,
+                presence: _presenceProjection,
+                codecs: [
+                  AgentPresenceTransportCodec(),
+                  SessionLifecycleTransportCodec(),
+                ],
+                open: open,
+                onError: (error, stackTrace) {
+                  appLogger.w(
+                    '[event-transport] client',
+                    error: error,
+                    stackTrace: stackTrace,
+                  );
+                },
+              );
+              return CallbackEventTransportEndpoint(
+                start: client.start,
+                stop: client.stop,
+              );
+            },
+      );
+
   @override
   void initState() {
     super.initState();
@@ -3010,9 +3098,14 @@ class _TeamPilotBootstrapState extends State<TeamPilotBootstrap> {
         bootstrapCubit: widget.bootstrapCubit,
         presenceProjection: _presenceProjection,
         presenceSink: _presenceSink,
+        eventTransportController: _eventTransportController,
+        bindEventTransportHome: (home) {
+          _eventTransportHome = home;
+        },
       );
       final shell = builtShell;
       if (!mounted) {
+        await _eventTransportController.apply(EventTransportRole.none);
         await shell.memberPresenceCubit.close();
         await shell.connectCubit?.close();
         await shell.managedProviderControlPlane.close();
@@ -3021,6 +3114,7 @@ class _TeamPilotBootstrapState extends State<TeamPilotBootstrap> {
       await yieldUiFrame();
       await shell.bootstrapAppData();
       if (!mounted) {
+        await _eventTransportController.apply(EventTransportRole.none);
         await shell.memberPresenceCubit.close();
         await shell.connectCubit?.close();
         await shell.managedProviderControlPlane.close();
@@ -3058,6 +3152,7 @@ class _TeamPilotBootstrapState extends State<TeamPilotBootstrap> {
       // same reason: it subscribes to the app-lifetime presence projection.
       await builtShell?.memberPresenceCubit.close();
       await builtShell?.catalogRuntime?.bus.close();
+      await _eventTransportController.apply(EventTransportRole.none);
       appLogger.e(
         '[boot] buildAppShell failed',
         error: error,
@@ -3114,6 +3209,7 @@ class _TeamPilotBootstrapState extends State<TeamPilotBootstrap> {
     // close — runs strictly after the last delivery. The projection also
     // guards its own broadcast add (`if (!_changes.isClosed)`), so even a late
     // event would be dropped rather than throw; the chain is belt-and-braces.
+    unawaited(_eventTransportController.apply(EventTransportRole.none));
     unawaited(
       _eventDispatcher.stop().then((_) => _presenceProjection.close()),
     );

@@ -41,15 +41,24 @@ class PresenceTarget {
 }
 
 class MemberPresenceState extends Equatable {
-  const MemberPresenceState({this.presence = const {}});
+  const MemberPresenceState({
+    this.presence = const {},
+    this.occupiedSessionIds = const {},
+  });
 
   final Map<String, MemberPresence> presence;
+  final Set<String> occupiedSessionIds;
 
-  MemberPresenceState copyWith({Map<String, MemberPresence>? presence}) =>
-      MemberPresenceState(presence: presence ?? this.presence);
+  MemberPresenceState copyWith({
+    Map<String, MemberPresence>? presence,
+    Set<String>? occupiedSessionIds,
+  }) => MemberPresenceState(
+    presence: presence ?? this.presence,
+    occupiedSessionIds: occupiedSessionIds ?? this.occupiedSessionIds,
+  );
 
   @override
-  List<Object?> get props => [presence];
+  List<Object?> get props => [presence, occupiedSessionIds];
 }
 
 class MemberPresenceCubit extends Cubit<MemberPresenceState> {
@@ -78,8 +87,24 @@ class MemberPresenceCubit extends Cubit<MemberPresenceState> {
   final AgentPresenceProjection? _presenceProjection;
 
   /// Pushed-events producer edge: dedupes the availability recomputed every
-  /// tick into events. Null means no publishing.
-  final PresenceEventBridge? _presenceBridge;
+  /// tick into events. Null means no publishing. Replaced on home-role swap
+  /// because [reloadAllAppData] does not recreate this cubit.
+  PresenceEventBridge? _presenceBridge;
+
+  /// Replaces the producer edge. Disposes the previous bridge. Idempotent on
+  /// producer-ness: a producer is not disposed/recreated when [bridge] is
+  /// non-null, and a consumer stays null when [bridge] is null.
+  void setPresenceBridge(PresenceEventBridge? bridge) {
+    if (identical(_presenceBridge, bridge)) return;
+    final currentlyProducer = _presenceBridge != null;
+    final wantProducer = bridge != null;
+    if (currentlyProducer == wantProducer) {
+      bridge?.dispose();
+      return;
+    }
+    _presenceBridge?.dispose();
+    _presenceBridge = bridge;
+  }
 
   /// Observable spy for tests; called before a projection change triggers a
   /// recompute.
@@ -125,6 +150,20 @@ class MemberPresenceCubit extends Cubit<MemberPresenceState> {
     _target = target;
     _attachPresencePushTriggers(target);
     _schedulePresencePollingRestart();
+  }
+
+  /// Retracts occupancy for a torn-down [sessionId] by publishing `cleared`
+  /// for every known seat in that session. Does not run when the active
+  /// target merely becomes null (tab switch / personal-tab hysteresis).
+  void forgetSession(String sessionId) {
+    final seats = [
+      for (final seat in _knownSeats)
+        if (seat.sessionId == sessionId) seat,
+    ];
+    for (final seat in seats) {
+      _presenceBridge?.reportAvailability(seat, null);
+      _knownSeats.remove(seat);
+    }
   }
 
   /// [owner] identifies the attaching UI (pass the [State] of each
@@ -211,6 +250,10 @@ class MemberPresenceCubit extends Cubit<MemberPresenceState> {
 
   void _onProjectionSeatChanged(PresenceSeatKey seat) {
     _onProjectionChanged?.call();
+    final occupied = _presenceProjection?.occupiedSessionIds ?? const <String>{};
+    if (!setEquals(state.occupiedSessionIds, occupied)) {
+      emit(state.copyWith(occupiedSessionIds: occupied));
+    }
     _requestPresenceRecompute();
   }
 
@@ -341,6 +384,7 @@ class MemberPresenceCubit extends Cubit<MemberPresenceState> {
         AgentPresenceKind.booting => MemberAvailability.booting,
         AgentPresenceKind.working => MemberAvailability.working,
         AgentPresenceKind.idle => MemberAvailability.idle,
+        AgentPresenceKind.cleared => null,
         null => null,
       };
 
@@ -394,6 +438,9 @@ class MemberPresenceCubit extends Cubit<MemberPresenceState> {
     _knownSeats.clear();
     _presenceBridge?.dispose();
     await changes?.cancel();
+    if (!setEquals(state.occupiedSessionIds, const {})) {
+      emit(state.copyWith(occupiedSessionIds: const {}));
+    }
     await super.close();
   }
 }

@@ -12,8 +12,9 @@ import 'agent_presence_sink.dart';
 /// - A first report for a seat (no baseline) counts as a change and IS
 ///   published — consumers need the initial value.
 /// - Passing `null` means "this seat currently has no availability"
-///   (disconnected): it clears the internal baseline and publishes NOTHING.
-///   The connection dimension is not part of this event family this phase.
+///   (disconnected): it clears the internal baseline and publishes
+///   [AgentPresenceKind.cleared] when a baseline existed. When there was no
+///   baseline, nothing is published (avoids unbound-seat tombstone spam).
 ///   Because the baseline is cleared, a re-report of the same value after a
 ///   `null` publishes again (fresh baseline).
 /// - [forget] clears the baseline so the next report publishes.
@@ -33,11 +34,18 @@ final class PresenceEventBridge {
 
   /// Reports the current [availability] for [seat], publishing an event only
   /// when it differs from the last reported value. A `null` [availability]
-  /// clears the baseline without publishing (see class docs).
+  /// clears the baseline and publishes [AgentPresenceKind.cleared] when a
+  /// baseline existed (see class docs).
   void reportAvailability(PresenceSeatKey seat, AgentPresenceKind? availability) {
     if (_disposed) return;
     if (availability == null) {
-      _last.remove(seat);
+      final had = _last.remove(seat);
+      if (had == null) return;
+      _sink.publish(AgentPresenceEvent(
+        seat: seat,
+        eventKind: AgentPresenceKind.cleared,
+        timestamp: _clock(),
+      ));
       return;
     }
     if (_last[seat] == availability) return;

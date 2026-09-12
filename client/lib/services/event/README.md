@@ -55,8 +55,8 @@ Producers push from two latches in the terminal layer:
 `PresenceEventBridge` is the deduping edge: producers report a seat's current
 availability on each poll recompute, and the bridge publishes an
 `AgentPresenceEvent` only when the value differs from the last one reported (a
-first report always publishes; a `null` report clears the baseline without
-publishing, since connection is not part of this family).
+first report always publishes; a `null` report publishes `cleared` and clears
+the baseline, so a later reconnect of the same value is not swallowed).
 
 The value fed to the bridge is the **authoritative computed availability**
 (`MemberCoordination`'s result), **not** the projected value the cubit emits.
@@ -65,6 +65,27 @@ reporting the projected value back into the edge would make it self-referential
 — the projection's first value would become its own input and the loop would
 freeze, never observing a fresh computation. The computed value is ground truth;
 the projection is a downstream cache of it.
+
+## Event Transport
+
+Loopback NDJSON over SSH `forwardLocal` so a phone (ssh home) sees the desktop's
+occupied sessions and agent availability. `services/event/` does **not** import
+dartssh2; the ssh layer wraps `SSHForwardChannel` as `EventTransportByteChannel`.
+
+| home | role | cubit |
+|---|---|---|
+| local (desktop) | `EventTransportServer` on `127.0.0.1:0` | **with** `PresenceEventBridge` (producer) |
+| ssh (phone) | `EventTransportClient` via `forwardLocal('127.0.0.1', port)` | **without** bridge (consumer only) |
+| Termux / other | neither | today's producer (bridge stays on) |
+
+The advertisement file is `<teampilotRoot>/event-transport.json`
+(`{v, bindHost, port, pid, startedAt}`). Missing file or a failed forward is
+logged; the Client backoff retries `open`. Transport failure **degrades to
+disk + poll** — home still opens.
+
+UTF-8 NDJSON, one JSON object per line. Presence snapshot uses `op:set`; the
+in-process `AgentPresenceKind.cleared` tombstone is `op:clear` on the wire.
+`sessionLifecycle` is live-only this phase (no snapshot, no new phone UI).
 
 ### Consumer
 

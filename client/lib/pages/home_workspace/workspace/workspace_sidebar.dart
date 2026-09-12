@@ -8,6 +8,7 @@ import 'package:shared_ui/shared_ui.dart';
 
 import '../../../cubits/chat_cubit.dart';
 import '../../../cubits/layout_cubit.dart';
+import '../../../cubits/member_presence_cubit.dart';
 import '../../../cubits/session_groups_cubit.dart';
 import '../../../cubits/shortcut_cubit.dart';
 import '../../../cubits/workbench/workbench_cubit.dart';
@@ -434,12 +435,16 @@ class _RunningSessionsHost extends StatelessWidget {
       (c) => SplitSessionGroups.fromWorkbench(c, tabScopeId),
     );
     if (splitGroups.groups.isNotEmpty) {
+      final occupied = context.select<MemberPresenceCubit, Set<String>>(
+        (c) => c.state.occupiedSessionIds,
+      );
       final running = context.select<ChatCubit, RunningSessionIds>(
         (c) => RunningSessionIds.fromOpenSessionTabs(
           sessions: sessionsForWorkspace(workspace, c.state.sessions),
           openTabSessionIdsInOrder: [
             for (final g in splitGroups.groups) ...g.sessionIds,
           ],
+          occupiedSessionIds: occupied,
         ),
       );
       if (running.isEmpty) {
@@ -479,10 +484,14 @@ class _RunningSessionsHost extends StatelessWidget {
     final centerLayout = context.select<WorkbenchCubit, WorkbenchGroupLayout>(
       (c) => c.centerLayout(tabScopeId),
     );
+    final occupied = context.select<MemberPresenceCubit, Set<String>>(
+      (c) => c.state.occupiedSessionIds,
+    );
     final running = context.select<ChatCubit, RunningSessionIds>(
       (c) => RunningSessionIds.fromOpenSessionTabs(
         sessions: sessionsForWorkspace(workspace, c.state.sessions),
         openTabSessionIdsInOrder: openTabIds.ids,
+        occupiedSessionIds: occupied,
       ),
     );
     if (running.isEmpty) {

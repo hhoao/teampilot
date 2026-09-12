@@ -60,4 +60,11 @@ void main() {
       AgentPresenceKind.working.runtimeType,
     );
   });
+
+  test('cleared shares the family runtimeType so one registration covers it', () {
+    expect(
+      AgentPresenceKind.cleared.runtimeType,
+      AgentPresenceKind.working.runtimeType,
+    );
+  });
 }
