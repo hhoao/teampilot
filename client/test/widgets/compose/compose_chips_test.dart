@@ -240,6 +240,43 @@ void main() {
       expect(selected, LaunchSecurityPolicy.fullAccess);
     });
 
+    testWidgets(
+      'selects the first rendered policy when the selected optional label is missing',
+      (tester) async {
+        await tester.pumpWidget(
+          MaterialApp(
+            home: Scaffold(
+              body: Builder(
+                builder: (context) {
+                  final palette = WorkspaceChatLandingPalette(
+                    Theme.of(context).colorScheme,
+                  );
+                  return ComposePermissionChip(
+                    palette: palette,
+                    supportedPolicies: Set.unmodifiable({
+                      LaunchSecurityPolicy.askReadOnlyTrusted,
+                      LaunchSecurityPolicy.fullAccess,
+                    }),
+                    launchSecurityPolicy:
+                        LaunchSecurityPolicy.askReadOnlyTrusted,
+                    defaultLabel: 'Default',
+                    fullAccessLabel: 'Full access',
+                    onSelected: (_) {},
+                  );
+                },
+              ),
+            ),
+          ),
+        );
+
+        await tester.tap(find.text('Full access'));
+        await tester.pumpAndSettle();
+
+        expect(find.text('Full access'), findsNWidgets(2));
+        expect(find.byIcon(Icons.check), findsOneWidget);
+      },
+    );
+
     testWidgets('preserves an intermediate normalized policy', (tester) async {
       LaunchSecurityPolicy? selected;
       await tester.pumpWidget(
