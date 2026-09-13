@@ -368,6 +368,7 @@ class WorkspaceComposeCard extends StatelessWidget {
         SizedBox(width: spacing.sm),
         ComposePermissionChip(
           palette: palette,
+          supportedPolicies: control.supportedPolicies,
           launchSecurityPolicy: control.launchSecurityPolicy,
           defaultLabel: control.defaultLabel,
           fullAccessLabel: control.fullAccessLabel,
@@ -413,6 +414,7 @@ class WorkspaceComposeCard extends StatelessWidget {
       if (chrome.permissionControl case final control?) ...[
         ComposePermissionChip(
           palette: palette,
+          supportedPolicies: control.supportedPolicies,
           launchSecurityPolicy: control.launchSecurityPolicy,
           defaultLabel: control.defaultLabel,
           fullAccessLabel: control.fullAccessLabel,

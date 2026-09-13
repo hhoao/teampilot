@@ -176,6 +176,10 @@ void main() {
                 palette: WorkspaceChatLandingPalette(
                   Theme.of(context).colorScheme,
                 ),
+                supportedPolicies: Set.unmodifiable({
+                  LaunchSecurityPolicy.cliDefault,
+                  LaunchSecurityPolicy.askReadOnlyTrusted,
+                }),
                 launchSecurityPolicy: LaunchSecurityPolicy.cliDefault,
                 defaultLabel: 'Default',
                 fullAccessLabel: 'Full access',
@@ -189,6 +193,7 @@ void main() {
 
       await tester.tap(find.text('Default'));
       await tester.pumpAndSettle();
+      expect(find.text('Full access'), findsNothing);
       await tester.tap(find.text('Ask read-only'));
       await tester.pumpAndSettle();
 
@@ -209,6 +214,10 @@ void main() {
                 );
                 return ComposePermissionChip(
                   palette: palette,
+                  supportedPolicies: Set.unmodifiable({
+                    LaunchSecurityPolicy.cliDefault,
+                    LaunchSecurityPolicy.fullAccess,
+                  }),
                   launchSecurityPolicy: LaunchSecurityPolicy.cliDefault,
                   defaultLabel: 'Default',
                   fullAccessLabel: 'Full access',
@@ -243,6 +252,10 @@ void main() {
                 );
                 return ComposePermissionChip(
                   palette: palette,
+                  supportedPolicies: Set.unmodifiable({
+                    LaunchSecurityPolicy.askReadOnlyTrusted,
+                    LaunchSecurityPolicy.autoApproveWorkspaceWriteTrusted,
+                  }),
                   launchSecurityPolicy: LaunchSecurityPolicy.askReadOnlyTrusted,
                   defaultLabel: 'Default',
                   fullAccessLabel: 'Full access',

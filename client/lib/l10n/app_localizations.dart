@@ -3536,30 +3536,6 @@ abstract class AppLocalizations {
   /// **'Custom launch'**
   String get workspaceChatLandingCustomLaunchTitle;
 
-  /// No description provided for @workspaceChatLandingFullAccessPermissions.
-  ///
-  /// In en, this message translates to:
-  /// **'Full access permissions'**
-  String get workspaceChatLandingFullAccessPermissions;
-
-  /// No description provided for @workspaceChatLandingAskReadOnlyPermissions.
-  ///
-  /// In en, this message translates to:
-  /// **'Ask · read-only · trusted hooks'**
-  String get workspaceChatLandingAskReadOnlyPermissions;
-
-  /// No description provided for @workspaceChatLandingAutoApproveWorkspaceWritePermissions.
-  ///
-  /// In en, this message translates to:
-  /// **'Auto-approve · workspace write · trusted hooks'**
-  String get workspaceChatLandingAutoApproveWorkspaceWritePermissions;
-
-  /// No description provided for @workspaceChatLandingCustomPermissions.
-  ///
-  /// In en, this message translates to:
-  /// **'Custom security policy'**
-  String get workspaceChatLandingCustomPermissions;
-
   /// No description provided for @workspaceChatLandingSkills.
   ///
   /// In en, this message translates to:
@@ -3571,12 +3547,6 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Connect apps'**
   String get workspaceChatLandingConnectApps;
-
-  /// No description provided for @workspaceChatLandingDefaultPermissions.
-  ///
-  /// In en, this message translates to:
-  /// **'Default permissions'**
-  String get workspaceChatLandingDefaultPermissions;
 
   /// No description provided for @workspaceChatLandingAttach.
   ///
@@ -5569,18 +5539,6 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'When off (default), sending from Chat (new conversation or continue) stays on the Chat view while the terminal runs in the background. When on, switch to the Terminal after send.'**
   String get chatSubmitSwitchesToTerminalDescription;
-
-  /// No description provided for @simpleModeDefaultFullAccessTitle.
-  ///
-  /// In en, this message translates to:
-  /// **'Simple mode default: full access'**
-  String get simpleModeDefaultFullAccessTitle;
-
-  /// No description provided for @simpleModeDefaultFullAccessDescription.
-  ///
-  /// In en, this message translates to:
-  /// **'When enabled (default), new Simple-mode compose landing starts with full access permissions. Workspace chip choices still override and persist per workspace.'**
-  String get simpleModeDefaultFullAccessDescription;
 
   /// No description provided for @continueSwitchRestartTitle.
   ///
@@ -10124,18 +10082,6 @@ abstract class AppLocalizations {
   /// **'Agent preset and extra CLI flags for this member.'**
   String get workspaceAdvancedSettingsSubtitle;
 
-  /// No description provided for @memberDangerouslySkipPermissions.
-  ///
-  /// In en, this message translates to:
-  /// **'Skip all permission checks'**
-  String get memberDangerouslySkipPermissions;
-
-  /// No description provided for @memberDangerouslySkipPermissionsHint.
-  ///
-  /// In en, this message translates to:
-  /// **'Only for isolated / no-network sandboxes. Extremely risky otherwise.'**
-  String get memberDangerouslySkipPermissionsHint;
-
   /// No description provided for @prompt.
   ///
   /// In en, this message translates to:
@@ -12487,30 +12433,6 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Worktree'**
   String get automationsLaunchWorktree;
-
-  /// Session permission level for launch-prompt automations
-  ///
-  /// In en, this message translates to:
-  /// **'Permissions'**
-  String get automationsPermissions;
-
-  /// No description provided for @automationsPermissionsAskReadOnly.
-  ///
-  /// In en, this message translates to:
-  /// **'Ask · read-only · trusted hooks'**
-  String get automationsPermissionsAskReadOnly;
-
-  /// No description provided for @automationsPermissionsAutoApproveWorkspaceWrite.
-  ///
-  /// In en, this message translates to:
-  /// **'Auto-approve · workspace write · trusted hooks'**
-  String get automationsPermissionsAutoApproveWorkspaceWrite;
-
-  /// No description provided for @automationsPermissionsCustom.
-  ///
-  /// In en, this message translates to:
-  /// **'Custom security policy'**
-  String get automationsPermissionsCustom;
 
   /// Deprecated — use automationsLaunchMode
   ///

@@ -10,6 +10,7 @@ sealed class ComposeChrome {
 final class ComposePermissionControl {
   const ComposePermissionControl({
     required this.launchSecurityPolicy,
+    required this.supportedPolicies,
     required this.defaultLabel,
     required this.fullAccessLabel,
     required this.onSelected,
@@ -19,6 +20,9 @@ final class ComposePermissionControl {
   });
 
   final LaunchSecurityPolicy launchSecurityPolicy;
+
+  /// Immutable policies exposed by the CLI capability for this control.
+  final Set<LaunchSecurityPolicy> supportedPolicies;
   final String defaultLabel;
   final String fullAccessLabel;
   final String? askReadOnlyLabel;

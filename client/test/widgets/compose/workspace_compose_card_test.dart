@@ -154,6 +154,10 @@ void main() {
         child: pumpCard(
           chrome: BoundComposeChrome(
             permissionControl: ComposePermissionControl(
+              supportedPolicies: Set.unmodifiable({
+                LaunchSecurityPolicy.cliDefault,
+                LaunchSecurityPolicy.fullAccess,
+              }),
               launchSecurityPolicy: LaunchSecurityPolicy.cliDefault,
               defaultLabel: 'Default permissions',
               fullAccessLabel: 'Full access',

@@ -1960,28 +1960,10 @@ class AppLocalizationsEn extends AppLocalizations {
   String get workspaceChatLandingCustomLaunchTitle => 'Custom launch';
 
   @override
-  String get workspaceChatLandingFullAccessPermissions =>
-      'Full access permissions';
-
-  @override
-  String get workspaceChatLandingAskReadOnlyPermissions =>
-      'Ask · read-only · trusted hooks';
-
-  @override
-  String get workspaceChatLandingAutoApproveWorkspaceWritePermissions =>
-      'Auto-approve · workspace write · trusted hooks';
-
-  @override
-  String get workspaceChatLandingCustomPermissions => 'Custom security policy';
-
-  @override
   String get workspaceChatLandingSkills => 'Skills';
 
   @override
   String get workspaceChatLandingConnectApps => 'Connect apps';
-
-  @override
-  String get workspaceChatLandingDefaultPermissions => 'Default permissions';
 
   @override
   String get workspaceChatLandingAttach => 'Attach files';
@@ -3106,14 +3088,6 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get chatSubmitSwitchesToTerminalDescription =>
       'When off (default), sending from Chat (new conversation or continue) stays on the Chat view while the terminal runs in the background. When on, switch to the Terminal after send.';
-
-  @override
-  String get simpleModeDefaultFullAccessTitle =>
-      'Simple mode default: full access';
-
-  @override
-  String get simpleModeDefaultFullAccessDescription =>
-      'When enabled (default), new Simple-mode compose landing starts with full access permissions. Workspace chip choices still override and persist per workspace.';
 
   @override
   String get continueSwitchRestartTitle => 'Restart to apply switch?';
@@ -5685,13 +5659,6 @@ class AppLocalizationsEn extends AppLocalizations {
       'Agent preset and extra CLI flags for this member.';
 
   @override
-  String get memberDangerouslySkipPermissions => 'Skip all permission checks';
-
-  @override
-  String get memberDangerouslySkipPermissionsHint =>
-      'Only for isolated / no-network sandboxes. Extremely risky otherwise.';
-
-  @override
   String get prompt => 'Prompt';
 
   @override
@@ -7033,20 +7000,6 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get automationsLaunchWorktree => 'Worktree';
-
-  @override
-  String get automationsPermissions => 'Permissions';
-
-  @override
-  String get automationsPermissionsAskReadOnly =>
-      'Ask · read-only · trusted hooks';
-
-  @override
-  String get automationsPermissionsAutoApproveWorkspaceWrite =>
-      'Auto-approve · workspace write · trusted hooks';
-
-  @override
-  String get automationsPermissionsCustom => 'Custom security policy';
 
   @override
   String get automationsLaunchProfile => 'Launch identity';
