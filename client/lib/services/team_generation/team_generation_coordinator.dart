@@ -181,7 +181,6 @@ final class TeamGenerationCoordinator {
       launch: TeamGenerationLaunchSnapshot(
         projectFolderPath: projectFolderPath,
         workingDirectoryPath: workingDirectoryPath,
-        launchSecurityPolicyValue: 'cliDefault',
         folderIds: folderIds,
         targetIds: targetIds,
         workspaceRevision: workspaceRevision,

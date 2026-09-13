@@ -2511,39 +2511,6 @@ class ChatCubit extends Cubit<ChatState>
     if (updated != null) replaceSessionSnapshot(updated);
   }
 
-  /// Persists session-level or per-member continue security-policy overrides.
-  ///
-  /// Returns false when the repo/session is missing or persistence fails.
-  Future<bool> setSessionContinueSecurityPolicy({
-    required String sessionId,
-    required LaunchSecurityPolicy launchSecurityPolicy,
-    String? memberId,
-  }) async {
-    final repo = _sessionRepository;
-    if (repo == null) return false;
-    final session = _continueOverridesController.sessionIn(
-      state.sessions,
-      sessionId,
-    );
-    if (session == null) return false;
-    final patched = _continueOverridesController.patchSecurityPolicy(
-      session: session,
-      launchSecurityPolicy: launchSecurityPolicy,
-      memberId: memberId,
-    );
-    try {
-      await _continueOverridesController.persistSecurityPolicy(
-        repo: repo,
-        patched: patched,
-      );
-      replaceSessionSnapshot(patched);
-      _syncTabPersistedSession(patched);
-      return true;
-    } on Object {
-      return false;
-    }
-  }
-
   /// Persists a same-CLI preset for Simple identity or a team member override.
   ///
   /// Returns false when [preset.cli] does not match [lockedCli] (no disk write).

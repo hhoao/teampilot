@@ -6,6 +6,7 @@ import 'package:teampilot/services/cli/codex/capabilities/permission_launch.dart
 import 'package:teampilot/services/cli/codex/capabilities/session_selection_launch.dart';
 import 'package:teampilot/services/cli/codex/capabilities/workspace_access_launch.dart';
 import 'package:teampilot/services/cli/codex/codex_tool.dart';
+import 'package:teampilot/services/cli/registry/capabilities/cli_launch_security_capability.dart';
 import 'package:teampilot/services/cli/registry/cli_capability.dart';
 import 'package:teampilot/services/cli/registry/cli_tool_definition.dart';
 import 'package:teampilot/services/cli/registry/cli_tool_registry.dart';
@@ -25,7 +26,6 @@ void main() {
           id: 'member',
           name: 'Member',
           model: 'gpt-5.2',
-          launchSecurityPolicy: LaunchSecurityPolicy.fullAccess,
         ),
         workingDirectory: '/work',
       ),
@@ -42,11 +42,7 @@ void main() {
 
   test('resume and fixed Codex launches use the resume subcommand', () {
     const team = TeamProfile(id: 'team', name: 'Team', cli: CliTool.codex);
-    const member = TeamMemberConfig(
-      id: 'member',
-      name: 'Member',
-      launchSecurityPolicy: LaunchSecurityPolicy.fullAccess,
-    );
+    const member = TeamMemberConfig(id: 'member', name: 'Member');
 
     expect(
       _assemble(team: team, member: member, resumeSessionId: 'resume-id'),
@@ -80,7 +76,6 @@ void main() {
             r'E:\repo\two',
           ],
           useWslPaths: true,
-          launchSecurityPolicy: LaunchSecurityPolicy.cliDefault,
         ),
         [
           '--cd',
@@ -89,6 +84,8 @@ void main() {
           '/mnt/d/repo/one',
           '--add-dir',
           '/mnt/e/repo/two',
+          '--dangerously-bypass-approvals-and-sandbox',
+          '--dangerously-bypass-hook-trust',
         ],
       );
     },
@@ -103,9 +100,13 @@ void main() {
           name: 'Member',
           model: '  gpt-5.2  ',
         ),
-        launchSecurityPolicy: LaunchSecurityPolicy.cliDefault,
       ),
-      ['-m', 'gpt-5.2'],
+      [
+        '-m',
+        'gpt-5.2',
+        '--dangerously-bypass-approvals-and-sandbox',
+        '--dangerously-bypass-hook-trust',
+      ],
     );
   });
 
@@ -120,104 +121,50 @@ void main() {
         '--dangerously-bypass-hook-trust',
       ],
     );
-    expect(
-      _assemble(
-        team: const TeamProfile(id: 'team', name: 'Team', cli: CliTool.codex),
-        member: const TeamMemberConfig(id: 'member', name: 'Member'),
-        launchSecurityPolicy: LaunchSecurityPolicy.cliDefault,
-      ),
-      isEmpty,
+  });
+
+  test('Codex assembler rejects every non-full-access policy', () {
+    for (final policy in const [
+      LaunchSecurityPolicy.cliDefault,
+      LaunchSecurityPolicy.askReadOnlyTrusted,
+      LaunchSecurityPolicy.autoApproveWorkspaceWriteTrusted,
+    ]) {
+      expect(
+        () => _assemble(
+          team: const TeamProfile(id: 'team', name: 'Team', cli: CliTool.codex),
+          member: const TeamMemberConfig(id: 'member', name: 'Member'),
+          launchSecurityPolicy: policy,
+        ),
+        throwsA(
+          isA<CliLaunchCapabilityException>()
+              .having((error) => error.cli, 'cli', CliTool.codex)
+              .having(
+                (error) => error.contributionKey,
+                'contributionKey',
+                'launch-security-policy',
+              ),
+        ),
+        reason: describeLaunchSecurityPolicy(policy),
+      );
+    }
+  });
+
+  test('Codex permission provider rejects non-full access directly', () {
+    final context = CliLaunchContext(
+      team: const TeamProfile(id: 'team', name: 'Team', cli: CliTool.codex),
+      member: const TeamMemberConfig(id: 'member', name: 'Member'),
+      launchSecurityPolicy: LaunchSecurityPolicy.cliDefault,
     );
+
     expect(
-      _assemble(
-        team: const TeamProfile(id: 'team', name: 'Team', cli: CliTool.codex),
-        member: const TeamMemberConfig(id: 'member', name: 'Member'),
-        launchSecurityPolicy: const LaunchSecurityPolicy(
-          approval: LaunchApprovalPolicy.never,
-          sandbox: LaunchSandboxPolicy.fullAccess,
-          hookTrust: LaunchHookTrustPolicy.trustedOnly,
+      () => const CodexPermissionLaunch().buildLaunchArgs(context),
+      throwsA(
+        isA<CliLaunchCapabilityException>().having(
+          (error) => error.contributionKey,
+          'contributionKey',
+          'codex-permission',
         ),
       ),
-      ['--ask-for-approval', 'never', '--sandbox', 'danger-full-access'],
-    );
-  });
-
-  test('permission provider maps the cautious Codex policy', () {
-    expect(
-      _assemble(
-        team: const TeamProfile(id: 'team', name: 'Team', cli: CliTool.codex),
-        member: const TeamMemberConfig(id: 'member', name: 'Member'),
-        launchSecurityPolicy: LaunchSecurityPolicy.askReadOnlyTrusted,
-      ),
-      ['--ask-for-approval', 'on-request', '--sandbox', 'read-only'],
-    );
-  });
-
-  test('permission provider maps Codex automatic review policy', () {
-    expect(
-      _assemble(
-        team: const TeamProfile(id: 'team', name: 'Team', cli: CliTool.codex),
-        member: const TeamMemberConfig(id: 'member', name: 'Member'),
-        launchSecurityPolicy:
-            LaunchSecurityPolicy.autoApproveWorkspaceWriteTrusted,
-      ),
-      ['--approve-for-me'],
-    );
-  });
-
-  test(
-    'permission provider rejects automatic review without workspace write',
-    () {
-      for (final sandbox in <LaunchSandboxPolicy>[
-        LaunchSandboxPolicy.cliDefault,
-        LaunchSandboxPolicy.readOnly,
-        LaunchSandboxPolicy.fullAccess,
-      ]) {
-        expect(
-          () => _assemble(
-            team: const TeamProfile(
-              id: 'team',
-              name: 'Team',
-              cli: CliTool.codex,
-            ),
-            member: const TeamMemberConfig(id: 'member', name: 'Member'),
-            launchSecurityPolicy: LaunchSecurityPolicy(
-              approval: LaunchApprovalPolicy.autoApprove,
-              sandbox: sandbox,
-              hookTrust: LaunchHookTrustPolicy.trustedOnly,
-            ),
-          ),
-          throwsA(
-            isA<CliLaunchCapabilityException>().having(
-              (error) => error.contributionKey,
-              'contribution key',
-              'codex-permission',
-            ),
-          ),
-          reason: 'sandbox=$sandbox',
-        );
-      }
-    },
-  );
-
-  test('permission provider keeps hook trust bypass independent', () {
-    expect(
-      _assemble(
-        team: const TeamProfile(id: 'team', name: 'Team', cli: CliTool.codex),
-        member: const TeamMemberConfig(id: 'member', name: 'Member'),
-        launchSecurityPolicy: const LaunchSecurityPolicy(
-          approval: LaunchApprovalPolicy.never,
-          sandbox: LaunchSandboxPolicy.workspaceWrite,
-          hookTrust: LaunchHookTrustPolicy.bypass,
-        ),
-      ),
-      [
-        '--ask-for-approval',
-        'never',
-        '--sandbox',
-        'workspace-write',
-        '--dangerously-bypass-hook-trust',
-      ],
     );
   });
 
@@ -236,11 +183,12 @@ void main() {
           extraArgs: "--member-flag 'member value'",
         ),
         workingDirectory: '/work',
-        launchSecurityPolicy: LaunchSecurityPolicy.cliDefault,
       ),
       [
         '--cd',
         '/work',
+        '--dangerously-bypass-approvals-and-sandbox',
+        '--dangerously-bypass-hook-trust',
         '--team-flag',
         'team value',
         '--member-flag',
@@ -309,7 +257,8 @@ List<String> _assemble({
       fixedSessionId: fixedSessionId,
       resumeSessionId: resumeSessionId,
       useWslPaths: useWslPaths,
-      launchSecurityPolicy: launchSecurityPolicy,
+      launchSecurityPolicy:
+          launchSecurityPolicy ?? LaunchSecurityPolicy.fullAccess,
     ),
   );
 }
@@ -328,5 +277,7 @@ final class _EmptyCodexTool implements CliToolDefinition {
   bool get isLaunchSupported => true;
 
   @override
-  Iterable<CliCapability> get capabilities => const [];
+  Iterable<CliCapability> get capabilities => const [
+    FullAccessOnlyCliLaunchSecurityCapability(),
+  ];
 }

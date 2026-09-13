@@ -10,7 +10,6 @@ import '../../cubits/team/launch_profile_selectors.dart';
 import '../../l10n/l10n_extensions.dart';
 import '../../models/discoverable_member.dart';
 import '../../models/team_config.dart';
-import '../../models/launch_security_policy.dart';
 import '../../models/team_roster_slot.dart';
 import '../../services/cli/flashskyai/agent_catalog_service.dart';
 import '../../widgets/home_storage_scope.dart';
@@ -405,11 +404,6 @@ class TeamMemberConfigFormState extends State<TeamMemberConfigForm> {
             memberId: widget.memberId,
             showDividerBelow: true,
           ),
-          _MemberSkipPermissionsSwitch(
-            teamId: widget.teamId,
-            memberId: widget.memberId,
-            onPersist: _persistImmediate,
-          ),
           TpPreferenceStack(
             title: l10n.memberResponsibilities,
             subtitle: l10n.memberPromptSubtitle,
@@ -494,58 +488,5 @@ class _ReadOnlyMultilineText extends StatelessWidget {
       return Text(emptyHint, style: mutedStyle);
     }
     return SelectableText(trimmed, style: style);
-  }
-}
-
-class _MemberSkipPermissionsSwitch extends StatelessWidget {
-  const _MemberSkipPermissionsSwitch({
-    required this.teamId,
-    required this.memberId,
-    required this.onPersist,
-  });
-
-  final String teamId;
-  final String memberId;
-  final void Function(TeamMemberConfig next) onPersist;
-
-  @override
-  Widget build(BuildContext context) {
-    final l10n = context.l10n;
-    final policy = context.select<LaunchProfileCubit, LaunchSecurityPolicy?>(
-      (c) => LaunchProfileSelectors.memberDiscreteFields(
-        c.state,
-        teamId,
-        memberId,
-      )?.launchSecurityPolicy,
-    );
-    if (policy == null) return const SizedBox.shrink();
-
-    return TpPreferenceRow(
-      title: l10n.memberDangerouslySkipPermissions,
-      subtitle: l10n.memberDangerouslySkipPermissionsHint,
-      trailing: Switch(
-        value: policy.requiresDangerousExecution,
-        onChanged: (v) {
-          final member = LaunchProfileSelectors.memberById(
-            LaunchProfileSelectors.teamById(
-              context.read<LaunchProfileCubit>().state,
-              teamId,
-            ),
-            memberId,
-          );
-          if (member == null) return;
-          onPersist(
-            member.copyWith(
-              launchSecurityPolicy: v
-                  ? LaunchSecurityPolicy.fullAccess
-                  : policy == LaunchSecurityPolicy.fullAccess
-                  ? LaunchSecurityPolicy.cliDefault
-                  : policy,
-            ),
-          );
-        },
-      ),
-      showDividerBelow: true,
-    );
   }
 }

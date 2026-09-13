@@ -7,6 +7,7 @@ import 'package:teampilot/services/cli/opencode/capabilities/session_selection_l
 import 'package:teampilot/services/cli/opencode/capabilities/team_behavior.dart';
 import 'package:teampilot/services/cli/opencode/capabilities/user_extra_args_launch.dart';
 import 'package:teampilot/services/cli/opencode/opencode_tool.dart';
+import 'package:teampilot/services/cli/registry/capabilities/cli_launch_security_capability.dart';
 import 'package:teampilot/services/cli/registry/capabilities/team_behavior_capability.dart';
 import 'package:teampilot/services/cli/registry/cli_capability.dart';
 import 'package:teampilot/services/cli/registry/cli_tool_definition.dart';
@@ -16,6 +17,8 @@ import 'package:teampilot/services/cli/registry/launch/cli_launch_arg_provider.d
 import 'package:teampilot/services/cli/registry/launch/cli_launch_constraint.dart';
 import 'package:teampilot/services/cli/registry/launch/cli_launch_capability_error.dart';
 import 'package:teampilot/services/cli/registry/launch/cli_launch_context.dart';
+import 'package:teampilot/services/cli/registry/launch/cli_headless_launch_constraint.dart';
+import 'package:teampilot/services/cli/registry/launch/cli_headless_launch_context.dart';
 import 'package:teampilot/services/session/launch_command_builder.dart';
 
 void main() {
@@ -118,7 +121,7 @@ void main() {
     );
   });
 
-  test('OpenCode rejects security policies it cannot represent', () {
+  test('OpenCode assembler rejects non-full-access security policies', () {
     expect(
       () => _assemble(
         team: const TeamProfile(
@@ -126,11 +129,8 @@ void main() {
           name: 'Team',
           cli: CliTool.opencode,
         ),
-        member: const TeamMemberConfig(
-          id: 'member',
-          name: 'Member',
-          launchSecurityPolicy: LaunchSecurityPolicy.askReadOnlyTrusted,
-        ),
+        member: const TeamMemberConfig(id: 'member', name: 'Member'),
+        launchSecurityPolicy: LaunchSecurityPolicy.askReadOnlyTrusted,
       ),
       throwsA(
         isA<CliLaunchCapabilityException>()
@@ -138,8 +138,48 @@ void main() {
             .having(
               (error) => error.contributionKey,
               'contributionKey',
-              'opencode-permission',
+              'launch-security-policy',
             ),
+      ),
+    );
+  });
+
+  test('OpenCode permission provider rejects non-full access directly', () {
+    final context = CliLaunchContext(
+      team: const TeamProfile(id: 'team', name: 'Team', cli: CliTool.opencode),
+      member: const TeamMemberConfig(id: 'member', name: 'Member'),
+      launchSecurityPolicy: LaunchSecurityPolicy.cliDefault,
+    );
+
+    expect(
+      () => const OpencodePermissionLaunch().validateLaunch(context),
+      throwsA(
+        isA<CliLaunchCapabilityException>().having(
+          (error) => error.contributionKey,
+          'contributionKey',
+          'opencode-permission',
+        ),
+      ),
+    );
+  });
+
+  test('OpenCode permission provider rejects non-full headless access', () {
+    const context = CliHeadlessLaunchContext(
+      prompt: 'hello',
+      model: '',
+      effort: '',
+      configDir: '/tmp/config',
+      securityPolicy: LaunchSecurityPolicy.cliDefault,
+    );
+
+    expect(
+      () => const OpencodePermissionLaunch().validateHeadlessLaunch(context),
+      throwsA(
+        isA<CliLaunchCapabilityException>().having(
+          (error) => error.contributionKey,
+          'contributionKey',
+          'opencode-permission',
+        ),
       ),
     );
   });
@@ -152,11 +192,7 @@ void main() {
           name: 'Team',
           cli: CliTool.opencode,
         ),
-        member: const TeamMemberConfig(
-          id: 'member',
-          name: 'Member',
-          launchSecurityPolicy: LaunchSecurityPolicy.fullAccess,
-        ),
+        member: const TeamMemberConfig(id: 'member', name: 'Member'),
       ),
       isEmpty,
     );
@@ -174,6 +210,10 @@ void main() {
       expect(providers, contains(isA<OpencodeUserExtraArgsLaunch>()));
       expect(
         tool.capabilities.whereType<CliLaunchConstraint>(),
+        contains(isA<OpencodePermissionLaunch>()),
+      );
+      expect(
+        tool.capabilities.whereType<CliHeadlessLaunchConstraint>(),
         contains(isA<OpencodePermissionLaunch>()),
       );
       expect(providers, hasLength(4));
@@ -212,6 +252,7 @@ void main() {
 List<String> _assemble({
   required TeamProfile team,
   required TeamMemberConfig member,
+  LaunchSecurityPolicy launchSecurityPolicy = LaunchSecurityPolicy.fullAccess,
   String? workingDirectory,
   List<String> additionalDirectories = const [],
   String? fixedSessionId,
@@ -222,6 +263,7 @@ List<String> _assemble({
     CliLaunchContext(
       team: team,
       member: member,
+      launchSecurityPolicy: launchSecurityPolicy,
       workingDirectory: workingDirectory,
       additionalDirectories: additionalDirectories,
       fixedSessionId: fixedSessionId,
@@ -244,5 +286,7 @@ final class _EmptyOpencodeTool implements CliToolDefinition {
   bool get isLaunchSupported => true;
 
   @override
-  Iterable<CliCapability> get capabilities => const [];
+  Iterable<CliCapability> get capabilities => const [
+    FullAccessOnlyCliLaunchSecurityCapability(),
+  ];
 }

@@ -1,4 +1,3 @@
-import 'package:teampilot/models/launch_security_policy.dart';
 import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
@@ -14,7 +13,10 @@ void main() {
   _simpleSession() async {
     final tmp = await Directory.systemTemp.createTemp('fs_continue_overrides_');
     addTearDown(() => tmp.deleteSync(recursive: true));
-    final repo = SessionRepository(rootDir: tmp.path, storage: fakeHomeStorage(), );
+    final repo = SessionRepository(
+      rootDir: tmp.path,
+      storage: fakeHomeStorage(),
+    );
     final workspace = await repo.createWorkspace([WorkspaceFolder(path: '/w')]);
     final session = (await repo.createSession(
       workspace.workspaceId,
@@ -30,12 +32,10 @@ void main() {
   test('updateContinueOverrides round-trips on disk', () async {
     final (:repo, :session) = await _simpleSession();
     const overrides = SessionContinueOverrides(
-      launchSecurityPolicy: LaunchSecurityPolicyOverride.fullAccess,
       memberOverrides: {
         'team-lead': SessionMemberContinueOverride(
           provider: 'openai',
           model: 'gpt-4',
-          launchSecurityPolicy: LaunchSecurityPolicyOverride.cliDefault,
         ),
       },
     );
@@ -51,7 +51,9 @@ void main() {
     () async {
       final (:repo, :session) = await _simpleSession();
       const overrides = SessionContinueOverrides(
-        launchSecurityPolicy: LaunchSecurityPolicyOverride.fullAccess,
+        memberOverrides: {
+          'team-lead': SessionMemberContinueOverride(provider: 'openai'),
+        },
       );
       await repo.updateContinueOverrides(session.sessionId, overrides);
 
@@ -75,10 +77,15 @@ void main() {
   test('createSession persists optional continueOverrides', () async {
     final tmp = await Directory.systemTemp.createTemp('fs_continue_overrides_');
     addTearDown(() => tmp.deleteSync(recursive: true));
-    final repo = SessionRepository(rootDir: tmp.path, storage: fakeHomeStorage(), );
+    final repo = SessionRepository(
+      rootDir: tmp.path,
+      storage: fakeHomeStorage(),
+    );
     final workspace = await repo.createWorkspace([WorkspaceFolder(path: '/w')]);
     const overrides = SessionContinueOverrides(
-      launchSecurityPolicy: LaunchSecurityPolicyOverride.fullAccess,
+      memberOverrides: {
+        'team-lead': SessionMemberContinueOverride(provider: 'openai'),
+      },
     );
     final session = (await repo.createSession(
       workspace.workspaceId,
@@ -92,13 +99,14 @@ void main() {
   test('updateContinueOverrides no-ops for unknown sessionId', () async {
     final tmp = await Directory.systemTemp.createTemp('fs_continue_overrides_');
     addTearDown(() => tmp.deleteSync(recursive: true));
-    final repo = SessionRepository(rootDir: tmp.path, storage: fakeHomeStorage(), );
+    final repo = SessionRepository(
+      rootDir: tmp.path,
+      storage: fakeHomeStorage(),
+    );
 
     await repo.updateContinueOverrides(
       'unknown-session-id',
-      const SessionContinueOverrides(
-        launchSecurityPolicy: LaunchSecurityPolicyOverride.fullAccess,
-      ),
+      const SessionContinueOverrides(),
     );
 
     expect(await repo.loadSessions(), isEmpty);
@@ -107,7 +115,10 @@ void main() {
   test('updateSimpleLaunchIdentity no-ops for unknown sessionId', () async {
     final tmp = await Directory.systemTemp.createTemp('fs_continue_overrides_');
     addTearDown(() => tmp.deleteSync(recursive: true));
-    final repo = SessionRepository(rootDir: tmp.path, storage: fakeHomeStorage(), );
+    final repo = SessionRepository(
+      rootDir: tmp.path,
+      storage: fakeHomeStorage(),
+    );
 
     await repo.updateSimpleLaunchIdentity(
       'unknown-session-id',

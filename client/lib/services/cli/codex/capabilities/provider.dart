@@ -3,6 +3,7 @@ import '../../../../models/app_provider_config.dart';
 import '../../../../models/credential_action_result.dart';
 import '../../../../models/credential_probe.dart';
 import '../../../../models/team_config.dart';
+import '../../../../models/launch_security_policy.dart';
 import '../../../../utils/workspace/trusted_project_paths.dart';
 import '../../../hook/glue_script_builder.dart';
 import '../../../launch/work_plane_paths.dart';
@@ -394,7 +395,7 @@ final class CodexProviderCapability extends CatalogModelCapability
         if (installsManagedHooks) {
           overlayParts.add(
             CodexManagedHookOverlay.build(
-              launchSecurityPolicy: member.launchSecurityPolicy,
+              launchSecurityPolicy: LaunchSecurityPolicy.fullAccess,
             ),
           );
         }

@@ -9,8 +9,6 @@ import '../../cubits/chat/model/session_open_status.dart';
 import '../../models/app_session.dart';
 import '../../models/automation.dart';
 import '../../models/cli_preset.dart';
-import '../../models/launch_security_policy.dart';
-import '../../models/session_continue_overrides.dart';
 import '../../models/simple_launch_identity.dart';
 import '../../models/team_config.dart';
 import '../../models/workspace.dart';
@@ -268,11 +266,6 @@ class AutomationDispatcher {
           cli: simpleIdentity.cli,
           simpleIdentity: simpleIdentity,
           expertKey: expertKey,
-          continueOverrides: SessionContinueOverrides(
-            launchSecurityPolicy: LaunchSecurityPolicyOverride.fromPolicy(
-              automation.launchSecurityPolicy,
-            ),
-          ),
           workingDirectory: workingDirectory,
           fixedSessionId: plannedSessionId,
         ),
@@ -290,11 +283,6 @@ class AutomationDispatcher {
           team: team,
           member: member,
           repo: _sessionRepository,
-          continueOverrides: SessionContinueOverrides(
-            launchSecurityPolicy: LaunchSecurityPolicyOverride.fromPolicy(
-              automation.launchSecurityPolicy,
-            ),
-          ),
           workingDirectory: workingDirectory,
           fixedSessionId: plannedSessionId,
         ),
@@ -327,7 +315,7 @@ class AutomationDispatcher {
     if (!isPersonal) {
       team = _teamById(session.sessionTeam);
       if (team == null) return false;
-      member = _resolveTeamMember(team, memberId);
+      member = _resolveTeamMember(team, memberId, session: session);
     }
 
     final status = await _requestOpenSession(
@@ -370,15 +358,22 @@ class AutomationDispatcher {
     return target.isEmpty ? _leadMemberId : target;
   }
 
-  TeamMemberConfig? _resolveTeamMember(TeamProfile team, String memberId) {
+  TeamMemberConfig? _resolveTeamMember(
+    TeamProfile team,
+    String memberId, {
+    AppSession? session,
+  }) {
+    final members = session == null
+        ? team.members
+        : sessionRosterMembers(session, team);
     final trimmed = memberId.trim();
     if (trimmed.isNotEmpty) {
-      final match = team.members.where((m) => m.id == trimmed).firstOrNull;
+      final match = members.where((m) => m.id == trimmed).firstOrNull;
       if (match != null && match.isValid) return match;
     }
-    final lead = team.members.where((m) => m.id == _leadMemberId).firstOrNull;
+    final lead = members.where((m) => m.id == _leadMemberId).firstOrNull;
     if (lead != null && lead.isValid) return lead;
-    return team.members.where((m) => m.isValid).firstOrNull;
+    return members.where((m) => m.isValid).firstOrNull;
   }
 
   AutomationRun _pendingRun(

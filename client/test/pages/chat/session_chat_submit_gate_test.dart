@@ -1,4 +1,3 @@
-import 'package:teampilot/models/launch_security_policy.dart';
 import 'dart:async';
 
 import 'package:flutter/material.dart';
@@ -66,50 +65,46 @@ void main() {
       addTearDown(textController.dispose);
       addTearDown(focusNode.dispose);
 
-      await tester.pumpWidget(RepositoryProvider<HomeStorage>.value(
-        value: testHomeStorage,
-        child: MaterialApp(
-          home: Scaffold(
-            body: WorkspaceComposeCard(
-              controller: textController,
-              focusNode: focusNode,
-              hint: 'Continue',
-              canSubmit: true,
-              isSubmitting: true,
-              onSubmit: () => submits++,
-              onChanged: (_) {},
-              chrome: const BoundComposeChrome(
-                identityLabel: 'Simple',
-                launchSecurityPolicy: LaunchSecurityPolicy.cliDefault,
-                defaultPermissionsLabel: 'Default',
-                fullAccessPermissionsLabel: 'Full access',
-                onPermissionSelected: _noopPolicy,
-              ),
-              dropTarget: ComposeFileDropIngestor(
+      await tester.pumpWidget(
+        RepositoryProvider<HomeStorage>.value(
+          value: testHomeStorage,
+          child: MaterialApp(
+            home: Scaffold(
+              body: WorkspaceComposeCard(
+                controller: textController,
+                focusNode: focusNode,
+                hint: 'Continue',
+                canSubmit: true,
+                isSubmitting: true,
+                onSubmit: () => submits++,
+                onChanged: (_) {},
+                chrome: const BoundComposeChrome(identityLabel: 'Simple'),
+                dropTarget: ComposeFileDropIngestor(
+                  workspaceRoot: '/tmp',
+                  onInsertReferences: (_) {},
+                  usesPosixPaths: false,
+                ),
+                attachTooltip: 'Attach',
+                voiceTooltip: 'Voice',
+                voiceCancelTooltip: 'Cancel',
+                voiceStopTooltip: 'Stop',
+                isVoiceListening: false,
+                voiceElapsed: Duration.zero,
+                voiceSoundLevel: 0,
+                onAttach: () {},
+                onVoice: () {},
+                onVoiceCancel: () {},
+                onVoiceStop: () {},
                 workspaceRoot: '/tmp',
-                onInsertReferences: (_) {},
-                                                   usesPosixPaths: false,
+                skills: const [],
+                plugins: const [],
+                slashBundle: const ConfigBundle(),
+                deferFieldMount: false,
               ),
-              attachTooltip: 'Attach',
-              voiceTooltip: 'Voice',
-              voiceCancelTooltip: 'Cancel',
-              voiceStopTooltip: 'Stop',
-              isVoiceListening: false,
-              voiceElapsed: Duration.zero,
-              voiceSoundLevel: 0,
-              onAttach: () {},
-              onVoice: () {},
-              onVoiceCancel: () {},
-              onVoiceStop: () {},
-              workspaceRoot: '/tmp',
-              skills: const [],
-              plugins: const [],
-              slashBundle: const ConfigBundle(),
-              deferFieldMount: false,
             ),
           ),
         ),
-      ));
+      );
 
       expect(find.byType(ComposeFileDropRegion), findsOneWidget);
 
@@ -120,6 +115,3 @@ void main() {
     });
   });
 }
-
-void _noopBool(bool _) {}
-void _noopPolicy(LaunchSecurityPolicy _) {}

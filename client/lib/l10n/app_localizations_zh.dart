@@ -1864,26 +1864,10 @@ class AppLocalizationsZh extends AppLocalizations {
   String get workspaceChatLandingCustomLaunchTitle => '自定义启动';
 
   @override
-  String get workspaceChatLandingFullAccessPermissions => '完全访问权限';
-
-  @override
-  String get workspaceChatLandingAskReadOnlyPermissions => '询问 · 只读 · 仅信任钩子';
-
-  @override
-  String get workspaceChatLandingAutoApproveWorkspaceWritePermissions =>
-      '自动批准 · 工作区写入 · 仅信任钩子';
-
-  @override
-  String get workspaceChatLandingCustomPermissions => '自定义安全策略';
-
-  @override
   String get workspaceChatLandingSkills => '技能';
 
   @override
   String get workspaceChatLandingConnectApps => '连应用';
-
-  @override
-  String get workspaceChatLandingDefaultPermissions => '默认权限';
 
   @override
   String get workspaceChatLandingAttach => '附加文件';
@@ -2961,13 +2945,6 @@ class AppLocalizationsZh extends AppLocalizations {
   @override
   String get chatSubmitSwitchesToTerminalDescription =>
       '关闭（默认）时，在聊天页发送（新建或继续）后仍留在聊天视图，终端在后台运行。开启后，发送后切换到终端。';
-
-  @override
-  String get simpleModeDefaultFullAccessTitle => '简单模式默认：完全访问';
-
-  @override
-  String get simpleModeDefaultFullAccessDescription =>
-      '开启（默认）时，简单模式落地页默认使用完全访问权限。工作区里权限芯片的选择仍会覆盖并按工作区持久化。';
 
   @override
   String get continueSwitchRestartTitle => '重启以应用切换？';
@@ -5453,12 +5430,6 @@ class AppLocalizationsZh extends AppLocalizations {
   String get workspaceAdvancedSettingsSubtitle => 'Agent 预设与本成员的额外 CLI 参数。';
 
   @override
-  String get memberDangerouslySkipPermissions => '跳过所有权限检查';
-
-  @override
-  String get memberDangerouslySkipPermissionsHint => '仅限隔离或无网络沙箱使用，否则风险极高。';
-
-  @override
   String get prompt => '提示词';
 
   @override
@@ -6748,19 +6719,6 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get automationsLaunchWorktree => 'Worktree';
-
-  @override
-  String get automationsPermissions => '权限';
-
-  @override
-  String get automationsPermissionsAskReadOnly => '询问 · 只读 · 仅信任钩子';
-
-  @override
-  String get automationsPermissionsAutoApproveWorkspaceWrite =>
-      '自动批准 · 工作区写入 · 仅信任钩子';
-
-  @override
-  String get automationsPermissionsCustom => '自定义安全策略';
 
   @override
   String get automationsLaunchProfile => '启动身份';

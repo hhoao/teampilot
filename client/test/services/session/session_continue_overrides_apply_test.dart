@@ -6,49 +6,8 @@ import 'package:teampilot/models/team_config.dart';
 import 'package:teampilot/services/session/session_continue_overrides_apply.dart';
 
 void main() {
-  test('security policy overrides merge member > session > launchDefault', () {
-    expect(
-      resolveContinueSecurityPolicy(
-        sessionLevel: const LaunchSecurityPolicyOverride(
-          approval: LaunchApprovalPolicy.ask,
-        ),
-        memberLevel: const LaunchSecurityPolicyOverride(
-          sandbox: LaunchSandboxPolicy.readOnly,
-        ),
-        launchDefault: LaunchSecurityPolicy.fullAccess,
-      ),
-      const LaunchSecurityPolicy(
-        approval: LaunchApprovalPolicy.ask,
-        sandbox: LaunchSandboxPolicy.readOnly,
-        hookTrust: LaunchHookTrustPolicy.bypass,
-      ),
-    );
-    expect(
-      resolveContinueSecurityPolicy(
-        sessionLevel: const LaunchSecurityPolicyOverride(
-          approval: LaunchApprovalPolicy.ask,
-        ),
-        launchDefault: const LaunchSecurityPolicy(
-          sandbox: LaunchSandboxPolicy.workspaceWrite,
-        ),
-      ),
-      const LaunchSecurityPolicy(
-        approval: LaunchApprovalPolicy.ask,
-        sandbox: LaunchSandboxPolicy.workspaceWrite,
-      ),
-    );
-    expect(
-      resolveContinueSecurityPolicy(
-        launchDefault: const LaunchSecurityPolicy(
-          hookTrust: LaunchHookTrustPolicy.trustedOnly,
-        ),
-      ),
-      const LaunchSecurityPolicy(hookTrust: LaunchHookTrustPolicy.trustedOnly),
-    );
-  });
-
   test(
-    'team deleted-preset without livePreset stamps snapshot and policy; CLI unchanged',
+    'team deleted-preset without livePreset stamps snapshot; CLI unchanged',
     () {
       const base = TeamMemberConfig(
         id: 'builder-0',
@@ -56,7 +15,6 @@ void main() {
         cli: CliTool.claude,
         provider: 'old',
         model: 'old-m',
-        launchSecurityPolicy: LaunchSecurityPolicy.fullAccess,
       );
       final session = AppSession(
         sessionId: 's1',
@@ -64,14 +22,12 @@ void main() {
         sessionTeam: 'team',
         createdAt: 1,
         continueOverrides: const SessionContinueOverrides(
-          launchSecurityPolicy: LaunchSecurityPolicyOverride.fullAccess,
           memberOverrides: {
             'builder-0': SessionMemberContinueOverride(
               presetId: 'p1',
               provider: 'new',
               model: 'new-m',
               effort: 'high',
-              launchSecurityPolicy: LaunchSecurityPolicyOverride.cliDefault,
             ),
           },
         ),
@@ -89,7 +45,6 @@ void main() {
       // Concrete fields clear activePresetId so memberForLaunch cannot re-expand
       // a template preset over continue provider/model (presetId stays on override).
       expect(out.activePresetId, isNull);
-      expect(out.launchSecurityPolicy.requiresDangerousExecution, isFalse);
     },
   );
 
@@ -113,7 +68,6 @@ void main() {
         provider: 'live-provider',
         model: 'live-model',
         effort: 'low',
-        launchSecurityPolicy: LaunchSecurityPolicy.fullAccess,
       );
       final session = AppSession(
         sessionId: 's1',
@@ -191,40 +145,32 @@ void main() {
     expect(out.cli, CliTool.claude);
   });
 
-  test(
-    'simple merge applies session-level policy; keeps base provider/model/cli',
-    () {
-      const base = TeamMemberConfig(
-        id: 's1',
-        name: 'Simple',
-        cli: CliTool.codex,
-        provider: 'openai',
-        model: 'gpt',
-        launchSecurityPolicy: LaunchSecurityPolicy.fullAccess,
-      );
-      final session = AppSession(
-        sessionId: 's1',
-        workspaceId: 'w1',
-        cli: CliTool.codex,
-        provider: 'openai',
-        model: 'gpt',
-        createdAt: 1,
-        continueOverrides: const SessionContinueOverrides(
-          launchSecurityPolicy: LaunchSecurityPolicyOverride.cliDefault,
-        ),
-      );
-      final out = applySessionContinueOverrides(
-        baseMember: base,
-        session: session,
-        memberId: 's1',
-        isSimple: true,
-      );
-      expect(out.cli, CliTool.codex);
-      expect(out.provider, 'openai');
-      expect(out.model, 'gpt');
-      expect(out.launchSecurityPolicy.requiresDangerousExecution, isFalse);
-    },
-  );
+  test('simple merge keeps base provider/model/cli', () {
+    const base = TeamMemberConfig(
+      id: 's1',
+      name: 'Simple',
+      cli: CliTool.codex,
+      provider: 'openai',
+      model: 'gpt',
+    );
+    final session = AppSession(
+      sessionId: 's1',
+      workspaceId: 'w1',
+      cli: CliTool.codex,
+      provider: 'openai',
+      model: 'gpt',
+      createdAt: 1,
+    );
+    final out = applySessionContinueOverrides(
+      baseMember: base,
+      session: session,
+      memberId: 's1',
+      isSimple: true,
+    );
+    expect(out.cli, CliTool.codex);
+    expect(out.provider, 'openai');
+    expect(out.model, 'gpt');
+  });
 
   test('simple finalize sets member.id to session.sessionId for X-Member', () {
     const base = TeamMemberConfig(
@@ -255,7 +201,6 @@ void main() {
       cli: CliTool.claude,
       provider: 'keep',
       model: 'keep-m',
-      launchSecurityPolicy: LaunchSecurityPolicy.fullAccess,
     );
     final session = AppSession(
       sessionId: 's1',
@@ -264,11 +209,7 @@ void main() {
       createdAt: 1,
       continueOverrides: const SessionContinueOverrides(
         memberOverrides: {
-          'other': SessionMemberContinueOverride(
-            provider: 'x',
-            model: 'y',
-            launchSecurityPolicy: LaunchSecurityPolicyOverride.cliDefault,
-          ),
+          'other': SessionMemberContinueOverride(provider: 'x', model: 'y'),
         },
       ),
     );
@@ -280,7 +221,6 @@ void main() {
     );
     expect(out.provider, 'keep');
     expect(out.model, 'keep-m');
-    expect(out.launchSecurityPolicy.requiresDangerousExecution, isTrue);
   });
 
   test(

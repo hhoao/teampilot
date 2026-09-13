@@ -146,22 +146,17 @@ void main() {
     expect(slot.expertKey, isEmpty);
   });
 
-  test('synthesized slot preserves member launch security policy', () {
-    const policy = LaunchSecurityPolicy(
-      approval: LaunchApprovalPolicy.ask,
-      sandbox: LaunchSandboxPolicy.readOnly,
-      hookTrust: LaunchHookTrustPolicy.trustedOnly,
-    );
+  test('synthesized slot preserves member launch overrides', () {
     const team = TeamProfile(id: 'team-1', name: 'Team');
     const member = TeamMemberConfig(
       id: 'team-lead',
       name: 'Lead',
-      launchSecurityPolicy: policy,
+      extraArgs: '--verbose',
     );
 
     final slot = teamRosterSlotForMember(team, member);
 
-    expect(slot.overrides.launchSecurityPolicy, policy);
+    expect(slot.overrides.extraArgs, '--verbose');
   });
 
   test(
@@ -227,7 +222,10 @@ class _FakeExpertResolver extends ExpertCapabilityResolver {
         installSkill: (_) async => null,
         installPlugin: (_) async => null,
         installMcp: (_) async => null,
-             localStore: LocalExpertStore(fs: InMemoryFilesystem(), dirOverride: AppPaths('/tp').memberHubLocalTemplatesDir),
+        localStore: LocalExpertStore(
+          fs: InMemoryFilesystem(),
+          dirOverride: AppPaths('/tp').memberHubLocalTemplatesDir,
+        ),
       );
 
   final Map<String, ExpertCapabilityPack> packs;

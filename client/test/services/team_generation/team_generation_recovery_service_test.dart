@@ -148,7 +148,6 @@ Future<TeamGenerationJobStore> _seedRecoveryJob({
     launch: const TeamGenerationLaunchSnapshot(
       projectFolderPath: '/proj',
       workingDirectoryPath: '/proj',
-      launchSecurityPolicyValue: 'cliDefault',
       folderIds: <String>[],
       targetIds: <String>['local'],
       workspaceRevision: '',
@@ -196,7 +195,6 @@ void main() {
         launch: const TeamGenerationLaunchSnapshot(
           projectFolderPath: '/proj',
           workingDirectoryPath: '/proj',
-          launchSecurityPolicyValue: 'cliDefault',
           folderIds: <String>[],
           targetIds: <String>['local'],
           workspaceRevision: '',

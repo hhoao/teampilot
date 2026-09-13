@@ -8,10 +8,7 @@ import '../cli/registry/cli_tool_registry.dart';
 
 /// One typed compatibility issue; [code] drives localized remediation.
 final class TeamGenerationIssue {
-  const TeamGenerationIssue({
-    required this.code,
-    this.detail = '',
-  });
+  const TeamGenerationIssue({required this.code, this.detail = ''});
 
   final String code;
   final String detail;
@@ -32,15 +29,9 @@ final class TeamGenerationIssue {
 
 /// Result of one capability-composed compatibility evaluation.
 final class TeamGenerationCompatibilityResult {
-  const TeamGenerationCompatibilityResult({
-    required this.issues,
-    this.builderSecurityPolicy,
-  });
+  const TeamGenerationCompatibilityResult({required this.issues});
 
   final List<TeamGenerationIssue> issues;
-
-  /// Policy chosen for the builder session (generator evaluation only).
-  final LaunchSecurityPolicy? builderSecurityPolicy;
 
   bool get isCompatible => issues.isEmpty;
 }
@@ -48,9 +39,6 @@ final class TeamGenerationCompatibilityResult {
 /// Capability-composed checks: no `if (cli == …)` branches anywhere.
 ///
 /// - Generator: launch + session + skill + MCP capabilities.
-/// - Builder policy: askReadOnlyTrusted when the CLI's session capability
-///   declares a representable ask/approval surface, else cliDefault — never
-///   fullAccess.
 /// - Native pool: every effective entry matches the selected native CLI and
 ///   the CLI advertises [TeamBehaviorCapability.supportsNativeTeam].
 /// - Mixed pool: every preset CLI is launch-supported and session-capable.
@@ -59,19 +47,14 @@ final class TeamGenerationCompatibility {
 
   final CliToolRegistry registry;
 
-  TeamGenerationCompatibilityResult evaluateGenerator({
-    required CliTool cli,
-  }) {
+  TeamGenerationCompatibilityResult evaluateGenerator({required CliTool cli}) {
     final issues = <TeamGenerationIssue>[];
     final definition = registry.tryGet(cli);
     if (definition == null || !definition.isLaunchSupported) {
       issues.add(
         const TeamGenerationIssue(code: 'generator_launch_unsupported'),
       );
-      return TeamGenerationCompatibilityResult(
-        issues: issues,
-        builderSecurityPolicy: LaunchSecurityPolicy.cliDefault,
-      );
+      return TeamGenerationCompatibilityResult(issues: issues);
     }
     if (registry.capability<CliSessionCapability>(cli) == null) {
       issues.add(
@@ -84,14 +67,9 @@ final class TeamGenerationCompatibility {
       );
     }
     if (registry.capability<McpCapability>(cli) == null) {
-      issues.add(
-        const TeamGenerationIssue(code: 'generator_mcp_unsupported'),
-      );
+      issues.add(const TeamGenerationIssue(code: 'generator_mcp_unsupported'));
     }
-    return TeamGenerationCompatibilityResult(
-      issues: issues,
-      builderSecurityPolicy: _builderSecurityPolicy(cli),
-    );
+    return TeamGenerationCompatibilityResult(issues: issues);
   }
 
   TeamGenerationCompatibilityResult evaluateTeamPool({
@@ -107,8 +85,9 @@ final class TeamGenerationCompatibility {
     final issues = <TeamGenerationIssue>[];
     if (mode == TeamMode.native) {
       for (final entry in pool) {
-        final behavior =
-            registry.capability<TeamBehaviorCapability>(entry.preset.cli);
+        final behavior = registry.capability<TeamBehaviorCapability>(
+          entry.preset.cli,
+        );
         if (entry.preset.cli != nativeCli) {
           issues.add(
             TeamGenerationIssue(
@@ -134,7 +113,8 @@ final class TeamGenerationCompatibility {
             ),
           );
         } else if (registry.capability<CliSessionCapability>(
-                entry.preset.cli) ==
+              entry.preset.cli,
+            ) ==
             null) {
           issues.add(
             TeamGenerationIssue(
@@ -146,24 +126,5 @@ final class TeamGenerationCompatibility {
       }
     }
     return TeamGenerationCompatibilityResult(issues: issues);
-  }
-
-  /// askReadOnlyTrusted when the CLI's session capability exposes an ask /
-  /// read-only surface; otherwise cliDefault. Never fullAccess: the builder
-  /// must not run with elevated trust merely because generation needs MCP.
-  LaunchSecurityPolicy _builderSecurityPolicy(CliTool cli) {
-    final session = registry.capability<CliSessionCapability>(cli);
-    if (session != null && _representsAskPolicy(session)) {
-      return LaunchSecurityPolicy.askReadOnlyTrusted;
-    }
-    return LaunchSecurityPolicy.cliDefault;
-  }
-
-  bool _representsAskPolicy(CliSessionCapability session) {
-    // Ask-based approval exists on every session-capable CLI the app can
-    // launch; the capability simply marks the CLI as owning a session
-    // surface. When a future capability adds an explicit read-only deny,
-    // this check narrows there.
-    return true;
   }
 }

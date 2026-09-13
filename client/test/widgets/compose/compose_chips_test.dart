@@ -14,14 +14,14 @@ void main() {
 
   group('buildComposeModelCascadeMenuSpecs', () {
     CliPreset preset(String id, String name) => CliPreset(
-          id: id,
-          name: name,
-          cli: CliTool.claude,
-          provider: 'p',
-          model: 'm',
-          createdAt: 0,
-          updatedAt: 0,
-        );
+      id: id,
+      name: name,
+      cli: CliTool.claude,
+      provider: 'p',
+      model: 'm',
+      createdAt: 0,
+      updatedAt: 0,
+    );
 
     List<TpActionMenuSpec> buildSpecs({
       required List<CliPreset> presets,
@@ -164,6 +164,42 @@ void main() {
   });
 
   group('ComposePermissionChip', () {
+    testWidgets('configurable policies still emit a selected policy', (
+      tester,
+    ) async {
+      LaunchSecurityPolicy? selected;
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: Builder(
+              builder: (context) => ComposePermissionChip(
+                palette: WorkspaceChatLandingPalette(
+                  Theme.of(context).colorScheme,
+                ),
+                supportedPolicies: Set.unmodifiable({
+                  LaunchSecurityPolicy.cliDefault,
+                  LaunchSecurityPolicy.askReadOnlyTrusted,
+                }),
+                launchSecurityPolicy: LaunchSecurityPolicy.cliDefault,
+                defaultLabel: 'Default',
+                fullAccessLabel: 'Full access',
+                askReadOnlyLabel: 'Ask read-only',
+                onSelected: (value) => selected = value,
+              ),
+            ),
+          ),
+        ),
+      );
+
+      await tester.tap(find.text('Default'));
+      await tester.pumpAndSettle();
+      expect(find.text('Full access'), findsNothing);
+      await tester.tap(find.text('Ask read-only'));
+      await tester.pumpAndSettle();
+
+      expect(selected, LaunchSecurityPolicy.askReadOnlyTrusted);
+    });
+
     testWidgets('shows default label and forwards bool selection', (
       tester,
     ) async {
@@ -178,6 +214,10 @@ void main() {
                 );
                 return ComposePermissionChip(
                   palette: palette,
+                  supportedPolicies: Set.unmodifiable({
+                    LaunchSecurityPolicy.cliDefault,
+                    LaunchSecurityPolicy.fullAccess,
+                  }),
                   launchSecurityPolicy: LaunchSecurityPolicy.cliDefault,
                   defaultLabel: 'Default',
                   fullAccessLabel: 'Full access',
@@ -200,6 +240,43 @@ void main() {
       expect(selected, LaunchSecurityPolicy.fullAccess);
     });
 
+    testWidgets(
+      'selects the first rendered policy when the selected optional label is missing',
+      (tester) async {
+        await tester.pumpWidget(
+          MaterialApp(
+            home: Scaffold(
+              body: Builder(
+                builder: (context) {
+                  final palette = WorkspaceChatLandingPalette(
+                    Theme.of(context).colorScheme,
+                  );
+                  return ComposePermissionChip(
+                    palette: palette,
+                    supportedPolicies: Set.unmodifiable({
+                      LaunchSecurityPolicy.askReadOnlyTrusted,
+                      LaunchSecurityPolicy.fullAccess,
+                    }),
+                    launchSecurityPolicy:
+                        LaunchSecurityPolicy.askReadOnlyTrusted,
+                    defaultLabel: 'Default',
+                    fullAccessLabel: 'Full access',
+                    onSelected: (_) {},
+                  );
+                },
+              ),
+            ),
+          ),
+        );
+
+        await tester.tap(find.text('Full access'));
+        await tester.pumpAndSettle();
+
+        expect(find.text('Full access'), findsNWidgets(2));
+        expect(find.byIcon(Icons.check), findsOneWidget);
+      },
+    );
+
     testWidgets('preserves an intermediate normalized policy', (tester) async {
       LaunchSecurityPolicy? selected;
       await tester.pumpWidget(
@@ -212,6 +289,10 @@ void main() {
                 );
                 return ComposePermissionChip(
                   palette: palette,
+                  supportedPolicies: Set.unmodifiable({
+                    LaunchSecurityPolicy.askReadOnlyTrusted,
+                    LaunchSecurityPolicy.autoApproveWorkspaceWriteTrusted,
+                  }),
                   launchSecurityPolicy: LaunchSecurityPolicy.askReadOnlyTrusted,
                   defaultLabel: 'Default',
                   fullAccessLabel: 'Full access',

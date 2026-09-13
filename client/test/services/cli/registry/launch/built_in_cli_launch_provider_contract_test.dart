@@ -82,7 +82,6 @@ CliLaunchContext _contextFor(CliTool cli) {
       model: 'model',
       agent: 'agent',
       extraArgs: '--member-extra "member value"',
-      launchSecurityPolicy: LaunchSecurityPolicy.fullAccess,
     ),
     workingDirectory: '/workspace',
     additionalDirectories: const ['/workspace/shared-a', '/workspace/shared-b'],

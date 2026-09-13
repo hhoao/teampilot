@@ -31,7 +31,7 @@ void main() {
     final store = TeamGenerationJobStore(
       fs: fs,
       layout: WorkspaceLayout(teampilotRoot: '/tp', fs: fs),
-                                          storage: testHomeStorage,
+      storage: testHomeStorage,
     );
     final settings = resolveTeamGenerationSettingsSnapshot(
       settings: TeamGenerationSettings(teamMode: TeamMode.mixed),
@@ -49,7 +49,6 @@ void main() {
       launch: const TeamGenerationLaunchSnapshot(
         projectFolderPath: '/proj',
         workingDirectoryPath: '/proj',
-        launchSecurityPolicyValue: 'fullAccess',
         folderIds: ['f1'],
         targetIds: ['local'],
         workspaceRevision: 'rev-1',
@@ -133,7 +132,6 @@ void main() {
       launch: const TeamGenerationLaunchSnapshot(
         projectFolderPath: '/proj',
         workingDirectoryPath: '/proj',
-        launchSecurityPolicyValue: 'sandbox',
         folderIds: ['/proj'],
         targetIds: ['local'],
         workspaceRevision: 'workspace-rev',

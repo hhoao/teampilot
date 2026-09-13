@@ -24,6 +24,7 @@ import '../registry/capabilities/native_command_capability.dart';
 import '../registry/capabilities/chat_interaction_capability.dart';
 import '../registry/capabilities/runtime_event_capability.dart';
 import '../registry/capabilities/cli_executable_capability.dart';
+import '../registry/capabilities/cli_launch_security_capability.dart';
 import '../registry/capabilities/hook_capability.dart';
 import 'capabilities/mcp.dart';
 import 'capabilities/plugin.dart';
@@ -39,6 +40,7 @@ final class OpencodeCliTool implements CliToolDefinition {
     this.teamBehavior = const OpencodeTeamBehavior(),
     this.sessionSelection = const OpencodeSessionSelectionLaunch(),
     this.modelLaunch = const OpencodeModelLaunch(),
+    this.launchSecurity = const FullAccessOnlyCliLaunchSecurityCapability(),
     this.permissionLaunch = const OpencodePermissionLaunch(),
     this.agentLaunch = const OpencodeAgentLaunch(),
     this.userExtraArgs = const OpencodeUserExtraArgsLaunch(),
@@ -72,6 +74,7 @@ final class OpencodeCliTool implements CliToolDefinition {
   final TeamBehaviorCapability teamBehavior;
   final OpencodeSessionSelectionLaunch sessionSelection;
   final OpencodeModelLaunch modelLaunch;
+  final CliLaunchSecurityCapability launchSecurity;
   final OpencodePermissionLaunch permissionLaunch;
   final OpencodeAgentLaunch agentLaunch;
   final OpencodeUserExtraArgsLaunch userExtraArgs;
@@ -94,6 +97,7 @@ final class OpencodeCliTool implements CliToolDefinition {
     teamBehavior,
     sessionSelection,
     modelLaunch,
+    launchSecurity,
     permissionLaunch,
     agentLaunch,
     userExtraArgs,

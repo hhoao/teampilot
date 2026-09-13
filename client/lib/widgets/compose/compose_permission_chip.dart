@@ -11,6 +11,7 @@ import 'package:shared_ui/shared_ui.dart';
 class ComposePermissionChip extends StatelessWidget {
   const ComposePermissionChip({
     required this.palette,
+    required this.supportedPolicies,
     required this.launchSecurityPolicy,
     required this.defaultLabel,
     required this.fullAccessLabel,
@@ -22,6 +23,9 @@ class ComposePermissionChip extends StatelessWidget {
   });
 
   final WorkspaceChatLandingPalette palette;
+
+  /// Immutable policies exposed by the CLI capability for this chip.
+  final Set<LaunchSecurityPolicy> supportedPolicies;
   final LaunchSecurityPolicy launchSecurityPolicy;
   final String defaultLabel;
   final String fullAccessLabel;
@@ -30,65 +34,95 @@ class ComposePermissionChip extends StatelessWidget {
   final String? customLabel;
   final ValueChanged<LaunchSecurityPolicy> onSelected;
 
+  List<LaunchSecurityPolicy> get _renderablePolicies => [
+    if (supportedPolicies.contains(LaunchSecurityPolicy.cliDefault))
+      LaunchSecurityPolicy.cliDefault,
+    if (supportedPolicies.contains(LaunchSecurityPolicy.askReadOnlyTrusted) &&
+        askReadOnlyLabel != null)
+      LaunchSecurityPolicy.askReadOnlyTrusted,
+    if (supportedPolicies.contains(
+          LaunchSecurityPolicy.autoApproveWorkspaceWriteTrusted,
+        ) &&
+        autoApproveWorkspaceWriteLabel != null)
+      LaunchSecurityPolicy.autoApproveWorkspaceWriteTrusted,
+    if (supportedPolicies.contains(LaunchSecurityPolicy.fullAccess))
+      LaunchSecurityPolicy.fullAccess,
+  ];
+
+  LaunchSecurityPolicy? get _effectiveLaunchSecurityPolicy {
+    final renderablePolicies = _renderablePolicies;
+    if (renderablePolicies.isEmpty) return null;
+    return renderablePolicies.contains(launchSecurityPolicy)
+        ? launchSecurityPolicy
+        : renderablePolicies.first;
+  }
+
   String get _chipLabel {
-    if (launchSecurityPolicy == LaunchSecurityPolicy.fullAccess) {
+    final policy = _effectiveLaunchSecurityPolicy;
+    if (policy == LaunchSecurityPolicy.fullAccess) {
       return fullAccessLabel;
     }
-    if (launchSecurityPolicy == LaunchSecurityPolicy.askReadOnlyTrusted) {
+    if (policy == LaunchSecurityPolicy.askReadOnlyTrusted) {
       return askReadOnlyLabel ?? customLabel ?? defaultLabel;
     }
-    if (launchSecurityPolicy ==
-        LaunchSecurityPolicy.autoApproveWorkspaceWriteTrusted) {
+    if (policy == LaunchSecurityPolicy.autoApproveWorkspaceWriteTrusted) {
       return autoApproveWorkspaceWriteLabel ?? customLabel ?? defaultLabel;
     }
-    if (launchSecurityPolicy == LaunchSecurityPolicy.cliDefault) {
+    if (policy == LaunchSecurityPolicy.cliDefault) {
       return defaultLabel;
     }
     return customLabel ?? defaultLabel;
   }
 
   List<TpActionMenuSpec> _specs() {
+    final renderablePolicies = _renderablePolicies;
+    final selectedPolicy = _effectiveLaunchSecurityPolicy;
     final specs = <TpActionMenuSpec>[
-      TpActionMenuSpec.item(
-        value: LaunchSecurityPolicy.cliDefault,
-        icon: Icons.verified_outlined,
-        label: defaultLabel,
-        selected: launchSecurityPolicy == LaunchSecurityPolicy.cliDefault,
-      ),
-      if (askReadOnlyLabel != null)
+      if (renderablePolicies.contains(LaunchSecurityPolicy.cliDefault))
+        TpActionMenuSpec.item(
+          value: LaunchSecurityPolicy.cliDefault,
+          icon: Icons.verified_outlined,
+          label: defaultLabel,
+          selected: selectedPolicy == LaunchSecurityPolicy.cliDefault,
+        ),
+      if (renderablePolicies.contains(LaunchSecurityPolicy.askReadOnlyTrusted))
         TpActionMenuSpec.item(
           value: LaunchSecurityPolicy.askReadOnlyTrusted,
           icon: Icons.visibility_outlined,
           label: askReadOnlyLabel!,
-          selected:
-              launchSecurityPolicy == LaunchSecurityPolicy.askReadOnlyTrusted,
+          selected: selectedPolicy == LaunchSecurityPolicy.askReadOnlyTrusted,
         ),
-      if (autoApproveWorkspaceWriteLabel != null)
+      if (renderablePolicies.contains(
+        LaunchSecurityPolicy.autoApproveWorkspaceWriteTrusted,
+      ))
         TpActionMenuSpec.item(
           value: LaunchSecurityPolicy.autoApproveWorkspaceWriteTrusted,
           icon: Icons.edit_note_outlined,
           label: autoApproveWorkspaceWriteLabel!,
           selected:
-              launchSecurityPolicy ==
+              selectedPolicy ==
               LaunchSecurityPolicy.autoApproveWorkspaceWriteTrusted,
         ),
-      TpActionMenuSpec.item(
-        value: LaunchSecurityPolicy.fullAccess,
-        icon: Icons.lock_open_outlined,
-        label: fullAccessLabel,
-        selected: launchSecurityPolicy == LaunchSecurityPolicy.fullAccess,
-      ),
+      if (renderablePolicies.contains(LaunchSecurityPolicy.fullAccess))
+        TpActionMenuSpec.item(
+          value: LaunchSecurityPolicy.fullAccess,
+          icon: Icons.lock_open_outlined,
+          label: fullAccessLabel,
+          selected: selectedPolicy == LaunchSecurityPolicy.fullAccess,
+        ),
     ];
     return specs;
   }
 
   @override
   Widget build(BuildContext context) {
+    final specs = _specs();
+    if (specs.isEmpty) return const SizedBox.shrink();
     return ComposeMenuChip(
       palette: palette,
       icon: Icons.verified_outlined,
       label: _chipLabel,
-      specs: _specs(),
+      specs: specs,
       onSelected: (value) {
         if (value is LaunchSecurityPolicy) onSelected(value);
       },

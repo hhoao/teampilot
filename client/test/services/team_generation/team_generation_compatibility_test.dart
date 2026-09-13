@@ -1,6 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/models/cli_preset.dart';
-import 'package:teampilot/models/launch_security_policy.dart';
 import 'package:teampilot/models/team_config.dart';
 import 'package:teampilot/models/team_generation_settings.dart';
 import 'package:teampilot/services/cli/registry/cli_capability.dart';
@@ -120,23 +119,14 @@ void main() {
       result.issues.map((issue) => issue.code),
       contains('generator_mcp_unsupported'),
     );
-    expect(result.builderSecurityPolicy, isNotNull);
   });
 
-  test(
-    'generator accepts a fully capable cli and never grants full access',
-    () {
-      final compatibility = TeamGenerationCompatibility(
-        registry: registryWith(),
-      );
-      final result = compatibility.evaluateGenerator(cli: CliTool.codex);
-      expect(result.isCompatible, isTrue);
-      expect(
-        result.builderSecurityPolicy,
-        isNot(LaunchSecurityPolicy.fullAccess),
-      );
-    },
-  );
+  test('generator accepts a fully capable cli', () {
+    final compatibility = TeamGenerationCompatibility(registry: registryWith());
+    final result = compatibility.evaluateGenerator(cli: CliTool.codex);
+    expect(result.isCompatible, isTrue);
+    expect(result.issues, isEmpty);
+  });
 
   test('native pool requires one native-team-capable cli', () {
     final compatibility = TeamGenerationCompatibility(

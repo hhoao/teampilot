@@ -1,4 +1,12 @@
+import '../../../../models/launch_security_policy.dart';
 import '../../../../models/team_config.dart';
+
+String describeLaunchSecurityPolicy(LaunchSecurityPolicy policy) {
+  return 'LaunchSecurityPolicy('
+      'approval: ${policy.approval.name}, '
+      'sandbox: ${policy.sandbox.name}, '
+      'hookTrust: ${policy.hookTrust.name})';
+}
 
 /// A requested launch capability could not be assembled safely.
 final class CliLaunchCapabilityException implements Exception {

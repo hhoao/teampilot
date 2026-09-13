@@ -24,6 +24,7 @@ import '../registry/capabilities/native_command_capability.dart';
 import '../registry/capabilities/chat_interaction_capability.dart';
 import '../registry/capabilities/runtime_event_capability.dart';
 import '../registry/capabilities/cli_executable_capability.dart';
+import '../registry/capabilities/cli_launch_security_capability.dart';
 import 'capabilities/mcp.dart';
 import 'capabilities/plugin.dart';
 import 'capabilities/prompt.dart';
@@ -41,6 +42,7 @@ final class ClaudeCliTool implements CliToolDefinition {
     this.sessionSelection = const ClaudeSessionSelectionLaunch(),
     this.workspaceAccess = const ClaudeWorkspaceAccessLaunch(),
     this.modelLaunch = const ClaudeModelLaunch(),
+    this.launchSecurity = const FullAccessOnlyCliLaunchSecurityCapability(),
     this.permissionLaunch = const ClaudePermissionLaunch(),
     this.promptLaunch = const ClaudePromptLaunch(),
     this.userExtraArgs = const UserExtraArgsProvider(),
@@ -80,6 +82,7 @@ final class ClaudeCliTool implements CliToolDefinition {
   final ClaudeSessionSelectionLaunch sessionSelection;
   final ClaudeWorkspaceAccessLaunch workspaceAccess;
   final ClaudeModelLaunch modelLaunch;
+  final CliLaunchSecurityCapability launchSecurity;
   final ClaudePermissionLaunch permissionLaunch;
   final ClaudePromptLaunch promptLaunch;
   final UserExtraArgsProvider userExtraArgs;
@@ -102,6 +105,7 @@ final class ClaudeCliTool implements CliToolDefinition {
     sessionSelection,
     workspaceAccess,
     modelLaunch,
+    launchSecurity,
     permissionLaunch,
     promptLaunch,
     userExtraArgs,

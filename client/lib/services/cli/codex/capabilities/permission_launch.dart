@@ -10,7 +10,6 @@ final class CodexPermissionLaunch implements CliLaunchArgProvider {
   @override
   Iterable<CliLaunchArgContribution> buildLaunchArgs(CliLaunchContext context) {
     final policy = context.launchSecurityPolicy;
-    if (policy == LaunchSecurityPolicy.cliDefault) return const [];
     if (policy == LaunchSecurityPolicy.fullAccess) {
       return [
         _contribution(const [
@@ -19,39 +18,7 @@ final class CodexPermissionLaunch implements CliLaunchArgProvider {
         ], key: 'codex-permission-bypass'),
       ];
     }
-
-    final args = <String>[];
-    switch (policy.approval) {
-      case LaunchApprovalPolicy.cliDefault:
-        break;
-      case LaunchApprovalPolicy.ask:
-        args.addAll(['--ask-for-approval', 'on-request']);
-      case LaunchApprovalPolicy.never:
-        args.addAll(['--ask-for-approval', 'never']);
-      case LaunchApprovalPolicy.autoApprove:
-        if (policy.sandbox != LaunchSandboxPolicy.workspaceWrite) {
-          throw _unsupportedPolicy();
-        }
-        args.add('--approve-for-me');
-    }
-
-    switch (policy.sandbox) {
-      case LaunchSandboxPolicy.cliDefault:
-        break;
-      case LaunchSandboxPolicy.readOnly:
-        args.addAll(['--sandbox', 'read-only']);
-      case LaunchSandboxPolicy.workspaceWrite:
-        if (policy.approval != LaunchApprovalPolicy.autoApprove) {
-          args.addAll(['--sandbox', 'workspace-write']);
-        }
-      case LaunchSandboxPolicy.fullAccess:
-        args.addAll(['--sandbox', 'danger-full-access']);
-    }
-
-    if (policy.hookTrust == LaunchHookTrustPolicy.bypass) {
-      args.add('--dangerously-bypass-hook-trust');
-    }
-    return [_contribution(args)];
+    throw _unsupportedPolicy();
   }
 
   CliLaunchArgContribution _contribution(

@@ -8,6 +8,7 @@ import '../../models/cli_preset.dart';
 import '../../models/session_member_binding.dart';
 import '../../models/skill.dart';
 import '../../models/team_config.dart';
+import '../../models/launch_security_policy.dart';
 import '../../models/member_instance.dart';
 import '../../models/launch_profile.dart';
 import '../../repositories/cli_presets_repository.dart';
@@ -990,7 +991,7 @@ class SessionLifecycleService {
       return CliLaunchContext(
         team: launchTeam,
         member: member,
-        launchSecurityPolicy: member.launchSecurityPolicy,
+        launchSecurityPolicy: LaunchSecurityPolicy.fullAccess,
         sessionTeam: plan.cliTeamName,
         workingDirectory: personalDirs.workingDirectory,
         additionalDirectories: personalDirs.addDirs,
@@ -1019,7 +1020,7 @@ class SessionLifecycleService {
     return CliLaunchContext(
       team: launchTeam,
       member: member,
-      launchSecurityPolicy: member.launchSecurityPolicy,
+      launchSecurityPolicy: LaunchSecurityPolicy.fullAccess,
       sessionTeam: _resolveSessionTeam(session, plan, false),
       workingDirectory: memberDirs.workingDirectory.isNotEmpty
           ? memberDirs.workingDirectory

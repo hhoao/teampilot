@@ -3,7 +3,6 @@ import 'package:flutter/services.dart';
 
 import '../../l10n/l10n_extensions.dart';
 import '../../models/workspace.dart';
-import '../../models/launch_security_policy.dart';
 import '../../services/automation/automation_schedule_calculator.dart';
 import '../../services/automation/automation_schedule_defaults.dart';
 import 'package:shared_ui/shared_ui.dart';
@@ -37,7 +36,6 @@ class AutomationEditorFormBody extends StatelessWidget {
     this.presetId,
     this.teamId,
     this.expertKey,
-    this.launchSecurityPolicy = LaunchSecurityPolicy.fullAccess,
     this.targetMemberId = 'team-lead',
     this.onIsPersonalChanged,
     this.onProjectChanged,
@@ -45,7 +43,6 @@ class AutomationEditorFormBody extends StatelessWidget {
     this.onPresetChanged,
     this.onTeamChanged,
     this.onExpertChanged,
-    this.onPermissionsChanged,
     this.onTargetMemberChanged,
     super.key,
   });
@@ -71,7 +68,6 @@ class AutomationEditorFormBody extends StatelessWidget {
   final String? presetId;
   final String? teamId;
   final String? expertKey;
-  final LaunchSecurityPolicy launchSecurityPolicy;
   final String targetMemberId;
   final ValueChanged<bool>? onIsPersonalChanged;
   final ValueChanged<String?>? onProjectChanged;
@@ -79,7 +75,6 @@ class AutomationEditorFormBody extends StatelessWidget {
   final ValueChanged<String?>? onPresetChanged;
   final ValueChanged<String?>? onTeamChanged;
   final ValueChanged<String?>? onExpertChanged;
-  final ValueChanged<LaunchSecurityPolicy>? onPermissionsChanged;
   final ValueChanged<String>? onTargetMemberChanged;
 
   @override
@@ -135,7 +130,6 @@ class AutomationEditorFormBody extends StatelessWidget {
             presetId: presetId,
             teamId: teamId,
             expertKey: expertKey,
-            launchSecurityPolicy: launchSecurityPolicy,
             targetMemberId: targetMemberId,
             labelWidth: kAutomationEditorFormLabelWidth,
             onProjectChanged: onProjectChanged ?? (_) {},
@@ -144,7 +138,6 @@ class AutomationEditorFormBody extends StatelessWidget {
             onPresetChanged: onPresetChanged ?? (_) {},
             onTeamChanged: onTeamChanged ?? (_) {},
             onExpertChanged: onExpertChanged ?? (_) {},
-            onPermissionsChanged: onPermissionsChanged ?? (_) {},
             onTargetMemberChanged: onTargetMemberChanged ?? (_) {},
           ),
           const SizedBox(height: 12),

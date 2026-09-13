@@ -1,4 +1,3 @@
-import 'package:teampilot/models/launch_security_policy.dart';
 import 'dart:io';
 
 import 'package:flutter/material.dart';
@@ -135,7 +134,6 @@ void main() {
         cli: CliTool.claude,
         provider: 'template-provider',
         model: 'template-model',
-        launchSecurityPolicy: LaunchSecurityPolicy.fullAccess,
       );
       final team = TeamProfile(
         id: 'team-1',
@@ -176,52 +174,15 @@ void main() {
       expect(templateMember.provider, 'template-provider');
     });
 
-    test('3. Permission full access → effective skip true on merge', () {
-      final session = controller.patchSecurityPolicy(
-        session: simpleSession().copyWith(sessionTeam: 'team-1'),
-        launchSecurityPolicy: LaunchSecurityPolicy.fullAccess,
-        memberId: 'builder-0',
-      );
-      const base = TeamMemberConfig(
-        id: 'builder-0',
-        name: 'Builder',
-        cli: CliTool.claude,
-        launchSecurityPolicy: LaunchSecurityPolicy.cliDefault,
-      );
-
-      final merged = applySessionContinueOverrides(
-        baseMember: base,
-        session: session,
-        memberId: 'builder-0',
-        isSimple: false,
-      );
-      expect(merged.launchSecurityPolicy.requiresDangerousExecution, isTrue);
-      expect(
-        resolveContinueSecurityPolicy(
-          sessionLevel: session.continueOverrides.launchSecurityPolicy,
-          memberLevel: session
-              .continueOverrides
-              .memberOverrides['builder-0']
-              ?.launchSecurityPolicy,
-          launchDefault: base.launchSecurityPolicy,
-        ),
-        const LaunchSecurityPolicy(
-          approval: LaunchApprovalPolicy.never,
-          sandbox: LaunchSandboxPolicy.fullAccess,
-          hookTrust: LaunchHookTrustPolicy.bypass,
-        ),
-      );
-    });
-
     test('4. Cross-CLI preset rejected (no write)', () async {
       final tmp = await Directory.systemTemp.createTemp(
         'continue_chrome_xcli_',
       );
       addTearDown(() => tmp.deleteSync(recursive: true));
       final repo = SessionRepository(
-          rootDir: tmp.path,
-          storage: fakeHomeStorage(),
-        );
+        rootDir: tmp.path,
+        storage: fakeHomeStorage(),
+      );
       final workspace = await repo.createWorkspace([
         const WorkspaceFolder(path: '/w'),
       ]);
@@ -282,40 +243,6 @@ void main() {
       expect(presetsForCli(presets, lockedCli).map((p) => p.id), ['claude-p']);
     });
 
-    test('5. Landing session-level permission → unedited team member uses '
-        'session default (not template)', () {
-      // Landing writes session-level only; no memberOverrides fan-out.
-      final session = AppSession(
-        sessionId: 's1',
-        workspaceId: 'w1',
-        sessionTeam: 'team-1',
-        createdAt: 1,
-        continueOverrides: const SessionContinueOverrides(
-          launchSecurityPolicy: LaunchSecurityPolicyOverride.fullAccess,
-        ),
-      );
-      const templateMember = TeamMemberConfig(
-        id: 'builder-0',
-        name: 'Builder',
-        cli: CliTool.claude,
-        // Template often skips; session-level must still win when set.
-        launchSecurityPolicy: LaunchSecurityPolicy.cliDefault,
-      );
-
-      final merged = applySessionContinueOverrides(
-        baseMember: templateMember,
-        session: session,
-        memberId: 'builder-0',
-        isSimple: false,
-      );
-      expect(merged.launchSecurityPolicy.requiresDangerousExecution, isTrue);
-      expect(session.continueOverrides.memberOverrides, isEmpty);
-      expect(
-        templateMember.launchSecurityPolicy.requiresDangerousExecution,
-        isFalse,
-      );
-    });
-
     test('6. Member switch uses that member’s override map entry', () {
       final session = AppSession(
         sessionId: 's1',
@@ -323,19 +250,16 @@ void main() {
         sessionTeam: 'team-1',
         createdAt: 1,
         continueOverrides: const SessionContinueOverrides(
-          launchSecurityPolicy: LaunchSecurityPolicyOverride.cliDefault,
           memberOverrides: {
             'builder-0': SessionMemberContinueOverride(
               presetId: 'preset-builder',
               provider: 'openai',
               model: 'gpt-4o',
-              launchSecurityPolicy: LaunchSecurityPolicyOverride.fullAccess,
             ),
             'reviewer-0': SessionMemberContinueOverride(
               presetId: 'preset-reviewer',
               provider: 'anthropic',
               model: 'claude-opus',
-              launchSecurityPolicy: LaunchSecurityPolicyOverride.cliDefault,
             ),
           },
         ),
@@ -346,7 +270,6 @@ void main() {
         cli: CliTool.claude,
         provider: 'template',
         model: 'template-m',
-        launchSecurityPolicy: LaunchSecurityPolicy.fullAccess,
       );
       const reviewer = TeamMemberConfig(
         id: 'reviewer-0',
@@ -354,7 +277,6 @@ void main() {
         cli: CliTool.claude,
         provider: 'template',
         model: 'template-m',
-        launchSecurityPolicy: LaunchSecurityPolicy.fullAccess,
       );
 
       final builderMerged = applySessionContinueOverrides(
@@ -372,17 +294,9 @@ void main() {
 
       expect(builderMerged.provider, 'openai');
       expect(builderMerged.model, 'gpt-4o');
-      expect(
-        builderMerged.launchSecurityPolicy.requiresDangerousExecution,
-        isTrue,
-      );
 
       expect(reviewerMerged.provider, 'anthropic');
       expect(reviewerMerged.model, 'claude-opus');
-      expect(
-        reviewerMerged.launchSecurityPolicy.requiresDangerousExecution,
-        isFalse,
-      );
 
       // Chip selection ids follow the selected member's override entry.
       expect(
@@ -400,70 +314,59 @@ void main() {
     setUp(setUpTestAppStorage);
     tearDown(tearDownTestAppStorage);
 
-    test(
-      'ChatCubit Simple preset + permission round-trip feeds merge',
-      () async {
-        final tmp = await Directory.systemTemp.createTemp(
-          'continue_chrome_cubit_',
-        );
-        addTearDown(() async => deleteTempDirBestEffort(tmp));
-        final repo = SessionRepository(
-          rootDir: tmp.path,
-          storage: buildTestHomeStorage(),
-        );
-        final cubit = ChatCubit(
-          executableResolver: () => 'true',
-          storage: buildTestHomeStorage(),
-          automationRepository: testAutomationRepository(),
-          sessionRepository: repo,
-        );
-        addTearDown(cubit.close);
+    test('ChatCubit Simple preset round-trip feeds merge', () async {
+      final tmp = await Directory.systemTemp.createTemp(
+        'continue_chrome_cubit_',
+      );
+      addTearDown(() async => deleteTempDirBestEffort(tmp));
+      final repo = SessionRepository(
+        rootDir: tmp.path,
+        storage: buildTestHomeStorage(),
+      );
+      final cubit = ChatCubit(
+        executableResolver: () => 'true',
+        storage: buildTestHomeStorage(),
+        automationRepository: testAutomationRepository(),
+        sessionRepository: repo,
+      );
+      addTearDown(cubit.close);
 
-        final workspace = await repo.createWorkspace([
-          const WorkspaceFolder(path: '/w'),
-        ]);
-        final session = (await repo.createSession(
-          workspace.workspaceId,
-          cli: CliTool.claude,
-          provider: 'anthropic',
-          model: 'claude-sonnet',
-          presetId: 'preset-a',
-        )).session;
-        await cubit.loadWorkspaceData(repo);
+      final workspace = await repo.createWorkspace([
+        const WorkspaceFolder(path: '/w'),
+      ]);
+      final session = (await repo.createSession(
+        workspace.workspaceId,
+        cli: CliTool.claude,
+        provider: 'anthropic',
+        model: 'claude-sonnet',
+        presetId: 'preset-a',
+      )).session;
+      await cubit.loadWorkspaceData(repo);
 
-        expect(
-          await cubit.setSessionContinuePreset(
-            sessionId: session.sessionId,
-            preset: claudePreset(),
-            lockedCli: CliTool.claude,
-          ),
-          isTrue,
-        );
-        expect(
-          await cubit.setSessionContinueSecurityPolicy(
-            sessionId: session.sessionId,
-            launchSecurityPolicy: LaunchSecurityPolicy.fullAccess,
-          ),
-          isTrue,
-        );
+      expect(
+        await cubit.setSessionContinuePreset(
+          sessionId: session.sessionId,
+          preset: claudePreset(),
+          lockedCli: CliTool.claude,
+        ),
+        isTrue,
+      );
 
-        final live = cubit.state.sessions.single;
-        const packMember = TeamMemberConfig(
-          id: 'x',
-          name: 'Simple',
-          cli: CliTool.claude,
-        );
-        final merged = applySessionContinueOverrides(
-          baseMember: live.simpleIdentity.applyToMember(packMember),
-          session: live,
-          memberId: live.sessionId,
-          isSimple: true,
-        );
-        expect(merged.provider, 'openai');
-        expect(merged.model, 'gpt-4o');
-        expect(merged.launchSecurityPolicy.requiresDangerousExecution, isTrue);
-      },
-    );
+      final live = cubit.state.sessions.single;
+      const packMember = TeamMemberConfig(
+        id: 'x',
+        name: 'Simple',
+        cli: CliTool.claude,
+      );
+      final merged = applySessionContinueOverrides(
+        baseMember: live.simpleIdentity.applyToMember(packMember),
+        session: live,
+        memberId: live.sessionId,
+        isSimple: true,
+      );
+      expect(merged.provider, 'openai');
+      expect(merged.model, 'gpt-4o');
+    });
 
     test(
       'ChatCubit Simple custom launch round-trip clears preset and feeds merge',
@@ -540,73 +443,71 @@ void main() {
         addTearDown(textController.dispose);
         addTearDown(focusNode.dispose);
 
-        await tester.pumpWidget(RepositoryProvider<HomeStorage>.value(
-        value: testHomeStorage,
-        child: MaterialApp(
-            home: Scaffold(
-              body: WorkspaceComposeCard(
-                controller: textController,
-                focusNode: focusNode,
-                hint: 'Continue',
-                canSubmit: false,
-                onSubmit: () {},
-                onChanged: (_) {},
-                chrome: BoundComposeChrome(
-                  identityLabel: 'My Team',
-                  modelPresetLabel: 'Beta',
-                  modelCascadeSpecs: buildComposeModelCascadeMenuSpecs(
-                    presets: [claudePreset()],
-                    selectedPresetId: 'preset-b',
-                    emptyHintLabel: 'No presets',
-                    emptyProvidersLabel: 'No providers configured',
-                    presetsLabel: 'Presets',
-                    defaultEffortLabel: 'Default',
-                    customModelIdLabel: 'Custom model ID…',
-                    noModelsLabel: 'No model catalog',
-                    savePresetLabel: 'Save as preset',
-                    managePresetsLabel: 'Manage',
-                    cliGroups: const [],
-                    groupByCli: false,
+        await tester.pumpWidget(
+          RepositoryProvider<HomeStorage>.value(
+            value: testHomeStorage,
+            child: MaterialApp(
+              home: Scaffold(
+                body: WorkspaceComposeCard(
+                  controller: textController,
+                  focusNode: focusNode,
+                  hint: 'Continue',
+                  canSubmit: false,
+                  onSubmit: () {},
+                  onChanged: (_) {},
+                  chrome: BoundComposeChrome(
+                    identityLabel: 'My Team',
+                    modelPresetLabel: 'Beta',
+                    modelCascadeSpecs: buildComposeModelCascadeMenuSpecs(
+                      presets: [claudePreset()],
+                      selectedPresetId: 'preset-b',
+                      emptyHintLabel: 'No presets',
+                      emptyProvidersLabel: 'No providers configured',
+                      presetsLabel: 'Presets',
+                      defaultEffortLabel: 'Default',
+                      customModelIdLabel: 'Custom model ID…',
+                      noModelsLabel: 'No model catalog',
+                      savePresetLabel: 'Save as preset',
+                      managePresetsLabel: 'Manage',
+                      cliGroups: const [],
+                      groupByCli: false,
+                    ),
+                    onModelCascadeSelected: (_) {},
                   ),
-                  onModelCascadeSelected: (_) {},
-                  launchSecurityPolicy: LaunchSecurityPolicy.cliDefault,
-                  defaultPermissionsLabel: 'Default',
-                  fullAccessPermissionsLabel: 'Full access',
-                  onPermissionSelected: (_) {},
-                ),
-                dropTarget: ComposeFileDropIngestor(
+                  dropTarget: ComposeFileDropIngestor(
+                    workspaceRoot: '/tmp',
+                    usesPosixPaths: false,
+                    onInsertReferences: (_) {},
+                  ),
+                  attachTooltip: 'Attach',
+                  voiceTooltip: 'Voice',
+                  voiceCancelTooltip: 'Cancel',
+                  voiceStopTooltip: 'Stop',
+                  isVoiceListening: false,
+                  voiceElapsed: Duration.zero,
+                  voiceSoundLevel: 0,
+                  onAttach: () {},
+                  onVoice: () {},
+                  onVoiceCancel: () {},
+                  onVoiceStop: () {},
                   workspaceRoot: '/tmp',
-                  usesPosixPaths: false,
-                  onInsertReferences: (_) {},
+                  skills: const [],
+                  plugins: const [],
+                  slashBundle: const ConfigBundle(),
+                  deferFieldMount: false,
                 ),
-                attachTooltip: 'Attach',
-                voiceTooltip: 'Voice',
-                voiceCancelTooltip: 'Cancel',
-                voiceStopTooltip: 'Stop',
-                isVoiceListening: false,
-                voiceElapsed: Duration.zero,
-                voiceSoundLevel: 0,
-                onAttach: () {},
-                onVoice: () {},
-                onVoiceCancel: () {},
-                onVoiceStop: () {},
-                workspaceRoot: '/tmp',
-                skills: const [],
-                plugins: const [],
-                slashBundle: const ConfigBundle(),
-                deferFieldMount: false,
               ),
             ),
           ),
-      ));
+        );
 
         expect(find.byType(WorkspaceComposeCard), findsOneWidget);
         expect(find.byType(ComposeFileDropRegion), findsOneWidget);
         expect(find.widgetWithText(ComposeMenuChip, 'Beta'), findsOneWidget);
-        expect(find.byType(ComposePermissionChip), findsOneWidget);
+        expect(find.byType(ComposePermissionChip), findsNothing);
         expect(find.text('My Team'), findsOneWidget);
         expect(find.text('Beta'), findsOneWidget);
-        expect(find.text('Default'), findsOneWidget);
+        expect(find.text('Full access'), findsNothing);
 
         // Landing session-fixed chrome must stay absent on review compose.
         expect(find.text('Project'), findsNothing);

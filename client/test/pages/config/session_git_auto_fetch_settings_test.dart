@@ -81,6 +81,8 @@ void main() {
     );
     await tester.pumpAndSettle();
 
+    expect(find.text('Simple mode default: full access'), findsNothing);
+
     expect(cubit.state.preferences.gitAutoFetchEnabled, isTrue);
     expect(cubit.state.preferences.gitAutoFetchIntervalMinutes, 5);
 

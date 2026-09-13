@@ -1,6 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/models/launch_security_policy.dart';
 import 'package:teampilot/models/team_config.dart';
+import 'package:teampilot/services/cli/claude/capabilities/permission_launch.dart';
 import 'package:teampilot/services/cli/claude/claude_tool.dart';
 import 'package:teampilot/services/cli/registry/launch/cli_launch_arg_assembler.dart';
 import 'package:teampilot/services/cli/registry/launch/cli_launch_arg_provider.dart';
@@ -139,40 +140,50 @@ void main() {
     );
   });
 
-  test(
-    'Claude maps supported safe policies and rejects unsupported tuples',
-    () {
-      final readOnly = _assemble(
-        team: const TeamProfile(id: 'team-1', name: 'agent'),
-        member: member,
-        launchSecurityPolicy: LaunchSecurityPolicy.askReadOnlyTrusted,
-      );
-      final workspaceWrite = _assemble(
-        team: const TeamProfile(id: 'team-1', name: 'agent'),
-        member: member,
-        launchSecurityPolicy:
-            LaunchSecurityPolicy.autoApproveWorkspaceWriteTrusted,
-      );
-
-      expect(readOnly, containsAllInOrder(['--permission-mode', 'plan']));
-      expect(
-        workspaceWrite,
-        containsAllInOrder(['--permission-mode', 'acceptEdits']),
-      );
+  test('Claude assembler rejects every non-full-access policy', () {
+    for (final policy in const [
+      LaunchSecurityPolicy.cliDefault,
+      LaunchSecurityPolicy.askReadOnlyTrusted,
+      LaunchSecurityPolicy.autoApproveWorkspaceWriteTrusted,
+    ]) {
       expect(
         () => _assemble(
           team: const TeamProfile(id: 'team-1', name: 'agent'),
           member: member,
-          launchSecurityPolicy: const LaunchSecurityPolicy(
-            approval: LaunchApprovalPolicy.never,
-            sandbox: LaunchSandboxPolicy.workspaceWrite,
-            hookTrust: LaunchHookTrustPolicy.trustedOnly,
-          ),
+          launchSecurityPolicy: policy,
         ),
-        throwsA(isA<CliLaunchCapabilityException>()),
+        throwsA(
+          isA<CliLaunchCapabilityException>()
+              .having((error) => error.cli, 'cli', CliTool.claude)
+              .having(
+                (error) => error.contributionKey,
+                'contributionKey',
+                'launch-security-policy',
+              ),
+        ),
+        reason: describeLaunchSecurityPolicy(policy),
       );
-    },
-  );
+    }
+  });
+
+  test('Claude permission provider rejects non-full access directly', () {
+    final context = CliLaunchContext(
+      team: const TeamProfile(id: 'team-1', name: 'agent'),
+      member: member,
+      launchSecurityPolicy: LaunchSecurityPolicy.cliDefault,
+    );
+
+    expect(
+      () => const ClaudePermissionLaunch().buildLaunchArgs(context),
+      throwsA(
+        isA<CliLaunchCapabilityException>().having(
+          (error) => error.contributionKey,
+          'contributionKey',
+          'claude-permission',
+        ),
+      ),
+    );
+  });
 
   test('Claude registers one launch provider per semantic capability', () {
     final providers = ClaudeCliTool().capabilities
@@ -209,7 +220,8 @@ List<String> _assemble({
       appendSystemPromptFile: appendSystemPromptFile,
       useWslPaths: useWslPaths,
       nativeAgentTeam: nativeAgentTeam,
-      launchSecurityPolicy: launchSecurityPolicy,
+      launchSecurityPolicy:
+          launchSecurityPolicy ?? LaunchSecurityPolicy.fullAccess,
     ),
   );
 }

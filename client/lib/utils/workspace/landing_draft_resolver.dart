@@ -1,6 +1,5 @@
 import '../../models/cli_preset.dart';
 import '../../models/landing_launch_context.dart';
-import '../../models/launch_security_policy.dart';
 import '../../models/simple_launch_identity.dart';
 import '../../models/team_config.dart';
 import '../../services/cli/preset_resolver.dart';
@@ -119,23 +118,17 @@ LandingLaunchContext seedLandingDraftPresetDefault(
 
 /// Loads persisted compose-landing draft for a workspace (local to landing UI).
 ///
-/// When no workspace prefs exist, [simpleModeDefaultFullAccess] seeds the
-/// permission chip (app Session setting; defaults to full access).
+/// Landing drafts carry no permission policy; launch contexts supply full access.
 Future<LandingLaunchContext> resolveLandingDraft({
   required String workspaceId,
   required HomeStorage storage,
   LandingPrefsStore? store,
-  bool simpleModeDefaultFullAccess = true,
 }) async {
-  final prefs =
-      await (store ?? LandingPrefsStore(storage: storage)).prefsFor(workspaceId);
+  final prefs = await (store ?? LandingPrefsStore(storage: storage)).prefsFor(
+    workspaceId,
+  );
   if (prefs == null) {
-    return LandingLaunchContext(
-      isPersonal: true,
-      launchSecurityPolicy: simpleModeDefaultFullAccess
-          ? LaunchSecurityPolicy.fullAccess
-          : LaunchSecurityPolicy.cliDefault,
-    );
+    return const LandingLaunchContext(isPersonal: true);
   }
   return LandingLaunchContext(
     isPersonal: prefs.isPersonal,
@@ -145,7 +138,6 @@ Future<LandingLaunchContext> resolveLandingDraft({
     projectFolderPath: prefs.projectFolderPath,
     expertKey: prefs.expertKey,
     workingDirectoryPath: prefs.workingDirectoryPath,
-    launchSecurityPolicy: prefs.launchSecurityPolicy,
     cli: prefs.cli,
     provider: prefs.provider,
     model: prefs.model,
@@ -169,7 +161,6 @@ Future<void> persistLandingDraft(
       projectFolderPath: draft.projectFolderPath,
       expertKey: draft.expertKey,
       workingDirectoryPath: draft.workingDirectoryPath,
-      launchSecurityPolicy: draft.launchSecurityPolicy,
       cli: draft.cli,
       provider: draft.provider,
       model: draft.model,

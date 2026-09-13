@@ -79,6 +79,7 @@ services/cli/
       headless_capability.dart
       ai_history_capability.dart
       member_config_inspection_capability.dart
+      cli_launch_security_capability.dart        # 启动安全能力（当前固定为 full access）
       claude_family_agent_status_normalizer.dart   # 共享：claude 家族状态归一化
       claude_family_hook_registry.dart             # 共享：claude 家族 hook 注册表
       hook_registry.dart                           # 共享：hook 事件注册表
@@ -239,6 +240,7 @@ tool 列表。
 |------|------|------|
 | `ProviderCapability` | `registry/capabilities/provider_capability.dart` | Provider 目录、凭证、模型、effort、`materializeSessionHome`（session home 材料化） |
 | `MemberConfigInspectionCapability` | `registry/capabilities/member_config_inspection_capability.dart` | 成员配置检查 |
+| `CliLaunchSecurityCapability` | `registry/capabilities/cli_launch_security_capability.dart` | 启动安全策略（当前固定 full access） |
 | `CliSessionCapability` | `registry/capabilities/cli_session_capability.dart` | 会话持久化/初始化/finalize、配置目录 |
 | `TeamBehaviorCapability` | `registry/capabilities/team_behavior_capability.dart` | 团队协作行为（native team、wait-before-stop、presence、agent 预设） |
 | `ChatInteractionCapability` | `registry/capabilities/chat_interaction_capability.dart` | Agent 状态归一化 + 结构化 ask / 审批 |
@@ -493,6 +495,7 @@ for (final def in CliToolRegistry.builtIn().launchable)
 | `McpCapability` | `registry/capabilities/mcp_capability.dart` | Hub 契约 | - |
 | `HookCapability` | `registry/capabilities/hook_capability.dart` | Hub 契约 | - |
 | `PromptCapability` | `registry/capabilities/prompt_capability.dart` | Hub 契约 | - |
+| `CliLaunchSecurityCapability` | `registry/capabilities/cli_launch_security_capability.dart` | 启动安全 | ✅ |
 | `CliSessionCapability` | `registry/capabilities/cli_session_capability.dart` | 基础设施 | ✅ |
 | `TeamBehaviorCapability` | `registry/capabilities/team_behavior_capability.dart` | 基础设施 | ✅ |
 | `ChatInteractionCapability` | `registry/capabilities/chat_interaction_capability.dart` | 基础设施 | ✅ |
@@ -604,35 +607,36 @@ Assembler 按以下顺序工作：
 `CliSessionCapability` 只负责会话生命周期和配置目录；它不是 argv 的备用来源。启动
 调用链不能因为没有找到 Provider 就回退到另一套按 CLI 分支的参数逻辑。
 
-### 归一化安全策略映射
+### 启动安全能力与固定产品策略
 
-调用方只传递 `LaunchSecurityPolicy` 的三个正交维度：
-`approval`（`cliDefault` / `ask` / `autoApprove` / `never`）、`sandbox`
-（`cliDefault` / `readOnly` / `workspaceWrite` / `fullAccess`）和 `hookTrust`
-（`cliDefault` / `trustedOnly` / `bypass`）。UI 文案（例如 plan、auto、manual）必须在
-进入 Provider 前映射为明确的策略组合，不能把某个文案直接当成通用 CLI flag。
+`CliLaunchSecurityCapability` 是启动边界声明的 CLI 安全策略能力，提供
+`supportedPolicies` 与 `supportsUserConfiguration`。当前五个内置可启动 CLI（Claude、
+FlashskyAI、Codex、Cursor、OpenCode）都注册不可配置的
+`FullAccessOnlyCliLaunchSecurityCapability`：其 `supportedPolicies` 唯一值是
+`{LaunchSecurityPolicy.fullAccess}`，且 `supportsUserConfiguration` 为 `false`。
 
-`LaunchSecurityPolicy()` 与 `LaunchSecurityPolicy.fullAccess` 表示应用的完全访问默认值；
-只有需要明确委托给 CLI 时才使用 `LaunchSecurityPolicy.cliDefault`。这样“应用默认权限”和
-“CLI 默认权限”不会再依赖一个含义模糊的空构造函数。
+因此，当前产品策略是固定的 full access，而不是用户可选择或持久化的策略。启动安全策略
+不写入团队配置、成员配置、session preferences、automation 或其他用户配置存储；调用方和
+headless/runtime 边界只使用内存中的 `LaunchSecurityPolicy.fullAccess`。`LaunchSecurityPolicy`
+的其他语义变体（包括 `cliDefault`）仅为未来 CLI capability expansion 保留；当前产品不支持
+这些变体，也不持久化它们。不要为当前产品恢复权限选择器、覆盖字段或策略持久化。
 
-当前启动参数 Provider 的映射是：
+`CliLaunchArgAssembler` 在收集 Provider 贡献前，要求 definition 恰好注册一个
+`CliLaunchSecurityCapability`，并拒绝不在 `supportedPolicies` 中的策略，抛出结构化的
+`CliLaunchCapabilityException`。Provider 或 Constraint 也必须对无法表达的请求返回能力错误，
+不能静默降级为 CLI 默认权限。未来若某个 CLI 获得额外安全能力，应先扩展该 CLI 的能力注册和
+契约测试，再单独评估产品 UI/持久化；未来的 CLI capability expansion 不改变当前 fixed
+product policy 的事实。
 
-| 归一化策略 | Claude / FlashskyAI | Codex | Cursor | OpenCode |
-|------------|--------------------|-------|--------|----------|
-| 显式 CLI 默认（三项均 `cliDefault`） | 不追加权限 argv | 不追加权限 argv | 不追加权限 argv | `OpencodePermissionLaunch` 显式验证；保留 CLI 默认配置 |
-| `ask + readOnly + trustedOnly` | `--permission-mode plan` | `--ask-for-approval on-request --sandbox read-only` | 不支持，抛能力异常 | 不由启动 argv 表达 |
-| `autoApprove + workspaceWrite + trustedOnly` | `--permission-mode acceptEdits` | `--approve-for-me`（Codex 固定使用 workspace-write） | 不支持，抛能力异常 | 不由启动 argv 表达 |
-| `never + fullAccess + bypass`（`fullAccess`） | `--dangerously-skip-permissions` | `--dangerously-bypass-approvals-and-sandbox` 与 `--dangerously-bypass-hook-trust` | `--force` | 不由启动 argv 表达；由 `OpencodePermissionLaunch` 校验，并由 provider 物化 `edit` / `bash` / `external_directory` |
+当前唯一策略 `fullAccess` 的 CLI 参数/配置映射是：
 
-Codex 还会独立表达 `ask` / `never` approval、`readOnly` / `workspaceWrite` /
-`fullAccess` sandbox，以及 `bypass` hook trust；`autoApprove` 只有与 `workspaceWrite`
-组合时可由 `--approve-for-me` 无损表达，其余无法表示的组合仍返回能力错误。
-
-如果 CLI 无法表示一个明确请求，Provider 或 Constraint 必须返回结构化能力错误；不能悄悄使用 CLI 默认
-权限。OpenCode 的权限请求/应答属于配置和运行时能力：full-access 由 provider 物化为
-`permission.edit`、`permission.bash` 与 `permission.external_directory`，其余当前无法
-完整表达的策略由 `OpencodePermissionLaunch` 拒绝。
+| CLI | `fullAccess` 映射 |
+|-----|------------------|
+| Claude | `--dangerously-skip-permissions` |
+| FlashskyAI | `--dangerously-skip-permissions` |
+| Codex | `--dangerously-bypass-approvals-and-sandbox` 与 `--dangerously-bypass-hook-trust` |
+| Cursor | `--force` |
+| OpenCode | 不由启动 argv 表达；由 `OpencodePermissionLaunch` 校验，并由 Provider 物化 `permission.edit` / `permission.bash` / `permission.external_directory` |
 
 ### 工作区目录的 CLI 差异
 

@@ -50,9 +50,6 @@ class AppKeys {
   static const chatSubmitSwitchesToTerminalSwitch = Key(
     'chat-submit-switches-to-terminal-switch',
   );
-  static const simpleModeDefaultFullAccessSwitch = Key(
-    'simple-mode-default-full-access-switch',
-  );
   static const sessionWorkbenchViewToggle = Key(
     'session-workbench-view-toggle',
   );

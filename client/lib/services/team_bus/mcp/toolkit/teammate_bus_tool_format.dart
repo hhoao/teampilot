@@ -162,7 +162,6 @@ abstract final class TeammateBusToolFormat {
       if (isSelf) 'self': true,
       'joined_at': profile.joinedAt > 0 ? profile.joinedAt : null,
       'extra_args': profile.extraArgs.isEmpty ? null : profile.extraArgs,
-      'launch_security_policy': profile.launchSecurityPolicy.toJson(),
       'responsibilities': profile.responsibilities.trim().isEmpty
           ? null
           : profile.responsibilitiesSummary(),

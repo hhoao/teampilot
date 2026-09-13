@@ -1,6 +1,7 @@
 import '../../../models/team_config.dart';
 import 'built_in_cli_tools.dart';
 import 'capabilities/cli_session_capability.dart';
+import 'capabilities/cli_launch_security_capability.dart';
 import 'capabilities/noop_cli_session_capability.dart';
 import 'capabilities/provider_capability.dart';
 import 'capabilities/team_behavior_capability.dart';
@@ -12,6 +13,7 @@ class CliToolRegistry {
   CliToolRegistry._();
 
   static CliToolRegistry? _builtIn;
+
   /// Null until [configure] runs — the pre-configure registration serves
   /// launch-arg assembly only; its capabilities throw on storage use.
   CliBootstrap? _bootstrap;
@@ -91,6 +93,16 @@ class CliToolRegistry {
   /// Session capability for [cli], or a no-op that allows connect immediately.
   CliSessionCapability lifecycleFor(CliTool cli) =>
       capability<CliSessionCapability>(cli) ?? const NoopCliSessionCapability();
+
+  CliLaunchSecurityCapability launchSecurityFor(CliTool id) {
+    final launchSecurity = this.capability<CliLaunchSecurityCapability>(id);
+    if (launchSecurity == null) {
+      throw StateError(
+        'CLI ${id.value} must register CliLaunchSecurityCapability',
+      );
+    }
+    return launchSecurity;
+  }
 
   /// Official catalog id used when a Simple launch provider is unset (see
   /// [ProviderCapability.defaultOfficialProviderId]).

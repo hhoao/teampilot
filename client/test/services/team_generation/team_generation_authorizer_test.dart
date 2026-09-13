@@ -20,10 +20,13 @@ class _StaticSessionLookup implements TeamGenerationSessionLookup {
   Future<AppSession?> findById(String sessionId) async => sessions[sessionId];
 }
 
-TeamGenerationJobStore buildStore(InMemoryFilesystem fs) => TeamGenerationJobStore(
-  fs: fs,
-  layout: WorkspaceLayout(teampilotRoot: '/tp', fs: fs),
-  clock: () => DateTime.utc(2026, 8, 31), storage: fakeHomeStorage(filesystem: fs), );
+TeamGenerationJobStore buildStore(InMemoryFilesystem fs) =>
+    TeamGenerationJobStore(
+      fs: fs,
+      layout: WorkspaceLayout(teampilotRoot: '/tp', fs: fs),
+      clock: () => DateTime.utc(2026, 8, 31),
+      storage: fakeHomeStorage(filesystem: fs),
+    );
 
 Future<TeamGenerationJob> seedBuilderJob(
   TeamGenerationJobStore store, {
@@ -45,7 +48,6 @@ Future<TeamGenerationJob> seedBuilderJob(
     launch: const TeamGenerationLaunchSnapshot(
       projectFolderPath: '/proj',
       workingDirectoryPath: '/proj',
-      launchSecurityPolicyValue: 'fullAccess',
       folderIds: [],
       targetIds: ['local'],
       workspaceRevision: 'rev-1',
@@ -55,8 +57,7 @@ Future<TeamGenerationJob> seedBuilderJob(
 }
 
 void main() {
-  test('authorization fails for cancelled jobs and unknown sessions',
-      () async {
+  test('authorization fails for cancelled jobs and unknown sessions', () async {
     final fs = InMemoryFilesystem();
     final store = buildStore(fs);
     await seedBuilderJob(store);
@@ -85,10 +86,7 @@ void main() {
 
     // Cancel the workflow: authorization must fail immediately.
     await store.beginCancel('ws', 'wf');
-    expect(
-      await auth.authorize(principal: principal, token: token),
-      isFalse,
-    );
+    expect(await auth.authorize(principal: principal, token: token), isFalse);
     auth.revoke('wf');
 
     // Unknown session: no authorization.

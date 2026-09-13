@@ -1,6 +1,5 @@
 import '../../models/app_session.dart';
 import '../../models/cli_preset.dart';
-import '../../models/launch_security_policy.dart';
 import '../../models/session_continue_overrides.dart';
 import '../../models/team_config.dart';
 import '../../repositories/session_repository.dart';
@@ -34,39 +33,6 @@ class SessionContinueOverridesController {
     return null;
   }
 
-  AppSession patchSecurityPolicy({
-    required AppSession session,
-    required LaunchSecurityPolicy launchSecurityPolicy,
-    String? memberId,
-  }) {
-    final trimmedMemberId = memberId?.trim();
-    if (trimmedMemberId == null || trimmedMemberId.isEmpty) {
-      return session.copyWith(
-        continueOverrides: session.continueOverrides.copyWith(
-          launchSecurityPolicy: LaunchSecurityPolicyOverride.fromPolicy(
-            launchSecurityPolicy,
-          ),
-        ),
-      );
-    }
-
-    final existing = session.continueOverrides.memberOverrides[trimmedMemberId];
-    final updatedMembers = Map<String, SessionMemberContinueOverride>.from(
-      session.continueOverrides.memberOverrides,
-    );
-    updatedMembers[trimmedMemberId] =
-        (existing ?? const SessionMemberContinueOverride()).copyWith(
-          launchSecurityPolicy: LaunchSecurityPolicyOverride.fromPolicy(
-            launchSecurityPolicy,
-          ),
-        );
-    return session.copyWith(
-      continueOverrides: session.continueOverrides.copyWith(
-        memberOverrides: updatedMembers,
-      ),
-    );
-  }
-
   /// Returns null when [preset.cli] does not match [lockedCli].
   AppSession? patchPreset({
     required AppSession session,
@@ -86,7 +52,6 @@ class SessionContinueOverridesController {
       );
     }
 
-    final existing = session.continueOverrides.memberOverrides[trimmedMemberId];
     final updatedMembers = Map<String, SessionMemberContinueOverride>.from(
       session.continueOverrides.memberOverrides,
     );
@@ -95,7 +60,6 @@ class SessionContinueOverridesController {
       provider: preset.provider,
       model: preset.model,
       effort: preset.effort.isEmpty ? null : preset.effort,
-      launchSecurityPolicy: existing?.launchSecurityPolicy,
     );
     return session.copyWith(
       continueOverrides: session.continueOverrides.copyWith(
@@ -117,16 +81,6 @@ class SessionContinueOverridesController {
       provider: provider,
       model: model,
       effort: effort,
-    );
-  }
-
-  Future<void> persistSecurityPolicy({
-    required SessionRepository repo,
-    required AppSession patched,
-  }) {
-    return repo.updateContinueOverrides(
-      patched.sessionId,
-      patched.continueOverrides,
     );
   }
 

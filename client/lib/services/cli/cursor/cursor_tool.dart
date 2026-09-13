@@ -25,6 +25,7 @@ import '../registry/capabilities/native_command_capability.dart';
 import '../registry/capabilities/chat_interaction_capability.dart';
 import '../registry/capabilities/runtime_event_capability.dart';
 import '../registry/capabilities/cli_executable_capability.dart';
+import '../registry/capabilities/cli_launch_security_capability.dart';
 import 'capabilities/mcp.dart';
 import 'capabilities/plugin.dart';
 import '../registry/capabilities/plugin_capability.dart';
@@ -42,6 +43,7 @@ final class CursorCliTool implements CliToolDefinition {
     this.sessionSelection = const CursorSessionSelectionLaunch(),
     this.workspaceAccess = const CursorWorkspaceAccessLaunch(),
     this.modelLaunch = const CursorModelLaunch(),
+    this.launchSecurity = const FullAccessOnlyCliLaunchSecurityCapability(),
     this.permissionLaunch = const CursorPermissionLaunch(),
     this.userExtraArgs = const UserExtraArgsProvider(),
     this.session = const CursorSessionLifecycleCapability(),
@@ -75,6 +77,7 @@ final class CursorCliTool implements CliToolDefinition {
   final CursorSessionSelectionLaunch sessionSelection;
   final CursorWorkspaceAccessLaunch workspaceAccess;
   final CursorModelLaunch modelLaunch;
+  final CliLaunchSecurityCapability launchSecurity;
   final CursorPermissionLaunch permissionLaunch;
   final UserExtraArgsProvider userExtraArgs;
   final HookCapability hookWriter;
@@ -97,6 +100,7 @@ final class CursorCliTool implements CliToolDefinition {
     sessionSelection,
     workspaceAccess,
     modelLaunch,
+    launchSecurity,
     permissionLaunch,
     userExtraArgs,
     executable,

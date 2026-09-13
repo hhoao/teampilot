@@ -1,6 +1,7 @@
 import 'dart:io';
 
 import 'package:teampilot/services/cli/registry/cli_capability.dart';
+import 'package:teampilot/services/cli/registry/capabilities/cli_launch_security_capability.dart';
 import 'package:teampilot/services/cli/registry/cli_tool_definition.dart';
 import 'package:teampilot/services/cli/registry/launch/cli_launch_arg_contribution.dart';
 import 'package:teampilot/services/cli/registry/launch/cli_launch_arg_provider.dart';
@@ -21,7 +22,6 @@ void main() {
     provider: 'anthropic',
     model: 'sonnet',
     agent: 'builder',
-    launchSecurityPolicy: LaunchSecurityPolicy.cliDefault,
   );
 
   test('builds required flashskyai arguments for a member', () {
@@ -48,6 +48,7 @@ void main() {
         'sonnet',
         '--agent',
         'builder',
+        '--dangerously-skip-permissions',
       ],
     );
   });
@@ -224,7 +225,12 @@ void main() {
           isSimpleSynthetic: true,
         ),
       ),
-      ['-m', 'sonnet'],
+      [
+        '-m',
+        'sonnet',
+        '--dangerously-bypass-approvals-and-sandbox',
+        '--dangerously-bypass-hook-trust',
+      ],
     );
   });
 
@@ -295,7 +301,7 @@ void main() {
       ),
       'flashskyai --session-id fixed-id --add-dir /work/shared '
       '--team runtime-team --member member-1 --provider anthropic '
-      '--model sonnet --agent builder',
+      '--model sonnet --agent builder --dangerously-skip-permissions',
     );
   });
 
@@ -317,6 +323,7 @@ void main() {
         'sonnet',
         '--agent',
         'builder',
+        '--dangerously-skip-permissions',
       ],
     );
   });
@@ -346,11 +353,12 @@ void main() {
         'sonnet',
         '--agent',
         'builder',
+        '--dangerously-skip-permissions',
       ],
     );
   });
 
-  test('adds --dangerously-skip-permissions when member requests it', () {
+  test('adds --dangerously-skip-permissions for fixed full access', () {
     const team = TeamProfile(id: '1', name: 'agent', cli: CliTool.flashskyai);
     const risky = TeamMemberConfig(
       id: 'member-1',
@@ -358,7 +366,6 @@ void main() {
       provider: 'anthropic',
       model: 'sonnet',
       agent: 'builder',
-      launchSecurityPolicy: LaunchSecurityPolicy.fullAccess,
     );
 
     expect(
@@ -392,7 +399,6 @@ void main() {
       id: 'member-2',
       name: 'reviewer',
       extraArgs: '--continue --system-prompt "be careful"',
-      launchSecurityPolicy: LaunchSecurityPolicy.cliDefault,
     );
 
     expect(
@@ -410,6 +416,7 @@ void main() {
         'agent',
         '--member',
         'member-2',
+        '--dangerously-skip-permissions',
         '--permission-mode',
         'acceptEdits',
         '--continue',
@@ -425,25 +432,17 @@ void main() {
       name: 'hello team',
       cli: CliTool.flashskyai,
     );
-    const reviewer = TeamMemberConfig(
-      id: 'member-2',
-      name: 'code reviewer',
-      launchSecurityPolicy: LaunchSecurityPolicy.cliDefault,
-    );
+    const reviewer = TeamMemberConfig(id: 'member-2', name: 'code reviewer');
 
     expect(
       LaunchCommandBuilder.preview(team, reviewer, executable: 'flashskyai'),
-      "flashskyai --team 'hello team' --member member-2",
+      "flashskyai --team 'hello team' --member member-2 --dangerously-skip-permissions",
     );
   });
 
   test('preview honours the supplied executable path', () {
     const team = TeamProfile(id: '1', name: 'agent', cli: CliTool.flashskyai);
-    const planner = TeamMemberConfig(
-      id: 'm',
-      name: 'planner',
-      launchSecurityPolicy: LaunchSecurityPolicy.cliDefault,
-    );
+    const planner = TeamMemberConfig(id: 'm', name: 'planner');
 
     expect(
       LaunchCommandBuilder.preview(
@@ -451,7 +450,7 @@ void main() {
         planner,
         executable: '/opt/custom/flashskyai',
       ),
-      '/opt/custom/flashskyai --team agent --member m',
+      '/opt/custom/flashskyai --team agent --member m --dangerously-skip-permissions',
     );
   });
 
@@ -501,13 +500,12 @@ void main() {
       provider: 'anthropic',
       model: 'sonnet',
       agent: 'builder',
-      launchSecurityPolicy: LaunchSecurityPolicy.cliDefault,
     );
 
     expect(
       LaunchCommandBuilder.preview(team, planner, executable: 'claude'),
       'claude --team-name agent --agent-name m '
-      '--agent-id m@agent --model sonnet',
+      '--agent-id m@agent --model sonnet --dangerously-skip-permissions',
     );
   });
 
@@ -704,7 +702,10 @@ final class _FakeLaunchTool implements CliToolDefinition {
   final CliLaunchArgProvider provider;
 
   @override
-  List<CliCapability> get capabilities => [provider];
+  List<CliCapability> get capabilities => [
+    const FullAccessOnlyCliLaunchSecurityCapability(),
+    provider,
+  ];
 
   @override
   final bool isLaunchSupported;

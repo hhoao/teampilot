@@ -35,7 +35,6 @@ Future<ExpertDeepLinkResult> applyExpertDeepLink({
   CompositeExpertHubSource? source,
   LandingPrefsStore? store,
   ExpertCapabilityResolver? resolver,
-  bool simpleModeDefaultFullAccess = true,
 }) async {
   final trimmed = expertKey?.trim() ?? '';
   if (trimmed.isEmpty) {
@@ -45,7 +44,6 @@ Future<ExpertDeepLinkResult> applyExpertDeepLink({
   final draft = await resolveLandingDraft(
     workspaceId: workspaceId,
     storage: storage,
-    simpleModeDefaultFullAccess: simpleModeDefaultFullAccess,
   );
 
   // Explicit team profile in the URL keeps team mode; otherwise force Simple.

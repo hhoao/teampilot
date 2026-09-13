@@ -5,6 +5,7 @@ import 'package:path/path.dart' as p;
 
 import '../cli/preset_resolver.dart';
 import '../../models/team_config.dart';
+import '../../models/launch_security_policy.dart';
 import '../cli/registry/launch/cli_launch_arg_assembler.dart';
 import '../cli/registry/launch/cli_launch_arg_provider.dart';
 import '../cli/registry/launch/cli_launch_context.dart' as launch_context;
@@ -124,7 +125,7 @@ class LaunchCommandBuilder {
         launch_context.CliLaunchContext(
           team: team,
           member: member,
-          launchSecurityPolicy: member.launchSecurityPolicy,
+          launchSecurityPolicy: LaunchSecurityPolicy.fullAccess,
           sessionTeam: sessionTeam,
           workingDirectory: workingDirectory,
           additionalDirectories: additionalDirectories,
@@ -169,7 +170,7 @@ class LaunchCommandBuilder {
       launch_context.CliLaunchContext(
         team: team,
         member: member,
-        launchSecurityPolicy: member.launchSecurityPolicy,
+        launchSecurityPolicy: LaunchSecurityPolicy.fullAccess,
         sessionTeam: sessionTeam,
         workingDirectory: wd,
         additionalDirectories: additionalDirectories,

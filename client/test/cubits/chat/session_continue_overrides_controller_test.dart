@@ -1,4 +1,3 @@
-import 'package:teampilot/models/launch_security_policy.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/cubits/chat/session_continue_overrides_controller.dart';
 import 'package:teampilot/models/app_session.dart';
@@ -37,69 +36,6 @@ void main() {
       updatedAt: 0,
     );
   }
-
-  group('patchSecurityPolicy', () {
-    test('writes session-level permission for Simple', () {
-      final patched = controller.patchSecurityPolicy(
-        session: _simpleSession(),
-        launchSecurityPolicy: LaunchSecurityPolicy.fullAccess,
-      );
-
-      expect(
-        patched
-            .continueOverrides
-            .launchSecurityPolicy
-            ?.requiresDangerousExecution,
-        isTrue,
-      );
-      expect(patched.continueOverrides.memberOverrides, isEmpty);
-    });
-
-    test('writes per-member permission without touching other members', () {
-      final session = _simpleSession().copyWith(
-        sessionTeam: 'team-1',
-        continueOverrides: const SessionContinueOverrides(
-          memberOverrides: {
-            'builder-0': SessionMemberContinueOverride(
-              presetId: 'preset-a',
-              provider: 'anthropic',
-              model: 'claude-sonnet',
-            ),
-            'reviewer-0': SessionMemberContinueOverride(
-              launchSecurityPolicy: LaunchSecurityPolicyOverride.fullAccess,
-            ),
-          },
-        ),
-      );
-
-      final patched = controller.patchSecurityPolicy(
-        session: session,
-        launchSecurityPolicy: LaunchSecurityPolicy.cliDefault,
-        memberId: 'builder-0',
-      );
-
-      expect(
-        patched
-            .continueOverrides
-            .memberOverrides['builder-0']
-            ?.launchSecurityPolicy
-            ?.requiresDangerousExecution,
-        isFalse,
-      );
-      expect(
-        patched.continueOverrides.memberOverrides['builder-0']?.presetId,
-        'preset-a',
-      );
-      expect(
-        patched
-            .continueOverrides
-            .memberOverrides['reviewer-0']
-            ?.launchSecurityPolicy
-            ?.requiresDangerousExecution,
-        isTrue,
-      );
-    });
-  });
 
   group('patchPreset', () {
     test('same-CLI preset updates Simple identity fields', () {

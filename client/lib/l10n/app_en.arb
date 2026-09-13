@@ -928,13 +928,8 @@
   "workspaceChatLandingUsePreset": "Use preset",
   "workspaceChatLandingCustomLaunch": "Custom…",
   "workspaceChatLandingCustomLaunchTitle": "Custom launch",
-  "workspaceChatLandingFullAccessPermissions": "Full access permissions",
-  "workspaceChatLandingAskReadOnlyPermissions": "Ask · read-only · trusted hooks",
-  "workspaceChatLandingAutoApproveWorkspaceWritePermissions": "Auto-approve · workspace write · trusted hooks",
-  "workspaceChatLandingCustomPermissions": "Custom security policy",
   "workspaceChatLandingSkills": "Skills",
   "workspaceChatLandingConnectApps": "Connect apps",
-  "workspaceChatLandingDefaultPermissions": "Default permissions",
   "workspaceChatLandingAttach": "Attach files",
   "workspaceChatLandingVoice": "Voice input",
   "workspaceChatLandingVoiceCancel": "Cancel recording",
@@ -1511,8 +1506,6 @@
   "openExistingSessionStartsTerminalDescription": "When enabled, opening a conversation from the sidebar connects the terminal immediately. When off (default), open the Chat view first; send from Chat to start the terminal.",
   "chatSubmitSwitchesToTerminalTitle": "Switch to Terminal after Chat send",
   "chatSubmitSwitchesToTerminalDescription": "When off (default), sending from Chat (new conversation or continue) stays on the Chat view while the terminal runs in the background. When on, switch to the Terminal after send.",
-  "simpleModeDefaultFullAccessTitle": "Simple mode default: full access",
-  "simpleModeDefaultFullAccessDescription": "When enabled (default), new Simple-mode compose landing starts with full access permissions. Workspace chip choices still override and persist per workspace.",
   "continueSwitchRestartTitle": "Restart to apply switch?",
   "continueSwitchRestartBody": "The new provider/model is saved. A running session still uses the old config, so the switch only takes effect after a restart.",
   "continueSwitchRestartNow": "Restart now",
@@ -2875,8 +2868,6 @@
   "memberExtraArgsSubtitle": "Extra flags applied only when this member starts.",
   "workspaceAdvancedSettings": "Advanced",
   "workspaceAdvancedSettingsSubtitle": "Agent preset and extra CLI flags for this member.",
-  "memberDangerouslySkipPermissions": "Skip all permission checks",
-  "memberDangerouslySkipPermissionsHint": "Only for isolated / no-network sandboxes. Extremely risky otherwise.",
   "prompt": "Prompt",
   "memberResponsibilities": "Responsibilities",
   "memberPromptSubtitle": "What this member owns and must not do. Written into the agent's role definition.",
@@ -3654,13 +3645,6 @@
   "@automationsLaunchWorktree": {
     "description": "Git worktree cwd for launch-prompt automations"
   },
-  "automationsPermissions": "Permissions",
-  "@automationsPermissions": {
-    "description": "Session permission level for launch-prompt automations"
-  },
-  "automationsPermissionsAskReadOnly": "Ask · read-only · trusted hooks",
-  "automationsPermissionsAutoApproveWorkspaceWrite": "Auto-approve · workspace write · trusted hooks",
-  "automationsPermissionsCustom": "Custom security policy",
   "automationsLaunchProfile": "Launch identity",
   "@automationsLaunchProfile": {
     "description": "Deprecated — use automationsLaunchMode"

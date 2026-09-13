@@ -1,5 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/models/team_config.dart';
+import 'package:teampilot/services/cli/registry/capabilities/cli_launch_security_capability.dart';
 import 'package:teampilot/services/cli/registry/cli_capability.dart';
 import 'package:teampilot/services/cli/registry/cli_tool_definition.dart';
 import 'package:teampilot/services/cli/registry/launch/cli_launch_arg_assembler.dart';
@@ -74,10 +75,15 @@ void main() {
 }
 
 final class _FakeCliTool implements CliToolDefinition {
-  _FakeCliTool(this.capabilities);
+  _FakeCliTool(this._capabilities);
 
   @override
-  final List<CliCapability> capabilities;
+  Iterable<CliCapability> get capabilities => [
+    const FullAccessOnlyCliLaunchSecurityCapability(),
+    ..._capabilities,
+  ];
+
+  final List<CliCapability> _capabilities;
 
   @override
   CliTool get id => CliTool.claude;

@@ -274,7 +274,9 @@ class _SessionControlsState extends State<_SessionControls> {
                       onFieldSubmitted: (value) {
                         final parsed = int.tryParse(value.trim());
                         if (parsed != null) {
-                          unawaited(cubit.setReclaimIdleTerminalAfterMinutes(parsed));
+                          unawaited(
+                            cubit.setReclaimIdleTerminalAfterMinutes(parsed),
+                          );
                         }
                       },
                     ),
@@ -304,17 +306,6 @@ class _SessionControlsState extends State<_SessionControls> {
                   showDividerBelow: true,
                 ),
                 TpPreferenceRow(
-                  title: l10n.simpleModeDefaultFullAccessTitle,
-                  subtitle: l10n.simpleModeDefaultFullAccessDescription,
-                  trailing: Switch(
-                    key: AppKeys.simpleModeDefaultFullAccessSwitch,
-                    value: snapshot.simpleModeDefaultFullAccess,
-                    onChanged: (value) =>
-                        cubit.setSimpleModeDefaultFullAccess(value),
-                  ),
-                  showDividerBelow: true,
-                ),
-                TpPreferenceRow(
                   title: l10n.scopeSessionsToSelectedTeamTitle,
                   subtitle: l10n.scopeSessionsToSelectedTeamDescription,
                   trailing: Switch(
@@ -339,8 +330,7 @@ class _SessionControlsState extends State<_SessionControls> {
                   subtitle: l10n.gitAutoFetchDescription,
                   trailing: Switch(
                     value: snapshot.gitAutoFetchEnabled,
-                    onChanged: (value) =>
-                        cubit.setGitAutoFetchEnabled(value),
+                    onChanged: (value) => cubit.setGitAutoFetchEnabled(value),
                   ),
                   showDividerBelow: true,
                 ),
@@ -390,7 +380,6 @@ class _SessionControlsSnapshot {
     required this.reclaimIdleTerminalAfterSeconds,
     required this.openExistingSessionStartsTerminal,
     required this.chatSubmitSwitchesToTerminal,
-    required this.simpleModeDefaultFullAccess,
     required this.scopeSessionsToSelectedTeam,
     required this.notifyOnSessionIdle,
     required this.gitAutoFetchEnabled,
@@ -406,7 +395,6 @@ class _SessionControlsSnapshot {
   final int reclaimIdleTerminalAfterSeconds;
   final bool openExistingSessionStartsTerminal;
   final bool chatSubmitSwitchesToTerminal;
-  final bool simpleModeDefaultFullAccess;
   final bool scopeSessionsToSelectedTeam;
   final bool notifyOnSessionIdle;
   final bool gitAutoFetchEnabled;
@@ -425,7 +413,6 @@ class _SessionControlsSnapshot {
       openExistingSessionStartsTerminal:
           preferences.openExistingSessionStartsTerminal,
       chatSubmitSwitchesToTerminal: preferences.chatSubmitSwitchesToTerminal,
-      simpleModeDefaultFullAccess: preferences.simpleModeDefaultFullAccess,
       scopeSessionsToSelectedTeam: preferences.scopeSessionsToSelectedTeam,
       notifyOnSessionIdle: preferences.notifyOnSessionIdle,
       gitAutoFetchEnabled: preferences.gitAutoFetchEnabled,
@@ -447,7 +434,6 @@ class _SessionControlsSnapshot {
         other.openExistingSessionStartsTerminal ==
             openExistingSessionStartsTerminal &&
         other.chatSubmitSwitchesToTerminal == chatSubmitSwitchesToTerminal &&
-        other.simpleModeDefaultFullAccess == simpleModeDefaultFullAccess &&
         other.scopeSessionsToSelectedTeam == scopeSessionsToSelectedTeam &&
         other.notifyOnSessionIdle == notifyOnSessionIdle &&
         other.gitAutoFetchEnabled == gitAutoFetchEnabled &&
@@ -465,7 +451,6 @@ class _SessionControlsSnapshot {
     reclaimIdleTerminalAfterSeconds,
     openExistingSessionStartsTerminal,
     chatSubmitSwitchesToTerminal,
-    simpleModeDefaultFullAccess,
     scopeSessionsToSelectedTeam,
     notifyOnSessionIdle,
     gitAutoFetchEnabled,

@@ -22,6 +22,7 @@ import 'package:teampilot/services/commands/command_bus.dart';
 import 'package:teampilot/theme/app_theme.dart';
 import 'package:teampilot/utils/ui/app_keys.dart';
 import 'package:teampilot/widgets/compose/workspace_compose_card.dart';
+import 'package:teampilot/widgets/compose/compose_permission_chip.dart';
 
 import '../../../support/post_frame_test_harness.dart';
 import 'package:teampilot/services/storage/home_storage.dart';
@@ -132,6 +133,14 @@ void main() {
     expect(find.byKey(AppKeys.workspaceChatLandingBackButton), findsOneWidget);
     expect(find.byType(WorkspaceLandingHeaderRow), findsOneWidget);
     expect(find.byType(WorkspaceComposeCard), findsOneWidget);
+    expect(find.byType(ComposePermissionChip), findsNothing);
+    expect(
+      find.descendant(
+        of: find.byType(WorkspaceComposeCard),
+        matching: find.byIcon(Icons.add),
+      ),
+      findsOneWidget,
+    );
   });
 
   testWidgets('landing without a back context hides the back control', (

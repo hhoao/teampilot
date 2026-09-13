@@ -1,8 +1,8 @@
-import 'package:teampilot/models/launch_security_policy.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_ui/shared_ui.dart';
 import 'package:teampilot/l10n/app_localizations.dart';
+import 'package:teampilot/models/launch_security_policy.dart';
 import 'package:teampilot/models/config_bundle.dart';
 import 'package:teampilot/services/compose/compose_clip.dart';
 import 'package:teampilot/services/compose/compose_file_drop_ingestor.dart';
@@ -10,6 +10,7 @@ import 'package:teampilot/widgets/compose/compose_at_file_chip_row.dart';
 import 'package:teampilot/widgets/compose/compose_paste_clip_bar.dart';
 import 'package:teampilot/widgets/compose/compose_chrome.dart';
 import 'package:teampilot/widgets/compose/compose_file_drop_region.dart';
+import 'package:teampilot/widgets/compose/compose_permission_chip.dart';
 import 'package:teampilot/widgets/compose/compose_trigger_field.dart';
 import 'package:teampilot/widgets/compose/workspace_compose_card.dart';
 import 'package:teampilot/services/storage/home_storage.dart';
@@ -37,7 +38,7 @@ void main() {
     final dropTarget = ComposeFileDropIngestor(
       workspaceRoot: '/tmp',
       onInsertReferences: (_) {},
-                                                usesPosixPaths: false,
+      usesPosixPaths: false,
     );
 
     return MaterialApp(
@@ -79,14 +80,10 @@ void main() {
   const unboundChrome = UnboundComposeChrome(
     conversationModeLabel: 'Simple',
     autoChipLabel: 'Preset',
-    launchSecurityPolicy: LaunchSecurityPolicy.cliDefault,
-    defaultPermissionsLabel: 'Default',
-    fullAccessPermissionsLabel: 'Full',
     conversationModeSpecs: [],
     autoChipSpecs: [],
     onConversationModeSelected: _noop,
     onAutoChipSelected: _noop,
-    onPermissionSelected: _noopPolicy,
   );
 
   const boundChrome = BoundComposeChrome(
@@ -103,13 +100,92 @@ void main() {
     onModelCascadeSelected: _noopObject,
   );
 
+  testWidgets(
+    'unbound compose without permission control keeps ordinary chips',
+    (tester) async {
+      await tester.pumpWidget(
+        RepositoryProvider<HomeStorage>.value(
+          value: testHomeStorage,
+          child: pumpCard(
+            chrome: const UnboundComposeChrome(
+              conversationModeLabel: 'Simple',
+              autoChipLabel: 'Preset',
+              conversationModeSpecs: [],
+              autoChipSpecs: [],
+              onConversationModeSelected: _noop,
+              onAutoChipSelected: _noop,
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.byType(ComposePermissionChip), findsNothing);
+      expect(find.text('Simple'), findsOneWidget);
+      expect(find.text('Preset'), findsOneWidget);
+      expect(find.byIcon(Icons.add), findsOneWidget);
+    },
+  );
+
+  testWidgets('bound compose without permission control keeps model chip', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      RepositoryProvider<HomeStorage>.value(
+        value: testHomeStorage,
+        child: pumpCard(chrome: boundChrome),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.byType(ComposePermissionChip), findsNothing);
+    expect(find.text('Team'), findsOneWidget);
+    expect(find.text('Model'), findsOneWidget);
+    expect(find.byIcon(Icons.add), findsOneWidget);
+  });
+
+  testWidgets('explicit permission control remains reusable in bound compose', (
+    tester,
+  ) async {
+    LaunchSecurityPolicy? selected;
+    await tester.pumpWidget(
+      RepositoryProvider<HomeStorage>.value(
+        value: testHomeStorage,
+        child: pumpCard(
+          chrome: BoundComposeChrome(
+            permissionControl: ComposePermissionControl(
+              supportedPolicies: Set.unmodifiable({
+                LaunchSecurityPolicy.cliDefault,
+                LaunchSecurityPolicy.fullAccess,
+              }),
+              launchSecurityPolicy: LaunchSecurityPolicy.cliDefault,
+              defaultLabel: 'Default permissions',
+              fullAccessLabel: 'Full access',
+              onSelected: (value) => selected = value,
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.byType(ComposePermissionChip), findsOneWidget);
+    await tester.tap(find.text('Default permissions'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Full access'));
+    await tester.pumpAndSettle();
+    expect(selected, LaunchSecurityPolicy.fullAccess);
+  });
+
   testWidgets('unbound chrome shows conversation mode label and drop region', (
     tester,
   ) async {
-    await tester.pumpWidget(RepositoryProvider<HomeStorage>.value(
+    await tester.pumpWidget(
+      RepositoryProvider<HomeStorage>.value(
         value: testHomeStorage,
         child: pumpCard(chrome: unboundChrome),
-      ));
+      ),
+    );
     await tester.pumpAndSettle();
 
     expect(find.text('Simple'), findsOneWidget);
@@ -119,10 +195,12 @@ void main() {
   testWidgets(
     'bound chrome shows identity label and model preset chip, no mode labels',
     (tester) async {
-      await tester.pumpWidget(RepositoryProvider<HomeStorage>.value(
-        value: testHomeStorage,
-        child: pumpCard(chrome: boundChrome),
-      ));
+      await tester.pumpWidget(
+        RepositoryProvider<HomeStorage>.value(
+          value: testHomeStorage,
+          child: pumpCard(chrome: boundChrome),
+        ),
+      );
       await tester.pumpAndSettle();
 
       expect(find.text('Team'), findsOneWidget);
@@ -134,10 +212,12 @@ void main() {
   testWidgets('deferFieldMount true wraps field in TpDeferredMountShell', (
     tester,
   ) async {
-    await tester.pumpWidget(RepositoryProvider<HomeStorage>.value(
+    await tester.pumpWidget(
+      RepositoryProvider<HomeStorage>.value(
         value: testHomeStorage,
         child: pumpCard(chrome: unboundChrome, deferFieldMount: true),
-      ));
+      ),
+    );
 
     expect(find.byType(TpDeferredMountShell), findsOneWidget);
     // Tests mount the child immediately (FLUTTER_TEST).
@@ -147,10 +227,12 @@ void main() {
   testWidgets('deferFieldMount false does not wrap field in deferred shell', (
     tester,
   ) async {
-    await tester.pumpWidget(RepositoryProvider<HomeStorage>.value(
+    await tester.pumpWidget(
+      RepositoryProvider<HomeStorage>.value(
         value: testHomeStorage,
         child: pumpCard(chrome: unboundChrome),
-      ));
+      ),
+    );
 
     expect(find.byType(TpDeferredMountShell), findsNothing);
     expect(find.byType(ComposeTriggerField), findsOneWidget);
@@ -163,14 +245,16 @@ void main() {
     addTearDown(controller.dispose);
     final opened = <String>[];
 
-    await tester.pumpWidget(RepositoryProvider<HomeStorage>.value(
+    await tester.pumpWidget(
+      RepositoryProvider<HomeStorage>.value(
         value: testHomeStorage,
         child: pumpCard(
-        chrome: unboundChrome,
-        controller: controller,
-        onOpenAtFile: opened.add,
+          chrome: unboundChrome,
+          controller: controller,
+          onOpenAtFile: opened.add,
+        ),
       ),
-      ));
+    );
     await tester.pumpAndSettle();
 
     expect(find.byType(ComposeAtFileChipRow), findsOneWidget);
@@ -187,15 +271,17 @@ void main() {
   testWidgets('bound chrome does not embed launch error inside the card', (
     tester,
   ) async {
-    await tester.pumpWidget(RepositoryProvider<HomeStorage>.value(
+    await tester.pumpWidget(
+      RepositoryProvider<HomeStorage>.value(
         value: testHomeStorage,
         child: pumpCard(
-        chrome: const BoundComposeChrome(
-          identityLabel: 'Team',
-          launchError: 'Something went wrong',
+          chrome: const BoundComposeChrome(
+            identityLabel: 'Team',
+            launchError: 'Something went wrong',
+          ),
         ),
       ),
-      ));
+    );
     await tester.pumpAndSettle();
 
     // Launch errors render above the card (compose section slot), not inside.
@@ -209,10 +295,12 @@ void main() {
     final controller = TextEditingController();
     addTearDown(controller.dispose);
 
-    await tester.pumpWidget(RepositoryProvider<HomeStorage>.value(
+    await tester.pumpWidget(
+      RepositoryProvider<HomeStorage>.value(
         value: testHomeStorage,
         child: pumpCard(chrome: unboundChrome, controller: controller),
-      ));
+      ),
+    );
     await tester.pumpAndSettle();
 
     expect(find.byIcon(Icons.mic_none_outlined), findsOneWidget);
@@ -232,15 +320,17 @@ void main() {
       addTearDown(controller.dispose);
       var submitted = false;
 
-      await tester.pumpWidget(RepositoryProvider<HomeStorage>.value(
-        value: testHomeStorage,
-        child: pumpCard(
-          chrome: unboundChrome,
-          controller: controller,
-          canSubmit: true,
-          onSubmit: () => submitted = true,
+      await tester.pumpWidget(
+        RepositoryProvider<HomeStorage>.value(
+          value: testHomeStorage,
+          child: pumpCard(
+            chrome: unboundChrome,
+            controller: controller,
+            canSubmit: true,
+            onSubmit: () => submitted = true,
+          ),
         ),
-      ));
+      );
       await tester.pumpAndSettle();
 
       controller.text = 'hello';
@@ -258,10 +348,12 @@ void main() {
     final clip = ComposeClip();
     addTearDown(clip.dispose);
 
-    await tester.pumpWidget(RepositoryProvider<HomeStorage>.value(
+    await tester.pumpWidget(
+      RepositoryProvider<HomeStorage>.value(
         value: testHomeStorage,
         child: pumpCard(chrome: unboundChrome, clip: clip),
-      ));
+      ),
+    );
     expect(find.byType(ComposePasteClipBar), findsNothing);
 
     clip.setPasted('a\nb\nc');
@@ -278,10 +370,12 @@ void main() {
     final clip = ComposeClip();
     addTearDown(clip.dispose);
 
-    await tester.pumpWidget(RepositoryProvider<HomeStorage>.value(
+    await tester.pumpWidget(
+      RepositoryProvider<HomeStorage>.value(
         value: testHomeStorage,
         child: pumpCard(chrome: unboundChrome, clip: clip),
-      ));
+      ),
+    );
     clip.setPasted('see @lib/main.dart inside the block');
     await tester.pump();
 
@@ -296,10 +390,16 @@ void main() {
       addTearDown(controller.dispose);
       addTearDown(clip.dispose);
 
-      await tester.pumpWidget(RepositoryProvider<HomeStorage>.value(
-        value: testHomeStorage,
-        child: pumpCard(chrome: unboundChrome, controller: controller, clip: clip),
-      ));
+      await tester.pumpWidget(
+        RepositoryProvider<HomeStorage>.value(
+          value: testHomeStorage,
+          child: pumpCard(
+            chrome: unboundChrome,
+            controller: controller,
+            clip: clip,
+          ),
+        ),
+      );
 
       final longText = List.generate(30, (i) => 'line $i').join('\n');
       controller.value = TextEditingValue(
@@ -315,6 +415,4 @@ void main() {
 }
 
 void _noop(Object? _) {}
-void _noopBool(bool _) {}
 void _noopObject(Object? _) {}
-void _noopPolicy(LaunchSecurityPolicy _) {}

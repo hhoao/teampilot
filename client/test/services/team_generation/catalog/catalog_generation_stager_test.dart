@@ -30,7 +30,7 @@ void main() {
     store = TeamGenerationJobStore(
       fs: fs,
       layout: WorkspaceLayout(teampilotRoot: '/tp', fs: fs),
-                                    storage: fakeHomeStorage(filesystem: fs),
+      storage: fakeHomeStorage(filesystem: fs),
     );
     final settings = resolveTeamGenerationSettingsSnapshot(
       settings: TeamGenerationSettings(teamMode: TeamMode.mixed),
@@ -48,7 +48,6 @@ void main() {
       launch: const TeamGenerationLaunchSnapshot(
         projectFolderPath: '/proj',
         workingDirectoryPath: '/proj',
-        launchSecurityPolicyValue: 'fullAccess',
         folderIds: [],
         targetIds: ['local'],
         workspaceRevision: 'rev-1',
@@ -60,7 +59,7 @@ void main() {
       executor: TeamGenerationWorkflowExecutor(),
       layout: WorkspaceLayout(teampilotRoot: '/tp', fs: fs),
       fs: fs,
-                                      storage: fakeHomeStorage(filesystem: fs),
+      storage: fakeHomeStorage(filesystem: fs),
     );
   });
 
@@ -134,7 +133,7 @@ void main() {
         layout: WorkspaceLayout(teampilotRoot: '/tp', fs: fs),
         fs: fs,
         registry: CatalogKindRegistry()..register(globalModule),
-                                                       storage: fakeHomeStorage(filesystem: fs),
+        storage: fakeHomeStorage(filesystem: fs),
       );
       await promotingStager.handleMcpMutation(
         kind: 'skill',

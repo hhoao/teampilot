@@ -1,4 +1,5 @@
 import '../../models/team_config.dart';
+import '../../models/launch_security_policy.dart';
 import '../cli/registry/launch/cli_launch_context.dart';
 
 class LaunchPlan {
@@ -84,7 +85,7 @@ class ShellLaunchSpec {
       launchContext: CliLaunchContext(
         team: team,
         member: member,
-        launchSecurityPolicy: member.launchSecurityPolicy,
+        launchSecurityPolicy: LaunchSecurityPolicy.fullAccess,
         sessionTeam: runtimeTeam,
         workingDirectory: workingDirectory,
         additionalDirectories: additionalDirectories,
