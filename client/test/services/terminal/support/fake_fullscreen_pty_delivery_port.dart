@@ -58,6 +58,16 @@ final class FakeFullscreenPtyDeliveryPort implements FullscreenPtyDeliveryPort {
   }
 
   @override
+  FullscreenPromptAnchor? locatePasteZoneNeedle(
+    String needle, {
+    int scanRows = 24,
+  }) => locateNeedle(needle, scanRows: scanRows);
+
+  @override
+  FullscreenPromptAnchor? locateCollapsedPasteZoneNeedle({int scanRows = 24}) =>
+      locateCollapsedPasteNeedle(scanRows: scanRows);
+
+  @override
   FullscreenPromptAnchor? locateCollapsedPasteNeedle({int scanRows = 24}) {
     if (staged == null) return null;
     final marker = PtyAutomationNeedle.collapsedPasteNeedle(staged!);
@@ -191,6 +201,16 @@ final class RowAwareFakeFullscreenPtyDeliveryPort
     }
     return null;
   }
+
+  @override
+  FullscreenPromptAnchor? locatePasteZoneNeedle(
+    String needle, {
+    int scanRows = 24,
+  }) => locateNeedle(needle, scanRows: scanRows);
+
+  @override
+  FullscreenPromptAnchor? locateCollapsedPasteZoneNeedle({int scanRows = 24}) =>
+      null;
 
   @override
   FullscreenPromptAnchor? locateCollapsedPasteNeedle({int scanRows = 24}) =>

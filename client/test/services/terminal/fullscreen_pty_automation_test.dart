@@ -722,6 +722,16 @@ final class _TimestampedPastePort implements FullscreenPtyDeliveryPort {
     if (anchor != null) needleSeenAt ??= DateTime.now();
     return anchor;
   }
+  @override
+  FullscreenPromptAnchor? locatePasteZoneNeedle(
+    String needle, {
+    int scanRows = 24,
+  }) => locateNeedle(needle, scanRows: scanRows);
+
+  @override
+  FullscreenPromptAnchor? locateCollapsedPasteZoneNeedle({int scanRows = 24}) =>
+      locateCollapsedPasteNeedle(scanRows: scanRows);
+
 
   @override
   FullscreenPromptAnchor? locateCollapsedPasteNeedle({int scanRows = 24}) =>
@@ -797,6 +807,16 @@ final class _CursorTranscriptAfterSubmitPort
       needle: needle,
     );
   }
+  @override
+  FullscreenPromptAnchor? locatePasteZoneNeedle(
+    String needle, {
+    int scanRows = 24,
+  }) => locateNeedle(needle, scanRows: scanRows);
+
+  @override
+  FullscreenPromptAnchor? locateCollapsedPasteZoneNeedle({int scanRows = 24}) =>
+      locateCollapsedPasteNeedle(scanRows: scanRows);
+
 
   @override
   FullscreenPromptAnchor? locateCollapsedPasteNeedle({int scanRows = 24}) =>
@@ -903,6 +923,16 @@ final class _ComposerMovesDownStuckButCommittedPort
       needle: needle,
     );
   }
+  @override
+  FullscreenPromptAnchor? locatePasteZoneNeedle(
+    String needle, {
+    int scanRows = 24,
+  }) => locateNeedle(needle, scanRows: scanRows);
+
+  @override
+  FullscreenPromptAnchor? locateCollapsedPasteZoneNeedle({int scanRows = 24}) =>
+      locateCollapsedPasteNeedle(scanRows: scanRows);
+
 
   @override
   FullscreenPromptAnchor? locateCollapsedPasteNeedle({int scanRows = 24}) =>
@@ -994,6 +1024,16 @@ final class _ComposerMovesDownStuckStagedThenAckPort
       needle: needle,
     );
   }
+  @override
+  FullscreenPromptAnchor? locatePasteZoneNeedle(
+    String needle, {
+    int scanRows = 24,
+  }) => locateNeedle(needle, scanRows: scanRows);
+
+  @override
+  FullscreenPromptAnchor? locateCollapsedPasteZoneNeedle({int scanRows = 24}) =>
+      locateCollapsedPasteNeedle(scanRows: scanRows);
+
 
   @override
   FullscreenPromptAnchor? locateCollapsedPasteNeedle({int scanRows = 24}) =>
@@ -1084,6 +1124,16 @@ final class _ComposerMovesDownEmptyNoNeedleThenAckPort
       needle: needle,
     );
   }
+  @override
+  FullscreenPromptAnchor? locatePasteZoneNeedle(
+    String needle, {
+    int scanRows = 24,
+  }) => locateNeedle(needle, scanRows: scanRows);
+
+  @override
+  FullscreenPromptAnchor? locateCollapsedPasteZoneNeedle({int scanRows = 24}) =>
+      locateCollapsedPasteNeedle(scanRows: scanRows);
+
 
   @override
   FullscreenPromptAnchor? locateCollapsedPasteNeedle({int scanRows = 24}) =>
@@ -1178,6 +1228,16 @@ final class _AnchorCellStuckButHookAckedPort
       needle: needle,
     );
   }
+  @override
+  FullscreenPromptAnchor? locatePasteZoneNeedle(
+    String needle, {
+    int scanRows = 24,
+  }) => locateNeedle(needle, scanRows: scanRows);
+
+  @override
+  FullscreenPromptAnchor? locateCollapsedPasteZoneNeedle({int scanRows = 24}) =>
+      locateCollapsedPasteNeedle(scanRows: scanRows);
+
 
   @override
   FullscreenPromptAnchor? locateCollapsedPasteNeedle({int scanRows = 24}) =>
@@ -1266,6 +1326,16 @@ final class _MentionPopupSwallowsCrPort implements FullscreenPtyDeliveryPort {
       needle: needle,
     );
   }
+  @override
+  FullscreenPromptAnchor? locatePasteZoneNeedle(
+    String needle, {
+    int scanRows = 24,
+  }) => locateNeedle(needle, scanRows: scanRows);
+
+  @override
+  FullscreenPromptAnchor? locateCollapsedPasteZoneNeedle({int scanRows = 24}) =>
+      locateCollapsedPasteNeedle(scanRows: scanRows);
+
 
   @override
   FullscreenPromptAnchor? locateCollapsedPasteNeedle({int scanRows = 24}) =>
@@ -1356,6 +1426,16 @@ final class _AbortedAfterHookAckPort implements FullscreenPtyDeliveryPort {
       needle: needle,
     );
   }
+  @override
+  FullscreenPromptAnchor? locatePasteZoneNeedle(
+    String needle, {
+    int scanRows = 24,
+  }) => locateNeedle(needle, scanRows: scanRows);
+
+  @override
+  FullscreenPromptAnchor? locateCollapsedPasteZoneNeedle({int scanRows = 24}) =>
+      locateCollapsedPasteNeedle(scanRows: scanRows);
+
 
   @override
   FullscreenPromptAnchor? locateCollapsedPasteNeedle({int scanRows = 24}) =>
@@ -1435,6 +1515,16 @@ final class _PaintWakePort implements FullscreenPtyDeliveryPort {
       needle: needle,
     );
   }
+  @override
+  FullscreenPromptAnchor? locatePasteZoneNeedle(
+    String needle, {
+    int scanRows = 24,
+  }) => locateNeedle(needle, scanRows: scanRows);
+
+  @override
+  FullscreenPromptAnchor? locateCollapsedPasteZoneNeedle({int scanRows = 24}) =>
+      locateCollapsedPasteNeedle(scanRows: scanRows);
+
 
   @override
   FullscreenPromptAnchor? locateCollapsedPasteNeedle({int scanRows = 24}) =>
@@ -1525,6 +1615,16 @@ final class _LateCrAckPaintPort implements FullscreenPtyDeliveryPort {
       needle: needle,
     );
   }
+  @override
+  FullscreenPromptAnchor? locatePasteZoneNeedle(
+    String needle, {
+    int scanRows = 24,
+  }) => locateNeedle(needle, scanRows: scanRows);
+
+  @override
+  FullscreenPromptAnchor? locateCollapsedPasteZoneNeedle({int scanRows = 24}) =>
+      locateCollapsedPasteNeedle(scanRows: scanRows);
+
 
   @override
   FullscreenPromptAnchor? locateCollapsedPasteNeedle({int scanRows = 24}) =>

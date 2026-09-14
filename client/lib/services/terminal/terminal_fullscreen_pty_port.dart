@@ -59,11 +59,34 @@ final class TerminalFullscreenPtyPort implements FullscreenPtyDeliveryPort {
         composerPrefix: _crAckConfig.composerPrefix,
       );
 
+  /// Paste-ACK location: finds [needle] in the **bottom input zone** (the last
+  /// [scanRows] visible rows), without a CLI-specific composer prefix. The
+  /// input box is pinned at the bottom of full-screen TUIs, so bottom-scoped
+  /// search plus the paste-denominator baseline (in [FullscreenPtyAutomation])
+  /// is enough to distinguish a newly staged paste from an older transcript
+  /// echo — no per-CLI prefix character needed.
+  @override
+  FullscreenPromptAnchor? locatePasteZoneNeedle(
+    String needle, {
+    int scanRows = 24,
+  }) => _probe.locateFullscreenPromptNeedle(
+    needle,
+    scanRows: scanRows,
+    composerPrefix: null,
+  );
+
   @override
   FullscreenPromptAnchor? locateCollapsedPasteNeedle({int scanRows = 24}) =>
       _probe.locateCollapsedPasteNeedle(
         scanRows: scanRows,
         composerPrefix: _crAckConfig.composerPrefix,
+      );
+
+  @override
+  FullscreenPromptAnchor? locateCollapsedPasteZoneNeedle({int scanRows = 24}) =>
+      _probe.locateCollapsedPasteNeedle(
+        scanRows: scanRows,
+        composerPrefix: null,
       );
 
   @override

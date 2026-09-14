@@ -17,6 +17,16 @@ abstract interface class FullscreenPtyDeliveryPort {
 
   FullscreenPromptAnchor? locateNeedle(String needle, {int scanRows = 24});
 
+  /// Paste-ACK location in the **bottom input zone**: bottom [scanRows] visible
+  /// rows, no CLI composer prefix. Used by the paste ACK / baseline flow.
+  FullscreenPromptAnchor? locatePasteZoneNeedle(
+    String needle, {
+    int scanRows = 24,
+  });
+
+  /// Collapsed-paste chrome (`[Pasted ~N lines]`) in the bottom input zone.
+  FullscreenPromptAnchor? locateCollapsedPasteZoneNeedle({int scanRows = 24});
+
   /// Collapsed-paste chrome ACK when body text is hidden from the grid
   /// (e.g. Claude Code `[Pasted text #N +M lines]`, opencode `[Pasted ~N lines]`).
   FullscreenPromptAnchor? locateCollapsedPasteNeedle({int scanRows = 24});

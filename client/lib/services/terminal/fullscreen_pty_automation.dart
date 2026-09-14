@@ -723,9 +723,9 @@ class FullscreenPtyAutomation {
     String needle,
   ) {
     final scanRows = _probeScanRows(port);
-    final primary = port.locateNeedle(needle, scanRows: scanRows);
+    final primary = port.locatePasteZoneNeedle(needle, scanRows: scanRows);
     if (primary != null) return primary;
-    return port.locateCollapsedPasteNeedle(scanRows: scanRows);
+    return port.locateCollapsedPasteZoneNeedle(scanRows: scanRows);
   }
 
   void _logProbeMiss(
