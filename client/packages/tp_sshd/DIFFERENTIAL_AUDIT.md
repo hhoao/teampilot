@@ -76,25 +76,25 @@ login afterwards).
 
 | ID | 刺激 | OpenSSH 预期（源码出处） | OpenSSH 实测 | tp_sshd 实测 | 判定 |
 |----|------|--------------------------|--------------|--------------|------|
-| A01 | garbage line `xxxx\r\n` before the version string, then a real `SSH-2.0` handshake | Any non-`SSH-` line from a *client* is fatal: `client sent invalid protocol identifier` → plaintext `Invalid SSH identification string.` error line, then close (`SSH_ERR_INVALID_FORMAT`). [kex.c:kex_exchange_identification — server branch of the pre-banner loop] | banner + `line="Invalid SSH identification string."`, then closed — prediction confirmed | banner + KEXINIT bytes, connection stays **open**: the garbage line was discarded as a "pre-banner line" and the handshake proceeded | **fix-divergence** |
+| A01 | garbage line `xxxx\r\n` before the version string, then a real `SSH-2.0` handshake | Any non-`SSH-` line from a *client* is fatal: `client sent invalid protocol identifier` → plaintext `Invalid SSH identification string.` error line, then close (`SSH_ERR_INVALID_FORMAT`). [kex.c:kex_exchange_identification — server branch of the pre-banner loop] | banner + `line="Invalid SSH identification string."`, then closed — prediction confirmed | banner + `line="Invalid SSH identification string."`, then closed — identical observable to sshd *(regenerated post-fix; was: garbage discarded as a "pre-banner line", handshake proceeded, connection open; fixed-in dartssh2 74dd24c, F12)* | **match** |
 | A02 | version `SSH-1.99-DartSSH_2.0` | Accepted: `remote_major 1` with `remote_minor 99` leaves `mismatch = 0`, so the server proceeds with protocol 2 — banner + its own KEXINIT, connection stays open, no error line. [kex.c:kex_exchange_identification (switch on remote_major); compat.c:compat_banner] | banner + KEXINIT packet, connection open — prediction confirmed | identical shape (banner + KEXINIT, open) | **match** |
 | A03 | pre-KEX plaintext packet, `packet_length = 40000` (> 35000, < 256 KiB), only the header sent | 40000 is below OpenSSH's `PACKET_MAX_SIZE` (256 KiB), so the length check passes; `need = 4 + 40000 − 8 = 39996` is not a multiple of the 8-byte block → "padding error" → `ssh_packet_start_discard` with `enc == NULL` → `DISCONNECT(2, "Packet corrupt")` + close. [packet.c:ssh_packet_read_poll2 (need % block_size); packet.c:ssh_packet_start_discard; PACKET_MAX_SIZE packet.c:102] | closed with **no DISCONNECT on the wire**; sshd log confirms the predicted path (`need 39996 block 8 mod 4` + `sshpkt_disconnect: … "Packet corrupt"`) — the DISCONNECT is queued but never flushed before teardown, so the wire observable is a silent close | closed, no DISCONNECT (dartssh2 rejects the length outright: `Packet too long: 40000` against its 35000 cap) | **match** (wire observable: both silently close; see triage notes 2–3) |
 | A04 | pre-KEX plaintext packet, `packet_length = 0` | `packlen < 1 + 4` → "Bad packet length 0." → same discard path → `DISCONNECT(2, "Packet corrupt")` + close. [packet.c:ssh_packet_read_poll2] | closed with no DISCONNECT on the wire; sshd log confirms `Bad packet length 0.` + the queued "Packet corrupt" disconnect | closed, no DISCONNECT (`Packet too short: 0`) | **match** (same nuance as A03) |
 | A05 | unknown message id 200 pre-auth (post-KEX, no service request) | `USERAUTH` dispatch table is initialized with `dispatch_protocol_error` as the default → reply `SSH_MSG_UNIMPLEMENTED(seq)`, connection stays open. [auth2.c:do_authentication2 (`ssh_dispatch_init`); dispatch.c:dispatch_protocol_error] | `msg:3(UNIMPLEMENTED)`, connection open — prediction confirmed; sshd log cross-check confirms the trace-recorded id (`dispatch_protocol_error: type 200`) | `msg:3(UNIMPLEMENTED)`, connection open | **match** |
 | A06 | unknown message id 201 post-auth | Same default handler, registered again for the running phase → `SSH_MSG_UNIMPLEMENTED`, connection stays open. [serverloop.c:server_init_dispatch (`ssh_dispatch_init`); dispatch.c:dispatch_protocol_error] | `msg:3(UNIMPLEMENTED)` (plus sshd's ambient hostkeys GLOBAL_REQUEST + DEBUG), connection open — prediction confirmed | `msg:3(UNIMPLEMENTED)`, connection open | **match** |
 | A07 | `SERVICE_REQUEST "audit-bogus-service"` | Only `ssh-userauth` is accepted; anything else → `ssh_packet_disconnect("bad service request …")` → `DISCONNECT(2, "bad service request audit-bogus-service")`. [auth2.c:input_service_request] | `disconnect:2("bad service request audit-bogus-service")` — prediction confirmed exactly | `disconnect:7("Service not available: audit-bogus-service")` — also fatal, different reason code (7 `service not available` vs 2 `protocol error`) and description | **deliberate-divergence** |
-| A08 | `USERAUTH_REQUEST` (valid publickey probe) sent *before* any `SERVICE_REQUEST` | The `USERAUTH_REQUEST` dispatch entry is only registered after `ssh-userauth` is accepted; before that the default `dispatch_protocol_error` answers → `SSH_MSG_UNIMPLEMENTED`, connection stays open. [auth2.c:do_authentication2 + auth2.c:input_service_request] | `msg:3(UNIMPLEMENTED)`, connection open — prediction confirmed | `msg:60(USERAUTH_PK_OK)`: the request was **processed and answered** (probe accepted) with no service negotiation at all | **fix-divergence** |
-| A09 | `USERAUTH_REQUEST` method `password` (config has `PasswordAuthentication no`) | Method not enabled → `authmethod_lookup` returns NULL → authenticated = 0 → `USERAUTH_FAILURE` listing the enabled methods (`publickey`), connection stays open. [auth2.c:input_userauth_request → authmethod_lookup; auth2.c:userauth_finish → authmethods_get] | `msg:51(USERAUTH_FAILURE, methods=[publickey])`, connection open — prediction confirmed | `msg:51(USERAUTH_FAILURE, methods=[])` — failure, but with an **empty** methods list | **fix-divergence** |
-| A10 | `USERAUTH_REQUEST publickey` with an undecodable key blob | `sshkey_from_blob` fails ("parse key") → `goto done` with authenticated = 0 → `USERAUTH_FAILURE("publickey")`, connection stays open. [auth2-pubkey.c:userauth_pubkey; sshkey.c:sshkey_from_blob] | `msg:51(USERAUTH_FAILURE, methods=[publickey])`, connection open — prediction confirmed | `msg:51(USERAUTH_FAILURE, methods=[])` — same shape as A09 | **fix-divergence** (same fix as A09) |
-| A11 | `USERAUTH_REQUEST publickey` with the real device key but an invalid signature | `sshkey_verify` fails → authenticated = 0 → `USERAUTH_FAILURE("publickey")`, connection stays open. [auth2-pubkey.c:userauth_pubkey (have_sig verify path)] | `msg:6(SERVICE_ACCEPT)`, `msg:51(USERAUTH_FAILURE, methods=[publickey])` — prediction confirmed | `msg:6(SERVICE_ACCEPT)`, `msg:51(USERAUTH_FAILURE, methods=[])` — same shape as A09 | **fix-divergence** (same fix as A09) |
-| A12 | 7 consecutive publickey probe attempts with a distrusted key | `MaxAuthTries` defaults to 6 (`DEFAULT_AUTH_FAIL_MAX`): attempts 1–5 are answered `USERAUTH_FAILURE("publickey")`; on the 6th failure `failures >= 6` → `ssh_packet_disconnect("Too many authentication failures")` → `DISCONNECT(2, …)`. [servconf.h:39 DEFAULT_AUTH_FAIL_MAX; servconf.c:446; auth2.c:userauth_finish; auth.c:auth_maxtries_exceeded] | 5 × `USERAUTH_FAILURE(methods=[publickey])` then `disconnect:2("Too many authentication failures")` — prediction confirmed exactly (cap fires on the 6th failure) | 5 × `USERAUTH_FAILURE(methods=[])` then `disconnect:14("Too many failed authentication attempts")` — **same cap (6) and same count**, different disconnect reason code (14 vs 2) and text; also carries A09's empty methods list | **deliberate-divergence** (cap parity; the methods-list part is A09's fix) |
+| A08 | `USERAUTH_REQUEST` (valid publickey probe) sent *before* any `SERVICE_REQUEST` | The `USERAUTH_REQUEST` dispatch entry is only registered after `ssh-userauth` is accepted; before that the default `dispatch_protocol_error` answers → `SSH_MSG_UNIMPLEMENTED`, connection stays open. [auth2.c:do_authentication2 + auth2.c:input_service_request] | `msg:3(UNIMPLEMENTED)`, connection open — prediction confirmed | `msg:3(UNIMPLEMENTED)`, connection open *(regenerated post-fix; was: `msg:60(USERAUTH_PK_OK)` — the request was processed and answered with no service negotiation; fixed-in tp_sshd 9dc2480, F9)* | **match** |
+| A09 | `USERAUTH_REQUEST` method `password` (config has `PasswordAuthentication no`) | Method not enabled → `authmethod_lookup` returns NULL → authenticated = 0 → `USERAUTH_FAILURE` listing the enabled methods (`publickey`), connection stays open. [auth2.c:input_userauth_request → authmethod_lookup; auth2.c:userauth_finish → authmethods_get] | `msg:51(USERAUTH_FAILURE, methods=[publickey])`, connection open — prediction confirmed | `msg:51(USERAUTH_FAILURE, methods=[publickey])`, connection open *(regenerated post-fix; was: empty methods list; fixed-in tp_sshd 85e1d94, F8)* | **match** |
+| A10 | `USERAUTH_REQUEST publickey` with an undecodable key blob | `sshkey_from_blob` fails ("parse key") → `goto done` with authenticated = 0 → `USERAUTH_FAILURE("publickey")`, connection stays open. [auth2-pubkey.c:userauth_pubkey; sshkey.c:sshkey_from_blob] | `msg:51(USERAUTH_FAILURE, methods=[publickey])`, connection open — prediction confirmed | `msg:51(USERAUTH_FAILURE, methods=[publickey])`, connection open *(regenerated post-fix; was: empty methods list — same shape as A09; fixed-in tp_sshd 85e1d94, F8)* | **match** |
+| A11 | `USERAUTH_REQUEST publickey` with the real device key but an invalid signature | `sshkey_verify` fails → authenticated = 0 → `USERAUTH_FAILURE("publickey")`, connection stays open. [auth2-pubkey.c:userauth_pubkey (have_sig verify path)] | `msg:6(SERVICE_ACCEPT)`, `msg:51(USERAUTH_FAILURE, methods=[publickey])` — prediction confirmed | `msg:6(SERVICE_ACCEPT)`, `msg:51(USERAUTH_FAILURE, methods=[publickey])` *(regenerated post-fix; was: empty methods list; fixed-in tp_sshd 85e1d94, F8)* | **match** |
+| A12 | 7 consecutive publickey probe attempts with a distrusted key | `MaxAuthTries` defaults to 6 (`DEFAULT_AUTH_FAIL_MAX`): attempts 1–5 are answered `USERAUTH_FAILURE("publickey")`; on the 6th failure `failures >= 6` → `ssh_packet_disconnect("Too many authentication failures")` → `DISCONNECT(2, …)`. [servconf.h:39 DEFAULT_AUTH_FAIL_MAX; servconf.c:446; auth2.c:userauth_finish; auth.c:auth_maxtries_exceeded] | 5 × `USERAUTH_FAILURE(methods=[publickey])` then `disconnect:2("Too many authentication failures")` — prediction confirmed exactly (cap fires on the 6th failure) | 5 × `USERAUTH_FAILURE(methods=[publickey])` then `disconnect:14("Too many failed authentication attempts")` — **same cap (6) and same count**, different disconnect reason code (14 vs 2) and text; the failure packets now carry the methods list *(methods-list half fixed-in tp_sshd 85e1d94, F8; the reason-code difference stays deliberate)* | **deliberate-divergence** (cap parity; the methods-list part is fixed) |
 | A13 | `KEXINIT` mid-auth (after successful publickey login, via the client transport's `rekey()`) | A client KEXINIT outside an in-progress exchange is a normal rekey initiation (`kex_input_kexinit` stays registered after the first KEX): the server answers with its own `KEXINIT` and the rekey proceeds; connection continues. [kex.c:kex_input_newkeys re-registers `SSH2_MSG_KEXINIT → kex_input_kexinit`; kex.c:kex_input_kexinit] | `msg:20(KEXINIT)`, `msg:31(KEXDH_REPLY)`, `msg:21(NEWKEYS)` — the rekey completed end-to-end, connection open — prediction confirmed (plus one ambient DEBUG message) | `msg:20(KEXINIT)`, `msg:31(KEXDH_REPLY)`, `msg:21(NEWKEYS)` — identical rekey completion, connection open | **match** |
 | A14 | `CHANNEL_OPEN "audit-bogus-channel"` post-auth | Unknown channel type → no handler matched → `CHANNEL_OPEN_FAILURE` with the initial reason `SSH2_OPEN_CONNECT_FAILED` (2) and description "open failed". [serverloop.c:server_input_channel_open; ssh2.h:172] | `msg:92(CHANNEL_OPEN_FAILURE, reason=2 "open failed")` — prediction confirmed exactly | `msg:92(CHANNEL_OPEN_FAILURE, reason=1 "Channel type 'audit-bogus-channel' is not supported")` — also refused, reason 1 (administratively prohibited) with a descriptive message | **deliberate-divergence** |
-| A15 | `CHANNEL_DATA` to recipient channel 99999 (never opened) | Channel lookup fails → `ssh_packet_disconnect("data packet referred to nonexistent channel 99999")` → `DISCONNECT(2, …)`. [channels.c:channel_from_packet_id via channels.c:channel_input_data] | `disconnect:2("data packet referred to nonexistent channel 99999")` — prediction confirmed exactly | **no response at all**: the message is silently dropped (unknown recipient ids are ignored as indistinguishable from a racing channel close), connection stays open | **fix-divergence** |
-| A16 | `CHANNEL_DATA` flood on an open **direct-tcpip** channel (a request-less *session* channel stays `SSH_CHANNEL_LARVAL` and its data is dropped before any window check — `serverloop.c:server_request_session`, `channels.c:channel_input_data` non-open type check): 320 × 32000 bytes ≈ 10 MiB — enough to first fill the target socket's kernel buffer, then exhaust the 2 MiB window + 10% grace | Each packet is under `local_maxpacket` (32 KiB) so the "rcvd big packet" ignore does not fire; once the window is exhausted the excess is logged, and past 10% of `local_window_max` (≈ 209 KiB) → `ssh_packet_disconnect("channel N: peer ignored channel window")` → `DISCONNECT(2, …)`. [channels.c:channel_input_data; CHAN_TCP_WINDOW_DEFAULT channels.h:232] | connection closed (the RST from the continuing flood beat the client's observation of the DISCONNECT); sshd log confirms the predicted path verbatim: `rcvd too much data … excess …` accumulating past the grace, then `channel 0: peer ignored channel window` + the disconnect | **no disconnect, ever**: the server kept granting window (`msg:93(CHANNEL_WINDOW_ADJUST)` × 55) and buffered all ~10 MiB; the teardown then leaked an **unhandled async error** (see triage note 6) | **fix-divergence** |
+| A15 | `CHANNEL_DATA` to recipient channel 99999 (never opened) | Channel lookup fails → `ssh_packet_disconnect("data packet referred to nonexistent channel 99999")` → `DISCONNECT(2, …)`. [channels.c:channel_from_packet_id via channels.c:channel_input_data] | `disconnect:2("data packet referred to nonexistent channel 99999")` — prediction confirmed exactly | `msg:1(DISCONNECT), disconnect:2("data packet referred to nonexistent channel 99999")`, closed — sshd's exact wording *(regenerated post-fix; was: no response at all, silently dropped, connection open; fixed-in tp_sshd 4599197, F5)* | **match** |
+| A16 | `CHANNEL_DATA` flood on an open **direct-tcpip** channel (a request-less *session* channel stays `SSH_CHANNEL_LARVAL` and its data is dropped before any window check — `serverloop.c:server_request_session`, `channels.c:channel_input_data` non-open type check): 320 × 32000 bytes ≈ 10 MiB — enough to first fill the target socket's kernel buffer, then exhaust the 2 MiB window + 10% grace | Each packet is under `local_maxpacket` (32 KiB) so the "rcvd big packet" ignore does not fire; once the window is exhausted the excess is logged, and past 10% of `local_window_max` (≈ 209 KiB) → `ssh_packet_disconnect("channel N: peer ignored channel window")` → `DISCONNECT(2, …)`. [channels.c:channel_input_data; CHAN_TCP_WINDOW_DEFAULT channels.h:232] | connection closed (the RST from the continuing flood beat the client's observation of the DISCONNECT); sshd log confirms the predicted path verbatim: `rcvd too much data … excess …` accumulating past the grace, then `channel 0: peer ignored channel window` + the disconnect | `msg:1(DISCONNECT), disconnect:2("channel 0: peer ignored channel window")`, closed — the bound is enforced and the teardown carries sshd's exact wording; the teardown leaked no stray async error (F13 fixed) *(regenerated post-fix; was: no disconnect, ever — the server kept granting window (`msg:93` × 55) and buffered all ~10 MiB, and the teardown leaked an unhandled async error; fixed-in tp_sshd 992552d, F4)* | **match** |
 | A17 | `GLOBAL_REQUEST "audit-bogus@tp-sshd-differential"` with `want_reply = true` | Unknown request name → success stays 0 → `REQUEST_FAILURE`, connection stays open. [serverloop.c:server_input_global_request] | `msg:82(REQUEST_FAILURE)`, connection open — prediction confirmed | `msg:82(REQUEST_FAILURE)`, connection open | **match** |
 | A18 | client `DISCONNECT(11)` sent right after the version exchange (mid-handshake, pre-KEX) | `SSH_MSG_DISCONNECT` is intercepted in the read loop in every phase: logged, no reply, clean teardown (`SSH_ERR_DISCONNECTED`); the listener serves the next login. [packet.c:ssh_packet_read_poll_seqnr] | banner + KEXINIT, then closed with no reply; sshd log records `Received disconnect … 11: tp-sshd differential audit A18`; listener served the next login — prediction confirmed | banner + KEXINIT, then closed with no reply; listener served the next login | **match** |
-| A19 | strict-kex violation (RFC 9142 §3.2): a hand-driven client `KEXINIT` that advertises `kex-strict-c-v00@openssh.com` (so the server enables strict kex), then a non-KEX packet — `SERVICE_REQUEST` (id 5) — injected while the exchange is in progress, before any `NEWKEYS` (all plaintext, raw bytes) | During the initial KEX in strict mode nothing is implicitly handled, and the whole transport range (ids 1–49) dispatches to `kex_protocol_error`, whose strict branch (`KEX_INITIAL && kex_strict`) is fatal: `ssh_packet_disconnect("strict KEX violation: unexpected packet type 5 (seqnr 1)")` → `sshpkt_disconnect` emits `SSH_MSG_DISCONNECT` with `SSH2_DISCONNECT_PROTOCOL_ERROR` (2, ssh2.h:153) and `ssh_packet_disconnect` waits for the write (unlike the A03/A04 path, this DISCONNECT reaches the wire), then close. Strict mode is only on because our KEXINIT carries the `kex-strict-c-v00@openssh.com` marker (kex.c:kex_choose_conf); without it the same packet draws only `UNIMPLEMENTED`. [packet.c:ssh_packet_read_poll_seqnr; kex.c:kex_protocol_error; packet.c:ssh_packet_disconnect → packet.c:sshpkt_disconnect; ssh2.h:153] | banner + KEXINIT, then `disconnect:2("strict KEX violation: unexpected packet type 5 (seqnr 1)")`, then closed — prediction confirmed exactly (message, type, reason code and seqnr); sshd log confirms the `strict KEX violation` path | banner + KEXINIT, then closed with **no DISCONNECT on the wire**: the strict-kex check did fire and tore the connection down (the violation was neither accepted nor ignored), but via `SSHHandshakeError` → `SSHTransport.closeWithError` → `socket.destroy()` (dartssh2 `ssh_transport.dart`), so the client sees an unexplained TCP close instead of the protocol-error DISCONNECT | **fix-divergence** |
+| A19 | strict-kex violation (RFC 9142 §3.2): a hand-driven client `KEXINIT` that advertises `kex-strict-c-v00@openssh.com` (so the server enables strict kex), then a non-KEX packet — `SERVICE_REQUEST` (id 5) — injected while the exchange is in progress, before any `NEWKEYS` (all plaintext, raw bytes) | During the initial KEX in strict mode nothing is implicitly handled, and the whole transport range (ids 1–49) dispatches to `kex_protocol_error`, whose strict branch (`KEX_INITIAL && kex_strict`) is fatal: `ssh_packet_disconnect("strict KEX violation: unexpected packet type 5 (seqnr 1)")` → `sshpkt_disconnect` emits `SSH_MSG_DISCONNECT` with `SSH2_DISCONNECT_PROTOCOL_ERROR` (2, ssh2.h:153) and `ssh_packet_disconnect` waits for the write (unlike the A03/A04 path, this DISCONNECT reaches the wire), then close. Strict mode is only on because our KEXINIT carries the `kex-strict-c-v00@openssh.com` marker (kex.c:kex_choose_conf); without it the same packet draws only `UNIMPLEMENTED`. [packet.c:ssh_packet_read_poll_seqnr; kex.c:kex_protocol_error; packet.c:ssh_packet_disconnect → packet.c:sshpkt_disconnect; ssh2.h:153] | banner + KEXINIT, then `disconnect:2("strict KEX violation: unexpected packet type 5 (seqnr 1)")`, then closed — prediction confirmed exactly (message, type, reason code and seqnr); sshd log confirms the `strict KEX violation` path | banner + KEXINIT, then `disconnect:2("strict KEX violation: unexpected message 5 received during key exchange")`, then closed — the DISCONNECT is now on the wire with reason 2 naming the strict-key-exchange violation; sshd's wording differs ("unexpected packet type 5 (seqnr 1)"), the reason code and reply class are identical *(regenerated post-fix; was: closed with no DISCONNECT on the wire — the violation tore the connection down via `SSHHandshakeError` → `socket.destroy()`; fixed-in dartssh2 43899e5, F2)* | **match** |
 
 Row A16 first pass (recorded because the finding stands on its own): the
 same flood against a request-less **session** channel was silently
@@ -106,8 +106,12 @@ tp_sshd — related to Area C (window handling), noted there for follow-up.
 
 ## Area A triage
 
-Verdicts: 8 match, 3 deliberate-divergence, 8 fix-divergence, 19 rows
-(A09–A11 share one fix; every other fix-divergence row is its own fix).
+Verdicts (post-fix regeneration, 2026-09-14): 16 match, 3
+deliberate-divergence (A07, A12, A14), 0 fix-divergence, 19 rows
+(A09–A11 shared one fix; every fix-divergence row's fix has landed —
+A01/F12, A08/F9, A09–A11/F8, A15/F5, A16/F4, A19/F2 — and the
+regenerated actuals above record the flips). At audit time this was
+8 match, 3 deliberate, 8 fix-divergence.
 
 ### fix-divergence — acceptance criteria
 
@@ -194,6 +198,10 @@ Verdicts: 8 match, 3 deliberate-divergence, 8 fix-divergence, 19 rows
    an unhandled error into the embedder's zone — in the app that is an
    unhandled exception. Fix candidate for Task 7.
 
+   *Fix landed (2026-09-14):* the pump consumes both channels of
+   `connection.done` (F13); the full-harness regeneration runs with an
+   empty stray-error list (the section does not even print).
+
 ### ambient differences (normalized out of the verdicts; no action)
 
 - sshd sends an unsolicited `hostkeys-00@openssh.com` GLOBAL_REQUEST and a
@@ -245,18 +253,21 @@ from the client side.
 | ID | 刺激 | OpenSSH 预期（源码出处） | OpenSSH 实测 | tp_sshd 实测 | 判定 |
 |----|------|--------------------------|--------------|--------------|------|
 | B01 | 对端主动 rekey（真实 dartssh2 SSHClient，开着 `cat` exec 通道，两次 stdin 回显之间调用 `rekey()`，之后再执行一条命令） | 正常 rekey：服务器应答自己的 KEXINIT，交换走到 NEWKEYS，已开通道在新密钥下继续工作。[kex.c:kex_send_newkeys; kex.c:kex_input_kexinit; packet.c:ssh_packet_send2（rekey 期间非 KEX 出站包排队）] | rekey completed; 通道 rekey 前后回显均成功；rekey 后新 exec `"echo post" -> "post"`；通道干净关闭（exit 0） — prediction confirmed | 完全相同（rekey completed; 前后回显 ok; 新 exec ok; exit 0） | **match** |
-| B02 | rekey 期间有数据在途（×5 轮）：1 MiB exec 流（`head -c 1048576` 模式文件）流动中客户端在收到 ≥ 64 KiB 时 `rekey()`；流必须逐字节完整、通道必须正常收尾 | 两边都在交换期间把非 KEX 出站包排队、NEWKEYS 后按序冲刷：流短暂停顿后继续，不丢、不乱序。[packet.c:ssh_packet_send2（"During rekeying we can only send key exchange messages. Queue everything else."）] | 5/5 轮：流逐字节完整、按序；通道干净关闭（exit 0） — prediction confirmed | 4/5 轮干净；1 轮流完整但**通道永远不关闭**：exec 收尾（exit-status/EOF/CLOSE）落进交换窗口被丢弃，会话挂死（追踪证实：客户端对 packet 40/41/42 回 UNIMPLEMENTED，即 ssh_transport.dart `_handleMessage` 的 `_kexInProgress` default 分支丢包；单独 8 轮测量中挂死 1–2 轮，OpenSSH 侧 0/8） | **fix-divergence** |
-| B03 | 交换进行中注入第二个 KEXINIT（rekey 刚发起、NEWKEYS 之前，算法列表与首个相同） | 重复 KEXINIT 不重新协商：它落入 `kex_protocol_error`（kex_input_kexinit 收到首个 KEXINIT 时把 KEXINIT 重注册为 kex_protocol_error），非首次交换的 strict 分支不触发 → 回 `UNIMPLEMENTED`，进行中的交换照常完成，连接继续。[kex.c:kex_input_kexinit:621; kex.c:kex_protocol_error:234-247（fatal 需 KEX_INITIAL）; kex.c:kex_input_newkeys:561] | `msg:20(KEXINIT), msg:3(UNIMPLEMENTED), msg:31(KEXDH_REPLY), msg:21(NEWKEYS), msg:82(REQUEST_FAILURE)` — rekey 完成、请求 ping 仍被应答，prediction confirmed；sshd log 证实 `kex_protocol_error: type 20 seq 3` | `msg:20(KEXINIT), msg:31(KEXDH_REPLY), closed` — 重复 KEXINIT **被静默并入协商**（无 UNIMPLEMENTED）：`_handleMessageKexInit` 用它覆盖 `_remoteKexInit` 并替换临时 kex，交换哈希失同步，客户端验证 KEXDH_REPLY 签名失败（"The message is forged or malformed or the signature is invalid"）→ 连接关闭，rekey 永不完成 | **fix-divergence** |
+| B02 | rekey 期间有数据在途（×5 轮）：1 MiB exec 流（`head -c 1048576` 模式文件）流动中客户端在收到 ≥ 64 KiB 时 `rekey()`；流必须逐字节完整、通道必须正常收尾 | 两边都在交换期间把非 KEX 出站包排队、NEWKEYS 后按序冲刷：流短暂停顿后继续，不丢、不乱序。[packet.c:ssh_packet_send2（"During rekeying we can only send key exchange messages. Queue everything else."）] | 5/5 轮：流逐字节完整、按序；通道干净关闭（exit 0） — prediction confirmed | 5/5 轮干净：流逐字节完整、按序，通道干净关闭（exit 0）— 与 OpenSSH 侧一致 *(regenerated post-fix; was: 4/5 干净，1 轮 exec 收尾落进交换窗口被 UNIMPLEMENTED 丢弃、会话挂死; fixed-in dartssh2 74dd24c, F6 — 交换窗口内到达的非 KEX 消息现被排队并在 NEWKEYS 后重分发)* | **match** |
+| B03 | 交换进行中注入第二个 KEXINIT（rekey 刚发起、NEWKEYS 之前，算法列表与首个相同） | 重复 KEXINIT 不重新协商：它落入 `kex_protocol_error`（kex_input_kexinit 收到首个 KEXINIT 时把 KEXINIT 重注册为 kex_protocol_error），非首次交换的 strict 分支不触发 → 回 `UNIMPLEMENTED`，进行中的交换照常完成，连接继续。[kex.c:kex_input_kexinit:621; kex.c:kex_protocol_error:234-247（fatal 需 KEX_INITIAL）; kex.c:kex_input_newkeys:561] | `msg:20(KEXINIT), msg:3(UNIMPLEMENTED), msg:31(KEXDH_REPLY), msg:21(NEWKEYS), msg:82(REQUEST_FAILURE)` — rekey 完成、请求 ping 仍被应答，prediction confirmed；sshd log 证实 `kex_protocol_error: type 20 seq 3` | `msg:20(KEXINIT), msg:3(UNIMPLEMENTED), msg:31(KEXDH_REPLY), msg:21(NEWKEYS), msg:82(REQUEST_FAILURE)` — 与 sshd 完全相同的形状：重复 KEXINIT 被 UNIMPLEMENTED 拒绝，进行中的交换照常完成 *(regenerated post-fix; was: 重复 KEXINIT 被静默并入协商，交换哈希失同步，客户端验签失败 → 连接关闭; fixed-in dartssh2 74dd24c, F10)* | **match** |
 | B04 | rekey KEXINIT 只提议不支持的 kex 算法（kex 列表 = `tp-sshd-audit-bogus-kex`，其余字段合法） | 服务器先发自己的 KEXINIT，协商失败为致命：`choose_kex` 失败 → `kex->failed_choice` → `sshpkt_vfatal` 的 `SSH_ERR_NO_KEX_ALG_MATCH` 分支 → `logdie "Unable to negotiate … Their offer: …"` 退出 — 线上无 DISCONNECT，只有 sshd log 可见。[kex.c:kex_choose_conf:980-984; packet.c:sshpkt_vfatal:2043-2050] | 裸 `closed`，无 DISCONNECT；sshd log 证实 `Unable to negotiate … Their offer: tp-sshd-audit-bogus-kex`（其 KEXINIT 已发出但 logdie 退出时未冲上线，与 A03/A04 同类） | `msg:20(KEXINIT), closed` — 同样致命、同样无 DISCONNECT；区别仅在 tp_sshd 的 KEXINIT 先到达了线上（`_sendKexInit` 在协商抛 `StateError('No matching key exchange algorithm')` 之前已写出） | **match**（裸关闭这一结果类一致；线上形状的差别见 triage 注记 5） |
 | B05 | rekey 时服务器换主机密钥（客户端策略镜像，需 MITM 才能差分运行 — source-only） | OpenSSH 客户端在**每次**交换中重新验证服务器主机密钥，密钥变化即致命。[kexgen.c:167 → kex.c:kex_verify_host_key:1183-1196 → sshconnect2.c:verify_host_key_callback:94-103（fatal "Host key verification failed."）] | source-only — 机制在源码中确认（kexgen.c:167 → kex.c:1183-1196 → sshconnect2.c:94-103） | source-only — dartssh2 客户端同样：ssh_transport.dart:1903-1913 在每次 rekey 重比对已接受密钥的指纹，变化即以 `SSHHostkeyError "Host key changed during rekey: …"` 关闭（刻意不再询问 onVerifyHostKey） | **match**（客户端行为参照行） |
-| B06 | 长会话字节阈值：服务器自己会不会发起 rekey — source-only（10.2 默认阈值为密码学几何量级，回环打满需数小时） | sshd 的触发机制**始终在岗**：`max_blocks` 取密码几何界（block≥16 → 2^(block×2) 块；RekeyLimit 取 min；另有 MAX_PACKETS 2^31 硬顶），每次发包与主循环检查，超限即服务器自发 KEXINIT（`kex_start_rekex`），非 KEX 出站包排队到 NEWKEYS。[packet.c:1046-1063; packet.c:1070-1123 + 1366-1399; serverloop.c:385-387；sshd_config.5:1788-1812（默认 "default none"）] | source-only — 机制在源码中确认；10.2 默认仅字节界（RekeyLimit "default none"，servconf.c:398-401 → rekey_limit=0/interval=0），本 harness 实测 sshd 每连接打日志 `rekey in after 4294967296 blocks`（= 2^32 块，AES 16 字节块即 64 GiB） | source-only — **无任何触发机制**：server_connection.dart 无字节计数器、无定时器（"rekey" 零引用）；dartssh2 的 `rekey()`（ssh_transport.dart:2054）是客户端角色 API，服务器代码从不调用 — 密钥只在客户端主动时才轮换 | **fix-divergence** |
-| B07 | 时间阈值 rekey（sshd 每小时）— source-only（等 1 小时不现实，且 10.2 默认根本没有时间阈值） | 时间 rekey 仅在 RekeyLimit 配置了 interval 时生效（serverloop.c:171 只在 `rekey_interval > 0` 时排定 deadline，packet.c:1095-1097 触发）；默认（"default none"）sshd 从不按时间 rekey | source-only — 可配置（`RekeyLimit <bytes> <interval>`）但默认关闭：servconf.c:400-401 默认 interval=0 | source-only — 与 B06 同一无：服务器侧不存在任何定时器，配置等价物也无从触发 | **fix-divergence**（与 B06 同一缺失机制） |
-| B08 | strict-kex 的 rekey 变体：rekey KEXINIT 之后、NEWKEYS 之前注入乱序 NEWKEYS（strict kex 已协商 — dartssh2 客户端首包带 `kex-strict-c-v00@openssh.com`） | 乱序 NEWKEYS 不被采纳：交换期 dispatch 指向 `kex_protocol_error` → 回 `UNIMPLEMENTED`；但 strict 的读序号复位**照发**（packet.c:1804-1808 对每个收到的 NEWKEYS 复位 p_read.seqnr，rekey 也算），于是客户端下一包 MAC 校验失败（"Corrupted MAC on input."）→ 拆连接、无 DISCONNECT。[kex.c:kex_input_newkeys:531; packet.c:1804-1808; packet.c:1697/1717; packet.c:sshpkt_vfatal] | `msg:20(KEXINIT), msg:3(UNIMPLEMENTED), msg:31(KEXDH_REPLY), msg:21(NEWKEYS)` — 交换**完成**、连接存活；sshd log：复位两次（`resetting read seqnr 4` / `…3`）但**无** "Corrupted MAC" — 预测的 MAC 失效半段未发生：协商出的 aes256-gcm 不把序号绑进 AEAD nonce（只有 chacha20-poly1305 绑，cipher.c:336-340 / cipher-chachapoly.c:69-82），复位因此无害 | `msg:20(KEXINIT), closed` — 乱序 NEWKEYS **被直接采纳**：`_handleMessageNewKeys`（ssh_transport.dart:2016）无进行中检查，用陈旧交换哈希重新推导密钥并终结交换状态；客户端真正的 KEXDH_INIT 随后命中 kex 为空的 `SSHStateError`（ssh_transport.dart:1951-1960）→ 连接被拆，无 DISCONNECT，rekey 永不完成 | **fix-divergence** |
+| B06 | 长会话字节阈值：服务器自己会不会发起 rekey — source-only（10.2 默认阈值为密码学几何量级，回环打满需数小时） | sshd 的触发机制**始终在岗**：`max_blocks` 取密码几何界（block≥16 → 2^(block×2) 块；RekeyLimit 取 min；另有 MAX_PACKETS 2^31 硬顶），每次发包与主循环检查，超限即服务器自发 KEXINIT（`kex_start_rekex`），非 KEX 出站包排队到 NEWKEYS。[packet.c:1046-1063; packet.c:1070-1123 + 1366-1399; serverloop.c:385-387；sshd_config.5:1788-1812（默认 "default none"）] | source-only — 机制在源码中确认；10.2 默认仅字节界（RekeyLimit "default none"，servconf.c:398-401 → rekey_limit=0/interval=0），本 harness 实测 sshd 每连接打日志 `rekey in after 4294967296 blocks`（= 2^32 块，AES 16 字节块即 64 GiB） | source-only — **触发机制已落地**（fixed-in tp_sshd e136659b7, F3）：server_connection.dart 现在在发送路径上有出站字节计数器 + 认证后武装的一次性 rekeyInterval 定时器，越过阈值即经 `SSHTransport.rekey()` 发出主动 KEXINIT（并发触发收敛为一次交换，包级测试 server_rekey_test.dart 覆盖字节阈值/空闲定时器/通道连续性/全关闭）。与 sshd 的**默认值刻意分歧**：1 GiB + 1 h（sshd 10.2 默认 RekeyLimit "default none"，仅密码几何界）——配对会话长期低流量，纯字节界几乎永不触发（见 F3 的完整理由） | **deliberate-divergence**（机制落地；默认值分歧有档） |
+| B07 | 时间阈值 rekey（sshd 每小时）— source-only（等 1 小时不现实，且 10.2 默认根本没有时间阈值） | 时间 rekey 仅在 RekeyLimit 配置了 interval 时生效（serverloop.c:171 只在 `rekey_interval > 0` 时排定 deadline，packet.c:1095-1097 触发）；默认（"default none"）sshd 从不按时间 rekey | source-only — 可配置（`RekeyLimit <bytes> <interval>`）但默认关闭：servconf.c:400-401 默认 interval=0 | source-only — 定时器已随 F3 落地（tp_sshd e136659b7）：`rekeyInterval`（默认 1 h，可空关闭）武装一次性定时器，空闲会话也会轮换密钥；sshd 默认不配时间阈值，本分歧与 B06 同属一个有档的默认值选择 | **deliberate-divergence**（机制落地；默认值分歧有档） |
+| B08 | strict-kex 的 rekey 变体：rekey KEXINIT 之后、NEWKEYS 之前注入乱序 NEWKEYS（strict kex 已协商 — dartssh2 客户端首包带 `kex-strict-c-v00@openssh.com`） | 乱序 NEWKEYS 不被采纳：交换期 dispatch 指向 `kex_protocol_error` → 回 `UNIMPLEMENTED`；但 strict 的读序号复位**照发**（packet.c:1804-1808 对每个收到的 NEWKEYS 复位 p_read.seqnr，rekey 也算），于是客户端下一包 MAC 校验失败（"Corrupted MAC on input."）→ 拆连接、无 DISCONNECT。[kex.c:kex_input_newkeys:531; packet.c:1804-1808; packet.c:1697/1717; packet.c:sshpkt_vfatal] | `msg:20(KEXINIT), msg:3(UNIMPLEMENTED), msg:31(KEXDH_REPLY), msg:21(NEWKEYS)` — 交换**完成**、连接存活；sshd log：复位两次（`resetting read seqnr 4` / `…3`）但**无** "Corrupted MAC" — 预测的 MAC 失效半段未发生：协商出的 aes256-gcm 不把序号绑进 AEAD nonce（只有 chacha20-poly1305 绑，cipher.c:336-340 / cipher-chachapoly.c:69-82），复位因此无害 | `msg:20(KEXINIT), msg:3(UNIMPLEMENTED), msg:31(KEXDH_REPLY), msg:21(NEWKEYS)` — 乱序 NEWKEYS 不再被采纳（UNIMPLEMENTED），交换照常完成、连接存活，与 sshd 的线上观测一致 *(regenerated post-fix; was: 乱序 NEWKEYS 被直接采纳，用陈旧交换哈希重新推导密钥，客户端真正的 KEXDH_INIT 命中 kex 为空的 SSHStateError → 连接被拆; fixed-in dartssh2 74dd24c, F11)* | **match** |
 
 ## Area B triage
 
-Verdicts: 3 match (B01, B04, B05), 5 fix-divergence (B02, B03, B06+B07,
-B08), 0 deliberate-divergence, 8 rows.
+Verdicts (post-fix regeneration, 2026-09-14): 6 match (B01–B04, B05,
+B08), 2 deliberate-divergence (B06, B07 — the mechanism landed with F3;
+the *defaults* 1 GiB/1 h vs sshd's RekeyLimit-default-none are the
+documented divergence), 0 fix-divergence, 8 rows. At audit time this was
+3 match, 5 fix-divergence, 0 deliberate-divergence.
 
 ### fix-divergence — acceptance criteria
 
@@ -352,17 +363,22 @@ channels.h:230), which is the anchor of C02.
 | C02 | 观测行：两个服务端在 session 通道上的初始窗口授予（confirmation 携带值）+ exec 时刻的 adjust 序列 + 1 MiB 入流的 adjust 节奏 | sshd 的 session 通道 LARVAL 期窗口为 0，confirmation 带 0；程序启动时 session_set_fds → channel_set_fds 以 WINDOW_ADJUST 授 2 MiB。[serverloop.c:server_request_session（channel_new window 0）；session.c:session_set_fds；channels.h:230 CHAN_SES_WINDOW_DEFAULT] | confirmation window=0 maxpacket=32768；exec 后 1 次 adjust 2097152；1 MiB 入流 8 次 adjust 共 1048576 — prediction confirmed | confirmation window=2097152（2 MiB 平铺），exec 后无 adjust；1 MiB 入流 8 次 adjust 共 1048576 | **deliberate-divergence**（tp_sshd 开通道即授 2 MiB 平铺，server_channel.dart initialReceiveWindow — 等效授权，少一次往返） |
 | C03 | 32768 字节客户端窗口 + 产出 1 MiB 的 exec（`head -c 1048576 /dev/zero`），客户端永不读取、永不 adjust | 服务端在窗口耗尽后停读子进程（子进程阻塞在 stdout 管道上）；无定时器、无断连；通道停摆、连接存活。[channels.c:channel_output_poll_input_open（remote_window <= 0 即 return）] | 32723+45(stderr) 字节即停（= 32768 窗口），3 秒后再无字节；连接存活；子进程被冻结，无 exit-status | 32768 字节即停；但服务端无背压地读完了子进程全部输出（内存队列），子进程退出 → exit-status → ~2 秒后 EOF+CLOSE（超出授权窗口的尾部被丢弃） | **deliberate-divergence**（bounded-flush 家族，D02：tp_sshd 的 2 s 关闭冲刷界 + 无界写队列 vs sshd 冻结子进程；见 triage 注 2） |
 | C04 | 单个 33000 字节 CHANNEL_DATA（> 服务端授予的 32768 maxpacket，但 < 35000 传输层包上限，故观测的是通道策略而非 A03 的长度上限）发到 `cat` exec 通道，随后一个小的界内探测块 | 超大包被丢弃：logit "rcvd big packet" + return 0，无回复，通道与连接都活着，后续探测块照常回显。[channels.c:channel_input_data（win_len > local_maxpacket 分支）] | 33000 字节块后无任何回复；后续 6 字节探测回显（通道活着）— prediction confirmed | 33000 字节块后 `msg:97(CHANNEL_CLOSE)`：整个通道被关闭；后续探测无回显（通道已死）；连接存活 | **deliberate-divergence**（越界包：sshd 静默丢弃 vs tp_sshd 关闭该通道 — `_handleIncoming` 的边界检查；连接两边都不受影响；见 triage 注 3） |
-| C05 | 窗口耗尽 + 1 字节：向 `sleep 30`（永不读 stdin 的程序）灌 2 MiB + 32768 + 1 字节，再补 ~320 KiB 越过 10% 宽限 | 首次越界被容忍（local_window_exceeded 累计、窗口清零、数据仍入缓冲、不回包）；越过 local_window_max/10 后 DISCONNECT(2, "channel N: peer ignored channel window")。[channels.c:channel_input_data] | 阶段 1：1 次 adjust 65536（管道消费），无断连（管道 64 KiB 余量吸收了首次越界）；阶段 2 (+320 KiB)：`msg:93, closed` — DISCONNECT 入队但未冲上线（A03 家族），sshd log 证实 `peer ignored channel window` — 机制证实 | 阶段 1：16 次 adjust 共 2097152（记账式回补，窗口从未真正耗尽）；阶段 2：19 次 adjust 共 2457601，永不断连，无界缓冲 | **fix-divergence**（A16 的 session 通道正式化：接收窗口纯按记账回补、无消费要求、无 10% 宽限强制 — 服务端可被无界缓冲；验收标准见 triage 注 4） |
+| C05 | 窗口耗尽 + 1 字节：向 `sleep 30`（永不读 stdin 的程序）灌 2 MiB + 32768 + 1 字节，再补 ~320 KiB 越过 10% 宽限 | 首次越界被容忍（local_window_exceeded 累计、窗口清零、数据仍入缓冲、不回包）；越过 local_window_max/10 后 DISCONNECT(2, "channel N: peer ignored channel window")。[channels.c:channel_input_data] | 阶段 1：1 次 adjust 65536（管道消费），无断连（管道 64 KiB 余量吸收了首次越界）；阶段 2 (+320 KiB)：`msg:93, closed` — DISCONNECT 入队但未冲上线（A03 家族），sshd log 证实 `peer ignored channel window` — 机制证实 | 阶段 1：adjust 按消费回补（管道消费 65536 后才补）；阶段 2：`disconnect:2("channel 0: peer ignored channel window")`，连接被拆 — 10% 宽限强制已落地，与 sshd 的线上观测一致 *(regenerated post-fix; was: 记账式回补、永不断连、无界缓冲; fixed-in tp_sshd 992552d, F4)* | **match** |
 | C06 | 三个 WINDOW_ADJUST 异常依次：发给未创建通道 99999 的 adjust、对已开通道的 adjust 0、以及在 send window 已为 0xffffffff 的通道上 +1（溢出） | 未知通道：logit 后忽略，无回复；adjust 0：no-op 无回复；溢出：fatal "channel %d: adjust %u overflows remote window %u" — 线上无 DISCONNECT 的拆连接。[channels.c:channel_input_window_adjust] | 未知通道与 adjust 0 均无回复（prediction confirmed）；溢出 adjust：裸 `closed`，sshd log 证实 `overflows remote window` | 未知通道与 adjust 0 同样无回复；溢出 adjust：`msg:97(CHANNEL_CLOSE)` — 只关闭该通道（`_failChannel`），连接存活 | **deliberate-divergence**（前两项一致；溢出的处置范围不同：sshd fatal 杀整条连接 vs tp_sshd 只关该通道 — fork 客户端策略的镜像；见 triage 注 5） |
-| C07 | rekey 下的窗口压力（B01 变体，×3 轮）：65536 字节客户端窗口的 `cat` exec，灌 512 KiB，客户端以 50 ms 泵调整窗口，echo ≥ 64 KiB 时 rekey()；回声必须逐字节完整、通道必须收尾 | 两边都在交换期排队非 KEX 出站包、NEWKEYS 后按序冲刷；入站通道消息照常分发；流完整收尾。[packet.c:ssh_packet_send2；channels.c:channel_check_window] vs dartssh2 共享传输层的 UNIMPLEMENTED 丢弃（B02 记录） | 1/3 轮干净；失败轮：echo 冻结在 130982/524288（前缀完整）、通道永不关闭、0 次 UNIMPLEMENTED — 失败由驱动侧客户端半边丢弃在途 DATA 造成（B02 客户端半） | 0/3 轮干净；每轮 echo 冻结在恰好 65536（首个窗口边界）、通道经 2 s 界收尾、0 次 UNIMPLEMENTED — adjust/数据包竞进服务端交换窗口被丢弃后发送窗口饿死（B02 服务端半） | **fix-divergence**（B02 家族：交换窗口内到达的非 KEX 消息被静默丢弃；C07 补充了两个方向的证据与窗口压力下的确定性死锁形态；验收标准同 B02） |
+| C07 | rekey 下的窗口压力（B01 变体，×3 轮）：65536 字节客户端窗口的 `cat` exec，灌 512 KiB，客户端以 50 ms 泵调整窗口，echo ≥ 64 KiB 时 rekey()；回声必须逐字节完整、通道必须收尾 | 两边都在交换期排队非 KEX 出站包、NEWKEYS 后按序冲刷；入站通道消息照常分发；流完整收尾。[packet.c:ssh_packet_send2；channels.c:channel_check_window] vs dartssh2 共享传输层的 UNIMPLEMENTED 丢弃（B02 记录） | 1/3 轮干净；失败轮：echo 冻结在 130982/524288（前缀完整）、通道永不关闭、0 次 UNIMPLEMENTED — 失败由驱动侧客户端半边丢弃在途 DATA 造成（B02 客户端半） | 3/3 轮干净：回声逐字节完整、通道干净收尾 — 窗口压力下的确定性死锁形态消失 *(regenerated post-fix; was: 0/3 干净，每轮 echo 冻结在恰好 65536（首个窗口边界），adjust 竞进服务端交换窗口被丢弃后发送窗口饿死; fixed-in dartssh2 74dd24c, F6 — 同一修复覆盖两个方向)* | **match** |
 | C08 | max-channels 洪泛：一条连接开 11 个 session 通道（tp_sshd maxChannels 10；sshd MaxSessions 默认 10） | 前 10 个确认，第 11 个失败：session_new 达到 max_sessions 返回 NULL → CHANNEL_OPEN_FAILURE，reason 保持初值 SSH2_OPEN_CONNECT_FAILED(2)，描述 "open failed"。[session.c:session_new；serverloop.c:server_request_session + server_input_channel_open；servconf.h:40 DEFAULT_SESSIONS_MAX 10] | 10/11 确认；第 11 个 `reason=2 "open failed"` — prediction confirmed | 10/11 确认；第 11 个 `reason=4 "Too many open channels (10/10)"` | **deliberate-divergence**（上限数量一致（10=10）；拒绝码不同：reason 4（resource shortage）恰是 RFC 4254 §5.1 为此情形建议的码 — tp_sshd 的更贴切） |
 | C09 | 第 11 个通道的确切拒绝观测 + 槽位回收：拒绝后关掉一个已确认通道，再开一个 | 已关闭通道的槽位归还：新开被确认（sshd 经 cleanup 回调释放 session；上限计的是活通道）。[channels.c:channel_free；serverloop.c] | 10/11 确认后拒绝（reason=2）；关闭一个通道后新开：confirmed（槽位回收）— prediction confirmed | 10/11 确认后拒绝（reason=4）；关闭一个通道后新开：confirmed（槽位回收） | **match**（拒绝码差异属 C08；本行问题 — 槽位回收 — 行为一致） |
 | C10 | 观测行：真实 dartssh2 SftpClient 的 4 MiB SFTP 往返（流水线 WRITE 后流水线 READ） | 双端完成往返、字节完整；流水线请求受 session 通道 2 MiB 窗口约束，无停顿无错误。[sftp-server.c process() 循环；channels.h:230 经 session_set_fds] | 4 MiB 往返：上传 3817ms，下载 3736ms，4194304 字节读回，字节完整 | 4 MiB 往返：上传 7482ms，下载 7446ms，4194304 字节读回，字节完整 | **match**（观测行：完成与完整性一致；tp_sshd 每方向约慢 2×，记录为观测差距，见 triage 注 6） |
 
 ## Area C triage
 
-Verdicts: 3 match (C01, C09, C10), 5 deliberate-divergence (C02, C03,
-C04, C06, C08), 2 fix-divergence (C05, C07), 10 rows.
+Verdicts (post-fix regeneration, 2026-09-14): 5 match (C01, C05, C07,
+C09, C10), 5 deliberate-divergence (C02, C03, C04, C06, C08),
+0 fix-divergence, 10 rows. At audit time this was 3 match,
+5 deliberate, 2 fix-divergence. (C01's tp_sshd adjust cadence shifted
+with F4's consumption-driven refill — 29 adjusts totaling 950272 bytes
+in the regeneration vs 8/1048576 recorded above — the boundary
+exactness the row judges is unchanged; see triage note 1.)
 
 ### fix-divergence — acceptance criteria
 
@@ -465,11 +481,11 @@ messages on the raw driver; the sshd `tput` stderr noise is normalized
 
 | ID | 刺激 | OpenSSH 预期（源码出处） | OpenSSH 实测 | tp_sshd 实测 | 判定 |
 |----|------|--------------------------|--------------|--------------|------|
-| D01 | 客户端 EOF 后继续发 DATA：`cat > /dev/null; sleep 30` exec 在 EOF 后仍活着（cat 半程结束、sleep 半程撑住通道），客户端再发 10 字节 | EOF 后的普通 DATA 无 EOF 检查：ostate != OPEN 分支假消费（仅记账，字节丢弃），无回复、连接存活；只有 EOF 后的 EXTENDED data 才断连。[channels.c:channel_input_data；channel_input_extended_data] | EOF 后 10 字节：无任何回复，连接存活 — prediction confirmed | EOF 后 10 字节：连接被整个拆掉（裸 `closed`，无 DISCONNECT）— `handleEof` 关闭输入控制器后 `_handleIncoming` 对已关控制器 add 抛错，经传输层 dispatch 传播到 closeWithError | **fix-divergence** |
+| D01 | 客户端 EOF 后继续发 DATA：`cat > /dev/null; sleep 30` exec 在 EOF 后仍活着（cat 半程结束、sleep 半程撑住通道），客户端再发 10 字节 | EOF 后的普通 DATA 无 EOF 检查：ostate != OPEN 分支假消费（仅记账，字节丢弃），无回复、连接存活；只有 EOF 后的 EXTENDED data 才断连。[channels.c:channel_input_data；channel_input_extended_data] | EOF 后 10 字节：无任何回复，连接存活 — prediction confirmed | EOF 后 10 字节：无任何回复，连接存活 — 数据被假消费（仅记账），与 sshd 一致 *(regenerated post-fix; was: 连接被整个拆掉 — handleEof 关闭输入控制器后 _handleIncoming 对已关控制器 add 抛错; fixed-in tp_sshd 86c4c0d, F7)* | **match** |
 | D02 | 输出仍在等窗口信用时收尾。阶段 1：4096 字节客户端窗口 + 256 KiB 输出，首批发到后客户端发 CHANNEL_CLOSE；阶段 2：同样压力但不关 — exit-status/EOF/CLOSE 相对进程退出何时落地 | 阶段 1：chan_rcvd_oclose → ostate WAIT_DRAIN — 无信用则永远等待，不回 CLOSE。阶段 2：进程退出路径丢弃挂起输出（chan_write_failed 重置缓冲）：exit-status → EOF → CLOSE 立即连发。[nchan.c:chan_rcvd_oclose；session.c:session_exit_message] | 阶段 1：0 个后续数据字节，`exit-signal(PIPE) → CLOSE`（关闭读端使 head SIGPIPE 死亡，子进程退出路径收尾 — 与预测的"沉默挂起"不同，预测被证伪）；阶段 2：10 秒内 exit-status 未到（子进程被窗口冻结，无法退出 — C03 机制） | 阶段 1：0 个后续数据字节，立即 `CLOSE`（队列丢弃、进程杀死、无退出报告）；阶段 2：exit-status 立即到达，EOF + CLOSE 在 1974 ms 后（2 s closeFlushTimeout 界），尾部丢弃 | **deliberate-divergence**（bounded-flush 2 s 界；两阶段的完整差异见 triage 注 1） |
 | D03 | 双方 EOF：`echo done` exec，客户端在 exec 应答后立即发 CHANNEL_EOF（从不发 CLOSE）— 谁先发 CLOSE、收尾顺序 | 客户端 EOF 后服务端输出进入 WAIT_DRAIN；子进程退出驱动 exit-status → EOF → CLOSE；CLOSE 由服务端发出。[nchan.c:chan_rcvd_ieof；chan_is_dead/chan_send_close2；session.c:session_close_by_pid] | `data:5 → CHANNEL_SUCCESS → stderr(45) → EOF → exit-status(0) → CLOSE`；CLOSE 来自服务端 — prediction confirmed（EOF 先于 exit-status，见 D04） | `data:5 → CHANNEL_SUCCESS → exit-status(0) → EOF → CLOSE`；CLOSE 来自服务端 | **match**（关闭发起者与收尾完成一致；exit-status/EOF 顺序差是 D04 的记录项） |
 | D04 | 无任何客户端 EOF 的 exit-status 排序：`echo ok` exec，客户端只等 — 观测 exit-status/EOF/CLOSE 顺序与退出码 | session_close_by_pid → session_exit_message 先发 exit-status，再 chan_write_failed；EOF 由子进程 stdin 管道排空驱动，CLOSE 最后。[session.c:session_exit_message；nchan.c:chan_ibuf_empty → chan_send_eof2；chan_is_dead → chan_send_close2] | `data:3 → CHANNEL_SUCCESS → stderr(45) → EOF → exit-status(0) → CLOSE` — EOF 抢在 exit-status 之前（管道 EOF 与 SIGCHLD 路径竞速，观测两次一致）；CLOSE 最后 — 预测的前半段被实测修正 | `data:3 → CHANNEL_SUCCESS → exit-status(0) → EOF → CLOSE` — exit-status 严格先于 EOF/CLOSE | **deliberate-divergence**（顺序：tp_sshd 刻意先发 exit-status — `_pipeProcess` 注释"a client that sees EOF first may stop waiting for it"；两种顺序都为 RFC 所容，sshd 的 EOF 先行是其两条异步路径的竞速结果） |
-| D05 | 通道彻底死亡后再发 CHANNEL_REQUEST（echo ok 通道完全关闭并确认后，对其再发一个 want_reply 的 `env` 请求） | 通道已释放：channel_lookup 失败 → DISCONNECT(2, "server_input_channel_req: unknown channel <id>")，连接被拆。[serverloop.c:server_input_channel_req] | `disconnect:2("server_input_channel_req: unknown channel 0")`，log 证实 — prediction confirmed | 无任何回复，连接存活（通道已从表中移除，静默忽略 — A15 家族） | **fix-divergence**（A15 的同类：验收标准并入 A15 — 通道作用域消息对不存在通道应回协议错误，涵盖 DATA 与 REQUEST） |
+| D05 | 通道彻底死亡后再发 CHANNEL_REQUEST（echo ok 通道完全关闭并确认后，对其再发一个 want_reply 的 `env` 请求） | 通道已释放：channel_lookup 失败 → DISCONNECT(2, "server_input_channel_req: unknown channel <id>")，连接被拆。[serverloop.c:server_input_channel_req] | `disconnect:2("server_input_channel_req: unknown channel 0")`，log 证实 — prediction confirmed | `msg:1(DISCONNECT), disconnect:2("server_input_channel_req: unknown channel 0")` — sshd 的逐字措辞 *(regenerated post-fix; was: 无任何回复，连接存活 — 静默忽略; fixed-in tp_sshd 4599197, F5)* | **match** |
 | D06 | 通道中途的 TCP RST（观测行）：exec 流式输出 1 MiB 中客户端以 SO_LINGER 0 硬拆 socket | 读错误路径拆连接、收尸子进程、监听器无恙；sshd log 记录 reset。[sshd-session.c 会话主循环读错误路径；serverloop.c] | RST 发出（已收 1 MiB 且仍在流）；sshd log 证实 `Connection reset`；监听器存活 | RST 发出；进程内服务端存活，运行器 zone 无 stray async error；监听器存活 | **match** |
 | D07 | 客户端在子进程（`sleep 2`）仍运行时、未发任何 EOF 就发 CHANNEL_CLOSE | chan_rcvd_oclose 后 channel_garbage_collect 因 session cleanup 回调 force=0 而持有"almost dead"通道：子进程活着时不回 CLOSE；子进程退出时 session_close_by_pid 仍交付 exit-status 与 CLOSE（无 EOF）。[nchan.c:chan_rcvd_oclose；channels.c:channel_garbage_collect；serverloop.c:server_request_session] | `exit-status(0) → CLOSE`，CLOSE 在子进程退出时（~2 s）才回，此前沉默 — prediction confirmed | 立即 `CLOSE`（handleClose → _finish：队列丢弃、进程杀死），无 exit-status | **deliberate-divergence**（提前 CLOSE 的语义：sshd 持通道至子进程退出并补报 exit-status vs tp_sshd 立即收尾并杀进程；客户端已声明不再需要通道，两种读法皆合规；见 triage 注 2） |
 | D08 | 服务端发起的 `forwarded-tcpip` 通道（tcpip-forward 到 127.0.0.1:0 后拨入一条连接）被客户端以 CHANNEL_CLOSE 回应而非确认 — pending-open 竞态；随后控制连接正常确认 | OPENING 通道收 CLOSE 应被拆除：接受 socket 随 fd 关闭 — 拨入连接被服务端关闭。[channels.c:channel_post_port_listener；nchan.c:chan_rcvd_oclose] | CLOSE 后无任何回复；拨入连接保持打开（**通道僵尸**：SSH_CHANNEL_OPENING 在 channel_handler_init 的 pre/post 表中无处理项，ostate 停在 WAIT_DRAIN，永不释放 — 预测被证伪）；控制连接：echo 正常（转发仍活） | CLOSE 后无任何回复；拨入连接保持打开（pending open 永不裁决，连接被持有到 SSH 连接结束）；控制连接：echo 正常（转发仍活） | **match**（两端都持有被 CLOSE 的 pending open、都不回包、转发都存活；sshd 的僵尸机制记录于 triage 注 3） |
@@ -478,8 +494,10 @@ messages on the raw driver; the sshd `tput` stderr noise is normalized
 
 ## Area D triage
 
-Verdicts: 4 match (D03, D06, D08, D09), 4 deliberate-divergence (D02,
-D04, D07, D10), 2 fix-divergence (D01, D05), 10 rows.
+Verdicts (post-fix regeneration, 2026-09-14): 6 match (D01, D03, D05,
+D06, D08, D09), 4 deliberate-divergence (D02, D04, D07, D10),
+0 fix-divergence, 10 rows. At audit time this was 4 match, 4 deliberate,
+2 fix-divergence.
 
 ### fix-divergence — acceptance criteria
 
@@ -591,7 +609,7 @@ mechanism is the anti-oracle E01 measures.
 
 | ID | 刺激 | OpenSSH 预期（源码出处） | OpenSSH 实测 | tp_sshd 实测 | 判定 |
 |----|------|--------------------------|--------------|--------------|------|
-| E01 | 认证失败时延分布：三种失败条件各 50 次全新连接（每条件新连接，避开两端的 6 次失败上限）——wrong-key（真实用户名 + 未授权密钥 + **有效** RFC 4252 §7 签名）、unknown-user（不存在的用户名，其余为有效登录）、malformed-blob（不可解码密钥 blob，A10 形状）——测量 USERAUTH_REQUEST 发出到 USERAUTH_FAILURE 回复的墙钟 µs，每格 median/p95/max（专用 harness，PerSourcePenalties 关闭：150 次失败登录测的是认证时延而非惩罚门控） | 每个失败的 non-"none" 尝试都被垫时：5 ms 下限 + 0–4.2 ms 由 timing_secret 派生的按用户名伪随机抖动，之后才回包——三种失败条件在时延上不可区分（垫时即反预言机；路径差异被下限吸收）。[auth2.c:input_userauth_request -> ensure_minimum_time_since + user_specific_delay] | wrong-key med 6986µs p95 7571µs；unknown-user med 7744µs p95 8115µs；malformed-blob med 6765µs p95 7066µs — 同用户名的两条件（wrong-key/malformed）仅差 220µs，unknown-user 的 ~1 ms 落差是按用户名抖动（秘密派生的常量，不泄露路径） | wrong-key med 2808µs p95 3805µs；unknown-user med 902µs p95 1213µs；malformed-blob med 630µs p95 838µs — 三类清晰可分：正确用户名要付完整 ed25519 验签 + 异步 authenticate 回调（~2.8 ms），错误用户名在用户名比较处提前退出（~0.9 ms），坏 blob 在解码/回调处最快（~0.6 ms） | **fix-divergence**（用户名枚举预言机：正确用户名的拒绝比错误用户名慢 3 倍，sshd 用垫时防住的正是这个；验收标准见 triage 注 1） |
+| E01 | 认证失败时延分布：三种失败条件各 50 次全新连接（每条件新连接，避开两端的 6 次失败上限）——wrong-key（真实用户名 + 未授权密钥 + **有效** RFC 4252 §7 签名）、unknown-user（不存在的用户名，其余为有效登录）、malformed-blob（不可解码密钥 blob，A10 形状）——测量 USERAUTH_REQUEST 发出到 USERAUTH_FAILURE 回复的墙钟 µs，每格 median/p95/max（专用 harness，PerSourcePenalties 关闭：150 次失败登录测的是认证时延而非惩罚门控） | 每个失败的 non-"none" 尝试都被垫时：5 ms 下限 + 0–4.2 ms 由 timing_secret 派生的按用户名伪随机抖动，之后才回包——三种失败条件在时延上不可区分（垫时即反预言机；路径差异被下限吸收）。[auth2.c:input_userauth_request -> ensure_minimum_time_since + user_specific_delay] | wrong-key med 6986µs p95 7571µs；unknown-user med 7744µs p95 8115µs；malformed-blob med 6765µs p95 7066µs — 同用户名的两条件（wrong-key/malformed）仅差 220µs，unknown-user 的 ~1 ms 落差是按用户名抖动（秘密派生的常量，不泄露路径） | wrong-key med 11905µs、unknown-user med 11646µs、malformed-blob med 11278µs（regeneration 2026-09-14）— 三类落在同一噪声带内（差距 ~5%），不可分 *(regenerated post-fix; was: 2808/902/630 µs 三类清晰可分，正确用户名的拒绝比错误用户名慢 3 倍; fixed-in tp_sshd 的 authFailureMinDelay 垫时, F1)* | **match**（in-kind：三类不可分，F1 验收达成） |
 | E02 | 认证前空闲超时：拨号完成 KEX、协商 ssh-userauth 后不发任何字节，测量拆连接的时刻与方式（两端都配 3 s：sshd `LoginGraceTime 3`、tp_sshd `authTimeout 3 s`，使行可运行；默认值差异记录于 triage 注 3） | setitimer 为 login_grace_time 加 0–4 s 随机抖动（arc4random_uniform(4×10⁶) µs）；到时 grace_alarm_handler 杀进程组并 `_exit(EXIT_LOGIN_GRACE)`——静默关闭、线上无 DISCONNECT，落在 ~3–7 s。[sshd-session.c:1238-1248；sshd-session.c:211 grace_alarm_handler] | 4.29 s 处静默 `closed`（3 s + ~1.3 s 抖动，落在预测区间） | 2.97 s 处静默 `closed`（定时器自连接建立起 3 s 整、无抖动；测量锚点在 KEX+协商之后，故读数略小于 3.00，见 triage 注 2） | **match**（等配置下机制一致：超时即静默拆连接、无 DISCONNECT；默认值 30 s vs 120 s 为 deliberate，见 triage 注 3） |
 | E03 | 认证后空闲：已认证连接 5 s 内无任何流量（无通道）——服务端有无 keepalive 探测、有无空闲断连 | 两端都不探测也不断连：client_alive_interval 默认 0 = 禁用（client_alive_check 仅在 interval > 0 时发探测）；tp_sshd 认证成功即取消唯一的 _authTimer，此后无任何定时器。[servconf.c:452-455；serverloop.c:client_alive_check；server_connection.dart] | 5 s 空闲零流量（2 条环境噪声消息已过滤），连接存活 — prediction confirmed | 5 s 空闲零流量，连接存活 | **match** |
 | E04 | 认证前连接洪泛：顺序开 7 条连接并保持未认证（专用 harness，sshd 配 `MaxStartups 3:100:6` 使丢弃模式确定：begin=3、rate=100%、full=6）；按每条连接的首字节分类（SSH banner = 接受） | children_active < 3 的连接被接受（banner）；达到 3 后每个新连接被 drop_connection 拒绝：在任何 SSH banner 之前收到明文 `Not allowed at this time\r\n`，随后 socket 被父进程关闭。[sshd.c:drop_connection + should_drop_connection；sshd.c:1147 close(newsock)] | accepted #1–#3（banner），dropped #4–#7（拒绝行 + 关闭），sshd log 证实 `drop connection` — prediction confirmed | 7/7 全部接受（banner），无任何拒绝 | **deliberate-divergence**（tp_sshd 无认证前连接上限——嵌入式配对场景的监听面不由服务端自限；见 triage 注 4） |
@@ -600,9 +618,10 @@ mechanism is the anti-oracle E01 measures.
 
 ## Area E triage
 
-Verdicts: 3 match (E02, E03, E05), 2 deliberate-divergence (E04, E06),
-1 fix-divergence (E01), 6 rows. Timing rows are judged match-in-kind, never
-by numeric equality (area method note).
+Verdicts (post-fix regeneration, 2026-09-14): 4 match (E01, E02, E03,
+E05), 2 deliberate-divergence (E04, E06), 0 fix-divergence, 6 rows. At
+audit time this was 3 match, 2 deliberate, 1 fix-divergence. Timing rows
+are judged match-in-kind, never by numeric equality (area method note).
 
 ### fix-divergence — acceptance criteria
 
@@ -638,7 +657,11 @@ by numeric equality (area method note).
    conditions now sit within one noise band, in-kind with the same run's
    sshd cells (8452 / 7487 / 8256 µs, itself a ~13% spread). Per-username
    jitter (sshd's `user_specific_delay`) is recorded as a hardening
-   follow-up, not part of the floor.
+   follow-up, not part of the floor. One 7a observation folded in: the
+   malformed-userauth decode-failure path (`Malformed userauth request`
+   DISCONNECT) replies unpadded — a different reply class (protocol
+   error, not a failed authentication attempt), matching sshd, which
+   also does not pad undecodable requests.
 
 ### deliberate-divergence (documented, not scheduled for fixing)
 
@@ -722,12 +745,37 @@ downgrades/follow-ups.
 
 | Area | match | deliberate-divergence | fix-divergence | rows |
 |------|-------|----------------------|----------------|------|
-| A — malformed input | 8 | 3 (A07, A12, A14) | 8 (A01, A08, A09, A10, A11, A15, A16, A19) | 19 |
-| B — rekey timing | 3 | 0 | 5 (B02, B03, B06, B07, B08) | 8 |
-| C — window handling | 3 | 5 (C02, C03, C04, C06, C08) | 2 (C05, C07) | 10 |
-| D — channel close races | 4 | 4 (D02, D04, D07, D10) | 2 (D01, D05) | 10 |
-| E — timing surfaces | 3 | 2 (E04, E06) | 1 (E01) | 6 |
-| **Total** | **21** | **14** | **18** | **53** |
+| A — malformed input | 8 → **16** | 3 (A07, A12, A14) | 8 → **0** | 19 |
+| B — rekey timing | 3 → **6** | 0 → **2** (B06, B07 — defaults) | 5 → **0** | 8 |
+| C — window handling | 3 → **5** | 5 (C02, C03, C04, C06, C08) | 2 → **0** | 10 |
+| D — channel close races | 4 → **6** | 4 (D02, D04, D07, D10) | 2 → **0** | 10 |
+| E — timing surfaces | 3 → **4** | 2 (E04, E06) | 1 → **0** | 6 |
+| **Total** | 21 → **37** | 14 → **16** | 18 → **0** | **53** |
+
+The arrows record the post-fix regeneration (2026-09-14, final fix-wave
+pass): every one of the 18 fix-divergence rows flipped — 16 to `match`
+and 2 (B06/B07) to `deliberate-divergence`, because F3 landed the
+rekey *mechanism* while deliberately choosing different *defaults*
+(1 GiB / 1 h vs sshd 10.2's `RekeyLimit default none`); that choice is
+carried in the deliberate table below so the tally does not lose it.
+
+### Audit closed (2026-09-14, final fix-wave pass)
+
+Audit complete: **53 rows — 37 match, 16 deliberate-divergence, 0
+fix-divergence.** All 12 mechanism-level fix items (F1–F12) plus the
+non-row harness finding (F13) landed across three fix waves (7a: F1,
+F2, F13; 7b: F4, F5, F7, F8, F9; 7c: F3, F6, F10, F11, F12). Verified
+by a full five-area harness regeneration (2026-09-14: every fixed row
+flipped as recorded above, zero stray async errors), the package gate
+(tp_sshd `dart analyze` clean, `dart test` 99 passing), and a clean
+captured full
+dartssh2 fork run (`dart test`: 731 passed, 23 skipped, 0 failed —
+this also closes 7a's transient single-failure flag, which did not
+reproduce). The deliberate divergences carry their rationales in the
+table below; the recorded follow-ups (C04 tolerant drop, D10 decoder
+flag loss, E02 grace-timer jitter, E04 configurable pre-auth cap, C10
+SFTP throughput, E01 per-username jitter) are listed in the follow-ups
+section.
 
 Plus one documented deliberate divergence that is **not a row verdict**:
 E02's *default values* — tp_sshd `authTimeout` 30 s vs sshd
@@ -741,7 +789,7 @@ the tally does not lose it.
 | ID | surface | sshd | tp_sshd | spec rationale |
 |----|---------|------|---------|----------------|
 | A07 | unknown service request | `DISCONNECT(2, "bad service request <name>")` | `DISCONNECT(7, "Service not available: <name>")` | Both fatal; reason 7 is the more apt RFC 4253 §11.1 semantic; clients only surface the text. |
-| A12 | auth-attempt cap disconnect | reason 2, `Too many authentication failures` | reason 14, `Too many failed authentication attempts` | Cap parity (both cut at 6: five failures then the disconnect); no client branches on the reason code. The failure packets' empty methods list is A09's fix (F8). |
+| A12 | auth-attempt cap disconnect | reason 2, `Too many authentication failures` | reason 14, `Too many failed authentication attempts` | Cap parity (both cut at 6: five failures then the disconnect); no client branches on the reason code. The failure packets now carry the methods list (fixed by F8); only the reason-code difference remains deliberate. |
 | A14 | unknown channel type | `CHANNEL_OPEN_FAILURE` reason 2 `"open failed"` | reason 1, `Channel type '<name>' is not supported` | RFC 4254 §5.1 actually suggests reason 3 for unknown types — both deviate; clients only display the string. |
 | C02 | initial session-channel window | confirms with window 0 (LARVAL), grants 2 MiB via WINDOW_ADJUST at program start | confirms with the full 2 MiB immediately | Same effective grant, one round-trip cheaper; both stay at 2 MiB. |
 | C03 | non-reading client (send side) | stops reading the child at window 0 (child freezes on its stdout pipe; channel held open) | no send-side backpressure — output queued in memory, channel finishes after the 2 s close-flush bound, tail dropped | The bounded-flush family with D02; the client-visible edge (a client pausing > 2 s after process exit loses the un-granted tail) is the recorded risk of that bound (D02). |
@@ -753,6 +801,7 @@ the tally does not lose it.
 | D07 | early client CLOSE | holds the channel "almost dead" until the child exits, then delivers exit-status + CLOSE | finishes immediately (`handleClose` → `_finish`), kills the process, no exit-status | The client has declared the channel unneeded; tp_sshd trades the late exit report for immediate teardown and no orphaned process. |
 | D10 | `signal` request with a bogus name | `CHANNEL_FAILURE` (generic want_reply handling) | no reply (decoder hardcodes `wantReply: false`, so the server never sees the flag) | RFC 4254 §6.9 pins `want reply FALSE` in the signal message format itself, so no compliant client waits for a reply. The decoder flag loss is a latent dartssh2 issue (follow-ups). |
 | E02-defaults | pre-auth idle timeout *default* | `LoginGraceTime` 120 s (plus 0-4 s jitter) | `authTimeout` 30 s, fixed timer | Deliberate: the embedded pairing window (QR-pair → first login) is short-lived and a stale pre-auth socket should not pin state for two minutes. The fixed (unjittered) timer is acceptable because the timeout is public configuration, not a secret; jitter is a hardening candidate (follow-ups). |
+| B06+B07 | server-initiated rekey defaults | always-armed geometry bound (2^(block×2) blocks ≈ 64 GiB; `RekeyLimit default none` — no byte limit, no interval) | 1 GiB byte bound + 1 h interval (`rekeyBytes`/`rekeyInterval`, both nullable to disable) | The mechanism landed with F3 (e136659b7); the defaults are the deliberate divergence: pairing sessions are long-lived and frequently low-volume, so a geometry-scale byte-only bound would essentially never fire and the session would keep its keys forever (the B06 finding). 1 GiB + 1 h guarantees every live pairing session rotates at least hourly; `null` restores sshd-default-equivalent behavior. |
 | E04 | pre-auth connection cap | `MaxStartups 10:30:100`; past the threshold answers the plaintext `Not allowed at this time` line and closes before any banner | no pre-auth cap; every connection gets its full auth window | Embedded pairing context: the listener is paired with the app client on the device, not internet-facing; an embedder needing the bound can enforce it at the listener. Configurable cap is a backlog candidate (follow-ups). |
 | E06 | `keepalive@openssh.com` reply | `REQUEST_FAILURE` (the name is unknown to sshd's global-request handler — it is sshd's own *outbound* keepalive name) | `REQUEST_SUCCESS` (special-cased) | Liveness-equivalent: sshd's own keepalive contract accepts any of the four reply types as proof of life (server_input_keep_alive), so no compliant client observes a difference beyond the reply id. |
 
@@ -816,7 +865,10 @@ impact vs churn), not a dependency.
   during key exchange")` followed by close (before: closed with no
   DISCONNECT on the wire). The row still string-diffs against sshd on
   message wording and banner text; the acceptance criterion above is met,
-  and the row-verdict refresh belongs to the final fix-wave dispatch.
+  and the row-verdict refresh was done in the final fix-wave pass
+  (2026-09-14): A19 now records `match`, the remaining wording
+  difference ("unexpected message 5 …" vs "unexpected packet type 5
+  (seqnr 1)") being cosmetic like the per-row banner strings.
 - **F3 — B06+B07: the server must be able to initiate a rekey**
   (tp_sshd, `server_connection.dart`). Today there is no trigger of any
   kind (no byte counter, no timer; dartssh2's `rekey()` is a client-role
@@ -845,6 +897,20 @@ impact vs churn), not a dependency.
   interval guarantees every live pairing session rotates keys at least
   hourly, covering idle-but-alive sessions a byte counter never reaches;
   0 restores sshd-default-equivalent behavior for embedders who want it.
+
+  *Fix landed (2026-09-14, tp_sshd e136659b7):*
+  `SSHServerConfig.rekeyBytes` (default 1 GiB) / `rekeyInterval`
+  (default 1 h), both nullable to disable. The connection counts
+  outbound bytes on its send path (`_sendPacket` wraps every reply,
+  channel and forwarder packet) and arms a one-shot interval timer once
+  authenticated; crossing either threshold initiates an unprompted
+  KEXINIT through `SSHTransport.rekey`, concurrent triggers collapse
+  into the in-flight exchange, and both counters restart when it
+  completes. `SSHServerConnection.rekeyCount` exposes the count.
+  Package tests (`test/server_rekey_test.dart`): byte threshold, idle
+  interval fire, mid-stream channel continuity (byte-exact through the
+  exchange), and both-null disabling. B06/B07 flip to
+  deliberate-divergence on the *defaults*, not the mechanism.
 
 **P1 — client-visible compatibility (a real client misbehaves)**
 
@@ -933,8 +999,8 @@ impact vs churn), not a dependency.
   trace evidence (UNIMPLEMENTED for packets 40/41/42) plus repeated
   runs, not on any single regeneration (see the regeneration note).
 
-  *Status (2026-09-14, Task 7b):* NOT LANDED — and confirmed NOT
-  landable from the tp_sshd package. The drop sits in the shared
+  *Status (2026-09-14, Task 7b):* was NOT LANDED from the tp_sshd
+  package (analysis retained below); landed in the fork the next wave. The drop sits in the shared
   dartssh2 transport (`ssh_transport.dart` `_handleMessage` default
   case: `_kexInProgress` routes every non-transport message id to
   `_handleUnexpectedKexMessage` → UNIMPLEMENTED + drop) *before* the
@@ -947,7 +1013,23 @@ impact vs churn), not a dependency.
   `_rekeyPendingPackets` queue) and re-dispatch them from
   `_handleMessageNewKeys` after the keys are applied; strict-kex
   violations (initial KEX only) must keep firing `_failStrictKex`
-  before the buffering. B02/C07 therefore still regenerate unfixed.
+  before the buffering. B02/C07 therefore still regenerated unfixed
+  until the fork wave below.
+
+  *Fix landed (2026-09-14, dartssh2 fork 74dd24c, parent gitlink
+  21b67f530):* exactly the patch the 7b analysis proposed —
+  `_rekeyPendingInboundPackets`, the symmetric twin of the outgoing
+  `_rekeyPendingPackets` queue. Non-KEX messages with id ≥ 50 arriving
+  while `_kexInProgress` on a *rekey* (`!_isFirstKex`) are queued and
+  re-dispatched from `_handleMessageNewKeys` after the keys are
+  applied, in arrival order; the initial exchange keeps answering
+  everything through `_handleUnexpectedKexMessage` (OpenSSH's
+  `dispatch_protocol_error` there), so strict-kex violations stay
+  fatal. Both roles benefit (the shared transport serves the tp_sshd
+  server and every dartssh2 client). Regeneration: B02 5/5 rounds
+  clean (was 4/5 with the hang), C07 3/3 rounds clean under window
+  pressure (was 0/3, frozen at the initial grant). Fork tests:
+  `test/src/ssh_transport_kex_hardening_test.dart`.
 - **F7 — D01: data after EOF must not kill the connection** (tp_sshd,
   `server_channel.dart`). A `CHANNEL_DATA` arriving after the client's
   `CHANNEL_EOF` on a live channel must be tolerated the way sshd
@@ -1015,6 +1097,15 @@ impact vs churn), not a dependency.
   desynchronize, the client's KEXDH_REPLY verification fails ("signature
   is invalid") and the connection dies. Reject or ignore a KEXINIT
   while `_kexInProgress` is true.
+
+  *Fix landed (2026-09-14, dartssh2 fork 74dd24c, parent gitlink
+  21b67f530):* a new `_receivedKexInit` round flag — a KEXINIT arriving
+  while an exchange is already running on a received KEXINIT routes to
+  `_handleUnexpectedKexMessage` (UNIMPLEMENTED on a rekey; fatal under
+  the initial strict exchange, matching kex_protocol_error's
+  KEX_INITIAL branch) and the in-flight negotiation is untouched.
+  Regeneration: B03's tp_sshd observable is now byte-for-byte sshd's
+  (`KEXINIT, UNIMPLEMENTED, KEXDH_REPLY, NEWKEYS, REQUEST_FAILURE`).
 - **F11 — B08: an unsolicited NEWKEYS must not be adopted** (dartssh2,
   `ssh_transport.dart`). *Acceptance:* an unsolicited NEWKEYS
   (mid-exchange, or with no exchange in progress) is not applied — it
@@ -1027,6 +1118,15 @@ impact vs churn), not a dependency.
   after which the peer's real KEXDH_INIT hits the kex-null
   `SSHStateError` and the connection is torn down without a DISCONNECT
   (F2's missing-DISCONNECT family).
+
+  *Fix landed (2026-09-14, dartssh2 fork 74dd24c, parent gitlink
+  21b67f530):* `_handleMessageNewKeys` now requires the exchange to be
+  in progress *and* our own NEWKEYS to be out (`_sentNewKeys`) before
+  applying remote keys; anything else draws UNIMPLEMENTED through
+  `_handleUnexpectedKexMessage` and the exchange state survives.
+  Regeneration: B08's tp_sshd observable is now identical to sshd's
+  (`KEXINIT, UNIMPLEMENTED, KEXDH_REPLY, NEWKEYS`, exchange completes,
+  connection alive).
 - **F12 — A01: server-side pre-banner garbage must be fatal** (dartssh2,
   server side). Any non-`SSH-` line from a client before its
   identification string must terminate the connection: send the
@@ -1038,6 +1138,15 @@ impact vs churn), not a dependency.
   refused prober still succeeds on a fresh connection. (The client-side
   pre-banner tolerance is legitimate; only the server-side tolerance is
   the defect.)
+
+  *Fix landed (2026-09-14, dartssh2 fork 74dd24c, parent gitlink
+  21b67f530):* the server-role version exchange answers the plaintext
+  `Invalid SSH identification string.` line and closes (the line is
+  flushed before the socket is destroyed, like the strict-kex
+  DISCONNECT); the client role still tolerates server comment lines
+  per RFC 4253 §4.2 (pinned by both the fork test and the pre-existing
+  version-exchange test). Regeneration: A01's tp_sshd observable is now
+  identical to sshd's — error line, close, listener alive.
 
 **P3 — package hygiene**
 
