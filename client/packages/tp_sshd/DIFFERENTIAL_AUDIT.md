@@ -767,11 +767,15 @@ non-row harness finding (F13) landed across three fix waves (7a: F1,
 F2, F13; 7b: F4, F5, F7, F8, F9; 7c: F3, F6, F10, F11, F12). Verified
 by a full five-area harness regeneration (2026-09-14: every fixed row
 flipped as recorded above, zero stray async errors), the package gate
-(tp_sshd `dart analyze` clean, `dart test` 99 passing), and a clean
-captured full
-dartssh2 fork run (`dart test`: 731 passed, 23 skipped, 0 failed —
-this also closes 7a's transient single-failure flag, which did not
-reproduce). The deliberate divergences carry their rationales in the
+(tp_sshd `dart analyze` clean, `dart test` 99 passing), and a captured
+full dartssh2 fork run (`dart test`: 731 passed, 23 skipped, 0 failed
+when captured — that run still depended on the third-party
+test.rebex.net server, whose per-IP connection rate limit makes full
+parallel runs flake; 7a's transient single-failure flag was that rate
+limit, not a regression. Those tests are now opt-in behind
+`DARTSSH2_REBEX=1`, so the default full run — 711 passed, 46 skipped,
+0 failed — has no third-party dependency). The deliberate divergences
+carry their rationales in the
 table below; the recorded follow-ups (C04 tolerant drop, D10 decoder
 flag loss, E02 grace-timer jitter, E04 configurable pre-auth cap, C10
 SFTP throughput, E01 per-username jitter) are listed in the follow-ups
