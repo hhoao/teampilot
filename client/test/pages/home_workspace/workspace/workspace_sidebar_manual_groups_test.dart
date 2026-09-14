@@ -235,9 +235,9 @@ void main() {
     expect(find.text('huji'), findsOneWidget);
     expect(find.text('待办'), findsNothing);
     expect(find.byTooltip('New group'), findsNothing);
+    expect(find.byTooltip('New worktree'), findsOneWidget);
     expect(find.byType(WorktreeGroupSection), findsNothing);
     expect(find.byTooltip('Refresh worktrees'), findsNothing);
-    expect(find.byTooltip('New worktree'), findsNothing);
     expect(chatCubit.state.sessions, hasLength(2));
   });
 

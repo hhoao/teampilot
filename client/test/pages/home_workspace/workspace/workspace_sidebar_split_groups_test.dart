@@ -226,6 +226,28 @@ void main() {
     expect(switcher.width, greaterThan(144));
   });
 
+  testWidgets('view switcher icons align vertically with their labels', (
+    tester,
+  ) async {
+    await pumpSidebar(tester);
+
+    final switcher = find.byKey(
+      const ValueKey('workspace-sidebar-view-switcher'),
+    );
+    for (final (icon, label) in [
+      (Icons.tag_outlined, 'Groups'),
+      (Icons.folder_outlined, 'Project tree'),
+    ]) {
+      final iconRect = tester.getRect(
+        find.descendant(of: switcher, matching: find.byIcon(icon)),
+      );
+      final labelRect = tester.getRect(
+        find.descendant(of: switcher, matching: find.text(label)),
+      );
+      expect(iconRect.center.dy, closeTo(labelRect.center.dy, 0.1));
+    }
+  });
+
   testWidgets(
     'running session strip does not reserve empty space without footer',
     (tester) async {

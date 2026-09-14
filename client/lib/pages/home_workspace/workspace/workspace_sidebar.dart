@@ -13,6 +13,7 @@ import '../../../cubits/session_groups_cubit.dart';
 import '../../../cubits/shortcut_cubit.dart';
 import '../../../cubits/workbench/workbench_cubit.dart';
 import '../../../cubits/workbench/workbench_split_layout.dart';
+import '../../../cubits/worktree_cubit.dart';
 import '../../../l10n/l10n_extensions.dart';
 import '../../../models/app_session.dart';
 import '../../../models/session_group.dart';
@@ -21,13 +22,17 @@ import '../../../pages/home_workspace/home_workspace_route.dart';
 import '../../../services/commands/command_ids.dart';
 import '../../../services/commands/command_tooltip.dart';
 import '../../../services/commands/key_chord.dart';
+import '../../../services/git/git_worktree_service.dart';
 import '../../../services/io/local_filesystem.dart';
 import '../../../widgets/home_storage_scope.dart';
 import '../../../services/search/content_search_slices.dart';
+import '../../../services/storage/workspace_layout.dart';
 import '../../../services/workspace/workspace_tools_scope.dart';
 import '../../../utils/session/session_project_grouping.dart';
 import '../../../utils/workspace/workspace_chrome_profile.dart';
 import 'session_group_section.dart';
+import 'worktree_create_dialog.dart';
+import 'worktree_group_section.dart';
 import '../../../utils/ui/app_keys.dart';
 import '../../../utils/session/app_session_sort.dart';
 import '../../../utils/debounce/debounce.dart';
@@ -117,6 +122,7 @@ class _WorkspaceSidebarState extends State<WorkspaceSidebar> {
   @override
   Widget build(BuildContext context) {
     final l10n = context.l10n;
+    final toolsContext = WorkspaceToolsScope.maybeOf(context)?.tools?.context;
 
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 18),
@@ -210,6 +216,7 @@ class _WorkspaceSidebarState extends State<WorkspaceSidebar> {
                               crossAxisAlignment: CrossAxisAlignment.stretch,
                               children: [
                                 Row(
+                                  crossAxisAlignment: CrossAxisAlignment.center,
                                   children: [
                                     Expanded(
                                       child: SingleChildScrollView(
@@ -279,6 +286,24 @@ class _WorkspaceSidebarState extends State<WorkspaceSidebar> {
                                           'workspace_sidebar_new_group',
                                           () => unawaited(
                                             _createSessionGroup(context),
+                                          ),
+                                        ),
+                                      ),
+                                    ] else if (toolsContext != null &&
+                                        worktreeManagementEnabled(
+                                          toolsContext,
+                                        )) ...[
+                                      const SizedBox(width: 2),
+                                      TpIconButton(
+                                        icon: Icons.account_tree_outlined,
+                                        compact: true,
+                                        size: TpIconButton.kCompactSize,
+                                        tooltip:
+                                            l10n.worktreeNewWorktreeTooltip,
+                                        onTap: throttledTap(
+                                          'workspace_sidebar_new_worktree',
+                                          () => unawaited(
+                                            _createWorktree(context),
                                           ),
                                         ),
                                       ),
@@ -392,6 +417,44 @@ class _WorkspaceSidebarState extends State<WorkspaceSidebar> {
       widget.workspace,
       tabScopeId: widget.tabScopeId,
     );
+  }
+
+  Future<void> _createWorktree(BuildContext context) async {
+    final cubit = context.read<WorktreeCubit>();
+    final tools = WorkspaceToolsScope.of(context).tools;
+    if (tools == null) return;
+    final repoPath = cubit.state.repoPath.trim().isNotEmpty
+        ? cubit.state.repoPath
+        : widget.workspace.firstFolderPath;
+    final layout = WorkspaceLayout(
+      teampilotRoot: homeStorageOf(context).paths.basePath,
+      fs: homeStorageOf(context).fs,
+    );
+    await showWorktreeCreateDialog(
+      context,
+      repoName: _basename(repoPath),
+      repoPath: repoPath,
+      layout: layout.worktreePathFor,
+      branchLoader: branchListLoaderFor(tools.context),
+      existingWorktreePaths: [for (final wt in cubit.state.worktrees) wt.path],
+      onSubmit: (result) async {
+        await GitWorktreeService.forContext(tools.context).add(
+          repoPath,
+          result.worktreePath,
+          branch: result.branch,
+          baseRef: result.baseRef,
+          existingBranch: result.existingBranch,
+        );
+        await cubit.load(repoPath, force: true);
+        cubit.setCurrentWorktree(result.worktreePath);
+      },
+    );
+  }
+
+  static String _basename(String path) {
+    final parts = path.replaceAll(r'\', '/').split('/')
+      ..removeWhere((e) => e.isEmpty);
+    return parts.isEmpty ? path : parts.last;
   }
 }
 
