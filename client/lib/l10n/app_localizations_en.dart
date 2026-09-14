@@ -142,6 +142,15 @@ class AppLocalizationsEn extends AppLocalizations {
       'Show the source control panel for the current repository.';
 
   @override
+  String get workspaceSidebarGroupsView => 'Groups';
+
+  @override
+  String get workspaceSidebarProjectTreeView => 'Project tree';
+
+  @override
+  String get projectTreeOther => 'Other';
+
+  @override
   String get extensionsSettingsTitle => 'Extensions';
 
   @override

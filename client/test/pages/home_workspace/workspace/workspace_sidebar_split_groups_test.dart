@@ -178,34 +178,39 @@ void main() {
 
     await pumpSidebar(tester, ids: ids, height: 400);
 
+    expect(
+      find.byKey(const ValueKey('workspace-sidebar-view-switcher')),
+      findsOneWidget,
+    );
     expect(tester.takeException(), isNull);
   });
 
-  testWidgets('running session strip does not reserve empty space without footer', (
-    tester,
-  ) async {
-    workbenchCubit
-      ..openSession('ws-1', 'a')
-      ..openSession('ws-1', 'b')
-      ..splitTab(
-        'ws-1',
-        WorkbenchTabId.session('b'),
-        axis: Axis.horizontal,
-        before: false,
-      );
-    await pumpSidebar(tester, embedFooter: false);
+  testWidgets(
+    'running session strip does not reserve empty space without footer',
+    (tester) async {
+      workbenchCubit
+        ..openSession('ws-1', 'a')
+        ..openSession('ws-1', 'b')
+        ..splitTab(
+          'ws-1',
+          WorkbenchTabId.session('b'),
+          axis: Axis.horizontal,
+          before: false,
+        );
+      await pumpSidebar(tester, embedFooter: false);
 
-    final viewport = tester.getRect(
-      find.ancestor(
-        of: find.byKey(const ValueKey('workspace-running-split-g0')),
-        matching: find.byType(ListView),
-      ),
-    );
-    final lastTile = tester.getRect(
-      find.byKey(const ValueKey('workspace-running-session-b')),
-    );
-    expect(viewport.bottom, closeTo(lastTile.bottom, 0.1));
-  });
+      final viewport = tester.getRect(
+        find.ancestor(
+          of: find.byKey(const ValueKey('workspace-running-split-g0')),
+          matching: find.byType(ListView),
+        ),
+      );
+      final lastTile = tester.getRect(
+        find.byKey(const ValueKey('workspace-running-session-b')),
+      );
+      expect(viewport.bottom, closeTo(lastTile.bottom, 0.1));
+    },
+  );
 
   testWidgets('running session strip hugs content with footer', (tester) async {
     workbenchCubit
@@ -400,40 +405,39 @@ void main() {
     },
   );
 
-  testWidgets(
-    'same-group indicators abut across the inter-row gap',
-    (tester) async {
-      workbenchCubit
-        ..openSession('ws-1', 'a')
-        ..openSession('ws-1', 'b')
-        ..openSession('ws-1', 'c')
-        ..activate('ws-1', WorkbenchTabId.session('a'))
-        ..splitTab(
-          'ws-1',
-          WorkbenchTabId.session('b'),
-          axis: Axis.horizontal,
-          before: false,
-        ); // g0 [a, c] | g1 [b]
-      await pumpSidebar(tester, ids: const ['a', 'b', 'c']);
+  testWidgets('same-group indicators abut across the inter-row gap', (
+    tester,
+  ) async {
+    workbenchCubit
+      ..openSession('ws-1', 'a')
+      ..openSession('ws-1', 'b')
+      ..openSession('ws-1', 'c')
+      ..activate('ws-1', WorkbenchTabId.session('a'))
+      ..splitTab(
+        'ws-1',
+        WorkbenchTabId.session('b'),
+        axis: Axis.horizontal,
+        before: false,
+      ); // g0 [a, c] | g1 [b]
+    await pumpSidebar(tester, ids: const ['a', 'b', 'c']);
 
-      final indicators = find
-          .byKey(const ValueKey('workspace-running-group-indicator-g0'))
-          .evaluate()
-          .toList();
-      expect(indicators.length, 2);
-      final first = indicators.first.renderObject! as RenderBox;
-      final second = indicators.last.renderObject! as RenderBox;
-      // Non-last bar extends through the tile gap so the rail reads continuous.
-      expect(
-        first.size.height,
-        kWorkspaceSidebarRowPaintHeight + kWorkspaceSidebarRowGap,
-      );
-      expect(second.size.height, kWorkspaceSidebarRowPaintHeight);
-      final firstBottom = first.localToGlobal(Offset(0, first.size.height)).dy;
-      final secondTop = second.localToGlobal(Offset.zero).dy;
-      expect(firstBottom, secondTop);
-    },
-  );
+    final indicators = find
+        .byKey(const ValueKey('workspace-running-group-indicator-g0'))
+        .evaluate()
+        .toList();
+    expect(indicators.length, 2);
+    final first = indicators.first.renderObject! as RenderBox;
+    final second = indicators.last.renderObject! as RenderBox;
+    // Non-last bar extends through the tile gap so the rail reads continuous.
+    expect(
+      first.size.height,
+      kWorkspaceSidebarRowPaintHeight + kWorkspaceSidebarRowGap,
+    );
+    expect(second.size.height, kWorkspaceSidebarRowPaintHeight);
+    final firstBottom = first.localToGlobal(Offset(0, first.size.height)).dy;
+    final secondTop = second.localToGlobal(Offset.zero).dy;
+    expect(firstBottom, secondTop);
+  });
   testWidgets('session menus lock their owning split groups', (tester) async {
     workbenchCubit
       ..openSession('ws-1', 'a')

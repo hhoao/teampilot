@@ -11,7 +11,6 @@ import 'package:teampilot/cubits/worktree_cubit.dart';
 import 'package:teampilot/cubits/workbench/workbench_cubit.dart';
 import 'package:teampilot/l10n/app_localizations.dart';
 import 'package:teampilot/models/app_session.dart';
-import 'package:teampilot/models/git_worktree.dart';
 import 'package:teampilot/models/workspace.dart';
 import 'package:teampilot/models/workspace_folder.dart';
 import 'package:teampilot/pages/home_workspace/workspace/workspace_sidebar.dart';
@@ -23,7 +22,7 @@ import 'package:teampilot/services/storage/home_storage.dart';
 
 final _workspace = Workspace(
   workspaceId: 'ws-1',
-  folders: const [WorkspaceFolder(path: '/tmp/ws-1')],
+  folders: const [WorkspaceFolder(path: '/tmp/huji')],
   createdAt: 1,
 );
 
@@ -36,7 +35,7 @@ AppSession _session({
   return AppSession(
     sessionId: id,
     workspaceId: _workspace.workspaceId,
-    folders: const [WorkspaceFolder(path: '/tmp/ws-1')],
+    folders: const [WorkspaceFolder(path: '/tmp/huji')],
     display: display,
     createdAt: createdAt,
     updatedAt: updatedAt,
@@ -86,8 +85,8 @@ void main() {
         home: Scaffold(
           body: MultiRepositoryProvider(
             providers: [
-              
-            RepositoryProvider<HomeStorage>.value(value: testHomeStorage),RepositoryProvider<SessionRepository>.value(
+              RepositoryProvider<HomeStorage>.value(value: testHomeStorage),
+              RepositoryProvider<SessionRepository>.value(
                 value: sessionRepository,
               ),
             ],
@@ -136,63 +135,7 @@ void main() {
   int mountedTiles(WidgetTester tester) =>
       tester.widgetList(find.byType(SidebarSessionTile)).length;
 
-  Future<void> expandGroup(WidgetTester tester) async {
-    await tester.tap(find.text('More'));
-    await tester.pump();
-  }
-
-  testWidgets(
-    'collapsed group caps at 8 natural rows; expanded becomes a fixed '
-    '10-row scrollable that stays virtualized',
-    (tester) async {
-      final n = 300;
-      await emitSessions([
-        for (var i = 0; i < n; i++)
-          _session(id: 's$i', display: 'Session $i', createdAt: n - i),
-      ]);
-      await pumpSidebar(tester);
-
-      // Non-git folder → single project group, collapsed by default: 8 rows
-      // at natural height + a "More" toggle. No scrollable extra height.
-      final listFinder = find.byType(ReorderableListView);
-      expect(listFinder, findsOneWidget);
-      expect(mountedTiles(tester), 8);
-      expect(find.text('More'), findsOneWidget);
-      expect(tester.getSize(listFinder).height, 8 * 46);
-
-      await expandGroup(tester);
-      expect(find.text('Show less'), findsOneWidget);
-      expect(tester.getSize(listFinder).height, 10 * 46);
-      final mounted = mountedTiles(tester);
-      expect(mounted, greaterThan(8));
-      expect(mounted, lessThan(60));
-      expect(mounted, lessThan(n));
-
-      // Scrolling the expanded area reveals the bottom sessions without
-      // mounting everything.
-      final scrollable = tester.state<ScrollableState>(
-        find.descendant(
-          of: listFinder,
-          matching: find.byType(Scrollable),
-        ),
-      );
-      scrollable.position.jumpTo(scrollable.position.maxScrollExtent);
-      await tester.pump();
-      expect(find.text('Session 299'), findsOneWidget);
-      expect(find.text('Session 0'), findsNothing);
-      expect(mountedTiles(tester), lessThan(60));
-
-      // Toggle back to the collapsed cap.
-      await tester.tap(find.text('Show less'));
-      await tester.pump();
-      expect(mountedTiles(tester), 8);
-      expect(tester.getSize(listFinder).height, 8 * 46);
-    },
-  );
-
-  testWidgets('groups at or under the cap have no toggle and natural height', (
-    tester,
-  ) async {
+  testWidgets('groups mode uses one flat reorderable list', (tester) async {
     await emitSessions([
       _session(id: 'a', display: 'Alpha', createdAt: 3),
       _session(id: 'b', display: 'Beta', createdAt: 2),
@@ -200,98 +143,86 @@ void main() {
     ]);
     await pumpSidebar(tester);
 
+    expect(find.byType(ReorderableListView), findsOneWidget);
     expect(find.text('More'), findsNothing);
-    expect(tester.getSize(find.byType(ReorderableListView)).height, 138);
     expect(mountedTiles(tester), 3);
-
-    // Exactly the cap: still no toggle, full natural height.
-    await emitSessions([
-      for (var i = 0; i < 8; i++)
-        _session(id: 's$i', display: 'Session $i', createdAt: 8 - i),
-    ]);
-    await tester.pump();
-    expect(find.text('More'), findsNothing);
-    expect(mountedTiles(tester), 8);
-    expect(tester.getSize(find.byType(ReorderableListView)).height, 8 * 46);
+    expect(
+      find.byKey(const ValueKey('project-tree-node-/tmp/huji')),
+      findsNothing,
+    );
   });
 
-  testWidgets('collapsing a group hides its sessions; re-expanding shows them', (
+  testWidgets('groups mode keeps a large flat list virtualized', (
     tester,
   ) async {
+    const n = 300;
     await emitSessions([
-      for (var i = 0; i < 20; i++)
-        _session(id: 's$i', display: 'Session $i', createdAt: 20 - i),
+      for (var i = 0; i < n; i++)
+        _session(id: 's$i', display: 'Session $i', createdAt: n - i),
     ]);
     await pumpSidebar(tester);
 
-    expect(mountedTiles(tester), 8);
-    final headerKey = find.byKey(
-      const ValueKey('worktree-group-header-probe-project:/tmp/ws-1'),
-    );
-    await tester.tap(headerKey);
-    await tester.pump();
-    expect(find.byType(SidebarSessionTile), findsNothing);
-
-    // Re-expanding resets the list to the collapsed 8-row cap.
-    await tester.tap(headerKey);
-    await tester.pump();
-    expect(mountedTiles(tester), 8);
-    expect(find.text('More'), findsOneWidget);
+    expect(find.byType(ReorderableListView), findsOneWidget);
+    expect(mountedTiles(tester), lessThan(n));
+    expect(find.text('Session 299'), findsNothing);
   });
 
-  testWidgets(
-    'grouped drag stamps the workspace sort order via group merge',
-    (tester) async {
-      final worktrees = [
-        GitWorktree(
-          path: '/tmp/ws-1',
-          branch: 'refs/heads/main',
-          head: 'abc1111',
-          isBare: false,
-          isMainWorktree: true,
-        ),
-        GitWorktree(
-          path: '/tmp/ws-1/wt-feature',
-          branch: 'refs/heads/feature',
-          head: 'abc2222',
-          isBare: false,
-          isMainWorktree: false,
-        ),
-      ];
-      worktreeCubit.emit(
-        worktreeCubit.state.copyWith(
-          worktrees: worktrees,
-          currentWorktreePath: worktrees.first.path,
-          loading: false,
-        ),
-      );
-      await emitSessions([
-        _session(id: 'a', display: 'A', createdAt: 6),
-        _session(id: 'b', display: 'B', createdAt: 5),
-        _session(id: 'c', display: 'C', createdAt: 4),
-        _session(id: 'd', display: 'D', createdAt: 3),
-        _session(id: 'e', display: 'E', createdAt: 2),
-        _session(id: 'f', display: 'F', createdAt: 1),
-      ]);
-      await pumpSidebar(tester);
+  testWidgets('project tree mode has project nodes with session children', (
+    tester,
+  ) async {
+    await emitSessions([
+      _session(id: 'a', display: 'Alpha', createdAt: 2),
+      _session(id: 'b', display: 'Beta', createdAt: 1),
+    ]);
+    await pumpSidebar(tester);
 
-      // Two group lists exist; the first one belongs to the main worktree.
-      final list = tester.widget<ReorderableListView>(
-        find.byType(ReorderableListView).first,
-      );
-      // Rows inside the main group: [a, b, c]. Move c (index 2) above a.
-      list.onReorderItem!(2, 0);
-      await tester.pump();
+    await tester.tap(
+      find.descendant(
+        of: find.byKey(const ValueKey('workspace-sidebar-view-switcher')),
+        matching: find.text('Project tree'),
+      ),
+    );
+    await tester.pump();
+    expect(find.byType(ReorderableListView), findsNothing);
+    expect(
+      find.byKey(const ValueKey('project-tree-node-/tmp/huji')),
+      findsOneWidget,
+    );
+    expect(
+      find.byKey(const ValueKey('project-tree-session-a')),
+      findsOneWidget,
+    );
+    expect(
+      find.byKey(const ValueKey('project-tree-session-b')),
+      findsOneWidget,
+    );
+  });
 
-      final order = {
-        for (final s in chatCubit.state.sessions) s.sessionId: s.sortOrder,
-      };
-      expect(order['c'], 1);
-      expect(order['a'], 2);
-      expect(order['b'], 3);
-      expect(order['d'], 4);
-      expect(order['e'], 5);
-      expect(order['f'], 6);
-    },
-  );
+  testWidgets('flat drag stamps the workspace sort order', (tester) async {
+    await emitSessions([
+      _session(id: 'a', display: 'A', createdAt: 6),
+      _session(id: 'b', display: 'B', createdAt: 5),
+      _session(id: 'c', display: 'C', createdAt: 4),
+      _session(id: 'd', display: 'D', createdAt: 3),
+      _session(id: 'e', display: 'E', createdAt: 2),
+      _session(id: 'f', display: 'F', createdAt: 1),
+    ]);
+    await pumpSidebar(tester);
+
+    final list = tester.widget<ReorderableListView>(
+      find.byType(ReorderableListView),
+    );
+    list.onReorderItem!(2, 0);
+    await tester.pump();
+
+    final order = {
+      for (final s in chatCubit.state.sessions) s.sessionId: s.sortOrder,
+    };
+    expect(order['c'], 1);
+    expect(order['a'], 2);
+    expect(order['b'], 3);
+    expect(order['d'], 4);
+    expect(order['e'], 5);
+    expect(order['f'], 6);
+  });
 }

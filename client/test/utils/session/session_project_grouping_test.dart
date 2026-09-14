@@ -257,138 +257,142 @@ void main() {
       },
     );
 
-    test('nested workspace folders assign each session to the deepest match', () {
-      const folders = [
-        WorkspaceFolder(path: '/home/hhoa/git'),
-        WorkspaceFolder(path: '/home/hhoa/git/teampilot'),
-      ];
-      final worktreesByProject = <String, List<GitWorktree>>{
-        '/home/hhoa/git': const [],
-        '/home/hhoa/git/teampilot': [
-          GitWorktree(
-            path: '/home/hhoa/git/teampilot',
-            branch: 'refs/heads/main',
-            head: 'a',
-            isBare: false,
-            isMainWorktree: true,
-          ),
-        ],
-      };
-      final sessions = [
-        AppSession(
-          sessionId: 's-main',
-          workspaceId: 'w1',
-          folders: const [
-            WorkspaceFolder(path: '/home/hhoa/git/teampilot'),
+    test(
+      'nested workspace folders assign each session to the deepest match',
+      () {
+        const folders = [
+          WorkspaceFolder(path: '/home/hhoa/git'),
+          WorkspaceFolder(path: '/home/hhoa/git/teampilot'),
+        ];
+        final worktreesByProject = <String, List<GitWorktree>>{
+          '/home/hhoa/git': const [],
+          '/home/hhoa/git/teampilot': [
+            GitWorktree(
+              path: '/home/hhoa/git/teampilot',
+              branch: 'refs/heads/main',
+              head: 'a',
+              isBare: false,
+              isMainWorktree: true,
+            ),
           ],
-          createdAt: 1,
-        ),
-        AppSession(
-          sessionId: 's-parent',
-          workspaceId: 'w1',
-          folders: const [WorkspaceFolder(path: '/home/hhoa/git')],
-          createdAt: 1,
-        ),
-      ];
-
-      final groups = groupSessionsByWorktreeAcrossProjects(
-        folders: folders,
-        worktreesByProjectPath: worktreesByProject,
-        sessions: sessions,
-        usesPosixPaths: false,
-      );
-
-      final mainGroup = groups.firstWhere(
-        (g) => g.worktree?.path == '/home/hhoa/git/teampilot',
-      );
-      final parentGroup = groups.firstWhere((g) => g.isProjectGroup);
-
-      expect(mainGroup.sessions.map((s) => s.sessionId), ['s-main']);
-      expect(parentGroup.projectFolderPath, '/home/hhoa/git');
-      expect(parentGroup.sessions.map((s) => s.sessionId), ['s-parent']);
-      expect(
-        groups.expand((g) => g.sessions).map((s) => s.sessionId).toSet(),
-        {'s-main', 's-parent'},
-      );
-    });
-
-    test('preserves recentlyUpdated order within each project worktree group', () {
-      const folders = [
-        WorkspaceFolder(path: '/repo-a'),
-        WorkspaceFolder(path: '/repo-b'),
-      ];
-      final worktreesByProject = {
-        '/repo-a': [
-          GitWorktree(
-            path: '/repo-a',
-            branch: 'refs/heads/main',
-            head: 'a',
-            isBare: false,
-            isMainWorktree: true,
+        };
+        final sessions = [
+          AppSession(
+            sessionId: 's-main',
+            workspaceId: 'w1',
+            folders: const [WorkspaceFolder(path: '/home/hhoa/git/teampilot')],
+            createdAt: 1,
           ),
-        ],
-        '/repo-b': [
-          GitWorktree(
-            path: '/repo-b',
-            branch: 'refs/heads/main',
-            head: 'c',
-            isBare: false,
-            isMainWorktree: true,
+          AppSession(
+            sessionId: 's-parent',
+            workspaceId: 'w1',
+            folders: const [WorkspaceFolder(path: '/home/hhoa/git')],
+            createdAt: 1,
           ),
-        ],
-      };
-      final unsorted = [
-        AppSession(
-          sessionId: 'a-old',
-          workspaceId: 'w',
-          folders: const [WorkspaceFolder(path: '/repo-a')],
-          createdAt: 1,
-          updatedAt: 10,
-        ),
-        AppSession(
-          sessionId: 'b-new',
-          workspaceId: 'w',
-          folders: const [WorkspaceFolder(path: '/repo-b')],
-          createdAt: 1,
-          updatedAt: 50,
-        ),
-        AppSession(
-          sessionId: 'a-new',
-          workspaceId: 'w',
-          folders: const [WorkspaceFolder(path: '/repo-a')],
-          createdAt: 1,
-          updatedAt: 40,
-        ),
-        AppSession(
-          sessionId: 'b-old',
-          workspaceId: 'w',
-          folders: const [WorkspaceFolder(path: '/repo-b')],
-          createdAt: 1,
-          updatedAt: 5,
-        ),
-      ];
-      final sorted = sortAppSessions(
-        unsorted,
-        sort: AppSessionSort.recentlyUpdated,
-      );
-      final groups = groupSessionsByWorktreeAcrossProjects(
-        folders: folders,
-        worktreesByProjectPath: worktreesByProject,
-        sessions: sorted,
-        usesPosixPaths: false,
-      );
+        ];
 
-      final aMain = groups.firstWhere((g) => g.worktree?.path == '/repo-a');
-      expect(
-        [for (final s in aMain.sessions) s.sessionId],
-        ['a-new', 'a-old'],
-      );
-      final bMain = groups.firstWhere((g) => g.worktree?.path == '/repo-b');
-      expect(
-        [for (final s in bMain.sessions) s.sessionId],
-        ['b-new', 'b-old'],
-      );
-    });
+        final groups = groupSessionsByWorktreeAcrossProjects(
+          folders: folders,
+          worktreesByProjectPath: worktreesByProject,
+          sessions: sessions,
+          usesPosixPaths: false,
+        );
+
+        final mainGroup = groups.firstWhere(
+          (g) => g.worktree?.path == '/home/hhoa/git/teampilot',
+        );
+        final parentGroup = groups.firstWhere((g) => g.isProjectGroup);
+
+        expect(mainGroup.sessions.map((s) => s.sessionId), ['s-main']);
+        expect(parentGroup.projectFolderPath, '/home/hhoa/git');
+        expect(parentGroup.sessions.map((s) => s.sessionId), ['s-parent']);
+        expect(
+          groups.expand((g) => g.sessions).map((s) => s.sessionId).toSet(),
+          {'s-main', 's-parent'},
+        );
+      },
+    );
+
+    test(
+      'preserves recentlyUpdated order within each project worktree group',
+      () {
+        const folders = [
+          WorkspaceFolder(path: '/repo-a'),
+          WorkspaceFolder(path: '/repo-b'),
+        ];
+        final worktreesByProject = {
+          '/repo-a': [
+            GitWorktree(
+              path: '/repo-a',
+              branch: 'refs/heads/main',
+              head: 'a',
+              isBare: false,
+              isMainWorktree: true,
+            ),
+          ],
+          '/repo-b': [
+            GitWorktree(
+              path: '/repo-b',
+              branch: 'refs/heads/main',
+              head: 'c',
+              isBare: false,
+              isMainWorktree: true,
+            ),
+          ],
+        };
+        final unsorted = [
+          AppSession(
+            sessionId: 'a-old',
+            workspaceId: 'w',
+            folders: const [WorkspaceFolder(path: '/repo-a')],
+            createdAt: 1,
+            updatedAt: 10,
+          ),
+          AppSession(
+            sessionId: 'b-new',
+            workspaceId: 'w',
+            folders: const [WorkspaceFolder(path: '/repo-b')],
+            createdAt: 1,
+            updatedAt: 50,
+          ),
+          AppSession(
+            sessionId: 'a-new',
+            workspaceId: 'w',
+            folders: const [WorkspaceFolder(path: '/repo-a')],
+            createdAt: 1,
+            updatedAt: 40,
+          ),
+          AppSession(
+            sessionId: 'b-old',
+            workspaceId: 'w',
+            folders: const [WorkspaceFolder(path: '/repo-b')],
+            createdAt: 1,
+            updatedAt: 5,
+          ),
+        ];
+        final sorted = sortAppSessions(
+          unsorted,
+          sort: AppSessionSort.recentlyUpdated,
+        );
+        final groups = groupSessionsByWorktreeAcrossProjects(
+          folders: folders,
+          worktreesByProjectPath: worktreesByProject,
+          sessions: sorted,
+          usesPosixPaths: false,
+        );
+
+        final aMain = groups.firstWhere((g) => g.worktree?.path == '/repo-a');
+        expect(
+          [for (final s in aMain.sessions) s.sessionId],
+          ['a-new', 'a-old'],
+        );
+        final bMain = groups.firstWhere((g) => g.worktree?.path == '/repo-b');
+        expect(
+          [for (final s in bMain.sessions) s.sessionId],
+          ['b-new', 'b-old'],
+        );
+      },
+    );
 
     test('resolves archived sessions from an active-only worktree group', () {
       const folders = [WorkspaceFolder(path: '/repo')];
@@ -444,6 +448,119 @@ void main() {
       expect(resolved.map((session) => session.sessionId), [
         'active',
         'archived',
+      ]);
+    });
+  });
+
+  group('groupSessionsByProject', () {
+    test('keeps folder order and assigns sessions by project path', () {
+      const folders = [
+        WorkspaceFolder(path: '/repo-a'),
+        WorkspaceFolder(path: '/repo-b'),
+      ];
+      final sessions = [
+        AppSession(
+          sessionId: 'a',
+          workspaceId: 'w1',
+          folders: const [WorkspaceFolder(path: '/repo-a/lib')],
+          createdAt: 1,
+        ),
+        AppSession(
+          sessionId: 'b',
+          workspaceId: 'w1',
+          folders: const [WorkspaceFolder(path: '/repo-b')],
+          createdAt: 1,
+        ),
+      ];
+
+      final groups = groupSessionsByProject(
+        folders: folders,
+        sessions: sessions,
+        usesPosixPaths: true,
+      );
+
+      expect(groups.map((group) => group.projectPath), ['/repo-a', '/repo-b']);
+      expect(groups[0].sessions.map((session) => session.sessionId), ['a']);
+      expect(groups[1].sessions.map((session) => session.sessionId), ['b']);
+      expect(groups.any((group) => group.isOther), isFalse);
+    });
+
+    test('uses the longest matching folder for nested projects', () {
+      const folders = [
+        WorkspaceFolder(path: '/repo'),
+        WorkspaceFolder(path: '/repo/packages/client'),
+      ];
+      final session = AppSession(
+        sessionId: 'nested',
+        workspaceId: 'w1',
+        folders: const [WorkspaceFolder(path: '/repo/packages/client/lib')],
+        createdAt: 1,
+      );
+
+      final groups = groupSessionsByProject(
+        folders: folders,
+        sessions: [session],
+        usesPosixPaths: true,
+      );
+
+      expect(groups[0].sessions, isEmpty);
+      expect(groups[1].sessions.single.sessionId, 'nested');
+    });
+
+    test('adds Other only for sessions outside every folder', () {
+      const folders = [WorkspaceFolder(path: '/repo')];
+      final session = AppSession(
+        sessionId: 'orphan',
+        workspaceId: 'w1',
+        folders: const [WorkspaceFolder(path: '/elsewhere')],
+        createdAt: 1,
+      );
+
+      final groups = groupSessionsByProject(
+        folders: folders,
+        sessions: [session],
+        usesPosixPaths: true,
+      );
+
+      expect(groups, hasLength(2));
+      expect(groups.last.isOther, isTrue);
+      expect(groups.last.projectPath, isNull);
+      expect(groups.last.sessions.single.sessionId, 'orphan');
+    });
+
+    test('matches Windows-style paths when POSIX paths are disabled', () {
+      const folders = [WorkspaceFolder(path: r'C:\repo')];
+      final session = AppSession(
+        sessionId: 'windows',
+        workspaceId: 'w1',
+        folders: const [WorkspaceFolder(path: r'C:\repo\src')],
+        createdAt: 1,
+      );
+
+      final groups = groupSessionsByProject(
+        folders: folders,
+        sessions: [session],
+        usesPosixPaths: false,
+      );
+
+      expect(groups.single.sessions.single.sessionId, 'windows');
+    });
+
+    test('disambiguates duplicate folder basenames', () {
+      const folders = [
+        WorkspaceFolder(path: '/team-a/huji'),
+        WorkspaceFolder(path: '/team-b/huji'),
+      ];
+
+      final groups = groupSessionsByProject(
+        folders: folders,
+        sessions: const [],
+        usesPosixPaths: true,
+      );
+
+      expect(groups.map((group) => group.label), [
+        'team-a/huji',
+        'team-b/huji',
       ]);
     });
   });
