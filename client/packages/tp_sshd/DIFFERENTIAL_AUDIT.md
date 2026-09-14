@@ -976,6 +976,19 @@ impact vs churn), not a dependency.
   D05's shape). Unknown-id WINDOW_ADJUSTs stay ignored like sshd's
   logit-only branch. Differential re-runs: A15 and D05 both observe the
   exact sshd disconnect wording; D08's pending-open tolerance unchanged.
+
+  *Post-audit review correction (7c review, fixed in the follow-up commit):*
+  the open-*verdict* half of this policy was briefly made more tolerant
+  than sshd: a duplicate `CHANNEL_OPEN_CONFIRMATION` for a live channel
+  was logged and dropped, on a misreading of
+  `channel_input_open_confirmation` as debug-log-and-return. sshd 10.2
+  fatals there (channels.c:3642-3644, 3698-3700: `Received open
+  confirmation for non-opening channel N.` / the open-failure twin), and a
+  dartssh2 client answers each server-initiated open exactly once, so a
+  duplicate verdict is peer misbehavior, not a race. The live-channel
+  verdict now matches sshd's non-opening fatal; the finish-race and
+  never-existed classes above are unchanged. No row verdict moves — no
+  harness row sends a server-directed open verdict for a live channel.
 - **F6 — B02 + C07: messages racing the rekey exchange window must not
   be dropped** (dartssh2, `ssh_transport.dart`). The shared transport
   answers every incoming non-KEX message processed while a key exchange

@@ -675,10 +675,10 @@ class SSHServerConnection {
   /// Serves the client's verdict on a server-initiated channel open
   /// (RFC 4254 §5.1): a CHANNEL_OPEN_CONFIRMATION promotes the pending open
   /// to a live channel; a CHANNEL_OPEN_FAILURE resolves it to `null`. A
-  /// verdict for an id that was never a pending open is a protocol error
-  /// like any other channel-scoped message for a nonexistent channel —
-  /// unless it races a channel the verdict already created (duplicate
-  /// replies) or one that has since finished.
+  /// verdict for an id without a pending open follows sshd's policy for a
+  /// channel that is not still opening — fatal for a live channel, and
+  /// tolerated only when it races a channel that has since finished (see
+  /// [_tolerateOrDisconnectOpenReply]).
   void _handleChannelOpenReply(Uint8List payload) {
     switch (SSHMessage.readMessageId(payload)) {
       case SSH_Message_Channel_Confirmation.messageId:
@@ -692,7 +692,7 @@ class SSHServerConnection {
         if (pending == null) {
           _tolerateOrDisconnectOpenReply(
             message.recipientChannel,
-            'open confirmation packet',
+            'confirmation',
           );
           return;
         }
@@ -726,7 +726,7 @@ class SSHServerConnection {
         if (pending == null) {
           _tolerateOrDisconnectOpenReply(
             message.recipientChannel,
-            'open failure packet',
+            'failure',
           );
           return;
         }
@@ -735,24 +735,28 @@ class SSHServerConnection {
     }
   }
 
-  /// The unknown-id policy for an open verdict: tolerated when the channel
-  /// is known in any form — live (a duplicate verdict for a channel the
-  /// first verdict already created, the shape OpenSSH's
-  /// `channel_input_open_confirmation` answers with a debug log and a
-  /// return), or remembered as closing/reaped (a verdict racing the
-  /// channel's finish) — a protocol error otherwise.
-  void _tolerateOrDisconnectOpenReply(int id, String what) {
+  /// The policy for an open verdict addressed to an id without a pending
+  /// open, matching sshd's `channel_input_open_confirmation` /
+  /// `channel_input_open_failure` (channels.c:3642-3644, 3698-3700): a
+  /// verdict for a channel that is already live — a duplicate verdict, since
+  /// a dartssh2 client answers each server-initiated open exactly once — is
+  /// the non-opening fatal, `Received open <kind> for non-opening channel
+  /// N.`; a verdict for an unknown id is `channel_from_packet_id`'s
+  /// nonexistent-channel disconnect. Only the finish race stays tolerated:
+  /// a channel this server finished but whose CHANNEL_CLOSE the client has
+  /// not sent yet.
+  void _tolerateOrDisconnectOpenReply(int id, String kind) {
     if (_channels.containsKey(id)) {
-      _config.printDebug?.call(
-        'tp_sshd: ignoring $what for channel $id '
-        '(duplicate verdict for a live channel)',
+      _disconnect(
+        SSHDisconnectReason.protocolError,
+        'Received open $kind for non-opening channel $id.',
       );
       return;
     }
     if (_closingChannels.contains(id) || _reapedChannels.contains(id)) return;
     _disconnect(
       SSHDisconnectReason.protocolError,
-      '$what referred to nonexistent channel $id',
+      'open $kind packet referred to nonexistent channel $id',
     );
   }
 
